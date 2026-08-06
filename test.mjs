@@ -1,0 +1,237 @@
+// Checagem mínima da lógica de derivação. `node test.mjs`
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { projectOf, modelOf, routeOf, statusOf, subjectOf, buildJob, mergeMeta, fmtAge, fmtTokens, readJobs } from './src/jobs.mjs'
+
+// projeto/subprojeto saem do padrão de pastas do Felipe
+assert.deepEqual(projectOf('D:\\Documentos\\Ti\\projetos\\CLIENTS\\inovallbond\\minigame-evento-v2'), {
+  project: 'inovallbond', sub: 'minigame-evento-v2',
+})
+assert.deepEqual(projectOf('C:\\Users\\lfeli'), { project: 'lfeli', sub: null })
+assert.deepEqual(projectOf(''), { project: '—', sub: null })
+// sem grupo, a pasta de projetos resolve — é o caso de outra máquina
+assert.deepEqual(projectOf('/home/ana/projects/meuapp/api'), { project: 'meuapp', sub: 'api' })
+assert.deepEqual(projectOf('/Users/ana/dev/site'), { project: 'site', sub: null })
+// sem nada reconhecível, o último segmento serve
+assert.deepEqual(projectOf('/opt/coisa'), { project: 'coisa', sub: null })
+
+// modelo só existe dentro de respawnFlags
+assert.equal(modelOf(['--agent', 'claude', '--model', 'opus[1m]']), 'opus[1m]')
+assert.equal(modelOf(['--agent', 'claude']), 'default')
+assert.equal(modelOf(undefined), 'default')
+
+// rota: branch da worktree sem o prefixo, senão main
+assert.equal(routeOf({ worktreeBranch: 'worktree-painel-int' }), 'painel-int')
+assert.equal(routeOf({}), 'main')
+
+assert.equal(statusOf('working'), 'working')
+assert.equal(statusOf('done'), 'done')
+assert.equal(statusOf('needs_input'), 'waiting')
+assert.equal(statusOf('error'), 'failed')
+assert.equal(statusOf('coisa-nova'), 'coisa-nova') // rótulo desconhecido passa direto, não vira 'unknown'
+
+// precedência do assunto: meta > nome do usuário > nome automático > prompt
+assert.equal(subjectOf({ name: 'auto', nameSource: 'auto' }, { subject: 'meu' }), 'meu')
+assert.equal(subjectOf({ name: 'nuvem', nameSource: 'user' }, {}), 'nuvem')
+assert.equal(subjectOf({ intent: 'faz deploy na vps por favor' }, {}), 'faz deploy na vps por favor')
+
+// job "working" sem sinal há 20min conta como parado
+const now = 1_000_000_000
+const job = buildJob(
+  'abc',
+  {
+    state: 'working',
+    createdAt: new Date(now - 3600e3).toISOString(),
+    updatedAt: new Date(now - 20 * 60e3).toISOString(),
+    respawnFlags: ['--model', 'sonnet'],
+    originCwd: 'D:\\Documentos\\Ti\\projetos\\CLIENTS\\inovallbond\\minigame-evento-v2',
+    tokens: 12345,
+  },
+  { todos: [{ text: 'a', done: true }, { text: 'b', done: false }] },
+  ['abc'],
+  now,
+)
+assert.equal(job.stale, true)
+assert.equal(job.pinned, true)
+assert.equal(job.project, 'inovallbond')
+assert.equal(job.todosDone, 1)
+assert.equal(job.model, 'sonnet')
+
+// merge preserva o que o patch não mencionou, e null apaga campo
+assert.deepEqual(mergeMeta({ subject: 'x', category: 'bug' }, { category: 'feature' }), {
+  subject: 'x', category: 'feature',
+})
+assert.deepEqual(mergeMeta({ subject: 'x', notes: 'y' }, { notes: null }), { subject: 'x' })
+
+// célula sempre ocupa a largura pedida, com ou sem cor, truncando ou não
+const { cell } = await import('./src/tui.mjs')
+const strip = (s) => s.replace(/\x1b\[[0-9;]*m/g, '')
+assert.equal(strip(cell('abc', 10)).length, 10)
+assert.equal(strip(cell('abc', 10, '\x1b[2m')).length, 10)
+assert.equal(strip(cell('painel-int-editores-longo', 20)), 'painel-int-editore… ') // 19 + espaço
+assert.equal(strip(cell('painel-int-editores-longo', 20)).length, 20)
+assert.ok(cell('x', 5, '\x1b[2m').endsWith('    ')) // reset vem antes do padding
+
+assert.equal(fmtAge(90 * 60e3), '1h30')
+assert.equal(fmtTokens(114533), '115k')
+assert.equal(fmtTokens(0), '—')
+
+// o script da página não roda em Node, mas erro de sintaxe dá pra pegar aqui
+const html = fs.readFileSync(new URL('./src/ui.html', import.meta.url), 'utf8')
+const script = html.match(/<script>([\s\S]*?)<\/script>/)[1]
+assert.doesNotThrow(() => new Function(script), 'ui.html tem erro de sintaxe no JS')
+for (const rota of ['/api/jobs', '/api/meta', '/events']) {
+  assert.ok(script.includes(rota), `ui.html não usa ${rota}`)
+}
+
+// contra os jobs reais da máquina: não pode explodir nem inventar campo
+const real = readJobs()
+for (const j of real) {
+  assert.ok(typeof j.id === 'string' && j.id)
+  assert.ok(typeof j.subject === 'string')
+  assert.ok(Array.isArray(j.todos))
+}
+
+// --- transcript: o último pedido vem do arquivo da sessão, não do intent ---
+const { lastPrompt, _internals } = await import('./src/transcript.mjs')
+const { humanText, scanTail } = _internals
+
+assert.equal(humanText({ type: 'user', message: { content: 'oi' } }), 'oi')
+assert.equal(humanText({ type: 'user', message: { content: [{ type: 'text', text: 'oi' }] } }), 'oi')
+assert.equal(humanText({ type: 'assistant', message: { content: 'oi' } }), null)
+assert.equal(humanText({ type: 'user', toolUseResult: {}, message: { content: 'saida' } }), null)
+assert.equal(humanText({ type: 'user', message: { content: '<system-reminder>x</system-reminder>' } }), null)
+assert.equal(humanText({ type: 'user', message: { content: '   ' } }), null)
+// injeção de skill vem como user e traz o SKILL.md inteiro — não é pedido
+assert.equal(humanText({ type: 'user', isMeta: true, message: { content: 'Base directory for this skill: ...' } }), null)
+assert.equal(humanText({ type: 'user', interruptedMessageId: 'x', message: { content: '[Request interrupted by user]' } }), null)
+assert.equal(humanText({ type: 'user', promptSource: 'user', message: { content: 'pedido real' } }), 'pedido real')
+
+const linhas = [
+  '{"type":"user","message":{"content":"primeiro pedido"}}',
+  '{"type":"assistant","message":{"content":"resposta"}}',
+  '{"type":"user","toolUseResult":{},"message":{"content":"saida de tool"}}',
+  '{"type":"user","message":{"content":"<system-reminder>ignora</system-reminder>"}}',
+  '{"type":"user","message":{"content":"ultimo pedido"}}',
+]
+assert.equal(scanTail(linhas.join('\n'), false), 'ultimo pedido')
+assert.equal(scanTail(['{"type":"user","message":{"conte', ...linhas].join('\n'), true), 'ultimo pedido')
+assert.equal(scanTail('{lixo nao json}\n', false), null)
+assert.equal(scanTail(linhas.join('\n'), false), 'ultimo pedido')
+assert.equal(_internals.scanLines(linhas.join('\n'), { fromEnd: false }), 'primeiro pedido')
+assert.equal(lastPrompt(null), null)
+assert.equal(lastPrompt('C:/caminho/que/nao/existe.jsonl'), null)
+
+// a flag de confiança só pode acusar quando há transcript pra comparar
+const { intentMatchesTranscript } = await import('./src/transcript.mjs')
+assert.equal(intentMatchesTranscript('qualquer coisa', null), null)
+assert.equal(intentMatchesTranscript(null, 'x.jsonl'), null)
+
+// nos jobs reais com transcript, tem que sair pedido de verdade
+const comTranscript = readJobs().filter((j) => j.lastPrompt)
+assert.ok(comTranscript.length > 0, 'nenhum job leu o transcript')
+for (const j of comTranscript) {
+  assert.ok(typeof j.lastPrompt === 'string' && j.lastPrompt.length > 0)
+  assert.ok(!j.lastPrompt.startsWith('<'), 'pegou system-reminder como pedido')
+}
+
+// --- meta.json vem de agente: formato varia, não pode virar "undefined" ---
+const { normalizeTodo, normalizeLink } = await import('./src/jobs.mjs')
+assert.deepEqual(normalizeTodo({ text: 'a', done: true }), { text: 'a', done: true })
+assert.deepEqual(normalizeTodo({ t: 'a', done: true }), { text: 'a', done: true }) // o caso real
+assert.deepEqual(normalizeTodo({ title: 'a' }), { text: 'a', done: false })
+assert.deepEqual(normalizeTodo({ task: 'a', completed: true }), { text: 'a', done: true })
+assert.deepEqual(normalizeTodo('só texto'), { text: 'só texto', done: false })
+assert.equal(normalizeTodo({ done: true }), null) // sem texto não vira cartão vazio
+assert.equal(normalizeTodo(null), null)
+
+assert.deepEqual(normalizeLink('https://lev4.carzo.com.br'), { label: 'lev4.carzo.com.br', url: 'https://lev4.carzo.com.br' })
+assert.deepEqual(normalizeLink({ label: 'painel', url: 'http://x' }), { label: 'painel', url: 'http://x' })
+assert.deepEqual(normalizeLink({ href: 'http://x' }), { label: 'http://x', url: 'http://x' })
+assert.equal(normalizeLink({ label: 'sem url' }), null)
+
+// --- servidores: classificação e caminho ---
+const srv = await import('./src/servers.mjs')
+const { kindOf, projectFromCmd } = srv._internals
+assert.equal(kindOf('node.exe', 'node .../vite/bin/vite.js'), 'vite')
+assert.equal(kindOf('python.exe', 'uvicorn app:main'), 'python')
+assert.equal(kindOf('lsass.exe', ''), 'lsass')
+// o caminho tem que parar antes de node_modules, senão não diz qual app é
+assert.deepEqual(
+  projectFromCmd('"node" "D:\\Documentos\\Ti\\projetos\\CLIENTS\\inovallbond\\apps\\game_startingup\\node_modules\\.bin\\..\\vite\\bin\\vite.js"'),
+  { project: 'inovallbond', path: 'D:\\Documentos\\Ti\\projetos\\CLIENTS\\inovallbond\\apps\\game_startingup' },
+)
+assert.deepEqual(projectFromCmd('C:\\Windows\\system32\\svchost.exe -k netsvcs'), { project: null, path: null })
+// caminho de Unix também tem que ser reconhecido
+assert.deepEqual(projectFromCmd('node /home/ana/projects/meuapp/node_modules/.bin/vite'), {
+  project: 'meuapp', path: '/home/ana/projects/meuapp',
+})
+
+// --- portabilidade: nada pode depender do HD de uma máquina ---
+const plat = await import('./src/platform.mjs')
+assert.ok(['win32', 'darwin', 'linux'].includes(plat.SO) || plat.SO)
+assert.ok(plat.caminhoAutostart().length > 0)
+assert.ok(plat.atalhosPossiveis().every((p) => typeof p === 'string'))
+const inst = await import('./src/install.mjs')
+assert.equal(typeof inst.projectsBase(), 'string') // detectada, não fixa no código
+assert.equal(inst.detectarBase([{ cwd: '/home/ana/projects/x' }, { cwd: '/home/ana/projects/y' }]),
+  ['', 'home', 'ana', 'projects'].join(path.sep))
+assert.equal(inst.detectarBase([{ cwd: '/opt/nada' }]), null)
+assert.deepEqual(inst.findProjects(null), []) // sem base, não varre nada
+// matar processo fora da lista tem que ser recusado
+assert.throws(() => srv.killServer(4), /inválido/)
+assert.throws(() => srv.killServer('abc'), /inválido/)
+
+// --- config: liga/desliga sem tocar no arquivo real ---
+const { isEnabled } = await import('./src/config.mjs')
+const cwdIno = 'D:\\Documentos\\Ti\\projetos\\CLIENTS\\inovallbond\\minigame-evento-v2'
+assert.equal(isEnabled(cwdIno, { enabled: true, disabledProjects: [] }), true)
+assert.equal(isEnabled(cwdIno, { enabled: false, disabledProjects: [] }), false)
+assert.equal(isEnabled(cwdIno, { enabled: true, disabledProjects: ['inovallbond'] }), false)
+assert.equal(isEnabled(cwdIno, { enabled: true, disabledProjects: ['outro'] }), true)
+
+// --- install: edição idempotente, em pasta descartável ---
+const { installInto, removeFrom, findProjects, blockText } = await import('./src/install.mjs')
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-test-'))
+try {
+  assert.equal(installInto(tmp).action, 'missing') // sem CLAUDE.md não inventa arquivo
+  assert.equal(installInto(tmp, { create: true }).action, 'created')
+
+  const md = path.join(tmp, 'CLAUDE.md')
+  fs.writeFileSync(md, '# Projeto\n\nTexto do usuário.\n')
+  assert.equal(installInto(tmp).action, 'added')
+  assert.equal(installInto(tmp).action, 'unchanged') // rodar de novo não duplica
+
+  const depois = fs.readFileSync(md, 'utf8')
+  assert.ok(depois.includes('Texto do usuário.'), 'apagou conteúdo do usuário')
+  assert.equal(depois.split('control-center:start').length - 1, 1, 'duplicou o bloco')
+
+  // conteúdo fora dos marcadores sobrevive ao update
+  fs.writeFileSync(md, depois + '\n## Minha seção\nnão pode sumir\n')
+  fs.writeFileSync(md, fs.readFileSync(md, 'utf8').replace(blockText(), '<!-- control-center:start -->\nvelho\n<!-- control-center:end -->'))
+  assert.equal(installInto(tmp).action, 'updated')
+  const final = fs.readFileSync(md, 'utf8')
+  assert.ok(final.includes('Minha seção') && final.includes('Texto do usuário.'))
+  assert.ok(!final.includes('\nvelho\n'), 'bloco velho não foi substituído')
+
+  assert.equal(removeFrom(tmp).action, 'removed')
+  assert.ok(!fs.readFileSync(md, 'utf8').includes('control-center:start'))
+  assert.equal(removeFrom(tmp).action, 'unchanged')
+} finally {
+  fs.rmSync(tmp, { recursive: true, force: true })
+}
+
+// varredura acha projetos reais e não devolve lixo
+const projetos = findProjects()
+assert.ok(projetos.length > 5, 'varredura achou pouca coisa')
+assert.ok(projetos.every((p) => fs.existsSync(p)))
+assert.ok(!projetos.some((p) => /node_modules|[\\/]_/.test(p)), 'varredura pegou pasta que devia pular')
+
+// --- daemon: caminhos, sem escrever nada ---
+const dm = await import('./src/daemon.mjs')
+assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')
+assert.equal(path.basename(dm.vbsPath()), 'control-center.vbs')
+
+console.log(`ok — ${real.length} jobs reais, ${projetos.length} projetos varridos`)

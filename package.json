@@ -1,0 +1,30 @@
+{
+  "name": "claude-control-center",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Painel dos agentes do Claude Code rodando em background — terminal e web, com to-dos, custo e servidores locais",
+  "keywords": ["claude", "claude-code", "dashboard", "agents", "tui"],
+  "license": "MIT",
+  "author": "Felipe Cardoso",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/felipecarzo/claudecontrolcenter.git"
+  },
+  "bugs": { "url": "https://github.com/felipecarzo/claudecontrolcenter/issues" },
+  "homepage": "https://github.com/felipecarzo/claudecontrolcenter#readme",
+  "bin": { "cc": "./cc.mjs" },
+  "main": "./src/jobs.mjs",
+  "exports": {
+    ".": "./src/jobs.mjs",
+    "./servers": "./src/servers.mjs",
+    "./platform": "./src/platform.mjs"
+  },
+  "files": ["cc.mjs", "src/", "AGENTS.md", "README.md", "LICENSE"],
+  "scripts": {
+    "start": "node cc.mjs",
+    "web": "node cc.mjs --web-only",
+    "test": "node test.mjs"
+  },
+  "engines": { "node": ">=18" },
+  "os": ["win32", "darwin", "linux"]
+}

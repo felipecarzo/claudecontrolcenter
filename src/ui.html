@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control Center</title>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #11141a;
+    --surface-2: #161a21;
+    --line: #1e232c;
+    --line-soft: #171b22;
+    --fg: #e6edf3;
+    --dim: #8b95a5;
+    --faint: #5a6472;
+
+    --working: #4da3ff;
+    --waiting: #f0a92b;
+    --failed:  #ff5c57;
+    --done:    #3fd07f;
+    --idle:    #5a6472;
+
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+    /* Bahnschrift é a DIN que já vem no Windows: letra de sinalização
+       industrial. Variável — a largura condensada carrega a personalidade. */
+    --label: Bahnschrift, "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  }
+  h1, .count, .tab, thead th, tr.zone > td, .cat, h3, .col-head, .big {
+    font-stretch: 75%;
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 13px/1.45 var(--mono); -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid var(--working); outline-offset: 2px; }
+  h3 {
+    margin: 0 0 6px; font: 700 10px/1 var(--label);
+    letter-spacing: .16em; text-transform: uppercase; color: var(--faint);
+  }
+
+  /* ---------- topo ---------- */
+  header { position: sticky; top: 0; z-index: 30; background: var(--bg); padding: 14px 20px 0; }
+  .top { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; }
+  h1 {
+    font: 700 20px/1 var(--label); letter-spacing: .26em;
+    text-transform: uppercase; margin: 0; white-space: nowrap;
+  }
+  .counts { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; }
+  .count {
+    font: 700 12px/1 var(--label); letter-spacing: .12em; text-transform: uppercase;
+    color: var(--faint); display: flex; align-items: baseline; gap: 6px;
+  }
+  .count b { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--dim); }
+  .count.hot b { color: var(--fg); }
+  .grow { flex: 1 1 40px; }
+  input[type=search], select {
+    background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 3px; padding: 5px 9px; font: 12px var(--mono); min-width: 170px;
+  }
+  input[type=search]::placeholder { color: var(--faint); }
+
+  nav { display: flex; gap: 2px; margin-top: 12px; border-bottom: 1px solid var(--line); }
+  .tab {
+    background: none; border: 0; border-bottom: 2px solid transparent;
+    padding: 8px 14px; cursor: pointer; color: var(--faint);
+    font: 700 12px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+  }
+  .tab:hover { color: var(--dim); }
+  .tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--working); }
+  .tab .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); margin-left: 6px; }
+
+  main { padding: 4px 20px 60px; }
+  footer { color: var(--faint); font-size: 11px; padding: 0 20px 28px; }
+  .empty { color: var(--faint); text-align: center; padding: 60px 0; }
+
+  /* ---------- tabela de agentes ---------- */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  col.c-dot { width: 22px; } col.c-path { width: 200px; }
+  col.c-model { width: 72px; } col.c-tok { width: 60px; }
+  col.c-time { width: 200px; } col.c-todo { width: 60px; }
+
+  thead th {
+    text-align: left; padding: 10px 10px 7px 0;
+    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+    color: var(--faint); border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  .ruler { position: relative; height: 11px; }
+  .ruler span {
+    position: absolute; top: 0; transform: translateX(-50%);
+    font: 10px/1 var(--mono); color: var(--faint); white-space: nowrap;
+  }
+  .ruler span.start { transform: none; }
+  .ruler span.end { transform: translateX(-100%); }
+  .ruler i {
+    position: absolute; bottom: -7px; width: 1px; height: 4px;
+    background: var(--line); transform: translateX(-50%);
+  }
+
+  tr.zone > td {
+    padding: 24px 0 7px; font: 700 14px/1 var(--label);
+    letter-spacing: .24em; text-transform: uppercase;
+  }
+  tr.zone .bar { display: flex; align-items: center; gap: 10px; }
+  tr.zone .rule { flex: 1; height: 1px; background: var(--line); }
+  tr.zone .n { color: var(--faint); font-family: var(--mono); letter-spacing: 0; }
+  tr.zone button {
+    background: none; border: 0; padding: 0; cursor: pointer; color: var(--faint);
+    font: inherit; letter-spacing: inherit; text-transform: inherit;
+  }
+  tr.zone button:hover { color: var(--fg); }
+  .z-waiting { color: var(--waiting); } .z-failed { color: var(--failed); }
+  .z-working { color: var(--working); } .z-idle { color: var(--idle); }
+  .z-done { color: var(--done); }
+
+  tr.row { cursor: pointer; border-bottom: 1px solid var(--line-soft); }
+  tr.row:hover, tr.row.sel { background: var(--surface); }
+  tr.row.sel > td:first-child { box-shadow: inset 2px 0 0 currentColor; }
+  tr.row.pinned > td:first-child { box-shadow: inset 2px 0 0 var(--waiting); }
+  td { padding: 7px 10px 7px 0; vertical-align: top; }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: block; margin-top: 5px; }
+  .s-working { background: var(--working); } .s-waiting { background: var(--waiting); }
+  .s-failed { background: var(--failed); } .s-done { background: var(--done); }
+  .s-idle { background: var(--idle); }
+
+  .clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .subject { display: flex; align-items: baseline; gap: 7px; }
+  .note { color: var(--faint); font-size: 12px; margin-top: 2px; }
+  .note.warn { color: var(--waiting); } .note.bad { color: var(--failed); }
+  .cat {
+    font: 700 9px/1.6 var(--label); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--dim); border: 1px solid var(--line); border-radius: 2px;
+    padding: 0 5px; flex: none;
+  }
+  .path { color: var(--dim); font-size: 12px; }
+  .path em { color: var(--faint); font-style: normal; }
+  .num { color: var(--dim); font-variant-numeric: tabular-nums; }
+
+  /* signature: faixa de atividade */
+  .track { position: relative; height: 16px; margin-top: 2px; }
+  .track .base { position: absolute; inset: 7px 0 auto; height: 2px; background: var(--line); }
+  .track .life { position: absolute; top: 6px; height: 4px; border-radius: 1px; background: currentColor; opacity: .85; }
+  .track .silence {
+    position: absolute; top: 7px; height: 2px;
+    background: repeating-linear-gradient(90deg, var(--failed) 0 3px, transparent 3px 6px);
+  }
+  .track .now { position: absolute; top: 3px; right: 0; width: 1px; height: 10px; background: var(--faint); }
+
+  .bar-todo { height: 3px; background: var(--line); border-radius: 2px; margin-top: 4px; }
+  .bar-todo > i { display: block; height: 100%; background: var(--done); border-radius: 2px; }
+
+  /* ---------- painel lateral ---------- */
+  .scrim {
+    position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.45);
+    opacity: 0; pointer-events: none;
+  }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 50;
+    width: min(660px, 92vw); background: var(--surface);
+    border-left: 1px solid var(--line); overflow-y: auto;
+    transform: translateX(100%); box-shadow: -24px 0 48px rgba(0,0,0,.5);
+  }
+  .drawer.on { transform: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .drawer { transition: transform .16s ease-out; }
+    .scrim { transition: opacity .16s ease-out; }
+    tr.row { transition: background .12s ease; }
+  }
+  .d-head { padding: 20px 22px 16px; border-bottom: 1px solid var(--line); }
+  .d-head .big {
+    font: 700 22px/1.15 var(--label); letter-spacing: .02em; margin: 6px 0 8px;
+  }
+  .d-close {
+    float: right; background: none; border: 0; color: var(--faint);
+    font: 16px var(--mono); cursor: pointer; padding: 0 2px;
+  }
+  .d-close:hover { color: var(--fg); }
+  .d-status {
+    display: inline-flex; align-items: center; gap: 7px;
+    font: 700 11px/1 var(--label); letter-spacing: .18em; text-transform: uppercase;
+  }
+  .d-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--dim); font-size: 12px; }
+  .d-meta span:not(:last-child)::after { content: " ·"; color: var(--faint); }
+  .d-body { padding: 18px 22px 40px; display: grid; gap: 22px; }
+  .d-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .d-body p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .quote {
+    border-left: 2px solid var(--line); padding-left: 12px; color: var(--fg);
+  }
+  details.lvl > summary {
+    cursor: pointer; color: var(--faint); list-style: none;
+    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+    padding: 8px 0; border-top: 1px solid var(--line);
+  }
+  details.lvl > summary::-webkit-details-marker { display: none; }
+  details.lvl > summary::before { content: "▸ "; }
+  details.lvl[open] > summary::before { content: "▾ "; }
+  details.lvl > summary:hover { color: var(--fg); }
+
+  .todos { list-style: none; margin: 0; padding: 0; }
+  .todos li { display: flex; gap: 9px; align-items: flex-start; padding: 4px 0; }
+  .todos input { margin-top: 3px; accent-color: var(--done); flex: none; }
+  .todos li.done span { color: var(--faint); text-decoration: line-through; }
+  a { color: var(--working); }
+  code {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 2px;
+    padding: 0 5px; color: var(--dim); overflow-wrap: anywhere;
+  }
+
+  /* ---------- kanban ---------- */
+  .kanban { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
+  .col-head {
+    display: flex; align-items: baseline; gap: 8px; padding: 14px 0 8px;
+    font: 700 13px/1 var(--label); letter-spacing: .2em; text-transform: uppercase;
+  }
+  .col-head .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-left-width: 2px;
+    border-radius: 3px; padding: 6px 11px; margin-bottom: 4px; cursor: pointer;
+  }
+  .card:hover { background: var(--surface-2); }
+  .card .txt { display: block; }
+  .card.done .txt { color: var(--faint); text-decoration: line-through; }
+  .card .from {
+    display: flex; gap: 7px; margin-top: 6px; color: var(--faint); font-size: 11px;
+    align-items: baseline;
+  }
+
+  /* ---------- projetos ---------- */
+  .projs { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
+  .proj { border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
+  .proj > .hd { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .proj .name { font: 700 15px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; }
+  .proj .sub { color: var(--faint); font-size: 11px; margin-top: 6px; }
+  .proj .item {
+    display: flex; align-items: baseline; gap: 8px; padding: 7px 14px;
+    border-top: 1px solid var(--line-soft); cursor: pointer;
+  }
+  .proj .item:hover { background: var(--surface-2); }
+
+  /* ---------- custo ---------- */
+  .cost { max-width: 780px; }
+  .cost .row { display: grid; grid-template-columns: 150px 1fr 70px; gap: 12px; align-items: center; padding: 5px 0; }
+  .cost .meter { height: 8px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .cost .meter > i { display: block; height: 100%; background: var(--working); opacity: .75; }
+  .total { font: 700 32px/1 var(--label); letter-spacing: .04em; margin: 8px 0 4px; }
+
+  /* ---------- servidores ---------- */
+  .srv { width: 100%; border-collapse: collapse; }
+  .srv td { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  .srv .port { font: 700 15px/1 var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+  .btn {
+    background: var(--surface); border: 1px solid var(--line); color: var(--dim);
+    border-radius: 3px; padding: 4px 10px; cursor: pointer; font: 11px var(--mono);
+  }
+  .btn:hover { color: var(--fg); border-color: var(--faint); }
+  .btn.danger { color: var(--failed); border-color: color-mix(in srgb, var(--failed) 40%, var(--line)); }
+  .btn.danger:hover { background: color-mix(in srgb, var(--failed) 16%, var(--surface)); }
+  .btn[disabled] { opacity: .4; cursor: not-allowed; }
+
+  @media (max-width: 900px) {
+    col.c-model, col.c-tok, col.c-time { width: 0; }
+    .hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>Control Center</h1>
+    <div class="counts" id="counts"></div>
+    <span class="grow"></span>
+    <input type="search" id="q" placeholder="filtrar…" autocomplete="off">
+    <select id="proj"><option value="">todos os projetos</option></select>
+  </div>
+  <nav id="tabs" role="tablist"></nav>
+</header>
+
+<main id="main"></main>
+<footer id="foot"></footer>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-label="detalhe do agente"></aside>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const params = new URLSearchParams(location.search)
+let DATA = { jobs: [], summary: {} }
+let SERVERS = null            // carregado só quando a aba de servidores abre
+let armed = null              // pid com "encerrar" armado, aguardando confirmação
+let selected = params.get('open') || null
+
+const TABS = [
+  { id: 'agentes', label: 'agentes' },
+  { id: 'todos', label: 'to-dos' },
+  { id: 'projetos', label: 'projetos' },
+  { id: 'tempo', label: 'tempo' },
+  { id: 'custo', label: 'custo' },
+  { id: 'servidores', label: 'servidores' },
+]
+let tab = params.get('tab') || localStorage.getItem('cc-tab') || 'agentes'
+
+const collapsed = params.has('expand')
+  ? new Set()
+  : new Set(JSON.parse(localStorage.getItem('cc-collapsed') || '["done","idle"]'))
+
+const ZONES = [
+  { key: 'waiting', title: 'precisa de você' },
+  { key: 'failed', title: 'falhou' },
+  { key: 'working', title: 'trabalhando' },
+  { key: 'idle', title: 'parados' },
+  { key: 'done', title: 'prontos' },
+]
+const LABEL = { working: 'ativos', waiting: 'esperando', failed: 'falharam', done: 'prontos', idle: 'parados' }
+
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const age = (ms) => {
+  if (!(ms >= 0)) return '—'
+  const m = Math.floor(ms / 6e4)
+  if (m < 60) return m + 'm'
+  const h = Math.floor(m / 60)
+  return h < 24 ? h + 'h' + String(m % 60).padStart(2, '0') : Math.floor(h / 24) + 'd' + (h % 24) + 'h'
+}
+const tok = (n) => !n ? '—' : n < 1e3 ? String(n) : n < 1e6 ? (n / 1e3).toFixed(n < 1e4 ? 1 : 0) + 'k' : (n / 1e6).toFixed(1) + 'M'
+const byId = (id) => DATA.jobs.find((j) => j.id === id)
+
+function filtered() {
+  const q = $('#q').value.trim().toLowerCase()
+  const proj = $('#proj').value
+  return DATA.jobs.filter((j) => {
+    if (proj && j.project !== proj) return false
+    if (!q) return true
+    return [j.subject, j.route, j.project, j.sub, j.category, j.detail, j.model, j.id, j.lastPrompt,
+      ...j.todos.map((t) => t.text)].join(' ').toLowerCase().includes(q)
+  })
+}
+
+/* ============================ topo ============================ */
+
+function renderHeader() {
+  const s = DATA.summary
+  $('#counts').innerHTML = ['waiting', 'failed', 'working', 'idle', 'done']
+    .map((k) => {
+      const n = s[k] ?? 0
+      const hot = n > 0 && (k === 'waiting' || k === 'failed')
+      return `<span class="count${hot ? ' hot' : ''}" style="${hot ? `color:var(--${k})` : ''}"><b>${n}</b>${LABEL[k]}</span>`
+    }).join('') + `<span class="count"><b>${tok(s.tokens)}</b>tokens</span>`
+
+  const sel = $('#proj'), cur = sel.value
+  sel.innerHTML = ['<option value="">todos os projetos</option>']
+    .concat((s.projects || []).map((p) => `<option${p === cur ? ' selected' : ''}>${esc(p)}</option>`)).join('')
+
+  const counts = {
+    agentes: DATA.jobs.length,
+    todos: DATA.jobs.reduce((a, j) => a + j.todos.filter((t) => !t.done).length, 0),
+    projetos: (s.projects || []).length,
+    servidores: SERVERS ? SERVERS.filter((x) => x.dev).length : null,
+  }
+  $('#tabs').innerHTML = TABS.map((t) => `
+    <button class="tab" role="tab" data-tab="${t.id}" aria-selected="${t.id === tab}">
+      ${t.label}${counts[t.id] != null ? `<span class="n">${counts[t.id]}</span>` : ''}
+    </button>`).join('')
+}
+
+/* ======================= aba: agentes ======================== */
+
+function timeScale(jobs) {
+  const now = Date.now()
+  const oldest = Math.min(now - 36e5, ...jobs.map((j) => j.createdAt))
+  return { t0: oldest, span: Math.max(now - oldest, 36e5), now }
+}
+
+function track(j, scale) {
+  const pct = (t) => Math.max(0, Math.min(100, ((t - scale.t0) / scale.span) * 100))
+  const from = pct(j.createdAt), to = pct(j.updatedAt)
+  const silent = j.status === 'working' && j.idleMs > 6e5
+  return `<div class="track" style="color:var(--${j.status})" title="começou há ${age(j.ageMs)} · último sinal há ${age(j.idleMs)}">
+    <i class="base"></i>
+    <i class="life" style="left:${from}%;width:${Math.max(to - from, 0.6)}%"></i>
+    ${silent ? `<i class="silence" style="left:${to}%;width:${Math.max(100 - to, 0.6)}%"></i>` : ''}
+    <i class="now"></i>
+  </div>`
+}
+
+function ruler(scale) {
+  const h = scale.span / 36e5
+  return `<div class="ruler">${[
+    { at: 0, t: `-${Math.round(h)}h`, c: 'start' },
+    { at: 50, t: `-${Math.round(h / 2)}h`, c: '' },
+    { at: 100, t: 'agora', c: 'end' },
+  ].map((m) => `<i style="left:${m.at}%"></i><span class="${m.c}" style="left:${m.at}%">${m.t}</span>`).join('')}</div>`
+}
+
+function row(j, scale) {
+  const note = j.stale ? `<div class="note warn clip">sem sinal há ${age(j.idleMs)}</div>`
+    : j.blockers.length ? `<div class="note bad clip">${esc(j.blockers[0])}</div>`
+    : j.inFlight.length ? `<div class="note clip">${esc(j.inFlight[0].label)}</div>`
+    : j.detail ? `<div class="note clip">${esc(j.detail)}</div>` : ''
+  const pct = j.todos.length ? Math.round((j.todosDone / j.todos.length) * 100) : 0
+  return `
+    <tr class="row${selected === j.id ? ' sel' : ''}${j.pinned ? ' pinned' : ''}" data-job="${j.id}"
+        style="color:var(--${j.status})" tabindex="0" title="${j.pinned ? 'fixado · ' : ''}${esc(j.id)}">
+      <td><i class="dot s-${j.status}"></i></td>
+      <td>
+        <div class="subject clip" style="color:var(--fg)">
+          ${j.category ? `<span class="cat">${esc(j.category)}</span>` : ''}
+          <b class="clip">${esc(j.subject)}</b>
+        </div>${note}
+      </td>
+      <td class="path clip" title="${esc(j.project)}/${esc(j.route)}">${esc(j.project)}<em>/${esc(j.route)}</em></td>
+      <td class="path hide-sm">${esc(j.model)}</td>
+      <td class="num hide-sm">${tok(j.tokens)}</td>
+      <td class="hide-sm">${track(j, scale)}</td>
+      <td>${j.todos.length
+        ? `<span class="num">${j.todosDone}/${j.todos.length}</span><div class="bar-todo"><i style="width:${pct}%"></i></div>`
+        : '<span class="path">—</span>'}</td>
+    </tr>`
+}
+
+function viewAgentes(jobs) {
+  const scale = timeScale(DATA.jobs.length ? DATA.jobs : [{ createdAt: Date.now() }])
+  const body = ZONES.map((z) => {
+    const list = jobs.filter((j) => j.status === z.key)
+    if (!list.length) return ''
+    const hidden = collapsed.has(z.key)
+    return `<tbody>
+      <tr class="zone"><td colspan="7"><div class="bar">
+        <button data-zone="${z.key}" aria-expanded="${!hidden}">
+          <span class="z-${z.key}">${z.title}</span> <span class="n">${list.length}</span>
+          ${hidden ? '<span class="n">▸</span>' : ''}
+        </button><span class="rule"></span>
+      </div></td></tr>
+      ${hidden ? '' : list.map((j) => row(j, scale)).join('')}
+    </tbody>`
+  }).join('')
+
+  return `<table>
+    <colgroup><col class="c-dot"><col><col class="c-path">
+      <col class="c-model"><col class="c-tok"><col class="c-time"><col class="c-todo"></colgroup>
+    <thead><tr>
+      <th></th><th>assunto</th><th>projeto / rota</th>
+      <th class="hide-sm">modelo</th><th class="hide-sm">tokens</th>
+      <th class="hide-sm">${ruler(scale)}</th><th>to-do</th>
+    </tr></thead>${body}</table>`
+}
+
+/* ======================== aba: to-dos ======================== */
+
+function viewTodos(jobs) {
+  const comTodo = jobs.filter((j) => j.todos.length)
+  if (!comTodo.length) return '<div class="empty">nenhum agente registrou to-do ainda</div>'
+
+  const card = (job, t, i) => `
+    <div class="card${t.done ? ' done' : ''}" data-toggle="${job.id}" data-i="${i}"
+         style="border-left-color:var(--${job.status})" tabindex="0"
+         title="clique para marcar como ${t.done ? 'não feita' : 'feita'}">
+      <span class="txt">${esc(t.text)}</span>
+    </div>`
+
+  // agrupado por agente: sem isso o mesmo "projeto/rota · assunto" se repete
+  // em todo cartão da coluna
+  const col = (title, feito) => {
+    const grupos = comTodo
+      .map((j) => ({ j, itens: j.todos.map((t, i) => ({ t, i })).filter(({ t }) => Boolean(t.done) === feito) }))
+      .filter((g) => g.itens.length)
+    const n = grupos.reduce((a, g) => a + g.itens.length, 0)
+    return `<section>
+      <div class="col-head"><span>${title}</span><span class="n">${n}</span></div>
+      ${grupos.length ? grupos.map((g) => `
+        <div style="margin-bottom:16px">
+          <div class="from" style="margin:0 0 6px" data-job="${g.j.id}" tabindex="0"
+               title="abrir o agente">
+            <i class="dot s-${g.j.status}" style="margin:4px 0 0"></i>
+            <span class="path" style="color:var(--fg)">${esc(g.j.project)}<em>/${esc(g.j.route)}</em></span>
+            <span class="clip">${esc(g.j.subject)}</span>
+          </div>
+          ${g.itens.map(({ t, i }) => card(g.j, t, i)).join('')}
+        </div>`).join('')
+        : `<div class="path">${feito ? 'nada concluído ainda' : 'nenhuma tarefa aberta'}</div>`}
+    </section>`
+  }
+
+  return `<div class="kanban">${col('a fazer', false)}${col('feito', true)}</div>`
+}
+
+/* ======================= aba: projetos ======================= */
+
+function viewProjetos(jobs) {
+  const groups = new Map()
+  for (const j of jobs) {
+    if (!groups.has(j.project)) groups.set(j.project, [])
+    groups.get(j.project).push(j)
+  }
+  if (!groups.size) return '<div class="empty">nenhum projeto no filtro</div>'
+
+  return `<div class="projs">${[...groups].map(([name, list]) => {
+    const tokens = list.reduce((a, j) => a + (j.tokens || 0), 0)
+    const rotas = [...new Set(list.map((j) => j.route))]
+    const abertos = list.filter((j) => j.todos.some((t) => !t.done)).length
+    const porStatus = ZONES.map((z) => {
+      const n = list.filter((j) => j.status === z.key).length
+      return n ? `<span style="color:var(--${z.key})">${n} ${z.title}</span>` : ''
+    }).filter(Boolean).join(' · ')
+    return `<div class="proj">
+      <div class="hd">
+        <div class="name">${esc(name)}</div>
+        <div class="sub">${list.length} agentes · ${tok(tokens)} tokens${abertos ? ` · ${abertos} com to-do aberto` : ''}</div>
+        <div class="sub" style="color:var(--dim)">${porStatus}</div>
+        <div class="sub">rotas: ${rotas.map(esc).join(', ')}</div>
+      </div>
+      ${list.map((j) => `
+        <div class="item" data-job="${j.id}" tabindex="0">
+          <i class="dot s-${j.status}" style="margin-top:6px"></i>
+          <span class="clip" style="flex:1">${esc(j.subject)}</span>
+          <span class="path">${esc(j.route)}</span>
+        </div>`).join('')}
+    </div>`
+  }).join('')}</div>`
+}
+
+/* ======================== aba: tempo ========================= */
+
+function viewTempo(jobs) {
+  if (!jobs.length) return '<div class="empty">nenhum agente no filtro</div>'
+  const scale = timeScale(jobs)
+  const list = [...jobs].sort((a, b) => a.createdAt - b.createdAt)
+  return `<table>
+    <colgroup><col style="width:230px"><col><col style="width:150px"></colgroup>
+    <thead><tr><th>agente</th><th>${ruler(scale)}</th><th>último sinal</th></tr></thead>
+    <tbody>${list.map((j) => `
+      <tr class="row" data-job="${j.id}" style="color:var(--${j.status})" tabindex="0">
+        <td class="clip" style="color:var(--fg)">${esc(j.subject)}
+          <div class="path clip">${esc(j.project)}<em>/${esc(j.route)}</em></div></td>
+        <td>${track(j, scale)}</td>
+        <td class="path">há ${age(j.idleMs)}${j.stale ? ' <span class="note warn" style="display:inline">parado</span>' : ''}</td>
+      </tr>`).join('')}</tbody></table>`
+}
+
+/* ======================== aba: custo ========================= */
+
+function viewCusto(jobs) {
+  if (!jobs.length) return '<div class="empty">nenhum agente no filtro</div>'
+  const total = jobs.reduce((a, j) => a + (j.tokens || 0), 0)
+  const soma = (chave) => {
+    const m = new Map()
+    for (const j of jobs) m.set(j[chave], (m.get(j[chave]) || 0) + (j.tokens || 0))
+    return [...m].sort((a, b) => b[1] - a[1])
+  }
+  const bloco = (titulo, pares) => `
+    <h3 style="margin-top:26px">${titulo}</h3>
+    ${pares.map(([nome, n]) => `
+      <div class="row">
+        <span class="clip path" style="color:var(--fg)">${esc(nome)}</span>
+        <span class="meter"><i style="width:${total ? (n / total) * 100 : 0}%"></i></span>
+        <span class="num" style="text-align:right">${tok(n)}</span>
+      </div>`).join('')}`
+
+  const caros = [...jobs].sort((a, b) => b.tokens - a.tokens).slice(0, 5)
+  return `<div class="cost">
+    <h3>total acumulado</h3>
+    <div class="total">${tok(total)}</div>
+    <div class="path">somando ${jobs.length} agentes</div>
+    ${bloco('por projeto', soma('project'))}
+    ${bloco('por modelo', soma('model'))}
+    ${bloco('agentes mais caros', caros.map((j) => [j.subject, j.tokens]))}
+  </div>`
+}
+
+/* ====================== aba: servidores ====================== */
+
+function viewServidores() {
+  if (!SERVERS) return '<div class="empty">lendo as portas em escuta…</div>'
+  const dev = SERVERS.filter((s) => s.dev)
+  const resto = SERVERS.filter((s) => !s.dev)
+
+  // O começo do caminho é sempre o mesmo; o que identifica o app está no fim.
+  const cauda = (p, n = 42) => (p.length > n ? '…' + p.slice(-(n - 1)) : p)
+
+  const linha = (s) => `
+    <tr>
+      <td class="port" style="width:80px">${s.ports.join(', ')}</td>
+      <td style="width:74px"><span class="cat">${esc(s.kind)}</span></td>
+      <td class="clip" title="${esc(s.cmd)}">
+        <span style="color:var(--fg)">${esc(s.project || s.name)}</span>
+        ${s.path ? `<div class="path">${esc(cauda(s.path))}</div>` : ''}
+      </td>
+      <td class="path" style="width:90px">${s.startedAt ? 'há ' + age(Date.now() - s.startedAt) : '—'}</td>
+      <td class="path" style="width:90px">pid ${s.pid}</td>
+      <td style="width:150px;text-align:right;white-space:nowrap">
+        ${s.url ? `<a class="btn" href="${esc(s.url)}" target="_blank" rel="noopener">abrir</a>` : ''}
+        ${s.dev && !s.protegido
+          ? `<button class="btn danger" data-kill="${s.pid}">${armed === s.pid ? 'confirmar?' : 'encerrar'}</button>`
+          : ''}
+      </td>
+    </tr>`
+
+  // duas instâncias do mesmo projeto quase sempre é uma esquecida de ontem
+  const porProjeto = new Map()
+  for (const s of dev) if (s.project) porProjeto.set(s.project, (porProjeto.get(s.project) || 0) + 1)
+  const dobrados = [...porProjeto].filter(([, n]) => n > 1)
+
+  return `
+    <div class="col-head"><span>servidores de projeto</span><span class="n">${dev.length}</span></div>
+    ${dobrados.length ? `<p class="note warn" style="margin:0 0 10px">${
+      dobrados.map(([p, n]) => `${esc(p)} está com ${n} servidores abertos`).join(' · ')}</p>` : ''}
+    ${dev.length ? `<table class="srv">${dev.map(linha).join('')}</table>`
+      : '<div class="path">nenhum servidor de desenvolvimento escutando agora</div>'}
+    <details class="lvl" style="margin-top:24px">
+      <summary>outros processos com porta aberta (${resto.length})</summary>
+      <table class="srv">${resto.map(linha).join('')}</table>
+    </details>
+    <p class="path" style="margin-top:20px">
+      encerrar pede confirmação e só vale para servidor de desenvolvimento —
+      processo do Windows fica de fora de propósito.
+    </p>`
+}
+
+/* ==================== painel lateral ========================= */
+
+function drawer() {
+  const el = $('#drawer'), scrim = $('#scrim')
+  const j = selected && byId(selected)
+  if (!j) {
+    el.classList.remove('on'); scrim.classList.remove('on'); el.innerHTML = ''
+    return
+  }
+  const pct = j.todos.length ? Math.round((j.todosDone / j.todos.length) * 100) : 0
+  el.innerHTML = `
+    <div class="d-head" style="color:var(--${j.status})">
+      <button class="d-close" aria-label="fechar">✕</button>
+      <span class="d-status"><i class="dot s-${j.status}" style="margin:0"></i>${LABEL[j.status] || j.status}</span>
+      <div class="big" style="color:var(--fg)">${esc(j.subject)}</div>
+      <div class="d-meta">
+        <span>${esc(j.project)}/${esc(j.route)}</span>
+        <span>${esc(j.model)}</span>
+        <span>${tok(j.tokens)} tokens</span>
+        <span>começou há ${age(j.ageMs)}</span>
+        <span>sinal há ${age(j.idleMs)}</span>
+      </div>
+    </div>
+    <div class="d-body">
+      ${j.stale ? `<p class="note warn">sem sinal há ${age(j.idleMs)} — pode ter travado</p>` : ''}
+      ${j.blockers.length ? `<div><h3>bloqueios</h3><ul class="todos">${
+        j.blockers.map((b) => `<li class="note bad">${esc(b)}</li>`).join('')}</ul></div>` : ''}
+
+      <div>
+        <h3>último pedido</h3>
+        <p class="quote">${esc(j.lastPrompt || j.intent) || '—'}</p>
+      </div>
+
+      ${j.todos.length ? `
+      <div>
+        <h3>to-dos — ${j.todosDone} de ${j.todos.length}</h3>
+        <div class="bar-todo" style="margin-bottom:8px"><i style="width:${pct}%"></i></div>
+        <ul class="todos">${j.todos.map((t, i) => `
+          <li class="${t.done ? 'done' : ''}">
+            <input type="checkbox" data-todo="${j.id}" data-i="${i}" ${t.done ? 'checked' : ''}>
+            <span>${esc(t.text)}</span></li>`).join('')}</ul>
+      </div>` : ''}
+
+      <div class="d-grid">
+        <div><h3>${j.result ? 'resultado' : 'estado'}</h3><p>${esc(j.result || j.detail) || '—'}</p></div>
+        ${j.notes ? `<div><h3>notas</h3><p>${esc(j.notes)}</p></div>` : ''}
+      </div>
+
+      ${j.links.length ? `<div><h3>links</h3><p>${j.links.map((l) =>
+        `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join(' · ')}</p></div>` : ''}
+
+      <details class="lvl">
+        <summary>pedido inicial${j.intentTrustworthy === false ? ' — é de outra conversa' : ''}</summary>
+        <p class="path">${esc(j.intent) || '—'}</p>
+      </details>
+
+      <details class="lvl">
+        <summary>contexto técnico</summary>
+        <p class="path">agente <code>${esc(j.agent)}</code> · modelo <code>${esc(j.model)}</code> · job <code>${esc(j.id)}</code></p>
+        <p class="path">${esc(j.worktreePath || j.cwd)}</p>
+        ${j.inFlight.length ? `<p class="path">rodando agora: <code>${esc(j.inFlight[0].label)}</code></p>` : ''}
+        ${j.sessionId ? `<p class="path">retomar <code>claude --resume ${esc(j.sessionId)}</code></p>` : ''}
+      </details>
+    </div>`
+  el.classList.add('on'); scrim.classList.add('on')
+}
+
+/* ========================= render ============================ */
+
+function render() {
+  renderHeader()
+  const jobs = filtered()
+  const views = {
+    agentes: () => viewAgentes(jobs),
+    todos: () => viewTodos(jobs),
+    projetos: () => viewProjetos(jobs),
+    tempo: () => viewTempo(jobs),
+    custo: () => viewCusto(jobs),
+    servidores: () => viewServidores(),
+  }
+  $('#main').innerHTML = (views[tab] || views.agentes)()
+  $('#foot').textContent = {
+    agentes: 'a faixa de atividade vai do agente mais antigo até agora; tracejado vermelho é silêncio de quem deveria estar trabalhando',
+    todos: 'clique num cartão para marcar feito — a mudança vai para o meta.json do agente',
+    projetos: 'clique num agente para abrir o painel lateral',
+    tempo: 'barras alinhadas na mesma régua: dá pra ver o que rodou junto e onde ficou o silêncio',
+    custo: 'tokens acumulados por agente desde que ele começou',
+    servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
+  }[tab] || ''
+  drawer()
+}
+
+async function carregarServidores(force) {
+  if (SERVERS && !force) return
+  const r = await fetch('/api/servers')
+  SERVERS = (await r.json()).servers
+  render()
+}
+
+/* ========================= eventos =========================== */
+
+document.addEventListener('click', async (e) => {
+  const t = e.target
+
+  const aba = t.closest('button[data-tab]')
+  if (aba) {
+    tab = aba.dataset.tab
+    localStorage.setItem('cc-tab', tab)
+    armed = null
+    render()
+    if (tab === 'servidores') carregarServidores()
+    return
+  }
+
+  if (t.closest('.d-close') || t.id === 'scrim') { selected = null; return render() }
+
+  const zone = t.closest('button[data-zone]')
+  if (zone) {
+    const k = zone.dataset.zone
+    collapsed.has(k) ? collapsed.delete(k) : collapsed.add(k)
+    localStorage.setItem('cc-collapsed', JSON.stringify([...collapsed]))
+    return render()
+  }
+
+  const kill = t.closest('button[data-kill]')
+  if (kill) {
+    const pid = Number(kill.dataset.kill)
+    if (armed !== pid) { armed = pid; return render() } // primeiro clique só arma
+    armed = null
+    kill.disabled = true
+    const r = await fetch('/api/kill', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pid }),
+    })
+    const out = await r.json()
+    if (!out.ok) alert(out.error)
+    SERVERS = null
+    return carregarServidores(true)
+  }
+
+  const card = t.closest('[data-toggle]')
+  if (card) return toggleTodo(card.dataset.toggle, +card.dataset.i)
+
+  const linha = t.closest('[data-job]')
+  if (linha && !t.matches('input, a')) {
+    const id = linha.dataset.job
+    selected = selected === id ? null : id
+    return render()
+  }
+})
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && selected) { selected = null; return render() }
+  if (e.key !== 'Enter' && e.key !== ' ') return
+  const alvo = e.target.closest?.('[data-job], [data-toggle]')
+  if (!alvo) return
+  e.preventDefault()
+  alvo.click()
+})
+
+document.addEventListener('change', (e) => {
+  const cb = e.target.closest('input[data-todo]')
+  if (cb) toggleTodo(cb.dataset.todo, +cb.dataset.i, cb.checked)
+})
+
+async function toggleTodo(jobId, i, valor) {
+  const job = byId(jobId)
+  if (!job || !job.todos[i]) return
+  const todos = job.todos.map((t, k) => (k === i ? { ...t, done: valor ?? !t.done } : t))
+  job.todos = todos
+  job.todosDone = todos.filter((t) => t.done).length
+  render()
+  await fetch('/api/meta', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id: jobId, patch: { todos } }),
+  })
+}
+
+for (const el of ['#q', '#proj']) $(el).addEventListener('input', render)
+
+// ?static=1 não abre o SSE: com a conexão pendurada, captura headless nunca
+// considera a página carregada. Serve pra screenshot e impressão.
+if (!params.has('static')) {
+  new EventSource('/events').onmessage = (e) => { DATA = JSON.parse(e.data); render() }
+}
+fetch('/api/jobs').then((r) => r.json()).then((d) => {
+  DATA = d
+  render()
+  if (tab === 'servidores') carregarServidores()
+})
+</script>
+</body>
+</html>

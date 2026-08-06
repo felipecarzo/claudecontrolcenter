@@ -1,0 +1,5 @@
+node_modules/
+*.log
+
+# gerado por `cc daemon install` com os caminhos absolutos da máquina
+abrir-control-center.vbs
