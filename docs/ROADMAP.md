@@ -64,3 +64,9 @@ Escritos aqui porque são escolha, não descuido:
   precisar mexer no código.
 - `todos` substitui a lista inteira em vez de fazer merge item a item. Evita
   duplicata; o preço é o agente precisar mandar a lista completa.
+
+---
+
+Última atualização: **2026-08-05** — MVP fechado, design em zonas por urgência,
+seis abas, e v0.2.0 publicada como pacote npm multiplataforma. Aberto: CC-08
+(macOS/Linux sem teste) e CC-09 (repositório privado).
