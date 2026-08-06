@@ -14,13 +14,19 @@ Git: um repositório só, na raiz acima.
 ## Estrutura
 
 ```
-cc.mjs           entrada única: CLI (terminal, web, daemon, set)
+cc.mjs           entrada única: CLI (terminal, web, daemon, set, install)
 src/
   jobs.mjs       núcleo — lê ~/.claude/jobs, deriva campos, escreve meta.json
+  transcript.mjs último pedido, lido do .jsonl da sessão
+  platform.mjs   TUDO que depende do sistema operacional
+  daemon.mjs     autostart, atalho, subir/derrubar — delega pro platform
+  servers.mjs    portas em escuta, com as travas do encerrar
+  config.mjs     interruptor global e por projeto
+  install.mjs    bloco do protocolo no CLAUDE.md dos projetos
   tui.mjs        tabela do terminal
-  web.mjs        servidor http + SSE + POST /api/meta
-  ui.html        página, sem dependência, tema claro/escuro automático
-test.mjs         asserts da derivação + sintaxe do ui.html
+  web.mjs        servidor http + SSE + rotas de escrita
+  ui.html        página, sem dependência
+test.mjs         asserts + sintaxe do ui.html
 AGENTS.md        protocolo que os agentes seguem pra alimentar o painel
 docs/            ver docs/README.md
 ```
@@ -29,13 +35,30 @@ Sem dependência de runtime. Só Node >= 18 e o que vem nele.
 
 ## Comandos
 
+Distribuído como pacote npm (`npm i -g github:felipecarzo/claudecontrolcenter`),
+o comando é `cc`. No repositório, `node cc.mjs` faz o mesmo.
+
 ```bash
-node cc.mjs                # tabela no terminal + web, imprime o link
-node cc.mjs --web-only     # só o servidor
-node cc.mjs json           # despeja o estado e sai
-node cc.mjs set '<json>'   # agente grava seu meta.json
-npm test                   # gate de qualidade — não existe outro
+cc                    # tabela no terminal + web, imprime o link
+cc --web-only         # só o servidor
+cc json               # despeja o estado e sai
+cc set '<json>'       # agente grava seu meta.json
+cc daemon restart     # depois de mexer no código
+npm test              # gate de qualidade — não existe outro
 ```
+
+## Portabilidade
+
+`process.platform` só pode aparecer em `src/platform.mjs`. Todo comando de
+sistema (subir no login, listar portas, matar processo, abrir navegador, criar
+atalho) passa por lá, com um caminho por SO.
+
+**Windows é o único verificado em máquina real.** macOS (launchd, `lsof`,
+`.command`) e Linux (systemd de usuário, `lsof`/`ss`, `.desktop`) foram escritos
+com os comandos padrão de cada um, mas nunca rodaram.
+
+Nenhum caminho de máquina pode ser fixado no código: a pasta de projetos é
+descoberta pelos diretórios dos jobs, e dá pra forçar por `CC_PROJECTS_BASE`.
 
 ## Regra de ouro — não quebrar o Claude Code
 

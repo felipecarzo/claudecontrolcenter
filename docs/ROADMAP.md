@@ -4,6 +4,24 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ## Agora
 
+### CC-08 — macOS e Linux nunca rodaram
+O código existe em `src/platform.mjs` — launchd e systemd de usuário, `lsof`/`ss`
+no lugar do PowerShell, `SIGTERM` no lugar do `taskkill`, `.command`/`.desktop`
+no lugar do `.lnk`. Nada disso foi executado: a máquina de desenvolvimento é
+Windows. O README diz isso na cara.
+
+Quando houver um Mac ou Linux à mão, conferir nesta ordem: `cc` (só leitura,
+tem que funcionar de primeira) → `cc open` → `cc daemon install` → aba de
+servidores → encerrar um processo de teste.
+
+### CC-09 — Repositório é privado
+`npm i -g github:felipecarzo/claudecontrolcenter` só funciona em máquina com
+credencial do GitHub configurada. Para instalar em qualquer lugar sem login, o
+repositório precisa virar público — e aí vale revisar `docs/diario/`, que cita
+nomes de clientes e um domínio de produção.
+
+## Depois
+
 Nada bloqueando. O que segue é oportunidade, não dívida.
 
 ### CC-07 — Abas novas ainda não vistas em uso
