@@ -20,20 +20,34 @@ credencial do GitHub configurada. Para instalar em qualquer lugar sem login, o
 repositório precisa virar público — e aí vale revisar `docs/diario/`, que cita
 nomes de clientes e um domínio de produção.
 
+### CC-10 — Commitar o trabalho de 2026-08-06
+Sete arquivos modificados e três novos (`src/notes.mjs`, `src/tempo.mjs`,
+`test-ui.mjs`) na árvore de trabalho, tudo funcionando e testado, nada
+commitado. É a primeira coisa da próxima sessão.
+
 ## Depois
 
 Nada bloqueando. O que segue é oportunidade, não dívida.
 
-### CC-07 — Abas novas ainda não vistas em uso
-`tempo` e `custo` foram construídas e conferidas por captura, mas nunca usadas
-de verdade com muitos agentes vivos. Rever depois de alguns dias de uso: pode
-ser que `tempo` só faça sentido com dezenas de agentes, e que `custo` peça
-recorte por período em vez de acumulado desde sempre.
+### CC-11 — Aba de custo ainda é a antiga
+A aba `tempo` foi refeita e passou a calcular custo real por token, lido dos
+transcripts, com quebra por tipo e recorte por período. A aba `custo` continua
+mostrando só `state.tokens` acumulado desde sempre, sem preço e sem recorte —
+ficou atrás da vizinha. Decidir se ela vira a visão financeira (custo por
+modelo, por período, por projeto, com a série histórica) ou se some, já que a
+aba de tempo passou a responder a mesma pergunta melhor.
 
-### CC-04 — Verificar a faixa de silêncio com agente travado de verdade
-O tracejado vermelho (agente `working` sem sinal há mais de 10 min) foi escrito
-e tem teste de lógica, mas **nunca apareceu numa captura** — não houve agente
-travado enquanto o design era feito. Conferir na primeira vez que acontecer.
+### CC-12 — Converter horas em dinheiro
+A aba de tempo entrega horas e custo de API em dólar. Falta o passo que o
+Felipe pediu pra adiar até ver o custo real: taxa horária configurável (global
+e por projeto) pra sair valor de projeto direto da tela. Decisão dele, não
+técnica — o código é uma linha depois da taxa definida.
+
+### CC-04 — Verificar o aviso de silêncio com agente travado de verdade
+A faixa de atividade saiu da tela em 06/08 (era o CC-07: construída e nunca
+usada). O que sobrou do silêncio é a nota `sem sinal há Xm` na linha do agente,
+que também nunca apareceu numa captura — não houve agente travado enquanto o
+design era feito. Conferir na primeira vez que acontecer.
 
 ### CC-05 — Tabela do terminal ainda é a versão antiga
 O redesenho por zonas foi só na web. O `tui.mjs` continua agrupando por projeto.
@@ -60,6 +74,13 @@ Escritos aqui porque são escolha, não descuido:
 
 - Polling de 2s nas duas telas. Com dezenas de jobs, reler 8 arquivos é mais
   barato que a complexidade de `fs.watch`. Revisar se passar de ~100 jobs.
+- A aba de tempo só recalcula cortes a partir de 2 minutos. O cache guarda
+  blocos contíguos desse grão; cortes menores exigiriam guardar cada marca de
+  tempo (dezenas de milhares por projeto) pra ganhar uma precisão que ninguém
+  usa pra cobrar.
+- O tempo ativo conta agente rodando sozinho como trabalho, e não conta tempo
+  lendo código ou em reunião. É a medida que o transcript permite; melhorar
+  exigiria o Felipe marcar ponto, que é pior que o erro.
 - Categoria é texto livre, sem lista fechada — vocabulário novo nasce sem
   precisar mexer no código.
 - `todos` substitui a lista inteira em vez de fazer merge item a item. Evita
@@ -67,6 +88,9 @@ Escritos aqui porque são escolha, não descuido:
 
 ---
 
-Última atualização: **2026-08-05** — MVP fechado, design em zonas por urgência,
-seis abas, e v0.2.0 publicada como pacote npm multiplataforma. Aberto: CC-08
-(macOS/Linux sem teste) e CC-09 (repositório privado).
+Última atualização: **2026-08-06** — bloco de notas com checklist, e três abas
+refeitas: to-dos (lista densa, edição inline), agentes (barra de gasto,
+ordenação, ações na linha) e tempo (horas por projeto lidas dos transcripts,
+com custo real de token). CC-07 fechado — a faixa de atividade saiu da tela.
+Aberto: CC-10 (commitar o dia), CC-08 (macOS/Linux sem teste), CC-09
+(repositório privado), CC-11 (aba de custo ficou atrás) e CC-12 (taxa horária).
