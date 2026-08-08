@@ -22,11 +22,14 @@ src/
   daemon.mjs     autostart, atalho, subir/derrubar — delega pro platform
   servers.mjs    portas em escuta, com as travas do encerrar
   config.mjs     interruptor global e por projeto
+  notes.mjs      bloco de notas da máquina, em ~/.claude
+  tempo.mjs      horas por projeto e custo de token, lidos dos transcritos
   install.mjs    bloco do protocolo no CLAUDE.md dos projetos
   tui.mjs        tabela do terminal
   web.mjs        servidor http + SSE + rotas de escrita
   ui.html        página, sem dependência
 test.mjs         asserts + sintaxe do ui.html
+test-ui.mjs      a aba de to-dos dirigida por CDP (fora do gate, pede Chrome)
 AGENTS.md        protocolo que os agentes seguem pra alimentar o painel
 docs/            ver docs/README.md
 ```
@@ -45,6 +48,7 @@ cc json               # despeja o estado e sai
 cc set '<json>'       # agente grava seu meta.json
 cc daemon restart     # depois de mexer no código
 npm test              # gate de qualidade — não existe outro
+npm run test:ui <job> # opcional: a aba de to-dos de ponta a ponta, com Chrome
 ```
 
 ## Portabilidade
@@ -110,6 +114,55 @@ errada por definição.
 - **O atalho do Desktop não é uma URL.** É um `.lnk` que chama
   `abrir-control-center.vbs` → `cc.mjs open`, que sobe o painel se estiver fora
   do ar. Um `.url` simples só funciona se o processo já estiver vivo.
+- **`cc daemon restart` reinicia o pacote instalado, não este repositório.** O
+  autostart aponta pro `cc.mjs` de `AppData/Roaming/npm/node_modules/…`, então
+  mexer em `src/` e reiniciar continua servindo código velho — e você fica
+  procurando bug no lugar errado. Para validar o repo, suba numa porta própria:
+  `node cc.mjs --web-only --port 8123`. Só reinstalar o pacote global leva a
+  mudança pro painel de todo dia.
+- **Breakpoint do painel é `@container`, não `@media`.** Com a coluna de notas
+  aberta a janela continua larga enquanto o painel encolhe; media query nunca
+  dispararia e a tabela quebraria em vez de compactar. `#painel` declara
+  `container-type: inline-size` e as regras olham pra ele.
+- **Bloco de nota em modo lista não tem array de itens.** O `text` continua
+  sendo a única fonte: uma linha por item, `[x] ` na frente quando feito, e
+  `kind: 'check'` só muda como aparece. Alternar o modo não migra dado nenhum,
+  e o arquivo segue legível fora do painel. Um array paralelo daria duas
+  verdades pro mesmo conteúdo.
+- **Índice de to-do não é posição na tela.** As concluídas ficam depois das
+  abertas, dentro do `<details>`, então "o último campo do DOM" é uma tarefa que
+  já existe. Focar o campo novo por `campos[campos.length-1]` fez a digitação
+  sobrescrever uma tarefa pronta — e apagou uma de verdade. Sempre buscar por
+  `[data-i="<índice no array>"]`.
+- **Durante a edição, `DATA` não pode mudar.** O stream troca o snapshot a cada
+  2s; com o redesenho adiado pelo foco, a tela mostra a lista antiga enquanto os
+  índices já são outros, e a edição vai parar em outra tarefa. `aplicarDados()`
+  segura o snapshot em `dadosPendentes` até o campo perder o foco.
+- **Nada de textarea dentro do `#main`.** `render()` reescreve o painel inteiro
+  a cada evento do stream, de 2 em 2 segundos — o cursor sumiria no meio da
+  frase. As notas moram num `<aside>` irmão e só se redesenham ao criar ou
+  apagar bloco; digitar altera o modelo em memória e agenda a gravação.
+- **A aba de tempo mede tempo ativo, e o corte é do usuário.** A janela do
+  primeiro ao último sinal não serve pra cobrar: no `inovallbond` dá 282h
+  corridas contra ~90h de trabalho real. O que vale é a soma dos intervalos
+  descartando as paradas maiores que um corte — e o corte muda o número
+  (77,7h a 5min contra 91,5h a 15min no mesmo projeto), então é escolha de
+  quem olha, nunca constante no código.
+- **O cache do tempo guarda blocos, não totais.** Se `tempo.mjs` somasse as
+  horas na varredura, mudar o corte na tela exigiria reler 800 MB. Por isso o
+  cache guarda blocos contíguos de 2 minutos: qualquer corte a partir daí sai
+  juntando blocos vizinhos, em memória. O preço é não conseguir cortes < 2min.
+- **Ler 800 MB de transcrito leva ~3s, e só a aba de tempo pede.** `JSON.parse`
+  roda apenas nas linhas que têm `"usage"` (~18% delas); nas outras o timestamp
+  sai por regex. Reler tudo a cada abertura seria desperdício — o cache por
+  tamanho+mtime relê só a sessão que cresceu.
+- **O custo em dólar é referência, não fatura.** Sai da tabela de preços de API
+  em `PRECOS`; quem usa assinatura não pagou aquilo. E o volume engana: quase
+  todo o token é releitura de cache, que custa 10% da entrada — por isso a
+  quebra por tipo aparece no detalhe do projeto.
+- **Modelo vem ora com alias, ora com data.** `claude-haiku-4-5` e
+  `claude-haiku-4-5-20251001` são o mesmo preço; sem `precoDe()` cortando o
+  sufixo, o modelo cai calado na lista de ignorados e o custo sai menor.
 - **Varrer portas leva ~3s.** Só a rota `/api/servers` faz isso, com cache de
   15s, e a aba só consulta quando aberta. Nunca colocar isso no `/api/jobs` nem
   no stream.
