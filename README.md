@@ -98,7 +98,9 @@ seus agentes já rodaram. Para forçar:
 | projetos | como está um cliente por inteiro |
 | tempo | quantas horas cada projeto levou, quanto custou e quanto vale |
 | gráficos | os mesmos dados cruzados como você quiser, e salvos |
+| preço | quanto vale cada problema resolvido, por nível de senioridade |
 | servidores | o que está escutando porta nesta máquina |
+| escritório | os agentes desenhados trabalhando, aqui e na VPS |
 
 Clicar num agente abre um painel lateral com o detalhe em níveis. `Esc` fecha.
 
@@ -106,6 +108,26 @@ A aba **servidores** lista as portas em escuta, com o projeto de origem quando
 dá pra saber, link pra abrir e botão pra encerrar. Encerrar pede confirmação e
 só vale pra servidor de desenvolvimento — processo do Windows fica fora de
 propósito, porque a lista contém `lsass` e `svchost`.
+
+A aba **escritório** embute o [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents),
+que lê os transcritos e desenha cada sessão do Claude Code como um personagem
+num escritório: anda até a mesa, senta, digita quando edita arquivo, levanta
+bandeira quando trava esperando resposta.
+
+Dois painéis: o desta máquina e o da VPS. O da VPS não roda aqui — é um túnel
+SSH, porque lá o Pixel Agents escuta só em `127.0.0.1`, de propósito. O botão
+**ligar** sobe um ou abre o outro; **desligar** derruba.
+
+O botão **PiP** solta a tela numa janela flutuante que fica por cima de tudo
+(*Document Picture-in-Picture*, só em navegador Chromium — em outro, abre aba
+comum). Serve pra acompanhar de canto de olho enquanto se trabalha noutra coisa.
+
+Ligar e desligar painel não contradiz "não gerencia agente": painel é servidor
+local, a mesma categoria que a aba de servidores já encerra. O agente em si
+segue intocado.
+
+As portas e comandos ficam em `src/paineis.mjs` e podem ser trocados por
+`paineis` no `control-center.json`.
 
 ## Parâmetros da página
 

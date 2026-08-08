@@ -6,10 +6,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
+import { tarefas } from './tarefas.mjs'
+import { garantirMercado } from './mercado.mjs'
 import { readServers, killServer } from './servers.mjs'
+import { readPaineis, ligarPainel, desligarPainel } from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
-import { setTaxa, setCambio, setAssinatura, setGraficos, readConfig } from './config.mjs'
+import { setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, readConfig } from './config.mjs'
 import { garantirCambio } from './cambio.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -121,8 +124,63 @@ function handler(req, res) {
     return comCorpo(req, res, 1e4, ({ valor }) => ({ config: setAssinatura(valor) }))
   }
 
+  // Preço por tarefa. Puxa o mercado antes do cálculo, pelo mesmo motivo do
+  // câmbio: o cálculo lê as faixas do config e sairia sem elas na primeira vez.
+  if (url.pathname === '/api/tarefas') {
+    const num = (v, padrao) => (Number.isFinite(Number(v)) ? Number(v) : padrao)
+    return garantirMercado({ force: url.searchParams.has('mercado') }).then(() => {
+      try {
+        send(res, 200, tarefas({
+          corteMin: num(url.searchParams.get('corte'), 15),
+          unidade: url.searchParams.get('unidade') === 'sessao' ? 'sessao' : 'todo',
+        }))
+      } catch (e) {
+        send(res, 500, { error: String(e.message || e) })
+      }
+    })
+  }
+
+  if (url.pathname === '/api/mercado' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, (m) => ({ mercado: setMercado({ ...m, manual: true }) }))
+  }
+
+  // Correção de nível e tempo digitado. Sessão vai pro config; to-do vai pro
+  // meta.json do job, mesclado item a item para não apagar as outras tarefas.
+  if (url.pathname === '/api/tarefa' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ sessao, job, tarefa, nivel, horas }) => {
+      if (sessao) return { ajuste: setSessao(sessao, { nivel, horas }) }
+      if (!job || !tarefa) throw new Error('informe sessao, ou job e tarefa')
+      const atual = readJobs().find((j) => j.id === job)
+      if (!atual) throw new Error(`job ${job} não existe`)
+      const niveis = { ...atual.niveis }
+      const estimativas = { ...atual.estimativas }
+      if (['junior', 'pleno', 'senior'].includes(nivel)) niveis[tarefa] = nivel
+      else delete niveis[tarefa]
+      if (Number(horas) > 0) estimativas[tarefa] = Math.min(Number(horas), 1000)
+      else delete estimativas[tarefa]
+      return { meta: writeMeta(job, { niveis, estimativas }) }
+    })
+  }
+
   if (url.pathname === '/api/kill' && req.method === 'POST') {
     return comCorpo(req, res, 1e4, ({ pid }) => ({ killed: killServer(pid) }))
+  }
+
+  // Painéis de acompanhamento (aba escritório). Estado sai da mesma varredura
+  // de portas da aba de servidores, então não custa consulta nova.
+  if (url.pathname === '/api/paineis') {
+    return send(res, 200, { paineis: readPaineis({ force: url.searchParams.has('force') }) })
+  }
+
+  // Ligar e desligar recebem `id`, nunca pid: o pid vem da porta declarada no
+  // próprio módulo, então a página não consegue mandar encerrar processo
+  // arbitrário mesmo se alguém mexer no JavaScript.
+  if (url.pathname === '/api/paineis/ligar' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ id }) => ({ painel: ligarPainel(id) }))
+  }
+
+  if (url.pathname === '/api/paineis/desligar' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ id }) => ({ painel: desligarPainel(id) }))
   }
 
   // Existe pra `daemon restart` conseguir derrubar o processo antigo: o servidor

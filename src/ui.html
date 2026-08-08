@@ -553,6 +553,31 @@
      o painel estreito. O min() faz o cartão encolher em vez de vazar. */
   .projs { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
   .d-grid { grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
+
+  /* ---------------------------- escritório ---------------------------- */
+  .painel-lista {
+    display: grid; gap: 10px; margin-bottom: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  }
+  .painel-card {
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--surface); padding: 10px 12px; cursor: pointer;
+  }
+  .painel-card:hover { background: var(--surface-2); }
+  /* o cartão escolhido é o que está no palco abaixo; a barra à esquerda liga
+     visualmente uma coisa à outra */
+  .painel-card.sel { border-color: var(--working); box-shadow: inset 3px 0 0 var(--working); }
+  .painel-topo { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .painel-bolha { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .painel-acoes { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .painel-acoes .btn { text-decoration: none; }
+  /* altura fixa: o conteúdo é um canvas de jogo, que não tem altura própria
+     pra empurrar o iframe */
+  .painel-palco {
+    width: 100%; height: min(70vh, 620px);
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); display: block;
+  }
 </style>
 <script>
   // No head, e não junto do resto: aplicado depois do body a página pisca
@@ -614,6 +639,9 @@ const $ = (s) => document.querySelector(s)
 const params = new URLSearchParams(location.search)
 let DATA = { jobs: [], summary: {} }
 let SERVERS = null            // carregado só quando a aba de servidores abre
+let PAINEIS = null            // idem, aba escritório
+// qual painel está embutido na aba; a escolha sobrevive ao recarregar
+let painelAtivo = localStorage.getItem('cc-painel') || 'local'
 let TEMPO = null              // idem: a varredura dos transcritos é cara
 // o corte é a escolha que muda o número cobrado — vale lembrar entre sessões
 const tempoParams = {
@@ -631,7 +659,9 @@ const TABS = [
   { id: 'projetos', label: 'projetos' },
   { id: 'tempo', label: 'tempo' },
   { id: 'graficos', label: 'gráficos' },
+  { id: 'preco', label: 'preço' },
   { id: 'servidores', label: 'servidores' },
+  { id: 'escritorio', label: 'escritório' },
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
 // painel sem nenhuma aba marcada.
@@ -1406,6 +1436,98 @@ function aplicarDados(snapshot) {
   render()
 }
 
+/* ====================== aba: escritório ====================== */
+
+// As telas de Pixel Agents: os agentes desenhados como bonecos num escritório.
+// Uma roda nesta máquina; a outra é a da VPS, alcançada por túnel SSH.
+function viewEscritorio() {
+  if (!PAINEIS) return '<div class="empty">procurando os painéis…</div>'
+
+  const escolhido = PAINEIS.find((p) => p.id === painelAtivo) || PAINEIS[0]
+  const cartoes = PAINEIS.map((p) => {
+    const marca = p.noAr ? 'var(--done)' : 'var(--idle)'
+    return `
+      <div class="painel-card${p.id === escolhido?.id ? ' sel' : ''}" data-painel-ver="${p.id}">
+        <div class="painel-topo">
+          <span class="painel-bolha" style="background:${marca}"></span>
+          <strong>${esc(p.nome)}</strong>
+          <span class="path">:${p.porta}</span>
+        </div>
+        <div class="path">${esc(p.detalhe)}</div>
+        <div class="painel-acoes">
+          ${p.noAr
+            ? `<button class="btn" data-painel-desligar="${p.id}">desligar</button>
+               <button class="btn" data-painel-pip="${p.id}" title="janela flutuante, sempre por cima">PiP</button>
+               <a class="btn" href="${p.url}" target="_blank" rel="noopener">abrir</a>`
+            : `<button class="btn" data-painel-ligar="${p.id}">ligar</button>
+               <span class="path clip" title="${esc(p.comando)}">parado</span>`}
+        </div>
+      </div>`
+  }).join('')
+
+  const palco = escolhido?.noAr
+    ? `<iframe class="painel-palco" src="${escolhido.url}" title="${esc(escolhido.nome)}"></iframe>`
+    : `<div class="empty" style="height:420px;display:grid;place-items:center">
+         ${escolhido ? `${esc(escolhido.nome)} está parado — clique em <b>ligar</b> acima` : 'nenhum painel configurado'}
+       </div>`
+
+  return `
+    <div class="painel-lista">${cartoes}</div>
+    ${palco}`
+}
+
+async function carregarPaineis(force) {
+  if (PAINEIS && !force) return
+  try {
+    PAINEIS = (await (await fetch(`/api/paineis${force ? '?force=1' : ''}`)).json()).paineis
+  } catch (e) {
+    PAINEIS = []
+  }
+  render()
+}
+
+async function acaoPainel(id, acao) {
+  try {
+    const r = await fetch(`/api/paineis/${acao}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    const j = await r.json()
+    if (!j.ok) throw new Error(j.error || 'falhou')
+  } catch (e) {
+    alert(`não deu para ${acao}: ${e.message || e}`)
+  }
+  // O processo leva um instante para abrir (ou soltar) a porta. Sem esta
+  // espera a lista volta com o estado velho e parece que o clique não fez nada.
+  await new Promise((r) => setTimeout(r, acao === 'ligar' ? 2500 : 900))
+  await carregarPaineis(true)
+}
+
+/**
+ * Janela flutuante que fica por cima de tudo, via Document Picture-in-Picture.
+ * Só existe em navegador baseado em Chromium — em outro, abre aba comum, que é
+ * pior mas não deixa o botão morto.
+ */
+async function abrirPiP(id) {
+  const p = (PAINEIS || []).find((x) => x.id === id)
+  if (!p) return
+  if (!window.documentPictureInPicture) {
+    window.open(p.url, '_blank', 'width=480,height=380')
+    return
+  }
+  const win = await documentPictureInPicture.requestWindow({ width: 480, height: 380 })
+  win.document.title = `${p.nome} — agentes`
+  const estilo = win.document.createElement('style')
+  estilo.textContent = `
+    html,body{margin:0;height:100%;background:#0b0e14;overflow:hidden}
+    iframe{border:0;width:100%;height:100%;display:block}`
+  win.document.head.append(estilo)
+  const frame = win.document.createElement('iframe')
+  frame.src = p.url
+  win.document.body.append(frame)
+}
+
 function render() {
   if (editando()) { redesenhoAdiado = true; return }
   redesenhoAdiado = false
@@ -1417,7 +1539,9 @@ function render() {
     projetos: () => viewProjetos(jobs),
     tempo: () => viewTempo(),
     graficos: () => viewGraficos(),
+    preco: () => viewPreco(),
     servidores: () => viewServidores(),
+    escritorio: () => viewEscritorio(),
   }
   $('#main').innerHTML = (views[tab] || views.agentes)()
   $('#foot').textContent = {
@@ -1426,7 +1550,9 @@ function render() {
     projetos: 'clique num agente para abrir o painel lateral',
     tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
     graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
+    preco: 'clique numa linha para ver por que aquele nível foi sugerido, corrigir o nível e digitar quanto tempo você acha que levou',
     servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
+    escritorio: 'os agentes desenhados trabalhando; PiP solta numa janelinha que fica por cima de tudo — o painel da VPS depende do túnel SSH, que este botão abre',
   }[tab] || ''
   drawer()
 }
@@ -1706,7 +1832,39 @@ document.addEventListener('click', async (e) => {
     armed = null
     render()
     if (tab === 'servidores') carregarServidores()
+    if (tab === 'escritorio') carregarPaineis()
     if (tab === 'tempo' || tab === 'graficos') carregarTempo()
+    if (tab === 'preco') carregarPreco()
+    return
+  }
+
+  const verPainel = t.closest('[data-painel-ver]')
+  if (verPainel && !t.closest('button, a')) {
+    painelAtivo = verPainel.dataset.painelVer
+    localStorage.setItem('cc-painel', painelAtivo)
+    render()
+    return
+  }
+
+  const ligar = t.closest('[data-painel-ligar]')
+  if (ligar) {
+    ligar.disabled = true
+    ligar.textContent = 'ligando…'
+    acaoPainel(ligar.dataset.painelLigar, 'ligar')
+    return
+  }
+
+  const desligar = t.closest('[data-painel-desligar]')
+  if (desligar) {
+    desligar.disabled = true
+    desligar.textContent = 'desligando…'
+    acaoPainel(desligar.dataset.painelDesligar, 'desligar')
+    return
+  }
+
+  const pip = t.closest('[data-painel-pip]')
+  if (pip) {
+    abrirPiP(pip.dataset.painelPip)
     return
   }
 
@@ -1947,7 +2105,9 @@ fetch('/api/jobs').then((r) => r.json()).then((d) => {
   DATA = d
   render()
   if (tab === 'servidores') carregarServidores()
+  if (tab === 'escritorio') carregarPaineis()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()
+  if (tab === 'preco') carregarPreco()
 })
 
 fetch('/api/graficos').then((r) => r.json()).then((d) => {
