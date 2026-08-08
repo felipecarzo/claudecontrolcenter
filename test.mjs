@@ -59,6 +59,18 @@ assert.equal(job.project, 'inovallbond')
 assert.equal(job.todosDone, 1)
 assert.equal(job.model, 'sonnet')
 
+// pin do painel (meta.pin) e pin do CLI (pins.json) convivem
+const semPin = { state: 'done', respawnFlags: [], originCwd: '/x/y', createdAt: new Date(now).toISOString() }
+assert.equal(buildJob('a', semPin, {}, [], now).pinned, false)
+assert.equal(buildJob('a', semPin, { pin: true }, [], now).pinned, true)
+assert.equal(buildJob('a', semPin, { pin: true }, [], now).pinnedAqui, true)
+// fixado pelo CLI aparece fixado, mas não como pin do painel — o painel não
+// pode oferecer desafixar o que ele não escreveu
+assert.equal(buildJob('a', semPin, {}, ['a'], now).pinned, true)
+assert.equal(buildJob('a', semPin, {}, ['a'], now).pinnedAqui, false)
+// o do CLI continua vindo antes na ordenação
+assert.ok(buildJob('a', semPin, {}, ['a'], now).pinIndex < buildJob('a', semPin, { pin: true }, [], now).pinIndex)
+
 // merge preserva o que o patch não mencionou, e null apaga campo
 assert.deepEqual(mergeMeta({ subject: 'x', category: 'bug' }, { category: 'feature' }), {
   subject: 'x', category: 'feature',
@@ -82,9 +94,13 @@ assert.equal(fmtTokens(0), '—')
 const html = fs.readFileSync(new URL('./src/ui.html', import.meta.url), 'utf8')
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1]
 assert.doesNotThrow(() => new Function(script), 'ui.html tem erro de sintaxe no JS')
-for (const rota of ['/api/jobs', '/api/meta', '/events']) {
+for (const rota of ['/api/jobs', '/api/meta', '/api/notes', '/events']) {
   assert.ok(script.includes(rota), `ui.html não usa ${rota}`)
 }
+// o painel tem que reagir ao próprio espaço: com as notas abertas a janela
+// segue larga, então media query não serve de breakpoint
+assert.ok(html.includes('container-type: inline-size'), 'painel não é contêiner de consulta')
+assert.ok(!/@media[^{]*max-width[^{]*\{[^}]*hide-sm/.test(html), 'hide-sm voltou a depender da janela')
 
 // contra os jobs reais da máquina: não pode explodir nem inventar campo
 const real = readJobs()
@@ -228,6 +244,58 @@ const projetos = findProjects()
 assert.ok(projetos.length > 5, 'varredura achou pouca coisa')
 assert.ok(projetos.every((p) => fs.existsSync(p)))
 assert.ok(!projetos.some((p) => /node_modules|[\\/]_/.test(p)), 'varredura pegou pasta que devia pular')
+
+// --- notas: arquivo editável à mão, formato tem que aguentar variação ---
+const notas = await import('./src/notes.mjs')
+const { normalizeNote } = notas._internals
+assert.equal(normalizeNote('só texto').text, 'só texto')
+assert.equal(normalizeNote({ t: 'titulo curto' }).title, 'titulo curto')
+assert.equal(normalizeNote({ texto: 'x', titulo: 'y' }).title, 'y')
+assert.equal(normalizeNote(null), null)
+assert.equal(normalizeNote({}).h, 120) // sem altura, padrão
+assert.equal(normalizeNote({ h: 9999 }).h, 2000) // altura absurda não passa
+assert.equal(normalizeNote({ h: 1 }).h, 40)
+assert.equal(normalizeNote({ h: 'abc' }).h, 120)
+assert.ok(normalizeNote({}).id.length > 1) // bloco sem id ganha um, senão o clique não acha
+assert.notEqual(normalizeNote({}).id, normalizeNote({}).id)
+assert.equal(normalizeNote({ text: 'x'.repeat(50000) }).text.length, 20000)
+assert.ok(Array.isArray(notas.readNotes())) // arquivo pode nem existir
+assert.ok(notas.NOTES_FILE.endsWith('control-center-notes.json'))
+assert.ok(!notas.NOTES_FILE.includes(`${path.sep}jobs${path.sep}`), 'notas não podem morar em ~/.claude/jobs')
+
+// --- tempo: o corte muda o número, então tem que ser recalculável ---
+const tempo = await import('./src/tempo.mjs')
+const min = (n) => n * 60_000
+// blocos vizinhos só se juntam quando a parada cabe no corte
+const blocos = [[0, min(10)], [min(20), min(30)], [min(60), min(70)]]
+assert.equal(tempo.ativoMs(blocos, min(2)) / 60_000, 30) // nada junta: 10+10+10
+assert.equal(tempo.ativoMs(blocos, min(15)) / 60_000, 40) // junta os dois primeiros: 30+10
+assert.equal(tempo.ativoMs(blocos, min(45)) / 60_000, 70) // junta tudo
+assert.equal(tempo.ativoMs([], min(15)), 0)
+assert.equal(tempo.ativoMs([[0, min(5)]], min(15)) / 60_000, 5)
+// corte maior nunca pode dar menos tempo que corte menor
+for (const c of [2, 5, 10, 15, 30, 60]) {
+  assert.ok(tempo.ativoMs(blocos, min(c)) >= tempo.ativoMs(blocos, min(2)))
+}
+
+// bloco que cruza a meia-noite entra nos dois dias, não some nem duplica
+const { blocosPorDia } = tempo._internals
+const virada = blocosPorDia([[Date.parse('2026-08-01T23:30:00Z'), Date.parse('2026-08-02T00:30:00Z')]])
+assert.deepEqual(Object.keys(virada).sort(), ['2026-08-01', '2026-08-02'])
+const somaDias = Object.values(virada).flat().reduce((a, [i, f]) => a + (f - i), 0)
+assert.ok(Math.abs(somaDias - 60 * 60_000) < 1000, 'a virada do dia perdeu ou inventou tempo')
+
+// custo: cache de escrita custa mais que input, leitura custa muito menos
+const so = (campo, n) => ({ input: 0, output: 0, escrita5m: 0, escrita1h: 0, leitura: 0, [campo]: n })
+assert.equal(tempo.custoDe('claude-opus-5', so('input', 1e6)), 5)
+assert.equal(tempo.custoDe('claude-opus-5', so('output', 1e6)), 25)
+assert.equal(tempo.custoDe('claude-opus-5', so('escrita5m', 1e6)), 6.25)
+assert.equal(tempo.custoDe('claude-opus-5', so('escrita1h', 1e6)), 10)
+assert.equal(tempo.custoDe('claude-opus-5', so('leitura', 1e6)), 0.5)
+assert.equal(tempo.custoDe('claude-haiku-4-5', so('input', 1e6)), 1)
+// id com data é o mesmo preço do alias — senão o modelo sai da conta calado
+assert.equal(tempo.custoDe('claude-haiku-4-5-20251001', so('input', 1e6)), 1)
+assert.equal(tempo.custoDe('modelo-que-nao-existe', so('input', 1e6)), null)
 
 // --- daemon: caminhos, sem escrever nada ---
 const dm = await import('./src/daemon.mjs')
