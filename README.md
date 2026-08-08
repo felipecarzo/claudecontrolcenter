@@ -2,7 +2,7 @@
 
 Painel dos agentes do Claude Code rodando em background. No lugar de navegar
 aba por aba (`←` `←`), uma tela que responde **o que precisa de você agora** —
-mais to-dos, custo em tokens e os servidores locais abertos na máquina.
+mais to-dos, horas e custo por projeto, e os servidores locais abertos na máquina.
 
 Duas superfícies do mesmo dado: tabela no terminal e painel web.
 
@@ -96,8 +96,7 @@ seus agentes já rodaram. Para forçar:
 | agentes | o que precisa de mim agora |
 | to-dos | o que falta, em tudo que está rodando (kanban) |
 | projetos | como está um cliente por inteiro |
-| tempo | o que rodou junto e onde ficou o silêncio |
-| custo | onde os tokens estão indo |
+| tempo | quantas horas cada projeto levou, e quanto isso vale |
 | servidores | o que está escutando porta nesta máquina |
 
 Clicar num agente abre um painel lateral com o detalhe em níveis. `Esc` fecha.

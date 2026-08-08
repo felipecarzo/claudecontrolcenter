@@ -2,27 +2,6 @@
 
 Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
-## Esperando decisão do Felipe
-
-### CC-09 — Repositório é privado
-`npm i -g github:felipecarzo/claudecontrolcenter` só funciona em máquina com
-credencial do GitHub configurada. Para instalar em qualquer lugar sem login, o
-repositório precisa virar público.
-
-A varredura de 08/08 não achou e-mail, IP, domínio nem caminho de máquina. O
-que existe é **nome de cliente com horas e custo ao lado**: a tabela de
-`docs/diario/2026-08-06.md` diz que o inovallbond levou 90h17 e $5,6k de API, e
-o mesmo para renanMarchon, fibraessencia e ibrics. Publicar expõe quanto tempo
-cada cliente consome. Ou se aceita isso, ou a tabela vira cliente A/B/C antes.
-
-### CC-11 — Aba de custo ainda é a antiga
-A aba `tempo` calcula custo real por token, com quebra por tipo, recorte por
-período e agora valor em R$. A aba `custo` continua mostrando só `state.tokens`
-acumulado desde sempre, sem preço e sem recorte. **Recomendação: apagar.** A
-única coisa que ela mostra e a vizinha não é token por agente — e agente não é
-a unidade que interessa pra dinheiro; projeto é. Manter as duas obriga a
-explicar a diferença toda vez que uma discorda da outra.
-
 ## Aberto
 
 ### CC-08 — macOS e Linux nunca rodaram
@@ -70,6 +49,8 @@ Escritos aqui porque são escolha, não descuido:
 - A taxa em R$ é uma só por projeto, sem histórico. Reajuste no meio do projeto
   recalcula tudo pela taxa nova. Guardar taxa com data de vigência resolveria,
   e é complexidade que só se paga quando um reajuste acontecer de verdade.
+- O repositório é público com os nomes de cliente e as horas de cada um no
+  diário de 06/08. Decisão do Felipe em 08/08, com o conteúdo na mão.
 - Categoria é texto livre, sem lista fechada — vocabulário novo nasce sem
   precisar mexer no código.
 - `todos` substitui a lista inteira em vez de fazer merge item a item. Evita
@@ -77,8 +58,7 @@ Escritos aqui porque são escolha, não descuido:
 
 ---
 
-Última atualização: **2026-08-08** — o trabalho de 06/08 foi commitado (CC-10,
-em três commits) e a aba de tempo ganhou valor em R$ (CC-12): taxa por hora
-global, sobreposta por projeto, com a coluna de valor sumindo quando a taxa é
-zero. Aberto e esperando você: CC-09 (repositório público expõe horas por
-cliente) e CC-11 (apagar a aba de custo).
+Última atualização: **2026-08-08** — dia de fechar backlog. O trabalho de 06/08
+foi commitado (CC-10), a aba de tempo ganhou valor em R$ (CC-12), a aba de
+custo foi apagada (CC-11) e o repositório virou público (CC-09). O que sobrou
+depende de máquina ou de acaso: CC-08, CC-04 e CC-05.

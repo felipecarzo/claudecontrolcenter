@@ -358,13 +358,6 @@
   .t-ses .num { text-align: right; font-variant-numeric: tabular-nums; }
   .t-mod { display: flex; gap: 18px; flex-wrap: wrap; color: var(--dim); font-size: 12px; }
 
-  /* ---------- custo ---------- */
-  .cost { max-width: 780px; }
-  .cost .row { display: grid; grid-template-columns: 150px 1fr 70px; gap: 12px; align-items: center; padding: 5px 0; }
-  .cost .meter { height: 8px; background: var(--line); border-radius: 2px; overflow: hidden; }
-  .cost .meter > i { display: block; height: 100%; background: var(--working); opacity: .75; }
-  .total { font: 700 32px/1 var(--label); letter-spacing: .04em; margin: 8px 0 4px; }
-
   /* ---------- servidores ---------- */
   .srv { width: 100%; border-collapse: collapse; }
   .srv td { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
@@ -459,7 +452,6 @@
     footer { padding: 0 12px 24px; }
     .top { gap: 12px; }
     input[type=search], select { min-width: 0; flex: 1 1 110px; }
-    .cost .row { grid-template-columns: 96px 1fr 56px; }
     .tab { padding: 8px 8px; letter-spacing: .1em; }
     h1 { font-size: 17px; letter-spacing: .18em; }
   }
@@ -522,10 +514,12 @@ const TABS = [
   { id: 'todos', label: 'to-dos' },
   { id: 'projetos', label: 'projetos' },
   { id: 'tempo', label: 'tempo' },
-  { id: 'custo', label: 'custo' },
   { id: 'servidores', label: 'servidores' },
 ]
+// A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
+// painel sem nenhuma aba marcada.
 let tab = params.get('tab') || localStorage.getItem('cc-tab') || 'agentes'
+if (!TABS.some((t) => t.id === tab)) tab = 'agentes'
 
 const collapsed = params.has('expand')
   ? new Set()
@@ -952,36 +946,6 @@ function viewTempo() {
     </div>`
 }
 
-/* ======================== aba: custo ========================= */
-
-function viewCusto(jobs) {
-  if (!jobs.length) return '<div class="empty">nenhum agente no filtro</div>'
-  const total = jobs.reduce((a, j) => a + (j.tokens || 0), 0)
-  const soma = (chave) => {
-    const m = new Map()
-    for (const j of jobs) m.set(j[chave], (m.get(j[chave]) || 0) + (j.tokens || 0))
-    return [...m].sort((a, b) => b[1] - a[1])
-  }
-  const bloco = (titulo, pares) => `
-    <h3 style="margin-top:26px">${titulo}</h3>
-    ${pares.map(([nome, n]) => `
-      <div class="row">
-        <span class="clip path" style="color:var(--fg)">${esc(nome)}</span>
-        <span class="meter"><i style="width:${total ? (n / total) * 100 : 0}%"></i></span>
-        <span class="num" style="text-align:right">${tok(n)}</span>
-      </div>`).join('')}`
-
-  const caros = [...jobs].sort((a, b) => b.tokens - a.tokens).slice(0, 5)
-  return `<div class="cost">
-    <h3>total acumulado</h3>
-    <div class="total">${tok(total)}</div>
-    <div class="path">somando ${jobs.length} agentes</div>
-    ${bloco('por projeto', soma('project'))}
-    ${bloco('por modelo', soma('model'))}
-    ${bloco('agentes mais caros', caros.map((j) => [j.subject, j.tokens]))}
-  </div>`
-}
-
 /* ====================== aba: servidores ====================== */
 
 function viewServidores() {
@@ -1141,7 +1105,6 @@ function render() {
     todos: () => viewTodos(jobs),
     projetos: () => viewProjetos(jobs),
     tempo: () => viewTempo(),
-    custo: () => viewCusto(jobs),
     servidores: () => viewServidores(),
   }
   $('#main').innerHTML = (views[tab] || views.agentes)()
@@ -1150,7 +1113,6 @@ function render() {
     todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
     projetos: 'clique num agente para abrir o painel lateral',
     tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
-    custo: 'tokens acumulados por agente desde que ele começou',
     servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
   }[tab] || ''
   drawer()

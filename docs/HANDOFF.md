@@ -2,19 +2,23 @@
 
 **Sessão:** 2026-08-08 · agente Claude (Opus 5) · máquina ALIENWARE-LIPE
 **Branch:** `master` · **árvore limpa** — nada pendente de commit
-**Estado:** o débito de 06/08 acabou. O que sobrou é decisão, não código.
+**Estado:** backlog limpo. Fecharam CC-10, CC-12, CC-11 e CC-09 no mesmo dia.
+O que sobrou depende de máquina (CC-08) ou de acaso (CC-04), fora o CC-05.
 
 O que aconteceu: [diario/2026-08-08.md](diario/2026-08-08.md).
 
-## Duas perguntas esperando o Felipe
+## O que mudou e você precisa saber
 
-**CC-09 — publicar o repositório?** A varredura não achou e-mail, IP, domínio
-nem caminho de máquina. Achou nome de cliente com horas e custo ao lado, na
-tabela de `docs/diario/2026-08-06.md`. Publicar expõe isso. Alternativa:
-anonimizar a tabela antes.
+**O repositório é público.** Os nomes de cliente e as horas de cada um estão no
+diário de 06/08, e ficam visíveis. Foi decisão sua com o conteúdo na mão. Todo
+diário novo daqui pra frente é escrito sabendo disso.
 
-**CC-11 — apagar a aba de custo?** Recomendação registrada no ROADMAP: apagar.
-A aba de tempo responde melhor a mesma pergunta.
+**A aba de custo não existe mais.** Quem tinha ela guardada no navegador cai em
+agentes. A aba de tempo responde o que ela respondia, melhor.
+
+**A taxa em R$ está zerada.** O campo está lá, na barra da aba de tempo (global)
+e dentro de cada projeto (só dele). Digitar um número faz a coluna de valor
+aparecer.
 
 ## Depois de mexer no código
 
@@ -56,8 +60,8 @@ Para validar o repositório sem tocar no painel de todo dia:
 |---|---|
 | CC-10 commitar o dia 06/08 | concluído — três commits |
 | CC-12 taxa horária em R$ | concluído — falta você digitar o número |
-| CC-09 repositório público | **espera decisão** |
-| CC-11 apagar a aba de custo | **espera decisão** |
+| CC-11 apagar a aba de custo | concluído |
+| CC-09 repositório público | concluído |
 | CC-08 macOS e Linux | aberto — precisa de máquina |
 | CC-04 aviso de silêncio nunca visto | aberto — precisa de agente travado |
 | CC-05 tabela do terminal ainda agrupa por projeto | aberto |
