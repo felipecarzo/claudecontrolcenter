@@ -12,7 +12,7 @@ import { projectOf } from './jobs.mjs'
 
 export const CONFIG_FILE = path.join(os.homedir(), '.claude', 'control-center.json')
 
-const DEFAULTS = { enabled: true, disabledProjects: [] }
+const DEFAULTS = { enabled: true, disabledProjects: [], taxaHora: 0, taxaPorProjeto: {} }
 
 export function readConfig() {
   try {
@@ -44,6 +44,29 @@ export function setEnabled(on, { project = null } = {}) {
   const set = new Set(cfg.disabledProjects)
   on ? set.delete(project) : set.add(project)
   return writeConfig({ ...cfg, disabledProjects: [...set].sort() })
+}
+
+/**
+ * Taxa em R$/hora usada para dar preço ao tempo ativo: a do projeto quando
+ * existe, senão a global. Zero é "não configurada" — a tela esconde a coluna
+ * em vez de mostrar R$ 0,00, que pareceria trabalho de graça.
+ */
+export function taxaDe(projeto, cfg = readConfig()) {
+  const doProjeto = Number(cfg.taxaPorProjeto?.[projeto])
+  if (Number.isFinite(doProjeto) && doProjeto > 0) return doProjeto
+  const global = Number(cfg.taxaHora)
+  return Number.isFinite(global) && global > 0 ? global : 0
+}
+
+/** Zerar a taxa de um projeto o devolve para a global, em vez de gravar zero. */
+export function setTaxa(valor, { projeto = null } = {}) {
+  const cfg = readConfig()
+  const v = Math.max(0, Number(valor) || 0)
+  if (!projeto) return writeConfig({ ...cfg, taxaHora: v })
+  const mapa = { ...cfg.taxaPorProjeto }
+  if (v > 0) mapa[projeto] = v
+  else delete mapa[projeto]
+  return writeConfig({ ...cfg, taxaPorProjeto: mapa })
 }
 
 export function describe(cwd = process.cwd()) {

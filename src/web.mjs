@@ -9,6 +9,7 @@ import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import { readServers, killServer } from './servers.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
+import { setTaxa } from './config.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
@@ -81,6 +82,14 @@ function handler(req, res) {
     } catch (e) {
       return send(res, 500, { error: String(e.message || e) })
     }
+  }
+
+  // Taxa em R$/hora, global ou por projeto. Fica no config e não no cache de
+  // tempo: mudar a taxa não pode invalidar 800 MB de varredura.
+  if (url.pathname === '/api/taxa' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ valor, projeto }) => ({
+      config: setTaxa(valor, { projeto: projeto || null }),
+    }))
   }
 
   if (url.pathname === '/api/kill' && req.method === 'POST') {

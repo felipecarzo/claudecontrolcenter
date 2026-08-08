@@ -14,6 +14,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { projectOf } from './jobs.mjs'
+import { readConfig, taxaDe } from './config.mjs'
 
 const PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects')
 export const CACHE_FILE = path.join(os.homedir(), '.claude', 'control-center-tempo.json')
@@ -257,9 +258,11 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
     }
   }
 
+  const cfg = readConfig()
   const lista = [...projetos.values()].map((p) => {
     const ordenar = (bs) => bs.sort((a, b) => a[0] - b[0])
     const horas = ativoMs(ordenar(p.blocos), corteMs)
+    const taxaHora = taxaDe(p.projeto, cfg)
     const dias = Object.entries(p.dias)
       .map(([dia, d]) => ({ dia, ativoMs: ativoMs(ordenar(d.blocos), corteMs) }))
       .filter((d) => d.ativoMs > 0)
@@ -276,12 +279,16 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
       uso,
       custo: uso.reduce((a, u) => a + (u.custo || 0), 0),
       tokens: uso.reduce((a, u) => a + u.tokens, 0),
+      taxaHora,
+      taxaPropria: Number(cfg.taxaPorProjeto?.[p.projeto]) > 0,
+      valor: taxaHora * (horas / 36e5),
     }
   }).filter((p) => p.ativoMs > 0 || p.tokens > 0)
 
   lista.sort((a, b) => b.ativoMs - a.ativoMs)
   return {
     corteMin, de, ate, projetos: lista,
+    taxaGlobal: Number(cfg.taxaHora) || 0,
     varredura: { arquivos: Object.keys(arquivos).length, lidos, bytesLidos },
     modelosSemPreco: [...modelosSemPreco],
     precos: PRECOS,

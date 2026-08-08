@@ -201,12 +201,20 @@ assert.throws(() => srv.killServer(4), /inválido/)
 assert.throws(() => srv.killServer('abc'), /inválido/)
 
 // --- config: liga/desliga sem tocar no arquivo real ---
-const { isEnabled } = await import('./src/config.mjs')
+const { isEnabled, taxaDe } = await import('./src/config.mjs')
 const cwdIno = 'D:\\Documentos\\Ti\\projetos\\CLIENTS\\inovallbond\\minigame-evento-v2'
 assert.equal(isEnabled(cwdIno, { enabled: true, disabledProjects: [] }), true)
 assert.equal(isEnabled(cwdIno, { enabled: false, disabledProjects: [] }), false)
 assert.equal(isEnabled(cwdIno, { enabled: true, disabledProjects: ['inovallbond'] }), false)
 assert.equal(isEnabled(cwdIno, { enabled: true, disabledProjects: ['outro'] }), true)
+
+// --- taxa horária: projeto vence global, zero volta pra global ---
+const cfgTaxa = { taxaHora: 120, taxaPorProjeto: { inovallbond: 200, gratis: 0 } }
+assert.equal(taxaDe('inovallbond', cfgTaxa), 200)
+assert.equal(taxaDe('outro', cfgTaxa), 120)
+assert.equal(taxaDe('gratis', cfgTaxa), 120) // zero gravado não vira "de graça"
+assert.equal(taxaDe('qualquer', {}), 0) // sem taxa nenhuma, a coluna some da tela
+assert.equal(taxaDe('qualquer', { taxaHora: 'abc' }), 0)
 
 // --- install: edição idempotente, em pasta descartável ---
 const { installInto, removeFrom, findProjects, blockText } = await import('./src/install.mjs')

@@ -323,7 +323,9 @@
     display: grid; gap: 12px; align-items: baseline; padding: 9px 4px;
     grid-template-columns: 1fr 74px 52px 62px 66px 78px 62px; cursor: pointer;
   }
+  .t-linha.com-valor { grid-template-columns: 1fr 74px 52px 62px 66px 78px 62px 86px; }
   .t-linha:hover { background: var(--surface); }
+  .t-linha .val { color: var(--fg); font-weight: 600; }
   .t-linha .nome { font: 700 13px/1.2 var(--label); letter-spacing: .1em; text-transform: uppercase; }
   .t-linha .v { text-align: right; font-variant-numeric: tabular-nums; }
   .t-linha .h { color: var(--fg); font-size: 14px; }
@@ -334,6 +336,16 @@
     font: 700 9px/1.3 var(--label); letter-spacing: .14em; text-transform: uppercase;
   }
   .t-corpo { padding: 4px 4px 20px; display: grid; gap: 18px; }
+  .t-taxa {
+    background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 3px; padding: 4px 7px; font: 12px var(--mono); width: 76px;
+  }
+  .t-valor { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .t-valor label {
+    display: flex; align-items: center; gap: 6px; color: var(--faint);
+    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+  }
+  .t-valor b { font-size: 20px; color: var(--fg); font-weight: 600; }
 
   .t-dias { display: flex; align-items: flex-end; gap: 3px; height: 76px; }
   .t-dia { flex: 1; min-width: 4px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
@@ -792,6 +804,9 @@ const horas = (ms) => {
   return `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}`
 }
 const usd = (n) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(2)}`)
+// Valor de projeto é número que vai pra proposta: sem abreviar em "k", porque
+// R$ 12,4k não se cola num orçamento.
+const brl = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const dataCurta = (dia) => dia.slice(8) + '/' + dia.slice(5, 7)
 const diaDe = (ms) => new Date(ms).toISOString().slice(0, 10)
 
@@ -808,6 +823,9 @@ function viewTempo() {
       <label>de <input type="date" data-tempo="de" value="${esc(TEMPO.de || '')}"></label>
       <label>até <input type="date" data-tempo="ate" value="${esc(TEMPO.ate || '')}"></label>
       ${TEMPO.de || TEMPO.ate ? '<button class="btn" data-tempo-limpar>período inteiro</button>' : ''}
+      <label title="0 esconde a coluna de valor">R$ por hora
+        <input type="number" min="0" step="10" class="t-taxa" data-taxa value="${TEMPO.taxaGlobal || ''}" placeholder="—">
+      </label>
       <span class="grow"></span>
       <button class="btn" data-tempo-recarregar>reler transcritos</button>
     </div>`
@@ -825,6 +843,10 @@ function viewTempo() {
 
   const totalMs = TEMPO.projetos.reduce((a, p) => a + p.ativoMs, 0)
   const totalUsd = TEMPO.projetos.reduce((a, p) => a + p.custo, 0)
+  // A coluna de valor só existe depois que uma taxa foi definida: sem taxa,
+  // mostrar R$ 0,00 em toda linha diria que o trabalho não vale nada.
+  const comValor = TEMPO.projetos.some((p) => p.taxaHora > 0)
+  const cls = comValor ? ' com-valor' : ''
 
   const barras = (dias) => {
     const maior = Math.max(...dias.map((d) => d.ativoMs))
@@ -844,7 +866,7 @@ function viewTempo() {
     const aberto = tempoAberto.has(p.projeto) || tudoAberto
     const porDia = p.diasTrabalhados ? p.ativoMs / p.diasTrabalhados : 0
     return `<div class="t-proj">
-      <div class="t-linha" data-tempo-proj="${esc(p.projeto)}" tabindex="0">
+      <div class="t-linha${cls}" data-tempo-proj="${esc(p.projeto)}" tabindex="0">
         <span class="nome">${aberto ? '▾' : '▸'} ${esc(p.projeto)}</span>
         <span class="v h">${horas(p.ativoMs)}</span>
         <span class="v path">${p.diasTrabalhados}d</span>
@@ -852,8 +874,22 @@ function viewTempo() {
         <span class="v num">${tok(p.tokens)}</span>
         <span class="v cif">${usd(p.custo)}</span>
         <span class="v path">${p.ativoMs ? usd(p.custo / (p.ativoMs / 36e5)) + '/h' : '—'}</span>
+        ${comValor ? `<span class="v val" title="${p.taxaHora ? `${horas(p.ativoMs)} a ${brl(p.taxaHora)}/h${p.taxaPropria ? ' (taxa deste projeto)' : ''}` : 'sem taxa'}">${
+          p.taxaHora ? brl(p.valor) : '—'}</span>` : ''}
       </div>
       ${aberto ? `<div class="t-corpo">
+        <div class="t-valor">
+          <label>R$ por hora aqui
+            <input type="number" min="0" step="10" class="t-taxa" data-taxa
+              data-projeto="${esc(p.projeto)}"
+              value="${p.taxaPropria ? p.taxaHora : ''}"
+              placeholder="${TEMPO.taxaGlobal || '—'}">
+          </label>
+          ${p.taxaHora ? `<b>${brl(p.valor)}</b>
+            <span class="path">${horas(p.ativoMs)} × ${brl(p.taxaHora)}/h${
+              p.taxaPropria ? '' : ' (taxa global)'} · custo de API ${usd(p.custo)}</span>`
+            : '<span class="path">defina a taxa para ver o valor do projeto</span>'}
+        </div>
         ${p.dias.length ? barras(p.dias) : ''}
         <div>
           <h3>gasto por modelo</h3>
@@ -898,18 +934,21 @@ function viewTempo() {
     </div>`
   }
 
+  const totalValor = TEMPO.projetos.reduce((a, p) => a + p.valor, 0)
   return `${ctl}${aviso}
-    <div class="t-linha t-head">
+    <div class="t-linha t-head${cls}">
       <span>projeto</span><span class="v">horas</span><span class="v">dias</span>
       <span class="v">média</span><span class="v">tokens</span><span class="v">custo api</span><span class="v">por hora</span>
+      ${comValor ? '<span class="v">valor</span>' : ''}
     </div>
     ${TEMPO.projetos.map(proj).join('')}
-    <div class="t-linha" style="border-top:1px solid var(--line);cursor:default">
+    <div class="t-linha${cls}" style="border-top:1px solid var(--line);cursor:default">
       <span class="nome" style="color:var(--faint)">total</span>
       <span class="v h">${horas(totalMs)}</span><span class="v"></span><span class="v"></span>
       <span class="v num">${tok(TEMPO.projetos.reduce((a, p) => a + p.tokens, 0))}</span>
       <span class="v cif">${usd(totalUsd)}</span>
       <span class="v path">${totalMs ? usd(totalUsd / (totalMs / 36e5)) + '/h' : ''}</span>
+      ${comValor ? `<span class="v val">${brl(totalValor)}</span>` : ''}
     </div>`
 }
 
@@ -1110,7 +1149,7 @@ function render() {
     agentes: 'a barra de gasto compara os tokens do que está na tela; passe o mouse na linha para retomar (↻), fixar (☆) ou copiar o caminho (⧉); clique no cabeçalho para ordenar',
     todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
     projetos: 'clique num agente para abrir o painel lateral',
-    tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos e as sessões',
+    tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
     custo: 'tokens acumulados por agente desde que ele começou',
     servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
   }[tab] || ''
@@ -1138,6 +1177,15 @@ async function carregarTempo(force) {
     TEMPO = { error: String(e.message || e) }
   }
   render()
+}
+
+/** Grava a taxa e recalcula do cache — não relê transcrito por causa de preço. */
+async function salvarTaxa(projeto, valor) {
+  await fetch('/api/taxa', {
+    method: 'POST',
+    body: JSON.stringify({ valor: Number(valor) || 0, projeto }),
+  })
+  carregarTempo(true)
 }
 
 /* ========================== notas ============================
@@ -1453,6 +1501,9 @@ document.addEventListener('change', (e) => {
 
   const nota = e.target.closest('[data-nota-job]')
   if (nota) return editarNotaDoAgente(nota.dataset.notaJob, nota.value)
+
+  const taxa = e.target.closest('[data-taxa]')
+  if (taxa) return salvarTaxa(taxa.dataset.projeto || null, taxa.value)
 
   const ctl = e.target.closest('[data-tempo]')
   if (ctl) {

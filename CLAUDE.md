@@ -166,6 +166,12 @@ errada por definição.
 - **Varrer portas leva ~3s.** Só a rota `/api/servers` faz isso, com cache de
   15s, e a aba só consulta quando aberta. Nunca colocar isso no `/api/jobs` nem
   no stream.
+- **Taxa zero não é "de graça", é "não configurada".** `setTaxa(0, {projeto})`
+  apaga a entrada em vez de gravar zero, e o projeto volta pra taxa global —
+  senão não haveria como desfazer uma taxa específica. Pelo mesmo motivo a
+  coluna de valor some quando ninguém tem taxa: uma tabela de R$ 0,00 em toda
+  linha diz que o trabalho não vale nada. A taxa mora no `config.mjs`, nunca no
+  cache de tempo: mudar preço não pode invalidar 800 MB de varredura.
 
 ## Convenções
 - Commits: `type(scope): mensagem` — sem `Co-Authored-By`
