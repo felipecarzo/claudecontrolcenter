@@ -26,6 +26,29 @@
        industrial. Variável — a largura condensada carrega a personalidade. */
     --label: Bahnschrift, "Segoe UI Variable Display", "Segoe UI", sans-serif;
   }
+  /* O tema claro redefine as mesmas variáveis, e nada mais. `data-tema` é
+     sempre resolvido pelo JS para claro|escuro — "auto" não chega ao CSS, o
+     que evita repetir a paleta clara num @media além daqui. */
+  :root[data-tema="claro"] {
+    color-scheme: light;
+    --bg: #ffffff;
+    --surface: #f6f8fa;
+    --surface-2: #eceff2;
+    --line: #d0d7de;
+    --line-soft: #e6eaef;
+    --fg: #1f2328;
+    --dim: #57606a;
+    --faint: #818b98;
+
+    /* As cores de estado precisam escurecer: o azul que brilha no fundo preto
+       fica ilegível no branco. Estas passam em 4.5:1 sobre #ffffff. */
+    --working: #0969da;
+    --waiting: #9a6700;
+    --failed:  #cf222e;
+    --done:    #1a7f37;
+    --idle:    #6e7781;
+  }
+
   h1, .count, .tab, thead th, tr.zone > td, .cat, h3, .col-head, .big {
     font-stretch: 75%;
   }
@@ -323,9 +346,19 @@
     display: grid; gap: 12px; align-items: baseline; padding: 9px 4px;
     grid-template-columns: 1fr 74px 52px 62px 66px 78px 62px; cursor: pointer;
   }
+  /* Cada coluna opcional entra na grade só quando existe: sem isso, ligar a
+     assinatura empurraria tudo e a linha estouraria o painel estreito. */
   .t-linha.com-valor { grid-template-columns: 1fr 74px 52px 62px 66px 78px 62px 86px; }
+  .t-linha.com-real  { grid-template-columns: 1fr 74px 52px 62px 66px 78px 62px 80px; }
+  .t-linha.com-valor.com-real { grid-template-columns: 1fr 74px 52px 62px 66px 78px 62px 80px 86px; }
+  .t-linha.com-valor.com-real.com-sobra {
+    grid-template-columns: 1fr 66px 44px 58px 60px 70px 58px 76px 82px 82px;
+  }
   .t-linha:hover { background: var(--surface); }
   .t-linha .val { color: var(--fg); font-weight: 600; }
+  .t-linha .real { color: var(--waiting); }
+  .t-linha .ok { color: var(--done); font-weight: 600; }
+  .t-linha .ruim { color: var(--failed); font-weight: 600; }
   .t-linha .nome { font: 700 13px/1.2 var(--label); letter-spacing: .1em; text-transform: uppercase; }
   .t-linha .v { text-align: right; font-variant-numeric: tabular-nums; }
   .t-linha .h { color: var(--fg); font-size: 14px; }
@@ -346,6 +379,8 @@
     font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
   }
   .t-valor b { font-size: 20px; color: var(--fg); font-weight: 600; }
+  .t-valor b.ok { font-size: inherit; color: var(--done); }
+  .t-valor b.ruim { font-size: inherit; color: var(--failed); }
 
   .t-dias { display: flex; align-items: flex-end; gap: 3px; height: 76px; }
   .t-dia { flex: 1; min-width: 4px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
@@ -357,6 +392,65 @@
   .t-ses td { padding: 4px 10px 4px 0; border-top: 1px solid var(--line-soft); font-size: 12px; }
   .t-ses .num { text-align: right; font-variant-numeric: tabular-nums; }
   .t-mod { display: flex; gap: 18px; flex-wrap: wrap; color: var(--dim); font-size: 12px; }
+
+  /* ---------- gráficos ---------- */
+  .g-grade { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); }
+  .g-card { border: 1px solid var(--line); border-radius: 4px; padding: 12px 14px 14px; background: var(--surface); }
+  .g-card > header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+  .g-card > header b { font: 700 12px/1.2 var(--label); letter-spacing: .1em; text-transform: uppercase; }
+  .btn.min { padding: 2px 6px; font-size: 12px; }
+
+  .g-leg { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; color: var(--dim); font-size: 11px; }
+  .g-leg i, .g-lista i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+  .g-escala { display: flex; justify-content: space-between; color: var(--faint); font-size: 10px; margin-top: 6px; }
+
+  .g-barras { display: flex; align-items: flex-end; gap: 3px; height: 150px; }
+  .g-col { flex: 1; min-width: 3px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+  .g-pilha { display: flex; flex-direction: column-reverse; min-height: 2px; border-radius: 1px 1px 0 0; overflow: hidden; }
+  .g-pilha.neg { opacity: .55; }
+  .g-pilha > i { display: block; width: 100%; }
+  .g-rot {
+    font-size: 9px; color: var(--faint); text-align: center; margin-top: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* Com muitas colunas o rótulo vira tinta ilegível; some e fica o tooltip. */
+  .g-barras > .g-col:nth-child(n+16) .g-rot, .g-barras:has(> :nth-child(16)) .g-rot { display: none; }
+
+  .g-svg { width: 100%; height: 200px; display: block; }
+
+  .g-rosca { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .g-rosca svg { width: 140px; height: 140px; flex: none; }
+  .g-lista { list-style: none; margin: 0; padding: 0; flex: 1 1 200px; min-width: 0; }
+  .g-lista li { display: flex; align-items: baseline; gap: 6px; padding: 2px 0; font-size: 12px; }
+  .g-nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }
+  .g-lista b { color: var(--fg); font-weight: 600; }
+  .g-pct { color: var(--faint); width: 34px; text-align: right; }
+
+  .g-cal { display: flex; gap: 3px; align-items: flex-start; overflow-x: auto; padding-bottom: 2px; }
+  .g-sem { display: grid; grid-template-rows: repeat(7, 11px); gap: 3px; }
+  .g-cal i { display: block; width: 11px; height: 11px; border-radius: 2px; background: var(--line); }
+  .g-cal i.vazio { background: var(--line-soft); }
+
+  .g-tab { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .g-tab th { text-align: left; color: var(--faint); font-weight: 400; padding: 3px 8px 6px 0; }
+  .g-tab td { padding: 3px 8px 3px 0; color: var(--dim); border-top: 1px solid var(--line-soft); }
+  .g-tab .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .g-tab .forte { color: var(--fg); }
+  .g-tab tr.off td { opacity: .55; }
+
+  .g-erro { color: var(--waiting); font-size: 12px; padding: 10px 0; }
+  .g-form { border: 1px solid var(--working); border-radius: 4px; padding: 12px 14px; margin-bottom: 16px; }
+  .g-campos { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .g-campos label {
+    display: flex; align-items: center; gap: 6px; color: var(--faint);
+    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+  }
+  .g-campos select, .g-campos input {
+    background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 3px; padding: 4px 7px; font: 12px var(--mono); min-width: 0;
+  }
+  .g-previa { margin-top: 14px; }
+  .g-indice { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); margin-bottom: 18px; }
 
   /* ---------- servidores ---------- */
   .srv { width: 100%; border-collapse: collapse; }
@@ -460,6 +554,26 @@
   .projs { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
   .d-grid { grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
 </style>
+<script>
+  // No head, e não junto do resto: aplicado depois do body a página pisca
+  // escura antes de clarear. Três estados — auto segue o Windows.
+  var TEMA_ESCURO = matchMedia('(prefers-color-scheme: dark)')
+  // ?tema= existe para a captura de tela: headless não tem preferência de
+  // sistema nem localStorage, e sem isso não dá para conferir o tema claro.
+  var temaModo = new URLSearchParams(location.search).get('tema')
+    || localStorage.getItem('cc-tema') || 'auto'
+  function aplicarTema() {
+    var claro = temaModo === 'claro' || (temaModo === 'auto' && !TEMA_ESCURO.matches)
+    document.documentElement.dataset.tema = claro ? 'claro' : 'escuro'
+    var botao = document.getElementById('tema-toggle')
+    if (!botao) return
+    botao.textContent = { auto: '◐', claro: '☀', escuro: '☾' }[temaModo]
+    botao.title = { auto: 'tema: segue o Windows', claro: 'tema: claro', escuro: 'tema: escuro' }[temaModo]
+  }
+  aplicarTema()
+  // Só interessa quando está em auto, mas o listener é barato e não erra.
+  TEMA_ESCURO.addEventListener('change', aplicarTema)
+</script>
 </head>
 <body>
 <div id="painel">
@@ -471,6 +585,7 @@
       <div class="ferramentas">
         <input type="search" id="q" placeholder="filtrar…" autocomplete="off">
         <select id="proj"><option value="">todos os projetos</option></select>
+        <button class="btn" id="tema-toggle" title="tema: segue o Windows"></button>
         <button class="btn" id="n-toggle" aria-pressed="false">notas</button>
       </div>
     </div>
@@ -493,6 +608,7 @@
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-label="detalhe do agente"></aside>
 
+<script src="/graficos.js"></script>
 <script>
 const $ = (s) => document.querySelector(s)
 const params = new URLSearchParams(location.search)
@@ -514,6 +630,7 @@ const TABS = [
   { id: 'todos', label: 'to-dos' },
   { id: 'projetos', label: 'projetos' },
   { id: 'tempo', label: 'tempo' },
+  { id: 'graficos', label: 'gráficos' },
   { id: 'servidores', label: 'servidores' },
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
@@ -826,6 +943,10 @@ function viewTempo() {
       <label title="0 esconde a coluna de valor">R$ por hora
         <input type="number" min="0" step="10" class="t-taxa" data-taxa value="${TEMPO.taxaGlobal || ''}" placeholder="—">
       </label>
+      <label title="quanto você paga de assinatura por mês; 0 mostra só o preço de API">assinatura/mês
+        <input type="number" min="0" step="10" class="t-taxa" data-assinatura
+          value="${TEMPO.assinaturaMes || ''}" placeholder="—">
+      </label>
       <label title="${TEMPO.cambio.em
         ? `cotação de ${new Date(TEMPO.cambio.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}${
             TEMPO.cambio.manual ? ', digitada por você' : ', buscada automaticamente'}`
@@ -858,7 +979,9 @@ function viewTempo() {
   // A coluna de valor só existe depois que uma taxa foi definida: sem taxa,
   // mostrar R$ 0,00 em toda linha diria que o trabalho não vale nada.
   const comValor = TEMPO.projetos.some((p) => p.taxaHora > 0)
-  const cls = comValor ? ' com-valor' : ''
+  const comReal = TEMPO.assinaturaMes > 0
+  const comSobra = comValor && comReal
+  const cls = `${comValor ? ' com-valor' : ''}${comReal ? ' com-real' : ''}${comSobra ? ' com-sobra' : ''}`
 
   const barras = (dias) => {
     const maior = Math.max(...dias.map((d) => d.ativoMs))
@@ -889,8 +1012,11 @@ function viewTempo() {
           const porHora = p.custo / (p.ativoMs / 36e5)
           return TEMPO.cambio.brlPorUsd ? brl(porHora * TEMPO.cambio.brlPorUsd) + '/h' : usd(porHora) + '/h'
         })()}</span>
+        ${comReal ? `<span class="v real" title="fatia da assinatura pelas horas deste projeto em cada mês">${brl(p.custoReal)}</span>` : ''}
         ${comValor ? `<span class="v val" title="${p.taxaHora ? `${horas(p.ativoMs)} a ${brl(p.taxaHora)}/h${p.taxaPropria ? ' (taxa deste projeto)' : ''}` : 'sem taxa'}">${
           p.taxaHora ? brl(p.valor) : '—'}</span>` : ''}
+        ${comSobra ? `<span class="v ${p.sobra == null ? '' : p.sobra >= 0 ? 'ok' : 'ruim'}">${
+          p.sobra == null ? '—' : brl(p.sobra)}</span>` : ''}
       </div>
       ${aberto ? `<div class="t-corpo">
         <div class="t-valor">
@@ -905,6 +1031,8 @@ function viewTempo() {
               p.taxaPropria ? '' : ' (taxa global)'} · API ${
               p.custoBrl == null ? usd(p.custo) : `${brl(p.custoBrl)} (${usd(p.custo)})`}</span>`
             : '<span class="path">defina a taxa para ver o valor do projeto</span>'}
+          ${p.custoReal == null ? '' : `<span class="path">· assinatura ${brl(p.custoReal)}${
+            p.sobra == null ? '' : ` · <b class="${p.sobra >= 0 ? 'ok' : 'ruim'}">sobra ${brl(p.sobra)}</b>`}</span>`}
         </div>
         ${p.dias.length ? barras(p.dias) : ''}
         <div>
@@ -957,7 +1085,9 @@ function viewTempo() {
     <div class="t-linha t-head${cls}">
       <span>projeto</span><span class="v">horas</span><span class="v">dias</span>
       <span class="v">média</span><span class="v">tokens</span><span class="v">custo api</span><span class="v">por hora</span>
+      ${comReal ? '<span class="v">custo real</span>' : ''}
       ${comValor ? '<span class="v">valor</span>' : ''}
+      ${comSobra ? '<span class="v">sobra</span>' : ''}
     </div>
     ${TEMPO.projetos.map(proj).join('')}
     <div class="t-linha${cls}" style="border-top:1px solid var(--line);cursor:default">
@@ -970,8 +1100,161 @@ function viewTempo() {
         const porHora = totalUsd / (totalMs / 36e5)
         return TEMPO.cambio.brlPorUsd ? brl(porHora * TEMPO.cambio.brlPorUsd) + '/h' : usd(porHora) + '/h'
       })()}</span>
+      ${comReal ? `<span class="v real">${brl(TEMPO.projetos.reduce((a, p) => a + (p.custoReal || 0), 0))}</span>` : ''}
       ${comValor ? `<span class="v val">${brl(totalValor)}</span>` : ''}
+      ${comSobra ? (() => {
+        const s = TEMPO.projetos.reduce((a, p) => a + (p.sobra || 0), 0)
+        return `<span class="v ${s >= 0 ? 'ok' : 'ruim'}">${brl(s)}</span>`
+      })() : ''}
     </div>`
+}
+
+/* ======================== aba: gráficos ======================
+   Os dados são os mesmos da aba de tempo — nada é lido de novo. O que muda é
+   que aqui eles viram fatos soltos, que o motor em graficos.js cruza. */
+
+let GRAFICOS = null          // null = nunca mexeu, mostra os prontos
+// ?novo=1 e ?indice=1 abrem o construtor e o índice já na carga — sem eles não
+// dá pra conferir nenhum dos dois numa captura de tela.
+let rascunho = params.has('novo')
+  ? { forma: 'barras', dimensao: 'projeto', serie: 'nenhuma', medida: 'horas', nome: '' }
+  : null
+let indiceAberto = params.has('indice')
+
+/** Um id curto e estável, para o cartão sobreviver a reordenar e reeditar. */
+const novoIdGrafico = () => 'g' + Math.random().toString(36).slice(2, 8)
+
+const graficosAtuais = () => GRAFICOS
+  || CCGraficos.PRONTOS.map((g) => ({ ...g, id: novoIdGrafico() }))
+
+/**
+ * As duas tabelas de fatos. `tempo` carrega a taxa e o custo/hora do mês junto
+ * de cada linha: assim o motor calcula valor e sobra sem saber de configuração.
+ */
+function fatosDe(T) {
+  const custoHoraMes = Object.fromEntries((T.meses || []).map((m) => [m.mes, m.custoHora]))
+  const cambio = T.cambio.brlPorUsd || 0
+  const tempo = []
+  const uso = []
+  for (const p of T.projetos) {
+    for (const d of p.dias) {
+      tempo.push({
+        projeto: p.projeto, dia: d.dia, ms: d.ativoMs,
+        taxaHora: p.taxaHora || 0,
+        custoHoraMes: custoHoraMes[d.dia.slice(0, 7)] || 0,
+      })
+    }
+    for (const u of p.usoDias || []) {
+      // Converte aqui e não no motor: o motor não deve saber de moeda.
+      uso.push({ ...u, projeto: p.projeto, custo: (u.custo || 0) * (cambio || 1) })
+    }
+  }
+  return { tempo, uso }
+}
+
+const fmtG = (v, tipo) => {
+  if (tipo === 'horas') return horas(v * 36e5)
+  if (tipo === 'brl') return brl(v)
+  if (tipo === 'tok') return tok(Math.round(v))
+  if (tipo === 'moeda') return TEMPO.cambio.brlPorUsd ? brl(v) : usd(v)
+  return String(Math.round(v))
+}
+
+function seletor(nome, opcoes, atual) {
+  return `<select data-rasc="${nome}">${opcoes.map(([id, rot]) =>
+    `<option value="${esc(id)}"${id === atual ? ' selected' : ''}>${esc(rot)}</option>`).join('')}</select>`
+}
+
+function construtor(idx, estado) {
+  const s = rascunho
+  const erro = CCGraficos.validar(s, estado)
+  return `<div class="g-form">
+    <div class="g-campos">
+      <label>forma ${seletor('forma', Object.entries(CCGraficos.FORMAS).map(([id, f]) => [id, f.rotulo]), s.forma)}</label>
+      <label>medida ${seletor('medida', idx.medidas.map((m) => [m.id, m.rotulo]), s.medida)}</label>
+      <label>eixo ${seletor('dimensao', Object.entries(CCGraficos.DIMENSOES).filter(([id]) => id !== 'nenhuma').map(([id, d]) => [id, d.rotulo]), s.dimensao)}</label>
+      <label>dividir por ${seletor('serie', Object.entries(CCGraficos.DIMENSOES).map(([id, d]) => [id, d.rotulo]), s.serie)}</label>
+      <label>nome <input type="text" data-rasc="nome" value="${esc(s.nome || '')}" placeholder="${esc(CCGraficos.descrever(s))}"></label>
+      <span class="grow"></span>
+      <button class="btn" data-g-salvar${erro ? ' disabled' : ''}>${s.id ? 'salvar' : 'adicionar'}</button>
+      <button class="btn" data-g-cancelar>cancelar</button>
+    </div>
+    ${erro ? `<div class="g-erro">${esc(erro)}</div>`
+      : `<div class="g-previa">${CCGraficos.desenhar(s, fatosDe(TEMPO), fmtG, estado)}</div>`}
+  </div>`
+}
+
+function viewIndice(idx) {
+  if (!indiceAberto) return ''
+  const fonteDe = (f) => (f === 'tempo' ? 'relógio' : 'uso de token')
+  return `<div class="g-indice">
+    <div>
+      <h3>medidas</h3>
+      <table class="g-tab">
+        ${idx.medidas.map((m) => `<tr><td>${esc(m.rotulo)}</td><td class="path">vem do ${fonteDe(m.fonte)}</td></tr>`).join('')}
+        ${idx.bloqueadas.map((m) => `<tr class="off"><td>${esc(m.rotulo)}</td>
+          <td class="path">falta ${esc(m.precisa.replace('+', ' e '))} — defina na aba tempo</td></tr>`).join('')}
+      </table>
+    </div>
+    <div>
+      <h3>eixos</h3>
+      <table class="g-tab">
+        ${Object.entries(CCGraficos.DIMENSOES).filter(([id]) => id !== 'nenhuma').map(([, d]) =>
+          `<tr><td>${esc(d.rotulo)}</td><td class="path">${d.fontes.length === 2
+            ? 'cruza com qualquer medida'
+            : `só com medidas do ${fonteDe(d.fontes[0])}`}</td></tr>`).join('')}
+      </table>
+      <p class="path" style="margin:10px 0 0">
+        O relógio não sabe qual modelo rodou, e o uso de token não sabe quanto tempo levou.
+        Por isso horas não cruza com modelo — e o construtor avisa em vez de desenhar zero.
+      </p>
+    </div>
+  </div>`
+}
+
+function viewGraficos() {
+  if (!TEMPO) return '<div class="empty">lendo os transcritos… a primeira vez varre ~800 MB</div>'
+  if (TEMPO.error) return `<div class="empty">não deu para ler os transcritos: ${esc(TEMPO.error)}</div>`
+
+  const estado = {
+    temTaxa: TEMPO.projetos.some((p) => p.taxaHora > 0),
+    temAssinatura: TEMPO.assinaturaMes > 0,
+  }
+  const idx = CCGraficos.indice(estado)
+  const dados = fatosDe(TEMPO)
+  const lista = graficosAtuais()
+
+  const barra = `<div class="t-ctl">
+    <button class="btn" data-g-novo${rascunho ? ' disabled' : ''}>+ gráfico</button>
+    <button class="btn${indiceAberto ? ' on' : ''}" data-g-indice>o que dá pra cruzar</button>
+    ${GRAFICOS ? '<button class="btn" data-g-restaurar>voltar aos prontos</button>' : ''}
+    <span class="grow"></span>
+    <span class="path">período e corte saem da aba tempo${
+      TEMPO.de || TEMPO.ate ? ` · recorte ativo` : ''}</span>
+  </div>`
+
+  const cartoes = lista.map((g) => `
+    <section class="g-card">
+      <header>
+        <b>${esc(g.nome || CCGraficos.descrever(g))}</b>
+        <span class="path">${esc(CCGraficos.descrever(g))}</span>
+        <span class="grow"></span>
+        <button class="btn min" data-g-editar="${esc(g.id)}" title="editar">✎</button>
+        <button class="btn min" data-g-remover="${esc(g.id)}" title="remover">✕</button>
+      </header>
+      ${CCGraficos.desenhar(g, dados, fmtG, estado)}
+    </section>`).join('')
+
+  return barra + viewIndice(idx)
+    + (rascunho ? construtor(idx, estado) : '')
+    + (lista.length ? `<div class="g-grade">${cartoes}</div>`
+      : '<div class="empty">nenhum gráfico — use o + acima</div>')
+}
+
+async function gravarGraficos(lista) {
+  GRAFICOS = lista
+  render()
+  await fetch('/api/graficos', { method: 'POST', body: JSON.stringify({ graficos: lista }) })
 }
 
 /* ====================== aba: servidores ====================== */
@@ -1133,6 +1416,7 @@ function render() {
     todos: () => viewTodos(jobs),
     projetos: () => viewProjetos(jobs),
     tempo: () => viewTempo(),
+    graficos: () => viewGraficos(),
     servidores: () => viewServidores(),
   }
   $('#main').innerHTML = (views[tab] || views.agentes)()
@@ -1141,6 +1425,7 @@ function render() {
     todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
     projetos: 'clique num agente para abrir o painel lateral',
     tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
+    graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
     servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
   }[tab] || ''
   drawer()
@@ -1169,11 +1454,14 @@ async function carregarTempo(force) {
   render()
 }
 
-/** Cotação digitada congela o valor; apagar o campo devolve a busca automática. */
-async function salvarCambio(valor) {
-  await fetch('/api/cambio', { method: 'POST', body: JSON.stringify({ valor: Number(valor) || 0 }) })
+/** Grava um número de configuração e recalcula do cache, sem reler transcrito. */
+async function salvarNumero(rota, valor) {
+  await fetch(rota, { method: 'POST', body: JSON.stringify({ valor: Number(valor) || 0 }) })
   carregarTempo(true)
 }
+
+/** Cotação digitada congela o valor; apagar o campo devolve a busca automática. */
+const salvarCambio = (valor) => salvarNumero('/api/cambio', valor)
 
 /** Grava a taxa e recalcula do cache — não relê transcrito por causa de preço. */
 async function salvarTaxa(projeto, valor) {
@@ -1319,6 +1607,37 @@ $('#split').addEventListener('pointerdown', (e) => {
 document.addEventListener('click', async (e) => {
   const t = e.target
 
+  if (t.closest('[data-g-novo]')) {
+    rascunho = { forma: 'barras', dimensao: 'projeto', serie: 'nenhuma', medida: 'horas', nome: '' }
+    return render()
+  }
+  if (t.closest('[data-g-indice]')) { indiceAberto = !indiceAberto; return render() }
+  if (t.closest('[data-g-cancelar]')) { rascunho = null; return render() }
+  if (t.closest('[data-g-restaurar]')) return gravarGraficos(null)
+
+  const editar = t.closest('[data-g-editar]')
+  if (editar) {
+    rascunho = { ...graficosAtuais().find((g) => g.id === editar.dataset.gEditar) }
+    return render()
+  }
+  const remover = t.closest('[data-g-remover]')
+  if (remover) return gravarGraficos(graficosAtuais().filter((g) => g.id !== remover.dataset.gRemover))
+
+  if (t.closest('[data-g-salvar]')) {
+    const lista = graficosAtuais()
+    const salvo = { ...rascunho, id: rascunho.id || novoIdGrafico() }
+    rascunho = null
+    return gravarGraficos(lista.some((g) => g.id === salvo.id)
+      ? lista.map((g) => (g.id === salvo.id ? salvo : g))
+      : [...lista, salvo])
+  }
+
+  if (t.closest('#tema-toggle')) {
+    temaModo = { auto: 'claro', claro: 'escuro', escuro: 'auto' }[temaModo]
+    localStorage.setItem('cc-tema', temaModo)
+    return aplicarTema()
+  }
+
   if (t.closest('#n-toggle')) {
     notesOpen = !notesOpen
     localStorage.setItem('cc-notes-open', notesOpen ? '1' : '0')
@@ -1387,7 +1706,7 @@ document.addEventListener('click', async (e) => {
     armed = null
     render()
     if (tab === 'servidores') carregarServidores()
-    if (tab === 'tempo') carregarTempo()
+    if (tab === 'tempo' || tab === 'graficos') carregarTempo()
     return
   }
 
@@ -1487,6 +1806,12 @@ document.addEventListener('keydown', (e) => {
 })
 
 document.addEventListener('change', (e) => {
+  const rasc = e.target.closest('[data-rasc]')
+  if (rasc && rascunho) {
+    rascunho[rasc.dataset.rasc] = rasc.value
+    return render()
+  }
+
   const cb = e.target.closest('input[data-todo]')
   if (cb) return toggleTodo(cb.dataset.todo, +cb.dataset.i, cb.checked)
 
@@ -1503,6 +1828,9 @@ document.addEventListener('change', (e) => {
 
   const cambio = e.target.closest('[data-cambio]')
   if (cambio) return salvarCambio(cambio.value)
+
+  const assin = e.target.closest('[data-assinatura]')
+  if (assin) return salvarNumero('/api/assinatura', assin.value)
 
   const ctl = e.target.closest('[data-tempo]')
   if (ctl) {
@@ -1606,6 +1934,10 @@ function editarTodo(jobId, i, texto) {
 
 for (const el of ['#q', '#proj']) $(el).addEventListener('input', render)
 
+// A primeira chamada rodou no head, quando o botão ainda não existia: o tema
+// já valia, mas o ícone estava vazio.
+aplicarTema()
+
 // ?static=1 não abre o SSE: com a conexão pendurada, captura headless nunca
 // considera a página carregada. Serve pra screenshot e impressão.
 if (!params.has('static')) {
@@ -1615,7 +1947,12 @@ fetch('/api/jobs').then((r) => r.json()).then((d) => {
   DATA = d
   render()
   if (tab === 'servidores') carregarServidores()
-  if (tab === 'tempo') carregarTempo()
+  if (tab === 'tempo' || tab === 'graficos') carregarTempo()
+})
+
+fetch('/api/graficos').then((r) => r.json()).then((d) => {
+  GRAFICOS = d.graficos
+  if (tab === 'graficos') render()
 })
 
 layoutNotas()

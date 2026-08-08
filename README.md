@@ -97,6 +97,7 @@ seus agentes já rodaram. Para forçar:
 | to-dos | o que falta, em tudo que está rodando (kanban) |
 | projetos | como está um cliente por inteiro |
 | tempo | quantas horas cada projeto levou, quanto custou e quanto vale |
+| gráficos | os mesmos dados cruzados como você quiser, e salvos |
 | servidores | o que está escutando porta nesta máquina |
 
 Clicar num agente abre um painel lateral com o detalhe em níveis. `Esc` fecha.
@@ -114,6 +115,8 @@ propósito, porque a lista contém `lsass` e `svchost`.
 | `?expand=1` | abre todas as zonas, inclusive as recolhidas |
 | `?open=<id>` | abre o painel lateral de um agente |
 | `?tab=<id>` | abre direto numa aba |
+| `?tema=claro\|escuro` | força o tema, ignorando o sistema e o que está salvo |
+| `?novo=1` `?indice=1` | abrem o construtor de gráficos e o índice de dados |
 
 ## Skills
 

@@ -224,7 +224,7 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
     const { project } = projectOf(dados.cwd || '')
     if (!projetos.has(project)) {
       projetos.set(project, {
-        projeto: project, dias: {}, sessoes: [], uso: {}, blocos: [],
+        projeto: project, dias: {}, sessoes: [], uso: {}, blocos: [], usoDia: {},
       })
     }
     const p = projetos.get(project)
@@ -243,6 +243,9 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
       if (!noRecorte(dia)) continue
       for (const [modelo, uso] of Object.entries(porModelo)) {
         soma((p.uso[modelo] ||= usoZero()), uso)
+        // Mesma soma quebrada por dia: é o que permite cruzar modelo com data
+        // nos gráficos. O total por modelo acima continua valendo sozinho.
+        soma(((p.usoDia[dia] ||= {})[modelo] ||= usoZero()), uso)
         if (!precoDe(modelo)) modelosSemPreco.add(modelo)
       }
     }
@@ -272,6 +275,18 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
       modelo, ...u, custo: custoDe(modelo, u), tokens: u.input + u.output + u.escrita5m + u.escrita1h + u.leitura,
     }))
     const custo = uso.reduce((a, u) => a + (u.custo || 0), 0)
+    // Uso quebrado por dia E modelo: é o que deixa cruzar as duas dimensões
+    // nos gráficos. Sem isso só dá pra ver modelo no total ou dia no total.
+    const usoDias = []
+    for (const [dia, porModelo] of Object.entries(p.usoDia)) {
+      if (!noRecorte(dia)) continue
+      for (const [modelo, u] of Object.entries(porModelo)) {
+        usoDias.push({
+          dia, modelo, ...u, custo: custoDe(modelo, u),
+          tokens: u.input + u.output + u.escrita5m + u.escrita1h + u.leitura,
+        })
+      }
+    }
     return {
       projeto: p.projeto,
       ativoMs: horas,
@@ -279,6 +294,7 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
       diasTrabalhados: dias.length,
       sessoes: p.sessoes.filter((s) => s.ativoMs > 0).sort((a, b) => b.inicio - a.inicio),
       uso,
+      usoDias,
       custo,
       custoBrl: brlPorUsd ? custo * brlPorUsd : null,
       tokens: uso.reduce((a, u) => a + u.tokens, 0),
@@ -288,11 +304,34 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
     }
   }).filter((p) => p.ativoMs > 0 || p.tokens > 0)
 
+  // A assinatura é um custo fixo do mês, então a hora vale o que sobra dela
+  // dividido pelo que se trabalhou naquele mês: mês parado deixa a hora cara,
+  // e isso é a verdade, não um defeito da conta. Rateio por mês e não pelo
+  // período inteiro justamente para não diluir isso.
+  const assinaturaMes = Number(cfg.assinaturaMes) || 0
+  const msPorMes = {}
+  for (const p of lista) {
+    for (const d of p.dias) msPorMes[d.dia.slice(0, 7)] = (msPorMes[d.dia.slice(0, 7)] || 0) + d.ativoMs
+  }
+  const meses = Object.entries(msPorMes).sort().map(([mes, ms]) => ({
+    mes, ms, custoHora: assinaturaMes && ms ? assinaturaMes / (ms / 36e5) : 0,
+  }))
+  for (const p of lista) {
+    p.custoReal = assinaturaMes
+      ? p.dias.reduce((a, d) => {
+        const total = msPorMes[d.dia.slice(0, 7)]
+        return a + (total ? assinaturaMes * (d.ativoMs / total) : 0)
+      }, 0)
+      : null
+    p.sobra = p.custoReal != null && p.taxaHora ? p.valor - p.custoReal : null
+  }
+
   lista.sort((a, b) => b.ativoMs - a.ativoMs)
   return {
     corteMin, de, ate, projetos: lista,
     taxaGlobal: Number(cfg.taxaHora) || 0,
     cambio: cfg.cambio || {},
+    assinaturaMes, meses,
     varredura: { arquivos: Object.keys(arquivos).length, lidos, bytesLidos },
     modelosSemPreco: [...modelosSemPreco],
     precos: PRECOS,

@@ -14,6 +14,7 @@ export const CONFIG_FILE = path.join(os.homedir(), '.claude', 'control-center.js
 
 const DEFAULTS = {
   enabled: true, disabledProjects: [], taxaHora: 0, taxaPorProjeto: {}, cambio: {},
+  assinaturaMes: 0, graficos: null,
 }
 
 export function readConfig() {
@@ -84,6 +85,33 @@ export function setCambio({ brlPorUsd, em, manual }) {
     : {}
   writeConfig({ ...cfg, cambio })
   return cambio
+}
+
+/**
+ * Os gráficos que o Felipe montou. `null` significa "nunca mexeu", e a tela
+ * mostra os prontos — diferente de `[]`, que é "apaguei todos" e deve
+ * continuar vazio. Sem essa distinção, apagar o último traria todos de volta.
+ */
+export function setGraficos(lista) {
+  const cfg = readConfig()
+  const limpa = Array.isArray(lista)
+    ? lista.slice(0, 40).map((g) => ({
+      id: String(g.id || '').slice(0, 40),
+      nome: String(g.nome || '').slice(0, 80),
+      forma: String(g.forma || '').slice(0, 20),
+      dimensao: String(g.dimensao || '').slice(0, 20),
+      serie: String(g.serie || 'nenhuma').slice(0, 20),
+      medida: String(g.medida || '').slice(0, 20),
+    }))
+    : null
+  writeConfig({ ...cfg, graficos: limpa })
+  return limpa
+}
+
+/** Quanto a assinatura custa por mês. Zero desliga o custo real na tela. */
+export function setAssinatura(valor) {
+  const cfg = readConfig()
+  return writeConfig({ ...cfg, assinaturaMes: Math.max(0, Number(valor) || 0) })
 }
 
 export function describe(cwd = process.cwd()) {

@@ -9,11 +9,12 @@ import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import { readServers, killServer } from './servers.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
-import { setTaxa, setCambio } from './config.mjs'
+import { setTaxa, setCambio, setAssinatura, setGraficos, readConfig } from './config.mjs'
 import { garantirCambio } from './cambio.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
+const GRAFICOS = path.join(HERE, 'graficos.js')
 
 const snapshot = () => {
   const jobs = readJobs()
@@ -45,6 +46,9 @@ function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
 
   if (url.pathname === '/') return send(res, 200, fs.readFileSync(UI, 'utf8'), 'text/html; charset=utf-8')
+  if (url.pathname === '/graficos.js') {
+    return send(res, 200, fs.readFileSync(GRAFICOS, 'utf8'), 'text/javascript; charset=utf-8')
+  }
   if (url.pathname === '/api/jobs') return send(res, 200, snapshot())
 
   // Escrita de meta pela própria página (marcar todo, anotar).
@@ -104,6 +108,17 @@ function handler(req, res) {
     return comCorpo(req, res, 1e4, ({ valor, projeto }) => ({
       config: setTaxa(valor, { projeto: projeto || null }),
     }))
+  }
+
+  if (url.pathname === '/api/graficos') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e5, ({ graficos }) => ({ graficos: setGraficos(graficos) }))
+    }
+    return send(res, 200, { graficos: readConfig().graficos })
+  }
+
+  if (url.pathname === '/api/assinatura' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ valor }) => ({ config: setAssinatura(valor) }))
   }
 
   if (url.pathname === '/api/kill' && req.method === 'POST') {

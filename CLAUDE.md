@@ -25,6 +25,8 @@ src/
   notes.mjs      bloco de notas da máquina, em ~/.claude
   tempo.mjs      horas por projeto e custo de token, lidos dos transcritos
   cambio.mjs     cotação do dólar — a única chamada de rede do painel
+  graficos.js    motor de gráficos: índice do que cruza com o quê, e o SVG
+                 (servido em /graficos.js; não é módulo, roda no navegador)
   install.mjs    bloco do protocolo no CLAUDE.md dos projetos
   tui.mjs        tabela do terminal
   web.mjs        servidor http + SSE + rotas de escrita
@@ -101,7 +103,9 @@ errada por definição.
   se fosse o pedido — aconteceu.
 - **Screenshot do painel:** `?static=1` desliga o SSE (senão o headless nunca
   termina de carregar), `?expand=1` abre todas as zonas, `?open=<id>` abre uma
-  linha, `?tab=<id>` escolhe a aba. Sem eles não dá pra ver o layout numa captura.
+  linha, `?tab=<id>` escolhe a aba, `?tema=claro|escuro` força o tema, e
+  `?novo=1`/`?indice=1` abrem o construtor de gráficos e o índice de dados.
+  Sem eles não dá pra ver o layout numa captura.
 - **O `meta.json` é escrito por agente e o formato varia.** Um agente gravou
   `{t: "..."}` no lugar de `{text: "..."}` e o painel exibiu "undefined" com a
   tarefa inteira ali do lado. Toda leitura de `meta` passa por `normalizeTodo` /
@@ -174,10 +178,27 @@ errada por definição.
   Cotação fora da faixa 0,5–100 é rejeitada: se a API inverter o par e mandar
   0,18, o custo de R$ 34 mil viraria R$ 1,2 mil sem nenhum erro aparecer.
   Cotação digitada marca `manual: true` e a busca automática para de mexer.
-- **Não existe coluna de margem, e a tentativa foi revertida.** Receita menos
-  custo de API dava "sobra de −R$ 19.504" no inovallbond: o custo é preço de
-  API e o Felipe paga assinatura. Só faz sentido com o custo real da
-  assinatura rateado, que o painel não tem.
+- **Sobra usa a assinatura rateada, nunca o preço de API.** A primeira versão
+  fez receita menos custo de API e deu "sobra de −R$ 19.504" no inovallbond —
+  o Felipe paga assinatura, não tabela de API. O custo real é
+  `assinaturaMes ÷ horas daquele mês`, aplicado mês a mês e não pelo período
+  inteiro: mês parado deixa a hora cara, e isso é a verdade. Consequência a
+  lembrar: filtrar meio mês infla o custo/hora daquele mês, porque o rateio só
+  enxerga as horas dentro do recorte.
+- **O motor de gráficos é um índice, não uma coleção de gráficos.** Cada medida
+  declara sua FONTE (`tempo` ou `uso`) e cada dimensão em quais fontes existe.
+  Horas não cruza com modelo porque o relógio não sabe qual modelo rodou, e
+  token não sabe quanto tempo levou — o construtor recusa e explica, em vez de
+  desenhar zeros. Medida que depende de configuração (`valor`, `sobra`) também
+  é recusada com o que falta: sem isso, taxa zerada renderiza um gráfico vazio
+  que parece "não trabalhei".
+- **`graficos: null` e `graficos: []` são estados diferentes** no config. `null`
+  é "nunca mexi" e mostra os prontos; `[]` é "apaguei todos" e fica vazio. Sem
+  a distinção, apagar o último gráfico traria os oito prontos de volta.
+- **O tema resolve `auto` no JavaScript, e o CSS só vê claro|escuro.** O bloco
+  vai no `<head>`, antes do body: aplicado depois, a página pisca escura antes
+  de clarear. `?tema=claro` existe para a captura, porque o headless não tem
+  preferência de sistema nem localStorage.
 - **Taxa zero não é "de graça", é "não configurada".** `setTaxa(0, {projeto})`
   apaga a entrada em vez de gravar zero, e o projeto volta pra taxa global —
   senão não haveria como desfazer uma taxa específica. Pelo mesmo motivo a

@@ -92,8 +92,14 @@ assert.equal(fmtTokens(0), '—')
 
 // o script da página não roda em Node, mas erro de sintaxe dá pra pegar aqui
 const html = fs.readFileSync(new URL('./src/ui.html', import.meta.url), 'utf8')
-const script = html.match(/<script>([\s\S]*?)<\/script>/)[1]
-assert.doesNotThrow(() => new Function(script), 'ui.html tem erro de sintaxe no JS')
+// São dois blocos: o do tema, no head, e o da página, no fim do body. Pegar só
+// o primeiro faria este teste validar 15 linhas e dar a página inteira por boa.
+const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1])
+assert.equal(scripts.length, 2, 'ui.html deixou de ter os dois blocos de script esperados')
+for (const s of scripts) {
+  assert.doesNotThrow(() => new Function(s), 'ui.html tem erro de sintaxe no JS')
+}
+const script = scripts.join('\n')
 for (const rota of ['/api/jobs', '/api/meta', '/api/notes', '/events']) {
   assert.ok(script.includes(rota), `ui.html não usa ${rota}`)
 }

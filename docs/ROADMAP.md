@@ -54,9 +54,16 @@ Escritos aqui porque são escolha, não descuido:
 - O custo em real usa a cotação de hoje, inclusive para trabalho de semanas
   atrás. Converter cada dia pela cotação daquele dia exigiria série histórica
   de câmbio, para mudar um número que é referência de esforço, não fatura.
-- Não há coluna de margem. Receita menos custo de API daria prejuízo em todo
-  projeto, porque o custo é preço de API e a conta paga é assinatura. Só volta
-  a fazer sentido com o valor da assinatura rateado por hora.
+- A sobra usa a assinatura rateada pelas horas do mês, não o preço de API.
+  Filtrar meio mês infla o custo/hora daquele mês: o rateio só enxerga as horas
+  dentro do recorte. Guardar o total de horas do mês fora do filtro resolveria,
+  ao preço de o número mudar conforme o que está na tela.
+- A assinatura é um valor só, sem histórico. Mudança de plano recalcula meses
+  antigos pelo valor novo. Mesma decisão da taxa horária: data de vigência só
+  se paga quando houver uma mudança real.
+- Os gráficos não têm filtro próprio. Período e corte de ociosidade vêm da aba
+  de tempo, e valem para todos os cartões de uma vez. Filtro por cartão seria
+  outro estado por gráfico, para uma pergunta que ainda não apareceu.
 - Categoria é texto livre, sem lista fechada — vocabulário novo nasce sem
   precisar mexer no código.
 - `todos` substitui a lista inteira em vez de fazer merge item a item. Evita
