@@ -799,8 +799,14 @@ const horas = (ms) => {
 }
 const usd = (n) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(2)}`)
 // Valor de projeto é número que vai pra proposta: sem abreviar em "k", porque
-// R$ 12,4k não se cola num orçamento.
-const brl = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+// R$ 12,4k não se cola num orçamento. Centavos só abaixo de cem reais — num
+// custo de API de R$ 3,74 eles são a informação, num projeto de R$ 15 mil são ruído.
+const brl = (n) => {
+  const casas = Math.abs(n) < 100 ? 2 : 0
+  return n.toLocaleString('pt-BR', {
+    style: 'currency', currency: 'BRL', minimumFractionDigits: casas, maximumFractionDigits: casas,
+  })
+}
 const dataCurta = (dia) => dia.slice(8) + '/' + dia.slice(5, 7)
 const diaDe = (ms) => new Date(ms).toISOString().slice(0, 10)
 
@@ -820,6 +826,13 @@ function viewTempo() {
       <label title="0 esconde a coluna de valor">R$ por hora
         <input type="number" min="0" step="10" class="t-taxa" data-taxa value="${TEMPO.taxaGlobal || ''}" placeholder="—">
       </label>
+      <label title="${TEMPO.cambio.em
+        ? `cotação de ${new Date(TEMPO.cambio.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}${
+            TEMPO.cambio.manual ? ', digitada por você' : ', buscada automaticamente'}`
+        : 'sem cotação — digite uma para ver o custo em real'}">dólar
+        <input type="number" min="0" step="0.01" class="t-taxa" data-cambio
+          value="${TEMPO.cambio.brlPorUsd ? TEMPO.cambio.brlPorUsd.toFixed(2) : ''}" placeholder="—">
+      </label>
       <span class="grow"></span>
       <button class="btn" data-tempo-recarregar>reler transcritos</button>
     </div>`
@@ -827,8 +840,13 @@ function viewTempo() {
   const aviso = `<p class="t-aviso">
     Tempo ativo é a soma dos intervalos entre mensagens, descartando as paradas maiores
     que o corte acima. <b>Agente rodando sozinho conta como trabalho</b>, e tempo lendo
-    código ou em reunião não conta. O valor em dólar é o preço de API dos tokens gastos —
-    referência de custo, não o que foi cobrado de você na assinatura.
+    código ou em reunião não conta. O custo é o preço de API dos tokens gastos —
+    referência de esforço, não o que foi cobrado de você na assinatura.
+    ${TEMPO.cambio.brlPorUsd
+      ? `Convertido a ${brl(TEMPO.cambio.brlPorUsd)} por dólar${TEMPO.cambio.manual
+          ? ', cotação digitada por você'
+          : `, cotação de ${new Date(TEMPO.cambio.em).toLocaleDateString('pt-BR')}`}.`
+      : ''}
     ${TEMPO.modelosSemPreco.length
       ? `<br>Sem preço conhecido, fora da conta: ${TEMPO.modelosSemPreco.map(esc).join(', ')}.` : ''}
   </p>`
@@ -866,8 +884,11 @@ function viewTempo() {
         <span class="v path">${p.diasTrabalhados}d</span>
         <span class="v path">${horas(porDia)}/dia</span>
         <span class="v num">${tok(p.tokens)}</span>
-        <span class="v cif">${usd(p.custo)}</span>
-        <span class="v path">${p.ativoMs ? usd(p.custo / (p.ativoMs / 36e5)) + '/h' : '—'}</span>
+        <span class="v cif" title="${usd(p.custo)} de API">${p.custoBrl == null ? usd(p.custo) : brl(p.custoBrl)}</span>
+        <span class="v path">${!p.ativoMs ? '—' : (() => {
+          const porHora = p.custo / (p.ativoMs / 36e5)
+          return TEMPO.cambio.brlPorUsd ? brl(porHora * TEMPO.cambio.brlPorUsd) + '/h' : usd(porHora) + '/h'
+        })()}</span>
         ${comValor ? `<span class="v val" title="${p.taxaHora ? `${horas(p.ativoMs)} a ${brl(p.taxaHora)}/h${p.taxaPropria ? ' (taxa deste projeto)' : ''}` : 'sem taxa'}">${
           p.taxaHora ? brl(p.valor) : '—'}</span>` : ''}
       </div>
@@ -881,7 +902,8 @@ function viewTempo() {
           </label>
           ${p.taxaHora ? `<b>${brl(p.valor)}</b>
             <span class="path">${horas(p.ativoMs)} × ${brl(p.taxaHora)}/h${
-              p.taxaPropria ? '' : ' (taxa global)'} · custo de API ${usd(p.custo)}</span>`
+              p.taxaPropria ? '' : ' (taxa global)'} · API ${
+              p.custoBrl == null ? usd(p.custo) : `${brl(p.custoBrl)} (${usd(p.custo)})`}</span>`
             : '<span class="path">defina a taxa para ver o valor do projeto</span>'}
         </div>
         ${p.dias.length ? barras(p.dias) : ''}
@@ -897,7 +919,9 @@ function viewTempo() {
                 <td class="num">${tok(u.output)}</td>
                 <td class="num">${tok(u.escrita5m + u.escrita1h)}</td>
                 <td class="num">${tok(u.leitura)}</td>
-                <td class="num cif">${u.custo == null ? '<em class="path">sem preço</em>' : usd(u.custo)}</td>
+                <td class="num cif" title="${u.custo == null ? '' : usd(u.custo) + ' de API'}">${
+                  u.custo == null ? '<em class="path">sem preço</em>'
+                    : TEMPO.cambio.brlPorUsd ? brl(u.custo * TEMPO.cambio.brlPorUsd) : usd(u.custo)}</td>
               </tr>`).join('')}
           </table>
           <p class="path" style="margin:6px 0 0">
@@ -940,8 +964,12 @@ function viewTempo() {
       <span class="nome" style="color:var(--faint)">total</span>
       <span class="v h">${horas(totalMs)}</span><span class="v"></span><span class="v"></span>
       <span class="v num">${tok(TEMPO.projetos.reduce((a, p) => a + p.tokens, 0))}</span>
-      <span class="v cif">${usd(totalUsd)}</span>
-      <span class="v path">${totalMs ? usd(totalUsd / (totalMs / 36e5)) + '/h' : ''}</span>
+      <span class="v cif" title="${usd(totalUsd)} de API">${
+        TEMPO.cambio.brlPorUsd ? brl(totalUsd * TEMPO.cambio.brlPorUsd) : usd(totalUsd)}</span>
+      <span class="v path">${!totalMs ? '' : (() => {
+        const porHora = totalUsd / (totalMs / 36e5)
+        return TEMPO.cambio.brlPorUsd ? brl(porHora * TEMPO.cambio.brlPorUsd) + '/h' : usd(porHora) + '/h'
+      })()}</span>
       ${comValor ? `<span class="v val">${brl(totalValor)}</span>` : ''}
     </div>`
 }
@@ -1139,6 +1167,12 @@ async function carregarTempo(force) {
     TEMPO = { error: String(e.message || e) }
   }
   render()
+}
+
+/** Cotação digitada congela o valor; apagar o campo devolve a busca automática. */
+async function salvarCambio(valor) {
+  await fetch('/api/cambio', { method: 'POST', body: JSON.stringify({ valor: Number(valor) || 0 }) })
+  carregarTempo(true)
 }
 
 /** Grava a taxa e recalcula do cache — não relê transcrito por causa de preço. */
@@ -1466,6 +1500,9 @@ document.addEventListener('change', (e) => {
 
   const taxa = e.target.closest('[data-taxa]')
   if (taxa) return salvarTaxa(taxa.dataset.projeto || null, taxa.value)
+
+  const cambio = e.target.closest('[data-cambio]')
+  if (cambio) return salvarCambio(cambio.value)
 
   const ctl = e.target.closest('[data-tempo]')
   if (ctl) {

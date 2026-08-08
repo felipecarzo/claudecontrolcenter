@@ -20,6 +20,10 @@ agentes. A aba de tempo responde o que ela respondia, melhor.
 e dentro de cada projeto (só dele). Digitar um número faz a coluna de valor
 aparecer.
 
+**O painel passou a falar com a rede, uma vez a cada 12h.** Só pra cotação do
+dólar, e só a rota `/api/tempo` dispara. Sem rede, vale o último valor com a
+data na tela. O campo `dólar` aceita valor digitado, que congela a busca.
+
 ## Depois de mexer no código
 
 O painel de todo dia serve o **pacote instalado**, não este repositório:

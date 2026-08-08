@@ -24,6 +24,7 @@ src/
   config.mjs     interruptor global e por projeto
   notes.mjs      bloco de notas da máquina, em ~/.claude
   tempo.mjs      horas por projeto e custo de token, lidos dos transcritos
+  cambio.mjs     cotação do dólar — a única chamada de rede do painel
   install.mjs    bloco do protocolo no CLAUDE.md dos projetos
   tui.mjs        tabela do terminal
   web.mjs        servidor http + SSE + rotas de escrita
@@ -34,7 +35,8 @@ AGENTS.md        protocolo que os agentes seguem pra alimentar o painel
 docs/            ver docs/README.md
 ```
 
-Sem dependência de runtime. Só Node >= 18 e o que vem nele.
+Sem dependência de runtime. Só Node >= 18 e o que vem nele. Funciona offline,
+menos a cotação do dólar — que degrada pro último valor conhecido.
 
 ## Comandos
 
@@ -166,6 +168,16 @@ errada por definição.
 - **Varrer portas leva ~3s.** Só a rota `/api/servers` faz isso, com cache de
   15s, e a aba só consulta quando aberta. Nunca colocar isso no `/api/jobs` nem
   no stream.
+- **O câmbio é a única chamada de rede do painel inteiro.** Tudo o mais lê disco
+  local. `cambio.mjs` busca a cotação na AwesomeAPI (sem chave), cacheia por 12h
+  no config e, se a rede falhar, devolve o último valor — com a data na tela.
+  Cotação fora da faixa 0,5–100 é rejeitada: se a API inverter o par e mandar
+  0,18, o custo de R$ 34 mil viraria R$ 1,2 mil sem nenhum erro aparecer.
+  Cotação digitada marca `manual: true` e a busca automática para de mexer.
+- **Não existe coluna de margem, e a tentativa foi revertida.** Receita menos
+  custo de API dava "sobra de −R$ 19.504" no inovallbond: o custo é preço de
+  API e o Felipe paga assinatura. Só faz sentido com o custo real da
+  assinatura rateado, que o painel não tem.
 - **Taxa zero não é "de graça", é "não configurada".** `setTaxa(0, {projeto})`
   apaga a entrada em vez de gravar zero, e o projeto volta pra taxa global —
   senão não haveria como desfazer uma taxa específica. Pelo mesmo motivo a

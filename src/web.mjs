@@ -9,7 +9,8 @@ import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import { readServers, killServer } from './servers.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
-import { setTaxa } from './config.mjs'
+import { setTaxa, setCambio } from './config.mjs'
+import { garantirCambio } from './cambio.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
@@ -72,16 +73,29 @@ function handler(req, res) {
   if (url.pathname === '/api/tempo') {
     const num = (v, padrao) => (Number.isFinite(Number(v)) ? Number(v) : padrao)
     const dia = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : null)
-    try {
-      return send(res, 200, resumoTempo({
-        corteMin: num(url.searchParams.get('corte'), 15),
-        de: dia(url.searchParams.get('de')),
-        ate: dia(url.searchParams.get('ate')),
-        force: url.searchParams.has('force'),
-      }))
-    } catch (e) {
-      return send(res, 500, { error: String(e.message || e) })
-    }
+    // A cotação é buscada antes do resumo, e não em paralelo, porque o resumo
+    // lê o câmbio do config: em paralelo, a primeira carga do dia sairia sem
+    // real e só a segunda mostraria a coluna.
+    return garantirCambio().then(() => {
+      try {
+        send(res, 200, resumoTempo({
+          corteMin: num(url.searchParams.get('corte'), 15),
+          de: dia(url.searchParams.get('de')),
+          ate: dia(url.searchParams.get('ate')),
+          force: url.searchParams.has('force'),
+        }))
+      } catch (e) {
+        send(res, 500, { error: String(e.message || e) })
+      }
+    })
+  }
+
+  // Cotação digitada à mão. Grava `manual`, e a busca automática passa a
+  // respeitar o número — quem fecha preço não quer o valor trocando sozinho.
+  if (url.pathname === '/api/cambio' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ valor }) => ({
+      cambio: setCambio({ brlPorUsd: valor, manual: Number(valor) > 0 }),
+    }))
   }
 
   // Taxa em R$/hora, global ou por projeto. Fica no config e não no cache de

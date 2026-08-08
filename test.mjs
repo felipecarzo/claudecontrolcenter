@@ -216,6 +216,14 @@ assert.equal(taxaDe('gratis', cfgTaxa), 120) // zero gravado não vira "de graç
 assert.equal(taxaDe('qualquer', {}), 0) // sem taxa nenhuma, a coluna some da tela
 assert.equal(taxaDe('qualquer', { taxaHora: 'abc' }), 0)
 
+// --- câmbio: só aceita cotação em faixa de dólar-real ---
+const { cotacaoPlausivel } = await import('./src/cambio.mjs')
+assert.equal(cotacaoPlausivel(5.43), true)
+assert.equal(cotacaoPlausivel(0.18), false) // par invertido pela API
+assert.equal(cotacaoPlausivel(0), false)
+assert.equal(cotacaoPlausivel(NaN), false)
+assert.equal(cotacaoPlausivel(543), false) // centavos vindo como inteiro
+
 // --- install: edição idempotente, em pasta descartável ---
 const { installInto, removeFrom, findProjects, blockText } = await import('./src/install.mjs')
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-test-'))

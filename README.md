@@ -96,7 +96,7 @@ seus agentes já rodaram. Para forçar:
 | agentes | o que precisa de mim agora |
 | to-dos | o que falta, em tudo que está rodando (kanban) |
 | projetos | como está um cliente por inteiro |
-| tempo | quantas horas cada projeto levou, e quanto isso vale |
+| tempo | quantas horas cada projeto levou, quanto custou e quanto vale |
 | servidores | o que está escutando porta nesta máquina |
 
 Clicar num agente abre um painel lateral com o detalhe em níveis. `Esc` fecha.

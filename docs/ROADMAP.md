@@ -51,6 +51,12 @@ Escritos aqui porque são escolha, não descuido:
   e é complexidade que só se paga quando um reajuste acontecer de verdade.
 - O repositório é público com os nomes de cliente e as horas de cada um no
   diário de 06/08. Decisão do Felipe em 08/08, com o conteúdo na mão.
+- O custo em real usa a cotação de hoje, inclusive para trabalho de semanas
+  atrás. Converter cada dia pela cotação daquele dia exigiria série histórica
+  de câmbio, para mudar um número que é referência de esforço, não fatura.
+- Não há coluna de margem. Receita menos custo de API daria prejuízo em todo
+  projeto, porque o custo é preço de API e a conta paga é assinatura. Só volta
+  a fazer sentido com o valor da assinatura rateado por hora.
 - Categoria é texto livre, sem lista fechada — vocabulário novo nasce sem
   precisar mexer no código.
 - `todos` substitui a lista inteira em vez de fazer merge item a item. Evita

@@ -12,7 +12,9 @@ import { projectOf } from './jobs.mjs'
 
 export const CONFIG_FILE = path.join(os.homedir(), '.claude', 'control-center.json')
 
-const DEFAULTS = { enabled: true, disabledProjects: [], taxaHora: 0, taxaPorProjeto: {} }
+const DEFAULTS = {
+  enabled: true, disabledProjects: [], taxaHora: 0, taxaPorProjeto: {}, cambio: {},
+}
 
 export function readConfig() {
   try {
@@ -67,6 +69,21 @@ export function setTaxa(valor, { projeto = null } = {}) {
   if (v > 0) mapa[projeto] = v
   else delete mapa[projeto]
   return writeConfig({ ...cfg, taxaPorProjeto: mapa })
+}
+
+/**
+ * Cotação do dólar. `manual: true` congela o valor digitado — cotação buscada
+ * nunca sobrescreve escolha de quem está fechando preço. Valor zero destrava
+ * a busca automática de novo.
+ */
+export function setCambio({ brlPorUsd, em, manual }) {
+  const cfg = readConfig()
+  const v = Math.max(0, Number(brlPorUsd) || 0)
+  const cambio = v > 0
+    ? { brlPorUsd: v, em: em || Date.now(), manual: !!manual }
+    : {}
+  writeConfig({ ...cfg, cambio })
+  return cambio
 }
 
 export function describe(cwd = process.cwd()) {

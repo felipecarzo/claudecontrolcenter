@@ -259,6 +259,7 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
   }
 
   const cfg = readConfig()
+  const brlPorUsd = Number(cfg.cambio?.brlPorUsd) || 0
   const lista = [...projetos.values()].map((p) => {
     const ordenar = (bs) => bs.sort((a, b) => a[0] - b[0])
     const horas = ativoMs(ordenar(p.blocos), corteMs)
@@ -270,6 +271,7 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
     const uso = Object.entries(p.uso).map(([modelo, u]) => ({
       modelo, ...u, custo: custoDe(modelo, u), tokens: u.input + u.output + u.escrita5m + u.escrita1h + u.leitura,
     }))
+    const custo = uso.reduce((a, u) => a + (u.custo || 0), 0)
     return {
       projeto: p.projeto,
       ativoMs: horas,
@@ -277,7 +279,8 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
       diasTrabalhados: dias.length,
       sessoes: p.sessoes.filter((s) => s.ativoMs > 0).sort((a, b) => b.inicio - a.inicio),
       uso,
-      custo: uso.reduce((a, u) => a + (u.custo || 0), 0),
+      custo,
+      custoBrl: brlPorUsd ? custo * brlPorUsd : null,
       tokens: uso.reduce((a, u) => a + u.tokens, 0),
       taxaHora,
       taxaPropria: Number(cfg.taxaPorProjeto?.[p.projeto]) > 0,
@@ -289,6 +292,7 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
   return {
     corteMin, de, ate, projetos: lista,
     taxaGlobal: Number(cfg.taxaHora) || 0,
+    cambio: cfg.cambio || {},
     varredura: { arquivos: Object.keys(arquivos).length, lidos, bytesLidos },
     modelosSemPreco: [...modelosSemPreco],
     precos: PRECOS,
