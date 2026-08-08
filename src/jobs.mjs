@@ -196,8 +196,11 @@ export function buildJob(id, state, meta, pins, now) {
     blockers: normalizeList(meta.blockers, (b) => (typeof b === 'string' ? b : b?.text ?? b?.reason ?? null)),
     links: normalizeList(meta.links, normalizeLink),
     notes: meta.notes || '',
-    pinned: pinIndex >= 0,
-    pinIndex: pinIndex >= 0 ? pinIndex : 999,
+    // Dois pins convivem: o do CLI vem de pins.json (só leitura) e o do painel
+    // fica no meta.json. Fixar aqui não pode escrever no arquivo do Claude Code.
+    pinned: pinIndex >= 0 || meta.pin === true,
+    pinnedAqui: meta.pin === true,
+    pinIndex: pinIndex >= 0 ? pinIndex : meta.pin === true ? 500 : 999,
     createdAt: created,
     updatedAt: updated,
     ageMs: now - created,

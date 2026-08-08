@@ -35,6 +35,26 @@
   body {
     margin: 0; background: var(--bg); color: var(--fg);
     font: 13px/1.45 var(--mono); -webkit-font-smoothing: antialiased;
+    display: flex; height: 100vh; overflow: hidden;
+  }
+  [hidden] { display: none !important; }
+
+  /* ---------- estrutura: painel | divisória | notas ----------
+     O painel é o contêiner de consulta. Sem `container-type`, o breakpoint
+     olharia a largura da JANELA — e com as notas abertas a janela continua
+     larga enquanto o painel some. A tabela quebraria em vez de compactar. */
+  #painel {
+    flex: 1 1 auto; min-width: 0; overflow-y: auto;
+    container-type: inline-size; container-name: painel;
+  }
+  #split {
+    flex: none; width: 6px; cursor: col-resize; background: var(--line);
+    border-left: 1px solid var(--bg); border-right: 1px solid var(--bg);
+  }
+  #split:hover, #split.drag { background: var(--working); }
+  #notas {
+    flex: none; width: min(var(--notes-w, 340px), 78vw); min-width: 0;
+    background: var(--surface); border-left: 1px solid var(--line); overflow-y: auto;
   }
   :focus-visible { outline: 2px solid var(--working); outline-offset: 2px; }
   h3 {
@@ -57,16 +77,19 @@
   .count b { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--dim); }
   .count.hot b { color: var(--fg); }
   .grow { flex: 1 1 40px; }
+  /* juntos num bloco só: soltos, ao quebrar a linha o campo de filtro sobrava
+     no meio do cabeçalho enquanto o resto ia pra outra ponta */
+  .ferramentas { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   input[type=search], select {
     background: var(--surface); color: var(--fg); border: 1px solid var(--line);
     border-radius: 3px; padding: 5px 9px; font: 12px var(--mono); min-width: 170px;
   }
   input[type=search]::placeholder { color: var(--faint); }
 
-  nav { display: flex; gap: 2px; margin-top: 12px; border-bottom: 1px solid var(--line); }
+  nav { display: flex; gap: 2px; margin-top: 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   .tab {
     background: none; border: 0; border-bottom: 2px solid transparent;
-    padding: 8px 14px; cursor: pointer; color: var(--faint);
+    padding: 8px 14px; cursor: pointer; color: var(--faint); white-space: nowrap;
     font: 700 12px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
   }
   .tab:hover { color: var(--dim); }
@@ -79,27 +102,53 @@
 
   /* ---------- tabela de agentes ---------- */
   table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  col.c-dot { width: 22px; } col.c-path { width: 200px; }
-  col.c-model { width: 72px; } col.c-tok { width: 60px; }
-  col.c-time { width: 200px; } col.c-todo { width: 60px; }
+  col.c-dot { width: 22px; } col.c-path { width: 210px; }
+  col.c-model { width: 84px; } col.c-tok { width: 66px; }
+  col.c-time { width: 200px; } col.c-bar { width: 150px; }
+  col.c-todo { width: 64px; } col.c-acts { width: 96px; }
 
   thead th {
     text-align: left; padding: 10px 10px 7px 0;
     font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
     color: var(--faint); border-bottom: 1px solid var(--line); white-space: nowrap;
   }
-  .ruler { position: relative; height: 11px; }
-  .ruler span {
-    position: absolute; top: 0; transform: translateX(-50%);
-    font: 10px/1 var(--mono); color: var(--faint); white-space: nowrap;
+  thead th button {
+    background: none; border: 0; padding: 0; cursor: pointer; color: inherit;
+    font: inherit; letter-spacing: inherit; text-transform: inherit;
   }
-  .ruler span.start { transform: none; }
-  .ruler span.end { transform: translateX(-100%); }
-  .ruler i {
-    position: absolute; bottom: -7px; width: 1px; height: 4px;
-    background: var(--line); transform: translateX(-50%);
-  }
+  thead th button:hover { color: var(--fg); }
+  thead th button .dir { color: var(--working); margin-left: 4px; }
+  thead th.ativo button { color: var(--fg); }
 
+  /* largura de leitura: sem isso o assunto estica por 900px numa tela larga
+     e as colunas da direita ficam espremidas no canto */
+  .subject, .note { max-width: 74ch; }
+
+  .tokbar { height: 5px; background: var(--line); border-radius: 2px; margin-top: 6px; }
+  .tokbar > i { display: block; height: 100%; border-radius: 2px; background: currentColor; opacity: .8; }
+
+  td.acts { text-align: right; white-space: nowrap; opacity: 0; }
+  tr.row:hover td.acts, tr.row:focus-within td.acts { opacity: 1; }
+  td.acts button {
+    background: none; border: 0; padding: 2px 5px; cursor: pointer;
+    color: var(--faint); font: 13px/1 var(--mono);
+  }
+  td.acts button:hover { color: var(--fg); }
+  td.acts button.on { color: var(--waiting); opacity: 1; }
+  td.acts button[disabled] { opacity: .25; cursor: not-allowed; }
+  /* o que está fixado precisa se ver sem passar o mouse */
+  tr.row.pinned td.acts { opacity: 1; }
+  tr.row.pinned td.acts button:not(.on) { opacity: 0; }
+  tr.row.pinned:hover td.acts button { opacity: 1; }
+
+  .aviso-ordem {
+    display: flex; align-items: baseline; gap: 10px; padding: 8px 0 2px;
+    color: var(--faint); font-size: 12px;
+  }
+  .aviso-ordem button {
+    background: none; border: 0; padding: 0; cursor: pointer;
+    color: var(--working); font: 12px var(--mono);
+  }
   tr.zone > td {
     padding: 24px 0 7px; font: 700 14px/1 var(--label);
     letter-spacing: .24em; text-transform: uppercase;
@@ -139,16 +188,6 @@
   .path { color: var(--dim); font-size: 12px; }
   .path em { color: var(--faint); font-style: normal; }
   .num { color: var(--dim); font-variant-numeric: tabular-nums; }
-
-  /* signature: faixa de atividade */
-  .track { position: relative; height: 16px; margin-top: 2px; }
-  .track .base { position: absolute; inset: 7px 0 auto; height: 2px; background: var(--line); }
-  .track .life { position: absolute; top: 6px; height: 4px; border-radius: 1px; background: currentColor; opacity: .85; }
-  .track .silence {
-    position: absolute; top: 7px; height: 2px;
-    background: repeating-linear-gradient(90deg, var(--failed) 0 3px, transparent 3px 6px);
-  }
-  .track .now { position: absolute; top: 3px; right: 0; width: 1px; height: 10px; background: var(--faint); }
 
   .bar-todo { height: 3px; background: var(--line); border-radius: 2px; margin-top: 4px; }
   .bar-todo > i { display: block; height: 100%; background: var(--done); border-radius: 2px; }
@@ -212,24 +251,44 @@
     padding: 0 5px; color: var(--dim); overflow-wrap: anywhere;
   }
 
-  /* ---------- kanban ---------- */
-  .kanban { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
   .col-head {
     display: flex; align-items: baseline; gap: 8px; padding: 14px 0 8px;
     font: 700 13px/1 var(--label); letter-spacing: .2em; text-transform: uppercase;
   }
   .col-head .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); }
-  .card {
-    background: var(--surface); border: 1px solid var(--line); border-left-width: 2px;
-    border-radius: 3px; padding: 6px 11px; margin-bottom: 4px; cursor: pointer;
+
+  /* ---------- to-dos: lista densa ---------- */
+  .lista { max-width: 920px; }
+  .grupo { margin-bottom: 20px; }
+  .g-head {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 5px 0 6px; border-bottom: 1px solid var(--line-soft);
   }
-  .card:hover { background: var(--surface-2); }
-  .card .txt { display: block; }
-  .card.done .txt { color: var(--faint); text-decoration: line-through; }
-  .card .from {
-    display: flex; gap: 7px; margin-top: 6px; color: var(--faint); font-size: 11px;
-    align-items: baseline;
+  .g-head .n { color: var(--faint); font-variant-numeric: tabular-nums; }
+  .g-head .path { cursor: pointer; }
+  .g-head .path:hover { color: var(--fg); }
+  .g-add {
+    background: none; border: 0; padding: 1px 7px; cursor: pointer;
+    color: var(--faint); font: 15px/1 var(--mono);
   }
+  .g-add:hover { color: var(--done); }
+  .item { display: flex; align-items: baseline; gap: 9px; padding: 1px 0 1px 3px; border-radius: 2px; }
+  .item:hover { background: var(--surface); }
+  .item > input[type=checkbox] {
+    flex: none; margin: 0; position: relative; top: 2px; accent-color: var(--done); cursor: pointer;
+  }
+  /* o texto é sempre um campo: editar sem entrar em "modo edição" é uma
+     interação a menos, e o painel já pausa o redesenho enquanto tem foco */
+  .item .txt {
+    flex: 1; min-width: 0; background: none; border: 0; border-radius: 2px;
+    color: var(--fg); font: 13px/1.6 var(--mono); padding: 1px 5px;
+  }
+  .item .txt:hover { background: var(--surface-2); }
+  .item .txt:focus { outline: none; background: var(--surface-2); box-shadow: inset 0 -1px 0 var(--working); }
+  .item .txt::placeholder { color: var(--faint); }
+  .item.done .txt { color: var(--faint); text-decoration: line-through; }
+  .grupo details.lvl > summary { border-top: 0; padding: 4px 0 4px 3px; }
+  .outros { border-top: 1px solid var(--line-soft); padding-top: 6px; }
 
   /* ---------- projetos ---------- */
   .projs { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
@@ -242,6 +301,50 @@
     border-top: 1px solid var(--line-soft); cursor: pointer;
   }
   .proj .item:hover { background: var(--surface-2); }
+
+  /* ---------- tempo ---------- */
+  .t-ctl {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 10px 0 14px; border-bottom: 1px solid var(--line-soft); margin-bottom: 4px;
+  }
+  .t-ctl label {
+    display: flex; align-items: center; gap: 6px; color: var(--faint);
+    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+  }
+  .t-ctl input[type=date], .t-ctl select {
+    background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 3px; padding: 4px 7px; font: 12px var(--mono); min-width: 0;
+  }
+  .t-aviso { color: var(--faint); font-size: 11px; max-width: 78ch; margin: 0 0 14px; }
+  .t-aviso b { color: var(--waiting); font-weight: 400; }
+
+  .t-proj { border-bottom: 1px solid var(--line-soft); }
+  .t-linha {
+    display: grid; gap: 12px; align-items: baseline; padding: 9px 4px;
+    grid-template-columns: 1fr 74px 52px 62px 66px 78px 62px; cursor: pointer;
+  }
+  .t-linha:hover { background: var(--surface); }
+  .t-linha .nome { font: 700 13px/1.2 var(--label); letter-spacing: .1em; text-transform: uppercase; }
+  .t-linha .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .t-linha .h { color: var(--fg); font-size: 14px; }
+  .t-linha .cif { color: var(--done); }
+  .t-head { color: var(--faint); cursor: default; padding-bottom: 4px; }
+  .t-head:hover { background: none; }
+  .t-head span {
+    font: 700 9px/1.3 var(--label); letter-spacing: .14em; text-transform: uppercase;
+  }
+  .t-corpo { padding: 4px 4px 20px; display: grid; gap: 18px; }
+
+  .t-dias { display: flex; align-items: flex-end; gap: 3px; height: 76px; }
+  .t-dia { flex: 1; min-width: 4px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+  .t-dia > i { display: block; background: var(--working); opacity: .8; border-radius: 1px 1px 0 0; min-height: 2px; }
+  .t-dia:hover > i { opacity: 1; background: var(--fg); }
+  .t-eixo { display: flex; justify-content: space-between; color: var(--faint); font-size: 10px; margin-top: 5px; }
+
+  .t-ses { width: 100%; border-collapse: collapse; }
+  .t-ses td { padding: 4px 10px 4px 0; border-top: 1px solid var(--line-soft); font-size: 12px; }
+  .t-ses .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .t-mod { display: flex; gap: 18px; flex-wrap: wrap; color: var(--dim); font-size: 12px; }
 
   /* ---------- custo ---------- */
   .cost { max-width: 780px; }
@@ -263,26 +366,126 @@
   .btn.danger:hover { background: color-mix(in srgb, var(--failed) 16%, var(--surface)); }
   .btn[disabled] { opacity: .4; cursor: not-allowed; }
 
-  @media (max-width: 900px) {
+  /* ---------- bloco de notas ---------- */
+  .n-head {
+    position: sticky; top: 0; z-index: 5; background: var(--surface);
+    display: flex; align-items: center; gap: 10px;
+    padding: 15px 14px 11px; border-bottom: 1px solid var(--line);
+  }
+  .n-head h3 { margin: 0; flex: 1; }
+  #n-list { padding: 12px 14px 40px; display: grid; gap: 12px; align-content: start; }
+  .n-block { border: 1px solid var(--line); border-radius: 3px; background: var(--bg); }
+  .n-block:focus-within { border-color: var(--faint); }
+  .n-top {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 5px 4px 10px; border-bottom: 1px solid var(--line-soft);
+  }
+  .n-title {
+    flex: 1; min-width: 0; background: none; border: 0; padding: 2px 0; color: var(--fg);
+    font: 700 11px/1.4 var(--label); letter-spacing: .12em; text-transform: uppercase;
+  }
+  .n-title::placeholder { color: var(--faint); }
+  .n-title:focus { outline: none; }
+  .n-del {
+    flex: none; background: none; border: 0; padding: 2px 5px; cursor: pointer;
+    color: var(--faint); font: 12px var(--mono);
+  }
+  .n-del:hover { color: var(--failed); }
+  .n-del.armed { color: var(--failed); font-size: 10px; }
+  /* resize nativo do textarea: a alça de altura sai de graça, sem JS */
+  .n-block textarea {
+    display: block; width: 100%; min-height: 40px; border: 0; background: none;
+    color: var(--fg); font: 12px/1.55 var(--mono); padding: 8px 10px 10px; resize: vertical;
+  }
+  .n-block textarea:focus { outline: none; }
+  .n-empty { color: var(--faint); font-size: 12px; padding: 6px 2px; }
+  .n-modo {
+    flex: none; background: none; border: 0; padding: 2px 4px; cursor: pointer;
+    color: var(--faint); font: 12px var(--mono);
+  }
+  .n-modo:hover { color: var(--working); }
+  .n-itens { padding: 5px 8px 7px; }
+  .n-item { display: flex; align-items: baseline; gap: 8px; padding: 1px 0; }
+  .n-item > input[type=checkbox] {
+    flex: none; margin: 0; position: relative; top: 2px; accent-color: var(--done); cursor: pointer;
+  }
+  .n-item .txt {
+    flex: 1; min-width: 0; background: none; border: 0; border-radius: 2px;
+    color: var(--fg); font: 12px/1.55 var(--mono); padding: 1px 4px;
+  }
+  .n-item .txt:hover { background: var(--surface-2); }
+  .n-item .txt:focus { outline: none; background: var(--surface-2); box-shadow: inset 0 -1px 0 var(--working); }
+  .n-item.done .txt { color: var(--faint); text-decoration: line-through; }
+  .n-add-item {
+    background: none; border: 0; padding: 3px 4px; cursor: pointer;
+    color: var(--faint); font: 11px var(--mono);
+  }
+  .n-add-item:hover { color: var(--done); }
+
+  /* campo de notas do agente, no painel lateral */
+  .d-nota {
+    width: 100%; min-height: 68px; resize: vertical; border: 1px solid var(--line);
+    border-radius: 3px; background: var(--bg); color: var(--fg);
+    font: 12px/1.55 var(--mono); padding: 7px 9px;
+  }
+  .d-nota:focus { outline: none; border-color: var(--faint); }
+  .d-nota::placeholder { color: var(--faint); }
+  .btn.on { color: var(--fg); border-color: var(--faint); background: var(--surface-2); }
+
+  /* ---------- o painel reage ao espaço que sobrou, não à janela ---------- */
+  .only-xs { display: none; }
+  @container painel (max-width: 900px) {
     col.c-model, col.c-tok, col.c-time { width: 0; }
     .hide-sm { display: none; }
   }
+  @container painel (max-width: 620px) {
+    col.c-path { width: 0; }
+    .hide-xs { display: none; }
+    .only-xs { display: block; }
+    header { padding: 12px 12px 0; }
+    main { padding: 4px 12px 40px; }
+    footer { padding: 0 12px 24px; }
+    .top { gap: 12px; }
+    input[type=search], select { min-width: 0; flex: 1 1 110px; }
+    .cost .row { grid-template-columns: 96px 1fr 56px; }
+    .tab { padding: 8px 8px; letter-spacing: .1em; }
+    h1 { font-size: 17px; letter-spacing: .18em; }
+  }
+  /* auto-fit sozinho não impede estouro: a coluna mínima de 340px é maior que
+     o painel estreito. O min() faz o cartão encolher em vez de vazar. */
+  .projs { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+  .d-grid { grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
 </style>
 </head>
 <body>
-<header>
-  <div class="top">
-    <h1>Control Center</h1>
-    <div class="counts" id="counts"></div>
-    <span class="grow"></span>
-    <input type="search" id="q" placeholder="filtrar…" autocomplete="off">
-    <select id="proj"><option value="">todos os projetos</option></select>
-  </div>
-  <nav id="tabs" role="tablist"></nav>
-</header>
+<div id="painel">
+  <header>
+    <div class="top">
+      <h1>Control Center</h1>
+      <div class="counts" id="counts"></div>
+      <span class="grow"></span>
+      <div class="ferramentas">
+        <input type="search" id="q" placeholder="filtrar…" autocomplete="off">
+        <select id="proj"><option value="">todos os projetos</option></select>
+        <button class="btn" id="n-toggle" aria-pressed="false">notas</button>
+      </div>
+    </div>
+    <nav id="tabs" role="tablist"></nav>
+  </header>
 
-<main id="main"></main>
-<footer id="foot"></footer>
+  <main id="main"></main>
+  <footer id="foot"></footer>
+</div>
+
+<div id="split" hidden role="separator" aria-orientation="vertical" aria-label="largura das notas"></div>
+<aside id="notas" hidden aria-label="bloco de notas">
+  <div class="n-head">
+    <h3>notas</h3>
+    <button class="btn" id="n-add">+ bloco</button>
+  </div>
+  <div id="n-list"></div>
+</aside>
+
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-label="detalhe do agente"></aside>
 
@@ -291,6 +494,14 @@ const $ = (s) => document.querySelector(s)
 const params = new URLSearchParams(location.search)
 let DATA = { jobs: [], summary: {} }
 let SERVERS = null            // carregado só quando a aba de servidores abre
+let TEMPO = null              // idem: a varredura dos transcritos é cara
+// o corte é a escolha que muda o número cobrado — vale lembrar entre sessões
+const tempoParams = {
+  corte: Number(params.get('corte')) || Number(localStorage.getItem('cc-corte')) || 15,
+  de: params.get('de') || '',
+  ate: params.get('ate') || '',
+}
+const tempoAberto = new Set()
 let armed = null              // pid com "encerrar" armado, aguardando confirmação
 let selected = params.get('open') || null
 
@@ -307,6 +518,13 @@ let tab = params.get('tab') || localStorage.getItem('cc-tab') || 'agentes'
 const collapsed = params.has('expand')
   ? new Set()
   : new Set(JSON.parse(localStorage.getItem('cc-collapsed') || '["done","idle"]'))
+
+// quais agentes estão com as tarefas concluídas à mostra na aba de to-dos
+const feitosAbertos = new Set(JSON.parse(localStorage.getItem('cc-feitos') || '[]'))
+const tudoAberto = params.has('expand') // captura de tela precisa ver tudo
+
+// ordem da tabela de agentes; campo vazio = agrupado por urgência
+const ordem = { campo: '', desc: true, ...JSON.parse(localStorage.getItem('cc-ordem') || '{}') }
 
 const ZONES = [
   { key: 'waiting', title: 'precisa de você' },
@@ -368,39 +586,15 @@ function renderHeader() {
 
 /* ======================= aba: agentes ======================== */
 
-function timeScale(jobs) {
-  const now = Date.now()
-  const oldest = Math.min(now - 36e5, ...jobs.map((j) => j.createdAt))
-  return { t0: oldest, span: Math.max(now - oldest, 36e5), now }
-}
-
-function track(j, scale) {
-  const pct = (t) => Math.max(0, Math.min(100, ((t - scale.t0) / scale.span) * 100))
-  const from = pct(j.createdAt), to = pct(j.updatedAt)
-  const silent = j.status === 'working' && j.idleMs > 6e5
-  return `<div class="track" style="color:var(--${j.status})" title="começou há ${age(j.ageMs)} · último sinal há ${age(j.idleMs)}">
-    <i class="base"></i>
-    <i class="life" style="left:${from}%;width:${Math.max(to - from, 0.6)}%"></i>
-    ${silent ? `<i class="silence" style="left:${to}%;width:${Math.max(100 - to, 0.6)}%"></i>` : ''}
-    <i class="now"></i>
-  </div>`
-}
-
-function ruler(scale) {
-  const h = scale.span / 36e5
-  return `<div class="ruler">${[
-    { at: 0, t: `-${Math.round(h)}h`, c: 'start' },
-    { at: 50, t: `-${Math.round(h / 2)}h`, c: '' },
-    { at: 100, t: 'agora', c: 'end' },
-  ].map((m) => `<i style="left:${m.at}%"></i><span class="${m.c}" style="left:${m.at}%">${m.t}</span>`).join('')}</div>`
-}
-
-function row(j, scale) {
+function row(j, maxTok, total) {
+  // "done" repetiria o ponto verde e a zona: nota só quando acrescenta algo
   const note = j.stale ? `<div class="note warn clip">sem sinal há ${age(j.idleMs)}</div>`
     : j.blockers.length ? `<div class="note bad clip">${esc(j.blockers[0])}</div>`
     : j.inFlight.length ? `<div class="note clip">${esc(j.inFlight[0].label)}</div>`
+    : j.lastPrompt ? `<div class="note clip">${esc(j.lastPrompt)}</div>`
     : j.detail ? `<div class="note clip">${esc(j.detail)}</div>` : ''
   const pct = j.todos.length ? Math.round((j.todosDone / j.todos.length) * 100) : 0
+  const fatia = total ? Math.round((j.tokens / total) * 100) : 0
   return `
     <tr class="row${selected === j.id ? ' sel' : ''}${j.pinned ? ' pinned' : ''}" data-job="${j.id}"
         style="color:var(--${j.status})" tabindex="0" title="${j.pinned ? 'fixado · ' : ''}${esc(j.id)}">
@@ -410,41 +604,99 @@ function row(j, scale) {
           ${j.category ? `<span class="cat">${esc(j.category)}</span>` : ''}
           <b class="clip">${esc(j.subject)}</b>
         </div>${note}
+        <div class="path clip only-xs">${esc(j.project)}<em>/${esc(j.route)}</em></div>
       </td>
-      <td class="path clip" title="${esc(j.project)}/${esc(j.route)}">${esc(j.project)}<em>/${esc(j.route)}</em></td>
+      <td class="path clip hide-xs" title="${esc(j.project)}/${esc(j.route)}">${esc(j.project)}<em>/${esc(j.route)}</em></td>
       <td class="path hide-sm">${esc(j.model)}</td>
       <td class="num hide-sm">${tok(j.tokens)}</td>
-      <td class="hide-sm">${track(j, scale)}</td>
+      <td class="hide-sm">
+        <div class="tokbar" title="${tok(j.tokens)} tokens · ${esc(j.model)} · ${fatia}% do total na tela">
+          <i style="width:${maxTok ? Math.max((j.tokens / maxTok) * 100, j.tokens ? 1.5 : 0) : 0}%"></i>
+        </div>
+      </td>
       <td>${j.todos.length
         ? `<span class="num">${j.todosDone}/${j.todos.length}</span><div class="bar-todo"><i style="width:${pct}%"></i></div>`
         : '<span class="path">—</span>'}</td>
+      <td class="acts">
+        <button data-act="resume" data-id="${j.id}" ${j.sessionId ? '' : 'disabled'}
+          title="${j.sessionId ? 'copiar claude --resume' : 'sem sessão para retomar'}">↻</button>
+        <button data-act="pin" data-id="${j.id}" class="${j.pinned ? 'on' : ''}"
+          title="${j.pinnedAqui ? 'desafixar' : j.pinned ? 'fixado pelo Claude Code' : 'fixar no topo'}"
+          ${j.pinned && !j.pinnedAqui ? 'disabled' : ''}>${j.pinned ? '★' : '☆'}</button>
+        <button data-act="path" data-id="${j.id}" title="copiar o caminho da pasta">⧉</button>
+      </td>
     </tr>`
 }
 
-function viewAgentes(jobs) {
-  const scale = timeScale(DATA.jobs.length ? DATA.jobs : [{ createdAt: Date.now() }])
-  const body = ZONES.map((z) => {
-    const list = jobs.filter((j) => j.status === z.key)
-    if (!list.length) return ''
-    const hidden = collapsed.has(z.key)
-    return `<tbody>
-      <tr class="zone"><td colspan="7"><div class="bar">
-        <button data-zone="${z.key}" aria-expanded="${!hidden}">
-          <span class="z-${z.key}">${z.title}</span> <span class="n">${list.length}</span>
-          ${hidden ? '<span class="n">▸</span>' : ''}
-        </button><span class="rule"></span>
-      </div></td></tr>
-      ${hidden ? '' : list.map((j) => row(j, scale)).join('')}
-    </tbody>`
-  }).join('')
+const CAMPOS = {
+  subject: (j) => j.subject.toLowerCase(),
+  project: (j) => `${j.project}/${j.route}`.toLowerCase(),
+  model: (j) => j.model.toLowerCase(),
+  tokens: (j) => j.tokens || 0,
+  todos: (j) => (j.todos.length ? j.todosDone / j.todos.length : -1),
+}
 
-  return `<table>
+function ordenar(lista) {
+  const f = CAMPOS[ordem.campo]
+  if (!f) return lista
+  const dir = ordem.desc ? -1 : 1
+  return [...lista].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1 // fixado fica no topo
+    const [x, y] = [f(a), f(b)]
+    return (x < y ? -1 : x > y ? 1 : 0) * dir
+  })
+}
+
+const th = (campo, rotulo, classe = '') => {
+  const ativo = ordem.campo === campo
+  return `<th class="${classe}${ativo ? ' ativo' : ''}">
+    <button data-sort="${campo}">${rotulo}${ativo ? `<span class="dir">${ordem.desc ? '▾' : '▴'}</span>` : ''}</button>
+  </th>`
+}
+
+function viewAgentes(jobs) {
+  const maxTok = Math.max(0, ...jobs.map((j) => j.tokens || 0))
+  const total = jobs.reduce((a, j) => a + (j.tokens || 0), 0)
+  const linhas = (lista) => lista.map((j) => row(j, maxTok, total)).join('')
+
+  // Ordenar por coluna desliga as zonas: comparar tokens dentro de cada faixa
+  // de urgência esconde justamente o agente caro que se quer achar.
+  const body = ordem.campo
+    ? `<tbody>${linhas(ordenar(jobs))}</tbody>`
+    : ZONES.map((z) => {
+        const list = jobs.filter((j) => j.status === z.key)
+        if (!list.length) return ''
+        const hidden = collapsed.has(z.key)
+        return `<tbody>
+          <tr class="zone"><td colspan="8"><div class="bar">
+            <button data-zone="${z.key}" aria-expanded="${!hidden}">
+              <span class="z-${z.key}">${z.title}</span> <span class="n">${list.length}</span>
+              ${hidden ? '<span class="n">▸</span>' : ''}
+            </button><span class="rule"></span>
+          </div></td></tr>
+          ${hidden ? '' : linhas(list)}
+        </tbody>`
+      }).join('')
+
+  const aviso = ordem.campo
+    ? `<div class="aviso-ordem">
+        <span>ordenado por ${esc(ordem.campo)} — zonas desligadas</span>
+        <button data-sort="">voltar a agrupar por urgência</button>
+      </div>`
+    : ''
+
+  return `${aviso}<table>
     <colgroup><col class="c-dot"><col><col class="c-path">
-      <col class="c-model"><col class="c-tok"><col class="c-time"><col class="c-todo"></colgroup>
+      <col class="c-model"><col class="c-tok"><col class="c-bar"><col class="c-todo"><col class="c-acts"></colgroup>
     <thead><tr>
-      <th></th><th>assunto</th><th>projeto / rota</th>
-      <th class="hide-sm">modelo</th><th class="hide-sm">tokens</th>
-      <th class="hide-sm">${ruler(scale)}</th><th>to-do</th>
+      <th></th>
+      ${th('subject', 'assunto')}
+      ${th('project', 'projeto / rota', 'hide-xs')}
+      ${th('model', 'modelo', 'hide-sm')}
+      ${th('tokens', 'tokens', 'hide-sm')}
+      <th class="hide-sm">gasto</th>
+      ${th('todos', 'to-do')}
+      <th></th>
     </tr></thead>${body}</table>`
 }
 
@@ -452,39 +704,50 @@ function viewAgentes(jobs) {
 
 function viewTodos(jobs) {
   const comTodo = jobs.filter((j) => j.todos.length)
-  if (!comTodo.length) return '<div class="empty">nenhum agente registrou to-do ainda</div>'
+  const semTodo = jobs.filter((j) => !j.todos.length)
+  if (!jobs.length) return '<div class="empty">nenhum agente no filtro</div>'
 
-  const card = (job, t, i) => `
-    <div class="card${t.done ? ' done' : ''}" data-toggle="${job.id}" data-i="${i}"
-         style="border-left-color:var(--${job.status})" tabindex="0"
-         title="clique para marcar como ${t.done ? 'não feita' : 'feita'}">
-      <span class="txt">${esc(t.text)}</span>
+  const item = (j, t, i) => `
+    <div class="item${t.done ? ' done' : ''}">
+      <input type="checkbox" data-todo="${j.id}" data-i="${i}" ${t.done ? 'checked' : ''}
+        aria-label="marcar como feita">
+      <input class="txt" value="${esc(t.text)}" data-edit="${j.id}" data-i="${i}"
+        aria-label="texto da tarefa" placeholder="descreva a tarefa — em branco, ela some">
     </div>`
 
-  // agrupado por agente: sem isso o mesmo "projeto/rota · assunto" se repete
-  // em todo cartão da coluna
-  const col = (title, feito) => {
-    const grupos = comTodo
-      .map((j) => ({ j, itens: j.todos.map((t, i) => ({ t, i })).filter(({ t }) => Boolean(t.done) === feito) }))
-      .filter((g) => g.itens.length)
-    const n = grupos.reduce((a, g) => a + g.itens.length, 0)
-    return `<section>
-      <div class="col-head"><span>${title}</span><span class="n">${n}</span></div>
-      ${grupos.length ? grupos.map((g) => `
-        <div style="margin-bottom:16px">
-          <div class="from" style="margin:0 0 6px" data-job="${g.j.id}" tabindex="0"
-               title="abrir o agente">
-            <i class="dot s-${g.j.status}" style="margin:4px 0 0"></i>
-            <span class="path" style="color:var(--fg)">${esc(g.j.project)}<em>/${esc(g.j.route)}</em></span>
-            <span class="clip">${esc(g.j.subject)}</span>
-          </div>
-          ${g.itens.map(({ t, i }) => card(g.j, t, i)).join('')}
-        </div>`).join('')
-        : `<div class="path">${feito ? 'nada concluído ainda' : 'nenhuma tarefa aberta'}</div>`}
+  // Cabeçalho por agente: sem isso "projeto/rota · assunto" se repetiria em
+  // toda linha da lista.
+  const grupo = (j) => {
+    const marcados = j.todos.map((t, i) => ({ t, i }))
+    const abertos = marcados.filter(({ t }) => !t.done)
+    const feitos = marcados.filter(({ t }) => t.done)
+    return `<section class="grupo">
+      <div class="g-head" style="color:var(--${j.status})">
+        <i class="dot s-${j.status}" style="margin:0;position:relative;top:1px"></i>
+        <span class="path" data-job="${j.id}" tabindex="0" title="abrir o agente"
+          >${esc(j.project)}<em>/${esc(j.route)}</em></span>
+        <b class="clip" style="flex:1;color:var(--fg)">${esc(j.subject)}</b>
+        <span class="n">${abertos.length}</span>
+        <button class="g-add" data-add="${j.id}" title="nova tarefa neste agente">+</button>
+      </div>
+      ${abertos.map(({ t, i }) => item(j, t, i)).join('')}
+      ${feitos.length ? `
+        <details class="lvl"${feitosAbertos.has(j.id) || tudoAberto ? ' open' : ''} data-feitos="${j.id}">
+          <summary>${feitos.length} concluída${feitos.length > 1 ? 's' : ''}</summary>
+          ${feitos.map(({ t, i }) => item(j, t, i)).join('')}
+        </details>` : ''}
+      ${!abertos.length && !feitos.length ? '<div class="path" style="padding:3px 5px">sem tarefa</div>' : ''}
     </section>`
   }
 
-  return `<div class="kanban">${col('a fazer', false)}${col('feito', true)}</div>`
+  return `<div class="lista">
+    ${comTodo.length ? comTodo.map(grupo).join('') : '<div class="path">nenhum agente registrou tarefa ainda</div>'}
+    ${semTodo.length ? `
+      <details class="lvl outros"${tudoAberto ? ' open' : ''}>
+        <summary>abrir tarefa em outro agente (${semTodo.length})</summary>
+        ${semTodo.map(grupo).join('')}
+      </details>` : ''}
+  </div>`
 }
 
 /* ======================= aba: projetos ======================= */
@@ -524,20 +787,130 @@ function viewProjetos(jobs) {
 
 /* ======================== aba: tempo ========================= */
 
-function viewTempo(jobs) {
-  if (!jobs.length) return '<div class="empty">nenhum agente no filtro</div>'
-  const scale = timeScale(jobs)
-  const list = [...jobs].sort((a, b) => a.createdAt - b.createdAt)
-  return `<table>
-    <colgroup><col style="width:230px"><col><col style="width:150px"></colgroup>
-    <thead><tr><th>agente</th><th>${ruler(scale)}</th><th>último sinal</th></tr></thead>
-    <tbody>${list.map((j) => `
-      <tr class="row" data-job="${j.id}" style="color:var(--${j.status})" tabindex="0">
-        <td class="clip" style="color:var(--fg)">${esc(j.subject)}
-          <div class="path clip">${esc(j.project)}<em>/${esc(j.route)}</em></div></td>
-        <td>${track(j, scale)}</td>
-        <td class="path">há ${age(j.idleMs)}${j.stale ? ' <span class="note warn" style="display:inline">parado</span>' : ''}</td>
-      </tr>`).join('')}</tbody></table>`
+const horas = (ms) => {
+  const min = Math.round(ms / 60_000)
+  return `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}`
+}
+const usd = (n) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(2)}`)
+const dataCurta = (dia) => dia.slice(8) + '/' + dia.slice(5, 7)
+const diaDe = (ms) => new Date(ms).toISOString().slice(0, 10)
+
+function viewTempo() {
+  if (!TEMPO) return '<div class="empty">lendo os transcritos… a primeira vez varre ~800 MB</div>'
+  if (TEMPO.error) return `<div class="empty">não deu para ler os transcritos: ${esc(TEMPO.error)}</div>`
+
+  const ctl = `
+    <div class="t-ctl">
+      <label>parada que encerra
+        <select data-tempo="corte">${[2, 5, 10, 15, 30, 60].map((m) =>
+          `<option value="${m}"${m === TEMPO.corteMin ? ' selected' : ''}>${m} min</option>`).join('')}</select>
+      </label>
+      <label>de <input type="date" data-tempo="de" value="${esc(TEMPO.de || '')}"></label>
+      <label>até <input type="date" data-tempo="ate" value="${esc(TEMPO.ate || '')}"></label>
+      ${TEMPO.de || TEMPO.ate ? '<button class="btn" data-tempo-limpar>período inteiro</button>' : ''}
+      <span class="grow"></span>
+      <button class="btn" data-tempo-recarregar>reler transcritos</button>
+    </div>`
+
+  const aviso = `<p class="t-aviso">
+    Tempo ativo é a soma dos intervalos entre mensagens, descartando as paradas maiores
+    que o corte acima. <b>Agente rodando sozinho conta como trabalho</b>, e tempo lendo
+    código ou em reunião não conta. O valor em dólar é o preço de API dos tokens gastos —
+    referência de custo, não o que foi cobrado de você na assinatura.
+    ${TEMPO.modelosSemPreco.length
+      ? `<br>Sem preço conhecido, fora da conta: ${TEMPO.modelosSemPreco.map(esc).join(', ')}.` : ''}
+  </p>`
+
+  if (!TEMPO.projetos.length) return ctl + aviso + '<div class="empty">nenhum trabalho no período</div>'
+
+  const totalMs = TEMPO.projetos.reduce((a, p) => a + p.ativoMs, 0)
+  const totalUsd = TEMPO.projetos.reduce((a, p) => a + p.custo, 0)
+
+  const barras = (dias) => {
+    const maior = Math.max(...dias.map((d) => d.ativoMs))
+    return `<div>
+      <h3>por dia</h3>
+      <div class="t-dias">${dias.map((d) => `
+        <div class="t-dia" title="${d.dia}: ${horas(d.ativoMs)}">
+          <i style="height:${Math.max((d.ativoMs / maior) * 100, 2)}%"></i>
+        </div>`).join('')}</div>
+      <div class="t-eixo"><span>${dataCurta(dias[0].dia)}</span>
+        <span>${horas(maior)} no melhor dia</span>
+        <span>${dataCurta(dias[dias.length - 1].dia)}</span></div>
+    </div>`
+  }
+
+  const proj = (p) => {
+    const aberto = tempoAberto.has(p.projeto) || tudoAberto
+    const porDia = p.diasTrabalhados ? p.ativoMs / p.diasTrabalhados : 0
+    return `<div class="t-proj">
+      <div class="t-linha" data-tempo-proj="${esc(p.projeto)}" tabindex="0">
+        <span class="nome">${aberto ? '▾' : '▸'} ${esc(p.projeto)}</span>
+        <span class="v h">${horas(p.ativoMs)}</span>
+        <span class="v path">${p.diasTrabalhados}d</span>
+        <span class="v path">${horas(porDia)}/dia</span>
+        <span class="v num">${tok(p.tokens)}</span>
+        <span class="v cif">${usd(p.custo)}</span>
+        <span class="v path">${p.ativoMs ? usd(p.custo / (p.ativoMs / 36e5)) + '/h' : '—'}</span>
+      </div>
+      ${aberto ? `<div class="t-corpo">
+        ${p.dias.length ? barras(p.dias) : ''}
+        <div>
+          <h3>gasto por modelo</h3>
+          <table class="t-ses">
+            <tr class="path"><td>modelo</td><td class="num">entrada</td><td class="num">saída</td>
+              <td class="num">cache escrito</td><td class="num">cache lido</td><td class="num">custo</td></tr>
+            ${p.uso.map((u) => `
+              <tr>
+                <td style="color:var(--fg)">${esc(u.modelo)}</td>
+                <td class="num">${tok(u.input)}</td>
+                <td class="num">${tok(u.output)}</td>
+                <td class="num">${tok(u.escrita5m + u.escrita1h)}</td>
+                <td class="num">${tok(u.leitura)}</td>
+                <td class="num cif">${u.custo == null ? '<em class="path">sem preço</em>' : usd(u.custo)}</td>
+              </tr>`).join('')}
+          </table>
+          <p class="path" style="margin:6px 0 0">
+            releitura de cache costuma ser a maior fatia do volume e a menor do preço — custa 10% da entrada.
+          </p>
+        </div>
+        <div>
+          <h3>sessões — ${p.sessoes.length}</h3>
+          <table class="t-ses">${p.sessoes.slice(0, 40).map((s) => {
+            const fmt = (ms, opts) => new Date(ms).toLocaleString('pt-BR', opts)
+            const mesmoDia = diaDe(s.inicio) === diaDe(s.fim)
+            // sessão de madrugada com agente autônomo cruza o dia; mostrar só
+            // o começo faria parecer que 19h de trabalho couberam num dia
+            const quando = mesmoDia
+              ? fmt(s.inicio, { dateStyle: 'short', timeStyle: 'short' })
+              : `${fmt(s.inicio, { dateStyle: 'short', timeStyle: 'short' })} → ${fmt(s.fim, { dateStyle: 'short', timeStyle: 'short' })}`
+            return `<tr>
+              <td class="path">${quando}</td>
+              <td class="num" style="color:var(--fg);width:70px">${horas(s.ativoMs)}</td>
+              <td class="path num" style="width:80px" title="janela do começo ao fim">${horas(s.fim - s.inicio)} corridas</td>
+              <td class="path clip" title="${esc(s.id)}">${esc(s.id.slice(0, 8))}</td>
+            </tr>`
+          }).join('')}
+          </table>
+          ${p.sessoes.length > 40 ? `<p class="path" style="margin:6px 0 0">mostrando as 40 mais recentes de ${p.sessoes.length}</p>` : ''}
+        </div>
+      </div>` : ''}
+    </div>`
+  }
+
+  return `${ctl}${aviso}
+    <div class="t-linha t-head">
+      <span>projeto</span><span class="v">horas</span><span class="v">dias</span>
+      <span class="v">média</span><span class="v">tokens</span><span class="v">custo api</span><span class="v">por hora</span>
+    </div>
+    ${TEMPO.projetos.map(proj).join('')}
+    <div class="t-linha" style="border-top:1px solid var(--line);cursor:default">
+      <span class="nome" style="color:var(--faint)">total</span>
+      <span class="v h">${horas(totalMs)}</span><span class="v"></span><span class="v"></span>
+      <span class="v num">${tok(TEMPO.projetos.reduce((a, p) => a + p.tokens, 0))}</span>
+      <span class="v cif">${usd(totalUsd)}</span>
+      <span class="v path">${totalMs ? usd(totalUsd / (totalMs / 36e5)) + '/h' : ''}</span>
+    </div>`
 }
 
 /* ======================== aba: custo ========================= */
@@ -664,7 +1037,12 @@ function drawer() {
 
       <div class="d-grid">
         <div><h3>${j.result ? 'resultado' : 'estado'}</h3><p>${esc(j.result || j.detail) || '—'}</p></div>
-        ${j.notes ? `<div><h3>notas</h3><p>${esc(j.notes)}</p></div>` : ''}
+      </div>
+
+      <div>
+        <h3>notas</h3>
+        <textarea class="d-nota" data-nota-job="${esc(j.id)}" spellcheck="false"
+          placeholder="anote o que quiser sobre este agente">${esc(j.notes || '')}</textarea>
       </div>
 
       ${j.links.length ? `<div><h3>links</h3><p>${j.links.map((l) =>
@@ -688,23 +1066,51 @@ function drawer() {
 
 /* ========================= render ============================ */
 
+let redesenhoAdiado = false
+let dadosPendentes = null
+
+/**
+ * O stream manda evento a cada 2s e `render()` reescreve o painel inteiro —
+ * o cursor sumiria no meio da palavra. Enquanto houver campo em foco dentro
+ * do painel, o redesenho espera; sai o foco, ele acontece.
+ */
+function editando() {
+  const alvo = document.activeElement
+  if (!alvo || !alvo.matches('input, textarea')) return false
+  // o painel lateral também é reescrito por render() — vale a mesma trava
+  return $('#main').contains(alvo) || $('#drawer').contains(alvo)
+}
+
+/**
+ * Trocar `DATA` no meio da digitação é pior que redesenhar: a tela continua
+ * mostrando a lista antiga enquanto os índices já mudaram, e a edição vai
+ * parar em outra tarefa. Snapshot e tela esperam juntos.
+ */
+function aplicarDados(snapshot) {
+  if (editando()) { dadosPendentes = snapshot; return }
+  DATA = snapshot
+  render()
+}
+
 function render() {
+  if (editando()) { redesenhoAdiado = true; return }
+  redesenhoAdiado = false
   renderHeader()
   const jobs = filtered()
   const views = {
     agentes: () => viewAgentes(jobs),
     todos: () => viewTodos(jobs),
     projetos: () => viewProjetos(jobs),
-    tempo: () => viewTempo(jobs),
+    tempo: () => viewTempo(),
     custo: () => viewCusto(jobs),
     servidores: () => viewServidores(),
   }
   $('#main').innerHTML = (views[tab] || views.agentes)()
   $('#foot').textContent = {
-    agentes: 'a faixa de atividade vai do agente mais antigo até agora; tracejado vermelho é silêncio de quem deveria estar trabalhando',
-    todos: 'clique num cartão para marcar feito — a mudança vai para o meta.json do agente',
+    agentes: 'a barra de gasto compara os tokens do que está na tela; passe o mouse na linha para retomar (↻), fixar (☆) ou copiar o caminho (⧉); clique no cabeçalho para ordenar',
+    todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
     projetos: 'clique num agente para abrir o painel lateral',
-    tempo: 'barras alinhadas na mesma régua: dá pra ver o que rodou junto e onde ficou o silêncio',
+    tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos e as sessões',
     custo: 'tokens acumulados por agente desde que ele começou',
     servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
   }[tab] || ''
@@ -718,10 +1124,217 @@ async function carregarServidores(force) {
   render()
 }
 
+async function carregarTempo(force) {
+  if (TEMPO && !force) return
+  const q = new URLSearchParams({ corte: tempoParams.corte })
+  if (tempoParams.de) q.set('de', tempoParams.de)
+  if (tempoParams.ate) q.set('ate', tempoParams.ate)
+  if (force === 'reler') q.set('force', '1')
+  TEMPO = null
+  render() // mostra "lendo os transcritos…" antes de travar no fetch
+  try {
+    TEMPO = await (await fetch(`/api/tempo?${q}`)).json()
+  } catch (e) {
+    TEMPO = { error: String(e.message || e) }
+  }
+  render()
+}
+
+/* ========================== notas ============================
+   Fora do #main de propósito: `render()` reescreve o painel a cada evento do
+   stream, de 2 em 2 segundos. Um textarea ali dentro perderia o cursor no
+   meio da frase. Aqui só se redesenha ao criar ou apagar bloco. */
+
+let NOTES = []
+let armedNote = null          // bloco com "apagar" armado, esperando confirmação
+let notesOpen = params.has('notes') || localStorage.getItem('cc-notes-open') === '1'
+let notesW = Number(localStorage.getItem('cc-notes-w')) || 340
+let saveTimer = null
+
+const novoId = () => 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)
+const notaDo = (el) => NOTES.find((n) => n.id === el.closest('.n-block')?.dataset.note)
+
+function layoutNotas() {
+  document.body.style.setProperty('--notes-w', notesW + 'px')
+  $('#notas').hidden = $('#split').hidden = !notesOpen
+  $('#n-toggle').setAttribute('aria-pressed', String(notesOpen))
+  $('#n-toggle').classList.toggle('on', notesOpen)
+}
+
+/**
+ * No modo lista, cada linha não vazia é um item; "[x]" na frente é feito.
+ * Aceita "[]" sem espaço porque é assim que se digita à mão — exigir o
+ * espaço faria a marca virar texto do próprio item.
+ */
+const itensDe = (n) => n.text.split('\n').filter((l) => l.trim()).map((linha) => {
+  const m = linha.match(/^\s*\[([ xX]?)\]\s?(.*)$/)
+  return m ? { text: m[2], done: m[1].trim() !== '' } : { text: linha.trim(), done: false }
+})
+const linhasDe = (itens) => itens.map((it) => `${it.done ? '[x] ' : '[ ] '}${it.text}`).join('\n')
+
+function renderNotas() {
+  const corpo = (n) => n.kind === 'check'
+    ? `<div class="n-itens">
+        ${itensDe(n).map((it, i) => `
+          <div class="n-item${it.done ? ' done' : ''}">
+            <input type="checkbox" data-nota-check="${esc(n.id)}" data-i="${i}" ${it.done ? 'checked' : ''}
+              aria-label="marcar item">
+            <input class="txt" value="${esc(it.text)}" data-nota-item="${esc(n.id)}" data-i="${i}"
+              aria-label="texto do item" placeholder="em branco, o item some">
+          </div>`).join('')}
+        <button class="n-add-item" data-nota-add="${esc(n.id)}">+ item</button>
+      </div>`
+    : `<textarea style="height:${n.h}px" spellcheck="false" aria-label="conteúdo do bloco">${esc(n.text)}</textarea>`
+
+  $('#n-list').innerHTML = NOTES.length
+    ? NOTES.map((n) => `
+      <div class="n-block" data-note="${esc(n.id)}">
+        <div class="n-top">
+          <input class="n-title" value="${esc(n.title)}" placeholder="sem título" aria-label="título do bloco">
+          <button class="n-modo" data-modo="${esc(n.id)}"
+            title="${n.kind === 'check' ? 'virar texto livre' : 'virar lista de itens'}"
+            aria-label="alternar tipo do bloco">${n.kind === 'check' ? '¶' : '☑'}</button>
+          <button class="n-del${armedNote === n.id ? ' armed' : ''}" data-del="${esc(n.id)}"
+            title="apagar bloco">${armedNote === n.id ? 'apagar?' : '✕'}</button>
+        </div>
+        ${corpo(n)}
+      </div>`).join('')
+    : '<div class="n-empty">nenhum bloco ainda — clique em <b>+ bloco</b></div>'
+}
+
+function salvarNotas(agora) {
+  clearTimeout(saveTimer)
+  const gravar = () => fetch('/api/notes', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ notes: NOTES }),
+  })
+  agora ? gravar() : (saveTimer = setTimeout(gravar, 500))
+}
+
+// Digitar não redesenha: só atualiza o modelo e agenda a gravação.
+document.addEventListener('input', (e) => {
+  const n = notaDo(e.target)
+  if (!n) return
+  if (e.target.matches('textarea')) n.text = e.target.value
+  else if (e.target.matches('.n-title')) n.title = e.target.value
+  else if (e.target.matches('[data-nota-item]')) {
+    const itens = itensDe(n)
+    const i = +e.target.dataset.i
+    if (!itens[i]) return
+    itens[i] = { ...itens[i], text: e.target.value }
+    n.text = linhasDe(itens)
+  } else return
+  salvarNotas()
+})
+
+// item vazio sai da lista — mesmo gesto de apagar dos to-dos
+document.addEventListener('change', (e) => {
+  const campo = e.target.closest('[data-nota-item]')
+  if (!campo || campo.value.trim()) return
+  const n = notaDo(campo)
+  if (!n) return
+  n.text = linhasDe(itensDe(n).filter((_, k) => k !== +campo.dataset.i))
+  renderNotas()
+  salvarNotas(true)
+})
+
+// A alça de resize do textarea não emite evento próprio. Como só dá pra
+// arrastá-la com o ponteiro, soltar o botão é o momento certo de conferir.
+document.addEventListener('pointerup', () => {
+  let mudou = false
+  for (const ta of document.querySelectorAll('.n-block textarea')) {
+    const n = notaDo(ta)
+    const h = Math.round(ta.getBoundingClientRect().height)
+    if (n && h && h !== n.h) { n.h = h; mudou = true }
+  }
+  if (mudou) salvarNotas()
+})
+
+$('#split').addEventListener('pointerdown', (e) => {
+  e.preventDefault()
+  const split = e.currentTarget
+  split.setPointerCapture(e.pointerId)
+  split.classList.add('drag')
+  const mover = (ev) => {
+    const max = Math.max(window.innerWidth * 0.78, 220)
+    notesW = Math.round(Math.min(Math.max(window.innerWidth - ev.clientX, 220), max))
+    document.body.style.setProperty('--notes-w', notesW + 'px')
+  }
+  const soltar = () => {
+    split.classList.remove('drag')
+    split.removeEventListener('pointermove', mover)
+    split.removeEventListener('pointerup', soltar)
+    localStorage.setItem('cc-notes-w', notesW)
+  }
+  split.addEventListener('pointermove', mover)
+  split.addEventListener('pointerup', soltar)
+})
+
 /* ========================= eventos =========================== */
 
 document.addEventListener('click', async (e) => {
   const t = e.target
+
+  if (t.closest('#n-toggle')) {
+    notesOpen = !notesOpen
+    localStorage.setItem('cc-notes-open', notesOpen ? '1' : '0')
+    return layoutNotas()
+  }
+
+  if (t.closest('#n-add')) {
+    NOTES.unshift({ id: novoId(), title: '', text: '', h: 120 })
+    armedNote = null
+    renderNotas()
+    $('#n-list .n-title')?.focus()
+    return salvarNotas(true)
+  }
+
+  const modo = t.closest('[data-modo]')
+  if (modo) {
+    const n = NOTES.find((x) => x.id === modo.dataset.modo)
+    if (!n) return
+    if (n.kind === 'check') {
+      n.kind = 'text' // as marcas viram "[x] " no texto: o que estava feito continua visível
+    } else {
+      n.kind = 'check'
+      n.text = linhasDe(itensDe(n)) // normaliza: uma linha por item, sem vazias
+    }
+    renderNotas()
+    return salvarNotas(true)
+  }
+
+  const marca = t.closest('[data-nota-check]')
+  if (marca) {
+    const n = NOTES.find((x) => x.id === marca.dataset.notaCheck)
+    if (!n) return
+    const i = +marca.dataset.i
+    n.text = linhasDe(itensDe(n).map((it, k) => (k === i ? { ...it, done: !it.done } : it)))
+    renderNotas()
+    // o clique redesenhou a linha: devolve o foco pra quem marcou com teclado
+    $(`[data-nota-check="${CSS.escape(n.id)}"][data-i="${i}"]`)?.focus()
+    return salvarNotas()
+  }
+
+  const addItem = t.closest('[data-nota-add]')
+  if (addItem) {
+    const n = NOTES.find((x) => x.id === addItem.dataset.notaAdd)
+    if (!n) return
+    const itens = itensDe(n)
+    n.text = linhasDe([...itens, { text: '', done: false }])
+    renderNotas()
+    $(`[data-nota-item="${CSS.escape(n.id)}"][data-i="${itens.length}"]`)?.focus()
+    return salvarNotas()
+  }
+
+  const del = t.closest('[data-del]')
+  if (del) {
+    const id = del.dataset.del
+    if (armedNote !== id) { armedNote = id; return renderNotas() } // primeiro clique só arma
+    NOTES = NOTES.filter((n) => n.id !== id)
+    armedNote = null
+    renderNotas()
+    return salvarNotas(true)
+  }
 
   const aba = t.closest('button[data-tab]')
   if (aba) {
@@ -730,10 +1343,40 @@ document.addEventListener('click', async (e) => {
     armed = null
     render()
     if (tab === 'servidores') carregarServidores()
+    if (tab === 'tempo') carregarTempo()
     return
   }
 
+  const projTempo = t.closest('[data-tempo-proj]')
+  if (projTempo) {
+    const nome = projTempo.dataset.tempoProj
+    tempoAberto.has(nome) ? tempoAberto.delete(nome) : tempoAberto.add(nome)
+    return render()
+  }
+
+  if (t.closest('[data-tempo-recarregar]')) return carregarTempo('reler')
+  if (t.closest('[data-tempo-limpar]')) {
+    tempoParams.de = tempoParams.ate = ''
+    return carregarTempo(true)
+  }
+
   if (t.closest('.d-close') || t.id === 'scrim') { selected = null; return render() }
+
+  const sort = t.closest('[data-sort]')
+  if (sort) {
+    const campo = sort.dataset.sort
+    // mesma coluna de novo inverte; coluna nova começa do maior pro menor
+    if (campo && campo === ordem.campo) ordem.desc = !ordem.desc
+    else { ordem.campo = campo; ordem.desc = true }
+    localStorage.setItem('cc-ordem', JSON.stringify(ordem))
+    return render()
+  }
+
+  const acao = t.closest('button[data-act]')
+  if (acao) {
+    e.stopPropagation() // não abrir o painel lateral junto
+    return executarAcao(acao)
+  }
 
   const zone = t.closest('button[data-zone]')
   if (zone) {
@@ -759,8 +1402,27 @@ document.addEventListener('click', async (e) => {
     return carregarServidores(true)
   }
 
-  const card = t.closest('[data-toggle]')
-  if (card) return toggleTodo(card.dataset.toggle, +card.dataset.i)
+  const add = t.closest('button[data-add]')
+  if (add) {
+    const job = byId(add.dataset.add)
+    if (!job) return
+    job.todos = [...job.todos, { text: '', done: false }]
+    render()
+    // Foca pelo índice, nunca pelo último campo do DOM: as concluídas ficam
+    // depois das abertas dentro do <details>, então "o último da tela" seria
+    // uma tarefa já existente — e digitar em cima apagaria ela.
+    const i = job.todos.length - 1
+    document.querySelector(`.txt[data-edit="${CSS.escape(job.id)}"][data-i="${i}"]`)?.focus()
+    return
+  }
+
+  const feitos = t.closest('details[data-feitos] > summary')
+  if (feitos) {
+    const id = feitos.parentElement.dataset.feitos
+    feitosAbertos.has(id) ? feitosAbertos.delete(id) : feitosAbertos.add(id)
+    localStorage.setItem('cc-feitos', JSON.stringify([...feitosAbertos]))
+    return // o <details> abre sozinho, sem redesenhar
+  }
 
   const linha = t.closest('[data-job]')
   if (linha && !t.matches('input, a')) {
@@ -773,7 +1435,8 @@ document.addEventListener('click', async (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selected) { selected = null; return render() }
   if (e.key !== 'Enter' && e.key !== ' ') return
-  const alvo = e.target.closest?.('[data-job], [data-toggle]')
+  if (e.target.matches?.('input, textarea, select')) return // espaço é espaço dentro do campo
+  const alvo = e.target.closest?.('[data-job]')
   if (!alvo) return
   e.preventDefault()
   alvo.click()
@@ -781,20 +1444,114 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('change', (e) => {
   const cb = e.target.closest('input[data-todo]')
-  if (cb) toggleTodo(cb.dataset.todo, +cb.dataset.i, cb.checked)
+  if (cb) return toggleTodo(cb.dataset.todo, +cb.dataset.i, cb.checked)
+
+  // `change` só dispara ao sair do campo ou no Enter — uma gravação por
+  // edição, não uma por tecla
+  const campo = e.target.closest('.txt[data-edit]')
+  if (campo) return editarTodo(campo.dataset.edit, +campo.dataset.i, campo.value)
+
+  const nota = e.target.closest('[data-nota-job]')
+  if (nota) return editarNotaDoAgente(nota.dataset.notaJob, nota.value)
+
+  const ctl = e.target.closest('[data-tempo]')
+  if (ctl) {
+    tempoParams[ctl.dataset.tempo] = ctl.value
+    if (ctl.dataset.tempo === 'corte') localStorage.setItem('cc-corte', ctl.value)
+    carregarTempo(true) // o corte é recalculado do cache, não relê os arquivos
+  }
 })
 
-async function toggleTodo(jobId, i, valor) {
+/** Confirma no próprio botão, sem redesenhar a linha inteira nem usar alerta. */
+function piscar(botao, texto) {
+  const antes = botao.textContent
+  botao.textContent = texto
+  setTimeout(() => { botao.textContent = antes }, 1200)
+}
+
+async function copiar(botao, texto) {
+  try {
+    await navigator.clipboard.writeText(texto)
+    piscar(botao, '✓')
+  } catch {
+    piscar(botao, '✕')
+  }
+}
+
+async function executarAcao(botao) {
+  const job = byId(botao.dataset.id)
+  if (!job) return
+  const acao = botao.dataset.act
+
+  if (acao === 'resume') return copiar(botao, `claude --resume ${job.sessionId}`)
+  if (acao === 'path') return copiar(botao, job.worktreePath || job.cwd)
+
+  if (acao === 'pin') {
+    // pin do CLI é só leitura: aqui só se mexe no que o painel escreveu
+    if (job.pinned && !job.pinnedAqui) return
+    const novo = !job.pinnedAqui
+    job.pinned = novo
+    job.pinnedAqui = novo
+    render()
+    await fetch('/api/meta', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: job.id, patch: { pin: novo || null } }),
+    })
+  }
+}
+
+/** Nota vazia some do meta.json: `null` no patch apaga o campo. */
+async function editarNotaDoAgente(jobId, texto) {
   const job = byId(jobId)
-  if (!job || !job.todos[i]) return
-  const todos = job.todos.map((t, k) => (k === i ? { ...t, done: valor ?? !t.done } : t))
+  if (!job) return
+  const limpo = texto.trim()
+  if (limpo === (job.notes || '')) return
+  job.notes = limpo
+  await fetch('/api/meta', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id: jobId, patch: { notes: limpo || null } }),
+  })
+}
+
+// saiu do campo: o que o stream mandou durante a digitação entra agora
+// (o setTimeout existe porque no focusout o foco ainda está no ar)
+document.addEventListener('focusout', () => {
+  setTimeout(() => {
+    if (editando()) return
+    if (dadosPendentes) {
+      const d = dadosPendentes
+      dadosPendentes = null
+      return aplicarDados(d)
+    }
+    if (redesenhoAdiado) render()
+  }, 0)
+})
+
+async function gravarTodos(job, todos) {
   job.todos = todos
   job.todosDone = todos.filter((t) => t.done).length
   render()
   await fetch('/api/meta', {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ id: jobId, patch: { todos } }),
+    body: JSON.stringify({ id: job.id, patch: { todos } }),
   })
+}
+
+function toggleTodo(jobId, i, valor) {
+  const job = byId(jobId)
+  if (!job || !job.todos[i]) return
+  gravarTodos(job, job.todos.map((t, k) => (k === i ? { ...t, done: valor ?? !t.done } : t)))
+}
+
+/** Texto em branco apaga a tarefa — é o jeito de desfazer um "+" sem outro botão. */
+function editarTodo(jobId, i, texto) {
+  const job = byId(jobId)
+  if (!job || !job.todos[i]) return
+  const limpo = texto.trim()
+  if (limpo === job.todos[i].text) return
+  gravarTodos(job, limpo
+    ? job.todos.map((t, k) => (k === i ? { ...t, text: limpo } : t))
+    : job.todos.filter((_, k) => k !== i))
 }
 
 for (const el of ['#q', '#proj']) $(el).addEventListener('input', render)
@@ -802,13 +1559,17 @@ for (const el of ['#q', '#proj']) $(el).addEventListener('input', render)
 // ?static=1 não abre o SSE: com a conexão pendurada, captura headless nunca
 // considera a página carregada. Serve pra screenshot e impressão.
 if (!params.has('static')) {
-  new EventSource('/events').onmessage = (e) => { DATA = JSON.parse(e.data); render() }
+  new EventSource('/events').onmessage = (e) => aplicarDados(JSON.parse(e.data))
 }
 fetch('/api/jobs').then((r) => r.json()).then((d) => {
   DATA = d
   render()
   if (tab === 'servidores') carregarServidores()
+  if (tab === 'tempo') carregarTempo()
 })
+
+layoutNotas()
+fetch('/api/notes').then((r) => r.json()).then((d) => { NOTES = d.notes || []; renderNotas() })
 </script>
 </body>
 </html>

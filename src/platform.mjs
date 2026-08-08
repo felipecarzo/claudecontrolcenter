@@ -42,6 +42,22 @@ export function abrirNavegador(url) {
   return quiet('xdg-open', [url])
 }
 
+/**
+ * Onde o Chrome mora, para a captura de tela e o teste da página.
+ * Só o `test-ui.mjs` usa: o painel em si não depende de navegador nenhum.
+ */
+export function chromePath() {
+  const candidatos = ehWindows
+    ? [
+        path.join(process.env['PROGRAMFILES'] || 'C:\\Program Files', 'Google\\Chrome\\Application\\chrome.exe'),
+        path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'Google\\Chrome\\Application\\chrome.exe'),
+      ]
+    : ehMac
+      ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome']
+      : ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/snap/bin/chromium']
+  return candidatos.find((p) => fs.existsSync(p)) || null
+}
+
 /* ------------------------------ pastas ----------------------------- */
 
 export function pastaDesktop() {

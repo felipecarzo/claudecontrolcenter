@@ -7,6 +7,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import { readServers, killServer } from './servers.mjs'
+import { readNotes, writeNotes } from './notes.mjs'
+import { resumo as resumoTempo } from './tempo.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
@@ -21,6 +23,22 @@ const send = (res, code, body, type = 'application/json') => {
   res.end(typeof body === 'string' ? body : JSON.stringify(body))
 }
 
+/** Junta o corpo, com teto contra payload absurdo, e devolve o JSON. */
+const comCorpo = (req, res, max, fn) => {
+  let body = ''
+  req.on('data', (c) => {
+    body += c
+    if (body.length > max) req.destroy()
+  })
+  req.on('end', () => {
+    try {
+      send(res, 200, { ok: true, ...fn(JSON.parse(body)) })
+    } catch (e) {
+      send(res, 400, { ok: false, error: String(e.message || e) })
+    }
+  })
+}
+
 function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
 
@@ -29,42 +47,44 @@ function handler(req, res) {
 
   // Escrita de meta pela própria página (marcar todo, anotar).
   if (url.pathname === '/api/meta' && req.method === 'POST') {
-    let body = ''
-    req.on('data', (c) => {
-      body += c
-      if (body.length > 1e6) req.destroy() // guarda simples contra payload absurdo
+    return comCorpo(req, res, 1e6, ({ id, patch }) => {
+      if (!id || typeof patch !== 'object') throw new Error('id e patch obrigatórios')
+      return { meta: writeMeta(id, patch) }
     })
-    req.on('end', () => {
-      try {
-        const { id, patch } = JSON.parse(body)
-        if (!id || typeof patch !== 'object') throw new Error('id e patch obrigatórios')
-        send(res, 200, { ok: true, meta: writeMeta(id, patch) })
-      } catch (e) {
-        send(res, 400, { ok: false, error: String(e.message || e) })
-      }
-    })
-    return
+  }
+
+  // Bloco de notas da máquina. Fora de /api/jobs: nota não é agente, e o
+  // stream compara os jobs pra decidir se manda evento.
+  if (url.pathname === '/api/notes') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 5e6, ({ notes }) => ({ notes: writeNotes(notes) }))
+    }
+    return send(res, 200, { notes: readNotes() })
   }
 
   // Consultado só pela aba de servidores: a varredura leva ~3s e não pode
   // pesar no painel principal nem no stream.
   if (url.pathname === '/api/servers') return send(res, 200, { servers: readServers() })
 
+  // Idem: lê ~800MB de transcript na primeira vez. Só a aba de tempo pede, e
+  // as vezes seguintes releem apenas o que mudou.
+  if (url.pathname === '/api/tempo') {
+    const num = (v, padrao) => (Number.isFinite(Number(v)) ? Number(v) : padrao)
+    const dia = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : null)
+    try {
+      return send(res, 200, resumoTempo({
+        corteMin: num(url.searchParams.get('corte'), 15),
+        de: dia(url.searchParams.get('de')),
+        ate: dia(url.searchParams.get('ate')),
+        force: url.searchParams.has('force'),
+      }))
+    } catch (e) {
+      return send(res, 500, { error: String(e.message || e) })
+    }
+  }
+
   if (url.pathname === '/api/kill' && req.method === 'POST') {
-    let body = ''
-    req.on('data', (c) => {
-      body += c
-      if (body.length > 1e4) req.destroy()
-    })
-    req.on('end', () => {
-      try {
-        const { pid } = JSON.parse(body)
-        send(res, 200, { ok: true, killed: killServer(pid) })
-      } catch (e) {
-        send(res, 400, { ok: false, error: String(e.message || e) })
-      }
-    })
-    return
+    return comCorpo(req, res, 1e4, ({ pid }) => ({ killed: killServer(pid) }))
   }
 
   // Existe pra `daemon restart` conseguir derrubar o processo antigo: o servidor

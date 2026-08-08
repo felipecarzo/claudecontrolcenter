@@ -23,7 +23,8 @@
   "scripts": {
     "start": "node cc.mjs",
     "web": "node cc.mjs --web-only",
-    "test": "node test.mjs"
+    "test": "node test.mjs",
+    "test:ui": "node test-ui.mjs"
   },
   "engines": { "node": ">=18" },
   "os": ["win32", "darwin", "linux"]
