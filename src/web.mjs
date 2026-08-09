@@ -14,6 +14,7 @@ import {
   volume as volumeMidia, mudo as mudoMidia,
 } from './midia.mjs'
 import { estado as estadoMaquina } from './maquina.mjs'
+import { lerRoadmap } from './roadmap.mjs'
 import { garantirMercado } from './mercado.mjs'
 import { readServers, killServer } from './servers.mjs'
 import { readPaineis, ligarPainel, desligarPainel } from './paineis.mjs'
@@ -188,6 +189,15 @@ function handler(req, res) {
       else delete estimativas[tarefa]
       return { meta: writeMeta(job, { niveis, estimativas }) }
     })
+  }
+
+  // Mapa do projeto, lido do ROADMAP.md dele. Recebe o `cwd` de um agente
+  // porque é de lá que se sobe até achar o arquivo — o painel não guarda
+  // caminho de projeto em lugar nenhum.
+  if (url.pathname === '/api/roadmap') {
+    const cwd = url.searchParams.get('cwd') || ''
+    const mapa = cwd ? lerRoadmap(cwd) : null
+    return send(res, 200, mapa || { vazio: true })
   }
 
   // Sensores da máquina. Fora do stream pelo mesmo motivo da mídia: a leitura

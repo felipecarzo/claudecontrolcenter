@@ -196,6 +196,9 @@ export function buildJob(id, state, meta, pins, now) {
     project: meta.project || project,
     sub,
     route: meta.route || routeOf(state),
+    // Frente do ROADMAP.md do projeto, declarada pelo agente. É o que liga o
+    // cartão ao mapa e faz o assunto parar de ser texto solto.
+    frente: meta.frente || meta.front || null,
     model: modelOf(state.respawnFlags),
     agent: agentOf(state),
     tokens: state.tokens ?? 0,

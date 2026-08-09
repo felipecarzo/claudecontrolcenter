@@ -21,7 +21,7 @@ não um log.
 **1. Ao entender a tarefa** (antes da primeira edição):
 
 ```bash
-node .../cc.mjs set '{"subject":"portais no map editor","category":"feature","route":"B86-portais","todos":[{"text":"icone proprio","done":false},{"text":"posicionavel no editor","done":false},{"text":"round-trip do save","done":false}]}'
+node .../cc.mjs set '{"subject":"portais no map editor","category":"feature","frente":"Map editor","route":"B86-portais","todos":[{"text":"icone proprio","done":false},{"text":"posicionavel no editor","done":false},{"text":"round-trip do save","done":false}]}'
 ```
 
 **2. Assim que cada to-do fecha** — um comando, sem reenviar a lista:
@@ -51,6 +51,7 @@ node .../cc.mjs set '{"status":"entregue","blockers":null,"links":[{"label":"pai
 | Campo | Regra |
 |---|---|
 | `subject` | 3 a 6 palavras, em português, o **problema** — não o comando rodado |
+| `frente` | título da seção do `docs/ROADMAP.md` onde isto entra — é o que liga o cartão ao mapa do projeto |
 | `category` | `feature` · `bug` · `deploy` · `research` · `refactor` · `docs` · `ops` · o que fizer sentido |
 | `route` | a rota de `docs/ROTAS-ATIVAS.md` que este agente possui, quando o projeto usa esse protocolo |
 | `status` | uma frase do passo atual — vence o `detail` automático |

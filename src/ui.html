@@ -642,6 +642,45 @@
   .aviso-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .aviso-linha > .path:first-child { color: var(--fg); cursor: pointer; }
 
+  /* ---------- mapa do projeto ---------- */
+  .mapa {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 50;
+    width: min(520px, 92vw); overflow-y: auto; padding: 16px 20px 40px;
+    background: var(--bg); border-left: 1px solid var(--line);
+  }
+  .m-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; position: sticky; top: 0; background: var(--bg); padding-bottom: 8px; }
+  .m-head b { font: 700 15px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; }
+  .m-grupo { margin-bottom: 18px; padding-left: 10px; border-left: 3px solid var(--line); }
+  .m-grupo.e-bloqueado { border-left-color: var(--failed); }
+  .m-grupo.e-esperando { border-left-color: var(--waiting); }
+  .m-grupo.e-aberto { border-left-color: var(--done); }
+  .m-grupo.e-feito { border-left-color: var(--idle); opacity: .65; }
+  .m-gtit { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .m-gtit b { color: var(--fg); font-size: 13px; }
+  .m-selo {
+    font: 700 9px/1.6 var(--label); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--dim); border: 1px solid var(--line); border-radius: 2px; padding: 0 5px;
+  }
+  .m-frac { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .m-frente {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 3px 0 3px 12px; font-size: 12px; color: var(--dim);
+  }
+  .m-frente.com-agente { color: var(--fg); }
+  .m-nome { flex: 1; min-width: 0; }
+  /* onde há gente trabalhando é a informação que se procura primeiro */
+  .m-agentes {
+    color: var(--working); font-size: 10px; white-space: nowrap;
+    border: 1px solid currentColor; border-radius: 10px; padding: 0 7px;
+  }
+  .m-rodape { margin-top: 20px; font-size: 10px; }
+  .c-mapa {
+    background: none; border: 0; padding: 0; cursor: pointer;
+    color: var(--dim); font: inherit;
+  }
+  .c-mapa:hover { color: var(--acento); text-decoration: underline; }
+  .c-frente { color: var(--acento); }
+
   /* ---------- preço ---------- */
   .p-niveis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); margin: 4px 0 16px; }
   .p-nivel {
@@ -987,6 +1026,9 @@
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-label="detalhe do agente"></aside>
 
+<div class="scrim" id="scrim-mapa"></div>
+<aside class="mapa" id="mapa" hidden role="dialog" aria-label="mapa do projeto"></aside>
+
 <script src="/graficos.js"></script>
 <script>
 const $ = (s) => document.querySelector(s)
@@ -1185,7 +1227,12 @@ function cartao(j) {
         </span>
       </header>
       <b class="c-titulo">${esc(j.subject)}</b>
-      <p class="c-proj">${esc(j.project)}<em>/${esc(j.route)}</em></p>
+      <p class="c-proj">
+        <button class="c-mapa" data-mapa="${esc(j.id)}" title="abrir o mapa deste projeto">${esc(j.project)}</button>
+        ${j.frente
+          ? `<span class="c-frente" title="frente do ROADMAP.md">› ${esc(j.frente)}</span>`
+          : `<em>/${esc(j.route)}</em>`}
+      </p>
       ${nota}
       <footer>
         <span class="c-prog">${progresso}</span>
@@ -2240,6 +2287,97 @@ async function salvarTaxa(projeto, valor) {
   carregarTempo(true)
 }
 
+/* ========================= mapa do projeto =========================
+   O ROADMAP.md do projeto, ao lado. Existe porque o cartão sozinho mostrava a
+   folha sem a árvore: "Pierre: travessia gamificada" não diz nada para quem
+   não lembra que Pierre é uma frente do inovallbond. Aqui a frente aparece
+   dentro do grupo dela, com quantos agentes estão em cada uma. */
+
+let MAPA = null
+let mapaProjeto = null
+
+const ROTULO_ESTADO = {
+  bloqueado: 'travado', esperando: 'esperando alguém',
+  aberto: 'aberto', feito: 'feito',
+}
+
+async function abrirMapa(job) {
+  mapaProjeto = job
+  MAPA = null
+  desenharMapa()
+  try {
+    MAPA = await (await fetch(`/api/roadmap?cwd=${encodeURIComponent(job.cwd)}`)).json()
+  } catch {
+    MAPA = { erro: 'não deu para ler o roadmap' }
+  }
+  desenharMapa()
+}
+
+function fecharMapa() {
+  mapaProjeto = null
+  MAPA = null
+  desenharMapa()
+}
+
+/** Quantos agentes estão em cada frente, para o mapa dizer onde há gente. */
+function agentesPorFrente(projeto) {
+  const conta = new Map()
+  for (const j of DATA.jobs) {
+    if (j.project !== projeto || !j.frente) continue
+    const k = j.frente.toLowerCase()
+    conta.set(k, (conta.get(k) || 0) + 1)
+  }
+  return conta
+}
+
+function desenharMapa() {
+  const el = $('#mapa')
+  const scrim = $('#scrim-mapa')
+  if (!mapaProjeto) { el.hidden = true; scrim.classList.remove('on'); return }
+  el.hidden = false
+  scrim.classList.add('on')
+
+  if (!MAPA) { el.innerHTML = '<div class="empty">lendo o roadmap…</div>'; return }
+
+  const cabeca = `<header class="m-head">
+    <b>${esc(mapaProjeto.project)}</b>
+    <span class="grow"></span>
+    <button class="btn" data-fechar-mapa>fechar</button>
+  </header>`
+
+  if (MAPA.vazio || MAPA.erro || !MAPA.grupos?.length) {
+    el.innerHTML = `${cabeca}<div class="empty">
+      este projeto não tem <code>docs/ROADMAP.md</code> — sem ele o painel não tem
+      mapa para mostrar, só o que o agente escreveu no cartão.
+    </div>`
+    return
+  }
+
+  const naFrente = agentesPorFrente(mapaProjeto.project)
+  const barra = (feitos, itens) => (itens
+    ? `<span class="m-frac">${feitos}/${itens}</span>` : '')
+
+  el.innerHTML = cabeca + MAPA.grupos.map((g) => `
+    <section class="m-grupo e-${g.estado}">
+      <div class="m-gtit">
+        <span class="m-selo">${ROTULO_ESTADO[g.estado] || g.estado}</span>
+        <b>${esc(g.titulo)}</b>
+        ${barra(g.feitos, g.itens)}
+      </div>
+      ${g.frentes.map((f) => {
+        const quantos = naFrente.get(f.titulo.toLowerCase())
+          ?? [...naFrente].find(([k]) => f.titulo.toLowerCase().startsWith(k))?.[1] ?? 0
+        return `<div class="m-frente${quantos ? ' com-agente' : ''}">
+          <span class="m-nome">${esc(f.titulo)}</span>
+          ${barra(f.feitos, f.itens)}
+          ${quantos ? `<span class="m-agentes">${quantos} agente${quantos > 1 ? 's' : ''} aqui</span>` : ''}
+        </div>`
+      }).join('')}
+    </section>`).join('')
+    + `<p class="path m-rodape">lido de <code>${esc((MAPA.arquivo || '').split(/[\\/]/).slice(-2).join('/'))}</code>
+        · ${MAPA.linhas} linhas · atualizado ${MAPA.atualizadoEm ? age(Date.now() - MAPA.atualizadoEm) + ' atrás' : '—'}</p>`
+}
+
 /* ====================== módulos da máquina =========================
    CPU, memória e GPU em blocos pequenos, ao lado do player. Cada um mostra o
    número que decide alguma coisa — uso e temperatura — e guarda o resto no
@@ -2532,6 +2670,14 @@ $('#split').addEventListener('pointerdown', (e) => {
 
 document.addEventListener('click', async (e) => {
   const t = e.target
+
+  const btMapa = t.closest('[data-mapa]')
+  if (btMapa) {
+    const job = byId(btMapa.dataset.mapa)
+    if (job) abrirMapa(job)
+    return
+  }
+  if (t.closest('[data-fechar-mapa]') || t.closest('#scrim-mapa')) return fecharMapa()
 
   const btMidia = t.closest('[data-midia]')
   if (btMidia) {

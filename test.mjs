@@ -278,6 +278,35 @@ assert.equal(depois.b, 'hoje')
 assert.equal(marcarConclusoes(antes, { todos: [{ text: 'b', done: true }] }, 'hoje').a, undefined)
 assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem todos não mexe nos carimbos')
 
+// --- roadmap: CRLF não pode zerar o parser ---
+{
+  const rm = await import('./src/roadmap.mjs')
+  // CRLF de propósito: é o formato de metade dos roadmaps, e o que fazia
+  // `(.+)$` falhar em todo cabeçalho — o parser saía vazio, sem erro nenhum.
+  const comCRLF = [
+    '# Projeto',
+    '## 🟢 Aberto — depende de mim',
+    '### Pierre — anonimização',
+    '- fazer isso',
+    '- [x] feito isso',
+  ].join('\r\n')
+  const tmp = path.join(os.tmpdir(), `cc-rm-${Date.now()}`)
+  fs.mkdirSync(path.join(tmp, 'docs'), { recursive: true })
+  fs.writeFileSync(path.join(tmp, 'docs', 'ROADMAP.md'), comCRLF)
+  try {
+    const m = rm.lerRoadmap(tmp)
+    assert.ok(m, 'não achou o roadmap')
+    assert.equal(m.grupos.length, 1, 'CRLF zerou os grupos: o ponto do regex nao casa retorno de carro')
+    assert.equal(m.grupos[0].estado, 'aberto')
+    assert.equal(m.grupos[0].frentes.length, 1)
+    assert.equal(m.grupos[0].frentes[0].itens, 2)
+    assert.equal(m.grupos[0].frentes[0].feitos, 1)
+    // o agente escreve "Pierre"; o roadmap diz "Pierre — anonimização"
+    assert.ok(rm.acharFrente(m, 'Pierre'), 'não casou a frente declarada')
+    assert.equal(rm.acharFrente(m, 'nada a ver'), null)
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }) }
+}
+
 // --- status: "done" do CLI não quer dizer tarefa terminada ---
 {
   const { statusReal, VIVO_MS } = await import('./src/jobs.mjs')

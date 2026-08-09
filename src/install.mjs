@@ -56,7 +56,11 @@ cc set '<json parcial>'
 \`\`\`
 
 - **Ao entender a tarefa:** \`subject\` (3-6 palavras, o problema — não o comando),
-  \`category\`, \`todos\`
+  \`category\`, \`todos\` e **\`frente\`**
+- **\`frente\` é o título da seção do \`docs/ROADMAP.md\` onde este trabalho
+  entra** — \`"Pierre"\`, \`"Jogo do evento"\`. É o que liga o agente ao mapa do
+  projeto: sem isso o cartão vira texto solto para quem não tem o contexto na
+  cabeça. Projeto sem roadmap: escreva a frente assim mesmo, em 1-3 palavras
 - **Assim que cada to-do fecha:** \`cc done "texto da tarefa"\` — casa sem acento
   e sem caixa, e não exige reenviar a lista. Travou? \`blockers\`
 - **Ao entregar:** \`status\`, \`links\`, \`blockers: null\` — e **a lista fechada**
