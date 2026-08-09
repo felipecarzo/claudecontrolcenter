@@ -628,25 +628,69 @@
     border: 1px solid var(--line); border-radius: 8px;
     background: var(--bg); display: block;
   }
+  /* Palco largo, legenda estreita e fixa: a coluna de texto não deve roubar
+     espaço do escritório, e abaixo de 900px vira uma coisa embaixo da outra. */
+  .escritorio-grade { display: grid; grid-template-columns: 1fr 280px; gap: 10px; }
+  @media (max-width: 900px) { .escritorio-grade { grid-template-columns: 1fr; } }
+  .escritorio-legenda {
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--surface); overflow: hidden;
+    display: flex; flex-direction: column; max-height: min(70vh, 620px);
+  }
+  .escritorio-legenda h3 {
+    margin: 0; padding: 8px 10px; font-size: 11px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--dim);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .leg-lista { overflow-y: auto; }
+  .leg-item {
+    padding: 7px 10px; border-bottom: 1px solid var(--line-soft); cursor: pointer;
+  }
+  .leg-item:hover { background: var(--surface-2); }
+  .leg-topo { display: flex; align-items: center; gap: 6px; }
+  .leg-nome {
+    font-size: 12px; color: var(--fg);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .leg-proj { font-size: 10px; color: var(--faint); margin: 1px 0 0 14px; }
+  /* Fechado: uma linha. Aberto: o texto inteiro, quebrado. É o clique que
+     decide — comando de deploy não cabe em coluna de 280px. */
+  .leg-faz {
+    font-size: 11px; color: var(--dim); margin: 3px 0 0 14px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .leg-item.on .leg-faz { white-space: normal; word-break: break-word; }
+  .leg-mais { color: var(--working); font-size: 10px; }
 </style>
 <script>
   // No head, e não junto do resto: aplicado depois do body a página pisca
   // escura antes de clarear. Três estados — auto segue o Windows.
   var TEMA_ESCURO = matchMedia('(prefers-color-scheme: dark)')
+  // A ordem é a do menu. `escuro` diz para qual lado o "automático" cai.
+  var TEMAS = [
+    { id: 'noite', nome: 'noite', escuro: true },
+    { id: 'carvao', nome: 'carvão', escuro: true },
+    { id: 'ambar', nome: 'âmbar', escuro: true },
+    { id: 'floresta', nome: 'floresta', escuro: true },
+    { id: 'papel', nome: 'papel', escuro: false },
+    { id: 'areia', nome: 'areia', escuro: false },
+  ]
   // ?tema= existe para a captura de tela: headless não tem preferência de
-  // sistema nem localStorage, e sem isso não dá para conferir o tema claro.
+  // sistema nem localStorage, e sem isso não dá para conferir tema nenhum.
   var temaModo = new URLSearchParams(location.search).get('tema')
     || localStorage.getItem('cc-tema') || 'auto'
+
   function aplicarTema() {
-    var claro = temaModo === 'claro' || (temaModo === 'auto' && !TEMA_ESCURO.matches)
-    document.documentElement.dataset.tema = claro ? 'claro' : 'escuro'
-    var botao = document.getElementById('tema-toggle')
-    if (!botao) return
-    botao.textContent = { auto: '◐', claro: '☀', escuro: '☾' }[temaModo]
-    botao.title = { auto: 'tema: segue o Windows', claro: 'tema: claro', escuro: 'tema: escuro' }[temaModo]
+    var alvo = temaModo
+    // "automático" escolhe o par padrão de cada lado; tema nomeado manda nele.
+    if (alvo === 'auto') alvo = TEMA_ESCURO.matches ? 'noite' : 'papel'
+    if (!TEMAS.some(function (t) { return t.id === alvo })) alvo = 'noite'
+    document.documentElement.dataset.tema = alvo
+    var sel = document.getElementById('tema-sel')
+    if (sel && sel.value !== temaModo) sel.value = temaModo
   }
   aplicarTema()
-  // Só interessa quando está em auto, mas o listener é barato e não erra.
+  // Só interessa quando está em automático, mas o listener é barato e não erra.
   TEMA_ESCURO.addEventListener('change', aplicarTema)
 </script>
 </head>
@@ -692,6 +736,8 @@ let SERVERS = null            // carregado só quando a aba de servidores abre
 let PAINEIS = null            // idem, aba escritório
 // qual painel está embutido na aba; a escolha sobrevive ao recarregar
 let painelAtivo = localStorage.getItem('cc-painel') || 'local'
+// quais linhas da legenda estão com o texto inteiro à mostra
+const legendaAberta = new Set()
 let TEMPO = null              // idem: a varredura dos transcritos é cara
 // o corte é a escolha que muda o número cobrado — vale lembrar entre sessões
 const tempoParams = {
@@ -1649,9 +1695,10 @@ function aplicarDados(snapshot) {
 
 // As telas de Pixel Agents: os agentes desenhados como bonecos num escritório.
 // Uma roda nesta máquina; a outra é a da VPS, alcançada por túnel SSH.
-function viewEscritorio() {
-  if (!PAINEIS) return '<div class="empty">procurando os painéis…</div>'
-
+// Separada do palco de propósito: os cartões mudam de estado a toda hora e
+// podem ser redesenhados à vontade; o iframe abaixo não pode ser tocado.
+function viewCartoesPaineis() {
+  if (!PAINEIS) return '<div class="painel-lista"></div>'
   const escolhido = PAINEIS.find((p) => p.id === painelAtivo) || PAINEIS[0]
   const cartoes = PAINEIS.map((p) => {
     const marca = p.noAr ? 'var(--done)' : 'var(--idle)'
@@ -1674,15 +1721,62 @@ function viewEscritorio() {
       </div>`
   }).join('')
 
+  return `<div class="painel-lista">${cartoes}</div>`
+}
+
+/**
+ * A legenda do escritório: quem é cada boneco e o que está fazendo.
+ *
+ * Existe porque o rótulo flutuante do Pixel Agents cobre o personagem e o
+ * comando inteiro não cabe — vira uma tarja cinza atravessando a sala. Aqui o
+ * texto tem largura própria: resumo de uma linha, e o comando completo só
+ * quando se clica.
+ */
+function viewLegendaEscritorio(jobs) {
+  if (!jobs.length) return '<div class="empty" style="padding:14px">nenhum agente vivo</div>'
+
+  const ordem = { waiting: 0, failed: 1, working: 2, idle: 3, done: 4 }
+  const lista = [...jobs].sort((a, b) => (ordem[a.status] ?? 9) - (ordem[b.status] ?? 9))
+
+  return lista.map((j) => {
+    const fazendo = (j.detail || j.result || j.lastPrompt || '').trim()
+    const curto = fazendo.length > 64 ? fazendo.slice(0, 64) + '…' : fazendo
+    const temMais = fazendo.length > 64
+    const aberto = legendaAberta.has(j.id)
+    return `
+      <div class="leg-item${aberto ? ' on' : ''}" data-legenda="${j.id}">
+        <div class="leg-topo">
+          <span class="dot ${j.status}"></span>
+          <span class="leg-nome" title="${esc(j.subject || j.name || '')}">${esc(j.subject || j.name || '(sem assunto)')}</span>
+        </div>
+        <div class="leg-proj">${esc(j.project || '?')}${j.route && j.route !== 'main' ? ' · ' + esc(j.route) : ''}</div>
+        ${fazendo ? `<div class="leg-faz">${esc(aberto ? fazendo : curto)}${temMais && !aberto ? ' <span class="leg-mais">ver</span>' : ''}</div>` : ''}
+      </div>`
+  }).join('')
+}
+
+function viewEscritorio() {
+  if (!PAINEIS) return '<div class="empty">procurando os painéis…</div>'
+  const escolhido = PAINEIS.find((p) => p.id === painelAtivo) || PAINEIS[0]
+
+  // `data-src` existe para o render() comparar sem ler `iframe.src`, que o
+  // navegador normaliza (barra no fim) e nunca bateria com a string do JSON.
   const palco = escolhido?.noAr
-    ? `<iframe class="painel-palco" src="${escolhido.url}" title="${esc(escolhido.nome)}"></iframe>`
+    ? `<iframe class="painel-palco" data-src="${escolhido.url}" src="${escolhido.url}" title="${esc(escolhido.nome)}"></iframe>`
     : `<div class="empty" style="height:420px;display:grid;place-items:center">
          ${escolhido ? `${esc(escolhido.nome)} está parado — clique em <b>ligar</b> acima` : 'nenhum painel configurado'}
        </div>`
 
-  return `
-    <div class="painel-lista">${cartoes}</div>
-    ${palco}`
+  // Palco e legenda lado a lado: o escritório mostra o movimento, a coluna
+  // diz o que está acontecendo. Uma coisa o outro não faz bem.
+  return viewCartoesPaineis() + `
+    <div class="escritorio-grade">
+      ${palco}
+      <aside class="escritorio-legenda">
+        <h3>quem é quem</h3>
+        <div class="leg-lista">${viewLegendaEscritorio(filtered())}</div>
+      </aside>
+    </div>`
 }
 
 async function carregarPaineis(force) {
@@ -1737,6 +1831,19 @@ async function abrirPiP(id) {
   win.document.body.append(frame)
 }
 
+// Fora do render() porque o atalho do escritório também precisa dele, e
+// duplicar texto é como as duas telas passam a dizer coisas diferentes.
+const RODAPE = {
+  agentes: 'clique num cartão para abrir o detalhe; passe o mouse nele para retomar (↻), fixar (★) ou copiar o caminho (⧉); as bolinhas são as tarefas, cheias as concluídas',
+  todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
+  projetos: 'clique num agente para abrir o painel lateral',
+  tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
+  graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
+  preco: 'clique numa linha para ver por que aquele nível foi sugerido, corrigir o nível e digitar quanto tempo você acha que levou',
+  servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
+  escritorio: 'os agentes desenhados trabalhando; PiP solta numa janelinha que fica por cima de tudo — o painel da VPS depende do túnel SSH, que este botão abre',
+}
+
 function render() {
   if (editando()) { redesenhoAdiado = true; return }
   redesenhoAdiado = false
@@ -1752,17 +1859,26 @@ function render() {
     servidores: () => viewServidores(),
     escritorio: () => viewEscritorio(),
   }
+  // O palco do escritório é um iframe. Reescrever #main a cada evento do
+  // stream o recriaria, e iframe recriado RECARREGA — a tela piscava e o
+  // escritório reiniciava sozinho a cada 2 segundos. Enquanto o painel
+  // escolhido não muda, só os cartões são redesenhados; o iframe não é
+  // tocado. Mover o nó também recarregaria, então nem isso se faz.
+  const palco = tab === 'escritorio' ? $('.painel-palco') : null
+  if (palco && palco.dataset.src === (PAINEIS || []).find((p) => p.id === painelAtivo)?.url) {
+    const cartoes = $('.painel-lista')
+    if (cartoes) {
+      cartoes.outerHTML = viewCartoesPaineis()
+      const leg = $('.leg-lista')
+      if (leg) leg.innerHTML = viewLegendaEscritorio(filtered())
+      $('#foot').textContent = RODAPE[tab] || ''
+      drawer()
+      return
+    }
+  }
+
   $('#main').innerHTML = (views[tab] || views.agentes)()
-  $('#foot').textContent = {
-    agentes: 'a barra de gasto compara os tokens do que está na tela; passe o mouse na linha para retomar (↻), fixar (☆) ou copiar o caminho (⧉); clique no cabeçalho para ordenar',
-    todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
-    projetos: 'clique num agente para abrir o painel lateral',
-    tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
-    graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
-    preco: 'clique numa linha para ver por que aquele nível foi sugerido, corrigir o nível e digitar quanto tempo você acha que levou',
-    servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
-    escritorio: 'os agentes desenhados trabalhando; PiP solta numa janelinha que fica por cima de tudo — o painel da VPS depende do túnel SSH, que este botão abre',
-  }[tab] || ''
+  $('#foot').textContent = RODAPE[tab] || ''
   drawer()
 }
 
@@ -2097,6 +2213,15 @@ document.addEventListener('click', async (e) => {
   const pip = t.closest('[data-painel-pip]')
   if (pip) {
     abrirPiP(pip.dataset.painelPip)
+    return
+  }
+
+  const leg = t.closest('[data-legenda]')
+  if (leg) {
+    const id = leg.dataset.legenda
+    legendaAberta.has(id) ? legendaAberta.delete(id) : legendaAberta.add(id)
+    const lista = $('.leg-lista')
+    if (lista) lista.innerHTML = viewLegendaEscritorio(filtered())
     return
   }
 
