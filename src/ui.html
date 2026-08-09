@@ -234,25 +234,25 @@
   /* `min-width` na largura das abas inteiras: quando não cabe abas + módulos,
      quem desce para a linha de baixo é o bloco de módulos. Navegação quebrada
      em duas linhas é pior que módulo deslocado. */
-  .linha-abas > nav { flex: 1 1 auto; min-width: 560px; }
+  .linha-abas > nav { flex: 1 1 auto; min-width: 480px; align-self: flex-end; }
   .linha-abas > .modulos { flex: 0 1 auto; margin-left: auto; }
-  /* Faixa de módulos: hardware e player, todos do mesmo tamanho e altura. */
-  .modulos { display: flex; align-items: stretch; gap: 8px; flex: none; }
+  /* Faixa de módulos: hardware e player, todos retangulares e da MESMA altura.
+     Duas linhas dentro de cada um — é isso que deixa tudo caber ao lado das
+     abas em vez de virar uma faixa esticada embaixo delas. */
+  .modulos { display: flex; align-items: stretch; gap: 7px; flex: none; }
   .mod {
-    display: flex; align-items: center; gap: 8px; flex: none;
-    padding: 4px 9px; border: 1px solid var(--line); border-radius: 7px;
-    background: var(--surface); min-height: 34px;
+    display: flex; flex-direction: column; justify-content: center; gap: 3px;
+    flex: none; padding: 5px 9px; min-height: 40px;
+    border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
   }
 
-  /* Cada bloco de hardware: rótulo, números e uma barrinha embaixo. Em duas
-     linhas para caber muito num espaço pequeno. */
-  .hw { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; align-content: center; padding: 3px 9px; }
+  .hw { display: grid; grid-template-columns: auto 1fr; gap: 2px 7px; align-content: center; }
   .hw-rot {
     grid-row: span 2; align-self: center;
-    font: 700 9px/1 var(--label); letter-spacing: .12em; text-transform: uppercase;
+    font: 700 9px/1 var(--label); letter-spacing: .1em; text-transform: uppercase;
     color: var(--faint);
   }
-  .hw-nums { display: flex; align-items: baseline; gap: 6px; }
+  .hw-nums { display: flex; align-items: baseline; gap: 5px; }
   .hw-nums b { font: 700 13px/1 var(--mono); font-variant-numeric: tabular-nums; }
   .hw-nums i { font-style: normal; font-size: 9px; color: var(--faint); margin-left: 1px; }
   .hw-temp { color: var(--dim); }
@@ -261,14 +261,23 @@
   .hw-det { grid-column: 2; font-size: 9px; color: var(--faint); white-space: nowrap; }
   .hw.n-baixo { color: var(--done); } .hw.n-medio { color: var(--waiting); }
   .hw.n-alto { color: var(--failed); }
-  .hw .hw-nums b:first-child { color: currentColor; }
 
-  .player { max-width: 34vw; }
-  /* O que cede primeiro é o artista, depois o nome do app, depois os módulos
-     de hardware: as abas não podem quebrar em duas linhas por causa disso. */
-  @container painel (max-width: 1500px) { .player .p-faixa .path { display: none; } }
-  @container painel (max-width: 1300px) { .player .p-app, .hw-det { display: none; } }
-  @container painel (max-width: 1100px) { #maquina .hw:nth-child(n+3) { display: none; } }
+  /* Largura fixa: sem isto o título da música manda no tamanho do bloco, e um
+     nome de vídeo do YouTube empurra as abas para a linha de baixo. */
+  .player { width: 256px; }
+  .p-cima { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .p-titulo {
+    color: var(--fg); font-size: 11px; font-weight: 600; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .p-baixo { display: flex; align-items: center; gap: 8px; }
+  .p-semvol { font-size: 9px; }
+
+  /* Apertado, some primeiro o detalhe do hardware, depois o rótulo do app, e
+     por último a GPU. As abas nunca cedem. */
+  @container painel (max-width: 1500px) { .hw-det { display: none; } .player { width: 214px; } }
+  @container painel (max-width: 1240px) { .player .p-app { display: none; } .player { width: 176px; } }
+  @container painel (max-width: 1080px) { #maquina .hw:nth-child(3) { display: none; } }
   .p-app {
     font: 700 9px/1 var(--label); letter-spacing: .14em; text-transform: uppercase;
     color: var(--faint); flex: none;
@@ -2342,28 +2351,32 @@ function renderPlayer() {
     ${ligado ? '' : 'disabled'} title="${dica}">${rotulo}</button>`
   const temVolume = s.pid && s.volume != null
 
+  // Duas linhas, como os módulos de hardware: em cima o que toca, embaixo os
+  // controles. Em linha única o player esticava e empurrava tudo para fora.
   alvo.innerHTML = `
-    <button class="p-app${quantas > 1 ? ' trocavel' : ''}" data-midia="trocar"
-      ${quantas > 1 ? '' : 'disabled'}
-      title="${quantas > 1 ? `clique para controlar outra mídia (${quantas} abertas)` : 'única mídia aberta'}"
-      >${esc(s.app)}${quantas > 1 ? ` ${quantas}` : ''}</button>
-    <span class="p-faixa">
-      <b>${esc(s.titulo || 'sem título')}</b>
-      ${s.artista ? `<span class="path">${esc(s.artista)}</span>` : ''}
-    </span>
-    <span class="p-bts">
-      ${bt('prev', '⏮', s.podeAnterior, 'faixa anterior')}
-      ${bt('toggle', s.tocando ? '⏸' : '▶', s.podePausa || s.podePlay, s.tocando ? 'pausar' : 'tocar')}
-      ${bt('next', '⏭', s.podeProximo, 'próxima faixa')}
-    </span>
-    ${temVolume ? `
-      <span class="p-vol">
-        <button class="p-bt" data-midia="mudo" title="${s.mudo ? 'tirar do mudo' : 'mudo'}">${s.mudo ? '🔇' : '🔊'}</button>
-        <input type="range" min="0" max="100" value="${s.volume}" data-vol
-          title="volume deste aplicativo — não mexe no volume do Windows">
-        <b>${s.mudo ? '—' : s.volume + '%'}</b>
-      </span>`
-      : '<span class="path p-semvol" title="a sessão de mídia não casou com nenhum processo de áudio">sem controle de volume</span>'}`
+    <div class="p-cima">
+      <button class="p-app${quantas > 1 ? ' trocavel' : ''}" data-midia="trocar"
+        ${quantas > 1 ? '' : 'disabled'}
+        title="${quantas > 1 ? `clique para controlar outra mídia (${quantas} abertas)` : 'única mídia aberta'}"
+        >${esc(s.app)}${quantas > 1 ? ` ${quantas}` : ''}</button>
+      <b class="p-titulo" title="${esc(s.titulo)}${s.artista ? ` — ${esc(s.artista)}` : ''}"
+        >${esc(s.titulo || 'sem título')}</b>
+    </div>
+    <div class="p-baixo">
+      <span class="p-bts">
+        ${bt('prev', '⏮', s.podeAnterior, 'faixa anterior')}
+        ${bt('toggle', s.tocando ? '⏸' : '▶', s.podePausa || s.podePlay, s.tocando ? 'pausar' : 'tocar')}
+        ${bt('next', '⏭', s.podeProximo, 'próxima faixa')}
+      </span>
+      ${temVolume ? `
+        <span class="p-vol">
+          <button class="p-bt" data-midia="mudo" title="${s.mudo ? 'tirar do mudo' : 'mudo'}">${s.mudo ? '🔇' : '🔊'}</button>
+          <input type="range" min="0" max="100" value="${s.volume}" data-vol
+            title="volume deste aplicativo — não mexe no volume do Windows">
+          <b>${s.mudo ? '—' : s.volume + '%'}</b>
+        </span>`
+        : '<span class="path p-semvol" title="a sessão de mídia não casou com nenhum processo de áudio">sem volume</span>'}
+    </div>`
 }
 
 async function mandarMidia(corpo, rota = 'acao') {
