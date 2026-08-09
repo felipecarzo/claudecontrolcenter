@@ -270,13 +270,22 @@
     color: var(--fg); font-size: 11px; font-weight: 600; min-width: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .p-baixo { display: flex; align-items: center; gap: 8px; }
+  /* `min-width: 0` nos dois: sem isso o slider mantém a largura natural, e com
+     o zoom do navegador — que estreita o bloco pelos @container — ele vaza
+     para fora do cartão em vez de encolher. */
+  .p-baixo { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .p-semvol { font-size: 9px; }
 
   /* Apertado, some primeiro o detalhe do hardware, depois o rótulo do app, e
      por último a GPU. As abas nunca cedem. */
   @container painel (max-width: 1500px) { .hw-det { display: none; } .player { width: 214px; } }
-  @container painel (max-width: 1240px) { .player .p-app { display: none; } .player { width: 176px; } }
+  /* Abaixo daqui o número do volume sai junto com a largura: o slider sozinho
+     já diz onde está, e o rótulo era o que espremia a barra até quebrar. */
+  @container painel (max-width: 1240px) {
+    .player .p-app { display: none; }
+    .player { width: 176px; }
+    .p-vol > b { display: none; }
+  }
   @container painel (max-width: 1080px) { #maquina .hw:nth-child(3) { display: none; } }
   .p-app {
     font: 700 9px/1 var(--label); letter-spacing: .14em; text-transform: uppercase;
@@ -296,19 +305,21 @@
   }
   .p-bt:hover:not([disabled]) { color: var(--fg); background: var(--surface); }
   .p-bt[disabled] { opacity: .25; cursor: not-allowed; }
-  .p-vol { display: flex; align-items: center; gap: 7px; flex: none; }
-  .p-vol input[type=range] { width: 90px; accent-color: var(--acento); }
-  .p-vol b { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
-  .p-semvol { flex: none; font-size: 10px; }
-  /* Apertado, o player desce para a linha de baixo inteiro, em vez de espremer
-     as abas até virarem ilegíveis. */
+  /* Uma declaração só para o volume. Havia duas — a segunda com `flex: none` e
+     largura fixa de 90px — e era a segunda que valia: por isso a barra vazava
+     para fora do cartão assim que o zoom estreitava o bloco. */
+  .p-vol { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
+  .p-vol input[type=range] {
+    flex: 1 1 auto; width: auto; min-width: 28px; accent-color: var(--acento);
+  }
+  .p-vol > b {
+    flex: none; font-size: 10px; color: var(--dim);
+    font-variant-numeric: tabular-nums; min-width: 30px; text-align: right;
+  }
+  .p-semvol { flex: none; font-size: 9px; }
   @container painel (max-width: 900px) {
     .linha-abas { flex-wrap: wrap; }
-    .player { max-width: none; width: 100%; margin: 2px 0 8px; }
-  }
-  @container painel (max-width: 620px) {
-    .p-app, .p-semvol { display: none; }
-    .p-vol input[type=range] { width: 60px; }
+    .player { width: 100%; margin: 2px 0 8px; }
   }
 
   /* Uso do plano: fixo no topo, em toda aba. Compacto de propósito — é
