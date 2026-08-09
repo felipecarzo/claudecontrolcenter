@@ -192,6 +192,13 @@ errada por definição.
   Cotação fora da faixa 0,5–100 é rejeitada: se a API inverter o par e mandar
   0,18, o custo de R$ 34 mil viraria R$ 1,2 mil sem nenhum erro aparecer.
   Cotação digitada marca `manual: true` e a busca automática para de mexer.
+- **Nota tem backup porque já se perdeu uma vez.** Em 2026-08-09 o arquivo
+  amanheceu com `{"notes": []}` e as duas listas do Felipe sumiram — sem que se
+  conseguisse provar quem gravou. `writeNotes` agora copia a versão anterior
+  para `.bak` antes de sobrescrever, e o apagamento TOTAL ganha uma cópia com
+  data (`.apagado`), que a gravação seguinte não sobrescreve. Recuperar é
+  copiar o `.bak` de volta. Não remover isso achando que é redundante: o dado
+  é texto digitado à mão, não tem outra fonte.
 - **Mídia são DUAS APIs do Windows, e cada uma faz metade.** `SMTC`
   (Windows.Media.Control) dá o que está tocando e o transporte — funciona com
   qualquer app do popup de mídia, do Spotify ao YouTube no Chrome. `WASAPI`

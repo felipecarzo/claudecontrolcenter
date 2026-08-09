@@ -228,12 +228,19 @@
 
   /* Player: colado na base do painel, acima de tudo que rola. Some sozinho
      quando não há mídia — barra de player vazia é só ocupar espaço. */
+  /* Divide a linha com as abas. `min-width: 0` no nav é o que deixa as abas
+     encolherem em vez de empurrar o player para fora da tela. */
+  .linha-abas { display: flex; align-items: center; gap: 16px; }
+  .linha-abas > nav { min-width: 0; flex: 1; }
   .player {
-    position: sticky; bottom: 0; z-index: 20;
-    display: flex; align-items: center; gap: 14px;
-    margin: 0 20px 14px; padding: 8px 14px;
-    border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2);
+    display: flex; align-items: center; gap: 10px; flex: none;
+    max-width: 38%; margin-bottom: 2px; padding: 5px 10px;
+    border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
   }
+  /* O que cede primeiro é o artista, depois o nome do app: as abas não podem
+     quebrar em duas linhas por causa do player. */
+  @container painel (max-width: 1400px) { .player .p-faixa .path { display: none; } }
+  @container painel (max-width: 1150px) { .player .p-app { display: none; } }
   .p-app {
     font: 700 9px/1 var(--label); letter-spacing: .14em; text-transform: uppercase;
     color: var(--faint); flex: none;
@@ -241,7 +248,8 @@
   }
   .p-app.trocavel { cursor: pointer; }
   .p-app.trocavel:hover { color: var(--acento); }
-  .p-faixa { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
+  .p-faixa { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1 1 auto; }
+  .p-faixa .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .p-faixa b { color: var(--fg); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .p-faixa .path { flex: none; }
   .p-bts { display: flex; gap: 2px; flex: none; }
@@ -255,6 +263,12 @@
   .p-vol input[type=range] { width: 90px; accent-color: var(--acento); }
   .p-vol b { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
   .p-semvol { flex: none; font-size: 10px; }
+  /* Apertado, o player desce para a linha de baixo inteiro, em vez de espremer
+     as abas até virarem ilegíveis. */
+  @container painel (max-width: 900px) {
+    .linha-abas { flex-wrap: wrap; }
+    .player { max-width: none; width: 100%; margin: 2px 0 8px; }
+  }
   @container painel (max-width: 620px) {
     .p-app, .p-semvol { display: none; }
     .p-vol input[type=range] { width: 60px; }
@@ -898,12 +912,16 @@
         <button class="btn" id="n-toggle" aria-pressed="false">notas</button>
       </div>
     </div>
-    <nav id="tabs" role="tablist"></nav>
+    <!-- O player divide a linha com as abas: sobra espaço à direita ali, e no
+         rodapé ele disputava atenção com o conteúdo. -->
+    <div class="linha-abas">
+      <nav id="tabs" role="tablist"></nav>
+      <div id="player" class="player" hidden></div>
+    </div>
   </header>
 
   <main id="main"></main>
   <footer id="foot"></footer>
-  <div id="player" class="player" hidden></div>
 </div>
 
 <div id="split" hidden role="separator" aria-orientation="vertical" aria-label="largura das notas"></div>

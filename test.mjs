@@ -278,6 +278,31 @@ assert.equal(depois.b, 'hoje')
 assert.equal(marcarConclusoes(antes, { todos: [{ text: 'b', done: true }] }, 'hoje').a, undefined)
 assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem todos não mexe nos carimbos')
 
+// --- notas: apagar tudo tem que deixar rastro recuperável ---
+{
+  const notas = await import('./src/notes.mjs')
+  const real = fs.existsSync(notas.NOTES_FILE) ? fs.readFileSync(notas.NOTES_FILE, 'utf8') : null
+  const bakReal = fs.existsSync(notas.BACKUP_FILE) ? fs.readFileSync(notas.BACKUP_FILE, 'utf8') : null
+  const sujeira = []
+  try {
+    notas.writeNotes([{ title: 'teste', text: 'a' }])
+    notas.writeNotes([]) // o caso que apagou as notas de verdade
+    assert.equal(notas.readNotes().length, 0)
+    const bak = JSON.parse(fs.readFileSync(notas.BACKUP_FILE, 'utf8'))
+    assert.equal(bak.notes[0].title, 'teste', 'o .bak precisa ter a versão de antes do apagamento')
+    const pasta = path.dirname(notas.NOTES_FILE)
+    const copias = fs.readdirSync(pasta).filter((f) => f.startsWith(path.basename(notas.NOTES_FILE)) && f.endsWith('.apagado'))
+    assert.ok(copias.length > 0, 'apagar tudo tem que gerar cópia com data')
+    sujeira.push(...copias.map((f) => path.join(pasta, f)))
+  } finally {
+    // devolve o arquivo do Felipe exatamente como estava
+    for (const f of sujeira) { try { fs.unlinkSync(f) } catch {} }
+    if (real != null) fs.writeFileSync(notas.NOTES_FILE, real)
+    if (bakReal != null) fs.writeFileSync(notas.BACKUP_FILE, bakReal)
+    else try { fs.unlinkSync(notas.BACKUP_FILE) } catch {}
+  }
+}
+
 // --- mídia: nome de app legível e escolha da sessão certa ---
 const midia = await import('./src/midia.mjs')
 const { nomeBonito, normalizar } = midia._internals

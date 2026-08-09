@@ -52,11 +52,41 @@ export function readNotes() {
   }
 }
 
+export const BACKUP_FILE = `${NOTES_FILE}.bak`
+
+/**
+ * Guarda a versão anterior antes de sobrescrever.
+ *
+ * Existe porque em 2026-08-09 o arquivo amanheceu com `{"notes": []}` e as
+ * duas listas do Felipe sumiram, sem que se conseguisse provar quem gravou.
+ * Nota é texto que ele digitou à mão: o arquivo não pode ter só uma versão.
+ *
+ * `.bak` é a última gravação, e some na seguinte. Por isso o apagamento TOTAL
+ * — de N blocos para nenhum — ganha cópia com data, que ninguém sobrescreve:
+ * é o caso em que se perde tudo e só se descobre horas depois.
+ */
+function guardarAnterior(antes, virandoVazio) {
+  try {
+    if (!fs.existsSync(NOTES_FILE)) return
+    fs.copyFileSync(NOTES_FILE, BACKUP_FILE)
+    if (virandoVazio && antes.length) {
+      const quando = new Date().toISOString().replace(/[:.]/g, '-')
+      fs.copyFileSync(NOTES_FILE, `${NOTES_FILE}.${quando}.apagado`)
+    }
+  } catch {
+    // Falhar o backup não pode impedir a gravação: o pior caso vira o de antes.
+  }
+}
+
 export function writeNotes(notes) {
   const limpo = (Array.isArray(notes) ? notes : [])
     .map(normalizeNote)
     .filter(Boolean)
     .slice(0, LIMITS.blocos)
+
+  const antes = readNotes()
+  guardarAnterior(antes, limpo.length === 0)
+
   fs.mkdirSync(path.dirname(NOTES_FILE), { recursive: true })
   const tmp = `${NOTES_FILE}.tmp`
   fs.writeFileSync(tmp, JSON.stringify({ notes: limpo }, null, 2))
