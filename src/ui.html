@@ -226,6 +226,40 @@
   table { width: 100%; border-collapse: collapse; table-layout: fixed; }
   td { padding: 7px 10px 7px 0; vertical-align: top; }
 
+  /* Player: colado na base do painel, acima de tudo que rola. Some sozinho
+     quando não há mídia — barra de player vazia é só ocupar espaço. */
+  .player {
+    position: sticky; bottom: 0; z-index: 20;
+    display: flex; align-items: center; gap: 14px;
+    margin: 0 20px 14px; padding: 8px 14px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2);
+  }
+  .p-app {
+    font: 700 9px/1 var(--label); letter-spacing: .14em; text-transform: uppercase;
+    color: var(--faint); flex: none;
+    background: none; border: 0; padding: 3px 0; cursor: default;
+  }
+  .p-app.trocavel { cursor: pointer; }
+  .p-app.trocavel:hover { color: var(--acento); }
+  .p-faixa { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
+  .p-faixa b { color: var(--fg); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .p-faixa .path { flex: none; }
+  .p-bts { display: flex; gap: 2px; flex: none; }
+  .p-bt {
+    background: none; border: 0; padding: 3px 7px; cursor: pointer;
+    color: var(--dim); font: 14px/1 var(--mono); border-radius: 4px;
+  }
+  .p-bt:hover:not([disabled]) { color: var(--fg); background: var(--surface); }
+  .p-bt[disabled] { opacity: .25; cursor: not-allowed; }
+  .p-vol { display: flex; align-items: center; gap: 7px; flex: none; }
+  .p-vol input[type=range] { width: 90px; accent-color: var(--acento); }
+  .p-vol b { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+  .p-semvol { flex: none; font-size: 10px; }
+  @container painel (max-width: 620px) {
+    .p-app, .p-semvol { display: none; }
+    .p-vol input[type=range] { width: 60px; }
+  }
+
   /* Uso do plano: fixo no topo, em toda aba. Compacto de propósito — é
      referência de quanto ainda dá pra rodar, não um painel de métrica. */
   .uso { display: flex; align-items: center; gap: 14px; flex: none; }
@@ -869,6 +903,7 @@
 
   <main id="main"></main>
   <footer id="foot"></footer>
+  <div id="player" class="player" hidden></div>
 </div>
 
 <div id="split" hidden role="separator" aria-orientation="vertical" aria-label="largura das notas"></div>
@@ -2136,6 +2171,88 @@ async function salvarTaxa(projeto, valor) {
   carregarTempo(true)
 }
 
+/* ========================= player de mídia =========================
+   Fica fora do #main de propósito, como as notas: `render()` reescreve o
+   painel a cada evento do stream, e o cursor do controle de volume sumiria no
+   meio do arrasto. Aqui o desenho só acontece quando o que está tocando muda. */
+
+let MIDIA = null
+let midiaAssinatura = ''
+let arrastandoVolume = false
+// Qual sessão a barra controla. Vazio = a mais provável, escolhida por peso.
+// Fica gravado porque trocar de app a cada vez que o YouTube pausa seria pior
+// que a escolha errada.
+let midiaEscolhida = localStorage.getItem('cc-midia') || ''
+
+/** A sessão da barra: a fixada, se ainda existir; senão a mais provável. */
+const sessaoAtual = () => {
+  const lista = MIDIA?.sessoes || []
+  return lista.find((s) => s.appId === midiaEscolhida) || lista[0] || null
+}
+
+const $player = () => $('#player')
+
+async function carregarMidia() {
+  try {
+    const r = await fetch('/api/midia')
+    MIDIA = await r.json()
+  } catch {
+    MIDIA = { erro: 'sem resposta' }
+  }
+  renderPlayer()
+}
+
+/** Só redesenha quando muda de verdade — e nunca durante um arrasto. */
+function renderPlayer() {
+  const alvo = $player()
+  const s = sessaoAtual()
+  if (!s) {
+    alvo.hidden = true
+    midiaAssinatura = ''
+    return
+  }
+  const quantas = (MIDIA?.sessoes || []).length
+  const assinatura = JSON.stringify([s.appId, s.titulo, s.artista, s.tocando, s.volume, s.mudo, s.pid, quantas])
+  if (assinatura === midiaAssinatura || arrastandoVolume) return
+  midiaAssinatura = assinatura
+  alvo.hidden = false
+
+  const bt = (acao, rotulo, ligado, dica) => `<button class="p-bt" data-midia="${acao}"
+    ${ligado ? '' : 'disabled'} title="${dica}">${rotulo}</button>`
+  const temVolume = s.pid && s.volume != null
+
+  alvo.innerHTML = `
+    <button class="p-app${quantas > 1 ? ' trocavel' : ''}" data-midia="trocar"
+      ${quantas > 1 ? '' : 'disabled'}
+      title="${quantas > 1 ? `clique para controlar outra mídia (${quantas} abertas)` : 'única mídia aberta'}"
+      >${esc(s.app)}${quantas > 1 ? ` ${quantas}` : ''}</button>
+    <span class="p-faixa">
+      <b>${esc(s.titulo || 'sem título')}</b>
+      ${s.artista ? `<span class="path">${esc(s.artista)}</span>` : ''}
+    </span>
+    <span class="p-bts">
+      ${bt('prev', '⏮', s.podeAnterior, 'faixa anterior')}
+      ${bt('toggle', s.tocando ? '⏸' : '▶', s.podePausa || s.podePlay, s.tocando ? 'pausar' : 'tocar')}
+      ${bt('next', '⏭', s.podeProximo, 'próxima faixa')}
+    </span>
+    ${temVolume ? `
+      <span class="p-vol">
+        <button class="p-bt" data-midia="mudo" title="${s.mudo ? 'tirar do mudo' : 'mudo'}">${s.mudo ? '🔇' : '🔊'}</button>
+        <input type="range" min="0" max="100" value="${s.volume}" data-vol
+          title="volume deste aplicativo — não mexe no volume do Windows">
+        <b>${s.mudo ? '—' : s.volume + '%'}</b>
+      </span>`
+      : '<span class="path p-semvol" title="a sessão de mídia não casou com nenhum processo de áudio">sem controle de volume</span>'}`
+}
+
+async function mandarMidia(corpo, rota = 'acao') {
+  try {
+    await fetch(`/api/midia/${rota}`, { method: 'POST', body: JSON.stringify(corpo) })
+  } catch { /* a próxima leitura mostra a verdade */ }
+  midiaAssinatura = '' // força redesenho com o estado novo
+  carregarMidia()
+}
+
 /* ========================== notas ============================
    Fora do #main de propósito: `render()` reescreve o painel a cada evento do
    stream, de 2 em 2 segundos. Um textarea ali dentro perderia o cursor no
@@ -2270,6 +2387,23 @@ $('#split').addEventListener('pointerdown', (e) => {
 
 document.addEventListener('click', async (e) => {
   const t = e.target
+
+  const btMidia = t.closest('[data-midia]')
+  if (btMidia) {
+    const s = sessaoAtual()
+    if (!s) return
+    const qual = btMidia.dataset.midia
+    if (qual === 'trocar') {
+      const lista = MIDIA?.sessoes || []
+      const proxima = lista[(lista.indexOf(s) + 1) % lista.length]
+      midiaEscolhida = proxima.appId
+      localStorage.setItem('cc-midia', midiaEscolhida)
+      midiaAssinatura = ''
+      return renderPlayer()
+    }
+    if (qual === 'mudo') return mandarMidia({ pid: s.pid, mudo: !s.mudo }, 'volume')
+    return mandarMidia({ indice: s.indice, qual })
+  }
 
   const fecharTodas = t.closest('[data-fechar-todas]')
   if (fecharTodas) {
@@ -2685,6 +2819,22 @@ function editarTodo(jobId, i, texto) {
 
 for (const el of ['#q', '#proj']) $(el).addEventListener('input', render)
 
+// Volume: `input` move a barra ao vivo, `change` é que grava. Enquanto o dedo
+// está na barra, o redesenho fica travado — senão o stream devolveria o valor
+// antigo no meio do arrasto e a barra pularia para trás.
+$player().addEventListener('pointerdown', (e) => { if (e.target.matches('[data-vol]')) arrastandoVolume = true })
+$player().addEventListener('input', (e) => {
+  if (!e.target.matches('[data-vol]')) return
+  const rotulo = $player().querySelector('.p-vol b')
+  if (rotulo) rotulo.textContent = `${e.target.value}%`
+})
+$player().addEventListener('change', (e) => {
+  if (!e.target.matches('[data-vol]')) return
+  arrastandoVolume = false
+  const s = sessaoAtual()
+  if (s?.pid) mandarMidia({ pid: s.pid, nivel: Number(e.target.value) }, 'volume')
+})
+
 // O menu só pode ser montado agora: no head, o <select> ainda não existia.
 $('#tema-sel').innerHTML = '<option value="auto">tema: automático</option>'
   + TEMAS.map((t) => `<option value="${t.id}">tema: ${t.nome}</option>`).join('')
@@ -2716,6 +2866,13 @@ fetch('/api/graficos').then((r) => r.json()).then((d) => {
 
 layoutNotas()
 fetch('/api/notes').then((r) => r.json()).then((d) => { NOTES = d.notes || []; renderNotas() })
+
+// A mídia tem ritmo próprio: não vem no stream porque cada leitura custa ~500ms
+// no Windows, e o tique de 2s dos agentes não pode esperar por isso.
+carregarMidia()
+// Em `static` fica na leitura única: o intervalo manteria a captura headless
+// esperando para sempre, pelo mesmo motivo que o SSE fica desligado lá.
+if (!params.has('static')) setInterval(carregarMidia, 4000)
 </script>
 </body>
 </html>

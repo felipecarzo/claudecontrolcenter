@@ -49,6 +49,12 @@ de propósito — a do terminal é consultada de relance, a web com calma.
   global já cobre todos, e repetir a instrução em 14 arquivos contraria "um fato
   mora em um lugar só". A ferramenta existe se mudar de ideia.
 
+### CC-16 — Mídia só no Windows
+`midia.ps1` usa SMTC e WASAPI, que são APIs do Windows. No macOS o caminho
+seria `MediaRemote`/AppleScript; no Linux, MPRIS via D-Bus. Nenhum dos dois é
+tradução direta — são três implementações, não uma com três caminhos. Fora do
+Windows a barra do player simplesmente não aparece.
+
 ## Limites aceitos hoje
 
 Escritos aqui porque são escolha, não descuido:
@@ -70,6 +76,12 @@ Escritos aqui porque são escolha, não descuido:
 - O custo em real usa a cotação de hoje, inclusive para trabalho de semanas
   atrás. Converter cada dia pela cotação daquele dia exigiria série histórica
   de câmbio, para mudar um número que é referência de esforço, não fatura.
+- A barra de mídia consulta a cada 4s, fora do stream de 2s dos agentes. Cada
+  leitura custa ~0,5s no Windows, e pendurar isso no tique dos agentes atrasaria
+  o que o painel tem de mais importante.
+- O painel passou a ATUAR na máquina (pausar mídia, mexer em volume de app),
+  além de encerrar servidor. Continua não mexendo em agente: criar, matar ou
+  pausar job segue fora de escopo.
 - A sobra usa a assinatura rateada pelas horas do mês, não o preço de API.
   Filtrar meio mês infla o custo/hora daquele mês: o rateio só enxerga as horas
   dentro do recorte. Guardar o total de horas do mês fora do filtro resolveria,

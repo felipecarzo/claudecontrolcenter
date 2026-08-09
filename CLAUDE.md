@@ -29,6 +29,8 @@ src/
   tarefas.mjs    preço por problema resolvido: esforço, nível e valor
   historico.mjs  o que sobra depois que o CLI apaga o job
   uso.mjs        uso do plano (5h e semana), colhido do statusLine
+  midia.mjs      o que está tocando e os controles; normaliza e cacheia
+  midia.ps1      as duas APIs do Windows (SMTC + WASAPI), em processo vivo
   graficos.js    motor de gráficos: índice do que cruza com o quê, e o SVG
                  (servido em /graficos.js; não é módulo, roda no navegador)
   install.mjs    bloco do protocolo no CLAUDE.md dos projetos
@@ -190,6 +192,30 @@ errada por definição.
   Cotação fora da faixa 0,5–100 é rejeitada: se a API inverter o par e mandar
   0,18, o custo de R$ 34 mil viraria R$ 1,2 mil sem nenhum erro aparecer.
   Cotação digitada marca `manual: true` e a busca automática para de mexer.
+- **Mídia são DUAS APIs do Windows, e cada uma faz metade.** `SMTC`
+  (Windows.Media.Control) dá o que está tocando e o transporte — funciona com
+  qualquer app do popup de mídia, do Spotify ao YouTube no Chrome. `WASAPI`
+  (Audio Session API) dá o volume POR APLICATIVO, o mixer do Windows. SMTC não
+  mexe em volume e WASAPI não troca de faixa: juntar as duas é trabalho do
+  painel, e o casamento é por nome de processo normalizado. Quando não casa, a
+  sessão fica sem controle de volume e o transporte continua.
+- **`midia.ps1` roda como processo VIVO, e o motivo é medido.** O `Add-Type`
+  compila o C# do WASAPI a cada execução: chamada avulsa leva ~18s, em processo
+  persistente cai para ~0,5s. `platform.mjs` mantém o processo e conversa por
+  stdin/stdout, uma linha por comando.
+- **Mídia só funciona no Windows PowerShell 5.1, nunca no `pwsh` 7.** O 7 não
+  tem projeção WinRT e a chamada de SMTC morre com "Operation is not supported
+  on this platform". Trocar por `pwsh` quebra a barra inteira.
+- **Vtable de interface COM erra em silêncio.** Um método a mais ou a menos em
+  `IAudioSessionControl2` fez `GetProcessId` devolver 0 para tudo — seis
+  processos "Idle", sem erro nenhum. Ela herda `IAudioSessionControl`, então
+  `GetState` vem antes de `GetDisplayName`.
+- **O PID do Chrome não é o processo maior.** O áudio fica num filho; escolher
+  por consumo de memória pega o errado. O PID tem que vir da própria lista de
+  sessões de áudio.
+- **`[Console]::OutputEncoding` no ps1 não é enfeite.** Sem ele, título de
+  música com acento chega como "m?dia" — o PowerShell 5.1 sai em code page do
+  Windows, não em UTF-8.
 - **O uso do plano vem do statusLine, não da API.** O Claude Code entrega
   `rate_limits.five_hour` / `.seven_day` no JSON que manda para o comando de
   statusLine, a cada resposta — é o número oficial, o mesmo do `/usage`. Por

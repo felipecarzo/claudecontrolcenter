@@ -9,6 +9,10 @@ import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import { tarefas } from './tarefas.mjs'
 import { arquivar, jobsHistoricos } from './historico.mjs'
 import { readUso } from './uso.mjs'
+import {
+  estado as estadoMidia, acao as acaoMidia,
+  volume as volumeMidia, mudo as mudoMidia,
+} from './midia.mjs'
 import { garantirMercado } from './mercado.mjs'
 import { readServers, killServer } from './servers.mjs'
 import { readPaineis, ligarPainel, desligarPainel } from './paineis.mjs'
@@ -46,6 +50,22 @@ const comCorpo = (req, res, max, fn) => {
   req.on('end', () => {
     try {
       send(res, 200, { ok: true, ...fn(JSON.parse(body)) })
+    } catch (e) {
+      send(res, 400, { ok: false, error: String(e.message || e) })
+    }
+  })
+}
+
+/** Igual ao `comCorpo`, para quando o que responde devolve promessa. */
+const comCorpoAsync = (req, res, max, fn) => {
+  let body = ''
+  req.on('data', (c) => {
+    body += c
+    if (body.length > max) req.destroy()
+  })
+  req.on('end', async () => {
+    try {
+      send(res, 200, { ok: true, ...(await fn(JSON.parse(body))) })
     } catch (e) {
       send(res, 400, { ok: false, error: String(e.message || e) })
     }
@@ -167,6 +187,24 @@ function handler(req, res) {
       else delete estimativas[tarefa]
       return { meta: writeMeta(job, { niveis, estimativas }) }
     })
+  }
+
+  // Mídia: consultada pela barra do player, que pergunta a cada poucos
+  // segundos. Cache curto mora no módulo; aqui só se decide ler ou escrever.
+  if (url.pathname === '/api/midia') {
+    return estadoMidia({ force: url.searchParams.has('force') })
+      .then((d) => send(res, 200, d))
+      .catch((e) => send(res, 500, { erro: String(e.message || e) }))
+  }
+
+  if (url.pathname === '/api/midia/acao' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e4, ({ indice, qual }) => acaoMidia(indice, qual))
+  }
+
+  if (url.pathname === '/api/midia/volume' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e4, ({ pid, nivel, mudo }) => (
+      mudo === undefined ? volumeMidia(pid, nivel) : mudoMidia(pid, mudo)
+    ))
   }
 
   if (url.pathname === '/api/kill' && req.method === 'POST') {

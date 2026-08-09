@@ -278,6 +278,27 @@ assert.equal(depois.b, 'hoje')
 assert.equal(marcarConclusoes(antes, { todos: [{ text: 'b', done: true }] }, 'hoje').a, undefined)
 assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem todos não mexe nos carimbos')
 
+// --- mídia: nome de app legível e escolha da sessão certa ---
+const midia = await import('./src/midia.mjs')
+const { nomeBonito, normalizar } = midia._internals
+assert.equal(nomeBonito('5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App'), 'WhatsAppDesktop')
+assert.equal(nomeBonito('Spotify.exe'), 'Spotify')
+assert.equal(nomeBonito('Chrome'), 'Chrome')
+assert.equal(nomeBonito(''), 'mídia')
+// o WhatsApp registra sessão de mídia e não pode passar na frente do que toca
+const escolha = normalizar(JSON.stringify({
+  sessoes: [
+    { indice: 0, app: 'WhatsApp', estado: 'Paused', pid: null },
+    { indice: 1, app: 'Chrome', estado: 'Playing', pid: 123, volume: 80, podeProximo: true },
+  ],
+}))
+assert.equal(escolha.sessoes[0].app, 'Chrome', 'quem está tocando tem que vir primeiro')
+assert.equal(escolha.sessoes[0].volume, 80)
+// PowerShell serializa objeto único fora de array quando só há um
+assert.equal(normalizar(JSON.stringify({ sessoes: { indice: 0, app: 'Spotify.exe' } })).sessoes.length, 1)
+assert.ok(normalizar('não é json').erro)
+assert.equal(normalizar(JSON.stringify({ erro: 'x' })).erro, 'x')
+
 // --- histórico: só grava o que mudou, e não perde job que o CLI apagou ---
 const hist = await import('./src/historico.mjs')
 hist._internals.resetar()

@@ -106,6 +106,9 @@ seus agentes já rodaram. Para forçar:
 | servidores | o que está escutando porta nesta máquina |
 | escritório | os agentes desenhados trabalhando, aqui e na VPS |
 
+No rodapé, quando há algo tocando: **barra de mídia** com o que toca, botões de
+faixa e volume **do aplicativo** (não o do Windows). Só Windows por enquanto.
+
 Clicar num agente abre um painel lateral com o detalhe em níveis. `Esc` fecha.
 
 A aba **servidores** lista as portas em escuta, com o projeto de origem quando

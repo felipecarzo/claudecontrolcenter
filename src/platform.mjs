@@ -9,6 +9,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { execFileSync, spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+
+const AQUI = path.dirname(fileURLToPath(import.meta.url))
 
 export const SO = process.platform // 'win32' | 'darwin' | 'linux'
 export const ehWindows = SO === 'win32'
@@ -33,6 +36,93 @@ export const quiet = (cmd, args) => {
 }
 
 const existe = (cmd) => quiet(ehWindows ? 'where' : 'which', [cmd]).ok
+
+/* ------------------------------ mídia ------------------------------
+   Controle do que está tocando: transporte e volume por aplicativo.
+
+   No Windows, quem responde é `src/midia.ps1`, mantido VIVO como processo e
+   conversando por stdin/stdout. O motivo é medido: o script compila C# para
+   falar com a Audio Session API, e uma execução avulsa leva ~18s; em processo
+   persistente, cada comando sai em milissegundos.
+
+   Precisa ser `powershell.exe` (5.1) e não `pwsh` (7): o 7 não tem projeção
+   WinRT, e a chamada de SMTC morre com "Operation is not supported on this
+   platform".
+
+   macOS e Linux: não implementado. Os caminhos seriam `MediaRemote`/AppleScript
+   e MPRIS via D-Bus, e nenhum dos dois é tradução direta deste. */
+
+let servidorMidia = null
+
+export function midiaDisponivel() {
+  return ehWindows
+}
+
+function subirServidorMidia() {
+  if (servidorMidia) return servidorMidia
+  const script = path.join(AQUI, 'midia.ps1')
+  const proc = spawn('powershell.exe', [
+    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, 'servir',
+  ], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
+
+  const estado = { proc, fila: [], buffer: '', pronto: false }
+  proc.stdout.setEncoding('utf8')
+  proc.stdout.on('data', (bloco) => {
+    estado.buffer += bloco
+    let corte
+    while ((corte = estado.buffer.indexOf('\n')) >= 0) {
+      const linha = estado.buffer.slice(0, corte).trim()
+      estado.buffer = estado.buffer.slice(corte + 1)
+      if (!linha) continue
+      if (!estado.pronto) { estado.pronto = true; continue } // handshake
+      const pedido = estado.fila.shift()
+      if (pedido) pedido.resolve(linha)
+    }
+  })
+  // Morreu: o próximo pedido sobe outro. Não reinicia sozinho para não ficar
+  // ressuscitando em laço quando o problema é permanente.
+  const derrubar = () => {
+    for (const p of estado.fila) p.resolve('{"erro":"o controlador de mídia caiu"}')
+    estado.fila = []
+    if (servidorMidia === estado) servidorMidia = null
+  }
+  proc.on('exit', derrubar)
+  proc.on('error', derrubar)
+
+  servidorMidia = estado
+  return estado
+}
+
+/** Manda um comando e devolve o JSON cru. Nunca lança. */
+export function midiaComando(comando, alvo = '', valor = '') {
+  if (!ehWindows) return Promise.resolve('{"erro":"controle de mídia só existe no Windows por enquanto"}')
+  let estado
+  try { estado = subirServidorMidia() } catch (e) { return Promise.resolve(`{"erro":${JSON.stringify(String(e.message))}}`) }
+
+  return new Promise((resolve) => {
+    // O primeiro comando espera a compilação do C#; os seguintes, não.
+    const relogio = setTimeout(() => {
+      const i = estado.fila.findIndex((p) => p.resolve === resolve)
+      if (i >= 0) estado.fila.splice(i, 1)
+      resolve('{"erro":"o controlador de mídia não respondeu"}')
+    }, 30000)
+    const pedido = {
+      resolve: (linha) => { clearTimeout(relogio); resolve(linha) },
+    }
+    estado.fila.push(pedido)
+    try {
+      estado.proc.stdin.write(`${comando} ${alvo} ${valor}\n`)
+    } catch {
+      pedido.resolve('{"erro":"não deu para falar com o controlador de mídia"}')
+    }
+  })
+}
+
+export function pararMidia() {
+  if (!servidorMidia) return
+  try { servidorMidia.proc.kill() } catch { /* já morreu */ }
+  servidorMidia = null
+}
 
 /* ---------------------------- navegador ---------------------------- */
 
