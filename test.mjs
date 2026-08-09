@@ -278,6 +278,24 @@ assert.equal(depois.b, 'hoje')
 assert.equal(marcarConclusoes(antes, { todos: [{ text: 'b', done: true }] }, 'hoje').a, undefined)
 assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem todos não mexe nos carimbos')
 
+// --- status: "done" do CLI não quer dizer tarefa terminada ---
+{
+  const { statusReal, VIVO_MS } = await import('./src/jobs.mjs')
+  const novo = 5_000
+  const velho = VIVO_MS + 1
+  // o caso que o Felipe relatou: agente trabalhando aparecia como pronto
+  assert.equal(statusReal({ state: 'done' }, novo, true), 'working')
+  // acabou de responder e a bola está com ele
+  assert.equal(statusReal({ state: 'done' }, novo, false), 'waiting')
+  // sinal parou: terminou de verdade
+  assert.equal(statusReal({ state: 'done' }, velho, false), 'done')
+  assert.equal(statusReal({ state: 'done' }, velho, true), 'done')
+  // estado explícito do CLI manda, sempre
+  assert.equal(statusReal({ state: 'blocked' }, novo, false), 'waiting')
+  assert.equal(statusReal({ state: 'failed' }, novo, true), 'failed')
+  assert.equal(statusReal({ state: 'running' }, velho, false), 'working')
+}
+
 // --- máquina: uso de CPU é diferença entre amostras, não leitura ---
 {
   const maq = await import('./src/maquina.mjs')

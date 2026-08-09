@@ -292,10 +292,14 @@ errada por definição.
   pedia `todos`. Quem seguia à risca entregava com tudo aberto. Três consertos,
   nessa ordem de importância: o texto (causa), `cc done "texto"` (o atrito de
   reenviar a lista inteira era o que fazia adiar) e o hook Stop (consequência).
-- **O `state` do CLI vira `done` ao fim de CADA turno.** Usá-lo como gatilho do
-  aviso faria o hook cobrar a cada resposta, inclusive no meio do trabalho. O
-  gatilho certo é o `status` que o AGENTE escreveu no meta.json — `cc check`
-  usa `metaStatus()` por isso, e não `job.status`.
+- **O `state` do CLI vira `done` ao fim de CADA turno**, e isso já enganou a
+  tela duas vezes. No `cc check`, faria o hook cobrar a cada resposta. Na aba
+  de agentes, punha agente TRABALHANDO na faixa "prontos" — foi reclamação do
+  Felipe, com razão. O discriminador é o SINAL: job encerrado para de atualizar
+  `updatedAt`. Vivo com ferramenta rodando está trabalhando; vivo sem
+  ferramenta acabou de responder e espera ele. Ver `statusReal()`.
+- **O gatilho do `cc check` é o `status` que o AGENTE escreveu no meta.json**,
+  não o `state` do CLI nem o `job.status` — por isso ele usa `metaStatus()`.
 - **`~/.claude/jobs` é efêmero.** O CLI apaga job antigo: em 2026-08-08 restavam
   9 de semanas de trabalho. `historico.mjs` copia o que foi lido para arquivo
   próprio a cada varredura, só quando muda. Sem ele, a aba de preço só enxerga

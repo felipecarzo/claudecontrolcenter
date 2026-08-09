@@ -120,6 +120,27 @@ export function statusOf(raw = '') {
   return raw ? String(raw) : 'unknown'
 }
 
+/** Sinal mais novo que isto significa que o agente está VIVO, não terminado. */
+export const VIVO_MS = 2 * 60 * 1000
+
+/**
+ * O status que o painel mostra, que não é o `state` cru do Claude Code.
+ *
+ * Motivo: o CLI marca `done` ao fim de CADA turno, não ao fim da tarefa. Um
+ * agente que acabou de responder e está esperando o Felipe aparecia como
+ * "pronto" — e ele relatou justamente isso: "estava com todos os agentes
+ * trabalhando e aqui dizia que estava tudo pronto".
+ *
+ * O que separa terminado de vivo é o SINAL: job encerrado para de atualizar o
+ * `updatedAt`. Vivo com ferramenta rodando está trabalhando; vivo sem
+ * ferramenta acabou de responder e a bola está com o Felipe.
+ */
+export function statusReal(state, idadeMs, emFerramenta) {
+  const bruto = statusOf(state.state)
+  if (bruto !== 'done' || idadeMs >= VIVO_MS) return bruto
+  return emFerramenta ? 'working' : 'waiting'
+}
+
 const truncate = (s, n) => (s && s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s || '')
 
 /**
@@ -160,7 +181,8 @@ export function buildJob(id, state, meta, pins, now) {
   const todos = normalizeList(meta.todos, normalizeTodo)
   const created = Date.parse(state.createdAt) || now
   const updated = Date.parse(state.updatedAt) || created
-  const status = statusOf(state.state)
+  const emFerramenta = (state.fan ?? []).length > 0
+  const status = statusReal(state, now - updated, emFerramenta)
   const pinIndex = pins.indexOf(id)
 
   const last = lastPrompt(state.linkScanPath)
