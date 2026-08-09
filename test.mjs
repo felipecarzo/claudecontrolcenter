@@ -230,6 +230,59 @@ assert.equal(cotacaoPlausivel(0), false)
 assert.equal(cotacaoPlausivel(NaN), false)
 assert.equal(cotacaoPlausivel(543), false) // centavos vindo como inteiro
 
+// --- mercado: recusa faixa que passa no regex mas não faz sentido ---
+const { faixasPlausiveis, extrair, _internals: mi } = await import('./src/mercado.mjs')
+assert.equal(faixasPlausiveis([60, 90, 100, 180, 200, 400]), true)
+assert.equal(faixasPlausiveis([200, 400, 100, 180, 60, 90]), false) // colunas invertidas
+assert.equal(faixasPlausiveis([60, 40, 100, 180, 200, 400]), false) // mínimo acima do máximo
+assert.equal(faixasPlausiveis([1, 2, 3, 4, 5, 6]), false) // valores fora de faixa de hora
+// o padrão tem que casar com o texto real da página, sem as tags
+assert.ok(extrair('Desenvolvedor web/app R$ 60–90/h R$ 100–180/h R$ 200–400/h', mi.FONTES[0]))
+assert.ok(extrair('Desenvolvedor Full Stack: R$ 70-120 / R$ 120-200 / R$ 200-400', mi.FONTES[1]))
+assert.equal(extrair('nada a ver', mi.FONTES[0]), null)
+
+// --- complexidade: ordena do trivial ao difícil, e o difícil não é só longo ---
+const { classificar } = await import('./src/tarefas.mjs')
+const trivial = { ms: 5 * 60e3, tokens: 20e3, arquivos: 0, turnos: 3, reeditados: 0, familia: 'haiku' }
+const medio = { ms: 3 * 36e5, tokens: 900e3, arquivos: 9, turnos: 80, reeditados: 6, familia: 'opus' }
+const extremo = { ms: 9 * 36e5, tokens: 4e6, arquivos: 20, turnos: 300, reeditados: 12, familia: 'opus' }
+// mesma duração do médio, mas resolvido de primeira, num arquivo só
+const longoESimples = { ms: 3 * 36e5, tokens: 200e3, arquivos: 1, turnos: 12, reeditados: 0, familia: 'sonnet' }
+assert.equal(classificar(trivial).nivel, 'junior')
+assert.equal(classificar(medio).nivel, 'pleno')
+assert.equal(classificar(extremo).nivel, 'senior')
+assert.ok(classificar(longoESimples).fracao < classificar(medio).fracao,
+  'duração sozinha não pode valer o mesmo que retrabalho — senão arrastar tarefa viraria aumento')
+assert.ok(classificar(trivial).fracao < classificar(longoESimples).fracao)
+
+// --- conclusão de to-do: carimba na virada, e só na virada ---
+const { marcarConclusoes } = await import('./src/jobs.mjs')
+const antes = { todos: [{ text: 'a', done: true }, { text: 'b', done: false }], feitoEm: { a: 'ontem' } }
+const depois = marcarConclusoes(antes, { todos: [{ text: 'a', done: true }, { text: 'b', done: true }] }, 'hoje')
+assert.equal(depois.a, 'ontem', 'tarefa já concluída não pode ganhar carimbo novo')
+assert.equal(depois.b, 'hoje')
+// tarefa que saiu da lista leva o carimbo junto, senão o mapa cresce pra sempre
+assert.equal(marcarConclusoes(antes, { todos: [{ text: 'b', done: true }] }, 'hoje').a, undefined)
+assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem todos não mexe nos carimbos')
+
+// --- histórico: só grava o que mudou, e não perde job que o CLI apagou ---
+const hist = await import('./src/historico.mjs')
+hist._internals.resetar()
+const fakeJob = {
+  id: 'j1', subject: 's', project: 'p', status: 'done', todos: [{ text: 'a', done: true }],
+  tokens: 10, createdAt: 1, updatedAt: 2,
+}
+assert.equal(hist._internals.marca(hist._internals.guardavel(fakeJob)),
+  hist._internals.marca(hist._internals.guardavel({ ...fakeJob, model: 'outro' })),
+  'trocar campo que não interessa não pode disparar gravação')
+assert.notEqual(hist._internals.marca(hist._internals.guardavel(fakeJob)),
+  hist._internals.marca(hist._internals.guardavel({ ...fakeJob, todos: [{ text: 'a', done: false }] })),
+  'desmarcar tarefa tem que disparar gravação')
+// o job apagado pelo CLI continua contando: é o motivo do arquivo existir
+const so2 = hist.jobsHistoricos([{ id: 'nao-existe-no-historico' }])
+assert.equal(so2.total, so2.vivos.length + so2.mortos.length)
+assert.ok(!so2.mortos.some((j) => j.id === 'nao-existe-no-historico'))
+
 // --- install: edição idempotente, em pasta descartável ---
 const { installInto, removeFrom, findProjects, blockText } = await import('./src/install.mjs')
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-test-'))

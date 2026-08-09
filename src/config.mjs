@@ -14,7 +14,7 @@ export const CONFIG_FILE = path.join(os.homedir(), '.claude', 'control-center.js
 
 const DEFAULTS = {
   enabled: true, disabledProjects: [], taxaHora: 0, taxaPorProjeto: {}, cambio: {},
-  assinaturaMes: 0, graficos: null,
+  assinaturaMes: 0, graficos: null, mercado: {}, sessoes: {},
 }
 
 export function readConfig() {
@@ -106,6 +106,44 @@ export function setGraficos(lista) {
     : null
   writeConfig({ ...cfg, graficos: limpa })
   return limpa
+}
+
+/**
+ * Faixas de mercado por senioridade. `manual: true` congela o que o Felipe
+ * digitou — busca na web não sobrescreve escolha de quem vai cobrar.
+ */
+export function setMercado(m) {
+  const cfg = readConfig()
+  const faixa = (f) => ({ min: Math.max(0, Number(f?.min) || 0), max: Math.max(0, Number(f?.max) || 0) })
+  const mercado = {
+    junior: faixa(m.junior),
+    pleno: faixa(m.pleno),
+    senior: faixa(m.senior),
+    fonte: String(m.fonte || '').slice(0, 60),
+    em: Number(m.em) || Date.now(),
+    manual: !!m.manual,
+  }
+  writeConfig({ ...cfg, mercado })
+  return mercado
+}
+
+/**
+ * Correção de nível e tempo digitado, por sessão. Fica aqui e não no meta.json
+ * porque sessão não pertence a job nenhum — e o job some antes do transcript.
+ * Ajuste vazio some do mapa, para o arquivo não crescer com lixo.
+ */
+export function setSessao(sessao, { nivel, horas }) {
+  const cfg = readConfig()
+  const sessoes = { ...cfg.sessoes }
+  const id = String(sessao || '').slice(0, 64)
+  if (!id) throw new Error('sessão obrigatória')
+  const ajuste = {}
+  if (['junior', 'pleno', 'senior'].includes(nivel)) ajuste.nivel = nivel
+  if (Number(horas) > 0) ajuste.horas = Math.min(Number(horas), 1000)
+  if (Object.keys(ajuste).length) sessoes[id] = ajuste
+  else delete sessoes[id]
+  writeConfig({ ...cfg, sessoes })
+  return sessoes[id] || null
 }
 
 /** Quanto a assinatura custa por mês. Zero desliga o custo real na tela. */

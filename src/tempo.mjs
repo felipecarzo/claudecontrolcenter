@@ -79,6 +79,16 @@ function lerArquivo(arquivo) {
   const marcas = []
   const porDia = {}
   let cwd = null
+  // Sinais de esforço, colhidos no mesmo parse que já roda: as linhas com uso
+  // de token são justamente as respostas do assistente, e é nelas que vêm as
+  // chamadas de ferramenta. Coletar isto não custa uma passada a mais.
+  const tools = {}
+  const edicoes = new Map()
+  let turnos = 0
+  // Primeiro pedido de verdade da sessão, para dar nome a ela na tela.
+  // `promptSource` é o que separa pessoa de injeção de skill e saída de tool —
+  // filtro barato o bastante para rodar em linha crua antes do parse.
+  let titulo = null
 
   for (const linha of texto.split('\n')) {
     if (!linha) continue
@@ -90,12 +100,30 @@ function lerArquivo(arquivo) {
     const t = mt ? Date.parse(mt[1]) : NaN
     if (Number.isFinite(t)) marcas.push(t)
 
+    if (titulo === null && linha.includes('"promptSource"') && !linha.includes('"isMeta":true')) {
+      try {
+        const j = JSON.parse(linha)
+        const c = j.message?.content
+        const texto = typeof c === 'string' ? c : Array.isArray(c) ? c.find((b) => b?.type === 'text')?.text : null
+        if (texto && !j.toolUseResult) titulo = texto.trim().slice(0, 120)
+      } catch { /* linha truncada: a próxima serve */ }
+    }
+
     if (!linha.includes('"usage"')) continue
     let obj
     try { obj = JSON.parse(linha) } catch { continue }
     const u = obj.message?.usage
     const modelo = obj.message?.model
     if (!u || !modelo || modelo === '<synthetic>') continue
+    turnos++
+    for (const bloco of obj.message?.content || []) {
+      if (bloco?.type !== 'tool_use') continue
+      tools[bloco.name] = (tools[bloco.name] || 0) + 1
+      // Só Edit e Write mudam código. Read encosta no arquivo e não é esforço
+      // de mesma natureza; contá-lo inflaria toda tarefa de investigação.
+      const alvo = bloco.name === 'Edit' || bloco.name === 'Write' ? bloco.input?.file_path : null
+      if (alvo) edicoes.set(alvo, (edicoes.get(alvo) || 0) + 1)
+    }
     const dia = new Date(Number.isFinite(t) ? t : Date.now()).toISOString().slice(0, 10)
     const alvo = ((porDia[dia] ||= {})[modelo] ||= usoZero())
     alvo.input += u.input_tokens || 0
@@ -118,11 +146,34 @@ function lerArquivo(arquivo) {
     if (ultimo && t - ultimo[1] <= GRAO_MS) ultimo[1] = t
     else blocos.push([t, t])
   }
-  return { cwd, blocos, porDia }
+  // Guarda o agregado, não a lista de caminhos: a lista cresceria o cache sem
+  // responder nada além do que estes três números já respondem.
+  return {
+    cwd,
+    blocos,
+    porDia,
+    titulo,
+    sinais: {
+      turnos,
+      tools,
+      arquivos: edicoes.size,
+      reeditados: [...edicoes.values()].filter((n) => n > 1).length,
+    },
+  }
 }
 
+// Sobe quando o formato do que se guarda por arquivo muda. Sem isto, um campo
+// novo nasceria vazio para sempre nas sessões já cacheadas — e sessão antiga é
+// justamente a que não vai ser reescrita para forçar releitura.
+const VERSAO_CACHE = 3
+
 const lerCache = () => {
-  try { return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8')) } catch { return { arquivos: {} } }
+  try {
+    const c = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'))
+    return c.versao === VERSAO_CACHE ? c : { versao: VERSAO_CACHE, arquivos: {} }
+  } catch {
+    return { versao: VERSAO_CACHE, arquivos: {} }
+  }
 }
 
 const gravarCache = (cache) => {
@@ -133,7 +184,7 @@ const gravarCache = (cache) => {
 
 /** Varre os transcripts, relendo só o que mudou de tamanho ou data. */
 export function varrer({ force = false } = {}) {
-  const cache = force ? { arquivos: {} } : lerCache()
+  const cache = force ? { versao: VERSAO_CACHE, arquivos: {} } : lerCache()
   const vistos = new Set()
   let lidos = 0
   let bytesLidos = 0

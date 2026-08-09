@@ -7,6 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import { tarefas } from './tarefas.mjs'
+import { arquivar, jobsHistoricos } from './historico.mjs'
 import { garantirMercado } from './mercado.mjs'
 import { readServers, killServer } from './servers.mjs'
 import { readPaineis, ligarPainel, desligarPainel } from './paineis.mjs'
@@ -21,6 +22,9 @@ const GRAFICOS = path.join(HERE, 'graficos.js')
 
 const snapshot = () => {
   const jobs = readJobs()
+  // O CLI apaga job antigo, e com ele a única cópia dos to-dos. Arquivar aqui
+  // é barato: só grava quando algo mudou, e o painel já releu tudo mesmo.
+  arquivar(jobs)
   return { jobs, summary: summarize(jobs), at: Date.now() }
 }
 

@@ -57,8 +57,13 @@ cc set '<json parcial>'
 
 - **Ao entender a tarefa:** \`subject\` (3-6 palavras, o problema — não o comando),
   \`category\`, \`todos\`
-- **Ao fechar um to-do ou travar:** \`todos\` completo, \`status\`, \`blockers\`
-- **Ao entregar:** \`status\`, \`links\`, \`blockers: null\`
+- **Assim que cada to-do fecha:** \`cc done "texto da tarefa"\` — casa sem acento
+  e sem caixa, e não exige reenviar a lista. Travou? \`blockers\`
+- **Ao entregar:** \`status\`, \`links\`, \`blockers: null\` — e **a lista fechada**
+
+**Entregar deixando to-do aberto é erro:** ou fecha o que terminou, ou explica
+em \`blockers\` o que ficou. O tempo por tarefa sai daí; lista em aberto num
+agente entregue é métrica perdida, e o painel denuncia.
 
 Desligado (\`cc off\`), o comando vira no-op silencioso — pode chamar sempre.
 Se \`cc\` não estiver no PATH, use \`node ${CC} set …\`.

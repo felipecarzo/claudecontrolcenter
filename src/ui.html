@@ -393,6 +393,56 @@
   .t-ses .num { text-align: right; font-variant-numeric: tabular-nums; }
   .t-mod { display: flex; gap: 18px; flex-wrap: wrap; color: var(--dim); font-size: 12px; }
 
+  .aviso-todo {
+    border: 1px solid var(--waiting); border-left-width: 3px; border-radius: 4px;
+    background: var(--surface); padding: 10px 12px; margin-bottom: 14px; display: grid; gap: 6px;
+  }
+  .aviso-todo > b { color: var(--waiting); font-weight: 600; }
+  .aviso-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .aviso-linha > .path:first-child { color: var(--fg); cursor: pointer; }
+
+  /* ---------- preço ---------- */
+  .p-niveis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); margin: 4px 0 16px; }
+  .p-nivel {
+    border: 1px solid var(--line); border-left-width: 3px; border-radius: 4px;
+    background: var(--surface); padding: 10px 12px; display: grid; gap: 4px;
+  }
+  .p-nivel b { font: 700 11px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; }
+  .p-nivel .p-hora { font-size: 20px; color: var(--fg); font-variant-numeric: tabular-nums; }
+  .p-nivel .p-hora i { font-size: 12px; color: var(--faint); font-style: normal; }
+  .p-nivel input { width: 90px; }
+  .n-junior { color: var(--done); }  .p-nivel.n-junior { border-left-color: var(--done); }
+  .n-pleno  { color: var(--working); } .p-nivel.n-pleno { border-left-color: var(--working); }
+  .n-senior { color: var(--waiting); } .p-nivel.n-senior { border-left-color: var(--waiting); }
+
+  .p-resumo { display: flex; gap: 32px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+  .p-resumo div { display: grid; gap: 2px; }
+  .p-resumo b { font-size: 22px; color: var(--fg); font-variant-numeric: tabular-nums; }
+  .p-resumo .path { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+
+  .p-linha {
+    display: grid; gap: 12px; align-items: baseline; padding: 8px 4px; cursor: pointer;
+    grid-template-columns: 1fr 130px 62px 62px 66px 66px 78px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .p-linha:hover { background: var(--surface); }
+  .p-linha .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .p-linha .h { color: var(--fg); }
+  .p-linha .cif { color: var(--done); font-weight: 600; }
+  .p-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .p-head { color: var(--faint); cursor: default; }
+  .p-head:hover { background: none; }
+  .p-head span { font: 700 9px/1.3 var(--label); letter-spacing: .14em; text-transform: uppercase; }
+  .p-item.on { background: var(--surface); }
+  .p-detalhe { padding: 6px 8px 14px; display: grid; gap: 12px; }
+  .p-sinais { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
+  .p-sinal { display: grid; gap: 1px; font-size: 12px; }
+  .p-sinal b { color: var(--fg); font-weight: 600; }
+  .p-notas { color: var(--working); letter-spacing: 2px; }
+  .p-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .p-acoes label { display: flex; align-items: center; gap: 6px; }
+  .p-acoes input { width: 80px; }
+
   /* ---------- gráficos ---------- */
   .g-grade { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); }
   .g-card { border: 1px solid var(--line); border-radius: 4px; padding: 12px 14px 14px; background: var(--surface); }
@@ -696,7 +746,8 @@ const age = (ms) => {
   const h = Math.floor(m / 60)
   return h < 24 ? h + 'h' + String(m % 60).padStart(2, '0') : Math.floor(h / 24) + 'd' + (h % 24) + 'h'
 }
-const tok = (n) => !n ? '—' : n < 1e3 ? String(n) : n < 1e6 ? (n / 1e3).toFixed(n < 1e4 ? 1 : 0) + 'k' : (n / 1e6).toFixed(1) + 'M'
+const tok = (n) => !n ? '—' : n < 1e3 ? String(n) : n < 1e6 ? (n / 1e3).toFixed(n < 1e4 ? 1 : 0) + 'k'
+  : n < 1e9 ? (n / 1e6).toFixed(1) + 'M' : (n / 1e9).toFixed(1) + 'B'
 const byId = (id) => DATA.jobs.find((j) => j.id === id)
 
 function filtered() {
@@ -860,6 +911,19 @@ function viewTodos(jobs) {
   const semTodo = jobs.filter((j) => !j.todos.length)
   if (!jobs.length) return '<div class="empty">nenhum agente no filtro</div>'
 
+  // Entregou e não marcou nada: a lista mente e a métrica de tempo por tarefa
+  // sai vazia. Mostrar aqui, com o conserto ao lado, é o que faz o dado existir.
+  const sujos = jobs.filter((j) => j.entregueEmAberto)
+  const alerta = sujos.length ? `<div class="aviso-todo">
+    <b>${sujos.length} ${sujos.length > 1 ? 'agentes entregaram' : 'agente entregou'} sem marcar nada.</b>
+    <span class="path">Enquanto isso, a aba de preço não sabe quanto levou cada tarefa.</span>
+    ${sujos.map((j) => `<div class="aviso-linha">
+      <span class="path" data-job="${j.id}" tabindex="0" title="abrir o agente">${esc(j.subject)}</span>
+      <span class="path">${j.todos.length} em aberto</span>
+      <button class="btn" data-fechar-todas="${j.id}">marcar todas como feitas</button>
+    </div>`).join('')}
+  </div>` : ''
+
   const item = (j, t, i) => `
     <div class="item${t.done ? ' done' : ''}">
       <input type="checkbox" data-todo="${j.id}" data-i="${i}" ${t.done ? 'checked' : ''}
@@ -893,7 +957,7 @@ function viewTodos(jobs) {
     </section>`
   }
 
-  return `<div class="lista">
+  return `${alerta}<div class="lista">
     ${comTodo.length ? comTodo.map(grupo).join('') : '<div class="path">nenhum agente registrou tarefa ainda</div>'}
     ${semTodo.length ? `
       <details class="lvl outros"${tudoAberto ? ' open' : ''}>
@@ -1285,6 +1349,151 @@ async function gravarGraficos(lista) {
   GRAFICOS = lista
   render()
   await fetch('/api/graficos', { method: 'POST', body: JSON.stringify({ graficos: lista }) })
+}
+
+/* ========================= aba: preço ========================
+   Quanto vale cada coisa resolvida. O tempo vem do transcript, o nível sai de
+   sinais de esforço e o valor/hora é buscado na web — e nada disso vira preço
+   sem o Felipe poder discordar de cada linha. */
+
+let PRECO = null
+let precoUnidade = localStorage.getItem('cc-preco-unidade') || 'sessao'
+// ?tarefa=<chave> abre uma linha já na carga, para a captura conseguir mostrar
+// os sinais — é o mesmo motivo do ?open= na aba de agentes.
+let precoAberta = params.get('tarefa') || null
+
+const NIVEL_ROTULO = { junior: 'júnior', pleno: 'pleno', senior: 'sênior' }
+
+async function carregarPreco(force) {
+  if (PRECO && !force) return
+  const q = new URLSearchParams({ corte: tempoParams.corte, unidade: precoUnidade })
+  if (force === 'mercado') q.set('mercado', '1')
+  PRECO = null
+  render()
+  try {
+    PRECO = await (await fetch(`/api/tarefas?${q}`)).json()
+  } catch (e) {
+    PRECO = { error: String(e.message || e) }
+  }
+  render()
+}
+
+/** Grava a correção de uma linha e recalcula. */
+async function ajustarTarefa(item, patch) {
+  const corpo = item.sessao
+    ? { sessao: item.sessao, nivel: item.nivel, horas: item.digitadoMs ? item.digitadoMs / 36e5 : 0, ...patch }
+    : { job: item.job, tarefa: item.tarefa, nivel: item.nivel, horas: item.digitadoMs ? item.digitadoMs / 36e5 : 0, ...patch }
+  await fetch('/api/tarefa', { method: 'POST', body: JSON.stringify(corpo) })
+  carregarPreco(true)
+}
+
+const chaveDe = (t) => t.sessao || `${t.job}|${t.tarefa}`
+
+function viewPreco() {
+  if (!PRECO) return '<div class="empty">calculando… a primeira vez varre os transcritos</div>'
+  if (PRECO.error) return `<div class="empty">não deu para calcular: ${esc(PRECO.error)}</div>`
+
+  const m = PRECO.mercado
+  const idade = m.em ? Math.round((Date.now() - m.em) / 864e5) : null
+  const ctl = `<div class="t-ctl">
+    <label>unidade
+      <select data-preco="unidade">
+        <option value="sessao"${precoUnidade === 'sessao' ? ' selected' : ''}>sessão de trabalho</option>
+        <option value="todo"${precoUnidade === 'todo' ? ' selected' : ''}>tarefa concluída</option>
+      </select>
+    </label>
+    <span class="path">corte de ${esc(String(tempoParams.corte))}min, da aba tempo</span>
+    <span class="grow"></span>
+    <span class="path">mercado: ${esc(m.fonte || '—')}${
+      idade == null ? '' : idade === 0 ? ', hoje' : `, há ${idade}d`}</span>
+    <button class="btn" data-preco-buscar>buscar de novo</button>
+  </div>`
+
+  const faixas = `<div class="p-niveis">
+    ${['junior', 'pleno', 'senior'].map((n) => {
+      const p = PRECO.porNivel[n]
+      return `<div class="p-nivel n-${n}">
+        <b>${NIVEL_ROTULO[n]}</b>
+        <span class="p-hora">${brl(p.valorHora)}<i>/h</i></span>
+        <input type="number" min="0" step="5" class="t-taxa" data-mercado="${n}"
+          value="${p.valorHora}" title="digitar congela o valor e a busca para de mexer">
+        <span class="path">faixa ${brl(p.faixa?.min || 0)}–${brl(p.faixa?.max || 0)}</span>
+        <span class="path">${p.quantas} ${precoUnidade === 'sessao' ? 'sessões' : 'tarefas'}
+          · média ${horas(p.mediaMs)} · ${brl(p.total)}</span>
+      </div>`
+    }).join('')}
+  </div>`
+
+  const r = PRECO.resumo
+  const resumo = `<div class="p-resumo">
+    <div><span class="path">${precoUnidade === 'sessao' ? 'sessões' : 'tarefas'}</span><b>${r.quantas}</b></div>
+    <div><span class="path">média por problema</span><b>${horas(r.mediaMs)}</b></div>
+    <div><span class="path">total de horas</span><b>${horas(r.totalMs)}</b></div>
+    <div><span class="path">a cobrar</span><b class="cif">${brl(r.total)}</b></div>
+  </div>`
+
+  const aviso = `<p class="t-aviso">
+    O nível sai de sinais de esforço no transcript, não de entendimento do problema —
+    <b>é palpite, e o palpite é seu para corrigir</b>: clique na linha e escolha.
+    ${precoUnidade === 'sessao'
+      ? 'Uma sessão pode ter resolvido mais de uma coisa, então a média por sessão é maior que a média por problema.'
+      : `O tempo é rateado por igual entre as tarefas fechadas na mesma sessão${
+          r.rateadas ? ` (${r.rateadas} de ${r.quantas})` : ''}, porque não há marca de início e fim por tarefa.`}
+    Digitar seu tempo faz a média com o medido, e é essa média que vira preço.
+  </p>`
+
+  if (!PRECO.tarefas.length) {
+    return ctl + faixas + aviso + `<div class="empty">
+      ${precoUnidade === 'todo'
+        ? 'nenhuma tarefa marcada como concluída nos agentes vivos — marque na aba to-dos, ou veja por sessão'
+        : 'nenhuma sessão com tempo no período'}</div>`
+  }
+
+  const linha = (t) => {
+    const k = chaveDe(t)
+    const aberta = precoAberta === k
+    return `<div class="p-item${aberta ? ' on' : ''}">
+      <div class="p-linha" data-preco-abrir="${esc(k)}" tabindex="0">
+        <span class="p-nome" title="${esc(t.tarefa)}">${esc(t.tarefa)}</span>
+        <span class="v path">${esc(t.projeto || '—')}</span>
+        <span class="v n-${t.nivel}">${NIVEL_ROTULO[t.nivel]}${t.corrigido ? ' ✓' : ''}</span>
+        <span class="v">${horas(t.medidoMs)}</span>
+        <span class="v path">${t.digitadoMs == null ? '—' : horas(t.digitadoMs)}</span>
+        <span class="v h">${horas(t.cobradoMs)}</span>
+        <span class="v cif">${brl(t.preco)}</span>
+      </div>
+      ${aberta ? `<div class="p-detalhe">
+        <div class="p-sinais">
+          ${t.sinais.map((s) => `<div class="p-sinal">
+            <span class="path">${esc(s.rotulo)}</span>
+            <b>${esc(s.texto)}</b>
+            <span class="p-notas">${'▪'.repeat(s.nota) || '·'}</span>
+          </div>`).join('')}
+        </div>
+        <div class="p-acoes">
+          <span class="path">sugerido: ${NIVEL_ROTULO[t.nivelAuto]}</span>
+          ${['junior', 'pleno', 'senior'].map((n) =>
+            `<button class="btn${t.nivel === n ? ' on' : ''}" data-preco-nivel="${esc(k)}" data-n="${n}">${NIVEL_ROTULO[n]}</button>`).join('')}
+          <label class="path">seu tempo, em horas
+            <input type="number" min="0" step="0.5" class="t-taxa" data-preco-horas="${esc(k)}"
+              value="${t.digitadoMs == null ? '' : (t.digitadoMs / 36e5).toFixed(1)}" placeholder="${(t.medidoMs / 36e5).toFixed(1)}">
+          </label>
+          <span class="grow"></span>
+          <span class="path">API ${usd(t.custoApi)} · ${tok(Math.round(t.tokens))} tokens${
+            t.rateada ? ' · rateado' : ''}</span>
+        </div>
+      </div>` : ''}
+    </div>`
+  }
+
+  return ctl + faixas + resumo + aviso
+    + `<div class="p-linha p-head">
+        <span>o que foi resolvido</span><span class="v">projeto</span><span class="v">nível</span>
+        <span class="v">medido</span><span class="v">seu tempo</span><span class="v">cobrado</span><span class="v">preço</span>
+      </div>`
+    + PRECO.tarefas.slice(0, 120).map(linha).join('')
+    + (PRECO.tarefas.length > 120
+      ? `<p class="path" style="margin:10px 0 0">mostrando as 120 mais caras de ${PRECO.tarefas.length}</p>` : '')
 }
 
 /* ====================== aba: servidores ====================== */
@@ -1733,6 +1942,29 @@ $('#split').addEventListener('pointerdown', (e) => {
 document.addEventListener('click', async (e) => {
   const t = e.target
 
+  const fecharTodas = t.closest('[data-fechar-todas]')
+  if (fecharTodas) {
+    const job = byId(fecharTodas.dataset.fecharTodas)
+    // Marca tudo de uma vez porque o agente já disse que entregou; corrigir
+    // item a item é para quando ele entregou parte, e aí a lista está na tela.
+    return gravarTodos(job, job.todos.map((x) => ({ ...x, done: true })))
+  }
+
+  const abrirPreco = t.closest('[data-preco-abrir]')
+  if (abrirPreco && !t.closest('button, input')) {
+    const k = abrirPreco.dataset.precoAbrir
+    precoAberta = precoAberta === k ? null : k
+    return render()
+  }
+  const nivelBotao = t.closest('[data-preco-nivel]')
+  if (nivelBotao) {
+    const item = PRECO.tarefas.find((x) => chaveDe(x) === nivelBotao.dataset.precoNivel)
+    // Clicar no nível que já está ativo desfaz a correção e devolve o palpite.
+    const n = nivelBotao.dataset.n
+    return ajustarTarefa(item, { nivel: item.nivel === n && item.corrigido ? '' : n })
+  }
+  if (t.closest('[data-preco-buscar]')) return carregarPreco('mercado')
+
   if (t.closest('[data-g-novo]')) {
     rascunho = { forma: 'barras', dimensao: 'projeto', serie: 'nenhuma', medida: 'horas', nome: '' }
     return render()
@@ -1989,6 +2221,35 @@ document.addEventListener('change', (e) => {
 
   const assin = e.target.closest('[data-assinatura]')
   if (assin) return salvarNumero('/api/assinatura', assin.value)
+
+  const un = e.target.closest('[data-preco="unidade"]')
+  if (un) {
+    precoUnidade = un.value
+    localStorage.setItem('cc-preco-unidade', precoUnidade)
+    precoAberta = null
+    return carregarPreco(true)
+  }
+  const horasCampo = e.target.closest('[data-preco-horas]')
+  if (horasCampo) {
+    const item = PRECO.tarefas.find((x) => chaveDe(x) === horasCampo.dataset.precoHoras)
+    return ajustarTarefa(item, { horas: Number(horasCampo.value) || 0 })
+  }
+  // Digitar um valor/hora congela os três: buscar de novo sobrescreveria o que
+  // o Felipe escolheu, então a marca de manual vale para a tabela inteira.
+  const mercadoCampo = e.target.closest('[data-mercado]')
+  if (mercadoCampo) {
+    const v = Math.max(0, Number(mercadoCampo.value) || 0)
+    const faixa = (n) => (n === mercadoCampo.dataset.mercado
+      ? { min: v, max: v }
+      : { min: PRECO.valorHora[n], max: PRECO.valorHora[n] })
+    return fetch('/api/mercado', {
+      method: 'POST',
+      body: JSON.stringify({
+        junior: faixa('junior'), pleno: faixa('pleno'), senior: faixa('senior'),
+        fonte: 'você digitou',
+      }),
+    }).then(() => carregarPreco(true))
+  }
 
   const ctl = e.target.closest('[data-tempo]')
   if (ctl) {

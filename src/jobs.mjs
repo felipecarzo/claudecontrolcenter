@@ -208,6 +208,16 @@ export function buildJob(id, state, meta, pins, now) {
     stale: status === 'working' && now - updated > STALE_MS,
     metaUpdatedAt: Date.parse(meta.updatedAt) || null,
     sessionId: state.sessionId || null,
+    // Precificação: nível corrigido à mão e tempo estimado pelo Felipe, ambos
+    // por texto da tarefa. Chave é o texto e não o índice porque a lista é
+    // reescrita inteira pelo agente, e o índice de hoje é outra tarefa amanhã.
+    niveis: meta.niveis && typeof meta.niveis === 'object' ? meta.niveis : {},
+    estimativas: meta.estimativas && typeof meta.estimativas === 'object' ? meta.estimativas : {},
+    feitoEm: meta.feitoEm && typeof meta.feitoEm === 'object' ? meta.feitoEm : {},
+    // Entregou dizendo pronto e deixou tarefa aberta: ou esqueceu de marcar, ou
+    // a lista está errada. Nos dois casos a métrica sai suja, e é isso que a
+    // tela precisa mostrar em vez de somar como se estivesse tudo certo.
+    entregueEmAberto: status === 'done' && todos.length > 0 && todos.every((t) => !t.done),
   }
 }
 
@@ -246,10 +256,81 @@ export function currentJobId() {
 }
 
 /** Merge raso do que o agente mandou por cima do meta.json existente. */
+/**
+ * Registra a hora em que cada tarefa virou concluída, num mapa por texto.
+ *
+ * Fora da lista de to-dos de propósito: o agente reescreve `todos` inteiro a
+ * cada `cc set`, então um campo dentro do item seria apagado na chamada
+ * seguinte. Com isto, a precificação deixa de ratear o tempo por igual — mas
+ * só para o que for concluído daqui em diante; o passado não tem essa marca.
+ */
+export function marcarConclusoes(current, patch, agora = new Date().toISOString()) {
+  if (!Array.isArray(patch.todos)) return current.feitoEm || null
+  const antes = new Map()
+  for (const t of current.todos || []) {
+    if (t && typeof t === 'object' && t.text) antes.set(t.text, !!t.done)
+  }
+  const feitoEm = { ...(current.feitoEm || {}) }
+  for (const t of patch.todos) {
+    const texto = t && typeof t === 'object' ? t.text : t
+    if (!texto || !(t && typeof t === 'object' && t.done)) continue
+    if (antes.get(texto) === true) continue // já estava feita: mantém o carimbo
+    feitoEm[texto] = agora
+  }
+  // Tarefa que sumiu da lista leva o carimbo junto, senão o mapa cresce sem fim
+  const vivos = new Set(patch.todos.map((t) => (t && typeof t === 'object' ? t.text : t)))
+  for (const k of Object.keys(feitoEm)) if (!vivos.has(k)) delete feitoEm[k]
+  return Object.keys(feitoEm).length ? feitoEm : null
+}
+
 export function mergeMeta(current, patch) {
+  const feitoEm = marcarConclusoes(current, patch)
   const next = { ...current, ...patch }
+  if (feitoEm) next.feitoEm = feitoEm
   for (const k of Object.keys(next)) if (next[k] === null) delete next[k]
   return next
+}
+
+/** O `status` que o agente escreveu — não o `state` do CLI, que é outra coisa. */
+export function metaStatus(id) {
+  return (readJson(path.join(JOBS_DIR, id, 'meta.json'), {}) || {}).status || null
+}
+
+/**
+ * Fecha um to-do sem reenviar a lista inteira.
+ *
+ * Existe porque `todos` substitui, e reenviar tudo a cada item fechado é o
+ * atrito que fazia o agente adiar — e adiar virou nunca: em 2026-08-08, cinco
+ * jobs entregues tinham 0 de 34 tarefas marcadas.
+ *
+ * Casa por texto, sem exigir igualdade exata: o agente costuma abreviar ou
+ * corrigir acento na hora de fechar. Ambiguidade não é resolvida no chute —
+ * dois candidatos devolvem erro pedindo mais texto.
+ */
+export function marcarTodo(id, texto, done = true) {
+  const alvo = String(texto || '').trim().toLowerCase()
+  if (!alvo) throw new Error('diga qual tarefa fechar')
+  const file = path.join(JOBS_DIR, id, 'meta.json')
+  const meta = readJson(file, {}) || {}
+  const lista = Array.isArray(meta.todos) ? meta.todos.map(normalizeTodo).filter(Boolean) : []
+  if (!lista.length) throw new Error('este agente não tem to-dos no meta.json')
+
+  // Sem acento e sem caixa: "icone proprio" tem que casar com "ícone próprio"
+  const norm = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const a = norm(alvo)
+  const exatos = lista.filter((t) => norm(t.text) === a)
+  const parciais = exatos.length ? exatos : lista.filter((t) => norm(t.text).includes(a) || a.includes(norm(t.text)))
+  if (!parciais.length) {
+    throw new Error(`nenhum to-do parecido com "${texto}". Abertos: ${
+      lista.filter((t) => !t.done).map((t) => `"${t.text}"`).join(', ') || 'nenhum'}`)
+  }
+  if (parciais.length > 1) {
+    throw new Error(`"${texto}" casa com ${parciais.length}: ${parciais.map((t) => `"${t.text}"`).join(', ')}`)
+  }
+
+  const escolhido = parciais[0]
+  const todos = lista.map((t) => (t.text === escolhido.text ? { ...t, done } : t))
+  return { meta: writeMeta(id, { todos }), tarefa: escolhido.text, done }
 }
 
 export function writeMeta(id, patch) {

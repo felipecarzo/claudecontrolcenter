@@ -6,12 +6,14 @@
 //   node cc.mjs daemon install     roda sozinho no logon + atalho no Desktop
 //   node cc.mjs daemon status|restart|uninstall
 //   node cc.mjs set '<json>'       agente grava seu meta.json
+//   node cc.mjs done "tarefa"      fecha um to-do sem reenviar a lista
+//   node cc.mjs check              usado pelo hook: avisa to-do aberto na entrega
 //   node cc.mjs on|off [--project X]   liga/desliga o reporte
 //   node cc.mjs json               despeja o estado atual e sai
 //
 //   flags: --no-web  --web-only  --port <n>
 
-import { readJobs, summarize, writeMeta, currentJobId } from './src/jobs.mjs'
+import { readJobs, summarize, writeMeta, marcarTodo, metaStatus, currentJobId } from './src/jobs.mjs'
 import { startTui } from './src/tui.mjs'
 import { startWeb } from './src/web.mjs'
 import * as daemon from './src/daemon.mjs'
@@ -54,6 +56,45 @@ switch (cmd) {
     }
     console.log(JSON.stringify(writeMeta(id, patch), null, 2))
     break
+  }
+
+  // Fechar tarefa sem reenviar a lista: era esse atrito que fazia o agente
+  // adiar a marcação, e adiar virou nunca.
+  case 'done':
+  case 'undone': {
+    if (!isEnabled()) process.exit(0)
+    const id = val('--job') || currentJobId()
+    if (!id) die('sem job: rode dentro de um job do Claude Code ou passe --job <id>')
+    if (!arg) die(`uso: node cc.mjs ${cmd} "texto da tarefa"`)
+    try {
+      const r = marcarTodo(id, arg, cmd === 'done')
+      console.log(`${r.done ? '✓' : '○'} ${r.tarefa}`)
+    } catch (e) {
+      die(e.message)
+    }
+    break
+  }
+
+  // Chamado pelo hook Stop: avisa se o agente vai encerrar deixando a métrica
+  // suja. Nunca falha o processo — hook que quebra vira hook desligado.
+  case 'check': {
+    const id = val('--job') || currentJobId()
+    if (!id || !isEnabled()) process.exit(0)
+    const job = readJobs().find((j) => j.id === id)
+    if (!job || !job.todos.length) process.exit(0)
+    const abertos = job.todos.filter((t) => !t.done)
+    if (!abertos.length) process.exit(0)
+    // O `state` do CLI vira "done" ao fim de CADA turno, então usá-lo aqui
+    // faria o hook cobrar a cada resposta, inclusive no meio do trabalho. O
+    // gatilho é o que o agente ESCREVEU no próprio status ao dar por encerrado.
+    if (!/entreg|pronto|conclu|finaliz/i.test(metaStatus(id) || '')) process.exit(0)
+    console.error(
+      `${abertos.length} to-do${abertos.length > 1 ? 's' : ''} em aberto com o trabalho dado por pronto:\n`
+      + abertos.map((t) => `  ○ ${t.text}`).join('\n')
+      + `\n\nFeche o que terminou com  cc done "texto da tarefa"  — ou explique em blockers`
+      + ' o que ficou. Métrica de tempo por tarefa depende disso.',
+    )
+    process.exit(2)
   }
 
   case 'on':

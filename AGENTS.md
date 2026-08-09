@@ -24,18 +24,27 @@ não um log.
 node .../cc.mjs set '{"subject":"portais no map editor","category":"feature","route":"B86-portais","todos":[{"text":"icone proprio","done":false},{"text":"posicionavel no editor","done":false},{"text":"round-trip do save","done":false}]}'
 ```
 
-**2. Quando um to-do fecha ou aparece bloqueio:**
+**2. Assim que cada to-do fecha** — um comando, sem reenviar a lista:
 
 ```bash
-node .../cc.mjs set '{"status":"drag-and-drop funcionando, falta o save","todos":[{"text":"icone proprio","done":true},{"text":"posicionavel no editor","done":true},{"text":"round-trip do save","done":false}]}'
+node .../cc.mjs done "icone proprio"
 node .../cc.mjs set '{"blockers":["Supabase fora do ar, leads nao gravam"]}'
 ```
 
-**3. Ao entregar** — links que o Felipe vai querer clicar:
+`done` casa por texto, sem acento e sem caixa: `"icone proprio"` fecha
+`"ícone próprio"`. Reabrir é `undone "texto"`.
+
+**3. Ao entregar** — status, links **e a lista fechada**:
 
 ```bash
+node .../cc.mjs done "round-trip do save"
 node .../cc.mjs set '{"status":"entregue","blockers":null,"links":[{"label":"painel","url":"http://localhost:8099"}]}'
 ```
+
+> **Entregar deixando to-do aberto é erro.** Ou você fecha o que terminou, ou
+> explica em `blockers` o que ficou pra trás. A aba de preço mede tempo por
+> tarefa concluída: lista em aberto num agente entregue não é "cauteloso", é
+> métrica perdida — e o painel denuncia na aba de to-dos.
 
 ## Campos
 

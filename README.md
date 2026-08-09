@@ -55,6 +55,9 @@ cc daemon restart        # depois de mexer no código
 cc daemon uninstall      # parar de subir no login
 cc on | off              # liga/desliga o reporte dos agentes
 cc off --project X       # desliga só num projeto
+cc done "tarefa"         # fecha um to-do sem reenviar a lista inteira
+cc undone "tarefa"       # reabre
+cc check                 # avisa se vai encerrar com to-do aberto (usado pelo hook)
 cc install [dir]         # põe o protocolo no CLAUDE.md de um projeto
 cc sync [--dry-run]      # o mesmo, em todos os projetos
 cc json                  # despeja o estado atual e sai

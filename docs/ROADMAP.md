@@ -61,6 +61,23 @@ Escritos aqui porque são escolha, não descuido:
 - A assinatura é um valor só, sem histórico. Mudança de plano recalcula meses
   antigos pelo valor novo. Mesma decisão da taxa horária: data de vigência só
   se paga quando houver uma mudança real.
+- O rateio do tempo entre tarefas da mesma sessão continua por igual, mesmo com
+  o `feitoEm` carimbado. Usar os carimbos para dividir por intervalo só vale
+  quando houver sessões inteiras marcadas item a item — hoje há uma. Revisar
+  quando o hook tiver uma semana de uso.
+- O histórico guarda o job, não o transcript. Se o Claude Code apagar o `.jsonl`
+  da sessão, as horas daquele job somem mesmo com o job arquivado. Copiar
+  transcript seria dobrar 800 MB para ganhar pouco.
+- O nível de senioridade é palpite a partir de esforço, não de entendimento do
+  problema: uma tarefa difícil resolvida em duas linhas parece fácil. Por isso
+  a sugestão é corrigível e a correção vence para sempre. Melhorar de verdade
+  exigiria classificar o conteúdo do trabalho, não seus sinais.
+- O valor/hora vem de duas páginas de blog raspadas. É referência de freelance
+  no Brasil, não pesquisa salarial: pode envelhecer sem aviso, e a tela mostra
+  a fonte e a idade justamente por isso.
+- Por sessão, a média inclui sessões de recado ("rode o server por favor") ao
+  lado de sessões de trabalho longo. Filtrar as curtas mudaria a média para
+  cima; deixar é mais honesto, já que recado também consome tempo.
 - Os gráficos não têm filtro próprio. Período e corte de ociosidade vêm da aba
   de tempo, e valem para todos os cartões de uma vez. Filtro por cartão seria
   outro estado por gráfico, para uma pergunta que ainda não apareceu.

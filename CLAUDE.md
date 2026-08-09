@@ -24,7 +24,10 @@ src/
   config.mjs     interruptor global e por projeto
   notes.mjs      bloco de notas da máquina, em ~/.claude
   tempo.mjs      horas por projeto e custo de token, lidos dos transcritos
-  cambio.mjs     cotação do dólar — a única chamada de rede do painel
+  cambio.mjs     cotação do dólar — uma das duas chamadas de rede do painel
+  mercado.mjs    valor/hora de dev por senioridade, raspado de duas fontes
+  tarefas.mjs    preço por problema resolvido: esforço, nível e valor
+  historico.mjs  o que sobra depois que o CLI apaga o job
   graficos.js    motor de gráficos: índice do que cruza com o quê, e o SVG
                  (servido em /graficos.js; não é módulo, roda no navegador)
   install.mjs    bloco do protocolo no CLAUDE.md dos projetos
@@ -50,6 +53,8 @@ cc                    # tabela no terminal + web, imprime o link
 cc --web-only         # só o servidor
 cc json               # despeja o estado e sai
 cc set '<json>'       # agente grava seu meta.json
+cc done "tarefa"      # fecha um to-do sem reenviar a lista
+cc check              # o hook Stop chama: avisa to-do aberto na entrega
 cc daemon restart     # depois de mexer no código
 npm test              # gate de qualidade — não existe outro
 npm run test:ui <job> # opcional: a aba de to-dos de ponta a ponta, com Chrome
@@ -120,12 +125,18 @@ errada por definição.
 - **O atalho do Desktop não é uma URL.** É um `.lnk` que chama
   `abrir-control-center.vbs` → `cc.mjs open`, que sobe o painel se estiver fora
   do ar. Um `.url` simples só funciona se o processo já estiver vivo.
-- **`cc daemon restart` reinicia o pacote instalado, não este repositório.** O
-  autostart aponta pro `cc.mjs` de `AppData/Roaming/npm/node_modules/…`, então
-  mexer em `src/` e reiniciar continua servindo código velho — e você fica
-  procurando bug no lugar errado. Para validar o repo, suba numa porta própria:
-  `node cc.mjs --web-only --port 8123`. Só reinstalar o pacote global leva a
-  mudança pro painel de todo dia.
+- **O pacote global é um LINK para este repositório, não uma cópia.** Medido em
+  2026-08-08: `AppData/Roaming/npm/node_modules/claude-control-center` é um
+  symlink para `D:\…\proj_controlcenter` — é o que `npm i -g <caminho-local>`
+  faz. Três consequências que já enganaram:
+  a) mexer em `src/` e rodar `cc daemon restart` **serve o código novo**, sem
+     reinstalar (a versão antiga desta armadilha dizia o contrário, escrita na
+     época em que se instalava de `github:…`, que aí sim é cópia);
+  b) o painel de todo dia mostra o que está na ÁRVORE, inclusive trabalho de
+     outra sessão ainda sem commit — separar o commit não separa o que roda;
+  c) código quebrado no repo quebra o `cc` de todos os agentes na hora, porque
+     é esse arquivo que eles chamam. Rode `npm test` antes de sair.
+  Para validar isolado, suba numa porta própria: `node cc.mjs --web-only --port 8123`.
 - **Breakpoint do painel é `@container`, não `@media`.** Com a coluna de notas
   aberta a janela continua larga enquanto o painel encolhe; media query nunca
   dispararia e a tabela quebraria em vez de compactar. `#painel` declara
@@ -178,6 +189,45 @@ errada por definição.
   Cotação fora da faixa 0,5–100 é rejeitada: se a API inverter o par e mandar
   0,18, o custo de R$ 34 mil viraria R$ 1,2 mil sem nenhum erro aparecer.
   Cotação digitada marca `manual: true` e a busca automática para de mexer.
+- **Os agentes não marcavam to-do, e a culpa era do protocolo.** Medido em
+  2026-08-08: cinco jobs com `state: done` e **0 de 34** tarefas marcadas. O
+  passo 3 do AGENTS.md pedia `status`, `links` e `blockers` na entrega — e não
+  pedia `todos`. Quem seguia à risca entregava com tudo aberto. Três consertos,
+  nessa ordem de importância: o texto (causa), `cc done "texto"` (o atrito de
+  reenviar a lista inteira era o que fazia adiar) e o hook Stop (consequência).
+- **O `state` do CLI vira `done` ao fim de CADA turno.** Usá-lo como gatilho do
+  aviso faria o hook cobrar a cada resposta, inclusive no meio do trabalho. O
+  gatilho certo é o `status` que o AGENTE escreveu no meta.json — `cc check`
+  usa `metaStatus()` por isso, e não `job.status`.
+- **`~/.claude/jobs` é efêmero.** O CLI apaga job antigo: em 2026-08-08 restavam
+  9 de semanas de trabalho. `historico.mjs` copia o que foi lido para arquivo
+  próprio a cada varredura, só quando muda. Sem ele, a aba de preço só enxerga
+  a última semana — e continua valendo que nada é escrito dentro de `jobs/`.
+- **Complexidade não é duração.** O peso da duração na classificação é o menor
+  de todos, de propósito: tempo longo é tarefa GRANDE, e quem paga sênior paga
+  por dificuldade — senão arrastar o trabalho viraria aumento. O que pesa mais
+  é `reeditados`, voltar no mesmo arquivo, que é o sinal de que a primeira
+  tentativa não resolveu. Há teste guardando isso (`longoESimples < medio`).
+- **Os cortes de nível saíram dos percentis das 125 sessões reais**, não de
+  terços iguais. A distribuição é bimodal (muita sessão curta de recado, muita
+  longa de trabalho) e terços jogavam metade em sênior. Recalibrar exige olhar
+  a distribuição de novo, não mexer no número até "parecer certo".
+- **A aba de preço tem duas unidades porque as duas mentem diferente.** `todo`
+  é a unidade certa mas depende de o agente marcar concluído — hoje são 0 de
+  33 — e o job some quando o CLI limpa. `sessao` tem 125 amostras e tempo
+  exato, mas uma sessão resolve mais de uma coisa, então a média por sessão é
+  sempre maior que a média por problema. Nenhuma das duas é "a verdade".
+- **`feitoEm` fica fora da lista de to-dos.** O agente reescreve `todos`
+  inteiro a cada `cc set`, então carimbo dentro do item seria apagado na
+  chamada seguinte. O mapa por texto sobrevive — e é o que vai acabar com o
+  rateio por igual, mas só para o que for concluído daqui em diante.
+- **`VERSAO_CACHE` em `tempo.mjs` existe para campo novo não nascer vazio.**
+  Sessão antiga não vai ser reescrita para forçar releitura, então sem o número
+  de versão um campo novo ficaria mudo para sempre justamente no histórico.
+- **Raspar preço de mercado quebra, e a queda é em três camadas.** Duas fontes
+  independentes, depois o último valor buscado, depois a tabela escrita no
+  código. `faixasPlausiveis` recusa o que passa no regex mas não faz sentido —
+  colunas invertidas dariam sênior mais barato que júnior, sem erro na tela.
 - **Sobra usa a assinatura rateada, nunca o preço de API.** A primeira versão
   fez receita menos custo de API e deu "sobra de −R$ 19.504" no inovallbond —
   o Felipe paga assinatura, não tabela de API. O custo real é
