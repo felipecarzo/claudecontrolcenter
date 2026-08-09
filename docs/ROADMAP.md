@@ -49,11 +49,24 @@ de propósito — a do terminal é consultada de relance, a web com calma.
   global já cobre todos, e repetir a instrução em 14 arquivos contraria "um fato
   mora em um lugar só". A ferramenta existe se mudar de ideia.
 
-### CC-16 — Mídia só no Windows
-`midia.ps1` usa SMTC e WASAPI, que são APIs do Windows. No macOS o caminho
-seria `MediaRemote`/AppleScript; no Linux, MPRIS via D-Bus. Nenhum dos dois é
-tradução direta — são três implementações, não uma com três caminhos. Fora do
-Windows a barra do player simplesmente não aparece.
+### CC-17 — O "último pedido" no cartão nem sempre é o último
+Reclamação do Felipe em 09/08: o cartão mostra um texto que ele não reconhece
+como o que pediu por último. A linha mistura duas fontes — `lastPrompt`, lido
+do transcript, e `meta.status`, escrito pelo agente — e a precedência escolhe
+uma sem dizer qual está mostrando. Decidir: ou rotular a origem, ou mostrar só
+o que o agente declarou.
+
+### CC-18 — Projeto sem ROADMAP.md fica sem mapa
+O mapa lateral lê `docs/ROADMAP.md`. Dos projetos com agente ativo,
+`renanMarchon` não tem — clicar no projeto abre um painel que só explica a
+ausência. Ou se aceita isso, ou o painel passa a oferecer criar o arquivo a
+partir de um modelo.
+
+### CC-19 — Os agentes ainda não declaram `frente`
+O campo entrou no protocolo em 09/08 e vale para todos os projetos pelo bloco
+global, mas só passa a aparecer conforme cada agente novo reporta. Conferir em
+alguns dias: se a maioria dos cartões continuar sem frente, o problema é o
+texto do protocolo — foi exatamente o que aconteceu com os to-dos.
 
 ## Limites aceitos hoje
 
@@ -113,10 +126,30 @@ Escritos aqui porque são escolha, não descuido:
   precisar mexer no código.
 - `todos` substitui a lista inteira em vez de fazer merge item a item. Evita
   duplicata; o preço é o agente precisar mandar a lista completa.
+- **Mídia e sensores são só Windows.** `midia.ps1` usa SMTC e WASAPI; a GPU usa
+  `nvidia-smi`. No macOS o caminho seria `MediaRemote`/AppleScript; no Linux,
+  MPRIS via D-Bus. Não é tradução — são três implementações. Fora do Windows a
+  barra do player e os módulos simplesmente não aparecem.
+- Temperatura de CPU e de memória dependem do LibreHardwareMonitor ABERTO. Sem
+  ele o Windows não expõe esses sensores, e o campo some da tela em vez de
+  mostrar zero. O código já lê de lá quando existe.
+- Ler os sensores deixa um buraco de ~300ms no event loop, por causa do spawn
+  de processo no Windows. Era de 2,7s antes do `quietAsync`. Aceitável a cada
+  5s; se incomodar, o caminho é amostrar em background e servir só o cache.
+- O mapa lê só `##` (grupos) e `###` (frentes) do ROADMAP.md, e conta item de
+  lista. Parágrafo solto é explicação, não tarefa — por isso não entra na conta.
+- O vínculo agente↔roadmap é pelo TÍTULO da seção, não por ID. Dos 43 roadmaps,
+  só 6 têm IDs; numerar todos seria trabalho grande para pouco ganho, e ID
+  envelhece quando a lista muda.
 
 ---
 
-Última atualização: **2026-08-08** — dia de fechar backlog. O trabalho de 06/08
-foi commitado (CC-10), a aba de tempo ganhou valor em R$ (CC-12), a aba de
-custo foi apagada (CC-11) e o repositório virou público (CC-09). O que sobrou
-depende de máquina ou de acaso: CC-08, CC-04 e CC-05.
+Última atualização: **2026-08-09** — dia de tornar o painel legível para quem
+não escreveu o código. Uso do plano no topo, seis temas, cartões nas abas de
+lista, módulos de CPU/RAM/GPU e barra de mídia com volume por aplicativo. No
+fim do dia, o feedback que mais rendeu: "prontos" mentia (bug do `state` do
+CLI, corrigido) e o cartão mostrava a folha sem a árvore — daí o mapa do
+projeto lendo o ROADMAP.md e o campo `frente` no protocolo.
+Aberto: CC-17 (último pedido ambíguo), CC-18 (projeto sem roadmap), CC-19
+(conferir adesão ao `frente`), mais CC-04, CC-05, CC-08 e os dois do Felipe
+(CC-14, CC-15).

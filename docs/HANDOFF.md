@@ -1,55 +1,57 @@
 # HANDOFF
 
-**Sessão:** 2026-08-08 · agente Claude (Opus 5) · máquina ALIENWARE-LIPE
-**Branch:** `master` · **árvore limpa** — nada pendente de commit
-**Estado:** backlog limpo. Fecharam CC-10, CC-12, CC-11 e CC-09 no mesmo dia.
-O que sobrou depende de máquina (CC-08) ou de acaso (CC-04), fora o CC-05.
+**Sessão:** 2026-08-09 · agente Claude (Opus 5) · máquina ALIENWARE-LIPE
+**Último commit:** `d3133f3` — feat(mapa): o ROADMAP.md do projeto vira mapa no painel
+**Branch:** `master` · **árvore limpa**, tudo empurrado
 
-O que aconteceu: [diario/2026-08-08.md](diario/2026-08-08.md).
+O que aconteceu: [diario/2026-08-09.md](diario/2026-08-09.md).
 
-## O que mudou e você precisa saber
+## Próxima task: CC-17 — o "último pedido" no cartão não é o último
 
-**O repositório é público.** Os nomes de cliente e as horas de cada um estão no
-diário de 06/08, e ficam visíveis. Foi decisão sua com o conteúdo na mão. Todo
-diário novo daqui pra frente é escrito sabendo disso.
+Foi a única reclamação do Felipe que ficou sem resposta hoje. Ele olha o cartão
+e não reconhece o texto como o que pediu por último.
 
-**A aba de custo não existe mais.** Quem tinha ela guardada no navegador cai em
-agentes. A aba de tempo responde o que ela respondia, melhor.
+A linha mistura duas fontes: `lastPrompt`, lido do transcript, e `meta.status`,
+escrito pelo agente. A precedência escolhe uma e não diz qual. Decidir entre
+rotular a origem ou mostrar só o que o agente declarou — e, se for a segunda,
+lembrar que `subject` já é do agente, então a linha viraria redundante.
 
-**A taxa em R$ está zerada.** O campo está lá, na barra da aba de tempo (global)
-e dentro de cada projeto (só dele). Digitar um número faz a coluna de valor
-aparecer.
+Começar por `src/ui.html`, função `cartao()`, a variável `nota`.
 
-**O painel passou a falar com a rede, uma vez a cada 12h.** Só pra cotação do
-dólar, e só a rota `/api/tempo` dispara. Sem rede, vale o último valor com a
-data na tela. O campo `dólar` aceita valor digitado, que congela a busca.
+## O que mudou hoje e você precisa saber
 
-## Depois de mexer no código
+**O painel virou legível para quem não escreveu o código** — foi o tema do dia.
+Uso do plano fixo no topo, seis temas, cartões em todas as abas de lista,
+módulos de CPU/RAM/GPU e barra de mídia.
 
-O painel de todo dia serve o **pacote instalado**, não este repositório:
+**"Prontos" era mentira e foi corrigido.** O `state` do CLI vira `done` ao fim
+de cada TURNO. Agora `statusReal()` usa o sinal para separar vivo de terminado.
+Se mexer em status, ler a armadilha no `CLAUDE.md` antes.
 
-```
-npm i -g D:\Documentos\Ti\projetos\PESSOAL\proj_controlcenter
-node cc.mjs daemon restart
-```
+**O protocolo ganhou `frente`** — a seção do `ROADMAP.md` onde o agente está.
+Já vale para todos os projetos pelo bloco global. Os cartões antigos ainda
+mostram a rota; os novos mostram `projeto › frente`.
 
-Para validar o repositório sem tocar no painel de todo dia:
-`node cc.mjs --web-only --port 8123`.
+**Notas têm backup agora.** As do Felipe sumiram hoje e não se provou a causa.
+`writeNotes` guarda `.bak` a cada gravação e uma cópia com data quando tudo
+some. Se ele reclamar de nota perdida, o `.bak` é o primeiro lugar a olhar.
 
 ## Armadilhas que vão te pegar de novo
 
-- **Here-string de PowerShell (`@'…'@`) não funciona na ferramenta Bash** — o
-  `@` entra na mensagem de commit. Para mensagem longa, `git commit -F arquivo`.
-- **`npm run test:ui <id-do-job>`** escreve num job real e no arquivo de notas,
-  e restaura os dois no fim — do estado do **começo** da rodada. Não fique
-  editando o painel enquanto ele corre.
-- O resto está em `CLAUDE.md`, seção Armadilhas.
+- **`quiet()` é síncrono e congela o servidor.** Para qualquer coisa que
+  alimente a tela, use `quietAsync`. Custou 2,7s de event loop travado.
+- **`.` no regex não casa `\r`.** Metade dos arquivos é CRLF; um parser inteiro
+  saiu vazio por causa disso, sem erro nenhum.
+- **Mídia só funciona no PowerShell 5.1**, nunca no `pwsh` 7.
+- **CSS duplicado ganha por último.** A barra de volume tinha duas declarações
+  e a correção certa estava sendo anulada em silêncio.
+- O resto está em `CLAUDE.md`, seção Armadilhas — cresceu bastante hoje.
 
 ## Arquivos a ler antes
 
-- `CLAUDE.md` — armadilhas
-- `docs/ROADMAP.md` — o que está aberto, e o que espera decisão
-- `src/tempo.mjs` — o módulo com a lógica menos óbvia (cache por blocos)
+- `CLAUDE.md` — armadilhas; as de hoje custaram horas
+- `src/roadmap.mjs` — o mais novo, e o que muda como o painel é lido
+- `src/jobs.mjs` → `statusReal()` — por que "pronto" não é `state === done`
 
 ## Regras que não podem quebrar
 
@@ -57,15 +59,18 @@ Para validar o repositório sem tocar no painel de todo dia:
 - `~/.claude/jobs` é somente leitura, exceto `meta.json`
 - `pins.json` e `state.json` são do Claude Code — nunca escrever
 - Depois de editar `src/`, reinicie o servidor: ele não recarrega módulo
+- O pacote global é um LINK para este repositório: código quebrado aqui quebra
+  o `cc` de todos os agentes na hora. Rode `npm test` antes de sair.
 
 ## Estado do ROADMAP
 
 | Task | Estado |
 |---|---|
-| CC-10 commitar o dia 06/08 | concluído — três commits |
-| CC-12 taxa horária em R$ | concluído — falta você digitar o número |
-| CC-11 apagar a aba de custo | concluído |
-| CC-09 repositório público | concluído |
+| CC-17 último pedido ambíguo no cartão | **aberto — próxima** |
+| CC-18 projeto sem ROADMAP.md fica sem mapa | aberto |
+| CC-19 conferir se os agentes declaram `frente` | aberto — reavaliar em dias |
+| CC-14 tray com porcentagem errada | aberto — do Felipe |
+| CC-15 statusline.log com 284 MB | aberto — do Felipe |
 | CC-08 macOS e Linux | aberto — precisa de máquina |
 | CC-04 aviso de silêncio nunca visto | aberto — precisa de agente travado |
 | CC-05 tabela do terminal ainda agrupa por projeto | aberto |
