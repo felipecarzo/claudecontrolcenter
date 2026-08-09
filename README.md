@@ -106,8 +106,14 @@ seus agentes já rodaram. Para forçar:
 | servidores | o que está escutando porta nesta máquina |
 | escritório | os agentes desenhados trabalhando, aqui e na VPS |
 
-No rodapé, quando há algo tocando: **barra de mídia** com o que toca, botões de
-faixa e volume **do aplicativo** (não o do Windows). Só Windows por enquanto.
+Na linha das abas, à direita: **módulos da máquina** (CPU, memória e GPU — uso,
+temperatura e barra) e a **barra de mídia**, com o que está tocando, botões de
+faixa e volume **do aplicativo** (não o do Windows).
+
+Temperatura de CPU e de memória só aparecem com o
+[LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)
+aberto — é ele quem publica esses sensores no Windows. GPU e uso não dependem
+de nada. Mídia e GPU são só Windows por enquanto.
 
 Clicar num agente abre um painel lateral com o detalhe em níveis. `Esc` fecha.
 

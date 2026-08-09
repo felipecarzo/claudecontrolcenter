@@ -8,7 +8,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { execFileSync, spawn } from 'node:child_process'
+import { execFileSync, execFile, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url))
@@ -35,7 +35,84 @@ export const quiet = (cmd, args) => {
   }
 }
 
+/**
+ * Versão que não bloqueia. `quiet` usa `execFileSync`, e num servidor isso
+ * segura o event loop inteiro: uma leitura de sensor de 1s congelaria o
+ * stream dos agentes junto. Onde a resposta alimenta a tela, use esta.
+ */
+export const quietAsync = (cmd, args, ms = 15000) => new Promise((resolve) => {
+  execFile(cmd, args, { encoding: 'utf8', windowsHide: true, timeout: ms, maxBuffer: 8 * 1024 * 1024 },
+    (erro, saida, err) => resolve(erro
+      ? { ok: false, out: String(saida || err || erro.message).trim() }
+      : { ok: true, out: saida }))
+})
+
 const existe = (cmd) => quiet(ehWindows ? 'where' : 'which', [cmd]).ok
+
+/* ------------------------- sensores da máquina ---------------------
+   CPU e memória saem do próprio Node, em `maquina.mjs`. Aqui fica só o que
+   depende do sistema: a GPU e os sensores de temperatura.
+
+   Não usa PowerShell para a GPU de propósito: `nvidia-smi` é um executável, e
+   chamá-lo direto custa ~590ms contra os ~3s de subir um PowerShell. */
+
+const CAMPOS_GPU = [
+  'name', 'temperature.gpu', 'temperature.memory', 'utilization.gpu',
+  'utilization.memory', 'memory.used', 'memory.total', 'power.draw',
+]
+
+const numero = (v) => {
+  const n = Number(String(v).trim())
+  return Number.isFinite(n) ? n : null
+}
+
+/** GPU NVIDIA. `null` quando não há placa NVIDIA ou o driver não responde. */
+export async function lerGpu() {
+  const r = await quietAsync('nvidia-smi', [`--query-gpu=${CAMPOS_GPU.join(',')}`, '--format=csv,noheader,nounits'])
+  if (!r.ok) return null
+  const linha = r.out.split('\n').find((l) => l.trim())
+  if (!linha) return null
+  const c = linha.split(',').map((s) => s.trim())
+  const usadaMB = numero(c[5])
+  const totalMB = numero(c[6])
+  return {
+    nome: (c[0] || '').replace(/^NVIDIA\s+/i, ''),
+    temp: numero(c[1]),
+    // placa de consumo costuma não expor sensor da memória: vem "N/A"
+    tempMem: numero(c[2]),
+    uso: numero(c[3]),
+    usoMem: numero(c[4]),
+    vramUsadaGB: usadaMB == null ? null : +(usadaMB / 1024).toFixed(1),
+    vramTotalGB: totalMB == null ? null : +(totalMB / 1024).toFixed(1),
+    watts: numero(c[7]),
+  }
+}
+
+/**
+ * Temperatura de CPU e de memória — só existem se o LibreHardwareMonitor (ou
+ * o antigo OpenHardwareMonitor) estiver ABERTO, porque é ele quem publica o
+ * namespace WMI. Sem ele, `MSAcpi_ThermalZoneTemperature` e
+ * `root/Hardware NumericSensor` existem como classe e devolvem zero
+ * instâncias — medido nesta máquina.
+ */
+export async function lerSensoresExtras() {
+  if (!ehWindows) return {}
+  const ps = `
+    $ErrorActionPreference='SilentlyContinue'
+    $s = Get-CimInstance -Namespace root/LibreHardwareMonitor -ClassName Sensor
+    $fonte = 'LibreHardwareMonitor'
+    if (-not $s) { $s = Get-CimInstance -Namespace root/OpenHardwareMonitor -ClassName Sensor; $fonte = 'OpenHardwareMonitor' }
+    if (-not $s) { '{}'; exit }
+    $t = $s | Where-Object { $_.SensorType -eq 'Temperature' }
+    $cpu = $t | Where-Object { $_.Identifier -match '/(intelcpu|amdcpu)/' -and $_.Name -match 'Package|Total|CPU' } | Select-Object -First 1
+    $ram = $t | Where-Object { $_.Identifier -match '/ram/' } | Select-Object -First 1
+    @{ cpuTemp = if ($cpu) { [math]::Round($cpu.Value,0) } else { $null }
+       ramTemp = if ($ram) { [math]::Round($ram.Value,0) } else { $null }
+       fonte = $fonte } | ConvertTo-Json -Compress`
+  const r = await quietAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], 20000)
+  if (!r.ok) return {}
+  try { return JSON.parse(r.out.trim()) } catch { return {} }
+}
 
 /* ------------------------------ mídia ------------------------------
    Controle do que está tocando: transporte e volume por aplicativo.

@@ -29,6 +29,7 @@ src/
   tarefas.mjs    preço por problema resolvido: esforço, nível e valor
   historico.mjs  o que sobra depois que o CLI apaga o job
   uso.mjs        uso do plano (5h e semana), colhido do statusLine
+  maquina.mjs    CPU e RAM do próprio Node, GPU do nvidia-smi
   midia.mjs      o que está tocando e os controles; normaliza e cacheia
   midia.ps1      as duas APIs do Windows (SMTC + WASAPI), em processo vivo
   graficos.js    motor de gráficos: índice do que cruza com o quê, e o SVG
@@ -192,6 +193,27 @@ errada por definição.
   Cotação fora da faixa 0,5–100 é rejeitada: se a API inverter o par e mandar
   0,18, o custo de R$ 34 mil viraria R$ 1,2 mil sem nenhum erro aparecer.
   Cotação digitada marca `manual: true` e a busca automática para de mexer.
+- **CPU e RAM não precisam de WMI — o Node já dá.** A primeira versão dos
+  módulos perguntava tudo ao WMI por PowerShell e levava 10s, com
+  `Win32_PerfFormattedData_PerfOS_Processor` custando 3,2s sozinho. `os.cpus()`
+  e `os.totalmem()` respondem o mesmo em 3ms, e ainda funcionam fora do
+  Windows. Só a GPU precisa de processo externo (`nvidia-smi`, 590ms).
+- **Uso de CPU é diferença entre duas amostras.** `os.cpus()` dá tempos
+  acumulados desde o boot, não percentual. A primeira leitura devolve `null` de
+  propósito — 0% diria que a máquina está parada. Por isso `estado()` tira uma
+  amostra e espera 120ms na primeira vez, senão o módulo sumiria da tela ao abrir.
+- **`quiet` é síncrono e trava o servidor.** Ele usa `execFileSync`: uma
+  leitura de 1s congela o event loop inteiro, e com ele o stream dos agentes.
+  Para qualquer coisa que alimente a tela existe `quietAsync`. Medido:
+  `nvidia-smi` por `quietAsync` deixa um buraco de 32ms; a mesma consulta via
+  WMI síncrona deixava 1,1s.
+- **Temperatura de CPU e de RAM não existem no Windows sem programa externo.**
+  Medido nesta máquina: `MSAcpi_ThermalZoneTemperature`, `root/Hardware
+  NumericSensor` e `WMI_ThermalQuery` existem como classe e devolvem ZERO
+  instâncias; os namespaces `root/Dell` e `root/Dell/DCIM` têm zero classes.
+  Quem publica é o LibreHardwareMonitor, e só enquanto está aberto. A consulta
+  a ele é tentada UMA vez por processo, adiada em 8s, porque trava ~1s — não
+  adianta tentar de novo para quem não tem o programa.
 - **Nota tem backup porque já se perdeu uma vez.** Em 2026-08-09 o arquivo
   amanheceu com `{"notes": []}` e as duas listas do Felipe sumiram — sem que se
   conseguisse provar quem gravou. `writeNotes` agora copia a versão anterior

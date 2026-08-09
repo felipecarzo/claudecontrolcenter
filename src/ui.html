@@ -230,17 +230,45 @@
      quando não há mídia — barra de player vazia é só ocupar espaço. */
   /* Divide a linha com as abas. `min-width: 0` no nav é o que deixa as abas
      encolherem em vez de empurrar o player para fora da tela. */
-  .linha-abas { display: flex; align-items: center; gap: 16px; }
-  .linha-abas > nav { min-width: 0; flex: 1; }
-  .player {
-    display: flex; align-items: center; gap: 10px; flex: none;
-    max-width: 38%; margin-bottom: 2px; padding: 5px 10px;
-    border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
+  .linha-abas { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  /* `min-width` na largura das abas inteiras: quando não cabe abas + módulos,
+     quem desce para a linha de baixo é o bloco de módulos. Navegação quebrada
+     em duas linhas é pior que módulo deslocado. */
+  .linha-abas > nav { flex: 1 1 auto; min-width: 560px; }
+  .linha-abas > .modulos { flex: 0 1 auto; margin-left: auto; }
+  /* Faixa de módulos: hardware e player, todos do mesmo tamanho e altura. */
+  .modulos { display: flex; align-items: stretch; gap: 8px; flex: none; }
+  .mod {
+    display: flex; align-items: center; gap: 8px; flex: none;
+    padding: 4px 9px; border: 1px solid var(--line); border-radius: 7px;
+    background: var(--surface); min-height: 34px;
   }
-  /* O que cede primeiro é o artista, depois o nome do app: as abas não podem
-     quebrar em duas linhas por causa do player. */
-  @container painel (max-width: 1400px) { .player .p-faixa .path { display: none; } }
-  @container painel (max-width: 1150px) { .player .p-app { display: none; } }
+
+  /* Cada bloco de hardware: rótulo, números e uma barrinha embaixo. Em duas
+     linhas para caber muito num espaço pequeno. */
+  .hw { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; align-content: center; padding: 3px 9px; }
+  .hw-rot {
+    grid-row: span 2; align-self: center;
+    font: 700 9px/1 var(--label); letter-spacing: .12em; text-transform: uppercase;
+    color: var(--faint);
+  }
+  .hw-nums { display: flex; align-items: baseline; gap: 6px; }
+  .hw-nums b { font: 700 13px/1 var(--mono); font-variant-numeric: tabular-nums; }
+  .hw-nums i { font-style: normal; font-size: 9px; color: var(--faint); margin-left: 1px; }
+  .hw-temp { color: var(--dim); }
+  .hw-barra { grid-column: 2; display: block; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .hw-barra > i { display: block; height: 100%; background: currentColor; border-radius: 2px; }
+  .hw-det { grid-column: 2; font-size: 9px; color: var(--faint); white-space: nowrap; }
+  .hw.n-baixo { color: var(--done); } .hw.n-medio { color: var(--waiting); }
+  .hw.n-alto { color: var(--failed); }
+  .hw .hw-nums b:first-child { color: currentColor; }
+
+  .player { max-width: 34vw; }
+  /* O que cede primeiro é o artista, depois o nome do app, depois os módulos
+     de hardware: as abas não podem quebrar em duas linhas por causa disso. */
+  @container painel (max-width: 1500px) { .player .p-faixa .path { display: none; } }
+  @container painel (max-width: 1300px) { .player .p-app, .hw-det { display: none; } }
+  @container painel (max-width: 1100px) { #maquina .hw:nth-child(n+3) { display: none; } }
   .p-app {
     font: 700 9px/1 var(--label); letter-spacing: .14em; text-transform: uppercase;
     color: var(--faint); flex: none;
@@ -916,7 +944,10 @@
          rodapé ele disputava atenção com o conteúdo. -->
     <div class="linha-abas">
       <nav id="tabs" role="tablist"></nav>
-      <div id="player" class="player" hidden></div>
+      <div class="modulos">
+        <div id="maquina" class="modulos"></div>
+        <div id="player" class="player mod" hidden></div>
+      </div>
     </div>
   </header>
 
@@ -2189,6 +2220,78 @@ async function salvarTaxa(projeto, valor) {
   carregarTempo(true)
 }
 
+/* ====================== módulos da máquina =========================
+   CPU, memória e GPU em blocos pequenos, ao lado do player. Cada um mostra o
+   número que decide alguma coisa — uso e temperatura — e guarda o resto no
+   título. Sem gráfico: aqui é para bater o olho, não para analisar.
+
+   Temperatura de CPU e de memória não existem no Windows sem o
+   LibreHardwareMonitor aberto; quando faltam, o campo some em vez de mostrar
+   zero, que pareceria uma máquina gelada. */
+
+let MAQUINA = null
+
+async function carregarMaquina() {
+  try {
+    MAQUINA = await (await fetch('/api/maquina')).json()
+  } catch {
+    MAQUINA = null
+  }
+  renderMaquina()
+}
+
+const faixaUso = (p) => (p >= 90 ? 'alto' : p >= 70 ? 'medio' : 'baixo')
+// Faixas de temperatura de silício: 80 °C é onde placa e processador começam a
+// reduzir desempenho para se proteger.
+const faixaTemp = (t) => (t >= 80 ? 'alto' : t >= 65 ? 'medio' : 'baixo')
+
+function moduloHw({ rot, uso, temp, detalhe, dica }) {
+  if (uso == null && temp == null) return ''
+  const classe = uso == null ? faixaTemp(temp) : faixaUso(uso)
+  return `<div class="mod hw n-${classe}" title="${esc(dica)}">
+    <span class="hw-rot">${rot}</span>
+    <span class="hw-nums">
+      ${uso == null ? '' : `<b>${Math.round(uso)}<i>%</i></b>`}
+      ${temp == null ? '' : `<b class="hw-temp">${Math.round(temp)}<i>°</i></b>`}
+    </span>
+    <span class="hw-barra"><i style="width:${Math.min(uso ?? 0, 100)}%"></i></span>
+    ${detalhe ? `<span class="hw-det">${esc(detalhe)}</span>` : ''}
+  </div>`
+}
+
+function renderMaquina() {
+  const alvo = $('#maquina')
+  if (!MAQUINA || MAQUINA.erro) { alvo.innerHTML = ''; return }
+  const { cpu, ram, gpu } = MAQUINA
+  const gb = (n) => (n == null ? '' : `${n}`.replace('.', ',') + ' GB')
+
+  alvo.innerHTML = [
+    moduloHw({
+      rot: 'cpu',
+      uso: cpu?.uso,
+      temp: cpu?.temp,
+      detalhe: cpu?.nucleos ? `${cpu.nucleos} fios` : '',
+      dica: `${cpu?.nome || 'processador'}${cpu?.temp == null
+        ? ' · temperatura precisa do LibreHardwareMonitor aberto' : ''}`,
+    }),
+    moduloHw({
+      rot: 'ram',
+      uso: ram?.uso,
+      temp: ram?.temp,
+      detalhe: `${gb(ram?.usadaGB)} de ${gb(ram?.totalGB)}`,
+      dica: `memória: ${gb(ram?.usadaGB)} em uso de ${gb(ram?.totalGB)}`,
+    }),
+    gpu ? moduloHw({
+      rot: 'gpu',
+      uso: gpu.uso,
+      temp: gpu.temp,
+      detalhe: `${gb(gpu.vramUsadaGB)} de ${gb(gpu.vramTotalGB)}`,
+      dica: `${gpu.nome} · vram ${gpu.usoMem ?? '—'}% · ${gpu.watts ?? '—'} W`
+        + `${gpu.tempMem == null ? ' · esta placa não expõe temperatura da memória' : ` · memória ${gpu.tempMem}°`}`,
+    }) : '',
+  ].join('')
+}
+
 /* ========================= player de mídia =========================
    Fica fora do #main de propósito, como as notas: `render()` reescreve o
    painel a cada evento do stream, e o cursor do controle de volume sumiria no
@@ -2888,9 +2991,13 @@ fetch('/api/notes').then((r) => r.json()).then((d) => { NOTES = d.notes || []; r
 // A mídia tem ritmo próprio: não vem no stream porque cada leitura custa ~500ms
 // no Windows, e o tique de 2s dos agentes não pode esperar por isso.
 carregarMidia()
-// Em `static` fica na leitura única: o intervalo manteria a captura headless
+carregarMaquina()
+// Em `static` ficam na leitura única: o intervalo manteria a captura headless
 // esperando para sempre, pelo mesmo motivo que o SSE fica desligado lá.
-if (!params.has('static')) setInterval(carregarMidia, 4000)
+if (!params.has('static')) {
+  setInterval(carregarMidia, 4000)
+  setInterval(carregarMaquina, 5000)
+}
 </script>
 </body>
 </html>

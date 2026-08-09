@@ -278,6 +278,20 @@ assert.equal(depois.b, 'hoje')
 assert.equal(marcarConclusoes(antes, { todos: [{ text: 'b', done: true }] }, 'hoje').a, undefined)
 assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem todos não mexe nos carimbos')
 
+// --- máquina: uso de CPU é diferença entre amostras, não leitura ---
+{
+  const maq = await import('./src/maquina.mjs')
+  maq._internals.resetar()
+  // sem amostra anterior não há uso: null, nunca 0 — zero diria "parada"
+  assert.equal(maq._internals.usoCpu(), null)
+  const segundo = maq._internals.usoCpu()
+  assert.ok(segundo === null || (segundo >= 0 && segundo <= 100), `uso fora de faixa: ${segundo}`)
+  const r = maq._internals.ram()
+  assert.ok(r.totalGB > 0 && r.usadaGB > 0 && r.usadaGB <= r.totalGB)
+  assert.ok(r.uso >= 0 && r.uso <= 100)
+  maq._internals.resetar()
+}
+
 // --- notas: apagar tudo tem que deixar rastro recuperável ---
 {
   const notas = await import('./src/notes.mjs')

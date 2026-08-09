@@ -13,6 +13,7 @@ import {
   estado as estadoMidia, acao as acaoMidia,
   volume as volumeMidia, mudo as mudoMidia,
 } from './midia.mjs'
+import { estado as estadoMaquina } from './maquina.mjs'
 import { garantirMercado } from './mercado.mjs'
 import { readServers, killServer } from './servers.mjs'
 import { readPaineis, ligarPainel, desligarPainel } from './paineis.mjs'
@@ -187,6 +188,14 @@ function handler(req, res) {
       else delete estimativas[tarefa]
       return { meta: writeMeta(job, { niveis, estimativas }) }
     })
+  }
+
+  // Sensores da máquina. Fora do stream pelo mesmo motivo da mídia: a leitura
+  // da GPU spawna processo, e o tique de 2s dos agentes não pode depender disso.
+  if (url.pathname === '/api/maquina') {
+    return estadoMaquina({ force: url.searchParams.has('force') })
+      .then((d) => send(res, 200, d))
+      .catch((e) => send(res, 500, { erro: String(e.message || e) }))
   }
 
   // Mídia: consultada pela barra do player, que pergunta a cada poucos
