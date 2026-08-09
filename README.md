@@ -58,6 +58,7 @@ cc off --project X       # desliga só num projeto
 cc done "tarefa"         # fecha um to-do sem reenviar a lista inteira
 cc undone "tarefa"       # reabre
 cc check                 # avisa se vai encerrar com to-do aberto (usado pelo hook)
+cc statusline --wrap "<cmd>"   # colhe o uso do plano e repassa para sua statusline
 cc install [dir]         # põe o protocolo no CLAUDE.md de um projeto
 cc sync [--dry-run]      # o mesmo, em todos os projetos
 cc json                  # despeja o estado atual e sai
@@ -140,7 +141,7 @@ As portas e comandos ficam em `src/paineis.mjs` e podem ser trocados por
 | `?expand=1` | abre todas as zonas, inclusive as recolhidas |
 | `?open=<id>` | abre o painel lateral de um agente |
 | `?tab=<id>` | abre direto numa aba |
-| `?tema=claro\|escuro` | força o tema, ignorando o sistema e o que está salvo |
+| `?tema=<id>` | força o tema: `noite` `carvao` `ambar` `floresta` `papel` `areia` |
 | `?novo=1` `?indice=1` | abrem o construtor de gráficos e o índice de dados |
 
 ## Skills

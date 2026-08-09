@@ -28,6 +28,7 @@ src/
   mercado.mjs    valor/hora de dev por senioridade, raspado de duas fontes
   tarefas.mjs    preço por problema resolvido: esforço, nível e valor
   historico.mjs  o que sobra depois que o CLI apaga o job
+  uso.mjs        uso do plano (5h e semana), colhido do statusLine
   graficos.js    motor de gráficos: índice do que cruza com o quê, e o SVG
                  (servido em /graficos.js; não é módulo, roda no navegador)
   install.mjs    bloco do protocolo no CLAUDE.md dos projetos
@@ -189,6 +190,47 @@ errada por definição.
   Cotação fora da faixa 0,5–100 é rejeitada: se a API inverter o par e mandar
   0,18, o custo de R$ 34 mil viraria R$ 1,2 mil sem nenhum erro aparecer.
   Cotação digitada marca `manual: true` e a busca automática para de mexer.
+- **O uso do plano vem do statusLine, não da API.** O Claude Code entrega
+  `rate_limits.five_hour` / `.seven_day` no JSON que manda para o comando de
+  statusLine, a cada resposta — é o número oficial, o mesmo do `/usage`. Por
+  isso o painel **não** chama API nem lê `~/.claude/.credentials.json`, embora
+  o endpoint exista (`/api/oauth/usage`, achado no bundle do CLI). Consequência
+  a lembrar: o valor só anda quando o Claude Code responde algo; parado, o
+  painel mostra a última leitura e a idade dela.
+- **Não existe janela de uso do Fable.** Conferido no bundle: os tipos são
+  `five_hour`, `seven_day`, `seven_day_opus` e `seven_day_sonnet` — zero
+  ocorrências de qualquer `fable`. O próprio aviso do app explica por quê: o
+  Fable consome da janela **semanal**, com teto de 50% dela, e mais rápido que
+  o Opus. Dá para mostrar quanto de Fable foi gasto em token (a aba de tempo
+  faz), mas não em "% do limite" — a conversão não é linear e seria invenção.
+  As quatro janelas são capturadas; a conta do Felipe hoje só reporta duas.
+- **`cc statusline --wrap "<comando>"` embrulha a statusline que já existe.**
+  Só pode haver um comando de statusLine, então a captura executa a original e
+  repassa a saída. Duas travas aprendidas na marra: timeout de 15s, porque a
+  statusline do Felipe cai num `npx ccusage` quando o binário não está
+  instalado e chega a travar; e uma linha mínima de fallback, porque barra
+  vazia parece painel quebrado. Mexer nisso sem testar tira a barra da tela.
+- **Tema é um bloco de variáveis, e `--acento` não é `--working`.** São seis
+  (`noite`, `carvao`, `ambar`, `floresta`, `papel`, `areia`) e cada um só
+  redefine as variáveis do `:root`. Duas regras ao criar mais: `dim` e `faint`
+  precisam passar de 4,5:1 sobre o fundo — era daí que vinha o "difícil de
+  ler", não do fundo escuro; e os cinco estados continuam distinguíveis entre
+  si, porque são semânticos. O que muda de tema para tema é `--acento`, usado
+  em foco, aba ativa e seleção; antes isso era o azul de "trabalhando", e por
+  isso todo tema parecia azul. O gate confere que todo tema do CSS está na
+  lista do seletor, e que nenhum hex é inválido — dois já entraram corrompidos
+  (`#8manual` e um dígito devanagari no meio da cor), e o navegador ignora em
+  silêncio.
+- **Tag semântica dentro de componente colide com regra global de tag.** Os
+  cartões de agente usam `<header>` e `<footer>` próprios, e as regras soltas
+  `header { position:sticky; background:var(--bg); padding:14px 20px }` e
+  `footer { padding:0 20px 28px }` pintaram uma faixa cinza dentro de cada
+  cartão. Agora são `#painel > header` e `#painel > footer`. Vale para qualquer
+  componente novo: ou escopa a regra global, ou não usa a tag.
+- **Classe de estado solta pinta o que não devia.** `.s-working { background }`
+  existia para a bolinha de status; quando o cartão passou a carregar
+  `s-<status>` para colorir a borda, o fundo inteiro virou laranja com o texto
+  ilegível dentro. Escopadas em `.dot.s-*`.
 - **Os agentes não marcavam to-do, e a culpa era do protocolo.** Medido em
   2026-08-08: cinco jobs com `state: done` e **0 de 34** tarefas marcadas. O
   passo 3 do AGENTS.md pedia `status`, `links` e `blockers` na entrega — e não

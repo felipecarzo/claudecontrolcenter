@@ -26,27 +26,120 @@
        industrial. Variável — a largura condensada carrega a personalidade. */
     --label: Bahnschrift, "Segoe UI Variable Display", "Segoe UI", sans-serif;
   }
-  /* O tema claro redefine as mesmas variáveis, e nada mais. `data-tema` é
-     sempre resolvido pelo JS para claro|escuro — "auto" não chega ao CSS, o
-     que evita repetir a paleta clara num @media além daqui. */
-  :root[data-tema="claro"] {
+  /* ---------- temas ----------
+     Cada tema redefine as mesmas variáveis, e nada mais. `data-tema` é sempre
+     um tema concreto: "automático" é resolvido no JavaScript antes de chegar
+     ao CSS, o que evita repetir paleta dentro de @media.
+
+     Regras que valem para todo tema novo:
+       - `fg` sobre `bg` tem que passar de 7:1. O tema original ficava em 12:1,
+         mas `dim` e `faint` caíam para 4 e 2,6 — era daí que vinha o "difícil
+         de ler", não do fundo escuro.
+       - os cinco estados continuam distinguíveis entre si em qualquer tema:
+         são semânticos, e trocar o significado da cor confundiria mais que
+         agradar. O tema colorido muda fundo, superfície e acento de interface.
+
+     `--acento` é o que a interface usa para foco, aba ativa e barra de nota —
+     antes era o mesmo azul de "trabalhando", e por isso todo tema parecia azul. */
+  :root, :root[data-tema="noite"] {
+    color-scheme: dark;
+    --acento: #4da3ff;
+  }
+
+  /* Escuro neutro, contraste alto: o `dim` sobe de 4,0 para 7,2 sobre o fundo. */
+  :root[data-tema="carvao"] {
+    color-scheme: dark;
+    --bg: #101215;
+    --surface: #191c21;
+    --surface-2: #22262d;
+    --line: #333941;
+    --line-soft: #262a31;
+    --fg: #f2f5f8;
+    --dim: #b6bec9;
+    --faint: #8d97a3;
+    --acento: #6cb6ff;
+    --working: #6cb6ff;
+    --waiting: #f5b544;
+    --failed:  #ff7b72;
+    --done:    #57d98a;
+    --idle:    #7d8590;
+  }
+
+  /* Quente e escuro. O âmbar do acento é o mesmo tom do "esperando", então
+     aqui o estado de espera puxa para o vermelho para não sumir no tema. */
+  :root[data-tema="ambar"] {
+    color-scheme: dark;
+    --bg: #14100b;
+    --surface: #1e1811;
+    --surface-2: #292117;
+    --line: #3d3223;
+    --line-soft: #2b2419;
+    --fg: #f7efe3;
+    --dim: #c4b49c;
+    --faint: #8f8270;
+    --acento: #ff9f45;
+    --working: #ff9f45;
+    --waiting: #ffd23f;
+    --failed:  #ff7a6b;
+    --done:    #7fd17f;
+    --idle:    #8f8270;
+  }
+
+  :root[data-tema="floresta"] {
+    color-scheme: dark;
+    --bg: #0b1210;
+    --surface: #121b18;
+    --surface-2: #1a2521;
+    --line: #24352e;
+    --line-soft: #1a2723;
+    --fg: #e9f3ee;
+    --dim: #a6bdb2;
+    --faint: #7a9086;
+    --acento: #4fd6a0;
+    --working: #4fd6a0;
+    --waiting: #f0b429;
+    --failed:  #ff7a6b;
+    --done:    #8fe388;
+    --idle:    #7a9086;
+  }
+
+  /* Claro de alto contraste. `dim` a 6,3 e `faint` a 4,6 sobre o branco —
+     no claro anterior, `faint` ficava em 2,9 e sumia. */
+  :root[data-tema="papel"] {
     color-scheme: light;
     --bg: #ffffff;
-    --surface: #f6f8fa;
-    --surface-2: #eceff2;
-    --line: #d0d7de;
-    --line-soft: #e6eaef;
-    --fg: #1f2328;
-    --dim: #57606a;
-    --faint: #818b98;
+    --surface: #f4f6f8;
+    --surface-2: #e8ecf0;
+    --line: #c3ccd6;
+    --line-soft: #e2e7ec;
+    --fg: #12161c;
+    --dim: #4a545f;
+    --faint: #6b7681;
+    --acento: #0757ba;
+    --working: #0757ba;
+    --waiting: #8a5a00;
+    --failed:  #c0202c;
+    --done:    #14702f;
+    --idle:    #626c76;
+  }
 
-    /* As cores de estado precisam escurecer: o azul que brilha no fundo preto
-       fica ilegível no branco. Estas passam em 4.5:1 sobre #ffffff. */
-    --working: #0969da;
-    --waiting: #9a6700;
-    --failed:  #cf222e;
-    --done:    #1a7f37;
-    --idle:    #6e7781;
+  /* Claro quente, para quem acha o branco puro duro à noite. */
+  :root[data-tema="areia"] {
+    color-scheme: light;
+    --bg: #fbf7f0;
+    --surface: #f3ede2;
+    --surface-2: #eae2d3;
+    --line: #cfc4b0;
+    --line-soft: #e4dccd;
+    --fg: #1b1610;
+    --dim: #554d40;
+    --faint: #786f5f;
+    --acento: #a8501a;
+    --working: #a8501a;
+    --waiting: #86600a;
+    --failed:  #b5232b;
+    --done:    #2f6a2a;
+    --idle:    #786f5f;
   }
 
   h1, .count, .tab, thead th, tr.zone > td, .cat, h3, .col-head, .big {
@@ -74,19 +167,22 @@
     flex: none; width: 6px; cursor: col-resize; background: var(--line);
     border-left: 1px solid var(--bg); border-right: 1px solid var(--bg);
   }
-  #split:hover, #split.drag { background: var(--working); }
+  #split:hover, #split.drag { background: var(--acento); }
   #notas {
     flex: none; width: min(var(--notes-w, 340px), 78vw); min-width: 0;
     background: var(--surface); border-left: 1px solid var(--line); overflow-y: auto;
   }
-  :focus-visible { outline: 2px solid var(--working); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
   h3 {
     margin: 0 0 6px; font: 700 10px/1 var(--label);
     letter-spacing: .16em; text-transform: uppercase; color: var(--faint);
   }
 
   /* ---------- topo ---------- */
-  header { position: sticky; top: 0; z-index: 30; background: var(--bg); padding: 14px 20px 0; }
+  /* `> header` e não `header`: os cartões de agente usam <header>/<footer>
+     próprios, e a regra solta pintava o topo de cada cartão com o fundo da
+     página, com 20px de recuo — parecia uma faixa cinza dentro do cartão. */
+  #painel > header { position: sticky; top: 0; z-index: 30; background: var(--bg); padding: 14px 20px 0; }
   .top { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; }
   h1 {
     font: 700 20px/1 var(--label); letter-spacing: .26em;
@@ -116,92 +212,126 @@
     font: 700 12px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
   }
   .tab:hover { color: var(--dim); }
-  .tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--working); }
+  .tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--acento); }
   .tab .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); margin-left: 6px; }
 
   main { padding: 4px 20px 60px; }
-  footer { color: var(--faint); font-size: 11px; padding: 0 20px 28px; }
+  #painel > footer { color: var(--faint); font-size: 11px; padding: 0 20px 28px; }
   .empty { color: var(--faint); text-align: center; padding: 60px 0; }
 
-  /* ---------- tabela de agentes ---------- */
+  /* ---------- agentes: faixas de cartões ----------
+     Cada situação é uma faixa da largura toda, e os cartões se espalham em
+     grade dentro dela. Colunas verticais ficariam magras: é comum um estado
+     ter cinco agentes e o vizinho ter zero. */
   table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  col.c-dot { width: 22px; } col.c-path { width: 210px; }
-  col.c-model { width: 84px; } col.c-tok { width: 66px; }
-  col.c-time { width: 200px; } col.c-bar { width: 150px; }
-  col.c-todo { width: 64px; } col.c-acts { width: 96px; }
+  td { padding: 7px 10px 7px 0; vertical-align: top; }
 
-  thead th {
-    text-align: left; padding: 10px 10px 7px 0;
-    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
-    color: var(--faint); border-bottom: 1px solid var(--line); white-space: nowrap;
+  /* Uso do plano: fixo no topo, em toda aba. Compacto de propósito — é
+     referência de quanto ainda dá pra rodar, não um painel de métrica. */
+  .uso { display: flex; align-items: center; gap: 14px; flex: none; }
+  .u-item {
+    display: flex; align-items: center; gap: 7px;
+    border: 1px solid var(--line); border-radius: 5px; padding: 4px 9px;
+    background: var(--surface);
   }
-  thead th button {
-    background: none; border: 0; padding: 0; cursor: pointer; color: inherit;
-    font: inherit; letter-spacing: inherit; text-transform: inherit;
+  .u-rot {
+    font: 700 9px/1 var(--label); letter-spacing: .14em; text-transform: uppercase;
+    color: var(--faint);
   }
-  thead th button:hover { color: var(--fg); }
-  thead th button .dir { color: var(--working); margin-left: 4px; }
-  thead th.ativo button { color: var(--fg); }
+  .u-barra { display: block; width: 64px; height: 7px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .u-barra > i { display: block; height: 100%; background: currentColor; border-radius: 4px; }
+  .u-item b { font: 700 14px/1 var(--mono); font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+  /* o tempo até zerar muda a decisão: 90% faltando 10min não é 90% faltando 3 dias */
+  .u-reset { color: var(--faint); font-size: 10px; font-variant-numeric: tabular-nums; }
+  /* passando de 85% a informação vira alerta, não estatística */
+  .u-item.n-alto { border-color: var(--failed); }
+  .u-item.n-baixo { color: var(--done); } .u-item.n-medio { color: var(--waiting); }
+  .u-item.n-alto { color: var(--failed); }
+  .u-velho { color: var(--faint); font-size: 10px; }
 
-  /* largura de leitura: sem isso o assunto estica por 900px numa tela larga
-     e as colunas da direita ficam espremidas no canto */
-  .subject, .note { max-width: 74ch; }
+  .ord { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0 14px; }
+  .ord .dir { color: var(--acento); }
 
-  .tokbar { height: 5px; background: var(--line); border-radius: 2px; margin-top: 6px; }
-  .tokbar > i { display: block; height: 100%; border-radius: 2px; background: currentColor; opacity: .8; }
-
-  td.acts { text-align: right; white-space: nowrap; opacity: 0; }
-  tr.row:hover td.acts, tr.row:focus-within td.acts { opacity: 1; }
-  td.acts button {
-    background: none; border: 0; padding: 2px 5px; cursor: pointer;
-    color: var(--faint); font: 13px/1 var(--mono);
+  .faixa { margin-bottom: 26px; }
+  .f-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .f-head button {
+    background: none; border: 0; padding: 0; cursor: pointer; display: flex;
+    align-items: baseline; gap: 8px;
+    font: 700 13px/1 var(--label); letter-spacing: .22em; text-transform: uppercase;
   }
-  td.acts button:hover { color: var(--fg); }
-  td.acts button.on { color: var(--waiting); opacity: 1; }
-  td.acts button[disabled] { opacity: .25; cursor: not-allowed; }
-  /* o que está fixado precisa se ver sem passar o mouse */
-  tr.row.pinned td.acts { opacity: 1; }
-  tr.row.pinned td.acts button:not(.on) { opacity: 0; }
-  tr.row.pinned:hover td.acts button { opacity: 1; }
-
-  .aviso-ordem {
-    display: flex; align-items: baseline; gap: 10px; padding: 8px 0 2px;
-    color: var(--faint); font-size: 12px;
-  }
-  .aviso-ordem button {
-    background: none; border: 0; padding: 0; cursor: pointer;
-    color: var(--working); font: 12px var(--mono);
-  }
-  tr.zone > td {
-    padding: 24px 0 7px; font: 700 14px/1 var(--label);
-    letter-spacing: .24em; text-transform: uppercase;
-  }
-  tr.zone .bar { display: flex; align-items: center; gap: 10px; }
-  tr.zone .rule { flex: 1; height: 1px; background: var(--line); }
-  tr.zone .n { color: var(--faint); font-family: var(--mono); letter-spacing: 0; }
-  tr.zone button {
-    background: none; border: 0; padding: 0; cursor: pointer; color: var(--faint);
-    font: inherit; letter-spacing: inherit; text-transform: inherit;
-  }
-  tr.zone button:hover { color: var(--fg); }
+  .f-head .n { color: var(--faint); font-family: var(--mono); letter-spacing: 0; font-weight: 400; }
+  .f-head .rule { flex: 1; height: 1px; background: var(--line); }
   .z-waiting { color: var(--waiting); } .z-failed { color: var(--failed); }
   .z-working { color: var(--working); } .z-idle { color: var(--idle); }
   .z-done { color: var(--done); }
 
-  tr.row { cursor: pointer; border-bottom: 1px solid var(--line-soft); }
-  tr.row:hover, tr.row.sel { background: var(--surface); }
-  tr.row.sel > td:first-child { box-shadow: inset 2px 0 0 currentColor; }
-  tr.row.pinned > td:first-child { box-shadow: inset 2px 0 0 var(--waiting); }
-  td { padding: 7px 10px 7px 0; vertical-align: top; }
+  .cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(270px, 100%), 1fr)); }
+  .card {
+    position: relative; display: flex; flex-direction: column; gap: 5px;
+    border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+    padding: 9px 11px 8px 13px; cursor: pointer; min-width: 0;
+  }
+  /* a cor do estado é uma barra na borda, não texto: identifica sem competir
+     com o assunto, que é o que se quer ler */
+  .card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    border-radius: 6px 0 0 6px; background: var(--idle);
+  }
+  .card.s-working::before { background: var(--working); }
+  .card.s-waiting::before { background: var(--waiting); }
+  .card.s-failed::before  { background: var(--failed); }
+  .card.s-done::before    { background: var(--done); }
+  .card:hover { background: var(--surface-2); border-color: var(--line); }
+  .card.sel { border-color: var(--acento); }
+  .card.pinned::after {
+    content: '★'; position: absolute; top: 7px; right: 9px;
+    color: var(--waiting); font-size: 11px; pointer-events: none;
+  }
+  .card > header { display: flex; align-items: center; gap: 6px; min-height: 17px; }
+  .cat.vazia { border: 0; padding: 0; }
+  .c-titulo {
+    color: var(--fg); font-size: 13px; font-weight: 600; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .c-proj { margin: 0; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .c-nota {
+    margin: 1px 0 0; color: var(--faint); font-size: 11px; line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .c-nota.warn { color: var(--waiting); } .c-nota.bad { color: var(--failed); }
+  .card > footer {
+    display: flex; align-items: center; gap: 8px; margin-top: 3px;
+    padding-top: 7px; border-top: 1px solid var(--line-soft); font-size: 11px;
+  }
+  .card > footer .path { font-size: 11px; }
+  .c-prog { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .c-pontos { color: var(--done); letter-spacing: 1px; font-size: 10px; }
+  .c-frac { color: var(--dim); font-variant-numeric: tabular-nums; }
+  .c-barra { display: block; width: 44px; height: 3px; background: var(--line); border-radius: 2px; }
+  .c-barra > i { display: block; height: 100%; background: var(--done); border-radius: 2px; }
+  .c-idade { color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  /* some até o mouse chegar: três botões em cada cartão viram ruído visual */
+  .c-acts { display: flex; gap: 2px; opacity: 0; }
+  .card:hover .c-acts, .card:focus-within .c-acts { opacity: 1; }
+  .c-acts button {
+    background: none; border: 0; padding: 1px 4px; cursor: pointer;
+    color: var(--faint); font: 12px/1 var(--mono);
+  }
+  .c-acts button:hover { color: var(--fg); }
+  .c-acts button.on { color: var(--waiting); }
+  .c-acts button[disabled] { opacity: .25; cursor: not-allowed; }
 
   .dot { width: 7px; height: 7px; border-radius: 50%; display: block; margin-top: 5px; }
-  .s-working { background: var(--working); } .s-waiting { background: var(--waiting); }
-  .s-failed { background: var(--failed); } .s-done { background: var(--done); }
-  .s-idle { background: var(--idle); }
+  /* Escopadas na bolinha: soltas, pintavam o fundo inteiro de qualquer
+     elemento que carregasse a classe de estado — foi o que aconteceu com o
+     cartão de agente, que ficou laranja com o texto ilegível dentro. */
+  .dot.s-working { background: var(--working); } .dot.s-waiting { background: var(--waiting); }
+  .dot.s-failed { background: var(--failed); } .dot.s-done { background: var(--done); }
+  .dot.s-idle { background: var(--idle); }
 
   .clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .subject { display: flex; align-items: baseline; gap: 7px; }
-  .note { color: var(--faint); font-size: 12px; margin-top: 2px; }
+  .note { color: var(--faint); font-size: 12px; margin-top: 2px; max-width: 74ch; }
   .note.warn { color: var(--waiting); } .note.bad { color: var(--failed); }
   .cat {
     font: 700 9px/1.6 var(--label); letter-spacing: .1em; text-transform: uppercase;
@@ -268,7 +398,7 @@
   .todos li { display: flex; gap: 9px; align-items: flex-start; padding: 4px 0; }
   .todos input { margin-top: 3px; accent-color: var(--done); flex: none; }
   .todos li.done span { color: var(--faint); text-decoration: line-through; }
-  a { color: var(--working); }
+  a { color: var(--acento); }
   code {
     background: var(--bg); border: 1px solid var(--line); border-radius: 2px;
     padding: 0 5px; color: var(--dim); overflow-wrap: anywhere;
@@ -281,15 +411,30 @@
   .col-head .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); }
 
   /* ---------- to-dos: lista densa ---------- */
-  .lista { max-width: 920px; }
-  .grupo { margin-bottom: 20px; }
+  /* Mesma linguagem dos cartões de agente: cada agente é um bloco, e a lista
+     de tarefas continua densa dentro dele. O que muda é achar o bloco — antes
+     era uma coluna só, de 920px, descendo a página inteira. */
+  .lista { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); }
+  .grupo {
+    position: relative; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--surface); padding: 8px 12px 10px 14px; align-self: start;
+  }
+  .grupo::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    border-radius: 6px 0 0 6px; background: var(--idle);
+  }
+  .grupo.s-working::before { background: var(--working); }
+  .grupo.s-waiting::before { background: var(--waiting); }
+  .grupo.s-failed::before  { background: var(--failed); }
+  .grupo.s-done::before    { background: var(--done); }
   .g-head {
     display: flex; align-items: baseline; gap: 8px;
-    padding: 5px 0 6px; border-bottom: 1px solid var(--line-soft);
+    padding: 3px 0 7px; border-bottom: 1px solid var(--line-soft); margin-bottom: 4px;
   }
   .g-head .n { color: var(--faint); font-variant-numeric: tabular-nums; }
-  .g-head .path { cursor: pointer; }
-  .g-head .path:hover { color: var(--fg); }
+  .g-head b { cursor: pointer; font-size: 13px; }
+  .g-head b:hover { color: var(--acento) !important; }
+  .grupo > .c-proj { margin: 0 0 6px; }
   .g-add {
     background: none; border: 0; padding: 1px 7px; cursor: pointer;
     color: var(--faint); font: 15px/1 var(--mono);
@@ -307,7 +452,7 @@
     color: var(--fg); font: 13px/1.6 var(--mono); padding: 1px 5px;
   }
   .item .txt:hover { background: var(--surface-2); }
-  .item .txt:focus { outline: none; background: var(--surface-2); box-shadow: inset 0 -1px 0 var(--working); }
+  .item .txt:focus { outline: none; background: var(--surface-2); box-shadow: inset 0 -1px 0 var(--acento); }
   .item .txt::placeholder { color: var(--faint); }
   .item.done .txt { color: var(--faint); text-decoration: line-through; }
   .grupo details.lvl > summary { border-top: 0; padding: 4px 0 4px 3px; }
@@ -489,7 +634,7 @@
   .g-tab tr.off td { opacity: .55; }
 
   .g-erro { color: var(--waiting); font-size: 12px; padding: 10px 0; }
-  .g-form { border: 1px solid var(--working); border-radius: 4px; padding: 12px 14px; margin-bottom: 16px; }
+  .g-form { border: 1px solid var(--acento); border-radius: 4px; padding: 12px 14px; margin-bottom: 16px; }
   .g-campos { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
   .g-campos label {
     display: flex; align-items: center; gap: 6px; color: var(--faint);
@@ -503,9 +648,23 @@
   .g-indice { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); margin-bottom: 18px; }
 
   /* ---------- servidores ---------- */
-  .srv { width: 100%; border-collapse: collapse; }
-  .srv td { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
-  .srv .port { font: 700 15px/1 var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+  .srv-card {
+    position: relative; display: flex; flex-direction: column; gap: 5px;
+    border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+    padding: 9px 11px 8px 13px; min-width: 0;
+  }
+  /* verde na borda = servidor de desenvolvimento, o único que dá pra encerrar */
+  .srv-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    border-radius: 6px 0 0 6px; background: var(--idle);
+  }
+  .srv-card.dev::before { background: var(--done); }
+  .srv-card > header { display: flex; align-items: baseline; gap: 8px; }
+  .srv-card > footer {
+    display: flex; align-items: center; gap: 8px; margin-top: 3px;
+    padding-top: 7px; border-top: 1px solid var(--line-soft);
+  }
+  .srv-card .port { font: 700 15px/1 var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
   .btn {
     background: var(--surface); border: 1px solid var(--line); color: var(--dim);
     border-radius: 3px; padding: 4px 10px; cursor: pointer; font: 11px var(--mono);
@@ -552,7 +711,7 @@
     flex: none; background: none; border: 0; padding: 2px 4px; cursor: pointer;
     color: var(--faint); font: 12px var(--mono);
   }
-  .n-modo:hover { color: var(--working); }
+  .n-modo:hover { color: var(--acento); }
   .n-itens { padding: 5px 8px 7px; }
   .n-item { display: flex; align-items: baseline; gap: 8px; padding: 1px 0; }
   .n-item > input[type=checkbox] {
@@ -563,7 +722,7 @@
     color: var(--fg); font: 12px/1.55 var(--mono); padding: 1px 4px;
   }
   .n-item .txt:hover { background: var(--surface-2); }
-  .n-item .txt:focus { outline: none; background: var(--surface-2); box-shadow: inset 0 -1px 0 var(--working); }
+  .n-item .txt:focus { outline: none; background: var(--surface-2); box-shadow: inset 0 -1px 0 var(--acento); }
   .n-item.done .txt { color: var(--faint); text-decoration: line-through; }
   .n-add-item {
     background: none; border: 0; padding: 3px 4px; cursor: pointer;
@@ -583,17 +742,13 @@
 
   /* ---------- o painel reage ao espaço que sobrou, não à janela ---------- */
   .only-xs { display: none; }
-  @container painel (max-width: 900px) {
-    col.c-model, col.c-tok, col.c-time { width: 0; }
-    .hide-sm { display: none; }
-  }
+  /* Os cartões encolhem sozinhos pelo minmax da grade, então o que sobrou aqui
+     é só o enquadramento da página — as regras que escondiam coluna morreram
+     junto com a tabela de agentes. */
   @container painel (max-width: 620px) {
-    col.c-path { width: 0; }
-    .hide-xs { display: none; }
-    .only-xs { display: block; }
-    header { padding: 12px 12px 0; }
+    #painel > header { padding: 12px 12px 0; }
     main { padding: 4px 12px 40px; }
-    footer { padding: 0 12px 24px; }
+    #painel > footer { padding: 0 12px 24px; }
     .top { gap: 12px; }
     input[type=search], select { min-width: 0; flex: 1 1 110px; }
     .tab { padding: 8px 8px; letter-spacing: .1em; }
@@ -701,10 +856,11 @@
       <h1>Control Center</h1>
       <div class="counts" id="counts"></div>
       <span class="grow"></span>
+      <div id="uso" class="uso"></div>
       <div class="ferramentas">
         <input type="search" id="q" placeholder="filtrar…" autocomplete="off">
         <select id="proj"><option value="">todos os projetos</option></select>
-        <button class="btn" id="tema-toggle" title="tema: segue o Windows"></button>
+        <select id="tema-sel" title="tema do painel" aria-label="tema do painel"></select>
         <button class="btn" id="n-toggle" aria-pressed="false">notas</button>
       </div>
     </div>
@@ -809,8 +965,58 @@ function filtered() {
 
 /* ============================ topo ============================ */
 
+/**
+ * Uso do plano, no topo e em toda aba — é o número que decide se dá pra
+ * despachar mais um agente agora. Vem do statusLine do Claude Code, então
+ * só anda quando ele responde algo: por isso a hora da leitura aparece
+ * quando envelhece, em vez de fingir que é de agora.
+ */
+function renderUso() {
+  const u = DATA.uso
+  const alvo = $('#uso')
+  if (!u || (!u.cincoHoras && !u.semana)) {
+    alvo.innerHTML = ''
+    alvo.title = 'sem leitura ainda — aparece depois da próxima resposta do Claude Code'
+    return
+  }
+  const faixa = (p) => (p >= 85 ? 'alto' : p >= 60 ? 'medio' : 'baixo')
+  const relogio = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const dia = (ms) => new Date(ms).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+  /** Quanto falta para zerar, curto o bastante para caber ao lado do número. */
+  const falta = (ms) => {
+    const min = Math.round((ms - Date.now()) / 60000)
+    if (min <= 0) return 'zerando'
+    if (min < 60) return `${min}min`
+    const h = Math.floor(min / 60)
+    return h < 24 ? `${h}h${String(min % 60).padStart(2, '0')}` : `${Math.floor(h / 24)}d${h % 24}h`
+  }
+  const medidor = (rot, j, nota = '') => {
+    if (!j) return ''
+    const quando = j.resetaEm
+      ? `zera ${falta(j.resetaEm)} — ${dia(j.resetaEm)} às ${relogio(j.resetaEm)}`
+      : 'sem hora de virada informada'
+    return `<span class="u-item n-${faixa(j.pct)}" title="${rot}: ${j.pct.toFixed(1)}% usado · ${quando}${nota ? ` · ${nota}` : ''}">
+      <span class="u-rot">${rot}</span>
+      <span class="u-barra"><i style="width:${Math.min(j.pct, 100)}%"></i></span>
+      <b>${Math.round(j.pct)}%</b>
+      ${j.resetaEm ? `<span class="u-reset">${falta(j.resetaEm)}</span>` : ''}
+    </span>`
+  }
+  // Só avisa quando a leitura envelhece: enquanto o Claude Code está sendo
+  // usado, ela é de segundos atrás e dizer isso seria ruído.
+  const velha = Date.now() - u.em > 20 * 60_000
+  alvo.innerHTML = medidor('5h', u.cincoHoras)
+    + medidor('semana', u.semana, 'o Fable puxa desta janela, até 50% dela, e mais rápido que o Opus')
+    + medidor('opus', u.semanaOpus)
+    + medidor('sonnet', u.semanaSonnet)
+    + (velha ? `<span class="u-velho" title="a leitura vem do statusLine e só anda quando o Claude Code responde">${age(Date.now() - u.em)} atrás</span>` : '')
+  alvo.title = `uso do plano, leitura de ${relogio(u.em)}. `
+    + 'O Fable não tem janela própria: consome da semanal, com teto de 50% dela.'
+}
+
 function renderHeader() {
   const s = DATA.summary
+  renderUso()
   $('#counts').innerHTML = ['waiting', 'failed', 'working', 'idle', 'done']
     .map((k) => {
       const n = s[k] ?? 0
@@ -836,46 +1042,54 @@ function renderHeader() {
 
 /* ======================= aba: agentes ======================== */
 
-function row(j, maxTok, total) {
-  // "done" repetiria o ponto verde e a zona: nota só quando acrescenta algo
-  const note = j.stale ? `<div class="note warn clip">sem sinal há ${age(j.idleMs)}</div>`
-    : j.blockers.length ? `<div class="note bad clip">${esc(j.blockers[0])}</div>`
-    : j.inFlight.length ? `<div class="note clip">${esc(j.inFlight[0].label)}</div>`
-    : j.lastPrompt ? `<div class="note clip">${esc(j.lastPrompt)}</div>`
-    : j.detail ? `<div class="note clip">${esc(j.detail)}</div>` : ''
-  const pct = j.todos.length ? Math.round((j.todosDone / j.todos.length) * 100) : 0
-  const fatia = total ? Math.round((j.tokens / total) * 100) : 0
+/**
+ * Um agente vira um cartão, e a leitura é de cima pra baixo: o que é, de quem
+ * é, o que está fazendo agora, quanto falta. Tabela obrigava a varrer a linha
+ * inteira até o fim da tela para juntar as mesmas quatro coisas.
+ */
+function cartao(j) {
+  // "done" repetiria o ponto e a faixa: nota só quando acrescenta algo
+  const nota = j.stale ? `<p class="c-nota warn">sem sinal há ${age(j.idleMs)}</p>`
+    : j.blockers.length ? `<p class="c-nota bad">${esc(j.blockers[0])}</p>`
+    : j.inFlight.length ? `<p class="c-nota">${esc(j.inFlight[0].label)}</p>`
+    : j.lastPrompt ? `<p class="c-nota">${esc(j.lastPrompt)}</p>`
+    : j.detail ? `<p class="c-nota">${esc(j.detail)}</p>` : ''
+
+  // Bolinhas em vez de barra: com poucas tarefas dá pra contar de relance, e é
+  // isso que se quer saber — quantas faltam, não a porcentagem.
+  const N = 10
+  const progresso = !j.todos.length ? '<span class="path">sem tarefa</span>'
+    : j.todos.length <= N
+      ? `<span class="c-pontos">${'●'.repeat(j.todosDone)}${'○'.repeat(j.todos.length - j.todosDone)}</span>
+         <span class="c-frac">${j.todosDone}/${j.todos.length}</span>`
+      : `<span class="c-barra"><i style="width:${Math.round((j.todosDone / j.todos.length) * 100)}%"></i></span>
+         <span class="c-frac">${j.todosDone}/${j.todos.length}</span>`
+
   return `
-    <tr class="row${selected === j.id ? ' sel' : ''}${j.pinned ? ' pinned' : ''}" data-job="${j.id}"
-        style="color:var(--${j.status})" tabindex="0" title="${j.pinned ? 'fixado · ' : ''}${esc(j.id)}">
-      <td><i class="dot s-${j.status}"></i></td>
-      <td>
-        <div class="subject clip" style="color:var(--fg)">
-          ${j.category ? `<span class="cat">${esc(j.category)}</span>` : ''}
-          <b class="clip">${esc(j.subject)}</b>
-        </div>${note}
-        <div class="path clip only-xs">${esc(j.project)}<em>/${esc(j.route)}</em></div>
-      </td>
-      <td class="path clip hide-xs" title="${esc(j.project)}/${esc(j.route)}">${esc(j.project)}<em>/${esc(j.route)}</em></td>
-      <td class="path hide-sm">${esc(j.model)}</td>
-      <td class="num hide-sm">${tok(j.tokens)}</td>
-      <td class="hide-sm">
-        <div class="tokbar" title="${tok(j.tokens)} tokens · ${esc(j.model)} · ${fatia}% do total na tela">
-          <i style="width:${maxTok ? Math.max((j.tokens / maxTok) * 100, j.tokens ? 1.5 : 0) : 0}%"></i>
-        </div>
-      </td>
-      <td>${j.todos.length
-        ? `<span class="num">${j.todosDone}/${j.todos.length}</span><div class="bar-todo"><i style="width:${pct}%"></i></div>`
-        : '<span class="path">—</span>'}</td>
-      <td class="acts">
-        <button data-act="resume" data-id="${j.id}" ${j.sessionId ? '' : 'disabled'}
-          title="${j.sessionId ? 'copiar claude --resume' : 'sem sessão para retomar'}">↻</button>
-        <button data-act="pin" data-id="${j.id}" class="${j.pinned ? 'on' : ''}"
-          title="${j.pinnedAqui ? 'desafixar' : j.pinned ? 'fixado pelo Claude Code' : 'fixar no topo'}"
-          ${j.pinned && !j.pinnedAqui ? 'disabled' : ''}>${j.pinned ? '★' : '☆'}</button>
-        <button data-act="path" data-id="${j.id}" title="copiar o caminho da pasta">⧉</button>
-      </td>
-    </tr>`
+    <article class="card s-${j.status}${selected === j.id ? ' sel' : ''}${j.pinned ? ' pinned' : ''}"
+        data-job="${j.id}" tabindex="0" title="${j.pinned ? 'fixado · ' : ''}${esc(j.id)}">
+      <header>
+        ${j.category ? `<span class="cat">${esc(j.category)}</span>` : '<span class="cat vazia"></span>'}
+        <span class="grow"></span>
+        <span class="c-acts">
+          <button data-act="resume" data-id="${j.id}" ${j.sessionId ? '' : 'disabled'}
+            title="${j.sessionId ? 'copiar claude --resume' : 'sem sessão para retomar'}">↻</button>
+          <button data-act="pin" data-id="${j.id}" class="${j.pinned ? 'on' : ''}"
+            title="${j.pinnedAqui ? 'desafixar' : j.pinned ? 'fixado pelo Claude Code' : 'fixar no topo'}"
+            ${j.pinned && !j.pinnedAqui ? 'disabled' : ''}>${j.pinned ? '★' : '☆'}</button>
+          <button data-act="path" data-id="${j.id}" title="copiar o caminho da pasta">⧉</button>
+        </span>
+      </header>
+      <b class="c-titulo">${esc(j.subject)}</b>
+      <p class="c-proj">${esc(j.project)}<em>/${esc(j.route)}</em></p>
+      ${nota}
+      <footer>
+        <span class="c-prog">${progresso}</span>
+        <span class="grow"></span>
+        <span class="path" title="${tok(j.tokens)} tokens · ${esc(j.model)}">${esc(j.model)} · ${tok(j.tokens)}</span>
+        <span class="c-idade" title="começou há ${age(j.ageMs)}">${age(j.idleMs)}</span>
+      </footer>
+    </article>`
 }
 
 const CAMPOS = {
@@ -897,57 +1111,46 @@ function ordenar(lista) {
   })
 }
 
-const th = (campo, rotulo, classe = '') => {
-  const ativo = ordem.campo === campo
-  return `<th class="${classe}${ativo ? ' ativo' : ''}">
-    <button data-sort="${campo}">${rotulo}${ativo ? `<span class="dir">${ordem.desc ? '▾' : '▴'}</span>` : ''}</button>
-  </th>`
-}
+const ORDENAR_POR = [
+  ['', 'urgência'], ['subject', 'assunto'], ['project', 'projeto'],
+  ['tokens', 'tokens'], ['todos', 'to-dos'],
+]
 
 function viewAgentes(jobs) {
-  const maxTok = Math.max(0, ...jobs.map((j) => j.tokens || 0))
-  const total = jobs.reduce((a, j) => a + (j.tokens || 0), 0)
-  const linhas = (lista) => lista.map((j) => row(j, maxTok, total)).join('')
+  const grade = (lista) => `<div class="cards">${lista.map(cartao).join('')}</div>`
 
-  // Ordenar por coluna desliga as zonas: comparar tokens dentro de cada faixa
-  // de urgência esconde justamente o agente caro que se quer achar.
-  const body = ordem.campo
-    ? `<tbody>${linhas(ordenar(jobs))}</tbody>`
+  // Ordenar desliga as faixas: comparar tokens dentro de cada faixa de urgência
+  // esconde justamente o agente caro que se quer achar.
+  const corpo = ordem.campo
+    ? grade(ordenar(jobs))
     : ZONES.map((z) => {
         const list = jobs.filter((j) => j.status === z.key)
+        // Faixa vazia não vira coluna magra: some, e o que sobra ocupa a tela.
         if (!list.length) return ''
-        const hidden = collapsed.has(z.key)
-        return `<tbody>
-          <tr class="zone"><td colspan="8"><div class="bar">
-            <button data-zone="${z.key}" aria-expanded="${!hidden}">
-              <span class="z-${z.key}">${z.title}</span> <span class="n">${list.length}</span>
-              ${hidden ? '<span class="n">▸</span>' : ''}
-            </button><span class="rule"></span>
-          </div></td></tr>
-          ${hidden ? '' : linhas(list)}
-        </tbody>`
+        const oculta = collapsed.has(z.key)
+        return `<section class="faixa">
+          <div class="f-head">
+            <button data-zone="${z.key}" aria-expanded="${!oculta}">
+              <span class="z-${z.key}">${oculta ? '▸' : '▾'} ${z.title}</span>
+              <span class="n">${list.length}</span>
+            </button>
+            <span class="rule"></span>
+          </div>
+          ${oculta ? '' : grade(list)}
+        </section>`
       }).join('')
 
-  const aviso = ordem.campo
-    ? `<div class="aviso-ordem">
-        <span>ordenado por ${esc(ordem.campo)} — zonas desligadas</span>
-        <button data-sort="">voltar a agrupar por urgência</button>
-      </div>`
-    : ''
+  const barra = `<div class="ord">
+    <span class="path">ordenar por</span>
+    ${ORDENAR_POR.map(([campo, rotulo]) => {
+      const ativo = (ordem.campo || '') === campo
+      return `<button class="btn${ativo ? ' on' : ''}" data-sort="${campo}">${rotulo}${
+        ativo && campo ? `<span class="dir">${ordem.desc ? ' ▾' : ' ▴'}</span>` : ''}</button>`
+    }).join('')}
+    ${ordem.campo ? '<span class="path">faixas desligadas enquanto ordena</span>' : ''}
+  </div>`
 
-  return `${aviso}<table>
-    <colgroup><col class="c-dot"><col><col class="c-path">
-      <col class="c-model"><col class="c-tok"><col class="c-bar"><col class="c-todo"><col class="c-acts"></colgroup>
-    <thead><tr>
-      <th></th>
-      ${th('subject', 'assunto')}
-      ${th('project', 'projeto / rota', 'hide-xs')}
-      ${th('model', 'modelo', 'hide-sm')}
-      ${th('tokens', 'tokens', 'hide-sm')}
-      <th class="hide-sm">gasto</th>
-      ${th('todos', 'to-do')}
-      <th></th>
-    </tr></thead>${body}</table>`
+  return barra + (corpo || '<div class="empty">nenhum agente no filtro</div>')
 }
 
 /* ======================== aba: to-dos ======================== */
@@ -984,15 +1187,14 @@ function viewTodos(jobs) {
     const marcados = j.todos.map((t, i) => ({ t, i }))
     const abertos = marcados.filter(({ t }) => !t.done)
     const feitos = marcados.filter(({ t }) => t.done)
-    return `<section class="grupo">
-      <div class="g-head" style="color:var(--${j.status})">
-        <i class="dot s-${j.status}" style="margin:0;position:relative;top:1px"></i>
-        <span class="path" data-job="${j.id}" tabindex="0" title="abrir o agente"
-          >${esc(j.project)}<em>/${esc(j.route)}</em></span>
-        <b class="clip" style="flex:1;color:var(--fg)">${esc(j.subject)}</b>
+    return `<section class="grupo s-${j.status}">
+      <div class="g-head">
+        <b class="clip" style="flex:1;color:var(--fg)" data-job="${j.id}" tabindex="0"
+          title="abrir o agente">${esc(j.subject)}</b>
         <span class="n">${abertos.length}</span>
         <button class="g-add" data-add="${j.id}" title="nova tarefa neste agente">+</button>
       </div>
+      <p class="c-proj">${esc(j.project)}<em>/${esc(j.route)}</em></p>
       ${abertos.map(({ t, i }) => item(j, t, i)).join('')}
       ${feitos.length ? `
         <details class="lvl"${feitosAbertos.has(j.id) || tudoAberto ? ' open' : ''} data-feitos="${j.id}">
@@ -1410,8 +1612,10 @@ let precoAberta = params.get('tarefa') || null
 
 const NIVEL_ROTULO = { junior: 'júnior', pleno: 'pleno', senior: 'sênior' }
 
+let precoEm = 0
 async function carregarPreco(force) {
-  if (PRECO && !force) return
+  if (PRECO && !force && Date.now() - precoEm < 30_000) return
+  precoEm = Date.now()
   const q = new URLSearchParams({ corte: tempoParams.corte, unidade: precoUnidade })
   if (force === 'mercado') q.set('mercado', '1')
   PRECO = null
@@ -1552,23 +1756,27 @@ function viewServidores() {
   // O começo do caminho é sempre o mesmo; o que identifica o app está no fim.
   const cauda = (p, n = 42) => (p.length > n ? '…' + p.slice(-(n - 1)) : p)
 
-  const linha = (s) => `
-    <tr>
-      <td class="port" style="width:80px">${s.ports.join(', ')}</td>
-      <td style="width:74px"><span class="cat">${esc(s.kind)}</span></td>
-      <td class="clip" title="${esc(s.cmd)}">
-        <span style="color:var(--fg)">${esc(s.project || s.name)}</span>
-        ${s.path ? `<div class="path">${esc(cauda(s.path))}</div>` : ''}
-      </td>
-      <td class="path" style="width:90px">${s.startedAt ? 'há ' + age(Date.now() - s.startedAt) : '—'}</td>
-      <td class="path" style="width:90px">pid ${s.pid}</td>
-      <td style="width:150px;text-align:right;white-space:nowrap">
+  // A porta é o que identifica o servidor na cabeça de quem procura — por isso
+  // vem primeiro e grande, em vez de ser a primeira coluna de uma tabela.
+  const cartaoSrv = (s) => `
+    <article class="srv-card${s.dev ? ' dev' : ''}">
+      <header>
+        <b class="port">:${s.ports.join(', :')}</b>
+        <span class="cat">${esc(s.kind)}</span>
+        <span class="grow"></span>
+        <span class="path">pid ${s.pid}</span>
+      </header>
+      <b class="c-titulo">${esc(s.project || s.name)}</b>
+      ${s.path ? `<p class="c-proj" title="${esc(s.cmd)}">${esc(cauda(s.path))}</p>` : ''}
+      <footer>
+        <span class="path">${s.startedAt ? 'no ar há ' + age(Date.now() - s.startedAt) : '—'}</span>
+        <span class="grow"></span>
         ${s.url ? `<a class="btn" href="${esc(s.url)}" target="_blank" rel="noopener">abrir</a>` : ''}
         ${s.dev && !s.protegido
           ? `<button class="btn danger" data-kill="${s.pid}">${armed === s.pid ? 'confirmar?' : 'encerrar'}</button>`
           : ''}
-      </td>
-    </tr>`
+      </footer>
+    </article>`
 
   // duas instâncias do mesmo projeto quase sempre é uma esquecida de ontem
   const porProjeto = new Map()
@@ -1579,11 +1787,11 @@ function viewServidores() {
     <div class="col-head"><span>servidores de projeto</span><span class="n">${dev.length}</span></div>
     ${dobrados.length ? `<p class="note warn" style="margin:0 0 10px">${
       dobrados.map(([p, n]) => `${esc(p)} está com ${n} servidores abertos`).join(' · ')}</p>` : ''}
-    ${dev.length ? `<table class="srv">${dev.map(linha).join('')}</table>`
+    ${dev.length ? `<div class="cards">${dev.map(cartaoSrv).join('')}</div>`
       : '<div class="path">nenhum servidor de desenvolvimento escutando agora</div>'}
     <details class="lvl" style="margin-top:24px">
       <summary>outros processos com porta aberta (${resto.length})</summary>
-      <table class="srv">${resto.map(linha).join('')}</table>
+      <div class="cards" style="margin-top:10px">${resto.map(cartaoSrv).join('')}</div>
     </details>
     <p class="path" style="margin-top:20px">
       encerrar pede confirmação e só vale para servidor de desenvolvimento —
@@ -1889,8 +2097,13 @@ async function carregarServidores(force) {
   render()
 }
 
+// Revalida ao voltar na aba. Morno, /api/tempo custa ~20ms — o guard antigo
+// segurava o snapshot da PRIMEIRA carga da aba pelo resto da sessão, e as
+// horas congelavam sem nada na tela dizendo isso.
+let tempoEm = 0
 async function carregarTempo(force) {
-  if (TEMPO && !force) return
+  if (TEMPO && !force && Date.now() - tempoEm < 30_000) return
+  tempoEm = Date.now()
   const q = new URLSearchParams({ corte: tempoParams.corte })
   if (tempoParams.de) q.set('de', tempoParams.de)
   if (tempoParams.ate) q.set('ate', tempoParams.ate)
@@ -2104,12 +2317,6 @@ document.addEventListener('click', async (e) => {
     return gravarGraficos(lista.some((g) => g.id === salvo.id)
       ? lista.map((g) => (g.id === salvo.id ? salvo : g))
       : [...lista, salvo])
-  }
-
-  if (t.closest('#tema-toggle')) {
-    temaModo = { auto: 'claro', claro: 'escuro', escuro: 'auto' }[temaModo]
-    localStorage.setItem('cc-tema', temaModo)
-    return aplicarTema()
   }
 
   if (t.closest('#n-toggle')) {
@@ -2478,8 +2685,14 @@ function editarTodo(jobId, i, texto) {
 
 for (const el of ['#q', '#proj']) $(el).addEventListener('input', render)
 
-// A primeira chamada rodou no head, quando o botão ainda não existia: o tema
-// já valia, mas o ícone estava vazio.
+// O menu só pode ser montado agora: no head, o <select> ainda não existia.
+$('#tema-sel').innerHTML = '<option value="auto">tema: automático</option>'
+  + TEMAS.map((t) => `<option value="${t.id}">tema: ${t.nome}</option>`).join('')
+$('#tema-sel').addEventListener('change', (e) => {
+  temaModo = e.target.value
+  localStorage.setItem('cc-tema', temaModo)
+  aplicarTema()
+})
 aplicarTema()
 
 // ?static=1 não abre o SSE: com a conexão pendurada, captura headless nunca

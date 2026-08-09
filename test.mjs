@@ -103,6 +103,19 @@ const script = scripts.join('\n')
 for (const rota of ['/api/jobs', '/api/meta', '/api/notes', '/events']) {
   assert.ok(script.includes(rota), `ui.html não usa ${rota}`)
 }
+// Cor inválida em variável CSS é ignorada em silêncio pelo navegador: o tema
+// carrega, só que aquele tom cai no valor herdado. Já aconteceu duas vezes na
+// mesma edição (`#8manual` e um dígito devanagari no meio do hex).
+for (const [, nome, valor] of html.matchAll(/(--[a-z0-9-]+):\s*(#[^;]+);/gi)) {
+  assert.match(valor.trim(), /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i,
+    `cor inválida em ${nome}: "${valor.trim()}"`)
+}
+// cada tema declarado no CSS precisa aparecer na lista que a tela oferece,
+// senão vira paleta que ninguém consegue escolher
+for (const [, id] of html.matchAll(/:root\[data-tema="([a-z]+)"\]/g)) {
+  assert.ok(script.includes(`'${id}'`), `tema "${id}" existe no CSS e não está na lista do seletor`)
+}
+
 // o painel tem que reagir ao próprio espaço: com as notas abertas a janela
 // segue larga, então media query não serve de breakpoint
 assert.ok(html.includes('container-type: inline-size'), 'painel não é contêiner de consulta')

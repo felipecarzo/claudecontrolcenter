@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import { tarefas } from './tarefas.mjs'
 import { arquivar, jobsHistoricos } from './historico.mjs'
+import { readUso } from './uso.mjs'
 import { garantirMercado } from './mercado.mjs'
 import { readServers, killServer } from './servers.mjs'
 import { readPaineis, ligarPainel, desligarPainel } from './paineis.mjs'
@@ -25,7 +26,9 @@ const snapshot = () => {
   // O CLI apaga job antigo, e com ele a única cópia dos to-dos. Arquivar aqui
   // é barato: só grava quando algo mudou, e o painel já releu tudo mesmo.
   arquivar(jobs)
-  return { jobs, summary: summarize(jobs), at: Date.now() }
+  // Vai junto do snapshot porque tem que aparecer em toda aba, sempre: é
+  // leitura de um JSON de 200 bytes, não pesa no tique de 2s.
+  return { jobs, summary: summarize(jobs), uso: readUso(), at: Date.now() }
 }
 
 const send = (res, code, body, type = 'application/json') => {
@@ -206,7 +209,7 @@ function handler(req, res) {
       const snap = snapshot()
       const json = JSON.stringify(snap)
       // compara sem o timestamp, senão manda evento a cada tick
-      const fingerprint = JSON.stringify(snap.jobs)
+      const fingerprint = JSON.stringify([snap.jobs, snap.uso])
       if (fingerprint === last) return
       last = fingerprint
       res.write(`data: ${json}\n\n`)

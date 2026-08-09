@@ -58,6 +58,57 @@ switch (cmd) {
     break
   }
 
+  /**
+   * Captura o uso do plano do JSON que o Claude Code manda para o statusLine,
+   * e repassa a entrada intacta para o comando de statusline que já existia.
+   *
+   * É o único lugar de onde o número oficial sai sem chamar API nem tocar em
+   * credencial. Falha aberta em tudo: se este comando quebrar, a statusline do
+   * Felipe some da tela, o que é pior que não ter o dado no painel.
+   */
+  case 'statusline': {
+    const entrada = await new Promise((resolve) => {
+      let buf = ''
+      process.stdin.setEncoding('utf8')
+      process.stdin.on('data', (c) => { buf += c })
+      process.stdin.on('end', () => resolve(buf))
+      process.stdin.on('error', () => resolve(''))
+    })
+    try {
+      const { gravarUso } = await import('./src/uso.mjs')
+      gravarUso(JSON.parse(entrada))
+    } catch { /* sem rate_limits, JSON quebrado ou disco cheio: segue o jogo */ }
+
+    const embrulhado = val('--wrap')
+    if (!embrulhado) break
+    let saida = ''
+    try {
+      const { spawnSync } = await import('node:child_process')
+      // 15s: a statusline embrulhada pode chamar ferramenta externa lenta (a
+      // do Felipe cai num `npx ccusage` quando o binário não está instalado).
+      const r = spawnSync(embrulhado, { input: entrada, shell: true, encoding: 'utf8', timeout: 15000 })
+      saida = r.stdout || ''
+    } catch { /* fica com a linha mínima abaixo */ }
+
+    // Se a original travou ou não imprimiu nada, ainda assim sai algo: barra
+    // vazia parece painel quebrado, e o uso do plano é a informação que mais
+    // importa ali.
+    if (!saida.trim()) {
+      try {
+        const j = JSON.parse(entrada)
+        const u = (await import('./src/uso.mjs')).readUso()
+        const pct = (x) => (x ? `${Math.round(x.pct)}%` : '—')
+        saida = [
+          j.workspace?.current_dir ? j.workspace.current_dir.split(/[\\/]/).filter(Boolean).pop() : '',
+          j.model?.display_name,
+          u ? `plano 5h ${pct(u.cincoHoras)} · semana ${pct(u.semana)}` : '',
+        ].filter(Boolean).join('  ·  ')
+      } catch { /* nem isso: sai vazio mesmo */ }
+    }
+    if (saida) process.stdout.write(saida)
+    break
+  }
+
   // Fechar tarefa sem reenviar a lista: era esse atrito que fazia o agente
   // adiar a marcação, e adiar virou nunca.
   case 'done':
