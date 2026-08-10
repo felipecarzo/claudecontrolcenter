@@ -14,7 +14,7 @@ export const CONFIG_FILE = path.join(os.homedir(), '.claude', 'control-center.js
 
 const DEFAULTS = {
   enabled: true, disabledProjects: [], taxaHora: 0, taxaPorProjeto: {}, cambio: {},
-  assinaturaMes: 0, graficos: null, mercado: {}, sessoes: {},
+  assinaturaMes: 0, graficos: null, mercado: {}, sessoes: {}, servidores: {},
 }
 
 export function readConfig() {
@@ -144,6 +144,48 @@ export function setSessao(sessao, { nivel, horas }) {
   else delete sessoes[id]
   writeConfig({ ...cfg, sessoes })
   return sessoes[id] || null
+}
+
+/**
+ * O que o Felipe escreveu sobre um servidor: apelido, explicação de que raio
+ * ele abre, e se é favorito. Guarda também de onde subir de novo (`cwd` +
+ * `comando`) e quando foi visto pela última vez, que é o que alimenta os
+ * "recentes".
+ *
+ * A chave vem de `chaveServidor()` em `servers.mjs`: caminho do projeto mais
+ * porta. Não pode ser o PID — ele muda a cada `npm run dev`, e o apelido tem
+ * que sobreviver ao reinício, que é justamente quando ele serve.
+ *
+ * Entrada que fica sem nada é apagada: o arquivo é do usuário, não pode
+ * encher de registro vazio de servidor que rodou uma vez.
+ */
+export function setServidor(chave, patch = {}) {
+  const cfg = readConfig()
+  const id = String(chave || '').slice(0, 200)
+  if (!id) throw new Error('chave do servidor obrigatória')
+
+  const texto = (v, n) => (v == null ? undefined : String(v).trim().slice(0, n))
+  const atual = cfg.servidores?.[id] || {}
+  const proximo = { ...atual }
+
+  if ('apelido' in patch) proximo.apelido = texto(patch.apelido, 60)
+  if ('nota' in patch) proximo.nota = texto(patch.nota, 400)
+  if ('favorito' in patch) proximo.favorito = !!patch.favorito
+  if ('cwd' in patch) proximo.cwd = texto(patch.cwd, 400)
+  if ('comando' in patch) proximo.comando = texto(patch.comando, 300)
+  if ('ultimoEm' in patch) proximo.ultimoEm = Number(patch.ultimoEm) || Date.now()
+
+  // campo vazio some em vez de virar string vazia no arquivo
+  for (const k of ['apelido', 'nota', 'cwd', 'comando']) if (!proximo[k]) delete proximo[k]
+  if (!proximo.favorito) delete proximo.favorito
+
+  const servidores = { ...cfg.servidores }
+  // sobrou só o carimbo de "já vi": não vale guardar
+  if (!Object.keys(proximo).filter((k) => k !== 'ultimoEm').length) delete servidores[id]
+  else servidores[id] = proximo
+
+  writeConfig({ ...cfg, servidores })
+  return servidores[id] || null
 }
 
 /** Quanto a assinatura custa por mês. Zero desliga o custo real na tela. */

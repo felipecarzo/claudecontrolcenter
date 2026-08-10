@@ -138,18 +138,42 @@ Escritos aqui porque são escolha, não descuido:
   5s; se incomodar, o caminho é amostrar em background e servir só o cache.
 - O mapa lê só `##` (grupos) e `###` (frentes) do ROADMAP.md, e conta item de
   lista. Parágrafo solto é explicação, não tarefa — por isso não entra na conta.
+- **O painel passou a SUBIR servidor**, e com isso executa comando na máquina.
+  A trava é a pasta: só dentro da base de projetos, ou de um caminho que
+  contenha uma pasta de `CC_PROJECT_DIRS`. Não há lista fechada de comandos —
+  o campo é editável de propósito, porque projeto real sobe de jeito que
+  nenhuma lista adivinha. Continua valendo que agente não se cria nem se mata
+  pelo painel.
+- Servidor duplicado é o MESMO tipo no MESMO projeto, e fica o mais recente.
+  `next` e `vite` lado a lado não contam: monorepo sobe os dois de propósito.
+  Quem vai morrer aparece na tela antes do clique de confirmação.
+- Apelido e explicação de servidor são editados por `prompt()` do navegador,
+  não por campo na página. Não é preguiça: `render()` reescreve o `#main` a
+  cada evento do stream, e um campo de texto ali perderia o cursor no meio da
+  digitação — a mesma razão pela qual as notas moram fora do `#main`.
+- "Recentes" nasce da varredura, não de histórico próprio: a primeira vez que
+  um servidor com pasta é visto, o par pasta+comando vai pro config. O carimbo
+  só se renova a cada hora, senão seriam quatro escritas por minuto.
+- A lista de "por pasta" só oferece scripts que sobem algo (`dev`, `start`,
+  `serve`, `preview`, `watch`). Projeto que sobe com outro nome de script não
+  aparece — o comando é editável antes de subir, e é por ali que se resolve.
 - O vínculo agente↔roadmap é pelo TÍTULO da seção, não por ID. Dos 43 roadmaps,
   só 6 têm IDs; numerar todos seria trabalho grande para pouco ganho, e ID
   envelhece quando a lista muda.
 
 ---
 
-Última atualização: **2026-08-09** — dia de tornar o painel legível para quem
-não escreveu o código. Uso do plano no topo, seis temas, cartões nas abas de
-lista, módulos de CPU/RAM/GPU e barra de mídia com volume por aplicativo. No
-fim do dia, o feedback que mais rendeu: "prontos" mentia (bug do `state` do
-CLI, corrigido) e o cartão mostrava a folha sem a árvore — daí o mapa do
-projeto lendo o ROADMAP.md e o campo `frente` no protocolo.
-Aberto: CC-17 (último pedido ambíguo), CC-18 (projeto sem roadmap), CC-19
-(conferir adesão ao `frente`), mais CC-04, CC-05, CC-08 e os dois do Felipe
-(CC-14, CC-15).
+Última atualização: **2026-08-10** — a aba de servidores virou útil de
+verdade, a pedido direto do Felipe (não estava numerada no roadmap). Cada
+processo agora diz o que é de fato (`next rodando em inovallbond/apps`, não
+"node"), aceita apelido e explicação, agrupa por projeto, marca favorito, fecha
+duplicados do mesmo tipo com um clique, abre a pasta em quatro formatos
+(explorador/editor/terminal/copiar caminho) e sobe servidor novo por pasta,
+favorito ou recente. No caminho, três bugs reais na detecção de projeto
+(`.bin` fantasma, drive Windows perdido em barra normal, pasta que era na
+verdade um arquivo) — corrigidos com teste, achados só porque a varredura
+real do disco foi conferida, não só o `npm test`.
+
+CC-17 (último pedido ambíguo) segue como próxima task — não foi tocada hoje.
+Aberto: CC-17, CC-18 (projeto sem roadmap), CC-19 (conferir adesão ao
+`frente`), mais CC-04, CC-05, CC-08 e os dois do Felipe (CC-14, CC-15).

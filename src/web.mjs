@@ -16,11 +16,14 @@ import {
 import { estado as estadoMaquina } from './maquina.mjs'
 import { lerRoadmap } from './roadmap.mjs'
 import { garantirMercado } from './mercado.mjs'
-import { readServers, killServer } from './servers.mjs'
+import {
+  readServers, killServer, duplicados, recentes, projetosLancaveis,
+  subirServidor, abrirLocal, esquecerCache,
+} from './servers.mjs'
 import { readPaineis, ligarPainel, desligarPainel } from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
-import { setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, readConfig } from './config.mjs'
+import { setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, readConfig } from './config.mjs'
 import { garantirCambio } from './cambio.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -102,7 +105,39 @@ function handler(req, res) {
 
   // Consultado só pela aba de servidores: a varredura leva ~3s e não pode
   // pesar no painel principal nem no stream.
-  if (url.pathname === '/api/servers') return send(res, 200, { servers: readServers() })
+  if (url.pathname === '/api/servers') {
+    const servers = readServers()
+    return send(res, 200, {
+      servers,
+      // só os PIDs: a página já tem a lista inteira e não precisa dela de novo
+      duplicados: duplicados(servers).map((g) => ({
+        project: g.project, kind: g.kind, manter: g.manter.pid, matar: g.matar.map((s) => s.pid),
+      })),
+      recentes: recentes(),
+    })
+  }
+
+  // Apelido, explicação e favorito de um servidor. Some do cache na hora:
+  // esperar os 15s da varredura pareceria que o texto não foi salvo.
+  if (url.pathname === '/api/servidor' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ chave, patch }) => {
+      if (!chave || typeof patch !== 'object') throw new Error('chave e patch obrigatórios')
+      const salvo = setServidor(chave, patch)
+      esquecerCache()
+      return { servidor: salvo }
+    })
+  }
+
+  // Varre o disco atrás de pastas de projeto: só o construtor de "subir" pede.
+  if (url.pathname === '/api/projetos') return send(res, 200, { projetos: projetosLancaveis() })
+
+  if (url.pathname === '/api/subir' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, (corpo) => ({ subiu: subirServidor(corpo) }))
+  }
+
+  if (url.pathname === '/api/abrir' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ dir, como }) => ({ aberto: abrirLocal(dir, como) }))
+  }
 
   // Idem: lê ~800MB de transcript na primeira vez. Só a aba de tempo pede, e
   // as vezes seguintes releem apenas o que mudou.

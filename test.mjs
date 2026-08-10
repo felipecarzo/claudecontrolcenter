@@ -189,20 +189,55 @@ assert.equal(normalizeLink({ label: 'sem url' }), null)
 
 // --- servidores: classificação e caminho ---
 const srv = await import('./src/servers.mjs')
-const { kindOf, projectFromCmd } = srv._internals
+const { kindOf, projectFromCmd, alvoDoCmd, pastaValida } = srv._internals
 assert.equal(kindOf('node.exe', 'node .../vite/bin/vite.js'), 'vite')
 assert.equal(kindOf('python.exe', 'uvicorn app:main'), 'python')
 assert.equal(kindOf('lsass.exe', ''), 'lsass')
 // o caminho tem que parar antes de node_modules, senão não diz qual app é
 assert.deepEqual(
   projectFromCmd('"node" "D:\\Documentos\\Ti\\projetos\\CLIENTS\\inovallbond\\apps\\game_startingup\\node_modules\\.bin\\..\\vite\\bin\\vite.js"'),
-  { project: 'inovallbond', path: 'D:\\Documentos\\Ti\\projetos\\CLIENTS\\inovallbond\\apps\\game_startingup' },
+  { project: 'inovallbond', sub: 'apps', path: 'D:\\Documentos\\Ti\\projetos\\CLIENTS\\inovallbond\\apps\\game_startingup' },
 )
-assert.deepEqual(projectFromCmd('C:\\Windows\\system32\\svchost.exe -k netsvcs'), { project: null, path: null })
+assert.deepEqual(projectFromCmd('C:\\Windows\\system32\\svchost.exe -k netsvcs'), { project: null, sub: null, path: null })
 // caminho de Unix também tem que ser reconhecido
 assert.deepEqual(projectFromCmd('node /home/ana/projects/meuapp/node_modules/.bin/vite'), {
-  project: 'meuapp', path: '/home/ana/projects/meuapp',
+  project: 'meuapp', sub: null, path: '/home/ana/projects/meuapp',
 })
+// caminho do Windows com barra normal não pode perder a letra do drive
+assert.deepEqual(projectFromCmd('node D:/Documentos/Ti/projetos/PESSOAL/app_x/app/dist/cli.js --port 3102'), {
+  project: 'app_x', sub: 'app', path: 'D:/Documentos/Ti/projetos/PESSOAL/app_x/app',
+})
+// o alvo é a pasta que roda, não o arquivo nem o dist
+assert.equal(projectFromCmd('node /home/ana/projects/x/build/server.js').path, '/home/ana/projects/x')
+
+// --- servidores: dizer o que o processo é, e não só "node" ---
+assert.equal(alvoDoCmd('"node.exe" "D:\\p\\projetos\\x\\node_modules\\.bin\\vite"'), 'vite')
+assert.equal(alvoDoCmd('node /home/ana/projects/x/node_modules/next/dist/bin/next'), 'next')
+// barra dobrada depois do .bin: era o que fazia o painel anunciar um ".bin"
+assert.equal(alvoDoCmd('"node" "D:\\p\\projetos\\x\\node_modules\\.bin\\\\..\\next\\dist\\bin\\next" start -p 3131'), 'next')
+assert.equal(alvoDoCmd('node /p/projetos/x/node_modules/@nrwl/cli/bin/nx'), '@nrwl/cli')
+assert.equal(alvoDoCmd('"C:\\node.exe" "D:\\Documentos\\Ti\\projetos\\PESSOAL\\proj_controlcenter\\cc.mjs"'), 'cc.mjs')
+assert.equal(alvoDoCmd('C:\\Windows\\system32\\svchost.exe -k netsvcs'), null)
+assert.equal(srv.descrever({ kind: 'vite', project: 'x', sub: 'apps', cmd: 'node /a/projetos/x/node_modules/.bin/vite' }),
+  'vite rodando em x/apps')
+assert.equal(srv.descrever({ kind: 'node', project: null, cmd: 'svchost.exe' }), '') // sem nada honesto a dizer
+
+// chave estável entre reinícios: PID muda, apelido não pode sumir com ele
+assert.equal(srv.chaveServidor({ path: 'D:\\Proj\\X\\', ports: [5173, 5174] }), 'd:\\proj\\x#5173')
+assert.equal(srv.chaveServidor({ name: 'node.exe', ports: [] }), 'node.exe#0')
+
+// repetido é mesmo tipo no mesmo projeto; next + vite lado a lado não é duplicata
+const doProjeto = (pid, kind, porta, started) =>
+  ({ pid, kind, project: 'x', dev: true, protegido: false, ports: [porta], startedAt: started })
+const dups = srv.duplicados([doProjeto(1, 'vite', 5173, 100), doProjeto(2, 'vite', 5174, 200), doProjeto(3, 'next', 3000, 100)])
+assert.equal(dups.length, 1)
+assert.equal(dups[0].manter.pid, 2)       // fica o mais recente
+assert.deepEqual(dups[0].matar.map((s) => s.pid), [1])
+
+// subir e abrir só valem dentro de pasta de projeto
+assert.throws(() => pastaValida('C:\\Windows\\System32'), /pasta de projetos|não existe/)
+assert.throws(() => pastaValida(''), /não existe/)
+assert.throws(() => srv.subirServidor({ cwd: process.cwd(), comando: '' }), /obrigatório/)
 
 // --- portabilidade: nada pode depender do HD de uma máquina ---
 const plat = await import('./src/platform.mjs')

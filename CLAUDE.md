@@ -20,7 +20,8 @@ src/
   transcript.mjs último pedido, lido do .jsonl da sessão
   platform.mjs   TUDO que depende do sistema operacional
   daemon.mjs     autostart, atalho, subir/derrubar — delega pro platform
-  servers.mjs    portas em escuta, com as travas do encerrar
+  servers.mjs    portas em escuta: o que cada uma é, apelido, favorito,
+                 duplicados, subir de novo e as travas do encerrar
   config.mjs     interruptor global e por projeto
   notes.mjs      bloco de notas da máquina, em ~/.claude
   tempo.mjs      horas por projeto e custo de token, lidos dos transcritos
@@ -218,7 +219,8 @@ src/
   transcript.mjs último pedido, lido do .jsonl da sessão
   platform.mjs   TUDO que depende do sistema operacional
   daemon.mjs     autostart, atalho, subir/derrubar — delega pro platform
-  servers.mjs    portas em escuta, com as travas do encerrar
+  servers.mjs    portas em escuta: o que cada uma é, apelido, favorito,
+                 duplicados, subir de novo e as travas do encerrar
   config.mjs     interruptor global e por projeto
   notes.mjs      bloco de notas da máquina, em ~/.claude
   tempo.mjs      horas por projeto e custo de token, lidos dos transcritos
@@ -557,6 +559,33 @@ errada por definição.
   vai no `<head>`, antes do body: aplicado depois, a página pisca escura antes
   de clarear. `?tema=claro` existe para a captura, porque o headless não tem
   preferência de sistema nem localStorage.
+- **O caminho do servidor sai da linha de comando, e ela mente de três jeitos.**
+  Medido em 2026-08-10, ao fazer a aba de servidores dizer o que cada processo
+  é: (a) `node_modules\.bin\\..\next\dist\bin\next` tem barra DOBRADA, e o
+  regex com `(?:\.bin[\\/])?` fazia backtrack e anunciava um servidor chamado
+  ".bin" — por isso hoje se percorrem os segmentos pulando `.bin`, `..` e
+  `dist`; (b) caminho do Windows com barra normal (`node D:/Documentos/...`)
+  não casa `[A-Z]:\\`, e o padrão passava a casar no primeiro `/`, gravando um
+  `cwd` sem a letra do drive — pasta que não existe, e ninguém avisa;
+  (c) o trecho pode terminar num ARQUIVO (`.../app/dist/cli.js`), então "abrir
+  a pasta do projeto" abria o `dist`. `soPasta()` tira o arquivo e as pastas de
+  build. As três saem de `src/servers.mjs`.
+- **Chave de servidor não pode ser o PID.** Apelido e favorito existem
+  justamente para sobreviver ao `npm run dev` seguinte, e o PID muda nele.
+  `chaveServidor()` usa caminho do projeto + porta mais baixa.
+- **O rodapé do cartão de servidor não cabe seis botões.** Renomear, explicar,
+  abrir e encerrar num `flex` sem `wrap` espremeram o "no ar há 43m" até virar
+  quatro linhas verticais, e o `encerrar` saiu para fora do cartão. Ações de
+  pasta e de edição moram em `.srv-onde`, acima do rodapé; o rodapé tem `wrap`
+  e a idade tem `nowrap`.
+- **Oferecer script de `package.json` num botão "subir" exige filtro.** Sem ele
+  a lista mostrava `test` e `typecheck` do lado de `dev` — clicar rodaria a
+  suíte achando que estava levantando o servidor. Só `dev|start|serve|preview|
+  watch` entram, e pasta sem nenhum deles simplesmente não aparece.
+- **`projetosLancaveis()` desce um nível quando a raiz não tem `package.json`.**
+  Nos monorepos (`inovallbond/apps/app_pierre`) o servidor mora lá embaixo, e
+  parar na raiz deixava justamente os projetos grandes de fora: eram 8 pastas
+  na lista, viraram 22.
 - **Taxa zero não é "de graça", é "não configurada".** `setTaxa(0, {projeto})`
   apaga a entrada em vez de gravar zero, e o projeto volta pra taxa global —
   senão não haveria como desfazer uma taxa específica. Pelo mesmo motivo a

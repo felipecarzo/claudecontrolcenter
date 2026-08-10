@@ -1,15 +1,23 @@
 # HANDOFF
 
-**Sessão:** 2026-08-09 · agente Claude (Opus 5) · máquina ALIENWARE-LIPE
-**Último commit:** `d3133f3` — feat(mapa): o ROADMAP.md do projeto vira mapa no painel
-**Branch:** `master` · **árvore limpa**, tudo empurrado
+**Sessão:** 2026-08-10 · agente Claude (Sonnet 5) · máquina ALIENWARE-LIPE
+**Último commit antes desta sessão:** `ef5e5ee` — docs(session): encerramento 2026-08-09
+**Branch:** `master` · pendente de commit ao final desta sessão (ver abaixo)
 
-O que aconteceu: [diario/2026-08-09.md](diario/2026-08-09.md).
+O que aconteceu: [diario/2026-08-10.md](diario/2026-08-10.md).
+
+## Pendências de commit
+
+Ainda não commitado nesta sessão — aguardando aprovação do Felipe:
+`CLAUDE.md`, `README.md`, `docs/ROADMAP.md`, `docs/diario/2026-08-10.md`,
+`docs/HANDOFF.md`, `src/config.mjs`, `src/platform.mjs`, `src/servers.mjs`,
+`src/ui.html`, `src/web.mjs`, `test.mjs`. (`src/ui.html` acumula tanto a aba
+de servidores quanto a janela flutuante — duas entregas, um arquivo.)
 
 ## Próxima task: CC-17 — o "último pedido" no cartão não é o último
 
-Foi a única reclamação do Felipe que ficou sem resposta hoje. Ele olha o cartão
-e não reconhece o texto como o que pediu por último.
+Segue igual ao HANDOFF anterior — não foi tocada nesta sessão, o Felipe pediu
+outra coisa (aba de servidores) em vez disso.
 
 A linha mistura duas fontes: `lastPrompt`, lido do transcript, e `meta.status`,
 escrito pelo agente. A precedência escolhe uma e não diz qual. Decidir entre
@@ -20,38 +28,50 @@ Começar por `src/ui.html`, função `cartao()`, a variável `nota`.
 
 ## O que mudou hoje e você precisa saber
 
-**O painel virou legível para quem não escreveu o código** — foi o tema do dia.
-Uso do plano fixo no topo, seis temas, cartões em todas as abas de lista,
-módulos de CPU/RAM/GPU e barra de mídia.
+**A aba de servidores parou de mostrar "node" solto.** Cada cartão agora diz o
+que o processo é de fato (`next rodando em inovallbond/apps`), aceita apelido
+e nota escritos à mão, agrupa por projeto, marca favorito, fecha duplicados do
+mesmo tipo com confirmação, abre a pasta em quatro formatos e sobe servidor
+novo — por pasta, favorito ou recente.
 
-**"Prontos" era mentira e foi corrigido.** O `state` do CLI vira `done` ao fim
-de cada TURNO. Agora `statusReal()` usa o sinal para separar vivo de terminado.
-Se mexer em status, ler a armadilha no `CLAUDE.md` antes.
+**Três bugs reais na detecção de projeto, achados só por testar contra o
+disco de verdade** (não só `npm test`): barra dobrada depois de `.bin`
+inventava um servidor chamado ".bin"; caminho do Windows com barra normal
+perdia a letra do drive; o trecho extraído podia terminar num arquivo em vez
+de pasta. Os três em `src/servers.mjs`, corrigidos com teste — ver
+`CLAUDE.md`.
 
-**O protocolo ganhou `frente`** — a seção do `ROADMAP.md` onde o agente está.
-Já vale para todos os projetos pelo bloco global. Os cartões antigos ainda
-mostram a rota; os novos mostram `projeto › frente`.
+**Config ganhou uma seção nova:** `servidores` em `~/.claude/control-center.json`,
+por `chaveServidor()` (caminho+porta, não PID). Escrita por `setServidor()` em
+`src/config.mjs`.
 
-**Notas têm backup agora.** As do Felipe sumiram hoje e não se provou a causa.
-`writeNotes` guarda `.bak` a cada gravação e uma cópia com data quando tudo
-some. Se ele reclamar de nota perdida, o `.bak` é o primeiro lugar a olhar.
+**`cc daemon restart` já foi rodado** com o código novo, então o painel real
+(porta 8099) já reflete tudo isto. Se testar de novo, não precisa reiniciar
+por causa desta sessão — só se mexer em `src/` de novo.
+
+**Janela flutuante nova** — botão "flutuar" no topo, `documentPictureInPicture`.
+Resumo de uso do plano, agentes em andamento e tokens, atualiza junto com o
+stream de 2s. Testado de verdade (clique + confirmação visual do Felipe) no
+painel real. Só `src/ui.html`, sem rota nova no backend — tudo já vinha em
+`/api/jobs`.
 
 ## Armadilhas que vão te pegar de novo
 
-- **`quiet()` é síncrono e congela o servidor.** Para qualquer coisa que
-  alimente a tela, use `quietAsync`. Custou 2,7s de event loop travado.
-- **`.` no regex não casa `\r`.** Metade dos arquivos é CRLF; um parser inteiro
-  saiu vazio por causa disso, sem erro nenhum.
-- **Mídia só funciona no PowerShell 5.1**, nunca no `pwsh` 7.
-- **CSS duplicado ganha por último.** A barra de volume tinha duas declarações
-  e a correção certa estava sendo anulada em silêncio.
-- O resto está em `CLAUDE.md`, seção Armadilhas — cresceu bastante hoje.
+- **O caminho do servidor sai da linha de comando, e ela mente de três
+  jeitos** — barra dobrada, drive perdido, arquivo em vez de pasta. Ver
+  `CLAUDE.md`, é a mais recente e mais cara de hoje.
+- **Chave de servidor não pode ser o PID** — muda a cada `npm run dev`.
+- **Rodapé do cartão não cabe seis botões** — por isso renomear/explicar/pasta
+  foram para `.srv-onde`, acima do rodapé.
+- O resto (das sessões anteriores) segue em `CLAUDE.md`, seção Armadilhas.
 
 ## Arquivos a ler antes
 
-- `CLAUDE.md` — armadilhas; as de hoje custaram horas
-- `src/roadmap.mjs` — o mais novo, e o que muda como o painel é lido
-- `src/jobs.mjs` → `statusReal()` — por que "pronto" não é `state === done`
+- `CLAUDE.md` — seção Armadilhas, as de hoje estão no topo da lista de servidor
+- `src/servers.mjs` — o mais novo, e o mais arriscado (executa comando na
+  máquina via `subirServidor`)
+- `src/ui.html` → função `cartao()`, variável `nota` — ponto de partida do
+  CC-17
 
 ## Regras que não podem quebrar
 
@@ -61,6 +81,11 @@ some. Se ele reclamar de nota perdida, o `.bak` é o primeiro lugar a olhar.
 - Depois de editar `src/`, reinicie o servidor: ele não recarrega módulo
 - O pacote global é um LINK para este repositório: código quebrado aqui quebra
   o `cc` de todos os agentes na hora. Rode `npm test` antes de sair.
+- **Novo desta sessão:** `subirServidor()` executa comando arbitrário na
+  máquina. A única trava é a pasta (`pastaValida()`) — dentro da base de
+  projetos ou de uma pasta listada em `CC_PROJECT_DIRS`. Não adicionar
+  lista fechada de comandos permitidos: foi decisão consciente, o campo é
+  editável de propósito.
 
 ## Estado do ROADMAP
 

@@ -797,8 +797,10 @@
   .srv-card > header { display: flex; align-items: baseline; gap: 8px; }
   .srv-card > footer {
     display: flex; align-items: center; gap: 8px; margin-top: 3px;
-    padding-top: 7px; border-top: 1px solid var(--line-soft);
+    padding-top: 7px; border-top: 1px solid var(--line-soft); flex-wrap: wrap;
   }
+  /* sem isto o "no ar há 43m" vira quatro linhas e empurra o encerrar pra fora */
+  .srv-card > footer .idade { white-space: nowrap; }
   .srv-card .port { font: 700 15px/1 var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
   .btn {
     background: var(--surface); border: 1px solid var(--line); color: var(--dim);
@@ -808,6 +810,41 @@
   .btn.danger { color: var(--failed); border-color: color-mix(in srgb, var(--failed) 40%, var(--line)); }
   .btn.danger:hover { background: color-mix(in srgb, var(--failed) 16%, var(--surface)); }
   .btn[disabled] { opacity: .4; cursor: not-allowed; }
+  .btn.mini { padding: 2px 7px; font-size: 10px; }
+
+  /* filtro da lista: por porta, por projeto, só favoritos */
+  .chip {
+    background: none; border: 1px solid var(--line); color: var(--dim);
+    border-radius: 999px; padding: 3px 11px; cursor: pointer; font: 11px var(--mono);
+  }
+  .chip:hover { color: var(--fg); }
+  .chip.on { color: var(--acento); border-color: var(--acento); }
+
+  .srv-topo { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 12px; }
+  .srv-fav {
+    background: none; border: 0; cursor: pointer; padding: 0 2px;
+    color: var(--faint); font-size: 13px; line-height: 1;
+  }
+  .srv-fav.on, .srv-fav:hover { color: var(--acento); }
+  /* o que o processo está de fato executando — a resposta pro "node" solto */
+  .srv-resumo { margin: 0; font: 11px var(--mono); color: var(--dim); }
+  /* texto escrito à mão: ganha destaque, é o que a pessoa quis dizer */
+  .srv-nota {
+    margin: 2px 0 0; padding-left: 7px; border-left: 2px solid var(--line);
+    font-size: 11px; color: var(--fg);
+  }
+  .srv-onde { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+
+  .srv-novo {
+    border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+    padding: 4px 13px 13px; margin-bottom: 16px;
+  }
+  .srv-lanc {
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    padding: 5px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .srv-lanc:last-child { border-bottom: 0; }
+  .srv-lanc code { font-size: 10px; }
 
   /* ---------- bloco de notas ---------- */
   .n-head {
@@ -997,6 +1034,7 @@
         <select id="proj"><option value="">todos os projetos</option></select>
         <select id="tema-sel" title="tema do painel" aria-label="tema do painel"></select>
         <button class="btn" id="n-toggle" aria-pressed="false">notas</button>
+        <button class="btn" id="pip-toggle" hidden aria-pressed="false">flutuar</button>
       </div>
     </div>
     <!-- O player divide a linha com as abas: sobra espaço à direita ali, e no
@@ -1035,6 +1073,14 @@ const $ = (s) => document.querySelector(s)
 const params = new URLSearchParams(location.search)
 let DATA = { jobs: [], summary: {} }
 let SERVERS = null            // carregado só quando a aba de servidores abre
+let DUPLICADOS = []           // grupos repetidos, calculados no servidor
+let RECENTES = []             // já rodaram e não estão no ar: dá pra subir de novo
+let PROJETOS = null           // pastas com script de servidor; varre disco, só sob demanda
+let srvModo = localStorage.getItem('cc-srv-modo') || 'porta'
+// `?subir=1` abre o painel de subir servidor: sem ele não há como capturar
+// essa parte da tela, porque o headless não clica em nada
+let srvNovo = params.has('subir')
+let srvDedup = false          // "fechar duplicados" armado, esperando confirmação
 let PAINEIS = null            // idem, aba escritório
 // qual painel está embutido na aba; a escolha sobrevive ao recarregar
 let painelAtivo = localStorage.getItem('cc-painel') || 'local'
@@ -1184,6 +1230,85 @@ function renderHeader() {
     <button class="tab" role="tab" data-tab="${t.id}" aria-selected="${t.id === tab}">
       ${t.label}${counts[t.id] != null ? `<span class="n">${counts[t.id]}</span>` : ''}
     </button>`).join('')
+}
+
+/* ===================== janela flutuante (resumo) =====================
+   Um resumo compacto — uso do plano, tokens, agentes em andamento — numa
+   janela real do SO via documentPictureInPictureAPI: sobrevive a trocar de
+   aba ou minimizar o Chrome, ao contrário de um elemento fixo na página.
+   Só existe em Chrome/Edge recentes; sem a API o botão fica escondido. */
+
+let pipWin = null
+
+function atualizarBotaoPip() {
+  const b = $('#pip-toggle')
+  if (!b) return
+  if (!('documentPictureInPicture' in window)) { b.hidden = true; return }
+  b.hidden = false
+  b.textContent = pipWin ? 'fechar flutuante' : 'flutuar'
+  b.setAttribute('aria-pressed', String(!!pipWin))
+}
+
+async function alternarPip() {
+  if (pipWin) { pipWin.close(); return }
+  pipWin = await documentPictureInPicture.requestWindow({ width: 300, height: 420 })
+  pipWin.document.title = 'Control Center — resumo'
+  // mesma folha de estilo da página principal: reaproveita as variáveis de
+  // tema em vez de manter uma segunda paleta sincronizada à mão
+  pipWin.document.head.append(document.querySelector('style').cloneNode(true))
+  const extra = document.createElement('style')
+  extra.textContent = `
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 12px var(--mono); }
+    #pip-root { padding: 10px 12px 14px; display: grid; gap: 10px; align-content: start; }
+    .pip-sec b.tit { display: block; font-size: 10px; letter-spacing: .04em; color: var(--faint); text-transform: uppercase; margin-bottom: 5px; }
+    .pip-ag { border: 1px solid var(--line); border-radius: 5px; padding: 6px 8px; margin-bottom: 5px; }
+    .pip-ag b { display: block; font-size: 11.5px; }
+    .pip-ag p { margin: 2px 0 0; color: var(--dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pip-vazio { color: var(--faint); }
+  `
+  pipWin.document.head.append(extra)
+  const root = document.createElement('div')
+  root.id = 'pip-root'
+  pipWin.document.body.append(root)
+  // fechada pela pessoa (botão nativo da janelinha) ou pelo botão da página:
+  // os dois caminhos passam por aqui, então só um listener basta
+  pipWin.addEventListener('pagehide', () => { pipWin = null; atualizarBotaoPip() })
+  atualizarBotaoPip()
+  renderPip()
+}
+
+/** Os números que valem a pena ver sem voltar pra aba do painel. */
+function renderPip() {
+  atualizarBotaoPip()
+  if (!pipWin) return
+  const root = pipWin.document.getElementById('pip-root')
+  if (!root) return
+  // tema pode trocar com a janelinha já aberta (auto virando escuro à noite)
+  pipWin.document.documentElement.dataset.tema = document.documentElement.dataset.tema
+
+  const u = DATA.uso
+  const barra = (rot, j) => !j ? '' : `<div class="pip-sec"><b class="tit">${rot}</b>
+    <span class="u-item n-${j.pct >= 85 ? 'alto' : j.pct >= 60 ? 'medio' : 'baixo'}">
+      <span class="u-barra"><i style="width:${Math.min(j.pct, 100)}%"></i></span>
+      <b>${Math.round(j.pct)}%</b>
+    </span></div>`
+
+  // "em andamento" e não "todos": pronto/parado não é o que se quer ver de
+  // relance sem a tela por perto — é o que ainda pede atenção
+  const emAndamento = DATA.jobs
+    .filter((j) => j.status === 'working' || j.status === 'waiting')
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+
+  const cartaoPip = (j) => `<div class="pip-ag">
+    <b style="color:var(--${j.status})">● ${esc(j.project)}${j.frente ? ` › ${esc(j.frente)}` : ''}</b>
+    <p title="${esc(j.subject || j.detail || '')}">${esc(j.subject || j.detail || '—')}</p>
+    <p>${j.todos.length ? `${j.todosDone}/${j.todos.length} to-dos` : 'sem to-dos'} · ${tok(j.tokens)} tokens</p>
+  </div>`
+
+  root.innerHTML = barra('uso 5h', u?.cincoHoras) + barra('uso semana', u?.semana)
+    + `<div class="pip-sec"><b class="tit">tokens agora</b>${tok(DATA.summary.tokens)}</div>`
+    + `<div class="pip-sec"><b class="tit">agentes em andamento (${emAndamento.length})</b>
+      ${emAndamento.length ? emAndamento.map(cartaoPip).join('') : '<p class="pip-vazio">nenhum agora</p>'}</div>`
 }
 
 /* ======================= aba: agentes ======================== */
@@ -1899,28 +2024,48 @@ function viewPreco() {
 
 /* ====================== aba: servidores ====================== */
 
-function viewServidores() {
-  if (!SERVERS) return '<div class="empty">lendo as portas em escuta…</div>'
-  const dev = SERVERS.filter((s) => s.dev)
-  const resto = SERVERS.filter((s) => !s.dev)
+// O começo do caminho é sempre o mesmo; o que identifica o app está no fim.
+const cauda = (p, n = 42) => (p.length > n ? '…' + p.slice(-(n - 1)) : p)
 
-  // O começo do caminho é sempre o mesmo; o que identifica o app está no fim.
-  const cauda = (p, n = 42) => (p.length > n ? '…' + p.slice(-(n - 1)) : p)
+/**
+ * As quatro maneiras de responder "onde fica isso?", mais renomear e explicar.
+ * Ficam aqui e não no rodapé porque o rodapé tem que caber numa linha: com
+ * seis botões lá, "encerrar" vazava para fora do cartão.
+ */
+const acoesDoCartao = (s) => `
+  <div class="srv-onde">
+    ${s.path ? `
+      <button class="btn mini" data-abrir="${esc(s.path)}" data-como="pasta">pasta</button>
+      <button class="btn mini" data-abrir="${esc(s.path)}" data-como="editor">código</button>
+      <button class="btn mini" data-abrir="${esc(s.path)}" data-como="terminal">terminal</button>
+      <button class="btn mini" data-copiar="${esc(s.path)}">copiar caminho</button>` : ''}
+    <button class="btn mini" data-srv-nome="${esc(s.chave)}"
+      title="dar um nome que você reconheça">renomear</button>
+    <button class="btn mini" data-srv-nota="${esc(s.chave)}"
+      title="explicar o que este servidor abre">explicar</button>
+  </div>`
 
-  // A porta é o que identifica o servidor na cabeça de quem procura — por isso
-  // vem primeiro e grande, em vez de ser a primeira coluna de uma tabela.
-  const cartaoSrv = (s) => `
+// A porta é o que identifica o servidor na cabeça de quem procura — por isso
+// vem primeiro e grande, em vez de ser a primeira coluna de uma tabela.
+function cartaoSrv(s) {
+  return `
     <article class="srv-card${s.dev ? ' dev' : ''}">
       <header>
         <b class="port">:${s.ports.join(', :')}</b>
         <span class="cat">${esc(s.kind)}</span>
         <span class="grow"></span>
+        ${s.dev ? `<button class="srv-fav${s.favorito ? ' on' : ''}" data-srv-fav="${esc(s.chave)}"
+          title="${s.favorito ? 'tirar dos favoritos' : 'marcar como favorito'}">${s.favorito ? '★' : '☆'}</button>` : ''}
         <span class="path">pid ${s.pid}</span>
       </header>
-      <b class="c-titulo">${esc(s.project || s.name)}</b>
-      ${s.path ? `<p class="c-proj" title="${esc(s.cmd)}">${esc(cauda(s.path))}</p>` : ''}
+      <b class="c-titulo">${esc(s.titulo || s.name)}</b>
+      ${s.resumo && s.resumo !== s.titulo
+        ? `<p class="srv-resumo" title="${esc(s.cmd)}">${esc(s.resumo)}</p>` : ''}
+      ${s.nota ? `<p class="srv-nota">${esc(s.nota)}</p>` : ''}
+      ${s.path ? `<p class="c-proj" title="${esc(s.path)}">${esc(cauda(s.path))}</p>` : ''}
+      ${s.dev ? acoesDoCartao(s) : ''}
       <footer>
-        <span class="path">${s.startedAt ? 'no ar há ' + age(Date.now() - s.startedAt) : '—'}</span>
+        <span class="path idade">${s.startedAt ? 'no ar há ' + age(Date.now() - s.startedAt) : '—'}</span>
         <span class="grow"></span>
         ${s.url ? `<a class="btn" href="${esc(s.url)}" target="_blank" rel="noopener">abrir</a>` : ''}
         ${s.dev && !s.protegido
@@ -1928,18 +2073,88 @@ function viewServidores() {
           : ''}
       </footer>
     </article>`
+}
 
-  // duas instâncias do mesmo projeto quase sempre é uma esquecida de ontem
-  const porProjeto = new Map()
-  for (const s of dev) if (s.project) porProjeto.set(s.project, (porProjeto.get(s.project) || 0) + 1)
-  const dobrados = [...porProjeto].filter(([, n]) => n > 1)
+/** Painel de subir servidor: favoritos, recentes e todas as pastas de projeto. */
+function viewSubir() {
+  const linha = (nome, dir, comando, extra = '') => `
+    <div class="srv-lanc">
+      <b>${esc(nome)}</b>
+      ${extra}
+      <span class="grow"></span>
+      <code class="path" title="${esc(comando || '')}">${esc(cauda(comando || '—', 34))}</code>
+      <button class="btn mini" data-subir-cwd="${esc(dir)}" data-subir-cmd="${esc(comando || '')}">subir</button>
+    </div>`
+
+  const favoritos = RECENTES.filter((r) => r.favorito)
+  const outros = RECENTES.filter((r) => !r.favorito)
+  const quando = (t) => (t ? `<span class="path">visto ${age(Date.now() - t)} atrás</span>` : '')
+
+  const porPasta = PROJETOS === null
+    ? '<div class="path">procurando pastas de projeto…</div>'
+    : PROJETOS.length
+      ? PROJETOS.map((p) => `
+        <div class="srv-lanc">
+          <b>${esc(p.nome)}</b>
+          <span class="grow"></span>
+          ${p.scripts.map((s) => `<button class="btn mini"
+            data-subir-cwd="${esc(p.dir)}" data-subir-cmd="npm run ${esc(s)}">${esc(s)}</button>`).join('')}
+        </div>`).join('')
+      : '<div class="path">nenhuma pasta de projeto com script de servidor</div>'
 
   return `
-    <div class="col-head"><span>servidores de projeto</span><span class="n">${dev.length}</span></div>
-    ${dobrados.length ? `<p class="note warn" style="margin:0 0 10px">${
-      dobrados.map(([p, n]) => `${esc(p)} está com ${n} servidores abertos`).join(' · ')}</p>` : ''}
-    ${dev.length ? `<div class="cards">${dev.map(cartaoSrv).join('')}</div>`
-      : '<div class="path">nenhum servidor de desenvolvimento escutando agora</div>'}
+    <section class="srv-novo">
+      ${favoritos.length ? `<div class="col-head"><span>★ favoritos</span></div>
+        ${favoritos.map((r) => linha(r.nome, r.cwd, r.comando, quando(r.ultimoEm))).join('')}` : ''}
+      ${outros.length ? `<div class="col-head"><span>abertos recentemente</span></div>
+        ${outros.map((r) => linha(r.nome, r.cwd, r.comando, quando(r.ultimoEm))).join('')}` : ''}
+      <div class="col-head"><span>por pasta de projeto</span></div>
+      ${porPasta}
+      <p class="path" style="margin-top:12px">
+        o servidor sobe numa janela própria, e continua no ar se você fechar o painel.
+      </p>
+    </section>`
+}
+
+function viewServidores() {
+  if (!SERVERS) return '<div class="empty">lendo as portas em escuta…</div>'
+  const dev = SERVERS.filter((s) => s.dev)
+  const resto = SERVERS.filter((s) => !s.dev)
+
+  // Por porta é o padrão porque a porta é o que a pessoa lembra. Por projeto
+  // serve quando o mesmo projeto sobe três coisas e a pergunta é "o que é meu".
+  const lista = srvModo === 'projeto'
+    ? [...new Set(dev.map((s) => s.project || 'sem projeto identificado'))].sort()
+      .map((p) => `<div class="col-head"><span>${esc(p)}</span></div><div class="cards">${
+        dev.filter((s) => (s.project || 'sem projeto identificado') === p).map(cartaoSrv).join('')
+      }</div>`).join('')
+    : srvModo === 'favoritos'
+      ? `<div class="cards">${dev.filter((s) => s.favorito).map(cartaoSrv).join('')}</div>`
+      : `<div class="cards">${dev.map(cartaoSrv).join('')}</div>`
+
+  const nenhum = srvModo === 'favoritos' && !dev.some((s) => s.favorito)
+  const aba = (id, texto) => `<button class="chip${srvModo === id ? ' on' : ''}" data-srv-modo="${id}">${texto}</button>`
+
+  const total = DUPLICADOS.reduce((n, g) => n + g.matar.length, 0)
+
+  return `
+    <div class="srv-topo">
+      <div class="col-head" style="margin:0"><span>servidores de projeto</span><span class="n">${dev.length}</span></div>
+      <span class="grow"></span>
+      ${aba('porta', 'por porta')}${aba('projeto', 'por projeto')}${aba('favoritos', '★ favoritos')}
+      <button class="btn" data-srv-novo="1">${srvNovo ? 'fechar' : '+ subir servidor'}</button>
+    </div>
+    ${srvNovo ? viewSubir() : ''}
+    ${DUPLICADOS.length ? `<p class="note warn" style="margin:0 0 10px">
+      ${DUPLICADOS.map((g) => `${esc(g.project)} está com ${g.matar.length + 1} servidores <b>${esc(g.kind)}</b> abertos`).join(' · ')}
+      — <button class="btn mini danger" data-dedup="1">${
+        srvDedup ? `confirmar: encerrar ${total}?` : `fechar ${total} duplicado${total > 1 ? 's' : ''}`
+      }</button>
+      <span class="path">fica o mais recente de cada</span>
+    </p>` : ''}
+    ${dev.length && !nenhum ? lista
+      : `<div class="path">${nenhum ? 'nenhum servidor marcado como favorito ainda'
+        : 'nenhum servidor de desenvolvimento escutando agora'}</div>`}
     <details class="lvl" style="margin-top:24px">
       <summary>outros processos com porta aberta (${resto.length})</summary>
       <div class="cards" style="margin-top:10px">${resto.map(cartaoSrv).join('')}</div>
@@ -2207,6 +2422,7 @@ function render() {
   if (editando()) { redesenhoAdiado = true; return }
   redesenhoAdiado = false
   renderHeader()
+  renderPip()
   const jobs = filtered()
   const views = {
     agentes: () => viewAgentes(jobs),
@@ -2244,8 +2460,29 @@ function render() {
 async function carregarServidores(force) {
   if (SERVERS && !force) return
   const r = await fetch('/api/servers')
-  SERVERS = (await r.json()).servers
+  const d = await r.json()
+  SERVERS = d.servers
+  DUPLICADOS = d.duplicados || []
+  RECENTES = d.recentes || []
   render()
+}
+
+/** Varre o disco atrás de pastas de projeto. Só quando o painel de subir abre. */
+async function carregarProjetos() {
+  if (PROJETOS) return
+  PROJETOS = (await (await fetch('/api/projetos')).json()).projetos || []
+  render()
+}
+
+/** Grava apelido, explicação ou favorito e relê — o cache do servidor já caiu. */
+async function salvarServidor(chave, patch) {
+  const r = await fetch('/api/servidor', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ chave, patch }),
+  })
+  const out = await r.json()
+  if (!out.ok) return alert(out.error)
+  return carregarServidores(true)
 }
 
 // Revalida ao voltar na aba. Morno, /api/tempo custa ~20ms — o guard antigo
@@ -2750,6 +2987,8 @@ document.addEventListener('click', async (e) => {
     return layoutNotas()
   }
 
+  if (t.closest('#pip-toggle')) return alternarPip()
+
   if (t.closest('#n-add')) {
     NOTES.unshift({ id: novoId(), title: '', text: '', h: 120 })
     armedNote = null
@@ -2894,6 +3133,105 @@ document.addEventListener('click', async (e) => {
     collapsed.has(k) ? collapsed.delete(k) : collapsed.add(k)
     localStorage.setItem('cc-collapsed', JSON.stringify([...collapsed]))
     return render()
+  }
+
+  const srvAba = t.closest('button[data-srv-modo]')
+  if (srvAba) {
+    srvModo = srvAba.dataset.srvModo
+    localStorage.setItem('cc-srv-modo', srvModo)
+    return render()
+  }
+
+  const srvAbrirNovo = t.closest('button[data-srv-novo]')
+  if (srvAbrirNovo) {
+    srvNovo = !srvNovo
+    render()
+    if (srvNovo) carregarProjetos()
+    return
+  }
+
+  const fav = t.closest('[data-srv-fav]')
+  if (fav) {
+    const chave = fav.dataset.srvFav
+    const atual = SERVERS.find((s) => s.chave === chave)
+    return salvarServidor(chave, { favorito: !atual?.favorito })
+  }
+
+  // Apelido e explicação usam prompt de propósito: campo de texto dentro do
+  // #main sumiria no meio da digitação, porque render() reescreve o painel a
+  // cada evento do stream.
+  const renomear = t.closest('button[data-srv-nome]')
+  if (renomear) {
+    const chave = renomear.dataset.srvNome
+    const atual = SERVERS.find((s) => s.chave === chave)
+    const nome = prompt('Como você chama este servidor?', atual?.apelido || atual?.titulo || '')
+    if (nome === null) return
+    return salvarServidor(chave, { apelido: nome })
+  }
+
+  const explicar = t.closest('button[data-srv-nota]')
+  if (explicar) {
+    const chave = explicar.dataset.srvNota
+    const atual = SERVERS.find((s) => s.chave === chave)
+    const nota = prompt('O que este servidor abre? (fica no cartão)', atual?.nota || '')
+    if (nota === null) return
+    return salvarServidor(chave, { nota })
+  }
+
+  const abrir = t.closest('button[data-abrir]')
+  if (abrir) {
+    const r = await fetch('/api/abrir', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ dir: abrir.dataset.abrir, como: abrir.dataset.como }),
+    })
+    const out = await r.json()
+    if (!out.ok) alert(out.error)
+    return
+  }
+
+  const copiar = t.closest('button[data-copiar]')
+  if (copiar) {
+    await navigator.clipboard.writeText(copiar.dataset.copiar)
+    copiar.textContent = 'copiado'
+    setTimeout(() => { copiar.textContent = 'copiar caminho' }, 1200)
+    return
+  }
+
+  const dedup = t.closest('button[data-dedup]')
+  if (dedup) {
+    if (!srvDedup) { srvDedup = true; return render() } // primeiro clique só arma
+    srvDedup = false
+    dedup.disabled = true
+    // em série, e não em paralelo: cada morte invalida a lista do lado do
+    // servidor, e é ela que autoriza a próxima
+    for (const pid of DUPLICADOS.flatMap((g) => g.matar)) {
+      const r = await fetch('/api/kill', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ pid }),
+      })
+      const out = await r.json()
+      if (!out.ok) alert(out.error)
+    }
+    return carregarServidores(true)
+  }
+
+  const subir = t.closest('button[data-subir-cwd]')
+  if (subir) {
+    const cwd = subir.dataset.subirCwd
+    const comando = prompt(`Subir o quê em ${cwd}?`, subir.dataset.subirCmd || 'npm run dev')
+    if (!comando) return
+    subir.disabled = true
+    const r = await fetch('/api/subir', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ cwd, comando }),
+    })
+    const out = await r.json()
+    subir.disabled = false
+    if (!out.ok) return alert(out.error)
+    // o servidor leva alguns segundos pra abrir a porta; sem espera a lista
+    // voltaria igual e pareceria que nada aconteceu
+    setTimeout(() => carregarServidores(true), 4000)
+    return
   }
 
   const kill = t.closest('button[data-kill]')
@@ -3145,6 +3483,7 @@ fetch('/api/jobs').then((r) => r.json()).then((d) => {
   DATA = d
   render()
   if (tab === 'servidores') carregarServidores()
+  if (srvNovo) carregarProjetos()
   if (tab === 'escritorio') carregarPaineis()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()
   if (tab === 'preco') carregarPreco()

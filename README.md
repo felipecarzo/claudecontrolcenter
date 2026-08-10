@@ -103,7 +103,7 @@ seus agentes já rodaram. Para forçar:
 | tempo | quantas horas cada projeto levou, quanto custou e quanto vale |
 | gráficos | os mesmos dados cruzados como você quiser, e salvos |
 | preço | quanto vale cada problema resolvido, por nível de senioridade |
-| servidores | o que está escutando porta nesta máquina |
+| servidores | o que está escutando porta nesta máquina, e como subir mais um |
 | escritório | os agentes desenhados trabalhando, aqui e na VPS |
 
 Na linha das abas, à direita: **módulos da máquina** (CPU, memória e GPU — uso,
@@ -121,6 +121,14 @@ A aba **servidores** lista as portas em escuta, com o projeto de origem quando
 dá pra saber, link pra abrir e botão pra encerrar. Encerrar pede confirmação e
 só vale pra servidor de desenvolvimento — processo do Windows fica fora de
 propósito, porque a lista contém `lsass` e `svchost`.
+
+Cada linha diz **o que aquilo é de fato** — `next rodando em inovallbond/apps`,
+e não só "node" — e aceita apelido e explicação escritos por você, que
+sobrevivem ao próximo `npm run dev`. Dá pra marcar favorito, agrupar por
+projeto, ir até a pasta (explorador, VS Code, terminal ou copiar o caminho),
+fechar de uma vez os duplicados do mesmo projeto e **subir servidor** por
+pasta, pelos favoritos ou pelos abertos recentemente. Subir só funciona dentro
+da pasta de projetos, e o comando aparece pra você conferir antes.
 
 A aba **escritório** embute o [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents),
 que lê os transcritos e desenha cada sessão do Claude Code como um personagem

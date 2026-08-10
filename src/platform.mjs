@@ -342,6 +342,63 @@ export function matarProcesso(pid) {
   process.kill(pid, 'SIGTERM')
 }
 
+/* --------------------- abrir a pasta do projeto -------------------- */
+// Quatro destinos porque a pergunta "onde é isso?" tem quatro respostas
+// diferentes: ver os arquivos, mexer no código, rodar comando, ou colar o
+// caminho em outro lugar. A última é do navegador, não passa por aqui.
+
+/** Abre a pasta no explorador de arquivos do sistema. */
+export function abrirPasta(dir) {
+  if (ehWindows) return quiet('explorer.exe', [dir]) // devolve 1 mesmo dando certo
+  if (ehMac) return quiet('open', [dir])
+  return quiet('xdg-open', [dir])
+}
+
+/** Abre a pasta no VS Code. Falha limpa quando o `code` não está no PATH. */
+export function abrirEditor(dir) {
+  // no Windows o `code` é um .cmd, e .cmd não é executável direto pelo spawn
+  const r = ehWindows ? quiet('cmd', ['/c', 'code', dir]) : quiet('code', [dir])
+  if (!r.ok) throw new Error('não achei o comando `code` — o VS Code precisa estar no PATH')
+  return r
+}
+
+/** Abre um terminal já dentro da pasta. */
+export function abrirTerminal(dir) {
+  if (ehWindows) {
+    // Windows Terminal quando existe; senão o PowerShell de sempre.
+    if (existe('wt')) return quiet('cmd', ['/c', 'start', '', 'wt', '-d', dir])
+    return quiet('cmd', ['/c', 'start', '', 'powershell', '-NoExit', '-Command', `Set-Location '${dir.replace(/'/g, "''")}'`])
+  }
+  if (ehMac) return quiet('open', ['-a', 'Terminal', dir])
+  for (const t of ['x-terminal-emulator', 'gnome-terminal', 'konsole', 'xterm']) {
+    if (existe(t)) return quiet(t, ['--working-directory', dir])
+  }
+  throw new Error('não achei um emulador de terminal instalado')
+}
+
+/**
+ * Sobe um servidor de desenvolvimento numa pasta.
+ *
+ * Com janela visível de propósito: dev server que quebra só conta o motivo no
+ * próprio log, e um processo invisível transformaria "não subiu" em mistério.
+ * O processo é destacado — encerrar o painel não derruba o servidor.
+ */
+export function lancarComando(comando, cwd) {
+  if (ehWindows) {
+    // `start` é do cmd. O primeiro "" é o título da janela, que o start exige
+    // quando o alvo vem entre aspas — sem ele o comando vira o título.
+    const filho = spawn('cmd', ['/c', 'start', '', 'cmd', '/k', comando], {
+      cwd, detached: true, stdio: 'ignore', windowsHide: false,
+    })
+    filho.unref()
+    return
+  }
+  const filho = spawn(process.env.SHELL || '/bin/sh', ['-c', comando], {
+    cwd, detached: true, stdio: 'ignore',
+  })
+  filho.unref()
+}
+
 /* ----------------------------- autostart --------------------------- */
 // Cada sistema tem seu jeito de subir algo no login. A interface é a mesma:
 // instalar({node, script, porta}) / desinstalar() / caminhoAutostart()
