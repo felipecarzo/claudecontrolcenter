@@ -18,7 +18,10 @@ está. Mandar `null` num campo apaga esse campo.
 Três momentos. Não mais que isso — o painel é para o Felipe ler de relance,
 não um log.
 
-**1. Ao entender a tarefa** (antes da primeira edição):
+**1. Ao entender a tarefa** (antes da primeira edição) — **`subject`, `frente`
+e `todos` juntos, não só o assunto**. `frente` é o que liga o cartão ao mapa
+do projeto; sem ele, o cartão vira texto solto pra quem não tem o contexto na
+cabeça:
 
 ```bash
 node .../cc.mjs set '{"subject":"portais no map editor","category":"feature","frente":"Map editor","route":"B86-portais","todos":[{"text":"icone proprio","done":false},{"text":"posicionavel no editor","done":false},{"text":"round-trip do save","done":false}]}'
@@ -45,6 +48,12 @@ node .../cc.mjs set '{"status":"entregue","blockers":null,"links":[{"label":"pai
 > explica em `blockers` o que ficou pra trás. A aba de preço mede tempo por
 > tarefa concluída: lista em aberto num agente entregue não é "cauteloso", é
 > métrica perdida — e o painel denuncia na aba de to-dos.
+>
+> **Entregar sem `frente` também é erro**, se o projeto tem `docs/ROADMAP.md`
+> com seções `###`. Sem `frente`, o mapa lateral não sabe onde encaixar este
+> trabalho — mesmo problema que os `todos` tiveram antes de virar checklist de
+> entrega: só documentar o campo no passo 1 não bastou, o reforço no momento
+> de entregar é o que funcionou.
 
 ## Campos
 

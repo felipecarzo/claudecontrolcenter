@@ -34,12 +34,6 @@ design era feito. Conferir na primeira vez que acontecer.
   global já cobre todos, e repetir a instrução em 14 arquivos contraria "um fato
   mora em um lugar só". A ferramenta existe se mudar de ideia.
 
-### CC-19 — Os agentes ainda não declaram `frente`
-O campo entrou no protocolo em 09/08 e vale para todos os projetos pelo bloco
-global, mas só passa a aparecer conforme cada agente novo reporta. Conferir em
-alguns dias: se a maioria dos cartões continuar sem frente, o problema é o
-texto do protocolo — foi exatamente o que aconteceu com os to-dos.
-
 ### Frente: Conteúdo social — módulo novo, ver [[produto/CONTEUDO-SOCIAL]]
 
 Decidido com o Felipe em 11/08: vive neste repo, não em projeto à parte.
@@ -221,6 +215,5 @@ Escritos aqui porque são escolha, não descuido:
 Última atualização: **2026-08-12** — cockpit de 10/08 commitado (estava
 pendente), e CC-20 (calendário) fechado. Ver [[../diario/2026-08-12]].
 
-Aberto: CC-19 (conferir adesão ao `frente`), CC-21 (escrita na agenda,
-próximo da frente de conteúdo social), mais CC-04, CC-08 e CC-14 (do Felipe —
-conferir no tray, não é bug deste projeto).
+Aberto: CC-21 (escrita na agenda, próximo da frente de conteúdo social), mais
+CC-04, CC-08 e CC-14 (do Felipe — conferir no tray, não é bug deste projeto).

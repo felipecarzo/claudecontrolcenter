@@ -69,6 +69,10 @@ cc set '<json parcial>'
 em \`blockers\` o que ficou. O tempo por tarefa sai daí; lista em aberto num
 agente entregue é métrica perdida, e o painel denuncia.
 
+**Entregar sem \`frente\` também é erro**, se o projeto tem \`docs/ROADMAP.md\`
+com seções \`###\`. Sem ela o mapa lateral não sabe onde encaixar o trabalho —
+o mesmo problema que os \`todos\` tiveram antes de virar checklist de entrega.
+
 Desligado (\`cc off\`), o comando vira no-op silencioso — pode chamar sempre.
 Se \`cc\` não estiver no PATH, use \`node ${CC} set …\`.
 
