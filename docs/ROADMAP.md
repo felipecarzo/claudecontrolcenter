@@ -36,11 +36,6 @@ usada). O que sobrou do silêncio é a nota `sem sinal há Xm` na linha do agent
 que também nunca apareceu numa captura — não houve agente travado enquanto o
 design era feito. Conferir na primeira vez que acontecer.
 
-### CC-05 — Tabela do terminal ainda é a versão antiga
-O redesenho por zonas foi só na web. O `tui.mjs` continua agrupando por projeto.
-Decidir se vale portar as zonas pro terminal ou se as duas telas podem divergir
-de propósito — a do terminal é consultada de relance, a web com calma.
-
 ### CC-06 — Ideias sem dono
 - Agrupar por rota dentro do projeto, quando um projeto tiver muitos agentes
 - Avisar quando um agente passa de N minutos sem sinal (hoje só pinta de amarelo)
@@ -243,4 +238,4 @@ pendente), e CC-20 (calendário) fechado. Ver [[../diario/2026-08-12]].
 CC-17 (último pedido ambíguo) segue como próxima task da sessão de 10/08 —
 não foi tocada. Aberto: CC-17, CC-18 (projeto sem roadmap), CC-19 (conferir
 adesão ao `frente`), CC-21 (escrita na agenda, próximo da frente de conteúdo
-social), mais CC-04, CC-05, CC-08 e os dois do Felipe (CC-14, CC-15).
+social), mais CC-04, CC-08 e os dois do Felipe (CC-14, CC-15).

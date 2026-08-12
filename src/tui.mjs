@@ -24,6 +24,18 @@ const DOT = {
   idle: [C.gray, '○'],
 }
 
+// Mesma ordem de urgência da web (CC-05): quem precisa de você primeiro, quem
+// já terminou por último. Projeto deixa de ser cabeçalho de seção e vira
+// coluna — o terminal é consulta de relance, então zona responde "o que olho
+// primeiro" e a coluna responde "de qual projeto é" sem precisar procurar.
+const ZONES = [
+  { key: 'waiting', title: 'precisa de você' },
+  { key: 'failed', title: 'falhou' },
+  { key: 'working', title: 'trabalhando' },
+  { key: 'idle', title: 'parados' },
+  { key: 'done', title: 'prontos' },
+]
+
 /**
  * Célula de largura fixa. Recebe texto PURO — a cor entra depois, senão a
  * truncagem corta o código de escape no meio e vaza `[0m` na tela.
@@ -57,21 +69,26 @@ function render(jobs, { link } = {}) {
   if (link) out.push(`${C.dim}web:${C.reset} ${C.blue}${link}${C.reset}`)
   out.push('')
 
-  const W = { dot: 3, route: 20, model: 10, tok: 8, age: 8, todo: 7 }
-  const fixed = W.dot + W.route + W.model + W.tok + W.age + W.todo
-  const subjW = Math.max(26, width - fixed - 4)
+  const W = { dot: 3, project: 16, route: 18, model: 10, tok: 8, age: 8, todo: 7 }
+  const fixed = W.dot + W.project + W.route + W.model + W.tok + W.age + W.todo
+  const subjW = Math.max(24, width - fixed - 4)
 
-  const byProject = new Map()
+  const porZona = new Map(ZONES.map((z) => [z.key, []]))
   for (const j of jobs) {
-    if (!byProject.has(j.project)) byProject.set(j.project, [])
-    byProject.get(j.project).push(j)
+    if (!porZona.has(j.status)) porZona.set(j.status, []) // status desconhecido não some, ganha zona própria
+    porZona.get(j.status).push(j)
   }
+  const zonas = [...ZONES, ...[...porZona.keys()].filter((k) => !ZONES.some((z) => z.key === k))
+    .map((key) => ({ key, title: key }))]
 
-  for (const [project, list] of byProject) {
-    out.push(`${C.magenta}${C.bold}▸ ${project}${C.reset} ${C.dim}(${list.length})${C.reset}`)
+  for (const { key, title } of zonas) {
+    const list = porZona.get(key) || []
+    if (!list.length) continue
+    const [zoneColor] = DOT[key] ?? [C.gray]
+    out.push(`${zoneColor}${C.bold}▸ ${title}${C.reset} ${C.dim}(${list.length})${C.reset}`)
     out.push(
       '  ' + C.dim +
-        cell('', W.dot) + cell('ASSUNTO', subjW) + cell('ROTA', W.route) +
+        cell('', W.dot) + cell('ASSUNTO', subjW) + cell('PROJETO', W.project) + cell('ROTA', W.route) +
         cell('MODELO', W.model) + cell('TOKENS', W.tok) + cell('IDADE', W.age) + cell('TODO', W.todo) +
         C.reset,
     )
@@ -85,6 +102,7 @@ function render(jobs, { link } = {}) {
         '  ' +
           cell(dotChar, W.dot, dotColor) +
           cell(prefix + j.subject, subjW) +
+          cell(j.project, W.project, C.magenta) +
           cell(j.route, W.route, C.gray) +
           cell(j.model, W.model, C.dim) +
           cell(fmtTokens(j.tokens), W.tok, C.dim) +
