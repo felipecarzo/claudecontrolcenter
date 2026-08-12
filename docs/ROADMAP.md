@@ -68,6 +68,66 @@ global, mas só passa a aparecer conforme cada agente novo reporta. Conferir em
 alguns dias: se a maioria dos cartões continuar sem frente, o problema é o
 texto do protocolo — foi exatamente o que aconteceu com os to-dos.
 
+### Frente: Conteúdo social — módulo novo, ver [[produto/CONTEUDO-SOCIAL]]
+
+Decidido com o Felipe em 11/08: vive neste repo, não em projeto à parte.
+Ordem de dependência importa — CC-20 e CC-21 são pré-requisito de tudo depois,
+o resto pode andar em paralelo uma vez que os sinais existem.
+
+### CC-20 — Calendário dentro do Control Center
+Não existe módulo de calendário hoje (`find` por `calend*`/`agenda*` no
+`src/` não acha nada). Pré-requisito de todo o resto da frente: sem agenda
+povoada de verdade não há gatilho de story nem marco de evento pra cruzar
+com git log. Ler do Google Calendar, não reinventar um calendário próprio.
+
+### CC-21 — MCP do Google Calendar com escrita
+Hoje a leitura de agenda só existe manual (colar no chat). Com MCP de
+escrita configurado no Claude Code local, dá pra criar evento por voz/texto
+direto ("call com a Carol quinta 14h") sem abrir o Google Calendar. Também
+o que faz o CC-20 poder *escrever*, não só ler.
+
+### CC-22 — Arquivo de marco manual
+Evento que não deixa rastro em código (reunião, fala em evento presencial,
+nota de prova) precisa de um sinal manual mínimo — uma linha por marco, não
+formulário longo. Formato ainda em aberto: provavelmente mais uma entrada em
+`docs/diario/{data}.md` de cada projeto, lida pelo digest do CC-24, em vez de
+arquivo novo — evita duplicar onde mora a verdade.
+
+### CC-23 — Histórico rico por projeto
+`historico.mjs` tem 100 linhas hoje — cobre o que a aba de tempo precisa, não
+cobre "o que esse projeto produziu que vale virar conteúdo". Precisa
+estruturar por marco (commit relevante, tarefa fechada, evento), não só por
+bloco de tempo. A aba de todos (`tarefas.mjs`) é a mais fraca do painel hoje
+porque task fechada some — não vira registro, só desaparece da lista. Esse é
+o gap que trava o digest do CC-24: sem arquivo do que foi feito, não tem o
+que resumir.
+
+### CC-24 — Digest semanal entre projetos
+Ferramenta que cruza git log + `docs/diario` + `ROADMAP.md` de todos os
+projetos com CLAUDE.md (mesma lista que o `sync` do CC-06 already varre) e
+produz um resumo por projeto, candidato a virar post. Roda sob demanda
+(botão/comando), não em timer — mesma lógica de "processos" e "VPS": caro
+demais pra rodar sozinho a cada 2s.
+
+### CC-25 — Vault Obsidian como espelho de leitura
+`LM_vault/Neo` existe mas está vazio (só `.obsidian/`, zero arquivo). Decisão
+11/08: reviver só como leitor — CC/skill escrevem `.md` estruturado numa
+pasta (digest do CC-24, histórico do CC-23), o vault só aponta pra essa pasta
+pra visualização/grafo. Nunca fonte de dado, nunca destino de escrita de
+skill. Sem isso a decisão vira "reviver o vault" solto, sem dizer quem
+escreve o quê.
+
+### CC-26 — Skill de geração de rascunho (fora deste repo)
+Consome o digest do CC-24. Não é módulo do Control Center — é skill global do
+Claude Code (`~/.claude/skills/`), porque roda como parte do fluxo de
+trabalho do Felipe, não como aba do painel. Nenhum dos dois repos do GitHub
+analisados em 11/08 (`blacktwist/social-media-skills`,
+`charlie947/social-media-skills`) serve pronto: os dois assumem "uma
+invocação = um post" com fonte colada à mão, nenhum lê calendário/git/memória
+como gatilho, nenhum gera lote. Só `content-repurposer-sms` do primeiro repo
+serve como referência de estrutura (matriz de derivados por plataforma).
+Depende do CC-24 existir antes de fazer sentido escrever.
+
 ## Limites aceitos hoje
 
 Escritos aqui porque são escolha, não descuido:
@@ -157,22 +217,50 @@ Escritos aqui porque são escolha, não descuido:
 - A lista de "por pasta" só oferece scripts que sobem algo (`dev`, `start`,
   `serve`, `preview`, `watch`). Projeto que sobe com outro nome de script não
   aparece — o comando é editável antes de subir, e é por ali que se resolve.
+- **Processos que mais consomem (CPU/RAM/VRAM) não roda em timer, nunca.**
+  Medido nesta máquina: `Get-Process` de 596 processos leva entre 19s e 29,3s
+  — variando de chamada pra chamada, um timeout de 30s quase estourou de
+  verdade. Só carrega sob clique ("ler processos" / "atualizar"), igual a
+  VPS. O bloco no PiP usa a última leitura guardada; abrir a janelinha com
+  "processos" ativo dispara uma leitura, mas só essa vez.
+- **VRAM por processo não é "uso de GPU" — é só memória.** `nvidia-smi` não
+  expõe percentual de utilização por processo em placa de consumo, só quanto
+  de vídeo cada um está segurando. Rotulado como VRAM na tela de propósito,
+  pra não prometer o que a placa não entrega.
+- A aba VPS também nunca atualiza sozinha — mesma decisão dos processos, e
+  pelo mesmo motivo maior: usa a chave privada do Felipe pra entrar num
+  servidor de produção. Host, usuário e caminho da chave ficam no
+  `control-center.json` desta máquina, não no código — o repositório é
+  público, e são dados específicos de quem está rodando.
+- O organograma da VPS liga nginx a Docker por NÚMERO DE PORTA (a de FORA do
+  container, do `proxy_pass`), não por nome. PM2 fica fora do cruzamento:
+  `pm2 jlist` não expõe a porta que o processo escuta, e inventar o link
+  seria mentira bonita — melhor mostrar sem link do que linkar errado.
 - O vínculo agente↔roadmap é pelo TÍTULO da seção, não por ID. Dos 43 roadmaps,
   só 6 têm IDs; numerar todos seria trabalho grande para pouco ganho, e ID
   envelhece quando a lista muda.
 
 ---
 
-Última atualização: **2026-08-10** — a aba de servidores virou útil de
-verdade, a pedido direto do Felipe (não estava numerada no roadmap). Cada
-processo agora diz o que é de fato (`next rodando em inovallbond/apps`, não
-"node"), aceita apelido e explicação, agrupa por projeto, marca favorito, fecha
-duplicados do mesmo tipo com um clique, abre a pasta em quatro formatos
-(explorador/editor/terminal/copiar caminho) e sobe servidor novo por pasta,
-favorito ou recente. No caminho, três bugs reais na detecção de projeto
-(`.bin` fantasma, drive Windows perdido em barra normal, pasta que era na
-verdade um arquivo) — corrigidos com teste, achados só porque a varredura
-real do disco foi conferida, não só o `npm test`.
+Última atualização: **2026-08-10** — dois pedaços, nenhum numerado no
+roadmap, os dois a pedido direto do Felipe.
+
+**Aba de servidores** (commitado em `99e2fd3`): cada processo diz o que é de
+fato (`next rodando em inovallbond/apps`, não "node"), apelido e explicação,
+agrupa por projeto, favorito, fecha duplicados, abre a pasta em quatro
+formatos, sobe servidor novo. Três bugs reais na detecção de projeto (`.bin`
+fantasma, drive perdido, pasta que era arquivo) — achados só por testar
+contra o disco de verdade, não só `npm test`.
+
+**Cockpit** (pendente de commit): o pedido virou "quero mais informação
+acessível, transformar isso num cockpit" — six peças na janela flutuante e
+fora dela: configurar o que o PiP mostra, abas internas, layout em fita
+(redesenhado depois do Felipe ver a v1 e reclamar), Docker local, aba VPS com
+organograma (nginx↔Docker por porta, PM2 à parte, só sob clique — nunca em
+timer, é chave privada de produção), e processos que mais consomem CPU/RAM/
+VRAM (medido 19–29,3s por leitura, também só sob clique). Duas idas e voltas
+de design ao vivo com o Felipe: a aba "geral" do PiP tinha sumido e voltou, a
+fita virou pastilha colorida.
 
 CC-17 (último pedido ambíguo) segue como próxima task — não foi tocada hoje.
 Aberto: CC-17, CC-18 (projeto sem roadmap), CC-19 (conferir adesão ao

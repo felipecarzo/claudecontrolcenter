@@ -1,23 +1,61 @@
 # HANDOFF
 
 **Sessão:** 2026-08-10 · agente Claude (Sonnet 5) · máquina ALIENWARE-LIPE
-**Último commit antes desta sessão:** `ef5e5ee` — docs(session): encerramento 2026-08-09
-**Branch:** `master` · pendente de commit ao final desta sessão (ver abaixo)
+**Último commit:** `99e2fd3` — feat(servidores): nome explícito, apelido, favoritos, duplicados, subir servidor, ir pra pasta e janela flutuante
+**Branch:** `master` · commit `99e2fd3` já empurrado; **cockpit desta sessão ainda não commitado** (ver abaixo)
 
-O que aconteceu: [diario/2026-08-10.md](diario/2026-08-10.md).
+O que aconteceu: [diario/2026-08-10.md](diario/2026-08-10.md) — tem duas
+partes no mesmo dia, a aba de servidores (commitada) e o cockpit (pendente).
+
+## Frente nova adicionada em 11/08 (planejada de fora, sessão em `inovallbond`)
+
+O Felipe está migrando pra cá pra atacar isto. Docs escritos, zero código:
+
+- [[produto/CONTEUDO-SOCIAL]] — visão do módulo: pipeline
+  calendário+git log+diário → digest semanal → skill de rascunho (fora deste
+  repo) → fila de curadoria em lote. Nasceu de ele querer parar de perder
+  conteúdo postável (projetos, eventos, produção acadêmica) sem virar
+  influencer nem ter que reabrir cada projeto pra escrever um post.
+- `ROADMAP.md`, itens **CC-20 a CC-26** — backlog em ordem de dependência.
+  **CC-20 (calendário no CC) e CC-21 (MCP do Google Calendar com escrita) são
+  pré-requisito de tudo depois** — sem agenda povoada não tem gatilho de story
+  nem marco pra cruzar com git log. Recomendação de início: CC-20.
+- Contexto extra que não foi pra doc nenhum: dois repos do GitHub
+  (`blacktwist/social-media-skills`, `charlie947/social-media-skills`) foram
+  auditados e descartados — nenhum lê calendário/git/memória como gatilho,
+  nenhum gera lote, todos assumem "uma invocação = um post" com fonte colada
+  à mão. Só `content-repurposer-sms` (blacktwist) serve como referência de
+  estrutura de derivados por plataforma, citado no CC-26.
+- Não mexe com CC-17 (próxima task da sessão de 10/08, ver abaixo) nem com o
+  cockpit pendente de commit — frentes paralelas, sem conflito de arquivo
+  (esta só tocou `docs/`).
 
 ## Pendências de commit
 
-Ainda não commitado nesta sessão — aguardando aprovação do Felipe:
-`CLAUDE.md`, `README.md`, `docs/ROADMAP.md`, `docs/diario/2026-08-10.md`,
-`docs/HANDOFF.md`, `src/config.mjs`, `src/platform.mjs`, `src/servers.mjs`,
-`src/ui.html`, `src/web.mjs`, `test.mjs`. (`src/ui.html` acumula tanto a aba
-de servidores quanto a janela flutuante — duas entregas, um arquivo.)
+O cockpit inteiro está pronto, testado, mas sem aprovação de commit ainda —
+a sessão foi delegada (`/ceo`) pra implementar sem parar, não pra commitar
+sem parar. Arquivos modificados desde `99e2fd3`:
+
+```
+M  CLAUDE.md
+M  docs/ROADMAP.md
+M  src/config.mjs
+M  src/ui.html
+M  src/web.mjs
+M  test.mjs
+?? src/docker.mjs
+?? src/processos.mjs
+?? src/vps.mjs
+```
+
+`npm test` passa. `cc daemon restart` já foi rodado com o backend novo — o
+painel real (porta 8099) já reflete tudo isto, incluindo a VPS de produção
+já configurada e lida uma vez (host `66.94.117.215`, salvo no
+`control-center.json` desta máquina, fora do repositório).
 
 ## Próxima task: CC-17 — o "último pedido" no cartão não é o último
 
-Segue igual ao HANDOFF anterior — não foi tocada nesta sessão, o Felipe pediu
-outra coisa (aba de servidores) em vez disso.
+Segue sem tocar — não é isso que o Felipe pediu hoje.
 
 A linha mistura duas fontes: `lastPrompt`, lido do transcript, e `meta.status`,
 escrito pelo agente. A precedência escolhe uma e não diz qual. Decidir entre
@@ -26,50 +64,58 @@ lembrar que `subject` já é do agente, então a linha viraria redundante.
 
 Começar por `src/ui.html`, função `cartao()`, a variável `nota`.
 
-## O que mudou hoje e você precisa saber
+## O que mudou hoje — resumo dos dois pedaços
 
-**A aba de servidores parou de mostrar "node" solto.** Cada cartão agora diz o
-que o processo é de fato (`next rodando em inovallbond/apps`), aceita apelido
-e nota escritos à mão, agrupa por projeto, marca favorito, fecha duplicados do
-mesmo tipo com confirmação, abre a pasta em quatro formatos e sobe servidor
-novo — por pasta, favorito ou recente.
+**Aba de servidores** (commitado): nome explícito por processo, apelido/nota,
+favoritos, agrupar por projeto, fechar duplicados, ir pra pasta (4 formas),
+subir servidor. Três bugs de detecção de projeto corrigidos — ver `CLAUDE.md`.
 
-**Três bugs reais na detecção de projeto, achados só por testar contra o
-disco de verdade** (não só `npm test`): barra dobrada depois de `.bin`
-inventava um servidor chamado ".bin"; caminho do Windows com barra normal
-perdia a letra do drive; o trecho extraído podia terminar num arquivo em vez
-de pasta. Os três em `src/servers.mjs`, corrigidos com teste — ver
-`CLAUDE.md`.
+**Cockpit** (pendente): o Felipe pediu pra virar "ferramenta de cockpit" —
+mais informação acessível sem sair do que está fazendo. Seis peças:
 
-**Config ganhou uma seção nova:** `servidores` em `~/.claude/control-center.json`,
-por `chaveServidor()` (caminho+porta, não PID). Escrita por `setServidor()` em
-`src/config.mjs`.
-
-**`cc daemon restart` já foi rodado** com o código novo, então o painel real
-(porta 8099) já reflete tudo isto. Se testar de novo, não precisa reiniciar
-por causa desta sessão — só se mexer em `src/` de novo.
-
-**Janela flutuante nova** — botão "flutuar" no topo, `documentPictureInPicture`.
-Resumo de uso do plano, agentes em andamento e tokens, atualiza junto com o
-stream de 2s. Testado de verdade (clique + confirmação visual do Felipe) no
-painel real. Só `src/ui.html`, sem rota nova no backend — tudo já vinha em
-`/api/jobs`.
+1. **Config do PiP** — `⚙` no topo escolhe blocos + layout. `setPip()` em
+   `config.mjs`, rota `/api/pip`.
+2. **Abas dentro do PiP** — cada bloco vira aba própria. "Geral" (tudo
+   empilhado) é sempre a primeira e o padrão — foi correção depois que o
+   Felipe testou e sentiu falta da visão de conjunto.
+3. **Fita horizontal** — layout alternativo em pastilhas coloridas por faixa
+   de uso, agrupadas por bloco. Redesenhada depois que o Felipe viu a
+   primeira versão (texto corrido) e reclamou.
+4. **Docker local** — `docker.mjs`, seção na aba servidores + bloco no PiP.
+5. **Aba VPS** — organograma visual (nginx → Docker por porta, PM2 à parte)
+   de `66.94.117.215`. **Só atualiza sob clique, nunca em timer** — usa a
+   chave privada do Felipe. `vps.mjs`.
+6. **Processos que mais consomem** — `processos.mjs`, `Get-Process`. **Medido
+   19-29,3s por chamada nesta máquina (596 processos) — também só sob
+   clique**, nunca timer. Bloco no PiP.
 
 ## Armadilhas que vão te pegar de novo
 
-- **O caminho do servidor sai da linha de comando, e ela mente de três
-  jeitos** — barra dobrada, drive perdido, arquivo em vez de pasta. Ver
-  `CLAUDE.md`, é a mais recente e mais cara de hoje.
-- **Chave de servidor não pode ser o PID** — muda a cada `npm run dev`.
-- **Rodapé do cartão não cabe seis botões** — por isso renomear/explicar/pasta
-  foram para `.srv-onde`, acima do rodapé.
-- O resto (das sessões anteriores) segue em `CLAUDE.md`, seção Armadilhas.
+- **Botão com feature-detect precisa desescondar TODOS os elementos, não só
+  o primeiro que lembrar.** `#pip-config-toggle` ficou `hidden` pra sempre
+  porque só `#pip-toggle` recebia `hidden = false`. `getBoundingClientRect()`
+  num elemento escondido dá retângulo zerado — o bug não dá erro, só some.
+- **Nada caro roda em timer, mesmo que "só 10s".** VPS por SSH e processos
+  por `Get-Process` são as duas exceções conscientes: clique explícito,
+  nunca `setInterval`. A VALIDADE_MS de cache é pra não reler à toa dentro da
+  mesma sessão de uso, não uma licença pra automatizar depois.
+- **Timeout perto do tempo medido é bug, não coincidência.** `Get-Process`
+  variou 19s–29,3s; um timeout de 30s quase estourou de verdade. Se o tempo
+  medido chega perto do limite, o limite está errado.
+- **PiP não abre via automação de browser** — `documentPictureInPicture`
+  exige gesto real do usuário. Pra revisar design sem incomodar o Felipe:
+  extrai o `<style>` do `ui.html`, cola numa página estática com os mesmos
+  nomes de classe, tira print dessa página.
+- O resto (aba de servidores, `.bin` fantasma, drive perdido, etc) segue em
+  `CLAUDE.md`, seção Armadilhas — leia de cima, as de hoje estão no topo.
 
 ## Arquivos a ler antes
 
-- `CLAUDE.md` — seção Armadilhas, as de hoje estão no topo da lista de servidor
-- `src/servers.mjs` — o mais novo, e o mais arriscado (executa comando na
-  máquina via `subirServidor`)
+- `CLAUDE.md` — seção Armadilhas, tudo de hoje está no topo
+- `src/vps.mjs` e `src/processos.mjs` — os dois com decisão de segurança
+  (nunca timer) que não pode ser "otimizada" de volta pra automático
+- `src/ui.html` → bloco "janela flutuante (resumo)" — é onde config, abas e
+  fita moram juntos
 - `src/ui.html` → função `cartao()`, variável `nota` — ponto de partida do
   CC-17
 
@@ -78,24 +124,39 @@ painel real. Só `src/ui.html`, sem rota nova no backend — tudo já vinha em
 - `process.platform` só aparece em `src/platform.mjs`
 - `~/.claude/jobs` é somente leitura, exceto `meta.json`
 - `pins.json` e `state.json` são do Claude Code — nunca escrever
-- Depois de editar `src/`, reinicie o servidor: ele não recarrega módulo
+- Depois de editar `src/*.mjs`, reinicie o servidor (`cc daemon restart`):
+  ele não recarrega módulo. `ui.html` É lido do disco a cada request — não
+  precisa restart pra mudança só nele.
 - O pacote global é um LINK para este repositório: código quebrado aqui quebra
   o `cc` de todos os agentes na hora. Rode `npm test` antes de sair.
-- **Novo desta sessão:** `subirServidor()` executa comando arbitrário na
-  máquina. A única trava é a pasta (`pastaValida()`) — dentro da base de
-  projetos ou de uma pasta listada em `CC_PROJECT_DIRS`. Não adicionar
-  lista fechada de comandos permitidos: foi decisão consciente, o campo é
-  editável de propósito.
+- `subirServidor()` executa comando arbitrário na máquina — trava é só a
+  pasta (`pastaValida()`), de propósito sem lista fechada de comandos.
+- **Novo:** `vps.mjs` e `processos.mjs` NUNCA em `setInterval`. Ver armadilhas.
+- **Novo:** IP/usuário/chave da VPS ficam em `control-center.json`, nunca no
+  código — o repositório é público (`felipecarzo/claudecontrolcenter`).
 
 ## Estado do ROADMAP
 
 | Task | Estado |
 |---|---|
-| CC-17 último pedido ambíguo no cartão | **aberto — próxima** |
+| CC-17 último pedido ambíguo no cartão | aberto — próxima da sessão de 10/08 |
 | CC-18 projeto sem ROADMAP.md fica sem mapa | aberto |
 | CC-19 conferir se os agentes declaram `frente` | aberto — reavaliar em dias |
+| CC-20 calendário dentro do CC | **aberto — pré-requisito da frente nova** |
+| CC-21 MCP do Google Calendar com escrita | aberto — depende do CC-20 |
+| CC-22 arquivo de marco manual | aberto |
+| CC-23 histórico rico por projeto | aberto |
+| CC-24 digest semanal entre projetos | aberto — depende do CC-20/22/23 |
+| CC-25 vault Obsidian como espelho de leitura | aberto — depende do CC-23/24 |
+| CC-26 skill de geração de rascunho (fora deste repo) | aberto — depende do CC-24 |
 | CC-14 tray com porcentagem errada | aberto — do Felipe |
 | CC-15 statusline.log com 284 MB | aberto — do Felipe |
 | CC-08 macOS e Linux | aberto — precisa de máquina |
 | CC-04 aviso de silêncio nunca visto | aberto — precisa de agente travado |
 | CC-05 tabela do terminal ainda agrupa por projeto | aberto |
+
+Ideias do cockpit que ficaram de fora (não pedidas de novo, mas surgiram no
+meio): bandeja do sistema com tooltip é viável tecnicamente, mas é peça
+separada; fixar de verdade na barra de tarefas o Windows não permite via
+nenhum programa desde o Windows 10 — sem solução, só o gesto manual do
+usuário.
