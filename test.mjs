@@ -239,6 +239,84 @@ assert.throws(() => pastaValida('C:\\Windows\\System32'), /pasta de projetos|nã
 assert.throws(() => pastaValida(''), /não existe/)
 assert.throws(() => srv.subirServidor({ cwd: process.cwd(), comando: '' }), /obrigatório/)
 
+// --- VPS: parser da saída do SSH ---
+const vps = await import('./src/vps.mjs')
+const { secoes, parseNginx, parsePm2, parseDocker, porta } = vps._internals
+
+const bruto = [
+  '===HOST===', 'vmi3388091', '16:50:18 up 19 days', '===RAM===', '11000 5600',
+  '===DOCKER===', 'meu-app\tnode:20\tUp 2 days\t127.0.0.1:3003->3000/tcp',
+].join('\n')
+const partes = secoes(bruto)
+assert.equal(partes.host, 'vmi3388091\n16:50:18 up 19 days')
+assert.equal(partes.ram, '11000 5600')
+assert.equal(partes.docker, 'meu-app\tnode:20\tUp 2 days\t127.0.0.1:3003->3000/tcp')
+assert.equal(partes.nginx, undefined) // seção que não veio na saída simplesmente não existe
+
+assert.equal(porta('127.0.0.1:3003->3000/tcp'), 3003) // porta de FORA, não a do container
+assert.equal(porta('proxy_pass http://127.0.0.1:3002'), 3002)
+assert.equal(porta(''), null)
+
+const nginxBruto = [
+  '>>inovallbond', 'server_name inovallbond.carzo.com.br', 'proxy_pass http://127.0.0.1:3002',
+  '>>mnzs', 'server_name mnzs.carzo.com.br', 'root /var/www/mnzs',
+].join('\n')
+const sites = parseNginx(nginxBruto)
+assert.equal(sites.length, 2)
+assert.deepEqual(sites[0], { arquivo: 'inovallbond', serverName: 'inovallbond.carzo.com.br', tipo: 'proxy', alvo: 'http://127.0.0.1:3002', porta: 3002 })
+assert.equal(sites[1].tipo, 'estatico')
+assert.equal(sites[1].alvo, '/var/www/mnzs')
+assert.deepEqual(parseNginx(''), [])
+
+const pm2Bruto = JSON.stringify([{ name: 'ahtleta', pm2_env: { status: 'online', restart_time: 4, pm_uptime: Date.now() - 60000 }, monit: { memory: 84 * 1024 * 1024 } }])
+const pm2 = parsePm2(pm2Bruto)
+assert.equal(pm2.length, 1)
+assert.equal(pm2[0].nome, 'ahtleta')
+assert.equal(pm2[0].status, 'online')
+assert.equal(pm2[0].memMB, 84)
+assert.deepEqual(parsePm2('não é json'), []) // saída quebrada não pode derrubar a aba
+
+const docker = parseDocker('web_ibrics-app-1\tnode:20\tUp 4 days\t127.0.0.1:3003->3000/tcp')
+assert.equal(docker.length, 1)
+assert.equal(docker[0].nome, 'web_ibrics-app-1')
+assert.equal(docker[0].porta, 3003)
+assert.deepEqual(parseDocker(''), [])
+
+// --- processos: %CPU vem de duas amostras, RAM/VRAM não precisam disso ---
+const proc = await import('./src/processos.mjs')
+const { montarDados } = proc._internals
+
+// primeira leitura (sem `antes`): CPU sempre null, mas RAM já aparece
+const bruto1 = [{ Id: 1, ProcessName: 'chrome', Cpu: 10, Mem: 500 * 2 ** 20 }]
+const r1 = montarDados(bruto1, new Map(), null, 1000, { totalRamBytes: 16e9, nucleos: 4 })
+assert.equal(r1.dados.temAmostraCpu, false)
+assert.deepEqual(r1.dados.porCpu, []) // sem antes, não tem %, e por isso não entra na lista
+assert.equal(r1.dados.porRam[0].ramMB, 500)
+assert.equal(r1.proximo.get(1).cpuSeg, 10)
+
+// segunda leitura, 2s depois, gastou 1s de CPU num núcleo — em 4 núcleos, 1/(2*4) = 12,5%
+const r2 = montarDados(
+  [{ Id: 1, ProcessName: 'chrome', Cpu: 11, Mem: 500 * 2 ** 20 }],
+  new Map(), r1.proximo, 3000, { totalRamBytes: 16e9, nucleos: 4 },
+)
+assert.equal(r2.dados.temAmostraCpu, true)
+assert.equal(r2.dados.porCpu[0].cpuPct, 12.5)
+
+// processo com 0% não entra no "top CPU" — lista existiria cheia de lixo sem isto
+const r3 = montarDados(
+  [{ Id: 1, ProcessName: 'parado', Cpu: 10, Mem: 1 }],
+  new Map(), new Map([[1, { cpuSeg: 10, em: 0 }]]), 2000, { totalRamBytes: 16e9, nucleos: 4 },
+)
+assert.deepEqual(r3.dados.porCpu, [])
+
+// VRAM: só quem está na lista do nvidia-smi aparece
+const r4 = montarDados(
+  [{ Id: 1, ProcessName: 'jogo', Cpu: 0, Mem: 1 }, { Id: 2, ProcessName: 'outro', Cpu: 0, Mem: 1 }],
+  new Map([[1, 2048]]), null, 1000, { totalRamBytes: 16e9, nucleos: 4 },
+)
+assert.equal(r4.dados.porVram.length, 1)
+assert.equal(r4.dados.porVram[0].vramMB, 2048)
+
 // --- portabilidade: nada pode depender do HD de uma máquina ---
 const plat = await import('./src/platform.mjs')
 assert.ok(['win32', 'darwin', 'linux'].includes(plat.SO) || plat.SO)

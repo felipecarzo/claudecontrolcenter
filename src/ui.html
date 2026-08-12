@@ -812,6 +812,20 @@
   .btn[disabled] { opacity: .4; cursor: not-allowed; }
   .btn.mini { padding: 2px 7px; font-size: 10px; }
 
+  /* popover de configuração da janela flutuante. Posição vem de JS (embaixo
+     do botão de verdade): a altura do header varia com o player de mídia
+     aparecendo e sumindo, então um `top` fixo ora sobrava, ora ficava por
+     baixo do header (`z-index: 30`) — daqui o 40, acima dele. */
+  .pip-cfg {
+    position: fixed; z-index: 40; width: 220px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  }
+  .pip-cfg-tit { display: block; font-size: 10px; letter-spacing: .04em; color: var(--faint); text-transform: uppercase; margin: 10px 0 6px; }
+  .pip-cfg-tit:first-child { margin-top: 0; }
+  .pip-cfg-blocos { display: grid; gap: 6px; }
+  .pip-cfg-item { display: flex; align-items: center; gap: 7px; font-size: 12px; cursor: pointer; }
+
   /* filtro da lista: por porta, por projeto, só favoritos */
   .chip {
     background: none; border: 1px solid var(--line); color: var(--dim);
@@ -845,6 +859,24 @@
   }
   .srv-lanc:last-child { border-bottom: 0; }
   .srv-lanc code { font-size: 10px; }
+
+  /* ---------- VPS ---------- */
+  .vps-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .vps-form {
+    display: grid; gap: 10px; max-width: 360px; margin: 14px 0 22px;
+    border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 14px 16px;
+  }
+  .vps-form label { display: grid; gap: 4px; font-size: 11px; color: var(--dim); }
+  .vps-form input {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 4px;
+    padding: 7px 9px; color: var(--fg); font: 13px var(--mono);
+  }
+  .vps-form button { justify-self: start; }
+  .vps-stats { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+  .vps-stats .pip-item { gap: 8px; }
+  /* três colunas — encolhe pra uma só em janela estreita, igual aos gráficos */
+  .vps-organograma { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); align-items: start; }
+  .vps-liga { color: var(--acento); font-weight: 600; }
 
   /* ---------- bloco de notas ---------- */
   .n-head {
@@ -1035,6 +1067,7 @@
         <select id="tema-sel" title="tema do painel" aria-label="tema do painel"></select>
         <button class="btn" id="n-toggle" aria-pressed="false">notas</button>
         <button class="btn" id="pip-toggle" hidden aria-pressed="false">flutuar</button>
+        <button class="btn" id="pip-config-toggle" hidden title="escolher o que aparece na janela flutuante">⚙</button>
       </div>
     </div>
     <!-- O player divide a linha com as abas: sobra espaço à direita ali, e no
@@ -1060,6 +1093,8 @@
   </div>
   <div id="n-list"></div>
 </aside>
+
+<div class="pip-cfg" id="pip-config" hidden></div>
 
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" role="dialog" aria-label="detalhe do agente"></aside>
@@ -1105,6 +1140,7 @@ const TABS = [
   { id: 'graficos', label: 'gráficos' },
   { id: 'preco', label: 'preço' },
   { id: 'servidores', label: 'servidores' },
+  { id: 'vps', label: 'VPS' },
   { id: 'escritorio', label: 'escritório' },
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
@@ -1233,51 +1269,257 @@ function renderHeader() {
 }
 
 /* ===================== janela flutuante (resumo) =====================
-   Um resumo compacto — uso do plano, tokens, agentes em andamento — numa
-   janela real do SO via documentPictureInPictureAPI: sobrevive a trocar de
-   aba ou minimizar o Chrome, ao contrário de um elemento fixo na página.
-   Só existe em Chrome/Edge recentes; sem a API o botão fica escondido. */
+   Um resumo compacto numa janela real do SO via documentPictureInPictureAPI:
+   sobrevive a trocar de aba ou minimizar o Chrome, ao contrário de um
+   elemento fixo na página. Só existe em Chrome/Edge recentes; sem a API o
+   botão fica escondido.
+
+   O que aparece é configurável (`PIP_CFG.blocos`) e o layout tem dois modos:
+   `quadrado` empilha cartões e ganha abas própias quando há mais de um bloco
+   ativo (não precisa voltar pro Control Center pra trocar de vista); `fita`
+   condensa tudo numa linha só, pensada pra encostar num canto da tela sem
+   cobrir nada. Cada bloco por isso tem duas saídas — `full` (cartão) e `fita`
+   (uma frase curta) — em vez de um único HTML reaproveitado nos dois modos. */
 
 let pipWin = null
+let PIP_CFG = { blocos: ['uso', 'agentes'], layout: 'quadrado' }
+let pipAbaAtiva = localStorage.getItem('cc-pip-aba') || null
+
+/** Uma pastilha da fita: rótulo curto + valor em destaque, cor opcional por faixa. */
+const pipChip = (rotulo, valor, faixa = '') => `<span class="pip-chip${faixa ? ' n-' + faixa : ''}">
+  <span class="pip-chip-rot">${esc(rotulo)}</span><b>${esc(valor)}</b></span>`
+const faixaPct = (v, altoEm = 90, medioEm = 70) => (v == null ? '' : v >= altoEm ? 'alto' : v >= medioEm ? 'medio' : 'baixo')
+
+function pipUsoFull() {
+  const u = DATA.uso
+  const barra = (rot, j) => !j ? '' : `<div class="pip-item"><span class="pip-rot">${rot}</span>
+    <span class="u-item n-${j.pct >= 85 ? 'alto' : j.pct >= 60 ? 'medio' : 'baixo'}">
+      <span class="u-barra"><i style="width:${Math.min(j.pct, 100)}%"></i></span>
+      <b>${Math.round(j.pct)}%</b>
+    </span></div>`
+  return barra('5h', u?.cincoHoras) + barra('semana', u?.semana) || '<p class="pip-vazio">sem leitura ainda</p>'
+}
+const pipUsoFita = () => {
+  const u = DATA.uso
+  const item = (rot, j) => (j ? pipChip(rot, `${Math.round(j.pct)}%`, faixaPct(j.pct, 85, 60)) : '')
+  return item('5h', u?.cincoHoras) + item('sem', u?.semana) || pipChip('uso', '—')
+}
+
+function pipAgentesFull() {
+  // "em andamento" e não "todos": pronto/parado não é o que se quer ver de
+  // relance sem a tela por perto — é o que ainda pede atenção
+  const emAndamento = DATA.jobs.filter((j) => j.status === 'working' || j.status === 'waiting')
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+  if (!emAndamento.length) return '<p class="pip-vazio">nenhum agora</p>'
+  return emAndamento.map((j) => `<div class="pip-ag">
+    <b style="color:var(--${j.status})">● ${esc(j.project)}${j.frente ? ` › ${esc(j.frente)}` : ''}</b>
+    <p title="${esc(j.subject || j.detail || '')}">${esc(j.subject || j.detail || '—')}</p>
+    <p>${j.todos.length ? `${j.todosDone}/${j.todos.length} to-dos` : 'sem to-dos'} · ${tok(j.tokens)} tokens</p>
+  </div>`).join('')
+}
+const pipAgentesFita = () => {
+  const jobs = DATA.jobs.filter((j) => j.status === 'working' || j.status === 'waiting')
+  const esperando = jobs.filter((j) => j.status === 'waiting').length
+  // esperando pede atenção — vermelho não é exagero aqui, é o mesmo critério
+  // do contador "esperando" no topo do painel
+  return pipChip('agentes', String(jobs.length), esperando ? 'alto' : '')
+}
+
+function pipMaquinaFull() {
+  if (!MAQUINA || MAQUINA.erro) return '<p class="pip-vazio">sem leitura</p>'
+  const { cpu, ram, gpu } = MAQUINA
+  const linha = (rot, uso) => (uso == null ? '' : `<div class="pip-item"><span class="pip-rot">${rot}</span>
+    <span class="u-item n-${uso >= 90 ? 'alto' : uso >= 70 ? 'medio' : 'baixo'}">
+    <span class="u-barra"><i style="width:${Math.min(uso, 100)}%"></i></span><b>${Math.round(uso)}%</b></span></div>`)
+  return linha('cpu', cpu?.uso) + linha('ram', ram?.uso) + (gpu ? linha('gpu', gpu.uso) : '')
+}
+const pipMaquinaFita = () => {
+  if (!MAQUINA || MAQUINA.erro) return pipChip('máquina', '—')
+  const { cpu, ram, gpu } = MAQUINA
+  const item = (rot, v) => (v == null ? '' : pipChip(rot, `${Math.round(v)}%`, faixaPct(v)))
+  return item('cpu', cpu?.uso) + item('ram', ram?.uso) + (gpu ? item('gpu', gpu.uso) : '')
+}
+
+function pipServidoresFull() {
+  const dev = (SERVERS || []).filter((s) => s.dev)
+  if (!dev.length) return '<p class="pip-vazio">nenhum agora</p>'
+  return dev.map((s) => `<div class="pip-ag"><b>:${s.ports[0]} ${esc(s.titulo || s.name)}</b>
+    ${s.resumo ? `<p>${esc(s.resumo)}</p>` : ''}</div>`).join('')
+}
+const pipServidoresFita = () => {
+  const n = (SERVERS || []).filter((s) => s.dev).length
+  return pipChip('servidores', String(n))
+}
+
+function pipDockerFull() {
+  if (!DOCKER || DOCKER.disponivel === false) return '<p class="pip-vazio">sem Docker nesta máquina</p>'
+  if (!DOCKER.containers) return '<p class="pip-vazio">lendo…</p>'
+  const rodando = DOCKER.containers.filter((c) => c.rodando)
+  if (!rodando.length) return '<p class="pip-vazio">nenhum container rodando</p>'
+  return rodando.map((c) => `<div class="pip-ag"><b>● ${esc(c.nome)}</b><p>${esc(c.imagem)}</p></div>`).join('')
+}
+const pipDockerFita = () => {
+  if (!DOCKER || DOCKER.disponivel === false) return ''
+  const n = (DOCKER.containers || []).filter((c) => c.rodando).length
+  return pipChip('docker', String(n))
+}
+
+function pipProcessosFull() {
+  if (!PROCESSOS) return '<p class="pip-vazio">sem leitura</p>'
+  const linha = (p, valor) => `<div class="pip-item"><span class="pip-proc-nome">${esc(p.nome)}</span><b>${esc(valor)}</b></div>`
+  const bloco = (tit, lista, valor) => !lista.length ? '' : `<b class="pip-sec-tit">${tit}</b>${lista.slice(0, 4).map((p) => linha(p, valor(p))).join('')}`
+  const saida = bloco('cpu', PROCESSOS.porCpu, (p) => `${Math.round(p.cpuPct)}%`)
+    + bloco('ram', PROCESSOS.porRam, (p) => `${p.ramMB} MB`)
+  return saida || '<p class="pip-vazio">sem leitura ainda</p>'
+}
+const pipProcessosFita = () => {
+  const top = PROCESSOS?.porRam?.[0]
+  return top ? pipChip(top.nome.slice(0, 16), `${top.ramMB} MB`) : ''
+}
+
+const PIP_BLOCO = {
+  uso: { label: 'uso do plano', full: pipUsoFull, fita: pipUsoFita },
+  agentes: { label: 'agentes', full: pipAgentesFull, fita: pipAgentesFita },
+  maquina: { label: 'cpu/ram/gpu', full: pipMaquinaFull, fita: pipMaquinaFita },
+  servidores: { label: 'servidores', full: pipServidoresFull, fita: pipServidoresFita },
+  docker: { label: 'docker', full: pipDockerFull, fita: pipDockerFita },
+  processos: { label: 'processos', full: pipProcessosFull, fita: pipProcessosFita },
+}
+
+async function carregarPip() {
+  try {
+    const d = await (await fetch('/api/pip')).json()
+    if (d.pip) PIP_CFG = d.pip
+  } catch { /* fica no padrão */ }
+  renderPipConfig()
+  renderPip()
+}
+
+/** Grava e aplica na hora — a janelinha não pode esperar o próximo tique. */
+async function salvarPip(patch) {
+  const r = await fetch('/api/pip', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch),
+  })
+  const out = await r.json()
+  if (!out.ok) return alert(out.error)
+  PIP_CFG = out.pip
+  renderPipConfig()
+  // layout novo muda o tamanho da janela, e isso só se consegue reabrindo —
+  // documentPictureInPicture não redimensiona uma janela já aberta
+  if (pipWin && 'layout' in patch) { pipWin.close(); await alternarPip() }
+  else renderPip()
+}
 
 function atualizarBotaoPip() {
   const b = $('#pip-toggle')
   if (!b) return
-  if (!('documentPictureInPicture' in window)) { b.hidden = true; return }
+  const g = $('#pip-config-toggle')
+  if (!('documentPictureInPicture' in window)) { b.hidden = true; g.hidden = true; return }
   b.hidden = false
+  g.hidden = false
   b.textContent = pipWin ? 'fechar flutuante' : 'flutuar'
   b.setAttribute('aria-pressed', String(!!pipWin))
+  // `?pipcfg=1` abre o popover de configuração: o headless não clica em nada,
+  // então sem isto não dá pra capturar essa parte da tela
+  if (params.has('pipcfg')) {
+    const el = $('#pip-config')
+    el.hidden = false
+    const r = $('#pip-config-toggle').getBoundingClientRect()
+    el.style.top = `${Math.round(r.bottom + 8)}px`
+    el.style.right = `${Math.round(window.innerWidth - r.right)}px`
+  }
 }
+
+function renderPipConfig() {
+  const el = $('#pip-config')
+  if (!el) return
+  const check = (b) => `<label class="pip-cfg-item">
+    <input type="checkbox" data-pip-bloco="${b}" ${PIP_CFG.blocos.includes(b) ? 'checked' : ''}>
+    ${esc(PIP_BLOCO[b].label)}
+  </label>`
+  el.innerHTML = `
+    <b class="pip-cfg-tit">janela flutuante mostra</b>
+    <div class="pip-cfg-blocos">${Object.keys(PIP_BLOCO).map(check).join('')}</div>
+    <b class="pip-cfg-tit">formato</b>
+    <div class="pip-cfg-blocos">
+      <label class="pip-cfg-item"><input type="radio" name="pip-layout" value="quadrado" ${PIP_CFG.layout === 'quadrado' ? 'checked' : ''}> quadrado, com abas</label>
+      <label class="pip-cfg-item"><input type="radio" name="pip-layout" value="fita" ${PIP_CFG.layout === 'fita' ? 'checked' : ''}> fita horizontal</label>
+    </div>`
+}
+
+/** Tamanho de abertura por layout — fita é pra encostar numa borda da tela. */
+const PIP_TAMANHO = { quadrado: [300, 420], fita: [620, 54] }
 
 async function alternarPip() {
   if (pipWin) { pipWin.close(); return }
-  pipWin = await documentPictureInPicture.requestWindow({ width: 300, height: 420 })
+  const [width, height] = PIP_TAMANHO[PIP_CFG.layout] || PIP_TAMANHO.quadrado
+  pipWin = await documentPictureInPicture.requestWindow({ width, height })
   pipWin.document.title = 'Control Center — resumo'
   // mesma folha de estilo da página principal: reaproveita as variáveis de
   // tema em vez de manter uma segunda paleta sincronizada à mão
   pipWin.document.head.append(document.querySelector('style').cloneNode(true))
   const extra = document.createElement('style')
   extra.textContent = `
-    body { margin: 0; background: var(--bg); color: var(--fg); font: 12px var(--mono); }
-    #pip-root { padding: 10px 12px 14px; display: grid; gap: 10px; align-content: start; }
-    .pip-sec b.tit { display: block; font-size: 10px; letter-spacing: .04em; color: var(--faint); text-transform: uppercase; margin-bottom: 5px; }
-    .pip-ag { border: 1px solid var(--line); border-radius: 5px; padding: 6px 8px; margin-bottom: 5px; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 12px var(--mono); overflow: hidden; }
+    #pip-root { height: 100vh; box-sizing: border-box; overflow-y: auto; }
+    #pip-root.quadrado { padding: 10px 12px 14px; display: grid; gap: 8px; align-content: start; }
+    #pip-root.fita { display: flex; align-items: center; gap: 0; padding: 0 12px; white-space: nowrap; overflow-x: auto; overflow-y: hidden; }
+    /* cada bloco é um grupo de pastilhas, com uma linha fina separando do próximo */
+    .pip-grupo { display: inline-flex; align-items: center; gap: 6px; padding-right: 12px; margin-right: 12px; border-right: 1px solid var(--line); flex: none; }
+    .pip-grupo:last-child { border-right: none; padding-right: 0; margin-right: 0; }
+    .pip-chip {
+      display: inline-flex; align-items: baseline; gap: 5px; flex: none;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+      padding: 4px 10px; font-size: 12px; line-height: 1;
+    }
+    .pip-chip b { font-variant-numeric: tabular-nums; }
+    .pip-chip-rot { color: var(--faint); font-size: 10px; text-transform: uppercase; letter-spacing: .02em; }
+    .pip-chip.n-alto { border-color: var(--failed); color: var(--failed); }
+    .pip-chip.n-medio { border-color: var(--waiting); color: var(--waiting); }
+    .pip-chip.n-baixo { border-color: var(--done); color: var(--done); }
+    .pip-chip.n-alto .pip-chip-rot, .pip-chip.n-medio .pip-chip-rot, .pip-chip.n-baixo .pip-chip-rot { color: inherit; opacity: .75; }
+    .pip-abas { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 2px; }
+    .pip-aba {
+      background: none; border: 1px solid var(--line); color: var(--dim); cursor: pointer;
+      border-radius: 999px; padding: 3px 10px; font: 10.5px var(--mono);
+    }
+    .pip-aba.on { color: var(--acento); border-color: var(--acento); }
+    .pip-item { display: flex; align-items: center; gap: 8px; }
+    .pip-rot { width: 46px; flex: none; color: var(--faint); font-size: 10px; text-transform: uppercase; }
+    .pip-ag { border: 1px solid var(--line); border-radius: 5px; padding: 6px 8px; }
+    .pip-ag + .pip-ag { margin-top: 5px; }
     .pip-ag b { display: block; font-size: 11.5px; }
     .pip-ag p { margin: 2px 0 0; color: var(--dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .pip-vazio { color: var(--faint); }
+    .pip-vazio { color: var(--faint); margin: 0; }
+    .pip-sec + .pip-sec { margin-top: 10px; }
+    .pip-sec-tit { display: block; font-size: 10px; letter-spacing: .04em; color: var(--faint); text-transform: uppercase; margin-bottom: 5px; }
+    .pip-proc-nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); font-size: 11px; }
   `
   pipWin.document.head.append(extra)
   const root = document.createElement('div')
   root.id = 'pip-root'
   pipWin.document.body.append(root)
+  // abas moram na própria janelinha: sem isto, trocar de vista exigiria
+  // voltar pro Control Center — justamente o que a janela existe pra evitar
+  pipWin.document.addEventListener('click', (e) => {
+    const aba = e.target.closest('[data-pip-aba]')
+    if (!aba) return
+    pipAbaAtiva = aba.dataset.pipAba
+    localStorage.setItem('cc-pip-aba', pipAbaAtiva)
+    renderPip()
+  })
   // fechada pela pessoa (botão nativo da janelinha) ou pelo botão da página:
   // os dois caminhos passam por aqui, então só um listener basta
   pipWin.addEventListener('pagehide', () => { pipWin = null; atualizarBotaoPip() })
   atualizarBotaoPip()
   renderPip()
+  // "processos" é caro e nunca roda sozinho — mas pedir pra aparecer no PiP
+  // e nunca carregar também seria ruim. Abrir a janelinha com ele escolhido
+  // conta como o clique que autoriza a leitura, uma vez.
+  if (PIP_CFG.blocos.includes('processos')) carregarProcessos()
 }
 
-/** Os números que valem a pena ver sem voltar pra aba do painel. */
+/** Os blocos escolhidos em configurações, no formato escolhido. */
 function renderPip() {
   atualizarBotaoPip()
   if (!pipWin) return
@@ -1285,30 +1527,35 @@ function renderPip() {
   if (!root) return
   // tema pode trocar com a janelinha já aberta (auto virando escuro à noite)
   pipWin.document.documentElement.dataset.tema = document.documentElement.dataset.tema
+  root.className = PIP_CFG.layout === 'fita' ? 'fita' : 'quadrado'
 
-  const u = DATA.uso
-  const barra = (rot, j) => !j ? '' : `<div class="pip-sec"><b class="tit">${rot}</b>
-    <span class="u-item n-${j.pct >= 85 ? 'alto' : j.pct >= 60 ? 'medio' : 'baixo'}">
-      <span class="u-barra"><i style="width:${Math.min(j.pct, 100)}%"></i></span>
-      <b>${Math.round(j.pct)}%</b>
-    </span></div>`
+  const ativos = PIP_CFG.blocos.filter((b) => PIP_BLOCO[b])
+  if (!ativos.length) { root.innerHTML = '<p class="pip-vazio">nada selecionado — configure em ⚙, no painel</p>'; return }
 
-  // "em andamento" e não "todos": pronto/parado não é o que se quer ver de
-  // relance sem a tela por perto — é o que ainda pede atenção
-  const emAndamento = DATA.jobs
-    .filter((j) => j.status === 'working' || j.status === 'waiting')
-    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+  if (PIP_CFG.layout === 'fita') {
+    // cada bloco vira um grupo de pastilhas (uma ou mais), separado do
+    // próximo por uma linha fina — bloco sem nada a mostrar agora (Docker
+    // não instalado, processos nunca lidos) simplesmente não aparece
+    const grupos = ativos.map((b) => PIP_BLOCO[b].fita()).filter(Boolean)
+    root.innerHTML = grupos.length
+      ? grupos.map((h) => `<span class="pip-grupo">${h}</span>`).join('')
+      : '<span class="pip-vazio">nada pra mostrar ainda</span>'
+    return
+  }
 
-  const cartaoPip = (j) => `<div class="pip-ag">
-    <b style="color:var(--${j.status})">● ${esc(j.project)}${j.frente ? ` › ${esc(j.frente)}` : ''}</b>
-    <p title="${esc(j.subject || j.detail || '')}">${esc(j.subject || j.detail || '—')}</p>
-    <p>${j.todos.length ? `${j.todosDone}/${j.todos.length} to-dos` : 'sem to-dos'} · ${tok(j.tokens)} tokens</p>
-  </div>`
+  // "geral" é tudo empilhado — a vista original, e o padrão de abertura.
+  // Com um bloco só ela seria idêntica à aba dele, então nem aparece.
+  const opcoes = ativos.length > 1 ? ['geral', ...ativos] : ativos
+  if (!opcoes.includes(pipAbaAtiva)) pipAbaAtiva = opcoes[0]
 
-  root.innerHTML = barra('uso 5h', u?.cincoHoras) + barra('uso semana', u?.semana)
-    + `<div class="pip-sec"><b class="tit">tokens agora</b>${tok(DATA.summary.tokens)}</div>`
-    + `<div class="pip-sec"><b class="tit">agentes em andamento (${emAndamento.length})</b>
-      ${emAndamento.length ? emAndamento.map(cartaoPip).join('') : '<p class="pip-vazio">nenhum agora</p>'}</div>`
+  const abas = opcoes.length > 1
+    ? `<div class="pip-abas">${opcoes.map((b) => `<button class="pip-aba${b === pipAbaAtiva ? ' on' : ''}"
+        data-pip-aba="${b}">${b === 'geral' ? 'geral' : esc(PIP_BLOCO[b].label)}</button>`).join('')}</div>`
+    : ''
+  const conteudo = pipAbaAtiva === 'geral'
+    ? ativos.map((b) => `<div class="pip-sec"><b class="pip-sec-tit">${esc(PIP_BLOCO[b].label)}</b>${PIP_BLOCO[b].full()}</div>`).join('')
+    : PIP_BLOCO[pipAbaAtiva].full()
+  root.innerHTML = abas + conteudo
 }
 
 /* ======================= aba: agentes ======================== */
@@ -2022,6 +2269,147 @@ function viewPreco() {
       ? `<p class="path" style="margin:10px 0 0">mostrando as 120 mais caras de ${PRECO.tarefas.length}</p>` : '')
 }
 
+/* ========================== aba: VPS ==========================
+   Organograma da VPS — nginx, Docker e PM2 — pra não depender só de SSH cru.
+   A leitura é sempre sob clique (`atualizarVps`), nunca automática: usa a
+   chave privada do Felipe pra entrar num servidor de produção, e o painel já
+   é processo que fica sempre religado — não é lugar pra SSH em timer. */
+
+let VPS = null
+let vpsConfigAberto = false
+let vpsAtualizando = false
+
+async function carregarVps(force) {
+  if (VPS && !force) return
+  try {
+    VPS = await (await fetch('/api/vps')).json()
+  } catch {
+    VPS = null
+  }
+  render()
+}
+
+async function salvarVpsConfig() {
+  const host = $('#vps-host').value.trim()
+  const usuario = $('#vps-usuario').value.trim() || 'root'
+  const chaveDigitada = $('#vps-chave').value.trim()
+  if (!VPS?.configurado && !chaveDigitada) {
+    return alert('primeira vez: precisa do caminho da chave privada também')
+  }
+  const body = { host, usuario }
+  if (chaveDigitada) body.chave = chaveDigitada // vazio = mantém a que já tem
+  const r = await fetch('/api/vps', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+  })
+  const out = await r.json()
+  if (!out.ok) return alert(out.error)
+  vpsConfigAberto = false
+  return carregarVps(true)
+}
+
+async function atualizarVps() {
+  vpsAtualizando = true
+  render()
+  try {
+    const r = await fetch('/api/vps/atualizar', { method: 'POST' })
+    const out = await r.json()
+    if (!out.ok) alert(out.error)
+    else VPS = { ...VPS, snapshot: out.snapshot }
+  } catch {
+    alert('não consegui falar com o painel — confira se ele ainda está no ar')
+  }
+  vpsAtualizando = false
+  render()
+}
+
+function viewVpsFormulario() {
+  const v = VPS || {}
+  return `<div class="vps-form">
+    <label>host (IP ou domínio)<input id="vps-host" value="${esc(v.host || '')}" placeholder="66.94.117.215"></label>
+    <label>usuário<input id="vps-usuario" value="${esc(v.usuario || 'root')}"></label>
+    <label>caminho da chave privada<input id="vps-chave" value=""
+      placeholder="${v.configurado ? 'já configurada — deixe em branco pra manter' : '~/.ssh/id_ed25519_...'}"></label>
+    <button class="btn" data-vps-salvar="1">salvar</button>
+    <p class="path">a chave em si nunca sai desta máquina — só o caminho do arquivo fica guardado</p>
+  </div>`
+}
+
+function viewVpsOrganograma(s) {
+  const portaParaDocker = new Map()
+  for (const c of s.docker) if (c.porta) portaParaDocker.set(c.porta, c.nome)
+
+  const statLinha = (rot, uso, detalhe) => (uso == null ? '' : `<div class="pip-item"><span class="pip-rot">${rot}</span>
+    <span class="u-item n-${uso >= 90 ? 'alto' : uso >= 70 ? 'medio' : 'baixo'}">
+    <span class="u-barra"><i style="width:${Math.min(uso, 100)}%"></i></span><b>${Math.round(uso)}%</b></span>
+    <span class="path">${esc(detalhe)}</span></div>`)
+
+  const ramPct = s.ram ? Math.round((100 * s.ram.usadoMB) / s.ram.totalMB) : null
+  const discoPct = s.disco ? Math.round((100 * s.disco.usadoGB) / s.disco.totalGB) : null
+
+  const cartaoNginx = (n) => `<article class="srv-card">
+    <b class="c-titulo">${esc(n.serverName || n.arquivo)}</b>
+    ${n.tipo === 'proxy'
+      ? `<p class="srv-resumo">proxy → ${esc(n.alvo || '?')}${
+          n.porta && portaParaDocker.has(n.porta) ? ` <span class="vps-liga">(${esc(portaParaDocker.get(n.porta))})</span>` : ''}</p>`
+      : n.tipo === 'estatico'
+        ? `<p class="srv-resumo">estático → ${esc(n.alvo || '?')}</p>`
+        : '<p class="srv-resumo">sem proxy_pass nem root identificado</p>'}
+  </article>`
+
+  const cartaoDockerVps = (c) => `<article class="srv-card">
+    <b class="c-titulo">${esc(c.nome)}</b>
+    <p class="srv-resumo">${esc(c.imagem)}</p>
+    ${c.portas.length ? `<p class="c-proj">${c.portas.map(esc).join(' · ')}</p>` : ''}
+    <p class="path">${esc(c.status)}</p>
+  </article>`
+
+  const cartaoPm2 = (p) => `<article class="srv-card">
+    <b class="c-titulo">${esc(p.nome)}</b>
+    <p class="srv-resumo">${esc(p.status)}${p.memMB ? ` · ${p.memMB} MB` : ''}</p>
+    <p class="path">${p.restarts} reinício${p.restarts === 1 ? '' : 's'}${p.uptimeMs ? ' · no ar há ' + age(p.uptimeMs) : ''}</p>
+  </article>`
+
+  return `
+    <div class="vps-stats">
+      ${s.uptime ? `<span class="path">${esc(s.uptime.trim())}</span>` : ''}
+      ${ramPct != null ? statLinha('ram', ramPct, `${s.ram.usadoMB} de ${s.ram.totalMB} MB`) : ''}
+      ${discoPct != null ? statLinha('disco', discoPct, `${s.disco.usadoGB} de ${s.disco.totalGB} GB`) : ''}
+    </div>
+    <div class="vps-organograma">
+      <section>
+        <div class="col-head"><span>nginx — o que entra</span><span class="n">${s.nginx.length}</span></div>
+        <div class="cards">${s.nginx.length ? s.nginx.map(cartaoNginx).join('') : '<div class="path">nenhum site em sites-enabled</div>'}</div>
+      </section>
+      <section>
+        <div class="col-head"><span>docker</span><span class="n">${s.docker.length}</span></div>
+        <div class="cards">${s.docker.length ? s.docker.map(cartaoDockerVps).join('') : '<div class="path">nenhum container</div>'}</div>
+      </section>
+      <section>
+        <div class="col-head"><span>pm2</span><span class="n">${s.pm2.length}</span></div>
+        <div class="cards">${s.pm2.length ? s.pm2.map(cartaoPm2).join('') : '<div class="path">nenhum processo</div>'}</div>
+      </section>
+    </div>`
+}
+
+function viewVps() {
+  if (!VPS) return '<div class="empty">carregando…</div>'
+  if (!VPS.configurado) return `<div class="col-head"><span>conectar na VPS</span></div>${viewVpsFormulario()}`
+
+  const s = VPS.snapshot
+  return `
+    <div class="vps-topo">
+      <div class="col-head" style="margin:0"><span>${esc(VPS.host)}</span></div>
+      ${s ? `<span class="path">lido ${age(Date.now() - s.em)} atrás</span>` : ''}
+      <span class="grow"></span>
+      <button class="btn" data-vps-config="1">${vpsConfigAberto ? 'fechar' : '⚙ conexão'}</button>
+      <button class="btn" data-vps-atualizar="1" ${vpsAtualizando ? 'disabled' : ''}>${vpsAtualizando ? 'lendo pela SSH…' : 'atualizar'}</button>
+    </div>
+    ${vpsConfigAberto ? viewVpsFormulario() : ''}
+    ${!s
+      ? '<div class="path" style="margin-top:16px">nunca lida — clique em "atualizar" pra entrar pela primeira vez</div>'
+      : viewVpsOrganograma(s)}`
+}
+
 /* ====================== aba: servidores ====================== */
 
 // O começo do caminho é sempre o mesmo; o que identifica o app está no fim.
@@ -2159,10 +2547,75 @@ function viewServidores() {
       <summary>outros processos com porta aberta (${resto.length})</summary>
       <div class="cards" style="margin-top:10px">${resto.map(cartaoSrv).join('')}</div>
     </details>
+    ${viewDocker()}
+    ${viewProcessos()}
     <p class="path" style="margin-top:20px">
       encerrar pede confirmação e só vale para servidor de desenvolvimento —
       processo do Windows fica de fora de propósito.
     </p>`
+}
+
+/** O que mais pesa na máquina agora — CPU, RAM e VRAM, três listas curtas. */
+function cartaoProcesso(p, valor) {
+  return `<article class="srv-card">
+    <header><b class="port">${esc(valor)}</b><span class="grow"></span><span class="path">pid ${p.pid}</span></header>
+    <b class="c-titulo">${esc(p.nome)}</b>
+  </article>`
+}
+
+function viewProcessos() {
+  const cabeca = `<div class="col-head" style="margin-top:24px"><span>processos que mais consomem</span></div>`
+  if (processosCarregando) return `${cabeca}<div class="path">lendo os processos… pode levar alguns segundos</div>`
+  if (!PROCESSOS) {
+    return `${cabeca}<button class="btn mini" data-processos-atualizar="1">ler processos</button>
+      <p class="path" style="margin-top:6px">caro de ler (segundos, não milissegundos) — por isso é sob clique</p>`
+  }
+
+  const coluna = (titulo, lista, valor) => `<section>
+    <div class="col-head"><span>${titulo}</span></div>
+    ${lista.length ? `<div class="cards">${lista.map((p) => cartaoProcesso(p, valor(p))).join('')}</div>`
+      : '<div class="path">sem leitura ainda</div>'}
+  </section>`
+
+  return `${cabeca}
+    <button class="btn mini" data-processos-atualizar="1" style="margin-bottom:10px">atualizar</button>
+    <div class="vps-organograma">
+      ${coluna('cpu', PROCESSOS.porCpu, (p) => `${Math.round(p.cpuPct)}%`)}
+      ${coluna('ram', PROCESSOS.porRam, (p) => `${p.ramMB} MB`)}
+      ${PROCESSOS.porVram.length ? coluna('vram', PROCESSOS.porVram, (p) => `${p.vramMB} MB`) : ''}
+    </div>
+    ${!PROCESSOS.temAmostraCpu ? '<p class="path" style="margin-top:8px">cpu por processo aparece na próxima leitura — precisa de duas amostras</p>' : ''}`
+}
+
+/** Containers Docker desta máquina — some sozinho se o Docker não existir aqui. */
+function cartaoDocker(c) {
+  return `<article class="srv-card${c.rodando ? ' dev' : ''}">
+    <header>
+      <b class="port">${c.rodando ? '●' : '○'}</b>
+      <span class="cat">docker</span>
+      <span class="grow"></span>
+      <span class="path">${esc(c.id)}</span>
+    </header>
+    <b class="c-titulo">${esc(c.nome)}</b>
+    <p class="srv-resumo">${esc(c.imagem)}</p>
+    ${c.portas.length ? `<p class="c-proj">${c.portas.map(esc).join(' · ')}</p>` : ''}
+    <footer><span class="path">${esc(c.status)}</span></footer>
+  </article>`
+}
+
+function viewDocker() {
+  if (!DOCKER || DOCKER.disponivel === false) return ''
+  if (!DOCKER.containers) return '<div class="empty" style="margin-top:24px">lendo containers…</div>'
+  const rodando = DOCKER.containers.filter((c) => c.rodando)
+  const parados = DOCKER.containers.filter((c) => !c.rodando)
+  return `
+    <div class="col-head" style="margin-top:24px"><span>containers docker</span><span class="n">${rodando.length}</span></div>
+    ${rodando.length ? `<div class="cards">${rodando.map(cartaoDocker).join('')}</div>`
+      : '<div class="path">nenhum container rodando agora</div>'}
+    ${parados.length ? `<details class="lvl" style="margin-top:12px">
+      <summary>parados (${parados.length})</summary>
+      <div class="cards" style="margin-top:10px">${parados.map(cartaoDocker).join('')}</div>
+    </details>` : ''}`
 }
 
 /* ==================== painel lateral ========================= */
@@ -2415,6 +2868,7 @@ const RODAPE = {
   graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
   preco: 'clique numa linha para ver por que aquele nível foi sugerido, corrigir o nível e digitar quanto tempo você acha que levou',
   servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
+  vps: 'retrato por SSH, só quando você clica em atualizar — nunca sozinho. Fica salvo até o próximo clique',
   escritorio: 'os agentes desenhados trabalhando; PiP solta numa janelinha que fica por cima de tudo — o painel da VPS depende do túnel SSH, que este botão abre',
 }
 
@@ -2432,6 +2886,7 @@ function render() {
     graficos: () => viewGraficos(),
     preco: () => viewPreco(),
     servidores: () => viewServidores(),
+    vps: () => viewVps(),
     escritorio: () => viewEscritorio(),
   }
   // O palco do escritório é um iframe. Reescrever #main a cada evento do
@@ -2633,6 +3088,45 @@ async function carregarMaquina() {
     MAQUINA = null
   }
   renderMaquina()
+}
+
+let DOCKER = null
+
+/**
+ * Roda sempre, não só na aba servidores: é bloco possível do PiP, e a
+ * janelinha tem que ter dado mesmo com o Control Center numa aba diferente.
+ */
+async function carregarDocker() {
+  try {
+    DOCKER = await (await fetch('/api/docker')).json()
+  } catch {
+    DOCKER = null
+  }
+  if (tab === 'servidores') render()
+  renderPip()
+}
+
+let PROCESSOS = null
+let processosCarregando = false
+
+/**
+ * Nunca em timer — medido em 19s (`Get-Process`) numa máquina com 596
+ * processos. Carrega uma vez ao abrir a aba, e só de novo com o botão
+ * "atualizar", igual a VPS: caro e raro, não barato e constante.
+ */
+async function carregarProcessos(force) {
+  if ((PROCESSOS && !force) || processosCarregando) return
+  processosCarregando = true
+  if (tab === 'servidores') render() // mostra "lendo…" durante a espera
+  try {
+    const d = await (await fetch('/api/processos')).json()
+    PROCESSOS = d?.indisponivel ? null : d
+  } catch {
+    PROCESSOS = null
+  }
+  processosCarregando = false
+  if (tab === 'servidores') render()
+  renderPip()
 }
 
 const faixaUso = (p) => (p >= 90 ? 'alto' : p >= 70 ? 'medio' : 'baixo')
@@ -2862,6 +3356,25 @@ document.addEventListener('input', (e) => {
 
 // item vazio sai da lista — mesmo gesto de apagar dos to-dos
 document.addEventListener('change', (e) => {
+  const bloco = e.target.closest('[data-pip-bloco]')
+  if (bloco) {
+    const b = bloco.dataset.pipBloco
+    const blocos = bloco.checked ? [...PIP_CFG.blocos, b] : PIP_CFG.blocos.filter((x) => x !== b)
+    return salvarPip({ blocos })
+  }
+  const layout = e.target.closest('[name="pip-layout"]')
+  if (layout) return salvarPip({ layout: layout.value })
+})
+
+// clicar fora fecha o popover — sem isso ficaria aberto até um clique em cima
+document.addEventListener('click', (e) => {
+  const el = $('#pip-config')
+  if (!el || el.hidden) return
+  if (el.contains(e.target) || e.target.closest('#pip-config-toggle')) return
+  el.hidden = true
+})
+
+document.addEventListener('change', (e) => {
   const campo = e.target.closest('[data-nota-item]')
   if (!campo || campo.value.trim()) return
   const n = notaDo(campo)
@@ -2989,6 +3502,19 @@ document.addEventListener('click', async (e) => {
 
   if (t.closest('#pip-toggle')) return alternarPip()
 
+  const cfgBtn = t.closest('#pip-config-toggle')
+  if (cfgBtn) {
+    const el = $('#pip-config')
+    el.hidden = !el.hidden
+    if (!el.hidden) {
+      renderPipConfig()
+      const r = cfgBtn.getBoundingClientRect()
+      el.style.top = `${Math.round(r.bottom + 8)}px`
+      el.style.right = `${Math.round(window.innerWidth - r.right)}px`
+    }
+    return
+  }
+
   if (t.closest('#n-add')) {
     NOTES.unshift({ id: novoId(), title: '', text: '', h: 120 })
     armedNote = null
@@ -3051,6 +3577,7 @@ document.addEventListener('click', async (e) => {
     armed = null
     render()
     if (tab === 'servidores') carregarServidores()
+    if (tab === 'vps') carregarVps()
     if (tab === 'escritorio') carregarPaineis()
     if (tab === 'tempo' || tab === 'graficos') carregarTempo()
     if (tab === 'preco') carregarPreco()
@@ -3134,6 +3661,12 @@ document.addEventListener('click', async (e) => {
     localStorage.setItem('cc-collapsed', JSON.stringify([...collapsed]))
     return render()
   }
+
+  if (t.closest('[data-processos-atualizar]')) return carregarProcessos(true)
+
+  if (t.closest('[data-vps-config]')) { vpsConfigAberto = !vpsConfigAberto; return render() }
+  if (t.closest('[data-vps-salvar]')) return salvarVpsConfig()
+  if (t.closest('[data-vps-atualizar]') && !vpsAtualizando) return atualizarVps()
 
   const srvAba = t.closest('button[data-srv-modo]')
   if (srvAba) {
@@ -3482,12 +4015,19 @@ if (!params.has('static')) {
 fetch('/api/jobs').then((r) => r.json()).then((d) => {
   DATA = d
   render()
-  if (tab === 'servidores') carregarServidores()
+  if (tab === 'servidores') { carregarServidores(); carregarProcessos() }
+  if (tab === 'vps') carregarVps()
   if (srvNovo) carregarProjetos()
   if (tab === 'escritorio') carregarPaineis()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()
   if (tab === 'preco') carregarPreco()
 })
+
+carregarPip()
+// servidores é bloco possível do PiP, então precisa de dado mesmo com a aba
+// fechada — o cache de 15s no servidor evita que isto pese a varredura de portas
+carregarServidores()
+if (!params.has('static')) setInterval(() => carregarServidores(true), 20000)
 
 fetch('/api/graficos').then((r) => r.json()).then((d) => {
   GRAFICOS = d.graficos
@@ -3501,11 +4041,15 @@ fetch('/api/notes').then((r) => r.json()).then((d) => { NOTES = d.notes || []; r
 // no Windows, e o tique de 2s dos agentes não pode esperar por isso.
 carregarMidia()
 carregarMaquina()
+carregarDocker()
+// carregarProcessos() NÃO entra aqui: é caro (segundos, não ms) e só roda
+// sob demanda — ver a função.
 // Em `static` ficam na leitura única: o intervalo manteria a captura headless
 // esperando para sempre, pelo mesmo motivo que o SSE fica desligado lá.
 if (!params.has('static')) {
   setInterval(carregarMidia, 4000)
   setInterval(carregarMaquina, 5000)
+  setInterval(carregarDocker, 10000)
 }
 </script>
 </body>

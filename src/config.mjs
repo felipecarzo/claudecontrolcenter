@@ -15,7 +15,13 @@ export const CONFIG_FILE = path.join(os.homedir(), '.claude', 'control-center.js
 const DEFAULTS = {
   enabled: true, disabledProjects: [], taxaHora: 0, taxaPorProjeto: {}, cambio: {},
   assinaturaMes: 0, graficos: null, mercado: {}, sessoes: {}, servidores: {},
+  pip: { blocos: ['uso', 'agentes'], layout: 'quadrado' },
+  vps: { host: '', usuario: 'root', chave: '' },
+  vpsSnapshot: null,
 }
+
+export const PIP_BLOCOS = ['uso', 'agentes', 'maquina', 'servidores', 'docker', 'processos']
+export const PIP_LAYOUTS = ['quadrado', 'fita']
 
 export function readConfig() {
   try {
@@ -186,6 +192,49 @@ export function setServidor(chave, patch = {}) {
 
   writeConfig({ ...cfg, servidores })
   return servidores[id] || null
+}
+
+/**
+ * O que a janela flutuante mostra: quais blocos, e se em cartões (quadrado,
+ * um por aba) ou numa linha só (fita, tudo condensado, pra encostar num canto
+ * da tela sem cobrir nada). Bloco desconhecido é ignorado em vez de rejeitado
+ * — assim uma versão futura com bloco novo não quebra config antiga.
+ */
+export function setPip({ blocos, layout }) {
+  const cfg = readConfig()
+  const atual = cfg.pip || DEFAULTS.pip
+  const proximo = { ...atual }
+  if (Array.isArray(blocos)) {
+    const limpo = [...new Set(blocos)].filter((b) => PIP_BLOCOS.includes(b))
+    proximo.blocos = limpo.length ? limpo : ['uso'] // vazio deixaria a janela em branco
+  }
+  if (PIP_LAYOUTS.includes(layout)) proximo.layout = layout
+  writeConfig({ ...cfg, pip: proximo })
+  return proximo
+}
+
+/**
+ * Onde entrar pra ler a VPS. Fica no config e não em `src/vps.mjs` de
+ * propósito: o repositório é público, e IP + caminho de chave são específicos
+ * do Felipe — não é fato do projeto, é dado da máquina de quem está rodando.
+ */
+export function setVpsConfig({ host, usuario, chave }) {
+  const cfg = readConfig()
+  const atual = cfg.vps || DEFAULTS.vps
+  const proximo = {
+    host: host != null ? String(host).trim().slice(0, 200) : atual.host,
+    usuario: (usuario != null ? String(usuario).trim().slice(0, 60) : atual.usuario) || 'root',
+    chave: chave != null ? String(chave).trim().slice(0, 400) : atual.chave,
+  }
+  writeConfig({ ...cfg, vps: proximo })
+  return proximo
+}
+
+/** Última leitura da VPS por SSH — só grava quando o Felipe pede, nunca sozinho. */
+export function setVpsSnapshot(snapshot) {
+  const cfg = readConfig()
+  writeConfig({ ...cfg, vpsSnapshot: snapshot })
+  return snapshot
 }
 
 /** Quanto a assinatura custa por mês. Zero desliga o custo real na tela. */

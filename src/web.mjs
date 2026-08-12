@@ -23,7 +23,13 @@ import {
 import { readPaineis, ligarPainel, desligarPainel } from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
-import { setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, readConfig } from './config.mjs'
+import {
+  setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
+  setVpsConfig, readConfig,
+} from './config.mjs'
+import { listarContainers } from './docker.mjs'
+import { atualizarSnapshot } from './vps.mjs'
+import { estado as estadoProcessos } from './processos.mjs'
 import { garantirCambio } from './cambio.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -137,6 +143,52 @@ function handler(req, res) {
 
   if (url.pathname === '/api/abrir' && req.method === 'POST') {
     return comCorpo(req, res, 1e4, ({ dir, como }) => ({ aberto: abrirLocal(dir, como) }))
+  }
+
+  // Containers Docker desta máquina. Fora do stream, mesmo motivo da máquina
+  // e dos servidores: `docker ps` spawna processo e não pode travar o tique
+  // de 2s dos agentes.
+  if (url.pathname === '/api/docker') {
+    return listarContainers({ force: url.searchParams.has('force') }).then((d) => send(res, 200, d))
+  }
+
+  // Top processos por CPU/RAM/VRAM. É o mais caro dos três (PowerShell +
+  // Get-Process de todos os processos), por isso o cache mais largo dentro
+  // do próprio módulo — aqui só repassa.
+  if (url.pathname === '/api/processos') {
+    return estadoProcessos({ force: url.searchParams.has('force') }).then((d) => send(res, 200, d || { indisponivel: true }))
+  }
+
+  // O que a janela flutuante mostra. GET pra montar o painel de configurações
+  // sem esperar o primeiro /api/jobs; POST grava a escolha.
+  if (url.pathname === '/api/pip') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e4, ({ blocos, layout }) => ({ pip: setPip({ blocos, layout }) }))
+    }
+    return send(res, 200, { pip: readConfig().pip })
+  }
+
+  // Config de conexão + o último retrato lido. Nunca devolve o caminho da
+  // chave: não é segredo, mas não tem por que trafegar pro navegador.
+  if (url.pathname === '/api/vps') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e4, ({ host, usuario, chave }) => ({ vps: setVpsConfig({ host, usuario, chave }) }))
+    }
+    const cfg = readConfig()
+    return send(res, 200, {
+      configurado: Boolean(cfg.vps?.host),
+      host: cfg.vps?.host || null,
+      usuario: cfg.vps?.usuario || 'root',
+      snapshot: cfg.vpsSnapshot,
+    })
+  }
+
+  // SSH de verdade, só aqui: botão clicado pelo Felipe, nunca timer. Pode
+  // demorar (rede + comando remoto), por isso o timeout mais largo.
+  if (url.pathname === '/api/vps/atualizar' && req.method === 'POST') {
+    return atualizarSnapshot()
+      .then((snapshot) => send(res, 200, { ok: true, snapshot }))
+      .catch((e) => send(res, 500, { ok: false, error: String(e.message || e) }))
   }
 
   // Idem: lê ~800MB de transcript na primeira vez. Só a aba de tempo pede, e
