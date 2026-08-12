@@ -605,6 +605,92 @@ assert.equal(tempo.custoDe('claude-haiku-4-5', so('input', 1e6)), 1)
 assert.equal(tempo.custoDe('claude-haiku-4-5-20251001', so('input', 1e6)), 1)
 assert.equal(tempo.custoDe('modelo-que-nao-existe', so('input', 1e6)), null)
 
+// --- calendário: parser de ICS, sem tocar na rede nem no config ---
+const cal = await import('./src/calendario.mjs')
+
+// linha longa continua na seguinte começando com espaço; sem desdobrar, o
+// título vira dois campos e o segundo não casa com nada
+assert.deepEqual(cal.desdobrar('SUMMARY:reunião com\r\n  a Carol\r\nEND'), ['SUMMARY:reunião com a Carol', 'END'])
+
+// três formatos de data, e só o com Z é UTC
+assert.equal(cal.paraData('20260812T140000Z').data.toISOString(), '2026-08-12T14:00:00.000Z')
+assert.equal(cal.paraData('20260812').diaInteiro, true)
+assert.equal(cal.paraData('20260812T140000').data.getHours(), 14) // sem Z: hora local
+assert.equal(cal.paraData('nada'), null)
+
+const ics = (corpo) => `BEGIN:VCALENDAR\r\n${corpo}\r\nEND:VCALENDAR`
+const janela = { de: new Date(2026, 7, 10), ate: new Date(2026, 7, 20) }
+
+const simples = cal.lerIcs(ics([
+  'BEGIN:VEVENT', 'UID:1', 'SUMMARY:call com a Carol\\, quinta', 'LOCATION:Meet',
+  'DTSTART:20260813T140000', 'DTEND:20260813T150000', 'END:VEVENT',
+].join('\r\n')), janela)
+assert.equal(simples.length, 1)
+assert.equal(simples[0].titulo, 'call com a Carol, quinta') // vírgula escapada volta ao normal
+assert.equal(simples[0].fim - simples[0].inicio, 60 * 60_000)
+
+// evento excluído continua no arquivo do Google; não pode aparecer na agenda
+assert.equal(cal.lerIcs(ics([
+  'BEGIN:VEVENT', 'UID:2', 'SUMMARY:cancelado', 'STATUS:CANCELLED',
+  'DTSTART:20260813T140000', 'END:VEVENT',
+].join('\r\n')), janela).length, 0)
+
+// fora da janela não entra
+assert.equal(cal.lerIcs(ics([
+  'BEGIN:VEVENT', 'UID:3', 'SUMMARY:mês que vem', 'DTSTART:20260913T140000', 'END:VEVENT',
+].join('\r\n')), janela).length, 0)
+
+// semanal às segundas e quartas, com uma data excluída no meio
+const repetido = cal.lerIcs(ics([
+  'BEGIN:VEVENT', 'UID:4', 'SUMMARY:daily', 'DTSTART:20260810T090000',
+  'RRULE:FREQ=WEEKLY;BYDAY=MO,WE', 'EXDATE:20260812T090000', 'END:VEVENT',
+].join('\r\n')), janela)
+// 10, 12, 17 e 19 de agosto são seg/qua na janela — o dia 12 está excluído
+assert.deepEqual(repetido.map((e) => new Date(e.inicio).getDate()), [10, 17, 19])
+assert.ok(repetido.every((e) => e.repete))
+
+// A última semana da janela não pode sumir. Achado rodando de verdade: com a
+// janela terminando numa quarta, os dias dessa semana parcial nunca eram
+// gerados, porque o cursor da semana já nascia depois do limite.
+const parcial = cal.lerIcs(ics([
+  'BEGIN:VEVENT', 'UID:41', 'SUMMARY:daily', 'DTSTART:20260812T093000',
+  'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', 'END:VEVENT',
+].join('\r\n')), { de: new Date(2026, 7, 12), ate: new Date(2026, 7, 19) })
+// 12, 13 e 14 (qua a sex) mais 17 e 18 (seg e ter da semana seguinte) — a
+// ocorrência do dia 19 às 9h30 fica de fora porque a janela fecha à meia-noite
+assert.deepEqual(parcial.map((e) => new Date(e.inicio).getDate()), [12, 13, 14, 17, 18])
+
+// UNTIL corta a série antes do fim da janela
+assert.equal(cal.lerIcs(ics([
+  'BEGIN:VEVENT', 'UID:5', 'SUMMARY:acaba', 'DTSTART:20260810T090000',
+  'RRULE:FREQ=DAILY;UNTIL=20260812T090000', 'END:VEVENT',
+].join('\r\n')), janela).length, 3)
+
+// COUNT idem
+assert.equal(cal.lerIcs(ics([
+  'BEGIN:VEVENT', 'UID:6', 'SUMMARY:duas vezes', 'DTSTART:20260810T090000',
+  'RRULE:FREQ=DAILY;COUNT=2', 'END:VEVENT',
+].join('\r\n')), janela).length, 2)
+
+// COUNT conta ocorrência, não semana: 3 com BYDAY=MO,WE são seg, qua e a
+// segunda seguinte — não três semanas inteiras
+assert.deepEqual(cal.lerIcs(ics([
+  'BEGIN:VEVENT', 'UID:61', 'SUMMARY:tres vezes', 'DTSTART:20260810T090000',
+  'RRULE:FREQ=WEEKLY;BYDAY=MO,WE;COUNT=3', 'END:VEVENT',
+].join('\r\n')), janela).map((e) => new Date(e.inicio).getDate()), [10, 12, 17])
+
+// regra sem fim não pode virar loop: a janela é o teto, não o arquivo
+const anos = cal.lerIcs(ics([
+  'BEGIN:VEVENT', 'UID:7', 'SUMMARY:pra sempre', 'DTSTART:20200101T090000',
+  'RRULE:FREQ=DAILY', 'END:VEVENT',
+].join('\r\n')), janela)
+assert.ok(anos.length <= cal._internals.MAX_OCORRENCIAS, 'RRULE infinito passou do teto')
+
+// a URL do calendário é credencial: caminho de arquivo local não pode virar fonte
+const { setCalendario } = await import('./src/config.mjs')
+assert.throws(() => setCalendario({ nome: 'x', url: 'file:///C:/Windows/win.ini' }), /http/)
+assert.throws(() => setCalendario({ nome: 'x', url: '' }), /obrigat/)
+
 // --- daemon: caminhos, sem escrever nada ---
 const dm = await import('./src/daemon.mjs')
 assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')

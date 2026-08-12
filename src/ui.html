@@ -878,6 +878,54 @@
   .vps-organograma { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); align-items: start; }
   .vps-liga { color: var(--acento); font-weight: 600; }
 
+  /* ---------- agenda ---------- */
+  /* `--dim` e `--failed` já existiam como variável, mas não havia classe que
+     as aplicasse — `class="dim"` não pintava nada, e classe que não existe não
+     dá erro nenhum, só passa despercebida. Utilitárias, valem pra tela toda. */
+  .dim { color: var(--dim); }
+  .bad { color: var(--failed); }
+  .ag-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .ag-topo .spacer { flex: 1; }
+  .ag-form {
+    display: grid; gap: 10px; max-width: 460px; margin: 14px 0 22px;
+    border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 14px 16px;
+  }
+  .ag-form label { display: grid; gap: 4px; font-size: 11px; color: var(--dim); }
+  .ag-form input {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 4px;
+    padding: 7px 9px; color: var(--fg); font: 13px var(--mono);
+  }
+  .ag-form button { justify-self: start; }
+  .ag-ajuda { font-size: 12px; color: var(--dim); line-height: 1.55; margin: 0; }
+  .ag-cals { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ag-cal {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+  }
+  .ag-erro { font-size: 12px; color: var(--waiting); margin: 0 0 14px; }
+  .ag-lista { display: grid; gap: 22px; }
+  .ag-dia h3 {
+    font-size: 12px; font-weight: 600; color: var(--dim); text-transform: lowercase;
+    margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line);
+  }
+  .ag-ev {
+    display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: baseline;
+    padding: 7px 8px; border-radius: 4px; border-left: 2px solid transparent;
+  }
+  .ag-ev:hover { background: var(--surface); }
+  .ag-hora { font: 12px var(--mono); color: var(--dim); }
+  .ag-tit { font-size: 13px; }
+  .ag-local { font-size: 11px; }
+  /* acontecendo agora ganha a cor de foco; o que já passou apaga mas não some,
+     porque "o que eu fiz hoje" é justamente a pergunta do digest de conteúdo */
+  .ag-ev.agora { border-left-color: var(--acento); background: var(--surface); }
+  .ag-ev.agora .ag-hora { color: var(--acento); font-weight: 600; }
+  .ag-ev.passou { opacity: .5; }
+  @container (max-width: 620px) {
+    .ag-ev { grid-template-columns: 56px 1fr; }
+    .ag-ev .ag-local { grid-column: 2; }
+  }
+
   /* ---------- bloco de notas ---------- */
   .n-head {
     position: sticky; top: 0; z-index: 5; background: var(--surface);
@@ -1139,6 +1187,7 @@ const TABS = [
   { id: 'tempo', label: 'tempo' },
   { id: 'graficos', label: 'gráficos' },
   { id: 'preco', label: 'preço' },
+  { id: 'agenda', label: 'agenda' },
   { id: 'servidores', label: 'servidores' },
   { id: 'vps', label: 'VPS' },
   { id: 'escritorio', label: 'escritório' },
@@ -2860,6 +2909,126 @@ async function abrirPiP(id) {
 
 // Fora do render() porque o atalho do escritório também precisa dele, e
 // duplicar texto é como as duas telas passam a dizer coisas diferentes.
+/* ========================== aba: agenda ==========================
+   A agenda do Google dentro do painel, pelo endereço secreto em iCal. É a
+   metade "o que aconteceu de verdade" do módulo de conteúdo social: commit e
+   diário contam o que foi feito no código, o calendário conta reunião, aula e
+   evento presencial, que não deixam rastro nenhum no git.
+
+   O endereço nunca chega aqui: o servidor devolve nome e eventos, e só. Uma
+   captura de tela do painel não pode vazar a agenda inteira. */
+
+let AGENDA = null
+let agendaDias = +(localStorage.getItem('cc-agenda-dias') || 7)
+let agendaConfigAberta = false
+let agendaCarregando = false
+
+async function carregarAgenda(force) {
+  if (AGENDA && !force) return
+  agendaCarregando = true
+  try {
+    AGENDA = await (await fetch(`/api/calendario?dias=${agendaDias}${force ? '&force=1' : ''}`)).json()
+  } catch {
+    AGENDA = null
+  }
+  agendaCarregando = false
+  render()
+}
+
+async function salvarCalendario() {
+  const nome = $('#ag-nome').value.trim() || 'agenda'
+  const url = $('#ag-url').value.trim()
+  if (!url) return alert('cole o endereço secreto em formato iCal do Google Calendar')
+  const r = await fetch('/api/calendario', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ nome, url }),
+  })
+  const out = await r.json()
+  if (!out.ok) return alert(out.error)
+  agendaConfigAberta = false
+  return carregarAgenda(true)
+}
+
+async function removerCalendario(id) {
+  await fetch('/api/calendario/remover', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }),
+  })
+  return carregarAgenda(true)
+}
+
+const horaDe = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+const diaChave = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` }
+
+/** "hoje" e "amanhã" valem mais que a data: é assim que se lê uma agenda. */
+function rotuloDia(ms) {
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+  const dias = Math.round((new Date(ms).setHours(0, 0, 0, 0) - +hoje) / 864e5)
+  const nome = new Date(ms).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })
+  if (dias === 0) return `hoje · ${nome}`
+  if (dias === 1) return `amanhã · ${nome}`
+  return nome
+}
+
+function viewAgendaFormulario() {
+  const cals = AGENDA?.calendarios || []
+  return `<div class="ag-form">
+    <p class="ag-ajuda">No Google Calendar: <b>Configurações do calendário › Integrar agenda ›
+      Endereço secreto no formato iCal</b>. Esse endereço dá acesso de leitura à agenda inteira,
+      então ele fica só nesta máquina e nunca volta pra esta tela.</p>
+    <label>nome<input id="ag-nome" placeholder="pessoal, faculdade, clientes…"></label>
+    <label>endereço secreto (iCal)<input id="ag-url" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"></label>
+    <button class="btn" data-ag-salvar="1">adicionar</button>
+    ${cals.length ? `<div class="ag-cals">${cals.map((c) => `
+      <span class="ag-cal">${esc(c.nome)}${c.erro ? ' <span class="bad">(fora do ar)</span>' : ''}
+        <button class="btn mini danger" data-ag-remover="${esc(c.id)}" title="remover">✕</button></span>`).join('')}</div>` : ''}
+  </div>`
+}
+
+function viewAgenda() {
+  if (!AGENDA) return `<div class="empty">${agendaCarregando ? 'carregando…' : 'agenda indisponível'}</div>`
+  if (!AGENDA.configurado) {
+    return `<div class="col-head"><span>conectar uma agenda</span></div>${viewAgendaFormulario()}`
+  }
+
+  const agora = Date.now()
+  const eventos = AGENDA.eventos || []
+  const porDia = new Map()
+  for (const e of eventos) {
+    const k = diaChave(e.inicio)
+    if (!porDia.has(k)) porDia.set(k, [])
+    porDia.get(k).push(e)
+  }
+
+  const erros = (AGENDA.calendarios || []).filter((c) => c.erro)
+  const topo = `<div class="ag-topo">
+    <strong>${eventos.length} evento${eventos.length === 1 ? '' : 's'}</strong>
+    <span class="dim">nos próximos ${agendaDias} dias</span>
+    <span class="spacer"></span>
+    ${[7, 14, 30].map((d) => `<button class="btn mini ${d === agendaDias ? 'on' : ''}" data-ag-dias="${d}">${d}d</button>`).join('')}
+    <button class="btn mini" data-ag-atualizar="1">${agendaCarregando ? 'lendo…' : '↻ atualizar'}</button>
+    <button class="btn mini" data-ag-config="1">${agendaConfigAberta ? 'fechar' : '⚙ agendas'}</button>
+  </div>
+  ${erros.length ? `<p class="ag-erro">sem resposta de: ${erros.map((c) => esc(c.nome)).join(', ')} — mostrando a última leitura</p>` : ''}
+  ${agendaConfigAberta ? viewAgendaFormulario() : ''}`
+
+  if (!eventos.length) return `${topo}<div class="empty">nada marcado nesta janela</div>`
+
+  const dias = [...porDia.entries()].map(([, lista]) => `
+    <section class="ag-dia">
+      <h3>${esc(rotuloDia(lista[0].inicio))}</h3>
+      ${lista.map((e) => {
+    const rolando = agora >= e.inicio && agora < e.fim
+    const passou = e.fim < agora
+    return `<div class="ag-ev ${rolando ? 'agora' : ''} ${passou ? 'passou' : ''}">
+        <span class="ag-hora">${e.diaInteiro ? 'dia todo' : horaDe(e.inicio)}</span>
+        <span class="ag-tit">${esc(e.titulo)}${e.repete ? ' <span class="dim" title="evento que se repete">↻</span>' : ''}</span>
+        ${e.local ? `<span class="ag-local dim">${esc(e.local)}</span>` : ''}
+      </div>`
+  }).join('')}
+    </section>`).join('')
+
+  return `${topo}<div class="ag-lista">${dias}</div>`
+}
+
 const RODAPE = {
   agentes: 'clique num cartão para abrir o detalhe; passe o mouse nele para retomar (↻), fixar (★) ou copiar o caminho (⧉); as bolinhas são as tarefas, cheias as concluídas',
   todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
@@ -2867,6 +3036,7 @@ const RODAPE = {
   tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
   graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
   preco: 'clique numa linha para ver por que aquele nível foi sugerido, corrigir o nível e digitar quanto tempo você acha que levou',
+  agenda: 'o que está marcado no Google Calendar, lido pelo endereço secreto em iCal — o endereço fica só nesta máquina e nunca aparece nesta tela',
   servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
   vps: 'retrato por SSH, só quando você clica em atualizar — nunca sozinho. Fica salvo até o próximo clique',
   escritorio: 'os agentes desenhados trabalhando; PiP solta numa janelinha que fica por cima de tudo — o painel da VPS depende do túnel SSH, que este botão abre',
@@ -2885,6 +3055,7 @@ function render() {
     tempo: () => viewTempo(),
     graficos: () => viewGraficos(),
     preco: () => viewPreco(),
+    agenda: () => viewAgenda(),
     servidores: () => viewServidores(),
     vps: () => viewVps(),
     escritorio: () => viewEscritorio(),
@@ -3578,11 +3749,31 @@ document.addEventListener('click', async (e) => {
     render()
     if (tab === 'servidores') carregarServidores()
     if (tab === 'vps') carregarVps()
+    if (tab === 'agenda') carregarAgenda()
     if (tab === 'escritorio') carregarPaineis()
     if (tab === 'tempo' || tab === 'graficos') carregarTempo()
     if (tab === 'preco') carregarPreco()
     return
   }
+
+  const agDias = t.closest('[data-ag-dias]')
+  if (agDias) {
+    agendaDias = +agDias.dataset.agDias
+    localStorage.setItem('cc-agenda-dias', agendaDias)
+    return carregarAgenda(true)
+  }
+
+  if (t.closest('[data-ag-atualizar]')) return carregarAgenda(true)
+
+  if (t.closest('[data-ag-config]')) {
+    agendaConfigAberta = !agendaConfigAberta
+    return render()
+  }
+
+  if (t.closest('[data-ag-salvar]')) return salvarCalendario()
+
+  const agRemover = t.closest('[data-ag-remover]')
+  if (agRemover) return removerCalendario(agRemover.dataset.agRemover)
 
   const verPainel = t.closest('[data-painel-ver]')
   if (verPainel && !t.closest('button, a')) {
@@ -4017,6 +4208,7 @@ fetch('/api/jobs').then((r) => r.json()).then((d) => {
   render()
   if (tab === 'servidores') { carregarServidores(); carregarProcessos() }
   if (tab === 'vps') carregarVps()
+  if (tab === 'agenda') carregarAgenda()
   if (srvNovo) carregarProjetos()
   if (tab === 'escritorio') carregarPaineis()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()

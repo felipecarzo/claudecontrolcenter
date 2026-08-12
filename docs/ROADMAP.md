@@ -71,20 +71,15 @@ texto do protocolo — foi exatamente o que aconteceu com os to-dos.
 ### Frente: Conteúdo social — módulo novo, ver [[produto/CONTEUDO-SOCIAL]]
 
 Decidido com o Felipe em 11/08: vive neste repo, não em projeto à parte.
-Ordem de dependência importa — CC-20 e CC-21 são pré-requisito de tudo depois,
-o resto pode andar em paralelo uma vez que os sinais existem.
-
-### CC-20 — Calendário dentro do Control Center
-Não existe módulo de calendário hoje (`find` por `calend*`/`agenda*` no
-`src/` não acha nada). Pré-requisito de todo o resto da frente: sem agenda
-povoada de verdade não há gatilho de story nem marco de evento pra cruzar
-com git log. Ler do Google Calendar, não reinventar um calendário próprio.
+Ordem de dependência importa — CC-20 (feito em 12/08) e CC-21 são pré-requisito
+de tudo depois, o resto pode andar em paralelo uma vez que os sinais existem.
 
 ### CC-21 — MCP do Google Calendar com escrita
-Hoje a leitura de agenda só existe manual (colar no chat). Com MCP de
-escrita configurado no Claude Code local, dá pra criar evento por voz/texto
-direto ("call com a Carol quinta 14h") sem abrir o Google Calendar. Também
-o que faz o CC-20 poder *escrever*, não só ler.
+Hoje a leitura de agenda já existe (CC-20, aba "agenda", lê por iCal). Falta
+escrever: com MCP configurado no Claude Code local, dá pra criar evento por
+voz/texto direto ("call com a Carol quinta 14h") sem abrir o Google Calendar.
+O iCal é só leitura — não dá pra escrever por ele, então isto é integração
+nova, não extensão do `calendario.mjs`.
 
 ### CC-22 — Arquivo de marco manual
 Evento que não deixa rastro em código (reunião, fala em evento presencial,
@@ -242,26 +237,10 @@ Escritos aqui porque são escolha, não descuido:
 
 ---
 
-Última atualização: **2026-08-10** — dois pedaços, nenhum numerado no
-roadmap, os dois a pedido direto do Felipe.
+Última atualização: **2026-08-12** — cockpit de 10/08 commitado (estava
+pendente), e CC-20 (calendário) fechado. Ver [[../diario/2026-08-12]].
 
-**Aba de servidores** (commitado em `99e2fd3`): cada processo diz o que é de
-fato (`next rodando em inovallbond/apps`, não "node"), apelido e explicação,
-agrupa por projeto, favorito, fecha duplicados, abre a pasta em quatro
-formatos, sobe servidor novo. Três bugs reais na detecção de projeto (`.bin`
-fantasma, drive perdido, pasta que era arquivo) — achados só por testar
-contra o disco de verdade, não só `npm test`.
-
-**Cockpit** (pendente de commit): o pedido virou "quero mais informação
-acessível, transformar isso num cockpit" — six peças na janela flutuante e
-fora dela: configurar o que o PiP mostra, abas internas, layout em fita
-(redesenhado depois do Felipe ver a v1 e reclamar), Docker local, aba VPS com
-organograma (nginx↔Docker por porta, PM2 à parte, só sob clique — nunca em
-timer, é chave privada de produção), e processos que mais consomem CPU/RAM/
-VRAM (medido 19–29,3s por leitura, também só sob clique). Duas idas e voltas
-de design ao vivo com o Felipe: a aba "geral" do PiP tinha sumido e voltou, a
-fita virou pastilha colorida.
-
-CC-17 (último pedido ambíguo) segue como próxima task — não foi tocada hoje.
-Aberto: CC-17, CC-18 (projeto sem roadmap), CC-19 (conferir adesão ao
-`frente`), mais CC-04, CC-05, CC-08 e os dois do Felipe (CC-14, CC-15).
+CC-17 (último pedido ambíguo) segue como próxima task da sessão de 10/08 —
+não foi tocada. Aberto: CC-17, CC-18 (projeto sem roadmap), CC-19 (conferir
+adesão ao `frente`), CC-21 (escrita na agenda, próximo da frente de conteúdo
+social), mais CC-04, CC-05, CC-08 e os dois do Felipe (CC-14, CC-15).

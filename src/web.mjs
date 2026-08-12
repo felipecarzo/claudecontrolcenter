@@ -25,8 +25,9 @@ import { readNotes, writeNotes } from './notes.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
-  setVpsConfig, readConfig,
+  setVpsConfig, setCalendario, removerCalendario, readConfig,
 } from './config.mjs'
+import { agenda, esquecerCache as esquecerAgenda } from './calendario.mjs'
 import { listarContainers } from './docker.mjs'
 import { atualizarSnapshot } from './vps.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
@@ -189,6 +190,33 @@ function handler(req, res) {
     return atualizarSnapshot()
       .then((snapshot) => send(res, 200, { ok: true, snapshot }))
       .catch((e) => send(res, 500, { ok: false, error: String(e.message || e) }))
+  }
+
+  // Agenda do Google, por iCal. GET traz os eventos da janela pedida; POST
+  // cadastra um calendário. A resposta NUNCA inclui o endereço: ele é a
+  // credencial de leitura da agenda, e uma captura de tela do painel vazaria
+  // a agenda inteira do Felipe pra quem visse a imagem.
+  if (url.pathname === '/api/calendario') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e4, (corpo) => {
+        const cal = setCalendario(corpo)
+        esquecerAgenda() // senão o calendário novo só apareceria 15 min depois
+        return { calendario: cal }
+      })
+    }
+    const dias = Number(url.searchParams.get('dias'))
+    return agenda({
+      dias: Number.isFinite(dias) ? dias : 7,
+      force: url.searchParams.has('force'),
+    }).then((d) => send(res, 200, d)).catch((e) => send(res, 500, { erro: String(e.message || e) }))
+  }
+
+  if (url.pathname === '/api/calendario/remover' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ id }) => {
+      const calendarios = removerCalendario(id)
+      esquecerAgenda()
+      return { calendarios }
+    })
   }
 
   // Idem: lê ~800MB de transcript na primeira vez. Só a aba de tempo pede, e

@@ -92,6 +92,18 @@ errada por definição.
 
 ## Armadilhas (custaram tempo, não redescobrir)
 
+- **`CONFIG_FILE` não é isolado por porta.** Subir uma instância de teste com
+  `node cc.mjs --web-only --port 8123` para não mexer no painel real (porta
+  9099 do daemon) protege o processo, mas não protege o dado: `config.mjs`
+  aponta sempre pro mesmo `~/.claude/control-center.json`, então escrever
+  nele pela porta de teste escreve no arquivo que o daemon real também lê.
+  Achado testando o CC-20 (calendário): um calendário de teste foi salvo no
+  config de verdade do Felipe. Pra testar rota que ESCREVE config, ou aponta
+  `CC_HOME`/variável equivalente pra um `.claude` isolado (não existe hoje —
+  seria o conserto certo), ou remove cirurgicamente só a chave que o teste
+  gravou depois, nunca restaura o arquivo inteiro de um backup — o daemon
+  real pode ter escrito algo legítimo nesse meio-tempo, e restaurar por cima
+  perde esse dado.
 - **`fan[]` fica com resíduo** da última tool mesmo depois do job terminar. Só
   exibir enquanto o status é `working`.
 - **Truncar string já colorida corta o código ANSI no meio** e vaza `[0m` na

@@ -18,6 +18,7 @@ const DEFAULTS = {
   pip: { blocos: ['uso', 'agentes'], layout: 'quadrado' },
   vps: { host: '', usuario: 'root', chave: '' },
   vpsSnapshot: null,
+  calendarios: [],
 }
 
 export const PIP_BLOCOS = ['uso', 'agentes', 'maquina', 'servidores', 'docker', 'processos']
@@ -235,6 +236,55 @@ export function setVpsSnapshot(snapshot) {
   const cfg = readConfig()
   writeConfig({ ...cfg, vpsSnapshot: snapshot })
   return snapshot
+}
+
+/**
+ * Um calendário do Google, pelo endereço secreto em iCal.
+ *
+ * Grava UM de cada vez, em vez de receber a lista inteira como os gráficos, e
+ * a razão é segurança: a URL é a credencial de leitura da agenda, então ela
+ * nunca volta pro navegador. Se a página tivesse que reenviar a lista completa
+ * para salvar, ela mandaria de volta os calendários sem URL nenhuma — e o
+ * primeiro "salvar" apagaria todos os endereços já guardados.
+ *
+ * Aceita só http(s): sem isso um `file:///` transformaria o campo num leitor
+ * de arquivo arbitrário da máquina.
+ */
+export function setCalendario({ id, nome, url, cor }) {
+  const cfg = readConfig()
+  const lista = [...(cfg.calendarios || [])]
+  const chave = String(id || '').trim().slice(0, 40)
+    || `cal${Date.now().toString(36)}`
+
+  let endereco
+  if (url != null) {
+    endereco = String(url).trim().slice(0, 600)
+    if (endereco && !/^https?:\/\//i.test(endereco)) throw new Error('o endereço tem que começar com http:// ou https://')
+  }
+
+  const i = lista.findIndex((c) => c.id === chave)
+  const atual = i >= 0 ? lista[i] : {}
+  const proximo = {
+    id: chave,
+    nome: (nome != null ? String(nome).trim().slice(0, 60) : atual.nome) || 'agenda',
+    url: endereco !== undefined ? endereco : atual.url,
+    cor: cor != null ? String(cor).trim().slice(0, 20) : atual.cor,
+  }
+  if (!proximo.url) throw new Error('endereço do calendário obrigatório')
+  if (!proximo.cor) delete proximo.cor
+
+  if (i >= 0) lista[i] = proximo
+  else lista.push(proximo)
+
+  writeConfig({ ...cfg, calendarios: lista.slice(0, 12) })
+  return { id: proximo.id, nome: proximo.nome, cor: proximo.cor || null }
+}
+
+export function removerCalendario(id) {
+  const cfg = readConfig()
+  const calendarios = (cfg.calendarios || []).filter((c) => c.id !== id)
+  writeConfig({ ...cfg, calendarios })
+  return calendarios.map((c) => ({ id: c.id, nome: c.nome }))
 }
 
 /** Quanto a assinatura custa por mês. Zero desliga o custo real na tela. */
