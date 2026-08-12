@@ -34,13 +34,6 @@ design era feito. Conferir na primeira vez que acontecer.
   global já cobre todos, e repetir a instrução em 14 arquivos contraria "um fato
   mora em um lugar só". A ferramenta existe se mudar de ideia.
 
-### CC-17 — O "último pedido" no cartão nem sempre é o último
-Reclamação do Felipe em 09/08: o cartão mostra um texto que ele não reconhece
-como o que pediu por último. A linha mistura duas fontes — `lastPrompt`, lido
-do transcript, e `meta.status`, escrito pelo agente — e a precedência escolhe
-uma sem dizer qual está mostrando. Decidir: ou rotular a origem, ou mostrar só
-o que o agente declarou.
-
 ### CC-18 — Projeto sem ROADMAP.md fica sem mapa
 O mapa lateral lê `docs/ROADMAP.md`. Dos projetos com agente ativo,
 `renanMarchon` não tem — clicar no projeto abre um painel que só explica a
@@ -225,8 +218,6 @@ Escritos aqui porque são escolha, não descuido:
 Última atualização: **2026-08-12** — cockpit de 10/08 commitado (estava
 pendente), e CC-20 (calendário) fechado. Ver [[../diario/2026-08-12]].
 
-CC-17 (último pedido ambíguo) segue como próxima task da sessão de 10/08 —
-não foi tocada. Aberto: CC-17, CC-18 (projeto sem roadmap), CC-19 (conferir
-adesão ao `frente`), CC-21 (escrita na agenda, próximo da frente de conteúdo
-social), mais CC-04, CC-08 e CC-14 (do Felipe — conferir no tray, não é bug
-deste projeto).
+Aberto: CC-18 (projeto sem roadmap), CC-19 (conferir adesão ao `frente`),
+CC-21 (escrita na agenda, próximo da frente de conteúdo social), mais CC-04,
+CC-08 e CC-14 (do Felipe — conferir no tray, não é bug deste projeto).

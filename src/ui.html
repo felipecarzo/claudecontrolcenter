@@ -395,6 +395,8 @@
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
   .c-nota.warn { color: var(--waiting); } .c-nota.bad { color: var(--failed); }
+  /* rótulo do CC-17: distingue "isto é seu pedido" de "isto é status do agente" */
+  .c-nota-origem { color: var(--dim); font-weight: 600; }
   .card > footer {
     display: flex; align-items: center; gap: 8px; margin-top: 3px;
     padding-top: 7px; border-top: 1px solid var(--line-soft); font-size: 11px;
@@ -1615,12 +1617,18 @@ function renderPip() {
  * inteira até o fim da tela para juntar as mesmas quatro coisas.
  */
 function cartao(j) {
-  // "done" repetiria o ponto e a faixa: nota só quando acrescenta algo
+  // "done" repetiria o ponto e a faixa: nota só quando acrescenta algo.
+  // CC-17: `detail` é o status que o próprio agente escreveu (`cc set`), e
+  // vem antes de `lastPrompt` — o que você digitou por último, lido do
+  // transcript. Quase todo job tem transcript, então antes disso `lastPrompt`
+  // quase sempre ganhava e escondia o status; o cartão parecia ecoar seu
+  // pedido em vez de dizer o que está acontecendo. Sem `detail`, `lastPrompt`
+  // ainda aparece, mas rotulado — pra não parecer status quando é só eco.
   const nota = j.stale ? `<p class="c-nota warn">sem sinal há ${age(j.idleMs)}</p>`
     : j.blockers.length ? `<p class="c-nota bad">${esc(j.blockers[0])}</p>`
     : j.inFlight.length ? `<p class="c-nota">${esc(j.inFlight[0].label)}</p>`
-    : j.lastPrompt ? `<p class="c-nota">${esc(j.lastPrompt)}</p>`
-    : j.detail ? `<p class="c-nota">${esc(j.detail)}</p>` : ''
+    : j.detail ? `<p class="c-nota">${esc(j.detail)}</p>`
+    : j.lastPrompt ? `<p class="c-nota"><span class="c-nota-origem">você pediu:</span> ${esc(j.lastPrompt)}</p>` : ''
 
   // Bolinhas em vez de barra: com poucas tarefas dá pra contar de relance, e é
   // isso que se quer saber — quantas faltam, não a porcentagem.
