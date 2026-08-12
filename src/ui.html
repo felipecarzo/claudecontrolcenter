@@ -218,6 +218,7 @@
   main { padding: 4px 20px 60px; }
   #painel > footer { color: var(--faint); font-size: 11px; padding: 0 20px 28px; }
   .empty { color: var(--faint); text-align: center; padding: 60px 0; }
+  .empty .btn { margin-top: 14px; }
 
   /* ---------- agentes: faixas de cartões ----------
      Cada situação é uma faixa da largura toda, e os cartões se espalham em
@@ -651,6 +652,7 @@
     background: var(--bg); border-left: 1px solid var(--line);
   }
   .m-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; position: sticky; top: 0; background: var(--bg); padding-bottom: 8px; }
+  .m-todo-ok { color: var(--done); margin-top: 14px; }
   .m-head b { font: 700 15px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; }
   .m-grupo { margin-bottom: 18px; padding-left: 10px; border-left: 3px solid var(--line); }
   .m-grupo.e-bloqueado { border-left-color: var(--failed); }
@@ -3172,6 +3174,8 @@ const ROTULO_ESTADO = {
   aberto: 'aberto', feito: 'feito',
 }
 
+const TODO_ROADMAP = 'criar docs/ROADMAP.md deste projeto, seguindo a estrutura do projeto-template'
+
 async function abrirMapa(job) {
   mapaProjeto = job
   MAPA = null
@@ -3217,9 +3221,17 @@ function desenharMapa() {
   </header>`
 
   if (MAPA.vazio || MAPA.erro || !MAPA.grupos?.length) {
+    // CC-18: o painel não escreve o arquivo direto na pasta de outro projeto —
+    // isso seria o Control Center mudando disco de fora sem revisão. Em vez
+    // disso, cria um to-do no job aberto; um agente de verdade lê e decide
+    // como escrever, com a revisão normal de qualquer código gerado.
+    const jaTem = (mapaProjeto.todos || []).some((t) => t.text === TODO_ROADMAP)
     el.innerHTML = `${cabeca}<div class="empty">
       este projeto não tem <code>docs/ROADMAP.md</code> — sem ele o painel não tem
       mapa para mostrar, só o que o agente escreveu no cartão.
+      ${jaTem
+        ? '<p class="m-todo-ok">✓ to-do criado — o agente vê na próxima checada</p>'
+        : '<button class="btn" data-criar-todo-roadmap>+ criar to-do "escrever o roadmap"</button>'}
     </div>`
     return
   }
@@ -3607,6 +3619,13 @@ document.addEventListener('click', async (e) => {
     return
   }
   if (t.closest('[data-fechar-mapa]') || t.closest('#scrim-mapa')) return fecharMapa()
+
+  if (t.closest('[data-criar-todo-roadmap]')) {
+    const job = mapaProjeto
+    if (!job) return
+    await gravarTodos(job, [...job.todos, { text: TODO_ROADMAP, done: false }])
+    return desenharMapa()
+  }
 
   const btMidia = t.closest('[data-midia]')
   if (btMidia) {

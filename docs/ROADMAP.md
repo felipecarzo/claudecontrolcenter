@@ -34,12 +34,6 @@ design era feito. Conferir na primeira vez que acontecer.
   global já cobre todos, e repetir a instrução em 14 arquivos contraria "um fato
   mora em um lugar só". A ferramenta existe se mudar de ideia.
 
-### CC-18 — Projeto sem ROADMAP.md fica sem mapa
-O mapa lateral lê `docs/ROADMAP.md`. Dos projetos com agente ativo,
-`renanMarchon` não tem — clicar no projeto abre um painel que só explica a
-ausência. Ou se aceita isso, ou o painel passa a oferecer criar o arquivo a
-partir de um modelo.
-
 ### CC-19 — Os agentes ainda não declaram `frente`
 O campo entrou no protocolo em 09/08 e vale para todos os projetos pelo bloco
 global, mas só passa a aparecer conforme cada agente novo reporta. Conferir em
@@ -105,6 +99,15 @@ Depende do CC-24 existir antes de fazer sentido escrever.
 
 Escritos aqui porque são escolha, não descuido:
 
+- **Projeto sem `docs/ROADMAP.md` não ganha escrita direta do painel** (CC-18,
+  decidido 12/08). O painel nunca escreve `docs/ROADMAP.md` sozinho na pasta
+  de outro projeto — seria o Control Center mudando disco de um repositório
+  de fora sem revisão nenhuma. Em vez disso, o mapa vazio ganhou um botão
+  que cria um to-do (`gravarTodos()`, o mesmo caminho que os checkboxes da
+  aba to-dos já usam) no job aberto: "criar `docs/ROADMAP.md` deste projeto,
+  seguindo a estrutura do projeto-template". Um agente de verdade lê esse
+  to-do depois e decide como escrever, com a revisão normal de qualquer
+  código gerado — o painel só aponta o problema, não resolve sozinho.
 - Polling de 2s nas duas telas. Com dezenas de jobs, reler 8 arquivos é mais
   barato que a complexidade de `fs.watch`. Revisar se passar de ~100 jobs.
 - A aba de tempo só recalcula cortes a partir de 2 minutos. O cache guarda
@@ -218,6 +221,6 @@ Escritos aqui porque são escolha, não descuido:
 Última atualização: **2026-08-12** — cockpit de 10/08 commitado (estava
 pendente), e CC-20 (calendário) fechado. Ver [[../diario/2026-08-12]].
 
-Aberto: CC-18 (projeto sem roadmap), CC-19 (conferir adesão ao `frente`),
-CC-21 (escrita na agenda, próximo da frente de conteúdo social), mais CC-04,
-CC-08 e CC-14 (do Felipe — conferir no tray, não é bug deste projeto).
+Aberto: CC-19 (conferir adesão ao `frente`), CC-21 (escrita na agenda,
+próximo da frente de conteúdo social), mais CC-04, CC-08 e CC-14 (do Felipe —
+conferir no tray, não é bug deste projeto).
