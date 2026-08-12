@@ -10,16 +10,6 @@ percentual que **não bate** com o real. Não é bug deste projeto. Agora dá pa
 conferir: o painel mostra o número oficial no topo, vindo do `rate_limits` do
 statusLine — se o tray discordar dele, o errado é o tray.
 
-### CC-15 — O statusline.log do Felipe está com 284 MB
-Achado em 08/08 enquanto se investigava o uso do plano. O `statusline.sh`
-(gerado pelo cc-statusline) grava o JSON de entrada inteiro a cada render —
-155 mil execuções acumuladas. Não é arquivo deste projeto, mas cresce sem
-teto no disco dele. Também vale desligar o trecho de `ccusage`: o binário não
-está instalado, então cai num `npx --yes ccusage@latest` que baixa pacote a
-cada chamada — é a parte lenta da statusline, e a estimativa dele por custo é
-justamente a que dá números errados. O dado oficial já vem no próprio JSON de
-entrada, e o painel passou a usar esse.
-
 ### CC-08 — macOS e Linux nunca rodaram
 O código existe em `src/platform.mjs` — launchd e systemd de usuário, `lsof`/`ss`
 no lugar do PowerShell, `SIGTERM` no lugar do `taskkill`, `.command`/`.desktop`
@@ -238,4 +228,5 @@ pendente), e CC-20 (calendário) fechado. Ver [[../diario/2026-08-12]].
 CC-17 (último pedido ambíguo) segue como próxima task da sessão de 10/08 —
 não foi tocada. Aberto: CC-17, CC-18 (projeto sem roadmap), CC-19 (conferir
 adesão ao `frente`), CC-21 (escrita na agenda, próximo da frente de conteúdo
-social), mais CC-04, CC-08 e os dois do Felipe (CC-14, CC-15).
+social), mais CC-04, CC-08 e CC-14 (do Felipe — conferir no tray, não é bug
+deste projeto).
