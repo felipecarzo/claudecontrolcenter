@@ -10,6 +10,33 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ## Aberto
 
+### Frente: Acesso remoto pela VPS — visão registrada em 13/08, não implementar ainda
+
+Regra 4 do ciclo (visão longa se registra, não se implementa). Palavras do
+Felipe, ditadas:
+
+> "quando a gente subir esse projeto na vps, e aí eu ter como controlar o
+> claude, o estudo, tudo por um link meu no meu site carzo, por exemplo, eu
+> crio um domínio lá no carzo chamado cockpit, eu acesso, boto o meu login e
+> minha senha e consigo controlar pelo, ver pelo telefone o que que a gente
+> está fazendo e tal, igual a gente tem aqui só que no telefone na rua, porque
+> eu já estou instalando o claude lá na vps pra eu usar ele lá e controlar
+> pela própria cli da anthropic"
+
+Normalizado do áudio (ele pediu pra nunca corrigir a grafia, só entender):
+"cloud" → Claude Code; "Carlos" → Carzo, o site/domínio dele; "/rc" →
+provavelmente "CLI", a própria linha de comando do Claude Code.
+
+O pedido, resumido: hoje o Agent Cockpit só roda local. A visão é subir este
+projeto numa VPS que já vai ter o Claude Code instalado, expor por um
+subdomínio do site dele (`cockpit.carzo...`), com login e senha, pra abrir do
+telefone e ver/controlar os agentes rodando — o mesmo painel de hoje, só que
+de fora de casa.
+
+Não é task ainda. Quando virar: login/senha é autenticação de verdade (nunca
+mock, regra do protótipo simular produção), e o painel hoje não tem nenhuma
+camada de auth — é a primeira coisa a decidir antes de expor pela internet.
+
 ### CC-14 — O tray do Claude Code mostra porcentagem errada
 Botão direito no ícone do Claude Code na bandeja → "Plano Max uso" mostra um
 percentual que **não bate** com o real. Não é bug deste projeto. Agora dá para
@@ -33,18 +60,27 @@ que também nunca apareceu numa captura — não houve agente travado enquanto o
 design era feito. Conferir na primeira vez que acontecer.
 
 ### CC-06 — Ideias sem dono
-- Agrupar por rota dentro do projeto, quando um projeto tiver muitos agentes
-- Avisar quando um agente passa de N minutos sem sinal (hoje só pinta de amarelo)
-- Ordenar por token gasto, pra achar o agente caro
-- `sync` em massa nos 14 projetos com `CLAUDE.md`: não foi rodado porque o bloco
-  global já cobre todos, e repetir a instrução em 14 arquivos contraria "um fato
-  mora em um lugar só". A ferramenta existe se mudar de ideia.
-- `estadoDe()` (`roadmap.mjs`) casa por regex solto no título, e isso deu falso
-  positivo achado em 13/08 pelas pastilhas do CC-34: "CC-23 — Histórico rico"
-  virou "feito" porque o título contém a palavra "Histórico", e "CC-04 —
-  ...agente travado..." virou "bloqueado" porque contém "travado". O regex
-  deveria olhar só o marcador de estado (emoji/palavra no INÍCIO do título),
-  não a frase inteira.
+
+Duas feitas em 13/08, duas deliberadamente não: **agrupar por rota** — o
+cartão do cockpit agrupa a lista de agentes frios por `route` quando passa de
+4, e some com poucos (moldura sem ganho). **Ordenar por token** já existia
+(`ORDENAR_POR` na aba agentes tinha `tokens` desde antes — nada a fazer).
+
+**Não construído, de propósito:** avisar de agente sem sinal há N minutos. O
+CC-04 continua aberto porque a nota `sem sinal há Xm` nunca foi vista com
+agente travado de verdade — e o cockpit já dá peso 4 pra `stale`, que é o
+sinal ativo possível sem inventar notificação nova antes do existente se
+provar (precedente: CC-07, construído e nunca usado). E `sync` em massa nos
+projetos com `CLAUDE.md`: o bloco global já cobre todos, repetir a instrução
+em 14 arquivos contraria "um fato mora em um lugar só". A ferramenta
+(`syncAll`) existe se o Felipe mudar de ideia.
+
+**Achado no caminho, ainda sem dono:** `estadoDe()` (`roadmap.mjs`) casa por
+regex solto no título, e isso deu falso positivo achado em 13/08 pelas
+pastilhas do CC-34: "CC-23 — Histórico rico" virou "feito" porque o título
+contém a palavra "Histórico", e "CC-04 — ...agente travado..." virou
+"bloqueado" porque contém "travado". O regex deveria olhar só o marcador de
+estado (emoji/palavra no INÍCIO do título), não a frase inteira.
 
 ### Frente: Conteúdo social — módulo novo, ver [[produto/CONTEUDO-SOCIAL]]
 
@@ -198,11 +234,29 @@ mensagens acusatórias em 3 projetos), e **visão longa se registra, não se
 implementa**. Mais o desempate das contradições que a evidência resolve.
 
 ### CC-39 — Consertar o `- projeto_template`, que hoje nasce violando o global
-Três defeitos achados: manda usar `Co-Authored-By` (regra absoluta do Felipe
-proíbe, e ele escreveu "esta regra vence"); descreve estrutura de pastas que
-não é mais a dele (`docs/essential/`, `docs/daily/` em vez de
-`guias/diario/produto/legacy`); e o `CLAUDE.md` dele é o do `app_ayvu` inteiro
-com placeholders só parcialmente aplicados. Todo projeto novo nasce com isso.
+
+**Parte aplicada em 13/08.** O diagnóstico original (escrito antes de olhar o
+código de verdade) estava parcialmente errado: `Co-Authored-By` já aparecia só
+documentando a proibição, nunca mandando usar, e a estrutura de pastas
+(`guias/produto/legacy/diario`) já era a nova. O `CLAUDE.md` também já estava
+limpo. O que era real e foi corrigido: os **4 arquivos de agente**
+(`.claude/agents/{planner,reviewer,scrum-manager,tester}.md`) tinham o nome
+"app_ayvu", o caminho `D:\...\app_ayvu` fixo e a stack (Rust+Flutter) do ayvu
+hardcoded — inclusive um import de exemplo quebrado
+(`from 'cargo test (Rust) + flutter test (Dart)'`, um find-replace que vazou
+pro código). E `docs/HANDOFF.md` carregava **133 linhas de estado real** do
+ayvu — datas, hash de commit, resultado de benchmark (94.2% pass rate) —
+sobrescrito por um modelo vazio.
+
+**Achado maior, não tocado — decisão do Felipe:** a pasta `app/` tem **91
+arquivos** de um app Flutter real (`com.ayvu.ayvu`, Android/Kotlin incluído),
+`docs/legacy/` guarda sessões reais do ayvu (`session-TRANS-01-FL.md` etc,
+combinando com o HANDOFF que citava essa mesma task) e `docs/ROADMAP.md` abre
+com "`# app_ayvu — ROADMAP`". Isso não é mais "template com resíduo" — parece
+o projeto ayvu real, sendo convertido em template, com a conversão pela
+metade. Apagar código de app alheio é decisão de conteúdo, não mecânica: fica
+para o Felipe dizer se `app/` é referência que ele quer manter (ex.: esqueleto
+Flutter pronto) ou lixo a remover.
 
 ### CC-40 — Índice das memórias comportamentais
 ~30 memórias sobre o jeito dele trabalhar, espalhadas por 15 projetos, sem

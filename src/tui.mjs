@@ -60,7 +60,7 @@ function render(jobs, { link } = {}) {
   const chip = (k, n, label) => `${DOT[k][0]}${DOT[k][1]}${C.reset} ${n} ${C.dim}${label}${C.reset}`
 
   out.push(
-    `${C.bold}CONTROL CENTER${C.reset}   ` +
+    `${C.bold}AGENT COCKPIT${C.reset}   ` +
       [chip('working', s.working, 'ativos'), chip('waiting', s.waiting, 'esperando'),
        chip('failed', s.failed, 'falhos'), chip('done', s.done, 'prontos')].join('   ') +
       `   ${C.dim}${fmtTokens(s.tokens)} tokens${C.reset}` +

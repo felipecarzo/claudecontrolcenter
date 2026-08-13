@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Control Center</title>
+<title>Agent Cockpit</title>
 <style>
   :root {
     --bg: #0a0c10;
@@ -592,6 +592,10 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .ck-frios { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  /* CC-06: só aparece com muitos agentes no mesmo projeto (>4) */
+  .ck-rota { margin: 6px 0; }
+  .ck-rota > .dim { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+  .ck-rota .ck-frios { margin: 3px 0 0; }
   .ck-frio {
     display: inline-flex; align-items: center; gap: 5px; font-size: 11px;
     color: var(--faint); border: 1px solid var(--line); border-radius: 999px;
@@ -1232,7 +1236,7 @@
 <div id="painel">
   <header>
     <div class="top">
-      <h1>Control Center</h1>
+      <h1>Agent Cockpit</h1>
       <div class="counts" id="counts"></div>
       <span class="grow"></span>
       <div id="uso" class="uso"></div>
@@ -1634,7 +1638,7 @@ async function alternarPip() {
   if (pipWin) { pipWin.close(); return }
   const [width, height] = PIP_TAMANHO[PIP_CFG.layout] || PIP_TAMANHO.quadrado
   pipWin = await documentPictureInPicture.requestWindow({ width, height })
-  pipWin.document.title = 'Control Center — resumo'
+  pipWin.document.title = 'Agent Cockpit — resumo'
   // mesma folha de estilo da página principal: reaproveita as variáveis de
   // tema em vez de manter uma segunda paleta sincronizada à mão
   pipWin.document.head.append(document.querySelector('style').cloneNode(true))
@@ -2053,10 +2057,25 @@ function viewCockpit(jobs) {
 
     // Os demais agentes, em uma linha só: contexto sem virar parede de texto.
     const resto = p.jobs.filter((j) => !p.esperando.some((e) => e.id === j.id))
-    const frios = resto.length ? `<div class="ck-frios">${resto.map((j) => `
-      <span class="ck-frio" data-job="${j.id}" tabindex="0" title="${esc(j.motivo)}">
+    const chip = (j) => `<span class="ck-frio" data-job="${j.id}" tabindex="0" title="${esc(j.motivo)}">
         <i class="dot s-${j.status}"></i>${esc(j.subject)}
-      </span>`).join('')}</div>` : ''
+      </span>`
+    // CC-06: agrupar por rota só quando vira lista comprida — com poucos
+    // agentes, um por rota, o agrupamento só adicionaria moldura sem ajudar.
+    const frios = !resto.length ? '' : resto.length <= 4
+      ? `<div class="ck-frios">${resto.map(chip).join('')}</div>`
+      : (() => {
+        const porRota = new Map()
+        for (const j of resto) {
+          const k = j.route || 'sem rota'
+          if (!porRota.has(k)) porRota.set(k, [])
+          porRota.get(k).push(j)
+        }
+        return [...porRota].map(([rota, js]) => `
+          <div class="ck-rota"><span class="dim">${esc(rota)}</span>
+            <div class="ck-frios">${js.map(chip).join('')}</div>
+          </div>`).join('')
+      })()
 
     // CC-33: o delta desde a última vez que ele clicou "vi isso". Sem visita
     // registrada, não mostra frase nenhuma — inventar "desde sempre" mentiria.

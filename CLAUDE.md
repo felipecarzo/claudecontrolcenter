@@ -1,4 +1,4 @@
-# control-center — Claude Code Instructions
+# agent-cockpit — Claude Code Instructions
 
 ## Projeto
 Painel dos agentes do Claude Code rodando em background. Uma linha por agente,

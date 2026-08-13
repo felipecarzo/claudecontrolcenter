@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Control Center — painel dos agentes do Claude Code.
+// Agent Cockpit — painel dos agentes do Claude Code.
 //
 //   node cc.mjs                    tabela no terminal + web, imprime o link
 //   node cc.mjs open               garante o painel no ar e abre no navegador

@@ -1,4 +1,4 @@
-# Documentação — control-center
+# Documentação — agent-cockpit
 
 Um fato mora em um lugar só. Precisa dele em outro documento? Escreva
 `[[link]]`, não copie o texto.

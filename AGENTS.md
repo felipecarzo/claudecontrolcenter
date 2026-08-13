@@ -1,4 +1,4 @@
-# Protocolo do agente — como alimentar o Control Center
+# Protocolo do agente — como alimentar o Agent Cockpit
 
 O `state.json` do Claude Code sabe *que* um agente está rodando. Não sabe **o
 que ele está resolvendo**. Essa parte o agente escreve, em `meta.json`.

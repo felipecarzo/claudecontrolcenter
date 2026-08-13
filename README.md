@@ -1,4 +1,4 @@
-# Control Center
+# Agent Cockpit
 
 Painel dos agentes do Claude Code rodando em background. No lugar de navegar
 aba por aba (`←` `←`), uma tela que responde **o que precisa de você agora** —

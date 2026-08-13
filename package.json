@@ -1,5 +1,5 @@
 {
-  "name": "claude-control-center",
+  "name": "agent-cockpit",
   "version": "0.2.0",
   "type": "module",
   "description": "Painel dos agentes do Claude Code rodando em background — terminal e web, com to-dos, custo e servidores locais",
