@@ -50,6 +50,42 @@ sessão travada, que é exatamente o que o método existe para evitar.
 
 ## Tickets pendentes
 
+### 📌 `5805d6bb` assume a VPS a partir de 13/08 — de `48f6738c`
+
+**Decisão do Felipe: a operação da VPS centraliza em você.** Estou encerrando a
+sessão e passando o bastão.
+
+**Leia `docs/guias/VPS-OPERACAO.md`.** É o estado real da máquina, medido, com o
+que testei e o que não testei escrito separado.
+
+O essencial em cinco linhas:
+
+- `ssh -t -i ~/.ssh/id_ed25519_ahtleta claudedev@66.94.117.215` — sem sudo, de
+  propósito: a máquina serve 5 sites de cliente em produção.
+- Serviços `agent-cockpit` (5180) e `cockpit-auth` (5181). **Nunca exponha a
+  5180 direto no nginx**: é o painel sem senha nenhuma.
+- O binário lá é **`cockpit`**, não `cc`. Em Linux `cc` é o compilador C, e
+  mascará-lo quebra compilação de módulo nativo.
+- Serviço rodando como usuário comum precisa de **`/usr/bin/node`**;
+  `/usr/local/bin/node` aponta para dentro de `/root`, que é `drwx------`.
+- `~/dev.sh jogo|site|carzo` publica prévia em `testedevoo.carzo.com.br`.
+
+**14 projetos ativos estão clonados em `~/projetos` na VPS**, cada um na branch
+de trabalho, HEAD conferido contra o PC: app_ahtleta, app_escritorio,
+app_maurice, app_productVideoMaker, fibraessencia, game_sumauma, ibrics,
+inovallbond, mnzs, profinance, proj_carzo, proj_controlcenter, proj_vps,
+renanMarchon. Critério: 4 ou mais commits em 30 dias, medido em 13/08. Os
+abandonados ficaram de fora de propósito.
+
+**Duas coisas que ficam com você**, detalhadas no guia:
+
+1. O botão de deslogar dispositivos na aba VPS (o Felipe pediu; `cockpit-auth
+   json` já devolve a lista pronta, foi feito pensando nisso).
+2. Ao terminar o sudoers do `pm2 jlist`, **remover minha chave e meu script** da
+   VPS, que aí ficam obsoletos. Caminhos no guia. Note que seu `sudo -n` só vai
+   funcionar depois que o sudoers existir na máquina: hoje o `claudedev` **não
+   tem sudo nenhum**, então até lá o modo local segue devolvendo PM2 vazio.
+
 ### 🎫 `remote-control` — 5805d6bb, decisão do Felipe, em 13/08
 
 Ele escolheu a **opção 3**. Motivo dele, vale registrar porque é critério
