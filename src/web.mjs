@@ -19,7 +19,7 @@ import { findProjects } from './install.mjs'
 import { commitsDesde } from './gitlog.mjs'
 import { digestTodos } from './digest.mjs'
 import { enriquecerTodos } from './opencode.mjs'
-import { ligar as ligarRemoto, desligar as desligarRemoto, estado as estadoRemoto } from './remotecontrol.mjs'
+import { ligar as ligarRemoto, desligar as desligarRemoto, estado as estadoRemoto, link as linkRemoto } from './remotecontrol.mjs'
 import { garantirMercado } from './mercado.mjs'
 import {
   readServers, killServer, duplicados, recentes, projetosLancaveis,
@@ -182,12 +182,14 @@ function handler(req, res) {
   }
 
   // Botão "ligar projetos": dispara `claude --remote-control` na pasta do
-  // projeto. Nunca no stream: é processo que fica vivo indefinidamente, não
-  // uma leitura barata.
+  // projeto (tmux no Linux, console novo no Windows — ver remotecontrol.mjs).
+  // Nunca no stream de 2s: ligar/desligar spawna processo, e "pegar link"
+  // lê a tela do tmux, mais caro que o resto do stream.
   if (url.pathname === '/api/remote-control') {
     if (req.method === 'POST') {
-      return comCorpo(req, res, 1e4, ({ projeto, cwd, acao }) => {
+      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao }) => {
         if (acao === 'desligar') return desligarRemoto(projeto)
+        if (acao === 'link') return linkRemoto(projeto)
         const dir = cwdDoProjeto(cwd, projeto)
         if (!dir) throw new Error(`projeto não encontrado: ${projeto}`)
         return ligarRemoto(projeto, dir)
@@ -196,7 +198,7 @@ function handler(req, res) {
     // GET: todo projeto conhecido (pra montar a lista de botões) + o que já
     // está ligado agora.
     const projetos = findProjects().map((dir) => ({ nome: path.basename(dir), dir }))
-    return send(res, 200, { projetos, ativos: estadoRemoto() })
+    return estadoRemoto().then((ativos) => send(res, 200, { projetos, ativos }))
   }
 
   // Containers Docker desta máquina. Fora do stream, mesmo motivo da máquina
@@ -523,14 +525,18 @@ function handler(req, res) {
       connection: 'keep-alive',
     })
     let last = ''
-    const push = () => {
+    // `remoto` entra no stream (e no fingerprint) pra ligar/desligar numa
+    // aba aparecer na outra sem precisar reabrir — bug relatado em 13/08:
+    // "ligado" só atualizava no aparelho que clicou. `estadoRemoto()` no
+    // Linux spawna `tmux list-sessions`; barato, e só roda enquanto alguém
+    // tem a aba aberta.
+    const push = async () => {
       const snap = snapshot()
-      const json = JSON.stringify(snap)
-      // compara sem o timestamp, senão manda evento a cada tick
-      const fingerprint = JSON.stringify([snap.jobs, snap.uso])
+      const remoto = await estadoRemoto()
+      const fingerprint = JSON.stringify([snap.jobs, snap.uso, remoto])
       if (fingerprint === last) return
       last = fingerprint
-      res.write(`data: ${json}\n\n`)
+      res.write(`data: ${JSON.stringify({ ...snap, remoto })}\n\n`)
     }
     push()
     const timer = setInterval(push, 2000)

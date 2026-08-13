@@ -1051,44 +1051,53 @@ if (estRotinas.projetos.length) {
   assert.equal(si.sobreposicao(new Set(), new Set(['x'])), 0)
 }
 
-// --- remote control: dispara claude --remote-control, sem chamar o binario real ---
+// --- remote control: dispara claude --remote-control, sem chamar o binario real.
+// Só cobre o caminho Windows de verdade (é a única máquina verificada); o
+// caminho tmux (Linux/VPS) exige tmux instalado, então só roda quando existe.
 {
   const rc = await import('./src/remotecontrol.mjs')
+  const { ehWindows } = await import('./src/platform.mjs')
   const tmpRc = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-remote-teste-'))
 
   // pasta que nao existe: falha aberta, sem lancar
-  const semPasta = rc.ligar('projeto-x', path.join(tmpRc, 'nao-existe'))
+  const semPasta = await rc.ligar('projeto-x', path.join(tmpRc, 'nao-existe'))
   assert.equal(semPasta.ok, false)
 
-  // binario fake que fica vivo por alguns segundos: um binario que sai na
-  // hora (node com flag desconhecida, por exemplo) deixaria o teste instavel
-  // -- o processo podia morrer antes da checagem de "ja ligado" rodar
-  const fakeBin = path.join(tmpRc, 'fake-claude.cmd')
-  fs.writeFileSync(fakeBin, '@echo off\r\ntimeout /t 5 /nobreak >nul\r\n')
+  if (ehWindows) {
+    // binario fake que fica vivo por alguns segundos: um binario que sai na
+    // hora (node com flag desconhecida, por exemplo) deixaria o teste instavel
+    // -- o processo podia morrer antes da checagem de "ja ligado" rodar
+    const fakeBin = path.join(tmpRc, 'fake-claude.cmd')
+    fs.writeFileSync(fakeBin, '@echo off\r\ntimeout /t 5 /nobreak >nul\r\n')
 
-  // disparo nao pode bloquear, mesmo com binario que fica vivo por segundos
-  const antes = Date.now()
-  const r1 = rc.ligar('projeto-teste', tmpRc, { binario: fakeBin })
-  assert.ok(Date.now() - antes < 1000, 'ligar nao pode bloquear esperando o processo terminar')
-  assert.equal(r1.ok, true)
-  assert.equal(r1.ja, false)
+    // disparo nao pode bloquear, mesmo com binario que fica vivo por segundos
+    const antes = Date.now()
+    const r1 = await rc.ligar('projeto-teste', tmpRc, { binario: fakeBin })
+    assert.ok(Date.now() - antes < 1000, 'ligar nao pode bloquear esperando o processo terminar')
+    assert.equal(r1.ok, true)
+    assert.equal(r1.ja, false)
 
-  // clicar duas vezes no mesmo projeto nao abre sessao duplicada
-  const r2 = rc.ligar('projeto-teste', tmpRc, { binario: fakeBin })
-  assert.equal(r2.ja, true, 'segunda chamada no mesmo projeto tem que reconhecer a sessao ja ligada')
-  assert.equal(r2.pid, r1.pid)
+    // clicar duas vezes no mesmo projeto nao abre sessao duplicada
+    const r2 = await rc.ligar('projeto-teste', tmpRc, { binario: fakeBin })
+    assert.equal(r2.ja, true, 'segunda chamada no mesmo projeto tem que reconhecer a sessao ja ligada')
+    assert.equal(r2.pid, r1.pid)
 
-  // aparece no estado()
-  assert.ok('projeto-teste' in rc.estado())
+    // aparece no estado()
+    assert.ok('projeto-teste' in await rc.estado())
 
-  // desligar mata o processo e some do estado
-  const d = rc.desligar('projeto-teste')
-  assert.equal(d.ok, true)
-  assert.equal(d.ja, true)
-  assert.ok(!('projeto-teste' in rc.estado()))
+    // desligar mata a arvore de processos e some do estado
+    const d = await rc.desligar('projeto-teste')
+    assert.equal(d.ok, true)
+    assert.equal(d.ja, true)
+    assert.ok(!('projeto-teste' in await rc.estado()))
 
-  // desligar de novo (ja desligado) nao lanca, so reporta
-  assert.deepEqual(rc.desligar('projeto-teste'), { ok: true, ja: false })
+    // desligar de novo (ja desligado) nao lanca, so reporta
+    assert.deepEqual(await rc.desligar('projeto-teste'), { ok: true, ja: false })
+
+    // sem sessao: link nao lanca, so reporta erro
+    const semLink = await rc.link('projeto-teste')
+    assert.equal(semLink.ok, false)
+  }
 
   fs.rmSync(tmpRc, { recursive: true, force: true })
 }

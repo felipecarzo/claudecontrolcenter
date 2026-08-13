@@ -28,7 +28,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | `cockpit` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: CC-32, aba projetos vira cockpit) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
-| `remote-control` | 🔴 ocupada | 5805d6bb — bug real: `claude --remote-control` falha sem TTY/PTY, status "ligado" com falso positivo, aba não sincroniza entre aparelhos | 2026-08-13 |
+| `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
 
 ## Como pedir autorização numa rota que tem dono
 
@@ -102,6 +102,61 @@ abandonados ficaram de fora de propósito.
    VPS. **Está desatualizado nesse ponto** e vale você corrigir quando passar
    por lá: agora é modo local mais sudoers, e é mais simples do que estava
    escrito.
+
+### 📌 `remote-control` — 5805d6bb, os 3 bugs corrigidos, achado novo pro Felipe, em 13/08
+
+**Causa raiz dos 3 bugs que o Felipe reportou**: `claude --remote-control`
+confere `isatty` no stdout, e sem terminal de verdade cai num caminho igual
+ao `--print`, que exige prompt e falha na hora com "Input must be provided
+either through stdin or as a prompt argument when using --print". A primeira
+versão redirecionava stdout pra arquivo de log — é isso que mata o TTY.
+
+Reescrito em `src/remotecontrol.mjs`:
+
+- **Linux/VPS**: `tmux new-session -d`. tmux aloca um PTY de verdade, e a
+  sessão sobrevive independente de quem a criou. `estado()` lê
+  `tmux list-sessions`, nunca reteste PID. `link()` lê `tmux capture-pane`
+  pra achar a URL de conexão sem precisar de arquivo de log.
+- **Windows**: sem tmux nativo. `spawn()` sem redirecionar stdio e com
+  `detached: true` faz o Windows abrir console novo de verdade pro filho —
+  é TTY genuíno (documentado no próprio Node), só que visível. `desligar()`
+  usa `taskkill /T /F` porque o pid rastreado é do `cmd /c`, e matar só o
+  topo deixava a árvore (o `claude.cmd` de dentro) órfã.
+- Aba "remoto" (`ui.html`) sincroniza via `/events` agora (antes só
+  recarregava ao abrir a aba, por isso "ligado" só aparecia em quem clicou).
+  Botão "pegar link" novo, só funciona no Linux (onde dá pra capturar tela).
+
+**Testado de verdade nos dois lados**, não só `npm test`:
+
+- PC (Windows): `ligar()` num projeto real, processo sobreviveu 5s+ sem
+  crash instantâneo (contra o bug antigo, que matava na hora), `estado()`
+  bateu, `desligar()` com `taskkill /T /F` não deixou zumbi (conferido com
+  `Get-CimInstance` filtrando o nome do projeto de teste).
+- VPS: `tmux new-session` com `claude --remote-control` de verdade em
+  `~/projetos/proj_controlcenter`. `tmux capture-pane` mostrou a **TUI
+  completa renderizada** (tela de boas-vindas, escolha de tema) — prova
+  forte de que o PTY funciona, porque isso nunca aparece sem terminal real.
+
+**Achado novo, não é bug de código, é decisão sua**: mandando Enter pra
+aceitar o tema, a tela seguinte pediu **login de conta** ("Select login
+method: 1. Claude account with subscription..."), mesmo o `claudedev` já
+tendo um `~/.claude/.credentials.json` de 508 bytes salvo. Ou seja: o
+`claudedev` está autenticado de um jeito (provavelmente API key/console, é
+como as sessões automatizadas rodam hoje), mas **Remote Control parece
+exigir especificamente login de conta com assinatura**, não API key. Matei a
+sessão de teste sem escolher opção nenhuma — não é decisão minha logar a sua
+conta pessoal num usuário compartilhado da VPS.
+
+**Três saídas que eu enxergo, sua decisão**:
+1. Logar sua conta pessoal (Pro/Max) como `claudedev` uma vez, interativo —
+   depois Remote Control funciona em qualquer projeto lá, mas a sessão de
+   assinatura fica compartilhada entre tudo que roda nesse usuário.
+2. Aceitar que Remote Control só funciona a partir do PC por enquanto, e a
+   VPS continua só pra sessões automatizadas via API key.
+3. Investigar se dá pra ter os dois tipos de credencial coexistindo (não
+   pesquisei isso ainda, é hipótese).
+
+Código não commitado ainda — só working tree. `npm test` passa.
 
 ### 🎫 `remote-control` — 5805d6bb, decisão do Felipe, em 13/08
 

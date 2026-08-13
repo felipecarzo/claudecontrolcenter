@@ -3073,6 +3073,11 @@ function editando() {
 function aplicarDados(snapshot) {
   if (editando()) { dadosPendentes = snapshot; return }
   DATA = snapshot
+  // liga/desliga num aparelho tem que aparecer nos outros sem reabrir a aba
+  // (bug relatado em 13/08: "ligado" só via quem clicou). `projetos` continua
+  // vindo só do GET inicial, que é a parte cara (varre disco); `ativos` é
+  // barato e chega em todo tique de 2s.
+  if (REMOTO_DATA && snapshot.remoto) REMOTO_DATA.ativos = snapshot.remoto
   render()
 }
 
@@ -3527,8 +3532,8 @@ function viewRemoto() {
   if (!projetos.length) return '<div class="empty">nenhum projeto encontrado</div>'
 
   return `<div class="dim" style="margin-bottom:12px">liga uma sessão do Claude Code com Remote Control na pasta do
-    projeto escolhido: conecte do celular por <code>claude.ai/code</code>. A sessão fica viva enquanto este painel
-    estiver aberto.</div>
+    projeto escolhido: conecte do celular por <code>claude.ai/code</code>. Na VPS a sessão sobrevive a este painel;
+    neste PC uma janela de console abre e fica com ela, "pegar link" só funciona onde tem tmux (Linux).</div>
   <div class="rm-lista">${projetos.map((p) => {
     const on = ativos[p.nome]
     return `<div class="rm-linha">
@@ -3536,7 +3541,8 @@ function viewRemoto() {
       ${on ? '<span class="hk-badge ok">ligado</span>' : ''}
       <span class="rm-acoes">
         ${on
-        ? `<button class="btn" data-remoto-desligar="${esc(p.nome)}">desligar</button>`
+        ? `<button class="btn" data-remoto-link="${esc(p.nome)}" title="copia o link de conexão, se já apareceu na tela">pegar link</button>
+           <button class="btn" data-remoto-desligar="${esc(p.nome)}">desligar</button>`
         : `<button class="btn" data-remoto-ligar="${esc(p.nome)}" data-remoto-dir="${esc(p.dir)}">ligar</button>`}
       </span>
     </div>`
@@ -4494,6 +4500,29 @@ document.addEventListener('click', async (e) => {
       body: JSON.stringify({ projeto: btDesligar.dataset.remotoDesligar, acao: 'desligar' }),
     })
     return carregarRemoto(true)
+  }
+
+  const btLink = t.closest('[data-remoto-link]')
+  if (btLink) {
+    const texto = btLink.textContent
+    btLink.textContent = 'buscando…'
+    try {
+      const r = await fetch('/api/remote-control', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ projeto: btLink.dataset.remotoLink, acao: 'link' }),
+      })
+      const out = await r.json()
+      if (out.ok && out.url) {
+        try { await navigator.clipboard.writeText(out.url) } catch { /* sem permissão de clipboard: mostra na tela mesmo */ }
+        btLink.textContent = out.url
+      } else {
+        btLink.textContent = out.erro || out.error || 'sem link'
+      }
+    } catch {
+      btLink.textContent = 'falhou'
+    }
+    setTimeout(() => { btLink.textContent = texto }, 4000)
+    return
   }
 
   const btEnriquecer = t.closest('[data-enriquecer]')
