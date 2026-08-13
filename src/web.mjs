@@ -7,7 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import { tarefas } from './tarefas.mjs'
-import { arquivar, jobsHistoricos } from './historico.mjs'
+import { arquivar, jobsHistoricos, marcosDe } from './historico.mjs'
 import { readUso } from './uso.mjs'
 import {
   estado as estadoMidia, acao as acaoMidia,
@@ -15,6 +15,7 @@ import {
 } from './midia.mjs'
 import { estado as estadoMaquina } from './maquina.mjs'
 import { lerRoadmap } from './roadmap.mjs'
+import { findProjects } from './install.mjs'
 import { garantirMercado } from './mercado.mjs'
 import {
   readServers, killServer, duplicados, recentes, projetosLancaveis,
@@ -25,7 +26,7 @@ import { readNotes, writeNotes } from './notes.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
-  setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig,
+  setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig, setVisita,
 } from './config.mjs'
 import { agenda, esquecerCache as esquecerAgenda } from './calendario.mjs'
 import { HOOKS } from './hooksCatalogo.mjs'
@@ -54,7 +55,13 @@ const snapshot = () => {
   // ordenação por urgência mora em `cockpit.mjs`, que o `npm test` cobre —
   // duplicá-la em JS de navegador seria ter duas verdades pra "o que é
   // urgente".
-  return { jobs, summary: summarize(jobs), cockpit: porProjeto(jobs), uso: readUso(), at: Date.now() }
+  //
+  // CC-33: `visitas` e `marcosDe` vão junto — o config e o histórico já são
+  // lidos em outras rotas com o mesmo custo (JSON pequeno), então entra no
+  // tique de 2s sem pesar.
+  const visitas = readConfig().visitas
+  const cockpit = porProjeto(jobs, { visitas, marcosDe: (p, o) => marcosDe(p, { ...o, jobs }) })
+  return { jobs, summary: summarize(jobs), cockpit, uso: readUso(), at: Date.now() }
 }
 
 const send = (res, code, body, type = 'application/json') => {
@@ -174,7 +181,27 @@ function handler(req, res) {
   // propósito — só relê os mesmos jobs do snapshot, sem tempo.mjs nem spawn,
   // então pode ser consultado à vontade.
   if (url.pathname === '/api/cockpit') {
-    return send(res, 200, { projetos: porProjeto(readJobs()), at: Date.now() })
+    const jobs = readJobs()
+    const visitas = readConfig().visitas
+    return send(res, 200, {
+      projetos: porProjeto(jobs, { visitas, marcosDe: (p, o) => marcosDe(p, { ...o, jobs }) }),
+      at: Date.now(),
+    })
+  }
+
+  // CC-33: carimbo explícito de "vi isso". Nunca automático — o Felipe olha o
+  // painel o dia todo, e carimbar sozinho zeraria o delta a cada visita.
+  if (url.pathname === '/api/visita' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ projeto }) => ({ visitas: setVisita(projeto).visitas }))
+  }
+
+  // CC-23: o que aconteceu num projeto, derivado do histórico já guardado —
+  // mesma barateza do /api/cockpit, sem spawn nem disco além do JSON.
+  if (url.pathname === '/api/marcos') {
+    const projeto = url.searchParams.get('projeto')
+    const desde = Number(url.searchParams.get('desde')) || 0
+    if (!projeto) return send(res, 400, { error: 'falta o parâmetro projeto' })
+    return send(res, 200, { marcos: marcosDe(projeto, { desde, jobs: readJobs() }), at: Date.now() })
   }
 
   // Catálogo de hooks + se cada um está ligado (control-center.json) e
@@ -355,11 +382,21 @@ function handler(req, res) {
     })
   }
 
-  // Mapa do projeto, lido do ROADMAP.md dele. Recebe o `cwd` de um agente
-  // porque é de lá que se sobe até achar o arquivo — o painel não guarda
-  // caminho de projeto em lugar nenhum.
+  // Mapa do projeto, lido do ROADMAP.md dele. Aceita `cwd` (de um agente vivo)
+  // ou `projeto` (nome) — CC-34: projeto sem agente ativo ainda quer abrir o
+  // mapa. Sem `cwd` direto, resolve por: (1) o `cwd` que algum job daquele
+  // projeto já gravou no histórico (CC-23), preferível porque é o caminho que
+  // de fato gerou aquele `project`; (2) `findProjects()`, casando pelo nome da
+  // pasta. Pastas achadas por (2) que nunca rodaram um job ainda entram, e é
+  // isso que faz o mapa abrir pra projeto totalmente parado.
   if (url.pathname === '/api/roadmap') {
-    const cwd = url.searchParams.get('cwd') || ''
+    let cwd = url.searchParams.get('cwd') || ''
+    const projeto = url.searchParams.get('projeto') || ''
+    if (!cwd && projeto) {
+      // vivos:[] de propósito — aqui quero TODO job já visto, vivo ou não
+      const doHistorico = jobsHistoricos([]).mortos.find((j) => j.project === projeto && j.cwd)?.cwd
+      cwd = doHistorico || findProjects().find((p) => path.basename(p) === projeto) || ''
+    }
     const mapa = cwd ? lerRoadmap(cwd) : null
     return send(res, 200, mapa || { vazio: true })
   }

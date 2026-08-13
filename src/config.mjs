@@ -21,6 +21,7 @@ const DEFAULTS = {
   vpsSnapshot: null,
   calendarios: [],
   hooks: {},
+  visitas: {},
 }
 
 export const PIP_BLOCOS = ['uso', 'agentes', 'maquina', 'servidores', 'docker', 'processos']
@@ -315,6 +316,18 @@ export function setHookEnabled(id, on) {
 export function setAssinatura(valor) {
   const cfg = readConfig()
   return writeConfig({ ...cfg, assinaturaMes: Math.max(0, Number(valor) || 0) })
+}
+
+/**
+ * CC-33: carimbo de "vi isso" por projeto. Sempre por botão explícito — nunca
+ * ao abrir a aba, senão o Felipe (que olha o painel o dia todo) zeraria o
+ * delta a cada olhada e destruiria o próprio sinal.
+ */
+export function setVisita(projeto, em = Date.now()) {
+  const cfg = readConfig()
+  const id = String(projeto || '').slice(0, 200)
+  if (!id) throw new Error('projeto obrigatório')
+  return writeConfig({ ...cfg, visitas: { ...cfg.visitas, [id]: Number(em) || Date.now() } })
 }
 
 export function describe(cwd = process.cwd()) {

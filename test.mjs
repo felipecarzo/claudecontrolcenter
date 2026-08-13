@@ -516,6 +516,43 @@ const so2 = hist.jobsHistoricos([{ id: 'nao-existe-no-historico' }])
 assert.equal(so2.total, so2.vivos.length + so2.mortos.length)
 assert.ok(!so2.mortos.some((j) => j.id === 'nao-existe-no-historico'))
 
+// CC-23: arquivar duas vezes não pode apagar o carimbo de conclusão da
+// primeira vez, mesmo que a segunda venha com feitoEm podado (o cenário real:
+// marcarConclusoes() remove do mapa o texto que saiu da lista de to-dos)
+{
+  const arqTeste = path.join(os.tmpdir(), `cc-test-historico-${Date.now()}.json`)
+  hist._internals.resetar()
+  try {
+    hist.arquivar(
+      [{ id: 'j2', subject: 'primeira', project: 'proj-teste-cc23', status: 'working',
+         todos: [{ text: 'a', done: true }], feitoEm: { a: 100 }, createdAt: 50, updatedAt: 100 }],
+      100, arqTeste,
+    )
+    hist._internals.resetar() // senão a marca igual faria a segunda gravação ser pulada
+    hist.arquivar(
+      [{ id: 'j2', subject: 'primeira', project: 'proj-teste-cc23', status: 'done',
+         todos: [], feitoEm: {}, createdAt: 50, updatedAt: 200 }],
+      200, arqTeste,
+    )
+    const h = hist.readHistorico(arqTeste)
+    assert.deepEqual(h.jobs.j2.feitoEm, { a: 100 }, 'o carimbo da primeira gravação sobreviveu à poda da segunda')
+
+    const marcos = hist.marcosDe('proj-teste-cc23', { file: arqTeste })
+    assert.equal(marcos.filter((m) => m.tipo === 'todo').length, 1)
+    assert.equal(marcos.filter((m) => m.tipo === 'entrega').length, 1, 'job status done vira marco de entrega')
+    assert.ok(marcos.every((m) => m.em <= m.em), 'sanidade: cada marco tem timestamp')
+    assert.deepEqual([...marcos].sort((a, b) => a.em - b.em).map((m) => m.em), marcos.map((m) => m.em), 'marcosDe devolve em ordem')
+
+    assert.equal(hist.marcosDe('projeto-que-nao-existe', { file: arqTeste }).length, 0)
+    assert.equal(hist.marcosDe('proj-teste-cc23', { desde: 999999, file: arqTeste }).length, 0,
+      'desde no futuro não traz marco nenhum')
+  } finally {
+    fs.rmSync(arqTeste, { force: true })
+    fs.rmSync(`${arqTeste}.tmp`, { force: true })
+    hist._internals.resetar()
+  }
+}
+
 // --- install: edição idempotente, em pasta descartável ---
 const { installInto, removeFrom, findProjects, blockText } = await import('./src/install.mjs')
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-test-'))
@@ -687,9 +724,14 @@ const anos = cal.lerIcs(ics([
 assert.ok(anos.length <= cal._internals.MAX_OCORRENCIAS, 'RRULE infinito passou do teto')
 
 // a URL do calendário é credencial: caminho de arquivo local não pode virar fonte
-const { setCalendario } = await import('./src/config.mjs')
+const { setCalendario, setVisita } = await import('./src/config.mjs')
 assert.throws(() => setCalendario({ nome: 'x', url: 'file:///C:/Windows/win.ini' }), /http/)
 assert.throws(() => setCalendario({ nome: 'x', url: '' }), /obrigat/)
+
+// CC-33: só a validação — nunca chamar setVisita de verdade aqui, escreveria
+// no control-center.json real desta máquina a cada `npm test`
+assert.throws(() => setVisita(''), /projeto/)
+assert.throws(() => setVisita(null), /projeto/)
 
 // --- catálogo de hooks: todo id único, todo evento reconhecido ---
 const { HOOKS, EVENTOS } = await import('./src/hooksCatalogo.mjs')
@@ -857,6 +899,24 @@ assert.equal(ck.porProjeto([
   jobCom({ project: 'p', updatedAt: 100 }),
   jobCom({ project: 'p', updatedAt: 900 }),
 ])[0].ultimaAtividade, 900)
+
+// CC-33: sem visita registrada, nunca inventar data — em é null e sem resumo
+assert.deepEqual(ck.porProjeto([jobCom({ project: 'p' })])[0].desdeVisita, { em: null, resumo: null })
+// com visita, o resumo sai do marcosDe injetado — nunca importado direto,
+// pra este módulo continuar testável sem tocar disco
+const comVisita = ck.porProjeto([jobCom({ project: 'p' })], {
+  visitas: { p: 500 },
+  marcosDe: (projeto, { desde }) => (projeto === 'p' && desde === 500
+    ? [{ em: 600, tipo: 'todo' }, { em: 700, tipo: 'todo' }, { em: 800, tipo: 'agente' }]
+    : []),
+})[0].desdeVisita
+assert.equal(comVisita.em, 500)
+assert.equal(comVisita.resumo, '2 tarefa(s) fechada(s) · 1 agente(s) novo(s)')
+// visita sem marco novo desde então: em existe, resumo não
+assert.deepEqual(
+  ck.porProjeto([jobCom({ project: 'q' })], { visitas: { q: 999 }, marcosDe: () => [] })[0].desdeVisita,
+  { em: 999, resumo: null },
+)
 
 // a nota segue a precedência do CC-17: o status do agente vence o pedido do Felipe
 assert.equal(ck.notaDe({ detail: 'rodando testes', lastPrompt: 'conserta isso' }).tipo, 'status')

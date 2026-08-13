@@ -62,7 +62,26 @@ export function notaDe(job) {
  * Projeto sem agente nenhum entra com peso 0 em vez de sumir: "esse projeto
  * está parado há 3 dias" é resposta legítima pra "onde eu mexo agora".
  */
-export function porProjeto(jobs, { agora = Date.now() } = {}) {
+/**
+ * O delta "desde que você saiu". `marcosDe` é injetado (não importado direto)
+ * para manter este módulo testável sem tocar disco — mesmo motivo por trás de
+ * `jobs` já ser parâmetro em vez de lido daqui dentro.
+ */
+function desdeVisitaDe(projeto, visitas, marcosDe) {
+  const em = visitas?.[projeto] ?? null
+  if (em == null || !marcosDe) return { em, resumo: null }
+  const marcos = marcosDe(projeto, { desde: em })
+  if (!marcos.length) return { em, resumo: null }
+  const porTipo = {}
+  for (const m of marcos) porTipo[m.tipo] = (porTipo[m.tipo] || 0) + 1
+  const partes = []
+  if (porTipo.todo) partes.push(`${porTipo.todo} tarefa(s) fechada(s)`)
+  if (porTipo.agente) partes.push(`${porTipo.agente} agente(s) novo(s)`)
+  if (porTipo.entrega) partes.push(`${porTipo.entrega} entrega(s)`)
+  return { em, resumo: partes.join(' · ') || null }
+}
+
+export function porProjeto(jobs, { agora = Date.now(), visitas = {}, marcosDe = null } = {}) {
   const grupos = new Map()
   for (const j of jobs) {
     if (!grupos.has(j.project)) grupos.set(j.project, [])
@@ -95,6 +114,9 @@ export function porProjeto(jobs, { agora = Date.now() } = {}) {
       ultimaAtividade: lista.reduce((max, j) => Math.max(max, j.updatedAt || 0), 0),
       tokens: lista.reduce((a, j) => a + (j.tokens || 0), 0),
       abertos: lista.filter((j) => j.todos?.some((t) => !t.done)).length,
+      // CC-33: nunca invente uma data inicial. Sem visita registrada, `em` é
+      // null e o cartão mostra só o botão "vi isso", sem alegar um delta.
+      desdeVisita: desdeVisitaDe(projeto, visitas, marcosDe),
       jobs: comMotivo.map(({ job, motivo }) => ({
         id: job.id, subject: job.subject, status: job.status, route: job.route,
         frente: job.frente || null, motivo: motivo.frase, tipo: motivo.tipo,

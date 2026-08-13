@@ -39,6 +39,12 @@ design era feito. Conferir na primeira vez que acontecer.
 - `sync` em massa nos 14 projetos com `CLAUDE.md`: não foi rodado porque o bloco
   global já cobre todos, e repetir a instrução em 14 arquivos contraria "um fato
   mora em um lugar só". A ferramenta existe se mudar de ideia.
+- `estadoDe()` (`roadmap.mjs`) casa por regex solto no título, e isso deu falso
+  positivo achado em 13/08 pelas pastilhas do CC-34: "CC-23 — Histórico rico"
+  virou "feito" porque o título contém a palavra "Histórico", e "CC-04 —
+  ...agente travado..." virou "bloqueado" porque contém "travado". O regex
+  deveria olhar só o marcador de estado (emoji/palavra no INÍCIO do título),
+  não a frase inteira.
 
 ### Frente: Conteúdo social — módulo novo, ver [[produto/CONTEUDO-SOCIAL]]
 

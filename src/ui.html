@@ -601,6 +601,22 @@
   .ck-frio:hover { color: var(--fg); border-color: var(--faint); }
   .ck-pe { display: flex; align-items: baseline; gap: 10px; font-size: 11px; margin-top: 8px; }
 
+  /* CC-34: pastilhas de frente, sem biblioteca de grid/chart nenhuma. */
+  .ck-mini { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+  .ck-mini-f {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px;
+    border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px;
+    max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ck-mini-f b { font-weight: 500; color: var(--faint); margin-left: 2px; }
+  /* Escopado à pastilha, não solto: uma .f-failed global já pintou fundo
+     inteiro de cartão por engano nesta mesma aba (regra registrada no CLAUDE.md). */
+  .ck-mini-f.f-failed { border-color: color-mix(in srgb, var(--failed) 45%, var(--line)); color: var(--failed); }
+  .ck-mini-f.f-waiting { border-color: color-mix(in srgb, var(--waiting) 45%, var(--line)); color: var(--waiting); }
+  .ck-mini-f.f-done { border-color: color-mix(in srgb, var(--done) 45%, var(--line)); color: var(--done); }
+  .ck-mini-f.f-dim { color: var(--faint); }
+  .ck-mini-f .dot { margin-right: 1px; }
+
   /* ---------- projetos (visão antiga, ainda usada em outros lugares) ---------- */
   .projs { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
   .proj { border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
@@ -1912,6 +1928,41 @@ const COR_MOTIVO = {
   waiting: 'waiting', aberto: 'waiting', working: 'working', parado: 'dim',
 }
 
+// CC-34: mini-mapa de frentes no cartão. Carga preguiçosa e cacheada por
+// sessão — uma leitura por projeto, nunca no tique de 2s. Ler ~20 ROADMAP.md
+// a cada tique custaria I/O que o stream não paga hoje (VPS/processos/git-log
+// seguem a mesma regra: sob clique ou sob demanda única, nunca timer).
+const MAPAS_MINI = new Map() // projeto -> mapa | 'carregando' | 'vazio'
+
+function pedirMapaMini(projeto) {
+  if (MAPAS_MINI.has(projeto)) return
+  MAPAS_MINI.set(projeto, 'carregando')
+  fetch(`/api/roadmap?projeto=${encodeURIComponent(projeto)}`)
+    .then((r) => r.json())
+    .then((mapa) => { MAPAS_MINI.set(projeto, mapa?.grupos?.length ? mapa : 'vazio'); render() })
+    .catch(() => MAPAS_MINI.set(projeto, 'vazio'))
+}
+
+/** Pastilhas por frente, sem biblioteca. Ponto quando há agente ali. */
+function miniMapa(projeto) {
+  const mapa = MAPAS_MINI.get(projeto)
+  if (!mapa || mapa === 'carregando' || mapa === 'vazio') return ''
+  const naFrente = agentesPorFrente(projeto)
+  const frentes = mapa.grupos.flatMap((g) => g.frentes)
+  if (!frentes.length) return ''
+  return `<div class="ck-mini">${frentes.map((f) => {
+    const cor = COR_MOTIVO_ESTADO[f.estado] || 'dim'
+    const temAgente = naFrente.has(f.titulo.toLowerCase())
+    return `<span class="ck-mini-f f-${cor}" title="${esc(f.titulo)}: ${f.feitos}/${f.itens || 0}">
+      ${temAgente ? '<i class="dot s-working"></i>' : ''}${esc(f.titulo)}
+      ${f.itens ? `<b>${f.feitos}/${f.itens}</b>` : ''}
+    </span>`
+  }).join('')}</div>`
+}
+
+// Mesmo vocabulário de cor do roadmap.mjs (estadoDe), não o do motivo do agente.
+const COR_MOTIVO_ESTADO = { bloqueado: 'failed', esperando: 'waiting', feito: 'done', aberto: 'dim' }
+
 function viewCockpit(jobs) {
   if (!jobs.length) return '<div class="empty">nenhum projeto no filtro</div>'
   // O cockpit vem pronto do servidor (`cockpit.mjs`, testado). O filtro do topo
@@ -1922,6 +1973,7 @@ function viewCockpit(jobs) {
   if (!projetos.length) return '<div class="empty">nenhum projeto no filtro</div>'
 
   return `<div class="ck-lista">${projetos.map((p) => {
+    pedirMapaMini(p.projeto)
     const cor = COR_MOTIVO[p.motivo.tipo] || 'dim'
     const status = ZONES.map((z) => {
       const n = p.porStatus[z.key] || 0
@@ -1948,16 +2000,26 @@ function viewCockpit(jobs) {
         <i class="dot s-${j.status}"></i>${esc(j.subject)}
       </span>`).join('')}</div>` : ''
 
+    // CC-33: o delta desde a última vez que ele clicou "vi isso". Sem visita
+    // registrada, não mostra frase nenhuma — inventar "desde sempre" mentiria.
+    const visita = p.desdeVisita?.em
+      ? `<span class="dim" title="desde ${new Date(p.desdeVisita.em).toLocaleString('pt-BR')}">${
+          p.desdeVisita.resumo ? esc(p.desdeVisita.resumo) : 'nada novo desde sua visita'}</span>`
+      : ''
+
     return `<article class="ck-proj p-${cor}">
       <header class="ck-head">
         <button class="ck-nome" data-mapa-projeto="${esc(p.projeto)}" title="abrir o mapa deste projeto">${esc(p.projeto)}</button>
         <span class="ck-motivo" style="color:var(--${cor})">${esc(p.motivo.frase)}${
       p.motivo.peso >= 3 ? ` há ${age(p.motivo.desde)}` : ''}</span>
         <span class="grow"></span>
+        ${visita}
+        <button class="btn mini" data-visita="${esc(p.projeto)}" title="marcar como visto agora">vi isso</button>
         <span class="path">${p.ultimaAtividade ? `visto há ${age(Date.now() - p.ultimaAtividade)}` : '—'}</span>
       </header>
       ${esperando}
       ${frios}
+      ${miniMapa(p.projeto)}
       <footer class="ck-pe">
         <span class="dim">${status || 'sem agente ativo'}</span>
         <span class="grow"></span>
@@ -3481,12 +3543,16 @@ const ROTULO_ESTADO = {
 
 const TODO_ROADMAP = 'criar docs/ROADMAP.md deste projeto, seguindo a estrutura do projeto-template'
 
+// `job` pode ser um agente de verdade (tem `cwd`) ou, vindo do cockpit sem
+// nenhum agente ativo, um objeto sintético `{ project }` — o servidor resolve
+// o cwd sozinho (histórico ou disco), CC-34.
 async function abrirMapa(job) {
   mapaProjeto = job
   MAPA = null
   desenharMapa()
   try {
-    MAPA = await (await fetch(`/api/roadmap?cwd=${encodeURIComponent(job.cwd)}`)).json()
+    const q = job.cwd ? `cwd=${encodeURIComponent(job.cwd)}` : `projeto=${encodeURIComponent(job.project)}`
+    MAPA = await (await fetch(`/api/roadmap?${q}`)).json()
   } catch {
     MAPA = { erro: 'não deu para ler o roadmap' }
   }
@@ -3531,12 +3597,18 @@ function desenharMapa() {
     // disso, cria um to-do no job aberto; um agente de verdade lê e decide
     // como escrever, com a revisão normal de qualquer código gerado.
     const jaTem = (mapaProjeto.todos || []).some((t) => t.text === TODO_ROADMAP)
+    // CC-34: mapaProjeto pode ser sintético (`{project}`, sem `id`) quando veio
+    // do cockpit sem nenhum agente vivo. Sem job real não há onde gravar o
+    // to-do — mostrar o botão criaria um clique que falha em silêncio.
+    const podeCriarTodo = Boolean(mapaProjeto.id)
     el.innerHTML = `${cabeca}<div class="empty">
       este projeto não tem <code>docs/ROADMAP.md</code> — sem ele o painel não tem
       mapa para mostrar, só o que o agente escreveu no cartão.
       ${jaTem
         ? '<p class="m-todo-ok">✓ to-do criado — o agente vê na próxima checada</p>'
-        : '<button class="btn" data-criar-todo-roadmap>+ criar to-do "escrever o roadmap"</button>'}
+        : podeCriarTodo
+          ? '<button class="btn" data-criar-todo-roadmap>+ criar to-do "escrever o roadmap"</button>'
+          : '<p class="dim">sem agente ativo aqui pra carregar o to-do — abra uma sessão neste projeto</p>'}
     </div>`
     return
   }
@@ -3927,14 +3999,14 @@ document.addEventListener('click', async (e) => {
     return
   }
 
-  // Mapa a partir do cockpit, onde não há um job escolhido: usa qualquer
-  // agente daquele projeto, porque `abrirMapa` precisa do `cwd` pra achar o
-  // ROADMAP.md. Projeto sem agente vivo ainda não abre — é o CC-34, que põe
-  // o `cwd` no histórico.
+  // Mapa a partir do cockpit: prefere um agente vivo (não precisa de round
+  // trip pra resolver cwd), mas projeto totalmente parado também abre — CC-34,
+  // o servidor resolve o cwd pelo histórico ou pelo disco.
   const btMapaProj = t.closest('[data-mapa-projeto]')
   if (btMapaProj) {
-    const job = DATA.jobs.find((j) => j.project === btMapaProj.dataset.mapaProjeto && j.cwd)
-    if (job) abrirMapa(job)
+    const projeto = btMapaProj.dataset.mapaProjeto
+    const job = DATA.jobs.find((j) => j.project === projeto && j.cwd) || { project: projeto }
+    abrirMapa(job)
     return
   }
   if (t.closest('[data-fechar-mapa]') || t.closest('#scrim-mapa')) return fecharMapa()
@@ -4216,6 +4288,17 @@ document.addEventListener('click', async (e) => {
   if (rtDel) {
     const [dir, nome] = rtDel.dataset.rtDel.split('|')
     return acaoRotina(dir, nome, 'remover', dir.split(/[\\/]/).pop())
+  }
+
+  const visitaBtn = t.closest('[data-visita]')
+  if (visitaBtn) {
+    // O cockpit vem embutido no stream de 2s (DATA.cockpit), não numa rota
+    // própria — não precisa forçar recarga, o próximo tique já traz o delta
+    // zerado. `/api/visita` só grava.
+    return fetch('/api/visita', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ projeto: visitaBtn.dataset.visita }),
+    })
   }
 
   if (t.closest('[data-vps-config]')) { vpsConfigAberto = !vpsConfigAberto; return render() }
