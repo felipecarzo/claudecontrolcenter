@@ -169,8 +169,42 @@ Depende do CC-24 existir antes de fazer sentido escrever.
 Decidido com o Felipe em 12/08: o painel passa a controlar comportamento de
 verdade do Claude Code, não só ler estado. Épico 1 (CC-27), Épico 2 (CC-28)
 e Épico 3A (CC-29) feitos em 12/08. Os itens abaixo têm decisão pendente
-documentada em produto/FRAMEWORK-HOOKS.md — nenhum decide sozinho qual
+documentada em produto/FRAMEWORK-HOOKS.md; nenhum decide sozinho qual
 caminho tomar, o Felipe escolhe quando o sprint chegar.
+
+### 🔴 Bloqueio crítico, achado em 13/08: `cwd` não isola o opencode de verdade
+
+Testando o CC-36 (enriquecimento de to-dos) contra o binário real do
+opencode, com `cwd` explicitamente apontando pra uma pasta temporária nova a
+cada chamada: uma das chamadas rodou `git status --short && git log
+--oneline -3` de verdade e leu o estado **real** deste repositório
+(`proj_controlcenter`), não o da pasta isolada passada como `cwd`.
+
+Isso contradiz a premissa de segurança já escrita no CC-29
+(`src/opencode.mjs`): "roda em pasta neutra, nunca o cwd do projeto". O `cwd`
+do `spawn()` do Node não está controlando onde o opencode de fato executa
+suas próprias ferramentas (bash, edit, write) — ele parece manter alguma
+noção própria de "o projeto atual", independente do processo que o disparou.
+Confirmado por dois testes com resultado diferente no mesmo dia: um `pwd`
+pedido manualmente (via `cd` real antes de chamar `opencode run`) respondeu
+certo, isolado; a mesma chamada passando por `dispararTarefa` (que envolve
+`cmd /c` no Windows) não isolou.
+
+**Não investigado ainda, por falta de tempo na sessão que achou isso**: se é
+`cmd /c` perdendo o `cwd` na cadeia de processos, se é o opencode tendo
+sessão/projeto persistido em `~/.config` independente do processo, ou outra
+causa. **Afeta qualquer uso de `dispararTarefa`**, não só o CC-36: o CC-29
+(disparo em background) e o CC-30 (fila de revisão, ainda não feito)
+carregam a mesma suposição de isolamento, hoje não comprovada.
+
+Os agentes do opencode neste setup têm `permission:*` — nenhum é
+read-only. Enquanto isso não for resolvido, qualquer chamada real pode, em
+tese, editar arquivo de verdade do projeto em vez de só descrever texto.
+
+**Antes de usar CC-36 (ou qualquer outra coisa que dispare opencode) em
+produção**: isolar de verdade (testar sem `cmd /c`, ou achar a flag/config
+do opencode que fixa o projeto por chamada) e provar com um teste que tenta
+editar um arquivo canário fora do `cwd` esperado e confirma que falha.
 
 ### CC-30 — Fila de revisão do opencode + hook que obriga a chamada
 Depende do CC-29 e de decidir qual evento e qual critério "obrigam" a
