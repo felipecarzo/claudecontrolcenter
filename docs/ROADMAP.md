@@ -92,21 +92,10 @@ Depende do CC-24 existir antes de fazer sentido escrever.
 ### Frente: Framework de hooks — ver [[produto/FRAMEWORK-HOOKS]]
 
 Decidido com o Felipe em 12/08: o painel passa a controlar comportamento de
-verdade do Claude Code, não só ler estado. Épico 1 (alicerce — hooks
-ligáveis pelo painel, CC-27) e Épico 2 (Método Routia adaptado, CC-28)
-feitos em 12/08. Os itens abaixo têm decisão pendente documentada em
-produto/FRAMEWORK-HOOKS.md — nenhum decide sozinho qual caminho tomar, o
-Felipe escolhe quando o sprint chegar.
-
-### CC-29 — Delegação opencode: disparo + verificação em background
-Hoje a skill `vibecoder-opencode` decide viabilidade, dispara e verifica
-tudo dentro do julgamento do Claude — síncrono, gasta Claude Code. Precisa
-virar módulo de código puro (`src/opencode.mjs`): disparo de processo
-destacado (reaproveitando o padrão `spawn(detached)` de `platform.mjs`),
-heurística de viabilidade simplificada (primeira versão, corrigível depois),
-e verificação pós-hoc automática (`node --check`). Sem dependência de `jq` —
-o `--format json` do opencode já sai um objeto por linha, filtrável em Node
-puro. Sem travas de decisão: pode andar assim que o Épico 1 (feito) permitir.
+verdade do Claude Code, não só ler estado. Épico 1 (CC-27), Épico 2 (CC-28)
+e Épico 3A (CC-29) feitos em 12/08. Os itens abaixo têm decisão pendente
+documentada em produto/FRAMEWORK-HOOKS.md — nenhum decide sozinho qual
+caminho tomar, o Felipe escolhe quando o sprint chegar.
 
 ### CC-30 — Fila de revisão do opencode + hook que obriga a chamada
 Depende do CC-29 e de decidir qual evento e qual critério "obrigam" a

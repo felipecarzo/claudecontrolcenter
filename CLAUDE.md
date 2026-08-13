@@ -92,6 +92,38 @@ errada por definição.
 
 ## Armadilhas (custaram tempo, não redescobrir)
 
+- **`detached: true` no Windows quebra captura de saída via `fd` bruto,
+  sempre — a causa real é o processo Node sair antes do filho terminar.**
+  Achado no CC-29 (`src/opencode.mjs`): `spawn(cmd, args, { detached: true,
+  stdio: ['ignore', fd, fd] })` sobe o processo de verdade (pid real,
+  confirmado via `Get-CimInstance Win32_Process`), mas o arquivo de log fica
+  sempre vazio, mesmo esperando muito mais que o tempo real da tarefa.
+  Isolado por eliminação, quase dez rodadas (PowerShell e Git Bash, sandbox
+  ligado/desligado, com/sem `unref`, comando instantâneo e de alguns
+  segundos): não é `detached` nem `unref` isolados — é o processo Node que
+  chamou `spawn` terminar antes do filho. Com `detached: true` isso é o uso
+  normal (dispara e sai); sem `detached` e sem `unref`, o Node espera o
+  filho sozinho e a captura funciona sempre. Regra prática: se o disparo é
+  feito de DENTRO do processo do painel (`cc.mjs --web-only`, que já não sai
+  sozinho), não precisa de `detached` nem `unref` nenhum — só parecia
+  precisar porque os primeiros testes eram scripts avulsos que saíam na
+  hora. `detached: true` continua certo pra quem PRECISA sobreviver ao
+  processo que disparou (`lancarComando`/`subirServidor`, servidor que tem
+  que ficar de pé depois do painel fechar) — mas nesse caso não dá pra
+  também capturar a saída via `fd` bruto ao mesmo tempo; escolha um dos
+  dois, não os dois juntos.
+- **`shell: true` com argumento de texto arbitrário (`args` como array) é
+  injeção de comando real, não só estilo.** O próprio Node avisa
+  (deprecation warning): argumentos concatenados na linha de comando do
+  shell sem escapar. Achado no mesmo `dispararTarefa` do CC-29, onde
+  `prompt` é texto livre. Correção: nunca `shell: true` com array de
+  `args` dinâmico — usar o padrão de `lancarComando`, invocar `cmd.exe`
+  direto como executável (sem `shell`), com `/c` e cada argumento como
+  elemento separado do array. Node escapa cada um sozinho ao montar a linha
+  de comando do Windows; o texto arbitrário nunca é interpretado pelo shell.
+  Vale sempre que o binário-alvo é um `.cmd` do npm (como `opencode`, como o
+  próprio `cc`) — `spawn()` sem `shell` nem `cmd.exe` de propósito nunca sobe
+  esses, sem erro visível.
 - **`CONFIG_FILE` não é isolado por porta.** Subir uma instância de teste com
   `node cc.mjs --web-only --port 8123` para não mexer no painel real (porta
   9099 do daemon) protege o processo, mas não protege o dado: `config.mjs`

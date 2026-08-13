@@ -760,6 +760,57 @@ assert.match(fs.readFileSync(rotiaR1.arquivo, 'utf8'), /NÃO PODE SUMIR/, 'insta
 
 for (const d of [tmpRotia, tmpSrc, tmpVazio]) fs.rmSync(d, { recursive: true, force: true })
 
+// --- opencode: disparo, heurística, verificação — sem chamar o opencode de verdade ---
+const oc = await import('./src/opencode.mjs')
+
+// heurística de viabilidade (réplica simplificada da tabela da skill)
+assert.equal(oc.viavel('cria um componente boilerplate simples', { linhasEsperadas: 10 }), 'ALTA')
+assert.equal(oc.viavel('ajusta validação', { linhasEsperadas: 35 }), 'MEDIA')
+assert.equal(oc.viavel('reescreve o módulo inteiro', { linhasEsperadas: 5 }), 'BAIXA') // palavra-chave vence linha curta
+assert.equal(oc.viavel('nova função', { linhasEsperadas: 80 }), 'BAIXA')
+
+const tmpOc = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-opencode-teste-'))
+
+// verificação pós-hoc: arquivo válido, quebrado, ausente, extensão sem verificador
+const arquivoValido = path.join(tmpOc, 'ok.mjs')
+fs.writeFileSync(arquivoValido, 'export const x = 1\n')
+assert.equal(oc.verificar(arquivoValido).ok, true)
+
+const arquivoQuebrado = path.join(tmpOc, 'quebrado.mjs')
+fs.writeFileSync(arquivoQuebrado, 'export const x = (\n') // sintaxe inválida de propósito
+assert.equal(oc.verificar(arquivoQuebrado).ok, false)
+
+assert.equal(oc.verificar(path.join(tmpOc, 'nao-existe.mjs')).ok, false)
+
+const arquivoCss = path.join(tmpOc, 'estilo.css')
+fs.writeFileSync(arquivoCss, 'body { color: red; }\n')
+assert.equal(oc.verificar(arquivoCss).ok, true) // sem verificador pra CSS: passa sem fingir que checou
+
+// leitura de eventos: filtra tool_use sem jq, ignora linha quebrada/irrelevante
+const logFake = path.join(tmpOc, 'fake.jsonl')
+fs.writeFileSync(logFake, [
+  JSON.stringify({ type: 'tool_use', part: { tool: 'write', state: { input: { filePath: 'a.mjs' } } } }),
+  'linha que não é json',
+  JSON.stringify({ type: 'outro_evento' }),
+  JSON.stringify({ type: 'tool_use', part: { tool: 'edit', state: { input: { filePath: 'b.mjs' } } } }),
+].join('\n'))
+const eventosOc = oc.lerEventos(logFake)
+assert.equal(eventosOc.length, 2)
+assert.deepEqual(eventosOc.map((e) => e.arquivo), ['a.mjs', 'b.mjs'])
+
+// disparo nunca lança, mesmo com binário inexistente — falha aberta (o erro
+// real sai async no evento 'error', não trava nem derruba quem chamou)
+assert.doesNotThrow(() => oc.dispararTarefa('tarefa qualquer', { binario: 'este-binario-nao-existe-de-jeito-nenhum' }))
+
+// disparo não pode bloquear esperando o processo terminar
+const antesDisparo = Date.now()
+const rDisparo = oc.dispararTarefa('prompt de teste', { binario: process.execPath })
+assert.ok(Date.now() - antesDisparo < 1000, 'dispararTarefa não pode bloquear esperando o processo terminar')
+assert.equal(rDisparo.ok, true)
+assert.ok(fs.existsSync(rDisparo.logFile), 'log do disparo não foi criado')
+
+fs.rmSync(tmpOc, { recursive: true, force: true })
+
 // --- daemon: caminhos, sem escrever nada ---
 const dm = await import('./src/daemon.mjs')
 assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')
