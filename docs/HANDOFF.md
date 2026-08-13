@@ -1,67 +1,81 @@
 # HANDOFF
 
-**Sessão:** 2026-08-12 · agente Claude (Opus 5) · máquina ALIENWARE-LIPE ·
-delegada por `/ceo`, depois ROADMAP em ordem crescente, depois pedido novo
-(framework de hooks)
-**Último commit:** ver `git log -1` — sequência do dia: cockpit, CC-20, CC-05,
-CC-15 (docs), CC-17, CC-18, CC-19, CC-27, CC-28, routia-resolver, CC-29
+**Sessão:** 2026-08-13 · agente Claude (Sonnet 5, job de background `5805d6bb`) ·
+máquina ALIENWARE-LIPE · continuação direta da sessão de 12/08 (mesmo dia
+lógico, virou a madrugada)
+**Último commit:** `99bce1d` — fix(remote-control): PTY de verdade,
+liveness sem PID reciclado, sync entre aparelhos
 **Branch:** `master`
 
-O que aconteceu: [diario/2026-08-12.md](diario/2026-08-12.md).
+O que aconteceu: [diario/2026-08-13.md](diario/2026-08-13.md). Resumo: CC-32
+(cockpit) e o backlog que saiu dele no mesmo fôlego (CC-06, CC-23, CC-24,
+CC-33, CC-34, CC-35), CC-42 (aba rotinas, 22 cópias desatualizadas limpas), e
+o conserto do Remote Control (3 bugs reais de PTY/liveness/sync, mais o
+login de conta que faltava no `claudedev` da VPS — pilotado por SSH,
+commitado e deployado nos dois lados).
+
+**Achado neste fechamento**: seis tasks (CC-06/23/24/33/34/35) e CC-38
+estavam prontas no código havia horas, mas ainda apareciam como "Aberto" no
+`ROADMAP.md` — corrigido agora. Se um HANDOFF futuro parecer desalinhado do
+ROADMAP de novo, é sinal de rodar `/end-session` com mais frequência, não só
+no fim do dia inteiro.
 
 ## Próxima task
 
-Sem task herdada de sessão anterior — o dia esgotou o ROADMAP de 12/08,
-depois os Épicos 1, 2 e 3A (CC-27, CC-28, CC-29) do framework de hooks.
-Duas frentes abertas, nenhuma óbvia sem o Felipe escolher:
+**Sem task óbvia sem decisão do Felipe primeiro** — a maior parte do que
+sobrou no ROADMAP está travada em escolha dele: CC-30/31 (framework de
+hooks), CC-39 (o que fazer com `app/` no projeto_template), CC-40/41
+(quais memórias sobem pro global, pipeline formal ou não), CC-43/44 (D1: o
+painel escrever `settings.json`).
 
-1. **CC-21** — MCP do Google Calendar com escrita (frente conteúdo social).
-2. **CC-30 e CC-31** — framework de hooks, épicos 3B e 4. Cada um tem
-   decisão pendente documentada em `docs/produto/FRAMEWORK-HOOKS.md`
-   (D3, D4). CC-30 (fila de revisão do opencode) já tem a mecânica pronta
-   (`src/opencode.mjs`, CC-29) — falta só decidir D3 (qual evento obriga a
-   chamada) pra desbloquear.
+O que dá pra pegar sem esperar resposta:
 
-Rollout do Método Routia pros outros ~14 projetos (incluindo cliente) é
-manual, projeto a projeto, com `cc routia install [pasta]` — decisão do
-Felipe de não fazer em lote.
+1. **CC-46** (novo, achado hoje) — `estadoDe()` em `roadmap.mjs` casa por
+   regex solto no título inteiro, não só no marcador de estado. Pequeno,
+   isolado, sem decisão pendente.
+2. **CC-21** — MCP do Google Calendar com escrita. Primeira peça da frente
+   "Conteúdo social" que ainda falta (CC-20 já feito).
+3. **CC-25/CC-26** — agora desbloqueados de verdade: dependiam do CC-24
+   (digest), que foi feito hoje.
+
+**Não pegar sem avisar o Felipe primeiro**: CC-36 (enriquecimento de to-dos
+pelo opencode) — funciona, mas carrega o bloqueio não resolvido do `cwd` não
+isolando de verdade o opencode (ver ROADMAP, "🔴 Bloqueio crítico"). Decisão
+dele foi deixar em aberto e investigar pela própria VPS, não bloquear o
+resto do backlog.
 
 ## Arquivos a ler antes
 
-- `docs/ROADMAP.md` — estado de tudo que está aberto
-- `docs/produto/FRAMEWORK-HOOKS.md` — visão do framework de hooks e as
-  decisões pendentes (D3, D4)
-- `CLAUDE.md` — seção Armadilhas, as de hoje estão no topo — **duas novas
-  sobre `spawn()` no Windows são essenciais antes de mexer em CC-30**
-  (`detached` quebra captura de saída via `fd`; `shell:true` com args
-  dinâmicos é injeção de comando)
-- `src/opencode.mjs` — disparo/heurística/verificação pro CC-30 consumir
-- `src/hooksCatalogo.mjs` / `src/hooksRegistro.mjs` / `config.mjs`
-  (`hookEnabled`/`setHookEnabled`) / `src/routia.mjs` — o alicerce que os
-  épicos usam
+- `docs/ROADMAP.md` — estado real de tudo que está aberto (acabou de ser
+  limpo nesta sessão, confiar nele mais que em memória de sessões antigas)
+- `docs/ROTAS-ATIVAS.md` — Método Routia; `remote-control` está livre de
+  novo, ticket completo com o que foi feito e testado
+- `src/remotecontrol.mjs` — reescrito hoje; se for mexer em qualquer coisa
+  que dispara processo de longa duração (`spawn`, `tmux`), ler os comentários
+  de topo antes: PTY real é a diferença entre funcionar e falhar calado
+- `CLAUDE.md` (projeto) — seção Armadilhas, ordem cronológica reversa (mais
+  recente primeiro)
 
 ## Regras que não podem quebrar
 
-Ver `CLAUDE.md`, seção "Regra de ouro" e "Armadilhas". Novidades de hoje:
+Ver `CLAUDE.md`, seções "Regra de ouro" e "Armadilhas". Novidades de hoje:
 
-- `calendarios[].url` (agenda) nunca volta pro navegador — mesma lógica da
-  chave da VPS.
-- Testar rota que ESCREVE config não pode restaurar arquivo inteiro de um
-  backup — o daemon real pode ter escrito algo legítimo no meio do teste.
-- **Toggle de hook (`hookEnabled`/`setHookEnabled`) nunca escreve no
-  `settings.json` do Claude Code** — só em `control-center.json`. Registrar
-  hook novo no `settings.json` é sempre manual, via skill `update-config`.
-- `CONFIG_FILE` não é isolado por porta: instância de teste em `--port 8123`
-  ainda escreve no `control-center.json` real.
-- **Editar `~/.claude/hooks/*.mjs` é editar infraestrutura ativa agora
-  mesmo**, pra toda sessão do Felipe em todo projeto. Testar com stdin
-  sintético (PowerShell, não Git Bash) antes de considerar pronto.
-- **`docs/ROTAS-ATIVAS.md` deste projeto está ativo.** `pastas-controladas:
-  [src]`. Sessão que for mexer em `src/` precisa marcar a própria rota antes
-  — ver o quadro (fica sempre livre entre sessões, por convenção desta).
-- **`spawn(..., { detached: true })` no Windows nunca captura saída via `fd`
-  bruto de forma confiável** — a causa é o processo Node sair antes do
-  filho. Se o disparo é feito de dentro do painel (que não sai sozinho),
-  não usar nem `detached` nem `unref`. Ver armadilha detalhada no
-  `CLAUDE.md` antes de mexer em `src/opencode.mjs` ou em qualquer `spawn`
-  novo no CC-30/31.
+- **`claude --remote-control` exige TTY de verdade.** Redirecionar stdout
+  pra arquivo mata o terminal e o comando falha na hora. `tmux new-session
+  -d` no Linux, console novo via `spawn()` sem stdio redirecionado no
+  Windows — nunca voltar pro padrão de log em arquivo pra esse comando
+  específico.
+- **Liveness de processo de longa duração nunca re-testa PID isolado**
+  (`process.kill(pid, 0)`) — o SO recicla PID e isso já gerou falso "ligado"
+  com processo morto. Usar o sinal de verdade: evento de saída do processo
+  (Windows) ou o dono real do recurso (`tmux has-session`, no Linux).
+- **`cockpit daemon restart` por SSH não-interativo não reinicia o serviço
+  systemd de verdade** — sobe uma instância avulsa noutra porta (8099 em vez
+  da 5180 real). Pra atualizar o serviço de produção na VPS depois de um
+  `git pull`: derrubar o processo real via `POST /api/shutdown` (o systemd
+  tem restart automático) e conferir com `systemctl status agent-cockpit`
+  que o `Main PID` mudou.
+- **`docs/ROADMAP.md` só reflete o código se alguém tirar o item de lá ao
+  terminar.** Marcar ✅ não é suficiente sozinho pra itens que a sessão quer
+  arquivar de vez — a convenção do projeto (linha 3 do próprio ROADMAP) é
+  "concluído sai daqui e vira linha no diário". Ver o achado de hoje.

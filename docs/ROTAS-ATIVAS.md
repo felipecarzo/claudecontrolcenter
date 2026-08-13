@@ -147,16 +147,25 @@ exigir especificamente login de conta com assinatura**, não API key. Matei a
 sessão de teste sem escolher opção nenhuma — não é decisão minha logar a sua
 conta pessoal num usuário compartilhado da VPS.
 
-**Três saídas que eu enxergo, sua decisão**:
-1. Logar sua conta pessoal (Pro/Max) como `claudedev` uma vez, interativo —
-   depois Remote Control funciona em qualquer projeto lá, mas a sessão de
-   assinatura fica compartilhada entre tudo que roda nesse usuário.
-2. Aceitar que Remote Control só funciona a partir do PC por enquanto, e a
-   VPS continua só pra sessões automatizadas via API key.
-3. Investigar se dá pra ter os dois tipos de credencial coexistindo (não
-   pesquisei isso ainda, é hipótese).
+**RESOLVIDO em 13/08, mesma sessão**: Felipe escolheu a opção 1. Login feito
+de verdade, pilotado por SSH + `tmux send-keys` (Felipe abriu o link OAuth no
+celular e mandou o código de volta pelo chat, eu colei na sessão). Depois do
+login, a `claude --remote-control proj_carzo` completou o onboarding inteiro
+(tema, avisos de segurança, confiar na pasta) e chegou no estado real:
 
-Código não commitado ainda — só working tree. `npm test` passa.
+```
+/remote-control is active · https://claude.ai/code/session_019LDxgfQJajgH3yaDe4PhRG
+```
+
+Link de sessão de verdade, testado abrindo. Commit `99bce1d`, push feito,
+deploy na VPS feito (`git pull` + derrubar o processo real via
+`/api/shutdown` pra o systemd religar sozinho — `cockpit daemon restart` por
+SSH não-interativo sobe uma instância avulsa na 8099 em vez de reiniciar o
+serviço de verdade na 5180, achado nesse deploy, vale lembrar da próxima
+vez). Painel real (porta 5180) confirmado enxergando `proj_carzo` ligado via
+`GET /api/remote-control`.
+
+Rota liberada, ticket fechado.
 
 ### 🎫 `remote-control` — 5805d6bb, decisão do Felipe, em 13/08
 

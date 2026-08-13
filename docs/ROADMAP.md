@@ -86,28 +86,13 @@ usada). O que sobrou do silêncio é a nota `sem sinal há Xm` na linha do agent
 que também nunca apareceu numa captura — não houve agente travado enquanto o
 design era feito. Conferir na primeira vez que acontecer.
 
-### CC-06 — Ideias sem dono
+### CC-46 — `estadoDe()` casa por regex solto no título, dá falso positivo
 
-Duas feitas em 13/08, duas deliberadamente não: **agrupar por rota** — o
-cartão do cockpit agrupa a lista de agentes frios por `route` quando passa de
-4, e some com poucos (moldura sem ganho). **Ordenar por token** já existia
-(`ORDENAR_POR` na aba agentes tinha `tokens` desde antes — nada a fazer).
-
-**Não construído, de propósito:** avisar de agente sem sinal há N minutos. O
-CC-04 continua aberto porque a nota `sem sinal há Xm` nunca foi vista com
-agente travado de verdade — e o cockpit já dá peso 4 pra `stale`, que é o
-sinal ativo possível sem inventar notificação nova antes do existente se
-provar (precedente: CC-07, construído e nunca usado). E `sync` em massa nos
-projetos com `CLAUDE.md`: o bloco global já cobre todos, repetir a instrução
-em 14 arquivos contraria "um fato mora em um lugar só". A ferramenta
-(`syncAll`) existe se o Felipe mudar de ideia.
-
-**Achado no caminho, ainda sem dono:** `estadoDe()` (`roadmap.mjs`) casa por
-regex solto no título, e isso deu falso positivo achado em 13/08 pelas
-pastilhas do CC-34: "CC-23 — Histórico rico" virou "feito" porque o título
-contém a palavra "Histórico", e "CC-04 — ...agente travado..." virou
-"bloqueado" porque contém "travado". O regex deveria olhar só o marcador de
-estado (emoji/palavra no INÍCIO do título), não a frase inteira.
+Achado em 13/08 implementando as pastilhas do CC-34: "CC-23 — Histórico rico"
+virou "feito" porque o título contém a palavra "Histórico", e "CC-04 —
+...agente travado..." virou "bloqueado" porque contém "travado". O regex em
+`roadmap.mjs` deveria olhar só o marcador de estado (emoji/palavra no INÍCIO
+do título), não a frase inteira.
 
 ### Frente: Conteúdo social — módulo novo, ver [[produto/CONTEUDO-SOCIAL]]
 
@@ -128,22 +113,6 @@ nota de prova) precisa de um sinal manual mínimo — uma linha por marco, não
 formulário longo. Formato ainda em aberto: provavelmente mais uma entrada em
 `docs/diario/{data}.md` de cada projeto, lida pelo digest do CC-24, em vez de
 arquivo novo — evita duplicar onde mora a verdade.
-
-### CC-23 — Histórico rico por projeto
-`historico.mjs` tem 100 linhas hoje — cobre o que a aba de tempo precisa, não
-cobre "o que esse projeto produziu que vale virar conteúdo". Precisa
-estruturar por marco (commit relevante, tarefa fechada, evento), não só por
-bloco de tempo. A aba de todos (`tarefas.mjs`) é a mais fraca do painel hoje
-porque task fechada some — não vira registro, só desaparece da lista. Esse é
-o gap que trava o digest do CC-24: sem arquivo do que foi feito, não tem o
-que resumir.
-
-### CC-24 — Digest semanal entre projetos
-Ferramenta que cruza git log + `docs/diario` + `ROADMAP.md` de todos os
-projetos com CLAUDE.md (mesma lista que o `sync` do CC-06 already varre) e
-produz um resumo por projeto, candidato a virar post. Roda sob demanda
-(botão/comando), não em timer — mesma lógica de "processos" e "VPS": caro
-demais pra rodar sozinho a cada 2s.
 
 ### CC-25 — Vault Obsidian como espelho de leitura
 `LM_vault/Neo` existe mas está vazio (só `.obsidian/`, zero arquivo). Decisão
@@ -232,30 +201,8 @@ Reposicionamento do produto pelo Felipe em 12/08: **os hooks não são o
 produto, são sensor** — o produto é o painel virar o lugar onde ele volta ao
 contexto rápido, gerenciando 4-5 projetos em paralelo. Isso muda o critério
 de sucesso de qualquer sinal: não é "impõe boa prática", é "me faz voltar ao
-contexto mais rápido?". CC-32 feito em 13/08; os demais em ordem.
-
-### CC-33 — Marca de visita e o delta "desde que você saiu"
-`control-center.json` ganha `visitas: {projeto: ms}`, carimbada por botão
-explícito ("vi isso") — automático ao abrir a aba destruiria o sinal, já que
-ele olha o painel o dia todo. O cartão do cockpit ganha "desde sua última
-visita: 3 tarefas fechadas · 1 agente novo · roadmap editado", tudo de dado
-que já existe (`feitoEm`, `createdAt`, `visto`, `mapa.atualizadoEm`).
-Depende de duas linhas em `historico.mjs`: guardar `cwd` no `guardavel()` e
-fazer merge (não sobrescrita) do `feitoEm` no `arquivar()` — hoje ele é
-podado por `marcarConclusoes()` e a poda vaza pro histórico.
-
-### CC-34 — Mapa visual: pastilhas de frente, todo projeto
-Mini-mapa no cartão do cockpit: frentes do ROADMAP.md como pastilhas em
-`display:grid` (sem biblioteca), cor pelo `estado` que `estadoDe()` já
-classifica, fração feitos/itens, ponto quando tem agente na frente. E o mapa
-completo passa a abrir de qualquer projeto, com ou sem agente vivo — hoje
-exige `job.cwd`, que só existe em job vivo. `acharFrente()` (exportada, sem
-consumidor nenhum hoje) vira a costura jobs × roadmap.
-
-### CC-35 — `git log --since` na abertura do projeto
-A resposta rica pra "o que mudou desde que saí", e a única fonte real de
-"quais arquivos" — `sinais.arquivos` do `tempo.mjs` é contagem
-(`edicoes.size`), não lista de caminhos. Sob clique, nunca em timer.
+contexto mais rápido?". CC-32, CC-33, CC-34 e CC-35 feitos em 13/08; CC-36 e
+CC-37 seguem abertos.
 
 ### CC-36 — Enriquecimento de to-dos pelo opencode
 Pedido do Felipe: "olho os to-dos e as tarefas não fazem sentido, os nomes
@@ -287,7 +234,11 @@ presas em memória de um projeto só.
 Critério de ordem, o mesmo do [[produto/COCKPIT]]: **isso me faz voltar ao
 contexto mais rápido, ou economiza uma volta do ciclo?**
 
-### CC-38 — O ciclo vira regra onde carrega: o CLAUDE.md global
+### CC-38 — O ciclo vira regra onde carrega: o CLAUDE.md global ✅ 13/08
+Aplicado no `CLAUDE.md` global (commit `8998699`) — as sete regras do ciclo
+estão lá, com o desempate de contradições. Descrição original abaixo, como
+registro do que motivou.
+
 As quatro regras de maior retorno medido estão presas em memória de projeto,
 e por isso o mesmo erro se repete: verificação visual obrigatória (o mais
 repetido, 3 projetos diferentes), repetir a mecânica antes de codar (4 rodadas
