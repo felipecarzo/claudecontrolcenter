@@ -162,6 +162,55 @@ Disparar a cada to-do novo é sedutor por custar R$ 0, mas toda escrita em
 rajada, e modelo grátis fora do ar vira lixo silencioso. Só depois do CC-36
 provar qualidade.
 
+### Frente: Ciclo Felipe → IA → Felipe — ver [[produto/CICLO]]
+
+Análise de 13/08 sobre 235 mensagens reais dele em 5 projetos, mais 43 pastas
+de memória. Dez padrões com evidência medida. O diagnóstico: o problema não é
+falta de regra, é **excesso de regra dispersa** — 4 seções OBRIGATÓRIO no
+global, ~30 memórias comportamentais em 15 projetos, ~60 armadilhas, com 6
+contradições convivendo sem desempate. E as regras de maior retorno estão
+presas em memória de um projeto só.
+
+Critério de ordem, o mesmo do [[produto/COCKPIT]]: **isso me faz voltar ao
+contexto mais rápido, ou economiza uma volta do ciclo?**
+
+### CC-38 — O ciclo vira regra onde carrega: o CLAUDE.md global
+As quatro regras de maior retorno medido estão presas em memória de projeto,
+e por isso o erro se repete há três anos: verificação visual obrigatória (erro
+mais repetido, 3 projetos), repetir a mecânica antes de codar (4 rodadas
+evitadas por 1 frase), backlog de tudo que ele fala, medir antes de agir na
+hipótese dele. Sobem pro global junto com os três protocolos novos que a
+análise revelou: **desambiguar substantivo na segunda repetição** (mataria 3
+das 4 sagas longas em uma mensagem), **o mecanismo nomeado é o pedido** (12
+mensagens acusatórias em 3 projetos), e **visão longa se registra, não se
+implementa**. Mais o desempate das contradições que a evidência resolve.
+
+### CC-39 — Consertar o `- projeto_template`, que hoje nasce violando o global
+Três defeitos achados: manda usar `Co-Authored-By` (regra absoluta do Felipe
+proíbe, e ele escreveu "esta regra vence"); descreve estrutura de pastas que
+não é mais a dele (`docs/essential/`, `docs/daily/` em vez de
+`guias/diario/produto/legacy`); e o `CLAUDE.md` dele é o do `app_ayvu` inteiro
+com placeholders só parcialmente aplicados. Todo projeto novo nasce com isso.
+
+### CC-40 — Índice das memórias comportamentais
+~30 memórias sobre o jeito dele trabalhar, espalhadas por 15 projetos, sem
+índice e sem hierarquia. O perfil cognitivo completo mora em `ntz-48` e no
+vault — projetos que ele não abre pra trabalhar, então nunca é lido. Precisa
+de um índice que diga o que vale sempre e o que é específico de projeto.
+
+### CC-41 — O painel enxerga os sinais do ciclo
+Os padrões medidos viram sinal no cockpit: rajada (3+ mensagens em 6min = ou
+o entregável não mudou nada, ou é modo visão), repetição do mesmo pedido
+(gatilho do protocolo de desambiguação), e silêncio maior que a janela de
+atenção de ~10min por projeto. Fecha o ciclo: o que a análise achou vira coisa
+que o painel mostra sozinho.
+
+**Decisão pendente do Felipe** (só uma; as outras a evidência resolve): o
+pipeline formal Planner → Tester → Revisor é regra absoluta no global, mas os
+diários do próprio Control Center dizem "sem Tester nem Revisor formais" e
+nunca foi cobrado. Ou a regra vira condicional (quando vale, quando não), ou
+o pipeline passa a valer de verdade aqui também.
+
 ## Limites aceitos hoje
 
 Escritos aqui porque são escolha, não descuido:
