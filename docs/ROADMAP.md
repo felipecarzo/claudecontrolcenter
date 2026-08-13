@@ -206,6 +206,10 @@ produção**: isolar de verdade (testar sem `cmd /c`, ou achar a flag/config
 do opencode que fixa o projeto por chamada) e provar com um teste que tenta
 editar um arquivo canário fora do `cwd` esperado e confirma que falha.
 
+**Decisão do Felipe em 13/08**: fica em aberto por enquanto, não é bloqueio
+pra seguir com o resto do backlog. A investigação da causa raiz vai acontecer
+pela própria VPS (onde o opencode também vai rodar), não nesta sessão local.
+
 ### CC-30 — Fila de revisão do opencode + hook que obriga a chamada
 Depende do CC-29 e de decidir qual evento e qual critério "obrigam" a
 chamada ao opencode (ex.: `UserPromptSubmit` por linguagem natural, mais
