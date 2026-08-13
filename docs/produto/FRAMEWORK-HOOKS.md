@@ -91,3 +91,28 @@ não em lote nesta sessão. Mecanismo pronto:
 
 O Felipe aplica `cc routia install` em cada projeto quando quiser, vendo o
 resultado antes de commitar — não é ação em lote deste agente.
+
+## `routia-fim` fica quieto quando está sozinho de verdade (12/08, mesma sessão)
+
+Achado ao vivo: o `pierre_web` (inovallbond) recebeu o aviso do `routia-fim`
+repetido a cada `Stop`, mesmo sendo o único agente trabalhando ali — rota
+presa de uma rodada anterior, sem conflito real. Duas peças, as duas
+consultam o Control Center antes de agir, nenhuma escreve o quadro sozinha
+sem confirmação:
+
+- **`~/.claude/commands/routia-resolver.md`** (skill nova, global): sob
+  pedido explícito, roda `cc json`, filtra jobs `working`/`waiting` na mesma
+  pasta de projeto (excluindo a própria sessão) — se sobrar algum, não mexe
+  em nada e explica quem está ativo; se ninguém sobrar, libera as rotas
+  🔴 pra 🟢 com nota do que foi feito no lugar do "quem".
+- **`~/.claude/hooks/routia-fim.mjs`** ficou mais esperto: antes de emitir o
+  `systemMessage`, faz a mesma pergunta ao Control Center. Confirmado
+  sozinho → fica mudo, sem aviso repetido. Qualquer sinal de outro agente
+  ativo, ou o Control Center indisponível → continua avisando (falha pro
+  lado de falar, nunca pro lado de esconder conflito real). Não escreve o
+  quadro — só decide se vale interromper com o aviso.
+
+Testado: lógica de decisão validada contra caso de conflito real e caso
+sozinho (dado sintético), e contra o dado real do pierre_web/inovallbond —
+`cc json` mostra só `8d8cd8e5` ativo em `inovallbond`, e o hook
+correspondentemente fica mudo.

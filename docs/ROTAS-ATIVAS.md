@@ -24,7 +24,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
-| `framework-hooks` | 🟢 livre | — (5805d6bb fechou em 2026-08-12: CC-27 alicerce de hooks, CC-28 Método Routia adaptado, `cc routia install`) | — |
+| `framework-hooks` | 🟢 livre | — (5805d6bb fechou em 2026-08-12: routia-resolver, routia-fim consulta o Control Center antes de avisar) | — |
 
 ## Tickets pendentes
 

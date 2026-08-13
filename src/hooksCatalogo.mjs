@@ -63,7 +63,9 @@ export const HOOKS = [
     script: 'routia-fim.mjs',
     evento: 'Stop',
     descricao: 'Lembra (sem bloquear, sem editar sozinho) quando a sessão '
-      + 'termina com uma rota 🔴 ainda marcada no seu nome.',
+      + 'termina com uma rota 🔴 ainda marcada no seu nome — mas só fala se '
+      + 'o Control Center confirmar outro agente de verdade ativo no '
+      + 'projeto; sozinho, fica quieto.',
     padrao: true,
     implementado: true,
   },
