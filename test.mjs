@@ -955,6 +955,27 @@ if (estRotinas.projetos.length) {
   )
 }
 
+// --- gitlog (CC-35): usa este próprio repositório como fixture — leitura
+// pura, sem risco. O achado real ao testar ao vivo: sem `-C <cwd>`, o `git
+// log` roda sempre na pasta onde o SERVIDOR foi iniciado, não na do projeto
+// pedido — as duas primeiras provas devolveram o histórico deste repo mesmo
+// pedindo outro. Este teste não pega isso sozinho (roda daqui mesmo por
+// acaso), mas trava qualquer regressão na forma do retorno.
+{
+  const { commitsDesde } = await import('./src/gitlog.mjs')
+  const aqui = await commitsDesde(process.cwd(), 0)
+  assert.equal(aqui.ok, true)
+  assert.ok(aqui.commits.length > 0, 'este repositório tem commit — se vier vazio, o parser quebrou')
+  const c0 = aqui.commits[0]
+  assert.ok(c0.hash && c0.em > 0 && c0.assunto && Array.isArray(c0.arquivos))
+  assert.ok(c0.arquivos.length > 0, 'commit real sempre toca arquivo — numstat não foi parseado')
+
+  const semGit = await commitsDesde(os.tmpdir(), 0)
+  assert.equal(semGit.ok, false, 'pasta fora de qualquer repo git tem que reportar falha, não lista vazia')
+
+  assert.deepEqual(await commitsDesde('', 0), { ok: false, motivo: 'sem caminho do projeto' })
+}
+
 // --- daemon: caminhos, sem escrever nada ---
 const dm = await import('./src/daemon.mjs')
 assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')

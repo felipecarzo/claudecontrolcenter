@@ -738,6 +738,16 @@
     border: 1px solid currentColor; border-radius: 10px; padding: 0 7px;
   }
   .m-rodape { margin-top: 20px; font-size: 10px; }
+
+  /* CC-35: commits desde a última visita, dentro do próprio mapa. */
+  .m-git-sec { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .m-git-sec h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); }
+  .m-git { display: grid; gap: 4px; }
+  .m-commit {
+    display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: baseline;
+    font-size: 12px; padding: 4px 0;
+  }
+  .m-git-carregando { font-style: italic; }
   .c-mapa {
     background: none; border: 0; padding: 0; cursor: pointer;
     color: var(--dim); font: inherit;
@@ -3535,6 +3545,9 @@ async function salvarTaxa(projeto, valor) {
 
 let MAPA = null
 let mapaProjeto = null
+// CC-35: commits desde a última visita, ou desde 7 dias sem visita nenhuma —
+// "o que mudou" tem que ter uma janela, senão viraria o histórico inteiro.
+let GIT = null
 
 const ROTULO_ESTADO = {
   bloqueado: 'travado', esperando: 'esperando alguém',
@@ -3549,12 +3562,24 @@ const TODO_ROADMAP = 'criar docs/ROADMAP.md deste projeto, seguindo a estrutura 
 async function abrirMapa(job) {
   mapaProjeto = job
   MAPA = null
+  GIT = null
   desenharMapa()
+  const q = job.cwd ? `cwd=${encodeURIComponent(job.cwd)}` : `projeto=${encodeURIComponent(job.project)}`
   try {
-    const q = job.cwd ? `cwd=${encodeURIComponent(job.cwd)}` : `projeto=${encodeURIComponent(job.project)}`
     MAPA = await (await fetch(`/api/roadmap?${q}`)).json()
   } catch {
     MAPA = { erro: 'não deu para ler o roadmap' }
+  }
+  desenharMapa()
+  // Sob clique (o próprio abrir do mapa já é o clique): spawn de git não
+  // pode entrar no stream de 2s, então carrega à parte e redesenha quando
+  // chegar — o mapa já está na tela nesse ponto, esperando só esta seção.
+  const cockpitProj = (DATA.cockpit || []).find((p) => p.projeto === job.project)
+  const desde = cockpitProj?.desdeVisita?.em || (Date.now() - 7 * 24 * 3600 * 1000)
+  try {
+    GIT = await (await fetch(`/api/git?${q}&desde=${desde}`)).json()
+  } catch {
+    GIT = { ok: false, motivo: 'falha ao ler o git' }
   }
   desenharMapa()
 }
@@ -3562,7 +3587,23 @@ async function abrirMapa(job) {
 function fecharMapa() {
   mapaProjeto = null
   MAPA = null
+  GIT = null
   desenharMapa()
+}
+
+/** Lista compacta de commits, ou o motivo de não ter nenhum. */
+function viewGit() {
+  if (!GIT) return '<p class="dim m-git-carregando">lendo o git…</p>'
+  if (!GIT.ok) return `<p class="dim">sem histórico de commits (${esc(GIT.motivo || 'motivo desconhecido')})</p>`
+  if (!GIT.commits.length) return '<p class="dim">nenhum commit nessa janela</p>'
+  return `<div class="m-git">${GIT.commits.slice(0, 12).map((c) => `
+    <div class="m-commit">
+      <span class="path">${age(Date.now() - c.em)}</span>
+      <b>${esc(c.assunto)}</b>
+      <span class="dim">${c.arquivos.length} arquivo${c.arquivos.length === 1 ? '' : 's'}</span>
+    </div>`).join('')}
+    ${GIT.commits.length > 12 ? `<p class="dim">+ ${GIT.commits.length - 12} commit(s) mais antigo(s) na janela</p>` : ''}
+  </div>`
 }
 
 /** Quantos agentes estão em cada frente, para o mapa dizer onde há gente. */
@@ -3609,7 +3650,8 @@ function desenharMapa() {
         : podeCriarTodo
           ? '<button class="btn" data-criar-todo-roadmap>+ criar to-do "escrever o roadmap"</button>'
           : '<p class="dim">sem agente ativo aqui pra carregar o to-do — abra uma sessão neste projeto</p>'}
-    </div>`
+    </div>
+    <section class="m-git-sec"><h4>o que mudou</h4>${viewGit()}</section>`
     return
   }
 
@@ -3636,6 +3678,7 @@ function desenharMapa() {
     </section>`).join('')
     + `<p class="path m-rodape">lido de <code>${esc((MAPA.arquivo || '').split(/[\\/]/).slice(-2).join('/'))}</code>
         · ${MAPA.linhas} linhas · atualizado ${MAPA.atualizadoEm ? age(Date.now() - MAPA.atualizadoEm) + ' atrás' : '—'}</p>`
+    + `<section class="m-git-sec"><h4>o que mudou</h4>${viewGit()}</section>`
 }
 
 /* ====================== módulos da máquina =========================

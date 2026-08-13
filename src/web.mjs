@@ -16,6 +16,7 @@ import {
 import { estado as estadoMaquina } from './maquina.mjs'
 import { lerRoadmap } from './roadmap.mjs'
 import { findProjects } from './install.mjs'
+import { commitsDesde } from './gitlog.mjs'
 import { garantirMercado } from './mercado.mjs'
 import {
   readServers, killServer, duplicados, recentes, projetosLancaveis,
@@ -41,6 +42,20 @@ import { garantirCambio } from './cambio.mjs'
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
 const GRAFICOS = path.join(HERE, 'graficos.js')
+
+/**
+ * `cwd` explícito vence. Sem ele, resolve pelo nome do projeto: (1) o `cwd`
+ * que algum job daquele projeto já gravou no histórico (CC-23) — preferível,
+ * é o caminho que de fato gerou aquele `project`; (2) `findProjects()`,
+ * casando pelo nome da pasta, pro projeto que nunca rodou um agente.
+ */
+function cwdDoProjeto(cwd, projeto) {
+  if (cwd) return cwd
+  if (!projeto) return ''
+  // vivos:[] de propósito — aqui quero TODO job já visto, vivo ou não
+  const doHistorico = jobsHistoricos([]).mortos.find((j) => j.project === projeto && j.cwd)?.cwd
+  return doHistorico || findProjects().find((p) => path.basename(p) === projeto) || ''
+}
 
 const snapshot = () => {
   const jobs = readJobs()
@@ -384,21 +399,20 @@ function handler(req, res) {
 
   // Mapa do projeto, lido do ROADMAP.md dele. Aceita `cwd` (de um agente vivo)
   // ou `projeto` (nome) — CC-34: projeto sem agente ativo ainda quer abrir o
-  // mapa. Sem `cwd` direto, resolve por: (1) o `cwd` que algum job daquele
-  // projeto já gravou no histórico (CC-23), preferível porque é o caminho que
-  // de fato gerou aquele `project`; (2) `findProjects()`, casando pelo nome da
-  // pasta. Pastas achadas por (2) que nunca rodaram um job ainda entram, e é
-  // isso que faz o mapa abrir pra projeto totalmente parado.
+  // mapa.
   if (url.pathname === '/api/roadmap') {
-    let cwd = url.searchParams.get('cwd') || ''
-    const projeto = url.searchParams.get('projeto') || ''
-    if (!cwd && projeto) {
-      // vivos:[] de propósito — aqui quero TODO job já visto, vivo ou não
-      const doHistorico = jobsHistoricos([]).mortos.find((j) => j.project === projeto && j.cwd)?.cwd
-      cwd = doHistorico || findProjects().find((p) => path.basename(p) === projeto) || ''
-    }
+    const cwd = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
     const mapa = cwd ? lerRoadmap(cwd) : null
     return send(res, 200, mapa || { vazio: true })
+  }
+
+  // CC-35: "o que mudou desde que saí", em commit de verdade — sempre sob
+  // clique, nunca no stream: é spawn de git.
+  if (url.pathname === '/api/git') {
+    const cwd = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
+    const desde = Number(url.searchParams.get('desde')) || 0
+    if (!cwd) return send(res, 200, { ok: false, motivo: 'projeto não encontrado' })
+    return commitsDesde(cwd, desde).then((r) => send(res, 200, r))
   }
 
   // Sensores da máquina. Fora do stream pelo mesmo motivo da mídia: a leitura
