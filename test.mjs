@@ -976,6 +976,29 @@ if (estRotinas.projetos.length) {
   assert.deepEqual(await commitsDesde('', 0), { ok: false, motivo: 'sem caminho do projeto' })
 }
 
+// --- digest (CC-24): este próprio projeto, que tem diário, git e histórico reais ---
+{
+  const { digestDe, digestTodos } = await import('./src/digest.mjs')
+  const aqui = await digestDe(process.cwd(), 'proj_controlcenter', { desde: 0 })
+  assert.equal(aqui.projeto, 'proj_controlcenter')
+  assert.equal(aqui.gitOk, true)
+  assert.ok(aqui.commits.length > 0)
+  assert.ok(aqui.diario.length > 0, 'este projeto tem docs/diario — silêncio aqui indica que o leitor quebrou')
+  assert.equal(aqui.silencio, false)
+
+  // desde no futuro: nada de novo em lugar nenhum, e silencio tem que dizer isso
+  const vazio = await digestDe(process.cwd(), 'proj_controlcenter', { desde: Date.now() + 1e9 })
+  assert.equal(vazio.silencio, true)
+  assert.equal(vazio.commits.length, 0)
+  assert.equal(vazio.diario.length, 0)
+
+  // digestTodos varre e SEPARA silenciosos, nunca trunca sem dizer o tamanho
+  const todos = await digestTodos({ desde: Date.now() + 1e9, base: path.dirname(process.cwd()) })
+  assert.ok(todos.silenciosos >= 0 && todos.projetos.length === 0,
+    'janela no futuro: todo mundo silencioso, projetos filtrado vazio')
+  assert.equal(todos.silenciosos + todos.projetos.length <= todos.totalVarrido, true)
+}
+
 // --- daemon: caminhos, sem escrever nada ---
 const dm = await import('./src/daemon.mjs')
 assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')

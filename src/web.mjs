@@ -17,6 +17,7 @@ import { estado as estadoMaquina } from './maquina.mjs'
 import { lerRoadmap } from './roadmap.mjs'
 import { findProjects } from './install.mjs'
 import { commitsDesde } from './gitlog.mjs'
+import { digestTodos } from './digest.mjs'
 import { garantirMercado } from './mercado.mjs'
 import {
   readServers, killServer, duplicados, recentes, projetosLancaveis,
@@ -404,6 +405,13 @@ function handler(req, res) {
     const cwd = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
     const mapa = cwd ? lerRoadmap(cwd) : null
     return send(res, 200, mapa || { vazio: true })
+  }
+
+  // CC-24: digest semanal entre projetos, cruzando histórico + git + diário +
+  // roadmap. Varre ~20 projetos com spawn de git cada — sempre sob clique.
+  if (url.pathname === '/api/digest') {
+    const desde = Number(url.searchParams.get('desde')) || undefined
+    return digestTodos({ desde, jobs: readJobs() }).then((d) => send(res, 200, d))
   }
 
   // CC-35: "o que mudou desde que saí", em commit de verdade — sempre sob

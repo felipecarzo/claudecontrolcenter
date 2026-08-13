@@ -617,6 +617,12 @@
   .ck-mini-f.f-dim { color: var(--faint); }
   .ck-mini-f .dot { margin-right: 1px; }
 
+  /* CC-24: digest semanal, painel simples acima da lista de projetos. */
+  .dg-cab { margin-bottom: 14px; }
+  .dg-lista { display: grid; gap: 10px; margin-top: 10px; max-width: 900px; }
+  .dg-proj { border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px; font-size: 12px; }
+  .dg-item { padding: 2px 0 2px 10px; color: var(--faint); font-size: 11px; }
+
   /* ---------- projetos (visão antiga, ainda usada em outros lugares) ---------- */
   .projs { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
   .proj { border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
@@ -1973,6 +1979,43 @@ function miniMapa(projeto) {
 // Mesmo vocabulário de cor do roadmap.mjs (estadoDe), não o do motivo do agente.
 const COR_MOTIVO_ESTADO = { bloqueado: 'failed', esperando: 'waiting', feito: 'done', aberto: 'dim' }
 
+// CC-24: digest semanal, sob clique — nunca carregado sozinho, é spawn de git
+// em ~20 projetos.
+let DIGEST = null // null=fechado, 'carregando', ou o resultado
+async function alternarDigest() {
+  if (DIGEST) { DIGEST = null; return render() }
+  DIGEST = 'carregando'
+  render()
+  try {
+    DIGEST = await (await fetch('/api/digest')).json()
+  } catch {
+    DIGEST = { erro: true }
+  }
+  render()
+}
+
+function viewDigest() {
+  if (DIGEST === 'carregando') return '<p class="dim">cruzando histórico, git e diário de todos os projetos…</p>'
+  if (!DIGEST || DIGEST.erro) return '<p class="dim">não deu para montar o digest</p>'
+  if (!DIGEST.projetos.length) {
+    return `<p class="dim">nenhum projeto com novidade nos últimos 7 dias${
+      DIGEST.silenciosos ? ` (${DIGEST.silenciosos} projeto(s) sem nada nessa janela)` : ''}</p>`
+  }
+  return `<div class="dg-lista">${DIGEST.projetos.map((p) => {
+    const itens = [
+      p.commits.length && `${p.commits.length} commit(s)`,
+      p.marcos.filter((m) => m.tipo === 'todo').length && `${p.marcos.filter((m) => m.tipo === 'todo').length} tarefa(s) fechada(s)`,
+      p.diario.length && `${p.diario.length} dia(s) de diário`,
+    ].filter(Boolean).join(' · ')
+    return `<div class="dg-proj">
+      <b>${esc(p.projeto)}</b><span class="dim"> — ${itens || 'sem sinal'}</span>
+      ${p.commits.slice(0, 5).map((c) => `<div class="dg-item">${esc(c.assunto)}</div>`).join('')}
+    </div>`
+  }).join('')}
+  ${DIGEST.silenciosos ? `<p class="dim">+ ${DIGEST.silenciosos} projeto(s) sem novidade nessa janela</p>` : ''}
+  </div>`
+}
+
 function viewCockpit(jobs) {
   if (!jobs.length) return '<div class="empty">nenhum projeto no filtro</div>'
   // O cockpit vem pronto do servidor (`cockpit.mjs`, testado). O filtro do topo
@@ -1982,7 +2025,12 @@ function viewCockpit(jobs) {
   const projetos = (DATA.cockpit || []).filter((p) => visiveis.has(p.projeto))
   if (!projetos.length) return '<div class="empty">nenhum projeto no filtro</div>'
 
-  return `<div class="ck-lista">${projetos.map((p) => {
+  const cabecalhoDigest = `<div class="dg-cab">
+    <button class="btn" data-digest>${DIGEST ? 'fechar digest' : 'digest da semana'}</button>
+    ${DIGEST ? viewDigest() : ''}
+  </div>`
+
+  return cabecalhoDigest + `<div class="ck-lista">${projetos.map((p) => {
     pedirMapaMini(p.projeto)
     const cor = COR_MOTIVO[p.motivo.tipo] || 'dim'
     const status = ZONES.map((z) => {
@@ -4332,6 +4380,8 @@ document.addEventListener('click', async (e) => {
     const [dir, nome] = rtDel.dataset.rtDel.split('|')
     return acaoRotina(dir, nome, 'remover', dir.split(/[\\/]/).pop())
   }
+
+  if (t.closest('[data-digest]')) return alternarDigest()
 
   const visitaBtn = t.closest('[data-visita]')
   if (visitaBtn) {
