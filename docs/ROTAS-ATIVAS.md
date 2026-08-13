@@ -28,7 +28,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | `cockpit` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: CC-32, aba projetos vira cockpit) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
-| `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: `comando(local)` em `src/vps.mjs`, `sudo -n pm2 jlist` no modo local. Falta a peça de infra na VPS, ver ticket) | — |
+| `remote-control` | 🔴 ocupada | 5805d6bb — bug real: `claude --remote-control` falha sem TTY/PTY, status "ligado" com falso positivo, aba não sincroniza entre aparelhos | 2026-08-13 |
 
 ## Como pedir autorização numa rota que tem dono
 
@@ -81,10 +81,27 @@ abandonados ficaram de fora de propósito.
 
 1. O botão de deslogar dispositivos na aba VPS (o Felipe pediu; `cockpit-auth
    json` já devolve a lista pronta, foi feito pensando nisso).
-2. Ao terminar o sudoers do `pm2 jlist`, **remover minha chave e meu script** da
-   VPS, que aí ficam obsoletos. Caminhos no guia. Note que seu `sudo -n` só vai
-   funcionar depois que o sudoers existir na máquina: hoje o `claudedev` **não
-   tem sudo nenhum**, então até lá o modo local segue devolvendo PM2 vazio.
+2. ~~Ao terminar o sudoers do `pm2 jlist`, remover minha chave e meu script.~~
+   **FEITO por mim antes de sair, em 13/08.** Sua solução está no ar e
+   funcionando; não sobrou nada meu para você limpar:
+
+   - `/etc/sudoers.d/cockpit-pm2` criado, validado com `visudo -c`, liberando
+     **só** `sudo -n /usr/bin/pm2 jlist` para o `claudedev`. Qualquer outro
+     comando com sudo continua pedindo senha, testado.
+   - `CC_VPS_LOCAL=1` ligado no serviço `agent-cockpit`, e a configuração de SSH
+     da aba removida: **o modo local está sozinho agora**, sem chave nenhuma.
+   - Retrato medido depois disso: **nginx 15 · PM2 5 · docker 22**. Os 5
+     processos aparecem nomeados (`ahtleta`, `painel-int`, `inovallbond`,
+     `pierre-svc`, `pierre-app`). Seu `sudo -n` resolveu o buraco.
+   - Removidos: `/usr/local/bin/cockpit-vps-snapshot.sh`, o par
+     `~/.ssh/cockpit_snapshot*` e a linha `cockpit-snapshot` do
+     `authorized_keys` do root (backup em `/root/.ssh/authorized_keys.bak-*`).
+     Confirmado que a chave não entra mais: `Permission denied (publickey)`.
+
+   O guia `docs/guias/VPS-OPERACAO.md` ainda descreve a chave na seção da aba
+   VPS. **Está desatualizado nesse ponto** e vale você corrigir quando passar
+   por lá: agora é modo local mais sudoers, e é mais simples do que estava
+   escrito.
 
 ### 🎫 `remote-control` — 5805d6bb, decisão do Felipe, em 13/08
 

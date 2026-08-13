@@ -103,39 +103,36 @@ virar `cockpit` de vez, o problema some sozinho em todo Linux.
 - Túnel do Cloudflare foi **abandonado** em 13/08: dava URL nova a cada
   execução. Se achar `trycloudflare` em algum lugar, está obsoleto.
 
-## Aba VPS: decisão que ficou com você
+## Aba VPS: modo local mais sudoers
 
-Hoje ela lê por SSH de `127.0.0.1` para si mesma, com a chave
-`~/.ssh/cockpit_snapshot` presa a um **forced command** no `authorized_keys` do
-root, apontando para `/usr/local/bin/cockpit-vps-snapshot.sh`. A chave não abre
-shell, não encaminha porta e não aceita outro comando: testado mandando `rm -rf`
-por ela, que foi ignorado.
+**Estado final, fechado em 13/08.** A aba lê a máquina localmente, sem SSH e sem
+chave nenhuma:
 
-Isso existe porque medi a diferença entre os dois caminhos, na mesma máquina e
-no mesmo instante:
+- `CC_VPS_LOCAL=1` no serviço `agent-cockpit` faz `configurada()` devolver `true`
+  e `atualizarSnapshot()` rodar por `bash -lc` em vez de `ssh`.
+- `/etc/sudoers.d/cockpit-pm2` libera **só** `sudo -n /usr/bin/pm2 jlist` para o
+  `claudedev`. Qualquer outro comando com sudo continua pedindo senha, testado.
 
-| Caminho | nginx | PM2 | docker |
-|---|---|---|---|
-| `CC_VPS_LOCAL=1` (roda como `claudedev`) | 15 | **0** | 22 |
-| chave com forced command (roda como root) | 15 | **5** | 22 |
+Medido depois de tudo no lugar: **nginx 15 · PM2 5 · docker 22**, com os
+processos nomeados (`ahtleta`, `painel-int`, `inovallbond`, `pierre-svc`,
+`pierre-app`).
 
-Cada usuário tem seu próprio daemon do PM2, então o `claudedev` enxerga `[]`. Os
-5 invisíveis são sites de cliente no ar: `ahtleta`, `inovallbond`, `painel-int`,
-`pierre-svc`, `pierre-app`.
+O sudoers existe porque cada usuário tem seu próprio daemon do PM2: sem ele o
+`claudedev` enxergava `[]`, e a aba ficava cega justamente para os sites de
+cliente no ar. Foi a opção que o Felipe escolheu, com o critério dele: "sempre o
+caminho que tem mais possibilidade de integração remota".
 
-**O Felipe escolheu a opção 3** (sudoers escalando só `pm2 jlist`) e você já pegou
-a rota para isso. Quando terminar, **remova o que é meu**, que aí fica obsoleto:
-
-```bash
-rm /usr/local/bin/cockpit-vps-snapshot.sh
-# e a linha 'cockpit-snapshot' de /root/.ssh/authorized_keys
-rm /home/claudedev/.ssh/cockpit_snapshot*
-```
-
-Docker aparece nos dois casos porque dei o grupo ao **processo** do painel
+Docker aparece porque o grupo foi dado ao **processo** do painel
 (`SupplementaryGroups=docker` no systemd), não ao usuário em shell. Isso é
 deliberado: `claudedev` com acesso ao socket do Docker vira root efetivo, e uma
 sessão do Claude não pode ter esse caminho.
+
+⚠️ **Histórico, para não confundir quem achar rastro:** houve uma solução
+intermediária com a chave `~/.ssh/cockpit_snapshot` presa a um forced command e
+o script `/usr/local/bin/cockpit-vps-snapshot.sh`. **Tudo isso foi removido em
+13/08** quando o sudoers entrou. Se encontrar menção a esses caminhos em
+qualquer lugar, está obsoleta. Backup do `authorized_keys` anterior ficou em
+`/root/.ssh/authorized_keys.bak-*`.
 
 ## Sandbox e segredos
 
