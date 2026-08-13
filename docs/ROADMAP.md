@@ -258,11 +258,22 @@ metade. Apagar código de app alheio é decisão de conteúdo, não mecânica: f
 para o Felipe dizer se `app/` é referência que ele quer manter (ex.: esqueleto
 Flutter pronto) ou lixo a remover.
 
-### CC-40 — Índice das memórias comportamentais
-~30 memórias sobre o jeito dele trabalhar, espalhadas por 15 projetos, sem
-índice e sem hierarquia. O perfil cognitivo completo mora em `ntz-48` e no
-vault — projetos que ele não abre pra trabalhar, então nunca é lido. Precisa
-de um índice que diga o que vale sempre e o que é específico de projeto.
+### CC-40 — Índice das memórias comportamentais ✅ 13/08 (levantamento; decisão pendente)
+
+Contagem real: **81** memórias `type: feedback` em **22** diretórios (o
+roadmap estimava ~30 em 15 — a realidade é maior e mais concentrada: 25 só no
+`inovallbond`). Índice completo em [[produto/INDICE-MEMORIAS]].
+
+Achados: **7** já duplicam regra que já está no global (sinal de que a regra
+é forte, não erro apagar); **6** são candidatas genuínas a subir, com
+destaque pra `servidor-teste-porta-compartilhada` do inovallbond —
+confirmada no MESMO DIA pela armadilha do `pkill` no CC-42 deste projeto,
+duas descobertas independentes do mesmo problema; **2** estão mortas,
+descrevendo a estrutura de kanban do vault que a limpeza de 13/08 apagou; as
+outras **68** (84%) são de fato locais, corretamente presas ao projeto.
+
+**Decisão do Felipe**: quais das 6 candidatas sobem pro `CLAUDE.md` global,
+no formato do CC-38.
 
 ### CC-41 — O painel enxerga os sinais do ciclo ✅ 13/08
 
