@@ -264,12 +264,26 @@ Flutter pronto) ou lixo a remover.
 vault — projetos que ele não abre pra trabalhar, então nunca é lido. Precisa
 de um índice que diga o que vale sempre e o que é específico de projeto.
 
-### CC-41 — O painel enxerga os sinais do ciclo
-Os padrões medidos viram sinal no cockpit: rajada (3+ mensagens em 6min = ou
-o entregável não mudou nada, ou é modo visão), repetição do mesmo pedido
-(gatilho do protocolo de desambiguação), e silêncio maior que a janela de
-atenção de ~10min por projeto. Fecha o ciclo: o que a análise achou vira coisa
-que o painel mostra sozinho.
+### CC-41 — O painel enxerga os sinais do ciclo ✅ 13/08
+
+Rajada (3+ mensagens em 6min) e repetição (sobreposição de palavras 4+ letras
+≥ 60% com uma mensagem anterior) entram como motivo novo no cockpit, peso
+entre `waiting` e `stale`. `src/sinais.mjs` é lógica pura testável, alimentada
+por `src/transcript.mjs` (nova `humanMessagesTail`, cache por tamanho+mtime
+igual ao `lastPrompt`), calculada dentro de `buildJob()` — mesmo lugar que já
+lê o transcript pro último pedido.
+
+**Bug achado pelo próprio teste, corrigido antes de subir**: o colapso de
+"reenvio em <5min substitui" (regra 6 do ciclo) comparava só o tempo, e
+engolia rajada de verdade — três mensagens **diferentes** em 2-3 minutos
+viravam "uma reescrita", zerando o sinal. Corrigido: só colapsa quando a
+mensagem nova tem sobreposição de conteúdo com a anterior (é a mesma ideia
+reescrita), não qualquer par próximo no tempo.
+
+Silêncio (>10min sem mensagem) é calculado e devolvido em `job.sinais`, mas
+**não virou motivo novo no cockpit** — seria redundante com `stale` (mesmo
+limiar, ângulo diferente: um é "o agente travou", outro é "o Felipe foi
+embora"). Fica disponível pra quem quiser usar sem duplicar sinal na tela.
 
 **Decisão pendente do Felipe** (só uma; as outras a evidência resolve): o
 pipeline formal Planner → Tester → Revisor é regra absoluta no global, mas os

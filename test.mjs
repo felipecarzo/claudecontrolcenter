@@ -955,6 +955,50 @@ if (estRotinas.projetos.length) {
   )
 }
 
+// --- sinais (CC-41): pura lógica, mensagens sintéticas, sem tocar disco ---
+{
+  const { sinaisDe, _internals: si } = await import('./src/sinais.mjs')
+  const M = 60_000
+  const msg = (texto, em) => ({ texto, em })
+
+  // 3 em 6min dispara; 3 em 20min não
+  assert.equal(sinaisDe([msg('a', 0), msg('b', 2 * M), msg('c', 5 * M)], { agora: 5 * M }).rajada, true)
+  assert.equal(sinaisDe([msg('a', 0), msg('b', 10 * M), msg('c', 20 * M)], { agora: 20 * M }).rajada, false)
+
+  // reenvio em <5min substitui, não soma — 2 mensagens "rápidas" que na
+  // verdade são a mesma intenção reescrita não podem contar como rajada
+  assert.equal(
+    sinaisDe([msg('sobe o servidor', 0), msg('sobe o dev server por favor', 2 * M)], { agora: 2 * M }).rajada,
+    false, 'duas mensagens em <5min contam como uma só (substituição)',
+  )
+
+  // repetição: sobreposição alta de palavras de 4+ letras dispara
+  assert.equal(
+    sinaisDe([
+      msg('conserta o bug do login que trava no mobile', 0),
+      msg('trabalha em outra coisa agora', 30 * M),
+      msg('o bug do login ainda trava no mobile, não conseguiu resolver ainda?', 60 * M),
+    ], { agora: 60 * M }).repeticao,
+    true,
+  )
+  // mensagens sem nada em comum não disparam falso positivo
+  assert.equal(
+    sinaisDe([msg('sobe o servidor', 0), msg('qual o preço do dólar hoje', 60 * M)], { agora: 60 * M }).repeticao,
+    false,
+  )
+
+  // silêncio: só depois da janela de 10min sem mensagem
+  assert.equal(sinaisDe([msg('a', 0)], { agora: 5 * M }).silencio, false)
+  assert.equal(sinaisDe([msg('a', 0)], { agora: 15 * M }).silencio, true)
+
+  // sem mensagem nenhuma: nada dispara, sem lançar
+  assert.deepEqual(sinaisDe([], { agora: Date.now() }), { rajada: false, repeticao: false, silencio: false })
+
+  // isMeta e afins nunca chegam aqui — filtro é em transcript.mjs (humanText),
+  // sinais.mjs só confia no que recebeu
+  assert.equal(si.sobreposicao(new Set(), new Set(['x'])), 0)
+}
+
 // --- gitlog (CC-35): usa este próprio repositório como fixture — leitura
 // pura, sem risco. O achado real ao testar ao vivo: sem `-C <cwd>`, o `git
 // log` roda sempre na pasta onde o SERVIDOR foi iniciado, não na do projeto

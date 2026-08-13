@@ -1945,6 +1945,8 @@ function viewTodos(jobs) {
 // Cor por tipo de motivo, reusando os tokens de estado que já existem.
 const COR_MOTIVO = {
   travado: 'failed', failed: 'failed', stale: 'waiting',
+  // CC-41: pedem atenção, não são falha — mesma cor de waiting
+  rajada: 'waiting', repeticao: 'waiting',
   waiting: 'waiting', aberto: 'waiting', working: 'working', parado: 'dim',
 }
 

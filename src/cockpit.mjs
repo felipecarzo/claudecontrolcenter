@@ -33,6 +33,16 @@ export function motivoDe(job, agora = Date.now()) {
   if (job.status === 'failed') return { peso: 4, tipo: 'failed', frase: 'falhou', desde: idle }
   // `stale` já é "diz que trabalha e não dá sinal há 10min" — provavelmente travou.
   if (job.stale) return { peso: 4, tipo: 'stale', frase: 'sem sinal', desde: idle }
+  // CC-41: sinais do ciclo, entre waiting (3) e stale/failed (4) — pedem
+  // atenção, mas não são falha. `job.sinais` é injetado por quem chama
+  // (nunca lido aqui: este módulo não toca transcript, mesmo motivo de
+  // `jobs` já ser parâmetro em vez de lido de `~/.claude/jobs`).
+  if (job.sinais?.rajada) {
+    return { peso: 3.5, tipo: 'rajada', frase: '3+ mensagens rápidas — talvez modo visão, ou nada mudou', desde: idle }
+  }
+  if (job.sinais?.repeticao) {
+    return { peso: 3.5, tipo: 'repeticao', frase: 'pedido parecido com um de antes — desambiguar a palavra', desde: idle }
+  }
   if (job.status === 'waiting') return { peso: 3, tipo: 'waiting', frase: 'esperando você', desde: idle }
   if (job.entregueEmAberto) return { peso: 2, tipo: 'aberto', frase: 'entregou com tudo em aberto', desde: idle }
   if (job.status === 'working') return { peso: 1, tipo: 'working', frase: 'trabalhando', desde: idle }

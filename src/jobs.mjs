@@ -7,7 +7,8 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { lastPrompt, intentMatchesTranscript } from './transcript.mjs'
+import { lastPrompt, intentMatchesTranscript, humanMessagesTail } from './transcript.mjs'
+import { sinaisDe } from './sinais.mjs'
 
 export const JOBS_DIR = path.join(os.homedir(), '.claude', 'jobs')
 
@@ -186,6 +187,8 @@ export function buildJob(id, state, meta, pins, now) {
   const pinIndex = pins.indexOf(id)
 
   const last = lastPrompt(state.linkScanPath)
+  // CC-41: rajada/repetição, dos padrões medidos no ciclo Felipe -> IA -> Felipe.
+  const sinais = sinaisDe(humanMessagesTail(state.linkScanPath), { agora: now })
 
   return {
     id,
@@ -211,6 +214,7 @@ export function buildJob(id, state, meta, pins, now) {
     intent: state.displayIntent || state.intent || '',
     // false = o intent é de outra conversa; null = sem transcript pra comparar
     intentTrustworthy: intentMatchesTranscript(state.intent, state.linkScanPath),
+    sinais,
     cwd,
     worktreePath: state.worktreePath || null,
     // `fan` guarda resíduo da última tool mesmo depois do job terminar;

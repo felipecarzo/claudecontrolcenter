@@ -137,4 +137,52 @@ export function intentMatchesTranscript(intent, file) {
   return norm(intent) === norm(first)
 }
 
+const tailCache = new Map() // path -> { size, mtimeMs, mensagens }
+
+/**
+ * CC-41: as últimas mensagens humanas com timestamp, pra detectar rajada e
+ * repetição — `lastPrompt` só devolve uma, sem hora. Só a cauda (janela curta
+ * é o que importa aqui), ordenado do mais antigo pro mais novo.
+ *
+ * Cache por tamanho+mtime, mesmo padrão de `lastPrompt`: isto é chamado a
+ * cada job em cada tique de 2s, e sem cache reeleria o arquivo toda vez
+ * mesmo sem nada de novo escrito.
+ */
+export function humanMessagesTail(file, { bytes = TAILS[0] } = {}) {
+  if (!file) return []
+  let stat
+  try {
+    stat = fs.statSync(file)
+  } catch {
+    return []
+  }
+  const hit = tailCache.get(file)
+  if (hit && hit.size === stat.size && hit.mtimeMs === stat.mtimeMs) return hit.mensagens
+
+  let tail
+  try {
+    tail = readTail(file, bytes)
+  } catch {
+    return []
+  }
+  const lines = tail.text.split('\n')
+  if (tail.partial) lines.shift() // primeira linha da cauda vem cortada ao meio
+  const out = []
+  for (const line of lines) {
+    const l = line.trim()
+    if (!l || !l.includes('"user"')) continue
+    let entry
+    try {
+      entry = JSON.parse(l)
+    } catch {
+      continue
+    }
+    const t = humanText(entry)
+    const em = entry.timestamp ? Date.parse(entry.timestamp) : NaN
+    if (t && Number.isFinite(em)) out.push({ texto: t, em })
+  }
+  tailCache.set(file, { size: stat.size, mtimeMs: stat.mtimeMs, mensagens: out })
+  return out
+}
+
 export const _internals = { humanText, scanTail, scanLines }
