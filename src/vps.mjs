@@ -15,17 +15,28 @@ const MARCA = {
   nginx: '===NGINX===', pm2: '===PM2===', docker: '===DOCKER===',
 }
 
-// Um comando só (menos round-trips SSH que um por seção). `-k` no df força
-// bloco de 1024 bytes — sem isso o padrão POSIX é bloco de 512 e a conta de
-// GB sai errada pela metade.
-const COMANDO = [
+/**
+ * Um comando só (menos round-trips SSH que um por seção). `-k` no df força
+ * bloco de 1024 bytes — sem isso o padrão POSIX é bloco de 512 e a conta de
+ * GB sai errada pela metade.
+ *
+ * O `pm2 jlist` muda com o modo. Por SSH (`local=false`) já roda como root,
+ * pega os processos direto. No modo local (`local=true`) o painel roda como
+ * `claudedev`, e o PM2 de produção é do `root` — cada usuário tem o próprio
+ * daemon PM2, então sem escalar o retrato vinha sempre vazio, escondendo
+ * justamente os sites de cliente no ar. Decisão do Felipe em 13/08: `sudo -n`
+ * restrito a esse comando único via `sudoers` (infra da VPS, fora deste
+ * repositório) — `-n` nunca espera senha, falha rápido se o `sudoers` não
+ * estiver configurado ainda, em vez de travar o comando inteiro.
+ */
+const comando = (local) => [
   `echo '${MARCA.host}'`, 'hostname', 'uptime',
   `echo '${MARCA.ram}'`, `free -m | awk 'NR==2{print $2,$3}'`,
   `echo '${MARCA.disco}'`, `df -Pk / | awk 'NR==2{print $2,$3}'`,
   `echo '${MARCA.nginx}'`,
   `for f in /etc/nginx/sites-enabled/*; do [ -f "$f" ] && echo ">>$(basename "$f")" `
     + `&& grep -hE 'server_name|proxy_pass|root ' "$f" | sed 's/^[[:space:]]*//;s/;$//'; done 2>/dev/null`,
-  `echo '${MARCA.pm2}'`, `pm2 jlist 2>/dev/null || echo '[]'`,
+  `echo '${MARCA.pm2}'`, `${local ? 'sudo -n pm2 jlist' : 'pm2 jlist'} 2>/dev/null || echo '[]'`,
   `echo '${MARCA.docker}'`,
   // `|| true` no fim: sem docker (ou sem permissão), o comando composto
   // inteiro saía com código != 0, e o painel tratava isso como "SSH falhou"
@@ -116,18 +127,19 @@ export function configurada() {
 export async function atualizarSnapshot() {
   const cfg = readConfig().vps
 
+  const modoLocal = local()
   let r
-  if (local()) {
-    r = await quietAsync('bash', ['-lc', COMANDO], 25000)
+  if (modoLocal) {
+    r = await quietAsync('bash', ['-lc', comando(true)], 25000)
   } else {
     if (!cfg?.host) throw new Error('configure host, usuário e chave antes de atualizar')
     const args = [
       '-i', cfg.chave, '-o', 'ConnectTimeout=15', '-o', 'BatchMode=yes',
-      '-o', 'StrictHostKeyChecking=accept-new', `${cfg.usuario || 'root'}@${cfg.host}`, COMANDO,
+      '-o', 'StrictHostKeyChecking=accept-new', `${cfg.usuario || 'root'}@${cfg.host}`, comando(false),
     ]
     r = await quietAsync('ssh', args, 25000)
   }
-  if (!r.ok) throw new Error(`${local() ? 'comando local' : 'SSH'} falhou: ${r.out.slice(0, 300) || 'sem resposta'}`)
+  if (!r.ok) throw new Error(`${modoLocal ? 'comando local' : 'SSH'} falhou: ${r.out.slice(0, 300) || 'sem resposta'}`)
 
   const partes = secoes(r.out)
   const [totalMB, usadoMB] = (partes.ram || '').split(/\s+/).map(Number)
