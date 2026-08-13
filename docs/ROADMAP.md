@@ -2,6 +2,12 @@
 
 Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
+> **Vai executar alguma destas tasks?** Os planos estão em [[PLANOS]], um
+> arquivo por task em `docs/planos/`. Eles dizem onde mexer, o que reusar e
+> quais das armadilhas do `CLAUDE.md` se aplicam. Escritos em 13/08 por uma
+> sessão Opus, justamente para as sessões de execução não precisarem redescobrir
+> isso.
+
 ## Aberto
 
 ### CC-14 — O tray do Claude Code mostra porcentagem errada
@@ -210,6 +216,99 @@ pipeline formal Planner → Tester → Revisor é regra absoluta no global, mas 
 diários do próprio Control Center dizem "sem Tester nem Revisor formais" e
 nunca foi cobrado. Ou a regra vira condicional (quando vale, quando não), ou
 o pipeline passa a valer de verdade aqui também.
+
+### Frente: O painel dono das rotinas — ver [[produto/FRAMEWORK-ROTINAS]]
+
+Visão do Felipe em 13/08, registrada com as palavras dele, ainda sem decisão de
+escopo. Cinco peças: retroalimentação entre projetos, registro total, o painel
+traduzir, o painel criar e gerenciar as rotinas na máquina, e formato de
+framework por cockpit no lugar de linguagem natural avulsa.
+
+A análise contra a evidência do repo está no documento. O resumo: as peças
+"traduzir" e "gerenciar rotina" atacam três dos cinco buracos medidos em
+[[produto/ROTINAS-HOJE]]; a peça "registro total" tem um contra-exemplo do
+mesmo dia (o vault de 518 arquivos gerados por rotina, esvaziado em 13/08 com
+o veredito "tá tudo repetido ou ultrapassado").
+
+**CC-42 feito em 13/08**: a aba "rotinas" mostra as cópias de comando dentro
+dos projetos, quanto cada uma divergiu da global, e conserta sob clique (usar a
+global, ou apagar a cópia), sempre com a comparação disponível antes de
+escrever. Achado ao ligar: **22 rotinas desatualizadas em 5 projetos**, sendo o
+`end-session.md` o pior caso (224 linhas contra 259). Nada foi sincronizado
+ainda — a decisão do que consertar é do Felipe, cópia por cópia.
+
+Quatro decisões fechadas em 13/08, detalhadas no documento: o framework é
+**ferramenta com liga/desliga**, não obrigação (reusa `cc hooks on|off` e
+`isEnabled()`, sem mecanismo novo); começa pelo **nível baixo** com a D1 só
+planejada; o **fluxo do framework vem depois** do sistema de distribuição
+existir; e a peça "registro total" **não entra como está**.
+
+### CC-43 — Decisão D1: o painel escrever `settings.json` (planejada, não feita)
+
+O plano de segurança está escrito em [[produto/FRAMEWORK-ROTINAS]]: backup
+datado antes de escrever, validação com reversão automática, escrita cirúrgica
+nunca do arquivo inteiro, um hook só por uma semana, botão de pânico. Fazer ou
+não depende de uma pergunta de valor, não técnica: **o que um hook registrado
+pelo painel faz que um comando distribuído não faz?** Se o CC-42 no ar já
+resolver a dor, a D1 perde o motivo.
+
+### CC-44 — A regra: global vale para tudo, projeto só acrescenta
+
+Decisão do Felipe em 13/08, confirmada por medição das 22 divergentes: o
+conteúdo "próprio" das cópias é (a) a mesma coisa dita de um jeito mais velho,
+(b) erro ativo — o `end-session.md` do `app_maurice` se diz do "projeto Juju" e
+manda ler a memória de outro projeto — e (c) um punhado que, se é mesmo
+específico, cabe em comando de nome próprio.
+
+Não dá pra mesclar: quem resolve a precedência é o Claude Code, e ele substitui
+por nome de arquivo. Então a regra é convenção, com duas formas de acrescentar
+sem sobrescrever: **nome próprio** (`/rotina-do-projeto` em vez de uma segunda
+versão de `/end-session`, como já fazem `authorize`, `tickets` e `routia`, que
+nunca deram problema) ou **a global lendo o projeto** (o esqueleto global manda
+"se existir `docs/rotina-extra.md`, siga também"). Falta o Felipe mandar aplicar
+— o CC-42 já mostra onde a convenção está quebrada e desfaz sob clique.
+
+**Gatilho do framework, resolvido**: o Felipe liga **no início do projeto**, e
+vai desenhar o framework ele mesmo. O painel entra como quem liga, distribui e
+mostra — não como quem inventa o método.
+
+**Aplicado em 13/08**: 21 cópias apagadas (16 velhas + 5 idênticas), tudo
+versionado antes. Sobraram as 12 de nome próprio e as 4 `set-role`, que têm
+customização real e viram decisão dele. Detalhe e o que se perdeu em
+[[produto/FRAMEWORK-ROTINAS]].
+
+### CC-45 — Nenhuma rotina global escreve mais no vault ✅ 13/08
+
+Avaliação de 13/08 (ver [[produto/ROTINAS-AVALIACAO]]): os passos **5.5**
+(Kanban do vault, 51 linhas) e **5.6** (daily do vault, 48 linhas) são os dois
+maiores da rotina e somam **38% das 259 linhas** — escrevendo justamente no
+vault que o Felipe esvaziou no mesmo dia.
+
+E continuam rodando: o vault foi limpo às ~03:50, e às 04:18/04:21 outra sessão
+já tinha recriado `daily/2026-08-13.md` e um kanban de 200 linhas. A decisão de
+parar estava **documentada** num LEIA-ME dentro do próprio vault, e não durou
+meia hora — demonstração do buraco nº 2 de [[produto/ROTINAS-HOJE]]:
+**instrução escrita é sugestão, hook é regra.**
+
+O dado não se perde: "o que só o Felipe pode fazer" vira `blockers` no
+`meta.json`, que o cartão do agente já mostra. É troca de destino, não deleção.
+
+**Aplicado**, e eram **quatro** rotinas escrevendo lá, não duas:
+`end-session` (259 → 176 linhas), `novo-projeto` (472 → 316, o PASSO 7 criava
+task, nota e dois kanbans em pastas que já não existem), `deps` (108 → 106) e
+`daily-log` (108 → 89, agora escreve em `docs/diario/` do próprio projeto).
+**−243 linhas**, varredura confirma que só sobraram as linhas que *proíbem* a
+escrita, e o destino novo foi testado de ponta a ponta (`cc set` com `blockers`
+aparece no `/api/jobs`). A entrada `/novo-projeto TK-{ID}` foi aposentada junto:
+lia uma pasta apagada.
+
+**Falta ainda**, da mesma avaliação, e são os itens 2 e 3 que o Felipe quis
+discutir depois: o PASSO 6 (relatório de 31 linhas que ele lê uma vez) virar
+`cc set` de fechamento, e a divisão diário × memória × HANDOFF ganhar uma regra
+de uma frase. Mais a poda da estrutura de scrum no `- projeto_template` para o
+que sobrevive ao uso (`ROADMAP.md`, `HANDOFF.md`, `diario/`) — o `VIASMAP.md`
+do vault tinha as oito vias livres e zero cruzamentos desde que nasceu. Casa
+com o CC-39.
 
 ## Limites aceitos hoje
 

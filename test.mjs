@@ -865,6 +865,36 @@ assert.equal(ck.notaDe({ blockers: ['x'], detail: 'y' }).tipo, 'bloqueio')
 assert.equal(ck.notaDe({ stale: true, blockers: ['x'] }).tipo, 'stale')
 assert.equal(ck.notaDe({}), null)
 
+// --- rotinas: comparação e travas, sem escrever nada ---
+const rt = await import('./src/rotinas.mjs')
+const estRotinas = rt.estado()
+assert.ok(Array.isArray(estRotinas.globais), 'estado() devolve a lista de rotinas globais')
+for (const p of estRotinas.projetos) {
+  for (const r of p.rotinas) {
+    assert.ok(['igual', 'divergente', 'propria'].includes(r.situacao), `situação inesperada: ${r.situacao}`)
+    // divergente sem contagem seria o pior dos mundos: acusa o problema e não
+    // diz o tamanho dele, então o Felipe não sabe se vale abrir
+    if (r.situacao === 'divergente') assert.ok(r.diferencas > 0, `${p.projeto}/${r.nome}: divergente com 0 diferenças`)
+    if (r.situacao === 'igual') assert.equal(r.diferencas, 0)
+  }
+}
+
+// As duas escritas só aceitam .md simples dentro de projeto conhecido. Sem
+// isso, um nome vindo do navegador escreveria em qualquer lugar do disco.
+const projetoReal = estRotinas.projetos[0]?.dir || process.cwd()
+assert.throws(() => rt.sincronizar(projetoReal, '../../evil.md'), /inválido/, 'aceitou subir de pasta no nome')
+assert.throws(() => rt.sincronizar(projetoReal, 'x.txt'), /inválido/, 'aceitou arquivo que não é .md')
+assert.throws(() => rt.remover('C:\\Windows', 'commit-now.md'), /fora da base/, 'aceitou pasta fora da base')
+// caminho legítimo com barra normal (é como o navegador manda) não pode ser
+// recusado: comparar como texto cru rejeitava, `path.resolve` conserta
+if (estRotinas.projetos.length) {
+  assert.throws(
+    () => rt.sincronizar(projetoReal.replace(/\\/g, '/'), 'nao-existe-na-global.md'),
+    /não existe rotina global/,
+    'projeto legítimo com barra normal foi recusado como se fosse de fora',
+  )
+}
+
 // --- daemon: caminhos, sem escrever nada ---
 const dm = await import('./src/daemon.mjs')
 assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')

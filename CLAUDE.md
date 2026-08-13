@@ -24,6 +24,8 @@ src/
                  duplicados, subir de novo e as travas do encerrar
   docker.mjs     containers Docker desta máquina (docker ps), pro painel e o PiP
   vps.mjs        retrato da VPS por SSH — nginx, PM2, Docker — só sob clique
+  rotinas.mjs    os comandos `/algo` copiados dentro dos projetos: o que está
+                 velho, e o conserto sob clique
   config.mjs     interruptor global e por projeto
   notes.mjs      bloco de notas da máquina, em ~/.claude
   tempo.mjs      horas por projeto e custo de token, lidos dos transcritos
@@ -144,6 +146,17 @@ errada por definição.
   Chrome nunca considera o load terminado.
 - **O servidor não recarrega módulo.** Mexeu em `src/`, reinicie o processo —
   senão você valida código velho achando que é novo.
+- **`pkill -f` não mata o Node no Git Bash do Windows, e falha calado.** Achado
+  no CC-42: `pkill -f "port 8123"` seguido de subir de novo parecia funcionar,
+  mas a porta continuava servida pelo processo ANTIGO — e o novo morria em
+  silêncio por a porta estar ocupada. Resultado: uma correção real em
+  `rotinas.mjs` foi testada cinco vezes contra o binário velho, e o sintoma
+  ("o módulo funciona no `node -e`, mas a rota HTTP recusa") apontava pro lugar
+  errado. Ao final havia **cinco processos** acumulados na mesma porta. Matar
+  de verdade é pelo PowerShell, e conferindo depois:
+  `Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -like '*8123*' } | Stop-Process -Force`.
+  Regra prática: quando o módulo passa no teste direto e falha pela rota, o
+  suspeito nº 1 é processo velho, não o código.
 - **Modelo não é campo próprio**, sai de `respawnFlags` (`--model opus[1m]`).
 - **`state.intent` não serve como "o pedido".** É o primeiro prompt, congelado:
   sessão longa que mudou de assunto mostra coisa velha. E em job respawnado ele
@@ -232,6 +245,16 @@ errada por definição.
 - **Modelo vem ora com alias, ora com data.** `claude-haiku-4-5` e
   `claude-haiku-4-5-20251001` são o mesmo preço; sem `precoDe()` cortando o
   sufixo, o modelo cai calado na lista de ignorados e o custo sai menor.
+- **A cópia de rotina dentro do projeto VENCE a global, e é assim que uma
+  rotina boa fica desligada em silêncio.** `/start-session` é o arquivo
+  `start-session.md`, e ele existe em `~/.claude/commands/` e em
+  `{projeto}/.claude/commands/` — o segundo ganha. Medido no CC-42: **22
+  rotinas desatualizadas em 5 projetos**, com o `end-session.md` do
+  `app_maurice` em 224 linhas contra 259 da global, e nenhuma das cinco cópias
+  de `start-session.md` mencionando o Método Routia, que a global traz 6 vezes.
+  Uma delas ainda se apresentava como "projeto Juju" dentro do `app_maurice`.
+  Comparar por `mtime` não serve (copiar pasta renova a data) e comparar texto
+  cru acusa CRLF como diferença: `rotinas.mjs` normaliza antes.
 - **Varrer portas leva ~3s.** Só a rota `/api/servers` faz isso, com cache de
   15s, e a aba só consulta quando aberta. Nunca colocar isso no `/api/jobs` nem
   no stream.

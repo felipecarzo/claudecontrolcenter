@@ -34,6 +34,7 @@ import { porProjeto } from './cockpit.mjs'
 import { listarContainers } from './docker.mjs'
 import { atualizarSnapshot } from './vps.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
+import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -189,6 +190,23 @@ function handler(req, res) {
     return send(res, 200, {
       hooks: HOOKS.map((h) => ({ ...h, ligado: hookEnabled(h.id), registrado: registrados[h.id] })),
     })
+  }
+
+  // Rotinas (`/comando`) copiadas dentro dos projetos. Varre disco de ~20
+  // projetos, então é só sob clique, igual a processos e VPS. Nunca no stream.
+  // `?dir=&nome=` traz os dois textos pra conferir antes de qualquer escrita.
+  if (url.pathname === '/api/rotinas') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e4, ({ dir, nome, acao }) => {
+        if (acao === 'sincronizar') return sincronizarRotina(dir, nome)
+        if (acao === 'remover') return removerRotina(dir, nome)
+        throw new Error(`ação desconhecida: ${acao}`)
+      })
+    }
+    const dir = url.searchParams.get('dir')
+    const nome = url.searchParams.get('nome')
+    if (dir && nome) return send(res, 200, compararRotina(dir, nome))
+    return send(res, 200, estadoRotinas())
   }
 
   // O que a janela flutuante mostra. GET pra montar o painel de configurações

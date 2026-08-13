@@ -992,6 +992,35 @@
   .hk-badge.ok { color: var(--done); border-color: color-mix(in srgb, var(--done) 40%, var(--line)); }
   .hk-badge.bad { color: var(--waiting); border-color: color-mix(in srgb, var(--waiting) 40%, var(--line)); }
 
+  /* ---------- rotinas (comandos copiados dentro dos projetos) ---------- */
+  .rt-lista { display: grid; gap: 14px; max-width: 1000px; }
+  .rt-proj { border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+  .rt-proj > header {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--line);
+  }
+  .rt-proj > header b { font-size: 13px; }
+  .rt-linha {
+    display: grid; grid-template-columns: minmax(340px, 1fr) auto auto; gap: 10px; align-items: center;
+    padding: 6px 12px; border-bottom: 1px solid var(--line); font-size: 12px;
+  }
+  .rt-linha:last-child { border-bottom: 0; }
+  .rt-linha:hover { background: var(--surface); }
+  /* uma linha por rotina: nome e detalhe lado a lado, sem quebra. "archive-"
+     em cima de "sprint", ou o detalhe caindo para baixo, dobram a altura da
+     lista e tornam impossível varrer os 22 casos de relance. */
+  .rt-nome { display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; }
+  .rt-nome b { font-weight: 500; }
+  .rt-nome .dim { overflow: hidden; text-overflow: ellipsis; }
+  .rt-acoes { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .rt-diff {
+    margin: 0; padding: 10px 12px; max-height: 320px; overflow: auto;
+    background: var(--surface); border-top: 1px solid var(--line);
+    font-size: 11px; line-height: 1.45; white-space: pre-wrap; word-break: break-word;
+  }
+  .rt-diff ins { background: color-mix(in srgb, var(--done) 22%, transparent); text-decoration: none; }
+  .rt-diff del { background: color-mix(in srgb, var(--failed) 22%, transparent); text-decoration: none; }
+
   /* ---------- bloco de notas ---------- */
   .n-head {
     position: sticky; top: 0; z-index: 5; background: var(--surface);
@@ -1257,6 +1286,7 @@ const TABS = [
   { id: 'preco', label: 'preço' },
   { id: 'agenda', label: 'agenda' },
   { id: 'hooks', label: 'hooks' },
+  { id: 'rotinas', label: 'rotinas' },
   { id: 'servidores', label: 'servidores' },
   { id: 'vps', label: 'VPS' },
   { id: 'escritorio', label: 'escritório' },
@@ -3193,6 +3223,123 @@ function viewHooks() {
   return `<div class="hk-lista">${linhas}</div>`
 }
 
+/* ========================== aba: rotinas ==========================
+   Comando (`/start-session`) é um arquivo .md, e ele mora em dois lugares: na
+   pasta global e dentro do projeto. O do PROJETO vence, então cópia velha
+   desliga a rotina boa em silêncio, que foi exatamente o que estava
+   acontecendo. Esta aba mostra onde isso está e conserta sob clique.
+
+   Varre disco de ~20 projetos: carrega só ao abrir a aba, nunca no stream. */
+
+let ROTINAS_DATA = null
+let ROTINA_ABERTA = null // `${dir}|${nome}` da comparação expandida
+
+async function carregarRotinas(force) {
+  if (ROTINAS_DATA && !force) return
+  try {
+    ROTINAS_DATA = await (await fetch('/api/rotinas')).json()
+  } catch {
+    ROTINAS_DATA = null
+  }
+  render()
+}
+
+async function verRotina(dir, nome) {
+  const chave = dir + '|' + nome
+  if (ROTINA_ABERTA && ROTINA_ABERTA.chave === chave) { ROTINA_ABERTA = null; return render() }
+  ROTINA_ABERTA = { chave, carregando: true }
+  render()
+  try {
+    const q = `dir=${encodeURIComponent(dir)}&nome=${encodeURIComponent(nome)}`
+    ROTINA_ABERTA = { chave, ...(await (await fetch('/api/rotinas?' + q)).json()) }
+  } catch {
+    ROTINA_ABERTA = null
+  }
+  render()
+}
+
+async function acaoRotina(dir, nome, acao, projeto) {
+  const aviso = acao === 'sincronizar'
+    ? `Sobrescrever "${nome}" em ${projeto} com a versão global?\n\nO que essa cópia tiver de próprio (o nome do projeto no texto, por exemplo) some.`
+    : `Apagar "${nome}" de ${projeto}?\n\nA rotina global volta a valer ali, que é o normal.`
+  if (!confirm(aviso)) return
+  const r = await fetch('/api/rotinas', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ dir, nome, acao }),
+  })
+  const out = await r.json()
+  if (!out.ok) return alert(out.error)
+  ROTINA_ABERTA = null
+  return carregarRotinas(true)
+}
+
+/** Comparação linha a linha, só pra ler: o que só a global tem, o que só a cópia tem. */
+function diffTexto(global, local) {
+  const g = (global || '').replace(/\r\n/g, '\n').split('\n')
+  const l = (local || '').replace(/\r\n/g, '\n').split('\n')
+  const setG = new Set(g)
+  const setL = new Set(l)
+  const soGlobal = g.filter((x) => x.trim() && !setL.has(x))
+  const soLocal = l.filter((x) => x.trim() && !setG.has(x))
+  const bloco = (titulo, linhas, tag) => linhas.length
+    ? `<b>${titulo}</b>\n<${tag}>${esc(linhas.slice(0, 40).join('\n'))}</${tag}>${linhas.length > 40 ? `\n<span class="dim">… e mais ${linhas.length - 40} linha(s)</span>` : ''}\n\n`
+    : ''
+  return bloco('só na global (falta na cópia):', soGlobal, 'ins')
+    + bloco('só na cópia do projeto:', soLocal, 'del')
+    || '<span class="dim">sem diferença de conteúdo</span>'
+}
+
+function viewRotinas() {
+  if (!ROTINAS_DATA) return '<div class="empty">carregando…</div>'
+  const projetos = ROTINAS_DATA.projetos || []
+  if (!projetos.length) {
+    return '<div class="empty">nenhum projeto tem cópia de rotina: a global vale em todos, que é o ideal</div>'
+  }
+
+  const totalDiv = projetos.reduce((s, p) => s + p.divergentes, 0)
+
+  const rotulo = {
+    divergente: '<span class="hk-badge bad">desatualizada</span>',
+    igual: '<span class="hk-badge ok">igual à global</span>',
+    propria: '<span class="hk-badge">só deste projeto</span>',
+  }
+
+  const linhas = (p) => p.rotinas.map((r) => {
+    const chave = p.dir + '|' + r.nome
+    const aberta = ROTINA_ABERTA && ROTINA_ABERTA.chave === chave
+    const detalhe = r.situacao === 'divergente'
+      ? `<span class="dim">${r.linhas} linhas, a global tem ${r.linhasGlobal} · ${r.diferencas} linha(s) diferentes</span>`
+      : `<span class="dim">${r.linhas} linhas</span>`
+    const acoes = r.situacao === 'propria' ? '' : `
+      <button class="btn" data-rt-ver="${esc(chave)}">${aberta ? 'fechar' : 'comparar'}</button>
+      <button class="btn" data-rt-sync="${esc(chave)}">usar a global</button>
+      <button class="btn" data-rt-del="${esc(chave)}">apagar a cópia</button>`
+    const corpo = aberta
+      ? `<pre class="rt-diff">${ROTINA_ABERTA.carregando ? 'carregando…' : diffTexto(ROTINA_ABERTA.global, ROTINA_ABERTA.local)}</pre>`
+      : ''
+    return `
+      <div class="rt-linha">
+        <span class="rt-nome"><b>${esc(r.nome.replace(/\.md$/, ''))}</b>${detalhe}</span>
+        ${rotulo[r.situacao] || ''}
+        <span class="rt-acoes">${acoes}</span>
+      </div>${corpo}`
+  }).join('')
+
+  const cartoes = projetos.map((p) => `
+    <div class="rt-proj">
+      <header>
+        <b>${esc(p.projeto)}</b>
+        <span class="dim">${p.rotinas.length} rotina(s)${p.divergentes ? ` · ${p.divergentes} desatualizada(s)` : ''}</span>
+      </header>
+      ${linhas(p)}
+    </div>`).join('')
+
+  const resumo = totalDiv
+    ? `<div class="dim" style="margin-bottom:12px">${totalDiv} rotina(s) desatualizada(s) em ${projetos.filter((p) => p.divergentes).length} projeto(s). A cópia do projeto vence a global, então é essa versão velha que roda hoje.</div>`
+    : '<div class="dim" style="margin-bottom:12px">nenhuma cópia desatualizada</div>'
+
+  return `${resumo}<div class="rt-lista">${cartoes}</div>`
+}
+
 const RODAPE = {
   agentes: 'clique num cartão para abrir o detalhe; passe o mouse nele para retomar (↻), fixar (★) ou copiar o caminho (⧉); as bolinhas são as tarefas, cheias as concluídas',
   todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
@@ -3202,6 +3349,7 @@ const RODAPE = {
   preco: 'clique numa linha para ver por que aquele nível foi sugerido, corrigir o nível e digitar quanto tempo você acha que levou',
   agenda: 'o que está marcado no Google Calendar, lido pelo endereço secreto em iCal — o endereço fica só nesta máquina e nunca aparece nesta tela',
   hooks: 'liga/desliga hooks do Claude Code sem mexer no settings.json — "registrado" diz se o script já está de fato configurado lá; desligado aqui vira no-op silencioso, nunca erro',
+  rotinas: 'comandos (/start-session, /end-session) copiados dentro dos projetos. A cópia do projeto VENCE a global, então cópia velha é a que roda; compare antes de usar a global ou apagar a cópia',
   servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
   vps: 'retrato por SSH, só quando você clica em atualizar — nunca sozinho. Fica salvo até o próximo clique',
   escritorio: 'os agentes desenhados trabalhando; PiP solta numa janelinha que fica por cima de tudo — o painel da VPS depende do túnel SSH, que este botão abre',
@@ -3222,6 +3370,7 @@ function render() {
     preco: () => viewPreco(),
     agenda: () => viewAgenda(),
     hooks: () => viewHooks(),
+    rotinas: () => viewRotinas(),
     servidores: () => viewServidores(),
     vps: () => viewVps(),
     escritorio: () => viewEscritorio(),
@@ -3948,6 +4097,7 @@ document.addEventListener('click', async (e) => {
     if (tab === 'vps') carregarVps()
     if (tab === 'agenda') carregarAgenda()
     if (tab === 'hooks') carregarHooks()
+    if (tab === 'rotinas') carregarRotinas()
     if (tab === 'escritorio') carregarPaineis()
     if (tab === 'tempo' || tab === 'graficos') carregarTempo()
     if (tab === 'preco') carregarPreco()
@@ -4052,6 +4202,21 @@ document.addEventListener('click', async (e) => {
   }
 
   if (t.closest('[data-processos-atualizar]')) return carregarProcessos(true)
+
+  // As três ações da aba de rotinas. A chave carrega pasta + nome juntos
+  // porque o mesmo nome de rotina existe em vários projetos.
+  const rtVer = t.closest('[data-rt-ver]')
+  if (rtVer) return verRotina(...rtVer.dataset.rtVer.split('|'))
+  const rtSync = t.closest('[data-rt-sync]')
+  if (rtSync) {
+    const [dir, nome] = rtSync.dataset.rtSync.split('|')
+    return acaoRotina(dir, nome, 'sincronizar', dir.split(/[\\/]/).pop())
+  }
+  const rtDel = t.closest('[data-rt-del]')
+  if (rtDel) {
+    const [dir, nome] = rtDel.dataset.rtDel.split('|')
+    return acaoRotina(dir, nome, 'remover', dir.split(/[\\/]/).pop())
+  }
 
   if (t.closest('[data-vps-config]')) { vpsConfigAberto = !vpsConfigAberto; return render() }
   if (t.closest('[data-vps-salvar]')) return salvarVpsConfig()
@@ -4408,6 +4573,7 @@ fetch('/api/jobs').then((r) => r.json()).then((d) => {
   if (tab === 'vps') carregarVps()
   if (tab === 'agenda') carregarAgenda()
   if (tab === 'hooks') carregarHooks()
+  if (tab === 'rotinas') carregarRotinas()
   if (srvNovo) carregarProjetos()
   if (tab === 'escritorio') carregarPaineis()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()
@@ -4419,6 +4585,11 @@ carregarPip()
 // fechada — o cache de 15s no servidor evita que isto pese a varredura de portas
 carregarServidores()
 if (!params.has('static')) setInterval(() => carregarServidores(true), 20000)
+
+// Abrir direto na aba de rotinas (link salvo, ou `?tab=rotinas` da captura)
+// precisa de uma leitura aqui: as outras chegam pelo stream, e com `static`
+// ele nem existe, e a aba ficaria em "carregando…" para sempre.
+if (tab === 'rotinas') carregarRotinas()
 
 fetch('/api/graficos').then((r) => r.json()).then((d) => {
   GRAFICOS = d.graficos
