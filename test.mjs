@@ -727,6 +727,39 @@ assert.equal(registrado(HOOKS.find((h) => h.id === 'git-add-guard'), settingsFak
 // settings.json ausente/quebrado: nenhum hook aparece registrado, sem lançar
 assert.equal(registrado(HOOKS.find((h) => h.id === 'rota-guard'), null), false)
 
+// --- Método Routia: instalar o quadro, tudo dentro de uma pasta temporária ---
+const { detectarPastas, instalarRotas } = await import('./src/routia.mjs')
+const tmpRotia = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-routia-'))
+
+// apps/tools vence quando existem, mesmo com src do lado
+fs.mkdirSync(path.join(tmpRotia, 'apps'))
+fs.mkdirSync(path.join(tmpRotia, 'src'))
+assert.deepEqual(detectarPastas(tmpRotia), ['apps'])
+
+// só src: projeto de app único, como este aqui
+const tmpSrc = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-routia-'))
+fs.mkdirSync(path.join(tmpSrc, 'src'))
+assert.deepEqual(detectarPastas(tmpSrc), ['src'])
+
+// nem apps/tools nem src: cai no hardcode antigo, sem lançar
+const tmpVazio = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-routia-'))
+assert.deepEqual(detectarPastas(tmpVazio), ['apps', 'tools'])
+
+// instala de verdade, com o front-matter certo
+const rotiaR1 = instalarRotas(tmpSrc)
+assert.equal(rotiaR1.acao, 'criado')
+assert.deepEqual(rotiaR1.pastas, ['src'])
+const conteudo = fs.readFileSync(rotiaR1.arquivo, 'utf8')
+assert.match(conteudo, /pastas-controladas: \[src\]/)
+
+// nunca sobrescreve um quadro que já existe
+fs.writeFileSync(rotiaR1.arquivo, conteudo.replace('🟢 livre', '🔴 ocupada — NÃO PODE SUMIR'))
+const rotiaR2 = instalarRotas(tmpSrc)
+assert.equal(rotiaR2.acao, 'ja-existe')
+assert.match(fs.readFileSync(rotiaR1.arquivo, 'utf8'), /NÃO PODE SUMIR/, 'instalarRotas sobrescreveu quadro com dado real')
+
+for (const d of [tmpRotia, tmpSrc, tmpVazio]) fs.rmSync(d, { recursive: true, force: true })
+
 // --- daemon: caminhos, sem escrever nada ---
 const dm = await import('./src/daemon.mjs')
 assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')

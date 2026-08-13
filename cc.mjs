@@ -11,10 +11,13 @@
 //   node cc.mjs on|off [--project X]   liga/desliga o reporte
 //   node cc.mjs hooks                  lista hooks e se estão ligados
 //   node cc.mjs hooks on|off <id>      liga/desliga um hook específico
+//   node cc.mjs routia install [pasta] cria docs/ROTAS-ATIVAS.md pro Método Routia
 //   node cc.mjs json               despeja o estado atual e sai
 //
 //   flags: --no-web  --web-only  --port <n>
 
+import fs from 'node:fs'
+import path from 'node:path'
 import { readJobs, summarize, writeMeta, marcarTodo, metaStatus, currentJobId } from './src/jobs.mjs'
 import { startTui } from './src/tui.mjs'
 import { startWeb } from './src/web.mjs'
@@ -22,6 +25,7 @@ import * as daemon from './src/daemon.mjs'
 import * as install from './src/install.mjs'
 import { isEnabled, setEnabled, describe, hookEnabled, setHookEnabled } from './src/config.mjs'
 import { HOOKS } from './src/hooksCatalogo.mjs'
+import { instalarRotas, detectarPastas } from './src/routia.mjs'
 
 const argv = process.argv.slice(2)
 const FLAGS_WITH_VALUE = new Set(['--port', '--job', '--project'])
@@ -181,6 +185,25 @@ switch (cmd) {
     for (const h of HOOKS) {
       const on = hookEnabled(h.id)
       console.log(`${on ? '●' : '○'} ${h.id.padEnd(14)} ${h.evento.padEnd(14)} ${on ? 'ligado' : 'desligado'}${h.implementado ? '' : '  (ainda não implementado)'}`)
+    }
+    break
+  }
+
+  // Instala o quadro do Método Routia num projeto. O hook que bloqueia
+  // (rota-guard.mjs) já roda global — isto só cria docs/ROTAS-ATIVAS.md com
+  // o escopo de pasta chutado pra estrutura real, sem nunca sobrescrever.
+  case 'routia': {
+    if (arg !== 'install') die(`uso: node cc.mjs routia install [pasta]\nsem pasta, usa o diretório atual`)
+    const dir = path.resolve(positional[2] || process.cwd())
+    if (!fs.existsSync(dir)) die(`pasta não existe: ${dir}`)
+    const pastasArg = val('--pastas')
+    const r = instalarRotas(dir, { pastas: pastasArg ? pastasArg.split(',').map((s) => s.trim()).filter(Boolean) : undefined })
+    if (r.acao === 'ja-existe') {
+      console.log(`já existe: ${r.arquivo}`)
+    } else {
+      console.log(`criado: ${r.arquivo}`)
+      console.log(`pastas-controladas: [${r.pastas.join(', ')}]`)
+      console.log(`\nse não bater com a estrutura real, edite o front-matter à mão.`)
     }
     break
   }

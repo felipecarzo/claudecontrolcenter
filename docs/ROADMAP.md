@@ -93,20 +93,10 @@ Depende do CC-24 existir antes de fazer sentido escrever.
 
 Decidido com o Felipe em 12/08: o painel passa a controlar comportamento de
 verdade do Claude Code, não só ler estado. Épico 1 (alicerce — hooks
-ligáveis pelo painel) feito em 12/08. Os quatro itens abaixo têm decisão
-pendente documentada no produto/FRAMEWORK-HOOKS.md — nenhum decide sozinho
-qual caminho tomar, o Felipe escolhe quando o sprint chegar.
-
-### CC-28 — Método Routia adaptado ao Control Center
-O Método Routia já roda globalmente (`~/.claude/hooks/rota-guard.mjs` e
-`git-add-guard.mjs`), mas o escopo de pastas protegidas está fixo em
-`apps`/`tools` (layout do inovallbond) — não cobre `src/`, onde o código do
-Control Center vive. Depende de decisão: o projeto ganha
-`docs/ROTAS-ATIVAS.md`? Com qual `pastas-controladas`? Depois disso, dois
-hooks novos (fora deste repo, em `~/.claude/hooks/`): ler o quadro ao abrir
-sessão (`SessionStart`, não bloqueia) e lembrar de liberar a rota ao
-terminar (aviso em texto, nunca escrita automática — mesmo princípio do
-CC-18).
+ligáveis pelo painel, CC-27) e Épico 2 (Método Routia adaptado, CC-28)
+feitos em 12/08. Os itens abaixo têm decisão pendente documentada em
+produto/FRAMEWORK-HOOKS.md — nenhum decide sozinho qual caminho tomar, o
+Felipe escolhe quando o sprint chegar.
 
 ### CC-29 — Delegação opencode: disparo + verificação em background
 Hoje a skill `vibecoder-opencode` decide viabilidade, dispara e verifica

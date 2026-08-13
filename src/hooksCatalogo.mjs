@@ -55,7 +55,7 @@ export const HOOKS = [
     descricao: 'Injeta o resumo de docs/ROTAS-ATIVAS.md no início da sessão, '
       + 'sem depender do agente lembrar de ler.',
     padrao: true,
-    implementado: false, // Épico 2, depende da decisão D1
+    implementado: true,
   },
   {
     id: 'routia-fim',
@@ -65,7 +65,7 @@ export const HOOKS = [
     descricao: 'Lembra (sem bloquear, sem editar sozinho) quando a sessão '
       + 'termina com uma rota 🔴 ainda marcada no seu nome.',
     padrao: true,
-    implementado: false, // Épico 2, depende da decisão D1/D2b
+    implementado: true,
   },
 ]
 

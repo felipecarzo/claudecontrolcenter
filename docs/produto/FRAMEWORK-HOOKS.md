@@ -43,8 +43,8 @@ numerado no `ROADMAP.md`.
 
 ## Épicos
 
-1. **Alicerce — hooks ligáveis pelo painel.** Feito em 12/08 (ver diário).
-2. **Método Routia adaptado ao Control Center.** Aberto — CC-28.
+1. **Alicerce — hooks ligáveis pelo painel.** Feito em 12/08 (CC-27, ver diário).
+2. **Método Routia adaptado ao Control Center.** Feito em 12/08 (CC-28, ver diário).
 3A. **Delegação opencode — disparo + verificação.** Aberto — CC-29.
 3B. **Fila de revisão + hook que obriga a chamada.** Aberto — CC-30, depende
     de 3A e da decisão D3.
@@ -53,12 +53,41 @@ numerado no `ROADMAP.md`.
 
 ## Decisões pendentes (o Felipe decide quando o sprint chegar)
 
-- **D1** — registrar hook novo no `settings.json`: escrita programática pelo
-  Control Center (primeira vez que tocaria arquivo do Claude Code além de
-  `meta.json`) vs. passo manual assistido pela skill `update-config`.
-- **D2** — Control Center ganha `docs/ROTAS-ATIVAS.md`? Com qual
-  `pastas-controladas`?
-- **D2b** — liberar rota ao terminar: lembrete de texto (recomendado) vs.
-  escrita automática.
+- ~~**D1** — registrar hook novo no `settings.json`~~ — resolvida em 12/08:
+  manual, via skill `update-config`, feito para os dois hooks do Épico 2
+  (`routia-inicio.mjs`, `routia-fim.mjs`). Mesma escolha vale pros hooks
+  futuros dos Épicos 3B e 4.
+- ~~**D2** — Control Center ganha `docs/ROTAS-ATIVAS.md`?~~ — resolvida em
+  12/08: sim, `pastas-controladas: [src]`. Rollout nos outros projetos do
+  Felipe (incluindo cliente) é manual, projeto a projeto, com
+  `cc routia install <pasta>` — não em lote.
+- ~~**D2b** — liberar rota ao terminar~~ — resolvida em 12/08: lembrete de
+  texto (`systemMessage`, não bloqueia), `routia-fim.mjs`. Nunca escrita
+  automática.
 - **D3** — qual evento e qual critério "obrigam" a chamada ao opencode.
 - **D4** — conteúdo editorial do checklist de metodologia.
+
+## Rollout do Método Routia pra outros projetos (12/08)
+
+Decisão do Felipe: quer o Método Routia como infraestrutura fixa em **todos**
+os projetos, incluindo cliente — mas o rollout é manual, projeto a projeto,
+não em lote nesta sessão. Mecanismo pronto:
+
+- `cc routia install [pasta]` (`src/routia.mjs` + `cc.mjs`): cria
+  `docs/ROTAS-ATIVAS.md` com `pastas-controladas` chutado pela estrutura real
+  (`apps`/`tools` se existirem, senão `src`, senão o hardcode antigo). Nunca
+  sobrescreve um quadro que já existe.
+- `~/.claude/hooks/rota-guard.mjs` foi generalizado pra ler
+  `pastas-controladas` do front-matter do quadro, com fallback pro hardcode
+  `apps`/`tools` quando o campo não existe — o quadro do inovallbond continua
+  funcionando sem mudança nenhuma.
+- `/novo-projeto` (comando global) já tinha um passo pro Método Routia
+  (cópia manual do modelo); atualizado pra usar `cc routia install` em vez
+  de copiar o template vazio na mão.
+- Dois hooks novos, registrados no `settings.json` global via `update-config`:
+  `routia-inicio.mjs` (`SessionStart`, injeta o resumo do quadro no início da
+  sessão) e `routia-fim.mjs` (`Stop`, lembra sem bloquear se a rota da sessão
+  continua marcada 🔴 ao terminar).
+
+O Felipe aplica `cc routia install` em cada projeto quando quiser, vendo o
+resultado antes de commitar — não é ação em lote deste agente.
