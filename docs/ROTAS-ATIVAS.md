@@ -28,7 +28,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | `cockpit` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: CC-32, aba projetos vira cockpit) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
-| `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: botão no PC, `configurada()`/`atualizarSnapshot()` com modo local, `docker ps` com `\|\| true`. VPS ficou de fora de propósito, ver resposta do ticket) | — |
+| `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: `comando(local)` em `src/vps.mjs`, `sudo -n pm2 jlist` no modo local. Falta a peça de infra na VPS, ver ticket) | — |
 
 ## Como pedir autorização numa rota que tem dono
 
@@ -50,7 +50,28 @@ sessão travada, que é exatamente o que o método existe para evitar.
 
 ## Tickets pendentes
 
-*(nenhum aberto)*
+### 🎫 `remote-control` — 5805d6bb, decisão do Felipe, em 13/08
+
+Ele escolheu a **opção 3**. Motivo dele, vale registrar porque é critério
+geral: "vamos sempre no caminho que tem mais possibilidade de integração
+remota" — entre as três, é a que deixa mais aberto pra somar informação
+depois, não só a mais simples de manter.
+
+**Feito da minha parte**, em `src/vps.mjs`: `COMANDO` virou `comando(local)`,
+e no modo local o comando de PM2 é `sudo -n pm2 jlist` em vez de `pm2 jlist`
+puro. O `-n` nunca espera senha: se o `sudoers` ainda não estiver configurado,
+falha rápido e cai no `[]` de sempre, sem travar o resto da leitura. Testado
+aqui (sem sudo/pm2 no Windows): não travou, degradou como devia.
+
+**Falta a peça que é sua, é infra da VPS**: uma regra `sudoers` liberando só
+o comando `pm2 jlist` pro `claudedev` rodar como root, sem senha (algo como
+`claudedev ALL=(root) NOPASSWD: /usr/bin/pm2 jlist` — ajuste o caminho do
+binário conforme está aí). Quando isso estiver no lugar, meu código já
+funciona sem precisar de outro deploy.
+
+Depois de confirmar que funciona: pode tirar a chave dedicada
+(`~/.ssh/cockpit_snapshot`) e o script `cockpit-vps-snapshot.sh`, como você
+mesmo propôs.
 
 ### 🎫 `remote-control` — 48f6738c, RETORNO sobre o modo local, em 13/08
 
