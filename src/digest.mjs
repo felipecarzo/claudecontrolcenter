@@ -1,6 +1,6 @@
 // CC-24: "o que eu produzi esta semana", cruzando os projetos.
 //
-// Não escreve nada em lugar nenhum — nem arquivo novo, nem vault. Só lê o que
+// Não escreve nada em lugar nenhum: nem arquivo novo, nem vault. Só lê o que
 // já existe (histórico de jobs, git, diário, roadmap) e devolve texto pronto.
 // Sob demanda (botão), nunca em timer: varrer ~20 projetos com spawn de git é
 // caro, mesma decisão de processos.mjs e vps.mjs.
@@ -48,13 +48,13 @@ export async function digestDe(dir, projeto, { desde = 0, jobs = [] } = {}) {
     commits: git.ok ? git.commits : [],
     gitOk: git.ok,
     diario,
-    // sem nenhuma das três fontes, o projeto não teve semana — não é erro
+    // sem nenhuma das três fontes, o projeto não teve semana: não é erro
     silencio: !marcos.length && !(git.ok && git.commits.length) && !diario.length,
   }
 }
 
 /**
- * Todos os projetos com `CLAUDE.md` — mesma lista que o `sync` do CC-06 já
+ * Todos os projetos com `CLAUDE.md`: mesma lista que o `sync` do CC-06 já
  * varre. `desde` default: 7 dias, porque é "digest SEMANAL".
  */
 export async function digestTodos({ desde = Date.now() - 7 * 24 * 3600 * 1000, jobs = [], base } = {}) {

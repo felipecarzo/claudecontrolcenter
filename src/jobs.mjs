@@ -243,6 +243,8 @@ export function buildJob(id, state, meta, pins, now) {
     niveis: meta.niveis && typeof meta.niveis === 'object' ? meta.niveis : {},
     estimativas: meta.estimativas && typeof meta.estimativas === 'object' ? meta.estimativas : {},
     feitoEm: meta.feitoEm && typeof meta.feitoEm === 'object' ? meta.feitoEm : {},
+    // CC-36: {titulo, resumo, arquivo} por texto de to-do, escrito pelo opencode
+    explicacoes: meta.explicacoes && typeof meta.explicacoes === 'object' ? meta.explicacoes : {},
     // Entregou dizendo pronto e deixou tarefa aberta: ou esqueceu de marcar, ou
     // a lista está errada. Nos dois casos a métrica sai suja, e é isso que a
     // tela precisa mostrar em vez de somar como se estivesse tudo certo.

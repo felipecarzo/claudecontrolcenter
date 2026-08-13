@@ -119,6 +119,117 @@ export function lerEventos(logFile) {
 }
 
 /**
+ * O texto final da resposta, não `tool_use`: é o que o modelo escreveu.
+ * Schema confirmado com chamada real em 13/08:
+ * `{"type":"text","part":{"type":"text","text":"..."}}`, podendo vir em
+ * mais de um evento (streaming); concatena em ordem.
+ */
+export function lerResposta(logFile) {
+  let texto
+  try { texto = fs.readFileSync(logFile, 'utf8') } catch { return '' }
+  let out = ''
+  for (const linha of texto.split('\n')) {
+    if (!linha.trim()) continue
+    let obj
+    try { obj = JSON.parse(linha) } catch { continue }
+    if (obj?.type === 'text' && typeof obj.part?.text === 'string') out += obj.part.text
+  }
+  return out
+}
+
+/**
+ * CC-36: pede pro opencode explicar os to-dos de um agente: título mais
+ * claro, resumo, e (melhor esforço) qual arquivo a tarefa provavelmente
+ * mexe. **Roda em pasta neutra** (nunca o cwd do projeto): todos os agentes
+ * do opencode neste setup têm `permission:*`, nenhum é read-only, então
+ * deixá-lo entrar no projeto de verdade seria dar permissão de escrita a uma
+ * chamada que só deveria descrever texto. O preço é que "qual arquivo" vira
+ * inferência do texto do to-do, não inspeção real: o prompt avisa isso.
+ */
+export function promptEnriquecimento(todos) {
+  const lista = todos.map((t, i) => `${i + 1}. ${t}`).join('\n')
+  return [
+    // Achado testando de verdade em 13/08: sem este aviso, respostas
+    // anteriores da mesma sessão do opencode vazam pro contexto, e o modelo
+    // respondeu "tenho acesso real aos arquivos" (falso: cwd é pasta neutra,
+    // confirmado com pwd de verdade) em vez de seguir o formato pedido.
+    'Ignore qualquer contexto de sessão anterior. Esta é uma tarefa nova e',
+    'isolada, sem relação com pedidos passados.',
+    '',
+    'Você não tem acesso a nenhum arquivo ou projeto real. Responda só com',
+    'o que der pra inferir do texto abaixo. Cada linha é uma tarefa de um',
+    'agente de programação. Para cada uma, produza título mais claro, resumo',
+    'de uma frase, e um palpite de qual arquivo ou pasta ela provavelmente',
+    'mexe. Sem indício nenhum, use null; nunca invente um caminho.',
+    '',
+    lista,
+    '',
+    'Responda SÓ com um JSON válido, sem markdown ao redor, no formato:',
+    '{"1": {"titulo": "...", "resumo": "...", "arquivo": "..." ou null}, "2": {...}}',
+  ].join('\n')
+}
+
+/**
+ * Dispara, espera o log parar de crescer (processo terminou) e devolve o
+ * mapa `texto do to-do -> {titulo, resumo, arquivos}` já no formato de
+ * `explicacoes` do `meta.json`. Uma chamada por AGENTE, nunca por tarefa:
+ * é o `todos` inteiro numa só ida ao opencode.
+ *
+ * `esperarMs`/`intervaloMs` existem pro teste não esperar o tempo real.
+ *
+ * **Achado testando de verdade em 13/08**: `opencode run` guarda sessão por
+ * pasta e a retoma sozinho, mesmo sem `--continue`. Chamar duas vezes com o
+ * mesmo `cwd` fez a segunda vir quase toda do cache da primeira (49280 de
+ * 49469 tokens), e o modelo respondeu "sessão zerada, pode mandar a tarefa"
+ * em vez de processar o pedido que já estava no mesmo prompt: tratou o aviso
+ * de "ignore o contexto" como um turno de conversa, não como prefixo do
+ * pedido de verdade. Por isso `cwd` default é uma pasta NOVA a cada
+ * chamada, nunca `os.tmpdir()` reusado.
+ */
+export async function enriquecerTodos(todos, {
+  cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-enriquecer-')),
+  esperarMs = 60_000, intervaloMs = 500, binario = 'opencode',
+} = {}) {
+  if (!todos.length) return {}
+  const disparo = dispararTarefa(promptEnriquecimento(todos), { cwd, binario })
+  if (!disparo.ok) return {}
+
+  const inicio = Date.now()
+  let ultimoTamanho = -1
+  let estavel = 0
+  while (Date.now() - inicio < esperarMs) {
+    await new Promise((r) => setTimeout(r, intervaloMs))
+    let tamanho = 0
+    try { tamanho = fs.statSync(disparo.logFile).size } catch { /* ainda não existe */ }
+    if (tamanho > 0 && tamanho === ultimoTamanho) {
+      estavel++
+      if (estavel >= 2) break // dois tiques sem crescer: processo morreu
+    } else {
+      estavel = 0
+    }
+    ultimoTamanho = tamanho
+  }
+
+  const resposta = lerResposta(disparo.logFile)
+  let porIndice
+  try {
+    // modelo às vezes cerca com ```json apesar do pedido: tira antes de parsear
+    porIndice = JSON.parse(resposta.replace(/^```json\s*|```\s*$/g, '').trim())
+  } catch {
+    return {} // resposta ilegível não é gravada: melhor sem explicação que com uma errada
+  }
+
+  const explicacoes = {}
+  todos.forEach((texto, i) => {
+    const e = porIndice[String(i + 1)]
+    if (e && typeof e === 'object') {
+      explicacoes[texto] = { titulo: e.titulo || null, resumo: e.resumo || null, arquivo: e.arquivo || null }
+    }
+  })
+  return explicacoes
+}
+
+/**
  * Heurística de viabilidade, réplica simplificada da tabela da skill
  * `vibecoder-opencode` — primeira versão, corrigível depois de uso real:
  * boilerplate/<20 linhas → ALTA, 20-50 → MÉDIA, >50 ou refactor → BAIXA.

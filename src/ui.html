@@ -540,6 +540,9 @@
   }
   .g-add:hover { color: var(--done); }
   .item { display: flex; align-items: baseline; gap: 9px; padding: 1px 0 1px 3px; border-radius: 2px; }
+  /* CC-36: explicação do opencode, embaixo do to-do correspondente */
+  .todo-explicacao { margin: 0 0 4px 26px; font-size: 11px; color: var(--faint); }
+  .todo-explicacao code { font-size: 10px; }
   .item:hover { background: var(--surface); }
   .item > input[type=checkbox] {
     flex: none; margin: 0; position: relative; top: 2px; accent-color: var(--done); cursor: pointer;
@@ -1892,7 +1895,15 @@ function viewTodos(jobs) {
         aria-label="marcar como feita">
       <input class="txt" value="${esc(t.text)}" data-edit="${j.id}" data-i="${i}"
         aria-label="texto da tarefa" placeholder="descreva a tarefa — em branco, ela some">
-    </div>`
+    </div>
+    ${(() => {
+      // CC-36: explicação do opencode, se já enriquecida. Chaveada por texto,
+      // igual feitoEm — some se o texto do to-do mudar.
+      const e = j.explicacoes?.[t.text]
+      if (!e) return ''
+      return `<p class="todo-explicacao">${e.titulo ? `<b>${esc(e.titulo)}:</b> ` : ''}${esc(e.resumo || '')}${
+        e.arquivo ? ` <code>${esc(e.arquivo)}</code>` : ''}</p>`
+    })()}`
 
   // Cabeçalho por agente: sem isso "projeto/rota · assunto" se repetiria em
   // toda linha da lista.
@@ -1905,6 +1916,7 @@ function viewTodos(jobs) {
         <b class="clip" style="flex:1;color:var(--fg)" data-job="${j.id}" tabindex="0"
           title="abrir o agente">${esc(j.subject)}</b>
         <span class="n">${abertos.length}</span>
+        ${abertos.length ? `<button class="btn mini" data-enriquecer="${j.id}" title="pedir pro opencode explicar as tarefas deste agente (pode levar até 1min)">explicar</button>` : ''}
         <button class="g-add" data-add="${j.id}" title="nova tarefa neste agente">+</button>
       </div>
       <p class="c-proj">${esc(j.project)}<em>/${esc(j.route)}</em></p>
@@ -4403,6 +4415,23 @@ document.addEventListener('click', async (e) => {
   }
 
   if (t.closest('[data-digest]')) return alternarDigest()
+
+  const btEnriquecer = t.closest('[data-enriquecer]')
+  if (btEnriquecer) {
+    const id = btEnriquecer.dataset.enriquecer
+    btEnriquecer.disabled = true
+    btEnriquecer.textContent = 'pedindo…'
+    try {
+      const r = await fetch('/api/enriquecer', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job: id }),
+      })
+      const out = await r.json()
+      if (!out.ok) alert(out.error)
+    } catch {
+      alert('não deu pra falar com o opencode')
+    }
+    return // o stream de 2s traz o meta.json atualizado, sem forçar recarga
+  }
 
   const visitaBtn = t.closest('[data-visita]')
   if (visitaBtn) {

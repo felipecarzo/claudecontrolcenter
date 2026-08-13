@@ -853,6 +853,58 @@ assert.ok(fs.existsSync(rDisparo.logFile), 'log do disparo não foi criado')
 
 fs.rmSync(tmpOc, { recursive: true, force: true })
 
+// --- CC-36: lerResposta, promptEnriquecimento, enriquecerTodos ---
+{
+  const tmpOc2 = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-opencode-cc36-'))
+
+  // lerResposta: schema real confirmado com chamada de verdade em 13/08
+  // ({"type":"text","part":{"type":"text","text":"..."}}), concatena chunks,
+  // ignora tudo o mais (tool_use, step_start, linha quebrada)
+  const logResposta = path.join(tmpOc2, 'resposta.jsonl')
+  fs.writeFileSync(logResposta, [
+    JSON.stringify({ type: 'step_start', part: { type: 'step-start' } }),
+    JSON.stringify({ type: 'text', part: { type: 'text', text: 'ola ' } }),
+    'linha quebrada, nao e json',
+    JSON.stringify({ type: 'tool_use', part: { tool: 'read' } }),
+    JSON.stringify({ type: 'text', part: { type: 'text', text: 'mundo' } }),
+  ].join('\n'))
+  assert.equal(oc.lerResposta(logResposta), 'ola mundo')
+  assert.equal(oc.lerResposta(path.join(tmpOc2, 'nao-existe.jsonl')), '')
+
+  // promptEnriquecimento: numera as tarefas, pede JSON, avisa da falta de acesso a arquivo
+  const prompt = oc.promptEnriquecimento(['fazer a coisa', 'fazer outra coisa'])
+  assert.ok(prompt.includes('1. fazer a coisa') && prompt.includes('2. fazer outra coisa'))
+  assert.ok(/n[ãa]o tem acesso/i.test(prompt), 'tem que avisar que roda em pasta neutra, sem acesso real')
+
+  // enriquecerTodos, ponta a ponta: binario falso (.cmd) que devolve o schema
+  // real fixado acima, sem chamar o opencode de verdade
+  const fixture = path.join(tmpOc2, 'fixture.jsonl')
+  fs.writeFileSync(fixture, [
+    JSON.stringify({ type: 'text', part: { type: 'text', text: '{"1": {"titulo": "Corrigir X", "resumo": "resumo aqui", "arquivo": "src/x.mjs"}}' } }),
+  ].join('\n'))
+  const fakeBin = path.join(tmpOc2, 'fake-opencode.cmd')
+  fs.writeFileSync(fakeBin, `@echo off\r\ntype "${fixture}"\r\n`)
+
+  const explicacoes = await oc.enriquecerTodos(['corrigir o bug X'], {
+    binario: fakeBin, esperarMs: 5000, intervaloMs: 100,
+  })
+  assert.deepEqual(explicacoes, {
+    'corrigir o bug X': { titulo: 'Corrigir X', resumo: 'resumo aqui', arquivo: 'src/x.mjs' },
+  })
+
+  // lista vazia não dispara nada
+  assert.deepEqual(await oc.enriquecerTodos([]), {})
+
+  // resposta ilegível (json quebrado) não é gravada — melhor sem que com erro
+  const fixtureRuim = path.join(tmpOc2, 'fixture-ruim.jsonl')
+  fs.writeFileSync(fixtureRuim, JSON.stringify({ type: 'text', part: { type: 'text', text: 'isto não é json' } }))
+  const fakeBinRuim = path.join(tmpOc2, 'fake-ruim.cmd')
+  fs.writeFileSync(fakeBinRuim, `@echo off\r\ntype "${fixtureRuim}"\r\n`)
+  assert.deepEqual(await oc.enriquecerTodos(['tarefa'], { binario: fakeBinRuim, esperarMs: 5000, intervaloMs: 100 }), {})
+
+  fs.rmSync(tmpOc2, { recursive: true, force: true })
+}
+
 // --- cockpit: "onde eu mexo agora" ---
 const ck = await import('./src/cockpit.mjs')
 

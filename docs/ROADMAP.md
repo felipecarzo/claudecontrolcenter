@@ -30,12 +30,39 @@ provavelmente "CLI", a própria linha de comando do Claude Code.
 O pedido, resumido: hoje o Agent Cockpit só roda local. A visão é subir este
 projeto numa VPS que já vai ter o Claude Code instalado, expor por um
 subdomínio do site dele (`cockpit.carzo...`), com login e senha, pra abrir do
-telefone e ver/controlar os agentes rodando — o mesmo painel de hoje, só que
+telefone e ver/controlar os agentes rodando. O mesmo painel de hoje, só que
 de fora de casa.
 
 Não é task ainda. Quando virar: login/senha é autenticação de verdade (nunca
 mock, regra do protótipo simular produção), e o painel hoje não tem nenhuma
-camada de auth — é a primeira coisa a decidir antes de expor pela internet.
+camada de auth: é a primeira coisa a decidir antes de expor pela internet.
+
+**Comentário adicional do Felipe, 13/08, também registrado sem implementar
+ainda** ("vamos primeiro se preocupar em botar no ar" foi a instrução dele):
+
+> "a partir de agora, todas as nossas interações com a VPS que não sejam de
+> projeto, etcétera, de mexer na estrutura da VPS vai ser feito por esse
+> projeto. Porque esse projeto agora é o lá na VPS também. Então, básicamente
+> lá na VPS vai ser o que vai traduzir as minhas vontades e necessidades pra
+> dentro da VPS de forma visual, ou seja, eu vou ver o que está acontecendo na
+> VPS em tempo real, vou falar o que eu quero mudar. A gente tem que incluir
+> também, no depois, alguns controles que fazem sentido com a VPS: tipo dentro
+> da aba VPS, ter outras abas, prover tudo que está rolando lá em tempo real,
+> por exemplo tem coisas que não são só agentes, tem processos, tem os sites
+> que eu estou utilizando, coisas que podem estar desatualizadas em relação ao
+> GitHub. Todas essas informações eu preciso ter depois, mas não agora."
+
+Duas peças novas nesse comentário:
+
+1. **O Agent Cockpit vira o ponto único de mexer na VPS**, não só de vê-la.
+   Hoje a aba VPS é só leitura (`atualizarSnapshot`, sob clique). A visão é o
+   painel também **agir** lá: qualquer mudança de estrutura da VPS (fora do
+   dia a dia de projeto) passa a ser feita por aqui, não por comando manual
+   direto na VPS.
+2. **A aba VPS ganha sub-abas com mais do que agente**: processos rodando de
+   verdade na VPS, quais sites/domínios estão servidos, e se o código lá bate
+   com o que está no GitHub (deploy desatualizado). Ele mesmo apontou o corte:
+   isso é "depois", a prioridade agora é **subir o painel no ar** primeiro.
 
 ### CC-14 — O tray do Claude Code mostra porcentagem errada
 Botão direito no ícone do Claude Code na bandeja → "Plano Max uso" mostra um

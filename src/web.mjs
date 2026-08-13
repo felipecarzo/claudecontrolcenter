@@ -18,6 +18,7 @@ import { lerRoadmap } from './roadmap.mjs'
 import { findProjects } from './install.mjs'
 import { commitsDesde } from './gitlog.mjs'
 import { digestTodos } from './digest.mjs'
+import { enriquecerTodos } from './opencode.mjs'
 import { garantirMercado } from './mercado.mjs'
 import {
   readServers, killServer, duplicados, recentes, projetosLancaveis,
@@ -405,6 +406,22 @@ function handler(req, res) {
     const cwd = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
     const mapa = cwd ? lerRoadmap(cwd) : null
     return send(res, 200, mapa || { vazio: true })
+  }
+
+  // CC-36: enriquecimento de to-dos pelo opencode. Uma chamada por AGENTE
+  // (não por tarefa), roda em pasta neutra (nunca o cwd do projeto — todos
+  // os agentes do opencode aqui têm permission:*, nenhum é read-only).
+  // Pode levar até 60s (espera o processo do opencode terminar), por isso
+  // sob clique explícito, nunca automático.
+  if (url.pathname === '/api/enriquecer' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e4, async ({ job }) => {
+      const atual = readJobs().find((j) => j.id === job)
+      if (!atual) throw new Error(`job ${job} não existe`)
+      const textos = (atual.todos || []).map((t) => t.text)
+      const novas = await enriquecerTodos(textos)
+      const explicacoes = { ...atual.explicacoes, ...novas }
+      return { meta: writeMeta(job, { explicacoes }), adicionadas: Object.keys(novas).length }
+    })
   }
 
   // CC-24: digest semanal entre projetos, cruzando histórico + git + diário +
