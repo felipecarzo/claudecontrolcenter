@@ -128,6 +128,53 @@ O bloco de protocolo do `CLAUDE.md` da VPS já foi escrito com `cockpit`.
   sintético ele grava o JSON mas o job não aparece em `cockpit json`. Vale
   conferir se isso é intencional ou se falta um caminho de fallback.
 
+### 8. Botão de deslogar dispositivos na aba VPS (pendente)
+
+Pedido dele:
+
+> "coloca login e senha com autenticação maxima pra salvar no dispositivo mas me
+> permitir deslogar pelo control center do pc na aba VPS"
+
+**Metade entregue.** A autenticação está no ar e a revogação funciona, testada:
+o mesmo cookie vira 401 no ato. Falta o botão na aba VPS do painel do PC.
+
+Não fiz agora porque `src/ui.html` e `src/web.mjs` estavam com alterações não
+commitadas de outra sessão em 2026-08-13, e editá-los criaria conflito.
+`src/vps.mjs` está livre.
+
+Enquanto o botão não existe, o comando equivalente, rodado do PC:
+
+    ssh -i ~/.ssh/id_ed25519_ahtleta claudedev@66.94.117.215 "cockpit-auth revogar"
+    ssh -i ~/.ssh/id_ed25519_ahtleta claudedev@66.94.117.215 "cockpit-auth sessoes"
+
+Para integrar: `cockpit-auth json` já devolve a lista pronta em JSON, pensando
+nisso. O caminho é `vps.mjs` chamar esse comando no mesmo SSH do snapshot, e a
+aba mostrar a lista com um botão por linha mais um "deslogar todos".
+
+### 9. Auditoria das abas na VPS: o que está vazio e por quê
+
+Todas as 12 abas respondem, nenhuma quebrada. As vazias, e a causa real:
+
+| Aba | Estado | Causa |
+|---|---|---|
+| Agentes, To-dos, Tempo, Hooks, Rotinas, Servidores, Escritório | ok | |
+| Docker | **corrigido** | faltava o grupo; resolvido com `SupplementaryGroups=docker` só no serviço |
+| Cockpit | vazio | depende de jobs de agente, enche com o uso |
+| Gráficos | vazio | depende de histórico acumulado |
+| Agenda | não configurado | exige OAuth do Google, não feito |
+| VPS | não configurado | ver abaixo |
+| **Processos** | **indisponível por design** | `processos.mjs` é só Windows (`Get-Process`) |
+
+Duas decisões pendentes:
+
+- **Processos em Linux.** Hoje a aba some fora do Windows, o que o próprio código
+  documenta como intencional. Implementar o equivalente com `ps` é feature nova.
+  Vale? Numa VPS, saber o que pesa a máquina tem uso real.
+- **Aba VPS dentro da própria VPS.** Ela existe pra ver a VPS de fora, por SSH.
+  Rodando na VPS ficaria olhando pra si mesma, e exigiria gerar uma chave SSH pro
+  `claudedev` apontando pra localhost. Além disso é redundante com Servidores e
+  Docker ali. Deixei desconfigurada de propósito. Decidir se vale.
+
 ## Como isso entrou aqui
 
 Pedido dele, no meio da migração pra VPS:
