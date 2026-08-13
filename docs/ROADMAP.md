@@ -113,6 +113,55 @@ sinais que já existem em `buildJob()` (sem `frente`, sem `todos`...). Nunca
 bloqueia, sempre alerta. Conteúdo exato das perguntas é editorial, não
 técnico — falta o Felipe definir quão rigoroso.
 
+### Frente: Cockpit de retomada de contexto — ver [[produto/COCKPIT]]
+
+Reposicionamento do produto pelo Felipe em 12/08: **os hooks não são o
+produto, são sensor** — o produto é o painel virar o lugar onde ele volta ao
+contexto rápido, gerenciando 4-5 projetos em paralelo. Isso muda o critério
+de sucesso de qualquer sinal: não é "impõe boa prática", é "me faz voltar ao
+contexto mais rápido?". CC-32 feito em 13/08; os demais em ordem.
+
+### CC-33 — Marca de visita e o delta "desde que você saiu"
+`control-center.json` ganha `visitas: {projeto: ms}`, carimbada por botão
+explícito ("vi isso") — automático ao abrir a aba destruiria o sinal, já que
+ele olha o painel o dia todo. O cartão do cockpit ganha "desde sua última
+visita: 3 tarefas fechadas · 1 agente novo · roadmap editado", tudo de dado
+que já existe (`feitoEm`, `createdAt`, `visto`, `mapa.atualizadoEm`).
+Depende de duas linhas em `historico.mjs`: guardar `cwd` no `guardavel()` e
+fazer merge (não sobrescrita) do `feitoEm` no `arquivar()` — hoje ele é
+podado por `marcarConclusoes()` e a poda vaza pro histórico.
+
+### CC-34 — Mapa visual: pastilhas de frente, todo projeto
+Mini-mapa no cartão do cockpit: frentes do ROADMAP.md como pastilhas em
+`display:grid` (sem biblioteca), cor pelo `estado` que `estadoDe()` já
+classifica, fração feitos/itens, ponto quando tem agente na frente. E o mapa
+completo passa a abrir de qualquer projeto, com ou sem agente vivo — hoje
+exige `job.cwd`, que só existe em job vivo. `acharFrente()` (exportada, sem
+consumidor nenhum hoje) vira a costura jobs × roadmap.
+
+### CC-35 — `git log --since` na abertura do projeto
+A resposta rica pra "o que mudou desde que saí", e a única fonte real de
+"quais arquivos" — `sinais.arquivos` do `tempo.mjs` é contagem
+(`edicoes.size`), não lista de caminhos. Sob clique, nunca em timer.
+
+### CC-36 — Enriquecimento de to-dos pelo opencode
+Pedido do Felipe: "olho os to-dos e as tarefas não fazem sentido, os nomes
+poderiam ser mais explicativos e as tarefas poderiam abrir e ter um resumo da
+conversa que gerou ela, qual arquivo mexe". Uma chamada por agente (não por
+tarefa) via `src/opencode.mjs` (CC-29), guardando em
+`meta.json → explicacoes: {texto da tarefa: {titulo, resumo, arquivos}}` —
+mapa por texto, padrão do `feitoEm`, porque o agente reescreve `todos`
+inteiro a cada `cc set`. **Nunca reescrever `t.text`**: `feitoEm`, `niveis`,
+`estimativas` e `explicacoes` são todos chaveados por ele. O opencode roda
+em pasta neutra, nunca no `cwd` do projeto — verificado que todos os agentes
+dele têm `permission:*` neste setup, nenhum é read-only.
+
+### CC-37 — Enriquecimento automático (stretch, provavelmente não fazer)
+Disparar a cada to-do novo é sedutor por custar R$ 0, mas toda escrita em
+`meta.json` vira evento no stream e dispara `arquivar()` — com 5 projetos é
+rajada, e modelo grátis fora do ar vira lixo silencioso. Só depois do CC-36
+provar qualidade.
+
 ## Limites aceitos hoje
 
 Escritos aqui porque são escolha, não descuido:

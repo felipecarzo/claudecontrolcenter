@@ -811,6 +811,60 @@ assert.ok(fs.existsSync(rDisparo.logFile), 'log do disparo não foi criado')
 
 fs.rmSync(tmpOc, { recursive: true, force: true })
 
+// --- cockpit: "onde eu mexo agora" ---
+const ck = await import('./src/cockpit.mjs')
+
+// a ordem das razões É a regra de negócio: blocker (escrito pelo agente) ganha de tudo
+const jobCom = (extra) => ({ project: 'p', id: 'x', subject: 's', todos: [], idleMs: 1000, ...extra })
+assert.equal(ck.motivoDe(jobCom({ blockers: ['sem credencial'], status: 'failed' })).peso, 5)
+assert.match(ck.motivoDe(jobCom({ blockers: ['sem credencial'] })).frase, /sem credencial/)
+assert.equal(ck.motivoDe(jobCom({ status: 'failed' })).peso, 4)
+assert.equal(ck.motivoDe(jobCom({ status: 'working', stale: true })).peso, 4)
+assert.equal(ck.motivoDe(jobCom({ status: 'waiting' })).peso, 3)
+assert.equal(ck.motivoDe(jobCom({ status: 'done', entregueEmAberto: true })).peso, 2)
+assert.equal(ck.motivoDe(jobCom({ status: 'working' })).peso, 1)
+assert.equal(ck.motivoDe(jobCom({ status: 'done' })).peso, 0)
+
+// projeto com blocker vem antes de projeto com falha; tudo pronto fica por último
+const ordenado = ck.porProjeto([
+  jobCom({ project: 'tranquilo', status: 'done' }),
+  jobCom({ project: 'falhou', status: 'failed' }),
+  jobCom({ project: 'travado', blockers: ['banco fora do ar'] }),
+  jobCom({ project: 'rodando', status: 'working' }),
+])
+assert.deepEqual(ordenado.map((p) => p.projeto), ['travado', 'falhou', 'rodando', 'tranquilo'])
+assert.equal(ordenado[ordenado.length - 1].projeto, 'tranquilo', 'projeto sem urgência tem que ficar por último')
+
+// empate no peso desempata pelo que está assim há mais tempo — o que apodrece primeiro sobe
+const empate = ck.porProjeto([
+  jobCom({ project: 'recente', status: 'waiting', idleMs: 60_000 }),
+  jobCom({ project: 'esquecido', status: 'waiting', idleMs: 4 * 3600_000 }),
+])
+assert.deepEqual(empate.map((p) => p.projeto), ['esquecido', 'recente'])
+
+// o peso do projeto é o do agente MAIS urgente, não a média nem o primeiro da lista
+const misto = ck.porProjeto([
+  jobCom({ project: 'p', id: 'a', status: 'done' }),
+  jobCom({ project: 'p', id: 'b', blockers: ['travou aqui'] }),
+])
+assert.equal(misto[0].peso, 5)
+assert.equal(misto[0].esperando.length, 1, 'só o agente que precisa de atenção entra em "esperando"')
+assert.equal(misto[0].esperando[0].id, 'b')
+assert.equal(misto[0].agentes, 2)
+
+// última atividade sai de updatedAt (de graça) — nunca do tempo.mjs, que é caro
+assert.equal(ck.porProjeto([
+  jobCom({ project: 'p', updatedAt: 100 }),
+  jobCom({ project: 'p', updatedAt: 900 }),
+])[0].ultimaAtividade, 900)
+
+// a nota segue a precedência do CC-17: o status do agente vence o pedido do Felipe
+assert.equal(ck.notaDe({ detail: 'rodando testes', lastPrompt: 'conserta isso' }).tipo, 'status')
+assert.equal(ck.notaDe({ lastPrompt: 'conserta isso' }).tipo, 'pedido')
+assert.equal(ck.notaDe({ blockers: ['x'], detail: 'y' }).tipo, 'bloqueio')
+assert.equal(ck.notaDe({ stale: true, blockers: ['x'] }).tipo, 'stale')
+assert.equal(ck.notaDe({}), null)
+
 // --- daemon: caminhos, sem escrever nada ---
 const dm = await import('./src/daemon.mjs')
 assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')

@@ -30,6 +30,7 @@ import {
 import { agenda, esquecerCache as esquecerAgenda } from './calendario.mjs'
 import { HOOKS } from './hooksCatalogo.mjs'
 import { registradoTodos } from './hooksRegistro.mjs'
+import { porProjeto } from './cockpit.mjs'
 import { listarContainers } from './docker.mjs'
 import { atualizarSnapshot } from './vps.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
@@ -46,7 +47,13 @@ const snapshot = () => {
   arquivar(jobs)
   // Vai junto do snapshot porque tem que aparecer em toda aba, sempre: é
   // leitura de um JSON de 200 bytes, não pesa no tique de 2s.
-  return { jobs, summary: summarize(jobs), uso: readUso(), at: Date.now() }
+  //
+  // `cockpit` também vem pronto do servidor, pelo mesmo motivo do `summary`:
+  // é derivado dos mesmos jobs (map/sort em memória, zero I/O) e a lógica de
+  // ordenação por urgência mora em `cockpit.mjs`, que o `npm test` cobre —
+  // duplicá-la em JS de navegador seria ter duas verdades pra "o que é
+  // urgente".
+  return { jobs, summary: summarize(jobs), cockpit: porProjeto(jobs), uso: readUso(), at: Date.now() }
 }
 
 const send = (res, code, body, type = 'application/json') => {
@@ -160,6 +167,13 @@ function handler(req, res) {
   // do próprio módulo — aqui só repassa.
   if (url.pathname === '/api/processos') {
     return estadoProcessos({ force: url.searchParams.has('force') }).then((d) => send(res, 200, d || { indisponivel: true }))
+  }
+
+  // "Onde eu mexo agora": projetos ordenados por urgência. Barato de
+  // propósito — só relê os mesmos jobs do snapshot, sem tempo.mjs nem spawn,
+  // então pode ser consultado à vontade.
+  if (url.pathname === '/api/cockpit') {
+    return send(res, 200, { projetos: porProjeto(readJobs()), at: Date.now() })
   }
 
   // Catálogo de hooks + se cada um está ligado (control-center.json) e

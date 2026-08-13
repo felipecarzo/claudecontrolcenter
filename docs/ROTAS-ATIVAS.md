@@ -25,6 +25,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (5805d6bb fechou em 2026-08-12/13: CC-29, modelo padrão do opencode trocado pra big-pickle) | — |
+| `cockpit` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: CC-32, aba projetos vira cockpit) | — |
 
 ## Tickets pendentes
 

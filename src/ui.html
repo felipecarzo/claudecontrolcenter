@@ -557,7 +557,51 @@
   .grupo details.lvl > summary { border-top: 0; padding: 4px 0 4px 3px; }
   .outros { border-top: 1px solid var(--line-soft); padding-top: 6px; }
 
-  /* ---------- projetos ---------- */
+  /* ---------- cockpit (aba projetos) ----------
+     Uma coluna de propósito: a ordem é a informação. Grade de cartões faria o
+     olho varrer, e a pergunta aqui é "o primeiro" — não "todos". A barra
+     colorida à esquerda repete o motivo sem exigir leitura. */
+  .ck-lista { display: grid; gap: 12px; max-width: 900px; }
+  .ck-proj {
+    border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border-radius: 4px; background: var(--surface); padding: 12px 14px;
+  }
+  .ck-proj.p-failed { border-left-color: var(--failed); }
+  .ck-proj.p-waiting { border-left-color: var(--waiting); }
+  .ck-proj.p-working { border-left-color: var(--working); }
+  .ck-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .ck-nome {
+    font: 700 14px/1 var(--label); letter-spacing: .14em; text-transform: uppercase;
+    background: none; border: 0; color: var(--fg); cursor: pointer; padding: 0;
+  }
+  .ck-nome:hover { color: var(--acento); }
+  .ck-motivo { font-size: 12px; font-weight: 600; }
+  .ck-espera { display: grid; gap: 2px; margin: 10px 0 6px; }
+  .ck-ag {
+    display: flex; align-items: baseline; gap: 8px; padding: 6px 8px;
+    border-radius: 3px; cursor: pointer; background: var(--bg);
+  }
+  .ck-ag:hover { background: var(--surface-2); }
+  .ck-ag b { font-size: 13px; font-weight: 600; }
+  .ck-ag-motivo { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  /* Uma linha só, não duas: `lastPrompt` pode ser um parágrafo inteiro de
+     conversa (visto no inovallbond real), e duas linhas de prosa afogam o
+     motivo, que é o que decide. Quem quer o texto todo abre o detalhe. */
+  .ck-nota {
+    margin: 0 0 4px; padding: 0 8px; color: var(--faint); font-size: 11px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ck-frios { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  .ck-frio {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px;
+    color: var(--faint); border: 1px solid var(--line); border-radius: 999px;
+    padding: 2px 9px; cursor: pointer; max-width: 260px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ck-frio:hover { color: var(--fg); border-color: var(--faint); }
+  .ck-pe { display: flex; align-items: baseline; gap: 10px; font-size: 11px; margin-top: 8px; }
+
+  /* ---------- projetos (visão antiga, ainda usada em outros lugares) ---------- */
   .projs { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
   .proj { border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
   .proj > .hd { padding: 12px 14px; border-bottom: 1px solid var(--line); }
@@ -1205,7 +1249,9 @@ let selected = params.get('open') || null
 const TABS = [
   { id: 'agentes', label: 'agentes' },
   { id: 'todos', label: 'to-dos' },
-  { id: 'projetos', label: 'projetos' },
+  // id continua `projetos` de propósito: mudar mandaria quem tem a aba
+  // lembrada no localStorage pra outro lugar sem motivo.
+  { id: 'projetos', label: 'cockpit' },
   { id: 'tempo', label: 'tempo' },
   { id: 'graficos', label: 'gráficos' },
   { id: 'preco', label: 'preço' },
@@ -1818,36 +1864,77 @@ function viewTodos(jobs) {
 
 /* ======================= aba: projetos ======================= */
 
-function viewProjetos(jobs) {
-  const groups = new Map()
-  for (const j of jobs) {
-    if (!groups.has(j.project)) groups.set(j.project, [])
-    groups.get(j.project).push(j)
-  }
-  if (!groups.size) return '<div class="empty">nenhum projeto no filtro</div>'
+/* ======================= aba: cockpit =========================
+   "Onde eu mexo agora?" — projetos ordenados por urgência, o topo da lista é
+   onde ele deve olhar. A ordenação e as frases vêm de `src/cockpit.mjs`, que
+   é código puro e testado; aqui só se desenha.
 
-  return `<div class="projs">${[...groups].map(([name, list]) => {
-    const tokens = list.reduce((a, j) => a + (j.tokens || 0), 0)
-    const rotas = [...new Set(list.map((j) => j.route))]
-    const abertos = list.filter((j) => j.todos.some((t) => !t.done)).length
-    const porStatus = ZONES.map((z) => {
-      const n = list.filter((j) => j.status === z.key).length
+   O peso numérico NUNCA aparece: o que aparece é a frase ("travado: falta
+   credencial"). Número sem explicação vira burocracia que se desliga.
+
+   Calculado no cliente a partir do snapshot que já chega pelo stream — sem
+   fetch próprio, então atualiza junto com o resto a cada 2s. A rota
+   `/api/cockpit` existe para consumo externo (PiP, futuro), não para esta aba. */
+
+// Cor por tipo de motivo, reusando os tokens de estado que já existem.
+const COR_MOTIVO = {
+  travado: 'failed', failed: 'failed', stale: 'waiting',
+  waiting: 'waiting', aberto: 'waiting', working: 'working', parado: 'dim',
+}
+
+function viewCockpit(jobs) {
+  if (!jobs.length) return '<div class="empty">nenhum projeto no filtro</div>'
+  // O cockpit vem pronto do servidor (`cockpit.mjs`, testado). O filtro do topo
+  // continua valendo, mas por PROJETO: achar um agente pela busca mostra o
+  // projeto dele inteiro — é visão de projeto, não de agente.
+  const visiveis = new Set(jobs.map((j) => j.project))
+  const projetos = (DATA.cockpit || []).filter((p) => visiveis.has(p.projeto))
+  if (!projetos.length) return '<div class="empty">nenhum projeto no filtro</div>'
+
+  return `<div class="ck-lista">${projetos.map((p) => {
+    const cor = COR_MOTIVO[p.motivo.tipo] || 'dim'
+    const status = ZONES.map((z) => {
+      const n = p.porStatus[z.key] || 0
       return n ? `<span style="color:var(--${z.key})">${n} ${z.title}</span>` : ''
     }).filter(Boolean).join(' · ')
-    return `<div class="proj">
-      <div class="hd">
-        <div class="name">${esc(name)}</div>
-        <div class="sub">${list.length} agentes · ${tok(tokens)} tokens${abertos ? ` · ${abertos} com to-do aberto` : ''}</div>
-        <div class="sub" style="color:var(--dim)">${porStatus}</div>
-        <div class="sub">rotas: ${rotas.map(esc).join(', ')}</div>
-      </div>
-      ${list.map((j) => `
-        <div class="item" data-job="${j.id}" tabindex="0">
-          <i class="dot s-${j.status}" style="margin-top:6px"></i>
-          <span class="clip" style="flex:1">${esc(j.subject)}</span>
-          <span class="path">${esc(j.route)}</span>
-        </div>`).join('')}
-    </div>`
+
+    // Quem espera decisão dele — é o que este painel existe pra despachar.
+    const esperando = p.esperando.length ? `<div class="ck-espera">
+      ${p.esperando.map((e) => `
+        <div class="ck-ag" data-job="${e.id}" tabindex="0" title="abrir detalhe">
+          <span class="ck-ag-motivo" style="color:var(--${COR_MOTIVO[e.tipo] || 'dim'})">${esc(e.motivo)}</span>
+          <b>${esc(e.subject)}</b>
+          ${e.frente ? `<span class="dim">› ${esc(e.frente)}</span>` : ''}
+          <span class="grow"></span>
+          <span class="path">${age(e.idleMs)}</span>
+        </div>
+        ${e.nota ? `<p class="ck-nota">${esc(e.nota.texto)}</p>` : ''}`).join('')}
+    </div>` : ''
+
+    // Os demais agentes, em uma linha só: contexto sem virar parede de texto.
+    const resto = p.jobs.filter((j) => !p.esperando.some((e) => e.id === j.id))
+    const frios = resto.length ? `<div class="ck-frios">${resto.map((j) => `
+      <span class="ck-frio" data-job="${j.id}" tabindex="0" title="${esc(j.motivo)}">
+        <i class="dot s-${j.status}"></i>${esc(j.subject)}
+      </span>`).join('')}</div>` : ''
+
+    return `<article class="ck-proj p-${cor}">
+      <header class="ck-head">
+        <button class="ck-nome" data-mapa-projeto="${esc(p.projeto)}" title="abrir o mapa deste projeto">${esc(p.projeto)}</button>
+        <span class="ck-motivo" style="color:var(--${cor})">${esc(p.motivo.frase)}${
+      p.motivo.peso >= 3 ? ` há ${age(p.motivo.desde)}` : ''}</span>
+        <span class="grow"></span>
+        <span class="path">${p.ultimaAtividade ? `visto há ${age(Date.now() - p.ultimaAtividade)}` : '—'}</span>
+      </header>
+      ${esperando}
+      ${frios}
+      <footer class="ck-pe">
+        <span class="dim">${status || 'sem agente ativo'}</span>
+        <span class="grow"></span>
+        <span class="path">${p.agentes} agente${p.agentes === 1 ? '' : 's'}${
+      p.abertos ? ` · ${p.abertos} com to-do aberto` : ''} · ${tok(p.tokens)}</span>
+      </footer>
+    </article>`
   }).join('')}</div>`
 }
 
@@ -3109,7 +3196,7 @@ function viewHooks() {
 const RODAPE = {
   agentes: 'clique num cartão para abrir o detalhe; passe o mouse nele para retomar (↻), fixar (★) ou copiar o caminho (⧉); as bolinhas são as tarefas, cheias as concluídas',
   todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
-  projetos: 'clique num agente para abrir o painel lateral',
+  projetos: 'onde mexer agora — projetos ordenados por urgência, o de cima primeiro; clique no agente para abrir o detalhe, ou no nome do projeto para o mapa',
   tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
   graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
   preco: 'clique numa linha para ver por que aquele nível foi sugerido, corrigir o nível e digitar quanto tempo você acha que levou',
@@ -3129,7 +3216,7 @@ function render() {
   const views = {
     agentes: () => viewAgentes(jobs),
     todos: () => viewTodos(jobs),
-    projetos: () => viewProjetos(jobs),
+    projetos: () => viewCockpit(jobs),
     tempo: () => viewTempo(),
     graficos: () => viewGraficos(),
     preco: () => viewPreco(),
@@ -3687,6 +3774,17 @@ document.addEventListener('click', async (e) => {
   const btMapa = t.closest('[data-mapa]')
   if (btMapa) {
     const job = byId(btMapa.dataset.mapa)
+    if (job) abrirMapa(job)
+    return
+  }
+
+  // Mapa a partir do cockpit, onde não há um job escolhido: usa qualquer
+  // agente daquele projeto, porque `abrirMapa` precisa do `cwd` pra achar o
+  // ROADMAP.md. Projeto sem agente vivo ainda não abre — é o CC-34, que põe
+  // o `cwd` no histórico.
+  const btMapaProj = t.closest('[data-mapa-projeto]')
+  if (btMapaProj) {
+    const job = DATA.jobs.find((j) => j.project === btMapaProj.dataset.mapaProjeto && j.cwd)
     if (job) abrirMapa(job)
     return
   }
