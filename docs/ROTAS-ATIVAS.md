@@ -24,7 +24,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
-| `framework-hooks` | 🟢 livre | — (5805d6bb fechou em 2026-08-12: CC-29, src/opencode.mjs) | — |
+| `framework-hooks` | 🟢 livre | — (5805d6bb fechou em 2026-08-12/13: CC-29, modelo padrão do opencode trocado pra big-pickle) | — |
 
 ## Tickets pendentes
 

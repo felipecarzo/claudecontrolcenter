@@ -17,7 +17,13 @@ import path from 'node:path'
 import os from 'node:os'
 import { quiet, ehWindows } from './platform.mjs'
 
-export const MODELO_PADRAO = 'opencode/north-mini-code-free'
+// north-mini-code-free (recomendado pela skill vibecoder-opencode) deu erro
+// de servidor nas duas vezes testadas em 12/08 — confirmado via CLI direto,
+// não é bug daqui. opencode/big-pickle respondeu de primeira, custo 0,
+// testado ponta a ponta criando arquivo de verdade. Sujeito a mudar de novo
+// se a lista de modelos gratuitos do opencode mudar — `opencode models`
+// mostra a atual.
+export const MODELO_PADRAO = 'opencode/big-pickle'
 const PASTA_LOG = path.join(os.tmpdir(), 'cc-opencode')
 
 /**
