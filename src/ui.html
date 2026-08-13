@@ -624,6 +624,15 @@
   .ck-mini-f.f-dim { color: var(--faint); }
   .ck-mini-f .dot { margin-right: 1px; }
 
+  /* aba: remoto */
+  .rm-lista { display: grid; gap: 2px; max-width: 720px; }
+  .rm-linha {
+    display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
+    padding: 8px 10px; border-radius: 4px; border-bottom: 1px solid var(--line);
+  }
+  .rm-linha:hover { background: var(--surface); }
+  .rm-nome { font-size: 13px; }
+
   /* CC-24: digest semanal, painel simples acima da lista de projetos. */
   .dg-cab { margin-bottom: 14px; }
   .dg-lista { display: grid; gap: 10px; margin-top: 10px; max-width: 900px; }
@@ -1329,6 +1338,7 @@ const TABS = [
   { id: 'servidores', label: 'servidores' },
   { id: 'vps', label: 'VPS' },
   { id: 'escritorio', label: 'escritório' },
+  { id: 'remoto', label: 'remoto' },
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
 // painel sem nenhuma aba marcada.
@@ -2750,7 +2760,7 @@ function viewVps() {
       ${s ? `<span class="path">lido ${age(Date.now() - s.em)} atrás</span>` : ''}
       <span class="grow"></span>
       <button class="btn" data-vps-config="1">${vpsConfigAberto ? 'fechar' : '⚙ conexão'}</button>
-      <button class="btn" data-vps-atualizar="1" ${vpsAtualizando ? 'disabled' : ''}>${vpsAtualizando ? 'lendo pela SSH…' : 'atualizar'}</button>
+      <button class="btn" data-vps-atualizar="1" ${vpsAtualizando ? 'disabled' : ''}>${vpsAtualizando ? 'lendo…' : 'atualizar'}</button>
     </div>
     ${vpsConfigAberto ? viewVpsFormulario() : ''}
     ${!s
@@ -3493,6 +3503,46 @@ function viewRotinas() {
   return `${resumo}<div class="rt-lista">${cartoes}</div>`
 }
 
+/* ========================== aba: remoto ==========================
+   Botão "ligar projetos": dispara `claude --remote-control` na pasta de um
+   projeto, pra acessar do celular. Varre disco (findProjects), então carrega
+   só ao abrir a aba, nunca no stream. */
+
+let REMOTO_DATA = null
+
+async function carregarRemoto(force) {
+  if (REMOTO_DATA && !force) return
+  try {
+    REMOTO_DATA = await (await fetch('/api/remote-control')).json()
+  } catch {
+    REMOTO_DATA = null
+  }
+  render()
+}
+
+function viewRemoto() {
+  if (!REMOTO_DATA) return '<div class="empty">carregando…</div>'
+  const projetos = REMOTO_DATA.projetos || []
+  const ativos = REMOTO_DATA.ativos || {}
+  if (!projetos.length) return '<div class="empty">nenhum projeto encontrado</div>'
+
+  return `<div class="dim" style="margin-bottom:12px">liga uma sessão do Claude Code com Remote Control na pasta do
+    projeto escolhido: conecte do celular por <code>claude.ai/code</code>. A sessão fica viva enquanto este painel
+    estiver aberto.</div>
+  <div class="rm-lista">${projetos.map((p) => {
+    const on = ativos[p.nome]
+    return `<div class="rm-linha">
+      <span class="rm-nome">${esc(p.nome)}</span>
+      ${on ? '<span class="hk-badge ok">ligado</span>' : ''}
+      <span class="rm-acoes">
+        ${on
+        ? `<button class="btn" data-remoto-desligar="${esc(p.nome)}">desligar</button>`
+        : `<button class="btn" data-remoto-ligar="${esc(p.nome)}" data-remoto-dir="${esc(p.dir)}">ligar</button>`}
+      </span>
+    </div>`
+  }).join('')}</div>`
+}
+
 const RODAPE = {
   agentes: 'clique num cartão para abrir o detalhe; passe o mouse nele para retomar (↻), fixar (★) ou copiar o caminho (⧉); as bolinhas são as tarefas, cheias as concluídas',
   todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
@@ -3506,6 +3556,7 @@ const RODAPE = {
   servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
   vps: 'retrato por SSH, só quando você clica em atualizar — nunca sozinho. Fica salvo até o próximo clique',
   escritorio: 'os agentes desenhados trabalhando; PiP solta numa janelinha que fica por cima de tudo — o painel da VPS depende do túnel SSH, que este botão abre',
+  remoto: 'liga uma sessão do Claude Code com Remote Control na pasta do projeto, pra acessar do celular por claude.ai/code. A sessão fica viva enquanto o painel estiver de pé; desligar aqui derruba a conexão remota também',
 }
 
 function render() {
@@ -3527,6 +3578,7 @@ function render() {
     servidores: () => viewServidores(),
     vps: () => viewVps(),
     escritorio: () => viewEscritorio(),
+    remoto: () => viewRemoto(),
   }
   // O palco do escritório é um iframe. Reescrever #main a cada evento do
   // stream o recriaria, e iframe recriado RECARREGA — a tela piscava e o
@@ -4294,6 +4346,7 @@ document.addEventListener('click', async (e) => {
     if (tab === 'agenda') carregarAgenda()
     if (tab === 'hooks') carregarHooks()
     if (tab === 'rotinas') carregarRotinas()
+    if (tab === 'remoto') carregarRemoto()
     if (tab === 'escritorio') carregarPaineis()
     if (tab === 'tempo' || tab === 'graficos') carregarTempo()
     if (tab === 'preco') carregarPreco()
@@ -4415,6 +4468,33 @@ document.addEventListener('click', async (e) => {
   }
 
   if (t.closest('[data-digest]')) return alternarDigest()
+
+  const btLigar = t.closest('[data-remoto-ligar]')
+  if (btLigar) {
+    btLigar.disabled = true
+    btLigar.textContent = 'ligando…'
+    try {
+      const r = await fetch('/api/remote-control', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ projeto: btLigar.dataset.remotoLigar, cwd: btLigar.dataset.remotoDir }),
+      })
+      const out = await r.json()
+      if (!out.ok) alert(out.error || out.erro)
+    } catch {
+      alert('não deu pra ligar')
+    }
+    return carregarRemoto(true)
+  }
+
+  const btDesligar = t.closest('[data-remoto-desligar]')
+  if (btDesligar) {
+    if (!confirm(`Desligar a sessão remota de "${btDesligar.dataset.remotoDesligar}"? A conexão do celular cai junto.`)) return
+    await fetch('/api/remote-control', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ projeto: btDesligar.dataset.remotoDesligar, acao: 'desligar' }),
+    })
+    return carregarRemoto(true)
+  }
 
   const btEnriquecer = t.closest('[data-enriquecer]')
   if (btEnriquecer) {
@@ -4800,6 +4880,7 @@ fetch('/api/jobs').then((r) => r.json()).then((d) => {
   if (tab === 'agenda') carregarAgenda()
   if (tab === 'hooks') carregarHooks()
   if (tab === 'rotinas') carregarRotinas()
+  if (tab === 'remoto') carregarRemoto()
   if (srvNovo) carregarProjetos()
   if (tab === 'escritorio') carregarPaineis()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()
@@ -4812,10 +4893,11 @@ carregarPip()
 carregarServidores()
 if (!params.has('static')) setInterval(() => carregarServidores(true), 20000)
 
-// Abrir direto na aba de rotinas (link salvo, ou `?tab=rotinas` da captura)
+// Abrir direto na aba de rotinas/remoto (link salvo, ou `?tab=` da captura)
 // precisa de uma leitura aqui: as outras chegam pelo stream, e com `static`
 // ele nem existe, e a aba ficaria em "carregando…" para sempre.
 if (tab === 'rotinas') carregarRotinas()
+if (tab === 'remoto') carregarRemoto()
 
 fetch('/api/graficos').then((r) => r.json()).then((d) => {
   GRAFICOS = d.graficos

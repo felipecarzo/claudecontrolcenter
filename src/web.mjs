@@ -19,6 +19,7 @@ import { findProjects } from './install.mjs'
 import { commitsDesde } from './gitlog.mjs'
 import { digestTodos } from './digest.mjs'
 import { enriquecerTodos } from './opencode.mjs'
+import { ligar as ligarRemoto, desligar as desligarRemoto, estado as estadoRemoto } from './remotecontrol.mjs'
 import { garantirMercado } from './mercado.mjs'
 import {
   readServers, killServer, duplicados, recentes, projetosLancaveis,
@@ -36,7 +37,7 @@ import { HOOKS } from './hooksCatalogo.mjs'
 import { registradoTodos } from './hooksRegistro.mjs'
 import { porProjeto } from './cockpit.mjs'
 import { listarContainers } from './docker.mjs'
-import { atualizarSnapshot } from './vps.mjs'
+import { atualizarSnapshot, configurada as vpsConfigurada } from './vps.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
 import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
@@ -180,6 +181,24 @@ function handler(req, res) {
     return comCorpo(req, res, 1e4, ({ dir, como }) => ({ aberto: abrirLocal(dir, como) }))
   }
 
+  // Botão "ligar projetos": dispara `claude --remote-control` na pasta do
+  // projeto. Nunca no stream: é processo que fica vivo indefinidamente, não
+  // uma leitura barata.
+  if (url.pathname === '/api/remote-control') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e4, ({ projeto, cwd, acao }) => {
+        if (acao === 'desligar') return desligarRemoto(projeto)
+        const dir = cwdDoProjeto(cwd, projeto)
+        if (!dir) throw new Error(`projeto não encontrado: ${projeto}`)
+        return ligarRemoto(projeto, dir)
+      })
+    }
+    // GET: todo projeto conhecido (pra montar a lista de botões) + o que já
+    // está ligado agora.
+    const projetos = findProjects().map((dir) => ({ nome: path.basename(dir), dir }))
+    return send(res, 200, { projetos, ativos: estadoRemoto() })
+  }
+
   // Containers Docker desta máquina. Fora do stream, mesmo motivo da máquina
   // e dos servidores: `docker ps` spawna processo e não pode travar o tique
   // de 2s dos agentes.
@@ -270,7 +289,9 @@ function handler(req, res) {
     }
     const cfg = readConfig()
     return send(res, 200, {
-      configurado: Boolean(cfg.vps?.host),
+      // CC_VPS_LOCAL=1 conta como configurado mesmo sem host salvo: é o modo
+      // local, rodando o painel dentro da própria VPS.
+      configurado: vpsConfigurada(),
       host: cfg.vps?.host || null,
       usuario: cfg.vps?.usuario || 'root',
       snapshot: cfg.vpsSnapshot,

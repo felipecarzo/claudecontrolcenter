@@ -27,7 +27,11 @@ const COMANDO = [
     + `&& grep -hE 'server_name|proxy_pass|root ' "$f" | sed 's/^[[:space:]]*//;s/;$//'; done 2>/dev/null`,
   `echo '${MARCA.pm2}'`, `pm2 jlist 2>/dev/null || echo '[]'`,
   `echo '${MARCA.docker}'`,
-  `docker ps --format '{{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Ports}}' 2>/dev/null`,
+  // `|| true` no fim: sem docker (ou sem permissão), o comando composto
+  // inteiro saía com código != 0, e o painel tratava isso como "SSH falhou"
+  // mesmo com host/RAM/disco/nginx/PM2 lidos certo. Achado pela sessão que
+  // rodou o painel dentro da própria VPS em 13/08.
+  `docker ps --format '{{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Ports}}' 2>/dev/null || true`,
 ].join('; ')
 
 /** Quebra a saída única nas seções marcadas, na ordem em que apareceram. */
@@ -97,21 +101,33 @@ function parseDocker(bloco) {
   })
 }
 
-/** `null` quando a VPS ainda não foi configurada nesta máquina. */
+// Rodando o painel DENTRO da própria VPS, `atualizarSnapshot()` pedia pra
+// "conectar na VPS" via SSH de si pra si mesma, sem necessidade. Achado pela
+// sessão que instalou o painel lá em 13/08. `CC_VPS_LOCAL=1` é declarada por
+// quem sobe o serviço systemd na VPS (nunca adivinhada por hostname: um
+// palpite errado mostraria o retrato da máquina errada, sem aviso nenhum).
+const local = () => process.env.CC_VPS_LOCAL === '1'
+
+/** `true` também no modo local, mesmo sem host configurado nesta máquina. */
 export function configurada() {
-  return Boolean(readConfig().vps?.host)
+  return local() || Boolean(readConfig().vps?.host)
 }
 
 export async function atualizarSnapshot() {
   const cfg = readConfig().vps
-  if (!cfg?.host) throw new Error('configure host, usuário e chave antes de atualizar')
 
-  const args = [
-    '-i', cfg.chave, '-o', 'ConnectTimeout=15', '-o', 'BatchMode=yes',
-    '-o', 'StrictHostKeyChecking=accept-new', `${cfg.usuario || 'root'}@${cfg.host}`, COMANDO,
-  ]
-  const r = await quietAsync('ssh', args, 25000)
-  if (!r.ok) throw new Error(`SSH falhou: ${r.out.slice(0, 300) || 'sem resposta'}`)
+  let r
+  if (local()) {
+    r = await quietAsync('bash', ['-lc', COMANDO], 25000)
+  } else {
+    if (!cfg?.host) throw new Error('configure host, usuário e chave antes de atualizar')
+    const args = [
+      '-i', cfg.chave, '-o', 'ConnectTimeout=15', '-o', 'BatchMode=yes',
+      '-o', 'StrictHostKeyChecking=accept-new', `${cfg.usuario || 'root'}@${cfg.host}`, COMANDO,
+    ]
+    r = await quietAsync('ssh', args, 25000)
+  }
+  if (!r.ok) throw new Error(`${local() ? 'comando local' : 'SSH'} falhou: ${r.out.slice(0, 300) || 'sem resposta'}`)
 
   const partes = secoes(r.out)
   const [totalMB, usadoMB] = (partes.ram || '').split(/\s+/).map(Number)
@@ -120,7 +136,7 @@ export async function atualizarSnapshot() {
 
   const snapshot = {
     em: Date.now(),
-    host: host || cfg.host,
+    host: host || cfg?.host || null,
     uptime: uptime || null,
     ram: Number.isFinite(totalMB) && Number.isFinite(usadoMB) ? { totalMB, usadoMB } : null,
     disco: Number.isFinite(totalKB) && Number.isFinite(usadoKB)

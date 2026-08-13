@@ -1051,6 +1051,48 @@ if (estRotinas.projetos.length) {
   assert.equal(si.sobreposicao(new Set(), new Set(['x'])), 0)
 }
 
+// --- remote control: dispara claude --remote-control, sem chamar o binario real ---
+{
+  const rc = await import('./src/remotecontrol.mjs')
+  const tmpRc = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-remote-teste-'))
+
+  // pasta que nao existe: falha aberta, sem lancar
+  const semPasta = rc.ligar('projeto-x', path.join(tmpRc, 'nao-existe'))
+  assert.equal(semPasta.ok, false)
+
+  // binario fake que fica vivo por alguns segundos: um binario que sai na
+  // hora (node com flag desconhecida, por exemplo) deixaria o teste instavel
+  // -- o processo podia morrer antes da checagem de "ja ligado" rodar
+  const fakeBin = path.join(tmpRc, 'fake-claude.cmd')
+  fs.writeFileSync(fakeBin, '@echo off\r\ntimeout /t 5 /nobreak >nul\r\n')
+
+  // disparo nao pode bloquear, mesmo com binario que fica vivo por segundos
+  const antes = Date.now()
+  const r1 = rc.ligar('projeto-teste', tmpRc, { binario: fakeBin })
+  assert.ok(Date.now() - antes < 1000, 'ligar nao pode bloquear esperando o processo terminar')
+  assert.equal(r1.ok, true)
+  assert.equal(r1.ja, false)
+
+  // clicar duas vezes no mesmo projeto nao abre sessao duplicada
+  const r2 = rc.ligar('projeto-teste', tmpRc, { binario: fakeBin })
+  assert.equal(r2.ja, true, 'segunda chamada no mesmo projeto tem que reconhecer a sessao ja ligada')
+  assert.equal(r2.pid, r1.pid)
+
+  // aparece no estado()
+  assert.ok('projeto-teste' in rc.estado())
+
+  // desligar mata o processo e some do estado
+  const d = rc.desligar('projeto-teste')
+  assert.equal(d.ok, true)
+  assert.equal(d.ja, true)
+  assert.ok(!('projeto-teste' in rc.estado()))
+
+  // desligar de novo (ja desligado) nao lanca, so reporta
+  assert.deepEqual(rc.desligar('projeto-teste'), { ok: true, ja: false })
+
+  fs.rmSync(tmpRc, { recursive: true, force: true })
+}
+
 // --- gitlog (CC-35): usa este próprio repositório como fixture — leitura
 // pura, sem risco. O achado real ao testar ao vivo: sem `-C <cwd>`, o `git
 // log` roda sempre na pasta onde o SERVIDOR foi iniciado, não na do projeto
