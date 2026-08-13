@@ -176,8 +176,8 @@ contexto mais rápido, ou economiza uma volta do ciclo?**
 
 ### CC-38 — O ciclo vira regra onde carrega: o CLAUDE.md global
 As quatro regras de maior retorno medido estão presas em memória de projeto,
-e por isso o erro se repete há três anos: verificação visual obrigatória (erro
-mais repetido, 3 projetos), repetir a mecânica antes de codar (4 rodadas
+e por isso o mesmo erro se repete: verificação visual obrigatória (o mais
+repetido, 3 projetos diferentes), repetir a mecânica antes de codar (4 rodadas
 evitadas por 1 frase), backlog de tudo que ele fala, medir antes de agir na
 hipótese dele. Sobem pro global junto com os três protocolos novos que a
 análise revelou: **desambiguar substantivo na segunda repetição** (mataria 3

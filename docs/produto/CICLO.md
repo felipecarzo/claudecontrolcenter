@@ -69,8 +69,13 @@ pra verificar, dizer isso com todas as letras em vez de descrever a intenção
 como se fosse resultado.
 
 Esse é o erro mais repetido de todos: gerou memória em três projetos
-diferentes (`ghoscode` em abril, `inovallbond` e `controlcenter` em agosto) e
-**mesmo assim não está no CLAUDE.md global** — por isso ele se repete.
+diferentes (`ghoscode`, `inovallbond` e `controlcenter`) e **mesmo assim não
+está no CLAUDE.md global** — por isso ele se repete.
+
+Sobre a janela de tempo: as memórias vão de **2026-03-01 a 2026-08-13**, ou
+seja, cerca de **5 meses** de uso. (Uma versão anterior deste documento dizia
+"3 anos", número que veio de um agente de pesquisa e foi repetido sem
+conferência. O Felipe pegou o erro. Verificado pela data dos arquivos.)
 
 ---
 
@@ -243,7 +248,7 @@ hierarquia, com contradições convivendo sem desempate.
 
 | Regra | Retorno medido | Onde vive hoje |
 |---|---|---|
-| Verificação visual obrigatória | erro mais repetido em 3 projetos e 3 anos | memória de projeto, **não no global** |
+| Verificação visual obrigatória | erro mais repetido: 3 projetos, em ~5 meses de uso | memória de projeto, **não no global** |
 | Repetir a mecânica antes de codar | 4 rodadas evitadas por 1 frase | preso no `inovallbond`, 2 dias de idade |
 | Backlog de tudo que ele fala | perdeu spec inteira sem isso | `inovallbond` + `productVideoMaker`, não no global |
 | Medir antes de agir na hipótese dele | evitou piorar o produto 2x no mesmo dia | preso no `renanMarchon` |
