@@ -72,10 +72,27 @@ Esse é o erro mais repetido de todos: gerou memória em três projetos
 diferentes (`ghoscode`, `inovallbond` e `controlcenter`) e **mesmo assim não
 está no CLAUDE.md global** — por isso ele se repete.
 
-Sobre a janela de tempo: as memórias vão de **2026-03-01 a 2026-08-13**, ou
-seja, cerca de **5 meses** de uso. (Uma versão anterior deste documento dizia
-"3 anos", número que veio de um agente de pesquisa e foi repetido sem
-conferência. O Felipe pegou o erro. Verificado pela data dos arquivos.)
+### Quanto tempo de uso isso representa (e por que o número importa)
+
+**21 dias de uso medidos** — 9 em julho, 12 em agosto de 2026. Não são cinco
+meses corridos: a primeira memória é de 2026-03-01, mas o Felipe usou de forma
+intermitente, com meses sem abrir. Palavras dele: *"5 meses que eu usei a
+primeira vez mas tiveram meses que eu não usei depois"*.
+
+O descompasso entre memória (desde março) e transcrito (só desde 22/07) tem
+explicação técnica: **transcrito tem retenção de 30 dias** por padrão
+(`cleanupPeriodDays` não configurado), memória não expira. Então não há como
+medir os dias de uso de março a junho — os arquivos já foram apagados.
+
+**Isso torna a repetição do erro mais grave, não menos**: a verificação visual
+falhou em 3 projetos distintos dentro de ~21 dias de uso efetivo.
+
+> **Duas correções neste parágrafo, as duas dele.** A primeira versão dizia
+> "3 anos" (número que veio de um agente de pesquisa e foi repetido sem
+> conferência); a segunda dizia "5 meses de uso", confundindo período de
+> calendário com uso real. Ficam registradas de propósito: este documento
+> exige evidência medida, e ele foi escrito quebrando a própria regra duas
+> vezes seguidas.
 
 ---
 
@@ -248,7 +265,7 @@ hierarquia, com contradições convivendo sem desempate.
 
 | Regra | Retorno medido | Onde vive hoje |
 |---|---|---|
-| Verificação visual obrigatória | erro mais repetido: 3 projetos, em ~5 meses de uso | memória de projeto, **não no global** |
+| Verificação visual obrigatória | erro mais repetido: 3 projetos, em ~21 dias de uso medidos | memória de projeto, **não no global** |
 | Repetir a mecânica antes de codar | 4 rodadas evitadas por 1 frase | preso no `inovallbond`, 2 dias de idade |
 | Backlog de tudo que ele fala | perdeu spec inteira sem isso | `inovallbond` + `productVideoMaker`, não no global |
 | Medir antes de agir na hipótese dele | evitou piorar o produto 2x no mesmo dia | preso no `renanMarchon` |
