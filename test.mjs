@@ -691,6 +691,42 @@ const { setCalendario } = await import('./src/config.mjs')
 assert.throws(() => setCalendario({ nome: 'x', url: 'file:///C:/Windows/win.ini' }), /http/)
 assert.throws(() => setCalendario({ nome: 'x', url: '' }), /obrigat/)
 
+// --- catálogo de hooks: todo id único, todo evento reconhecido ---
+const { HOOKS, EVENTOS } = await import('./src/hooksCatalogo.mjs')
+const ids = HOOKS.map((h) => h.id)
+assert.equal(new Set(ids).size, ids.length, 'hook com id duplicado no catálogo')
+for (const h of HOOKS) assert.ok(EVENTOS.includes(h.evento), `evento desconhecido em ${h.id}: ${h.evento}`)
+
+// --- toggle de hook: sem entrada no config usa o padrão do catálogo ---
+const { hookEnabled } = await import('./src/config.mjs')
+// cc-check tem padrao:true — cfg sem a chave usa o padrão, não false
+assert.equal(hookEnabled('cc-check', { hooks: {} }), true)
+// override explícito vence o padrão, nos dois sentidos
+assert.equal(hookEnabled('cc-check', { hooks: { 'cc-check': false } }), false)
+assert.equal(hookEnabled('routia-inicio', { hooks: { 'routia-inicio': true } }), true)
+// hook fora do catálogo: presume desligado, nunca liga sozinho por engano
+assert.equal(hookEnabled('nao-existe', { hooks: {} }), false)
+
+// --- registro no settings.json: leitura tolerante, sem tocar disco ---
+const { registrado } = await import('./src/hooksRegistro.mjs')
+const settingsFake = {
+  hooks: {
+    PreToolUse: [
+      { matcher: 'Edit|Write', hooks: [{ type: 'command', command: 'node ~/.claude/hooks/rota-guard.mjs' }] },
+    ],
+    Stop: [
+      { hooks: [{ type: 'command', command: 'node ~/.claude/hooks/todo-guard.mjs', timeout: 10 }] },
+    ],
+  },
+}
+assert.equal(registrado(HOOKS.find((h) => h.id === 'rota-guard'), settingsFake), true)
+// cc-check não tem script próprio no settings.json — só é achado via registradoVia (todo-guard.mjs)
+assert.equal(registrado(HOOKS.find((h) => h.id === 'cc-check'), settingsFake), true)
+// git-add-guard não está no fixture: tem que dar false, não lançar
+assert.equal(registrado(HOOKS.find((h) => h.id === 'git-add-guard'), settingsFake), false)
+// settings.json ausente/quebrado: nenhum hook aparece registrado, sem lançar
+assert.equal(registrado(HOOKS.find((h) => h.id === 'rota-guard'), null), false)
+
 // --- daemon: caminhos, sem escrever nada ---
 const dm = await import('./src/daemon.mjs')
 assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')

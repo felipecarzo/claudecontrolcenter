@@ -89,10 +89,65 @@ como gatilho, nenhum gera lote. Só `content-repurposer-sms` do primeiro repo
 serve como referência de estrutura (matriz de derivados por plataforma).
 Depende do CC-24 existir antes de fazer sentido escrever.
 
+### Frente: Framework de hooks — ver [[produto/FRAMEWORK-HOOKS]]
+
+Decidido com o Felipe em 12/08: o painel passa a controlar comportamento de
+verdade do Claude Code, não só ler estado. Épico 1 (alicerce — hooks
+ligáveis pelo painel) feito em 12/08. Os quatro itens abaixo têm decisão
+pendente documentada no produto/FRAMEWORK-HOOKS.md — nenhum decide sozinho
+qual caminho tomar, o Felipe escolhe quando o sprint chegar.
+
+### CC-28 — Método Routia adaptado ao Control Center
+O Método Routia já roda globalmente (`~/.claude/hooks/rota-guard.mjs` e
+`git-add-guard.mjs`), mas o escopo de pastas protegidas está fixo em
+`apps`/`tools` (layout do inovallbond) — não cobre `src/`, onde o código do
+Control Center vive. Depende de decisão: o projeto ganha
+`docs/ROTAS-ATIVAS.md`? Com qual `pastas-controladas`? Depois disso, dois
+hooks novos (fora deste repo, em `~/.claude/hooks/`): ler o quadro ao abrir
+sessão (`SessionStart`, não bloqueia) e lembrar de liberar a rota ao
+terminar (aviso em texto, nunca escrita automática — mesmo princípio do
+CC-18).
+
+### CC-29 — Delegação opencode: disparo + verificação em background
+Hoje a skill `vibecoder-opencode` decide viabilidade, dispara e verifica
+tudo dentro do julgamento do Claude — síncrono, gasta Claude Code. Precisa
+virar módulo de código puro (`src/opencode.mjs`): disparo de processo
+destacado (reaproveitando o padrão `spawn(detached)` de `platform.mjs`),
+heurística de viabilidade simplificada (primeira versão, corrigível depois),
+e verificação pós-hoc automática (`node --check`). Sem dependência de `jq` —
+o `--format json` do opencode já sai um objeto por linha, filtrável em Node
+puro. Sem travas de decisão: pode andar assim que o Épico 1 (feito) permitir.
+
+### CC-30 — Fila de revisão do opencode + hook que obriga a chamada
+Depende do CC-29 e de decidir qual evento e qual critério "obrigam" a
+chamada ao opencode (ex.: `UserPromptSubmit` por linguagem natural, mais
+agressivo; ou um comando explícito tipo `cc delegar "tarefa"`, menos "hook
+obrigando" e mais "ferramenta que o agente usa"). Resultado nunca fecha
+to-do sozinho — fila de revisão em `~/.claude/control-center-opencode.json`
+(fora de `~/.claude/jobs`, que é contrato exclusivo de `meta.json`), aprovar
+só marca `revisado: true`, no máximo sugere fechar o to-do ligado.
+
+### CC-31 — Painel de metodologia (ágil/UML/MER, alerta sem bloquear)
+Checklist como dado estático (`src/metodologia.mjs`) e aba só-leitura que
+mostra, pro job selecionado, o que **parece** faltando — heurística sobre
+sinais que já existem em `buildJob()` (sem `frente`, sem `todos`...). Nunca
+bloqueia, sempre alerta. Conteúdo exato das perguntas é editorial, não
+técnico — falta o Felipe definir quão rigoroso.
+
 ## Limites aceitos hoje
 
 Escritos aqui porque são escolha, não descuido:
 
+- **Toggle de hook nunca escreve no `settings.json` do Claude Code** (CC-27,
+  Épico 1 do framework de hooks, 12/08). `cc hooks on|off <id>` só grava em
+  `control-center.json` — o hook em si (script em `~/.claude/hooks/` ou
+  dentro de `cc.mjs`) continua registrado ou não no `settings.json`
+  independente disso, e cada hook checa o toggle sozinho antes de agir
+  (mesmo contrato de `isEnabled()`). Por isso a aba "hooks" mostra um badge
+  "registrado"/"não registrado" separado do liga/desliga: ligar aqui um hook
+  que não está no `settings.json` não faz nada, e o badge existe pra isso não
+  ser silencioso. Escrever `settings.json` programaticamente é a decisão D1
+  do backlog (`produto/FRAMEWORK-HOOKS.md`), ainda em aberto.
 - **Projeto sem `docs/ROADMAP.md` não ganha escrita direta do painel** (CC-18,
   decidido 12/08). O painel nunca escreve `docs/ROADMAP.md` sozinho na pasta
   de outro projeto — seria o Control Center mudando disco de um repositório

@@ -9,6 +9,8 @@
 //   node cc.mjs done "tarefa"      fecha um to-do sem reenviar a lista
 //   node cc.mjs check              usado pelo hook: avisa to-do aberto na entrega
 //   node cc.mjs on|off [--project X]   liga/desliga o reporte
+//   node cc.mjs hooks                  lista hooks e se estão ligados
+//   node cc.mjs hooks on|off <id>      liga/desliga um hook específico
 //   node cc.mjs json               despeja o estado atual e sai
 //
 //   flags: --no-web  --web-only  --port <n>
@@ -18,7 +20,8 @@ import { startTui } from './src/tui.mjs'
 import { startWeb } from './src/web.mjs'
 import * as daemon from './src/daemon.mjs'
 import * as install from './src/install.mjs'
-import { isEnabled, setEnabled, describe } from './src/config.mjs'
+import { isEnabled, setEnabled, describe, hookEnabled, setHookEnabled } from './src/config.mjs'
+import { HOOKS } from './src/hooksCatalogo.mjs'
 
 const argv = process.argv.slice(2)
 const FLAGS_WITH_VALUE = new Set(['--port', '--job', '--project'])
@@ -130,7 +133,7 @@ switch (cmd) {
   // suja. Nunca falha o processo — hook que quebra vira hook desligado.
   case 'check': {
     const id = val('--job') || currentJobId()
-    if (!id || !isEnabled()) process.exit(0)
+    if (!id || !isEnabled() || !hookEnabled('cc-check')) process.exit(0)
     const job = readJobs().find((j) => j.id === id)
     if (!job || !job.todos.length) process.exit(0)
     const abertos = job.todos.filter((t) => !t.done)
@@ -161,6 +164,24 @@ switch (cmd) {
     )
     if (d.disabledProjects.length) console.log(`projetos desligados: ${d.disabledProjects.join(', ')}`)
     console.log(`config: ${d.file}`)
+    break
+  }
+
+  // `cc hooks` lista; `cc hooks on|off <id>` liga/desliga um hook específico —
+  // não confundir com `cc on|off`, que é o interruptor geral do reporte.
+  case 'hooks': {
+    if (arg === 'on' || arg === 'off') {
+      const id = positional[2]
+      if (!id) die(`uso: node cc.mjs hooks ${arg} <id>`)
+      if (!HOOKS.some((h) => h.id === id)) die(`hook desconhecido: ${id}`)
+      setHookEnabled(id, arg === 'on')
+      console.log(`${id}: ${arg === 'on' ? 'ligado' : 'desligado'}`)
+      break
+    }
+    for (const h of HOOKS) {
+      const on = hookEnabled(h.id)
+      console.log(`${on ? '●' : '○'} ${h.id.padEnd(14)} ${h.evento.padEnd(14)} ${on ? 'ligado' : 'desligado'}${h.implementado ? '' : '  (ainda não implementado)'}`)
+    }
     break
   }
 

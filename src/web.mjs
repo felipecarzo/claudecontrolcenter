@@ -25,9 +25,11 @@ import { readNotes, writeNotes } from './notes.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
-  setVpsConfig, setCalendario, removerCalendario, readConfig,
+  setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig,
 } from './config.mjs'
 import { agenda, esquecerCache as esquecerAgenda } from './calendario.mjs'
+import { HOOKS } from './hooksCatalogo.mjs'
+import { registradoTodos } from './hooksRegistro.mjs'
 import { listarContainers } from './docker.mjs'
 import { atualizarSnapshot } from './vps.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
@@ -158,6 +160,21 @@ function handler(req, res) {
   // do próprio módulo — aqui só repassa.
   if (url.pathname === '/api/processos') {
     return estadoProcessos({ force: url.searchParams.has('force') }).then((d) => send(res, 200, d || { indisponivel: true }))
+  }
+
+  // Catálogo de hooks + se cada um está ligado (control-center.json) e
+  // registrado de verdade (settings.json do Claude Code, só leitura).
+  if (url.pathname === '/api/hooks') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e4, ({ id, on }) => {
+        if (!HOOKS.some((h) => h.id === id)) throw new Error(`hook desconhecido: ${id}`)
+        return { ligado: setHookEnabled(id, on) }
+      })
+    }
+    const registrados = registradoTodos(HOOKS)
+    return send(res, 200, {
+      hooks: HOOKS.map((h) => ({ ...h, ligado: hookEnabled(h.id), registrado: registrados[h.id] })),
+    })
   }
 
   // O que a janela flutuante mostra. GET pra montar o painel de configurações

@@ -930,6 +930,24 @@
     .ag-ev .ag-local { grid-column: 2; }
   }
 
+  /* ---------- hooks ---------- */
+  .hk-lista { display: grid; gap: 2px; max-width: 720px; }
+  .hk-linha {
+    display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center;
+    padding: 10px 8px; border-radius: 4px; border-bottom: 1px solid var(--line);
+  }
+  .hk-linha:hover { background: var(--surface); }
+  .hk-linha input[type="checkbox"] { width: 16px; height: 16px; }
+  .hk-info { display: grid; gap: 2px; }
+  .hk-info b { font-size: 13px; }
+  .hk-info .dim { font-size: 11px; }
+  .hk-badge {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--dim);
+  }
+  .hk-badge.ok { color: var(--done); border-color: color-mix(in srgb, var(--done) 40%, var(--line)); }
+  .hk-badge.bad { color: var(--waiting); border-color: color-mix(in srgb, var(--waiting) 40%, var(--line)); }
+
   /* ---------- bloco de notas ---------- */
   .n-head {
     position: sticky; top: 0; z-index: 5; background: var(--surface);
@@ -1192,6 +1210,7 @@ const TABS = [
   { id: 'graficos', label: 'gráficos' },
   { id: 'preco', label: 'preço' },
   { id: 'agenda', label: 'agenda' },
+  { id: 'hooks', label: 'hooks' },
   { id: 'servidores', label: 'servidores' },
   { id: 'vps', label: 'VPS' },
   { id: 'escritorio', label: 'escritório' },
@@ -3039,6 +3058,54 @@ function viewAgenda() {
   return `${topo}<div class="ag-lista">${dias}</div>`
 }
 
+/* ========================== aba: hooks ==========================
+   Control center dos hooks do Claude Code (Método Routia, cc-check, e o que
+   os próximos épicos trouxerem). Liga/desliga aqui só grava em
+   control-center.json — nunca escreve no settings.json do Claude Code, por
+   isso "registrado" pode aparecer não-marcado mesmo com o hook ligado: falta
+   o passo manual de registrar o script lá (ver decisão D1 do backlog). */
+
+let HOOKS_DATA = null
+
+async function carregarHooks(force) {
+  if (HOOKS_DATA && !force) return
+  try {
+    HOOKS_DATA = await (await fetch('/api/hooks')).json()
+  } catch {
+    HOOKS_DATA = null
+  }
+  render()
+}
+
+async function alternarHook(id, on) {
+  const r = await fetch('/api/hooks', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, on }),
+  })
+  const out = await r.json()
+  if (!out.ok) return alert(out.error)
+  return carregarHooks(true)
+}
+
+function viewHooks() {
+  if (!HOOKS_DATA) return '<div class="empty">carregando…</div>'
+  const linhas = (HOOKS_DATA.hooks || []).map((h) => `
+    <div class="hk-linha">
+      <label><input type="checkbox" ${h.ligado ? 'checked' : ''} data-hk-toggle="${esc(h.id)}"></label>
+      <div class="hk-info">
+        <b>${esc(h.label)}</b>
+        <span class="dim">${esc(h.evento)} · ${esc(h.descricao)}</span>
+      </div>
+      <span class="hk-badge ${h.registrado ? 'ok' : 'bad'}" title="${h.registrado
+    ? 'o script está de fato no settings.json do Claude Code'
+    : 'ligado aqui, mas não está registrado no settings.json — não faz nada ainda'}">
+        ${h.registrado ? '● registrado' : '○ não registrado'}
+      </span>
+      ${h.implementado ? '' : '<span class="hk-badge">planejado</span>'}
+    </div>`).join('')
+
+  return `<div class="hk-lista">${linhas}</div>`
+}
+
 const RODAPE = {
   agentes: 'clique num cartão para abrir o detalhe; passe o mouse nele para retomar (↻), fixar (★) ou copiar o caminho (⧉); as bolinhas são as tarefas, cheias as concluídas',
   todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
@@ -3047,6 +3114,7 @@ const RODAPE = {
   graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
   preco: 'clique numa linha para ver por que aquele nível foi sugerido, corrigir o nível e digitar quanto tempo você acha que levou',
   agenda: 'o que está marcado no Google Calendar, lido pelo endereço secreto em iCal — o endereço fica só nesta máquina e nunca aparece nesta tela',
+  hooks: 'liga/desliga hooks do Claude Code sem mexer no settings.json — "registrado" diz se o script já está de fato configurado lá; desligado aqui vira no-op silencioso, nunca erro',
   servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
   vps: 'retrato por SSH, só quando você clica em atualizar — nunca sozinho. Fica salvo até o próximo clique',
   escritorio: 'os agentes desenhados trabalhando; PiP solta numa janelinha que fica por cima de tudo — o painel da VPS depende do túnel SSH, que este botão abre',
@@ -3066,6 +3134,7 @@ function render() {
     graficos: () => viewGraficos(),
     preco: () => viewPreco(),
     agenda: () => viewAgenda(),
+    hooks: () => viewHooks(),
     servidores: () => viewServidores(),
     vps: () => viewVps(),
     escritorio: () => viewEscritorio(),
@@ -3555,6 +3624,9 @@ document.addEventListener('change', (e) => {
   }
   const layout = e.target.closest('[name="pip-layout"]')
   if (layout) return salvarPip({ layout: layout.value })
+
+  const hk = e.target.closest('[data-hk-toggle]')
+  if (hk) return alternarHook(hk.dataset.hkToggle, hk.checked)
 })
 
 // clicar fora fecha o popover — sem isso ficaria aberto até um clique em cima
@@ -3777,6 +3849,7 @@ document.addEventListener('click', async (e) => {
     if (tab === 'servidores') carregarServidores()
     if (tab === 'vps') carregarVps()
     if (tab === 'agenda') carregarAgenda()
+    if (tab === 'hooks') carregarHooks()
     if (tab === 'escritorio') carregarPaineis()
     if (tab === 'tempo' || tab === 'graficos') carregarTempo()
     if (tab === 'preco') carregarPreco()
@@ -4236,6 +4309,7 @@ fetch('/api/jobs').then((r) => r.json()).then((d) => {
   if (tab === 'servidores') { carregarServidores(); carregarProcessos() }
   if (tab === 'vps') carregarVps()
   if (tab === 'agenda') carregarAgenda()
+  if (tab === 'hooks') carregarHooks()
   if (srvNovo) carregarProjetos()
   if (tab === 'escritorio') carregarPaineis()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()

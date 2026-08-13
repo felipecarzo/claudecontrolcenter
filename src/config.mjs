@@ -9,6 +9,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { projectOf } from './jobs.mjs'
+import { hookDe } from './hooksCatalogo.mjs'
 
 export const CONFIG_FILE = path.join(os.homedir(), '.claude', 'control-center.json')
 
@@ -19,6 +20,7 @@ const DEFAULTS = {
   vps: { host: '', usuario: 'root', chave: '' },
   vpsSnapshot: null,
   calendarios: [],
+  hooks: {},
 }
 
 export const PIP_BLOCOS = ['uso', 'agentes', 'maquina', 'servidores', 'docker', 'processos']
@@ -285,6 +287,28 @@ export function removerCalendario(id) {
   const calendarios = (cfg.calendarios || []).filter((c) => c.id !== id)
   writeConfig({ ...cfg, calendarios })
   return calendarios.map((c) => ({ id: c.id, nome: c.nome }))
+}
+
+/**
+ * Se um hook (Método Routia, cc-check, os que os próximos épicos trarem)
+ * está ligado. Ausência no mapa usa o `padrao` do catálogo — hook novo nunca
+ * nasce "invisível" nem "ligado à força" sem o Felipe ter decidido nada.
+ * Hook desconhecido (fora do catálogo) volta `false`: mais seguro presumir
+ * desligado do que agir por um id que não se sabe o que é.
+ */
+export function hookEnabled(id, cfg = readConfig()) {
+  if (id in (cfg.hooks || {})) return !!cfg.hooks[id]
+  return hookDe(id)?.padrao ?? false
+}
+
+/** Igual quando o valor bate com o padrão do catálogo, a entrada some — arquivo enxuto. */
+export function setHookEnabled(id, on) {
+  const cfg = readConfig()
+  const hooks = { ...cfg.hooks }
+  if (!!on === (hookDe(id)?.padrao ?? false)) delete hooks[id]
+  else hooks[id] = !!on
+  writeConfig({ ...cfg, hooks })
+  return hookEnabled(id, { ...cfg, hooks })
 }
 
 /** Quanto a assinatura custa por mês. Zero desliga o custo real na tela. */
