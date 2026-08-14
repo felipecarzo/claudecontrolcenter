@@ -239,6 +239,18 @@ O suficiente para decidir se algo do backlog conflita com ela:
 Terceira camada do produto: o cockpit é a tela, os hooks são o sensor e o gate,
 e o framework é o método que os dois servem.
 
+**Backlog de execução fechado em 14/08: [[planos/FRAMEWORK-V1]].** Nove etapas,
+em ordem, com a análise conceitual final. Aguardando ordem de implementar.
+
+A primeira etapa (F1, o "modo conversa") nasceu de um erro real do mesmo dia:
+no meio de uma conversa que ele abriu com "vamos discutir isso ainda antes de
+implementar", eu implementei o glossário e a aba de tarefas. Ninguém mandou
+construir; eu tratei resposta de design como ordem de execução. Palavra dele:
+"cadê o hook pra impedir você de sair fazendo isso sem eu pedir explicitamente?
+esse glossário foi um dos erros (inofensivos) que mostram o problema do sistema
+hoje". É a prova do princípio do framework pelo custo mais barato possível: a
+instrução existia, era recente, era explícita, e não segurou nada.
+
 **Terceira rodada de decisão, mesmo dia, a partir de um documento externo que
 o Felipe trouxe (ata completa em [[../DISCUSSAO-FRAMEWORK-BANCADA]]):**
 
