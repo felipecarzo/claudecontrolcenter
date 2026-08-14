@@ -10,81 +10,28 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ## Aberto
 
-### Frente: Acesso remoto pela VPS — visão registrada em 13/08, não implementar ainda
+> **Poda de 14/08.** Este arquivo tinha 45 frentes e 993 linhas, quase metade
+> delas descrevendo coisa já concluída. Ficaram 13 frentes vivas. O concluído
+> foi para [[diario/2026-08-14]], o congelado e o descartado para [[GELO]]
+> (nada apagado), e as lições viraram armadilha no `CLAUDE.md`, que é onde
+> lição serve para alguma coisa. A regra que isto restaura já existia escrita
+> na linha 3 deste arquivo e não estava sendo seguida.
 
-Regra 4 do ciclo (visão longa se registra, não se implementa). Palavras do
-Felipe, ditadas:
+### CC-08 — só macOS continua sem prova
 
-> "quando a gente subir esse projeto na vps, e aí eu ter como controlar o
-> claude, o estudo, tudo por um link meu no meu site carzo, por exemplo, eu
-> crio um domínio lá no carzo chamado cockpit, eu acesso, boto o meu login e
-> minha senha e consigo controlar pelo, ver pelo telefone o que que a gente
-> está fazendo e tal, igual a gente tem aqui só que no telefone na rua, porque
-> eu já estou instalando o claude lá na vps pra eu usar ele lá e controlar
-> pela própria cli da anthropic"
+Era "macOS e Linux nunca rodaram". **Linux saiu da lista em 13 e 14/08**: o
+painel roda em produção nesta VPS Ubuntu, como serviço systemd, e o que foi
+exercitado de verdade cobre quase todo o `platform.mjs` — portas por `ss`,
+processos, matar processo, spawn de painel embutido, proxy HTTP e WebSocket,
+hooks, e o serviço voltando sozinho depois de derrubado. O que ainda não foi
+testado em Linux: `cc daemon install` (aqui o serviço foi criado à mão) e o
+atalho `.desktop`.
 
-Normalizado do áudio (ele pediu pra nunca corrigir a grafia, só entender):
-"cloud" → Claude Code; "Carlos" → Carzo, o site/domínio dele; "/rc" →
-provavelmente "CLI", a própria linha de comando do Claude Code.
-
-O pedido, resumido: hoje o Agent Cockpit só roda local. A visão é subir este
-projeto numa VPS que já vai ter o Claude Code instalado, expor por um
-subdomínio do site dele (`cockpit.carzo...`), com login e senha, pra abrir do
-telefone e ver/controlar os agentes rodando. O mesmo painel de hoje, só que
-de fora de casa.
-
-Não é task ainda. Quando virar: login/senha é autenticação de verdade (nunca
-mock, regra do protótipo simular produção), e o painel hoje não tem nenhuma
-camada de auth: é a primeira coisa a decidir antes de expor pela internet.
-
-**Comentário adicional do Felipe, 13/08, também registrado sem implementar
-ainda** ("vamos primeiro se preocupar em botar no ar" foi a instrução dele):
-
-> "a partir de agora, todas as nossas interações com a VPS que não sejam de
-> projeto, etcétera, de mexer na estrutura da VPS vai ser feito por esse
-> projeto. Porque esse projeto agora é o lá na VPS também. Então, básicamente
-> lá na VPS vai ser o que vai traduzir as minhas vontades e necessidades pra
-> dentro da VPS de forma visual, ou seja, eu vou ver o que está acontecendo na
-> VPS em tempo real, vou falar o que eu quero mudar. A gente tem que incluir
-> também, no depois, alguns controles que fazem sentido com a VPS: tipo dentro
-> da aba VPS, ter outras abas, prover tudo que está rolando lá em tempo real,
-> por exemplo tem coisas que não são só agentes, tem processos, tem os sites
-> que eu estou utilizando, coisas que podem estar desatualizadas em relação ao
-> GitHub. Todas essas informações eu preciso ter depois, mas não agora."
-
-Duas peças novas nesse comentário:
-
-1. **O Agent Cockpit vira o ponto único de mexer na VPS**, não só de vê-la.
-   Hoje a aba VPS é só leitura (`atualizarSnapshot`, sob clique). A visão é o
-   painel também **agir** lá: qualquer mudança de estrutura da VPS (fora do
-   dia a dia de projeto) passa a ser feita por aqui, não por comando manual
-   direto na VPS.
-2. **A aba VPS ganha sub-abas com mais do que agente**: processos rodando de
-   verdade na VPS, quais sites/domínios estão servidos, e se o código lá bate
-   com o que está no GitHub (deploy desatualizado). Ele mesmo apontou o corte:
-   isso é "depois", a prioridade agora é **subir o painel no ar** primeiro.
-
-### CC-14 — O tray do Claude Code mostra porcentagem errada
-Botão direito no ícone do Claude Code na bandeja → "Plano Max uso" mostra um
-percentual que **não bate** com o real. Não é bug deste projeto. Agora dá para
-conferir: o painel mostra o número oficial no topo, vindo do `rate_limits` do
-statusLine — se o tray discordar dele, o errado é o tray.
-
-### CC-08 — macOS e Linux nunca rodaram
-O código existe em `src/platform.mjs` — launchd e systemd de usuário, `lsof`/`ss`
-no lugar do PowerShell, `SIGTERM` no lugar do `taskkill`, `.command`/`.desktop`
-no lugar do `.lnk`. Nada disso foi executado: a máquina de desenvolvimento é
-Windows. O README diz isso na cara.
-
-Quando houver um Mac ou Linux à mão, conferir nesta ordem: `cc` (só leitura,
-tem que funcionar de primeira) → `cc open` → `cc daemon install` → aba de
-servidores → encerrar um processo de teste.
-
-### CC-04 — Verificar o aviso de silêncio com agente travado de verdade
-A faixa de atividade saiu da tela em 06/08 (era o CC-07: construída e nunca
-usada). O que sobrou do silêncio é a nota `sem sinal há Xm` na linha do agente,
-que também nunca apareceu numa captura — não houve agente travado enquanto o
-design era feito. Conferir na primeira vez que acontecer.
+**macOS segue sem nenhuma máquina real.** launchd, `lsof`, `.command` e o
+`SIGTERM` no lugar do `taskkill` existem escritos e nunca executaram. Quando
+houver um Mac à mão: `cc` (só leitura, tem que funcionar de primeira) →
+`cc open` → `cc daemon install` → aba de servidores → encerrar um processo de
+teste.
 
 ### CC-46 — `estadoDe()` casa por regex solto no título, dá falso positivo
 
@@ -128,51 +75,6 @@ lado só: o PC alcança `cockpit.carzo.com.br`, a VPS nunca alcança o PC atrás
 NAT. Então a VPS é obrigatoriamente o servidor, e o PC é cliente que empurra e
 puxa. Qualquer desenho que ignore isso não sai do papel.
 
-### CC-47: O cockpit da VPS vira o servidor de estado ✅ 14/08 (canal pronto)
-
-Escolha do Felipe entre as três que apresentei, junto com o CC-49. A infra já
-existe: HTTP, autenticação por senha na 5181, domínio público, systemd que
-volta sozinho. Falta o cliente: o `cc set` do PC passa a espelhar para a VPS
-além de escrever local.
-
-Requisitos que saem do que foi medido:
-
-- Escrita local primeiro, espelho depois. Se a VPS cair, o PC continua
-  funcionando sozinho, degradando em silêncio (o mesmo padrão do câmbio).
-- Token no PC, guardado no `control-center.json`, nunca no repositório: ele é
-  público.
-- O espelho nunca pode entrar em `setInterval` cego. Vale a mesma regra da aba
-  VPS: rede sai de ação, não de timer de fundo.
-
-**Feito em 14/08.** `src/federacao.mjs` (motor puro, 11 grupos de asserção),
-`src/maquina-id.mjs` (identidade sorteada uma vez, nome editável), rotas
-`POST/GET /api/federacao`, `/api/federacao/config` e `/api/federacao/enviar`, e
-a tela de configuração na aba remoto. O empurrão sai a cada 30s, só quando
-configurado, e nunca leva transcrito: só o resumo que a tela usa.
-
-Provado de ponta a ponta: pacote de uma segunda máquina recebido, agentes das
-duas aparecendo juntos com a origem carimbada, token errado recusado com 401 e
-`federação desligada` quando não há token.
-
-Decisão registrada: **a chave de deduplicação é `origem.id + id`**, nunca só o
-id. Duas máquinas podem ter job com o mesmo identificador curto, e uma
-sobrescreveria a outra em silêncio. Há teste guardando isso.
-
-### CC-54: O uso do plano vem da conta, não da máquina ✅ 14/08
-
-Achado medindo o CC-47: **a statusLine não roda em sessão Remote Control**.
-Instrumentei o comando com um `tee` e, depois de várias respostas trabalhando
-pelo celular, o arquivo de captura nunca foi criado, e
-`~/.claude/control-center-uso.json` continua sem existir na VPS.
-
-Como as janelas de 5 horas e de semana são da CONTA, e não da máquina, o painel
-passou a aceitar a leitura mais recente venha de onde vier: sem coleta local,
-vale a que o desktop empurrou. Ver `usoDaConta()` em `src/web.mjs`.
-
-Consequência a lembrar: enquanto só a VPS estiver ligada, o medidor de uso fica
-vazio aqui, e isso é o correto — não há de onde tirar o número sem chamar a API,
-que este projeto decidiu não chamar.
-
 ### CC-48: Rotas deixam de depender de commit para o outro lado enxergar
 
 Hoje marcar rota no PC só chega na VPS depois de commit, push e pull. O quadro
@@ -197,235 +99,16 @@ Limite conhecido, que não pode ser esquecido no desenho: presença detecta
 colisão em curso, não previne a próxima. Ela complementa a marcação à mão, não
 substitui.
 
-### CC-50: Os testes do Routia não valem na VPS ✅ 14/08 (feito, com ressalva)
-
-Os dois scripts falham aqui por motivos que não são o hook. O
-`testar-rota-guard.sh` tem `REPO="D:/Documentos/Ti/projetos/CLIENTS/inovallbond"`
-fixo no código, caminho do Windows que não existe nesta máquina, então o hook
-libera corretamente por não haver quadro e o teste conta isso como falha. O
-`testar-rota-pedidos.sh` escreve em `~/.claude/jobs/<id>/tmp`, read-only no
-sandbox, e falha 12 vezes por isso.
-
-Consequência real: o Routia funciona na VPS e ninguém saberia se parasse.
-
-**Feito em 14/08, medido:** 19 checks passando aqui, 7 do `rota-guard` e 12 do
-`rota-pedidos`, onde antes não passava nenhum. O `testar-rota-guard.sh` agora
-monta o projeto de exemplo numa pasta temporária em vez de apontar para o
-caminho fixo do PC. O `testar-rota-pedidos.sh` tenta a pasta do job e cai para
-uma temporária quando não consegue escrever, avisando qual escolheu. A conversão
-`pwd -W`, que é o que de fato resolve o problema do Git Bash citado no topo do
-script, ficou intacta.
-
-**Ressalva que vira trabalho, e é o retrato da frente inteira:** esses arquivos
-moram em `~/.claude/hooks`, que é local de cada máquina e não está em
-repositório nenhum. O conserto existe só na VPS. O PC segue com a versão que
-falha, e nenhum `git pull` vai levar isso para lá. Não foi validado no Windows,
-onde só o caminho de fallback é novo.
-
-**Sujeira encontrada no caminho, já limpa:** rodar o `rota-guard` à mão para
-diagnóstico gravou um pedido de sessão falsa em `docs/.rotas-pedidos.json` do
-repositório de verdade. O arquivo foi removido. Testar hook contra o próprio
-projeto tem efeito colateral no projeto: usar pasta descartável.
-
-### CC-51: O painel não enxerga sessão interativa ✅ 14/08
-
-`cockpit set` recusa com "sem job" numa sessão via Remote Control. Como o
-trabalho pelo celular passou a ser interativo e não mais delegado a job, o
-painel fica cego exatamente no modo de uso novo.
-
-**Feito em 14/08**, em `src/sessoes.mjs`: as sessões interativas saem dos
-transcritos (`~/.claude/projects/<projeto>/<sessionId>.jsonl`) e entram no
-painel com `tipo: 'interativa'`, reusando `buildJob` com um estado sintético,
-para o resto da tela não precisar saber a diferença. Medido: o painel da VPS
-saiu de **0 agentes e 0 projetos** para 4 e 2, com a sessão do Felipe aparecendo
-como `working`.
-
-Três decisões, todas por um motivo medido:
-
-- **O `cwd` sai de dentro do arquivo, nunca do nome da pasta.** O nome
-  `-home-claudedev-projetos-proj-controlcenter` troca `/` e `_` pelo mesmo `-`:
-  é impossível saber se é `proj_controlcenter` ou `proj/controlcenter`.
-- **Janela de 24h.** Sem corte, o PC traria centenas de sessões mortas e o
-  painel viraria arquivo morto em vez de "o que está acontecendo agora".
-- **`tokens: null`, não zero.** Contar token de sessão interativa exigiria
-  parsear o transcrito inteiro, que é trabalho da aba tempo. Zero seria mentira
-  com cara de medida.
-
-Ainda em aberto, e é do CC-56: `cockpit set` continua recusando em sessão
-interativa, então to-dos e frente não têm como ser reportados daqui.
-
-### CC-55: Nunca subir servidor por tarefa de background do Claude Code
-
-Achado em 14/08 investigando a queixa do Felipe de que "a bolinha continua
-rodando e o tempo contando" depois que a tarefa termina, e que isso não
-acontece no desktop.
-
-Não são os hooks: `todo-guard` 64 ms, `routia-fim` 280 ms, statusline 151 ms,
-`node` vazio 54 ms. Era **um `node cc.mjs --web-only --port 8123` subido em
-background pela própria sessão, vivo havia 11 horas**. Tarefa de background que
-não termina mantém a sessão marcada como ativa. Não gasta token, mas o relógio
-corre e parece que gasta.
-
-Regra: instância de teste sobe e morre **dentro do mesmo comando**. No Linux,
-`&` do shell também não resolve, porque cada comando roda em namespace próprio:
-o processo fica vivo, mas inalcançável no comando seguinte.
-
 ### CC-56: Reportar estado a partir de sessão interativa
 
-### CC-57: A aba tempo soma as máquinas ✅ 14/08
+`cockpit set` recusa com "sem job" numa sessão via Remote Control: ele exige um
+job de background em `~/.claude/jobs/<id>`, e trabalho pelo celular não cria um.
+Consequência medida em 14/08: da VPS não dá para reportar to-do, frente nem
+bloqueio no painel, justamente no modo de uso que mais cresceu.
 
-Pedido do Felipe: "os dados de todos os meus dispositivos, somados, e eu poder
-filtrar pra separar o que é da VPS e o que é deste desktop".
-
-`mesclarTempo()` soma horas e tokens por projeto e guarda a quebra por origem,
-que aparece como pastilha na linha quando o projeto foi tocado em mais de uma
-máquina. Provado: `proj_controlcenter` com 2,4h, sendo 1,4h da VPS e 1h do PC.
-
-**Dinheiro não é somado, de propósito.** `valor`, `custoReal` e `sobra` saem da
-taxa e da assinatura, que moram no config de CADA máquina e podem divergir.
-Somar dois números calculados com tabelas diferentes daria um total que não é
-de ninguém. Quem exibe recalcula sobre as horas já somadas.
-
-O tempo entra no pacote a cada 10 minutos, não a cada 30 segundos como o resto:
-varrer transcrito custa segundos e centenas de MB no PC. E só os totais por
-projeto viajam, nunca `dias` e `sessoes`, que são o que engorda o resumo.
-
-### CC-58: O escritório é local de cada máquina, e agora existe na VPS ✅ 14/08
-
-O "agente pixel" que o Felipe não achava é o **Pixel Agents**, o app dos
-bonequinhos que a aba embute. Ele não estava instalado na VPS (`npm i -g
-pixel-agents`, feito em 14/08, versão 1.4.0), e nada escutava na 3101.
-
-Dois consertos além da instalação:
-
-- **O painel `vps` some quando o cockpit roda DENTRO da VPS.** Ele é um túnel
-  SSH para lá: rodando na própria VPS seria a máquina se conectando a si mesma
-  com a chave do Felipe, apontando para um serviço que não existe. A mesma
-  variável do resto do projeto (`CC_VPS_LOCAL`) decide.
-- **O painel local deixou de se chamar "meu PC"**, que mentia na VPS. Agora usa
-  o nome da máquina (`maquina-id.mjs`).
-
-**A aba diz na tela que é local de cada máquina**, decisão do Felipe ("faz os
-dois, instala e também deixa dizer que é local"). Federar os bonecos exigiria o
-Pixel Agents aceitar dado de fora, o que ele não faz: ele lê o `~/.claude` da
-máquina onde roda.
-
-**Não bastava instalar, e o Felipe achou na hora: "o pixel agents nao ta
-funcionando ainda".** Três defeitos separados, todos consertados em 14/08:
-
-1. **O iframe apontava para `http://localhost:3101`.** `localhost` é a máquina
-   de QUEM OLHA. No PC, onde o painel nasceu, isso dava certo por acaso. Abrindo
-   `cockpit.carzo.com.br` no celular, o navegador procurava a porta 3101 do
-   próprio telefone. Nunca teve chance de funcionar remotamente. Agora o cockpit
-   serve o escritório em `/painel/:id/`, caminho relativo, atrás da mesma senha.
-2. **O botão "ligar" respondia `ok` e nada subia.** O serviço systemd não herda
-   o PATH do shell, então `spawn('pixel-agents')` não achava o binário em
-   `~/.npm-global/bin`, e `stdio: 'ignore'` engolia o erro. `resolverBinario()`
-   procura nos lugares conhecidos do npm.
-3. **O app conecta em `/ws` ABSOLUTO** (`wss://${location.host}/ws`, conferido
-   no bundle). Sem repassar o `upgrade`, a página carregaria e os bonecos
-   ficariam parados para sempre, que é o pior tipo de defeito: parece que
-   funcionou. O proxy encaminha WebSocket, e `/ws` na raiz vai para o painel
-   local. Provado com `101 Switching Protocols` pelo proxy.
-
-**Quarto achado, sem conserto por enquanto:** o Pixel Agents cai toda vez que o
-`agent-cockpit` reinicia. `detached: true` cria grupo de processo novo, mas não
-sai do **cgroup** do serviço, e o systemd mata o cgroup inteiro. Resolver exige
-`KillMode=process` no unit (root) ou um serviço próprio. Por ora, o botão
-"ligar" religa em um clique.
-
-**Duas coisas a saber**, ambas medidas:
-
-1. O Pixel Agents da VPS foi subido à mão e **não volta depois de um reboot**.
-   O botão "ligar" da aba resolve, ou vira serviço systemd um dia.
-2. O instalador dele **se registrou sozinho em 14 eventos do `settings.json`**,
-   incluindo `PostToolUse` e `UserPromptSubmit`, a 132 ms por evento. Numa
-   resposta com muitas ferramentas isso soma. Se a sessão ficar lenta, o
-   suspeito nº 1 é esse, e dá para tirar os eventos mais frequentes sem perder
-   os bonecos.
-
-### CC-59: O escritório piscava e recarregava sozinho ✅ 14/08
-
-Reportado pelo Felipe minutos depois do CC-58: "no momento o pixel tá dando
-refresh infinito, tela branca piscando". Dois defeitos somados, os dois meus:
-
-1. **A proteção do iframe nunca casava.** O `render()` reescreve o `#main` a
-   cada evento do stream, de 2 em 2 segundos, e iframe recriado **recarrega** —
-   isso já estava previsto no código, com a comparação
-   `palco.dataset.src === PAINEIS.find(p => p.id === painelAtivo)?.url`. Só que
-   `painelAtivo` é **nulo até o primeiro clique**, enquanto a tela mostra
-   `PAINEIS[0]`: duas contas diferentes para "qual painel está no palco". A
-   comparação falhava, o iframe era recriado, e o escritório reiniciava a cada
-   2 segundos. Agora existe `painelNoPalco()`, e é a mesma conta nos dois
-   lugares.
-2. **O aviso "local de cada máquina" se acumulava.** O render trocava
-   `.painel-lista` por `aviso + lista`, então a cada 2 segundos entrava mais um
-   parágrafo e a página crescia sem parar. Aviso e cartões agora saem dentro de
-   um container só (`.painel-cab`), que é o que o render substitui.
-
-Lição para qualquer coisa nova na aba escritório: o que o `render()` troca por
-`outerHTML` tem que ser **exatamente** o que a função devolve, senão o que
-sobra fora do seletor se duplica a cada tique.
-
-### CC-61: A tela branca depois do CC-59 era uma camada mais funda ✅ 14/08
-
-O Felipe, minutos depois do CC-59: "a tela ficou branca sem piscar, porém o
-pixel agents não carregou nada". O parar de piscar confirmou que o `render()`
-estava certo; a tela branca era outra coisa.
-
-O acesso ao cockpit passa por **três camadas**, e eu só tinha testado a de
-dentro: `cockpit.carzo.com.br` → nginx → `cockpit-auth` (porta 5181, a senha) →
-`agent-cockpit` (porta 5180, o painel) → Pixel Agents (3101). O nginx repassa
-`Upgrade`/`Connection` certo (já configurado para o hot reload do dev.sh). O
-proxy do CC-58 dentro do `agent-cockpit` também. **Faltava só o meio: o
-`cockpit-auth` não tinha handler de `upgrade` nenhum**, então o WebSocket
-morria bem na porta de entrada — a página HTTP carregava normal (por isso não
-piscava mais), e os bonecos nunca chegavam.
-
-**Conserto em `~/cockpit-auth.mjs`** (fora deste repositório, ver ressalva
-abaixo): `servidor.on('upgrade', ...)` exige a mesma sessão válida do resto do
-proxy antes de encaminhar — WebSocket sem senha seria um buraco do tamanho do
-painel inteiro, justamente o que a 5180 escutar só em 127.0.0.1 existe para
-evitar. Provado com sessão de teste descartada logo depois: `101 Switching
-Protocols` com cookie válido, `401` sem ele.
-
-**Ressalva que fica registrada por ser risco real:** `~/cockpit-auth.mjs` **não
-está em repositório nenhum**, nem este nem outro. É a porta de entrada do
-painel inteiro, e vive só no disco desta VPS, sem histórico de versão e sem
-backup. Se o arquivo se perder, ninguém recupera esta correção nem as
-anteriores. Vale um dia entrar em algum lugar versionado, ainda que fora do
-`proj_controlcenter`.
-
-### CC-62: O agente não aparecia porque religar não confirma que religou
-
-O Felipe: "o agente dessa sessão não está no escritório. pq será?". A dúvida
-dele em 14/08 sobre "pixel agents na VPS vs no sandbox" (ver acima) tinha uma
-resposta técnica clara: **funciona por hook**, não por leitura passiva. O
-instalador registrou 14 eventos no `settings.json`
-(`SessionStart`/`PreToolUse`/etc), e cada um descobre o servidor por
-`~/.pixel-agents/server.json` (porta, pid, token). Como o hook roda dentro
-desta mesma VPS, esta sessão sempre foi, em tese, um dos bonecos — não existe
-"pixel agents do sandbox" separado do "da VPS": é a mesma máquina, o mesmo
-`~/.claude`.
-
-Só que o boneco não aparecia. Causa raiz, medida: **o processo ligado pelo
-botão roda com `stdio: 'ignore'`** (decisão de propósito do `paineis.mjs`,
-para sobreviver ao fim do painel), então se ele cair ou não processar nada,
-**ninguém vê o erro**. Como o Pixel Agents morre a cada restart do
-`agent-cockpit` (o cgroup do systemd mata junto, CC-58), religar pelo botão sem
-log nenhum não confirma que o processo voltou saudável — só que o comando de
-subir foi disparado.
-
-Religuei manualmente com log capturado (`> ~/logs/pixel-agents.log`) e
-confirmei ao vivo: cada comando meu virou `PreToolUse`/`PostToolUse` real no
-log, com `session=ff0d68b2` (esta sessão), e um cliente WebSocket já conectado
-pela porta do proxy.
-
-**O risco que fica**: o botão "ligar" da aba escritório pode dar falso positivo
-— resposta `ok`, painel mostrando "no ar", e o processo por trás morto ou
-travado, sem ninguém saber. Enquanto `stdio: 'ignore'` for a escolha (e ela é
-certa, pelo motivo que já está escrito), o jeito de confirmar de verdade
-continua sendo olhar `~/logs/pixel-agents.log` à mão depois de religar.
+O CC-51 resolveu metade (o painel agora **enxerga** a sessão interativa, lendo o
+transcrito). Falta o caminho de volta: a sessão poder **escrever** o próprio
+estado.
 
 ### CC-60: O outro Pixel Agents, o do Telegram
 
@@ -536,107 +219,6 @@ O suficiente para decidir se algo do backlog conflita:
   o painel mata processo filho em corrida longa. Registrado, não bloqueia.
 - Aba própria, "bancada", ao lado de tempo/preço/servidores.
 
-### Frente: Conteúdo social — módulo novo, ver [[produto/CONTEUDO-SOCIAL]]
-
-Decidido com o Felipe em 11/08: vive neste repo, não em projeto à parte.
-Ordem de dependência importa — CC-20 (feito em 12/08) e CC-21 são pré-requisito
-de tudo depois, o resto pode andar em paralelo uma vez que os sinais existem.
-
-### CC-21 — MCP do Google Calendar com escrita
-Hoje a leitura de agenda já existe (CC-20, aba "agenda", lê por iCal). Falta
-escrever: com MCP configurado no Claude Code local, dá pra criar evento por
-voz/texto direto ("call com a Carol quinta 14h") sem abrir o Google Calendar.
-O iCal é só leitura — não dá pra escrever por ele, então isto é integração
-nova, não extensão do `calendario.mjs`.
-
-### CC-22 — Arquivo de marco manual
-Evento que não deixa rastro em código (reunião, fala em evento presencial,
-nota de prova) precisa de um sinal manual mínimo — uma linha por marco, não
-formulário longo. Formato ainda em aberto: provavelmente mais uma entrada em
-`docs/diario/{data}.md` de cada projeto, lida pelo digest do CC-24, em vez de
-arquivo novo — evita duplicar onde mora a verdade.
-
-### CC-25 — Vault Obsidian como espelho de leitura
-`LM_vault/Neo` existe mas está vazio (só `.obsidian/`, zero arquivo). Decisão
-11/08: reviver só como leitor — CC/skill escrevem `.md` estruturado numa
-pasta (digest do CC-24, histórico do CC-23), o vault só aponta pra essa pasta
-pra visualização/grafo. Nunca fonte de dado, nunca destino de escrita de
-skill. Sem isso a decisão vira "reviver o vault" solto, sem dizer quem
-escreve o quê.
-
-### CC-26 — Skill de geração de rascunho (fora deste repo)
-Consome o digest do CC-24. Não é módulo do Control Center — é skill global do
-Claude Code (`~/.claude/skills/`), porque roda como parte do fluxo de
-trabalho do Felipe, não como aba do painel. Nenhum dos dois repos do GitHub
-analisados em 11/08 (`blacktwist/social-media-skills`,
-`charlie947/social-media-skills`) serve pronto: os dois assumem "uma
-invocação = um post" com fonte colada à mão, nenhum lê calendário/git/memória
-como gatilho, nenhum gera lote. Só `content-repurposer-sms` do primeiro repo
-serve como referência de estrutura (matriz de derivados por plataforma).
-Depende do CC-24 existir antes de fazer sentido escrever.
-
-### Frente: Framework de hooks — ver [[produto/FRAMEWORK-HOOKS]]
-
-Decidido com o Felipe em 12/08: o painel passa a controlar comportamento de
-verdade do Claude Code, não só ler estado. Épico 1 (CC-27), Épico 2 (CC-28)
-e Épico 3A (CC-29) feitos em 12/08. Os itens abaixo têm decisão pendente
-documentada em produto/FRAMEWORK-HOOKS.md; nenhum decide sozinho qual
-caminho tomar, o Felipe escolhe quando o sprint chegar.
-
-### 🔴 Bloqueio crítico, achado em 13/08: `cwd` não isola o opencode de verdade
-
-Testando o CC-36 (enriquecimento de to-dos) contra o binário real do
-opencode, com `cwd` explicitamente apontando pra uma pasta temporária nova a
-cada chamada: uma das chamadas rodou `git status --short && git log
---oneline -3` de verdade e leu o estado **real** deste repositório
-(`proj_controlcenter`), não o da pasta isolada passada como `cwd`.
-
-Isso contradiz a premissa de segurança já escrita no CC-29
-(`src/opencode.mjs`): "roda em pasta neutra, nunca o cwd do projeto". O `cwd`
-do `spawn()` do Node não está controlando onde o opencode de fato executa
-suas próprias ferramentas (bash, edit, write) — ele parece manter alguma
-noção própria de "o projeto atual", independente do processo que o disparou.
-Confirmado por dois testes com resultado diferente no mesmo dia: um `pwd`
-pedido manualmente (via `cd` real antes de chamar `opencode run`) respondeu
-certo, isolado; a mesma chamada passando por `dispararTarefa` (que envolve
-`cmd /c` no Windows) não isolou.
-
-**Não investigado ainda, por falta de tempo na sessão que achou isso**: se é
-`cmd /c` perdendo o `cwd` na cadeia de processos, se é o opencode tendo
-sessão/projeto persistido em `~/.config` independente do processo, ou outra
-causa. **Afeta qualquer uso de `dispararTarefa`**, não só o CC-36: o CC-29
-(disparo em background) e o CC-30 (fila de revisão, ainda não feito)
-carregam a mesma suposição de isolamento, hoje não comprovada.
-
-Os agentes do opencode neste setup têm `permission:*` — nenhum é
-read-only. Enquanto isso não for resolvido, qualquer chamada real pode, em
-tese, editar arquivo de verdade do projeto em vez de só descrever texto.
-
-**Antes de usar CC-36 (ou qualquer outra coisa que dispare opencode) em
-produção**: isolar de verdade (testar sem `cmd /c`, ou achar a flag/config
-do opencode que fixa o projeto por chamada) e provar com um teste que tenta
-editar um arquivo canário fora do `cwd` esperado e confirma que falha.
-
-**Decisão do Felipe em 13/08**: fica em aberto por enquanto, não é bloqueio
-pra seguir com o resto do backlog. A investigação da causa raiz vai acontecer
-pela própria VPS (onde o opencode também vai rodar), não nesta sessão local.
-
-### CC-30 — Fila de revisão do opencode + hook que obriga a chamada
-Depende do CC-29 e de decidir qual evento e qual critério "obrigam" a
-chamada ao opencode (ex.: `UserPromptSubmit` por linguagem natural, mais
-agressivo; ou um comando explícito tipo `cc delegar "tarefa"`, menos "hook
-obrigando" e mais "ferramenta que o agente usa"). Resultado nunca fecha
-to-do sozinho — fila de revisão em `~/.claude/control-center-opencode.json`
-(fora de `~/.claude/jobs`, que é contrato exclusivo de `meta.json`), aprovar
-só marca `revisado: true`, no máximo sugere fechar o to-do ligado.
-
-### CC-31 — Painel de metodologia (ágil/UML/MER, alerta sem bloquear)
-Checklist como dado estático (`src/metodologia.mjs`) e aba só-leitura que
-mostra, pro job selecionado, o que **parece** faltando — heurística sobre
-sinais que já existem em `buildJob()` (sem `frente`, sem `todos`...). Nunca
-bloqueia, sempre alerta. Conteúdo exato das perguntas é editorial, não
-técnico — falta o Felipe definir quão rigoroso.
-
 ### Frente: Cockpit de retomada de contexto — ver [[produto/COCKPIT]]
 
 Reposicionamento do produto pelo Felipe em 12/08: **os hooks não são o
@@ -645,24 +227,6 @@ contexto rápido, gerenciando 4-5 projetos em paralelo. Isso muda o critério
 de sucesso de qualquer sinal: não é "impõe boa prática", é "me faz voltar ao
 contexto mais rápido?". CC-32, CC-33, CC-34 e CC-35 feitos em 13/08; CC-36 e
 CC-37 seguem abertos.
-
-### CC-36 — Enriquecimento de to-dos pelo opencode
-Pedido do Felipe: "olho os to-dos e as tarefas não fazem sentido, os nomes
-poderiam ser mais explicativos e as tarefas poderiam abrir e ter um resumo da
-conversa que gerou ela, qual arquivo mexe". Uma chamada por agente (não por
-tarefa) via `src/opencode.mjs` (CC-29), guardando em
-`meta.json → explicacoes: {texto da tarefa: {titulo, resumo, arquivos}}` —
-mapa por texto, padrão do `feitoEm`, porque o agente reescreve `todos`
-inteiro a cada `cc set`. **Nunca reescrever `t.text`**: `feitoEm`, `niveis`,
-`estimativas` e `explicacoes` são todos chaveados por ele. O opencode roda
-em pasta neutra, nunca no `cwd` do projeto — verificado que todos os agentes
-dele têm `permission:*` neste setup, nenhum é read-only.
-
-### CC-37 — Enriquecimento automático (stretch, provavelmente não fazer)
-Disparar a cada to-do novo é sedutor por custar R$ 0, mas toda escrita em
-`meta.json` vira evento no stream e dispara `arquivar()` — com 5 projetos é
-rajada, e modelo grátis fora do ar vira lixo silencioso. Só depois do CC-36
-provar qualidade.
 
 ### Frente: Ciclo Felipe → IA → Felipe — ver [[produto/CICLO]]
 
@@ -675,183 +239,6 @@ presas em memória de um projeto só.
 
 Critério de ordem, o mesmo do [[produto/COCKPIT]]: **isso me faz voltar ao
 contexto mais rápido, ou economiza uma volta do ciclo?**
-
-### CC-38 — O ciclo vira regra onde carrega: o CLAUDE.md global ✅ 13/08
-Aplicado no `CLAUDE.md` global (commit `8998699`) — as sete regras do ciclo
-estão lá, com o desempate de contradições. Descrição original abaixo, como
-registro do que motivou.
-
-As quatro regras de maior retorno medido estão presas em memória de projeto,
-e por isso o mesmo erro se repete: verificação visual obrigatória (o mais
-repetido, 3 projetos diferentes), repetir a mecânica antes de codar (4 rodadas
-evitadas por 1 frase), backlog de tudo que ele fala, medir antes de agir na
-hipótese dele. Sobem pro global junto com os três protocolos novos que a
-análise revelou: **desambiguar substantivo na segunda repetição** (mataria 3
-das 4 sagas longas em uma mensagem), **o mecanismo nomeado é o pedido** (12
-mensagens acusatórias em 3 projetos), e **visão longa se registra, não se
-implementa**. Mais o desempate das contradições que a evidência resolve.
-
-### CC-39 — Consertar o `- projeto_template`, que hoje nasce violando o global
-
-**Parte aplicada em 13/08.** O diagnóstico original (escrito antes de olhar o
-código de verdade) estava parcialmente errado: `Co-Authored-By` já aparecia só
-documentando a proibição, nunca mandando usar, e a estrutura de pastas
-(`guias/produto/legacy/diario`) já era a nova. O `CLAUDE.md` também já estava
-limpo. O que era real e foi corrigido: os **4 arquivos de agente**
-(`.claude/agents/{planner,reviewer,scrum-manager,tester}.md`) tinham o nome
-"app_ayvu", o caminho `D:\...\app_ayvu` fixo e a stack (Rust+Flutter) do ayvu
-hardcoded — inclusive um import de exemplo quebrado
-(`from 'cargo test (Rust) + flutter test (Dart)'`, um find-replace que vazou
-pro código). E `docs/HANDOFF.md` carregava **133 linhas de estado real** do
-ayvu — datas, hash de commit, resultado de benchmark (94.2% pass rate) —
-sobrescrito por um modelo vazio.
-
-**Achado maior, não tocado — decisão do Felipe:** a pasta `app/` tem **91
-arquivos** de um app Flutter real (`com.ayvu.ayvu`, Android/Kotlin incluído),
-`docs/legacy/` guarda sessões reais do ayvu (`session-TRANS-01-FL.md` etc,
-combinando com o HANDOFF que citava essa mesma task) e `docs/ROADMAP.md` abre
-com "`# app_ayvu — ROADMAP`". Isso não é mais "template com resíduo" — parece
-o projeto ayvu real, sendo convertido em template, com a conversão pela
-metade. Apagar código de app alheio é decisão de conteúdo, não mecânica: fica
-para o Felipe dizer se `app/` é referência que ele quer manter (ex.: esqueleto
-Flutter pronto) ou lixo a remover.
-
-### CC-40 — Índice das memórias comportamentais ✅ 13/08 (levantamento; decisão pendente)
-
-Contagem real: **81** memórias `type: feedback` em **22** diretórios (o
-roadmap estimava ~30 em 15 — a realidade é maior e mais concentrada: 25 só no
-`inovallbond`). Índice completo em [[produto/INDICE-MEMORIAS]].
-
-Achados: **7** já duplicam regra que já está no global (sinal de que a regra
-é forte, não erro apagar); **6** são candidatas genuínas a subir, com
-destaque pra `servidor-teste-porta-compartilhada` do inovallbond —
-confirmada no MESMO DIA pela armadilha do `pkill` no CC-42 deste projeto,
-duas descobertas independentes do mesmo problema; **2** estão mortas,
-descrevendo a estrutura de kanban do vault que a limpeza de 13/08 apagou; as
-outras **68** (84%) são de fato locais, corretamente presas ao projeto.
-
-**Decisão do Felipe**: quais das 6 candidatas sobem pro `CLAUDE.md` global,
-no formato do CC-38.
-
-### CC-41 — O painel enxerga os sinais do ciclo ✅ 13/08
-
-Rajada (3+ mensagens em 6min) e repetição (sobreposição de palavras 4+ letras
-≥ 60% com uma mensagem anterior) entram como motivo novo no cockpit, peso
-entre `waiting` e `stale`. `src/sinais.mjs` é lógica pura testável, alimentada
-por `src/transcript.mjs` (nova `humanMessagesTail`, cache por tamanho+mtime
-igual ao `lastPrompt`), calculada dentro de `buildJob()` — mesmo lugar que já
-lê o transcript pro último pedido.
-
-**Bug achado pelo próprio teste, corrigido antes de subir**: o colapso de
-"reenvio em <5min substitui" (regra 6 do ciclo) comparava só o tempo, e
-engolia rajada de verdade — três mensagens **diferentes** em 2-3 minutos
-viravam "uma reescrita", zerando o sinal. Corrigido: só colapsa quando a
-mensagem nova tem sobreposição de conteúdo com a anterior (é a mesma ideia
-reescrita), não qualquer par próximo no tempo.
-
-Silêncio (>10min sem mensagem) é calculado e devolvido em `job.sinais`, mas
-**não virou motivo novo no cockpit** — seria redundante com `stale` (mesmo
-limiar, ângulo diferente: um é "o agente travou", outro é "o Felipe foi
-embora"). Fica disponível pra quem quiser usar sem duplicar sinal na tela.
-
-**Decisão pendente do Felipe** (só uma; as outras a evidência resolve): o
-pipeline formal Planner → Tester → Revisor é regra absoluta no global, mas os
-diários do próprio Control Center dizem "sem Tester nem Revisor formais" e
-nunca foi cobrado. Ou a regra vira condicional (quando vale, quando não), ou
-o pipeline passa a valer de verdade aqui também.
-
-### Frente: O painel dono das rotinas — ver [[produto/FRAMEWORK-ROTINAS]]
-
-Visão do Felipe em 13/08, registrada com as palavras dele, ainda sem decisão de
-escopo. Cinco peças: retroalimentação entre projetos, registro total, o painel
-traduzir, o painel criar e gerenciar as rotinas na máquina, e formato de
-framework por cockpit no lugar de linguagem natural avulsa.
-
-A análise contra a evidência do repo está no documento. O resumo: as peças
-"traduzir" e "gerenciar rotina" atacam três dos cinco buracos medidos em
-[[produto/ROTINAS-HOJE]]; a peça "registro total" tem um contra-exemplo do
-mesmo dia (o vault de 518 arquivos gerados por rotina, esvaziado em 13/08 com
-o veredito "tá tudo repetido ou ultrapassado").
-
-**CC-42 feito em 13/08**: a aba "rotinas" mostra as cópias de comando dentro
-dos projetos, quanto cada uma divergiu da global, e conserta sob clique (usar a
-global, ou apagar a cópia), sempre com a comparação disponível antes de
-escrever. Achado ao ligar: **22 rotinas desatualizadas em 5 projetos**, sendo o
-`end-session.md` o pior caso (224 linhas contra 259). Nada foi sincronizado
-ainda — a decisão do que consertar é do Felipe, cópia por cópia.
-
-Quatro decisões fechadas em 13/08, detalhadas no documento: o framework é
-**ferramenta com liga/desliga**, não obrigação (reusa `cc hooks on|off` e
-`isEnabled()`, sem mecanismo novo); começa pelo **nível baixo** com a D1 só
-planejada; o **fluxo do framework vem depois** do sistema de distribuição
-existir; e a peça "registro total" **não entra como está**.
-
-### CC-43 — Decisão D1: o painel escrever `settings.json` (planejada, não feita)
-
-O plano de segurança está escrito em [[produto/FRAMEWORK-ROTINAS]]: backup
-datado antes de escrever, validação com reversão automática, escrita cirúrgica
-nunca do arquivo inteiro, um hook só por uma semana, botão de pânico. Fazer ou
-não depende de uma pergunta de valor, não técnica: **o que um hook registrado
-pelo painel faz que um comando distribuído não faz?** Se o CC-42 no ar já
-resolver a dor, a D1 perde o motivo.
-
-### CC-44 — A regra: global vale para tudo, projeto só acrescenta
-
-Decisão do Felipe em 13/08, confirmada por medição das 22 divergentes: o
-conteúdo "próprio" das cópias é (a) a mesma coisa dita de um jeito mais velho,
-(b) erro ativo — o `end-session.md` do `app_maurice` se diz do "projeto Juju" e
-manda ler a memória de outro projeto — e (c) um punhado que, se é mesmo
-específico, cabe em comando de nome próprio.
-
-Não dá pra mesclar: quem resolve a precedência é o Claude Code, e ele substitui
-por nome de arquivo. Então a regra é convenção, com duas formas de acrescentar
-sem sobrescrever: **nome próprio** (`/rotina-do-projeto` em vez de uma segunda
-versão de `/end-session`, como já fazem `authorize`, `tickets` e `routia`, que
-nunca deram problema) ou **a global lendo o projeto** (o esqueleto global manda
-"se existir `docs/rotina-extra.md`, siga também"). Falta o Felipe mandar aplicar
-— o CC-42 já mostra onde a convenção está quebrada e desfaz sob clique.
-
-**Gatilho do framework, resolvido**: o Felipe liga **no início do projeto**, e
-vai desenhar o framework ele mesmo. O painel entra como quem liga, distribui e
-mostra — não como quem inventa o método.
-
-**Aplicado em 13/08**: 21 cópias apagadas (16 velhas + 5 idênticas), tudo
-versionado antes. Sobraram as 12 de nome próprio e as 4 `set-role`, que têm
-customização real e viram decisão dele. Detalhe e o que se perdeu em
-[[produto/FRAMEWORK-ROTINAS]].
-
-### CC-45 — Nenhuma rotina global escreve mais no vault ✅ 13/08
-
-Avaliação de 13/08 (ver [[produto/ROTINAS-AVALIACAO]]): os passos **5.5**
-(Kanban do vault, 51 linhas) e **5.6** (daily do vault, 48 linhas) são os dois
-maiores da rotina e somam **38% das 259 linhas** — escrevendo justamente no
-vault que o Felipe esvaziou no mesmo dia.
-
-E continuam rodando: o vault foi limpo às ~03:50, e às 04:18/04:21 outra sessão
-já tinha recriado `daily/2026-08-13.md` e um kanban de 200 linhas. A decisão de
-parar estava **documentada** num LEIA-ME dentro do próprio vault, e não durou
-meia hora — demonstração do buraco nº 2 de [[produto/ROTINAS-HOJE]]:
-**instrução escrita é sugestão, hook é regra.**
-
-O dado não se perde: "o que só o Felipe pode fazer" vira `blockers` no
-`meta.json`, que o cartão do agente já mostra. É troca de destino, não deleção.
-
-**Aplicado**, e eram **quatro** rotinas escrevendo lá, não duas:
-`end-session` (259 → 176 linhas), `novo-projeto` (472 → 316, o PASSO 7 criava
-task, nota e dois kanbans em pastas que já não existem), `deps` (108 → 106) e
-`daily-log` (108 → 89, agora escreve em `docs/diario/` do próprio projeto).
-**−243 linhas**, varredura confirma que só sobraram as linhas que *proíbem* a
-escrita, e o destino novo foi testado de ponta a ponta (`cc set` com `blockers`
-aparece no `/api/jobs`). A entrada `/novo-projeto TK-{ID}` foi aposentada junto:
-lia uma pasta apagada.
-
-**Falta ainda**, da mesma avaliação, e são os itens 2 e 3 que o Felipe quis
-discutir depois: o PASSO 6 (relatório de 31 linhas que ele lê uma vez) virar
-`cc set` de fechamento, e a divisão diário × memória × HANDOFF ganhar uma regra
-de uma frase. Mais a poda da estrutura de scrum no `- projeto_template` para o
-que sobrevive ao uso (`ROADMAP.md`, `HANDOFF.md`, `diario/`) — o `VIASMAP.md`
-do vault tinha as oito vias livres e zero cruzamentos desde que nasceu. Casa
-com o CC-39.
 
 ## Limites aceitos hoje
 

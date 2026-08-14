@@ -94,6 +94,49 @@ errada por definição.
 
 ## Armadilhas (custaram tempo, não redescobrir)
 
+- **`localhost` num iframe é a máquina de QUEM OLHA, não a que serve.** O
+  escritório apontava para `http://localhost:3101`: no PC funcionava por acaso,
+  e abrindo `cockpit.carzo.com.br` no celular o navegador procurava a porta no
+  próprio telefone. Nunca teve chance de funcionar remoto. Hoje o cockpit serve
+  o painel embutido em `/painel/:id/`, caminho relativo, com proxy que só
+  alcança 127.0.0.1 e só as portas declaradas em `paineis.mjs`. **Junto vai o
+  WebSocket**: o Pixel Agents conecta em `/ws` ABSOLUTO
+  (`wss://${location.host}/ws`), e sem repassar o `upgrade` a página carrega e
+  os bonecos ficam parados para sempre. E são TRÊS camadas de proxy no caminho
+  real (nginx → `cockpit-auth` 5181 → painel 5180): consertar só a de dentro não
+  adianta, o `cockpit-auth` também precisou de handler de `upgrade`, exigindo a
+  mesma sessão do HTTP.
+- **Servidor subido por tarefa de background do Claude Code nunca termina, e a
+  sessão fica "ativa" para sempre.** Foi a causa medida da queixa "a bolinha
+  continua rodando e o tempo contando": um `node cc.mjs --web-only` em
+  background ficou 11 horas vivo. Não gasta token (token só sai quando o modelo
+  roda), mas o relógio corre. Os hooks foram descartados por medição:
+  `todo-guard` 64ms, `routia-fim` 280ms, statusline 151ms. Regra: instância de
+  teste sobe e morre **dentro do mesmo comando**. No Linux o `&` do shell também
+  não resolve, porque cada comando roda em namespace próprio — o processo fica
+  vivo mas inalcançável no comando seguinte.
+- **Religar um processo pelo painel NÃO confirma que ele voltou saudável.** O
+  `paineis.mjs` sobe com `stdio: 'ignore'` de propósito (para sobreviver ao fim
+  do painel), então falha e travamento são invisíveis: a rota responde `ok` e a
+  tela mostra "no ar" com o processo morto por trás. Some-se a isso que
+  **processo filho morre a cada restart do `agent-cockpit`** — `detached: true`
+  cria grupo de processo novo mas não sai do **cgroup** do systemd, que mata
+  tudo junto. Conferir de verdade exige religar capturando log
+  (`> ~/logs/pixel-agents.log`) e ler. Conserto de raiz seria `KillMode=process`
+  no unit, que exige root.
+- **O `render()` troca por `outerHTML` exatamente o seletor que a função
+  devolve — o que sobrar fora dele duplica a cada 2 segundos.** Dois defeitos no
+  mesmo dia na aba escritório: um aviso colocado antes do `.painel-lista` virava
+  um parágrafo novo a cada tique, e a proteção que impede o iframe de recarregar
+  comparava com `painelAtivo` (nulo até o primeiro clique) enquanto a tela
+  mostrava `PAINEIS[0]` — duas contas para "qual painel está no palco", a
+  comparação nunca casava, e iframe recriado **recarrega**. Hoje existe
+  `painelNoPalco()`, uma conta só, e o container trocado é `.painel-cab`.
+- **Binário instalado por npm global não está no PATH de serviço systemd.** O
+  botão "ligar" do escritório respondia `ok` e nada subia: `spawn('pixel-agents')`
+  não achava o binário em `~/.npm-global/bin`. `resolverBinario()` procura nos
+  lugares conhecidos. Vale para qualquer comando que o painel dispare.
+
 - **`detached: true` no Windows quebra captura de saída via `fd` bruto,
   sempre — a causa real é o processo Node sair antes do filho terminar.**
   Achado no CC-29 (`src/opencode.mjs`): `spawn(cmd, args, { detached: true,
