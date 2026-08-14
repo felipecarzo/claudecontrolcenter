@@ -1,0 +1,102 @@
+/**
+ * O runner da Bancada, e a ponte dela com o framework (F5).
+ *
+ * Roda as camadas escolhidas num projeto e grava o resultado no
+ * `.framework/estado.json`. É isso que faz o gate de Verificação do método
+ * `entrega-cliente` funcionar: os predicados `verificacao-rodada` e
+ * `verificacao-limpa` já existiam esperando alguém preencher esse campo.
+ *
+ * ## Serial, e sem fila
+ *
+ * Uma camada por vez, um projeto por vez. Sem paralelismo: se duas camadas ao
+ * mesmo tempo virar necessidade medida, aí sim. Complexidade de fila sem
+ * demanda é o tipo de coisa que se paga em bug e não em valor.
+ *
+ * ## O que ele NÃO faz, de propósito
+ *
+ * Não conserta nada. Mostra o achado e o comando de conserto; aplicar é decisão
+ * de quem lê, igual à aba de rotinas. E não instala ferramenta: camada cuja
+ * ferramenta não existe aparece como indisponível, com o motivo.
+ */
+import { camadaDe, camadasDe } from './bancadaCatalogo.mjs'
+import { registrarVerificacao } from './framework.mjs'
+import { gravar as gravarEstado, ler as lerEstado } from './frameworkDisco.mjs'
+
+/** O catálogo aplicável a um projeto, com o que já foi rodado. Serve à tela. */
+export function situacao(raiz, cfg = {}) {
+  const estado = lerEstado(raiz)
+  const escolhidas = estado?.ferramentas || []
+  const resultados = estado?.verificacao || {}
+
+  return {
+    camadas: camadasDe(raiz, cfg).map((c) => ({
+      id: c.id,
+      nome: c.nome,
+      grupo: c.grupo,
+      custo: c.custo,
+      duracao: c.duracao,
+      explica: c.explica,
+      escolhida: escolhidas.includes(c.id),
+      resultado: resultados[c.id] || null,
+    })),
+    escolhidas,
+  }
+}
+
+/**
+ * Roda uma camada e registra o resultado no estado do framework.
+ *
+ * O resultado é DADO, não julgamento: a camada diz se passou, o framework só
+ * confere se rodou e se passou. Isso mantém o gate mecânico, que é a regra que
+ * impede a IA de se auto-aprovar.
+ */
+export async function rodar(raiz, id, cfg = {}) {
+  const camada = camadaDe(id)
+  if (!camada) return { ok: false, erro: `camada desconhecida: ${id}` }
+
+  const inicio = Date.now()
+  let r
+  try {
+    r = await camada.rodar(raiz, cfg)
+  } catch (e) {
+    // Camada que explode é falha DELA, não do projeto: reportar como erro em vez
+    // de dizer que o projeto está sujo seria acusar o inocente.
+    return { ok: false, erro: `a camada ${id} falhou: ${String(e?.message || e)}` }
+  }
+
+  const resultado = {
+    ok: Boolean(r.ok),
+    achados: r.achados || [],
+    nota: r.nota || null,
+    duracaoMs: Date.now() - inicio,
+  }
+
+  const estado = lerEstado(raiz)
+  if (estado) {
+    const x = registrarVerificacao(estado, id, {
+      ok: resultado.ok,
+      detalhe: resultado.achados.length
+        ? `${resultado.achados.length} achado(s): ${resultado.achados[0].titulo}`
+        : (resultado.nota || null),
+      quando: new Date().toISOString(),
+    })
+    if (x.ok) gravarEstado(raiz, x.estado)
+  }
+
+  return { ok: true, camada: id, ...resultado }
+}
+
+/** Roda todas as camadas escolhidas na Definição, em série. */
+export async function rodarEscolhidas(raiz, cfg = {}) {
+  const estado = lerEstado(raiz)
+  const ids = estado?.ferramentas || []
+  if (!ids.length) return { ok: false, erro: 'nenhuma ferramenta escolhida para este projeto' }
+
+  const resultados = []
+  for (const id of ids) resultados.push(await rodar(raiz, id, cfg))
+  return {
+    ok: resultados.every((r) => r.ok && r.ok !== false),
+    limpo: resultados.every((r) => r.ok && r.achados?.length === 0),
+    resultados,
+  }
+}

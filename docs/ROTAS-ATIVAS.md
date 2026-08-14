@@ -30,7 +30,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
 | `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: cockpit federado, CC-47/51/54/55/57/58. Escritório servido por proxy com WebSocket, porque `localhost` no iframe é o celular de quem olha. Falta ligar o PC: ver ticket) | — |
-| `framework` | 🟢 livre | — (ff0d68b2 fechou em 15/08: F1 a F4, F6 a F8, F10, F11 e F13 de [[planos/FRAMEWORK-V1]]. Faltam F5 (depende da Bancada) e as visões F9, F12, F14) | — |
+| `framework` | 🟢 livre | — (ff0d68b2 fechou em 15/08: F1-F8, F10, F11, F13 e F5. Faltam as visões F9, F12, F14) | — |
 
 ## Como pedir autorização numa rota que tem dono
 

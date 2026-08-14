@@ -318,6 +318,33 @@ switch (cmd) {
         mostrar(r)
         break
       }
+      case 'bancada': {
+        const r = exigeRaiz()
+        const B = await import('./src/bancada.mjs')
+        const alvo = positional[2]
+        const cfg = { alvo: val('--alvo') }
+
+        if (!alvo) {
+          const s = B.situacao(r, cfg)
+          for (const c of s.camadas) {
+            const marca = c.escolhida ? '*' : ' '
+            const res = c.resultado ? (c.resultado.ok ? 'ok' : 'FALHOU') : '—'
+            console.log(`${marca} ${c.id.padEnd(14)} ${res.padEnd(7)} ${c.explica}`)
+          }
+          console.log('\n* = escolhida na Definição. Rodar: framework bancada <camada|tudo>')
+          break
+        }
+
+        const saida = alvo === 'tudo' ? await B.rodarEscolhidas(r, cfg) : await B.rodar(r, alvo, cfg)
+        if (saida.erro) die(saida.erro)
+        const lista = saida.resultados || [saida]
+        for (const x of lista) {
+          console.log(`${x.camada}: ${x.ok && !x.achados?.length ? 'limpo' : `${x.achados?.length || 0} achado(s)`}`)
+          for (const a of x.achados || []) console.log(`  [${a.gravidade}] ${a.titulo} — ${a.onde}`)
+        }
+        mostrar(r)
+        break
+      }
       case 'metodos': {
         for (const m of Object.values(F.METODOS)) {
           console.log(`${m.id}${' '.repeat(Math.max(1, 18 - m.id.length))}${m.titulo}`)

@@ -7,14 +7,42 @@
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
   "criterios": [
-   { "texto": "Ler ~/.claude/jobs e derivar projeto, rota, modelo, status, idade, tokens", "feito": true },
-   { "texto": "Tabela no terminal, agrupada por projeto, atualizando sozinha", "feito": true },
-   { "texto": "Painel web com filtro, busca, detalhe expansivel e SSE", "feito": true },
-   { "texto": "meta.json: agente reporta assunto, categoria, to-dos, bloqueios, links", "feito": true },
-   { "texto": "cc.mjs set com merge parcial, descobrindo o job pelo ambiente", "feito": true },
-   { "texto": "Rodar sozinho no logon, com atalho pra abrir", "feito": true },
-   { "texto": "Ligar o protocolo em todos os projetos, com liga e desliga", "feito": true }
+   {
+    "texto": "Ler ~/.claude/jobs e derivar projeto, rota, modelo, status, idade, tokens",
+    "feito": true
+   },
+   {
+    "texto": "Tabela no terminal, agrupada por projeto, atualizando sozinha",
+    "feito": true
+   },
+   {
+    "texto": "Painel web com filtro, busca, detalhe expansivel e SSE",
+    "feito": true
+   },
+   {
+    "texto": "meta.json: agente reporta assunto, categoria, to-dos, bloqueios, links",
+    "feito": true
+   },
+   {
+    "texto": "cc.mjs set com merge parcial, descobrindo o job pelo ambiente",
+    "feito": true
+   },
+   {
+    "texto": "Rodar sozinho no logon, com atalho pra abrir",
+    "feito": true
+   },
+   {
+    "texto": "Ligar o protocolo em todos os projetos, com liga e desliga",
+    "feito": true
+   }
   ]
  },
- "historico": []
+ "historico": [],
+ "verificacao": {
+  "segredo": {
+   "ok": true,
+   "detalhe": null,
+   "em": "2026-08-14T23:02:47.883Z"
+  }
+ }
 }

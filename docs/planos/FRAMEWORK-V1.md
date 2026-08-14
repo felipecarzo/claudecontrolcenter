@@ -212,7 +212,38 @@ ferramentas aquele projeto usa é feita junto do MVP, não solta no meio da
 execução. Consequência: o estado ganha um campo, e o gate de Execução passa a
 conferir também isso.
 
-### F5. Bancada como gate de pronto
+### F5. Bancada como gate de pronto ✅ 15/08
+
+A etapa 1 da [[../produto/BANCADA]] existe, e está ligada ao framework:
+`src/bancadaCatalogo.mjs` (camadas como dado) e `src/bancada.mjs` (runner que
+grava o resultado no `.framework/estado.json`). Os predicados
+`verificacao-rodada` e `verificacao-limpa` já esperavam alguém preencher esse
+campo.
+
+**Começou por código nosso, e o motivo foi medido:** gitleaks, trivy, semgrep,
+trufflehog e nuclei — nenhum instalado nesta VPS, e este projeto nem tem
+lockfile, então nem `npm audit` roda. Uma bancada que só sabe chamar ferramenta
+de terceiro nasceria inteira cinza. As camadas que o documento chamava de
+diferencial são justamente as que não dependem de instalar nada.
+
+Quatro camadas: `segredo` (conteúdo, não nome de arquivo), `dependencia`
+(`npm audit`), `teste` (`npm test` do projeto) e `zona-restrita` (chama `/admin`,
+`/.env` sem sessão e exige que não respondam conteúdo).
+
+**Prova, e ela tem duas metades.** Rodar contra este repositório deu zero
+achados — o que sozinho não significa nada, porque pode ser camada cega. Rodei
+então contra um projeto semeado e ela pegou **5 de 5**: chave da AWS, token do
+GitHub, senha em URL, chave privada e o JWT com `service_role`, que era a camada
+mais valiosa do documento. Só aí o zero do repositório vira informação.
+
+**O ciclo completo, ponta a ponta:** na fase de Verificação o gate cobrou "falta
+rodar: segredo"; depois de rodar e achar uma chave, passou a recusar avançar com
+"verificação acusou problema em: segredo". Segurança virou gate, não
+recomendação.
+
+Falta da Bancada, e não bloqueia o framework: job assíncrono para camada longa,
+instalar/desinstalar em projeto de terceiro (Playwright), a aba própria, e as
+camadas que dependem de ferramenta externa.
 
 Ver [[../produto/BANCADA]]. "Pronto" passa a exigir pelo menos a camada de
 segredo rodada. Depende da Bancada existir (etapa 1 dela).
