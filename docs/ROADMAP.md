@@ -344,6 +344,45 @@ sai do **cgroup** do serviço, e o systemd mata o cgroup inteiro. Resolver exige
    suspeito nº 1 é esse, e dá para tirar os eventos mais frequentes sem perder
    os bonecos.
 
+### CC-59: O escritório piscava e recarregava sozinho ✅ 14/08
+
+Reportado pelo Felipe minutos depois do CC-58: "no momento o pixel tá dando
+refresh infinito, tela branca piscando". Dois defeitos somados, os dois meus:
+
+1. **A proteção do iframe nunca casava.** O `render()` reescreve o `#main` a
+   cada evento do stream, de 2 em 2 segundos, e iframe recriado **recarrega** —
+   isso já estava previsto no código, com a comparação
+   `palco.dataset.src === PAINEIS.find(p => p.id === painelAtivo)?.url`. Só que
+   `painelAtivo` é **nulo até o primeiro clique**, enquanto a tela mostra
+   `PAINEIS[0]`: duas contas diferentes para "qual painel está no palco". A
+   comparação falhava, o iframe era recriado, e o escritório reiniciava a cada
+   2 segundos. Agora existe `painelNoPalco()`, e é a mesma conta nos dois
+   lugares.
+2. **O aviso "local de cada máquina" se acumulava.** O render trocava
+   `.painel-lista` por `aviso + lista`, então a cada 2 segundos entrava mais um
+   parágrafo e a página crescia sem parar. Aviso e cartões agora saem dentro de
+   um container só (`.painel-cab`), que é o que o render substitui.
+
+Lição para qualquer coisa nova na aba escritório: o que o `render()` troca por
+`outerHTML` tem que ser **exatamente** o que a função devolve, senão o que
+sobra fora do seletor se duplica a cada tique.
+
+### CC-60: O outro Pixel Agents, o do Telegram
+
+Achado em 14/08 investigando o escritório: já existe um `pixel-agents` rodando
+nesta VPS há mais de dois dias, na **porta 3100**, do usuário **`agente`**, que
+é outro usuário do sistema. O `paineis.mjs` o chama de "o agente do Telegram, via
+túnel SSH", e o túnel que o PC abria apontava justamente para ele.
+
+Não mexi nele, de propósito: é de outro usuário e está de pé há dias.
+
+**O Felipe pediu para olhar isso depois.** As perguntas abertas: que agentes ele
+mostra (o `~/.claude` do usuário `agente`, não o nosso), quem o subiu, se ainda
+serve para alguma coisa, e se vale aparecer no cockpit como um segundo painel
+ou se é lixo de uma experiência anterior. Se for para aparecer, o proxy já
+sabe servir por porta; o que falta decidir é se faz sentido dois escritórios na
+mesma tela.
+
 ### CC-52: O Routia só existe em 2 dos 14 projetos clonados na VPS
 
 `proj_controlcenter` e `inovallbond`. Rollout continua manual por decisão do

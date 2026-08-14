@@ -3304,7 +3304,9 @@ function aplicarDados(snapshot) {
 // Separada do palco de propósito: os cartões mudam de estado a toda hora e
 // podem ser redesenhados à vontade; o iframe abaixo não pode ser tocado.
 function viewCartoesPaineis() {
-  if (!PAINEIS) return '<div class="painel-lista"></div>'
+  // Mesmo container do caso normal: o render troca `.painel-cab`, e sem ele
+  // aqui a primeira troca não acharia nada para substituir.
+  if (!PAINEIS) return '<div class="painel-cab"><div class="painel-lista"></div></div>'
   const escolhido = PAINEIS.find((p) => p.id === painelAtivo) || PAINEIS[0]
   // CC-47: diferente das outras abas, esta NÃO é federada, e dizer isso evita a
   // pergunta certa ("cadê os agentes da outra máquina?"). O Pixel Agents lê o
@@ -3334,7 +3336,18 @@ function viewCartoesPaineis() {
       </div>`
   }).join('')
 
-  return aviso + `<div class="painel-lista">${cartoes}</div>`
+  // Aviso e cartões saem juntos dentro de UM container, e é o container que o
+  // render troca. Sem isso, `cartoes.outerHTML = viewCartoesPaineis()` inseria
+  // outro aviso a cada 2 segundos e a página crescia sem parar.
+  return `<div class="painel-cab">${aviso}<div class="painel-lista">${cartoes}</div></div>`
+}
+
+/** O painel que está de fato no palco. Mesma conta em dois lugares dava tela
+ *  branca piscando: o render comparava com `painelAtivo` (nulo antes do
+ *  primeiro clique) enquanto a tela mostrava `PAINEIS[0]`, então a proteção
+ *  nunca casava e o iframe era recriado a cada evento do stream. */
+function painelNoPalco() {
+  return (PAINEIS || []).find((p) => p.id === painelAtivo) || (PAINEIS || [])[0] || null
 }
 
 /**
@@ -3370,7 +3383,7 @@ function viewLegendaEscritorio(jobs) {
 
 function viewEscritorio() {
   if (!PAINEIS) return '<div class="empty">procurando os painéis…</div>'
-  const escolhido = PAINEIS.find((p) => p.id === painelAtivo) || PAINEIS[0]
+  const escolhido = painelNoPalco()
 
   // `data-src` existe para o render() comparar sem ler `iframe.src`, que o
   // navegador normaliza (barra no fim) e nunca bateria com a string do JSON.
@@ -3866,8 +3879,8 @@ function render() {
   // escolhido não muda, só os cartões são redesenhados; o iframe não é
   // tocado. Mover o nó também recarregaria, então nem isso se faz.
   const palco = tab === 'escritorio' ? $('.painel-palco') : null
-  if (palco && palco.dataset.src === (PAINEIS || []).find((p) => p.id === painelAtivo)?.url) {
-    const cartoes = $('.painel-lista')
+  if (palco && palco.dataset.src === painelNoPalco()?.url) {
+    const cartoes = $('.painel-cab')
     if (cartoes) {
       cartoes.outerHTML = viewCartoesPaineis()
       const leg = $('.leg-lista')
