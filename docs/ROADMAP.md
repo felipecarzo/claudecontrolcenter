@@ -396,6 +396,37 @@ backup. Se o arquivo se perder, ninguém recupera esta correção nem as
 anteriores. Vale um dia entrar em algum lugar versionado, ainda que fora do
 `proj_controlcenter`.
 
+### CC-62: O agente não aparecia porque religar não confirma que religou
+
+O Felipe: "o agente dessa sessão não está no escritório. pq será?". A dúvida
+dele em 14/08 sobre "pixel agents na VPS vs no sandbox" (ver acima) tinha uma
+resposta técnica clara: **funciona por hook**, não por leitura passiva. O
+instalador registrou 14 eventos no `settings.json`
+(`SessionStart`/`PreToolUse`/etc), e cada um descobre o servidor por
+`~/.pixel-agents/server.json` (porta, pid, token). Como o hook roda dentro
+desta mesma VPS, esta sessão sempre foi, em tese, um dos bonecos — não existe
+"pixel agents do sandbox" separado do "da VPS": é a mesma máquina, o mesmo
+`~/.claude`.
+
+Só que o boneco não aparecia. Causa raiz, medida: **o processo ligado pelo
+botão roda com `stdio: 'ignore'`** (decisão de propósito do `paineis.mjs`,
+para sobreviver ao fim do painel), então se ele cair ou não processar nada,
+**ninguém vê o erro**. Como o Pixel Agents morre a cada restart do
+`agent-cockpit` (o cgroup do systemd mata junto, CC-58), religar pelo botão sem
+log nenhum não confirma que o processo voltou saudável — só que o comando de
+subir foi disparado.
+
+Religuei manualmente com log capturado (`> ~/logs/pixel-agents.log`) e
+confirmei ao vivo: cada comando meu virou `PreToolUse`/`PostToolUse` real no
+log, com `session=ff0d68b2` (esta sessão), e um cliente WebSocket já conectado
+pela porta do proxy.
+
+**O risco que fica**: o botão "ligar" da aba escritório pode dar falso positivo
+— resposta `ok`, painel mostrando "no ar", e o processo por trás morto ou
+travado, sem ninguém saber. Enquanto `stdio: 'ignore'` for a escolha (e ela é
+certa, pelo motivo que já está escrito), o jeito de confirmar de verdade
+continua sendo olhar `~/logs/pixel-agents.log` à mão depois de religar.
+
 ### CC-60: O outro Pixel Agents, o do Telegram
 
 Achado em 14/08 investigando o escritório: já existe um `pixel-agents` rodando
