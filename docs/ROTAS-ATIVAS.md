@@ -29,7 +29,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
-| `sincronia` | 🔴 ocupada | ff0d68b2 (sessão na VPS) — cockpit federado, plano aprovado pelo Felipe em 14/08: identidade de máquina, canal VPS↔desktop, filtro por origem. Fase 0 primeiro (sessão interativa no painel, uso do plano) | 2026-08-14 |
+| `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: cockpit federado. CC-47, CC-51, CC-54, CC-55, CC-57 e CC-58 feitos. Falta ligar o PC: ver ticket) | — |
 | `framework` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: gate de MVP de ponta a ponta, hook registrado no `settings.json` da VPS e ligado no `proj_controlcenter`. Ver ticket) | — |
 
 ## Como pedir autorização numa rota que tem dono
@@ -51,6 +51,24 @@ Se você é o dono e recebeu um pedido: responda. Ficar em silêncio deixa a out
 sessão travada, que é exatamente o que o método existe para evitar.
 
 ## Tickets pendentes
+
+### 🎫 `sincronia` — ligar o PC no painel federado, de ff0d68b2, em 14/08
+
+A VPS já é o servidor: identidade `VPS`, token forte gerado, e ela aceita
+pacote de outra máquina. Falta a ponta do desktop, que é onde você está lendo.
+
+Na aba **remoto** do painel do PC, bloco "painel federado":
+
+1. nome desta máquina: `ALIENWARE-LIPE`
+2. token: o mesmo da VPS (lá, mesma tela, botão `mostrar`)
+3. empurrar para: `https://cockpit.carzo.com.br`
+4. `salvar`, depois `enviar agora`
+
+O seletor de máquina no topo só aparece com duas ou mais reportando. Antes
+disso ele fica escondido, porque escolher entre uma opção só é ruído.
+
+Direção fixa e não é preguiça: o PC alcança a VPS, a VPS nunca alcança o PC
+atrás de NAT. Então o desktop empurra e a VPS recebe, sempre.
 
 ### 🎫 `framework` — para quem abrir no PC, de ff0d68b2, em 14/08
 

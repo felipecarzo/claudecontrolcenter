@@ -2435,7 +2435,13 @@ function viewTempo() {
     const porDia = p.diasTrabalhados ? p.ativoMs / p.diasTrabalhados : 0
     return `<div class="t-proj">
       <div class="t-linha${cls}" data-tempo-proj="${esc(p.projeto)}" tabindex="0">
-        <span class="nome">${aberto ? '▾' : '▸'} ${esc(p.projeto)}</span>
+        <span class="nome">${aberto ? '▾' : '▸'} ${esc(p.projeto)}${
+      // CC-47: de onde vieram estas horas. Só quando o projeto foi tocado em
+      // mais de uma máquina — no caso comum seria carimbo repetido inútil.
+      (p.porMaquina || []).length > 1
+        ? ` ${p.porMaquina.map((m) => `<span class="selo-maq" title="${esc(m.maquina.nome)}: ${horas(m.ativoMs)}">${
+          esc(m.maquina.nome)} ${horas(m.ativoMs)}</span>`).join('')}`
+        : ''}</span>
         <span class="v h">${horas(p.ativoMs)}</span>
         <span class="v path">${p.diasTrabalhados}d</span>
         <span class="v path">${horas(porDia)}/dia</span>
@@ -3300,6 +3306,13 @@ function aplicarDados(snapshot) {
 function viewCartoesPaineis() {
   if (!PAINEIS) return '<div class="painel-lista"></div>'
   const escolhido = PAINEIS.find((p) => p.id === painelAtivo) || PAINEIS[0]
+  // CC-47: diferente das outras abas, esta NÃO é federada, e dizer isso evita a
+  // pergunta certa ("cadê os agentes da outra máquina?"). O Pixel Agents lê o
+  // `~/.claude` da máquina onde roda; ele não sabe receber dado de fora.
+  const local = PAINEIS.find((p) => p.local)
+  const aviso = `<p class="dim" style="margin:0 0 10px">O escritório é <b>local de cada máquina</b>:
+    mostra os agentes${local ? ` de <b>${esc(local.nome)}</b>` : ' desta máquina'}, não os das outras.
+    Para ver o escritório do outro lado, abra o cockpit de lá. As demais abas somam as duas.</p>`
   const cartoes = PAINEIS.map((p) => {
     const marca = p.noAr ? 'var(--done)' : 'var(--idle)'
     return `
@@ -3321,7 +3334,7 @@ function viewCartoesPaineis() {
       </div>`
   }).join('')
 
-  return `<div class="painel-lista">${cartoes}</div>`
+  return aviso + `<div class="painel-lista">${cartoes}</div>`
 }
 
 /**

@@ -6,7 +6,7 @@
 import assert from 'node:assert'
 import {
   LIMITE_PACOTE, SEM_CONTATO_MS, carimbar, maquinasConhecidas, mesclar,
-  montarPacote, validarPacote,
+  mesclarTempo, montarPacote, validarPacote,
 } from './src/federacao.mjs'
 
 let n = 0
@@ -93,6 +93,46 @@ assert.equal(pacote.jobs[0].intent, undefined)
 assert.ok(pacote.em > 0)
 assert.ok(JSON.stringify(pacote).length < LIMITE_PACOTE)
 ok('pacote leva só o que a tela precisa, sem o estado cru')
+
+// --------------------------------------------------------- tempo somado
+const tempoVps = { projetos: [
+  { projeto: 'inovallbond', ativoMs: 3_600_000, tokens: 100, valor: 500, custoReal: 40, sobra: 460 },
+  { projeto: 'proj_carzo', ativoMs: 1_800_000, tokens: 50, valor: 0, custoReal: null, sobra: null },
+] }
+const tempoPc = { projetos: [
+  { projeto: 'inovallbond', ativoMs: 7_200_000, tokens: 900, valor: 9999, custoReal: 111, sobra: 1 },
+] }
+const somado = mesclarTempo(tempoVps, [{ maquina: PC, tempo: tempoPc, idadeMs: 5 }], LOCAL)
+
+const inovall = somado.projetos.find((p) => p.projeto === 'inovallbond')
+assert.equal(inovall.ativoMs, 10_800_000, '1h da VPS + 2h do PC = 3h')
+assert.equal(inovall.tokens, 1000)
+assert.equal(inovall.porMaquina.length, 2, 'a quebra por máquina é o que o filtro usa')
+assert.equal(inovall.porMaquina[0].maquina.nome, 'VPS')
+assert.equal(inovall.porMaquina[1].ativoMs, 7_200_000)
+ok('horas e tokens somam entre as máquinas, com a quebra por origem')
+
+// dinheiro NÃO soma: taxa e assinatura são de cada config
+assert.equal(inovall.valor, 0, 'valor tem que ser recalculado por quem exibe')
+assert.equal(inovall.custoReal, null)
+assert.equal(inovall.sobra, null)
+ok('dinheiro não é somado entre máquinas com tabelas diferentes')
+
+// projeto que só existe numa das máquinas continua inteiro
+const carzo = somado.projetos.find((p) => p.projeto === 'proj_carzo')
+assert.equal(carzo.ativoMs, 1_800_000)
+assert.equal(carzo.porMaquina.length, 1)
+// e a ordem é por tempo, o maior primeiro
+assert.equal(somado.projetos[0].projeto, 'inovallbond')
+assert.equal(somado.federado, true)
+ok('projeto de uma máquina só sobrevive, e a ordem é por tempo')
+
+// sem pacote nenhum, o resultado é o local intacto
+const sozinho = mesclarTempo(tempoVps, [], LOCAL)
+assert.equal(sozinho.projetos.length, 2)
+assert.equal(sozinho.federado, false)
+assert.equal(mesclarTempo(null, [], LOCAL).projetos.length, 0, 'sem dado nenhum não pode explodir')
+ok('sem outra máquina, a aba tempo continua como sempre foi')
 
 // ------------------------------------------------------- ida e volta
 const ida = montarPacote({ maquina: PC, jobs: [{ id: 'j9', subject: 'viajou' }] })

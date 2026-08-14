@@ -10,7 +10,7 @@ import { readSessoes } from './sessoes.mjs'
 import { origem as origemLocal } from './maquina-id.mjs'
 import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
-  mesclar, montarPacote, validarPacote,
+  mesclar, mesclarTempo, montarPacote, validarPacote,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
 import { arquivar, jobsHistoricos, marcosDe } from './historico.mjs'
@@ -168,14 +168,44 @@ function usoDaConta(local, pacotes) {
  * varrer transcrito custa segundos e não pode entrar num timer curto, a mesma
  * regra que vale para as portas, a VPS e os processos.
  */
-async function empurrar() {
+/**
+ * Quando o tempo entrou no pacote pela última vez.
+ *
+ * Ele vai junto a cada 10 minutos, e não a cada 30 segundos como o resto:
+ * `resumoTempo()` varre os transcritos, o que custa segundos e centenas de MB
+ * no PC do Felipe. A mesma regra das portas, da VPS e dos processos, só que
+ * aqui com um relógio em vez de um clique.
+ */
+let ultimoTempoEnviado = 0
+const INTERVALO_TEMPO_MS = 10 * 60 * 1000
+
+async function empurrar({ comTempo = null } = {}) {
   const cfg = readConfig()
   const { token, enviarPara } = cfg.federacao || {}
   if (!token || !enviarPara) return { ok: false, erro: 'federação não configurada' }
 
   const s = snapshot()
   const meus = s.jobs.filter((j) => j.origem?.id === s.maquina.id)
-  const pacote = montarPacote({ maquina: s.maquina, jobs: meus, uso: s.uso })
+
+  const agora = Date.now()
+  const mandarTempo = comTempo ?? (agora - ultimoTempoEnviado > INTERVALO_TEMPO_MS)
+  let tempo = null
+  if (mandarTempo) {
+    try {
+      // Só os totais por projeto: `dias` e `sessoes` são o que engorda o
+      // resumo, e a outra ponta não usa nenhum dos dois para somar.
+      const r = resumoTempo({ corteMin: 15 })
+      tempo = {
+        corteMin: r.corteMin,
+        projetos: (r.projetos || []).map((p) => ({
+          projeto: p.projeto, ativoMs: p.ativoMs, tokens: p.tokens,
+        })),
+      }
+      ultimoTempoEnviado = agora
+    } catch { /* varredura falhou: manda o resto, tempo vai na próxima */ }
+  }
+
+  const pacote = montarPacote({ maquina: s.maquina, jobs: meus, uso: s.uso, tempo })
   return enviarPacote({ enviarPara, token, pacote })
 }
 
@@ -546,12 +576,17 @@ function handler(req, res) {
     // real e só a segunda mostraria a coluna.
     return garantirCambio().then(() => {
       try {
-        send(res, 200, resumoTempo({
+        const local = resumoTempo({
           corteMin: num(url.searchParams.get('corte'), 15),
           de: dia(url.searchParams.get('de')),
           ate: dia(url.searchParams.get('ate')),
           force: url.searchParams.has('force'),
-        }))
+        })
+        // CC-47: as horas das outras máquinas entram aqui. O corte e o recorte
+        // de datas valem só para o que é local: o remoto chega já somado, com o
+        // corte que a máquina de lá usou. Misturar cortes diferentes seria
+        // mentira silenciosa, então a tela avisa quando o total é federado.
+        send(res, 200, mesclarTempo(local, lerPacotes(), origemLocal()))
       } catch (e) {
         send(res, 500, { error: String(e.message || e) })
       }

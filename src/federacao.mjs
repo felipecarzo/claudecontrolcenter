@@ -122,6 +122,46 @@ export function mesclar(locais, pacotes, origemLocal, campo = 'jobs') {
   })
 }
 
+/**
+ * Soma a aba tempo das várias máquinas, por projeto.
+ *
+ * O Felipe pediu "os dados de todos os meus dispositivos, somados, e eu poder
+ * filtrar pra separar o que é da VPS e o que é deste desktop". Some-se o que é
+ * físico (horas e tokens) e guarde-se a quebra por origem, que é o que o filtro
+ * usa e o que responde "onde eu trabalhei mais".
+ *
+ * O que NÃO é somado, de propósito: dinheiro. `valor`, `custoReal` e `sobra`
+ * saem da taxa e da assinatura, que moram no config de CADA máquina e podem
+ * divergir. Somar dois números calculados com tabelas diferentes daria um total
+ * que não é de ninguém. Eles são recalculados na máquina que exibe, sobre as
+ * horas já somadas.
+ */
+export function mesclarTempo(local, pacotes, origemLocal) {
+  const porProjeto = new Map()
+
+  const juntar = (resumo, origem) => {
+    for (const p of resumo?.projetos || []) {
+      const atual = porProjeto.get(p.projeto) || {
+        ...p, ativoMs: 0, tokens: 0, porMaquina: [],
+        // zerados: quem exibe recalcula com a própria taxa
+        valor: 0, custoReal: null, sobra: null,
+      }
+      atual.ativoMs += p.ativoMs || 0
+      atual.tokens += p.tokens || 0
+      atual.porMaquina.push({ maquina: origem, ativoMs: p.ativoMs || 0, tokens: p.tokens || 0 })
+      porProjeto.set(p.projeto, atual)
+    }
+  }
+
+  juntar(local, origemLocal)
+  for (const pac of pacotes) {
+    if (pac.tempo) juntar(pac.tempo, { ...pac.maquina, idadeMs: pac.idadeMs, semContato: pac.semContato })
+  }
+
+  const projetos = [...porProjeto.values()].sort((a, b) => b.ativoMs - a.ativoMs)
+  return { ...(local || {}), projetos, federado: pacotes.some((p) => p.tempo) }
+}
+
 /** As máquinas conhecidas, para montar o filtro do topo. A local vem primeiro:
  *  é a que o Felipe está olhando. */
 export function maquinasConhecidas(pacotes, origemLocal) {

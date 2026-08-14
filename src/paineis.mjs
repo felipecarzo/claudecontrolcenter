@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process'
 import { readServers } from './servers.mjs'
 import { matarProcesso, ehWindows } from './platform.mjs'
 import { readConfig } from './config.mjs'
+import { origem } from './maquina-id.mjs'
 
 const CHAVE_VPS = path.join(os.homedir(), '.ssh', 'id_ed25519_ahtleta')
 
@@ -27,7 +28,8 @@ const CHAVE_VPS = path.join(os.homedir(), '.ssh', 'id_ed25519_ahtleta')
 const PADRAO = [
   {
     id: 'local',
-    nome: 'meu PC',
+    // O nome real entra em `readPaineis`: "meu PC" mentia rodando na VPS.
+    nome: 'esta máquina',
     detalhe: 'sessões do Claude Code desta máquina',
     porta: 3101,
     cmd: 'pixel-agents',
@@ -55,11 +57,25 @@ const PADRAO = [
   },
 ]
 
-/** Permite trocar porta/host sem mexer no código: `paineis` no config.json. */
+/**
+ * Permite trocar porta/host sem mexer no código: `paineis` no config.json.
+ *
+ * O painel `vps` só existe quando o Control Center roda FORA da VPS: ele é um
+ * túnel SSH para lá. Rodando dentro dela, o túnel seria a máquina se conectando
+ * a si mesma com a chave do Felipe, e o Pixel Agents local já mostra os mesmos
+ * agentes. Medido em 14/08, quando a aba escritório aparecia vazia na VPS: o
+ * `pixel-agents` não estava instalado e o túnel apontava para um serviço que
+ * não existe. A mesma variável que o resto do projeto usa para saber que está
+ * na VPS decide isto (`CC_VPS_LOCAL`, ver `vps.mjs`).
+ */
 function definicoes() {
+  const naVps = process.env.CC_VPS_LOCAL === '1'
+  const base = naVps ? PADRAO.filter((p) => p.id !== 'vps') : PADRAO
   const custom = readConfig().paineis
-  if (!Array.isArray(custom) || !custom.length) return PADRAO
-  return custom.map((c) => ({ ...PADRAO.find((p) => p.id === c.id), ...c }))
+  if (!Array.isArray(custom) || !custom.length) return base
+  return custom
+    .map((c) => ({ ...PADRAO.find((p) => p.id === c.id), ...c }))
+    .filter((p) => !(naVps && p.id === 'vps'))
 }
 
 /** Acha o processo que está segurando a porta, se houver. */
@@ -68,11 +84,17 @@ function processoNaPorta(porta, { force = false } = {}) {
 }
 
 export function readPaineis({ force = false } = {}) {
+  const eu = origem()
   return definicoes().map((p) => {
     const proc = processoNaPorta(p.porta, { force })
     return {
       id: p.id,
-      nome: p.nome,
+      // CC-47: o escritório é LOCAL de cada máquina, e a tela precisa dizer
+      // isso. O Pixel Agents lê `~/.claude` da máquina onde roda; federar os
+      // bonecos exigiria o app aceitar dado de fora, o que ele não faz.
+      nome: p.id === 'local' ? eu.nome : p.nome,
+      local: p.id === 'local',
+      maquina: eu,
       detalhe: p.detalhe,
       porta: p.porta,
       noAr: Boolean(proc),

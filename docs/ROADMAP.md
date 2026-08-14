@@ -272,6 +272,54 @@ o processo fica vivo, mas inalcançável no comando seguinte.
 
 ### CC-56: Reportar estado a partir de sessão interativa
 
+### CC-57: A aba tempo soma as máquinas ✅ 14/08
+
+Pedido do Felipe: "os dados de todos os meus dispositivos, somados, e eu poder
+filtrar pra separar o que é da VPS e o que é deste desktop".
+
+`mesclarTempo()` soma horas e tokens por projeto e guarda a quebra por origem,
+que aparece como pastilha na linha quando o projeto foi tocado em mais de uma
+máquina. Provado: `proj_controlcenter` com 2,4h, sendo 1,4h da VPS e 1h do PC.
+
+**Dinheiro não é somado, de propósito.** `valor`, `custoReal` e `sobra` saem da
+taxa e da assinatura, que moram no config de CADA máquina e podem divergir.
+Somar dois números calculados com tabelas diferentes daria um total que não é
+de ninguém. Quem exibe recalcula sobre as horas já somadas.
+
+O tempo entra no pacote a cada 10 minutos, não a cada 30 segundos como o resto:
+varrer transcrito custa segundos e centenas de MB no PC. E só os totais por
+projeto viajam, nunca `dias` e `sessoes`, que são o que engorda o resumo.
+
+### CC-58: O escritório é local de cada máquina, e agora existe na VPS ✅ 14/08
+
+O "agente pixel" que o Felipe não achava é o **Pixel Agents**, o app dos
+bonequinhos que a aba embute. Ele não estava instalado na VPS (`npm i -g
+pixel-agents`, feito em 14/08, versão 1.4.0), e nada escutava na 3101.
+
+Dois consertos além da instalação:
+
+- **O painel `vps` some quando o cockpit roda DENTRO da VPS.** Ele é um túnel
+  SSH para lá: rodando na própria VPS seria a máquina se conectando a si mesma
+  com a chave do Felipe, apontando para um serviço que não existe. A mesma
+  variável do resto do projeto (`CC_VPS_LOCAL`) decide.
+- **O painel local deixou de se chamar "meu PC"**, que mentia na VPS. Agora usa
+  o nome da máquina (`maquina-id.mjs`).
+
+**A aba diz na tela que é local de cada máquina**, decisão do Felipe ("faz os
+dois, instala e também deixa dizer que é local"). Federar os bonecos exigiria o
+Pixel Agents aceitar dado de fora, o que ele não faz: ele lê o `~/.claude` da
+máquina onde roda.
+
+**Duas coisas a saber**, ambas medidas:
+
+1. O Pixel Agents da VPS foi subido à mão e **não volta depois de um reboot**.
+   O botão "ligar" da aba resolve, ou vira serviço systemd um dia.
+2. O instalador dele **se registrou sozinho em 14 eventos do `settings.json`**,
+   incluindo `PostToolUse` e `UserPromptSubmit`, a 132 ms por evento. Numa
+   resposta com muitas ferramentas isso soma. Se a sessão ficar lenta, o
+   suspeito nº 1 é esse, e dá para tirar os eventos mais frequentes sem perder
+   os bonecos.
+
 ### CC-52: O Routia só existe em 2 dos 14 projetos clonados na VPS
 
 `proj_controlcenter` e `inovallbond`. Rollout continua manual por decisão do
