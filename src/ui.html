@@ -630,6 +630,49 @@
   }
   .selo-maq.frio { border-style: dashed; opacity: .65; }
 
+  /* aba "meu": o que depende dele. Linha alta e texto grande de propósito —
+     é a lista que ele lê no celular, não uma tabela de dado técnico. */
+  .meu-nova { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .meu-nova input {
+    flex: 1; min-width: 160px; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--faint); border-radius: 6px; padding: 7px 10px; font-size: 13px;
+  }
+  .meu-lista { display: flex; flex-direction: column; gap: 8px; }
+  .meu-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    border: 1px solid var(--faint); border-radius: 10px; padding: 10px 12px;
+  }
+  .meu-item.ok { opacity: .55; }
+  .meu-item.ok b { text-decoration: line-through; }
+  .meu-check { background: none; border: 0; color: var(--fg); font-size: 17px; cursor: pointer; line-height: 1; padding: 0; }
+  .meu-txt { flex: 1; min-width: 0; }
+  .meu-txt b { font-size: 13px; font-weight: 600; }
+  .meu-txt p { margin: 3px 0 4px; font-size: 11.5px; }
+  .meu-feitas { margin-top: 14px; }
+  .meu-feitas summary { cursor: pointer; font-size: 11.5px; color: var(--dim); }
+
+  /* aba glossário: cartões curtos, um por documento */
+  .gl-busca { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .gl-busca input {
+    flex: 1; min-width: 200px; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--faint); border-radius: 6px; padding: 7px 10px; font-size: 13px;
+  }
+  .gl-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+  .gl-card { border: 1px solid var(--faint); border-radius: 10px; padding: 12px 14px; }
+  .gl-card header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .gl-card p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.45; }
+  .gl-card footer { margin-top: 8px; }
+  .gl-termos { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 11.5px; }
+  .gl-termos dt { color: var(--fg); font-weight: 600; white-space: nowrap; }
+  .gl-termos dd { color: var(--dim); margin: 0; }
+  .gl-hits { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .gl-hit {
+    display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
+    border-left: 2px solid var(--acento); padding: 3px 0 3px 10px; font-size: 12px;
+  }
+  .gl-faltando { margin-top: 16px; }
+  .gl-faltando summary { cursor: pointer; font-size: 11.5px; color: var(--dim); }
+
   /* Configuração da federação, na aba remoto. Rótulo em cima do campo abaixo de
      560px: no celular, rótulo e campo lado a lado deixam o campo com 40px. */
   .fed-bloco { border: 1px solid var(--faint); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
@@ -1380,6 +1423,11 @@ const TABS = [
   { id: 'servidores', label: 'servidores' },
   { id: 'vps', label: 'VPS' },
   { id: 'escritorio', label: 'escritório' },
+  // CC-63/64: o que depende dele, e o glossário. Ficam no fim até o redesign
+  // de abas agrupar tudo — acrescentar aba solta é exatamente o que ele
+  // reclamou, mas sem tela o recurso não existe pra ele.
+  { id: 'meu', label: 'meu' },
+  { id: 'glossario', label: 'glossário' },
   { id: 'remoto', label: 'remoto' },
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
@@ -3297,6 +3345,138 @@ function aplicarDados(snapshot) {
   render()
 }
 
+/* ==================== aba: meu (o que depende dele) ==================== */
+
+/**
+ * As tarefas do Felipe, de todos os projetos, num lugar.
+ *
+ * Ele chamou de "o meu trelo da vida": o que a IA não pode fazer (cortar um
+ * asset, logar uma conta, autorizar sudo, decidir). Antes viviam soltas no meio
+ * da conversa e sumiam junto com a sessão.
+ */
+let MEU = null
+
+async function carregarMeu(force) {
+  if (MEU && !force) return
+  try {
+    MEU = (await (await fetch('/api/meu')).json()).tarefas
+  } catch {
+    MEU = []
+  }
+  render()
+}
+
+async function acaoMeu(corpo) {
+  try {
+    await fetch('/api/meu', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo),
+    })
+  } catch { /* sem rede a tela segue com o que tem */ }
+  return carregarMeu(true)
+}
+
+function viewMeu() {
+  if (!MEU) return '<div class="empty">carregando…</div>'
+  const abertas = MEU.filter((t) => !t.feito)
+  const feitas = MEU.filter((t) => t.feito)
+
+  const linha = (t) => `<div class="meu-item${t.feito ? ' ok' : ''}">
+    <button class="meu-check" data-meu-marcar="${esc(t.id)}" data-meu-feito="${t.feito ? '0' : '1'}"
+      title="${t.feito ? 'reabrir' : 'marcar como feito'}">${t.feito ? '☑' : '☐'}</button>
+    <div class="meu-txt">
+      <b>${esc(t.texto)}</b>
+      ${t.porque ? `<p class="dim">${esc(t.porque)}</p>` : ''}
+      <span class="path">${t.projeto ? esc(t.projeto) : 'sem projeto'}${
+  t.frente ? ` › ${esc(t.frente)}` : ''}${t.fonte === 'agente' ? ' · pedido por um agente' : ''}${
+  t.em ? ` · há ${age(Date.now() - t.em)}` : ''}</span>
+    </div>
+    ${t.fonte === 'lista' ? `<button class="btn mini" data-meu-remover="${esc(t.id)}" title="apagar">✕</button>` : ''}
+  </div>`
+
+  return `<div class="meu-nova">
+      <input id="meu-txt" placeholder="o que depende de você…" autocomplete="off">
+      <input id="meu-proj" placeholder="projeto (opcional)" autocomplete="off">
+      <button class="btn" data-meu-add>anotar</button>
+    </div>
+    ${abertas.length
+    ? `<div class="meu-lista">${abertas.map(linha).join('')}</div>`
+    : '<div class="empty">nada depende de você agora</div>'}
+    ${feitas.length ? `<details class="meu-feitas"><summary>${feitas.length} já resolvida${
+      feitas.length > 1 ? 's' : ''}</summary><div class="meu-lista">${feitas.map(linha).join('')}</div></details>` : ''}`
+}
+
+/* ======================= aba: glossário ======================= */
+
+/**
+ * Os documentos reduzidos ao que cabe numa tela, com os termos de cada um.
+ *
+ * Palavra dele: "se eu quiser lembrar o que que é a bancada que eu mesmo criei
+ * há pouco tempo atrás, eu já não lembro, eu teria que pesquisar pra ler. E eu
+ * não posso, toda hora que eu esquecer, ficar lendo um documento gigante."
+ *
+ * O documento continua grande, porque é a fonte de verdade que a IA lê. Isto é
+ * a camada curta, extraída do próprio arquivo, nunca escrita em dobro.
+ */
+let GLOSSARIO = null
+let glossarioBusca = ''
+
+async function carregarGlossario(force) {
+  if (GLOSSARIO && !force) return
+  try {
+    GLOSSARIO = await (await fetch('/api/glossario')).json()
+  } catch {
+    GLOSSARIO = { verbetes: [], termos: [] }
+  }
+  render()
+}
+
+function viewGlossario() {
+  if (!GLOSSARIO) return '<div class="empty">lendo os documentos…</div>'
+  const q = glossarioBusca.trim().toLowerCase()
+  const casa = (t) => !q || t.toLowerCase().includes(q)
+
+  const verbetes = (GLOSSARIO.verbetes || []).filter((v) => casa([
+    v.titulo, v.resumo, v.estado, ...(v.tags || []),
+    ...Object.keys(v.termos || {}), ...Object.values(v.termos || {}),
+  ].join(' ')))
+  const termos = (GLOSSARIO.termos || []).filter((t) => casa(`${t.termo} ${t.definicao} ${t.onde}`))
+
+  // Sem resumo escrito o cartão sairia de um chute da primeira frase: some da
+  // lista principal e vira pendência no fim, em vez de poluir com texto ruim.
+  const bons = verbetes.filter((v) => !v.resumoAutomatico)
+  const chutados = verbetes.filter((v) => v.resumoAutomatico)
+
+  const cartao = (v) => `<article class="gl-card">
+    <header>
+      <b>${esc(v.titulo)}</b>
+      ${v.estado ? `<span class="fw-selo">${esc(v.estado)}</span>` : ''}
+      <span class="grow"></span>
+      <span class="path">${v.linhas} linhas</span>
+    </header>
+    <p>${esc(v.resumo || '')}</p>
+    ${Object.keys(v.termos || {}).length ? `<dl class="gl-termos">${
+    Object.entries(v.termos).map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl>` : ''}
+    <footer><span class="path">${esc(v.id)}</span></footer>
+  </article>`
+
+  return `<div class="gl-busca">
+      <input id="gl-q" value="${esc(glossarioBusca)}" placeholder="buscar termo, documento ou assunto…" autocomplete="off">
+      <span class="path">${bons.length} documento${bons.length === 1 ? '' : 's'} · ${termos.length} termo${termos.length === 1 ? '' : 's'}</span>
+    </div>
+    ${q && termos.length ? `<div class="gl-hits">${termos.slice(0, 12).map((t) => `
+      <div class="gl-hit"><b>${esc(t.termo)}</b> <span>${esc(t.definicao)}</span>
+        <span class="path">${esc(t.onde)}</span></div>`).join('')}</div>` : ''}
+    ${bons.length ? `<div class="gl-lista">${bons.map(cartao).join('')}</div>`
+    : '<div class="empty">nada encontrado</div>'}
+    ${chutados.length ? `<details class="gl-faltando"><summary>${chutados.length} documento${
+      chutados.length > 1 ? 's' : ''} ainda sem resumo escrito</summary>
+      <p class="dim">O cartão sairia de um chute da primeira frase. Escrever o campo
+      <code>resumo:</code> no cabeçalho do arquivo resolve.</p>
+      <div class="gl-lista">${chutados.map((v) => `<div class="gl-hit">
+        <b>${esc(v.titulo)}</b> <span class="path">${esc(v.id)}</span></div>`).join('')}</div>
+    </details>` : ''}`
+}
+
 /* ====================== aba: escritório ====================== */
 
 // As telas de Pixel Agents: os agentes desenhados como bonecos num escritório.
@@ -3871,6 +4051,8 @@ function render() {
     servidores: () => viewServidores(),
     vps: () => viewVps(),
     escritorio: () => viewEscritorio(),
+    meu: () => viewMeu(),
+    glossario: () => viewGlossario(),
     remoto: () => viewRemoto(),
   }
   // O palco do escritório é um iframe. Reescrever #main a cada evento do
@@ -4641,6 +4823,8 @@ document.addEventListener('click', async (e) => {
     if (tab === 'rotinas') carregarRotinas()
     if (tab === 'remoto') { carregarRemoto(); if (!FEDERACAO) carregarFederacao() }
     if (tab === 'escritorio') carregarPaineis()
+    if (tab === 'meu') carregarMeu()
+    if (tab === 'glossario') carregarGlossario()
     if (tab === 'tempo' || tab === 'graficos') carregarTempo()
     if (tab === 'preco') carregarPreco()
     return
@@ -4838,6 +5022,18 @@ document.addEventListener('click', async (e) => {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ projeto: visitaBtn.dataset.visita }),
     })
+  }
+
+  const meuMarcar = t.closest('[data-meu-marcar]')
+  if (meuMarcar) {
+    return acaoMeu({ acao: 'marcar', id: meuMarcar.dataset.meuMarcar, feito: meuMarcar.dataset.meuFeito === '1' })
+  }
+  const meuRemover = t.closest('[data-meu-remover]')
+  if (meuRemover) return acaoMeu({ acao: 'remover', id: meuRemover.dataset.meuRemover })
+  if (t.closest('[data-meu-add]')) {
+    const texto = $('#meu-txt')?.value
+    if (!texto?.trim()) return
+    return acaoMeu({ texto, projeto: $('#meu-proj')?.value || null })
   }
 
   if (t.closest('[data-fw-lista]')) return abrirFrameworkLista()
@@ -5203,6 +5399,15 @@ function editarTodo(jobId, i, texto) {
 }
 
 for (const el of ['#q', '#proj', '#maq']) $(el).addEventListener('input', render)
+
+// A busca do glossário e os campos de "meu" vivem dentro do #main, que o
+// render() reescreve a cada evento do stream. Por isso o listener é delegado no
+// documento e o valor digitado fica numa variável: um listener preso ao
+// elemento morreria no primeiro redesenho, e o texto sumiria enquanto ele
+// digita — o mesmo motivo pelo qual as notas moram fora do #main.
+document.addEventListener('input', (e) => {
+  if (e.target?.id === 'gl-q') { glossarioBusca = e.target.value; render(); $('#gl-q')?.focus() }
+})
 // A máquina escolhida sobrevive ao recarregar, igual à aba: é preferência de
 // quem olha, não estado do dado.
 $('#maq').addEventListener('change', (e) => localStorage.setItem('cc-maquina', e.target.value))
@@ -5249,6 +5454,8 @@ fetch('/api/jobs').then((r) => r.json()).then((d) => {
   if (tab === 'remoto') carregarRemoto()
   if (srvNovo) carregarProjetos()
   if (tab === 'escritorio') carregarPaineis()
+  if (tab === 'meu') carregarMeu()
+  if (tab === 'glossario') carregarGlossario()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()
   if (tab === 'preco') carregarPreco()
 })

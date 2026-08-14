@@ -1,8 +1,17 @@
 ---
-tags: [produto, visao]
+tags: [produto, visao, seguranca]
 tipo: visao
 atualizado: 2026-08-14
 estado: registrada, não implementada
+resumo: O cockpit instala o instrumento de teste dentro do projeto, roda, mostra o resultado e desinstala. Vira gate do framework, o "pronto" passa a exigir checagem de segredo.
+termos:
+  camada: um teste ou scanner que pode ser ligado por projeto (são 17 no catálogo, 4 no MVP)
+  corrida: uma execução da bancada, com id, log próprio e cancelamento
+  manifesto: a lista do que o cockpit instalou no projeto, com hash, para nunca apagar arquivo mexido à mão
+  sonda de RLS: testa se as tabelas do Supabase respondem sem login, usando a chave pública do próprio site
+  service_role: a chave de admin do Supabase, que nunca pode aparecer no código que vai pro navegador
+  job assíncrono: clique responde na hora com um número, o processo escreve num log, a tela pergunta depois
+  fire and forget: sobe o processo e joga a saída fora. Serve pra dev server, nunca pra teste
 ---
 
 # Frente: Bancada

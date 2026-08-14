@@ -1,3 +1,18 @@
+---
+tags: [produto, processo]
+tipo: metodo
+atualizado: 2026-08-12
+estado: em vigor, virou regra no CLAUDE.md global
+resumo: Sete regras de como trabalhar com o Felipe, tiradas de 235 mensagens reais dele em 5 projetos. Cada uma traz o custo que evita. Não é teoria de produtividade, é evidência medida.
+termos:
+  prova visual: nada é "feito" sem print ou URL. Teste verde já conviveu com tela quebrada
+  desambiguar: na segunda vez que ele repete o pedido, o problema é a palavra, não o código
+  o mecanismo é o pedido: se ele disse "linhas", linhas é a especificação, não sugestão
+  visão longa: mensagem acima de 400 caracteres que abre com "e se" é pra registrar, não executar
+  ordem curta: mensagem de até 25 caracteres quer execução e silêncio, não confirmação
+  reenvio: mensagem reenviada em menos de 5 minutos SUBSTITUI a anterior, não soma
+---
+
 # O ciclo Felipe → IA → Felipe
 
 Framework de colaboração calibrado pra uma cabeça específica: a do Felipe.

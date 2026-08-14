@@ -1,3 +1,15 @@
+---
+tags: [produto, visao]
+tipo: visao
+atualizado: 2026-08-13
+estado: parcial, épicos 3B e 4 congelados no GELO
+resumo: O painel deixa de só ler o estado e passa a distribuir e controlar os hooks dos projetos. O princípio, medido em campo, é que instrução escrita é sugestão e hook é regra.
+termos:
+  hook: script chamado num evento do Claude Code, que pode BLOQUEAR a ação
+  gate: hook que recusa com exit 2 e devolve o motivo pro modelo ler
+  PreToolUse: o evento que roda antes da ferramenta, onde o bloqueio acontece
+---
+
 # Visão — Framework de hooks
 
 Decidido com o Felipe em 12/08. O Control Center para de só ler o estado dos

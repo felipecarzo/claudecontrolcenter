@@ -1,3 +1,14 @@
+---
+tags: [produto, escopo]
+tipo: escopo
+atualizado: 2026-08-05
+estado: fechado em 05/08, as 7 entregas estão prontas
+resumo: O corte do que entra na v1 e as 6 linhas que definem quando algo está pronto. É a fonte do MVP que o gate do framework usa neste projeto.
+termos:
+  definição de pronto: as 6 condições que toda entrega cumpre, incluindo prova na tela
+  fora do MVP: o que ficou de fora por decisão e não por esquecimento, listado explícito
+---
+
 # MVP e definição de pronto
 
 ## O corte

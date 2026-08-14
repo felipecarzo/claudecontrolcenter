@@ -1,3 +1,14 @@
+---
+tags: [processo]
+tipo: arquivo
+atualizado: 2026-08-14
+estado: reversível, nada aqui foi apagado
+resumo: Onde as frentes congeladas e as descartadas ficam depois da poda de 14/08. Existe para o backlog caber numa tela sem jogar fora o que já foi pensado.
+termos:
+  congelado: depende de decisão que nunca veio ou de bloqueio aberto. Volta quando destravar
+  morto: confirmado como não vale mais, mas fica aqui inteiro mesmo assim
+---
+
 # Gelo
 
 Frentes e itens tirados do [[ROADMAP]] para ele voltar a caber numa tela.

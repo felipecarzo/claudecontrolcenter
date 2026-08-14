@@ -43,12 +43,36 @@ const readJson = (file, fallback) => {
  * com a tarefa inteira ali do lado. Aceitar as variações é mais barato que
  * esperar que todo agente acerte.
  */
+/**
+ * `dono` responde "quem faz isso": o agente ou o Felipe.
+ *
+ * Pedido dele em 14/08: "onde ficam as minhas tarefas? a gente tem que criar
+ * uma forma de eu identificar o que são as tarefas em andamento por IA e as
+ * tarefas em andamento minhas". São coisas que a IA não pode fazer sozinha —
+ * cortar um asset, logar uma conta, autorizar sudo, decidir entre dois
+ * caminhos.
+ *
+ * O padrão é `ia`, e é de propósito: todo `meta.json` que já existe foi escrito
+ * por agente descrevendo o próprio trabalho. Mudar o padrão reclassificaria o
+ * histórico inteiro de uma vez.
+ */
+export const DONOS = ['ia', 'felipe']
+export const donoDe = (raw) => {
+  const bruto = String(raw?.dono ?? raw?.owner ?? raw?.quem ?? '').trim().toLowerCase()
+  if (bruto === 'felipe' || bruto === 'humano' || bruto === 'user' || bruto === 'voce') return 'felipe'
+  return 'ia'
+}
+
 export function normalizeTodo(raw) {
-  if (typeof raw === 'string') return { text: raw, done: false }
+  if (typeof raw === 'string') return { text: raw, done: false, dono: 'ia' }
   if (!raw || typeof raw !== 'object') return null
   const text = raw.text ?? raw.t ?? raw.title ?? raw.task ?? raw.label ?? raw.name ?? raw.desc
   if (text == null || String(text).trim() === '') return null
-  return { text: String(text), done: Boolean(raw.done ?? raw.completed ?? raw.checked ?? raw.finished) }
+  return {
+    text: String(text),
+    done: Boolean(raw.done ?? raw.completed ?? raw.checked ?? raw.finished),
+    dono: donoDe(raw),
+  }
 }
 
 export function normalizeLink(raw) {

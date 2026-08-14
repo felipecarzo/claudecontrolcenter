@@ -1,3 +1,11 @@
+---
+tags: [processo]
+tipo: captura
+atualizado: 2026-08-13
+estado: append-only, item resolvido sai daqui
+resumo: Ideias que o Felipe solta no meio de outra tarefa, anotadas na hora com as palavras dele para não se perderem. O que eu apuro depois entra embaixo como "Apurado", sem reescrever o que ele disse.
+---
+
 # Backlog de captura
 
 Ideias e observações do Felipe ditas no meio de outra tarefa, anotadas na hora

@@ -7,6 +7,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import { readSessoes } from './sessoes.mjs'
+import { buscar, lerGlossario, termosDe } from './glossario.mjs'
+import {
+  acrescentar as acrescentarMeu, marcar as marcarMeu, remover as removerMeu, tudo as tudoMeu,
+} from './meu.mjs'
 import { origem as origemLocal } from './maquina-id.mjs'
 import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
@@ -452,6 +456,44 @@ function handler(req, res) {
   // Empurra agora, sob clique: serve para o Felipe testar sem esperar o ciclo.
   if (url.pathname === '/api/federacao/enviar' && req.method === 'POST') {
     return empurrar().then((r) => send(res, 200, r)).catch((e) => send(res, 200, { ok: false, erro: String(e) }))
+  }
+
+  // O glossário: os documentos reduzidos ao que cabe numa tela.
+  //
+  // Pedido do Felipe em 14/08: "se eu quiser lembrar o que que é a bancada que
+  // eu mesmo criei há pouco tempo atrás, eu já não lembro, eu teria que
+  // pesquisar pra ler. E eu não posso, toda hora que eu esquecer, ficar lendo
+  // um documento gigante." Ler ~36 arquivos é I/O demais pro tique de 2s, então
+  // fica aqui, sob demanda, como o roadmap e os processos.
+  if (url.pathname === '/api/glossario') {
+    // Sem projeto informado, o glossário é o DESTE repositório, e o caminho sai
+    // do próprio módulo. `process.cwd()` não serve: o serviço systemd roda com
+    // WorkingDirectory no home, e ali não existe `docs/` — a rota devolvia zero
+    // verbete no painel de produção enquanto funcionava no teste local.
+    const dir = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
+      || path.resolve(HERE, '..')
+    const verbetes = buscar(lerGlossario(dir), url.searchParams.get('q'))
+    return send(res, 200, { verbetes, termos: termosDe(verbetes), at: Date.now() })
+  }
+
+  // O que depende do FELIPE, de todos os projetos, num lugar só.
+  //
+  // Pedido dele no mesmo dia: as tarefas que a IA não pode fazer (cortar um
+  // asset, logar uma conta, autorizar sudo, decidir) não tinham onde morar. O
+  // painel só mostrava to-do de agente, que é trabalho meu, não dele.
+  //
+  // Sai do snapshot que já está em memória: zero I/O novo, e por isso pode ser
+  // chamado à vontade.
+  if (url.pathname === '/api/meu') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 4e3, ({ acao, id: alvo, texto, projeto, frente, porque, feito }) => {
+        if (acao === 'marcar') return marcarMeu(alvo, feito)
+        if (acao === 'remover') return removerMeu(alvo)
+        return acrescentarMeu({ texto, projeto, frente, porque })
+      })
+    }
+    const tarefas = tudoMeu(snapshot().jobs)
+    return send(res, 200, { tarefas, abertas: tarefas.filter((t) => !t.feito).length, at: Date.now() })
   }
 
   // Todos os projetos conhecidos, com o estado do framework em cada um.

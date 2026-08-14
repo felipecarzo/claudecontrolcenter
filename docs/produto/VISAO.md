@@ -1,3 +1,17 @@
+---
+tags: [produto, visao]
+tipo: visao
+atualizado: 2026-08-05
+estado: no ar, é o produto de hoje
+resumo: Ver o estado de todos os agentes numa tela só, sem entrar em nenhum. Nasceu porque a única forma de olhar vários agentes no Claude Code é navegar aba por aba.
+termos:
+  job: um agente do Claude Code rodando em background, com pasta em ~/.claude/jobs
+  meta.json: o único arquivo que o painel escreve. É por onde o agente reporta assunto, to-dos e bloqueio
+  state.json: o arquivo do Claude Code. Somente leitura, sempre. Escrever nele quebraria o CLI
+  statusReal: a diferença entre agente vivo trabalhando e agente que só terminou o turno
+  respawn: quando o CLI recria o job, o que faz o primeiro prompt ficar velho e enganar a tela
+---
+
 # Visão — Control Center
 
 ## O problema

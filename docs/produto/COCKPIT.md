@@ -1,3 +1,17 @@
+---
+tags: [produto, visao]
+tipo: visao
+atualizado: 2026-08-13
+estado: em uso, a aba cockpit existe
+resumo: O painel deixa de mostrar dado de agente e passa a responder "onde eu mexo agora", com um cartão por projeto ordenado por urgência. Foi o reposicionamento do produto em 12/08.
+termos:
+  frente: a seção do ROADMAP.md onde um trabalho entra, o que liga o agente ao mapa do projeto
+  motivo: a frase que explica por que aquele projeto está no topo (travado, esperando, parado)
+  peso: a ordem de urgência por trás do motivo. Nunca aparece na tela, só a frase
+  esperando decisão: agente que parou porque precisa de você, o que o painel existe pra despachar
+  marca de visita: o "vi isso", que zera o delta e faz o painel mostrar só o que mudou desde então
+---
+
 # Visão — Cockpit de retomada de contexto
 
 Reposicionamento do produto pelo Felipe em 12/08, no meio da sessão do
