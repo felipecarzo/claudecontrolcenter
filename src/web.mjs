@@ -37,8 +37,14 @@ import {
 } from './servers.mjs'
 import { readPaineis, ligarPainel, desligarPainel, portaDe } from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
-import { desligar as desligarFramework, ligar as ligarFramework, situacao as situacaoFramework } from './frameworkDisco.mjs'
-import { avaliar as avaliarFramework, resumo as resumoFramework } from './framework.mjs'
+import {
+  desligar as desligarFramework, gravar as gravarFramework, ler as lerFramework,
+  ligar as ligarFramework, situacao as situacaoFramework,
+} from './frameworkDisco.mjs'
+import {
+  MODOS, autorizar as autorizarFramework, avaliar as avaliarFramework,
+  modoDe as modoDeFramework, resumo as resumoFramework, trocarModo as trocarModoFramework,
+} from './framework.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
@@ -80,9 +86,16 @@ function retratoFramework(raiz) {
   const s = situacaoFramework(raiz)
   if (!s.existe) return s
   const a = avaliarFramework(s.estado.metodo, s.estado)
+  const modo = modoDeFramework(s.estado)
   return {
     existe: true,
     ligado: s.ligado,
+    modo: modo.id,
+    tituloModo: modo.titulo,
+    explicaModo: modo.explica,
+    modoTrava: Boolean(modo.trava),
+    autorizado: s.estado.autorizado || [],
+    modos: Object.values(MODOS).map((m) => ({ id: m.id, titulo: m.titulo, explica: m.explica })),
     fase: a.fase,
     tituloFase: a.tituloFase,
     portaoAberto: a.portaoAberto,
@@ -520,9 +533,26 @@ function handler(req, res) {
 
   if (url.pathname === '/api/framework') {
     if (req.method === 'POST') {
-      return comCorpo(req, res, 1e3, ({ projeto, cwd, acao }) => {
+      return comCorpo(req, res, 1e3, ({ projeto, cwd, acao, modo, alvo, motivo }) => {
         const raiz = cwdDoProjeto(cwd, projeto)
         if (!raiz) return { error: 'não achei a pasta deste projeto' }
+
+        // Trocar de modo e autorizar são o que faz o modo imperativo existir de
+        // verdade: o desenho dele é "eu autorizo por clique", e sem estas duas
+        // ações o clique não existe — sobraria a linha de comando, que não serve
+        // para quem trabalha do celular.
+        if (acao === 'modo' || acao === 'autorizar') {
+          const estado = lerFramework(raiz)
+          if (!estado) return { error: 'este projeto não tem framework ligado' }
+          const quando = new Date().toISOString()
+          const r = acao === 'modo'
+            ? trocarModoFramework(estado, modo, { quando })
+            : autorizarFramework(estado, { alvo: alvo || '**', motivo: motivo || null, quando })
+          if (!r.ok) return { error: r.erro }
+          gravarFramework(raiz, r.estado)
+          return { raiz, ...retratoFramework(raiz) }
+        }
+
         const r = acao === 'desligar' ? desligarFramework(raiz) : ligarFramework(raiz)
         if (!r.ok) return { error: r.erro }
         return { raiz, ...retratoFramework(raiz) }

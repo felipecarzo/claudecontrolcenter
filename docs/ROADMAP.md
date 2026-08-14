@@ -121,56 +121,6 @@ O CC-51 resolveu metade (o painel agora **enxerga** a sessão interativa, lendo 
 transcrito). Falta o caminho de volta: a sessão poder **escrever** o próprio
 estado.
 
-### CC-63: Glossário, os documentos reduzidos ao que cabe numa tela ✅ 14/08
-
-Pedido dele depois da poda, e a razão importa mais que o recurso:
-
-> "eu preciso ter um acesso a todos esses documentos de forma resumida pra eu
-> saber as coisas sem ter que ficar lendo um livro gigante, porque o problema é
-> a minha velocidade de leitura [...] se eu quiser lembrar o que que é a bancada
-> que eu mesmo criei há pouco tempo atrás, eu já não lembro, eu teria que
-> pesquisar pra ler."
-
-`src/glossario.mjs` lê `docs/**` e extrai resumo, estado e termos do
-**frontmatter do próprio arquivo** — nunca de um segundo arquivo escrito à mão.
-O documento grande continua sendo a fonte de verdade para a IA; a aba
-`glossário` é a camada curta para ele, com busca que casa título, resumo, tags e
-os termos ("não lembro o nome, lembro a palavra").
-
-Formato escolhido por ele entre três opções mostradas na tela: resumo de uma
-frase mais glossário de termos daquele documento.
-
-Medido: 36 verbetes, 9 com resumo escrito à mão e 32 termos. Os outros 27 saem
-de um chute da primeira frase e por isso **não aparecem na lista principal** —
-vão para um `<details>` no fim, como pendência de escrita. Cartão com resumo
-ruim é pior que cartão ausente.
-
-Armadilha registrada: sem projeto informado a rota caía em `process.cwd()`, e o
-serviço systemd roda com `WorkingDirectory` no home — devolvia zero verbete em
-produção enquanto funcionava no teste local. O padrão agora sai do caminho do
-próprio módulo.
-
-### CC-64: As tarefas dele, separadas das da IA ✅ 14/08
-
-> "onde ficam as minhas tarefas? a gente tem que criar uma forma de eu
-> identificar o que são as tarefas em andamento por IA e as tarefas em andamento
-> minhas". Ele chamou de "o meu trelo da vida".
-
-Duas peças. O to-do ganhou `dono` (`ia` por padrão, `felipe` quando é coisa que
-a IA não pode fazer), e nasceu `src/meu.mjs` com uma lista própria em
-`~/.claude/control-center-meu.json`. A aba `meu` junta as duas fontes, de todos
-os projetos, aberta primeiro e mais antiga no topo.
-
-**Por que arquivo próprio, e não só o campo no `meta.json`:** a primeira versão
-lia só os to-dos dos jobs, e voltou vazia no teste. Isso expôs dois furos —
-job é efêmero (o CLI apaga, e a tarefa dele sumiria junto) e sessão interativa
-não tem job (CC-56), então eu não conseguiria registrar nada enquanto trabalho
-com ele pelo celular. Tarefa de humano dura mais que a sessão que a criou.
-
-Já nasceu com as quatro pendências reais do dia: ligar o PC na federação,
-registrar o hook no `settings.json` do PC, decidir sobre o Pixel Agents do
-Telegram, e autorizar o sudo do `KillMode`.
-
 ### CC-60: O outro Pixel Agents, o do Telegram
 
 Achado em 14/08 investigando o escritório: já existe um `pixel-agents` rodando

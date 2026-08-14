@@ -238,7 +238,36 @@ As três leituras que ele escolheu juntas: pergunta viaja entre máquinas pela
 federação, respostas viram rede de decisões com memória, agentes repassam
 decisão entre si. Frente própria, depois do resto.
 
-### F10. Gate de documentação
+### F10. Gate de documentação ✅ 14/08
+
+`hooks/roadmap-guard.mjs`, no evento `Stop`. Avisa quando há item concluído
+parado no ROADMAP, listando quais.
+
+**Avisa em vez de bloquear, e o motivo é estrutural:** `Stop` com `exit 2`
+devolve o texto pro modelo e o manda continuar. Num gate de documentação isso
+criaria laço — o fim da sessão é justamente quando se escreve o diário, e para
+arrumar o ROADMAP eu preciso poder terminar o turno. O `todo-guard` usa o mesmo
+tom no mesmo evento, pelo mesmo motivo.
+
+**Já pegou dois itens meus na primeira execução** (CC-63 e CC-64, escritos horas
+antes), e eu obedeci ao próprio hook movendo os dois para o diário. Depois
+disso ele ficou em silêncio.
+
+### F7. Painel do framework ✅ 14/08 (parcial)
+
+O que faltava para o imperativo **existir de verdade**: o desenho dele é
+"autorizo por clique", e o clique não existia — sobrava o CLI, que não serve
+para quem trabalha do celular.
+
+No cartão de cada projeto agora tem um seletor de modo (os quatro) e, nos modos
+que travam, o botão `autorizar` com confirmação. O retrato da rota passou a
+devolver modo, se ele trava, e as autorizações em vigor.
+
+Falta ainda a parte de leitura que o F7 previa: quantas vezes o escopo mudou por
+projeto e o histórico de autorizações numa tela. Hoje isso está no arquivo, não
+na tela.
+
+### F10 (desenho original)
 
 Recusar fechar a sessão com concluído parado no ROADMAP. É irmão do F1 e sai
 barato junto: mesmo mecanismo, hook que lê um estado e recusa.

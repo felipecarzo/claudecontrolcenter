@@ -619,6 +619,10 @@
     border: 1px solid var(--faint); color: var(--dim); font-size: 10.5px; white-space: nowrap;
   }
   .fw-selo.fw-off { border-style: dashed; }
+  .fw-modo {
+    background: var(--bg); color: var(--fg); border: 1px solid var(--faint);
+    border-radius: 999px; font-size: 10.5px; padding: 1px 4px;
+  }
 
   /* CC-47: de qual máquina é a linha. Discreto de propósito: é contexto, não
      o assunto. `frio` é a máquina que parou de reportar — continua visível,
@@ -2228,8 +2232,23 @@ function seloFramework(projeto) {
 
   const cor = f.portaoAberto ? 'done' : 'waiting'
   const frase = f.pendencias?.length ? f.pendencias[0] : 'portão aberto'
+
+  // O seletor de modo e o "autorizar" são o que fazem o imperativo existir de
+  // verdade: o desenho dele é autorizar por CLIQUE. Sem isso sobraria o CLI,
+  // que não serve pra quem está no celular.
+  const modos = (f.modos || []).map((m) => `<option value="${m.id}"${
+    m.id === f.modo ? ' selected' : ''} title="${esc(m.explica)}">${esc(m.titulo)}</option>`).join('')
+
+  const autorizacao = !f.modoTrava ? '' : (f.autorizado || []).length
+    ? `<span class="fw-selo" style="border-color:var(--done);color:var(--done)"
+         title="${esc((f.autorizado || []).join(', '))}">autorizado</span>`
+    : `<button class="btn mini" data-fw="autorizar" data-fw-proj="${esc(projeto)}"
+         title="liberar a IA pra escrever código neste projeto até o modo mudar">autorizar</button>`
+
   return `<span class="fw-selo fw-on" style="border-color:var(--${cor});color:var(--${cor})"
       title="${esc(f.resumo || '')}">${esc(f.tituloFase || 'framework')}</span>
+    <select class="fw-modo" data-fw-modo="${esc(projeto)}" title="${esc(f.explicaModo || '')}">${modos}</select>
+    ${autorizacao}
     <span class="dim fw-frase" title="${esc(f.resumo || '')}">${esc(frase)}</span>
     ${f.mudancasDeEscopo ? `<span class="fw-selo" title="o escopo do MVP mudou ${f.mudancasDeEscopo} vez(es), com motivo registrado">escopo mudou ${f.mudancasDeEscopo}×</span>` : ''}
     <button class="btn mini" data-fw="desligar" data-fw-proj="${esc(projeto)}"
@@ -5065,6 +5084,7 @@ document.addEventListener('click', async (e) => {
   if (fwBtn) {
     const projeto = fwBtn.dataset.fwProj
     const acao = fwBtn.dataset.fw
+    if (acao === 'autorizar' && !confirm(`Autorizar a IA a escrever código em ${projeto}?`)) return
     // Diferente do "vi isso": o framework NÃO vem no stream de 2s (é leitura de
     // disco por projeto), então a resposta do POST é a única atualização que
     // esta tela vai receber. Guardar o retrato devolvido é obrigatório.
@@ -5407,6 +5427,26 @@ for (const el of ['#q', '#proj', '#maq']) $(el).addEventListener('input', render
 // digita — o mesmo motivo pelo qual as notas moram fora do #main.
 document.addEventListener('input', (e) => {
   if (e.target?.id === 'gl-q') { glossarioBusca = e.target.value; render(); $('#gl-q')?.focus() }
+})
+
+// Trocar o modo do framework é `change` num <select>, não clique num botão, e
+// por isso não entra no delegador de cliques lá de cima.
+document.addEventListener('change', (e) => {
+  const sel = e.target?.closest?.('[data-fw-modo]')
+  if (!sel) return
+  const projeto = sel.dataset.fwModo
+  fetch('/api/framework', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ projeto, acao: 'modo', modo: sel.value }),
+  }).then((r) => r.json()).then((f) => {
+    if (f.error) alert(f.error)
+    else {
+      FRAMEWORKS.set(projeto, f)
+      if (Array.isArray(FW_LISTA)) FW_LISTA = FW_LISTA.map((p) => (p.projeto === projeto ? { ...p, ...f } : p))
+    }
+    render()
+  }).catch(() => render())
 })
 // A máquina escolhida sobrevive ao recarregar, igual à aba: é preferência de
 // quem olha, não estado do dado.
