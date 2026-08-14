@@ -94,6 +94,169 @@ virou "feito" porque o título contém a palavra "Histórico", e "CC-04 —
 `roadmap.mjs` deveria olhar só o marcador de estado (emoji/palavra no INÍCIO
 do título), não a frase inteira.
 
+### Frente: Sincronia entre máquinas, aprovada pelo Felipe em 14/08
+
+O pedido dele, ditado por voz na VPS pelo celular: parar de usar o Git como
+canal entre a sessão do PC e a sessão da VPS. Motivo dele, que é o certo: "a
+gente faz muitos testes internos", então commit e push viram ruído e latência
+justamente no arquivo mais disputado. Git fica como registro de entrega, não
+como barramento de estado vivo.
+
+O que mudou na dinâmica, nas palavras dele: antes precisava estar no PC físico,
+com teclado e mouse; agora ele abre pelo telefone, conclui tarefa de qualquer
+lugar e usa túnel próprio para acessar o que está rodando.
+
+**Medido nesta VPS em 14/08, antes de propor qualquer coisa:**
+
+- O Routia funciona aqui. O `rota-guard` bloqueou de verdade com caminho real
+  desta máquina, listando as rotas ocupadas; o `SessionStart` injetou o quadro
+  no começo da sessão; a fila de pedidos responde.
+- A sessão da VPS roda em sandbox com rede e processos isolados. Ela vê 6
+  processos, nenhum da VPS, e não alcança a porta 5180. O que ela enxerga de
+  verdade é o disco: `~/projetos` e `~/.claude` são reais.
+- Por isso `cockpit status` responde "painel fora do ar" de dentro do sandbox,
+  e essa resposta não vale nada: ele testa uma porta que o sandbox bloqueia.
+  Não usar esse veredito como diagnóstico.
+- O `cockpit set` recusa com "sem job": esta sessão é interativa via Remote
+  Control, e o painel só enxerga job de background.
+- Só 2 dos 14 projetos clonados na VPS têm quadro de rotas.
+
+**Os dois problemas são diferentes e não podem virar uma solução só.** Duas
+sessões na mesma máquina já estão resolvidas pelo disco compartilhado, que é o
+Routia de hoje. Entre PC e VPS não há disco comum, e a topologia é torta de um
+lado só: o PC alcança `cockpit.carzo.com.br`, a VPS nunca alcança o PC atrás do
+NAT. Então a VPS é obrigatoriamente o servidor, e o PC é cliente que empurra e
+puxa. Qualquer desenho que ignore isso não sai do papel.
+
+### CC-47: O cockpit da VPS vira o servidor de estado
+
+Escolha do Felipe entre as três que apresentei, junto com o CC-49. A infra já
+existe: HTTP, autenticação por senha na 5181, domínio público, systemd que
+volta sozinho. Falta o cliente: o `cc set` do PC passa a espelhar para a VPS
+além de escrever local.
+
+Requisitos que saem do que foi medido:
+
+- Escrita local primeiro, espelho depois. Se a VPS cair, o PC continua
+  funcionando sozinho, degradando em silêncio (o mesmo padrão do câmbio).
+- Token no PC, guardado no `control-center.json`, nunca no repositório: ele é
+  público.
+- O espelho nunca pode entrar em `setInterval` cego. Vale a mesma regra da aba
+  VPS: rede sai de ação, não de timer de fundo.
+
+### CC-48: Rotas deixam de depender de commit para o outro lado enxergar
+
+Hoje marcar rota no PC só chega na VPS depois de commit, push e pull. O quadro
+em markdown continua sendo a verdade legível e versionada; o que muda é o canal
+de propagação, que passa a ser o painel.
+
+O `rota-guard` consulta o endpoint com cache local e cai para o arquivo quando
+a rede falha. A degradação precisa ser decidida de propósito e escrita no
+código: rede fora não pode nem bloquear tudo nem liberar tudo.
+
+### CC-49: Presença deduzida, para acabar com rota esquecida ocupada
+
+A segunda metade da escolha do Felipe. Prova viva do problema, encontrada hoje:
+a rota `backlog` está marcada como ocupada por `5805d6bb`, sessão que encerrou o
+dia e commitou o fechamento mais de uma hora antes. O quadro mente, e o próximo
+agente respeita a mentira.
+
+O painel já sabe quais jobs estão vivos. Falta cruzar isso com o quadro e marcar
+a rota como provavelmente órfã, com o tempo desde o último sinal.
+
+Limite conhecido, que não pode ser esquecido no desenho: presença detecta
+colisão em curso, não previne a próxima. Ela complementa a marcação à mão, não
+substitui.
+
+### CC-50: Os testes do Routia não valem na VPS ✅ 14/08 (feito, com ressalva)
+
+Os dois scripts falham aqui por motivos que não são o hook. O
+`testar-rota-guard.sh` tem `REPO="D:/Documentos/Ti/projetos/CLIENTS/inovallbond"`
+fixo no código, caminho do Windows que não existe nesta máquina, então o hook
+libera corretamente por não haver quadro e o teste conta isso como falha. O
+`testar-rota-pedidos.sh` escreve em `~/.claude/jobs/<id>/tmp`, read-only no
+sandbox, e falha 12 vezes por isso.
+
+Consequência real: o Routia funciona na VPS e ninguém saberia se parasse.
+
+**Feito em 14/08, medido:** 19 checks passando aqui, 7 do `rota-guard` e 12 do
+`rota-pedidos`, onde antes não passava nenhum. O `testar-rota-guard.sh` agora
+monta o projeto de exemplo numa pasta temporária em vez de apontar para o
+caminho fixo do PC. O `testar-rota-pedidos.sh` tenta a pasta do job e cai para
+uma temporária quando não consegue escrever, avisando qual escolheu. A conversão
+`pwd -W`, que é o que de fato resolve o problema do Git Bash citado no topo do
+script, ficou intacta.
+
+**Ressalva que vira trabalho, e é o retrato da frente inteira:** esses arquivos
+moram em `~/.claude/hooks`, que é local de cada máquina e não está em
+repositório nenhum. O conserto existe só na VPS. O PC segue com a versão que
+falha, e nenhum `git pull` vai levar isso para lá. Não foi validado no Windows,
+onde só o caminho de fallback é novo.
+
+**Sujeira encontrada no caminho, já limpa:** rodar o `rota-guard` à mão para
+diagnóstico gravou um pedido de sessão falsa em `docs/.rotas-pedidos.json` do
+repositório de verdade. O arquivo foi removido. Testar hook contra o próprio
+projeto tem efeito colateral no projeto: usar pasta descartável.
+
+### CC-51: O painel não enxerga sessão interativa, só job de background
+
+`cockpit set` recusa com "sem job" numa sessão via Remote Control. Como o
+trabalho pelo celular passou a ser interativo e não mais delegado a job, o
+painel fica cego exatamente no modo de uso novo. Decidir se sessão interativa
+vira cidadã de primeira classe no painel ou se o reporte continua só para job.
+
+### CC-52: O Routia só existe em 2 dos 14 projetos clonados na VPS
+
+`proj_controlcenter` e `inovallbond`. Rollout continua manual por decisão do
+Felipe, mas vale saber o tamanho real do buraco antes de confiar no método como
+proteção geral.
+
+### CC-53: O gate `npm test` não roda na VPS, e falha por ambiente
+
+Medido em 14/08: `npm test` morre em `test.mjs:168` com "nenhum job leu o
+transcript". O teste exige `readJobs()` devolvendo job real com transcript, e
+esta máquina tem um job só. Não é regressão, é o gate dependendo do estado da
+máquina de quem roda.
+
+Consequência prática, que é o que importa: quem trabalha pela VPS não tem gate
+nenhum hoje. Ou o teste passa a pular esse bloco quando não há job (dizendo que
+pulou, nunca em silêncio), ou o projeto ganha um conjunto mínimo que roda em
+qualquer máquina.
+
+### Visão registrada em 14/08: o cockpit vira um framework de engenharia de software
+
+**Visão inteira, com as palavras dele: [[produto/FRAMEWORK]].** Registrada em
+14/08 e detalhada na mesma conversa.
+
+**Primeira fatia construída em 14/08**, a pedido dele ("vamos testar"): o gate de
+MVP nas quatro peças (método como dado, motor puro, estado no projeto, hook
+aplicando). 26 checks passando, ciclo completo rodado de verdade. **Não está
+instalado em lugar nenhum**, e ligar exige dois passos deliberados. O que falta
+decidir antes de virar produto está no fim do documento, e o item mais sério é o
+risco 1: hoje o ciclo roda sem nenhum ponto onde o humano aprova.
+
+O suficiente para decidir se algo do backlog conflita com ela:
+
+- Framework no sentido de Rails ou Django, mas o domínio é o processo de
+  engenharia de software. Agnóstico de linguagem.
+- **Modo, não questionário.** O modelo mental é o `conda activate`: ligado no
+  projeto, tudo que vem depois opera sob ele, e o projeto fica imperativo (segue
+  o backlog, executa o MVP, e obriga a criar MVP se não houver). Desligado, a IA
+  é a de hoje, o que é desejado.
+- **O artefato é para a máquina, não para leitura.** Palavra dele: "eu nunca leio
+  a quantidade de documentos". O insight chega destilado pelo cockpit, e é isso
+  que separa a ideia do spec-driven do mercado.
+- **Scrum, UML e MER são meio, não obrigação.** O rigor mira a definição de
+  pronto e a integridade do escopo: chegamos no MVP julgado viável, o prazo e o
+  produto final mudaram sem ninguém declarar?
+- **O cockpit de hoje continua**, palavra dele: "ele está bom na linha que está".
+  É acréscimo, não troca.
+- Critério de desenho que vale para toda peça: continua útil para um time de
+  humanos sem IA nenhuma?
+
+Terceira camada do produto: o cockpit é a tela, os hooks são o sensor e o gate,
+e o framework é o método que os dois servem.
+
 ### Frente: Conteúdo social — módulo novo, ver [[produto/CONTEUDO-SOCIAL]]
 
 Decidido com o Felipe em 11/08: vive neste repo, não em projeto à parte.

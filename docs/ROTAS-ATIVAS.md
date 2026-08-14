@@ -25,10 +25,12 @@ Passo 0, antes de tocar em qualquer arquivo.
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
-| `cockpit` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: CC-32, aba projetos vira cockpit) | — |
+| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: botão do framework no cartão, mais a lista `framework nos projetos` no cabeçalho, porque cartão só existe para projeto com agente) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
+| `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: frente "Sincronia entre máquinas" registrada, CC-47 a CC-53, mais o CC-50 feito: 19 checks do Routia passando na VPS, onde nenhum passava) | — |
+| `framework` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: gate de MVP de ponta a ponta, hook registrado no `settings.json` da VPS e ligado no `proj_controlcenter`. Ver ticket) | — |
 
 ## Como pedir autorização numa rota que tem dono
 
@@ -49,6 +51,28 @@ Se você é o dono e recebeu um pedido: responda. Ficar em silêncio deixa a out
 sessão travada, que é exatamente o que o método existe para evitar.
 
 ## Tickets pendentes
+
+### 🎫 `framework` — para quem abrir no PC, de ff0d68b2, em 14/08
+
+O gate de MVP está no repositório e chega no PC pelo `git pull`. **Mas ele não
+liga sozinho lá**, e por dois motivos separados:
+
+1. **O hook não está no `settings.json` do PC.** Ele foi registrado só na VPS, e
+   `settings.json` não é versionado. Pior: o comando lá aponta para
+   `/home/claudedev/projetos/...`, caminho que não existe no Windows. No PC o
+   comando é `node D:/Documentos/Ti/projetos/PESSOAL/proj_controlcenter/hooks/framework-guard.mjs`,
+   entrando junto do `rota-guard` no mesmo bloco `PreToolUse` com matcher
+   `Edit|Write|MultiEdit|NotebookEdit`. Registrar pela skill `update-config`.
+2. **O `.framework/estado.json` do `proj_controlcenter` VEM no commit**, então o
+   projeto já chega com o framework ligado e em Execução, com o MVP real (as 7
+   entregas fechadas em 05/08). Sem o passo 1, isso não trava nada; com o passo
+   1, trava se alguém desmarcar critério.
+
+Esse par é o retrato exato da frente "Sincronia entre máquinas": o que mora no
+repositório viaja, o que mora em `~/.claude` não. Ver CC-47 a CC-53.
+
+Existe também `~/projetos/teste_framework` **só na VPS**, projeto descartável da
+demonstração. Não está em repositório nenhum e pode ser apagado.
 
 ### 📌 `5805d6bb` assume a VPS a partir de 13/08 — de `48f6738c`
 

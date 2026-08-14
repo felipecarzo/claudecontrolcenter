@@ -608,6 +608,23 @@
   .ck-frio:hover { color: var(--fg); border-color: var(--faint); }
   .ck-pe { display: flex; align-items: baseline; gap: 10px; font-size: 11px; margin-top: 8px; }
 
+  /* Framework de engenharia: linha própria, nunca no rodapé. O cartão de
+     servidor já ensinou que rodapé com muitos botões espreme tudo e joga o
+     último para fora. `wrap` porque a frase do que falta é texto do usuário e
+     pode ser longa. */
+  .ck-fw { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; }
+  .ck-fw .fw-frase { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46ch; }
+  .fw-selo {
+    display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px;
+    border: 1px solid var(--faint); color: var(--dim); font-size: 10.5px; white-space: nowrap;
+  }
+  .fw-selo.fw-off { border-style: dashed; }
+  .fw-lista { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .fw-linha {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 6px 10px; border: 1px solid var(--faint); border-radius: 8px; font-size: 11.5px;
+  }
+
   /* CC-34: pastilhas de frente, sem biblioteca de grid/chart nenhuma. */
   .ck-mini { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
   .ck-mini-f {
@@ -1987,6 +2004,94 @@ function pedirMapaMini(projeto) {
     .catch(() => MAPAS_MINI.set(projeto, 'vazio'))
 }
 
+// O framework de engenharia, por projeto. Mesma regra do mini-mapa: uma
+// leitura por projeto, sob demanda, nunca no tique de 2s.
+const FRAMEWORKS = new Map() // projeto -> retrato | 'carregando'
+let FW_LISTA = null // null = fechado; 'carregando'; ou a lista de projetos
+
+/**
+ * A lista de TODOS os projetos, sob clique.
+ *
+ * O botão no cartão não basta: cartão só existe para projeto com agente, e o
+ * caso principal do framework é projeto novo, antes de haver código e antes de
+ * haver agente. Na VPS, com zero job vivo, a aba inteira fica vazia.
+ */
+function abrirFrameworkLista() {
+  if (FW_LISTA) { FW_LISTA = null; return render() }
+  FW_LISTA = 'carregando'
+  render()
+  fetch('/api/framework/projetos')
+    .then((r) => r.json())
+    .then((d) => { FW_LISTA = d.projetos || []; render() })
+    .catch(() => { FW_LISTA = []; render() })
+}
+
+function viewFrameworkLista() {
+  if (FW_LISTA === 'carregando') return '<p class="dim">lendo os projetos…</p>'
+  if (!FW_LISTA.length) return '<p class="dim">nenhum projeto encontrado nesta máquina</p>'
+  const ligados = FW_LISTA.filter((p) => p.existe && p.ligado).length
+  return `<div class="fw-lista">
+    <p class="dim">${ligados} de ${FW_LISTA.length} projeto${FW_LISTA.length === 1 ? '' : 's'} com o framework ligado.
+      Ligar cria <code>.framework/estado.json</code> dentro do projeto; desligar não apaga o MVP.</p>
+    ${FW_LISTA.map((p) => {
+    const estado = !p.existe
+      ? '<span class="dim">sem framework</span>'
+      : p.ligado
+        ? `<span class="fw-selo fw-on" style="border-color:var(--${p.portaoAberto ? 'done' : 'waiting'});color:var(--${p.portaoAberto ? 'done' : 'waiting'})">${esc(p.tituloFase)}</span>
+           <span class="dim fw-frase">${esc(p.pendencias?.[0] || 'portão aberto')}</span>`
+        : '<span class="fw-selo fw-off">desligado</span>'
+    const acao = !p.existe || !p.ligado ? 'ligar' : 'desligar'
+    return `<div class="fw-linha">
+        <b>${esc(p.projeto)}</b>
+        ${estado}
+        <span class="grow"></span>
+        <button class="btn mini" data-fw="${acao}" data-fw-proj="${esc(p.projeto)}">${
+      !p.existe ? 'ligar' : p.ligado ? 'desligar' : 'religar'}</button>
+      </div>`
+  }).join('')}
+  </div>`
+}
+
+function pedirFramework(projeto) {
+  if (FRAMEWORKS.has(projeto)) return
+  FRAMEWORKS.set(projeto, 'carregando')
+  fetch(`/api/framework?projeto=${encodeURIComponent(projeto)}`)
+    .then((r) => r.json())
+    .then((f) => { FRAMEWORKS.set(projeto, f); render() })
+    .catch(() => FRAMEWORKS.set(projeto, { existe: false, ligado: false }))
+}
+
+/**
+ * O botão de ligar e desligar, mais o estado em uma frase.
+ *
+ * Três aparências, porque são três situações diferentes e tratá-las igual foi
+ * o que já confundiu antes: nunca ligado (convite), ligado (fase e o que falta,
+ * com destaque) e desligado com dado guardado (o MVP continua lá).
+ */
+function seloFramework(projeto) {
+  const f = FRAMEWORKS.get(projeto)
+  if (!f || f === 'carregando' || f.semPasta) return ''
+
+  if (!f.existe) {
+    return `<button class="btn mini" data-fw="ligar" data-fw-proj="${esc(projeto)}"
+      title="ligar o framework de engenharia neste projeto">ligar framework</button>`
+  }
+
+  if (!f.ligado) {
+    return `<span class="fw-selo fw-off" title="o MVP registrado continua guardado">framework desligado</span>
+      <button class="btn mini" data-fw="ligar" data-fw-proj="${esc(projeto)}">religar</button>`
+  }
+
+  const cor = f.portaoAberto ? 'done' : 'waiting'
+  const frase = f.pendencias?.length ? f.pendencias[0] : 'portão aberto'
+  return `<span class="fw-selo fw-on" style="border-color:var(--${cor});color:var(--${cor})"
+      title="${esc(f.resumo || '')}">${esc(f.tituloFase || 'framework')}</span>
+    <span class="dim fw-frase" title="${esc(f.resumo || '')}">${esc(frase)}</span>
+    ${f.mudancasDeEscopo ? `<span class="fw-selo" title="o escopo do MVP mudou ${f.mudancasDeEscopo} vez(es), com motivo registrado">escopo mudou ${f.mudancasDeEscopo}×</span>` : ''}
+    <button class="btn mini" data-fw="desligar" data-fw-proj="${esc(projeto)}"
+      title="desligar sem apagar o MVP nem o histórico">desligar</button>`
+}
+
 /** Pastilhas por frente, sem biblioteca. Ponto quando há agente ali. */
 function miniMapa(projeto) {
   const mapa = MAPAS_MINI.get(projeto)
@@ -2045,21 +2150,29 @@ function viewDigest() {
 }
 
 function viewCockpit(jobs) {
-  if (!jobs.length) return '<div class="empty">nenhum projeto no filtro</div>'
+  // O cabeçalho é montado ANTES de qualquer saída antecipada, de propósito.
+  // Achado em 14/08 na VPS: sem job vivo, a função retornava "nenhum projeto no
+  // filtro" e levava junto o botão do framework, que é justamente o que serve
+  // para projeto sem agente. Máquina sem agente nenhum é o caso mais comum de
+  // quem acabou de abrir o painel.
+  const cabecalhoDigest = `<div class="dg-cab">
+    <button class="btn" data-digest>${DIGEST ? 'fechar digest' : 'digest da semana'}</button>
+    <button class="btn" data-fw-lista>${FW_LISTA ? 'fechar framework' : 'framework nos projetos'}</button>
+    ${DIGEST ? viewDigest() : ''}
+    ${FW_LISTA ? viewFrameworkLista() : ''}
+  </div>`
+
+  if (!jobs.length) return cabecalhoDigest + '<div class="empty">nenhum agente ativo nesta máquina</div>'
   // O cockpit vem pronto do servidor (`cockpit.mjs`, testado). O filtro do topo
   // continua valendo, mas por PROJETO: achar um agente pela busca mostra o
   // projeto dele inteiro — é visão de projeto, não de agente.
   const visiveis = new Set(jobs.map((j) => j.project))
   const projetos = (DATA.cockpit || []).filter((p) => visiveis.has(p.projeto))
-  if (!projetos.length) return '<div class="empty">nenhum projeto no filtro</div>'
-
-  const cabecalhoDigest = `<div class="dg-cab">
-    <button class="btn" data-digest>${DIGEST ? 'fechar digest' : 'digest da semana'}</button>
-    ${DIGEST ? viewDigest() : ''}
-  </div>`
+  if (!projetos.length) return cabecalhoDigest + '<div class="empty">nenhum projeto no filtro</div>'
 
   return cabecalhoDigest + `<div class="ck-lista">${projetos.map((p) => {
     pedirMapaMini(p.projeto)
+    pedirFramework(p.projeto)
     const cor = COR_MOTIVO[p.motivo.tipo] || 'dim'
     const status = ZONES.map((z) => {
       const n = p.porStatus[z.key] || 0
@@ -2121,6 +2234,7 @@ function viewCockpit(jobs) {
       ${esperando}
       ${frios}
       ${miniMapa(p.projeto)}
+      ${(() => { const s = seloFramework(p.projeto); return s ? `<div class="ck-fw">${s}</div>` : '' })()}
       <footer class="ck-pe">
         <span class="dim">${status || 'sem agente ativo'}</span>
         <span class="grow"></span>
@@ -4551,6 +4665,30 @@ document.addEventListener('click', async (e) => {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ projeto: visitaBtn.dataset.visita }),
     })
+  }
+
+  if (t.closest('[data-fw-lista]')) return abrirFrameworkLista()
+
+  const fwBtn = t.closest('[data-fw]')
+  if (fwBtn) {
+    const projeto = fwBtn.dataset.fwProj
+    const acao = fwBtn.dataset.fw
+    // Diferente do "vi isso": o framework NÃO vem no stream de 2s (é leitura de
+    // disco por projeto), então a resposta do POST é a única atualização que
+    // esta tela vai receber. Guardar o retrato devolvido é obrigatório.
+    fwBtn.disabled = true
+    return fetch('/api/framework', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ projeto, acao }),
+    }).then((r) => r.json()).then((f) => {
+      if (f.error) { alert(f.error); FRAMEWORKS.delete(projeto) } else FRAMEWORKS.set(projeto, f)
+      // A lista aberta mostra o mesmo projeto: atualizar as duas, senão o
+      // cartão diz "ligado" e a lista logo acima continua dizendo "sem framework".
+      if (Array.isArray(FW_LISTA) && !f.error) {
+        FW_LISTA = FW_LISTA.map((p) => (p.projeto === projeto ? { ...p, ...f } : p))
+      }
+      render()
+    }).catch(() => { FRAMEWORKS.delete(projeto); render() })
   }
 
   if (t.closest('[data-vps-config]')) { vpsConfigAberto = !vpsConfigAberto; return render() }

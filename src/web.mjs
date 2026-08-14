@@ -27,6 +27,8 @@ import {
 } from './servers.mjs'
 import { readPaineis, ligarPainel, desligarPainel } from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
+import { desligar as desligarFramework, ligar as ligarFramework, situacao as situacaoFramework } from './frameworkDisco.mjs'
+import { avaliar as avaliarFramework, resumo as resumoFramework } from './framework.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
@@ -58,6 +60,26 @@ function cwdDoProjeto(cwd, projeto) {
   // vivos:[] de propósito — aqui quero TODO job já visto, vivo ou não
   const doHistorico = jobsHistoricos([]).mortos.find((j) => j.project === projeto && j.cwd)?.cwd
   return doHistorico || findProjects().find((p) => path.basename(p) === projeto) || ''
+}
+
+/** Estado do framework num projeto, do jeito que a tela precisa: existe, está
+ *  ligado, em que fase, e a frase do que falta. A frase vem do motor, para a
+ *  tela e o hook nunca discordarem sobre o mesmo projeto. */
+function retratoFramework(raiz) {
+  const s = situacaoFramework(raiz)
+  if (!s.existe) return s
+  const a = avaliarFramework(s.estado.metodo, s.estado)
+  return {
+    existe: true,
+    ligado: s.ligado,
+    fase: a.fase,
+    tituloFase: a.tituloFase,
+    portaoAberto: a.portaoAberto,
+    pendencias: a.pendencias,
+    resumo: resumoFramework(s.estado.metodo, s.estado),
+    mvp: s.estado.mvp || null,
+    mudancasDeEscopo: (s.estado.historico || []).filter((h) => h.tipo === 'escopo').length,
+  }
 }
 
 const snapshot = () => {
@@ -231,6 +253,50 @@ function handler(req, res) {
   // painel o dia todo, e carimbar sozinho zeraria o delta a cada visita.
   if (url.pathname === '/api/visita' && req.method === 'POST') {
     return comCorpo(req, res, 1e3, ({ projeto }) => ({ visitas: setVisita(projeto).visitas }))
+  }
+
+  // O framework de engenharia (ver docs/produto/FRAMEWORK.md). Leitura sob
+  // demanda por projeto, nunca no stream: são ~20 projetos e o tique é de 2s.
+  //
+  // Duas coisas que o botão NÃO faz, de propósito: não apaga a pasta
+  // `.framework` (desligar preserva o MVP e o histórico de escopo; destruir
+  // dado do projeto não pode ser um clique) e não registra o hook no
+  // settings.json do Claude Code, que continua manual como todo hook aqui.
+  // Todos os projetos conhecidos, com o estado do framework em cada um.
+  //
+  // Existe porque o botão no cartão não bastava: o cartão só aparece para
+  // projeto COM agente, e o caso principal do framework é o contrário, projeto
+  // novo antes de existir código. Medido em 14/08 na VPS, com zero job vivo: a
+  // aba inteira ficava vazia e não havia como ligar nada.
+  //
+  // Sob clique, nunca no stream: são ~20 leituras de JSON pequeno, na mesma
+  // regra das portas, da VPS e dos processos.
+  if (url.pathname === '/api/framework/projetos') {
+    const vistos = new Set()
+    const lista = []
+    for (const raiz of findProjects()) {
+      const nome = path.basename(raiz)
+      if (vistos.has(nome)) continue
+      vistos.add(nome)
+      lista.push({ projeto: nome, raiz, ...retratoFramework(raiz) })
+    }
+    lista.sort((a, b) => (b.existe ? 1 : 0) - (a.existe ? 1 : 0) || a.projeto.localeCompare(b.projeto))
+    return send(res, 200, { projetos: lista, at: Date.now() })
+  }
+
+  if (url.pathname === '/api/framework') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e3, ({ projeto, cwd, acao }) => {
+        const raiz = cwdDoProjeto(cwd, projeto)
+        if (!raiz) return { error: 'não achei a pasta deste projeto' }
+        const r = acao === 'desligar' ? desligarFramework(raiz) : ligarFramework(raiz)
+        if (!r.ok) return { error: r.erro }
+        return { raiz, ...retratoFramework(raiz) }
+      })
+    }
+    const raiz = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
+    if (!raiz) return send(res, 200, { existe: false, ligado: false, semPasta: true })
+    return send(res, 200, { raiz, ...retratoFramework(raiz) })
   }
 
   // CC-23: o que aconteceu num projeto, derivado do histórico já guardado —
