@@ -6,6 +6,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
+import { readSessoes } from './sessoes.mjs'
+import { origem as origemLocal } from './maquina-id.mjs'
+import {
+  LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
+  mesclar, montarPacote, validarPacote,
+} from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
 import { arquivar, jobsHistoricos, marcosDe } from './historico.mjs'
 import { readUso } from './uso.mjs'
@@ -33,6 +39,7 @@ import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
   setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig, setVisita,
+  setMaquina, setFederacao,
 } from './config.mjs'
 import { agenda, esquecerCache as esquecerAgenda } from './calendario.mjs'
 import { HOOKS } from './hooksCatalogo.mjs'
@@ -83,10 +90,21 @@ function retratoFramework(raiz) {
 }
 
 const snapshot = () => {
-  const jobs = readJobs()
+  const doBackground = readJobs()
   // O CLI apaga job antigo, e com ele a única cópia dos to-dos. Arquivar aqui
   // é barato: só grava quando algo mudou, e o painel já releu tudo mesmo.
-  arquivar(jobs)
+  // Só os jobs de verdade são arquivados: sessão interativa é derivada do
+  // transcrito, que o Claude Code guarda sozinho.
+  arquivar(doBackground)
+
+  // CC-51: as sessões interativas entram junto. Sem isso o painel fica cego
+  // para quem trabalha pelo Remote Control (o caso da VPS, onde não existe
+  // NENHUM job de background e a aba aparecia vazia com trabalho acontecendo).
+  // `ignorar` evita a mesma sessão aparecer duas vezes quando ela tem job.
+  const interativas = readSessoes(Date.now(), {
+    ignorar: doBackground.flatMap((j) => [j.id, j.sessionId]),
+  })
+  const jobs = [...doBackground, ...interativas]
   // Vai junto do snapshot porque tem que aparecer em toda aba, sempre: é
   // leitura de um JSON de 200 bytes, não pesa no tique de 2s.
   //
@@ -99,9 +117,66 @@ const snapshot = () => {
   // CC-33: `visitas` e `marcosDe` vão junto — o config e o histórico já são
   // lidos em outras rotas com o mesmo custo (JSON pequeno), então entra no
   // tique de 2s sem pesar.
-  const visitas = readConfig().visitas
-  const cockpit = porProjeto(jobs, { visitas, marcosDe: (p, o) => marcosDe(p, { ...o, jobs }) })
-  return { jobs, summary: summarize(jobs), cockpit, uso: readUso(), at: Date.now() }
+  const cfg = readConfig()
+  const visitas = cfg.visitas
+
+  // CC-47: as outras máquinas entram aqui. Ler os pacotes é abrir alguns JSON
+  // pequenos de disco local, não é rede: quem fala rede é o empurrador, e só
+  // quando está configurado.
+  const eu = origemLocal(cfg)
+  const pacotes = lerPacotes()
+  const todos = mesclar(jobs, pacotes, eu)
+
+  const cockpit = porProjeto(todos, { visitas, marcosDe: (p, o) => marcosDe(p, { ...o, jobs: todos }) })
+  return {
+    jobs: todos,
+    summary: summarize(todos),
+    cockpit,
+    uso: usoDaConta(readUso(), pacotes),
+    maquinas: maquinasConhecidas(pacotes, eu),
+    maquina: eu,
+    at: Date.now(),
+  }
+}
+
+/**
+ * O uso do plano é da CONTA, não da máquina: as janelas de 5 horas e de semana
+ * são as mesmas em qualquer lugar onde o Felipe esteja logado. Então vale a
+ * leitura mais recente, venha de onde vier.
+ *
+ * Isso conserta um buraco medido em 14/08: a statusLine **não roda em sessão
+ * Remote Control**, e por isso a VPS nunca gravou `control-center-uso.json`.
+ * Instrumentei a statusline com um `tee` e, depois de várias respostas, o
+ * arquivo continuava sem existir. Trabalhando pelo celular, o uso do plano
+ * simplesmente não é coletado aqui; o número que vem do desktop é tão válido
+ * quanto, e a marca `origem` diz de onde veio.
+ */
+function usoDaConta(local, pacotes) {
+  const candidatos = [
+    local ? { ...local, origem: null } : null,
+    ...pacotes.map((p) => (p.uso ? { ...p.uso, origem: p.maquina } : null)),
+  ].filter(Boolean)
+  if (!candidatos.length) return null
+  return candidatos.sort((a, b) => (b.em || 0) - (a.em || 0))[0]
+}
+
+/**
+ * O lado cliente da federação: manda o estado desta máquina para o servidor.
+ *
+ * Só os dados baratos vão a cada ciclo (agentes e uso, que já estão em memória
+ * pelo snapshot). Tempo e histórico ficam de fora deste caminho de propósito:
+ * varrer transcrito custa segundos e não pode entrar num timer curto, a mesma
+ * regra que vale para as portas, a VPS e os processos.
+ */
+async function empurrar() {
+  const cfg = readConfig()
+  const { token, enviarPara } = cfg.federacao || {}
+  if (!token || !enviarPara) return { ok: false, erro: 'federação não configurada' }
+
+  const s = snapshot()
+  const meus = s.jobs.filter((j) => j.origem?.id === s.maquina.id)
+  const pacote = montarPacote({ maquina: s.maquina, jobs: meus, uso: s.uso })
+  return enviarPacote({ enviarPara, token, pacote })
 }
 
 const send = (res, code, body, type = 'application/json') => {
@@ -262,6 +337,66 @@ function handler(req, res) {
   // `.framework` (desligar preserva o MVP e o histórico de escopo; destruir
   // dado do projeto não pode ser um clique) e não registra o hook no
   // settings.json do Claude Code, que continua manual como todo hook aqui.
+  // CC-47, o lado servidor da federação: recebe o estado de outra máquina.
+  //
+  // Autenticação é por token próprio, não pelo cookie do `cockpit-auth`: quem
+  // fala aqui é outro painel, não um navegador. Token vazio significa "não
+  // aceito federação", que é o padrão — sem isso, qualquer um que alcançasse a
+  // porta escreveria no painel.
+  if (url.pathname === '/api/federacao' && req.method === 'POST') {
+    const cfg = readConfig()
+    const esperado = cfg.federacao?.token || ''
+    if (!esperado) return send(res, 403, { error: 'federação desligada nesta máquina' })
+    if (req.headers['x-cc-token'] !== esperado) return send(res, 401, { error: 'token inválido' })
+
+    return comCorpo(req, res, LIMITE_PACOTE, (bruto) => {
+      const { ok, erro, pacote } = validarPacote(bruto)
+      if (!ok) return { error: erro }
+      gravarPacote(pacote)
+      return { recebido: pacote.maquina, jobs: pacote.jobs.length }
+    })
+  }
+
+  // O que chegou de fora, mais a identidade desta máquina. Serve à tela (o
+  // filtro do topo) e a conferir quem está sem contato.
+  if (url.pathname === '/api/federacao') {
+    const cfg = readConfig()
+    const pacotes = lerPacotes()
+    return send(res, 200, {
+      maquina: origemLocal(cfg),
+      maquinas: maquinasConhecidas(pacotes, origemLocal(cfg)),
+      // O token VAI para a tela, e é decisão consciente: ele precisa ser
+      // copiado para a outra máquina, e quem chega aqui já passou pela senha do
+      // `cockpit-auth`. O painel também só escuta em 127.0.0.1. A tela o
+      // esconde atrás de um clique, para não vazar em print.
+      token: cfg.federacao?.token || '',
+      configurada: Boolean(cfg.federacao?.token),
+      enviandoPara: cfg.federacao?.enviarPara || '',
+      pacotes: pacotes.map((p) => ({
+        maquina: p.maquina, jobs: p.jobs.length, em: p.em, idadeMs: p.idadeMs, semContato: p.semContato,
+      })),
+    })
+  }
+
+  // Configuração da federação: nome desta máquina, token e para onde empurrar.
+  if (url.pathname === '/api/federacao/config' && req.method === 'POST') {
+    return comCorpo(req, res, 2e3, ({ nome, token, enviarPara }) => {
+      if (typeof nome === 'string' && nome.trim()) setMaquina({ nome: nome.trim() })
+      if (typeof token === 'string' || typeof enviarPara === 'string') setFederacao({ token, enviarPara })
+      const cfg = readConfig()
+      return {
+        maquina: origemLocal(cfg),
+        configurada: Boolean(cfg.federacao?.token),
+        enviandoPara: cfg.federacao?.enviarPara || '',
+      }
+    })
+  }
+
+  // Empurra agora, sob clique: serve para o Felipe testar sem esperar o ciclo.
+  if (url.pathname === '/api/federacao/enviar' && req.method === 'POST') {
+    return empurrar().then((r) => send(res, 200, r)).catch((e) => send(res, 200, { ok: false, erro: String(e) }))
+  }
+
   // Todos os projetos conhecidos, com o estado do framework em cada um.
   //
   // Existe porque o botão no cartão não bastava: o cartão só aparece para
@@ -624,7 +759,19 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
         server.listen(port + attempt, '127.0.0.1')
       } else reject(e)
     })
-    server.on('listening', () => resolve({ server, url: `http://localhost:${server.address().port}` }))
+    server.on('listening', () => {
+      // CC-47: o empurrão para a máquina servidora. Fica aqui, e não no tique
+      // de 2s do stream, porque é a ÚNICA chamada de rede periódica do painel
+      // e 30s já é mais rápido do que o Felipe troca de tela. Sem federação
+      // configurada, o timer nem existe.
+      const { token, enviarPara } = readConfig().federacao || {}
+      if (token && enviarPara) {
+        const timer = setInterval(() => { empurrar().catch(() => {}) }, 30_000)
+        timer.unref() // não pode segurar o processo de pé sozinho
+        empurrar().catch(() => {}) // um primeiro envio, para não esperar meio minuto
+      }
+      resolve({ server, url: `http://localhost:${server.address().port}` })
+    })
     server.listen(port, '127.0.0.1')
   })
 }

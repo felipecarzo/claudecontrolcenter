@@ -619,6 +619,28 @@
     border: 1px solid var(--faint); color: var(--dim); font-size: 10.5px; white-space: nowrap;
   }
   .fw-selo.fw-off { border-style: dashed; }
+
+  /* CC-47: de qual máquina é a linha. Discreto de propósito: é contexto, não
+     o assunto. `frio` é a máquina que parou de reportar — continua visível,
+     porque sumir calada faria parecer que o trabalho nunca existiu. */
+  .selo-maq {
+    display: inline-flex; align-items: center; padding: 0 6px; border-radius: 999px;
+    border: 1px solid var(--faint); color: var(--dim); font-size: 10px;
+    white-space: nowrap; margin-left: 6px;
+  }
+  .selo-maq.frio { border-style: dashed; opacity: .65; }
+
+  /* Configuração da federação, na aba remoto. Rótulo em cima do campo abaixo de
+     560px: no celular, rótulo e campo lado a lado deixam o campo com 40px. */
+  .fed-bloco { border: 1px solid var(--faint); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+  .fed-bloco h3 { font-size: 12px; margin: 0 0 6px; }
+  .fed-linha { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .fed-linha label { font-size: 11px; color: var(--dim); min-width: 132px; }
+  .fed-linha input {
+    flex: 1; min-width: 180px; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--faint); border-radius: 6px; padding: 5px 8px; font-size: 12px;
+  }
+  @container (max-width: 560px) { .fed-linha { flex-direction: column; align-items: stretch; } }
   .fw-lista { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
   .fw-linha {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
@@ -1272,6 +1294,9 @@
       <div class="ferramentas">
         <input type="search" id="q" placeholder="filtrar…" autocomplete="off">
         <select id="proj"><option value="">todos os projetos</option></select>
+        <!-- CC-47: só aparece quando há mais de uma máquina reportando. Com uma
+             só, o seletor seria uma escolha sem alternativa. -->
+        <select id="maq" title="de qual máquina" aria-label="filtrar por máquina" hidden></select>
         <select id="tema-sel" title="tema do painel" aria-label="tema do painel"></select>
         <button class="btn" id="n-toggle" aria-pressed="false">notas</button>
         <button class="btn" id="pip-toggle" hidden aria-pressed="false">flutuar</button>
@@ -1397,7 +1422,11 @@ const byId = (id) => DATA.jobs.find((j) => j.id === id)
 function filtered() {
   const q = $('#q').value.trim().toLowerCase()
   const proj = $('#proj').value
+  const maq = $('#maq').value
   return DATA.jobs.filter((j) => {
+    // CC-47: "só este desktop", "só a VPS", ou tudo. Compara por id e não por
+    // nome: renomear a máquina não pode zerar o filtro guardado.
+    if (maq && j.origem?.id !== maq) return false
     if (proj && j.project !== proj) return false
     if (!q) return true
     return [j.subject, j.route, j.project, j.sub, j.category, j.detail, j.model, j.id, j.lastPrompt,
@@ -1469,6 +1498,20 @@ function renderHeader() {
   const sel = $('#proj'), cur = sel.value
   sel.innerHTML = ['<option value="">todos os projetos</option>']
     .concat((s.projects || []).map((p) => `<option${p === cur ? ' selected' : ''}>${esc(p)}</option>`)).join('')
+
+  // CC-47: o seletor de máquina. Escondido enquanto só existe uma, porque aí
+  // ele seria uma escolha sem alternativa ocupando espaço no celular.
+  const maqs = DATA.maquinas || []
+  const selMaq = $('#maq')
+  selMaq.hidden = maqs.length < 2
+  if (!selMaq.hidden) {
+    const escolhida = selMaq.value || localStorage.getItem('cc-maquina') || ''
+    selMaq.innerHTML = ['<option value="">todas as máquinas</option>']
+      .concat(maqs.map((m) => {
+        const rotulo = m.local ? `${m.nome} (aqui)` : m.semContato ? `${m.nome} · sem contato` : m.nome
+        return `<option value="${esc(m.id)}"${m.id === escolhida ? ' selected' : ''}>${esc(rotulo)}</option>`
+      })).join('')
+  }
 
   const counts = {
     agentes: DATA.jobs.length,
@@ -1779,6 +1822,33 @@ function renderPip() {
  * é, o que está fazendo agora, quanto falta. Tabela obrigava a varrer a linha
  * inteira até o fim da tela para juntar as mesmas quatro coisas.
  */
+/**
+ * De onde vem este agente, e de que tipo ele é.
+ *
+ * CC-47: com duas máquinas na mesma tela, "quem está fazendo isso" deixa de ser
+ * óbvio. A pastilha só aparece quando há mais de uma máquina: no uso de uma
+ * máquina só ela seria carimbo repetido em toda linha.
+ *
+ * CC-51: `interativa` é a sessão que você mesmo está tocando (terminal ou
+ * celular), diferente do job que roda sozinho. Sem essa distinção, uma sessão
+ * sua apareceria como se fosse um agente trabalhando em background.
+ */
+function selo(j) {
+  const varias = (DATA.maquinas || []).length > 1
+  const partes = []
+  if (varias && j.origem?.nome) {
+    const velho = j.origem.semContato ? ` · sem contato há ${age(j.origem.idadeMs)}` : ''
+    partes.push(`<span class="selo-maq${j.origem.semContato ? ' frio' : ''}"
+      title="máquina de origem${velho}">${esc(j.origem.nome)}</span>`)
+  }
+  if (j.tipo === 'interativa') {
+    partes.push(`<span class="selo-maq" title="${j.remoto
+      ? 'sessão interativa, pilotada por Remote Control'
+      : 'sessão interativa num terminal desta máquina'}">${j.remoto ? 'remoto' : 'terminal'}</span>`)
+  }
+  return partes.join('')
+}
+
 function cartao(j) {
   // "done" repetiria o ponto e a faixa: nota só quando acrescenta algo.
   // CC-17: `detail` é o status que o próprio agente escreveu (`cc set`), e
@@ -1808,6 +1878,7 @@ function cartao(j) {
         data-job="${j.id}" tabindex="0" title="${j.pinned ? 'fixado · ' : ''}${esc(j.id)}">
       <header>
         ${j.category ? `<span class="cat">${esc(j.category)}</span>` : '<span class="cat vazia"></span>'}
+        ${selo(j)}
         <span class="grow"></span>
         <span class="c-acts">
           <button data-act="resume" data-id="${j.id}" ${j.sessionId ? '' : 'disabled'}
@@ -2008,6 +2079,31 @@ function pedirMapaMini(projeto) {
 // leitura por projeto, sob demanda, nunca no tique de 2s.
 const FRAMEWORKS = new Map() // projeto -> retrato | 'carregando'
 let FW_LISTA = null // null = fechado; 'carregando'; ou a lista de projetos
+let FEDERACAO = null // CC-47: identidade desta máquina, token e quem reporta aqui
+
+async function carregarFederacao() {
+  try {
+    FEDERACAO = await (await fetch('/api/federacao')).json()
+  } catch {
+    FEDERACAO = { maquinas: [], configurada: false }
+  }
+  render()
+}
+
+async function salvarFederacao(extra = {}) {
+  const corpo = {
+    nome: $('#fed-nome')?.value ?? undefined,
+    token: $('#fed-token')?.value ?? undefined,
+    enviarPara: $('#fed-destino')?.value ?? undefined,
+    ...extra,
+  }
+  try {
+    await fetch('/api/federacao/config', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo),
+    })
+  } catch { /* sem rede o painel continua inteiro */ }
+  return carregarFederacao()
+}
 
 /**
  * A lista de TODOS os projetos, sob clique.
@@ -3639,13 +3735,64 @@ async function carregarRemoto(force) {
   render()
 }
 
+/**
+ * CC-47: ligar esta máquina no painel federado.
+ *
+ * Mora aqui porque a aba já é sobre "trabalhar de outro lugar", e porque é
+ * configuração de uma vez por máquina, não coisa do dia a dia.
+ *
+ * O token aparece na tela de propósito: quem chegou até aqui já passou pela
+ * senha do `cockpit-auth`, e ele precisa copiar o valor para a outra máquina.
+ * Fica atrás de um clique para não ficar exposto em print de tela.
+ */
+function viewFederacao() {
+  const f = FEDERACAO
+  if (!f) return '<p class="dim">lendo a configuração de máquinas…</p>'
+  const maqs = f.maquinas || []
+
+  const outras = maqs.filter((m) => !m.local)
+  const estado = !outras.length
+    ? '<span class="dim">nenhuma outra máquina reportando ainda</span>'
+    : outras.map((m) => `<span class="selo-maq${m.semContato ? ' frio' : ''}">${esc(m.nome)}${
+      m.semContato ? ` · sem contato há ${age(m.idadeMs)}` : ' · online'}</span>`).join(' ')
+
+  return `<div class="fed-bloco">
+    <h3>painel federado</h3>
+    <p class="dim">Esta máquina se chama <b>${esc(f.maquina?.nome || '?')}</b>.
+      ${f.configurada
+    ? 'Ela aceita o estado de outras máquinas: use o token abaixo na outra ponta.'
+    : 'Ela ainda não aceita outras máquinas. Gere um token para ligar.'}
+      Quem manda é o desktop, quem recebe é a VPS: teu PC alcança a VPS, mas a VPS nunca alcança teu PC.</p>
+    <div class="fed-linha">
+      <label>nome desta máquina</label>
+      <input id="fed-nome" value="${esc(f.maquina?.nome || '')}" placeholder="ALIENWARE-LIPE">
+    </div>
+    <div class="fed-linha">
+      <label>token (o mesmo nas duas)</label>
+      <input id="fed-token" type="password" value="${esc(f.token || '')}" placeholder="cole ou gere">
+      <button class="btn" data-fed-ver>mostrar</button>
+      <button class="btn" data-fed-gerar>gerar</button>
+    </div>
+    <div class="fed-linha">
+      <label>empurrar para</label>
+      <input id="fed-destino" value="${esc(f.enviandoPara || '')}" placeholder="https://cockpit.carzo.com.br (deixe vazio na VPS)">
+    </div>
+    <div class="fed-linha">
+      <button class="btn" data-fed-salvar>salvar</button>
+      <button class="btn" data-fed-enviar>enviar agora</button>
+      <span class="grow"></span>
+      ${estado}
+    </div>
+  </div>`
+}
+
 function viewRemoto() {
-  if (!REMOTO_DATA) return '<div class="empty">carregando…</div>'
+  if (!REMOTO_DATA) return viewFederacao() + '<div class="empty">carregando…</div>'
   const projetos = REMOTO_DATA.projetos || []
   const ativos = REMOTO_DATA.ativos || {}
-  if (!projetos.length) return '<div class="empty">nenhum projeto encontrado</div>'
+  if (!projetos.length) return viewFederacao() + '<div class="empty">nenhum projeto encontrado</div>'
 
-  return `<div class="dim" style="margin-bottom:12px">liga uma sessão do Claude Code com Remote Control na pasta do
+  return viewFederacao() + `<div class="dim" style="margin-bottom:12px">liga uma sessão do Claude Code com Remote Control na pasta do
     projeto escolhido: conecte do celular por <code>claude.ai/code</code>. Na VPS a sessão sobrevive a este painel;
     neste PC uma janela de console abre e fica com ela, "pegar link" só funciona onde tem tmux (Linux).</div>
   <div class="rm-lista">${projetos.map((p) => {
@@ -4466,7 +4613,7 @@ document.addEventListener('click', async (e) => {
     if (tab === 'agenda') carregarAgenda()
     if (tab === 'hooks') carregarHooks()
     if (tab === 'rotinas') carregarRotinas()
-    if (tab === 'remoto') carregarRemoto()
+    if (tab === 'remoto') { carregarRemoto(); if (!FEDERACAO) carregarFederacao() }
     if (tab === 'escritorio') carregarPaineis()
     if (tab === 'tempo' || tab === 'graficos') carregarTempo()
     if (tab === 'preco') carregarPreco()
@@ -4668,6 +4815,29 @@ document.addEventListener('click', async (e) => {
   }
 
   if (t.closest('[data-fw-lista]')) return abrirFrameworkLista()
+
+  if (t.closest('[data-fed-ver]')) {
+    const campo = $('#fed-token')
+    campo.type = campo.type === 'password' ? 'text' : 'password'
+    return
+  }
+  if (t.closest('[data-fed-gerar]')) {
+    // Gerado no navegador: não precisa de rota nova, e o valor só sai daqui
+    // dentro do POST que grava. 24 bytes viram 32 caracteres.
+    const bytes = crypto.getRandomValues(new Uint8Array(24))
+    $('#fed-token').value = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '').slice(0, 32)
+    $('#fed-token').type = 'text'
+    return
+  }
+  if (t.closest('[data-fed-salvar]')) return salvarFederacao()
+  if (t.closest('[data-fed-enviar]')) {
+    const btn = t.closest('[data-fed-enviar]')
+    btn.disabled = true
+    return fetch('/api/federacao/enviar', { method: 'POST' })
+      .then((r) => r.json())
+      .then((r) => { alert(r.ok ? 'enviado' : `não deu: ${r.erro || r.status}`); return carregarFederacao() })
+      .catch(() => { btn.disabled = false })
+  }
 
   const fwBtn = t.closest('[data-fw]')
   if (fwBtn) {
@@ -5006,7 +5176,10 @@ function editarTodo(jobId, i, texto) {
     : job.todos.filter((_, k) => k !== i))
 }
 
-for (const el of ['#q', '#proj']) $(el).addEventListener('input', render)
+for (const el of ['#q', '#proj', '#maq']) $(el).addEventListener('input', render)
+// A máquina escolhida sobrevive ao recarregar, igual à aba: é preferência de
+// quem olha, não estado do dado.
+$('#maq').addEventListener('change', (e) => localStorage.setItem('cc-maquina', e.target.value))
 
 // Volume: `input` move a barra ao vivo, `change` é que grava. Enquanto o dedo
 // está na barra, o redesenho fica travado — senão o stream devolveria o valor

@@ -22,6 +22,10 @@ const DEFAULTS = {
   calendarios: [],
   hooks: {},
   visitas: {},
+  // Federação (CC-47): identidade desta máquina e as outras que reportam aqui.
+  // `maquina` nasce vazia e é preenchida na primeira leitura (`maquina-id.mjs`).
+  maquina: null,
+  federacao: { token: '', enviarPara: '', maquinas: {} },
 }
 
 export const PIP_BLOCOS = ['uso', 'agentes', 'maquina', 'servidores', 'docker', 'processos']
@@ -42,6 +46,37 @@ function writeConfig(cfg) {
   fs.writeFileSync(tmp, JSON.stringify(next, null, 2))
   fs.renameSync(tmp, CONFIG_FILE)
   return next
+}
+
+/**
+ * Identidade desta máquina (CC-47). Escrita rara, de propósito: o id é sorteado
+ * uma vez e o nome só muda quando o Felipe renomeia na tela.
+ */
+export function setMaquina({ id, nome }) {
+  const cfg = readConfig()
+  const atual = cfg.maquina || {}
+  const proxima = {
+    id: (id || atual.id || '').trim(),
+    nome: (nome || atual.nome || '').trim(),
+  }
+  if (!proxima.id) return atual // sem id não há origem: melhor não gravar lixo
+  writeConfig({ ...cfg, maquina: proxima })
+  return proxima
+}
+
+/**
+ * Para onde esta máquina empurra o estado, e com que token. Vazio significa
+ * "não federa", que é o padrão: quem roda o painel sozinho não precisa de nada
+ * disto, e token em repositório público seria erro grave.
+ */
+export function setFederacao({ token, enviarPara }) {
+  const cfg = readConfig()
+  const atual = cfg.federacao || DEFAULTS.federacao
+  const proxima = { ...atual }
+  if (typeof token === 'string') proxima.token = token.trim()
+  if (typeof enviarPara === 'string') proxima.enviarPara = enviarPara.trim().replace(/\/+$/, '')
+  writeConfig({ ...cfg, federacao: proxima })
+  return proxima
 }
 
 /** Sem projeto informado, responde só pelo interruptor global. */

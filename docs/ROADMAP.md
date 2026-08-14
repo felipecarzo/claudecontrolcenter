@@ -128,7 +128,7 @@ lado só: o PC alcança `cockpit.carzo.com.br`, a VPS nunca alcança o PC atrás
 NAT. Então a VPS é obrigatoriamente o servidor, e o PC é cliente que empurra e
 puxa. Qualquer desenho que ignore isso não sai do papel.
 
-### CC-47: O cockpit da VPS vira o servidor de estado
+### CC-47: O cockpit da VPS vira o servidor de estado ✅ 14/08 (canal pronto)
 
 Escolha do Felipe entre as três que apresentei, junto com o CC-49. A infra já
 existe: HTTP, autenticação por senha na 5181, domínio público, systemd que
@@ -143,6 +143,35 @@ Requisitos que saem do que foi medido:
   público.
 - O espelho nunca pode entrar em `setInterval` cego. Vale a mesma regra da aba
   VPS: rede sai de ação, não de timer de fundo.
+
+**Feito em 14/08.** `src/federacao.mjs` (motor puro, 11 grupos de asserção),
+`src/maquina-id.mjs` (identidade sorteada uma vez, nome editável), rotas
+`POST/GET /api/federacao`, `/api/federacao/config` e `/api/federacao/enviar`, e
+a tela de configuração na aba remoto. O empurrão sai a cada 30s, só quando
+configurado, e nunca leva transcrito: só o resumo que a tela usa.
+
+Provado de ponta a ponta: pacote de uma segunda máquina recebido, agentes das
+duas aparecendo juntos com a origem carimbada, token errado recusado com 401 e
+`federação desligada` quando não há token.
+
+Decisão registrada: **a chave de deduplicação é `origem.id + id`**, nunca só o
+id. Duas máquinas podem ter job com o mesmo identificador curto, e uma
+sobrescreveria a outra em silêncio. Há teste guardando isso.
+
+### CC-54: O uso do plano vem da conta, não da máquina ✅ 14/08
+
+Achado medindo o CC-47: **a statusLine não roda em sessão Remote Control**.
+Instrumentei o comando com um `tee` e, depois de várias respostas trabalhando
+pelo celular, o arquivo de captura nunca foi criado, e
+`~/.claude/control-center-uso.json` continua sem existir na VPS.
+
+Como as janelas de 5 horas e de semana são da CONTA, e não da máquina, o painel
+passou a aceitar a leitura mais recente venha de onde vier: sem coleta local,
+vale a que o desktop empurrou. Ver `usoDaConta()` em `src/web.mjs`.
+
+Consequência a lembrar: enquanto só a VPS estiver ligada, o medidor de uso fica
+vazio aqui, e isso é o correto — não há de onde tirar o número sem chamar a API,
+que este projeto decidiu não chamar.
 
 ### CC-48: Rotas deixam de depender de commit para o outro lado enxergar
 
@@ -198,12 +227,50 @@ diagnóstico gravou um pedido de sessão falsa em `docs/.rotas-pedidos.json` do
 repositório de verdade. O arquivo foi removido. Testar hook contra o próprio
 projeto tem efeito colateral no projeto: usar pasta descartável.
 
-### CC-51: O painel não enxerga sessão interativa, só job de background
+### CC-51: O painel não enxerga sessão interativa ✅ 14/08
 
 `cockpit set` recusa com "sem job" numa sessão via Remote Control. Como o
 trabalho pelo celular passou a ser interativo e não mais delegado a job, o
-painel fica cego exatamente no modo de uso novo. Decidir se sessão interativa
-vira cidadã de primeira classe no painel ou se o reporte continua só para job.
+painel fica cego exatamente no modo de uso novo.
+
+**Feito em 14/08**, em `src/sessoes.mjs`: as sessões interativas saem dos
+transcritos (`~/.claude/projects/<projeto>/<sessionId>.jsonl`) e entram no
+painel com `tipo: 'interativa'`, reusando `buildJob` com um estado sintético,
+para o resto da tela não precisar saber a diferença. Medido: o painel da VPS
+saiu de **0 agentes e 0 projetos** para 4 e 2, com a sessão do Felipe aparecendo
+como `working`.
+
+Três decisões, todas por um motivo medido:
+
+- **O `cwd` sai de dentro do arquivo, nunca do nome da pasta.** O nome
+  `-home-claudedev-projetos-proj-controlcenter` troca `/` e `_` pelo mesmo `-`:
+  é impossível saber se é `proj_controlcenter` ou `proj/controlcenter`.
+- **Janela de 24h.** Sem corte, o PC traria centenas de sessões mortas e o
+  painel viraria arquivo morto em vez de "o que está acontecendo agora".
+- **`tokens: null`, não zero.** Contar token de sessão interativa exigiria
+  parsear o transcrito inteiro, que é trabalho da aba tempo. Zero seria mentira
+  com cara de medida.
+
+Ainda em aberto, e é do CC-56: `cockpit set` continua recusando em sessão
+interativa, então to-dos e frente não têm como ser reportados daqui.
+
+### CC-55: Nunca subir servidor por tarefa de background do Claude Code
+
+Achado em 14/08 investigando a queixa do Felipe de que "a bolinha continua
+rodando e o tempo contando" depois que a tarefa termina, e que isso não
+acontece no desktop.
+
+Não são os hooks: `todo-guard` 64 ms, `routia-fim` 280 ms, statusline 151 ms,
+`node` vazio 54 ms. Era **um `node cc.mjs --web-only --port 8123` subido em
+background pela própria sessão, vivo havia 11 horas**. Tarefa de background que
+não termina mantém a sessão marcada como ativa. Não gasta token, mas o relógio
+corre e parece que gasta.
+
+Regra: instância de teste sobe e morre **dentro do mesmo comando**. No Linux,
+`&` do shell também não resolve, porque cada comando roda em namespace próprio:
+o processo fica vivo, mas inalcançável no comando seguinte.
+
+### CC-56: Reportar estado a partir de sessão interativa
 
 ### CC-52: O Routia só existe em 2 dos 14 projetos clonados na VPS
 

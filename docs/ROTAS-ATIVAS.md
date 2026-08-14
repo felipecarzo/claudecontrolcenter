@@ -29,7 +29,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
-| `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: frente "Sincronia entre máquinas" registrada, CC-47 a CC-53, mais o CC-50 feito: 19 checks do Routia passando na VPS, onde nenhum passava) | — |
+| `sincronia` | 🔴 ocupada | ff0d68b2 (sessão na VPS) — cockpit federado, plano aprovado pelo Felipe em 14/08: identidade de máquina, canal VPS↔desktop, filtro por origem. Fase 0 primeiro (sessão interativa no painel, uso do plano) | 2026-08-14 |
 | `framework` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: gate de MVP de ponta a ponta, hook registrado no `settings.json` da VPS e ligado no `proj_controlcenter`. Ver ticket) | — |
 
 ## Como pedir autorização numa rota que tem dono
