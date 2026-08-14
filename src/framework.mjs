@@ -59,6 +59,26 @@ export const PREDICADOS = {
       ? `faltam ${abertos.length} de ${cs.length} critérios do MVP: ${abertos.map((c) => c.texto).join('; ')}`
       : null
   },
+  // F4: quais ferramentas de verificação este projeto usa. Decisão do Felipe em
+  // 14/08: isso se escolhe na DEFINIÇÃO, junto do MVP, não solta no meio da
+  // execução. "o framework JÁ teria isso definido desde o início do projeto na
+  // definição de pronto."
+  'ferramentas-escolhidas': (e) => ((e?.ferramentas || []).length
+    ? null
+    : 'nenhuma ferramenta de verificação escolhida: decida na Definição o que este projeto usa'),
+  'verificacao-rodada': (e) => {
+    const esperadas = e?.ferramentas || []
+    if (!esperadas.length) return 'nenhuma ferramenta escolhida para rodar'
+    const rodadas = Object.keys(e?.verificacao || {})
+    const faltam = esperadas.filter((f) => !rodadas.includes(f))
+    return faltam.length ? `falta rodar: ${faltam.join(', ')}` : null
+  },
+  'verificacao-limpa': (e) => {
+    const sujas = Object.entries(e?.verificacao || {})
+      .filter(([, r]) => r && r.ok === false)
+      .map(([f]) => f)
+    return sujas.length ? `verificação acusou problema em: ${sujas.join(', ')}` : null
+  },
 }
 
 /** Métodos prontos. Trocar de método é trocar de dado, nunca de código. */
@@ -79,6 +99,50 @@ export const METODOS = {
         titulo: 'Execução',
         explica: 'Código liberado. O projeto só é dado como pronto quando todos os critérios do MVP estiverem marcados.',
         exige: ['criterios-todos-marcados'],
+        trava: [],
+      },
+    ],
+  },
+
+  /**
+   * F6: o segundo método, e ele existe para provar uma afirmação que até agora
+   * era só promessa — **método é dado, não código**. Se acrescentar um método
+   * exigisse mexer no motor, o framework seria agnóstico só no papel.
+   *
+   * É também o mais próximo do trabalho real do Felipe: site de cliente que
+   * sobe para a VPS. Por isso tem uma fase que o `mvp-basico` não tem, a de
+   * Verificação, onde a [[BANCADA]] entra como gate (F5).
+   */
+  'entrega-cliente': {
+    id: 'entrega-cliente',
+    titulo: 'Entrega para cliente: nada sobe sem verificação',
+    fases: [
+      {
+        id: 'definicao',
+        titulo: 'Definição',
+        explica: 'O que o cliente recebe, como se sabe que está pronto, e quais verificações este projeto usa.',
+        exige: ['mvp-tem-nome', 'mvp-definido', 'ferramentas-escolhidas'],
+        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+      },
+      {
+        id: 'execucao',
+        titulo: 'Execução',
+        explica: 'Código liberado. Sai desta fase quando todos os critérios combinados estiverem marcados.',
+        exige: ['criterios-todos-marcados'],
+        trava: [],
+      },
+      {
+        id: 'verificacao',
+        titulo: 'Verificação',
+        explica: 'As ferramentas escolhidas na Definição precisam ter rodado, e sem acusar problema.',
+        exige: ['verificacao-rodada', 'verificacao-limpa'],
+        trava: [],
+      },
+      {
+        id: 'entregue',
+        titulo: 'Entregue',
+        explica: 'Verificado e no ar. Mudança daqui em diante é escopo novo, e escopo novo se declara.',
+        exige: [],
         trava: [],
       },
     ],
@@ -157,6 +221,10 @@ export const estadoInicial = (metodo = 'mvp-basico') => ({
   modo: 'dialogo',
   fase: METODOS[metodo]?.fases[0]?.id || null,
   mvp: { nome: '', criterios: [] },
+  // F4: as ferramentas de verificação deste projeto, escolhidas na Definição.
+  // `verificacao` guarda o resultado de cada uma: `{ gitleaks: { ok, em } }`.
+  ferramentas: [],
+  verificacao: {},
   // O que a IA já pode construir sem perguntar de novo. Vazio significa
   // "conversamos, mas você ainda não mandou fazer" — o estado exato em que eu
   // estava quando construí o glossário sem pedido.
@@ -313,6 +381,47 @@ export function mudarEscopo(estado, { mvp, motivo, quando }) {
         ...(estado.historico || []),
         { tipo: 'escopo', de: estado.mvp, para: mvp, motivo, quando: quando || null },
       ],
+    },
+  }
+}
+
+/**
+ * F4: escolhe as ferramentas de verificação do projeto.
+ *
+ * Substitui a lista inteira em vez de acrescentar, de propósito: é uma decisão
+ * tomada de uma vez na Definição, não um acúmulo. Tirar uma ferramenta da lista
+ * precisa ser tão fácil quanto pôr.
+ */
+export function escolherFerramentas(estado, lista, { quando = null } = {}) {
+  const limpa = [...new Set((Array.isArray(lista) ? lista : []).map((f) => String(f).trim()).filter(Boolean))]
+  return {
+    ok: true,
+    estado: {
+      ...estado,
+      ferramentas: limpa,
+      historico: [
+        ...(estado?.historico || []),
+        { tipo: 'ferramentas', de: estado?.ferramentas || [], para: limpa, quando },
+      ],
+    },
+  }
+}
+
+/**
+ * Registra o resultado de uma verificação.
+ *
+ * `ok: false` é o que segura a fase de Verificação no `entrega-cliente`. O
+ * resultado é DADO, não julgamento: quem roda a ferramenta diz se passou, o
+ * framework só confere se rodou e se passou.
+ */
+export function registrarVerificacao(estado, ferramenta, { ok, detalhe = null, quando = null }) {
+  const nome = String(ferramenta || '').trim()
+  if (!nome) return { ok: false, erro: 'verificação sem nome de ferramenta' }
+  return {
+    ok: true,
+    estado: {
+      ...estado,
+      verificacao: { ...(estado?.verificacao || {}), [nome]: { ok: Boolean(ok), detalhe, em: quando } },
     },
   }
 }

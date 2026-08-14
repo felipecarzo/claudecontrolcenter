@@ -287,6 +287,44 @@ switch (cmd) {
         mostrar(r)
         break
       }
+      case 'ferramentas': {
+        const r = exigeRaiz()
+        const e = D.ler(r)
+        const lista = positional.slice(2)
+        if (!lista.length) {
+          console.log((e.ferramentas || []).join(', ') || '(nenhuma escolhida)')
+          for (const [f, v] of Object.entries(e.verificacao || {})) {
+            console.log(`  ${v.ok ? 'ok  ' : 'FALHOU'} ${f}${v.detalhe ? ` — ${v.detalhe}` : ''}`)
+          }
+          break
+        }
+        const x = F.escolherFerramentas(e, lista, { quando: new Date().toISOString() })
+        D.gravar(r, x.estado)
+        console.log(`ferramentas: ${x.estado.ferramentas.join(', ')}`)
+        mostrar(r)
+        break
+      }
+      case 'verificou': {
+        const r = exigeRaiz()
+        const nome = positional[2]
+        if (!nome) die(`uso: node cc.mjs framework verificou <ferramenta> [--falhou] [--detalhe "..."]`)
+        const x = F.registrarVerificacao(D.ler(r), nome, {
+          ok: !argv.includes('--falhou'),
+          detalhe: val('--detalhe'),
+          quando: new Date().toISOString(),
+        })
+        if (!x.ok) die(x.erro)
+        D.gravar(r, x.estado)
+        mostrar(r)
+        break
+      }
+      case 'metodos': {
+        for (const m of Object.values(F.METODOS)) {
+          console.log(`${m.id}${' '.repeat(Math.max(1, 18 - m.id.length))}${m.titulo}`)
+          console.log(`  fases: ${m.fases.map((f) => f.id).join(' → ')}`)
+        }
+        break
+      }
       case 'mvp': {
         const r = exigeRaiz()
         const e = D.ler(r)

@@ -162,6 +162,46 @@ assert.deepEqual(Object.keys(MODOS), ['desligado', 'dialogo', 'imperativo', 'res
 for (const m of Object.values(MODOS)) assert.ok(m.explica && m.titulo, `modo ${m.id} sem texto`)
 ok('os quatro modos existem, com título e explicação, e o resumo os mostra')
 
+// --------------------------------- F4 e F6: ferramentas e o segundo método
+const { escolherFerramentas, registrarVerificacao } = await import('./src/framework.mjs')
+
+// o segundo método existe pra provar que método é DADO: 4 fases, sem tocar no motor
+assert.ok(METODOS['entrega-cliente'], 'o segundo método precisa existir')
+assert.equal(METODOS['entrega-cliente'].fases.length, 4)
+assert.equal(METODOS['mvp-basico'].fases.length, 2)
+ok('dois métodos convivem, com número de fases diferente')
+
+// na Definição do entrega-cliente, MVP pronto NÃO basta: falta escolher ferramenta
+const cliente = { ...estadoInicial('entrega-cliente'), mvp: definido.mvp }
+const semFerramenta = avaliar('entrega-cliente', cliente)
+assert.equal(semFerramenta.portaoAberto, false)
+assert.ok(semFerramenta.pendencias.some((p) => /ferramenta/.test(p)))
+ok('entrega-cliente exige escolher as ferramentas na Definição')
+
+const comFerramenta = escolherFerramentas(cliente, ['gitleaks', 'rls']).estado
+assert.deepEqual(comFerramenta.ferramentas, ['gitleaks', 'rls'])
+assert.equal(avaliar('entrega-cliente', comFerramenta).portaoAberto, true)
+assert.equal(comFerramenta.historico.at(-1).tipo, 'ferramentas')
+// duplicata não entra duas vezes
+assert.deepEqual(escolherFerramentas(cliente, ['a', 'a', ' a ']).estado.ferramentas, ['a'])
+ok('escolher ferramentas abre o portão e deixa rastro, sem duplicar')
+
+// a fase de Verificação segura enquanto não rodou, e enquanto acusou problema
+const naVerificacao = { ...comFerramenta, fase: 'verificacao' }
+assert.match(avaliar('entrega-cliente', naVerificacao).pendencias[0], /falta rodar/)
+const rodou1 = registrarVerificacao(naVerificacao, 'gitleaks', { ok: true }).estado
+assert.match(avaliar('entrega-cliente', rodou1).pendencias[0], /falta rodar: rls/)
+const rodouSujo = registrarVerificacao(rodou1, 'rls', { ok: false, detalhe: 'tabela aberta' }).estado
+assert.ok(avaliar('entrega-cliente', rodouSujo).pendencias.some((p) => /acusou problema/.test(p)))
+const rodouLimpo = registrarVerificacao(rodou1, 'rls', { ok: true }).estado
+assert.equal(avaliar('entrega-cliente', rodouLimpo).portaoAberto, true)
+assert.equal(registrarVerificacao(naVerificacao, '', { ok: true }).ok, false)
+ok('verificação segura a fase: precisa ter rodado E não pode ter acusado problema')
+
+// o mvp-basico não ganhou exigência nenhuma com isso
+assert.equal(avaliar('mvp-basico', definido).portaoAberto, true)
+ok('o método antigo não mudou de comportamento')
+
 // ------------------------------------------------------------ mudar escopo
 const semMotivo = mudarEscopo(pronto, { mvp: { nome: 'outro', criterios: [] } })
 assert.equal(semMotivo.ok, false, 'mudança de escopo sem motivo tem que recusar')

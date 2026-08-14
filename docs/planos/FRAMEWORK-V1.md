@@ -232,6 +232,39 @@ mudou. É a camada de insight que justifica todo o registro embaixo.
 A inversão da visão: o framework demanda ao Felipe, começando por "o que é o
 projeto". Hoje o gate só recusa, ainda não conduz.
 
+### F12. Filtro de confidencialidade local
+
+Vem do documento "Arquitetura de Hábitos", que o Felipe escreveu para **outro
+produto** (ver abaixo), e é a peça que ele decidiu trazer para cá em 14/08.
+
+Substituir dado sensível por token antes de sair da máquina, e remontar na
+volta: `[CLIENTE_1]`, `[CHAVE_2]`. Hoje o problema é resolvido por proibição —
+o `segredo-guard` me bloqueou várias vezes nesta sessão, inclusive no `.env` do
+Pixel Agents. Bloquear é a solução tosca: eu simplesmente não leio o arquivo.
+Substituir é a solução boa: eu leio a estrutura sem ver o segredo.
+
+Encaixa como camada do framework e conversa direto com a [[../produto/BANCADA]]
+(as sondas de segredo já sabem achar o que precisa ser mascarado).
+
+### F13. Tom, separado do modo
+
+Decisão dele em 14/08, corrigindo o desenho que eu tinha proposto: **tom e modo
+são eixos independentes**, não a mesma escala.
+
+O modo diz **o que trava** (desligado, diálogo, imperativo, restritivo). O tom
+diz **como eu falo**: curto e direto, ou explicando o porquê. Palavra dele: "eu
+acho que eles podem ficar separados [...] eu posso mudar o tom de qualquer um
+também".
+
+Cada modo tem um tom **recomendado** (imperativo pede resposta curta, diálogo
+pede explicação), para a escolha rápida ser um clique só, mas qualquer
+combinação é válida. Vem do documento dele, e é melhor do que o nosso desenho:
+hoje o modo só liga e desliga gate, não muda como eu converso.
+
+### F14. Ponte com outras ferramentas (visão, não agora)
+
+Roo Code, Antigravity, IDEs locais. Registrado como direção, sem trabalho agora.
+
 ### F9. Perguntas em rede (visão, não agora)
 
 As três leituras que ele escolheu juntas: pergunta viaja entre máquinas pela
