@@ -30,7 +30,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
 | `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: cockpit federado, CC-47/51/54/55/57/58. Escritório servido por proxy com WebSocket, porque `localhost` no iframe é o celular de quem olha. Falta ligar o PC: ver ticket) | — |
-| `framework` | 🟢 livre | — (ff0d68b2 fechou em 15/08: F1-F8, F10, F11, F13 e F5. Faltam as visões F9, F12, F14) | — |
+| `framework` | 🟢 livre | — (ff0d68b2 fechou em 15/08: F1-F8, F10-F13. Falta F9 e F14, que são visões) | — |
 
 ## Como pedir autorização numa rota que tem dono
 
@@ -51,6 +51,32 @@ Se você é o dono e recebeu um pedido: responda. Ficar em silêncio deixa a out
 sessão travada, que é exatamente o que o método existe para evitar.
 
 ## Tickets pendentes
+
+### 🎫 Para o **Pierre** (outro repositório) — achado por ff0d68b2 em 15/08
+
+**O regex de endereço engole o texto que vem depois da vírgula.** Achado ao
+portar `anonimizar.ts` para o cockpit (F12). Não é defeito do port: os 33 casos
+de teste originais passam, e o comportamento é o mesmo lá.
+
+    ANTES : com sede na Avenida Paulista 1000, doravante CONTRATADA.
+    DEPOIS: com sede na <ENDERECO_1>
+    mapa  : { "<ENDERECO_1>": "Avenida Paulista 1000, doravante CONTRATADA." }
+
+    ANTES : na Avenida Brasil 200, e outras clausulas seguem aqui.
+    DEPOIS: na <ENDERECO_1>
+
+A causa é a segunda parte opcional de `RE_ENDERECO`, que existe para pegar
+número e bairro depois da vírgula (`, conjunto 71`) e não sabe onde parar.
+
+**Não é vazamento, é o oposto: mascara demais.** E o custo é real na análise —
+"doravante CONTRATADA" é o que define qual parte é qual, e o modelo perde isso.
+No terceiro exemplo sumiu meia frase de cláusula.
+
+Não consertei: mexer em regex de outro projeto sem os contratos reais de teste
+que existem lá é como o próprio arquivo avisa — a medição contra contrato real é
+o que ensinou cada linha daquele padrão. O conserto provável é a segunda parte
+exigir cara de complemento de endereço (número, `conjunto`, `sala`, `bloco`,
+`bairro`, CEP) em vez de aceitar qualquer coisa até a próxima vírgula.
 
 ### 🎫 `sincronia` — ligar o PC no painel federado, de ff0d68b2, em 14/08
 

@@ -318,6 +318,25 @@ switch (cmd) {
         mostrar(r)
         break
       }
+      case 'anonimizar': {
+        const r = exigeRaiz()
+        const e = D.ler(r)
+        const arg2 = positional[2]
+        if (!arg2) {
+          console.log(`modo Pierre: ${e.anonimizar ? 'ligado' : 'desligado'}`)
+          const { registro } = await import('./src/anonimoDisco.mjs')
+          const reg = registro(10)
+          if (reg.length) {
+            console.log('\núltimos arquivos mascarados:')
+            for (const x of reg) console.log(`  ${x.em?.slice(0, 16)} ${x.quantos} valor(es) [${x.tipos.join(', ')}] ${x.origem}`)
+          }
+          break
+        }
+        if (!['on', 'off'].includes(arg2)) die('uso: node cc.mjs framework anonimizar [on|off]')
+        D.gravar(r, { ...e, anonimizar: arg2 === 'on' })
+        console.log(`modo Pierre: ${arg2 === 'on' ? 'ligado' : 'desligado'}`)
+        break
+      }
       case 'bancada': {
         const r = exigeRaiz()
         const B = await import('./src/bancada.mjs')

@@ -330,6 +330,43 @@ hoje o modo só liga e desliga gate, não muda como eu converso.
 
 Roo Code, Antigravity, IDEs locais. Registrado como direção, sem trabalho agora.
 
+### F15. Achado em projeto alheio se registra NO GIT dele
+
+Regra que o Felipe formulou em 15/08, olhando o caso acontecer: *"isso é uma
+regra pro framework, o registro em outros projetos, ficaria no git? assim eles
+se comunicam"*.
+
+O caso: trabalhando no cockpit, portei o `anonimizar.ts` do Pierre e descobri um
+defeito **no Pierre**. Registrar só aqui seria enterrar o achado no repositório
+errado — quem abrir o Pierre amanhã não veria nada.
+
+**A regra:** achado sobre outro projeto vira ticket no `docs/` **daquele**
+projeto, no formato que ele já usa, commitado e enviado. O git é o canal.
+
+**E isso não contradiz "o Git é ruim como canal", que ele mesmo disse em 14/08.**
+São dois usos diferentes, e a distinção é o que vale guardar:
+
+| | Estado vivo (rota ocupada agora) | Achado durável (bug, decisão) |
+|---|---|---|
+| Precisa de | latência baixa | sobreviver a máquina desligada |
+| Git serve? | não, exige commit/pull e conflita | **sim, é o ideal** |
+| Canal | federação (CC-47) | git do projeto dono |
+
+**Três limites, e vieram do caso real:**
+
+1. **Só `docs/`, nunca código.** Consertei? Não. O `anonimizar.ts` registra que
+   cada linha saiu de medição contra contrato real, e os contratos estão lá.
+   Corrigir de fora troca defeito conhecido por desconhecido.
+2. **Commit próprio, com a origem escrita.** Quem achou, de onde, e por quê. Sem
+   isso o ticket aparece órfão e ninguém sabe a quem perguntar.
+3. **A árvore de lá tem que estar limpa.** Se houver trabalho não commitado de
+   outra sessão, o ticket espera: misturar é o problema que o `git-add-guard`
+   existe para evitar.
+
+Falta implementar: um `cc framework ticket <projeto> "<texto>"` que faça isso
+sozinho, achando o `docs/ROTAS-ATIVAS.md` do alvo e respeitando os três limites.
+Hoje é procedimento manual, e procedimento manual é sugestão.
+
 ### F9. Perguntas em rede (visão, não agora)
 
 As três leituras que ele escolheu juntas: pergunta viaja entre máquinas pela
