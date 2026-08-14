@@ -310,6 +310,30 @@ dois, instala e também deixa dizer que é local"). Federar os bonecos exigiria 
 Pixel Agents aceitar dado de fora, o que ele não faz: ele lê o `~/.claude` da
 máquina onde roda.
 
+**Não bastava instalar, e o Felipe achou na hora: "o pixel agents nao ta
+funcionando ainda".** Três defeitos separados, todos consertados em 14/08:
+
+1. **O iframe apontava para `http://localhost:3101`.** `localhost` é a máquina
+   de QUEM OLHA. No PC, onde o painel nasceu, isso dava certo por acaso. Abrindo
+   `cockpit.carzo.com.br` no celular, o navegador procurava a porta 3101 do
+   próprio telefone. Nunca teve chance de funcionar remotamente. Agora o cockpit
+   serve o escritório em `/painel/:id/`, caminho relativo, atrás da mesma senha.
+2. **O botão "ligar" respondia `ok` e nada subia.** O serviço systemd não herda
+   o PATH do shell, então `spawn('pixel-agents')` não achava o binário em
+   `~/.npm-global/bin`, e `stdio: 'ignore'` engolia o erro. `resolverBinario()`
+   procura nos lugares conhecidos do npm.
+3. **O app conecta em `/ws` ABSOLUTO** (`wss://${location.host}/ws`, conferido
+   no bundle). Sem repassar o `upgrade`, a página carregaria e os bonecos
+   ficariam parados para sempre, que é o pior tipo de defeito: parece que
+   funcionou. O proxy encaminha WebSocket, e `/ws` na raiz vai para o painel
+   local. Provado com `101 Switching Protocols` pelo proxy.
+
+**Quarto achado, sem conserto por enquanto:** o Pixel Agents cai toda vez que o
+`agent-cockpit` reinicia. `detached: true` cria grupo de processo novo, mas não
+sai do **cgroup** do serviço, e o systemd mata o cgroup inteiro. Resolver exige
+`KillMode=process` no unit (root) ou um serviço próprio. Por ora, o botão
+"ligar" religa em um clique.
+
 **Duas coisas a saber**, ambas medidas:
 
 1. O Pixel Agents da VPS foi subido à mão e **não volta depois de um reboot**.

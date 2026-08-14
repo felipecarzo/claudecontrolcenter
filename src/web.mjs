@@ -31,7 +31,7 @@ import {
   readServers, killServer, duplicados, recentes, projetosLancaveis,
   subirServidor, abrirLocal, esquecerCache,
 } from './servers.mjs'
-import { readPaineis, ligarPainel, desligarPainel } from './paineis.mjs'
+import { readPaineis, ligarPainel, desligarPainel, portaDe } from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
 import { desligar as desligarFramework, ligar as ligarFramework, situacao as situacaoFramework } from './frameworkDisco.mjs'
 import { avaliar as avaliarFramework, resumo as resumoFramework } from './framework.mjs'
@@ -367,6 +367,33 @@ function handler(req, res) {
   // `.framework` (desligar preserva o MVP e o histórico de escopo; destruir
   // dado do projeto não pode ser um clique) e não registra o hook no
   // settings.json do Claude Code, que continua manual como todo hook aqui.
+  // O escritório servido pelo próprio cockpit, em vez de `http://localhost:PORTA`.
+  //
+  // Medido em 14/08, quando o Felipe disse que o Pixel Agents não funcionava:
+  // o iframe apontava para `localhost:3101`, e `localhost` é a máquina de quem
+  // OLHA. No PC dele, onde o painel nasceu, isso é verdade por acaso. Abrindo
+  // `cockpit.carzo.com.br` no celular, o navegador tentava a porta 3101 do
+  // próprio telefone. Nunca teve chance de funcionar remotamente.
+  //
+  // O proxy só alcança 127.0.0.1 e só as portas declaradas em `paineis.mjs`:
+  // sem essa trava, esta rota viraria um proxy aberto para a rede inteira da
+  // máquina, que é o oposto de servir o painel atrás de senha.
+  if (url.pathname === '/painel' || url.pathname.startsWith('/painel/')) {
+    const partes = url.pathname.split('/').filter(Boolean) // ['painel', id, ...resto]
+    const porta = portaDe(partes[1])
+    if (!porta) return send(res, 404, { error: 'painel desconhecido' })
+
+    const caminho = '/' + partes.slice(2).join('/') + (url.search || '')
+    const req2 = http.request({
+      host: '127.0.0.1', port: porta, path: caminho, method: req.method, headers: req.headers,
+    }, (r2) => {
+      res.writeHead(r2.statusCode || 502, r2.headers)
+      r2.pipe(res)
+    })
+    req2.on('error', (e) => send(res, 502, { error: String(e.message || e) }))
+    return req.pipe(req2)
+  }
+
   // CC-47, o lado servidor da federação: recebe o estado de outra máquina.
   //
   // Autenticação é por token próprio, não pelo cookie do `cockpit-auth`: quem
@@ -783,11 +810,69 @@ function handler(req, res) {
   send(res, 404, { error: 'not found' })
 }
 
+/**
+ * O WebSocket do escritório, encaminhado junto com o HTTP.
+ *
+ * O Pixel Agents monta a URL do socket a partir de `location.host`, então pelo
+ * proxy ele bate em `/painel/local/...` deste servidor. Sem repassar o
+ * `upgrade`, a página carrega e os bonecos ficam parados para sempre: o pior
+ * tipo de defeito, porque parece que funcionou.
+ *
+ * O encaminhamento é cru (dois sockets colados) e não interpreta quadro nenhum:
+ * é o mínimo para o upgrade completar. Só 127.0.0.1 e só as portas declaradas.
+ */
+function proxyUpgrade(req, socket, head) {
+  const caminho = (req.url || '').split('?')[0]
+  const busca = req.url.includes('?') ? `?${req.url.split('?')[1]}` : ''
+
+  // O Pixel Agents monta o socket como `wss://${location.host}/ws`, caminho
+  // ABSOLUTO: servido dentro do iframe em `/painel/local/`, ele ainda bate na
+  // raiz. Por isso `/ws` também é aceito e vai para o painel local. Conferido
+  // no bundle dele em 14/08; se um dia houver dois painéis embutidos ao mesmo
+  // tempo, este atalho precisa de um desempate.
+  if (caminho === '/ws') {
+    const p = portaDe('local')
+    return p ? encaminharUpgrade(req, socket, head, p, `/ws${busca}`) : socket.destroy()
+  }
+
+  if (!caminho.startsWith('/painel/')) return socket.destroy()
+  const partes = caminho.split('/').filter(Boolean)
+  const porta = portaDe(partes[1])
+  if (!porta) return socket.destroy()
+
+  return encaminharUpgrade(req, socket, head, porta, '/' + partes.slice(2).join('/') + busca)
+}
+
+function encaminharUpgrade(req, socket, head, porta, destino) {
+  const req2 = http.request({
+    host: '127.0.0.1', port: porta, path: destino, method: req.method,
+    headers: req.headers,
+  })
+  req2.end()
+
+  req2.on('upgrade', (r2, socket2, head2) => {
+    socket.write(`HTTP/1.1 101 ${r2.statusMessage || 'Switching Protocols'}\r\n`
+      + Object.entries(r2.headers).map(([k, v]) => `${k}: ${v}`).join('\r\n')
+      + '\r\n\r\n')
+    if (head2?.length) socket.write(head2)
+    socket2.pipe(socket)
+    socket.pipe(socket2)
+    // Um lado caindo tem que derrubar o outro, senão sobra socket meio-aberto
+    // segurando memória do painel, que roda o dia inteiro.
+    const fim = () => { socket.destroy(); socket2.destroy() }
+    socket.on('error', fim); socket2.on('error', fim)
+    socket.on('close', fim); socket2.on('close', fim)
+  })
+  req2.on('error', () => socket.destroy())
+  if (head?.length) req2.write?.(head)
+}
+
 /** Sobe na primeira porta livre a partir de `port`. */
 export function startWeb({ port = 8099, tries = 10 } = {}) {
   return new Promise((resolve, reject) => {
     let attempt = 0
     const server = http.createServer(handler)
+    server.on('upgrade', proxyUpgrade)
     server.on('error', (e) => {
       if (e.code === 'EADDRINUSE' && attempt < tries) {
         attempt++

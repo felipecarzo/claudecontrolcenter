@@ -6,6 +6,7 @@
 // não é job. É servidor local, a mesma categoria que a aba de servidores já
 // encerra hoje. O que continua proibido é mexer no agente em si.
 
+import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
@@ -78,6 +79,41 @@ function definicoes() {
     .filter((p) => !(naVps && p.id === 'vps'))
 }
 
+/**
+ * Onde o binário do painel realmente está.
+ *
+ * Medido em 14/08: o botão "ligar" respondia `ok` e nada subia. O serviço
+ * systemd não herda o PATH do shell, então `spawn('pixel-agents')` não achava
+ * o binário instalado em `~/.npm-global/bin`, e `stdio: 'ignore'` engolia o
+ * erro. Falhar calado é pior que não ter o botão: parece que funcionou.
+ *
+ * Procura nos lugares conhecidos do npm e devolve o comando original quando não
+ * acha, para a mensagem de erro continuar dizendo o nome que a pessoa espera.
+ */
+export function resolverBinario(cmd) {
+  const candidatos = [
+    path.join(os.homedir(), '.npm-global', 'bin', cmd),
+    path.join(os.homedir(), '.local', 'bin', cmd),
+    `/usr/local/bin/${cmd}`,
+    `/usr/bin/${cmd}`,
+  ]
+  for (const c of candidatos) {
+    try { if (fs.existsSync(c)) return c } catch { /* segue */ }
+  }
+  return cmd
+}
+
+/**
+ * A porta de um painel, sem varrer nada.
+ *
+ * O proxy do escritório precisa disto a cada requisição do iframe (dezenas por
+ * carga), e `readPaineis()` chama `readServers()`, que leva segundos. Aqui só
+ * se lê a declaração, que é o que a rota precisa saber para onde encaminhar.
+ */
+export function portaDe(id) {
+  return definicoes().find((p) => p.id === id)?.porta || null
+}
+
 /** Acha o processo que está segurando a porta, se houver. */
 function processoNaPorta(porta, { force = false } = {}) {
   return readServers({ force }).find((s) => s.ports.includes(porta)) || null
@@ -100,7 +136,13 @@ export function readPaineis({ force = false } = {}) {
       noAr: Boolean(proc),
       pid: proc?.pid ?? null,
       desde: proc?.startedAt ?? null,
-      url: `http://localhost:${p.porta}`,
+      // Caminho relativo, servido pelo próprio cockpit (rota `/painel/:id`).
+      // Era `http://localhost:PORTA`, e `localhost` é a máquina de quem OLHA:
+      // no PC dava certo por acaso, no celular o navegador procurava a porta no
+      // próprio telefone. Relativo funciona nos dois, e passa pela senha do
+      // `cockpit-auth` junto com o resto do painel.
+      url: `/painel/${p.id}/`,
+      urlLocal: `http://localhost:${p.porta}`,
       // o que a pessoa rodaria na mão, pra poder copiar quando algo der errado
       comando: [p.cmd, ...p.args].join(' '),
     }
@@ -117,7 +159,7 @@ export function ligarPainel(id) {
   // Destacado e sem stdio: o painel precisa sobreviver ao fim deste processo,
   // senão morre junto com o Control Center — foi exatamente assim que o túnel
   // caiu na primeira tentativa.
-  const filho = spawn(def.cmd, def.args, {
+  const filho = spawn(resolverBinario(def.cmd), def.args, {
     detached: true,
     stdio: 'ignore',
     shell: def.shell,

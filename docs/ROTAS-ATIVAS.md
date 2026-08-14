@@ -29,7 +29,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
-| `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: cockpit federado. CC-47, CC-51, CC-54, CC-55, CC-57 e CC-58 feitos. Falta ligar o PC: ver ticket) | — |
+| `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: cockpit federado, CC-47/51/54/55/57/58. Escritório servido por proxy com WebSocket, porque `localhost` no iframe é o celular de quem olha. Falta ligar o PC: ver ticket) | — |
 | `framework` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: gate de MVP de ponta a ponta, hook registrado no `settings.json` da VPS e ligado no `proj_controlcenter`. Ver ticket) | — |
 
 ## Como pedir autorização numa rota que tem dono
