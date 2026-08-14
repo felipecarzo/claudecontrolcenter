@@ -5,8 +5,11 @@ atualizado: 2026-08-14
 estado: análise conceitual fechada, aguardando ordem de implementar
 resumo: O caminho para o framework de engenharia sair de gate de MVP solto e virar sistema. Nasceu de um erro real, inofensivo, em que a IA implementou sem pedido durante uma conversa de conceito.
 termos:
-  modo conversa: estado em que discutir é permitido e escrever código é recusado
+  modo diálogo: decidimos em prosa e a IA interpreta. É o fluxo de hoje
+  modo imperativo: ele não digita, segue o backlog e autoriza por clique
+  modo restritivo: agente com rota travada no Routia, sem prosa, só objetivo e revisão
   gate: hook que recusa a ferramenta com exit 2 e devolve o motivo pro modelo
+  gate de perguntas: o AskUserQuestion, o mecanismo por trás dos modos
   fase: onde o projeto está no método (definição, execução), decide o que trava
   ferramentas do projeto: quais camadas de verificação aquele projeto usa, escolhido na Definição
   ponto de aprovação: o lugar minúsculo onde o humano decide, para o pronto não ser auto-avaliação
@@ -72,20 +75,84 @@ não usa.
 Cada etapa entrega sozinha. A ordem é: primeiro o que impede erro novo, depois o
 que dá interface, por último o que amplia.
 
-### F1. O modo conversa (o gate que faltou hoje)
+### F1. Os modos de ativação
 
-O que resolveria o erro deste documento. O estado ganha `modo`:
+Desenhado pelo Felipe em 14/08, melhor do que a minha proposta de dois estados.
+São **quatro modos**, mais um botão que desliga tudo:
 
-- **`conversa`**: escrever em código é recusado. Documento, backlog e o próprio
-  estado continuam livres, porque é o que a conversa produz.
-- **`execucao`**: como é hoje.
+| Modo | Como a decisão é tomada |
+|---|---|
+| **desligado** | A IA é a de sempre. Um botão, sempre disponível, sem exceção |
+| **diálogo** | Decidimos em prosa e eu interpreto. O fluxo de hoje |
+| **imperativo** | Ele não digita: segue o backlog definido, responde perguntas decisivas e **autoriza por clique** |
+| **restritivo** | Para agente com rota limitada no Routia. Sem prosa: pergunta o objetivo, define backlog, executa até o fim, só revisões |
 
-Mecânico, sem julgamento: o hook não tenta adivinhar se houve pedido, ele lê um
-interruptor. Quem liga e desliga é o Felipe, por botão no painel ou por uma
-frase que ele já usa naturalmente ("pode implementar", "vamos testar").
+Os quatro formam uma escala de rigor crescente, e o nome diz **como a decisão é
+tomada**: conversando, pelo backlog, pelo escopo travado.
 
-Ponto a decidir na hora: se a IA pode voltar para `execucao` sozinha ao receber
-ordem explícita, ou se só o Felipe troca. A versão segura é só ele.
+Ele batizou o segundo de "permissivo" e autorizou trocar ("é o de menos").
+Trocado por **diálogo** por dois motivos: "permissivo" colide com as permissões
+do Claude Code (o allow/deny de ferramentas), e numa mensagem de recusa do hook
+isso confundiria; e "diálogo" descreve o mecanismo em vez do grau de liberdade.
+
+Sobre escopo, palavra dele: o framework é **global**, com **níveis de
+rigorosidade** além do estilo de produção, e o botão de desligar vale para tudo.
+Isso é diferente do que eu tinha proposto (modo por projeto), e a razão dele é
+melhor: o ritmo é dele, não do repositório.
+
+**O clique do imperativo resolve o risco 1 de graça.** Eu tratava "onde o humano
+aprova" como peça separada; no desenho dele já é parte do modo.
+
+**O restritivo liga Routia e framework**, que estavam soltos. O escopo do agente
+já é provado mecanicamente pelo `rota-guard`: se ele só tem a rota `frontend`,
+prosa sobre arquitetura é conversa que não leva a nada. Pergunta o objetivo,
+monta backlog, vai até o fim.
+
+**Objeção que levantei e como ficou:** o erro que originou este plano
+aconteceria de novo no diálogo, porque foi interpretação de prosa. Decisão
+dele: *"o gatilho explícito meu resolve, mas se eu não deixar explícito você
+manda um gate de pergunta que nem esse"*. Ou seja, no diálogo, sem sinal
+claro para construir, eu **pergunto** em vez de decidir. Não bloqueia o fluxo e
+tira de mim a decisão de quando começar.
+
+Ressalva a não esquecer no imperativo: se ele só responde e **eu** escolho o que
+perguntar, eu controlo a pauta. A saída do modo tem que estar sempre à mão, sem
+depender de eu oferecer a opção.
+
+### F1b. O gate de perguntas, que é o mecanismo por trás dos modos
+
+Pergunta dele: *"qual o nome disso e como ativa? [...] esse gate de perguntas e
+respostas pode ser o segredo master do framework, manipular isso é incrível e
+muito útil"*.
+
+**Nome: `AskUserQuestion`**, ferramenta do Claude Code, não deste projeto. De 1 a
+4 perguntas por vez, de 2 a 4 opções cada, sempre com resposta livre automática
+(o "Other"), múltipla escolha opcional, e `preview` para comparar alternativas
+lado a lado.
+
+**Não existe comando que a ative.** É o modelo que decide chamar, e é exatamente
+esse o buraco: hoje a IA decide quando perguntar, e foi por isso que não
+perguntei antes de construir o glossário. Três formas de o framework tomar essa
+decisão para si:
+
+1. **Por bloqueio** (`PreToolUse` recusa e devolve "pergunte antes"). O mais
+   forte e o único mecânico. Sem saída: ou pergunta, ou não escreve.
+2. **Por injeção de contexto** (`SessionStart` / `UserPromptSubmit` insere a
+   regra do modo). Mais leve, mas volta a ser instrução, e instrução é sugestão.
+3. **Por catálogo**: as perguntas obrigatórias de cada fase vêm de arquivo, não
+   da cabeça da IA. É o mais valioso, pelo motivo abaixo.
+
+**O risco que vem junto do poder, e é o argumento decisivo a favor do catálogo:**
+quem escreve as opções molda a decisão. Formular a pergunta e as três
+alternativas já filtra o mundo antes de ele escolher, mesmo sem má intenção.
+Aconteceu hoje: ofereci três leituras de "network", ele quis as três, e a quarta
+possibilidade era eu não ter pensado nela. Catálogo tira essa alavanca da mão da
+IA; a resposta livre, que ele fez questão de manter sempre, é a válvula contra a
+moldura.
+
+**Duas limitações que afetam o desenho:** só funciona em sessão interativa
+(agente de background não tem a quem perguntar, para e espera ou decide sozinho),
+e o teto é quatro perguntas por vez.
 
 ### F2. O ponto onde o humano aprova (risco 1)
 
