@@ -330,6 +330,31 @@ hoje o modo só liga e desliga gate, não muda como eu converso.
 
 Roo Code, Antigravity, IDEs locais. Registrado como direção, sem trabalho agora.
 
+### F16. PDF continua sem extrator, e é decisão pendente
+
+Pergunta do Felipe em 15/08, e ela achou um buraco meu: *"mas se o PDF não lê,
+no Pierre ele também não lê contrato em PDF?"*.
+
+**Não. O Pierre lê PDF e DOCX** (`extrair.ts`, com `pdfjs-dist` e `mammoth`).
+Eu tinha portado só o detector e deixado o extrator para trás, então o
+mascarador bloqueava justamente o formato em que contrato costuma chegar.
+
+**DOCX foi resolvido no mesmo dia, sem dependência:** `src/extrairDocx.mjs` lê
+o ZIP com o `zlib` do Node e tira o texto do XML. Umas 50 linhas contra 2 MB de
+biblioteca. Provado contra contrato real (`assets/contratos-exemplo` do
+inovallbond): 12 valores mascarados, nenhum nome vazando.
+
+**PDF fica pendente, e é escolha entre dois males:**
+
+| Caminho | Custo |
+|---|---|
+| Trazer `pdfjs-dist` | 34 MB e o fim da regra de zero dependência de runtime |
+| Escrever à mão | PDF tem fonte embutida, codificação própria e texto em ordem de desenho. Sairia um extrator ruim disfarçado de solução |
+| Deixar bloqueado | Contrato em PDF simplesmente não passa pelo mascarador |
+
+Hoje está no terceiro, que é o único honesto sem uma decisão dele. Se PDF for
+frequente no uso real, a conta muda e vale pagar os 34 MB.
+
 ### F15. Achado em projeto alheio se registra NO GIT dele
 
 Regra que o Felipe formulou em 15/08, olhando o caso acontecer: *"isso é uma

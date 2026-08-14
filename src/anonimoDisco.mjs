@@ -23,6 +23,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { anonimizar, reidentificar, vazou } from './anonimizar.mjs'
+import { extrairDocx } from './extrairDocx.mjs'
 
 export const DIR_MAPAS = path.join(os.homedir(), '.claude', 'control-center-anon')
 export const DIR_COPIAS = path.join(os.tmpdir(), 'cc-anon')
@@ -36,10 +37,20 @@ export const EXTENSOES = new Set([
   '.log', '.eml', '.vtt', '.srt',
 ])
 
-/** As que o mascarador NÃO lê de verdade: são compactadas ou binárias, e o
- *  texto sai como lixo. Reportadas como "não dá para mascarar", nunca como
- *  "mascarado" — dizer que protegeu sem ter protegido é o erro mais caro. */
-export const OPACAS = new Set(['.pdf', '.docx', '.doc', '.odt', '.rtf'])
+/**
+ * As que o mascarador NÃO consegue ler, e por isso são bloqueadas em vez de
+ * mascaradas: dizer que protegeu sem ter protegido é o erro mais caro aqui.
+ *
+ * `.docx` saiu desta lista em 15/08, quando ganhou extrator próprio
+ * (`extrairDocx.mjs`, ZIP mais XML com o zlib do Node, sem dependência). Foi
+ * pergunta do Felipe que revelou o buraco: o Pierre lê PDF e DOCX, e eu tinha
+ * portado só o detector — o mascarador bloqueava justamente o formato em que
+ * contrato chega.
+ *
+ * PDF continua aqui, e a decisão é consciente: extrair PDF exige `pdfjs-dist`
+ * (34 MB), e escrever à mão daria um extrator ruim disfarçado de solução.
+ */
+export const OPACAS = new Set(['.pdf', '.doc', '.odt', '.rtf'])
 
 export const deveMascarar = (arquivo) => EXTENSOES.has(path.extname(String(arquivo)).toLowerCase())
 export const ehOpaco = (arquivo) => OPACAS.has(path.extname(String(arquivo)).toLowerCase())
@@ -55,11 +66,19 @@ const idDe = (arquivo, texto) => crypto
  * significa o dado passar em claro.
  */
 export function mascararArquivo(arquivo) {
+  // `.docx` passa pelo extrator próprio; o resto é lido como texto puro.
   let texto = ''
-  try {
-    texto = fs.readFileSync(arquivo, 'utf8')
-  } catch (e) {
-    return { ok: false, erro: `não deu para ler: ${String(e?.message || e)}` }
+  if (path.extname(arquivo).toLowerCase() === '.docx') {
+    texto = extrairDocx(arquivo) || ''
+    if (!texto) {
+      return { ok: false, erro: 'não deu para extrair o texto deste .docx (corrompido ou só renomeado?)' }
+    }
+  } else {
+    try {
+      texto = fs.readFileSync(arquivo, 'utf8')
+    } catch (e) {
+      return { ok: false, erro: `não deu para ler: ${String(e?.message || e)}` }
+    }
   }
 
   if (ehOpaco(arquivo) && texto.includes('\u0000')) {
