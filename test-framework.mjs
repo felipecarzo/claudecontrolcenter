@@ -202,6 +202,44 @@ ok('verificação segura a fase: precisa ter rodado E não pode ter acusado prob
 assert.equal(avaliar('mvp-basico', definido).portaoAberto, true)
 ok('o método antigo não mudou de comportamento')
 
+// ------------------------------- F8 e F13: entrevista e tom
+const { PERGUNTAS, TONS, TOM_RECOMENDADO, proximaPergunta, tomDe } = await import('./src/framework.mjs')
+
+// projeto novo pergunta o nome primeiro, uma coisa por vez
+const nova = proximaPergunta('mvp-basico', vazio)
+assert.equal(nova.predicado, 'mvp-tem-nome')
+assert.ok(nova.opcoes.length >= 2, 'pergunta sem opção não serve ao AskUserQuestion')
+assert.ok(nova.falta, 'a pergunta carrega qual pendência ela resolve')
+// com nome, a próxima é o critério
+const soNome = { ...vazio, mvp: { nome: 'x', criterios: [] } }
+assert.equal(proximaPergunta('mvp-basico', soNome).predicado, 'mvp-definido')
+// resolvido tudo, silêncio
+assert.equal(proximaPergunta('mvp-basico', definido), null)
+assert.equal(proximaPergunta('mvp-basico', { ...vazio, ligado: false }), null)
+ok('entrevista pergunta uma coisa por vez e cala quando não há pendência')
+
+// toda pergunta do catálogo aponta pra um predicado que existe
+for (const [pred, q] of Object.entries(PERGUNTAS)) {
+  assert.ok(PREDICADOS[pred], `pergunta órfã: ${pred}`)
+  assert.ok(q.pergunta && q.header && q.ajuda, `pergunta ${pred} incompleta`)
+  assert.ok(q.header.length <= 12, `header "${q.header}" passa de 12 caracteres`)
+  for (const o of q.opcoes) assert.ok(o.label && o.descricao, `opção sem texto em ${pred}`)
+}
+ok('todo verbete do catálogo é válido para o AskUserQuestion')
+
+// o entrega-cliente também pergunta as ferramentas
+const cli2 = { ...estadoInicial('entrega-cliente'), mvp: definido.mvp }
+assert.equal(proximaPergunta('entrega-cliente', cli2).predicado, 'ferramentas-escolhidas')
+ok('o segundo método reusa o catálogo, sem pergunta nova no código')
+
+// F13: tom é eixo separado do modo
+assert.equal(tomDe({}), 'explicativo')
+assert.equal(tomDe({ modo: 'imperativo' }), 'direto')
+assert.equal(tomDe({ modo: 'imperativo', tom: 'explicativo' }), 'explicativo', 'tom escolhido vence o recomendado')
+assert.equal(tomDe({ modo: 'imperativo', tom: 'inventado' }), 'direto', 'tom inválido cai no recomendado')
+for (const m of Object.keys(MODOS)) assert.ok(TONS[TOM_RECOMENDADO[m]], `modo ${m} sem tom recomendado válido`)
+ok('tom é independente do modo, com recomendado por modo')
+
 // ------------------------------------------------------------ mudar escopo
 const semMotivo = mudarEscopo(pronto, { mvp: { nome: 'outro', criterios: [] } })
 assert.equal(semMotivo.ok, false, 'mudança de escopo sem motivo tem que recusar')

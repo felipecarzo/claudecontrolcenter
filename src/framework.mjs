@@ -149,6 +149,99 @@ export const METODOS = {
   },
 }
 
+/**
+ * F8: as perguntas da entrevista, e elas são DADO.
+ *
+ * A inversão da visão: ligado, o framework demanda ao Felipe em vez de esperar.
+ * Hoje o gate só recusa ("falta o MVP"); a entrevista é o que faz ele conduzir.
+ *
+ * **Por que catálogo e não a IA inventando a pergunta na hora:** decisão dele em
+ * 14/08, e o motivo é o risco que ele mesmo apontou como "segredo master" —
+ * quem escreve as opções molda a decisão. Se eu formulo a pergunta E as
+ * alternativas, eu filtrei o mundo antes de ele escolher. Catálogo tira essa
+ * alavanca da minha mão. A resposta livre (o "Other" do `AskUserQuestion`, que
+ * é automático) é a válvula contra a moldura que sobrar.
+ *
+ * Cada pergunta é amarrada ao PREDICADO que ela resolve: se o predicado está
+ * satisfeito, a pergunta não aparece. Assim a entrevista termina sozinha, em
+ * vez de virar questionário fixo.
+ */
+export const PERGUNTAS = {
+  'mvp-tem-nome': {
+    pergunta: 'O que este projeto entrega, numa frase?',
+    header: 'O projeto',
+    ajuda: 'Sem isso o framework não sabe quando dizer que acabou.',
+    opcoes: [
+      { label: 'Descrever agora', descricao: 'Escrevo a frase e ela vira o nome do MVP.' },
+      { label: 'É continuação de algo', descricao: 'O projeto já existe e estou retomando: uso o que já está escrito no ROADMAP ou no README como ponto de partida.' },
+    ],
+  },
+  'mvp-definido': {
+    pergunta: 'Como a gente sabe que está pronto?',
+    header: 'Pronto é',
+    ajuda: 'Um a três critérios verificáveis. É o que o framework confere depois.',
+    opcoes: [
+      { label: 'Listar os critérios agora', descricao: 'Digo em voz alta o que precisa funcionar, e viram a lista.' },
+      { label: 'Derivar do que já existe', descricao: 'Puxar do ROADMAP ou dos testes que já estão no projeto, e eu confirmo.' },
+      { label: 'Só um critério, o essencial', descricao: 'Definir o mínimo agora e acrescentar depois. Escopo cresce declarando.' },
+    ],
+  },
+  'ferramentas-escolhidas': {
+    pergunta: 'Que verificações este projeto precisa antes de entregar?',
+    header: 'Verificação',
+    ajuda: 'Decidido aqui, na Definição, para não virar escolha solta no meio da execução.',
+    opcoes: [
+      { label: 'Segredo e dependência', descricao: 'O básico: nada de chave vazada no histórico, nenhuma dependência com falha conhecida. Serve para qualquer projeto.' },
+      { label: 'Tudo que se aplica a site de cliente', descricao: 'Segredo, dependência, e as sondas de dado (RLS aberto, chave de admin no bundle, rota restrita sem login).' },
+      { label: 'Nenhuma por enquanto', descricao: 'Projeto interno ou experimento. Pode acrescentar depois, mas o framework vai parar de cobrar.' },
+    ],
+  },
+  'criterios-todos-marcados': {
+    pergunta: 'Os critérios que faltam ainda valem?',
+    header: 'Critérios',
+    ajuda: 'Aparece quando o trabalho parece pronto mas a lista discorda.',
+    opcoes: [
+      { label: 'Sim, ainda falta fazer', descricao: 'O trabalho continua. Nada muda.' },
+      { label: 'Cortar do escopo', descricao: 'Não vale mais a pena. Fica registrado com motivo, e o projeto pode fechar sem eles.' },
+    ],
+  },
+}
+
+/** A próxima coisa a perguntar, ou `null` quando não há pendência. Uma por vez:
+ *  entrevista que dispara quatro perguntas juntas vira formulário, e formulário
+ *  é o que ele não lê. */
+export function proximaPergunta(metodo, estado) {
+  const M = metodoDe(metodo)
+  if (!M || estado?.ligado === false) return null
+  const idx = Math.max(0, M.fases.findIndex((f) => f.id === estado?.fase))
+  const fase = M.fases[idx]
+  for (const p of fase?.exige || []) {
+    const falta = PREDICADOS[p] ? PREDICADOS[p](estado) : null
+    if (falta && PERGUNTAS[p]) return { predicado: p, falta, fase: fase.id, ...PERGUNTAS[p] }
+  }
+  return null
+}
+
+/**
+ * F13: o tom recomendado de cada modo.
+ *
+ * Tom e modo são eixos SEPARADOS, correção dele ao meu desenho: "eles podem
+ * ficar separados [...] eu posso mudar o tom de qualquer um também". O modo diz
+ * o que trava; o tom diz como eu falo. O recomendado existe só para a escolha
+ * rápida ser um clique.
+ */
+export const TONS = {
+  direto: 'Frases curtas, sem explicação. Executa e reporta o resultado.',
+  explicativo: 'Diz o porquê de cada escolha e o que foi descartado no caminho.',
+}
+export const TOM_RECOMENDADO = {
+  desligado: 'explicativo',
+  dialogo: 'explicativo',
+  imperativo: 'direto',
+  restritivo: 'direto',
+}
+export const tomDe = (estado) => (TONS[estado?.tom] ? estado.tom : TOM_RECOMENDADO[modoDe(estado).id] || 'explicativo')
+
 /** Casamento de caminho simples: `src/**` pega tudo sob `src/`, `*` pega o que
  *  está na raiz, nome exato pega ele mesmo. Sem dependência, de propósito. */
 export function casa(padrao, rel) {

@@ -227,7 +227,41 @@ dado e não código — hoje isso é afirmação, não fato demonstrado.
 Fase de cada projeto, o que falta para o próximo portão, quantas vezes o escopo
 mudou. É a camada de insight que justifica todo o registro embaixo.
 
-### F8. A entrevista inicial
+### F8. A entrevista inicial ✅ 14/08
+
+O que faz o framework **conduzir** em vez de só recusar. Duas peças:
+
+- `PERGUNTAS` em `src/framework.mjs`: catálogo, cada verbete amarrado ao
+  predicado que ele resolve. Predicado satisfeito, pergunta some — a entrevista
+  termina sozinha em vez de virar formulário fixo.
+- `hooks/framework-inicio.mjs` (`SessionStart`): injeta onde o projeto está, com
+  que tom falar, e a próxima pergunta a fazer, com as opções do catálogo.
+
+**Uma pergunta por vez, de propósito.** Quatro juntas viram formulário, e
+formulário é o que ele não lê.
+
+**Injeta em vez de bloquear**, e isso é coerente: `SessionStart` não tem
+ferramenta para recusar. A trava já existe do outro lado — se eu ignorar a
+pergunta e for escrever código, o `framework-guard` me recusa. Um conduz, o
+outro segura.
+
+**O catálogo é o ponto, não detalhe de implementação.** Se eu inventasse a
+pergunta e as alternativas na hora, teria filtrado o mundo antes de ele
+escolher — o risco que ele mesmo nomeou ao chamar isso de "segredo master". A
+resposta livre do `AskUserQuestion` é automática e fecha a brecha que sobra.
+
+Prova: projeto novo devolve "O que este projeto entrega, numa frase?" com duas
+opções; com o nome preenchido, passa para os critérios; com tudo resolvido, fica
+em silêncio. Projeto sem framework não imprime nada.
+
+### F13. Tom, separado do modo ✅ 14/08
+
+`TONS` e `TOM_RECOMENDADO`: dois tons (direto, explicativo), um recomendado por
+modo para a escolha rápida, e tom escolhido à mão vence o recomendado. Tom
+inválido cai no recomendado em vez de quebrar. O hook de início injeta o tom
+junto do modo.
+
+### F8 (desenho original)
 
 A inversão da visão: o framework demanda ao Felipe, começando por "o que é o
 projeto". Hoje o gate só recusa, ainda não conduz.
