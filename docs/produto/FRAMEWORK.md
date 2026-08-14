@@ -210,6 +210,65 @@ Dois passos deliberados, e nenhum deles automático:
 
 Desligar num projeto é apagar a pasta `.framework`.
 
+## Terceira rodada, 14/08: ferramenta é escolha testada, não aprovação prévia
+
+Discutida a partir de um documento externo (síntese de outra sessão sobre este
+mesmo framework, mais um plano de "Bancada" — auditoria e teste, ver
+[[BANCADA]]) que reintroduzia UML/MER como algo o "agente força". A correção
+dele foi mais funda do que essa frase, e virou princípio geral de todo o
+framework, não só desse ponto:
+
+> "isso tudo é ferramenta [...] quem pode testar e me dizer o que funciona e o
+> que não funciona é unicamente você como IA [...] a melhor forma de saber
+> quais ferramentas a gente vai usar pra garantir a integridade e segurança
+> das etapas é você. A única coisa que é essencial pra mim é que as suas
+> decisões sejam revisadas e testadas e que gerem ruídos, esses ruídos não
+> precisam estar na linguagem natural, pode ser o mais rápido leve e fácil
+> possível pra você, pq a ideia do cockpit é pegar esse ruído e traduzir pra
+> mim, e criar uma forma do meu cérebro controlar você como uma máquina de
+> produção, ao invés de ficarmos discutindo prosa. [...] o foco é no mouse e
+> poucas teclas resolver problemas complexos de forma rápida, e só parar o
+> trabalho pra discutir coisas que só juntos poderíamos resolver, e que o
+> framework JÁ teria isso definido desde o início do projeto na definição de
+> pronto."
+
+Discussão completa em [[../DISCUSSAO-FRAMEWORK-BANCADA]]. Três decisões que
+saem direto disto:
+
+1. **UML, Mermaid, qual scanner de segurança, qual linter — é escolha da IA,
+   testada, nunca aprovação prévia dele nem regra fixa.** Nenhuma ferramenta
+   é obrigatória por padrão; nenhuma é descartada de antemão. Uso quando o
+   teste mostrar que ajuda o projeto em questão.
+2. **A escolha de QUAIS ferramentas um projeto vai usar entra na fase de
+   Definição, junto do MVP** — não é decisão solta que aparece no meio da
+   execução. Consequência de código: `estadoInicial()` provavelmente ganha um
+   campo (`ferramentas` ou dentro de `mvp`) decidido no mesmo momento que
+   nome e critérios.
+3. **Pergunta com opções (o mecanismo que este chat já usa) fica reservada
+   pra decisão de rumo** — arquitetura, escopo, filosofia do produto — nunca
+   pra escolha de ferramenta ou tática. E as respostas dele a essas perguntas
+   de rumo viraram uma visão maior, registrada abaixo.
+
+### Visão registrada, não implementada: perguntas em rede
+
+Ele pediu para o framework ter um "sistema de perguntas [...] que obriga a IA
+a me perguntar coisas ou aceitar sugestões extras ou selecionar coisas como
+tecnologias, stacks ou recursos", e quando perguntei o que ele queria dizer
+com "se encaixa no conceito de network", escolheu as três leituras que
+ofereci, juntas, não uma:
+
+- As perguntas viajam entre as máquinas pela federação do cockpit (CC-47):
+  uma pergunta que surge no PC pode ser respondida do celular, e vice-versa.
+- Rede de decisões com memória: cada resposta vira um nó que perguntas
+  futuras podem consultar, não pergunta solta e esquecida.
+- Vários agentes na mesma rede de trabalho, repassando ou delegando uma
+  pergunta entre si — o Método Routia já coordena agentes; isto seria a
+  mesma ideia aplicada a decisão, não a arquivo.
+
+Isto é arquitetura própria, maior que uma função dentro do gate de MVP.
+**Decisão dele: registrar como visão, terminar o resto primeiro** (Framework
+e Bancada). Vira frente própria no ROADMAP quando chegar a vez.
+
 ## O que falta decidir antes de virar produto
 
 - **Onde o humano decide** (risco 1). Hoje o ciclo inteiro roda sem nenhum ponto
@@ -221,4 +280,10 @@ Desligar num projeto é apagar a pasta `.framework`.
 - **Mais de um método.** Só existe `mvp-basico`. O segundo preset é o que prova
   de verdade que o método é dado e não código.
 - **A entrevista inicial** ("o que é o projeto"), que é a inversão da visão.
-  Hoje o gate só recusa; ele ainda não conduz.
+  Hoje o gate só recusa; ele ainda não conduz. Agora com escopo maior: a
+  entrevista também é onde as ferramentas do projeto (Bancada incluída) se
+  decidem, junto do MVP.
+- **Bancada como gate** ([[BANCADA]], decidido 14/08): o "pronto" da fase de
+  Execução provavelmente passa a exigir pelo menos a camada de segredo
+  rodada, não só os critérios do MVP marcados. Desenho de como isso entra no
+  motor (`framework.mjs`) ainda não foi feito.

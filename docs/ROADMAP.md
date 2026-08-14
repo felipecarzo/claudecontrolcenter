@@ -495,6 +495,47 @@ O suficiente para decidir se algo do backlog conflita com ela:
 Terceira camada do produto: o cockpit é a tela, os hooks são o sensor e o gate,
 e o framework é o método que os dois servem.
 
+**Terceira rodada de decisão, mesmo dia, a partir de um documento externo que
+o Felipe trouxe (ata completa em [[../DISCUSSAO-FRAMEWORK-BANCADA]]):**
+
+- **Qual ferramenta usar (UML, Mermaid, qual scanner) é escolha da IA,
+  testada, nunca aprovação prévia dele.** "Quem pode testar e me dizer o que
+  funciona é você" — e a escolha de quais ferramentas um projeto vai usar
+  entra na fase de Definição do framework, junto do MVP, não solta no meio da
+  execução.
+- **Pergunta com opções fica reservada pra decisão de rumo**, nunca escolha
+  de ferramenta ou tática. As perguntas que valeram hoje (quando o sistema
+  pergunta, catálogo vs IA, o que é "network", Bancada como gate) eram desse
+  tipo.
+- **Visão nova, registrada e não implementada: perguntas em rede.** As
+  perguntas do framework viajam entre PC e VPS pela federação, viram nó de uma
+  rede de decisões com memória entre si, e servem para agentes repassarem
+  decisão entre eles. Maior que uma função do gate — vira frente própria
+  quando chegar a vez, depois de Framework e Bancada.
+
+### Frente: Bancada — auditoria e teste agnóstico, ver [[produto/BANCADA]]
+
+Registrada em 14/08, a partir do mesmo documento externo. **Não implementada.**
+O cockpit instala o instrumento de teste no projeto, dispara, mostra o
+resultado, desinstala — o projeto não ganha CI próprio.
+
+O suficiente para decidir se algo do backlog conflita:
+
+- **Vira gate do [[produto/FRAMEWORK]]**: "pronto" provavelmente vai exigir
+  pelo menos a camada de segredo rodada, não só os critérios do MVP marcados.
+- Catálogo de 17 camadas, quatro marcadas como ponto de partida (CVE Lite,
+  Gitleaks, Sandyaa, Playwright), o resto desligado até virar objeto novo no
+  catálogo — sem código de runner extra.
+- O diferencial é código nosso, não ferramenta de prateleira: sonda de RLS do
+  Supabase, caça a `service_role` vazado no bundle, sonda de zona restrita sem
+  sessão. Nenhuma ferramenta pronta faz essas três.
+- **O painel não tem job assíncrono hoje**, e a Bancada precisa de um
+  (progresso, cancelamento, resultado que sobrevive ao clique). Reusa o único
+  precedente do repo, `dispararTarefa()` do `opencode.mjs`.
+- **Mesmo risco do systemd achado hoje com o Pixel Agents** (CC-62): reiniciar
+  o painel mata processo filho em corrida longa. Registrado, não bloqueia.
+- Aba própria, "bancada", ao lado de tempo/preço/servidores.
+
 ### Frente: Conteúdo social — módulo novo, ver [[produto/CONTEUDO-SOCIAL]]
 
 Decidido com o Felipe em 11/08: vive neste repo, não em projeto à parte.
