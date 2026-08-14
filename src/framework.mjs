@@ -25,6 +25,17 @@
 export const SEMPRE_LIVRE = ['docs/**', 'assets/**', '.framework/**', '*']
 
 /**
+ * O que conta como código para os MODOS.
+ *
+ * Separado do `trava` da fase de propósito, e o teste pegou o motivo: na fase
+ * de Execução o `trava` é vazio (a fase não bloqueia nada), então o modo nunca
+ * enxergaria arquivo nenhum como código e o imperativo não travaria. São duas
+ * perguntas diferentes: a FASE pergunta "esta etapa bloqueia este caminho?", o
+ * MODO pergunta "isto é código?".
+ */
+export const CODIGO = ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**', 'hooks/**']
+
+/**
  * Predicados: o vocabulário que uma fase usa em `exige`. Cada um devolve `null`
  * quando está satisfeito, ou a frase do que falta.
  *
@@ -88,10 +99,68 @@ export function casa(padrao, rel) {
   return alvo === padrao
 }
 
+/**
+ * Os modos de ativação, desenhados pelo Felipe em 14/08.
+ *
+ * Escala de rigor crescente, e o nome diz COMO a decisão é tomada: conversando,
+ * pelo backlog, pelo escopo travado. Ver `docs/planos/FRAMEWORK-V1.md`.
+ *
+ * `diálogo` nasceu de um erro real e barato: no meio de uma conversa que ele
+ * abriu com "vamos discutir isso ainda antes de implementar", eu implementei
+ * duas abas inteiras. Tratei resposta de design como ordem de execução. A
+ * instrução existia, era recente, era explícita, e não segurou nada — que é a
+ * tese inteira deste framework, provada contra mim.
+ *
+ * Por isso `pergunta`: no diálogo, sem gatilho claro para construir, a IA
+ * PERGUNTA em vez de decidir. Decisão dele: "o gatilho explícito meu resolve,
+ * mas se eu não deixar explícito você manda um gate de pergunta que nem esse".
+ */
+export const MODOS = {
+  desligado: {
+    id: 'desligado',
+    titulo: 'Desligado',
+    explica: 'A IA é a de sempre. Nada é travado.',
+    trava: false,
+    pergunta: false,
+  },
+  dialogo: {
+    id: 'dialogo',
+    titulo: 'Diálogo',
+    explica: 'Decidimos em prosa. Sem um gatilho claro seu, eu pergunto antes de escrever código.',
+    trava: false,
+    pergunta: true,
+  },
+  imperativo: {
+    id: 'imperativo',
+    titulo: 'Imperativo',
+    explica: 'Só o que está no backlog, e cada passo precisa da sua autorização.',
+    trava: true,
+    pergunta: true,
+    exigeAutorizacao: true,
+  },
+  restritivo: {
+    id: 'restritivo',
+    titulo: 'Restritivo',
+    explica: 'Agente de escopo travado: objetivo, backlog e execução até o fim, sem prosa.',
+    trava: true,
+    pergunta: false,
+    exigeAutorizacao: false,
+  },
+}
+
+/** `dialogo` é o padrão: é o fluxo que já existia antes de os modos nascerem, e
+ *  estado antigo (sem o campo) não pode mudar de comportamento sozinho. */
+export const modoDe = (estado) => MODOS[estado?.modo] || MODOS.dialogo
+
 export const estadoInicial = (metodo = 'mvp-basico') => ({
   metodo,
+  modo: 'dialogo',
   fase: METODOS[metodo]?.fases[0]?.id || null,
   mvp: { nome: '', criterios: [] },
+  // O que a IA já pode construir sem perguntar de novo. Vazio significa
+  // "conversamos, mas você ainda não mandou fazer" — o estado exato em que eu
+  // estava quando construí o glossário sem pedido.
+  autorizado: [],
   historico: [],
 })
 
@@ -147,9 +216,73 @@ export function podeEditar(metodo, estado, rel) {
   if (a.erro) return { ok: true, motivo: 'método desconhecido, liberando' }
   if (a.ligado === false) return { ok: true, motivo: 'framework desligado neste projeto' }
   if (SEMPRE_LIVRE.some((p) => casa(p, rel))) return { ok: true, motivo: 'caminho sempre livre' }
+
+  // O MODO decide antes da fase: nos modos que travam, nem MVP definido libera
+  // código sem autorização explícita. É o conserto do erro de 14/08 — o projeto
+  // estava em Execução com o portão aberto, e por isso nada me impediu.
+  const modo = modoDe(estado)
+  const eCodigo = CODIGO.some((p) => casa(p, rel))
+  if (modo.trava && eCodigo) {
+    const permitido = (estado?.autorizado || []).some((alvo) => casa(alvo, rel) || alvo === '**')
+    if (!permitido) {
+      return {
+        ok: false,
+        modo: modo.id,
+        motivoModo: modo.explica,
+        pendencias: [`o modo ${modo.titulo} exige autorização explícita para escrever em ${rel}`],
+        explica: modo.explica,
+      }
+    }
+  }
+
   if (!a.trava.some((p) => casa(p, rel))) return { ok: true, motivo: 'fase não trava este caminho' }
   if (a.portaoAberto) return { ok: true, motivo: 'portão aberto, falta só avançar de fase' }
   return { ok: false, fase: a.fase, pendencias: a.pendencias, explica: a.explica }
+}
+
+/**
+ * Autoriza a IA a escrever num caminho, dentro dos modos que travam.
+ *
+ * `'**'` autoriza tudo até o modo mudar, e existe para a ordem "pode
+ * implementar" não virar uma lista de caminhos digitada à mão. A autorização é
+ * um evento com hora e motivo: é o rastro que o cockpit traduz, e o que faltava
+ * quando eu decidi sozinho que era hora de construir.
+ */
+export function autorizar(estado, { alvo = '**', motivo = null, quando = null }) {
+  const atual = estado?.autorizado || []
+  if (atual.includes(alvo)) return { ok: true, estado }
+  return {
+    ok: true,
+    estado: {
+      ...estado,
+      autorizado: [...atual, alvo],
+      historico: [
+        ...(estado?.historico || []),
+        { tipo: 'autorizacao', alvo, motivo, modo: modoDe(estado).id, quando: quando || null },
+      ],
+    },
+  }
+}
+
+/**
+ * Troca o modo. Zera as autorizações de propósito: autorização dada no diálogo
+ * não pode sobreviver à entrada no imperativo, senão trocar de modo não muda
+ * nada e o rigor vira decoração.
+ */
+export function trocarModo(estado, modo, { quando = null } = {}) {
+  if (!MODOS[modo]) return { ok: false, erro: `modo desconhecido: ${modo}` }
+  return {
+    ok: true,
+    estado: {
+      ...estado,
+      modo,
+      autorizado: [],
+      historico: [
+        ...(estado?.historico || []),
+        { tipo: 'modo', de: modoDe(estado).id, para: modo, quando: quando || null },
+      ],
+    },
+  }
 }
 
 /** Avança de fase. Recusa com o que falta, em vez de avançar calado. */
@@ -190,6 +323,11 @@ export function resumo(metodo, estado) {
   const a = avaliar(metodo, estado)
   if (a.erro) return a.erro
   if (a.ligado === false) return 'Framework desligado neste projeto. O MVP registrado continua guardado.'
+  const modo = modoDe(estado)
+  if (modo.trava) {
+    const n = (estado?.autorizado || []).length
+    return `Modo ${modo.titulo}. ${modo.explica}${n ? ` ${n} autorização(ões) em vigor.` : ''}`
+  }
   const onde = `fase ${a.indice + 1} de ${METODOS[a.metodo]?.fases.length}: ${a.tituloFase}`
   if (a.portaoAberto) {
     return a.ultima

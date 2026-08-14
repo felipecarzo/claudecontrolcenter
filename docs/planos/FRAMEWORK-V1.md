@@ -2,7 +2,7 @@
 tags: [plano, framework]
 tipo: plano
 atualizado: 2026-08-14
-estado: análise conceitual fechada, aguardando ordem de implementar
+estado: F1, F1b e F3 no ar. F2 embutido no imperativo. Faltam F4 a F11
 resumo: O caminho para o framework de engenharia sair de gate de MVP solto e virar sistema. Nasceu de um erro real, inofensivo, em que a IA implementou sem pedido durante uma conversa de conceito.
 termos:
   modo diálogo: decidimos em prosa e a IA interpreta. É o fluxo de hoje
@@ -75,7 +75,29 @@ não usa.
 Cada etapa entrega sozinha. A ordem é: primeiro o que impede erro novo, depois o
 que dá interface, por último o que amplia.
 
-### F1. Os modos de ativação
+### F1. Os modos de ativação ✅ 14/08
+
+**Feito e provado contra mim mesmo.** Liguei o modo imperativo neste projeto e
+tentei escrever um arquivo em `src/`. Fui recusado, com o MVP completo e o
+portão de fase aberto — exatamente a situação em que, horas antes, nada me
+impediu de construir o glossário sem pedido.
+
+Duas coisas que o teste ensinou e que estão no código:
+
+- **O modo precisa da própria noção de "isto é código".** A primeira versão
+  reusava o `trava` da fase, e na fase de Execução esse campo é vazio: o
+  imperativo não travava nada. São perguntas diferentes — a fase pergunta "esta
+  etapa bloqueia este caminho?", o modo pergunta "isto é código?". Hoje existe
+  `CODIGO` separado, e há teste guardando.
+- **As duas travas são em série, e isso é correto.** Modo libera, fase ainda
+  pode barrar (projeto sem MVP continua sem escrever código, em qualquer modo).
+  Confundi as duas num teste e achei que era bug; era o desenho certo.
+
+Trocar de modo **zera as autorizações**, de propósito: autorização dada em
+diálogo não pode sobreviver à entrada no imperativo, senão trocar de modo não
+muda nada e o rigor vira decoração.
+
+### F1 (desenho original)
 
 Desenhado pelo Felipe em 14/08, melhor do que a minha proposta de dois estados.
 São **quatro modos**, mais um botão que desliga tudo:
@@ -162,11 +184,26 @@ evidência de que isso falha (545 testes verdes com a tela quebrada).
 
 Regra de desenho: um botão e uma frase. Nunca um documento para ler.
 
-### F3. Interface de uso (`cc framework`)
+### F3. Interface de uso (`cc framework`) ✅ 14/08
 
-Hoje o MVP se registra editando JSON à mão — foi como eu me destravei, e é a
-prova de que está errado. Comandos: iniciar, status, mvp, avançar, modo, mudar
-escopo.
+Existe porque registrar MVP editando `.framework/estado.json` à mão foi como eu
+me destravei do próprio gate. O arquivo é sempre livre e tem que ser (senão não
+há como sair da fase); o comando não fecha esse buraco, mas tira o incentivo.
+
+```
+cc framework                      onde o projeto está e o que falta
+cc framework iniciar              liga no projeto
+cc framework modo [nome]          lista ou troca (desligado|dialogo|imperativo|restritivo)
+cc framework autorizar [alvo]     libera escrita nos modos que travam
+cc framework mvp --nome / --criterio
+cc framework avancar              recusa dizendo o que falta
+```
+
+**Bug achado e corrigido no caminho, e vale para o CLI inteiro:** `--dir` não
+estava na lista de flags que consomem o argumento seguinte, então o VALOR virava
+posicional — `framework autorizar --dir /tmp/x` autorizava um caminho chamado
+`/tmp/x`. Consertado na origem (`FLAGS_WITH_VALUE`), com as outras flags novas
+registradas junto.
 
 ### F4. As ferramentas do projeto entram na Definição
 
@@ -201,13 +238,31 @@ As três leituras que ele escolheu juntas: pergunta viaja entre máquinas pela
 federação, respostas viram rede de decisões com memória, agentes repassam
 decisão entre si. Frente própria, depois do resto.
 
-## Fora deste plano, de propósito
+### F10. Gate de documentação
 
-- **Gate de documentação** (recusar fechar sessão com concluído parado no
-  ROADMAP). É irmão do F1 e sai barato junto, mas é outro assunto: organização,
-  não engenharia de software.
-- **Redesign das abas.** Decidido em 14/08, pendente, e cresceu de urgência:
-  são 14 abas agora, duas delas criadas no erro que abriu este plano.
+Recusar fechar a sessão com concluído parado no ROADMAP. É irmão do F1 e sai
+barato junto: mesmo mecanismo, hook que lê um estado e recusa.
+
+A regra existe escrita há semanas ("concluído sai daqui e vira linha no
+diário", linha 3 do próprio ROADMAP) e não foi seguida por ninguém, inclusive
+por mim, dez vezes em 14/08. É o segundo caso de teste do princípio do
+framework, e o mais barato de provar.
+
+### F11. Redesign das abas
+
+Decidido em 14/08 e pendente desde então. Cresceu de urgência: eram 12 abas, são
+**14 agora**, e duas delas nasceram no erro que originou este plano.
+
+Os dois agrupamentos que ele nomeou, e que valem como estão: **tempo, gráficos e
+preço** (a mesma pergunta: quanto custou e quanto vale) e **servidores, VPS,
+hooks e remoto** (o que está ligado e o que eu ligo ou desligo).
+
+Critério para o resto, dado por ele: agrupar por **pergunta que ele faz**, nunca
+por tipo de dado. Isso leva a quatro portas em vez de quatorze — o que exige
+decisão agora, quanto custou, o que está ligado, o que a máquina está fazendo.
+
+Vem depois do F1 de propósito: construir os modos dentro da estrutura nova, em
+vez de mexer duas vezes na navegação.
 
 ## Verificação
 

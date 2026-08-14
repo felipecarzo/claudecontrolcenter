@@ -28,7 +28,12 @@ import { HOOKS } from './src/hooksCatalogo.mjs'
 import { instalarRotas, detectarPastas } from './src/routia.mjs'
 
 const argv = process.argv.slice(2)
-const FLAGS_WITH_VALUE = new Set(['--port', '--job', '--project'])
+// Flag que come o argumento seguinte. Esquecer de registrar aqui faz o VALOR da
+// flag virar posicional: `framework autorizar --dir /tmp/x` tratava `/tmp/x`
+// como o alvo a autorizar. Achado testando o CLI do framework em 14/08.
+const FLAGS_WITH_VALUE = new Set([
+  '--port', '--job', '--project', '--dir', '--metodo', '--motivo', '--nome', '--criterio', '--pastas',
+])
 
 const has = (f) => argv.includes(f)
 const val = (f, d = null) => {
@@ -204,6 +209,109 @@ switch (cmd) {
       console.log(`criado: ${r.arquivo}`)
       console.log(`pastas-controladas: [${r.pastas.join(', ')}]`)
       console.log(`\nse não bater com a estrutura real, edite o front-matter à mão.`)
+    }
+    break
+  }
+
+  /**
+   * O framework de engenharia, pela linha de comando.
+   *
+   * Existe porque registrar MVP editando `.framework/estado.json` à mão é o que
+   * me deixou burlar o próprio gate em 14/08: o arquivo é sempre livre (tem que
+   * ser, senão não há como sair da fase), então quem edita à mão passa por
+   * cima. Comando não conserta isso sozinho, mas tira o incentivo.
+   */
+  case 'framework': {
+    const F = await import('./src/framework.mjs')
+    const D = await import('./src/frameworkDisco.mjs')
+    const dir = path.resolve(val('--dir') || process.cwd())
+    const raiz = D.acharRaiz(dir)
+
+    const exigeRaiz = () => {
+      if (!raiz) die(`este projeto não tem framework ligado\nligue com: node cc.mjs framework iniciar`)
+      return raiz
+    }
+    const mostrar = (r) => {
+      const e = D.ler(r)
+      console.log(F.resumo(e.metodo, e))
+      const a = F.avaliar(e.metodo, e)
+      if (a.pendencias?.length) a.pendencias.forEach((p) => console.log(`  falta: ${p}`))
+      if ((e.autorizado || []).length) console.log(`  autorizado: ${e.autorizado.join(', ')}`)
+    }
+
+    switch (arg) {
+      case 'iniciar': {
+        if (raiz) die(`já existe framework em ${raiz}`)
+        const r = D.iniciar(dir, val('--metodo') || 'mvp-basico')
+        if (!r.ok) die(r.erro)
+        console.log(`framework ligado em ${dir}`)
+        mostrar(dir)
+        break
+      }
+      case 'modo': {
+        const r = exigeRaiz()
+        const alvo = positional[2]
+        if (!alvo) {
+          console.log(`modo atual: ${F.modoDe(D.ler(r)).id}`)
+          console.log(`disponíveis: ${Object.keys(F.MODOS).join(', ')}`)
+          break
+        }
+        const t = F.trocarModo(D.ler(r), alvo, { quando: new Date().toISOString() })
+        if (!t.ok) die(t.erro)
+        D.gravar(r, t.estado)
+        console.log(`modo: ${alvo}`)
+        mostrar(r)
+        break
+      }
+      case 'autorizar': {
+        const r = exigeRaiz()
+        const a = F.autorizar(D.ler(r), {
+          alvo: positional[2] || '**',
+          motivo: val('--motivo') || null,
+          quando: new Date().toISOString(),
+        })
+        D.gravar(r, a.estado)
+        console.log(`autorizado: ${positional[2] || '**'}`)
+        break
+      }
+      case 'avancar': {
+        const r = exigeRaiz()
+        const av = F.avancar(D.ler(r).metodo, D.ler(r))
+        if (!av.ok) {
+          console.log('não dá para avançar ainda:')
+          av.pendencias.forEach((p) => console.log(`  ${p}`))
+          process.exitCode = 1
+          break
+        }
+        D.gravar(r, av.estado)
+        mostrar(r)
+        break
+      }
+      case 'mvp': {
+        const r = exigeRaiz()
+        const e = D.ler(r)
+        const nome = val('--nome')
+        const criterio = val('--criterio')
+        if (!nome && !criterio) {
+          console.log(`nome: ${e.mvp?.nome || '(sem nome)'}`)
+          for (const c of e.mvp?.criterios || []) console.log(`  [${c.feito ? 'x' : ' '}] ${c.texto}`)
+          break
+        }
+        const mvp = { ...e.mvp }
+        if (nome) mvp.nome = nome
+        if (criterio) mvp.criterios = [...(mvp.criterios || []), { texto: criterio, feito: false }]
+        D.gravar(r, { ...e, mvp })
+        mostrar(r)
+        break
+      }
+      case 'status':
+      case undefined: {
+        if (!raiz) { console.log('este projeto não tem framework ligado'); break }
+        mostrar(raiz)
+        break
+      }
+      default:
+        die(`uso: node cc.mjs framework [status|iniciar|modo <nome>|autorizar [alvo]|mvp|avancar]`)
     }
     break
   }

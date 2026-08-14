@@ -101,6 +101,67 @@ assert.equal(avaliar('mvp-basico', vazio).ligado, true)
 assert.equal(podeEditar('mvp-basico', vazio, 'src/a.mjs').ok, false)
 ok('desligado libera tudo e preserva o MVP; ausência do campo conta como ligado')
 
+// ------------------------------------------------------------- os modos
+const { MODOS, modoDe, autorizar, trocarModo } = await import('./src/framework.mjs')
+
+// estado antigo, sem o campo, não pode mudar de comportamento sozinho
+assert.equal(modoDe({}).id, 'dialogo')
+assert.equal(modoDe({ modo: 'nao-existe' }).id, 'dialogo')
+assert.equal(estadoInicial().modo, 'dialogo')
+ok('sem modo declarado, o padrão é diálogo')
+
+// no diálogo o código passa quando o portão está aberto (o fluxo de hoje)
+const emDialogo = { ...definido, fase: 'execucao', modo: 'dialogo' }
+assert.equal(podeEditar('mvp-basico', emDialogo, 'src/a.mjs').ok, true)
+ok('diálogo não trava: é o fluxo de sempre')
+
+// imperativo trava MESMO com MVP definido e portão aberto — é o conserto do
+// erro de 14/08, onde o projeto estava em Execução e nada me impediu
+const emImperativo = { ...emDialogo, modo: 'imperativo' }
+const bloq = podeEditar('mvp-basico', emImperativo, 'src/a.mjs')
+assert.equal(bloq.ok, false, 'imperativo tem que travar mesmo com o MVP pronto')
+assert.equal(bloq.modo, 'imperativo')
+assert.match(bloq.pendencias[0], /autorização/)
+assert.equal(podeEditar('mvp-basico', { ...emDialogo, modo: 'restritivo' }, 'src/a.mjs').ok, false)
+ok('imperativo e restritivo travam código mesmo com o portão aberto')
+
+// e não travam o que nunca trava
+for (const livre of ['docs/x.md', '.framework/estado.json', 'package.json']) {
+  assert.equal(podeEditar('mvp-basico', emImperativo, livre).ok, true, `${livre} tinha que passar`)
+}
+ok('nos modos que travam, docs e o próprio estado continuam livres')
+
+// autorizar libera, e deixa rastro
+const aut = autorizar(emImperativo, { alvo: '**', motivo: 'pode implementar' })
+assert.equal(podeEditar('mvp-basico', aut.estado, 'src/a.mjs').ok, true)
+assert.equal(aut.estado.historico.at(-1).tipo, 'autorizacao')
+assert.equal(aut.estado.historico.at(-1).motivo, 'pode implementar')
+// autorização por caminho não vaza para outro caminho
+const soSrc = autorizar(emImperativo, { alvo: 'src/**' })
+assert.equal(podeEditar('mvp-basico', soSrc.estado, 'src/a.mjs').ok, true)
+assert.equal(podeEditar('mvp-basico', soSrc.estado, 'apps/b.mjs').ok, false)
+ok('autorizar libera com rastro, e o alvo não vaza para outro caminho')
+
+// trocar de modo zera autorização: senão o rigor vira decoração
+const voltou = trocarModo(aut.estado, 'imperativo')
+assert.deepEqual(voltou.estado.autorizado, [])
+assert.equal(podeEditar('mvp-basico', voltou.estado, 'src/a.mjs').ok, false)
+assert.equal(voltou.estado.historico.at(-1).tipo, 'modo')
+assert.equal(trocarModo(emDialogo, 'inventado').ok, false)
+ok('trocar de modo zera as autorizações e fica no histórico')
+
+// desligado é mais forte que qualquer modo
+assert.equal(podeEditar('mvp-basico', { ...emImperativo, ligado: false }, 'src/a.mjs').ok, true)
+ok('desligado vence o modo: nada trava')
+
+// o resumo diz o modo quando ele trava
+assert.match(resumo('mvp-basico', emImperativo), /Imperativo/)
+assert.match(resumo('mvp-basico', aut.estado), /autoriza/i)
+// e os quatro modos existem com explicação
+assert.deepEqual(Object.keys(MODOS), ['desligado', 'dialogo', 'imperativo', 'restritivo'])
+for (const m of Object.values(MODOS)) assert.ok(m.explica && m.titulo, `modo ${m.id} sem texto`)
+ok('os quatro modos existem, com título e explicação, e o resumo os mostra')
+
 // ------------------------------------------------------------ mudar escopo
 const semMotivo = mudarEscopo(pronto, { mvp: { nome: 'outro', criterios: [] } })
 assert.equal(semMotivo.ok, false, 'mudança de escopo sem motivo tem que recusar')

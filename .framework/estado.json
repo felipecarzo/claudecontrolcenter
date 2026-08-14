@@ -2,6 +2,8 @@
  "metodo": "mvp-basico",
  "fase": "execucao",
  "ligado": true,
+ "modo": "dialogo",
+ "autorizado": [],
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
   "criterios": [

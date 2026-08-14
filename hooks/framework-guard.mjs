@@ -64,6 +64,25 @@ const rel = relative(raiz, alvo).replace(/\\/g, '/')
 const veredito = podeEditar(estado.metodo, estado, rel)
 if (veredito.ok) liberar()
 
+// Recusa por MODO é outra conversa que recusa por fase: aqui o MVP pode estar
+// completo e o portão aberto — o que falta é a autorização dele. Dizer "falta
+// definir o MVP" nesse caso mandaria o agente consertar a coisa errada.
+if (veredito.modo) {
+  bloquear(`FRAMEWORK: modo ${veredito.modo.toUpperCase()}, escrita em código bloqueada em ${rel}
+
+${veredito.motivoModo}
+
+Neste modo, escrever código exige autorização explícita do Felipe. Enquanto ela
+não vier, o caminho é perguntar, não decidir sozinho.
+
+Como sair daqui:
+  - ele autoriza pelo painel, ou
+  - o modo volta para "dialogo" em ${raiz}/.framework/estado.json
+
+Documentação, backlog e o próprio estado continuam livres: é o que a conversa
+produz, e travar isso tornaria impossível registrar a decisão.`)
+}
+
 const a = avaliar(estado.metodo, estado)
 bloquear(`FRAMEWORK: ${a.tituloFase.toUpperCase()}, edição de código bloqueada em ${rel}
 
