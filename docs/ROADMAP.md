@@ -367,6 +367,35 @@ Lição para qualquer coisa nova na aba escritório: o que o `render()` troca po
 `outerHTML` tem que ser **exatamente** o que a função devolve, senão o que
 sobra fora do seletor se duplica a cada tique.
 
+### CC-61: A tela branca depois do CC-59 era uma camada mais funda ✅ 14/08
+
+O Felipe, minutos depois do CC-59: "a tela ficou branca sem piscar, porém o
+pixel agents não carregou nada". O parar de piscar confirmou que o `render()`
+estava certo; a tela branca era outra coisa.
+
+O acesso ao cockpit passa por **três camadas**, e eu só tinha testado a de
+dentro: `cockpit.carzo.com.br` → nginx → `cockpit-auth` (porta 5181, a senha) →
+`agent-cockpit` (porta 5180, o painel) → Pixel Agents (3101). O nginx repassa
+`Upgrade`/`Connection` certo (já configurado para o hot reload do dev.sh). O
+proxy do CC-58 dentro do `agent-cockpit` também. **Faltava só o meio: o
+`cockpit-auth` não tinha handler de `upgrade` nenhum**, então o WebSocket
+morria bem na porta de entrada — a página HTTP carregava normal (por isso não
+piscava mais), e os bonecos nunca chegavam.
+
+**Conserto em `~/cockpit-auth.mjs`** (fora deste repositório, ver ressalva
+abaixo): `servidor.on('upgrade', ...)` exige a mesma sessão válida do resto do
+proxy antes de encaminhar — WebSocket sem senha seria um buraco do tamanho do
+painel inteiro, justamente o que a 5180 escutar só em 127.0.0.1 existe para
+evitar. Provado com sessão de teste descartada logo depois: `101 Switching
+Protocols` com cookie válido, `401` sem ele.
+
+**Ressalva que fica registrada por ser risco real:** `~/cockpit-auth.mjs` **não
+está em repositório nenhum**, nem este nem outro. É a porta de entrada do
+painel inteiro, e vive só no disco desta VPS, sem histórico de versão e sem
+backup. Se o arquivo se perder, ninguém recupera esta correção nem as
+anteriores. Vale um dia entrar em algum lugar versionado, ainda que fora do
+`proj_controlcenter`.
+
 ### CC-60: O outro Pixel Agents, o do Telegram
 
 Achado em 14/08 investigando o escritório: já existe um `pixel-agents` rodando
