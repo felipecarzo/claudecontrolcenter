@@ -215,6 +215,26 @@
   .tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--acento); }
   .tab .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); margin-left: 6px; }
 
+  /* F11: duas fileiras. O grupo é a decisão grande e vem em cima, maior; a aba
+     é o detalhe e vem embaixo, menor. Se as duas tivessem o mesmo peso visual,
+     seriam 19 botões iguais em vez de 15, que é o oposto do objetivo. */
+  .tab-grupos { display: flex; gap: 2px; flex-wrap: wrap; }
+  .tab-abas { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 2px; }
+  .grupo {
+    background: none; border: 0; border-bottom: 2px solid transparent;
+    padding: 7px 14px; cursor: pointer; color: var(--faint); white-space: nowrap;
+    font: 700 13px/1 var(--label); letter-spacing: .18em; text-transform: uppercase;
+  }
+  .grupo:hover { color: var(--dim); }
+  .grupo[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--acento); }
+  .grupo .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); margin-left: 6px; font-size: 11px; }
+  /* a aba dentro do grupo é secundária: sem sublinhado, marcada por fundo */
+  .tab-abas .tab {
+    border-bottom: 0; border-radius: 999px; padding: 5px 11px;
+    font-size: 10.5px; letter-spacing: .1em;
+  }
+  .tab-abas .tab[aria-selected="true"] { background: var(--faint); color: var(--fg); }
+
   main { padding: 4px 20px 60px; }
   #painel > footer { color: var(--faint); font-size: 11px; padding: 0 20px 28px; }
   .empty { color: var(--faint); text-align: center; padding: 60px 0; }
@@ -1434,6 +1454,27 @@ const TABS = [
   { id: 'glossario', label: 'glossário' },
   { id: 'remoto', label: 'remoto' },
 ]
+
+/**
+ * F11: as quatro portas.
+ *
+ * Eram 15 abas numa fileira só, e duas delas nasceram no mesmo dia do redesign
+ * — o Felipe reclamou com razão. O critério de agrupamento é dele: **a pergunta
+ * que ele faz**, nunca o tipo de dado. Dois grupos ele nomeou diretamente
+ * (tempo/gráficos/preço juntos; servidores/VPS/hooks/remoto juntos), os outros
+ * seguem a mesma lógica.
+ *
+ * A aba continua sendo a unidade real: `tab` guarda o id de sempre, `?tab=`
+ * continua valendo (a captura de tela depende disso) e o localStorage de quem
+ * já usa não muda de lugar. O grupo é derivado da aba ativa, não guardado —
+ * um estado a menos para dessincronizar.
+ */
+const GRUPOS = [
+  { id: 'agora', label: 'agora', abas: ['projetos', 'agentes', 'todos', 'meu', 'escritorio'] },
+  { id: 'custo', label: 'custo', abas: ['tempo', 'graficos', 'preco'] },
+  { id: 'controle', label: 'controle', abas: ['servidores', 'vps', 'hooks', 'rotinas', 'remoto'] },
+  { id: 'saber', label: 'saber', abas: ['glossario', 'agenda'] },
+]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
 // painel sem nenhuma aba marcada.
 let tab = params.get('tab') || localStorage.getItem('cc-tab') || 'agentes'
@@ -1571,10 +1612,29 @@ function renderHeader() {
     projetos: (s.projects || []).length,
     servidores: SERVERS ? SERVERS.filter((x) => x.dev).length : null,
   }
-  $('#tabs').innerHTML = TABS.map((t) => `
-    <button class="tab" role="tab" data-tab="${t.id}" aria-selected="${t.id === tab}">
-      ${t.label}${counts[t.id] != null ? `<span class="n">${counts[t.id]}</span>` : ''}
-    </button>`).join('')
+  // F11: duas fileiras. Em cima os quatro grupos, embaixo as abas do grupo
+  // ativo. O grupo sai da aba, nunca do contrário: guardar os dois criaria a
+  // chance de discordarem, e aí o painel abriria num grupo que não contém a
+  // aba marcada.
+  const grupoAtivo = GRUPOS.find((g) => g.abas.includes(tab)) || GRUPOS[0]
+  const soma = (g) => g.abas.reduce((a, id) => a + (counts[id] || 0), 0)
+
+  const linhaGrupos = GRUPOS.map((g) => {
+    const n = soma(g)
+    return `<button class="grupo" data-grupo="${g.id}" aria-selected="${g.id === grupoAtivo.id}">
+      ${g.label}${n ? `<span class="n">${n}</span>` : ''}
+    </button>`
+  }).join('')
+
+  const doGrupo = grupoAtivo.abas
+    .map((id) => TABS.find((t) => t.id === id))
+    .filter(Boolean)
+
+  $('#tabs').innerHTML = `<div class="tab-grupos">${linhaGrupos}</div>
+    <div class="tab-abas">${doGrupo.map((t) => `
+      <button class="tab" role="tab" data-tab="${t.id}" aria-selected="${t.id === tab}">
+        ${t.label}${counts[t.id] != null ? `<span class="n">${counts[t.id]}</span>` : ''}
+      </button>`).join('')}</div>`
 }
 
 /* ===================== janela flutuante (resumo) =====================
@@ -3364,6 +3424,38 @@ function aplicarDados(snapshot) {
   render()
 }
 
+/**
+ * Trocar de aba, num lugar só.
+ *
+ * Antes isto vivia dentro do handler de clique, e a mesma lista de "o que
+ * carregar" estava repetida no boot — duas cópias que precisavam ser lembradas
+ * juntas a cada aba nova. Com o F11 apareceu uma terceira porta de entrada (o
+ * clique no grupo), e três cópias seria pedir para uma delas ficar para trás.
+ */
+function trocarAba(id) {
+  if (!TABS.some((t) => t.id === id)) return
+  tab = id
+  localStorage.setItem('cc-tab', tab)
+  armed = null
+  render()
+  carregarDaAba()
+}
+
+/** O que cada aba precisa buscar ao abrir. Chamado na troca e no boot. */
+function carregarDaAba() {
+  if (tab === 'servidores') carregarServidores()
+  if (tab === 'vps') carregarVps()
+  if (tab === 'agenda') carregarAgenda()
+  if (tab === 'hooks') carregarHooks()
+  if (tab === 'rotinas') carregarRotinas()
+  if (tab === 'remoto') { carregarRemoto(); if (!FEDERACAO) carregarFederacao() }
+  if (tab === 'escritorio') carregarPaineis()
+  if (tab === 'meu') carregarMeu()
+  if (tab === 'glossario') carregarGlossario()
+  if (tab === 'tempo' || tab === 'graficos') carregarTempo()
+  if (tab === 'preco') carregarPreco()
+}
+
 /* ==================== aba: meu (o que depende dele) ==================== */
 
 /**
@@ -4829,25 +4921,19 @@ document.addEventListener('click', async (e) => {
     return salvarNotas(true)
   }
 
-  const aba = t.closest('button[data-tab]')
-  if (aba) {
-    tab = aba.dataset.tab
-    localStorage.setItem('cc-tab', tab)
-    armed = null
-    render()
-    if (tab === 'servidores') carregarServidores()
-    if (tab === 'vps') carregarVps()
-    if (tab === 'agenda') carregarAgenda()
-    if (tab === 'hooks') carregarHooks()
-    if (tab === 'rotinas') carregarRotinas()
-    if (tab === 'remoto') { carregarRemoto(); if (!FEDERACAO) carregarFederacao() }
-    if (tab === 'escritorio') carregarPaineis()
-    if (tab === 'meu') carregarMeu()
-    if (tab === 'glossario') carregarGlossario()
-    if (tab === 'tempo' || tab === 'graficos') carregarTempo()
-    if (tab === 'preco') carregarPreco()
-    return
+  // F11: clicar no grupo abre a primeira aba dele, e daí em diante a navegação
+  // é a de sempre. Grupo não é estado à parte: é só um atalho para uma aba.
+  const grupo = t.closest('button[data-grupo]')
+  if (grupo) {
+    const g = GRUPOS.find((x) => x.id === grupo.dataset.grupo)
+    if (!g) return
+    // Se ele já está numa aba deste grupo, clicar de novo não deve tirá-lo dela.
+    const alvo = g.abas.includes(tab) ? tab : g.abas[0]
+    return trocarAba(alvo)
   }
+
+  const aba = t.closest('button[data-tab]')
+  if (aba) return trocarAba(aba.dataset.tab)
 
   const agDias = t.closest('[data-ag-dias]')
   if (agDias) {
@@ -5486,18 +5572,11 @@ if (!params.has('static')) {
 fetch('/api/jobs').then((r) => r.json()).then((d) => {
   DATA = d
   render()
-  if (tab === 'servidores') { carregarServidores(); carregarProcessos() }
-  if (tab === 'vps') carregarVps()
-  if (tab === 'agenda') carregarAgenda()
-  if (tab === 'hooks') carregarHooks()
-  if (tab === 'rotinas') carregarRotinas()
-  if (tab === 'remoto') carregarRemoto()
+  // Mesma lista da troca de aba, chamada de um lugar só: aba nova precisa ser
+  // lembrada uma vez, não três.
+  carregarDaAba()
+  if (tab === 'servidores') carregarProcessos()
   if (srvNovo) carregarProjetos()
-  if (tab === 'escritorio') carregarPaineis()
-  if (tab === 'meu') carregarMeu()
-  if (tab === 'glossario') carregarGlossario()
-  if (tab === 'tempo' || tab === 'graficos') carregarTempo()
-  if (tab === 'preco') carregarPreco()
 })
 
 carregarPip()

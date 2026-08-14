@@ -344,7 +344,40 @@ diário", linha 3 do próprio ROADMAP) e não foi seguida por ninguém, inclusiv
 por mim, dez vezes em 14/08. É o segundo caso de teste do princípio do
 framework, e o mais barato de provar.
 
-### F11. Redesign das abas
+### F11. Redesign das abas ✅ 15/08
+
+De 15 abas numa fileira para **quatro portas**, agrupadas pela pergunta que ele
+faz — critério dele, não por tipo de dado:
+
+| Porta | Abas |
+|---|---|
+| **agora** | cockpit, agentes, to-dos, meu, escritório |
+| **custo** | tempo, gráficos, preço |
+| **controle** | servidores, VPS, hooks, rotinas, remoto |
+| **saber** | glossário, agenda |
+
+Os dois primeiros agrupamentos são os que ele nomeou; os outros seguem a mesma
+lógica.
+
+**A aba continua sendo a unidade real.** `tab` guarda o id de sempre, `?tab=`
+continua valendo (a captura de tela depende disso) e o `localStorage` de quem já
+usava não muda de lugar. O grupo é **derivado** da aba ativa, nunca guardado:
+dois estados poderiam discordar, e aí o painel abriria num grupo que não contém
+a aba marcada.
+
+Hierarquia visual de propósito: o grupo é a decisão grande (maior, sublinhado),
+a aba é o detalhe (menor, pastilha). Com o mesmo peso seriam 19 botões iguais em
+vez de 15, o oposto do objetivo.
+
+**Faxina que veio junto:** a lista de "o que carregar ao abrir a aba" estava
+duplicada entre o clique e o boot, e o grupo seria a terceira cópia. Virou
+`trocarAba()` mais `carregarDaAba()`, chamadas das três portas de entrada.
+
+**Teste no gate** (`test.mjs`): toda aba precisa morar em algum grupo e nenhum
+grupo pode apontar para aba inexistente. Sem isso, acrescentar aba nova a
+deixaria **invisível** — existiria em `TABS` sem aparecer em porta nenhuma, e
+nenhum outro teste pegaria, porque o JS continua válido. Confirmei que o teste
+pega o erro simulando uma aba órfã.
 
 Decidido em 14/08 e pendente desde então. Cresceu de urgência: eram 12 abas, são
 **14 agora**, e duas delas nasceram no erro que originou este plano.

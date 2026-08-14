@@ -100,6 +100,23 @@ for (const s of scripts) {
   assert.doesNotThrow(() => new Function(s), 'ui.html tem erro de sintaxe no JS')
 }
 const script = scripts.join('\n')
+
+// F11: toda aba precisa morar em algum grupo, e nenhum grupo pode apontar pra
+// aba que não existe. Sem isto, acrescentar aba nova a deixa invisível na tela
+// (ela existe em TABS, mas nenhuma das quatro portas a mostra) — e o defeito
+// não aparece em nenhum outro teste, porque o JS continua válido.
+{
+  const trecho = (nome) => script.match(new RegExp(`const ${nome} = \\[[\\s\\S]*?\\n\\]`))?.[0]
+  const fonte = `${trecho('TABS')}\n${trecho('GRUPOS')}\nreturn { TABS, GRUPOS }`
+  const { TABS, GRUPOS } = new Function(fonte)()
+  const cobertas = new Set(GRUPOS.flatMap((g) => g.abas))
+  const orfas = TABS.filter((t) => !cobertas.has(t.id)).map((t) => t.id)
+  const fantasmas = [...cobertas].filter((id) => !TABS.some((t) => t.id === id))
+  assert.deepEqual(orfas, [], `aba sem grupo (invisível na tela): ${orfas.join(', ')}`)
+  assert.deepEqual(fantasmas, [], `grupo aponta pra aba inexistente: ${fantasmas.join(', ')}`)
+  assert.ok(GRUPOS.every((g) => g.abas.length), 'grupo vazio não pode existir')
+}
+
 for (const rota of ['/api/jobs', '/api/meta', '/api/notes', '/events']) {
   assert.ok(script.includes(rota), `ui.html não usa ${rota}`)
 }

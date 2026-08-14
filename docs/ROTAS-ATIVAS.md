@@ -25,12 +25,12 @@ Passo 0, antes de tocar em qualquer arquivo.
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
-| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: CC-63 glossário e CC-64 tarefas do Felipe) | — |
+| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-15: F11, 15 abas viraram 4 portas) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
 | `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: cockpit federado, CC-47/51/54/55/57/58. Escritório servido por proxy com WebSocket, porque `localhost` no iframe é o celular de quem olha. Falta ligar o PC: ver ticket) | — |
-| `framework` | 🔴 ocupada | ff0d68b2 — executando [[planos/FRAMEWORK-V1]]: os quatro modos (desligado, diálogo, imperativo, restritivo), o CLI e o gate de documentação | 2026-08-14 |
+| `framework` | 🟢 livre | — (ff0d68b2 fechou em 15/08: F1 a F4, F6 a F8, F10, F11 e F13 de [[planos/FRAMEWORK-V1]]. Faltam F5 (depende da Bancada) e as visões F9, F12, F14) | — |
 
 ## Como pedir autorização numa rota que tem dono
 
