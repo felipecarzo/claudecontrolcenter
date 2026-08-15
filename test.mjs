@@ -1515,6 +1515,38 @@ if (estRotinas.projetos.length) {
   assert.ok(real.ms < 2000, `varredura lenta demais: ${real.ms}ms`)
 }
 
+/* --- CC-87: toda tela responde uma pergunta, escrita no topo ---
+   Regra 1 da frente. O gate guarda a REGRA, não o texto: se alguém acrescentar
+   uma tela sem pergunta, ninguém notaria — foi assim que 11 das 15 ficaram
+   mudas até 15/08. */
+{
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui.html'), 'utf8')
+
+  assert.match(html, /function cabecaDaTela\(/, 'sumiu o componente do topo de tela')
+
+  // as telas já convertidas têm que continuar chamando
+  for (const [fn, pergunta] of [
+    ['viewMeu', 'O que depende de mim?'],
+    ['viewGlossario', 'O que é isso mesmo?'],
+    ['viewCockpit', 'Onde eu mexo agora?'],
+  ]) {
+    const i = html.indexOf(`function ${fn}(`)
+    assert.ok(i > 0, `${fn} sumiu`)
+    const corpo = html.slice(i, html.indexOf('\nfunction ', i + 10))
+    assert.ok(corpo.includes('cabecaDaTela('), `${fn} não usa o topo padrão`)
+    assert.ok(corpo.includes(pergunta), `${fn} perdeu a pergunta "${pergunta}"`)
+  }
+
+  /* A VPS é a que inaugurou o padrão, com nome próprio (`vps-veredito`) porque
+     veio antes. Se ela deixar de ter veredito, a regra morreu na origem. */
+  assert.match(html, /vps-veredito/, 'a aba VPS perdeu o veredito')
+
+  // as cores do veredito são as mesmas dos estados, não inventadas
+  for (const c of ['v-bom', 'v-atencao', 'v-ruim']) {
+    assert.ok(html.includes(`.tela-cabeca.${c}`), `falta a cor ${c}`)
+  }
+}
+
 /* --- CC-73: o painel não pode rolar de lado ---
    Não dá para medir layout sem navegador, e o Chrome desta VPS exige um token
    que o hook de segredo (com razão) não deixa ler. Então o que este teste

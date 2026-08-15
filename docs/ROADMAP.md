@@ -559,7 +559,7 @@ mesmo projeto é sinal de que as rotas estão mal divididas.** Esse número não
 existe hoje e seria o primeiro sinal objetivo de que o Routia precisa de ajuste
 naquele projeto.
 
-### CC-87: as 11 telas, uma a uma, pelo método `conserto`
+### CC-87 — as 11 telas, uma a uma (3 de 11 feitas em 15/08)
 
 Decisão dele em 15/08: **as onze**, com prévia em arquivo a cada uma, da mais
 fácil para a mais difícil. E, sobre o método: *"registra o conserto no backlog
@@ -579,6 +579,27 @@ Ordem: (1) `meu`, `glossário`, `cockpit`; (2) `agentes`, `to-dos`, `remoto`,
 
 Cada uma fecha com prévia em arquivo — é a fase de Prova do método, e a regra 1
 do ciclo dele.
+
+#### ✅ As três primeiras, 15/08
+
+`cabecaDaTela()` nasceu aqui: um componente só, com a pergunta e o veredito, no
+mesmo desenho que a aba VPS inaugurou.
+
+| Aba | A pergunta | O veredito |
+|---|---|---|
+| `meu` | O que depende de mim? | "Nada. Você resolveu 4." / "3 coisas só você pode resolver." |
+| `glossário` | O que é isso mesmo? | "9 documentos prontos, 3 ainda sem resumo." |
+| `cockpit` | Onde eu mexo agora? | "1 agente parado esperando você. Comece pelo de cima." |
+
+**O veredito do `cockpit` é o que mais muda o uso:** aquela aba já ordenava por
+urgência desde sempre, e **nunca dizia isso em voz alta**. Quem abria via uma
+lista e tinha que descobrir sozinho que a de cima era a mais urgente.
+
+O gate guarda a regra, não o texto: se alguém acrescentar tela sem pergunta,
+ninguém notaria — foi assim que 11 das 15 ficaram mudas até hoje.
+
+**Faltam 8:** `agentes`, `to-dos`(sprint), `remoto`, `servidores`, `agenda`,
+`preço`, `tempo`, `hooks`.
 
 ### ✅ CC-88 15/08 — a aba `to-dos` virou `sprint`, e as cores inverteram
 
