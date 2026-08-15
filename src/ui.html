@@ -746,6 +746,20 @@
   }
   /* CC-81: a resposta nasce ao lado da pergunta. z-index acima do header
      (que é sticky com 30), senão fica cortado quando o player está tocando. */
+  /* CC-83: os três níveis de backlog. A coluna "agora" é derivada de quem
+     tem agente — nunca digitada, senão vira artefato que envelhece. */
+  .m-niveis { display: grid; gap: 8px; margin-bottom: 16px; }
+  .m-nivel { padding: 9px 12px; border-radius: 8px; background: var(--surface);
+    border-left: 3px solid var(--line); }
+  .m-nivel.n-agora { border-left-color: var(--working); }
+  .m-nivel.n-fila { border-left-color: var(--waiting); }
+  .m-nivel.n-prontas { border-left-color: var(--done); opacity: .7; }
+  .m-nivel-cab { display: flex; align-items: baseline; gap: 8px; }
+  .m-nivel-cab b { font: 700 11px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; }
+  .m-nivel-itens { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .m-nivel-itens span { font-size: 11px; padding: 2px 7px; border-radius: 4px;
+    background: var(--bg); border: 1px solid var(--line); }
+
   /* CC-78: as rotas no mapa. Três cores, e a do meio é derivada. */
   .m-rotas { display: grid; gap: 6px; margin: 8px 0; }
   .m-rota {
@@ -4547,6 +4561,49 @@ function agentesPorFrente(projeto) {
   return conta
 }
 
+/**
+ * CC-83: os três backlogs, no vocabulário que ele já tem.
+ *
+ * Ideia dele: *"na metodologia ágil a gente tem backlog do produto, do sprint e
+ * do dia"*. Isso resolveu uma confusão que ele mesmo apontou — a tela de frentes
+ * e a aba de to-dos não são duas telas concorrendo, são **dois níveis do mesmo
+ * funil**, e faltava o nome que os separasse.
+ *
+ * **O nível do meio é DERIVADO, nunca digitado**, e essa é a decisão central.
+ * Uma terceira lista para alguém manter envelheceria como todo artefato que
+ * depende de disciplina. Sprint aqui é o que TEM AGENTE agora, e isso o painel
+ * já sabe.
+ *
+ * Medido em 15/08 nos 14 projetos: os roadmaps só têm dois estados escritos, 48
+ * abertas e 12 feitas, **zero "em andamento"**. Ninguém nunca escreveu isso num
+ * roadmap — por isso a coluna do meio não podia vir do texto.
+ */
+function viewNiveis(naFrente) {
+  const todas = MAPA.grupos.flatMap((g) => g.frentes)
+  const temAgente = (f) => (naFrente.get(f.titulo.toLowerCase())
+    ?? [...naFrente].find(([k]) => f.titulo.toLowerCase().startsWith(k))?.[1] ?? 0) > 0
+
+  const feitas = todas.filter((f) => f.estado === 'feito')
+  const sprint = todas.filter((f) => f.estado !== 'feito' && temAgente(f))
+  const fila = todas.filter((f) => f.estado !== 'feito' && !temAgente(f))
+
+  const bloco = (rotulo, lista, dica, classe) => `
+    <div class="m-nivel ${classe}">
+      <div class="m-nivel-cab"><b>${rotulo}</b><span class="m-frac">${lista.length}</span></div>
+      <p class="path">${dica}</p>
+      ${lista.length
+        ? `<div class="m-nivel-itens">${lista.slice(0, 8).map((f) => `<span>${esc(f.titulo)}</span>`).join('')}${
+            lista.length > 8 ? `<span class="path">e mais ${lista.length - 8}</span>` : ''}</div>`
+        : ''}
+    </div>`
+
+  return `<section class="m-niveis">
+    ${bloco('agora', sprint, 'frentes com agente trabalhando nelas — sai sozinho, ninguém escreve', 'n-agora')}
+    ${bloco('na fila', fila, 'o resto do que está aberto no roadmap', 'n-fila')}
+    ${bloco('prontas', feitas, 'já fechadas, mantidas para consulta', 'n-prontas')}
+  </section>`
+}
+
 function desenharMapa() {
   const el = $('#mapa')
   const scrim = $('#scrim-mapa')
@@ -4589,7 +4646,7 @@ function desenharMapa() {
   const barra = (feitos, itens) => (itens
     ? `<span class="m-frac">${feitos}/${itens}</span>` : '')
 
-  el.innerHTML = cabeca + MAPA.grupos.map((g) => `
+  el.innerHTML = cabeca + viewNiveis(naFrente) + MAPA.grupos.map((g) => `
     <section class="m-grupo e-${g.estado}">
       <div class="m-gtit">
         <span class="m-selo">${ROTULO_ESTADO[g.estado] || g.estado}</span>

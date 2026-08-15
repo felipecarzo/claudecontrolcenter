@@ -384,7 +384,7 @@ honesta ali.
 - **Agrupar as pastilhas por nível de backlog** — CC-83.
 - O layout do mapa continua ruim em tela estreita — isso é CC-77.
 
-### CC-83: três backlogs em níveis, que é o vocabulário que ele já tem
+### CC-83 ✅ 15/08 — três backlogs em níveis, no mapa
 
 Ideia dele em 15/08, e ela resolve uma confusão que ele mesmo tinha acabado de
 apontar (*"parece meio com o TO-DO também né?"*):
@@ -426,12 +426,22 @@ Adotar Scrum. A decisão do framework é dele e continua valendo:
 se pega **três palavras que ele já entende**, não a cerimônia — sem sprint com
 data, sem planning, sem estimativa.
 
+#### ✅ Feito, no mapa lateral
+
+Três blocos no topo: **agora**, **na fila**, **prontas**. O do meio sai de quem
+tem agente trabalhando na frente — o painel já sabia disso desde o campo
+`frente` do protocolo, e ninguém tinha juntado.
+
+A tela diz, embaixo do rótulo, **de onde cada número vem**. "Sai sozinho,
+ninguém escreve" não é enfeite: é o que impede alguém, daqui a três meses,
+tentar manter a lista à mão e frustrar-se quando ela não obedecer.
+
 #### Ligações
 
-- **CC-78** (rotas na tela) é a fonte do nível do meio. Um não anda sem o outro.
-- **CC-81** já fez a pastilha e o peso; falta agrupá-las por nível.
-- O campo `frente` do protocolo já liga to-do a frente, então a ponte entre o
-  nível de baixo e o de cima existe desde 14/08.
+- **CC-78** (rotas na tela) ✅ é a outra metade, e fechou junto.
+- **CC-81** ✅ fez a pastilha e o peso.
+- O campo `frente` do protocolo já ligava to-do a frente desde 14/08 — era a
+  ponte, e estava lá o tempo todo.
 
 ### CC-84 ✅ 15/08 — dois agentes no mesmo projeto, se falando
 
