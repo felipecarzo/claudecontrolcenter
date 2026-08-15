@@ -644,7 +644,7 @@ O que cada uma acertou, e onde estamos:
 Observação que vale guardar: o `git-add-guard` é um pre-commit caseiro que já
 existia aqui sem se chamar assim.
 
-### CC-67: `cc hooks install` — o gancho nasce com o projeto
+### CC-67 ✅ 15/08 — `cc hooks install`, o gancho nasce com o projeto
 
 **O mais urgente dos seis**, e a prova está no HANDOFF de hoje: dois hooks novos
 estão esperando ele registrar à mão no `settings.json` do PC, com caminho `D:/`.
@@ -654,9 +654,30 @@ O husky resolveu exatamente isto: gancho de git não é versionado, então cada
 máquina teria que instalar sozinha. Aqui é pior, porque o `settings.json` é
 global e o caminho muda de máquina.
 
-Já existe metade: `hooksRegistro.mjs` sabe **ler** e dizer se um hook está
-registrado. Falta escrever, com o cuidado de sempre — merge, nunca substituir o
-arquivo, que é o mesmo cuidado do `install.mjs` com o CLAUDE.md.
+**Feito.** `hooksRegistro.mjs` já sabia ler; ganhou `instalar()`.
+
+```
+cc hooks install --dry-run    mostra o que faria, sem tocar em nada
+cc hooks install              registra o que falta
+```
+
+Quatro cuidados, e o primeiro é o que mais podia dar errado:
+
+1. **Merge, nunca substituição.** O `settings.json` dele tem ~200 linhas e é
+   compartilhado: o pixel-agents registra em 11 eventos. Trocar a lista de um
+   evento apagaria hooks de terceiro sem aviso. **Há teste guardando isso**, com
+   um hook de outro sistema no mesmo evento.
+2. **Cópia antes de gravar** (`.bak`), pela mesma razão de `notes.mjs`: arquivo
+   editado à mão, sem outra fonte.
+3. **O JSON é validado antes de sobrescrever.** Settings quebrado não desliga um
+   hook, desliga *todos*.
+4. **Barra normal mesmo no Windows.** Barra invertida em JSON exige escape
+   duplo, e isso já quebrou o atalho do Desktop em silêncio.
+
+O caminho é derivado do próprio arquivo, então sai certo em cada máquina —
+`D:/...` no PC, `/home/...` aqui. E rodar duas vezes não duplica.
+
+O hook de recados (CC-84) entrou no catálogo junto, então já vai instalado.
 
 ### CC-68: catálogo de métodos, não um só
 

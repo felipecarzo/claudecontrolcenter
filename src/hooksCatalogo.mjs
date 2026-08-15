@@ -41,6 +41,17 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'recados',
+    label: 'Método Routia — agentes do mesmo projeto se falando',
+    script: 'recados.mjs',
+    evento: 'PreToolUse',
+    descricao: 'Entrega recado de outro agente na PRÓXIMA ferramenta, não no '
+      + 'fim do turno. Interrompe uma vez por recado e libera. Falha aberta: '
+      + 'roda em toda chamada de todos os agentes.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'rota-guard',
     label: 'Método Routia — trava edição sem rota',
     script: 'rota-guard.mjs',

@@ -11,6 +11,7 @@
 //   node cc.mjs on|off [--project X]   liga/desliga o reporte
 //   node cc.mjs hooks                  lista hooks e se estão ligados
 //   node cc.mjs hooks on|off <id>      liga/desliga um hook específico
+//   node cc.mjs hooks install [--dry-run]  registra os hooks no settings.json
 //   node cc.mjs routia install [pasta] cria docs/ROTAS-ATIVAS.md pro Método Routia
 //   node cc.mjs routia cobertura       onde o Routia está descoberto nesta máquina
 //   node cc.mjs deps [arquivo]     o que quebra se eu mexer aqui
@@ -189,6 +190,26 @@ switch (cmd) {
       console.log(`${id}: ${arg === 'on' ? 'ligado' : 'desligado'}`)
       break
     }
+    /* CC-67: o gancho nasce com o projeto. O husky resolveu isto no git há
+       anos; aqui doeu em 15/08, com três hooks esperando registro à mão no PC
+       enquanto o padrão de resposta valia só na VPS. */
+    if (arg === 'install') {
+      const R = await import('./src/hooksRegistro.mjs')
+      const simular = has('--dry-run')
+      const r = R.instalar(HOOKS.filter((h) => h.implementado), { dryRun: simular })
+      if (!r.ok) die(`não deu: ${r.erro}`)
+      console.log(`\n${R.SETTINGS_FILE}${simular ? '  (simulação, nada gravado)' : ''}\n`)
+      for (const f of r.feitos) {
+        const marca = { registrado: '+', 'já estava': '·' }[f.acao] || '!'
+        console.log(`  ${marca} ${f.id.padEnd(16)} ${f.acao}${f.evento ? `  (${f.evento})` : ''}`)
+      }
+      const novos = r.feitos.filter((f) => f.acao === 'registrado').length
+      console.log(novos
+        ? `\n  ${novos} registrado(s). Cópia do anterior em ${r.backup}\n  Abra /hooks no Claude Code, ou reinicie, para valer nesta sessão.\n`
+        : '\n  nada a fazer: todos já estavam registrados\n')
+      break
+    }
+
     for (const h of HOOKS) {
       const on = hookEnabled(h.id)
       console.log(`${on ? '●' : '○'} ${h.id.padEnd(14)} ${h.evento.padEnd(14)} ${on ? 'ligado' : 'desligado'}${h.implementado ? '' : '  (ainda não implementado)'}`)

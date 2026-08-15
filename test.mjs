@@ -1362,6 +1362,59 @@ if (estRotinas.projetos.length) {
   }
 }
 
+/* --- CC-67: `cc hooks install` — o gancho nasce com o projeto ---
+   Roda em casa temporária: escrever no settings.json de verdade num teste seria
+   repetir o erro das notas, que o CC-53 acabou de fechar. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-hk-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    /* Um settings.json com hook DE TERCEIRO no mesmo evento. É o caso real: o
+       do Felipe tem ~200 linhas e o pixel-agents registra em 11 eventos.
+       Apagar isso sem avisar é o pior que este comando poderia fazer. */
+    fs.writeFileSync(path.join(casa, 'settings.json'), JSON.stringify({
+      model: 'opus',
+      hooks: {
+        PreToolUse: [{ hooks: [{ type: 'command', command: 'node /outro/sistema/hook.js' }] }],
+      },
+    }, null, 2))
+
+    const q = `?casa=${encodeURIComponent(casa)}`
+    const R = await import(`./src/hooksRegistro.mjs${q}`)
+    const { HOOKS } = await import(`./src/hooksCatalogo.mjs${q}`)
+    assert.ok(R.SETTINGS_FILE.startsWith(casa), 'ia escrever no settings de verdade')
+
+    // simulação não pode tocar no arquivo
+    const antesDoTexto = fs.readFileSync(R.SETTINGS_FILE, 'utf8')
+    R.instalar(HOOKS.filter((h) => h.implementado), { dryRun: true })
+    assert.equal(fs.readFileSync(R.SETTINGS_FILE, 'utf8'), antesDoTexto, '--dry-run gravou')
+
+    const r = R.instalar(HOOKS.filter((h) => h.implementado))
+    assert.ok(r.ok && r.gravou)
+
+    const depois = JSON.parse(fs.readFileSync(R.SETTINGS_FILE, 'utf8'))
+    const todos = Object.values(depois.hooks).flat().flatMap((g) => g.hooks).map((h) => h.command)
+
+    assert.ok(todos.some((c) => c.includes('/outro/sistema/hook.js')), 'APAGOU hook de terceiro')
+    assert.equal(depois.model, 'opus', 'perdeu configuração que não era hook')
+    assert.ok(todos.some((c) => c.includes('recados.mjs')), 'não registrou o hook de recados')
+    // barra normal mesmo no Windows: barra invertida em JSON exige escape duplo,
+    // e isso já quebrou o atalho do Desktop em silêncio
+    assert.ok(!todos.some((c) => c.includes('\\')), 'usou barra invertida no caminho')
+
+    // rodar de novo não duplica
+    const r2 = R.instalar(HOOKS.filter((h) => h.implementado))
+    assert.equal(r2.feitos.filter((f) => f.acao === 'registrado').length, 0, 'duplicou na segunda vez')
+
+    assert.ok(fs.existsSync(`${R.SETTINGS_FILE}.bak`), 'não deixou cópia do anterior')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
 /* --- CC-86: o mapa de dependência sai do código, e nunca envelhece --- */
 {
   const D = await import('./src/dependencias.mjs')
