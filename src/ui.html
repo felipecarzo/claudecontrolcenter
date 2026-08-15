@@ -3725,8 +3725,13 @@ function viewEscritorio() {
   // navegador normaliza (barra no fim) e nunca bateria com a string do JSON.
   const palco = escolhido?.noAr
     ? `<iframe class="painel-palco" data-src="${escolhido.url}" src="${escolhido.url}" title="${esc(escolhido.nome)}"></iframe>`
-    : `<div class="empty" style="height:420px;display:grid;place-items:center">
-         ${escolhido ? `${esc(escolhido.nome)} está parado — clique em <b>ligar</b> acima` : 'nenhum painel configurado'}
+    /* O texto vai dentro de UM `<p>`, e isso não é estilo: em `display:grid`,
+       cada pedaço de texto solto vira um item da grade. Como a frase tinha
+       texto, depois `<b>ligar</b>`, depois texto, ela virava TRÊS itens
+       empilhados e espalhados pelos 420px de altura. Apareceu no print que o
+       Felipe mandou em 15/08, usando o painel na lateral da tela. */
+    : `<div class="empty" style="min-height:220px;display:grid;place-items:center">
+         <p>${escolhido ? `${esc(escolhido.nome)} está parado — clique em <b>ligar</b> acima` : 'nenhum painel configurado'}</p>
        </div>`
 
   // Palco e legenda lado a lado: o escritório mostra o movimento, a coluna

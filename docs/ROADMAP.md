@@ -76,6 +76,89 @@ mudança: o `inovallbond` está no PM2 com **6 reinícios**. Na tela antiga isso
 um número no canto de um cartão; agora é uma linha que diz *"aparece como no ar,
 mas está caindo e voltando. O log dele diz por quê"*. Ninguém tinha notado.
 
+#### Segunda rodada, 15/08: os prints dele em tela estreita
+
+Ele mandou três prints usando o painel **encaixado na lateral do monitor**, que
+é como ele usa no PC, e é a mesma largura do celular. Palavras dele: *"você vê
+nitidamente como o design está ruim, não dá pra ver nada, os nomes, as coisas
+estão desalinhadas"* e *"tem que ter mais cara de aplicativo"*.
+
+**A ordem que ele deu:** primeiro terminar o que já está em andamento (as três
+regras acima, telas traduzidas), **depois** o modo aplicativo. E o alvo é o
+estreito: *"no computador pode ficar do jeito que está"*.
+
+##### ✅ O aviso espalhado por 300px — consertado em 15/08
+
+`display:grid` transforma **cada pedaço de texto solto em um item da grade**. O
+aviso "X está parado — clique em **ligar** acima" tinha texto, `<b>`, texto:
+virou três itens empilhados, distribuídos numa caixa de 420px de altura. Estava
+assim desde sempre e só apareceu quando ele estreitou a janela.
+
+Armadilha a não repetir: **texto com elemento no meio, dentro de `display:grid`,
+precisa de UM elemento que o envolva.** Hoje é o único caso no arquivo, e foi
+conferido por varredura.
+
+### CC-73: o painel vaza de lado, e não pode
+
+A barra de rolagem horizontal aparece no rodapé do print, e a tabela da aba
+tempo sai cortada. `#painel` tem `overflow-y` e não tem `overflow-x`, então
+conteúdo largo empurra a página inteira.
+
+A causa concreta na aba tempo: `.t-linha` usa colunas de largura fixa que somam
+mais que a janela estreita (`1fr 74px 52px 62px 66px 78px 62px 80px 86px`).
+
+Regra a valer: **o painel nunca rola de lado. Quem rola é o elemento largo,
+dentro dele mesmo.**
+
+### CC-74: o cabeçalho come metade da tela
+
+Em janela estreita, antes de qualquer conteúdo: título, cinco contadores (quatro
+deles zero), a linha de tokens, duas barras de uso, cinco controles, um botão
+solto e duas fileiras de abas. Sobra menos da metade da altura para o que
+importa.
+
+Ideias medidas nos prints, a decidir com ele: contador zerado não ocupa espaço;
+os controles viram um botão só que abre; as duas fileiras de abas viram uma
+navegação de aplicativo.
+
+### CC-75: informação em árvore, que é o princípio que ele nomeou
+
+Palavras dele, no meio desta conversa:
+
+> "juntar várias informações num local só, e essa informação poder destrinchar,
+> e fazer várias árvores, e todas elas simples com mais opções. Mesmo que tiver
+> que ser complexo, que seja complexo dividido em pequenas etapas"
+
+É a generalização do que a aba VPS virou: **veredito → alerta → dado cru**, cada
+nível simples, o de baixo só se você pedir. Vira a quinta regra da frente, e é
+a que dá o critério para quando o "?" é necessário: se o nível de cima já
+responde, o "?" é ruído.
+
+Vale para tudo, não só para tela: é o mesmo formato do guia em etapas que ele
+pediu na sessão de senhas, e o mesmo do gate de MVP, que para no primeiro
+critério que não fecha em vez de despejar a lista.
+
+### CC-76: prévia de cada página antes de mexer
+
+Pedido dele: *"me mande aí também uma prévia de cada página"*. O caminho já foi
+provado hoje com a aba VPS — arquivo HTML com o CSS de verdade e os dados reais,
+que ele abre no celular. **Não dá para tirar print daqui**: o Chrome desta VPS
+exige um token que mora numa pasta de root, e o hook de segredo bloqueia a
+leitura, corretamente.
+
+São 15 abas. A prévia é por aba, e ele aprova antes de qualquer mudança.
+
+### CC-77: cara de aplicativo no estreito
+
+O guarda-chuva dos três acima, e o que ele pediu por último. **Só vale para a
+largura estreita**; no monitor largo, a decisão dele é deixar como está.
+
+O que "cara de aplicativo" quer dizer, tirado do que ele reclamou: alinhamento
+(hoje os nomes dançam), navegação de um nível em vez de duas fileiras de abas,
+e o dado aparente sem precisar rolar de lado.
+
+**Depende do CC-76:** ele quer ver antes de eu mexer.
+
 #### O que falta
 
 Aplicar às outras telas, uma por vez, e só depois de a VPS provar valor no uso
