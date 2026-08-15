@@ -35,7 +35,7 @@ em código, o certo é parar e abrir outra — credencial e edição de arquivo 
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
 | `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **CC-56** (sessao interativa reporta estado, via `CLAUDE_CODE_SESSION_ID`, fora de `jobs/`), **CC-49** (`cc routia presenca`: ativa / orfa / desconhecida, e a distincao entre as duas ultimas e o cuidado central), **CC-48** (rotas viajam no pacote da federacao) e **CC-65** (os 6 hooks globais nao existiam em repo nenhum: agora em `hooks/routia/`). Anterior: cockpit federado, CC-47/51/54/55/57/58) | — |
-| `framework` | 🔴 ocupada | ff0d68b2 — posicionamento contra os frameworks de agente (LangChain e cia) em `docs/produto/FRAMEWORK.md`. So doc | 2026-08-15 |
+| `framework` | 🟢 livre | — (ff0d68b2 fechou em 15/08: posicionamento contra os frameworks de agente, no fim de [[produto/FRAMEWORK]]. Anterior: F16, F9 e F14) | — |
 
 ## Como pedir autorização numa rota que tem dono
 
