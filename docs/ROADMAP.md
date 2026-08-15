@@ -295,6 +295,52 @@ honesta ali.
   o markdown.
 - O layout do mapa continua ruim em tela estreita — isso é CC-77.
 
+### CC-82: um leitor de documentos dentro do cockpit
+
+Ideia dele em 15/08, logo depois do CC-81, e é a mesma ideia em escala maior:
+**guardar a fonte primária.** Palavras dele:
+
+> "adiciona um leitor de dentro do cockpit, algo bem leve, só pra gente poder
+> ver texto formatado. Assim a gente pode anexar documentos dentro do cockpit
+> (…) guardar documentos mesmo, ideias minhas, textos meus, pra ela analisar
+> depois. É sempre bom ter a fonte primária guardada."
+
+**A distinção que ele mesmo fez, e que decide o desenho:** *"notas é mais em
+tempo real, são coisas que eu vou anotar. E esse mecanismo é pra guardar
+documentos"*. São duas coisas diferentes e não devem virar a mesma aba — o bloco
+de notas grava a cada tecla e cabe numa linha; documento é peça fechada que ele
+escreveu ou ditou e quer reler meses depois.
+
+Precedente que já aconteceu: ele mandou o documento da [[produto/BANCADA]] e o da
+[[produto/ARQUITETURA-DE-HABITOS]] pelo chat. Os dois viraram arquivo em
+`docs/produto/` **de um projeto específico**, e é lá que estão presos. Ele não
+os alcança de outro lugar, que é exatamente a falta que este item nomeia.
+
+#### O que já existe e serve de fundação
+
+- **Markdown formatado sem biblioteca**: o painel não tem dependência de runtime,
+  e um leitor "bem leve" cabe nisso — títulos, negrito, lista, citação e código
+  cobrem tudo que ele escreve. Nada de renderizador completo.
+- **A federação (CC-47)**: documento guardado fora do projeto viaja entre as
+  máquinas pelo canal que já existe, e é o que faz o "ver de qualquer lugar".
+- **`notes.mjs`** tem o cuidado que este vai precisar: cópia `.bak` antes de
+  sobrescrever, porque texto digitado à mão não tem outra fonte. As notas já se
+  perderam uma vez, em 09/08.
+
+#### Três perguntas em aberto
+
+1. **Onde mora?** Fora do projeto, para ele ver de qualquer lugar — mas então
+   fica fora do git, sem histórico. Guardar dentro do projeto dá versionamento e
+   perde o "de qualquer lugar". Talvez os dois: mora fora, e um comando publica
+   no projeto quando o documento vira decisão.
+2. **Documento anexado passa pelo mascarador (F12)?** Ele disse "para ela
+   analisar depois", então a IA vai ler. Se for contrato da Carol, o F12 se
+   aplica; se for ideia dele, mascarar seria só atrapalhar. Provável resposta:
+   o mascarador continua no hook de leitura, e o leitor não se mete.
+3. **"Adiciona uma nota lá pra mim" precisa de comando?** Ele citou isso como
+   caso de uso. Seria `cc doc add`, irmão do `cc set` — e aí funciona pelo
+   celular, que é o ponto.
+
 ### CC-78: o quadro de rotas vira tela, e dá para mexer
 
 Hoje `docs/ROTAS-ATIVAS.md` tem **336 linhas** e é lido abrindo o arquivo. A
