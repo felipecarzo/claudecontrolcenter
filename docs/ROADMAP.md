@@ -28,6 +28,28 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 > lição serve para alguma coisa. A regra que isto restaura já existia escrita
 > na linha 3 deste arquivo e não estava sendo seguida.
 
+### CC-65 ✅ 15/08 — os hooks globais não existiam em repositório nenhum
+
+Achado tentando entregar o CC-48: **não dá para mandar por PR o que não é
+versionado.** `rota-guard.mjs`, `rota-pedidos.mjs`, `routia-inicio.mjs`,
+`routia-fim.mjs`, `git-add-guard.mjs` e `todo-guard.mjs` só existiam em
+`~/.claude/hooks/`, em duas máquinas.
+
+O risco é maior que o incômodo: o `hooksCatalogo.mjs` **liga e desliga cinco
+deles pela tela deste painel**, ou seja, o cockpit controlava código que não
+estava em lugar nenhum. Perder uma máquina levava o Método Routia junto.
+
+Agora estão em `hooks/routia/`, varridos por segredo antes de entrar (o
+repositório é público): nada. Os matches de `token` eram nome de variável de
+parser e a lista de padrões dos próprios detectores.
+
+⚠️ **É cópia, não fonte.** O que roda continua sendo `~/.claude/hooks/`, e nada
+sincroniza sozinho. O combinado está no `hooks/routia/LEIA.md`: editar no
+repositório e copiar no mesmo passo. Um `cc hooks sync` resolveria, e não existe.
+
+Irmão do CC-61 (o `cockpit-auth.mjs`, que também não está em repositório e é a
+porta de entrada do painel inteiro).
+
 ### CC-08 — só macOS continua sem prova
 
 Era "macOS e Linux nunca rodaram". **Linux saiu da lista em 13 e 14/08**: o
@@ -44,13 +66,22 @@ houver um Mac à mão: `cc` (só leitura, tem que funcionar de primeira) →
 `cc open` → `cc daemon install` → aba de servidores → encerrar um processo de
 teste.
 
-### CC-46 — `estadoDe()` casa por regex solto no título, dá falso positivo
+### CC-46 ✅ 15/08 — `estadoDe()` casava estado no meio do título
 
 Achado em 13/08 implementando as pastilhas do CC-34: "CC-23 — Histórico rico"
 virou "feito" porque o título contém a palavra "Histórico", e "CC-04 —
-...agente travado..." virou "bloqueado" porque contém "travado". O regex em
-`roadmap.mjs` deveria olhar só o marcador de estado (emoji/palavra no INÍCIO
-do título), não a frase inteira.
+...agente travado..." virou "bloqueado" porque contém "travado". Nos dois casos
+a palavra descrevia **o que a tarefa é**, não em que pé ela está.
+
+**Consertado:** emoji vale em qualquer posição (ninguém escreve ✅ sem querer
+dizer feito), palavra só vale na ETIQUETA do título — o pedaço antes do primeiro
+travessão ou dois-pontos, depois de tirar o identificador (`CC-46`, `F16.`).
+
+Provado varrendo os **83 títulos dos roadmaps reais dos 14 projetos**: uma única
+mudança de estado, e para melhor. O inovallbond tem `🟡 Bloqueado — depende do
+Felipe`, que saía vermelho no painel enquanto o arquivo mostrava amarelo. Quando
+emoji e palavra se contradizem o emoji ganha, porque escolher 🟡 e não 🔴 é
+deliberado, e "depende de alguém" é esperar, não estar impedido.
 
 ### Frente: Sincronia entre máquinas, aprovada pelo Felipe em 14/08
 
@@ -86,42 +117,74 @@ lado só: o PC alcança `cockpit.carzo.com.br`, a VPS nunca alcança o PC atrás
 NAT. Então a VPS é obrigatoriamente o servidor, e o PC é cliente que empurra e
 puxa. Qualquer desenho que ignore isso não sai do papel.
 
-### CC-48: Rotas deixam de depender de commit para o outro lado enxergar
+### CC-48 ✅ 15/08 — as rotas viajam no pacote da federação
 
 Hoje marcar rota no PC só chega na VPS depois de commit, push e pull. O quadro
 em markdown continua sendo a verdade legível e versionada; o que muda é o canal
 de propagação, que passa a ser o painel.
 
-O `rota-guard` consulta o endpoint com cache local e cai para o arquivo quando
-a rede falha. A degradação precisa ser decidida de propósito e escrita no
-código: rede fora não pode nem bloquear tudo nem liberar tudo.
+**Feito reusando a federação que já existia, em vez de um canal novo.** O quadro
+ocupado entra no pacote (`enxugarRotas`) e `rotasDeTodos()` junta os dois lados
+por projeto. Vai só o essencial de cada rota: o quadro do inovallbond passa de
+60 KB, quase todo histórico de rota fechada, e o limite do pacote é 2 MB para a
+federação inteira.
 
-### CC-49: Presença deduzida, para acabar com rota esquecida ocupada
+Duas decisões que ficam no código: **rota ocupada em qualquer máquina conta como
+ocupada** (bloquear demais custa uma mensagem, colisão custa trabalho perdido), e
+a mesma rota reportada dos dois lados vira uma só, com o sinal mais novo.
+
+⚠️ **Falta a última perna, e ela depende do PC:** o `rota-guard` ainda lê só o
+arquivo local. Ele passou a ser versionado em `hooks/routia/` (ver abaixo), que
+era o que impedia entregar essa mudança por PR.
+
+### CC-49 ✅ 15/08 — presença deduzida, contra rota esquecida ocupada
 
 A segunda metade da escolha do Felipe. Prova viva do problema, encontrada hoje:
 a rota `backlog` está marcada como ocupada por `5805d6bb`, sessão que encerrou o
 dia e commitou o fechamento mais de uma hora antes. O quadro mente, e o próximo
 agente respeita a mentira.
 
-O painel já sabe quais jobs estão vivos. Falta cruzar isso com o quadro e marcar
-a rota como provavelmente órfã, com o tempo desde o último sinal.
+**Feito**: `src/presenca.mjs` mais `cc routia presenca`. Três vereditos, e o do
+meio é o que faltava: `ativa`, `orfa` (marcada por quem sumiu há mais de uma
+hora) e `desconhecida`.
 
-Limite conhecido, que não pode ser esquecido no desenho: presença detecta
-colisão em curso, não previne a próxima. Ela complementa a marcação à mão, não
-substitui.
+**A distinção entre órfã e desconhecida é o cuidado central.** Sessão cujo
+transcrito não existe nesta máquina é quase sempre da OUTRA máquina, e chamá-la
+de órfã seria afirmar o que daqui não dá para saber. Rodando neste projeto agora,
+o `5805d6bb` cai certo nessa caixa: ele rodou no PC.
 
-### CC-56: Reportar estado a partir de sessão interativa
+Nunca libera sozinho, de propósito: um agente pode passar vinte minutos pensando
+sem escrever nada, e liberar por silêncio é a colisão que o método existe para
+evitar. O limite continua valendo — presença detecta colisão em curso, não
+previne a próxima.
+
+Dois detalhes que só apareceram rodando: o corte de uma hora é folgado porque
+sessão longa fica muito tempo numa tarefa só; e o exemplo dentro de comentário
+HTML do próprio quadro casava todos os critérios, então o painel acusava uma
+`feature/checkout` ocupada que nunca existiu.
+
+### CC-56 ✅ 15/08 — sessão interativa reporta o próprio estado
 
 `cockpit set` recusa com "sem job" numa sessão via Remote Control: ele exige um
 job de background em `~/.claude/jobs/<id>`, e trabalho pelo celular não cria um.
 Consequência medida em 14/08: da VPS não dá para reportar to-do, frente nem
 bloqueio no painel, justamente no modo de uso que mais cresceu.
 
-O CC-51 resolveu metade (o painel agora **enxerga** a sessão interativa, lendo o
-transcrito). Falta o caminho de volta: a sessão poder **escrever** o próprio
-estado.
+O CC-51 resolveu metade (o painel **enxerga** a sessão). **Agora ela escreve.**
 
-### CC-60: O outro Pixel Agents, o do Telegram
+A identidade vem do ambiente, não de adivinhação: `CLAUDE_CODE_SESSION_ID`
+existe em sessão interativa e é o nome do arquivo de transcrito (conferido nesta
+VPS). A alternativa seria deduzir pelo transcrito mais recente do projeto, que
+erra sempre que duas sessões trabalham juntas — o caso comum aqui.
+
+O estado mora em `<casa>/control-center-sessoes/<id>.json`, **fora de
+`jobs/`**: sessão interativa não tem pasta lá, e criar uma seria escrever dentro
+da casa do Claude Code, que a regra de ouro proíbe. Há teste guardando isso.
+
+`cc set` e `cc done` funcionam iguais nos dois tipos, e o painel lê o estado
+pelo mesmo `buildJob` de sempre — sem caso especial espalhado.
+
+### CC-60 — o outro Pixel Agents: as perguntas factuais, respondidas
 
 Achado em 14/08 investigando o escritório: já existe um `pixel-agents` rodando
 nesta VPS há mais de dois dias, na **porta 3100**, do usuário **`agente`**, que
@@ -130,30 +193,70 @@ túnel SSH", e o túnel que o PC abria apontava justamente para ele.
 
 Não mexi nele, de propósito: é de outro usuário e está de pé há dias.
 
-**O Felipe pediu para olhar isso depois.** As perguntas abertas: que agentes ele
-mostra (o `~/.claude` do usuário `agente`, não o nosso), quem o subiu, se ainda
-serve para alguma coisa, e se vale aparecer no cockpit como um segundo painel
-ou se é lixo de uma experiência anterior. Se for para aparecer, o proxy já
-sabe servir por porta; o que falta decidir é se faz sentido dois escritórios na
-mesma tela.
+**Olhado em 15/08.** O que dá para afirmar:
 
-### CC-52: O Routia só existe em 2 dos 14 projetos clonados na VPS
+- É o **mesmo programa e a mesma versão** que o nosso: os dois servem o bundle
+  `index-vW13Q-7p.js`. Não é experiência antiga, é uma segunda instância.
+- Roda desde **12/08** (`node .../pixel-agents --host 127.0.0.1 --port 3100`),
+  usuário `agente`, 1min40 de CPU acumulada. O nosso é a 3101, do `claudedev`.
+- **Que agentes ele mostra continua desconhecido**, e por um motivo de
+  permissão: ele lê o `~/.claude` do usuário `agente`, e `/home/agente/` recusa
+  leitura. Sem sudo não há como responder daqui.
 
-`proj_controlcenter` e `inovallbond`. Rollout continua manual por decisão do
-Felipe, mas vale saber o tamanho real do buraco antes de confiar no método como
-proteção geral.
+Achado no caminho, e vale para qualquer investigação de rede local: **o sandbox
+bloqueia até 127.0.0.1**. A porta 3100 respondia `000` de dentro e `200` de
+fora — quem não souber disso conclui que o serviço está morto.
 
-### CC-53: O gate `npm test` não roda na VPS, e falha por ambiente
+**Continua sendo decisão do Felipe:** mostrar como segundo escritório, ou
+desligar. O proxy já sabe servir por porta; o que falta é ele dizer se dois
+escritórios na mesma tela fazem sentido.
+
+### CC-52 ✅ 15/08 — o buraco do Routia, medido
+
+**A pergunta certa não era "quantos projetos têm quadro".** O Routia protege
+contra duas sessões mexendo na mesma parte ao mesmo tempo; num projeto de sessão
+única, não ter quadro não custa nada. "12 de 14 sem Routia" assusta e não informa.
+
+O que informa: **em quantos projetos duas sessões de fato se sobrepuseram no
+tempo, sem quadro para se enxergarem.** É sempre um número menor, e acionável.
+
+`cc routia cobertura` responde isso, e a resposta é da MÁQUINA em que roda —
+por isso é comando, não linha no painel. Nesta VPS: 3 projetos com sessão, 1 com
+quadro, **0 sobreposições**, ou seja, o buraco daqui é teórico. O número que vale
+sai do PC, onde os jobs de background rodam em paralelo. Rollout continua manual,
+como o Felipe decidiu.
+
+### CC-53 ✅ 15/08 — o gate `npm test` passou a rodar em qualquer máquina
 
 Medido em 14/08: `npm test` morre em `test.mjs:168` com "nenhum job leu o
 transcript". O teste exige `readJobs()` devolvendo job real com transcript, e
 esta máquina tem um job só. Não é regressão, é o gate dependendo do estado da
 máquina de quem roda.
 
-Consequência prática, que é o que importa: quem trabalha pela VPS não tem gate
-nenhum hoje. Ou o teste passa a pular esse bloco quando não há job (dizendo que
-pulou, nunca em silêncio), ou o projeto ganha um conjunto mínimo que roda em
-qualquer máquina.
+Consequência prática: quem trabalhava pela VPS não tinha gate nenhum.
+
+**Feito, e não era um bloco só: eram cinco**, cada um assumindo algo da máquina
+de quem roda. Transcript e base de projetos exigiam job de background; o binário
+falso do opencode era `.cmd` com comandos do Windows; o caminho de autostart
+exigia a pasta `Startup`; e `projectsBase()` tinha que devolver string, quando
+`null` é resposta legítima de máquina sem job.
+
+O padrão do conserto é o mesmo nos cinco: **testar a substância contra dado
+sintético**, que roda em qualquer lugar, e manter a checagem contra a máquina de
+verdade quando ela tiver o que oferecer — pulando com aviso na tela, nunca em
+silêncio.
+
+Dois achados que só apareceram porque o gate voltou a rodar:
+
+1. **Uma regressão minha estava escondida atrás da falha.** `normalizeTodo`
+   ganhou o campo `dono` em 14/08 (`4f78264`) e o teste não foi atualizado
+   junto. Ninguém viu porque o gate morria antes. Teste que não roda não é teste
+   que passa, é teste que some.
+2. **O gate escrevia nas notas de verdade do Felipe** para conferir a cópia de
+   segurança, restaurando no `finally`. Interrompido no meio, deixava a lista
+   vazia — o sintoma exato do apagamento de 09/08, cuja causa nunca foi provada.
+   Nasceu daí o `CC_HOME`/`casaClaude()`, que também fecha a armadilha do
+   `CONFIG_FILE` que o CLAUDE.md dizia não ter conserto.
 
 ### Visão registrada em 14/08: o cockpit vira um framework de engenharia de software
 
@@ -218,6 +321,21 @@ o Felipe trouxe (ata completa em [[../DISCUSSAO-FRAMEWORK-BANCADA]]):**
   rede de decisões com memória entre si, e servem para agentes repassarem
   decisão entre eles. Maior que uma função do gate — vira frente própria
   quando chegar a vez, depois de Framework e Bancada.
+- **Visão nova, registrada e não implementada: ponte com outras ferramentas.**
+  O framework hoje só existe onde o Claude Code roda, porque o que o segura são
+  hooks do Claude Code. Roo Code, Antigravity e IDE local ficam de fora, e o
+  Felipe usa mais de uma.
+
+  O que existe já aponta o caminho: o estado mora em `.framework/estado.json`
+  **dentro do projeto**, não em `~/.claude`, e o motor (`src/framework.mjs`) é
+  puro — sem disco, sem rede, sem IA. Ou seja, a decisão de "pode ou não pode"
+  já é portável; o que não é portável é o gatilho. Uma ponte seria dar a cada
+  ferramenta o seu próprio gatilho lendo o mesmo arquivo.
+
+  Sem trabalho previsto agora, e a razão de registrar em vez de fazer é a de
+  sempre aqui: com uma ferramenta só, ainda não dá pra saber se o modelo de
+  fases aguenta duas. **Vira frente quando ele começar a trabalhar de verdade
+  em outra ferramenta**, e não antes.
 
 ### Frente: Bancada — auditoria e teste agnóstico, ver [[produto/BANCADA]]
 

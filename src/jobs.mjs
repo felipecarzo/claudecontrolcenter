@@ -9,6 +9,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { lastPrompt, intentMatchesTranscript, humanMessagesTail } from './transcript.mjs'
 import { sinaisDe } from './sinais.mjs'
+import { arquivoMetaDe, PROJETOS_DIR, sessaoAtual, transcritoDe } from './metaSessao.mjs'
 
 export const JOBS_DIR = path.join(os.homedir(), '.claude', 'jobs')
 
@@ -303,11 +304,22 @@ export function readJobs(now = Date.now()) {
 }
 
 /** Descobre o job atual pelo ambiente ($CLAUDE_JOB_DIR aponta pro subdir tmp). */
+/**
+ * Quem sou eu, para reportar estado.
+ *
+ * Job de background traz `CLAUDE_JOB_DIR`. Sessão interativa (Remote Control,
+ * terminal) não tem job nenhum, e traz `CLAUDE_CODE_SESSION_ID` — que é o nome
+ * do arquivo de transcrito, conferido nesta VPS. Antes só o primeiro contava, e
+ * era por isso que `cc set` recusava com "sem job" em tudo que não fosse
+ * background (CC-56).
+ */
 export function currentJobId() {
   const dir = process.env.CLAUDE_JOB_DIR
-  if (!dir) return null
-  const base = path.basename(dir)
-  return base === 'tmp' ? path.basename(path.dirname(dir)) : base
+  if (dir) {
+    const base = path.basename(dir)
+    return base === 'tmp' ? path.basename(path.dirname(dir)) : base
+  }
+  return sessaoAtual()
 }
 
 /** Merge raso do que o agente mandou por cima do meta.json existente. */
@@ -365,8 +377,9 @@ export function metaStatus(id) {
 export function marcarTodo(id, texto, done = true) {
   const alvo = String(texto || '').trim().toLowerCase()
   if (!alvo) throw new Error('diga qual tarefa fechar')
-  const file = path.join(JOBS_DIR, id, 'meta.json')
-  const meta = readJson(file, {}) || {}
+  // mesmo caminho do writeMeta: job de background ou sessão interativa
+  const onde = caminhoDoEstado(id)
+  const meta = onde ? (readJson(onde.file, {}) || {}) : {}
   const lista = Array.isArray(meta.todos) ? meta.todos.map(normalizeTodo).filter(Boolean) : []
   if (!lista.length) throw new Error('este agente não tem to-dos no meta.json')
 
@@ -388,16 +401,59 @@ export function marcarTodo(id, texto, done = true) {
   return { meta: writeMeta(id, { todos }), tarefa: escolhido.text, done }
 }
 
-export function writeMeta(id, patch) {
+/**
+ * Onde o estado daquele id mora. Duas casas, e a escolha não é preferência:
+ *
+ * - **job de background**: `~/.claude/jobs/<id>/meta.json`, arquivo que o CLI
+ *   não conhece, dentro de uma pasta que ele criou;
+ * - **sessão interativa** (CC-56): `<casa>/control-center-sessoes/<id>.json`,
+ *   do lado de fora. Sessão interativa não tem pasta em `jobs/`, e criar uma
+ *   seria escrever dentro da casa do Claude Code — o que a regra de ouro deste
+ *   projeto proíbe.
+ *
+ * Exigir que o alvo exista (pasta do job, ou transcrito da sessão) é o que
+ * impede um `--job` digitado errado de criar estado órfão para sempre.
+ */
+export function caminhoDoEstado(id) {
   const dir = path.join(JOBS_DIR, id)
-  if (!fs.existsSync(dir)) throw new Error(`job ${id} não existe em ${JOBS_DIR}`)
-  const file = path.join(dir, 'meta.json')
-  const next = mergeMeta(readJson(file, {}) || {}, patch)
+  if (fs.existsSync(dir)) return { tipo: 'job', file: path.join(dir, 'meta.json') }
+
+  // O painel mostra a sessão pelos 8 primeiros caracteres; quem chama de fora
+  // pode passar o curto, então aceita os dois.
+  const completo = transcritoDe(id) ? id : acharSessaoPorPrefixo(id)
+  if (completo) return { tipo: 'sessao', id: completo, file: arquivoMetaDe(completo) }
+
+  return null
+}
+
+function acharSessaoPorPrefixo(curto) {
+  if (!curto || curto.length < 6) return null
+  try {
+    for (const d of fs.readdirSync(PROJETOS_DIR(), { withFileTypes: true })) {
+      if (!d.isDirectory()) continue
+      const pasta = path.join(PROJETOS_DIR(), d.name)
+      const achado = fs.readdirSync(pasta)
+        .find((f) => f.endsWith('.jsonl') && f.startsWith(curto))
+      if (achado) return path.basename(achado, '.jsonl')
+    }
+  } catch { /* sem pasta de transcritos: não é sessão */ }
+  return null
+}
+
+export function writeMeta(id, patch) {
+  const alvo = caminhoDoEstado(id)
+  if (!alvo) {
+    throw new Error(
+      `não achei ${id}: não é job em ${JOBS_DIR} nem sessão com transcrito`,
+    )
+  }
+  const next = mergeMeta(readJson(alvo.file, {}) || {}, patch)
   next.updatedAt = new Date().toISOString()
-  // escrita atômica: nunca deixa meta.json pela metade se o processo morrer
-  const tmp = `${file}.tmp`
+  fs.mkdirSync(path.dirname(alvo.file), { recursive: true })
+  // escrita atômica: nunca deixa o arquivo pela metade se o processo morrer
+  const tmp = `${alvo.file}.tmp`
   fs.writeFileSync(tmp, JSON.stringify(next, null, 2))
-  fs.renameSync(tmp, file)
+  fs.renameSync(tmp, alvo.file)
   return next
 }
 

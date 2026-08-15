@@ -17,6 +17,30 @@ export const SO = process.platform // 'win32' | 'darwin' | 'linux'
 export const ehWindows = SO === 'win32'
 export const ehMac = SO === 'darwin'
 
+/**
+ * A pasta `.claude` onde o painel guarda o que é dele. Um lugar só, e
+ * redirecionável por `CC_HOME`.
+ *
+ * **Por que a variável existe, e não é conforto de teste.** O gate escrevia no
+ * `control-center-notes.json` DE VERDADE: gravava, apagava tudo para conferir a
+ * cópia de segurança, e restaurava no `finally`. Funciona quando termina — e
+ * `npm test` interrompido no meio (Ctrl+C, crash, a máquina dormindo) deixa o
+ * arquivo com a lista vazia.
+ *
+ * Isso bate com o incidente de 2026-08-09 registrado no `CLAUDE.md`, quando as
+ * duas listas do Felipe amanheceram apagadas "sem que se conseguisse provar
+ * quem gravou". Não é prova de que foi o teste, mas é um caminho que existia e
+ * agora não existe mais: o gate aponta para uma pasta temporária.
+ *
+ * O mesmo vale para `control-center.json` — a armadilha do `CONFIG_FILE`, no
+ * `CLAUDE.md`, dizia que o conserto certo seria exatamente isto e que não
+ * existia. Passou a existir.
+ *
+ * ⚠️ Ler e escrever é sempre daqui. `os.homedir()` solto em módulo novo volta a
+ * furar o isolamento, e o furo só aparece quando alguém perde dado.
+ */
+export const casaClaude = () => process.env.CC_HOME || path.join(os.homedir(), '.claude')
+
 export const quiet = (cmd, args) => {
   try {
     return {

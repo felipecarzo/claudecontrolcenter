@@ -181,21 +181,68 @@ const { intentMatchesTranscript } = await import('./src/transcript.mjs')
 assert.equal(intentMatchesTranscript('qualquer coisa', null), null)
 assert.equal(intentMatchesTranscript(null, 'x.jsonl'), null)
 
-// nos jobs reais com transcript, tem que sair pedido de verdade
-const comTranscript = readJobs().filter((j) => j.lastPrompt)
-assert.ok(comTranscript.length > 0, 'nenhum job leu o transcript')
-for (const j of comTranscript) {
-  assert.ok(typeof j.lastPrompt === 'string' && j.lastPrompt.length > 0)
-  assert.ok(!j.lastPrompt.startsWith('<'), 'pegou system-reminder como pedido')
+/* CC-53: o transcript é testado contra um arquivo SINTÉTICO, e por quê.
+   Antes isto dependia de `readJobs()` achar um job real com transcript, e numa
+   máquina sem job de background o gate inteiro morria aqui — foi o que deixou
+   quem trabalha pela VPS sem gate nenhum. Pior: o comportamento que mais
+   importa (separar pedido de verdade de injeção de skill) só era exercitado por
+   acaso, dependendo do que houvesse na máquina de quem rodou.
+
+   Cada linha abaixo é uma armadilha que já enganou o painel de verdade. */
+{
+  const linhas = [
+    { type: 'user', message: { content: 'primeiro pedido de todos' }, promptSource: 'user' },
+    // saída de ferramenta: veio como `user` e não foi ninguém que escreveu
+    { type: 'user', toolUseResult: { ok: true }, message: { content: 'saida de tool' } },
+    // injeção de skill: traz o SKILL.md inteiro no corpo, e já apareceu na tela
+    // como se fosse o pedido dele
+    { type: 'user', isMeta: true, message: { content: 'conteudo inteiro de um SKILL.md' } },
+    { type: 'assistant', message: { content: 'resposta' } },
+    // interrupção: o CLI grava "Request interrupted by user" como mensagem
+    { type: 'user', interruptedMessageId: 'x', message: { content: 'Request interrupted' } },
+    { type: 'user', message: { content: '<system-reminder>contexto injetado</system-reminder>' } },
+    { type: 'user', message: { content: [{ type: 'text', text: 'o pedido de verdade, o ultimo' }] } },
+  ].map((o) => JSON.stringify(o)).join('\n')
+
+  const arq = path.join(os.tmpdir(), `cc-tr-${Date.now()}.jsonl`)
+  fs.writeFileSync(arq, linhas)
+  try {
+    assert.equal(lastPrompt(arq), 'o pedido de verdade, o ultimo')
+    assert.equal(
+      _internals.scanLines(linhas, { fromEnd: false }),
+      'primeiro pedido de todos',
+      'a varredura de cima pegou algo que não foi pessoa que escreveu',
+    )
+  } finally { fs.rmSync(arq, { force: true }) }
+}
+
+/* E quando a máquina TEM job real, ele também é conferido: o sintético prova a
+   regra, o real prova que a leitura de disco continua funcionando. Sem job,
+   pula dizendo que pulou — silêncio aqui viraria "passou" sem ter testado. */
+{
+  const comTranscript = readJobs().filter((j) => j.lastPrompt)
+  if (!comTranscript.length) {
+    console.log('  (pulado: esta máquina não tem job de background com transcript)')
+  }
+  for (const j of comTranscript) {
+    assert.ok(typeof j.lastPrompt === 'string' && j.lastPrompt.length > 0)
+    assert.ok(!j.lastPrompt.startsWith('<'), 'pegou system-reminder como pedido')
+  }
 }
 
 // --- meta.json vem de agente: formato varia, não pode virar "undefined" ---
 const { normalizeTodo, normalizeLink } = await import('./src/jobs.mjs')
-assert.deepEqual(normalizeTodo({ text: 'a', done: true }), { text: 'a', done: true })
-assert.deepEqual(normalizeTodo({ t: 'a', done: true }), { text: 'a', done: true }) // o caso real
-assert.deepEqual(normalizeTodo({ title: 'a' }), { text: 'a', done: false })
-assert.deepEqual(normalizeTodo({ task: 'a', completed: true }), { text: 'a', done: true })
-assert.deepEqual(normalizeTodo('só texto'), { text: 'só texto', done: false })
+/* `dono` entrou em 14/08 (commit `4f78264`, a aba de tarefas dele) e estas
+   linhas não foram atualizadas junto. Ninguém viu porque o gate morria antes,
+   no bloco do transcript — é o custo escondido do CC-53: teste que não roda
+   não é teste que passa, é teste que some. */
+assert.deepEqual(normalizeTodo({ text: 'a', done: true }), { text: 'a', done: true, dono: 'ia' })
+assert.deepEqual(normalizeTodo({ t: 'a', done: true }), { text: 'a', done: true, dono: 'ia' }) // o caso real
+assert.deepEqual(normalizeTodo({ title: 'a' }), { text: 'a', done: false, dono: 'ia' })
+assert.deepEqual(normalizeTodo({ task: 'a', completed: true }), { text: 'a', done: true, dono: 'ia' })
+assert.deepEqual(normalizeTodo('só texto'), { text: 'só texto', done: false, dono: 'ia' })
+// quem faz a tarefa: o agente por padrão, o Felipe quando o meta.json diz
+assert.equal(normalizeTodo({ text: 'a', dono: 'felipe' }).dono, 'felipe')
 assert.equal(normalizeTodo({ done: true }), null) // sem texto não vira cartão vazio
 assert.equal(normalizeTodo(null), null)
 
@@ -340,7 +387,23 @@ assert.ok(['win32', 'darwin', 'linux'].includes(plat.SO) || plat.SO)
 assert.ok(plat.caminhoAutostart().length > 0)
 assert.ok(plat.atalhosPossiveis().every((p) => typeof p === 'string'))
 const inst = await import('./src/install.mjs')
-assert.equal(typeof inst.projectsBase(), 'string') // detectada, não fixa no código
+/* Detectada, nunca fixa no código. `null` é resposta legítima: máquina sem job
+   e sem config não tem como adivinhar a pasta, e inventar um caminho seria pior
+   que admitir. Antes isto exigia string e falhava em qualquer máquina sem job
+   de background — mesma dependência de ambiente do CC-53. */
+const base = inst.projectsBase()
+assert.ok(base === null || (typeof base === 'string' && base.length > 0))
+{
+  // o que É determinístico: a variável de ambiente manda, em qualquer máquina
+  const antes = process.env.CC_PROJECTS_BASE
+  process.env.CC_PROJECTS_BASE = path.join(path.sep, 'tmp', 'base-de-teste')
+  try {
+    assert.equal(inst.projectsBase(), path.join(path.sep, 'tmp', 'base-de-teste'))
+  } finally {
+    if (antes === undefined) delete process.env.CC_PROJECTS_BASE
+    else process.env.CC_PROJECTS_BASE = antes
+  }
+}
 assert.equal(inst.detectarBase([{ cwd: '/home/ana/projects/x' }, { cwd: '/home/ana/projects/y' }]),
   ['', 'home', 'ana', 'projects'].join(path.sep))
 assert.equal(inst.detectarBase([{ cwd: '/opt/nada' }]), null)
@@ -437,6 +500,37 @@ assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem
   } finally { fs.rmSync(tmp, { recursive: true, force: true }) }
 }
 
+// --- roadmap CC-46: estado é a etiqueta do título, não o assunto dele ---
+{
+  const rm = await import('./src/roadmap.mjs')
+  /* Os dois primeiros são os casos reais que motivaram o CC-46: a palavra
+     descrevia O QUE a tarefa é, e o painel lia como em que pé ela está.
+     Os outros guardam o que NÃO pode ter quebrado no conserto. */
+  const casos = [
+    ['CC-23 — Historico rico, o que sobra quando o CLI apaga o job', 'aberto'],
+    ['CC-04 — o painel mostra agente travado como se estivesse vivo', 'aberto'],
+    ['Concluido em 14/08', 'feito'],
+    ['🔴 Bloqueado — so o Felipe destrava', 'bloqueado'],
+    // emoji vence a palavra quando os dois se contradizem: quem escolheu 🟡 e
+    // não 🔴 quis dizer amarelo, e "depende de alguém" é esperar
+    ['🟡 Bloqueado — depende da Carol', 'esperando'],
+    ['F16. PDF ✅ 15/08 — extrator proprio', 'feito'],
+    ['Frente: Bancada — auditoria e teste agnostico', 'aberto'],
+  ]
+  const tmp = path.join(os.tmpdir(), `cc-rm46-${Date.now()}`)
+  fs.mkdirSync(path.join(tmp, 'docs'), { recursive: true })
+  fs.writeFileSync(
+    path.join(tmp, 'docs', 'ROADMAP.md'),
+    ['# P', '## Sprint', ...casos.map(([t]) => `### ${t}`)].join('\n'),
+  )
+  try {
+    const frentes = rm.lerRoadmap(tmp).grupos[0].frentes
+    casos.forEach(([titulo, esperado], i) => {
+      assert.equal(frentes[i].estado, esperado, `"${titulo}" saiu como ${frentes[i].estado}`)
+    })
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }) }
+}
+
 // --- status: "done" do CLI não quer dizer tarefa terminada ---
 {
   const { statusReal, VIVO_MS } = await import('./src/jobs.mjs')
@@ -469,28 +563,41 @@ assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem
   maq._internals.resetar()
 }
 
-// --- notas: apagar tudo tem que deixar rastro recuperável ---
+/* --- notas: apagar tudo tem que deixar rastro recuperável ---
+
+   ⚠️ Este bloco roda numa casa `.claude` TEMPORÁRIA, e isso não é detalhe.
+   Antes ele escrevia no `control-center-notes.json` de verdade: gravava,
+   apagava tudo para conferir a cópia de segurança, e restaurava no `finally`.
+   Termina bem quando termina — e `npm test` interrompido no meio (Ctrl+C,
+   crash) deixava as notas do Felipe vazias. É o sintoma exato do incidente de
+   2026-08-09, cuja causa nunca foi provada.
+
+   Como `casaClaude()` é lido a cada chamada, a variável precisa estar no lugar
+   ANTES do import do módulo. */
 {
-  const notas = await import('./src/notes.mjs')
-  const real = fs.existsSync(notas.NOTES_FILE) ? fs.readFileSync(notas.NOTES_FILE, 'utf8') : null
-  const bakReal = fs.existsSync(notas.BACKUP_FILE) ? fs.readFileSync(notas.BACKUP_FILE, 'utf8') : null
-  const sujeira = []
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-casa-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
   try {
+    // `?casa=` força um módulo novo: import é cacheado, e sem isso o NOTES_FILE
+    // resolvido num teste anterior continuaria valendo
+    const notas = await import(`./src/notes.mjs?casa=${encodeURIComponent(casa)}`)
+    assert.ok(notas.NOTES_FILE.startsWith(casa), 'o teste ia escrever nas notas de verdade')
+
     notas.writeNotes([{ title: 'teste', text: 'a' }])
     notas.writeNotes([]) // o caso que apagou as notas de verdade
     assert.equal(notas.readNotes().length, 0)
+
     const bak = JSON.parse(fs.readFileSync(notas.BACKUP_FILE, 'utf8'))
     assert.equal(bak.notes[0].title, 'teste', 'o .bak precisa ter a versão de antes do apagamento')
-    const pasta = path.dirname(notas.NOTES_FILE)
-    const copias = fs.readdirSync(pasta).filter((f) => f.startsWith(path.basename(notas.NOTES_FILE)) && f.endsWith('.apagado'))
+
+    const copias = fs.readdirSync(casa)
+      .filter((f) => f.startsWith(path.basename(notas.NOTES_FILE)) && f.endsWith('.apagado'))
     assert.ok(copias.length > 0, 'apagar tudo tem que gerar cópia com data')
-    sujeira.push(...copias.map((f) => path.join(pasta, f)))
   } finally {
-    // devolve o arquivo do Felipe exatamente como estava
-    for (const f of sujeira) { try { fs.unlinkSync(f) } catch {} }
-    if (real != null) fs.writeFileSync(notas.NOTES_FILE, real)
-    if (bakReal != null) fs.writeFileSync(notas.BACKUP_FILE, bakReal)
-    else try { fs.unlinkSync(notas.BACKUP_FILE) } catch {}
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
   }
 }
 
@@ -601,11 +708,37 @@ try {
   fs.rmSync(tmp, { recursive: true, force: true })
 }
 
-// varredura acha projetos reais e não devolve lixo
-const projetos = findProjects()
-assert.ok(projetos.length > 5, 'varredura achou pouca coisa')
-assert.ok(projetos.every((p) => fs.existsSync(p)))
-assert.ok(!projetos.some((p) => /node_modules|[\\/]_/.test(p)), 'varredura pegou pasta que devia pular')
+/* Varredura: base sintética primeiro, porque é a única que roda em qualquer
+   máquina. `findProjects()` sem argumento depende de `projectsBase()`, que
+   depende dos jobs — numa máquina sem job de background devolvia vazio e o
+   gate morria aqui (CC-53 de novo, terceira vez no mesmo arquivo). */
+{
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-proj-'))
+  try {
+    // projeto é pasta com `.git` ou `CLAUDE.md`; as duas últimas têm que ser puladas
+    for (const p of ['alfa', 'beta', 'grupo/gama', '_rascunho', 'node_modules/pacote']) {
+      fs.mkdirSync(path.join(raiz, p), { recursive: true })
+      fs.writeFileSync(path.join(raiz, p, 'CLAUDE.md'), '# projeto de teste')
+    }
+
+    const achados = findProjects(raiz)
+    assert.ok(achados.length >= 3, `varredura achou pouca coisa: ${achados.length}`)
+    assert.ok(achados.every((p) => fs.existsSync(p)))
+    assert.ok(
+      !achados.some((p) => /node_modules|[\\/]_/.test(p)),
+      'varredura pegou pasta que devia pular',
+    )
+  } finally { fs.rmSync(raiz, { recursive: true, force: true }) }
+}
+
+// e contra a máquina de verdade, quando ela tiver base: prova que a detecção
+// e a leitura de disco continuam de pé, sem exigir que exista
+{
+  const reais = findProjects()
+  if (!reais.length) console.log('  (pulado: esta máquina não tem base de projetos detectada)')
+  assert.ok(reais.every((p) => fs.existsSync(p)))
+  assert.ok(!reais.some((p) => /node_modules|[\\/]_/.test(p)))
+}
 
 // --- notas: arquivo editável à mão, formato tem que aguentar variação ---
 const notas = await import('./src/notes.mjs')
@@ -899,8 +1032,17 @@ fs.rmSync(tmpOc, { recursive: true, force: true })
   fs.writeFileSync(fixture, [
     JSON.stringify({ type: 'text', part: { type: 'text', text: '{"1": {"titulo": "Corrigir X", "resumo": "resumo aqui", "arquivo": "src/x.mjs"}}' } }),
   ].join('\n'))
-  const fakeBin = path.join(tmpOc2, 'fake-opencode.cmd')
-  fs.writeFileSync(fakeBin, `@echo off\r\ntype "${fixture}"\r\n`)
+  /* O binário falso precisa existir nos dois mundos: em Windows o disparo passa
+     por `cmd /c` e o alvo tem que ser `.cmd`; em Linux e macOS é executado
+     direto, então é script com shebang e bit de execução. Antes só havia a
+     versão `.cmd`, e este bloco simplesmente não rodava fora do Windows. */
+  const fakeBin = path.join(tmpOc2, plat.ehWindows ? 'fake-opencode.cmd' : 'fake-opencode.sh')
+  if (plat.ehWindows) {
+    fs.writeFileSync(fakeBin, `@echo off\r\ntype "${fixture}"\r\n`)
+  } else {
+    fs.writeFileSync(fakeBin, `#!/bin/sh\ncat "${fixture}"\n`)
+    fs.chmodSync(fakeBin, 0o755)
+  }
 
   const explicacoes = await oc.enriquecerTodos(['corrigir o bug X'], {
     binario: fakeBin, esperarMs: 5000, intervaloMs: 100,
@@ -1163,9 +1305,168 @@ if (estRotinas.projetos.length) {
   assert.equal(todos.silenciosos + todos.projetos.length <= todos.totalVarrido, true)
 }
 
-// --- daemon: caminhos, sem escrever nada ---
-const dm = await import('./src/daemon.mjs')
-assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')
-assert.equal(path.basename(dm.vbsPath()), 'control-center.vbs')
+/* --- CC-48: as rotas viajam no pacote, e param de esperar commit --- */
+{
+  const F = await import('./src/federacao.mjs')
+  const quadroDoPc = [{
+    projeto: 'proj_controlcenter',
+    ocupadas: [{ rota: 'backlog', id: '5805d6bb', ultimoSinal: 100, veredito: 'ativa', ruido: 'não pode viajar' }],
+  }]
 
-console.log(`ok — ${real.length} jobs reais, ${projetos.length} projetos varridos`)
+  const pacote = F.montarPacote({ maquina: { id: 'pc', nome: 'ALIENWARE-LIPE' }, rotas: quadroDoPc })
+  assert.deepEqual(Object.keys(pacote.rotas[0].ocupadas[0]).sort(), ['id', 'rota', 'ultimoSinal', 'veredito'],
+    'o pacote leva campo que não devia: o quadro do inovallbond passa de 60 KB')
+
+  // ida e volta por JSON, como acontece de verdade na rede
+  const v = F.validarPacote(JSON.parse(JSON.stringify(pacote)))
+  assert.ok(v.ok)
+
+  const daqui = [{ projeto: 'proj_controlcenter', ocupadas: [{ rota: 'sincronia', id: 'ff0d68b2', ultimoSinal: 900, veredito: 'ativa' }] }]
+  const juntas = F.rotasDeTodos(daqui, [{ ...v.pacote, idade: 1200 }], 'VPS')
+  assert.equal(juntas.proj_controlcenter.length, 2, 'a rota do outro lado sumiu')
+  assert.deepEqual(juntas.proj_controlcenter.map((r) => r.origem), ['VPS', 'ALIENWARE-LIPE'])
+
+  // mesma rota reportada dos dois lados fica uma só, com o sinal mais novo
+  const repetida = F.rotasDeTodos(
+    [{ projeto: 'p', ocupadas: [{ rota: 'x', id: 'aaaaaaaa', ultimoSinal: 10, veredito: 'orfa' }] }],
+    [{ maquina: { nome: 'PC' }, rotas: [{ projeto: 'p', ocupadas: [{ rota: 'x', id: 'aaaaaaaa', ultimoSinal: 999, veredito: 'ativa' }] }] }],
+    'VPS',
+  )
+  assert.equal(repetida.p.length, 1)
+  assert.equal(repetida.p[0].veredito, 'ativa', 'o sinal mais novo tem que vencer')
+
+  // sem federação, nada muda para quem trabalha sozinho
+  assert.deepEqual(F.rotasDeTodos([], [], 'VPS'), {})
+}
+
+/* --- CC-49: rota ocupada por quem sumiu ---
+   O caso de verdade: em 14/08 a rota `backlog` estava ocupada por uma sessão
+   que tinha encerrado o dia mais de uma hora antes. O quadro mentia e o próximo
+   agente respeitava a mentira. */
+{
+  const { rotasOcupadas, humanizar, SILENCIO_MS } = await import('./src/presenca.mjs')
+  const agora = Date.parse('2026-08-15T12:00:00Z')
+  const quadro = [
+    '| `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41 | 2026-08-13 |',
+    '| `viva` | 🔴 ocupada | ff0d68b2 — trabalhando agora | 2026-08-15 |',
+    '| `livre` | 🟢 livre | — | — |',
+    // o quadro traz um exemplo de linha ocupada dentro de comentário HTML, e
+    // ele casava todos os critérios: o painel acusava rota que nunca existiu
+    '<!-- | `so-exemplo` | 🔴 ocupada | id da sessão | hoje | -->',
+    '| `[exemplo] feature/checkout` | 🔴 ocupada | id da sessão | hoje |',
+  ].join('\n')
+
+  const sinais = new Map([
+    ['5805d6bb', agora - 5 * 3600e3], // sumiu faz cinco horas
+    ['ff0d68b2', agora - 60e3], // escreveu agora há pouco
+  ])
+  const r = rotasOcupadas(quadro, sinais, agora)
+
+  assert.deepEqual(r.map((x) => x.rota), ['backlog', 'viva'], 'exemplo do quadro entrou como rota real')
+  assert.equal(r[0].veredito, 'orfa')
+  assert.equal(r[1].veredito, 'ativa')
+  assert.equal(humanizar(r[0].silencioMs), '5h 0min')
+
+  // sessão que esta máquina não conhece NÃO é órfã: quase sempre é da outra
+  // máquina, e afirmar que sumiu seria inventar
+  const semSinal = rotasOcupadas('| `x` | 🔴 ocupada | abcdef12 — outra máquina | hoje |', new Map(), agora)
+  assert.equal(semSinal[0].veredito, 'desconhecida')
+
+  // no limite exato ainda é ativa: o corte é folgado de propósito, porque
+  // sessão longa passa dezenas de minutos numa tarefa só
+  const noLimite = rotasOcupadas(quadro, new Map([['5805d6bb', agora - SILENCIO_MS]]), agora)
+  assert.equal(noLimite[0].veredito, 'ativa')
+}
+
+/* --- CC-52: o buraco do Routia é sobreposição, não ausência de quadro --- */
+{
+  const { sobreposicoes } = await import('./src/routiaCobertura.mjs')
+  const j = (ini, fim) => ({ inicio: ini, fim })
+  // uma depois da outra: sessão única por vez, quadro não faria falta
+  assert.equal(sobreposicoes([j(0, 10), j(20, 30), j(40, 50)]), 0)
+  // a segunda começa antes de a primeira acabar: é aqui que duas sessões se pisam
+  assert.equal(sobreposicoes([j(0, 100), j(50, 150)]), 1)
+  // fora de ordem na entrada não pode mudar a conta
+  assert.equal(sobreposicoes([j(50, 150), j(0, 100)]), 1)
+  // três ao mesmo tempo contam duas sobreposições, não três
+  assert.equal(sobreposicoes([j(0, 100), j(10, 90), j(20, 80)]), 2)
+  assert.equal(sobreposicoes([]), 0)
+  assert.equal(sobreposicoes([j(0, 10)]), 0)
+}
+
+/* --- CC-56: sessão interativa reporta o próprio estado ---
+   O modo de uso que mais cresceu (celular, Remote Control) não cria job de
+   background, e por isso `cc set` recusava com "sem job". Roda em casa
+   temporária: o alvo aqui é ESCRITA de estado, e escrever no `.claude` real
+   seria repetir o erro das notas. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-s56-'))
+  const antesCasa = process.env.CC_HOME
+  const antesId = process.env.CLAUDE_CODE_SESSION_ID
+  const antesJob = process.env.CLAUDE_JOB_DIR
+  const sessionId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+  process.env.CC_HOME = casa
+  process.env.CLAUDE_CODE_SESSION_ID = sessionId
+  delete process.env.CLAUDE_JOB_DIR // é o que define "interativa"
+  try {
+    // um transcrito é a prova de que a sessão existe; sem ele, gravar é recusado
+    const pastaProj = path.join(casa, 'projects', '-um-projeto')
+    fs.mkdirSync(pastaProj, { recursive: true })
+    fs.writeFileSync(
+      path.join(pastaProj, `${sessionId}.jsonl`),
+      `${JSON.stringify({ type: 'user', cwd: path.join(path.sep, 'x', 'proj'), message: { content: 'o pedido' } })}\n`,
+    )
+
+    const q = `?casa=${encodeURIComponent(casa)}`
+    const jb = await import(`./src/jobs.mjs${q}`)
+    const ss = await import(`./src/sessoes.mjs${q}`)
+
+    assert.equal(jb.currentJobId(), sessionId, 'sem job, a identidade é a sessão')
+
+    jb.writeMeta(sessionId, { subject: 'reportando do celular', todos: [{ text: 'fechar isto', done: false }] })
+
+    // a regra de ouro: nada pode ter sido criado dentro de jobs/
+    assert.ok(!fs.existsSync(path.join(casa, 'jobs')), 'escreveu dentro da casa do Claude Code')
+    assert.ok(fs.existsSync(path.join(casa, 'control-center-sessoes', `${sessionId}.json`)))
+
+    const vista = ss.readSessoes(Date.now()).find((s) => s.id === sessionId.slice(0, 8))
+    assert.ok(vista, 'o painel não enxergou a sessão')
+    assert.equal(vista.subject, 'reportando do celular', 'o painel não leu o estado reportado')
+
+    // fechar to-do sem reenviar a lista funciona igual ao job de background
+    assert.equal(jb.marcarTodo(sessionId, 'fechar isto', true).done, true)
+    assert.equal(jb.marcarTodo(sessionId.slice(0, 8), 'fechar isto', false).done, false) // pelo id curto
+
+    // id que não é job nem sessão é recusado, senão vira arquivo órfão pra sempre
+    assert.throws(() => jb.writeMeta('nao-existe-mesmo', { subject: 'x' }), /não achei/)
+  } finally {
+    for (const [k, v] of [['CC_HOME', antesCasa], ['CLAUDE_CODE_SESSION_ID', antesId], ['CLAUDE_JOB_DIR', antesJob]]) {
+      if (v === undefined) delete process.env[k]
+      else process.env[k] = v
+    }
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
+/* --- daemon: caminhos, sem escrever nada ---
+   Cada sistema sobe no login do seu jeito, e o teste tem que perguntar isso ao
+   sistema em que está rodando. Antes exigia a pasta `Startup` sempre, o que só
+   existe no Windows — mais um bloco que só rodava numa máquina. */
+const dm = await import('./src/daemon.mjs')
+const ESPERADO = {
+  win32: { onde: /Startup/i, arquivo: 'control-center.vbs' },
+  darwin: { onde: /LaunchAgents/i, arquivo: 'control-center.plist' },
+  linux: { onde: /systemd[\\/]user/i, arquivo: 'control-center.service' },
+}[plat.SO]
+if (!ESPERADO) {
+  console.log(`  (pulado: sistema ${plat.SO} não tem caminho de autostart previsto)`)
+} else {
+  assert.match(dm.vbsPath(), ESPERADO.onde, `autostart fora do lugar em ${plat.SO}`)
+  assert.equal(path.basename(dm.vbsPath()), ESPERADO.arquivo)
+}
+
+/* O resumo diz o que a MÁQUINA tinha para oferecer, e por isso os dois números
+   podem ser zero sem que nada esteja errado: numa VPS sem job de background o
+   gate agora roda inteiro contra dados sintéticos. Zero aqui é informação, não
+   falha — antes era o gate morrendo. */
+console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos varridos nesta máquina`)

@@ -6,12 +6,14 @@
 // no CLAUDE.md não quebra nem escreve sem querer.
 
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { projectOf } from './jobs.mjs'
 import { hookDe } from './hooksCatalogo.mjs'
+import { casaClaude } from './platform.mjs'
 
-export const CONFIG_FILE = path.join(os.homedir(), '.claude', 'control-center.json')
+// via casaClaude(): era a armadilha do CONFIG_FILE nao isolado, que ja fez um
+// teste gravar um calendario no config de verdade do Felipe
+export const CONFIG_FILE = path.join(casaClaude(), 'control-center.json')
 
 const DEFAULTS = {
   enabled: true, disabledProjects: [], taxaHora: 0, taxaPorProjeto: {}, cambio: {},

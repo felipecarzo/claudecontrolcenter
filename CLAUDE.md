@@ -175,12 +175,22 @@ errada por definição.
   aponta sempre pro mesmo `~/.claude/control-center.json`, então escrever
   nele pela porta de teste escreve no arquivo que o daemon real também lê.
   Achado testando o CC-20 (calendário): um calendário de teste foi salvo no
-  config de verdade do Felipe. Pra testar rota que ESCREVE config, ou aponta
-  `CC_HOME`/variável equivalente pra um `.claude` isolado (não existe hoje —
-  seria o conserto certo), ou remove cirurgicamente só a chave que o teste
-  gravou depois, nunca restaura o arquivo inteiro de um backup — o daemon
-  real pode ter escrito algo legítimo nesse meio-tempo, e restaurar por cima
-  perde esse dado.
+  config de verdade do Felipe. **Consertado em 15/08: `CC_HOME` existe.**
+  `casaClaude()`, em `platform.mjs`, é o único lugar que resolve a pasta
+  `.claude`, e `CC_HOME` redireciona tudo pra um `.claude` isolado. `config.mjs`
+  e `notes.mjs` já passam por lá; os outros 12 módulos que ainda chamam
+  `os.homedir()` direto são cache ou dado derivado, e entram quando alguém
+  precisar. Módulo novo usa `casaClaude()`, nunca `os.homedir()` — o furo só
+  aparece quando alguém perde dado.
+- **O gate escrevia nas notas DE VERDADE do Felipe, e isso é candidato à causa
+  do apagamento de 2026-08-09.** O bloco de notas do `test.mjs` gravava,
+  apagava tudo para conferir a cópia de segurança, e restaurava no `finally`.
+  Termina bem quando termina — `npm test` interrompido no meio (Ctrl+C, crash)
+  deixava o arquivo com a lista vazia, que é exatamente o sintoma registrado
+  ("amanheceu com `{"notes": []}`, sem que se conseguisse provar quem gravou").
+  Não é prova, é um caminho que existia e agora não existe: o bloco roda numa
+  casa temporária via `CC_HOME`. **Teste que escreve em dado real do Felipe é
+  defeito, mesmo com restauração no `finally`.**
 - **`fan[]` fica com resíduo** da última tool mesmo depois do job terminar. Só
   exibir enquanto o status é `working`.
 - **Truncar string já colorida corta o código ANSI no meio** e vaza `[0m` na

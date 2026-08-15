@@ -25,12 +25,12 @@ Passo 0, antes de tocar em qualquer arquivo.
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
-| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-15: F11, 15 abas viraram 4 portas) | — |
+| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **CC-46** (estado casava no meio do titulo; provado nos 83 titulos dos 14 roadmaps, 1 mudanca e pra melhor) e **CC-53** (o `npm test` roda inteiro na VPS pela 1a vez: eram 5 blocos presos ao ambiente, nao 1). Nasceu o `CC_HOME`/`casaClaude()`, que tirou o gate de cima das notas de verdade do Felipe. Anterior: F11, 15 abas viraram 4 portas) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
-| `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: cockpit federado, CC-47/51/54/55/57/58. Escritório servido por proxy com WebSocket, porque `localhost` no iframe é o celular de quem olha. Falta ligar o PC: ver ticket) | — |
-| `framework` | 🟢 livre | — (ff0d68b2 fechou em 15/08: F1-F8, F10-F13, F15, F16. Falta F9 e F14, visões) | — |
+| `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **CC-56** (sessao interativa reporta estado, via `CLAUDE_CODE_SESSION_ID`, fora de `jobs/`), **CC-49** (`cc routia presenca`: ativa / orfa / desconhecida, e a distincao entre as duas ultimas e o cuidado central), **CC-48** (rotas viajam no pacote da federacao) e **CC-65** (os 6 hooks globais nao existiam em repo nenhum: agora em `hooks/routia/`). Anterior: cockpit federado, CC-47/51/54/55/57/58) | — |
+| `framework` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **F16**, `src/extrairPdf.mjs`, ~200 linhas so com o zlib do Node no lugar dos 34 MB do `pdfjs-dist`. Medido nos 3 contratos reais: 16/16, 8/8 e 12/12 valores mascarados, nenhum escapando. Junto: F9 e F14 no ROADMAP, o RE_ENDERECO trazido do Pierre `46999be`, e `test-anonimizar.mjs`) | — |
 
 ## Como pedir autorização numa rota que tem dono
 

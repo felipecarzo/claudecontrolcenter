@@ -12,6 +12,7 @@
 //   node cc.mjs hooks                  lista hooks e se estão ligados
 //   node cc.mjs hooks on|off <id>      liga/desliga um hook específico
 //   node cc.mjs routia install [pasta] cria docs/ROTAS-ATIVAS.md pro Método Routia
+//   node cc.mjs routia cobertura       onde o Routia está descoberto nesta máquina
 //   node cc.mjs json               despeja o estado atual e sai
 //
 //   flags: --no-web  --web-only  --port <n>
@@ -198,7 +199,79 @@ switch (cmd) {
   // (rota-guard.mjs) já roda global — isto só cria docs/ROTAS-ATIVAS.md com
   // o escopo de pasta chutado pra estrutura real, sem nunca sobrescrever.
   case 'routia': {
-    if (arg !== 'install') die(`uso: node cc.mjs routia install [pasta]\nsem pasta, usa o diretório atual`)
+    /* CC-52: quanto o método está descoberto NESTA máquina. Subcomando, e não
+       linha no painel, porque a resposta muda de máquina para máquina: na VPS o
+       trabalho é interativo, um por vez, e o paralelismo de verdade acontece no
+       PC. Um número só na tela esconderia de onde ele veio. */
+    if (arg === 'cobertura') {
+      const { retrato } = await import('./src/routiaCobertura.mjs')
+      const r = retrato()
+      if (has('--json')) { console.log(JSON.stringify(r, null, 2)); break }
+
+      const { hostname } = await import('node:os')
+      console.log(`\nMétodo Routia em ${hostname()}\n`)
+      if (!r.projetos.length) {
+        console.log('  nenhuma sessão com trabalho de verdade nesta máquina\n')
+        break
+      }
+      console.log(`  ${'projeto'.padEnd(28)}${'sessões'.padStart(8)}${'simultâneas'.padStart(13)}   quadro`)
+      for (const p of r.projetos) {
+        const marca = p.temQuadro ? 'sim' : (p.simultaneas > 0 ? 'NÃO ← descoberto' : 'não')
+        console.log(`  ${p.nome.padEnd(28)}${String(p.sessoes).padStart(8)}${String(p.simultaneas).padStart(13)}   ${marca}`)
+      }
+      const { comSessao, comQuadro, comParalelismo, expostos } = r.resumo
+      console.log(`\n  ${comSessao} projeto(s) com sessão, ${comQuadro} com quadro, ${comParalelismo} com sessões simultâneas.`)
+      console.log(expostos
+        ? `  ⚠️  ${expostos} tiveram sessões ao mesmo tempo SEM quadro: ${r.expostos.map((p) => p.nome).join(', ')}\n`
+        : '  Nenhum projeto teve sessões simultâneas sem quadro nesta máquina.\n')
+      break
+    }
+
+    /* CC-49: quem está com rota marcada e já sumiu. Nunca libera sozinho — um
+       agente pode passar vinte minutos pensando sem escrever nada, e liberar
+       por silêncio é a colisão que o método existe para evitar. */
+    if (arg === 'presenca') {
+      const { retratoDoQuadro, humanizar, SILENCIO_MS } = await import('./src/presenca.mjs')
+      const { readSessoes } = await import('./src/sessoes.mjs')
+      const dir = path.resolve(val('--dir') || positional[2] || process.cwd())
+      const jobs = readJobs()
+      const { PROJETOS_DIR } = await import('./src/sessoes.mjs')
+      const r = retratoDoQuadro(dir, {
+        jobs,
+        sessoes: readSessoes(Date.now(), { ignorar: jobs.map((j) => j.id) }),
+        pastaProjetos: PROJETOS_DIR,
+      })
+      if (!r) die(`sem quadro de rotas em ${dir}/docs/ROTAS-ATIVAS.md`)
+      if (has('--json')) { console.log(JSON.stringify(r, null, 2)); break }
+
+      console.log(`\n${r.arquivo}\n`)
+      if (!r.ocupadas.length) { console.log('  nenhuma rota ocupada\n'); break }
+      for (const o of r.ocupadas) {
+        const marca = { ativa: '🟢 ativa', orfa: '⚠️  provavelmente órfã', desconhecida: '？ sem sinal conhecido' }[o.veredito]
+        console.log(`  ${String(o.rota).padEnd(20)} ${String(o.id || '—').padEnd(10)} ${marca.padEnd(26)} calado há ${humanizar(o.silencioMs)}`)
+      }
+      const forasteiras = r.ocupadas.filter((o) => o.veredito === 'desconhecida').length
+      if (r.orfas.length) {
+        console.log(`\n  ${r.orfas.length} rota(s) sem sinal há mais de ${humanizar(SILENCIO_MS)}.`)
+        console.log('  Confirme antes de retomar: silêncio não é liberação.')
+      } else {
+        console.log('\n  Nenhuma rota com dono sumido nesta máquina.')
+      }
+      /* "Sem sinal conhecido" NÃO é órfã: é sessão cujo transcrito não existe
+         aqui, quase sempre da outra máquina. Dizer "todas têm dono vivo" nesse
+         caso seria afirmar o que esta máquina não tem como saber. */
+      if (forasteiras) {
+        console.log(`  ${forasteiras} rota(s) marcada(s) por sessão de outra máquina: daqui não dá para saber se ainda vive.`)
+      }
+      console.log('')
+      break
+    }
+
+    if (arg !== 'install') {
+      die('uso: node cc.mjs routia install [pasta]     cria o quadro\n'
+        + '     node cc.mjs routia cobertura [--json]  onde o método está descoberto\n'
+        + '     node cc.mjs routia presenca [--dir X]  rotas ocupadas por quem sumiu')
+    }
     const dir = path.resolve(positional[2] || process.cwd())
     if (!fs.existsSync(dir)) die(`pasta não existe: ${dir}`)
     const pastasArg = val('--pastas')

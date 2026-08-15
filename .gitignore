@@ -6,3 +6,6 @@ node_modules/
 
 # gerado por `cc daemon install` com os caminhos absolutos da máquina
 abrir-control-center.vbs
+
+# fila de pedidos de rota: estado efemero do hook, nao e historico
+docs/.rotas-pedidos.json

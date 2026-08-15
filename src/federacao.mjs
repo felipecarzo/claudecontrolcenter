@@ -56,6 +56,8 @@ export function validarPacote(bruto) {
       servidores: lista(bruto.servidores, 200),
       uso: bruto.uso && typeof bruto.uso === 'object' ? bruto.uso : null,
       tempo: bruto.tempo && typeof bruto.tempo === 'object' ? bruto.tempo : null,
+      // CC-48: 40 projetos é folgado e limita o estrago de um pacote malformado
+      rotas: lista(bruto.rotas, 40),
       em: Number(bruto.em) || Date.now(),
       recebidoEm: Date.now(),
     },
@@ -164,6 +166,44 @@ export function mesclarTempo(local, pacotes, origemLocal) {
 
 /** As máquinas conhecidas, para montar o filtro do topo. A local vem primeiro:
  *  é a que o Felipe está olhando. */
+/**
+ * CC-48: as rotas ocupadas em TODAS as máquinas, por projeto.
+ *
+ * A resposta que o `rota-guard` precisa antes de liberar uma rota: ela pode
+ * estar livre no quadro daqui e ocupada por uma sessão do outro lado que ainda
+ * não commitou.
+ *
+ * ⚠️ **Rota ocupada em qualquer máquina conta como ocupada.** Na dúvida entre
+ * bloquear demais e deixar duas sessões se pisarem, bloquear demais custa uma
+ * mensagem; a colisão custa trabalho perdido. O `veredito` acompanha para quem
+ * lê decidir — órfã do outro lado continua sendo órfã.
+ */
+export function rotasDeTodos(locais = [], pacotes = [], origemLocal = 'local') {
+  const porProjeto = new Map()
+
+  const juntar = (quadros, origem, idade = 0) => {
+    for (const q of quadros || []) {
+      if (!q?.projeto) continue
+      const lista = porProjeto.get(q.projeto) || []
+      for (const o of q.ocupadas || []) {
+        // mesma rota reportada pelas duas máquinas: fica a de sinal mais novo
+        const igual = lista.find((x) => x.rota === o.rota && x.id === o.id)
+        if (igual) {
+          if ((o.ultimoSinal || 0) > (igual.ultimoSinal || 0)) Object.assign(igual, o, { origem, idade })
+          continue
+        }
+        lista.push({ ...o, origem, idade })
+      }
+      porProjeto.set(q.projeto, lista)
+    }
+  }
+
+  juntar(locais, origemLocal)
+  for (const p of pacotes) juntar(p.rotas, p.maquina?.nome || p.maquina?.id || 'remota', p.idade)
+
+  return Object.fromEntries(porProjeto)
+}
+
 export function maquinasConhecidas(pacotes, origemLocal) {
   return [
     { ...origemLocal, local: true, idadeMs: 0, semContato: false },
@@ -178,7 +218,28 @@ export function maquinasConhecidas(pacotes, origemLocal) {
  * evita que a montagem do pacote dispare, sem querer, a varredura de 800 MB da
  * aba tempo dentro do tique de 2 segundos.
  */
-export function montarPacote({ maquina, jobs = [], servidores = [], uso = null, tempo = null }) {
+/**
+ * CC-48: as rotas viajam no pacote, e por isso deixam de esperar commit.
+ *
+ * Antes, marcar rota no PC só chegava na VPS depois de commit, push e pull —
+ * latência e ruído justamente no arquivo mais disputado, que foi a queixa do
+ * Felipe ("a gente faz muitos testes internos"). O quadro em markdown continua
+ * sendo a verdade legível e versionada; o que muda é **o canal**.
+ *
+ * Vai só o essencial de cada rota ocupada, nunca o arquivo inteiro: o quadro do
+ * inovallbond passa de 60 KB, quase todo histórico de rota fechada, e o limite
+ * de pacote é 2 MB para a federação inteira.
+ */
+export const enxugarRotas = (quadros) => quadros
+  .filter((q) => q?.projeto)
+  .map((q) => ({
+    projeto: q.projeto,
+    ocupadas: (q.ocupadas || []).map((o) => ({
+      rota: o.rota, id: o.id, ultimoSinal: o.ultimoSinal, veredito: o.veredito,
+    })),
+  }))
+
+export function montarPacote({ maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [] }) {
   const enxuto = jobs.map((j) => ({
     id: j.id, status: j.status, subject: j.subject, project: j.project, sub: j.sub,
     route: j.route, frente: j.frente, model: j.model, tokens: j.tokens, tipo: j.tipo || 'background',
@@ -186,7 +247,7 @@ export function montarPacote({ maquina, jobs = [], servidores = [], uso = null, 
     detail: j.detail, createdAt: j.createdAt, updatedAt: j.updatedAt, cwd: j.cwd,
     lastPrompt: j.lastPrompt, entregueEmAberto: j.entregueEmAberto, sinais: j.sinais,
   }))
-  return { maquina, jobs: enxuto, servidores, uso, tempo, em: Date.now() }
+  return { maquina, jobs: enxuto, servidores, uso, tempo, rotas: enxugarRotas(rotas), em: Date.now() }
 }
 
 /**

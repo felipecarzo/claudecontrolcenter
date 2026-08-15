@@ -81,11 +81,19 @@ const CORPO_ENDERECO = "(?:(?!CEP|<CEP)[^,\\n]|\\n(?!\\s*\\n))";
    texto que segue para o modelo perdia a vírgula que separava as informações */
 const FIM_ENDERECO = "(?:(?!CEP|<CEP)[^,\\n\\s])";
 
+/* o que pode vir depois da vírgula e ainda ser endereço. Sem esta lista, a
+   parte opcional aceitava QUALQUER coisa, e "Avenida Paulista 1000, doravante
+   CONTRATADA" virava uma etiqueta só — mascarando justamente o que diz qual
+   parte é qual. Achado ao portar este arquivo pra cá, e devolvido ao Pierre no
+   commit `46999be` do inovallbond, que é a origem dele. */
+const COMPLEMENTO =
+  "(?:n[ºo°.]?\\s*)?\\d|conjunto|conj|sala|bloco|bl|apto|ap|andar|casa|lote|quadra|qd|galp[ãa]o|fundos|t[ée]rreo|bairro|jardim|vila|centro|s\\/n";
+
 const RE_ENDERECO = new RegExp(
   `\\b${LOGRADOURO}\\s+${CORPO_ENDERECO}{1,69}${FIM_ENDERECO}` +
     /* a segunda parte (número, conjunto, bairro) é opcional: "Rua X, 190" e
        "Rua X 190, conjunto 71" são igualmente comuns */
-    `(?:,\\s*(?:(?!CEP|<CEP)[^,\\n]){0,39}${FIM_ENDERECO})?`,
+    `(?:,\\s*(?=${COMPLEMENTO})(?:(?!CEP|<CEP)[^,\\n]){0,39}${FIM_ENDERECO})?`,
   "gi",
 );
 

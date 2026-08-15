@@ -32,15 +32,48 @@ export function acharRoadmap(cwd) {
   return null
 }
 
-// Emoji e palavra viram o mesmo estado: os roadmaps usam ora um, ora outro.
+/**
+ * Emoji e palavra viram o mesmo estado: os roadmaps usam ora um, ora outro.
+ *
+ * **Mas as duas não valem no mesmo lugar, e é isso que o CC-46 consertou.**
+ * Emoji é marcador inequívoco: ninguém escreve ✅ no meio de uma frase sem
+ * querer dizer "feito". Palavra é ambígua, e testá-la contra o título inteiro
+ * dava falso positivo em cima do assunto da tarefa:
+ *
+ *   "CC-23 — Histórico rico"        virava FEITO      (por "histórico")
+ *   "CC-04 — ...agente travado..."  virava BLOQUEADO  (por "travado")
+ *
+ * Nos dois casos a palavra descreve **o que a tarefa é**, não em que pé ela
+ * está. Por isso a palavra só conta na ETIQUETA do título: o pedaço antes do
+ * primeiro travessão ou dois-pontos, depois de tirar o identificador
+ * (`CC-46`, `F16.`, `3)`). É onde o estado é escrito quando é escrito.
+ *
+ * **Quando os dois se contradizem, o emoji ganha.** Achado ao varrer os 14
+ * roadmaps: o inovallbond tem `🟡 Bloqueado — depende do Felipe`, e antes ele
+ * saía vermelho no painel enquanto o arquivo mostrava amarelo. Escolher 🟡 e
+ * não 🔴 é deliberado, e "depende de alguém" é esperar, não estar impedido. Foi
+ * a única mudança de estado em 83 títulos reais, e é para melhor.
+ */
 const ESTADOS = [
-  { chave: 'bloqueado', teste: /🔴|⛔|bloquead|travad|impedid/i },
-  { chave: 'esperando', teste: /🟡|⏳|aguardand|depende d[eao]\s+(?!mim)/i },
-  { chave: 'feito', teste: /✅|✔|conclu[íi]d|entregue|hist[óo]rico|feito/i },
-  { chave: 'aberto', teste: /🟢|aberto|agora|pr[óo]xim|fazer/i },
+  { chave: 'bloqueado', emoji: /🔴|⛔/u, palavra: /bloquead|travad|impedid/i },
+  { chave: 'esperando', emoji: /🟡|⏳/u, palavra: /aguardand|depende d[eao]\s+(?!mim)/i },
+  { chave: 'feito', emoji: /✅|✔/u, palavra: /conclu[íi]d|entregue|hist[óo]rico|feito/i },
+  { chave: 'aberto', emoji: /🟢/u, palavra: /aberto|agora|pr[óo]xim|fazer/i },
 ]
 
-const estadoDe = (titulo) => ESTADOS.find((e) => e.teste.test(titulo))?.chave || 'aberto'
+/** `CC-46 — casa por regex solto` → `casa por regex solto` → `` (etiqueta vazia).
+ *  O identificador sai primeiro porque ele contém hífen: cortar no primeiro
+ *  separador sem tirá-lo deixaria só "CC". */
+const etiquetaDe = (titulo) => String(titulo)
+  .replace(/^\s*(?:[A-Za-z]{1,4}-?\d+[.:)]?|\d+[.)])\s*/, '')
+  .split(/[—–:·]|\s-\s/)[0]
+
+const estadoDe = (titulo) => {
+  const porEmoji = ESTADOS.find((e) => e.emoji.test(titulo))
+  if (porEmoji) return porEmoji.chave
+  const etiqueta = etiquetaDe(titulo)
+  return ESTADOS.find((e) => e.palavra.test(etiqueta))?.chave || 'aberto'
+}
 
 /** `## 🔴 Bloqueado — só o Felipe destrava` → `Bloqueado — só o Felipe destrava` */
 const limpar = (s) => s
