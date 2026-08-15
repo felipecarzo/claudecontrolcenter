@@ -161,8 +161,19 @@
      larga enquanto o painel some. A tabela quebraria em vez de compactar. */
   #painel {
     flex: 1 1 auto; min-width: 0; overflow-y: auto;
+    /* CC-73: o painel NUNCA rola de lado. Sem isto, um elemento largo (a
+       tabela da aba tempo) empurra a página inteira e nasce uma barra de
+       rolagem horizontal no rodapé — apareceu no print dele de 15/08, com a
+       janela encaixada na lateral do monitor. Quem rola é o elemento largo,
+       dentro de `.rolagem`. */
+    overflow-x: hidden;
     container-type: inline-size; container-name: painel;
   }
+  /* A caixa que segura conteúdo largo. Rola sozinha, sem contaminar a página.
+     `overscroll-behavior-x: contain` impede o gesto de arrastar de lado no
+     celular virar "voltar" no navegador. */
+  .rolagem { overflow-x: auto; overscroll-behavior-x: contain; }
+  .rolagem > * { min-width: max-content; }
   #split {
     flex: none; width: 6px; cursor: col-resize; background: var(--line);
     border-left: 1px solid var(--bg); border-right: 1px solid var(--bg);
@@ -265,6 +276,18 @@
     display: flex; flex-direction: column; justify-content: center; gap: 3px;
     flex: none; padding: 5px 9px; min-height: 40px;
     border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
+  }
+
+  /* CC-73, tela estreita: `.modulos` e `.mod` são `flex: none`, então nada
+     encolhe e a faixa (cpu, ram, player) empurra a página para fora — é o que
+     corta o player no print dele. Aqui ela desce para uma linha própria e rola
+     dentro de si mesma, em vez de contaminar o painel. */
+  @container (max-width: 640px) {
+    .linha-abas { flex-wrap: wrap; }
+    .linha-abas > .modulos {
+      margin-left: 0; width: 100%; overflow-x: auto; overscroll-behavior-x: contain;
+      padding-bottom: 2px;
+    }
   }
 
   .hw { display: grid; grid-template-columns: auto 1fr; gap: 2px 7px; align-content: center; }
@@ -1313,7 +1336,10 @@
   /* Palco largo, legenda estreita e fixa: a coluna de texto não deve roubar
      espaço do escritório, e abaixo de 900px vira uma coisa embaixo da outra. */
   .escritorio-grade { display: grid; grid-template-columns: 1fr 280px; gap: 10px; }
-  @media (max-width: 900px) { .escritorio-grade { grid-template-columns: 1fr; } }
+  /* `@container` e não `@media`: com a coluna de notas aberta a janela continua
+     larga enquanto o painel encolhe, então a media query nunca dispararia e a
+     grade ficaria em duas colunas espremidas. Achado pelo gate do CC-73. */
+  @container (max-width: 900px) { .escritorio-grade { grid-template-columns: 1fr; } }
   .escritorio-legenda {
     border: 1px solid var(--line); border-radius: 8px;
     background: var(--surface); overflow: hidden;
@@ -2674,6 +2700,7 @@ function viewTempo() {
 
   const totalValor = TEMPO.projetos.reduce((a, p) => a + p.valor, 0)
   return `${ctl}${aviso}
+    <div class="rolagem">
     <div class="t-linha t-head${cls}">
       <span>projeto</span><span class="v">horas</span><span class="v">dias</span>
       <span class="v">média</span><span class="v">tokens</span><span class="v">custo api</span><span class="v">por hora</span>
@@ -2698,6 +2725,7 @@ function viewTempo() {
         const s = TEMPO.projetos.reduce((a, p) => a + (p.sobra || 0), 0)
         return `<span class="v ${s >= 0 ? 'ok' : 'ruim'}">${brl(s)}</span>`
       })() : ''}
+    </div>
     </div>`
 }
 

@@ -1362,6 +1362,39 @@ if (estRotinas.projetos.length) {
   }
 }
 
+/* --- CC-73: o painel não pode rolar de lado ---
+   Não dá para medir layout sem navegador, e o Chrome desta VPS exige um token
+   que o hook de segredo (com razão) não deixa ler. Então o que este teste
+   guarda é a REGRA, não o pixel: as três peças que impedem o vazamento têm que
+   continuar no arquivo. Se alguém remover uma, a barra horizontal volta e só
+   apareceria num print meses depois — foi assim que ela viveu até 15/08. */
+{
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui.html'), 'utf8')
+  const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'))
+
+  assert.match(css, /#painel\s*{[^}]*overflow-x:\s*hidden/s, 'o #painel voltou a poder rolar de lado')
+  assert.match(css, /\.rolagem\s*{[^}]*overflow-x:\s*auto/s, 'sumiu a caixa que segura conteúdo largo')
+  assert.match(css, /@container[^{]*\(max-width:\s*640px\)/, 'sumiu o ajuste de tela estreita da faixa de módulos')
+
+  // a tabela de tempo é o conteúdo largo conhecido, e tem que estar embrulhada
+  const tabela = html.indexOf('t-linha t-head')
+  assert.ok(tabela > 0)
+  assert.ok(
+    html.lastIndexOf('class="rolagem"', tabela) > tabela - 200,
+    'a tabela de tempo saiu de dentro da .rolagem',
+  )
+
+  /* Breakpoint é `@container`, nunca `@media`: com a coluna de notas aberta a
+     janela continua larga enquanto o painel encolhe, então media query não
+     dispararia. Armadilha já registrada no CLAUDE.md. */
+  // comentário é onde a regra está EXPLICADA, então sai antes da contagem
+  const semComentario = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  assert.equal(
+    (semComentario.match(/@media[^{]*max-width/g) || []).length, 0,
+    'entrou uma media query de largura: neste painel o breakpoint é @container',
+  )
+}
+
 /* --- VPS: veredito, não valor ---
    A tela mostrava o que a máquina TEM e ele tinha que traduzir sozinho. Os
    limiares são regra de negócio e ficam provados aqui, não na página. */

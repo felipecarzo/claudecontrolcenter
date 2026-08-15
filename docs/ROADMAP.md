@@ -98,7 +98,7 @@ Armadilha a não repetir: **texto com elemento no meio, dentro de `display:grid`
 precisa de UM elemento que o envolva.** Hoje é o único caso no arquivo, e foi
 conferido por varredura.
 
-### CC-73: o painel vaza de lado, e não pode
+### CC-73 ✅ 15/08 — o painel vazava de lado
 
 A barra de rolagem horizontal aparece no rodapé do print, e a tabela da aba
 tempo sai cortada. `#painel` tem `overflow-y` e não tem `overflow-x`, então
@@ -107,8 +107,23 @@ conteúdo largo empurra a página inteira.
 A causa concreta na aba tempo: `.t-linha` usa colunas de largura fixa que somam
 mais que a janela estreita (`1fr 74px 52px 62px 66px 78px 62px 80px 86px`).
 
-Regra a valer: **o painel nunca rola de lado. Quem rola é o elemento largo,
+**Feito.** Três peças: `#painel` ganhou `overflow-x: hidden`, nasceu `.rolagem`
+para conteúdo largo rolar dentro de si mesmo, e a faixa de módulos (cpu, ram,
+player) desce para uma linha própria abaixo de 640px — ela era `flex: none`, não
+encolhia, e empurrava a página inteira.
+
+A regra que fica: **o painel nunca rola de lado. Quem rola é o elemento largo,
 dentro dele mesmo.**
+
+O gate guarda a regra, não o pixel: sem navegador aqui (o Chrome desta VPS exige
+token que o hook de segredo não deixa ler, corretamente), o teste confere que as
+três peças continuam no arquivo. Sem isso, a barra volta e só apareceria num
+print meses depois — foi assim que ela viveu até hoje.
+
+**O teste achou um defeito de brinde:** a grade do escritório usava
+`@media (max-width: 900px)`. Com a coluna de notas aberta, a janela continua
+larga enquanto o painel encolhe, então ela nunca disparava. Virou `@container`,
+e o gate agora recusa qualquer media query de largura neste arquivo.
 
 ### CC-74: o cabeçalho come metade da tela
 
