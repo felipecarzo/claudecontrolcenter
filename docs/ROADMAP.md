@@ -407,7 +407,7 @@ data, sem planning, sem estimativa.
 - O campo `frente` do protocolo já liga to-do a frente, então a ponte entre o
   nível de baixo e o de cima existe desde 14/08.
 
-### CC-84 ⚠️ URGENTE: dois agentes no mesmo projeto, se falando
+### CC-84 ✅ 15/08 — dois agentes no mesmo projeto, se falando
 
 **Ele vai colocar dois agentes no mesmo projeto amanhã (16/08).** Isto deixou de
 ser ideia e virou prazo. Palavras dele:
@@ -449,18 +449,42 @@ Cuidado a respeitar: esse hook roda em **toda** chamada de ferramenta. Tem que
 ser leitura de um JSON pequeno, e falhar aberto — hook lento ou quebrado aqui
 trava os dois agentes de uma vez.
 
-#### O que desenhar
+#### ✅ Feito: `hooks/routia/recados.mjs`
 
-- **Caixa de mensagem por sessão**, fora de `jobs/` (mesma decisão do CC-56).
-- **Tipos de recado, poucos:** "vou mexer no seu arquivo", "terminei, pode ir",
-  "para e me responda". Cada tipo com o que o outro deve fazer.
-- **Detecção automática do conflito**, que é a parte difícil: hoje o Routia
-  raciocina por ROTA (pasta), e ele pediu por **dependência** — "se o outro vai
-  mexer numa classe/função que a minha tarefa usa". Isso exige olhar import e
-  chamada, não caminho de arquivo. Provável primeira versão: só arquivo, e a
-  dependência entra depois, se doer.
+Cinco tipos, poucos de propósito (lista longa vira taxonomia que ninguém lembra
+na hora de mandar): `aviso`, `vou_mexer`, `pare`, `liberado`, `terminei`. Cada um
+carrega **o que o outro deve fazer**, não só o texto.
 
-### CC-85: o log das conversas entre agentes
+```
+node recados.mjs enviar <para|todos> <tipo> "texto" [--arquivo x]
+node recados.mjs caixa      o que chegou pra mim
+node recados.mjs log        tudo que foi dito, recente primeiro   ← CC-85
+node recados.mjs quem       sessões que já trocaram recado aqui
+```
+
+**A decisão de desenho que vale registrar: todo recado interrompe uma vez.** Um
+hook `PreToolUse` só tem uma forma de fazer o agente LER algo — recusar a chamada
+e devolver o texto. Com exit 0 ele nunca fica sabendo. Então o recado custa uma
+interrupção, **uma só**: fica marcado como entregue e a ferramenta seguinte
+passa. Recado que não interrompe é recado que ninguém lê, que foi exatamente o
+problema do markdown.
+
+Gate: `hooks/routia/testar-recados.sh`, 10 checagens. A que mais importa é a
+última — **arquivo corrompido não trava nenhum dos dois agentes**. Este hook roda
+em TODA chamada de ferramenta de TODOS os agentes; se ele quebrar fechado, para
+o projeto inteiro.
+
+Instalado nesta VPS. No PC entra junto com o CC-67.
+
+#### O que ficou de fora, e é a parte que ele mais quer
+
+**Detecção automática do conflito por dependência.** Hoje o agente decide sozinho
+quando mandar recado; ninguém o avisa que o arquivo que ele vai tocar é usado
+pela tarefa do outro. Isso é o CC-86, e com ele o aviso deixa de ser "vou mexer
+no seu arquivo" e vira *"vou mexer num arquivo que 15 outros usam, dois deles
+abertos por você"*.
+
+### CC-85 ✅ 15/08 (primeira fatia) — o log das conversas
 
 Pedido junto do CC-84:
 
@@ -472,6 +496,10 @@ Pedido junto do CC-84:
 correção dele: daily não é sobre humanos, é sobre coordenação entre executores.
 Muda o formato — não é reunião de manhã, é registro do que foi combinado, na
 hora em que foi.
+
+`recados.mjs log` já mostra tudo que foi dito, recente primeiro. Falta a tela no
+painel, com os filtros que ele pediu (por projeto, por agente, ordem crescente e
+decrescente) — isso entra junto do CC-78.
 
 Vale como métrica, não só como histórico: **duas sessões negociando muito no
 mesmo projeto é sinal de que as rotas estão mal divididas.** Esse número não
