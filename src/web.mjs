@@ -57,6 +57,7 @@ import { registradoTodos } from './hooksRegistro.mjs'
 import { porProjeto } from './cockpit.mjs'
 import { listarContainers } from './docker.mjs'
 import { atualizarSnapshot, configurada as vpsConfigurada } from './vps.mjs'
+import { SECOES as SECOES_VPS, veredito as veredictoVps } from './vpsSaude.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
 import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
@@ -642,6 +643,12 @@ function handler(req, res) {
       host: cfg.vps?.host || null,
       usuario: cfg.vps?.usuario || 'root',
       snapshot: cfg.vpsSnapshot,
+      /* O veredito vem pronto do servidor, e não é preferência: os limiares
+         (disco em 85%, memória em 90%, 5 reinícios) são regra de negócio e o
+         `npm test` prova cada um. Recalcular em JS de navegador daria duas
+         verdades para "a VPS está bem?". */
+      saude: veredictoVps(cfg.vpsSnapshot),
+      secoes: SECOES_VPS,
     })
   }
 
@@ -649,7 +656,7 @@ function handler(req, res) {
   // demorar (rede + comando remoto), por isso o timeout mais largo.
   if (url.pathname === '/api/vps/atualizar' && req.method === 'POST') {
     return atualizarSnapshot()
-      .then((snapshot) => send(res, 200, { ok: true, snapshot }))
+      .then((snapshot) => send(res, 200, { ok: true, snapshot, saude: veredictoVps(snapshot) }))
       .catch((e) => send(res, 500, { ok: false, error: String(e.message || e) }))
   }
 

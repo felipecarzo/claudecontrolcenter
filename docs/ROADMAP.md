@@ -28,6 +28,61 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 > lição serve para alguma coisa. A regra que isto restaura já existia escrita
 > na linha 3 deste arquivo e não estava sendo seguida.
 
+### Frente: a tela fala a língua dele, aprovada em 15/08
+
+Pedido dele, ditado por voz: *"tem uma tela chamada VPS que tem um monte de
+processo jogado, e eu tenho que ter muito conhecimento técnico pra olhar aquilo
+ali e entender o que significa"*. E o motivo, que é maior que a estética: **ele
+volta em três meses e não lembra o que é cada coisa.**
+
+**A ideia dele era "?" em todo lugar. Discordei de um ponto e ele topou:** se
+tudo tem interrogação, nada tem destaque, e entender uma tela passa a exigir
+quarenta cliques. A explicação não é enfeite pendurado no dado, é **o dado
+escrito direito**:
+
+```
+hoje:   processos: 47                    ⓘ
+seria:  47 programas rodando, nenhum é seu
+```
+
+O "?" fica, mas só onde a tradução não cabe — hoje, uma por seção.
+
+#### As três regras
+
+1. **Toda tela responde uma pergunta dele, escrita no topo.** Se não dá para
+   escrever a pergunta, a tela não deveria existir. "VPS" não é pergunta; "A VPS
+   está saudável?" é.
+2. **O texto usa as palavras dele, não as da máquina.** Nome de ferramenta
+   (`nginx`, `pm2`) só diz algo a quem já sabe o que ela faz. O nome técnico
+   fica ao lado, pequeno: quem conhece reconhece, quem não conhece não precisa.
+3. **Todo estado tem veredito, não só valor.** `47 processos` não é veredito;
+   `tudo no ar` é. E todo alerta diz **o que fazer** — alerta sem saída é o
+   ruído que originou tudo isto.
+
+Quarta regra, acrescentada por ele: **celular primeiro**, que é onde ele usa. O
+breakpoint é `@container`, nunca `@media` (armadilha já registrada).
+
+#### ✅ Primeira fatia: a aba VPS, 15/08
+
+Feita inteira no padrão, e escolhida por ser a pior e a que ele citou. Se a
+regra não funcionasse ali, se jogaria fora uma tela em vez de quinze.
+
+O veredito mora em `src/vpsSaude.mjs`, **fora da página**: os limiares (disco em
+85%, memória em 90%, 5 reinícios) são regra de negócio e o `npm test` prova cada
+um. Calcular em JS de navegador daria duas verdades para "a VPS está bem?".
+
+**A tela nova achou um problema real no primeiro uso**, e é a melhor defesa da
+mudança: o `inovallbond` está no PM2 com **6 reinícios**. Na tela antiga isso era
+um número no canto de um cartão; agora é uma linha que diz *"aparece como no ar,
+mas está caindo e voltando. O log dele diz por quê"*. Ninguém tinha notado.
+
+#### O que falta
+
+Aplicar às outras telas, uma por vez, e só depois de a VPS provar valor no uso
+de verdade. A regra 2 tem um teste objetivo esperando: cruzar o texto da tela
+com o glossário do CC-63 e contar quantos termos técnicos sobraram. Isso vira
+número, e número ele acompanha.
+
 ### Frente: o que pre-commit, husky e Danger já resolveram, e nós não
 
 Registrada em 15/08 a pedido dele, depois de comparar o framework com os oito

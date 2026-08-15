@@ -1362,6 +1362,61 @@ if (estRotinas.projetos.length) {
   }
 }
 
+/* --- VPS: veredito, não valor ---
+   A tela mostrava o que a máquina TEM e ele tinha que traduzir sozinho. Os
+   limiares são regra de negócio e ficam provados aqui, não na página. */
+{
+  const V = await import('./src/vpsSaude.mjs')
+  const agora = Date.parse('2026-08-15T12:00:00Z')
+  const saudavel = {
+    em: agora - 60e3,
+    nginx: [{ serverName: 'site.com', tipo: 'proxy' }],
+    docker: [{ nome: 'db', status: 'Up 3 days', portas: [] }],
+    pm2: [{ nome: 'api', status: 'online', restarts: 0 }],
+    ram: { usadoMB: 2000, totalMB: 8000 },
+    disco: { usadoGB: 20, totalGB: 100 },
+  }
+
+  assert.equal(V.veredito(saudavel, agora).cor, 'bom')
+  assert.equal(V.alertas(saudavel, agora).length, 0)
+  // a frase responde a pergunta do topo, com números, sem jargão
+  assert.match(V.veredito(saudavel, agora).frase, /Tudo no ar/)
+
+  // container parado é grave: se servia um site, o site caiu
+  const comParado = { ...saudavel, docker: [{ nome: 'db', status: 'Exited (1)' }] }
+  assert.equal(V.veredito(comParado, agora).cor, 'ruim')
+
+  /* Reiniciando sozinho é o aviso mais valioso desta tela: o programa aparece
+     como "no ar" enquanto morre e volta em laço. */
+  const emLaco = { ...saudavel, pm2: [{ nome: 'api', status: 'online', restarts: 12 }] }
+  const vLaco = V.veredito(emLaco, agora)
+  assert.equal(vLaco.cor, 'atencao')
+  assert.match(vLaco.alertas[0].texto, /reiniciando sozinho/)
+
+  // disco avisa antes da memória, e o motivo está no módulo
+  assert.equal(V.veredito({ ...saudavel, disco: { usadoGB: 88, totalGB: 100 } }, agora).cor, 'atencao')
+  assert.equal(V.veredito({ ...saudavel, ram: { usadoMB: 7100, totalMB: 8000 } }, agora).cor, 'bom')
+
+  // leitura velha vira aviso: o que está na tela pode não valer mais
+  assert.match(V.alertas({ ...saudavel, em: agora - 3 * 3600e3 }, agora)[0].texto, /antiga/)
+
+  // grave sempre antes de aviso, senão o que importa fica embaixo
+  const misto = { ...saudavel, docker: [{ nome: 'x', status: 'Exited' }], disco: { usadoGB: 90, totalGB: 100 } }
+  assert.equal(V.alertas(misto, agora)[0].nivel, 'grave')
+
+  // todo alerta diz o que fazer: alerta sem saída é o ruído que originou isto
+  for (const a of V.alertas(misto, agora)) assert.ok(a.oQueFazer?.length > 10)
+
+  // sem retrato nenhum não se inventa veredito
+  assert.equal(V.veredito(null, agora).cor, 'neutro')
+
+  // as três seções têm título em português e o nome técnico à parte
+  for (const [, d] of Object.entries(V.SECOES)) {
+    assert.ok(d.titulo && d.tecnico && d.ajuda && d.vazio)
+    assert.ok(!/nginx|docker|pm2/i.test(d.titulo), `título ainda é nome de ferramenta: ${d.titulo}`)
+  }
+}
+
 /* --- CC-48: as rotas viajam no pacote, e param de esperar commit --- */
 {
   const F = await import('./src/federacao.mjs')

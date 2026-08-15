@@ -1074,6 +1074,32 @@
     padding: 7px 9px; color: var(--fg); font: 13px var(--mono);
   }
   .vps-form button { justify-self: start; }
+  /* ---- a tela responde uma pergunta, e o veredito vem antes do dado ---- */
+  .vps-veredito { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px;
+    border-radius: 10px; margin-bottom: 14px; border-left: 4px solid var(--dim); background: var(--card); }
+  .vps-veredito b { font-size: 1.05rem; }
+  .vps-veredito.v-bom { border-left-color: var(--done); }
+  .vps-veredito.v-atencao { border-left-color: var(--waiting); }
+  .vps-veredito.v-ruim { border-left-color: var(--failed); }
+  .vps-alertas { display: grid; gap: 8px; margin-bottom: 18px; }
+  .vps-alerta { padding: 10px 14px; border-radius: 8px; background: var(--card);
+    border-left: 3px solid var(--waiting); display: flex; flex-direction: column; gap: 2px; }
+  .vps-alerta.a-grave { border-left-color: var(--failed); }
+  /* o "o que fazer" é o que separa alerta de ruído, então nunca é escondido */
+  .vps-alerta span { color: var(--dim); font-size: .86rem; }
+  .vps-tec { color: var(--faint); font-size: .76rem; }
+  /* o "?" só aparece onde a tradução não cabe: seção inteira, nunca por dado */
+  .ajuda { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--dim);
+    background: none; color: var(--dim); font-size: .72rem; line-height: 1; cursor: pointer; padding: 0; }
+  .ajuda:hover { color: var(--acento); border-color: var(--acento); }
+  /* Celular: é onde ele usa de verdade. `@container` e não `@media` porque a
+     coluna de notas encolhe o painel sem encolher a janela — armadilha já
+     registrada no CLAUDE.md. */
+  @container (max-width: 560px) {
+    .vps-topo { flex-wrap: wrap; }
+    .vps-veredito b { font-size: 1rem; }
+    .vps-alerta { padding: 9px 12px; }
+  }
   .vps-stats { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
   .vps-stats .pip-item { gap: 8px; }
   /* três colunas — encolhe pra uma só em janela estreita, igual aos gráficos */
@@ -3070,6 +3096,22 @@ function viewVpsOrganograma(s) {
     <p class="path">${p.restarts} reinício${p.restarts === 1 ? '' : 's'}${p.uptimeMs ? ' · no ar há ' + age(p.uptimeMs) : ''}</p>
   </article>`
 
+  /* Título em português, nome da ferramenta entre parênteses e um "?" que abre
+     a explicação. O nome técnico fica: quem conhece reconhece na hora, quem não
+     conhece não precisa dele para entender a seção. */
+  const secao = (id, lista, cartao) => {
+    const d = (VPS.secoes || {})[id] || { titulo: id, tecnico: id, ajuda: '', vazio: 'nada aqui' }
+    return `<section>
+      <div class="col-head">
+        <span>${esc(d.titulo)}</span>
+        <span class="vps-tec">${esc(d.tecnico)}</span>
+        ${d.ajuda ? `<button class="ajuda" data-ajuda="${esc(d.ajuda)}" title="o que é isto?">?</button>` : ''}
+        <span class="n">${(lista || []).length}</span>
+      </div>
+      <div class="cards">${(lista || []).length ? lista.map(cartao).join('') : `<div class="path">${esc(d.vazio)}</div>`}</div>
+    </section>`
+  }
+
   return `
     <div class="vps-stats">
       ${s.uptime ? `<span class="path">${esc(s.uptime.trim())}</span>` : ''}
@@ -3077,18 +3119,9 @@ function viewVpsOrganograma(s) {
       ${discoPct != null ? statLinha('disco', discoPct, `${s.disco.usadoGB} de ${s.disco.totalGB} GB`) : ''}
     </div>
     <div class="vps-organograma">
-      <section>
-        <div class="col-head"><span>nginx — o que entra</span><span class="n">${s.nginx.length}</span></div>
-        <div class="cards">${s.nginx.length ? s.nginx.map(cartaoNginx).join('') : '<div class="path">nenhum site em sites-enabled</div>'}</div>
-      </section>
-      <section>
-        <div class="col-head"><span>docker</span><span class="n">${s.docker.length}</span></div>
-        <div class="cards">${s.docker.length ? s.docker.map(cartaoDockerVps).join('') : '<div class="path">nenhum container</div>'}</div>
-      </section>
-      <section>
-        <div class="col-head"><span>pm2</span><span class="n">${s.pm2.length}</span></div>
-        <div class="cards">${s.pm2.length ? s.pm2.map(cartaoPm2).join('') : '<div class="path">nenhum processo</div>'}</div>
-      </section>
+      ${secao('nginx', s.nginx, cartaoNginx)}
+      ${secao('docker', s.docker, cartaoDockerVps)}
+      ${secao('pm2', s.pm2, cartaoPm2)}
     </div>`
 }
 
@@ -3097,10 +3130,13 @@ function viewVps() {
   if (!VPS.configurado) return `<div class="col-head"><span>conectar na VPS</span></div>${viewVpsFormulario()}`
 
   const s = VPS.snapshot
+  const saude = VPS.saude || { cor: 'neutro', frase: '', alertas: [] }
+  /* A pergunta vem antes do dado, e a resposta vem antes do detalhe. Era esta
+     a queixa dele: a tela mostrava o que a máquina TEM, e ele tinha que
+     traduzir sozinho para saber se estava tudo bem. */
   return `
     <div class="vps-topo">
-      <div class="col-head" style="margin:0"><span>${esc(VPS.host)}</span></div>
-      ${s ? `<span class="path">lido ${age(Date.now() - s.em)} atrás</span>` : ''}
+      <div class="col-head" style="margin:0"><span>A VPS está saudável?</span></div>
       <span class="grow"></span>
       <button class="btn" data-vps-config="1">${vpsConfigAberto ? 'fechar' : '⚙ conexão'}</button>
       <button class="btn" data-vps-atualizar="1" ${vpsAtualizando ? 'disabled' : ''}>${vpsAtualizando ? 'lendo…' : 'atualizar'}</button>
@@ -3108,7 +3144,16 @@ function viewVps() {
     ${vpsConfigAberto ? viewVpsFormulario() : ''}
     ${!s
       ? '<div class="path" style="margin-top:16px">nunca lida — clique em "atualizar" pra entrar pela primeira vez</div>'
-      : viewVpsOrganograma(s)}`
+      : `<div class="vps-veredito v-${saude.cor}">
+          <b>${esc(saude.frase)}</b>
+          <span class="path">${esc(VPS.host || 'esta máquina')} · lido ${age(Date.now() - s.em)} atrás</span>
+        </div>
+        ${saude.alertas.length ? `<div class="vps-alertas">${saude.alertas.map((a) => `
+          <div class="vps-alerta a-${a.nivel}">
+            <b>${esc(a.texto)}</b>
+            <span>${esc(a.oQueFazer)}</span>
+          </div>`).join('')}</div>` : ''}
+        ${viewVpsOrganograma(s)}`}`
 }
 
 /* ====================== aba: servidores ====================== */
@@ -5065,6 +5110,12 @@ document.addEventListener('click', async (e) => {
     const [dir, nome] = rtDel.dataset.rtDel.split('|')
     return acaoRotina(dir, nome, 'remover', dir.split(/[\\/]/).pop())
   }
+
+  /* O "?" é o único lugar onde a explicação fica escondida, e existe só onde
+     a tradução não coube no próprio texto. Alerta simples de propósito: quem
+     clica quer ler uma frase, não abrir um painel. */
+  const btAjuda = t.closest('[data-ajuda]')
+  if (btAjuda) return alert(btAjuda.dataset.ajuda)
 
   if (t.closest('[data-digest]')) return alternarDigest()
 
