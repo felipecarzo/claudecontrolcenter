@@ -30,7 +30,7 @@ em código, o certo é parar e abrir outra — credencial e edição de arquivo 
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
-| `cockpit` | 🟢 livre | — (ff0d68b2 em 15/08: **CC-91**, 3 de 4 — confirmacao dupla lendo do servidor, autorizar longe do seletor com `?`, e a confirmacao dizendo o que faz. Falta autorizacao por arquivo) | — |
+| `cockpit` | 🟢 livre | — (ff0d68b2 em 16/08: CC-87, 9 das 11 telas com pergunta e veredito. Faltam `tempo` e `hooks`, as duas dificeis. Registrado tambem: da pra reiniciar o painel sem root, via /api/shutdown + Restart=always) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |

@@ -191,6 +191,13 @@ errada por definição.
   Não é prova, é um caminho que existia e agora não existe: o bloco roda numa
   casa temporária via `CC_HOME`. **Teste que escreve em dado real do Felipe é
   defeito, mesmo com restauração no `finally`.**
+- **Dá para reiniciar o painel da VPS SEM root, e isso destrava o trabalho
+  remoto.** O serviço `agent-cockpit` tem `Restart=always`, e o painel expõe
+  `POST /api/shutdown` (criada para o `daemon restart`). Chamar essa rota derruba
+  o processo, e o systemd sobe de novo em segundos com o código novo — sem
+  senha, sem chave, do próprio `claudedev`. Achado em 15/08 com o Felipe na rua,
+  depois de uma tarde inteira em que toda mudança ficou invisível esperando ele
+  chegar num terminal. Confere pelo `MainPID`, que tem que mudar.
 - **Hook de `Stop` PODE barrar prosa, e eu tinha escrito que não podia.** A
   armadilha registrada era "exit 2 no `Stop` devolve o texto pro modelo e o
   manda continuar, criando laço" — verdade num gate de documentação, onde não há

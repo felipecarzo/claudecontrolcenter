@@ -674,7 +674,7 @@ autorizar colado no seletor de novo, o teste acusa.
 É a que muda o fluxo dos dois lados e a única que exige código novo dos dois
 lados (hook + painel). Fica para a próxima rodada.
 
-### CC-87 — as 11 telas, uma a uma (3 de 11 feitas em 15/08)
+### CC-87 — as 11 telas, uma a uma (9 de 11 feitas)
 
 Decisão dele em 15/08: **as onze**, com prévia em arquivo a cada uma, da mais
 fácil para a mais difícil. E, sobre o método: *"registra o conserto no backlog
@@ -713,8 +713,27 @@ lista e tinha que descobrir sozinho que a de cima era a mais urgente.
 O gate guarda a regra, não o texto: se alguém acrescentar tela sem pergunta,
 ninguém notaria — foi assim que 11 das 15 ficaram mudas até hoje.
 
-**Faltam 8:** `agentes`, `to-dos`(sprint), `remoto`, `servidores`, `agenda`,
-`preço`, `tempo`, `hooks`.
+#### ✅ O grupo do meio, 16/08
+
+| Aba | A pergunta | O que o veredito responde |
+|---|---|---|
+| `agentes` | Quem está trabalhando agora? | separa **quem espera você** de quem roda sozinho |
+| `sprint` | O que falta fechar? | conta as abertas, que é o número que diz se o dia acabou |
+| `servidores` | O que está no ar nesta máquina? | só os SEUS servidores; as portas do sistema ficam à parte |
+| `agenda` | O que eu tenho hoje? | hoje primeiro — o dado estava organizado por "próximos N dias" |
+| `preço` | Quanto cobrar por isso? | o número que vai numa proposta, não a soma de tudo |
+| `remoto` | Onde eu quero abrir uma sessão? | o que já está de pé, para não abrir duas sem querer |
+
+Duas decisões que se repetiram e viram padrão: **o veredito conta o que é dele,
+não o que a máquina tem** (servidores ignora porta de sistema), e **ele responde
+a pergunta do momento, não a do dado** (agenda mostra hoje, mesmo guardando 30
+dias).
+
+Conferido no painel de produção depois do restart: as nove perguntas estão no
+ar.
+
+**Faltam 2, as difíceis:** `tempo` (tabela de 9 colunas) e `hooks` (a mais
+técnica da lista).
 
 ### ✅ CC-88 15/08 — a aba `to-dos` virou `sprint`, e as cores inverteram
 

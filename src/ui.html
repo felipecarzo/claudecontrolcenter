@@ -2243,7 +2243,18 @@ function viewAgentes(jobs) {
     ${ordem.campo ? '<span class="path">faixas desligadas enquanto ordena</span>' : ''}
   </div>`
 
-  return barra + (corpo || '<div class="empty">nenhum agente no filtro</div>')
+  /* CC-87. A pergunta é "quem está trabalhando agora?", e o veredito separa o
+     que espera VOCÊ do que roda sozinho — a única distinção que muda o que você
+     faz ao abrir esta aba. */
+  const espera = jobs.filter((j) => j.status === 'waiting').length
+  const rodando = jobs.filter((j) => j.status === 'working').length
+  const vdAg = !jobs.length ? 'Nenhum agente aberto agora.'
+    : espera ? `${espera} esperando você, ${rodando} trabalhando.`
+      : rodando ? `${rodando} trabalhando, ninguém esperando você.`
+        : `${jobs.length} agente(s), todos parados.`
+
+  return cabecaDaTela('Quem está trabalhando agora?', vdAg, espera ? 'atencao' : 'bom')
+    + barra + (corpo || '<div class="empty">nenhum agente no filtro</div>')
 }
 
 /* ======================== aba: to-dos ======================== */
@@ -2310,7 +2321,16 @@ function viewTodos(jobs) {
     </section>`
   }
 
-  return `${alerta}<div class="lista">
+  /* CC-87. A pergunta do sprint backlog: o que falta fechar. O veredito conta
+     as ABERTAS, que é o número que decide se o dia acabou. */
+  const abertasT = jobs.reduce((a, j) => a + j.todos.filter((t) => !t.done).length, 0)
+  const feitasT = jobs.reduce((a, j) => a + j.todos.filter((t) => t.done).length, 0)
+  const vdT = !abertasT
+    ? (feitasT ? `Nada em aberto. ${feitasT} fechada(s) neste sprint.` : 'Nenhuma tarefa registrada.')
+    : `${abertasT} em aberto, ${feitasT} fechada(s).`
+
+  return cabecaDaTela('O que falta fechar?', vdT, abertasT ? 'atencao' : 'bom')
+    + `${alerta}<div class="lista">
     ${comTodo.length ? comTodo.map(grupo).join('') : '<div class="path">nenhum agente registrou tarefa ainda</div>'}
     ${semTodo.length ? `
       <details class="lvl outros"${tudoAberto ? ' open' : ''}>
@@ -3176,7 +3196,15 @@ function viewPreco() {
     </div>`
   }
 
-  return ctl + faixas + resumo + aviso
+  /* CC-87. A pergunta é a dele: quanto cobrar. O veredito responde com o
+     número que ele usaria numa proposta, não com a soma de tudo. */
+  const qtd = (PRECO.tarefas || []).length
+  const total = (PRECO.tarefas || []).reduce((a, t) => a + (t.preco || 0), 0)
+  const vdP = !qtd
+    ? 'Nenhum problema resolvido no período — sem base para preço.'
+    : `${qtd} problema(s) resolvido(s)${total ? `, somando ${brl(total)}` : ''}. Clique numa linha para ver por que aquele nível.`
+
+  return cabecaDaTela('Quanto cobrar por isso?', vdP, 'bom') + ctl + faixas + resumo + aviso
     + `<div class="p-linha p-head">
         <span>o que foi resolvido</span><span class="v">projeto</span><span class="v">nível</span>
         <span class="v">medido</span><span class="v">seu tempo</span><span class="v">cobrado</span><span class="v">preço</span>
@@ -3461,7 +3489,12 @@ function viewServidores() {
 
   const total = DUPLICADOS.reduce((n, g) => n + g.matar.length, 0)
 
-  return `
+  /* O veredito conta só o que é DELE: servidor de desenvolvimento. As dezenas
+     de portas de sistema somadas dariam um número grande que não diz nada. */
+  const vdSrv = dev.length
+    ? `${dev.length} servidor(es) seu(s) no ar, e ${resto.length} porta(s) do sistema.`
+    : `Nenhum servidor seu no ar. ${resto.length} porta(s) são do sistema.`
+  return cabecaDaTela('O que está no ar nesta máquina?', vdSrv, 'bom') + `
     <div class="srv-topo">
       <div class="col-head" style="margin:0"><span>servidores de projeto</span><span class="n">${dev.length}</span></div>
       <span class="grow"></span>
@@ -4140,7 +4173,17 @@ function viewAgenda() {
   }).join('')}
     </section>`).join('')
 
-  return `${topo}<div class="ag-lista">${dias}</div>`
+  /* CC-87. "O que eu tenho hoje?" é a pergunta de quem abre agenda — não "o
+     que existe nos próximos N dias", que é como o dado estava organizado. */
+  const hoje = eventos.filter((e) => diaChave(e.inicio) === diaChave(agora)).length
+  const vdA = hoje
+    ? `${hoje} compromisso(s) hoje, ${eventos.length} nos próximos ${agendaDias} dias.`
+    : eventos.length
+      ? `Nada hoje. ${eventos.length} nos próximos ${agendaDias} dias.`
+      : `Nada marcado nos próximos ${agendaDias} dias.`
+
+  return cabecaDaTela('O que eu tenho hoje?', vdA, hoje ? 'atencao' : 'bom')
+    + `${topo}<div class="ag-lista">${dias}</div>`
 }
 
 /* ========================== aba: hooks ==========================
@@ -4389,7 +4432,15 @@ function viewRemoto() {
     .filter((k) => k.startsWith(`${nome}-`) && /-\d+$/.test(k.slice(nome.length)))
     .sort()
 
-  return viewFederacao() + `<div class="dim" style="margin-bottom:12px">liga uma sessão do Claude Code com Remote Control na pasta do
+  /* CC-87. A pergunta é de escolha, não de estado: onde eu quero abrir. O
+     veredito diz o que já está de pé, para ele não abrir duas sem querer. */
+  const nAtivos = Object.keys(ativos).length
+  const vdR = nAtivos
+    ? `${nAtivos} sessão(ões) no ar. Abra outra só se precisar de um agente a mais.`
+    : `Nenhuma sessão aberta. ${projetos.length} projeto(s) para escolher.`
+
+  return cabecaDaTela('Onde eu quero abrir uma sessão?', vdR, 'bom')
+    + viewFederacao() + `<div class="dim" style="margin-bottom:12px">liga uma sessão do Claude Code com Remote Control na pasta do
     projeto escolhido: conecte do celular por <code>claude.ai/code</code>. Na VPS a sessão sobrevive a este painel;
     neste PC uma janela de console abre e fica com ela, "pegar link" só funciona onde tem tmux (Linux).
     <b>mais uma</b> abre outro agente no mesmo projeto.</div>
