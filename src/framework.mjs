@@ -29,7 +29,7 @@ export const SEMPRE_LIVRE = ['docs/**', 'assets/**', '.framework/**', '*']
  *
  * Separado do `trava` da fase de propósito, e o teste pegou o motivo: na fase
  * de Execução o `trava` é vazio (a fase não bloqueia nada), então o modo nunca
- * enxergaria arquivo nenhum como código e o imperativo não travaria. São duas
+ * enxergaria arquivo nenhum como código e o sugestivo não travaria. São duas
  * perguntas diferentes: a FASE pergunta "esta etapa bloqueia este caminho?", o
  * MODO pergunta "isto é código?".
  */
@@ -350,7 +350,7 @@ export const TONS = {
 export const TOM_RECOMENDADO = {
   desligado: 'explicativo',
   dialogo: 'explicativo',
-  imperativo: 'direto',
+  sugestivo: 'direto',
   restritivo: 'direto',
 }
 export const tomDe = (estado) => (TONS[estado?.tom] ? estado.tom : TOM_RECOMENDADO[modoDe(estado).id] || 'explicativo')
@@ -400,9 +400,15 @@ export const MODOS = {
     trava: false,
     pergunta: true,
   },
-  imperativo: {
-    id: 'imperativo',
-    titulo: 'Imperativo',
+  /* Chamava-se `imperativo` até 15/08. O Felipe trocou, e a razão é de ponto de
+     vista: do lado do agente o modo é imperativo mesmo (recusa a ferramenta),
+     mas do lado DELE ele sugere — recebe propostas e clica. Palavras dele:
+     *"ele não é tão imperativo assim, ele sugere só"*.
+
+     O nome descreve o que ele vive, porque é ele quem escolhe o modo. */
+  sugestivo: {
+    id: 'sugestivo',
+    titulo: 'Sugestivo',
     explica: 'Só o que está no backlog, e cada passo precisa da sua autorização.',
     trava: true,
     pergunta: true,
@@ -540,7 +546,7 @@ export function autorizar(estado, { alvo = '**', motivo = null, quando = null })
 
 /**
  * Troca o modo. Zera as autorizações de propósito: autorização dada no diálogo
- * não pode sobreviver à entrada no imperativo, senão trocar de modo não muda
+ * não pode sobreviver à entrada no sugestivo, senão trocar de modo não muda
  * nada e o rigor vira decoração.
  */
 export function trocarModo(estado, modo, { quando = null } = {}) {

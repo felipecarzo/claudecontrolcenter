@@ -2419,7 +2419,7 @@ function seloFramework(projeto) {
   const cor = f.portaoAberto ? 'done' : 'waiting'
   const frase = f.pendencias?.length ? f.pendencias[0] : 'portão aberto'
 
-  // O seletor de modo e o "autorizar" são o que fazem o imperativo existir de
+  // O seletor de modo e o "autorizar" são o que fazem o sugestivo existir de
   // verdade: o desenho dele é autorizar por CLIQUE. Sem isso sobraria o CLI,
   // que não serve pra quem está no celular.
   const modos = (f.modos || []).map((m) => `<option value="${m.id}"${

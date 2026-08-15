@@ -1005,7 +1005,7 @@ da casa do Claude Code, que a regra de ouro proíbe. Há teste guardando isso.
 `cc set` e `cc done` funcionam iguais nos dois tipos, e o painel lê o estado
 pelo mesmo `buildJob` de sempre — sem caso especial espalhado.
 
-### CC-60 — o outro Pixel Agents: as perguntas factuais, respondidas
+### CC-60 ⚠️ REVIRADO em 15/08 — o da porta 3100 é o DEFINITIVO
 
 Achado em 14/08 investigando o escritório: já existe um `pixel-agents` rodando
 nesta VPS há mais de dois dias, na **porta 3100**, do usuário **`agente`**, que
@@ -1028,9 +1028,34 @@ Achado no caminho, e vale para qualquer investigação de rede local: **o sandbo
 bloqueia até 127.0.0.1**. A porta 3100 respondia `000` de dentro e `200` de
 fora — quem não souber disso conclui que o serviço está morto.
 
-**Continua sendo decisão do Felipe:** mostrar como segundo escritório, ou
-desligar. O proxy já sabe servir por porta; o que falta é ele dizer se dois
-escritórios na mesma tela fazem sentido.
+**A resposta dele muda tudo o que estava escrito acima:**
+
+> "esse novo pixel agent é o definitivo, e a ideia é a gente colocar o pc e a
+> vps nele ao mesmo tempo. Eu quero que o cockpit seja um serviço no pc e que,
+> quando o pc tá ligado, roda esse serviço e eu vejo tudo centralizado no mesmo
+> lugar — inclusive quero que o cockpit mostre as coisas que no pc mostra, como
+> o limite do Claude por 5h e semanal. Precisamos pensar em como."
+
+Ou seja: **não é lixo de experiência anterior, é para onde isso vai.** O nosso,
+na 3101, é que é o provisório.
+
+Três coisas nascem daqui, e duas já têm metade pronta:
+
+**a) O cockpit vira serviço no PC também.** Hoje ele é serviço só na VPS
+(`agent-cockpit`, systemd). No PC roda por atalho. `daemon.mjs` já sabe instalar
+autostart em Windows — o que falta é ligá-lo à federação, que existe desde o
+CC-47 e nunca foi acionada de lá.
+
+**b) O limite de 5h e semanal centralizado — já resolvido, e ninguém ligou.**
+`usoDaConta()` (web.mjs) pega a leitura mais recente **de qualquer máquina** e
+marca a origem. A razão está registrada: a statusLine **não roda em sessão
+Remote Control**, então a VPS nunca coleta esse número; o do PC é tão válido
+quanto. Falta só o PC empurrar o pacote.
+
+**c) Os dois Pixel Agents viram um.** Se o da 3100 é o definitivo, o da 3101 é
+que sai — não o contrário. Antes de mexer: ele roda como usuário `agente`, e a
+pasta dele recusa leitura para o `claudedev`. Migrar exige root, e é decisão de
+como os dois usuários convivem.
 
 ### CC-52 ✅ 15/08 — o buraco do Routia, medido
 
@@ -1157,6 +1182,22 @@ o Felipe trouxe (ata completa em [[../DISCUSSAO-FRAMEWORK-BANCADA]]):**
   sempre aqui: com uma ferramenta só, ainda não dá pra saber se o modelo de
   fases aguenta duas. **Vira frente quando ele começar a trabalhar de verdade
   em outra ferramenta**, e não antes.
+
+### Decisões dele em 15/08, à noite, sobre as duas frentes grandes
+
+**Bancada:** *"precisa ter todas as camadas, mas poder rodar elas
+individualmente"*. Isso muda o desenho: não é escolher quatro para começar, é
+**o catálogo inteiro declarado, com execução por camada**. Cada uma sabe se
+instalar, rodar e sair — e nada obriga a rodar tudo.
+
+Consequência boa: uma camada que ninguém usa custa uma entrada no catálogo, não
+tempo de execução. E o gate do framework passa a poder exigir **uma** camada
+específica por método, em vez de "a Bancada inteira".
+
+**Telas:** *"todas, mas vai me perguntando — vamos aplicar o framework de fato
+nesse trabalho"*. As onze, uma por vez, e **usando o método `conserto` ou o
+`estudo` de verdade**, não só como assunto. É o primeiro uso do framework num
+trabalho real com ele acompanhando, que era justamente o que faltava.
 
 ### Frente: Bancada — auditoria e teste agnóstico, ver [[produto/BANCADA]]
 

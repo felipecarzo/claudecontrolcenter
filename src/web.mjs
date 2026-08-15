@@ -556,7 +556,7 @@ function handler(req, res) {
         const raiz = cwdDoProjeto(cwd, projeto)
         if (!raiz) return { error: 'não achei a pasta deste projeto' }
 
-        // Trocar de modo e autorizar são o que faz o modo imperativo existir de
+        // Trocar de modo e autorizar são o que faz o modo sugestivo existir de
         // verdade: o desenho dele é "eu autorizo por clique", e sem estas duas
         // ações o clique não existe — sobraria a linha de comando, que não serve
         // para quem trabalha do celular.

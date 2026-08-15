@@ -115,35 +115,35 @@ const emDialogo = { ...definido, fase: 'execucao', modo: 'dialogo' }
 assert.equal(podeEditar('mvp-basico', emDialogo, 'src/a.mjs').ok, true)
 ok('diálogo não trava: é o fluxo de sempre')
 
-// imperativo trava MESMO com MVP definido e portão aberto — é o conserto do
+// sugestivo trava MESMO com MVP definido e portão aberto — é o conserto do
 // erro de 14/08, onde o projeto estava em Execução e nada me impediu
-const emImperativo = { ...emDialogo, modo: 'imperativo' }
-const bloq = podeEditar('mvp-basico', emImperativo, 'src/a.mjs')
-assert.equal(bloq.ok, false, 'imperativo tem que travar mesmo com o MVP pronto')
-assert.equal(bloq.modo, 'imperativo')
+const emSugestivo = { ...emDialogo, modo: 'sugestivo' }
+const bloq = podeEditar('mvp-basico', emSugestivo, 'src/a.mjs')
+assert.equal(bloq.ok, false, 'sugestivo tem que travar mesmo com o MVP pronto')
+assert.equal(bloq.modo, 'sugestivo')
 assert.match(bloq.pendencias[0], /autorização/)
 assert.equal(podeEditar('mvp-basico', { ...emDialogo, modo: 'restritivo' }, 'src/a.mjs').ok, false)
-ok('imperativo e restritivo travam código mesmo com o portão aberto')
+ok('sugestivo e restritivo travam código mesmo com o portão aberto')
 
 // e não travam o que nunca trava
 for (const livre of ['docs/x.md', '.framework/estado.json', 'package.json']) {
-  assert.equal(podeEditar('mvp-basico', emImperativo, livre).ok, true, `${livre} tinha que passar`)
+  assert.equal(podeEditar('mvp-basico', emSugestivo, livre).ok, true, `${livre} tinha que passar`)
 }
 ok('nos modos que travam, docs e o próprio estado continuam livres')
 
 // autorizar libera, e deixa rastro
-const aut = autorizar(emImperativo, { alvo: '**', motivo: 'pode implementar' })
+const aut = autorizar(emSugestivo, { alvo: '**', motivo: 'pode implementar' })
 assert.equal(podeEditar('mvp-basico', aut.estado, 'src/a.mjs').ok, true)
 assert.equal(aut.estado.historico.at(-1).tipo, 'autorizacao')
 assert.equal(aut.estado.historico.at(-1).motivo, 'pode implementar')
 // autorização por caminho não vaza para outro caminho
-const soSrc = autorizar(emImperativo, { alvo: 'src/**' })
+const soSrc = autorizar(emSugestivo, { alvo: 'src/**' })
 assert.equal(podeEditar('mvp-basico', soSrc.estado, 'src/a.mjs').ok, true)
 assert.equal(podeEditar('mvp-basico', soSrc.estado, 'apps/b.mjs').ok, false)
 ok('autorizar libera com rastro, e o alvo não vaza para outro caminho')
 
 // trocar de modo zera autorização: senão o rigor vira decoração
-const voltou = trocarModo(aut.estado, 'imperativo')
+const voltou = trocarModo(aut.estado, 'sugestivo')
 assert.deepEqual(voltou.estado.autorizado, [])
 assert.equal(podeEditar('mvp-basico', voltou.estado, 'src/a.mjs').ok, false)
 assert.equal(voltou.estado.historico.at(-1).tipo, 'modo')
@@ -151,14 +151,14 @@ assert.equal(trocarModo(emDialogo, 'inventado').ok, false)
 ok('trocar de modo zera as autorizações e fica no histórico')
 
 // desligado é mais forte que qualquer modo
-assert.equal(podeEditar('mvp-basico', { ...emImperativo, ligado: false }, 'src/a.mjs').ok, true)
+assert.equal(podeEditar('mvp-basico', { ...emSugestivo, ligado: false }, 'src/a.mjs').ok, true)
 ok('desligado vence o modo: nada trava')
 
 // o resumo diz o modo quando ele trava
-assert.match(resumo('mvp-basico', emImperativo), /Imperativo/)
+assert.match(resumo('mvp-basico', emSugestivo), /Sugestivo/)
 assert.match(resumo('mvp-basico', aut.estado), /autoriza/i)
 // e os quatro modos existem com explicação
-assert.deepEqual(Object.keys(MODOS), ['desligado', 'dialogo', 'imperativo', 'restritivo'])
+assert.deepEqual(Object.keys(MODOS), ['desligado', 'dialogo', 'sugestivo', 'restritivo'])
 for (const m of Object.values(MODOS)) assert.ok(m.explica && m.titulo, `modo ${m.id} sem texto`)
 ok('os quatro modos existem, com título e explicação, e o resumo os mostra')
 
@@ -234,9 +234,9 @@ ok('o segundo método reusa o catálogo, sem pergunta nova no código')
 
 // F13: tom é eixo separado do modo
 assert.equal(tomDe({}), 'explicativo')
-assert.equal(tomDe({ modo: 'imperativo' }), 'direto')
-assert.equal(tomDe({ modo: 'imperativo', tom: 'explicativo' }), 'explicativo', 'tom escolhido vence o recomendado')
-assert.equal(tomDe({ modo: 'imperativo', tom: 'inventado' }), 'direto', 'tom inválido cai no recomendado')
+assert.equal(tomDe({ modo: 'sugestivo' }), 'direto')
+assert.equal(tomDe({ modo: 'sugestivo', tom: 'explicativo' }), 'explicativo', 'tom escolhido vence o recomendado')
+assert.equal(tomDe({ modo: 'sugestivo', tom: 'inventado' }), 'direto', 'tom inválido cai no recomendado')
 for (const m of Object.keys(MODOS)) assert.ok(TONS[TOM_RECOMENDADO[m]], `modo ${m} sem tom recomendado válido`)
 ok('tom é independente do modo, com recomendado por modo')
 
