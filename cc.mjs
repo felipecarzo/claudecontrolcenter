@@ -344,6 +344,52 @@ switch (cmd) {
   case 'framework': {
     const F = await import('./src/framework.mjs')
     const D = await import('./src/frameworkDisco.mjs')
+
+    /* CC-70: rodar o gate sem esperar o gatilho.
+       `pre-commit run --all-files` existe porque gate que só dispara no gatilho
+       não responde "como está o projeto AGORA?". Aqui a falta era a mesma: para
+       saber se um projeto passaria, era preciso tentar editar e ser recusado.
+
+       Serve para três coisas: conferir antes de começar, rodar em CI, e dar ao
+       painel o estado real em vez do registrado. */
+    if (arg === 'check') {
+      const alvos = val('--dir')
+        ? [path.resolve(val('--dir'))]
+        : (await import('./src/install.mjs')).findProjects()
+
+      const linhas = []
+      for (const dir of alvos) {
+        const sit = D.situacao(dir)
+        if (!sit.existe) continue
+        const a = F.avaliar(sit.estado.metodo, sit.estado)
+        const modo = F.modoDe(sit.estado)
+        linhas.push({
+          projeto: path.basename(dir),
+          ligado: sit.ligado,
+          modo: modo.id,
+          fase: a.tituloFase,
+          passa: sit.ligado === false || a.portaoAberto,
+          pendencias: a.pendencias || [],
+        })
+      }
+
+      if (has('--json')) { console.log(JSON.stringify(linhas, null, 2)); break }
+      if (!linhas.length) { console.log('\nnenhum projeto com framework ligado por aqui\n'); break }
+
+      console.log('')
+      for (const l of linhas) {
+        console.log(`  ${l.passa ? '✓' : '✗'} ${l.projeto.padEnd(22)} ${
+          (l.ligado === false ? 'desligado' : `${l.fase} · ${l.modo}`)}`)
+        for (const p of l.pendencias) console.log(`      falta: ${p}`)
+      }
+      const barrados = linhas.filter((l) => !l.passa).length
+      console.log(barrados
+        ? `\n  ${barrados} projeto(s) não escreveriam código agora.\n`
+        : '\n  todos passariam.\n')
+      // sai com erro quando algo barra: é o que deixa isto servir em CI
+      if (barrados) process.exitCode = 1
+      break
+    }
     const dir = path.resolve(val('--dir') || process.cwd())
     const raiz = D.acharRaiz(dir)
 

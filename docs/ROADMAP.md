@@ -727,7 +727,7 @@ travam, 2 avisam, 2 injetam, 1 mede.
 travar. Exit 2 ali devolve o texto ao modelo e o manda continuar, criando laço.
 Isso estava escrito em comentário em dois arquivos; agora o teste recusa.
 
-### CC-70: `cc framework check` — rodar o gate sem esperar o gatilho
+### CC-70 ✅ 15/08 — `cc framework check`, o gate sem esperar o gatilho
 
 `pre-commit run --all-files` existe porque gate que só roda no gatilho não
 responde "como está o projeto agora?". Aqui é a mesma falta: para saber se um
@@ -735,6 +735,19 @@ projeto passaria, é preciso tentar editar um arquivo e ser recusado.
 
 Serve para três coisas: conferir antes de começar, rodar em CI, e alimentar o
 painel com o estado real de cada projeto em vez do estado registrado.
+
+**Feito.** Sem argumento, varre todos os projetos; com `--dir`, um só.
+
+```
+cc framework check              todos os projetos
+cc framework check --dir X      um projeto
+cc framework check --json       para script
+```
+
+**Sai com código de erro quando algum projeto barraria**, e é isso que o torna
+útil em CI — sem esse detalhe seria só um relatório bonito. Conferido nos dois
+casos: `teste_pierre_agenda` (sem MVP) sai 1 e lista o que falta;
+`proj_controlcenter` sai 0.
 
 ### CC-71: agir só no que mudou
 
