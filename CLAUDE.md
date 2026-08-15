@@ -191,6 +191,20 @@ errada por definição.
   Não é prova, é um caminho que existia e agora não existe: o bloco roda numa
   casa temporária via `CC_HOME`. **Teste que escreve em dado real do Felipe é
   defeito, mesmo com restauração no `finally`.**
+- **Hook de `Stop` PODE barrar prosa, e eu tinha escrito que não podia.** A
+  armadilha registrada era "exit 2 no `Stop` devolve o texto pro modelo e o
+  manda continuar, criando laço" — verdade num gate de documentação, onde não há
+  o que fazer diferente na segunda passada. **Mas quando existe uma ação
+  concreta a tomar, o laço é justamente o mecanismo**: o `pergunta-guard`
+  devolve uma vez pedindo para refazer a pergunta no `AskUserQuestion`, e a
+  volta seguinte passa (`stop_hook_active`). Achado em 15/08, depois de o Felipe
+  me pegar duas vezes perguntando em prosa — e depois de eu "consertar" a
+  primeira vez com uma INSTRUÇÃO no injetor, que é exatamente o remédio que a
+  análise do próprio projeto diz não funcionar comigo.
+- **Hook novo precisa estar no `hooksCatalogo.mjs` ANTES de funcionar.**
+  `hookEnabled('id-desconhecido')` devolve `false`, então o hook sai calado
+  achando que está desligado. Custou uma rodada de teste inteira em 15/08: os
+  três casos que deviam barrar passavam, e a detecção estava certa o tempo todo.
 - **`fan[]` fica com resíduo** da última tool mesmo depois do job terminar. Só
   exibir enquanto o status é `working`.
 - **Truncar string já colorida corta o código ANSI no meio** e vaza `[0m` na

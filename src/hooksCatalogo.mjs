@@ -63,6 +63,18 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'pergunta-guard',
+    nivel: 'avisa',
+    label: 'pergunta decisiva vai na caixa, não em prosa',
+    script: 'pergunta-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Se a resposta TERMINA perguntando algo que muda o que será '
+      + 'feito, devolve uma vez pedindo para refazer no AskUserQuestion. Não '
+      + 'obriga a perguntar — só o formato. Uma volta por turno.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'recados',
     nivel: 'trava',
     label: 'Método Routia — agentes do mesmo projeto se falando',

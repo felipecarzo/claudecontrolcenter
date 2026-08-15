@@ -559,6 +559,38 @@ mesmo projeto é sinal de que as rotas estão mal divididas.** Esse número não
 existe hoje e seria o primeiro sinal objetivo de que o Routia precisa de ajuste
 naquele projeto.
 
+### ✅ CC-90 15/08 — o gate de pergunta em prosa
+
+Ele me pegou **duas vezes no mesmo dia** fazendo pergunta decisiva em prosa, em
+vez de usar o `AskUserQuestion`:
+
+> "por que você me fez essa pergunta no chat, em vez daquele formato de
+> perguntinha na tela? Aquilo é a regra, o framework tem que usar aquilo."
+
+**Na primeira vez eu consertei errado**, e o erro é o mais interessante deste
+item: escrevi uma **instrução** no injetor do `SessionStart` — horas depois de
+ter escrito, na [[produto/ANALISE-DA-IA]], que instrução não me segura e que o
+que segura é gate. Diagnóstico certo, remédio errado, recaída em vinte mensagens.
+
+**E eu tinha declarado impossível o que resolvia.** Estava escrito que hook não
+barra prosa. O `Stop` recebe o turno inteiro e pode devolver — o que a armadilha
+antiga dizia é que isso vira laço, e vira **quando não há o que fazer diferente
+na segunda passada**. Aqui há: refazer a pergunta na ferramenta certa.
+
+**O que ele NÃO faz**, que foi a dúvida dele antes de autorizar: não obriga a
+perguntar. Não olha se existe pergunta, olha se ela **saiu em prosa**. Executar
+e reportar não dispara nada.
+
+Três travas para não virar hook chato: uma volta só por turno; só os dois
+últimos parágrafos (pergunta no meio é retórica); e silêncio se a caixa já foi
+usada no turno. Gate próprio com 10 checagens, metade delas provando o que
+**passa**.
+
+**Um defeito de brinde, que custou uma rodada inteira:** hook fora do
+`hooksCatalogo.mjs` sai calado, porque `hookEnabled` de id desconhecido devolve
+`false`. A detecção estava certa desde o começo; o hook é que se achava
+desligado. Virou armadilha no `CLAUDE.md`.
+
 ### CC-87 — as 11 telas, uma a uma (3 de 11 feitas em 15/08)
 
 Decisão dele em 15/08: **as onze**, com prévia em arquivo a cada uma, da mais
