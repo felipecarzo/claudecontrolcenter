@@ -26,6 +26,35 @@ relatório — o diário tem os porquês.
    esperando ele no Remote Control. O teste: pedir código e confirmar que ela
    recusa, porque o projeto está na fase de Definição sem MVP.
 
+## ⚠️ A sessão de senhas: não toca em código
+
+O Felipe vai abrir uma sessão **só para resolver as senhas da VPS** (ele perdeu
+as anotações à mão e vai passar tudo para o Bitwarden). Nela, **todas as rotas
+de desenvolvimento ficam bloqueadas** — decisão dele, em 15/08.
+
+**Isso não exige nada de novo: é o comportamento padrão do Routia.** O
+`rota-guard` recusa edição de código a quem não marcou rota. Então a regra da
+sessão de senhas é uma só:
+
+> **Não marque rota nenhuma.** Sem rota marcada, o gate já barra qualquer
+> `Edit`/`Write` em `src/`, e é isso que se quer ali.
+
+Se aquela sessão precisar mexer em código por algum motivo, o certo é parar e
+abrir outra — misturar credencial com edição de arquivo é como segredo vaza
+para dentro de commit.
+
+Três cuidados que valem repetir para quem abrir aquela sessão:
+
+- **Nunca imprimir senha, chave privada ou o conteúdo de `~/.cockpit-auth.json`
+  e `~/.cockpit-sessions.json`.** Vale mesmo se ele pedir: o que sai na tela
+  entra no transcrito, que fica em disco e é lido pelo painel.
+- **A chave SSH importa mais que a senha.** Foi ela que resolveu o sudo hoje,
+  não a senha. Perder `id_ed25519_ahtleta` é perder o acesso root a uma máquina
+  que hospeda cinco sites de cliente.
+- Se ele pedir a senha do cockpit, ela **não existe em texto** — só o hash. O
+  caminho é trocar por uma nova (`cockpit-auth senha "<nova>"`), que revoga
+  todos os dispositivos junto.
+
 ## Feito nesta sessão, em uma linha cada
 
 F16 (PDF sem `pdfjs-dist`), CC-46, CC-48, CC-49, CC-52, CC-53, CC-56, CC-65

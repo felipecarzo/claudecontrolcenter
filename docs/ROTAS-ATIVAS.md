@@ -22,6 +22,11 @@ Passo 0, antes de tocar em qualquer arquivo.
 
 <!-- Preencha as rotas de acordo com a estrutura real do projeto. Exemplo: -->
 
+**🔒 Sessão de senhas (15/08):** o Felipe vai abrir uma sessão só para resolver as senhas
+da VPS. **Ela não marca rota nenhuma**, de propósito: sem rota marcada o `rota-guard` já
+recusa editar código, que é exatamente o que se quer ali. Se aquela sessão precisar mexer
+em código, o certo é parar e abrir outra — credencial e edição de arquivo não se misturam.
+
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
