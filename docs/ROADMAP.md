@@ -59,8 +59,21 @@ O "?" fica, mas só onde a tradução não cabe — hoje, uma por seção.
    `tudo no ar` é. E todo alerta diz **o que fazer** — alerta sem saída é o
    ruído que originou tudo isto.
 
-Quarta regra, acrescentada por ele: **celular primeiro**, que é onde ele usa. O
-breakpoint é `@container`, nunca `@media` (armadilha já registrada).
+**Quarta regra**, acrescentada por ele: **celular primeiro**, que é onde ele usa.
+O breakpoint é `@container`, nunca `@media` (armadilha já registrada).
+
+**Quinta regra, e é a que dá critério às outras: informação em árvore.** Palavras
+dele: *"juntar várias informações num local só, e essa informação poder
+destrinchar (…) todas elas simples com mais opções"*. Cada nível responde
+sozinho; o de baixo só aparece se você pedir.
+
+A aba VPS é o exemplo: **veredito → alerta → dado cru**. E é daqui que sai o
+critério do "?": **se o nível de cima já responde, a interrogação é ruído.** Foi
+por isso que ele ficou um por seção, e não um por dado.
+
+Vale além da tela, e as três aplicações já existem: o guia em etapas que ele
+pediu na sessão de senhas, o gate de MVP que para no primeiro critério que não
+fecha, e o cabeçalho do CC-74, onde quatro controles entraram atrás de um `⋯`.
 
 #### ✅ Primeira fatia: a aba VPS, 15/08
 
@@ -146,7 +159,7 @@ importa.
 **Falta a terceira**, e ela é maior: as duas fileiras de abas viram navegação de
 aplicativo. Entra no CC-77, depois das prévias.
 
-### CC-75: informação em árvore, que é o princípio que ele nomeou
+### CC-75 ✅ 15/08 — informação em árvore virou a quinta regra
 
 Palavras dele, no meio desta conversa:
 
