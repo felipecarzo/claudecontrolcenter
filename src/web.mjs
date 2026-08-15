@@ -331,17 +331,32 @@ function handler(req, res) {
   // lê a tela do tmux, mais caro que o resto do stream.
   if (url.pathname === '/api/remote-control') {
     if (req.method === 'POST') {
-      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao }) => {
+      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, mais }) => {
         if (acao === 'desligar') return desligarRemoto(projeto)
         if (acao === 'link') return linkRemoto(projeto)
         const dir = cwdDoProjeto(cwd, projeto)
         if (!dir) throw new Error(`projeto não encontrado: ${projeto}`)
-        return ligarRemoto(projeto, dir)
+        // `mais`: outro agente na mesma pasta, em vez de devolver o que já existe
+        return ligarRemoto(projeto, dir, { mais: Boolean(mais) })
       })
     }
-    // GET: todo projeto conhecido (pra montar a lista de botões) + o que já
-    // está ligado agora.
-    const projetos = findProjects().map((dir) => ({ nome: path.basename(dir), dir }))
+    /* GET: todo projeto conhecido (pra montar a lista de botões) + o que já
+       está ligado agora.
+
+       Duas fontes, e a segunda é rede de segurança. `findProjects()` depende de
+       `projectsBase()`, que sem `CC_PROJECTS_BASE` nem config depende dos jobs
+       de background — e devolve ZERO em máquina que só tem sessão interativa
+       (mesma raiz do CC-53). O serviço systemd desta VPS define a variável,
+       então o painel de produção sempre listou certo; quem cai no buraco é o
+       `cc` rodado à mão no terminal. Os `cwd` das sessões e do histórico
+       cobrem isso: toda sessão que já rodou deixou um. */
+    const porDir = new Map(findProjects().map((dir) => [dir, path.basename(dir)]))
+    for (const j of [...readJobs(), ...readSessoes(), ...jobsHistoricos([]).mortos]) {
+      const dir = String(j?.cwd || '').replace(/[\\/]+$/, '')
+      if (dir && !porDir.has(dir)) porDir.set(dir, path.basename(dir))
+    }
+    const projetos = [...porDir].map(([dir, nome]) => ({ nome, dir }))
+      .sort((a, b) => a.nome.localeCompare(b.nome))
     return estadoRemoto().then((ativos) => send(res, 200, { projetos, ativos }))
   }
 
@@ -845,6 +860,12 @@ function handler(req, res) {
     return comCorpo(req, res, 1e4, ({ id }) => ({ painel: desligarPainel(id) }))
   }
 
+  /* Abrir sessão do Claude Code pelo painel. Nasceu do celular: ele trabalha
+     pelo Remote Control e não tem terminal para abrir sessão em outra pasta.
+
+     A pasta vem SEMPRE da lista de projetos que o painel já conhece, nunca do
+     que a página mandar: aceitar caminho arbitrário daria ao painel o poder de
+     rodar o CLI em qualquer lugar do disco. */
   // Existe pra `daemon restart` conseguir derrubar o processo antigo: o servidor
   // não recarrega módulo, então mexer no código exige reiniciar de verdade.
   if (url.pathname === '/api/shutdown' && req.method === 'POST') {

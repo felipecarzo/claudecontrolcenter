@@ -4109,21 +4109,38 @@ function viewRemoto() {
   const ativos = REMOTO_DATA.ativos || {}
   if (!projetos.length) return viewFederacao() + '<div class="empty">nenhum projeto encontrado</div>'
 
+  /* As sessões extras (`projeto-2`, `projeto-3`) aparecem sob o projeto delas,
+     e não como projetos soltos na lista: são o mesmo trabalho, e listá-las como
+     projeto faria a lista crescer sem dizer de onde cada uma veio. */
+  const extrasDe = (nome) => Object.keys(ativos)
+    .filter((k) => k.startsWith(`${nome}-`) && /-\d+$/.test(k.slice(nome.length)))
+    .sort()
+
   return viewFederacao() + `<div class="dim" style="margin-bottom:12px">liga uma sessão do Claude Code com Remote Control na pasta do
     projeto escolhido: conecte do celular por <code>claude.ai/code</code>. Na VPS a sessão sobrevive a este painel;
-    neste PC uma janela de console abre e fica com ela, "pegar link" só funciona onde tem tmux (Linux).</div>
+    neste PC uma janela de console abre e fica com ela, "pegar link" só funciona onde tem tmux (Linux).
+    <b>mais uma</b> abre outro agente no mesmo projeto.</div>
   <div class="rm-lista">${projetos.map((p) => {
     const on = ativos[p.nome]
+    const extras = extrasDe(p.nome)
     return `<div class="rm-linha">
       <span class="rm-nome">${esc(p.nome)}</span>
       ${on ? '<span class="hk-badge ok">ligado</span>' : ''}
+      ${extras.length ? `<span class="dim">+${extras.length}</span>` : ''}
       <span class="rm-acoes">
         ${on
         ? `<button class="btn" data-remoto-link="${esc(p.nome)}" title="copia o link de conexão, se já apareceu na tela">pegar link</button>
+           <button class="btn" data-remoto-mais="${esc(p.nome)}" data-remoto-dir="${esc(p.dir)}" title="abre outro agente na mesma pasta">mais uma</button>
            <button class="btn" data-remoto-desligar="${esc(p.nome)}">desligar</button>`
         : `<button class="btn" data-remoto-ligar="${esc(p.nome)}" data-remoto-dir="${esc(p.dir)}">ligar</button>`}
       </span>
-    </div>`
+    </div>${extras.map((e) => `<div class="rm-linha" style="padding-left:22px">
+      <span class="rm-nome dim">↳ ${esc(e)}</span>
+      <span class="rm-acoes">
+        <button class="btn" data-remoto-link="${esc(e)}">pegar link</button>
+        <button class="btn" data-remoto-desligar="${esc(e)}">desligar</button>
+      </span>
+    </div>`).join('')}`
   }).join('')}</div>`
 }
 
@@ -5051,19 +5068,28 @@ document.addEventListener('click', async (e) => {
 
   if (t.closest('[data-digest]')) return alternarDigest()
 
-  const btLigar = t.closest('[data-remoto-ligar]')
+  /* "ligar" e "mais uma" são o mesmo caminho: a diferença é `mais`, que faz o
+     servidor escolher um rótulo livre em vez de devolver a sessão existente. */
+  const btLigar = t.closest('[data-remoto-ligar]') || t.closest('[data-remoto-mais]')
   if (btLigar) {
+    const mais = Boolean(btLigar.dataset.remotoMais)
+    const projeto = btLigar.dataset.remotoMais || btLigar.dataset.remotoLigar
     btLigar.disabled = true
-    btLigar.textContent = 'ligando…'
+    btLigar.textContent = 'abrindo…'
     try {
       const r = await fetch('/api/remote-control', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ projeto: btLigar.dataset.remotoLigar, cwd: btLigar.dataset.remotoDir }),
+        body: JSON.stringify({ projeto, cwd: btLigar.dataset.remotoDir, mais }),
       })
       const out = await r.json()
       if (!out.ok) alert(out.error || out.erro)
+      /* A tela da sessão nova vai para o alerta, e não é enfeite: subir sem
+         olhar já deu "ligado" com processo morto por trás neste projeto. É
+         também onde ele vê a pergunta de permissão que o painel não responde
+         por ele. */
+      else if (out.tela) alert(`${out.rotulo || projeto}\n\n${out.tela}`)
     } catch {
-      alert('não deu pra ligar')
+      alert('não deu pra abrir')
     }
     return carregarRemoto(true)
   }

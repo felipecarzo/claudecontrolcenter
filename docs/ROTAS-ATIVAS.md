@@ -25,7 +25,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
-| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **CC-66**, o padrao de resposta do Felipe virou hook `estilo-inicio` (injeta em toda sessao, framework ligado ou nao) mais `estilo-fim` (mede sem reclamar) e `cc estilo`. Registrados no settings.json desta VPS. Anterior: CC-46 e CC-53) | — |
+| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 15/08: aba **remoto** ganhou varios agentes por projeto (`mais uma`), responde sozinha a pergunta de confiar na pasta (a sessao nascia travada nela e o painel dizia "ligado"), e devolve a tela como prova. Anterior: CC-66, CC-46 e CC-53) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
