@@ -591,7 +591,7 @@ usada no turno. Gate próprio com 10 checagens, metade delas provando o que
 `false`. A detecção estava certa desde o começo; o hook é que se achava
 desligado. Virou armadilha no `CLAUDE.md`.
 
-### CC-91: o cartão do framework no painel, quatro defeitos
+### CC-91 ✅ 15/08 (3 de 4) — o cartão do framework
 
 Todos apontados por ele em 15/08, usando o framework de verdade pela primeira
 vez. **O primeiro é o mais grave, e eu vi acontecer.**
@@ -652,6 +652,27 @@ o arquivo diz diálogo"*. É o único jeito de o medo dele ter fim.
 barrado. Com autorização por arquivo, eu preciso **pedir antes** — e isso já
 existe pronto no `rota-pedidos.mjs`, que faz exatamente isso para rotas. É
 código para reusar.
+
+#### ✅ Feito: 1, 2 e 4
+
+**A confirmação é dupla e funciona como ele pediu.** Depois de trocar o modo, o
+painel faz uma segunda chamada e compara o que foi PEDIDO com o que o servidor
+diz que está gravado. Se bater: *"✓ salvo: o arquivo diz Restritivo, às 21:03"*.
+Se não bater: *"✗ pedi restritivo, o arquivo diz dialogo — tente de novo"*, em
+vermelho.
+
+**O autorizar saiu de perto do seletor**, para um bloco próprio que só aparece
+quando o modo trava. Ganhou um `?` explicando o que a autorização faz, por
+quanto tempo vale, e que trocar de modo a zera. E a confirmação do clique passou
+a **dizer o que vai acontecer** em vez de perguntar "tem certeza?".
+
+O gate guarda as três peças, inclusive a posição: se alguém puser o botão de
+autorizar colado no seletor de novo, o teste acusa.
+
+#### Falta a parte 3: autorização por arquivo
+
+É a que muda o fluxo dos dois lados e a única que exige código novo dos dois
+lados (hook + painel). Fica para a próxima rodada.
 
 ### CC-87 — as 11 telas, uma a uma (3 de 11 feitas em 15/08)
 

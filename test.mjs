@@ -1515,6 +1515,33 @@ if (estRotinas.projetos.length) {
   assert.ok(real.ms < 2000, `varredura lenta demais: ${real.ms}ms`)
 }
 
+/* --- CC-91: o cartão do framework confirma o que GRAVOU ---
+   Ele trocou o modo duas vezes em 15/08, a tela confirmou, e o arquivo
+   continuava o mesmo. O gate guarda as três peças do conserto. */
+{
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui.html'), 'utf8')
+
+  // 1. a confirmação relê do servidor em vez de repetir o que foi clicado
+  assert.match(html, /CONFIRMA_FW/, 'sumiu a confirmação da troca de modo')
+  assert.match(html, /conferido\.modo === pedido/, 'a confirmação parou de comparar pedido com arquivo')
+  assert.match(html, /fw-salvo ruim/, 'sumiu o aviso de gravação que falhou')
+
+  /* 2. o autorizar NÃO pode voltar para perto do seletor: ele apertou por
+     engano justamente por isso. O seletor fica no `seloFramework`, e o botão
+     tem que estar dentro de `.fw-aut`, que é bloco próprio. */
+  const i = html.indexOf('function seloFramework(')
+  const corpo = html.slice(i, html.indexOf('\nfunction ', i + 10))
+  assert.ok(corpo.includes('fw-aut'), 'o autorizar saiu do bloco próprio')
+  const posSeletor = corpo.indexOf('class="fw-modo"')
+  const posAut = corpo.indexOf('data-fw="autorizar"')
+  assert.ok(posAut < posSeletor || corpo.slice(posSeletor, posAut).includes('fw-aut'),
+    'o botão de autorizar voltou a ficar colado no seletor de modo')
+
+  // 3. a confirmação do clique diz o que vai acontecer, não só "tem certeza?"
+  assert.match(html, /vale at[ée] voc[êe] trocar de modo/, 'a confirmação parou de dizer o prazo')
+  assert.match(html, /data-ajuda="Liberar escrita/, 'sumiu a explicação do "?" do autorizar')
+}
+
 /* --- CC-87: toda tela responde uma pergunta, escrita no topo ---
    Regra 1 da frente. O gate guarda a REGRA, não o texto: se alguém acrescentar
    uma tela sem pergunta, ninguém notaria — foi assim que 11 das 15 ficaram

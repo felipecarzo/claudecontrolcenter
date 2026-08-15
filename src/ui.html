@@ -754,6 +754,21 @@
   }
   /* CC-81: a resposta nasce ao lado da pergunta. z-index acima do header
      (que é sticky com 30), senão fica cortado quando o player está tocando. */
+  /* CC-91: o autorizar em linha própria, longe do seletor de modo. */
+  .fw-aut {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    margin-top: 8px; padding: 8px 11px; border-radius: 7px;
+    background: var(--surface); border-left: 3px solid var(--waiting);
+  }
+  .fw-aut.ok { border-left-color: var(--done); }
+  .fw-aut b { font-size: 12px; }
+  .fw-aut .path { flex: 1 1 200px; }
+  /* a confirmação da troca de modo: o que o ARQUIVO diz, não o que foi clicado */
+  .fw-salvo {
+    margin-top: 6px; font-size: 11.5px; color: var(--done);
+  }
+  .fw-salvo.ruim { color: var(--failed); font-weight: 600; }
+
   /* CC-87: o topo de toda tela. Mesmo desenho do veredito da VPS, que foi a
      primeira a usar — a barra colorida à esquerda é o que faz o olho pousar
      ali antes do conteúdo. */
@@ -2431,6 +2446,10 @@ function pedirFramework(projeto) {
  * o que já confundiu antes: nunca ligado (convite), ligado (fase e o que falta,
  * com destaque) e desligado com dado guardado (o MVP continua lá).
  */
+/* CC-91: o que a última troca de modo produziu, por projeto. Some no
+   redesenho seguinte a um novo clique — é confirmação, não histórico. */
+const CONFIRMA_FW = new Map()
+
 function seloFramework(projeto) {
   const f = FRAMEWORKS.get(projeto)
   if (!f || f === 'carregando' || f.semPasta) return ''
@@ -2454,20 +2473,40 @@ function seloFramework(projeto) {
   const modos = (f.modos || []).map((m) => `<option value="${m.id}"${
     m.id === f.modo ? ' selected' : ''} title="${esc(m.explica)}">${esc(m.titulo)}</option>`).join('')
 
+  /* CC-91: o autorizar SAI de perto do seletor, para uma linha própria.
+     Ele apertou por engano em 15/08 e disse por quê: *"dá vontade de apertar em
+     executar do lado porque é um botão muito imediato; não era pra ter esse
+     botão colado numa coisa que você troca"*. Ação que libera escrita não fica
+     grudada em ação de configuração. */
   const autorizacao = !f.modoTrava ? '' : (f.autorizado || []).length
-    ? `<span class="fw-selo" style="border-color:var(--done);color:var(--done)"
-         title="${esc((f.autorizado || []).join(', '))}">autorizado</span>`
-    : `<button class="btn mini" data-fw="autorizar" data-fw-proj="${esc(projeto)}"
-         title="liberar a IA pra escrever código neste projeto até o modo mudar">autorizar</button>`
+    ? `<div class="fw-aut ok">
+         <b>código liberado</b>
+         <span class="path">até você trocar de modo — trocar zera esta autorização</span>
+       </div>`
+    : `<div class="fw-aut">
+         <b>código travado</b>
+         <span class="path">o modo ${esc(f.tituloModo || '')} exige sua autorização para eu escrever código</span>
+         <button class="btn mini" data-fw="autorizar" data-fw-proj="${esc(projeto)}">liberar escrita…</button>
+         <button class="ajuda" data-ajuda="Liberar escrita deixa a IA editar código neste projeto — todos os arquivos, até você trocar de modo. Trocar de modo zera a autorização de propósito: autorização dada num modo não pode sobreviver à entrada em outro. Documentação, backlog e o estado do framework nunca ficam travados.">?</button>
+       </div>`
+
+  /* A confirmação da troca: as duas metades que ele pediu. O `fw-salvo` é a
+     resposta imediata ao clique; o que aparece abaixo é o que o ARQUIVO diz.
+     A segunda é a que não mente — a primeira sozinha foi o que falhou hoje. */
+  const conf = CONFIRMA_FW.get(projeto)
+  const confirmacao = !conf ? '' : conf.erro
+    ? `<div class="fw-salvo ruim">✗ pedi <b>${esc(conf.pedido)}</b>, o arquivo diz <b>${esc(conf.real)}</b> — tente de novo</div>`
+    : `<div class="fw-salvo">✓ salvo: o arquivo diz <b>${esc(conf.real)}</b>, às ${esc(conf.hora)}</div>`
 
   return `<span class="fw-selo fw-on" style="border-color:var(--${cor});color:var(--${cor})"
       title="${esc(f.resumo || '')}">${esc(f.tituloFase || 'framework')}</span>
     <select class="fw-modo" data-fw-modo="${esc(projeto)}" title="${esc(f.explicaModo || '')}">${modos}</select>
-    ${autorizacao}
     <span class="dim fw-frase" title="${esc(f.resumo || '')}">${esc(frase)}</span>
     ${f.mudancasDeEscopo ? `<span class="fw-selo" title="o escopo do MVP mudou ${f.mudancasDeEscopo} vez(es), com motivo registrado">escopo mudou ${f.mudancasDeEscopo}×</span>` : ''}
     <button class="btn mini" data-fw="desligar" data-fw-proj="${esc(projeto)}"
-      title="desligar sem apagar o MVP nem o histórico">desligar</button>`
+      title="desligar sem apagar o MVP nem o histórico">desligar</button>
+    ${confirmacao}
+    ${autorizacao}`
 }
 
 /** Pastilhas por frente, sem biblioteca. Ponto quando há agente ali. */
@@ -5597,7 +5636,15 @@ document.addEventListener('click', async (e) => {
   if (fwBtn) {
     const projeto = fwBtn.dataset.fwProj
     const acao = fwBtn.dataset.fw
-    if (acao === 'autorizar' && !confirm(`Autorizar a IA a escrever código em ${projeto}?`)) return
+    /* CC-91: a confirmação diz o que vai acontecer, não só pergunta "tem
+       certeza?". Ele apertou esse botão por engano em 15/08 justamente porque
+       ele era imediato demais e não explicava nada. */
+    if (acao === 'autorizar' && !confirm(
+      `Liberar a IA para escrever código em ${projeto}?\n\n`
+      + '· vale para TODOS os arquivos de código do projeto\n'
+      + '· vale até você trocar de modo — trocar zera esta autorização\n'
+      + '· documentação e backlog nunca estiveram travados',
+    )) return
     // Diferente do "vi isso": o framework NÃO vem no stream de 2s (é leitura de
     // disco por projeto), então a resposta do POST é a única atualização que
     // esta tela vai receber. Guardar o retrato devolvido é obrigatório.
@@ -5952,15 +5999,30 @@ document.addEventListener('change', (e) => {
   const sel = e.target?.closest?.('[data-fw-modo]')
   if (!sel) return
   const projeto = sel.dataset.fwModo
+  const pedido = sel.value
+  CONFIRMA_FW.delete(projeto) // some a confirmação anterior antes de pedir a nova
   fetch('/api/framework', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ projeto, acao: 'modo', modo: sel.value }),
-  }).then((r) => r.json()).then((f) => {
-    if (f.error) alert(f.error)
-    else {
-      FRAMEWORKS.set(projeto, f)
-      if (Array.isArray(FW_LISTA)) FW_LISTA = FW_LISTA.map((p) => (p.projeto === projeto ? { ...p, ...f } : p))
+  }).then((r) => r.json()).then(async (f) => {
+    if (f.error) { alert(f.error); return render() }
+    FRAMEWORKS.set(projeto, f)
+    if (Array.isArray(FW_LISTA)) FW_LISTA = FW_LISTA.map((p) => (p.projeto === projeto ? { ...p, ...f } : p))
+
+    /* CC-91: relê o estado do SERVIDOR e compara com o que foi pedido. A
+       resposta do POST diz o que o painel achou que gravou; esta segunda leitura
+       diz o que está no arquivo. Duas vezes em 15/08 ele trocou o modo, a tela
+       confirmou, e o `.framework/estado.json` continuava o mesmo. */
+    const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    try {
+      const conferido = await (await fetch(`/api/framework?projeto=${encodeURIComponent(projeto)}`)).json()
+      CONFIRMA_FW.set(projeto, conferido.modo === pedido
+        ? { real: conferido.tituloModo || conferido.modo, hora }
+        : { erro: true, pedido, real: conferido.modo || 'nada' })
+      FRAMEWORKS.set(projeto, conferido)
+    } catch {
+      CONFIRMA_FW.set(projeto, { erro: true, pedido, real: 'não consegui conferir' })
     }
     render()
   }).catch(() => render())
