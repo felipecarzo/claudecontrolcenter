@@ -56,6 +56,21 @@ Escrito por ele em 15/08/2026, a partir de uma explicação minha que ficou ruim
 
 O item 5 é o que permite cortar sem deixá-lo sem informação.
 
+## Como explicar uma coisa técnica: quatro campos, sempre nesta ordem
+
+Criado por ele no mesmo dia, e pelo motivo dele: *"as suas explicações nunca
+seguem padrões"*. O padrão acima diz QUANTO falar; este diz COMO explicar.
+
+1. **O que é** — em português comum, uma ou duas linhas.
+2. **Onde fica** — o caminho exato, na máquina dele.
+3. **O que fazer** — o conteúdo ou o comando, com cada parte explicada, e a
+   regra que não pode ser quebrada, se houver.
+4. **Como saber que deu certo** — o teste, e o que aparece quando funcionou.
+   **É o campo que sempre faltou.**
+
+As duas regras que já existiam continuam valendo: comando de terminal se quebra
+parte por parte, e valor vem com a escala ("borda em 10, de 0 a 100").
+
 ## O vício a evitar, com exemplo real
 
 Parágrafo que começa se defendendo de pergunta que ninguém fez:

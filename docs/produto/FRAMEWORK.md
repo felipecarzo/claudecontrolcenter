@@ -288,6 +288,30 @@ e Bancada). Vira frente própria no ROADMAP quando chegar a vez.
   rodada, não só os critérios do MVP marcados. Desenho de como isso entra no
   motor (`framework.mjs`) ainda não foi feito.
 
+## O nome: DDS, Directed Development System
+
+Batizado por ele em 15/08, depois de comparar com os frameworks de agente e ver
+que a categoria não existia com nome. A primeira ideia foi **ODS, Offensive
+Development System**; virou **Directed** por um motivo prático: em inglês,
+*offensive* carrega ofensa antes de carregar ataque. Em segurança funciona,
+porque *offensive security* já existe há décadas e o contexto desfaz; fora dela,
+"Offensive Development" lê como "desenvolvimento desagradável".
+
+**O eixo é ativo contra passivo**, e é a definição mais curta do que isto é:
+
+> Passivo é a IA esperar instrução. Ativo é o sistema conduzir o processo.
+
+A ligação que ele fez é com a [[ARQUITETURA-DE-HABITOS]], o outro produto dele:
+**a mesma ideia, aplicada a sistemas em vez de pessoas.** Lá, o ambiente é
+desenhado para o hábito acontecer sem depender de força de vontade. Aqui, o
+processo é desenhado para acontecer sem depender de alguém lembrar da regra — e
+o dia inteiro de 15/08 é a prova de que lembrar não funciona: o aviso do hash de
+privacidade ficou três dias sendo ignorado, em negrito, no lugar certo.
+
+Vale registrar o que o nome NÃO promete: não é metodologia de gestão, não
+compete com Scrum, e não diz como o software deve ser escrito. Ele nomeia o
+mecanismo — o processo dirige, em vez de esperar.
+
 ## Por que não é LangChain (nem LangGraph, nem Google ADK)
 
 Escrito em 15/08, quando o Felipe trouxe uma tabela com oito frameworks de
