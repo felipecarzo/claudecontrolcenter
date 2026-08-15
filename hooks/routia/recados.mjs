@@ -215,7 +215,20 @@ if (cmd === 'enviar') {
     console.error(`uso: recados.mjs enviar <para|todos> <${Object.keys(TIPOS).join('|')}> "texto" [--arquivo x]`)
     process.exit(1)
   }
-  const r = enviar(raiz, { de: eu, para, tipo, texto, arquivo: val('--arquivo') })
+  /* CC-86: com `--arquivo`, o recado leva o impacto junto. Muda "vou mexer no
+     seu arquivo" para algo que o outro julga sem abrir nada.
+
+     O cálculo roda AQUI, no envio, que é raro — nunca no hook, que roda em toda
+     chamada de ferramenta. São ~50ms: aceitável uma vez, inaceitável mil. */
+  let alvo = val('--arquivo')
+  let comImpacto = texto
+  if (alvo) {
+    try {
+      const D = await import(new URL('../../src/dependencias.mjs', import.meta.url))
+      comImpacto = `${texto}\n  impacto: ${D.aviso(D.mapear(raiz), alvo)}`
+    } catch { /* sem o módulo, o recado vai sem o impacto: melhor que não ir */ }
+  }
+  const r = enviar(raiz, { de: eu, para, tipo, texto: comImpacto, arquivo: alvo })
   console.log(`enviado ${r.id} para ${r.para}: ${TIPOS[r.tipo].rotulo}`)
 } else if (cmd === 'caixa') {
   const meus = pendentes(raiz, eu)

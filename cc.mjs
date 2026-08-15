@@ -13,6 +13,7 @@
 //   node cc.mjs hooks on|off <id>      liga/desliga um hook específico
 //   node cc.mjs routia install [pasta] cria docs/ROTAS-ATIVAS.md pro Método Routia
 //   node cc.mjs routia cobertura       onde o Routia está descoberto nesta máquina
+//   node cc.mjs deps [arquivo]     o que quebra se eu mexer aqui
 //   node cc.mjs json               despeja o estado atual e sai
 //
 //   flags: --no-web  --web-only  --port <n>
@@ -565,6 +566,37 @@ switch (cmd) {
       r.tendenciaPalavras == null ? '(sem passado para comparar ainda)' : `${seta} ${Math.abs(r.tendenciaPalavras)}% contra as ${r.janela} anteriores`}`)
     console.log(`  ${String(r.autodefesa).padStart(4)} com parágrafo de autodefesa`)
     console.log('\n  Tendência, não nota: falso positivo é esperado.\n')
+    break
+  }
+
+  /* CC-86: "o que quebra se eu mexer aqui?", lido do código de agora.
+     Sem argumento, mostra os arquivos mais perigosos de tocar no projeto. */
+  case 'deps': {
+    const D = await import('./src/dependencias.mjs')
+    const raiz = path.resolve(val('--dir') || process.cwd())
+    const g = D.mapear(raiz)
+    if (has('--json')) { console.log(JSON.stringify({ ...g, usa: undefined, usadoPor: undefined, top: D.maisUsados(g, 20) }, null, 2)); break }
+
+    console.log(`\n${g.arquivos} arquivos · ${g.ligacoes} ligações · lido ${g.kb} KB em ${g.ms}ms\n`)
+    if (!arg) {
+      console.log('  os mais perigosos de tocar (quantos dependem deles):\n')
+      for (const m of D.maisUsados(g, 8)) {
+        console.log(`  ${String(m.dependentes).padStart(3)}  ${m.arquivo}`)
+      }
+      console.log('\n  para um arquivo:  cc deps <caminho>\n')
+      break
+    }
+    const i = D.impactoDe(g, arg)
+    if (!i.existe) { console.log(`  ${i.arquivo}: não achei este arquivo no projeto\n`); break }
+    console.log(`  ${i.arquivo}\n`)
+    console.log(i.diretos.length
+      ? `  usam ele diretamente (${i.diretos.length}):\n${i.diretos.map((a) => `    ${a}`).join('\n')}`
+      : '  ninguém usa este arquivo')
+    const indiretos = i.todos.filter((a) => !i.diretos.includes(a))
+    if (indiretos.length) {
+      console.log(`\n  e por tabela (${indiretos.length}):\n${indiretos.map((a) => `    ${a}`).join('\n')}`)
+    }
+    console.log('')
     break
   }
 

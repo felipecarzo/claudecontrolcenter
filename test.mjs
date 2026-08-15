@@ -1362,6 +1362,58 @@ if (estRotinas.projetos.length) {
   }
 }
 
+/* --- CC-86: o mapa de dependência sai do código, e nunca envelhece --- */
+{
+  const D = await import('./src/dependencias.mjs')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-dep-'))
+  try {
+    fs.mkdirSync(path.join(raiz, 'src'), { recursive: true })
+    fs.mkdirSync(path.join(raiz, 'node_modules', 'pacote'), { recursive: true })
+    const w = (p, c) => fs.writeFileSync(path.join(raiz, p), c)
+
+    w('src/base.mjs', 'export const x = 1\n')
+    w('src/meio.mjs', "import { x } from './base.mjs'\nexport const y = x\n")
+    w('src/topo.mjs', "import { y } from './meio.mjs'\nimport fs from 'node:fs'\nexport default y\n")
+    w('src/solto.mjs', 'export const nada = 0\n')
+    // segundo dependente da base, para `maisUsados` não empatar com o ciclo:
+    // com empate o desempate é a ordem do Map, e o teste viraria loteria
+    w('src/outro.mjs', "import { x } from './base.mjs'\nexport const z = x\n")
+    // pacote instalado não é problema nosso: ninguém "mexe" no react sem querer
+    w('node_modules/pacote/index.js', "import './outro.js'\n")
+    // ciclo de import EXISTE, e sem visitados a busca em largura não termina
+    w('src/ciclo-a.mjs', "import './ciclo-b.mjs'\n")
+    w('src/ciclo-b.mjs', "import './ciclo-a.mjs'\n")
+
+    const g = D.mapear(raiz)
+    assert.equal(g.arquivos, 7, 'varreu node_modules ou perdeu arquivo')
+
+    // a pergunta direta
+    assert.deepEqual(D.impactoDe(g, 'src/meio.mjs').diretos, ['src/topo.mjs'])
+
+    /* A pergunta que importa é a transitiva: base é usada por meio, e meio por
+       topo. Olhando um nível só, mexer em base pareceria seguro para topo. */
+    const base = D.impactoDe(g, 'src/base.mjs')
+    assert.deepEqual(base.diretos, ['src/meio.mjs', 'src/outro.mjs'])
+    assert.deepEqual(base.todos, ['src/meio.mjs', 'src/outro.mjs', 'src/topo.mjs'], 'perdeu o impacto indireto')
+
+    assert.deepEqual(D.impactoDe(g, 'src/solto.mjs').diretos, [], 'inventou dependente')
+    assert.equal(D.impactoDe(g, 'src/nao-existe.mjs').existe, false)
+
+    // ciclo não pode travar
+    assert.deepEqual(D.impactoDe(g, 'src/ciclo-a.mjs').todos, ['src/ciclo-b.mjs'])
+
+    assert.equal(D.maisUsados(g, 1)[0].arquivo, 'src/base.mjs')
+    assert.match(D.aviso(g, 'src/solto.mjs'), /ninguém mais usa/)
+    assert.match(D.aviso(g, 'src/base.mjs'), /3 contando os indiretos/)
+  } finally { fs.rmSync(raiz, { recursive: true, force: true }) }
+
+  /* Contra o projeto de verdade: o custo é o argumento inteiro de derivar em vez
+     de manter à mão, então ele fica guardado. */
+  const real = D.mapear(process.cwd())
+  assert.ok(real.arquivos > 40 && real.ligacoes > 50)
+  assert.ok(real.ms < 2000, `varredura lenta demais: ${real.ms}ms`)
+}
+
 /* --- CC-73: o painel não pode rolar de lado ---
    Não dá para medir layout sem navegador, e o Chrome desta VPS exige um token
    que o hook de segredo (com razão) não deixa ler. Então o que este teste

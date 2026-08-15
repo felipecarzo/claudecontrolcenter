@@ -49,7 +49,7 @@ não organizar, **derivar**. Foi o que fez o peso das pastilhas (CC-81), a sprin
 (CC-83), a presença (CC-49) e agora o mapa de dependência (CC-86). Vale como
 regra para o que vier: se dá para calcular, não peça para alguém manter.
 
-### CC-86: o mapa de dependência, extraído e nunca escrito
+### CC-86 ✅ 15/08 — o mapa de dependência, extraído e nunca escrito
 
 Nasceu da discussão de UML/MER: ele apontou, com razão, que o glossário com
 relações não cobre **dependência de código** — "se o outro agente vai mexer numa
@@ -75,6 +75,32 @@ você"*. É a pergunta que ele quer respondida: **o que quebra se eu mexer aqui?
 JavaScript dele quase não há classes, mas se algum for orientado a objetos de
 verdade, aí o diagrama tem valor que a extração não tem. Fica registrado, não
 resolvido.
+
+#### ✅ Feito: `src/dependencias.mjs` + `cc deps`
+
+Números do projeto inteiro: **73 arquivos, 115 ligações, 23 ms.** O topo:
+`platform.mjs` com 16 dependentes, `config.mjs` com 12, `jobs.mjs` com 10.
+
+**O transitivo é o que responde a pergunta de verdade.** Mexer em `platform.mjs`
+alcança 32 arquivos, quase metade do projeto — olhando um nível só, seriam 16.
+
+```
+cc deps                 os mais perigosos de tocar
+cc deps src/x.mjs       quem quebra, direto e por tabela
+```
+
+**Ligado ao CC-84:** `recados.mjs enviar … --arquivo x` calcula o impacto e manda
+junto. O outro agente recebe *"vou mexer num arquivo que 16 outros usam"* em vez
+de *"vou mexer no seu arquivo"*, e julga sem abrir nada. O cálculo roda no envio,
+que é raro — **nunca no hook**, que roda em toda chamada de ferramenta.
+
+Dois defeitos que o gate pegou, os dois reais:
+
+- **`import './x'` sem `from`** (efeito colateral, usado para CSS e polyfill) não
+  casava no regex. O teste do ciclo denunciou: dois arquivos que se importavam
+  assim apareciam como se ninguém usasse ninguém.
+- **Ciclo de import existe**, e sem conjunto de visitados a busca em largura não
+  termina.
 
 
 > **Poda de 14/08.** Este arquivo tinha 45 frentes e 993 linhas, quase metade
