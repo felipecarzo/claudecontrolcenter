@@ -1296,6 +1296,11 @@
      é só o enquadramento da página — as regras que escondiam coluna morreram
      junto com a tabela de agentes. */
   @container painel (max-width: 620px) {
+    .only-xs { display: inline-flex; }
+    /* escondidos até o ⋯ abrir. `hidden` do pip-toggle continua mandando: um
+       botão que o navegador não suporta não pode aparecer só porque abriu. */
+    .ferramentas > .ctl-extra:not([hidden]) { display: none; }
+    .ferramentas.aberta > .ctl-extra:not([hidden]) { display: inline-flex; }
     #painel > header { padding: 12px 12px 0; }
     main { padding: 4px 12px 40px; }
     #painel > footer { padding: 0 12px 24px; }
@@ -1411,15 +1416,22 @@
       <span class="grow"></span>
       <div id="uso" class="uso"></div>
       <div class="ferramentas">
+        <!-- CC-74: em tela estreita os seis controles ocupavam duas linhas do
+             cabeçalho. Filtro e projeto ficam (uso constante); tema, notas,
+             flutuar e ⚙ entram atrás deste botão, que só existe no estreito.
+             É o princípio da árvore aplicado ao cabeçalho: o de cima simples,
+             o resto a um clique. -->
+        <button class="btn only-xs" id="mais-ctl" aria-expanded="false"
+          title="tema, notas e janela flutuante">⋯</button>
         <input type="search" id="q" placeholder="filtrar…" autocomplete="off">
         <select id="proj"><option value="">todos os projetos</option></select>
         <!-- CC-47: só aparece quando há mais de uma máquina reportando. Com uma
              só, o seletor seria uma escolha sem alternativa. -->
         <select id="maq" title="de qual máquina" aria-label="filtrar por máquina" hidden></select>
-        <select id="tema-sel" title="tema do painel" aria-label="tema do painel"></select>
-        <button class="btn" id="n-toggle" aria-pressed="false">notas</button>
-        <button class="btn" id="pip-toggle" hidden aria-pressed="false">flutuar</button>
-        <button class="btn" id="pip-config-toggle" hidden title="escolher o que aparece na janela flutuante">⚙</button>
+        <select id="tema-sel" class="ctl-extra" title="tema do painel" aria-label="tema do painel"></select>
+        <button class="btn ctl-extra" id="n-toggle" aria-pressed="false">notas</button>
+        <button class="btn ctl-extra" id="pip-toggle" hidden aria-pressed="false">flutuar</button>
+        <button class="btn ctl-extra" id="pip-config-toggle" hidden title="escolher o que aparece na janela flutuante">⚙</button>
       </div>
     </div>
     <!-- O player divide a linha com as abas: sobra espaço à direita ali, e no
@@ -1633,7 +1645,15 @@ function renderUso() {
 function renderHeader() {
   const s = DATA.summary
   renderUso()
+  /* CC-74: contador zerado não ocupa espaço. No print dele, em tela estreita,
+     a linha era "1 esperando · 0 falharam · 0 ativos · 0 parados · 7 prontos":
+     quatro dos cinco números eram zero, e ocupavam a mesma altura que os dois
+     que importavam. Zero não é informação aqui — é a ausência dela.
+
+     `done` fica sempre, mesmo em zero: "0 prontos" é resposta legítima a "o que
+     terminou?", e sem ele a linha ficaria vazia num dia parado. */
   $('#counts').innerHTML = ['waiting', 'failed', 'working', 'idle', 'done']
+    .filter((k) => (s[k] ?? 0) > 0 || k === 'done')
     .map((k) => {
       const n = s[k] ?? 0
       const hot = n > 0 && (k === 'waiting' || k === 'failed')
@@ -4938,6 +4958,17 @@ document.addEventListener('click', async (e) => {
     return gravarGraficos(lista.some((g) => g.id === salvo.id)
       ? lista.map((g) => (g.id === salvo.id ? salvo : g))
       : [...lista, salvo])
+  }
+
+  /* CC-74: abre e fecha os controles secundários em tela estreita. Sem estado
+     guardado de propósito: é gesto de momento, e reabrir a página com o
+     cabeçalho expandido devolveria o problema que isto resolve. */
+  const btMais = t.closest('#mais-ctl')
+  if (btMais) {
+    const caixa = btMais.parentElement
+    const aberta = caixa.classList.toggle('aberta')
+    btMais.setAttribute('aria-expanded', String(aberta))
+    return
   }
 
   if (t.closest('#n-toggle')) {

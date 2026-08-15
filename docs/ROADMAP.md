@@ -125,16 +125,26 @@ print meses depois — foi assim que ela viveu até hoje.
 larga enquanto o painel encolhe, então ela nunca disparava. Virou `@container`,
 e o gate agora recusa qualquer media query de largura neste arquivo.
 
-### CC-74: o cabeçalho come metade da tela
+### CC-74 ✅ 15/08 (parcial) — o cabeçalho comia metade da tela
 
 Em janela estreita, antes de qualquer conteúdo: título, cinco contadores (quatro
 deles zero), a linha de tokens, duas barras de uso, cinco controles, um botão
 solto e duas fileiras de abas. Sobra menos da metade da altura para o que
 importa.
 
-Ideias medidas nos prints, a decidir com ele: contador zerado não ocupa espaço;
-os controles viram um botão só que abre; as duas fileiras de abas viram uma
-navegação de aplicativo.
+**Feito, duas das três:**
+
+- **Contador zerado não ocupa espaço.** No print eram seis, quatro deles zero.
+  Zero ali não é informação, é a ausência dela. `prontos` fica mesmo em zero,
+  porque "0 prontos" é resposta legítima a "o que terminou?" e sem ele a linha
+  sumiria num dia parado.
+- **Quatro dos seis controles entraram atrás de um `⋯`**, só em tela estreita.
+  Filtro e projeto ficam, que são de uso constante. É o princípio da árvore
+  (CC-75) aplicado ao cabeçalho. O estado não é guardado de propósito: reabrir
+  a página com o cabeçalho expandido devolveria o problema.
+
+**Falta a terceira**, e ela é maior: as duas fileiras de abas viram navegação de
+aplicativo. Entra no CC-77, depois das prévias.
 
 ### CC-75: informação em árvore, que é o princípio que ele nomeou
 
