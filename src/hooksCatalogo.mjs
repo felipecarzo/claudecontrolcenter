@@ -15,9 +15,30 @@ export const EVENTOS = [
   'PreCompact', 'PostCompact', 'UserPromptSubmit',
 ]
 
+/**
+ * CC-69: o que cada hook FAZ quando dispara, declarado num lugar só.
+ *
+ * O Danger tem `fail`, `warn` e `message`, e a regra diz qual usa. Aqui a
+ * escolha estava certa em todos, mas **espalhada pelo código de cada um**: não
+ * dava para olhar num lugar e saber o que trava e o que só fala.
+ *
+ * - `trava`  — recusa a ferramenta (exit 2). O agente não passa.
+ * - `avisa`  — fala e deixa seguir. Todo hook de `Stop` é assim, e é obrigatório:
+ *              exit 2 no `Stop` devolve o texto ao modelo e cria laço.
+ * - `injeta` — põe contexto no começo da sessão, sem barrar nada.
+ * - `mede`   — só registra, nunca aparece.
+ */
+export const NIVEIS = {
+  trava: 'recusa a ferramenta — o agente não passa',
+  avisa: 'fala e deixa seguir',
+  injeta: 'põe contexto no início da sessão',
+  mede: 'só registra, não aparece',
+}
+
 export const HOOKS = [
   {
     id: 'estilo-inicio',
+    nivel: 'injeta',
     label: 'Padrão de resposta do Felipe',
     script: 'estilo-inicio.mjs',
     evento: 'SessionStart',
@@ -30,6 +51,7 @@ export const HOOKS = [
   },
   {
     id: 'estilo-fim',
+    nivel: 'mede',
     label: 'Padrão de resposta — mede sem reclamar',
     script: 'estilo-fim.mjs',
     evento: 'Stop',
@@ -42,6 +64,7 @@ export const HOOKS = [
   },
   {
     id: 'recados',
+    nivel: 'trava',
     label: 'Método Routia — agentes do mesmo projeto se falando',
     script: 'recados.mjs',
     evento: 'PreToolUse',
@@ -53,6 +76,7 @@ export const HOOKS = [
   },
   {
     id: 'rota-guard',
+    nivel: 'trava',
     label: 'Método Routia — trava edição sem rota',
     script: 'rota-guard.mjs',
     evento: 'PreToolUse',
@@ -63,6 +87,7 @@ export const HOOKS = [
   },
   {
     id: 'git-add-guard',
+    nivel: 'trava',
     label: 'Método Routia — trava git add em massa',
     script: 'git-add-guard.mjs',
     evento: 'PreToolUse',
@@ -73,6 +98,7 @@ export const HOOKS = [
   },
   {
     id: 'cc-check',
+    nivel: 'avisa',
     label: 'to-do aberto trava a entrega',
     script: null,
     registradoVia: 'todo-guard.mjs',
@@ -84,6 +110,7 @@ export const HOOKS = [
   },
   {
     id: 'routia-inicio',
+    nivel: 'injeta',
     label: 'Método Routia — mostra o quadro ao abrir sessão',
     script: 'routia-inicio.mjs',
     evento: 'SessionStart',
@@ -94,6 +121,7 @@ export const HOOKS = [
   },
   {
     id: 'routia-fim',
+    nivel: 'avisa',
     label: 'Método Routia — lembra de liberar a rota',
     script: 'routia-fim.mjs',
     evento: 'Stop',

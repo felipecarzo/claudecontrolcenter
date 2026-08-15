@@ -119,3 +119,89 @@ export function instalar(hooks, { dryRun = false } = {}) {
   }
   return { ok: true, feitos, gravou: true, backup: `${SETTINGS_FILE}.bak` }
 }
+
+
+/* ======================= CC-72: `cc hooks sync` =======================
+   O CC-65 versionou os hooks globais e deixou dito em negrito que é **cópia,
+   não fonte**: mexer no repositório não muda o que roda. Isso é uma armadilha
+   esperando alguém — exatamente o formato das 22 rotinas desatualizadas que o
+   CC-42 encontrou em 5 projetos.
+
+   `rotinas.mjs` já resolve esse mesmo problema para os comandos `/algo`
+   copiados dentro dos projetos, incluindo a normalização de CRLF que custou
+   tempo lá. Aqui a comparação é a mesma ideia, sem a parte de projeto. */
+
+/** CRLF não é diferença de conteúdo. Foi o que enganou a comparação de rotinas
+ *  no CC-42: arquivo igual acusava divergência só por causa do fim de linha. */
+const normalizar = (t) => String(t).replace(/\r\n/g, '\n').trimEnd()
+
+/** O comando com que aquele hook está de fato registrado, se estiver. */
+function comandoRegistradoDe(hook, settings = readSettings()) {
+  const alvo = hook.registradoVia || hook.script
+  for (const grupo of settings?.hooks?.[hook.evento] || []) {
+    for (const h of grupo.hooks || []) {
+      if (typeof h.command === 'string' && alvo && h.command.includes(alvo)) return h.command
+    }
+  }
+  return null
+}
+
+/** Onde o hook instalado mora — a casa do Claude Code, não o repositório. */
+export const pastaInstalada = () => path.join(casaClaude(), 'hooks')
+
+/**
+ * Compara cada hook do repositório com o que está instalado.
+ *
+ * Três respostas possíveis, e a terceira é a que mais importa: `divergente`
+ * quer dizer que **o que roda não é o que está versionado**, e ninguém saberia.
+ */
+export function comparar(hooks = []) {
+  const base = pastaHooks()
+  const instalada = pastaInstalada()
+  return hooks.map((h) => {
+    const alvo = h.script
+    if (!alvo) return { id: h.id, estado: 'sem script' }
+
+    const noRepo = [alvo, path.join('routia', alvo)]
+      .map((rel) => path.join(base, rel))
+      .find((c) => fs.existsSync(c))
+    const instalado = path.join(instalada, alvo)
+
+    /* Se o settings.json aponta para o ARQUIVO DO REPOSITÓRIO, não há cópia a
+       manter: o que roda já é o versionado, que é o ideal. Sem esta checagem o
+       comparador mandava copiar `estilo-inicio` para `~/.claude/hooks`, criando
+       justamente a segunda cópia que este comando existe para evitar. */
+    const registrado = comandoRegistradoDe(h)
+    if (noRepo && registrado && registrado.includes(noRepo.split(path.sep).join('/'))) {
+      return { id: h.id, estado: 'roda do repositório', noRepo }
+    }
+
+    if (!noRepo) return { id: h.id, estado: 'só instalado', instalado }
+    if (!fs.existsSync(instalado)) return { id: h.id, estado: 'só no repositório', noRepo }
+
+    try {
+      const igual = normalizar(fs.readFileSync(noRepo, 'utf8')) === normalizar(fs.readFileSync(instalado, 'utf8'))
+      return { id: h.id, estado: igual ? 'igual' : 'divergente', noRepo, instalado }
+    } catch (e) {
+      return { id: h.id, estado: 'erro', erro: String(e.message || e) }
+    }
+  })
+}
+
+/** Copia o do repositório por cima do instalado. O repositório é a referência:
+ *  é ele que passa por revisão e commit. */
+export function sincronizar(hooks = [], { dryRun = false } = {}) {
+  const feitos = []
+  for (const c of comparar(hooks)) {
+    if (c.estado !== 'divergente' && c.estado !== 'só no repositório') continue
+    if (dryRun) { feitos.push({ ...c, acao: 'copiaria' }); continue }
+    try {
+      fs.mkdirSync(pastaInstalada(), { recursive: true })
+      fs.copyFileSync(c.noRepo, path.join(pastaInstalada(), path.basename(c.noRepo)))
+      feitos.push({ ...c, acao: 'copiado' })
+    } catch (e) {
+      feitos.push({ ...c, acao: 'falhou', erro: String(e.message || e) })
+    }
+  }
+  return feitos
+}

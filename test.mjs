@@ -1415,6 +1415,54 @@ if (estRotinas.projetos.length) {
   }
 }
 
+/* --- CC-69 e CC-72: o que cada hook faz, e o que roda contra o que é versionado --- */
+{
+  const { HOOKS, NIVEIS } = await import('./src/hooksCatalogo.mjs')
+
+  // CC-69: o nível estava espalhado pelo código de cada hook; agora é declarado
+  for (const h of HOOKS.filter((x) => x.implementado)) {
+    assert.ok(NIVEIS[h.nivel], `${h.id} sem nível declarado`)
+  }
+  /* Hook de `Stop` NUNCA pode travar: exit 2 ali devolve o texto ao modelo e o
+     manda continuar, criando laço. Isso estava escrito em comentário em dois
+     arquivos; agora o gate cobra. */
+  for (const h of HOOKS.filter((x) => x.evento === 'Stop' && x.implementado)) {
+    assert.notEqual(h.nivel, 'trava', `${h.id} é Stop e trava: vira laço`)
+  }
+
+  // CC-72: cópia divergente é invisível, e é o formato das 22 rotinas velhas
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-sync-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const R = await import(`./src/hooksRegistro.mjs?casa=${encodeURIComponent(casa)}`)
+    fs.mkdirSync(R.pastaInstalada(), { recursive: true })
+    fs.writeFileSync(path.join(casa, 'settings.json'), '{}')
+
+    const doRepo = path.join(R.pastaHooks(), 'routia', 'rota-guard.mjs')
+    const instalado = path.join(R.pastaInstalada(), 'rota-guard.mjs')
+
+    // igual, mas com CRLF: fim de linha não é diferença de conteúdo, e foi o
+    // que enganou a comparação de rotinas no CC-42
+    fs.writeFileSync(instalado, fs.readFileSync(doRepo, 'utf8').replace(/\n/g, '\r\n'))
+    const soRota = HOOKS.filter((h) => h.id === 'rota-guard')
+    assert.equal(R.comparar(soRota)[0].estado, 'igual', 'CRLF virou divergência')
+
+    fs.writeFileSync(instalado, '// versão velha, diferente\n')
+    assert.equal(R.comparar(soRota)[0].estado, 'divergente')
+
+    assert.equal(R.sincronizar(soRota, { dryRun: true })[0].acao, 'copiaria')
+    assert.equal(fs.readFileSync(instalado, 'utf8'), '// versão velha, diferente\n', '--dry-run copiou')
+
+    assert.equal(R.sincronizar(soRota)[0].acao, 'copiado')
+    assert.equal(R.comparar(soRota)[0].estado, 'igual')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
 /* --- CC-86: o mapa de dependência sai do código, e nunca envelhece --- */
 {
   const D = await import('./src/dependencias.mjs')

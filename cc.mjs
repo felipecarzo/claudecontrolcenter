@@ -12,6 +12,7 @@
 //   node cc.mjs hooks                  lista hooks e se estão ligados
 //   node cc.mjs hooks on|off <id>      liga/desliga um hook específico
 //   node cc.mjs hooks install [--dry-run]  registra os hooks no settings.json
+//   node cc.mjs hooks sync [--dry-run]     copia o hook do repo para ~/.claude/hooks
 //   node cc.mjs routia install [pasta] cria docs/ROTAS-ATIVAS.md pro Método Routia
 //   node cc.mjs routia cobertura       onde o Routia está descoberto nesta máquina
 //   node cc.mjs deps [arquivo]     o que quebra se eu mexer aqui
@@ -193,6 +194,30 @@ switch (cmd) {
     /* CC-67: o gancho nasce com o projeto. O husky resolveu isto no git há
        anos; aqui doeu em 15/08, com três hooks esperando registro à mão no PC
        enquanto o padrão de resposta valia só na VPS. */
+    /* CC-72: o que roda é `~/.claude/hooks`, e o repositório é só cópia. Sem
+       isto, mexer no repositório não muda nada e ninguém percebe — o mesmo
+       formato das 22 rotinas desatualizadas do CC-42. */
+    if (arg === 'sync') {
+      const R = await import('./src/hooksRegistro.mjs')
+      const simular = has('--dry-run')
+      const comp = R.comparar(HOOKS.filter((h) => h.script))
+      console.log(`\n  repositório: ${R.pastaHooks()}\n  instalado:   ${R.pastaInstalada()}\n`)
+      for (const c of comp) {
+        const marca = {
+          igual: '·', 'roda do repositório': '✓',
+          divergente: '≠', 'só no repositório': '+', 'só instalado': '!',
+        }[c.estado] || '?'
+        console.log(`  ${marca} ${c.id.padEnd(16)} ${c.estado}`)
+      }
+      const mexer = comp.filter((c) => c.estado === 'divergente' || c.estado === 'só no repositório')
+      if (!mexer.length) { console.log('\n  tudo em dia\n'); break }
+      const feitos = R.sincronizar(HOOKS.filter((h) => h.script), { dryRun: simular })
+      console.log(simular
+        ? `\n  ${feitos.length} seria(m) copiado(s). Sem --dry-run, copio de verdade.\n`
+        : `\n  ${feitos.filter((f) => f.acao === 'copiado').length} copiado(s) do repositório para a casa do Claude Code.\n`)
+      break
+    }
+
     if (arg === 'install') {
       const R = await import('./src/hooksRegistro.mjs')
       const simular = has('--dry-run')

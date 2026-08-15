@@ -712,15 +712,20 @@ Ligado ao que já está registrado: "mais de um método é o que prova que o mé
 é dado e não código" ([[produto/FRAMEWORK]]), e a [[produto/BANCADA]] é o
 embrião do catálogo pelo lado das ferramentas de verificação.
 
-### CC-69: níveis declarados, em vez de cada hook decidir sozinho
+### CC-69 ✅ 15/08 — níveis declarados, num lugar só
 
 O Danger tem `fail`, `warn` e `message`, e a regra diz qual usa. Aqui cada hook
 resolve no próprio código: o `framework-guard` recusa com exit 2, o
 `roadmap-guard` avisa, o `todo-guard` avisa. A escolha está certa em todos, mas
 está espalhada — não dá para olhar num lugar e saber o que trava e o que fala.
 
-Ganho real: o `hooksCatalogo.mjs` passaria a dizer o nível junto do resto, e o
-painel poderia mostrar "3 travam, 4 avisam" sem ler código.
+**Feito.** Quatro níveis: `trava` (recusa a ferramenta), `avisa` (fala e deixa
+seguir), `injeta` (põe contexto no início) e `mede` (só registra). Hoje: 3
+travam, 2 avisam, 2 injetam, 1 mede.
+
+**O gate ganhou uma regra que era só comentário:** hook de `Stop` nunca pode
+travar. Exit 2 ali devolve o texto ao modelo e o manda continuar, criando laço.
+Isso estava escrito em comentário em dois arquivos; agora o teste recusa.
 
 ### CC-70: `cc framework check` — rodar o gate sem esperar o gatilho
 
@@ -742,17 +747,25 @@ de lentidão que faz o Felipe desligar o recurso.
 **Registrado como direção, não como tarefa:** sem a Bancada ligada, não há o que
 otimizar, e otimizar antes seria inventar problema.
 
-### CC-72: sincronizar as regras, em vez de copiar à mão
+### CC-72 ✅ 15/08 — `cc hooks sync`, contra a cópia que envelhece
 
 O CC-65 versionou os seis hooks globais e deixou dito em negrito que é **cópia,
 não fonte**: mexer no repositório não muda o que roda. O `pre-commit autoupdate`
 resolve isso do lado deles.
 
-Aqui seria `cc hooks sync`: comparar o que está em `hooks/routia/` com o que está
-em `~/.claude/hooks/`, mostrar a diferença e sincronizar sob clique. O
-`rotinas.mjs` **já faz exatamente isso** para os comandos `/algo` copiados dentro
-dos projetos, incluindo a normalização de CRLF que custou tempo lá — é código
-para reusar, não para reescrever.
+**Feito:** `cc hooks sync [--dry-run]` compara o repositório com
+`~/.claude/hooks` e copia o que divergiu. CRLF não conta como diferença — foi o
+que enganou a comparação de rotinas no CC-42, e há teste guardando.
+
+**Um estado que eu não tinha previsto, e o comparador aprendeu:** três hooks
+(`estilo-inicio`, `estilo-fim`, `recados`) estão registrados apontando **direto
+para o arquivo do repositório**. Não há cópia a manter — o que roda já é o
+versionado, que é o ideal. Na primeira versão o comando mandava copiá-los para
+`~/.claude/hooks`, criando exatamente a segunda cópia que ele existe para
+evitar.
+
+Isso vira recomendação: **hook novo registra o caminho do repositório**, e aí
+nunca há o que sincronizar.
 
 ### CC-66 ✅ 15/08 — o padrão de resposta virou hook instalável
 
