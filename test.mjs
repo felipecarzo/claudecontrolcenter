@@ -1628,6 +1628,53 @@ if (estRotinas.projetos.length) {
   assert.equal(noLimite[0].veredito, 'ativa')
 }
 
+/* --- CC-78: trocar o estado de uma rota pela tela ---
+   O medo aqui é claro: o painel escreve num arquivo que agentes editam ao mesmo
+   tempo. Por isso a edição é cirúrgica, e o teste prova que só a linha alvo
+   muda. */
+{
+  const { alternarRota, corDaRota } = await import('./src/presenca.mjs')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-rt-'))
+  try {
+    fs.mkdirSync(path.join(dir, 'docs'), { recursive: true })
+    const original = [
+      '# Rotas',
+      '',
+      '| Rota | Status | Quem / o quê | Desde |',
+      '|---|---|---|---|',
+      '| `alfa` | 🟢 livre | — (fechou o CC-1 ontem) | — |',
+      '| `beta` | 🔴 ocupada | 5805d6bb — trabalhando nisso | 2026-08-13 |',
+      '',
+      '## Tickets pendentes',
+      'texto que não pode ser tocado',
+      '',
+    ].join('\n')
+    fs.writeFileSync(path.join(dir, 'docs', 'ROTAS-ATIVAS.md'), original)
+
+    const r = alternarRota(dir, 'alfa', { paraOcupada: true, marca: 'ff0d68b2', agora: new Date('2026-08-15') })
+    assert.ok(r.ok)
+    const depois = fs.readFileSync(path.join(dir, 'docs', 'ROTAS-ATIVAS.md'), 'utf8').split('\n')
+
+    assert.ok(depois[4].includes('🔴 ocupada') && depois[4].includes('ff0d68b2'))
+    // a OUTRA linha e o resto do arquivo não podem ter mudado: é o quadro que
+    // outra sessão pode estar editando no mesmo segundo
+    assert.equal(depois[5], '| `beta` | 🔴 ocupada | 5805d6bb — trabalhando nisso | 2026-08-13 |')
+    assert.equal(depois[8], 'texto que não pode ser tocado')
+
+    assert.ok(alternarRota(dir, 'beta', { paraOcupada: false }).ok)
+    assert.match(fs.readFileSync(path.join(dir, 'docs', 'ROTAS-ATIVAS.md'), 'utf8'), /`beta` \| 🟢 livre/)
+
+    assert.equal(alternarRota(dir, 'nao-existe', { paraOcupada: true }).ok, false)
+
+    /* As três cores. O azul é derivado, nunca escrito: é o veredito do CC-49,
+       ocupada por quem sumiu. Por isso ele não entra no ciclo do clique. */
+    assert.equal(corDaRota('| `x` | 🟢 livre | — | — |'), 'livre')
+    assert.equal(corDaRota('| `x` | 🔴 ocupada | a | b |', 'ativa'), 'ocupada')
+    assert.equal(corDaRota('| `x` | 🔴 ocupada | a | b |', 'orfa'), 'orfa')
+    assert.equal(corDaRota('| `x` | 🔴 ocupada | a | b |', 'desconhecida'), 'ocupada')
+  } finally { fs.rmSync(dir, { recursive: true, force: true }) }
+}
+
 /* --- CC-52: o buraco do Routia é sobreposição, não ausência de quadro --- */
 {
   const { sobreposicoes } = await import('./src/routiaCobertura.mjs')

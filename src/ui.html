@@ -744,6 +744,36 @@
     border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px;
     max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  /* CC-81: a resposta nasce ao lado da pergunta. z-index acima do header
+     (que é sticky com 30), senão fica cortado quando o player está tocando. */
+  /* CC-78: as rotas no mapa. Três cores, e a do meio é derivada. */
+  .m-rotas { display: grid; gap: 6px; margin: 8px 0; }
+  .m-rota {
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+    padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px;
+    background: var(--surface); color: var(--fg); cursor: pointer; font: inherit;
+  }
+  .m-rota:hover { border-color: var(--acento); }
+  .m-rota i { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--dim); }
+  .m-rota.c-livre i { background: var(--done); }
+  .m-rota.c-ocupada i { background: var(--failed); }
+  /* azul: ocupada por quem sumiu. Não é escolha, é descoberta — por isso não
+     entra no ciclo do clique. */
+  .m-rota.c-orfa i { background: #4a8fd6; }
+  .m-rota b { font-weight: 600; }
+  .m-rota .path { margin-left: auto; }
+
+  #frente-pop {
+    position: fixed; z-index: 60; max-width: min(420px, calc(100vw - 16px));
+    display: flex; flex-direction: column; gap: 6px; padding: 12px 14px;
+    border: 1px solid var(--acento); border-radius: 10px; background: var(--bg);
+    box-shadow: 0 8px 28px rgba(0,0,0,.45);
+  }
+  #frente-pop .fp-cit {
+    margin: 4px 0; padding-left: 10px; border-left: 2px solid var(--acento);
+    color: var(--fg); font-style: italic;
+  }
+  #frente-pop .btn { align-self: flex-start; margin-top: 4px; }
   .ck-mini-f { background: none; cursor: pointer; font-family: inherit; text-align: left; }
   .ck-mini-f:hover { border-color: var(--acento); }
   /* CC-81, o peso. Derivado, nunca digitado: frente inteira, item com muitos
@@ -4260,6 +4290,46 @@ function viewRemoto() {
   }).join('')}</div>`
 }
 
+/**
+ * O que aquele item é, ancorado NA pastilha.
+ *
+ * Feedback dele vendo a prévia: *"se eu clicar no primeiro eu tenho que descer
+ * pra ver; o ideal seria clicar no primeiro e já ver automaticamente"*. A
+ * primeira versão punha o texto no fim da lista, a segunda usava `alert()`. As
+ * duas erram pelo mesmo motivo: **a resposta tem que nascer ao lado da
+ * pergunta**.
+ *
+ * Posição calculada em JS a partir do botão, e não `top` fixo: o cabeçalho muda
+ * de altura conforme o player aparece, e popover com pixel chutado ora fica
+ * certo, ora atrás do header (armadilha registrada no CLAUDE.md).
+ */
+function abrirFrente(botao) {
+  const d = botao.dataset
+  let pop = $('#frente-pop')
+  if (!pop) {
+    pop = document.createElement('div')
+    pop.id = 'frente-pop'
+    document.body.appendChild(pop)
+  }
+
+  pop.innerHTML = `
+    <b>${esc(d.frenteAbrir)}</b>
+    <span class="path">${esc(d.frenteN)} itens fechados</span>
+    ${d.frenteCit
+      ? `<p class="fp-cit">“${esc(d.frenteCit)}”</p>
+         <span class="path">Foi assim que você pediu. Se não é o que você quis dizer, me diga:
+         o item foi escrito a partir daí.</span>`
+      : '<p class="path">Este item não guarda as suas palavras — foi escrito por mim.</p>'}
+    <button class="btn mini" data-frente-fechar="1">fechar</button>`
+
+  pop.hidden = false
+  const r = botao.getBoundingClientRect()
+  // largura primeiro, para medir a altura real antes de decidir se abre pra cima
+  pop.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8))}px`
+  const cabeAbaixo = r.bottom + pop.offsetHeight + 12 < window.innerHeight
+  pop.style.top = `${Math.round(cabeAbaixo ? r.bottom + 8 : Math.max(8, r.top - pop.offsetHeight - 8))}px`
+}
+
 const RODAPE = {
   agentes: 'clique num cartão para abrir o detalhe; passe o mouse nele para retomar (↻), fixar (★) ou copiar o caminho (⧉); as bolinhas são as tarefas, cheias as concluídas',
   todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
@@ -4411,10 +4481,13 @@ const TODO_ROADMAP = 'criar docs/ROADMAP.md deste projeto, seguindo a estrutura 
 // `job` pode ser um agente de verdade (tem `cwd`) ou, vindo do cockpit sem
 // nenhum agente ativo, um objeto sintético `{ project }` — o servidor resolve
 // o cwd sozinho (histórico ou disco), CC-34.
+let ROTAS = null
+
 async function abrirMapa(job) {
   mapaProjeto = job
   MAPA = null
   GIT = null
+  ROTAS = null
   desenharMapa()
   const q = job.cwd ? `cwd=${encodeURIComponent(job.cwd)}` : `projeto=${encodeURIComponent(job.project)}`
   try {
@@ -4422,6 +4495,10 @@ async function abrirMapa(job) {
   } catch {
     MAPA = { erro: 'não deu para ler o roadmap' }
   }
+  desenharMapa()
+  /* CC-78: quem está em qual rota, com o veredito de presença junto. Fora do
+     stream de 2s porque varre transcrito — é leitura de disco, não de memória. */
+  try { ROTAS = await (await fetch(`/api/rotas?${q}`)).json() } catch { ROTAS = { existe: false } }
   desenharMapa()
   // Sob clique (o próprio abrir do mapa já é o clique): spawn de git não
   // pode entrar no stream de 2s, então carrega à parte e redesenha quando
@@ -4440,6 +4517,7 @@ function fecharMapa() {
   mapaProjeto = null
   MAPA = null
   GIT = null
+  ROTAS = null
   desenharMapa()
 }
 
@@ -4530,7 +4608,38 @@ function desenharMapa() {
     </section>`).join('')
     + `<p class="path m-rodape">lido de <code>${esc((MAPA.arquivo || '').split(/[\\/]/).slice(-2).join('/'))}</code>
         · ${MAPA.linhas} linhas · atualizado ${MAPA.atualizadoEm ? age(Date.now() - MAPA.atualizadoEm) + ' atrás' : '—'}</p>`
+    + viewRotas()
     + `<section class="m-git-sec"><h4>o que mudou</h4>${viewGit()}</section>`
+}
+
+/**
+ * CC-78: as rotas do projeto, clicáveis.
+ *
+ * **Três cores, e o azul não se clica.** Ele pediu bolinhas que ciclam; a cor
+ * do meio não precisou ser inventada, já existia como veredito do CC-49:
+ * ocupada por alguém que sumiu há mais de uma hora. Clicar alterna entre livre
+ * e ocupada, que são as duas escolhas de verdade — um terceiro estado clicável
+ * seria cor sem significado.
+ */
+function viewRotas() {
+  if (!ROTAS) return '<section class="m-git-sec"><h4>rotas</h4><p class="path">lendo…</p></section>'
+  if (!ROTAS.existe) {
+    return `<section class="m-git-sec"><h4>rotas</h4>
+      <p class="path">este projeto não usa o Método Routia (sem <code>docs/ROTAS-ATIVAS.md</code>)</p></section>`
+  }
+  const rotulo = { livre: 'livre', ocupada: 'ocupada', orfa: 'o dono sumiu' }
+  return `<section class="m-git-sec"><h4>rotas <span class="path">clique para trocar</span></h4>
+    <div class="m-rotas">${ROTAS.rotas.map((r) => `
+      <button class="m-rota c-${r.cor}" data-rota="${esc(r.rota)}" data-rota-ocupar="${r.cor === 'livre' ? '1' : ''}"
+        title="${r.cor === 'livre' ? 'marcar como ocupada' : 'liberar'}">
+        <i></i>
+        <b>${esc(r.rota)}</b>
+        <span class="path">${rotulo[r.cor]}${r.quem ? ` · ${esc(r.quem)}` : ''}${
+          r.cor === 'orfa' ? ` · calado há ${esc(r.silencio)}` : ''}</span>
+      </button>`).join('')}</div>
+    ${ROTAS.rotas.some((r) => r.cor === 'orfa')
+      ? '<p class="path">Azul é o dono que sumiu. Confirme antes de retomar: silêncio não é liberação.</p>' : ''}
+  </section>`
 }
 
 /* ====================== módulos da máquina =========================
@@ -4985,18 +5094,29 @@ document.addEventListener('click', async (e) => {
      as palavras dele. Não abre tela nova: é o nível de baixo da árvore (CC-75),
      e ele pediu "uma forma mais fácil de identificar" e "clicar nelas e ver o
      que é cada uma", não navegação. */
-  const btFrente = t.closest('[data-frente-abrir]')
-  if (btFrente) {
-    const d = btFrente.dataset
-    const partes = [`${d.frenteAbrir}`, `${d.frenteN} itens fechados`]
-    if (d.frenteCit) {
-      partes.push('', 'você pediu assim:', `"${d.frenteCit}"`, '',
-        'Se isso não é o que você quis dizer, me diga: o item foi escrito a partir daí.')
-    } else {
-      partes.push('', 'Este item não guarda as suas palavras — foi escrito por mim.')
-    }
-    return alert(partes.join('\n'))
+  const btRota = t.closest('[data-rota]')
+  if (btRota) {
+    const ocupar = Boolean(btRota.dataset.rotaOcupar)
+    if (!ocupar && !confirm(`Liberar a rota "${btRota.dataset.rota}"? Se alguém ainda estiver nela, isso apaga a marca.`)) return
+    btRota.disabled = true
+    try {
+      await fetch('/api/rotas/alternar', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          cwd: mapaProjeto?.cwd, projeto: mapaProjeto?.project,
+          rota: btRota.dataset.rota, paraOcupada: ocupar,
+        }),
+      })
+    } catch { alert('não deu para trocar a rota') }
+    const q = mapaProjeto?.cwd ? `cwd=${encodeURIComponent(mapaProjeto.cwd)}` : `projeto=${encodeURIComponent(mapaProjeto.project)}`
+    try { ROTAS = await (await fetch(`/api/rotas?${q}`)).json() } catch { /* mantém o que tinha */ }
+    return desenharMapa()
   }
+
+  if (t.closest('[data-frente-fechar]')) { $('#frente-pop').hidden = true; return }
+
+  const btFrente = t.closest('[data-frente-abrir]')
+  if (btFrente) return abrirFrente(btFrente)
 
   const btMais = t.closest('#mais-ctl')
   if (btMais) {
@@ -5515,6 +5635,10 @@ document.addEventListener('click', async (e) => {
 })
 
 document.addEventListener('keydown', (e) => {
+  /* Esc fecha o popover da frente ANTES de mexer na seleção: ele é o que está
+     por cima, e é o que o Esc deve fechar primeiro. */
+  const pop = $('#frente-pop')
+  if (e.key === 'Escape' && pop && !pop.hidden) { pop.hidden = true; return }
   if (e.key === 'Escape' && selected) { selected = null; return render() }
   if (e.key !== 'Enter' && e.key !== ' ') return
   if (e.target.matches?.('input, textarea, select')) return // espaço é espaço dentro do campo

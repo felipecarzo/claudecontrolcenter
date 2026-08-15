@@ -578,24 +578,37 @@ os alcança de outro lugar, que é exatamente a falta que este item nomeia.
    caso de uso. Seria `cc doc add`, irmão do `cc set` — e aí funciona pelo
    celular, que é o ponto.
 
-### CC-78: o quadro de rotas vira tela, e dá para mexer
+### CC-78 ✅ 15/08 — o quadro de rotas virou tela, e dá para mexer
 
 Hoje `docs/ROTAS-ATIVAS.md` tem **336 linhas** e é lido abrindo o arquivo. A
 ideia dele é ver, por projeto, em que rota cada um está — e **mudar o estado
 clicando**: *"aquelas bolinhas verde, vermelho, azul (…) se eu clicar ela fica
 vermelha, se eu clicar ela fica azul, se eu clicar fica verde de novo"*.
 
-**Três perguntas em aberto, e nenhuma é detalhe:**
+**As três perguntas em aberto, respondidas:**
 
-1. **O que é o azul?** O quadro hoje tem dois estados (🟢 livre, 🔴 ocupada) mais
-   o ticket. Um terceiro precisa de significado antes de virar cor — "em
-   revisão"? "minha, mas parada"? Cor sem significado vira enfeite.
-2. **Quem vence quando os dois escrevem?** Se o painel edita o markdown enquanto
-   um agente edita o mesmo arquivo, é a colisão que o Routia existe para evitar,
-   acontecendo no próprio Routia. Ideia a testar: o painel escreve num arquivo
-   ao lado e o markdown continua sendo gerado, nunca editado à mão pelos dois.
-3. **O clique libera rota de outra sessão?** O CC-49 decidiu que silêncio não é
-   liberação. Um botão que libera com um toque desfaz essa decisão sem querer.
+**1. O que é o azul?** Não precisou ser inventado — **já existia**, como veredito
+do CC-49: 🔵 é ocupada por alguém que sumiu há mais de uma hora. Verde é livre,
+vermelho é ocupada com dono vivo.
+
+**E o azul não se clica.** Ele pediu bolinhas que ciclam; o clique alterna entre
+livre e ocupada, que são as duas escolhas de verdade. O azul é descoberta, não
+escolha — um terceiro estado clicável seria cor sem significado.
+
+**2. Quem vence quando os dois escrevem?** A edição é **cirúrgica**: só a célula
+de status daquela linha muda, com releitura imediata antes de gravar. Se outra
+sessão escreveu em outra linha nesse meio-tempo, o texto dela sobrevive — **há
+teste provando isso**, com uma segunda rota e um parágrafo que não podem ser
+tocados.
+
+⚠️ **Não é lock, e a corrida continua existindo**, reduzida de minutos para
+milissegundos. Lock de verdade exigiria arquivo à parte, e aí o markdown
+deixaria de ser a fonte.
+
+**3. O clique libera rota de outra sessão?** Libera, **com confirmação escrita**
+dizendo que isso apaga a marca de quem estiver nela. E a decisão do CC-49
+continua de pé onde importa: o sistema nunca libera sozinho por silêncio, só
+mostra o azul e deixa a escolha com quem lê.
 
 ### CC-79: ligar as rotas ao Pixel Agents
 

@@ -6,7 +6,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
-import { readSessoes } from './sessoes.mjs'
+import { PROJETOS_DIR as PROJETOS_DIR_SESSOES, readSessoes } from './sessoes.mjs'
+import {
+  alternarRota, corDaRota, humanizar as humanizarSilencio, lerQuadro, retratoDoQuadro,
+} from './presenca.mjs'
 import { buscar, lerGlossario, termosDe } from './glossario.mjs'
 import {
   acrescentar as acrescentarMeu, marcar as marcarMeu, remover as removerMeu, tudo as tudoMeu,
@@ -873,6 +876,44 @@ function handler(req, res) {
      A pasta vem SEMPRE da lista de projetos que o painel já conhece, nunca do
      que a página mandar: aceitar caminho arbitrário daria ao painel o poder de
      rodar o CLI em qualquer lugar do disco. */
+  /* CC-78: as rotas na tela, e clicáveis.
+     A pasta vem do projeto que o painel já conhece — nunca do que a página
+     mandar, senão o painel escreveria markdown em qualquer lugar do disco. */
+  if (url.pathname === '/api/rotas') {
+    const dir = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
+    if (!dir) return send(res, 200, { existe: false })
+    const jobs = readJobs()
+    const r = retratoDoQuadro(dir, {
+      jobs,
+      sessoes: readSessoes(Date.now(), { ignorar: jobs.map((j) => j.id) }),
+      pastaProjetos: PROJETOS_DIR_SESSOES,
+    })
+    if (!r) return send(res, 200, { existe: false, dir })
+    const texto = lerQuadro(dir) || ''
+    const todas = texto.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/)
+      .filter((l) => l.includes('|') && (l.includes('🔴') || l.includes('🟢')) && !/\[exemplo\]/i.test(l))
+      .map((l) => {
+        const nome = (l.match(/`([^`]+)`/) || [])[1] || null
+        const ocupada = r.ocupadas.find((o) => o.rota === nome)
+        return {
+          rota: nome,
+          cor: corDaRota(l, ocupada?.veredito),
+          quem: ocupada?.id || null,
+          silencio: ocupada ? humanizarSilencio(ocupada.silencioMs) : null,
+          veredito: ocupada?.veredito || null,
+        }
+      }).filter((x) => x.rota)
+    return send(res, 200, { existe: true, dir, rotas: todas })
+  }
+
+  if (url.pathname === '/api/rotas/alternar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, rota, paraOcupada }) => {
+      const dir = cwdDoProjeto(cwd, projeto)
+      if (!dir) return { erro: 'projeto desconhecido' }
+      return { alternou: alternarRota(dir, rota, { paraOcupada: Boolean(paraOcupada), marca: 'painel' }) }
+    })
+  }
+
   // Existe pra `daemon restart` conseguir derrubar o processo antigo: o servidor
   // não recarrega módulo, então mexer no código exige reiniciar de verdade.
   if (url.pathname === '/api/shutdown' && req.method === 'POST') {

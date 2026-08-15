@@ -162,3 +162,67 @@ export function retratoDoQuadro(dir, { jobs = [], sessoes = [], pastaProjetos = 
     orfas: ocupadas.filter((r) => r.veredito === 'orfa'),
   }
 }
+
+
+/* ==================== CC-78: mexer na rota pela tela ====================
+   Ele pediu para clicar numa bolinha e o estado mudar. A pergunta que ficou em
+   aberto no ROADMAP era "o que é o azul?", e a resposta não precisou ser
+   inventada: **ela já existe neste arquivo**.
+
+   - 🟢 verde   = livre
+   - 🔴 vermelho = ocupada, e o dono deu sinal há pouco
+   - 🔵 azul     = ocupada, mas o dono sumiu (`veredito: 'orfa'`)
+
+   O azul NÃO é um estado que se clica: é o que o sistema descobre sozinho. O
+   clique alterna entre livre e ocupada, que são as duas escolhas de verdade.
+   Inventar um terceiro estado clicável seria cor sem significado. */
+
+/** A cor de cada rota, juntando o que está escrito com o que se descobriu. */
+export function corDaRota(linha, veredito) {
+  if (!linha.includes('🔴')) return 'livre'
+  return veredito === 'orfa' ? 'orfa' : 'ocupada'
+}
+
+/**
+ * Troca o estado de UMA rota, mexendo só na coluna de status daquela linha.
+ *
+ * ⚠️ **Releitura imediata antes de gravar, e ainda assim há corrida.** O quadro
+ * é editado por agentes ao mesmo tempo; o que este cuidado garante é que a
+ * janela seja de milissegundos em vez de minutos. Não é lock — lock de verdade
+ * exigiria um arquivo à parte, e aí o markdown deixaria de ser a fonte.
+ *
+ * Por isso a edição é **cirúrgica**: só a célula de status muda. Se outra sessão
+ * escreveu em outra linha nesse meio-tempo, o texto dela sobrevive.
+ */
+export function alternarRota(dir, nomeDaRota, { paraOcupada, marca = null, agora = new Date() } = {}) {
+  const arquivo = quadroDe(dir)
+  let texto
+  try { texto = fs.readFileSync(arquivo, 'utf8') } catch { return { ok: false, erro: 'sem quadro de rotas' } }
+
+  const linhas = texto.split(/\r?\n/)
+  const i = linhas.findIndex((l) => ehLinhaDeRota(l) && nomeNaLinha(l) === nomeDaRota)
+  if (i < 0) return { ok: false, erro: `rota não encontrada: ${nomeDaRota}` }
+
+  const colunas = linhas[i].split('|')
+  // 0 é o vazio antes da primeira barra; 1 é a rota; 2 é o status
+  if (colunas.length < 4) return { ok: false, erro: 'linha de rota fora do formato de tabela' }
+
+  const hoje = agora.toISOString().slice(0, 10)
+  colunas[2] = paraOcupada ? ' 🔴 ocupada ' : ' 🟢 livre '
+  if (paraOcupada) {
+    colunas[3] = ` ${marca || '—'} — marcada pelo painel `
+    if (colunas[4] !== undefined) colunas[4] = ` ${hoje} `
+  } else {
+    colunas[3] = ' — (liberada pelo painel) '
+    if (colunas[4] !== undefined) colunas[4] = ' — '
+  }
+  linhas[i] = colunas.join('|')
+
+  try {
+    const tmp = `${arquivo}.tmp`
+    fs.writeFileSync(tmp, linhas.join('\n'))
+    fs.renameSync(tmp, arquivo)
+  } catch (e) { return { ok: false, erro: String(e.message || e) } }
+
+  return { ok: true, rota: nomeDaRota, estado: paraOcupada ? 'ocupada' : 'livre', linha: linhas[i] }
+}
