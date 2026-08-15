@@ -25,7 +25,7 @@ Passo 0, antes de tocar em qualquer arquivo.
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
-| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **CC-46** (estado casava no meio do titulo; provado nos 83 titulos dos 14 roadmaps, 1 mudanca e pra melhor) e **CC-53** (o `npm test` roda inteiro na VPS pela 1a vez: eram 5 blocos presos ao ambiente, nao 1). Nasceu o `CC_HOME`/`casaClaude()`, que tirou o gate de cima das notas de verdade do Felipe. Anterior: F11, 15 abas viraram 4 portas) | — |
+| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **CC-66**, o padrao de resposta do Felipe virou hook `estilo-inicio` (injeta em toda sessao, framework ligado ou nao) mais `estilo-fim` (mede sem reclamar) e `cc estilo`. Registrados no settings.json desta VPS. Anterior: CC-46 e CC-53) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |

@@ -17,6 +17,30 @@ export const EVENTOS = [
 
 export const HOOKS = [
   {
+    id: 'estilo-inicio',
+    label: 'Padrão de resposta do Felipe',
+    script: 'estilo-inicio.mjs',
+    evento: 'SessionStart',
+    descricao: 'Injeta o padrão de resposta no início de TODA sessão, em '
+      + 'qualquer projeto, com o framework ligado ou desligado. Não é gate: '
+      + 'hook bloqueia ferramenta, não prosa. O texto fica em '
+      + '~/.claude/control-center-estilo.md e é editável.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'estilo-fim',
+    label: 'Padrão de resposta — mede sem reclamar',
+    script: 'estilo-fim.mjs',
+    evento: 'Stop',
+    descricao: 'Mede tamanho e parágrafos de autodefesa da resposta que acabou '
+      + 'de sair. Nunca bloqueia e nunca fala na tela: aviso a cada resposta '
+      + 'seria a linha a mais que o padrão existe para cortar. Vira tendência '
+      + 'no painel (cc estilo).',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'rota-guard',
     label: 'Método Routia — trava edição sem rota',
     script: 'rota-guard.mjs',

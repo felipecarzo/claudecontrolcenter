@@ -543,6 +543,31 @@ switch (cmd) {
     break
   }
 
+  /* O padrão de resposta dele, e quanto eu o sigo. Sem argumento mostra o
+     retrato; `cc estilo padrao` imprime o texto e onde ele mora, para editar. */
+  case 'estilo': {
+    const E = await import('./src/estilo.mjs')
+    if (arg === 'padrao') {
+      console.log(`${E.ARQUIVO_PADRAO()}\n`)
+      console.log(E.lerPadrao())
+      break
+    }
+    const r = E.retrato()
+    if (has('--json')) { console.log(JSON.stringify(r, null, 2)); break }
+    if (!r) {
+      console.log('\nainda não medi nenhuma resposta. O hook `estilo-fim` precisa estar registrado.\n')
+      break
+    }
+    const seta = r.tendenciaPalavras == null ? '' : r.tendenciaPalavras < 0 ? '↓' : '↑'
+    console.log(`\nPadrão de resposta — últimas ${r.janela} de ${r.total}\n`)
+    console.log(`  ${String(r.linhas).padStart(4)} linhas por resposta, em média`)
+    console.log(`  ${String(r.palavras).padStart(4)} palavras ${
+      r.tendenciaPalavras == null ? '(sem passado para comparar ainda)' : `${seta} ${Math.abs(r.tendenciaPalavras)}% contra as ${r.janela} anteriores`}`)
+    console.log(`  ${String(r.autodefesa).padStart(4)} com parágrafo de autodefesa`)
+    console.log('\n  Tendência, não nota: falso positivo é esperado.\n')
+    break
+  }
+
   case 'json': {
     const jobs = readJobs()
     console.log(JSON.stringify({ jobs, summary: summarize(jobs) }, null, 2))

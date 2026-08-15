@@ -1305,6 +1305,63 @@ if (estRotinas.projetos.length) {
   assert.equal(todos.silenciosos + todos.projetos.length <= todos.totalVarrido, true)
 }
 
+/* --- padrão de resposta: medir o vício que ele apontou em 15/08 --- */
+{
+  const E = await import('./src/estilo.mjs')
+
+  // o texto real que ele criticou, com os dois parágrafos de autodefesa
+  const ruim = [
+    'As rotas viajam agora.',
+    'Não inventei canal novo, aproveitei o que já existia.',
+    'Vale lembrar que o quadro do inovallbond passa de 60 KB.',
+    'Falta ligar isso no guarda.',
+  ].join('\n\n')
+  assert.equal(E.medir(ruim).autodefesa, 2)
+  assert.equal(E.medir(ruim).paragrafos, 4)
+
+  // e o mesmo conteúdo no padrão: nada a acusar
+  assert.equal(E.medir('As rotas que você marca no PC aparecem para mim sem commit.\n\nFalta ligar no guarda. Preciso de um número seu.').autodefesa, 0)
+
+  /* Bloco de código é trabalho, não prosa: contá-lo inflaria toda resposta que
+     mexeu em arquivo, e o número viraria ruído. */
+  const comCodigo = 'Pronto.\n\n```js\nnão inventei nada\nvale lembrar disso\n```\n'
+  assert.equal(E.medir(comCodigo).autodefesa, 0, 'contou código como prosa')
+
+  // "não é" e "não foi" ficam de fora da lista: são comuns em frase legítima
+  assert.equal(E.medir('Não é possível medir isso daqui.').autodefesa, 0)
+  assert.equal(E.medir('').autodefesa, 0)
+
+  // a última resposta sai do transcrito, e tool_use não é prosa
+  {
+    const arq = path.join(os.tmpdir(), `cc-est-${Date.now()}.jsonl`)
+    fs.writeFileSync(arq, [
+      JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'resposta antiga' }] } }),
+      JSON.stringify({ type: 'user', message: { content: 'e agora?' } }),
+      JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Edit' }, { type: 'text', text: 'a última' }] } }),
+    ].join('\n'))
+    try {
+      assert.equal(E.ultimaResposta(arq), 'a última')
+    } finally { fs.rmSync(arq, { force: true }) }
+  }
+
+  // sem passado para comparar, a tendência é null: 0% de melhora seria invenção
+  {
+    const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-est-'))
+    const antes = process.env.CC_HOME
+    process.env.CC_HOME = casa
+    try {
+      const Ei = await import(`./src/estilo.mjs?casa=${encodeURIComponent(casa)}`)
+      Ei.registrar(Ei.medir('uma resposta curta'))
+      assert.equal(Ei.retrato().tendenciaPalavras, null)
+      assert.ok(Ei.ARQUIVO_MEDIDAS().startsWith(casa), 'ia medir na casa de verdade')
+    } finally {
+      if (antes === undefined) delete process.env.CC_HOME
+      else process.env.CC_HOME = antes
+      fs.rmSync(casa, { recursive: true, force: true })
+    }
+  }
+}
+
 /* --- CC-48: as rotas viajam no pacote, e param de esperar commit --- */
 {
   const F = await import('./src/federacao.mjs')

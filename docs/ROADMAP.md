@@ -28,6 +28,32 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 > lição serve para alguma coisa. A regra que isto restaura já existia escrita
 > na linha 3 deste arquivo e não estava sendo seguida.
 
+### CC-66 ✅ 15/08 — o padrão de resposta virou hook instalável
+
+Saiu de um estudo que ele mandou fazer sobre uma explicação minha do CC-48 que
+ficou confusa: *"algumas coisas começam como se já existisse um contexto
+recente e fosse uma resposta, mas a pergunta nunca existiu, e quem você tá
+respondendo não tá lendo"*.
+
+Três vícios, achados no meu próprio texto: **respondo pergunta que ele não
+fez**, **reexplico o que ele mesmo me contou**, e **justifico escolha antes de
+perguntarem**. O mesmo texto no padrão: 35 linhas viraram 9.
+
+**`estilo-inicio` (SessionStart)** injeta o padrão em toda sessão, em qualquer
+projeto, com o framework ligado ou desligado — decisão dele, e a razão é certa:
+o jeito de conversar não é regra de engenharia de um projeto. O texto mora em
+`~/.claude/control-center-estilo.md` e é editável por ele.
+
+⚠️ **Isto não é gate, e a diferença importa.** Hook bloqueia ferramenta; prosa
+sai do modelo direto para a tela. É a instrução mais forte que existe aqui, e
+ainda assim uma instrução.
+
+Por isso ele pediu a medição junto: **`estilo-fim` (Stop)** conta tamanho e
+parágrafos de autodefesa, e `cc estilo` mostra a tendência contra as respostas
+anteriores. Nunca bloqueia (exit 2 no Stop viraria laço de reescrever resposta)
+e nunca fala na tela (aviso a cada resposta seria a linha a mais que o padrão
+existe para cortar). Falso positivo é esperado: é tendência, não nota.
+
 ### CC-65 ✅ 15/08 — os hooks globais não existiam em repositório nenhum
 
 Achado tentando entregar o CC-48: **não dá para mandar por PR o que não é
