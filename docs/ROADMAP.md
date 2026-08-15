@@ -559,6 +559,57 @@ mesmo projeto é sinal de que as rotas estão mal divididas.** Esse número não
 existe hoje e seria o primeiro sinal objetivo de que o Routia precisa de ajuste
 naquele projeto.
 
+### CC-87: as 11 telas, uma a uma, pelo método `conserto`
+
+Decisão dele em 15/08: **as onze**, com prévia em arquivo a cada uma, da mais
+fácil para a mais difícil. E, sobre o método: *"registra o conserto no backlog
+como próximas tarefas e segue"*.
+
+**A reprodução já está registrada** (`cc framework reproducao`):
+
+> **como aparece:** as 11 telas não respondem pergunta nenhuma — mostram o dado
+> cru e ele traduz sozinho. Em tela estreita: nomes desalinhados, nada aparente,
+> sem cara de aplicativo.
+>
+> **esperado:** cada tela abre com a pergunta dela no topo e um veredito em uma
+> frase, nas palavras dele.
+
+Ordem: (1) `meu`, `glossário`, `cockpit`; (2) `agentes`, `to-dos`, `remoto`,
+`servidores`, `agenda`, `preço`; (3) `tempo`, `hooks`.
+
+Cada uma fecha com prévia em arquivo — é a fase de Prova do método, e a regra 1
+do ciclo dele.
+
+### ✅ CC-88 15/08 — a aba `to-dos` virou `sprint`, e as cores inverteram
+
+Decisão dele: *"vamos chamar os to-dos de sprint backlog? fica melhor usar
+aquela ideia dos nomes do Scrum pras coisas"*. É o CC-83 chegando na tela, e
+fecha o vocabulário: **product backlog** é o roadmap, **sprint backlog** são os
+to-dos do agente.
+
+**As cores estão invertidas de propósito, e a razão é dele:** verde é o que
+FALTA, cinza é o que passou. O costume é o contrário, e o costume está errado
+aqui — verde chama o olho, e o olho deve ir para o que resta.
+
+**A tarefa em andamento ganhou barra azul**, e ela é derivada: é a primeira
+tarefa aberta de um agente cujo status é `working`. Ninguém marca "estou nesta".
+
+⚠️ O `id` da aba continua `todos`: trocar mandaria quem tem a aba lembrada no
+`localStorage` para outro lugar sem motivo.
+
+### CC-89: etiqueta da tarefa no chat
+
+Pedido dele no mesmo momento: *"adicionando as tarefas também pra gente colocar
+aqui no chat, sempre uma etiqueta durante o chat em alguns momentos, pra eu
+saber qual tarefa a gente está fazendo"*.
+
+**Já em uso a partir de 15/08**, no formato `[tarefa: ...]` no começo da
+resposta. Não precisa de código — precisa de hábito, e por isso entra no
+`control-center-estilo.md`, que é injetado a cada sessão.
+
+Vale medir depois, junto do `estilo-fim`: em quantas respostas a etiqueta
+aparece quando havia tarefa em curso.
+
 ### CC-82: um leitor de documentos dentro do cockpit
 
 Ideia dele em 15/08, logo depois do CC-81, e é a mesma ideia em escala maior:

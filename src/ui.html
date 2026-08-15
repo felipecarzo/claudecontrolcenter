@@ -582,7 +582,12 @@
     color: var(--faint); font: 15px/1 var(--mono);
   }
   .g-add:hover { color: var(--done); }
-  .item { display: flex; align-items: baseline; gap: 9px; padding: 1px 0 1px 3px; border-radius: 2px; }
+  /* CC-83, decisão dele em 15/08: **verde é o que falta, cinza é o que passou**.
+     É o contrário do costume, e o motivo é bom — verde chama o olho, e o olho
+     deve ir para o que resta, não para o que já acabou. */
+  .item { display: flex; align-items: baseline; gap: 9px; padding: 1px 0 1px 3px; border-radius: 2px;
+    border-left: 2px solid var(--done); padding-left: 6px; }
+  .item.done { border-left-color: var(--line); }
   /* CC-36: explicação do opencode, embaixo do to-do correspondente */
   .todo-explicacao { margin: 0 0 4px 26px; font-size: 11px; color: var(--faint); }
   .todo-explicacao code { font-size: 10px; }
@@ -600,6 +605,9 @@
   .item .txt:focus { outline: none; background: var(--surface-2); box-shadow: inset 0 -1px 0 var(--acento); }
   .item .txt::placeholder { color: var(--faint); }
   .item.done .txt { color: var(--faint); text-decoration: line-through; }
+  /* o que está no sprint agora: a tarefa do agente que está trabalhando */
+  .item.agora { border-left-width: 3px; border-left-color: var(--working); }
+  .item.agora .txt { color: var(--fg); font-weight: 500; }
   .grupo details.lvl > summary { border-top: 0; padding: 4px 0 4px 3px; }
   .outros { border-top: 1px solid var(--line-soft); padding-top: 6px; }
 
@@ -1552,7 +1560,11 @@ let selected = params.get('open') || null
 
 const TABS = [
   { id: 'agentes', label: 'agentes' },
-  { id: 'todos', label: 'to-dos' },
+  // CC-83: o nome vem do Scrum, que ele já domina — decisão dele em 15/08:
+  // "vamos chamar os to-dos de sprint backlog? fica melhor usar aquela ideia
+  // dos nomes do scrum pras coisas". O `id` continua `todos` de propósito:
+  // trocar mandaria quem tem a aba lembrada no localStorage pra outro lugar.
+  { id: 'todos', label: 'sprint' },
   // id continua `projetos` de propósito: mudar mandaria quem tem a aba
   // lembrada no localStorage pra outro lugar sem motivo.
   { id: 'projetos', label: 'cockpit' },
@@ -2225,8 +2237,11 @@ function viewTodos(jobs) {
     </div>`).join('')}
   </div>` : ''
 
+  /* A primeira tarefa aberta de um agente que está TRABALHANDO é o que ele faz
+     agora. Derivado, não digitado: ninguém marca "estou nesta". */
   const item = (j, t, i) => `
-    <div class="item${t.done ? ' done' : ''}">
+    <div class="item${t.done ? ' done' : ''}${
+      !t.done && j.status === 'working' && (j.todos || []).findIndex((x) => !x.done) === i ? ' agora' : ''}">
       <input type="checkbox" data-todo="${j.id}" data-i="${i}" ${t.done ? 'checked' : ''}
         aria-label="marcar como feita">
       <input class="txt" value="${esc(t.text)}" data-edit="${j.id}" data-i="${i}"
@@ -4346,7 +4361,7 @@ function abrirFrente(botao) {
 
 const RODAPE = {
   agentes: 'clique num cartão para abrir o detalhe; passe o mouse nele para retomar (↻), fixar (★) ou copiar o caminho (⧉); as bolinhas são as tarefas, cheias as concluídas',
-  todos: 'clique no texto para editar, + abre tarefa nova, texto em branco apaga — tudo vai para o meta.json do agente',
+  todos: 'o sprint backlog: o que os agentes estão fazendo agora. Verde é o que falta, cinza o que passou, e a barra azul é a tarefa em andamento — clique no texto para editar, em branco apaga',
   projetos: 'onde mexer agora — projetos ordenados por urgência, o de cima primeiro; clique no agente para abrir o detalhe, ou no nome do projeto para o mapa',
   tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
   graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
