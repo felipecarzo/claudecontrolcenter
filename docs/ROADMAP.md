@@ -191,6 +191,61 @@ de verdade. A regra 2 tem um teste objetivo esperando: cruzar o texto da tela
 com o glossário do CC-63 e contar quantos termos técnicos sobraram. Isso vira
 número, e número ele acompanha.
 
+### Frente: o projeto visto por rotas, para estudar
+
+Ideias dele em 15/08, ditadas por voz, **para estudo — nada decidido**. O eixo,
+nas palavras dele: *"ter uma visão do projeto mais estrutural, voltada pra uma
+forma que funciona melhor com o meu tipo de raciocínio visual"*.
+
+Metade do dado já existe e é a razão de isto ser barato: `presenca.mjs` (CC-49)
+lê o quadro e classifica cada rota em ativa / órfã / desconhecida, e
+`rotasDeTodos()` (CC-48) junta as rotas das duas máquinas por projeto. Hoje isso
+só sai por comando de terminal.
+
+### CC-78: o quadro de rotas vira tela, e dá para mexer
+
+Hoje `docs/ROTAS-ATIVAS.md` tem **336 linhas** e é lido abrindo o arquivo. A
+ideia dele é ver, por projeto, em que rota cada um está — e **mudar o estado
+clicando**: *"aquelas bolinhas verde, vermelho, azul (…) se eu clicar ela fica
+vermelha, se eu clicar ela fica azul, se eu clicar fica verde de novo"*.
+
+**Três perguntas em aberto, e nenhuma é detalhe:**
+
+1. **O que é o azul?** O quadro hoje tem dois estados (🟢 livre, 🔴 ocupada) mais
+   o ticket. Um terceiro precisa de significado antes de virar cor — "em
+   revisão"? "minha, mas parada"? Cor sem significado vira enfeite.
+2. **Quem vence quando os dois escrevem?** Se o painel edita o markdown enquanto
+   um agente edita o mesmo arquivo, é a colisão que o Routia existe para evitar,
+   acontecendo no próprio Routia. Ideia a testar: o painel escreve num arquivo
+   ao lado e o markdown continua sendo gerado, nunca editado à mão pelos dois.
+3. **O clique libera rota de outra sessão?** O CC-49 decidiu que silêncio não é
+   liberação. Um botão que libera com um toque desfaz essa decisão sem querer.
+
+### CC-79: ligar as rotas ao Pixel Agents
+
+Ideia dele: o escritório com os bonequinhos e o quadro de rotas conversarem.
+*"isso poderia ter uma conexão entre esses dois"*.
+
+O que dá para imaginar sem inventar: o boneco de cada agente mostrando em que
+rota ele está, e a rota mostrando qual boneco a ocupa. Os dois lados já sabem o
+id da sessão, que é a chave que os liga.
+
+⚠️ **Depende do CC-60**, que continua aberto: há dois Pixel Agents nesta VPS, um
+nosso e um do usuário `agente`, e ainda não foi decidido o que fazer com o
+segundo. Ligar rotas a um escritório indefinido é construir sobre areia.
+
+### CC-80: a visão estrutural do projeto
+
+O guarda-chuva dos dois acima, e o mais vago de propósito: ele pediu para
+**estudar**, não para fazer. O que está dito é o critério, não a solução — tem
+que caber no raciocínio visual dele, que é o mesmo motivo pelo qual o cockpit
+existe.
+
+Vale desenhar contra o que já se sabe dele: ele lê mal texto longo, decide bem
+com mapa, e o vocabulário da tela tem que ser o do ROADMAP dele (foi o achado
+que criou o campo `frente`). Uma tela de rotas que fale em `src/**` em vez de
+"Pierre" repete o erro que o `frente` corrigiu.
+
 ### Frente: o que pre-commit, husky e Danger já resolveram, e nós não
 
 Registrada em 15/08 a pedido dele, depois de comparar o framework com os oito
