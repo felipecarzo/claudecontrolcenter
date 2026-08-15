@@ -591,6 +591,40 @@ usada no turno. Gate próprio com 10 checagens, metade delas provando o que
 `false`. A detecção estava certa desde o começo; o hook é que se achava
 desligado. Virou armadilha no `CLAUDE.md`.
 
+### CC-91: o cartão do framework no painel, quatro defeitos
+
+Todos apontados por ele em 15/08, usando o framework de verdade pela primeira
+vez. **O primeiro é o mais grave, e eu vi acontecer.**
+
+**1. Trocar o modo não confirma nada.** Palavras dele: *"quando eu mudasse
+tivesse uma confirmação de que foi mudado de fato, porque às vezes eu mudo e dá
+medo de não ter mudado"*.
+
+Não é impressão: **aconteceu duas vezes hoje.** Ele disse que tinha desligado o
+framework, e o `.framework/estado.json` continuava `restritivo`. Eu só descobri
+porque fui ler o arquivo. Sem confirmação, a tela afirma uma coisa que pode não
+ter acontecido — e é o pior tipo de mentira de interface, porque parece sucesso.
+
+**2. O botão "autorizar" está colado no seletor de modo.** *"dá vontade de
+apertar em executar do lado porque é um botão muito imediato (…) não era pra ter
+esse botão autorizado do lado, colado numa coisa que você troca"*.
+
+Ele apertou por engano hoje, e a consequência não é pequena: `autorizar` libera
+escrever código, que é justamente o que o modo acabou de travar. **Ação
+destrutiva grudada em ação de configuração.**
+
+**3. O botão não diz o que autoriza.** Hoje grava `**`, que é tudo, para sempre,
+até trocar de modo. A tela não conta isso.
+
+**4. Framework e ligar/desligar moram em lugares diferentes.** *"onde a gente
+ativa o projeto, a gente pode mudar o modo (…) é uma coisa inteiramente ligada.
+Quando você começa um projeto e bota o controle nele, seria legal poder mudar
+por lá também"*.
+
+São a mesma decisão vista de dois lugares: ligar o framework num projeto e
+escolher como ele te trata. Estar em telas diferentes obriga a lembrar que as
+duas existem.
+
 ### CC-87 — as 11 telas, uma a uma (3 de 11 feitas em 15/08)
 
 Decisão dele em 15/08: **as onze**, com prévia em arquivo a cada uma, da mais
