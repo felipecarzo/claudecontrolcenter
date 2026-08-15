@@ -288,6 +288,29 @@ e Bancada). Vira frente própria no ROADMAP quando chegar a vez.
   rodada, não só os critérios do MVP marcados. Desenho de como isso entra no
   motor (`framework.mjs`) ainda não foi feito.
 
+## UML e MER: a discussão fechada em 15/08
+
+Ficou em aberto duas vezes, e travava por estar na pergunta errada — "diagrama
+serve ou não serve?". A resposta, em [[ANALISE-DA-IA]]:
+
+**Como desenho, o valor para a IA é baixo** (ela lê o código, e um MER diz o que
+o schema já diz). **Como contrato de nomes, é o mais alto de todos**, porque o
+erro nº 1 medido nesta relação não é de implementação, é de vocabulário: as três
+sagas longas do [[CICLO]] quebraram quando um substantivo significava coisas
+diferentes nas duas cabeças.
+
+**Decisão:** a fase de Definição não pede diagrama. Pede **o glossário do
+projeto** — as cinco a dez palavras que aquele projeto usa e o que cada uma
+significa ali. É MER sem desenho, custa cinco minutos, e ataca a causa medida.
+Dá função ao CC-63, que existe e está subusado.
+
+E sobre Scrum, palavra dele no mesmo dia: *"o Scrum não é um inimigo a ser
+combatido, ele é uma ferramenta"*. O corte não é entre ágil sim e ágil não: é
+entre **o que existe para sincronizar pessoas** (sprint com data, planning,
+daily — sai) e **o que existe para garantir qualidade** (Definição de Pronto,
+retrospectiva, backlog em níveis — fica). O que sobra é o que ele já tinha
+adotado sem chamar de Scrum.
+
 ## O nome: DDS, Directed Development System
 
 Batizado por ele em 15/08, depois de comparar com os frameworks de agente e ver
