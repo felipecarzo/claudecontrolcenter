@@ -288,6 +288,28 @@ e Bancada). Vira frente própria no ROADMAP quando chegar a vez.
   rodada, não só os critérios do MVP marcados. Desenho de como isso entra no
   motor (`framework.mjs`) ainda não foi feito.
 
+## O restritivo não trava: correção de 15/08
+
+Erro meu de implementação, achado por ele usando o modo de verdade:
+
+> "a ideia é que o modo restritivo só crie esse modo de desenvolvimento com
+> perguntas, mas não necessariamente travar tudo e eu ter que ficar desligando
+> ele toda hora"
+
+**O desenho original nunca falou em travar** — *"agente com rota limitada no
+Routia: pergunta o objetivo, define backlog, executa até o fim, só revisões"*. O
+escopo dele é a **rota**, e quem trava rota é o `rota-guard`, que já existe e é
+externo ao framework.
+
+Eu copiei o `trava: true` do sugestivo, e o resultado foi um modo que travava
+igual e **ainda** pedia autorização, sem dar nada em troca. O sintoma mediu o
+erro: **ele desligou o framework três vezes numa tarde** para eu conseguir
+trabalhar, o que é o oposto de um framework.
+
+**A regra que fica:** trava por clique é do `sugestivo`, onde ela É o ponto. Um
+agente que "executa até o fim" não pode parar a cada arquivo. Há teste
+guardando os dois lados.
+
 ## UML e MER: a discussão fechada em 15/08
 
 Ficou em aberto duas vezes, e travava por estar na pergunta errada — "diagrama

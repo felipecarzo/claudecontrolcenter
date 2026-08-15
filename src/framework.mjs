@@ -414,11 +414,31 @@ export const MODOS = {
     pergunta: true,
     exigeAutorizacao: true,
   },
+  /* `trava: false` desde 15/08, e a correção é conceitual.
+   *
+   * O desenho original dele nunca falou em travar: "para agente com rota
+   * limitada no Routia — sem prosa: pergunta o objetivo, define backlog,
+   * executa até o fim, só revisões". **O escopo do restritivo é a ROTA**, e
+   * quem trava rota é o `rota-guard`, que já existe e é externo ao framework.
+   *
+   * Eu tinha copiado o `trava: true` do sugestivo, e o resultado foi um modo
+   * que travava igual e ainda pedia autorização, sem dar nada em troca — ele
+   * teve que desligar o framework três vezes numa tarde para eu conseguir
+   * trabalhar. Palavras dele: "a ideia é que o restritivo só crie esse modo de
+   * desenvolvimento com perguntas, mas não necessariamente travar tudo e eu
+   * ter que ficar desligando ele toda hora".
+   *
+   * Um agente que "executa até o fim" não pode parar a cada arquivo. Quem trava
+   * por clique é o `sugestivo`, onde a trava É o ponto.
+   *
+   * O que o restritivo faz, então: muda o TOM (direto, sem prosa) e o
+   * comportamento (pergunta o objetivo uma vez, monta o backlog, executa). A
+   * contenção vem do Routia, de fora. */
   restritivo: {
     id: 'restritivo',
     titulo: 'Restritivo',
-    explica: 'Agente de escopo travado: objetivo, backlog e execução até o fim, sem prosa.',
-    trava: true,
+    explica: 'Escopo travado pela ROTA, não por clique: pergunta o objetivo, monta o backlog e executa até o fim, sem prosa.',
+    trava: false,
     pergunta: false,
     exigeAutorizacao: false,
   },

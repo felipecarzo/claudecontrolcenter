@@ -122,8 +122,14 @@ const bloq = podeEditar('mvp-basico', emSugestivo, 'src/a.mjs')
 assert.equal(bloq.ok, false, 'sugestivo tem que travar mesmo com o MVP pronto')
 assert.equal(bloq.modo, 'sugestivo')
 assert.match(bloq.pendencias[0], /autorização/)
-assert.equal(podeEditar('mvp-basico', { ...emDialogo, modo: 'restritivo' }, 'src/a.mjs').ok, false)
-ok('sugestivo e restritivo travam código mesmo com o portão aberto')
+/* O restritivo NÃO trava mais, e a mudança é de 15/08. Este teste afirmava o
+   contrário porque eu tinha copiado o `trava` do sugestivo por engano — e o
+   sintoma foi ele desligar o framework três vezes numa tarde para eu conseguir
+   trabalhar, que é o oposto de um framework. O escopo do restritivo é a ROTA,
+   e quem trava rota é o `rota-guard`, de fora. */
+assert.equal(podeEditar('mvp-basico', { ...emDialogo, modo: 'restritivo' }, 'src/a.mjs').ok, true,
+  'restritivo travando de novo: ele teria que desligar o framework para trabalhar')
+ok('só o sugestivo trava com o portão aberto — no restritivo a contenção é a rota')
 
 // e não travam o que nunca trava
 for (const livre of ['docs/x.md', '.framework/estado.json', 'package.json']) {
@@ -339,5 +345,24 @@ ok('todo método declarado usa predicado que existe, e toda fase explica')
   }).portaoAberto, true)
 }
 ok('CC-68: conserto reproduz antes e prova depois; estudo trava código nas duas fases')
+
+/* O restritivo NÃO trava código, e isso é decisão dele em 15/08 — corrigindo
+   uma implementação minha que copiou o `trava` do sugestivo por engano.
+
+   O teste existe porque o sintoma foi caro: ele desligou o framework três vezes
+   numa tarde para eu conseguir trabalhar, o que é o oposto de um framework. */
+{
+  assert.equal(MODOS.restritivo.trava, false, 'o restritivo voltou a travar código')
+  assert.equal(MODOS.sugestivo.trava, true, 'o sugestivo tem que travar: a trava É o ponto dele')
+  assert.equal(MODOS.dialogo.trava, false)
+
+  // e o efeito prático: no restritivo, escrever código passa
+  const emRestritivo = { ligado: true, modo: 'restritivo', fase: 'execucao', mvp: { nome: 'x', criterios: [{ texto: 'a', feito: true }] } }
+  assert.equal(podeEditar('mvp-basico', emRestritivo, 'src/qualquer.mjs').ok, true,
+    'restritivo travando código: ele teria que desligar o framework para trabalhar')
+  // e o sugestivo continua travando sem autorização, que é o desenho dele
+  assert.equal(podeEditar('mvp-basico', { ...emRestritivo, modo: 'sugestivo' }, 'src/qualquer.mjs').ok, false)
+}
+ok('o restritivo restringe por rota, não por clique — quem trava é o sugestivo')
 
 console.log(`\n${n} grupos de asserção passaram`)
