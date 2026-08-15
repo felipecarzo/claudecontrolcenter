@@ -176,7 +176,7 @@ Vale para tudo, não só para tela: é o mesmo formato do guia em etapas que ele
 pediu na sessão de senhas, e o mesmo do gate de MVP, que para no primeiro
 critério que não fecha em vez de despejar a lista.
 
-### CC-76: prévia de cada página antes de mexer
+### CC-76 — as 15 abas auditadas, e o problema da prévia
 
 Pedido dele: *"me mande aí também uma prévia de cada página"*. O caminho já foi
 provado hoje com a aba VPS — arquivo HTML com o CSS de verdade e os dados reais,
@@ -184,7 +184,43 @@ que ele abre no celular. **Não dá para tirar print daqui**: o Chrome desta VPS
 exige um token que mora numa pasta de root, e o hook de segredo bloqueia a
 leitura, corretamente.
 
-São 15 abas. A prévia é por aba, e ele aprova antes de qualquer mudança.
+São 15 abas, e aqui está o problema: **remontar cada uma à mão daria
+aproximação, não a tela.** As views são JavaScript que roda no navegador; o que
+eu monto por fora é a mesma folha de estilo com dados de exemplo. Serviu para a
+VPS e para o cabeçalho, que são simples. Para as 15, o custo é alto e a fidelidade
+cai.
+
+**O caminho barato e fiel:** ele reinicia o painel (precisa do root dele) e
+navega nas abas de verdade. O painel real é a melhor prévia que existe.
+
+**O que dá para adiantar sem navegador, e foi feito:** a auditoria das 15 contra
+a regra 1, que é a que decide todo o resto. Cada aba tem que responder uma
+pergunta escrita no topo. Hoje só a VPS responde.
+
+| Aba | A pergunta que ela deveria responder | Estado |
+|---|---|---|
+| VPS | A VPS está saudável? | ✅ feito em 15/08 |
+| meu | O que depende de mim? | já é isso, falta escrever a pergunta |
+| glossário | O que é isso mesmo? | já é isso, falta escrever a pergunta |
+| cockpit | Onde eu mexo agora? | ordena por urgência; falta o veredito no topo |
+| agentes | Quem está trabalhando agora? | lista sem veredito |
+| to-dos | O que falta fechar? | lista sem veredito |
+| tempo | Quanto tempo isso levou, e quanto vale? | tabela larga, 9 colunas |
+| gráficos | Como esses números se cruzam? | construtor, sem pergunta |
+| preço | Quanto cobrar por isso? | lista sem veredito |
+| agenda | O que eu tenho hoje? | lista sem veredito |
+| hooks | O que está me travando? | lista técnica, nome de arquivo |
+| rotinas | Alguma rotina está velha? | tem veredito parcial, é a mais perto |
+| servidores | O que está no ar nesta máquina? | lista sem veredito |
+| escritório | O que os agentes estão fazendo? | mostra movimento, não conclusão |
+| remoto | Onde eu quero abrir uma sessão? | lista sem veredito |
+
+**Onze das quinze não respondem nada.** A ordem sugerida para atacar é a dor
+dele, não a lista: `tempo` (a que vaza e ele mais olha), `hooks` (a mais
+técnica), `agentes` e `cockpit` (as que abre primeiro).
+
+Três (`meu`, `glossário`, `cockpit`) já fazem a coisa certa e só precisam da
+frase no topo — são as mais baratas e provavelmente as primeiras.
 
 ### CC-77: cara de aplicativo no estreito
 
