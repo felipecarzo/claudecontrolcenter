@@ -625,6 +625,34 @@ São a mesma decisão vista de dois lugares: ligar o framework num projeto e
 escolher como ele te trata. Estar em telas diferentes obriga a lembrar que as
 duas existem.
 
+#### Como consertar, decidido por ele em 15/08
+
+**A confirmação é dupla, e as duas metades fazem coisas diferentes:** um aviso
+de "salvo" logo após o clique (resposta imediata, para a mão saber que registrou)
+**e** a releitura do arquivo mostrando o que ele de fato diz, com a hora. A
+segunda é a que não mente — a primeira sozinha foi o que falhou hoje, porque
+confirma o envio, não a gravação.
+
+Se as duas discordarem, a tela mostra o conflito em vermelho: *"pedi restritivo,
+o arquivo diz diálogo"*. É o único jeito de o medo dele ter fim.
+
+**O autorizar ganha três mudanças, também combinadas:**
+
+1. **Sai de perto do seletor de modo.** Linha própria, e só aparece quando o
+   modo trava alguma coisa. Ação que libera escrita não pode ficar colada em
+   ação de configuração — ele apertou por engano exatamente por isso.
+2. **Pergunta antes**, dizendo o que vai acontecer.
+3. **Passa a ser por arquivo, não `**`.** Eu peço, ele libera o que pedi. É o
+   desenho original do modo, e o `**` de hoje é o atalho que esvazia o gate.
+4. **Explicação junto do botão, ou num "?" ao lado** — pedido dele no mesmo
+   momento. O botão hoje não diz o que autoriza, por quanto tempo, nem que a
+   autorização morre ao trocar de modo.
+
+⚠️ **A parte 3 muda o fluxo dos dois lados:** hoje eu tento escrever e sou
+barrado. Com autorização por arquivo, eu preciso **pedir antes** — e isso já
+existe pronto no `rota-pedidos.mjs`, que faz exatamente isso para rotas. É
+código para reusar.
+
 ### CC-87 — as 11 telas, uma a uma (3 de 11 feitas em 15/08)
 
 Decisão dele em 15/08: **as onze**, com prévia em arquivo a cada uma, da mais
