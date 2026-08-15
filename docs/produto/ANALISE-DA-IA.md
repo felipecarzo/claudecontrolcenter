@@ -122,10 +122,42 @@ setas, está em obrigar a nomear.**
 
 > **A proposta concreta:** na fase de Definição, o framework não pede diagrama.
 > Pede **o glossário do projeto** — as cinco a dez palavras que aquele projeto
-> usa e o que cada uma significa ali. É MER sem desenho, custa cinco minutos,
-> e ataca a causa medida.
->
-> O CC-63 (glossário) já existe e está subusado. Isto lhe daria função.
+> usa e o que cada uma significa ali.
+
+### ⚠️ Correção dele, no mesmo dia: glossário sozinho não basta
+
+Ele apontou o furo, e está certo:
+
+> "talvez o diagrama de classes tenha um certo valor, porque com ele você
+> saberia que o chão era o chão e o céu era o céu, porque eles seriam classes
+> diferentes"
+
+**O erro das nuvens não foi de NOME, foi de PERTENCIMENTO.** Eu sabia o que era
+nuvem e o que era chão. O que eu não sabia é a qual dos dois a nuvem pertencia.
+Uma lista de palavras não responde isso; um diagrama de classes responde.
+
+Ele perguntou se existe forma mais leve, e existe. O que funciona melhor para
+mim não é desenho, é **texto com as relações declaradas** — cada entidade
+dizendo três coisas:
+
+```
+NUVEM
+  é parte de: chão            ← a linha que teria evitado 5 horas
+  contém: sombra, volume
+  não confundir com: céu      ← esta não existe em diagrama de classes nenhum
+```
+
+`não confundir com` é a linha que ataca a causa medida de frente, e é a que
+nenhuma notação tradicional tem, porque ela nasce do histórico de erro daquele
+projeto, não da estrutura dele.
+
+**Vantagem sobre o diagrama, para este caso:** é texto, versiona no git, entra
+no contexto sem virar imagem, e cresce por acréscimo — cada mal-entendido que
+acontecer vira uma linha nova de `não confundir com`. Um diagrama exigiria
+ferramenta, exportação e alguém para mantê-lo.
+
+O CC-63 (glossário) já existe e está subusado. Isto lhe daria função, com os
+três campos em vez de só a definição.
 
 ---
 
@@ -139,13 +171,29 @@ garantir qualidade**.
 |---|---|---|
 | Sprint com data | **tirar** | Existe para prever capacidade de time. Eu não tenho capacidade previsível nem cansaço |
 | Planning e estimativa em pontos | **tirar** | Ver o fato 4: eu não sinto esforço, então minha estimativa é chute com cara de número |
-| Daily | **tirar** | Existe para pessoas saberem umas das outras. O quadro de rotas já faz isso, e sem reunião |
+| ~~Daily~~ | **manter — eu errei** | Ver abaixo |
 | **Definição de Pronto** | **manter, e é o coração** | É a única peça que impede auto-aprovação. O framework já pegou esta |
 | **Retrospectiva** | **manter** | A única cerimônia que gera aprendizado. Aqui ela virou o diário e as armadilhas do `CLAUDE.md` |
 | **Backlog em níveis** | **manter** | É o CC-83, e o vocabulário já é dele |
 
-Ou seja: **o que sobra do Scrum é o que ele já adotou sem chamar de Scrum.**
-Isso não é coincidência, é o filtro funcionando.
+### O Daily: eu errei, e a correção dele é melhor que a minha análise
+
+Escrevi que o daily sai porque "existe para pessoas saberem umas das outras".
+Resposta dele:
+
+> "os agentes também precisam se comunicar. Amanhã eu já pretendo botar dois
+> agentes trabalhando no mesmo projeto, e a ideia é que eles se comuniquem
+> através de comandos de ticket"
+
+**O daily não é sobre humanos, é sobre coordenação entre executores.** Se o
+executor é agente, a necessidade não muda — muda o formato: não é reunião de
+manhã, é interrupção no momento em que o conflito aparece.
+
+Isso vira o CC-84 no ROADMAP.
+
+Ou seja: **o que sobra do Scrum é o que ele já adotou sem chamar de Scrum**, mais
+o daily, que eu tinha cortado errado. Não é coincidência, é o filtro dele
+funcionando — inclusive contra mim.
 
 ---
 

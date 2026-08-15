@@ -351,6 +351,77 @@ data, sem planning, sem estimativa.
 - O campo `frente` do protocolo já liga to-do a frente, então a ponte entre o
   nível de baixo e o de cima existe desde 14/08.
 
+### CC-84 ⚠️ URGENTE: dois agentes no mesmo projeto, se falando
+
+**Ele vai colocar dois agentes no mesmo projeto amanhã (16/08).** Isto deixou de
+ser ideia e virou prazo. Palavras dele:
+
+> "os agentes também precisam se comunicar (…) se dois agentes trabalham em
+> rotas diferentes e um precisa mexer num arquivo que está na rota do outro, ele
+> pode abrir um ticket, e um vai parar o Claude no meio do que ele está fazendo
+> e avisar: o que você está fazendo vai ser afetado se a gente mexer em tal
+> coisa. Se sim, para; ele vai terminar o que faz e você volta depois"
+
+É o mesmo problema que ele já tinha nomeado na sessão de senhas: *"esse
+recadinho que a gente ta fazendo é ineficiente"* — o `ROTAS-ATIVAS.md` com 336
+linhas de conversa entre sessões em markdown.
+
+#### O que já existe, e onde para
+
+`rota-pedidos.mjs` (13/08) resolveu **um** caso: o agente barrado pede a rota, o
+dono autoriza por comando. `routia-fim.mjs` avisa o dono. Onde para:
+
+1. **O aviso só chega no `Stop`**, ou seja, no fim do turno do outro. Se ele
+   estiver no meio de uma tarefa longa, o pedido espera.
+2. **Só cobre pedido de rota.** Não existe "isto que você vai fazer afeta o que
+   eu estou fazendo".
+3. **Não há registro navegável** do que foi combinado entre agentes.
+
+#### O detalhe técnico que muda o desenho, e melhora
+
+Ele descreveu "parar o Claude no meio". Isso não existe: não há como interromper
+um agente que está pensando. **Mas existe algo quase tão bom e mais simples:**
+todo agente passa por `PreToolUse` a cada ferramenta que usa, e isso acontece
+várias vezes por minuto.
+
+**O ponto de interrupção mais cedo possível é o próximo tool call, não o fim do
+turno.** Um hook de `PreToolUse` que consulte a caixa de mensagens entrega o
+aviso em segundos, no meio do trabalho, sem precisar de nada que o Claude Code
+não ofereça. É o mesmo mecanismo do `rota-guard`, com outro conteúdo.
+
+Cuidado a respeitar: esse hook roda em **toda** chamada de ferramenta. Tem que
+ser leitura de um JSON pequeno, e falhar aberto — hook lento ou quebrado aqui
+trava os dois agentes de uma vez.
+
+#### O que desenhar
+
+- **Caixa de mensagem por sessão**, fora de `jobs/` (mesma decisão do CC-56).
+- **Tipos de recado, poucos:** "vou mexer no seu arquivo", "terminei, pode ir",
+  "para e me responda". Cada tipo com o que o outro deve fazer.
+- **Detecção automática do conflito**, que é a parte difícil: hoje o Routia
+  raciocina por ROTA (pasta), e ele pediu por **dependência** — "se o outro vai
+  mexer numa classe/função que a minha tarefa usa". Isso exige olhar import e
+  chamada, não caminho de arquivo. Provável primeira versão: só arquivo, e a
+  dependência entra depois, se doer.
+
+### CC-85: o log das conversas entre agentes
+
+Pedido junto do CC-84:
+
+> "sempre que tiver uma intervenção, ter tipo um log do que aconteceu, por
+> projeto, por hora, poder ver em ordem crescente, decrescente, separar por
+> projeto, separar por agentes"
+
+**É o daily do [[produto/ANALISE-DA-IA]], e é o que eu tinha cortado errado.** A
+correção dele: daily não é sobre humanos, é sobre coordenação entre executores.
+Muda o formato — não é reunião de manhã, é registro do que foi combinado, na
+hora em que foi.
+
+Vale como métrica, não só como histórico: **duas sessões negociando muito no
+mesmo projeto é sinal de que as rotas estão mal divididas.** Esse número não
+existe hoje e seria o primeiro sinal objetivo de que o Routia precisa de ajuste
+naquele projeto.
+
 ### CC-82: um leitor de documentos dentro do cockpit
 
 Ideia dele em 15/08, logo depois do CC-81, e é a mesma ideia em escala maior:
