@@ -293,7 +293,63 @@ honesta ali.
 - **Deixar ele corrigir a citação pela tela.** Ele pediu: *"óbvio que você pode
   consertar a pontuação, palavras, botar o significado real"*. Hoje só se edita
   o markdown.
+- **O clique tem que abrir POR CIMA, ancorado na pastilha.** Feedback dele
+  vendo a prévia: *"se eu clicar no primeiro eu tenho que descer pra ver, o
+  ideal seria clicar no primeiro e já ver automaticamente"*. Na prévia o texto
+  saía embaixo; no código é aviso do navegador, que aparece por cima mas é feio.
+  Os dois estão errados pelo mesmo motivo: a resposta tem que nascer ao lado da
+  pergunta.
+- **Agrupar as pastilhas por nível de backlog** — CC-83.
 - O layout do mapa continua ruim em tela estreita — isso é CC-77.
+
+### CC-83: três backlogs em níveis, que é o vocabulário que ele já tem
+
+Ideia dele em 15/08, e ela resolve uma confusão que ele mesmo tinha acabado de
+apontar (*"parece meio com o TO-DO também né?"*):
+
+> "na metodologia ágil, no Scrum, a gente tem o conceito de backlog em várias
+> partes diferentes: tem o backlog do produto, o backlog do sprint, o backlog
+> do dia (…) fica muito fácil pra eu entender, já que eu estudei muito
+> engenharia de software"
+
+**A tela de frentes e a aba de to-dos não são duas telas concorrendo: são dois
+níveis do mesmo funil**, e faltava o nome que os separasse.
+
+| Nível | O que é aqui | Tempo de vida | Quem escreve |
+|---|---|---|---|
+| Produto | as frentes do `ROADMAP.md` | semanas | ele |
+| Sprint | **não existe hoje** | dias | — |
+| Dia | os to-dos do `meta.json` | horas | o agente |
+
+#### O nível do meio tem que ser DERIVADO, nunca digitado
+
+É a decisão central deste item. Uma terceira lista que alguém precise manter vai
+envelhecer como todo artefato que depende de disciplina — e ele não vai
+alimentá-la, o que é fato medido (ele não lê nem escreve documento longo; é a
+razão de o cockpit existir).
+
+A sprint pode sair sozinha do que já se sabe: **frente com rota ocupada ou com
+agente trabalhando nela agora**. O painel já cruza isso — é a bolinha que
+aparece na pastilha do CC-81. Preenche sozinha, e é exatamente a coluna do meio
+do Trello que a medição mostrou vazia.
+
+**Medido em 15/08, nos 14 projetos:** os roadmaps só têm dois estados, 48
+abertas e 12 feitas. **Zero "em andamento".** Ninguém nunca escreveu isso num
+roadmap, e por isso a coluna do meio não pode vir do texto.
+
+#### O que isto NÃO é
+
+Adotar Scrum. A decisão do framework é dele e continua valendo:
+*"Scrum, UML e MER são ferramenta, não obrigação"* ([[produto/FRAMEWORK]]). Aqui
+se pega **três palavras que ele já entende**, não a cerimônia — sem sprint com
+data, sem planning, sem estimativa.
+
+#### Ligações
+
+- **CC-78** (rotas na tela) é a fonte do nível do meio. Um não anda sem o outro.
+- **CC-81** já fez a pastilha e o peso; falta agrupá-las por nível.
+- O campo `frente` do protocolo já liga to-do a frente, então a ponte entre o
+  nível de baixo e o de cima existe desde 14/08.
 
 ### CC-82: um leitor de documentos dentro do cockpit
 
