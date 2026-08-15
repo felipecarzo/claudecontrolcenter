@@ -59,6 +59,48 @@ export const PREDICADOS = {
       ? `faltam ${abertos.length} de ${cs.length} critérios do MVP: ${abertos.map((c) => c.texto).join('; ')}`
       : null
   },
+  /* CC-68, método `conserto`. Os dois campos abaixo são o que separa conserto
+     de "mexi até parar de dar erro":
+
+     `reproducao` é escrita ANTES, e trava o código de propósito. Foi o vício
+     mais caro de hoje: escrevi que o extrator de PDF seria ruim sem tentar, e
+     exagerei a gravidade do defeito do endereço sem medir. Nos dois casos eu
+     tinha pulado a reprodução.
+
+     `prova` é escrita DEPOIS, e é a regra 1 do ciclo dele virando trava: teste
+     verde não é prova — já houve 545 testes passando com a tela quebrada. */
+  'defeito-reproduzido': (e) => {
+    const r = e?.reproducao || {}
+    if (!(r.como || '').trim()) return 'falta dizer COMO o defeito aparece: o passo que o faz acontecer'
+    if (!(r.esperado || '').trim()) return 'falta dizer o que você esperava ver no lugar'
+    return null
+  },
+  'conserto-provado': (e) => {
+    const p = e?.prova || {}
+    if (!(p.como || '').trim()) return 'falta a prova de que o defeito sumiu: o que foi rodado, e o que apareceu'
+    if (!p.guardado) return 'falta o teste que guarda o conserto — sem ele o defeito volta e ninguém vê'
+    return null
+  },
+
+  /* CC-68, método `estudo`. A entrega é a DECISÃO, e por isso as duas fases
+     travam código do começo ao fim. É o F1 no nível do projeto inteiro: ele
+     pediu três itens "para estudar" e o risco é sempre o mesmo — eu começo a
+     construir enquanto ele ainda está pensando. */
+  'pergunta-declarada': (e) => ((e?.estudo?.pergunta || '').trim()
+    ? null
+    : 'falta a pergunta que este estudo responde, em uma frase'),
+  'opcoes-medidas': (e) => {
+    const o = e?.estudo?.opcoes || []
+    if (o.length < 2) return 'um estudo com menos de duas opções não é estudo: é uma escolha já feita'
+    const semMedida = o.filter((x) => !(x.medida || '').trim())
+    return semMedida.length
+      ? `${semMedida.length} opção(ões) sem medida: ${semMedida.map((x) => x.nome).join(', ')}`
+      : null
+  },
+  'decisao-registrada': (e) => ((e?.estudo?.decisao || '').trim()
+    ? null
+    : 'falta a decisão e o porquê dela — sem isso o estudo não vira nada'),
+
   // F4: quais ferramentas de verificação este projeto usa. Decisão do Felipe em
   // 14/08: isso se escolhe na DEFINIÇÃO, junto do MVP, não solta no meio da
   // execução. "o framework JÁ teria isso definido desde o início do projeto na
@@ -100,6 +142,77 @@ export const METODOS = {
         explica: 'Código liberado. O projeto só é dado como pronto quando todos os critérios do MVP estiverem marcados.',
         exige: ['criterios-todos-marcados'],
         trava: [],
+      },
+    ],
+  },
+
+  /**
+   * CC-68, e ele nasceu de uma observação sobre o dia 15/08 inteiro: os dois
+   * métodos acima supõem que existe algo NOVO para entregar, e o trabalho de
+   * verdade daquele dia foi outro — regex quebrado, hash velho, layout
+   * vazando, gate morto. Nenhum tinha MVP a definir.
+   *
+   * A ordem das fases é o remédio: **reproduzir antes de consertar** é o que
+   * impede o conserto de virar tentativa, e **provar depois** é a regra 1 do
+   * ciclo dele ("prova visual antes de dizer feito").
+   */
+  conserto: {
+    id: 'conserto',
+    titulo: 'Conserto: reproduzir antes, provar depois',
+    fases: [
+      {
+        id: 'reproducao',
+        titulo: 'Reprodução',
+        explica: 'Antes de mexer no código: como o defeito aparece, e o que deveria aparecer no lugar. Sem isso, consertar vira tentativa.',
+        exige: ['defeito-reproduzido'],
+        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+      },
+      {
+        id: 'execucao',
+        titulo: 'Conserto',
+        explica: 'Código liberado. Vale mexer só no que a reprodução apontou — escopo maior que isso é outro trabalho.',
+        exige: [],
+        trava: [],
+      },
+      {
+        id: 'prova',
+        titulo: 'Prova',
+        explica: 'O que foi rodado, o que apareceu, e o teste que guarda. Teste verde não é prova: já houve 545 passando com a tela quebrada.',
+        exige: ['conserto-provado'],
+        trava: [],
+      },
+    ],
+  },
+
+  /**
+   * CC-68. A entrega é a DECISÃO, não o programa — por isso as duas fases
+   * travam código do começo ao fim.
+   *
+   * Nasceu de um padrão dele: em 15/08 pediu três itens "para estudar", e o
+   * risco é sempre o mesmo — eu começo a construir enquanto ele ainda está
+   * pensando. Foi exatamente o erro do glossário, que originou o F1. Aqui isso
+   * vira fase, não instrução.
+   *
+   * Se o estudo virar código, o projeto **troca de método**. Isso é sinal de
+   * que a decisão foi tomada, e é o momento certo de registrar qual foi.
+   */
+  estudo: {
+    id: 'estudo',
+    titulo: 'Estudo: a entrega é a decisão',
+    fases: [
+      {
+        id: 'pergunta',
+        titulo: 'Pergunta',
+        explica: 'Que pergunta este estudo responde? Sem ela, estudo vira leitura sem fim.',
+        exige: ['pergunta-declarada'],
+        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+      },
+      {
+        id: 'decisao',
+        titulo: 'Decisão',
+        explica: 'Duas opções ou mais, cada uma com o que foi medido, e a escolha com o porquê. Código continua travado: se virou código, virou outro método.',
+        exige: ['opcoes-medidas', 'decisao-registrada'],
+        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
       },
     ],
   },

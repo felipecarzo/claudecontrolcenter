@@ -286,4 +286,58 @@ for (const m of Object.values(METODOS)) {
 }
 ok('todo método declarado usa predicado que existe, e toda fase explica')
 
+/* CC-68: os métodos `conserto` e `estudo`.
+
+   O ponto do catálogo é que **método é dado, não código** — então o teste mais
+   importante aqui é o de baixo, que confere que nenhum deles trouxe predicado
+   ou fase que o motor não soubesse tratar. */
+{
+  assert.equal(Object.keys(METODOS).length, 4, 'o catálogo tem que ter os quatro')
+
+  // conserto: reproduzir ANTES trava o código, e é o ponto do método
+  const c = METODOS.conserto
+  assert.deepEqual(c.fases.map((f) => f.id), ['reproducao', 'execucao', 'prova'])
+  assert.ok(c.fases[0].trava.includes('src/**'), 'a reprodução tem que travar código')
+  assert.equal(c.fases[1].trava.length, 0, 'a fase de consertar não pode travar código')
+
+  const semNada = avaliar('conserto', { fase: 'reproducao' })
+  assert.equal(semNada.portaoAberto, false)
+  assert.match(semNada.pendencias[0], /COMO o defeito aparece/)
+
+  const soComo = avaliar('conserto', { fase: 'reproducao', reproducao: { como: 'clico e some' } })
+  assert.match(soComo.pendencias[0], /esperava ver/)
+
+  const reproduzido = avaliar('conserto', {
+    fase: 'reproducao', reproducao: { como: 'clico e some', esperado: 'devia abrir' },
+  })
+  assert.equal(reproduzido.portaoAberto, true)
+
+  /* Prova sem teste que guarde não fecha: é a regra 1 do ciclo dele, e a
+     lembrança de que 545 testes verdes já conviveram com a tela quebrada. */
+  const semTeste = avaliar('conserto', { fase: 'prova', prova: { como: 'rodei e passou' } })
+  assert.match(semTeste.pendencias[0], /teste que guarda/)
+  assert.equal(avaliar('conserto', { fase: 'prova', prova: { como: 'rodei', guardado: true } }).portaoAberto, true)
+
+  // estudo: as DUAS fases travam código, porque a entrega é a decisão
+  const e = METODOS.estudo
+  assert.deepEqual(e.fases.map((f) => f.id), ['pergunta', 'decisao'])
+  for (const f of e.fases) assert.ok(f.trava.includes('src/**'), `${f.id} tem que travar código`)
+
+  assert.match(avaliar('estudo', { fase: 'pergunta' }).pendencias[0], /pergunta que este estudo responde/)
+  // uma opção só não é estudo: é escolha já feita, com aparência de pesquisa
+  assert.match(
+    avaliar('estudo', { fase: 'decisao', estudo: { opcoes: [{ nome: 'a', medida: '1' }] } }).pendencias[0],
+    /menos de duas opções/,
+  )
+  assert.match(
+    avaliar('estudo', { fase: 'decisao', estudo: { opcoes: [{ nome: 'a', medida: '1' }, { nome: 'b' }] } }).pendencias[0],
+    /sem medida: b/,
+  )
+  assert.equal(avaliar('estudo', {
+    fase: 'decisao',
+    estudo: { opcoes: [{ nome: 'a', medida: '1' }, { nome: 'b', medida: '2' }], decisao: 'fica a' },
+  }).portaoAberto, true)
+}
+ok('CC-68: conserto reproduz antes e prova depois; estudo trava código nas duas fases')
+
 console.log(`\n${n} grupos de asserção passaram`)

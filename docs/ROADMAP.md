@@ -719,7 +719,7 @@ O caminho é derivado do próprio arquivo, então sai certo em cada máquina —
 
 O hook de recados (CC-84) entrou no catálogo junto, então já vai instalado.
 
-### CC-68: catálogo de métodos, não um só
+### CC-68 ✅ 15/08 — catálogo de métodos: quatro, nenhum com código próprio
 
 `mvp-basico` e `entrega-cliente` são os dois presets que existem, e o segundo
 mal foi usado. O pre-commit tem centenas porque **quem adota escolhe**, e a
@@ -728,6 +728,32 @@ escolha é de três linhas.
 Ligado ao que já está registrado: "mais de um método é o que prova que o método
 é dado e não código" ([[produto/FRAMEWORK]]), e a [[produto/BANCADA]] é o
 embrião do catálogo pelo lado das ferramentas de verificação.
+
+#### ✅ Feito: `conserto` e `estudo`, escolhidos por ele
+
+**A observação que decidiu quais:** os dois métodos que existiam supõem que há
+algo NOVO para entregar. O dia 15/08 inteiro não foi isso — regex quebrado,
+hash velho, layout vazando, gate morto. **Nenhum tinha MVP a definir.**
+
+**`conserto`: Reprodução → Conserto → Prova.** A ordem é o remédio. Reproduzir
+antes trava o código de propósito, e é o vício mais caro de hoje: escrevi que o
+extrator de PDF seria ruim sem tentar, e exagerei a gravidade do defeito do
+endereço sem medir — nos dois casos eu tinha pulado a reprodução. Provar depois
+é a regra 1 do ciclo dele virando trava, e exige **teste que guarde**: verde não
+é prova, já houve 545 passando com a tela quebrada.
+
+**`estudo`: Pergunta → Decisão, com código travado nas DUAS fases.** A entrega é
+a decisão, não o programa. Nasceu de um padrão dele — em 15/08 pediu três itens
+"para estudar", e o risco é sempre o mesmo: eu começo a construir enquanto ele
+ainda está pensando. Foi o erro do glossário, que originou o F1; aqui vira fase
+em vez de instrução.
+
+Dois predicados que valem citar: **estudo com uma opção só é recusado** ("não é
+estudo, é uma escolha já feita"), e **opção sem medida também**.
+
+**O que isto prova, e era o ponto:** os dois entraram como **dado puro**. Nenhuma
+linha no motor, nenhum `if` por método. O gate confere que todo predicado
+declarado existe — se algum método precisasse de código próprio, quebraria ali.
 
 ### CC-69 ✅ 15/08 — níveis declarados, num lugar só
 
