@@ -744,6 +744,16 @@
     border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px;
     max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .ck-mini-f { background: none; cursor: pointer; font-family: inherit; text-align: left; }
+  .ck-mini-f:hover { border-color: var(--acento); }
+  /* CC-81, o peso. Derivado, nunca digitado: frente inteira, item com muitos
+     filhos e item que traz as palavras dele pesam mais. Sem isto o mapa dá a
+     mesma altura para uma frente e para um conserto de regex. */
+  .ck-mini-f.p-2 { font-size: 11.5px; max-width: 300px; }
+  .ck-mini-f.p-3 { font-size: 12.5px; max-width: 100%; font-weight: 600; border-width: 1px;
+    background: var(--surface); padding: 5px 10px; }
+  /* aspas: este item guarda o que ELE disse, e o clique mostra */
+  .ck-mini-f .tem-fala { font-style: normal; color: var(--acento); font-size: 13px; line-height: 0; }
   .ck-mini-f b { font-weight: 500; color: var(--faint); margin-left: 2px; }
   /* Escopado à pastilha, não solto: uma .f-failed global já pintou fundo
      inteiro de cartão por engano nesta mesma aba (regra registrada no CLAUDE.md). */
@@ -2397,10 +2407,18 @@ function miniMapa(projeto) {
   return `<div class="ck-mini">${frentes.map((f) => {
     const cor = COR_MOTIVO_ESTADO[f.estado] || 'dim'
     const temAgente = naFrente.has(f.titulo.toLowerCase())
-    return `<span class="ck-mini-f f-${cor}" title="${esc(f.titulo)}: ${f.feitos}/${f.itens || 0}">
+    /* CC-81: clicável, com peso, e carregando as palavras dele.
+       Queixa que gerou: "está tudo empilhado como se fosse só pequenas
+       tarefas, e não é bem isso" — e "teria que dar pra clicar nelas". */
+    return `<button class="ck-mini-f f-${cor} p-${f.peso || 1}"
+      data-frente-abrir="${esc(f.titulo)}"
+      data-frente-cit="${esc(f.citacao || '')}"
+      data-frente-n="${f.feitos}/${f.itens || 0}"
+      title="${esc(f.titulo)}: ${f.feitos}/${f.itens || 0}">
       ${temAgente ? '<i class="dot s-working"></i>' : ''}${esc(f.titulo)}
+      ${f.citacao ? '<i class="tem-fala" title="tem as suas palavras">”</i>' : ''}
       ${f.itens ? `<b>${f.feitos}/${f.itens}</b>` : ''}
-    </span>`
+    </button>`
   }).join('')}</div>`
 }
 
@@ -4963,6 +4981,23 @@ document.addEventListener('click', async (e) => {
   /* CC-74: abre e fecha os controles secundários em tela estreita. Sem estado
      guardado de propósito: é gesto de momento, e reabrir a página com o
      cabeçalho expandido devolveria o problema que isto resolve. */
+  /* CC-81: o clique na pastilha mostra o que aquele item É — e, quando existe,
+     as palavras dele. Não abre tela nova: é o nível de baixo da árvore (CC-75),
+     e ele pediu "uma forma mais fácil de identificar" e "clicar nelas e ver o
+     que é cada uma", não navegação. */
+  const btFrente = t.closest('[data-frente-abrir]')
+  if (btFrente) {
+    const d = btFrente.dataset
+    const partes = [`${d.frenteAbrir}`, `${d.frenteN} itens fechados`]
+    if (d.frenteCit) {
+      partes.push('', 'você pediu assim:', `"${d.frenteCit}"`, '',
+        'Se isso não é o que você quis dizer, me diga: o item foi escrito a partir daí.')
+    } else {
+      partes.push('', 'Este item não guarda as suas palavras — foi escrito por mim.')
+    }
+    return alert(partes.join('\n'))
+  }
+
   const btMais = t.closest('#mais-ctl')
   if (btMais) {
     const caixa = btMais.parentElement

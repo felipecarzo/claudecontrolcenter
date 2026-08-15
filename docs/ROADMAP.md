@@ -251,6 +251,50 @@ lê o quadro e classifica cada rota em ativa / órfã / desconhecida, e
 `rotasDeTodos()` (CC-48) junta as rotas das duas máquinas por projeto. Hoje isso
 só sai por comando de terminal.
 
+### CC-81 ✅ 15/08 (primeira fatia) — o mapa guarda as suas palavras
+
+Olhando o mapa do cockpit no celular, ele disse três coisas. As três estão
+atendidas em parte, e a terceira é a mais valiosa:
+
+> "teria que dar pra clicar nelas, e ver o que que é cada uma"
+
+Toda pastilha virou botão. O clique mostra o que o item é, sem abrir tela nova —
+é o nível de baixo da árvore (CC-75), não navegação.
+
+> "uma forma mais fácil de identificar a importância de cada uma, porque está
+> tudo empilhado como se fosse só pequenas tarefas, e não é bem isso"
+
+Agora há peso de 1 a 3, e ele é **derivado, nunca digitado**: frente inteira
+pesa mais que item solto, item com quatro ou mais filhos pesa mais, item que
+traz as palavras dele pesa mais, e o que já está feito pesa menos porque não
+pede mais decisão. Nos 32 itens de hoje: 21 leves, 7 médios, 4 pesados.
+
+> "cada uma delas pode conter o trecho da conversa onde eu te pedi, pra eu
+> lembrar exatamente o que eu quis dizer (…) ali eu posso identificar se você
+> entendeu o que eu falei de fato"
+
+**Esta é a ideia forte, e faz duas coisas numa.** Ele relembra o que quis dizer,
+e confere se a minha tradução bate com o pedido — que é a forma mais barata de
+pegar um mal-entendido antes de virar código. É o mesmo problema que a regra 2
+do ciclo já descrevia ("na segunda repetição, desambigue a palavra"), só que
+resolvido antes da repetição.
+
+**A convenção já existia sem nome:** 7 dos 32 itens já traziam citação, ora como
+bloco `>`, ora em itálico entre aspas. `citacaoDe()` lê as duas formas, então
+nada precisou ser reescrito. Pastilha com citação ganha um `”`; pastilha sem
+citação diz, ao ser clicada, que **foi escrita por mim** — que é a informação
+honesta ali.
+
+#### O que falta
+
+- **Escrever a citação nos 25 itens que não têm.** Não dá para inventar: ou a
+  frase dele existe na conversa, ou o item nasceu de mim mesmo, e dizer isso é
+  melhor que forjar.
+- **Deixar ele corrigir a citação pela tela.** Ele pediu: *"óbvio que você pode
+  consertar a pontuação, palavras, botar o significado real"*. Hoje só se edita
+  o markdown.
+- O layout do mapa continua ruim em tela estreita — isso é CC-77.
+
 ### CC-78: o quadro de rotas vira tela, e dá para mexer
 
 Hoje `docs/ROTAS-ATIVAS.md` tem **336 linhas** e é lido abrindo o arquivo. A
