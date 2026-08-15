@@ -21,6 +21,62 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ## Aberto
 
+## ▶ A ORDEM DE EXECUÇÃO, definida em 15/08
+
+Ele pediu: *"pegar tudo o que a gente discutiu, melhorar o backlog e começar a
+trabalhar o mais rápido possível"*. São **25 frentes abertas** — a lista abaixo
+é a ordem, e o critério é um só: **o que destrava mais coisa, primeiro.**
+
+| # | Item | Por que agora | Depende de |
+|---|---|---|---|
+| 1 | **CC-84** agentes se falando | Ele põe dois agentes no mesmo projeto **amanhã, 16/08** | nada |
+| 2 | **CC-86** mapa de dependência | 30 linhas, 127ms, e melhora o CC-84 de "seu arquivo" para "o que quebra junto" | nada |
+| 3 | **CC-67** `cc hooks install` | Está travando ele AGORA: dois hooks esperando registro à mão no PC | nada |
+| 4 | **CC-81** resto | Clique ancorado, o defeito que ele viu com os próprios olhos | nada |
+| 5 | **CC-85** log das conversas | Nasce do CC-84; sem ele não há o que registrar | CC-84 |
+| 6 | **CC-78** rotas na tela | Precisa da decisão dele: o que é o azul? | decisão |
+| 7 | **CC-83** três backlogs | A coluna do meio vem das rotas | CC-78 |
+| 8 | **CC-76/77** prévias e cara de aplicativo | Ele quer ver antes; e o painel precisa reiniciar para mostrar o que já mudou | restart |
+
+**Fora da fila, e por quê:** CC-08 (precisa de um Mac), CC-60 e CC-79 (decisão
+dele sobre o segundo Pixel Agents), CC-68 a CC-72 (valem, e nenhum é urgente),
+CC-80 e CC-82 (ele pediu para estudar, não para fazer).
+
+**Uma decisão de método, tirada da conversa de hoje:** ele quis achar uma forma
+de organizar tudo para facilitar o acesso, e desistiu por bom motivo —
+**organização feita à mão é mais um lugar que envelhece.** A saída que ficou:
+não organizar, **derivar**. Foi o que fez o peso das pastilhas (CC-81), a sprint
+(CC-83), a presença (CC-49) e agora o mapa de dependência (CC-86). Vale como
+regra para o que vier: se dá para calcular, não peça para alguém manter.
+
+### CC-86: o mapa de dependência, extraído e nunca escrito
+
+Nasceu da discussão de UML/MER: ele apontou, com razão, que o glossário com
+relações não cobre **dependência de código** — "se o outro agente vai mexer numa
+classe que a minha tarefa usa". Isso está no diagrama de classes.
+
+**Concordo com o valor, discordo do meio.** Diagrama mantido à mão diverge do
+código em dias, e aí fica pior que não existir: responde errado com cara de
+certo. Mas o dado é extraível, e sai sempre atualizado.
+
+**Medido em 15/08, neste projeto:** 52 arquivos, 90 ligações, **127 ms**, lendo
+só 4 KB do topo de cada um — `import` mora no topo, ler o resto é desperdício.
+A esse custo não precisa nem de cache.
+
+E a medição já entregou um número que ninguém sabia: **`platform.mjs` tem 15
+dependentes, o maior do projeto.** É o arquivo mais perigoso de tocar, e isso
+não estava escrito em lugar nenhum.
+
+**O que isto muda no CC-84:** em vez de "vou mexer no seu arquivo", o aviso
+passa a ser *"vou mexer num arquivo que 15 outros usam, dois deles abertos por
+você"*. É a pergunta que ele quer respondida: **o que quebra se eu mexer aqui?**
+
+⚠️ **O que a extração NÃO pega:** herança e hierarquia de classes. Nos projetos
+JavaScript dele quase não há classes, mas se algum for orientado a objetos de
+verdade, aí o diagrama tem valor que a extração não tem. Fica registrado, não
+resolvido.
+
+
 > **Poda de 14/08.** Este arquivo tinha 45 frentes e 993 linhas, quase metade
 > delas descrevendo coisa já concluída. Ficaram 13 frentes vivas. O concluído
 > foi para [[diario/2026-08-14]], o congelado e o descartado para [[GELO]]
