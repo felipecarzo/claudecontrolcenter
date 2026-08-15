@@ -28,6 +28,94 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 > lição serve para alguma coisa. A regra que isto restaura já existia escrita
 > na linha 3 deste arquivo e não estava sendo seguida.
 
+### Frente: o que pre-commit, husky e Danger já resolveram, e nós não
+
+Registrada em 15/08 a pedido dele, depois de comparar o framework com os oito
+frameworks de agente e perceber que **os parentes de verdade não são LangChain
+e cia: são as ferramentas de gate do mundo humano**. Elas atacam o mesmo
+problema de fundo há uma década — instrução escrita não segura ninguém, então a
+regra vira código que intercepta.
+
+O que cada uma acertou, e onde estamos:
+
+| Elas | Nós hoje |
+|---|---|
+| `pre-commit`: catálogo de centenas de checagens, adotadas em 3 linhas | um método só, `mvp-basico` |
+| `husky`: o gancho nasce com o `npm install` | registrar hook à mão no `settings.json` de cada máquina |
+| `lint-staged`: roda só no que mudou | sem noção de "o que mudou" |
+| `Danger`: níveis declarados (fail / warn / message) | cada hook decide no próprio código |
+| `pre-commit run --all-files`: rodar tudo sob demanda | o gate só existe no gatilho |
+| `pre-commit autoupdate`: atualizar as regras | cópia manual, ver CC-65 |
+
+Observação que vale guardar: o `git-add-guard` é um pre-commit caseiro que já
+existia aqui sem se chamar assim.
+
+### CC-67: `cc hooks install` — o gancho nasce com o projeto
+
+**O mais urgente dos seis**, e a prova está no HANDOFF de hoje: dois hooks novos
+estão esperando ele registrar à mão no `settings.json` do PC, com caminho `D:/`.
+Enquanto isso o padrão de resposta vale só na VPS.
+
+O husky resolveu exatamente isto: gancho de git não é versionado, então cada
+máquina teria que instalar sozinha. Aqui é pior, porque o `settings.json` é
+global e o caminho muda de máquina.
+
+Já existe metade: `hooksRegistro.mjs` sabe **ler** e dizer se um hook está
+registrado. Falta escrever, com o cuidado de sempre — merge, nunca substituir o
+arquivo, que é o mesmo cuidado do `install.mjs` com o CLAUDE.md.
+
+### CC-68: catálogo de métodos, não um só
+
+`mvp-basico` e `entrega-cliente` são os dois presets que existem, e o segundo
+mal foi usado. O pre-commit tem centenas porque **quem adota escolhe**, e a
+escolha é de três linhas.
+
+Ligado ao que já está registrado: "mais de um método é o que prova que o método
+é dado e não código" ([[produto/FRAMEWORK]]), e a [[produto/BANCADA]] é o
+embrião do catálogo pelo lado das ferramentas de verificação.
+
+### CC-69: níveis declarados, em vez de cada hook decidir sozinho
+
+O Danger tem `fail`, `warn` e `message`, e a regra diz qual usa. Aqui cada hook
+resolve no próprio código: o `framework-guard` recusa com exit 2, o
+`roadmap-guard` avisa, o `todo-guard` avisa. A escolha está certa em todos, mas
+está espalhada — não dá para olhar num lugar e saber o que trava e o que fala.
+
+Ganho real: o `hooksCatalogo.mjs` passaria a dizer o nível junto do resto, e o
+painel poderia mostrar "3 travam, 4 avisam" sem ler código.
+
+### CC-70: `cc framework check` — rodar o gate sem esperar o gatilho
+
+`pre-commit run --all-files` existe porque gate que só roda no gatilho não
+responde "como está o projeto agora?". Aqui é a mesma falta: para saber se um
+projeto passaria, é preciso tentar editar um arquivo e ser recusado.
+
+Serve para três coisas: conferir antes de começar, rodar em CI, e alimentar o
+painel com o estado real de cada projeto em vez do estado registrado.
+
+### CC-71: agir só no que mudou
+
+`lint-staged` roda só nos arquivos alterados, e é o que torna o hook rápido o
+bastante para ninguém desligar. Nosso equivalente ainda não tem uso claro — o
+gate de fase não olha arquivo — mas passa a ter no dia em que a Bancada virar
+gate: rodar a camada de segredo no repositório inteiro a cada entrega é o tipo
+de lentidão que faz o Felipe desligar o recurso.
+
+**Registrado como direção, não como tarefa:** sem a Bancada ligada, não há o que
+otimizar, e otimizar antes seria inventar problema.
+
+### CC-72: sincronizar as regras, em vez de copiar à mão
+
+O CC-65 versionou os seis hooks globais e deixou dito em negrito que é **cópia,
+não fonte**: mexer no repositório não muda o que roda. O `pre-commit autoupdate`
+resolve isso do lado deles.
+
+Aqui seria `cc hooks sync`: comparar o que está em `hooks/routia/` com o que está
+em `~/.claude/hooks/`, mostrar a diferença e sincronizar sob clique. O
+`rotinas.mjs` **já faz exatamente isso** para os comandos `/algo` copiados dentro
+dos projetos, incluindo a normalização de CRLF que custou tempo lá — é código
+para reusar, não para reescrever.
+
 ### CC-66 ✅ 15/08 — o padrão de resposta virou hook instalável
 
 Saiu de um estudo que ele mandou fazer sobre uma explicação minha do CC-48 que
