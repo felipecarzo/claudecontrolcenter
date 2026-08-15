@@ -674,7 +674,7 @@ autorizar colado no seletor de novo, o teste acusa.
 É a que muda o fluxo dos dois lados e a única que exige código novo dos dois
 lados (hook + painel). Fica para a próxima rodada.
 
-### CC-87 — as 11 telas, uma a uma (9 de 11 feitas)
+### CC-87 ✅ 16/08 — as 11 telas respondem uma pergunta cada
 
 Decisão dele em 15/08: **as onze**, com prévia em arquivo a cada uma, da mais
 fácil para a mais difícil. E, sobre o método: *"registra o conserto no backlog
@@ -732,8 +732,52 @@ dias).
 Conferido no painel de produção depois do restart: as nove perguntas estão no
 ar.
 
-**Faltam 2, as difíceis:** `tempo` (tabela de 9 colunas) e `hooks` (a mais
-técnica da lista).
+#### ✅ As duas difíceis, 16/08
+
+Nessas a pergunta no topo não bastava: o corpo também mudou.
+
+**`hooks` — "O que está me travando?"** Passou a agrupar por **nível** (travam /
+avisam / informam / medem) em vez de por evento. `PreToolUse` e `Stop` são nomes
+do Claude Code; o que ele precisa saber é o que barra e o que só fala. O nível
+veio do CC-69, que declarou isso num lugar só justamente para servir aqui.
+
+O evento virou frase: *"antes de cada ação minha"*, não `PreToolUse`.
+
+**E o veredito grita o caso perigoso:** hook ligado e NÃO registrado no
+`settings.json`. Ele parece ativo na tela e não faz nada — a pior combinação
+possível, e estava escondida numa etiqueta cinza no canto.
+
+**`tempo` — "Quanto tempo isso levou, e quanto vale?"** A pergunta tem duas
+metades porque a aba tem dois usos. O veredito responde as duas numa frase e diz
+qual projeto consumiu mais, que é o que ele procura primeiro.
+
+**E o corpo encolhe em tela estreita:** das 9 colunas de largura fixa, ficam
+projeto, horas e dinheiro. As outras somem — o detalhe continua a um clique, no
+painel do projeto, que é o nível de baixo da árvore (CC-75). Era a tabela que
+mais vazava de lado, e a que ele mais olha.
+
+#### As onze, conferidas no ar
+
+| | |
+|---|---|
+| cockpit | Onde eu mexo agora? |
+| agentes | Quem está trabalhando agora? |
+| sprint | O que falta fechar? |
+| meu | O que depende de mim? |
+| glossário | O que é isso mesmo? |
+| tempo | Quanto tempo isso levou, e quanto vale? |
+| preço | Quanto cobrar por isso? |
+| agenda | O que eu tenho hoje? |
+| servidores | O que está no ar nesta máquina? |
+| VPS | A VPS está saudável? |
+| hooks | O que está me travando? |
+| remoto | Onde eu quero abrir uma sessão? |
+
+São doze com a VPS, que inaugurou o padrão.
+
+**Falta a consideração dele, página a página** — pedida em 16/08, depois de ver
+as telas prontas. É a fase de Prova do método `conserto`, e nenhuma tela está
+fechada até ele olhar.
 
 ### ✅ CC-88 15/08 — a aba `to-dos` virou `sprint`, e as cores inverteram
 

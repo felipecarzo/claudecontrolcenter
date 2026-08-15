@@ -754,6 +754,30 @@
   }
   /* CC-81: a resposta nasce ao lado da pergunta. z-index acima do header
      (que é sticky com 30), senão fica cortado quando o player está tocando. */
+  /* CC-87, a aba tempo em tela estreita. A tabela tem até 9 colunas de largura
+     fixa, e ela é a que ele mais olha — no celular sobrava rolagem lateral e
+     nenhuma leitura possível.
+
+     Aqui as colunas de detalhe (dias, média, tokens, custo/hora) somem, e ficam
+     projeto, horas e dinheiro: as três que respondem a pergunta do topo. O
+     detalhe continua a um clique, no painel do projeto, que é o nível de baixo
+     da árvore (CC-75). */
+  @container (max-width: 620px) {
+    .t-linha { grid-template-columns: 1fr 70px 76px !important; }
+    .t-linha > span:nth-child(3),
+    .t-linha > span:nth-child(4),
+    .t-linha > span:nth-child(5),
+    .t-linha > span:nth-child(7) { display: none; }
+    .t-aviso { font-size: 11px; }
+  }
+
+  /* CC-87, hooks agrupados por nível. A linha fantasma (ligada e não
+     registrada) é a única que ganha cor: ela parece ativa e não faz nada. */
+  .hk-grupo { margin-bottom: 14px; }
+  .hk-linha.fantasma { border-left: 3px solid var(--failed); padding-left: 7px; }
+  .hk-planejados { margin-top: 10px; }
+  .hk-planejados summary { color: var(--dim); font-size: 12px; cursor: pointer; }
+
   /* CC-91: o autorizar em linha própria, longe do seletor de modo. */
   .fw-aut {
     display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
@@ -2881,7 +2905,16 @@ function viewTempo() {
   }
 
   const totalValor = TEMPO.projetos.reduce((a, p) => a + p.valor, 0)
-  return `${ctl}${aviso}
+  /* CC-87. A pergunta tem duas metades porque a aba tem dois usos: saber quanto
+     levou, e saber quanto vale. O veredito responde as duas em uma frase, com o
+     projeto que mais consumiu — que é a informação que ele procura primeiro. */
+  const maior = [...TEMPO.projetos].sort((a, b) => b.ativoMs - a.ativoMs)[0]
+  const emReal = TEMPO.cambio.brlPorUsd ? brl(totalUsd * TEMPO.cambio.brlPorUsd) : usd(totalUsd)
+  const vdT = `${horas(totalMs)} de trabalho e ${emReal} em token no período.`
+    + (maior ? ` O maior é ${maior.projeto}, com ${horas(maior.ativoMs)}.` : '')
+
+  return cabecaDaTela('Quanto tempo isso levou, e quanto vale?', vdT, 'bom')
+    + `${ctl}${aviso}
     <div class="rolagem">
     <div class="t-linha t-head${cls}">
       <span>projeto</span><span class="v">horas</span><span class="v">dias</span>
@@ -4214,24 +4247,81 @@ async function alternarHook(id, on) {
   return carregarHooks(true)
 }
 
+/* CC-87, a tela mais técnica da lista. Três coisas mudaram:
+
+   1. **Agrupa por NÍVEL, não por evento.** `PreToolUse` e `Stop` são nomes do
+      Claude Code; "trava" e "avisa" é o que ele precisa saber. O nível veio do
+      CC-69, que declarou isso num lugar só justamente para servir aqui.
+   2. **O evento vira frase.** "quando eu vou usar uma ferramenta", não
+      `PreToolUse`.
+   3. **O veredito destaca o caso perigoso:** hook ligado e NÃO registrado. Ele
+      parece ativo na tela e não faz nada — é a pior combinação possível, e
+      estava escondida numa etiqueta cinza no canto. */
+const QUANDO_HOOK = {
+  PreToolUse: 'antes de cada ação minha',
+  PostToolUse: 'depois de cada ação minha',
+  Stop: 'quando eu termino de responder',
+  SessionStart: 'quando a conversa começa',
+  SessionEnd: 'quando a conversa acaba',
+  UserPromptSubmit: 'quando você manda uma mensagem',
+  PreCompact: 'antes de resumir a conversa',
+}
+
+const NIVEL_HOOK = {
+  trava: { titulo: 'travam', explica: 'recusam a ação e me obrigam a mudar de caminho', cor: 'failed' },
+  avisa: { titulo: 'avisam', explica: 'falam e deixam seguir — nunca bloqueiam', cor: 'waiting' },
+  injeta: { titulo: 'informam', explica: 'põem contexto no começo da conversa', cor: 'done' },
+  mede: { titulo: 'medem', explica: 'só registram, nunca aparecem', cor: 'dim' },
+}
+
 function viewHooks() {
   if (!HOOKS_DATA) return '<div class="empty">carregando…</div>'
-  const linhas = (HOOKS_DATA.hooks || []).map((h) => `
-    <div class="hk-linha">
+  const todos = (HOOKS_DATA.hooks || []).filter((h) => h.implementado)
+
+  /* O caso perigoso: ligado na tela e ausente do settings.json. Parece ativo e
+     não faz nada. É o que o veredito precisa gritar. */
+  const fantasmas = todos.filter((h) => h.ligado && !h.registrado)
+  const ativos = todos.filter((h) => h.ligado && h.registrado)
+  const travam = ativos.filter((h) => h.nivel === 'trava').length
+
+  const vd = fantasmas.length
+    ? `${fantasmas.length} hook(s) parecem ligados e não estão registrados — não fazem nada.`
+    : `${ativos.length} ativos, ${travam} deles podem me barrar.`
+
+  const linha = (h) => `
+    <div class="hk-linha${h.ligado && !h.registrado ? ' fantasma' : ''}">
       <label><input type="checkbox" ${h.ligado ? 'checked' : ''} data-hk-toggle="${esc(h.id)}"></label>
       <div class="hk-info">
         <b>${esc(h.label)}</b>
-        <span class="dim">${esc(h.evento)} · ${esc(h.descricao)}</span>
+        <span class="dim">${esc(QUANDO_HOOK[h.evento] || h.evento)} · ${esc(h.descricao)}</span>
       </div>
-      <span class="hk-badge ${h.registrado ? 'ok' : 'bad'}" title="${h.registrado
-    ? 'o script está de fato no settings.json do Claude Code'
-    : 'ligado aqui, mas não está registrado no settings.json — não faz nada ainda'}">
-        ${h.registrado ? '● registrado' : '○ não registrado'}
-      </span>
-      ${h.implementado ? '' : '<span class="hk-badge">planejado</span>'}
-    </div>`).join('')
+      ${h.ligado && !h.registrado
+        ? '<span class="hk-badge bad" title="ligado aqui, mas ausente do settings.json do Claude Code — não roda">não faz nada</span>'
+        : ''}
+    </div>`
 
-  return `<div class="hk-lista">${linhas}</div>`
+  const grupos = Object.entries(NIVEL_HOOK).map(([nivel, d]) => {
+    const lista = todos.filter((h) => (h.nivel || 'avisa') === nivel)
+    if (!lista.length) return ''
+    return `<section class="hk-grupo">
+      <div class="col-head">
+        <span style="color:var(--${d.cor})">${d.titulo}</span>
+        <span class="path">${d.explica}</span>
+        <span class="n">${lista.length}</span>
+      </div>
+      ${lista.map(linha).join('')}
+    </section>`
+  }).join('')
+
+  const planejados = (HOOKS_DATA.hooks || []).filter((h) => !h.implementado)
+
+  return cabecaDaTela('O que está me travando?', vd, fantasmas.length ? 'ruim' : 'bom')
+    + `<div class="hk-lista">${grupos}</div>`
+    + (planejados.length
+      ? `<details class="hk-planejados"><summary>${planejados.length} ainda não implementado(s)</summary>
+          ${planejados.map((h) => `<div class="hk-linha"><div class="hk-info"><b>${esc(h.label)}</b>
+            <span class="dim">${esc(h.descricao)}</span></div></div>`).join('')}</details>`
+      : '')
 }
 
 /* ========================== aba: rotinas ==========================
