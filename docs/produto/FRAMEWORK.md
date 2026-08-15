@@ -287,3 +287,51 @@ e Bancada). Vira frente própria no ROADMAP quando chegar a vez.
   Execução provavelmente passa a exigir pelo menos a camada de segredo
   rodada, não só os critérios do MVP marcados. Desenho de como isso entra no
   motor (`framework.mjs`) ainda não foi feito.
+
+## Por que não é LangChain (nem LangGraph, nem Google ADK)
+
+Escrito em 15/08, quando o Felipe trouxe uma tabela com oito frameworks de
+agente (LangChain, LangGraph, LlamaIndex, Microsoft Agent Framework, Google
+ADK, Deep Agents, OpenAI Agents SDK, PydanticAI) e perguntou se o nosso é a
+mesma coisa. É a pergunta que qualquer pessoa técnica vai fazer, então a
+resposta mora aqui.
+
+**Os oito servem para CONSTRUIR agentes. Este serve para GOVERNAR um agente que
+já existe.** Usa-se LangChain para escrever um programa que chama modelo, define
+ferramentas e orquestra passos. Este framework não constrói agente, não chama
+modelo e não orquestra nada: ele intercepta o Claude Code e recusa uma edição
+quando o MVP não está definido.
+
+A diferença técnica que resume: **eles rodam DENTRO do seu programa, este roda
+FORA do agente.** Eles são biblioteca que se importa; este é hook, do lado de
+fora, interceptando o que o agente tenta fazer. Daí vêm duas propriedades que
+nenhum dos oito tem:
+
+- vale para qualquer projeto sem reescrever uma linha dele;
+- continua valendo com o framework desligado, porque o gancho é o hook, não o
+  código do projeto.
+
+### Duas palavras da tabela deles enganam
+
+**"Memória"**, nos oito, é o que o modelo lembra dentro da conversa. A daqui é
+outra coisa: arquivo em disco que **sobrevive à conversa** e é escrito para o
+Felipe e para a próxima sessão. O `HANDOFF.md` é a memória deste framework, e um
+LLM não é o público principal dele. Ver [[COCKPIT]], que existe justamente
+porque ele não lê documento longo.
+
+**"Multiagente"**, nos oito, é orquestrar agentes que o próprio framework criou.
+O Método Routia coordena sessões que nascem por fora, inclusive em máquinas
+diferentes, e resolve outro problema: impedir que duas mexam no mesmo arquivo.
+
+### O que este NÃO tem, de propósito
+
+Orquestração, RAG, chamada de modelo, tipagem de saída. Nada disso está no
+caminho: não é o problema que ele resolve, e adotar qualquer um dos oito para
+ganhar isso não traria o gate, que é a peça inteira.
+
+### Onde eles se encontrariam
+
+Se um dia houver um agente próprio construído com um desses, este framework
+poderia governá-lo também — o motor (`framework.mjs`) é puro e o estado mora no
+projeto, não no Claude Code. O que prende hoje é só o gatilho, que é hook do
+Claude Code. É exatamente o F14 do plano.
