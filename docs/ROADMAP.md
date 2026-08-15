@@ -38,6 +38,23 @@ trabalhar o mais rápido possível"*. São **25 frentes abertas** — a lista ab
 | 7 | **CC-83** três backlogs | A coluna do meio vem das rotas | CC-78 |
 | 8 | **CC-76/77** prévias e cara de aplicativo | Ele quer ver antes; e o painel precisa reiniciar para mostrar o que já mudou | restart |
 
+**✅ A fila foi executada inteira em 15/08, menos o item 8**, que depende de ele
+reiniciar o painel e olhar. Junto saíram CC-69, CC-70 e CC-72, que estavam fora
+da fila e eram baratos.
+
+**O que sobrou, e por que cada um está parado:**
+
+| Item | Espera o quê |
+|---|---|
+| CC-76 / CC-77 | ele reiniciar o painel e dizer quais abas doem mais |
+| CC-68 catálogo de métodos | decisão de produto: qual é o terceiro método, e para quê |
+| CC-71 agir só no que mudou | a Bancada virar gate — sem ela não há o que otimizar |
+| CC-79 rotas × Pixel Agents | o CC-60: há dois Pixel Agents nesta VPS e um é de outro usuário |
+| CC-80 visão estrutural, CC-82 leitor | ele pediu para **estudar**, não para fazer |
+| CC-08 macOS | um Mac |
+| CC-60 o outro Pixel Agents | decisão dele: mostrar no cockpit ou desligar |
+
+
 **Fora da fila, e por quê:** CC-08 (precisa de um Mac), CC-60 e CC-79 (decisão
 dele sobre o segundo Pixel Agents), CC-68 a CC-72 (valem, e nenhum é urgente),
 CC-80 e CC-82 (ele pediu para estudar, não para fazer).

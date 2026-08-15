@@ -55,6 +55,74 @@ Três cuidados que valem repetir para quem abrir aquela sessão:
   caminho é trocar por uma nova (`cockpit-auth senha "<nova>"`), que revoga
   todos os dispositivos junto.
 
+## Dois pedidos do Felipe em 15/08, na sessão de senhas
+
+Registrados aqui a pedido dele, para outro agente ler. Nenhum dos dois foi
+implementado: a sessão de senhas não toca em código.
+
+### 1. Guia tem que virar etapa, não bloco de texto
+
+Palavras dele:
+
+> "se eu nao acho o primeiro item da sua mensagem eu automaticamente perco todo
+> o resto do texto, o ideal seria a gente usar o framework e transformar essas
+> guias em etapas, assim se eu nao achar algo ja trava desde o inicio"
+
+O caso real que gerou: passo a passo do Bitwarden escrito com âncora relativa
+("logo abaixo de X"). Ele não achou o X, e as outras seis linhas da mensagem
+viraram perda total. **O custo de uma âncora errada não é a âncora, é a
+mensagem inteira.**
+
+O formato que passou a valer na conversa, e que funcionou de primeira:
+
+- **uma etapa por mensagem**, nunca o guia todo
+- âncora **absoluta** (nome do bloco na tela), nunca "abaixo do que eu disse antes"
+- critério de sucesso explícito ("achou?")
+- **parada declarada** se não achar, em vez de seguir para a etapa seguinte
+- o total anunciado no começo ("etapa 1 de 3"), para ele saber onde está
+
+Candidato a virar recurso do framework, e não só jeito de escrever. É a mesma
+família do gate de MVP: o sistema para no primeiro critério que não fecha, em
+vez de despejar tudo e deixar a verificação por conta dele.
+
+### 2. ⚠️ Contato entre agentes do mesmo projeto, urgente
+
+Palavras dele:
+
+> "precisamos aprimorar o contato entre agentes no mesmo projeto urgente, esse
+> recadinho que a gente ta fazendo é ineficiente"
+
+O "recadinho" é o `docs/ROTAS-ATIVAS.md`. Hoje ele tem **336 linhas**, e a
+maior parte é conversa entre sessões: ticket escrito em markdown, que o outro
+agente só lê se abrir o arquivo, e responde escrevendo mais markdown embaixo.
+Quem chega depois lê tudo de novo para descobrir o que ainda vale.
+
+O `rota-pedidos.mjs` (13/08) resolveu **um** caso, o pedido de autorização, e é
+justamente o caso que virou comando em vez de texto. O resto continua sendo
+recado. Vale olhar o que ele resolveu e por quê antes de desenhar o geral.
+
+## A rodada de backlog de 15/08, à noite
+
+Ele mandou consolidar tudo e executar até o fim. **A fila de 8 saiu inteira,
+menos o item 8**, que depende dele. Junto saíram três que estavam fora da fila.
+
+| | |
+|---|---|
+| **CC-84** | dois agentes no mesmo projeto se falam, com recado que chega na PRÓXIMA ferramenta |
+| **CC-86** | `cc deps` — o que quebra se eu mexer aqui, lido do código em 23ms |
+| **CC-67** | `cc hooks install` — os 8 hooks de uma vez, sem editar JSON à mão |
+| **CC-81** | o mapa guarda as palavras DELE, e o clique abre colado na pastilha |
+| **CC-78** | rotas clicáveis no mapa; o azul é "o dono sumiu", derivado do CC-49 |
+| **CC-83** | três backlogs (agora / na fila / prontas), com o do meio derivado |
+| **CC-69** | quatro níveis de hook declarados num lugar só |
+| **CC-70** | `cc framework check` — o gate sob demanda, com código de saída pra CI |
+| **CC-72** | `cc hooks sync` — a cópia do repositório contra o que roda |
+
+**A decisão de método que atravessa tudo isso**, e que ele firmou depois de
+tentar organizar o projeto e desistir: **não organize, derive.** Peso das
+pastilhas, sprint, presença, dependência — nada disso é digitado, e por isso
+nada disso envelhece.
+
 ## Feito nesta sessão, em uma linha cada
 
 F16 (PDF sem `pdfjs-dist`), CC-46, CC-48, CC-49, CC-52, CC-53, CC-56, CC-65
