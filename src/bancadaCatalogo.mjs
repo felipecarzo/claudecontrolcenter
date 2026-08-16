@@ -227,6 +227,153 @@ export const CAMADAS = [
     },
   },
 
+  /**
+   * Segredo no HISTÓRICO, sem Gitleaks.
+   *
+   * O Gitleaks é a ferramenta prevista e não está instalado aqui. Mas o git
+   * sozinho resolve o essencial: `git log -G<regex>` acha o commit que
+   * INTRODUZIU um padrão, e é justamente isso que se procura.
+   *
+   * **Por que esta camada existe separada da de código:** apagar o arquivo não
+   * apaga o commit. Um segredo removido ontem continua clonável hoje por quem
+   * tiver o repositório — e o repositório deste projeto é público.
+   */
+  {
+    id: 'segredo-historico',
+    nome: 'Segredo no histórico',
+    grupo: 'segredo',
+    custo: 'grátis',
+    duracao: 'segundos',
+    ferramenta: 'git log -G (o Gitleaks faria mais, e não está instalado)',
+    explica: 'Chave, token e senha em QUALQUER commit do histórico — não só no código de agora. Apagar o arquivo não apaga o commit.',
+    aplicaA: (raiz) => fs.existsSync(path.join(raiz, '.git')),
+    async rodar(raiz) {
+      const achados = []
+      for (const p of PADROES_SEGREDO) {
+        // `-G` procura a EXPRESSÃO no diff; `--all` cobre todos os ramos
+        const r = await exec('git', ['log', '--all', '-G', p.re.source, '--format=%h %ad %s', '--date=short'], {
+          cwd: raiz, maxBuffer: 4 * 1024 * 1024, timeout: 30_000,
+        }).catch(() => null)
+        if (!r?.stdout?.trim()) continue
+
+        for (const linha of r.stdout.trim().split('\n').slice(0, 10)) {
+          const [hash, data, ...resto] = linha.split(' ')
+          achados.push({
+            gravidade: 'alta',
+            titulo: `${p.nome} entrou num commit`,
+            onde: `${hash} · ${data} · ${resto.join(' ').slice(0, 60)}`,
+            conserto: 'rotacione a credencial. Reescrever o histórico não basta: quem já clonou continua com ela.',
+          })
+        }
+      }
+      return { ok: achados.length === 0, achados }
+    },
+  },
+
+  /**
+   * A `service_role` do Supabase onde ela nunca pode estar.
+   *
+   * É a chave que **ignora todas as regras de acesso**. No servidor é normal;
+   * em qualquer coisa que chegue ao navegador é o fim da linha — quem abrir o
+   * DevTools lê o banco inteiro.
+   *
+   * Ele tem Supabase em produção nesta VPS, então a camada vale de verdade.
+   */
+  {
+    id: 'service-role',
+    nome: 'Caça à service_role',
+    grupo: 'dados',
+    custo: 'grátis',
+    duracao: 'segundos',
+    explica: 'A chave que ignora TODAS as regras de acesso, procurada onde ela nunca deveria estar: código de navegador, bundle, arquivo público.',
+    aplicaA: () => true,
+    async rodar(raiz) {
+      const achados = []
+      /* Pasta que vira navegador. `.env` fica FORA: lá a chave é legítima, e
+         acusá-la seria o alarme falso que faz desligar a camada. */
+      const perigosas = /(^|[\\/])(public|static|assets|dist|build|components?|pages|app|src[\\/](app|pages|components))([\\/]|$)/i
+      const RE_SERVICE = /service_role|SUPABASE_SERVICE_ROLE|supabaseServiceRole/
+
+      for (const arquivo of arquivosDe(raiz)) {
+        const rel = path.relative(raiz, arquivo)
+        if (/(^|[\\/])\.env/.test(rel)) continue
+        let texto = ''
+        try {
+          if (fs.statSync(arquivo).size > 2 * 1024 * 1024) continue
+          texto = fs.readFileSync(arquivo, 'utf8')
+        } catch { continue }
+        if (!RE_SERVICE.test(texto)) continue
+
+        const noNavegador = perigosas.test(rel)
+        const linha = texto.split('\n').findIndex((l) => RE_SERVICE.test(l)) + 1
+        achados.push({
+          gravidade: noNavegador ? 'alta' : 'média',
+          titulo: noNavegador
+            ? 'service_role em código que vai para o navegador'
+            : 'service_role citada no código',
+          onde: `${rel}:${linha}`,
+          conserto: noNavegador
+            ? 'tire daí AGORA e rotacione a chave: quem abrir o DevTools lê o banco inteiro'
+            : 'confirme que este arquivo só roda no servidor, e que a chave vem de variável de ambiente',
+        })
+      }
+      return { ok: !achados.some((a) => a.gravidade === 'alta'), achados }
+    },
+  },
+
+  /**
+   * Certificado e TLS dos domínios que estão no ar, com o `tls` do Node.
+   *
+   * O `testssl.sh` faria muito mais (cifras, protocolos velhos, vulnerabilidades
+   * nomeadas). O que cabe sem dependência é o que mais dói na prática:
+   * **certificado vencendo**. Renovação automática falha em silêncio, e o site
+   * cai num sábado.
+   */
+  {
+    id: 'tls',
+    nome: 'Certificado e TLS',
+    grupo: 'rede',
+    custo: 'grátis',
+    duracao: 'segundos',
+    ferramenta: 'node:tls (o testssl.sh faria mais, e não está instalado)',
+    explica: 'Quanto falta para o certificado de cada domínio vencer. Renovação automática falha calada, e o site cai no fim de semana.',
+    aplicaA: (raiz, cfg) => (cfg?.dominios || []).length > 0,
+    async rodar(raiz, cfg = {}) {
+      const tls = await import('node:tls')
+      const achados = []
+
+      for (const dominio of (cfg.dominios || []).slice(0, 20)) {
+        const cert = await new Promise((resolve) => {
+          const s = tls.connect({ host: dominio, port: 443, servername: dominio, timeout: 8000 }, () => {
+            const c = s.getPeerCertificate()
+            s.end()
+            resolve(c)
+          })
+          s.on('error', (e) => resolve({ erro: String(e.message || e) }))
+          s.on('timeout', () => { s.destroy(); resolve({ erro: 'tempo esgotado' }) })
+        })
+
+        if (cert?.erro) {
+          achados.push({
+            gravidade: 'alta', titulo: 'não consegui falar com o domínio',
+            onde: dominio, conserto: `verifique se está no ar: ${cert.erro}`,
+          })
+          continue
+        }
+        const dias = Math.round((new Date(cert.valid_to) - Date.now()) / 86400000)
+        if (dias < 21) {
+          achados.push({
+            gravidade: dias < 7 ? 'alta' : 'média',
+            titulo: dias < 0 ? 'certificado VENCIDO' : `certificado vence em ${dias} dias`,
+            onde: `${dominio} · ${cert.issuer?.O || 'emissor desconhecido'}`,
+            conserto: 'confira o certbot.timer — renovação automática falha em silêncio',
+          })
+        }
+      }
+      return { ok: achados.length === 0, achados }
+    },
+  },
+
   /* ==================== as declaradas, ainda sem execução ====================
      Decisão dele em 15/08: *"a bancada precisa ter todas as camadas, mas poder
      rodar elas individualmente"*.
@@ -245,9 +392,6 @@ export const CAMADAS = [
     { id: 'container', nome: 'Container e infraestrutura', grupo: 'suprimento', custo: 'grátis', duracao: 'minutos',
       ferramenta: 'Trivy',
       explica: 'Imagem Docker, Dockerfile e config de infra. Vale para a VPS, que roda 22 containers.' },
-    { id: 'segredo-historico', nome: 'Segredo no histórico', grupo: 'segredo', custo: 'grátis', duracao: 'segundos',
-      ferramenta: 'Gitleaks',
-      explica: 'Chave, token e senha em QUALQUER commit do histórico — não só no código de agora. Apagar o arquivo não apaga o commit.' },
     { id: 'segredo-vivo', nome: 'Segredo que ainda funciona', grupo: 'segredo', custo: 'grátis', duracao: 'minutos',
       ferramenta: 'TruffleHog',
       explica: 'Dos segredos achados, quais ainda respondem. Faz a chamada e confirma — transforma 200 alarmes em 3 reais.' },
@@ -266,16 +410,11 @@ export const CAMADAS = [
     { id: 'exposicao', nome: 'Exposição na internet', grupo: 'rede', custo: 'grátis', duracao: 'minutos',
       ferramenta: 'Nuclei',
       explica: 'O que responde de fora: painel aberto, rota administrativa, arquivo esquecido no servidor.' },
-    { id: 'tls', nome: 'Cabeçalho e TLS', grupo: 'rede', custo: 'grátis', duracao: 'segundos',
-      ferramenta: 'testssl.sh',
-      explica: 'Certificado, versão de TLS e cabeçalho de segurança dos domínios que estão no ar.' },
     { id: 'passiva', nome: 'Varredura passiva', grupo: 'rede', custo: 'grátis', duracao: 'minutos',
       ferramenta: 'OWASP ZAP baseline',
       explica: 'Navega o site sem atacar e aponta o que está exposto. Seguro de rodar em produção.' },
     { id: 'rls-supabase', nome: 'Sonda de RLS do Supabase', grupo: 'dados', custo: 'grátis', duracao: 'segundos',
       explica: 'Tenta ler tabela como anônimo. RLS mal configurado é o furo mais comum e mais caro em projeto com Supabase.' },
-    { id: 'service-role', nome: 'Caça à service_role', grupo: 'dados', custo: 'grátis', duracao: 'segundos',
-      explica: 'A chave que ignora TODAS as regras de acesso, procurada onde ela nunca deveria estar: código de navegador, bundle, repositório.' },
     { id: 'eval-prompt', nome: 'Eval de prompt', grupo: 'ia', custo: 'grátis', duracao: 'minutos',
       ferramenta: 'promptfoo',
       explica: 'O prompt continua respondendo o que devia depois de uma mudança. É teste de regressão para IA.' },

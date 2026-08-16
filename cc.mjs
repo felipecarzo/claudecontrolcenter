@@ -763,6 +763,11 @@ switch (cmd) {
 
     if (arg && arg !== 'rodar') die('uso: node cc.mjs bancada [rodar <camada>] [--dir X]')
 
+    /* Os domínios da camada TLS saem do retrato da VPS que já existe — o
+       `serverName` do nginx. Ele traz VÁRIOS por linha
+       ("ahtleta.com.br www.ahtleta.com.br"), e passar a linha inteira como
+       endereço deu dois falsos positivos no primeiro teste. */
+
     if (arg === 'rodar') {
       const id = positional[2]
       if (!id) die(`uso: node cc.mjs bancada rodar <camada>\ncamadas: ${C.CAMADAS.filter((c) => c.implementada).map((c) => c.id).join(', ')}`)
@@ -773,7 +778,19 @@ switch (cmd) {
           + `  ferramenta prevista: ${camada.ferramenta || '(própria)'}`)
       }
       console.log(`\n${camada.nome} — ${raiz}\n`)
-      const r = await B.rodar(raiz, id)
+
+      /* Os domínios da camada TLS saem do retrato da VPS que já existe. O
+         `serverName` do nginx traz VÁRIOS por linha ("a.com.br www.a.com.br"),
+         e passar a linha inteira como endereço deu dois falsos positivos no
+         primeiro teste — daí o split. */
+      const { readConfig } = await import('./src/config.mjs')
+      const dominios = [...new Set(
+        (readConfig().vpsSnapshot?.nginx || [])
+          .flatMap((n) => String(n.serverName || '').split(/\s+/))
+          .filter((d) => d.includes('.') && !d.includes('_') && !d.startsWith('*')),
+      )]
+
+      const r = await B.rodar(raiz, id, { dominios })
       if (r.erro) die(`  falhou: ${r.erro}`)
       if (!r.achados?.length) { console.log('  nada encontrado\n'); break }
       for (const a of r.achados) {

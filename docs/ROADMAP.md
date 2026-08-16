@@ -1560,11 +1560,38 @@ defeito possível numa ferramenta de verificação — ela diria "está limpo" s
 olhado. Achou também um grupo duplicado (`dado` e `dados`), que faria a tela
 mostrar duas seções para a mesma coisa.
 
+#### ✅ Mais três camadas, 16/08 — e nenhuma precisou de ferramenta externa
+
+Nenhuma das ferramentas previstas está instalada nesta VPS (Gitleaks, Trivy,
+Semgrep, Nuclei). Três camadas saíram assim mesmo, com o que já existe:
+
+**`segredo-historico`, com `git log -G` no lugar do Gitleaks.** O git sozinho
+acha o commit que INTRODUZIU um padrão, que é o essencial. Existe separada da
+camada de código por um motivo que vale repetir: **apagar o arquivo não apaga o
+commit** — um segredo removido ontem continua clonável hoje, e este repositório
+é público. Rodou aqui: nada encontrado.
+
+**`service-role`, a chave que ignora todas as regras do Supabase.** Procura onde
+ela nunca pode estar: pasta que vira navegador. `.env` fica de fora de propósito
+— lá a chave é legítima, e acusá-la seria o alarme falso que faz desligar a
+camada. Rodou no inovallbond e achou uma menção real em `openapi.json`,
+classificada como média (menção, não exposição).
+
+**`tls`, com o `node:tls` no lugar do testssl.sh.** Faz o que mais dói na
+prática: dizer quanto falta para o certificado vencer. Renovação automática
+falha em silêncio e o site cai no sábado.
+
+**Os domínios saem do retrato da VPS que já existia** — o `serverName` do nginx.
+E aí veio o defeito que o teste pegou: o nginx põe vários domínios na mesma
+linha (`ahtleta.com.br www.ahtleta.com.br`), e passar a linha inteira como
+endereço deu dois falsos positivos de "domínio fora do ar". Com o split, os 17
+domínios respondem e o mais próximo vence em 69 dias.
+
 #### O que falta
 
-Implementar as 15, uma a uma, por ordem de dor. E a decisão que já estava
-registrada: **a Bancada vira gate do framework** — o "pronto" da fase de
-Verificação passa a exigir camada rodada, não só critério marcado.
+Implementar as 12 restantes — todas dependem de ferramenta externa instalada. E
+a decisão que já estava registrada: **a Bancada vira gate do framework**, com o
+"pronto" da fase de Verificação exigindo camada rodada, não só critério marcado.
 
 ### Frente: Bancada — auditoria e teste agnóstico, ver [[produto/BANCADA]]
 
