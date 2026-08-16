@@ -788,6 +788,56 @@
   .todo-prova { border-left-color: var(--done); }
   .todo-prova b, .todo-pronto b { color: var(--faint); font-weight: 700; }
 
+  /* CC-100: o que acabou de mudar. Fica no TOPO da aba sprint porque a
+     pergunta que ela responde vem antes de "o que falta": ele abre o painel no
+     meio da conversa querendo saber o que aconteceu enquanto lia. */
+  .mudou {
+    border: 1px solid var(--line); border-left: 3px solid var(--done);
+    border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; background: var(--surface);
+  }
+  .mudou h4 {
+    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+    color: var(--done); margin: 0 0 8px;
+  }
+  .mudou h4 .dim { letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 10px; }
+  .mudou-item { display: grid; grid-template-columns: 62px 1fr; gap: 2px 8px; margin-bottom: 7px; font-size: 12px; }
+  .mudou-q { font-family: var(--mono); font-size: 10.5px; color: var(--faint); text-align: right; }
+  .mudou-t { overflow-wrap: anywhere; }
+  .mudou-p, .mudou-sp { grid-column: 2; font-size: 10.5px; line-height: 1.4; }
+  .mudou-p { color: var(--dim); }
+  .mudou-sp { color: var(--failed); }
+
+  /* CC-99: a revisão da tarefa, no backlog e não no chat. Vermelha enquanto
+     não foi respondida — apontamento em aberto é a coisa mais fácil de perder,
+     e era exatamente o que sumia na conversa. */
+  .todo-rev {
+    margin: -2px 0 6px 30px; font-size: 11px; line-height: 1.45; color: var(--dim);
+    border-left: 2px solid var(--failed); padding-left: 8px;
+  }
+  .todo-rev.rev-ok { border-left-color: var(--done); }
+  .todo-rev b { color: var(--faint); }
+  .rev-resp { display: block; color: var(--dim); }
+  .rev-aberta { display: block; color: var(--failed); font-size: 10px; }
+
+  /* CC-98: as duas ordens do backlog, no topo do mapa. */
+  .m-ordens { margin: 0 0 16px; }
+  .m-otabs { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+  .m-otab {
+    background: none; border: 1px solid var(--line); border-radius: 999px;
+    padding: 4px 11px; cursor: pointer; color: var(--dim); font-size: 11px;
+  }
+  .m-otab.on { border-color: var(--acento); color: var(--fg); }
+  .m-oexp { font-size: 11px; line-height: 1.45; margin: 0 0 8px; max-width: 62ch; }
+  .m-olist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; counter-reset: o; }
+  .m-olist li { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+  /* o número é o dado, não enfeite: a importância calculada ou a idade */
+  .m-onum {
+    flex: none; min-width: 34px; text-align: right; font-family: var(--mono);
+    font-size: 11px; color: var(--acento); font-variant-numeric: tabular-nums;
+  }
+  .m-otit { min-width: 0; overflow-wrap: anywhere; }
+  .m-odep { flex: none; font-size: 10px; color: var(--faint); }
+
   /* ---------- a bancada: níveis de verificação ---------- */
   .bn-niveis { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); margin-bottom: 12px; }
   .bn-nivel {
@@ -2527,6 +2577,10 @@ function viewTodos(jobs) {
         aria-label="texto da tarefa" placeholder="descreva a tarefa — em branco, ela some">
     </div>
     ${t.prova ? `<p class="todo-prova"><b>prova:</b> ${esc(t.prova)}</p>` : ''}
+    ${(t.revisoes || []).map((r) => `<p class="todo-rev${r.respondeu ? ' rev-ok' : ''}">
+      <b>${esc(r.quem)} apontou:</b> ${esc(r.apontou)}
+      ${r.respondeu ? `<span class="rev-resp">→ ${esc(r.respondeu)}</span>` : '<span class="rev-aberta">sem resposta</span>'}
+    </p>`).join('')}
     ${!t.done && t.pronto ? `<p class="todo-pronto"><b>pronto quando:</b> ${esc(t.pronto)}</p>` : ''}
     ${(() => {
       // CC-36: explicação do opencode, se já enriquecida. Chaveada por texto,
@@ -2571,6 +2625,7 @@ function viewTodos(jobs) {
     : `${abertasT} em aberto, ${feitasT} fechada(s).`
 
   return cabecaDaTela('O que falta fechar?', vdT, abertasT ? 'atencao' : 'bom')
+    + viewMudou()
     + `${alerta}<div class="lista">
     ${comTodo.length ? comTodo.map(grupo).join('') : '<div class="path">nenhum agente registrou tarefa ainda</div>'}
     ${semTodo.length ? `
@@ -5292,6 +5347,88 @@ async function abrirMapa(job) {
   desenharMapa()
 }
 
+/* CC-98: as duas ordens que ele pediu — "em ordem de tempo e importancia".
+   Duas listas curtas em vez de uma reordenação do mapa: reordenar tiraria o
+   agrupamento por frente, que é o que dá o contexto. Aqui elas respondem duas
+   perguntas diferentes, e o mapa inteiro continua embaixo.
+
+   Só o que está ABERTO entra. Item feito ou parado por decisão dele não é "o
+   que fazer agora" nem "o que está encalhado". */
+let ordemAberta = localStorage.getItem('cc-mapa-ordem') || 'importancia'
+
+/* CC-100 — o painel mexendo enquanto ele lê.
+   Pedido dele: *"que fiquem visiveis em locais faceis pra eu ver voce mexendo e
+   atualizando enquanto leio aqui"*.
+
+   O canal já existia: o painel redesenha a cada 2 segundos. O que faltava era o
+   agente escrever (CC-95) e a tela dizer O QUE mudou. Sem isso, a atualização
+   acontecia e era invisível — um número trocando de 5 para 6 não conta história.
+
+   Derivado de `feitoEm`, o carimbo que o `writeMeta` já grava ao fechar uma
+   tarefa. Nada de registro novo. */
+const JANELA_MUDOU = 45 * 60 * 1000
+
+function mudancasRecentes(agora = Date.now()) {
+  const saida = []
+  for (const j of DATA.jobs || []) {
+    for (const [texto, quando] of Object.entries(j.feitoEm || {})) {
+      const t = Date.parse(quando)
+      if (!Number.isFinite(t) || agora - t > JANELA_MUDOU) continue
+      const todo = (j.todos || []).find((x) => x.text === texto)
+      saida.push({ texto, quando: t, projeto: j.project, prova: todo?.prova || null })
+    }
+  }
+  return saida.sort((a, b) => b.quando - a.quando)
+}
+
+function viewMudou() {
+  const lista = mudancasRecentes()
+  if (!lista.length) return ''
+  const min = (t) => {
+    const m = Math.round((Date.now() - t) / 60000)
+    return m < 1 ? 'agora' : `há ${m}min`
+  }
+  return `<section class="mudou">
+    <h4>acabou de mudar <span class="dim">${lista.length} nos últimos 45min</span></h4>
+    ${lista.slice(0, 6).map((m) => `<div class="mudou-item">
+      <span class="mudou-q">${esc(min(m.quando))}</span>
+      <span class="mudou-t">${esc(m.texto)}</span>
+      ${m.prova ? `<span class="mudou-p">${esc(m.prova)}</span>` : '<span class="mudou-sp">sem prova</span>'}
+    </div>`).join('')}
+  </section>`
+}
+
+function viewOrdens() {
+  const o = MAPA?.ordens
+  if (!o) return ''
+  const vivos = (l) => l.filter((x) => x.estado === 'aberto' || x.estado === 'bloqueado')
+  const lista = ordemAberta === 'tempo' ? vivos(o.porTempo) : vivos(o.porImportancia)
+  if (!lista.length) return ''
+
+  const idade = (t) => {
+    if (!t) return ''
+    const h = (Date.now() - t) / 3600000
+    return h < 24 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`
+  }
+
+  return `<section class="m-ordens">
+    <div class="m-otabs">
+      <button class="m-otab${ordemAberta === 'importancia' ? ' on' : ''}" data-ordem="importancia">o que fazer agora</button>
+      <button class="m-otab${ordemAberta === 'tempo' ? ' on' : ''}" data-ordem="tempo">o que está encalhado</button>
+    </div>
+    <p class="dim m-oexp">${ordemAberta === 'importancia'
+    ? 'por importância: o que destrava outros itens, o que veio de pedido seu, e o peso da frente. Tudo derivado, nada digitado.'
+    : 'por idade: há quanto tempo o item foi escrito no ROADMAP e continua aberto. Sai do git, não de data escrita à mão.'}</p>
+    <ol class="m-olist">
+      ${lista.slice(0, 8).map((i) => `<li>
+        <span class="m-onum">${ordemAberta === 'tempo' ? esc(idade(i.nasceuEm)) : i.importancia}</span>
+        <span class="m-otit">${esc(i.titulo)}</span>
+        ${i.dependentes ? `<span class="m-odep">${i.dependentes} depende(m)</span>` : ''}
+      </li>`).join('')}
+    </ol>
+  </section>`
+}
+
 function fecharMapa() {
   mapaProjeto = null
   MAPA = null
@@ -5411,7 +5548,7 @@ function desenharMapa() {
   const barra = (feitos, itens) => (itens
     ? `<span class="m-frac">${feitos}/${itens}</span>` : '')
 
-  el.innerHTML = cabeca + viewNiveis(naFrente) + MAPA.grupos.map((g) => `
+  el.innerHTML = cabeca + viewNiveis(naFrente) + viewOrdens() + MAPA.grupos.map((g) => `
     <section class="m-grupo e-${g.estado}">
       <div class="m-gtit">
         <span class="m-selo">${ROTULO_ESTADO[g.estado] || g.estado}</span>
@@ -6037,6 +6174,13 @@ document.addEventListener('click', async (e) => {
 
   const aba = t.closest('button[data-tab]')
   if (aba) return trocarAba(aba.dataset.tab)
+
+  const ordemBtn = t.closest('[data-ordem]')
+  if (ordemBtn) {
+    ordemAberta = ordemBtn.dataset.ordem
+    localStorage.setItem('cc-mapa-ordem', ordemAberta)
+    return desenharMapa()
+  }
 
   const bnNivel = t.closest('[data-bn-nivel]')
   if (bnNivel) return bancadaAcao({ acao: 'nivel', nivel: bnNivel.dataset.bnNivel })

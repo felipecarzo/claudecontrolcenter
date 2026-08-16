@@ -24,7 +24,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { readJobs, summarize, writeMeta, marcarTodo, metaStatus, currentJobId } from './src/jobs.mjs'
+import { readJobs, summarize, writeMeta, marcarTodo, revisarTodo, metaStatus, currentJobId } from './src/jobs.mjs'
 import { startTui } from './src/tui.mjs'
 import { startWeb } from './src/web.mjs'
 import * as daemon from './src/daemon.mjs'
@@ -39,7 +39,7 @@ const argv = process.argv.slice(2)
 // como o alvo a autorizar. Achado testando o CLI do framework em 14/08.
 const FLAGS_WITH_VALUE = new Set([
   '--port', '--job', '--project', '--dir', '--metodo', '--motivo', '--nome', '--criterio', '--pastas',
-  '--prova', '--pronto', '--branch', '--alvo',
+  '--prova', '--pronto', '--branch', '--alvo', '--apontou', '--respondeu', '--quem',
 ])
 
 const has = (f) => argv.includes(f)
@@ -168,6 +168,30 @@ switch (cmd) {
       + ' o que ficou. Métrica de tempo por tarefa depende disso.',
     )
     process.exit(2)
+  }
+
+  /* CC-99: a revisão fica na tarefa, não na conversa.
+       cc revisar "tarefa" --apontou "o menu fecha sozinho"
+       cc revisar "tarefa" --respondeu "guarda no renderTabs, 4 casos"
+     Sem `--quem`, a revisão é dele: é ele quem revisa na prática, e escrever
+     "felipe" toda vez seria atrito no celular. */
+  case 'revisar': {
+    const id = val('--job') || currentJobId()
+    if (!id) die('sem job: rode dentro de uma sessão do Claude Code ou passe --job <id>')
+    if (!arg) die('uso: node cc.mjs revisar "texto da tarefa" --apontou "..." | --respondeu "..."')
+    try {
+      const r = revisarTodo(id, arg, {
+        apontou: val('--apontou'),
+        respondeu: val('--respondeu'),
+        quem: val('--quem') || 'felipe',
+      })
+      console.log(`↺ ${r.tarefa}`)
+      for (const rev of r.revisoes) {
+        console.log(`  ${rev.quem} apontou: ${rev.apontou}`)
+        if (rev.respondeu) console.log(`  respondido: ${rev.respondeu}`)
+      }
+    } catch (e) { die(e.message) }
+    break
   }
 
   case 'on':

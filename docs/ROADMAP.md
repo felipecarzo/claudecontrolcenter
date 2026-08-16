@@ -94,7 +94,7 @@ definição de pronto, e isso quebra praticamente todo o projeto"*.
 - **definição de pronto por tarefa**: hoje só há `mvp.criterios` por projeto.
   Sem isso, "feito" é opinião minha — e é o que ele mais teme
 
-### CC-98: o backlog ordenado por tempo E por importância
+### CC-98 ✅ 16/08 — o backlog ordenado por tempo E por importância
 
 *"me deem uma nocao de preenchimento em ordem de tempo e importancia"*. Hoje o
 ROADMAP tem uma ordem só, e implícita: a ordem em que os itens nasceram.
@@ -102,13 +102,13 @@ ROADMAP tem uma ordem só, e implícita: a ordem em que os itens nasceram.
 Derivar as duas, nunca digitar: tempo sai do `tempo.mjs` e do git; importância
 sai de quantos itens dependem daquele mais o que ele mesmo marcou.
 
-### CC-99: a revisão mora no backlog, não no chat
+### CC-99 ✅ 16/08 — a revisão mora no backlog, não no chat
 
 *"a revisao seja anotada, apontada e revisada nesse local, que seria o
 backlog"*. Hoje eu aponto defeito no chat e ele some na fita. Cada item precisa
 carregar o que foi revisado, o que foi apontado e o que foi respondido.
 
-### CC-100: o painel mexendo enquanto ele lê
+### CC-100 ✅ 16/08 — o painel mexendo enquanto ele lê
 
 *"que fiquem visiveis em locais faceis pra eu ver voce mexendo e atualizando
 enquanto leio aqui"*. O canal já existe — o painel atualiza a cada 2 segundos.

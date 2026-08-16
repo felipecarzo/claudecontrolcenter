@@ -12,6 +12,7 @@
 // meses, sem formato combinado. Vale o que o Markdown já diz: `##` agrupa,
 // `###` é a frente de trabalho, item de lista é tarefa.
 
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -135,6 +136,155 @@ export function pesoDe(f) {
   if (f.citacao) p += 1
   if (f.estado === 'bloqueado') p += 1
   return Math.min(3, p)
+}
+
+/**
+ * CC-98 — quando cada item do backlog nasceu, derivado do git.
+ *
+ * Pedido dele em 16/08: *"me deem uma nocao de preenchimento em ordem de tempo
+ * e importancia"*. Hoje o ROADMAP tem uma ordem só, e implícita: a ordem em que
+ * os itens foram escritos.
+ *
+ * **Uma chamada de git, não uma por item.** `git log -S "CC-95"` responde certo
+ * mas custa uma chamada por item — 40 itens seriam 40 processos. Ler os diffs
+ * de uma vez e procurar a linha `+### <título>` custa 276ms para o histórico
+ * inteiro deste arquivo, medido.
+ *
+ * A data é a do commit que **introduziu** o cabeçalho. Reescrever o item depois
+ * não muda o nascimento, que é o que se quer: o mapa mostra há quanto tempo
+ * aquilo está esperando, não quando mexi nele pela última vez.
+ *
+ * Devolve `Map<títuloNormalizado, timestampMs>`, vazio quando não é git.
+ */
+export function nascimentos(cwd) {
+  const arquivo = acharRoadmap(cwd)
+  if (!arquivo) return new Map()
+  const raiz = path.dirname(path.dirname(arquivo))
+  const nomeRel = path.relative(raiz, arquivo)
+
+  let saida = ''
+  try {
+    /* O marcador NÃO pode ser `@`: as linhas de contexto do diff começam com
+       `@@ -1,5 +1,7 @@`, e o parser lia isso como data, virando NaN. */
+    saida = execFileSync('git', ['log', '--format=__quando__%at', '--diff-filter=AM', '-p', '--', nomeRel], {
+      cwd: raiz, encoding: 'utf8', timeout: 20_000, maxBuffer: 3e7, stdio: ['ignore', 'pipe', 'ignore'],
+    })
+  } catch { return new Map() }
+
+  /* O log vem do mais novo para o mais velho, então a ÚLTIMA vez que um título
+     aparece como linha adicionada é o commit mais antigo — o nascimento. */
+  const quando = new Map()
+  let commit = 0
+  for (const linha of saida.split('\n')) {
+    if (linha.startsWith('__quando__')) {
+      const t = Number(linha.slice(10))
+      if (Number.isFinite(t) && t > 0) commit = t * 1000
+      continue
+    }
+    if (!linha.startsWith('+###')) continue
+    const chave = chaveDoTitulo(linha.slice(1))
+    if (chave && commit) quando.set(chave, commit) // sobrescreve: fica o mais antigo
+  }
+  return quando
+}
+
+/** O identificador estável de um título, para casar entre versões reescritas. */
+const chaveDoTitulo = (linha) => {
+  const id = /\b([A-Z]{1,3}-\d+)\b/.exec(linha)
+  if (id) return id[1]
+  const limpo = limpar(linha)
+  return limpo ? limpo.slice(0, 40).toLowerCase() : null
+}
+
+/**
+ * CC-98 — quanto este item importa, de 0 a 100.
+ *
+ * Derivado, nunca digitado, que é a regra mais usada deste projeto. Quatro
+ * sinais, e cada um responde a uma pergunta diferente:
+ *
+ * | sinal | pergunta |
+ * |---|---|
+ * | quantos itens dependem dele | destrava outros? |
+ * | o peso que já existia | é frente grande ou conserto solto? |
+ * | traz as palavras dele | é pedido dele ou coisa que eu inventei? |
+ * | há quanto tempo espera | está encalhado? |
+ *
+ * **Item parado (`⏸`) e item feito pesam pouco de propósito.** Importância aqui
+ * é "o que fazer agora": um item que depende de decisão dele não é urgente para
+ * mim, por mais central que seja.
+ *
+ * A idade entra com peso pequeno e teto. Sem teto, um item de três meses
+ * dominaria a lista para sempre — e velho não é o mesmo que importante.
+ */
+export function importanciaDe(frente, { dependentes = 0, nasceuEm = null, agora = Date.now() } = {}) {
+  if (frente.estado === 'feito') return 0
+  if (frente.estado === 'esperando') return 10
+
+  let p = 20
+  p += Math.min(30, dependentes * 15)          // destravar outros é o que mais conta
+  p += (pesoDe(frente) - 1) * 10               // 0, 10 ou 20
+  if (frente.citacao) p += 15                  // pedido dele vale mais que ideia minha
+  if (frente.estado === 'bloqueado') p += 10
+
+  if (nasceuEm) {
+    const dias = Math.max(0, (agora - nasceuEm) / 86_400_000)
+    p += Math.min(10, Math.round(dias))        // teto: velho não é o mesmo que importante
+  }
+  return Math.min(100, p)
+}
+
+/**
+ * Quem depende de quem, lido do texto que já está escrito.
+ *
+ * "Depende do CC-60" é como os itens sempre disseram isso — não há campo novo
+ * a preencher, e não deve haver: mais um lugar para envelhecer.
+ */
+export function dependencias(grupos) {
+  const conta = new Map()
+  for (const g of grupos) {
+    for (const f of g.frentes) {
+      const texto = [f.titulo, ...(f.corpo || [])].join(' ')
+      for (const m of texto.matchAll(/depende (?:do|de|dos)\s+([A-Z]{1,3}-\d+)/gi)) {
+        const alvo = m[1].toUpperCase()
+        conta.set(alvo, (conta.get(alvo) || 0) + 1)
+      }
+    }
+  }
+  return conta
+}
+
+/**
+ * O backlog nas DUAS ordens que ele pediu, no mesmo objeto.
+ *
+ * Não escolhe por ele: devolve as duas listas e deixa a tela mostrar as duas.
+ * Escolher uma seria decidir por ele qual pergunta importa mais hoje.
+ */
+export function ordenar(cwd, mapa) {
+  const quando = nascimentos(cwd)
+  const deps = dependencias(mapa.grupos || [])
+  const agora = Date.now()
+
+  const itens = (mapa.grupos || []).flatMap((g) => g.frentes.map((f) => {
+    const chave = chaveDoTitulo(f.titulo)
+    const nasceuEm = quando.get(chave) || null
+    const dependentes = deps.get(chave) || 0
+    return {
+      titulo: f.titulo,
+      estado: f.estado,
+      grupo: g.titulo,
+      citacao: f.citacao || null,
+      itens: f.itens,
+      nasceuEm,
+      dependentes,
+      importancia: importanciaDe(f, { dependentes, nasceuEm, agora }),
+    }
+  }))
+
+  return {
+    // o mais antigo primeiro: é a ordem que mostra o que está encalhado
+    porTempo: [...itens].sort((a, b) => (a.nasceuEm || Infinity) - (b.nasceuEm || Infinity)),
+    porImportancia: [...itens].sort((a, b) => b.importancia - a.importancia),
+  }
 }
 
 /**

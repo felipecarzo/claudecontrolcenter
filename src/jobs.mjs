@@ -85,6 +85,31 @@ export function normalizeTodo(raw) {
        Felipe não consegue auditar hoje. */
     pronto: raw.pronto ? String(raw.pronto).slice(0, 400) : null,
     prova: raw.prova ? String(raw.prova).slice(0, 600) : null,
+    /* CC-99: a revisão mora aqui, não no chat.
+       Pedido dele em 16/08: "a revisao seja anotada, apontada e revisada nesse
+       local, que seria o backlog". Hoje eu aponto um defeito na conversa e ele
+       some na fita — quem chega depois não sabe o que já foi olhado.
+
+       Uma lista, não um campo: uma tarefa pode ser revisada mais de uma vez, e
+       sobrescrever apagaria a primeira rodada. Cada entrada tem quem apontou, o
+       que apontou e o que foi respondido. */
+    revisoes: Array.isArray(raw.revisoes)
+      ? raw.revisoes.slice(-10).map(normalizeRevisao).filter(Boolean)
+      : [],
+  }
+}
+
+/** Uma rodada de revisão. `respondeu` fica nulo até alguém responder. */
+function normalizeRevisao(r) {
+  if (typeof r === 'string') r = { apontou: r }
+  if (!r || typeof r !== 'object') return null
+  const apontou = String(r.apontou ?? r.texto ?? r.nota ?? '').trim()
+  if (!apontou) return null
+  return {
+    quem: String(r.quem || 'felipe').slice(0, 40),
+    apontou: apontou.slice(0, 600),
+    respondeu: r.respondeu ? String(r.respondeu).slice(0, 600) : null,
+    em: r.em || null,
   }
 }
 
@@ -416,6 +441,48 @@ export function marcarTodo(id, texto, done = true, { prova = null } = {}) {
     ? { ...t, done, prova: done ? (prova || t.prova) : null }
     : t))
   return { meta: writeMeta(id, { todos }), tarefa: escolhido.text, done, prova: prova || null }
+}
+
+/**
+ * CC-99 — registra uma revisão numa tarefa, ou responde a última em aberto.
+ *
+ * Pedido dele em 16/08: *"a revisao seja anotada, apontada e revisada nesse
+ * local, que seria o backlog"*. Hoje eu aponto um defeito no chat e ele some na
+ * fita: quem chega depois não sabe o que já foi olhado nem o que ficou de pé.
+ *
+ * `--apontou` abre uma rodada. `--respondeu` fecha a última aberta, em vez de
+ * criar outra — responder criando entrada nova deixaria a pergunta órfã e a
+ * resposta sem contexto, que é exatamente o problema do chat.
+ */
+export function revisarTodo(id, texto, { apontou = null, respondeu = null, quem = 'felipe', quando = null } = {}) {
+  if (!apontou && !respondeu) throw new Error('diga o que foi apontado (--apontou) ou respondido (--respondeu)')
+  const onde = caminhoDoEstado(id)
+  const meta = onde ? (readJson(onde.file, {}) || {}) : {}
+  const lista = Array.isArray(meta.todos) ? meta.todos.map(normalizeTodo).filter(Boolean) : []
+  if (!lista.length) throw new Error('este agente não tem to-dos no meta.json')
+
+  const norm = (x) => String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const a = norm(String(texto || '').trim())
+  if (!a) throw new Error('diga qual tarefa revisar')
+  const achados = lista.filter((t) => norm(t.text).includes(a) || a.includes(norm(t.text)))
+  if (!achados.length) throw new Error(`nenhum to-do parecido com "${texto}"`)
+  if (achados.length > 1) throw new Error(`"${texto}" casa com ${achados.length}: ${achados.map((t) => `"${t.text}"`).join(', ')}`)
+
+  const alvo = achados[0]
+  const em = quando || new Date().toISOString()
+  let revisoes = [...(alvo.revisoes || [])]
+
+  if (apontou) {
+    revisoes.push({ quem, apontou, respondeu: null, em })
+  } else {
+    // responde a ÚLTIMA em aberto; sem nenhuma, a resposta não tem a que se ligar
+    const i = revisoes.map((r) => !r.respondeu).lastIndexOf(true)
+    if (i < 0) throw new Error('não há revisão em aberto nesta tarefa para responder')
+    revisoes[i] = { ...revisoes[i], respondeu, respondidoEm: em }
+  }
+
+  const todos = lista.map((t) => (t.text === alvo.text ? { ...t, revisoes } : t))
+  return { meta: writeMeta(id, { todos }), tarefa: alvo.text, revisoes }
 }
 
 /**

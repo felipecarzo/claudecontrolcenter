@@ -262,7 +262,7 @@ const { normalizeTodo, normalizeLink } = await import('./src/jobs.mjs')
 /* `pronto` e `prova` entraram em 16/08 (CC-97). Comparar o objeto inteiro é
    proposital, apesar de quebrar a cada campo novo: foi assim que o `dono`
    apareceu como regressão escondida, e é barato de atualizar. */
-const TODO = (extra) => ({ dono: 'ia', pronto: null, prova: null, ...extra })
+const TODO = (extra) => ({ dono: 'ia', pronto: null, prova: null, revisoes: [], ...extra })
 assert.deepEqual(normalizeTodo({ text: 'a', done: true }), TODO({ text: 'a', done: true }))
 assert.deepEqual(normalizeTodo({ t: 'a', done: true }), TODO({ text: 'a', done: true })) // o caso real
 assert.deepEqual(normalizeTodo({ title: 'a' }), TODO({ text: 'a', done: false }))
@@ -273,6 +273,26 @@ assert.deepEqual(normalizeTodo('só texto'), TODO({ text: 'só texto', done: fal
 assert.equal(normalizeTodo({ text: 'a', pronto: 'a tela abre' }).pronto, 'a tela abre')
 assert.equal(normalizeTodo({ text: 'a', prova: 'npm test verde' }).prova, 'npm test verde')
 assert.equal(normalizeTodo({ text: 'a', prova: 'x'.repeat(900) }).prova.length, 600)
+
+/* CC-99: a revisão é LISTA, não campo. Uma tarefa pode ser revisada mais de uma
+   vez, e sobrescrever apagaria a rodada anterior — que é justamente o histórico
+   que ele pediu para não morrer no chat. */
+{
+  const comRev = normalizeTodo({
+    text: 'a',
+    revisoes: [
+      'o menu fecha sozinho',
+      { quem: 'felipe', apontou: 'e no telefone piora', respondeu: 'guarda no renderTabs' },
+      { apontou: '   ' },        // vazio não vira entrada
+    ],
+  })
+  assert.equal(comRev.revisoes.length, 2, 'revisão sem texto não pode virar linha vazia')
+  assert.equal(comRev.revisoes[0].quem, 'felipe', 'sem quem declarado, a revisão é dele')
+  assert.equal(comRev.revisoes[0].respondeu, null, 'apontado e ainda não respondido')
+  assert.equal(comRev.revisoes[1].respondeu, 'guarda no renderTabs')
+  // teto: um to-do não pode virar log infinito dentro do meta.json
+  assert.equal(normalizeTodo({ text: 'a', revisoes: Array(30).fill('x') }).revisoes.length, 10)
+}
 // quem faz a tarefa: o agente por padrão, o Felipe quando o meta.json diz
 assert.equal(normalizeTodo({ text: 'a', dono: 'felipe' }).dono, 'felipe')
 assert.equal(normalizeTodo({ done: true }), null) // sem texto não vira cartão vazio

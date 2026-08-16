@@ -27,7 +27,7 @@ import {
   volume as volumeMidia, mudo as mudoMidia,
 } from './midia.mjs'
 import { estado as estadoMaquina } from './maquina.mjs'
-import { lerRoadmap } from './roadmap.mjs'
+import { lerRoadmap, ordenar as ordenarRoadmap } from './roadmap.mjs'
 import { findProjects } from './install.mjs'
 import { commitsDesde } from './gitlog.mjs'
 import { digestTodos } from './digest.mjs'
@@ -876,7 +876,14 @@ function handler(req, res) {
   if (url.pathname === '/api/roadmap') {
     const cwd = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
     const mapa = cwd ? lerRoadmap(cwd) : null
-    return send(res, 200, mapa || { vazio: true })
+    if (!mapa) return send(res, 200, { vazio: true })
+    /* CC-98: as duas ordens vão JUNTO do mapa, não numa rota separada.
+       Quem abre o mapa quer as duas perguntas respondidas na mesma tela — "o
+       que fazer agora" e "o que está encalhado" —, e o custo é uma leitura de
+       git de ~280ms que só acontece quando alguém pede o mapa. */
+    let ordens = null
+    try { ordens = ordenarRoadmap(cwd, mapa) } catch { /* sem git, fica sem ordem */ }
+    return send(res, 200, { ...mapa, ordens })
   }
 
   // CC-36: enriquecimento de to-dos pelo opencode. Uma chamada por AGENTE
