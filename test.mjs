@@ -601,6 +601,55 @@ assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem
   }
 }
 
+/* --- CC-82, documentos: o que não pode se perder ---
+
+   Mesma casa temporária das notas, pela mesma razão: aqui se apaga documento
+   para conferir o rastro, e documento é fonte primária dele — texto ditado que
+   não tem outra cópia. Teste que escreve no dado real é defeito, mesmo com
+   restauração no `finally`. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-docs-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const doc = await import(`./src/documentos.mjs?casa=${encodeURIComponent(casa)}`)
+    assert.ok(doc.PASTA().startsWith(casa), 'o teste ia escrever na estante de verdade')
+
+    const a = doc.gravar({ titulo: 'Contrato da Carol', texto: '# Contrato\n\ncorpo', fonte: 'chat' })
+    assert.equal(a.id, 'contrato-da-carol', 'o id sai do título, legível fora do painel')
+
+    // título repetido não pode sobrescrever silenciosamente o documento anterior
+    const b = doc.gravar({ titulo: 'Contrato da Carol', texto: 'outro' })
+    assert.equal(b.id, 'contrato-da-carol-2')
+    assert.equal(doc.ler('contrato-da-carol').texto.trim(), '# Contrato\n\ncorpo')
+
+    // acrescentar é o caso do celular: soma ao fim, nunca troca o documento
+    doc.acrescentar('contrato-da-carol', 'linha ditada')
+    const depois = doc.ler('contrato-da-carol')
+    assert.ok(depois.texto.includes('corpo') && depois.texto.includes('linha ditada'))
+    assert.ok(depois.criadoEm, 'a data de criação sobrevive à reescrita')
+    assert.equal(depois.fonte, 'chat', 'a origem sobrevive à reescrita')
+
+    // gravar por cima deixa .bak, como as notas — o cuidado que veio do 09/08
+    assert.ok(fs.existsSync(path.join(doc.PASTA(), 'contrato-da-carol.md.bak')))
+
+    // apagar deixa rastro recuperável, nunca some de vez
+    doc.apagar('contrato-da-carol-2')
+    assert.equal(doc.listar().length, 1)
+    assert.ok(fs.readdirSync(doc.PASTA()).some((f) => f.includes('.apagado')),
+      'apagar documento tem que deixar cópia — é fonte primária, não tem de onde regenerar')
+
+    // frontmatter é escrito à mão; o parser precisa aguentar a volta
+    const { meta, texto } = doc._internals.separar(doc._internals.juntar({ titulo: 'x: y' }, 'corpo'))
+    assert.equal(meta.titulo, 'x: y')
+    assert.equal(texto, 'corpo')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
 // --- mídia: nome de app legível e escolha da sessão certa ---
 const midia = await import('./src/midia.mjs')
 const { nomeBonito, normalizar } = midia._internals

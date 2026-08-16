@@ -38,6 +38,8 @@ src/
   roadmap.mjs    o ROADMAP.md do projeto virando mapa na tela
   midia.mjs      o que está tocando e os controles; normaliza e cacheia
   midia.ps1      as duas APIs do Windows (SMTC + WASAPI), em processo vivo
+  documentos.mjs a estante: um .md por documento, fora do projeto para ele
+                 alcançar de qualquer máquina; publica no docs/ quando vira decisão
   graficos.js    motor de gráficos: índice do que cruza com o quê, e o SVG
                  (servido em /graficos.js; não é módulo, roda no navegador)
   install.mjs    bloco do protocolo no CLAUDE.md dos projetos
@@ -436,6 +438,12 @@ errada por definição.
   `footer { padding:0 20px 28px }` pintaram uma faixa cinza dentro de cada
   cartão. Agora são `#painel > header` e `#painel > footer`. Vale para qualquer
   componente novo: ou escopa a regra global, ou não usa a tag.
+- **Existe UM `<h1>` na página, e a regra solta dele pegava o leitor de
+  documentos.** `h1 { text-transform: uppercase; white-space: nowrap }` cortava
+  a última letra do título dentro do `.doc-leitor`. É a terceira vez que regra
+  global de TAG colide com componente (antes foram `<header>` e `<footer>` no
+  cartão de agente). Regra sobre tag semântica sempre escopada pelo pai —
+  `#painel > header h1` — mesmo quando só existe um elemento daquele tipo hoje.
 - **Classe de estado solta pinta o que não devia.** `.s-working { background }`
   existia para a bolinha de status; quando o cartão passou a carregar
   `s-<status>` para colorir a borda, o fundo inteiro virou laranja com o texto

@@ -195,7 +195,11 @@
      página, com 20px de recuo — parecia uma faixa cinza dentro do cartão. */
   #painel > header { position: sticky; top: 0; z-index: 30; background: var(--bg); padding: 14px 20px 0; }
   .top { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; }
-  h1 {
+  /* Escopado no cabecalho: existe UM <h1> na pagina, o nome do painel, e a
+     regra solta pegava tambem o titulo dentro do leitor de documentos —
+     `nowrap` mais caixa alta cortavam a ultima letra. Mesma armadilha ja
+     registrada com <header> e <footer> dentro do cartao de agente. */
+  #painel > header h1 {
     font: 700 20px/1 var(--label); letter-spacing: .26em;
     text-transform: uppercase; margin: 0; white-space: nowrap;
   }
@@ -773,6 +777,54 @@
   }
   .gl-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
   .gl-card { border: 1px solid var(--faint); border-radius: 10px; padding: 12px 14px; }
+
+  /* ---------- CC-82: a estante de documentos ---------- */
+  .doc-barra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .doc-barra input { flex: 1 1 220px; min-width: 0; }
+  .doc-lista { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
+  .doc-card {
+    display: grid; gap: 3px; text-align: left; cursor: pointer; padding: 12px 14px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg);
+  }
+  .doc-card:hover { border-color: var(--acento); }
+  .doc-card b { font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
+  .doc-card span { color: var(--faint); font-size: 11px; }
+  /* O leitor tem medida propria, e ela nao e a do painel. Texto corrido em
+     coluna larga se le mal — 68 caracteres e o limite classico, e aqui vale
+     dobrado porque o documento e para LER, nao para bater o olho como a tabela
+     de agentes. Corpo em 15px pelo mesmo motivo. */
+  .doc-leitor { max-width: 68ch; font-size: 15px; line-height: 1.6; }
+  .doc-leitor h1 {
+    font: 700 22px/1.25 var(--sans, inherit); letter-spacing: normal;
+    text-transform: none; white-space: normal; margin: 0 0 10px; overflow-wrap: anywhere;
+  }
+  .doc-leitor h2 { font-size: 17px; margin: 22px 0 8px; }
+  .doc-leitor h3 { font-size: 15px; margin: 18px 0 6px; }
+  .doc-leitor p { margin: 0 0 12px; }
+  .doc-leitor ul { margin: 0 0 12px; padding-left: 20px; }
+  .doc-leitor li { margin-bottom: 4px; }
+  .doc-leitor blockquote {
+    margin: 0 0 12px; padding-left: 12px; border-left: 3px solid var(--faint);
+    color: var(--dim); font-style: italic;
+  }
+  .doc-leitor pre { background: var(--surface); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; }
+  .doc-leitor code { background: var(--surface); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .doc-pe { color: var(--faint); font-size: 11px; margin-top: 20px; }
+
+  #doc-edit {
+    width: min(760px, 94vw); border: 1px solid var(--line); border-radius: 12px;
+    background: var(--bg); color: var(--fg); padding: 18px;
+  }
+  #doc-edit::backdrop { background: rgba(0, 0, 0, .6); }
+  #doc-edit h2 { font: 700 13px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; margin: 0 0 14px; color: var(--dim); }
+  #doc-edit input, #doc-edit textarea { width: 100%; margin-bottom: 10px; }
+  #doc-edit textarea {
+    font: 13px/1.55 var(--mono); resize: vertical; padding: 10px 12px;
+    background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .doc-edit-pe { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11px; }
+  .btn.primario { border-color: var(--acento); color: var(--acento); }
+  .btn.perigo { border-color: var(--failed); color: var(--failed); }
   .gl-card header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
   .gl-card p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.45; }
   .gl-card footer { margin-top: 8px; }
@@ -1647,6 +1699,22 @@
 <div class="scrim" id="scrim-mapa"></div>
 <aside class="mapa" id="mapa" hidden role="dialog" aria-label="mapa do projeto"></aside>
 
+<!-- CC-82: o editor de documento. Fora do #main de proposito — `render()`
+     reescreve aquele bloco a cada tique do stream, e o cursor sumiria no meio
+     da frase. Aqui nada o redesenha. -->
+<dialog id="doc-edit" aria-label="editar documento">
+  <h2>novo documento</h2>
+  <input type="hidden" data-doc-id>
+  <input data-doc-titulo placeholder="titulo" autocomplete="off">
+  <textarea data-doc-texto rows="16" placeholder="o texto. aceita # titulo, **negrito**, - lista, > citacao e ```codigo```"></textarea>
+  <div class="doc-edit-pe">
+    <span class="dim">so grava quando voce clica em guardar</span>
+    <span class="grow"></span>
+    <button class="btn" data-doc-cancelar>cancelar</button>
+    <button class="btn primario" data-doc-salvar>guardar</button>
+  </div>
+</dialog>
+
 <script src="/graficos.js"></script>
 <script>
 const $ = (s) => document.querySelector(s)
@@ -1701,6 +1769,7 @@ const TABS = [
   // reclamou, mas sem tela o recurso não existe pra ele.
   { id: 'meu', label: 'meu' },
   { id: 'glossario', label: 'glossário' },
+  { id: 'docs', label: 'documentos' },
   { id: 'remoto', label: 'remoto' },
 ]
 
@@ -1722,7 +1791,7 @@ const GRUPOS = [
   { id: 'agora', label: 'agora', abas: ['projetos', 'agentes', 'todos', 'meu', 'escritorio'] },
   { id: 'custo', label: 'custo', abas: ['tempo', 'graficos', 'preco'] },
   { id: 'controle', label: 'controle', abas: ['servidores', 'vps', 'hooks', 'rotinas', 'remoto'] },
-  { id: 'saber', label: 'saber', abas: ['glossario', 'agenda'] },
+  { id: 'saber', label: 'saber', abas: ['glossario', 'docs', 'agenda'] },
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
 // painel sem nenhuma aba marcada.
@@ -3838,6 +3907,7 @@ function carregarDaAba() {
   if (tab === 'escritorio') carregarPaineis()
   if (tab === 'meu') carregarMeu()
   if (tab === 'glossario') carregarGlossario()
+  if (tab === 'docs') carregarDocs()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()
   if (tab === 'preco') carregarPreco()
 }
@@ -3950,6 +4020,158 @@ async function carregarGlossario(force) {
     GLOSSARIO = { verbetes: [], termos: [] }
   }
   render()
+}
+
+/* ==================== aba: documentos (CC-82) ====================
+   A estante: guardar a fonte primária dele (ideias, textos ditados, contrato
+   que chegou pelo chat) num lugar que ele alcança de qualquer máquina.
+
+   Separada das notas de propósito, com a distinção que ele mesmo fez: "notas é
+   mais em tempo real, são coisas que eu vou anotar. E esse mecanismo é pra
+   guardar documentos". Nota grava a cada tecla; documento é peça fechada.
+
+   ⚠️ O editor mora num <dialog>, FORA do `#main`. A razão está na lista de
+   armadilhas: `render()` reescreve o painel a cada tique do stream, e um
+   textarea ali dentro perderia o cursor no meio da frase. O <dialog> não é
+   tocado pelo redesenho. */
+let DOCS = null
+let docsBusca = ''
+let docAberto = null      // id do documento no leitor
+let docCorpo = null       // corpo carregado, para não reler a cada render
+
+async function carregarDocs(force) {
+  if (DOCS && !force) return
+  try {
+    DOCS = (await (await fetch('/api/docs')).json()).docs || []
+  } catch { DOCS = [] }
+  render()
+}
+
+async function abrirDoc(id) {
+  docAberto = id
+  docCorpo = null
+  render()
+  try {
+    docCorpo = await (await fetch(`/api/docs?id=${encodeURIComponent(id)}`)).json()
+  } catch { docCorpo = { erro: 'não deu para ler' } }
+  render()
+}
+
+/* Markdown reduzido ao que ele escreve. Mesmo subconjunto do `previa.mjs`, e
+   pelo mesmo motivo: "algo bem leve" foi a palavra dele, e uma biblioteca
+   quebraria a regra de zero dependência do projeto. */
+function mdParaHtml(md) {
+  const linhas = String(md || '').split(/\r?\n/)
+  const fora = []
+  let lista = false
+  let codigo = false
+  const inline = (t) => esc(t)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\[\[([^\]]+)\]\]/g, '<b>$1</b>')
+  for (const l of linhas) {
+    if (/^```/.test(l)) { fora.push(codigo ? '</pre>' : '<pre>'); codigo = !codigo; continue }
+    if (codigo) { fora.push(esc(l)); continue }
+    const item = /^\s*[-*]\s+(.+)$/.exec(l)
+    if (item) {
+      if (!lista) { fora.push('<ul>'); lista = true }
+      fora.push(`<li>${inline(item[1])}</li>`); continue
+    }
+    if (lista) { fora.push('</ul>'); lista = false }
+    const h = /^(#{1,3})\s+(.+)$/.exec(l)
+    if (h) { fora.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`); continue }
+    const cit = /^>\s?(.*)$/.exec(l)
+    if (cit) { fora.push(`<blockquote>${inline(cit[1])}</blockquote>`); continue }
+    if (l.trim()) fora.push(`<p>${inline(l)}</p>`)
+  }
+  if (lista) fora.push('</ul>')
+  if (codigo) fora.push('</pre>')
+  return fora.join('\n')
+}
+
+const quandoCurto = (ms) => {
+  if (!ms) return ''
+  const d = Math.floor((Date.now() - ms) / 86400000)
+  if (d === 0) return 'hoje'
+  if (d === 1) return 'ontem'
+  if (d < 30) return `há ${d} dias`
+  return new Date(ms).toLocaleDateString('pt-BR')
+}
+
+
+/* O editor. Vive num <dialog> justamente para escapar do `render()`: um
+   textarea dentro do `#main` perderia o cursor a cada 2 segundos. Ele também
+   não recebe gravação automática — documento é peça fechada, e salvar a cada
+   tecla é o comportamento do bloco de notas, que é o outro recurso. */
+let docArmado = null   // apagar exige dois cliques, como as notas
+
+function abrirEditor(doc) {
+  const dlg = $('#doc-edit')
+  dlg.querySelector('[data-doc-id]').value = doc?.id || ''
+  dlg.querySelector('[data-doc-titulo]').value = doc?.titulo || ''
+  dlg.querySelector('[data-doc-texto]').value = doc?.texto || ''
+  dlg.querySelector('h2').textContent = doc ? 'editar documento' : 'novo documento'
+  dlg.showModal()
+  dlg.querySelector(doc ? '[data-doc-texto]' : '[data-doc-titulo]').focus()
+}
+
+async function salvarDoc() {
+  const dlg = $('#doc-edit')
+  const id = dlg.querySelector('[data-doc-id]').value || null
+  const titulo = dlg.querySelector('[data-doc-titulo]').value.trim()
+  const texto = dlg.querySelector('[data-doc-texto]').value
+  if (!titulo && !texto.trim()) return dlg.close()
+  const r = await (await fetch('/api/docs', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id, titulo, texto, fonte: id ? undefined : 'painel' }),
+  })).json()
+  dlg.close()
+  await carregarDocs(true)
+  if (r?.id) abrirDoc(r.id)
+}
+
+function viewDocs() {
+  if (!DOCS) return '<div class="empty">abrindo a estante…</div>'
+
+  if (docAberto) {
+    const d = docCorpo
+    return `${cabecaDaTela('O que este documento diz?', d?.titulo || 'lendo…')}
+      <div class="doc-barra">
+        <button class="btn" data-doc-voltar>‹ todos os documentos</button>
+        ${d && !d.erro ? `<span class="grow"></span>
+          <button class="btn" data-doc-editar="${esc(d.id)}">editar</button>
+          <button class="btn ${docArmado === d.id ? 'perigo' : ''}" data-doc-apagar="${esc(d.id)}">
+            ${docArmado === d.id ? 'confirma apagar?' : 'apagar'}</button>` : ''}
+      </div>
+      ${!d ? '<div class="empty">lendo…</div>'
+    : d.erro ? `<div class="empty">${esc(d.erro)}</div>`
+      : `<article class="doc-leitor">${mdParaHtml(d.texto)}</article>
+         <p class="doc-pe">${esc(d.id)}.md · mexido ${quandoCurto(d.mexidoEm)}${
+  d.fonte ? ` · veio de ${esc(d.fonte)}` : ''}</p>`}`
+  }
+
+  const q = docsBusca.trim().toLowerCase()
+  const lista = DOCS.filter((d) => !q || d.titulo.toLowerCase().includes(q))
+  const veredito = DOCS.length
+    ? `${DOCS.length} guardado(s)${q ? `, ${lista.length} com "${docsBusca}"` : ''}`
+    : 'a estante está vazia'
+
+  return `${cabecaDaTela('O que eu guardei aqui?', veredito, DOCS.length ? 'neutro' : 'faint')}
+    <div class="doc-barra">
+      <input id="doc-q" value="${esc(docsBusca)}" placeholder="buscar documento…" autocomplete="off">
+      <button class="btn" data-doc-novo>novo documento</button>
+    </div>
+    ${!DOCS.length ? `<div class="empty">Nada guardado ainda. Serve para ideia sua, texto ditado,
+      contrato que chegou pelo chat: o que você quer reler daqui a meses, de qualquer máquina.
+      Diferente das notas, que são de agora.</div>`
+    : !lista.length ? '<div class="empty">nenhum documento com esse nome</div>'
+      : `<div class="doc-lista">${lista.map((d) => `
+        <button class="doc-card" data-doc-abrir="${esc(d.id)}">
+          <b>${esc(d.titulo)}</b>
+          <span>${d.palavras > 900 ? `${Math.round(d.palavras / 100) / 10} mil` : d.palavras} palavras
+            · ${quandoCurto(d.mexidoEm)}${d.fonte ? ` · ${esc(d.fonte)}` : ''}</span>
+        </button>`).join('')}</div>`}`
 }
 
 function viewGlossario() {
@@ -4720,6 +4942,7 @@ function render() {
     escritorio: () => viewEscritorio(),
     meu: () => viewMeu(),
     glossario: () => viewGlossario(),
+    docs: () => viewDocs(),
     remoto: () => viewRemoto(),
   }
   // O palco do escritório é um iframe. Reescrever #main a cada evento do
@@ -5612,6 +5835,30 @@ document.addEventListener('click', async (e) => {
   const aba = t.closest('button[data-tab]')
   if (aba) return trocarAba(aba.dataset.tab)
 
+  if (t.closest('[data-doc-novo]')) return abrirEditor(null)
+  if (t.closest('[data-doc-voltar]')) { docAberto = null; docCorpo = null; docArmado = null; return render() }
+  if (t.closest('[data-doc-cancelar]')) return $('#doc-edit').close()
+  if (t.closest('[data-doc-salvar]')) return salvarDoc()
+
+  const docAbrir = t.closest('[data-doc-abrir]')
+  if (docAbrir) return abrirDoc(docAbrir.dataset.docAbrir)
+
+  const docEditar = t.closest('[data-doc-editar]')
+  if (docEditar) return abrirEditor(docCorpo)
+
+  const docApagar = t.closest('[data-doc-apagar]')
+  if (docApagar) {
+    const id = docApagar.dataset.docApagar
+    if (docArmado !== id) { docArmado = id; return render() }  // primeiro clique so arma
+    await fetch('/api/docs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ apagar: id }),
+    })
+    docArmado = null; docAberto = null; docCorpo = null
+    return carregarDocs(true)
+  }
+
   const agDias = t.closest('[data-ag-dias]')
   if (agDias) {
     agendaDias = +agDias.dataset.agDias
@@ -6223,6 +6470,7 @@ for (const el of ['#q', '#proj', '#maq']) $(el).addEventListener('input', render
 // digita — o mesmo motivo pelo qual as notas moram fora do #main.
 document.addEventListener('input', (e) => {
   if (e.target?.id === 'gl-q') { glossarioBusca = e.target.value; render(); $('#gl-q')?.focus() }
+  if (e.target?.id === 'doc-q') { docsBusca = e.target.value; render(); $('#doc-q')?.focus() }
 })
 
 // Trocar o modo do framework é `change` num <select>, não clique num botão, e

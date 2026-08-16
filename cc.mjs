@@ -182,6 +182,72 @@ switch (cmd) {
     break
   }
 
+  /* CC-82: a estante pelo terminal, que é como ela funciona do celular.
+     `cc doc add "<titulo>" "<texto>"` cria; sem o texto, lê da entrada padrão,
+     que é o que permite `pbpaste | cc doc add "titulo"` e o ditado.
+     `cc doc + <id> "<linha>"` acrescenta ao fim — o caso que ele descreveu foi
+     "adiciona uma nota lá pra mim", nunca "troca o documento inteiro". */
+  case 'doc': {
+    const DOC = await import('./src/documentos.mjs')
+    const sub = arg || 'list'
+
+    if (sub === 'list' || sub === 'ls') {
+      const lista = DOC.listar()
+      if (!lista.length) { console.log('a estante está vazia'); break }
+      for (const d of lista) {
+        const quando = new Date(d.mexidoEm).toISOString().slice(0, 10)
+        console.log(`${d.id.padEnd(34)} ${String(d.palavras).padStart(6)} palavras  ${quando}  ${d.titulo}`)
+      }
+      break
+    }
+
+    if (sub === 'ver' || sub === 'cat') {
+      const doc = DOC.ler(positional[2])
+      if (!doc) die(`documento não existe: ${positional[2]}`)
+      console.log(doc.texto)
+      break
+    }
+
+    if (sub === 'add' || sub === 'novo') {
+      const titulo = positional[2]
+      if (!titulo) die('uso: node cc.mjs doc add "<titulo>" ["<texto>"]')
+      // sem texto no argumento, lê da entrada padrão: é o que deixa encadear
+      // com pipe, e ditar no celular sem escapar aspas de um texto longo
+      const texto = positional[3] ?? (process.stdin.isTTY ? '' : fs.readFileSync(0, 'utf8'))
+      const r = DOC.gravar({ titulo, texto, fonte: 'terminal' })
+      if (!r.ok) die(r.erro)
+      console.log(`guardado: ${r.id}`)
+      break
+    }
+
+    if (sub === '+' || sub === 'append') {
+      const id = positional[2]
+      const linha = positional[3] ?? (process.stdin.isTTY ? '' : fs.readFileSync(0, 'utf8'))
+      if (!id || !String(linha).trim()) die('uso: node cc.mjs doc + <id> "<linha>"')
+      const r = DOC.acrescentar(id, linha)
+      if (!r.ok) die(r.erro)
+      console.log(`acrescentado em ${r.id}`)
+      break
+    }
+
+    if (sub === 'rm' || sub === 'apagar') {
+      const r = DOC.apagar(positional[2])
+      if (!r.ok) die(r.erro)
+      console.log(`apagado (o arquivo virou .apagado, dá para recuperar)`)
+      break
+    }
+
+    if (sub === 'publicar') {
+      const r = DOC.publicar(positional[2], path.resolve(val('--dir') || process.cwd()))
+      if (!r.ok) die(r.erro)
+      console.log(`publicado em ${r.arquivo} — agora tem git`)
+      break
+    }
+
+    die('uso: node cc.mjs doc [list|ver|add|+|rm|publicar]')
+    break
+  }
+
   // `cc hooks` lista; `cc hooks on|off <id>` liga/desliga um hook específico —
   // não confundir com `cc on|off`, que é o interruptor geral do reporte.
   case 'hooks': {

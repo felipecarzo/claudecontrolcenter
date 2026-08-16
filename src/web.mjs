@@ -40,6 +40,7 @@ import {
 } from './servers.mjs'
 import { readPaineis, ligarPainel, desligarPainel, portaDe } from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
+import * as docs from './documentos.mjs'
 import {
   desligar as desligarFramework, gravar as gravarFramework, ler as lerFramework,
   ligar as ligarFramework, situacao as situacaoFramework,
@@ -293,6 +294,27 @@ function handler(req, res) {
       return comCorpo(req, res, 5e6, ({ notes }) => ({ notes: writeNotes(notes) }))
     }
     return send(res, 200, { notes: readNotes() })
+  }
+
+  // CC-82, a estante. Separada de /api/notes pela mesma razao que separa os
+  // dois recursos: nota grava a cada tecla e vem inteira no payload; documento
+  // e peca fechada, e a lista nao carrega o corpo de cada um — 500 documentos
+  // no stream seriam megabytes por tique.
+  if (url.pathname === '/api/docs') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 5e6, (b) => {
+        if (b?.apagar) return docs.apagar(b.apagar)
+        if (b?.acrescentar) return docs.acrescentar(b.acrescentar, b.linha || '')
+        if (b?.publicar) return docs.publicar(b.publicar, b.projeto || process.cwd())
+        return docs.gravar({ id: b?.id || null, titulo: b?.titulo, texto: b?.texto, fonte: b?.fonte })
+      })
+    }
+    const id = url.searchParams.get('id')
+    if (id) {
+      const doc = docs.ler(id)
+      return send(res, doc ? 200 : 404, doc || { erro: 'documento não existe' })
+    }
+    return send(res, 200, { docs: docs.listar() })
   }
 
   // Consultado só pela aba de servidores: a varredura leva ~3s e não pode

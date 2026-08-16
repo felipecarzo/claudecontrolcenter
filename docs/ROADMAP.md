@@ -942,7 +942,7 @@ regra no `control-center-estilo.md`, junto do padrão de resposta.
 O gate é a parte que funciona. Instrução escrita já falhou três vezes em dois
 dias (o próprio CC-90 nasceu disso), e regra sem porteiro é intenção.
 
-### CC-82: um leitor de documentos dentro do cockpit
+### CC-82 ✅ 16/08 (primeira fatia) — a estante de documentos
 
 Ideia dele em 15/08, logo depois do CC-81, e é a mesma ideia em escala maior:
 **guardar a fonte primária.** Palavras dele:
@@ -987,6 +987,43 @@ os alcança de outro lugar, que é exatamente a falta que este item nomeia.
 3. **"Adiciona uma nota lá pra mim" precisa de comando?** Ele citou isso como
    caso de uso. Seria `cc doc add`, irmão do `cc set` — e aí funciona pelo
    celular, que é o ponto.
+
+#### Feito em 16/08, e as três perguntas respondidas
+
+`src/documentos.mjs`, um arquivo `.md` por documento em
+`~/.claude/control-center-docs/`. Aba `documentos`, dentro de `saber`.
+
+1. **Onde mora:** fora do projeto, que é o que faz o "ver de qualquer lugar" —
+   a falta que o item nomeia é justamente o texto da Bancada preso em
+   `docs/produto/` de um repositório. `publicar()` copia para o `docs/` de um
+   projeto quando o documento vira decisão, e aí ele ganha git. Mora fora,
+   publica quando amadurece.
+2. **Passa pelo mascarador?** Não, e de propósito. O F12 vive no hook de
+   leitura de arquivo, que é onde o dado sai para a API. Repetir a lógica aqui
+   daria duas verdades para a mesma regra, e a segunda envelheceria calada.
+3. **Comando:** `cc doc list | ver | add | + | rm | publicar`. O `+` acrescenta
+   ao fim porque o caso que ele descreveu foi *"adiciona uma nota lá pra mim"*,
+   nunca trocar o documento inteiro. Sem texto no argumento, lê da entrada
+   padrão: dá para encadear com pipe e ditar sem escapar aspas.
+
+**O cuidado herdado das notas:** `.bak` antes de sobrescrever e `.apagado` com
+data ao remover. Documento é fonte primária dele — texto ditado não tem de onde
+regenerar. As notas já se perderam uma vez, em 09/08.
+
+**A armadilha que quase repeti:** o editor é um `<textarea>`, e a lista de
+armadilhas diz que textarea dentro do `#main` perde o cursor, porque `render()`
+reescreve o painel a cada 2 segundos. Ele mora num `<dialog>` irmão. Provado com
+o navegador: 7 segundos de stream ligado com o texto e o foco intactos.
+
+**Junto veio um defeito antigo:** a regra global `h1 { text-transform: uppercase;
+white-space: nowrap }` pegava o título dentro do leitor e cortava a última letra.
+Existe UM `<h1>` na página; a regra virou `#painel > header h1`.
+
+#### O que falta
+
+Anexar arquivo pela tela (hoje entra por texto ou pelo terminal), busca dentro
+do corpo — a de agora é só por título — e o documento viajar na federação, que é
+o que fecha o "ver de qualquer lugar" entre o PC e a VPS.
 
 ### CC-78 ✅ 15/08 — o quadro de rotas virou tela, e dá para mexer
 
