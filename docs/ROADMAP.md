@@ -887,7 +887,7 @@ de um documento não pode virar script na página.
 
 Regra também no `control-center-estilo.md`, que é injetado a cada sessão.
 
-### CC-92: o proxy da anonimização — pedido em 15/08 e NÃO registrado
+### CC-92 ⏸ direção — o proxy da anonimização (o hook resolve 80% com 1% do risco)
 
 **Escapou.** Ele disse, palavra por palavra: *"segue com o hook e já pode
 implementar ele, não precisa do proxy por enquanto, **mas anota ele**"*. O hook
@@ -1057,7 +1057,7 @@ dizendo que isso apaga a marca de quem estiver nela. E a decisão do CC-49
 continua de pé onde importa: o sistema nunca libera sozinho por silêncio, só
 mostra o azul e deixa a escolha com quem lê.
 
-### CC-79: ligar as rotas ao Pixel Agents
+### CC-79 ⏸ depende do CC-60 — ligar as rotas ao Pixel Agents
 
 Ideia dele: o escritório com os bonequinhos e o quadro de rotas conversarem.
 *"isso poderia ter uma conexão entre esses dois"*.
@@ -1070,7 +1070,7 @@ id da sessão, que é a chave que os liga.
 nosso e um do usuário `agente`, e ainda não foi decidido o que fazer com o
 segundo. Ligar rotas a um escritório indefinido é construir sobre areia.
 
-### CC-80: a visão estrutural do projeto
+### CC-80 ⏸ direção — a visão estrutural do projeto (ele pediu para ESTUDAR)
 
 O guarda-chuva dos dois acima, e o mais vago de propósito: ele pediu para
 **estudar**, não para fazer. O que está dito é o critério, não a solução — tem
@@ -1212,7 +1212,7 @@ cc framework check --json       para script
 casos: `teste_pierre_agenda` (sem MVP) sai 1 e lista o que falta;
 `proj_controlcenter` sai 0.
 
-### CC-71: agir só no que mudou
+### CC-71 ⏸ direção — agir só no que mudou (sem a Bancada como gate, não há o que otimizar)
 
 `lint-staged` roda só nos arquivos alterados, e é o que torna o hook rápido o
 bastante para ninguém desligar. Nosso equivalente ainda não tem uso claro — o
@@ -1291,7 +1291,7 @@ repositório e copiar no mesmo passo. Um `cc hooks sync` resolveria, e não exis
 Irmão do CC-61 (o `cockpit-auth.mjs`, que também não está em repositório e é a
 porta de entrada do painel inteiro).
 
-### CC-08 — só macOS continua sem prova
+### CC-08 ⏸ ambiente — só macOS continua sem prova (não existe Mac aqui)
 
 Era "macOS e Linux nunca rodaram". **Linux saiu da lista em 13 e 14/08**: o
 painel roda em produção nesta VPS Ubuntu, como serviço systemd, e o que foi
@@ -1425,7 +1425,7 @@ da casa do Claude Code, que a regra de ouro proíbe. Há teste guardando isso.
 `cc set` e `cc done` funcionam iguais nos dois tipos, e o painel lê o estado
 pelo mesmo `buildJob` de sempre — sem caso especial espalhado.
 
-### CC-60 ⚠️ REVIRADO em 15/08 — o da porta 3100 é o DEFINITIVO
+### CC-60 ⏸ decisão do Felipe — o da porta 3100 é o DEFINITIVO (falta resolver o segundo Pixel Agents)
 
 Achado em 14/08 investigando o escritório: já existe um `pixel-agents` rodando
 nesta VPS há mais de dois dias, na **porta 3100**, do usuário **`agente`**, que

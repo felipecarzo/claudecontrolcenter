@@ -119,14 +119,14 @@
    "achados": 0,
    "verificou": true,
    "detalhe": null,
-   "em": "2026-08-16T05:20:31.652Z"
+   "em": "2026-08-16T05:39:47.048Z"
   },
   "segredo-historico": {
    "ok": true,
    "achados": 0,
    "verificou": true,
    "detalhe": null,
-   "em": "2026-08-16T05:20:36.203Z"
+   "em": "2026-08-16T05:39:51.714Z"
   },
   "tls": {
    "ok": true,
@@ -143,7 +143,7 @@
    "achados": 0,
    "verificou": true,
    "detalhe": null,
-   "em": "2026-08-16T05:20:44.208Z"
+   "em": "2026-08-16T05:39:59.751Z"
   },
   "service-role": {
    "ok": true,
@@ -157,5 +157,5 @@
   "como": "as 11 telas nao respondem pergunta nenhuma: mostram o dado cru e ele traduz sozinho. Nos prints em tela estreita: nomes desalinhados, nada aparente, sem cara de aplicativo",
   "esperado": "cada tela abre com a pergunta dela no topo e um veredito em uma frase, nas palavras dele"
  },
- "nivelBancada": "interno"
+ "nivelBancada": "cliente"
 }

@@ -128,16 +128,33 @@ function ultimoPedido(texto) {
 }
 
 /**
- * Itens abertos do ROADMAP.
+ * Itens abertos E EXECUTÁVEIS do ROADMAP.
  *
  * O `roadmap.mjs` não serve aqui: ele lê o formato de frentes com `## Aberto`, e
  * este arquivo usa `### CC-NN`. Contar o que não tem ✅ é grosseiro de propósito
  * — o hook precisa de "sobrou trabalho", não do mapa inteiro.
+ *
+ * ## Os dois marcadores, e por que ⏸ precisou existir
+ *
+ * `✅` é feito. `⏸` é **aberto e parado por motivo que não depende de mim** —
+ * direção em vez de tarefa, dependência de outro item, ambiente que não existe,
+ * ou decisão que só o Felipe toma.
+ *
+ * Sem essa distinção o hook me devolvia com "6 itens abertos" quando nenhum dos
+ * seis era executável, e a única saída seria declarar parada toda vez. Guarda
+ * que cobra o impossível ensina a ignorá-lo, e aí ele não segura mais o caso
+ * real — que é justamente o que ele existe para pegar.
+ *
+ * O motivo vai no próprio título, depois do ⏸, para a lista da devolução ser
+ * legível sem abrir o arquivo.
  */
 function backlogAberto(raizProjeto) {
   let md = ''
   try { md = readFileSync(join(raizProjeto, 'docs', 'ROADMAP.md'), 'utf8') } catch { return [] }
   return md.split(/\r?\n/)
-    .filter((l) => /^###\s/.test(l) && !l.includes('✅') && !/^###\s*(Frente|Visão|Decis)/i.test(l))
+    .filter((l) => /^###\s/.test(l)
+      && !l.includes('✅')
+      && !l.includes('⏸')
+      && !/^###\s*(Frente|Visão|Decis)/i.test(l))
     .map((l) => l.replace(/^###\s*/, '').trim())
 }
