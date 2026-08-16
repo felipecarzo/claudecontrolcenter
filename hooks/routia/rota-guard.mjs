@@ -1,0 +1,285 @@
+// rota-guard — impede escrever em código sem antes marcar a rota no quadro.
+//
+// Por que existe: o Método Routia já estava escrito no CLAUDE.md do inovallbond
+// desde o acidente de 2026-08-04 (três sessões mexendo na mesma parte do jogo
+// sem se ver). Em 2026-08-06 duas sessões colidiram DE NOVO — e nenhuma das
+// duas tinha lido o quadro. Regra sem consequência é lembrete, e lembrete
+// compete com outras duzentas linhas de instrução.
+//
+// Como funciona: antes de Edit/Write nas pastas controladas do projeto,
+// procura no docs/ROTAS-ATIVAS.md uma rota 🔴 marcada com o id DESTA sessão.
+// Sem isso, bloqueia e diz exatamente qual linha escrever.
+//
+// Princípios:
+//   - FALHA ABERTA. Qualquer erro do próprio hook libera a edição. Um guard de
+//     coordenação que trava o trabalho por bug próprio é pior que o problema.
+//   - Não toca em projeto sem ROTAS-ATIVAS.md — o quadro é opt-in por repo.
+//   - Nunca bloqueia a edição do próprio quadro, senão marcar rota fica impossível.
+//   - Não bloqueia docs/ nem assets/: travar documentação travaria o /end-session,
+//     e a colisão que dói é em código.
+//
+// Pastas controladas: 2026-08-13, deixou de ser `apps`/`tools` fixo no código.
+// Lê `pastas-controladas: [x, y]` do front-matter do próprio ROTAS-ATIVAS.md;
+// sem esse campo (quadro antigo, como o do inovallbond), cai no hardcode de
+// sempre — comportamento antigo intacto pra quem já usa. Existe pra projeto
+// de app único (código em `src/`, sem `apps/`/`tools/`) poder usar o método
+// também, em vez do guard nunca agir nele — instalado por `cc routia install`.
+
+import { readFileSync } from 'node:fs'
+import { dirname, join, resolve, sep } from 'node:path'
+
+/** Libera e encerra. Todo caminho de erro passa por aqui. */
+function liberar() { process.exit(0) }
+
+/** Bloqueia: exit 2 devolve o stderr pro modelo como recusa da ferramenta. */
+function bloquear(mensagem) {
+  process.stderr.write(mensagem)
+  process.exit(2)
+}
+
+function lerEntrada() {
+  try { return JSON.parse(readFileSync(0, 'utf8')) } catch { return null }
+}
+
+/**
+ * A pasta principal do repositório, quando esta é uma worktree secundária.
+ *
+ * Numa worktree, `.git` não é pasta: é um arquivo de uma linha com
+ * `gitdir: /caminho/da/principal/.git/worktrees/<nome>`. Recortar antes de
+ * `/.git/worktrees/` dá a principal, sem rodar git nenhum — derivado, e a
+ * mesma informação que o `git worktree list` daria por muito mais caro.
+ *
+ * `null` quando esta já é a principal, ou quando não é repositório.
+ */
+function raizPrincipal(dir) {
+  let texto = ''
+  try { texto = readFileSync(join(dir, '.git'), 'utf8') } catch { return null }
+  const m = /^gitdir:\s*(.+?)[\\/]\.git[\\/]worktrees[\\/]/m.exec(texto.trim())
+  return m ? m[1] : null
+}
+
+/**
+ * Sobe a árvore procurando o quadro. null = projeto sem Routia.
+ *
+ * ⚠️ **Numa oficina (worktree), o quadro que vale é o da pasta PRINCIPAL.**
+ * Achado em 16/08, minutos depois de criar a primeira: cada worktree tem sua
+ * própria cópia dos arquivos, então cada uma tinha um quadro diferente, vindo do
+ * último commit. Dois agentes marcando rota em dois quadros que nunca se veem —
+ * a coordenação viraria teatro exatamente no cenário para o qual ela existe.
+ *
+ * Um quadro só, na principal, e todas as oficinas leem e escrevem nele.
+ */
+function acharQuadro(partida) {
+  let dir = partida
+  for (let i = 0; i < 30; i++) {
+    const alvo = join(dir, 'docs', 'ROTAS-ATIVAS.md')
+    try {
+      readFileSync(alvo, 'utf8')
+      const principal = raizPrincipal(dir)
+      if (principal) {
+        const doTronco = join(principal, 'docs', 'ROTAS-ATIVAS.md')
+        // se a principal sumiu ou não tem quadro, fica no local: falha aberta
+        try { readFileSync(doTronco, 'utf8'); return { quadro: doTronco, raiz: dir } } catch { /* usa o local */ }
+      }
+      return { quadro: alvo, raiz: dir }
+    } catch { /* sobe */ }
+    const pai = dirname(dir)
+    if (pai === dir) break
+    dir = pai
+  }
+  return null
+}
+
+/** O quadro traz uma legenda e um exemplo comentado que PARECEM linhas de rota.
+ *  Sem tirar os dois, a mensagem de bloqueio lista lixo — e mensagem com lixo é
+ *  mensagem que a próxima sessão ignora. */
+function linhasDeRota(texto) {
+  return texto
+    .replace(/<!--[\s\S]*?-->/g, '')            // fora o exemplo comentado
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.startsWith('|') && l.includes('`'))  // só linha de tabela com rota
+}
+
+/**
+ * `pastas-controladas: [src, apps]` do front-matter YAML do quadro. Parser
+ * ingênuo de propósito — não é YAML genérico, é uma linha com uma lista
+ * simples entre colchetes. `null` quando o campo não existe (quadro antigo),
+ * pra quem chama cair no hardcode de sempre.
+ */
+function pastasControladas(texto) {
+  // BOM no início (comum em arquivo salvo por algumas ferramentas do Windows,
+  // como PowerShell `Set-Content -Encoding utf8`) faria `^---` nunca casar.
+  const m = /^\uFEFF?---[\s\S]*?^pastas-controladas:\s*\[([^\]]*)\][\s\S]*?^---/m.exec(texto)
+  if (!m) return null
+  const lista = m[1].split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
+  return lista.length ? lista : null
+}
+
+/**
+ * Os arquivos que uma linha de rota reivindica, marcados com 📁.
+ *
+ * ## Por que isto existe, achado em 16/08
+ *
+ * Até aqui o guard perguntava só "esta sessão marcou ALGUMA rota?" — e, se sim,
+ * liberava a pasta controlada inteira. Duas sessões com rotas diferentes
+ * editavam o mesmo `src/ui.html` sem nenhum aviso. A separação era convenção,
+ * não trava, e o quadro dava a impressão contrária.
+ *
+ * O Felipe perguntou exatamente isso ao querer abrir um segundo agente para o
+ * front-end: *"o que temos de segurança pra fazer isso sem quebrar o projeto?"*
+ *
+ * ## O formato, e por que ele não quebra quadro nenhum
+ *
+ * Na coluna "Quem / o quê", em qualquer lugar dela:
+ *
+ *     | `cockpit` | 🔴 ocupada | ff0d68b2 — abas 📁 src/ui.html src/web.mjs | hoje |
+ *
+ * **Rota sem 📁 continua funcionando como antes** (libera a pasta inteira). É o
+ * que mantém os outros projetos e o histórico deste intactos: quem não declara
+ * nada não perde nada, e quem declara ganha a trava.
+ *
+ * Casa por prefixo, então `📁 src/` cobre a pasta e `📁 src/ui.html` cobre um
+ * arquivo. Glob completo seria mais poderoso e menos previsível de ler no
+ * quadro, que é um documento para humano antes de ser entrada de parser.
+ */
+function arquivosDaLinha(linha) {
+  const i = linha.indexOf('📁')
+  if (i < 0) return null
+  return linha.slice(i + 2)
+    .split('|')[0]                       // não vaza para a coluna seguinte
+    .split(/[\s,]+/)
+    .map((s) => s.trim().replace(/^`|`$/g, ''))
+    .filter((s) => s && /[/.]/.test(s))  // caminho tem barra ou ponto
+}
+
+/** Nomes de rota do quadro, pra mensagem de erro ser acionável. */
+function rotasDisponiveis(texto) {
+  const nomes = []
+  for (const linha of linhasDeRota(texto)) {
+    const m = linha.match(/\|\s*\S*\s*`([^`]+)`\s*\|/)
+    if (m && !nomes.includes(m[1])) nomes.push(m[1])
+  }
+  return nomes
+}
+
+const entrada = lerEntrada()
+if (!entrada) liberar()
+
+const arquivo = entrada.tool_input?.file_path
+if (!arquivo) liberar()
+
+const sessao = String(entrada.session_id || '')
+if (!sessao) liberar()          // sem identidade não dá pra cobrar rota
+const marca = sessao.slice(0, 8)
+
+let caminho
+try { caminho = resolve(arquivo) } catch { liberar() }
+
+const achado = acharQuadro(dirname(caminho))
+if (!achado) liberar()          // projeto sem quadro: nada a cobrar
+
+// Editar o próprio quadro é como se marca a rota — nunca pode ser bloqueado.
+if (caminho === resolve(achado.quadro)) liberar()
+
+let texto
+try { texto = readFileSync(achado.quadro, 'utf8') } catch { liberar() }
+
+// Só código. Documentação, assets e configuração de raiz passam direto. O
+// escopo vem do quadro (`pastas-controladas`); sem o campo, hardcode antigo.
+const relativo = caminho.slice(achado.raiz.length + 1)
+const primeiraPasta = relativo.split(sep)[0]
+const pastas = pastasControladas(texto) || ['apps', 'tools']
+if (!pastas.includes(primeiraPasta)) liberar()
+
+/* Arquivo reivindicado por OUTRA sessão barra mesmo quem tem rota própria.
+   Esta checagem vem ANTES da liberação por rota, e é o conserto inteiro: até
+   16/08 o guard perguntava só "esta sessão marcou alguma rota?", e uma resposta
+   sim liberava a pasta controlada inteira. Dois agentes com rotas diferentes
+   editavam o mesmo arquivo em silêncio.
+
+   Rota sem 📁 não reivindica nada e não barra ninguém — é o que mantém todo
+   quadro existente funcionando igual. */
+const relBarra = relativo.split(sep).join('/')
+const donoDoArquivo = linhasDeRota(texto).find((l) => {
+  if (!l.includes('🔴') || l.includes(marca)) return false
+  const alvos = arquivosDaLinha(l)
+  return alvos?.some((a) => relBarra === a || relBarra.startsWith(a.replace(/\/?$/, '/')))
+})
+
+if (donoDoArquivo) {
+  const nome = (donoDoArquivo.match(/`([^`]+)`/) || [])[1] || 'outra rota'
+  const quem = (donoDoArquivo.match(/\b([0-9a-f]{8})\b/) || [])[1] || 'outra sessão'
+  process.stderr.write(
+    `ARQUIVO DE OUTRA ROTA — ${relBarra} está reivindicado por \`${nome}\`.\n\n`
+    + `Dono agora: ${quem}. Sua marca: ${marca}.\n\n`
+    + `    ${donoDoArquivo}\n\n`
+    + 'Ter rota marcada não dá acesso ao projeto inteiro: a rota que declara\n'
+    + 'arquivos com 📁 fica com eles. Foi assim que, em 06/08, uma sessão\n'
+    + 'commitou três vezes o código que a outra tinha acabado de escrever.\n\n'
+    + 'O que fazer, em ordem:\n'
+    + '  1. Trabalhe no que é seu — quase sempre há outro arquivo na sua rota.\n'
+    + `  2. Precisa mesmo deste? Peça ao dono pelo recado do Routia, ou espere\n`
+    + `     ele liberar. Não edite o quadro para tomar a rota de alguém.\n`,
+  )
+  process.exit(2)
+}
+
+// Uma rota vale se está ocupada E carrega o id desta sessão.
+const marcada = linhasDeRota(texto).some(l => l.includes('🔴') && l.includes(marca))
+if (marcada) liberar()
+
+const rotas = rotasDisponiveis(texto)
+const linhasOcupadas = linhasDeRota(texto).filter(l => l.includes('🔴'))
+const ocupadas = linhasOcupadas.map(l => '    ' + l)
+
+// Autorização explícita do dono da rota vale como passe: é o que transforma o
+// bloqueio numa negociação entre agentes em vez de um beco sem saída. Carregado
+// aqui e não no topo porque tudo neste hook falha aberto — se o módulo sumir ou
+// quebrar, o guarda volta a ser exatamente o que era antes.
+let pedidos = null
+try {
+  pedidos = await import('./rota-pedidos.mjs')
+} catch { /* sem o módulo, comportamento antigo */ }
+
+if (pedidos) {
+  try {
+    if (pedidos.autorizado(achado.raiz, { marca, relativo })) liberar()
+  } catch { /* falha aberta: segue para o bloqueio normal */ }
+}
+
+let aviso = ''
+if (pedidos) {
+  try {
+    const donos = linhasOcupadas
+      .map((l) => (l.match(/\|\s*\S*\s*`([^`]+)`\s*\|/) || [])[1])
+      .filter(Boolean)
+    const p = pedidos.registrar(achado.raiz, { marca, relativo, rotasOcupadas: donos })
+    aviso = p?.status === 'negado'
+      ? `\nSeu pedido para este arquivo foi NEGADO${p.motivo ? `: ${p.motivo}` : ''}.\nEle voltou para pendente porque você tentou de novo. Fale com o Felipe antes de insistir.\n`
+      : `\nPEDIDO REGISTRADO (${p?.id || '?'}), tentativa ${p?.tentativas || 1}.\n`
+        + `O dono da rota é avisado no fim do turno dele e libera com:\n`
+        + `    node ~/.claude/hooks/rota-pedidos.mjs autorizar ${p?.id || '<id>'}\n`
+        + `Não fique esperando: siga com o que não depende deste arquivo.\n`
+  } catch { /* falha aberta: bloqueia sem registrar */ }
+}
+
+bloquear(
+`ROTA NÃO MARCADA — edição bloqueada em ${relativo}
+
+Este projeto usa o Método Routia (docs/COORDENACAO-AGENTES.md). Antes de tocar
+em código, marque sua rota em docs/ROTAS-ATIVAS.md — é o que impede duas sessões
+de mexerem na mesma parte sem se ver.
+
+Sua marca de sessão: ${marca}
+
+Rotas do quadro: ${rotas.length ? rotas.join(', ') : '(nenhuma listada)'}
+${ocupadas.length ? `\nJá ocupadas AGORA (não mexa nelas):\n${ocupadas.join('\n')}\n` : '\nNenhuma rota ocupada no momento.\n'}${aviso}
+Se a rota é sua e você só não marcou: edite docs/ROTAS-ATIVAS.md e troque
+🟢 livre por 🔴 ocupada, incluindo ${marca} na coluna "Quem / o quê". Exemplo:
+
+| 🟩 \`jogo/npcs\` | 🔴 ocupada | ${marca} — "zoom de dois dedos" | hoje |
+
+Se a rota tem outro dono, NÃO edite o quadro. O pedido acima já foi registrado
+para ele responder.
+`)

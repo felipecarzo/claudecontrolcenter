@@ -7,10 +7,12 @@
 // configuração o tempo todo por causa de uma tecla.
 
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
+import { casaClaude } from './platform.mjs'
 
-export const NOTES_FILE = path.join(os.homedir(), '.claude', 'control-center-notes.json')
+// via casaClaude(), nunca os.homedir() direto: o gate precisa apontar isto
+// pra uma pasta temporaria, senao ele escreve e apaga as notas de verdade
+export const NOTES_FILE = path.join(casaClaude(), 'control-center-notes.json')
 
 const LIMITS = { blocos: 200, titulo: 120, texto: 20000, altura: [40, 2000] }
 

@@ -18,7 +18,10 @@
  * de quem lê, igual à aba de rotinas. E não instala ferramenta: camada cuja
  * ferramenta não existe aparece como indisponível, com o motivo.
  */
-import { camadaDe, camadasDe } from './bancadaCatalogo.mjs'
+import {
+  camadaDe, camadasDe, todasAsCamadas,
+  NIVEIS, NIVEL_PADRAO, camadasDoNivel, avaliarNivel, nivelDaCamada,
+} from './bancadaCatalogo.mjs'
 import { registrarVerificacao } from './framework.mjs'
 import { gravar as gravarEstado, ler as lerEstado } from './frameworkDisco.mjs'
 
@@ -29,13 +32,21 @@ export function situacao(raiz, cfg = {}) {
   const resultados = estado?.verificacao || {}
 
   return {
-    camadas: camadasDe(raiz, cfg).map((c) => ({
+    // todas, não só as que cabem: camada que some da lista é indistinguível de
+    // camada que não existe, e a decisão dele foi ter o catálogo inteiro à vista
+    camadas: todasAsCamadas(raiz, cfg).map((c) => ({
       id: c.id,
       nome: c.nome,
       grupo: c.grupo,
       custo: c.custo,
       duracao: c.duracao,
       explica: c.explica,
+      implementada: c.implementada,
+      cabe: c.cabe,
+      porQueNao: c.porQueNao,
+      // em que nível de exigência esta camada entra; `null` = fora da escala,
+      // como as de IA, que dependem do projeto ter modelo e não do rigor
+      nivel: nivelDaCamada(c.id),
       escolhida: escolhidas.includes(c.id),
       resultado: resultados[c.id] || null,
     })),
@@ -68,13 +79,25 @@ export async function rodar(raiz, id, cfg = {}) {
     ok: Boolean(r.ok),
     achados: r.achados || [],
     nota: r.nota || null,
+    /* "não achei nada" e "não consegui olhar" são resultados DIFERENTES, e
+       confundir os dois é o pior defeito de uma ferramenta de verificação.
+       Achado rodando a camada `pacote-malicioso` contra o `mnzs`: o npm falhava
+       por falta de `node_modules` e ela respondia limpo.
+
+       Camada antiga não declara o campo e é `true` por padrão — todas de fato
+       verificam quando `aplicaA` deixa passar. Quem não consegue olhar precisa
+       dizer, e a partir daí a verificação NÃO conta como aprovada no framework. */
+    verificou: r.verificou !== false,
     duracaoMs: Date.now() - inicio,
   }
 
   const estado = lerEstado(raiz)
   if (estado) {
     const x = registrarVerificacao(estado, id, {
-      ok: resultado.ok,
+      // camada que não conseguiu olhar não vale como verificação aprovada
+      ok: resultado.ok && resultado.verificou,
+      achados: resultado.achados.length,
+      verificou: resultado.verificou,
       detalhe: resultado.achados.length
         ? `${resultado.achados.length} achado(s): ${resultado.achados[0].titulo}`
         : (resultado.nota || null),
@@ -87,6 +110,34 @@ export async function rodar(raiz, id, cfg = {}) {
 }
 
 /** Roda todas as camadas escolhidas na Definição, em série. */
+/**
+ * Roda o nível inteiro, pulando o que não cabe no projeto.
+ *
+ * O nível é a resposta à pergunta dele sobre "níveis diferentes de engenharia de
+ * cibersegurança": em vez de escolher dezenove caixinhas, escolhe-se **quem
+ * alcança o projeto** — e a lista de camadas sai disso.
+ *
+ * Camada declarada e sem execução é PULADA, não falha: dívida nossa não pode
+ * travar o projeto dele. Ela volta no veredito como `semExecucao`, que é
+ * informação, não reprovação.
+ */
+export async function rodarNivel(raiz, nivel = NIVEL_PADRAO, cfg = {}) {
+  if (!NIVEIS[nivel]) return { ok: false, erro: `nível desconhecido: ${nivel}` }
+
+  const porId = Object.fromEntries(situacao(raiz, cfg).camadas.map((c) => [c.id, c]))
+
+  const resultados = []
+  for (const id of camadasDoNivel(nivel)) {
+    const c = porId[id]
+    if (!c?.implementada || !c.cabe) continue
+    resultados.push(await rodar(raiz, id, cfg))
+  }
+
+  // relê a situação: o `rodar` gravou cada resultado no estado do framework
+  const veredito = avaliarNivel(nivel, situacao(raiz, cfg).camadas)
+  return { ok: true, nivel, veredito, resultados }
+}
+
 export async function rodarEscolhidas(raiz, cfg = {}) {
   const estado = lerEstado(raiz)
   const ids = estado?.ferramentas || []
@@ -96,6 +147,8 @@ export async function rodarEscolhidas(raiz, cfg = {}) {
   for (const id of ids) resultados.push(await rodar(raiz, id, cfg))
   return {
     ok: resultados.every((r) => r.ok && r.ok !== false),
+    // quantas realmente olharam, para a tela não somar cinza com verde
+    verificaram: resultados.filter((r) => r.verificou !== false).length,
     limpo: resultados.every((r) => r.ok && r.achados?.length === 0),
     resultados,
   }

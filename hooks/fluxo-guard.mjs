@@ -1,0 +1,143 @@
+#!/usr/bin/env node
+/**
+ * A trava de execução contínua do modo restritivo.
+ *
+ * ## Duas versões, e por que a primeira estava errada
+ *
+ * A primeira versão, escrita em 16/08, só disparava quando eu **prometia**
+ * continuar ("sigo", "continuo pelo que sobrou") e não continuava. Ele apontou o
+ * furo no mesmo dia:
+ *
+ * > "um gate parece permissivo demais e o restritivo deveria ter foco contínuo
+ * > em execução do backlog"
+ *
+ * Está certo, e o buraco é literal: **parar calado passava.** Que é justamente o
+ * comportamento que a queixa original nomeia — eu paro, ele acha que o trabalho
+ * segue, e descobre depois que não seguiu.
+ *
+ * ## A inversão
+ *
+ * Antes: continuar era o padrão, e parar precisava de promessa quebrada para ser
+ * pego. Agora: **com backlog aberto, parar é a exceção, e a exceção tem que ser
+ * declarada.** Nada de deduzir intenção do texto.
+ *
+ * ## As quatro saídas legítimas, em ordem de precedência
+ *
+ * 1. **Ele perguntou algo** (a mensagem dele termina em `?`). Responder É a
+ *    entrega; empurrar backlog em cima de uma pergunta é não escutar.
+ * 2. **`AskUserQuestion` foi usado no turno.** Parada legítima por definição:
+ *    a bola está com ele.
+ * 3. **Parada declarada**: uma linha começando com `Parada:` e o motivo. É o
+ *    "gosto, prioridade entre frentes, risco que ele assume" do próprio modo.
+ * 4. **Backlog zerado.** Nada a empurrar.
+ *
+ * ## Por que uma volta só, e não até zerar
+ *
+ * `stop_hook_active` limita a um empurrão por turno. Ignorar isso criaria um
+ * laço que executa o backlog inteiro sem ele conseguir entrar no meio — e a
+ * regra dele é a oposta, ele confere cada entrega. Uma volta basta: o efeito é
+ * que eu nunca paro sem ter continuado ou dito por que parei.
+ *
+ * Falha ABERTA em tudo: erro aqui não pode travar o fim do turno.
+ */
+import { readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const AQUI = dirname(fileURLToPath(import.meta.url))
+const sair = () => process.exit(0)
+
+let dados = null
+try { dados = JSON.parse(readFileSync(0, 'utf8')) } catch { sair() }
+if (dados?.stop_hook_active) sair()
+
+const cfg = await import(resolve(AQUI, '../src/config.mjs')).catch(() => null)
+if (cfg?.hookEnabled && !cfg.hookEnabled('fluxo-guard')) sair()
+
+const D = await import(resolve(AQUI, '../src/frameworkDisco.mjs')).catch(() => null)
+const F = await import(resolve(AQUI, '../src/framework.mjs')).catch(() => null)
+if (!D || !F) sair()
+
+const raiz = D.acharRaiz(dados?.cwd || process.cwd())
+if (!raiz) sair()
+
+const estado = D.ler(raiz)
+if (!estado || estado.ligado === false) sair()
+
+const modo = F.modoDe(estado)
+if (!modo?.fluxo) sair() // só onde o combinado é executar em sequência
+
+const arquivo = dados?.transcript_path || dados?.transcriptPath
+if (!arquivo) sair()
+
+let cauda = ''
+try { cauda = readFileSync(arquivo, 'utf8').slice(-160_000) } catch { sair() }
+
+/* Delimita o turno: tudo depois da última mensagem de gente. */
+const corte = cauda.lastIndexOf('"type":"user"')
+const turno = corte >= 0 ? cauda.slice(corte) : cauda
+
+/* 2. a caixa de pergunta foi usada — a bola está com ele */
+if (turno.includes('AskUserQuestion')) sair()
+
+const E = await import(resolve(AQUI, '../src/estilo.mjs')).catch(() => null)
+if (!E) sair()
+
+/* 1. ele perguntou: responder é a entrega */
+const pedido = ultimoPedido(cauda)
+if (pedido && /\?\s*$/.test(pedido.trim())) sair()
+
+/* 3. parada declarada, com motivo */
+const resposta = E.ultimaResposta(arquivo) || ''
+if (/^\s*(\*\*)?Parada:/im.test(resposta)) sair()
+
+/* 4. backlog: os itens do ROADMAP sem a marca de concluído */
+const abertos = backlogAberto(raiz)
+if (!abertos.length) sair()
+
+console.error(
+  `PAROU COM ${abertos.length} ITENS ABERTOS — modo ${modo.titulo}.\n\n`
+  + `Não pare para: ${modo.naoPara || modo.fluxo.naoPara}.\n`
+  + `Só pare para: ${modo.fluxo.paradaLegitima}.\n\n`
+  + 'Próximos na fila:\n'
+  + abertos.slice(0, 3).map((t) => `  · ${t}`).join('\n')
+  + '\n\nDuas saídas, e só estas duas:\n\n'
+  + '  1. EXECUTE agora o próximo item, sem anunciar que vai executar. Anúncio\n'
+  + '     não é execução: o turno acaba quando você para de chamar ferramenta.\n'
+  + '  2. Ou abra a resposta com uma linha "Parada: <motivo>" — e o motivo tem\n'
+  + '     que ser decisão dele, não dúvida técnica sua. Dúvida técnica você\n'
+  + '     resolve e reporta. Se for decisão dele mesmo, use o AskUserQuestion.\n\n'
+  + 'Esta é a única volta: a próxima passa.',
+)
+process.exit(2)
+
+/** A última coisa que uma PESSOA escreveu — injeção de skill e saída de tool não contam. */
+function ultimoPedido(texto) {
+  const linhas = texto.split('\n')
+  for (let i = linhas.length - 1; i >= 0; i -= 1) {
+    let l = null
+    try { l = JSON.parse(linhas[i]) } catch { continue }
+    if (l?.type !== 'user' || l?.isMeta || l?.toolUseResult) continue
+    const c = l?.message?.content
+    const t = typeof c === 'string'
+      ? c
+      : Array.isArray(c) ? c.filter((x) => x?.type === 'text').map((x) => x.text).join('\n') : ''
+    if (t && !t.startsWith('<')) return t
+  }
+  return null
+}
+
+/**
+ * Itens abertos do ROADMAP.
+ *
+ * O `roadmap.mjs` não serve aqui: ele lê o formato de frentes com `## Aberto`, e
+ * este arquivo usa `### CC-NN`. Contar o que não tem ✅ é grosseiro de propósito
+ * — o hook precisa de "sobrou trabalho", não do mapa inteiro.
+ */
+function backlogAberto(raizProjeto) {
+  let md = ''
+  try { md = readFileSync(join(raizProjeto, 'docs', 'ROADMAP.md'), 'utf8') } catch { return [] }
+  return md.split(/\r?\n/)
+    .filter((l) => /^###\s/.test(l) && !l.includes('✅') && !/^###\s*(Frente|Visão|Decis)/i.test(l))
+    .map((l) => l.replace(/^###\s*/, '').trim())
+}

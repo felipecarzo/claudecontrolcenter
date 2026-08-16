@@ -28,7 +28,23 @@ const AQUI = dirname(fileURLToPath(import.meta.url))
 
 const liberar = () => process.exit(0)
 
-function bloquear(texto) {
+/**
+ * CC-91 parte 3: registra o PEDIDO antes de recusar.
+ *
+ * Sem isto ele só vê que eu fui barrado, e a saída mais fácil é autorizar tudo
+ * com `**` — o atalho que esvazia o modo. Com o pedido registrado, ele libera
+ * o arquivo que eu pedi, sabendo qual é.
+ *
+ * Dentro de `try`: não conseguir registrar não pode impedir a recusa, que é a
+ * parte que protege.
+ */
+function bloquear(texto, pedido = null) {
+  if (pedido) {
+    try {
+      const r = pedirAutorizacao(pedido.estado, { alvo: pedido.alvo, quando: new Date().toISOString() })
+      if (r.ok) gravarEstado(pedido.raiz, r.estado)
+    } catch { /* segue e recusa */ }
+  }
   process.stderr.write(texto + '\n')
   process.exit(2)
 }
@@ -50,8 +66,8 @@ try {
 const caminho = dados?.tool_input?.file_path
 if (!caminho) liberar()
 
-const { acharRaiz, ler } = await import(resolve(AQUI, '../src/frameworkDisco.mjs')).catch(liberar)
-const { avaliar, podeEditar } = await import(resolve(AQUI, '../src/framework.mjs')).catch(liberar)
+const { acharRaiz, ler, gravar: gravarEstado } = await import(resolve(AQUI, '../src/frameworkDisco.mjs')).catch(liberar)
+const { avaliar, podeEditar, pedir: pedirAutorizacao } = await import(resolve(AQUI, '../src/framework.mjs')).catch(liberar)
 
 const alvo = resolve(String(caminho))
 const raiz = acharRaiz(dirname(alvo))
@@ -80,7 +96,10 @@ Como sair daqui:
   - o modo volta para "dialogo" em ${raiz}/.framework/estado.json
 
 Documentação, backlog e o próprio estado continuam livres: é o que a conversa
-produz, e travar isso tornaria impossível registrar a decisão.`)
+produz, e travar isso tornaria impossível registrar a decisão.
+
+Já registrei o pedido de "${rel}": ele aparece no cartão do projeto para você
+liberar SÓ este arquivo, em vez de liberar tudo.`, { estado, raiz, alvo: rel })
 }
 
 const a = avaliar(estado.metodo, estado)

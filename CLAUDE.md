@@ -38,6 +38,8 @@ src/
   roadmap.mjs    o ROADMAP.md do projeto virando mapa na tela
   midia.mjs      o que está tocando e os controles; normaliza e cacheia
   midia.ps1      as duas APIs do Windows (SMTC + WASAPI), em processo vivo
+  documentos.mjs a estante: um .md por documento, fora do projeto para ele
+                 alcançar de qualquer máquina; publica no docs/ quando vira decisão
   graficos.js    motor de gráficos: índice do que cruza com o quê, e o SVG
                  (servido em /graficos.js; não é módulo, roda no navegador)
   install.mjs    bloco do protocolo no CLAUDE.md dos projetos
@@ -175,12 +177,43 @@ errada por definição.
   aponta sempre pro mesmo `~/.claude/control-center.json`, então escrever
   nele pela porta de teste escreve no arquivo que o daemon real também lê.
   Achado testando o CC-20 (calendário): um calendário de teste foi salvo no
-  config de verdade do Felipe. Pra testar rota que ESCREVE config, ou aponta
-  `CC_HOME`/variável equivalente pra um `.claude` isolado (não existe hoje —
-  seria o conserto certo), ou remove cirurgicamente só a chave que o teste
-  gravou depois, nunca restaura o arquivo inteiro de um backup — o daemon
-  real pode ter escrito algo legítimo nesse meio-tempo, e restaurar por cima
-  perde esse dado.
+  config de verdade do Felipe. **Consertado em 15/08: `CC_HOME` existe.**
+  `casaClaude()`, em `platform.mjs`, é o único lugar que resolve a pasta
+  `.claude`, e `CC_HOME` redireciona tudo pra um `.claude` isolado. `config.mjs`
+  e `notes.mjs` já passam por lá; os outros 12 módulos que ainda chamam
+  `os.homedir()` direto são cache ou dado derivado, e entram quando alguém
+  precisar. Módulo novo usa `casaClaude()`, nunca `os.homedir()` — o furo só
+  aparece quando alguém perde dado.
+- **O gate escrevia nas notas DE VERDADE do Felipe, e isso é candidato à causa
+  do apagamento de 2026-08-09.** O bloco de notas do `test.mjs` gravava,
+  apagava tudo para conferir a cópia de segurança, e restaurava no `finally`.
+  Termina bem quando termina — `npm test` interrompido no meio (Ctrl+C, crash)
+  deixava o arquivo com a lista vazia, que é exatamente o sintoma registrado
+  ("amanheceu com `{"notes": []}`, sem que se conseguisse provar quem gravou").
+  Não é prova, é um caminho que existia e agora não existe: o bloco roda numa
+  casa temporária via `CC_HOME`. **Teste que escreve em dado real do Felipe é
+  defeito, mesmo com restauração no `finally`.**
+- **Dá para reiniciar o painel da VPS SEM root, e isso destrava o trabalho
+  remoto.** O serviço `agent-cockpit` tem `Restart=always`, e o painel expõe
+  `POST /api/shutdown` (criada para o `daemon restart`). Chamar essa rota derruba
+  o processo, e o systemd sobe de novo em segundos com o código novo — sem
+  senha, sem chave, do próprio `claudedev`. Achado em 15/08 com o Felipe na rua,
+  depois de uma tarde inteira em que toda mudança ficou invisível esperando ele
+  chegar num terminal. Confere pelo `MainPID`, que tem que mudar.
+- **Hook de `Stop` PODE barrar prosa, e eu tinha escrito que não podia.** A
+  armadilha registrada era "exit 2 no `Stop` devolve o texto pro modelo e o
+  manda continuar, criando laço" — verdade num gate de documentação, onde não há
+  o que fazer diferente na segunda passada. **Mas quando existe uma ação
+  concreta a tomar, o laço é justamente o mecanismo**: o `pergunta-guard`
+  devolve uma vez pedindo para refazer a pergunta no `AskUserQuestion`, e a
+  volta seguinte passa (`stop_hook_active`). Achado em 15/08, depois de o Felipe
+  me pegar duas vezes perguntando em prosa — e depois de eu "consertar" a
+  primeira vez com uma INSTRUÇÃO no injetor, que é exatamente o remédio que a
+  análise do próprio projeto diz não funcionar comigo.
+- **Hook novo precisa estar no `hooksCatalogo.mjs` ANTES de funcionar.**
+  `hookEnabled('id-desconhecido')` devolve `false`, então o hook sai calado
+  achando que está desligado. Custou uma rodada de teste inteira em 15/08: os
+  três casos que deviam barrar passavam, e a detecção estava certa o tempo todo.
 - **`fan[]` fica com resíduo** da última tool mesmo depois do job terminar. Só
   exibir enquanto o status é `working`.
 - **Truncar string já colorida corta o código ANSI no meio** e vaza `[0m` na
@@ -405,6 +438,12 @@ errada por definição.
   `footer { padding:0 20px 28px }` pintaram uma faixa cinza dentro de cada
   cartão. Agora são `#painel > header` e `#painel > footer`. Vale para qualquer
   componente novo: ou escopa a regra global, ou não usa a tag.
+- **Existe UM `<h1>` na página, e a regra solta dele pegava o leitor de
+  documentos.** `h1 { text-transform: uppercase; white-space: nowrap }` cortava
+  a última letra do título dentro do `.doc-leitor`. É a terceira vez que regra
+  global de TAG colide com componente (antes foram `<header>` e `<footer>` no
+  cartão de agente). Regra sobre tag semântica sempre escopada pelo pai —
+  `#painel > header h1` — mesmo quando só existe um elemento daquele tipo hoje.
 - **Classe de estado solta pinta o que não devia.** `.s-working { background }`
   existia para a bolinha de status; quando o cartão passou a carregar
   `s-<status>` para colorir a borda, o fundo inteiro virou laranja com o texto

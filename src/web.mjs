@@ -6,7 +6,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
-import { readSessoes } from './sessoes.mjs'
+import { PROJETOS_DIR as PROJETOS_DIR_SESSOES, readSessoes } from './sessoes.mjs'
+import {
+  alternarRota, corDaRota, humanizar as humanizarSilencio, lerQuadro, retratoDoQuadro,
+} from './presenca.mjs'
 import { buscar, lerGlossario, termosDe } from './glossario.mjs'
 import {
   acrescentar as acrescentarMeu, marcar as marcarMeu, remover as removerMeu, tudo as tudoMeu,
@@ -37,6 +40,12 @@ import {
 } from './servers.mjs'
 import { readPaineis, ligarPainel, desligarPainel, portaDe } from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
+import * as docs from './documentos.mjs'
+// estáticos, não `await import` dentro da rota: a função que trata a requisição
+// não é async, e o `await` ali quebrou o servidor inteiro por erro de sintaxe —
+// com o `npm test` passando, porque o gate não carregava este arquivo
+import * as bancada from './bancada.mjs'
+import * as bancadaCatalogo from './bancadaCatalogo.mjs'
 import {
   desligar as desligarFramework, gravar as gravarFramework, ler as lerFramework,
   ligar as ligarFramework, situacao as situacaoFramework,
@@ -57,6 +66,7 @@ import { registradoTodos } from './hooksRegistro.mjs'
 import { porProjeto } from './cockpit.mjs'
 import { listarContainers } from './docker.mjs'
 import { atualizarSnapshot, configurada as vpsConfigurada } from './vps.mjs'
+import { SECOES as SECOES_VPS, veredito as veredictoVps } from './vpsSaude.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
 import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
@@ -64,6 +74,12 @@ import { garantirCambio } from './cambio.mjs'
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
 const GRAFICOS = path.join(HERE, 'graficos.js')
+/* O alvo quando ninguém escolheu projeto no filtro.
+   `process.cwd()` NÃO serve: como serviço do systemd o painel roda de outro
+   diretório, e a bancada respondia "o framework está desligado aqui" sobre uma
+   pasta que não era projeto nenhum. A raiz do próprio código é estável em
+   qualquer forma de subir o painel. */
+const RAIZ_DO_PAINEL = path.join(HERE, '..')
 
 /**
  * `cwd` explícito vence. Sem ele, resolve pelo nome do projeto: (1) o `cwd`
@@ -95,6 +111,8 @@ function retratoFramework(raiz) {
     explicaModo: modo.explica,
     modoTrava: Boolean(modo.trava),
     autorizado: s.estado.autorizado || [],
+    // CC-91 parte 3: o que eu pedi e ele ainda não liberou
+    pedidos: s.estado.pedidos || [],
     modos: Object.values(MODOS).map((m) => ({ id: m.id, titulo: m.titulo, explica: m.explica })),
     fase: a.fase,
     tituloFase: a.tituloFase,
@@ -289,6 +307,27 @@ function handler(req, res) {
     return send(res, 200, { notes: readNotes() })
   }
 
+  // CC-82, a estante. Separada de /api/notes pela mesma razao que separa os
+  // dois recursos: nota grava a cada tecla e vem inteira no payload; documento
+  // e peca fechada, e a lista nao carrega o corpo de cada um — 500 documentos
+  // no stream seriam megabytes por tique.
+  if (url.pathname === '/api/docs') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 5e6, (b) => {
+        if (b?.apagar) return docs.apagar(b.apagar)
+        if (b?.acrescentar) return docs.acrescentar(b.acrescentar, b.linha || '')
+        if (b?.publicar) return docs.publicar(b.publicar, b.projeto || process.cwd())
+        return docs.gravar({ id: b?.id || null, titulo: b?.titulo, texto: b?.texto, fonte: b?.fonte })
+      })
+    }
+    const id = url.searchParams.get('id')
+    if (id) {
+      const doc = docs.ler(id)
+      return send(res, doc ? 200 : 404, doc || { erro: 'documento não existe' })
+    }
+    return send(res, 200, { docs: docs.listar() })
+  }
+
   // Consultado só pela aba de servidores: a varredura leva ~3s e não pode
   // pesar no painel principal nem no stream.
   if (url.pathname === '/api/servers') {
@@ -331,17 +370,32 @@ function handler(req, res) {
   // lê a tela do tmux, mais caro que o resto do stream.
   if (url.pathname === '/api/remote-control') {
     if (req.method === 'POST') {
-      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao }) => {
+      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, mais }) => {
         if (acao === 'desligar') return desligarRemoto(projeto)
         if (acao === 'link') return linkRemoto(projeto)
         const dir = cwdDoProjeto(cwd, projeto)
         if (!dir) throw new Error(`projeto não encontrado: ${projeto}`)
-        return ligarRemoto(projeto, dir)
+        // `mais`: outro agente na mesma pasta, em vez de devolver o que já existe
+        return ligarRemoto(projeto, dir, { mais: Boolean(mais) })
       })
     }
-    // GET: todo projeto conhecido (pra montar a lista de botões) + o que já
-    // está ligado agora.
-    const projetos = findProjects().map((dir) => ({ nome: path.basename(dir), dir }))
+    /* GET: todo projeto conhecido (pra montar a lista de botões) + o que já
+       está ligado agora.
+
+       Duas fontes, e a segunda é rede de segurança. `findProjects()` depende de
+       `projectsBase()`, que sem `CC_PROJECTS_BASE` nem config depende dos jobs
+       de background — e devolve ZERO em máquina que só tem sessão interativa
+       (mesma raiz do CC-53). O serviço systemd desta VPS define a variável,
+       então o painel de produção sempre listou certo; quem cai no buraco é o
+       `cc` rodado à mão no terminal. Os `cwd` das sessões e do histórico
+       cobrem isso: toda sessão que já rodou deixou um. */
+    const porDir = new Map(findProjects().map((dir) => [dir, path.basename(dir)]))
+    for (const j of [...readJobs(), ...readSessoes(), ...jobsHistoricos([]).mortos]) {
+      const dir = String(j?.cwd || '').replace(/[\\/]+$/, '')
+      if (dir && !porDir.has(dir)) porDir.set(dir, path.basename(dir))
+    }
+    const projetos = [...porDir].map(([dir, nome]) => ({ nome, dir }))
+      .sort((a, b) => a.nome.localeCompare(b.nome))
     return estadoRemoto().then((ativos) => send(res, 200, { projetos, ativos }))
   }
 
@@ -531,13 +585,64 @@ function handler(req, res) {
     return send(res, 200, { projetos: lista, at: Date.now() })
   }
 
+  /* A Bancada pela tela. Fora do stream de propósito: rodar uma camada leva de
+     segundos a minutos e fala com servidor de verdade — no `/api/jobs` isso
+     viraria varredura a cada 2 segundos, contra o projeto dele. */
+  if (url.pathname === '/api/bancada') {
+    const B = bancada
+    const C = bancadaCatalogo
+
+    if (req.method === 'POST') {
+      // `comCorpoAsync`, não `comCorpo`: rodar camada devolve promessa, e o
+      // síncrono responderia o objeto pendente em vez do resultado
+      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, nivel, camada }) => {
+        const raiz = cwdDoProjeto(cwd, projeto) || RAIZ_DO_PAINEL
+        const estado = lerFramework(raiz)
+        if (!estado) return { error: 'este projeto não tem framework ligado' }
+
+        if (acao === 'nivel') {
+          if (!C.NIVEIS[nivel]) return { error: `nível desconhecido: ${nivel}` }
+          gravarFramework(raiz, { ...estado, nivelBancada: nivel })
+          return { ok: true, nivel }
+        }
+        if (acao === 'rodar') {
+          const r = camada
+            ? await B.rodar(raiz, camada, estado.bancadaCfg || {})
+            : await B.rodarNivel(raiz, nivel || estado.nivelBancada || 'rascunho', estado.bancadaCfg || {})
+          return r.erro ? { error: r.erro } : r
+        }
+        return { error: 'ação desconhecida' }
+      })
+    }
+
+    /* Sem projeto escolhido no filtro, o alvo é a pasta onde o painel roda.
+       A alternativa seria a tela vazia com "não achei a pasta deste projeto",
+       que é o que aparecia — e é confuso, porque o filtro em "todos os
+       projetos" é o estado NORMAL de quem abre o painel. Verificação de
+       segurança é sempre de UM projeto: não existe rodar em todos de uma vez. */
+    const raiz = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto')) || RAIZ_DO_PAINEL
+    const estado = lerFramework(raiz)
+    const nivel = estado?.nivelBancada || 'rascunho'
+    const s = B.situacao(raiz, estado?.bancadaCfg || {})
+    return send(res, 200, {
+      raiz,
+      ligado: Boolean(estado && estado.ligado !== false),
+      nivel,
+      declarado: Boolean(estado?.nivelBancada),
+      niveis: Object.values(C.NIVEIS),
+      camadas: s.camadas,
+      veredito: C.avaliarNivel(nivel, s.camadas),
+      at: Date.now(),
+    })
+  }
+
   if (url.pathname === '/api/framework') {
     if (req.method === 'POST') {
       return comCorpo(req, res, 1e3, ({ projeto, cwd, acao, modo, alvo, motivo }) => {
         const raiz = cwdDoProjeto(cwd, projeto)
         if (!raiz) return { error: 'não achei a pasta deste projeto' }
 
-        // Trocar de modo e autorizar são o que faz o modo imperativo existir de
+        // Trocar de modo e autorizar são o que faz o modo sugestivo existir de
         // verdade: o desenho dele é "eu autorizo por clique", e sem estas duas
         // ações o clique não existe — sobraria a linha de comando, que não serve
         // para quem trabalha do celular.
@@ -627,6 +732,12 @@ function handler(req, res) {
       host: cfg.vps?.host || null,
       usuario: cfg.vps?.usuario || 'root',
       snapshot: cfg.vpsSnapshot,
+      /* O veredito vem pronto do servidor, e não é preferência: os limiares
+         (disco em 85%, memória em 90%, 5 reinícios) são regra de negócio e o
+         `npm test` prova cada um. Recalcular em JS de navegador daria duas
+         verdades para "a VPS está bem?". */
+      saude: veredictoVps(cfg.vpsSnapshot),
+      secoes: SECOES_VPS,
     })
   }
 
@@ -634,7 +745,7 @@ function handler(req, res) {
   // demorar (rede + comando remoto), por isso o timeout mais largo.
   if (url.pathname === '/api/vps/atualizar' && req.method === 'POST') {
     return atualizarSnapshot()
-      .then((snapshot) => send(res, 200, { ok: true, snapshot }))
+      .then((snapshot) => send(res, 200, { ok: true, snapshot, saude: veredictoVps(snapshot) }))
       .catch((e) => send(res, 500, { ok: false, error: String(e.message || e) }))
   }
 
@@ -843,6 +954,50 @@ function handler(req, res) {
 
   if (url.pathname === '/api/paineis/desligar' && req.method === 'POST') {
     return comCorpo(req, res, 1e4, ({ id }) => ({ painel: desligarPainel(id) }))
+  }
+
+  /* Abrir sessão do Claude Code pelo painel. Nasceu do celular: ele trabalha
+     pelo Remote Control e não tem terminal para abrir sessão em outra pasta.
+
+     A pasta vem SEMPRE da lista de projetos que o painel já conhece, nunca do
+     que a página mandar: aceitar caminho arbitrário daria ao painel o poder de
+     rodar o CLI em qualquer lugar do disco. */
+  /* CC-78: as rotas na tela, e clicáveis.
+     A pasta vem do projeto que o painel já conhece — nunca do que a página
+     mandar, senão o painel escreveria markdown em qualquer lugar do disco. */
+  if (url.pathname === '/api/rotas') {
+    const dir = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
+    if (!dir) return send(res, 200, { existe: false })
+    const jobs = readJobs()
+    const r = retratoDoQuadro(dir, {
+      jobs,
+      sessoes: readSessoes(Date.now(), { ignorar: jobs.map((j) => j.id) }),
+      pastaProjetos: PROJETOS_DIR_SESSOES,
+    })
+    if (!r) return send(res, 200, { existe: false, dir })
+    const texto = lerQuadro(dir) || ''
+    const todas = texto.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/)
+      .filter((l) => l.includes('|') && (l.includes('🔴') || l.includes('🟢')) && !/\[exemplo\]/i.test(l))
+      .map((l) => {
+        const nome = (l.match(/`([^`]+)`/) || [])[1] || null
+        const ocupada = r.ocupadas.find((o) => o.rota === nome)
+        return {
+          rota: nome,
+          cor: corDaRota(l, ocupada?.veredito),
+          quem: ocupada?.id || null,
+          silencio: ocupada ? humanizarSilencio(ocupada.silencioMs) : null,
+          veredito: ocupada?.veredito || null,
+        }
+      }).filter((x) => x.rota)
+    return send(res, 200, { existe: true, dir, rotas: todas })
+  }
+
+  if (url.pathname === '/api/rotas/alternar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, rota, paraOcupada }) => {
+      const dir = cwdDoProjeto(cwd, projeto)
+      if (!dir) return { erro: 'projeto desconhecido' }
+      return { alternou: alternarRota(dir, rota, { paraOcupada: Boolean(paraOcupada), marca: 'painel' }) }
+    })
   }
 
   // Existe pra `daemon restart` conseguir derrubar o processo antigo: o servidor

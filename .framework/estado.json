@@ -2,7 +2,7 @@
  "metodo": "mvp-basico",
  "fase": "execucao",
  "ligado": true,
- "modo": "dialogo",
+ "modo": "restritivo",
  "autorizado": [],
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
@@ -37,12 +37,125 @@
    }
   ]
  },
- "historico": [],
+ "historico": [
+  {
+   "tipo": "modo",
+   "de": "dialogo",
+   "para": "imperativo",
+   "quando": "2026-08-15T20:05:38.177Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "**",
+   "motivo": null,
+   "modo": "imperativo",
+   "quando": "2026-08-15T20:05:54.322Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "imperativo",
+   "para": "restritivo",
+   "quando": "2026-08-15T20:10:16.005Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "**",
+   "motivo": null,
+   "modo": "restritivo",
+   "quando": "2026-08-15T20:10:17.845Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "restritivo",
+   "para": "dialogo",
+   "quando": "2026-08-15T20:27:32.732Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "dialogo",
+   "para": "restritivo",
+   "quando": "2026-08-15T20:42:48.873Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "restritivo",
+   "para": "desligado",
+   "quando": "2026-08-15T20:59:25.155Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "desligado",
+   "para": "restritivo",
+   "quando": "2026-08-15T21:00:38.935Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "restritivo",
+   "para": "desligado",
+   "quando": "2026-08-15T21:01:55.412Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "desligado",
+   "para": "restritivo",
+   "quando": "2026-08-15T21:08:42.875Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "restritivo",
+   "para": "desligado",
+   "quando": "2026-08-15T21:18:31.663Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "desligado",
+   "para": "restritivo",
+   "quando": "2026-08-15T21:22:54.928Z"
+  }
+ ],
  "verificacao": {
   "segredo": {
    "ok": true,
+   "achados": 0,
+   "verificou": true,
    "detalhe": null,
-   "em": "2026-08-14T23:02:47.883Z"
+   "em": "2026-08-16T05:20:31.652Z"
+  },
+  "segredo-historico": {
+   "ok": true,
+   "achados": 0,
+   "verificou": true,
+   "detalhe": null,
+   "em": "2026-08-16T05:20:36.203Z"
+  },
+  "tls": {
+   "ok": true,
+   "detalhe": null,
+   "em": "2026-08-16T02:15:13.315Z"
+  },
+  "navegador": {
+   "ok": true,
+   "detalhe": null,
+   "em": "2026-08-16T04:03:39.449Z"
+  },
+  "teste": {
+   "ok": true,
+   "achados": 0,
+   "verificou": true,
+   "detalhe": null,
+   "em": "2026-08-16T05:20:44.208Z"
+  },
+  "service-role": {
+   "ok": true,
+   "achados": 1,
+   "verificou": true,
+   "detalhe": "1 achado(s): service_role citada no código",
+   "em": "2026-08-16T05:20:44.235Z"
   }
- }
+ },
+ "reproducao": {
+  "como": "as 11 telas nao respondem pergunta nenhuma: mostram o dado cru e ele traduz sozinho. Nos prints em tela estreita: nomes desalinhados, nada aparente, sem cara de aplicativo",
+  "esperado": "cada tela abre com a pergunta dela no topo e um veredito em uma frase, nas palavras dele"
+ },
+ "nivelBancada": "interno"
 }

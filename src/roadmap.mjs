@@ -32,15 +32,48 @@ export function acharRoadmap(cwd) {
   return null
 }
 
-// Emoji e palavra viram o mesmo estado: os roadmaps usam ora um, ora outro.
+/**
+ * Emoji e palavra viram o mesmo estado: os roadmaps usam ora um, ora outro.
+ *
+ * **Mas as duas não valem no mesmo lugar, e é isso que o CC-46 consertou.**
+ * Emoji é marcador inequívoco: ninguém escreve ✅ no meio de uma frase sem
+ * querer dizer "feito". Palavra é ambígua, e testá-la contra o título inteiro
+ * dava falso positivo em cima do assunto da tarefa:
+ *
+ *   "CC-23 — Histórico rico"        virava FEITO      (por "histórico")
+ *   "CC-04 — ...agente travado..."  virava BLOQUEADO  (por "travado")
+ *
+ * Nos dois casos a palavra descreve **o que a tarefa é**, não em que pé ela
+ * está. Por isso a palavra só conta na ETIQUETA do título: o pedaço antes do
+ * primeiro travessão ou dois-pontos, depois de tirar o identificador
+ * (`CC-46`, `F16.`, `3)`). É onde o estado é escrito quando é escrito.
+ *
+ * **Quando os dois se contradizem, o emoji ganha.** Achado ao varrer os 14
+ * roadmaps: o inovallbond tem `🟡 Bloqueado — depende do Felipe`, e antes ele
+ * saía vermelho no painel enquanto o arquivo mostrava amarelo. Escolher 🟡 e
+ * não 🔴 é deliberado, e "depende de alguém" é esperar, não estar impedido. Foi
+ * a única mudança de estado em 83 títulos reais, e é para melhor.
+ */
 const ESTADOS = [
-  { chave: 'bloqueado', teste: /🔴|⛔|bloquead|travad|impedid/i },
-  { chave: 'esperando', teste: /🟡|⏳|aguardand|depende d[eao]\s+(?!mim)/i },
-  { chave: 'feito', teste: /✅|✔|conclu[íi]d|entregue|hist[óo]rico|feito/i },
-  { chave: 'aberto', teste: /🟢|aberto|agora|pr[óo]xim|fazer/i },
+  { chave: 'bloqueado', emoji: /🔴|⛔/u, palavra: /bloquead|travad|impedid/i },
+  { chave: 'esperando', emoji: /🟡|⏳/u, palavra: /aguardand|depende d[eao]\s+(?!mim)/i },
+  { chave: 'feito', emoji: /✅|✔/u, palavra: /conclu[íi]d|entregue|hist[óo]rico|feito/i },
+  { chave: 'aberto', emoji: /🟢/u, palavra: /aberto|agora|pr[óo]xim|fazer/i },
 ]
 
-const estadoDe = (titulo) => ESTADOS.find((e) => e.teste.test(titulo))?.chave || 'aberto'
+/** `CC-46 — casa por regex solto` → `casa por regex solto` → `` (etiqueta vazia).
+ *  O identificador sai primeiro porque ele contém hífen: cortar no primeiro
+ *  separador sem tirá-lo deixaria só "CC". */
+const etiquetaDe = (titulo) => String(titulo)
+  .replace(/^\s*(?:[A-Za-z]{1,4}-?\d+[.:)]?|\d+[.)])\s*/, '')
+  .split(/[—–:·]|\s-\s/)[0]
+
+const estadoDe = (titulo) => {
+  const porEmoji = ESTADOS.find((e) => e.emoji.test(titulo))
+  if (porEmoji) return porEmoji.chave
+  const etiqueta = etiquetaDe(titulo)
+  return ESTADOS.find((e) => e.palavra.test(etiqueta))?.chave || 'aberto'
+}
 
 /** `## 🔴 Bloqueado — só o Felipe destrava` → `Bloqueado — só o Felipe destrava` */
 const limpar = (s) => s
@@ -49,6 +82,55 @@ const limpar = (s) => s
   .replace(/[🔴🟡🟢🔥✅✔⛔⏳📌]/gu, '')
   .replace(/\s+/g, ' ')
   .trim()
+
+/**
+ * As palavras DELE dentro de um item, quando existirem.
+ *
+ * Pedido em 15/08, olhando o mapa do roadmap no celular: *"cada uma delas pode
+ * conter o trecho da conversa onde eu te pedi, pra eu lembrar exatamente o que
+ * eu quis dizer (…) ali eu posso identificar se você entendeu o que eu falei de
+ * fato"*.
+ *
+ * São **duas funções numa**: ele relembra o que quis dizer, e confere se a
+ * tradução que eu fiz bate com o pedido. A segunda é a que importa mais, e é
+ * a única forma barata de pegar um mal-entendido antes de virar código.
+ *
+ * A convenção já existia sem nome: 9 dos 32 itens do ROADMAP hoje trazem uma
+ * citação, ora como bloco `>`, ora em itálico. As duas formas contam.
+ */
+export function citacaoDe(corpo = []) {
+  const texto = corpo.join('\n')
+
+  const bloco = texto.match(/^>\s*[*_"“]*(.+?)[*_"”]*\s*$/m)
+  if (bloco && bloco[1].length > 20) return bloco[1].trim()
+
+  // itálico entre aspas, o formato usado no meio de parágrafo
+  const solto = texto.match(/\*"([^"]{20,400})"\*/)
+  if (solto) return solto[1].replace(/\s+/g, ' ').trim()
+
+  return null
+}
+
+/**
+ * Quanto aquele item pesa, de 1 a 3.
+ *
+ * Queixa dele no mesmo dia: *"está tudo empilhado como se fosse só pequenas
+ * tarefas, e não é bem isso"*. Sem peso, o mapa dá a mesma altura para uma
+ * frente inteira e para um conserto de regex.
+ *
+ * O peso é **derivado, nunca digitado**: frente com muitos itens pesa mais que
+ * item solto; item que traz as palavras dele pesa mais que item que eu inventei
+ * sozinho; e o que já está feito pesa menos, porque não pede mais decisão.
+ */
+export function pesoDe(f) {
+  if (f.estado === 'feito') return 1
+  let p = 1
+  if (/^frente[:\s]/i.test(f.titulo)) p += 1
+  if (f.itens >= 4) p += 1
+  if (f.citacao) p += 1
+  if (f.estado === 'bloqueado') p += 1
+  return Math.min(3, p)
+}
 
 /**
  * Devolve os grupos (`##`) com suas frentes (`###`) e a contagem de itens.
@@ -85,10 +167,12 @@ export function lerRoadmap(cwd) {
         grupo = { titulo: '', estado: 'aberto', frentes: [], itens: 0, feitos: 0 }
         grupos.push(grupo)
       }
-      frente = { titulo: limpar(h3[1]), estado: estadoDe(h3[1]), itens: 0, feitos: 0 }
+      frente = { titulo: limpar(h3[1]), estado: estadoDe(h3[1]), itens: 0, feitos: 0, corpo: [] }
       grupo.frentes.push(frente)
       continue
     }
+    // o corpo alimenta a citação e o peso; nada dele vai inteiro para a tela
+    if (frente && linha.trim()) frente.corpo.push(linha)
     // Só conta item de lista; parágrafo solto é explicação, não tarefa.
     if (marcado || item) {
       const feito = marcado ? marcado[1].toLowerCase() === 'x' : false
@@ -98,6 +182,12 @@ export function lerRoadmap(cwd) {
       if (feito) onde.feitos++
       if (frente && grupo) { grupo.itens++; if (feito) grupo.feitos++ }
     }
+  }
+
+  for (const g of grupos) for (const f of g.frentes || []) {
+    f.citacao = citacaoDe(f.corpo)
+    f.peso = pesoDe(f)
+    delete f.corpo // o corpo é matéria-prima, não sai daqui
   }
 
   return {

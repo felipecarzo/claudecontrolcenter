@@ -24,6 +24,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { anonimizar, reidentificar, vazou } from './anonimizar.mjs'
 import { extrairDocx } from './extrairDocx.mjs'
+import { extrairPdf } from './extrairPdf.mjs'
 
 export const DIR_MAPAS = path.join(os.homedir(), '.claude', 'control-center-anon')
 export const DIR_COPIAS = path.join(os.tmpdir(), 'cc-anon')
@@ -47,10 +48,16 @@ export const EXTENSOES = new Set([
  * portado só o detector — o mascarador bloqueava justamente o formato em que
  * contrato chega.
  *
- * PDF continua aqui, e a decisão é consciente: extrair PDF exige `pdfjs-dist`
- * (34 MB), e escrever à mão daria um extrator ruim disfarçado de solução.
+ * `.pdf` saiu no mesmo dia, pelo mesmo caminho (`extrairPdf.mjs`) e depois de
+ * medir: nos 3 contratos reais em PDF, o mascarador acha **o mesmo conjunto de
+ * dados** que acha no `.txt` equivalente. A alternativa era `pdfjs-dist`, 34 MB
+ * e o fim da regra de zero dependência de runtime.
+ *
+ * Ficam aqui os formatos que ninguém mediu: `.doc` binário antigo, `.odt` e
+ * `.rtf`. Sair desta lista exige extrator **e** medição contra arquivo real,
+ * nessa ordem — sem a segunda parte, o que se ganha é a ilusão de cobertura.
  */
-export const OPACAS = new Set(['.pdf', '.doc', '.odt', '.rtf'])
+export const OPACAS = new Set(['.doc', '.odt', '.rtf'])
 
 export const deveMascarar = (arquivo) => EXTENSOES.has(path.extname(String(arquivo)).toLowerCase())
 export const ehOpaco = (arquivo) => OPACAS.has(path.extname(String(arquivo)).toLowerCase())
@@ -66,12 +73,24 @@ const idDe = (arquivo, texto) => crypto
  * significa o dado passar em claro.
  */
 export function mascararArquivo(arquivo) {
-  // `.docx` passa pelo extrator próprio; o resto é lido como texto puro.
+  // `.docx` e `.pdf` passam por extrator próprio; o resto é lido como texto puro.
   let texto = ''
-  if (path.extname(arquivo).toLowerCase() === '.docx') {
-    texto = extrairDocx(arquivo) || ''
-    if (!texto) {
-      return { ok: false, erro: 'não deu para extrair o texto deste .docx (corrompido ou só renomeado?)' }
+  const ext = path.extname(arquivo).toLowerCase()
+  if (ext === '.docx' || ext === '.pdf') {
+    texto = (ext === '.docx' ? extrairDocx(arquivo) : extrairPdf(arquivo)) || ''
+    /* Extrator que devolve pouco não é sucesso parcial, é falha silenciosa: PDF
+       escaneado, cifrado ou com objeto comprimido cai aqui, e deixar passar
+       significaria mascarar 3 linhas de um contrato de 3 páginas e chamar de
+       protegido. O piso é baixo de propósito — só precisa separar "leu" de
+       "não leu". */
+    if (texto.trim().length < 40) {
+      return {
+        ok: false,
+        opaco: true,
+        erro: ext === '.pdf'
+          ? 'não deu para tirar texto deste PDF (escaneado, cifrado, ou num formato que o extrator não cobre)'
+          : 'não deu para extrair o texto deste .docx (corrompido ou só renomeado?)',
+      }
     }
   } else {
     try {

@@ -15,11 +15,12 @@
  * 'interativa'`, para o resto do painel não precisar saber a diferença.
  */
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { buildJob } from './jobs.mjs'
+import { PROJETOS_DIR as pastaProjetos, lerMetaSessao, limparOrfaos } from './metaSessao.mjs'
 
-export const PROJETOS_DIR = path.join(os.homedir(), '.claude', 'projects')
+// via `casaClaude()`, para o gate poder apontar tudo pra uma casa temporária
+export const PROJETOS_DIR = pastaProjetos()
 
 /** Só o que teve sinal recente. Sem isso, o PC do Felipe traria centenas de
  *  sessões mortas e o painel viraria arquivo morto em vez de "o que está
@@ -151,7 +152,11 @@ export function readSessoes(now = Date.now(), { janelaMs = JANELA_MS, ignorar = 
         tokens: 0,
       }
 
-      const job = buildJob(curto, state, {}, [], now)
+      /* CC-56: a sessão agora pode reportar o próprio estado, e ele entra aqui
+         como o `meta` que o job de background sempre teve. É o que faz to-do,
+         frente e bloqueio aparecerem iguais nos dois tipos de linha — sem isso
+         o painel enxergava a sessão mas ela não tinha voz. */
+      const job = buildJob(curto, state, lerMetaSessao(sessionId), [], now)
       sessoes.push({
         ...job,
         // O que a tela precisa para não mentir sobre o que é cada linha.

@@ -35,6 +35,45 @@ const PREFIXO_SESSAO = 'cc-remote-'
 
 const slug = (projeto) => PREFIXO_SESSAO + String(projeto).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 50)
 
+/**
+ * Vários agentes no mesmo projeto: `proj`, `proj-2`, `proj-3`.
+ *
+ * Pedido dele em 15/08 (*"a gente pode querer abrir vários agentes pro mesmo
+ * projeto"*). Antes o nome era só o slug, então o segundo clique batia na
+ * sessão existente e devolvia `ja: true` — parecia que tinha funcionado.
+ *
+ * O sufixo fica fora do primeiro nome de propósito: quem tem uma sessão só
+ * continua vendo `cc-remote-projeto`, e nada do que já existe muda de nome.
+ */
+export const rotuloDe = (projeto, n = 1) => (n > 1 ? `${projeto}-${n}` : projeto)
+
+async function proximoRotulo(projeto, ativos) {
+  for (let n = 1; n <= 20; n++) {
+    const r = rotuloDe(projeto, n)
+    if (!ativos[r]) return r
+  }
+  return null
+}
+
+/**
+ * Perguntas que travam a sessão recém-nascida, e a tecla que resolve.
+ *
+ * A regra é **responder fricção, nunca política**. "Confia nos arquivos desta
+ * pasta?" é fricção: ele acabou de clicar em ligar naquela pasta, a resposta já
+ * veio no clique. Já "quer auto mode como padrão?" é política de permissão, e
+ * decidir isso por ele seria escolher o nível de autonomia dos agentes dele.
+ *
+ * Medido em 15/08: sem responder a primeira, a sessão sobe e fica parada nela
+ * para sempre — e o painel dizia "ligado", que é o pior resultado possível.
+ */
+const PERGUNTAS_DE_ABERTURA = [
+  /trust the files in this folder/i,
+  /confia.*(nos arquivos|nesta pasta)/i,
+  /Yes, I trust this folder/i,
+]
+
+const espera = (ms) => new Promise((r) => setTimeout(r, ms))
+
 const tmux = (args, ms = 8000) => new Promise((resolve) => {
   execFile('tmux', args, { encoding: 'utf8', timeout: ms, maxBuffer: 4 * 1024 * 1024 },
     (erro, saida, err) => resolve(erro
@@ -68,11 +107,17 @@ export async function estado() {
  * de verdade. Nunca espera terminar: é sessão que fica viva até o Felipe
  * fechar pelo celular, o `desligar` daqui, ou (só no Windows) o painel cair.
  */
-export async function ligar(projeto, cwd, { binario = 'claude' } = {}) {
+export async function ligar(projeto, cwd, { binario = 'claude', mais = false, esperarMs = 6000 } = {}) {
   if (!cwd || !fs.existsSync(cwd)) return { ok: false, erro: `pasta não existe: ${cwd}` }
 
-  const existente = (await estado())[projeto]
-  if (existente) return { ok: true, ja: true, ...existente }
+  const ativos = await estado()
+  const existente = ativos[projeto]
+  // `mais` é o botão "mais uma": sem ele, ligar duas vezes devolvia a sessão
+  // que já existia e parecia ter aberto uma nova
+  if (existente && !mais) return { ok: true, ja: true, ...existente }
+
+  const rotulo = mais ? await proximoRotulo(projeto, ativos) : projeto
+  if (!rotulo) return { ok: false, erro: `já há 20 sessões abertas em ${projeto}` }
 
   if (ehWindows) {
     try {
@@ -95,12 +140,30 @@ export async function ligar(projeto, cwd, { binario = 'claude' } = {}) {
     }
   }
 
-  const sessao = slug(projeto)
+  const sessao = slug(rotulo)
   // Args separados (não uma string só): tmux exec direto, sem passar por
   // shell nenhum — nome de projeto com espaço ou aspas não vira injeção.
-  const r = await tmux(['new-session', '-d', '-s', sessao, '-c', cwd, binario, '--remote-control', projeto])
+  const r = await tmux(['new-session', '-d', '-s', sessao, '-c', cwd, binario, '--remote-control', rotulo])
   if (!r.ok) return { ok: false, erro: `tmux falhou: ${r.out || 'tmux está instalado?'}` }
-  return { ok: true, ja: false, sessao, desde: Date.now(), cwd }
+
+  /* Responde a pergunta de confiança, senão a sessão nasce parada nela e o
+     painel mostra "ligado" para uma sessão que não serve pra nada. A espera é
+     generosa porque o CLI demora a desenhar a primeira tela: mandar a tecla
+     cedo demais é pior que não mandar, some no vazio e não dá erro. */
+  await espera(esperarMs)
+  let confianca = false
+  const primeira = await tmux(['capture-pane', '-t', sessao, '-p', '-S', '-200'])
+  if (primeira.ok && PERGUNTAS_DE_ABERTURA.some((re) => re.test(primeira.out))) {
+    await tmux(['send-keys', '-t', sessao, 'Enter'])
+    confianca = true
+    await espera(2500)
+  }
+
+  // A tela vai junto: "ok" sem olhar a tela já enganou neste projeto antes.
+  const agora = await tmux(['capture-pane', '-t', sessao, '-p'])
+  const tela = agora.ok ? agora.out.split('\n').filter((l) => l.trim()).slice(-12).join('\n') : null
+
+  return { ok: true, ja: false, sessao, rotulo, desde: Date.now(), cwd, confianca, tela }
 }
 
 /** Mata a sessão. A conexão remota cai junto: é o processo local que sustenta ela. */

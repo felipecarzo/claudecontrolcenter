@@ -115,35 +115,41 @@ const emDialogo = { ...definido, fase: 'execucao', modo: 'dialogo' }
 assert.equal(podeEditar('mvp-basico', emDialogo, 'src/a.mjs').ok, true)
 ok('diálogo não trava: é o fluxo de sempre')
 
-// imperativo trava MESMO com MVP definido e portão aberto — é o conserto do
+// sugestivo trava MESMO com MVP definido e portão aberto — é o conserto do
 // erro de 14/08, onde o projeto estava em Execução e nada me impediu
-const emImperativo = { ...emDialogo, modo: 'imperativo' }
-const bloq = podeEditar('mvp-basico', emImperativo, 'src/a.mjs')
-assert.equal(bloq.ok, false, 'imperativo tem que travar mesmo com o MVP pronto')
-assert.equal(bloq.modo, 'imperativo')
+const emSugestivo = { ...emDialogo, modo: 'sugestivo' }
+const bloq = podeEditar('mvp-basico', emSugestivo, 'src/a.mjs')
+assert.equal(bloq.ok, false, 'sugestivo tem que travar mesmo com o MVP pronto')
+assert.equal(bloq.modo, 'sugestivo')
 assert.match(bloq.pendencias[0], /autorização/)
-assert.equal(podeEditar('mvp-basico', { ...emDialogo, modo: 'restritivo' }, 'src/a.mjs').ok, false)
-ok('imperativo e restritivo travam código mesmo com o portão aberto')
+/* O restritivo NÃO trava mais, e a mudança é de 15/08. Este teste afirmava o
+   contrário porque eu tinha copiado o `trava` do sugestivo por engano — e o
+   sintoma foi ele desligar o framework três vezes numa tarde para eu conseguir
+   trabalhar, que é o oposto de um framework. O escopo do restritivo é a ROTA,
+   e quem trava rota é o `rota-guard`, de fora. */
+assert.equal(podeEditar('mvp-basico', { ...emDialogo, modo: 'restritivo' }, 'src/a.mjs').ok, true,
+  'restritivo travando de novo: ele teria que desligar o framework para trabalhar')
+ok('só o sugestivo trava com o portão aberto — no restritivo a contenção é a rota')
 
 // e não travam o que nunca trava
 for (const livre of ['docs/x.md', '.framework/estado.json', 'package.json']) {
-  assert.equal(podeEditar('mvp-basico', emImperativo, livre).ok, true, `${livre} tinha que passar`)
+  assert.equal(podeEditar('mvp-basico', emSugestivo, livre).ok, true, `${livre} tinha que passar`)
 }
 ok('nos modos que travam, docs e o próprio estado continuam livres')
 
 // autorizar libera, e deixa rastro
-const aut = autorizar(emImperativo, { alvo: '**', motivo: 'pode implementar' })
+const aut = autorizar(emSugestivo, { alvo: '**', motivo: 'pode implementar' })
 assert.equal(podeEditar('mvp-basico', aut.estado, 'src/a.mjs').ok, true)
 assert.equal(aut.estado.historico.at(-1).tipo, 'autorizacao')
 assert.equal(aut.estado.historico.at(-1).motivo, 'pode implementar')
 // autorização por caminho não vaza para outro caminho
-const soSrc = autorizar(emImperativo, { alvo: 'src/**' })
+const soSrc = autorizar(emSugestivo, { alvo: 'src/**' })
 assert.equal(podeEditar('mvp-basico', soSrc.estado, 'src/a.mjs').ok, true)
 assert.equal(podeEditar('mvp-basico', soSrc.estado, 'apps/b.mjs').ok, false)
 ok('autorizar libera com rastro, e o alvo não vaza para outro caminho')
 
 // trocar de modo zera autorização: senão o rigor vira decoração
-const voltou = trocarModo(aut.estado, 'imperativo')
+const voltou = trocarModo(aut.estado, 'sugestivo')
 assert.deepEqual(voltou.estado.autorizado, [])
 assert.equal(podeEditar('mvp-basico', voltou.estado, 'src/a.mjs').ok, false)
 assert.equal(voltou.estado.historico.at(-1).tipo, 'modo')
@@ -151,14 +157,14 @@ assert.equal(trocarModo(emDialogo, 'inventado').ok, false)
 ok('trocar de modo zera as autorizações e fica no histórico')
 
 // desligado é mais forte que qualquer modo
-assert.equal(podeEditar('mvp-basico', { ...emImperativo, ligado: false }, 'src/a.mjs').ok, true)
+assert.equal(podeEditar('mvp-basico', { ...emSugestivo, ligado: false }, 'src/a.mjs').ok, true)
 ok('desligado vence o modo: nada trava')
 
 // o resumo diz o modo quando ele trava
-assert.match(resumo('mvp-basico', emImperativo), /Imperativo/)
+assert.match(resumo('mvp-basico', emSugestivo), /Sugestivo/)
 assert.match(resumo('mvp-basico', aut.estado), /autoriza/i)
 // e os quatro modos existem com explicação
-assert.deepEqual(Object.keys(MODOS), ['desligado', 'dialogo', 'imperativo', 'restritivo'])
+assert.deepEqual(Object.keys(MODOS), ['desligado', 'dialogo', 'sugestivo', 'restritivo'])
 for (const m of Object.values(MODOS)) assert.ok(m.explica && m.titulo, `modo ${m.id} sem texto`)
 ok('os quatro modos existem, com título e explicação, e o resumo os mostra')
 
@@ -234,9 +240,9 @@ ok('o segundo método reusa o catálogo, sem pergunta nova no código')
 
 // F13: tom é eixo separado do modo
 assert.equal(tomDe({}), 'explicativo')
-assert.equal(tomDe({ modo: 'imperativo' }), 'direto')
-assert.equal(tomDe({ modo: 'imperativo', tom: 'explicativo' }), 'explicativo', 'tom escolhido vence o recomendado')
-assert.equal(tomDe({ modo: 'imperativo', tom: 'inventado' }), 'direto', 'tom inválido cai no recomendado')
+assert.equal(tomDe({ modo: 'sugestivo' }), 'direto')
+assert.equal(tomDe({ modo: 'sugestivo', tom: 'explicativo' }), 'explicativo', 'tom escolhido vence o recomendado')
+assert.equal(tomDe({ modo: 'sugestivo', tom: 'inventado' }), 'direto', 'tom inválido cai no recomendado')
 for (const m of Object.keys(MODOS)) assert.ok(TONS[TOM_RECOMENDADO[m]], `modo ${m} sem tom recomendado válido`)
 ok('tom é independente do modo, com recomendado por modo')
 
@@ -285,5 +291,111 @@ for (const m of Object.values(METODOS)) {
   }
 }
 ok('todo método declarado usa predicado que existe, e toda fase explica')
+
+/* CC-68: os métodos `conserto` e `estudo`.
+
+   O ponto do catálogo é que **método é dado, não código** — então o teste mais
+   importante aqui é o de baixo, que confere que nenhum deles trouxe predicado
+   ou fase que o motor não soubesse tratar. */
+{
+  assert.equal(Object.keys(METODOS).length, 4, 'o catálogo tem que ter os quatro')
+
+  // conserto: reproduzir ANTES trava o código, e é o ponto do método
+  const c = METODOS.conserto
+  assert.deepEqual(c.fases.map((f) => f.id), ['reproducao', 'execucao', 'prova'])
+  assert.ok(c.fases[0].trava.includes('src/**'), 'a reprodução tem que travar código')
+  assert.equal(c.fases[1].trava.length, 0, 'a fase de consertar não pode travar código')
+
+  const semNada = avaliar('conserto', { fase: 'reproducao' })
+  assert.equal(semNada.portaoAberto, false)
+  assert.match(semNada.pendencias[0], /COMO o defeito aparece/)
+
+  const soComo = avaliar('conserto', { fase: 'reproducao', reproducao: { como: 'clico e some' } })
+  assert.match(soComo.pendencias[0], /esperava ver/)
+
+  const reproduzido = avaliar('conserto', {
+    fase: 'reproducao', reproducao: { como: 'clico e some', esperado: 'devia abrir' },
+  })
+  assert.equal(reproduzido.portaoAberto, true)
+
+  /* Prova sem teste que guarde não fecha: é a regra 1 do ciclo dele, e a
+     lembrança de que 545 testes verdes já conviveram com a tela quebrada. */
+  const semTeste = avaliar('conserto', { fase: 'prova', prova: { como: 'rodei e passou' } })
+  assert.match(semTeste.pendencias[0], /teste que guarda/)
+  assert.equal(avaliar('conserto', { fase: 'prova', prova: { como: 'rodei', guardado: true } }).portaoAberto, true)
+
+  // estudo: as DUAS fases travam código, porque a entrega é a decisão
+  const e = METODOS.estudo
+  assert.deepEqual(e.fases.map((f) => f.id), ['pergunta', 'decisao'])
+  for (const f of e.fases) assert.ok(f.trava.includes('src/**'), `${f.id} tem que travar código`)
+
+  assert.match(avaliar('estudo', { fase: 'pergunta' }).pendencias[0], /pergunta que este estudo responde/)
+  // uma opção só não é estudo: é escolha já feita, com aparência de pesquisa
+  assert.match(
+    avaliar('estudo', { fase: 'decisao', estudo: { opcoes: [{ nome: 'a', medida: '1' }] } }).pendencias[0],
+    /menos de duas opções/,
+  )
+  assert.match(
+    avaliar('estudo', { fase: 'decisao', estudo: { opcoes: [{ nome: 'a', medida: '1' }, { nome: 'b' }] } }).pendencias[0],
+    /sem medida: b/,
+  )
+  assert.equal(avaliar('estudo', {
+    fase: 'decisao',
+    estudo: { opcoes: [{ nome: 'a', medida: '1' }, { nome: 'b', medida: '2' }], decisao: 'fica a' },
+  }).portaoAberto, true)
+}
+ok('CC-68: conserto reproduz antes e prova depois; estudo trava código nas duas fases')
+
+/* O restritivo NÃO trava código, e isso é decisão dele em 15/08 — corrigindo
+   uma implementação minha que copiou o `trava` do sugestivo por engano.
+
+   O teste existe porque o sintoma foi caro: ele desligou o framework três vezes
+   numa tarde para eu conseguir trabalhar, o que é o oposto de um framework. */
+{
+  assert.equal(MODOS.restritivo.trava, false, 'o restritivo voltou a travar código')
+  assert.equal(MODOS.sugestivo.trava, true, 'o sugestivo tem que travar: a trava É o ponto dele')
+  assert.equal(MODOS.dialogo.trava, false)
+
+  // e o efeito prático: no restritivo, escrever código passa
+  const emRestritivo = { ligado: true, modo: 'restritivo', fase: 'execucao', mvp: { nome: 'x', criterios: [{ texto: 'a', feito: true }] } }
+  assert.equal(podeEditar('mvp-basico', emRestritivo, 'src/qualquer.mjs').ok, true,
+    'restritivo travando código: ele teria que desligar o framework para trabalhar')
+  // e o sugestivo continua travando sem autorização, que é o desenho dele
+  assert.equal(podeEditar('mvp-basico', { ...emRestritivo, modo: 'sugestivo' }, 'src/qualquer.mjs').ok, false)
+}
+ok('o restritivo restringe por rota, não por clique — quem trava é o sugestivo')
+
+/* CC-91 parte 3: o agente PEDE antes de escrever.
+
+   Inverte o fluxo, e a inversão é o ponto: sem pedido, a saída mais fácil para
+   ele é autorizar tudo com `**`, que é o atalho que esvazia o modo. */
+{
+  const { pedir, resolverPedido } = await import('./src/framework.mjs')
+  let e = { modo: 'sugestivo', autorizado: [], pedidos: [] }
+
+  e = pedir(e, { alvo: 'src/a.mjs' }).estado
+  e = pedir(e, { alvo: 'src/b.mjs' }).estado
+  assert.deepEqual(e.pedidos.map((p) => p.alvo), ['src/a.mjs', 'src/b.mjs'])
+
+  // pedir o mesmo arquivo de novo não vira segunda linha na fila
+  e = pedir(e, { alvo: 'src/a.mjs', motivo: 'agora com motivo' }).estado
+  assert.equal(e.pedidos.filter((p) => p.alvo === 'src/a.mjs').length, 1)
+
+  // autorizar tira da fila: pedido resolvido não pode continuar pedindo
+  e = autorizar(e, { alvo: 'src/a.mjs' }).estado
+  assert.deepEqual(e.pedidos.map((p) => p.alvo), ['src/b.mjs'])
+  assert.ok(e.autorizado.includes('src/a.mjs'))
+
+  // recusar também tira, senão a fila só cresce
+  assert.deepEqual(resolverPedido(e, 'src/b.mjs').pedidos, [])
+
+  assert.equal(pedir(e, { alvo: '' }).ok, false, 'pedido sem alvo tinha que ser recusado')
+
+  /* Trocar de modo zera autorização E fila: pedido feito sob outro modo não
+     pode sobreviver, senão trocar de modo não muda nada. */
+  const trocado = trocarModo(e, 'dialogo').estado
+  assert.deepEqual(trocado.autorizado, [])
+}
+ok('CC-91: o agente pede por arquivo, e autorizar tira o pedido da fila')
 
 console.log(`\n${n} grupos de asserção passaram`)

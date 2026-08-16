@@ -287,3 +287,179 @@ e Bancada). Vira frente própria no ROADMAP quando chegar a vez.
   Execução provavelmente passa a exigir pelo menos a camada de segredo
   rodada, não só os critérios do MVP marcados. Desenho de como isso entra no
   motor (`framework.mjs`) ainda não foi feito.
+
+## O restritivo não trava: correção de 15/08
+
+Erro meu de implementação, achado por ele usando o modo de verdade:
+
+> "a ideia é que o modo restritivo só crie esse modo de desenvolvimento com
+> perguntas, mas não necessariamente travar tudo e eu ter que ficar desligando
+> ele toda hora"
+
+**O desenho original nunca falou em travar** — *"agente com rota limitada no
+Routia: pergunta o objetivo, define backlog, executa até o fim, só revisões"*. O
+escopo dele é a **rota**, e quem trava rota é o `rota-guard`, que já existe e é
+externo ao framework.
+
+Eu copiei o `trava: true` do sugestivo, e o resultado foi um modo que travava
+igual e **ainda** pedia autorização, sem dar nada em troca. O sintoma mediu o
+erro: **ele desligou o framework três vezes numa tarde** para eu conseguir
+trabalhar, o que é o oposto de um framework.
+
+**A regra que fica:** trava por clique é do `sugestivo`, onde ela É o ponto. Um
+agente que "executa até o fim" não pode parar a cada arquivo. Há teste
+guardando os dois lados.
+
+## ⚠️ O restritivo ficou sem mecanismo, e isso é dívida aberta
+
+Consequência de tirar a trava (correção certa, feita em 15/08 a pedido dele) que
+não foi dita na hora: **o modo restritivo passou a ser quase só um rótulo.**
+
+Hoje ele injeta um texto no `SessionStart` — *"executa até o fim, sem prosa"* — e
+não há nada que garanta isso. É instrução, e a lição de 15/08, repetida três
+vezes num dia, é que instrução não segura a IA.
+
+Pergunta dele em 16/08, que expôs o buraco: *"o framework não deveria tá
+restritivo até zerar o backlog? o que que tá travando você seguir esse fluxo? os
+hooks não tão funcionando?"*. Os hooks funcionam — nove ligados e conferidos. O
+modo é que não pede nada deles.
+
+**O que sobrou de mecanismo real é geral, não do restritivo:** `pergunta-guard`
+força a caixa, `rota-guard` prende à rota, `recados` entrega recado de outro
+agente. Todos valem em qualquer modo.
+
+### ✅ 16/08: ele definiu o fluxo, e o modo ganhou mecanismo
+
+> "o modo restritivo deveria ser um modo que não te permite sair do fluxo. Se eu
+> pedir pra adicionar alguma coisa, deveria salvar isso, adicionar a tarefa ao
+> backlog, e continuar. Você vai fazendo o backlog — tem dez tarefas, vai fazer
+> as dez. Só para quando for uma decisão única, tipo no design ter que definir a
+> fonte: aí você pergunta."
+
+Três regras, agora declaradas em `MODOS.restritivo.fluxo` e injetadas a cada
+sessão:
+
+| | |
+|---|---|
+| **pedido novo** | vira item do backlog e a execução continua |
+| **só pare para** | decisão que só ele toma: gosto, prioridade entre frentes, risco que ele assume |
+| **não pare para** | confirmar próximo passo, escolha técnica, ordem já definida |
+
+**A primeira é a que eu mais quebro.** Pedido no meio, eu paro, faço, e perco a
+sequência — e ele fica sem saber onde o backlog parou. A regra inverte: registra
+primeiro, executa depois, na ordem.
+
+**A terceira é estreita de propósito.** "Qual fonte?" para; "faço agora ou
+depois?" não para, porque a ordem já está escrita.
+
+Continua sendo injeção de contexto, não trava — e isso é honesto dizer. Mas
+agora é uma regra verificável: dá para contar quantas vezes eu parei sem
+motivo legítimo, que é o que o `pergunta-guard` já mede pela metade.
+
+**O que ainda faria o restritivo valer mais**, e nenhum está feito:
+
+- **Não pedir confirmação a cada passo.** É o comportamento que ele espera e que
+  eu não cumpro. Mensurável: quantas respostas terminam devolvendo a decisão
+  para ele quando o backlog já dizia o que fazer.
+- **Executar o backlog em sequência**, parando só no que exige decisão dele.
+- Um sinal na tela de que está nesse modo, porque hoje só o cartão do projeto
+  mostra, e ele trabalha olhando o chat.
+
+Enquanto isso não existir, **o honesto é dizer que o restritivo é uma
+intenção**, não uma garantia — e não deixar que o rótulo dê a impressão de que
+alguma coisa está sendo imposta.
+
+## UML e MER: a discussão fechada em 15/08
+
+Ficou em aberto duas vezes, e travava por estar na pergunta errada — "diagrama
+serve ou não serve?". A resposta, em [[ANALISE-DA-IA]]:
+
+**Como desenho, o valor para a IA é baixo** (ela lê o código, e um MER diz o que
+o schema já diz). **Como contrato de nomes, é o mais alto de todos**, porque o
+erro nº 1 medido nesta relação não é de implementação, é de vocabulário: as três
+sagas longas do [[CICLO]] quebraram quando um substantivo significava coisas
+diferentes nas duas cabeças.
+
+**Decisão:** a fase de Definição não pede diagrama. Pede **o glossário do
+projeto** — as cinco a dez palavras que aquele projeto usa e o que cada uma
+significa ali. É MER sem desenho, custa cinco minutos, e ataca a causa medida.
+Dá função ao CC-63, que existe e está subusado.
+
+E sobre Scrum, palavra dele no mesmo dia: *"o Scrum não é um inimigo a ser
+combatido, ele é uma ferramenta"*. O corte não é entre ágil sim e ágil não: é
+entre **o que existe para sincronizar pessoas** (sprint com data, planning,
+daily — sai) e **o que existe para garantir qualidade** (Definição de Pronto,
+retrospectiva, backlog em níveis — fica). O que sobra é o que ele já tinha
+adotado sem chamar de Scrum.
+
+## O nome: DDS, Directed Development System
+
+Batizado por ele em 15/08, depois de comparar com os frameworks de agente e ver
+que a categoria não existia com nome. A primeira ideia foi **ODS, Offensive
+Development System**; virou **Directed** por um motivo prático: em inglês,
+*offensive* carrega ofensa antes de carregar ataque. Em segurança funciona,
+porque *offensive security* já existe há décadas e o contexto desfaz; fora dela,
+"Offensive Development" lê como "desenvolvimento desagradável".
+
+**O eixo é ativo contra passivo**, e é a definição mais curta do que isto é:
+
+> Passivo é a IA esperar instrução. Ativo é o sistema conduzir o processo.
+
+A ligação que ele fez é com a [[ARQUITETURA-DE-HABITOS]], o outro produto dele:
+**a mesma ideia, aplicada a sistemas em vez de pessoas.** Lá, o ambiente é
+desenhado para o hábito acontecer sem depender de força de vontade. Aqui, o
+processo é desenhado para acontecer sem depender de alguém lembrar da regra — e
+o dia inteiro de 15/08 é a prova de que lembrar não funciona: o aviso do hash de
+privacidade ficou três dias sendo ignorado, em negrito, no lugar certo.
+
+Vale registrar o que o nome NÃO promete: não é metodologia de gestão, não
+compete com Scrum, e não diz como o software deve ser escrito. Ele nomeia o
+mecanismo — o processo dirige, em vez de esperar.
+
+## Por que não é LangChain (nem LangGraph, nem Google ADK)
+
+Escrito em 15/08, quando o Felipe trouxe uma tabela com oito frameworks de
+agente (LangChain, LangGraph, LlamaIndex, Microsoft Agent Framework, Google
+ADK, Deep Agents, OpenAI Agents SDK, PydanticAI) e perguntou se o nosso é a
+mesma coisa. É a pergunta que qualquer pessoa técnica vai fazer, então a
+resposta mora aqui.
+
+**Os oito servem para CONSTRUIR agentes. Este serve para GOVERNAR um agente que
+já existe.** Usa-se LangChain para escrever um programa que chama modelo, define
+ferramentas e orquestra passos. Este framework não constrói agente, não chama
+modelo e não orquestra nada: ele intercepta o Claude Code e recusa uma edição
+quando o MVP não está definido.
+
+A diferença técnica que resume: **eles rodam DENTRO do seu programa, este roda
+FORA do agente.** Eles são biblioteca que se importa; este é hook, do lado de
+fora, interceptando o que o agente tenta fazer. Daí vêm duas propriedades que
+nenhum dos oito tem:
+
+- vale para qualquer projeto sem reescrever uma linha dele;
+- continua valendo com o framework desligado, porque o gancho é o hook, não o
+  código do projeto.
+
+### Duas palavras da tabela deles enganam
+
+**"Memória"**, nos oito, é o que o modelo lembra dentro da conversa. A daqui é
+outra coisa: arquivo em disco que **sobrevive à conversa** e é escrito para o
+Felipe e para a próxima sessão. O `HANDOFF.md` é a memória deste framework, e um
+LLM não é o público principal dele. Ver [[COCKPIT]], que existe justamente
+porque ele não lê documento longo.
+
+**"Multiagente"**, nos oito, é orquestrar agentes que o próprio framework criou.
+O Método Routia coordena sessões que nascem por fora, inclusive em máquinas
+diferentes, e resolve outro problema: impedir que duas mexam no mesmo arquivo.
+
+### O que este NÃO tem, de propósito
+
+Orquestração, RAG, chamada de modelo, tipagem de saída. Nada disso está no
+caminho: não é o problema que ele resolve, e adotar qualquer um dos oito para
+ganhar isso não traria o gate, que é a peça inteira.
+
+### Onde eles se encontrariam
+
+Se um dia houver um agente próprio construído com um desses, este framework
+poderia governá-lo também — o motor (`framework.mjs`) é puro e o estado mora no
+projeto, não no Claude Code. O que prende hoje é só o gatilho, que é hook do
+Claude Code. É exatamente o F14 do plano.

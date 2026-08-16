@@ -326,11 +326,57 @@ pede explicação), para a escolha rápida ser um clique só, mas qualquer
 combinação é válida. Vem do documento dele, e é melhor do que o nosso desenho:
 hoje o modo só liga e desliga gate, não muda como eu converso.
 
-### F14. Ponte com outras ferramentas (visão, não agora)
+### F14. Ponte com outras ferramentas ✅ registrada em 15/08 (visão, não agora)
 
-Roo Code, Antigravity, IDEs locais. Registrado como direção, sem trabalho agora.
+Roo Code, Antigravity, IDE local. Escrita por inteiro no `docs/ROADMAP.md`, na
+frente do framework, junto com o F9 — é lá que ele olha, e visão que só existe
+num plano de execução é visão perdida.
 
-### F16. PDF continua sem extrator, e é decisão pendente
+Em uma linha: o motor já é portável (puro, e o estado mora em
+`.framework/estado.json` dentro do projeto), o gatilho não é (são hooks do
+Claude Code). Ponte é dar um gatilho próprio a cada ferramenta, lendo o mesmo
+arquivo. Vira frente quando ele trabalhar de verdade em outra ferramenta.
+
+### F16. PDF ✅ 15/08 — extrator próprio, sem os 34 MB
+
+**Resolvido, e a decisão foi da medição, não de gosto.** `src/extrairPdf.mjs`,
+~200 linhas, só com o `zlib` que já vem no Node. Nos 3 contratos reais em PDF o
+mascarador acha **exatamente o mesmo conjunto de dados pessoais** que acha no
+`.txt` equivalente: 16/16, 8/8 e 12/12 valores, nenhum escapando. O texto sai
+com 10 caracteres de diferença num contrato de 2.900.
+
+Três coisas que custaram tempo e estão no cabeçalho do arquivo, porque são
+armadilhas de PDF que qualquer um repetiria:
+
+1. **`N 0 obj` aparece por acaso dentro dos dados binários da fonte.** Indexar
+   os objetos por número fazia um match espúrio sobrescrever o objeto real, e
+   **metade do contrato sumia sem erro nenhum** — 1201 de 2386 caracteres,
+   cortando no meio de uma frase. É o pior tipo de defeito para este recurso:
+   silencioso, e do lado de "protegi menos do que disse". Hoje as faixas
+   `stream…endstream` são mapeadas primeiro e todo candidato lá dentro é
+   descartado. Tem teste guardando (o contrato 06, que é o de 2 páginas).
+2. **O texto de um PDF não são letras, são números de glifo.** Fonte `Type0` com
+   `Identity-H` escreve `<0026>` onde há um "C". O mapa de volta é o
+   `/ToUnicode`, texto comprimido dentro do próprio arquivo.
+3. **O Chrome emite um `Td` por caractere.** A regra ingênua "`Td` quebra linha"
+   devolvia o contrato inteiro em coluna, uma letra por linha. O que quebra
+   linha é a coordenada Y mudar.
+
+E uma quarta, que decidiu um valor escapando: **o PDF quebra linha por layout**.
+`(11) 98123-\n4567` é um telefone só, partido pela largura da página, e sem
+juntar o detector não o encontra. Duas junções conservadoras resolvem, e linha
+terminada em `.` ou `:` fica intacta, preservando a separação entre cláusulas.
+
+**O que continua bloqueado, de propósito:** PDF escaneado (imagem não tem
+texto), PDF cifrado e `/ObjStm` (objeto dentro de objeto comprimido, comum em
+PDF do Word). Nesses o extrator devolve pouco ou nada, e o piso de 40 caracteres
+faz o hook bloquear. Extrair 3 linhas de um contrato de 3 páginas e chamar de
+protegido seria pior do que recusar.
+
+`.doc` binário antigo, `.odt` e `.rtf` seguem opacos. Sair dessa lista exige
+extrator **e** medição contra arquivo real, nessa ordem.
+
+### F16 (histórico) — como a pergunta dele achou o buraco
 
 Pergunta do Felipe em 15/08, e ela achou um buraco meu: *"mas se o PDF não lê,
 no Pierre ele também não lê contrato em PDF?"*.
@@ -344,7 +390,7 @@ o ZIP com o `zlib` do Node e tira o texto do XML. Umas 50 linhas contra 2 MB de
 biblioteca. Provado contra contrato real (`assets/contratos-exemplo` do
 inovallbond): 12 valores mascarados, nenhum nome vazando.
 
-**PDF fica pendente, e é escolha entre dois males:**
+**PDF ficou resolvido no mesmo dia** (ver acima). O quadro abaixo é o que estava na mesa antes da medição, e explica por que o terceiro caminho era o único honesto sem ela:
 
 | Caminho | Custo |
 |---|---|
@@ -352,8 +398,9 @@ inovallbond): 12 valores mascarados, nenhum nome vazando.
 | Escrever à mão | PDF tem fonte embutida, codificação própria e texto em ordem de desenho. Sairia um extrator ruim disfarçado de solução |
 | Deixar bloqueado | Contrato em PDF simplesmente não passa pelo mascarador |
 
-Hoje está no terceiro, que é o único honesto sem uma decisão dele. Se PDF for
-frequente no uso real, a conta muda e vale pagar os 34 MB.
+O segundo caminho ganhou, e só porque foi medido: o receio de "extrator ruim
+disfarçado de solução" era legítimo, e a resposta não foi argumentar, foi rodar
+contra contrato real e comparar com o `.txt`.
 
 ### F15. Achado em projeto alheio se registra NO GIT dele
 
@@ -392,11 +439,12 @@ Falta implementar: um `cc framework ticket <projeto> "<texto>"` que faça isso
 sozinho, achando o `docs/ROTAS-ATIVAS.md` do alvo e respeitando os três limites.
 Hoje é procedimento manual, e procedimento manual é sugestão.
 
-### F9. Perguntas em rede (visão, não agora)
+### F9. Perguntas em rede ✅ registrada em 14/08 (visão, não agora)
 
 As três leituras que ele escolheu juntas: pergunta viaja entre máquinas pela
 federação, respostas viram rede de decisões com memória, agentes repassam
-decisão entre si. Frente própria, depois do resto.
+decisão entre si. Frente própria, depois do resto. Escrita no `docs/ROADMAP.md`,
+na frente do framework.
 
 ### F10. Gate de documentação ✅ 14/08
 
@@ -485,6 +533,63 @@ decisão agora, quanto custou, o que está ligado, o que a máquina está fazend
 
 Vem depois do F1 de propósito: construir os modos dentro da estrutura nova, em
 vez de mexer duas vezes na navegação.
+
+## Antes de usar de verdade: o que falta resolver
+
+Levantado em 15/08 a pedido dele. Separado por quem consegue resolver, porque
+metade disto não depende de código.
+
+### Depende dele (está na aba `meu` do painel)
+
+| O quê | Por quê |
+|---|---|
+| Ligar o PC na federação | A VPS já é servidor e está esperando. Sem isso o painel só enxerga uma máquina |
+| Registrar o hook no `settings.json` do PC | O gate chega pelo `git pull` mas não liga sozinho lá, e o caminho é `D:/`, não o da VPS |
+| Autorizar `sudo` para `KillMode=process` | É o que impede escritório e corrida longa de morrerem a cada restart do painel |
+
+| Olhar o Pixel Agents do Telegram (CC-60) | Porta 3100, usuário `agente`, no ar há dias, dono desconhecido |
+
+### Depende de código, e nenhum bloqueia o uso
+
+| O quê | Estado |
+|---|---|
+| `cc framework ticket <projeto>` | A regra F15 existe, o comando não. Procedimento manual é sugestão |
+| Painel do framework, parte de leitura | Falta mostrar histórico de escopo e autorizações na tela; hoje só no arquivo |
+| CC-56: `cockpit set` em sessão interativa | Da VPS não dá para reportar to-do; o painel enxerga a sessão mas ela não escreve |
+| CC-53: `npm test` não roda inteiro na VPS | **Melhorou em 15/08.** O `npm test` agora encadeia quatro gates, e o `test.mjs` (o único que exige job de background com transcrito) ficou por último de propósito: nesta VPS os outros três passam antes de ele falhar, então quem trabalha pelo celular deixou de estar sem gate nenhum. Falta o `test.mjs` em si funcionar sem job real |
+| Bancada: job assíncrono e aba própria | As camadas rápidas funcionam; camada longa (Sandyaa) precisa de progresso e cancelamento |
+| ~~F9 e F14~~ | ✅ Registradas no `docs/ROADMAP.md` em 15/08, com o gatilho que faz cada uma virar frente. Sem trabalho previsto agora, e é assim que devem ficar |
+
+### Resolvido no mesmo dia (15/08)
+
+**O regex de endereço do Pierre.** Ele engolia o texto depois da vírgula, então
+`"Avenida Paulista 1000, doravante CONTRATADA"` virava uma etiqueta só. Não é
+vazamento, é o oposto: mascara demais, e come justamente o que diz qual parte é
+qual num contrato.
+
+Consertado nos dois lados, e a ordem importa: primeiro no Pierre, que é a
+origem (commit `46999be` do inovallbond, na branch `site/redesign-pierre`),
+depois trazido para o port daqui. Fazer só aqui seria consertar a cópia e
+deixar o original doente, que é o pior dos dois mundos.
+
+Correção honesta ao meu diagnóstico anterior, que exagerou a gravidade: nos 6
+contratos reais de `assets/contratos-exemplo` o defeito **não aparecia** — lá o
+endereço vem seguido de CEP (já excluído) ou de complemento de verdade. É caso
+de texto corrido. Os 5 endereços dos contratos saem byte a byte idênticos antes
+e depois, incluindo `"Avenida das Nacoes 1200, conjunto 71"`.
+
+Junto veio um buraco maior que o defeito: **o port não tinha gate nenhum**. O
+`test.mjs` não mencionava anonimização, num arquivo que decide o que sai da
+máquina dele. Agora existe `test-anonimizar.mjs`, e ele roda os 35 casos do
+Pierre contra o port em vez de copiá-los — se alguém consertar um lado só, o
+gate quebra. Máquina sem o inovallbond clonado pula essa parte e roda o mínimo
+próprio.
+
+### Higiene
+
+- `~/projetos/teste_framework` na VPS é descartável, pode apagar
+- O `~/cockpit-auth.mjs` **não está em repositório nenhum** (CC-61), e é a porta
+  de entrada do painel inteiro
 
 ## Verificação
 

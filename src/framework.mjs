@@ -29,7 +29,7 @@ export const SEMPRE_LIVRE = ['docs/**', 'assets/**', '.framework/**', '*']
  *
  * Separado do `trava` da fase de propósito, e o teste pegou o motivo: na fase
  * de Execução o `trava` é vazio (a fase não bloqueia nada), então o modo nunca
- * enxergaria arquivo nenhum como código e o imperativo não travaria. São duas
+ * enxergaria arquivo nenhum como código e o sugestivo não travaria. São duas
  * perguntas diferentes: a FASE pergunta "esta etapa bloqueia este caminho?", o
  * MODO pergunta "isto é código?".
  */
@@ -59,6 +59,48 @@ export const PREDICADOS = {
       ? `faltam ${abertos.length} de ${cs.length} critérios do MVP: ${abertos.map((c) => c.texto).join('; ')}`
       : null
   },
+  /* CC-68, método `conserto`. Os dois campos abaixo são o que separa conserto
+     de "mexi até parar de dar erro":
+
+     `reproducao` é escrita ANTES, e trava o código de propósito. Foi o vício
+     mais caro de hoje: escrevi que o extrator de PDF seria ruim sem tentar, e
+     exagerei a gravidade do defeito do endereço sem medir. Nos dois casos eu
+     tinha pulado a reprodução.
+
+     `prova` é escrita DEPOIS, e é a regra 1 do ciclo dele virando trava: teste
+     verde não é prova — já houve 545 testes passando com a tela quebrada. */
+  'defeito-reproduzido': (e) => {
+    const r = e?.reproducao || {}
+    if (!(r.como || '').trim()) return 'falta dizer COMO o defeito aparece: o passo que o faz acontecer'
+    if (!(r.esperado || '').trim()) return 'falta dizer o que você esperava ver no lugar'
+    return null
+  },
+  'conserto-provado': (e) => {
+    const p = e?.prova || {}
+    if (!(p.como || '').trim()) return 'falta a prova de que o defeito sumiu: o que foi rodado, e o que apareceu'
+    if (!p.guardado) return 'falta o teste que guarda o conserto — sem ele o defeito volta e ninguém vê'
+    return null
+  },
+
+  /* CC-68, método `estudo`. A entrega é a DECISÃO, e por isso as duas fases
+     travam código do começo ao fim. É o F1 no nível do projeto inteiro: ele
+     pediu três itens "para estudar" e o risco é sempre o mesmo — eu começo a
+     construir enquanto ele ainda está pensando. */
+  'pergunta-declarada': (e) => ((e?.estudo?.pergunta || '').trim()
+    ? null
+    : 'falta a pergunta que este estudo responde, em uma frase'),
+  'opcoes-medidas': (e) => {
+    const o = e?.estudo?.opcoes || []
+    if (o.length < 2) return 'um estudo com menos de duas opções não é estudo: é uma escolha já feita'
+    const semMedida = o.filter((x) => !(x.medida || '').trim())
+    return semMedida.length
+      ? `${semMedida.length} opção(ões) sem medida: ${semMedida.map((x) => x.nome).join(', ')}`
+      : null
+  },
+  'decisao-registrada': (e) => ((e?.estudo?.decisao || '').trim()
+    ? null
+    : 'falta a decisão e o porquê dela — sem isso o estudo não vira nada'),
+
   // F4: quais ferramentas de verificação este projeto usa. Decisão do Felipe em
   // 14/08: isso se escolhe na DEFINIÇÃO, junto do MVP, não solta no meio da
   // execução. "o framework JÁ teria isso definido desde o início do projeto na
@@ -100,6 +142,77 @@ export const METODOS = {
         explica: 'Código liberado. O projeto só é dado como pronto quando todos os critérios do MVP estiverem marcados.',
         exige: ['criterios-todos-marcados'],
         trava: [],
+      },
+    ],
+  },
+
+  /**
+   * CC-68, e ele nasceu de uma observação sobre o dia 15/08 inteiro: os dois
+   * métodos acima supõem que existe algo NOVO para entregar, e o trabalho de
+   * verdade daquele dia foi outro — regex quebrado, hash velho, layout
+   * vazando, gate morto. Nenhum tinha MVP a definir.
+   *
+   * A ordem das fases é o remédio: **reproduzir antes de consertar** é o que
+   * impede o conserto de virar tentativa, e **provar depois** é a regra 1 do
+   * ciclo dele ("prova visual antes de dizer feito").
+   */
+  conserto: {
+    id: 'conserto',
+    titulo: 'Conserto: reproduzir antes, provar depois',
+    fases: [
+      {
+        id: 'reproducao',
+        titulo: 'Reprodução',
+        explica: 'Antes de mexer no código: como o defeito aparece, e o que deveria aparecer no lugar. Sem isso, consertar vira tentativa.',
+        exige: ['defeito-reproduzido'],
+        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+      },
+      {
+        id: 'execucao',
+        titulo: 'Conserto',
+        explica: 'Código liberado. Vale mexer só no que a reprodução apontou — escopo maior que isso é outro trabalho.',
+        exige: [],
+        trava: [],
+      },
+      {
+        id: 'prova',
+        titulo: 'Prova',
+        explica: 'O que foi rodado, o que apareceu, e o teste que guarda. Teste verde não é prova: já houve 545 passando com a tela quebrada.',
+        exige: ['conserto-provado'],
+        trava: [],
+      },
+    ],
+  },
+
+  /**
+   * CC-68. A entrega é a DECISÃO, não o programa — por isso as duas fases
+   * travam código do começo ao fim.
+   *
+   * Nasceu de um padrão dele: em 15/08 pediu três itens "para estudar", e o
+   * risco é sempre o mesmo — eu começo a construir enquanto ele ainda está
+   * pensando. Foi exatamente o erro do glossário, que originou o F1. Aqui isso
+   * vira fase, não instrução.
+   *
+   * Se o estudo virar código, o projeto **troca de método**. Isso é sinal de
+   * que a decisão foi tomada, e é o momento certo de registrar qual foi.
+   */
+  estudo: {
+    id: 'estudo',
+    titulo: 'Estudo: a entrega é a decisão',
+    fases: [
+      {
+        id: 'pergunta',
+        titulo: 'Pergunta',
+        explica: 'Que pergunta este estudo responde? Sem ela, estudo vira leitura sem fim.',
+        exige: ['pergunta-declarada'],
+        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+      },
+      {
+        id: 'decisao',
+        titulo: 'Decisão',
+        explica: 'Duas opções ou mais, cada uma com o que foi medido, e a escolha com o porquê. Código continua travado: se virou código, virou outro método.',
+        exige: ['opcoes-medidas', 'decisao-registrada'],
+        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
       },
     ],
   },
@@ -237,7 +350,7 @@ export const TONS = {
 export const TOM_RECOMENDADO = {
   desligado: 'explicativo',
   dialogo: 'explicativo',
-  imperativo: 'direto',
+  sugestivo: 'direto',
   restritivo: 'direto',
 }
 export const tomDe = (estado) => (TONS[estado?.tom] ? estado.tom : TOM_RECOMENDADO[modoDe(estado).id] || 'explicativo')
@@ -287,19 +400,72 @@ export const MODOS = {
     trava: false,
     pergunta: true,
   },
-  imperativo: {
-    id: 'imperativo',
-    titulo: 'Imperativo',
+  /* Chamava-se `imperativo` até 15/08. O Felipe trocou, e a razão é de ponto de
+     vista: do lado do agente o modo é imperativo mesmo (recusa a ferramenta),
+     mas do lado DELE ele sugere — recebe propostas e clica. Palavras dele:
+     *"ele não é tão imperativo assim, ele sugere só"*.
+
+     O nome descreve o que ele vive, porque é ele quem escolhe o modo. */
+  sugestivo: {
+    id: 'sugestivo',
+    titulo: 'Sugestivo',
     explica: 'Só o que está no backlog, e cada passo precisa da sua autorização.',
     trava: true,
     pergunta: true,
     exigeAutorizacao: true,
   },
+  /* `trava: false` desde 15/08, e a correção é conceitual.
+   *
+   * O desenho original dele nunca falou em travar: "para agente com rota
+   * limitada no Routia — sem prosa: pergunta o objetivo, define backlog,
+   * executa até o fim, só revisões". **O escopo do restritivo é a ROTA**, e
+   * quem trava rota é o `rota-guard`, que já existe e é externo ao framework.
+   *
+   * Eu tinha copiado o `trava: true` do sugestivo, e o resultado foi um modo
+   * que travava igual e ainda pedia autorização, sem dar nada em troca — ele
+   * teve que desligar o framework três vezes numa tarde para eu conseguir
+   * trabalhar. Palavras dele: "a ideia é que o restritivo só crie esse modo de
+   * desenvolvimento com perguntas, mas não necessariamente travar tudo e eu
+   * ter que ficar desligando ele toda hora".
+   *
+   * Um agente que "executa até o fim" não pode parar a cada arquivo. Quem trava
+   * por clique é o `sugestivo`, onde a trava É o ponto.
+   *
+   * O que o restritivo faz, então: muda o TOM (direto, sem prosa) e o
+   * comportamento (pergunta o objetivo uma vez, monta o backlog, executa). A
+   * contenção vem do Routia, de fora. */
   restritivo: {
     id: 'restritivo',
     titulo: 'Restritivo',
-    explica: 'Agente de escopo travado: objetivo, backlog e execução até o fim, sem prosa.',
-    trava: true,
+    explica: 'Não sai do fluxo: pedido novo vira item do backlog e a execução continua. Só para no que só ele decide.',
+    /* Definição dele em 16/08, e é a que dá mecanismo ao modo:
+     *
+     *   "o modo restritivo deveria ser um modo que não te permite sair do
+     *   fluxo. Se eu pedir pra adicionar alguma coisa, deveria salvar isso,
+     *   adicionar a tarefa ao backlog, e continuar. Você vai fazendo o
+     *   backlog — tem dez tarefas, vai fazer as dez. Só para quando for uma
+     *   decisão única, tipo no design ter que definir a fonte: aí você
+     *   pergunta."
+     *
+     * Três regras, e a primeira é a que eu mais quebro: **pedido no meio vira
+     * item, não interrupção**. Hoje eu paro, faço o que ele pediu, e perco a
+     * sequência — e ele fica sem saber onde o backlog parou.
+     *
+     * A terceira é o critério de parada, e ele é estreito de propósito: só
+     * decisão que **só ele** pode tomar. "Qual fonte?" para; "faço agora ou
+     * depois?" não para, porque a ordem já está no backlog. */
+    fluxo: {
+      pedidoNovo: 'registra no backlog e continua — não interrompe a sequência',
+      paradaLegitima: 'só o que exige decisão dele: gosto, prioridade entre frentes, risco que ele assume',
+      naoPara: 'confirmação de próximo passo, escolha técnica, ordem já definida no backlog',
+      // A trava do `fluxo-guard`: com backlog aberto, PARAR é que precisa ser
+      // declarado. A primeira versão pegava só promessa quebrada ("sigo" e não
+      // seguir), e ele viu o furo na hora: parar calado passava, que é o
+      // comportamento exato da queixa. Continuar deixou de ser o padrão
+      // implícito para virar a regra, com quatro saídas nomeadas.
+      pararExigeDeclaracao: true,
+    },
+    trava: false,
     pergunta: false,
     exigeAutorizacao: false,
   },
@@ -409,13 +575,45 @@ export function podeEditar(metodo, estado, rel) {
  * um evento com hora e motivo: é o rastro que o cockpit traduz, e o que faltava
  * quando eu decidi sozinho que era hora de construir.
  */
+/**
+ * CC-91 parte 3: o agente PEDE antes de escrever, em vez de tentar e ser barrado.
+ *
+ * Inverte o fluxo, e a inversão é o pedido dele: hoje eu tento, bato no gate, e
+ * ele autoriza tudo de uma vez com `**` — que é o atalho que esvazia o modo. Com
+ * pedido, ele libera **o arquivo que eu pedi**, sabendo por quê.
+ *
+ * O mecanismo é o mesmo do `rota-pedidos.mjs` (13/08), que faz isto para rotas:
+ * o bloqueio vira pedido registrado, e o dono libera por comando ou clique.
+ *
+ * Guarda no máximo 20: pedido velho que ninguém respondeu é ruído, e a lista
+ * cheia esconde justamente o que acabou de chegar.
+ */
+export function pedir(estado, { alvo, motivo = null, quando = null }) {
+  if (!alvo) return { ok: false, erro: 'pedido sem alvo' }
+  const pedidos = estado?.pedidos || []
+  // mesmo arquivo pedido de novo não vira segunda linha: atualiza o motivo
+  const outros = pedidos.filter((p) => p.alvo !== alvo)
+  return {
+    ok: true,
+    estado: {
+      ...estado,
+      pedidos: [...outros, { alvo, motivo, quando: quando || null }].slice(-20),
+    },
+  }
+}
+
+/** Tira o pedido da fila. Chamado ao autorizar ou ao recusar. */
+export function resolverPedido(estado, alvo) {
+  return { ...estado, pedidos: (estado?.pedidos || []).filter((p) => p.alvo !== alvo) }
+}
+
 export function autorizar(estado, { alvo = '**', motivo = null, quando = null }) {
   const atual = estado?.autorizado || []
   if (atual.includes(alvo)) return { ok: true, estado }
   return {
     ok: true,
     estado: {
-      ...estado,
+      ...resolverPedido(estado, alvo),
       autorizado: [...atual, alvo],
       historico: [
         ...(estado?.historico || []),
@@ -427,7 +625,7 @@ export function autorizar(estado, { alvo = '**', motivo = null, quando = null })
 
 /**
  * Troca o modo. Zera as autorizações de propósito: autorização dada no diálogo
- * não pode sobreviver à entrada no imperativo, senão trocar de modo não muda
+ * não pode sobreviver à entrada no sugestivo, senão trocar de modo não muda
  * nada e o rigor vira decoração.
  */
 export function trocarModo(estado, modo, { quando = null } = {}) {
@@ -507,14 +705,23 @@ export function escolherFerramentas(estado, lista, { quando = null } = {}) {
  * resultado é DADO, não julgamento: quem roda a ferramenta diz se passou, o
  * framework só confere se rodou e se passou.
  */
-export function registrarVerificacao(estado, ferramenta, { ok, detalhe = null, quando = null }) {
+export function registrarVerificacao(estado, ferramenta, {
+  ok, detalhe = null, quando = null, achados = null, verificou = true,
+}) {
   const nome = String(ferramenta || '').trim()
   if (!nome) return { ok: false, erro: 'verificação sem nome de ferramenta' }
   return {
     ok: true,
     estado: {
       ...estado,
-      verificacao: { ...(estado?.verificacao || {}), [nome]: { ok: Boolean(ok), detalhe, em: quando } },
+      verificacao: {
+        ...(estado?.verificacao || {}),
+        /* `ok` e `achados` são coisas diferentes, e guardar só o primeiro fez a
+           tela mentir: a camada `service-role` aparecia com o selo "limpo" e o
+           texto "5 achado(s)" logo abaixo, porque achado de gravidade baixa não
+           reprova. `verificou` separa o terceiro caso, "não consegui olhar". */
+        [nome]: { ok: Boolean(ok), achados, verificou: verificou !== false, detalhe, em: quando },
+      },
     },
   }
 }

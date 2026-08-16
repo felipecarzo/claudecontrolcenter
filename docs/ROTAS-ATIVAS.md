@@ -22,15 +22,22 @@ Passo 0, antes de tocar em qualquer arquivo.
 
 <!-- Preencha as rotas de acordo com a estrutura real do projeto. Exemplo: -->
 
+**🔒 Sessão de senhas (15/08):** o Felipe vai abrir uma sessão só para resolver as senhas
+da VPS. **Ela não marca rota nenhuma**, de propósito: sem rota marcada o `rota-guard` já
+recusa editar código, que é exatamente o que se quer ali. Se aquela sessão precisar mexer
+em código, o certo é parar e abrir outra — credencial e edição de arquivo não se misturam.
+
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
-| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-15: F11, 15 abas viraram 4 portas) | — |
+| `cockpit` | 🔴 ocupada | ff0d68b2 — níveis da Bancada e a auto-verificação 📁 src/bancada.mjs src/bancadaCatalogo.mjs src/ui.html hooks/ | 2026-08-16 |
+| `front` | 🟢 livre | — reservada para o agente de front-end do Felipe. Ao marcar, declare os arquivos com 📁, senão a rota não protege nada | — |
+| `cockpit` (anterior) | 🟢 livre | — (ff0d68b2 fechou em 16/08: **CC-93** (guia longo vira etapa, regra + `guia-guard`), **CC-77** (navegacao de um nivel no estreito, `.grupo` duplicada no CSS, e `test-estreito.mjs` medindo as 15 telas), **CC-82** (a estante de documentos, com leitor e `cc doc`), e a Bancada de 7 para 10 camadas, com a sonda de RLS do Supabase. Junto: `fluxo-guard`, a trava de execucao continua do modo restritivo) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
-| `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 2026-08-14: cockpit federado, CC-47/51/54/55/57/58. Escritório servido por proxy com WebSocket, porque `localhost` no iframe é o celular de quem olha. Falta ligar o PC: ver ticket) | — |
-| `framework` | 🟢 livre | — (ff0d68b2 fechou em 15/08: F1-F8, F10-F13, F15, F16. Falta F9 e F14, visões) | — |
+| `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **CC-56** (sessao interativa reporta estado, via `CLAUDE_CODE_SESSION_ID`, fora de `jobs/`), **CC-49** (`cc routia presenca`: ativa / orfa / desconhecida, e a distincao entre as duas ultimas e o cuidado central), **CC-48** (rotas viajam no pacote da federacao) e **CC-65** (os 6 hooks globais nao existiam em repo nenhum: agora em `hooks/routia/`). Anterior: cockpit federado, CC-47/51/54/55/57/58) | — |
+| `framework` | 🟢 livre | — (ff0d68b2 em 16/08: **CC-91 fechado** — o agente pede por arquivo e o cartao mostra a fila. Junto: o teste do framework-guard ainda dizia `imperativo` e passou a falhar; corrigido) | — |
 
 ## Como pedir autorização numa rota que tem dono
 

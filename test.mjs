@@ -90,6 +90,29 @@ assert.equal(fmtAge(90 * 60e3), '1h30')
 assert.equal(fmtTokens(114533), '115k')
 assert.equal(fmtTokens(0), '—')
 
+/* Todo módulo de `src/` tem que pelo menos CARREGAR.
+ *
+ * Em 16/08 um `await import` dentro de uma função que não era `async` derrubou
+ * o `web.mjs` inteiro — o painel entrou em laço de reinício no systemd e o
+ * `npm test` passou verde, porque o gate nunca carregava esse arquivo. Gate que
+ * aprova com o servidor morto é pior que gate nenhum: ele dá a confiança sem a
+ * cobertura.
+ *
+ * `import()` e não `new Function()`: erro de sintaxe em módulo ES só aparece no
+ * carregamento de verdade, e é justamente essa classe de erro que passou.
+ */
+{
+  const pastaSrc = new URL('./src/', import.meta.url)
+  const modulos = fs.readdirSync(pastaSrc).filter((f) => f.endsWith('.mjs'))
+  assert.ok(modulos.length > 15, 'a varredura de src/ não achou os módulos')
+  for (const m of modulos) {
+    await assert.doesNotReject(
+      () => import(new URL(m, pastaSrc)),
+      `src/${m} não carrega — erro de sintaxe ou import quebrado`,
+    )
+  }
+}
+
 // o script da página não roda em Node, mas erro de sintaxe dá pra pegar aqui
 const html = fs.readFileSync(new URL('./src/ui.html', import.meta.url), 'utf8')
 // São dois blocos: o do tema, no head, e o da página, no fim do body. Pegar só
@@ -181,21 +204,68 @@ const { intentMatchesTranscript } = await import('./src/transcript.mjs')
 assert.equal(intentMatchesTranscript('qualquer coisa', null), null)
 assert.equal(intentMatchesTranscript(null, 'x.jsonl'), null)
 
-// nos jobs reais com transcript, tem que sair pedido de verdade
-const comTranscript = readJobs().filter((j) => j.lastPrompt)
-assert.ok(comTranscript.length > 0, 'nenhum job leu o transcript')
-for (const j of comTranscript) {
-  assert.ok(typeof j.lastPrompt === 'string' && j.lastPrompt.length > 0)
-  assert.ok(!j.lastPrompt.startsWith('<'), 'pegou system-reminder como pedido')
+/* CC-53: o transcript é testado contra um arquivo SINTÉTICO, e por quê.
+   Antes isto dependia de `readJobs()` achar um job real com transcript, e numa
+   máquina sem job de background o gate inteiro morria aqui — foi o que deixou
+   quem trabalha pela VPS sem gate nenhum. Pior: o comportamento que mais
+   importa (separar pedido de verdade de injeção de skill) só era exercitado por
+   acaso, dependendo do que houvesse na máquina de quem rodou.
+
+   Cada linha abaixo é uma armadilha que já enganou o painel de verdade. */
+{
+  const linhas = [
+    { type: 'user', message: { content: 'primeiro pedido de todos' }, promptSource: 'user' },
+    // saída de ferramenta: veio como `user` e não foi ninguém que escreveu
+    { type: 'user', toolUseResult: { ok: true }, message: { content: 'saida de tool' } },
+    // injeção de skill: traz o SKILL.md inteiro no corpo, e já apareceu na tela
+    // como se fosse o pedido dele
+    { type: 'user', isMeta: true, message: { content: 'conteudo inteiro de um SKILL.md' } },
+    { type: 'assistant', message: { content: 'resposta' } },
+    // interrupção: o CLI grava "Request interrupted by user" como mensagem
+    { type: 'user', interruptedMessageId: 'x', message: { content: 'Request interrupted' } },
+    { type: 'user', message: { content: '<system-reminder>contexto injetado</system-reminder>' } },
+    { type: 'user', message: { content: [{ type: 'text', text: 'o pedido de verdade, o ultimo' }] } },
+  ].map((o) => JSON.stringify(o)).join('\n')
+
+  const arq = path.join(os.tmpdir(), `cc-tr-${Date.now()}.jsonl`)
+  fs.writeFileSync(arq, linhas)
+  try {
+    assert.equal(lastPrompt(arq), 'o pedido de verdade, o ultimo')
+    assert.equal(
+      _internals.scanLines(linhas, { fromEnd: false }),
+      'primeiro pedido de todos',
+      'a varredura de cima pegou algo que não foi pessoa que escreveu',
+    )
+  } finally { fs.rmSync(arq, { force: true }) }
+}
+
+/* E quando a máquina TEM job real, ele também é conferido: o sintético prova a
+   regra, o real prova que a leitura de disco continua funcionando. Sem job,
+   pula dizendo que pulou — silêncio aqui viraria "passou" sem ter testado. */
+{
+  const comTranscript = readJobs().filter((j) => j.lastPrompt)
+  if (!comTranscript.length) {
+    console.log('  (pulado: esta máquina não tem job de background com transcript)')
+  }
+  for (const j of comTranscript) {
+    assert.ok(typeof j.lastPrompt === 'string' && j.lastPrompt.length > 0)
+    assert.ok(!j.lastPrompt.startsWith('<'), 'pegou system-reminder como pedido')
+  }
 }
 
 // --- meta.json vem de agente: formato varia, não pode virar "undefined" ---
 const { normalizeTodo, normalizeLink } = await import('./src/jobs.mjs')
-assert.deepEqual(normalizeTodo({ text: 'a', done: true }), { text: 'a', done: true })
-assert.deepEqual(normalizeTodo({ t: 'a', done: true }), { text: 'a', done: true }) // o caso real
-assert.deepEqual(normalizeTodo({ title: 'a' }), { text: 'a', done: false })
-assert.deepEqual(normalizeTodo({ task: 'a', completed: true }), { text: 'a', done: true })
-assert.deepEqual(normalizeTodo('só texto'), { text: 'só texto', done: false })
+/* `dono` entrou em 14/08 (commit `4f78264`, a aba de tarefas dele) e estas
+   linhas não foram atualizadas junto. Ninguém viu porque o gate morria antes,
+   no bloco do transcript — é o custo escondido do CC-53: teste que não roda
+   não é teste que passa, é teste que some. */
+assert.deepEqual(normalizeTodo({ text: 'a', done: true }), { text: 'a', done: true, dono: 'ia' })
+assert.deepEqual(normalizeTodo({ t: 'a', done: true }), { text: 'a', done: true, dono: 'ia' }) // o caso real
+assert.deepEqual(normalizeTodo({ title: 'a' }), { text: 'a', done: false, dono: 'ia' })
+assert.deepEqual(normalizeTodo({ task: 'a', completed: true }), { text: 'a', done: true, dono: 'ia' })
+assert.deepEqual(normalizeTodo('só texto'), { text: 'só texto', done: false, dono: 'ia' })
+// quem faz a tarefa: o agente por padrão, o Felipe quando o meta.json diz
+assert.equal(normalizeTodo({ text: 'a', dono: 'felipe' }).dono, 'felipe')
 assert.equal(normalizeTodo({ done: true }), null) // sem texto não vira cartão vazio
 assert.equal(normalizeTodo(null), null)
 
@@ -340,7 +410,23 @@ assert.ok(['win32', 'darwin', 'linux'].includes(plat.SO) || plat.SO)
 assert.ok(plat.caminhoAutostart().length > 0)
 assert.ok(plat.atalhosPossiveis().every((p) => typeof p === 'string'))
 const inst = await import('./src/install.mjs')
-assert.equal(typeof inst.projectsBase(), 'string') // detectada, não fixa no código
+/* Detectada, nunca fixa no código. `null` é resposta legítima: máquina sem job
+   e sem config não tem como adivinhar a pasta, e inventar um caminho seria pior
+   que admitir. Antes isto exigia string e falhava em qualquer máquina sem job
+   de background — mesma dependência de ambiente do CC-53. */
+const base = inst.projectsBase()
+assert.ok(base === null || (typeof base === 'string' && base.length > 0))
+{
+  // o que É determinístico: a variável de ambiente manda, em qualquer máquina
+  const antes = process.env.CC_PROJECTS_BASE
+  process.env.CC_PROJECTS_BASE = path.join(path.sep, 'tmp', 'base-de-teste')
+  try {
+    assert.equal(inst.projectsBase(), path.join(path.sep, 'tmp', 'base-de-teste'))
+  } finally {
+    if (antes === undefined) delete process.env.CC_PROJECTS_BASE
+    else process.env.CC_PROJECTS_BASE = antes
+  }
+}
 assert.equal(inst.detectarBase([{ cwd: '/home/ana/projects/x' }, { cwd: '/home/ana/projects/y' }]),
   ['', 'home', 'ana', 'projects'].join(path.sep))
 assert.equal(inst.detectarBase([{ cwd: '/opt/nada' }]), null)
@@ -437,6 +523,37 @@ assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem
   } finally { fs.rmSync(tmp, { recursive: true, force: true }) }
 }
 
+// --- roadmap CC-46: estado é a etiqueta do título, não o assunto dele ---
+{
+  const rm = await import('./src/roadmap.mjs')
+  /* Os dois primeiros são os casos reais que motivaram o CC-46: a palavra
+     descrevia O QUE a tarefa é, e o painel lia como em que pé ela está.
+     Os outros guardam o que NÃO pode ter quebrado no conserto. */
+  const casos = [
+    ['CC-23 — Historico rico, o que sobra quando o CLI apaga o job', 'aberto'],
+    ['CC-04 — o painel mostra agente travado como se estivesse vivo', 'aberto'],
+    ['Concluido em 14/08', 'feito'],
+    ['🔴 Bloqueado — so o Felipe destrava', 'bloqueado'],
+    // emoji vence a palavra quando os dois se contradizem: quem escolheu 🟡 e
+    // não 🔴 quis dizer amarelo, e "depende de alguém" é esperar
+    ['🟡 Bloqueado — depende da Carol', 'esperando'],
+    ['F16. PDF ✅ 15/08 — extrator proprio', 'feito'],
+    ['Frente: Bancada — auditoria e teste agnostico', 'aberto'],
+  ]
+  const tmp = path.join(os.tmpdir(), `cc-rm46-${Date.now()}`)
+  fs.mkdirSync(path.join(tmp, 'docs'), { recursive: true })
+  fs.writeFileSync(
+    path.join(tmp, 'docs', 'ROADMAP.md'),
+    ['# P', '## Sprint', ...casos.map(([t]) => `### ${t}`)].join('\n'),
+  )
+  try {
+    const frentes = rm.lerRoadmap(tmp).grupos[0].frentes
+    casos.forEach(([titulo, esperado], i) => {
+      assert.equal(frentes[i].estado, esperado, `"${titulo}" saiu como ${frentes[i].estado}`)
+    })
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }) }
+}
+
 // --- status: "done" do CLI não quer dizer tarefa terminada ---
 {
   const { statusReal, VIVO_MS } = await import('./src/jobs.mjs')
@@ -469,28 +586,161 @@ assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem
   maq._internals.resetar()
 }
 
-// --- notas: apagar tudo tem que deixar rastro recuperável ---
+/* --- notas: apagar tudo tem que deixar rastro recuperável ---
+
+   ⚠️ Este bloco roda numa casa `.claude` TEMPORÁRIA, e isso não é detalhe.
+   Antes ele escrevia no `control-center-notes.json` de verdade: gravava,
+   apagava tudo para conferir a cópia de segurança, e restaurava no `finally`.
+   Termina bem quando termina — e `npm test` interrompido no meio (Ctrl+C,
+   crash) deixava as notas do Felipe vazias. É o sintoma exato do incidente de
+   2026-08-09, cuja causa nunca foi provada.
+
+   Como `casaClaude()` é lido a cada chamada, a variável precisa estar no lugar
+   ANTES do import do módulo. */
 {
-  const notas = await import('./src/notes.mjs')
-  const real = fs.existsSync(notas.NOTES_FILE) ? fs.readFileSync(notas.NOTES_FILE, 'utf8') : null
-  const bakReal = fs.existsSync(notas.BACKUP_FILE) ? fs.readFileSync(notas.BACKUP_FILE, 'utf8') : null
-  const sujeira = []
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-casa-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
   try {
+    // `?casa=` força um módulo novo: import é cacheado, e sem isso o NOTES_FILE
+    // resolvido num teste anterior continuaria valendo
+    const notas = await import(`./src/notes.mjs?casa=${encodeURIComponent(casa)}`)
+    assert.ok(notas.NOTES_FILE.startsWith(casa), 'o teste ia escrever nas notas de verdade')
+
     notas.writeNotes([{ title: 'teste', text: 'a' }])
     notas.writeNotes([]) // o caso que apagou as notas de verdade
     assert.equal(notas.readNotes().length, 0)
+
     const bak = JSON.parse(fs.readFileSync(notas.BACKUP_FILE, 'utf8'))
     assert.equal(bak.notes[0].title, 'teste', 'o .bak precisa ter a versão de antes do apagamento')
-    const pasta = path.dirname(notas.NOTES_FILE)
-    const copias = fs.readdirSync(pasta).filter((f) => f.startsWith(path.basename(notas.NOTES_FILE)) && f.endsWith('.apagado'))
+
+    const copias = fs.readdirSync(casa)
+      .filter((f) => f.startsWith(path.basename(notas.NOTES_FILE)) && f.endsWith('.apagado'))
     assert.ok(copias.length > 0, 'apagar tudo tem que gerar cópia com data')
-    sujeira.push(...copias.map((f) => path.join(pasta, f)))
   } finally {
-    // devolve o arquivo do Felipe exatamente como estava
-    for (const f of sujeira) { try { fs.unlinkSync(f) } catch {} }
-    if (real != null) fs.writeFileSync(notas.NOTES_FILE, real)
-    if (bakReal != null) fs.writeFileSync(notas.BACKUP_FILE, bakReal)
-    else try { fs.unlinkSync(notas.BACKUP_FILE) } catch {}
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
+/* --- CC-82, documentos: o que não pode se perder ---
+
+   Mesma casa temporária das notas, pela mesma razão: aqui se apaga documento
+   para conferir o rastro, e documento é fonte primária dele — texto ditado que
+   não tem outra cópia. Teste que escreve no dado real é defeito, mesmo com
+   restauração no `finally`. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-docs-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const doc = await import(`./src/documentos.mjs?casa=${encodeURIComponent(casa)}`)
+    assert.ok(doc.PASTA().startsWith(casa), 'o teste ia escrever na estante de verdade')
+
+    const a = doc.gravar({ titulo: 'Contrato da Carol', texto: '# Contrato\n\ncorpo', fonte: 'chat' })
+    assert.equal(a.id, 'contrato-da-carol', 'o id sai do título, legível fora do painel')
+
+    // título repetido não pode sobrescrever silenciosamente o documento anterior
+    const b = doc.gravar({ titulo: 'Contrato da Carol', texto: 'outro' })
+    assert.equal(b.id, 'contrato-da-carol-2')
+    assert.equal(doc.ler('contrato-da-carol').texto.trim(), '# Contrato\n\ncorpo')
+
+    // acrescentar é o caso do celular: soma ao fim, nunca troca o documento
+    doc.acrescentar('contrato-da-carol', 'linha ditada')
+    const depois = doc.ler('contrato-da-carol')
+    assert.ok(depois.texto.includes('corpo') && depois.texto.includes('linha ditada'))
+    assert.ok(depois.criadoEm, 'a data de criação sobrevive à reescrita')
+    assert.equal(depois.fonte, 'chat', 'a origem sobrevive à reescrita')
+
+    // gravar por cima deixa .bak, como as notas — o cuidado que veio do 09/08
+    assert.ok(fs.existsSync(path.join(doc.PASTA(), 'contrato-da-carol.md.bak')))
+
+    // apagar deixa rastro recuperável, nunca some de vez
+    doc.apagar('contrato-da-carol-2')
+    assert.equal(doc.listar().length, 1)
+    assert.ok(fs.readdirSync(doc.PASTA()).some((f) => f.includes('.apagado')),
+      'apagar documento tem que deixar cópia — é fonte primária, não tem de onde regenerar')
+
+    // frontmatter é escrito à mão; o parser precisa aguentar a volta
+    const { meta, texto } = doc._internals.separar(doc._internals.juntar({ titulo: 'x: y' }, 'corpo'))
+    assert.equal(meta.titulo, 'x: y')
+    assert.equal(texto, 'corpo')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
+/* --- Bancada, sonda de RLS: contra um Supabase de mentira ---
+
+   A camada mais valiosa do catálogo é também a única que não dá para provar
+   olhando: ela depende de um servidor respondendo. Nenhum projeto desta VPS tem
+   Supabase no `.env`, e apontar para um projeto real do Felipe seria varrer o
+   banco de um cliente para testar código.
+
+   Então o teste sobe um PostgREST FALSO: publica o esquema como o de verdade
+   publica, devolve linha em duas tabelas e vazio numa terceira. É o suficiente
+   para provar as três decisões que importam — descobrir tabela pelo OpenAPI,
+   separar "devolveu linha" de "RLS filtrou tudo", e classificar como ALTA a
+   tabela cujo nome sugere dado de pessoa. */
+{
+  const http = await import('node:http')
+  const { CAMADAS } = await import('./src/bancadaCatalogo.mjs')
+
+  const ESQUEMA = { paths: { '/': {}, '/users': {}, '/produtos': {}, '/segredos': {}, '/rpc/x': {} } }
+  const servidor = http.createServer((req, res) => {
+    res.setHeader('content-type', 'application/json')
+    const rota = req.url.split('?')[0]
+    if (rota === '/rest/v1/') return res.end(JSON.stringify(ESQUEMA))
+    // `users` e `produtos` devolvem linha (sem RLS); `segredos` devolve vazio,
+    // que é como uma tabela COM política se comporta para um estranho
+    if (rota === '/rest/v1/users') return res.end('[{"id":1}]')
+    if (rota === '/rest/v1/produtos') return res.end('[{"id":9}]')
+    if (rota === '/rest/v1/segredos') return res.end('[]')
+    res.statusCode = 404
+    res.end('{}')
+  })
+  await new Promise((ok) => servidor.listen(0, '127.0.0.1', ok))
+  const porta = servidor.address().port
+
+  const projeto = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-rls-'))
+  fs.writeFileSync(path.join(projeto, '.env'),
+    `SUPABASE_URL=http://127.0.0.1:${porta}\nSUPABASE_ANON_KEY=chave-de-mentira\n`)
+
+  try {
+    const rls = CAMADAS.find((c) => c.id === 'rls-supabase')
+    assert.ok(rls.aplicaA(projeto), 'com URL e chave no .env a camada tem que se aplicar')
+
+    const r = await rls.rodar(projeto)
+    assert.equal(r.verificou, true, 'falou com o servidor, então verificou')
+
+    const nomes = r.achados.map((a) => a.titulo)
+    assert.ok(nomes.some((t) => t.includes('"users"')), 'tabela sem RLS tem que aparecer')
+    assert.ok(nomes.some((t) => t.includes('"produtos"')), 'idem para produtos')
+    assert.ok(!nomes.some((t) => t.includes('"segredos"')),
+      'tabela que devolve vazio está PROTEGIDA — acusá-la seria alarme falso')
+    assert.ok(!nomes.some((t) => t.includes('rpc')), 'rpc não é tabela')
+
+    const users = r.achados.find((a) => a.titulo.includes('"users"'))
+    const produtos = r.achados.find((a) => a.titulo.includes('"produtos"'))
+    assert.equal(users.gravidade, 'alta', 'nome que sugere dado de pessoa é grave')
+    assert.equal(produtos.gravidade, 'média', 'catálogo pode ser público de propósito')
+    assert.equal(r.ok, false, 'achado grave reprova a camada')
+
+    // a chave nunca pode vazar para o resultado, que é lido e guardado no estado
+    assert.ok(!JSON.stringify(r).includes('chave-de-mentira'),
+      'a chave do .env não pode aparecer no resultado da camada')
+
+    // servidor fora do ar: "não deu para verificar", nunca "está limpo"
+    await new Promise((ok) => servidor.close(ok))
+    const caiu = await rls.rodar(projeto)
+    assert.equal(caiu.verificou, false, 'sem servidor não dá para afirmar nada')
+    assert.equal(caiu.achados.length, 0)
+  } finally {
+    servidor.close()
+    fs.rmSync(projeto, { recursive: true, force: true })
   }
 }
 
@@ -601,11 +851,37 @@ try {
   fs.rmSync(tmp, { recursive: true, force: true })
 }
 
-// varredura acha projetos reais e não devolve lixo
-const projetos = findProjects()
-assert.ok(projetos.length > 5, 'varredura achou pouca coisa')
-assert.ok(projetos.every((p) => fs.existsSync(p)))
-assert.ok(!projetos.some((p) => /node_modules|[\\/]_/.test(p)), 'varredura pegou pasta que devia pular')
+/* Varredura: base sintética primeiro, porque é a única que roda em qualquer
+   máquina. `findProjects()` sem argumento depende de `projectsBase()`, que
+   depende dos jobs — numa máquina sem job de background devolvia vazio e o
+   gate morria aqui (CC-53 de novo, terceira vez no mesmo arquivo). */
+{
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-proj-'))
+  try {
+    // projeto é pasta com `.git` ou `CLAUDE.md`; as duas últimas têm que ser puladas
+    for (const p of ['alfa', 'beta', 'grupo/gama', '_rascunho', 'node_modules/pacote']) {
+      fs.mkdirSync(path.join(raiz, p), { recursive: true })
+      fs.writeFileSync(path.join(raiz, p, 'CLAUDE.md'), '# projeto de teste')
+    }
+
+    const achados = findProjects(raiz)
+    assert.ok(achados.length >= 3, `varredura achou pouca coisa: ${achados.length}`)
+    assert.ok(achados.every((p) => fs.existsSync(p)))
+    assert.ok(
+      !achados.some((p) => /node_modules|[\\/]_/.test(p)),
+      'varredura pegou pasta que devia pular',
+    )
+  } finally { fs.rmSync(raiz, { recursive: true, force: true }) }
+}
+
+// e contra a máquina de verdade, quando ela tiver base: prova que a detecção
+// e a leitura de disco continuam de pé, sem exigir que exista
+{
+  const reais = findProjects()
+  if (!reais.length) console.log('  (pulado: esta máquina não tem base de projetos detectada)')
+  assert.ok(reais.every((p) => fs.existsSync(p)))
+  assert.ok(!reais.some((p) => /node_modules|[\\/]_/.test(p)))
+}
 
 // --- notas: arquivo editável à mão, formato tem que aguentar variação ---
 const notas = await import('./src/notes.mjs')
@@ -756,6 +1032,47 @@ const ids = HOOKS.map((h) => h.id)
 assert.equal(new Set(ids).size, ids.length, 'hook com id duplicado no catálogo')
 for (const h of HOOKS) assert.ok(EVENTOS.includes(h.evento), `evento desconhecido em ${h.id}: ${h.evento}`)
 
+/* Hook que existe no disco mas não no catálogo RODA CALADO, e isso me pegou
+   três vezes em dois dias: `hookEnabled('id-desconhecido')` devolve false, então
+   o hook sai na primeira linha achando que está desligado. O `roadmap-guard`
+   ficou assim desde que nasceu — estava no settings.json, nunca falou, e havia
+   33 itens concluídos entulhando o ROADMAP que ele teria acusado.
+
+   O erro é invisível justamente porque o hook não reclama de nada, inclusive de
+   si mesmo. Por isso a conferência é aqui e não numa instrução. */
+{
+  const pastaHooks = path.join(import.meta.dirname, 'hooks')
+  const noDisco = fs.readdirSync(pastaHooks).filter((f) => f.endsWith('.mjs'))
+  const noCatalogo = new Set(HOOKS.map((h) => h.script))
+
+  /* A acusação precisa ser exata: só quem CONSULTA o catálogo fica mudo fora
+     dele. `framework-guard` e `anonimo-guard` não chamam `hookEnabled`, então
+     funcionam registrados ou não — a primeira versão deste teste os acusava de
+     estar calados, o que era falso. Verificar antes de acusar vale para o teste
+     também. */
+  const mudos = noDisco.filter((f) => {
+    if (noCatalogo.has(f)) return false
+    let fonte = ''
+    try { fonte = fs.readFileSync(path.join(pastaHooks, f), 'utf8') } catch { return false }
+    return fonte.includes('hookEnabled')
+  })
+  assert.deepEqual(mudos, [],
+    `hook consulta o catálogo, não está nele, e por isso roda calado: ${mudos.join(', ')}`)
+
+  /* E o contrário: catálogo apontando para script que não existe.
+     Os do Routia moram em `hooks/routia/`, e o `cc-check` não é arquivo — é
+     subcomando do próprio `cc`, e por isso tem `script: null`. Procurar nas duas
+     pastas em vez de exigir tudo na raiz: a organização por família é boa, e o
+     teste é que tem que conhecê-la. */
+  const emRoutia = fs.existsSync(path.join(pastaHooks, 'routia'))
+    ? fs.readdirSync(path.join(pastaHooks, 'routia'))
+    : []
+  const semArquivo = HOOKS.filter((h) => h.implementado && h.script
+    && !noDisco.includes(h.script) && !emRoutia.includes(h.script))
+  assert.deepEqual(semArquivo.map((h) => h.id), [],
+    'catálogo diz implementado, mas o arquivo não está em hooks/ nem em hooks/routia/')
+}
+
 // --- toggle de hook: sem entrada no config usa o padrão do catálogo ---
 const { hookEnabled } = await import('./src/config.mjs')
 // cc-check tem padrao:true — cfg sem a chave usa o padrão, não false
@@ -899,8 +1216,17 @@ fs.rmSync(tmpOc, { recursive: true, force: true })
   fs.writeFileSync(fixture, [
     JSON.stringify({ type: 'text', part: { type: 'text', text: '{"1": {"titulo": "Corrigir X", "resumo": "resumo aqui", "arquivo": "src/x.mjs"}}' } }),
   ].join('\n'))
-  const fakeBin = path.join(tmpOc2, 'fake-opencode.cmd')
-  fs.writeFileSync(fakeBin, `@echo off\r\ntype "${fixture}"\r\n`)
+  /* O binário falso precisa existir nos dois mundos: em Windows o disparo passa
+     por `cmd /c` e o alvo tem que ser `.cmd`; em Linux e macOS é executado
+     direto, então é script com shebang e bit de execução. Antes só havia a
+     versão `.cmd`, e este bloco simplesmente não rodava fora do Windows. */
+  const fakeBin = path.join(tmpOc2, plat.ehWindows ? 'fake-opencode.cmd' : 'fake-opencode.sh')
+  if (plat.ehWindows) {
+    fs.writeFileSync(fakeBin, `@echo off\r\ntype "${fixture}"\r\n`)
+  } else {
+    fs.writeFileSync(fakeBin, `#!/bin/sh\ncat "${fixture}"\n`)
+    fs.chmodSync(fakeBin, 0o755)
+  }
 
   const explicacoes = await oc.enriquecerTodos(['corrigir o bug X'], {
     binario: fakeBin, esperarMs: 5000, intervaloMs: 100,
@@ -1163,9 +1489,637 @@ if (estRotinas.projetos.length) {
   assert.equal(todos.silenciosos + todos.projetos.length <= todos.totalVarrido, true)
 }
 
-// --- daemon: caminhos, sem escrever nada ---
-const dm = await import('./src/daemon.mjs')
-assert.ok(dm.vbsPath().includes('Startup'), 'autostart não aponta pra pasta Startup')
-assert.equal(path.basename(dm.vbsPath()), 'control-center.vbs')
+/* --- padrão de resposta: medir o vício que ele apontou em 15/08 --- */
+{
+  const E = await import('./src/estilo.mjs')
 
-console.log(`ok — ${real.length} jobs reais, ${projetos.length} projetos varridos`)
+  // o texto real que ele criticou, com os dois parágrafos de autodefesa
+  const ruim = [
+    'As rotas viajam agora.',
+    'Não inventei canal novo, aproveitei o que já existia.',
+    'Vale lembrar que o quadro do inovallbond passa de 60 KB.',
+    'Falta ligar isso no guarda.',
+  ].join('\n\n')
+  assert.equal(E.medir(ruim).autodefesa, 2)
+  assert.equal(E.medir(ruim).paragrafos, 4)
+
+  // e o mesmo conteúdo no padrão: nada a acusar
+  assert.equal(E.medir('As rotas que você marca no PC aparecem para mim sem commit.\n\nFalta ligar no guarda. Preciso de um número seu.').autodefesa, 0)
+
+  /* Bloco de código é trabalho, não prosa: contá-lo inflaria toda resposta que
+     mexeu em arquivo, e o número viraria ruído. */
+  const comCodigo = 'Pronto.\n\n```js\nnão inventei nada\nvale lembrar disso\n```\n'
+  assert.equal(E.medir(comCodigo).autodefesa, 0, 'contou código como prosa')
+
+  // "não é" e "não foi" ficam de fora da lista: são comuns em frase legítima
+  assert.equal(E.medir('Não é possível medir isso daqui.').autodefesa, 0)
+  assert.equal(E.medir('').autodefesa, 0)
+
+  // a última resposta sai do transcrito, e tool_use não é prosa
+  {
+    const arq = path.join(os.tmpdir(), `cc-est-${Date.now()}.jsonl`)
+    fs.writeFileSync(arq, [
+      JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'resposta antiga' }] } }),
+      JSON.stringify({ type: 'user', message: { content: 'e agora?' } }),
+      JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Edit' }, { type: 'text', text: 'a última' }] } }),
+    ].join('\n'))
+    try {
+      assert.equal(E.ultimaResposta(arq), 'a última')
+    } finally { fs.rmSync(arq, { force: true }) }
+  }
+
+  // sem passado para comparar, a tendência é null: 0% de melhora seria invenção
+  {
+    const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-est-'))
+    const antes = process.env.CC_HOME
+    process.env.CC_HOME = casa
+    try {
+      const Ei = await import(`./src/estilo.mjs?casa=${encodeURIComponent(casa)}`)
+      Ei.registrar(Ei.medir('uma resposta curta'))
+      assert.equal(Ei.retrato().tendenciaPalavras, null)
+      assert.ok(Ei.ARQUIVO_MEDIDAS().startsWith(casa), 'ia medir na casa de verdade')
+    } finally {
+      if (antes === undefined) delete process.env.CC_HOME
+      else process.env.CC_HOME = antes
+      fs.rmSync(casa, { recursive: true, force: true })
+    }
+  }
+}
+
+/* --- CC-67: `cc hooks install` — o gancho nasce com o projeto ---
+   Roda em casa temporária: escrever no settings.json de verdade num teste seria
+   repetir o erro das notas, que o CC-53 acabou de fechar. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-hk-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    /* Um settings.json com hook DE TERCEIRO no mesmo evento. É o caso real: o
+       do Felipe tem ~200 linhas e o pixel-agents registra em 11 eventos.
+       Apagar isso sem avisar é o pior que este comando poderia fazer. */
+    fs.writeFileSync(path.join(casa, 'settings.json'), JSON.stringify({
+      model: 'opus',
+      hooks: {
+        PreToolUse: [{ hooks: [{ type: 'command', command: 'node /outro/sistema/hook.js' }] }],
+      },
+    }, null, 2))
+
+    const q = `?casa=${encodeURIComponent(casa)}`
+    const R = await import(`./src/hooksRegistro.mjs${q}`)
+    const { HOOKS } = await import(`./src/hooksCatalogo.mjs${q}`)
+    assert.ok(R.SETTINGS_FILE.startsWith(casa), 'ia escrever no settings de verdade')
+
+    // simulação não pode tocar no arquivo
+    const antesDoTexto = fs.readFileSync(R.SETTINGS_FILE, 'utf8')
+    R.instalar(HOOKS.filter((h) => h.implementado), { dryRun: true })
+    assert.equal(fs.readFileSync(R.SETTINGS_FILE, 'utf8'), antesDoTexto, '--dry-run gravou')
+
+    const r = R.instalar(HOOKS.filter((h) => h.implementado))
+    assert.ok(r.ok && r.gravou)
+
+    const depois = JSON.parse(fs.readFileSync(R.SETTINGS_FILE, 'utf8'))
+    const todos = Object.values(depois.hooks).flat().flatMap((g) => g.hooks).map((h) => h.command)
+
+    assert.ok(todos.some((c) => c.includes('/outro/sistema/hook.js')), 'APAGOU hook de terceiro')
+    assert.equal(depois.model, 'opus', 'perdeu configuração que não era hook')
+    assert.ok(todos.some((c) => c.includes('recados.mjs')), 'não registrou o hook de recados')
+    // barra normal mesmo no Windows: barra invertida em JSON exige escape duplo,
+    // e isso já quebrou o atalho do Desktop em silêncio
+    assert.ok(!todos.some((c) => c.includes('\\')), 'usou barra invertida no caminho')
+
+    // rodar de novo não duplica
+    const r2 = R.instalar(HOOKS.filter((h) => h.implementado))
+    assert.equal(r2.feitos.filter((f) => f.acao === 'registrado').length, 0, 'duplicou na segunda vez')
+
+    assert.ok(fs.existsSync(`${R.SETTINGS_FILE}.bak`), 'não deixou cópia do anterior')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
+/* --- CC-69 e CC-72: o que cada hook faz, e o que roda contra o que é versionado --- */
+{
+  const { HOOKS, NIVEIS } = await import('./src/hooksCatalogo.mjs')
+
+  // CC-69: o nível estava espalhado pelo código de cada hook; agora é declarado
+  for (const h of HOOKS.filter((x) => x.implementado)) {
+    assert.ok(NIVEIS[h.nivel], `${h.id} sem nível declarado`)
+  }
+  /* Hook de `Stop` NUNCA pode travar: exit 2 ali devolve o texto ao modelo e o
+     manda continuar, criando laço. Isso estava escrito em comentário em dois
+     arquivos; agora o gate cobra. */
+  for (const h of HOOKS.filter((x) => x.evento === 'Stop' && x.implementado)) {
+    assert.notEqual(h.nivel, 'trava', `${h.id} é Stop e trava: vira laço`)
+  }
+
+  // CC-72: cópia divergente é invisível, e é o formato das 22 rotinas velhas
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-sync-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const R = await import(`./src/hooksRegistro.mjs?casa=${encodeURIComponent(casa)}`)
+    fs.mkdirSync(R.pastaInstalada(), { recursive: true })
+    fs.writeFileSync(path.join(casa, 'settings.json'), '{}')
+
+    const doRepo = path.join(R.pastaHooks(), 'routia', 'rota-guard.mjs')
+    const instalado = path.join(R.pastaInstalada(), 'rota-guard.mjs')
+
+    // igual, mas com CRLF: fim de linha não é diferença de conteúdo, e foi o
+    // que enganou a comparação de rotinas no CC-42
+    fs.writeFileSync(instalado, fs.readFileSync(doRepo, 'utf8').replace(/\n/g, '\r\n'))
+    const soRota = HOOKS.filter((h) => h.id === 'rota-guard')
+    assert.equal(R.comparar(soRota)[0].estado, 'igual', 'CRLF virou divergência')
+
+    fs.writeFileSync(instalado, '// versão velha, diferente\n')
+    assert.equal(R.comparar(soRota)[0].estado, 'divergente')
+
+    assert.equal(R.sincronizar(soRota, { dryRun: true })[0].acao, 'copiaria')
+    assert.equal(fs.readFileSync(instalado, 'utf8'), '// versão velha, diferente\n', '--dry-run copiou')
+
+    assert.equal(R.sincronizar(soRota)[0].acao, 'copiado')
+    assert.equal(R.comparar(soRota)[0].estado, 'igual')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
+/* --- CC-86: o mapa de dependência sai do código, e nunca envelhece --- */
+{
+  const D = await import('./src/dependencias.mjs')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-dep-'))
+  try {
+    fs.mkdirSync(path.join(raiz, 'src'), { recursive: true })
+    fs.mkdirSync(path.join(raiz, 'node_modules', 'pacote'), { recursive: true })
+    const w = (p, c) => fs.writeFileSync(path.join(raiz, p), c)
+
+    w('src/base.mjs', 'export const x = 1\n')
+    w('src/meio.mjs', "import { x } from './base.mjs'\nexport const y = x\n")
+    w('src/topo.mjs', "import { y } from './meio.mjs'\nimport fs from 'node:fs'\nexport default y\n")
+    w('src/solto.mjs', 'export const nada = 0\n')
+    // segundo dependente da base, para `maisUsados` não empatar com o ciclo:
+    // com empate o desempate é a ordem do Map, e o teste viraria loteria
+    w('src/outro.mjs', "import { x } from './base.mjs'\nexport const z = x\n")
+    // pacote instalado não é problema nosso: ninguém "mexe" no react sem querer
+    w('node_modules/pacote/index.js', "import './outro.js'\n")
+    // ciclo de import EXISTE, e sem visitados a busca em largura não termina
+    w('src/ciclo-a.mjs', "import './ciclo-b.mjs'\n")
+    w('src/ciclo-b.mjs', "import './ciclo-a.mjs'\n")
+
+    const g = D.mapear(raiz)
+    assert.equal(g.arquivos, 7, 'varreu node_modules ou perdeu arquivo')
+
+    // a pergunta direta
+    assert.deepEqual(D.impactoDe(g, 'src/meio.mjs').diretos, ['src/topo.mjs'])
+
+    /* A pergunta que importa é a transitiva: base é usada por meio, e meio por
+       topo. Olhando um nível só, mexer em base pareceria seguro para topo. */
+    const base = D.impactoDe(g, 'src/base.mjs')
+    assert.deepEqual(base.diretos, ['src/meio.mjs', 'src/outro.mjs'])
+    assert.deepEqual(base.todos, ['src/meio.mjs', 'src/outro.mjs', 'src/topo.mjs'], 'perdeu o impacto indireto')
+
+    assert.deepEqual(D.impactoDe(g, 'src/solto.mjs').diretos, [], 'inventou dependente')
+    assert.equal(D.impactoDe(g, 'src/nao-existe.mjs').existe, false)
+
+    // ciclo não pode travar
+    assert.deepEqual(D.impactoDe(g, 'src/ciclo-a.mjs').todos, ['src/ciclo-b.mjs'])
+
+    assert.equal(D.maisUsados(g, 1)[0].arquivo, 'src/base.mjs')
+    assert.match(D.aviso(g, 'src/solto.mjs'), /ninguém mais usa/)
+    assert.match(D.aviso(g, 'src/base.mjs'), /3 contando os indiretos/)
+  } finally { fs.rmSync(raiz, { recursive: true, force: true }) }
+
+  /* Contra o projeto de verdade: o custo é o argumento inteiro de derivar em vez
+     de manter à mão, então ele fica guardado. */
+  const real = D.mapear(process.cwd())
+  assert.ok(real.arquivos > 40 && real.ligacoes > 50)
+  assert.ok(real.ms < 2000, `varredura lenta demais: ${real.ms}ms`)
+}
+
+/* --- CC-91: o cartão do framework confirma o que GRAVOU ---
+   Ele trocou o modo duas vezes em 15/08, a tela confirmou, e o arquivo
+   continuava o mesmo. O gate guarda as três peças do conserto. */
+{
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui.html'), 'utf8')
+
+  // 1. a confirmação relê do servidor em vez de repetir o que foi clicado
+  assert.match(html, /CONFIRMA_FW/, 'sumiu a confirmação da troca de modo')
+  assert.match(html, /conferido\.modo === pedido/, 'a confirmação parou de comparar pedido com arquivo')
+  assert.match(html, /fw-salvo ruim/, 'sumiu o aviso de gravação que falhou')
+
+  /* 2. o autorizar NÃO pode voltar para perto do seletor: ele apertou por
+     engano justamente por isso. O seletor fica no `seloFramework`, e o botão
+     tem que estar dentro de `.fw-aut`, que é bloco próprio. */
+  const i = html.indexOf('function seloFramework(')
+  const corpo = html.slice(i, html.indexOf('\nfunction ', i + 10))
+  assert.ok(corpo.includes('fw-aut'), 'o autorizar saiu do bloco próprio')
+  const posSeletor = corpo.indexOf('class="fw-modo"')
+  const posAut = corpo.indexOf('data-fw="autorizar"')
+  assert.ok(posAut < posSeletor || corpo.slice(posSeletor, posAut).includes('fw-aut'),
+    'o botão de autorizar voltou a ficar colado no seletor de modo')
+
+  // 3. a confirmação do clique diz o que vai acontecer, não só "tem certeza?"
+  assert.match(html, /vale at[ée] voc[êe] trocar de modo/, 'a confirmação parou de dizer o prazo')
+  assert.match(html, /data-ajuda="Liberar escrita/, 'sumiu a explicação do "?" do autorizar')
+}
+
+/* --- Bancada: catálogo inteiro, cada camada rodando sozinha ---
+   Decisão dele em 15/08. O risco de declarar sem implementar é a tela oferecer
+   um botão que não faz nada — o gate guarda essa distinção. */
+{
+  const C = await import('./src/bancadaCatalogo.mjs')
+
+  assert.ok(C.CAMADAS.length >= 17, `o catálogo encolheu: ${C.CAMADAS.length}`)
+
+  const ids = C.CAMADAS.map((c) => c.id)
+  assert.equal(new Set(ids).size, ids.length, 'id de camada repetido')
+
+  for (const c of C.CAMADAS) {
+    assert.ok(c.nome && c.explica && c.grupo, `camada incompleta: ${c.id}`)
+    // a explicação é o que ele lê para decidir se liga: nome de ferramenta não basta
+    assert.ok(c.explica.length > 40, `explicação curta demais em ${c.id}`)
+    assert.equal(typeof c.aplicaA, 'function', `${c.id} sem aplicaA`)
+    /* `implementada` tem que bater com a realidade: prometer execução que não
+       existe é o pior defeito possível numa ferramenta de verificação. */
+    assert.equal(c.implementada, typeof c.rodar === 'function', `${c.id} mente sobre estar implementada`)
+  }
+
+  const rodam = C.CAMADAS.filter((c) => c.implementada)
+  assert.ok(rodam.length >= 4, 'as camadas que rodavam pararam de rodar')
+
+  // grupos: `dado` e `dados` conviveram por engano, e a tela mostraria dois
+  const grupos = [...new Set(C.CAMADAS.map((c) => c.grupo))]
+  assert.ok(!(grupos.includes('dado') && grupos.includes('dados')), 'grupo duplicado no singular e no plural')
+
+  // rodar uma declarada não pode fingir que rodou
+  const B = await import('./src/bancada.mjs')
+  const declarada = C.CAMADAS.find((c) => !c.implementada)
+  const r = await B.rodar(process.cwd(), declarada.id)
+  assert.ok(r.erro || r.naoImplementada, `${declarada.id} fingiu que rodou`)
+}
+
+/* --- CC-94: a prévia é para o telefone dele ---
+   Sete prévias em dois dias saíram com fonte de tela larga, e ele teve que dar
+   zoom em todas. O gate guarda o tamanho, que é a coisa fácil de perder. */
+{
+  const P = await import('./src/previa.mjs')
+
+  const html = P.pagina({ titulo: 'teste', subtitulo: 'sub', corpo: '<p>oi</p>' })
+  assert.match(html, /font:19px/, 'a prévia de leitura encolheu: ele lê no telefone, andando')
+  assert.match(html, /width=device-width/, 'sem viewport, o telefone renderiza como desktop')
+  assert.match(html, /text-size-adjust:100%/, 'sem isso o iOS remexe no tamanho ao girar a tela')
+  assert.ok(html.includes('<h1>teste</h1>'), 'o título sumiu')
+
+  /* O modo `layout` usa o CSS REAL: aqui fonte grande seria mentira, porque o
+     que se quer provar é justamente como a tela fica. */
+  const lay = P.pagina({ titulo: 't', corpo: '<p>x</p>', modo: 'layout' })
+  assert.ok(!lay.includes('font:19px'), 'o modo layout aumentou a fonte e passou a mentir')
+  assert.match(lay, /container-name:\s*painel/, 'o modo layout perdeu o container do painel')
+  assert.match(lay, /--bg/, 'o modo layout não carregou o CSS do painel')
+
+  // markdown reduzido: só o que ele escreve
+  const md = P.deMarkdown('# T\n\n- um\n- dois\n\n> citado\n\n`code` e **forte**')
+  assert.match(md, /<h1>T<\/h1>/)
+  assert.match(md, /<li>um<\/li>/)
+  assert.match(md, /<blockquote>citado<\/blockquote>/)
+  assert.match(md, /<code>code<\/code>/)
+  assert.match(md, /<b>forte<\/b>/)
+  // e escapa o que não é markdown, senão um `<script>` num doc viraria script
+  assert.match(P.deMarkdown('<script>x</script>'), /&lt;script&gt;/)
+}
+
+/* --- CC-87: toda tela responde uma pergunta, escrita no topo ---
+   Regra 1 da frente. O gate guarda a REGRA, não o texto: se alguém acrescentar
+   uma tela sem pergunta, ninguém notaria — foi assim que 11 das 15 ficaram
+   mudas até 15/08. */
+{
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui.html'), 'utf8')
+
+  assert.match(html, /function cabecaDaTela\(/, 'sumiu o componente do topo de tela')
+
+  // as telas já convertidas têm que continuar chamando
+  for (const [fn, pergunta] of [
+    ['viewMeu', 'O que depende de mim?'],
+    ['viewGlossario', 'O que é isso mesmo?'],
+    ['viewCockpit', 'Onde eu mexo agora?'],
+  ]) {
+    const i = html.indexOf(`function ${fn}(`)
+    assert.ok(i > 0, `${fn} sumiu`)
+    const corpo = html.slice(i, html.indexOf('\nfunction ', i + 10))
+    assert.ok(corpo.includes('cabecaDaTela('), `${fn} não usa o topo padrão`)
+    assert.ok(corpo.includes(pergunta), `${fn} perdeu a pergunta "${pergunta}"`)
+  }
+
+  /* A VPS é a que inaugurou o padrão, com nome próprio (`vps-veredito`) porque
+     veio antes. Se ela deixar de ter veredito, a regra morreu na origem. */
+  assert.match(html, /vps-veredito/, 'a aba VPS perdeu o veredito')
+
+  // as cores do veredito são as mesmas dos estados, não inventadas
+  for (const c of ['v-bom', 'v-atencao', 'v-ruim']) {
+    assert.ok(html.includes(`.tela-cabeca.${c}`), `falta a cor ${c}`)
+  }
+}
+
+/* --- CC-73: o painel não pode rolar de lado ---
+   Não dá para medir layout sem navegador, e o Chrome desta VPS exige um token
+   que o hook de segredo (com razão) não deixa ler. Então o que este teste
+   guarda é a REGRA, não o pixel: as três peças que impedem o vazamento têm que
+   continuar no arquivo. Se alguém remover uma, a barra horizontal volta e só
+   apareceria num print meses depois — foi assim que ela viveu até 15/08. */
+{
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui.html'), 'utf8')
+  const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'))
+
+  assert.match(css, /#painel\s*{[^}]*overflow-x:\s*hidden/s, 'o #painel voltou a poder rolar de lado')
+  assert.match(css, /\.rolagem\s*{[^}]*overflow-x:\s*auto/s, 'sumiu a caixa que segura conteúdo largo')
+  assert.match(css, /@container[^{]*\(max-width:\s*640px\)/, 'sumiu o ajuste de tela estreita da faixa de módulos')
+
+  // a tabela de tempo é o conteúdo largo conhecido, e tem que estar embrulhada
+  const tabela = html.indexOf('t-linha t-head')
+  assert.ok(tabela > 0)
+  assert.ok(
+    html.lastIndexOf('class="rolagem"', tabela) > tabela - 200,
+    'a tabela de tempo saiu de dentro da .rolagem',
+  )
+
+  /* Breakpoint é `@container`, nunca `@media`: com a coluna de notas aberta a
+     janela continua larga enquanto o painel encolhe, então media query não
+     dispararia. Armadilha já registrada no CLAUDE.md. */
+  // comentário é onde a regra está EXPLICADA, então sai antes da contagem
+  const semComentario = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  assert.equal(
+    (semComentario.match(/@media[^{]*max-width/g) || []).length, 0,
+    'entrou uma media query de largura: neste painel o breakpoint é @container',
+  )
+}
+
+/* --- VPS: veredito, não valor ---
+   A tela mostrava o que a máquina TEM e ele tinha que traduzir sozinho. Os
+   limiares são regra de negócio e ficam provados aqui, não na página. */
+{
+  const V = await import('./src/vpsSaude.mjs')
+  const agora = Date.parse('2026-08-15T12:00:00Z')
+  const saudavel = {
+    em: agora - 60e3,
+    nginx: [{ serverName: 'site.com', tipo: 'proxy' }],
+    docker: [{ nome: 'db', status: 'Up 3 days', portas: [] }],
+    pm2: [{ nome: 'api', status: 'online', restarts: 0 }],
+    ram: { usadoMB: 2000, totalMB: 8000 },
+    disco: { usadoGB: 20, totalGB: 100 },
+  }
+
+  assert.equal(V.veredito(saudavel, agora).cor, 'bom')
+  assert.equal(V.alertas(saudavel, agora).length, 0)
+  // a frase responde a pergunta do topo, com números, sem jargão
+  assert.match(V.veredito(saudavel, agora).frase, /Tudo no ar/)
+
+  // container parado é grave: se servia um site, o site caiu
+  const comParado = { ...saudavel, docker: [{ nome: 'db', status: 'Exited (1)' }] }
+  assert.equal(V.veredito(comParado, agora).cor, 'ruim')
+
+  /* Reiniciando sozinho é o aviso mais valioso desta tela: o programa aparece
+     como "no ar" enquanto morre e volta em laço. */
+  const emLaco = { ...saudavel, pm2: [{ nome: 'api', status: 'online', restarts: 12 }] }
+  const vLaco = V.veredito(emLaco, agora)
+  assert.equal(vLaco.cor, 'atencao')
+  assert.match(vLaco.alertas[0].texto, /reiniciando sozinho/)
+
+  // disco avisa antes da memória, e o motivo está no módulo
+  assert.equal(V.veredito({ ...saudavel, disco: { usadoGB: 88, totalGB: 100 } }, agora).cor, 'atencao')
+  assert.equal(V.veredito({ ...saudavel, ram: { usadoMB: 7100, totalMB: 8000 } }, agora).cor, 'bom')
+
+  // leitura velha vira aviso: o que está na tela pode não valer mais
+  assert.match(V.alertas({ ...saudavel, em: agora - 3 * 3600e3 }, agora)[0].texto, /antiga/)
+
+  // grave sempre antes de aviso, senão o que importa fica embaixo
+  const misto = { ...saudavel, docker: [{ nome: 'x', status: 'Exited' }], disco: { usadoGB: 90, totalGB: 100 } }
+  assert.equal(V.alertas(misto, agora)[0].nivel, 'grave')
+
+  // todo alerta diz o que fazer: alerta sem saída é o ruído que originou isto
+  for (const a of V.alertas(misto, agora)) assert.ok(a.oQueFazer?.length > 10)
+
+  // sem retrato nenhum não se inventa veredito
+  assert.equal(V.veredito(null, agora).cor, 'neutro')
+
+  // as três seções têm título em português e o nome técnico à parte
+  for (const [, d] of Object.entries(V.SECOES)) {
+    assert.ok(d.titulo && d.tecnico && d.ajuda && d.vazio)
+    assert.ok(!/nginx|docker|pm2/i.test(d.titulo), `título ainda é nome de ferramenta: ${d.titulo}`)
+  }
+}
+
+/* --- CC-48: as rotas viajam no pacote, e param de esperar commit --- */
+{
+  const F = await import('./src/federacao.mjs')
+  const quadroDoPc = [{
+    projeto: 'proj_controlcenter',
+    ocupadas: [{ rota: 'backlog', id: '5805d6bb', ultimoSinal: 100, veredito: 'ativa', ruido: 'não pode viajar' }],
+  }]
+
+  const pacote = F.montarPacote({ maquina: { id: 'pc', nome: 'ALIENWARE-LIPE' }, rotas: quadroDoPc })
+  assert.deepEqual(Object.keys(pacote.rotas[0].ocupadas[0]).sort(), ['id', 'rota', 'ultimoSinal', 'veredito'],
+    'o pacote leva campo que não devia: o quadro do inovallbond passa de 60 KB')
+
+  // ida e volta por JSON, como acontece de verdade na rede
+  const v = F.validarPacote(JSON.parse(JSON.stringify(pacote)))
+  assert.ok(v.ok)
+
+  const daqui = [{ projeto: 'proj_controlcenter', ocupadas: [{ rota: 'sincronia', id: 'ff0d68b2', ultimoSinal: 900, veredito: 'ativa' }] }]
+  const juntas = F.rotasDeTodos(daqui, [{ ...v.pacote, idade: 1200 }], 'VPS')
+  assert.equal(juntas.proj_controlcenter.length, 2, 'a rota do outro lado sumiu')
+  assert.deepEqual(juntas.proj_controlcenter.map((r) => r.origem), ['VPS', 'ALIENWARE-LIPE'])
+
+  // mesma rota reportada dos dois lados fica uma só, com o sinal mais novo
+  const repetida = F.rotasDeTodos(
+    [{ projeto: 'p', ocupadas: [{ rota: 'x', id: 'aaaaaaaa', ultimoSinal: 10, veredito: 'orfa' }] }],
+    [{ maquina: { nome: 'PC' }, rotas: [{ projeto: 'p', ocupadas: [{ rota: 'x', id: 'aaaaaaaa', ultimoSinal: 999, veredito: 'ativa' }] }] }],
+    'VPS',
+  )
+  assert.equal(repetida.p.length, 1)
+  assert.equal(repetida.p[0].veredito, 'ativa', 'o sinal mais novo tem que vencer')
+
+  // sem federação, nada muda para quem trabalha sozinho
+  assert.deepEqual(F.rotasDeTodos([], [], 'VPS'), {})
+}
+
+/* --- CC-49: rota ocupada por quem sumiu ---
+   O caso de verdade: em 14/08 a rota `backlog` estava ocupada por uma sessão
+   que tinha encerrado o dia mais de uma hora antes. O quadro mentia e o próximo
+   agente respeitava a mentira. */
+{
+  const { rotasOcupadas, humanizar, SILENCIO_MS } = await import('./src/presenca.mjs')
+  const agora = Date.parse('2026-08-15T12:00:00Z')
+  const quadro = [
+    '| `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41 | 2026-08-13 |',
+    '| `viva` | 🔴 ocupada | ff0d68b2 — trabalhando agora | 2026-08-15 |',
+    '| `livre` | 🟢 livre | — | — |',
+    // o quadro traz um exemplo de linha ocupada dentro de comentário HTML, e
+    // ele casava todos os critérios: o painel acusava rota que nunca existiu
+    '<!-- | `so-exemplo` | 🔴 ocupada | id da sessão | hoje | -->',
+    '| `[exemplo] feature/checkout` | 🔴 ocupada | id da sessão | hoje |',
+  ].join('\n')
+
+  const sinais = new Map([
+    ['5805d6bb', agora - 5 * 3600e3], // sumiu faz cinco horas
+    ['ff0d68b2', agora - 60e3], // escreveu agora há pouco
+  ])
+  const r = rotasOcupadas(quadro, sinais, agora)
+
+  assert.deepEqual(r.map((x) => x.rota), ['backlog', 'viva'], 'exemplo do quadro entrou como rota real')
+  assert.equal(r[0].veredito, 'orfa')
+  assert.equal(r[1].veredito, 'ativa')
+  assert.equal(humanizar(r[0].silencioMs), '5h 0min')
+
+  // sessão que esta máquina não conhece NÃO é órfã: quase sempre é da outra
+  // máquina, e afirmar que sumiu seria inventar
+  const semSinal = rotasOcupadas('| `x` | 🔴 ocupada | abcdef12 — outra máquina | hoje |', new Map(), agora)
+  assert.equal(semSinal[0].veredito, 'desconhecida')
+
+  // no limite exato ainda é ativa: o corte é folgado de propósito, porque
+  // sessão longa passa dezenas de minutos numa tarefa só
+  const noLimite = rotasOcupadas(quadro, new Map([['5805d6bb', agora - SILENCIO_MS]]), agora)
+  assert.equal(noLimite[0].veredito, 'ativa')
+}
+
+/* --- CC-78: trocar o estado de uma rota pela tela ---
+   O medo aqui é claro: o painel escreve num arquivo que agentes editam ao mesmo
+   tempo. Por isso a edição é cirúrgica, e o teste prova que só a linha alvo
+   muda. */
+{
+  const { alternarRota, corDaRota } = await import('./src/presenca.mjs')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-rt-'))
+  try {
+    fs.mkdirSync(path.join(dir, 'docs'), { recursive: true })
+    const original = [
+      '# Rotas',
+      '',
+      '| Rota | Status | Quem / o quê | Desde |',
+      '|---|---|---|---|',
+      '| `alfa` | 🟢 livre | — (fechou o CC-1 ontem) | — |',
+      '| `beta` | 🔴 ocupada | 5805d6bb — trabalhando nisso | 2026-08-13 |',
+      '',
+      '## Tickets pendentes',
+      'texto que não pode ser tocado',
+      '',
+    ].join('\n')
+    fs.writeFileSync(path.join(dir, 'docs', 'ROTAS-ATIVAS.md'), original)
+
+    const r = alternarRota(dir, 'alfa', { paraOcupada: true, marca: 'ff0d68b2', agora: new Date('2026-08-15') })
+    assert.ok(r.ok)
+    const depois = fs.readFileSync(path.join(dir, 'docs', 'ROTAS-ATIVAS.md'), 'utf8').split('\n')
+
+    assert.ok(depois[4].includes('🔴 ocupada') && depois[4].includes('ff0d68b2'))
+    // a OUTRA linha e o resto do arquivo não podem ter mudado: é o quadro que
+    // outra sessão pode estar editando no mesmo segundo
+    assert.equal(depois[5], '| `beta` | 🔴 ocupada | 5805d6bb — trabalhando nisso | 2026-08-13 |')
+    assert.equal(depois[8], 'texto que não pode ser tocado')
+
+    assert.ok(alternarRota(dir, 'beta', { paraOcupada: false }).ok)
+    assert.match(fs.readFileSync(path.join(dir, 'docs', 'ROTAS-ATIVAS.md'), 'utf8'), /`beta` \| 🟢 livre/)
+
+    assert.equal(alternarRota(dir, 'nao-existe', { paraOcupada: true }).ok, false)
+
+    /* As três cores. O azul é derivado, nunca escrito: é o veredito do CC-49,
+       ocupada por quem sumiu. Por isso ele não entra no ciclo do clique. */
+    assert.equal(corDaRota('| `x` | 🟢 livre | — | — |'), 'livre')
+    assert.equal(corDaRota('| `x` | 🔴 ocupada | a | b |', 'ativa'), 'ocupada')
+    assert.equal(corDaRota('| `x` | 🔴 ocupada | a | b |', 'orfa'), 'orfa')
+    assert.equal(corDaRota('| `x` | 🔴 ocupada | a | b |', 'desconhecida'), 'ocupada')
+  } finally { fs.rmSync(dir, { recursive: true, force: true }) }
+}
+
+/* --- CC-52: o buraco do Routia é sobreposição, não ausência de quadro --- */
+{
+  const { sobreposicoes } = await import('./src/routiaCobertura.mjs')
+  const j = (ini, fim) => ({ inicio: ini, fim })
+  // uma depois da outra: sessão única por vez, quadro não faria falta
+  assert.equal(sobreposicoes([j(0, 10), j(20, 30), j(40, 50)]), 0)
+  // a segunda começa antes de a primeira acabar: é aqui que duas sessões se pisam
+  assert.equal(sobreposicoes([j(0, 100), j(50, 150)]), 1)
+  // fora de ordem na entrada não pode mudar a conta
+  assert.equal(sobreposicoes([j(50, 150), j(0, 100)]), 1)
+  // três ao mesmo tempo contam duas sobreposições, não três
+  assert.equal(sobreposicoes([j(0, 100), j(10, 90), j(20, 80)]), 2)
+  assert.equal(sobreposicoes([]), 0)
+  assert.equal(sobreposicoes([j(0, 10)]), 0)
+}
+
+/* --- CC-56: sessão interativa reporta o próprio estado ---
+   O modo de uso que mais cresceu (celular, Remote Control) não cria job de
+   background, e por isso `cc set` recusava com "sem job". Roda em casa
+   temporária: o alvo aqui é ESCRITA de estado, e escrever no `.claude` real
+   seria repetir o erro das notas. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-s56-'))
+  const antesCasa = process.env.CC_HOME
+  const antesId = process.env.CLAUDE_CODE_SESSION_ID
+  const antesJob = process.env.CLAUDE_JOB_DIR
+  const sessionId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+  process.env.CC_HOME = casa
+  process.env.CLAUDE_CODE_SESSION_ID = sessionId
+  delete process.env.CLAUDE_JOB_DIR // é o que define "interativa"
+  try {
+    // um transcrito é a prova de que a sessão existe; sem ele, gravar é recusado
+    const pastaProj = path.join(casa, 'projects', '-um-projeto')
+    fs.mkdirSync(pastaProj, { recursive: true })
+    fs.writeFileSync(
+      path.join(pastaProj, `${sessionId}.jsonl`),
+      `${JSON.stringify({ type: 'user', cwd: path.join(path.sep, 'x', 'proj'), message: { content: 'o pedido' } })}\n`,
+    )
+
+    const q = `?casa=${encodeURIComponent(casa)}`
+    const jb = await import(`./src/jobs.mjs${q}`)
+    const ss = await import(`./src/sessoes.mjs${q}`)
+
+    assert.equal(jb.currentJobId(), sessionId, 'sem job, a identidade é a sessão')
+
+    jb.writeMeta(sessionId, { subject: 'reportando do celular', todos: [{ text: 'fechar isto', done: false }] })
+
+    // a regra de ouro: nada pode ter sido criado dentro de jobs/
+    assert.ok(!fs.existsSync(path.join(casa, 'jobs')), 'escreveu dentro da casa do Claude Code')
+    assert.ok(fs.existsSync(path.join(casa, 'control-center-sessoes', `${sessionId}.json`)))
+
+    const vista = ss.readSessoes(Date.now()).find((s) => s.id === sessionId.slice(0, 8))
+    assert.ok(vista, 'o painel não enxergou a sessão')
+    assert.equal(vista.subject, 'reportando do celular', 'o painel não leu o estado reportado')
+
+    // fechar to-do sem reenviar a lista funciona igual ao job de background
+    assert.equal(jb.marcarTodo(sessionId, 'fechar isto', true).done, true)
+    assert.equal(jb.marcarTodo(sessionId.slice(0, 8), 'fechar isto', false).done, false) // pelo id curto
+
+    // id que não é job nem sessão é recusado, senão vira arquivo órfão pra sempre
+    assert.throws(() => jb.writeMeta('nao-existe-mesmo', { subject: 'x' }), /não achei/)
+  } finally {
+    for (const [k, v] of [['CC_HOME', antesCasa], ['CLAUDE_CODE_SESSION_ID', antesId], ['CLAUDE_JOB_DIR', antesJob]]) {
+      if (v === undefined) delete process.env[k]
+      else process.env[k] = v
+    }
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
+/* --- daemon: caminhos, sem escrever nada ---
+   Cada sistema sobe no login do seu jeito, e o teste tem que perguntar isso ao
+   sistema em que está rodando. Antes exigia a pasta `Startup` sempre, o que só
+   existe no Windows — mais um bloco que só rodava numa máquina. */
+const dm = await import('./src/daemon.mjs')
+const ESPERADO = {
+  win32: { onde: /Startup/i, arquivo: 'control-center.vbs' },
+  darwin: { onde: /LaunchAgents/i, arquivo: 'control-center.plist' },
+  linux: { onde: /systemd[\\/]user/i, arquivo: 'control-center.service' },
+}[plat.SO]
+if (!ESPERADO) {
+  console.log(`  (pulado: sistema ${plat.SO} não tem caminho de autostart previsto)`)
+} else {
+  assert.match(dm.vbsPath(), ESPERADO.onde, `autostart fora do lugar em ${plat.SO}`)
+  assert.equal(path.basename(dm.vbsPath()), ESPERADO.arquivo)
+}
+
+/* O resumo diz o que a MÁQUINA tinha para oferecer, e por isso os dois números
+   podem ser zero sem que nada esteja errado: numa VPS sem job de background o
+   gate agora roda inteiro contra dados sintéticos. Zero aqui é informação, não
+   falha — antes era o gate morrendo. */
+console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos varridos nesta máquina`)
