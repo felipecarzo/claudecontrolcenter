@@ -275,7 +275,7 @@ Vale para tudo, não só para tela: é o mesmo formato do guia em etapas que ele
 pediu na sessão de senhas, e o mesmo do gate de MVP, que para no primeiro
 critério que não fecha em vez de despejar a lista.
 
-### CC-76 — as 15 abas auditadas, e o problema da prévia
+### CC-76 ✅ 16/08 — as 15 abas auditadas, e as prévias resolvidas
 
 Pedido dele: *"me mande aí também uma prévia de cada página"*. O caminho já foi
 provado hoje com a aba VPS — arquivo HTML com o CSS de verdade e os dados reais,
@@ -289,8 +289,9 @@ eu monto por fora é a mesma folha de estilo com dados de exemplo. Serviu para a
 VPS e para o cabeçalho, que são simples. Para as 15, o custo é alto e a fidelidade
 cai.
 
-**O caminho barato e fiel:** ele reinicia o painel (precisa do root dele) e
-navega nas abas de verdade. O painel real é a melhor prévia que existe.
+**Resolvido de dois jeitos em 16/08:** o `cc previa` (CC-94) padronizou a prévia
+em arquivo, e descobriu-se que **dá para reiniciar o painel sem root** — o que
+faz do painel de produção a prévia de verdade, a qualquer momento.
 
 **O que dá para adiantar sem navegador, e foi feito:** a auditoria das 15 contra
 a regra 1, que é a que decide todo o resto. Cada aba tem que responder uma
@@ -818,7 +819,7 @@ tarefa aberta de um agente cujo status é `working`. Ninguém marca "estou nesta
 ⚠️ O `id` da aba continua `todos`: trocar mandaria quem tem a aba lembrada no
 `localStorage` para outro lugar sem motivo.
 
-### CC-89: etiqueta da tarefa no chat
+### CC-89 ✅ 15/08 — etiqueta da tarefa no chat
 
 Pedido dele no mesmo momento: *"adicionando as tarefas também pra gente colocar
 aqui no chat, sempre uma etiqueta durante o chat em alguns momentos, pra eu
