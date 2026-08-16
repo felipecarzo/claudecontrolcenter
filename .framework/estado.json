@@ -120,7 +120,7 @@
    "verificou": true,
    "escopo": "mudou",
    "detalhe": null,
-   "em": "2026-08-16T06:49:24.895Z"
+   "em": "2026-08-16T06:52:26.282Z"
   },
   "segredo-historico": {
    "ok": true,
@@ -128,7 +128,7 @@
    "verificou": true,
    "escopo": "mudou",
    "detalhe": null,
-   "em": "2026-08-16T06:49:29.750Z"
+   "em": "2026-08-16T06:52:31.036Z"
   },
   "tls": {
    "ok": true,
@@ -146,7 +146,7 @@
    "verificou": true,
    "escopo": "mudou",
    "detalhe": null,
-   "em": "2026-08-16T06:49:37.693Z"
+   "em": "2026-08-16T06:52:38.936Z"
   },
   "service-role": {
    "ok": true,
