@@ -1647,6 +1647,38 @@ defeito possível numa ferramenta de verificação — ela diria "está limpo" s
 olhado. Achou também um grupo duplicado (`dado` e `dados`), que faria a tela
 mostrar duas seções para a mesma coisa.
 
+#### ✅ Mais duas camadas e três consertos, 16/08 (segunda rodada)
+
+**9 de 19 implementadas.** As duas novas também não precisaram de ferramenta
+ausente:
+
+- **`pacote-malicioso`, com `npm audit signatures`.** Diferente do `npm audit`
+  comum, que compara versão com lista de CVE: este pergunta ao registro se cada
+  tarball foi mesmo publicado por quem diz. É o que pega troca no meio do
+  caminho — quando o CVE sai, o ataque já rodou.
+- **`navegador`, com o Chromium que o Playwright já tem em cache aqui.** Abre
+  cada endereço e conta erro de JavaScript, requisição falha e tela vazia.
+  Justifica-se sozinha pela regra 1 dele: **já houve 545 testes verdes com a
+  tela quebrada no navegador**, e teste unitário não vê tela branca.
+
+**Os três consertos são a mesma família — a ferramenta afirmando mais do que
+sabe:**
+
+1. **`pacote-malicioso` disse "limpo" sem ter olhado.** Pego rodando contra o
+   `mnzs`: o npm falhava por falta de `node_modules` e a camada respondia que
+   estava tudo certo. É o defeito que o cabeçalho do catálogo chama de pior
+   possível. Agora existe `verificou: false`, o runner propaga, o CLI imprime
+   `NÃO VERIFICADO` e **o framework não conta como verificação aprovada**.
+2. **Camada implementada sumia da lista** quando `aplicaA` dizia não — pior que
+   a declarada e não implementada, que ao menos aparecia. Do lado de fora,
+   sumir e não existir são a mesma coisa, e a decisão dele foi ter o catálogo
+   inteiro à vista. `todasAsCamadas()` mostra todas, com o motivo na língua
+   dele: "este projeto não tem package-lock.json", nunca "aplicaA devolveu
+   false".
+3. **Resultado guardado vencia o "não se aplica"**, e a linha saía `tls: ok` ao
+   lado de "nenhum domínio configurado". Resultado antigo é de outra
+   configuração.
+
 #### ✅ Mais três camadas, 16/08 — e nenhuma precisou de ferramenta externa
 
 Nenhuma das ferramentas previstas está instalada nesta VPS (Gitleaks, Trivy,
