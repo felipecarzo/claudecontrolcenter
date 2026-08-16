@@ -96,6 +96,8 @@ export async function rodar(raiz, id, cfg = {}) {
     const x = registrarVerificacao(estado, id, {
       // camada que não conseguiu olhar não vale como verificação aprovada
       ok: resultado.ok && resultado.verificou,
+      achados: resultado.achados.length,
+      verificou: resultado.verificou,
       detalhe: resultado.achados.length
         ? `${resultado.achados.length} achado(s): ${resultado.achados[0].titulo}`
         : (resultado.nota || null),

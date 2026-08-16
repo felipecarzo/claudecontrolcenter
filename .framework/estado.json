@@ -116,13 +116,17 @@
  "verificacao": {
   "segredo": {
    "ok": true,
+   "achados": 0,
+   "verificou": true,
    "detalhe": null,
-   "em": "2026-08-16T04:47:56.603Z"
+   "em": "2026-08-16T05:20:31.652Z"
   },
   "segredo-historico": {
    "ok": true,
+   "achados": 0,
+   "verificou": true,
    "detalhe": null,
-   "em": "2026-08-16T04:48:01.089Z"
+   "em": "2026-08-16T05:20:36.203Z"
   },
   "tls": {
    "ok": true,
@@ -136,17 +140,22 @@
   },
   "teste": {
    "ok": true,
+   "achados": 0,
+   "verificou": true,
    "detalhe": null,
-   "em": "2026-08-16T04:48:09.254Z"
+   "em": "2026-08-16T05:20:44.208Z"
   },
   "service-role": {
    "ok": true,
-   "detalhe": "5 achado(s): service_role citada no código",
-   "em": "2026-08-16T04:48:09.297Z"
+   "achados": 1,
+   "verificou": true,
+   "detalhe": "1 achado(s): service_role citada no código",
+   "em": "2026-08-16T05:20:44.235Z"
   }
  },
  "reproducao": {
   "como": "as 11 telas nao respondem pergunta nenhuma: mostram o dado cru e ele traduz sozinho. Nos prints em tela estreita: nomes desalinhados, nada aparente, sem cara de aplicativo",
   "esperado": "cada tela abre com a pergunta dela no topo e um veredito em uma frase, nas palavras dele"
- }
+ },
+ "nivelBancada": "interno"
 }

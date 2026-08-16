@@ -41,6 +41,11 @@ import {
 import { readPaineis, ligarPainel, desligarPainel, portaDe } from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
 import * as docs from './documentos.mjs'
+// estáticos, não `await import` dentro da rota: a função que trata a requisição
+// não é async, e o `await` ali quebrou o servidor inteiro por erro de sintaxe —
+// com o `npm test` passando, porque o gate não carregava este arquivo
+import * as bancada from './bancada.mjs'
+import * as bancadaCatalogo from './bancadaCatalogo.mjs'
 import {
   desligar as desligarFramework, gravar as gravarFramework, ler as lerFramework,
   ligar as ligarFramework, situacao as situacaoFramework,
@@ -69,6 +74,12 @@ import { garantirCambio } from './cambio.mjs'
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
 const GRAFICOS = path.join(HERE, 'graficos.js')
+/* O alvo quando ninguém escolheu projeto no filtro.
+   `process.cwd()` NÃO serve: como serviço do systemd o painel roda de outro
+   diretório, e a bancada respondia "o framework está desligado aqui" sobre uma
+   pasta que não era projeto nenhum. A raiz do próprio código é estável em
+   qualquer forma de subir o painel. */
+const RAIZ_DO_PAINEL = path.join(HERE, '..')
 
 /**
  * `cwd` explícito vence. Sem ele, resolve pelo nome do projeto: (1) o `cwd`
@@ -572,6 +583,57 @@ function handler(req, res) {
     }
     lista.sort((a, b) => (b.existe ? 1 : 0) - (a.existe ? 1 : 0) || a.projeto.localeCompare(b.projeto))
     return send(res, 200, { projetos: lista, at: Date.now() })
+  }
+
+  /* A Bancada pela tela. Fora do stream de propósito: rodar uma camada leva de
+     segundos a minutos e fala com servidor de verdade — no `/api/jobs` isso
+     viraria varredura a cada 2 segundos, contra o projeto dele. */
+  if (url.pathname === '/api/bancada') {
+    const B = bancada
+    const C = bancadaCatalogo
+
+    if (req.method === 'POST') {
+      // `comCorpoAsync`, não `comCorpo`: rodar camada devolve promessa, e o
+      // síncrono responderia o objeto pendente em vez do resultado
+      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, nivel, camada }) => {
+        const raiz = cwdDoProjeto(cwd, projeto) || RAIZ_DO_PAINEL
+        const estado = lerFramework(raiz)
+        if (!estado) return { error: 'este projeto não tem framework ligado' }
+
+        if (acao === 'nivel') {
+          if (!C.NIVEIS[nivel]) return { error: `nível desconhecido: ${nivel}` }
+          gravarFramework(raiz, { ...estado, nivelBancada: nivel })
+          return { ok: true, nivel }
+        }
+        if (acao === 'rodar') {
+          const r = camada
+            ? await B.rodar(raiz, camada, estado.bancadaCfg || {})
+            : await B.rodarNivel(raiz, nivel || estado.nivelBancada || 'rascunho', estado.bancadaCfg || {})
+          return r.erro ? { error: r.erro } : r
+        }
+        return { error: 'ação desconhecida' }
+      })
+    }
+
+    /* Sem projeto escolhido no filtro, o alvo é a pasta onde o painel roda.
+       A alternativa seria a tela vazia com "não achei a pasta deste projeto",
+       que é o que aparecia — e é confuso, porque o filtro em "todos os
+       projetos" é o estado NORMAL de quem abre o painel. Verificação de
+       segurança é sempre de UM projeto: não existe rodar em todos de uma vez. */
+    const raiz = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto')) || RAIZ_DO_PAINEL
+    const estado = lerFramework(raiz)
+    const nivel = estado?.nivelBancada || 'rascunho'
+    const s = B.situacao(raiz, estado?.bancadaCfg || {})
+    return send(res, 200, {
+      raiz,
+      ligado: Boolean(estado && estado.ligado !== false),
+      nivel,
+      declarado: Boolean(estado?.nivelBancada),
+      niveis: Object.values(C.NIVEIS),
+      camadas: s.camadas,
+      veredito: C.avaliarNivel(nivel, s.camadas),
+      at: Date.now(),
+    })
   }
 
   if (url.pathname === '/api/framework') {

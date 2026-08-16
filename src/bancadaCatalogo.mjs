@@ -493,9 +493,18 @@ export const CAMADAS = [
       const perigosas = /(^|[\\/])(public|static|assets|dist|build|components?|pages|app|src[\\/](app|pages|components))([\\/]|$)/i
       const RE_SERVICE = /service_role|SUPABASE_SERVICE_ROLE|supabaseServiceRole/
 
+      /* Texto que FALA sobre a chave não é a chave.
+         Medido em 16/08 rodando aqui: 5 achados, todos em `docs/` e no próprio
+         ROADMAP, que só citam o termo. Ferramenta de segurança com cinco alarmes
+         falsos no primeiro uso é ferramenta que ninguém abre de novo — e o custo
+         de perder um achado real em markdown é zero, porque `.md` não vira
+         bundle nem é servido como código. */
+      const soTexto = /\.(md|mdx|txt|rst|adoc)$/i
+
       for (const arquivo of arquivosDe(raiz)) {
         const rel = path.relative(raiz, arquivo)
         if (/(^|[\\/])\.env/.test(rel)) continue
+        if (soTexto.test(rel)) continue
         let texto = ''
         try {
           if (fs.statSync(arquivo).size > 2 * 1024 * 1024) continue

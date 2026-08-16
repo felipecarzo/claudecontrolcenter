@@ -63,6 +63,19 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'bancada-guard',
+    nivel: 'avisa',
+    label: 'a tarefa não se auto-verificou',
+    script: 'bancada-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Editou código e a Bancada do nível declarado do projeto não rodou '
+      + 'depois? Devolve uma vez. O `npm test` responde "quebrei alguma coisa?"; a '
+      + 'Bancada responde "deixei alguma coisa insegura?" — e suíte verde convive '
+      + 'com chave commitada e tabela sem proteção.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'branch-guard',
     nivel: 'trava',
     label: 'comando git que apaga trabalho alheio',

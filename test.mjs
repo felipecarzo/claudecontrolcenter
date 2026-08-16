@@ -90,6 +90,29 @@ assert.equal(fmtAge(90 * 60e3), '1h30')
 assert.equal(fmtTokens(114533), '115k')
 assert.equal(fmtTokens(0), '—')
 
+/* Todo módulo de `src/` tem que pelo menos CARREGAR.
+ *
+ * Em 16/08 um `await import` dentro de uma função que não era `async` derrubou
+ * o `web.mjs` inteiro — o painel entrou em laço de reinício no systemd e o
+ * `npm test` passou verde, porque o gate nunca carregava esse arquivo. Gate que
+ * aprova com o servidor morto é pior que gate nenhum: ele dá a confiança sem a
+ * cobertura.
+ *
+ * `import()` e não `new Function()`: erro de sintaxe em módulo ES só aparece no
+ * carregamento de verdade, e é justamente essa classe de erro que passou.
+ */
+{
+  const pastaSrc = new URL('./src/', import.meta.url)
+  const modulos = fs.readdirSync(pastaSrc).filter((f) => f.endsWith('.mjs'))
+  assert.ok(modulos.length > 15, 'a varredura de src/ não achou os módulos')
+  for (const m of modulos) {
+    await assert.doesNotReject(
+      () => import(new URL(m, pastaSrc)),
+      `src/${m} não carrega — erro de sintaxe ou import quebrado`,
+    )
+  }
+}
+
 // o script da página não roda em Node, mas erro de sintaxe dá pra pegar aqui
 const html = fs.readFileSync(new URL('./src/ui.html', import.meta.url), 'utf8')
 // São dois blocos: o do tema, no head, e o da página, no fim do body. Pegar só

@@ -652,6 +652,56 @@ switch (cmd) {
           break
         }
 
+        /* `bancada nivel <x>`: a exigência escolhida por quem alcança o projeto,
+           em vez de dezenove caixinhas. Sem argumento, mostra os quatro e diz
+           qual está declarado — perguntar "quais níveis existem?" tem que ser
+           mais fácil que abrir o código. */
+        if (alvo === 'nivel') {
+          const C = await import('./src/bancadaCatalogo.mjs')
+          const estado = D.ler(r) || {}
+          const pedido = positional[3]
+
+          if (!pedido) {
+            const atual = estado.nivelBancada || 'rascunho (padrão, não declarado)'
+            console.log(`nível deste projeto: ${atual}\n`)
+            for (const n of Object.values(C.NIVEIS)) {
+              console.log(`${n.id === estado.nivelBancada ? '▸' : ' '} ${n.id.padEnd(9)} ${n.pergunta}`)
+              console.log(`    ${n.explica}`)
+              console.log(`    camadas: ${C.camadasDoNivel(n.id).join(', ')}\n`)
+            }
+            console.log('declarar: node cc.mjs framework bancada nivel <nome>')
+            console.log('rodar:    node cc.mjs framework bancada nivel <nome> --rodar')
+            break
+          }
+
+          if (!C.NIVEIS[pedido]) die(`nível desconhecido: ${pedido}. São: ${Object.keys(C.NIVEIS).join(', ')}`)
+
+          if (!process.argv.includes('--rodar')) {
+            D.gravar(r, { ...estado, nivelBancada: pedido })
+            console.log(`nível declarado: ${pedido}`)
+            console.log(`camadas exigidas: ${C.camadasDoNivel(pedido).join(', ')}`)
+            console.log('\nrodar agora: node cc.mjs framework bancada nivel ' + pedido + ' --rodar')
+            break
+          }
+
+          const res = await B.rodarNivel(r, pedido, cfg)
+          if (!res.ok) die(res.erro)
+          for (const x of res.resultados) {
+            const v = x.verificou === false ? 'NÃO VERIFICADO'
+              : x.ok && !x.achados?.length ? 'limpo' : `${x.achados?.length || 0} achado(s)`
+            console.log(`${x.camada.padEnd(20)} ${v}`)
+            if (x.nota) console.log(`  ${x.nota}`)
+            for (const a of x.achados || []) console.log(`  [${a.gravidade}] ${a.titulo} — ${a.onde}`)
+          }
+          const v = res.veredito
+          console.log(`\n${pedido}: ${v.aprovado ? 'APROVADO' : 'REPROVADO'}`)
+          if (v.falhou.length) console.log(`  achou problema: ${v.falhou.join(', ')}`)
+          if (v.faltaRodar.length) console.log(`  não rodou: ${v.faltaRodar.join(', ')}`)
+          if (v.naoSeAplica.length) console.log(`  não se aplica aqui: ${v.naoSeAplica.join(', ')}`)
+          if (v.semExecucao.length) console.log(`  ainda sem execução (dívida nossa): ${v.semExecucao.join(', ')}`)
+          break
+        }
+
         const saida = alvo === 'tudo' ? await B.rodarEscolhidas(r, cfg) : await B.rodar(r, alvo, cfg)
         if (saida.erro) die(saida.erro)
         const lista = saida.resultados || [saida]

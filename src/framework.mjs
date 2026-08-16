@@ -705,14 +705,23 @@ export function escolherFerramentas(estado, lista, { quando = null } = {}) {
  * resultado é DADO, não julgamento: quem roda a ferramenta diz se passou, o
  * framework só confere se rodou e se passou.
  */
-export function registrarVerificacao(estado, ferramenta, { ok, detalhe = null, quando = null }) {
+export function registrarVerificacao(estado, ferramenta, {
+  ok, detalhe = null, quando = null, achados = null, verificou = true,
+}) {
   const nome = String(ferramenta || '').trim()
   if (!nome) return { ok: false, erro: 'verificação sem nome de ferramenta' }
   return {
     ok: true,
     estado: {
       ...estado,
-      verificacao: { ...(estado?.verificacao || {}), [nome]: { ok: Boolean(ok), detalhe, em: quando } },
+      verificacao: {
+        ...(estado?.verificacao || {}),
+        /* `ok` e `achados` são coisas diferentes, e guardar só o primeiro fez a
+           tela mentir: a camada `service-role` aparecia com o selo "limpo" e o
+           texto "5 achado(s)" logo abaixo, porque achado de gravidade baixa não
+           reprova. `verificou` separa o terceiro caso, "não consegui olhar". */
+        [nome]: { ok: Boolean(ok), achados, verificou: verificou !== false, detalhe, em: quando },
+      },
     },
   }
 }

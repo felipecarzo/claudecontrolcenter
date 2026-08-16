@@ -778,6 +778,39 @@
   .gl-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
   .gl-card { border: 1px solid var(--faint); border-radius: 10px; padding: 12px 14px; }
 
+  /* ---------- a bancada: níveis de verificação ---------- */
+  .bn-niveis { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); margin-bottom: 12px; }
+  .bn-nivel {
+    display: grid; gap: 3px; text-align: left; cursor: pointer; padding: 11px 13px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--dim);
+  }
+  .bn-nivel:hover { border-color: var(--acento); }
+  /* o nível escolhido é a única decisão desta tela: precisa ganhar de tudo */
+  .bn-nivel.on { border-color: var(--acento); color: var(--fg); box-shadow: inset 0 0 0 1px var(--acento); }
+  .bn-nivel b { font-size: 14px; }
+  .bn-nivel span { font-size: 11.5px; line-height: 1.35; }
+  .bn-nivel i { font-style: normal; font-size: 10px; color: var(--faint); font-family: var(--mono); }
+  .bn-atual { font-size: 12.5px; line-height: 1.5; color: var(--dim); margin: 0 0 12px; max-width: 72ch; }
+  .bn-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .bn-alerta {
+    border: 1px solid var(--failed); border-radius: 8px; padding: 10px 12px;
+    font-size: 12.5px; margin-bottom: 16px;
+  }
+  .bn-h { font: 700 11px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; color: var(--faint); margin: 20px 0 8px; }
+  .bn-lista { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
+  .bn-camada { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface); }
+  /* camada de nível acima fica visível mas apagada: sumir com ela esconderia o
+     que se ganha ao subir de nível, que é justamente a decisão desta tela */
+  .bn-fora { opacity: .55; }
+  .bn-topo { display: flex; align-items: center; gap: 8px; justify-content: space-between; margin-bottom: 4px; }
+  .bn-topo b { font-size: 13px; }
+  .bn-explica { display: block; font-size: 11.5px; line-height: 1.45; color: var(--dim); }
+  .bn-pe { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; }
+  .fw-selo.v-done { border-color: var(--done); color: var(--done); }
+  .fw-selo.v-failed { border-color: var(--failed); color: var(--failed); }
+  .fw-selo.v-waiting { border-color: var(--waiting); color: var(--waiting); }
+  .fw-selo.v-faint { border-color: var(--faint); color: var(--faint); }
+
   /* ---------- CC-82: a estante de documentos ---------- */
   .doc-barra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
   .doc-barra input { flex: 1 1 220px; min-width: 0; }
@@ -1770,6 +1803,7 @@ const TABS = [
   { id: 'meu', label: 'meu' },
   { id: 'glossario', label: 'glossário' },
   { id: 'docs', label: 'documentos' },
+  { id: 'bancada', label: 'bancada' },
   { id: 'remoto', label: 'remoto' },
 ]
 
@@ -1790,7 +1824,7 @@ const TABS = [
 const GRUPOS = [
   { id: 'agora', label: 'agora', abas: ['projetos', 'agentes', 'todos', 'meu', 'escritorio'] },
   { id: 'custo', label: 'custo', abas: ['tempo', 'graficos', 'preco'] },
-  { id: 'controle', label: 'controle', abas: ['servidores', 'vps', 'hooks', 'rotinas', 'remoto'] },
+  { id: 'controle', label: 'controle', abas: ['servidores', 'vps', 'hooks', 'bancada', 'rotinas', 'remoto'] },
   { id: 'saber', label: 'saber', abas: ['glossario', 'docs', 'agenda'] },
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
@@ -3908,6 +3942,7 @@ function carregarDaAba() {
   if (tab === 'meu') carregarMeu()
   if (tab === 'glossario') carregarGlossario()
   if (tab === 'docs') carregarDocs()
+  if (tab === 'bancada') carregarBancada()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()
   if (tab === 'preco') carregarPreco()
 }
@@ -4129,6 +4164,137 @@ async function salvarDoc() {
   dlg.close()
   await carregarDocs(true)
   if (r?.id) abrirDoc(r.id)
+}
+
+/* ==================== aba: bancada (CC — níveis, 16/08) ====================
+   A verificação de segurança escolhida por UMA pergunta: quem alcança este
+   projeto? O `npm test` responde "quebrei alguma coisa"; a Bancada responde
+   "deixei alguma coisa insegura", e as duas respostas são independentes —
+   suíte verde convive muito bem com chave commitada e tabela sem proteção.
+
+   Pedido dele em 16/08: "podemos colocar um botão que ative isso em níveis
+   específicos". O nível é o botão; a lista de camadas é consequência dele, e
+   não uma segunda escolha. Dezenove caixinhas seria o mesmo que nenhuma. */
+let BANCADA = null
+let bancadaRodando = null   // id da camada em curso, ou 'nivel'
+
+async function carregarBancada(force) {
+  if (BANCADA && !force) return
+  try {
+    // o alvo é o projeto escolhido no filtro do topo. Vazio = o servidor usa a
+    // própria pasta, que é o caso de quem abre o painel dentro de um projeto
+    const alvo = $('#proj')?.value || ''
+    BANCADA = await (await fetch(`/api/bancada?projeto=${encodeURIComponent(alvo)}`)).json()
+  } catch { BANCADA = { error: 'não deu para ler a bancada deste projeto' } }
+  render()
+}
+
+async function bancadaAcao(corpo) {
+  bancadaRodando = corpo.camada || 'nivel'
+  render()
+  try {
+    await fetch('/api/bancada', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ projeto: $('#proj')?.value || '', ...corpo }),
+    })
+  } finally {
+    bancadaRodando = null
+    await carregarBancada(true)
+  }
+}
+
+/** O estado de uma camada em uma palavra, na ordem de precedência que importa. */
+function bancadaEstado(c) {
+  if (!c.implementada) return { txt: 'a fazer', cor: 'faint', dica: 'declarada no catálogo, ainda sem execução — dívida nossa, não sua' }
+  if (!c.cabe) return { txt: 'não se aplica', cor: 'faint', dica: c.porQueNao }
+  const r = c.resultado
+  if (!r) return { txt: 'nunca rodou', cor: 'waiting', dica: 'ninguém verificou isto ainda' }
+  if (r.verificou === false) return { txt: 'não olhou', cor: 'waiting', dica: r.detalhe || 'a camada não conseguiu rodar aqui' }
+  if (r.ok === false) return { txt: `${r.achados || ''} achado(s)`.trim(), cor: 'failed', dica: r.detalhe || 'há achados graves' }
+  // achado que não reprova ainda é achado: dizer "limpo" com 5 deles na dica
+  // era a tela se contradizendo em duas linhas seguidas
+  if (r.achados > 0) return { txt: `${r.achados} p/ olhar`, cor: 'waiting', dica: r.detalhe || 'achados leves, nenhum grave' }
+  return { txt: 'limpo', cor: 'done', dica: r.detalhe || `verificado ${quandoCurto(new Date(r.em).getTime())}` }
+}
+
+function viewBancada() {
+  if (!BANCADA) return '<div class="empty">lendo a bancada…</div>'
+  if (BANCADA.error) return `<div class="empty">${esc(BANCADA.error)}</div>`
+  if (!BANCADA.ligado) {
+    return `${cabecaDaTela('Este projeto se auto-verifica?', 'o framework está desligado aqui', 'faint')}
+      <div class="empty">A bancada roda junto do framework. Ligue o framework neste projeto
+        na aba <b>projetos</b> para escolher um nível.</div>`
+  }
+
+  const v = BANCADA.veredito
+  const atual = BANCADA.niveis.find((n) => n.id === BANCADA.nivel)
+  const cor = v.falhou.length ? 'failed' : v.faltaRodar.length ? 'waiting' : 'done'
+  const veredito = v.falhou.length
+    ? `${v.falhou.length} camada(s) acharam problema`
+    : v.faltaRodar.length ? `${v.faltaRodar.length} camada(s) nunca rodaram`
+      : `sim, no nível ${BANCADA.nivel}`
+
+  // as camadas fora da escala (as de IA) entram por aplicabilidade, nunca por
+  // rigor: pôr `ataque-modelo` no nível mais alto obrigaria um site
+  // institucional a rodar teste de injeção de prompt que não tem onde acontecer
+  const doNivel = BANCADA.camadas.filter((c) => c.nivel)
+  const foraDaEscala = BANCADA.camadas.filter((c) => !c.nivel)
+  const ordem = BANCADA.niveis.map((n) => n.id)
+  const exigida = (c) => ordem.indexOf(c.nivel) <= ordem.indexOf(BANCADA.nivel)
+
+  const cartao = (c) => {
+    const e = bancadaEstado(c)
+    const rodando = bancadaRodando === c.id
+    return `<div class="bn-camada ${exigida(c) ? '' : 'bn-fora'}">
+      <div class="bn-topo">
+        <b>${esc(c.nome)}</b>
+        <span class="fw-selo v-${e.cor}">${rodando ? 'rodando…' : esc(e.txt)}</span>
+      </div>
+      <span class="bn-explica">${esc(c.explica)}</span>
+      <div class="bn-pe">
+        <span class="dim">${esc(e.dica || '')}</span>
+        <span class="grow"></span>
+        ${c.implementada && c.cabe
+    ? `<button class="btn mini" data-bn-camada="${esc(c.id)}"${rodando ? ' disabled' : ''}>rodar só esta</button>`
+    : ''}
+      </div>
+    </div>`
+  }
+
+  return `${cabecaDaTela('Este projeto está seguro para quem o alcança?', veredito, cor)}
+
+    <div class="bn-niveis">
+      ${BANCADA.niveis.map((n) => `
+        <button class="bn-nivel${n.id === BANCADA.nivel ? ' on' : ''}" data-bn-nivel="${esc(n.id)}">
+          <b>${esc(n.titulo)}</b>
+          <span>${esc(n.pergunta)}</span>
+          <i>${n.camadas.length ? `+${n.camadas.length}` : ''} camada(s)</i>
+        </button>`).join('')}
+    </div>
+
+    <p class="bn-atual">${esc(atual?.explica || '')}${BANCADA.declarado ? '' : ' <b>(padrão — você ainda não escolheu)</b>'}</p>
+
+    <div class="bn-acoes">
+      <button class="btn primario" data-bn-rodar${bancadaRodando ? ' disabled' : ''}>
+        ${bancadaRodando === 'nivel' ? 'rodando…' : `rodar o nível ${esc(BANCADA.nivel)}`}
+      </button>
+      <span class="dim">${v.naoSeAplica.length ? `${v.naoSeAplica.length} não se aplicam a este projeto` : ''}</span>
+    </div>
+
+    ${v.falhou.length ? `<div class="bn-alerta">Achou problema em: <b>${v.falhou.map(esc).join(', ')}</b>.
+      Abra a camada para ver o quê.</div>` : ''}
+
+    <h3 class="bn-h">Exigidas por ${esc(BANCADA.nivel)}</h3>
+    <div class="bn-lista">${doNivel.filter(exigida).map(cartao).join('')}</div>
+
+    <h3 class="bn-h">Nos níveis acima, ainda não exigidas</h3>
+    <div class="bn-lista">${doNivel.filter((c) => !exigida(c)).map(cartao).join('') || '<span class="dim">nenhuma</span>'}</div>
+
+    ${foraDaEscala.length ? `<h3 class="bn-h">Fora da escala, por assunto</h3>
+      <p class="dim bn-explica">Não são mais rigorosas: só fazem sentido em projeto que use modelo de IA,
+      então entram por aplicabilidade e nunca por nível.</p>
+      <div class="bn-lista">${foraDaEscala.map(cartao).join('')}</div>` : ''}`
 }
 
 function viewDocs() {
@@ -4943,6 +5109,7 @@ function render() {
     meu: () => viewMeu(),
     glossario: () => viewGlossario(),
     docs: () => viewDocs(),
+    bancada: () => viewBancada(),
     remoto: () => viewRemoto(),
   }
   // O palco do escritório é um iframe. Reescrever #main a cada evento do
@@ -5835,6 +6002,12 @@ document.addEventListener('click', async (e) => {
   const aba = t.closest('button[data-tab]')
   if (aba) return trocarAba(aba.dataset.tab)
 
+  const bnNivel = t.closest('[data-bn-nivel]')
+  if (bnNivel) return bancadaAcao({ acao: 'nivel', nivel: bnNivel.dataset.bnNivel })
+  if (t.closest('[data-bn-rodar]')) return bancadaAcao({ acao: 'rodar' })
+  const bnCamada = t.closest('[data-bn-camada]')
+  if (bnCamada) return bancadaAcao({ acao: 'rodar', camada: bnCamada.dataset.bnCamada })
+
   if (t.closest('[data-doc-novo]')) return abrirEditor(null)
   if (t.closest('[data-doc-voltar]')) { docAberto = null; docCorpo = null; docArmado = null; return render() }
   if (t.closest('[data-doc-cancelar]')) return $('#doc-edit').close()
@@ -6462,6 +6635,9 @@ function editarTodo(jobId, i, texto) {
 }
 
 for (const el of ['#q', '#proj', '#maq']) $(el).addEventListener('input', render)
+// a bancada é POR PROJETO: trocar o filtro sem reler mostraria o veredito do
+// projeto anterior com o nome do novo, que é pior que não mostrar nada
+$('#proj').addEventListener('change', () => { if (tab === 'bancada') carregarBancada(true) })
 
 // A busca do glossário e os campos de "meu" vivem dentro do #main, que o
 // render() reescreve a cada evento do stream. Por isso o listener é delegado no
