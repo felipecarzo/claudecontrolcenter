@@ -788,6 +788,412 @@
   .todo-prova { border-left-color: var(--done); }
   .todo-prova b, .todo-pronto b { color: var(--faint); font-weight: 700; }
 
+  /* ---------- a tela que abre: o backlog em cartoes ----------
+
+     Rejeitada duas vezes em 16/08. Primeiro por prosa: "e muito texto no mesmo
+     lugar (...) ta parecendo um site feio feito por ia, cheio de texto jogado".
+     A resposta foi virar LINHA de 44px, e a linha foi rejeitada tambem, agora
+     olhando o monitor largo: "ta horripilante (...) vamos fazer algo mais
+     parecido com programas de gerenciamento de tarefas, com cards etc".
+
+     As duas queixas sao a MESMA, e e isso que explica por que a primeira
+     correcao nao pegou. A linha foi desenhada e conferida a 390px, onde ela
+     ocupa a tela inteira e portanto E um cartao. A 1900px a mesma regra estica
+     o item ate 1860px: o nome fica na ponta esquerda, o selo de estado na ponta
+     direita, e o olho atravessa o monitor inteiro para ligar cinco palavras a
+     uma pastilha. Sobra branco no meio, e branco no meio de uma linha e
+     exatamente a sensacao de "texto jogado" que ele descreveu da primeira vez.
+
+     A grade de cartoes resolve as duas de uma vez porque nao e uma terceira
+     tentativa de layout, e a generalizacao da segunda: `auto-fill` com piso de
+     300px da UMA coluna em 390 (a linha que ele aprovou no telefone, intacta) e
+     cinco em 1900. O que muda com a largura e quantos cartoes cabem lado a
+     lado, nunca o comprimento de um item.
+
+     O que sobrevive das decisoes anteriores, porque foi ele quem pediu:
+
+     1. CODIGO junto do nome, sempre, e agora ele e estavel (`CC-101`, `NV-03`).
+        No cartao ele sobe para a primeira linha, em mono e no acento: vira
+        etiqueta de cartao, que e como Linear e Jira mostram identificador.
+     2. O estado so aparece quando diz alguma coisa. "NA FILA" repetido em 44
+        cartoes nao e informacao. Fila e a ausencia de selo. A barra colorida da
+        esquerda continua marcando quem tem estado, entao a cor nunca fica sendo
+        a unica pista.
+     3. Tres listas, contagem no topo, detalhe que abre no toque.
+
+     E a hierarquia, que era o que faltava: quatro pesos diferentes num cartao
+     de 350px (codigo 10.5 mono no acento / selo 8.5 em pastilha tingida / nome
+     14 semibold / rodape 10 mono apagado), em vez de tudo no mesmo peso
+     esticado ao longo de 1860px. */
+
+  /* O seletor das quatro visoes, no topo da tela.
+
+     Eram tres contadores com `href="#secao"`, e a ancora rolava a pagina ate a
+     lista. A rolagem era justamente a queixa dele em 16/08. Agora cada um TROCA
+     o que a tela mostra: geral, sprint, produto, pendencias. O numero continua
+     no mesmo lugar, entao a leitura de relance nao se perdeu na troca.
+
+     O TETO de largura e o conserto antigo, e continua valendo: com `flex:1` e
+     sem `max-width` viravam quatro caixas de 460px num monitor de 1900, cada
+     uma com um numero de dois digitos perdido no canto. */
+  .bl-vistas { display: flex; gap: 8px; margin: 0 0 14px; flex-wrap: wrap; }
+  /* Numero em cima, palavra embaixo. Lado a lado eles pediam 126px cada e as
+     quatro visoes viravam duas fileiras de 104px num telefone, o dobro do que
+     a navegacao pode custar numa tela que existe para caber inteira. */
+  .bl-vista {
+    flex: 1 1 76px; min-width: 0; max-width: 214px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+    border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border-radius: 9px; padding: 8px 10px; background: var(--surface);
+    text-align: left; color: var(--dim); cursor: pointer;
+  }
+  .bl-vista b { font: 700 17px/1 var(--mono); color: var(--fg); }
+  /* 8px com pouco espacejamento porque "pendencias" tem que caber em UMA linha
+     num botao de 85px: quebrada, ela vira "PENDENCIA" mais um "S" solto, que foi
+     o que a primeira medida entregou. */
+  .bl-vista i {
+    font: 700 8px/1.25 var(--label); letter-spacing: .04em; text-transform: uppercase;
+    font-style: normal; min-width: 0; overflow-wrap: anywhere;
+  }
+  .bl-vista:hover { border-color: var(--acento); }
+  .bl-vista:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+  .bl-vista.v-working { border-left-color: var(--working); }
+  .bl-vista.v-working b { color: var(--working); }
+  .bl-vista.v-waiting { border-left-color: var(--waiting); }
+  .bl-vista.v-waiting b { color: var(--waiting); }
+  .bl-vista.v-done { border-left-color: var(--done); }
+  /* A visao no ar. Nao basta a borda: com quatro cartoes iguais lado a lado, 1px
+     de cor nao responde "onde eu estou". O fundo e o texto acesos respondem. */
+  .bl-vista.on { background: var(--line-soft); border-color: var(--acento); color: var(--fg); }
+
+  /* Cabecalho de secao. O total anda COLADO no nome, em pastilha: antes ele
+     morava em `margin-left:auto` e ia parar a 1860px do titulo que conta. */
+  .bl-sec { margin: 0 0 26px; scroll-margin-top: 64px; }
+  .bl-h { display: flex; align-items: center; gap: 9px; margin: 0 0 11px; flex-wrap: wrap; }
+  .bl-h .bl-h-t {
+    font: 700 12px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; color: var(--fg);
+  }
+  .bl-h .bl-h-n {
+    font: 700 10.5px/1 var(--mono); color: var(--dim); flex: none;
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px;
+  }
+  .bl-h .bl-h-s { font-size: 11px; color: var(--faint); min-width: 0; overflow-wrap: anywhere; }
+  /* O fio que corre ate a borda direita. Custa zero conteudo, e e o que faz a
+     tela larga parecer terminada em vez de vazia. Sem ele, todo cabecalho morre
+     no meio do monitor com 1200px de nada depois. */
+  .bl-fio { flex: 1 1 24px; min-width: 16px; height: 1px; background: var(--line); }
+
+  /* A grade. Este e o conserto inteiro, e sao duas linhas.
+
+     `auto-fill` + `minmax` nao tem breakpoint: o navegador divide a largura
+     disponivel pelo piso e resolve sozinho quantas colunas cabem (390 = 1,
+     1100 = 3, 1900 = 5). Piso de 320px porque abaixo disso o nome de um item
+     quebra em quatro linhas e o cartao vira paragrafo. Com 300 dava seis
+     colunas em 1900, e a sexta so cabia cortando o nome.
+
+     `min(320px, 100%)` no piso e OBRIGATORIO, nao enfeite: com `320px` puro,
+     qualquer container mais estreito que isso (a coluna de notas aberta no
+     telefone) faz a trilha estourar e a pagina inteira rola de lado. */
+  .bl-grade {
+    display: grid; align-items: start; gap: 9px;
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  }
+  .bl-grade + .bl-grupo { margin-top: 18px; }
+  /* `parelha` iguala a altura de todos os cartoes de uma fileira, e so vale
+     onde NENHUM cartao abre. No backlog seria o contrario de ajuda: um cartao
+     aberto de 300px arrastaria os quatro vizinhos fechados junto, e a fileira
+     viraria quatro caixas ocas do lado de uma cheia. Nas duas listas de tarefa
+     nada abre, entao a base comum e so alinhamento. */
+  .bl-grade.parelha { align-items: stretch; }
+
+  /* O cartao. A barra de 3px na esquerda carrega o estado, como carregava na
+     linha: e a mesma linguagem de cor, so que agora ela cerca um bloco em vez
+     de correr por 1860px. */
+  .ct {
+    display: flex; flex-direction: column; min-width: 0;
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--line); border-radius: 10px; overflow: hidden;
+  }
+  .ct.s-working { border-left-color: var(--working); }
+  .ct.s-waiting { border-left-color: var(--waiting); }
+  .ct.s-failed  { border-left-color: var(--failed); }
+  .ct.s-done    { border-left-color: var(--done); }
+
+  /* O corpo clicavel. `min-height` fixo e o que alinha o rodape de todos os
+     cartoes fechados da mesma fileira; sem ele a grade fica com a base
+     serrilhada, que e a mesma desorganizacao de antes em duas dimensoes. */
+  .ct-cab {
+    display: flex; flex-direction: column; gap: 6px; width: 100%;
+    min-height: 106px; padding: 10px 12px 9px; margin: 0;
+    background: none; border: 0; text-align: left; color: inherit; font: inherit;
+    cursor: pointer;
+  }
+  /* so o que de fato reage ganha a mãozinha: cartao morto com cursor de clique
+     e promessa que a tela nao cumpre */
+  div.ct-cab { cursor: default; }
+  .ct-cab:hover { background: var(--line-soft); }
+  .ct-cab:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+
+  /* Primeira linha do cartao: etiqueta a esquerda, estado a direita. `auto`
+     aqui e uma viagem de 300px, nao de 1800. */
+  .ct-alto { display: flex; align-items: center; gap: 8px; min-height: 17px; }
+  .ct-cod { font: 700 10.5px/1 var(--mono); letter-spacing: .04em; color: var(--faint); }
+  .ct-cod.real { color: var(--acento); }
+  .ct-selo {
+    margin-left: auto; flex: none;
+    font: 700 8.5px/1 var(--label); letter-spacing: .1em; text-transform: uppercase;
+    padding: 4px 7px; border-radius: 999px; white-space: nowrap;
+    border: 1px solid currentColor;
+    background: color-mix(in srgb, currentColor 13%, transparent);
+  }
+  .ct-selo.c-working { color: var(--working); }
+  .ct-selo.c-waiting { color: var(--waiting); }
+  .ct-selo.c-failed  { color: var(--failed); }
+  .ct-selo.c-done    { color: var(--done); }
+
+  .ct-nome {
+    font-size: 14px; font-weight: 600; line-height: 1.34; color: var(--fg);
+    overflow-wrap: anywhere;
+  }
+  .ct.feito .ct-nome { color: var(--dim); text-decoration: line-through; }
+
+  /* Rodape do cartao: por que esta nesse estado, e de quando e. `margin-top:auto`
+     e o que gruda ele na base. Junto do `min-height` acima, e o que faz uma
+     fileira de cartoes ter uma unica linha de base. */
+  .ct-pe {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-top: auto; padding-top: 8px;
+    font: 400 10px/1.25 var(--mono); color: var(--faint);
+  }
+  .ct-porque { min-width: 0; overflow-wrap: anywhere; }
+  .ct-idade { flex: none; white-space: nowrap; }
+
+  /* O cartao de TAREFA (sprint e pendencias dele). Mais baixo que o de backlog
+     de proposito: aqui o conteudo e uma frase e uma caixinha, nao um item com
+     estado, descricao e idade. */
+  .ct-tar {
+    display: grid; grid-template-columns: 17px minmax(0, 1fr); gap: 0 10px;
+    align-items: stretch; padding: 11px 12px; min-height: 96px; cursor: pointer;
+  }
+  div.ct-tar { cursor: default; }
+  .ct-tar:hover { background: var(--line-soft); }
+  .ct-tar:focus-within { outline: 2px solid var(--acento); outline-offset: -2px; }
+  .ct-tar input[type=checkbox] {
+    width: 17px; height: 17px; margin: 2px 0 0; align-self: start;
+    accent-color: var(--acento);
+  }
+  /* A coluna da caixinha e FIXA em 17px, e o vazio ocupa ela do mesmo jeito.
+     Pendencia que veio do roadmap nao tem onde gravar e portanto nao tem
+     caixinha; sem reservar a coluna, o nome dela comecava 27px a esquerda dos
+     vizinhos e a fileira perdia a linha de leitura vertical. */
+  .ct-tar > .ct-vazio { align-self: start; }
+  .ct-corpo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .ct-corpo .ct-nome { font-size: 13px; }
+
+  /* O detalhe, dentro do proprio cartao. A prosa que antes se espalhava pela
+     tela inteira agora tem a largura do cartao como limite natural de leitura. */
+  .ct-det {
+    display: grid; gap: 7px; padding: 10px 12px 12px;
+    border-top: 1px solid var(--line-soft); background: var(--bg);
+  }
+  .ct-det p { margin: 0; font-size: 12px; line-height: 1.45; color: var(--dim); overflow-wrap: anywhere; }
+  .bl-cit {
+    margin: 0; padding-left: 9px; border-left: 2px solid var(--faint);
+    font-size: 12px; line-height: 1.45; color: var(--dim); font-style: italic;
+    overflow-wrap: anywhere;
+  }
+  .bl-sub { display: grid; gap: 4px; }
+  .bl-sub-i { font-size: 12px; color: var(--fg); display: flex; gap: 6px; overflow-wrap: anywhere; }
+  .bl-sub-i span { color: var(--working); flex: none; }
+  .bl-cru {
+    font: 400 10px/1.4 var(--mono); color: var(--faint); overflow-wrap: anywhere; margin: 0;
+  }
+
+  /* Cabecalho de projeto no backlog, e de agente no sprint. Deixou de ser a
+     tampa de uma caixa e virou uma regua sobre a grade: nome, contagem, fio. */
+  .bl-grupo {
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+    margin: 0 0 9px; padding: 0; background: none; border: 0;
+  }
+  .bl-grupo-t {
+    min-width: 0; display: flex; align-items: center; gap: 7px;
+    background: none; border: 0; padding: 4px 0; min-height: 32px; cursor: pointer;
+    text-align: left; color: var(--dim);
+    font: 700 10.5px/1.2 var(--label); letter-spacing: .13em; text-transform: uppercase;
+  }
+  span.bl-grupo-t { cursor: default; }
+  .bl-grupo-t:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+  .bl-grupo-t b { color: var(--fg); font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+  .bl-cara { flex: none; color: var(--faint); font-size: 9px; transition: transform .15s ease; }
+  .bl-grupo.aberto .bl-cara { transform: rotate(90deg); }
+  .bl-grupo-n {
+    font: 700 10px/1 var(--mono); color: var(--dim); flex: none;
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px;
+  }
+  .bl-onde { font: 400 10px/1 var(--mono); color: var(--faint); }
+
+  /* No telefone o fio nao cabe na mesma linha do titulo e desceria sozinho,
+     virando um risco solto no meio da tela. Some. E com uma coluna so, a altura
+     minima do cartao vira espaco morto: cada um passa a ter a altura do que tem
+     dentro, que e a linha compacta que ele aprovou no aparelho. */
+  @container painel (max-width: 560px) {
+    .bl-fio { display: none; }
+    .ct-cab, .ct-tar { min-height: 0; }
+  }
+
+  .bl-nada {
+    margin: 0; padding: 15px 14px; font-size: 12px; color: var(--faint);
+    border: 1px dashed var(--line); border-radius: 10px; max-width: 540px;
+    overflow-wrap: anywhere;
+  }
+  .bl-nota { margin: 9px 2px 0; font-size: 10.5px; color: var(--faint); max-width: 620px; overflow-wrap: anywhere; }
+  .bl-ordens { display: flex; gap: 5px; margin: 0 0 11px; flex-wrap: wrap; }
+  .bl-ord {
+    background: none; border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 12px; min-height: 32px; cursor: pointer; color: var(--dim); font-size: 11.5px;
+  }
+  .bl-ord.on { border-color: var(--acento); color: var(--fg); }
+
+  /* ==================== a visao geral: tudo em quadradinhos ==================
+
+     Pedido dele em 16/08, com o defeito e a forma na mesma frase: *"eu quero
+     que eu consiga ver as coisas como quadradinhos, pra eu poder selecionar e
+     ver mais informacoes. Do jeito que esta, estao cards muito grandes, eu
+     tenho que ficar dando rolagem pra ler"*.
+
+     A conta que justifica a forma: sao 43 itens. Em cartao de 320px eles
+     ocupam sete telas de celular; em quadrado de 54px cabem em uma. O que o
+     quadrado carrega e o minimo para ele escolher ONDE tocar, e nada alem:
+     o codigo do item e a cor do estado. A prosa abre no toque, logo abaixo da
+     grade, sem trocar de tela nem perder o lugar.
+
+     Piso de 44px, que e o alvo de toque minimo e tambem o limite de baixo da
+     legibilidade: "CC-104" em 9,5px mono ocupa 34px, e um piso menor quebraria
+     o codigo em duas linhas, que deixa de ser reconhecivel de relance. */
+  /* `minmax(0, 1fr)` e `min-width: 0` nao sao enfeite, sao o conserto.
+     Item de grade nasce com `min-width: auto`, que vale o conteudo: a grade de
+     quadrados de dentro pediu 21 colunas, o bloco virou 1036px num painel de
+     366, e a legenda e as fileiras saiam pela direita da tela. */
+  .gr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .gr > * { min-width: 0; }
+
+  /* A legenda vem ANTES da grade, nao depois. Grade de cor lida sem legenda e
+     enigma, e o custo de descobrir isso e o mesmo tempo que o resumo deveria
+     economizar. */
+  .gr-leg {
+    display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0 0 12px; padding: 0;
+    font: 400 10px/1.4 var(--mono); color: var(--faint);
+  }
+  .gr-leg i { display: inline-flex; align-items: center; gap: 5px; font-style: normal; }
+  .gr-leg i::before {
+    content: ''; width: 10px; height: 10px; border-radius: 3px; flex: none;
+    border: 1px solid var(--line); background: var(--surface);
+  }
+  .gr-leg i.s-working::before { border-color: var(--working); background: color-mix(in srgb, var(--working) 40%, var(--surface)); }
+  .gr-leg i.s-waiting::before { border-color: var(--waiting); background: color-mix(in srgb, var(--waiting) 40%, var(--surface)); }
+  .gr-leg i.s-failed::before  { border-color: var(--failed);  background: color-mix(in srgb, var(--failed) 40%, var(--surface)); }
+  .gr-leg i.s-done::before    { border-color: var(--done);    background: color-mix(in srgb, var(--done) 40%, var(--surface)); }
+
+  /* Cabecalho de bloco na visao geral. E o mesmo do resto da tela, mais baixo:
+     tres deles em uma tela de celular nao podem custar 33px cada. */
+  .gr-h { display: flex; align-items: center; gap: 8px; margin: 0 0 7px; flex-wrap: wrap; }
+  .gr-h b {
+    font: 700 11px/1 var(--label); letter-spacing: .15em; text-transform: uppercase; color: var(--fg);
+  }
+  .gr-h .bl-h-n { font: 700 10px/1 var(--mono); color: var(--dim); flex: none;
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px; }
+  .gr-abrir {
+    flex: none; background: none; border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 12px; min-height: 34px; cursor: pointer; color: var(--dim); font-size: 10.5px;
+  }
+  .gr-abrir:hover { border-color: var(--acento); color: var(--fg); }
+  .gr-abrir:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+  /* O nome do projeto sobre a fileira dele. Sem isto, 35 quadrados viram uma
+     mancha unica e a pergunta "de onde e este item" so tem resposta no toque. */
+  .gr-proj { display: flex; align-items: baseline; gap: 7px; margin: 8px 0 4px; flex-wrap: wrap; }
+  .gr-proj-n {
+    font: 700 9px/1.2 var(--label); letter-spacing: .13em; text-transform: uppercase;
+    color: var(--dim); min-width: 0; overflow-wrap: anywhere;
+  }
+  .gr-proj-c { font: 400 9px/1 var(--mono); color: var(--faint); flex: none; }
+
+  /* `min(44px, 100%)` no piso e obrigatorio, nao enfeite: com `44px` puro, um
+     container mais estreito faz a trilha estourar e a pagina rola de lado.
+     O teto de 1180px e medida de leitura: fileira mais longa que isso e o olho
+     perde a linha na volta, e um monitor de 1900 daria 38 quadrados por fila. */
+  .gr-grade {
+    display: grid; gap: 4px; max-width: 1180px;
+    grid-template-columns: repeat(auto-fill, minmax(min(44px, 100%), 1fr));
+  }
+
+  /* O quadradinho. A barra de 3px na esquerda e a mesma linguagem do cartao
+     grande, so que agora cerca 54px em vez de 320. */
+  .gq {
+    aspect-ratio: 1 / 1; min-width: 0; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    padding: 2px; margin: 0; cursor: pointer; color: var(--dim);
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--line); border-radius: 8px;
+  }
+  /* Sombra interna em vez de `border-color` no hover: a borda esquerda carrega
+     o estado, e trocar a cor dela no hover apagaria a informacao no toque. */
+  .gq:hover { box-shadow: inset 0 0 0 1px var(--acento); }
+  .gq:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
+  .gq-cod { font: 700 9.5px/1 var(--mono); letter-spacing: 0; color: var(--fg); white-space: nowrap; }
+  /* A palavra do estado, em 7,5px. Existe para o daltonico e para quem nunca
+     leu a legenda: cor sozinha nao pode ser a unica portadora do estado.
+     So aparece fora da fila, porque "NA FILA" em 30 de 35 quadrados foi a
+     queixa registrada dele, e repetir o padrao 30 vezes nao informa nada. */
+  .gq-est {
+    font: 700 7px/1 var(--label); letter-spacing: .04em; text-transform: uppercase;
+    white-space: nowrap; max-width: 100%; overflow: hidden;
+  }
+  .gq.s-working { border-color: color-mix(in srgb, var(--working) 40%, var(--line));
+    border-left-color: var(--working); background: color-mix(in srgb, var(--working) 13%, var(--surface)); }
+  .gq.s-working .gq-est { color: var(--working); }
+  .gq.s-waiting { border-color: color-mix(in srgb, var(--waiting) 40%, var(--line));
+    border-left-color: var(--waiting); background: color-mix(in srgb, var(--waiting) 13%, var(--surface)); }
+  .gq.s-waiting .gq-est { color: var(--waiting); }
+  .gq.s-failed { border-color: color-mix(in srgb, var(--failed) 40%, var(--line));
+    border-left-color: var(--failed); background: color-mix(in srgb, var(--failed) 13%, var(--surface)); }
+  .gq.s-failed .gq-est { color: var(--failed); }
+  .gq.s-done { border-color: color-mix(in srgb, var(--done) 40%, var(--line));
+    border-left-color: var(--done); background: color-mix(in srgb, var(--done) 13%, var(--surface)); }
+  .gq.s-done .gq-est { color: var(--done); }
+  .gq.sel { outline: 2px solid var(--acento); outline-offset: 1px; box-shadow: none; }
+
+  /* O detalhe abre no lugar, logo abaixo da fileira do quadrado tocado. Nao e
+     modal de proposito: modal tampa o mapa, e o mapa e o que ele veio ver. */
+  .gq-det {
+    margin: 9px 0 0; padding: 12px 13px; max-width: 760px;
+    display: grid; gap: 8px; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--line); border-radius: 10px;
+  }
+  .gq-det.s-working { border-left-color: var(--working); }
+  .gq-det.s-waiting { border-left-color: var(--waiting); }
+  .gq-det.s-failed  { border-left-color: var(--failed); }
+  .gq-det.s-done    { border-left-color: var(--done); }
+  .gq-det-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .gq-det-t {
+    font-size: 14.5px; font-weight: 600; line-height: 1.34; color: var(--fg); overflow-wrap: anywhere;
+  }
+  .gq-det-m { margin: 0; font: 400 10.5px/1.45 var(--mono); color: var(--faint); overflow-wrap: anywhere; }
+  .gq-det-a { display: flex; gap: 6px; flex-wrap: wrap; }
+  .gq-det-c { display: flex; align-items: flex-start; gap: 9px; }
+  .gq-det-c input[type=checkbox] { width: 17px; height: 17px; margin: 2px 0 0; flex: none; accent-color: var(--acento); }
+  .gq-x {
+    margin-left: auto; flex: none; background: none; border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 11px; min-height: 32px; cursor: pointer;
+    color: var(--faint); font-size: 10.5px;
+  }
+  .gq-x:hover { border-color: var(--acento); color: var(--fg); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bl-cara { transition: none; }
+  }
+
   /* CC-100: o que acabou de mudar. Fica no TOPO da aba sprint porque a
      pergunta que ela responde vem antes de "o que falta": ele abre o painel no
      meio da conversa querendo saber o que aconteceu enquanto lia. */
@@ -1892,7 +2298,10 @@ const GRUPOS = [
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
 // painel sem nenhuma aba marcada.
-let tab = params.get('tab') || localStorage.getItem('cc-tab') || 'agentes'
+// Abre no backlog, nao na lista de agentes. Decisao dele em 16/08: a primeira
+// pergunta que ele faz e "em qual item do backlog estamos", e a tela de agentes
+// responde "quem esta trabalhando", que e a folha.
+let tab = params.get('tab') || localStorage.getItem('cc-tab') || 'projetos'
 if (!TABS.some((t) => t.id === tab)) tab = 'agentes'
 
 const collapsed = params.has('expand')
@@ -4032,6 +4441,7 @@ function carregarDaAba() {
   if (tab === 'escritorio') carregarPaineis()
   if (tab === 'meu') carregarMeu()
   if (tab === 'glossario') carregarGlossario()
+  if (tab === 'projetos') carregarTrabalho()
   if (tab === 'docs') carregarDocs()
   if (tab === 'bancada') carregarBancada()
   if (tab === 'tempo' || tab === 'graficos') carregarTempo()
@@ -4255,6 +4665,484 @@ async function salvarDoc() {
   dlg.close()
   await carregarDocs(true)
   if (r?.id) abrirDoc(r.id)
+}
+
+/* ==================== a tela que abre: "em que pé está o trabalho?" ==========
+   A unidade aqui é o ITEM DO BACKLOG, não o agente nem o projeto. Essa é a
+   mudança inteira; o resto é consequência.
+
+   Ordem dos blocos = ordem em que ele olha, dita por ele em 16/08: "primeiro eu
+   preciso ver em qual item do backlog estamos, depois preciso ver em que
+   tarefas estamos e em paralelo ver se tem pendencias minhas como humano
+   travando o projeto".
+
+   Antes disto o painel tinha dezessete telas, cada uma respondendo bem UMA
+   pergunta, e nenhuma respondendo a sequência. */
+let TRABALHO = null
+let trabalhoOrdem = localStorage.getItem('cc-trab-ordem') || 'importancia'
+const cartoesAbertos = new Set(JSON.parse(localStorage.getItem('cc-trab-abertos') || '[]'))
+
+/* Qual das quatro visões está no ar, e qual quadradinho está aberto.
+
+   Módulo mais localStorage pelo mesmo motivo de sempre: o painel se redesenha a
+   cada 2 segundos, e estado guardado no DOM morreria a cada tique. `?vista=` é
+   para a captura de tela, que não tem localStorage nem dedo para clicar. */
+const VISTAS = ['geral', 'sprint', 'produto', 'voce']
+let trabalhoVista = VISTAS.includes(params.get('vista') || localStorage.getItem('cc-trab-vista'))
+  ? (params.get('vista') || localStorage.getItem('cc-trab-vista')) : 'geral'
+let trabalhoFoco = params.get('foco') || null
+
+async function carregarTrabalho(force) {
+  if (TRABALHO && !force) return
+  try {
+    TRABALHO = await (await fetch(`/api/trabalho?ordem=${trabalhoOrdem}`)).json()
+  } catch { TRABALHO = { erro: 'não deu para montar a tela' } }
+  render()
+}
+
+/* Quais projetos do backlog estão dobrados. Fechado é a exceção, então o que se
+   guarda é a exceção: projeto novo nasce aberto sem ninguém ter que dizer. */
+const projFechados = new Set(JSON.parse(localStorage.getItem('cc-bl-fechados') || '[]'))
+
+const idadeCurta = (t) => {
+  const ms = typeof t === 'number' ? t : Date.parse(t)
+  if (!Number.isFinite(ms)) return ''
+  const h = (Date.now() - ms) / 3600000
+  if (h < 1) return `${Math.max(1, Math.round(h * 60))}min`
+  return h < 48 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`
+}
+
+/* A tela inteira: quatro visões da mesma pergunta, uma de cada vez.
+
+   Ele pediu a divisão em 16/08: *"tem como a gente dividir isso em três
+   janelas, poder ver os sprints, só ver os meus e só ver o de produto"*, e
+   *"uma aba geral em que vê os três juntos, de uma forma diminuída"*. Os nomes
+   são os que ele escolheu, não os nossos.
+
+   As três listas continuam exatamente como estavam, porque foram aprovadas
+   assim; o que mudou é que só uma aparece por vez, e nasceu uma quarta que
+   comprime as três em quadradinhos. Sprint primeiro porque é o que acontece
+   agora, pendências dele em segundo porque bloqueiam, e o backlog de produto
+   por último porque é o mais longo e o menos urgente. */
+function viewTrabalho(jobs = []) {
+  if (!TRABALHO) return '<div class="empty">lendo o backlog dos projetos…</div>'
+  if (TRABALHO.erro) return `<div class="empty">${esc(TRABALHO.error || TRABALHO.erro)}</div>`
+
+  const sprint = agrupadoPorAgente(jobs)
+  const nSprint = sprint.reduce((a, g) => a + g.itens.length, 0)
+  const minhas = (TRABALHO.pendencias || []).filter((p) => !p.feito)
+  const nBacklog = (TRABALHO.grupos || []).reduce((a, g) => a + g.cartoes.length, 0)
+  const nMudou = mudancasRecentes().length
+
+  const vista = (id, rotulo, n, cor) => `<button
+    class="bl-vista v-${cor}${trabalhoVista === id ? ' on' : ''}"
+    data-trab-vista="${id}" aria-pressed="${trabalhoVista === id}">
+    <b>${n}</b><i>${esc(rotulo)}</i></button>`
+
+  const corpo = {
+    geral: () => vistaGeral(sprint, nSprint, minhas, nBacklog, nMudou),
+    sprint: () => secaoSprint(sprint, nSprint)
+      + (nMudou ? `<section class="bl-sec">${viewMudou()}</section>` : ''),
+    produto: () => secaoProduto(nBacklog),
+    voce: () => secaoVoce(minhas),
+  }
+
+  /* O botão leva a palavra curta e o cabeçalho da lista leva o nome inteiro que
+     ele escolheu. "Backlog de pendências" dentro de um botão de 85px quebra em
+     três linhas, e a navegação passaria a custar mais altura que o conteúdo. */
+  return cabecaDaTela('Em que pé está o trabalho?', TRABALHO.veredito,
+    minhas.length ? 'atencao' : 'bom')
+    + `<nav class="bl-vistas" aria-label="as quatro visões do trabalho">
+        ${vista('geral', 'geral', nSprint + minhas.length + nBacklog, 'neutro')}
+        ${vista('sprint', 'sprint', nSprint, nSprint ? 'working' : 'done')}
+        ${vista('produto', 'produto', nBacklog, 'neutro')}
+        ${vista('voce', 'pendências', minhas.length, minhas.length ? 'waiting' : 'done')}
+      </nav>`
+    + (corpo[trabalhoVista] || corpo.geral)()
+}
+
+/* ---- visão geral: as três listas comprimidas em quadradinhos ----
+
+   O objetivo é um só, e ele disse qual: ver tudo de uma vez sem rolar, e tocar
+   para abrir. Por isso cada bloco tem cabeçalho com contagem e um botão que
+   leva à visão inteira daquela lista, e por isso a legenda fica no topo.
+
+   Detalhe abre logo abaixo da grade do bloco em que o item está. Foi escolha
+   contra duas alternativas: modal tampa o mapa que ele veio ver, e painel fixo
+   na lateral não existe em 390px. */
+function vistaGeral(sprint, nSprint, minhas, nBacklog, nMudou) {
+  /* O botão vem ANTES do fio, colado na contagem. Depois dele, num monitor de
+     1900, ele terminava a 1800px do título a que pertence, que é a mesma
+     viagem de olho que fez os cartões grandes serem recusados. */
+  const cab = (titulo, n, alvo) => `<div class="gr-h">
+    <b>${esc(titulo)}</b>
+    <span class="bl-h-n">${n}</span>
+    <button class="gr-abrir" data-trab-vista="${alvo}">abrir a lista</button>
+    <span class="bl-fio" aria-hidden="true"></span>
+  </div>`
+
+  const focoSprint = trabalhoFoco?.startsWith('s:')
+  const focoVoce = trabalhoFoco?.startsWith('v:')
+  const focoBacklog = trabalhoFoco?.startsWith('b:')
+
+  /* S1 e V1 são POSIÇÃO na lista, não identidade, e o detalhe precisa repetir o
+     mesmo código que estava no quadrado tocado. O mapa nasce aqui, onde a
+     posição é contada uma vez só, em vez de o detalhe recontar por fora e as
+     duas contas discordarem no dia em que a ordem mudar. */
+  const codigos = new Map()
+
+  let n = 0
+  const quadSprint = sprint.flatMap(({ job, itens }) => itens.map(({ t, i }) => {
+    n += 1
+    const ruim = (t.revisoes || []).some((r) => !r.respondeu)
+    codigos.set(`s:${job.id}:${i}`, `S${n}`)
+    return quadrado(`s:${job.id}:${i}`, `S${n}`, ruim ? 'failed' : 'working',
+      ruim ? 'revisar' : 'anda', `${t.text}, em ${job.subject || job.project}`)
+  })).join('')
+
+  const quadVoce = minhas.map((p, i) => {
+    codigos.set(`v:${p.id}`, `V${i + 1}`)
+    return quadrado(`v:${p.id}`, `V${i + 1}`, 'waiting',
+      'você', `${p.texto}, em ${p.projeto || 'sem projeto'}`)
+  }).join('')
+
+  const detalhe = () => detalheDoFoco(sprint, minhas, codigos)
+
+  /* O detalhe entra depois da grade DO PROJETO tocado, não no fim do bloco: com
+     35 itens em quatro projetos, o fim do bloco fica 350px abaixo do quadrado,
+     e abrir o detalhe empurraria para fora da tela justamente o que se tocou. */
+  const blocosProduto = (TRABALHO.grupos || []).map((g) => `
+    <div class="gr-proj">
+      <span class="gr-proj-n">${esc(g.projeto)}</span>
+      <span class="gr-proj-c">${g.cartoes.length}</span>
+    </div>
+    <div class="gr-grade">${g.cartoes.map((c) => quadrado(
+    `b:${g.projeto}:${c.nome}`, c.marca?.texto || '?', c.estado.cor,
+    palavraCurta(c.estado.palavra), `${c.rotulo || c.nome}, ${c.estado.palavra.toLowerCase()}`,
+  )).join('')}</div>
+    ${focoBacklog && trabalhoFoco.startsWith(`b:${g.projeto}:`) ? detalhe() : ''}`).join('')
+
+  return `<div class="gr">
+    <div>
+      <p class="gr-leg">
+        <i class="s-working">andando</i>
+        <i class="s-waiting">espera você</i>
+        <i class="s-failed">com problema</i>
+        <i class="s-done">feito</i>
+        <i>na fila</i>
+      </p>
+      ${cab('Sprint backlog', nSprint, 'sprint')}
+      ${quadSprint
+    ? `<div class="gr-grade">${quadSprint}</div>` : '<p class="bl-nada">nenhuma tarefa aberta agora</p>'}
+      ${focoSprint ? detalhe() : ''}
+    </div>
+
+    <div>
+      ${cab('Backlog de pendências', minhas.length, 'voce')}
+      ${quadVoce
+    ? `<div class="gr-grade">${quadVoce}</div>` : '<p class="bl-nada">nada depende de você agora</p>'}
+      ${focoVoce ? detalhe() : ''}
+    </div>
+
+    <div>
+      ${cab('Product backlog', nBacklog, 'produto')}
+      ${blocosProduto || '<p class="bl-nada">nenhum projeto com item aberto</p>'}
+    </div>
+
+    ${nMudou ? viewMudou() : ''}
+  </div>`
+}
+
+/* "VOCÊ DECIDE" não cabe em 54px, e "NA FILA" não precisa caber: fila é o
+   estado padrão de 30 dos 35 itens, e escrever o óbvio 30 vezes foi a queixa
+   registrada dele. Fora da fila, uma palavra curta e nada mais. */
+function palavraCurta(palavra) {
+  const p = (palavra || '').toUpperCase()
+  if (p === 'NA FILA') return ''
+  if (p === 'VOCÊ DECIDE') return 'você'
+  if (p === 'ANDANDO') return 'anda'
+  return p.toLowerCase().split(' ')[0].slice(0, 7)
+}
+
+/* O quadradinho. Carrega o código e a cor, que é o mínimo para escolher onde
+   tocar; o `aria-label` carrega a frase inteira, para quem ouve a tela. */
+function quadrado(chave, codigo, cor, curta, dica) {
+  const sel = trabalhoFoco === chave
+  return `<button class="gq s-${cor}${sel ? ' sel' : ''}" data-trab-foco="${esc(chave)}"
+    aria-pressed="${sel}" title="${esc(dica)}" aria-label="${esc(`${codigo}: ${dica}`)}">
+    <span class="gq-cod">${esc(codigo)}</span>
+    ${curta ? `<span class="gq-est">${esc(curta)}</span>` : ''}
+  </button>`
+}
+
+/* O detalhe do quadrado tocado. Uma função para os três tipos porque a leitura
+   é a mesma nos três: código e estado, o nome, de onde é, e o caminho para a
+   lista inteira. O que muda é só o corpo do meio. */
+function detalheDoFoco(sprint, minhas, codigos) {
+  const [tipo, ...resto] = (trabalhoFoco || '').split(':')
+  const fechar = '<button class="gq-x" data-trab-foco="">fechar</button>'
+  // o código repete o do quadrado tocado: é o que liga o detalhe ao lugar de
+  // onde ele saiu, e sem isso a caixa que abre parece vir do nada
+  const cod = codigos.get(trabalhoFoco) || ''
+
+  if (tipo === 's') {
+    const [jobId, i] = [resto[0], Number(resto[1])]
+    const grupo = sprint.find(({ job }) => job.id === jobId)
+    const t = grupo?.job.todos?.[i]
+    if (!t) return ''
+    const ruim = (t.revisoes || []).some((r) => !r.respondeu)
+    return `<div class="gq-det s-${ruim ? 'failed' : 'working'}">
+      <div class="gq-det-h">
+        <span class="ct-cod real">${esc(cod)}</span>
+        ${ruim ? '<span class="ct-selo c-failed">revisar</span>' : ''}
+        ${t.prova ? '<span class="ct-selo c-working">com prova</span>' : ''}
+        ${fechar}
+      </div>
+      <label class="gq-det-c">
+        <input type="checkbox" data-todo="${esc(grupo.job.id)}" data-i="${i}"
+          aria-label="marcar &quot;${esc(t.text)}&quot; como feita">
+        <span class="gq-det-t">${esc(t.text)}</span>
+      </label>
+      <p class="gq-det-m">${esc(grupo.job.subject || grupo.job.project)}${
+  t.prova ? ` · prova: ${esc(t.prova)}` : ''}</p>
+      <div class="gq-det-a">
+        <button class="bl-ord" data-tab-ir="todos">ver o sprint com prova e revisão</button>
+      </div>
+    </div>`
+  }
+
+  if (tipo === 'v') {
+    const p = minhas.find((x) => x.id === resto.join(':'))
+    if (!p) return ''
+    return `<div class="gq-det s-waiting">
+      <div class="gq-det-h">
+        <span class="ct-cod real">${esc(cod)}</span>
+        <span class="ct-selo c-waiting">${esc(p.fonte === 'lista' ? 'sua lista'
+    : p.fonte === 'agente' ? 'do agente' : 'roadmap')}</span>
+        ${fechar}
+      </div>
+      ${p.fonte === 'lista'
+    ? `<label class="gq-det-c">
+          <input type="checkbox" data-meu-check="${esc(p.id)}"
+            aria-label="marcar &quot;${esc(p.texto)}&quot; como resolvida">
+          <span class="gq-det-t">${esc(p.texto)}</span>
+        </label>`
+    : `<span class="gq-det-t">${esc(p.texto)}</span>`}
+      ${p.porque ? `<p class="gq-det-m">${esc(p.porque)}</p>` : ''}
+      <p class="gq-det-m">${esc(p.projeto || 'sem projeto')}${p.frente ? ` · ${esc(p.frente)}` : ''}${
+  p.em ? ` · há ${esc(idadeCurta(p.em))}` : ''}</p>
+      <div class="gq-det-a">
+        <button class="bl-ord" data-trab-vista="voce">abrir o backlog de pendências</button>
+      </div>
+    </div>`
+  }
+
+  const projeto = resto[0]
+  const nome = resto.slice(1).join(':')
+  const grupo = (TRABALHO.grupos || []).find((g) => g.projeto === projeto)
+  const c = grupo?.cartoes.find((x) => x.nome === nome)
+  if (!c) return ''
+  const e = c.estado
+  return `<div class="gq-det s-${e.cor}">
+    <div class="gq-det-h">
+      <span class="ct-cod${c.marca?.real ? ' real' : ''}">${esc(c.marca?.texto || '')}</span>
+      ${e.palavra !== 'NA FILA' ? `<span class="ct-selo c-${e.cor}">${esc(e.palavra.toLowerCase())}</span>` : ''}
+      ${fechar}
+    </div>
+    <span class="gq-det-t">${esc(c.rotulo || c.nome)}</span>
+    <p class="gq-det-m">${esc(projeto)}${e.porque ? ` · ${esc(e.porque)}` : ''}${
+  c.fracao ? ` · ${c.fracao.feitos}/${c.fracao.itens} fechadas` : ''}</p>
+    ${c.citacao ? `<blockquote class="bl-cit">${esc(c.citacao)}</blockquote>` : ''}
+    ${c.tarefas.length || c.pendencias.length
+    ? `<div class="bl-sub">${[...c.tarefas, ...c.pendencias].slice(0, 4).map((x) => `<div class="bl-sub-i">
+        <span aria-hidden="true">›</span>${esc(x.texto)}</div>`).join('')}</div>` : ''}
+    <div class="gq-det-a">
+      <button class="bl-ord" data-trab-abrir="${esc(`${projeto}:${nome}`)}">abrir no product backlog</button>
+    </div>
+  </div>`
+}
+
+/* ---- lista 1: o sprint, o que está sendo feito agora ---- */
+
+function agrupadoPorAgente(jobs) {
+  const saida = []
+  for (const j of jobs) {
+    const itens = (j.todos || []).map((t, i) => ({ t, i })).filter(({ t }) => !t.done)
+    if (itens.length) saida.push({ job: j, itens })
+  }
+  return saida
+}
+
+/* O cabeçalho de uma seção: nome, contagem colada nele, o que a lista é, e o
+   fio até a borda. O fio é o que ocupa a sobra do monitor largo sem inventar
+   conteúdo para preencher. */
+const cabecaSecao = (titulo, n, sub) => `<div class="bl-h">
+  <span class="bl-h-t">${esc(titulo)}</span>
+  <span class="bl-h-n">${n}</span>
+  <span class="bl-h-s">${esc(sub)}</span>
+  <span class="bl-fio" aria-hidden="true"></span>
+</div>`
+
+function secaoSprint(grupos, total) {
+  let n = 0
+  const corpo = grupos.map(({ job, itens }) => `
+    <div class="bl-grupo aberto">
+      <span class="bl-grupo-t"><b>${esc(job.subject || job.project)}</b></span>
+      <span class="bl-grupo-n">${itens.length}</span>
+      <span class="bl-fio" aria-hidden="true"></span>
+    </div>
+    <div class="bl-grade parelha">${itens.map(({ t, i }) => {
+    n += 1
+    /* Revisão sem resposta é o único aviso que sobe para o cartão: significa que
+       alguém apontou um defeito e ninguém respondeu, e é o que trava a entrega. */
+    const semResposta = (t.revisoes || []).some((r) => !r.respondeu)
+    return `<label class="ct ct-tar s-working">
+      <input type="checkbox" data-todo="${esc(job.id)}" data-i="${i}"
+        aria-label="marcar &quot;${esc(t.text)}&quot; como feita">
+      <span class="ct-corpo">
+        <span class="ct-alto">
+          <span class="ct-cod real">S${n}</span>
+          ${semResposta ? '<span class="ct-selo c-failed">revisar</span>' : ''}
+          ${t.prova ? '<span class="ct-selo c-working">com prova</span>' : ''}
+        </span>
+        <span class="ct-nome">${esc(t.text)}</span>
+      </span>
+    </label>`
+  }).join('')}</div>`).join('')
+
+  return `<section class="bl-sec" id="bl-sprint">
+    ${cabecaSecao('Sprint backlog', total, 'o que está sendo feito agora')}
+    ${corpo
+    || '<p class="bl-nada">nenhuma tarefa aberta agora. Assim que um agente registrar a dele, ela nasce aqui.</p>'}
+    ${total ? '<p class="bl-nota"><button class="bl-ord" data-tab-ir="todos">abrir o sprint com prova e revisão</button></p>' : ''}
+  </section>`
+}
+
+/* ---- lista 2: as pendências dele ---- */
+
+/* Caixinha só onde ela grava. Pendência que veio do roadmap ou de um agente não
+   mora no arquivo dele, então marcar não teria onde escrever: em vez de uma
+   caixinha que falha calada, a linha diz de onde veio. */
+function secaoVoce(minhas) {
+  /* O projeto só aparece quando há mais de um: repetir "proj_controlcenter" em
+     cinco linhas seguidas é exatamente o texto solto que ele reclamou. */
+  const varios = new Set(minhas.map((p) => p.projeto || '')).size > 1
+
+  const cartoes = minhas.map((p, i) => {
+    const podeMarcar = p.fonte === 'lista'
+    const corpo = `<span class="ct-corpo">
+      <span class="ct-alto">
+        <span class="ct-cod">V${i + 1}</span>
+        ${podeMarcar ? '' : `<span class="ct-selo c-waiting">${p.fonte === 'agente' ? 'do agente' : 'roadmap'}</span>`}
+      </span>
+      <span class="ct-nome">${esc(p.texto)}</span>
+      ${varios && p.projeto || p.em ? `<span class="ct-pe">
+        <span class="ct-porque">${varios && p.projeto ? esc(p.projeto) : ''}</span>
+        ${p.em ? `<span class="ct-idade">${esc(idadeCurta(p.em))}</span>` : ''}
+      </span>` : ''}
+    </span>`
+    return podeMarcar
+      ? `<label class="ct ct-tar s-waiting">
+          <input type="checkbox" data-meu-check="${esc(p.id)}"
+            aria-label="marcar &quot;${esc(p.texto)}&quot; como resolvida">
+          ${corpo}</label>`
+      : `<div class="ct ct-tar s-waiting"><span class="ct-vazio" aria-hidden="true"></span>${corpo}</div>`
+  }).join('')
+
+  return `<section class="bl-sec" id="bl-voce">
+    ${cabecaSecao('Backlog de pendências', minhas.length, 'só você resolve, e trava o resto')}
+    ${cartoes
+    ? `<div class="bl-grade parelha">${cartoes}</div>`
+    : '<p class="bl-nada">nada depende de você agora</p>'}
+  </section>`
+}
+
+/* ---- lista 3: o backlog de produto ---- */
+
+function secaoProduto(total) {
+  const b = (id, txt) => `<button class="bl-ord${trabalhoOrdem === id ? ' on' : ''}" data-trab-ordem="${id}">${txt}</button>`
+  const grupos = (TRABALHO.grupos || []).map(grupoDeProjeto).join('')
+  const inventados = (TRABALHO.grupos || [])
+    .flatMap((g) => g.cartoes).filter((c) => !c.id).length
+
+  return `<section class="bl-sec" id="bl-produto">
+    ${cabecaSecao('Product backlog', total, 'o que ainda não começou')}
+    <div class="bl-ordens">${b('importancia', 'o que fazer agora')}${b('tempo', 'o que está encalhado')}</div>
+    ${grupos || '<p class="bl-nada">nenhum projeto com item aberto</p>'}
+    ${inventados ? `<p class="bl-nota">Número com <b>#</b> é a posição do item no roadmap do projeto.
+      ${inventados > 1 ? `${inventados} itens ainda não ganharam` : 'Um item ainda não ganhou'} código próprio.</p>` : ''}
+    ${TRABALHO.semNada?.length
+    ? `<p class="bl-nota">Sem nada aberto: ${TRABALHO.semNada.map(esc).join(', ')}.</p>` : ''}
+  </section>`
+}
+
+function grupoDeProjeto(g) {
+  const fechado = projFechados.has(g.projeto) && !tudoAberto
+  return `<div class="bl-grupo${fechado ? '' : ' aberto'}">
+      <button class="bl-grupo-t" data-bl-proj="${esc(g.projeto)}"
+        aria-expanded="${fechado ? 'false' : 'true'}">
+        <span class="bl-cara" aria-hidden="true">▶</span>
+        <b>${esc(g.projeto)}</b>
+      </button>
+      <span class="bl-grupo-n">${g.cartoes.length}</span>
+      ${g.fechadas ? `<span class="bl-onde">${g.fechadas} já ${g.fechadas > 1 ? 'fechadas' : 'fechada'}</span>` : ''}
+      <span class="bl-fio" aria-hidden="true"></span>
+      <button class="btn mini" data-visita="${esc(g.projeto)}">vi isso</button>
+    </div>
+    ${fechado ? '' : `<div class="bl-grade">${
+  g.cartoes.map((c) => cartaoDoItem(c, g.projeto)).join('')}</div>`}`
+}
+
+/* O cartão do backlog. Fechado mostra o código, o nome e o estado quando ele
+   diz alguma coisa; a prosa toda abre no toque. É a mesma informação em árvore
+   de antes, agora num bloco de 350px em vez de uma faixa de 1860px.
+
+   O nome é o título inteiro, e não o par nome/descrição que `partirTitulo`
+   sabe produzir. Não é esquecimento: o corte na primeira vírgula transforma
+   "o que pre-commit, husky e Danger já resolveram" em "o que pre-commit", que
+   não é nome de nada. Num cartão de 350px o título de 61 caracteres cabe em
+   três linhas sem aperto, então mutilar não compra nada.
+
+   A ordem de leitura dentro do cartão é de cima para baixo e sempre a mesma:
+   etiqueta e estado, nome, o porquê e a idade. Duas coisas saem disso, e as
+   duas foram queixa dele: o olho não atravessa o monitor para casar o nome com
+   o estado, e cinco cartões lado a lado formam coluna, que é o que faz uma
+   lista de 35 itens ser varrida em vez de lida. */
+function cartaoDoItem(c, projeto) {
+  const chave = `${projeto}:${c.nome}`
+  const aberto = cartoesAbertos.has(chave) || tudoAberto
+  const e = c.estado
+  const marca = c.marca || { texto: '', real: false }
+  /* "NA FILA" em 44 de 52 itens foi a queixa dele, escrita com o nome do
+     defeito. Fila é o estado padrão: mostrar é repetir o óbvio 44 vezes. */
+  const mostraSelo = e.cor !== 'idle' && e.palavra !== 'NA FILA'
+  /* O rodapé é a linha de baixo do cartão, e ela só existe quando tem o que
+     dizer. Vazia, ela seria uma faixa cinza repetida 35 vezes. */
+  const pe = e.porque || c.nasceuEm
+
+  return `<article class="ct s-${e.cor}">
+    <button class="ct-cab" data-trab-card="${esc(chave)}"
+      aria-expanded="${aberto ? 'true' : 'false'}">
+      <span class="ct-alto">
+        <span class="ct-cod${marca.real ? ' real' : ''}">${esc(marca.texto)}</span>
+        ${mostraSelo ? `<span class="ct-selo c-${e.cor}">${esc(e.palavra.toLowerCase())}</span>` : ''}
+      </span>
+      <span class="ct-nome">${esc(c.rotulo || c.nome)}</span>
+      ${pe ? `<span class="ct-pe">
+        <span class="ct-porque">${esc(e.porque || '')}</span>
+        ${c.nasceuEm ? `<span class="ct-idade">${esc(idadeCurta(c.nasceuEm))}</span>` : ''}
+      </span>` : ''}
+    </button>
+    ${aberto ? `<div class="ct-det">
+      ${c.citacao ? `<blockquote class="bl-cit">${esc(c.citacao)}</blockquote>` : ''}
+      ${c.tarefas.length ? `<div class="bl-sub">${c.tarefas.map((t) => `<div class="bl-sub-i">
+        <span aria-hidden="true">›</span>${esc(t.texto)}</div>`).join('')}</div>` : ''}
+      ${c.pendencias.length ? `<div class="bl-sub">${c.pendencias.map((p) => `<div class="bl-sub-i">
+        <span aria-hidden="true">›</span>${esc(p.texto)}</div>`).join('')}</div>` : ''}
+      ${c.fracao ? `<p class="bl-cru">${c.fracao.feitos}/${c.fracao.itens} fechadas</p>` : ''}
+      <p class="bl-cru">no roadmap: ${esc(c.titulo || c.nome)}</p>
+    </div>` : ''}
+  </article>`
 }
 
 /* ==================== aba: bancada (CC — níveis, 16/08) ====================
@@ -5187,7 +6075,7 @@ function render() {
   const views = {
     agentes: () => viewAgentes(jobs),
     todos: () => viewTodos(jobs),
-    projetos: () => viewCockpit(jobs),
+    projetos: () => viewTrabalho(jobs),
     tempo: () => viewTempo(),
     graficos: () => viewGraficos(),
     preco: () => viewPreco(),
@@ -6175,6 +7063,67 @@ document.addEventListener('click', async (e) => {
   const aba = t.closest('button[data-tab]')
   if (aba) return trocarAba(aba.dataset.tab)
 
+  /* Trocar de visão fecha o quadrado aberto de propósito: o detalhe mora dentro
+     da visão geral, e deixá-lo armado faria ele reaparecer sozinho na volta. */
+  const trabVista = t.closest('[data-trab-vista]')
+  if (trabVista) {
+    trabalhoVista = trabVista.dataset.trabVista
+    localStorage.setItem('cc-trab-vista', trabalhoVista)
+    trabalhoFoco = null
+    render()
+    return $('#painel')?.scrollTo({ top: 0 })
+  }
+  /* Tocar no mesmo quadrado de novo fecha. Sem isso o detalhe não teria como
+     sair da tela a não ser trocando de visão. */
+  const trabFoco = t.closest('[data-trab-foco]')
+  if (trabFoco) {
+    const k = trabFoco.dataset.trabFoco
+    trabalhoFoco = !k || trabalhoFoco === k ? null : k
+    render()
+    // `nearest` só rola quando precisa: tocar num quadrado da primeira fileira
+    // não pode sacudir a tela, e tocar num da última não pode abrir fora dela
+    return trabalhoFoco && $('.gq-det')?.scrollIntoView({ block: 'nearest' })
+  }
+  /* O caminho do quadradinho até o cartão inteiro: troca a visão, abre o cartão
+     daquele item e rola até ele. Sem o scroll o item cairia fora da tela e o
+     botão pareceria não ter feito nada. */
+  const trabAbrir = t.closest('[data-trab-abrir]')
+  if (trabAbrir) {
+    const chave = trabAbrir.dataset.trabAbrir
+    trabalhoVista = 'produto'
+    localStorage.setItem('cc-trab-vista', 'produto')
+    trabalhoFoco = null
+    cartoesAbertos.add(chave)
+    localStorage.setItem('cc-trab-abertos', JSON.stringify([...cartoesAbertos]))
+    projFechados.delete(chave.split(':')[0])
+    localStorage.setItem('cc-bl-fechados', JSON.stringify([...projFechados]))
+    render()
+    return $(`[data-trab-card="${CSS.escape(chave)}"]`)?.scrollIntoView({ block: 'center' })
+  }
+
+  const trabOrd = t.closest('[data-trab-ordem]')
+  if (trabOrd) {
+    trabalhoOrdem = trabOrd.dataset.trabOrdem
+    localStorage.setItem('cc-trab-ordem', trabalhoOrdem)
+    return carregarTrabalho(true)
+  }
+  const trabCard = t.closest('[data-trab-card]')
+  if (trabCard) {
+    const k = trabCard.dataset.trabCard
+    if (cartoesAbertos.has(k)) cartoesAbertos.delete(k); else cartoesAbertos.add(k)
+    localStorage.setItem('cc-trab-abertos', JSON.stringify([...cartoesAbertos]))
+    return render()
+  }
+  const blProj = t.closest('[data-bl-proj]')
+  if (blProj) {
+    const p = blProj.dataset.blProj
+    if (projFechados.has(p)) projFechados.delete(p); else projFechados.add(p)
+    localStorage.setItem('cc-bl-fechados', JSON.stringify([...projFechados]))
+    return render()
+  }
+  const irPara = t.closest('[data-tab-ir]')
+  if (irPara) return trocarAba(irPara.dataset.tabIr)
+
   const ordemBtn = t.closest('[data-ordem]')
   if (ordemBtn) {
     ordemAberta = ordemBtn.dataset.ordem
@@ -6667,6 +7616,18 @@ document.addEventListener('change', (e) => {
 
   const cb = e.target.closest('input[data-todo]')
   if (cb) return toggleTodo(cb.dataset.todo, +cb.dataset.i, cb.checked)
+
+  /* Estava sem tratador nenhum desde que nasceu: a caixinha marcava na tela e
+     o próximo tique do stream desmarcava, sem nada ter sido gravado. Controle
+     morto numa lista de pendências é o pior defeito possível aqui, porque ele
+     acredita ter fechado o que continua aberto. */
+  const meuCb = e.target.closest('input[data-meu-check]')
+  if (meuCb) {
+    return acaoMeu({ acao: 'marcar', id: meuCb.dataset.meuCheck, feito: meuCb.checked })
+      // a lista de pendências desta tela vem do /api/trabalho, não do /api/meu:
+      // sem recarregar as duas, o item marcado ficaria na tela até o próximo F5
+      .then(() => carregarTrabalho(true))
+  }
 
   // `change` só dispara ao sair do campo ou no Enter — uma gravação por
   // edição, não uma por tecla

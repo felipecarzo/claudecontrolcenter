@@ -273,6 +273,30 @@ switch (cmd) {
     break
   }
 
+  /* Todo item do backlog ganha codigo estavel. Antes disto a tela mostrava a
+     POSICAO no arquivo (#07, #12), que muda quando alguem insere um item no
+     meio: numero que anda sozinho e pior que nenhum. */
+  case 'ticket': {
+    const T = await import('./src/tickets.mjs')
+    const seco = process.argv.includes('--seco')
+    const alvos = val('--dir')
+      ? [path.resolve(val('--dir'))]
+      : (await import('./src/install.mjs')).findProjects()
+
+    let total = 0
+    for (const raiz of alvos) {
+      const r = T.aplicar(raiz, { seco })
+      if (!r.ok || !r.mudancas.length) continue
+      total += r.mudancas.length
+      console.log(`${path.basename(raiz)}  (${r.prefixo})  ${r.mudancas.length} item(ns)${seco ? '  [simulacao]' : ''}`)
+      for (const m of r.mudancas) console.log(`   ${m.codigo}  ${m.titulo}`)
+    }
+    console.log(total
+      ? `\n${total} item(ns)${seco ? ' ganhariam' : ' ganharam'} codigo. Copia do anterior em ROADMAP.md.bak`
+      : 'todo item do backlog ja tem codigo')
+    break
+  }
+
   case 'doc': {
     const DOC = await import('./src/documentos.mjs')
     const sub = arg || 'list'

@@ -98,8 +98,44 @@ export function remover(idAlvo) {
  * Aberta primeiro, e dentro disso a mais antiga no topo — mesma regra do
  * cockpit, o que apodrece primeiro sobe.
  */
-export function tudo(jobs = []) {
+/**
+ * Item de backlog parado esperando decisão dele TAMBÉM é pendência dele.
+ *
+ * Defeito achado em 16/08, e o pior tipo: a tela que responde "o que depende de
+ * mim" não mostrava um item que estava literalmente parado esperando ele
+ * escolher. Ela lia só a lista dele e os to-dos marcados com dono `felipe`, e
+ * ignorava o roadmap.
+ *
+ * A marca é a mesma que o resto do projeto já usa: `⏸` no título, com o motivo
+ * ao lado. Nada de campo novo.
+ */
+function doRoadmap(projetos = []) {
+  const saida = []
+  for (const p of projetos) {
+    for (const g of p.mapa?.grupos || []) {
+      for (const f of g.frentes || []) {
+        if (f.estado !== 'esperando') continue
+        // só o que espera ELE; "depende do CC-60" espera outro item, não ele
+        if (!/decis[ãa]o d(o felipe|ele)|voc[êe] (decide|escolhe)|falta ele/i.test(f.titulo)) continue
+        saida.push({
+          id: `roadmap:${p.projeto}:${f.titulo.slice(0, 30)}`,
+          texto: f.titulo.replace(/^\S+\s*⏸?\s*/, '').trim() || f.titulo,
+          projeto: p.projeto,
+          frente: f.titulo,
+          porque: f.citacao || null,
+          feito: false,
+          em: f.nasceuEm || null,
+          fonte: 'roadmap',
+        })
+      }
+    }
+  }
+  return saida
+}
+
+export function tudo(jobs = [], { projetos = [] } = {}) {
   const doArquivo = ler().tarefas.map((t) => ({ ...t, fonte: 'lista' }))
+  const doMapa = doRoadmap(projetos)
 
   const dosAgentes = []
   for (const j of jobs) {
@@ -120,7 +156,7 @@ export function tudo(jobs = []) {
   }
 
   const vistos = new Set()
-  return [...doArquivo, ...dosAgentes]
+  return [...doArquivo, ...dosAgentes, ...doMapa]
     .filter((t) => {
       const chave = `${t.projeto}|${t.texto}`
       if (vistos.has(chave)) return false

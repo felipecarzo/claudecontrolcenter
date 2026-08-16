@@ -101,6 +101,43 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'medir-guard',
+    nivel: 'avisa',
+    label: 'agiu na descrição dele sem medir',
+    script: 'medir-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Ele descreveu um sintoma e o agente mexeu sem medir nada antes? '
+      + 'Devolve. A metáfora dele aponta o rumo, não a causa: "os nomes dançam" '
+      + 'era regra de estilo duplicada, não alinhamento.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'descida-guard',
+    nivel: 'avisa',
+    label: 'reprovou e refez no mesmo nível',
+    script: 'descida-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Ele reprovou e o agente refez sem quebrar em partes menores? '
+      + 'Devolve. Regra dele: negativa não significa tentar melhor, significa '
+      + 'tentar menor. Em 16/08 o design foi reprovado 2x e refeito inteiro as '
+      + 'duas, sem descer nenhum degrau de abstração.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'visual-guard',
+    nivel: 'avisa',
+    label: 'mexeu no visual e não olhou',
+    script: 'visual-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Editou tela e não abriu nenhuma imagem no turno? Devolve. Nasceu '
+      + 'de uma tela conferida só em 390px e entregue: no monitor ela estava '
+      + 'horrível, e eu não tinha olhado o monitor.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'jargao-guard',
     nivel: 'avisa',
     label: 'nome interno na conversa',
@@ -159,6 +196,20 @@ export const HOOKS = [
       + 'depois? Devolve uma vez. O `npm test` responde "quebrei alguma coisa?"; a '
       + 'Bancada responde "deixei alguma coisa insegura?" — e suíte verde convive '
       + 'com chave commitada e tabela sem proteção.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'commit-guard',
+    nivel: 'trava',
+    label: 'commit sem ele ter pedido',
+    script: 'commit-guard.mjs',
+    evento: 'PreToolUse',
+    matcher: 'Bash',
+    descricao: 'Regra dele escrita há meses: "nunca commitar sem que eu peça '
+      + 'explicitamente". Em 16/08 foram 15 commits e um pedido. O hook lê a '
+      + 'última mensagem dele e procura a autorização — add, status e diff '
+      + 'continuam livres, porque preparar não é atravessar.',
     padrao: true,
     implementado: true,
   },

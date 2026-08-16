@@ -142,7 +142,7 @@ em 16/08, as oficinas — `git worktree list` sempre acerta, um registro paralel
 de "quem está onde" mentiria no primeiro `remove` feito à mão. Se dá para
 calcular, não peça para alguém manter.
 
-### Frente: a tela fala a língua dele, aprovada em 15/08
+### CC-101 Frente: a tela fala a língua dele, aprovada em 15/08
 
 Pedido dele, ditado por voz: *"tem uma tela chamada VPS que tem um monte de
 processo jogado, e eu tenho que ter muito conhecimento técnico pra olhar aquilo
@@ -225,7 +225,7 @@ Armadilha a não repetir: **texto com elemento no meio, dentro de `display:grid`
 precisa de UM elemento que o envolva.** Hoje é o único caso no arquivo, e foi
 conferido por varredura.
 
-### Frente: o projeto visto por rotas, para estudar
+### CC-102 Frente: o projeto visto por rotas, para estudar
 
 Ideias dele em 15/08, ditadas por voz, **para estudo — nada decidido**. O eixo,
 nas palavras dele: *"ter uma visão do projeto mais estrutural, voltada pra uma
@@ -262,7 +262,7 @@ com mapa, e o vocabulário da tela tem que ser o do ROADMAP dele (foi o achado
 que criou o campo `frente`). Uma tela de rotas que fale em `src/**` em vez de
 "Pierre" repete o erro que o `frente` corrigiu.
 
-### Frente: o que pre-commit, husky e Danger já resolveram, e nós não
+### CC-103 Frente: o que pre-commit, husky e Danger já resolveram, e nós não
 
 Registrada em 15/08 a pedido dele, depois de comparar o framework com os oito
 frameworks de agente e perceber que **os parentes de verdade não são LangChain
@@ -300,7 +300,7 @@ houver um Mac à mão: `cc` (só leitura, tem que funcionar de primeira) →
 `cc open` → `cc daemon install` → aba de servidores → encerrar um processo de
 teste.
 
-### Frente: Sincronia entre máquinas, aprovada pelo Felipe em 14/08
+### CC-104 Frente: Sincronia entre máquinas, aprovada pelo Felipe em 14/08
 
 O pedido dele, ditado por voz na VPS pelo celular: parar de usar o Git como
 canal entre a sessão do PC e a sessão da VPS. Motivo dele, que é o certo: "a
@@ -334,7 +334,7 @@ lado só: o PC alcança `cockpit.carzo.com.br`, a VPS nunca alcança o PC atrás
 NAT. Então a VPS é obrigatoriamente o servidor, e o PC é cliente que empurra e
 puxa. Qualquer desenho que ignore isso não sai do papel.
 
-### Visão registrada em 14/08: o cockpit vira um framework de engenharia de software
+#### Visão registrada em 14/08: o cockpit vira um framework de engenharia de software
 
 **Visão inteira, com as palavras dele: [[produto/FRAMEWORK]].** Registrada em
 14/08 e detalhada na mesma conversa.
@@ -413,7 +413,7 @@ o Felipe trouxe (ata completa em [[../DISCUSSAO-FRAMEWORK-BANCADA]]):**
   fases aguenta duas. **Vira frente quando ele começar a trabalhar de verdade
   em outra ferramenta**, e não antes.
 
-### Decisões dele em 15/08, à noite, sobre as duas frentes grandes
+#### Decisões dele em 15/08, à noite, sobre as duas frentes grandes
 
 **Bancada:** *"precisa ter todas as camadas, mas poder rodar elas
 individualmente"*. Isso muda o desenho: não é escolher quatro para começar, é
@@ -429,7 +429,7 @@ nesse trabalho"*. As onze, uma por vez, e **usando o método `conserto` ou o
 `estudo` de verdade**, não só como assunto. É o primeiro uso do framework num
 trabalho real com ele acompanhando, que era justamente o que faltava.
 
-### Frente: Bancada — auditoria e teste agnóstico, ver [[produto/BANCADA]]
+### CC-105 Frente: Bancada — auditoria e teste agnóstico, ver [[produto/BANCADA]]
 
 Registrada em 14/08, a partir do mesmo documento externo. **Não implementada.**
 O cockpit instala o instrumento de teste no projeto, dispara, mostra o
@@ -452,7 +452,7 @@ O suficiente para decidir se algo do backlog conflita:
   o painel mata processo filho em corrida longa. Registrado, não bloqueia.
 - Aba própria, "bancada", ao lado de tempo/preço/servidores.
 
-### Frente: Cockpit de retomada de contexto — ver [[produto/COCKPIT]]
+### CC-106 Frente: Cockpit de retomada de contexto — ver [[produto/COCKPIT]]
 
 Reposicionamento do produto pelo Felipe em 12/08: **os hooks não são o
 produto, são sensor** — o produto é o painel virar o lugar onde ele volta ao
@@ -461,7 +461,7 @@ de sucesso de qualquer sinal: não é "impõe boa prática", é "me faz voltar a
 contexto mais rápido?". CC-32, CC-33, CC-34 e CC-35 feitos em 13/08; CC-36 e
 CC-37 seguem abertos.
 
-### Frente: Ciclo Felipe → IA → Felipe — ver [[produto/CICLO]]
+### CC-107 Frente: Ciclo Felipe → IA → Felipe — ver [[produto/CICLO]]
 
 Análise de 13/08 sobre 235 mensagens reais dele em 5 projetos, mais 43 pastas
 de memória. Dez padrões com evidência medida. O diagnóstico: o problema não é

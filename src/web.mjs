@@ -47,6 +47,7 @@ import * as docs from './documentos.mjs'
 import * as bancada from './bancada.mjs'
 import * as bancadaCatalogo from './bancadaCatalogo.mjs'
 import { montar as montarEscritorio } from './escritorio.mjs'
+import { montar as montarTrabalho, carregar as carregarProjetos, projetosDe } from './trabalho.mjs'
 import { arquivosDeclarados } from './oficinas.mjs'
 import {
   desligar as desligarFramework, gravar as gravarFramework, ler as lerFramework,
@@ -873,6 +874,23 @@ function handler(req, res) {
   // Mapa do projeto, lido do ROADMAP.md dele. Aceita `cwd` (de um agente vivo)
   // ou `projeto` (nome) — CC-34: projeto sem agente ativo ainda quer abrir o
   // mapa.
+  /* A tela que abre o painel: "em que pé está o trabalho?"
+     Junta o backlog de cada projeto, os agentes trabalhando e o que só ele
+     resolve. Fora do stream de 2s: lê o roadmap de cada projeto e chama git
+     para as idades, o que é caro demais para um tique. */
+  if (url.pathname === '/api/trabalho') {
+    const s = snapshot()
+    const lista = projetosDe(s.jobs, findProjects)
+    const projetos = carregarProjetos(lista)
+    const pendencias = tudoMeu(s.jobs, { projetos })
+    return send(res, 200, montarTrabalho({
+      projetos,
+      jobs: s.jobs,
+      pendencias,
+      ordem: url.searchParams.get('ordem') === 'tempo' ? 'tempo' : 'importancia',
+    }))
+  }
+
   if (url.pathname === '/api/roadmap') {
     const cwd = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
     const mapa = cwd ? lerRoadmap(cwd) : null

@@ -88,6 +88,64 @@ Escrito por ele em 15/08/2026, a partir de uma explicação minha que ficou ruim
 
 O item 5 é o que permite cortar sem deixá-lo sem informação.
 
+## Os três tempos: ele descreve, eu MEÇO, ele confirma
+
+Formulado por ele em 16/08, olhando o que tinha funcionado no dia:
+
+> "através de linguagem natural usando a minha criatividade pra demonstrar o que
+> estou vendo você conseguiria achar isso no codigo e juntos construiriamos a
+> ferramenta dessa forma, metodologicamente?"
+
+Sim, e o dia inteiro foi assim. Quatro casos, todos com a mesma forma:
+
+| ele disse | o que a medição achou |
+|---|---|
+| "os nomes dançam" | a mesma regra de estilo escrita duas vezes, uma vencendo a outra |
+| "linhas mais gordinhas" | a referência usa sombra e superfície, não fio de 1px |
+| "parece site feio feito por IA" | cartões esticados por 1860px no monitor |
+| "não lembro o que é reporte guard" | 279 travessões e dezenas de nomes internos por resposta |
+
+**A parte dele é nomear o sintoma**, e ele faz isso por metáfora física, que é
+o que dá o rumo. "Gordinho" não é vago: aponta para espessura e peso.
+
+**A minha parte NÃO é traduzir, é medir.** Pegar a metáfora e agir direto nela
+é adivinhar. Já está registrado que agir na hipótese dele sem medir piorou o
+produto duas vezes num mesmo dia.
+
+Então são três tempos, e o do meio é o que não pode ser pulado:
+
+1. ele descreve o que vê, do jeito dele
+2. **eu meço no código e mostro o número**
+3. ele confirma que era isso, ou corrige o rumo
+
+Em 16/08 as duas telas que ele rejeitou foram exatamente as duas em que eu pulei
+o passo 2.
+
+## Como desenvolver: o protótipo decide, a execução se pica
+
+Método dele, em 16/08, depois de três rodadas de redesenho:
+
+> "o projeto é para mudar o cockpit inteiro mas podemos aprovar primeiro um
+> prototipo, se tivermos dificuldades nós descemos pra decidir elementos
+> individualmente e testamos replicagem, sempre quebrando em micro-tarefas"
+
+**São duas coisas separadas, e confundi-las foi meu erro:**
+
+1. **Para DECIDIR, o protótipo é inteiro.** Design não soma por partes. Nas três
+   rodadas de hoje, se eu tivesse feito "primeiro as cores, depois as bordas,
+   depois os cartões", cada pedaço pareceria certo sozinho e o conjunto
+   continuaria feio. Ele precisa ver a coisa toda para dizer sim ou não.
+2. **Para EXECUTAR, sempre em micro-tarefas.** Tarefa de vinte minutos não
+   mostra nada no painel enquanto roda, e o painel é como ele acompanha. Em
+   16/08 "design em cards" foi UMA tarefa que reescreveu a tela inteira: ele
+   ficou sem nada para ver durante todo o trabalho.
+
+E quando o protótipo trava: descer para os elementos um a um, decidir cada um, e
+testar se a decisão replica no resto.
+
+**A regra prática:** se a tarefa não cabe numa linha do painel com um resultado
+conferível, ela é grande demais. Quebre antes de começar, não depois.
+
 ## O marcador: onde o raciocínio acaba e a conclusão começa
 
 Pedido dele em 16/08, e com o formato já escolhido por ele:
