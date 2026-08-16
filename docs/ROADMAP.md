@@ -550,9 +550,12 @@ correção dele: daily não é sobre humanos, é sobre coordenação entre execu
 Muda o formato — não é reunião de manhã, é registro do que foi combinado, na
 hora em que foi.
 
-`recados.mjs log` já mostra tudo que foi dito, recente primeiro. Falta a tela no
-painel, com os filtros que ele pediu (por projeto, por agente, ordem crescente e
-decrescente) — isso entra junto do CC-78.
+`recados.mjs log` já mostra tudo que foi dito, recente primeiro.
+
+**Falta a tela, com os quatro filtros que ele pediu literalmente:** *"por
+projeto, por hora, poder ver em ordem crescente, decrescente, separar por
+projeto, separar por agentes"*. Hoje o comando só ordena por recente. O CC-78
+fechou a parte das rotas; o log ainda não tem lugar no painel.
 
 Vale como métrica, não só como histórico: **duas sessões negociando muito no
 mesmo projeto é sinal de que as rotas estão mal divididas.** Esse número não
@@ -808,6 +811,49 @@ resposta. Não precisa de código — precisa de hábito, e por isso entra no
 
 Vale medir depois, junto do `estilo-fim`: em quantas respostas a etiqueta
 aparece quando havia tarefa em curso.
+
+### CC-92: o proxy da anonimização — pedido em 15/08 e NÃO registrado
+
+**Escapou.** Ele disse, palavra por palavra: *"segue com o hook e já pode
+implementar ele, não precisa do proxy por enquanto, **mas anota ele**"*. O hook
+foi feito (F12); a anotação não. Achado em 16/08, revendo o chat a pedido dele.
+
+O que ele queria: *"eu prefiro que isso seja um proxy, um hook, alguma coisa que
+seja sempre que eu mandar arquivos de texto, doc, pdf, enfim, tudo com esse modo
+ligado"*.
+
+**A diferença entre o hook e o proxy**, que é o motivo de ele ter pedido os dois:
+
+- O **hook** (feito) intercepta quando **eu leio** um arquivo do disco. Cobre o
+  caso de "o Felipe salvou o contrato numa pasta e mandou eu abrir".
+- O **proxy** interceptaria o que **sai desta máquina** para a API. Cobre o que
+  o hook não vê: arquivo colado direto no chat, imagem, texto digitado.
+
+⚠️ **Não é pequeno, e vale dizer antes de alguém começar:** exigiria pôr algo no
+caminho entre o Claude Code e a API da Anthropic — TLS, certificado, e um ponto
+único de falha que derruba o trabalho inteiro se quebrar. O hook resolve 80% com
+1% do risco. Registrado como direção, não como tarefa.
+
+### CC-93: guia longo tem que virar etapa
+
+Pedido dele na sessão de senhas, em 15/08, e que está só no `HANDOFF.md` — ou
+seja, **some quando o HANDOFF for sobrescrito**. Trazido para cá em 16/08.
+
+> "se eu não acho o primeiro item da sua mensagem eu automaticamente perco todo
+> o resto do texto; o ideal seria a gente usar o framework e transformar essas
+> guias em etapas, assim se eu não achar algo já trava desde o início"
+
+O caso real: um passo a passo do Bitwarden com âncora relativa ("logo abaixo de
+X"). Ele não achou o X, e as outras seis linhas viraram perda total. **O custo
+de uma âncora errada não é a âncora, é a mensagem inteira.**
+
+O formato que funcionou de primeira: uma etapa por mensagem, âncora absoluta,
+critério de sucesso explícito ("achou?"), parada declarada se não achar, e o
+total anunciado no começo ("etapa 1 de 3").
+
+É a mesma família do gate de MVP: parar no primeiro critério que não fecha, em
+vez de despejar tudo e deixar a verificação por conta dele. Candidato a virar
+regra no `control-center-estilo.md`, junto do padrão de resposta.
 
 ### CC-82: um leitor de documentos dentro do cockpit
 
