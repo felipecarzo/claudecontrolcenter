@@ -17,6 +17,7 @@
 //   node cc.mjs routia cobertura       onde o Routia está descoberto nesta máquina
 //   node cc.mjs deps [arquivo]     o que quebra se eu mexer aqui
 //   node cc.mjs previa <arq.md>    vira HTML no tamanho do telefone dele
+//   node cc.mjs bancada [rodar X] as camadas de verificação, uma a uma
 //   node cc.mjs json               despeja o estado atual e sai
 //
 //   flags: --no-web  --web-only  --port <n>
@@ -749,6 +750,57 @@ switch (cmd) {
       modo: has('--layout') ? 'layout' : 'leitura',
     })
     console.log(saida)
+    break
+  }
+
+  /* A Bancada: o catálogo inteiro, e cada camada rodando sozinha.
+     Decisão dele em 15/08 — declarar tudo vale por si, porque o catálogo passa
+     a ser o mapa do que EXISTE para verificar, não a lista do que eu escrevi. */
+  case 'bancada': {
+    const B = await import('./src/bancada.mjs')
+    const C = await import('./src/bancadaCatalogo.mjs')
+    const raiz = path.resolve(val('--dir') || process.cwd())
+
+    if (arg && arg !== 'rodar') die('uso: node cc.mjs bancada [rodar <camada>] [--dir X]')
+
+    if (arg === 'rodar') {
+      const id = positional[2]
+      if (!id) die(`uso: node cc.mjs bancada rodar <camada>\ncamadas: ${C.CAMADAS.filter((c) => c.implementada).map((c) => c.id).join(', ')}`)
+      const camada = C.camadaDe(id)
+      if (!camada) die(`camada desconhecida: ${id}`)
+      if (!camada.implementada) {
+        die(`"${camada.nome}" está declarada mas ainda não roda.\n  ${camada.explica}\n`
+          + `  ferramenta prevista: ${camada.ferramenta || '(própria)'}`)
+      }
+      console.log(`\n${camada.nome} — ${raiz}\n`)
+      const r = await B.rodar(raiz, id)
+      if (r.erro) die(`  falhou: ${r.erro}`)
+      if (!r.achados?.length) { console.log('  nada encontrado\n'); break }
+      for (const a of r.achados) {
+        console.log(`  [${a.gravidade}] ${a.titulo}`)
+        console.log(`     onde: ${a.onde}`)
+        if (a.conserto) console.log(`     como consertar: ${a.conserto}`)
+      }
+      console.log(`\n  ${r.achados.length} achado(s)\n`)
+      process.exitCode = 1 // serve em CI: achado é falha
+      break
+    }
+
+    const porGrupo = new Map()
+    for (const c of C.CAMADAS) {
+      if (!porGrupo.has(c.grupo)) porGrupo.set(c.grupo, [])
+      porGrupo.get(c.grupo).push(c)
+    }
+    const rodam = C.CAMADAS.filter((c) => c.implementada).length
+    console.log(`\n${C.CAMADAS.length} camadas · ${rodam} rodam hoje · ${C.CAMADAS.length - rodam} declaradas\n`)
+    for (const [grupo, lista] of porGrupo) {
+      console.log(`  ${grupo}`)
+      for (const c of lista) {
+        console.log(`    ${c.implementada ? '●' : '○'} ${c.id.padEnd(18)} ${c.nome}`)
+      }
+    }
+    console.log('\n  ● roda agora   ○ declarada, ainda não implementada')
+    console.log('  rodar uma:  cc bancada rodar <camada>\n')
     break
   }
 

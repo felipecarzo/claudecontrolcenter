@@ -1532,6 +1532,40 @@ nesse trabalho"*. As onze, uma por vez, e **usando o método `conserto` ou o
 `estudo` de verdade**, não só como assunto. É o primeiro uso do framework num
 trabalho real com ele acompanhando, que era justamente o que faltava.
 
+### ✅ Bancada, primeira fatia 16/08 — o catálogo inteiro, rodando uma a uma
+
+Decisão dele em 15/08: *"a bancada precisa ter todas as camadas, mas poder rodar
+elas individualmente"*.
+
+**19 camadas declaradas, 4 rodando hoje.** As 15 restantes aparecem no catálogo
+com o que pegariam e a ferramenta prevista — e **recusam com honestidade** se
+alguém tentar rodar, em vez de fingir sucesso.
+
+```
+cc bancada                      o catálogo, agrupado
+cc bancada rodar segredo        roda uma camada
+cc bancada rodar <declarada>    diz o que falta, e não finge
+```
+
+**Declarar sem implementar tem valor próprio**, e é o motivo de estar assim: o
+catálogo vira **o mapa do que existe para verificar**, não a lista do que eu
+consegui escrever num dia. Ele decide o que ligar olhando o todo.
+
+Conferido rodando: `segredo` varre este projeto e não achou nada;
+`segredo-historico` recusa dizendo que o Gitleaks é a ferramenta prevista.
+
+**O gate guarda a distinção que mais podia machucar:** `implementada` tem que
+bater com a existência real da função. Prometer execução que não existe é o pior
+defeito possível numa ferramenta de verificação — ela diria "está limpo" sem ter
+olhado. Achou também um grupo duplicado (`dado` e `dados`), que faria a tela
+mostrar duas seções para a mesma coisa.
+
+#### O que falta
+
+Implementar as 15, uma a uma, por ordem de dor. E a decisão que já estava
+registrada: **a Bancada vira gate do framework** — o "pronto" da fase de
+Verificação passa a exigir camada rodada, não só critério marcado.
+
 ### Frente: Bancada — auditoria e teste agnóstico, ver [[produto/BANCADA]]
 
 Registrada em 14/08, a partir do mesmo documento externo. **Não implementada.**

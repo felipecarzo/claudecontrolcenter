@@ -1542,6 +1542,41 @@ if (estRotinas.projetos.length) {
   assert.match(html, /data-ajuda="Liberar escrita/, 'sumiu a explicação do "?" do autorizar')
 }
 
+/* --- Bancada: catálogo inteiro, cada camada rodando sozinha ---
+   Decisão dele em 15/08. O risco de declarar sem implementar é a tela oferecer
+   um botão que não faz nada — o gate guarda essa distinção. */
+{
+  const C = await import('./src/bancadaCatalogo.mjs')
+
+  assert.ok(C.CAMADAS.length >= 17, `o catálogo encolheu: ${C.CAMADAS.length}`)
+
+  const ids = C.CAMADAS.map((c) => c.id)
+  assert.equal(new Set(ids).size, ids.length, 'id de camada repetido')
+
+  for (const c of C.CAMADAS) {
+    assert.ok(c.nome && c.explica && c.grupo, `camada incompleta: ${c.id}`)
+    // a explicação é o que ele lê para decidir se liga: nome de ferramenta não basta
+    assert.ok(c.explica.length > 40, `explicação curta demais em ${c.id}`)
+    assert.equal(typeof c.aplicaA, 'function', `${c.id} sem aplicaA`)
+    /* `implementada` tem que bater com a realidade: prometer execução que não
+       existe é o pior defeito possível numa ferramenta de verificação. */
+    assert.equal(c.implementada, typeof c.rodar === 'function', `${c.id} mente sobre estar implementada`)
+  }
+
+  const rodam = C.CAMADAS.filter((c) => c.implementada)
+  assert.ok(rodam.length >= 4, 'as camadas que rodavam pararam de rodar')
+
+  // grupos: `dado` e `dados` conviveram por engano, e a tela mostraria dois
+  const grupos = [...new Set(C.CAMADAS.map((c) => c.grupo))]
+  assert.ok(!(grupos.includes('dado') && grupos.includes('dados')), 'grupo duplicado no singular e no plural')
+
+  // rodar uma declarada não pode fingir que rodou
+  const B = await import('./src/bancada.mjs')
+  const declarada = C.CAMADAS.find((c) => !c.implementada)
+  const r = await B.rodar(process.cwd(), declarada.id)
+  assert.ok(r.erro || r.naoImplementada, `${declarada.id} fingiu que rodou`)
+}
+
 /* --- CC-94: a prévia é para o telefone dele ---
    Sete prévias em dois dias saíram com fonte de tela larga, e ele teve que dar
    zoom em todas. O gate guarda o tamanho, que é a coisa fácil de perder. */

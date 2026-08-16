@@ -200,7 +200,7 @@ export const CAMADAS = [
   {
     id: 'zona-restrita',
     nome: 'Zona restrita sem login',
-    grupo: 'dado',
+    grupo: 'dados',
     custo: 'grátis',
     duracao: 'segundos',
     explica: 'Chama /admin, /dashboard e /.env sem sessão, e exige que não respondam conteúdo.',
@@ -226,7 +226,68 @@ export const CAMADAS = [
       return { ok: achados.length === 0, achados }
     },
   },
+
+  /* ==================== as declaradas, ainda sem execução ====================
+     Decisão dele em 15/08: *"a bancada precisa ter todas as camadas, mas poder
+     rodar elas individualmente"*.
+
+     Declarar sem implementar tem valor próprio, e é o motivo de estarem aqui:
+     o catálogo passa a ser **o mapa do que existe para verificar**, e não a
+     lista do que eu já escrevi. Ele decide o que vale ligar olhando a lista
+     inteira, não a metade que coube num dia.
+
+     `rodar` ausente = a tela mostra a camada, explica o que ela pegaria, e diz
+     que falta implementar. Nunca finge que rodou. */
+  ...[
+    { id: 'pacote-malicioso', nome: 'Pacote malicioso', grupo: 'suprimento', custo: 'grátis', duracao: 'segundos',
+      ferramenta: 'npm audit signatures + Socket',
+      explica: 'Pacote MALICIOSO, não só vulnerável: script de instalação, código ofuscado, acesso de rede novo. Pega ataque de cadeia antes de existir CVE.' },
+    { id: 'container', nome: 'Container e infraestrutura', grupo: 'suprimento', custo: 'grátis', duracao: 'minutos',
+      ferramenta: 'Trivy',
+      explica: 'Imagem Docker, Dockerfile e config de infra. Vale para a VPS, que roda 22 containers.' },
+    { id: 'segredo-historico', nome: 'Segredo no histórico', grupo: 'segredo', custo: 'grátis', duracao: 'segundos',
+      ferramenta: 'Gitleaks',
+      explica: 'Chave, token e senha em QUALQUER commit do histórico — não só no código de agora. Apagar o arquivo não apaga o commit.' },
+    { id: 'segredo-vivo', nome: 'Segredo que ainda funciona', grupo: 'segredo', custo: 'grátis', duracao: 'minutos',
+      ferramenta: 'TruffleHog',
+      explica: 'Dos segredos achados, quais ainda respondem. Faz a chamada e confirma — transforma 200 alarmes em 3 reais.' },
+    { id: 'estatico', nome: 'Análise estática', grupo: 'codigo', custo: 'grátis', duracao: 'minutos',
+      ferramenta: 'Semgrep',
+      explica: '2000+ regras OWASP rodando local, sem subir código. Determinístico: mesma entrada, mesmo resultado.' },
+    { id: 'autonomo', nome: 'Auditoria autônoma', grupo: 'codigo', custo: 'token do plano', duracao: 'minutos a horas',
+      ferramenta: 'Sandyaa',
+      explica: 'Bug de lógica e de fluxo de dados, com prova de conceito gerada. É a camada cara: roda sob pedido, nunca junto das outras.' },
+    { id: 'navegador', nome: 'Navegador de verdade', grupo: 'runtime', custo: 'grátis', duracao: 'minutos',
+      ferramenta: 'Playwright',
+      explica: 'A tela como o usuário vê. Pega o que teste de unidade não pega — 545 testes verdes já conviveram com a tela quebrada.' },
+    { id: 'navegador-remoto', nome: 'Navegador remoto', grupo: 'runtime', custo: 'grátis', duracao: 'minutos',
+      ferramenta: 'skill remote-browser',
+      explica: 'O Chrome que já roda na VPS. Hoje exige um token guardado em pasta de root, e o guarda de segredo (com razão) não deixa lê-lo.' },
+    { id: 'exposicao', nome: 'Exposição na internet', grupo: 'rede', custo: 'grátis', duracao: 'minutos',
+      ferramenta: 'Nuclei',
+      explica: 'O que responde de fora: painel aberto, rota administrativa, arquivo esquecido no servidor.' },
+    { id: 'tls', nome: 'Cabeçalho e TLS', grupo: 'rede', custo: 'grátis', duracao: 'segundos',
+      ferramenta: 'testssl.sh',
+      explica: 'Certificado, versão de TLS e cabeçalho de segurança dos domínios que estão no ar.' },
+    { id: 'passiva', nome: 'Varredura passiva', grupo: 'rede', custo: 'grátis', duracao: 'minutos',
+      ferramenta: 'OWASP ZAP baseline',
+      explica: 'Navega o site sem atacar e aponta o que está exposto. Seguro de rodar em produção.' },
+    { id: 'rls-supabase', nome: 'Sonda de RLS do Supabase', grupo: 'dados', custo: 'grátis', duracao: 'segundos',
+      explica: 'Tenta ler tabela como anônimo. RLS mal configurado é o furo mais comum e mais caro em projeto com Supabase.' },
+    { id: 'service-role', nome: 'Caça à service_role', grupo: 'dados', custo: 'grátis', duracao: 'segundos',
+      explica: 'A chave que ignora TODAS as regras de acesso, procurada onde ela nunca deveria estar: código de navegador, bundle, repositório.' },
+    { id: 'eval-prompt', nome: 'Eval de prompt', grupo: 'ia', custo: 'grátis', duracao: 'minutos',
+      ferramenta: 'promptfoo',
+      explica: 'O prompt continua respondendo o que devia depois de uma mudança. É teste de regressão para IA.' },
+    { id: 'ataque-modelo', nome: 'Ataque ao modelo', grupo: 'ia', custo: 'grátis', duracao: 'minutos',
+      ferramenta: 'promptfoo redteam / Garak',
+      explica: 'Injeção de prompt e vazamento de instrução. Vale para o Pierre, que recebe documento de terceiro.' },
+  ].map((c) => ({ ...c, aplicaA: () => true, implementada: false })),
 ]
+
+/** Marca as que têm execução de verdade. A distinção existe para a tela nunca
+ *  oferecer um botão que não faz nada — declarada aparece, mas não promete. */
+for (const c of CAMADAS) if (c.implementada === undefined) c.implementada = typeof c.rodar === 'function'
 
 export const camadaDe = (id) => CAMADAS.find((c) => c.id === id) || null
 
