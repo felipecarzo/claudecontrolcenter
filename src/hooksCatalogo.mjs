@@ -63,6 +63,30 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'resumo-guard',
+    nivel: 'avisa',
+    label: 'resposta longa sem o separador',
+    script: 'resumo-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Passou de 3 parágrafos sem a linha de separação antes do que ele '
+      + 'decide, devolve. Nasceu porque implementei o separador e não usei na '
+      + 'resposta seguinte, deixando a verificação só medindo.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'teto-guard',
+    nivel: 'avisa',
+    label: 'entregou demais sem ele ver',
+    script: 'teto-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Mais de 2 tarefas fechadas desde a última mensagem dele, o turno '
+      + 'não encerra sem mostrar. Velocidade sem conferência é dívida: cada entrega '
+      + 'que ele não acompanhou vira surpresa quando quebrar.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'jargao-guard',
     nivel: 'avisa',
     label: 'nome interno na conversa',
