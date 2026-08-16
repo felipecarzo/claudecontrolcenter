@@ -2,58 +2,69 @@
 
 **Sessão:** 2026-08-16 · Claude (Opus 5, sessão interativa `ff0d68b2`) ·
 **VPS**, pelo celular via Remote Control · continuação direta de 15/08
-**Último commit:** `f2ccdb1` — feat(bancada): a sonda de RLS do Supabase
-**Branch:** `master`, **56 commits à frente do remoto** — e o PR de 15/08
-continua aberto: https://github.com/felipecarzo/claudecontrolcenter/pull/1
+**Último commit:** `3a59383` — fix(ui): o menu do celular fechava sozinho
+**Branch:** `backlog/cc-46-48-49-52-53-56-65`, **sincronizada com o remoto**
+**PR #1: MERGEADO** em 16/08 (`e75c666`, 59 commits). O master está em dia.
 
 O que aconteceu: [diario/2026-08-16.md](diario/2026-08-16.md). Ponteiro, não
 relatório — o diário tem os porquês.
 
-## O backlog do ROADMAP zerou no que dava para executar
+## Estado: nenhum item aberto e executável
 
-Fechados em 16/08: **CC-93** (guia longo vira etapa), **CC-77** (navegação de um
-nível no estreito), **CC-82** (a estante de documentos), e a Bancada de 7 para
-**10 de 19 camadas**.
+O ROADMAP saiu de 2033 para ~547 linhas: 37 concluídos viraram diário, que é a
+regra da linha 3 dele e estava sendo ignorada desde sempre. Sobraram dois itens,
+**e nenhum dos dois é meu**:
 
-**O que sobrou, e por que cada um está parado — nenhum é "esqueci":**
-
-| Item | Por que não anda |
+| Item | Espera |
 |---|---|
-| CC-71, CC-92, CC-80 | registrados no próprio ROADMAP como **direção, não tarefa** |
-| CC-79 | depende do CC-60 |
-| CC-60 | **decisão dele**: há dois Pixel Agents nesta VPS e o segundo não foi resolvido |
-| CC-08 | macOS, ambiente que não existe aqui |
-| 9 camadas da Bancada | Gitleaks, Trivy, Semgrep, Nuclei, TruffleHog, ZAP, promptfoo — **nenhum instalado, e instalar exige root** |
+| **CC-80** visão estrutural | **decisão do Felipe.** Estudo pronto em [[produto/ESTUDO-VISAO-ESTRUTURAL]] |
+| **CC-08** macOS | um Mac |
 
-## O que está esperando o Felipe agora
+## O que espera o Felipe
 
-1. **Registrar `fluxo-guard` e `guia-guard` no `settings.json`.** Os dois estão
-   escritos e testados; o classificador de permissão bloqueou a escrita no
-   arquivo, e é ele quem libera. `node cc.mjs hooks install` deve cobrir.
-2. **Fazer o merge do PR e rodar `npm test` no PC.** O gate roda inteiro aí,
-   inclusive a parte que a VPS pula por não ter job de background.
-3. **Deploy do Pierre.** O hash de privacidade servido em produção não bate com
-   o repositório desde 12/08, e o conserto está no git. Detalhes em
+1. **Abrir `/hooks` uma vez, ou reiniciar.** Sete hooks foram registrados no
+   `settings.json` hoje e só valem na sessão seguinte.
+2. **Deploy do Pierre.** O hash de privacidade em produção não bate com o
+   repositório desde 12/08. Detalhes em
    `inovallbond/docs/AUDITORIA-ANONIMIZACAO-2026-08-15.md`.
-4. **Decidir o CC-60**, que destrava o CC-79.
-5. **Testar o framework** na sessão `teste_pierre_agenda`, no ar esperando ele.
+3. **Responder o CC-80:** a tela de estrutura é para ele decidir prioridade, ou
+   para o agente não quebrar nada? Se for a segunda, `cc deps` já basta.
+4. **O fork do `app_escritorio`** ler `GET /api/escritorio` — é o que faz o
+   escritório mostrar as duas máquinas. Contrato em
+   [[guias/escritorio-e-cockpit]].
 
-## O defeito que ele apontou em 16/08, e o que foi feito
+## Para o próximo agente: o que mudou no jeito de trabalhar
 
-> "você diz que fez. eu confio, e no momento seguinte eu descubro que não
-> verdade o que você fez não eh exatamente o que eu pedi"
+**Sete hooks novos vão te barrar.** Nenhum é decorativo; todos nasceram de um
+erro real desta sessão:
 
-Duas causas, as duas com conserto mecânico e não com promessa:
+| hook | te devolve quando |
+|---|---|
+| `fluxo-guard` | você para com backlog aberto sem declarar `Parada: <motivo>` |
+| `gate-guard` | editou código e não rodou `npm test` DEPOIS |
+| `bancada-guard` | editou código e a Bancada do nível não rodou depois |
+| `edicao-guard` | usou `sed -i` ou `open(f,'w')` em arquivo do repo |
+| `guia-guard` | escreveu guia de 3+ passos de interface numa mensagem só |
+| `branch-guard` | `git checkout`/`reset --hard` com trabalho pendente |
+| `anonimo-prompt` | (barra o Felipe) dado pessoal colado no chat |
 
-- **Anunciar continuidade e parar.** O turno acaba quando o agente para de
-  chamar ferramenta; "continuo" na última frase vira promessa para o turno
-  seguinte. `hooks/fluxo-guard.mjs`: no modo restritivo, com item aberto no
-  ROADMAP, **parar é que precisa ser declarado** (`Parada: <motivo>`,
-  `AskUserQuestion`, ou uma pergunta dele).
-- **Dizer que marcou e não ter marcado.** Aconteceu no mesmo dia, no commit
-  `096e2b8`: um script de edição do ROADMAP falhou calado em heredoc encadeado
-  e o CC-77 foi commitado como fechado sem o corpo entrar. Corrigido em
-  `263c8b2`. **Regra que ficou: script de edição confere a saída, não o assert.**
+**A rota agora reivindica arquivo.** No quadro, `📁 src/ui.html src/web.mjs` na
+coluna "quem/o quê". Rota sem 📁 continua liberando a pasta inteira, como antes.
+
+**Oficina por agente**, se forem dois trabalhando:
+
+```bash
+node cc.mjs oficina criar <nome>   # worktree + branch + node_modules por atalho
+node cc.mjs oficina list           # quem está onde, derivado do git
+node cc.mjs oficina fechar <nome>  # recusa se houver trabalho não commitado
+```
+
+Existe uma oficina `front` criada em 16/08, em
+`~/projetos/proj_controlcenter--front`, **2 commits atrás do master**. Se for
+usá-la: `git -C ~/projetos/proj_controlcenter--front merge origin/master`.
+
+**A Bancada tem níveis.** `node cc.mjs framework bancada nivel` lista os quatro;
+este projeto está em `interno`. Use `--so-mudou` para rodar só no diff.
 
 ## ⚠️ A sessão de senhas: não toca em código
 
@@ -77,118 +88,39 @@ Três cuidados que valem repetir para quem abrir aquela sessão:
 - **Nunca imprimir senha, chave privada ou o conteúdo de `~/.cockpit-auth.json`
   e `~/.cockpit-sessions.json`.** Vale mesmo se ele pedir: o que sai na tela
   entra no transcrito, que fica em disco e é lido pelo painel.
-- **A chave SSH importa mais que a senha.** Foi ela que resolveu o sudo hoje,
-  não a senha. Perder `id_ed25519_ahtleta` é perder o acesso root a uma máquina
-  que hospeda cinco sites de cliente.
+- **A chave SSH importa mais que a senha.** Perder `id_ed25519_ahtleta` é
+  perder o acesso root a uma máquina que hospeda cinco sites de cliente.
 - Se ele pedir a senha do cockpit, ela **não existe em texto** — só o hash. O
   caminho é trocar por uma nova (`cockpit-auth senha "<nova>"`), que revoga
   todos os dispositivos junto.
 
-## Dois pedidos do Felipe em 15/08, na sessão de senhas
+## O pedido de 15/08 que continua aberto
 
-Registrados aqui a pedido dele, para outro agente ler. Nenhum dos dois foi
-implementado: a sessão de senhas não toca em código.
-
-### 1. Guia tem que virar etapa, não bloco de texto
-
-Palavras dele:
-
-> "se eu nao acho o primeiro item da sua mensagem eu automaticamente perco todo
-> o resto do texto, o ideal seria a gente usar o framework e transformar essas
-> guias em etapas, assim se eu nao achar algo ja trava desde o inicio"
-
-O caso real que gerou: passo a passo do Bitwarden escrito com âncora relativa
-("logo abaixo de X"). Ele não achou o X, e as outras seis linhas da mensagem
-viraram perda total. **O custo de uma âncora errada não é a âncora, é a
-mensagem inteira.**
-
-O formato que passou a valer na conversa, e que funcionou de primeira:
-
-- **uma etapa por mensagem**, nunca o guia todo
-- âncora **absoluta** (nome do bloco na tela), nunca "abaixo do que eu disse antes"
-- critério de sucesso explícito ("achou?")
-- **parada declarada** se não achar, em vez de seguir para a etapa seguinte
-- o total anunciado no começo ("etapa 1 de 3"), para ele saber onde está
-
-Candidato a virar recurso do framework, e não só jeito de escrever. É a mesma
-família do gate de MVP: o sistema para no primeiro critério que não fecha, em
-vez de despejar tudo e deixar a verificação por conta dele.
-
-### 2. ⚠️ Contato entre agentes do mesmo projeto, urgente
-
-Palavras dele:
+O primeiro dos dois virou o CC-93 e está fechado. O segundo, não:
 
 > "precisamos aprimorar o contato entre agentes no mesmo projeto urgente, esse
 > recadinho que a gente ta fazendo é ineficiente"
 
-O "recadinho" é o `docs/ROTAS-ATIVAS.md`. Hoje ele tem **336 linhas**, e a
-maior parte é conversa entre sessões: ticket escrito em markdown, que o outro
-agente só lê se abrir o arquivo, e responde escrevendo mais markdown embaixo.
-Quem chega depois lê tudo de novo para descobrir o que ainda vale.
+**O que mudou em 16/08, e o que não mudou.** A rota passou a reivindicar arquivo
+e o `rota-pedidos` já transforma o pedido de autorização em comando. Mas o
+`ROTAS-ATIVAS.md` continua sendo markdown que um agente escreve e o outro só lê
+se abrir o arquivo — o cerne da queixa segue de pé.
 
-O `rota-pedidos.mjs` (13/08) resolveu **um** caso, o pedido de autorização, e é
-justamente o caso que virou comando em vez de texto. O resto continua sendo
-recado. Vale olhar o que ele resolveu e por quê antes de desenhar o geral.
+O caminho que o próprio projeto sugere: o que virou **comando** funcionou
+(`rota-pedidos`, `cc oficina`), o que continuou **texto** não. Vale olhar quais
+recados sobraram e quais deles cabem num comando.
 
-## A rodada de backlog de 15/08, à noite
+## Três armadilhas novas, registradas no CLAUDE.md
 
-Ele mandou consolidar tudo e executar até o fim. **A fila de 8 saiu inteira,
-menos o item 8**, que depende dele. Junto saíram três que estavam fora da fila.
-
-| | |
-|---|---|
-| **CC-84** | dois agentes no mesmo projeto se falam, com recado que chega na PRÓXIMA ferramenta |
-| **CC-86** | `cc deps` — o que quebra se eu mexer aqui, lido do código em 23ms |
-| **CC-67** | `cc hooks install` — os 8 hooks de uma vez, sem editar JSON à mão |
-| **CC-81** | o mapa guarda as palavras DELE, e o clique abre colado na pastilha |
-| **CC-78** | rotas clicáveis no mapa; o azul é "o dono sumiu", derivado do CC-49 |
-| **CC-83** | três backlogs (agora / na fila / prontas), com o do meio derivado |
-| **CC-69** | quatro níveis de hook declarados num lugar só |
-| **CC-70** | `cc framework check` — o gate sob demanda, com código de saída pra CI |
-| **CC-72** | `cc hooks sync` — a cópia do repositório contra o que roda |
-
-**A decisão de método que atravessa tudo isso**, e que ele firmou depois de
-tentar organizar o projeto e desistir: **não organize, derive.** Peso das
-pastilhas, sprint, presença, dependência — nada disso é digitado, e por isso
-nada disso envelhece.
-
-## Feito nesta sessão, em uma linha cada
-
-F16 (PDF sem `pdfjs-dist`), CC-46, CC-48, CC-49, CC-52, CC-53, CC-56, CC-65
-(hooks globais versionados), CC-66 (padrão de resposta como hook), e a aba
-`remoto` ganhando vários agentes por projeto.
-
-No Pierre: o `RE_ENDERECO` parou de engolir texto (`46999be`) e o hash de
-privacidade virou gate (`a409029`), mais o documento de passe de bastão
-(`03e5603`).
-
-Na VPS, feito por ele com acesso root: `KillMode=process` no
-`agent-cockpit`, que era o que matava escritório e Pixel Agents a cada
-reinício do painel.
-
-## Dois achados que valem mais que os itens
-
-- **O gate escrevia nas notas de verdade do Felipe** e restaurava no fim.
-  Interrompido no meio, deixava a lista vazia — sintoma exato do apagamento de
-  09/08 que nunca teve causa provada. Fechado com `CC_HOME`.
-- **Os hooks globais não existiam em repositório nenhum**, e o painel liga e
-  desliga cinco deles pela tela.
-
-## Aberto, e por quê
-
-- **CC-08 (macOS)**: precisa de um Mac. Pendente por tempo indeterminado, por
-  decisão dele.
-- **A última perna do CC-48**: o `rota-guard` ainda lê só o arquivo local. O
-  encanamento está pronto (as rotas viajam no pacote da federação). Falta
-  decidir quanto tempo o hook pode esperar pela rede — hook lento trava o CLI.
-- **CC-60**: o outro Pixel Agents (porta 3100, usuário `agente`). O que dava
-  para saber está respondido; que agentes ele mostra exige permissão em
-  `/home/agente/`. Mostrar no cockpit ou desligar é decisão dele.
-- **CC-61**: `~/cockpit-auth.mjs` continua fora de repositório, e é a porta de
-  entrada do painel inteiro. Irmão do CC-65, que foi resolvido hoje.
+- **`<select>` aberto morre no redesenho**, e leva o popup do sistema junto —
+  que nem aparece no DOM. Vale para qualquer elemento com estado do SO.
+- **Hook fora do `hooksCatalogo` roda calado.** Pegou três vezes em dois dias;
+  o gate agora acusa.
+- **`await import` em função não-async derruba o servidor**, e o `npm test`
+  passava verde porque não carregava o arquivo. O gate agora importa todo
+  módulo de `src/`.
 
 ## Uma coisa sem explicação
 
-A sessão de teste que subi de manhã morreu em algum momento; a minha, criada
-antes, sobreviveu ao mesmo período. Não sei por quê e não chutei. Se a nova
-cair de novo, aí é padrão e vale investigar.
+A sessão de teste `teste_pierre_agenda` continua no ar esperando ele testar o
+framework. Não foi conferida hoje.

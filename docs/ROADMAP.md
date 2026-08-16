@@ -1,9 +1,9 @@
 ---
 tags: [processo]
 tipo: roadmap
-atualizado: 2026-08-14
-estado: 13 frentes vivas depois da poda de 14/08
-resumo: Só o que está aberto neste projeto. Concluído sai daqui e vira linha no diário, congelado vai pro GELO. Em 14/08 tinha 45 frentes e foi podado para 13.
+atualizado: 2026-08-16
+estado: nenhum item aberto e executável; 2 parados por decisão dele ou por ambiente
+resumo: Só o que está aberto neste projeto. Concluído sai daqui e vira linha no diário. Em 16/08 saíram 37 itens fechados e o arquivo caiu de 2033 para ~547 linhas.
 termos:
   frente: um bloco de trabalho com nome próprio, que o painel mostra como pastilha no cartão
   CC-nn: um item numerado. O número não indica ordem nem prioridade, só a ordem em que nasceu
@@ -21,43 +21,30 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ## Aberto
 
-## ▶ A ORDEM DE EXECUÇÃO, definida em 15/08
+## ▶ O que está aberto, em 16/08
 
-Ele pediu: *"pegar tudo o que a gente discutiu, melhorar o backlog e começar a
-trabalhar o mais rápido possível"*. São **25 frentes abertas** — a lista abaixo
-é a ordem, e o critério é um só: **o que destrava mais coisa, primeiro.**
-
-| # | Item | Por que agora | Depende de |
-|---|---|---|---|
-| 1 | **CC-84** agentes se falando | Ele põe dois agentes no mesmo projeto **amanhã, 16/08** | nada |
-| 2 | **CC-86** mapa de dependência | 30 linhas, 127ms, e melhora o CC-84 de "seu arquivo" para "o que quebra junto" | nada |
-| 3 | **CC-67** `cc hooks install` | Está travando ele AGORA: dois hooks esperando registro à mão no PC | nada |
-| 4 | **CC-81** resto | Clique ancorado, o defeito que ele viu com os próprios olhos | nada |
-| 5 | **CC-85** log das conversas | Nasce do CC-84; sem ele não há o que registrar | CC-84 |
-| 6 | **CC-78** rotas na tela | Precisa da decisão dele: o que é o azul? | decisão |
-| 7 | **CC-83** três backlogs | A coluna do meio vem das rotas | CC-78 |
-| 8 | **CC-76/77** prévias e cara de aplicativo | Ele quer ver antes; e o painel precisa reiniciar para mostrar o que já mudou | restart |
-
-**✅ A fila foi executada inteira em 15/08, menos o item 8**, que depende de ele
-reiniciar o painel e olhar. Junto saíram CC-69, CC-70 e CC-72, que estavam fora
-da fila e eram baratos.
-
-**O que sobrou, e por que cada um está parado:**
+**A fila de 15/08 foi executada inteira, e a de 16/08 também.** Nenhum item
+aberto e executável sobrou. Os dois que restam não dependem de mim:
 
 | Item | Espera o quê |
 |---|---|
-| CC-76 / CC-77 | ele reiniciar o painel e dizer quais abas doem mais |
-| CC-68 catálogo de métodos | decisão de produto: qual é o terceiro método, e para quê |
-| CC-71 agir só no que mudou | a Bancada virar gate — sem ela não há o que otimizar |
-| CC-79 rotas × Pixel Agents | o CC-60: há dois Pixel Agents nesta VPS e um é de outro usuário |
-| CC-80 visão estrutural, CC-82 leitor | ele pediu para **estudar**, não para fazer |
-| CC-08 macOS | um Mac |
-| CC-60 o outro Pixel Agents | decisão dele: mostrar no cockpit ou desligar |
+| **CC-80** visão estrutural | **decisão dele.** O estudo está pronto com três opções medidas em [[produto/ESTUDO-VISAO-ESTRUTURAL]]. A pergunta: a tela é para ele decidir prioridade, ou para o agente não quebrar nada? Se for a segunda, `cc deps` já basta e o item fecha sem código |
+| **CC-08** macOS | um Mac. Não existe nesta VPS nem no PC dele |
 
+**O que espera o Felipe fora do ROADMAP** (ação dele, não item de backlog):
 
-**Fora da fila, e por quê:** CC-08 (precisa de um Mac), CC-60 e CC-79 (decisão
-dele sobre o segundo Pixel Agents), CC-68 a CC-72 (valem, e nenhum é urgente),
-CC-80 e CC-82 (ele pediu para estudar, não para fazer).
+- abrir `/hooks` ou reiniciar, para os hooks novos valerem na sessão
+- deploy do Pierre: o hash de privacidade em produção não bate com o
+  repositório desde 12/08
+- o provider do fork em `app_escritorio` ler `GET /api/escritorio`, que é o que
+  faz o escritório mostrar as duas máquinas
+
+**Uma decisão de método que continua valendo**, e virou a regra mais usada do
+projeto: **não organizar, derivar.** Foi o que fez o peso das pastilhas
+(CC-81), a sprint (CC-83), a presença (CC-49), o mapa de dependência (CC-86) e,
+em 16/08, as oficinas — `git worktree list` sempre acerta, um registro paralelo
+de "quem está onde" mentiria no primeiro `remove` feito à mão. Se dá para
+calcular, não peça para alguém manter.
 
 **Uma decisão de método, tirada da conversa de hoje:** ele quis achar uma forma
 de organizar tudo para facilitar o acesso, e desistiu por bom motivo —

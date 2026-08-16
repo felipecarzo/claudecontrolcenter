@@ -118,9 +118,9 @@
    "ok": true,
    "achados": 0,
    "verificou": true,
-   "escopo": "mudou",
+   "escopo": "tudo",
    "detalhe": null,
-   "em": "2026-08-16T15:48:37.488Z"
+   "em": "2026-08-16T15:53:02.378Z"
   },
   "segredo-historico": {
    "ok": true,
@@ -160,5 +160,5 @@
   "como": "as 11 telas nao respondem pergunta nenhuma: mostram o dado cru e ele traduz sozinho. Nos prints em tela estreita: nomes desalinhados, nada aparente, sem cara de aplicativo",
   "esperado": "cada tela abre com a pergunta dela no topo e um veredito em uma frase, nas palavras dele"
  },
- "nivelBancada": "cliente"
+ "nivelBancada": "exposto"
 }
