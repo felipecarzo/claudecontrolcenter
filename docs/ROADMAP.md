@@ -887,7 +887,7 @@ de um documento não pode virar script na página.
 
 Regra também no `control-center-estilo.md`, que é injetado a cada sessão.
 
-### CC-92 ⏸ direção — o proxy da anonimização (o hook resolve 80% com 1% do risco)
+### CC-92 ✅ 16/08 — o buraco do proxy, fechado sem proxy
 
 **Escapou.** Ele disse, palavra por palavra: *"segue com o hook e já pode
 implementar ele, não precisa do proxy por enquanto, **mas anota ele**"*. O hook
@@ -908,6 +908,35 @@ ligado"*.
 caminho entre o Claude Code e a API da Anthropic — TLS, certificado, e um ponto
 único de falha que derruba o trabalho inteiro se quebrar. O hook resolve 80% com
 1% do risco. Registrado como direção, não como tarefa.
+
+#### ✅ 16/08 — o buraco foi fechado, e sem proxy
+
+**O proxy não é mais necessário para o caso que ele descreveu.** O evento
+`UserPromptSubmit` roda **antes** de o texto virar prompt, na máquina dele: é o
+mesmo ponto de interceptação que o proxy teria, sem nada do que o torna
+perigoso.
+
+| | proxy | `anonimo-prompt` |
+|---|---|---|
+| onde intercepta | entre o CLI e a API | antes do prompt sair |
+| TLS e certificado próprio | precisa | não |
+| derruba o trabalho se quebrar | tudo | nada, é opt-in por projeto |
+| vê texto colado no chat | sim | **sim** |
+| vê imagem colada | sim | não |
+
+Com o modo ligado, texto acima de 240 caracteres que traga CPF, nome ou e-mail é
+**recusado**, e a mensagem vai para ELE com três saídas. O corte de 240 é
+generoso de propósito: cobrar de um pedido curto seria alarme em cima de
+conversa.
+
+**Falha FECHADA**, como o `anonimo-guard`: sem o motor de mascaramento, não
+passa. Afirmar que está limpo sem ter olhado é o defeito que o hook existe para
+impedir — e uma vez no contexto, o dado já foi para a nuvem e o transcript
+guarda em texto puro. 9 casos de teste, incluindo esse.
+
+**O que sobra sem cobertura:** imagem colada. Nenhum dos dois resolveria bem —
+o proxy veria os bytes, não o conteúdo, e reconhecer CPF dentro de um print
+exige OCR, que é outro projeto.
 
 ### CC-93 ✅ 16/08 — guia longo virou etapa, com gate
 
@@ -1082,7 +1111,21 @@ id da sessão, que é a chave que os liga.
 nosso e um do usuário `agente`, e ainda não foi decidido o que fazer com o
 segundo. Ligar rotas a um escritório indefinido é construir sobre areia.
 
-### CC-80 ⏸ direção — a visão estrutural do projeto (ele pediu para ESTUDAR)
+### CC-80 ⏸ decisão do Felipe — o estudo está pronto, falta ele escolher
+
+O estudo que ele pediu está em [[produto/ESTUDO-VISAO-ESTRUTURAL]], com as três
+opções medidas e uma recomendação.
+
+**O achado que mais importa:** o problema não é falta de dado. Seis módulos já
+respondem partes da pergunta (85 arquivos e 121 ligações no `dependencias`, 7
+frentes no `roadmap`, rotas, oficinas, tempo, agentes) — o que falta é uma tela
+que junte. E a opção que eu teria feito por instinto (o grafo de arquivos) é a
+que **repete o erro que o campo `frente` corrigiu**: falaria `src/platform.mjs`
+onde ele pensa "Bancada".
+
+**A pergunta que decide, e é dele:** a tela é para ele olhar e decidir
+prioridade, ou para eu olhar e não quebrar nada? Se for a segunda, o `cc deps`
+já basta e este item fecha sem código novo.
 
 O guarda-chuva dos dois acima, e o mais vago de propósito: ele pediu para
 **estudar**, não para fazer. O que está dito é o critério, não a solução — tem

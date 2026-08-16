@@ -63,6 +63,18 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'anonimo-prompt',
+    nivel: 'trava',
+    label: 'dado pessoal colado no chat',
+    script: 'anonimo-prompt.mjs',
+    evento: 'UserPromptSubmit',
+    descricao: 'Com o modo de anonimização ligado, recusa o envio de texto longo '
+      + 'que traga CPF, nome ou e-mail. Fecha o buraco do CC-92 sem proxy: roda '
+      + 'antes de o prompt sair, na máquina dele, sem TLS nem ponto único de falha.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'bancada-guard',
     nivel: 'avisa',
     label: 'a tarefa não se auto-verificou',
