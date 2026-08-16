@@ -322,7 +322,7 @@ técnica), `agentes` e `cockpit` (as que abre primeiro).
 Três (`meu`, `glossário`, `cockpit`) já fazem a coisa certa e só precisam da
 frase no topo — são as mais baratas e provavelmente as primeiras.
 
-### CC-77: cara de aplicativo no estreito
+### CC-77 ✅ 16/08 — cara de aplicativo no estreito
 
 O guarda-chuva dos três acima, e o que ele pediu por último. **Só vale para a
 largura estreita**; no monitor largo, a decisão dele é deixar como está.
@@ -333,10 +333,28 @@ e o dado aparente sem precisar rolar de lado.
 
 **Depende do CC-76:** ele quer ver antes de eu mexer.
 
+#### Feito em 16/08
+
+**A navegação virou um nível.** No estreito as duas fileiras somem e entra um
+`<select>` nativo com as 15 abas agrupadas: abre o seletor do próprio telefone,
+alcança qualquer tela num toque e não rola de lado. No largo continua como
+estava, que foi a decisão dele. As duas versões existem no HTML e só trocam por
+`@container` — sem listener de resize e sem uma segunda conta de "qual aba está
+no palco", a armadilha que já custou um iframe recarregando.
+
+**O alinhamento tinha uma causa, e não era gosto.** `.grupo` estava definida
+duas vezes no CSS: botão do menu na linha 234, cartão de agente na 560. A
+segunda vencia por ordem, então os botões do menu herdavam caixa, borda e a
+barrinha cinza do `::before`. Escopadas em `.tab-grupos >` e `.lista >`.
+
+**Quatro telas vazavam de lado em 390px, com o CC-73 já dado por fechado.**
+`preco`, `rotinas`, `projetos` e `glossario` estouravam por grade de coluna fixa
+e `nowrap` em pastilha. Agora `node test-estreito.mjs` mede as 15 telas com o
+navegador e nomeia o elemento culpado: **15 de 15 cabem**.
+
 #### O que falta
 
-Aplicar às outras telas, uma por vez, e só depois de a VPS provar valor no uso
-de verdade. A regra 2 tem um teste objetivo esperando: cruzar o texto da tela
+A regra 2 tem um teste objetivo esperando: cruzar o texto da tela
 com o glossário do CC-63 e contar quantos termos técnicos sobraram. Isso vira
 número, e número ele acompanha.
 
@@ -911,6 +929,18 @@ total anunciado no começo ("etapa 1 de 3").
 É a mesma família do gate de MVP: parar no primeiro critério que não fecha, em
 vez de despejar tudo e deixar a verificação por conta dele. Candidato a virar
 regra no `control-center-estilo.md`, junto do padrão de resposta.
+
+**Feito em 16/08, nas duas pontas:**
+
+- **A regra**, em `src/estilo.mjs` (`PADRAO_EMBUTIDO`), que desce para
+  `~/.claude/control-center-estilo.md` e é injetada no início da sessão.
+- **O gate**, `hooks/guia-guard.mjs`: a partir de 3 passos de interface numa
+  resposta só, devolve pedindo o formato de etapa. Só instrução dirigida a ele
+  conta — relato do que o agente fez passa limpo, e bloco de código conta como
+  um passo. 5 casos de teste.
+
+O gate é a parte que funciona. Instrução escrita já falhou três vezes em dois
+dias (o próprio CC-90 nasceu disso), e regra sem porteiro é intenção.
 
 ### CC-82: um leitor de documentos dentro do cockpit
 
