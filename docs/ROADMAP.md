@@ -594,7 +594,7 @@ usada no turno. Gate próprio com 10 checagens, metade delas provando o que
 `false`. A detecção estava certa desde o começo; o hook é que se achava
 desligado. Virou armadilha no `CLAUDE.md`.
 
-### CC-91 ✅ 15/08 (3 de 4) — o cartão do framework
+### CC-91 ✅ 16/08 — o cartão do framework, as quatro partes
 
 Todos apontados por ele em 15/08, usando o framework de verdade pela primeira
 vez. **O primeiro é o mais grave, e eu vi acontecer.**
@@ -672,10 +672,29 @@ a **dizer o que vai acontecer** em vez de perguntar "tem certeza?".
 O gate guarda as três peças, inclusive a posição: se alguém puser o botão de
 autorizar colado no seletor de novo, o teste acusa.
 
-#### Falta a parte 3: autorização por arquivo
+#### ✅ Parte 3, 16/08: o agente pede antes de escrever
 
-É a que muda o fluxo dos dois lados e a única que exige código novo dos dois
-lados (hook + painel). Fica para a próxima rodada.
+**A inversão é o ponto.** Antes eu tentava, batia no gate, e a saída mais fácil
+para ele era autorizar tudo com `**` — o atalho que esvaziava o modo. Agora o
+guard **registra o pedido** ao recusar, e o cartão mostra uma linha por arquivo
+pedido, com botão próprio.
+
+O mecanismo é o mesmo do `rota-pedidos.mjs` (13/08), que já fazia isto para
+rotas: bloqueio vira pedido registrado, e o dono libera.
+
+Quatro cuidados no motor, cada um com teste:
+
+- **pedir o mesmo arquivo duas vezes não duplica** a linha, só atualiza o motivo
+- **autorizar tira o pedido da fila** — pedido resolvido que continua pedindo é
+  fila que só cresce
+- **a fila guarda 20**, porque pedido velho sem resposta é ruído que esconde o
+  que acabou de chegar
+- **registrar o pedido nunca impede a recusa**: fica dentro de `try`, porque a
+  recusa é a parte que protege
+
+E a confirmação do clique diz **qual**: "liberar só este arquivo" é uma frase
+diferente de "liberar todos", e a diferença entre as duas é o modo funcionar ou
+virar decoração.
 
 ### CC-87 ✅ 16/08 — as 11 telas respondem uma pergunta cada
 

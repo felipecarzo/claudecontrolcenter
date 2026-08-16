@@ -99,6 +99,8 @@ function retratoFramework(raiz) {
     explicaModo: modo.explica,
     modoTrava: Boolean(modo.trava),
     autorizado: s.estado.autorizado || [],
+    // CC-91 parte 3: o que eu pedi e ele ainda não liberou
+    pedidos: s.estado.pedidos || [],
     modos: Object.values(MODOS).map((m) => ({ id: m.id, titulo: m.titulo, explica: m.explica })),
     fase: a.fase,
     tituloFase: a.tituloFase,

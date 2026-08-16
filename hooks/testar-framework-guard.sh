@@ -64,11 +64,11 @@ escrever_estado '{"metodo":"metodo-que-nao-existe","fase":"x"}'
 caso "metodo desconhecido libera" libera "$PROJ/src/a.mjs"
 
 echo "5b. os modos"
-escrever_estado '{"metodo":"mvp-basico","fase":"execucao","ligado":true,"modo":"imperativo","mvp":{"nome":"x","criterios":[{"texto":"a","feito":true}]}}'
-caso "imperativo trava mesmo com MVP pronto" bloqueia "$PROJ/src/a.mjs"
+escrever_estado '{"metodo":"mvp-basico","fase":"execucao","ligado":true,"modo":"sugestivo","mvp":{"nome":"x","criterios":[{"texto":"a","feito":true}]}}'
+caso "sugestivo trava mesmo com MVP pronto" bloqueia "$PROJ/src/a.mjs"
 conter "a recusa fala de autorizacao, nao de MVP" "$PROJ/src/a.mjs" "autoriza"
-caso "imperativo nao trava docs" libera "$PROJ/docs/x.md"
-escrever_estado '{"metodo":"mvp-basico","fase":"execucao","ligado":true,"modo":"imperativo","autorizado":["**"],"mvp":{"nome":"x","criterios":[{"texto":"a","feito":true}]}}'
+caso "sugestivo nao trava docs" libera "$PROJ/docs/x.md"
+escrever_estado '{"metodo":"mvp-basico","fase":"execucao","ligado":true,"modo":"sugestivo","autorizado":["**"],"mvp":{"nome":"x","criterios":[{"texto":"a","feito":true}]}}'
 caso "autorizado libera" libera "$PROJ/src/a.mjs"
 escrever_estado '{"metodo":"mvp-basico","fase":"execucao","ligado":true,"modo":"dialogo","mvp":{"nome":"x","criterios":[{"texto":"a","feito":true}]}}'
 caso "dialogo nao trava" libera "$PROJ/src/a.mjs"

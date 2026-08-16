@@ -569,13 +569,45 @@ export function podeEditar(metodo, estado, rel) {
  * um evento com hora e motivo: é o rastro que o cockpit traduz, e o que faltava
  * quando eu decidi sozinho que era hora de construir.
  */
+/**
+ * CC-91 parte 3: o agente PEDE antes de escrever, em vez de tentar e ser barrado.
+ *
+ * Inverte o fluxo, e a inversão é o pedido dele: hoje eu tento, bato no gate, e
+ * ele autoriza tudo de uma vez com `**` — que é o atalho que esvazia o modo. Com
+ * pedido, ele libera **o arquivo que eu pedi**, sabendo por quê.
+ *
+ * O mecanismo é o mesmo do `rota-pedidos.mjs` (13/08), que faz isto para rotas:
+ * o bloqueio vira pedido registrado, e o dono libera por comando ou clique.
+ *
+ * Guarda no máximo 20: pedido velho que ninguém respondeu é ruído, e a lista
+ * cheia esconde justamente o que acabou de chegar.
+ */
+export function pedir(estado, { alvo, motivo = null, quando = null }) {
+  if (!alvo) return { ok: false, erro: 'pedido sem alvo' }
+  const pedidos = estado?.pedidos || []
+  // mesmo arquivo pedido de novo não vira segunda linha: atualiza o motivo
+  const outros = pedidos.filter((p) => p.alvo !== alvo)
+  return {
+    ok: true,
+    estado: {
+      ...estado,
+      pedidos: [...outros, { alvo, motivo, quando: quando || null }].slice(-20),
+    },
+  }
+}
+
+/** Tira o pedido da fila. Chamado ao autorizar ou ao recusar. */
+export function resolverPedido(estado, alvo) {
+  return { ...estado, pedidos: (estado?.pedidos || []).filter((p) => p.alvo !== alvo) }
+}
+
 export function autorizar(estado, { alvo = '**', motivo = null, quando = null }) {
   const atual = estado?.autorizado || []
   if (atual.includes(alvo)) return { ok: true, estado }
   return {
     ok: true,
     estado: {
-      ...estado,
+      ...resolverPedido(estado, alvo),
       autorizado: [...atual, alvo],
       historico: [
         ...(estado?.historico || []),

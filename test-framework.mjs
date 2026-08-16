@@ -365,4 +365,37 @@ ok('CC-68: conserto reproduz antes e prova depois; estudo trava código nas duas
 }
 ok('o restritivo restringe por rota, não por clique — quem trava é o sugestivo')
 
+/* CC-91 parte 3: o agente PEDE antes de escrever.
+
+   Inverte o fluxo, e a inversão é o ponto: sem pedido, a saída mais fácil para
+   ele é autorizar tudo com `**`, que é o atalho que esvazia o modo. */
+{
+  const { pedir, resolverPedido } = await import('./src/framework.mjs')
+  let e = { modo: 'sugestivo', autorizado: [], pedidos: [] }
+
+  e = pedir(e, { alvo: 'src/a.mjs' }).estado
+  e = pedir(e, { alvo: 'src/b.mjs' }).estado
+  assert.deepEqual(e.pedidos.map((p) => p.alvo), ['src/a.mjs', 'src/b.mjs'])
+
+  // pedir o mesmo arquivo de novo não vira segunda linha na fila
+  e = pedir(e, { alvo: 'src/a.mjs', motivo: 'agora com motivo' }).estado
+  assert.equal(e.pedidos.filter((p) => p.alvo === 'src/a.mjs').length, 1)
+
+  // autorizar tira da fila: pedido resolvido não pode continuar pedindo
+  e = autorizar(e, { alvo: 'src/a.mjs' }).estado
+  assert.deepEqual(e.pedidos.map((p) => p.alvo), ['src/b.mjs'])
+  assert.ok(e.autorizado.includes('src/a.mjs'))
+
+  // recusar também tira, senão a fila só cresce
+  assert.deepEqual(resolverPedido(e, 'src/b.mjs').pedidos, [])
+
+  assert.equal(pedir(e, { alvo: '' }).ok, false, 'pedido sem alvo tinha que ser recusado')
+
+  /* Trocar de modo zera autorização E fila: pedido feito sob outro modo não
+     pode sobreviver, senão trocar de modo não muda nada. */
+  const trocado = trocarModo(e, 'dialogo').estado
+  assert.deepEqual(trocado.autorizado, [])
+}
+ok('CC-91: o agente pede por arquivo, e autorizar tira o pedido da fila')
+
 console.log(`\n${n} grupos de asserção passaram`)
