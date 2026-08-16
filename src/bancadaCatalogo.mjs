@@ -24,7 +24,7 @@
  *
  * `ok: false` é o que segura a fase de Verificação do método `entrega-cliente`.
  */
-import { execFile } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { promisify } from 'node:util'
@@ -106,6 +106,54 @@ export const PADROES_SEGREDO = [
 
 /** Nunca varridas: ou não são nossas, ou são derivadas de algo que já foi visto. */
 const IGNORAR = /(^|\/)(node_modules|\.git|dist|build|coverage|\.next|\.framework)(\/|$)/
+
+/**
+ * CC-71 — os arquivos que mudaram desde o último commit.
+ *
+ * `lint-staged` roda só no que mudou, e é isso que torna o hook rápido o
+ * bastante para ninguém desligar. A falta virou concreta em 16/08, quando a
+ * Bancada passou a ser gate pelo `bancada-guard`: varrer o repositório inteiro a
+ * cada entrega é o tipo de lentidão que faz o Felipe desligar o recurso.
+ *
+ * `null` quando não dá para saber (não é git, git ausente, erro). Nesse caso
+ * quem chama varre tudo — **degradar para MAIS verificação, nunca para menos.**
+ * Uma camada de segurança que se cala por não conseguir listar o diff seria o
+ * pior tipo de falha silenciosa.
+ */
+export function mudadosDesde(raiz, referencia = 'HEAD') {
+  let saida = ''
+  try {
+    saida = execFileSync('git', ['diff', '--name-only', '--diff-filter=ACMR', referencia], {
+      cwd: raiz, encoding: 'utf8', timeout: 10_000, stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    // o que ainda não foi adicionado ao git também conta: é onde o trabalho de
+    // agora está, e é justamente o que o gate precisa olhar
+    saida += execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
+      cwd: raiz, encoding: 'utf8', timeout: 10_000, stdio: ['ignore', 'pipe', 'ignore'],
+    })
+  } catch { return null }
+
+  const lista = saida.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  return [...new Set(lista)].map((rel) => path.join(raiz, rel))
+}
+
+/**
+ * Os arquivos que uma camada deve olhar: o recorte, ou tudo.
+ *
+ * `cfg.soMudou` liga o modo incremental do CC-71. A regra de degradação é a que
+ * importa: **sem conseguir listar o diff, varre tudo.** Uma camada de segurança
+ * que se cala por não saber o que mudou seria a pior falha possível — a tela
+ * diria "limpo" tendo olhado zero arquivos.
+ *
+ * O `git diff` traz caminho de arquivo apagado também; `existsSync` filtra, e é
+ * mais barato que pedir ao git para distinguir.
+ */
+function alvosDe(raiz, cfg = {}) {
+  if (!cfg.soMudou) return arquivosDe(raiz)
+  const mudados = mudadosDesde(raiz, cfg.referencia || 'HEAD')
+  if (!mudados) return arquivosDe(raiz)
+  return mudados.filter((a) => { try { return fs.statSync(a).isFile() } catch { return false } })
+}
 
 function arquivosDe(raiz, limite = 4000) {
   const achados = []
@@ -303,9 +351,9 @@ export const CAMADAS = [
     duracao: 'segundos',
     explica: 'Procura chave de API, token e chave privada dentro dos arquivos versionados.',
     aplicaA: () => true,
-    async rodar(raiz) {
+    async rodar(raiz, cfg = {}) {
       const achados = []
-      for (const arquivo of arquivosDe(raiz)) {
+      for (const arquivo of alvosDe(raiz, cfg)) {
         let texto = ''
         try {
           const st = fs.statSync(arquivo)
@@ -486,7 +534,7 @@ export const CAMADAS = [
     duracao: 'segundos',
     explica: 'A chave que ignora TODAS as regras de acesso, procurada onde ela nunca deveria estar: código de navegador, bundle, arquivo público.',
     aplicaA: () => true,
-    async rodar(raiz) {
+    async rodar(raiz, cfg = {}) {
       const achados = []
       /* Pasta que vira navegador. `.env` fica FORA: lá a chave é legítima, e
          acusá-la seria o alarme falso que faz desligar a camada. */
@@ -501,7 +549,7 @@ export const CAMADAS = [
          bundle nem é servido como código. */
       const soTexto = /\.(md|mdx|txt|rst|adoc)$/i
 
-      for (const arquivo of arquivosDe(raiz)) {
+      for (const arquivo of alvosDe(raiz, cfg)) {
         const rel = path.relative(raiz, arquivo)
         if (/(^|[\\/])\.env/.test(rel)) continue
         if (soTexto.test(rel)) continue

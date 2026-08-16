@@ -96,6 +96,13 @@ if (!editadoEm) sair()
 
 const nivel = estado.nivelBancada || 'rascunho'
 const camadas = B.situacao(raiz, estado.bancadaCfg || {}).camadas
+
+/* CC-71: o gate sugere o modo incremental, não o completo.
+   `lint-staged` existe porque gate que roda no repositório inteiro a cada
+   entrega é o tipo de lentidão que faz desligar o recurso. Aqui a mesma regra:
+   a entrega mexeu em N arquivos, e são esses que precisam de olhar novo. O
+   completo continua a um comando de distância, sem a flag. */
+const SUGESTAO = `node cc.mjs framework bancada nivel ${nivel} --rodar --so-mudou`
 const veredito = C.avaliarNivel(nivel, camadas)
 
 const porId = Object.fromEntries(camadas.map((c) => [c.id, c]))
@@ -125,9 +132,11 @@ console.error(
   + `${N.explica}\n\n`
   + `Você mexeu em ${tocados.size} arquivo(s) de código neste turno.\n\n`
   + `${linhas.join('\n')}\n\n`
-  + `    node cc.mjs framework bancada nivel ${nivel}\n\n`
-  + `  · \`bancada nivel ${nivel}\` = roda as camadas exigidas por este nível,\n`
-  + '    pulando as que não se aplicam ao projeto\n\n'
+  + `    ${SUGESTAO}\n\n`
+  + `  · \`bancada nivel ${nivel} --rodar\` = roda as camadas exigidas por este\n`
+  + '    nível, pulando as que não se aplicam ao projeto\n'
+  + '  · `--so-mudou` = só nos arquivos que mudaram desde o último commit.\n'
+  + '    Sem git, varre tudo — nunca menos verificação, só menos espera\n\n'
   + 'O `npm test` responde "eu quebrei alguma coisa?". A Bancada responde\n'
   + '"eu deixei alguma coisa insegura?" — e suíte verde convive muito bem com\n'
   + 'chave commitada e tabela sem proteção.\n\n'

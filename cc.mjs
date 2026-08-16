@@ -633,7 +633,11 @@ switch (cmd) {
         const r = exigeRaiz()
         const B = await import('./src/bancada.mjs')
         const alvo = positional[2]
-        const cfg = { alvo: val('--alvo') }
+        /* CC-71: `--so-mudou` roda as camadas de arquivo apenas no diff.
+           Sem git, ou fora de repositorio, degrada para varrer TUDO — camada de
+           seguranca que se cala por nao saber o que mudou seria pior que
+           lentidao. */
+        const cfg = { alvo: val('--alvo'), soMudou: process.argv.includes('--so-mudou') }
 
         if (!alvo) {
           const s = B.situacao(r, cfg)

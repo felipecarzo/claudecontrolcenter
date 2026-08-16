@@ -1224,7 +1224,29 @@ cc framework check --json       para script
 casos: `teste_pierre_agenda` (sem MVP) sai 1 e lista o que falta;
 `proj_controlcenter` sai 0.
 
-### CC-71 ⏸ direção — agir só no que mudou (sem a Bancada como gate, não há o que otimizar)
+### CC-71 ✅ 16/08 — agir só no que mudou
+
+Estava registrado como direção porque *"sem a Bancada ligada não há o que
+otimizar, e otimizar antes seria inventar problema"*. **O dia chegou no mesmo
+dia:** o `bancada-guard` fez a Bancada virar gate, e aí varrer o repositório
+inteiro a cada entrega passou a ser o tipo de lentidão que faz desligar o
+recurso — que é exatamente o que o `lint-staged` existe para evitar.
+
+`mudadosDesde()` junta o `git diff --name-only` com os arquivos ainda não
+adicionados, porque é neles que o trabalho de agora está. `--so-mudou` liga o
+modo, e o `bancada-guard` sugere o comando já com a flag.
+
+**A regra de degradação é o que impede isto de virar um furo:** sem git, fora de
+repositório, ou com qualquer erro, `mudadosDesde` devolve `null` e a camada
+varre **tudo**. Degradar para MAIS verificação, nunca para menos — uma camada de
+segurança que se cala por não saber o que mudou diria "limpo" tendo olhado zero
+arquivos.
+
+E o resultado registra `escopo: 'mudou' | 'tudo'`. Verificação incremental que
+se guarda como completa seria o pior dos dois mundos: rápida e mentirosa.
+
+Medido aqui: 69ms no repositório inteiro contra 25ms no recorte de 12 arquivos.
+O ganho cresce com o tamanho do projeto, e este é pequeno.
 
 `lint-staged` roda só nos arquivos alterados, e é o que torna o hook rápido o
 bastante para ninguém desligar. Nosso equivalente ainda não tem uso claro — o

@@ -98,6 +98,9 @@ export async function rodar(raiz, id, cfg = {}) {
       ok: resultado.ok && resultado.verificou,
       achados: resultado.achados.length,
       verificou: resultado.verificou,
+      // CC-71: dizer QUE recorte foi olhado. Verificação incremental que se
+      // registra como completa e o pior dos dois mundos — rápida e mentirosa.
+      escopo: cfg.soMudou ? 'mudou' : 'tudo',
       detalhe: resultado.achados.length
         ? `${resultado.achados.length} achado(s): ${resultado.achados[0].titulo}`
         : (resultado.nota || null),
