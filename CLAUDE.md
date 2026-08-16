@@ -438,6 +438,23 @@ errada por definição.
   `footer { padding:0 20px 28px }` pintaram uma faixa cinza dentro de cada
   cartão. Agora são `#painel > header` e `#painel > footer`. Vale para qualquer
   componente novo: ou escopa a regra global, ou não usa a tag.
+- **`<select>` aberto morre no redesenho, e o popup do sistema vai junto.** A
+  armadilha do textarea (`render()` reescreve o painel a cada 2s) vale para o
+  `<select>` também, e enganou porque ele PARECE seguro: é pequeno e não tem
+  texto digitado. O que se perde não é conteúdo, é o **menu nativo aberto** —
+  que nem aparece no DOM, então nada no código sugere o problema. No telefone
+  do Felipe isso fechava a navegação na cara dele: *"clico lá e aparece cockpit
+  etc, antes de dar tempo de eu clicar ele some"*. Hoje `renderTabs` sai cedo
+  quando o `<select>` tem foco, e o redesenho volta no `blur` — segurar para
+  sempre congelaria as contagens, que seria trocar um defeito por outro mais
+  difícil de notar. **Regra geral: elemento com estado do SISTEMA operacional
+  (menu aberto, seletor de arquivo, seletor de data) não pode estar dentro de
+  bloco redesenhado por timer.**
+- **Teste de interação precisa rodar SEM `?static=1`.** O defeito acima só
+  existe com o stream ligado; com ele desligado o teste passa sempre e não prova
+  nada. E o `test-estreito.mjs` guarda uma verificação a mais que vale copiar:
+  ele desliga a própria guarda (`window.SEM_GUARDA`) e confere que o defeito
+  volta. Teste que só sabe dizer "hoje passa" não prova que pegaria a regressão.
 - **Existe UM `<h1>` na página, e a regra solta dele pegava o leitor de
   documentos.** `h1 { text-transform: uppercase; white-space: nowrap }` cortava
   a última letra do título dentro do `.doc-leitor`. É a terceira vez que regra

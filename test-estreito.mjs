@@ -85,6 +85,86 @@ for (const aba of abas) {
   }
 }
 
+/* --- o menu de navegação sobrevive ao stream? ---
+
+   Queixa dele em 16/08, usando o painel no telefone: "clico lá e aparece
+   cockpit etc, antes de dar tempo de eu clicar ele some e eu tenho que clicar
+   de novo".
+
+   O `render()` reescreve `#tabs` a cada 2 segundos, e o <select> aberto morre
+   junto — levando o popup nativo do sistema, que nem aparece no DOM. É a mesma
+   família da armadilha do textarea, e enganou porque o <select> parece seguro:
+   é pequeno e não tem texto digitado.
+
+   Este teste roda SEM `?static=1` de propósito. Com o stream desligado o
+   defeito não existe, e um teste que não pode falhar não prova nada. */
+console.log('\n— o menu de navegação, com o stream ligado —')
+const SEL = '#nav-uma select'
+await page.goto(`${BASE}/?tema=escuro&tab=agentes`, { waitUntil: 'load' })
+await page.waitForTimeout(1500)
+
+await page.focus(SEL)
+await page.evaluate((s) => { document.querySelector(s).dataset.marca = 'aberto' }, SEL)
+await page.waitForTimeout(5000) // mais de dois tiques
+
+const sobreviveu = await page.evaluate((s) => {
+  const el = document.querySelector(s)
+  return { mesmo: el?.dataset.marca === 'aberto', focado: document.activeElement === el }
+}, SEL)
+
+if (!sobreviveu.mesmo || !sobreviveu.focado) {
+  falhas += 1
+  console.log('  FALHOU o <select> aberto foi destruído pelo render() — o menu fecha na cara dele')
+} else {
+  console.log('  ok     sobrevive a 5s de stream com o foco dentro')
+}
+
+// e escolher tem que continuar funcionando, com o foco ainda no menu
+await page.selectOption(SEL, 'tempo')
+await page.waitForTimeout(1200)
+const trocou = await page.evaluate(() => localStorage.getItem('cc-tab'))
+if (trocou !== 'tempo') {
+  falhas += 1
+  console.log(`  FALHOU escolher no menu não trocou de tela (ficou em ${trocou})`)
+} else {
+  console.log('  ok     escolher troca de tela')
+}
+
+/* E o redesenho precisa VOLTAR depois: segurar para sempre congelaria as
+   contagens das abas, que é trocar um defeito por outro mais difícil de notar. */
+await page.evaluate((s) => document.querySelector(s).blur(), SEL)
+await page.evaluate((s) => { document.querySelector(s).dataset.marca = 'velho' }, SEL)
+await page.waitForTimeout(4500)
+const voltou = await page.evaluate((s) => document.querySelector(s)?.dataset.marca === undefined, SEL)
+if (!voltou) {
+  falhas += 1
+  console.log('  FALHOU o redesenho não voltou depois do blur — a tela congela')
+} else {
+  console.log('  ok     o redesenho volta quando o foco sai')
+}
+
+/* O teste consegue MESMO pegar o defeito?
+   Desliga a guarda pela janela e confere que o <select> volta a morrer. Um
+   teste que só sabe dizer "hoje passa" não prova que pegaria a regressão —
+   este reproduz o problema original em cima do código já consertado. */
+const semGuarda = await browser.newPage({ viewport: { width: LARGURA, height: ALTURA } })
+await semGuarda.addInitScript(() => { window.SEM_GUARDA = true })
+await semGuarda.goto(`${BASE}/?tema=escuro&tab=agentes`, { waitUntil: 'load' })
+await semGuarda.waitForTimeout(1500)
+await semGuarda.focus(SEL)
+await semGuarda.evaluate((s) => { document.querySelector(s).dataset.marca = 'aberto' }, SEL)
+await semGuarda.waitForTimeout(5000)
+const aindaPega = await semGuarda.evaluate(
+  (s) => document.querySelector(s)?.dataset.marca !== 'aberto', SEL,
+)
+if (!aindaPega) {
+  falhas += 1
+  console.log('  FALHOU este teste não pega mais o defeito — a checagem virou decorativa')
+} else {
+  console.log('  ok     sem a guarda o defeito volta, então o teste vale')
+}
+await semGuarda.close()
+
 await browser.close()
-console.log(falhas ? `\n${falhas} de ${abas.length} telas vazam em ${LARGURA}px` : `\nok — ${abas.length} telas cabem em ${LARGURA}px`)
+console.log(falhas ? `\n${falhas} falha(s) em ${LARGURA}px` : `\nok — ${abas.length} telas cabem em ${LARGURA}px, e o menu sobrevive ao stream`)
 process.exit(falhas ? 1 : 0)

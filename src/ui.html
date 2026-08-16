@@ -2004,6 +2004,27 @@ function renderHeader() {
     }).join('')}</optgroup>`
   }).join('')
 
+  /* ⚠️ O <select> aberto MORRE se `#tabs` for reescrito, e no telefone isso
+     fechava o menu na cara dele.
+
+     Queixa em 16/08: "clico lá e aparece cockpit etc, antes de dar tempo de eu
+     clicar ele some e eu tenho que clicar de novo". O stream redesenha a cada 2
+     segundos; o menu nativo do celular leva mais que isso para escolher.
+
+     É a mesma família da armadilha do textarea, com uma diferença que enganou:
+     o `<select>` PARECE seguro porque é um elemento pequeno e sem texto
+     digitado. Mas o que se perde não é conteúdo, é o **popup aberto do sistema**
+     — que morre junto com o elemento e nem aparece no DOM.
+
+     Segurar o redesenho enquanto ele está com foco é o mesmo remédio que o
+     `dadosPendentes` usa nos to-dos. A contagem das abas fica alguns segundos
+     velha, e isso não é nada perto de não conseguir trocar de tela. */
+  const menu = $('#nav-uma select')
+  // `SEM_GUARDA` existe só para o teste desligar isto e provar que o defeito
+  // volta. Teste que só sabe dizer "hoje passa" não prova que pegaria o erro;
+  // este consegue reproduzir o problema original em cima do código consertado.
+  if (menu && document.activeElement === menu && !window.SEM_GUARDA) return
+
   $('#tabs').innerHTML = `<div class="tab-grupos">${linhaGrupos}</div>
     <div class="tab-abas">${doGrupo.map((t) => `
       <button class="tab" role="tab" data-tab="${t.id}" aria-selected="${t.id === tab}">
