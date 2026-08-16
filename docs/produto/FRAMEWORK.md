@@ -328,7 +328,35 @@ modo é que não pede nada deles.
 força a caixa, `rota-guard` prende à rota, `recados` entrega recado de outro
 agente. Todos valem em qualquer modo.
 
-**O que faria o restritivo valer**, e nenhum está feito:
+### ✅ 16/08: ele definiu o fluxo, e o modo ganhou mecanismo
+
+> "o modo restritivo deveria ser um modo que não te permite sair do fluxo. Se eu
+> pedir pra adicionar alguma coisa, deveria salvar isso, adicionar a tarefa ao
+> backlog, e continuar. Você vai fazendo o backlog — tem dez tarefas, vai fazer
+> as dez. Só para quando for uma decisão única, tipo no design ter que definir a
+> fonte: aí você pergunta."
+
+Três regras, agora declaradas em `MODOS.restritivo.fluxo` e injetadas a cada
+sessão:
+
+| | |
+|---|---|
+| **pedido novo** | vira item do backlog e a execução continua |
+| **só pare para** | decisão que só ele toma: gosto, prioridade entre frentes, risco que ele assume |
+| **não pare para** | confirmar próximo passo, escolha técnica, ordem já definida |
+
+**A primeira é a que eu mais quebro.** Pedido no meio, eu paro, faço, e perco a
+sequência — e ele fica sem saber onde o backlog parou. A regra inverte: registra
+primeiro, executa depois, na ordem.
+
+**A terceira é estreita de propósito.** "Qual fonte?" para; "faço agora ou
+depois?" não para, porque a ordem já está escrita.
+
+Continua sendo injeção de contexto, não trava — e isso é honesto dizer. Mas
+agora é uma regra verificável: dá para contar quantas vezes eu parei sem
+motivo legítimo, que é o que o `pergunta-guard` já mede pela metade.
+
+**O que ainda faria o restritivo valer mais**, e nenhum está feito:
 
 - **Não pedir confirmação a cada passo.** É o comportamento que ele espera e que
   eu não cumpro. Mensurável: quantas respostas terminam devolvendo a decisão

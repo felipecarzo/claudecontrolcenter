@@ -437,7 +437,28 @@ export const MODOS = {
   restritivo: {
     id: 'restritivo',
     titulo: 'Restritivo',
-    explica: 'Escopo travado pela ROTA, não por clique: pergunta o objetivo, monta o backlog e executa até o fim, sem prosa.',
+    explica: 'Não sai do fluxo: pedido novo vira item do backlog e a execução continua. Só para no que só ele decide.',
+    /* Definição dele em 16/08, e é a que dá mecanismo ao modo:
+     *
+     *   "o modo restritivo deveria ser um modo que não te permite sair do
+     *   fluxo. Se eu pedir pra adicionar alguma coisa, deveria salvar isso,
+     *   adicionar a tarefa ao backlog, e continuar. Você vai fazendo o
+     *   backlog — tem dez tarefas, vai fazer as dez. Só para quando for uma
+     *   decisão única, tipo no design ter que definir a fonte: aí você
+     *   pergunta."
+     *
+     * Três regras, e a primeira é a que eu mais quebro: **pedido no meio vira
+     * item, não interrupção**. Hoje eu paro, faço o que ele pediu, e perco a
+     * sequência — e ele fica sem saber onde o backlog parou.
+     *
+     * A terceira é o critério de parada, e ele é estreito de propósito: só
+     * decisão que **só ele** pode tomar. "Qual fonte?" para; "faço agora ou
+     * depois?" não para, porque a ordem já está no backlog. */
+    fluxo: {
+      pedidoNovo: 'registra no backlog e continua — não interrompe a sequência',
+      paradaLegitima: 'só o que exige decisão dele: gosto, prioridade entre frentes, risco que ele assume',
+      naoPara: 'confirmação de próximo passo, escolha técnica, ordem já definida no backlog',
+    },
     trava: false,
     pergunta: false,
     exigeAutorizacao: false,

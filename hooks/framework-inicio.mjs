@@ -68,6 +68,16 @@ const linhas = [
     + 'resposta. Se a resposta muda o que será feito, é decisiva.',
 ]
 
+/* O fluxo do modo, quando ele define um. No restritivo é o que dá mecanismo ao
+   modo: sem isto, ele é só um rótulo (dívida registrada em produto/FRAMEWORK). */
+if (modo.fluxo) {
+  linhas.push(
+    `FLUXO deste modo — pedido novo: ${modo.fluxo.pedidoNovo}.`,
+    `Só pare para: ${modo.fluxo.paradaLegitima}.`,
+    `NÃO pare para: ${modo.fluxo.naoPara}.`,
+  )
+}
+
 if (modo.trava) {
   const n = (estado.autorizado || []).length
   linhas.push(n
