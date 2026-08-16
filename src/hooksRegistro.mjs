@@ -100,7 +100,21 @@ export function instalar(hooks, { dryRun = false } = {}) {
     settings.hooks ??= {}
     settings.hooks[hook.evento] ??= []
     settings.hooks[hook.evento].push({ hooks: [{ type: 'command', command: comando }] })
-    feitos.push({ id: hook.id, acao: 'registrado', evento: hook.evento, comando })
+
+    /* Um hook pode precisar de mais de um evento, e o `travessao-guard` é o
+       primeiro: a regra vale para a resposta na tela E para o texto que entra
+       em arquivo. Sem isto ele nasceu cobrindo só metade, e o instalador
+       reportou "registrado" como se estivesse inteiro — que é o tipo de meia
+       verdade que este projeto passou o dia consertando. */
+    for (const extra of hook.tambemEm || []) {
+      const [ev, matcher] = String(extra).split(':')
+      settings.hooks[ev] ??= []
+      const grupo = { ...(matcher ? { matcher } : {}), hooks: [{ type: 'command', command: comando }] }
+      settings.hooks[ev].push(grupo)
+    }
+
+    const eventos = [hook.evento, ...(hook.tambemEm || [])].join(' + ')
+    feitos.push({ id: hook.id, acao: 'registrado', evento: eventos, comando })
   }
 
   const mudou = feitos.filter((f) => f.acao === 'registrado')

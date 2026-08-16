@@ -63,6 +63,20 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'travessao-guard',
+    nivel: 'trava',
+    label: 'travessão na resposta ou no arquivo',
+    script: 'travessao-guard.mjs',
+    evento: 'Stop',
+    tambemEm: ['PreToolUse:Write', 'PreToolUse:Edit'],
+    descricao: 'A regra número 1 dele, escrita há meses e sem ninguém cobrando: '
+      + '279 travessões medidos num dia só. Cobre a resposta no chat e o texto '
+      + 'que vai para arquivo PÚBLICO (interface, página, README). Comentário de '
+      + 'código e documentação interna são livres, decisão dele em 16/08.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'resumo-guard',
     nivel: 'avisa',
     label: 'resposta longa sem o separador',

@@ -1636,11 +1636,22 @@ if (estRotinas.projetos.length) {
   for (const h of HOOKS.filter((x) => x.implementado)) {
     assert.ok(NIVEIS[h.nivel], `${h.id} sem nível declarado`)
   }
-  /* Hook de `Stop` NUNCA pode travar: exit 2 ali devolve o texto ao modelo e o
-     manda continuar, criando laço. Isso estava escrito em comentário em dois
-     arquivos; agora o gate cobra. */
-  for (const h of HOOKS.filter((x) => x.evento === 'Stop' && x.implementado)) {
-    assert.notEqual(h.nivel, 'trava', `${h.id} é Stop e trava: vira laço`)
+  /* Hook de `Stop` que devolve precisa da guarda de UMA volta.
+     A regra antiga era "Stop nunca pode travar", e ela protegia do laço: exit 2
+     ali devolve o texto ao modelo e o manda continuar. Mas o que evita o laço é
+     `stop_hook_active`, não a etiqueta do nível — o `pergunta-guard` provou isso
+     em 15/08, devolvendo uma vez e passando na volta seguinte.
+
+     Então o gate passou a conferir o CÓDIGO em vez do rótulo. Hook de Stop que
+     sai com exit 2 sem essa guarda é laço garantido, e isso continua barrado. */
+  for (const h of HOOKS.filter((x) => x.evento === 'Stop' && x.implementado && x.script)) {
+    let fonte = ''
+    try { fonte = fs.readFileSync(path.join(import.meta.dirname, 'hooks', h.script), 'utf8') } catch {
+      try { fonte = fs.readFileSync(path.join(import.meta.dirname, 'hooks', 'routia', h.script), 'utf8') } catch { continue }
+    }
+    if (!/process\.exit\(2\)/.test(fonte)) continue
+    assert.match(fonte, /stop_hook_active/,
+      `${h.id} devolve no Stop sem checar stop_hook_active: vira laço`)
   }
 
   // CC-72: cópia divergente é invisível, e é o formato das 22 rotinas velhas
