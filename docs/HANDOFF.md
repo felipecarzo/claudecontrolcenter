@@ -1,30 +1,59 @@
 # HANDOFF
 
-**Sessão:** 2026-08-15 · Claude (Opus 5, sessão interativa `ff0d68b2`) ·
-**VPS**, pelo celular via Remote Control · continuação direta de 14/08
-**Último commit:** `5efdb52` — feat(remoto): vários agentes por projeto, e a
-sessão para de nascer travada
-**Branch:** `backlog/cc-46-48-49-52-53-56-65` — **PR aberto, esperando merge:**
-https://github.com/felipecarzo/claudecontrolcenter/pull/1
+**Sessão:** 2026-08-16 · Claude (Opus 5, sessão interativa `ff0d68b2`) ·
+**VPS**, pelo celular via Remote Control · continuação direta de 15/08
+**Último commit:** `f2ccdb1` — feat(bancada): a sonda de RLS do Supabase
+**Branch:** `master`, **56 commits à frente do remoto** — e o PR de 15/08
+continua aberto: https://github.com/felipecarzo/claudecontrolcenter/pull/1
 
-O que aconteceu: [diario/2026-08-15.md](diario/2026-08-15.md). Ponteiro, não
+O que aconteceu: [diario/2026-08-16.md](diario/2026-08-16.md). Ponteiro, não
 relatório — o diário tem os porquês.
+
+## O backlog do ROADMAP zerou no que dava para executar
+
+Fechados em 16/08: **CC-93** (guia longo vira etapa), **CC-77** (navegação de um
+nível no estreito), **CC-82** (a estante de documentos), e a Bancada de 7 para
+**10 de 19 camadas**.
+
+**O que sobrou, e por que cada um está parado — nenhum é "esqueci":**
+
+| Item | Por que não anda |
+|---|---|
+| CC-71, CC-92, CC-80 | registrados no próprio ROADMAP como **direção, não tarefa** |
+| CC-79 | depende do CC-60 |
+| CC-60 | **decisão dele**: há dois Pixel Agents nesta VPS e o segundo não foi resolvido |
+| CC-08 | macOS, ambiente que não existe aqui |
+| 9 camadas da Bancada | Gitleaks, Trivy, Semgrep, Nuclei, TruffleHog, ZAP, promptfoo — **nenhum instalado, e instalar exige root** |
 
 ## O que está esperando o Felipe agora
 
-1. **Fazer o merge do PR e rodar `npm test` no PC.** O gate roda inteiro aí,
-   inclusive a parte que a VPS pula por não ter job de background. Se falhar
-   lá, é regressão e vale reportar.
-2. **Registrar os dois hooks do padrão de resposta no `settings.json` do PC**
-   (`hooks/estilo-inicio.mjs` em `SessionStart`, `hooks/estilo-fim.mjs` em
-   `Stop`, com caminho `D:/`). Sem isso o padrão vale só na VPS. Ele pediu o
-   trecho de JSON pronto e a conversa foi interrompida antes.
+1. **Registrar `fluxo-guard` e `guia-guard` no `settings.json`.** Os dois estão
+   escritos e testados; o classificador de permissão bloqueou a escrita no
+   arquivo, e é ele quem libera. `node cc.mjs hooks install` deve cobrir.
+2. **Fazer o merge do PR e rodar `npm test` no PC.** O gate roda inteiro aí,
+   inclusive a parte que a VPS pula por não ter job de background.
 3. **Deploy do Pierre.** O hash de privacidade servido em produção não bate com
-   o repositório desde 12/08, e o conserto está no git desde hoje. Detalhes em
+   o repositório desde 12/08, e o conserto está no git. Detalhes em
    `inovallbond/docs/AUDITORIA-ANONIMIZACAO-2026-08-15.md`.
-4. **Testar o framework** na sessão `teste_pierre_agenda`, que está no ar
-   esperando ele no Remote Control. O teste: pedir código e confirmar que ela
-   recusa, porque o projeto está na fase de Definição sem MVP.
+4. **Decidir o CC-60**, que destrava o CC-79.
+5. **Testar o framework** na sessão `teste_pierre_agenda`, no ar esperando ele.
+
+## O defeito que ele apontou em 16/08, e o que foi feito
+
+> "você diz que fez. eu confio, e no momento seguinte eu descubro que não
+> verdade o que você fez não eh exatamente o que eu pedi"
+
+Duas causas, as duas com conserto mecânico e não com promessa:
+
+- **Anunciar continuidade e parar.** O turno acaba quando o agente para de
+  chamar ferramenta; "continuo" na última frase vira promessa para o turno
+  seguinte. `hooks/fluxo-guard.mjs`: no modo restritivo, com item aberto no
+  ROADMAP, **parar é que precisa ser declarado** (`Parada: <motivo>`,
+  `AskUserQuestion`, ou uma pergunta dele).
+- **Dizer que marcou e não ter marcado.** Aconteceu no mesmo dia, no commit
+  `096e2b8`: um script de edição do ROADMAP falhou calado em heredoc encadeado
+  e o CC-77 foi commitado como fechado sem o corpo entrar. Corrigido em
+  `263c8b2`. **Regra que ficou: script de edição confere a saída, não o assert.**
 
 ## ⚠️ A sessão de senhas: não toca em código
 
