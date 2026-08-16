@@ -63,6 +63,18 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'jargao-guard',
+    nivel: 'avisa',
+    label: 'nome interno na conversa',
+    script: 'jargao-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Mais de dois nomes internos (hook, arquivo, campo, número de tarefa) '
+      + 'na prosa devolve. O problema não é o tamanho da resposta, é a memória que '
+      + 'ela exige dele. Bloco de código não conta.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'pronto-guard',
     nivel: 'avisa',
     label: 'tarefa fechada sem prova',

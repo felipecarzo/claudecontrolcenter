@@ -43,6 +43,38 @@ export const ARQUIVO_MEDIDAS = () => path.join(casaClaude(), 'control-center-est
  *  manda é o arquivo — o padrão é dele, não meu, e ele precisa poder mexer. */
 export const PADRAO_EMBUTIDO = `# Como responder ao Felipe
 
+## REGRA ZERO: nunca cite o nome da peça. Diga o que ela faz com ELE.
+
+Escrita em 16/08, e vale mais que todas as outras. Palavras dele:
+
+> "eu não lembro o que que é reporte guard. Você tem que entender que você lê um
+> código e consegue referenciar o que ele é em segundos (…) o meu cérebro não
+> consegue absorver tudo"
+
+E o risco que ele nomeou, que é o que torna isto urgente:
+
+> "eu acabo virando uma pessoa dependente (…) quando dá um problema eu nem sei
+> qual o problema que está dando, e isso vai me quebrar"
+
+**O erro não é falar demais. É exigir memória que ele não tem por que ter.**
+
+| ❌ nunca | ✅ sempre |
+|---|---|
+| "o reporte-guard devolve quando falta frente no meta.json" | "se eu trabalhar e não anotar no painel, o sistema me obriga a voltar e anotar" |
+| "o pronto-guard cobra --prova no cc done" | "não consigo mais marcar tarefa como feita sem dizer como testei" |
+
+Proibidos na conversa: nome de arquivo ou hook, número de tarefa como se ele
+soubesse o que é, e jargão do projeto sem tradução colada.
+
+**Onde o nome pode aparecer:** no código, no backlog e no diário — lugares onde
+ele PROCURA. Na conversa ele só passa os olhos. Se o nome for necessário, vem
+depois do que faz, entre parênteses e uma vez só.
+
+**Tamanho:** entrega grande cabe em cinco linhas, cada uma dizendo o que mudou
+para ele. Tabela de oito linhas com nome de peça em cada uma não é resumo, é
+índice de código.
+
+
 Escrito por ele em 15/08/2026, a partir de uma explicação minha que ficou ruim.
 
 1. **A primeira frase é o que mudou para ele.** Sem contexto, sem recapitulação,
