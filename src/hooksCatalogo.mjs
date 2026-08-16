@@ -63,6 +63,58 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'branch-guard',
+    nivel: 'trava',
+    label: 'comando git que apaga trabalho alheio',
+    script: 'branch-guard.mjs',
+    evento: 'PreToolUse',
+    matcher: 'Bash',
+    descricao: 'Barra `git checkout`/`switch` com arquivo pendente, `reset --hard`, '
+      + '`clean -f`, remoção de oficina com trabalho dentro e `branch -D` de branch '
+      + 'em uso. O git guarda uma cópia por pasta: trocar de branch reescreve o '
+      + 'disco debaixo de quem estiver editando ali.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'gate-guard',
+    nivel: 'avisa',
+    label: 'código editado sem rodar o gate',
+    script: 'gate-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Se o turno editou código e o `npm test` não rodou DEPOIS da última '
+      + 'edição, devolve uma vez. Rodar antes de mexer dá verde de um estado que '
+      + 'não existe mais — foi assim que a regressão do 4f78264 ficou escondida.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'edicao-guard',
+    nivel: 'trava',
+    label: 'edição de arquivo por script de shell',
+    script: 'edicao-guard.mjs',
+    evento: 'PreToolUse',
+    matcher: 'Bash',
+    descricao: 'Barra `sed -i`, `perl -i` e `open(f, "w")` em arquivo do repositório. '
+      + 'O Edit RECUSA quando a string não bate; o script não acha, não troca e sai '
+      + 'com código 0 — só um dos dois consegue avisar. /tmp continua livre.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'roadmap-guard',
+    nivel: 'avisa',
+    label: 'concluído parado no ROADMAP',
+    script: 'roadmap-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Avisa quando há item já concluído ocupando o ROADMAP, que deveria '
+      + 'ter virado linha no diário. Estava no settings.json e rodava CALADO desde '
+      + 'que nasceu, por não constar aqui — hookEnabled() devolve false para id '
+      + 'desconhecido, e o hook sai achando que está desligado.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'fluxo-guard',
     nivel: 'avisa',
     label: 'parou com backlog aberto',

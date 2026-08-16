@@ -117,12 +117,12 @@
   "segredo": {
    "ok": true,
    "detalhe": null,
-   "em": "2026-08-16T01:11:00.658Z"
+   "em": "2026-08-16T04:47:56.603Z"
   },
   "segredo-historico": {
    "ok": true,
    "detalhe": null,
-   "em": "2026-08-16T02:14:23.904Z"
+   "em": "2026-08-16T04:48:01.089Z"
   },
   "tls": {
    "ok": true,
@@ -133,6 +133,16 @@
    "ok": true,
    "detalhe": null,
    "em": "2026-08-16T04:03:39.449Z"
+  },
+  "teste": {
+   "ok": true,
+   "detalhe": null,
+   "em": "2026-08-16T04:48:09.254Z"
+  },
+  "service-role": {
+   "ok": true,
+   "detalhe": "5 achado(s): service_role citada no código",
+   "em": "2026-08-16T04:48:09.297Z"
   }
  },
  "reproducao": {

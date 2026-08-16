@@ -41,12 +41,48 @@ function lerEntrada() {
   try { return JSON.parse(readFileSync(0, 'utf8')) } catch { return null }
 }
 
-/** Sobe a árvore procurando o quadro. null = projeto sem Routia. */
+/**
+ * A pasta principal do repositório, quando esta é uma worktree secundária.
+ *
+ * Numa worktree, `.git` não é pasta: é um arquivo de uma linha com
+ * `gitdir: /caminho/da/principal/.git/worktrees/<nome>`. Recortar antes de
+ * `/.git/worktrees/` dá a principal, sem rodar git nenhum — derivado, e a
+ * mesma informação que o `git worktree list` daria por muito mais caro.
+ *
+ * `null` quando esta já é a principal, ou quando não é repositório.
+ */
+function raizPrincipal(dir) {
+  let texto = ''
+  try { texto = readFileSync(join(dir, '.git'), 'utf8') } catch { return null }
+  const m = /^gitdir:\s*(.+?)[\\/]\.git[\\/]worktrees[\\/]/m.exec(texto.trim())
+  return m ? m[1] : null
+}
+
+/**
+ * Sobe a árvore procurando o quadro. null = projeto sem Routia.
+ *
+ * ⚠️ **Numa oficina (worktree), o quadro que vale é o da pasta PRINCIPAL.**
+ * Achado em 16/08, minutos depois de criar a primeira: cada worktree tem sua
+ * própria cópia dos arquivos, então cada uma tinha um quadro diferente, vindo do
+ * último commit. Dois agentes marcando rota em dois quadros que nunca se veem —
+ * a coordenação viraria teatro exatamente no cenário para o qual ela existe.
+ *
+ * Um quadro só, na principal, e todas as oficinas leem e escrevem nele.
+ */
 function acharQuadro(partida) {
   let dir = partida
   for (let i = 0; i < 30; i++) {
     const alvo = join(dir, 'docs', 'ROTAS-ATIVAS.md')
-    try { readFileSync(alvo, 'utf8'); return { quadro: alvo, raiz: dir } } catch { /* sobe */ }
+    try {
+      readFileSync(alvo, 'utf8')
+      const principal = raizPrincipal(dir)
+      if (principal) {
+        const doTronco = join(principal, 'docs', 'ROTAS-ATIVAS.md')
+        // se a principal sumiu ou não tem quadro, fica no local: falha aberta
+        try { readFileSync(doTronco, 'utf8'); return { quadro: doTronco, raiz: dir } } catch { /* usa o local */ }
+      }
+      return { quadro: alvo, raiz: dir }
+    } catch { /* sobe */ }
     const pai = dirname(dir)
     if (pai === dir) break
     dir = pai
@@ -78,6 +114,43 @@ function pastasControladas(texto) {
   if (!m) return null
   const lista = m[1].split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
   return lista.length ? lista : null
+}
+
+/**
+ * Os arquivos que uma linha de rota reivindica, marcados com 📁.
+ *
+ * ## Por que isto existe, achado em 16/08
+ *
+ * Até aqui o guard perguntava só "esta sessão marcou ALGUMA rota?" — e, se sim,
+ * liberava a pasta controlada inteira. Duas sessões com rotas diferentes
+ * editavam o mesmo `src/ui.html` sem nenhum aviso. A separação era convenção,
+ * não trava, e o quadro dava a impressão contrária.
+ *
+ * O Felipe perguntou exatamente isso ao querer abrir um segundo agente para o
+ * front-end: *"o que temos de segurança pra fazer isso sem quebrar o projeto?"*
+ *
+ * ## O formato, e por que ele não quebra quadro nenhum
+ *
+ * Na coluna "Quem / o quê", em qualquer lugar dela:
+ *
+ *     | `cockpit` | 🔴 ocupada | ff0d68b2 — abas 📁 src/ui.html src/web.mjs | hoje |
+ *
+ * **Rota sem 📁 continua funcionando como antes** (libera a pasta inteira). É o
+ * que mantém os outros projetos e o histórico deste intactos: quem não declara
+ * nada não perde nada, e quem declara ganha a trava.
+ *
+ * Casa por prefixo, então `📁 src/` cobre a pasta e `📁 src/ui.html` cobre um
+ * arquivo. Glob completo seria mais poderoso e menos previsível de ler no
+ * quadro, que é um documento para humano antes de ser entrada de parser.
+ */
+function arquivosDaLinha(linha) {
+  const i = linha.indexOf('📁')
+  if (i < 0) return null
+  return linha.slice(i + 2)
+    .split('|')[0]                       // não vaza para a coluna seguinte
+    .split(/[\s,]+/)
+    .map((s) => s.trim().replace(/^`|`$/g, ''))
+    .filter((s) => s && /[/.]/.test(s))  // caminho tem barra ou ponto
 }
 
 /** Nomes de rota do quadro, pra mensagem de erro ser acionável. */
@@ -118,6 +191,39 @@ const relativo = caminho.slice(achado.raiz.length + 1)
 const primeiraPasta = relativo.split(sep)[0]
 const pastas = pastasControladas(texto) || ['apps', 'tools']
 if (!pastas.includes(primeiraPasta)) liberar()
+
+/* Arquivo reivindicado por OUTRA sessão barra mesmo quem tem rota própria.
+   Esta checagem vem ANTES da liberação por rota, e é o conserto inteiro: até
+   16/08 o guard perguntava só "esta sessão marcou alguma rota?", e uma resposta
+   sim liberava a pasta controlada inteira. Dois agentes com rotas diferentes
+   editavam o mesmo arquivo em silêncio.
+
+   Rota sem 📁 não reivindica nada e não barra ninguém — é o que mantém todo
+   quadro existente funcionando igual. */
+const relBarra = relativo.split(sep).join('/')
+const donoDoArquivo = linhasDeRota(texto).find((l) => {
+  if (!l.includes('🔴') || l.includes(marca)) return false
+  const alvos = arquivosDaLinha(l)
+  return alvos?.some((a) => relBarra === a || relBarra.startsWith(a.replace(/\/?$/, '/')))
+})
+
+if (donoDoArquivo) {
+  const nome = (donoDoArquivo.match(/`([^`]+)`/) || [])[1] || 'outra rota'
+  const quem = (donoDoArquivo.match(/\b([0-9a-f]{8})\b/) || [])[1] || 'outra sessão'
+  process.stderr.write(
+    `ARQUIVO DE OUTRA ROTA — ${relBarra} está reivindicado por \`${nome}\`.\n\n`
+    + `Dono agora: ${quem}. Sua marca: ${marca}.\n\n`
+    + `    ${donoDoArquivo}\n\n`
+    + 'Ter rota marcada não dá acesso ao projeto inteiro: a rota que declara\n'
+    + 'arquivos com 📁 fica com eles. Foi assim que, em 06/08, uma sessão\n'
+    + 'commitou três vezes o código que a outra tinha acabado de escrever.\n\n'
+    + 'O que fazer, em ordem:\n'
+    + '  1. Trabalhe no que é seu — quase sempre há outro arquivo na sua rota.\n'
+    + `  2. Precisa mesmo deste? Peça ao dono pelo recado do Routia, ou espere\n`
+    + `     ele liberar. Não edite o quadro para tomar a rota de alguém.\n`,
+  )
+  process.exit(2)
+}
 
 // Uma rota vale se está ocupada E carrega o id desta sessão.
 const marcada = linhasDeRota(texto).some(l => l.includes('🔴') && l.includes(marca))

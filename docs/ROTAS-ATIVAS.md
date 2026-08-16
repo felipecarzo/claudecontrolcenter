@@ -30,7 +30,9 @@ em código, o certo é parar e abrir outra — credencial e edição de arquivo 
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
-| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 16/08: **CC-93** (guia longo vira etapa, regra + `guia-guard`), **CC-77** (navegacao de um nivel no estreito, `.grupo` duplicada no CSS, e `test-estreito.mjs` medindo as 15 telas), **CC-82** (a estante de documentos, com leitor e `cc doc`), e a Bancada de 7 para 10 camadas, com a sonda de RLS do Supabase. Junto: `fluxo-guard`, a trava de execucao continua do modo restritivo) | — |
+| `cockpit` | 🔴 ocupada | ff0d68b2 — níveis da Bancada e a auto-verificação 📁 src/bancada.mjs src/bancadaCatalogo.mjs src/ui.html hooks/ | 2026-08-16 |
+| `front` | 🟢 livre | — reservada para o agente de front-end do Felipe. Ao marcar, declare os arquivos com 📁, senão a rota não protege nada | — |
+| `cockpit` (anterior) | 🟢 livre | — (ff0d68b2 fechou em 16/08: **CC-93** (guia longo vira etapa, regra + `guia-guard`), **CC-77** (navegacao de um nivel no estreito, `.grupo` duplicada no CSS, e `test-estreito.mjs` medindo as 15 telas), **CC-82** (a estante de documentos, com leitor e `cc doc`), e a Bancada de 7 para 10 camadas, com a sonda de RLS do Supabase. Junto: `fluxo-guard`, a trava de execucao continua do modo restritivo) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
 | `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |

@@ -1009,6 +1009,47 @@ const ids = HOOKS.map((h) => h.id)
 assert.equal(new Set(ids).size, ids.length, 'hook com id duplicado no catálogo')
 for (const h of HOOKS) assert.ok(EVENTOS.includes(h.evento), `evento desconhecido em ${h.id}: ${h.evento}`)
 
+/* Hook que existe no disco mas não no catálogo RODA CALADO, e isso me pegou
+   três vezes em dois dias: `hookEnabled('id-desconhecido')` devolve false, então
+   o hook sai na primeira linha achando que está desligado. O `roadmap-guard`
+   ficou assim desde que nasceu — estava no settings.json, nunca falou, e havia
+   33 itens concluídos entulhando o ROADMAP que ele teria acusado.
+
+   O erro é invisível justamente porque o hook não reclama de nada, inclusive de
+   si mesmo. Por isso a conferência é aqui e não numa instrução. */
+{
+  const pastaHooks = path.join(import.meta.dirname, 'hooks')
+  const noDisco = fs.readdirSync(pastaHooks).filter((f) => f.endsWith('.mjs'))
+  const noCatalogo = new Set(HOOKS.map((h) => h.script))
+
+  /* A acusação precisa ser exata: só quem CONSULTA o catálogo fica mudo fora
+     dele. `framework-guard` e `anonimo-guard` não chamam `hookEnabled`, então
+     funcionam registrados ou não — a primeira versão deste teste os acusava de
+     estar calados, o que era falso. Verificar antes de acusar vale para o teste
+     também. */
+  const mudos = noDisco.filter((f) => {
+    if (noCatalogo.has(f)) return false
+    let fonte = ''
+    try { fonte = fs.readFileSync(path.join(pastaHooks, f), 'utf8') } catch { return false }
+    return fonte.includes('hookEnabled')
+  })
+  assert.deepEqual(mudos, [],
+    `hook consulta o catálogo, não está nele, e por isso roda calado: ${mudos.join(', ')}`)
+
+  /* E o contrário: catálogo apontando para script que não existe.
+     Os do Routia moram em `hooks/routia/`, e o `cc-check` não é arquivo — é
+     subcomando do próprio `cc`, e por isso tem `script: null`. Procurar nas duas
+     pastas em vez de exigir tudo na raiz: a organização por família é boa, e o
+     teste é que tem que conhecê-la. */
+  const emRoutia = fs.existsSync(path.join(pastaHooks, 'routia'))
+    ? fs.readdirSync(path.join(pastaHooks, 'routia'))
+    : []
+  const semArquivo = HOOKS.filter((h) => h.implementado && h.script
+    && !noDisco.includes(h.script) && !emRoutia.includes(h.script))
+  assert.deepEqual(semArquivo.map((h) => h.id), [],
+    'catálogo diz implementado, mas o arquivo não está em hooks/ nem em hooks/routia/')
+}
+
 // --- toggle de hook: sem entrada no config usa o padrão do catálogo ---
 const { hookEnabled } = await import('./src/config.mjs')
 // cc-check tem padrao:true — cfg sem a chave usa o padrão, não false

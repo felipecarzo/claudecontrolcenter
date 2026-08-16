@@ -187,6 +187,64 @@ switch (cmd) {
      que é o que permite `pbpaste | cc doc add "titulo"` e o ditado.
      `cc doc + <id> "<linha>"` acrescenta ao fim — o caso que ele descreveu foi
      "adiciona uma nota lá pra mim", nunca "troca o documento inteiro". */
+  /* Uma pasta de trabalho por agente, para dois não escreverem no mesmo arquivo.
+     Tudo aqui é DERIVADO do git — não existe registro paralelo de "quem está
+     onde", que era a pergunta dele em 16/08. Um JSON com essa informação viraria
+     mentira no primeiro `git worktree remove` feito à mão. */
+  case 'oficina': {
+    const O = await import('./src/oficinas.mjs')
+    const raiz = process.cwd()
+    const sub = arg || 'list'
+
+    if (sub === 'list' || sub === 'ls') {
+      const m = await O.mapa(raiz)
+      if (!m.ok) die(m.erro)
+      console.log(`principal: ${m.principal}\n`)
+      for (const o of m.oficinas) {
+        const pend = o.sujos || o.novos ? `${o.sujos}M ${o.novos}?` : 'limpa'
+        const dist = o.aFrente == null ? '' : `  ${o.aFrente}↑ ${o.atras}↓`
+        console.log(`${o.principal ? '★' : ' '} ${(o.branch || '(sem branch)').padEnd(34)} ${pend.padEnd(9)}${dist}`)
+        console.log(`    ${o.pasta}`)
+        for (const r of o.rotas) {
+          console.log(`    rota \`${r.rota}\` · ${r.quem || 'sem id'}${r.arquivos.length ? ` · 📁 ${r.arquivos.join(' ')}` : ' · sem arquivo declarado'}`)
+        }
+        if (o.node?.existe) {
+          console.log(`    node_modules: ${o.node.atalho ? `atalho → ${o.node.destino}` : `${o.node.pacotes} pacote(s), cópia própria`}`)
+        }
+      }
+      if (m.colisoes.length) {
+        console.log('\n⚠️  o mesmo arquivo reivindicado em duas oficinas — vai conflitar no merge:')
+        for (const c of m.colisoes) {
+          console.log(`   ${c.arquivo}: \`${c.entre[0].rota}\` e \`${c.entre[1].rota}\``)
+        }
+      }
+      break
+    }
+
+    if (sub === 'criar' || sub === 'nova') {
+      const r = await O.criar(raiz, positional[2], {
+        branch: val('--branch'),
+        semAtalho: process.argv.includes('--sem-atalho'),
+      })
+      if (!r.ok) die(r.erro)
+      console.log(`oficina criada\n  pasta:  ${r.pasta}\n  branch: ${r.branch}`)
+      if (r.node) console.log(`  node:   ${r.node}`)
+      console.log('\nAbra o agente lá dentro e marque a rota no quadro daquela pasta,')
+      console.log('declarando os arquivos com 📁 — sem isso a rota não protege nada.')
+      break
+    }
+
+    if (sub === 'fechar' || sub === 'rm') {
+      const r = await O.fechar(raiz, positional[2], { forcar: process.argv.includes('--forcar') })
+      if (!r.ok) die(r.erro)
+      console.log(`oficina fechada: ${r.pasta}\nA branch \`${r.branch}\` continua existindo — falta o merge.`)
+      break
+    }
+
+    die('uso: node cc.mjs oficina [list|criar <nome>|fechar <nome>]')
+    break
+  }
+
   case 'doc': {
     const DOC = await import('./src/documentos.mjs')
     const sub = arg || 'list'

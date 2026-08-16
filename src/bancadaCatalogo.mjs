@@ -159,6 +159,141 @@ function supabaseDoProjeto(raiz) {
 /** Nome de tabela que quase sempre guarda dado de pessoa. */
 const SENSIVEL = /^(users?|profiles?|clientes?|customers?|pedidos?|orders?|pagamentos?|payments?|assinaturas?|subscriptions?|mensagens?|messages?|contratos?|documentos?|enderecos?|addresses|telefones?|emails?|leads?|cadastros?)$/i
 
+
+/**
+ * Os níveis de exigência da Bancada.
+ *
+ * ## A pergunta que criou isto
+ *
+ * > "Podemos automatizar o uso da banca em níveis diferentes de engenharia de
+ * > cibersegurança?"
+ *
+ * Dá, e o desenho vem de uma observação simples: **o que precisa ser verificado
+ * não depende do projeto, depende de quem alcança o projeto.** Um script que só
+ * roda na máquina dele e um site com login de cliente na internet não merecem a
+ * mesma exigência, e tratá-los igual tem dois custos opostos — ou o rascunho
+ * fica insuportável de mexer, ou o site do cliente sobe sem ninguém olhar.
+ *
+ * ## Os quatro níveis, pela pergunta que cada um responde
+ *
+ * | nível | a pergunta | quem alcança |
+ * |---|---|---|
+ * | `rascunho` | vazei alguma chave? | só ele, na própria máquina |
+ * | `interno` | isso se sustenta? | ele e as máquinas dele |
+ * | `cliente` | dado de outra pessoa está protegido? | um cliente, com login |
+ * | `exposto` | e quem nem é usuário? | a internet inteira |
+ *
+ * **Cada nível inclui os anteriores.** `exposto` roda tudo de `cliente`, que
+ * roda tudo de `interno`, que roda tudo de `rascunho`. Sem isso a escolha viraria
+ * um menu de dezenove caixinhas, que é exatamente o que faz ninguém escolher.
+ *
+ * ## Duas decisões que evitam o teatro de segurança
+ *
+ * **Camada que não cabe no projeto não reprova o nível.** Um projeto sem
+ * Supabase não pode ficar eternamente reprovado por causa do `rls-supabase`.
+ * O que reprova é camada que cabe, rodou e achou — ou que cabe e **não rodou**.
+ *
+ * **Camada ainda não implementada não aprova nem reprova: ela avisa.** Contar
+ * como aprovada seria dizer que olhou; como reprovada, travaria o projeto por
+ * dívida nossa. O nível informa quantas faltam, e a decisão é dele.
+ *
+ * ## Por que as camadas de IA ficam fora da escala
+ *
+ * `eval-prompt` e `ataque-modelo` não são mais rigorosas, são de outro eixo: só
+ * fazem sentido em projeto que chama modelo. Entram por aplicabilidade, nunca
+ * por nível — pôr no `exposto` obrigaria um site institucional a rodar teste de
+ * injeção de prompt que não tem onde acontecer.
+ */
+export const NIVEIS = {
+  rascunho: {
+    id: 'rascunho',
+    ordem: 0,
+    titulo: 'Rascunho',
+    pergunta: 'vazei alguma chave?',
+    explica: 'Só você alcança. A única coisa irreversível aqui é segredo commitado, porque o commit fica no histórico mesmo depois de apagar o arquivo.',
+    camadas: ['segredo'],
+  },
+  interno: {
+    id: 'interno',
+    ordem: 1,
+    titulo: 'Interno',
+    pergunta: 'isso se sustenta?',
+    explica: 'Roda nas suas máquinas. Entra o que quebra sozinho com o tempo: dependência velha, teste parado, e o segredo que ficou no histórico.',
+    camadas: ['segredo-historico', 'dependencia', 'teste'],
+  },
+  cliente: {
+    id: 'cliente',
+    ordem: 2,
+    titulo: 'Cliente',
+    pergunta: 'o dado de outra pessoa está protegido?',
+    explica: 'Alguém de fora usa, com login. A partir daqui o erro não é seu prejuízo, é o dado de um terceiro — e é o nível que o método entrega-cliente exige.',
+    camadas: ['service-role', 'rls-supabase', 'zona-restrita', 'pacote-malicioso', 'navegador'],
+  },
+  exposto: {
+    id: 'exposto',
+    ordem: 3,
+    titulo: 'Exposto',
+    pergunta: 'e quem nem é usuário?',
+    explica: 'Está na internet aberta. Aqui entra quem nunca fez login: varredura automática, porta esquecida, certificado vencido no fim de semana.',
+    camadas: ['tls', 'exposicao', 'passiva', 'container', 'estatico', 'segredo-vivo'],
+  },
+}
+
+export const NIVEL_PADRAO = 'interno'
+
+/** Todas as camadas exigidas até aquele nível, na ordem em que devem rodar. */
+export function camadasDoNivel(nivel) {
+  const alvo = NIVEIS[nivel] || NIVEIS[NIVEL_PADRAO]
+  return Object.values(NIVEIS)
+    .filter((n) => n.ordem <= alvo.ordem)
+    .flatMap((n) => n.camadas)
+}
+
+/** O nível em que cada camada entra — para a tela mostrar a escala sem repetir a lista. */
+export function nivelDaCamada(id) {
+  return Object.values(NIVEIS).find((n) => n.camadas.includes(id))?.id || null
+}
+
+/**
+ * O veredito de um nível, a partir do que já rodou.
+ *
+ * Devolve as três listas separadas porque elas pedem ações diferentes: `falhou`
+ * é trabalho de agora, `faltaRodar` é um comando, e `semExecucao` é dívida nossa
+ * que ele decide se importa. Somar as três num número só esconderia justamente a
+ * diferença que interessa.
+ */
+export function avaliarNivel(nivel, camadas) {
+  const exigidas = camadasDoNivel(nivel)
+  const porId = Object.fromEntries(camadas.map((c) => [c.id, c]))
+
+  const falhou = []
+  const faltaRodar = []
+  const semExecucao = []
+  const naoSeAplica = []
+  const ok = []
+
+  for (const id of exigidas) {
+    const c = porId[id]
+    if (!c) continue
+    if (!c.implementada) { semExecucao.push(id); continue }
+    if (!c.cabe) { naoSeAplica.push(id); continue }
+    if (!c.resultado) { faltaRodar.push(id); continue }
+    if (c.resultado.ok === false) { falhou.push(id); continue }
+    ok.push(id)
+  }
+
+  return {
+    nivel,
+    // dívida nossa não reprova o projeto dele; camada que cabe e não rodou, sim
+    aprovado: falhou.length === 0 && faltaRodar.length === 0,
+    ok,
+    falhou,
+    faltaRodar,
+    semExecucao,
+    naoSeAplica,
+  }
+}
+
 export const CAMADAS = [
   {
     id: 'segredo',
