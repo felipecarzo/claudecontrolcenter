@@ -16,6 +16,7 @@
 //   node cc.mjs routia install [pasta] cria docs/ROTAS-ATIVAS.md pro Método Routia
 //   node cc.mjs routia cobertura       onde o Routia está descoberto nesta máquina
 //   node cc.mjs deps [arquivo]     o que quebra se eu mexer aqui
+//   node cc.mjs previa <arq.md>    vira HTML no tamanho do telefone dele
 //   node cc.mjs json               despeja o estado atual e sai
 //
 //   flags: --no-web  --web-only  --port <n>
@@ -554,6 +555,37 @@ switch (cmd) {
         mostrar(r)
         break
       }
+      /* CC-68: os campos que os métodos `conserto` e `estudo` exigem. Sem
+         comando, registrá-los seria editar `.framework/estado.json` à mão — e
+         foi exatamente assim que eu burlei o próprio gate em 14/08. */
+      case 'reproducao': {
+        const r = exigeRaiz()
+        const e = D.ler(r)
+        const como = val('--como')
+        const esperado = val('--esperado')
+        if (!como && !esperado) {
+          console.log(`como aparece: ${e.reproducao?.como || '(não registrado)'}`)
+          console.log(`esperado:     ${e.reproducao?.esperado || '(não registrado)'}`)
+          break
+        }
+        D.gravar(r, { ...e, reproducao: { ...e.reproducao, ...(como && { como }), ...(esperado && { esperado }) } })
+        mostrar(r)
+        break
+      }
+      case 'prova': {
+        const r = exigeRaiz()
+        const e = D.ler(r)
+        const como = val('--como')
+        if (!como && !has('--guardado')) {
+          console.log(`prova:    ${e.prova?.como || '(não registrada)'}`)
+          console.log(`guardado: ${e.prova?.guardado ? 'sim' : 'não'}`)
+          break
+        }
+        D.gravar(r, { ...e, prova: { ...e.prova, ...(como && { como }), ...(has('--guardado') && { guardado: true }) } })
+        mostrar(r)
+        break
+      }
+
       case 'status':
       case undefined: {
         if (!raiz) { console.log('este projeto não tem framework ligado'); break }
@@ -689,6 +721,34 @@ switch (cmd) {
       console.log(`\n  e por tabela (${indiretos.length}):\n${indiretos.map((a) => `    ${a}`).join('\n')}`)
     }
     console.log('')
+    break
+  }
+
+  /* CC-94: a prévia que vai para o telefone dele, padronizada.
+     Antes era um script novo em /tmp a cada vez, e todos saíram com fonte de
+     tela larga — ele lê andando, e teve que dar zoom em todos. */
+  case 'previa': {
+    const P = await import('./src/previa.mjs')
+    if (!arg) {
+      die('uso: node cc.mjs previa <arquivo.md> [--saida x.html] [--layout]\n'
+        + '     --layout usa o CSS real do painel, para conferir TELA (não para ler)')
+    }
+    const origem = path.resolve(arg)
+    if (!fs.existsSync(origem)) die(`não achei: ${origem}`)
+
+    const md = fs.readFileSync(origem, 'utf8')
+    // o `# título` do arquivo vira o título da página; o nome é o reserva
+    const titulo = (md.match(/^#\s+(.+)$/m) || [])[1] || path.basename(origem, path.extname(origem))
+    const saida = path.resolve(val('--saida') || path.join(
+      process.env.TMPDIR || '/tmp', `${path.basename(origem, path.extname(origem))}.html`))
+
+    P.gravar(saida, {
+      titulo,
+      subtitulo: `de ${path.relative(process.cwd(), origem)}`,
+      corpo: P.deMarkdown(md.replace(/^---[\s\S]*?---\n/, '').replace(/^#\s+.+$/m, '')),
+      modo: has('--layout') ? 'layout' : 'leitura',
+    })
+    console.log(saida)
     break
   }
 

@@ -1542,6 +1542,36 @@ if (estRotinas.projetos.length) {
   assert.match(html, /data-ajuda="Liberar escrita/, 'sumiu a explicação do "?" do autorizar')
 }
 
+/* --- CC-94: a prévia é para o telefone dele ---
+   Sete prévias em dois dias saíram com fonte de tela larga, e ele teve que dar
+   zoom em todas. O gate guarda o tamanho, que é a coisa fácil de perder. */
+{
+  const P = await import('./src/previa.mjs')
+
+  const html = P.pagina({ titulo: 'teste', subtitulo: 'sub', corpo: '<p>oi</p>' })
+  assert.match(html, /font:19px/, 'a prévia de leitura encolheu: ele lê no telefone, andando')
+  assert.match(html, /width=device-width/, 'sem viewport, o telefone renderiza como desktop')
+  assert.match(html, /text-size-adjust:100%/, 'sem isso o iOS remexe no tamanho ao girar a tela')
+  assert.ok(html.includes('<h1>teste</h1>'), 'o título sumiu')
+
+  /* O modo `layout` usa o CSS REAL: aqui fonte grande seria mentira, porque o
+     que se quer provar é justamente como a tela fica. */
+  const lay = P.pagina({ titulo: 't', corpo: '<p>x</p>', modo: 'layout' })
+  assert.ok(!lay.includes('font:19px'), 'o modo layout aumentou a fonte e passou a mentir')
+  assert.match(lay, /container-name:\s*painel/, 'o modo layout perdeu o container do painel')
+  assert.match(lay, /--bg/, 'o modo layout não carregou o CSS do painel')
+
+  // markdown reduzido: só o que ele escreve
+  const md = P.deMarkdown('# T\n\n- um\n- dois\n\n> citado\n\n`code` e **forte**')
+  assert.match(md, /<h1>T<\/h1>/)
+  assert.match(md, /<li>um<\/li>/)
+  assert.match(md, /<blockquote>citado<\/blockquote>/)
+  assert.match(md, /<code>code<\/code>/)
+  assert.match(md, /<b>forte<\/b>/)
+  // e escapa o que não é markdown, senão um `<script>` num doc viraria script
+  assert.match(P.deMarkdown('<script>x</script>'), /&lt;script&gt;/)
+}
+
 /* --- CC-87: toda tela responde uma pergunta, escrita no topo ---
    Regra 1 da frente. O gate guarda a REGRA, não o texto: se alguém acrescentar
    uma tela sem pergunta, ninguém notaria — foi assim que 11 das 15 ficaram

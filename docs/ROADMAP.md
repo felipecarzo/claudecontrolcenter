@@ -812,7 +812,7 @@ resposta. Não precisa de código — precisa de hábito, e por isso entra no
 Vale medir depois, junto do `estilo-fim`: em quantas respostas a etiqueta
 aparece quando havia tarefa em curso.
 
-### ✅ CC-94 16/08 — prévia que eu mando é para telefone
+### ✅ CC-94 16/08 — a prévia virou parte do cockpit
 
 *"eu precisei dar zoom, fico dando zoom"*, dito na rua, sobre a lista do que
 falta. **Todas as prévias de 15 e 16/08 tinham o mesmo defeito:** usavam o CSS
@@ -822,10 +822,32 @@ Ele lê no telefone, quase sempre andando. Arquivo que exige zoom é arquivo que
 ele não lê — e aí a prévia não serve para nada, que é o pior desfecho possível
 para a fase de Prova do método `conserto`.
 
-Regra escrita no `control-center-estilo.md`: corpo em 19px, `viewport` declarado,
-`text-size-adjust` travado. **Com uma exceção:** prévia cujo objetivo é conferir
-o LAYOUT continua usando o CSS real do painel — senão ela mente sobre o que ele
-vai ver. Nesse caso, dizer na legenda.
+Pedido dele, e é o que fecha o item: *"botar isso como parte do sistema do
+cockpit e fixo, como uma prática mesmo, uma boa prática"*.
+
+**Virou `src/previa.mjs` + `cc previa`**, em vez de continuar como script solto
+em `/tmp` reescrito a cada vez — que era a causa: cada prévia recomeçava do zero
+e o acerto de tamanho se perdia junto com o `/tmp`.
+
+```
+cc previa docs/ALGO.md              vira HTML no tamanho do telefone
+cc previa docs/ALGO.md --layout     usa o CSS REAL do painel
+cc previa X.md --saida /caminho.html
+```
+
+**Os dois modos, e escolher errado estraga dos dois jeitos:**
+
+- `leitura` (padrão): 19px, CSS próprio. Para texto que ele vai LER.
+- `layout`: o CSS de verdade do painel. Para conferir como a tela fica — e
+  **aqui fonte grande seria mentira**, porque o tamanho é justamente o que se
+  quer provar.
+
+O markdown é traduzido pelo mínimo que ele escreve (título, lista, citação,
+código, negrito), sem biblioteca — trazer uma quebraria a regra de zero
+dependência por um ganho que ninguém pediu. E escapa HTML: um `<script>` dentro
+de um documento não pode virar script na página.
+
+Regra também no `control-center-estilo.md`, que é injetado a cada sessão.
 
 ### CC-92: o proxy da anonimização — pedido em 15/08 e NÃO registrado
 
