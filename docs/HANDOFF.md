@@ -22,16 +22,23 @@ regra da linha 3 dele e estava sendo ignorada desde sempre. Sobraram dois itens,
 
 ## O que espera o Felipe
 
-1. **Abrir `/hooks` uma vez, ou reiniciar.** Sete hooks foram registrados no
-   `settings.json` hoje e só valem na sessão seguinte.
-2. **Deploy do Pierre.** O hash de privacidade em produção não bate com o
-   repositório desde 12/08. Detalhes em
-   `inovallbond/docs/AUDITORIA-ANONIMIZACAO-2026-08-15.md`.
-3. **Responder o CC-80:** a tela de estrutura é para ele decidir prioridade, ou
-   para o agente não quebrar nada? Se for a segunda, `cc deps` já basta.
-4. **O fork do `app_escritorio`** ler `GET /api/escritorio` — é o que faz o
-   escritório mostrar as duas máquinas. Contrato em
-   [[guias/escritorio-e-cockpit]].
+1. ~~Abrir `/hooks`~~ — **feito em 16/08.** Os sete hooks estão valendo.
+2. **Responder o CC-80:** a tela de estrutura é para ele decidir prioridade, ou
+   para o agente não quebrar nada? Se for a segunda, `cc deps` já basta e o item
+   fecha sem código. Ele perguntou "que tela de estrutura?" ao ler isto — sinal
+   de que o item está vago desde que nasceu, e de que a resposta pode ser
+   simplesmente fechá-lo.
+
+**Em paralelo, decisão dele em 16/08:** ele está tocando o fork do
+`app_escritorio` agora, e a integração fica para depois que ele terminar lá.
+**Não mexer nisso.** O lado do cockpit já está pronto e esperando:
+`GET /api/escritorio`, contrato em [[guias/escritorio-e-cockpit]].
+
+⚠️ **Este HANDOFF é só do cockpit.** Em 16/08 eu tinha posto aqui uma pendência
+do `inovallbond` (o deploy do Pierre), e ele reparou na hora: *"o que tem a ver
+o pierre com esse projeto?"*. Pendência de outro repositório mora no HANDOFF
+daquele repositório — misturar faz o próximo agente procurar arquivo que não
+existe aqui.
 
 ## Para o próximo agente: o que mudou no jeito de trabalhar
 
