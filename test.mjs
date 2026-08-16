@@ -259,11 +259,20 @@ const { normalizeTodo, normalizeLink } = await import('./src/jobs.mjs')
    linhas não foram atualizadas junto. Ninguém viu porque o gate morria antes,
    no bloco do transcript — é o custo escondido do CC-53: teste que não roda
    não é teste que passa, é teste que some. */
-assert.deepEqual(normalizeTodo({ text: 'a', done: true }), { text: 'a', done: true, dono: 'ia' })
-assert.deepEqual(normalizeTodo({ t: 'a', done: true }), { text: 'a', done: true, dono: 'ia' }) // o caso real
-assert.deepEqual(normalizeTodo({ title: 'a' }), { text: 'a', done: false, dono: 'ia' })
-assert.deepEqual(normalizeTodo({ task: 'a', completed: true }), { text: 'a', done: true, dono: 'ia' })
-assert.deepEqual(normalizeTodo('só texto'), { text: 'só texto', done: false, dono: 'ia' })
+/* `pronto` e `prova` entraram em 16/08 (CC-97). Comparar o objeto inteiro é
+   proposital, apesar de quebrar a cada campo novo: foi assim que o `dono`
+   apareceu como regressão escondida, e é barato de atualizar. */
+const TODO = (extra) => ({ dono: 'ia', pronto: null, prova: null, ...extra })
+assert.deepEqual(normalizeTodo({ text: 'a', done: true }), TODO({ text: 'a', done: true }))
+assert.deepEqual(normalizeTodo({ t: 'a', done: true }), TODO({ text: 'a', done: true })) // o caso real
+assert.deepEqual(normalizeTodo({ title: 'a' }), TODO({ text: 'a', done: false }))
+assert.deepEqual(normalizeTodo({ task: 'a', completed: true }), TODO({ text: 'a', done: true }))
+assert.deepEqual(normalizeTodo('só texto'), TODO({ text: 'só texto', done: false }))
+
+// a definição de pronto e a prova sobrevivem à normalização, e são cortadas
+assert.equal(normalizeTodo({ text: 'a', pronto: 'a tela abre' }).pronto, 'a tela abre')
+assert.equal(normalizeTodo({ text: 'a', prova: 'npm test verde' }).prova, 'npm test verde')
+assert.equal(normalizeTodo({ text: 'a', prova: 'x'.repeat(900) }).prova.length, 600)
 // quem faz a tarefa: o agente por padrão, o Felipe quando o meta.json diz
 assert.equal(normalizeTodo({ text: 'a', dono: 'felipe' }).dono, 'felipe')
 assert.equal(normalizeTodo({ done: true }), null) // sem texto não vira cartão vazio

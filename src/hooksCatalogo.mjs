@@ -63,6 +63,31 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'pronto-guard',
+    nivel: 'avisa',
+    label: 'tarefa fechada sem prova',
+    script: 'pronto-guard.mjs',
+    evento: 'Stop',
+    descricao: 'To-do que passou a done neste turno sem `--prova` devolve uma vez. '
+      + 'Prova é o que foi rodado e o que apareceu, não a intenção — sem ela, '
+      + '"feito" é opinião do agente, que é o que ele mais teme.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'reporte-guard',
+    nivel: 'avisa',
+    label: 'trabalhou e não reportou no painel',
+    script: 'reporte-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Mexeu em código ou no ROADMAP e o meta.json está sem subject, '
+      + 'frente ou to-dos? Devolve. O `cc-check` cobra to-do ABERTO e deixava '
+      + 'lista vazia passar como entrega limpa — ausência de registro e trabalho '
+      + 'terminado tinham a mesma cara.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'anonimo-prompt',
     nivel: 'trava',
     label: 'dado pessoal colado no chat',

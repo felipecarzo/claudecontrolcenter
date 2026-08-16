@@ -56,6 +56,31 @@ Escrito por ele em 15/08/2026, a partir de uma explicação minha que ficou ruim
 
 O item 5 é o que permite cortar sem deixá-lo sem informação.
 
+## O marcador: onde o raciocínio acaba e a conclusão começa
+
+Pedido dele em 16/08, e com o formato já escolhido por ele:
+
+> "todas as mensagens que nao forem processos devem ficar entre alguma
+> sinalização, como ---- // resumo // ----"
+
+**Ele LÊ o raciocínio.** Isso não é para cortar nada — na mesma mensagem em que
+pediu isto, ele recusou o protocolo de outra IA que mandava não contar o
+porquê. O problema é a mistura: hoje raciocínio e conclusão vêm no mesmo bloco
+de prosa, e ele separa de cabeça enquanto lê.
+
+Numa resposta longa, o que ele decide ou confere vem depois de uma linha assim,
+sozinha:
+
+    ---------------------------------- // resumo // ----------------------------------
+
+Conversa curta não precisa de moldura: uma linha de resposta com um separador em
+cima é mais ruído que ajuda. O corte prático é o mesmo do resto deste arquivo —
+se a mensagem tem mais de dois parágrafos de raciocínio antes do que importa,
+marque.
+
+**O que vai abaixo do marcador:** o que mudou, o que ele decide, o que ele
+confere. **O que fica acima:** como cheguei lá, o que medi, o que descartei.
+
 ## Como explicar uma coisa técnica: quatro campos, sempre nesta ordem
 
 Criado por ele no mesmo dia, e pelo motivo dele: *"as suas explicações nunca
@@ -152,11 +177,22 @@ export function medir(texto) {
     if (ABERTURAS_DE_DEFESA.some((re) => re.test(abertura))) trechos.push(abertura.slice(0, 70))
   }
 
+  /* CC-96: a resposta longa separou raciocínio de conclusão?
+     `precisava` é o que torna a medida honesta — resposta curta sem marcador
+     não é falha, e contá-la como tal faria o número dizer que eu piorei num dia
+     em que só respondi perguntas rápidas. */
+  const marcador = /^\s*-{4,}\s*\/\/\s*resumo\s*\/\/\s*-{4,}\s*$/im.test(semCodigo)
+  const precisava = paragrafos.length > 3
+
   return {
     linhas: limpo.split('\n').length,
     palavras: semCodigo.split(/\s+/).filter(Boolean).length,
     paragrafos: paragrafos.length,
     autodefesa: trechos.length,
+    marcador,
+    precisavaMarcador: precisava,
+    // o que a aba de estilo soma: só conta como falha quando era longa mesmo
+    semMarcador: precisava && !marcador,
     trechos,
   }
 }
@@ -244,6 +280,10 @@ export function retrato(janela = 20) {
     linhas: Math.round(media(recentes, 'linhas')),
     palavras: Math.round(media(recentes, 'palavras')),
     autodefesa: recentes.filter((r) => r.autodefesa > 0).length,
+    /* CC-96: só as que PRECISAVAM entram na conta. Dividir pelo total faria o
+       número melhorar num dia de respostas curtas, que é o oposto de medir. */
+    semMarcador: recentes.filter((r) => r.semMarcador).length,
+    longas: recentes.filter((r) => r.precisavaMarcador).length,
     // `null` quando ainda não há passado suficiente: mostrar 0% de melhora
     // quando não se mediu nada antes seria inventar tendência
     tendenciaPalavras: anteriores.length

@@ -2,16 +2,37 @@
 tags: [processo]
 tipo: roadmap
 atualizado: 2026-08-16
-estado: nenhum item aberto e executável; 2 parados por decisão dele ou por ambiente
+estado: 3 abertos (CC-98, CC-99, CC-100, da frente do backlog visível); 2 parados por decisão dele ou por ambiente
 resumo: Só o que está aberto neste projeto. Concluído sai daqui e vira linha no diário. Em 16/08 saíram 37 itens fechados e o arquivo caiu de 2033 para ~547 linhas.
 termos:
   frente: um bloco de trabalho com nome próprio, que o painel mostra como pastilha no cartão
   CC-nn: um item numerado. O número não indica ordem nem prioridade, só a ordem em que nasceu
 ---
 
-# ROADMAP
+# ROADMAP — o product backlog deste projeto
 
 Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
+
+## Os três níveis, e o que cada um responde
+
+Nomeados em 16/08 a pedido dele: *"nao se chamou de product backlog tambem, e
+tambem nao temos exatamente uma definição de pronto, e isso quebra praticamente
+todo o projeto"*. O vocabulário é o do Scrum, que ele já domina.
+
+| nível | onde vive | responde |
+|---|---|---|
+| **product backlog** | este arquivo | o que existe para fazer, sem dono de tempo |
+| **sprint backlog** | aba `sprint` do painel | o que está sendo feito AGORA, por qual agente |
+| **definição de pronto** | campo `prova` de cada to-do | como se sabe que acabou, e o que apareceu |
+
+**A definição de pronto é por tarefa, não por projeto.** O `mvp.criterios` do
+framework continua valendo para o projeto inteiro; o que faltava era o nível de
+baixo. Sem ele, "feito" era opinião do agente — e o `pronto-guard` devolve
+quando um to-do fecha sem prova.
+
+Os três se ligam por derivação, nunca por cópia: o `frente` que o agente escreve
+no painel é o título de uma seção **deste** arquivo, e é isso que faz o cartão
+dele dizer `projeto › frente` em vez de texto solto.
 
 > **Vai executar alguma destas tasks?** Os planos estão em [[PLANOS]], um
 > arquivo por task em `docs/planos/`. Eles dizem onde mexer, o que reusar e
@@ -38,7 +59,7 @@ oposto do que este projeto existe para fazer.
 Escrevi o protocolo e não o segui; escrevi o `cc-check` e ele passou calado,
 porque só cobra **quando existem** to-dos.
 
-### CC-95: o agente reporta o trabalho no painel, e isso é cobrado
+### CC-95 ✅ 16/08 — o agente reporta o trabalho no painel, e isso é cobrado
 
 O buraco de raiz. `cc-check` só dispara com to-do já registrado — zero to-dos
 passa como se fosse entrega limpa. **Ausência de registro e trabalho terminado
@@ -52,7 +73,7 @@ não podem ter a mesma cara.**
 **Sem isto, todo o resto desta frente é enfeite** — o painel só mostra o que o
 agente escreve nele.
 
-### CC-96: raciocínio e conclusão separados por marcador
+### CC-96 ✅ 16/08 — raciocínio e conclusão separados por marcador
 
 Ele **lê o raciocínio** e não quer que eu corte — isso contraria o protocolo que
 outra IA sugeriu, e a palavra dele vence. O que falta é fronteira visível.
@@ -62,7 +83,7 @@ outra IA sugeriu, e a palavra dele vence. O que falta é fronteira visível.
 - vale para resposta longa; conversa curta não precisa de moldura
 - entra no `control-center-estilo.md`, e o `estilo-fim` passa a medir
 
-### CC-97: product backlog, sprint e definição de pronto — os três nomes
+### CC-97 ✅ 16/08 — product backlog, sprint e definição de pronto
 
 *"nao se chamou de product backlog tambem, e tambem nao temos exatamente uma
 definição de pronto, e isso quebra praticamente todo o projeto"*.
@@ -120,13 +141,6 @@ projeto: **não organizar, derivar.** Foi o que fez o peso das pastilhas
 em 16/08, as oficinas — `git worktree list` sempre acerta, um registro paralelo
 de "quem está onde" mentiria no primeiro `remove` feito à mão. Se dá para
 calcular, não peça para alguém manter.
-
-**Uma decisão de método, tirada da conversa de hoje:** ele quis achar uma forma
-de organizar tudo para facilitar o acesso, e desistiu por bom motivo —
-**organização feita à mão é mais um lugar que envelhece.** A saída que ficou:
-não organizar, **derivar**. Foi o que fez o peso das pastilhas (CC-81), a sprint
-(CC-83), a presença (CC-49) e agora o mapa de dependência (CC-86). Vale como
-regra para o que vier: se dá para calcular, não peça para alguém manter.
 
 ### Frente: a tela fala a língua dele, aprovada em 15/08
 

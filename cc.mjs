@@ -39,6 +39,7 @@ const argv = process.argv.slice(2)
 // como o alvo a autorizar. Achado testando o CLI do framework em 14/08.
 const FLAGS_WITH_VALUE = new Set([
   '--port', '--job', '--project', '--dir', '--metodo', '--motivo', '--nome', '--criterio', '--pastas',
+  '--prova', '--pronto', '--branch', '--alvo',
 ])
 
 const has = (f) => argv.includes(f)
@@ -136,8 +137,11 @@ switch (cmd) {
     if (!id) die('sem job: rode dentro de um job do Claude Code ou passe --job <id>')
     if (!arg) die(`uso: node cc.mjs ${cmd} "texto da tarefa"`)
     try {
-      const r = marcarTodo(id, arg, cmd === 'done')
+      // CC-97: `--prova` é o que separa "marquei" de "verifiquei". Opcional no
+      // comando, cobrado pelo `pronto-guard` na entrega.
+      const r = marcarTodo(id, arg, cmd === 'done', { prova: val('--prova') })
       console.log(`${r.done ? '✓' : '○'} ${r.tarefa}`)
+      if (r.prova) console.log(`  prova: ${r.prova}`)
     } catch (e) {
       die(e.message)
     }

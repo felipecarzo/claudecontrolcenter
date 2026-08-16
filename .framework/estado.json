@@ -118,9 +118,9 @@
    "ok": true,
    "achados": 0,
    "verificou": true,
-   "escopo": "tudo",
+   "escopo": "mudou",
    "detalhe": null,
-   "em": "2026-08-16T15:53:02.378Z"
+   "em": "2026-08-16T17:04:36.091Z"
   },
   "segredo-historico": {
    "ok": true,
@@ -128,7 +128,7 @@
    "verificou": true,
    "escopo": "mudou",
    "detalhe": null,
-   "em": "2026-08-16T15:48:42.514Z"
+   "em": "2026-08-16T17:04:41.279Z"
   },
   "tls": {
    "ok": true,
@@ -146,7 +146,7 @@
    "verificou": true,
    "escopo": "mudou",
    "detalhe": null,
-   "em": "2026-08-16T15:48:50.741Z"
+   "em": "2026-08-16T17:04:49.644Z"
   },
   "service-role": {
    "ok": true,

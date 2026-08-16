@@ -778,6 +778,16 @@
   .gl-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
   .gl-card { border: 1px solid var(--faint); border-radius: 10px; padding: 12px 14px; }
 
+  /* CC-97: a prova de que a tarefa fechou, e o critério enquanto ela está
+     aberta. Verde para a prova porque ela é a única coisa nesta tela que diz
+     "isto foi verificado" — o ✓ sozinho só diz "alguém marcou". */
+  .todo-prova, .todo-pronto {
+    margin: -2px 0 6px 30px; font-size: 11px; line-height: 1.4; color: var(--dim);
+    border-left: 2px solid var(--line); padding-left: 8px;
+  }
+  .todo-prova { border-left-color: var(--done); }
+  .todo-prova b, .todo-pronto b { color: var(--faint); font-weight: 700; }
+
   /* ---------- a bancada: níveis de verificação ---------- */
   .bn-niveis { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); margin-bottom: 12px; }
   .bn-nivel {
@@ -2516,6 +2526,8 @@ function viewTodos(jobs) {
       <input class="txt" value="${esc(t.text)}" data-edit="${j.id}" data-i="${i}"
         aria-label="texto da tarefa" placeholder="descreva a tarefa — em branco, ela some">
     </div>
+    ${t.prova ? `<p class="todo-prova"><b>prova:</b> ${esc(t.prova)}</p>` : ''}
+    ${!t.done && t.pronto ? `<p class="todo-pronto"><b>pronto quando:</b> ${esc(t.pronto)}</p>` : ''}
     ${(() => {
       // CC-36: explicação do opencode, se já enriquecida. Chaveada por texto,
       // igual feitoEm — some se o texto do to-do mudar.
@@ -5097,7 +5109,7 @@ function abrirFrente(botao) {
 
 const RODAPE = {
   agentes: 'clique num cartão para abrir o detalhe; passe o mouse nele para retomar (↻), fixar (★) ou copiar o caminho (⧉); as bolinhas são as tarefas, cheias as concluídas',
-  todos: 'o sprint backlog: o que os agentes estão fazendo agora. Verde é o que falta, cinza o que passou, e a barra azul é a tarefa em andamento — clique no texto para editar, em branco apaga',
+  todos: 'o SPRINT BACKLOG: o que os agentes estão fazendo agora. O product backlog é o docs/ROADMAP.md de cada projeto, e a definição de pronto é a linha verde de prova sob a tarefa fechada. Verde é o que falta, cinza o que passou, e a barra azul é a tarefa em andamento — clique no texto para editar, em branco apaga',
   projetos: 'onde mexer agora — projetos ordenados por urgência, o de cima primeiro; clique no agente para abrir o detalhe, ou no nome do projeto para o mapa',
   tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
   graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',

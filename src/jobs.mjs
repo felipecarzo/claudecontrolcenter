@@ -65,7 +65,9 @@ export const donoDe = (raw) => {
 }
 
 export function normalizeTodo(raw) {
-  if (typeof raw === 'string') return { text: raw, done: false, dono: 'ia' }
+  // string solta cai no caminho normal, senão ela sai sem os campos que o
+  // objeto ganha — foi assim que o `dono` nasceu inconsistente em 14/08
+  if (typeof raw === 'string') raw = { text: raw }
   if (!raw || typeof raw !== 'object') return null
   const text = raw.text ?? raw.t ?? raw.title ?? raw.task ?? raw.label ?? raw.name ?? raw.desc
   if (text == null || String(text).trim() === '') return null
@@ -73,6 +75,16 @@ export function normalizeTodo(raw) {
     text: String(text),
     done: Boolean(raw.done ?? raw.completed ?? raw.checked ?? raw.finished),
     dono: donoDe(raw),
+    /* CC-97, a definição de pronto por tarefa.
+       `pronto` é escrito ANTES ("como se sabe que acabou") e `prova` DEPOIS
+       ("o que rodou, e o que apareceu"). Os dois são opcionais para não quebrar
+       o meta.json de quem já reporta — o `pronto-guard` é que cobra.
+
+       São campos separados de propósito: juntar num só faria a promessa e o
+       resultado terem a mesma cara, e é justamente a diferença entre eles que o
+       Felipe não consegue auditar hoje. */
+    pronto: raw.pronto ? String(raw.pronto).slice(0, 400) : null,
+    prova: raw.prova ? String(raw.prova).slice(0, 600) : null,
   }
 }
 
@@ -374,7 +386,7 @@ export function metaStatus(id) {
  * corrigir acento na hora de fechar. Ambiguidade não é resolvida no chute —
  * dois candidatos devolvem erro pedindo mais texto.
  */
-export function marcarTodo(id, texto, done = true) {
+export function marcarTodo(id, texto, done = true, { prova = null } = {}) {
   const alvo = String(texto || '').trim().toLowerCase()
   if (!alvo) throw new Error('diga qual tarefa fechar')
   // mesmo caminho do writeMeta: job de background ou sessão interativa
@@ -397,8 +409,13 @@ export function marcarTodo(id, texto, done = true) {
   }
 
   const escolhido = parciais[0]
-  const todos = lista.map((t) => (t.text === escolhido.text ? { ...t, done } : t))
-  return { meta: writeMeta(id, { todos }), tarefa: escolhido.text, done }
+  /* CC-97: a prova entra ao FECHAR, que é quando ela existe. Reabrir uma tarefa
+     apaga a prova junto — ela era de um fecho que deixou de valer, e manter
+     seria dizer que algo foi verificado quando não foi. */
+  const todos = lista.map((t) => (t.text === escolhido.text
+    ? { ...t, done, prova: done ? (prova || t.prova) : null }
+    : t))
+  return { meta: writeMeta(id, { todos }), tarefa: escolhido.text, done, prova: prova || null }
 }
 
 /**

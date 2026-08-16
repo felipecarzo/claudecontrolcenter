@@ -56,7 +56,12 @@ export function acharRoadmap(cwd) {
  */
 const ESTADOS = [
   { chave: 'bloqueado', emoji: /🔴|⛔/u, palavra: /bloquead|travad|impedid/i },
-  { chave: 'esperando', emoji: /🟡|⏳/u, palavra: /aguardand|depende d[eao]\s+(?!mim)/i },
+  /* ⏸ nasceu em 16/08 e é diferente de "esperando" por um detalhe que decide:
+     ele diz que o item está aberto e parado por motivo que NÃO depende do
+     agente — direção em vez de tarefa, decisão dele, ou ambiente que não
+     existe. Sem essa chave o `fluxo-guard` cobrava seis itens impossíveis, e
+     guarda que cobra o impossível ensina a ser ignorado. */
+  { chave: 'esperando', emoji: /⏸|🟡|⏳/u, palavra: /aguardand|depende d[eao]\s+(?!mim)|decis[ãa]o d(o|ele)|dire[çc][ãa]o/i },
   { chave: 'feito', emoji: /✅|✔/u, palavra: /conclu[íi]d|entregue|hist[óo]rico|feito/i },
   { chave: 'aberto', emoji: /🟢/u, palavra: /aberto|agora|pr[óo]xim|fazer/i },
 ]
@@ -79,7 +84,7 @@ const estadoDe = (titulo) => {
 const limpar = (s) => s
   .replace(/^#+\s*/, '')
   .replace(/`[^`]*`/g, '')             // tags tipo `#pierre`
-  .replace(/[🔴🟡🟢🔥✅✔⛔⏳📌]/gu, '')
+  .replace(/[🔴🟡🟢🔥✅✔⛔⏳📌⏸]/gu, '')
   .replace(/\s+/g, ' ')
   .trim()
 
