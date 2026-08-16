@@ -891,7 +891,7 @@ caminho entre o Claude Code e a API da Anthropic — TLS, certificado, e um pont
 único de falha que derruba o trabalho inteiro se quebrar. O hook resolve 80% com
 1% do risco. Registrado como direção, não como tarefa.
 
-### CC-93: guia longo tem que virar etapa
+### CC-93 ✅ 16/08 — guia longo virou etapa, com gate
 
 Pedido dele na sessão de senhas, em 15/08, e que está só no `HANDOFF.md` — ou
 seja, **some quando o HANDOFF for sobrescrito**. Trazido para cá em 16/08.

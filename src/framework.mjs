@@ -458,6 +458,12 @@ export const MODOS = {
       pedidoNovo: 'registra no backlog e continua — não interrompe a sequência',
       paradaLegitima: 'só o que exige decisão dele: gosto, prioridade entre frentes, risco que ele assume',
       naoPara: 'confirmação de próximo passo, escolha técnica, ordem já definida no backlog',
+      // A trava do `fluxo-guard`: com backlog aberto, PARAR é que precisa ser
+      // declarado. A primeira versão pegava só promessa quebrada ("sigo" e não
+      // seguir), e ele viu o furo na hora: parar calado passava, que é o
+      // comportamento exato da queixa. Continuar deixou de ser o padrão
+      // implícito para virar a regra, com quatro saídas nomeadas.
+      pararExigeDeclaracao: true,
     },
     trava: false,
     pergunta: false,

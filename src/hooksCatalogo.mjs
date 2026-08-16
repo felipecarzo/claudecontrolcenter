@@ -63,6 +63,30 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'fluxo-guard',
+    nivel: 'avisa',
+    label: 'parou com backlog aberto',
+    script: 'fluxo-guard.mjs',
+    evento: 'Stop',
+    descricao: 'No modo restritivo, com item aberto no ROADMAP, parar precisa '
+      + 'ser declarado: "Parada: <motivo>", AskUserQuestion, ou uma pergunta dele. '
+      + 'Fora disso o hook devolve com os próximos itens da fila.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'guia-guard',
+    nivel: 'avisa',
+    label: 'guia longo numa mensagem só',
+    script: 'guia-guard.mjs',
+    evento: 'Stop',
+    descricao: 'A partir de 3 passos de interface numa resposta, exige o formato '
+      + 'de etapa: total anunciado, âncora absoluta, critério de sucesso e parada '
+      + 'declarada. Âncora errada no passo 1 perde a mensagem inteira (CC-93).',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'pergunta-guard',
     nivel: 'avisa',
     label: 'pergunta decisiva vai na caixa, não em prosa',

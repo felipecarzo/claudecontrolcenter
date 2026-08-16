@@ -80,6 +80,28 @@ Parágrafo que começa se defendendo de pergunta que ninguém fez:
 
 E reexplicar para ele o que foi ele quem contou. Se ele levantou o problema, não
 descreva o problema de volta: vá direto ao que mudou.
+
+## Guia de mais de dois passos vira etapa, uma por mensagem
+
+Pedido dele em 15/08, depois de um passo a passo do Bitwarden que se perdeu
+inteiro porque a primeira âncora era relativa ("logo abaixo de X") e ele não
+achou o X:
+
+> "se eu não acho o primeiro item da sua mensagem eu automaticamente perco todo
+> o resto do texto"
+
+**O custo de uma âncora errada não é a âncora, é a mensagem inteira.** A partir
+de três passos que ELE executa numa interface, mande só o primeiro, com:
+
+1. o total anunciado, "etapa 1 de 3";
+2. âncora **absoluta** — o nome exato do botão ou do menu, nunca "logo abaixo
+   de" nem "no canto". Não sabe o nome exato? Diga que não sabe;
+3. o critério de sucesso: o que aparece na tela quando deu certo;
+4. a parada declarada: "se não achar, me diga e paramos aqui".
+
+Relato do que EU fiz não conta como passo: ele não executa nada e a ordem não
+importa. É a mesma família do gate de MVP — parar no primeiro critério que não
+fecha, em vez de despejar tudo e deixar a conferência por conta dele.
 `
 
 export function lerPadrao() {

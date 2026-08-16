@@ -231,14 +231,37 @@
      seriam 19 botões iguais em vez de 15, que é o oposto do objetivo. */
   .tab-grupos { display: flex; gap: 2px; flex-wrap: wrap; }
   .tab-abas { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 2px; }
-  .grupo {
+  /* CC-77: escopado em `.tab-grupos >`. Sem isso colidia com o `.grupo` do
+     cartao de agente, definido mais abaixo e por isso vencedor: os botoes do
+     menu herdavam caixa, borda e a barrinha cinza do ::before. Era a causa
+     medida do "os nomes dancam" que ele reclamou. */
+  .tab-grupos > .grupo {
     background: none; border: 0; border-bottom: 2px solid transparent;
     padding: 7px 14px; cursor: pointer; color: var(--faint); white-space: nowrap;
     font: 700 13px/1 var(--label); letter-spacing: .18em; text-transform: uppercase;
   }
-  .grupo:hover { color: var(--dim); }
-  .grupo[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--acento); }
-  .grupo .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); margin-left: 6px; font-size: 11px; }
+  .tab-grupos > .grupo::before { content: none; }
+  .tab-grupos > .grupo:hover { color: var(--dim); }
+  .tab-grupos > .grupo[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--acento); }
+  .tab-grupos > .grupo .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); margin-left: 6px; font-size: 11px; }
+  /* CC-77: um nivel so no estreito. O <select> nativo abre o seletor do
+     proprio telefone, alcanca as 15 abas num toque e nao rola de lado — as
+     duas fileiras viravam quatro no celular. No largo ele nao existe. */
+  #nav-uma { display: none; }
+  #nav-uma select {
+    width: 100%; padding: 10px 34px 10px 12px; border-radius: 8px; cursor: pointer;
+    background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+    font: 700 13px/1.2 var(--label); letter-spacing: .1em; text-transform: uppercase;
+    /* a seta nativa some no tema escuro (ela e desenhada na cor do sistema, e o
+       fundo aqui e quase preto). Desenhada a mao para o campo nao parecer um
+       rotulo sem acao — no print de 390px ele lia como caixa morta. */
+    appearance: none; -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--dim) 50%),
+                      linear-gradient(135deg, var(--dim) 50%, transparent 50%);
+    background-position: right 17px center, right 12px center;
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+  }
+  #nav-uma select:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
   /* a aba dentro do grupo é secundária: sem sublinhado, marcada por fundo */
   .tab-abas .tab {
     border-bottom: 0; border-radius: 999px; padding: 5px 11px;
@@ -288,6 +311,42 @@
       margin-left: 0; width: 100%; overflow-x: auto; overscroll-behavior-x: contain;
       padding-bottom: 2px;
     }
+    /* CC-77: no estreito a navegacao vira UM nivel. As duas fileiras existem
+       no HTML e apenas trocam de lugar, para o CSS decidir sozinho — nao ha
+       listener de resize nem segunda conta de "qual aba esta no palco". */
+    .tab-grupos, .tab-abas { display: none; }
+    /* `#tabs` e filho de um flex e nasce com `min-width: auto`, ou seja, com a
+       largura do conteudo — as 15 abas somavam 480px num painel de 390, e o
+       <select> herdava isso e vazava. Medido com o navegador, nao chutado. */
+    #tabs { flex: 1 1 100%; min-width: 0; }
+    #nav-uma { display: block; width: 100%; }
+    /* CC-77: as quatro telas que o `test-estreito.mjs` mediu vazando em 390px.
+       Todas pelo mesmo motivo — grade de coluna FIXA, dimensionada para o
+       monitor. Nenhuma some: elas viram lista, que é o formato do telefone. */
+    .p-linha { grid-template-columns: 1fr 66px 66px !important; gap: 8px; }
+    .p-linha > :nth-child(n+4) { display: none; }
+    .rt-linha { grid-template-columns: 1fr !important; gap: 4px; }
+    /* item de grade estica por padrao. Numa coluna so, a pastilha "so deste
+       projeto" virava uma pilula da largura da tela com tres palavras no meio.
+       So a pastilha e as acoes: aplicar em `> *` tirava o encolhimento do nome,
+       que ai passava a vazar — trocar um defeito por outro, medido no gate. */
+    .rt-linha > .hk-badge, .rt-linha > .rt-acoes,
+    .hk-linha > .hk-badge { justify-self: start; max-width: 100%; }
+    .rt-linha > * { min-width: 0; overflow-wrap: anywhere; }
+    .rt-acoes { justify-content: flex-start; }
+    .hk-linha { grid-template-columns: 22px 1fr; }
+    .hk-linha > :nth-child(3) { grid-column: 2; justify-self: start; }
+    /* caminho e nome de projeto sao a fonte classica de estouro: string longa
+       sem espaco nao quebra sozinha, e empurra o cartao inteiro. */
+    .path, .ck-nome, .fw-frase { overflow-wrap: anywhere; }
+    .ck-fw .fw-frase { max-width: 100%; }
+    .ck-head, .ck-proj { min-width: 0; }
+    /* pastilha e `nowrap` de proposito, para o rotulo nao virar duas linhas
+       tortas. Em 390px isso inverte: "fase 2 de 2: Execucao" nao cabe em
+       largura nenhuma, e nowrap vira estouro. No estreito ela quebra. */
+    .fw-selo { white-space: normal; max-width: 100%; }
+    /* o filtro de projeto tem largura fixa e cortava o proprio rotulo em 390px */
+    #painel > header select, #painel > header input { max-width: 100%; min-width: 0; }
   }
 
   .hw { display: grid; grid-template-columns: auto 1fr; gap: 2px 7px; align-content: center; }
@@ -557,18 +616,18 @@
      de tarefas continua densa dentro dele. O que muda é achar o bloco — antes
      era uma coluna só, de 920px, descendo a página inteira. */
   .lista { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); }
-  .grupo {
+  .lista > .grupo {
     position: relative; border: 1px solid var(--line); border-radius: 6px;
     background: var(--surface); padding: 8px 12px 10px 14px; align-self: start;
   }
-  .grupo::before {
+  .lista > .grupo::before {
     content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
     border-radius: 6px 0 0 6px; background: var(--idle);
   }
-  .grupo.s-working::before { background: var(--working); }
-  .grupo.s-waiting::before { background: var(--waiting); }
-  .grupo.s-failed::before  { background: var(--failed); }
-  .grupo.s-done::before    { background: var(--done); }
+  .lista > .grupo.s-working::before { background: var(--working); }
+  .lista > .grupo.s-waiting::before { background: var(--waiting); }
+  .lista > .grupo.s-failed::before  { background: var(--failed); }
+  .lista > .grupo.s-done::before    { background: var(--done); }
   .g-head {
     display: flex; align-items: baseline; gap: 8px;
     padding: 3px 0 7px; border-bottom: 1px solid var(--line-soft); margin-bottom: 4px;
@@ -576,7 +635,7 @@
   .g-head .n { color: var(--faint); font-variant-numeric: tabular-nums; }
   .g-head b { cursor: pointer; font-size: 13px; }
   .g-head b:hover { color: var(--acento) !important; }
-  .grupo > .c-proj { margin: 0 0 6px; }
+  .lista > .grupo > .c-proj { margin: 0 0 6px; }
   .g-add {
     background: none; border: 0; padding: 1px 7px; cursor: pointer;
     color: var(--faint); font: 15px/1 var(--mono);
@@ -608,7 +667,7 @@
   /* o que está no sprint agora: a tarefa do agente que está trabalhando */
   .item.agora { border-left-width: 3px; border-left-color: var(--working); }
   .item.agora .txt { color: var(--fg); font-weight: 500; }
-  .grupo details.lvl > summary { border-top: 0; padding: 4px 0 4px 3px; }
+  .lista > .grupo details.lvl > summary { border-top: 0; padding: 4px 0 4px 3px; }
   .outros { border-top: 1px solid var(--line-soft); padding-top: 6px; }
 
   /* ---------- cockpit (aba projetos) ----------
@@ -1828,11 +1887,23 @@ function renderHeader() {
     .map((id) => TABS.find((t) => t.id === id))
     .filter(Boolean)
 
+  // CC-77: o mesmo estado servido em dois formatos. `tab` continua a unica
+  // fonte — o <select> so reflete e escreve nela, como os botoes.
+  const umNivel = GRUPOS.map((g) => {
+    const dentro = g.abas.map((id) => TABS.find((t) => t.id === id)).filter(Boolean)
+    if (!dentro.length) return ''
+    return `<optgroup label="${esc(g.label)}">${dentro.map((t) => {
+      const n = counts[t.id] != null ? ` (${counts[t.id]})` : ''
+      return `<option value="${t.id}"${t.id === tab ? ' selected' : ''}>${esc(t.label)}${n}</option>`
+    }).join('')}</optgroup>`
+  }).join('')
+
   $('#tabs').innerHTML = `<div class="tab-grupos">${linhaGrupos}</div>
     <div class="tab-abas">${doGrupo.map((t) => `
       <button class="tab" role="tab" data-tab="${t.id}" aria-selected="${t.id === tab}">
         ${t.label}${counts[t.id] != null ? `<span class="n">${counts[t.id]}</span>` : ''}
-      </button>`).join('')}</div>`
+      </button>`).join('')}</div>
+    <div id="nav-uma"><select aria-label="escolher tela">${umNivel}</select></div>`
 }
 
 /* ===================== janela flutuante (resumo) =====================
@@ -6191,6 +6262,13 @@ document.addEventListener('change', (e) => {
 // A máquina escolhida sobrevive ao recarregar, igual à aba: é preferência de
 // quem olha, não estado do dado.
 $('#maq').addEventListener('change', (e) => localStorage.setItem('cc-maquina', e.target.value))
+// CC-77: o seletor de um nivel do estreito. Delegado no documento porque
+// `#tabs` e reescrito a cada render — listener preso no <select> morreria no
+// primeiro tique do stream, e a navegacao pararia de funcionar sozinha.
+document.addEventListener('change', (e) => {
+  const sel = e.target.closest?.('#nav-uma select')
+  if (sel) trocarAba(sel.value)
+})
 
 // Volume: `input` move a barra ao vivo, `change` é que grava. Enquanto o dedo
 // está na barra, o redesenho fica travado — senão o stream devolveria o valor
