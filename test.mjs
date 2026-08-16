@@ -650,6 +650,77 @@ assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem
   }
 }
 
+/* --- Bancada, sonda de RLS: contra um Supabase de mentira ---
+
+   A camada mais valiosa do catálogo é também a única que não dá para provar
+   olhando: ela depende de um servidor respondendo. Nenhum projeto desta VPS tem
+   Supabase no `.env`, e apontar para um projeto real do Felipe seria varrer o
+   banco de um cliente para testar código.
+
+   Então o teste sobe um PostgREST FALSO: publica o esquema como o de verdade
+   publica, devolve linha em duas tabelas e vazio numa terceira. É o suficiente
+   para provar as três decisões que importam — descobrir tabela pelo OpenAPI,
+   separar "devolveu linha" de "RLS filtrou tudo", e classificar como ALTA a
+   tabela cujo nome sugere dado de pessoa. */
+{
+  const http = await import('node:http')
+  const { CAMADAS } = await import('./src/bancadaCatalogo.mjs')
+
+  const ESQUEMA = { paths: { '/': {}, '/users': {}, '/produtos': {}, '/segredos': {}, '/rpc/x': {} } }
+  const servidor = http.createServer((req, res) => {
+    res.setHeader('content-type', 'application/json')
+    const rota = req.url.split('?')[0]
+    if (rota === '/rest/v1/') return res.end(JSON.stringify(ESQUEMA))
+    // `users` e `produtos` devolvem linha (sem RLS); `segredos` devolve vazio,
+    // que é como uma tabela COM política se comporta para um estranho
+    if (rota === '/rest/v1/users') return res.end('[{"id":1}]')
+    if (rota === '/rest/v1/produtos') return res.end('[{"id":9}]')
+    if (rota === '/rest/v1/segredos') return res.end('[]')
+    res.statusCode = 404
+    res.end('{}')
+  })
+  await new Promise((ok) => servidor.listen(0, '127.0.0.1', ok))
+  const porta = servidor.address().port
+
+  const projeto = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-rls-'))
+  fs.writeFileSync(path.join(projeto, '.env'),
+    `SUPABASE_URL=http://127.0.0.1:${porta}\nSUPABASE_ANON_KEY=chave-de-mentira\n`)
+
+  try {
+    const rls = CAMADAS.find((c) => c.id === 'rls-supabase')
+    assert.ok(rls.aplicaA(projeto), 'com URL e chave no .env a camada tem que se aplicar')
+
+    const r = await rls.rodar(projeto)
+    assert.equal(r.verificou, true, 'falou com o servidor, então verificou')
+
+    const nomes = r.achados.map((a) => a.titulo)
+    assert.ok(nomes.some((t) => t.includes('"users"')), 'tabela sem RLS tem que aparecer')
+    assert.ok(nomes.some((t) => t.includes('"produtos"')), 'idem para produtos')
+    assert.ok(!nomes.some((t) => t.includes('"segredos"')),
+      'tabela que devolve vazio está PROTEGIDA — acusá-la seria alarme falso')
+    assert.ok(!nomes.some((t) => t.includes('rpc')), 'rpc não é tabela')
+
+    const users = r.achados.find((a) => a.titulo.includes('"users"'))
+    const produtos = r.achados.find((a) => a.titulo.includes('"produtos"'))
+    assert.equal(users.gravidade, 'alta', 'nome que sugere dado de pessoa é grave')
+    assert.equal(produtos.gravidade, 'média', 'catálogo pode ser público de propósito')
+    assert.equal(r.ok, false, 'achado grave reprova a camada')
+
+    // a chave nunca pode vazar para o resultado, que é lido e guardado no estado
+    assert.ok(!JSON.stringify(r).includes('chave-de-mentira'),
+      'a chave do .env não pode aparecer no resultado da camada')
+
+    // servidor fora do ar: "não deu para verificar", nunca "está limpo"
+    await new Promise((ok) => servidor.close(ok))
+    const caiu = await rls.rodar(projeto)
+    assert.equal(caiu.verificou, false, 'sem servidor não dá para afirmar nada')
+    assert.equal(caiu.achados.length, 0)
+  } finally {
+    servidor.close()
+    fs.rmSync(projeto, { recursive: true, force: true })
+  }
+}
+
 // --- mídia: nome de app legível e escolha da sessão certa ---
 const midia = await import('./src/midia.mjs')
 const { nomeBonito, normalizar } = midia._internals

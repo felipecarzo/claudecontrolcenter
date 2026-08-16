@@ -1647,6 +1647,40 @@ defeito possível numa ferramenta de verificação — ela diria "está limpo" s
 olhado. Achou também um grupo duplicado (`dado` e `dados`), que faria a tela
 mostrar duas seções para a mesma coisa.
 
+#### ✅ A sonda de RLS, 16/08 — 10 de 19, e a mais valiosa das dezenove
+
+`rls-supabase` era a última camada sem bloqueio externo, e é a que o documento
+da Bancada chama de diferencial: **nenhuma ferramenta de prateleira faz isto.**
+
+O furo que ela pega é o mais caro do stack dele. No Supabase a chave `anon` **é
+pública por desenho** — vai no bundle do navegador, qualquer um lê. O que separa
+"público" de "vazado" é só a RLS de cada tabela, ligada uma a uma. Tabela sem
+política é banco aberto na internet, e nada avisa: o app do cliente continua
+funcionando igual.
+
+A sonda descobre as tabelas pelo próprio esquema que o PostgREST publica em
+`/rest/v1/`, com a mesma chave `anon`. Ou seja, **vê exatamente o que um
+estranho veria** — testar com chave de serviço responderia a pergunta errada.
+
+Três decisões que evitam alarme falso:
+
+- tabela que responde com lista **vazia** está protegida, e não vira achado. É
+  como uma tabela com política se comporta para um estranho;
+- nome que sugere dado de pessoa (`users`, `pedidos`, `pagamentos`, `contratos`)
+  é gravidade **alta**; o resto é média, porque catálogo público existe;
+- servidor fora do ar devolve `verificou: false`, nunca "está limpo".
+
+**A prova, e por que ela é assim:** nenhum projeto desta VPS tem Supabase no
+`.env`, e apontar a sonda para o banco real de um cliente para testar código
+seria varrer dado de terceiro. O gate sobe um **PostgREST falso** que publica o
+esquema como o de verdade e devolve linha em duas tabelas e vazio numa terceira.
+O teste confere ainda que **a chave não aparece no resultado** da camada, que é
+guardado no estado do framework.
+
+O `.env` é lido dentro do processo do painel, nunca pelo agente: é o mesmo
+arquivo que o `segredo-guard` bloqueia, e o bloqueio funcionou durante este
+trabalho.
+
 #### ✅ Mais duas camadas e três consertos, 16/08 (segunda rodada)
 
 **9 de 19 implementadas.** As duas novas também não precisaram de ferramenta

@@ -124,6 +124,41 @@ function arquivosDe(raiz, limite = 4000) {
   return achados
 }
 
+
+/**
+ * URL e chave anônima do Supabase, lidas do `.env` do projeto.
+ *
+ * ⚠️ O valor é usado em memória e **nunca sai deste processo**: não é impresso,
+ * não vai para o resultado da camada, não entra em log. O `.env` é justamente o
+ * arquivo que o `segredo-guard` impede o agente de abrir, e a razão é boa — o
+ * conteúdo ficaria em texto puro no transcript, relido a cada `--resume`. Aqui
+ * quem lê é o painel, em tempo de execução.
+ *
+ * Os nomes procurados são os convencionais do Supabase, documentados e
+ * públicos; nada aqui depende de conhecer o conteúdo de um `.env` específico.
+ */
+function supabaseDoProjeto(raiz) {
+  const NOMES_URL = ['SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL', 'VITE_SUPABASE_URL', 'PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_URL']
+  const NOMES_CHAVE = ['SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY', 'PUBLIC_SUPABASE_ANON_KEY', 'EXPO_PUBLIC_SUPABASE_ANON_KEY']
+
+  const vars = {}
+  for (const nome of ['.env', '.env.local', '.env.production']) {
+    let texto = ''
+    try { texto = fs.readFileSync(path.join(raiz, nome), 'utf8') } catch { continue }
+    for (const linha of texto.split(/\r?\n/)) {
+      const m = /^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)$/.exec(linha)
+      if (m && vars[m[1]] === undefined) vars[m[1]] = m[2].trim().replace(/^["']|["']$/g, '')
+    }
+  }
+
+  const url = NOMES_URL.map((n) => vars[n]).find((v) => v && /^https?:\/\//.test(v))
+  const chave = NOMES_CHAVE.map((n) => vars[n]).find(Boolean)
+  return url && chave ? { url: url.replace(/\/+$/, ''), chave } : null
+}
+
+/** Nome de tabela que quase sempre guarda dado de pessoa. */
+const SENSIVEL = /^(users?|profiles?|clientes?|customers?|pedidos?|orders?|pagamentos?|payments?|assinaturas?|subscriptions?|mensagens?|messages?|contratos?|documentos?|enderecos?|addresses|telefones?|emails?|leads?|cadastros?)$/i
+
 export const CAMADAS = [
   {
     id: 'segredo',
@@ -558,6 +593,98 @@ export const CAMADAS = [
     },
   },
 
+  /**
+   * A sonda de RLS: dá para ler a tabela sendo um estranho?
+   *
+   * ## Por que esta é a camada mais valiosa das dezenove
+   *
+   * Nenhuma ferramenta de prateleira faz isto, e o furo é o mais caro do stack
+   * dele. No Supabase a chave `anon` **é pública por desenho** — vai no bundle
+   * do navegador, qualquer um lê. O que separa "público" de "vazado" é
+   * exclusivamente a Row Level Security de cada tabela, ligada uma a uma. Uma
+   * tabela sem política é um banco aberto na internet, e nada na tela avisa:
+   * o app do cliente continua funcionando igual.
+   *
+   * ## Como ela descobre as tabelas sem credencial de administrador
+   *
+   * O PostgREST publica o próprio esquema em `/rest/v1/` como OpenAPI, usando a
+   * mesma chave `anon`. Ou seja: a sonda vê exatamente o que um estranho veria,
+   * que é o ponto — testar com chave de serviço responderia a pergunta errada.
+   *
+   * ## O que este código NUNCA faz
+   *
+   * Não imprime o valor de nenhuma chave, não guarda o conteúdo das linhas, e
+   * não escreve nada no banco. Só conta quantas linhas voltaram. O `.env` é
+   * lido aqui dentro, em memória, e o valor não sai deste processo.
+   */
+  {
+    id: 'rls-supabase',
+    nome: 'RLS do Supabase',
+    grupo: 'dados',
+    custo: 'grátis',
+    duracao: 'segundos',
+    ferramenta: '—  (código nosso: nenhuma ferramenta de prateleira faz isto)',
+    explica: 'Tenta ler cada tabela como um estranho, com a mesma chave pública que vai no navegador. Tabela sem RLS é banco aberto na internet, e o app continua funcionando igual.',
+    aplicaA: (raiz) => Boolean(supabaseDoProjeto(raiz)),
+    async rodar(raiz) {
+      const cfg = supabaseDoProjeto(raiz)
+      if (!cfg) return { ok: true, achados: [], verificou: false, nota: 'não achei URL e chave anônima do Supabase neste projeto' }
+
+      const cab = { apikey: cfg.chave, Authorization: `Bearer ${cfg.chave}` }
+      const pegar = async (caminho) => {
+        const ctrl = new AbortController()
+        const t = setTimeout(() => ctrl.abort(), 12_000)
+        try {
+          const r = await fetch(`${cfg.url}${caminho}`, { headers: cab, signal: ctrl.signal })
+          return { status: r.status, corpo: await r.json().catch(() => null) }
+        } catch (e) {
+          return { erro: String(e.message || e) }
+        } finally { clearTimeout(t) }
+      }
+
+      const esquema = await pegar('/rest/v1/')
+      if (esquema.erro || !esquema.corpo?.paths) {
+        return {
+          ok: true, achados: [], verificou: false,
+          nota: `não deu para falar com o Supabase: ${esquema.erro || `respondeu ${esquema.status}`}`,
+        }
+      }
+
+      const tabelas = Object.keys(esquema.corpo.paths)
+        .filter((p) => /^\/[a-z0-9_]+$/i.test(p))
+        .map((p) => p.slice(1))
+
+      if (!tabelas.length) {
+        // sem nenhuma tabela visível o RLS está fazendo o trabalho dele
+        return { ok: true, achados: [], verificou: true, nota: `${0} tabela(s) visíveis para um estranho — é o resultado que se quer` }
+      }
+
+      const achados = []
+      let lidas = 0
+      for (const tabela of tabelas.slice(0, 40)) {
+        const r = await pegar(`/rest/v1/${tabela}?select=*&limit=1`)
+        if (r.erro || r.status !== 200 || !Array.isArray(r.corpo)) continue
+        if (!r.corpo.length) continue  // responde, mas RLS filtra tudo: correto
+        lidas += 1
+        achados.push({
+          gravidade: SENSIVEL.test(tabela) ? 'alta' : 'média',
+          titulo: `um estranho consegue LER a tabela "${tabela}"`,
+          onde: `${cfg.url.replace(/^https?:\/\//, '')} · ${tabela}`,
+          conserto: SENSIVEL.test(tabela)
+            ? 'o nome sugere dado de pessoa. Ligue RLS nesta tabela AGORA: alter table … enable row level security, e crie a política de leitura.'
+            : 'se for catálogo público, está certo. Se não for, ligue RLS: alter table … enable row level security.',
+        })
+      }
+
+      return {
+        ok: !achados.some((a) => a.gravidade === 'alta'),
+        achados,
+        verificou: true,
+        nota: `${tabelas.length} tabela(s) visíveis, ${lidas} com linha devolvida para anônimo`,
+      }
+    },
+  },
+
   /* ==================== as declaradas, ainda sem execução ====================
      Decisão dele em 15/08: *"a bancada precisa ter todas as camadas, mas poder
      rodar elas individualmente"*.
@@ -591,8 +718,6 @@ export const CAMADAS = [
     { id: 'passiva', nome: 'Varredura passiva', grupo: 'rede', custo: 'grátis', duracao: 'minutos',
       ferramenta: 'OWASP ZAP baseline',
       explica: 'Navega o site sem atacar e aponta o que está exposto. Seguro de rodar em produção.' },
-    { id: 'rls-supabase', nome: 'Sonda de RLS do Supabase', grupo: 'dados', custo: 'grátis', duracao: 'segundos',
-      explica: 'Tenta ler tabela como anônimo. RLS mal configurado é o furo mais comum e mais caro em projeto com Supabase.' },
     { id: 'eval-prompt', nome: 'Eval de prompt', grupo: 'ia', custo: 'grátis', duracao: 'minutos',
       ferramenta: 'promptfoo',
       explica: 'O prompt continua respondendo o que devia depois de uma mudança. É teste de regressão para IA.' },
