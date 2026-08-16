@@ -21,6 +21,81 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ## Aberto
 
+## ▶ Frente nova, aberta em 16/08: o backlog visível — ver [[produto/COMUNICACAO]]
+
+Diagnóstico dele ao fim do dia, e **a frente mais importante em aberto**, porque
+todas as outras dependem dela para serem acompanhadas. O documento tem as
+palavras dele inteiras; aqui ficam só as tarefas.
+
+O que ele nomeou: o chat é uma fita que só anda para a frente, sem retroativo;
+raciocínio e conclusão vêm misturados; e falta um lugar parado onde o trabalho
+apareça enquanto a conversa anda. O efeito medido é o pior possível — *"eu acabo
+sendo empurrado pro vibecoding"*, ou seja, ele desiste de conferir, que é o
+oposto do que este projeto existe para fazer.
+
+**A medição que fecha o caso:** depois de um dia fechando 10 itens, o
+`meta.json` desta sessão tinha `subject` vazio, `frente` vazia e **0 to-dos**.
+Escrevi o protocolo e não o segui; escrevi o `cc-check` e ele passou calado,
+porque só cobra **quando existem** to-dos.
+
+### CC-95: o agente reporta o trabalho no painel, e isso é cobrado
+
+O buraco de raiz. `cc-check` só dispara com to-do já registrado — zero to-dos
+passa como se fosse entrega limpa. **Ausência de registro e trabalho terminado
+não podem ter a mesma cara.**
+
+- gate no `Stop`: editou código ou fechou item de ROADMAP e o `meta.json` está
+  sem `subject`/`frente`/`todos`? devolve
+- e no começo: ao entender a tarefa, `subject`, `frente` e a lista de to-dos
+- o `frente` sai do ROADMAP, que é o vocabulário dele
+
+**Sem isto, todo o resto desta frente é enfeite** — o painel só mostra o que o
+agente escreve nele.
+
+### CC-96: raciocínio e conclusão separados por marcador
+
+Ele **lê o raciocínio** e não quer que eu corte — isso contraria o protocolo que
+outra IA sugeriu, e a palavra dele vence. O que falta é fronteira visível.
+
+- marcador entre as duas partes, no formato que ele propôs
+  (`---- // resumo // ----`)
+- vale para resposta longa; conversa curta não precisa de moldura
+- entra no `control-center-estilo.md`, e o `estilo-fim` passa a medir
+
+### CC-97: product backlog, sprint e definição de pronto — os três nomes
+
+*"nao se chamou de product backlog tambem, e tambem nao temos exatamente uma
+definição de pronto, e isso quebra praticamente todo o projeto"*.
+
+- **product backlog**: o que existe e não tem dono de tempo (hoje é o ROADMAP,
+  sem se chamar assim)
+- **sprint**: o recorte de agora. A aba existe e está vazia
+- **definição de pronto por tarefa**: hoje só há `mvp.criterios` por projeto.
+  Sem isso, "feito" é opinião minha — e é o que ele mais teme
+
+### CC-98: o backlog ordenado por tempo E por importância
+
+*"me deem uma nocao de preenchimento em ordem de tempo e importancia"*. Hoje o
+ROADMAP tem uma ordem só, e implícita: a ordem em que os itens nasceram.
+
+Derivar as duas, nunca digitar: tempo sai do `tempo.mjs` e do git; importância
+sai de quantos itens dependem daquele mais o que ele mesmo marcou.
+
+### CC-99: a revisão mora no backlog, não no chat
+
+*"a revisao seja anotada, apontada e revisada nesse local, que seria o
+backlog"*. Hoje eu aponto defeito no chat e ele some na fita. Cada item precisa
+carregar o que foi revisado, o que foi apontado e o que foi respondido.
+
+### CC-100: o painel mexendo enquanto ele lê
+
+*"que fiquem visiveis em locais faceis pra eu ver voce mexendo e atualizando
+enquanto leio aqui"*. O canal já existe — o painel atualiza a cada 2 segundos.
+O que falta é o CC-95 alimentá-lo, e a tela mostrar a mudança de forma que se
+perceba (o que acabou de mudar, e quando).
+
+**Depende do CC-95.** Sem dado entrando, não há o que ver mexer.
+
 ## ▶ O que está aberto, em 16/08
 
 **A fila de 15/08 foi executada inteira, e a de 16/08 também.** Nenhum item
