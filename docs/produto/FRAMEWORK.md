@@ -310,6 +310,37 @@ trabalhar, o que é o oposto de um framework.
 agente que "executa até o fim" não pode parar a cada arquivo. Há teste
 guardando os dois lados.
 
+## ⚠️ O restritivo ficou sem mecanismo, e isso é dívida aberta
+
+Consequência de tirar a trava (correção certa, feita em 15/08 a pedido dele) que
+não foi dita na hora: **o modo restritivo passou a ser quase só um rótulo.**
+
+Hoje ele injeta um texto no `SessionStart` — *"executa até o fim, sem prosa"* — e
+não há nada que garanta isso. É instrução, e a lição de 15/08, repetida três
+vezes num dia, é que instrução não segura a IA.
+
+Pergunta dele em 16/08, que expôs o buraco: *"o framework não deveria tá
+restritivo até zerar o backlog? o que que tá travando você seguir esse fluxo? os
+hooks não tão funcionando?"*. Os hooks funcionam — nove ligados e conferidos. O
+modo é que não pede nada deles.
+
+**O que sobrou de mecanismo real é geral, não do restritivo:** `pergunta-guard`
+força a caixa, `rota-guard` prende à rota, `recados` entrega recado de outro
+agente. Todos valem em qualquer modo.
+
+**O que faria o restritivo valer**, e nenhum está feito:
+
+- **Não pedir confirmação a cada passo.** É o comportamento que ele espera e que
+  eu não cumpro. Mensurável: quantas respostas terminam devolvendo a decisão
+  para ele quando o backlog já dizia o que fazer.
+- **Executar o backlog em sequência**, parando só no que exige decisão dele.
+- Um sinal na tela de que está nesse modo, porque hoje só o cartão do projeto
+  mostra, e ele trabalha olhando o chat.
+
+Enquanto isso não existir, **o honesto é dizer que o restritivo é uma
+intenção**, não uma garantia — e não deixar que o rótulo dê a impressão de que
+alguma coisa está sendo imposta.
+
 ## UML e MER: a discussão fechada em 15/08
 
 Ficou em aberto duas vezes, e travava por estar na pergunta errada — "diagrama
