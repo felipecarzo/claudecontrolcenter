@@ -18,7 +18,7 @@
  * de quem lê, igual à aba de rotinas. E não instala ferramenta: camada cuja
  * ferramenta não existe aparece como indisponível, com o motivo.
  */
-import { camadaDe, camadasDe } from './bancadaCatalogo.mjs'
+import { camadaDe, camadasDe, todasAsCamadas } from './bancadaCatalogo.mjs'
 import { registrarVerificacao } from './framework.mjs'
 import { gravar as gravarEstado, ler as lerEstado } from './frameworkDisco.mjs'
 
@@ -29,13 +29,18 @@ export function situacao(raiz, cfg = {}) {
   const resultados = estado?.verificacao || {}
 
   return {
-    camadas: camadasDe(raiz, cfg).map((c) => ({
+    // todas, não só as que cabem: camada que some da lista é indistinguível de
+    // camada que não existe, e a decisão dele foi ter o catálogo inteiro à vista
+    camadas: todasAsCamadas(raiz, cfg).map((c) => ({
       id: c.id,
       nome: c.nome,
       grupo: c.grupo,
       custo: c.custo,
       duracao: c.duracao,
       explica: c.explica,
+      implementada: c.implementada,
+      cabe: c.cabe,
+      porQueNao: c.porQueNao,
       escolhida: escolhidas.includes(c.id),
       resultado: resultados[c.id] || null,
     })),
@@ -68,13 +73,23 @@ export async function rodar(raiz, id, cfg = {}) {
     ok: Boolean(r.ok),
     achados: r.achados || [],
     nota: r.nota || null,
+    /* "não achei nada" e "não consegui olhar" são resultados DIFERENTES, e
+       confundir os dois é o pior defeito de uma ferramenta de verificação.
+       Achado rodando a camada `pacote-malicioso` contra o `mnzs`: o npm falhava
+       por falta de `node_modules` e ela respondia limpo.
+
+       Camada antiga não declara o campo e é `true` por padrão — todas de fato
+       verificam quando `aplicaA` deixa passar. Quem não consegue olhar precisa
+       dizer, e a partir daí a verificação NÃO conta como aprovada no framework. */
+    verificou: r.verificou !== false,
     duracaoMs: Date.now() - inicio,
   }
 
   const estado = lerEstado(raiz)
   if (estado) {
     const x = registrarVerificacao(estado, id, {
-      ok: resultado.ok,
+      // camada que não conseguiu olhar não vale como verificação aprovada
+      ok: resultado.ok && resultado.verificou,
       detalhe: resultado.achados.length
         ? `${resultado.achados.length} achado(s): ${resultado.achados[0].titulo}`
         : (resultado.nota || null),
@@ -96,6 +111,8 @@ export async function rodarEscolhidas(raiz, cfg = {}) {
   for (const id of ids) resultados.push(await rodar(raiz, id, cfg))
   return {
     ok: resultados.every((r) => r.ok && r.ok !== false),
+    // quantas realmente olharam, para a tela não somar cinza com verde
+    verificaram: resultados.filter((r) => r.verificou !== false).length,
     limpo: resultados.every((r) => r.ok && r.achados?.length === 0),
     resultados,
   }

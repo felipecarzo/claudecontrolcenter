@@ -581,8 +581,14 @@ switch (cmd) {
           const s = B.situacao(r, cfg)
           for (const c of s.camadas) {
             const marca = c.escolhida ? '*' : ' '
-            const res = c.resultado ? (c.resultado.ok ? 'ok' : 'FALHOU') : '—'
-            console.log(`${marca} ${c.id.padEnd(14)} ${res.padEnd(7)} ${c.explica}`)
+            /* A ordem importa e estava errada: o resultado GUARDADO vencia o
+               "não se aplica", e a linha saía "ok · nenhum domínio configurado".
+               Resultado antigo é de outra configuração, e mostrá-lo como válido
+               é dizer que verificou algo que hoje nem roda. */
+            const res = !c.implementada ? 'a fazer'
+              : !c.cabe ? 'n/a'
+                : c.resultado ? (c.resultado.ok ? 'ok' : 'FALHOU') : '—'
+            console.log(`${marca} ${c.id.padEnd(18)} ${res.padEnd(8)} ${c.cabe ? c.explica : c.porQueNao}`)
           }
           console.log('\n* = escolhida na Definição. Rodar: framework bancada <camada|tudo>')
           break
@@ -592,7 +598,14 @@ switch (cmd) {
         if (saida.erro) die(saida.erro)
         const lista = saida.resultados || [saida]
         for (const x of lista) {
-          console.log(`${x.camada}: ${x.ok && !x.achados?.length ? 'limpo' : `${x.achados?.length || 0} achado(s)`}`)
+          /* "não olhei" nunca pode sair impresso como "limpo" — foi o defeito
+             pego na camada `pacote-malicioso` em 16/08, com o npm falhando por
+             falta de node_modules e a camada respondendo que estava tudo certo. */
+          const veredito = x.verificou === false
+            ? 'NÃO VERIFICADO'
+            : x.ok && !x.achados?.length ? 'limpo' : `${x.achados?.length || 0} achado(s)`
+          console.log(`${x.camada}: ${veredito}`)
+          if (x.nota) console.log(`  ${x.nota}`)
           for (const a of x.achados || []) console.log(`  [${a.gravidade}] ${a.titulo} — ${a.onde}`)
         }
         mostrar(r)

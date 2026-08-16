@@ -31,6 +31,35 @@ import { promisify } from 'node:util'
 
 const exec = promisify(execFile)
 
+/**
+ * O navegador desta máquina, se houver — sem instalar nada.
+ *
+ * Procura o Chromium que o Playwright já baixou e o `playwright-core` de
+ * qualquer projeto que o tenha. Não é elegante, e é deliberado: a alternativa
+ * seria uma dependência de runtime, e o projeto inteiro não tem nenhuma.
+ *
+ * Devolve `null` quando não acha, e a camada RECUSA em vez de passar. Camada de
+ * verificação que diz "está limpo" sem ter olhado é o pior defeito possível.
+ */
+async function abrirNavegador() {
+  const { createRequire } = await import('node:module')
+  const chromes = [
+    `${process.env.HOME}/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell`,
+    '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome',
+  ]
+  const executablePath = chromes.find((c) => fs.existsSync(c))
+
+  let pw = null
+  for (const raiz of ['/usr/local/lib/hermes-agent/index.js', '/opt/hermes-work/ahtleta/index.js', `${process.cwd()}/index.js`]) {
+    try { pw = createRequire(raiz)('playwright-core'); break } catch { /* tenta o próximo */ }
+  }
+  if (!pw?.chromium) return null
+
+  try {
+    return await pw.chromium.launch({ ...(executablePath ? { executablePath } : {}), args: ['--no-sandbox'] })
+  } catch { return null }
+}
+
 /** Roda um comando sem shell e nunca lança: comando ausente vira `ok:false` com
  *  o motivo, que a tela mostra como "não instalado" em vez de erro cru. */
 async function cmd(bin, args, { cwd, timeout = 120_000 } = {}) {
@@ -374,6 +403,161 @@ export const CAMADAS = [
     },
   },
 
+  /**
+   * `npm audit signatures` confere a ASSINATURA do que o registro entregou.
+   *
+   * Diferente do `npm audit` comum, que compara versão com uma lista de CVE:
+   * este pergunta ao registro se cada tarball foi mesmo publicado por quem diz
+   * ter publicado. É o que pega troca de pacote no meio do caminho, que é o
+   * ataque de cadeia antes de existir CVE — quando o CVE sai, já rodou.
+   *
+   * O Socket faria mais (script de instalação, código ofuscado, acesso de rede
+   * novo), e não está instalado. O npm está, e cobre a parte que não dá para
+   * fazer sem falar com o registro.
+   */
+  {
+    id: 'pacote-malicioso',
+    nome: 'Pacote malicioso',
+    grupo: 'suprimento',
+    custo: 'grátis',
+    duracao: 'segundos',
+    ferramenta: 'npm audit signatures (o Socket faria mais, e não está instalado)',
+    explica: 'Confere se cada pacote instalado foi mesmo publicado por quem diz. Pega troca no meio do caminho, o ataque de cadeia antes de existir CVE.',
+    // sem lockfile o npm não tem o que conferir, e este projeto é um deles
+    aplicaA: (raiz) => ['package-lock.json', 'npm-shrinkwrap.json']
+      .some((f) => fs.existsSync(path.join(raiz, f))),
+    async rodar(raiz) {
+      let saida = ''
+      try {
+        const r = await exec('npm', ['audit', 'signatures'], { cwd: raiz, timeout: 90_000 })
+        saida = `${r.stdout}${r.stderr}`
+      } catch (e) {
+        saida = `${e.stdout || ''}${e.stderr || ''}${e.message || ''}`
+      }
+
+      /* ⚠️ A primeira versão desta camada devolvia `ok: true, achados: []` quando
+         o npm falhava, e isso foi pego rodando contra o `mnzs`: o npm dizia
+         "found no dependencies to audit that were installed from a supported
+         registry" (node_modules não instalado) e a camada respondia LIMPO.
+
+         É exatamente o defeito que o cabeçalho deste arquivo chama de pior
+         possível numa ferramenta de verificação — dizer que olhou sem ter
+         olhado. `nota` existe para isto: a tela mostra "não deu para verificar",
+         que é diferente de "está tudo certo". */
+      const naoRodou = /npm (error|ERR!)/i.test(saida) || !/audited|verified|signature/i.test(saida)
+      if (naoRodou) {
+        const motivo = (/npm (?:error|ERR!)\s+(.+)/i.exec(saida) || [])[1] || 'o npm não completou'
+        return {
+          ok: true,
+          achados: [],
+          verificou: false,
+          nota: `não deu para verificar: ${motivo.slice(0, 140)}. Rode \`npm install\` no projeto primeiro.`,
+        }
+      }
+
+      const achados = []
+      // o npm reporta em prosa; dois números importam e saem por regex, porque
+      // `--json` nesta subcomando varia de formato entre versões
+      const invalidas = Number((/(\d+)\s+package[s]?\s+ha[ds]?\s+(?:an?\s+)?invalid/i.exec(saida) || [])[1] || 0)
+      const semAssinatura = Number((/(\d+)\s+package[s]?\s+(?:ha[ds]?\s+)?missing/i.exec(saida) || [])[1] || 0)
+
+      if (invalidas) {
+        achados.push({
+          gravidade: 'alta',
+          titulo: `${invalidas} pacote(s) com assinatura INVÁLIDA`,
+          onde: path.basename(raiz),
+          conserto: 'apague node_modules e o lockfile e instale de novo. Se repetir, o pacote foi adulterado: não publique nada até resolver.',
+        })
+      }
+      if (semAssinatura > 0) {
+        achados.push({
+          gravidade: 'baixa',
+          titulo: `${semAssinatura} pacote(s) sem assinatura no registro`,
+          onde: path.basename(raiz),
+          conserto: 'normal em pacote antigo. Vale olhar se algum deles é crítico para o projeto.',
+        })
+      }
+      return { ok: !invalidas, achados, verificou: true }
+    },
+  },
+
+  /**
+   * A página abre mesmo? A camada mais barata que existe, e a que ele mais usa.
+   *
+   * Regra 1 do ciclo dele: *"prova visual antes de dizer feito"*, e o motivo
+   * está medido no próprio projeto — já houve **545 testes verdes com a tela
+   * quebrada no navegador**. Teste unitário não vê tela branca por erro de
+   * JavaScript, e é exatamente isso que esta camada pega.
+   *
+   * Usa o Chromium que o Playwright já baixou; não instala nada. Se não
+   * houver navegador na máquina, recusa dizendo, em vez de fingir que passou.
+   */
+  {
+    id: 'navegador',
+    nome: 'A página abre?',
+    grupo: 'runtime',
+    custo: 'grátis',
+    duracao: 'segundos',
+    ferramenta: 'Chromium do Playwright, já em cache nesta máquina',
+    explica: 'Abre cada endereço num navegador de verdade e conta erro de JavaScript, requisição que falhou e tela vazia. Teste verde não prova tela viva: já houve 545 passando com a página quebrada.',
+    aplicaA: (raiz, cfg) => (cfg?.urls || []).length > 0,
+    async rodar(raiz, cfg = {}) {
+      const nav = await abrirNavegador()
+      if (!nav) {
+        return { ok: true, achados: [], nota: 'sem Chromium nesta máquina — instale o Playwright ou rode do PC' }
+      }
+      const achados = []
+      try {
+        for (const url of (cfg.urls || []).slice(0, 10)) {
+          const pagina = await nav.newPage({ viewport: { width: 390, height: 800 } })
+          const erros = []
+          const quebradas = []
+          pagina.on('pageerror', (e) => erros.push(String(e.message || e).slice(0, 160)))
+          pagina.on('requestfailed', (r) => quebradas.push(r.url().slice(0, 120)))
+          let resposta = null
+          try {
+            resposta = await pagina.goto(url, { waitUntil: 'load', timeout: 20_000 })
+            await pagina.waitForTimeout(1200) // dá tempo do JavaScript quebrar
+          } catch (e) {
+            achados.push({
+              gravidade: 'alta', titulo: 'a página não abriu', onde: url,
+              conserto: String(e.message || e).slice(0, 140),
+            })
+            await pagina.close()
+            continue
+          }
+
+          const status = resposta?.status() ?? 0
+          const texto = await pagina.evaluate(() => document.body?.innerText?.trim().length || 0)
+          if (status >= 400) {
+            achados.push({ gravidade: 'alta', titulo: `respondeu ${status}`, onde: url, conserto: 'confira a rota e o servidor' })
+          }
+          // tela branca: carregou, respondeu 200, e não tem nada escrito
+          if (status < 400 && texto < 20) {
+            achados.push({
+              gravidade: 'alta', titulo: 'a página abriu VAZIA',
+              onde: url,
+              conserto: 'é o caso que passa em teste unitário e quebra no navegador. Abra o console e veja o primeiro erro.',
+            })
+          }
+          for (const e of [...new Set(erros)].slice(0, 3)) {
+            achados.push({ gravidade: 'alta', titulo: 'erro de JavaScript na página', onde: url, conserto: e })
+          }
+          if (quebradas.length) {
+            achados.push({
+              gravidade: 'média', titulo: `${quebradas.length} requisição(ões) falharam`,
+              onde: url, conserto: [...new Set(quebradas)].slice(0, 3).join(' · '),
+            })
+          }
+          await pagina.close()
+        }
+      } finally {
+        await nav.close().catch(() => {})
+      }
+      return { ok: !achados.some((a) => a.gravidade === 'alta'), achados }
+    },
+  },
+
   /* ==================== as declaradas, ainda sem execução ====================
      Decisão dele em 15/08: *"a bancada precisa ter todas as camadas, mas poder
      rodar elas individualmente"*.
@@ -386,9 +570,6 @@ export const CAMADAS = [
      `rodar` ausente = a tela mostra a camada, explica o que ela pegaria, e diz
      que falta implementar. Nunca finge que rodou. */
   ...[
-    { id: 'pacote-malicioso', nome: 'Pacote malicioso', grupo: 'suprimento', custo: 'grátis', duracao: 'segundos',
-      ferramenta: 'npm audit signatures + Socket',
-      explica: 'Pacote MALICIOSO, não só vulnerável: script de instalação, código ofuscado, acesso de rede novo. Pega ataque de cadeia antes de existir CVE.' },
     { id: 'container', nome: 'Container e infraestrutura', grupo: 'suprimento', custo: 'grátis', duracao: 'minutos',
       ferramenta: 'Trivy',
       explica: 'Imagem Docker, Dockerfile e config de infra. Vale para a VPS, que roda 22 containers.' },
@@ -401,9 +582,6 @@ export const CAMADAS = [
     { id: 'autonomo', nome: 'Auditoria autônoma', grupo: 'codigo', custo: 'token do plano', duracao: 'minutos a horas',
       ferramenta: 'Sandyaa',
       explica: 'Bug de lógica e de fluxo de dados, com prova de conceito gerada. É a camada cara: roda sob pedido, nunca junto das outras.' },
-    { id: 'navegador', nome: 'Navegador de verdade', grupo: 'runtime', custo: 'grátis', duracao: 'minutos',
-      ferramenta: 'Playwright',
-      explica: 'A tela como o usuário vê. Pega o que teste de unidade não pega — 545 testes verdes já conviveram com a tela quebrada.' },
     { id: 'navegador-remoto', nome: 'Navegador remoto', grupo: 'runtime', custo: 'grátis', duracao: 'minutos',
       ferramenta: 'skill remote-browser',
       explica: 'O Chrome que já roda na VPS. Hoje exige um token guardado em pasta de root, e o guarda de segredo (com razão) não deixa lê-lo.' },
@@ -436,4 +614,40 @@ export function camadasDe(raiz, cfg = {}) {
   return CAMADAS.filter((c) => {
     try { return c.aplicaA(raiz, cfg) } catch { return false }
   })
+}
+
+/**
+ * TODAS as camadas, cada uma dizendo se cabe neste projeto e por quê.
+ *
+ * Decisão dele em 15/08: *"a bancada precisa ter todas as camadas, mas poder
+ * rodar elas individualmente"*. `camadasDe()` filtra, e isso fazia camada
+ * implementada SUMIR da lista quando o `aplicaA` dizia não — pior que a camada
+ * declarada e não implementada, que ao menos aparecia. Do lado de fora, sumir
+ * e não existir são a mesma coisa.
+ *
+ * O motivo é derivado, não escrito duas vezes: quem tem `aplicaA` sabe o que
+ * exige, e a frase sai do próprio requisito.
+ */
+export function todasAsCamadas(raiz, cfg = {}) {
+  return CAMADAS.map((c) => {
+    let cabe = true
+    try { cabe = c.aplicaA ? Boolean(c.aplicaA(raiz, cfg)) : true } catch { cabe = false }
+    return {
+      ...c,
+      cabe,
+      implementada: typeof c.rodar === 'function',
+      porQueNao: cabe ? null : (MOTIVO[c.id] || 'não se aplica a este projeto'),
+    }
+  })
+}
+
+/** Por que a camada não cabe, na língua dele — nunca "aplicaA devolveu false". */
+const MOTIVO = {
+  'pacote-malicioso': 'este projeto não tem package-lock.json, então o npm não tem o que conferir',
+  navegador: 'nenhum endereço configurado para abrir — informe as URLs do projeto',
+  tls: 'nenhum domínio configurado',
+  teste: 'o package.json não tem script de teste',
+  dependencia: 'este projeto não tem package-lock.json nem pnpm-lock.yaml',
+  'zona-restrita': 'nenhuma zona restrita declarada',
+  'rls-supabase': 'não achei configuração de Supabase neste projeto',
 }
