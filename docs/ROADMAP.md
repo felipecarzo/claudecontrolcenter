@@ -812,6 +812,21 @@ resposta. Não precisa de código — precisa de hábito, e por isso entra no
 Vale medir depois, junto do `estilo-fim`: em quantas respostas a etiqueta
 aparece quando havia tarefa em curso.
 
+### ✅ CC-94 16/08 — prévia que eu mando é para telefone
+
+*"eu precisei dar zoom, fico dando zoom"*, dito na rua, sobre a lista do que
+falta. **Todas as prévias de 15 e 16/08 tinham o mesmo defeito:** usavam o CSS
+do painel, que é desenhado para tela larga, com fonte de 11 a 15 pixels.
+
+Ele lê no telefone, quase sempre andando. Arquivo que exige zoom é arquivo que
+ele não lê — e aí a prévia não serve para nada, que é o pior desfecho possível
+para a fase de Prova do método `conserto`.
+
+Regra escrita no `control-center-estilo.md`: corpo em 19px, `viewport` declarado,
+`text-size-adjust` travado. **Com uma exceção:** prévia cujo objetivo é conferir
+o LAYOUT continua usando o CSS real do painel — senão ela mente sobre o que ele
+vai ver. Nesse caso, dizer na legenda.
+
 ### CC-92: o proxy da anonimização — pedido em 15/08 e NÃO registrado
 
 **Escapou.** Ele disse, palavra por palavra: *"segue com o hook e já pode
