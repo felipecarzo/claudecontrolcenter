@@ -1057,7 +1057,19 @@ dizendo que isso apaga a marca de quem estiver nela. E a decisão do CC-49
 continua de pé onde importa: o sistema nunca libera sozinho por silêncio, só
 mostra o azul e deixa a escolha com quem lê.
 
-### CC-79 ⏸ depende do CC-60 — ligar as rotas ao Pixel Agents
+### CC-79 ✅ 16/08 — as rotas viajam junto do agente
+
+Destravado pelo CC-60 no mesmo dia. Ideia dele: *"isso poderia ter uma conexão
+entre esses dois"* — o boneco mostrando em que rota o agente está.
+
+Feito sem inventar identificador: **o elo é o id de sessão**, que os dois lados
+já conhecem. `paraEscritorio()` casa os 8 primeiros caracteres, que é a marca
+usada no quadro de rotas, e devolve `ccRotas` e `ccArquivos` em cada agente.
+
+Vai além do que a ideia pedia, porque a rota agora reivindica arquivo: o boneco
+sabe **quais arquivos** aquele agente está segurando, não só o nome da rota.
+
+### CC-79 (o que estava registrado antes)
 
 Ideia dele: o escritório com os bonequinhos e o quadro de rotas conversarem.
 *"isso poderia ter uma conexão entre esses dois"*.
@@ -1425,7 +1437,32 @@ da casa do Claude Code, que a regra de ouro proíbe. Há teste guardando isso.
 `cc set` e `cc done` funcionam iguais nos dois tipos, e o painel lê o estado
 pelo mesmo `buildJob` de sempre — sem caso especial espalhado.
 
-### CC-60 ⏸ decisão do Felipe — o da porta 3100 é o DEFINITIVO (falta resolver o segundo Pixel Agents)
+### CC-60 ✅ 16/08 — fica só o fork, e a federação substituiu o túnel
+
+**A decisão dele, que encerra o item:**
+
+> "eu só quero ficar com o plugin que é um fork meu no projeto app_escritorio, e
+> eu tô fazendo ele pra mesclar todos os meus agentes, da vps ou locais, pra
+> funcionar no cockpit"
+
+Dos três Pixel Agents desta VPS, ficou um. Saíram o oficial do npm (mesmo
+programa sem as sete melhorias do fork) e o do usuário `agente` na 3100, que
+nunca foi possível inspecionar. **O túnel SSH saiu junto**: ele só fazia sentido
+rodando fora da VPS, e a federação já entrega os agentes do PC sem rede nenhuma.
+
+`GET /api/escritorio` entrega os agentes de todas as máquinas já unidos, com a
+origem e a rota carimbadas em cada um. O contrato inteiro, com o porquê de cada
+campo, está em [[guias/escritorio-e-cockpit]].
+
+**A divisão que ficou:** o cockpit sabe QUEM trabalha, o escritório sabe
+DESENHAR. Mesclar máquinas é a federação do CC-47 — o fork reimplementar isso
+seriam duas verdades para a mesma pergunta.
+
+**Falta do lado do fork:** um provider que leia essa rota em vez de varrer
+`~/.claude` sozinho. Enquanto não existir, ele enxerga só a máquina onde roda,
+que é o comportamento de hoje e não uma regressão.
+
+### CC-60 (registro do que foi investigado, 14 e 15/08)
 
 Achado em 14/08 investigando o escritório: já existe um `pixel-agents` rodando
 nesta VPS há mais de dois dias, na **porta 3100**, do usuário **`agente`**, que

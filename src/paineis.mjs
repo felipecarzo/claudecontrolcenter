@@ -21,40 +21,43 @@ const CHAVE_VPS = path.join(os.homedir(), '.ssh', 'id_ed25519_ahtleta')
  * Os painéis conhecidos. `porta` é a identidade: é por ela que se descobre se
  * está no ar e qual processo derrubar.
  *
- * O da VPS não roda aqui — é um túnel SSH. O Pixel Agents de lá escuta só em
- * 127.0.0.1 dentro da VPS, de propósito; o túnel liga esta porta na de lá.
- * Quando `agentes.carzo.com.br` tiver DNS e certificado, este painel vira só
- * um link e o túnel deixa de ser necessário.
+ * ## CC-60 encerrado em 16/08: fica só o fork
+ *
+ * Existiam três Pixel Agents nesta VPS — o oficial do npm na 3101, um do
+ * usuário `agente` na 3100, e o fork do Felipe em `app_escritorio`. A decisão
+ * dele:
+ *
+ * > "eu só quero ficar com o plugin que é um fork meu no projeto app_escritorio,
+ * > e eu tô fazendo ele pra mesclar todos os meus agentes, da vps ou locais, pra
+ * > funcionar no cockpit"
+ *
+ * Os dois que saíram, e por quê:
+ *
+ * - **o oficial do npm (3101)**: mesmo programa, sem as sete melhorias do fork.
+ *   Manter os dois é manter duas telas que discordam.
+ * - **o túnel SSH para a 3100**: apontava para a instância do usuário `agente`,
+ *   que nunca foi possível inspecionar (o `/home/agente/` recusa leitura). E o
+ *   túnel só fazia sentido rodando FORA da VPS — dentro dela era a máquina se
+ *   conectando a si mesma com a chave do Felipe.
+ *
+ * **A federação substituiu o túnel.** Ver os agentes do PC de dentro da VPS não
+ * exige mais rede: cada máquina empurra o pacote e o `/api/escritorio` entrega a
+ * lista já unida, com a origem carimbada em cada agente.
  */
 const PADRAO = [
   {
-    id: 'local',
+    id: 'escritorio',
     // O nome real entra em `readPaineis`: "meu PC" mentia rodando na VPS.
-    nome: 'esta máquina',
-    detalhe: 'sessões do Claude Code desta máquina',
+    nome: 'escritório',
+    detalhe: 'os agentes de todas as máquinas, pelo fork em app_escritorio',
     porta: 3101,
     cmd: 'pixel-agents',
     args: ['--host', '127.0.0.1', '--port', '3101'],
     // no Windows o binário do npm é um .cmd: sem shell, o spawn não acha
     shell: ehWindows,
-  },
-  {
-    id: 'vps',
-    nome: 'VPS',
-    detalhe: 'o agente do Telegram, via túnel SSH',
-    porta: 3100,
-    cmd: 'ssh',
-    args: [
-      '-N', '-L', '3100:127.0.0.1:3100',
-      '-i', CHAVE_VPS,
-      '-o', 'StrictHostKeyChecking=accept-new',
-      // sem isto a conexão morre calada depois de um tempo parada, e a tela
-      // congela sem explicação nenhuma
-      '-o', 'ServerAliveInterval=30',
-      '-o', 'ServerAliveCountMax=3',
-      'root@66.94.117.215',
-    ],
-    shell: false,
+    // onde o fork mora, para `resolverBinario` achar o dist dele antes do
+    // pacote global — é o fork que tem as melhorias, não o upstream
+    fork: path.join('app_escritorio', 'app', 'dist', 'cli.js'),
   },
 ]
 
@@ -90,7 +93,19 @@ function definicoes() {
  * Procura nos lugares conhecidos do npm e devolve o comando original quando não
  * acha, para a mensagem de erro continuar dizendo o nome que a pessoa espera.
  */
-export function resolverBinario(cmd) {
+export function resolverBinario(cmd, { fork = null } = {}) {
+  /* O fork VENCE o pacote global, e a ordem é a decisão.
+     Os dois se chamam `pixel-agents` e servem a mesma porta; o do npm é o
+     upstream sem as sete melhorias do Sprint 1. Se o global viesse primeiro, o
+     Felipe subiria a versão errada pelo botão e não teria como notar — as duas
+     desenham a mesma sala. */
+  if (fork) {
+    for (const base of basesDeProjetos()) {
+      const alvo = path.join(base, fork)
+      try { if (fs.existsSync(alvo)) return alvo } catch { /* segue */ }
+    }
+  }
+
   const candidatos = [
     path.join(os.homedir(), '.npm-global', 'bin', cmd),
     path.join(os.homedir(), '.local', 'bin', cmd),
@@ -101,6 +116,22 @@ export function resolverBinario(cmd) {
     try { if (fs.existsSync(c)) return c } catch { /* segue */ }
   }
   return cmd
+}
+
+/**
+ * Onde as pastas de projeto podem estar, sem fixar caminho de máquina.
+ *
+ * A regra do projeto é que nenhum caminho de máquina entre no código: a pasta é
+ * descoberta, e `CC_PROJECTS_BASE` força quando preciso. Aqui a descoberta é
+ * barata — o painel roda de dentro de um projeto, então o irmão dele é o
+ * candidato natural.
+ */
+function basesDeProjetos() {
+  const bases = []
+  if (process.env.CC_PROJECTS_BASE) bases.push(process.env.CC_PROJECTS_BASE)
+  bases.push(path.join(process.cwd(), '..'))
+  bases.push(path.join(os.homedir(), 'projetos'))
+  return [...new Set(bases)]
 }
 
 /**
@@ -159,7 +190,7 @@ export function ligarPainel(id) {
   // Destacado e sem stdio: o painel precisa sobreviver ao fim deste processo,
   // senão morre junto com o Control Center — foi exatamente assim que o túnel
   // caiu na primeira tentativa.
-  const filho = spawn(resolverBinario(def.cmd), def.args, {
+  const filho = spawn(resolverBinario(def.cmd, { fork: def.fork }), def.args, {
     detached: true,
     stdio: 'ignore',
     shell: def.shell,

@@ -46,6 +46,8 @@ import * as docs from './documentos.mjs'
 // com o `npm test` passando, porque o gate não carregava este arquivo
 import * as bancada from './bancada.mjs'
 import * as bancadaCatalogo from './bancadaCatalogo.mjs'
+import { montar as montarEscritorio } from './escritorio.mjs'
+import { arquivosDeclarados } from './oficinas.mjs'
 import {
   desligar as desligarFramework, gravar as gravarFramework, ler as lerFramework,
   ligar as ligarFramework, situacao as situacaoFramework,
@@ -962,6 +964,43 @@ function handler(req, res) {
      A pasta vem SEMPRE da lista de projetos que o painel já conhece, nunca do
      que a página mandar: aceitar caminho arbitrário daria ao painel o poder de
      rodar o CLI em qualquer lugar do disco. */
+  /* CC-60 e CC-79: o que o escritório do Felipe consome.
+     Decisão dele em 16/08: fica só o fork em `app_escritorio`, e ele mescla os
+     agentes da VPS e do PC. Mesclar já é resolvido AQUI pela federação — então
+     em vez de o fork reimplementar isso, ele lê esta rota e desenha. O cockpit
+     sabe quem trabalha; o escritório sabe desenhar. */
+  if (url.pathname === '/api/escritorio') {
+    const s = snapshot()
+
+    /* As rotas ocupadas dos projetos que TÊM agente agora.
+       Varrer todos os projetos custaria uma leitura de quadro por pasta a cada
+       chamada, para depois jogar fora a maioria — o escritório só desenha quem
+       está trabalhando. */
+    const rotas = []
+    const vistos = new Set()
+    for (const j of s.jobs) {
+      const dir = j.cwd && !vistos.has(j.cwd) ? j.cwd : null
+      if (!dir) continue
+      vistos.add(dir)
+      const texto = lerQuadro(dir)
+      if (!texto) continue
+      for (const l of texto.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/)) {
+        if (!l.includes('🔴') || !l.includes('|')) continue
+        rotas.push({
+          rota: (l.match(/`([^`]+)`/) || [])[1] || null,
+          quem: (l.match(/\b([0-9a-f]{8})\b/) || [])[1] || null,
+          arquivos: arquivosDeclarados(l),
+          projeto: path.basename(dir),
+        })
+      }
+    }
+
+    return send(res, 200, montarEscritorio(s.jobs, {
+      rotas: rotas.filter((r) => r.rota),
+      maquinas: s.maquinas || [],
+    }))
+  }
+
   /* CC-78: as rotas na tela, e clicáveis.
      A pasta vem do projeto que o painel já conhece — nunca do que a página
      mandar, senão o painel escreveria markdown em qualquer lugar do disco. */

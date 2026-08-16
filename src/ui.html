@@ -1764,7 +1764,10 @@ let srvNovo = params.has('subir')
 let srvDedup = false          // "fechar duplicados" armado, esperando confirmação
 let PAINEIS = null            // idem, aba escritório
 // qual painel está embutido na aba; a escolha sobrevive ao recarregar
-let painelAtivo = localStorage.getItem('cc-painel') || 'local'
+// `escritorio` desde 16/08, quando o CC-60 fechou e sobrou um painel só. Quem
+// tem `local` guardado do tempo dos dois cai no fallback `PAINEIS[0]` — que é o
+// mesmo painel, então a troca é invisível e ninguém precisa limpar nada.
+let painelAtivo = localStorage.getItem('cc-painel') || 'escritorio'
 // quais linhas da legenda estão com o texto inteiro à mostra
 const legendaAberta = new Set()
 let TEMPO = null              // idem: a varredura dos transcritos é cara

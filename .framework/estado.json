@@ -119,14 +119,14 @@
    "achados": 0,
    "verificou": true,
    "detalhe": null,
-   "em": "2026-08-16T05:39:47.048Z"
+   "em": "2026-08-16T06:41:11.894Z"
   },
   "segredo-historico": {
    "ok": true,
    "achados": 0,
    "verificou": true,
    "detalhe": null,
-   "em": "2026-08-16T05:39:51.714Z"
+   "em": "2026-08-16T06:41:16.491Z"
   },
   "tls": {
    "ok": true,
@@ -143,7 +143,7 @@
    "achados": 0,
    "verificou": true,
    "detalhe": null,
-   "em": "2026-08-16T05:39:59.751Z"
+   "em": "2026-08-16T06:41:24.324Z"
   },
   "service-role": {
    "ok": true,
