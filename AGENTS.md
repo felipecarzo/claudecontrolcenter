@@ -24,8 +24,42 @@ do projeto; sem ele, o cartão vira texto solto pra quem não tem o contexto na
 cabeça:
 
 ```bash
-node .../cc.mjs set '{"subject":"portais no map editor","category":"feature","frente":"Map editor","route":"B86-portais","todos":[{"text":"icone proprio","done":false},{"text":"posicionavel no editor","done":false},{"text":"round-trip do save","done":false}]}'
+node .../cc.mjs set '{"subject":"portais no map editor","category":"feature","frente":"Map editor","route":"B86-portais","todos":[{"text":"o portal ganha icone proprio na paleta do editor","done":false,"olho":true},{"text":"o portal pode ser arrastado e posicionado no mapa","done":false},{"text":"o save grava o portal e o load devolve ele no mesmo lugar","done":false}]}'
 ```
+
+> **Cada tarefa é uma frase inteira: quem faz, o que muda, e onde.** Não é
+> título de commit. O Felipe leu "profissão escolhe quem entra" em 17/08 e
+> respondeu: *"os cards nunca fazem sentido (…) não tem o contexto de que é na
+> verdade, tipo 'a profissão do agente define se ele entra na tarefa'"*.
+>
+> O sinal mecânico é a palavra de ligação (artigo, preposição, possessivo):
+> sem elas o sujeito e o objeto desaparecem. Menos de duas na frase e o turno
+> é devolvido para você reescrever.
+>
+> | ❌ telegrama | ✅ frase |
+> |---|---|
+> | `elenco em disco` | `o elenco de agentes é gravado em disco e sobrevive ao reinício` |
+> | `corrigir layout mobile` | `os cartões param de vazar de lado no telefone` |
+> | `profissao escolhe quem entra` | `a profissão do agente define se ele entra na tarefa` |
+
+Cada to-do aceita dois campos além do texto, e os dois mudam o que o Felipe vê:
+
+- **`olho: true`** quando a entrega muda tela, texto ou comportamento que ELE
+  usa. O painel põe essas primeiro, com a marca "confira". Sem o campo, a
+  tarefa é técnica: fica acessível, mas ele não é cobrado a olhar.
+- **`pronto`**: como se saberá que acabou, escrito ANTES de fazer.
+
+Dependência entre tarefas se escreve NO TEXTO, do jeito que o Felipe escreve:
+`"protocolo atualizado, depende da s03"` ou `"depende do CC-112_s02"`. O
+painel deriva sozinho e põe o selo "espera s03" no quadradinho; quando a
+esperada fecha, vira "s03 feita". Não existe campo separado: reescrever a
+lista nunca perde a dependência, porque ela nasce do texto a cada leitura.
+
+E ao marcar rota no `docs/ROTAS-ATIVAS.md`, a reivindicação `📁` aceita
+`arquivo#parte` para dividir um arquivo por escrito:
+`📁 src/ui.html#viewTrabalho`. Quem TAMBÉM declarou o mesmo arquivo na
+própria rota edita; quem não declarou continua barrado. Sem `#`, o arquivo é
+posse inteira da rota, como sempre foi.
 
 **2. Assim que cada to-do fecha** — um comando, sem reenviar a lista:
 

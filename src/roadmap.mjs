@@ -105,7 +105,18 @@ const limpar = (s) => s
  * citação, ora como bloco `>`, ora em itálico. As duas formas contam.
  */
 export function citacaoDe(corpo = []) {
-  const texto = corpo.join('\n')
+  /* Só o começo do item, e o motivo custou um defeito visível.
+
+     Em 17/08 o cartão da Sincronia entre máquinas mostrava uma fala dele sobre
+     a Bancada. Dois cabeçalhos tinham sido rebaixados de `###` para `####` no
+     mesmo dia, para sairem da lista, e o texto deles passou a ser absorvido
+     pelo item de cima — a citação veio de 40 linhas adiante, sobre outro
+     assunto.
+
+     Cortar no primeiro `####` seria pior: subseção DENTRO do item é legítima e
+     comum aqui. O corte por distância acerta os dois casos, porque a citação
+     que resume um item mora no começo dele. */
+  const texto = corpo.slice(0, 25).join('\n')
 
   const bloco = texto.match(/^>\s*[*_"“]*(.+?)[*_"”]*\s*$/m)
   if (bloco && bloco[1].length > 20) return bloco[1].trim()
@@ -326,7 +337,15 @@ export function lerRoadmap(cwd) {
       grupo.frentes.push(frente)
       continue
     }
-    // o corpo alimenta a citação e o peso; nada dele vai inteiro para a tela
+    /* O corpo alimenta a citação e o peso; nada dele vai inteiro para a tela.
+
+       ⚠️ Subseção (`####`) ENCERRA a coleta, e isso não é detalhe. Em 17/08 o
+       cartão da Sincronia entre máquinas mostrava uma fala dele sobre a
+       Bancada: dois cabeçalhos tinham sido rebaixados de `###` para `####` no
+       mesmo dia, para sairem da lista de itens, e com isso o texto deles passou
+       a ser absorvido pelo item de cima. Citação trocada é pior que citação
+       ausente — ele lê as próprias palavras no lugar errado e conclui que eu
+       não entendi o pedido. */
     if (frente && linha.trim()) frente.corpo.push(linha)
     // Só conta item de lista; parágrafo solto é explicação, não tarefa.
     if (marcado || item) {
@@ -342,6 +361,14 @@ export function lerRoadmap(cwd) {
   for (const g of grupos) for (const f of g.frentes || []) {
     f.citacao = citacaoDe(f.corpo)
     f.peso = pesoDe(f)
+    /* De quem este item depende, lido do texto que já está escrito: "depende do
+       CC-60" é como os itens sempre disseram isso. Vem da planilha que ele
+       usava nos produtos (17/08): a dependência morava na linha da tarefa, e é
+       o que deixa a tela dizer "desbloqueia X" sem campo novo para envelhecer. */
+    const textoTodo = [f.titulo, ...(f.corpo || [])].join(' ')
+    f.dependeDe = [...new Set(
+      [...textoTodo.matchAll(/depende (?:do|de|da|dos)\s+([A-Z]{1,3}-\d+)/gi)].map((m) => m[1].toUpperCase()),
+    )]
     delete f.corpo // o corpo é matéria-prima, não sai daqui
   }
 

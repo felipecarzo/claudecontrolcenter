@@ -85,6 +85,20 @@ export function normalizeTodo(raw) {
        Felipe não consegue auditar hoje. */
     pronto: raw.pronto ? String(raw.pronto).slice(0, 400) : null,
     prova: raw.prova ? String(raw.prova).slice(0, 600) : null,
+    // o código estável da tarefa, atribuído na mesclagem e nunca reciclado
+    codigo: raw.codigo ? String(raw.codigo).slice(0, 12) : null,
+    /* Precisa do olho DELE, ou é técnica?
+       Decisão dele em 17/08, ao escolher o que revisar: "só o que eu vejo e
+       uso, porém é bom eu ter acesso à revisão se precisar". O agente declara
+       ao reportar: `olho: true` para o que muda tela, texto ou comportamento
+       que ele usa; ausente ou false é técnica, que ele alcança quando quiser
+       mas não é cobrado a olhar. */
+    olho: raw.olho === true,
+    /* CC-114: dependência POR TAREFA, escrita no próprio texto, do jeito que
+       ele já escreve no backlog: "depende da s03", "depende do CC-112_s02".
+       Campo derivado, nunca digitado: reescrever a lista não o perde porque
+       ele nasce do texto de novo a cada leitura. */
+    dependeDe: (String(text).match(/depende\s+d[aeo]s?\s+`?(s\d+|[A-Z]{2,4}-\d+(?:_s\d+)?)`?/i) || [])[1] || null,
     /* CC-99: a revisão mora aqui, não no chat.
        Pedido dele em 16/08: "a revisao seja anotada, apontada e revisada nesse
        local, que seria o backlog". Hoje eu aponto um defeito na conversa e ele
@@ -387,9 +401,48 @@ export function marcarConclusoes(current, patch, agora = new Date().toISOString(
   return Object.keys(feitoEm).length ? feitoEm : null
 }
 
+/**
+ * Cada tarefa nasce com um código próprio, e ele nunca muda.
+ *
+ * ## O defeito que isto fecha, achado por ele em 17/08
+ *
+ * A tela numerava as tarefas na hora de desenhar: `S1` era só "a primeira da
+ * lista". Fechava uma, todas as outras mudavam de número. *"o que são essas
+ * tarefas S? elas não dizem nada c nada"*.
+ *
+ * ## Como o código sobrevive
+ *
+ * O agente reescreve `todos` inteiro a cada reporte, então o código não pode
+ * viver só no item — viveria uma escrita. A cada mesclagem, a tarefa NOVA
+ * ganha o próximo número do contador do job (`seqTarefa`, que só cresce), e a
+ * tarefa que já existia recupera o seu pelo texto, igual ao carimbo de
+ * conclusão faz. Número nunca é reaproveitado: reciclar faria uma conversa
+ * antiga apontar para a coisa errada.
+ *
+ * O formato de exibição é dele: `produto10_sprint01`. Aqui, `s01`, `s02`, e a
+ * tela junta com o código do item de backlog quando a frente casa
+ * (`CC-104_s01`) ou com a sigla do projeto quando não casa.
+ */
+function numerarTarefas(current, patch) {
+  if (!Array.isArray(patch.todos)) return null
+  const antigos = new Map()
+  for (const t of current.todos || []) {
+    if (t && typeof t === 'object' && t.text && t.codigo) antigos.set(t.text, t.codigo)
+  }
+  let seq = Number(current.seqTarefa) || antigos.size
+  const todos = patch.todos.map((t) => {
+    const obj = typeof t === 'string' ? { text: t } : { ...t }
+    if (!obj.text) return t
+    obj.codigo = antigos.get(obj.text) || `s${String((seq += 1)).padStart(2, '0')}`
+    return obj
+  })
+  return { todos, seqTarefa: seq }
+}
+
 export function mergeMeta(current, patch) {
   const feitoEm = marcarConclusoes(current, patch)
-  const next = { ...current, ...patch }
+  const numerado = numerarTarefas(current, patch)
+  const next = { ...current, ...patch, ...(numerado || {}) }
   if (feitoEm) next.feitoEm = feitoEm
   for (const k of Object.keys(next)) if (next[k] === null) delete next[k]
   return next

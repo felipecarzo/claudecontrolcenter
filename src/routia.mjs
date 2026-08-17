@@ -84,6 +84,28 @@ Preciso mexer em \`arquivo.ts\` porque [motivo]. Aguardando o dono da rota.
  * ter rota real marcada, e apagar isso por engano é pior que não automatizar
  * nada. `pastas` explícito vence o chute de `detectarPastas`.
  */
+/**
+ * CC-115 — o retrato das rotas de um projeto, para a tela de módulos.
+ * Ligado = o arquivo existe. Não há "desligar" por clique de propósito:
+ * desligar seria apagar `docs/ROTAS-ATIVAS.md`, que carrega o histórico de
+ * quem fechou o quê — destruir dado do projeto não pode ser um clique.
+ */
+export function situacaoRotas(root) {
+  const arquivo = path.join(root, 'docs', 'ROTAS-ATIVAS.md')
+  let texto = null
+  try { texto = fs.readFileSync(arquivo, 'utf8') } catch { return { ligado: false } }
+  let total = 0
+  let ocupadas = 0
+  // uma linha de tabela por rota; 🔴 é ocupada, 🟢 é livre — o mesmo par que
+  // o protocolo manda usar, e o split tolera CRLF (armadilha já paga)
+  for (const linha of texto.split(/\r?\n/)) {
+    if (!/^\|\s*[^|]*`[^`]+`/.test(linha)) continue
+    total++
+    if (linha.includes('🔴')) ocupadas++
+  }
+  return { ligado: true, total, ocupadas }
+}
+
 export function instalarRotas(root, { pastas } = {}) {
   const arquivo = path.join(root, 'docs', 'ROTAS-ATIVAS.md')
   if (fs.existsSync(arquivo)) return { arquivo, acao: 'ja-existe' }

@@ -9,6 +9,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { projectOf } from './jobs.mjs'
 import { hookDe } from './hooksCatalogo.mjs'
+/* Importação normal, e não `await import()`: `hookEnabled` é síncrono e é
+   chamado por 32 hooks; torná-lo async mudaria a assinatura de todos. Não há
+   ciclo, porque nem `framework.mjs` nem `frameworkDisco.mjs` importam este
+   arquivo (conferido antes de escrever). */
+import { vigente as vigenteNoFramework } from './framework.mjs'
+import { acharRaiz as acharRaizFramework, ler as lerEstadoFramework } from './frameworkDisco.mjs'
 import { casaClaude } from './platform.mjs'
 
 // via casaClaude(): era a armadilha do CONFIG_FILE nao isolado, que ja fez um
@@ -334,9 +340,91 @@ export function removerCalendario(id) {
  * Hook desconhecido (fora do catálogo) volta `false`: mais seguro presumir
  * desligado do que agir por um id que não se sabe o que é.
  */
-export function hookEnabled(id, cfg = readConfig()) {
-  if (id in (cfg.hooks || {})) return !!cfg.hooks[id]
-  return hookDe(id)?.padrao ?? false
+/**
+ * CC-115 — a que projeto pertence um diretório. Delegado ao `projectOf`, que
+ * já é como o painel inteiro dá nome a projeto: duas contas para a mesma
+ * pergunta acabariam com o interruptor desligando um nome e a tela mostrando
+ * outro.
+ */
+export function projetoDe(dir) {
+  return projectOf(path.resolve(dir || process.cwd())).project
+}
+
+/** O módulo está ligado neste projeto? Só o desligamento é gravado (`false`);
+ *  religar apaga a entrada, o padrão é ligado — o mesmo desenho da taxa. */
+export function moduloLigado(modulo, projeto, cfg = readConfig()) {
+  return (cfg.modulosProjeto || {})[projeto]?.[modulo] !== false
+}
+
+export function setModuloProjeto(projeto, modulo, on) {
+  const cfg = readConfig()
+  const tudo = { ...cfg.modulosProjeto }
+  const doProjeto = { ...tudo[projeto] }
+  if (on) delete doProjeto[modulo]
+  else doProjeto[modulo] = false
+  if (Object.keys(doProjeto).length) tudo[projeto] = doProjeto
+  else delete tudo[projeto]
+  const novo = { ...cfg, modulosProjeto: tudo }
+  if (!Object.keys(tudo).length) delete novo.modulosProjeto // arquivo enxuto: só o desligado mora nele
+  writeConfig(novo)
+  return moduloLigado(modulo, projeto, novo)
+}
+
+/**
+ * `dir` é o que dá o desligamento por projeto (CC-115): todo hook pergunta a
+ * partir do diretório em que roda, então o módulo desligado num projeto cala
+ * o grupo inteiro lá, e só lá. As telas que mostram o interruptor GLOBAL
+ * passam `dir: null` de propósito — exibir o estado de um projeto por acaso
+ * (o cwd do painel) seria mentira silenciosa.
+ */
+export function hookEnabled(id, cfg = readConfig(), dir = process.cwd()) {
+  const global = id in (cfg.hooks || {}) ? !!cfg.hooks[id] : (hookDe(id)?.padrao ?? false)
+  if (!dir) return global
+
+  /* Regra dele em 17/08: **se tem função bloqueando, entra como framework.**
+     Então o modo (ou o perfil) do projeto manda, nesta ordem:
+
+     1. trava EXIGIDA pelo modo vale mesmo desligada em outro lugar. É o que faz
+        um perfil ser um perfil: escolher "Designer" liga o print obrigatório
+        sem ele ter que caçar interruptor.
+     2. trava DESLIGADA pelo modo cala, e isso é escolha declarada, não defeito.
+     3. sem modo dizendo nada, valem o interruptor global e o grupo do projeto.
+
+     A leitura do framework é preguiçosa e falha aberta: se o projeto não tem
+     framework, ou se a leitura quebrar, cai na regra antiga. Trava que depende
+     de um arquivo para existir não pode morrer quando o arquivo falta. */
+  const doModo = modoDoProjeto(dir)
+  if (doModo) {
+    if (doModo.exige.includes(id)) return true
+    if (doModo.desliga.includes(id)) return false
+  }
+
+  if (!global) return global
+  const modulo = hookDe(id)?.modulo
+  if (!modulo) return global
+  return moduloLigado(modulo, projetoDe(dir), cfg)
+}
+
+/* Cache por diretório: `hookEnabled` é chamado uma vez por hook em cada
+   disparo, e ler o estado do framework a cada chamada seria dezenas de leituras
+   de disco por turno. O processo de hook vive milissegundos, então cache de
+   processo é suficiente e nunca envelhece. */
+const CACHE_MODO = new Map()
+
+function modoDoProjeto(dir) {
+  const chave = path.resolve(dir)
+  if (CACHE_MODO.has(chave)) return CACHE_MODO.get(chave)
+  let resposta = null
+  try {
+    const raiz = acharRaizFramework(chave)
+    const estado = raiz ? lerEstadoFramework(raiz) : null
+    if (estado && estado.ligado !== false) {
+      const v = vigenteNoFramework(estado)
+      resposta = { exige: v.exige || [], desliga: v.desliga || [] }
+    }
+  } catch { resposta = null }
+  CACHE_MODO.set(chave, resposta)
+  return resposta
 }
 
 /** Igual quando o valor bate com o padrão do catálogo, a entrada some — arquivo enxuto. */

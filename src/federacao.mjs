@@ -24,10 +24,17 @@
  * calada, que faria parecer que o trabalho não existiu.
  */
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
+import { casaClaude } from './platform.mjs'
 
-export const DIR = path.join(os.homedir(), '.claude', 'control-center-federacao')
+/* `casaClaude()`, nunca `os.homedir()`: é o único lugar que resolve a pasta
+   `.claude`, e `CC_HOME` redireciona tudo para uma casa isolada. Achado em
+   17/08 ao tentar provar a tela de rotas de outra máquina com um pacote de
+   laboratório: a instância de teste continuava lendo a pasta REAL, então o
+   teste não podia funcionar e um pacote de mentira teria acabado no painel
+   dele. Função e não constante, porque `CC_HOME` pode mudar entre chamadas. */
+export const dirFederacao = () => path.join(casaClaude(), 'control-center-federacao')
+export const DIR = dirFederacao()
 
 /** Acima disto o pacote é recusado: 2 MB já é muito para um resumo de tela. */
 export const LIMITE_PACOTE = 2 * 1024 * 1024
@@ -67,8 +74,9 @@ export function validarPacote(bruto) {
 /** Escrita atômica, a mesma regra do `meta.json`: leitor concorrente nunca
  *  pode pegar arquivo pela metade. */
 export function gravarPacote(pacote) {
-  fs.mkdirSync(DIR, { recursive: true })
-  const alvo = path.join(DIR, `${pacote.maquina.id}.json`)
+  const dir = dirFederacao()
+  fs.mkdirSync(dir, { recursive: true })
+  const alvo = path.join(dir, `${pacote.maquina.id}.json`)
   const tmp = `${alvo}.tmp`
   fs.writeFileSync(tmp, JSON.stringify(pacote))
   fs.renameSync(tmp, alvo)
@@ -78,16 +86,17 @@ export function gravarPacote(pacote) {
 /** O que as outras máquinas mandaram. Arquivo corrompido é ignorado, nunca
  *  derruba a leitura das demais. */
 export function lerPacotes(now = Date.now()) {
+  const dir = dirFederacao()
   let arquivos = []
   try {
-    arquivos = fs.readdirSync(DIR).filter((f) => f.endsWith('.json'))
+    arquivos = fs.readdirSync(dir).filter((f) => f.endsWith('.json'))
   } catch {
     return []
   }
   const pacotes = []
   for (const f of arquivos) {
     try {
-      const p = JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8'))
+      const p = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
       if (!p?.maquina?.id) continue
       const idade = now - (p.recebidoEm || p.em || 0)
       pacotes.push({ ...p, idadeMs: idade, semContato: idade > SEM_CONTATO_MS })

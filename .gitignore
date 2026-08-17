@@ -9,3 +9,27 @@ abrir-control-center.vbs
 
 # fila de pedidos de rota: estado efemero do hook, nao e historico
 docs/.rotas-pedidos.json
+
+# modo por sessao e local desta maquina, nunca viaja (CC-116)
+.framework/sessoes/
+
+# 17/08: dentro do sandbox do Claude Code estes nomes existem na pasta como
+# dispositivos de caractere (/dev/null montado por cima), e apareciam como
+# arquivo novo no `git status`. Um `git add -A` distraido levaria lixo para o
+# repositorio publico. Nao sao arquivos do projeto e nunca serao.
+.bash_profile
+.bashrc
+.gitconfig
+.gitmodules
+.profile
+.ripgreprc
+.zprofile
+.zshrc
+# sem barra no fim: aqui dentro `.idea` e `.vscode` NÃO são pastas, são
+# dispositivos de caractere, e `.idea/` não casava com eles
+.idea
+.vscode
+.mcp.json
+
+# resto de script que reescreve documento em lote
+*.md.bak

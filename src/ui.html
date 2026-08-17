@@ -5,26 +5,70 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agent Cockpit</title>
 <style>
-  :root {
-    --bg: #0a0c10;
-    --surface: #11141a;
-    --surface-2: #161a21;
-    --line: #1e232c;
-    --line-soft: #171b22;
-    --fg: #e6edf3;
-    --dim: #8b95a5;
-    --faint: #5a6472;
+  /* ---------- a paleta, refeita em 17/08 por causa de fadiga visual ----------
 
-    --working: #4da3ff;
-    --waiting: #f0a92b;
-    --failed:  #ff5c57;
-    --done:    #3fd07f;
-    --idle:    #5a6472;
+     Ele perdeu um dia de trabalho: "minha visao ta cansada desse modo que ta,
+     preciso muito de algo que nao sobrecarregue a minha vista".
+
+     Isto nao e gosto, e ergonomia, e a medicao explica o cansaco inteiro:
+
+       contraste do texto     16,6   (o limite util e ~10; acima disso o texto
+                                      claro brilha sobre o fundo escuro e sangra
+                                      nas bordas, e piora com astigmatismo)
+       texto apagado           3,3   ABAIXO do minimo legivel de 4,5
+       fonte de codigo          46 usos, boa parte em texto corrido
+       caixa alta               45 usos
+       espacamento de letra     50 usos
+       linhas de 1px           110, contra 9 sombras
+
+     Cada item desses e um estimulo competindo. Caixa alta apaga a silhueta da
+     palavra, que e o que o olho usa para reconhecer sem soletrar; fonte de
+     largura fixa tira a mesma pista; e 110 fios finos obrigam o olho a separar
+     blocos por contorno em vez de por superficie.
+
+     As duas referencias que ele escolheu, e o que cada uma resolve: o painel do
+     Pierre da a paleta quente, papel em vez de branco clinico; o Lev4 da a
+     separacao por superficie e sombra, que e o que ele chamou de "linhas mais
+     gordinhas".
+
+     Todo tom abaixo foi conferido pela formula de contraste da WCAG. Texto
+     principal entre 9 e 11, secundario acima de 5, e NENHUM abaixo de 4,5. */
+  :root {
+    --bg: #212529;
+    --surface: #2a2f35;
+    --surface-2: #333940;
+    --line: #3a4047;
+    --line-soft: #2f353b;
+    --fg: #d6dade;
+    --dim: #a8b0b8;
+    /* 17/08, segunda medicao. O valor anterior (#868f98) so passava contra o
+       FUNDO. Sobre `surface`, que e o fundo de todo cartao, dava 4,11, e o
+       rodape do cartao (`.ct-pe`, o porque e a idade) e escrito nele. Medir
+       texto contra `bg` quando ele mora dentro de um cartao e medir o par
+       errado. Aqui: 5,39 sobre o fundo, 4,71 sobre o cartao. */
+    --faint: #909aa3;
+
+    --working: #6ba7e8;
+    --waiting: #d99a3c;
+    --failed:  #e07b72;
+    --done:    #5fb885;
+    /* 4,11 dentro do cartão na primeira versão, e era a cor de "na fila", o
+       estado da maioria dos itens. O erro foi medir tudo contra o fundo da
+       página quando quase todo texto mora dentro de uma superfície mais clara.
+       Aqui vai 5,15 no cartão e 5,89 no fundo. */
+    --idle:    #98a1aa;
 
     --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
-    /* Bahnschrift é a DIN que já vem no Windows: letra de sinalização
-       industrial. Variável — a largura condensada carrega a personalidade. */
+    /* A fonte de leitura, que passou a valer no texto corrido. A de codigo
+       ficou so onde o alinhamento de digito importa: numero, codigo de item,
+       caminho de arquivo. Largura fixa em frase e mais lenta de ler, porque
+       tira do olho a pista da forma da palavra. */
+    --texto: ui-sans-serif, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
     --label: Bahnschrift, "Segoe UI Variable Display", "Segoe UI", sans-serif;
+    /* Sombra no lugar de contorno: separa sem desenhar mais uma linha na tela.
+       E o que o Lev4 faz, e o motivo de ele parecer mais suave que o Pierre. */
+    --sombra: 0 1px 2px rgba(0, 0, 0, .28), 0 4px 12px rgba(0, 0, 0, .18);
+    --raio: 8px;
   }
   /* ---------- temas ----------
      Cada tema redefine as mesmas variáveis, e nada mais. `data-tema` é sempre
@@ -47,99 +91,36 @@
   }
 
   /* Escuro neutro, contraste alto: o `dim` sobe de 4,0 para 7,2 sobre o fundo. */
-  :root[data-tema="carvao"] {
-    color-scheme: dark;
-    --bg: #101215;
-    --surface: #191c21;
-    --surface-2: #22262d;
-    --line: #333941;
-    --line-soft: #262a31;
-    --fg: #f2f5f8;
-    --dim: #b6bec9;
-    --faint: #8d97a3;
-    --acento: #6cb6ff;
-    --working: #6cb6ff;
-    --waiting: #f5b544;
-    --failed:  #ff7b72;
-    --done:    #57d98a;
-    --idle:    #7d8590;
-  }
-
-  /* Quente e escuro. O âmbar do acento é o mesmo tom do "esperando", então
-     aqui o estado de espera puxa para o vermelho para não sumir no tema. */
-  :root[data-tema="ambar"] {
-    color-scheme: dark;
-    --bg: #14100b;
-    --surface: #1e1811;
-    --surface-2: #292117;
-    --line: #3d3223;
-    --line-soft: #2b2419;
-    --fg: #f7efe3;
-    --dim: #c4b49c;
-    --faint: #8f8270;
-    --acento: #ff9f45;
-    --working: #ff9f45;
-    --waiting: #ffd23f;
-    --failed:  #ff7a6b;
-    --done:    #7fd17f;
-    --idle:    #8f8270;
-  }
-
-  :root[data-tema="floresta"] {
-    color-scheme: dark;
-    --bg: #0b1210;
-    --surface: #121b18;
-    --surface-2: #1a2521;
-    --line: #24352e;
-    --line-soft: #1a2723;
-    --fg: #e9f3ee;
-    --dim: #a6bdb2;
-    --faint: #7a9086;
-    --acento: #4fd6a0;
-    --working: #4fd6a0;
-    --waiting: #f0b429;
-    --failed:  #ff7a6b;
-    --done:    #8fe388;
-    --idle:    #7a9086;
-  }
-
-  /* Claro de alto contraste. `dim` a 6,3 e `faint` a 4,6 sobre o branco —
-     no claro anterior, `faint` ficava em 2,9 e sumia. */
+  /* Claro: o papel do Pierre, com o texto suavizado. O claro anterior era
+     branco puro com texto quase preto, contraste 17,4 — o mesmo problema do
+     escuro, do outro lado. Aqui o texto fica em 9,6 e nenhum tom cai abaixo
+     de 4,5. */
   :root[data-tema="papel"] {
     color-scheme: light;
-    --bg: #ffffff;
-    --surface: #f4f6f8;
-    --surface-2: #e8ecf0;
-    --line: #c3ccd6;
-    --line-soft: #e2e7ec;
-    --fg: #12161c;
-    --dim: #4a545f;
-    --faint: #6b7681;
-    --acento: #0757ba;
-    --working: #0757ba;
-    --waiting: #8a5a00;
-    --failed:  #c0202c;
-    --done:    #14702f;
-    --idle:    #626c76;
-  }
+    --bg: #f2ede2;
+    --surface: #fbf8f1;
+    --surface-2: #f6f1e6;
+    --line: #ddd4c4;
+    --line-soft: #e8e1d4;
+    --fg: #413a31;
+    --dim: #635a4e;
+    --faint: #6f675b;
+    /* Era #9a6b16, que reprovava como TEXTO: 4,01 sobre o fundo e 4,41 sobre o
+       cartao. E acento aqui nao e so anel de foco, e o codigo do item
+       (`.ct-cod.real`) em todo cartao. Este valor e o `--ambar-fundo` do
+       proprio Pierre, que ja tinha sido conferido la pelo mesmo motivo:
+       4,88 sobre o fundo, 5,38 sobre o cartao. */
+    --acento: #8f5b1e;
 
-  /* Claro quente, para quem acha o branco puro duro à noite. */
-  :root[data-tema="areia"] {
-    color-scheme: light;
-    --bg: #fbf7f0;
-    --surface: #f3ede2;
-    --surface-2: #eae2d3;
-    --line: #cfc4b0;
-    --line-soft: #e4dccd;
-    --fg: #1b1610;
-    --dim: #554d40;
-    --faint: #786f5f;
-    --acento: #a8501a;
-    --working: #a8501a;
-    --waiting: #86600a;
-    --failed:  #b5232b;
-    --done:    #2f6a2a;
-    --idle:    #786f5f;
+    --working: #2a6ba8;
+    --waiting: #845a0e;
+    --failed:  #a63f2b;
+    --done:    #2f6742;
+    /* Era #8d8477: 3,16 sobre o fundo, a pior medida do painel inteiro, e logo
+       na cor de "na fila", que e o estado da maioria dos quadradinhos. Agora
+       4,78. No sol, na rua, era esta que sumia primeiro. */
+    --idle:    #6f6759;
+    --sombra: 0 1px 2px rgba(65, 58, 49, .10), 0 4px 12px rgba(65, 58, 49, .06);
   }
 
   h1, .count, .tab, thead th, tr.zone > td, .cat, h3, .col-head, .big {
@@ -150,7 +131,7 @@
   html { color-scheme: dark; }
   body {
     margin: 0; background: var(--bg); color: var(--fg);
-    font: 13px/1.45 var(--mono); -webkit-font-smoothing: antialiased;
+    font: 15px/1.6 var(--texto); -webkit-font-smoothing: antialiased;
     display: flex; height: 100vh; overflow: hidden;
   }
   [hidden] { display: none !important; }
@@ -185,8 +166,8 @@
   }
   :focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
   h3 {
-    margin: 0 0 6px; font: 700 10px/1 var(--label);
-    letter-spacing: .16em; text-transform: uppercase; color: var(--faint);
+    margin: 0 0 6px; font: 700 11.5px/1 var(--label);
+    letter-spacing: .07em; text-transform: uppercase; color: var(--faint);
   }
 
   /* ---------- topo ---------- */
@@ -200,12 +181,12 @@
      `nowrap` mais caixa alta cortavam a ultima letra. Mesma armadilha ja
      registrada com <header> e <footer> dentro do cartao de agente. */
   #painel > header h1 {
-    font: 700 20px/1 var(--label); letter-spacing: .26em;
+    font: 700 20px/1 var(--label); letter-spacing: .09em;
     text-transform: uppercase; margin: 0; white-space: nowrap;
   }
   .counts { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; }
   .count {
-    font: 700 12px/1 var(--label); letter-spacing: .12em; text-transform: uppercase;
+    font: 700 12px/1 var(--label); letter-spacing: .05em; text-transform: uppercase;
     color: var(--faint); display: flex; align-items: baseline; gap: 6px;
   }
   .count b { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--dim); }
@@ -224,7 +205,7 @@
   .tab {
     background: none; border: 0; border-bottom: 2px solid transparent;
     padding: 8px 14px; cursor: pointer; color: var(--faint); white-space: nowrap;
-    font: 700 12px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+    font: 700 12px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
   }
   .tab:hover { color: var(--dim); }
   .tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--acento); }
@@ -242,34 +223,19 @@
   .tab-grupos > .grupo {
     background: none; border: 0; border-bottom: 2px solid transparent;
     padding: 7px 14px; cursor: pointer; color: var(--faint); white-space: nowrap;
-    font: 700 13px/1 var(--label); letter-spacing: .18em; text-transform: uppercase;
+    font: 700 13px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
   }
   .tab-grupos > .grupo::before { content: none; }
   .tab-grupos > .grupo:hover { color: var(--dim); }
   .tab-grupos > .grupo[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--acento); }
   .tab-grupos > .grupo .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); margin-left: 6px; font-size: 11px; }
-  /* CC-77: um nivel so no estreito. O <select> nativo abre o seletor do
-     proprio telefone, alcanca as 15 abas num toque e nao rola de lado — as
-     duas fileiras viravam quatro no celular. No largo ele nao existe. */
-  #nav-uma { display: none; }
-  #nav-uma select {
-    width: 100%; padding: 10px 34px 10px 12px; border-radius: 8px; cursor: pointer;
-    background: var(--surface); color: var(--fg); border: 1px solid var(--line);
-    font: 700 13px/1.2 var(--label); letter-spacing: .1em; text-transform: uppercase;
-    /* a seta nativa some no tema escuro (ela e desenhada na cor do sistema, e o
-       fundo aqui e quase preto). Desenhada a mao para o campo nao parecer um
-       rotulo sem acao — no print de 390px ele lia como caixa morta. */
-    appearance: none; -webkit-appearance: none;
-    background-image: linear-gradient(45deg, transparent 50%, var(--dim) 50%),
-                      linear-gradient(135deg, var(--dim) 50%, transparent 50%);
-    background-position: right 17px center, right 12px center;
-    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
-  }
-  #nav-uma select:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
+  /* a barra de baixo só existe no estreito (modo aplicativo, 17/08). No monitor
+     a navegação continua nas duas fileiras do topo, que é a ordem dele. */
+  #app-bar { display: none; }
   /* a aba dentro do grupo é secundária: sem sublinhado, marcada por fundo */
   .tab-abas .tab {
     border-bottom: 0; border-radius: 999px; padding: 5px 11px;
-    font-size: 10.5px; letter-spacing: .1em;
+    font-size: 11.5px; letter-spacing: .1em;
   }
   .tab-abas .tab[aria-selected="true"] { background: var(--faint); color: var(--fg); }
 
@@ -310,6 +276,17 @@
      corta o player no print dele. Aqui ela desce para uma linha própria e rola
      dentro de si mesma, em vez de contaminar o painel. */
   @container (max-width: 640px) {
+    /* A resposta da tela estava a 255px do topo num aparelho de 390: o
+       primeiro terço da primeira dobra era titulo, contagem de agentes, filtro,
+       seletor e uso de processador. Nada disso responde a pergunta que ele faz
+       ao abrir o painel.
+
+       As duas coisas mais caras somem no estreito, e nenhuma se perde: a
+       contagem de agentes tem tela propria, e processador e memoria tambem.
+       No monitor as duas continuam onde estavam, porque la sobra espaco. */
+    #painel > header .counts { display: none; }
+    #painel > header #maquina { display: none; }
+    #painel > header { padding-top: 10px; }
     .linha-abas { flex-wrap: wrap; }
     .linha-abas > .modulos {
       margin-left: 0; width: 100%; overflow-x: auto; overscroll-behavior-x: contain;
@@ -318,12 +295,67 @@
     /* CC-77: no estreito a navegacao vira UM nivel. As duas fileiras existem
        no HTML e apenas trocam de lugar, para o CSS decidir sozinho — nao ha
        listener de resize nem segunda conta de "qual aba esta no palco". */
-    .tab-grupos, .tab-abas { display: none; }
+    /* MODO APLICATIVO, 17/08. Referências dele: o painel do Pierre (paleta de
+       papel) e o Lev4 (linhas gordinhas, sombra em vez de fio). A ordem dele
+       era clara: "no computador pode ficar do jeito que está", então tudo isto
+       vive dentro do estreito e nada muda no monitor.
+
+       O `<select>` de uma linha sai de cena aqui: ele resolvia a largura, mas
+       o menu do sistema fecha sozinho no telefone (queixa medida em 16/08) e
+       um popup nativo nunca vai ter cara de aplicativo. */
+    .tab-grupos { display: none; }
+
+    /* as abas do grupo viram pastilhas de dedo, rolando na horizontal */
+    .tab-abas {
+      display: flex; flex-wrap: nowrap; gap: 8px; margin-top: 0;
+      overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+      padding: 2px 0 4px;
+    }
+    .tab-abas::-webkit-scrollbar { display: none; }
+    .tab-abas .tab {
+      flex: 0 0 auto; padding: 8px 14px; border-radius: 999px; font-size: 14px;
+      border: 1px solid var(--faint); background: var(--surface); color: var(--dim);
+      border-bottom-color: var(--faint);
+    }
+    .tab-abas .tab[aria-selected="true"] {
+      background: var(--acento); border-color: var(--acento); color: var(--bg); font-weight: 600;
+    }
+    .tab-abas .tab .n { color: inherit; opacity: .85; }
+
+    /* a barra dos quatro grupos, colada embaixo */
+    #app-bar {
+      /* Sem margem negativa: ela sangrava 14px para fora do painel e o gate do
+         estreito acusou na primeira medição. A barra vai da borda à borda do
+         conteúdo, e o fundo é suficiente para ela parecer uma faixa. */
+      display: flex; position: sticky; bottom: 0; z-index: 25;
+      margin: 8px 0 0; border-radius: 14px 14px 0 0;
+      padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+      background: var(--surface); box-shadow: 0 -2px 12px rgba(0, 0, 0, .28);
+    }
+    #app-bar button {
+      flex: 1; position: relative; background: none; border: none; color: var(--dim);
+      font: inherit; font-size: 12px; padding: 6px 0; border-radius: 12px;
+      display: grid; gap: 2px; justify-items: center;
+    }
+    #app-bar button .ico { font-size: 21px; line-height: 1; }
+    #app-bar button[aria-selected="true"] { color: var(--acento); font-weight: 700; }
+    /* a contagem é aviso, não enfeite: usa a cor de "espera você" */
+    #app-bar button .n {
+      position: absolute; transform: translate(15px, -5px);
+      background: var(--waiting); color: var(--bg); border-radius: 999px;
+      font-size: 10px; min-width: 16px; height: 16px; line-height: 16px;
+      font-weight: 700; text-align: center; padding: 0 3px;
+    }
+    /* A barra é `sticky`, então enquanto há conteúdo abaixo ela FICA EM CIMA
+       dele: sem esta folga, a última fileira de quadradinhos ficava cortada
+       pela metade (visto no print de 390px, não deduzido). A altura é a da
+       barra (ícone de 21px, rótulo de 12px, 12px de respiro) mais a faixa do
+       aparelho. */
+    #main { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
     /* `#tabs` e filho de um flex e nasce com `min-width: auto`, ou seja, com a
        largura do conteudo — as 15 abas somavam 480px num painel de 390, e o
        <select> herdava isso e vazava. Medido com o navegador, nao chutado. */
     #tabs { flex: 1 1 100%; min-width: 0; }
-    #nav-uma { display: block; width: 100%; }
     /* CC-77: as quatro telas que o `test-estreito.mjs` mediu vazando em 390px.
        Todas pelo mesmo motivo — grade de coluna FIXA, dimensionada para o
        monitor. Nenhuma some: elas viram lista, que é o formato do telefone. */
@@ -356,16 +388,16 @@
   .hw { display: grid; grid-template-columns: auto 1fr; gap: 2px 7px; align-content: center; }
   .hw-rot {
     grid-row: span 2; align-self: center;
-    font: 700 9px/1 var(--label); letter-spacing: .1em; text-transform: uppercase;
+    font: 700 11px/1 var(--label); letter-spacing: .1em; text-transform: uppercase;
     color: var(--faint);
   }
   .hw-nums { display: flex; align-items: baseline; gap: 5px; }
   .hw-nums b { font: 700 13px/1 var(--mono); font-variant-numeric: tabular-nums; }
-  .hw-nums i { font-style: normal; font-size: 9px; color: var(--faint); margin-left: 1px; }
+  .hw-nums i { font-style: normal; font-size: 11px; color: var(--faint); margin-left: 1px; }
   .hw-temp { color: var(--dim); }
   .hw-barra { grid-column: 2; display: block; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
   .hw-barra > i { display: block; height: 100%; background: currentColor; border-radius: 2px; }
-  .hw-det { grid-column: 2; font-size: 9px; color: var(--faint); white-space: nowrap; }
+  .hw-det { grid-column: 2; font-size: 11px; color: var(--faint); white-space: nowrap; }
   .hw.n-baixo { color: var(--done); } .hw.n-medio { color: var(--waiting); }
   .hw.n-alto { color: var(--failed); }
 
@@ -381,7 +413,7 @@
      o zoom do navegador — que estreita o bloco pelos @container — ele vaza
      para fora do cartão em vez de encolher. */
   .p-baixo { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .p-semvol { font-size: 9px; }
+  .p-semvol { font-size: 11px; }
 
   /* Apertado, some primeiro o detalhe do hardware, depois o rótulo do app, e
      por último a GPU. As abas nunca cedem. */
@@ -395,7 +427,7 @@
   }
   @container painel (max-width: 1080px) { #maquina .hw:nth-child(3) { display: none; } }
   .p-app {
-    font: 700 9px/1 var(--label); letter-spacing: .14em; text-transform: uppercase;
+    font: 700 11px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
     color: var(--faint); flex: none;
     background: none; border: 0; padding: 3px 0; cursor: default;
   }
@@ -420,10 +452,10 @@
     flex: 1 1 auto; width: auto; min-width: 28px; accent-color: var(--acento);
   }
   .p-vol > b {
-    flex: none; font-size: 10px; color: var(--dim);
+    flex: none; font-size: 11.5px; color: var(--dim);
     font-variant-numeric: tabular-nums; min-width: 30px; text-align: right;
   }
-  .p-semvol { flex: none; font-size: 9px; }
+  .p-semvol { flex: none; font-size: 11px; }
   @container painel (max-width: 900px) {
     .linha-abas { flex-wrap: wrap; }
     .player { width: 100%; margin: 2px 0 8px; }
@@ -438,19 +470,19 @@
     background: var(--surface);
   }
   .u-rot {
-    font: 700 9px/1 var(--label); letter-spacing: .14em; text-transform: uppercase;
+    font: 700 11px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
     color: var(--faint);
   }
   .u-barra { display: block; width: 64px; height: 7px; background: var(--line); border-radius: 4px; overflow: hidden; }
   .u-barra > i { display: block; height: 100%; background: currentColor; border-radius: 4px; }
   .u-item b { font: 700 14px/1 var(--mono); font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
   /* o tempo até zerar muda a decisão: 90% faltando 10min não é 90% faltando 3 dias */
-  .u-reset { color: var(--faint); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .u-reset { color: var(--faint); font-size: 11.5px; font-variant-numeric: tabular-nums; }
   /* passando de 85% a informação vira alerta, não estatística */
   .u-item.n-alto { border-color: var(--failed); }
   .u-item.n-baixo { color: var(--done); } .u-item.n-medio { color: var(--waiting); }
   .u-item.n-alto { color: var(--failed); }
-  .u-velho { color: var(--faint); font-size: 10px; }
+  .u-velho { color: var(--faint); font-size: 11.5px; }
 
   .ord { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0 14px; }
   .ord .dir { color: var(--acento); }
@@ -460,7 +492,7 @@
   .f-head button {
     background: none; border: 0; padding: 0; cursor: pointer; display: flex;
     align-items: baseline; gap: 8px;
-    font: 700 13px/1 var(--label); letter-spacing: .22em; text-transform: uppercase;
+    font: 700 13px/1 var(--label); letter-spacing: .09em; text-transform: uppercase;
   }
   .f-head .n { color: var(--faint); font-family: var(--mono); letter-spacing: 0; font-weight: 400; }
   .f-head .rule { flex: 1; height: 1px; background: var(--line); }
@@ -496,7 +528,12 @@
     color: var(--fg); font-size: 13px; font-weight: 600; line-height: 1.3;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
-  .c-proj { margin: 0; color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Quebra em vez de cortar. A linha carregava reticências com nowrap, e a
+     frente do agente (texto livre, pode ter 50 caracteres) saía CORTADA no
+     celular. Pega pelo gate do estreito em 17/08 e medida no navegador: o span
+     herdava o nowrap do pai e o overflow escondia o resto. Nome de coisa nunca
+     é cortado; caminho comprido quebra no meio, que é feio e legível. */
+  .c-proj { margin: 0; color: var(--dim); font-size: 11px; overflow-wrap: anywhere; }
   .c-nota {
     margin: 1px 0 0; color: var(--faint); font-size: 11px; line-height: 1.35;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -510,7 +547,7 @@
   }
   .card > footer .path { font-size: 11px; }
   .c-prog { display: flex; align-items: center; gap: 6px; min-width: 0; }
-  .c-pontos { color: var(--done); letter-spacing: 1px; font-size: 10px; }
+  .c-pontos { color: var(--done); letter-spacing: 1px; font-size: 11.5px; }
   .c-frac { color: var(--dim); font-variant-numeric: tabular-nums; }
   .c-barra { display: block; width: 44px; height: 3px; background: var(--line); border-radius: 2px; }
   .c-barra > i { display: block; height: 100%; background: var(--done); border-radius: 2px; }
@@ -539,7 +576,7 @@
   .note { color: var(--faint); font-size: 12px; margin-top: 2px; max-width: 74ch; }
   .note.warn { color: var(--waiting); } .note.bad { color: var(--failed); }
   .cat {
-    font: 700 9px/1.6 var(--label); letter-spacing: .1em; text-transform: uppercase;
+    font: 700 11px/1.6 var(--label); letter-spacing: .1em; text-transform: uppercase;
     color: var(--dim); border: 1px solid var(--line); border-radius: 2px;
     padding: 0 5px; flex: none;
   }
@@ -579,7 +616,7 @@
   .d-close:hover { color: var(--fg); }
   .d-status {
     display: inline-flex; align-items: center; gap: 7px;
-    font: 700 11px/1 var(--label); letter-spacing: .18em; text-transform: uppercase;
+    font: 700 11px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
   }
   .d-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--dim); font-size: 12px; }
   .d-meta span:not(:last-child)::after { content: " ·"; color: var(--faint); }
@@ -591,7 +628,7 @@
   }
   details.lvl > summary {
     cursor: pointer; color: var(--faint); list-style: none;
-    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+    font: 700 11.5px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
     padding: 8px 0; border-top: 1px solid var(--line);
   }
   details.lvl > summary::-webkit-details-marker { display: none; }
@@ -611,7 +648,7 @@
 
   .col-head {
     display: flex; align-items: baseline; gap: 8px; padding: 14px 0 8px;
-    font: 700 13px/1 var(--label); letter-spacing: .2em; text-transform: uppercase;
+    font: 700 13px/1 var(--label); letter-spacing: .09em; text-transform: uppercase;
   }
   .col-head .n { font-family: var(--mono); letter-spacing: 0; color: var(--faint); }
 
@@ -653,7 +690,7 @@
   .item.done { border-left-color: var(--line); }
   /* CC-36: explicação do opencode, embaixo do to-do correspondente */
   .todo-explicacao { margin: 0 0 4px 26px; font-size: 11px; color: var(--faint); }
-  .todo-explicacao code { font-size: 10px; }
+  .todo-explicacao code { font-size: 11.5px; }
   .item:hover { background: var(--surface); }
   .item > input[type=checkbox] {
     flex: none; margin: 0; position: relative; top: 2px; accent-color: var(--done); cursor: pointer;
@@ -688,7 +725,7 @@
   .ck-proj.p-working { border-left-color: var(--working); }
   .ck-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .ck-nome {
-    font: 700 14px/1 var(--label); letter-spacing: .14em; text-transform: uppercase;
+    font: 700 14px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
     background: none; border: 0; color: var(--fg); cursor: pointer; padding: 0;
   }
   .ck-nome:hover { color: var(--acento); }
@@ -711,7 +748,7 @@
   .ck-frios { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
   /* CC-06: só aparece com muitos agentes no mesmo projeto (>4) */
   .ck-rota { margin: 6px 0; }
-  .ck-rota > .dim { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+  .ck-rota > .dim { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; }
   .ck-rota .ck-frios { margin: 3px 0 0; }
   .ck-frio {
     display: inline-flex; align-items: center; gap: 5px; font-size: 11px;
@@ -730,12 +767,24 @@
   .ck-fw .fw-frase { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46ch; }
   .fw-selo {
     display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px;
-    border: 1px solid var(--faint); color: var(--dim); font-size: 10.5px; white-space: nowrap;
+    border: 1px solid var(--faint); color: var(--dim); font-size: 11.5px; white-space: nowrap;
   }
   .fw-selo.fw-off { border-style: dashed; }
+  /* CC-115: os grupos de proteção por projeto. Ligado é discreto (o padrão);
+     desligado grita em cor de falha, porque projeto sem proteção é exceção
+     que precisa saltar aos olhos de relance. Fonte 12px, nunca menos: é botão
+     de dedo no telefone, não etiqueta. */
+  .fw-mods { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .fw-mod {
+    display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--faint); background: none; color: var(--dim);
+    font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  .fw-mod:hover { border-color: var(--dim); }
+  .fw-mod.off { border-color: var(--failed); color: var(--failed); border-style: dashed; font-weight: 600; }
   .fw-modo {
     background: var(--bg); color: var(--fg); border: 1px solid var(--faint);
-    border-radius: 999px; font-size: 10.5px; padding: 1px 4px;
+    border-radius: 999px; font-size: 11.5px; padding: 1px 4px;
   }
 
   /* CC-47: de qual máquina é a linha. Discreto de propósito: é contexto, não
@@ -743,7 +792,7 @@
      porque sumir calada faria parecer que o trabalho nunca existiu. */
   .selo-maq {
     display: inline-flex; align-items: center; padding: 0 6px; border-radius: 999px;
-    border: 1px solid var(--faint); color: var(--dim); font-size: 10px;
+    border: 1px solid var(--faint); color: var(--dim); font-size: 11.5px;
     white-space: nowrap; margin-left: 6px;
   }
   .selo-maq.frio { border-style: dashed; opacity: .65; }
@@ -852,7 +901,7 @@
      num botao de 85px: quebrada, ela vira "PENDENCIA" mais um "S" solto, que foi
      o que a primeira medida entregou. */
   .bl-vista i {
-    font: 700 8px/1.25 var(--label); letter-spacing: .04em; text-transform: uppercase;
+    font: 700 11px/1.25 var(--label); letter-spacing: .04em; text-transform: uppercase;
     font-style: normal; min-width: 0; overflow-wrap: anywhere;
   }
   .bl-vista:hover { border-color: var(--acento); }
@@ -871,10 +920,10 @@
   .bl-sec { margin: 0 0 26px; scroll-margin-top: 64px; }
   .bl-h { display: flex; align-items: center; gap: 9px; margin: 0 0 11px; flex-wrap: wrap; }
   .bl-h .bl-h-t {
-    font: 700 12px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; color: var(--fg);
+    font: 700 12px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; color: var(--fg);
   }
   .bl-h .bl-h-n {
-    font: 700 10.5px/1 var(--mono); color: var(--dim); flex: none;
+    font: 700 11.5px/1 var(--mono); color: var(--dim); flex: none;
     border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px;
   }
   .bl-h .bl-h-s { font-size: 11px; color: var(--faint); min-width: 0; overflow-wrap: anywhere; }
@@ -937,11 +986,11 @@
   /* Primeira linha do cartao: etiqueta a esquerda, estado a direita. `auto`
      aqui e uma viagem de 300px, nao de 1800. */
   .ct-alto { display: flex; align-items: center; gap: 8px; min-height: 17px; }
-  .ct-cod { font: 700 10.5px/1 var(--mono); letter-spacing: .04em; color: var(--faint); }
+  .ct-cod { font: 700 11.5px/1 var(--mono); letter-spacing: .04em; color: var(--faint); }
   .ct-cod.real { color: var(--acento); }
   .ct-selo {
     margin-left: auto; flex: none;
-    font: 700 8.5px/1 var(--label); letter-spacing: .1em; text-transform: uppercase;
+    font: 700 11px/1 var(--label); letter-spacing: .1em; text-transform: uppercase;
     padding: 4px 7px; border-radius: 999px; white-space: nowrap;
     border: 1px solid currentColor;
     background: color-mix(in srgb, currentColor 13%, transparent);
@@ -963,7 +1012,7 @@
   .ct-pe {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     margin-top: auto; padding-top: 8px;
-    font: 400 10px/1.25 var(--mono); color: var(--faint);
+    font: 400 11.5px/1.25 var(--mono); color: var(--faint);
   }
   .ct-porque { min-width: 0; overflow-wrap: anywhere; }
   .ct-idade { flex: none; white-space: nowrap; }
@@ -1006,7 +1055,7 @@
   .bl-sub-i { font-size: 12px; color: var(--fg); display: flex; gap: 6px; overflow-wrap: anywhere; }
   .bl-sub-i span { color: var(--working); flex: none; }
   .bl-cru {
-    font: 400 10px/1.4 var(--mono); color: var(--faint); overflow-wrap: anywhere; margin: 0;
+    font: 400 11.5px/1.4 var(--mono); color: var(--faint); overflow-wrap: anywhere; margin: 0;
   }
 
   /* Cabecalho de projeto no backlog, e de agente no sprint. Deixou de ser a
@@ -1019,18 +1068,124 @@
     min-width: 0; display: flex; align-items: center; gap: 7px;
     background: none; border: 0; padding: 4px 0; min-height: 32px; cursor: pointer;
     text-align: left; color: var(--dim);
-    font: 700 10.5px/1.2 var(--label); letter-spacing: .13em; text-transform: uppercase;
+    font: 700 11.5px/1.2 var(--label); letter-spacing: .05em; text-transform: uppercase;
   }
   span.bl-grupo-t { cursor: default; }
   .bl-grupo-t:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
   .bl-grupo-t b { color: var(--fg); font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
-  .bl-cara { flex: none; color: var(--faint); font-size: 9px; transition: transform .15s ease; }
+  .bl-cara { flex: none; color: var(--faint); font-size: 11px; transition: transform .15s ease; }
   .bl-grupo.aberto .bl-cara { transform: rotate(90deg); }
+  .bl-grupo-sub { font-style: normal; font-weight: 400; color: var(--faint); font-size: 11.5px; }
+  .bl-sub-cod { font: 600 11px/1 var(--mono); color: var(--acento); }
+  /* Dependência na linha do item, como na planilha dele: quem eu espero e quem
+     eu destravo. Âmbar espera, verde destrava, e a palavra vai junto da cor. */
+  .bl-dep { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 0; font-size: 11px; }
+  .bl-dep-t { color: var(--waiting); }
+  .bl-dep-d { color: var(--done); }
+  /* A tabela de rotas. No estreito as colunas empilham por linha, senão três
+     colunas em 366px viram letra de 8px, que é o piso que acabou de subir. */
+  /* ---- a planilha de tarefas (17/08) ----
+     Mesma linguagem da tabela de rotas: fio fino entre linhas, nada de grade
+     fechada. Fonte 13px, um passo acima da tabela de rotas, porque aqui o texto
+     da tarefa é para LER, não para bater o olho. */
+  .pl-rola { overflow-x: auto; overscroll-behavior-x: contain; }
+  .pl-tab { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pl-tab th {
+    text-align: left; font: 700 10px/1.4 var(--label); letter-spacing: .1em;
+    text-transform: uppercase; color: var(--faint); padding: 0 10px 6px 0;
+    border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  .pl-tab td { padding: 9px 10px 9px 0; vertical-align: top; }
+  .pl-tab tbody tr { border-bottom: 1px solid var(--line-soft); }
+  .pl-id code, .pl-dep code, .pl-des code { font-size: 11.5px; color: var(--dim); white-space: nowrap; }
+  /* `table-layout: fixed` e largura declarada em cada coluna. Sem isso o
+     navegador distribui pelo conteúdo: a coluna Task quebrava em três linhas
+     enquanto sobrava espaço vazio à direita, porque a largura ia para quem
+     tinha texto longo por acaso (o assunto do agente). Medido no print de
+     17/08, e é a mesma armadilha das grades de coluna fixa herdada. */
+  .pl-tab { table-layout: fixed; }
+  /* As medidas saíram do print, não de estimativa: com 8ch o código `ESC-132`
+     ficava cortado, e com 11ch os títulos DEPENDE DE / DESBLOQUEIA escreviam um
+     sobre o outro. Em ch, porque o que decide a largura aqui é quantos
+     caracteres o conteúdo tem. */
+  .pl-id { width: 12ch; }
+  .pl-task { width: 30%; }
+  .pl-quem { width: 15%; }
+  .pl-st { width: 15ch; }
+  /* 16ch, porque "DESBLOQUEIA" em caixa alta com espaçamento de letra ocupa
+     mais que os 11 caracteres sugerem. Conferido no print, duas rodadas. */
+  .pl-dep, .pl-des { width: 16ch; }
+  .pl-prova { width: auto; }
+  /* título de coluna pode quebrar em duas linhas; o conteúdo é que não pode */
+  .pl-tab th { white-space: normal; }
+  .pl-task b, .pl-quem, .pl-prova { overflow-wrap: anywhere; }
+  .pl-marca { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+  .pl-marca b { font-weight: 600; }
+  .pl-task .path, .pl-quem .path { display: block; margin-top: 2px; }
+  .pl-quem { color: var(--dim); }
+  .pl-st { white-space: nowrap; color: var(--dim); }
+  .pl-prova { color: var(--dim); max-width: 260px; }
+  /* o estado colore o fio da esquerda, como nos cartões: cor sozinha nunca
+     carrega significado, ela repete o que a coluna Status já diz por escrito */
+  .pl-l { border-left: 3px solid transparent; }
+  .pl-l.s-andando { border-left-color: var(--working); }
+  .pl-l.s-travado { border-left-color: var(--waiting); }
+  .pl-l.s-feito { border-left-color: var(--done); }
+  .pl-l > td:first-child { padding-left: 8px; }
+
+  .m-rotas-tab { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .m-rotas-tab tr { border-bottom: 1px solid var(--line-soft); }
+  .m-rotas-tab td { padding: 7px 8px 7px 0; vertical-align: top; }
+  .m-rota-bt {
+    display: flex; align-items: center; gap: 6px; background: none; border: 0;
+    cursor: pointer; color: var(--fg); font-weight: 600; padding: 0;
+  }
+  .m-rota-bt i { width: 9px; height: 9px; border-radius: 50%; background: var(--idle); flex: none; }
+  tr.c-ocupada .m-rota-bt i { background: var(--failed); }
+  tr.c-livre .m-rota-bt i { background: var(--done); }
+  tr.c-orfa .m-rota-bt i { background: var(--working); }
+  .rt-quem-c { color: var(--dim); white-space: nowrap; }
+  /* CC-102: a rota que vem de outra máquina. Levemente apagada e sem cursor de
+     clique, porque daqui ela não se mexe: quem libera é o aparelho dono. */
+  .rt-fora { opacity: .78; }
+  .rt-fora .m-rota-bt { cursor: default; }
+  .rt-arq-c code {
+    background: var(--surface-2); border-radius: 4px; padding: 1px 5px;
+    font-size: 10.5px; overflow-wrap: anywhere;
+  }
+  @container painel (max-width: 640px) {
+    .m-rotas-tab, .m-rotas-tab tbody, .m-rotas-tab tr, .m-rotas-tab td { display: block; }
+    .m-rotas-tab td { padding: 1px 0; }
+    .m-rotas-tab tr { padding: 7px 0; }
+    .rt-quem-c { white-space: normal; }
+
+    /* NO TELEFONE A TABELA CONTINUA TABELA, e rola de lado. A primeira versão
+       (17/08) empilhava cada linha em bloco aqui, e foi erro meu de tipo
+       conhecido: ele pediu tabela e eu entreguei o que julguei melhor. Palavras
+       dele ao ver: "EU PEDI EM TABELA VOCE INVENTOU OUTRA COISA QUE NÃO É
+       TABELA, FICOU IGUAL O ANTERIOR". Cabeçalho colado à esquerda para a
+       coluna Task ficar legível durante a rolagem. */
+    /* A largura MÍNIMA é o que faz a tabela rolar em vez de encolher. Sem ela,
+       as sete colunas se espremiam nos 390px e o texto quebrava letra a letra,
+       que é o pior dos dois mundos: nem tabela, nem legível. As medidas em `ch`
+       são por coluna, e a soma passa da tela de propósito. */
+    .pl-tab { table-layout: auto; min-width: 780px; font-size: 12.5px; }
+    .pl-id { width: auto; min-width: 10ch; }
+    .pl-task { width: auto; min-width: 30ch; position: sticky; left: 0; background: var(--bg); z-index: 1; }
+    .pl-quem { width: auto; min-width: 16ch; }
+    .pl-st { width: auto; min-width: 15ch; }
+    .pl-dep, .pl-des { width: auto; min-width: 13ch; }
+    .pl-prova { width: auto; min-width: 20ch; }
+    /* a coluna colada precisa de fundo opaco, senão o texto de baixo aparece
+       através dela durante a rolagem */
+    thead .pl-task { background: var(--bg); }
+    .pl-task { box-shadow: 1px 0 0 var(--line-soft); }
+  }
   .bl-grupo-n {
-    font: 700 10px/1 var(--mono); color: var(--dim); flex: none;
+    font: 700 11.5px/1 var(--mono); color: var(--dim); flex: none;
     border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px;
   }
-  .bl-onde { font: 400 10px/1 var(--mono); color: var(--faint); }
+  .bl-onde { font: 400 11.5px/1 var(--mono); color: var(--faint); }
 
   /* No telefone o fio nao cabe na mesma linha do titulo e desceria sozinho,
      virando um risco solto no meio da tela. Some. E com uma coluna so, a altura
@@ -1046,12 +1201,16 @@
     border: 1px dashed var(--line); border-radius: 10px; max-width: 540px;
     overflow-wrap: anywhere;
   }
-  .bl-nota { margin: 9px 2px 0; font-size: 10.5px; color: var(--faint); max-width: 620px; overflow-wrap: anywhere; }
+  .bl-nota { margin: 9px 2px 0; font-size: 11.5px; color: var(--faint); max-width: 620px; overflow-wrap: anywhere; }
   .bl-ordens { display: flex; gap: 5px; margin: 0 0 11px; flex-wrap: wrap; }
+  /* Mesma correcao do `.gr-abrir`, com recuo lateral de 2px porque a lacuna
+     desta fileira e 5, nao 8. */
   .bl-ord {
+    position: relative;
     background: none; border: 1px solid var(--line); border-radius: 999px;
     padding: 6px 12px; min-height: 32px; cursor: pointer; color: var(--dim); font-size: 11.5px;
   }
+  .bl-ord::after { content: ''; position: absolute; inset: -6px -2px; }
   .bl-ord.on { border-color: var(--acento); color: var(--fg); }
 
   /* ==================== a visao geral: tudo em quadradinhos ==================
@@ -1082,7 +1241,7 @@
      economizar. */
   .gr-leg {
     display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0 0 12px; padding: 0;
-    font: 400 10px/1.4 var(--mono); color: var(--faint);
+    font: 400 11.5px/1.4 var(--mono); color: var(--faint);
   }
   .gr-leg i { display: inline-flex; align-items: center; gap: 5px; font-style: normal; }
   .gr-leg i::before {
@@ -1098,14 +1257,22 @@
      tres deles em uma tela de celular nao podem custar 33px cada. */
   .gr-h { display: flex; align-items: center; gap: 8px; margin: 0 0 7px; flex-wrap: wrap; }
   .gr-h b {
-    font: 700 11px/1 var(--label); letter-spacing: .15em; text-transform: uppercase; color: var(--fg);
+    font: 700 11px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; color: var(--fg);
   }
-  .gr-h .bl-h-n { font: 700 10px/1 var(--mono); color: var(--dim); flex: none;
+  .gr-h .bl-h-n { font: 700 11.5px/1 var(--mono); color: var(--dim); flex: none;
     border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px; }
+  /* A pastilha mede 34px de alto, e o alvo de toque minimo e 44. Crescer a
+     pastilha custaria 10px em cada um dos tres cabecalhos, e rolagem foi
+     justamente a queixa dele. Entao cresce so o ALVO: um retangulo invisivel
+     de 46px por cima, que nao ocupa espaco nenhum no fluxo. O recuo lateral
+     para em 4px porque a lacuna da fileira e 8, e dois alvos vizinhos
+     esticados 4 de cada lado encostam sem se sobrepor. */
   .gr-abrir {
+    position: relative;
     flex: none; background: none; border: 1px solid var(--line); border-radius: 999px;
-    padding: 7px 12px; min-height: 34px; cursor: pointer; color: var(--dim); font-size: 10.5px;
+    padding: 7px 12px; min-height: 34px; cursor: pointer; color: var(--dim); font-size: 11.5px;
   }
+  .gr-abrir::after { content: ''; position: absolute; inset: -6px -4px; }
   .gr-abrir:hover { border-color: var(--acento); color: var(--fg); }
   .gr-abrir:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 
@@ -1113,10 +1280,15 @@
      mancha unica e a pergunta "de onde e este item" so tem resposta no toque. */
   .gr-proj { display: flex; align-items: baseline; gap: 7px; margin: 8px 0 4px; flex-wrap: wrap; }
   .gr-proj-n {
-    font: 700 9px/1.2 var(--label); letter-spacing: .13em; text-transform: uppercase;
+    font: 700 11px/1.2 var(--label); letter-spacing: .05em; text-transform: uppercase;
     color: var(--dim); min-width: 0; overflow-wrap: anywhere;
   }
-  .gr-proj-c { font: 400 9px/1 var(--mono); color: var(--faint); flex: none; }
+  .gr-proj-c { font: 400 11px/1 var(--mono); color: var(--faint); flex: none; }
+  /* A sigla com o "?": dica, nao verbete. Quem quiser mais abre o glossario. */
+  .gr-sigla {
+    font: 400 11px/1 var(--mono); color: var(--faint); flex: none;
+    border-bottom: 1px dotted var(--faint); cursor: help; text-decoration: none;
+  }
 
   /* `min(44px, 100%)` no piso e obrigatorio, nao enfeite: com `44px` puro, um
      container mais estreito faz a trilha estourar e a pagina rola de lado.
@@ -1140,13 +1312,13 @@
      o estado, e trocar a cor dela no hover apagaria a informacao no toque. */
   .gq:hover { box-shadow: inset 0 0 0 1px var(--acento); }
   .gq:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
-  .gq-cod { font: 700 9.5px/1 var(--mono); letter-spacing: 0; color: var(--fg); white-space: nowrap; }
+  .gq-cod { font: 700 11px/1 var(--mono); letter-spacing: 0; color: var(--fg); white-space: nowrap; }
   /* A palavra do estado, em 7,5px. Existe para o daltonico e para quem nunca
      leu a legenda: cor sozinha nao pode ser a unica portadora do estado.
      So aparece fora da fila, porque "NA FILA" em 30 de 35 quadrados foi a
      queixa registrada dele, e repetir o padrao 30 vezes nao informa nada. */
   .gq-est {
-    font: 700 7px/1 var(--label); letter-spacing: .04em; text-transform: uppercase;
+    font: 700 11px/1 var(--label); letter-spacing: .04em; text-transform: uppercase;
     white-space: nowrap; max-width: 100%; overflow: hidden;
   }
   .gq.s-working { border-color: color-mix(in srgb, var(--working) 40%, var(--line));
@@ -1179,14 +1351,14 @@
   .gq-det-t {
     font-size: 14.5px; font-weight: 600; line-height: 1.34; color: var(--fg); overflow-wrap: anywhere;
   }
-  .gq-det-m { margin: 0; font: 400 10.5px/1.45 var(--mono); color: var(--faint); overflow-wrap: anywhere; }
+  .gq-det-m { margin: 0; font: 400 11.5px/1.45 var(--mono); color: var(--faint); overflow-wrap: anywhere; }
   .gq-det-a { display: flex; gap: 6px; flex-wrap: wrap; }
   .gq-det-c { display: flex; align-items: flex-start; gap: 9px; }
   .gq-det-c input[type=checkbox] { width: 17px; height: 17px; margin: 2px 0 0; flex: none; accent-color: var(--acento); }
   .gq-x {
     margin-left: auto; flex: none; background: none; border: 1px solid var(--line);
     border-radius: 999px; padding: 6px 11px; min-height: 32px; cursor: pointer;
-    color: var(--faint); font-size: 10.5px;
+    color: var(--faint); font-size: 11.5px;
   }
   .gq-x:hover { border-color: var(--acento); color: var(--fg); }
 
@@ -1202,16 +1374,22 @@
     border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; background: var(--surface);
   }
   .mudou h4 {
-    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+    font: 700 11.5px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
     color: var(--done); margin: 0 0 8px;
   }
-  .mudou h4 .dim { letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 10px; }
+  .mudou h4 .dim { letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 11.5px; }
   .mudou-item { display: grid; grid-template-columns: 62px 1fr; gap: 2px 8px; margin-bottom: 7px; font-size: 12px; }
-  .mudou-q { font-family: var(--mono); font-size: 10.5px; color: var(--faint); text-align: right; }
+  .mudou-q { font-family: var(--mono); font-size: 11.5px; color: var(--faint); text-align: right; }
   .mudou-t { overflow-wrap: anywhere; }
-  .mudou-p, .mudou-sp { grid-column: 2; font-size: 10.5px; line-height: 1.4; }
+  .mudou-p, .mudou-sp { grid-column: 2; font-size: 11.5px; line-height: 1.4; }
   .mudou-p { color: var(--dim); }
   .mudou-sp { color: var(--failed); }
+  .mudou-olho {
+    font: 700 9.5px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
+    color: var(--waiting); border: 1px solid var(--waiting); border-radius: 999px;
+    padding: 1px 6px; margin-right: 2px;
+  }
+  .mudou-item.precisa-olho .mudou-t { font-weight: 600; }
 
   /* CC-99: a revisão da tarefa, no backlog e não no chat. Vermelha enquanto
      não foi respondida — apontamento em aberto é a coisa mais fácil de perder,
@@ -1223,7 +1401,7 @@
   .todo-rev.rev-ok { border-left-color: var(--done); }
   .todo-rev b { color: var(--faint); }
   .rev-resp { display: block; color: var(--dim); }
-  .rev-aberta { display: block; color: var(--failed); font-size: 10px; }
+  .rev-aberta { display: block; color: var(--failed); font-size: 11.5px; }
 
   /* CC-98: as duas ordens do backlog, no topo do mapa. */
   .m-ordens { margin: 0 0 16px; }
@@ -1242,7 +1420,7 @@
     font-size: 11px; color: var(--acento); font-variant-numeric: tabular-nums;
   }
   .m-otit { min-width: 0; overflow-wrap: anywhere; }
-  .m-odep { flex: none; font-size: 10px; color: var(--faint); }
+  .m-odep { flex: none; font-size: 11.5px; color: var(--faint); }
 
   /* ---------- a bancada: níveis de verificação ---------- */
   .bn-niveis { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); margin-bottom: 12px; }
@@ -1255,14 +1433,14 @@
   .bn-nivel.on { border-color: var(--acento); color: var(--fg); box-shadow: inset 0 0 0 1px var(--acento); }
   .bn-nivel b { font-size: 14px; }
   .bn-nivel span { font-size: 11.5px; line-height: 1.35; }
-  .bn-nivel i { font-style: normal; font-size: 10px; color: var(--faint); font-family: var(--mono); }
+  .bn-nivel i { font-style: normal; font-size: 11.5px; color: var(--faint); font-family: var(--mono); }
   .bn-atual { font-size: 12.5px; line-height: 1.5; color: var(--dim); margin: 0 0 12px; max-width: 72ch; }
   .bn-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
   .bn-alerta {
     border: 1px solid var(--failed); border-radius: 8px; padding: 10px 12px;
     font-size: 12.5px; margin-bottom: 16px;
   }
-  .bn-h { font: 700 11px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; color: var(--faint); margin: 20px 0 8px; }
+  .bn-h { font: 700 11px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; color: var(--faint); margin: 20px 0 8px; }
   .bn-lista { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
   .bn-camada { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface); }
   /* camada de nível acima fica visível mas apagada: sumir com ela esconderia o
@@ -1315,7 +1493,7 @@
     background: var(--bg); color: var(--fg); padding: 18px;
   }
   #doc-edit::backdrop { background: rgba(0, 0, 0, .6); }
-  #doc-edit h2 { font: 700 13px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; margin: 0 0 14px; color: var(--dim); }
+  #doc-edit h2 { font: 700 13px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; margin: 0 0 14px; color: var(--dim); }
   #doc-edit input, #doc-edit textarea { width: 100%; margin-bottom: 10px; }
   #doc-edit textarea {
     font: 13px/1.55 var(--mono); resize: vertical; padding: 10px 12px;
@@ -1358,7 +1536,7 @@
   /* CC-34: pastilhas de frente, sem biblioteca de grid/chart nenhuma. */
   .ck-mini { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
   .ck-mini-f {
-    display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px;
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px;
     border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px;
     max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
@@ -1433,7 +1611,7 @@
   .m-nivel.n-fila { border-left-color: var(--waiting); }
   .m-nivel.n-prontas { border-left-color: var(--done); opacity: .7; }
   .m-nivel-cab { display: flex; align-items: baseline; gap: 8px; }
-  .m-nivel-cab b { font: 700 11px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; }
+  .m-nivel-cab b { font: 700 11px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; }
   .m-nivel-itens { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
   .m-nivel-itens span { font-size: 11px; padding: 2px 7px; border-radius: 4px;
     background: var(--bg); border: 1px solid var(--line); }
@@ -1461,6 +1639,17 @@
     border: 1px solid var(--acento); border-radius: 10px; background: var(--bg);
     box-shadow: 0 8px 28px rgba(0,0,0,.45);
   }
+  /* CC-118: as mensagens recuperadas. Texto no tamanho de leitura (15px), não de
+     tabela: é ditado por voz e pode ter cinquenta palavras. Fundo de superfície
+     e fio na esquerda porque é fala DELE, o mesmo tratamento das citações. */
+  .fp-lista { display: grid; gap: 10px; margin-top: 12px; }
+  .fp-item {
+    background: var(--surface); border-radius: 12px; box-shadow: var(--sombra);
+    border-left: 3px solid var(--acento); padding: 12px 14px;
+  }
+  .fp-item header { padding: 0; background: none; position: static; }
+  .fp-item p { margin: 6px 0 0; font-size: 15px; line-height: 1.5; white-space: pre-wrap; }
+
   #frente-pop .fp-cit {
     margin: 4px 0; padding-left: 10px; border-left: 2px solid var(--acento);
     color: var(--fg); font-style: italic;
@@ -1504,7 +1693,7 @@
   .projs { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
   .proj { border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
   .proj > .hd { padding: 12px 14px; border-bottom: 1px solid var(--line); }
-  .proj .name { font: 700 15px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; }
+  .proj .name { font: 700 15px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; }
   .proj .sub { color: var(--faint); font-size: 11px; margin-top: 6px; }
   .proj .item {
     display: flex; align-items: baseline; gap: 8px; padding: 7px 14px;
@@ -1519,7 +1708,7 @@
   }
   .t-ctl label {
     display: flex; align-items: center; gap: 6px; color: var(--faint);
-    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+    font: 700 11.5px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
   }
   .t-ctl input[type=date], .t-ctl select {
     background: var(--surface); color: var(--fg); border: 1px solid var(--line);
@@ -1553,7 +1742,7 @@
   .t-head { color: var(--faint); cursor: default; padding-bottom: 4px; }
   .t-head:hover { background: none; }
   .t-head span {
-    font: 700 9px/1.3 var(--label); letter-spacing: .14em; text-transform: uppercase;
+    font: 700 11px/1.3 var(--label); letter-spacing: .07em; text-transform: uppercase;
   }
   .t-corpo { padding: 4px 4px 20px; display: grid; gap: 18px; }
   .t-taxa {
@@ -1563,7 +1752,7 @@
   .t-valor { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .t-valor label {
     display: flex; align-items: center; gap: 6px; color: var(--faint);
-    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+    font: 700 11.5px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
   }
   .t-valor b { font-size: 20px; color: var(--fg); font-weight: 600; }
   .t-valor b.ok { font-size: inherit; color: var(--done); }
@@ -1573,7 +1762,7 @@
   .t-dia { flex: 1; min-width: 4px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
   .t-dia > i { display: block; background: var(--working); opacity: .8; border-radius: 1px 1px 0 0; min-height: 2px; }
   .t-dia:hover > i { opacity: 1; background: var(--fg); }
-  .t-eixo { display: flex; justify-content: space-between; color: var(--faint); font-size: 10px; margin-top: 5px; }
+  .t-eixo { display: flex; justify-content: space-between; color: var(--faint); font-size: 11.5px; margin-top: 5px; }
 
   .t-ses { width: 100%; border-collapse: collapse; }
   .t-ses td { padding: 4px 10px 4px 0; border-top: 1px solid var(--line-soft); font-size: 12px; }
@@ -1593,10 +1782,16 @@
     position: fixed; top: 0; right: 0; bottom: 0; z-index: 50;
     width: min(520px, 92vw); overflow-y: auto; padding: 16px 20px 40px;
     background: var(--bg); border-left: 1px solid var(--line);
+    /* A gaveta vira um contêiner com o MESMO nome do painel: as regras de
+       estreito passam a valer dentro dela pela largura DELA. Sem isto a tabela
+       de rotas media a página (390) mas a query nunca disparava aqui dentro,
+       porque a gaveta é irmã do painel, não filha. A gaveta nunca passa de
+       520px, então dentro dela o empilhado é sempre o certo. */
+    container: painel / inline-size;
   }
   .m-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; position: sticky; top: 0; background: var(--bg); padding-bottom: 8px; }
   .m-todo-ok { color: var(--done); margin-top: 14px; }
-  .m-head b { font: 700 15px/1 var(--label); letter-spacing: .16em; text-transform: uppercase; }
+  .m-head b { font: 700 15px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; }
   .m-grupo { margin-bottom: 18px; padding-left: 10px; border-left: 3px solid var(--line); }
   .m-grupo.e-bloqueado { border-left-color: var(--failed); }
   .m-grupo.e-esperando { border-left-color: var(--waiting); }
@@ -1605,7 +1800,7 @@
   .m-gtit { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
   .m-gtit b { color: var(--fg); font-size: 13px; }
   .m-selo {
-    font: 700 9px/1.6 var(--label); letter-spacing: .1em; text-transform: uppercase;
+    font: 700 11px/1.6 var(--label); letter-spacing: .1em; text-transform: uppercase;
     color: var(--dim); border: 1px solid var(--line); border-radius: 2px; padding: 0 5px;
   }
   .m-frac { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -1617,10 +1812,10 @@
   .m-nome { flex: 1; min-width: 0; }
   /* onde há gente trabalhando é a informação que se procura primeiro */
   .m-agentes {
-    color: var(--working); font-size: 10px; white-space: nowrap;
+    color: var(--working); font-size: 11.5px; white-space: nowrap;
     border: 1px solid currentColor; border-radius: 10px; padding: 0 7px;
   }
-  .m-rodape { margin-top: 20px; font-size: 10px; }
+  .m-rodape { margin-top: 20px; font-size: 11.5px; }
 
   /* CC-35: commits desde a última visita, dentro do próprio mapa. */
   .m-git-sec { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
@@ -1636,7 +1831,9 @@
     color: var(--dim); font: inherit;
   }
   .c-mapa:hover { color: var(--acento); text-decoration: underline; }
-  .c-frente { color: var(--acento); }
+  /* Frente é texto livre do agente e pode ser longa: sem quebra, uma frente de
+     50 caracteres vazou 13px no cartão em 390px, pega pelo gate do estreito. */
+  .c-frente { color: var(--acento); min-width: 0; overflow-wrap: anywhere; }
 
   /* ---------- preço ---------- */
   .p-niveis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); margin: 4px 0 16px; }
@@ -1644,7 +1841,7 @@
     border: 1px solid var(--line); border-left-width: 3px; border-radius: 4px;
     background: var(--surface); padding: 10px 12px; display: grid; gap: 4px;
   }
-  .p-nivel b { font: 700 11px/1 var(--label); letter-spacing: .14em; text-transform: uppercase; }
+  .p-nivel b { font: 700 11px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; }
   .p-nivel .p-hora { font-size: 20px; color: var(--fg); font-variant-numeric: tabular-nums; }
   .p-nivel .p-hora i { font-size: 12px; color: var(--faint); font-style: normal; }
   .p-nivel input { width: 90px; }
@@ -1655,7 +1852,7 @@
   .p-resumo { display: flex; gap: 32px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--line-soft); }
   .p-resumo div { display: grid; gap: 2px; }
   .p-resumo b { font-size: 22px; color: var(--fg); font-variant-numeric: tabular-nums; }
-  .p-resumo .path { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+  .p-resumo .path { font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; }
 
   .p-linha {
     display: grid; gap: 12px; align-items: baseline; padding: 8px 4px; cursor: pointer;
@@ -1669,7 +1866,7 @@
   .p-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .p-head { color: var(--faint); cursor: default; }
   .p-head:hover { background: none; }
-  .p-head span { font: 700 9px/1.3 var(--label); letter-spacing: .14em; text-transform: uppercase; }
+  .p-head span { font: 700 11px/1.3 var(--label); letter-spacing: .07em; text-transform: uppercase; }
   .p-item.on { background: var(--surface); }
   .p-detalhe { padding: 6px 8px 14px; display: grid; gap: 12px; }
   .p-sinais { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
@@ -1689,7 +1886,7 @@
 
   .g-leg { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; color: var(--dim); font-size: 11px; }
   .g-leg i, .g-lista i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
-  .g-escala { display: flex; justify-content: space-between; color: var(--faint); font-size: 10px; margin-top: 6px; }
+  .g-escala { display: flex; justify-content: space-between; color: var(--faint); font-size: 11.5px; margin-top: 6px; }
 
   .g-barras { display: flex; align-items: flex-end; gap: 3px; height: 150px; }
   .g-col { flex: 1; min-width: 3px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
@@ -1697,7 +1894,7 @@
   .g-pilha.neg { opacity: .55; }
   .g-pilha > i { display: block; width: 100%; }
   .g-rot {
-    font-size: 9px; color: var(--faint); text-align: center; margin-top: 4px;
+    font-size: 11px; color: var(--faint); text-align: center; margin-top: 4px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   /* Com muitas colunas o rótulo vira tinta ilegível; some e fica o tooltip. */
@@ -1730,7 +1927,7 @@
   .g-campos { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
   .g-campos label {
     display: flex; align-items: center; gap: 6px; color: var(--faint);
-    font: 700 10px/1 var(--label); letter-spacing: .16em; text-transform: uppercase;
+    font: 700 11.5px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
   }
   .g-campos select, .g-campos input {
     background: var(--surface); color: var(--fg); border: 1px solid var(--line);
@@ -1767,7 +1964,7 @@
   .btn.danger { color: var(--failed); border-color: color-mix(in srgb, var(--failed) 40%, var(--line)); }
   .btn.danger:hover { background: color-mix(in srgb, var(--failed) 16%, var(--surface)); }
   .btn[disabled] { opacity: .4; cursor: not-allowed; }
-  .btn.mini { padding: 2px 7px; font-size: 10px; }
+  .btn.mini { padding: 2px 7px; font-size: 11.5px; }
 
   /* popover de configuração da janela flutuante. Posição vem de JS (embaixo
      do botão de verdade): a altura do header varia com o player de mídia
@@ -1778,7 +1975,7 @@
     background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
     padding: 12px 14px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.3);
   }
-  .pip-cfg-tit { display: block; font-size: 10px; letter-spacing: .04em; color: var(--faint); text-transform: uppercase; margin: 10px 0 6px; }
+  .pip-cfg-tit { display: block; font-size: 11.5px; letter-spacing: .04em; color: var(--faint); text-transform: uppercase; margin: 10px 0 6px; }
   .pip-cfg-tit:first-child { margin-top: 0; }
   .pip-cfg-blocos { display: grid; gap: 6px; }
   .pip-cfg-item { display: flex; align-items: center; gap: 7px; font-size: 12px; cursor: pointer; }
@@ -1815,7 +2012,7 @@
     padding: 5px 0; border-bottom: 1px solid var(--line-soft);
   }
   .srv-lanc:last-child { border-bottom: 0; }
-  .srv-lanc code { font-size: 10px; }
+  .srv-lanc code { font-size: 11.5px; }
 
   /* ---------- VPS ---------- */
   .vps-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -1911,6 +2108,13 @@
 
   /* ---------- hooks ---------- */
   .hk-lista { display: grid; gap: 2px; max-width: 720px; }
+  /* CC-103: a linha do relatório de provas não tem caixinha, então ela NÃO usa
+     a grade de três colunas: no estreito a pastilha caía na coluna de 22px que
+     existe para a caixinha e ficava escrita em cima do nome. Visto no print de
+     390px, e é a terceira vez que uma grade de coluna fixa herdada morde uma
+     linha nova. */
+  .hk-prova .hk-linha { grid-template-columns: auto 1fr !important; align-items: baseline; }
+  .hk-prova .hk-badge { justify-self: start; }
   .hk-linha {
     display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center;
     padding: 10px 8px; border-radius: 4px; border-bottom: 1px solid var(--line);
@@ -1921,7 +2125,7 @@
   .hk-info b { font-size: 13px; }
   .hk-info .dim { font-size: 11px; }
   .hk-badge {
-    font-size: 10px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
     border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--dim);
   }
   .hk-badge.ok { color: var(--done); border-color: color-mix(in srgb, var(--done) 40%, var(--line)); }
@@ -1972,7 +2176,7 @@
   }
   .n-title {
     flex: 1; min-width: 0; background: none; border: 0; padding: 2px 0; color: var(--fg);
-    font: 700 11px/1.4 var(--label); letter-spacing: .12em; text-transform: uppercase;
+    font: 700 11px/1.4 var(--label); letter-spacing: .05em; text-transform: uppercase;
   }
   .n-title::placeholder { color: var(--faint); }
   .n-title:focus { outline: none; }
@@ -1981,7 +2185,7 @@
     color: var(--faint); font: 12px var(--mono);
   }
   .n-del:hover { color: var(--failed); }
-  .n-del.armed { color: var(--failed); font-size: 10px; }
+  .n-del.armed { color: var(--failed); font-size: 11.5px; }
   /* resize nativo do textarea: a alça de altura sai de graça, sem JS */
   .n-block textarea {
     display: block; width: 100%; min-height: 40px; border: 0; background: none;
@@ -2039,7 +2243,7 @@
     .top { gap: 12px; }
     input[type=search], select { min-width: 0; flex: 1 1 110px; }
     .tab { padding: 8px 8px; letter-spacing: .1em; }
-    h1 { font-size: 17px; letter-spacing: .18em; }
+    h1 { font-size: 17px; letter-spacing: .07em; }
   }
   /* auto-fit sozinho não impede estouro: a coluna mínima de 340px é maior que
      o painel estreito. O min() faz o cartão encolher em vez de vazar. */
@@ -2083,7 +2287,7 @@
     display: flex; flex-direction: column; max-height: min(70vh, 620px);
   }
   .escritorio-legenda h3 {
-    margin: 0; padding: 8px 10px; font-size: 11px; letter-spacing: .12em;
+    margin: 0; padding: 8px 10px; font-size: 11px; letter-spacing: .05em;
     text-transform: uppercase; color: var(--dim);
     border-bottom: 1px solid var(--line-soft);
   }
@@ -2097,7 +2301,7 @@
     font-size: 12px; color: var(--fg);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .leg-proj { font-size: 10px; color: var(--faint); margin: 1px 0 0 14px; }
+  .leg-proj { font-size: 11.5px; color: var(--faint); margin: 1px 0 0 14px; }
   /* Fechado: uma linha. Aberto: o texto inteiro, quebrado. É o clique que
      decide — comando de deploy não cabe em coluna de 280px. */
   .leg-faz {
@@ -2105,20 +2309,19 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .leg-item.on .leg-faz { white-space: normal; word-break: break-word; }
-  .leg-mais { color: var(--working); font-size: 10px; }
+  .leg-mais { color: var(--working); font-size: 11.5px; }
 </style>
 <script>
   // No head, e não junto do resto: aplicado depois do body a página pisca
   // escura antes de clarear. Três estados — auto segue o Windows.
   var TEMA_ESCURO = matchMedia('(prefers-color-scheme: dark)')
   // A ordem é a do menu. `escuro` diz para qual lado o "automático" cai.
+  /* Dois temas, decisao dele em 16/08. Eram seis, e quatro ficavam sempre meio
+     acertados: conferir cada tela em seis variacoes multiplica o trabalho por
+     seis e ninguem faz. Dois bem feitos valem mais. */
   var TEMAS = [
-    { id: 'noite', nome: 'noite', escuro: true },
-    { id: 'carvao', nome: 'carvão', escuro: true },
-    { id: 'ambar', nome: 'âmbar', escuro: true },
-    { id: 'floresta', nome: 'floresta', escuro: true },
-    { id: 'papel', nome: 'papel', escuro: false },
-    { id: 'areia', nome: 'areia', escuro: false },
+    { id: 'noite', nome: 'escuro', escuro: true },
+    { id: 'papel', nome: 'claro', escuro: false },
   ]
   // ?tema= existe para a captura de tela: headless não tem preferência de
   // sistema nem localStorage, e sem isso não dá para conferir tema nenhum.
@@ -2179,6 +2382,12 @@
 
   <main id="main"></main>
   <footer id="foot"></footer>
+  <!-- Modo aplicativo (17/08): os quatro grupos na barra de baixo, só no
+       estreito. Fica DENTRO do #painel e é `sticky`, não `fixed`: com a gaveta
+       de notas aberta a janela continua larga enquanto o painel encolhe, e uma
+       barra fixa na viewport cobriria a gaveta. Mesma família da armadilha do
+       @container. -->
+  <nav id="app-bar" aria-label="grupos de tela"></nav>
 </div>
 
 <div id="split" hidden role="separator" aria-orientation="vertical" aria-label="largura das notas"></div>
@@ -2198,7 +2407,7 @@
 <div class="scrim" id="scrim-mapa"></div>
 <aside class="mapa" id="mapa" hidden role="dialog" aria-label="mapa do projeto"></aside>
 
-<!-- CC-82: o editor de documento. Fora do #main de proposito — `render()`
+<!-- CC-82: o editor de documento. Fora do #main de proposito, `render()`
      reescreve aquele bloco a cada tique do stream, e o cursor sumiria no meio
      da frase. Aqui nada o redesenha. -->
 <dialog id="doc-edit" aria-label="editar documento">
@@ -2290,11 +2499,15 @@ const TABS = [
  * já usa não muda de lugar. O grupo é derivado da aba ativa, não guardado —
  * um estado a menos para dessincronizar.
  */
+/* O `ico` existe só para a barra de baixo do modo aplicativo (17/08): num alvo
+   de dedo, texto de 12px sozinho não se distingue de relance. São caracteres
+   comuns, nunca fonte de ícone: dependência externa não sobrevive offline, e o
+   painel inteiro funciona sem rede. */
 const GRUPOS = [
-  { id: 'agora', label: 'agora', abas: ['projetos', 'agentes', 'todos', 'meu', 'escritorio'] },
-  { id: 'custo', label: 'custo', abas: ['tempo', 'graficos', 'preco'] },
-  { id: 'controle', label: 'controle', abas: ['servidores', 'vps', 'hooks', 'bancada', 'rotinas', 'remoto'] },
-  { id: 'saber', label: 'saber', abas: ['glossario', 'docs', 'agenda'] },
+  { id: 'agora', label: 'agora', ico: '◉', abas: ['projetos', 'agentes', 'todos', 'meu', 'escritorio'] },
+  { id: 'custo', label: 'custo', ico: '◔', abas: ['tempo', 'graficos', 'preco'] },
+  { id: 'controle', label: 'controle', ico: '✦', abas: ['servidores', 'vps', 'hooks', 'bancada', 'rotinas', 'remoto'] },
+  { id: 'saber', label: 'saber', ico: '✎', abas: ['glossario', 'docs', 'agenda'] },
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
 // painel sem nenhuma aba marcada.
@@ -2326,13 +2539,13 @@ const LABEL = { working: 'ativos', waiting: 'esperando', failed: 'falharam', don
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 const age = (ms) => {
-  if (!(ms >= 0)) return '—'
+  if (!(ms >= 0)) return '...'
   const m = Math.floor(ms / 6e4)
   if (m < 60) return m + 'm'
   const h = Math.floor(m / 60)
   return h < 24 ? h + 'h' + String(m % 60).padStart(2, '0') : Math.floor(h / 24) + 'd' + (h % 24) + 'h'
 }
-const tok = (n) => !n ? '—' : n < 1e3 ? String(n) : n < 1e6 ? (n / 1e3).toFixed(n < 1e4 ? 1 : 0) + 'k'
+const tok = (n) => !n ? '...' : n < 1e3 ? String(n) : n < 1e6 ? (n / 1e3).toFixed(n < 1e4 ? 1 : 0) + 'k'
   : n < 1e9 ? (n / 1e6).toFixed(1) + 'M' : (n / 1e9).toFixed(1) + 'B'
 const byId = (id) => DATA.jobs.find((j) => j.id === id)
 
@@ -2364,7 +2577,7 @@ function renderUso() {
   const alvo = $('#uso')
   if (!u || (!u.cincoHoras && !u.semana)) {
     alvo.innerHTML = ''
-    alvo.title = 'sem leitura ainda — aparece depois da próxima resposta do Claude Code'
+    alvo.title = 'sem leitura ainda, aparece depois da próxima resposta do Claude Code'
     return
   }
   const faixa = (p) => (p >= 85 ? 'alto' : p >= 60 ? 'medio' : 'baixo')
@@ -2381,7 +2594,7 @@ function renderUso() {
   const medidor = (rot, j, nota = '') => {
     if (!j) return ''
     const quando = j.resetaEm
-      ? `zera ${falta(j.resetaEm)} — ${dia(j.resetaEm)} às ${relogio(j.resetaEm)}`
+      ? `zera ${falta(j.resetaEm)}, ${dia(j.resetaEm)} às ${relogio(j.resetaEm)}`
       : 'sem hora de virada informada'
     return `<span class="u-item n-${faixa(j.pct)}" title="${rot}: ${j.pct.toFixed(1)}% usado · ${quando}${nota ? ` · ${nota}` : ''}">
       <span class="u-rot">${rot}</span>
@@ -2448,30 +2661,38 @@ function renderHeader() {
   // ativo. O grupo sai da aba, nunca do contrário: guardar os dois criaria a
   // chance de discordarem, e aí o painel abriria num grupo que não contém a
   // aba marcada.
+  /* CC-121: aba que só faz sentido nesta máquina não aparece quando não há o
+     que mostrar. Cinco das dezessete telas são assim (servidores, VPS,
+     escritório, remoto, rotinas), e no telefone metade do menu levava a lugar
+     nenhum. O painel já faz isso em três lugares: o seletor de máquina só
+     aparece com duas ou mais, o bloco de Docker some sem Docker, a coluna de
+     valor some sem taxa. Faltava valer para ABA.
+
+     Regra de segurança: só esconde o que o servidor AFIRMA não existir. Campo
+     ausente, servidor velho ou resposta ainda não chegada mostram tudo, porque
+     esconder por falta de informação seria pior que a aba vazia: ele procuraria
+     uma tela que existe. E a aba ABERTA nunca some, senão a navegação sumiria
+     debaixo dele. */
+  const tem = DATA?.tem || null
+  const escondida = (id) => tem && tem[id] === false && id !== tab
+  const visiveis = (lista) => lista.filter((id) => !escondida(id))
+
   const grupoAtivo = GRUPOS.find((g) => g.abas.includes(tab)) || GRUPOS[0]
   const soma = (g) => g.abas.reduce((a, id) => a + (counts[id] || 0), 0)
 
-  const linhaGrupos = GRUPOS.map((g) => {
+  /* Grupo que ficou sem nenhuma aba também some: a porta existiria para uma
+     sala vazia. O grupo ATIVO nunca some, pela mesma razão da aba ativa. */
+  const gruposVisiveis = GRUPOS.filter((g) => g.id === grupoAtivo.id || visiveis(g.abas).length)
+  const linhaGrupos = gruposVisiveis.map((g) => {
     const n = soma(g)
     return `<button class="grupo" data-grupo="${g.id}" aria-selected="${g.id === grupoAtivo.id}">
       ${g.label}${n ? `<span class="n">${n}</span>` : ''}
     </button>`
   }).join('')
 
-  const doGrupo = grupoAtivo.abas
+  const doGrupo = visiveis(grupoAtivo.abas)
     .map((id) => TABS.find((t) => t.id === id))
     .filter(Boolean)
-
-  // CC-77: o mesmo estado servido em dois formatos. `tab` continua a unica
-  // fonte — o <select> so reflete e escreve nela, como os botoes.
-  const umNivel = GRUPOS.map((g) => {
-    const dentro = g.abas.map((id) => TABS.find((t) => t.id === id)).filter(Boolean)
-    if (!dentro.length) return ''
-    return `<optgroup label="${esc(g.label)}">${dentro.map((t) => {
-      const n = counts[t.id] != null ? ` (${counts[t.id]})` : ''
-      return `<option value="${t.id}"${t.id === tab ? ' selected' : ''}>${esc(t.label)}${n}</option>`
-    }).join('')}</optgroup>`
-  }).join('')
 
   /* ⚠️ O <select> aberto MORRE se `#tabs` for reescrito, e no telefone isso
      fechava o menu na cara dele.
@@ -2488,18 +2709,33 @@ function renderHeader() {
      Segurar o redesenho enquanto ele está com foco é o mesmo remédio que o
      `dadosPendentes` usa nos to-dos. A contagem das abas fica alguns segundos
      velha, e isso não é nada perto de não conseguir trocar de tela. */
-  const menu = $('#nav-uma select')
-  // `SEM_GUARDA` existe só para o teste desligar isto e provar que o defeito
-  // volta. Teste que só sabe dizer "hoje passa" não prova que pegaria o erro;
-  // este consegue reproduzir o problema original em cima do código consertado.
-  if (menu && document.activeElement === menu && !window.SEM_GUARDA) return
+  /* O menu de uma linha morreu em 17/08, substituído pelo modo aplicativo: o
+     popup nativo nunca teve cara de aplicativo, e fechava sozinho. A guarda
+     ficou, porque o painel ainda tem `<select>` vivo (o modo do framework na
+     lista de módulos), e ela vale para QUALQUER um: elemento com estado do
+     sistema aberto não pode morrer em redesenho por timer.
+
+     `SEM_GUARDA` existe só para o teste desligar isto e provar que o defeito
+     volta. Teste que só sabe dizer "hoje passa" não prova que pegaria o erro. */
+  const foco = document.activeElement
+  if (foco?.tagName === 'SELECT' && $('#painel').contains(foco) && !window.SEM_GUARDA) return
 
   $('#tabs').innerHTML = `<div class="tab-grupos">${linhaGrupos}</div>
     <div class="tab-abas">${doGrupo.map((t) => `
       <button class="tab" role="tab" data-tab="${t.id}" aria-selected="${t.id === tab}">
         ${t.label}${counts[t.id] != null ? `<span class="n">${counts[t.id]}</span>` : ''}
       </button>`).join('')}</div>
-    <div id="nav-uma"><select aria-label="escolher tela">${umNivel}</select></div>`
+`
+
+  /* A barra de baixo do modo aplicativo. Mesmos `data-grupo` da fileira de
+     cima, então o clique já funciona sem handler novo, e o estado dos dois sai
+     de `tab`: duas telas do mesmo dado, nunca duas contas. */
+  $('#app-bar').innerHTML = gruposVisiveis.map((g) => {
+    const n = soma(g)
+    return `<button data-grupo="${g.id}" aria-selected="${g.id === grupoAtivo.id}">
+      <span class="ico" aria-hidden="true">${g.ico}</span>${g.label}${n ? `<span class="n">${n}</span>` : ''}
+    </button>`
+  }).join('')
 }
 
 /* ===================== janela flutuante (resumo) =====================
@@ -2536,7 +2772,7 @@ function pipUsoFull() {
 const pipUsoFita = () => {
   const u = DATA.uso
   const item = (rot, j) => (j ? pipChip(rot, `${Math.round(j.pct)}%`, faixaPct(j.pct, 85, 60)) : '')
-  return item('5h', u?.cincoHoras) + item('sem', u?.semana) || pipChip('uso', '—')
+  return item('5h', u?.cincoHoras) + item('sem', u?.semana) || pipChip('uso', '...')
 }
 
 function pipAgentesFull() {
@@ -2547,7 +2783,7 @@ function pipAgentesFull() {
   if (!emAndamento.length) return '<p class="pip-vazio">nenhum agora</p>'
   return emAndamento.map((j) => `<div class="pip-ag">
     <b style="color:var(--${j.status})">● ${esc(j.project)}${j.frente ? ` › ${esc(j.frente)}` : ''}</b>
-    <p title="${esc(j.subject || j.detail || '')}">${esc(j.subject || j.detail || '—')}</p>
+    <p title="${esc(j.subject || j.detail || '')}">${esc(j.subject || j.detail || '...')}</p>
     <p>${j.todos.length ? `${j.todosDone}/${j.todos.length} to-dos` : 'sem to-dos'} · ${tok(j.tokens)} tokens</p>
   </div>`).join('')
 }
@@ -2568,7 +2804,7 @@ function pipMaquinaFull() {
   return linha('cpu', cpu?.uso) + linha('ram', ram?.uso) + (gpu ? linha('gpu', gpu.uso) : '')
 }
 const pipMaquinaFita = () => {
-  if (!MAQUINA || MAQUINA.erro) return pipChip('máquina', '—')
+  if (!MAQUINA || MAQUINA.erro) return pipChip('máquina', '...')
   const { cpu, ram, gpu } = MAQUINA
   const item = (rot, v) => (v == null ? '' : pipChip(rot, `${Math.round(v)}%`, faixaPct(v)))
   return item('cpu', cpu?.uso) + item('ram', ram?.uso) + (gpu ? item('gpu', gpu.uso) : '')
@@ -2688,7 +2924,7 @@ async function alternarPip() {
   if (pipWin) { pipWin.close(); return }
   const [width, height] = PIP_TAMANHO[PIP_CFG.layout] || PIP_TAMANHO.quadrado
   pipWin = await documentPictureInPicture.requestWindow({ width, height })
-  pipWin.document.title = 'Agent Cockpit — resumo'
+  pipWin.document.title = 'Agent Cockpit, resumo'
   // mesma folha de estilo da página principal: reaproveita as variáveis de
   // tema em vez de manter uma segunda paleta sincronizada à mão
   pipWin.document.head.append(document.querySelector('style').cloneNode(true))
@@ -2764,7 +3000,7 @@ function renderPip() {
   root.className = PIP_CFG.layout === 'fita' ? 'fita' : 'quadrado'
 
   const ativos = PIP_CFG.blocos.filter((b) => PIP_BLOCO[b])
-  if (!ativos.length) { root.innerHTML = '<p class="pip-vazio">nada selecionado — configure em ⚙, no painel</p>'; return }
+  if (!ativos.length) { root.innerHTML = '<p class="pip-vazio">nada selecionado, configure em ⚙, no painel</p>'; return }
 
   if (PIP_CFG.layout === 'fita') {
     // cada bloco vira um grupo de pastilhas (uma ou mais), separado do
@@ -2983,7 +3219,7 @@ function viewTodos(jobs) {
       <input type="checkbox" data-todo="${j.id}" data-i="${i}" ${t.done ? 'checked' : ''}
         aria-label="marcar como feita">
       <input class="txt" value="${esc(t.text)}" data-edit="${j.id}" data-i="${i}"
-        aria-label="texto da tarefa" placeholder="descreva a tarefa — em branco, ela some">
+        aria-label="texto da tarefa" placeholder="descreva a tarefa, em branco, ela some">
     </div>
     ${t.prova ? `<p class="todo-prova"><b>prova:</b> ${esc(t.prova)}</p>` : ''}
     ${(t.revisoes || []).map((r) => `<p class="todo-rev${r.respondeu ? ' rev-ok' : ''}">
@@ -3086,6 +3322,7 @@ function pedirMapaMini(projeto) {
 // leitura por projeto, sob demanda, nunca no tique de 2s.
 const FRAMEWORKS = new Map() // projeto -> retrato | 'carregando'
 let FW_LISTA = null // null = fechado; 'carregando'; ou a lista de projetos
+let FW_CATALOGO_MODULOS = null // CC-115: nome e explicação de cada grupo de proteção
 let FEDERACAO = null // CC-47: identidade desta máquina, token e quem reporta aqui
 
 async function carregarFederacao() {
@@ -3125,7 +3362,7 @@ function abrirFrameworkLista() {
   render()
   fetch('/api/framework/projetos')
     .then((r) => r.json())
-    .then((d) => { FW_LISTA = d.projetos || []; render() })
+    .then((d) => { FW_LISTA = d.projetos || []; FW_CATALOGO_MODULOS = d.catalogoModulos || null; render() })
     .catch(() => { FW_LISTA = []; render() })
 }
 
@@ -3133,20 +3370,75 @@ function viewFrameworkLista() {
   if (FW_LISTA === 'carregando') return '<p class="dim">lendo os projetos…</p>'
   if (!FW_LISTA.length) return '<p class="dim">nenhum projeto encontrado nesta máquina</p>'
   const ligados = FW_LISTA.filter((p) => p.existe && p.ligado).length
+  const comRotas = FW_LISTA.filter((p) => p.rotas?.ligado).length
   return `<div class="fw-lista">
-    <p class="dim">${ligados} de ${FW_LISTA.length} projeto${FW_LISTA.length === 1 ? '' : 's'} com o framework ligado.
-      Ligar cria <code>.framework/estado.json</code> dentro do projeto; desligar não apaga o MVP.</p>
+    <p class="dim">${ligados} de ${FW_LISTA.length} projeto${FW_LISTA.length === 1 ? '' : 's'} com o framework ligado,
+      ${comRotas} com rotas de trabalho. Ligar o framework cria <code>.framework/estado.json</code>;
+      desligar não apaga o MVP. Rotas não se desligam por clique: o arquivo delas guarda o histórico do projeto.
+      As pastilhas são os grupos de proteção deste projeto; toque para desligar um grupo só aqui.
+      O desligado fica riscado em vermelho.</p>
     ${FW_LISTA.map((p) => {
+    /* O seletor de modo vivia só na vista antiga do cockpit, que morreu órfã
+       no redesenho: era por isso que "não tinha como ativar pelo celular".
+       Reutiliza o mesmo data-fw-modo, então o handler de change, a confirmação
+       pelo arquivo e o refresh já funcionam sem mudar uma linha. */
+    /* Um seletor com DOIS grupos, e a ordem é a dele: primeiro a profissão que
+       você contrataria (17/08, "a ideia eh facilitar o meu reconhecimento
+       rápido"), depois os modos crus para quem quiser montar à mão. O título de
+       cada opção diz o que aquilo exige, senão o nome bonito não tem
+       consequência declarada. */
+    const seletorModo = p.existe && p.ligado && Array.isArray(p.modos)
+      ? `<select class="fw-modo" data-fw-modo="${esc(p.projeto)}" title="quem trabalha neste projeto">
+          ${/* Em árvore: os papéis principais, e as variações recuadas embaixo do
+                pai. Ele corrigiu que Perito, Pesquisador e Revisor são variações
+                do Depurador, não papéis soltos ao lado de Designer. */ ''}
+          <optgroup label="papel">
+            ${(p.perfis || []).flatMap((x) => [
+    `<option value="perfil:${esc(x.id)}"${x.id === p.perfil ? ' selected' : ''}
+              title="${esc(x.contrataria)}${x.entrega ? ` · entrega: ${x.entrega}` : ''}${x.exige.length ? ` · exige: ${x.exige.join(', ')}` : ''}">${esc(x.titulo)}</option>`,
+    ...(x.subs || []).map((sx) => `<option value="perfil:${esc(sx.id)}"${sx.id === p.perfil ? ' selected' : ''}
+              title="${esc(sx.contrataria)}">&nbsp;&nbsp;└ ${esc(sx.titulo)}</option>`),
+  ]).join('')}
+          </optgroup>
+          <optgroup label="modo cru">
+            ${p.modos.map((m) => `<option value="${esc(m.id)}"${!p.perfil && m.id === p.modo ? ' selected' : ''} title="${esc(m.explica)}">${esc(m.titulo)}</option>`).join('')}
+          </optgroup>
+        </select>`
+      : ''
+    const conf = CONFIRMA_FW.get(p.projeto)
+    const confirmado = !conf ? '' : conf.erro
+      ? `<span class="fw-salvo ruim">✗ pedi ${esc(conf.pedido)}, o arquivo diz ${esc(conf.real)}</span>`
+      : `<span class="fw-salvo">✓ ${esc(conf.real)}, às ${esc(conf.hora)}</span>`
     const estado = !p.existe
       ? '<span class="dim">sem framework</span>'
       : p.ligado
         ? `<span class="fw-selo fw-on" style="border-color:var(--${p.portaoAberto ? 'done' : 'waiting'});color:var(--${p.portaoAberto ? 'done' : 'waiting'})">${esc(p.tituloFase)}</span>
+           ${seletorModo}${confirmado}
            <span class="dim fw-frase">${esc(p.pendencias?.[0] || 'portão aberto')}</span>`
         : '<span class="fw-selo fw-off">desligado</span>'
     const acao = !p.existe || !p.ligado ? 'ligar' : 'desligar'
+    // CC-115: o segundo módulo da linha. Ocupada em cor de atenção, livre em
+    // cor de pronto, e projeto sem rotas fica sem selo, não com selo cinza:
+    // a ausência já diz tudo e a linha continua limpa.
+    const r = p.rotas
+    const rotas = !r?.ligado ? '' : r.ocupadas
+      ? `<span class="fw-selo" style="border-color:var(--waiting);color:var(--waiting)" title="rotas de trabalho: ${r.ocupadas} de ${r.total} ocupadas">${r.ocupadas}/${r.total} rota${r.total === 1 ? '' : 's'} em uso</span>`
+      : `<span class="fw-selo" style="border-color:var(--done);color:var(--done)" title="rotas de trabalho: todas livres">${r.total} rota${r.total === 1 ? '' : 's'} livre${r.total === 1 ? '' : 's'}</span>`
+    /* CC-115: os grupos de proteção, ligáveis por projeto. Ligado fica
+       discreto (é o padrão, quase tudo); desligado grita, porque projeto sem
+       proteção é exceção que ele precisa enxergar de relance. */
+    const cat = FW_CATALOGO_MODULOS || {}
+    const grupos = Object.keys(cat).map((m) => {
+      const on = p.modulos?.[m] !== false
+      return `<button class="fw-mod${on ? '' : ' off'}" data-mod="${m}" data-mod-proj="${esc(p.projeto)}"
+        data-mod-on="${on ? '0' : '1'}"
+        title="${esc(cat[m].explica)}${on ? '' : ' (DESLIGADO neste projeto)'}">${esc(cat[m].label)}${on ? '' : ' ✕'}</button>`
+    }).join('')
     return `<div class="fw-linha">
         <b>${esc(p.projeto)}</b>
         ${estado}
+        ${rotas}
+        <span class="fw-mods">${grupos}</span>
         <span class="grow"></span>
         <button class="btn mini" data-fw="${acao}" data-fw-proj="${esc(p.projeto)}">${
       !p.existe ? 'ligar' : p.ligado ? 'desligar' : 'religar'}</button>
@@ -3206,7 +3498,7 @@ function seloFramework(projeto) {
   const autorizacao = !f.modoTrava ? '' : (f.autorizado || []).length
     ? `<div class="fw-aut ok">
          <b>código liberado</b>
-         <span class="path">até você trocar de modo — trocar zera esta autorização</span>
+         <span class="path">até você trocar de modo, trocar zera esta autorização</span>
        </div>`
     : `<div class="fw-aut">
          <b>código travado</b>
@@ -3219,7 +3511,7 @@ function seloFramework(projeto) {
            </div>`).join('')}
          </div>` : ''}
          <button class="btn mini" data-fw="autorizar" data-fw-proj="${esc(projeto)}">liberar escrita…</button>
-         <button class="ajuda" data-ajuda="Liberar escrita deixa a IA editar código neste projeto — todos os arquivos, até você trocar de modo. Trocar de modo zera a autorização de propósito: autorização dada num modo não pode sobreviver à entrada em outro. Documentação, backlog e o estado do framework nunca ficam travados.">?</button>
+         <button class="ajuda" data-ajuda="Liberar escrita deixa a IA editar código neste projeto, todos os arquivos, até você trocar de modo. Trocar de modo zera a autorização de propósito: autorização dada num modo não pode sobreviver à entrada em outro. Documentação, backlog e o estado do framework nunca ficam travados.">?</button>
        </div>`
 
   /* A confirmação da troca: as duas metades que ele pediu. O `fw-salvo` é a
@@ -3227,7 +3519,7 @@ function seloFramework(projeto) {
      A segunda é a que não mente — a primeira sozinha foi o que falhou hoje. */
   const conf = CONFIRMA_FW.get(projeto)
   const confirmacao = !conf ? '' : conf.erro
-    ? `<div class="fw-salvo ruim">✗ pedi <b>${esc(conf.pedido)}</b>, o arquivo diz <b>${esc(conf.real)}</b> — tente de novo</div>`
+    ? `<div class="fw-salvo ruim">✗ pedi <b>${esc(conf.pedido)}</b>, o arquivo diz <b>${esc(conf.real)}</b>, tente de novo</div>`
     : `<div class="fw-salvo">✓ salvo: o arquivo diz <b>${esc(conf.real)}</b>, às ${esc(conf.hora)}</div>`
 
   return `<span class="fw-selo fw-on" style="border-color:var(--${cor});color:var(--${cor})"
@@ -3298,7 +3590,7 @@ function viewDigest() {
       p.diario.length && `${p.diario.length} dia(s) de diário`,
     ].filter(Boolean).join(' · ')
     return `<div class="dg-proj">
-      <b>${esc(p.projeto)}</b><span class="dim"> — ${itens || 'sem sinal'}</span>
+      <b>${esc(p.projeto)}</b><span class="dim">, ${itens || 'sem sinal'}</span>
       ${p.commits.slice(0, 5).map((c) => `<div class="dg-item">${esc(c.assunto)}</div>`).join('')}
     </div>`
   }).join('')}
@@ -3306,113 +3598,11 @@ function viewDigest() {
   </div>`
 }
 
-function viewCockpit(jobs) {
-  // O cabeçalho é montado ANTES de qualquer saída antecipada, de propósito.
-  // Achado em 14/08 na VPS: sem job vivo, a função retornava "nenhum projeto no
-  // filtro" e levava junto o botão do framework, que é justamente o que serve
-  // para projeto sem agente. Máquina sem agente nenhum é o caso mais comum de
-  // quem acabou de abrir o painel.
-  /* A pergunta desta aba é a mais importante do painel inteiro, e é a razão de
-     ela existir: ela já ordena por urgência, só nunca dizia isso em voz alta. */
-  const esperando = jobs.filter((j) => j.status === 'waiting').length
-  const trabalhando = jobs.filter((j) => j.status === 'working').length
-  const vereditoCk = esperando
-    ? `${esperando} agente${esperando > 1 ? 's' : ''} parado${esperando > 1 ? 's' : ''} esperando você. Comece pelo de cima.`
-    : trabalhando
-      ? `Ninguém esperando. ${trabalhando} trabalhando agora.`
-      : 'Nada em curso — comece pelo projeto de cima, que é o mais atrasado.'
-
-  const cabecalhoDigest = cabecaDaTela('Onde eu mexo agora?', vereditoCk,
-    esperando ? 'atencao' : 'bom')
-    + `<div class="dg-cab">
-    <button class="btn" data-digest>${DIGEST ? 'fechar digest' : 'digest da semana'}</button>
-    <button class="btn" data-fw-lista>${FW_LISTA ? 'fechar framework' : 'framework nos projetos'}</button>
-    ${DIGEST ? viewDigest() : ''}
-    ${FW_LISTA ? viewFrameworkLista() : ''}
-  </div>`
-
-  if (!jobs.length) return cabecalhoDigest + '<div class="empty">nenhum agente ativo nesta máquina</div>'
-  // O cockpit vem pronto do servidor (`cockpit.mjs`, testado). O filtro do topo
-  // continua valendo, mas por PROJETO: achar um agente pela busca mostra o
-  // projeto dele inteiro — é visão de projeto, não de agente.
-  const visiveis = new Set(jobs.map((j) => j.project))
-  const projetos = (DATA.cockpit || []).filter((p) => visiveis.has(p.projeto))
-  if (!projetos.length) return cabecalhoDigest + '<div class="empty">nenhum projeto no filtro</div>'
-
-  return cabecalhoDigest + `<div class="ck-lista">${projetos.map((p) => {
-    pedirMapaMini(p.projeto)
-    pedirFramework(p.projeto)
-    const cor = COR_MOTIVO[p.motivo.tipo] || 'dim'
-    const status = ZONES.map((z) => {
-      const n = p.porStatus[z.key] || 0
-      return n ? `<span style="color:var(--${z.key})">${n} ${z.title}</span>` : ''
-    }).filter(Boolean).join(' · ')
-
-    // Quem espera decisão dele — é o que este painel existe pra despachar.
-    const esperando = p.esperando.length ? `<div class="ck-espera">
-      ${p.esperando.map((e) => `
-        <div class="ck-ag" data-job="${e.id}" tabindex="0" title="abrir detalhe">
-          <span class="ck-ag-motivo" style="color:var(--${COR_MOTIVO[e.tipo] || 'dim'})">${esc(e.motivo)}</span>
-          <b>${esc(e.subject)}</b>
-          ${e.frente ? `<span class="dim">› ${esc(e.frente)}</span>` : ''}
-          <span class="grow"></span>
-          <span class="path">${age(e.idleMs)}</span>
-        </div>
-        ${e.nota ? `<p class="ck-nota">${esc(e.nota.texto)}</p>` : ''}`).join('')}
-    </div>` : ''
-
-    // Os demais agentes, em uma linha só: contexto sem virar parede de texto.
-    const resto = p.jobs.filter((j) => !p.esperando.some((e) => e.id === j.id))
-    const chip = (j) => `<span class="ck-frio" data-job="${j.id}" tabindex="0" title="${esc(j.motivo)}">
-        <i class="dot s-${j.status}"></i>${esc(j.subject)}
-      </span>`
-    // CC-06: agrupar por rota só quando vira lista comprida — com poucos
-    // agentes, um por rota, o agrupamento só adicionaria moldura sem ajudar.
-    const frios = !resto.length ? '' : resto.length <= 4
-      ? `<div class="ck-frios">${resto.map(chip).join('')}</div>`
-      : (() => {
-        const porRota = new Map()
-        for (const j of resto) {
-          const k = j.route || 'sem rota'
-          if (!porRota.has(k)) porRota.set(k, [])
-          porRota.get(k).push(j)
-        }
-        return [...porRota].map(([rota, js]) => `
-          <div class="ck-rota"><span class="dim">${esc(rota)}</span>
-            <div class="ck-frios">${js.map(chip).join('')}</div>
-          </div>`).join('')
-      })()
-
-    // CC-33: o delta desde a última vez que ele clicou "vi isso". Sem visita
-    // registrada, não mostra frase nenhuma — inventar "desde sempre" mentiria.
-    const visita = p.desdeVisita?.em
-      ? `<span class="dim" title="desde ${new Date(p.desdeVisita.em).toLocaleString('pt-BR')}">${
-          p.desdeVisita.resumo ? esc(p.desdeVisita.resumo) : 'nada novo desde sua visita'}</span>`
-      : ''
-
-    return `<article class="ck-proj p-${cor}">
-      <header class="ck-head">
-        <button class="ck-nome" data-mapa-projeto="${esc(p.projeto)}" title="abrir o mapa deste projeto">${esc(p.projeto)}</button>
-        <span class="ck-motivo" style="color:var(--${cor})">${esc(p.motivo.frase)}${
-      p.motivo.peso >= 3 ? ` há ${age(p.motivo.desde)}` : ''}</span>
-        <span class="grow"></span>
-        ${visita}
-        <button class="btn mini" data-visita="${esc(p.projeto)}" title="marcar como visto agora">vi isso</button>
-        <span class="path">${p.ultimaAtividade ? `visto há ${age(Date.now() - p.ultimaAtividade)}` : '—'}</span>
-      </header>
-      ${esperando}
-      ${frios}
-      ${miniMapa(p.projeto)}
-      ${(() => { const s = seloFramework(p.projeto); return s ? `<div class="ck-fw">${s}</div>` : '' })()}
-      <footer class="ck-pe">
-        <span class="dim">${status || 'sem agente ativo'}</span>
-        <span class="grow"></span>
-        <span class="path">${p.agentes} agente${p.agentes === 1 ? '' : 's'}${
-      p.abertos ? ` · ${p.abertos} com to-do aberto` : ''} · ${tok(p.tokens)}</span>
-      </footer>
-    </article>`
-  }).join('')}</div>`
-}
+/* A vista antiga do cockpit morreu aqui em 17/08: a aba passou para a tela
+   de trabalho e a função ficou órfã, levando junto os controles do
+   framework, que ficaram dois dias inalcançáveis no celular. O que ela
+   tinha de único (lista de módulos, seletor de modo, digest) mora hoje na
+   tela de trabalho. O gate agora acusa vista definida e nunca chamada. */
 
 /* ======================== aba: tempo ========================= */
 
@@ -3447,18 +3637,18 @@ function viewTempo() {
       <label>até <input type="date" data-tempo="ate" value="${esc(TEMPO.ate || '')}"></label>
       ${TEMPO.de || TEMPO.ate ? '<button class="btn" data-tempo-limpar>período inteiro</button>' : ''}
       <label title="0 esconde a coluna de valor">R$ por hora
-        <input type="number" min="0" step="10" class="t-taxa" data-taxa value="${TEMPO.taxaGlobal || ''}" placeholder="—">
+        <input type="number" min="0" step="10" class="t-taxa" data-taxa value="${TEMPO.taxaGlobal || ''}" placeholder="ex: 140">
       </label>
       <label title="quanto você paga de assinatura por mês; 0 mostra só o preço de API">assinatura/mês
         <input type="number" min="0" step="10" class="t-taxa" data-assinatura
-          value="${TEMPO.assinaturaMes || ''}" placeholder="—">
+          value="${TEMPO.assinaturaMes || ''}" placeholder="ex: 1100">
       </label>
       <label title="${TEMPO.cambio.em
         ? `cotação de ${new Date(TEMPO.cambio.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}${
             TEMPO.cambio.manual ? ', digitada por você' : ', buscada automaticamente'}`
-        : 'sem cotação — digite uma para ver o custo em real'}">dólar
+        : 'sem cotação, digite uma para ver o custo em real'}">dólar
         <input type="number" min="0" step="0.01" class="t-taxa" data-cambio
-          value="${TEMPO.cambio.brlPorUsd ? TEMPO.cambio.brlPorUsd.toFixed(2) : ''}" placeholder="—">
+          value="${TEMPO.cambio.brlPorUsd ? TEMPO.cambio.brlPorUsd.toFixed(2) : ''}" placeholder="ex: 5,40">
       </label>
       <span class="grow"></span>
       <button class="btn" data-tempo-recarregar>reler transcritos</button>
@@ -3467,7 +3657,7 @@ function viewTempo() {
   const aviso = `<p class="t-aviso">
     Tempo ativo é a soma dos intervalos entre mensagens, descartando as paradas maiores
     que o corte acima. <b>Agente rodando sozinho conta como trabalho</b>, e tempo lendo
-    código ou em reunião não conta. O custo é o preço de API dos tokens gastos —
+    código ou em reunião não conta. O custo é o preço de API dos tokens gastos 
     referência de esforço, não o que foi cobrado de você na assinatura.
     ${TEMPO.cambio.brlPorUsd
       ? `Convertido a ${brl(TEMPO.cambio.brlPorUsd)} por dólar${TEMPO.cambio.manual
@@ -3520,15 +3710,15 @@ function viewTempo() {
         <span class="v path">${horas(porDia)}/dia</span>
         <span class="v num">${tok(p.tokens)}</span>
         <span class="v cif" title="${usd(p.custo)} de API">${p.custoBrl == null ? usd(p.custo) : brl(p.custoBrl)}</span>
-        <span class="v path">${!p.ativoMs ? '—' : (() => {
+        <span class="v path">${!p.ativoMs ? '...' : (() => {
           const porHora = p.custo / (p.ativoMs / 36e5)
           return TEMPO.cambio.brlPorUsd ? brl(porHora * TEMPO.cambio.brlPorUsd) + '/h' : usd(porHora) + '/h'
         })()}</span>
         ${comReal ? `<span class="v real" title="fatia da assinatura pelas horas deste projeto em cada mês">${brl(p.custoReal)}</span>` : ''}
         ${comValor ? `<span class="v val" title="${p.taxaHora ? `${horas(p.ativoMs)} a ${brl(p.taxaHora)}/h${p.taxaPropria ? ' (taxa deste projeto)' : ''}` : 'sem taxa'}">${
-          p.taxaHora ? brl(p.valor) : '—'}</span>` : ''}
+          p.taxaHora ? brl(p.valor) : '...'}</span>` : ''}
         ${comSobra ? `<span class="v ${p.sobra == null ? '' : p.sobra >= 0 ? 'ok' : 'ruim'}">${
-          p.sobra == null ? '—' : brl(p.sobra)}</span>` : ''}
+          p.sobra == null ? '...' : brl(p.sobra)}</span>` : ''}
       </div>
       ${aberto ? `<div class="t-corpo">
         <div class="t-valor">
@@ -3536,7 +3726,7 @@ function viewTempo() {
             <input type="number" min="0" step="10" class="t-taxa" data-taxa
               data-projeto="${esc(p.projeto)}"
               value="${p.taxaPropria ? p.taxaHora : ''}"
-              placeholder="${TEMPO.taxaGlobal || '—'}">
+              placeholder="${TEMPO.taxaGlobal || '...'}">
           </label>
           ${p.taxaHora ? `<b>${brl(p.valor)}</b>
             <span class="path">${horas(p.ativoMs)} × ${brl(p.taxaHora)}/h${
@@ -3565,11 +3755,11 @@ function viewTempo() {
               </tr>`).join('')}
           </table>
           <p class="path" style="margin:6px 0 0">
-            releitura de cache costuma ser a maior fatia do volume e a menor do preço — custa 10% da entrada.
+            releitura de cache costuma ser a maior fatia do volume e a menor do preço, custa 10% da entrada.
           </p>
         </div>
         <div>
-          <h3>sessões — ${p.sessoes.length}</h3>
+          <h3>sessões, ${p.sessoes.length}</h3>
           <table class="t-ses">${p.sessoes.slice(0, 40).map((s) => {
             const fmt = (ms, opts) => new Date(ms).toLocaleString('pt-BR', opts)
             const mesmoDia = diaDe(s.inicio) === diaDe(s.fim)
@@ -3716,7 +3906,7 @@ function viewIndice(idx) {
       <table class="g-tab">
         ${idx.medidas.map((m) => `<tr><td>${esc(m.rotulo)}</td><td class="path">vem do ${fonteDe(m.fonte)}</td></tr>`).join('')}
         ${idx.bloqueadas.map((m) => `<tr class="off"><td>${esc(m.rotulo)}</td>
-          <td class="path">falta ${esc(m.precisa.replace('+', ' e '))} — defina na aba tempo</td></tr>`).join('')}
+          <td class="path">falta ${esc(m.precisa.replace('+', ' e '))}, defina na aba tempo</td></tr>`).join('')}
       </table>
     </div>
     <div>
@@ -3729,7 +3919,7 @@ function viewIndice(idx) {
       </table>
       <p class="path" style="margin:10px 0 0">
         O relógio não sabe qual modelo rodou, e o uso de token não sabe quanto tempo levou.
-        Por isso horas não cruza com modelo — e o construtor avisa em vez de desenhar zero.
+        Por isso horas não cruza com modelo, e o construtor avisa em vez de desenhar zero.
       </p>
     </div>
   </div>`
@@ -3746,6 +3936,14 @@ function viewGraficos() {
   const idx = CCGraficos.indice(estado)
   const dados = fatosDe(TEMPO)
   const lista = graficosAtuais()
+
+  /* CC-101: a pergunta no topo, como toda tela. O veredito diz o que há para
+     ver, não um número seco. */
+  const cabeca = cabecaDaTela('O que os números mostram quando cruzados?',
+    lista.length
+      ? `${lista.length} gráfico${lista.length === 1 ? '' : 's'} montado${lista.length === 1 ? '' : 's'} com os dados de tempo e uso.`
+      : 'Nenhum gráfico ainda. "+ gráfico" monta o primeiro com os dados que você já tem.',
+    'neutro')
 
   const barra = `<div class="t-ctl">
     <button class="btn" data-g-novo${rascunho ? ' disabled' : ''}>+ gráfico</button>
@@ -3768,10 +3966,10 @@ function viewGraficos() {
       ${CCGraficos.desenhar(g, dados, fmtG, estado)}
     </section>`).join('')
 
-  return barra + viewIndice(idx)
+  return cabeca + barra + viewIndice(idx)
     + (rascunho ? construtor(idx, estado) : '')
     + (lista.length ? `<div class="g-grade">${cartoes}</div>`
-      : '<div class="empty">nenhum gráfico — use o + acima</div>')
+      : '<div class="empty">nenhum gráfico, use o + acima</div>')
 }
 
 async function gravarGraficos(lista) {
@@ -3835,7 +4033,7 @@ function viewPreco() {
     </label>
     <span class="path">corte de ${esc(String(tempoParams.corte))}min, da aba tempo</span>
     <span class="grow"></span>
-    <span class="path">mercado: ${esc(m.fonte || '—')}${
+    <span class="path">mercado: ${esc(m.fonte || '...')}${
       idade == null ? '' : idade === 0 ? ', hoje' : `, há ${idade}d`}</span>
     <button class="btn" data-preco-buscar>buscar de novo</button>
   </div>`
@@ -3848,7 +4046,9 @@ function viewPreco() {
         <span class="p-hora">${brl(p.valorHora)}<i>/h</i></span>
         <input type="number" min="0" step="5" class="t-taxa" data-mercado="${n}"
           value="${p.valorHora}" title="digitar congela o valor e a busca para de mexer">
-        <span class="path">faixa ${brl(p.faixa?.min || 0)}–${brl(p.faixa?.max || 0)}</span>
+        ${/* "a" e não traço: a limpeza de travessões de 17/08 apagou o que
+             separava os valores e a faixa saiu colada, "R$ 60,00R$ 90,00" */ ''}
+        <span class="path">faixa ${brl(p.faixa?.min || 0)} a ${brl(p.faixa?.max || 0)}</span>
         <span class="path">${p.quantas} ${precoUnidade === 'sessao' ? 'sessões' : 'tarefas'}
           · média ${horas(p.mediaMs)} · ${brl(p.total)}</span>
       </div>`
@@ -3864,7 +4064,7 @@ function viewPreco() {
   </div>`
 
   const aviso = `<p class="t-aviso">
-    O nível sai de sinais de esforço no transcript, não de entendimento do problema —
+    O nível sai de sinais de esforço no transcript, não de entendimento do problema 
     <b>é palpite, e o palpite é seu para corrigir</b>: clique na linha e escolha.
     ${precoUnidade === 'sessao'
       ? 'Uma sessão pode ter resolvido mais de uma coisa, então a média por sessão é maior que a média por problema.'
@@ -3876,7 +4076,7 @@ function viewPreco() {
   if (!PRECO.tarefas.length) {
     return ctl + faixas + aviso + `<div class="empty">
       ${precoUnidade === 'todo'
-        ? 'nenhuma tarefa marcada como concluída nos agentes vivos — marque na aba to-dos, ou veja por sessão'
+        ? 'nenhuma tarefa marcada como concluída nos agentes vivos, marque na aba to-dos, ou veja por sessão'
         : 'nenhuma sessão com tempo no período'}</div>`
   }
 
@@ -3886,10 +4086,10 @@ function viewPreco() {
     return `<div class="p-item${aberta ? ' on' : ''}">
       <div class="p-linha" data-preco-abrir="${esc(k)}" tabindex="0">
         <span class="p-nome" title="${esc(t.tarefa)}">${esc(t.tarefa)}</span>
-        <span class="v path">${esc(t.projeto || '—')}</span>
+        <span class="v path">${esc(t.projeto || '...')}</span>
         <span class="v n-${t.nivel}">${NIVEL_ROTULO[t.nivel]}${t.corrigido ? ' ✓' : ''}</span>
         <span class="v">${horas(t.medidoMs)}</span>
-        <span class="v path">${t.digitadoMs == null ? '—' : horas(t.digitadoMs)}</span>
+        <span class="v path">${t.digitadoMs == null ? '...' : horas(t.digitadoMs)}</span>
         <span class="v h">${horas(t.cobradoMs)}</span>
         <span class="v cif">${brl(t.preco)}</span>
       </div>
@@ -3922,7 +4122,7 @@ function viewPreco() {
   const qtd = (PRECO.tarefas || []).length
   const total = (PRECO.tarefas || []).reduce((a, t) => a + (t.preco || 0), 0)
   const vdP = !qtd
-    ? 'Nenhum problema resolvido no período — sem base para preço.'
+    ? 'Nenhum problema resolvido no período, sem base para preço.'
     : `${qtd} problema(s) resolvido(s)${total ? `, somando ${brl(total)}` : ''}. Clique numa linha para ver por que aquele nível.`
 
   return cabecaDaTela('Quanto cobrar por isso?', vdP, 'bom') + ctl + faixas + resumo + aviso
@@ -3982,7 +4182,7 @@ async function atualizarVps() {
     if (!out.ok) alert(out.error)
     else VPS = { ...VPS, snapshot: out.snapshot }
   } catch {
-    alert('não consegui falar com o painel — confira se ele ainda está no ar')
+    alert('não consegui falar com o painel, confira se ele ainda está no ar')
   }
   vpsAtualizando = false
   render()
@@ -3994,9 +4194,9 @@ function viewVpsFormulario() {
     <label>host (IP ou domínio)<input id="vps-host" value="${esc(v.host || '')}" placeholder="66.94.117.215"></label>
     <label>usuário<input id="vps-usuario" value="${esc(v.usuario || 'root')}"></label>
     <label>caminho da chave privada<input id="vps-chave" value=""
-      placeholder="${v.configurado ? 'já configurada — deixe em branco pra manter' : '~/.ssh/id_ed25519_...'}"></label>
+      placeholder="${v.configurado ? 'já configurada, deixe em branco pra manter' : '~/.ssh/id_ed25519_...'}"></label>
     <button class="btn" data-vps-salvar="1">salvar</button>
-    <p class="path">a chave em si nunca sai desta máquina — só o caminho do arquivo fica guardado</p>
+    <p class="path">a chave em si nunca sai desta máquina, só o caminho do arquivo fica guardado</p>
   </div>`
 }
 
@@ -4082,7 +4282,7 @@ function viewVps() {
     </div>
     ${vpsConfigAberto ? viewVpsFormulario() : ''}
     ${!s
-      ? '<div class="path" style="margin-top:16px">nunca lida — clique em "atualizar" pra entrar pela primeira vez</div>'
+      ? '<div class="path" style="margin-top:16px">nunca lida, clique em "atualizar" pra entrar pela primeira vez</div>'
       : `<div class="vps-veredito v-${saude.cor}">
           <b>${esc(saude.frase)}</b>
           <span class="path">${esc(VPS.host || 'esta máquina')} · lido ${age(Date.now() - s.em)} atrás</span>
@@ -4121,6 +4321,34 @@ const acoesDoCartao = (s) => `
 // A porta é o que identifica o servidor na cabeça de quem procura — por isso
 // vem primeiro e grande, em vez de ser a primeira coluna de uma tabela.
 function cartaoSrv(s) {
+  /* CC-120: qual agente está na mesma pasta que este servidor.
+   *
+   * Saiu do inventário das telas: a aba de servidores mostra o processo, a de
+   * agentes mostra quem trabalha, e o elo entre os dois só existia na cabeça
+   * dele. O dado já estava todo aqui, dos dois lados, e ninguém cruzava.
+   *
+   * **O rótulo diz "trabalhando aqui", e não "subiu isto", porque a prova é de
+   * pasta e não de autoria.** Ninguém registra quem deu `npm run dev`: o que se
+   * sabe é que a pasta do agente e a do servidor são a mesma. Prometer autoria
+   * seria a tela afirmando mais do que mediu.
+   *
+   * **O casamento é por PROJETO, e a primeira versão fazia por caminho.** Ela
+   * saiu no print e estava errada de um jeito que o código não denunciava: a
+   * sessão avulsa aberta na pasta pessoal casava com TODOS os servidores, porque
+   * todo projeto mora dentro dela. Um agente aparecia em cada cartão da tela.
+   *
+   * Sobra o caminho para quem não tem projeto identificado, e aí só valem a
+   * pasta idêntica ou o agente numa subpasta do servidor. O sentido contrário,
+   * servidor dentro da pasta do agente, é justamente o que trouxe o defeito.
+   */
+  const norm = (p) => String(p || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+  const aqui = (DATA.jobs || []).filter((j) => {
+    if (s.project && j.project) return norm(s.project) === norm(j.project)
+    const a = norm(j.worktreePath || j.cwd)
+    const b = norm(s.path)
+    return a && b && (a === b || a.startsWith(`${b}/`))
+  })
+
   return `
     <article class="srv-card${s.dev ? ' dev' : ''}">
       <header>
@@ -4136,9 +4364,14 @@ function cartaoSrv(s) {
         ? `<p class="srv-resumo" title="${esc(s.cmd)}">${esc(s.resumo)}</p>` : ''}
       ${s.nota ? `<p class="srv-nota">${esc(s.nota)}</p>` : ''}
       ${s.path ? `<p class="c-proj" title="${esc(s.path)}">${esc(cauda(s.path))}</p>` : ''}
+      ${aqui.length ? `<p class="c-proj">${aqui.map((j) => `
+        <span class="ck-frio" data-job="${esc(j.id)}" tabindex="0"
+          title="agente na mesma pasta deste servidor. O painel não sabe quem deu o comando: o que ele sabe é que a pasta é a mesma">
+          <i class="dot s-${j.status}"></i>${esc(j.subject || j.project)}
+        </span>`).join('')}</p>` : ''}
       ${s.dev ? acoesDoCartao(s) : ''}
       <footer>
-        <span class="path idade">${s.startedAt ? 'no ar há ' + age(Date.now() - s.startedAt) : '—'}</span>
+        <span class="path idade">${s.startedAt ? 'no ar há ' + age(Date.now() - s.startedAt) : '...'}</span>
         <span class="grow"></span>
         ${s.url ? `<a class="btn" href="${esc(s.url)}" target="_blank" rel="noopener">abrir</a>` : ''}
         ${s.dev && !s.protegido
@@ -4155,7 +4388,7 @@ function viewSubir() {
       <b>${esc(nome)}</b>
       ${extra}
       <span class="grow"></span>
-      <code class="path" title="${esc(comando || '')}">${esc(cauda(comando || '—', 34))}</code>
+      <code class="path" title="${esc(comando || '')}">${esc(cauda(comando || '...', 34))}</code>
       <button class="btn mini" data-subir-cwd="${esc(dir)}" data-subir-cmd="${esc(comando || '')}">subir</button>
     </div>`
 
@@ -4225,7 +4458,7 @@ function viewServidores() {
     ${srvNovo ? viewSubir() : ''}
     ${DUPLICADOS.length ? `<p class="note warn" style="margin:0 0 10px">
       ${DUPLICADOS.map((g) => `${esc(g.project)} está com ${g.matar.length + 1} servidores <b>${esc(g.kind)}</b> abertos`).join(' · ')}
-      — <button class="btn mini danger" data-dedup="1">${
+     , <button class="btn mini danger" data-dedup="1">${
         srvDedup ? `confirmar: encerrar ${total}?` : `fechar ${total} duplicado${total > 1 ? 's' : ''}`
       }</button>
       <span class="path">fica o mais recente de cada</span>
@@ -4240,7 +4473,7 @@ function viewServidores() {
     ${viewDocker()}
     ${viewProcessos()}
     <p class="path" style="margin-top:20px">
-      encerrar pede confirmação e só vale para servidor de desenvolvimento —
+      encerrar pede confirmação e só vale para servidor de desenvolvimento 
       processo do Windows fica de fora de propósito.
     </p>`
 }
@@ -4258,7 +4491,7 @@ function viewProcessos() {
   if (processosCarregando) return `${cabeca}<div class="path">lendo os processos… pode levar alguns segundos</div>`
   if (!PROCESSOS) {
     return `${cabeca}<button class="btn mini" data-processos-atualizar="1">ler processos</button>
-      <p class="path" style="margin-top:6px">caro de ler (segundos, não milissegundos) — por isso é sob clique</p>`
+      <p class="path" style="margin-top:6px">caro de ler (segundos, não milissegundos), por isso é sob clique</p>`
   }
 
   const coluna = (titulo, lista, valor) => `<section>
@@ -4274,7 +4507,7 @@ function viewProcessos() {
       ${coluna('ram', PROCESSOS.porRam, (p) => `${p.ramMB} MB`)}
       ${PROCESSOS.porVram.length ? coluna('vram', PROCESSOS.porVram, (p) => `${p.vramMB} MB`) : ''}
     </div>
-    ${!PROCESSOS.temAmostraCpu ? '<p class="path" style="margin-top:8px">cpu por processo aparece na próxima leitura — precisa de duas amostras</p>' : ''}`
+    ${!PROCESSOS.temAmostraCpu ? '<p class="path" style="margin-top:8px">cpu por processo aparece na próxima leitura, precisa de duas amostras</p>' : ''}`
 }
 
 /** Containers Docker desta máquina — some sozinho se o Docker não existir aqui. */
@@ -4332,18 +4565,18 @@ function drawer() {
       </div>
     </div>
     <div class="d-body">
-      ${j.stale ? `<p class="note warn">sem sinal há ${age(j.idleMs)} — pode ter travado</p>` : ''}
+      ${j.stale ? `<p class="note warn">sem sinal há ${age(j.idleMs)}, pode ter travado</p>` : ''}
       ${j.blockers.length ? `<div><h3>bloqueios</h3><ul class="todos">${
         j.blockers.map((b) => `<li class="note bad">${esc(b)}</li>`).join('')}</ul></div>` : ''}
 
       <div>
         <h3>último pedido</h3>
-        <p class="quote">${esc(j.lastPrompt || j.intent) || '—'}</p>
+        <p class="quote">${esc(j.lastPrompt || j.intent) || '...'}</p>
       </div>
 
       ${j.todos.length ? `
       <div>
-        <h3>to-dos — ${j.todosDone} de ${j.todos.length}</h3>
+        <h3>to-dos, ${j.todosDone} de ${j.todos.length}</h3>
         <div class="bar-todo" style="margin-bottom:8px"><i style="width:${pct}%"></i></div>
         <ul class="todos">${j.todos.map((t, i) => `
           <li class="${t.done ? 'done' : ''}">
@@ -4352,7 +4585,7 @@ function drawer() {
       </div>` : ''}
 
       <div class="d-grid">
-        <div><h3>${j.result ? 'resultado' : 'estado'}</h3><p>${esc(j.result || j.detail) || '—'}</p></div>
+        <div><h3>${j.result ? 'resultado' : 'estado'}</h3><p>${esc(j.result || j.detail) || '...'}</p></div>
       </div>
 
       <div>
@@ -4365,8 +4598,8 @@ function drawer() {
         `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join(' · ')}</p></div>` : ''}
 
       <details class="lvl">
-        <summary>pedido inicial${j.intentTrustworthy === false ? ' — é de outra conversa' : ''}</summary>
-        <p class="path">${esc(j.intent) || '—'}</p>
+        <summary>pedido inicial${j.intentTrustworthy === false ? ', é de outra conversa' : ''}</summary>
+        <p class="path">${esc(j.intent) || '...'}</p>
       </details>
 
       <details class="lvl">
@@ -4392,8 +4625,16 @@ let dadosPendentes = null
  */
 function editando() {
   const alvo = document.activeElement
-  if (!alvo || !alvo.matches('input, textarea')) return false
-  // o painel lateral também é reescrito por render() — vale a mesma trava
+  /* `select` entrou em 17/08, ao levar o seletor de modo para a lista de
+     módulos: é a mesma armadilha do menu de abas. O popup NATIVO do select
+     morre junto com o nó no redesenho de 2s, e no telefone ele fechava na cara
+     do Felipe antes do toque. O redesenho volta no blur, como nos campos. */
+  if (!alvo || !alvo.matches('input, textarea, select')) return false
+  // `SEM_GUARDA` é a chave que o teste vira para provar que ainda pega o
+  // defeito. Sem respeitá-la aqui, a auto-prova passava por acidente: a trava
+  // do menu desligava e esta continuava segurando o redesenho.
+  if (window.SEM_GUARDA) return false
+  // o painel lateral também é reescrito por render(), vale a mesma trava
   return $('#main').contains(alvo) || $('#drawer').contains(alvo)
 }
 
@@ -4458,6 +4699,20 @@ function carregarDaAba() {
  * da conversa e sumiam junto com a sessão.
  */
 let MEU = null
+// CC-118: null = nunca procurou; 'lendo'; ou o resultado
+let FILA_PERDIDA = null
+
+async function carregarFilaPerdida() {
+  if (FILA_PERDIDA === 'lendo') return
+  FILA_PERDIDA = 'lendo'
+  render()
+  try {
+    FILA_PERDIDA = await (await fetch('/api/fila-perdida')).json()
+  } catch (e) {
+    FILA_PERDIDA = { existe: false, erro: String(e) }
+  }
+  render()
+}
 
 async function carregarMeu(force) {
   if (MEU && !force) return
@@ -4530,7 +4785,43 @@ function viewMeu() {
     ? `<div class="meu-lista">${abertas.map(linha).join('')}</div>`
     : '<div class="empty">nada depende de você agora</div>'}
     ${feitas.length ? `<details class="meu-feitas"><summary>${feitas.length} já resolvida${
-      feitas.length > 1 ? 's' : ''}</summary><div class="meu-lista">${feitas.map(linha).join('')}</div></details>` : ''}`
+      feitas.length > 1 ? 's' : ''}</summary><div class="meu-lista">${feitas.map(linha).join('')}</div></details>` : ''}
+    ${viewFilaPerdida()}`
+}
+
+/* CC-118: as mensagens dele que a fila descartou.
+   Queixa: "as vezes eu digito aqui e o texto fica em itálico. daí ao sair da
+   janela e voltar, o texto simplesmente some". O texto fica no registro, e aqui
+   ele o recupera sem terminal. Sob clique, nunca no stream: ler 43 MB de
+   registro custa meio segundo. */
+function viewFilaPerdida() {
+  const f = FILA_PERDIDA
+  const botao = `<button class="btn" data-fila-perdida ${f === 'lendo' ? 'disabled' : ''}>${
+    f === 'lendo' ? 'procurando…' : 'o que eu digitei e sumiu'}</button>`
+  if (!f || f === 'lendo') {
+    return `<div class="t-ctl" style="margin-top:18px">${botao}
+      <span class="path">o texto que a fila descartou continua guardado no registro</span></div>`
+  }
+  if (!f.existe) {
+    return `<div class="t-ctl" style="margin-top:18px">${botao}
+      <span class="path">não achei registro de sessão nesta máquina</span></div>`
+  }
+  const lista = f.perdidas || []
+  /* O projeto vai em CADA linha, e não no cabeçalho, porque agora a varredura é
+     de todas as sessões da máquina. Na primeira versão a rota escolhia uma
+     sessão sozinha e mostrava 1 de 37, sem dizer que estava escolhendo. */
+  const projetos = [...new Set(lista.map((p) => p.projeto).filter(Boolean))]
+  return `<div class="t-ctl" style="margin-top:18px">${botao}
+      <span class="path">${lista.length
+    ? `${lista.length} mensagem${lista.length > 1 ? 's' : ''} sua${lista.length > 1 ? 's' : ''} que eu nunca recebi`
+      + `${projetos.length > 1 ? `, em ${projetos.length} projetos` : ''}`
+    : 'nenhuma mensagem sua se perdeu'}</span></div>
+    ${lista.length ? `<div class="fp-lista">${lista.map((p) => `
+      <article class="fp-item">
+        <header><span class="path">${p.quando ? esc(new Date(p.quando).toLocaleString('pt-BR')) : 'sem hora'}
+          · ${p.palavras} palavras${p.projeto ? ` · ${esc(p.projeto)}` : ''}</span></header>
+        <p>${esc(p.texto)}</p>
+      </article>`).join('')}</div>` : ''}`
 }
 
 /* ======================= aba: glossário ======================= */
@@ -4691,6 +4982,15 @@ const VISTAS = ['geral', 'sprint', 'produto', 'voce']
 let trabalhoVista = VISTAS.includes(params.get('vista') || localStorage.getItem('cc-trab-vista'))
   ? (params.get('vista') || localStorage.getItem('cc-trab-vista')) : 'geral'
 let trabalhoFoco = params.get('foco') || null
+/* CC: planilha ou quadradinhos na vista de sprint. Guardado, porque é
+   preferência de leitura e não estado de navegação. `?planilha=1` existe para a
+   captura de tela. */
+/* A planilha é o PADRÃO: ele pediu a visão em tabela, e quem abre o painel sem
+   clicar em nada tem que ver tabela. Guardar "quadradinhos" continua possível,
+   e só vale se ele escolher. */
+let sprintPlanilha = params.has('planilha')
+  ? params.get('planilha') !== '0'
+  : localStorage.getItem('cc-sprint-planilha') !== '0'
 
 async function carregarTrabalho(force) {
   if (TRABALHO && !force) return
@@ -4750,14 +5050,30 @@ function viewTrabalho(jobs = []) {
   /* O botão leva a palavra curta e o cabeçalho da lista leva o nome inteiro que
      ele escolheu. "Backlog de pendências" dentro de um botão de 85px quebra em
      três linhas, e a navegação passaria a custar mais altura que o conteúdo. */
-  return cabecaDaTela('Em que pé está o trabalho?', TRABALHO.veredito,
-    minhas.length ? 'atencao' : 'bom')
+  /* A frase e a cor vem juntas do servidor: dizer "esta tudo em ordem" numa
+     faixa laranja seria pior que nao dizer nada. O formato antigo era so texto,
+     e por isso a tela ficava identica com cinco coisas travadas e com nenhuma. */
+  const vd = typeof TRABALHO.veredito === 'string'
+    ? { frase: TRABALHO.veredito, cor: minhas.length ? 'atencao' : 'bom', calmo: !minhas.length }
+    : TRABALHO.veredito
+  return cabecaDaTela('Em que pé está o trabalho?', vd.frase, vd.cor)
     + `<nav class="bl-vistas" aria-label="as quatro visões do trabalho">
         ${vista('geral', 'geral', nSprint + minhas.length + nBacklog, 'neutro')}
         ${vista('sprint', 'sprint', nSprint, nSprint ? 'working' : 'done')}
         ${vista('produto', 'produto', nBacklog, 'neutro')}
-        ${vista('voce', 'pendências', minhas.length, minhas.length ? 'waiting' : 'done')}
+        ${/* "pendências" quebrava em "PENDÊNCI/AS" no quarto botão em 390px.
+             "você" diz a mesma coisa e é a palavra que ele usou. */ ''}
+        ${vista('voce', 'você', minhas.length, minhas.length ? 'waiting' : 'done')}
       </nav>`
+    /* CC-115: a porta dos módulos. A vista antiga do cockpit tinha o botão do
+       framework e morreu órfã quando esta tela assumiu a aba. A lista ficou
+       inalcançável sem ninguém notar; agora mora aqui, com as rotas junto. */
+    + `<div class="dg-cab">
+        <button class="btn" data-fw-lista>${FW_LISTA ? 'fechar módulos' : 'módulos por projeto'}</button>
+        <button class="btn" data-digest>${DIGEST ? 'fechar digest' : 'digest da semana'}</button>
+        ${FW_LISTA ? viewFrameworkLista() : ''}
+        ${DIGEST ? viewDigest() : ''}
+      </div>`
     + (corpo[trabalhoVista] || corpo.geral)()
 }
 
@@ -4770,6 +5086,22 @@ function viewTrabalho(jobs = []) {
    Detalhe abre logo abaixo da grade do bloco em que o item está. Foi escolha
    contra duas alternativas: modal tampa o mapa que ele veio ver, e painel fixo
    na lateral não existe em 390px. */
+/* CC: o "?" que diz o que a sigla quer dizer.
+   Pedido dele em 17/08: "as vezes eu me perco nesses nomes tambem". As siglas
+   nasceram no mesmo dia, ao dar codigo estavel aos itens, e resolveram apontar
+   para uma tarefa criando outro problema: `NV-08` nao diz a ninguem que aquilo
+   e o inovallbond.
+
+   E `title`, nao popup: a resposta cabe numa frase, e um popup exigiria fechar
+   o que abriu. No telefone o toque longo mostra o mesmo texto. */
+function siglaDo(projeto) {
+  const s = (TRABALHO?.siglas || []).find((x) => x.projeto === projeto)
+  if (!s) return ''
+  const onde = s.pasta ? s.pasta.replace(/^\/home\/[^/]+/, '~') : 'pasta desconhecida'
+  const extra = s.de === 'agente' ? ', escrita por um agente e nao pelo backlog' : ''
+  return `<abbr class="gr-sigla" title="${esc(s.sigla)} e o projeto ${esc(projeto)}, em ${esc(onde)}${extra}">${esc(s.sigla)} ?</abbr>`
+}
+
 function vistaGeral(sprint, nSprint, minhas, nBacklog, nMudou) {
   /* O botão vem ANTES do fio, colado na contagem. Depois dele, num monitor de
      1900, ele terminava a 1800px do título a que pertence, que é a mesma
@@ -4792,12 +5124,16 @@ function vistaGeral(sprint, nSprint, minhas, nBacklog, nMudou) {
   const codigos = new Map()
 
   let n = 0
+  /* O código vem da tarefa, não da posição: `s01` nasce quando a tarefa nasce
+     e não muda quando outra fecha. Era o defeito que ele apontou em 17/08 —
+     "essas tarefas S não dizem nada c nada e tão fora de qualquer projeto".
+     O projeto entra no texto de apoio e no cabeçalho do grupo. */
   const quadSprint = sprint.flatMap(({ job, itens }) => itens.map(({ t, i }) => {
-    n += 1
     const ruim = (t.revisoes || []).some((r) => !r.respondeu)
-    codigos.set(`s:${job.id}:${i}`, `S${n}`)
-    return quadrado(`s:${job.id}:${i}`, `S${n}`, ruim ? 'failed' : 'working',
-      ruim ? 'revisar' : 'anda', `${t.text}, em ${job.subject || job.project}`)
+    const cod = t.codigo || `s${i + 1}`
+    codigos.set(`s:${job.id}:${i}`, cod)
+    return quadrado(`s:${job.id}:${i}`, cod, ruim ? 'failed' : 'working',
+      ruim ? 'revisar' : 'anda', `${t.text}, no projeto ${job.project}`)
   })).join('')
 
   const quadVoce = minhas.map((p, i) => {
@@ -4815,6 +5151,7 @@ function vistaGeral(sprint, nSprint, minhas, nBacklog, nMudou) {
     <div class="gr-proj">
       <span class="gr-proj-n">${esc(g.projeto)}</span>
       <span class="gr-proj-c">${g.cartoes.length}</span>
+      ${siglaDo(g.projeto)}
     </div>
     <div class="gr-grade">${g.cartoes.map((c) => quadrado(
     `b:${g.projeto}:${c.nome}`, c.marca?.texto || '?', c.estado.cor,
@@ -4983,11 +5320,117 @@ const cabecaSecao = (titulo, n, sub) => `<div class="bl-h">
   <span class="bl-fio" aria-hidden="true"></span>
 </div>`
 
+/* ---- a planilha de roadmap (17/08) ----
+
+   Pedido dele: "vamos criar a visão de tarefas estilo tabela/planilha de
+   roadmap (…) nós já usamos em diversos projetos". As colunas NÃO foram
+   inventadas: saíram da varredura dos ROADMAP.md dele, onde o formato mais
+   completo é o do `proj_carzo`:
+
+       | ID | Task | Prioridade | Complexidade | Status | Depende de | Desbloqueia |
+
+   Duas colunas dele ficaram de fora porque não existe dado para preencher, e
+   coluna vazia é pior que coluna ausente: `Prioridade` (P0/P1) e
+   `Complexidade`, que hoje só existem para tarefa já concluída, na aba de
+   preço. Entram no lugar delas as duas que o cockpit sabe e o arquivo não:
+   quem está com a tarefa, e se a entrega tem prova.
+
+   Os símbolos são os do quadro dele: ✅ concluído, 🏗️ em progresso,
+   🔒 bloqueado por dependência, ⏳ pendente. */
+const SIMBOLO_TAREFA = {
+  feito: { icone: '✅', texto: 'concluído' },
+  andando: { icone: '🏗️', texto: 'em progresso' },
+  travado: { icone: '🔒', texto: 'bloqueado' },
+  fila: { icone: '⏳', texto: 'pendente' },
+}
+const VAZIO = '<span class="path">-</span>'
+
+function planilhaSprint(grupos) {
+  /* Quem destrava quem: o inverso do "depende de", calculado sobre TODAS as
+     tarefas de todos os agentes. Cruza agente, porque a tarefa que trava pode
+     estar na mão de outro, e é justamente isso que ele não consegue ver hoje. */
+  const todas = grupos.flatMap(({ job }) => (job.todos || []).map((t) => ({ t, job })))
+  const destrava = new Map()
+  for (const { t } of todas) {
+    if (!t.dependeDe) continue
+    const lista = destrava.get(t.dependeDe) || []
+    lista.push(t.codigo || t.text.slice(0, 14))
+    destrava.set(t.dependeDe, lista)
+  }
+  const feitaPorCodigo = new Map(todas.filter(({ t }) => t.codigo).map(({ t }) => [t.codigo, t.done]))
+
+  const linhas = grupos.flatMap(({ job, itens }) => itens.map(({ t, i }) => {
+    const esperando = t.dependeDe && feitaPorCodigo.get(t.dependeDe) === false
+    const estado = t.done ? 'feito' : esperando ? 'travado' : 'andando'
+    const s = SIMBOLO_TAREFA[estado]
+    const desbloqueia = destrava.get(t.codigo) || []
+    return `<tr class="pl-l s-${estado}">
+      <td class="pl-id"><code>${esc(codigoComposto(job, t))}</code></td>
+      <td class="pl-task">
+        <label class="pl-marca"><input type="checkbox" data-todo="${esc(job.id)}" data-i="${i}"
+          aria-label="marcar &quot;${esc(t.text)}&quot; como feita"><b>${esc(textoSemCodigo(t.text))}</b></label>
+        ${t.pronto ? `<span class="path">pronto quando: ${esc(t.pronto)}</span>` : ''}
+      </td>
+      ${/* CC-119, o funil: a coluna diz o CAMINHO até o item de backlog, não só
+            quem está com a tarefa. Produto e sprint eram duas telas que não se
+            referenciavam; com o item do roadmap aqui, a linha de sprint aponta
+            de volta para ele, que é o elo que o campo `frente` já guardava e
+            ninguém via. */ ''}
+      <td class="pl-quem">
+        ${job.frente
+    ? `<span class="c-frente" title="item do ROADMAP.md">${esc(job.frente)}</span>`
+    : '<span class="path">sem item no roadmap</span>'}
+        <span class="path">${esc(job.project)}${job.subject ? ` · ${esc(job.subject)}` : ''}</span>
+      </td>
+      <td class="pl-st" title="${s.texto}">${s.icone} ${s.texto}</td>
+      <td class="pl-dep">${t.dependeDe ? `<code>${esc(t.dependeDe)}</code>` : VAZIO}</td>
+      <td class="pl-des">${desbloqueia.length ? desbloqueia.map((c) => `<code>${esc(c)}</code>`).join(' ') : VAZIO}</td>
+      <td class="pl-prova">${t.prova ? esc(t.prova) : (t.olho ? 'precisa do seu olho' : VAZIO)}</td>
+    </tr>`
+  }))
+
+  if (!linhas.length) return '<p class="bl-nada">nenhuma tarefa aberta agora</p>'
+  return `<div class="pl-rola"><table class="pl-tab">
+    ${/* As classes vão nos `th`, não só nos `td`: em tabela de largura fixa a
+          medida sai da PRIMEIRA linha, e sem elas as sete colunas voltavam a se
+          dividir pelo conteúdo. Foi o que aconteceu na primeira tentativa. */ ''}
+    <thead><tr>
+      <th class="pl-id">ID</th><th class="pl-task">Task</th><th class="pl-quem">Item do roadmap</th>
+      <th class="pl-st">Status</th><th class="pl-dep">Depende de</th>
+      <th class="pl-des">Desbloqueia</th><th class="pl-prova">Prova</th>
+    </tr></thead>
+    <tbody>${linhas.join('')}</tbody>
+  </table></div>`
+}
+
+/**
+ * O ID da linha, na ordem em que ele existe de verdade:
+ *
+ * 1. Código escrito no PRÓPRIO texto da tarefa (`ESC-132 tela de cadastro`).
+ *    Muitos agentes já escrevem assim, e ignorar isso mostrava "?" na coluna ID
+ *    com o código ali do lado, dentro do texto. Visto no print de 17/08.
+ * 2. Item do roadmap mais o número da tarefa, o formato dele: `CC-112_s02`.
+ * 3. Só o número da tarefa.
+ */
+const CODIGO_NO_TEXTO = /^\s*([A-Z]{2,5}-\d+)\b[:.\-\s]*/
+
+function codigoComposto(job, t) {
+  const noTexto = t.text.match(CODIGO_NO_TEXTO)?.[1]
+  if (noTexto) return noTexto
+  const item = (job.frente || '').match(/\b([A-Z]{2,4}-\d+)\b/)?.[1]
+    || (job.subject || '').match(/\b([A-Z]{2,4}-\d+)\b/)?.[1]
+  return item && t.codigo ? `${item}_${t.codigo}` : (t.codigo || '?')
+}
+
+/** O texto sem o código que já virou coluna: repetir os dois lado a lado gasta
+ *  a largura que o texto da tarefa precisa. */
+const textoSemCodigo = (texto) => texto.replace(CODIGO_NO_TEXTO, '')
+
 function secaoSprint(grupos, total) {
   let n = 0
   const corpo = grupos.map(({ job, itens }) => `
     <div class="bl-grupo aberto">
-      <span class="bl-grupo-t"><b>${esc(job.subject || job.project)}</b></span>
+      <span class="bl-grupo-t"><b>${esc(job.project)}</b>${job.subject ? ` <i class="bl-grupo-sub">${esc(job.subject)}</i>` : ''}</span>
       <span class="bl-grupo-n">${itens.length}</span>
       <span class="bl-fio" aria-hidden="true"></span>
     </div>
@@ -4996,6 +5439,17 @@ function secaoSprint(grupos, total) {
     /* Revisão sem resposta é o único aviso que sobe para o cartão: significa que
        alguém apontou um defeito e ninguém respondeu, e é o que trava a entrega. */
     const semResposta = (t.revisoes || []).some((r) => !r.respondeu)
+    /* CC-114: a dependência POR TAREFA, lida do próprio texto ("depende da
+       s03"). Se a tarefa esperada mora na mesma lista, o selo sabe dizer se
+       ela já foi feita; referência de fora (CC-60) fica neutra, sem inventar
+       estado que não dá para conferir daqui. */
+    let espera = ''
+    if (t.dependeDe) {
+      const alvo = (job.todos || []).find((x) => x.codigo === t.dependeDe)
+      espera = alvo?.done
+        ? `<span class="ct-selo c-done">${esc(t.dependeDe)} feita</span>`
+        : `<span class="ct-selo ${alvo ? 'c-waiting' : ''}">espera ${esc(t.dependeDe)}</span>`
+    }
     return `<label class="ct ct-tar s-working">
       <input type="checkbox" data-todo="${esc(job.id)}" data-i="${i}"
         aria-label="marcar &quot;${esc(t.text)}&quot; como feita">
@@ -5003,6 +5457,7 @@ function secaoSprint(grupos, total) {
         <span class="ct-alto">
           <span class="ct-cod real">S${n}</span>
           ${semResposta ? '<span class="ct-selo c-failed">revisar</span>' : ''}
+          ${espera}
           ${t.prova ? '<span class="ct-selo c-working">com prova</span>' : ''}
         </span>
         <span class="ct-nome">${esc(t.text)}</span>
@@ -5010,10 +5465,21 @@ function secaoSprint(grupos, total) {
     </label>`
   }).join('')}</div>`).join('')
 
+  /* Planilha ou quadradinhos, escolha dele e guardada. A planilha é o padrão de
+     leitura que ele já usa nos ROADMAP.md dos projetos, e responde a queixa de
+     17/08: "não dá pra eu saber exatamente em qual tarefa cada agente tá". */
+  const alternador = `<div class="bl-ordens">
+    <button class="bl-ord${sprintPlanilha ? ' on' : ''}" data-sprint-planilha="1">planilha</button>
+    <button class="bl-ord${sprintPlanilha ? '' : ' on'}" data-sprint-planilha="0">quadradinhos</button>
+  </div>`
+
   return `<section class="bl-sec" id="bl-sprint">
     ${cabecaSecao('Sprint backlog', total, 'o que está sendo feito agora')}
-    ${corpo
-    || '<p class="bl-nada">nenhuma tarefa aberta agora. Assim que um agente registrar a dele, ela nasce aqui.</p>'}
+    ${total ? alternador : ''}
+    ${sprintPlanilha
+    ? planilhaSprint(grupos)
+    : (corpo
+      || '<p class="bl-nada">nenhuma tarefa aberta agora. Assim que um agente registrar a dele, ela nasce aqui.</p>')}
     ${total ? '<p class="bl-nota"><button class="bl-ord" data-tab-ir="todos">abrir o sprint com prova e revisão</button></p>' : ''}
   </section>`
 }
@@ -5136,11 +5602,14 @@ function cartaoDoItem(c, projeto) {
     ${aberto ? `<div class="ct-det">
       ${c.citacao ? `<blockquote class="bl-cit">${esc(c.citacao)}</blockquote>` : ''}
       ${c.tarefas.length ? `<div class="bl-sub">${c.tarefas.map((t) => `<div class="bl-sub-i">
-        <span aria-hidden="true">›</span>${esc(t.texto)}</div>`).join('')}</div>` : ''}
+        <span aria-hidden="true">›</span>${t.codigo ? `<b class="bl-sub-cod">${esc(c.id ? `${c.id}_${t.codigo}` : t.codigo)}</b> ` : ''}${esc(t.texto)}</div>`).join('')}</div>` : ''}
       ${c.pendencias.length ? `<div class="bl-sub">${c.pendencias.map((p) => `<div class="bl-sub-i">
         <span aria-hidden="true">›</span>${esc(p.texto)}</div>`).join('')}</div>` : ''}
+      ${(c.dependeDe?.length || c.desbloqueia?.length) ? `<p class="bl-dep">
+        ${c.dependeDe?.length ? `<span class="bl-dep-t">espera ${c.dependeDe.map(esc).join(', ')}</span>` : ''}
+        ${c.desbloqueia?.length ? `<span class="bl-dep-d">destrava ${c.desbloqueia.map(esc).join(', ')}</span>` : ''}
+      </p>` : ''}
       ${c.fracao ? `<p class="bl-cru">${c.fracao.feitos}/${c.fracao.itens} fechadas</p>` : ''}
-      <p class="bl-cru">no roadmap: ${esc(c.titulo || c.nome)}</p>
     </div>` : ''}
   </article>`
 }
@@ -5185,7 +5654,7 @@ async function bancadaAcao(corpo) {
 
 /** O estado de uma camada em uma palavra, na ordem de precedência que importa. */
 function bancadaEstado(c) {
-  if (!c.implementada) return { txt: 'a fazer', cor: 'faint', dica: 'declarada no catálogo, ainda sem execução — dívida nossa, não sua' }
+  if (!c.implementada) return { txt: 'a fazer', cor: 'faint', dica: 'declarada no catálogo, ainda sem execução, dívida nossa, não sua' }
   if (!c.cabe) return { txt: 'não se aplica', cor: 'faint', dica: c.porQueNao }
   const r = c.resultado
   if (!r) return { txt: 'nunca rodou', cor: 'waiting', dica: 'ninguém verificou isto ainda' }
@@ -5252,7 +5721,7 @@ function viewBancada() {
         </button>`).join('')}
     </div>
 
-    <p class="bn-atual">${esc(atual?.explica || '')}${BANCADA.declarado ? '' : ' <b>(padrão — você ainda não escolheu)</b>'}</p>
+    <p class="bn-atual">${esc(atual?.explica || '')}${BANCADA.declarado ? '' : ' <b>(padrão, você ainda não escolheu)</b>'}</p>
 
     <div class="bn-acoes">
       <button class="btn primario" data-bn-rodar${bancadaRodando ? ' disabled' : ''}>
@@ -5472,12 +5941,20 @@ function viewEscritorio() {
        empilhados e espalhados pelos 420px de altura. Apareceu no print que o
        Felipe mandou em 15/08, usando o painel na lateral da tela. */
     : `<div class="empty" style="min-height:220px;display:grid;place-items:center">
-         <p>${escolhido ? `${esc(escolhido.nome)} está parado — clique em <b>ligar</b> acima` : 'nenhum painel configurado'}</p>
+         <p>${escolhido ? `${esc(escolhido.nome)} está parado, clique em <b>ligar</b> acima` : 'nenhum painel configurado'}</p>
        </div>`
 
   // Palco e legenda lado a lado: o escritório mostra o movimento, a coluna
   // diz o que está acontecendo. Uma coisa o outro não faz bem.
-  return viewCartoesPaineis() + `
+  /* CC-101: a pergunta no topo. O veredito diz se há algo para ver AGORA,
+     que é o que decide se vale entrar na aba. */
+  const noAr = (Array.isArray(PAINEIS) ? PAINEIS : []).filter((p) => p.noAr).length
+  const cabecaEsc = cabecaDaTela('O que os painéis embutidos mostram?',
+    noAr
+      ? `${noAr} painel${noAr === 1 ? '' : 'is'} no ar. O escolhido aparece abaixo, inteiro.`
+      : 'Nenhum painel no ar agora. "ligar" sobe o que estiver parado.',
+    noAr ? 'bom' : 'neutro')
+  return cabecaEsc + viewCartoesPaineis() + `
     <div class="escritorio-grade">
       ${palco}
       <aside class="escritorio-legenda">
@@ -5528,7 +6005,7 @@ async function abrirPiP(id) {
     return
   }
   const win = await documentPictureInPicture.requestWindow({ width: 480, height: 380 })
-  win.document.title = `${p.nome} — agentes`
+  win.document.title = `${p.nome}, agentes`
   const estilo = win.document.createElement('style')
   estilo.textContent = `
     html,body{margin:0;height:100%;background:#0b0e14;overflow:hidden}
@@ -5639,7 +6116,7 @@ function viewAgenda() {
     <button class="btn mini" data-ag-atualizar="1">${agendaCarregando ? 'lendo…' : '↻ atualizar'}</button>
     <button class="btn mini" data-ag-config="1">${agendaConfigAberta ? 'fechar' : '⚙ agendas'}</button>
   </div>
-  ${erros.length ? `<p class="ag-erro">sem resposta de: ${erros.map((c) => esc(c.nome)).join(', ')} — mostrando a última leitura</p>` : ''}
+  ${erros.length ? `<p class="ag-erro">sem resposta de: ${erros.map((c) => esc(c.nome)).join(', ')}, mostrando a última leitura</p>` : ''}
   ${agendaConfigAberta ? viewAgendaFormulario() : ''}`
 
   if (!eventos.length) return `${topo}<div class="empty">nada marcado nesta janela</div>`
@@ -5679,6 +6156,8 @@ function viewAgenda() {
    o passo manual de registrar o script lá (ver decisão D1 do backlog). */
 
 let HOOKS_DATA = null
+// CC-103: null = nunca provou; 'rodando'; ou o resultado da última rodada
+let HOOKS_PROVA = null
 
 async function carregarHooks(force) {
   if (HOOKS_DATA && !force) return
@@ -5686,6 +6165,24 @@ async function carregarHooks(force) {
     HOOKS_DATA = await (await fetch('/api/hooks')).json()
   } catch {
     HOOKS_DATA = null
+  }
+  render()
+}
+
+/* CC-103: roda os testes de cada trava e mostra quem passou, quem falhou e
+   quem nunca foi medido. Leva dezenas de segundos (um processo por trava), por
+   isso é sob clique e o botão fica travado enquanto roda. */
+async function provarHooks() {
+  if (HOOKS_PROVA === 'rodando') return
+  HOOKS_PROVA = 'rodando'
+  render()
+  try {
+    const r = await fetch('/api/hooks/provar', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    })
+    HOOKS_PROVA = await r.json()
+  } catch (e) {
+    HOOKS_PROVA = { resumo: { provado: 0, falhou: 0, semProva: 0, total: 0 }, resultados: [], erro: String(e) }
   }
   render()
 }
@@ -5721,7 +6218,7 @@ const QUANDO_HOOK = {
 
 const NIVEL_HOOK = {
   trava: { titulo: 'travam', explica: 'recusam a ação e me obrigam a mudar de caminho', cor: 'failed' },
-  avisa: { titulo: 'avisam', explica: 'falam e deixam seguir — nunca bloqueiam', cor: 'waiting' },
+  avisa: { titulo: 'avisam', explica: 'falam e deixam seguir, nunca bloqueiam', cor: 'waiting' },
   injeta: { titulo: 'informam', explica: 'põem contexto no começo da conversa', cor: 'done' },
   mede: { titulo: 'medem', explica: 'só registram, nunca aparecem', cor: 'dim' },
 }
@@ -5737,7 +6234,7 @@ function viewHooks() {
   const travam = ativos.filter((h) => h.nivel === 'trava').length
 
   const vd = fantasmas.length
-    ? `${fantasmas.length} hook(s) parecem ligados e não estão registrados — não fazem nada.`
+    ? `${fantasmas.length} hook(s) parecem ligados e não estão registrados, não fazem nada.`
     : `${ativos.length} ativos, ${travam} deles podem me barrar.`
 
   const linha = (h) => `
@@ -5748,7 +6245,7 @@ function viewHooks() {
         <span class="dim">${esc(QUANDO_HOOK[h.evento] || h.evento)} · ${esc(h.descricao)}</span>
       </div>
       ${h.ligado && !h.registrado
-        ? '<span class="hk-badge bad" title="ligado aqui, mas ausente do settings.json do Claude Code — não roda">não faz nada</span>'
+        ? '<span class="hk-badge bad" title="ligado aqui, mas ausente do settings.json do Claude Code, não roda">não faz nada</span>'
         : ''}
     </div>`
 
@@ -5767,7 +6264,27 @@ function viewHooks() {
 
   const planejados = (HOOKS_DATA.hooks || []).filter((h) => !h.implementado)
 
+  /* CC-103: as travas provadas sob clique. Antes disto, saber se uma trava
+     ainda pega o que promete exigia provocá-la de propósito, uma por uma, e o
+     Felipe trabalha do telefone. "sem teste" aparece separado de "com defeito"
+     porque as duas coisas são diferentes: uma é desconhecida, a outra é ruim. */
+  const p = HOOKS_PROVA
+  const barraProva = `<div class="t-ctl">
+    <button class="btn" data-hk-provar ${p === 'rodando' ? 'disabled' : ''}>${
+      p === 'rodando' ? 'provando as travas…' : 'as travas funcionam? provar agora'}</button>
+    ${p && p !== 'rodando' ? `<span class="path">${p.resumo.provado} provada(s)`
+      + `${p.resumo.falhou ? `, <b style="color:var(--failed)">${p.resumo.falhou} com defeito</b>` : ''}`
+      + `, ${p.resumo.semProva} sem teste escrito</span>` : ''}
+    ${p === 'rodando' ? '<span class="path">roda uma por vez, leva alguns segundos</span>' : ''}
+  </div>`
+  const detalheProva = !p || p === 'rodando' ? '' : `<div class="hk-prova">${
+    p.resultados.filter((r) => r.estado !== 'provado').map((r) => `<div class="hk-linha">
+      <span class="hk-badge ${r.estado === 'falhou' ? 'bad' : ''}">${r.estado === 'falhou' ? 'com defeito' : 'sem teste'}</span>
+      <div class="hk-info"><b>${esc(r.id)}</b>${r.detalhe ? `<span class="dim">${esc(r.detalhe)}</span>` : ''}</div>
+    </div>`).join('')}</div>`
+
   return cabecaDaTela('O que está me travando?', vd, fantasmas.length ? 'ruim' : 'bom')
+    + barraProva + detalheProva
     + `<div class="hk-lista">${grupos}</div>`
     + (planejados.length
       ? `<details class="hk-planejados"><summary>${planejados.length} ainda não implementado(s)</summary>
@@ -5886,11 +6403,14 @@ function viewRotinas() {
       ${linhas(p)}
     </div>`).join('')
 
-  const resumo = totalDiv
-    ? `<div class="dim" style="margin-bottom:12px">${totalDiv} rotina(s) desatualizada(s) em ${projetos.filter((p) => p.divergentes).length} projeto(s). A cópia do projeto vence a global, então é essa versão velha que roda hoje.</div>`
-    : '<div class="dim" style="margin-bottom:12px">nenhuma cópia desatualizada</div>'
+  /* CC-101: pergunta e veredito no topo. A frase antiga em cinza continua
+     valendo como detalhe; a cabeça é quem diz se há o que fazer. */
+  const cabeca = totalDiv
+    ? cabecaDaTela('As rotinas copiadas ainda valem?',
+      `${totalDiv} desatualizada${totalDiv === 1 ? '' : 's'}: a cópia velha vence a nova, e é ela que roda. "usar a global" conserta.`, 'atencao')
+    : cabecaDaTela('As rotinas copiadas ainda valem?', 'Todas iguais às globais. Nada a fazer.', 'bom')
 
-  return `${resumo}<div class="rt-lista">${cartoes}</div>`
+  return `${cabeca}<div class="rt-lista">${cartoes}</div>`
 }
 
 /* ========================== aba: remoto ==========================
@@ -5963,9 +6483,53 @@ function viewFederacao() {
 
 function viewRemoto() {
   if (!REMOTO_DATA) return viewFederacao() + '<div class="empty">carregando…</div>'
-  const projetos = REMOTO_DATA.projetos || []
+  /* A pasta pessoal sai da lista de projetos: ela ganha linha própria logo
+     abaixo. Ela entra na lista sozinha assim que uma sessão avulsa roda ali,
+     porque a lista soma os `cwd` de tudo que já rodou, e apareceria duas vezes
+     na mesma tela, com nomes diferentes para a mesma pasta. */
+  const projetos = (REMOTO_DATA.projetos || []).filter((p) => p.dir !== REMOTO_DATA.casa)
   const ativos = REMOTO_DATA.ativos || {}
-  if (!projetos.length) return viewFederacao() + '<div class="empty">nenhum projeto encontrado</div>'
+
+  /* CC-129: a sessão avulsa na pasta pessoal.
+   *
+   * Pedido dele em 17/08: *"podemos incluir no controle center lá no remoto um
+   * botão pra criar uma sessão avulsa? daí abre em ~/. pra eu poder alterar
+   * coisas no próprio sandbox na vps"*.
+   *
+   * Fica fora da lista porque a pasta pessoal não é projeto: ela nunca aparece
+   * em `projetos`, e o servidor a manda à parte (`casa`). O caminho vai no
+   * próprio botão, e nenhuma rota nova foi precisa. O clique de "ligar" já
+   * aceita a pasta por `data-remoto-dir`, e o servidor já a usa antes de sair
+   * procurando projeto. Medido antes de escrever esta tela.
+   *
+   * O aviso do alcance fica colado no botão, e não no rodapé: quem clica
+   * precisa saber o que abre na hora em que clica.
+   */
+  const CASA = 'casa'
+  const linhaCasa = () => {
+    if (!REMOTO_DATA.casa) return ''
+    const on = ativos[CASA]
+    return `<div class="rm-linha">
+      <span class="rm-nome">sessão avulsa <span class="dim">${esc(REMOTO_DATA.casa)}</span></span>
+      ${on ? '<span class="hk-badge ok">ligada</span>' : ''}
+      <span class="rm-acoes">
+        ${on
+        ? `<button class="btn" data-remoto-link="${CASA}" title="copia o link de conexão, se já apareceu na tela">pegar link</button>
+           <button class="btn" data-remoto-mais="${CASA}" data-remoto-dir="${esc(REMOTO_DATA.casa)}"
+             title="abre outra sessão na pasta pessoal, além da que já está no ar">abrir outra</button>
+           <button class="btn" data-remoto-desligar="${CASA}">desligar</button>`
+        : `<button class="btn" data-remoto-ligar="${CASA}" data-remoto-dir="${esc(REMOTO_DATA.casa)}"
+             title="abre uma sessão do Claude Code na sua pasta pessoal, fora de qualquer projeto">abrir na pasta pessoal</button>`}
+      </span>
+    </div>
+    <p class="dim" style="margin:0 0 12px">Fora de projeto: alcança tudo do seu usuário nesta máquina,
+      inclusive a configuração do Claude Code e o arquivo que guarda a senha do painel.
+      Não vira administrador, e o sandbox de escrita continua valendo lá dentro.</p>`
+  }
+
+  if (!projetos.length) {
+    return viewFederacao() + linhaCasa() + '<div class="empty">nenhum projeto encontrado</div>'
+  }
 
   /* As sessões extras (`projeto-2`, `projeto-3`) aparecem sob o projeto delas,
      e não como projetos soltos na lista: são o mesmo trabalho, e listá-las como
@@ -5986,6 +6550,7 @@ function viewRemoto() {
     projeto escolhido: conecte do celular por <code>claude.ai/code</code>. Na VPS a sessão sobrevive a este painel;
     neste PC uma janela de console abre e fica com ela, "pegar link" só funciona onde tem tmux (Linux).
     <b>mais uma</b> abre outro agente no mesmo projeto.</div>
+  ${linhaCasa()}
   <div class="rm-lista">${projetos.map((p) => {
     const on = ativos[p.nome]
     const extras = extrasDe(p.nome)
@@ -6039,7 +6604,7 @@ function abrirFrente(botao) {
       ? `<p class="fp-cit">“${esc(d.frenteCit)}”</p>
          <span class="path">Foi assim que você pediu. Se não é o que você quis dizer, me diga:
          o item foi escrito a partir daí.</span>`
-      : '<p class="path">Este item não guarda as suas palavras — foi escrito por mim.</p>'}
+      : '<p class="path">Este item não guarda as suas palavras, foi escrito por mim.</p>'}
     <button class="btn mini" data-frente-fechar="1">fechar</button>`
 
   pop.hidden = false
@@ -6052,17 +6617,17 @@ function abrirFrente(botao) {
 
 const RODAPE = {
   agentes: 'clique num cartão para abrir o detalhe; passe o mouse nele para retomar (↻), fixar (★) ou copiar o caminho (⧉); as bolinhas são as tarefas, cheias as concluídas',
-  todos: 'o SPRINT BACKLOG: o que os agentes estão fazendo agora. O product backlog é o docs/ROADMAP.md de cada projeto, e a definição de pronto é a linha verde de prova sob a tarefa fechada. Verde é o que falta, cinza o que passou, e a barra azul é a tarefa em andamento — clique no texto para editar, em branco apaga',
-  projetos: 'onde mexer agora — projetos ordenados por urgência, o de cima primeiro; clique no agente para abrir o detalhe, ou no nome do projeto para o mapa',
-  tempo: 'tempo ativo por projeto, lido dos transcritos — clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
-  graficos: 'os mesmos dados da aba tempo, cruzados como você quiser — escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
+  todos: 'o SPRINT BACKLOG: o que os agentes estão fazendo agora. O product backlog é o docs/ROADMAP.md de cada projeto, e a definição de pronto é a linha verde de prova sob a tarefa fechada. Verde é o que falta, cinza o que passou, e a barra azul é a tarefa em andamento, clique no texto para editar, em branco apaga',
+  projetos: 'onde mexer agora: projetos ordenados por urgência, o de cima primeiro. Clique no agente para abrir o detalhe, ou no nome do projeto para o mapa',
+  tempo: 'tempo ativo por projeto, lido dos transcritos, clique no projeto para ver os dias, os modelos, as sessões e a taxa só dele; a taxa em R$ fica nesta máquina e some da tela quando é zero',
+  graficos: 'os mesmos dados da aba tempo, cruzados como você quiser, escolha medida, eixo e por que dividir; os gráficos criados ficam gravados nesta máquina',
   preco: 'clique numa linha para ver por que aquele nível foi sugerido, corrigir o nível e digitar quanto tempo você acha que levou',
-  agenda: 'o que está marcado no Google Calendar, lido pelo endereço secreto em iCal — o endereço fica só nesta máquina e nunca aparece nesta tela',
-  hooks: 'liga/desliga hooks do Claude Code sem mexer no settings.json — "registrado" diz se o script já está de fato configurado lá; desligado aqui vira no-op silencioso, nunca erro',
+  agenda: 'o que está marcado no Google Calendar, lido pelo endereço secreto em iCal, o endereço fica só nesta máquina e nunca aparece nesta tela',
+  hooks: 'liga/desliga hooks do Claude Code sem mexer no settings.json, "registrado" diz se o script já está de fato configurado lá; desligado aqui vira no-op silencioso, nunca erro',
   rotinas: 'comandos (/start-session, /end-session) copiados dentro dos projetos. A cópia do projeto VENCE a global, então cópia velha é a que roda; compare antes de usar a global ou apagar a cópia',
   servidores: 'portas em escuta nesta máquina, com o projeto de origem quando dá pra saber',
-  vps: 'retrato por SSH, só quando você clica em atualizar — nunca sozinho. Fica salvo até o próximo clique',
-  escritorio: 'os agentes desenhados trabalhando; PiP solta numa janelinha que fica por cima de tudo — o painel da VPS depende do túnel SSH, que este botão abre',
+  vps: 'retrato por SSH, só quando você clica em atualizar, nunca sozinho. Fica salvo até o próximo clique',
+  escritorio: 'os agentes desenhados trabalhando; PiP solta numa janelinha que fica por cima de tudo, o painel da VPS depende do túnel SSH, que este botão abre',
   remoto: 'liga uma sessão do Claude Code com Remote Control na pasta do projeto, pra acessar do celular por claude.ai/code. A sessão fica viva enquanto o painel estiver de pé; desligar aqui derruba a conexão remota também',
 }
 
@@ -6263,7 +6828,7 @@ function mudancasRecentes(agora = Date.now()) {
       const t = Date.parse(quando)
       if (!Number.isFinite(t) || agora - t > JANELA_MUDOU) continue
       const todo = (j.todos || []).find((x) => x.text === texto)
-      saida.push({ texto, quando: t, projeto: j.project, prova: todo?.prova || null })
+      saida.push({ texto, quando: t, projeto: j.project, prova: todo?.prova || null, olho: todo?.olho === true })
     }
   }
   return saida.sort((a, b) => b.quando - a.quando)
@@ -6278,9 +6843,12 @@ function viewMudou() {
   }
   return `<section class="mudou">
     <h4>acabou de mudar <span class="dim">${lista.length} nos últimos 45min</span></h4>
-    ${lista.slice(0, 6).map((m) => `<div class="mudou-item">
+    ${/* O que precisa do olho dele vem PRIMEIRO e marcado; o resto é técnica,
+         que ele alcança mas não é cobrado a olhar. Decisão dele em 17/08:
+         "só o que eu vejo e uso, porém é bom eu ter acesso". */ ''}
+    ${[...lista].sort((a, b) => (b.olho ? 1 : 0) - (a.olho ? 1 : 0)).slice(0, 6).map((m) => `<div class="mudou-item${m.olho ? ' precisa-olho' : ''}">
       <span class="mudou-q">${esc(min(m.quando))}</span>
-      <span class="mudou-t">${esc(m.texto)}</span>
+      <span class="mudou-t">${m.olho ? '<b class="mudou-olho">confira</b> ' : ''}${esc(m.texto)}</span>
       ${m.prova ? `<span class="mudou-p">${esc(m.prova)}</span>` : '<span class="mudou-sp">sem prova</span>'}
     </div>`).join('')}
   </section>`
@@ -6388,7 +6956,7 @@ function viewNiveis(naFrente) {
     </div>`
 
   return `<section class="m-niveis">
-    ${bloco('agora', sprint, 'frentes com agente trabalhando nelas — sai sozinho, ninguém escreve', 'n-agora')}
+    ${bloco('agora', sprint, 'frentes com agente trabalhando nelas, sai sozinho, ninguém escreve', 'n-agora')}
     ${bloco('na fila', fila, 'o resto do que está aberto no roadmap', 'n-fila')}
     ${bloco('prontas', feitas, 'já fechadas, mantidas para consulta', 'n-prontas')}
   </section>`
@@ -6420,13 +6988,13 @@ function desenharMapa() {
     // to-do — mostrar o botão criaria um clique que falha em silêncio.
     const podeCriarTodo = Boolean(mapaProjeto.id)
     el.innerHTML = `${cabeca}<div class="empty">
-      este projeto não tem <code>docs/ROADMAP.md</code> — sem ele o painel não tem
+      este projeto não tem <code>docs/ROADMAP.md</code>, sem ele o painel não tem
       mapa para mostrar, só o que o agente escreveu no cartão.
       ${jaTem
-        ? '<p class="m-todo-ok">✓ to-do criado — o agente vê na próxima checada</p>'
+        ? '<p class="m-todo-ok">✓ to-do criado, o agente vê na próxima checada</p>'
         : podeCriarTodo
           ? '<button class="btn" data-criar-todo-roadmap>+ criar to-do "escrever o roadmap"</button>'
-          : '<p class="dim">sem agente ativo aqui pra carregar o to-do — abra uma sessão neste projeto</p>'}
+          : '<p class="dim">sem agente ativo aqui pra carregar o to-do, abra uma sessão neste projeto</p>'}
     </div>
     <section class="m-git-sec"><h4>o que mudou</h4>${viewGit()}</section>`
     return
@@ -6454,7 +7022,7 @@ function desenharMapa() {
       }).join('')}
     </section>`).join('')
     + `<p class="path m-rodape">lido de <code>${esc((MAPA.arquivo || '').split(/[\\/]/).slice(-2).join('/'))}</code>
-        · ${MAPA.linhas} linhas · atualizado ${MAPA.atualizadoEm ? age(Date.now() - MAPA.atualizadoEm) + ' atrás' : '—'}</p>`
+        · ${MAPA.linhas} linhas · atualizado ${MAPA.atualizadoEm ? age(Date.now() - MAPA.atualizadoEm) + ' atrás' : '...'}</p>`
     + viewRotas()
     + `<section class="m-git-sec"><h4>o que mudou</h4>${viewGit()}</section>`
 }
@@ -6475,15 +7043,37 @@ function viewRotas() {
       <p class="path">este projeto não usa o Método Routia (sem <code>docs/ROTAS-ATIVAS.md</code>)</p></section>`
   }
   const rotulo = { livre: 'livre', ocupada: 'ocupada', orfa: 'o dono sumiu' }
-  return `<section class="m-git-sec"><h4>rotas <span class="path">clique para trocar</span></h4>
-    <div class="m-rotas">${ROTAS.rotas.map((r) => `
-      <button class="m-rota c-${r.cor}" data-rota="${esc(r.rota)}" data-rota-ocupar="${r.cor === 'livre' ? '1' : ''}"
-        title="${r.cor === 'livre' ? 'marcar como ocupada' : 'liberar'}">
-        <i></i>
-        <b>${esc(r.rota)}</b>
-        <span class="path">${rotulo[r.cor]}${r.quem ? ` · ${esc(r.quem)}` : ''}${
-          r.cor === 'orfa' ? ` · calado há ${esc(r.silencio)}` : ''}</span>
-      </button>`).join('')}</div>
+  /* A planilha que ele usava nos produtos (17/08): cada rota numa LINHA, com os
+     arquivos que ela reivindica na coluna ao lado. "eu via as rotas com nomes e
+     cores e isso agilizava o entendimento e o formato tabela é muito prático."
+     A cor continua no fio da esquerda e na palavra, nunca sozinha. */
+  return `<section class="m-git-sec"><h4>rotas <span class="path">toque no nome para trocar</span></h4>
+    <table class="m-rotas-tab"><tbody>${ROTAS.rotas.map((r) => `
+      <tr class="c-${r.cor}">
+        <td class="rt-nome-c"><button class="m-rota-bt" data-rota="${esc(r.rota)}"
+          data-rota-ocupar="${r.cor === 'livre' ? '1' : ''}"
+          title="${r.cor === 'livre' ? 'marcar como ocupada' : 'liberar'}"><i></i><b>${esc(r.rota)}</b></button></td>
+        <td class="rt-quem-c">${rotulo[r.cor]}${r.quem ? ` · ${esc(r.quem)}` : ''}${
+          r.cor === 'orfa' ? ` · calado há ${esc(r.silencio)}` : ''}</td>
+        <td class="rt-arq-c">${(r.arquivos || []).length
+          ? r.arquivos.map((a) => `<code>${esc(a)}</code>`).join(' ')
+          : '<span class="path">pasta inteira</span>'}</td>
+      </tr>`).join('')}
+    ${/* CC-102: as rotas de OUTRA máquina, que até 17/08 só saíam por comando
+          de terminal. Entram na mesma tabela, na mesma linguagem, com a máquina
+          escrita e sem botão: liberar rota de outro aparelho à distância é o
+          contrário do que o Routia protege. */ ''}
+    ${(ROTAS.deFora || []).map((r) => `
+      <tr class="c-${r.cor} rt-fora">
+        <td class="rt-nome-c"><span class="m-rota-bt" title="rota de outra máquina, sem botão daqui"><i></i><b>${esc(r.rota)}</b></span></td>
+        <td class="rt-quem-c">${esc(r.origem)}${r.quem ? ` · ${esc(r.quem)}` : ''}${
+          r.cor === 'orfa' ? ` · calado há ${esc(r.silencio || '?')}` : ''}</td>
+        <td class="rt-arq-c">${(r.arquivos || []).length
+          ? r.arquivos.map((a) => `<code>${esc(a)}</code>`).join(' ')
+          : '<span class="path">pasta inteira</span>'}</td>
+      </tr>`).join('')}</tbody></table>
+    ${(ROTAS.deFora || []).length
+      ? `<p class="path">${ROTAS.deFora.length} rota(s) de outra máquina, sem botão: quem libera é o aparelho dono.</p>` : ''}
     ${ROTAS.rotas.some((r) => r.cor === 'orfa')
       ? '<p class="path">Azul é o dono que sumiu. Confirme antes de retomar: silêncio não é liberação.</p>' : ''}
   </section>`
@@ -6594,7 +7184,7 @@ function renderMaquina() {
       uso: gpu.uso,
       temp: gpu.temp,
       detalhe: `${gb(gpu.vramUsadaGB)} de ${gb(gpu.vramTotalGB)}`,
-      dica: `${gpu.nome} · vram ${gpu.usoMem ?? '—'}% · ${gpu.watts ?? '—'} W`
+      dica: `${gpu.nome} · vram ${gpu.usoMem ?? '...'}% · ${gpu.watts ?? '...'} W`
         + `${gpu.tempMem == null ? ' · esta placa não expõe temperatura da memória' : ` · memória ${gpu.tempMem}°`}`,
     }) : '',
   ].join('')
@@ -6658,7 +7248,7 @@ function renderPlayer() {
         ${quantas > 1 ? '' : 'disabled'}
         title="${quantas > 1 ? `clique para controlar outra mídia (${quantas} abertas)` : 'única mídia aberta'}"
         >${esc(s.app)}${quantas > 1 ? ` ${quantas}` : ''}</button>
-      <b class="p-titulo" title="${esc(s.titulo)}${s.artista ? ` — ${esc(s.artista)}` : ''}"
+      <b class="p-titulo" title="${esc(s.titulo)}${s.artista ? `, ${esc(s.artista)}` : ''}"
         >${esc(s.titulo || 'sem título')}</b>
     </div>
     <div class="p-baixo">
@@ -6671,8 +7261,8 @@ function renderPlayer() {
         <span class="p-vol">
           <button class="p-bt" data-midia="mudo" title="${s.mudo ? 'tirar do mudo' : 'mudo'}">${s.mudo ? '🔇' : '🔊'}</button>
           <input type="range" min="0" max="100" value="${s.volume}" data-vol
-            title="volume deste aplicativo — não mexe no volume do Windows">
-          <b>${s.mudo ? '—' : s.volume + '%'}</b>
+            title="volume deste aplicativo, não mexe no volume do Windows">
+          <b>${s.mudo ? '...' : s.volume + '%'}</b>
         </span>`
         : '<span class="path p-semvol" title="a sessão de mídia não casou com nenhum processo de áudio">sem volume</span>'}
     </div>`
@@ -6745,7 +7335,7 @@ function renderNotas() {
         </div>
         ${corpo(n)}
       </div>`).join('')
-    : '<div class="n-empty">nenhum bloco ainda — clique em <b>+ bloco</b></div>'
+    : '<div class="n-empty">nenhum bloco ainda, clique em <b>+ bloco</b></div>'
 }
 
 function salvarNotas(agora) {
@@ -7055,8 +7645,13 @@ document.addEventListener('click', async (e) => {
   if (grupo) {
     const g = GRUPOS.find((x) => x.id === grupo.dataset.grupo)
     if (!g) return
+    /* CC-121: cai na primeira aba VISÍVEL do grupo. Sem isto, tocar em
+       "controle" numa máquina sem VPS abriria a aba escondida, e ele veria uma
+       tela vazia que nem estava no menu. */
+    const temDado = DATA?.tem || null
+    const disponiveis = g.abas.filter((id) => !(temDado && temDado[id] === false))
     // Se ele já está numa aba deste grupo, clicar de novo não deve tirá-lo dela.
-    const alvo = g.abas.includes(tab) ? tab : g.abas[0]
+    const alvo = g.abas.includes(tab) ? tab : (disponiveis[0] || g.abas[0])
     return trocarAba(alvo)
   }
 
@@ -7106,6 +7701,13 @@ document.addEventListener('click', async (e) => {
     trabalhoOrdem = trabOrd.dataset.trabOrdem
     localStorage.setItem('cc-trab-ordem', trabalhoOrdem)
     return carregarTrabalho(true)
+  }
+  // planilha ou quadradinhos: só forma de ler, nada a recarregar do servidor
+  const plBt = t.closest('[data-sprint-planilha]')
+  if (plBt) {
+    sprintPlanilha = plBt.dataset.sprintPlanilha === '1'
+    localStorage.setItem('cc-sprint-planilha', sprintPlanilha ? '1' : '0')
+    return render()
   }
   const trabCard = t.closest('[data-trab-card]')
   if (trabCard) {
@@ -7383,6 +7985,8 @@ document.addEventListener('click', async (e) => {
   }
 
   if (t.closest('[data-fw-lista]')) return abrirFrameworkLista()
+  if (t.closest('[data-hk-provar]')) return provarHooks()
+  if (t.closest('[data-fila-perdida]')) return carregarFilaPerdida()
 
   if (t.closest('[data-fed-ver]')) {
     const campo = $('#fed-token')
@@ -7407,6 +8011,21 @@ document.addEventListener('click', async (e) => {
       .catch(() => { btn.disabled = false })
   }
 
+  // CC-115: o interruptor de um grupo de proteção num projeto. Desligar pede
+  // confirmação com o que se perde; religar é imediato, voltar ao seguro não
+  // precisa de fricção.
+  const modBtn = t.closest('[data-mod]')
+  if (modBtn) {
+    const ligar = modBtn.dataset.modOn === '1'
+    const rotulo = modBtn.textContent.replace(' ✕', '').trim()
+    if (!ligar && !confirm(`Desligar as proteções de ${rotulo} no projeto ${modBtn.dataset.modProj}?\n\n`
+      + `· ${modBtn.title}\n· nenhum aviso ou trava desse grupo vai disparar lá\n· religa neste mesmo botão`)) return
+    fetch('/api/modulos', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ projeto: modBtn.dataset.modProj, modulo: modBtn.dataset.mod, ligado: ligar }),
+    }).then(() => { FW_LISTA = null; abrirFrameworkLista() })
+    return
+  }
   const fwBtn = t.closest('[data-fw]')
   if (fwBtn) {
     const projeto = fwBtn.dataset.fwProj
@@ -7423,7 +8042,7 @@ document.addEventListener('click', async (e) => {
         + '· vale até você trocar de modo'
       : `Liberar a IA para escrever código em ${projeto}?\n\n`
         + '· vale para TODOS os arquivos de código do projeto\n'
-        + '· vale até você trocar de modo — trocar zera esta autorização\n'
+        + '· vale até você trocar de modo, trocar zera esta autorização\n'
         + '· documentação e backlog nunca estiveram travados',
     )) return
     // Diferente do "vi isso": o framework NÃO vem no stream de 2s (é leitura de
@@ -7796,12 +8415,18 @@ document.addEventListener('change', (e) => {
   const sel = e.target?.closest?.('[data-fw-modo]')
   if (!sel) return
   const projeto = sel.dataset.fwModo
-  const pedido = sel.value
+  /* O mesmo seletor serve para os dois: opção de profissão vem marcada com
+     `perfil:`, e o resto é modo cru. Um seletor só, porque do lado dele é a
+     mesma pergunta: quem trabalha neste projeto agora. */
+  const ehPerfil = sel.value.startsWith('perfil:')
+  const pedido = ehPerfil ? sel.value.slice(7) : sel.value
   CONFIRMA_FW.delete(projeto) // some a confirmação anterior antes de pedir a nova
   fetch('/api/framework', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ projeto, acao: 'modo', modo: sel.value }),
+    body: JSON.stringify(ehPerfil
+      ? { projeto, acao: 'perfil', perfil: pedido }
+      : { projeto, acao: 'modo', modo: pedido }),
   }).then((r) => r.json()).then(async (f) => {
     if (f.error) { alert(f.error); return render() }
     FRAMEWORKS.set(projeto, f)
@@ -7814,9 +8439,15 @@ document.addEventListener('change', (e) => {
     const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     try {
       const conferido = await (await fetch(`/api/framework?projeto=${encodeURIComponent(projeto)}`)).json()
-      CONFIRMA_FW.set(projeto, conferido.modo === pedido
-        ? { real: conferido.tituloModo || conferido.modo, hora }
-        : { erro: true, pedido, real: conferido.modo || 'nada' })
+      // a conferência olha o campo certo: perfil quando foi perfil, modo quando
+      // foi modo. Sem isso, escolher uma profissão daria "salvo" com aviso de erro
+      const gravado = ehPerfil ? conferido.perfil : conferido.modo
+      const nome = ehPerfil
+        ? (conferido.perfis || []).find((x) => x.id === gravado)?.titulo || gravado
+        : conferido.tituloModo || gravado
+      CONFIRMA_FW.set(projeto, gravado === pedido
+        ? { real: nome, hora }
+        : { erro: true, pedido, real: gravado || 'nada' })
       FRAMEWORKS.set(projeto, conferido)
     } catch {
       CONFIRMA_FW.set(projeto, { erro: true, pedido, real: 'não consegui conferir' })
@@ -7827,14 +8458,6 @@ document.addEventListener('change', (e) => {
 // A máquina escolhida sobrevive ao recarregar, igual à aba: é preferência de
 // quem olha, não estado do dado.
 $('#maq').addEventListener('change', (e) => localStorage.setItem('cc-maquina', e.target.value))
-// CC-77: o seletor de um nivel do estreito. Delegado no documento porque
-// `#tabs` e reescrito a cada render — listener preso no <select> morreria no
-// primeiro tique do stream, e a navegacao pararia de funcionar sozinha.
-document.addEventListener('change', (e) => {
-  const sel = e.target.closest?.('#nav-uma select')
-  if (sel) trocarAba(sel.value)
-})
-
 // Volume: `input` move a barra ao vivo, `change` é que grava. Enquanto o dedo
 // está na barra, o redesenho fica travado — senão o stream devolveria o valor
 // antigo no meio do arrasto e a barra pularia para trás.

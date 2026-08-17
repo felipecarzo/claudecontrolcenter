@@ -1,6 +1,20 @@
 #!/bin/bash
+# Duas pastas de verdade, criadas aqui: uma COM quadro de rotas e uma sem.
+#
+# Antes de 17/08 isto usava um caminho `D:/...` que não existe no Linux e a
+# variavel `$TEMP`, que so existe no Windows. Resultado: os dois cwd caiam no
+# `process.cwd()` do proprio hook (este repositorio, que TEM quadro), entao o
+# caso "projeto sem quadro" comparava contra a pasta errada e falhava, e os
+# casos de bloqueio passavam por motivo diferente do que diziam testar.
+# Achado pelo `cc hooks testar`, que roda todas as travas de uma vez.
 HOOK="$HOME/.claude/hooks/git-add-guard.mjs"
-REPO="D:/Documentos/Ti/projetos/CLIENTS/inovallbond"
+BASE=$(mktemp -d)
+REPO="$BASE/com-quadro"
+TEMP="$BASE/sem-quadro"
+mkdir -p "$REPO/docs" "$TEMP"
+printf '# Rotas\n\n| Rota | Status | Quem | Desde |\n|---|---|---|---|\n| `x` | 🟢 livre | — | — |\n' \
+  > "$REPO/docs/ROTAS-ATIVAS.md"
+trap 'rm -rf "$BASE"' EXIT
 FALHOU=0
 
 # caso <nome> <esperado> <cwd> <comando>

@@ -30,15 +30,39 @@ em código, o certo é parar e abrir outra — credencial e edição de arquivo 
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
-| `cockpit` | 🔴 ocupada | ff0d68b2 — CC-95/96/97, o backlog visível 📁 src/hooksCatalogo.mjs src/estilo.mjs src/ui.html hooks/ | 2026-08-16 |
+| `cockpit` | 🔴 ocupada | ff0d68b2 — perfis, planilha e mensagens perdidas 📁 src/hooksCatalogo.mjs src/estilo.mjs src/framework.mjs src/fila.mjs src/pedido.mjs hooks/ src/ui.html#viewTrabalho src/ui.html#viewMeu src/ui.html#viewHooks src/ui.html#seloFramework src/ui.html#css | 2026-08-17 |
 | `cockpit` (antes) | 🟢 livre | — (ff0d68b2 fechou em 16/08, segunda metade: **CC-60/CC-79** (fica só o fork, e `GET /api/escritorio` entrega os agentes de todas as máquinas), **CC-71** (`--so-mudou`), **CC-92** (fechado sem proxy, via `UserPromptSubmit`), o estudo do **CC-80**, sete hooks novos, oficina por agente, rota que reivindica arquivo com 📁, o merge do PR #1 e o conserto do menu que fechava sozinho no telefone) | — |
 | `front` | 🟢 livre | — reservada para o agente de front-end do Felipe. Ao marcar, declare os arquivos com 📁, senão a rota não protege nada | — |
 | `cockpit` (anterior) | 🟢 livre | — (ff0d68b2 fechou em 16/08: **CC-93** (guia longo vira etapa, regra + `guia-guard`), **CC-77** (navegacao de um nivel no estreito, `.grupo` duplicada no CSS, e `test-estreito.mjs` medindo as 15 telas), **CC-82** (a estante de documentos, com leitor e `cc doc`), e a Bancada de 7 para 10 camadas, com a sonda de RLS do Supabase. Junto: `fluxo-guard`, a trava de execucao continua do modo restritivo) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
-| `remote-control` | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
+| `remote-control` | 🔴 ocupada | ab5121a0 — sessão avulsa na pasta pessoal pelo painel (CC-129) 📁 src/remotecontrol.mjs src/web.mjs src/ui.html#viewRemoto src/ui.html#cartaoSrv | 2026-08-17 |
+| `remote-control` (antes) | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
 | `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **CC-56** (sessao interativa reporta estado, via `CLAUDE_CODE_SESSION_ID`, fora de `jobs/`), **CC-49** (`cc routia presenca`: ativa / orfa / desconhecida, e a distincao entre as duas ultimas e o cuidado central), **CC-48** (rotas viajam no pacote da federacao) e **CC-65** (os 6 hooks globais nao existiam em repo nenhum: agora em `hooks/routia/`). Anterior: cockpit federado, CC-47/51/54/55/57/58) | — |
 | `framework` | 🟢 livre | — (ff0d68b2 em 16/08: **CC-91 fechado** — o agente pede por arquivo e o cartao mostra a fila. Junto: o teste do framework-guard ainda dizia `imperativo` e passou a falhar; corrigido) | — |
+
+## Declarar o modo de trabalho na própria rota (CC-123, 17/08)
+
+Pedido dele: *"eu posso ta no mesmo projeto fazendo backend e frontend. eu quero
+dialogar sobre o frontend mas o backend ja tem backlog entao eu posso colocar
+como restritivo"*.
+
+Escreva `🎚 <modo>` na linha da rota, junto do resto:
+
+    | `front` | 🔴 ocupada | ab5121a0 — telas 🎚 livre 📁 src/ui.html#viewRemoto | hoje |
+
+Quem trabalha nessa rota entra nesse modo, e ele **sobrevive ao reinício da
+sessão**, que era o furo da capa por sessão: a sessão morre e renasce com outro
+número, e o modo se perdia sem ninguém ver.
+
+A ordem, do menos específico para o mais: projeto → rota → sessão. A escolha
+feita na sessão (`cc framework modo <nome>`) continua vencendo, porque é a mais
+recente e a mais deliberada.
+
+⚠️ **Só modo de comportamento** (tom, ritmo, se pergunta). Modo que tranca
+escrita continua valendo para o projeto inteiro: duas travas discordando sobre
+quem pode escrever num arquivo é exatamente o cenário que o Routia existe para
+evitar.
 
 ## Como pedir autorização numa rota que tem dono
 

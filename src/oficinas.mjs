@@ -161,16 +161,23 @@ function pesoDoNode(pasta) {
  * é por arquivo declarado no quadro de cada pasta.
  */
 export function colisoes(retratos) {
-  const dono = new Map()
+  /* CC-114: `arquivo#parte` divide o arquivo por escrito. Partes DIFERENTES do
+     mesmo arquivo não colidem; a mesma parte colide, e arquivo inteiro (sem
+     `#`) colide com qualquer reivindicação daquele arquivo. A chave então é o
+     caminho, e a parte decide dentro dele. */
+  const dono = new Map() // caminho -> [{parte|null, pasta, rota, quem}]
   const achados = []
   for (const of of retratos) {
     for (const r of of.rotas || []) {
       for (const arquivo of r.arquivos) {
-        const antes = dono.get(arquivo)
-        if (antes && antes.pasta !== of.pasta) {
-          achados.push({ arquivo, entre: [antes, { pasta: of.pasta, rota: r.rota, quem: r.quem }] })
-        } else if (!antes) {
-          dono.set(arquivo, { pasta: of.pasta, rota: r.rota, quem: r.quem })
+        const [caminho, parte = null] = arquivo.split('#')
+        const lista = dono.get(caminho) || []
+        const briga = lista.find((d) => d.pasta !== of.pasta && (!d.parte || !parte || d.parte === parte))
+        if (briga) {
+          achados.push({ arquivo, entre: [briga, { parte, pasta: of.pasta, rota: r.rota, quem: r.quem }] })
+        } else {
+          lista.push({ parte, pasta: of.pasta, rota: r.rota, quem: r.quem })
+          dono.set(caminho, lista)
         }
       }
     }

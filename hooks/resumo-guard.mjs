@@ -45,12 +45,30 @@ if (!E) sair()
 const arquivo = dados?.transcript_path || dados?.transcriptPath
 if (!arquivo) sair()
 
-const texto = E.ultimaResposta(arquivo)
+/* O turno INTEIRO, não só o último bloco. Uma resposta vira vários pedaços
+   quando há ferramenta no meio, e medir um só me barrou duas vezes tendo eu
+   usado o separador no pedaço anterior. Falso positivo é o caminho mais curto
+   para hook desligado. */
+const texto = E.respostaDoTurno(arquivo) || E.ultimaResposta(arquivo)
 if (!texto) sair()
 
-/* A mesma medição que a aba de estilo usa — uma conta só, para a tela e o hook
+/* A mesma medição que a aba de estilo usa: uma conta só, para a tela e o hook
    nunca discordarem sobre a mesma resposta. */
-const m = E.medir(texto)
+let m = E.medir(texto)
+
+/* ⚠️ Antes de barrar, RELÊ. O transcrito é gravado enquanto o turno termina, e
+   o hook chega a ler antes do último pedaço estar no disco: medido em 17/08,
+   três falsos positivos seguidos em respostas que TINHAM o separador, e que
+   apareciam completas segundos depois.
+
+   Falso positivo é o caminho mais curto para hook desligado, então o custo de
+   esperar 400ms só quando eu já ia reclamar é barato demais para discutir. */
+if (m.semMarcador) {
+  const ate = Date.now() + 400
+  while (Date.now() < ate) { /* espera curta, sem depender de timer assíncrono */ }
+  const denovo = E.respostaDoTurno(arquivo) || E.ultimaResposta(arquivo)
+  if (denovo && denovo.length > texto.length) m = E.medir(denovo)
+}
 if (!m.semMarcador) sair()
 
 console.error(

@@ -3,10 +3,15 @@
 
 import http from 'node:http'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import { PROJETOS_DIR as PROJETOS_DIR_SESSOES, readSessoes } from './sessoes.mjs'
+import { perdidasDeTodas as perdidasDeTodasAsSessoes } from './fila.mjs'
+// `casaClaude()` e não `os.homedir()`: é o único lugar que resolve a pasta
+// `.claude`, e é o que faz `CC_HOME` isolar o painel de teste do real.
+import { casaClaude } from './platform.mjs'
 import {
   alternarRota, corDaRota, humanizar as humanizarSilencio, lerQuadro, retratoDoQuadro,
 } from './presenca.mjs'
@@ -29,6 +34,7 @@ import {
 import { estado as estadoMaquina } from './maquina.mjs'
 import { lerRoadmap, ordenar as ordenarRoadmap } from './roadmap.mjs'
 import { findProjects } from './install.mjs'
+import { situacaoRotas } from './routia.mjs'
 import { commitsDesde } from './gitlog.mjs'
 import { digestTodos } from './digest.mjs'
 import { enriquecerTodos } from './opencode.mjs'
@@ -38,7 +44,10 @@ import {
   readServers, killServer, duplicados, recentes, projetosLancaveis,
   subirServidor, abrirLocal, esquecerCache,
 } from './servers.mjs'
-import { readPaineis, ligarPainel, desligarPainel, portaDe } from './paineis.mjs'
+import {
+  readPaineis, ligarPainel, desligarPainel, portaDe,
+  resolverBinario, _internals as paineisInternals,
+} from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
 import * as docs from './documentos.mjs'
 // estáticos, não `await import` dentro da rota: a função que trata a requisição
@@ -48,23 +57,26 @@ import * as bancada from './bancada.mjs'
 import * as bancadaCatalogo from './bancadaCatalogo.mjs'
 import { montar as montarEscritorio } from './escritorio.mjs'
 import { montar as montarTrabalho, carregar as carregarProjetos, projetosDe } from './trabalho.mjs'
+import { todas as todasSiglas } from './siglas.mjs'
 import { arquivosDeclarados } from './oficinas.mjs'
 import {
   desligar as desligarFramework, gravar as gravarFramework, ler as lerFramework,
   ligar as ligarFramework, situacao as situacaoFramework,
 } from './frameworkDisco.mjs'
 import {
-  MODOS, autorizar as autorizarFramework, avaliar as avaliarFramework,
-  modoDe as modoDeFramework, resumo as resumoFramework, trocarModo as trocarModoFramework,
+  MODOS, PERFIS, autorizar as autorizarFramework, avaliar as avaliarFramework,
+  faltaNoPerfil, modoDe as modoDeFramework, perfilResolvido, perfisEmArvore,
+  resumo as resumoFramework, trocarModo as trocarModoFramework,
 } from './framework.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
   setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig, setVisita,
-  setMaquina, setFederacao,
+  setMaquina, setFederacao, moduloLigado, setModuloProjeto,
 } from './config.mjs'
 import { agenda, esquecerCache as esquecerAgenda } from './calendario.mjs'
-import { HOOKS } from './hooksCatalogo.mjs'
+import { HOOKS, MODULOS as MODULOS_HOOKS } from './hooksCatalogo.mjs'
+import { rodar as provarHooks, testeDe as provaTesteDe } from './hooksProva.mjs'
 import { registradoTodos } from './hooksRegistro.mjs'
 import { porProjeto } from './cockpit.mjs'
 import { listarContainers } from './docker.mjs'
@@ -117,6 +129,24 @@ function retratoFramework(raiz) {
     // CC-91 parte 3: o que eu pedi e ele ainda não liberou
     pedidos: s.estado.pedidos || [],
     modos: Object.values(MODOS).map((m) => ({ id: m.id, titulo: m.titulo, explica: m.explica })),
+    /* Os perfis (17/08): a tela mostra a PROFISSÃO, porque é o que ele reconhece
+       de relance. Cada um leva o que exige e o que desliga, para a escolha não
+       ser um nome bonito sem consequência declarada. */
+    perfil: s.estado.perfil || null,
+    /* Em ÁRVORE: ele corrigiu em 17/08 que Perito, Pesquisador e Revisor são
+       variações do Depurador, não papéis soltos. `falta` diz o que este papel
+       está exigindo agora, para a escolha não parecer decorativa. */
+    perfis: perfisEmArvore().map((p) => {
+      const monta = (x) => {
+        const r = perfilResolvido(x.id)
+        return {
+          id: x.id, titulo: x.titulo, contrataria: x.contrataria, entrega: x.entrega || null,
+          exige: r.exige, desliga: r.desliga, teto: r.teto,
+        }
+      }
+      return { ...monta(p), subs: p.subs.map(monta) }
+    }),
+    faltaPerfil: faltaNoPerfil(s.estado),
     fase: a.fase,
     tituloFase: a.tituloFase,
     portaoAberto: a.portaoAberto,
@@ -173,6 +203,27 @@ const snapshot = () => {
     uso: usoDaConta(readUso(), pacotes),
     maquinas: maquinasConhecidas(pacotes, eu),
     maquina: eu,
+    /* CC-121: o que ESTA máquina tem, para a navegação não oferecer tela que
+       abre vazia. No telefone, cinco das dezessete levavam a lugar nenhum.
+
+       **Tudo aqui custa microssegundos, e essa é a regra do campo.** Estas telas
+       são caras justamente quando ABREM (varrer portas leva segundos, ler
+       roadmap de vinte projetos idem), então a navegação não pode perguntar a
+       elas: perguntaria a cada 2 segundos. O que entra aqui é config já lida e
+       existência de arquivo, nunca varredura.
+
+       `vps` sai de `vpsConfigurada()` e não do host escrito no config: nesta VPS
+       o painel roda em modo local, sem host nenhum, e a aba funciona. Olhar só o
+       host esconderia a tela exatamente onde ela tem dado.
+
+       `escritorio` pergunta se o programa existe nesta máquina, não se ele está
+       no ar: painel parado continua sendo painel que dá para ligar, e a tela
+       serve para isso. */
+    tem: {
+      vps: vpsConfigurada(),
+      escritorio: paineisInternals.definicoes()
+        .some((p) => Boolean(resolverBinario(p.cmd, { fork: p.fork }))),
+    },
     at: Date.now(),
   }
 }
@@ -399,7 +450,10 @@ function handler(req, res) {
     }
     const projetos = [...porDir].map(([dir, nome]) => ({ nome, dir }))
       .sort((a, b) => a.nome.localeCompare(b.nome))
-    return estadoRemoto().then((ativos) => send(res, 200, { projetos, ativos }))
+    /* CC-129: a pasta pessoal desta máquina, para a tela poder oferecer uma
+       sessão avulsa ali. Ela não é projeto e nunca aparece em `projetos`, e o
+       navegador não tem como descobrir o caminho sozinho. */
+    return estadoRemoto().then((ativos) => send(res, 200, { projetos, ativos, casa: os.homedir() }))
   }
 
   // Containers Docker desta máquina. Fora do stream, mesmo motivo da máquina
@@ -566,6 +620,23 @@ function handler(req, res) {
     return send(res, 200, { tarefas, abertas: tarefas.filter((t) => !t.feito).length, at: Date.now() })
   }
 
+  /* CC-118: as mensagens que ele digitou e a fila descartou. Rota SEPARADA e só
+     sob clique: ler o registro inteiro custa meio segundo em 43 MB, e no stream
+     de 2 segundos isso travaria o painel (a armadilha do transcrito, de novo). */
+  if (url.pathname === '/api/fila-perdida') {
+    /* TODAS as sessões, não a mais recente. Ele pegou o defeito na primeira
+       versão: "só tá aparecendo uma, não eram 74?" — a rota escolhia a sessão de
+       sinal mais novo, que naquele instante era a do app_escritorio, com UMA
+       mensagem perdida. Escolher sessão por conta própria, quando a pergunta é
+       "o que EU digitei", é adivinhar. */
+    try {
+      const lista = perdidasDeTodasAsSessoes(path.join(casaClaude(), 'projects'))
+      return send(res, 200, { existe: true, perdidas: lista, at: Date.now() })
+    } catch (e) {
+      return send(res, 200, { existe: true, perdidas: [], erro: String(e.message || e) })
+    }
+  }
+
   // Todos os projetos conhecidos, com o estado do framework em cada um.
   //
   // Existe porque o botão no cartão não bastava: o cartão só aparece para
@@ -578,14 +649,29 @@ function handler(req, res) {
   if (url.pathname === '/api/framework/projetos') {
     const vistos = new Set()
     const lista = []
+    const cfgModulos = readConfig() // uma leitura para a lista toda, não uma por projeto
     for (const raiz of findProjects()) {
       const nome = path.basename(raiz)
       if (vistos.has(nome)) continue
       vistos.add(nome)
-      lista.push({ projeto: nome, raiz, ...retratoFramework(raiz) })
+      // CC-115: a mesma lista carrega os módulos todos — framework, rotas e
+      // os grupos de proteção com o interruptor por projeto
+      const modulos = {}
+      for (const m of Object.keys(MODULOS_HOOKS)) modulos[m] = moduloLigado(m, nome, cfgModulos)
+      lista.push({ projeto: nome, raiz, ...retratoFramework(raiz), rotas: situacaoRotas(raiz), modulos })
     }
     lista.sort((a, b) => (b.existe ? 1 : 0) - (a.existe ? 1 : 0) || a.projeto.localeCompare(b.projeto))
-    return send(res, 200, { projetos: lista, at: Date.now() })
+    return send(res, 200, { projetos: lista, catalogoModulos: MODULOS_HOOKS, at: Date.now() })
+  }
+
+  // CC-115: liga e desliga um grupo de proteções num projeto. Só o
+  // desligamento fica gravado; religar apaga a entrada e o padrão é ligado.
+  if (url.pathname === '/api/modulos' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ projeto, modulo, ligado }) => {
+      if (!MODULOS_HOOKS[modulo]) return { error: `módulo desconhecido: ${modulo}` }
+      if (!projeto) return { error: 'sem projeto' }
+      return { projeto, modulo, ligado: setModuloProjeto(projeto, modulo, !!ligado) }
+    })
   }
 
   /* A Bancada pela tela. Fora do stream de propósito: rodar uma camada leva de
@@ -641,9 +727,28 @@ function handler(req, res) {
 
   if (url.pathname === '/api/framework') {
     if (req.method === 'POST') {
-      return comCorpo(req, res, 1e3, ({ projeto, cwd, acao, modo, alvo, motivo }) => {
+      return comCorpo(req, res, 1e3, ({ projeto, cwd, acao, modo, perfil, alvo, motivo }) => {
         const raiz = cwdDoProjeto(cwd, projeto)
         if (!raiz) return { error: 'não achei a pasta deste projeto' }
+
+        /* Perfil pelo clique (17/08): é o que ele escolhe de verdade, porque
+           "Designer" ele reconhece e "desenho mais sugestivo" ele teria que
+           decorar. Guarda o perfil E o modo base, para quem lê o arquivo sem
+           passar pelo framework continuar entendendo o que está valendo. */
+        if (acao === 'perfil') {
+          const estado = lerFramework(raiz)
+          if (!estado) return { error: 'este projeto não tem framework ligado' }
+          if (!perfil || perfil === 'nenhum') {
+            const semPerfil = { ...estado }
+            delete semPerfil.perfil
+            gravarFramework(raiz, semPerfil)
+            return { raiz, ...retratoFramework(raiz) }
+          }
+          const r = perfilResolvido(perfil)
+          if (!r) return { error: `perfil desconhecido: ${perfil}` }
+          gravarFramework(raiz, { ...estado, perfil, modo: r.base.id })
+          return { raiz, ...retratoFramework(raiz) }
+        }
 
         // Trocar de modo e autorizar são o que faz o modo sugestivo existir de
         // verdade: o desenho dele é "eu autorizo por clique", e sem estas duas
@@ -691,7 +796,25 @@ function handler(req, res) {
     }
     const registrados = registradoTodos(HOOKS)
     return send(res, 200, {
-      hooks: HOOKS.map((h) => ({ ...h, ligado: hookEnabled(h.id), registrado: registrados[h.id] })),
+      // dir nulo: a aba de hooks mostra o interruptor global; o cwd do painel
+      // é um projeto por acaso e não pode colorir a resposta (CC-115)
+      hooks: HOOKS.map((h) => ({
+        ...h,
+        ligado: hookEnabled(h.id, undefined, null),
+        registrado: registrados[h.id],
+        // CC-103: tem teste escrito? Leitura de disco barata, sem rodar nada.
+        teste: Boolean(provaTesteDe(h.id)),
+      })),
+    })
+  }
+
+  /* CC-103: rodar as travas sob demanda, o que faltava do `pre-commit
+     run --all-files`. Fora do stream por definição: são ~28 processos e leva
+     dezenas de segundos, então só acontece com o clique dele. */
+  if (url.pathname === '/api/hooks/provar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e4, async ({ ids }) => {
+      const alvos = Array.isArray(ids) ? ids.filter((id) => HOOKS.some((h) => h.id === id)) : null
+      return provarHooks(alvos, {})
     })
   }
 
@@ -883,12 +1006,20 @@ function handler(req, res) {
     const lista = projetosDe(s.jobs, findProjects)
     const projetos = carregarProjetos(lista)
     const pendencias = tudoMeu(s.jobs, { projetos })
-    return send(res, 200, montarTrabalho({
-      projetos,
-      jobs: s.jobs,
-      pendencias,
-      ordem: url.searchParams.get('ordem') === 'tempo' ? 'tempo' : 'importancia',
-    }))
+    /* CC: as siglas vão junto do trabalho, não numa rota à parte. A tela mostra
+       o mesmo código em quatro lugares; se cada um resolvesse o nome sozinho,
+       seriam quatro contas para a mesma pergunta, e um dia discordariam. */
+    const siglas = todasSiglas(projetos.map((x) => x.raiz), s.jobs)
+
+    return send(res, 200, {
+      ...montarTrabalho({
+        projetos,
+        jobs: s.jobs,
+        pendencias,
+        ordem: url.searchParams.get('ordem') === 'tempo' ? 'tempo' : 'importancia',
+      }),
+      siglas,
+    })
   }
 
   if (url.pathname === '/api/roadmap') {
@@ -1051,9 +1182,39 @@ function handler(req, res) {
           quem: ocupada?.id || null,
           silencio: ocupada ? humanizarSilencio(ocupada.silencioMs) : null,
           veredito: ocupada?.veredito || null,
+          /* Os arquivos que a rota reivindica, da planilha dele: a tarefa é
+             definida pelos arquivos que toca, não só pelo texto. A marca é a
+             mesma que o guarda de rota lê, então tela e trava nunca discordam. */
+          arquivos: arquivosDeclarados(l),
         }
       }).filter((x) => x.rota)
-    return send(res, 200, { existe: true, dir, rotas: todas })
+
+    /* CC-102: as rotas das OUTRAS máquinas na tela. Isto já existia desde o
+       CC-48, mas só saía por comando de terminal, e o Felipe trabalha do
+       telefone: recurso que só existe no terminal não existe para ele.
+       Rota ocupada lá fora aparece como linha própria, com a máquina escrita,
+       porque a decisão que ela muda é "posso pegar esta rota agora?". */
+    const projetoAqui = path.basename(dir)
+    const deFora = []
+    for (const p of lerPacotes()) {
+      const nome = p.maquina?.nome || p.maquina?.id || 'outra máquina'
+      for (const q of p.rotas || []) {
+        if (q?.projeto !== projetoAqui) continue
+        for (const o of q.ocupadas || []) {
+          if (todas.some((x) => x.rota === o.rota && x.quem === o.id)) continue
+          deFora.push({
+            rota: o.rota,
+            cor: o.veredito === 'orfa' ? 'orfa' : 'ocupada',
+            quem: o.id || null,
+            silencio: o.silencioMs != null ? humanizarSilencio(o.silencioMs) : null,
+            veredito: o.veredito || null,
+            arquivos: o.arquivos || [],
+            origem: nome,
+          })
+        }
+      }
+    }
+    return send(res, 200, { existe: true, dir, rotas: todas, deFora })
   }
 
   if (url.pathname === '/api/rotas/alternar' && req.method === 'POST') {

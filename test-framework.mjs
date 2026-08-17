@@ -163,10 +163,213 @@ ok('desligado vence o modo: nada trava')
 // o resumo diz o modo quando ele trava
 assert.match(resumo('mvp-basico', emSugestivo), /Sugestivo/)
 assert.match(resumo('mvp-basico', aut.estado), /autoriza/i)
-// e os quatro modos existem com explicação
-assert.deepEqual(Object.keys(MODOS), ['desligado', 'dialogo', 'sugestivo', 'restritivo'])
+/* Os cinco primeiros são os originais e a ORDEM importa: é ela que a tela usa,
+   e o desligado tem que continuar sendo o primeiro. Os seis de 17/08 vêm depois
+   (estudo, depuração, desenho, revisão, pareado, entrega), conferidos no bloco
+   dos perfis mais abaixo. */
+assert.deepEqual(Object.keys(MODOS).slice(0, 5),
+  ['desligado', 'dialogo', 'sugestivo', 'restritivo', 'continuo'])
+assert.equal(Object.keys(MODOS).length, 11, 'mudou a quantidade de modos: confira a tela e o tom de cada um')
 for (const m of Object.values(MODOS)) assert.ok(m.explica && m.titulo, `modo ${m.id} sem texto`)
-ok('os quatro modos existem, com título e explicação, e o resumo os mostra')
+// a diferença entre revisão e contínuo é UMA: o teto. Todo o resto do fluxo é
+// igual, e se divergirem em outra coisa o modo virou outra coisa.
+assert.equal(MODOS.continuo.fluxo.semTeto, true)
+assert.notEqual(MODOS.restritivo.fluxo.semTeto, true)
+assert.equal(MODOS.continuo.fluxo.pedidoNovo, MODOS.restritivo.fluxo.pedidoNovo)
+ok('os cinco modos existem, e o contínuo é o restritivo sem o teto')
+
+// ------------------------- os perfis (17/08) e a regra dele
+/* "se tem função bloqueando, entra como framework". O perfil é a combinação de
+   modos com nome de profissão, e é ele quem manda nas travas. */
+{
+  const F = await import('./src/framework.mjs')
+  assert.ok(F.PERFIS.designer, 'sumiu o perfil Designer')
+  const d = F.perfilResolvido('designer')
+  assert.equal(d.base.id, 'desenho', 'o modo base é o primeiro da lista')
+  assert.equal(d.teto, 1, 'desenho tem teto de uma entrega')
+  for (const h of ['visual-guard', 'forma-guard', 'referencia-guard']) {
+    assert.ok(d.exige.includes(h), `Designer tinha que exigir ${h}`)
+  }
+  // exigência vence desligamento: na dúvida, protege
+  const somado = F.perfilResolvido('perito')
+  assert.ok(somado.desliga.includes('teto-guard'), 'Perito desliga o teto')
+  assert.ok(somado.exige.includes('medir-guard'), 'e exige medir antes')
+  assert.equal(F.perfilResolvido('nao-existe'), null, 'perfil desconhecido devolve null')
+  ok('perfis somam os modos, e exigência vence desligamento')
+}
+
+/* Os papéis com trava de ETAPA (17/08). Ele reprovou a primeira lista ("só
+   profissão nada a ver") e deu o mecanismo: Modelagem trava até o sistema estar
+   desenhado, Scrum Master até produto e projeto estarem definidos. Perfil que é
+   só um nome bonito não vale nada; o que vale é o que ele impede. */
+{
+  const F = await import('./src/framework.mjs')
+  const base = { metodo: 'mvp-basico', ligado: true, mvp: { nome: '', criterios: [] } }
+
+  // Scrum Master: sem MVP definido, código travado
+  const scrumSemMvp = { ...base, fase: 'execucao', perfil: 'scrum' }
+  const r1 = F.podeEditar('mvp-basico', scrumSemMvp, 'src/x.mjs')
+  assert.equal(r1.ok, false, 'Scrum Master sem MVP tinha que travar código')
+  assert.equal(r1.perfil, 'scrum')
+  assert.ok(r1.pendencias.some((p) => /nome/.test(p)), 'a pendência diz o que falta')
+  // ...e a saída DELE nunca trava: é documentação e backlog
+  assert.equal(F.podeEditar('mvp-basico', scrumSemMvp, 'docs/PLANO.md').ok, true)
+
+  // com o MVP definido, libera
+  const scrumOk = { ...scrumSemMvp, mvp: { nome: 'painel', criterios: [{ texto: 'x', feito: false }] } }
+  assert.equal(F.podeEditar('mvp-basico', scrumOk, 'src/x.mjs').ok, true)
+
+  // Modelagem: só na fase de Definição
+  const modelagem = { ...base, fase: 'execucao', perfil: 'modelagem', mvp: { nome: 'x', criterios: [{ texto: 'y', feito: true }] } }
+  const r2 = F.podeEditar('mvp-basico', modelagem, 'src/x.mjs')
+  assert.equal(r2.ok, false, 'Modelagem fora da Definição tinha que travar')
+  assert.match(r2.pendencias[0], /Defini/)
+
+  // e sem perfil nenhum, nada disto interfere
+  assert.deepEqual(F.faltaNoPerfil({ ...base, fase: 'execucao' }), [])
+  ok('Modelagem e Scrum Master travam a etapa, e a saída deles fica livre')
+}
+
+/* A correção dele: Perito, Pesquisador e Revisor são variações do Depurador,
+   não papéis soltos ao lado de Designer. A árvore é o que a tela desenha. */
+{
+  const F = await import('./src/framework.mjs')
+  const arvore = F.perfisEmArvore()
+  const nomes = arvore.map((p) => p.id)
+  assert.deepEqual(nomes, ['designer', 'modelagem', 'scrum', 'depurador'])
+  const dep = arvore.find((p) => p.id === 'depurador')
+  assert.deepEqual(dep.subs.map((s) => s.id), ['perito', 'pesquisador', 'revisor'])
+  for (const p of Object.values(F.PERFIS)) {
+    assert.ok(p.contrataria && p.titulo, `perfil ${p.id} sem texto`)
+    assert.ok(p.modos?.length, `perfil ${p.id} sem modo`)
+  }
+  ok('os três que ele aprovou são variações do Depurador')
+}
+
+/* Os nomes novos e os apelidos antigos. Estado gravado em disco usa os ids
+   velhos, e renomear não pode mudar comportamento pelas costas. */
+{
+  const F = await import('./src/framework.mjs')
+  assert.equal(F.MODOS.dialogo.titulo, 'Livre')
+  assert.equal(F.MODOS.restritivo.titulo, 'Continuativo')
+  assert.equal(F.MODOS.continuo.titulo, 'Autônomo')
+  assert.equal(F.acharModo('livre').id, 'dialogo')
+  assert.equal(F.acharModo('continuativo').id, 'restritivo')
+  assert.equal(F.acharModo('autonomo').id, 'continuo')
+  assert.equal(F.acharModo('debug').id, 'depuracao')
+  assert.equal(F.acharModo('restritivo').id, 'restritivo', 'o id antigo continua valendo')
+  assert.equal(F.acharModo('nao-existe'), null)
+  // e os modos novos existem, cada um declarando o que exige
+  for (const m of ['estudo', 'depuracao', 'desenho', 'revisao', 'pareado', 'entrega']) {
+    assert.ok(F.MODOS[m], `sumiu o modo ${m}`)
+    assert.ok(F.MODOS[m].hooks, `${m} sem declaração de travas: é o que a regra dele proíbe`)
+  }
+  ok('nomes novos, apelidos antigos, e todo modo novo declara suas travas')
+}
+
+/* `vigente()` é UMA conta para "o que vale agora": com duas, a tela e a trava
+   discordariam sobre o mesmo projeto. */
+{
+  const F = await import('./src/framework.mjs')
+  const v = F.vigente({ perfil: 'designer' })
+  assert.equal(v.titulo, 'Designer')
+  assert.equal(v.modo.id, 'desenho')
+  const v2 = F.vigente({ modo: 'restritivo' })
+  assert.equal(v2.titulo, 'Continuativo')
+  assert.equal(v2.perfil, null)
+  const v3 = F.vigente({})
+  assert.equal(v3.modo.id, 'dialogo', 'sem nada declarado, o padrão continua o livre')
+  ok('uma conta só decide o que vale agora')
+}
+
+/* CC-123: o modo declarado na ROTA. Três camadas, do menos específico para o
+   mais: projeto, rota, sessão. A rota existe porque a capa de sessão morre com a
+   sessão, e o modo se perdia a cada reinício sem ninguém ver pelo quadro. */
+{
+  const fsx = await import('node:fs')
+  const osx = await import('node:os')
+  const px = await import('node:path')
+  const D = await import('./src/frameworkDisco.mjs')
+  const raiz = fsx.mkdtempSync(px.join(osx.tmpdir(), 'fw-rota-'))
+  fsx.mkdirSync(px.join(raiz, '.framework'), { recursive: true })
+  fsx.mkdirSync(px.join(raiz, 'docs'), { recursive: true })
+  fsx.writeFileSync(px.join(raiz, '.framework', 'estado.json'),
+    JSON.stringify({ metodo: 'mvp-basico', fase: 'execucao', ligado: true, modo: 'restritivo' }))
+  fsx.writeFileSync(px.join(raiz, 'docs', 'ROTAS-ATIVAS.md'), [
+    '| Rota | Status | Quem | Desde |',
+    '|---|---|---|---|',
+    '| `front` | 🔴 ocupada | aaaa1111 — telas 🎚 dialogo 📁 src/ui.html | hoje |',
+    '| `back` | 🔴 ocupada | bbbb2222 — dados 📁 src/web.mjs | hoje |',
+  ].join('\n'))
+
+  const modoDeSessao = (s) => D.ler(raiz, { sessao: s }).modo
+  assert.equal(modoDeSessao('aaaa1111-x'), 'dialogo', 'a rota declara o modo dela')
+  assert.equal(modoDeSessao('bbbb2222-x'), 'restritivo', 'rota sem modo herda o do projeto')
+  assert.equal(modoDeSessao('cccc3333-x'), 'restritivo', 'sessão sem rota herda o do projeto')
+
+  D.gravarSessao(raiz, 'aaaa1111-x', { modo: 'sugestivo' })
+  assert.equal(modoDeSessao('aaaa1111-x'), 'sugestivo', 'a capa da sessão vence a rota')
+
+  const cru = JSON.parse(fsx.readFileSync(px.join(raiz, '.framework', 'estado.json'), 'utf8'))
+  assert.equal(cru.modo, 'restritivo', 'nem a rota nem a capa podem escrever no projeto')
+
+  fsx.rmSync(raiz, { recursive: true, force: true })
+  ok('o modo pode vir da rota, e a capa da sessão ainda vence')
+}
+
+// --------------------------------- CC-116: o modo por SESSÃO
+/* Duas sessões no mesmo projeto, modos diferentes: o caso dele é frontend no
+   restritivo e backend no sugestivo. A capa só sobrepõe modo e tom — se
+   pudesse sobrepor `ligado`, uma sessão desligaria o framework das outras. */
+{
+  const fsx = await import('node:fs')
+  const osx = await import('node:os')
+  const px = await import('node:path')
+  const D = await import('./src/frameworkDisco.mjs')
+  const raiz = fsx.mkdtempSync(px.join(osx.tmpdir(), 'fw-sessao-'))
+  fsx.mkdirSync(px.join(raiz, '.framework'), { recursive: true })
+  fsx.writeFileSync(px.join(raiz, '.framework', 'estado.json'),
+    JSON.stringify({ metodo: 'mvp-basico', fase: 'execucao', ligado: true, modo: 'restritivo' }))
+
+  D.gravarSessao(raiz, 'aaaa1111-x', { modo: 'sugestivo' })
+
+  const daA = D.ler(raiz, { sessao: 'aaaa1111-x' })
+  const daB = D.ler(raiz, { sessao: 'bbbb2222-x' })
+  assert.equal(daA.modo, 'sugestivo', 'a sessão com capa lê o modo dela')
+  assert.equal(daB.modo, 'restritivo', 'a sessão sem capa lê o do projeto')
+
+  // a capa NÃO pode desligar o framework dos outros
+  fsx.writeFileSync(px.join(raiz, '.framework', 'sessoes', 'aaaa1111.json'),
+    JSON.stringify({ modo: 'sugestivo', ligado: false }))
+  assert.equal(D.ler(raiz, { sessao: 'aaaa1111-x' }).ligado, true,
+    'capa de sessão não sobrepõe o ligado do projeto')
+
+  fsx.rmSync(raiz, { recursive: true, force: true })
+  ok('duas sessões no mesmo projeto, cada uma no seu modo')
+}
+
+/* O buraco que a capa abriu: comando que lê (com capa) e regrava o projeto
+   promoveria o modo da sessão a modo de todos. gravar() restaura do cru. */
+{
+  const fsx = await import('node:fs')
+  const osx = await import('node:os')
+  const px = await import('node:path')
+  const D = await import('./src/frameworkDisco.mjs')
+  const raiz = fsx.mkdtempSync(px.join(osx.tmpdir(), 'fw-vaza-'))
+  fsx.mkdirSync(px.join(raiz, '.framework'), { recursive: true })
+  fsx.writeFileSync(px.join(raiz, '.framework', 'estado.json'),
+    JSON.stringify({ metodo: 'mvp-basico', fase: 'execucao', ligado: true, modo: 'restritivo' }))
+  D.gravarSessao(raiz, 'cccc3333-x', { modo: 'sugestivo' })
+
+  const comCapa = D.ler(raiz, { sessao: 'cccc3333-x' })
+  D.gravar(raiz, { ...comCapa, fase: 'execucao' }) // regrava como qualquer comando faria
+  const depois = D.ler(raiz, { sessao: null })
+  assert.equal(depois.modo, 'restritivo', 'o modo da sessão não pode vazar pro projeto')
+  assert.equal('_sessao' in depois, false, 'a marca da capa não vai pro disco')
+
+  fsx.rmSync(raiz, { recursive: true, force: true })
+  ok('regravar o projeto não promove o modo de uma sessão')
+}
 
 // --------------------------------- F4 e F6: ferramentas e o segundo método
 const { escolherFerramentas, registrarVerificacao } = await import('./src/framework.mjs')

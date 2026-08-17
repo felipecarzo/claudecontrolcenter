@@ -352,6 +352,16 @@ export const TOM_RECOMENDADO = {
   dialogo: 'explicativo',
   sugestivo: 'direto',
   restritivo: 'direto',
+  // contínuo herda o tom do restritivo: é o mesmo fluxo, executando mais longe
+  continuo: 'direto',
+  /* Os seis de 17/08. O tom sai do que o modo PRODUZ: estudo e revisão entregam
+     texto para ele ler, então explicam; os de execução reportam e calam. */
+  estudo: 'explicativo',
+  revisao: 'explicativo',
+  depuracao: 'explicativo', // a causa medida é o produto, e ela precisa do porquê
+  desenho: 'direto',
+  pareado: 'direto',
+  entrega: 'direto',
 }
 export const tomDe = (estado) => (TONS[estado?.tom] ? estado.tom : TOM_RECOMENDADO[modoDe(estado).id] || 'explicativo')
 
@@ -469,11 +479,340 @@ export const MODOS = {
     pergunta: false,
     exigeAutorizacao: false,
   },
+
+  /**
+   * Contínuo: o restritivo sem o teto de entregas.
+   *
+   * Nomeado por ele em 17/08, resolvendo uma briga entre duas ordens dele:
+   *
+   * > "podemos criar um Hook pra modo continuo. assim o Hook que você criou
+   * > fica útil pra um 'modo revisão' e cria um Hook pra fazer o agente ir
+   * > ateh o fim do backlog e chamamos de modo continuo no framework"
+   *
+   * O teto de duas entregas nasceu de um pedido dele (16/08, contra o
+   * afogamento) e a execução até zerar também (16/08, contra a pausa
+   * indevida). As duas regras são boas e brigam. A saída dele: viram MODOS.
+   *
+   * - restritivo = modo revisão: executa em fila, mas para a cada duas
+   *   entregas para ele conferir. É o de acompanhar de perto.
+   * - contínuo = vai até o fim do backlog, e só para no que só ele decide.
+   *   É o de "toca o barco que eu olho depois".
+   */
+  continuo: {
+    id: 'continuo',
+    titulo: 'Contínuo',
+    explica: 'Vai até o fim do backlog sem parar para mostrar. Só interrompe no que só ele decide.',
+    fluxo: {
+      pedidoNovo: 'registra no backlog e continua — não interrompe a sequência',
+      paradaLegitima: 'só o que exige decisão dele: gosto, prioridade entre frentes, risco que ele assume',
+      naoPara: 'confirmação de próximo passo, escolha técnica, ordem já definida no backlog, e o teto de entregas',
+      pararExigeDeclaracao: true,
+      // é isto que o teto-guard lê para se desligar neste modo
+      semTeto: true,
+    },
+    trava: false,
+    pergunta: false,
+    exigeAutorizacao: false,
+  },
+}
+
+/* ============================ os modos novos ============================
+   Renomeação e ampliação pedidas por ele em 17/08:
+
+   > "vamos criar novos modo e renomear os existentes do framework. o restritivo
+   > tá mais pra continuativo, o diálogo seria mais um 'modo livre' (…) ficou
+   > faltando o modo estudo que você ia implementar, o modo debug, e tem mais
+   > coisas que podemos criar com os hooks certos combinados ou desativados
+   > propositalmente"
+
+   E a regra que dá mecanismo a tudo, dita por ele na mesma tarde: **se tem
+   função bloqueando, entra como framework**. Até aqui as 32 travas viviam soltas,
+   ligadas por padrão e indiferentes ao modo. Agora cada modo declara o que exige
+   e o que desliga de propósito, em `hooks`.
+
+   Os apelidos antigos (`dialogo`, `restritivo`, `continuo`) continuam válidos:
+   há estado gravado em disco com eles, e renomear não pode mudar o
+   comportamento de um projeto pelas costas. */
+Object.assign(MODOS, {
+  estudo: {
+    id: 'estudo',
+    titulo: 'Estudo',
+    explica: 'Entender sem mexer. Escrita em código recusada; a saída é o que você lê.',
+    trava: true,
+    pergunta: false,
+    /* `alvoLivre` é o que este modo tem de próprio: ele NÃO trava documentação
+       nem backlog, porque é justamente ali que a saída dele mora. */
+    soEscreve: ['docs/**', '*.md'],
+    hooks: {
+      exige: ['medir-guard', 'reporte-guard'],
+      desliga: ['teto-guard'],
+    },
+  },
+  depuracao: {
+    id: 'depuracao',
+    titulo: 'Depuração',
+    explica: 'Algo quebrou. Medir antes de mexer, e mexer só onde está o defeito.',
+    trava: false,
+    pergunta: false,
+    fluxo: {
+      pedidoNovo: 'registra no backlog e continua, o defeito em curso vem primeiro',
+      paradaLegitima: 'quando a causa medida contraria o que ele descreveu, e a decisão de rumo é dele',
+      naoPara: 'confirmação de próximo passo, e o teto de entregas',
+      pararExigeDeclaracao: true,
+      semTeto: true,
+    },
+    hooks: {
+      // medir antes de agir é a regra 7 dele, e aqui ela é obrigatória
+      exige: ['medir-guard', 'visual-guard'],
+      // conserto é iteração curta: o teto picaria o trabalho no meio
+      desliga: ['teto-guard'],
+    },
+  },
+  desenho: {
+    id: 'desenho',
+    titulo: 'Desenho',
+    explica: 'Mexer em tela. Print nas duas larguras, e a forma que você nomeou é obrigatória.',
+    trava: false,
+    pergunta: false,
+    hooks: {
+      exige: ['visual-guard', 'forma-guard', 'referencia-guard', 'desvio-guard'],
+      desliga: [],
+    },
+    // teto de UMA entrega: ele olha cada mudança visual antes da seguinte
+    teto: 1,
+  },
+  revisao: {
+    id: 'revisao',
+    titulo: 'Revisão',
+    explica: 'Apontar sem consertar. Cada achado vira linha no backlog, com onde está.',
+    trava: true,
+    pergunta: false,
+    soEscreve: ['docs/**', '*.md'],
+    hooks: {
+      exige: ['roadmap-guard', 'reporte-guard'],
+      desliga: [],
+    },
+  },
+  pareado: {
+    id: 'pareado',
+    titulo: 'Pareado',
+    explica: 'Eu mostro cada passo e espero você antes do próximo.',
+    trava: true,
+    pergunta: true,
+    exigeAutorizacao: true,
+    hooks: {
+      exige: ['visual-guard', 'pergunta-guard'],
+      desliga: [],
+    },
+    teto: 1,
+  },
+  entrega: {
+    id: 'entrega',
+    titulo: 'Entrega',
+    explica: 'Fechar o que está aberto: prova em cada item, backlog em dia, commit preparado.',
+    trava: false,
+    pergunta: false,
+    hooks: {
+      exige: ['pronto-guard', 'fila-guard', 'roadmap-guard', 'cc-check'],
+      desliga: [],
+    },
+  },
+})
+
+/* Os nomes que ele escolheu, e os antigos que continuam valendo. O `titulo` é o
+   que aparece na tela; o `id` continua o mesmo em disco, porque trocar id
+   invalidaria o estado gravado de cada projeto. */
+MODOS.dialogo.titulo = 'Livre'
+MODOS.dialogo.explica = 'Conversa solta. Sem um gatilho claro seu, eu pergunto antes de escrever código.'
+MODOS.restritivo.titulo = 'Continuativo'
+MODOS.continuo.titulo = 'Autônomo'
+MODOS.continuo.explica = 'Vai até o fim do backlog sem parar para mostrar. É o modo de quando você não está olhando.'
+
+/** Apelido para nome novo, aceito na linha de comando e na tela. */
+export const APELIDOS = {
+  livre: 'dialogo',
+  continuativo: 'restritivo',
+  autonomo: 'continuo',
+  debug: 'depuracao',
+  design: 'desenho',
+}
+
+/** Resolve o que foi digitado: nome novo, apelido antigo, ou nada. */
+export const acharModo = (nome) => MODOS[nome] || MODOS[APELIDOS[String(nome || '').toLowerCase()]] || null
+
+/* ============================== os perfis ==============================
+   Pedido dele, na mesma conversa, e a razão é de leitura:
+
+   > "gostei de todos, mas poderiam ser sub-modos (…) podemos fazer alguns
+   > juntos, como por exemplo o modo sugestivo e o desenho juntos pra transformar
+   > a ferramenta em um designer (…) seria o profissional que eu contrataria
+   > praquela tarefa, a ideia eh facilitar o meu reconhecimento rápido"
+
+   Então o perfil não é um modo novo: é a COMBINAÇÃO de modos, com um nome de
+   profissão. Ele escolhe "Designer" e não precisa lembrar que aquilo é desenho
+   mais sugestivo. Os modos continuam existindo para quem quer montar à mão. */
+export const PERFIS = {
+  designer: {
+    id: 'designer',
+    titulo: 'Designer',
+    contrataria: 'mexer em tela, com você olhando cada passo',
+    modos: ['desenho', 'sugestivo'],
+  },
+  /* Modelagem: desenhar o sistema INTEIRO antes de programar. Pedido dele em
+     17/08, e ele deu o mecanismo junto: "hooks que travem os prompts em
+     desenhar o sistema todo antes de programar". A trava é a fase de Definição
+     do próprio framework, mais o modo estudo, que recusa escrita em código: a
+     saída obrigatória é o documento de desenho, não commit. */
+  modelagem: {
+    id: 'modelagem',
+    titulo: 'Modelagem de sistema',
+    contrataria: 'desenhar o sistema todo antes de escrever a primeira linha',
+    modos: ['estudo'],
+    exigeFase: 'definicao',
+    entrega: 'o desenho escrito: peças, o que cada uma faz, e por onde os dados passam',
+  },
+  /* Scrum Master, também dele: "hooks que travem o sistema até definir todo o
+     produto e projeto e depois confirmar que tá de uma forma ideal baseado em um
+     padrão que agente definir". Duas travas, e nesta ordem: nada de código
+     enquanto o MVP não tiver nome e critérios; e o que fecha só fecha com prova
+     contra os critérios escritos. */
+  scrum: {
+    id: 'scrum',
+    titulo: 'Scrum Master',
+    contrataria: 'definir produto e projeto, e só liberar quando bate com o padrão',
+    modos: ['revisao'],
+    exigePredicados: ['mvp-tem-nome', 'mvp-definido'],
+    entrega: 'produto e projeto definidos, com critério de pronto por item',
+  },
+  /* Os três que ele aprovou, e a correção dele: "é algo mais dentro de um debug,
+     pode ser sub-categoria do depurador". Então eles têm `pai: depurador` e
+     aparecem agrupados na tela, em vez de soltos ao lado de Designer. */
+  depurador: {
+    id: 'depurador',
+    titulo: 'Depurador',
+    contrataria: 'achar e consertar o que está quebrado',
+    modos: ['depuracao'],
+  },
+  perito: {
+    id: 'perito',
+    titulo: 'Perito',
+    pai: 'depurador',
+    contrataria: 'achar a causa medindo, antes de qualquer conserto',
+    modos: ['depuracao', 'estudo'],
+  },
+  pesquisador: {
+    id: 'pesquisador',
+    titulo: 'Pesquisador',
+    pai: 'depurador',
+    contrataria: 'entender e escrever o que descobriu, sem tocar no código',
+    modos: ['estudo'],
+  },
+  revisor: {
+    id: 'revisor',
+    titulo: 'Revisor',
+    pai: 'depurador',
+    contrataria: 'olhar o que existe e apontar, sem consertar',
+    modos: ['revisao'],
+  },
+}
+
+/**
+ * O que um perfil exige e desliga, somando os modos dele.
+ *
+ * Soma com uma regra clara: **exigência vence desligamento**. Se um modo pede
+ * uma trava e o outro a desliga, ela fica ligada. Na dúvida entre proteger e
+ * soltar, protege, e é o mesmo critério do Routia com rota ocupada em duas
+ * máquinas.
+ */
+export function perfilResolvido(id) {
+  const p = PERFIS[id]
+  if (!p) return null
+  const exige = new Set()
+  const desliga = new Set()
+  let teto = null
+  for (const nome of p.modos) {
+    const m = MODOS[nome]
+    if (!m) continue
+    for (const h of m.hooks?.exige || []) exige.add(h)
+    for (const h of m.hooks?.desliga || []) desliga.add(h)
+    if (m.teto != null) teto = teto == null ? m.teto : Math.min(teto, m.teto)
+  }
+  for (const h of exige) desliga.delete(h)
+  return {
+    ...p,
+    // o modo BASE é o primeiro: é ele quem define trava, pergunta e fluxo
+    base: MODOS[p.modos[0]] || null,
+    exige: [...exige],
+    desliga: [...desliga],
+    teto,
+    /* A trava de ETAPA, que é o que ele pediu de verdade para Modelagem e Scrum
+       Master: não é só um nome bonito, é "não passa daqui antes de X". Sai do
+       vocabulário que o framework já tinha (fases e predicados), então nada é
+       inventado só para o perfil existir. */
+    pendencias: [],
+  }
+}
+
+/**
+ * O que falta para este perfil liberar o trabalho.
+ *
+ * Modelagem exige estar na fase de Definição, com o desenho escrito. Scrum
+ * Master exige o MVP com nome e critérios. Os dois vêm dos pedidos dele em
+ * 17/08, com o mecanismo que ele mesmo descreveu: *"hooks que travem os prompts
+ * em desenhar o sistema todo antes de programar"* e *"hooks que travem o sistema
+ * até definir todo o produto e projeto"*.
+ */
+export function faltaNoPerfil(estado) {
+  const p = estado?.perfil ? PERFIS[estado.perfil] : null
+  if (!p) return []
+  const falta = []
+  if (p.exigeFase && estado?.fase !== p.exigeFase) {
+    const fase = METODOS[estado?.metodo]?.fases?.find((f) => f.id === p.exigeFase)
+    falta.push(`${p.titulo} trabalha na fase ${fase?.titulo || p.exigeFase}, e o projeto está em ${estado?.fase || 'nenhuma'}`)
+  }
+  for (const nome of p.exigePredicados || []) {
+    const r = PREDICADOS[nome] ? PREDICADOS[nome](estado) : null
+    if (r) falta.push(r)
+  }
+  return falta
+}
+
+/** Os perfis principais, com os sub abaixo de cada um. É o agrupamento que a
+ *  tela usa: ele corrigiu que Perito, Pesquisador e Revisor são variações do
+ *  Depurador, não papéis soltos ao lado de Designer. */
+export function perfisEmArvore() {
+  const raizes = Object.values(PERFIS).filter((p) => !p.pai)
+  return raizes.map((p) => ({
+    ...p,
+    subs: Object.values(PERFIS).filter((x) => x.pai === p.id),
+  }))
 }
 
 /** `dialogo` é o padrão: é o fluxo que já existia antes de os modos nascerem, e
  *  estado antigo (sem o campo) não pode mudar de comportamento sozinho. */
 export const modoDe = (estado) => MODOS[estado?.modo] || MODOS.dialogo
+
+/**
+ * O que vale AGORA neste projeto: o perfil, se houver, senão o modo.
+ *
+ * Uma conta só, e é de propósito: com duas (uma para o perfil, outra para o
+ * modo) a tela e a trava discordariam sobre o mesmo projeto, que é o defeito
+ * que o painel já pagou duas vezes.
+ */
+export function vigente(estado) {
+  const perfil = estado?.perfil ? perfilResolvido(estado.perfil) : null
+  const modo = perfil?.base || modoDe(estado)
+  return {
+    perfil,
+    modo,
+    titulo: perfil ? perfil.titulo : modo.titulo,
+    explica: perfil ? perfil.contrataria : modo.explica,
+    exige: perfil ? perfil.exige : (modo.hooks?.exige || []),
+    desliga: perfil ? perfil.desliga : (modo.hooks?.desliga || []),
+    teto: perfil ? perfil.teto : (modo.teto ?? null),
+    semTeto: Boolean(modo.fluxo?.semTeto),
+  }
+}
 
 export const estadoInicial = (metodo = 'mvp-basico') => ({
   metodo,
@@ -549,6 +888,27 @@ export function podeEditar(metodo, estado, rel) {
   // estava em Execução com o portão aberto, e por isso nada me impediu.
   const modo = modoDe(estado)
   const eCodigo = CODIGO.some((p) => casa(p, rel))
+
+  /* O PERFIL decide antes de tudo, e é o que ele pediu em 17/08: Modelagem não
+     deixa programar antes do sistema estar desenhado, Scrum Master não deixa
+     antes do produto estar definido. Vale só para código: documentação e
+     backlog são justamente a saída desses dois papéis. */
+  if (eCodigo) {
+    const faltaPerfil = faltaNoPerfil(estado)
+    if (faltaPerfil.length) {
+      const p = PERFIS[estado.perfil]
+      return {
+        ok: false,
+        perfil: p.id,
+        modo: modo.id,
+        motivoModo: p.contrataria,
+        pendencias: faltaPerfil,
+        explica: `${p.titulo}: ${p.contrataria}.`
+          + (p.entrega ? ` A entrega deste papel é ${p.entrega}.` : ''),
+      }
+    }
+  }
+
   if (modo.trava && eCodigo) {
     const permitido = (estado?.autorizado || []).some((alvo) => casa(alvo, rel) || alvo === '**')
     if (!permitido) {

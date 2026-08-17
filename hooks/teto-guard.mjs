@@ -47,6 +47,18 @@ if (cfg?.hookEnabled && !cfg.hookEnabled('teto-guard')) sair()
 const J = await import(resolve(AQUI, '../src/jobs.mjs')).catch(() => null)
 if (!J) sair()
 
+/* O modo decide se o teto vale. Decisão dele em 17/08: o teto é o "modo
+   revisão" (restritivo e os outros), e o modo CONTÍNUO vai até o fim do
+   backlog sem parar para mostrar. As duas regras eram dele e brigavam; a
+   saída dele foi virarem modos. */
+const D = await import(resolve(AQUI, '../src/frameworkDisco.mjs')).catch(() => null)
+const F = await import(resolve(AQUI, '../src/framework.mjs')).catch(() => null)
+if (D && F) {
+  const raiz = D.acharRaiz(dados?.cwd || process.cwd())
+  const estado = raiz ? D.ler(raiz) : null
+  if (estado && estado.ligado !== false && F.modoDe(estado)?.fluxo?.semTeto) sair()
+}
+
 const id = process.env.CLAUDE_CODE_SESSION_ID || dados?.session_id || J.currentJobId?.()
 if (!id) sair()
 

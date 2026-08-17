@@ -74,6 +74,13 @@ depois do que faz, entre parênteses e uma vez só.
 para ele. Tabela de oito linhas com nome de peça em cada uma não é resumo, é
 índice de código.
 
+**Pedido em lote (17/08, urgente):** mensagem dele com vários pedidos: cada um
+vira item registrado ANTES de executar qualquer um, com as palavras dele. E
+toda pausa enumera os pedidos da conversa, um por linha, com estado: feito
+(com prova), em curso, ou na fila. Nenhum pode faltar, e essa lista não conta
+no teto de cinco linhas. Palavras dele: "qdo eu te peço mil coisas e voce
+pausa no meio eu não sei quanto você implementou e eu perco as ideias".
+
 
 Escrito por ele em 15/08/2026, a partir de uma explicação minha que ficou ruim.
 
@@ -297,6 +304,62 @@ export function medir(texto) {
  * Pega apenas blocos de texto: `tool_use` é trabalho, não prosa, e contá-lo
  * inflaria o tamanho de qualquer resposta que mexeu em arquivo.
  */
+/**
+ * TUDO que eu escrevi no turno, e não só o último pedaço.
+ *
+ * ## O falso positivo que criou esta função
+ *
+ * Uma resposta minha vira VÁRIOS blocos no transcrito: escrevo, chamo uma
+ * ferramenta, escrevo de novo. Medido em 17/08 num turno comum: três blocos,
+ * com 4, 7 e 1 parágrafos.
+ *
+ * `ultimaResposta` devolve só o último com texto, e isso fez o guarda do
+ * separador me barrar DUAS vezes seguidas quando eu tinha usado o separador
+ * direitinho: ele estava no segundo bloco, e o hook mediu o terceiro.
+ *
+ * **Falso positivo em hook é o caminho mais curto para hook desligado**, e um
+ * hook desligado não segura nada. Por isso a medição de estilo passa a olhar o
+ * turno inteiro, que é o que ele de fato lê.
+ *
+ * `ultimaResposta` continua existindo e é o certo para quem quer só o fecho da
+ * conversa, como o guarda de pergunta em prosa.
+ */
+export function respostaDoTurno(arquivo, limite = 400 * 1024) {
+  let texto = ''
+  try {
+    const { size } = fs.statSync(arquivo)
+    const tamanho = Math.min(size, limite)
+    const fd = fs.openSync(arquivo, 'r')
+    const buf = Buffer.alloc(tamanho)
+    fs.readSync(fd, buf, 0, tamanho, size - tamanho)
+    fs.closeSync(fd)
+    texto = buf.toString('utf8')
+  } catch { return null }
+
+  const linhas = texto.split('\n')
+  /* Onde começou o turno: a última fala de uma PESSOA. Injeção de skill e
+     resultado de ferramenta chegam como `user` e não contam. */
+  let inicio = 0
+  for (let i = linhas.length - 1; i >= 0; i -= 1) {
+    let j = null
+    try { j = JSON.parse(linhas[i]) } catch { continue }
+    if (j?.type !== 'user' || j.isMeta || j.toolUseResult) continue
+    inicio = i + 1
+    break
+  }
+
+  const blocos = []
+  for (let i = inicio; i < linhas.length; i += 1) {
+    let j = null
+    try { j = JSON.parse(linhas[i]) } catch { continue }
+    if (j?.type !== 'assistant') continue
+    for (const b of j.message?.content || []) {
+      if (b?.type === 'text' && String(b.text).trim()) blocos.push(b.text)
+    }
+  }
+  return blocos.length ? blocos.join('\n\n') : null
+}
+
 export function ultimaResposta(arquivo, limite = 256 * 1024) {
   let fd
   try {

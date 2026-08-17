@@ -29,6 +29,10 @@ pastas-controladas: [apps, tools]
 |---|---|---|---|
 | `jogo` | 🔴 ocupada | outra9999 (outra sessão, não a do teste) | 2026-08-14 |
 | `editor` | 🟢 livre | — | — |
+| `front` | 🔴 ocupada | aaaa1111 — telas 📁 apps/ui.html#viewTrabalho | hoje |
+| `vizinha` | 🔴 ocupada | cccc9999 — dados 📁 apps/dados.mjs · precisa de apps/tabela.js, que e da rota front: pedido feito | hoje |
+| `dona-tabela` | 🔴 ocupada | dddd8888 — tabela 📁 apps/tabela.js | hoje |
+| `back` | 🔴 ocupada | beef5678 — dados 📁 apps/ui.html#renderTabs apps/web.mjs | hoje |
 QUADRO
 
 caso() {
@@ -62,6 +66,28 @@ caso "o proprio quadro (senao vira impossivel marcar)" "libera" \
 
 caso "projeto sem quadro" "libera" \
   "{\"session_id\":\"abcd1234-ffff\",\"tool_input\":{\"file_path\":\"$SEM_QUADRO/apps/arquivo.ts\"}}"
+
+# CC-114: `arquivo#parte` e a partilha declarada. Quem tambem declarou o
+# arquivo edita; quem nao declarou continua barrado; arquivo sem `#` e posse
+# inteira como sempre foi.
+caso "partilha declarada: front edita o arquivo dividido" "libera" \
+  "{\"session_id\":\"aaaa1111-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/ui.html\"}}"
+
+caso "sem declarar: terceiro barrado no arquivo dividido" "bloqueia" \
+  "{\"session_id\":\"cafe0000-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/ui.html\"}}"
+
+caso "posse inteira: front barrado no arquivo so do back" "bloqueia" \
+  "{\"session_id\":\"aaaa1111-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/web.mjs\"}}"
+
+# 17/08: a PROSA depois dos arquivos declarados nao pode virar reivindicacao.
+# Uma rota escreveu "📁 src/a.mjs · precisa de src/ui.html, que e da rota
+# cockpit" e o parser colheu `src/ui.html` do meio da frase, dando ao vizinho a
+# posse de um arquivo que ele estava pedindo emprestado. O guarda barrou o DONO.
+caso "prosa da vizinha nao toma o arquivo do dono" "libera" \
+  "{\"session_id\":\"dddd8888-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/tabela.js\"}}"
+
+caso "e quem so citou em prosa continua barrado" "bloqueia" \
+  "{\"session_id\":\"cccc9999-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/tabela.js\"}}"
 
 caso "entrada vazia (hook nao pode travar por bug proprio)" "libera" ""
 

@@ -35,9 +35,27 @@ export const NIVEIS = {
   mede: 'só registra, não aparece',
 }
 
+/**
+ * CC-115 — os módulos: o agrupamento que liga e desliga POR PROJETO.
+ *
+ * O interruptor por hook continua global (aba de hooks). O que o projeto pode
+ * fazer é desligar um GRUPO inteiro para si: um projeto de estudo sem rotas,
+ * um repositório de terceiro onde as regras de entrega não fazem sentido.
+ * Nome e recorte são o vocabulário dele, não o meu: comunicação (como eu falo
+ * com ele), entrega (o que cobra prova e backlog), código (o que protege o
+ * repositório) e rotas (o trabalho em paralelo).
+ */
+export const MODULOS = {
+  comunicacao: { label: 'comunicação', explica: 'como eu respondo: tamanho, jargão, separador de resumo, pergunta no lugar certo' },
+  entrega: { label: 'entrega', explica: 'o que cobra prova, backlog anotado e verificação antes de dizer feito' },
+  codigo: { label: 'código', explica: 'o que protege o repositório: commit só com pedido, edição que falha em voz alta, texto público limpo' },
+  rotas: { label: 'rotas', explica: 'o trabalho em paralelo: cada agente na sua rota, recados entre eles' },
+}
+
 export const HOOKS = [
   {
     id: 'estilo-inicio',
+    modulo: 'comunicacao',
     nivel: 'injeta',
     label: 'Padrão de resposta do Felipe',
     script: 'estilo-inicio.mjs',
@@ -51,6 +69,7 @@ export const HOOKS = [
   },
   {
     id: 'estilo-fim',
+    modulo: 'comunicacao',
     nivel: 'mede',
     label: 'Padrão de resposta — mede sem reclamar',
     script: 'estilo-fim.mjs',
@@ -64,6 +83,7 @@ export const HOOKS = [
   },
   {
     id: 'travessao-guard',
+    modulo: 'codigo',
     nivel: 'trava',
     label: 'travessão na resposta ou no arquivo',
     script: 'travessao-guard.mjs',
@@ -77,7 +97,98 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'forma-guard',
+    modulo: 'entrega',
+    nivel: 'avisa',
+    label: 'A forma que ele nomeou tem que estar na entrega',
+    script: 'forma-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Ele nomeia a forma (tabela, card, lista, coluna) e a entrega '
+      + 'tem que falar da mesma. Barra quando a entrega ignora a palavra dele, '
+      + 'e barra mais forte quando fala de outra forma no lugar. A extração é '
+      + 'automática, de um vocabulário fechado: não depende de eu listar nada, '
+      + 'que era o ponto fraco da ideia original.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'referencia-guard',
+    modulo: 'entrega',
+    nivel: 'avisa',
+    label: 'Pediu igual ao que já existe: mostrar o par',
+    script: 'referencia-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Quando ele aponta uma referência que já existe ("igual ao que '
+      + 'já temos", "nós já usamos"), a entrega não fecha sem o original e o '
+      + 'novo lado a lado. A trava não julga se ficou igual, de propósito: quem '
+      + 'compara é ele. Mandar arquivo é chamada de ferramenta, então está no '
+      + 'transcrito ou não está; prosa não conta.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'desvio-guard',
+    modulo: 'entrega',
+    nivel: 'trava',
+    label: 'Decisão contra o pedido, escondida no código',
+    script: 'desvio-guard.mjs',
+    evento: 'PreToolUse',
+    descricao: 'Recusa a edição que justifica, dentro do arquivo, trocar o que '
+      + 'ele pediu por outra coisa. O discriminador é um CRUZAMENTO medido: a '
+      + 'frase de desvio na mesma sentença que um termo do pedido dele. Frase '
+      + 'sozinha não barra, porque "em vez de" aparece 92 vezes em comentário '
+      + 'legítimo. Nasceu da tabela que virou blocos no telefone em 17/08.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'tarefa-vaga-guard',
+    modulo: 'entrega',
+    nivel: 'avisa',
+    label: 'Tarefa escrita em telegrama',
+    script: 'tarefa-vaga-guard.mjs',
+    evento: 'Stop',
+    descricao: 'CC-126, queixa dele em 17/08: "os cards nunca fazem sentido, o '
+      + 'texto é algo vago como profissão escolhe quem entra". Tarefa sem artigo '
+      + 'nem preposição perde sujeito e objeto. O discriminador saiu de medição: '
+      + 'tamanho NÃO separa (mediana de 9 palavras, a vaga tem 4); ausência de '
+      + 'palavra de ligação separa, e acusou exatamente a que ele citou.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'enfileirada-guard',
+    modulo: 'comunicacao',
+    nivel: 'avisa',
+    label: 'Mensagem dele que sumiu da fila',
+    script: 'enfileirada-guard.mjs',
+    evento: 'Stop',
+    descricao: 'CC-118: ele digita enquanto eu trabalho, e às vezes o texto sai '
+      + 'da fila sem virar mensagem ("o texto simplesmente some"). O registro '
+      + 'guarda o texto. A trava exige que eu CITE o que ele escreveu, porque a '
+      + 'minha resposta é uma mensagem e sobrevive: citando, o pedido dele entra '
+      + 'no histórico pela minha boca. Medidas 34 nesta sessão.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'fila-guard',
+    modulo: 'comunicacao',
+    nivel: 'avisa',
+    label: 'Pausa diz o que ficou na fila',
+    script: 'fila-guard.mjs',
+    evento: 'Stop',
+    descricao: 'CC-117, pedido dele em 17/08: "qdo eu te peço mil coisas e '
+      + 'voce pausa no meio eu não sei quanto você implementou". Pausa de '
+      + 'entrega (com separador) com tarefa aberta no cartão precisa dizer o '
+      + 'que ficou: na fila, em curso ou esperando. Não casa item a item de '
+      + 'propósito: foi o que gerou falso positivo três vezes no separador.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'resumo-guard',
+    modulo: 'comunicacao',
     nivel: 'avisa',
     label: 'resposta longa sem o separador',
     script: 'resumo-guard.mjs',
@@ -90,6 +201,7 @@ export const HOOKS = [
   },
   {
     id: 'teto-guard',
+    modulo: 'comunicacao',
     nivel: 'avisa',
     label: 'entregou demais sem ele ver',
     script: 'teto-guard.mjs',
@@ -102,6 +214,7 @@ export const HOOKS = [
   },
   {
     id: 'medir-guard',
+    modulo: 'entrega',
     nivel: 'avisa',
     label: 'agiu na descrição dele sem medir',
     script: 'medir-guard.mjs',
@@ -114,6 +227,7 @@ export const HOOKS = [
   },
   {
     id: 'descida-guard',
+    modulo: 'comunicacao',
     nivel: 'avisa',
     label: 'reprovou e refez no mesmo nível',
     script: 'descida-guard.mjs',
@@ -127,6 +241,7 @@ export const HOOKS = [
   },
   {
     id: 'visual-guard',
+    modulo: 'entrega',
     nivel: 'avisa',
     label: 'mexeu no visual e não olhou',
     script: 'visual-guard.mjs',
@@ -139,6 +254,7 @@ export const HOOKS = [
   },
   {
     id: 'jargao-guard',
+    modulo: 'comunicacao',
     nivel: 'avisa',
     label: 'nome interno na conversa',
     script: 'jargao-guard.mjs',
@@ -151,6 +267,7 @@ export const HOOKS = [
   },
   {
     id: 'pronto-guard',
+    modulo: 'entrega',
     nivel: 'avisa',
     label: 'tarefa fechada sem prova',
     script: 'pronto-guard.mjs',
@@ -163,6 +280,7 @@ export const HOOKS = [
   },
   {
     id: 'reporte-guard',
+    modulo: 'entrega',
     nivel: 'avisa',
     label: 'trabalhou e não reportou no painel',
     script: 'reporte-guard.mjs',
@@ -176,6 +294,7 @@ export const HOOKS = [
   },
   {
     id: 'anonimo-prompt',
+    modulo: 'comunicacao',
     nivel: 'trava',
     label: 'dado pessoal colado no chat',
     script: 'anonimo-prompt.mjs',
@@ -188,6 +307,7 @@ export const HOOKS = [
   },
   {
     id: 'bancada-guard',
+    modulo: 'entrega',
     nivel: 'avisa',
     label: 'a tarefa não se auto-verificou',
     script: 'bancada-guard.mjs',
@@ -201,6 +321,7 @@ export const HOOKS = [
   },
   {
     id: 'commit-guard',
+    modulo: 'codigo',
     nivel: 'trava',
     label: 'commit sem ele ter pedido',
     script: 'commit-guard.mjs',
@@ -215,6 +336,7 @@ export const HOOKS = [
   },
   {
     id: 'branch-guard',
+    modulo: 'codigo',
     nivel: 'trava',
     label: 'comando git que apaga trabalho alheio',
     script: 'branch-guard.mjs',
@@ -229,6 +351,7 @@ export const HOOKS = [
   },
   {
     id: 'gate-guard',
+    modulo: 'entrega',
     nivel: 'avisa',
     label: 'código editado sem rodar o gate',
     script: 'gate-guard.mjs',
@@ -241,6 +364,7 @@ export const HOOKS = [
   },
   {
     id: 'edicao-guard',
+    modulo: 'codigo',
     nivel: 'trava',
     label: 'edição de arquivo por script de shell',
     script: 'edicao-guard.mjs',
@@ -254,6 +378,7 @@ export const HOOKS = [
   },
   {
     id: 'roadmap-guard',
+    modulo: 'codigo',
     nivel: 'avisa',
     label: 'concluído parado no ROADMAP',
     script: 'roadmap-guard.mjs',
@@ -267,6 +392,7 @@ export const HOOKS = [
   },
   {
     id: 'fluxo-guard',
+    modulo: 'entrega',
     nivel: 'avisa',
     label: 'parou com backlog aberto',
     script: 'fluxo-guard.mjs',
@@ -279,6 +405,7 @@ export const HOOKS = [
   },
   {
     id: 'guia-guard',
+    modulo: 'comunicacao',
     nivel: 'avisa',
     label: 'guia longo numa mensagem só',
     script: 'guia-guard.mjs',
@@ -291,6 +418,7 @@ export const HOOKS = [
   },
   {
     id: 'pergunta-guard',
+    modulo: 'comunicacao',
     nivel: 'avisa',
     label: 'pergunta decisiva vai na caixa, não em prosa',
     script: 'pergunta-guard.mjs',
@@ -303,6 +431,7 @@ export const HOOKS = [
   },
   {
     id: 'recados',
+    modulo: 'rotas',
     nivel: 'trava',
     label: 'Método Routia — agentes do mesmo projeto se falando',
     script: 'recados.mjs',
@@ -315,6 +444,7 @@ export const HOOKS = [
   },
   {
     id: 'rota-guard',
+    modulo: 'rotas',
     nivel: 'trava',
     label: 'Método Routia — trava edição sem rota',
     script: 'rota-guard.mjs',
@@ -326,6 +456,7 @@ export const HOOKS = [
   },
   {
     id: 'git-add-guard',
+    modulo: 'codigo',
     nivel: 'trava',
     label: 'Método Routia — trava git add em massa',
     script: 'git-add-guard.mjs',
@@ -337,6 +468,7 @@ export const HOOKS = [
   },
   {
     id: 'cc-check',
+    modulo: 'entrega',
     nivel: 'avisa',
     label: 'to-do aberto trava a entrega',
     script: null,
@@ -349,6 +481,7 @@ export const HOOKS = [
   },
   {
     id: 'routia-inicio',
+    modulo: 'rotas',
     nivel: 'injeta',
     label: 'Método Routia — mostra o quadro ao abrir sessão',
     script: 'routia-inicio.mjs',
@@ -360,6 +493,7 @@ export const HOOKS = [
   },
   {
     id: 'routia-fim',
+    modulo: 'rotas',
     nivel: 'avisa',
     label: 'Método Routia — lembra de liberar a rota',
     script: 'routia-fim.mjs',

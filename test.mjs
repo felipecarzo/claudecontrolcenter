@@ -262,12 +262,16 @@ const { normalizeTodo, normalizeLink } = await import('./src/jobs.mjs')
 /* `pronto` e `prova` entraram em 16/08 (CC-97). Comparar o objeto inteiro é
    proposital, apesar de quebrar a cada campo novo: foi assim que o `dono`
    apareceu como regressão escondida, e é barato de atualizar. */
-const TODO = (extra) => ({ dono: 'ia', pronto: null, prova: null, revisoes: [], ...extra })
+const TODO = (extra) => ({ dono: 'ia', pronto: null, prova: null, codigo: null, olho: false, dependeDe: null, revisoes: [], ...extra })
 assert.deepEqual(normalizeTodo({ text: 'a', done: true }), TODO({ text: 'a', done: true }))
 assert.deepEqual(normalizeTodo({ t: 'a', done: true }), TODO({ text: 'a', done: true })) // o caso real
 assert.deepEqual(normalizeTodo({ title: 'a' }), TODO({ text: 'a', done: false }))
 assert.deepEqual(normalizeTodo({ task: 'a', completed: true }), TODO({ text: 'a', done: true }))
 assert.deepEqual(normalizeTodo('só texto'), TODO({ text: 'só texto', done: false }))
+// CC-114: a dependência sai do texto, do jeito que ele escreve
+assert.equal(normalizeTodo('liga o mapa, depende da s03').dependeDe, 's03')
+assert.equal(normalizeTodo('depende do CC-112_s02: acabar o painel').dependeDe, 'CC-112_s02')
+assert.equal(normalizeTodo('independente de tudo').dependeDe, null, 'palavra parecida não pode casar')
 
 // a definição de pronto e a prova sobrevivem à normalização, e são cortadas
 assert.equal(normalizeTodo({ text: 'a', pronto: 'a tela abre' }).pronto, 'a tela abre')
@@ -290,7 +294,43 @@ assert.equal(normalizeTodo({ text: 'a', prova: 'x'.repeat(900) }).prova.length, 
   assert.equal(comRev.revisoes[0].quem, 'felipe', 'sem quem declarado, a revisão é dele')
   assert.equal(comRev.revisoes[0].respondeu, null, 'apontado e ainda não respondido')
   assert.equal(comRev.revisoes[1].respondeu, 'guarda no renderTabs')
+  /* A dependência sai do texto que já se escreve ("depende do CC-60"), e o
+     desbloqueio é o inverso calculado. Da planilha dele (17/08): a linha da
+     tarefa dizia de quem ela depende e quem ela destrava. */
+  {
+    const os2 = await import('node:os')
+    const casa = fs.mkdtempSync(path.join(os2.tmpdir(), 'cc-dep-'))
+    fs.mkdirSync(path.join(casa, 'docs'), { recursive: true })
+    fs.writeFileSync(path.join(casa, 'docs', 'ROADMAP.md'), [
+      '# mapa', '',
+      '### XX-01 a fundacao', 'texto solto', '',
+      '### XX-02 a parede', 'esta depende do XX-01 para existir', '',
+    ].join('\n'))
+    const { lerRoadmap } = await import('./src/roadmap.mjs')
+    const fs2 = lerRoadmap(casa).grupos.flatMap((g) => g.frentes)
+    assert.deepEqual(fs2.find((f) => /XX-02/.test(f.titulo)).dependeDe, ['XX-01'])
+    assert.deepEqual(fs2.find((f) => /XX-01/.test(f.titulo)).dependeDe, [])
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+
   // teto: um to-do não pode virar log infinito dentro do meta.json
+  /* O código da tarefa é estável POR CONSTRUÇÃO, e este teste é a prova que o
+     defeito do S1 pedia: fechar ou remover uma tarefa não renumera as outras,
+     e número removido nunca volta. */
+  {
+    const { mergeMeta } = await import('./src/jobs.mjs')
+    const v1 = mergeMeta({}, { todos: [{ text: 'a' }, { text: 'b' }] })
+    assert.equal(v1.todos[0].codigo, 's01')
+    assert.equal(v1.todos[1].codigo, 's02')
+    // 'a' fecha e some da lista; 'c' entra. 'b' NÃO pode virar s01
+    const v2x = mergeMeta(v1, { todos: [{ text: 'b' }, { text: 'c' }] })
+    assert.equal(v2x.todos[0].codigo, 's02', 'tarefa existente mantém o código')
+    assert.equal(v2x.todos[1].codigo, 's03', 'número removido não é reciclado')
+    // reenvio idêntico não gasta número
+    const v3 = mergeMeta(v2x, { todos: [{ text: 'b' }, { text: 'c' }] })
+    assert.equal(v3.seqTarefa, v2x.seqTarefa, 'reenviar a lista não anda o contador')
+  }
+
   assert.equal(normalizeTodo({ text: 'a', revisoes: Array(30).fill('x') }).revisoes.length, 10)
 }
 // quem faz a tarefa: o agente por padrão, o Felipe quando o meta.json diz
@@ -458,7 +498,152 @@ assert.ok(base === null || (typeof base === 'string' && base.length > 0))
 }
 assert.equal(inst.detectarBase([{ cwd: '/home/ana/projects/x' }, { cwd: '/home/ana/projects/y' }]),
   ['', 'home', 'ana', 'projects'].join(path.sep))
-assert.equal(inst.detectarBase([{ cwd: '/opt/nada' }]), null)
+/* CC-115: grupos de proteção ligáveis por projeto. O contrato que não pode
+   quebrar: desligar um grupo cala os hooks dele NAQUELE projeto e só nele; o
+   global (dir nulo) nunca é colorido por projeto; religar deixa o arquivo
+   enxuto. Casa isolada via CC_HOME + `?casa=`, o mesmo padrão das notas. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-mod-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const c = await import(`./src/config.mjs?casa=${encodeURIComponent(casa)}`)
+    assert.ok(c.CONFIG_FILE.startsWith(casa), 'o teste ia escrever no config de verdade')
+    const P = path.join(os.homedir(), 'projetos', 'x-inova', 'apps', 'game')
+    c.setModuloProjeto('x-inova', 'codigo', false)
+    assert.equal(c.hookEnabled('travessao-guard', undefined, P), false, 'grupo desligado tem que calar no projeto')
+    assert.equal(c.hookEnabled('resumo-guard', undefined, P), true, 'outro grupo continua vivo')
+    assert.equal(c.hookEnabled('travessao-guard', undefined, path.join(os.homedir(), 'projetos', 'outro')), true)
+    assert.equal(c.hookEnabled('travessao-guard', undefined, null), true, 'o global não é colorido por projeto')
+    c.setModuloProjeto('x-inova', 'codigo', true)
+    assert.equal(c.readConfig().modulosProjeto, undefined, 'religar apaga a entrada')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
+/* Número de item repetido no ROADMAP (17/08). Aconteceu duas vezes na mesma
+   tarde: escrevi CC-118 e CC-119 em cima de itens que já existiam mais abaixo
+   no arquivo, e o número deixou de identificar coisa nenhuma. É o oposto do que
+   o sistema de código estável existe para fazer, e conferir a olho não escala
+   num arquivo de 500 linhas. */
+{
+  const roadmap = fs.readFileSync(path.join(process.cwd(), 'docs', 'ROADMAP.md'), 'utf8')
+  const vistos = new Map()
+  const repetidos = []
+  for (const linha of roadmap.split(/\r?\n/)) {
+    const m = linha.match(/^###\s+((?:CC|NV|FB|VP)-\d+)\b/)
+    if (!m) continue
+    if (vistos.has(m[1])) repetidos.push(`${m[1]} (também em "${vistos.get(m[1]).slice(0, 40)}")`)
+    else vistos.set(m[1], linha.replace(/^###\s*/, ''))
+  }
+  /* A mensagem diz o arquivo E o próximo número livre. Sugestão de outra sessão
+     em 17/08, depois de esbarrar nisto: "se ele apontar o arquivo e o número
+     vizinho livre na própria mensagem de erro, quem esbarrar resolve sem ter que
+     ler o roadmap inteiro". Vale para toda mensagem de gate: acusar sem dar a
+     saída é a burocracia que se desliga na terceira semana. */
+  const maior = Math.max(0, ...[...vistos.keys()]
+    .filter((k) => k.startsWith('CC-')).map((k) => Number(k.slice(3)) || 0))
+  assert.deepEqual(repetidos, [],
+    `número de item repetido em docs/ROADMAP.md: ${repetidos.join('; ')}.`
+    + ` O próximo livre é CC-${maior + 1}.`)
+  /* O piso existe para o teste não passar por não achar nada. 20 é folgado
+     contra os 34 itens de hoje; escrevi 50 de cabeça na primeira versão e o
+     próprio gate me corrigiu, que é o comportamento certo dele. */
+  assert.ok(vistos.size >= 20, `o leitor de itens do roadmap achou só ${vistos.size} seções`)
+}
+
+/* CC-128: a regra dele, "se tem função bloqueando, entra como framework".
+   O modo do projeto manda no interruptor, e é isso que faz um perfil ser um
+   perfil: escolher Designer liga o print obrigatório sem caçar interruptor.
+   Casa isolada E projeto de laboratório, porque a resposta depende dos dois. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-perfil-'))
+  const proj = fs.mkdtempSync(path.join(os.tmpdir(), 'proj-perfil-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  const grava = (estado) => {
+    fs.mkdirSync(path.join(proj, '.framework'), { recursive: true })
+    fs.writeFileSync(path.join(proj, '.framework', 'estado.json'), JSON.stringify(estado))
+  }
+  try {
+    fs.mkdirSync(path.join(proj, '.git'), { recursive: true })
+    const c = await import(`./src/config.mjs?perfil=${encodeURIComponent(casa)}`)
+    assert.equal(c.hookEnabled('visual-guard', undefined, proj), true, 'sem framework, vale o padrão')
+
+    // ele desliga no interruptor GLOBAL
+    c.setHookEnabled('visual-guard', false)
+    assert.equal(c.hookEnabled('visual-guard', undefined, proj), false)
+
+    // o perfil Designer EXIGE: a exigência do modo vence o global
+    grava({ metodo: 'mvp-basico', fase: 'execucao', ligado: true, perfil: 'designer' })
+    const c2 = await import(`./src/config.mjs?perfil2=${encodeURIComponent(casa)}`)
+    assert.equal(c2.hookEnabled('visual-guard', undefined, proj), true,
+      'perfil que exige a trava tem que ligar mesmo com o global desligado')
+
+    // e o que o modo DESLIGA cala, que é escolha declarada
+    grava({ metodo: 'mvp-basico', fase: 'execucao', ligado: true, modo: 'depuracao' })
+    const c3 = await import(`./src/config.mjs?perfil3=${encodeURIComponent(casa)}`)
+    assert.equal(c3.hookEnabled('teto-guard', undefined, proj), false, 'depuração desliga o teto')
+    assert.equal(c3.hookEnabled('medir-guard', undefined, proj), true, 'e exige medir antes')
+
+    // framework desligado não manda em nada: falha aberta, regra antiga
+    grava({ metodo: 'mvp-basico', fase: 'execucao', ligado: false, perfil: 'designer' })
+    const c4 = await import(`./src/config.mjs?perfil4=${encodeURIComponent(casa)}`)
+    assert.equal(c4.hookEnabled('teto-guard', undefined, proj), true, 'framework desligado volta ao padrão')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+    fs.rmSync(proj, { recursive: true, force: true })
+  }
+}
+
+/* CC-102: a federação tem que respeitar a casa isolada. Achado em 17/08, ao
+   tentar provar a tela de rotas de outra máquina: o módulo resolvia a pasta com
+   `os.homedir()` direto, então a instância de teste lia a pasta REAL e um
+   pacote de laboratório teria acabado no painel dele. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-fed-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+    assert.ok(F.dirFederacao().startsWith(casa), 'o teste ia escrever na federação de verdade')
+    F.gravarPacote({ maquina: { id: 'lab', nome: 'LAB' }, rotas: [], recebidoEm: Date.now() })
+    const lidos = F.lerPacotes()
+    assert.equal(lidos.length, 1)
+    assert.equal(lidos[0].maquina.nome, 'LAB')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
+// CC-115: o retrato das rotas que a tela de módulos mostra. Este repositório
+// carrega o próprio arquivo de rotas, então ele serve de amostra real; um
+// diretório sem o arquivo tem que responder desligado, nunca lançar.
+{
+  const { situacaoRotas } = await import('./src/routia.mjs')
+  const aqui = situacaoRotas(process.cwd())
+  assert.equal(aqui.ligado, true)
+  assert.ok(aqui.total > 0, 'as rotas deste repo têm que ser contadas')
+  assert.ok(aqui.ocupadas <= aqui.total)
+  assert.deepEqual(situacaoRotas('/tmp'), { ligado: false })
+}
+
+// Sem voto de job a resposta mudou (17/08): cai nas pastas convencionais da
+// home, que é o que faz a VPS (só sessão interativa, zero jobs) achar os
+// projetos. O que continua garantido: o cwd fora do padrão nunca vira base.
+{
+  const semVoto = inst.detectarBase([{ cwd: '/opt/nada' }])
+  assert.ok(semVoto === null || semVoto.startsWith(os.homedir()),
+    'sem voto: ou null, ou pasta convencional da home')
+  assert.notEqual(semVoto, '/opt/nada')
+}
 assert.deepEqual(inst.findProjects(null), []) // sem base, não varre nada
 // matar processo fora da lista tem que ser recusado
 assert.throws(() => srv.killServer(4), /inválido/)
@@ -1747,7 +1932,14 @@ if (estRotinas.projetos.length) {
 
   // 1. a confirmação relê do servidor em vez de repetir o que foi clicado
   assert.match(html, /CONFIRMA_FW/, 'sumiu a confirmação da troca de modo')
-  assert.match(html, /conferido\.modo === pedido/, 'a confirmação parou de comparar pedido com arquivo')
+  /* A comparação virou `gravado === pedido` em 17/08, quando o mesmo seletor
+     passou a escolher também PERFIL: comparar sempre com `conferido.modo` daria
+     "erro" ao escolher uma profissão, porque o modo gravado é o base dela. O que
+     o gate guarda é a regra, não a linha: relê do arquivo e compara com o que
+     foi pedido. */
+  assert.match(html, /gravado === pedido/, 'a confirmação parou de comparar pedido com arquivo')
+  assert.match(html, /ehPerfil \? conferido\.perfil : conferido\.modo/,
+    'a confirmação tem que olhar o campo certo: perfil quando foi perfil')
   assert.match(html, /fw-salvo ruim/, 'sumiu o aviso de gravação que falhou')
 
   /* 2. o autorizar NÃO pode voltar para perto do seletor: ele apertou por
@@ -1841,16 +2033,29 @@ if (estRotinas.projetos.length) {
   assert.match(html, /function cabecaDaTela\(/, 'sumiu o componente do topo de tela')
 
   // as telas já convertidas têm que continuar chamando
+  // viewCockpit saiu da lista em 17/08: a vista morreu órfã no redesenho dos
+  // cards e foi removida; quem responde pela aba é a viewTrabalho.
   for (const [fn, pergunta] of [
     ['viewMeu', 'O que depende de mim?'],
     ['viewGlossario', 'O que é isso mesmo?'],
-    ['viewCockpit', 'Onde eu mexo agora?'],
+    ['viewTrabalho', 'Em que pé está o trabalho?'],
   ]) {
     const i = html.indexOf(`function ${fn}(`)
     assert.ok(i > 0, `${fn} sumiu`)
     const corpo = html.slice(i, html.indexOf('\nfunction ', i + 10))
     assert.ok(corpo.includes('cabecaDaTela('), `${fn} não usa o topo padrão`)
     assert.ok(corpo.includes(pergunta), `${fn} perdeu a pergunta "${pergunta}"`)
+  }
+
+  /* Vista definida e nunca chamada é a classe de erro que deixou os controles
+     do framework dois dias inalcançáveis no celular (17/08): o redesenho trocou
+     a vista da aba e ninguém notou que a antiga, com o seletor de modo dentro,
+     ficou sem porta. Contagem textual: a definição conta 1; qualquer chamada
+     soma. */
+  {
+    const defs = [...html.matchAll(/function (view[A-Z]\w*)\(/g)].map((m) => m[1])
+    const orfas = defs.filter((v) => html.split(`${v}(`).length - 1 <= 1)
+    assert.deepEqual(orfas, [], `vista(s) sem porta de entrada: ${orfas.join(', ')}`)
   }
 
   /* A VPS é a que inaugurou o padrão, com nome próprio (`vps-veredito`) porque

@@ -51,7 +51,8 @@ if (!E) sair()
 const arquivo = dados?.transcript_path || dados?.transcriptPath
 if (!arquivo) sair()
 
-const texto = E.ultimaResposta(arquivo)
+// mesma razão do guarda do separador: a resposta é escrita em blocos
+const texto = E.respostaDoTurno(arquivo) || E.ultimaResposta(arquivo)
 if (!texto) sair()
 
 /* Sai da conta:

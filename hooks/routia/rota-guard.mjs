@@ -146,11 +146,28 @@ function pastasControladas(texto) {
 function arquivosDaLinha(linha) {
   const i = linha.indexOf('📁')
   if (i < 0) return null
-  return linha.slice(i + 2)
+  const brutos = linha.slice(i + 2)
     .split('|')[0]                       // não vaza para a coluna seguinte
     .split(/[\s,]+/)
     .map((s) => s.trim().replace(/^`|`$/g, ''))
-    .filter((s) => s && /[/.]/.test(s))  // caminho tem barra ou ponto
+
+  /* Para no primeiro token que NÃO tem cara de caminho, em vez de filtrar a
+     linha inteira. O motivo é de 17/08: uma rota escreveu
+     `📁 src/a.mjs src/b.mjs · precisa de src/ui.html, que é da rota cockpit`,
+     e o filtro antigo colheu `src/ui.html` do meio da PROSA, dando ao vizinho a
+     posse de um arquivo que ele estava justamente pedindo emprestado. O guarda
+     barrou o dono do próprio arquivo.
+
+     Explicar o que a rota faz depois dos arquivos é uso normal do quadro, que é
+     documento para humano antes de ser entrada de parser. */
+  const caminho = /^[\w.@-]+(?:\/[\w.@-]*)*(?:#[\w.-]+)?$/
+  const saida = []
+  for (const t of brutos) {
+    if (!t) continue
+    if (!caminho.test(t) || !/[/.]/.test(t)) break
+    saida.push(t)
+  }
+  return saida
 }
 
 /** Nomes de rota do quadro, pra mensagem de erro ser acionável. */
@@ -201,10 +218,22 @@ if (!pastas.includes(primeiraPasta)) liberar()
    Rota sem 📁 não reivindica nada e não barra ninguém — é o que mantém todo
    quadro existente funcionando igual. */
 const relBarra = relativo.split(sep).join('/')
+
+/* CC-114: a reivindicação aceita `arquivo#parte` (função, classe, ativo):
+   `📁 src/ui.html#viewTrabalho`. O guard não tem como saber qual função uma
+   edição toca, então a regra mecânica é de PARTILHA DECLARADA: quem reivindica
+   só uma parte deixa de barrar quem TAMBÉM declarou o mesmo arquivo na própria
+   rota — os dois assumiram a divisão por escrito. Reivindicar o arquivo sem
+   `#` continua sendo posse inteira, como sempre foi. */
+const soCaminho = (a) => a.split('#')[0]
+const cobre = (a, rel) => rel === soCaminho(a) || rel.startsWith(soCaminho(a).replace(/\/?$/, '/'))
+const minhasLinhas = linhasDeRota(texto).filter((l) => l.includes('🔴') && l.includes(marca))
+const declareiEste = minhasLinhas.some((l) => (arquivosDaLinha(l) || []).some((a) => cobre(a, relBarra)))
+
 const donoDoArquivo = linhasDeRota(texto).find((l) => {
   if (!l.includes('🔴') || l.includes(marca)) return false
   const alvos = arquivosDaLinha(l)
-  return alvos?.some((a) => relBarra === a || relBarra.startsWith(a.replace(/\/?$/, '/')))
+  return alvos?.some((a) => cobre(a, relBarra) && !(a.includes('#') && declareiEste))
 })
 
 if (donoDoArquivo) {

@@ -396,6 +396,31 @@ switch (cmd) {
       break
     }
 
+    /* CC-103: o `pre-commit run --all-files` que faltava. O gate só existia no
+       gatilho, então saber se uma trava ainda pega o que promete exigia
+       provocá-la de propósito, uma por uma. */
+    if (arg === 'testar' || arg === 'provar') {
+      const P = await import('./src/hooksProva.mjs')
+      const pedidos = positional.slice(2)
+      if (pedidos.some((id) => !HOOKS.some((h) => h.id === id))) {
+        die(`hook desconhecido: ${pedidos.find((id) => !HOOKS.some((h) => h.id === id))}`)
+      }
+      console.log('')
+      const marca = { provado: '✓', falhou: '✗', 'sem prova': '?' }
+      const { resumo } = await P.rodar(pedidos.length ? pedidos : null, {
+        aoTerminar: (r) => {
+          const extra = r.estado === 'provado' ? `${r.casos} caso(s), ${r.ms}ms`
+            : r.estado === 'sem prova' ? 'nenhum teste escrito' : ''
+          console.log(`  ${marca[r.estado]} ${r.id.padEnd(18)} ${r.estado.padEnd(10)} ${extra}`)
+          if (r.detalhe) r.detalhe.split('\n').forEach((l) => console.log(`      ${l.trim()}`))
+        },
+      })
+      console.log(`\n  ${resumo.provado} provada(s), ${resumo.falhou} com defeito, `
+        + `${resumo.semProva} sem teste, de ${resumo.total}.`)
+      console.log('  "sem teste" não é o mesmo que quebrada: é trava cujo comportamento ninguém mediu.\n')
+      process.exit(resumo.falhou ? 1 : 0)
+    }
+
     if (arg === 'install') {
       const R = await import('./src/hooksRegistro.mjs')
       const simular = has('--dry-run')
@@ -414,7 +439,9 @@ switch (cmd) {
     }
 
     for (const h of HOOKS) {
-      const on = hookEnabled(h.id)
+      // dir nulo de propósito: esta lista é o interruptor GLOBAL, e o cwd de
+      // quem digitou o comando não pode colorir a resposta (CC-115)
+      const on = hookEnabled(h.id, undefined, null)
       console.log(`${on ? '●' : '○'} ${h.id.padEnd(14)} ${h.evento.padEnd(14)} ${on ? 'ligado' : 'desligado'}${h.implementado ? '' : '  (ainda não implementado)'}`)
     }
     break
@@ -592,15 +619,72 @@ switch (cmd) {
         mostrar(dir)
         break
       }
-      case 'modo': {
+      /* Perfil: a combinação de modos com nome de profissão, pedida por ele em
+         17/08 ("seria o profissional que eu contrataria praquela tarefa"). Mora
+         no mesmo comando porque, do lado dele, escolher "Designer" e escolher
+         "desenho" é a mesma ação. */
+      case 'perfil': {
         const r = exigeRaiz()
         const alvo = positional[2]
+        const estado = D.ler(r, { sessao: null })
         if (!alvo) {
-          console.log(`modo atual: ${F.modoDe(D.ler(r)).id}`)
-          console.log(`disponíveis: ${Object.keys(F.MODOS).join(', ')}`)
+          const v = F.vigente(estado)
+          console.log(`\nagora: ${v.titulo}${v.perfil ? '' : '  (modo, sem perfil)'}`)
+          console.log(`  ${v.explica}\n`)
+          for (const p of Object.values(F.PERFIS)) {
+            const res = F.perfilResolvido(p.id)
+            console.log(`  ${p.id.padEnd(13)} ${p.titulo.padEnd(13)} ${p.contrataria}`)
+            console.log(`  ${''.padEnd(13)} ${''.padEnd(13)} exige: ${res.exige.join(', ') || 'nada'}`
+              + `${res.desliga.length ? ` · desliga: ${res.desliga.join(', ')}` : ''}`
+              + `${res.teto != null ? ` · teto de ${res.teto} entrega` : ''}`)
+          }
+          console.log('')
           break
         }
-        const t = F.trocarModo(D.ler(r), alvo, { quando: new Date().toISOString() })
+        if (alvo === 'nenhum' || alvo === 'off') {
+          const semPerfil = { ...estado }
+          delete semPerfil.perfil
+          D.gravar(r, semPerfil)
+          console.log(`perfil removido, vale o modo: ${F.modoDe(semPerfil).titulo}`)
+          break
+        }
+        if (!F.PERFIS[alvo]) die(`perfil desconhecido: ${alvo}\ndisponíveis: ${Object.keys(F.PERFIS).join(', ')}`)
+        const res = F.perfilResolvido(alvo)
+        D.gravar(r, { ...estado, perfil: alvo, modo: res.base.id })
+        console.log(`perfil: ${res.titulo} (${res.contrataria})`)
+        console.log(`  exige: ${res.exige.join(', ') || 'nada'}`)
+        if (res.desliga.length) console.log(`  desliga de propósito: ${res.desliga.join(', ')}`)
+        if (res.teto != null) console.log(`  teto: ${res.teto} entrega antes de mostrar`)
+        break
+      }
+      case 'modo': {
+        const r = exigeRaiz()
+        const alvo0 = positional[2]
+        // apelidos: `livre`, `continuativo`, `autonomo`, `debug`, `design`
+        const achado = alvo0 ? F.acharModo(alvo0) : null
+        const alvo = achado ? achado.id : alvo0
+        if (!alvo) {
+          const v = F.vigente(D.ler(r))
+          console.log(`agora: ${v.titulo}${v.perfil ? ` (perfil, base ${v.modo.id})` : ''}`)
+          console.log(`disponíveis: ${Object.values(F.MODOS).map((m) => `${m.id} (${m.titulo})`).join(', ')}`)
+          console.log(`perfis prontos: ${Object.keys(F.PERFIS).join(', ')}  →  cc framework perfil <nome>`)
+          break
+        }
+        if (!achado) die(`modo desconhecido: ${alvo0}\ndisponíveis: ${Object.keys(F.MODOS).join(', ')}`)
+        /* CC-116: rodando dentro de uma sessão, o padrão é mudar SÓ ela — é o
+           que permite frontend no restritivo e backend no sugestivo no mesmo
+           projeto. `--projeto` muda para todos, o comportamento antigo. */
+        const sessaoAtual = process.env.CLAUDE_CODE_SESSION_ID
+        if (sessaoAtual && !has('--projeto')) {
+          if (!F.MODOS[alvo]) die(`modo desconhecido: ${alvo}\ndisponíveis: ${Object.keys(F.MODOS).join(', ')}`)
+          const g = D.gravarSessao(r, sessaoAtual, { modo: alvo })
+          if (!g.ok) die(g.erro)
+          const doProjeto = F.modoDe(D.ler(r, { sessao: null })).id
+          console.log(`modo desta sessão: ${alvo}`)
+          if (doProjeto !== alvo) console.log(`o projeto continua em ${doProjeto} — para mudar todos: --projeto`)
+          break
+        }
+        const t = F.trocarModo(D.ler(r, { sessao: null }), alvo, { quando: new Date().toISOString() })
         if (!t.ok) die(t.erro)
         D.gravar(r, t.estado)
         console.log(`modo: ${alvo}`)
@@ -914,6 +998,35 @@ switch (cmd) {
 
   /* O padrão de resposta dele, e quanto eu o sigo. Sem argumento mostra o
      retrato; `cc estilo padrao` imprime o texto e onde ele mora, para editar. */
+  /* CC-118: o que ele digitou e a fila descartou. Queixa dele: "as vezes eu
+     digito aqui e o texto fica em itálico. daí ao sair da janela e voltar, o
+     texto simplesmente some". O texto está no registro, e este comando o
+     devolve, sem ninguém precisar escrever script na hora. */
+  case 'fila': {
+    const F = await import('./src/fila.mjs')
+    const M = await import('./src/metaSessao.mjs')
+    const sessao = val('--sessao') || M.sessaoAtual()
+    if (!sessao) die('não sei de qual sessão: passe --sessao <id>')
+    const transcrito = M.transcritoDe(sessao)
+    if (!transcrito) die(`não achei o registro da sessão ${sessao}`)
+
+    const lista = F.perdidas(transcrito)
+    if (has('--json')) { console.log(JSON.stringify(lista, null, 2)); break }
+    if (!lista.length) {
+      console.log('\nnenhuma mensagem sua se perdeu nesta sessão.\n')
+      break
+    }
+    const quantas = Number(val('--quantas', has('--tudo') ? lista.length : 5))
+    console.log(`\n${lista.length} mensagem(ns) que você escreveu e a fila descartou antes de virar mensagem.`)
+    console.log(`Mostrando ${Math.min(quantas, lista.length)}, da mais recente. Todas: --tudo\n`)
+    for (const p of lista.slice(0, quantas)) {
+      const quando = p.quando ? new Date(p.quando).toLocaleString('pt-BR') : 'sem hora'
+      console.log(`── ${quando}  (${p.palavras} palavras)`)
+      console.log(p.texto.split('\n').map((l) => `   ${l}`).join('\n'))
+      console.log('')
+    }
+    break
+  }
   case 'estilo': {
     const E = await import('./src/estilo.mjs')
     if (arg === 'padrao') {

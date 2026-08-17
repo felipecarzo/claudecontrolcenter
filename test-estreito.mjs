@@ -56,7 +56,11 @@ const page = await browser.newPage({ viewport: { width: LARGURA, height: ALTURA 
 
 let falhas = 0
 for (const aba of abas) {
-  await page.goto(`${BASE}/?static=1&tema=escuro&tab=${aba}`, { waitUntil: 'load' })
+  /* Os DOIS temas, não um: o claro nasceu em 17/08 e vazamento pode ser
+     específico de tema, porque sombra e borda têm larguras diferentes nos
+     dois. E `tema=escuro` não existe mais: os nomes são noite e papel. */
+  for (const tema of ['noite', 'papel']) {
+    await page.goto(`${BASE}/?static=1&tema=${tema}&tab=${aba}`, { waitUntil: 'load' })
   await page.waitForTimeout(900)
   const r = await page.evaluate(() => {
     const limite = document.documentElement.clientWidth
@@ -64,8 +68,17 @@ for (const aba of abas) {
     for (const el of document.querySelectorAll('body *')) {
       const cx = el.getBoundingClientRect()
       if (cx.right <= limite + 1 || cx.width < 30) continue
-      // rolar dentro de si é a solução, não o defeito
-      if (/auto|scroll/.test(getComputedStyle(el).overflowX)) continue
+      /* Rolar dentro de si é a solução, não o defeito. Vale para o elemento E
+         para os filhos dele: a fileira de abas do modo aplicativo (17/08) rola
+         na horizontal de propósito, e as pastilhas de dentro passariam da borda
+         em qualquer largura de telefone. Antes daqui a checagem só olhava o
+         próprio elemento e um `.rolagem` no caminho, então filho de contêiner
+         rolável era acusado como vazamento. */
+      let dentroDeRolagem = false
+      for (let p = el; p && p !== document.body; p = p.parentElement) {
+        if (/auto|scroll/.test(getComputedStyle(p).overflowX)) { dentroDeRolagem = true; break }
+      }
+      if (dentroDeRolagem) continue
       if (el.closest('[style*="overflow"], .rolagem')) continue
       const nome = el.tagName.toLowerCase()
         + (el.id ? `#${el.id}` : '')
@@ -78,10 +91,11 @@ for (const aba of abas) {
   const rolaLado = r.scroll > r.limite + 1
   if (r.vaza.length || rolaLado) {
     falhas += 1
-    console.log(`  FALHOU ${aba}${rolaLado ? ` — a página rola de lado (${r.scroll}px)` : ''}`)
+    console.log(`  FALHOU ${aba} [${tema}]${rolaLado ? `, a página rola de lado (${r.scroll}px)` : ''}`)
     r.vaza.forEach((v) => console.log(`           ${v}`))
   } else {
-    console.log(`  ok     ${aba}`)
+    console.log(`  ok     ${aba} [${tema}]`)
+  }
   }
 }
 
@@ -99,9 +113,16 @@ for (const aba of abas) {
    Este teste roda SEM `?static=1` de propósito. Com o stream desligado o
    defeito não existe, e um teste que não pode falhar não prova nada. */
 console.log('\n— o menu de navegação, com o stream ligado —')
-const SEL = '#nav-uma select'
-await page.goto(`${BASE}/?tema=escuro&tab=agentes`, { waitUntil: 'load' })
-await page.waitForTimeout(1500)
+/* O alvo mudou em 17/08: o menu de uma linha morreu com a chegada do modo
+   aplicativo (barra de baixo com os quatro grupos), mas a ARMADILHA continua
+   viva no seletor de modo do framework, dentro da lista de módulos. O teste
+   passou a usar ele, que é `<select>` de verdade dentro do bloco redesenhado
+   pelo stream. */
+const SEL = 'select.fw-modo'
+await page.goto(`${BASE}/?tema=noite&tab=projetos`, { waitUntil: 'load' })
+await page.waitForTimeout(1800)
+await page.click('[data-fw-lista]')
+await page.waitForSelector(SEL, { timeout: 8000 })
 
 await page.focus(SEL)
 await page.evaluate((s) => { document.querySelector(s).dataset.marca = 'aberto' }, SEL)
@@ -119,16 +140,24 @@ if (!sobreviveu.mesmo || !sobreviveu.focado) {
   console.log('  ok     sobrevive a 5s de stream com o foco dentro')
 }
 
-// e escolher tem que continuar funcionando, com o foco ainda no menu
-await page.selectOption(SEL, 'tempo')
+/* A navegação do modo aplicativo: a barra de baixo troca de grupo e a aba
+   escolhida vira a primeira do grupo novo. É o caminho que substituiu o menu,
+   então é ele que precisa de prova. */
+await page.evaluate((sel) => document.querySelector(sel)?.blur(), SEL)
+await page.click('#app-bar button[data-grupo="custo"]')
 await page.waitForTimeout(1200)
 const trocou = await page.evaluate(() => localStorage.getItem('cc-tab'))
-if (trocou !== 'tempo') {
+if (!['tempo', 'graficos', 'preco'].includes(trocou)) {
   falhas += 1
-  console.log(`  FALHOU escolher no menu não trocou de tela (ficou em ${trocou})`)
+  console.log(`  FALHOU a barra de baixo não trocou de grupo (ficou em ${trocou})`)
 } else {
-  console.log('  ok     escolher troca de tela')
+  console.log('  ok     a barra de baixo troca de grupo')
 }
+await page.goto(`${BASE}/?tema=noite&tab=projetos`, { waitUntil: 'load' })
+await page.waitForTimeout(1800)
+await page.click('[data-fw-lista]')
+await page.waitForSelector(SEL, { timeout: 8000 })
+await page.focus(SEL)
 
 /* E o redesenho precisa VOLTAR depois: segurar para sempre congelaria as
    contagens das abas, que é trocar um defeito por outro mais difícil de notar. */
@@ -149,8 +178,10 @@ if (!voltou) {
    este reproduz o problema original em cima do código já consertado. */
 const semGuarda = await browser.newPage({ viewport: { width: LARGURA, height: ALTURA } })
 await semGuarda.addInitScript(() => { window.SEM_GUARDA = true })
-await semGuarda.goto(`${BASE}/?tema=escuro&tab=agentes`, { waitUntil: 'load' })
-await semGuarda.waitForTimeout(1500)
+await semGuarda.goto(`${BASE}/?tema=noite&tab=projetos`, { waitUntil: 'load' })
+await semGuarda.waitForTimeout(1800)
+await semGuarda.click('[data-fw-lista]')
+await semGuarda.waitForSelector(SEL, { timeout: 8000 })
 await semGuarda.focus(SEL)
 await semGuarda.evaluate((s) => { document.querySelector(s).dataset.marca = 'aberto' }, SEL)
 await semGuarda.waitForTimeout(5000)

@@ -2,7 +2,7 @@
  "metodo": "mvp-basico",
  "fase": "execucao",
  "ligado": true,
- "modo": "dialogo",
+ "modo": "restritivo",
  "autorizado": [],
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
@@ -117,6 +117,30 @@
    "de": "restritivo",
    "para": "dialogo",
    "quando": "2026-08-16T17:58:44.120Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "dialogo",
+   "para": "continuo",
+   "quando": "2026-08-17T13:16:59.238Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "continuo",
+   "para": "restritivo",
+   "quando": "2026-08-17T16:00:11.253Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "desenho",
+   "para": "restritivo",
+   "quando": "2026-08-17T16:58:46.302Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "desenho",
+   "para": "restritivo",
+   "quando": "2026-08-17T17:11:55.707Z"
   }
  ],
  "verificacao": {
@@ -124,9 +148,9 @@
    "ok": true,
    "achados": 0,
    "verificou": true,
-   "escopo": "mudou",
+   "escopo": "tudo",
    "detalhe": null,
-   "em": "2026-08-16T22:54:13.953Z"
+   "em": "2026-08-17T13:50:35.045Z"
   },
   "segredo-historico": {
    "ok": true,
@@ -134,7 +158,7 @@
    "verificou": true,
    "escopo": "mudou",
    "detalhe": null,
-   "em": "2026-08-16T22:54:19.221Z"
+   "em": "2026-08-17T13:20:41.194Z"
   },
   "tls": {
    "ok": true,
@@ -152,7 +176,7 @@
    "verificou": true,
    "escopo": "mudou",
    "detalhe": null,
-   "em": "2026-08-16T22:54:27.716Z"
+   "em": "2026-08-17T13:20:49.945Z"
   },
   "service-role": {
    "ok": true,
@@ -166,5 +190,5 @@
   "como": "as 11 telas nao respondem pergunta nenhuma: mostram o dado cru e ele traduz sozinho. Nos prints em tela estreita: nomes desalinhados, nada aparente, sem cara de aplicativo",
   "esperado": "cada tela abre com a pergunta dela no topo e um veredito em uma frase, nas palavras dele"
  },
- "nivelBancada": "exposto"
+ "nivelBancada": "rascunho"
 }

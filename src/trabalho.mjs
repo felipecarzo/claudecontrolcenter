@@ -203,11 +203,15 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
         estado: estadoDoItem(f, { agentes: daFrente, pendencias: minhas }),
         peso: pesoDe(f),
         nasceuEm: f.nasceuEm || null,
+        dependeDe: f.dependeDe || [],
         importancia: f.importancia ?? null,
         fracao: fracaoHonesta(f),
         tarefas: daFrente.flatMap((j) => (j.todos || [])
           .filter((t) => !t.done && t.dono !== 'felipe')
-          .map((t) => ({ texto: t.text, job: j.id, agente: j.subject || null }))),
+          /* O código composto é o formato dele, `produto10_sprint01`: o item
+             de backlog dá o sobrenome e a tarefa dá o número. Só existe quando
+             a frente casou; sem item, a tarefa fica com o código curto dela. */
+          .map((t) => ({ texto: t.text, job: j.id, agente: j.subject || null, codigo: t.codigo || null }))),
         /* `fonte` vai junto porque a tela decide por ela se cabe uma caixinha:
            só o que mora na lista dele pode ser marcado. Pendência lida do
            roadmap não tem onde gravar, e caixinha que não grava é controle
@@ -218,6 +222,21 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
 
     const fechadas = mapa.grupos.flatMap((g) => g.frentes).filter((f) => f.estado === 'feito').length
     if (cartoes.length || fechadas) grupos.push({ projeto, raiz, cartoes, fechadas })
+  }
+
+  /* O inverso da dependência: quem eu destravo quando fechar. Calculado aqui,
+     onde todos os cartões de todos os projetos já existem, porque a dependência
+     pode cruzar projeto. É a linha da planilha dele: "qual tarefa dependência
+     de outra ou desbloqueava outra". */
+  const desbloqueios = new Map()
+  for (const g of grupos) for (const c of g.cartoes) {
+    for (const alvo of c.dependeDe || []) {
+      if (!desbloqueios.has(alvo)) desbloqueios.set(alvo, [])
+      if (c.id) desbloqueios.get(alvo).push(c.id)
+    }
+  }
+  for (const g of grupos) for (const c of g.cartoes) {
+    c.desbloqueia = c.id ? (desbloqueios.get(c.id) || []) : []
   }
 
   /* Projeto sem nada aberto não vira seção: vira uma linha no fim. É a quinta
@@ -255,11 +274,27 @@ function casaFrente(daSessao, doRoadmap) {
 function veredito(grupos, pendencias) {
   const andando = grupos.flatMap((g) => g.cartoes).filter((c) => c.estado.palavra === 'ANDANDO').length
   const travadas = pendencias.filter((p) => !p.feito).length
-  if (!andando && !travadas) return 'nada em andamento e nada travado em você'
-  const partes = []
-  if (travadas) partes.push(`${travadas} coisa${travadas > 1 ? 's' : ''} travada${travadas > 1 ? 's' : ''} em você`)
+
+  /* O estado de calma, que faltava: a tela era idêntica com cinco coisas
+     travadas nele e com nenhuma. Um painel que não muda quando o mundo muda
+     não é painel, é papel de parede, e ele perde o hábito de olhar.
+
+     `cor` sai junto porque a moldura do topo precisa concordar com a frase:
+     dizer "está tudo em ordem" numa faixa laranja seria pior que não dizer. */
+  if (!travadas && !andando) {
+    return { frase: 'nada travado em você, e nada andando agora', cor: 'bom', calmo: true }
+  }
+  if (!travadas) {
+    return {
+      frase: `nada travado em você. ${andando} frente${andando > 1 ? 's' : ''} andando`,
+      cor: 'bom',
+      calmo: true,
+    }
+  }
+
+  const partes = [`${travadas} coisa${travadas > 1 ? 's' : ''} travada${travadas > 1 ? 's' : ''} em você`]
   if (andando) partes.push(`${andando} frente${andando > 1 ? 's' : ''} andando`)
-  return partes.join(', ')
+  return { frase: partes.join(', '), cor: 'atencao', calmo: false }
 }
 
 /**

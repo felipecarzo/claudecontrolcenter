@@ -4,6 +4,7 @@
 // substituído inteiro a cada sync. Nada fora dos marcadores é tocado.
 
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, PROJECT_DIRS } from './jobs.mjs'
@@ -41,7 +42,18 @@ export function detectarBase(jobs = readJobs()) {
     votos.set(base, (votos.get(base) || 0) + 1)
   }
   const melhor = [...votos].sort((a, b) => b[1] - a[1])[0]
-  return melhor ? melhor[0] : null
+  if (melhor) return melhor[0]
+
+  /* Sem job nenhum não há voto — era o caso da VPS, onde só existe sessão
+     interativa, e a lista de projetos vinha vazia (defeito anotado em 16/08).
+     Segundo caminho: as mesmas pastas convencionais de PROJECT_DIRS, direto
+     na home. Não é caminho fixo de máquina: é convenção, e `CC_PROJECTS_BASE`
+     continua vencendo tudo. */
+  for (const nome of PROJECT_DIRS) {
+    const dir = path.join(os.homedir(), nome)
+    try { if (fs.statSync(dir).isDirectory()) return dir } catch { /* próxima */ }
+  }
+  return null
 }
 
 export function blockText() {
