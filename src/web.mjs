@@ -33,7 +33,7 @@ import {
 } from './midia.mjs'
 import { estado as estadoMaquina } from './maquina.mjs'
 import { lerRoadmap, ordenar as ordenarRoadmap } from './roadmap.mjs'
-import { findProjects } from './install.mjs'
+import { findProjects, projectsBase } from './install.mjs'
 import { situacaoRotas } from './routia.mjs'
 import { commitsDesde } from './gitlog.mjs'
 import { digestTodos } from './digest.mjs'
@@ -68,6 +68,12 @@ import {
   faltaNoPerfil, modoDe as modoDeFramework, perfilResolvido, perfisEmArvore,
   resumo as resumoFramework, trocarModo as trocarModoFramework,
 } from './framework.mjs'
+import {
+  ROTEIRO as ROTEIRO_ENTREVISTA, aplicaveis as aplicaveisEntrevista, desfazer as desfazerEntrevista,
+  progresso as progressoEntrevista, proxima as proximaEntrevista, responder as responderEntrevista,
+  respostasDe as respostasEntrevista, textoDaPergunta,
+} from './entrevista.mjs'
+import { criar as criarProjeto, gruposDe } from './novoProjeto.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
@@ -155,6 +161,51 @@ function retratoFramework(raiz) {
     resumo: resumoFramework(s.estado.metodo, s.estado),
     mvp: s.estado.mvp || null,
     mudancasDeEscopo: (s.estado.historico || []).filter((h) => h.tipo === 'escopo').length,
+  }
+}
+
+/**
+ * CC-133, segunda fatia: a entrevista do jeito que a TELA precisa.
+ *
+ * A primeira fatia entregou o roteiro que se reescreve pela resposta, e só pela
+ * linha de comando. Ele não trabalha na linha de comando: trabalha no celular,
+ * olhando o painel. Uma entrevista que só existe no terminal é, na prática, uma
+ * entrevista que não existe.
+ *
+ * O que vai para a tela é o mesmo que o terminal vê — pergunta da vez, opções,
+ * progresso — mais uma coisa que só a tela precisa: **o que já foi respondido**,
+ * com o texto de cada resposta. No terminal a conversa fica na rolagem; na
+ * página, sem essa lista, cada pergunta chega sem passado e ele não tem como
+ * conferir o que disse antes de decidir voltar atrás.
+ *
+ * O progresso é sobre o roteiro APLICÁVEL, nunca sobre as 12 perguntas: a lista
+ * cresce e encolhe conforme ele responde, e "3 de 12" quando o roteiro dele tem
+ * 6 seria uma barra que anda para trás sozinha.
+ */
+export function retratoEntrevista(raiz) {
+  const estado = lerFramework(raiz)
+  if (!estado) return { existe: false, ligado: false }
+  const respostas = respostasEntrevista(estado)
+  const respondidas = aplicaveisEntrevista(respostas)
+    .filter((p) => respostas[p.id] !== undefined)
+    .map((p) => ({
+      id: p.id,
+      header: p.header,
+      /* O texto da pergunta é recalculado, não guardado: ele depende das
+         respostas atuais, e uma resposta trocada depois reescreve a frase. Ler
+         a versão congelada faria a lista contar uma conversa que não aconteceu. */
+      pergunta: textoDaPergunta(p, respostas),
+      texto: respostas[p.id].texto,
+      valor: respostas[p.id].valor || null,
+    }))
+  return {
+    existe: true,
+    ligado: estado.ligado !== false,
+    proxima: proximaEntrevista(estado),
+    ...progressoEntrevista(estado),
+    respondidas,
+    terminou: estado.entrevista?.terminou || null,
+    roteiro: ROTEIRO_ENTREVISTA.length,
   }
 }
 
@@ -775,6 +826,65 @@ function handler(req, res) {
     const raiz = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
     if (!raiz) return send(res, 200, { existe: false, ligado: false, semPasta: true })
     return send(res, 200, { raiz, ...retratoFramework(raiz) })
+  }
+
+  /* CC-143: criar projeto novo pelo painel.
+
+     GET diz ONDE os projetos desta máquina moram e que grupos existem lá, para
+     a tela nunca precisar chutar caminho: a base é descoberta, e no PC dele os
+     projetos ficam dentro de grupos que na VPS não existem. */
+  if (url.pathname === '/api/projeto/novo') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e4, ({ nome, grupo, descricao }) => {
+        const base = projectsBase()
+        const r = criarProjeto(base, { nome, grupo, descricao })
+        if (!r.ok) return { error: r.erro }
+        /* O retrato do framework vai junto porque o projeto nasce ligado e a
+           tela abre a entrevista na sequência: sem isso ela faria duas voltas
+           ao servidor para mostrar o que já é sabido aqui. */
+        return { ...r, framework: retratoFramework(r.raiz), entrevista: retratoEntrevista(r.raiz) }
+      })
+    }
+    const base = projectsBase()
+    return send(res, 200, { base, grupos: gruposDe(base), at: Date.now() })
+  }
+
+  /* CC-133, segunda fatia: a entrevista pela tela.
+     Rota separada do `/api/framework` de propósito. A lista de módulos lê o
+     retrato de ~20 projetos de uma vez, e carregar a conversa inteira de cada
+     um ali dentro seria pagar por 19 que ninguém abriu. Aqui é sob clique, de
+     um projeto só, como a bancada e as portas. */
+  if (url.pathname === '/api/entrevista') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e4, ({ projeto, cwd, acao, id, texto }) => {
+        const raiz = cwdDoProjeto(cwd, projeto)
+        if (!raiz) return { error: 'não achei a pasta deste projeto' }
+        const estado = lerFramework(raiz)
+        if (!estado) return { error: 'este projeto não tem framework ligado' }
+
+        if (acao === 'desfazer') {
+          const r = desfazerEntrevista(estado, id)
+          if (!r.ok) return { error: r.erro }
+          gravarFramework(raiz, r.estado)
+          /* As órfãs voltam na resposta porque apagar uma resposta apaga junto
+             o que só existia por causa dela, e isso tem que aparecer na tela.
+             Sumir em silêncio é como a decisão de login ficaria órfã no resumo
+             sem ninguém ver. */
+          return { raiz, orfas: r.orfas, ...retratoEntrevista(raiz) }
+        }
+
+        const r = responderEntrevista(estado, id, texto)
+        if (!r.ok) return { error: r.erro }
+        gravarFramework(raiz, r.estado)
+        /* O retrato sai do DISCO, não do estado em memória: é a mesma regra da
+           troca de modo, em que a tela dizia "salvo" sobre um arquivo que não
+           tinha mudado. O que a tela mostra é o que ficou gravado. */
+        return { raiz, ...retratoEntrevista(raiz) }
+      })
+    }
+    const raiz = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
+    if (!raiz) return send(res, 200, { existe: false, ligado: false, semPasta: true })
+    return send(res, 200, { raiz, ...retratoEntrevista(raiz) })
   }
 
   // CC-23: o que aconteceu num projeto, derivado do histórico já guardado —

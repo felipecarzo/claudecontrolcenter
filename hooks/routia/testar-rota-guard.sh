@@ -33,6 +33,7 @@ pastas-controladas: [apps, tools]
 | `vizinha` | 🔴 ocupada | cccc9999 — dados 📁 apps/dados.mjs · precisa de apps/tabela.js, que e da rota front: pedido feito | hoje |
 | `dona-tabela` | 🔴 ocupada | dddd8888 — tabela 📁 apps/tabela.js | hoje |
 | `back` | 🔴 ocupada | beef5678 — dados 📁 apps/ui.html#renderTabs apps/web.mjs | hoje |
+| `repetido` | 🔴 ocupada | eeee2222 — tres arquivos 📁 apps/um.mjs 📁 apps/dois.mjs 📁 apps/tres.mjs | hoje |
 QUADRO
 
 caso() {
@@ -88,6 +89,25 @@ caso "prosa da vizinha nao toma o arquivo do dono" "libera" \
 
 caso "e quem so citou em prosa continua barrado" "bloqueia" \
   "{\"session_id\":\"cccc9999-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/tabela.js\"}}"
+
+# 18/08: repetir o 📁 em cada arquivo e a forma mais natural de escrever, e o
+# laco parava no segundo marcador. Tudo depois do PRIMEIRO arquivo ficava sem
+# protecao, com o quadro anunciando posse que a trava nao tinha. Tres rotas
+# reais estavam assim quando o defeito apareceu.
+# A sessao usada aqui e a `aaaa1111`, que TEM rota propria: sem isso o caso
+# passaria por outro motivo (quem nao marcou rota ja e barrado em tudo), e o
+# teste diria "ok" sobre o defeito. Foi o que aconteceu na primeira versao.
+caso "📁 repetido: o PRIMEIRO arquivo protege" "bloqueia" \
+  "{\"session_id\":\"aaaa1111-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/um.mjs\"}}"
+
+caso "📁 repetido: o SEGUNDO tambem protege" "bloqueia" \
+  "{\"session_id\":\"aaaa1111-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/dois.mjs\"}}"
+
+caso "📁 repetido: e o TERCEIRO tambem" "bloqueia" \
+  "{\"session_id\":\"aaaa1111-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/tres.mjs\"}}"
+
+caso "📁 repetido: o dono continua editando os dele" "libera" \
+  "{\"session_id\":\"eeee2222-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/tres.mjs\"}}"
 
 caso "entrada vazia (hook nao pode travar por bug proprio)" "libera" ""
 

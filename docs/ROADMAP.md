@@ -42,6 +42,85 @@ dele dizer `projeto › frente` em vez de texto solto.
 
 ## Aberto
 
+## ▶ Frente nova, aberta em 18/08: os agentes que não são Claude, alcançáveis do celular
+
+Pedido dele: *"bota um atalho pro agy e pro opencode, cria uma aba agentes pra eu
+acessar eles"*, e antes disso *"tem como instalar o opencode na VPS pra acessar
+pelo Control center igual a gente faz com o Claude? e tem como instalar também o
+agy?"*.
+
+**No ar desde 18/08:** `cockpit.carzo.com.br/opencode` (conversa e terminal) e
+`cockpit.carzo.com.br/agy` (terminal do Antigravity), os dois atrás da senha que
+já existia, com atalho na aba de agentes. O que sobrou está aqui, e a maior
+parte depende dele, não de código.
+
+### CC-144 e CC-145 ✅ 18/08 — os dois voltam sozinhos, e sem depender do sudo dele
+
+Estavam escritos aqui como dependência humana, com um comando de administrador
+para ele rodar. **A dependência não existia.**
+
+`loginctl enable-linger claudedev` funciona sem privilégio nenhum nesta VPS, e é
+o que faz os serviços DE USUÁRIO sobreviverem ao logout e subirem no boot. Com
+ele ligado, os dois viram serviço em `~/.config/systemd/user/` sem tocar em
+`/etc`, sem senha e sem esperar por ele.
+
+**Vale para qualquer serviço nosso daqui em diante**, e desfaz a suposição que
+estava neste projeto desde a migração: nem tudo que sobe no boot precisa de root.
+O que continua precisando é `/etc/systemd/system`, nginx, Docker e portas baixas.
+
+Provado matando os dois processos: voltaram sozinhos com PID novo, e as duas
+telas seguiram respondendo pelo endereço público.
+
+### CC-146 — o login do Google no agy 🔒 só ele
+
+O `agy` está instalado (versão 1.1.13) mas sem conta. Sem isso ele responde
+"please sign in" e nenhum agente consegue usá-lo, nem ele nem o Claude. O
+caminho é abrir a tela `/agy`, que já cai no fluxo de login, e colar o código no
+celular. Depois disso o CC-147 destrava sozinho.
+
+### CC-147 — o Claude passa a delegar tarefa ao agy pela linha de comando
+
+Igual ao que já funciona com o opencode (`opencode run` respondeu de primeira,
+custo zero). Bloqueado pelo CC-146.
+
+### CC-148 — o título do terminal diz de quem é e de qual projeto
+
+Queixa dele em 18/08: *"mistura os projetos do agy e os projetos do opencode no
+mesmo terminal. Não teria problema se os títulos falassem. Tipo agy--nome do
+projeto, o nome do projeto"*.
+
+Metade já foi resolvida pela separação de telas: o agy saiu de dentro do
+opencode e ganhou `/agy`. Falta a outra metade, que é o nome do projeto no
+título de cada terminal e de cada conversa, para não precisar adivinhar de qual
+pasta aquilo é.
+
+### CC-149 — abrir escolhendo projeto E agente, como ele já abre o Remote Control
+
+Ideia dele em 18/08: *"fazer eu abrir sessão do projeto e do agente (agy ou
+opencode) igual eu abro o rc do Claude, e quando abrir o /opencode ou /agy já
+abrir c os projetos abertos"*.
+
+O caminho existe e foi apurado: a tela do opencode aceita `?directory=` no
+endereço, e a API dela abre terminal e sessão em pasta escolhida. Então o painel
+pode listar os projetos e mandar a pasta junto. Pelo lado do agy, o `ttyd`
+aceita subir com pasta de trabalho própria.
+
+**Apurado junto, e fecha uma dúvida dele:** o opencode tem app de celular
+(alpha) e app de computador com SSH; o agy tem editor de computador com Remote
+SSH, e **não tem app de celular**. Nenhum dos dois é necessário: as duas telas
+web já entregam o que ele quer.
+
+### CC-150 — decidido: modelo gratuito e Remote Control não convivem 🚫
+
+Pergunta dele: *"teria como colocar pra uma sessão do Claude rodar com um modelo
+desses gratuitos e ainda usar o remote control?"*
+
+**Não, e não é questão de configuração.** Desde a versão 2.1.196 o Claude Code
+desliga o Remote Control sempre que `ANTHROPIC_BASE_URL` aponta para um servidor
+que não é da Anthropic, e também enquanto existir credencial de gateway. O
+próprio projeto do roteador documenta a limitação. Fica registrado para não ser
+reaberto por engano: a escolha é uma ou outra, por sessão.
+
 ## ▶ Frente nova, aberta em 16/08: o backlog visível — ver [[produto/COMUNICACAO]]
 
 Diagnóstico dele ao fim do dia, e **a frente mais importante em aberto**, porque
@@ -762,6 +841,92 @@ Ele mesmo aponta o horizonte: *"a gente pode pensar num dia no futuro de fazer
 sem IA também"*, agnóstico de linguagem, cobrindo UML e MER. A primeira fatia
 não precisa disso: pode ser uma sequência de perguntas escritas à mão, na ordem
 que o método já define.
+
+#### ✅ Primeira fatia, 17/08: o roteiro que se reescreve pela resposta
+
+`src/entrevista.mjs`, e `cc framework entrevista` para conduzir uma pergunta por
+vez. Doze perguntas escritas à mão, mas **nenhuma delas fixa**: a resposta
+anterior decide se a próxima existe e reescreve o texto dela.
+
+Medido no projeto de teste: "site para cliente" abre 12 perguntas, "biblioteca"
+abre 8, "estudo" abre 6. Dizer que o dado mora num banco faz nascer a pergunta
+sobre área restrita, e responder que ela existe faz nascer a de como a pessoa
+entra. Voltar atrás leva junto o que só existia por causa da resposta apagada,
+senão a decisão de login ficaria órfã no resumo do projeto.
+
+A entrevista **não guarda uma segunda verdade**: nome do MVP, critérios de
+pronto e ferramentas de verificação continuam nos campos de sempre. Ao fim do
+roteiro o portão da Definição abre sozinho, e é isso que separa esta fatia de um
+questionário bonito. O gate guarda o encadeamento, e foi provado quebrando a
+condição de propósito.
+
+#### ✅ Segunda fatia, 18/08: a entrevista na tela
+
+A primeira fatia só existia na linha de comando, e ele trabalha no celular.
+Agora a entrevista abre embaixo da linha do projeto, na lista de módulos: uma
+pergunta grande, as opções como botões de toque, campo de texto livre sempre
+disponível, e a conversa já dita recolhida embaixo, com "voltar aqui" em cada
+resposta.
+
+Medido no navegador de verdade, nas duas larguras (390px e 1100px), clicando o
+caminho real: abre na primeira pergunta, a opção escolhida troca a pergunta
+seguinte, o progresso vai de 8 para 11 quando ele diz que é projeto de cliente,
+e nada vaza de lado no telefone. Pela rota, a conversa inteira das 12 perguntas
+gravou `mvp.nome`, os dois critérios de pronto e as cinco verificações, e o
+portão da Definição abriu. Apagar "tem área restrita" levou "como a pessoa
+entra" junto, e a tela diz o que saiu.
+
+**A armadilha desta fatia era o campo de texto**, e ela está provada no teste: a
+página se redesenha a cada 2 segundos, e o que ele digita mora numa variável
+fora do desenho. O teste espera dois tiques com o texto no campo antes de
+enviar, e é esse assert que impede a regressão.
+
+### CC-143: criar projeto novo pelo painel, com a pasta já no padrão
+
+Pedido dele em 18/08, respondendo à pergunta sobre a terceira fatia da
+entrevista:
+
+> *"sim, seria bom colocarmos no Control center também pra gente criar projetos
+> novos. precisaríamos definir a hierarquia de pasta etc pra isso ser feito
+> sempre com um padrão e um botão, e em novos projetos ativaria os esse modo
+> automático"*
+
+É a terceira fatia do CC-133 por outro lado: a entrevista existe para projeto
+que ainda não existe, e hoje ela só aparece em projeto que já tem o framework
+ligado. O botão fecha o buraco entre as duas coisas.
+
+Três peças, e a ordem importa:
+
+1. **A hierarquia não se inventa aqui.** Ela já está escrita nas regras dele
+   (`apps/`, `tools/`, `assets/`, `docs/` com produto, guias, diário, ROADMAP e
+   HANDOFF), junto com a regra que a limita: *"não criar pasta vazia por
+   simetria"*. Então o esqueleto que nasce é o de documentação, que todo projeto
+   tem, e as pastas de código nascem quando houver código.
+2. **Um repositório na raiz do projeto**, que é o problema número 1 das regras
+   dele: pasta sem `.git` próprio cai no repositório de cima.
+3. **O modo automático que ele pediu**: o projeto nasce com o framework ligado,
+   na fase de Definição, e a entrevista abre na primeira pergunta. Criar e ser
+   entrevistado é um gesto só.
+
+#### ✅ Feito em 18/08
+
+Botão "projeto novo" na mesma faixa dos módulos. Pede o nome da pasta, o grupo
+(só onde grupo existe: no PC dele são CLIENTS e PESSOAL, na VPS os projetos
+moram direto na base) e uma frase opcional do que é. A tela diz o que vai
+nascer antes, e o que nasceu depois, passo a passo, com o que falhou em
+vermelho.
+
+Medido criando um projeto pelo navegador, em 390px: seis passos, nenhum
+falhou, e a entrevista abriu sozinha na primeira pergunta. No disco nasceram
+`docs/` com produto, guias e diário, o roadmap, o handoff, o mapa da
+documentação, o CLAUDE.md já com o protocolo do painel, o `.gitignore`, e o
+repositório na raiz com o primeiro commit. Não nasceram `apps/`, `tools/` nem
+`assets/`, e a tela explica por quê.
+
+Dois defeitos de tela apareceram na conferência e foram corrigidos antes de
+fechar: uma base de caminho longo ocupava cinco linhas no telefone e empurrava
+o formulário para fora, e o campo que cresce na horizontal abria um buraco de
+150px na vertical quando a tela empilha.
 
 ### CC-134: o que os agentes conversaram entre si, registrado e visível
 

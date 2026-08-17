@@ -1573,6 +1573,82 @@
   .hk-planejados { margin-top: 10px; }
   .hk-planejados summary { color: var(--dim); font-size: 12px; cursor: pointer; }
 
+  /* CC-143: o formulário de projeto novo. Mora na mesma faixa dos módulos, e
+     por isso usa o mesmo desenho de cartão da entrevista. */
+  .np {
+    margin: 10px 0 4px; padding: 12px 14px; border-radius: 9px;
+    background: var(--card); border-left: 4px solid var(--acento);
+  }
+  .np-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 9px; margin: 10px 0; }
+  .np-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--dim); }
+  .np-form input, .np-form select {
+    background: var(--bg); color: var(--fg); border: 1px solid var(--faint);
+    border-radius: 7px; padding: 7px 9px; font: inherit; font-size: 12.5px; min-width: 150px;
+  }
+  .np-cresce { flex: 1 1 220px; }
+  .np-cresce input { width: 100%; }
+  .np-vai, .np-adiadas { font-size: 11px; line-height: 1.5; margin: 6px 0 0; }
+  .np-pronto { font-size: .95rem; margin: 0 0 4px; }
+  .np-caminho { font-size: 11.5px; color: var(--dim); }
+  .np-passos { list-style: none; padding: 0; margin: 9px 0 0; display: grid; gap: 4px; font-size: 11.5px; }
+  .np-passos li.ruim { color: var(--failed); }
+  @container (max-width: 560px) {
+    .np-form { flex-direction: column; align-items: stretch; }
+    .np-form input, .np-form select { width: 100%; }
+    /* Em coluna, `flex: 1 1 220px` cresce na VERTICAL: no telefone abriu um
+       buraco de 150px entre o último campo e o botão "criar". A base de
+       crescimento serve à linha, não à pilha. */
+    .np-cresce { flex: 0 0 auto; }
+  }
+
+  /* CC-133: a entrevista, embaixo da linha do projeto dela.
+     A pergunta é o maior texto da tela de propósito: é a única coisa que ele
+     precisa ler para responder, e tudo o mais ali é apoio. */
+  .ent {
+    margin: -2px 0 8px; padding: 12px 14px; border-radius: 9px;
+    background: var(--card); border-left: 4px solid var(--acento);
+  }
+  .ent-cab { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .ent-cab b { font-size: 12px; }
+  .ent-prog {
+    flex: 0 1 140px; height: 5px; border-radius: 3px; background: var(--faint); overflow: hidden;
+  }
+  .ent-prog i { display: block; height: 100%; background: var(--acento); }
+  .ent-conta { font-size: 11px; }
+  .ent-pergunta { font-size: 1.05rem; font-weight: 600; margin: 12px 0 4px; line-height: 1.35; }
+  .ent-ajuda { color: var(--dim); font-size: .82rem; margin: 0 0 10px; line-height: 1.45; }
+  .ent-ops { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 7px; }
+  .ent-op {
+    display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
+    padding: 9px 11px; border-radius: 7px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--fg);
+  }
+  .ent-op:hover, .ent-op:focus-visible { border-color: var(--acento); }
+  .ent-op b { font-size: 12.5px; }
+  .ent-op span { color: var(--dim); font-size: 11px; line-height: 1.35; }
+  .ent-livre { display: flex; align-items: flex-end; gap: 8px; margin-top: 9px; }
+  .ent-livre textarea {
+    flex: 1; resize: vertical; min-height: 46px; font: inherit; font-size: 12.5px;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--faint);
+    border-radius: 7px; padding: 7px 9px;
+  }
+  .ent-antes { margin-top: 12px; }
+  .ent-antes summary { color: var(--dim); font-size: 11.5px; cursor: pointer; }
+  .ent-ja {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding: 5px 0; border-bottom: 1px solid var(--faint); font-size: 11.5px;
+  }
+  .ent-ja b { flex: 0 0 84px; color: var(--dim); font-weight: 500; }
+  .ent-ja span { flex: 1 1 160px; }
+  .ent-orfas { color: var(--waiting); font-size: 11.5px; margin: 8px 0 0; }
+  .ent-pronto { font-size: .86rem; line-height: 1.5; margin: 10px 0 0; }
+  /* No telefone o campo embaixo do botão vira duas linhas espremidas: empilha,
+     e o botão ocupa a largura toda para virar alvo de toque de verdade. */
+  @container (max-width: 560px) {
+    .ent-livre { flex-direction: column; align-items: stretch; }
+    .ent-prog { flex-basis: 90px; }
+  }
+
   /* CC-91: o autorizar em linha própria, longe do seletor de modo. */
   .fw-aut {
     display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
@@ -1974,6 +2050,20 @@
   .btn.danger:hover { background: color-mix(in srgb, var(--failed) 16%, var(--surface)); }
   .btn[disabled] { opacity: .4; cursor: not-allowed; }
   .btn.mini { padding: 2px 7px; font-size: 11.5px; }
+
+  /* Atalhos dos agentes que não são Claude (opencode, agy). Maior que o `.btn`
+     de propósito: aqui o alvo é dedo, não ponteiro. Ele abre esta aba no
+     celular, na rua, e 44px é o mínimo de toque confortável. */
+  .atalhos-fora { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+  .atalho-fora {
+    display: flex; flex-direction: column; gap: 2px; min-height: 44px;
+    justify-content: center; text-align: left; text-decoration: none;
+    background: var(--surface); border: 1px solid var(--line); color: var(--fg);
+    border-radius: 4px; padding: 8px 14px; cursor: pointer; font: 13px var(--mono);
+  }
+  .atalho-fora:hover { border-color: var(--acento); }
+  .atalho-fora small { color: var(--faint); font-size: 11px; }
+  .atalho-fora[disabled] { opacity: .5; cursor: progress; }
 
   /* popover de configuração da janela flutuante. Posição vem de JS (embaixo
      do botão de verdade): a altura do header varia com o player de mídia
@@ -3152,6 +3242,76 @@ const ORDENAR_POR = [
   ['tokens', 'tokens'], ['todos', 'to-dos'],
 ]
 
+/* Os agentes que não são Claude: opencode e agy (Antigravity).
+ *
+ * Eles moram nesta aba porque a pergunta dela é "quem está trabalhando", e a
+ * resposta deixou de ser só Claude. O opencode serve a própria tela de
+ * conversa, com terminal dentro; o agy é só linha de comando, então o atalho
+ * dele abre um terminal com ele já rodando.
+ *
+ * Os atalhos só aparecem onde os dois existem. `HEAD /opencode/` é a pergunta:
+ * na VPS a porta de entrada responde, no PC do Felipe não, e ali os botões
+ * simplesmente não nascem. Caminho de binário nunca entra aqui, pela mesma
+ * regra de portabilidade do resto do projeto: quem resolve `agy` é o PATH do
+ * processo que serve o terminal.
+ */
+const AGENTES_FORA_LISTA = [
+  { id: 'opencode', rotulo: 'opencode', nota: 'conversa e terminal da VPS' },
+  { id: 'agy', rotulo: 'agy', nota: 'terminal do Antigravity, só dele' },
+]
+let AGENTES_FORA = null // null = ainda não perguntei; depois, os que responderam
+let ATALHO_INDO = null
+
+/* Cada um é perguntado por si. Antes bastava o opencode responder para os dois
+   botões nascerem, e num lugar onde só um existisse o outro seria um botão que
+   leva a lugar nenhum. */
+async function carregarAgentesFora() {
+  if (AGENTES_FORA !== null) return
+  const vivos = await Promise.all(AGENTES_FORA_LISTA.map(async (a) => {
+    try {
+      const r = await fetch(CASA_DO_AGENTE[a.id], { method: 'HEAD' })
+      return r.ok ? a.id : null
+    } catch { return null }
+  }))
+  AGENTES_FORA = vivos.filter(Boolean)
+  render()
+}
+
+function viewAtalhosFora() {
+  if (!AGENTES_FORA?.length) return ''
+  return `<div class="atalhos-fora">
+    ${AGENTES_FORA_LISTA.filter((a) => AGENTES_FORA.includes(a.id)).map((a) => `
+      <button class="atalho-fora" data-agente-fora="${a.id}"${
+        ATALHO_INDO === a.id ? ' disabled' : ''}>
+        <span>${a.rotulo}</span>
+        <small>${ATALHO_INDO === a.id ? 'abrindo...' : a.nota}</small>
+      </button>`).join('')}
+  </div>`
+}
+
+/* Cada um na sua tela, e a primeira versão errou justamente aqui.
+ *
+ * Ela criava o terminal do agy pela API do opencode e mandava o Felipe para
+ * `/opencode/`. O terminal nascia mesmo (três deles ficaram rodando), mas a
+ * tela do opencode abre na CONVERSA, e o terminal é um painel escondido lá
+ * dentro, sem endereço próprio para onde apontar. Ele clicava em agy e via
+ * opencode: "quando eu clico no AGY, ele vai pra uma janela de terminal e abre
+ * o OPENCODE na verdade, ele nao abre o agy". Junto vinha a segunda queixa, de
+ * os dois se misturarem no mesmo lugar.
+ *
+ * Agora o agy tem tela própria em `/agy/`, servida por `ttyd`, onde ele é a
+ * única coisa que existe. Sem estado intermediário, sem terminal órfão se o
+ * clique não completar. */
+const CASA_DO_AGENTE = { opencode: '/opencode/', agy: '/agy/' }
+
+function abrirAgenteFora(qual) {
+  const destino = CASA_DO_AGENTE[qual]
+  if (!destino) return
+  ATALHO_INDO = qual
+  render()
+  location.href = destino
+}
+
 function viewAgentes(jobs) {
   const grade = (lista) => `<div class="cards">${lista.map(cartao).join('')}</div>`
 
@@ -3197,6 +3357,7 @@ function viewAgentes(jobs) {
         : `${jobs.length} agente(s), todos parados.`
 
   return cabecaDaTela('Quem está trabalhando agora?', vdAg, espera ? 'atencao' : 'bom')
+    + viewAtalhosFora()
     + barra + (corpo || '<div class="empty">nenhum agente no filtro</div>')
 }
 
@@ -3366,7 +3527,9 @@ async function salvarFederacao(extra = {}) {
  * haver agente. Na VPS, com zero job vivo, a aba inteira fica vazia.
  */
 function abrirFrameworkLista() {
-  if (FW_LISTA) { FW_LISTA = null; return render() }
+  // A entrevista mora dentro desta lista: fechar a lista sem fechá-la deixaria
+  // um estado aberto que ninguém consegue ver nem encerrar.
+  if (FW_LISTA) { FW_LISTA = null; ENTREVISTA = null; return render() }
   FW_LISTA = 'carregando'
   render()
   fetch('/api/framework/projetos')
@@ -3443,17 +3606,267 @@ function viewFrameworkLista() {
         data-mod-on="${on ? '0' : '1'}"
         title="${esc(cat[m].explica)}${on ? '' : ' (DESLIGADO neste projeto)'}">${esc(cat[m].label)}${on ? '' : ' ✕'}</button>`
     }).join('')
+    /* CC-133: a entrevista abre AQUI, embaixo da linha do projeto a que ela
+       pertence, e não numa aba própria. É o mesmo critério do detalhe do
+       backlog: modal tampa o que ele veio ver, e coluna lateral não existe em
+       390px. Só para projeto com framework ligado, porque as respostas gravam
+       nos campos do framework. */
+    const entrevistaAqui = ENTREVISTA?.projeto === p.projeto
+    const btnEnt = p.existe && p.ligado
+      ? `<button class="btn mini" data-ent-abrir="${esc(p.projeto)}"
+          title="perguntas que definem o projeto, uma por vez, com a resposta anterior escolhendo a próxima">${
+  entrevistaAqui ? 'fechar entrevista' : 'entrevista'}</button>`
+      : ''
     return `<div class="fw-linha">
         <b>${esc(p.projeto)}</b>
         ${estado}
         ${rotas}
         <span class="fw-mods">${grupos}</span>
         <span class="grow"></span>
+        ${btnEnt}
         <button class="btn mini" data-fw="${acao}" data-fw-proj="${esc(p.projeto)}">${
       !p.existe ? 'ligar' : p.ligado ? 'desligar' : 'religar'}</button>
-      </div>`
+      </div>${entrevistaAqui ? viewEntrevista() : ''}`
   }).join('')}
   </div>`
+}
+
+/* ============ CC-143: criar projeto novo pelo painel ============
+
+   Pedido dele em 18/08: *"seria bom colocarmos no Control center também pra
+   gente criar projetos novos (…) sempre com um padrão e um botão, e em novos
+   projetos ativaria os esse modo automático"*.
+
+   A tela mostra o que vai nascer ANTES de criar, e o que nasceu depois. Não é
+   zelo: criar pasta é a única ação do painel que produz coisa no disco fora de
+   `~/.claude`, e "criei o projeto" sem dizer o quê é a promessa vaga que já
+   custou caro aqui. */
+let NOVO_PROJ = null // null = fechado; 'carregando'; ou { base, grupos }
+let NOVO_RESULTADO = null // o que nasceu, passo a passo, depois de criar
+const NOVO_FORM = { nome: '', grupo: '', descricao: '' } // fora do DOM, como o rascunho da entrevista
+
+function abrirNovoProjeto() {
+  if (NOVO_PROJ) { NOVO_PROJ = null; NOVO_RESULTADO = null; return render() }
+  NOVO_PROJ = 'carregando'
+  NOVO_RESULTADO = null
+  render()
+  fetch('/api/projeto/novo')
+    .then((r) => r.json())
+    .then((d) => { NOVO_PROJ = d; render() })
+    .catch(() => { NOVO_PROJ = null; render() })
+}
+
+function criarProjeto() {
+  const nome = (NOVO_FORM.nome || '').trim()
+  if (!nome) return alert('escreva o nome da pasta do projeto')
+  NOVO_RESULTADO = 'criando'
+  render()
+  fetch('/api/projeto/novo', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ...NOVO_FORM, nome }),
+  }).then((r) => r.json()).then((d) => {
+    if (d.error) { NOVO_RESULTADO = null; alert(d.error); return render() }
+    NOVO_RESULTADO = d
+    NOVO_FORM.nome = ''
+    NOVO_FORM.descricao = ''
+    /* O modo automático que ele pediu: já entra na entrevista, sem procurar o
+       projeto novo numa lista de vinte. E a lista de módulos é relida porque o
+       projeto que nasceu ainda não está nela. */
+    ENTREVISTA = { projeto: d.projeto, ...d.entrevista }
+    ENTREVISTA_RASCUNHO = ''
+    ENTREVISTA_ORFAS = null
+    /* A lista SEMPRE abre, mesmo fechada antes: é onde a entrevista é
+       desenhada, e criar o projeto sem mostrar a primeira pergunta entregaria
+       metade do que ele pediu. */
+    FW_LISTA = null
+    abrirFrameworkLista()
+  }).catch(() => { NOVO_RESULTADO = null; render() })
+}
+
+function viewNovoProjeto() {
+  if (!NOVO_PROJ) return ''
+  if (NOVO_PROJ === 'carregando') return '<div class="np"><p class="dim">vendo onde ficam os projetos…</p></div>'
+
+  if (NOVO_RESULTADO && NOVO_RESULTADO !== 'criando') {
+    const r = NOVO_RESULTADO
+    return `<div class="np">
+      <p class="np-pronto">✓ nasceu <b>${esc(r.projeto)}</b></p>
+      <code class="np-caminho">${esc(r.raiz)}</code>
+      <ul class="np-passos">
+        ${r.passos.map((p) => `<li class="${p.ok ? '' : 'ruim'}">${p.ok ? '✓' : '✗'} ${esc(p.o_que)}${
+  p.detalhe ? ` <span class="dim">(${esc(p.detalhe)})</span>` : ''}</li>`).join('')}
+      </ul>
+      <p class="dim np-adiadas">Não criei ${r.adiadas.map((a) => `<code>${esc(a.nome)}</code>`).join(', ')}:
+        pasta vazia por simetria esconde quais estão em uso. Cada uma nasce ${esc(r.adiadas[0].quando)},
+        e assim por diante.</p>
+      <p class="dim">A entrevista abriu embaixo, na primeira pergunta.</p>
+    </div>`
+  }
+
+  const g = NOVO_PROJ.grupos || []
+  /* O seletor de grupo só aparece onde grupo existe. No PC dele os projetos
+     moram dentro de CLIENTS, PESSOAL e ESTUDO; na VPS moram direto na base, e
+     um seletor com uma opção só seria ruído em metade das máquinas. */
+  const grupo = !g.length ? '' : `<label>onde
+      <select data-novo-campo="grupo">
+        <option value="">direto em ${esc((NOVO_PROJ.base || '').split(/[\\/]/).pop())}</option>
+        ${g.map((x) => `<option value="${esc(x.nome)}"${x.nome === NOVO_FORM.grupo ? ' selected' : ''}>${
+  esc(x.nome)} (${x.projetos})</option>`).join('')}
+      </select>
+    </label>`
+
+  /* Só o fim do caminho. O inteiro fica no `title`: numa base longa ele
+     ocupava CINCO linhas no telefone, empurrando o formulário para fora da
+     tela, e o que ele precisa saber é a pasta, não a árvore até ela. */
+  const partes = String(NOVO_PROJ.base || '').split(/[\\/]/).filter(Boolean)
+  const curta = partes.slice(-2).join('/') || 'não sei dizer'
+
+  return `<div class="np">
+    <p class="dim">Cria a pasta no padrão, com repositório próprio na raiz, e já abre a entrevista.
+      Base desta máquina: <code class="np-base" title="${esc(NOVO_PROJ.base || '')}">…/${esc(curta)}</code></p>
+    <div class="np-form">
+      <label>nome da pasta
+        <input data-novo-campo="nome" value="${esc(NOVO_FORM.nome)}" placeholder="app_agenda"
+          autocapitalize="off" autocorrect="off" spellcheck="false">
+      </label>
+      ${grupo}
+      <label class="np-cresce">em uma frase, o que é (opcional)
+        <input data-novo-campo="descricao" value="${esc(NOVO_FORM.descricao)}"
+          placeholder="agenda da clínica, para a recepção">
+      </label>
+      <button class="btn" data-novo-criar${NOVO_RESULTADO === 'criando' ? ' disabled' : ''}>${
+  NOVO_RESULTADO === 'criando' ? 'criando…' : 'criar'}</button>
+    </div>
+    <p class="dim np-vai">Vai nascer: <code>docs/</code> com produto, guias e diário, o roadmap, o handoff,
+      o CLAUDE.md com o protocolo do painel, o <code>.gitignore</code>, um repositório na raiz com o
+      primeiro commit, e o framework ligado na fase de Definição.</p>
+  </div>`
+}
+
+/* ================= CC-133: a entrevista, na tela =================
+
+   A primeira fatia deu o roteiro que se reescreve pela resposta, e só pela
+   linha de comando. Ele trabalha no celular: entrevista que só existe no
+   terminal é entrevista que não existe.
+
+   Duas decisões de desenho, e as duas vêm de erro já pago aqui:
+
+   1. **Uma pergunta por vez, ocupando a tela.** O framework já tinha quatro
+      perguntas independentes numa lista, e isso é formulário, que é o que ele
+      não lê. A conversa passada fica embaixo, resumida, para ele conferir o que
+      disse sem ter a resposta anterior competindo com a pergunta da vez.
+   2. **O que ele digita mora numa variável, não no DOM.** `render()` reescreve
+      o painel a cada 2 segundos; o campo em foco segura o redesenho, mas o
+      clique em "responder" tira o foco ANTES do clique chegar, e o texto morre
+      junto com o nó. É a mesma razão pela qual as notas moram fora do `#main`. */
+/* `projeto` SEMPRE presente, inclusive enquanto carrega: a entrevista é
+   desenhada embaixo da linha do projeto dela, e um estado "carregando" sem dono
+   não teria onde aparecer. */
+let ENTREVISTA = null // null = fechada; ou { projeto, carregando? , ...retrato }
+let ENTREVISTA_RASCUNHO = '' // o texto livre, guardado fora do DOM de propósito
+let ENTREVISTA_ORFAS = null // o que caiu junto na última volta atrás
+
+function abrirEntrevista(projeto) {
+  if (ENTREVISTA?.projeto === projeto) { ENTREVISTA = null; return render() }
+  ENTREVISTA = { projeto, carregando: true }
+  ENTREVISTA_RASCUNHO = ''
+  ENTREVISTA_ORFAS = null
+  render()
+  fetch(`/api/entrevista?projeto=${encodeURIComponent(projeto)}`)
+    .then((r) => r.json())
+    .then((d) => { ENTREVISTA = d.error ? null : { projeto, ...d }; if (d.error) alert(d.error); render() })
+    .catch(() => { ENTREVISTA = null; render() })
+}
+
+/** Grava uma resposta, ou desfaz uma já dada. O retrato devolvido é o do
+ *  arquivo, não o que o clique pediu: é a regra que a troca de modo ensinou. */
+function mandarEntrevista(corpo) {
+  if (!ENTREVISTA || ENTREVISTA.carregando) return
+  const { projeto } = ENTREVISTA
+  ENTREVISTA = { ...ENTREVISTA, salvando: true }
+  render()
+  fetch('/api/entrevista', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ projeto, ...corpo }),
+  }).then((r) => r.json()).then((d) => {
+    if (d.error) { alert(d.error); ENTREVISTA = { ...ENTREVISTA, salvando: false }; return render() }
+    ENTREVISTA_RASCUNHO = ''
+    ENTREVISTA_ORFAS = d.orfas?.length ? d.orfas : null
+    ENTREVISTA = { projeto, ...d }
+    /* O fim da entrevista abre o portão da Definição, e é justamente isso que
+       ele veio ver. A lista de módulos é cara (lê ~20 projetos), então ela só é
+       relida aqui, uma vez, e não a cada resposta. */
+    if (d.terminou && Array.isArray(FW_LISTA)) { FW_LISTA = null; return abrirFrameworkLista() }
+    render()
+  }).catch(() => { ENTREVISTA = { ...ENTREVISTA, salvando: false }; render() })
+}
+
+function viewEntrevista() {
+  if (!ENTREVISTA) return ''
+  if (ENTREVISTA.carregando) return '<div class="ent"><p class="dim">abrindo a entrevista…</p></div>'
+  const e = ENTREVISTA
+  const p = e.proxima
+  const pct = e.total ? Math.round((e.feitas / e.total) * 100) : 0
+
+  /* O progresso é sobre o roteiro APLICÁVEL, nunca sobre as 12 perguntas do
+     arquivo: a lista cresce e encolhe conforme ele responde, e uma barra sobre
+     o total fixo andaria para trás sozinha quando uma resposta fecha um ramo. */
+  const barra = `<div class="ent-prog" role="img" aria-label="${e.feitas} de ${e.total} perguntas">
+      <i style="width:${pct}%"></i>
+    </div>
+    <span class="dim ent-conta">${e.feitas} de ${e.total}${
+  e.total !== e.roteiro ? ` · o roteiro deste projeto tem ${e.total} das ${e.roteiro} perguntas` : ''}</span>`
+
+  const jaDitas = !e.respondidas?.length ? '' : `<details class="ent-antes"${e.terminou ? ' open' : ''}>
+      <summary>o que você já respondeu (${e.respondidas.length})</summary>
+      ${e.respondidas.map((r) => `<div class="ent-ja">
+        <b>${esc(r.header)}</b>
+        <span title="${esc(r.pergunta)}">${esc(r.texto)}</span>
+        <button class="btn mini" data-ent-voltar="${esc(r.id)}"
+          title="apagar esta resposta. O que só existia por causa dela some junto.">voltar aqui</button>
+      </div>`).join('')}
+    </details>`
+
+  const orfas = !ENTREVISTA_ORFAS ? '' : `<p class="ent-orfas">saiu junto, porque só existia por causa
+    da resposta que você apagou: ${ENTREVISTA_ORFAS.map((o) => esc(o)).join(', ')}</p>`
+
+  const cabeca = `<div class="ent-cab">
+      <b>entrevista de ${esc(e.projeto)}</b>
+      ${barra}
+      <span class="grow"></span>
+      <button class="btn mini" data-ent-fechar>fechar</button>
+    </div>`
+
+  if (!p) {
+    return `<div class="ent ent-fim">${cabeca}
+      <p class="ent-pronto">✓ a entrevista acabou. O nome do MVP, os critérios de pronto e as
+        verificações já estão gravados nos campos de sempre, porque a entrevista não guarda uma
+        segunda verdade. Se o portão da Definição ainda estiver fechado, o que falta aparece na
+        linha do projeto.</p>
+      ${orfas}${jaDitas}</div>`
+  }
+
+  /* Opção é botão, não item de lista: no celular ele responde com um toque. E
+     texto livre continua valendo sempre, com o campo logo abaixo, nunca no
+     lugar das opções. */
+  const opcoes = !p.opcoes?.length ? '' : `<div class="ent-ops">
+      ${p.opcoes.map((o) => `<button class="ent-op" data-ent-op="${esc(o.valor)}">
+        <b>${esc(o.label)}</b><span>${esc(o.descricao || '')}</span>
+      </button>`).join('')}
+    </div>`
+
+  return `<div class="ent">${cabeca}${orfas}
+    <p class="ent-pergunta">${esc(p.pergunta)}</p>
+    <p class="ent-ajuda">${esc(p.ajuda || '')}</p>
+    ${opcoes}
+    <div class="ent-livre">
+      <textarea data-ent-campo rows="3" placeholder="${
+  p.opcoes?.length ? 'ou responda com as suas palavras' : 'a sua resposta'}"
+        aria-label="resposta">${esc(ENTREVISTA_RASCUNHO)}</textarea>
+      <button class="btn" data-ent-responder${e.salvando ? ' disabled' : ''}>${
+  e.salvando ? 'gravando…' : 'responder'}</button>
+    </div>
+    ${jaDitas}</div>`
 }
 
 function pedirFramework(projeto) {
@@ -4682,6 +5095,7 @@ function trocarAba(id) {
 
 /** O que cada aba precisa buscar ao abrir. Chamado na troca e no boot. */
 function carregarDaAba() {
+  if (tab === 'agentes') carregarAgentesFora()
   if (tab === 'servidores') carregarServidores()
   if (tab === 'vps') carregarVps()
   if (tab === 'agenda') carregarAgenda()
@@ -5080,7 +5494,9 @@ function viewTrabalho(jobs = []) {
        inalcançável sem ninguém notar; agora mora aqui, com as rotas junto. */
     + `<div class="dg-cab">
         <button class="btn" data-fw-lista>${FW_LISTA ? 'fechar módulos' : 'módulos por projeto'}</button>
+        <button class="btn" data-novo-proj>${NOVO_PROJ ? 'fechar' : 'projeto novo'}</button>
         <button class="btn" data-digest>${DIGEST ? 'fechar digest' : 'digest da semana'}</button>
+        ${NOVO_PROJ ? viewNovoProjeto() : ''}
         ${FW_LISTA ? viewFrameworkLista() : ''}
         ${DIGEST ? viewDigest() : ''}
       </div>`
@@ -7700,6 +8116,9 @@ document.addEventListener('click', async (e) => {
     return trocarAba(alvo)
   }
 
+  const agFora = t.closest('[data-agente-fora]')
+  if (agFora) return abrirAgenteFora(agFora.dataset.agenteFora)
+
   const aba = t.closest('button[data-tab]')
   if (aba) return trocarAba(aba.dataset.tab)
 
@@ -8075,6 +8494,45 @@ document.addEventListener('click', async (e) => {
     }).then(() => { FW_LISTA = null; abrirFrameworkLista() })
     return
   }
+  // CC-143: criar projeto novo
+  if (t.closest('[data-novo-proj]')) return abrirNovoProjeto()
+  if (t.closest('[data-novo-criar]')) {
+    /* O valor sai do DOM se ele ainda estiver lá, e da variável quando o
+       redesenho já levou o campo. Mesma regra do campo da entrevista. */
+    for (const el of document.querySelectorAll('[data-novo-campo]')) NOVO_FORM[el.dataset.novoCampo] = el.value
+    return criarProjeto()
+  }
+
+  /* CC-133: a entrevista. Os quatro cliques dela, e nenhum deles depende do
+     texto estar no DOM: o rascunho é lido da variável quando o campo já morreu
+     no redesenho, que é o caso normal quando o clique vem depois do blur. */
+  const entAbrir = t.closest('[data-ent-abrir]')
+  if (entAbrir) return abrirEntrevista(entAbrir.dataset.entAbrir)
+
+  if (t.closest('[data-ent-fechar]')) { ENTREVISTA = null; return render() }
+
+  const entOp = t.closest('[data-ent-op]')
+  if (entOp && ENTREVISTA?.proxima) {
+    return mandarEntrevista({ acao: 'responder', id: ENTREVISTA.proxima.id, texto: entOp.dataset.entOp })
+  }
+
+  if (t.closest('[data-ent-responder]') && ENTREVISTA?.proxima) {
+    const texto = ($('[data-ent-campo]')?.value ?? ENTREVISTA_RASCUNHO).trim()
+    if (!texto) return alert('escreva a resposta, ou toque numa das opções')
+    return mandarEntrevista({ acao: 'responder', id: ENTREVISTA.proxima.id, texto })
+  }
+
+  const entVoltar = t.closest('[data-ent-voltar]')
+  if (entVoltar) {
+    /* A confirmação diz o que se perde, como a de desligar proteção: apagar uma
+       resposta apaga junto as que só existiam por causa dela, e descobrir isso
+       depois do clique é o tipo de surpresa que o quadro de rotas já custou. */
+    if (!confirm('Apagar esta resposta?\n\n'
+      + '· a pergunta volta a ser feita\n'
+      + '· o que só existia por causa dela sai junto, e a tela diz o que saiu')) return
+    return mandarEntrevista({ acao: 'desfazer', id: entVoltar.dataset.entVoltar })
+  }
+
   const fwBtn = t.closest('[data-fw]')
   if (fwBtn) {
     const projeto = fwBtn.dataset.fwProj
@@ -8456,6 +8914,14 @@ $('#proj').addEventListener('change', () => { if (tab === 'bancada') carregarBan
 document.addEventListener('input', (e) => {
   if (e.target?.id === 'gl-q') { glossarioBusca = e.target.value; render(); $('#gl-q')?.focus() }
   if (e.target?.id === 'doc-q') { docsBusca = e.target.value; render(); $('#doc-q')?.focus() }
+  /* CC-133: guarda o que ele digita, e NÃO redesenha. É a diferença entre este
+     campo e os dois de cima: aqui o texto pode ser longo (a resposta de "o que
+     é pronto" costuma ter três linhas), e redesenhar a cada tecla numa lista
+     de vinte projetos custaria caro sem ganhar nada. O valor volta para o
+     campo no próximo desenho, venha ele de onde vier. */
+  if (e.target?.matches?.('[data-ent-campo]')) ENTREVISTA_RASCUNHO = e.target.value
+  // CC-143: os campos do projeto novo, pela mesma razão
+  if (e.target?.matches?.('[data-novo-campo]')) NOVO_FORM[e.target.dataset.novoCampo] = e.target.value
 })
 
 // Trocar o modo do framework é `change` num <select>, não clique num botão, e

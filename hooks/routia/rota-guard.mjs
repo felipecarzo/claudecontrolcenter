@@ -162,7 +162,16 @@ function arquivosDaLinha(linha) {
      documento para humano antes de ser entrada de parser. */
   const caminho = /^[\w.@-]+(?:\/[\w.@-]*)*(?:#[\w.-]+)?$/
   const saida = []
-  for (const t of brutos) {
+  for (const bruto of brutos) {
+    if (!bruto) continue
+    /* Repetir o 📁 em cada arquivo é a forma mais natural de escrever, e três
+       rotas fizeram isso sem que ninguém percebesse o custo: o marcador não tem
+       cara de caminho, o laço parava nele, e tudo depois do PRIMEIRO arquivo
+       ficava sem proteção nenhuma. Silencioso e ao contrário, como a leitura do
+       modo pela rota: o quadro anunciava a posse, e a trava não tinha nenhuma.
+       Medido em 18/08, com `📁 src/entrevista.mjs 📁 cc.mjs 📁 test.mjs`
+       protegendo só o primeiro dos três. */
+    const t = bruto.replace(/^📁/, '')
     if (!t) continue
     if (!caminho.test(t) || !/[/.]/.test(t)) break
     saida.push(t)

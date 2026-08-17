@@ -30,9 +30,11 @@ em código, o certo é parar e abrir outra — credencial e edição de arquivo 
 | Rota | Status | Quem / o quê | Desde |
 |---|---|---|---|
 | `framework-hooks` | 🟢 livre | — (48f6738c fechou em 2026-08-13: pedido de autorização entre agentes, em `~/.claude/hooks/rota-pedidos.mjs` + `rota-guard` + `routia-fim`. 10 checks passando, instalado no PC e na VPS) | — |
-| `cockpit` | 🟢 livre | — (ff0d68b2 fechou em 17/08: as **três travas de fidelidade ao pedido** que ele escolheu depois do erro da tabela (desvio escondido no código, mostrar o par quando ele diz "igual ao que já temos", e a forma que ele nomeou), os **perfis com trava de etapa** (Modelagem, Scrum Master, Depurador com três variações) e a regra "se bloqueia, entra no framework", a **planilha de tarefas** no formato dos ROADMAP.md dele, a **recuperação das 37 mensagens** que somem da fila, **modo por rota**, aba que abriria vazia sumindo do menu, "o que mudou desde que eu olhei", e `cc ideias` no encerramento) | — |
+| `cockpit` | 🔴 ocupada | 93e2e5c3 — CC-133 fechado (primeira fatia: o roteiro que se reescreve pela resposta). Seguindo no backlog 🎚 continuativo 📁 src/entrevista.mjs 📁 cc.mjs 📁 test.mjs | hoje |
+| `cockpit` (17/08) | 🟢 livre | — (ff0d68b2 fechou em 17/08: as **três travas de fidelidade ao pedido** que ele escolheu depois do erro da tabela (desvio escondido no código, mostrar o par quando ele diz "igual ao que já temos", e a forma que ele nomeou), os **perfis com trava de etapa** (Modelagem, Scrum Master, Depurador com três variações) e a regra "se bloqueia, entra no framework", a **planilha de tarefas** no formato dos ROADMAP.md dele, a **recuperação das 37 mensagens** que somem da fila, **modo por rota**, aba que abriria vazia sumindo do menu, "o que mudou desde que eu olhei", e `cc ideias` no encerramento) | — |
 | `cockpit` (antes) | 🟢 livre | — (ff0d68b2 fechou em 16/08, segunda metade: **CC-60/CC-79** (fica só o fork, e `GET /api/escritorio` entrega os agentes de todas as máquinas), **CC-71** (`--so-mudou`), **CC-92** (fechado sem proxy, via `UserPromptSubmit`), o estudo do **CC-80**, sete hooks novos, oficina por agente, rota que reivindica arquivo com 📁, o merge do PR #1 e o conserto do menu que fechava sozinho no telefone) | — |
-| `front` | 🟢 livre | — reservada para o agente de front-end do Felipe. Ao marcar, declare os arquivos com 📁, senão a rota não protege nada | — |
+| `entrevista` | 🔴 ocupada | a4452c23 — CC-133 na tela (feito) e CC-143, o botão de projeto novo 🎚 continuativo 📁 src/web.mjs src/novoProjeto.mjs src/ui.html#viewEntrevista test.mjs | hoje |
+| `front` | 🟢 livre | — (42834678 fechou em 18/08: o agy ganhou tela própria em `/agy` servida por `ttyd`, e o botão passou a levar até ela. A versão anterior criava o terminal pela API do opencode e largava ele na conversa, sem caminho para o terminal) | — |
 | `cockpit` (anterior) | 🟢 livre | — (ff0d68b2 fechou em 16/08: **CC-93** (guia longo vira etapa, regra + `guia-guard`), **CC-77** (navegacao de um nivel no estreito, `.grupo` duplicada no CSS, e `test-estreito.mjs` medindo as 15 telas), **CC-82** (a estante de documentos, com leitor e `cc doc`), e a Bancada de 7 para 10 camadas, com a sonda de RLS do Supabase. Junto: `fluxo-guard`, a trava de execucao continua do modo restritivo) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
@@ -84,6 +86,28 @@ Se você é o dono e recebeu um pedido: responda. Ficar em silêncio deixa a out
 sessão travada, que é exatamente o que o método existe para evitar.
 
 ## Tickets pendentes
+
+### 📌 A trava de arquivo estava protegendo só o PRIMEIRO da lista, de a4452c23 em 18/08
+
+**Se você escreveu `📁 a.mjs 📁 b.mjs 📁 c.mjs`, só o `a.mjs` estava protegido.**
+O leitor do quadro parava no segundo marcador, porque ele não tem cara de
+caminho, e devolvia a lista pela metade. Silencioso e ao contrário: o quadro
+anunciava a posse, e a trava não tinha nenhuma.
+
+Três rotas estavam assim quando o defeito apareceu, incluindo a `cockpit`, que
+achava estar segurando `cc.mjs` e `test.mjs` e não segurava.
+
+**Consertado e instalado**, em `hooks/routia/rota-guard.mjs` e na cópia que roda
+de verdade. Quatro casos novos no `testar-rota-guard.sh`, e os dois que
+importam falham de propósito contra a versão velha.
+
+**O que muda para você:** os arquivos que você declarou depois do primeiro
+passaram a barrar os outros agentes de verdade, agora. E o contrário também: se
+outra rota declarou algo que você vinha editando sem saber, você vai ser barrado
+na próxima edição. Não é regressão, é a trava fazendo o que o quadro já dizia.
+
+As duas formas de escrever valem: um 📁 seguido de vários caminhos, ou um 📁 em
+cada. A primeira sempre funcionou; a segunda passou a funcionar.
 
 ### 🎫 Para o **Pierre** (outro repositório) — achado por ff0d68b2 em 15/08
 

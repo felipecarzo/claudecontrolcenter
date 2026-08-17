@@ -2363,6 +2363,233 @@ if (!ESPERADO) {
   assert.equal(path.basename(dm.vbsPath()), ESPERADO.arquivo)
 }
 
+/* --- CC-133: a entrevista CONDUZ, e é o encadeamento que prova isso ---
+
+   O que estes asserts guardam não é "as perguntas existem": é que a resposta
+   anterior muda o roteiro. Um teste que só contasse perguntas passaria com o
+   formulário de antes, que é justamente o que ele não quis. */
+{
+  const E = await import('./src/entrevista.mjs')
+  const responder = (estado, id, texto) => {
+    const r = E.responder(estado, id, texto, { quando: '2026-08-17T00:00:00.000Z' })
+    assert.ok(r.ok, `resposta recusada em "${id}": ${r.erro}`)
+    return r.estado
+  }
+
+  // uma pergunta por vez, e a primeira é o que o projeto É
+  const zero = {}
+  assert.equal(E.proxima(zero).id, 'natureza')
+  assert.equal(E.progresso(zero).feitas, 0)
+
+  // o roteiro CRESCE: dizer "cliente" traz tela e acesso, que "biblioteca" não tem
+  const cliente = responder(zero, 'natureza', 'cliente')
+  const biblioteca = responder(zero, 'natureza', 'biblioteca')
+  assert.ok(
+    E.progresso(cliente).total > E.progresso(biblioteca).total,
+    'projeto de cliente tem que perguntar mais que biblioteca — sem isso não é entrevista, é formulário',
+  )
+  assert.ok(E.aplicaveis(E.respostasDe(cliente)).some((p) => p.id === 'forma'))
+  assert.ok(!E.aplicaveis(E.respostasDe(biblioteca)).some((p) => p.id === 'forma'))
+
+  // o TEXTO da pergunta usa a resposta anterior
+  const estudo = responder(zero, 'natureza', 'estudo')
+  assert.match(E.proxima(estudo).pergunta, /pergunta este estudo responde/i)
+  assert.match(E.proxima(cliente).pergunta, /entrega/i)
+
+  // segunda camada: "login" só nasce depois de "acesso: sim", e nunca antes
+  let e = responder(cliente, 'entrega', 'catálogo de imóveis')
+  e = responder(e, 'quem', 'corretor na rua')
+  e = responder(e, 'hoje', 'manda foto por whatsapp')
+  const semBanco = responder(e, 'dado', 'nenhum')
+  assert.ok(!E.aplicaveis(E.respostasDe(semBanco)).some((p) => p.id === 'acesso'),
+    'sem dado guardado, perguntar sobre área restrita é ruído')
+  e = responder(e, 'dado', 'banco')
+  assert.ok(!E.aplicaveis(E.respostasDe(e)).some((p) => p.id === 'login'), 'login não pode existir antes de acesso')
+  e = responder(e, 'acesso', 'sim')
+  assert.ok(E.aplicaveis(E.respostasDe(e)).some((p) => p.id === 'login'), 'acesso "sim" tem que abrir a pergunta de login')
+
+  // pergunta fora do roteiro é recusada, não gravada em silêncio
+  assert.equal(E.responder(biblioteca, 'login', 'senha').ok, false)
+
+  // desfazer leva junto o que só existia por causa da resposta apagada
+  const comLogin = responder(e, 'login', 'provedor')
+  const desfeito = E.desfazer(comLogin, 'acesso')
+  assert.ok(desfeito.ok)
+  assert.deepEqual(desfeito.orfas, ['login'], 'apagar "acesso" tem que levar "login" junto, senão ele fica órfão no resumo')
+  assert.equal(E.respostasDe(desfeito.estado).login, undefined)
+
+  // a entrevista alimenta o MVP de verdade: uma verdade só, não uma segunda
+  let f = responder(comLogin, 'forma', 'painel')
+  f = responder(f, 'primeiro', 'o corretor vê a lista dele')
+  f = responder(f, 'pronto', '- corretor edita o imóvel\n- gerente vê tudo')
+  assert.equal(f.mvp.nome, 'catálogo de imóveis')
+  assert.deepEqual(f.mvp.criterios.map((c) => c.texto),
+    ['o corretor vê a lista dele', 'corretor edita o imóvel', 'gerente vê tudo'],
+    'lista em várias linhas vira vários critérios, e o marcador de lista sai fora')
+
+  // e a fase de Definição abre no fim, que é o ponto de tudo isso
+  f = responder(f, 'risco', 'imobiliária ver imóvel de outra')
+  f = responder(f, 'verificacao', 'cliente')
+  assert.equal(E.proxima(f), null, 'respondido tudo, não pode sobrar pergunta')
+  assert.ok(f.entrevista.terminou, 'o fim é derivado da última resposta, não digitado')
+  assert.ok(f.ferramentas.includes('rls'), 'site de cliente com login escolhe as sondas de dado')
+  const fw = await import('./src/framework.mjs')
+  assert.deepEqual(fw.avaliar('mvp-basico', { ...f, metodo: 'mvp-basico', fase: 'definicao' }).pendencias, [],
+    'entrevista completa tem que abrir o portão da Definição — se não abre, ela não conduziu a lugar nenhum')
+
+  // caminho "estudo" com o método padrão: grava nos dois lugares, senão trava
+  const est = responder(estudo, 'entrega', 'vale a pena trocar o parser?')
+  assert.equal(est.estudo.pergunta, 'vale a pena trocar o parser?')
+  assert.equal(est.mvp.nome, 'vale a pena trocar o parser?')
+
+  // resposta de várias linhas não pode quebrar a coluna do resumo
+  for (const linha of E.resumo(f).split('\n').slice(1)) {
+    assert.match(linha, /^ {2}\S/, `linha do resumo sem rótulo: ${JSON.stringify(linha)}`)
+  }
+}
+
+/* --- CC-133, segunda fatia: o que a TELA recebe ---
+
+   A fatia anterior provou o motor. Isto prova a camada que a página consome, e
+   ela tem uma responsabilidade a mais: entregar a conversa JÁ DITA, que no
+   terminal ficava na rolagem e na tela precisa ser dado.
+
+   Importar `src/web.mjs` aqui vale por si: até hoje o gate nunca carregava esse
+   arquivo, e um `await` no lugar errado dentro dele já derrubou o servidor
+   inteiro com o `npm test` passando. */
+{
+  const W = await import('./src/web.mjs')
+  const D = await import('./src/frameworkDisco.mjs')
+  const E = await import('./src/entrevista.mjs')
+
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-entrevista-'))
+  try {
+    assert.equal(W.retratoEntrevista(raiz).existe, false,
+      'projeto sem framework não pode parecer entrevista vazia: é ausência, não zero')
+
+    D.ligar(raiz)
+    const zerado = W.retratoEntrevista(raiz)
+    assert.equal(zerado.feitas, 0)
+    assert.equal(zerado.proxima.id, 'natureza')
+    assert.deepEqual(zerado.respondidas, [])
+    assert.equal(zerado.roteiro, E.ROTEIRO.length,
+      'o total do roteiro vai junto para a tela poder dizer que este projeto usa só parte dele')
+
+    // duas respostas, uma por opção e uma por texto livre
+    let e = E.responder(D.ler(raiz), 'natureza', 'cliente').estado
+    e = E.responder(e, 'entrega', 'agenda da clínica').estado
+    D.gravar(raiz, e)
+
+    const r = W.retratoEntrevista(raiz)
+    assert.equal(r.feitas, 2)
+    assert.ok(r.total > r.feitas)
+    assert.equal(r.respondidas.length, 2)
+    assert.deepEqual(r.respondidas.map((x) => x.id), ['natureza', 'entrega'],
+      'a ordem é a do roteiro, não a de gravação: é assim que ele relê a conversa')
+    assert.equal(r.respondidas[0].texto, 'Site ou app para cliente',
+      'opção escolhida chega na tela pelo RÓTULO, não pelo valor interno')
+    assert.equal(r.respondidas[0].valor, 'cliente')
+    assert.equal(r.respondidas[1].texto, 'agenda da clínica')
+
+    assert.match(r.proxima.pergunta, /Quem usa isso/)
+    assert.match(r.respondidas[1].pergunta, /O que ele entrega/,
+      'a pergunta guardada na lista é a que foi de fato feita, com a natureza já respondida')
+
+    /* Voltar atrás e trocar o ramo. A entrega SOBREVIVE (ela cabe em qualquer
+       projeto), e é justamente por isso que este é o caso que importa: o texto
+       da pergunta dela muda, e a lista precisa recalcular. Guardar a frase
+       congelada faria a tela contar uma conversa que não aconteceu. */
+    D.gravar(raiz, E.desfazer(D.ler(raiz), 'natureza').estado)
+    const semNatureza = W.retratoEntrevista(raiz)
+    assert.equal(semNatureza.proxima.id, 'natureza', 'a pergunta apagada volta a ser feita')
+    assert.deepEqual(semNatureza.respondidas.map((x) => x.id), ['entrega'])
+
+    D.gravar(raiz, E.responder(D.ler(raiz), 'natureza', 'estudo').estado)
+    const curto = W.retratoEntrevista(raiz)
+    assert.match(curto.respondidas[1].pergunta, /pergunta este estudo responde/i,
+      'trocado o ramo, a pergunta já respondida é reescrita: é a prova de que o texto não fica congelado')
+    assert.equal(curto.respondidas[1].texto, 'agenda da clínica', 'a resposta dele continua intacta')
+
+    // o total encolhe com o ramo, e é por isso que a barra da tela nunca pode
+    // ser contada sobre as 12 perguntas do arquivo
+    assert.ok(curto.total < curto.roteiro,
+      'projeto de estudo usa menos perguntas, e a tela precisa saber disso para não mostrar barra que anda para trás')
+    assert.ok(curto.total < r.total, 'trocar de cliente para estudo tem que ENCOLHER o roteiro')
+  } finally {
+    fs.rmSync(raiz, { recursive: true, force: true })
+  }
+}
+
+/* --- CC-143: o projeto nasce no padrão, e o padrão é o DELE ---
+
+   O que estes asserts guardam é a diferença entre o botão e um `mkdir`: o
+   repositório na raiz (a regra número 1 dele, que já custou 34 mil arquivos
+   engolidos por um repositório de cima) e a regra que a limita, "não criar
+   pasta vazia por simetria". */
+{
+  const N = await import('./src/novoProjeto.mjs')
+  const D = await import('./src/frameworkDisco.mjs')
+  const E = await import('./src/entrevista.mjs')
+
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-novoproj-'))
+  try {
+    // nome vira caminho de disco: recusar é mais barato que consertar depois
+    assert.ok(N.validarNome('app agenda'), 'espaço no nome tem que ser recusado')
+    assert.ok(N.validarNome('projeto/../fuga'), 'barra e subida de pasta têm que ser recusadas')
+    assert.ok(N.validarNome('-oculto'), 'nome que começa com hífen some das varreduras')
+    assert.equal(N.validarNome('app_agenda'), null)
+    assert.equal(N.criar(base, { nome: 'nome com espaço' }).ok, false)
+    assert.equal(N.criar('', { nome: 'app_x' }).ok, false, 'sem base conhecida não se cria nada')
+
+    const r = N.criar(base, { nome: 'app_agenda', descricao: 'agenda da clínica' })
+    assert.ok(r.ok, r.erro)
+    const raiz = r.raiz
+
+    // o esqueleto de documentação, que todo projeto tem desde o primeiro minuto
+    for (const p of ['docs/produto', 'docs/guias', 'docs/diario', 'docs/ROADMAP.md',
+      'docs/HANDOFF.md', 'docs/README.md', 'CLAUDE.md', '.gitignore']) {
+      assert.ok(fs.existsSync(path.join(raiz, p)), `faltou ${p}`)
+    }
+
+    // e as pastas de código NÃO nascem: pasta vazia por simetria esconde quais
+    // estão em uso, que é a regra dele limitando a hierarquia dele mesmo
+    for (const p of ['apps', 'tools', 'assets']) {
+      assert.ok(!fs.existsSync(path.join(raiz, p)), `${p} não pode nascer vazia`)
+    }
+    assert.deepEqual(N.PASTAS_ADIADAS.map((x) => x.nome), ['apps/', 'tools/', 'assets/'],
+      'a tela explica o que não nasceu, e a explicação sai daqui')
+
+    // o repositório na raiz, que é a razão de o botão existir
+    assert.ok(fs.existsSync(path.join(raiz, '.git')), 'projeto sem repositório próprio cai no de cima')
+
+    // o CLAUDE.md leva o protocolo do painel: projeto novo que não reporta é
+    // agente trabalhando invisível, e o furo só aparece dias depois
+    assert.match(fs.readFileSync(path.join(raiz, 'CLAUDE.md'), 'utf8'), /Control Center/i)
+
+    // o modo automático que ele pediu, em 18/08
+    const fw = D.ler(raiz)
+    assert.ok(fw && fw.ligado !== false, 'o projeto tem que nascer com o framework ligado')
+    assert.equal(fw.fase, 'definicao')
+    assert.equal(E.proxima(fw).id, 'natureza', 'e com a entrevista esperando na primeira pergunta')
+
+    // criar duas vezes no mesmo nome não pode passar por cima do que existe
+    const denovo = N.criar(base, { nome: 'app_agenda' })
+    assert.equal(denovo.ok, false)
+    assert.match(denovo.erro, /já existe/)
+
+    /* Grupo é DESCOBERTO, nunca fixado: no PC dele os projetos moram dentro de
+       CLIENTS e PESSOAL, na VPS moram direto na base. Lista fixa acertaria uma
+       máquina e inventaria pasta na outra. */
+    assert.deepEqual(N.gruposDe(base), [], 'projeto solto na base não é grupo')
+    const comGrupo = N.criar(base, { nome: 'site_x', grupo: 'CLIENTS' })
+    assert.ok(comGrupo.ok, comGrupo.erro)
+    assert.equal(path.basename(path.dirname(comGrupo.raiz)), 'CLIENTS')
+    assert.deepEqual(N.gruposDe(base), [{ nome: 'CLIENTS', projetos: 1 }])
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true })
+  }
+}
+
 /* O resumo diz o que a MÁQUINA tinha para oferecer, e por isso os dois números
    podem ser zero sem que nada esteja errado: numa VPS sem job de background o
    gate agora roda inteiro contra dados sintéticos. Zero aqui é informação, não
