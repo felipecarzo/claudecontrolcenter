@@ -675,6 +675,42 @@ podem escrever no estado do projeto.
 A regra do item foi respeitada: só modo de comportamento vem da rota. O que
 tranca escrita continua sendo do projeto.
 
+### CC-142 ✅ 17/08 — a trava do separador parou de acusar quem o usou
+
+Quarto falso positivo desta mesma trava, e o mais irônico: ela acusou uma
+resposta que TINHA o separador. Medido depois, no mesmo transcrito: o marcador
+estava lá, e a leitura do hook aconteceu antes de o último pedaço da resposta
+ser gravado.
+
+A releitura de 400ms, criada justamente contra isso, não bastou num turno longo
+com muitas chamadas de ferramenta. Agora ela relê **até o texto parar de
+crescer** (até 6 voltas), com saída antecipada.
+
+Custo medido: resposta com separador passa em 100ms, sem espera nenhuma; só
+quem vai ser barrado paga a releitura. Falso positivo é o caminho mais curto
+para trava desligada, e esta já custou quatro.
+
+### CC-141 ✅ 17/08 — a ideia fica GUARDADA para a próxima sessão
+
+Correção dele, minutos depois de a varredura nascer:
+
+> *"ela não escreve no backlog mas ela salva as ideias pra processar na próxima
+> sessão né? até pq não faria sentido adicionar nada ao backlog no final da
+> sessão, não quero adiar um término pq geralmente estou com pressa"*
+
+A primeira versão listava e sumia: se ninguém redigisse o item na hora, a ideia
+se perdia de novo, e o encerramento virava mais uma tarefa para quem está com
+pressa. **O fim da sessão captura, a próxima processa.**
+
+A fila mora em `docs/.ideias-pendentes.json`, fora do git, no mesmo padrão da
+fila de pedidos de rota: é estado de trabalho, não histórico. Guardar é o
+padrão do comando, não uma opção, porque opção que depende de alguém lembrar da
+flag não protege nada. Ideia tirada da fila não volta, senão o que ele
+descartou reapareceria a cada encerramento.
+
+Os dois lados ficaram escritos nas rotinas: o encerramento diz **não redija item
+aqui**, e o início do dia seguinte tem o passo que retoma.
+
 ### CC-139 ✅ 17/08 — o encerramento procura as ideias que não viraram item
 
 Ideia dele, no fim do dia: *"Será que eh interessante colocar algo assim no

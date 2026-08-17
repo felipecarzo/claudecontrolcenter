@@ -1039,12 +1039,47 @@ switch (cmd) {
     const I = await import('./src/ideias.mjs')
     const M = await import('./src/metaSessao.mjs')
     const fsx = await import('node:fs')
+
+    const alvo = val('--roadmap') || path.join(process.cwd(), 'docs', 'ROADMAP.md')
+    const raizProjeto = path.dirname(path.dirname(alvo))
+
+    /* Ler a fila e resolver item NÃO dependem de sessão: quem retoma amanhã
+       está noutra sessão, e exigir o transcrito da que capturou tornaria a fila
+       inalcançável justamente para quem ela existe. Medido tentando: o comando
+       morria com "não achei o registro da sessão". */
+
+    /* A FILA, correção dele em 17/08: o fim da sessão captura, a próxima
+       processa. Registrar item no encerramento adia o término de quem está com
+       pressa, e a ideia acabava se perdendo de novo. */
+    if (arg === 'pendentes' || arg === 'fila') {
+      const fila = I.lerFila(raizProjeto)
+      const ps = fila.pendentes || []
+      if (has('--json')) { console.log(JSON.stringify(ps, null, 2)); break }
+      if (!ps.length) { console.log('\nnenhuma ideia guardada esperando decisão\n'); break }
+      console.log(`\n${ps.length} ideia(s) dele esperando virar item (ou serem descartadas).\n`)
+      for (const p of ps) {
+        const q = p.quando ? new Date(p.quando).toLocaleString('pt-BR') : 'sem hora'
+        console.log(`── ${p.id}  ${q}`)
+        console.log(p.texto.split('\n').map((l) => `   ${l}`).join('\n').slice(0, 1200))
+        console.log('')
+      }
+      console.log('  Virou item, ou ele descartou?  node cc.mjs ideias resolver <id>\n')
+      break
+    }
+    if (arg === 'resolver') {
+      const id = positional[2]
+      if (!id) die('uso: node cc.mjs ideias resolver <id>')
+      const r = I.resolver(raizProjeto, id)
+      if (!r.ok) die(r.erro)
+      console.log(`ideia ${id} saiu da fila, restam ${r.restam}`)
+      break
+    }
+
+    // daqui para baixo é a varredura, e ela precisa do registro da sessão
     const sessao = val('--sessao') || M.sessaoAtual()
     if (!sessao) die('não sei de qual sessão: passe --sessao <id>')
     const transcrito = M.transcritoDe(sessao)
     if (!transcrito) die(`não achei o registro da sessão ${sessao}`)
-
-    const alvo = val('--roadmap') || path.join(process.cwd(), 'docs', 'ROADMAP.md')
     let roadmap = ''
     try { roadmap = fsx.readFileSync(alvo, 'utf8') } catch { die(`não achei ${alvo}`) }
 
@@ -1052,9 +1087,16 @@ switch (cmd) {
     const faltando = tudo.filter((x) => !x.registrada)
     if (has('--json')) { console.log(JSON.stringify(faltando, null, 2)); break }
 
+    /* Guardar é o padrão, e não uma opção: se depender de alguém lembrar da
+       flag, a ideia se perde exatamente como se perdia antes. `--so-listar`
+       existe para quem só quer ver. */
+    const guardadas = has('--so-listar')
+      ? null
+      : I.guardar(raizProjeto, faltando, { sessao: String(sessao).slice(0, 8) })
+
     console.log(`\n${tudo.length} ideia(s) longa(s) dele nesta sessão, `
       + `${tudo.length - faltando.length} já cobertas pelo backlog.\n`)
-    if (!faltando.length) { console.log('  nada a registrar\n'); break }
+    if (!faltando.length) { console.log('  nada a guardar\n'); break }
 
     for (const x of faltando) {
       const q = x.quando ? new Date(x.quando).toLocaleString('pt-BR') : 'sem hora'
@@ -1062,8 +1104,12 @@ switch (cmd) {
       console.log(x.texto.split('\n').map((l) => `   ${l}`).join('\n').slice(0, 900))
       console.log('')
     }
-    console.log('  Leia cada uma e decida: vira item, ou já está dito de outro jeito.')
-    console.log('  A ferramenta não escreve no ROADMAP de propósito.\n')
+    if (guardadas) {
+      console.log(`  ${guardadas.novos} guardada(s) para a próxima sessão, ${guardadas.total} na fila.`)
+      console.log('  Não precisa decidir nada agora: `cc ideias pendentes` retoma com calma.\n')
+    } else {
+      console.log('  Nada guardado (--so-listar).\n')
+    }
     break
   }
   case 'estilo': {

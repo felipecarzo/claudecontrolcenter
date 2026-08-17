@@ -21,6 +21,7 @@
  * lê, que é o problema que ele estava justamente tentando resolver.
  */
 import fs from 'node:fs'
+import path from 'node:path'
 
 /* Os marcadores saíram das mensagens reais dele, não de teoria. `min` existe
    porque a regra 4 tem número: acima de ~400 caracteres, abrindo com um destes,
@@ -117,4 +118,88 @@ export function jaNoBacklog(texto, roadmap, { corte = 0.55 } = {}) {
 /** O relatório inteiro: candidatas com o veredito de cada uma. */
 export function levantar(arquivo, roadmap, opcoes = {}) {
   return candidatas(arquivo, opcoes).map((c) => ({ ...c, ...jaNoBacklog(c.texto, roadmap, opcoes) }))
+}
+
+/* ==================== a fila, e por que ela existe ====================
+   Correção dele em 17/08, sobre a primeira versão deste módulo:
+
+   > "ela não escreve no backlog mas ela salva as ideias pra processar na
+   > próxima sessão né? até pq não faria sentido adicionar nada ao backlog no
+   > final da sessão, não quero adiar um término pq geralmente estou com pressa"
+
+   A primeira versão listava e sumia. Se ninguém registrasse na hora, a ideia se
+   perdia de novo, e o encerramento virava mais uma tarefa para quem está com
+   pressa. O fim da sessão CAPTURA; a próxima PROCESSA, com ele presente e sem
+   relógio correndo.
+
+   Arquivo efêmero e fora do git, no mesmo padrão de `docs/.rotas-pedidos.json`:
+   é estado de trabalho, não histórico. O histórico é o ROADMAP. */
+export const ARQUIVO_FILA = (raiz) => path.join(raiz, 'docs', '.ideias-pendentes.json')
+
+/** Identidade estável de uma ideia: o texto dela, resumido. A mesma ideia vista
+ *  em duas sessões não entra duas vezes. */
+const idDe = (texto) => {
+  const base = semAcento(texto).replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 400)
+  let h = 0
+  for (let i = 0; i < base.length; i += 1) h = (h * 31 + base.charCodeAt(i)) >>> 0
+  return h.toString(36).padStart(7, '0').slice(0, 7)
+}
+
+export function lerFila(raiz) {
+  try { return JSON.parse(fs.readFileSync(ARQUIVO_FILA(raiz), 'utf8')) } catch { return { pendentes: [] } }
+}
+
+function gravarFila(raiz, dados) {
+  const alvo = ARQUIVO_FILA(raiz)
+  fs.mkdirSync(path.dirname(alvo), { recursive: true })
+  const tmp = `${alvo}.tmp`
+  fs.writeFileSync(tmp, `${JSON.stringify(dados, null, 1)}\n`)
+  fs.renameSync(tmp, alvo)
+  return alvo
+}
+
+/**
+ * Guarda para a próxima sessão. Não decide nada, não escreve no roadmap.
+ *
+ * Ideia já guardada não duplica. Ideia tirada da fila não volta: sem isso, tudo
+ * o que ele descartou reapareceria a cada encerramento, e lista que repete o que
+ * já foi respondido é lista que ninguém lê.
+ */
+export function guardar(raiz, achados, { sessao = null } = {}) {
+  const fila = lerFila(raiz)
+  const conhecidos = new Map((fila.pendentes || []).map((p) => [p.id, p]))
+  const descartados = new Set(fila.descartados || [])
+  let novos = 0
+  for (const a of achados) {
+    const id = idDe(a.texto)
+    if (conhecidos.has(id) || descartados.has(id)) continue
+    conhecidos.set(id, {
+      id,
+      texto: a.texto,
+      quando: a.quando || null,
+      sessao,
+      cobertura: a.cobertura ?? null,
+      guardadaEm: new Date().toISOString(),
+    })
+    novos += 1
+  }
+  const pendentes = [...conhecidos.values()]
+  gravarFila(raiz, { pendentes, descartados: [...descartados] })
+  return { novos, total: pendentes.length, arquivo: ARQUIVO_FILA(raiz) }
+}
+
+/**
+ * Tira da fila: virou item, ou ele decidiu que não vira.
+ *
+ * O id fica numa lista de descartados, e só o id: guardar o texto de novo faria
+ * o arquivo crescer para sempre com o que já foi resolvido.
+ */
+export function resolver(raiz, id) {
+  const fila = lerFila(raiz)
+  const antes = (fila.pendentes || []).length
+  const pendentes = (fila.pendentes || []).filter((p) => p.id !== id)
+  if (pendentes.length === antes) return { ok: false, erro: `não achei a ideia ${id}` }
+  const descartados = [...new Set([...(fila.descartados || []), id])]
+  gravarFila(raiz, { pendentes, descartados })
+  return { ok: true, restam: pendentes.length }
 }

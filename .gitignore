@@ -33,3 +33,6 @@ docs/.rotas-pedidos.json
 
 # resto de script que reescreve documento em lote
 *.md.bak
+
+# fila de ideias a processar na proxima sessao: estado de trabalho, nao historico
+docs/.ideias-pendentes.json

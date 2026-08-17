@@ -64,10 +64,24 @@ let m = E.medir(texto)
    Falso positivo é o caminho mais curto para hook desligado, então o custo de
    esperar 400ms só quando eu já ia reclamar é barato demais para discutir. */
 if (m.semMarcador) {
-  const ate = Date.now() + 400
-  while (Date.now() < ate) { /* espera curta, sem depender de timer assíncrono */ }
-  const denovo = E.respostaDoTurno(arquivo) || E.ultimaResposta(arquivo)
-  if (denovo && denovo.length > texto.length) m = E.medir(denovo)
+  /* Relê ATÉ o texto parar de crescer, não uma vez só.
+     A versão de 400ms ainda deu falso positivo em 17/08, numa resposta que
+     TINHA o separador: turno longo, com muitas chamadas de ferramenta, grava o
+     último pedaço bem depois. Aqui são até 6 voltas de 400ms, e a saída é
+     antecipada assim que o marcador aparece ou o tamanho estabiliza, então o
+     caso comum continua custando uma volta.
+
+     Duas voltas a mais de espera são baratas; falso positivo é o caminho mais
+     curto para trava desligada, e esta já custou três. */
+  let ultimo = texto.length
+  for (let i = 0; i < 6 && m.semMarcador; i += 1) {
+    const ate = Date.now() + 400
+    while (Date.now() < ate) { /* espera curta, sem depender de timer assíncrono */ }
+    const denovo = E.respostaDoTurno(arquivo) || E.ultimaResposta(arquivo)
+    if (!denovo) break
+    if (denovo.length > ultimo) { m = E.medir(denovo); ultimo = denovo.length; continue }
+    break // parou de crescer: o turno acabou de verdade
+  }
 }
 if (!m.semMarcador) sair()
 

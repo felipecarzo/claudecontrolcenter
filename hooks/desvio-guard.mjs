@@ -83,9 +83,24 @@ if (termos.length < 3) sair()
    projeto inteiro. */
 const DESVIO = /\b(seria pior|é pior|e pior|pior que|melhor que|melhor assim|não vale a pena|nao vale a pena|em vez de|no lugar de|preferi|optei por|não faz sentido|nao faz sentido|não faria sentido|nao faria sentido|inviável|inviavel|não compensa|nao compensa)\b/i
 
+/* CITAÇÃO DELE NÃO É DECISÃO MINHA, e esta é a diferença que faltava.
+   Falso positivo medido em 17/08, ao escrever um módulo deste projeto: eu
+   registrava a correção que ele tinha acabado de dar, em citação, e as palavras
+   DELE acenderam a trava. Citar o pedido é o comportamento que o projeto
+   inteiro tenta incentivar; barrar isso ensinaria a não citar, que é o oposto.
+
+   Sai o que está em citação de markdown, em bloco de código, e o texto longo
+   entre aspas. */
+const semCitacoes = texto
+  .split('\n')
+  .filter((l) => !/^\s*(?:[*/ ]*)>/.test(l))
+  .join('\n')
+  .replace(/```[\s\S]*?```/g, ' ')
+  .replace(/[“"][^“”"]{40,}[”"]/g, ' ')
+
 /* Sentença, não linha: a justificativa e o termo do pedido moram na mesma
    frase, e quebrar por linha perderia comentário de bloco quebrado em duas. */
-const sentencas = texto.split(/(?<=[.;!?])\s+|\n{2,}/)
+const sentencas = semCitacoes.split(/(?<=[.;!?])\s+|\n{2,}/)
 
 const achados = []
 for (const s of sentencas) {

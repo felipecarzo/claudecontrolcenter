@@ -59,6 +59,22 @@ caso "cita o termo mas nao justifica desvio" "$PEDIDO_TABELA" \
 caso "pedido curto nao serve de base" "$PEDIDO_CURTO" \
 '/* usei cards em vez de tabela aqui */' 0
 
+# 17/08: CITACAO dele nao e decisao minha. A trava barrou eu registrar, em
+# citacao, a correcao que ele tinha acabado de dar: as palavras DELE acenderam o
+# marcador de desvio. Barrar citacao ensinaria a nao citar, que e o oposto do que
+# este projeto tenta incentivar.
+caso "citacao dele em markdown nao acende" "$PEDIDO_TABELA" \
+'/* Correcao dele, hoje:
+
+   > nao faria sentido usar tabela aqui, melhor que fosse lista
+
+   Feito como ele pediu. */' 0
+
+caso "mas a justificativa FORA da citacao continua barrando" "$PEDIDO_TABELA" \
+'/* > ele pediu tabela
+
+   usei cards em vez de tabela porque cabe na tela */' 2
+
 echo "— nao pode travar por bug proprio —"
 echo '{}' | node "$H" > /dev/null 2>&1
 [ $? = 0 ] && echo "  ok     entrada vazia" || { echo "  FALHOU entrada vazia"; FALHOU=1; }
