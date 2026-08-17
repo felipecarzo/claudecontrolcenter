@@ -2,7 +2,7 @@
 tags: [processo]
 tipo: roadmap
 atualizado: 2026-08-17
-estado: 15 abertos (CC-118 a CC-124 e o CC-126, mais as 7 frentes grandes); 2 parados por decisão dele ou por ambiente
+estado: 15 abertos (CC-133 a CC-138 nasceram em 17/08 da varredura de ideias, mais CC-124, CC-129 e as 7 frentes grandes); 2 parados por decisão dele ou por ambiente
 resumo: Só o que está aberto neste projeto. Concluído sai daqui e vira linha no diário. Em 16/08 saíram 37 itens fechados e o arquivo caiu de 2033 para ~547 linhas.
 termos:
   frente: um bloco de trabalho com nome próprio, que o painel mostra como pastilha no cartão
@@ -619,7 +619,7 @@ chamado a varredura de portas dentro do tique e derrubado o stream inteiro; a
 outra sessão pegou antes de aplicar. E o meu critério de VPS (`cfg.vps?.host`)
 esconderia a aba justamente nesta máquina, onde ela funciona em modo local.
 
-### CC-122: o que mudou desde que eu olhei
+### CC-122 ✅ 17/08 — o que mudou desde que eu olhei, numa resposta só
 
 A pergunta de quem volta depois de horas fora, e nenhuma tela responde ela
 inteira. Hoje está partida em três: o "vi isso" por projeto, o digest da semana
@@ -627,6 +627,20 @@ e o "o que mudou" dentro do mapa.
 
 Vale mais que remexer agrupamento de abas, que é onde a proposta de fora gastou
 o esforço dela.
+
+**Feito em 17/08.** Uma marca de "vi tudo" (separada das visitas por projeto,
+na mesma gaveta e com chave reservada) e uma lista única no topo da tela que
+abre: hora, projeto e o que aconteceu, do mais novo para o mais velho. Dobrada
+quando passa de doze, porque quem está no meio do trabalho não precisa dela
+toda hora. Sem marca registrada, mostra só o botão: alegar "desde sempre" seria
+inventar um delta.
+
+**E o item destravou um defeito que estava calado desde sempre:** o carimbo de
+tarefa concluída é gravado pelo agente como TEXTO ISO, e o resto do histórico
+usa número. Comparar texto com número usando `>` é sempre falso, sem erro
+nenhum, então **toda tarefa fechada sumia do "o que mudou"**. Media 1 marco
+onde havia 46. Agora há uma função que normaliza os dois formatos, e é o
+segundo defeito desta família hoje (o outro foi a data no nome de pacote).
 
 ### CC-123 ✅ 17/08 — o modo vale por rota, não só por sessão
 
@@ -660,6 +674,131 @@ podem escrever no estado do projeto.
 
 A regra do item foi respeitada: só modo de comportamento vem da rota. O que
 tranca escrita continua sendo do projeto.
+
+### CC-139 ✅ 17/08 — o encerramento procura as ideias que não viraram item
+
+Ideia dele, no fim do dia: *"Será que eh interessante colocar algo assim no
+end-session p ele procurar ideias não utilizadas e colocar no backlog se já não
+tiver?"*. É a regra 4 do ciclo virando rotina.
+
+`cc ideias` varre o registro da sessão atrás das mensagens longas dele que abrem
+com marcador de visão ("e se", "podemos", "tive uma ideia") e cruza cada uma com
+o ROADMAP por palavras de conteúdo. O passo 2.5 do `/end-session` chama isso.
+
+**Duas decisões que definem o recurso:**
+
+1. **Ela não escreve no roadmap.** Quem decide o que vira item é ele, e quem
+   escreve é o agente, com as palavras dele. Extrator que registra sozinho
+   enche o backlog de ruído, e backlog com ruído é backlog que ninguém lê, que é
+   exatamente o problema que isto existe para resolver.
+2. **Erra para mostrar demais.** Na dúvida marca como não registrada, porque
+   mostrar de novo algo já anotado custa um segundo, e deixar sumir o que ele
+   pediu é o dano.
+
+O corte de 55% de cobertura saiu de medição: com o 34% da primeira versão, as
+20 mensagens desta sessão passaram TODAS como registradas, e o recurso era
+decorativo. Este roadmap tem 500 linhas, então palavra comum do domínio casa
+sempre.
+
+**Usada na hora, achou cinco ideias soltas** que viraram os itens CC-133 a
+CC-138 abaixo. Depois de registrá-los, a mesma varredura passou a apontar uma
+só, e essa uma está pronta com outro nome (os modos "permissivo" e "imperativo"
+de 14/08 são o Livre e o Sugestivo de hoje), que é justamente o falso positivo
+previsto no item 2.
+
+### CC-133: a entrevista que conduz a definição de um projeto novo
+
+Palavras dele em 14/08, e nada disso existe hoje:
+
+> *"eu também queria que ele puxasse tarefas pra desenvolvimento com o IA (…)
+> ele me demandaria tarefas estruturais de um sistema, pra gente definir o que a
+> gente vai fazer. Por exemplo, ele me perguntaria sobre o que é o projeto, é
+> como se começasse uma sequência de desenvolvimento (…) que começa a me fazer
+> perguntas, caminhando na direção do desenvolvimento do projeto de acordo com
+> as respostas."*
+
+O framework tem a fase de Definição e sabe COBRAR o que falta (nome do MVP,
+critérios). Ele não CONDUZ: não pergunta, não encadeia, não usa a resposta
+anterior para escolher a próxima pergunta. É a diferença entre um formulário e
+uma conversa, e o que ele descreve é a conversa.
+
+Ele mesmo aponta o horizonte: *"a gente pode pensar num dia no futuro de fazer
+sem IA também"*, agnóstico de linguagem, cobrindo UML e MER. A primeira fatia
+não precisa disso: pode ser uma sequência de perguntas escritas à mão, na ordem
+que o método já define.
+
+### CC-134: o que os agentes conversaram entre si, registrado e visível
+
+Dele em 15/08, antes de existirem duas sessões trabalhando juntas:
+
+> *"os agentes também precisam se comunicar (…) se um agente precisa mexer num
+> arquivo que está na rota do outro, ele pode abrir um ticket (…) Inclusive
+> pode ter um registro também do que eles fazem. Sempre que tiver uma
+> intervenção, tipo um log dos que aconteceram, e por projeto, por hora, poder
+> ver em ordem crescente, decrescente, separar por projeto, separar por
+> agentes."*
+
+**A primeira metade aconteceu em 17/08 e funcionou**: duas sessões dividiram
+`src/ui.html` por função, avisaram uma à outra ao entrar e sair, uma achou
+defeito no trabalho da outra, e o commit saiu combinado. Nada disso ficou
+registrado em lugar nenhum: some com a sessão.
+
+Falta o registro que ele descreveu, e o dado existe (as mensagens entre sessões
+passam pelo painel). Ordenável por projeto, por agente e por hora.
+
+### CC-135: o modo sugestivo tem que SUGERIR
+
+Achado dele em 16/08, e é uma inversão que eu não tinha visto:
+
+> *"o modo sugestivo é exatamente o oposto do que eu falei. Porque ao invés de
+> você fazer uma abstração pra dentro, o modo sugestivo faz uma abstração pra
+> fora, ele busca características acima (…) Ele vai sugerir coisas que possam
+> ser feitas no projeto, e sempre manter a opção de eu poder escrever, porque
+> dessas coisas que eu leio surgem novas ideias."*
+
+Hoje o modo sugestivo faz o contrário do nome: ele TRAVA e espera autorização.
+Não propõe nada. O que ele descreve é um modo que, com o backlog vazio ou
+parado, olha o projeto e oferece caminhos, com a opção de escrita livre sempre
+aberta, porque ler as opções é o que faz ele lembrar do que queria.
+
+Junto vem a razão de existir, dita por ele: *"é meio que um mecanismo de
+automatização do meu pensamento humano"*.
+
+### CC-136: o padrão de trabalho vira trava, não só regra escrita
+
+Dele em 16/08, na mesma mensagem em que descreveu o método:
+
+> *"o projeto é para mudar o cockpit inteiro mas podemos aprovar primeiro um
+> protótipo, se tivermos dificuldades nós descemos pra decidir elementos
+> individualmente e testamos (…) sempre quebrando em micro tarefas (vamos
+> incluir isso como um padrão de hook de moldagem de pensamento pra como
+> desenvolver as tarefas no cockpit, o que acha?)"*
+
+Metade existe: a trava que exige descer um degrau de abstração quando ele
+reprova. Falta o resto do padrão que ele descreveu, e que hoje é só texto:
+protótipo inteiro decide o rumo, execução se pica em micro-tarefas, e a cada
+reprovação a tarefa seguinte é metade da anterior. Ele deu o exemplo: *"se a
+tarefa era fazer uma landing page e eu reprovar, a lógica seguinte é quebrar
+essa landing page em seções (…) e tudo bem exagerar na busca dessa abstração. O
+grande problema é simplesmente não descer nenhum nível"*.
+
+### CC-137: as 14 travas sem teste
+
+O painel mede e mostra: 19 de 33 provadas em 17/08. "Sem teste" não é o mesmo
+que quebrada, é trava cujo comportamento ninguém mediu, e o número só é honesto
+enquanto a lista existir. As que faltam aparecem na aba de hooks, no botão que
+roda todas.
+
+### CC-138: prioridade e complexidade na planilha de tarefas
+
+Duas colunas do formato que ele usa nos ROADMAP.md ficaram de fora da planilha
+em 17/08, e por um motivo honesto: **não há dado**. Prioridade (P0, P1) e
+complexidade só existem hoje para tarefa já concluída, estimadas na aba de
+preço.
+
+Para existirem na planilha, o agente precisa declarar as duas ao registrar a
+tarefa. É campo novo no protocolo, e vale medir antes se ele quer preencher isso
+a cada tarefa ou se prefere que saia estimado.
 
 ### CC-124: o comando `json` responde zero com ar de resposta completa
 
@@ -704,6 +843,34 @@ escrita continua valendo dentro dela: parte de `~/.claude` segue bloqueada, que
 é o que ele quer destravar na lista de ações dele.
 
 `src/ui.html` é da rota `cockpit`, com dono ativo. Pedido feito.
+
+### CC-140: as avenidas, ideia dele em 17/08
+
+> *"quando agentes mexem nos mesmos arquivos eles costumam ter uma rota do que
+> vão mexer? pq se essas rotas puderem ser imaginadas, podemos rastrear todas as
+> rotas que existem em desenvolvimento de software e transformar em 'avenidas',
+> e isso faria com que os agentes lidassem com os dados como carros lidam com
+> trânsito, eles poderiam pausar o raciocínio sempre que tivessem que acessar um
+> arquivo (…) se tiver um agente cruzando essa rota no mesmo momento ela ficaria
+> ocupada"*
+
+Registrado como visão, não como tarefa. Três partes, e duas valem por si:
+
+1. **A verificação no momento do acesso, e não no combinado prévio.** É o furo
+   real de hoje: o quadro de rotas protege a intenção, e o disco fica sem
+   árbitro. Semáforo no cruzamento é trava no instante da escrita, que o hook de
+   antes-da-ferramenta já está posicionado para tomar e soltar.
+2. **Rota como vizinhança, não como arquivo.** Duas sessões em arquivos
+   diferentes que se afetam passam batido hoje. Aconteceu em 17/08 sem custo por
+   sorte: o campo novo em `web.mjs` alimentava a tela que a outra sessão estava
+   escrevendo, e ninguém foi avisado por mecanismo nenhum.
+3. **Mapear todas as rotas de antemão não é preciso**, e ele já suspeitava
+   disso na própria mensagem. O grafo se deriva sob demanda, que é a regra mais
+   usada deste projeto.
+
+Onde a metáfora quebra, e vale escrever: rua tem topologia fixa, software muda a
+cada commit. Isso não invalida a ideia, só decide a implementação: o mapa se
+calcula na hora, nunca se mantém à mão.
 
 ## ▶ O que está aberto, em 16/08
 
@@ -1276,3 +1443,4 @@ Em 16/08 saíram 37 itens, com o texto integral preservado:
 
 - [2026-08-15](diario/2026-08-15.md) — CC-86, CC-73, CC-74, CC-75, CC-81, CC-83, CC-84, CC-85, CC-90, CC-88, CC-89, CC-94, CC-78, CC-67, CC-68, CC-69, CC-70, CC-72, CC-66, CC-65, CC-46, CC-48, CC-49, CC-56, CC-52, CC-53, Bancada
 - [2026-08-16](diario/2026-08-16.md) — CC-76, CC-77, CC-91, CC-87, CC-92, CC-93, CC-82, CC-79, CC-71, CC-60
+- [2026-08-17](diario/2026-08-17.md) — CC-109, CC-111, CC-113 a CC-123, CC-125 a CC-132, CC-139

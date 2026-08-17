@@ -1027,6 +1027,45 @@ switch (cmd) {
     }
     break
   }
+  /* O que ele falou e nunca virou item. Ideia dele em 17/08, ao encerrar o dia:
+     "será que eh interessante colocar algo assim no end-session p ele procurar
+     ideias não utilizadas e colocar no backlog se já não tiver?".
+
+     Lista candidatas e diz se cada uma parece registrada. NÃO escreve no
+     roadmap: quem decide o que vira item é ele, e quem escreve é o agente, com
+     as palavras dele. Extrator que escrevesse sozinho encheria o backlog de
+     ruído, e backlog com ruído é backlog que ninguém lê. */
+  case 'ideias': {
+    const I = await import('./src/ideias.mjs')
+    const M = await import('./src/metaSessao.mjs')
+    const fsx = await import('node:fs')
+    const sessao = val('--sessao') || M.sessaoAtual()
+    if (!sessao) die('não sei de qual sessão: passe --sessao <id>')
+    const transcrito = M.transcritoDe(sessao)
+    if (!transcrito) die(`não achei o registro da sessão ${sessao}`)
+
+    const alvo = val('--roadmap') || path.join(process.cwd(), 'docs', 'ROADMAP.md')
+    let roadmap = ''
+    try { roadmap = fsx.readFileSync(alvo, 'utf8') } catch { die(`não achei ${alvo}`) }
+
+    const tudo = I.levantar(transcrito, roadmap)
+    const faltando = tudo.filter((x) => !x.registrada)
+    if (has('--json')) { console.log(JSON.stringify(faltando, null, 2)); break }
+
+    console.log(`\n${tudo.length} ideia(s) longa(s) dele nesta sessão, `
+      + `${tudo.length - faltando.length} já cobertas pelo backlog.\n`)
+    if (!faltando.length) { console.log('  nada a registrar\n'); break }
+
+    for (const x of faltando) {
+      const q = x.quando ? new Date(x.quando).toLocaleString('pt-BR') : 'sem hora'
+      console.log(`── ${q}  (${x.palavras} palavras, ${Math.round(x.cobertura * 100)}% no backlog)`)
+      console.log(x.texto.split('\n').map((l) => `   ${l}`).join('\n').slice(0, 900))
+      console.log('')
+    }
+    console.log('  Leia cada uma e decida: vira item, ou já está dito de outro jeito.')
+    console.log('  A ferramenta não escreve no ROADMAP de propósito.\n')
+    break
+  }
   case 'estilo': {
     const E = await import('./src/estilo.mjs')
     if (arg === 'padrao') {

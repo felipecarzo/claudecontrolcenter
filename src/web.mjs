@@ -25,7 +25,7 @@ import {
   mesclar, mesclarTempo, montarPacote, validarPacote,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
-import { arquivar, jobsHistoricos, marcosDe } from './historico.mjs'
+import { arquivar, jobsHistoricos, marcosDe, mudouDesde } from './historico.mjs'
 import { readUso } from './uso.mjs'
 import {
   estado as estadoMidia, acao as acaoMidia,
@@ -73,6 +73,7 @@ import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
   setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig, setVisita,
   setMaquina, setFederacao, moduloLigado, setModuloProjeto,
+  CHAVE_TUDO, visitaGeral, setVisitaGeral,
 } from './config.mjs'
 import { agenda, esquecerCache as esquecerAgenda } from './calendario.mjs'
 import { HOOKS, MODULOS as MODULOS_HOOKS } from './hooksCatalogo.mjs'
@@ -1019,7 +1020,23 @@ function handler(req, res) {
         ordem: url.searchParams.get('ordem') === 'tempo' ? 'tempo' : 'importancia',
       }),
       siglas,
+      /* CC-122: "o que mudou desde que eu olhei", em UMA resposta.
+         Estava partida em três telas (o "vi isso" por projeto, o resumo da
+         semana e o "o que mudou" do mapa), e ele trabalha do telefone, onde
+         atravessar três telas para montar a resposta na cabeça é o mesmo que
+         não ter. Sai daqui porque esta é a tela que abre. */
+      desdeQueOlhei: (() => {
+        const em = visitaGeral()
+        if (em == null) return { em: null, marcos: [] }
+        return { em, marcos: mudouDesde(em, { jobs: s.jobs }) }
+      })(),
     })
+  }
+
+  /* Marca "olhei tudo". Separada da visita por projeto de propósito: são duas
+     perguntas diferentes, e ele responde uma sem responder a outra. */
+  if (url.pathname === '/api/vi-tudo' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, () => ({ em: setVisitaGeral().visitas[CHAVE_TUDO] }))
   }
 
   if (url.pathname === '/api/roadmap') {

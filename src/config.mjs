@@ -455,6 +455,16 @@ export function setVisita(projeto, em = Date.now()) {
   return writeConfig({ ...cfg, visitas: { ...cfg.visitas, [id]: Number(em) || Date.now() } })
 }
 
+/* CC-122: a marca de "olhei TUDO", separada das visitas por projeto.
+   A pergunta de quem volta depois de horas fora não é por projeto, é geral. Usa
+   a mesma gaveta (`visitas`) com uma chave reservada, em vez de campo novo: o
+   dado é o mesmo tipo, e um segundo lugar para guardar instante daria duas
+   verdades sobre "quando ele olhou". O nome tem `*` de propósito, que nenhum
+   projeto pode ter. */
+export const CHAVE_TUDO = '*'
+export const visitaGeral = (cfg = readConfig()) => cfg.visitas?.[CHAVE_TUDO] ?? null
+export const setVisitaGeral = (em = Date.now()) => setVisita(CHAVE_TUDO, em)
+
 export function describe(cwd = process.cwd()) {
   const cfg = readConfig()
   const { project } = projectOf(cwd)

@@ -1642,6 +1642,15 @@
   /* CC-118: as mensagens recuperadas. Texto no tamanho de leitura (15px), não de
      tabela: é ditado por voz e pode ter cinquenta palavras. Fundo de superfície
      e fio na esquerda porque é fala DELE, o mesmo tratamento das citações. */
+  /* CC-122: o que mudou desde a última olhada. Fio na esquerda porque é
+     histórico, não tarefa: nada aqui se clica para fazer. */
+  .dqo { margin: 10px 0 4px; border-left: 3px solid var(--done); padding-left: 12px; }
+  .dqo summary { cursor: pointer; font-size: 14px; color: var(--dim); }
+  .dqo summary b { color: var(--fg); }
+  .dqo-lista { display: grid; gap: 6px; margin: 10px 0; max-height: 320px; overflow-y: auto; }
+  .dqo-i { display: grid; gap: 1px; font-size: 13.5px; }
+  .dqo-i i { font-style: normal; color: var(--done); }
+
   .fp-lista { display: grid; gap: 10px; margin-top: 12px; }
   .fp-item {
     background: var(--surface); border-radius: 12px; box-shadow: var(--sombra);
@@ -5057,6 +5066,7 @@ function viewTrabalho(jobs = []) {
     ? { frase: TRABALHO.veredito, cor: minhas.length ? 'atencao' : 'bom', calmo: !minhas.length }
     : TRABALHO.veredito
   return cabecaDaTela('Em que pé está o trabalho?', vd.frase, vd.cor)
+    + viewDesdeQueOlhei()
     + `<nav class="bl-vistas" aria-label="as quatro visões do trabalho">
         ${vista('geral', 'geral', nSprint + minhas.length + nBacklog, 'neutro')}
         ${vista('sprint', 'sprint', nSprint, nSprint ? 'working' : 'done')}
@@ -5101,6 +5111,41 @@ function siglaDo(projeto) {
   const extra = s.de === 'agente' ? ', escrita por um agente e nao pelo backlog' : ''
   return `<abbr class="gr-sigla" title="${esc(s.sigla)} e o projeto ${esc(projeto)}, em ${esc(onde)}${extra}">${esc(s.sigla)} ?</abbr>`
 }
+
+/* CC-122: "o que mudou desde que eu olhei", numa resposta só.
+   Ele volta depois de horas fora e a pergunta é uma; até aqui ela estava
+   partida em três telas. Fica no topo da tela que abre, dobrada, porque quem
+   está no meio do trabalho não precisa dela toda hora. Sem marca registrada,
+   mostra só o botão: inventar "desde sempre" seria alegar um delta que não
+   existe, o mesmo cuidado do "vi isso" por projeto. */
+function viewDesdeQueOlhei() {
+  const d = TRABALHO?.desdeQueOlhei
+  if (!d) return ''
+  if (d.em == null) {
+    return `<div class="t-ctl"><button class="btn" data-vi-tudo>marcar que eu vi tudo</button>
+      <span class="path">a partir daí eu te mostro o que mudou enquanto você esteve fora</span></div>`
+  }
+  const n = (d.marcos || []).length
+  if (!n) {
+    return `<div class="t-ctl"><button class="btn" data-vi-tudo>vi tudo de novo</button>
+      <span class="path">nada mudou desde ${esc(quando(d.em))}</span></div>`
+  }
+  const rotulo = { todo: 'fechou', agente: 'começou', entrega: 'entregou' }
+  return `<details class="dqo" ${n <= 12 ? 'open' : ''}>
+    <summary><b>${n}</b> mudança${n > 1 ? 's' : ''} desde ${esc(quando(d.em))}</summary>
+    <div class="dqo-lista">${d.marcos.map((m) => `
+      <div class="dqo-i">
+        <span class="path">${esc(hora(m.em))} · ${esc(m.projeto || '')}</span>
+        <span><i>${esc(rotulo[m.tipo] || m.tipo)}</i> ${esc(m.texto)}</span>
+      </div>`).join('')}</div>
+    <button class="btn" data-vi-tudo>vi tudo, pode zerar</button>
+  </details>`
+}
+
+const quando = (em) => new Date(em).toLocaleString('pt-BR', {
+  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+})
+const hora = (em) => new Date(em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
 function vistaGeral(sprint, nSprint, minhas, nBacklog, nMudou) {
   /* O botão vem ANTES do fio, colado na contagem. Depois dele, num monitor de
@@ -7987,6 +8032,10 @@ document.addEventListener('click', async (e) => {
   if (t.closest('[data-fw-lista]')) return abrirFrameworkLista()
   if (t.closest('[data-hk-provar]')) return provarHooks()
   if (t.closest('[data-fila-perdida]')) return carregarFilaPerdida()
+  if (t.closest('[data-vi-tudo]')) {
+    return fetch('/api/vi-tudo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+      .then(() => carregarTrabalho(true))
+  }
 
   if (t.closest('[data-fed-ver]')) {
     const campo = $('#fed-token')

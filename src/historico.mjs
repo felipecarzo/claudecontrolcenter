@@ -119,6 +119,40 @@ export function jobsHistoricos(vivos = []) {
  * (CC-24/CC-35, que leem do disco do projeto) — aqui é só o que o histórico
  * de jobs já sabe.
  */
+/** Número, texto ISO ou nada: devolve sempre milissegundos, ou 0. */
+const instante = (v) => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0
+  if (typeof v === 'string') return Date.parse(v) || 0
+  return 0
+}
+
+/**
+ * O que mudou em TODOS os projetos desde um instante.
+ *
+ * A pergunta de quem volta depois de horas fora, e até hoje ela estava partida
+ * em três telas: o "vi isso" por projeto, o resumo da semana e o "o que mudou"
+ * dentro do mapa. Nenhuma respondia inteira, e ele trabalha do telefone, onde
+ * atravessar três telas para montar a resposta na cabeça é o mesmo que não ter.
+ *
+ * Devolve os marcos em ordem inversa (o mais novo primeiro), cada um com o
+ * projeto, porque sem isso a lista é uma pilha de frases sem lugar.
+ */
+export function mudouDesde(desde, { jobs = null, file = HISTORICO_FILE, teto = 60 } = {}) {
+  const h = readHistorico(file)
+  const vivos = jobs || []
+  const porId = new Map(vivos.map((j) => [j.id, j]))
+  for (const [id, j] of Object.entries(h.jobs)) if (!porId.has(id)) porId.set(id, j)
+
+  const projetos = new Set()
+  for (const j of porId.values()) if (j.project) projetos.add(j.project)
+
+  const tudo = []
+  for (const projeto of projetos) {
+    for (const m of marcosDe(projeto, { desde, jobs: vivos, file })) tudo.push({ ...m, projeto })
+  }
+  return tudo.sort((a, b) => b.em - a.em).slice(0, teto)
+}
+
 export function marcosDe(projeto, { desde = 0, jobs = null, file = HISTORICO_FILE } = {}) {
   const h = readHistorico(file)
   const vivos = jobs || []
@@ -128,13 +162,21 @@ export function marcosDe(projeto, { desde = 0, jobs = null, file = HISTORICO_FIL
   const marcos = []
   for (const j of porId.values()) {
     if (j.project !== projeto) continue
-    for (const [texto, em] of Object.entries(j.feitoEm || {})) {
-      if (em > desde) marcos.push({ em, tipo: 'todo', texto, jobId: j.id })
+    /* O instante chega em DOIS formatos, e comparar sem normalizar dá silêncio,
+       não erro: `feitoEm` é escrito pelo agente como texto ISO
+       ("2026-08-17T13:05:49.824Z") e `updatedAt` chega como número. Um texto
+       comparado com `>` contra número é sempre falso, então TODA tarefa fechada
+       sumia do "o que mudou". Medido em 17/08: 36 carimbos reais nesta sessão, e
+       a lista mostrava 1 marco, que era o único de origem numérica. */
+    for (const [texto, bruto] of Object.entries(j.feitoEm || {})) {
+      const em = instante(bruto)
+      if (em && em > desde) marcos.push({ em, tipo: 'todo', texto, jobId: j.id })
     }
-    const inicio = j.desde || j.createdAt
-    if (inicio > desde) marcos.push({ em: inicio, tipo: 'agente', texto: j.subject || '(sem assunto)', jobId: j.id })
-    if (j.status === 'done' && (j.updatedAt || 0) > desde) {
-      marcos.push({ em: j.updatedAt, tipo: 'entrega', texto: j.subject || '(sem assunto)', jobId: j.id })
+    const inicio = instante(j.desde || j.createdAt)
+    if (inicio && inicio > desde) marcos.push({ em: inicio, tipo: 'agente', texto: j.subject || '(sem assunto)', jobId: j.id })
+    const fim = instante(j.updatedAt)
+    if (j.status === 'done' && fim && fim > desde) {
+      marcos.push({ em: fim, tipo: 'entrega', texto: j.subject || '(sem assunto)', jobId: j.id })
     }
   }
   return marcos.sort((a, b) => a.em - b.em)
