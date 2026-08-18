@@ -1257,7 +1257,7 @@ Falta ele decidir, quando chegar a vez: onde essa tela mora (aba própria, ou
 dentro da aba de rotas que o CC-102 já esboça), e o quanto de detalhe cabe no
 celular (regra do CC-101 vale aqui também: celular primeiro).
 
-### CC-157 🔴 19/08 — a causa de "a sessão sumiu do painel": o sandbox deixou `~/.claude` só para leitura
+### CC-157 ✅ 19/08 — a sessão sumia do painel porque o sandbox trancou `~/.claude`, e agora ela tem abrigo
 
 Queixa dele em 19/08, sobre uma sessão trabalhando na `fibraessencia`:
 *"eu não estou vendo essa sessão que eu comecei disponível (…) ela não está
