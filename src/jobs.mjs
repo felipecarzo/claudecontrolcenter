@@ -593,11 +593,33 @@ export function writeMeta(id, patch) {
   }
   const next = mergeMeta(readJson(alvo.file, {}) || {}, patch)
   next.updatedAt = new Date().toISOString()
-  fs.mkdirSync(path.dirname(alvo.file), { recursive: true })
   // escrita atômica: nunca deixa o arquivo pela metade se o processo morrer
   const tmp = `${alvo.file}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(next, null, 2))
-  fs.renameSync(tmp, alvo.file)
+  try {
+    fs.mkdirSync(path.dirname(alvo.file), { recursive: true })
+    fs.writeFileSync(tmp, JSON.stringify(next, null, 2))
+    fs.renameSync(tmp, alvo.file)
+  } catch (e) {
+    /* CC-157, achado em 19/08: dentro do sandbox do Claude Code a pasta
+       `~/.claude` é somente leitura, e TODA sessão perde a capacidade de
+       reportar. O sintoma na tela é o pior possível, porque não é um erro:
+       o painel simplesmente não mostra a sessão, e quem olha conclui que o
+       agente está trabalhando por fora do sistema.
+
+       O que subia daqui era um stack trace de `EROFS` cru, que não diz o que
+       fazer. Falha com a causa e a saída escritas, porque a saída existe e é
+       de UMA linha: liberar a pasta na lista do sandbox. */
+    if (e?.code === 'EROFS' || e?.code === 'EACCES' || e?.code === 'EPERM') {
+      throw new Error(
+        `não deu para gravar o reporte em ${alvo.file}: a pasta está somente leitura para esta sessão (${e.code}).\n\n`
+        + 'Quase sempre é o sandbox do Claude Code: ele deixa ~/.claude só para leitura, e aí\n'
+        + 'nenhuma sessão consegue reportar ao painel. A sessão continua funcionando, e os hooks\n'
+        + 'também: o que se perde é a sessão APARECER no painel.\n\n'
+        + 'Saída: liberar a pasta na lista de escrita do sandbox (comando /sandbox no Claude Code).',
+      )
+    }
+    throw e
+  }
   return next
 }
 

@@ -232,6 +232,33 @@
   /* a barra de baixo só existe no estreito (modo aplicativo, 17/08). No monitor
      a navegação continua nas duas fileiras do topo, que é a ordem dele. */
   #app-bar { display: none; }
+
+  /* CC-156: a gaveta dos ajustes. Cobre a tela porque é uma escolha, não um
+     painel de leitura: enquanto está aberta, é o que ele está fazendo. */
+  .tab-grupos > .grupo-mais { color: var(--faint); }
+  .tab-grupos > .grupo-mais:hover { color: var(--fg); }
+  #gaveta { position: fixed; inset: 0; z-index: 60; display: flex;
+    align-items: flex-start; justify-content: center; padding: 8vh 16px 16px; }
+  #gaveta[hidden] { display: none; }
+  .gav-fundo { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 78%, transparent);
+    backdrop-filter: blur(3px); }
+  .gav-caixa { position: relative; width: min(560px, 100%); max-height: 84vh; overflow-y: auto;
+    background: var(--bg); border: 1px solid var(--faint); border-radius: 10px; padding: 18px 20px 22px; }
+  .gav-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    margin-bottom: 14px; }
+  .gav-topo h2 { margin: 0; font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--dim); font-weight: 600; }
+  .gav-x { border: 0; background: none; color: var(--dim); font-size: 15px; cursor: pointer;
+    padding: 4px 6px; margin: -4px -6px; }
+  .gav-x:hover { color: var(--fg); }
+  .gav-grupo + .gav-grupo { margin-top: 18px; }
+  .gav-grupo h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--faint); font-weight: 600; }
+  .gav-abas { display: flex; flex-wrap: wrap; gap: 6px; }
+  .gav-aba { border: 1px solid var(--faint); background: none; color: var(--fg); cursor: pointer;
+    border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 12.5px; min-height: 34px; }
+  .gav-aba:hover { border-color: var(--acento); color: var(--acento); }
+  .gav-aba .n { font-family: var(--mono); color: var(--faint); margin-left: 7px; font-size: 11px; }
   /* a aba dentro do grupo é secundária: sem sublinhado, marcada por fundo */
   .tab-abas .tab {
     border-bottom: 0; border-radius: 999px; padding: 5px 11px;
@@ -2599,6 +2626,12 @@
        @container. -->
   <nav id="app-bar" aria-label="grupos de tela"></nav>
 
+  <!-- CC-156: a gaveta dos ajustes. Fora do #main pela mesma razão do toast e
+       do editor de documento: `render()` reescreve aquele bloco a cada tique
+       do stream, e um painel sobreposto morreria debaixo do dedo dele. Dentro
+       do #painel porque é ele quem declara o @container. -->
+  <div id="gaveta" hidden></div>
+
   <!-- CC: auditoria de design em 18/08. Erro de rede caía num `alert()`
        nativo do navegador, o único ponto do produto inteiro em que a cópia
        cuidadosa em português some e vira caixa de sistema crua, exatamente no
@@ -2724,17 +2757,35 @@ const TABS = [
    de dedo, texto de 12px sozinho não se distingue de relance. São caracteres
    comuns, nunca fonte de ícone: dependência externa não sobrevive offline, e o
    painel inteiro funciona sem rede. */
+/* CC-156, 19/08: `gaveta: true` tira o grupo da fileira principal.
+ *
+ * Pedido dele, quando perguntado o que "redistribuição de funções" queria
+ * dizer: *"o que muda a cada segundo devia ficar separado do que é
+ * configuração"*. Até aqui os quatro grupos disputavam a mesma fileira em pé
+ * de igualdade, então ajuste que ele mexe uma vez por semana ocupava o mesmo
+ * espaço que a lista de agentes que muda sozinha a cada 2 segundos.
+ *
+ * O que fica na fileira é o que ele olha; o que vai para a gaveta é o que ele
+ * ajusta. A aba continua sendo a unidade real, e nada some: `?tab=` continua
+ * levando direto a qualquer uma delas, inclusive as de dentro da gaveta.
+ */
 const GRUPOS = [
   { id: 'agora', label: 'agora', ico: '◉', abas: ['projetos', 'agentes', 'todos', 'meu', 'escritorio'] },
   { id: 'custo', label: 'custo', ico: '◔', abas: ['tempo', 'graficos', 'preco'] },
-  { id: 'controle', label: 'controle', ico: '✦', abas: ['servidores', 'vps', 'hooks', 'bancada', 'rotinas', 'remoto'] },
-  { id: 'saber', label: 'saber', ico: '✎', abas: ['glossario', 'docs', 'agenda'] },
+  { id: 'controle', label: 'controle', ico: '✦', gaveta: true, abas: ['servidores', 'vps', 'hooks', 'bancada', 'rotinas', 'remoto'] },
+  { id: 'saber', label: 'saber', ico: '✎', gaveta: true, abas: ['glossario', 'docs', 'agenda'] },
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
 // painel sem nenhuma aba marcada.
 // Abre no backlog, nao na lista de agentes. Decisao dele em 16/08: a primeira
 // pergunta que ele faz e "em qual item do backlog estamos", e a tela de agentes
 // responde "quem esta trabalhando", que e a folha.
+/* CC-156: a gaveta está aberta agora? Estado de navegação do momento, não
+   preferência: nunca é guardado, porque abrir o painel já com um painel
+   sobreposto por cima seria abrir tampado. `?gaveta=1` existe para a captura
+   de tela, que não tem dedo para clicar. */
+let GAVETA_ABERTA = params.has('gaveta')
+
 let tab = params.get('tab') || localStorage.getItem('cc-tab') || 'projetos'
 if (!TABS.some((t) => t.id === tab)) tab = 'agentes'
 
@@ -2928,12 +2979,51 @@ function renderHeader() {
   /* Grupo que ficou sem nenhuma aba também some: a porta existiria para uma
      sala vazia. O grupo ATIVO nunca some, pela mesma razão da aba ativa. */
   const gruposVisiveis = GRUPOS.filter((g) => g.id === grupoAtivo.id || visiveis(g.abas).length)
-  const linhaGrupos = gruposVisiveis.map((g) => {
+
+  /* CC-156: a fileira leva só o que ele olha; o resto vive na gaveta.
+     O grupo ATIVO sobe para a fileira mesmo sendo de gaveta, senão a tela
+     aberta não teria como se mostrar na navegação. */
+  const naFileira = gruposVisiveis.filter((g) => !g.gaveta || g.id === grupoAtivo.id)
+  const naGaveta = gruposVisiveis.filter((g) => g.gaveta && g.id !== grupoAtivo.id)
+
+  const botaoGrupo = (g, classe = 'grupo') => {
     const n = soma(g)
-    return `<button class="grupo" data-grupo="${g.id}" aria-selected="${g.id === grupoAtivo.id}">
+    return `<button class="${classe}" data-grupo="${g.id}" aria-selected="${g.id === grupoAtivo.id}">
       ${g.label}${n ? `<span class="n">${n}</span>` : ''}
     </button>`
-  }).join('')
+  }
+  const linhaGrupos = naFileira.map((g) => botaoGrupo(g)).join('')
+    + (naGaveta.length
+      ? `<button class="grupo grupo-mais" data-gaveta="abrir" aria-expanded="${GAVETA_ABERTA}"
+           title="ajustes e referência">⋯ mais</button>`
+      : '')
+
+  /* A gaveta desenha os grupos que saíram da fileira, cada um com as abas
+     dentro: um toque escolhe, em vez de dois (abrir o grupo, depois a aba).
+     Fica fora do `#tabs` porque cobre a tela inteira, e o redesenho de 2s a
+     reescreveria por baixo do dedo dele. */
+  const gav = $('#gaveta')
+  if (gav) {
+    gav.hidden = !GAVETA_ABERTA
+    if (GAVETA_ABERTA) {
+      gav.innerHTML = `<div class="gav-fundo" data-gaveta="fechar"></div>
+        <div class="gav-caixa" role="dialog" aria-label="ajustes e referência">
+          <div class="gav-topo">
+            <h2>ajustes e referência</h2>
+            <button class="gav-x" data-gaveta="fechar" aria-label="fechar">✕</button>
+          </div>
+          ${naGaveta.map((g) => `<section class="gav-grupo">
+            <h3>${esc(g.label)}</h3>
+            <div class="gav-abas">${visiveis(g.abas)
+              .map((id) => TABS.find((t) => t.id === id)).filter(Boolean)
+              .map((t) => `<button class="gav-aba" data-tab="${t.id}">${esc(t.label)}${
+                counts[t.id] != null ? `<span class="n">${counts[t.id]}</span>` : ''}</button>`).join('')}</div>
+          </section>`).join('')}
+        </div>`
+    } else {
+      gav.innerHTML = ''
+    }
+  }
 
   const doGrupo = visiveis(grupoAtivo.abas)
     .map((id) => TABS.find((t) => t.id === id))
@@ -5393,6 +5483,7 @@ function trocarAba(id) {
   tab = id
   localStorage.setItem('cc-tab', tab)
   armed = null
+  GAVETA_ABERTA = false // CC-156: escolher uma tela fecha a gaveta, sempre
   render()
   carregarDaAba()
 }
@@ -8415,6 +8506,14 @@ document.addEventListener('click', async (e) => {
     armedNote = null
     renderNotas()
     return salvarNotas(true)
+  }
+
+  // CC-156: abrir e fechar a gaveta dos ajustes. Vem ANTES do handler de
+  // grupo: o botão "⋯ mais" não é um grupo, é a porta da gaveta.
+  const gavBtn = t.closest('[data-gaveta]')
+  if (gavBtn) {
+    GAVETA_ABERTA = gavBtn.dataset.gaveta === 'abrir'
+    return renderTabs()
   }
 
   // F11: clicar no grupo abre a primeira aba dele, e daí em diante a navegação

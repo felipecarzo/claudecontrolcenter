@@ -1257,6 +1257,54 @@ Falta ele decidir, quando chegar a vez: onde essa tela mora (aba própria, ou
 dentro da aba de rotas que o CC-102 já esboça), e o quanto de detalhe cabe no
 celular (regra do CC-101 vale aqui também: celular primeiro).
 
+### CC-157 🔴 19/08 — a causa de "a sessão sumiu do painel": o sandbox deixou `~/.claude` só para leitura
+
+Queixa dele em 19/08, sobre uma sessão trabalhando na `fibraessencia`:
+*"eu não estou vendo essa sessão que eu comecei disponível (…) ela não está
+disparando os hooks, é como se ela tivesse funcionando por fora do cockpit e
+de todo o sistema que a gente criou (…) totalmente offline do nosso sistema"*.
+
+**Medido, e a causa é uma só:** dentro do sandbox do Claude Code, `~/.claude`
+está montada somente para leitura. Reproduzido com o id de sessão real desta
+própria sessão:
+
+```
+Error: EROFS: read-only file system, open
+  '/home/claudedev/.claude/control-center-sessoes/<id>.json.tmp'
+```
+
+Confirmado que não é permissão de disco: a pasta é `drwxrwxr-x`, dono
+`claudedev`, e um `touch` na mesma pasta **fora** do sandbox escreve na hora.
+Leitura continua funcionando; só a escrita cai.
+
+**O que isso derruba, medido um a um** (todos em `~/.claude`): o reporte da
+sessão (`control-center-sessoes/`), o interruptor de travas por projeto
+(`control-center.json`), o histórico que sobrevive à limpeza do CLI, o bloco
+de notas, e a captura de uso do plano. O painel em si **não** é afetado: ele
+roda como serviço do sistema, fora do sandbox, e responde normal.
+
+**Duas correções de leitura importantes na queixa dele:**
+
+1. **Os hooks ESTÃO disparando.** Contados no transcrito real da sessão da
+   `fibraessencia`: 24 travas diferentes apareceram, 32 vezes só a do
+   travessão. O que falha é a sessão APARECER no painel, e a ausência dela na
+   tela é indistinguível de "nada está rodando" para quem olha.
+2. **O framework nunca esteve ligado na `fibraessencia`**, e isso não é
+   regressão. Varridos os projetos: nenhum dos seis conferidos tem
+   `.framework/estado.json`; só o `proj_controlcenter` tem. O mesmo vale para
+   o quadro de rotas (só `inovallbond` e este projeto) e para o protocolo do
+   painel no `CLAUDE.md` do projeto (nenhum tem, porque ele mora no global).
+
+**Feito agora:** a falha de escrita deixou de subir como stack trace cru e
+passa a dizer a causa e a saída em uma frase. Era o pior tipo de erro para
+diagnosticar, porque quem lia o `EROFS` não tinha como ligar aquilo a "minha
+sessão sumiu do painel".
+
+**Falta ele decidir (é risco que só ele assume):** liberar `~/.claude` na
+lista de escrita do sandbox, pelo comando `/sandbox` do Claude Code. Enquanto
+não for liberado, nenhuma sessão reporta, e o painel só mostra o que já
+estava lá antes da última gravação (18/08 21:59, medido).
+
 ### CC-156 ⏸ direção escolhida, aguardando ordem de construir: o redesenho da tela
 
 Ele rejeitou os 5 ajustes pontuais da auditoria de design (CC-152) e pediu
