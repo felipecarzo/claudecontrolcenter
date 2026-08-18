@@ -51,115 +51,26 @@
  *   node recados.mjs quem [--dir .]                 sessões vistas neste projeto
  *
  * `para` aceita o id curto de outra sessão, ou `todos`.
+ *
+ * ## Motor puro em `src/recados.mjs`
+ *
+ * `ler`, `gravar`, `enviar`, `pendentes`, `log` e `TIPOS` moram lá, não aqui.
+ * Achado em 18/08, tentando ler o log deste arquivo do PAINEL: este arquivo tem
+ * código de topo que interpreta `process.argv` e chama `process.exit()` sem
+ * condição nenhuma — importá-lo de dentro do painel derrubava QUALQUER comando
+ * do `cc.mjs`, porque o `argv` de quem importa nunca é `enviar`/`caixa`/etc, e o
+ * arquivo saía sozinho no meio do carregamento. O painel importa
+ * `src/recados.mjs`; este arquivo continua sendo a única porta de entrada para
+ * quem fala com ele por hook ou por terminal.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import {
+  TIPOS, acharRaiz, enviar, ler, log, marcarEntregue, pendentes, textoDoRecado,
+} from '../../src/recados.mjs'
+
+export { TIPOS, acharRaiz, enviar, ler, log, marcarEntregue, pendentes, textoDoRecado }
 
 const liberar = () => process.exit(0)
-
-/** Tipos de recado, e o que cada um pede de quem recebe. Poucos de propósito:
- *  lista longa vira taxonomia que ninguém lembra na hora de mandar. */
-export const TIPOS = {
-  aviso: {
-    rotulo: 'aviso',
-    acao: 'Leia e siga o que estava fazendo. Nada a responder.',
-  },
-  vou_mexer: {
-    rotulo: 'vou mexer num arquivo seu',
-    acao: 'Se isso atrapalha o que você está fazendo, responda com `pare`; '
-      + 'se não atrapalha, responda com `liberado` e siga.',
-  },
-  pare: {
-    rotulo: 'PARE e me responda',
-    acao: 'Pare o que está fazendo agora, responda, e só então continue.',
-  },
-  liberado: {
-    rotulo: 'pode mexer, não me atrapalha',
-    acao: 'Você está liberado para o que pediu. Siga.',
-  },
-  terminei: {
-    rotulo: 'terminei, pode ir',
-    acao: 'O arquivo está livre. Se você estava esperando por isto, siga.',
-  },
-}
-
-const arquivoDe = (raiz) => join(raiz, 'docs', '.recados.json')
-
-/** Sobe até achar a raiz do projeto (a que tem o quadro de rotas). */
-export function acharRaiz(inicio) {
-  let dir = resolve(inicio || process.cwd())
-  for (let i = 0; i < 8; i++) {
-    if (existsSync(join(dir, 'docs', 'ROTAS-ATIVAS.md'))) return dir
-    const pai = dirname(dir)
-    if (pai === dir) break
-    dir = pai
-  }
-  return null
-}
-
-export function ler(raiz) {
-  try { return JSON.parse(readFileSync(arquivoDe(raiz), 'utf8')) } catch { return { recados: [] } }
-}
-
-/** Escrita atômica, o padrão do projeto: nunca deixar o arquivo pela metade. */
-export function gravar(raiz, dados) {
-  const arq = arquivoDe(raiz)
-  mkdirSync(dirname(arq), { recursive: true })
-  const tmp = `${arq}.tmp`
-  writeFileSync(tmp, JSON.stringify(dados, null, 1))
-  renameSync(tmp, arq)
-}
-
-const curto = (id) => String(id || '').slice(0, 8)
-
-export function enviar(raiz, { de, para, tipo, texto, arquivo = null }) {
-  if (!TIPOS[tipo]) throw new Error(`tipo desconhecido: ${tipo}. Use ${Object.keys(TIPOS).join(', ')}`)
-  const dados = ler(raiz)
-  const recado = {
-    id: `${curto(de)}-${Date.now().toString(36)}`,
-    de: curto(de),
-    para: para === 'todos' ? 'todos' : curto(para),
-    tipo,
-    texto: String(texto || '').slice(0, 600),
-    arquivo,
-    em: Date.now(),
-    entregue: [],
-  }
-  dados.recados = [...(dados.recados || []), recado].slice(-300)
-  gravar(raiz, dados)
-  return recado
-}
-
-/** O que ainda não foi entregue a esta sessão. Recado dela mesma não conta. */
-export function pendentes(raiz, eu) {
-  const meu = curto(eu)
-  return (ler(raiz).recados || []).filter((r) => r.de !== meu
-    && (r.para === meu || r.para === 'todos')
-    && !(r.entregue || []).includes(meu))
-}
-
-export function marcarEntregue(raiz, eu, ids) {
-  const meu = curto(eu)
-  const dados = ler(raiz)
-  for (const r of dados.recados || []) {
-    if (ids.includes(r.id)) r.entregue = [...new Set([...(r.entregue || []), meu])]
-  }
-  gravar(raiz, dados)
-}
-
-/** CC-85: o log. Recente primeiro, porque a pergunta é sempre "o que houve
- *  agora?" e não "o que houve no começo". */
-export const log = (raiz, n = 30) => [...(ler(raiz).recados || [])].reverse().slice(0, n)
-
-const textoDoRecado = (r) => {
-  const quando = new Date(r.em).toISOString().slice(11, 16)
-  return [
-    `[${quando}] ${r.de} → ${r.para}: ${TIPOS[r.tipo]?.rotulo || r.tipo}`,
-    r.arquivo ? `  arquivo: ${r.arquivo}` : '',
-    `  ${r.texto}`,
-    `  → ${TIPOS[r.tipo]?.acao || ''}`,
-  ].filter(Boolean).join('\n')
-}
 
 /* ------------------------------- hook -------------------------------
    Sem argumento, é hook de PreToolUse: lê a entrada do Claude Code, entrega

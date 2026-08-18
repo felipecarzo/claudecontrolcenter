@@ -1382,6 +1382,78 @@ assert.match(fs.readFileSync(rotiaR1.arquivo, 'utf8'), /NÃO PODE SUMIR/, 'insta
 for (const d of [tmpRotia, tmpSrc, tmpVazio]) fs.rmSync(d, { recursive: true, force: true })
 
 // --- opencode: disparo, heurística, verificação — sem chamar o opencode de verdade ---
+/* --- CC-134: o motor de recados, e a razão dele estar em src/, não em hooks/ ---
+
+   `hooks/routia/recados.mjs` tem código de topo que chama `process.exit()`
+   sem condição: importar aquele arquivo do painel derrubava (ou travava,
+   esperando stdin) qualquer comando do `cc.mjs`. `src/recados.mjs` existe para
+   que o painel tenha o que importar sem esse risco — e este bloco é a prova de
+   que o motor puro continua funcionando depois da separação. */
+{
+  const R = await import('./src/recados.mjs')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-recados-'))
+  try {
+    assert.deepEqual(R.ler(raiz).recados, [], 'projeto sem arquivo ainda: lista vazia, nunca erro')
+    assert.deepEqual(R.log(raiz), [])
+    assert.deepEqual(R.pendentes(raiz, 'sessao-a'), [])
+
+    const r1 = R.enviar(raiz, { de: 'sessaoaaaa', para: 'sessaobbbb', tipo: 'vou_mexer', texto: 'vou mexer no ui.html', arquivo: 'src/ui.html' })
+    assert.equal(r1.de, 'sessaoaa') // curto: 8 caracteres, sempre
+    assert.equal(r1.para, 'sessaobb')
+    assert.throws(() => R.enviar(raiz, { de: 'a', para: 'b', tipo: 'tipo-que-nao-existe', texto: 'x' }),
+      /tipo desconhecido/, 'tipo inválido não pode virar recado gravado')
+
+    const r2 = R.enviar(raiz, { de: 'sessaoaaaa', para: 'todos', tipo: 'aviso', texto: 'oi geral' })
+
+    assert.deepEqual(R.pendentes(raiz, 'sessaoaaaa'), [], 'quem mandou não recebe o próprio recado')
+    const paraB = R.pendentes(raiz, 'sessaobbbb')
+    assert.equal(paraB.length, 2, 'o direto e o de todos, os dois chegam')
+
+    R.marcarEntregue(raiz, 'sessaobbbb', [r1.id])
+    const depois = R.pendentes(raiz, 'sessaobbbb')
+    assert.deepEqual(depois.map((x) => x.id), [r2.id], 'só o já entregue some da caixa, o resto continua')
+
+    const l = R.log(raiz, 10)
+    assert.equal(l.length, 2)
+    assert.equal(l[0].id, r2.id, 'o log vem do mais recente para o mais antigo')
+
+    assert.match(R.textoDoRecado(r1), /vou mexer num arquivo seu/, 'o rótulo do tipo entra na renderização')
+  } finally {
+    fs.rmSync(raiz, { recursive: true, force: true })
+  }
+}
+
+/* --- CC-134: a agregação que o painel faz em /api/recados ---
+
+   A rota junta o log de vários projetos e adiciona o campo `projeto` a cada
+   linha, ordenado do mais recente para o mais antigo. É lógica pequena o
+   bastante para não merecer função própria em `web.mjs` — mas pequena não é
+   sinônimo de óbvia: reproduzida aqui, contra dois projetos de mentira, para
+   garantir que a ordenação e o campo `projeto` não se percam numa próxima
+   edição daquele arquivo. */
+{
+  const R = await import('./src/recados.mjs')
+  const p1 = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-recados-p1-'))
+  const p2 = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-recados-p2-'))
+  try {
+    R.enviar(p1, { de: 'a', para: 'todos', tipo: 'aviso', texto: 'do projeto um' })
+    await new Promise((r) => { setTimeout(r, 5) })
+    R.enviar(p2, { de: 'b', para: 'todos', tipo: 'aviso', texto: 'do projeto dois' })
+
+    const agregado = [
+      ...R.log(p1, 300).map((r) => ({ ...r, projeto: 'p1' })),
+      ...R.log(p2, 300).map((r) => ({ ...r, projeto: 'p2' })),
+    ].sort((a, b) => b.em - a.em)
+
+    assert.equal(agregado.length, 2)
+    assert.equal(agregado[0].projeto, 'p2', 'o mais recente vem primeiro, entre projetos diferentes')
+    assert.equal(agregado[1].projeto, 'p1')
+  } finally {
+    fs.rmSync(p1, { recursive: true, force: true })
+    fs.rmSync(p2, { recursive: true, force: true })
+  }
+}
+
 const oc = await import('./src/opencode.mjs')
 
 // heurística de viabilidade (réplica simplificada da tabela da skill)

@@ -986,7 +986,7 @@ fechar: uma base de caminho longo ocupava cinco linhas no telefone e empurrava
 o formulário para fora, e o campo que cresce na horizontal abria um buraco de
 150px na vertical quando a tela empilha.
 
-### CC-134: o que os agentes conversaram entre si, registrado e visível
+### CC-134 ✅ 18/08 — o que os agentes conversaram entre si, registrado e visível
 
 Dele em 15/08, antes de existirem duas sessões trabalhando juntas:
 
@@ -1004,6 +1004,32 @@ registrado em lugar nenhum: some com a sessão.
 
 Falta o registro que ele descreveu, e o dado existe (as mensagens entre sessões
 passam pelo painel). Ordenável por projeto, por agente e por hora.
+
+#### ✅ Feito em 18/08
+
+Botão "recados entre agentes" na aba de agentes. Tabela com filtro de projeto e
+de agente, e ordenação por clique em qualquer coluna, crescente ou decrescente.
+Varre todos os projetos, sob clique, nunca no tique de 2 segundos.
+
+O motor que lê e grava os recados foi separado do hook que o Felipe já usava
+(`hooks/routia/recados.mjs`) para `src/recados.mjs`. Não é organização por
+gosto: o hook tem código que roda sozinho ao ser carregado, e importá-lo de
+dentro do painel derrubava o `cc.mjs` inteiro, achado ao tentar ler o log pelo
+painel pela primeira vez. Agora o hook importa de `src/recados.mjs`, não o
+contrário, e o gate tem teste garantindo que o motor não regride sozinho.
+
+Provado no navegador, nas duas larguras, com três recados de verdade entre
+projetos diferentes: a ordem por padrão é do mais recente, filtrar por projeto
+funciona, ordenar por quem mandou muda a lista, e nada vaza de lado no
+telefone.
+
+**Achado escrevendo o teste, e corrigido na origem**: dois recados da mesma
+sessão no mesmo milissegundo geravam o mesmo id, e quem confirma entrega
+(`marcarEntregue`) casa por igualdade de id — então os dois eram marcados como
+entregues juntos, mesmo sendo mensagens diferentes. Não era defeito da tela
+nova, era um id fraco de sempre; só apareceu porque o gate rodou rápido o
+bastante para dois envios caírem no mesmo milissegundo, 2 a cada 3 vezes. Um
+sufixo aleatório resolveu, mesmo padrão já usado em `opencode.mjs`.
 
 ### CC-135: o modo sugestivo tem que SUGERIR
 

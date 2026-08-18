@@ -1768,6 +1768,34 @@
   .rm-linha:hover { background: var(--surface); }
   .rm-nome { font-size: 13px; }
 
+  /* CC-134: recados entre agentes. Colunas fixas na cabeça e na linha, na
+     mesma ordem, para o clique de ordenar apontar pro dado certo. O texto é a
+     coluna que cresce: é o campo que ele veio ler. */
+  .rd { margin-top: 10px; }
+  .rd-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .rd-filtros select {
+    background: var(--bg); color: var(--fg); border: 1px solid var(--faint);
+    border-radius: 6px; padding: 5px 8px; font-size: 12px;
+  }
+  .rd-cab, .rd-linha {
+    display: grid; grid-template-columns: 110px 120px 160px 120px 1fr; gap: 10px; align-items: center;
+  }
+  .rd-cab { margin-bottom: 4px; }
+  .rd-cab .btn.mini { justify-self: start; font-size: 11px; padding: 3px 7px; }
+  .rd-lista { display: grid; gap: 1px; max-height: 420px; overflow-y: auto; }
+  .rd-linha { padding: 6px 4px; border-bottom: 1px solid var(--line); font-size: 12px; }
+  .rd-linha:hover { background: var(--surface); }
+  .rd-texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rd-texto:hover { white-space: normal; overflow: visible; }
+  .rd-texto code { font-size: 10.5px; color: var(--dim); }
+  @container (max-width: 640px) {
+    /* A grade de 5 colunas não cabe no telefone, mas ordenar continua
+       precisando existir ali: vira botões que quebram linha, em vez de sumir. */
+    .rd-cab { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rd-linha { grid-template-columns: 1fr; gap: 2px; padding: 8px 6px; }
+    .rd-linha > span:nth-child(1) { order: -1; font-size: 10.5px; }
+  }
+
   /* CC-24: digest semanal, painel simples acima da lista de projetos. */
   .dg-cab { margin-bottom: 14px; }
   .dg-lista { display: grid; gap: 10px; margin-top: 10px; max-width: 900px; }
@@ -3276,6 +3304,96 @@ async function carregarAgentesFora() {
   render()
 }
 
+/* ============ CC-134: o que os agentes conversaram entre si ============
+
+   Pedido dele em 15/08, antes de duas sessões dividirem um arquivo de verdade:
+   *"pode ter um registro também do que eles fazem (…) por projeto, por hora,
+   poder ver em ordem crescente, decrescente, separar por projeto, separar por
+   agentes"*.
+
+   A primeira metade (o recado em si, com a interrupção de verdade) já existia
+   desde o CC-84. Faltava o registro sobrevivendo à sessão, que hoje some
+   junto com ela. Aqui é só a LEITURA: uma tabela, ordenável por clique no
+   cabeçalho, com filtro de projeto e de agente. São os quatro jeitos que ele
+   pediu de olhar o mesmo dado, sem duplicar a busca no servidor. */
+let RECADOS = null // null = fechado; 'carregando'; ou a lista
+let RECADOS_TIPOS = null
+let recadosOrdem = { campo: 'em', desc: true }
+let recadosFiltro = { projeto: '', agente: '' }
+
+async function alternarRecados() {
+  if (RECADOS) { RECADOS = null; return render() }
+  RECADOS = 'carregando'
+  render()
+  try {
+    const d = await (await fetch('/api/recados')).json()
+    RECADOS = d.recados || []
+    RECADOS_TIPOS = d.tipos || {}
+  } catch {
+    RECADOS = []
+  }
+  render()
+}
+
+function ordenarPorRecados(campo) {
+  recadosOrdem = recadosOrdem.campo === campo
+    ? { campo, desc: !recadosOrdem.desc }
+    : { campo, desc: true }
+  render()
+}
+
+function viewRecados() {
+  if (RECADOS === 'carregando') return '<p class="dim">lendo os recados de todos os projetos…</p>'
+  if (!RECADOS) return ''
+  if (!RECADOS.length) return '<p class="dim">nenhuma sessão trocou recado ainda, em projeto nenhum</p>'
+
+  const projetos = [...new Set(RECADOS.map((r) => r.projeto))].sort()
+  const agentes = [...new Set(RECADOS.flatMap((r) => [r.de, r.para]))].filter((a) => a !== 'todos').sort()
+
+  const filtrados = RECADOS.filter((r) =>
+    (!recadosFiltro.projeto || r.projeto === recadosFiltro.projeto)
+    && (!recadosFiltro.agente || r.de === recadosFiltro.agente || r.para === recadosFiltro.agente))
+
+  const { campo, desc } = recadosOrdem
+  const pega = (r) => (campo === 'projeto' ? r.projeto : campo === 'de' ? r.de : campo === 'tipo' ? r.tipo : r.em)
+  const ordenados = [...filtrados].sort((a, b) => {
+    const x = pega(a); const y = pega(b)
+    const cmp = typeof x === 'number' ? x - y : String(x).localeCompare(String(y))
+    return desc ? -cmp : cmp
+  })
+
+  const coluna = (id, rotulo) => `<button class="btn mini" data-recados-ordenar="${id}">${esc(rotulo)}${
+    campo === id ? (desc ? ' ▾' : ' ▴') : ''}</button>`
+
+  return `<div class="rd">
+    <div class="rd-filtros">
+      <select data-recados-filtro="projeto">
+        <option value="">todos os projetos</option>
+        ${projetos.map((p) => `<option value="${esc(p)}"${p === recadosFiltro.projeto ? ' selected' : ''}>${esc(p)}</option>`).join('')}
+      </select>
+      <select data-recados-filtro="agente">
+        <option value="">todos os agentes</option>
+        ${agentes.map((a) => `<option value="${esc(a)}"${a === recadosFiltro.agente ? ' selected' : ''}>${esc(a)}</option>`).join('')}
+      </select>
+      <span class="dim">${filtrados.length} de ${RECADOS.length}</span>
+    </div>
+    <div class="rd-cab">${coluna('em', 'quando')}${coluna('projeto', 'projeto')}${coluna('de', 'quem')}${coluna('tipo', 'tipo')}</div>
+    <div class="rd-lista">
+      ${ordenados.map((r) => {
+    const quando = new Date(r.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    const tipo = RECADOS_TIPOS?.[r.tipo]?.rotulo || r.tipo
+    return `<div class="rd-linha">
+        <span class="dim">${esc(quando)}</span>
+        <span>${esc(r.projeto)}</span>
+        <span><b>${esc(r.de)}</b> → ${esc(r.para)}</span>
+        <span class="dim">${esc(tipo)}</span>
+        <span class="rd-texto">${esc(r.texto)}${r.arquivo ? ` <code>${esc(r.arquivo)}</code>` : ''}</span>
+      </div>`
+  }).join('')}
+    </div>
+  </div>`
+}
+
 function viewAtalhosFora() {
   if (!AGENTES_FORA?.length) return ''
   return `<div class="atalhos-fora">
@@ -3422,6 +3540,10 @@ function viewAgentes(jobs) {
 
   return cabecaDaTela('Quem está trabalhando agora?', vdAg, espera ? 'atencao' : 'bom')
     + viewAtalhosFora()
+    + `<div class="dg-cab">
+        <button class="btn" data-recados-abrir>${RECADOS ? 'fechar recados' : 'recados entre agentes'}</button>
+        ${viewRecados()}
+      </div>`
     + barra + (corpo || '<div class="empty">nenhum agente no filtro</div>')
 }
 
@@ -7901,6 +8023,9 @@ document.addEventListener('change', (e) => {
 
   const hk = e.target.closest('[data-hk-toggle]')
   if (hk) return alternarHook(hk.dataset.hkToggle, hk.checked)
+
+  const rdFiltro = e.target.closest('[data-recados-filtro]')
+  if (rdFiltro) { recadosFiltro[rdFiltro.dataset.recadosFiltro] = rdFiltro.value; return render() }
 })
 
 // clicar fora fecha o popover — sem isso ficaria aberto até um clique em cima
@@ -8179,6 +8304,11 @@ document.addEventListener('click', async (e) => {
     const alvo = g.abas.includes(tab) ? tab : (disponiveis[0] || g.abas[0])
     return trocarAba(alvo)
   }
+
+  // CC-134: o log de recados entre agentes
+  if (t.closest('[data-recados-abrir]')) return alternarRecados()
+  const rdOrd = t.closest('[data-recados-ordenar]')
+  if (rdOrd) return ordenarPorRecados(rdOrd.dataset.recadosOrdenar)
 
   // CC-149: escolher projeto e agente juntos, do mesmo jeito que o Remote Control
   const agEscolher = t.closest('[data-agente-escolher]')

@@ -74,6 +74,7 @@ import {
   respostasDe as respostasEntrevista, textoDaPergunta,
 } from './entrevista.mjs'
 import { criar as criarProjeto, gruposDe } from './novoProjeto.mjs'
+import { log as logRecados, TIPOS as TIPOS_RECADO } from './recados.mjs'
 import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
@@ -885,6 +886,29 @@ function handler(req, res) {
     const raiz = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
     if (!raiz) return send(res, 200, { existe: false, ligado: false, semPasta: true })
     return send(res, 200, { raiz, ...retratoEntrevista(raiz) })
+  }
+
+  /* CC-134: o que os agentes conversaram entre si, registrado e visível.
+     Pedido dele em 15/08, antes de duas sessões trabalharem juntas de verdade:
+     um log "por projeto, por hora, poder ver em ordem crescente, decrescente,
+     separar por projeto, separar por agentes". A ordenação e os filtros são
+     do lado do navegador (a mesma regra da tabela de jobs, que já ordena por
+     clique); aqui só a varredura, que é o lado caro.
+
+     Sem `projeto`, varre TODOS os conhecidos, igual à aba de servidores: são
+     leituras de JSON pequeno, uma por projeto, nunca no tique de 2s. */
+  if (url.pathname === '/api/recados') {
+    const alvo = url.searchParams.get('projeto')
+    const raizes = alvo
+      ? [cwdDoProjeto(url.searchParams.get('cwd'), alvo)].filter(Boolean)
+      : findProjects()
+    const todos = []
+    for (const raiz of raizes) {
+      const nome = path.basename(raiz)
+      for (const r of logRecados(raiz, 300)) todos.push({ ...r, projeto: nome })
+    }
+    todos.sort((a, b) => b.em - a.em)
+    return send(res, 200, { recados: todos, tipos: TIPOS_RECADO, at: Date.now() })
   }
 
   // CC-23: o que aconteceu num projeto, derivado do histórico já guardado —
