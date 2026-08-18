@@ -27,6 +27,7 @@
 
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 /** Libera e encerra. Todo caminho de erro passa por aqui. */
 function liberar() { process.exit(0) }
@@ -265,7 +266,82 @@ if (donoDoArquivo) {
 
 // Uma rota vale se está ocupada E carrega o id desta sessão.
 const marcada = linhasDeRota(texto).some(l => l.includes('🔴') && l.includes(marca))
-if (marcada) liberar()
+if (marcada) {
+  const aviso = await avisoDeVizinhanca(achado.raiz, relBarra, texto, marca).catch(() => '')
+  if (aviso) {
+    process.stdout.write(`${JSON.stringify({
+      hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: aviso },
+    })}\n`)
+  }
+  liberar()
+}
+
+/**
+ * CC-140, primeira fatia: aviso de VIZINHANÇA — nunca trava.
+ *
+ * O quadro protege o arquivo DECLARADO, e o furo real é o arquivo que ninguém
+ * declarou mas que o meu depende de, ou que depende do meu. Aconteceu em
+ * 17/08 sem custo por sorte: um campo novo em `web.mjs` alimentava a tela que
+ * outra sessão estava escrevendo, e nenhum mecanismo avisou.
+ *
+ * Só calcula o grafo quando pode valer a pena — alguma OUTRA rota já
+ * reivindicou arquivo com 📁 — porque mapear o projeto tem custo (site deste
+ * repositório: ~130ms) e a maioria das edições não tem ninguém para avisar.
+ * Falha aberta, como todo hook daqui: qualquer erro devolve string vazia e a
+ * edição segue normal, sem aviso.
+ *
+ * Sempre AVISA, nunca bloqueia: a metáfora tem topologia que muda a cada
+ * commit (o próprio CC-140 registra isso), e travar em cima de um grafo
+ * aproximado seria pior que o problema que ele resolve.
+ *
+ * ⚠️ **`dependencias.mjs` é código do cockpit, não do projeto protegido.**
+ * Este hook roda em QUALQUER projeto com quadro (não só neste repositório), e
+ * a instalação global fica achatada em `~/.claude/hooks/` — `../../src/...`
+ * resolveria certo dentro do repositório, mas erra por dois níveis quando
+ * copiado ali. Mesmo achado do `acharCC.mjs` (18/08): reusa ele para achar o
+ * `cc.mjs` desta máquina e deriva o caminho de `dependencias.mjs` a partir
+ * dele, em vez de um `../../` fixo que só serve a uma das duas localizações.
+ */
+async function avisoDeVizinhanca(raiz, relBarra, texto, marca) {
+  const outrasComArquivo = linhasDeRota(texto)
+    .filter((l) => l.includes('🔴') && !l.includes(marca) && (arquivosDaLinha(l) || []).length)
+  if (!outrasComArquivo.length) return ''
+
+  const D = await importDependencias()
+  if (!D) return ''
+  const grafo = D.mapear(raiz)
+  const impacto = D.impactoDe(grafo, relBarra, { profundidade: 1 })
+  const vizinhos = new Set([...impacto.diretos, ...(grafo.usa.get(relBarra) || [])])
+  if (!vizinhos.size) return ''
+
+  const achadas = []
+  for (const linha of outrasComArquivo) {
+    const alvos = arquivosDaLinha(linha) || []
+    const bate = [...vizinhos].filter((v) => alvos.some((a) => cobre(a, v)))
+    if (bate.length) {
+      const nome = (linha.match(/`([^`]+)`/) || [])[1] || 'outra rota'
+      achadas.push(`${nome}: ${bate.join(', ')}`)
+    }
+  }
+  if (!achadas.length) return ''
+
+  return `VIZINHANÇA OCUPADA — ${relBarra} tem ligação direta com arquivo(s) que outra rota está mexendo agora:\n`
+    + achadas.map((a) => `  · ${a}`).join('\n')
+    + '\nNão bloqueia: é aviso, não posse. Se a sua mudança troca o formato que o outro lado espera '
+    + '(nome de campo, formato de retorno), avise pelo recado do Routia antes de seguir.'
+}
+
+/** Acha `src/dependencias.mjs` do cockpit nesta máquina, a partir do `cc.mjs`
+ *  que o `acharCC.mjs` já sabe localizar. `null` se não achar nenhum dos
+ *  dois — falha aberta, o chamador trata como "sem aviso a dar". */
+async function importDependencias() {
+  try {
+    const { acharCC } = await import('./acharCC.mjs')
+    const cc = acharCC()
+    if (!cc) return null
+    return await import(pathToFileURL(join(dirname(cc), 'src', 'dependencias.mjs')).href)
+  } catch { return null }
+}
 
 const rotas = rotasDisponiveis(texto)
 const linhasOcupadas = linhasDeRota(texto).filter(l => l.includes('🔴'))

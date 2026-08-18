@@ -34,7 +34,21 @@ pastas-controladas: [apps, tools]
 | `dona-tabela` | 🔴 ocupada | dddd8888 — tabela 📁 apps/tabela.js | hoje |
 | `back` | 🔴 ocupada | beef5678 — dados 📁 apps/ui.html#renderTabs apps/web.mjs | hoje |
 | `repetido` | 🔴 ocupada | eeee2222 — tres arquivos 📁 apps/um.mjs 📁 apps/dois.mjs 📁 apps/tres.mjs | hoje |
+| `base-owner` | 🔴 ocupada | ffff4444 — a base 📁 apps/base.mjs | hoje |
 QUADRO
+
+# CC-140, aviso de vizinhança: precisa de import DE VERDADE no disco, porque
+# quem calcula é o dependencias.mjs lendo arquivo real, não o texto do quadro.
+cat > "$REPO/apps/base.mjs" <<'BASE'
+export const valor = 1
+BASE
+cat > "$REPO/apps/consumidor.mjs" <<'CONSUMIDOR'
+import { valor } from './base.mjs'
+export const dobro = valor * 2
+CONSUMIDOR
+cat > "$REPO/apps/solitario.mjs" <<'SOLITARIO'
+export const nada = 0
+SOLITARIO
 
 caso() {
   local nome="$1" esperado="$2" json="$3"
@@ -113,5 +127,43 @@ caso "entrada vazia (hook nao pode travar por bug proprio)" "libera" ""
 
 caso "sem file_path" "libera" \
   "{\"session_id\":\"abcd1234-ffff\",\"tool_input\":{}}"
+
+# CC-140, primeira fatia: aviso de vizinhança nunca trava, só avisa.
+casoAviso() {
+  local nome="$1" quer="$2" trecho="$3" json="$4"
+  local saida
+  saida=$(echo "$json" | node "$HOOK" 2>&1)
+  local codigo=$?
+  local achou=nao; echo "$saida" | grep -qF "$trecho" && achou=sim
+  if [ $codigo -ne 0 ]; then
+    echo "  FALHA $nome (aviso de vizinhanca nao pode bloquear, saiu $codigo)"
+    FALHOU=1
+  elif [ "$achou" = "$quer" ]; then
+    echo "  ok   $nome"
+  else
+    echo "  FALHA $nome (esperava achar=$quer para \"$trecho\")"
+    echo "$saida" | head -4
+    FALHOU=1
+  fi
+}
+
+# `aaaa1111` (rota `front`) tem rota própria e não reivindicou `consumidor.mjs`:
+# libera. `consumidor.mjs` importa `base.mjs`, que é de outra rota (`base-owner`)
+# — o aviso tem que aparecer, e o processo tem que sair 0 mesmo assim.
+casoAviso "vizinhanca ocupada: importa arquivo de outra rota" "sim" "base-owner" \
+  "{\"session_id\":\"aaaa1111-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/consumidor.mjs\"}}"
+
+# arquivo sem ligação com nada reivindicado: nenhum aviso, e nenhum custo pago
+# além do de sempre.
+casoAviso "sem vizinhanca: arquivo solto nao gera aviso" "nao" "VIZINHANÇA" \
+  "{\"session_id\":\"aaaa1111-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/solitario.mjs\"}}"
+
+# quando NINGUÉM mais reivindicou arquivo nenhum, o atalho de custo entra: sem
+# outra rota com 📁, nem o grafo chega a ser calculado. Vale como prova
+# indireta: se o atalho quebrasse e o cálculo rodasse sempre, o teste acima
+# ("sem vizinhanca") ainda passaria — o que garante o atalho é a ausência de
+# qualquer aviso aqui, no projeto sem quadro nenhum reivindicando nada.
+casoAviso "projeto sem quadro nao aciona a vizinhanca" "nao" "VIZINHANÇA" \
+  "{\"session_id\":\"abcd1234-ffff\",\"tool_input\":{\"file_path\":\"$SEM_QUADRO/apps/arquivo.ts\"}}"
 
 exit $FALHOU

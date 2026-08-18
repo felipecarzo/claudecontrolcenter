@@ -1,8 +1,8 @@
 ---
 tags: [plano, framework]
 tipo: plano
-atualizado: 2026-08-14
-estado: F1, F1b e F3 no ar. F2 embutido no imperativo. Faltam F4 a F11
+atualizado: 2026-08-18
+estado: dezesseis das dezessete etapas no ar. Só falta F12 (filtro de confidencialidade local)
 resumo: O caminho para o framework de engenharia sair de gate de MVP solto e virar sistema. Nasceu de um erro real, inofensivo, em que a IA implementou sem pedido durante uma conversa de conceito.
 termos:
   modo diálogo: decidimos em prosa e a IA interpreta. É o fluxo de hoje
@@ -176,13 +176,17 @@ moldura.
 (agente de background não tem a quem perguntar, para e espera ou decide sozinho),
 e o teto é quatro perguntas por vez.
 
-### F2. O ponto onde o humano aprova (risco 1)
+### F2 ✅ embutido no F1 — O ponto onde o humano aprova (risco 1)
 
 Um lugar minúsculo, no cockpit, onde ele confirma que algo está pronto de
 verdade. Sem isso, "pronto" é a IA se auto-avaliando, e este projeto já tem a
 evidência de que isso falha (545 testes verdes com a tela quebrada).
 
 Regra de desenho: um botão e uma frase. Nunca um documento para ler.
+
+Resolvido de graça pelo desenho do F1: no modo imperativo ele autoriza por
+clique, e é exatamente o botão-e-frase que este item pedia — não sobrou peça
+separada para construir.
 
 ### F3. Interface de uso (`cc framework`) ✅ 14/08
 
@@ -205,7 +209,7 @@ posicional — `framework autorizar --dir /tmp/x` autorizava um caminho chamado
 `/tmp/x`. Consertado na origem (`FLAGS_WITH_VALUE`), com as outras flags novas
 registradas junto.
 
-### F4. As ferramentas do projeto entram na Definição
+### F4 ✅ 14/08 (marca corrigida em 18/08) — As ferramentas do projeto entram na Definição
 
 Decisão de 14/08: a escolha de quais camadas de verificação (Bancada) e quais
 ferramentas aquele projeto usa é feita junto do MVP, não solta no meio da
@@ -248,10 +252,11 @@ camadas que dependem de ferramenta externa.
 Ver [[../produto/BANCADA]]. "Pronto" passa a exigir pelo menos a camada de
 segredo rodada. Depende da Bancada existir (etapa 1 dela).
 
-### F6. Segundo método
+### F6 ✅ 14/08 (marca corrigida em 18/08) — Segundo método
 
-Só existe `mvp-basico`. Um segundo preset é o que prova de verdade que método é
-dado e não código — hoje isso é afirmação, não fato demonstrado.
+`entrega-cliente` existe em `src/framework.mjs` ao lado de `mvp-basico`, com
+número de fases diferente — a prova de que método é dado, não código, já está
+no gate (`dois métodos convivem, com número de fases diferente`).
 
 ### F7. Painel do framework
 
@@ -402,7 +407,7 @@ O segundo caminho ganhou, e só porque foi medido: o receio de "extrator ruim
 disfarçado de solução" era legítimo, e a resposta não foi argumentar, foi rodar
 contra contrato real e comparar com o `.txt`.
 
-### F15. Achado em projeto alheio se registra NO GIT dele
+### F15 ✅ 18/08 — Achado em projeto alheio se registra NO GIT dele
 
 Regra que o Felipe formulou em 15/08, olhando o caso acontecer: *"isso é uma
 regra pro framework, o registro em outros projetos, ficaria no git? assim eles
@@ -435,9 +440,13 @@ São dois usos diferentes, e a distinção é o que vale guardar:
    outra sessão, o ticket espera: misturar é o problema que o `git-add-guard`
    existe para evitar.
 
-Falta implementar: um `cc framework ticket <projeto> "<texto>"` que faça isso
-sozinho, achando o `docs/ROTAS-ATIVAS.md` do alvo e respeitando os três limites.
-Hoje é procedimento manual, e procedimento manual é sugestão.
+**✅ Feito em 18/08.** `cc framework ticket <projeto> "<texto>"` existe
+(`src/ticket.mjs` + `cc.mjs`): acha o projeto pelo nome entre os que o cockpit
+conhece, exige árvore limpa (senão recusa e explica por quê), escreve em
+`docs/TICKETS-EXTERNOS.md` do ALVO — nasce sozinho na primeira vez — e commita
+só esse arquivo, com a origem na mensagem. Provado contra repositório git de
+verdade (não simulado): três limites testados em `test.mjs`, e uma rodada de
+ponta a ponta fora do teste, com commit real conferido pelo `git log`.
 
 ### F9. Perguntas em rede ✅ registrada em 14/08 (visão, não agora)
 

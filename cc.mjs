@@ -770,6 +770,21 @@ switch (cmd) {
         console.log(`modo Pierre: ${arg2 === 'on' ? 'ligado' : 'desligado'}`)
         break
       }
+      /* F15: achado sobre OUTRO projeto vira ticket NELE, no git dele — não
+         precisa de `exigeRaiz()`, o alvo é sempre um projeto diferente do
+         atual. `<projeto>` é o nome da pasta entre os que este cockpit
+         conhece (varredura de `findProjects`), `<texto>` é o achado. */
+      case 'ticket': {
+        const [projeto, texto] = [positional[2], positional[3]]
+        if (!projeto || !texto) {
+          die('uso: node cc.mjs framework ticket <projeto> "<texto do achado>"')
+        }
+        const Tk = await import('./src/ticket.mjs')
+        const res = Tk.registrarTicket(projeto, texto, { origem: path.basename(process.cwd()) })
+        if (!res.ok) die(res.erro)
+        console.log(`ticket registrado e commitado em ${res.relativo} (${projeto})`)
+        break
+      }
       case 'bancada': {
         const r = exigeRaiz()
         const B = await import('./src/bancada.mjs')

@@ -1233,16 +1233,24 @@ resolve devolve `null` (deixa valer o modo do projeto) em vez do texto cru.
 Novo teste em `test.mjs` prova as duas pontas: apelido resolve para o ID
 certo, nome desconhecido nunca devolve texto que parece um modo válido.
 
-### CC-138: prioridade e complexidade na planilha de tarefas
+### CC-138 ✅ decidido em 18/08 — prioridade e complexidade saem estimadas, nunca declaradas por mim
 
 Duas colunas do formato que ele usa nos ROADMAP.md ficaram de fora da planilha
 em 17/08, e por um motivo honesto: **não há dado**. Prioridade (P0, P1) e
 complexidade só existem hoje para tarefa já concluída, estimadas na aba de
 preço.
 
-Para existirem na planilha, o agente precisa declarar as duas ao registrar a
-tarefa. É campo novo no protocolo, e vale medir antes se ele quer preencher isso
-a cada tarefa ou se prefere que saia estimado.
+Palavras dele em 18/08: *"eu prefiro aceitar a estimativa porque eu não sou a
+melhor pessoa pra isso (…) a gente devia fazer uma pesquisa, porque com certeza
+tem algum mecanismo pra medir isso melhor do que a minha opinião"*.
+
+**Fica pesquisa registrada, não implementação ainda.** `classificar()`, em
+`src/tarefas.mjs`, já pontua tarefa CONCLUÍDA por sinal do transcrito (turnos,
+arquivos reabertos, modelo). O que falta é o mesmo para tarefa ainda ABERTA,
+sem histórico de execução para ler — sinal candidato é tamanho da frente,
+arquivos envolvidos (o mapa que o CC-140 vai passar a calcular), e quantas
+vezes ele voltou a falar do mesmo assunto. A fórmula entra depois de medida
+contra tarefas reais já fechadas, não escolhida no escuro.
 
 ### CC-124 ✅ 18/08 — o comando `json` responde zero com ar de resposta completa
 
@@ -1294,7 +1302,7 @@ escrita continua valendo dentro dela: parte de `~/.claude` segue bloqueada, que
 
 `src/ui.html` é da rota `cockpit`, com dono ativo. Pedido feito.
 
-### CC-140: as avenidas, ideia dele em 17/08
+### CC-140: as avenidas, ideia dele em 17/08, backlog liberado em 18/08
 
 > *"quando agentes mexem nos mesmos arquivos eles costumam ter uma rota do que
 > vão mexer? pq se essas rotas puderem ser imaginadas, podemos rastrear todas as
@@ -1321,6 +1329,40 @@ Registrado como visão, não como tarefa. Três partes, e duas valem por si:
 Onde a metáfora quebra, e vale escrever: rua tem topologia fixa, software muda a
 cada commit. Isso não invalida a ideia, só decide a implementação: o mapa se
 calcula na hora, nunca se mantém à mão.
+
+**Greenlight em 18/08**: *"eu gosto muito da ideia, é muito importante"* — sai
+de visão para backlog planejado. As três partes, com o que já existe achado
+antes de propor código novo:
+
+1. ✅ **feito em 18/08 — verificação no momento do acesso.** `hooks/routia/rota-guard.mjs`
+   ganhou aviso de VIZINHANÇA: antes de liberar uma edição, calcula (com o
+   `src/dependencias.mjs` do CC-86) se o arquivo importa ou é importado por
+   algum arquivo que OUTRA rota reivindicou com 📁, e avisa pelo
+   `additionalContext` do próprio hook — sem bloquear, porque o grafo é
+   aproximado e travar em cima dele seria pior que o problema. Só calcula
+   quando há alguma outra rota com arquivo declarado (custo pago só quando
+   pode valer a pena). Achado no caminho: o import fixo `../../src/...`
+   funcionava só dentro do repositório, e quebrava silenciosamente na
+   instalação global achatada em `~/.claude/hooks/` — mesmo formato de bug
+   que o `acharCC.mjs` já tinha resolvido para o `cc.mjs`; reusado aqui.
+   Prova: 3 casos novos em `hooks/routia/testar-rota-guard.sh`, com arquivo
+   real no disco e import de verdade (o grafo lê import real, não o texto do
+   quadro).
+2. ✅ **já existia — rota como vizinhança.** `src/dependencias.mjs` (CC-86, 15/08)
+   já resolve isso: `mapear()` lê os `import` reais do projeto,
+   `impactoDe()` calcula quem quebra se um arquivo mudar, transitivo e tudo.
+   O que faltava não era o cálculo, era ALGUÉM chamar durante a edição — é o
+   que a fatia 1 fecha.
+3. ✅ **já existia — mapa sob demanda.** `mapear()` roda a cada chamada, sem
+   cache em disco: ~130ms neste projeto (52 arquivos, 90 ligações), medido no
+   próprio comentário do módulo. Nada é mantido à mão.
+
+**O que sobra, registrado e não decidido ainda**: o aviso hoje olha só
+vizinhança de PROFUNDIDADE 1 (import direto), para manter o ruído baixo — não
+o `impactoDe` transitivo inteiro, que espalharia aviso pelo projeto inteiro em
+arquivo muito usado (`platform.mjs` tem 15 dependentes). Se profundidade 1
+gerar aviso raro demais ou frequente demais, é ajuste de constante, não de
+desenho.
 
 ## ▶ O que está aberto, em 16/08
 
@@ -1641,8 +1683,19 @@ O suficiente para decidir se algo do backlog conflita com ela:
 Terceira camada do produto: o cockpit é a tela, os hooks são o sensor e o gate,
 e o framework é o método que os dois servem.
 
-**Backlog de execução fechado em 14/08: [[planos/FRAMEWORK-V1]].** Nove etapas,
-em ordem, com a análise conceitual final. Aguardando ordem de implementar.
+**Backlog de execução fechado em 14/08: [[planos/FRAMEWORK-V1]].** Dezessete
+etapas, em ordem, com a análise conceitual final.
+
+**Ordem de implementar dada por ele em 18/08**: *"o plano grande de nove
+etapas [...] também quero botar pra frente o quanto antes"*. Ao reabrir o
+documento para começar, a maior parte já estava construída — a marca de
+"faltam F4 a F11" tinha ficado velha sem ninguém atualizar. Feito em 18/08:
+corrigidas as marcas de F4, F6 e F2 (resolvido de graça pelo desenho do F1),
+e implementado o F15 que faltava de verdade (`cc framework ticket`, achado
+sobre outro projeto vira ticket commitado NELE). **Sobra só o F12** (filtro de
+confidencialidade local — trocar dado sensível por token em vez de só
+bloquear a leitura), que é o de maior escopo e ainda não tem desenho técnico
+escrito, ao contrário dos outros dezesseis.
 
 A primeira etapa (F1, o "modo conversa") nasceu de um erro real do mesmo dia:
 no meio de uma conversa que ele abriu com "vamos discutir isso ainda antes de

@@ -2807,6 +2807,63 @@ if (!ESPERADO) {
   }
 }
 
+/* --- F15 do framework: achado sobre OUTRO projeto vira ticket NELE, no git dele ---
+
+   Regra do Felipe em 15/08: "isso é uma regra pro framework, o registro em
+   outros projetos, ficaria no git? assim eles se comunicam". Repositório git
+   DE VERDADE aqui, de propósito — o limite que mais importa (árvore suja
+   trava o ticket) só existe se o `git status` for real, não simulado. */
+{
+  const { execFileSync } = await import('node:child_process')
+  const T = await import('./src/ticket.mjs')
+
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-ticket-'))
+  const alvo = path.join(base, 'app_pierre')
+  try {
+    fs.mkdirSync(alvo, { recursive: true })
+    const git = (args) => execFileSync('git', args, { cwd: alvo, encoding: 'utf8' })
+    git(['init', '-q'])
+    git(['config', 'user.email', 'teste@local'])
+    git(['config', 'user.name', 'Teste'])
+    fs.writeFileSync(path.join(alvo, 'README.md'), '# app_pierre\n')
+    git(['add', 'README.md'])
+    git(['commit', '-q', '-m', 'inicial'])
+
+    assert.equal(T.acharProjeto('nao-existe', base), null)
+    assert.equal(T.acharProjeto('app_pierre', base), alvo)
+    assert.equal(T.arvoreLimpa(alvo), true, 'repositório recém commitado está limpo')
+
+    const r = T.registrarTicket('app_pierre', 'anonimizar.ts trunca nome com acento nos primeiros 3 caracteres', {
+      base, origem: 'proj_controlcenter', quando: '2026-08-18',
+    })
+    assert.ok(r.ok, r.erro)
+    assert.equal(r.relativo, path.join('docs', 'TICKETS-EXTERNOS.md'))
+
+    const conteudo = fs.readFileSync(r.arquivo, 'utf8')
+    assert.match(conteudo, /Tickets externos/, 'cabeçalho nasce sozinho na primeira vez')
+    assert.match(conteudo, /2026-08-18 — de `proj_controlcenter`/)
+    assert.match(conteudo, /trunca nome com acento/)
+
+    // limite 2: commit PRÓPRIO, com a origem escrita — não fica pendurado
+    assert.equal(T.arvoreLimpa(alvo), true, 'o próprio ticket foi commitado, não ficou solto na árvore')
+    const log = git(['log', '-1', '--format=%s'])
+    assert.match(log, /docs\(ticket\): achado de proj_controlcenter/)
+
+    // limite 3: árvore suja BLOQUEIA, e não mistura ticket com trabalho alheio
+    fs.writeFileSync(path.join(alvo, 'em-andamento.txt'), 'rascunho de outra sessão')
+    const bloqueado = T.registrarTicket('app_pierre', 'outro achado', { base, quando: '2026-08-18' })
+    assert.equal(bloqueado.ok, false)
+    assert.match(bloqueado.erro, /não está limpa/)
+    assert.equal(T.arvoreLimpa(alvo), false, 'o arquivo solto continua sujando a árvore: o ticket não tocou em nada')
+
+    // ticket sem texto não vira arquivo vazio: recusa é mais barato que apagar depois
+    fs.rmSync(path.join(alvo, 'em-andamento.txt'))
+    assert.equal(T.registrarTicket('app_pierre', '   ', { base }).ok, false)
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true })
+  }
+}
+
 /* O resumo diz o que a MÁQUINA tinha para oferecer, e por isso os dois números
    podem ser zero sem que nada esteja errado: numa VPS sem job de background o
    gate agora roda inteiro contra dados sintéticos. Zero aqui é informação, não
