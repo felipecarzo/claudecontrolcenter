@@ -68,6 +68,12 @@ caso "outro modo (dialogo) nao ganha sugestao" "$COM_DIALOGO" nao-contem "SUGIRA
 SO_FEITAS=$(projeto p4 sugestivo "# ROADMAP" "" "## Frente A" "" "### ✅ 17/08 — tudo que tinha ja fechou")
 caso "roadmap so com itens concluidos: nada pra sugerir" "$SO_FEITAS" nao-contem "SUGIRA"
 
+echo "— CC-136: o padrão proativo, só no modo desenho —"
+COM_DESENHO=$(projeto p5 desenho)
+caso "modo desenho ganha o padrao de protótipo primeiro" "$COM_DESENHO" contem "PADRÃO DE TRABALHO"
+caso "e cita a regra de nao descer nivel nenhum" "$COM_DESENHO" contem "não descer nível nenhum"
+caso "modo restritivo nao ganha esse padrao (e so do desenho)" "$COM_ROADMAP" nao-contem "PADRÃO DE TRABALHO"
+
 echo "— higiene —"
 echo '{}' | node "$HOOK" > /dev/null 2>&1
 [ $? = 0 ] && echo "  ok     entrada vazia não trava a abertura da sessão" || { echo "  FALHOU entrada vazia"; FALHOU=1; }

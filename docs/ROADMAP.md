@@ -1066,7 +1066,7 @@ escrita livre vale sempre. Nove casos de teste cobrem os limites: sem roadmap
 fica calado, outro modo fica calado, roadmap só com itens concluídos fica
 calado, item concluído nunca aparece na lista.
 
-### CC-136: o padrão de trabalho vira trava, não só regra escrita
+### CC-136 ✅ 18/08 — o padrão de trabalho vira trava, não só regra escrita
 
 Dele em 16/08, na mesma mensagem em que descreveu o método:
 
@@ -1083,6 +1083,24 @@ reprovação a tarefa seguinte é metade da anterior. Ele deu o exemplo: *"se a
 tarefa era fazer uma landing page e eu reprovar, a lógica seguinte é quebrar
 essa landing page em seções (…) e tudo bem exagerar na busca dessa abstração. O
 grande problema é simplesmente não descer nenhum nível"*.
+
+#### ✅ Feito em 18/08
+
+A metade reativa (o que fazer quando ele reprova) já travava de verdade, em
+`descida-guard.mjs`. A que faltava era a proativa: como COMEÇAR uma mudança
+grande. Ela agora mora no modo Desenho — não em detecção automática de "isto é
+grande", que seria julgamento demais para um regex, e a mesma moldura que o
+`AskUserQuestion` existe para evitar em outro lugar do framework. Quem decide
+que agora é hora desse padrão é ele, escolhendo o modo.
+
+No começo de toda sessão em modo Desenho: *"mudança grande: mostre o protótipo
+do TODO primeiro, não pedaço por pedaço. Só desça para elementos individuais se
+ele tiver dificuldade ou reprovar, e aí vale exagerar na divisão, o problema é
+não descer nível nenhum."*
+
+Provado contra o roadmap de verdade deste projeto, com a mesma capa de sessão
+temporária do CC-135 (sem mudar o modo real de ninguém). Três casos de teste
+novos, e o gate inteiro continua verde.
 
 ### CC-137 ✅ 18/08 — as 14 travas sem teste
 

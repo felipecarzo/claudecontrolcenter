@@ -68,6 +68,15 @@ const linhas = [
     + 'resposta. Se a resposta muda o que será feito, é decisiva.',
 ]
 
+/**
+ * CC-136: o padrão de trabalho para mudança GRANDE, quando o modo é `desenho`.
+ * Só a metade proativa: a reativa (o que fazer quando ele reprova) já trava
+ * de verdade em `descida-guard.mjs`, no Stop, e não precisa deste texto.
+ */
+if (modo.padrao) {
+  linhas.push('', `PADRÃO DE TRABALHO — ${modo.padrao.titulo}:`, modo.padrao.resumo)
+}
+
 /* O fluxo do modo, quando ele define um. No restritivo é o que dá mecanismo ao
    modo: sem isto, ele é só um rótulo (dívida registrada em produto/FRAMEWORK). */
 if (modo.fluxo) {

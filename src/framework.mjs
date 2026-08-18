@@ -601,6 +601,34 @@ Object.assign(MODOS, {
     },
     // teto de UMA entrega: ele olha cada mudança visual antes da seguinte
     teto: 1,
+    /**
+     * CC-136: a metade proativa do padrão que ele descreveu em 16/08, na
+     * mesma mensagem em que descreveu o método —
+     *
+     * > "o projeto é para mudar o cockpit inteiro mas podemos aprovar
+     * > primeiro um protótipo, se tivermos dificuldades nós descemos pra
+     * > decidir elementos individualmente e testamos (...) sempre quebrando
+     * > em micro tarefas."
+     *
+     * A metade REATIVA (o que fazer quando ele reprova) já existe e trava de
+     * verdade em `descida-guard.mjs`. Esta é a metade que falta: como COMEÇAR
+     * uma mudança grande. Fica presa ao modo `desenho` — não a um evento
+     * mecânico solto — porque "mudar o cockpit inteiro" é julgamento, não
+     * regex: só o modo que ele escolheu de propósito para mexer em tela sabe
+     * dizer que agora é a hora desse padrão.
+     *
+     * `padrao` é lido por `framework-inicio.mjs`, no mesmo lugar que já lê
+     * `fluxo` — os dois são texto injetado no começo da sessão, nunca um
+     * bloqueio mecânico: inventar detecção automática de "isto é uma mudança
+     * grande" seria a mesma moldura que o `AskUserQuestion` existe para
+     * evitar em outro lugar deste arquivo.
+     */
+    padrao: {
+      titulo: 'protótipo decide o rumo, depois desce em micro-tarefas',
+      resumo: 'Mudança grande: mostre o protótipo do TODO primeiro, não pedaço por pedaço. '
+        + 'Só desça para elementos individuais se ele tiver dificuldade ou reprovar — '
+        + 'e aí vale exagerar na divisão, o problema é não descer nível nenhum.',
+    },
   },
   revisao: {
     id: 'revisao',
