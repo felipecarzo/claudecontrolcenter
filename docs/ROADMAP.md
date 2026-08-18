@@ -1302,7 +1302,7 @@ escrita continua valendo dentro dela: parte de `~/.claude` segue bloqueada, que
 
 `src/ui.html` é da rota `cockpit`, com dono ativo. Pedido feito.
 
-### CC-140: as avenidas, ideia dele em 17/08, backlog liberado em 18/08
+### CC-140 ✅ Frente: as avenidas, ideia dele em 17/08, backlog liberado e primeira fatia feita em 18/08
 
 > *"quando agentes mexem nos mesmos arquivos eles costumam ter uma rota do que
 > vão mexer? pq se essas rotas puderem ser imaginadas, podemos rastrear todas as
@@ -1399,7 +1399,7 @@ em 16/08, as oficinas — `git worktree list` sempre acerta, um registro paralel
 de "quem está onde" mentiria no primeiro `remove` feito à mão. Se dá para
 calcular, não peça para alguém manter.
 
-### CC-101 Frente: a tela fala a sua língua, aprovada em 15/08
+### CC-101 ✅ Frente: a tela fala a sua língua, aprovada em 15/08
 
 Pedido dele, ditado por voz: *"tem uma tela chamada VPS que tem um monte de
 processo jogado, e eu tenho que ter muito conhecimento técnico pra olhar aquilo

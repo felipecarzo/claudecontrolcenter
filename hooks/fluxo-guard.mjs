@@ -208,6 +208,12 @@ function ultimoPedido(texto) {
  * O motivo vai no próprio título, depois do ⏸, para a lista da devolução ser
  * legível sem abrir o arquivo.
  */
+/* Achado em 18/08: o título de uma frente vem hoje como "### CC-101 Frente:
+   ...", com o número ANTES da palavra. A exclusão só casava "### Frente:" sem
+   número, então "CC-101 Frente", "CC-102 Frente" e "CC-104 Frente" — todas
+   sem próximo passo executável, todas já registradas como estudo ou visão —
+   voltavam pra fila do mesmo jeito que um item comum sem ✅. O prefixo
+   `(?:CC-\d+\s+)?` deixa o número opcional antes da palavra que classifica. */
 function backlogAberto(raizProjeto) {
   let md = ''
   try { md = readFileSync(join(raizProjeto, 'docs', 'ROADMAP.md'), 'utf8') } catch { return [] }
@@ -215,6 +221,6 @@ function backlogAberto(raizProjeto) {
     .filter((l) => /^###\s/.test(l)
       && !l.includes('✅')
       && !l.includes('⏸')
-      && !/^###\s*(Frente|Visão|Decis)/i.test(l))
+      && !/^###\s*(?:CC-\d+\s+)?(Frente|Visão|Decis)/i.test(l))
     .map((l) => l.replace(/^###\s*/, '').trim())
 }

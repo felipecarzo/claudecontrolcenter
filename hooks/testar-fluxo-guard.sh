@@ -67,6 +67,26 @@ transcrito "$T/6.jsonl" \
 prova "rotina que termina esperando por ele: a trava nao cobra" fluxo-guard 0 "$T/6.jsonl" "$(no_projeto "$PROJ")"
 rm -f "$PROJ/.claude/commands/start-session.md"
 
+# Achado em 18/08: titulo de frente vem hoje como "### CC-101 Frente: ...",
+# com o numero ANTES da palavra "Frente". A exclusao so casava "### Frente:"
+# sem numero, entao toda frente numerada (CC-101, CC-102, CC-104...) voltava
+# pra fila mesmo sem proximo passo executavel.
+SO_FRENTE="$T/so-frente"
+mkdir -p "$SO_FRENTE/docs" "$SO_FRENTE/.framework"
+printf '%s\n' "# ROADMAP" "" "### CC-101 Frente: a tela fala a sua lingua, aprovada em 15/08" \
+  "" "sem proximo passo executavel, so estudo." \
+  > "$SO_FRENTE/docs/ROADMAP.md"
+node -e '
+const fs = require("fs")
+fs.writeFileSync(process.argv[1], JSON.stringify({
+  metodo: "mvp-basico", modo: "restritivo", fase: "execucao", ligado: true,
+  mvp: { nome: "o painel", criterios: [{ texto: "abre", feito: true }] },
+  ferramentas: [], verificacao: {}, autorizado: [], historico: [],
+}, null, 1))
+' "$SO_FRENTE/.framework/estado.json"
+transcrito "$T/7.jsonl" u "termina isso ai" t Edit '{"file_path":"/x/src/web.mjs"}' a "Feito."
+prova "titulo de frente com numero antes nao conta como item aberto" fluxo-guard 0 "$T/7.jsonl" "$(no_projeto "$SO_FRENTE")"
+
 echo "— higiene —"
 higiene fluxo-guard
 
