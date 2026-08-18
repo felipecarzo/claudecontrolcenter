@@ -2156,3 +2156,5 @@ Em 16/08 saíram 37 itens, com o texto integral preservado:
 - [2026-08-15](diario/2026-08-15.md) — CC-86, CC-73, CC-74, CC-75, CC-81, CC-83, CC-84, CC-85, CC-90, CC-88, CC-89, CC-94, CC-78, CC-67, CC-68, CC-69, CC-70, CC-72, CC-66, CC-65, CC-46, CC-48, CC-49, CC-56, CC-52, CC-53, Bancada
 - [2026-08-16](diario/2026-08-16.md) — CC-76, CC-77, CC-91, CC-87, CC-92, CC-93, CC-82, CC-79, CC-71, CC-60
 - [2026-08-17](diario/2026-08-17.md) — CC-109, CC-111, CC-113 a CC-123, CC-125 a CC-132, CC-139
+- [2026-08-18](diario/2026-08-18.md) — CC-124, CC-133 a CC-137, CC-143 a CC-154 (texto ainda aqui, poda pendente)
+- [2026-08-19](diario/2026-08-19.md) — CC-138 (decidido), CC-140, CC-101, CC-157, CC-158 (texto ainda aqui, poda pendente)

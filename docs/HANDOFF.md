@@ -1,61 +1,79 @@
 # HANDOFF
 
-**Sessão:** 2026-08-17 · Claude (Fable 5, sessão interativa `ff0d68b2`) ·
-**VPS**, pelo celular via Remote Control · continuação direta de 16/08
-**Último commit:** `c7d0b2c` — docs(routia): libera a rota remote-control
-**Branch:** `backlog/cc-46-48-49-52-53-56-65`. Nada foi enviado ao remoto hoje:
-ele não pediu, e a regra é não subir sem pedido.
+**Sessão:** 2026-08-19 · Claude (Sonnet 5, sessão interativa `a4452c23`) ·
+**VPS**, pelo celular via Remote Control · continuação direta de 18/08
+**Último commit:** `537b0dd`, docs: o que a sessão do PC não pode desfazer
+**Branch:** `backlog/cc-46-48-49-52-53-56-65`, **enviada ao GitHub**. 25 commits
+à frente do que o PC tem.
 
-O que aconteceu: [diario/2026-08-17.md](diario/2026-08-17.md). Ponteiro, não
+O que aconteceu: [diario/2026-08-19.md](diario/2026-08-19.md). Ponteiro, não
 relatório.
+
+## ⚠️ Se você está no PC, leia isto primeiro
+
+Ele vai abrir este projeto no PC para construir a integração entre as duas
+máquinas. **Seis dias de trabalho aconteceram só na VPS**, e vários commits
+consertam coisa que só acontece lá. Cada um parece código defensivo demais
+para quem chega de fora, e desfazer volta o defeito sem erro na tela.
+
+**[guias/PC-E-VPS.md](guias/PC-E-VPS.md) lista os cinco**, com o que cada um
+evita e como conferir no Windows antes de encostar. Leia antes de mexer em
+código, não depois.
 
 ## O que muda para quem chega agora
 
-**Duas sessões trabalharam neste repositório o dia inteiro, e funcionou.** A
-peça que destravou foi a partilha por parte de arquivo: declare
+**Sessão que não consegue gravar na pasta de configuração agora tem um abrigo.**
+Dentro do sandbox, `~/.claude` fica somente leitura, e sem isso nenhuma sessão
+aparecia no painel, sem erro nenhum. Se você mexer em `metaSessao.mjs`, o
+caminho alternativo não é remendo: é o que mantém a VPS visível.
+
+**Falha de rede na tela agora avisa, em vez de sumir.** Quatro pontos. O mais
+importante é a lista de projetos: ela dizia "nenhum projeto encontrado nesta
+máquina" quando na verdade não tinha conseguido perguntar.
+
+**A partilha por parte de arquivo continua valendo**: declare
 `src/ui.html#nomeDaFuncao` na sua linha do quadro, e quem também declarou o
-mesmo arquivo edita junto. Leia
-[ROTAS-ATIVAS.md](ROTAS-ATIVAS.md) antes de tocar em código, como sempre, mas
-agora sabendo que dividir arquivo é possível.
+mesmo arquivo edita junto. Leia [ROTAS-ATIVAS.md](ROTAS-ATIVAS.md) antes de
+tocar em código.
 
-**O modo de trabalho pode vir da rota** (`🎚 <modo>` na linha), e as travas
-agora obedecem ao modo: perfil que exige uma trava liga ela mesmo com o
-interruptor global desligado. Se algo travar você e você não entender por quê,
-olhe o modo do projeto antes de olhar o hook.
-
-## Estado: 15 itens abertos, seis nasceram hoje
+## Estado: nada executável em aberto, uma frente em curso
 
 | Item | O que é | Espera |
 |---|---|---|
-| **CC-133** | a entrevista que conduz a definição de um projeto novo | executável |
-| **CC-134** | registro do que os agentes conversaram entre si | executável |
-| **CC-135** | o modo sugestivo tem que SUGERIR, não só travar | executável |
-| **CC-136** | o padrão de trabalho dele vira trava, não só regra escrita | executável |
-| **CC-137** | as 14 travas sem teste (19 de 33 provadas hoje) | executável |
-| **CC-138** | prioridade e complexidade na planilha | **decisão dele**: quer declarar por tarefa? |
-| **CC-124** | o comando `json` responde zero com ar de resposta completa | executável |
-| **CC-129** | sessão avulsa na pasta pessoal (feito pela outra sessão) | conferir e fechar |
-| **CC-101 a CC-107** | as sete frentes grandes | executáveis, cada uma em fatias |
-| **CC-80** | visão estrutural | **decisão dele**, estudo pronto |
+| **CC-156** | o redesenho da tela | **em curso**, direção fechada, 1 de 4 camadas no ar |
+| **CC-104** | integração PC mais VPS | **é o que ele quer construir agora** |
+| **CC-155** | mapa visual das avenidas | **decisão dele**: onde a tela mora, quanto cabe no celular |
+| **CC-80** | visão estrutural | **decisão dele**, estudo pronto desde 15/08 |
 | **CC-08** | macOS | ambiente, não há Mac aqui |
+| **CC-102/103/105/106/107** | as frentes grandes | executáveis, cada uma em fatias |
+
+Fechados hoje: CC-138 (decidido), CC-140, CC-101, CC-154, CC-157, CC-158.
 
 ## Próximo passo exato
 
-`cc ideias` na próxima sessão, antes de qualquer coisa: ele pode ter falado algo
-entre uma sessão e outra. Depois, o item de cima da fila.
+**No PC**, nesta ordem:
 
-Se for mexer em tela, **entre no perfil Designer** (`cc framework perfil
-designer`): ele exige print nas duas larguras e cobra a forma que ele nomeou na
-conferência. Foi a falta disso que custou o dia hoje.
+1. `git pull` nesta branch.
+2. **Ler [guias/PC-E-VPS.md](guias/PC-E-VPS.md)** antes de tocar em código.
+3. `npm test`. Se falhar no Windows, **registrar o que falhou antes de
+   consertar**: provavelmente é diferença real de sistema operacional, e essa
+   informação vale para a integração que ele quer construir.
+4. `cc json`. Se responder `total: 0` com agentes rodando, é o CC-124 de novo,
+   e a causa é sempre a mesma: uma das duas fontes de agente não está sendo
+   lida.
+
+**Se for mexer em tela**, entre no perfil Designer (`cc framework perfil
+designer`): ele exige print nas duas larguras e cobra a forma que ele nomeou.
 
 ## Arquivos a ler
 
-- [diario/2026-08-17.md](diario/2026-08-17.md) — o dia, com o erro e as travas
-- [ROADMAP.md](ROADMAP.md) — os 15 abertos, com as palavras dele em citação
-- [produto/VISAO-FELIPE-17-08.md](produto/VISAO-FELIPE-17-08.md) — as ideias
-  longas dele, na íntegra
-- `src/framework.mjs` — modos, perfis e a trava de etapa
-- `src/ideias.mjs` — o que ele falou e não virou item
+- [guias/PC-E-VPS.md](guias/PC-E-VPS.md), o que não desfazer, e por quê
+- [diario/2026-08-19.md](diario/2026-08-19.md), o dia inteiro
+- [produto/REDESENHO-TELA.md](produto/REDESENHO-TELA.md), a direção do CC-156,
+  fechada com ele em duas rodadas de pergunta
+- [ROADMAP.md](ROADMAP.md), com as palavras dele em citação
+- `PRODUCT.md` na raiz, o contexto de produto capturado em 19/08
+- `src/metaSessao.mjs`, a casa e o abrigo
 
 ## O que só ele resolve
 
@@ -81,30 +99,16 @@ conferência. Foi a falta disso que custou o dia hoje.
 
 ---
 
-## 2026-08-19, fim da temporada na VPS
+## O que está em curso e não terminou
 
-**Estado:** 24 commits nesta branch (`backlog/cc-46-48-49-52-53-56-65`) que o
-PC ainda não tinha. Já enviados para o GitHub. Gate verde.
-
-**Próximo passo exato, para quem abrir no PC:**
-
-1. `git pull` nesta branch.
-2. **Ler `docs/guias/PC-E-VPS.md` antes de mexer em código.** Ele lista as
-   cinco coisas que parecem erro e não são, e o que cada uma evita.
-3. `npm test`. Se falhar no Windows, registrar o que falhou antes de
-   consertar: provavelmente é diferença real de sistema, não defeito.
-
-**O que está em curso e não terminou:**
-
-- **CC-156, o redesenho da tela.** Direção fechada com ele e escrita em
-  `docs/produto/REDESENHO-TELA.md`. Primeira fatia no ar (as telas de ajuste
-  saíram para uma gaveta atrás de "mais"). Faltam as três camadas maiores:
-  projetos como cartões completos, backlog cruzando todos os projetos em
-  tabela, e a fusão de ligar servidor com configurar ele.
+- **CC-156, o redesenho da tela.** Direção fechada com ele em duas rodadas de
+  pergunta, escrita em [produto/REDESENHO-TELA.md](produto/REDESENHO-TELA.md).
+  Primeira fatia no ar (as telas de ajuste saíram para uma gaveta atrás de
+  "mais"). Faltam as três camadas maiores: projetos como cartões completos,
+  backlog cruzando todos os projetos em tabela, e a fusão de ligar servidor
+  com configurar ele.
 - **CC-104, a integração PC mais VPS**, que é o que ele quer construir agora.
   A federação já funciona; falta o serviço do lado do Windows que empurra o
-  pacote. A topologia é torta de um lado só, e isso decide o desenho: o PC
-  alcança a VPS, a VPS nunca alcança o PC atrás do NAT.
-
-**Decisões abertas, que só ele toma:** CC-80 (forma da tela de visão
-estrutural) e CC-155 (mapa visual das avenidas).
+  pacote. **A topologia é torta de um lado só, e isso decide o desenho:** o PC
+  alcança a VPS, a VPS nunca alcança o PC atrás do NAT. Qualquer desenho que
+  ignore isso não sai do papel.
