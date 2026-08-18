@@ -3885,7 +3885,9 @@ function pedirMapaMini(projeto) {
 // O framework de engenharia, por projeto. Mesma regra do mini-mapa: uma
 // leitura por projeto, sob demanda, nunca no tique de 2s.
 const FRAMEWORKS = new Map() // projeto -> retrato | 'carregando'
-let FW_LISTA = null // null = fechado; 'carregando'; ou a lista de projetos
+// null = fechado; 'carregando'; 'erro' (CC-158: a falha não pode virar lista
+// vazia, porque lista vazia AFIRMA que não há projeto nenhum); ou a lista.
+let FW_LISTA = null
 let FW_CATALOGO_MODULOS = null // CC-115: nome e explicação de cada grupo de proteção
 let FEDERACAO = null // CC-47: identidade desta máquina, token e quem reporta aqui
 
@@ -3929,11 +3931,21 @@ function abrirFrameworkLista() {
   fetch('/api/framework/projetos')
     .then((r) => r.json())
     .then((d) => { FW_LISTA = d.projetos || []; FW_CATALOGO_MODULOS = d.catalogoModulos || null; render() })
-    .catch(() => { FW_LISTA = []; render() })
+    /* CC-158, e este é o pior dos quatro: a falha virava `[]`, e a lista
+       vazia anuncia **"nenhum projeto encontrado nesta máquina"**. Não é uma
+       tela sem resposta, é uma AFIRMAÇÃO falsa com cara de fato, e ela
+       explica a conclusão dele de 19/08 ("continuo sem ter opção de ativar o
+       framework"): a lista onde o botão mora tinha respondido que não havia
+       projeto nenhum. Mesma família do `total: 0` do CC-124. */
+    .catch(() => { FW_LISTA = 'erro'; render() })
 }
 
 function viewFrameworkLista() {
   if (FW_LISTA === 'carregando') return '<p class="dim">lendo os projetos…</p>'
+  if (FW_LISTA === 'erro') {
+    return `<p class="dim">não deu para ler os projetos agora. Se o painel acabou de reiniciar,
+      espere um instante e abra de novo. <b>Isto não quer dizer que não há projetos.</b></p>`
+  }
   if (!FW_LISTA.length) return '<p class="dim">nenhum projeto encontrado nesta máquina</p>'
   const ligados = FW_LISTA.filter((p) => p.existe && p.ligado).length
   const comRotas = FW_LISTA.filter((p) => p.rotas?.ligado).length
@@ -4074,7 +4086,13 @@ function criarProjeto() {
        metade do que ele pediu. */
     FW_LISTA = null
     abrirFrameworkLista()
-  }).catch(() => { NOVO_RESULTADO = null; render() })
+  }).catch(() => {
+    // CC-158: mesma família do botão de framework. Criar projeto e não
+    // acontecer nada, sem uma palavra, é o pior desfecho possível aqui.
+    NOVO_RESULTADO = null
+    toast('não deu para falar com o painel agora. O projeto pode não ter sido criado: confira antes de tentar de novo.')
+    render()
+  })
 }
 
 function viewNovoProjeto() {
@@ -4169,7 +4187,13 @@ function abrirEntrevista(projeto) {
   fetch(`/api/entrevista?projeto=${encodeURIComponent(projeto)}`)
     .then((r) => r.json())
     .then((d) => { ENTREVISTA = d.error ? null : { projeto, ...d }; if (d.error) toast(d.error); render() })
-    .catch(() => { ENTREVISTA = null; render() })
+    // CC-158: sem isto, clicar em "entrevista" durante um reinício não abria
+    // nada e não dizia nada.
+    .catch(() => {
+      ENTREVISTA = null
+      toast('não deu para abrir a entrevista agora. Se o painel acabou de reiniciar, tente de novo.')
+      render()
+    })
 }
 
 /** Grava uma resposta, ou desfaz uma já dada. O retrato devolvido é o do
@@ -8994,7 +9018,22 @@ document.addEventListener('click', async (e) => {
         FW_LISTA = FW_LISTA.map((p) => (p.projeto === projeto ? { ...p, ...f } : p))
       }
       render()
-    }).catch(() => { FRAMEWORKS.delete(projeto); render() })
+    }).catch(() => {
+      /* CC-158, achado em 19/08: este `catch` engolia a falha de rede em
+         silêncio absoluto. O botão ficava cinza por um instante, voltava, e
+         nada acontecia, que é indistinguível de "este botão não faz nada".
+
+         Aconteceu com ele hoje, e a causa é banal: o painel reinicia em
+         segundos a cada mudança de código, e clicar durante esses segundos
+         cai exatamente aqui. Ele passou a acreditar que não existia opção de
+         ligar o framework num projeto, e o botão estava certo o tempo todo.
+
+         Falha de rede que some é pior que erro na tela: erro se resolve,
+         silêncio vira conclusão errada sobre o produto. */
+      FRAMEWORKS.delete(projeto)
+      toast('não deu para falar com o painel agora. Se ele acabou de reiniciar, espere um instante e clique de novo.')
+      render()
+    })
   }
 
   if (t.closest('[data-vps-config]')) { vpsConfigAberto = !vpsConfigAberto; return render() }

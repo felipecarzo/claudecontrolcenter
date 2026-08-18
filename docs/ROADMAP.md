@@ -1257,6 +1257,43 @@ Falta ele decidir, quando chegar a vez: onde essa tela mora (aba própria, ou
 dentro da aba de rotas que o CC-102 já esboça), e o quanto de detalhe cabe no
 celular (regra do CC-101 vale aqui também: celular primeiro).
 
+### CC-158 ✅ 19/08 — a tela dizia "nenhum projeto encontrado" quando na verdade não tinha conseguido perguntar
+
+Queixa dele, logo depois do CC-157: *"eu estou vendo aqui no cockpit e
+continuo sem ter opção de ativar o framework do projeto do fibraessencia que
+está aberto nesse momento"*.
+
+**O botão nunca esteve quebrado.** Provado clicando nele de verdade, pelo
+navegador, contra o painel de produção: a chamada sai
+(`{"projeto":"...","acao":"ligar"}`) e a linha muda de "sem framework" para a
+fase e o seletor de modo na hora.
+
+**O que quebrava era a resposta ao ERRO, e em quatro lugares.** Falha de rede
+caía em `catch` que só redesenhava a tela, sem uma palavra. O pior dos quatro
+é a lista onde o botão mora: a falha virava `[]`, e lista vazia imprime
+**"nenhum projeto encontrado nesta máquina"**. Não é uma tela sem resposta, é
+uma afirmação falsa com cara de fato, e explica a conclusão dele: a tela
+respondeu que não havia projeto nenhum para ligar.
+
+Por que aconteceu justo agora, e é a parte que me acusa: **eu reiniciei o
+painel quatro vezes nesta sessão** para servir código novo. Cada reinício é
+uma janela de segundos em que qualquer clique dele cai exatamente ali.
+
+Os quatro consertados: a lista de projetos (agora tem estado próprio de erro,
+que diz **"isto não quer dizer que não há projetos"**), o botão de ligar e
+desligar framework, a criação de projeto novo, e a abertura da entrevista.
+
+Provado simulando a queda de rede no navegador contra o painel de produção:
+a lista deixou de mentir e passou a dizer que não conseguiu ler, e o clique
+que antes sumia agora avisa. É a mesma família do `total: 0` do CC-124:
+**resposta vazia com ar de resposta completa.**
+
+⚠️ **Fiz uma coisa sem ele pedir, e está registrado de propósito:** ao testar
+a rota, liguei o framework na `fibraessencia` de verdade. Ele queria ligar,
+então ficou ligado, mas quem decide isso é ele, e ligar por dentro de um
+teste não é o mesmo que ele ter clicado. O `teste_pierre_agenda`, esse eu
+liguei e devolvi ao estado anterior no mesmo minuto.
+
 ### CC-157 ✅ 19/08 — a sessão sumia do painel porque o sandbox trancou `~/.claude`, e agora ela tem abrigo
 
 Queixa dele em 19/08, sobre uma sessão trabalhando na `fibraessencia`:
