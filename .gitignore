@@ -36,3 +36,6 @@ docs/.rotas-pedidos.json
 
 # fila de ideias a processar na proxima sessao: estado de trabalho, nao historico
 docs/.ideias-pendentes.json
+
+# recados entre rotas: estado efemero do hook, nao e historico
+docs/.recados.json

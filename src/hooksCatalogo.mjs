@@ -391,6 +391,20 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'diario-guard',
+    modulo: 'codigo',
+    nivel: 'avisa',
+    label: 'código mexido sem passar pelo diário',
+    script: 'diario-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Pedido do Felipe em 18/08, depois de perguntar se os consertos ficam '
+      + 'anotados em algum lugar: avisa quando o turno editou arquivo fora de docs/ e '
+      + 'o diário de hoje não foi tocado. Não distingue conserto de funcionalidade — a '
+      + 'convenção do projeto já pede diário pros dois.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'fluxo-guard',
     modulo: 'entrega',
     nivel: 'avisa',

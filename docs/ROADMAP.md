@@ -1233,6 +1233,47 @@ resolve devolve `null` (deixa valer o modo do projeto) em vez do texto cru.
 Novo teste em `test.mjs` prova as duas pontas: apelido resolve para o ID
 certo, nome desconhecido nunca devolve texto que parece um modo válido.
 
+### CC-155: as avenidas em mapa visual, ideia dele em 18/08
+
+Palavras dele, sobre a primeira fatia das avenidas (o aviso de vizinhança do
+CC-140): *"a gente consegue colocar visualmente, como se fosse um mapa com
+várias linhas, com cores diferentes, quando se cruza mostra qual a gente está
+em qual bifurcação se colidindo com outro agente, enfim, um visual bem fácil
+de visualizar o que está acontecendo"*.
+
+Registrado como visão, não como tarefa — é desenho de tela, e escolha de
+gosto é dele, não minha. O que já existe e barateia isso, achado antes de
+propor forma:
+
+- O grafo de dependência inteiro do projeto já é calculado sob demanda
+  (`src/dependencias.mjs`, CC-86) — quem usa quem, e com que profundidade.
+- Quem está ocupando qual rota, agora, incluindo as de outra máquina, já sai
+  pronto do quadro do Routia (CC-48/CC-49).
+- O motor de gráficos que já existe na tela (`graficos.js`) hoje desenha
+  série e barra, não grafo com linhas cruzando — a peça de "mapa com
+  bifurcação" é a única de verdade nova a construir.
+
+Falta ele decidir, quando chegar a vez: onde essa tela mora (aba própria, ou
+dentro da aba de rotas que o CC-102 já esboça), e o quanto de detalhe cabe no
+celular (regra do CC-101 vale aqui também: celular primeiro).
+
+### CC-154 ✅ 18/08 — mexer em código sem registrar no diário passa a avisar sozinho
+
+Pedido dele em 18/08, depois de perguntar se os consertos ficam anotados em
+algum lugar: *"seria bom termos isso como boa prática, usando hook, não
+gate"*. A resposta já era sim (o diário e o mapa do projeto recebem cada
+fechamento), mas só porque eu lembrava de fazer — não havia nada segurando
+isso se eu esquecesse.
+
+Nova trava, no mesmo formato das que já avisam sem travar (a que cobra item
+concluído esquecido no mapa é a irmã direta): ao fim do turno, se algum
+arquivo fora da pasta de documentação foi editado e o registro de hoje não
+foi tocado, ela avisa — sem bloquear, porque o fim do turno é exatamente
+quando esse registro se escreve, e travar ali criaria um laço. Provado com
+seis casos: código sem registro acusa, código com registro no mesmo turno
+fica calada, só documentação mexida fica calada, turno sem edição nenhuma
+fica calado, e projeto sem essa convenção nem entra em ação.
+
 ### CC-138 ✅ decidido em 18/08 — prioridade e complexidade saem estimadas, nunca declaradas por mim
 
 Duas colunas do formato que ele usa nos ROADMAP.md ficaram de fora da planilha
