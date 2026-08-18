@@ -2771,6 +2771,42 @@ if (!ESPERADO) {
   }
 }
 
+/* --- CC-123: `modoDaRota` resolve APELIDO, e o que não resolve devolve null ---
+
+   Achado em 18/08: o que se escreve na rota é o nome de tela ("continuativo",
+   "autônomo"), não o identificador interno do motor. Ler o texto cru sem
+   passar por `acharModo` fazia o modo cair no padrão (o mais permissivo, o
+   `dialogo`) enquanto o quadro continuava anunciando o modo como se ele
+   estivesse valendo — trava desligada em silêncio e ao contrário. */
+{
+  const D = await import('./src/frameworkDisco.mjs')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-modo-rota-'))
+  try {
+    fs.mkdirSync(path.join(dir, 'docs'), { recursive: true })
+    const sessao = 'abc12345'
+    fs.writeFileSync(
+      path.join(dir, 'docs', 'ROTAS-ATIVAS.md'),
+      `| \`backlog\` | 🔴 ocupada | ${sessao} — trabalho 🎚 continuativo 📁 x.mjs | hoje |\n`
+      + `| \`front\` | 🔴 ocupada | ${sessao} — trabalho 🎚 modo-que-nao-existe 📁 y.mjs | hoje |\n`,
+    )
+
+    // "continuativo" é apelido de "restritivo": tem que devolver o ID, não o texto da tela
+    const r = D.modoDaRota(dir, sessao)
+    assert.equal(r.modo, 'restritivo', 'apelido de tela tem que resolver para o identificador do motor')
+    assert.equal(r.rota, 'backlog', 'o nome da rota é o primeiro trecho entre crases da linha')
+
+    // nome que não resolve não pode virar modo nenhum: null deixa valer o do projeto,
+    // que é a escolha segura — devolver o texto cru era trocar a trava por nenhuma
+    fs.writeFileSync(
+      path.join(dir, 'docs', 'ROTAS-ATIVAS.md'),
+      `| \`front\` | 🔴 ocupada | ${sessao} — trabalho 🎚 modo-que-nao-existe 📁 y.mjs | hoje |\n`,
+    )
+    assert.equal(D.modoDaRota(dir, sessao), null, 'modo desconhecido não pode devolver texto cru')
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
+
 /* O resumo diz o que a MÁQUINA tinha para oferecer, e por isso os dois números
    podem ser zero sem que nada esteja errado: numa VPS sem job de background o
    gate agora roda inteiro contra dados sintéticos. Zero aqui é informação, não

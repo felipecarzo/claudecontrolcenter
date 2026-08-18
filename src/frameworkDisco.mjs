@@ -10,7 +10,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { estadoInicial } from './framework.mjs'
+import { acharModo, estadoInicial } from './framework.mjs'
 
 export const PASTA = '.framework'
 export const ARQUIVO = 'estado.json'
@@ -76,7 +76,22 @@ export function modoDaRota(raiz, sessao) {
   for (const linha of texto.split(/\r?\n/)) {
     if (!linha.includes('🔴') || !linha.includes(marca)) continue
     const m = linha.match(/🎚\s*`?([a-zà-ú-]+)`?/i)
-    if (m) return { modo: m[1].toLowerCase(), rota: (linha.match(/`([^`]+)`/) || [])[1] || null }
+    if (!m) continue
+
+    /* Achado em 18/08, e o sintoma era o pior tipo: silencioso e ao contrário.
+       O que se escreve na rota é o nome que aparece na tela ("continuativo",
+       "autônomo"), não o identificador interno. `modoDe()` não resolve apelido,
+       então o modo caía no padrão — que é o LIVRE, o mais permissivo de todos.
+       Ou seja: marcar a rota com o nome certo DESLIGAVA as travas, e o quadro
+       continuava anunciando o modo como se ele estivesse valendo.
+
+       Duas regras daqui em diante: apelido e título resolvem, e o que não
+       resolve não vale nada. Devolver `null` deixa valer o modo do projeto,
+       que é a escolha segura; devolver o texto cru era trocar a trava por
+       nenhuma sem ninguém ver. */
+    const achado = acharModo(m[1])
+    if (!achado) continue
+    return { modo: achado.id, rota: (linha.match(/`([^`]+)`/) || [])[1] || null }
   }
   return null
 }

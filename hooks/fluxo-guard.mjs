@@ -77,6 +77,10 @@ try { cauda = readFileSync(arquivo, 'utf8').slice(-160_000) } catch { sair() }
 const corte = cauda.lastIndexOf('"type":"user"')
 const turno = corte >= 0 ? cauda.slice(corte) : cauda
 
+/* 0. o turno é uma ROTINA que termina esperando por ele — ver `rotinaQuePausa` */
+const pausa = rotinaQuePausa(turno, dados?.cwd || process.cwd(), raiz)
+if (pausa) sair()
+
 /* 2. a caixa de pergunta foi usada — a bola está com ele */
 if (turno.includes('AskUserQuestion')) sair()
 
@@ -110,6 +114,62 @@ console.error(
   + 'Esta é a única volta: a próxima passa.',
 )
 process.exit(2)
+
+/**
+ * A quinta saída legítima, e ela nasceu de um erro meu, em 18/08.
+ *
+ * Ele digitou `/start-session`, que é a rotina de abertura e termina dizendo,
+ * com todas as letras, *"aguarde instrução do usuário para começar a
+ * trabalhar"*. Eu apresentei o resumo e parei, que é exatamente o combinado. A
+ * trava me devolveu com "PAROU COM 16 ITENS ABERTOS" e eu fui programar. A
+ * queixa dele:
+ *
+ * > *"eu só dei start session e você começou a programar, era pra você de
+ * > repente trazer um resumo da onde a gente parou (…) é um fato que não era
+ * > pra ter feito"*
+ *
+ * A causa é literal: `ultimoPedido()` descarta qualquer mensagem que comece com
+ * `<`, e a invocação de uma rotina chega ao transcript exatamente assim
+ * (`<command-message>…</command-message>`). Então a trava não via pedido
+ * nenhum, não via pergunta, não via parada declarada, e cobrava.
+ *
+ * O conserto **não é uma lista de rotinas escrita aqui dentro**, de propósito:
+ * lista aqui envelhece calada quando alguém cria uma rotina nova, e o defeito
+ * volta sem aviso. Quem manda é a própria rotina — se o texto dela declara que
+ * termina esperando, a trava obedece. A rotina é a fonte, este arquivo só lê.
+ *
+ * Duas formas de declarar, e a segunda é a rede para as que já existem:
+ *
+ * 1. `pausa-no-fim: true` no cabeçalho da rotina, que é explícito e não depende
+ *    de como a frase foi escrita;
+ * 2. a frase em português mesmo ("aguarde instrução do usuário", "aguarde
+ *    aprovação"), que é como as 25 rotinas de hoje já dizem isso.
+ *
+ * E vale a regra do projeto: **a cópia dentro do projeto vence a global**, a
+ * mesma coisa que o `rotinas.mjs` já mede — senão a trava leria uma rotina e o
+ * Claude Code executaria outra.
+ */
+function rotinaQuePausa(turnoTexto, cwd, raizProjeto) {
+  const m = /<command-name>\/?([a-z0-9:_-]+)<\/command-name>/i.exec(turnoTexto)
+  if (!m) return null
+  const nome = m[1].toLowerCase()
+
+  const casa = process.env.CC_HOME || process.env.HOME || process.env.USERPROFILE || ''
+  const candidatos = [
+    join(raizProjeto, '.claude', 'commands', `${nome}.md`),
+    join(cwd, '.claude', 'commands', `${nome}.md`),
+    casa ? join(casa, '.claude', 'commands', `${nome}.md`) : null,
+  ].filter(Boolean)
+
+  for (const caminho of candidatos) {
+    let md = ''
+    try { md = readFileSync(caminho, 'utf8') } catch { continue }
+    const declarado = /^\s*pausa-no-fim\s*:\s*(true|sim)\s*$/im.test(md)
+    const naFrase = /aguard\w*\s+(?:a\s+|o\s+|as\s+|os\s+)?(?:instru|aprova|confirma|resposta|retorno|orienta|autoriza)/i.test(md)
+    return (declarado || naFrase) ? { nome, caminho } : null // a primeira que existe é a que vale
+  }
+  return null
+}
 
 /** A última coisa que uma PESSOA escreveu — injeção de skill e saída de tool não contam. */
 function ultimoPedido(texto) {

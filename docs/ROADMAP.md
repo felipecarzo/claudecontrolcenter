@@ -1203,6 +1203,36 @@ Conserto de uma linha: casa por `id` OU por `nome`. Provado com o `--bg`
 computado de verdade: `tema=escuro` → `#212529` (noite), `tema=claro` →
 `#f2ede2` (papel), os quatro nomes funcionando.
 
+### CC-153 ✅ 18/08 — dois defeitos silenciosos: `/start-session` sendo cobrado, e a rota com a trava desligada sem avisar
+
+Dois achados no mesmo dia, os dois do pior tipo: sem erro na tela, sem teste
+acusando, e ao contrário do esperado.
+
+**O primeiro**: ele digitou `/start-session`, a rotina termina dizendo "aguarde
+instrução do usuário para começar a trabalhar", e a trava do modo contínuo
+cobrou "PAROU COM 16 ITENS ABERTOS" mesmo assim. A causa: a invocação de uma
+rotina chega no transcrito como `<command-message>` e `<command-name>`, e a
+trava não reconhecia esse formato como pedido nenhum — não via pergunta, não
+via parada declarada, cobrava. O conserto não lista rotinas no código da trava,
+de propósito: lista envelheceria calada a cada rotina nova. Quem manda é a
+própria rotina, por duas formas de declarar que termina esperando: um
+`pausa-no-fim: true` explícito no cabeçalho, ou a frase em português que as
+rotinas já usam ("aguarde instrução", "aguarde aprovação"). Provado com um
+caso novo no `hooks/testar-fluxo-guard.sh`: com a frase presente a trava
+libera mesmo com backlog aberto; sem ela, cobra — a prova de que o conserto
+funciona pela frase, não por acidente.
+
+**O segundo, mais sério porque troca a trava por nenhuma sem avisar**: o que se
+escreve na linha da rota é o nome de tela ("continuativo", "autônomo"), não o
+identificador interno do motor. `modoDaRota` lia o texto cru sem resolver
+apelido, então o modo caía no padrão — o `dialogo`, o mais permissivo de
+todos — enquanto o quadro do Routia continuava anunciando "🎚 continuativo"
+como se estivesse valendo. Marcar a rota certo desligava a trava. Conserto:
+passa pelo mesmo `acharModo` que já existe em `framework.mjs`, e o que não
+resolve devolve `null` (deixa valer o modo do projeto) em vez do texto cru.
+Novo teste em `test.mjs` prova as duas pontas: apelido resolve para o ID
+certo, nome desconhecido nunca devolve texto que parece um modo válido.
+
 ### CC-138: prioridade e complexidade na planilha de tarefas
 
 Duas colunas do formato que ele usa nos ROADMAP.md ficaram de fora da planilha

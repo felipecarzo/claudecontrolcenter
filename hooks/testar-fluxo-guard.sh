@@ -5,9 +5,9 @@
 # que ser declarada. Antes, continuar era o padrão e parar só era pego quando eu
 # quebrava uma promessa explícita.
 #
-# São quatro saídas legítimas, e o teste cobre as quatro: ele perguntou algo, a
-# pergunta foi feita na ferramenta própria, a parada foi declarada, ou o backlog
-# está zerado.
+# São cinco saídas legítimas, e o teste cobre as cinco: ele perguntou algo, a
+# pergunta foi feita na ferramenta própria, a parada foi declarada, o backlog
+# está zerado, ou o turno é uma ROTINA que termina esperando por ele (18/08).
 source "$(dirname "${BASH_SOURCE[0]}")/testar-comum.sh"
 
 echo "== fluxo-guard =="
@@ -53,6 +53,19 @@ prova "parada declarada, com motivo que so ele decide" fluxo-guard 0 "$T/4.jsonl
 
 transcrito "$T/5.jsonl" u "termina isso ai" t Edit '{"file_path":"/x/src/web.mjs"}' a "Feito."
 prova "projeto sem framework ligado: a trava nem opina" fluxo-guard 0 "$T/5.jsonl" "$(no_projeto "$SEM_FRAMEWORK")"
+
+# A quinta saída (18/08): a rotina /start-session termina dizendo, com todas
+# as letras, para aguardar instrução dele — e isso tem que segurar a trava
+# mesmo com backlog aberto, porque parar ali é o combinado, não um furo.
+mkdir -p "$PROJ/.claude/commands"
+printf '%s\n' "Passo 1. Passo 2." "" "Após este comando, aguarde instrução do usuário para começar a trabalhar." \
+  > "$PROJ/.claude/commands/start-session.md"
+transcrito "$T/6.jsonl" \
+  u "<command-message>start-session is running…</command-message>\n<command-name>/start-session</command-name>" \
+  t Bash '{"command":"git status --short"}' \
+  a "INICIO DE SESSAO\n\nPronto para comecar."
+prova "rotina que termina esperando por ele: a trava nao cobra" fluxo-guard 0 "$T/6.jsonl" "$(no_projeto "$PROJ")"
+rm -f "$PROJ/.claude/commands/start-session.md"
 
 echo "— higiene —"
 higiene fluxo-guard

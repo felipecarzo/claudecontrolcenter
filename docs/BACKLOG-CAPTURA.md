@@ -190,3 +190,68 @@ Pedido dele, no meio da migração pra VPS:
 > "vai anotando como comentários meus pra gente ir colocando pro final da fila,
 > e aí a gente pode criar um arquivinho pra ir anotando essas coisas pra não
 > perder. E aí depois você faz [...] pra não atrapalhar o seu processamento"
+
+---
+
+## 2026-08-18
+
+### Abrir sessão de projeto + agente pelo painel, como ele já abre o Remote Control
+
+> "a minha ideia depois de resolver os dois é fazer eu abrir sessão do projeto e
+> do agente (agy ou opencode) igual eu abro o rc do Claude, e quando abrir o
+> /opencode ou /agy já abrir c os projetos abertos. (verifica se eles tem remote
+> o algum app standalone, seria bom)"
+
+Dito em 18/08, logo depois que os atalhos do opencode e do agy entraram na aba
+de agentes. O que ele descreve é um nível acima do atalho: hoje o botão abre a
+ferramenta na pasta em que o servidor subiu, e ele quer escolher **projeto E
+agente** antes de entrar, do mesmo jeito que o botão de Remote Control já abre
+sessão do Claude numa pasta.
+
+Duas apurações pendentes, nas palavras dele ("verifica se eles tem remote"):
+
+- **opencode**: tem `opencode attach <url>` e descoberta por mDNS, além do
+  servidor com API. Falta apurar se existe app de celular ou desktop oficial.
+- **agy (Antigravity)**: tem o editor de janela para computador e a linha de
+  comando. Falta apurar se o editor conecta num servidor remoto, que é o que
+  tornaria "abrir do celular" possível sem passar pelo terminal.
+
+O caminho técnico já existe do lado do opencode: a API aceita abrir sessão e
+terminal com pasta escolhida (o campo `directory` aparece na resposta de
+`/api/pty`), então o painel poderia oferecer a lista de projetos e mandar a
+pasta junto.
+
+### Rodar uma sessão do Claude com modelo gratuito, sem perder o Remote Control
+
+> "existe um fork de um negócio que se chama alguma coisa router que permite
+> trocar o modelo do Claude pra outros gratuitos como o bigpickle e outros.
+> teria como colocar pra uma sessão do Claude rodar com um modelo desses
+> gratuitos e ainda usar o remote control?"
+
+Pergunta de viabilidade, não tarefa. O que ele chama de "alguma coisa router" é
+provavelmente o `claude-code-router`, que redireciona as chamadas de modelo do
+CLI para outro servidor.
+
+A dúvida real é a segunda metade, e ela precisa ser MEDIDA, não opinada: o
+Remote Control é canal da conta na Anthropic, e o roteador troca justamente o
+endereço para onde as chamadas vão. Se os dois canais forem o mesmo, uma coisa
+quebra a outra. Apurar antes de prometer.
+
+**Apurado em 18/08, nas duas frentes que ele mandou verificar:**
+
+- **opencode tem os dois.** App de celular existe (`opencode-remote`, self-hosted,
+  cliente Expo para iOS e Android, ainda alpha) e o app de computador conecta em
+  servidor remoto por SSH com encaminhamento de porta. Mas nenhum dos dois é
+  necessário para o que ele quer: `opencode serve` já entrega a tela completa no
+  navegador do celular, que é o caminho que ficou no ar em `/opencode`.
+- **agy tem editor de computador, não tem app de celular.** O editor é fork do
+  VS Code e aceita a extensão Remote SSH igual ao original, então dá para editar
+  na VPS a partir do PC dele. O Agent Manager (a superfície 2.0) NÃO suporta
+  conexão remota. Do celular, o caminho continua sendo o terminal.
+
+**Apurado sobre o roteador, e a resposta é não:** desde a versão 2.1.196 do
+Claude Code, o Remote Control é desligado sempre que `ANTHROPIC_BASE_URL` aponta
+para um servidor que não é da Anthropic, e também enquanto houver credencial de
+gateway configurada. O próprio projeto do roteador documenta isso. Ou seja: dá
+para rodar o Claude com modelo gratuito, mas o preço é perder o Remote Control
+naquela sessão. Os dois não convivem, e não é questão de configuração.
