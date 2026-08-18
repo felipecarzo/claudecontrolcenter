@@ -2459,7 +2459,15 @@
     var alvo = temaModo
     // "automático" escolhe o par padrão de cada lado; tema nomeado manda nele.
     if (alvo === 'auto') alvo = TEMA_ESCURO.matches ? 'noite' : 'papel'
-    if (!TEMAS.some(function (t) { return t.id === alvo })) alvo = 'noite'
+    /* Aceita tanto o `id` (noite/papel, o valor gravado) quanto o `nome`
+       exibido no seletor (escuro/claro). Achado em 18/08, numa auditoria de
+       design. `?tema=escuro` e `?tema=claro` são a forma que a própria
+       documentação deste projeto ensinava a usar para tirar print, e nunca
+       forçavam nada: só o `id` era comparado. As duas caíam sempre no mesmo
+       fallback (`noite`), sem erro nenhum, e dois prints "nos dois temas"
+       saíam byte a byte idênticos sem ninguém perceber. */
+    var casado = TEMAS.find(function (t) { return t.id === alvo || t.nome === alvo })
+    alvo = casado ? casado.id : 'noite'
     document.documentElement.dataset.tema = alvo
     var sel = document.getElementById('tema-sel')
     if (sel && sel.value !== temaModo) sel.value = temaModo

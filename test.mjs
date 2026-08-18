@@ -140,6 +140,30 @@ const script = scripts.join('\n')
   assert.ok(GRUPOS.every((g) => g.abas.length), 'grupo vazio não pode existir')
 }
 
+/* `?tema=` existe só para print de tela: headless não tem preferência de
+   sistema nem localStorage. Achado numa auditoria de design em 18/08: o valor
+   da URL era comparado só contra o `id` interno (noite/papel), nunca contra o
+   `nome` mostrado no seletor (escuro/claro) — que é a forma que a própria
+   documentação deste projeto ensinava a usar. `?tema=escuro` e `?tema=claro`
+   caíam sempre no mesmo fallback, e dois prints "nos dois temas" saíam byte a
+   byte idênticos sem erro nenhum. */
+{
+  const trechoTemas = script.match(/var TEMAS = \[[\s\S]*?\n {2}\]/)?.[0]
+  assert.ok(trechoTemas, 'ui.html perdeu a lista de TEMAS')
+  const fonte = `${trechoTemas}
+    function casar(alvo) {
+      var t = TEMAS.find(function (x) { return x.id === alvo || x.nome === alvo })
+      return t ? t.id : 'noite'
+    }
+    return casar`
+  const casar = new Function(fonte)()
+  assert.equal(casar('noite'), 'noite', 'o id continua funcionando')
+  assert.equal(casar('papel'), 'papel')
+  assert.equal(casar('escuro'), 'noite', 'o nome exibido tem que resolver pro id certo')
+  assert.equal(casar('claro'), 'papel', 'o nome exibido tem que resolver pro id certo')
+  assert.equal(casar('cor-que-nao-existe'), 'noite', 'valor desconhecido cai no escuro, nunca quebra')
+}
+
 for (const rota of ['/api/jobs', '/api/meta', '/api/notes', '/events']) {
   assert.ok(script.includes(rota), `ui.html não usa ${rota}`)
 }

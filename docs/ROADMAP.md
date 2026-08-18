@@ -1141,6 +1141,19 @@ escrever nenhum. **Dois casos foram reescritos por passarem contra o código com
 defeito**: um usava uma sessão que já era barrada por outro motivo, e o outro
 consultava os agentes reais da máquina em vez de um dublê.
 
+### CC-151 ✅ 18/08 — `?tema=escuro` e `?tema=claro` nunca forçavam nada
+
+Achado pela auditoria de design (`impeccable`), confirmado lendo o código: o
+parâmetro da URL era comparado só contra o `id` interno de cada tema
+(`noite`/`papel`), nunca contra o `nome` mostrado no seletor (`escuro`/`claro`)
+— que é a forma que a documentação deste próprio projeto ensina a usar para
+tirar print. As duas caíam sempre no mesmo padrão (`noite`), sem erro nenhum, e
+dois prints "nos dois temas" saíam byte a byte idênticos.
+
+Conserto de uma linha: casa por `id` OU por `nome`. Provado com o `--bg`
+computado de verdade: `tema=escuro` → `#212529` (noite), `tema=claro` →
+`#f2ede2` (papel), os quatro nomes funcionando.
+
 ### CC-138: prioridade e complexidade na planilha de tarefas
 
 Duas colunas do formato que ele usa nos ROADMAP.md ficaram de fora da planilha
