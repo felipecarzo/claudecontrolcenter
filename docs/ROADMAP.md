@@ -131,16 +131,37 @@ genérico, sem projeto, então continua abrindo sem título de projeto. É
 justamente o que o CC-149 (o próximo item, já registrado) resolve, com o
 seletor de projeto e agente.
 
-### CC-149 — abrir escolhendo projeto E agente, como ele já abre o Remote Control
+### CC-149 ✅ 18/08 — abrir escolhendo projeto E agente, como ele já abre o Remote Control
 
 Ideia dele em 18/08: *"fazer eu abrir sessão do projeto e do agente (agy ou
 opencode) igual eu abro o rc do Claude, e quando abrir o /opencode ou /agy já
 abrir c os projetos abertos"*.
 
-O caminho existe e foi apurado: a tela do opencode aceita `?directory=` no
-endereço, e a API dela abre terminal e sessão em pasta escolhida. Então o painel
-pode listar os projetos e mandar a pasta junto. Pelo lado do agy, o `ttyd`
-aceita subir com pasta de trabalho própria.
+**A apuração anterior estava errada, e a correção mudou a implementação
+inteira.** O registro dizia que a tela do opencode aceita `?directory=` no
+endereço. Testado direto contra o servidor de verdade em 18/08: não aceita.
+Esse parâmetro existe só no esquema de link do app de DESKTOP
+(`opencode://open-project?directory=…`), lido de uma string, nunca da barra de
+endereço do navegador.
+
+O caminho de verdade, achado lendo o bundle JavaScript da própria SPA do
+opencode: a pasta vai NA URL, como segmento, em base64url. A primeira tentativa
+de provar isso foi abrir `/opencode/session/<id>` direto, e parecia funcionar
+pelo texto da página. **Só o print de tela revelou o engano**: aquilo era a API
+crua devolvendo um JSON, porque a rota da SPA colide com uma rota do próprio
+servidor. Texto sozinho não bastava; a imagem sim.
+
+Na aba de agentes, clicar em "opencode" ou "agy" agora abre a mesma lista de
+projetos do Remote Control (a mesma fonte, para não duplicar o dia em que ela
+ficar desatualizada), e cada um leva direto para a pasta escolhida:
+`/opencode/<pasta em base64url>` ou `/agy/?arg=<nome do projeto>` (que já
+existia, do CC-148).
+
+Provado em três camadas: a codificação sozinha (teste no gate, contra o valor
+que o servidor de produção confirmou abrir de verdade), o clique no painel de
+teste (a lista aparece, e o clique monta a URL certa), e a página de verdade
+pelo endereço público, logada pela senha real, mostrando a interface do
+opencode sem cair no erro de pasta inválida.
 
 **Apurado junto, e fecha uma dúvida dele:** o opencode tem app de celular
 (alpha) e app de computador com SSH; o agy tem editor de computador com Remote

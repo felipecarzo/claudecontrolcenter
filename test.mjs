@@ -143,6 +143,37 @@ const script = scripts.join('\n')
 for (const rota of ['/api/jobs', '/api/meta', '/api/notes', '/events']) {
   assert.ok(script.includes(rota), `ui.html não usa ${rota}`)
 }
+
+/* --- CC-149: a codificação que abre o opencode já na pasta certa ---
+
+   `?directory=` na URL NÃO faz nada na página web do opencode: esse parâmetro
+   só existe no esquema de link do app de DESKTOP, lido de uma string, nunca
+   da barra de endereço do navegador — testado direto contra o servidor real
+   em 18/08, o corpo `{"directory":...}` foi ignorado.
+
+   O caminho de verdade é a pasta na PRÓPRIA url, como segmento, em
+   base64url. Achado lendo o bundle JS da SPA do opencode (funções `ln()` e
+   `_ne()` daquele código, não deste projeto). O valor abaixo foi conferido
+   contra o servidor de produção rodando de verdade: pedir essa URL abriu a
+   pasta certa, sem cair no erro que o próprio app declara para pasta
+   desconhecida. Guardar aqui é o que impede alguém trocar a fórmula sem
+   perceber que ela para de bater com o que o opencode espera. */
+{
+  const fonte = script.match(/const base64url = \([\s\S]*?\n/)?.[0]
+  assert.ok(fonte, 'ui.html perdeu a função base64url do CC-149')
+  const base64url = new Function(`${fonte}\nreturn base64url`)()
+
+  assert.equal(
+    base64url('/home/claudedev/projetos/proj_controlcenter'),
+    'L2hvbWUvY2xhdWRlZGV2L3Byb2pldG9zL3Byb2pfY29udHJvbGNlbnRlcg',
+    'a codificação da pasta mudou — é a mesma que o servidor de produção confirmou abrir de verdade',
+  )
+  // nunca pode sobrar +, / ou = : são os caracteres que tornam um valor
+  // inseguro dentro de segmento de URL, e é isso que "url" no nome promete
+  for (const pasta of ['/home/x', '/home/x/y-z_w.a', '/tmp/pasta com espaço']) {
+    assert.doesNotMatch(base64url(pasta), /[+/=]/, `sobrou caractere inseguro para "${pasta}"`)
+  }
+}
 // Cor inválida em variável CSS é ignorada em silêncio pelo navegador: o tema
 // carrega, só que aquele tom cai no valor herdado. Já aconteceu duas vezes na
 // mesma edição (`#8manual` e um dígito devanagari no meio do hex).

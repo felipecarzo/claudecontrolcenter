@@ -3260,7 +3260,6 @@ const AGENTES_FORA_LISTA = [
   { id: 'agy', rotulo: 'agy', nota: 'terminal do Antigravity, só dele' },
 ]
 let AGENTES_FORA = null // null = ainda não perguntei; depois, os que responderam
-let ATALHO_INDO = null
 
 /* Cada um é perguntado por si. Antes bastava o opencode responder para os dois
    botões nascerem, e num lugar onde só um existisse o outro seria um botão que
@@ -3281,11 +3280,84 @@ function viewAtalhosFora() {
   if (!AGENTES_FORA?.length) return ''
   return `<div class="atalhos-fora">
     ${AGENTES_FORA_LISTA.filter((a) => AGENTES_FORA.includes(a.id)).map((a) => `
-      <button class="atalho-fora" data-agente-fora="${a.id}"${
-        ATALHO_INDO === a.id ? ' disabled' : ''}>
+      <button class="atalho-fora" data-agente-escolher="${a.id}"${
+        AGENTE_ESCOLHENDO === a.id ? ' aria-expanded="true"' : ''}>
         <span>${a.rotulo}</span>
-        <small>${ATALHO_INDO === a.id ? 'abrindo...' : a.nota}</small>
+        <small>${a.nota}</small>
       </button>`).join('')}
+  </div>${viewEscolhaProjetoAgente()}`
+}
+
+/**
+ * CC-149: escolher projeto E agente, do mesmo jeito que já se escolhe projeto
+ * para o Remote Control.
+ *
+ * Pedido dele em 18/08: *"fazer eu abrir sessão do projeto e do agente (agy ou
+ * opencode) igual eu abro o rc do Claude, e quando abrir o /opencode ou /agy já
+ * abrir c os projetos abertos"*.
+ *
+ * Duas descobertas, e as duas corrigem uma suposição anterior deste roadmap
+ * que estava ERRADA. Medida contra o servidor de verdade, não lida em
+ * documentação nenhuma.
+ *
+ * 1. `?directory=` na URL do opencode não faz nada na página web. Esse
+ *    parâmetro só existe no esquema de link do app de DESKTOP
+ *    (`opencode://open-project?directory=…`), lido de uma string, nunca da
+ *    barra de endereço do navegador. Testado direto contra a API: o corpo
+ *    `{"directory":...}` em `POST /session` foi ignorado.
+ * 2. O caminho real, achado lendo o bundle JS da SPA: a pasta vai na PRÓPRIA
+ *    URL, como segmento, em base64url (`/opencode/<pasta em base64url>`). A
+ *    primeira tentativa foi abrir `/opencode/session/<id>` direto, e parecia
+ *    funcionar: o print de tela mostrou a verdade, aquilo é a API crua
+ *    devolvendo JSON, porque a rota da SPA colide com uma rota do servidor.
+ *    Só o print revelou o engano, o texto sozinho não bastava.
+ *
+ * Provado pelo endereço público de verdade, logado pela senha real: a página
+ * abre a interface do opencode já na pasta certa, sem cair no erro de URL
+ * inválida que o próprio app declara para pasta desconhecida.
+ */
+let AGENTE_ESCOLHENDO = null // null | 'opencode' | 'agy'
+let PROJETOS_AGENTE = null // cache de {nome, dir}[], a mesma lista do Remote Control
+
+/** base64url puro-navegador: `btoa` já resolve para caminho de projeto, que é
+ *  ASCII sempre. É a mesma codificação que o bundle do opencode usa (achada
+ *  lendo o código dele), não uma invenção daqui. */
+const base64url = (s) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+
+async function abrirEscolhaDeAgente(qual) {
+  if (AGENTE_ESCOLHENDO === qual) { AGENTE_ESCOLHENDO = null; return render() }
+  AGENTE_ESCOLHENDO = qual
+  render()
+  if (PROJETOS_AGENTE) return
+  /* A MESMA lista do Remote Control, de propósito: são os mesmos projetos,
+     descobertos pela mesma regra, e duplicar a busca duplicaria também o dia
+     em que ela ficar desatualizada. */
+  try {
+    const d = await (await fetch('/api/remote-control')).json()
+    PROJETOS_AGENTE = d.projetos || []
+  } catch { PROJETOS_AGENTE = [] }
+  render()
+}
+
+function irParaAgenteNoProjeto(qual, dir, nome) {
+  if (qual === 'agy') { location.href = `/agy/?arg=${encodeURIComponent(nome)}`; return }
+  if (qual === 'opencode') { location.href = `/opencode/${base64url(dir)}`; return }
+}
+
+function viewEscolhaProjetoAgente() {
+  if (!AGENTE_ESCOLHENDO) return ''
+  const a = AGENTES_FORA_LISTA.find((x) => x.id === AGENTE_ESCOLHENDO)
+  if (!PROJETOS_AGENTE) return `<div class="rm-lista"><p class="dim">lendo os projetos…</p></div>`
+  if (!PROJETOS_AGENTE.length) return `<div class="rm-lista"><p class="dim">nenhum projeto encontrado</p></div>`
+  return `<div class="rm-lista">
+    <p class="dim" style="margin:2px 0 8px">abrir <b>${esc(a?.rotulo || AGENTE_ESCOLHENDO)}</b> em qual projeto?</p>
+    ${PROJETOS_AGENTE.map((p) => `<div class="rm-linha">
+      <span class="rm-nome">${esc(p.nome)}</span>
+      <span class="rm-acoes">
+        <button class="btn" data-agente-projeto="${AGENTE_ESCOLHENDO}" data-agente-dir="${esc(p.dir)}"
+          data-agente-nome="${esc(p.nome)}">abrir</button>
+      </span>
+    </div>`).join('')}
   </div>`
 }
 
@@ -3303,14 +3375,6 @@ function viewAtalhosFora() {
  * única coisa que existe. Sem estado intermediário, sem terminal órfão se o
  * clique não completar. */
 const CASA_DO_AGENTE = { opencode: '/opencode/', agy: '/agy/' }
-
-function abrirAgenteFora(qual) {
-  const destino = CASA_DO_AGENTE[qual]
-  if (!destino) return
-  ATALHO_INDO = qual
-  render()
-  location.href = destino
-}
 
 function viewAgentes(jobs) {
   const grade = (lista) => `<div class="cards">${lista.map(cartao).join('')}</div>`
@@ -8116,8 +8180,14 @@ document.addEventListener('click', async (e) => {
     return trocarAba(alvo)
   }
 
-  const agFora = t.closest('[data-agente-fora]')
-  if (agFora) return abrirAgenteFora(agFora.dataset.agenteFora)
+  // CC-149: escolher projeto e agente juntos, do mesmo jeito que o Remote Control
+  const agEscolher = t.closest('[data-agente-escolher]')
+  if (agEscolher) return abrirEscolhaDeAgente(agEscolher.dataset.agenteEscolher)
+
+  const agProjeto = t.closest('[data-agente-projeto]')
+  if (agProjeto) {
+    return irParaAgenteNoProjeto(agProjeto.dataset.agenteProjeto, agProjeto.dataset.agenteDir, agProjeto.dataset.agenteNome)
+  }
 
   const aba = t.closest('button[data-tab]')
   if (aba) return trocarAba(aba.dataset.tab)
