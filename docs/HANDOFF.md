@@ -78,3 +78,33 @@ conferência. Foi a falta disso que custou o dia hoje.
    **O que é decisão daqui:** o agente declarar o nível pelo mesmo canal por
    onde já reporta assunto e tarefas, em vez de o escritório abrir um caminho
    próprio de escrita. Toca o CC-138, que pergunta a mesma coisa por outro lado.
+
+---
+
+## 2026-08-19, fim da temporada na VPS
+
+**Estado:** 24 commits nesta branch (`backlog/cc-46-48-49-52-53-56-65`) que o
+PC ainda não tinha. Já enviados para o GitHub. Gate verde.
+
+**Próximo passo exato, para quem abrir no PC:**
+
+1. `git pull` nesta branch.
+2. **Ler `docs/guias/PC-E-VPS.md` antes de mexer em código.** Ele lista as
+   cinco coisas que parecem erro e não são, e o que cada uma evita.
+3. `npm test`. Se falhar no Windows, registrar o que falhou antes de
+   consertar: provavelmente é diferença real de sistema, não defeito.
+
+**O que está em curso e não terminou:**
+
+- **CC-156, o redesenho da tela.** Direção fechada com ele e escrita em
+  `docs/produto/REDESENHO-TELA.md`. Primeira fatia no ar (as telas de ajuste
+  saíram para uma gaveta atrás de "mais"). Faltam as três camadas maiores:
+  projetos como cartões completos, backlog cruzando todos os projetos em
+  tabela, e a fusão de ligar servidor com configurar ele.
+- **CC-104, a integração PC mais VPS**, que é o que ele quer construir agora.
+  A federação já funciona; falta o serviço do lado do Windows que empurra o
+  pacote. A topologia é torta de um lado só, e isso decide o desenho: o PC
+  alcança a VPS, a VPS nunca alcança o PC atrás do NAT.
+
+**Decisões abertas, que só ele toma:** CC-80 (forma da tela de visão
+estrutural) e CC-155 (mapa visual das avenidas).

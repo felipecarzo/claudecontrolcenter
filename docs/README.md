@@ -10,6 +10,7 @@ Um fato mora em um lugar só. Precisa dele em outro documento? Escreva
 | O que falta fazer agora? | [ROADMAP.md](ROADMAP.md) |
 | Como funciona por dentro? | [guias/ARQUITETURA.md](guias/ARQUITETURA.md) |
 | Por que a tela é assim? | [guias/DESIGN.md](guias/DESIGN.md) |
+| **Vim do PC mexer neste repo. O que não posso desfazer?** | [guias/PC-E-VPS.md](guias/PC-E-VPS.md) |
 | Como um agente alimenta o painel? | [../AGENTS.md](../AGENTS.md) |
 | Como eu rodo isso? | [../README.md](../README.md) |
 | O que aconteceu em tal dia? | [diario/](diario/) |

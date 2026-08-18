@@ -1,5 +1,19 @@
 # agent-cockpit — Claude Code Instructions
 
+> ## ⚠️ Se você está no PC, leia isto antes de mexer em código
+>
+> Entre 13 e 19/08 este projeto foi construído **só na VPS** (Linux, usuário
+> sem `sudo`). São 24 commits que o PC nunca viu, e vários deles consertam
+> coisa que **só acontece lá**: a pasta de configuração fica somente leitura
+> dentro do sandbox, o painel reinicia sem `sudo`, o hook que roda é uma cópia
+> e não o arquivo do repositório.
+>
+> Cada um desses consertos parece código defensivo demais para quem chega de
+> fora, e desfazer volta o defeito, sem erro na tela.
+>
+> **`docs/guias/PC-E-VPS.md` lista os cinco, com o que cada um evita e como
+> conferir no Windows antes de encostar.** Leia antes, não depois.
+
 ## Projeto
 Painel dos agentes do Claude Code rodando em background. Uma linha por agente,
 agrupada por projeto, com rota, modelo, tokens, idade e to-dos — no lugar da
