@@ -9,7 +9,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { lastPrompt, intentMatchesTranscript, humanMessagesTail } from './transcript.mjs'
 import { sinaisDe } from './sinais.mjs'
-import { arquivoMetaDe, PROJETOS_DIR, sessaoAtual, transcritoDe } from './metaSessao.mjs'
+import { arquivoExistenteDe, arquivoMetaDe, gravarMetaSessao, PROJETOS_DIR, sessaoAtual, transcritoDe } from './metaSessao.mjs'
 import { casaClaude } from './platform.mjs'
 
 /* `casaClaude()` e não `os.homedir()`, desde 18/08. Sem isso não havia como
@@ -564,8 +564,13 @@ export function caminhoDoEstado(id) {
 
   // O painel mostra a sessão pelos 8 primeiros caracteres; quem chama de fora
   // pode passar o curto, então aceita os dois.
+  /* CC-157: o `file` de leitura é onde o reporte ESTÁ (casa ou abrigo), não
+     onde ele idealmente moraria. Sem isso, uma sessão que caiu no abrigo
+     leria `{}` da casa e cada `cc set` apagaria o que o anterior gravou. */
   const completo = transcritoDe(id) ? id : acharSessaoPorPrefixo(id)
-  if (completo) return { tipo: 'sessao', id: completo, file: arquivoMetaDe(completo) }
+  if (completo) {
+    return { tipo: 'sessao', id: completo, file: arquivoExistenteDe(completo) || arquivoMetaDe(completo) }
+  }
 
   return null
 }
@@ -593,33 +598,26 @@ export function writeMeta(id, patch) {
   }
   const next = mergeMeta(readJson(alvo.file, {}) || {}, patch)
   next.updatedAt = new Date().toISOString()
+
+  /* CC-157, achado em 19/08: dentro do sandbox do Claude Code a pasta
+     `~/.claude` fica somente leitura, e TODA sessão perdia a capacidade de
+     reportar. O sintoma era o pior possível, porque não parecia erro: o
+     painel simplesmente não mostrava a sessão, e quem olhava concluía que o
+     agente estava trabalhando por fora do sistema inteiro.
+
+     Ele perguntou o que GARANTE que não aconteça de novo, e avisar não
+     garante, porque aviso depende de alguém ler. O que garante é ter para
+     onde ir: sessão cai no abrigo (`gravarMetaSessao` tenta os dois lugares,
+     e a leitura olha os dois). Job de background continua com um caminho só,
+     porque a pasta dele é do CLI e inventar um segundo lugar para ela
+     quebraria a regra de ouro do projeto. */
+  if (alvo.tipo === 'sessao') return gravarMetaSessao(alvo.id, next)
+
   // escrita atômica: nunca deixa o arquivo pela metade se o processo morrer
   const tmp = `${alvo.file}.tmp`
-  try {
-    fs.mkdirSync(path.dirname(alvo.file), { recursive: true })
-    fs.writeFileSync(tmp, JSON.stringify(next, null, 2))
-    fs.renameSync(tmp, alvo.file)
-  } catch (e) {
-    /* CC-157, achado em 19/08: dentro do sandbox do Claude Code a pasta
-       `~/.claude` é somente leitura, e TODA sessão perde a capacidade de
-       reportar. O sintoma na tela é o pior possível, porque não é um erro:
-       o painel simplesmente não mostra a sessão, e quem olha conclui que o
-       agente está trabalhando por fora do sistema.
-
-       O que subia daqui era um stack trace de `EROFS` cru, que não diz o que
-       fazer. Falha com a causa e a saída escritas, porque a saída existe e é
-       de UMA linha: liberar a pasta na lista do sandbox. */
-    if (e?.code === 'EROFS' || e?.code === 'EACCES' || e?.code === 'EPERM') {
-      throw new Error(
-        `não deu para gravar o reporte em ${alvo.file}: a pasta está somente leitura para esta sessão (${e.code}).\n\n`
-        + 'Quase sempre é o sandbox do Claude Code: ele deixa ~/.claude só para leitura, e aí\n'
-        + 'nenhuma sessão consegue reportar ao painel. A sessão continua funcionando, e os hooks\n'
-        + 'também: o que se perde é a sessão APARECER no painel.\n\n'
-        + 'Saída: liberar a pasta na lista de escrita do sandbox (comando /sandbox no Claude Code).',
-      )
-    }
-    throw e
-  }
+  fs.mkdirSync(path.dirname(alvo.file), { recursive: true })
+  fs.writeFileSync(tmp, JSON.stringify(next, null, 2))
+  fs.renameSync(tmp, alvo.file)
   return next
 }
 

@@ -32,6 +32,39 @@ import { casaClaude } from './platform.mjs'
 export const PROJETOS_DIR = () => path.join(casaClaude(), 'projects')
 export const DIR_SESSOES = () => path.join(casaClaude(), 'control-center-sessoes')
 
+/**
+ * CC-157, 19/08: o abrigo, para quando a casa está trancada.
+ *
+ * Achado medindo a queixa dele de que uma sessão trabalhando na
+ * `fibraessencia` não aparecia no painel, *"como se ela tivesse funcionando
+ * por fora do cockpit"*: dentro do sandbox do Claude Code, `~/.claude` está
+ * montada somente para leitura. `EROFS` na cara, com a pasta gravável no
+ * disco e o mesmo `touch` funcionando fora do sandbox.
+ *
+ * O estrago é o pior tipo: **silencioso e ao contrário**. A sessão continua
+ * trabalhando, os hooks continuam disparando (contadas 24 travas diferentes
+ * no transcrito real dela), e o que se perde é só ela APARECER na tela. Quem
+ * olha o painel vazio conclui que nada está rodando.
+ *
+ * Ele perguntou o que garante que não aconteça de novo, e avisar não garante:
+ * aviso depende de alguém ler. O que garante é ter para onde ir. Medido o que
+ * o sandbox permite escrever, `~/.local/share` passa, então o reporte cai
+ * para lá quando a casa recusa, e a LEITURA olha os dois lugares.
+ *
+ * Por que `~/.local/share` e não `/tmp` nem a pasta do projeto: `/tmp` some no
+ * reboot, e escrever dentro do repositório sujaria projeto de cliente com
+ * estado de ferramenta. É o lugar padrão de dado de aplicativo no Linux, e
+ * sobrevive.
+ */
+export const DIR_SESSOES_ABRIGO = () => path.join(
+  process.env.XDG_DATA_HOME || path.join(casaClaude(), '..', '.local', 'share'),
+  'agent-cockpit', 'sessoes',
+)
+
+/** Os dois lugares onde um reporte de sessão pode estar, na ordem em que
+ *  valem: a casa primeiro, o abrigo depois. */
+export const DIRS_SESSOES = () => [DIR_SESSOES(), DIR_SESSOES_ABRIGO()]
+
 /** O id desta sessão, quando ela é interativa. `null` em job de background. */
 export const sessaoAtual = () => process.env.CLAUDE_CODE_SESSION_ID || null
 
@@ -60,21 +93,53 @@ export function transcritoDe(sessionId) {
   return null
 }
 
+/** Onde o reporte desta sessão está DE FATO. Procura na casa e no abrigo, e
+ *  devolve o mais recente quando os dois existem: a sessão pode ter começado
+ *  com a casa aberta e continuado depois que ela trancou. */
+export function arquivoExistenteDe(sessionId) {
+  const achados = DIRS_SESSOES()
+    .map((dir) => path.join(dir, `${sessionId}.json`))
+    .map((f) => { try { return { f, em: fs.statSync(f).mtimeMs } } catch { return null } })
+    .filter(Boolean)
+    .sort((a, b) => b.em - a.em)
+  return achados[0]?.f || null
+}
+
 export function lerMetaSessao(sessionId) {
+  const arquivo = arquivoExistenteDe(sessionId)
+  if (!arquivo) return {}
   try {
-    return JSON.parse(fs.readFileSync(arquivoMetaDe(sessionId), 'utf8'))
+    return JSON.parse(fs.readFileSync(arquivo, 'utf8'))
   } catch { return {} }
 }
 
-/** Escrita atômica, o mesmo padrão do `meta.json` de job: tmp mais rename, para
- *  nunca deixar o arquivo pela metade se o processo morrer no meio. */
+/**
+ * Escrita atômica, o mesmo padrão do `meta.json` de job: tmp mais rename, para
+ * nunca deixar o arquivo pela metade se o processo morrer no meio.
+ *
+ * CC-157: tenta a casa; se ela estiver somente leitura (o sandbox), cai no
+ * abrigo em vez de estourar. Devolve por onde saiu, para quem chama poder
+ * dizer isso em voz alta uma vez, em vez de sumir calado do painel.
+ */
 export function gravarMetaSessao(sessionId, meta) {
-  fs.mkdirSync(DIR_SESSOES(), { recursive: true })
-  const arquivo = arquivoMetaDe(sessionId)
-  const tmp = `${arquivo}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(meta, null, 2))
-  fs.renameSync(tmp, arquivo)
-  return meta
+  let ultimoErro = null
+  for (const dir of DIRS_SESSOES()) {
+    try {
+      fs.mkdirSync(dir, { recursive: true })
+      const arquivo = path.join(dir, `${sessionId}.json`)
+      const tmp = `${arquivo}.tmp`
+      fs.writeFileSync(tmp, JSON.stringify(meta, null, 2))
+      fs.renameSync(tmp, arquivo)
+      return { ...meta, _onde: dir, _abrigo: dir !== DIR_SESSOES() }
+    } catch (e) {
+      ultimoErro = e
+      // só vale tentar o próximo quando o problema é PERMISSÃO. Disco cheio ou
+      // JSON impossível de serializar falhariam igual nos dois, e insistir só
+      // esconderia a causa real atrás de uma segunda mensagem igual.
+      if (!['EROFS', 'EACCES', 'EPERM'].includes(e?.code)) throw e
+    }
+  }
+  throw ultimoErro
 }
 
 /**
@@ -84,16 +149,21 @@ export function gravarMetaSessao(sessionId, meta) {
  * varredura, nunca em timer: é leitura de disco, e o painel já varre.
  */
 export function limparOrfaos() {
-  let arquivos = []
-  try {
-    arquivos = fs.readdirSync(DIR_SESSOES()).filter((f) => f.endsWith('.json'))
-  } catch { return 0 }
-
   let apagados = 0
-  for (const f of arquivos) {
-    const id = f.replace(/\.json$/, '')
-    if (transcritoDe(id)) continue
-    try { fs.unlinkSync(path.join(DIR_SESSOES(), f)); apagados++ } catch { /* segue */ }
+  // CC-157: varre a casa E o abrigo. Limpar só um deixaria lixo eterno no
+  // outro, e o abrigo é justamente onde a sessão escreve quando algo está
+  // errado, ou seja, o lugar com mais chance de acumular.
+  for (const dir of DIRS_SESSOES()) {
+    let arquivos = []
+    try {
+      arquivos = fs.readdirSync(dir).filter((f) => f.endsWith('.json'))
+    } catch { continue }
+
+    for (const f of arquivos) {
+      const id = f.replace(/\.json$/, '')
+      if (transcritoDe(id)) continue
+      try { fs.unlinkSync(path.join(dir, f)); apagados++ } catch { /* segue */ }
+    }
   }
   return apagados
 }

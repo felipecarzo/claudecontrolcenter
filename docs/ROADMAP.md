@@ -1290,20 +1290,68 @@ roda como serviço do sistema, fora do sandbox, e responde normal.
    travessão. O que falha é a sessão APARECER no painel, e a ausência dela na
    tela é indistinguível de "nada está rodando" para quem olha.
 2. **O framework nunca esteve ligado na `fibraessencia`**, e isso não é
-   regressão. Varridos os projetos: nenhum dos seis conferidos tem
-   `.framework/estado.json`; só o `proj_controlcenter` tem. O mesmo vale para
-   o quadro de rotas (só `inovallbond` e este projeto) e para o protocolo do
-   painel no `CLAUDE.md` do projeto (nenhum tem, porque ele mora no global).
+   regressão.
+
+   ⚠️ **A primeira versão desta contagem estava errada, e foi ele quem pegou**,
+   olhando o painel: *"dos 6 projetos, dois são PC, dois têm framework, tem um
+   teste framework que nem tá ligado e o fibraessencia que tá ligado não tem
+   framework"*. Eu tinha conferido seis projetos escolhidos por mim e escrito
+   "nenhum tem, só este", o que é falso. A varredura completa dos 18:
+
+   | com framework | o que é |
+   |---|---|
+   | `proj_controlcenter` | este projeto |
+   | `proj_controlcenter--front` | **o mesmo projeto**, worktree (o `.git` é arquivo, não pasta) |
+   | `teste_framework` | projeto de teste, e o portão nem está aberto |
+   | `teste_pierre_agenda` | projeto de teste, e está **desligado** |
+   | `app_escritorio` | o único projeto de trabalho de verdade, além deste |
+
+   Os outros 13 não têm. Ou seja, tirando teste e duplicata, o framework roda
+   em **dois** projetos reais. A leitura dele estava certa e a minha, não:
+   contar amostra que eu mesmo escolhi e apresentar como varredura é
+   exatamente o erro que este projeto tenta evitar.
 
 **Feito agora:** a falha de escrita deixou de subir como stack trace cru e
 passa a dizer a causa e a saída em uma frase. Era o pior tipo de erro para
 diagnosticar, porque quem lia o `EROFS` não tinha como ligar aquilo a "minha
 sessão sumiu do painel".
 
-**Falta ele decidir (é risco que só ele assume):** liberar `~/.claude` na
-lista de escrita do sandbox, pelo comando `/sandbox` do Claude Code. Enquanto
-não for liberado, nenhuma sessão reporta, e o painel só mostra o que já
-estava lá antes da última gravação (18/08 21:59, medido).
+#### ✅ A garantia, feita em 19/08: o abrigo
+
+Ele perguntou o que **garante** que não aconteça de novo, e a resposta é que
+avisar não garante nada, porque aviso depende de alguém ler. O que garante é
+ter para onde ir.
+
+Medido o que o sandbox ainda deixa escrever: `~/.local/share` passa. O
+reporte da sessão agora tenta a casa (`~/.claude/control-center-sessoes`) e,
+quando ela recusa por permissão, **cai no abrigo**
+(`~/.local/share/agent-cockpit/sessoes`) em vez de estourar. A LEITURA olha
+os dois lugares e, quando o mesmo id existe nos dois, vale o mais recente:
+uma sessão pode começar com a casa aberta e continuar depois que ela trancar.
+
+Escolha de lugar, com o motivo: `/tmp` some no reboot, e escrever dentro do
+repositório sujaria projeto de cliente com estado de ferramenta.
+`~/.local/share` é o lugar padrão de dado de aplicativo no Linux e sobrevive.
+
+Só a queda por PERMISSÃO usa o abrigo. Disco cheio ou dado impossível de
+serializar falhariam igual nos dois lugares, e insistir só esconderia a causa
+real atrás de uma segunda mensagem idêntica.
+
+Job de background continua com um caminho só, de propósito: a pasta dele é do
+CLI, e inventar um segundo lugar para ela quebraria a regra de ouro do
+projeto.
+
+**Provado de ponta a ponta, dentro do sandbox** (que é onde o defeito mora):
+`cc set` gravou no abrigo, `cc json` voltou a enxergar a sessão, e o painel
+de produção, reiniciado, mostrou a sessão com assunto e frente. Teste no gate
+guarda a ponta que quebrava calada: reporte que só existe no abrigo tem que
+ser achado pela leitura.
+
+**O que ainda vale ele decidir, e agora é opcional:** liberar `~/.claude` na
+lista de escrita do sandbox (`/sandbox`). Isso devolveria também o
+interruptor de travas por projeto, o histórico e o bloco de notas, que
+continuam presos na casa. O reporte ao painel, que era o que doía, não
+depende mais disso.
 
 ### CC-156 ⏸ direção escolhida, aguardando ordem de construir: o redesenho da tela
 

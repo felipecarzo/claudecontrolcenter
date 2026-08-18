@@ -2864,6 +2864,48 @@ if (!ESPERADO) {
   }
 }
 
+/* --- CC-157: o reporte da sessão sobrevive à casa trancada ---
+
+   Achado em 19/08 medindo a queixa dele de que uma sessão não aparecia no
+   painel: dentro do sandbox, `~/.claude` fica somente leitura, e a sessão
+   sumia da tela sem nenhum erro visível para quem olhava.
+
+   O que estes asserts guardam é a GARANTIA que ele pediu, não o aviso: com a
+   casa trancada, o reporte cai no abrigo e a leitura continua achando. Um
+   teste que só provasse a mensagem de erro provaria o diagnóstico, não o
+   conserto. */
+{
+  const M = await import('./src/metaSessao.mjs')
+
+  const casa = M.DIR_SESSOES()
+  const abrigo = M.DIR_SESSOES_ABRIGO()
+  assert.notEqual(casa, abrigo, 'casa e abrigo têm que ser lugares diferentes')
+  assert.deepEqual(M.DIRS_SESSOES(), [casa, abrigo], 'a casa vale primeiro, o abrigo é a queda')
+
+  /* Trancar a casa de verdade não dá para simular sem root, então o que se
+     prova aqui é a outra ponta, que é a que quebrava calada: com o arquivo
+     SÓ no abrigo, a leitura tem que achar. Era isso que fazia a sessão sumir
+     da tela mesmo depois de gravar. */
+  const id = 'ff000000-0000-4000-8000-00000000abcd'
+  const noAbrigo = path.join(abrigo, `${id}.json`)
+  const jaExistia = fs.existsSync(noAbrigo)
+  if (!jaExistia) {
+    fs.mkdirSync(abrigo, { recursive: true })
+    fs.writeFileSync(noAbrigo, JSON.stringify({ subject: 'só no abrigo' }))
+  }
+  try {
+    assert.equal(M.arquivoExistenteDe(id), noAbrigo,
+      'reporte que só existe no abrigo tem que ser achado, senão a sessão some da tela')
+    assert.equal(M.lerMetaSessao(id).subject, 'só no abrigo')
+
+    // e o que não existe em lugar nenhum continua não existindo, sem inventar
+    assert.equal(M.arquivoExistenteDe('nao-existe-em-lugar-nenhum'), null)
+    assert.deepEqual(M.lerMetaSessao('nao-existe-em-lugar-nenhum'), {})
+  } finally {
+    if (!jaExistia) fs.rmSync(noAbrigo, { force: true })
+  }
+}
+
 /* O resumo diz o que a MÁQUINA tinha para oferecer, e por isso os dois números
    podem ser zero sem que nada esteja errado: numa VPS sem job de background o
    gate agora roda inteiro contra dados sintéticos. Zero aqui é informação, não
