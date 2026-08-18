@@ -71,28 +71,65 @@ O que continua precisando é `/etc/systemd/system`, nginx, Docker e portas baixa
 Provado matando os dois processos: voltaram sozinhos com PID novo, e as duas
 telas seguiram respondendo pelo endereço público.
 
-### CC-146 — o login do Google no agy 🔒 só ele
+### CC-146 ✅ 18/08 — o login do Google no agy 🔒 só ele
 
-O `agy` está instalado (versão 1.1.13) mas sem conta. Sem isso ele responde
-"please sign in" e nenhum agente consegue usá-lo, nem ele nem o Claude. O
-caminho é abrir a tela `/agy`, que já cai no fluxo de login, e colar o código no
-celular. Depois disso o CC-147 destrava sozinho.
+**Ele entrou**, e disse isso em 18/08. Conferido do lado de cá: `agy -p` responde
+sem pedir conta, versão 1.1.14. Era o que travava o item seguinte.
 
-### CC-147 — o Claude passa a delegar tarefa ao agy pela linha de comando
+### CC-147 ✅ 18/08 — o Claude delega tarefa ao agy pela linha de comando
 
-Igual ao que já funciona com o opencode (`opencode run` respondeu de primeira,
-custo zero). Bloqueado pelo CC-146.
+Mesmo cano do opencode, que já existia desde 13/08. O que muda de um agente para
+o outro é só três coisas, e é só isso que o código separa: o nome do binário, os
+argumentos, e como se lê a saída.
 
-### CC-148 — o título do terminal diz de quem é e de qual projeto
+Os dois formatos foram **medidos contra os binários reais**, não lidos em
+documentação: o opencode entrega pedaços de texto soltos, e o agy fecha com a
+resposta inteira num evento final. Somar os dois duplicaria o texto, então o
+evento final vence e os pedaços servem para mostrar a resposta crescendo
+enquanto a tarefa ainda roda.
+
+O agy ainda entrega **o gasto de token**, que o opencode não entrega. Para o
+opencode a resposta é `null`, nunca zero: zero diria que a chamada foi de graça,
+que é outra coisa.
+
+Provado de ponta a ponta com os dois agentes de verdade: o agy respondeu em 11s
+gastando 14.765 tokens, o opencode respondeu como antes. Duas armadilhas
+apareceram no caminho:
+
+- **o caminho do binário é resolvido, não só o nome.** O painel roda como
+  serviço, serviço não herda o PATH do shell, e o agy mora numa pasta que não
+  está nele. É o mesmo defeito que o botão do escritório teve em 16/08;
+- **"parou de crescer" não serve para saber que a tarefa acabou.** O agy escreve
+  o cabeçalho na hora e a resposta segundos depois, então duas leituras seguidas
+  dão o mesmo tamanho enquanto ele ainda pensa. A primeira versão do teste caiu
+  nisso e deu falha onde não havia. O sinal certo é o processo ter morrido.
+
+### CC-148 ✅ 18/08 — o título do terminal diz de quem é e de qual projeto
 
 Queixa dele em 18/08: *"mistura os projetos do agy e os projetos do opencode no
 mesmo terminal. Não teria problema se os títulos falassem. Tipo agy--nome do
 projeto, o nome do projeto"*.
 
-Metade já foi resolvida pela separação de telas: o agy saiu de dentro do
-opencode e ganhou `/agy`. Falta a outra metade, que é o nome do projeto no
-título de cada terminal e de cada conversa, para não precisar adivinhar de qual
-pasta aquilo é.
+Metade já tinha sido resolvida pela separação de telas: o agy saiu de dentro do
+opencode e ganhou `/agy`. Esta é a outra metade: o nome do projeto no título.
+
+`agy-projeto` (`~/.local/bin/`, fora do repositório, na mesma prateleira de
+`~/dev.sh` e `~/cockpit-auth.mjs`) recebe o projeto pela URL (`?arg=<projeto>`,
+que o `--url-arg` do `ttyd` já sabia repassar), confere que o nome é uma pasta
+de verdade dentro de `~/projetos`, entra nela e escreve o título da aba antes de
+passar a vez para o `agy` de verdade. Nome que não é uma pasta, ou que tenta
+sair de `~/projetos` (`../../etc`), cai no comportamento de sempre: abre sem
+projeto, e o título fica só `agy`.
+
+Provado no serviço de produção (porta 5183, atrás da senha do painel), com
+navegador de verdade medindo o título da aba: com projeto ele mostra "agy ·
+proj_controlcenter", sem projeto mostra "agy", e nome inventado ou tentativa de
+fuga de pasta não aparecem no título.
+
+**Falta a ponta que liga isso a um clique**: hoje o botão da aba de agentes é
+genérico, sem projeto, então continua abrindo sem título de projeto. É
+justamente o que o CC-149 (o próximo item, já registrado) resolve, com o
+seletor de projeto e agente.
 
 ### CC-149 — abrir escolhendo projeto E agente, como ele já abre o Remote Control
 
@@ -110,7 +147,7 @@ aceita subir com pasta de trabalho própria.
 SSH, e **não tem app de celular**. Nenhum dos dois é necessário: as duas telas
 web já entregam o que ele quer.
 
-### CC-150 — decidido: modelo gratuito e Remote Control não convivem 🚫
+### CC-150 ✅ 18/08 — decidido: modelo gratuito e Remote Control não convivem 🚫
 
 Pergunta dele: *"teria como colocar pra uma sessão do Claude rodar com um modelo
 desses gratuitos e ainda usar o remote control?"*
@@ -821,7 +858,7 @@ só, e essa uma está pronta com outro nome (os modos "permissivo" e "imperativo
 de 14/08 são o Livre e o Sugestivo de hoje), que é justamente o falso positivo
 previsto no item 2.
 
-### CC-133: a entrevista que conduz a definição de um projeto novo
+### CC-133 ✅ 18/08 — a entrevista que conduz a definição de um projeto novo
 
 Palavras dele em 14/08, e nada disso existe hoje:
 
@@ -881,7 +918,7 @@ página se redesenha a cada 2 segundos, e o que ele digita mora numa variável
 fora do desenho. O teste espera dois tiques com o texto no campo antes de
 enviar, e é esse assert que impede a regressão.
 
-### CC-143: criar projeto novo pelo painel, com a pasta já no padrão
+### CC-143 ✅ 18/08 — criar projeto novo pelo painel, com a pasta já no padrão
 
 Pedido dele em 18/08, respondendo à pergunta sobre a terceira fatia da
 entrevista:
@@ -1054,7 +1091,7 @@ falhou. É a mesma família do botão que responde `ok` com o processo morto atr
 Duas saídas: somar as duas fontes (a certa), ou a saída dizer que só lista job
 de background (a barata).
 
-### CC-129: sessão avulsa na pasta pessoal, pelo painel
+### CC-129 ✅ 17/08 — sessão avulsa na pasta pessoal, pelo painel
 
 Pedido dele em 17/08: *"podemos incluir no controle center lá no remoto um botão
 pra criar uma sessão avulsa? daí abre em ~/. pra eu poder alterar coisas no

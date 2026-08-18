@@ -16,6 +16,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import { quiet, ehWindows } from './platform.mjs'
+import { resolverBinario } from './paineis.mjs'
 
 // north-mini-code-free (recomendado pela skill vibecoder-opencode) deu erro
 // de servidor nas duas vezes testadas em 12/08 — confirmado via CLI direto,
@@ -25,6 +26,51 @@ import { quiet, ehWindows } from './platform.mjs'
 // mostra a atual.
 export const MODELO_PADRAO = 'opencode/big-pickle'
 const PASTA_LOG = path.join(os.tmpdir(), 'cc-opencode')
+
+/**
+ * CC-147: os agentes que NÃO são o Claude, disparados pela linha de comando.
+ *
+ * Eram dois caminhos separados, e o segundo não existia: o opencode já era
+ * disparado daqui desde 13/08, e o agy só dava para usar abrindo a tela dele e
+ * digitando. Delegar tarefa exige um canal sem tela.
+ *
+ * O que muda de um para o outro é só três coisas: o nome do binário, os
+ * argumentos, e como se lê a saída. O resto (subir sem esperar, gravar num
+ * arquivo, ler depois) é idêntico e não precisa ser escrito duas vezes.
+ *
+ * Os formatos foram MEDIDOS contra os binários reais em 18/08, não lidos na
+ * documentação:
+ *
+ * - opencode: `{"type":"text","part":{"text":"…"}}`, podendo vir em vários
+ *   eventos por causa do streaming;
+ * - agy: `{"event":"result","result":{"status":"SUCCESS","response":"…"}}` na
+ *   última linha, com os pedaços chegando antes em `step_update`. Ele ainda
+ *   entrega o gasto de token no mesmo evento, o que o opencode não faz.
+ */
+export const AGENTES = {
+  opencode: {
+    id: 'opencode',
+    titulo: 'opencode',
+    binario: 'opencode',
+    modeloPadrao: MODELO_PADRAO,
+    aceitaModelo: true,
+    args: (prompt, modelo) => ['run', '--model', modelo, '--format', 'json', prompt],
+  },
+  agy: {
+    id: 'agy',
+    titulo: 'agy (Antigravity)',
+    binario: 'agy',
+    /* Sem modelo na linha de comando de propósito: o agy escolhe pela conta
+       logada, e passar `--model` com um nome que ele não conhece falha a
+       chamada inteira em vez de degradar. */
+    modeloPadrao: null,
+    aceitaModelo: false,
+    args: (prompt) => ['-p', prompt, '--output-format', 'stream-json'],
+  },
+}
+
+/** O agente pedido, ou o opencode. Nome desconhecido não pode virar comando. */
+const agenteDe = (nome) => AGENTES[String(nome || 'opencode')] || AGENTES.opencode
 
 /**
  * Dispara `opencode run` e devolve na hora, sem esperar terminar. Falha de
@@ -74,13 +120,22 @@ const PASTA_LOG = path.join(os.tmpdir(), 'cc-opencode')
  * `binario` existe pra teste (aponta pra um comando qualquer no lugar de
  * `opencode`) — nunca precisa mudar em uso real.
  */
-export function dispararTarefa(prompt, { cwd = process.cwd(), modelo = MODELO_PADRAO, binario = 'opencode' } = {}) {
+export function dispararTarefa(prompt, {
+  cwd = process.cwd(), modelo = null, binario = null, agente = 'opencode',
+} = {}) {
   fs.mkdirSync(PASTA_LOG, { recursive: true })
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
   const logFile = path.join(PASTA_LOG, `${id}.jsonl`)
 
-  const args = ['run', '--model', modelo, '--format', 'json', prompt]
-  const [cmd, cmdArgs] = ehWindows ? ['cmd', ['/c', binario, ...args]] : [binario, args]
+  const a = agenteDe(agente)
+  /* `binario` continua vencendo tudo: é o que deixa o teste apontar para um
+     comando qualquer no lugar do agente de verdade. Sem ele, o caminho é
+     RESOLVIDO, e não só o nome: o painel roda como serviço, e serviço não
+     herda o PATH do shell — o `agy` mora em `~/.local/bin`, que não está lá.
+     Foi exatamente esse o defeito do botão do escritório em 16/08. */
+  const alvo = binario || resolverBinario(a.binario)
+  const args = a.args(prompt, modelo || a.modeloPadrao)
+  const [cmd, cmdArgs] = ehWindows ? ['cmd', ['/c', alvo, ...args]] : [alvo, args]
 
   try {
     const saida = fs.openSync(logFile, 'a')
@@ -114,8 +169,40 @@ export function lerEventos(logFile) {
     if (obj?.type === 'tool_use') {
       eventos.push({ tool: obj.part?.tool, arquivo: obj.part?.state?.input?.filePath })
     }
+    /* O agy chama a mesma coisa por outro nome: cada passo dele vem em
+       `step_update`, e o que interessa é o tipo do passo. Ler os dois formatos
+       aqui é o que deixa a tela do painel mostrar "o que ele está fazendo"
+       sem precisar saber qual agente respondeu. */
+    if (obj?.event === 'step_update' && obj.step_update?.step_type === 'tool_use') {
+      eventos.push({ tool: obj.step_update?.tool_name || 'ferramenta', arquivo: null })
+    }
   }
   return eventos
+}
+
+/**
+ * O que a tarefa custou, quando o agente diz. O agy entrega no evento final;
+ * o opencode não entrega nada, e `null` é a resposta honesta para ele — zero
+ * diria que a chamada foi de graça, que é outra coisa.
+ */
+export function lerCusto(logFile) {
+  let texto
+  try { texto = fs.readFileSync(logFile, 'utf8') } catch { return null }
+  for (const linha of texto.split('\n').reverse()) {
+    if (!linha.trim()) continue
+    let obj
+    try { obj = JSON.parse(linha) } catch { continue }
+    const u = obj?.result?.usage
+    if (u && Number.isFinite(u.total_tokens)) {
+      return {
+        entrada: u.input_tokens || 0,
+        saida: u.output_tokens || 0,
+        total: u.total_tokens,
+        segundos: obj.result.duration_seconds || null,
+      }
+    }
+  }
+  return null
 }
 
 /**
@@ -128,13 +215,27 @@ export function lerResposta(logFile) {
   let texto
   try { texto = fs.readFileSync(logFile, 'utf8') } catch { return '' }
   let out = ''
+  /* O agy fecha com a resposta INTEIRA num evento só, e os pedaços chegam
+     antes em `step_update`. Concatenar os dois duplicaria o texto, então o
+     evento final vence e o acúmulo serve de reserva para quando a tarefa
+     ainda está no meio (é assim que a tela mostra a resposta crescendo). */
+  let fechamento = null
   for (const linha of texto.split('\n')) {
     if (!linha.trim()) continue
     let obj
     try { obj = JSON.parse(linha) } catch { continue }
+
     if (obj?.type === 'text' && typeof obj.part?.text === 'string') out += obj.part.text
+
+    if (obj?.event === 'result' && typeof obj.result?.response === 'string') {
+      fechamento = obj.result.response
+    }
+    const passo = obj?.step_update
+    if (passo?.step_type === 'agent_response' && typeof passo.text_delta === 'string') {
+      out += passo.text_delta
+    }
   }
-  return out
+  return (fechamento ?? out).trim() ? (fechamento ?? out) : out
 }
 
 /**

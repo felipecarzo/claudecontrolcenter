@@ -1388,6 +1388,60 @@ const eventosOc = oc.lerEventos(logFake)
 assert.equal(eventosOc.length, 2)
 assert.deepEqual(eventosOc.map((e) => e.arquivo), ['a.mjs', 'b.mjs'])
 
+/* --- CC-147: o agy entra pelo mesmo cano do opencode ---
+
+   O que muda de um agente para o outro é o binário, os argumentos e o formato
+   da saída. O formato abaixo foi COPIADO de uma execução real do agy em 18/08,
+   não inventado: inventar o formato provaria só que eu sei ler o que eu mesmo
+   escrevi. */
+{
+  assert.deepEqual(Object.keys(oc.AGENTES), ['opencode', 'agy'])
+  assert.equal(oc.AGENTES.agy.aceitaModelo, false,
+    'o agy escolhe o modelo pela conta logada; passar --model com nome que ele não conhece derruba a chamada')
+  assert.ok(oc.AGENTES.agy.args('diga oi').includes('stream-json'),
+    'é o formato em fluxo que deixa acompanhar a tarefa enquanto ela roda')
+
+  const logAgy = path.join(tmpOc, 'agy.jsonl')
+  fs.writeFileSync(logAgy, [
+    JSON.stringify({ event: 'init', conversation_id: 'x', init: { cwd: '/p' } }),
+    JSON.stringify({ event: 'step_update', step_update: { step_type: 'tool_use', tool_name: 'view_file' } }),
+    JSON.stringify({ event: 'step_update', step_update: { step_type: 'agent_response', text_delta: 'dele' } }),
+    JSON.stringify({ event: 'step_update', step_update: { step_type: 'agent_response', text_delta: 'gado' } }),
+    JSON.stringify({
+      event: 'result',
+      result: {
+        status: 'SUCCESS',
+        response: 'delegado\n',
+        duration_seconds: 2.5,
+        usage: { input_tokens: 14712, output_tokens: 51, total_tokens: 14763 },
+      },
+    }),
+  ].join('\n'))
+
+  assert.equal(oc.lerResposta(logAgy), 'delegado\n',
+    'o evento final traz a resposta inteira, e ele vence os pedaços: somar os dois duplicaria o texto')
+  assert.deepEqual(oc.lerEventos(logAgy).map((e) => e.tool), ['view_file'],
+    'o passo de ferramenta do agy vira o mesmo evento que o do opencode')
+
+  const custo = oc.lerCusto(logAgy)
+  assert.equal(custo.total, 14763)
+  assert.equal(custo.segundos, 2.5)
+  assert.equal(oc.lerCusto(logFake), null,
+    'o opencode não informa gasto, e null é a resposta honesta: zero diria que foi de graça')
+
+  /* Resposta ainda no meio: sem o evento final, os pedaços são o que existe. É
+     assim que a tela mostra a resposta crescendo enquanto a tarefa roda. */
+  const meio = path.join(tmpOc, 'agy-meio.jsonl')
+  fs.writeFileSync(meio, [
+    JSON.stringify({ event: 'step_update', step_update: { step_type: 'agent_response', text_delta: 'meta' } }),
+    JSON.stringify({ event: 'step_update', step_update: { step_type: 'agent_response', text_delta: 'de' } }),
+  ].join('\n'))
+  assert.equal(oc.lerResposta(meio), 'metade')
+
+  // nome de agente desconhecido cai no padrão, nunca vira comando
+  assert.doesNotThrow(() => oc.dispararTarefa('x', { agente: 'rm -rf /', binario: process.execPath }))
+}
+
 // disparo nunca lança, mesmo com binário inexistente — falha aberta (o erro
 // real sai async no evento 'error', não trava nem derruba quem chamou)
 assert.doesNotThrow(() => oc.dispararTarefa('tarefa qualquer', { binario: 'este-binario-nao-existe-de-jeito-nenhum' }))
