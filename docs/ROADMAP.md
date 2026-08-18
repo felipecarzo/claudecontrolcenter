@@ -1233,7 +1233,7 @@ resolve devolve `null` (deixa valer o modo do projeto) em vez do texto cru.
 Novo teste em `test.mjs` prova as duas pontas: apelido resolve para o ID
 certo, nome desconhecido nunca devolve texto que parece um modo válido.
 
-### CC-155: as avenidas em mapa visual, ideia dele em 18/08
+### CC-155 ⏸ você decide — as avenidas em mapa visual, ideia dele em 18/08
 
 Palavras dele, sobre a primeira fatia das avenidas (o aviso de vizinhança do
 CC-140): *"a gente consegue colocar visualmente, como se fosse um mapa com
