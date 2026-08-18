@@ -1329,7 +1329,25 @@ switch (cmd) {
   }
 
   case 'json': {
-    const jobs = readJobs()
+    /* CC-124: achado em 17/08 pela sessão do app_escritorio, e confirmado
+       medindo os dois lados no mesmo minuto — este comando respondia
+       `{"jobs":[],"summary":{"total":0,...}}` com cinco agentes de verdade
+       trabalhando, porque só varria a pasta de jobs de BACKGROUND. Sessão
+       interativa (o caso normal na VPS, via Remote Control) grava em
+       `control-center-sessoes/`, por outro caminho, que só o painel lia.
+
+       O estrago está no `summary` zerado, não na lista vazia: `total: 0` e
+       `projects: []` respondem com ar de autoridade, e quem confere acha que
+       o reporte falhou — mesma família do botão que responde "ok" com o
+       processo morto atrás. A correção é somar as duas fontes, a mesma conta
+       que `/api/jobs` já faz no painel (`ignorar` evita duplicar quando a
+       sessão interativa também tem job). */
+    const doBackground = readJobs()
+    const { readSessoes } = await import('./src/sessoes.mjs')
+    const interativas = readSessoes(Date.now(), {
+      ignorar: doBackground.flatMap((j) => [j.id, j.sessionId]),
+    })
+    const jobs = [...doBackground, ...interativas]
     console.log(JSON.stringify({ jobs, summary: summarize(jobs) }, null, 2))
     break
   }

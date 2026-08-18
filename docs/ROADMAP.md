@@ -1152,7 +1152,7 @@ Para existirem na planilha, o agente precisa declarar as duas ao registrar a
 tarefa. É campo novo no protocolo, e vale medir antes se ele quer preencher isso
 a cada tarefa ou se prefere que saia estimado.
 
-### CC-124: o comando `json` responde zero com ar de resposta completa
+### CC-124 ✅ 18/08 — o comando `json` responde zero com ar de resposta completa
 
 Achado pela sessão do `app_escritorio` em 17/08, confirmado aqui medindo os dois
 lados no mesmo minuto:
@@ -1172,6 +1172,12 @@ falhou. É a mesma família do botão que responde `ok` com o processo morto atr
 
 Duas saídas: somar as duas fontes (a certa), ou a saída dizer que só lista job
 de background (a barata).
+
+`cc.mjs json` soma as duas fontes agora, a mesma conta que `/api/jobs` já
+fazia (`readSessoes` com `ignorar` para não duplicar quando a sessão
+interativa também tem job de background). Provado com dado real: rodando o
+comando dentro desta própria sessão, ele passou a mostrar o job de verdade em
+vez de `total: 0`.
 
 ### CC-129 ✅ 17/08 — sessão avulsa na pasta pessoal, pelo painel
 
