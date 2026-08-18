@@ -1241,12 +1241,12 @@ várias linhas, com cores diferentes, quando se cruza mostra qual a gente está
 em qual bifurcação se colidindo com outro agente, enfim, um visual bem fácil
 de visualizar o que está acontecendo"*.
 
-Registrado como visão, não como tarefa — é desenho de tela, e escolha de
+Registrado como visão, não como tarefa: é desenho de tela, e escolha de
 gosto é dele, não minha. O que já existe e barateia isso, achado antes de
 propor forma:
 
 - O grafo de dependência inteiro do projeto já é calculado sob demanda
-  (`src/dependencias.mjs`, CC-86) — quem usa quem, e com que profundidade.
+  (`src/dependencias.mjs`, CC-86), quem usa quem, e com que profundidade.
 - Quem está ocupando qual rota, agora, incluindo as de outra máquina, já sai
   pronto do quadro do Routia (CC-48/CC-49).
 - O motor de gráficos que já existe na tela (`graficos.js`) hoje desenha
@@ -1256,6 +1256,41 @@ propor forma:
 Falta ele decidir, quando chegar a vez: onde essa tela mora (aba própria, ou
 dentro da aba de rotas que o CC-102 já esboça), e o quanto de detalhe cabe no
 celular (regra do CC-101 vale aqui também: celular primeiro).
+
+### CC-156 ⏸ direção escolhida, aguardando ordem de construir: o redesenho da tela
+
+Ele rejeitou os 5 ajustes pontuais da auditoria de design (CC-152) e pediu
+uma direção nova de verdade: *"eu queria que a IA sugerisse um outro visual
+que melhorasse todo o approach do app, e até de redistribuição de funções...
+quero uma melhoria considerável em UI e UX do ponto de vista de humano
+mexendo"*.
+
+Conduzido pela mesma skill de design (`impeccable`), com entrevista real
+antes de propor qualquer forma. Confirmado por ele: o problema é uma mistura
+de função demais espalhada, o que importa não saltar aos olhos, e a tela não
+parecer produto pensado com prazer; e "redistribuição de funções" quer dizer
+o que muda a cada segundo separado do que é configuração. Três exemplos
+concretos dele, os três conferidos contra o código real antes de virar
+direção: remoto e servidores usados juntos mas vivendo em abas separadas;
+falta uma visão de backlog cruzando todos os projetos numa tabela só; e o
+que está aberto ou fechado na tela devia salvar no servidor, hoje só salva
+no navegador de cada aparelho.
+
+Três direções estruturais foram apresentadas com esboço em texto de cada
+uma. **Ele escolheu mesclar a segunda (mapa por projeto, cada um um cartão
+com tudo dentro) com a terceira (uma triagem fixa no topo do que precisa
+dele e do que está rodando, e o resto virando um menu que abre por cima)**,
+e pediu para registrar antes de construir. A direção inteira, em detalhe,
+está em [[REDESENHO-TELA]].
+
+**Não construído ainda, de propósito.** É uma reforma grande, tocando a
+navegação principal de mais de dez seções de uma tela em produção que ele
+usa todo dia; entrar direto na implementação no fim de uma sessão já longa
+trocaria pressa por qualidade numa decisão que ele levou duas rodadas de
+pergunta para fechar. Falta decidir, antes de começar a construir: onde a
+gaveta do sistema abre e como se comporta no celular, se o cartão de projeto
+com vários servidores ligados cabe sem virar gigante, e o critério exato de
+"projeto sem atividade".
 
 ### CC-154 ✅ 18/08 — mexer em código sem registrar no diário passa a avisar sozinho
 
