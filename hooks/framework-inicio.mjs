@@ -85,6 +85,42 @@ if (modo.trava) {
     : 'Sem autorização em vigor: escrever código está bloqueado até ele autorizar.')
 }
 
+/**
+ * CC-135: o sugestivo SUGERE, não só trava.
+ *
+ * Dele em 16/08, corrigindo o desenho anterior: *"o modo sugestivo é
+ * exatamente o oposto do que eu falei. Porque ao invés de você fazer uma
+ * abstração pra dentro, o modo sugestivo faz uma abstração pra fora, ele
+ * busca características acima. Ele vai sugerir coisas que possam ser feitas
+ * no projeto, e sempre manter a opção de eu poder escrever, porque dessas
+ * coisas que eu leio surgem novas ideias."*
+ *
+ * "Pra fora" é o roadmap, não a próxima tarefa: as FRENTES abertas, na mesma
+ * ordem de importância que a aba do painel já usa (`ordenar()`), para as duas
+ * telas nunca discordarem sobre o que é prioridade. Sem roadmap, sem
+ * sugestão — silêncio, porque inventar frente sem fonte seria a mesma moldura
+ * que o `AskUserQuestion` existe para evitar em outro lugar deste arquivo.
+ */
+if (modo.sugereFrentes) {
+  try {
+    const R = await import(resolve(AQUI, '../src/roadmap.mjs'))
+    const mapa = R.lerRoadmap(raiz)
+    const abertas = R.ordenar(raiz, mapa).porImportancia.filter((f) => f.estado !== 'feito')
+    if (abertas.length) {
+      linhas.push('', `SUGIRA, NÃO IMPONHA — frentes abertas neste projeto, da mais para a menos importante:`)
+      for (const f of abertas.slice(0, 5)) {
+        const marca = f.citacao ? ` — nas palavras dele: "${f.citacao}"` : ''
+        linhas.push(`  - [${f.grupo}] ${f.titulo}${f.itens ? ` (${f.itens} item(ns))` : ''}${marca}`)
+      }
+      linhas.push(
+        'Apresente como opções, no começo da conversa, não como plano já decidido.',
+        'A escrita livre dele vale sempre: se ele disser outra coisa, é o que vale, '
+          + 'e ler estas opções pode só ter feito ele lembrar do que já queria.',
+      )
+    }
+  } catch { /* sem roadmap.mjs ou sem docs/ROADMAP.md: modo sugestivo sem o que sugerir, fica calado */ }
+}
+
 const p = F.proximaPergunta(estado.metodo, estado)
 if (p) {
   linhas.push('', `PERGUNTE AO FELIPE ANTES DE SEGUIR — "${p.pergunta}"`)

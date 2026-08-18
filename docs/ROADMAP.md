@@ -1031,7 +1031,7 @@ nova, era um id fraco de sempre; só apareceu porque o gate rodou rápido o
 bastante para dois envios caírem no mesmo milissegundo, 2 a cada 3 vezes. Um
 sufixo aleatório resolveu, mesmo padrão já usado em `opencode.mjs`.
 
-### CC-135: o modo sugestivo tem que SUGERIR
+### CC-135 ✅ 18/08 — o modo sugestivo tem que SUGERIR
 
 Achado dele em 16/08, e é uma inversão que eu não tinha visto:
 
@@ -1048,6 +1048,23 @@ aberta, porque ler as opções é o que faz ele lembrar do que queria.
 
 Junto vem a razão de existir, dita por ele: *"é meio que um mecanismo de
 automatização do meu pensamento humano"*.
+
+#### ✅ Feito em 18/08
+
+No começo de toda sessão em modo Sugestivo, `framework-inicio.mjs` agora lista
+as frentes ABERTAS do roadmap, da mais para a menos importante, com a citação
+dele quando existe. É "pra fora" no sentido literal: frente inteira, não a
+próxima tarefa de dentro dela, porque a próxima tarefa é a "abstração pra
+dentro" que ele já tinha corrigido. `trava`/`exigeAutorizacao` continuam: as
+duas frases dele falam de como a sugestão chega, não de parar de proteger
+código.
+
+Provado contra o roadmap de verdade deste projeto, com uma capa de sessão
+temporária (sem mudar o modo real do projeto para ninguém): a lista saiu com
+as frentes certas, na ordem certa, citando as palavras dele, e lembrando que a
+escrita livre vale sempre. Nove casos de teste cobrem os limites: sem roadmap
+fica calado, outro modo fica calado, roadmap só com itens concluídos fica
+calado, item concluído nunca aparece na lista.
 
 ### CC-136: o padrão de trabalho vira trava, não só regra escrita
 

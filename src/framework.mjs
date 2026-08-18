@@ -415,14 +415,35 @@ export const MODOS = {
      mas do lado DELE ele sugere — recebe propostas e clica. Palavras dele:
      *"ele não é tão imperativo assim, ele sugere só"*.
 
-     O nome descreve o que ele vive, porque é ele quem escolhe o modo. */
+     O nome descreve o que ele vive, porque é ele quem escolhe o modo.
+
+     CC-135, 16/08: **ele corrigiu o mecanismo, não só o nome.** *"o modo
+     sugestivo é exatamente o oposto do que eu falei. Porque ao invés de você
+     fazer uma abstração pra dentro, o modo sugestivo faz uma abstração pra
+     fora, ele busca características acima. Ele vai sugerir coisas que possam
+     ser feitas no projeto, e sempre manter a opção de eu poder escrever,
+     porque dessas coisas que eu leio surgem novas ideias."*
+
+     "Abstração pra dentro" era o que existia até aqui: uma proposta pequena,
+     de clicar sim ou não. "Pra fora" é subir um nível e olhar as FRENTES do
+     projeto inteiro, não a próxima tarefa. Ele mesmo diz o motivo: *"é meio
+     que um mecanismo de automatização do meu pensamento humano"* — ler as
+     opções é o que lembra ele do que queria, e por isso a escrita livre nunca
+     pode ficar trancada atrás de uma proposta.
+
+     `trava`/`exigeAutorizacao` continuam: nenhuma das duas frases dele fala em
+     parar de proteger o código, só em como as sugestões chegam até ele. Quem
+     monta as sugestões é `framework-inicio.mjs`, lendo o roadmap do projeto —
+     não este arquivo, que não sabe nada sobre o dia a dia de um projeto
+     específico. */
   sugestivo: {
     id: 'sugestivo',
     titulo: 'Sugestivo',
-    explica: 'Só o que está no backlog, e cada passo precisa da sua autorização.',
+    explica: 'Ele te mostra frentes do projeto pra escolher, e cada passo precisa da sua autorização.',
     trava: true,
     pergunta: true,
     exigeAutorizacao: true,
+    sugereFrentes: true,
   },
   /* `trava: false` desde 15/08, e a correção é conceitual.
    *
