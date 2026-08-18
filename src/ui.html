@@ -310,6 +310,24 @@
       display: flex; flex-wrap: nowrap; gap: 8px; margin-top: 0;
       overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
       padding: 2px 0 4px;
+      /* Auditoria de design em 18/08, achado medido, não só opinião: em
+         390px a barra de rolagem some por escolha (linha de cima), mas sem
+         ela sobra zero indício de que tem mais pastilha fora da tela. O
+         detector mediu de verdade abas inteiras (`meu`, `rotinas`)
+         ultrapassando a borda direita da viewport. A receita clássica de
+         "sombra de rolagem", só em CSS: duas máscaras opacas que rolam JUNTO
+         com o conteúdo (`local`) cobrindo duas sombras fixas na borda
+         (`scroll`). A sombra só aparece onde ainda existe conteúdo pra aquele
+         lado, some sozinha quando chega no fim, sem JavaScript e sem medir
+         nada em tempo de execução. */
+      background:
+        linear-gradient(to right, var(--bg) 40%, transparent),
+        linear-gradient(to left, var(--bg) 40%, transparent) right,
+        linear-gradient(to right, color-mix(in srgb, var(--fg) 18%, transparent), transparent),
+        linear-gradient(to left, color-mix(in srgb, var(--fg) 18%, transparent), transparent) right;
+      background-repeat: no-repeat;
+      background-size: 24px 100%, 24px 100%, 10px 100%, 10px 100%;
+      background-attachment: local, local, scroll, scroll;
     }
     .tab-abas::-webkit-scrollbar { display: none; }
     .tab-abas .tab {
@@ -372,6 +390,12 @@
     .rt-acoes { justify-content: flex-start; }
     .hk-linha { grid-template-columns: 22px 1fr; }
     .hk-linha > :nth-child(3) { grid-column: 2; justify-self: start; }
+    /* Auditoria de design em 18/08, medido de verdade: os botões da barra de
+       filtro (`.btn`) davam ~23px de altura, abaixo do alvo de toque mínimo
+       de 24px. Só no estreito, de propósito: no computador a densidade atual
+       é a certa, é o dedo no celular que precisa da folga a mais. */
+    .btn { min-height: 30px; display: inline-flex; align-items: center; }
+    .btn.mini { min-height: 26px; }
     /* caminho e nome de projeto sao a fonte classica de estouro: string longa
        sem espaco nao quebra sozinha, e empurra o cartao inteiro. */
     .path, .ck-nome, .fw-frase { overflow-wrap: anywhere; }
@@ -1768,6 +1792,34 @@
   .rm-linha:hover { background: var(--surface); }
   .rm-nome { font-size: 13px; }
 
+  /* CC: o toast que trocou o alert() nativo, auditoria de design em 18/08.
+     No rodapé porque é a zona do polegar no celular (Casey, a persona
+     distraída de uma mão), e translúcido sobre o resto até `.on` chegar via
+     JS, nunca por transição CSS sozinha, que animaria em toda carga de
+     página. */
+  .toast {
+    position: fixed; left: 50%; bottom: 18px; z-index: 60; max-width: min(480px, calc(100% - 32px));
+    padding: 11px 16px; border-radius: 8px; font-size: 13px; line-height: 1.4;
+    background: var(--card); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, .28);
+    transform: translate(-50%, 12px); opacity: 0; pointer-events: none; transition: transform .18s, opacity .18s;
+  }
+  .toast.on { transform: translate(-50%, 0); opacity: 1; }
+  .toast.erro { border-color: color-mix(in srgb, var(--failed) 55%, var(--line)); color: var(--failed); }
+  .toast.aviso { border-color: color-mix(in srgb, var(--waiting) 55%, var(--line)); color: var(--waiting); }
+  .toast.bom { border-color: color-mix(in srgb, var(--done) 55%, var(--line)); color: var(--done); }
+  @container (max-width: 560px) {
+    /* No estreito a barra de baixo (`#app-bar`) ocupa a zona do polegar
+       primeiro. A mesma conta de `#main { padding-bottom: 64px + a faixa do
+       aparelho }`, mais uma folga: sem isso o toast nasce sobre os ícones da
+       barra, achado tirando o próprio print da prova. */
+    .toast {
+      left: 12px; right: 12px; max-width: none;
+      bottom: calc(64px + env(safe-area-inset-bottom) + 12px);
+      transform: translateY(12px);
+    }
+    .toast.on { transform: translateY(0); }
+  }
+
   /* CC-134: recados entre agentes. Colunas fixas na cabeça e na linha, na
      mesma ordem, para o clique de ordenar apontar pro dado certo. O texto é a
      coluna que cresce: é o campo que ele veio ler. */
@@ -2248,15 +2300,38 @@
   }
   .hk-linha:hover { background: var(--surface); }
   .hk-linha input[type="checkbox"] { width: 16px; height: 16px; }
+  /* Auditoria de design em 18/08: o quadrado do checkbox media 16×16px,
+     abaixo do alvo de toque mínimo de 24×24, medido de verdade, não estimado.
+     O quadrado visual não cresce (mudaria a densidade da lista inteira). O
+     `<label>` ao redor dele ganha a folga, área clicável a mais, sem mexer no
+     desenho. */
+  .hk-check { display: flex; align-items: center; justify-content: center; padding: 4px; margin: -4px; }
+  /* `<details>` no lugar do `<div>` de antes, mesmo espaço em grade, só que a
+     frase de contexto começa fechada. `list-style: none` e o `::marker`
+     desligado tiram a seta padrão do navegador. A densidade da lista já avisa
+     que dá para abrir, sem precisar do triângulo do sistema. */
   .hk-info { display: grid; gap: 2px; }
-  .hk-info b { font-size: 13px; }
-  .hk-info .dim { font-size: 11px; }
+  .hk-info summary { list-style: none; cursor: pointer; }
+  .hk-info summary::-webkit-details-marker { display: none; }
+  .hk-info summary b { font-size: 13px; }
+  .hk-info summary::after {
+    content: '▸'; display: inline-block; margin-left: 6px; color: var(--faint); font-size: 10px;
+    transition: transform .15s;
+  }
+  .hk-info[open] summary::after { transform: rotate(90deg); }
+  .hk-info .dim { font-size: 11px; margin-top: 2px; }
   .hk-badge {
     font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
     border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--dim);
   }
   .hk-badge.ok { color: var(--done); border-color: color-mix(in srgb, var(--done) 40%, var(--line)); }
-  .hk-badge.bad { color: var(--waiting); border-color: color-mix(in srgb, var(--waiting) 40%, var(--line)); }
+  /* P3 da auditoria: "não faz nada" tinha a mesma pílula arredondada dos
+     botões clicáveis da tela, convidando o toque. Cantos retos marcam, só
+     pela forma, que ali não tem ação nenhuma, sem precisar de mais cor. */
+  .hk-badge.bad {
+    color: var(--waiting); border-color: color-mix(in srgb, var(--waiting) 40%, var(--line));
+    border-radius: 3px;
+  }
 
   /* ---------- rotinas (comandos copiados dentro dos projetos) ---------- */
   .rt-lista { display: grid; gap: 14px; max-width: 1000px; }
@@ -2293,7 +2368,7 @@
     display: flex; align-items: center; gap: 10px;
     padding: 15px 14px 11px; border-bottom: 1px solid var(--line);
   }
-  .n-head h3 { margin: 0; flex: 1; }
+  .n-head h2 { margin: 0; flex: 1; font-size: inherit; font-weight: inherit; }
   #n-list { padding: 12px 14px 40px; display: grid; gap: 12px; align-content: start; }
   .n-block { border: 1px solid var(--line); border-radius: 3px; background: var(--bg); }
   .n-block:focus-within { border-color: var(--faint); }
@@ -2523,12 +2598,23 @@
        barra fixa na viewport cobriria a gaveta. Mesma família da armadilha do
        @container. -->
   <nav id="app-bar" aria-label="grupos de tela"></nav>
+
+  <!-- CC: auditoria de design em 18/08. Erro de rede caía num `alert()`
+       nativo do navegador, o único ponto do produto inteiro em que a cópia
+       cuidadosa em português some e vira caixa de sistema crua, exatamente no
+       momento em que ele mais precisa de clareza. Fora do #main de propósito,
+       pela mesma regra do editor de documento logo abaixo: `render()`
+       reescreve aquele bloco a cada tique do stream. Precisa estar DENTRO do
+       #painel: é ele quem declara o `@container`, e um `.toast` fora dele
+       nunca lê o breakpoint do estreito. Achado tirando o próprio print da
+       prova: o toast nascia por cima da barra de baixo. -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 
 <div id="split" hidden role="separator" aria-orientation="vertical" aria-label="largura das notas"></div>
 <aside id="notas" hidden aria-label="bloco de notas">
   <div class="n-head">
-    <h3>notas</h3>
+    <h2>notas</h2>
     <button class="btn" id="n-add">+ bloco</button>
   </div>
   <div id="n-list"></div>
@@ -2673,6 +2759,30 @@ const ZONES = [
 const LABEL = { working: 'ativos', waiting: 'esperando', failed: 'falharam', done: 'prontos', idle: 'parados' }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+/**
+ * CC: auditoria de design em 18/08. Erro de rede caía num `alert()` nativo,
+ * a única janela do produto inteiro sem tema, sem tom e sem cor. Achado
+ * puxado do próprio relatório: quebra o cuidado do resto da tela exatamente
+ * no momento em que ele mais precisa de clareza.
+ *
+ * `toast()` troca isso por um aviso no rodapé, na zona do polegar no
+ * celular (achado de persona, o mesmo relatório): não bloqueia a tela como
+ * `alert()` bloqueava, some sozinho, e tem cor de erro ou de aviso comum.
+ *
+ * Escrito para caber no lugar de `alert(x)` sem trocar o controle de fluxo:
+ * `return toast(x)` continua sendo um `return` que sai da função com
+ * `undefined`, do mesmo jeito que `return alert(x)` sempre foi.
+ */
+let TOAST_TIMER = null
+function toast(texto, tipo = 'erro') {
+  const el = document.getElementById('toast')
+  if (!el) return
+  el.textContent = texto
+  el.className = `toast on ${tipo}`
+  clearTimeout(TOAST_TIMER)
+  TOAST_TIMER = setTimeout(() => { el.className = 'toast' }, 6000)
+}
 const age = (ms) => {
   if (!(ms >= 0)) return '...'
   const m = Math.floor(ms / 6e4)
@@ -3006,7 +3116,7 @@ async function salvarPip(patch) {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch),
   })
   const out = await r.json()
-  if (!out.ok) return alert(out.error)
+  if (!out.ok) return toast(out.error)
   PIP_CFG = out.pip
   renderPipConfig()
   // layout novo muda o tamanho da janela, e isso só se consegue reabrindo —
@@ -3852,14 +3962,14 @@ function abrirNovoProjeto() {
 
 function criarProjeto() {
   const nome = (NOVO_FORM.nome || '').trim()
-  if (!nome) return alert('escreva o nome da pasta do projeto')
+  if (!nome) return toast('escreva o nome da pasta do projeto', 'aviso')
   NOVO_RESULTADO = 'criando'
   render()
   fetch('/api/projeto/novo', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ ...NOVO_FORM, nome }),
   }).then((r) => r.json()).then((d) => {
-    if (d.error) { NOVO_RESULTADO = null; alert(d.error); return render() }
+    if (d.error) { NOVO_RESULTADO = null; toast(d.error); return render() }
     NOVO_RESULTADO = d
     NOVO_FORM.nome = ''
     NOVO_FORM.descricao = ''
@@ -3968,7 +4078,7 @@ function abrirEntrevista(projeto) {
   render()
   fetch(`/api/entrevista?projeto=${encodeURIComponent(projeto)}`)
     .then((r) => r.json())
-    .then((d) => { ENTREVISTA = d.error ? null : { projeto, ...d }; if (d.error) alert(d.error); render() })
+    .then((d) => { ENTREVISTA = d.error ? null : { projeto, ...d }; if (d.error) toast(d.error); render() })
     .catch(() => { ENTREVISTA = null; render() })
 }
 
@@ -3983,7 +4093,7 @@ function mandarEntrevista(corpo) {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ projeto, ...corpo }),
   }).then((r) => r.json()).then((d) => {
-    if (d.error) { alert(d.error); ENTREVISTA = { ...ENTREVISTA, salvando: false }; return render() }
+    if (d.error) { toast(d.error); ENTREVISTA = { ...ENTREVISTA, salvando: false }; return render() }
     ENTREVISTA_RASCUNHO = ''
     ENTREVISTA_ORFAS = d.orfas?.length ? d.orfas : null
     ENTREVISTA = { projeto, ...d }
@@ -4776,7 +4886,7 @@ async function salvarVpsConfig() {
   const usuario = $('#vps-usuario').value.trim() || 'root'
   const chaveDigitada = $('#vps-chave').value.trim()
   if (!VPS?.configurado && !chaveDigitada) {
-    return alert('primeira vez: precisa do caminho da chave privada também')
+    return toast('primeira vez: precisa do caminho da chave privada também', 'aviso')
   }
   const body = { host, usuario }
   if (chaveDigitada) body.chave = chaveDigitada // vazio = mantém a que já tem
@@ -4784,7 +4894,7 @@ async function salvarVpsConfig() {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
   })
   const out = await r.json()
-  if (!out.ok) return alert(out.error)
+  if (!out.ok) return toast(out.error)
   vpsConfigAberto = false
   return carregarVps(true)
 }
@@ -4795,10 +4905,10 @@ async function atualizarVps() {
   try {
     const r = await fetch('/api/vps/atualizar', { method: 'POST' })
     const out = await r.json()
-    if (!out.ok) alert(out.error)
+    if (!out.ok) toast(out.error)
     else VPS = { ...VPS, snapshot: out.snapshot }
   } catch {
-    alert('não consegui falar com o painel, confira se ele ainda está no ar')
+    toast('não consegui falar com o painel, confira se ele ainda está no ar')
   }
   vpsAtualizando = false
   render()
@@ -5205,7 +5315,7 @@ function drawer() {
       </div>
 
       <div>
-        <h3>notas</h3>
+        <h2>notas</h2>
         <textarea class="d-nota" data-nota-job="${esc(j.id)}" spellcheck="false"
           placeholder="anote o que quiser sobre este agente">${esc(j.notes || '')}</textarea>
       </div>
@@ -6639,7 +6749,7 @@ async function acaoPainel(id, acao) {
     const j = await r.json()
     if (!j.ok) throw new Error(j.error || 'falhou')
   } catch (e) {
-    alert(`não deu para ${acao}: ${e.message || e}`)
+    toast(`não deu para ${acao}: ${e.message || e}`)
   }
   // O processo leva um instante para abrir (ou soltar) a porta. Sem esta
   // espera a lista volta com o estado velho e parece que o clique não fez nada.
@@ -6702,12 +6812,12 @@ async function carregarAgenda(force) {
 async function salvarCalendario() {
   const nome = $('#ag-nome').value.trim() || 'agenda'
   const url = $('#ag-url').value.trim()
-  if (!url) return alert('cole o endereço secreto em formato iCal do Google Calendar')
+  if (!url) return toast('cole o endereço secreto em formato iCal do Google Calendar', 'aviso')
   const r = await fetch('/api/calendario', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ nome, url }),
   })
   const out = await r.json()
-  if (!out.ok) return alert(out.error)
+  if (!out.ok) return toast(out.error)
   agendaConfigAberta = false
   return carregarAgenda(true)
 }
@@ -6847,7 +6957,7 @@ async function alternarHook(id, on) {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, on }),
   })
   const out = await r.json()
-  if (!out.ok) return alert(out.error)
+  if (!out.ok) return toast(out.error)
   return carregarHooks(true)
 }
 
@@ -6892,15 +7002,25 @@ function viewHooks() {
     ? `${fantasmas.length} hook(s) parecem ligados e não estão registrados, não fazem nada.`
     : `${ativos.length} ativos, ${travam} deles podem me barrar.`
 
+  /* Auditoria de design em 18/08: 33 itens com a frase inteira sempre à
+     mostra viravam uma parede de texto, exatamente na tela que decide se ele
+     confia nas próprias proteções. O título fica sempre visível (é o que ele
+     escaneia); a frase entra num `<details>`, fechado por padrão, o mesmo
+     padrão que os itens planejados já usam logo abaixo. Mudar de ideia sobre
+     UM hook não obriga a ler os outros 32. */
   const linha = (h) => `
     <div class="hk-linha${h.ligado && !h.registrado ? ' fantasma' : ''}">
-      <label><input type="checkbox" ${h.ligado ? 'checked' : ''} data-hk-toggle="${esc(h.id)}"></label>
-      <div class="hk-info">
-        <b>${esc(h.label)}</b>
+      <label class="hk-check"><input type="checkbox" ${h.ligado ? 'checked' : ''} data-hk-toggle="${esc(h.id)}"></label>
+      <details class="hk-info">
+        <summary><b>${esc(h.label)}</b></summary>
         <span class="dim">${esc(QUANDO_HOOK[h.evento] || h.evento)} · ${esc(h.descricao)}</span>
-      </div>
+      </details>
       ${h.ligado && !h.registrado
-        ? '<span class="hk-badge bad" title="ligado aqui, mas ausente do settings.json do Claude Code, não roda">não faz nada</span>'
+        /* P3 da auditoria: o aviso tinha a MESMA forma visual dos botões
+           clicáveis da tela (pílula com borda), sem fazer nada ao toque.
+           Título diz onde resolver de verdade. A forma (retângulo, sem o
+           arredondado de botão) marca visualmente que ele não é clicável. */
+        ? '<span class="hk-badge bad" title="ligado aqui, mas ausente do settings.json do Claude Code. Registre pelo settings.json: o clique aqui não resolve">não faz nada</span>'
         : ''}
     </div>`
 
@@ -6992,7 +7112,7 @@ async function acaoRotina(dir, nome, acao, projeto) {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ dir, nome, acao }),
   })
   const out = await r.json()
-  if (!out.ok) return alert(out.error)
+  if (!out.ok) return toast(out.error)
   ROTINA_ABERTA = null
   return carregarRotinas(true)
 }
@@ -7358,7 +7478,7 @@ async function salvarServidor(chave, patch) {
     body: JSON.stringify({ chave, patch }),
   })
   const out = await r.json()
-  if (!out.ok) return alert(out.error)
+  if (!out.ok) return toast(out.error)
   return carregarServidores(true)
 }
 
@@ -8202,7 +8322,7 @@ document.addEventListener('click', async (e) => {
           rota: btRota.dataset.rota, paraOcupada: ocupar,
         }),
       })
-    } catch { alert('não deu para trocar a rota') }
+    } catch { toast('não deu para trocar a rota') }
     const q = mapaProjeto?.cwd ? `cwd=${encodeURIComponent(mapaProjeto.cwd)}` : `projeto=${encodeURIComponent(mapaProjeto.project)}`
     try { ROTAS = await (await fetch(`/api/rotas?${q}`)).json() } catch { /* mantém o que tinha */ }
     return desenharMapa()
@@ -8571,14 +8691,14 @@ document.addEventListener('click', async (e) => {
         body: JSON.stringify({ projeto, cwd: btLigar.dataset.remotoDir, mais }),
       })
       const out = await r.json()
-      if (!out.ok) alert(out.error || out.erro)
+      if (!out.ok) toast(out.error || out.erro)
       /* A tela da sessão nova vai para o alerta, e não é enfeite: subir sem
          olhar já deu "ligado" com processo morto por trás neste projeto. É
          também onde ele vê a pergunta de permissão que o painel não responde
          por ele. */
       else if (out.tela) alert(`${out.rotulo || projeto}\n\n${out.tela}`)
     } catch {
-      alert('não deu pra abrir')
+      toast('não deu pra abrir')
     }
     return carregarRemoto(true)
   }
@@ -8626,9 +8746,9 @@ document.addEventListener('click', async (e) => {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job: id }),
       })
       const out = await r.json()
-      if (!out.ok) alert(out.error)
+      if (!out.ok) toast(out.error)
     } catch {
-      alert('não deu pra falar com o opencode')
+      toast('não deu pra falar com o opencode')
     }
     return // o stream de 2s traz o meta.json atualizado, sem forçar recarga
   }
@@ -8683,7 +8803,7 @@ document.addEventListener('click', async (e) => {
     btn.disabled = true
     return fetch('/api/federacao/enviar', { method: 'POST' })
       .then((r) => r.json())
-      .then((r) => { alert(r.ok ? 'enviado' : `não deu: ${r.erro || r.status}`); return carregarFederacao() })
+      .then((r) => { toast(r.ok ? 'enviado' : `não deu: ${r.erro || r.status}`, r.ok ? 'bom' : 'erro'); return carregarFederacao() })
       .catch(() => { btn.disabled = false })
   }
 
@@ -8726,7 +8846,7 @@ document.addEventListener('click', async (e) => {
 
   if (t.closest('[data-ent-responder]') && ENTREVISTA?.proxima) {
     const texto = ($('[data-ent-campo]')?.value ?? ENTREVISTA_RASCUNHO).trim()
-    if (!texto) return alert('escreva a resposta, ou toque numa das opções')
+    if (!texto) return toast('escreva a resposta, ou toque numa das opções', 'aviso')
     return mandarEntrevista({ acao: 'responder', id: ENTREVISTA.proxima.id, texto })
   }
 
@@ -8768,7 +8888,7 @@ document.addEventListener('click', async (e) => {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ projeto, acao, alvo: fwBtn.dataset.fwAlvo || undefined }),
     }).then((r) => r.json()).then((f) => {
-      if (f.error) { alert(f.error); FRAMEWORKS.delete(projeto) } else FRAMEWORKS.set(projeto, f)
+      if (f.error) { toast(f.error); FRAMEWORKS.delete(projeto) } else FRAMEWORKS.set(projeto, f)
       // A lista aberta mostra o mesmo projeto: atualizar as duas, senão o
       // cartão diz "ligado" e a lista logo acima continua dizendo "sem framework".
       if (Array.isArray(FW_LISTA) && !f.error) {
@@ -8832,7 +8952,7 @@ document.addEventListener('click', async (e) => {
       body: JSON.stringify({ dir: abrir.dataset.abrir, como: abrir.dataset.como }),
     })
     const out = await r.json()
-    if (!out.ok) alert(out.error)
+    if (!out.ok) toast(out.error)
     return
   }
 
@@ -8857,7 +8977,7 @@ document.addEventListener('click', async (e) => {
         body: JSON.stringify({ pid }),
       })
       const out = await r.json()
-      if (!out.ok) alert(out.error)
+      if (!out.ok) toast(out.error)
     }
     return carregarServidores(true)
   }
@@ -8874,7 +8994,7 @@ document.addEventListener('click', async (e) => {
     })
     const out = await r.json()
     subir.disabled = false
-    if (!out.ok) return alert(out.error)
+    if (!out.ok) return toast(out.error)
     // o servidor leva alguns segundos pra abrir a porta; sem espera a lista
     // voltaria igual e pareceria que nada aconteceu
     setTimeout(() => carregarServidores(true), 4000)
@@ -8892,7 +9012,7 @@ document.addEventListener('click', async (e) => {
       body: JSON.stringify({ pid }),
     })
     const out = await r.json()
-    if (!out.ok) alert(out.error)
+    if (!out.ok) toast(out.error)
     SERVERS = null
     return carregarServidores(true)
   }
@@ -9151,7 +9271,7 @@ document.addEventListener('change', (e) => {
       ? { projeto, acao: 'perfil', perfil: pedido }
       : { projeto, acao: 'modo', modo: pedido }),
   }).then((r) => r.json()).then(async (f) => {
-    if (f.error) { alert(f.error); return render() }
+    if (f.error) { toast(f.error); return render() }
     FRAMEWORKS.set(projeto, f)
     if (Array.isArray(FW_LISTA)) FW_LISTA = FW_LISTA.map((p) => (p.projeto === projeto ? { ...p, ...f } : p))
 

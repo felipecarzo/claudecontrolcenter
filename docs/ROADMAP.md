@@ -1141,6 +1141,55 @@ escrever nenhum. **Dois casos foram reescritos por passarem contra o código com
 defeito**: um usava uma sessão que já era barrada por outro motivo, e o outro
 consultava os agentes reais da máquina em vez de um dublê.
 
+### CC-152 ✅ 18/08 — os 5 achados da auditoria de design (impeccable), consertados
+
+Pedido dele: *"faça tudo que a skill indicou, vamos ver como fica"*. A auditoria
+completa (`critique`) está em `.impeccable/critique/`, nota 24/36. Os 5
+problemas prioritários, do mais para o menos importante, cada um com o comando
+da skill que resolveu:
+
+1. **[P1, `distill`] Aba de proteções era 33 parágrafos de peso igual.** Cada
+   linha agora mostra só o título; a frase inteira entra num `<details>`
+   fechado por padrão, o mesmo padrão que os itens não implementados já usavam
+   embaixo. Mudar de ideia sobre um hook não obriga a ler os outros 32.
+2. **[P1, `layout`] Sub-aba sumia da tela no celular sem aviso nenhum.** A
+   barra de rolagem horizontal ganhou sombra de borda, só em CSS (a técnica
+   clássica de duas máscaras com `background-attachment: local`/`scroll`):
+   aparece só do lado que ainda tem pastilha fora da tela, some sozinha no
+   fim, sem JavaScript.
+3. **[P2, `harden`] Erro de rede caía num `alert()` nativo.** ~25 chamadas
+   trocadas por `toast()`, um aviso no rodapé (zona do polegar no celular),
+   com cor de erro/aviso/sucesso e tema do resto da tela. Os dois `alert()`
+   que sobraram são deliberados (o texto de ajuda por toque, e a tela de
+   sessão nova, com comentário próprio explicando por quê) e não foram
+   tocados.
+4. **[P2, `adapt`] Alvo de toque pequeno demais, medido de verdade.** Os
+   checkboxes de hook tinham 16×16px; o `<label>` ao redor ganhou a folga sem
+   crescer o quadrado visual. Os botões da barra de filtro (`.btn`) tinham
+   ~23px de altura; ganharam altura mínima de 30px, só no estreito — no
+   computador a densidade continua a mesma.
+5. **[P3, `polish`] Badge "não faz nada" parecia botão clicável.** Perdeu o
+   arredondado de pílula (vira retângulo), e o texto de ajuda diz onde
+   resolver de verdade.
+
+Junto, achado pelo mesmo scan e consertado por ser pequeno e seguro: `<h1>`
+pulava direto para `<h3>` ("notas"), sem `<h2>` no meio — atrapalha quem navega
+por leitor de tela. Virou `<h2>`, com `font-size`/`font-weight` herdados do
+`<h3>` de antes para não mudar nada visualmente.
+
+**Fora do escopo, de propósito:** a hierarquia de tamanho de fonte "achatada"
+que o detector apontou (11 a 20px, pouca diferença entre os degraus) exigiria
+mexer em fonte em centenas de lugares do arquivo — risco real de quebrar
+telas já ajustadas na marra, e não estava nos 5 problemas priorizados que
+foram apresentados a ele antes de pedir "faça tudo". Fica registrado para
+quando ele quiser essa frente específica.
+
+Provado com o painel de produção de verdade: `npm test` verde,
+`test-estreito.mjs` com as 17 telas passando nas duas larguras e nos dois
+temas, e prints reais de cada conserto (fechado/aberto na aba de hooks, o
+toast aparecendo sem sobrepor a barra de baixo, a sombra de rolagem nos três
+estados de scroll).
+
 ### CC-151 ✅ 18/08 — `?tema=escuro` e `?tema=claro` nunca forçavam nada
 
 Achado pela auditoria de design (`impeccable`), confirmado lendo o código: o
