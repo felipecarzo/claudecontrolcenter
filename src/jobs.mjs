@@ -10,8 +10,15 @@ import path from 'node:path'
 import { lastPrompt, intentMatchesTranscript, humanMessagesTail } from './transcript.mjs'
 import { sinaisDe } from './sinais.mjs'
 import { arquivoMetaDe, PROJETOS_DIR, sessaoAtual, transcritoDe } from './metaSessao.mjs'
+import { casaClaude } from './platform.mjs'
 
-export const JOBS_DIR = path.join(os.homedir(), '.claude', 'jobs')
+/* `casaClaude()` e não `os.homedir()`, desde 18/08. Sem isso não havia como
+   testar nada que dependa de job: montar um job de mentira exigiria escrever
+   dentro do `~/.claude/jobs` de verdade, que é a pasta do Claude Code e a única
+   que este projeto promete nunca sujar. A trava "to-do aberto trava a entrega"
+   ficou sem teste por causa disso, e era justamente uma que estava quebrada.
+   Sem `CC_HOME` o caminho é exatamente o mesmo de antes. */
+export const JOBS_DIR = path.join(casaClaude(), 'jobs')
 
 const lista = (env, padrao) =>
   String(process.env[env] || padrao).split(',').map((s) => s.trim()).filter(Boolean)

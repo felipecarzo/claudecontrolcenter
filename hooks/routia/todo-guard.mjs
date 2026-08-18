@@ -17,9 +17,8 @@
 //     (stop_hook_active), libera — senão vira laço.
 
 import { spawnSync } from 'node:child_process'
-import { readFileSync, existsSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { acharCC } from './acharCC.mjs'
 
 const liberar = () => process.exit(0)
 
@@ -29,8 +28,11 @@ try { entrada = JSON.parse(readFileSync(0, 'utf8')) } catch { entrada = null }
 if (entrada?.stop_hook_active) liberar()
 if (!process.env.CLAUDE_JOB_DIR) liberar()
 
-const CC = join(homedir(), 'AppData', 'Roaming', 'npm', 'node_modules', 'claude-control-center', 'cc.mjs')
-if (!existsSync(CC)) liberar()
+/* Era um caminho fixo do npm global do Windows: em Linux o arquivo não existe,
+   então esta trava liberava sempre, calada, em toda máquina que não fosse o PC
+   dele. Ver `acharCC.mjs`, que guarda a busca e a história. */
+const CC = acharCC()
+if (!CC) liberar()
 
 let r
 try {

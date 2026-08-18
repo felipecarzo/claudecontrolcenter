@@ -60,6 +60,13 @@ const linhas = (corte >= 0 ? cauda.slice(corte) : cauda).split('\n')
 const CODIGO = /\.(mjs|js|cjs|ts|tsx|jsx|html|css|json|ps1|sh)$/i
 /** Onde documentação mora: mexer aqui não obriga a rodar suíte. */
 const SO_TEXTO = /(^|\/)(docs|assets)\//i
+/* Rascunho fora do projeto não é código do projeto, e cobrar o gate por ele é
+   falso positivo puro. Achado em 18/08 ao escrever o primeiro teste desta
+   trava: um `.mjs` no scratchpad da sessão (que fica em /tmp) disparava a
+   cobrança, e eu escrevo vários por sessão, todo dia. O caminho do Bash já
+   isentava /tmp desde o começo; o Edit e o Write não, e a assimetria não tinha
+   razão nenhuma. Falso positivo é o caminho mais curto para trava desligada. */
+const FORA_DO_PROJETO = /^(\/tmp\/|\/private\/tmp\/|\/var\/folders\/|[A-Za-z]:[\\/](Users[\\/][^\\/]+[\\/])?(AppData[\\/]Local[\\/])?Temp[\\/])/i
 
 let ultimaEdicao = -1
 let ultimoGate = -1
@@ -77,7 +84,10 @@ linhas.forEach((linha, i) => {
 
     if (bloco.name === 'Edit' || bloco.name === 'Write' || bloco.name === 'NotebookEdit') {
       const alvo = String(bloco.input?.file_path || '')
-      if (CODIGO.test(alvo) && !SO_TEXTO.test(alvo)) { ultimaEdicao = i; ondeEditou = alvo }
+      if (CODIGO.test(alvo) && !SO_TEXTO.test(alvo) && !FORA_DO_PROJETO.test(alvo)) {
+        ultimaEdicao = i
+        ondeEditou = alvo
+      }
     }
 
     if (bloco.name === 'Bash') {

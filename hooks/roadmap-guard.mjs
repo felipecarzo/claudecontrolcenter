@@ -56,7 +56,17 @@ try { texto = readFileSync(arquivo, 'utf8') } catch { liberar() }
 // aqui devolveria zero em metade dos projetos (armadilha já paga neste repo).
 const feitas = texto.split(/\r?\n/)
   .filter((l) => /^###\s/.test(l) && /✅/.test(l))
-  .map((l) => l.replace(/^###\s+/, '').replace(/\s*✅.*$/, '').trim())
+  /* Tira o selo e a data, e MANTÉM o título. A versão anterior cortava tudo a
+     partir do ✅, e como ele escreve `### CC-95 ✅ 16/08 — o agente reporta o
+     trabalho`, o aviso saía como uma lista de códigos secos: "CC-01, CC-03".
+     É a queixa dele sobre cartão sem contexto, do lado de dentro da trava:
+     "os cards nunca fazem sentido (…) não tem o contexto de que é na verdade".
+     Achado em 18/08, ao escrever o primeiro teste desta trava. */
+  .map((l) => l
+    .replace(/^###\s+/, '')
+    .replace(/✅\s*(\d{1,2}\/\d{1,2}(\/\d{2,4})?)?\s*(—|-|:)?\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim())
 
 if (!feitas.length) liberar()
 

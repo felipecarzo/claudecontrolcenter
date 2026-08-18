@@ -160,7 +160,12 @@ switch (cmd) {
     // O `state` do CLI vira "done" ao fim de CADA turno, então usá-lo aqui
     // faria o hook cobrar a cada resposta, inclusive no meio do trabalho. O
     // gatilho é o que o agente ESCREVEU no próprio status ao dar por encerrado.
-    if (!/entreg|pronto|conclu|finaliz/i.test(metaStatus(id) || '')) process.exit(0)
+    /* Os termos em INGLÊS entraram em 18/08, ao escrever o primeiro teste desta
+       trava. O protocolo dá o exemplo em português (`"status":"entregue"`), mas
+       agente nenhum é obrigado a copiar o exemplo: eu mesmo reportei
+       `"status":"done"` a sessão inteira naquele dia, e a cobrança nunca teria
+       disparado. Trava que depende do idioma que o agente escolheu não é trava. */
+    if (!/entreg|pronto|conclu|finaliz|\bdone\b|\bdelivered\b|\bfinish|\bcomplet/i.test(metaStatus(id) || '')) process.exit(0)
     console.error(
       `${abertos.length} to-do${abertos.length > 1 ? 's' : ''} em aberto com o trabalho dado por pronto:\n`
       + abertos.map((t) => `  ○ ${t.text}`).join('\n')
@@ -914,6 +919,67 @@ switch (cmd) {
         break
       }
 
+      /* CC-133: a entrevista que conduz. Sem subcomando ela MOSTRA a próxima
+         pergunta e para: quem responde é ele, e disparar a próxima sozinho
+         seria transformar a conversa de volta em formulário. */
+      case 'entrevista': {
+        const r = exigeRaiz()
+        const E = await import('./src/entrevista.mjs')
+        const acao = positional[2]
+        const e = D.ler(r)
+
+        const mostrarProxima = (estado) => {
+          const p = E.proxima(estado)
+          if (!p) {
+            console.log(`\nentrevista completa: ${E.progresso(estado).total} perguntas`)
+            console.log(E.resumo(estado))
+            const a = F.avaliar(estado.metodo, estado)
+            if (a.pendencias?.length) a.pendencias.forEach((x) => console.log(`  ainda falta: ${x}`))
+            else console.log(`  a fase ${a.tituloFase} está com tudo que precisa`)
+            console.log('')
+            return
+          }
+          console.log(`\n[${p.feitas + 1} de ${p.total}] ${p.header}`)
+          console.log(`  ${p.pergunta}`)
+          if (p.ajuda) console.log(`  (${p.ajuda})`)
+          for (const o of p.opcoes || []) console.log(`    · ${o.valor.padEnd(11)} ${o.label} — ${o.descricao}`)
+          console.log(`\n  responder: node cc.mjs framework entrevista responder "<sua resposta>"\n`)
+        }
+
+        if (acao === 'responder') {
+          const texto = positional.slice(3).join(' ')
+          if (!texto) die('uso: node cc.mjs framework entrevista responder "<sua resposta>"')
+          const atual = E.proxima(e)
+          if (!atual) { console.log('a entrevista já acabou'); break }
+          const res = E.responder(e, atual.id, texto)
+          if (!res.ok) die(res.erro)
+          D.gravar(r, res.estado)
+          console.log(`${atual.header}: ${res.resposta.texto}`)
+          mostrarProxima(res.estado)
+          break
+        }
+
+        if (acao === 'desfazer') {
+          const id = positional[3]
+          if (!id) die('uso: node cc.mjs framework entrevista desfazer <id da pergunta>')
+          const res = E.desfazer(e, id)
+          if (!res.ok) die(res.erro)
+          D.gravar(r, res.estado)
+          console.log(`apagada: ${id}`)
+          if (res.orfas.length) console.log(`saíram junto, porque só existiam por causa dela: ${res.orfas.join(', ')}`)
+          mostrarProxima(res.estado)
+          break
+        }
+
+        if (acao === 'resumo') {
+          console.log('\n' + E.resumo(e) + '\n')
+          break
+        }
+
+        mostrarProxima(e)
+        break
+      }
+
       case 'status':
       case undefined: {
         if (!raiz) { console.log('este projeto não tem framework ligado'); break }
@@ -921,7 +987,7 @@ switch (cmd) {
         break
       }
       default:
-        die(`uso: node cc.mjs framework [status|iniciar|modo <nome>|autorizar [alvo]|mvp|avancar]`)
+        die(`uso: node cc.mjs framework [status|iniciar|modo <nome>|entrevista|autorizar [alvo]|mvp|avancar]`)
     }
     break
   }

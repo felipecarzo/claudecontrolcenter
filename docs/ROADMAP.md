@@ -983,12 +983,44 @@ tarefa era fazer uma landing page e eu reprovar, a lógica seguinte é quebrar
 essa landing page em seções (…) e tudo bem exagerar na busca dessa abstração. O
 grande problema é simplesmente não descer nenhum nível"*.
 
-### CC-137: as 14 travas sem teste
+### CC-137 ✅ 18/08 — as 14 travas sem teste
 
-O painel mede e mostra: 19 de 33 provadas em 17/08. "Sem teste" não é o mesmo
-que quebrada, é trava cujo comportamento ninguém mediu, e o número só é honesto
-enquanto a lista existir. As que faltam aparecem na aba de hooks, no botão que
-roda todas.
+O painel media e mostrava: 19 de 33 provadas em 17/08. "Sem teste" não é o mesmo
+que quebrada, é trava cujo comportamento ninguém mediu.
+
+**Agora são 33 de 33, com 293 casos.** E o que apareceu ao medir justifica o
+item inteiro: **oito defeitos**, seis deles em travas que pareciam saudáveis.
+
+Duas estavam **desligadas de fato fora do PC dele**, e do jeito mais silencioso
+possível: procuravam o `cc.mjs` num caminho fixo do npm global do Windows. Em
+Linux o arquivo não existe, e as duas falham abertas. A que cobra to-do em
+aberto na entrega nunca cobrou nada nesta VPS; o aviso de fim de rota nunca
+conseguia confirmar "estou sozinho" e avisava toda vez. Falha aberta não faz
+barulho, e por isso passaram meses assim.
+
+As outras seis:
+
+- a que cobra o gate cobrava por rascunho escrito em `/tmp`, que não é código do
+  projeto. Falso positivo é o caminho mais curto para trava desligada;
+- a que exige medição antes de mexer não reconhecia script de medição chamado
+  pelo nome do arquivo, só `node -e`;
+- a que quebra guia longo em etapas **nunca contava o verbo "vá"**: a fronteira
+  de palavra do regex não reconhece letra acentuada no fim, e um guia de três
+  passos com um "vá" no meio passava como se tivesse dois;
+- o aviso de itens concluídos no ROADMAP listava só os códigos ("CC-01, CC-03"),
+  sem dizer o que eram. É a queixa dele sobre cartão sem contexto, do lado de
+  dentro da trava;
+- a cobrança de to-do só reconhecia status escrito em português, e eu mesmo
+  reportei `"status":"done"` a sessão inteira naquele dia;
+- a pasta dos jobs não respeitava a casa isolada, então testar qualquer coisa que
+  dependa de job exigiria escrever dentro do `~/.claude/jobs` de verdade, que é a
+  pasta que este projeto promete nunca sujar.
+
+Os testes moram ao lado de cada trava e rodam pelo botão da aba de hooks. O
+andaime comum monta o transcrito de mentira, que era o custo que fazia ninguém
+escrever nenhum. **Dois casos foram reescritos por passarem contra o código com
+defeito**: um usava uma sessão que já era barrada por outro motivo, e o outro
+consultava os agentes reais da máquina em vez de um dublê.
 
 ### CC-138: prioridade e complexidade na planilha de tarefas
 

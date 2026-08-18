@@ -117,7 +117,12 @@ for (const linha of turno.split('\n')) {
     if (b.name === 'Bash') {
       const c = String(b.input?.command || '')
       // contar, procurar, consultar, capturar: tudo que produz leitura do real
-      if (/\b(grep|wc|curl|node -e|find|git log|git diff|screenshot|evaluate|test)\b/.test(c)) mediu = true
+      /* `medir`/`prova` no nome do script entraram em 18/08, ao escrever o
+         primeiro teste desta trava: rodar `node medir-largura.mjs 390` é
+         medição óbvia e não era reconhecida, porque a lista só previa `node -e`.
+         Script de medição com nome próprio é o caso NORMAL quando a conta é
+         maior que uma linha. */
+      if (/\b(grep|wc|curl|node -e|find|git log|git diff|screenshot|evaluate|test|medi\w*|prova\w*)\b/.test(c)) mediu = true
     }
   }
 }

@@ -28,6 +28,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { homedir } from 'node:os'
+import { acharCC } from './acharCC.mjs'
 
 function sair() { process.exit(0) }
 
@@ -116,7 +117,11 @@ if (!minhas.length) {
  * "avisa", porque não saber não é a mesma coisa que saber que está sozinho.
  */
 function outroAgenteAtivo(raizProjeto, meuId) {
-  const CC = join(homedir(), 'AppData', 'Roaming', 'npm', 'node_modules', 'claude-control-center', 'cc.mjs')
+  /* Era um caminho fixo do npm global do Windows, e fora dali nunca existia:
+     a resposta caía sempre em `null`, ou seja, "não deu para confirmar", e o
+     aviso saía toda vez, inclusive em sessão sozinha. Ver `acharCC.mjs`. */
+  const CC = acharCC()
+  if (!CC) return null
   let r
   try {
     r = spawnSync(process.execPath, [CC, 'json'], { encoding: 'utf8', timeout: 5000 })
