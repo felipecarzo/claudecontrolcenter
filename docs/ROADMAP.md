@@ -2400,28 +2400,39 @@ escrito por ele mesmo ("vira frente quando ele começar a trabalhar de verdade
 em outra ferramenta", "depois de Framework e Bancada") — nenhum dos dois
 chegou.
 
-### CC-105 Frente: Bancada — auditoria e teste agnóstico, ver [[produto/BANCADA]]
+### CC-105 ✅ Bancada — auditoria e teste agnóstico, ver [[produto/BANCADA]]
 
-Registrada em 14/08, a partir do mesmo documento externo. **Não implementada.**
-O cockpit instala o instrumento de teste no projeto, dispara, mostra o
-resultado, desinstala — o projeto não ganha CI próprio.
+**Registro corrigido em 19/08: estava dizendo "não implementada" e não era
+verdade.** Terceira vez no mesmo dia que uma marca do roadmap ficou velha
+sobre peça que já existia por completo — antes foram o F12 e os 31 hooks que
+não liam config no Windows.
 
-O suficiente para decidir se algo do backlog conflita:
+Medido em 19/08, contra o código real, não contra a marca:
 
-- **Vira gate do [[produto/FRAMEWORK]]**: "pronto" provavelmente vai exigir
-  pelo menos a camada de segredo rodada, não só os critérios do MVP marcados.
-- Catálogo de 17 camadas, quatro marcadas como ponto de partida (CVE Lite,
-  Gitleaks, Sandyaa, Playwright), o resto desligado até virar objeto novo no
-  catálogo — sem código de runner extra.
-- O diferencial é código nosso, não ferramenta de prateleira: sonda de RLS do
-  Supabase, caça a `service_role` vazado no bundle, sonda de zona restrita sem
-  sessão. Nenhuma ferramenta pronta faz essas três.
-- **O painel não tem job assíncrono hoje**, e a Bancada precisa de um
-  (progresso, cancelamento, resultado que sobrevive ao clique). Reusa o único
-  precedente do repo, `dispararTarefa()` do `opencode.mjs`.
-- **Mesmo risco do systemd achado hoje com o Pixel Agents** (CC-62): reiniciar
-  o painel mata processo filho em corrida longa. Registrado, não bloqueia.
-- Aba própria, "bancada", ao lado de tempo/preço/servidores.
+- **Catálogo com 19 camadas declaradas**, 10 implementadas de verdade —
+  passou das quatro que este item ainda esperava. As três que nenhuma
+  ferramenta de prateleira faz (sonda de RLS do Supabase, caça a
+  `service_role` vazado, zona restrita sem sessão) estão entre elas.
+- **O medo do "painel não tem job assíncrono" não se confirmou.** A decisão
+  tomada foi a oposta, e está documentada no próprio motor: uma camada por
+  vez, um projeto por vez, sem fila — *"complexidade de fila sem demanda é o
+  tipo de coisa que se paga em bug e não em valor"*. A chamada roda e a
+  resposta espera, sem fila nova pra manter.
+- **Aba própria no ar**, com nível de exigência (Rascunho a Exposto),
+  resultado de cada camada, e o comando de conserto para quem quiser aplicar
+  à mão — a Bancada não conserta sozinha, de propósito.
+- **Vira gate do framework**, como este item pedia: o método
+  `entrega-cliente` já lê o resultado da verificação antes de liberar.
+
+**Provado ao vivo nesta sessão**, não só lido no código: rodei a camada de
+segredo neste projeto pela rota de verdade (`120ms`, sem achado), e a tela
+mostrou "verificado hoje" na hora. A camada de caça a `service_role` já tinha
+achado um caso de verdade antes desta sessão, ainda visível na tela.
+
+**O que ainda falta, honesto:** 9 das 19 camadas seguem só declaradas, sem
+runner (a maioria é a fatia mais cara — IA avaliando prompt, ataque a modelo,
+navegador remoto). Ninguém pediu essas ainda, e construir sem pedido é o
+oposto do que este projeto pratica.
 
 ### CC-106 Frente: Cockpit de retomada de contexto — ver [[produto/COCKPIT]]
 
