@@ -210,7 +210,7 @@ tinha se federado** — o CC-159 os ligou sem escrever uma linha. Conferido na
 VPS: `ALIENWARE-LIPE` aparece como máquina remota online, 15 jobs, pacote de
 13 segundos atrás, com o uso do plano do PC dentro.
 
-### CC-165 🚧 metade feita, 18/08 (PC) — o serviço que mantém tudo no ar e varre os projetos sozinho
+### CC-165 ✅ 19/08 — o serviço que mantém tudo no ar e varre os projetos sozinho
 
 **Feito: a tela responde "está mesmo sendo enviado?".** Era pergunta dele, sem
 resposta na tela: *"como garantimos que tá tudo sendo vigiado e enviado pro
@@ -233,10 +233,36 @@ Medido no painel de verdade: `✓ último envio 0m atrás para
 cockpit.carzo.com.br, com 15 agentes e as horas` e `✓ este painel sobe sozinho
 quando a máquina liga`.
 
-**Falta o resto do pedido dele:** *"fazendo uma varredura nos projetos onlines
-e nos seus backlogs"*. O pacote leva agentes, uso e horas, nunca o conteúdo do
-backlog de cada projeto. Depende do CC-161 (git como transporte) para não
-criar duas fontes de verdade sobre o mesmo `ROADMAP.md`.
+#### ✅ A varredura dos backlogs, fechada em 19/08
+
+*"fazendo uma varredura nos projetos onlines e nos seus backlogs"*. Até aqui o
+pacote levava agentes, uso e horas: a VPS sabia QUEM estava trabalhando e
+nunca EM QUÊ.
+
+**Só o resumo viaja**, e essa é a decisão que evita o problema que o CC-161
+apontou: contagem de frentes, quantas abertas, e os seis primeiros títulos.
+Nunca o texto do `ROADMAP.md`, porque o arquivo é do git, que tem histórico e
+resolução de conflito. Mandar o conteúdo aqui criaria uma segunda cópia, mais
+nova ou mais velha que a do git dependendo do dia, e ninguém saberia qual
+vale.
+
+**A contagem nunca é cortada, só a lista de títulos.** O teto existe porque o
+pacote inteiro tem limite de 2 MB, mas cortar o número diria "5 frentes
+abertas" para um projeto com 50, que é pior que não dizer nada. Há teste
+guardando exatamente isso.
+
+**Custo medido antes de entrar**: ler o roadmap dos 23 projetos custa **14ms**,
+três ordens de grandeza abaixo da varredura de tempo, então dispensa o relógio
+próprio que as horas precisaram.
+
+Cada campo é recortado individualmente na validação, em vez de aceito inteiro:
+um `titulos` com mil entradas de 10 KB passaria pelo limite do pacote e
+apareceria só como tela travada, que é o tipo de defeito que não se lê no
+código.
+
+**Provado em produção**, depois do deploy nas duas pontas: 11 projetos do PC
+com backlog chegando na VPS, entre eles `inovallbond` (12 frentes),
+`app_questguide` (26) e `proj_ghoscode` (16 de 44).
 
 **O pedido inteiro dele, para o que ainda falta ser medido contra ele:** *"por
 isso eu sugeri serviço, porque ele ficaria on o tempo todo e o cockpit
@@ -2275,10 +2301,19 @@ documento para começar, a maior parte já estava construída — a marca de
 "faltam F4 a F11" tinha ficado velha sem ninguém atualizar. Feito em 18/08:
 corrigidas as marcas de F4, F6 e F2 (resolvido de graça pelo desenho do F1),
 e implementado o F15 que faltava de verdade (`cc framework ticket`, achado
-sobre outro projeto vira ticket commitado NELE). **Sobra só o F12** (filtro de
-confidencialidade local — trocar dado sensível por token em vez de só
-bloquear a leitura), que é o de maior escopo e ainda não tem desenho técnico
-escrito, ao contrário dos outros dezesseis.
+sobre outro projeto vira ticket commitado NELE).
+
+**F12 fechado em 19/08, e ele também já estava construído.** O motor
+(`anonimizar.mjs`, 33 casos portados do Pierre), a cópia mascarada em disco e
+o `anonimo-guard` existiam inteiros. Faltava **uma linha no
+`hooksCatalogo.mjs`**: sem ela o `cc hooks install` não instala o hook em
+máquina nenhuma, e ele nunca rodou. É a armadilha que o próprio `CLAUDE.md`
+registra, acontecendo com a peça de maior escopo do framework.
+
+Provado com arquivo de verdade e dado inventado: `Mariana Vasconcelos
+Ribeiro, CPF 111.444.777-35` vira `<PESSOA_1>, CPF <CPF_1>` antes da leitura,
+e a estrutura do documento continua legível. **As dezessete etapas estão no
+ar.**
 
 A primeira etapa (F1, o "modo conversa") nasceu de um erro real do mesmo dia:
 no meio de uma conversa que ele abriu com "vamos discutir isso ainda antes de

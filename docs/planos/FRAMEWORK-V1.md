@@ -1,8 +1,8 @@
 ---
 tags: [plano, framework]
 tipo: plano
-atualizado: 2026-08-18
-estado: dezesseis das dezessete etapas no ar. Só falta F12 (filtro de confidencialidade local)
+atualizado: 2026-08-19
+estado: as dezessete etapas no ar. F12 fechado em 19/08, e ele já estava construído: faltava a linha no catálogo que o faz ser instalado
 resumo: O caminho para o framework de engenharia sair de gate de MVP solto e virar sistema. Nasceu de um erro real, inofensivo, em que a IA implementou sem pedido durante uma conversa de conceito.
 termos:
   modo diálogo: decidimos em prosa e a IA interpreta. É o fluxo de hoje
@@ -302,7 +302,30 @@ junto do modo.
 A inversão da visão: o framework demanda ao Felipe, começando por "o que é o
 projeto". Hoje o gate só recusa, ainda não conduz.
 
-### F12. Filtro de confidencialidade local
+### F12. Filtro de confidencialidade local ✅ 19/08 — estava construído e desligado
+
+**O motor e o hook já existiam.** `src/anonimizar.mjs` (portado do Pierre, 33
+casos), `src/anonimoDisco.mjs` (cópia mascarada em disco, com mapa para
+remontar) e `hooks/anonimo-guard.mjs`, que troca o caminho antes da leitura.
+
+**O que faltava era uma linha no catálogo.** `anonimo-guard` nunca foi
+registrado em `src/hooksCatalogo.mjs`, e sem isso o `cc hooks install` não o
+instala em máquina nenhuma. É a armadilha que o próprio `CLAUDE.md` registra
+("hook novo precisa estar no `hooksCatalogo.mjs` ANTES de funcionar"),
+acontecendo com a peça de maior escopo do framework.
+
+Mesmo padrão do CC-167 e do CC-162/163: **construído, provado, e desligado sem
+ninguém notar.** Três vezes na mesma sessão.
+
+**Provado com arquivo de verdade** (dado inventado, nunca dado real dele): com
+o framework desligado o hook não se mete; com a anonimização ligada, a leitura
+é redirecionada para uma cópia onde `Mariana Vasconcelos Ribeiro, CPF
+111.444.777-35` virou `<PESSOA_1>, CPF <CPF_1>`, e a estrutura do documento
+continua legível.
+
+Ele falha FECHADO, ao contrário de todos os outros hooks daqui: mascaramento
+que quebra bloqueia a leitura, porque dado pessoal que vazou para o contexto
+não tem desfazer.
 
 Vem do documento "Arquitetura de Hábitos", que o Felipe escreveu para **outro
 produto** (ver abaixo), e é a peça que ele decidiu trazer para cá em 14/08.

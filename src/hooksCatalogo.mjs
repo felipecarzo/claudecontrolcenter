@@ -306,6 +306,23 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'anonimo-guard',
+    modulo: 'comunicacao',
+    nivel: 'trava',
+    label: 'arquivo com dado pessoal lido em claro',
+    script: 'anonimo-guard.mjs',
+    evento: 'PreToolUse',
+    matcher: 'Read',
+    descricao: 'F12 do framework. Com o modo de anonimização ligado, troca o caminho '
+      + 'do arquivo pela cópia MASCARADA antes da leitura: a IA lê "<PESSOA_1> paga a '
+      + '<EMPRESA_2>" e o nome real nunca entra no contexto. Ao contrário dos outros, '
+      + 'falha FECHADA: se o mascaramento quebrar, a leitura é bloqueada, porque dado '
+      + 'pessoal que vazou não tem desfazer. Pedido dele em 15/08: "eu subo muitos '
+      + 'arquivos, isso tem que acontecer em qualquer arquivo que eu subir".',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'bancada-guard',
     modulo: 'entrega',
     nivel: 'avisa',
