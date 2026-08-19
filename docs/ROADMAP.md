@@ -2156,27 +2156,20 @@ Armadilha a não repetir: **texto com elemento no meio, dentro de `display:grid`
 precisa de UM elemento que o envolva.** Hoje é o único caso no arquivo, e foi
 conferido por varredura.
 
-### CC-102 Frente: o projeto visto por rotas, para estudar
+### CC-102 ✅ o projeto visto por rotas — convergiu no CC-80 e no CC-155
 
-Ideias dele em 15/08, ditadas por voz, **para estudo — nada decidido**. O eixo,
-nas palavras dele: *"ter uma visão do projeto mais estrutural, voltada pra uma
-forma que funciona melhor com o meu tipo de raciocínio visual"*.
+Ideias dele em 15/08, ditadas por voz: *"ter uma visão do projeto mais
+estrutural, voltada pra uma forma que funciona melhor com o meu tipo de
+raciocínio visual"*. Era estudo, sem forma decidida.
 
-Metade do dado já existe e é a razão de isto ser barato: `presenca.mjs` (CC-49)
-lê o quadro e classifica cada rota em ativa / órfã / desconhecida, e
-`rotasDeTodos()` (CC-48) junta as rotas das duas máquinas por projeto.
+**Feito em 17/08:** as rotas das outras máquinas entraram na tabela de cada
+projeto, com a máquina escrita, sem botão — liberar rota de outro aparelho à
+distância é o contrário do que o Routia protege.
 
-**✅ Feito em 17/08: as rotas das outras máquinas na tela.** Até aqui elas só
-saíam por comando de terminal, e ele trabalha do telefone: recurso que só
-existe no terminal não existe para ele. Agora a tabela de rotas de cada projeto
-mostra também as ocupadas do outro aparelho, com a máquina escrita, levemente
-apagadas e SEM botão: liberar rota de outro aparelho à distância é o contrário
-do que o Routia protege.
-
-De quebra, um defeito de isolamento: a federação resolvia a pasta pela home
-direto, ignorando a casa isolada dos testes. A instância de teste lia a pasta
-real, e um pacote de laboratório teria acabado no painel dele. Corrigido, com
-teste no gate.
+**A forma que faltava saiu em 19/08, em dois itens**, e por isso a pergunta
+deste item já tem resposta: **CC-80** (as frentes como território, com o que
+cada uma toca) e **CC-155** (o mapa das rotas cruzando, ao vivo). Nada mais
+pendente aqui.
 
 ### CC-80 ✅ 19/08 — a visão estrutural: onde mexer primeiro
 
@@ -2244,7 +2237,7 @@ casos caíam na pasta do próprio repositório. O caso "projeto sem quadro"
 falhava, e os de bloqueio passavam por motivo diferente do que diziam testar.
 Corrigido com pastas de verdade criadas no próprio teste.
 
-### CC-104 Frente: Sincronia entre máquinas, aprovada pelo Felipe em 14/08
+### CC-104 ✅ Sincronia entre máquinas, aprovada pelo Felipe em 14/08
 
 O pedido dele, ditado por voz na VPS pelo celular: parar de usar o Git como
 canal entre a sessão do PC e a sessão da VPS. Motivo dele, que é o certo: "a
@@ -2392,6 +2385,20 @@ específica por método, em vez de "a Bancada inteira".
 nesse trabalho"*. As onze, uma por vez, e **usando o método `conserto` ou o
 `estudo` de verdade**, não só como assunto. É o primeiro uso do framework num
 trabalho real com ele acompanhando, que era justamente o que faltava.
+
+#### Fechamento em 19/08
+
+**O pedido original desta frente está feito nos dois pilares.** A sincronia
+via git virou sincronia via federação para o que é estado vivo (agentes, uso,
+horas, backlog resumido, pedido de sessão), com o git mantido exatamente onde
+ele é insubstituível: registro de entrega e transporte de código. E as
+dezessete etapas do framework estão no ar, F12 incluído.
+
+**Dois sub-itens continuam registrados, de propósito, não como pendência**:
+"perguntas em rede" e "ponte com outras ferramentas" têm gatilho próprio
+escrito por ele mesmo ("vira frente quando ele começar a trabalhar de verdade
+em outra ferramenta", "depois de Framework e Bancada") — nenhum dos dois
+chegou.
 
 ### CC-105 Frente: Bancada — auditoria e teste agnóstico, ver [[produto/BANCADA]]
 
