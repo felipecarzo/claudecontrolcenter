@@ -21,9 +21,10 @@
   },
   "files": ["cc.mjs", "src/", "AGENTS.md", "README.md", "LICENSE"],
   "scripts": {
+    "postinstall": "node src/postinstall.mjs",
     "start": "node cc.mjs",
     "web": "node cc.mjs --web-only",
-    "test": "node test-anonimizar.mjs && node test-framework.mjs && node test-federacao.mjs && node hooks/testar-sincronia-guard.mjs && node test.mjs",
+    "test": "node test-anonimizar.mjs && node test-framework.mjs && node test-federacao.mjs && node hooks/testar-sincronia-guard.mjs && node test-postinstall.mjs && node test.mjs",
     "test:ui": "node test-ui.mjs"
   },
   "engines": { "node": ">=18" },

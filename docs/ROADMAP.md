@@ -2198,7 +2198,7 @@ Provado com dado real, clicando na tela de verdade: a frente de hoje mostrou
 `ROADMAP.md, federacao.mjs, hooksCatalogo.mjs, sincronia-guard.mjs, ui.html`
 como os arquivos mais tocados, e batem com o que esta sessão mexeu de fato.
 
-### CC-103 Frente: o que pre-commit, husky e Danger já resolveram, e nós não
+### CC-103 ✅ o que pre-commit, husky e Danger já resolveram, e nós não
 
 Registrada em 15/08 a pedido dele, depois de comparar o framework com os oito
 frameworks de agente e perceber que **os parentes de verdade não são LangChain
@@ -2236,6 +2236,40 @@ caminho `D:/...` e a variável `$TEMP`, que só existem no Windows, então os do
 casos caíam na pasta do próprio repositório. O caso "projeto sem quadro"
 falhava, e os de bloqueio passavam por motivo diferente do que diziam testar.
 Corrigido com pastas de verdade criadas no próprio teste.
+
+#### ✅ Fechada em 19/08: a última linha era a do husky
+
+Medido linha a linha da tabela antes de escrever qualquer coisa, e **cinco das
+seis já estavam fechadas** sem ninguém ter atualizado o registro:
+
+| Elas | Onde estamos agora |
+|---|---|
+| `pre-commit`: catálogo | **4 métodos** (`mvp-basico`, `conserto`, `estudo`, `entrega-cliente`), não um |
+| `Danger`: níveis declarados | **36 de 36** hooks com nível (`trava`, `avisa`, `injeta`, `mede`) |
+| `lint-staged`: só no que mudou | `--so-mudou` existe e a Bancada registra o escopo olhado (CC-71) |
+| `run --all-files` | `cc hooks testar`, feito em 17/08 |
+| `autoupdate` | `cc hooks sync` |
+| **`husky`: o gancho nasce com a instalação** | **era a que faltava** |
+
+**O custo dessa última doeu hoje**: ao abrir este projeto no PC depois de seis
+dias só na VPS, **31 dos 36 hooks nunca tinham sido instalados aqui**. Não
+estavam quebrados, nunca tinham sido copiados. Todas as travas de escrita, o
+gate do framework e o registro no diário existiam no repositório e não valiam
+nada nesta máquina.
+
+Agora `npm install` instala sozinho, e as três garantias que tornam isso
+seguro estão testadas:
+
+1. **só acrescenta** — hook de outro sistema dele (pixel-agents) fica intacto,
+   e há caso de teste guardando exatamente isso;
+2. **cópia de segurança** antes de escrever, que o registro já fazia;
+3. **nunca derruba o `npm install`** — sai com código 0 sempre, inclusive
+   quando a casa do Claude Code nem existe (CI, container).
+
+Rodar de novo em máquina já configurada não muda nada e fica calado. Registrar
+não é ligar: o interruptor por projeto continua sendo dele.
+
+9 casos no gate, em casa isolada por `CC_HOME`.
 
 ### CC-104 ✅ Sincronia entre máquinas, aprovada pelo Felipe em 14/08
 
