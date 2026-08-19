@@ -374,7 +374,16 @@ export async function enviar({ enviarPara, token, pacote }) {
       body: corpo,
       signal: AbortSignal.timeout(10_000),
     })
-    return { ok: r.ok, status: r.status }
+    /* O CORPO da resposta importa desde o CC-166: é por ele que voltam os
+       pedidos guardados para esta máquina, e é a única direção possível
+       (o servidor nunca alcança quem está atrás de NAT). Até 19/08 esta
+       função devolvia só `ok` e `status`, então o pedido chegava e era
+       descartado aqui, sem erro nenhum — o envio dizia 200 e nada acontecia
+       do outro lado. Resposta sem JSON válido não é problema: o servidor
+       pode ser uma versão antiga, e aí simplesmente não há pedido. */
+    let corpoResposta = null
+    try { corpoResposta = await r.json() } catch { /* servidor antigo ou resposta vazia */ }
+    return { ok: r.ok, status: r.status, ...(corpoResposta && typeof corpoResposta === 'object' ? corpoResposta : {}) }
   } catch (e) {
     return { ok: false, erro: String(e?.message || e) }
   }
