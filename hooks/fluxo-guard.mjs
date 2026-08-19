@@ -42,7 +42,13 @@
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+/* CC-167: `import()` no Windows precisa de URL, não de caminho. Com `D:\...`
+   ele lança ERR_UNSUPPORTED_ESM_URL_SCHEME, e como quase toda chamada aqui
+   está dentro de um `.catch`, o módulo some sem erro visível: foi assim que
+   o interruptor de módulos deixou de valer em 31 hooks, sem ninguém notar. */
+const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
 const sair = () => process.exit(0)
@@ -51,11 +57,11 @@ let dados = null
 try { dados = JSON.parse(readFileSync(0, 'utf8')) } catch { sair() }
 if (dados?.stop_hook_active) sair()
 
-const cfg = await import(resolve(AQUI, '../src/config.mjs')).catch(() => null)
+const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
 if (cfg?.hookEnabled && !cfg.hookEnabled('fluxo-guard')) sair()
 
-const D = await import(resolve(AQUI, '../src/frameworkDisco.mjs')).catch(() => null)
-const F = await import(resolve(AQUI, '../src/framework.mjs')).catch(() => null)
+const D = await import(urlDeModulo(AQUI, '../src/frameworkDisco.mjs')).catch(() => null)
+const F = await import(urlDeModulo(AQUI, '../src/framework.mjs')).catch(() => null)
 if (!D || !F) sair()
 
 const raiz = D.acharRaiz(dados?.cwd || process.cwd())
@@ -84,7 +90,7 @@ if (pausa) sair()
 /* 2. a caixa de pergunta foi usada — a bola está com ele */
 if (turno.includes('AskUserQuestion')) sair()
 
-const E = await import(resolve(AQUI, '../src/estilo.mjs')).catch(() => null)
+const E = await import(urlDeModulo(AQUI, '../src/estilo.mjs')).catch(() => null)
 if (!E) sair()
 
 /* 1. ele perguntou: responder é a entrega */

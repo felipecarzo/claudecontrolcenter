@@ -38,7 +38,13 @@
  */
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+/* CC-167: `import()` no Windows precisa de URL, não de caminho. Com `D:\...`
+   ele lança ERR_UNSUPPORTED_ESM_URL_SCHEME, e como quase toda chamada aqui
+   está dentro de um `.catch`, o módulo some sem erro visível: foi assim que
+   o interruptor de módulos deixou de valer em 31 hooks, sem ninguém notar. */
+const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
 const sair = () => process.exit(0)
@@ -47,11 +53,11 @@ let dados = null
 try { dados = JSON.parse(readFileSync(0, 'utf8')) } catch { sair() }
 if (dados?.stop_hook_active) sair()
 
-const cfg = await import(resolve(AQUI, '../src/config.mjs')).catch(() => null)
+const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
 if (cfg?.hookEnabled && !cfg.hookEnabled('pronto-guard')) sair()
 if (cfg?.isEnabled && !cfg.isEnabled()) sair()
 
-const J = await import(resolve(AQUI, '../src/jobs.mjs')).catch(() => null)
+const J = await import(urlDeModulo(AQUI, '../src/jobs.mjs')).catch(() => null)
 if (!J) sair()
 
 const id = process.env.CLAUDE_CODE_SESSION_ID || dados?.session_id || J.currentJobId?.()
@@ -59,7 +65,7 @@ if (!id) sair()
 
 let meta = {}
 try {
-  const M = await import(resolve(AQUI, '../src/metaSessao.mjs'))
+  const M = await import(urlDeModulo(AQUI, '../src/metaSessao.mjs'))
   meta = M.lerMetaSessao(id) || {}
 } catch { sair() }
 

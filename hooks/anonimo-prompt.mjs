@@ -42,7 +42,13 @@
  */
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+/* CC-167: `import()` no Windows precisa de URL, não de caminho. Com `D:\...`
+   ele lança ERR_UNSUPPORTED_ESM_URL_SCHEME, e como quase toda chamada aqui
+   está dentro de um `.catch`, o módulo some sem erro visível: foi assim que
+   o interruptor de módulos deixou de valer em 31 hooks, sem ninguém notar. */
+const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
 const liberar = () => process.exit(0)
@@ -50,10 +56,10 @@ const liberar = () => process.exit(0)
 let dados = null
 try { dados = JSON.parse(readFileSync(0, 'utf8')) } catch { liberar() }
 
-const cfg = await import(resolve(AQUI, '../src/config.mjs')).catch(() => null)
+const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
 if (cfg?.hookEnabled && !cfg.hookEnabled('anonimo-prompt')) liberar()
 
-const D = await import(resolve(AQUI, '../src/frameworkDisco.mjs')).catch(() => null)
+const D = await import(urlDeModulo(AQUI, '../src/frameworkDisco.mjs')).catch(() => null)
 if (!D) liberar()
 
 const raiz = D.acharRaiz(dados?.cwd || process.cwd())
@@ -70,7 +76,7 @@ const texto = String(dados?.prompt || '')
 if (texto.length < 240) liberar()
 
 let A = null
-try { A = await import(resolve(AQUI, '../src/anonimizar.mjs')) } catch {
+try { A = await import(urlDeModulo(AQUI, '../src/anonimizar.mjs')) } catch {
   /* FECHADO: sem o motor não dá para afirmar que está limpo, e afirmar sem
      olhar é o defeito que este hook existe para impedir. */
   process.stderr.write(

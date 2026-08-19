@@ -12,6 +12,7 @@ import { perdidasDeTodas as perdidasDeTodasAsSessoes } from './fila.mjs'
 // `casaClaude()` e não `os.homedir()`: é o único lugar que resolve a pasta
 // `.claude`, e é o que faz `CC_HOME` isolar o painel de teste do real.
 import { casaClaude, caminhoAutostart } from './platform.mjs'
+import { estadoGit } from './git.mjs'
 import {
   alternarRota, corDaRota, humanizar as humanizarSilencio, lerQuadro, retratoDoQuadro,
 } from './presenca.mjs'
@@ -22,7 +23,7 @@ import {
 import { origem as origemLocal } from './maquina-id.mjs'
 import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
-  mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos,
+  mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos, resumirBacklogs,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
 import { arquivar, jobsHistoricos, marcosDe, mudouDesde } from './historico.mjs'
@@ -361,7 +362,21 @@ async function empurrar({ comTempo = null } = {}) {
     } catch { /* varredura falhou: manda o resto, tempo vai na próxima */ }
   }
 
-  const pacote = montarPacote({ maquina: s.maquina, jobs: meus, uso: s.uso, tempo })
+  /* CC-165: o backlog de cada projeto vai junto, a cada ciclo.
+     Medido antes de entrar: ler o roadmap dos 23 projetos custa 14ms, três
+     ordens de grandeza abaixo da varredura de tempo, então não precisa do
+     relógio próprio que as horas precisaram. Só o RESUMO viaja: o arquivo em
+     si é do git, e duas cópias do mesmo ROADMAP.md em canais diferentes seria
+     duas verdades. */
+  let backlogs = null
+  try {
+    backlogs = resumirBacklogs(findProjects().map((raiz) => ({
+      projeto: path.basename(raiz),
+      mapa: lerRoadmap(raiz),
+    })))
+  } catch { /* varredura falhou: o resto do pacote continua valendo */ }
+
+  const pacote = montarPacote({ maquina: s.maquina, jobs: meus, uso: s.uso, tempo, backlogs })
   const r = await enviarPacote({ enviarPara, token, pacote })
   ultimoEmpurrao = {
     em: Date.now(),
@@ -688,6 +703,10 @@ function handler(req, res) {
       autostart: fs.existsSync(caminhoAutostart()),
       pacotes: pacotes.map((p) => ({
         maquina: p.maquina, jobs: p.jobs.length, em: p.em, idadeMs: p.idadeMs, semContato: p.semContato,
+        /* CC-165: o backlog que a outra máquina reportou. Vai aqui e não numa
+           rota nova porque quem pergunta "o que a outra máquina tem para
+           fazer?" já está olhando esta tela. */
+        backlogs: p.backlogs || [],
       })),
     })
   }
@@ -823,6 +842,23 @@ function handler(req, res) {
     lista.sort((a, b) => (b.ativo ? 1 : 0) - (a.ativo ? 1 : 0)
       || (b.existe ? 1 : 0) - (a.existe ? 1 : 0)
       || a.projeto.localeCompare(b.projeto))
+
+    /* CC-161: o estado do git de cada projeto, que é o que decide se o backlog
+     * daqui é o mais novo.
+     *
+     * **Só para os que a tela mostra**, e a razão é medida: 23 projetos custam
+     * 1905ms (83ms cada), e isso não pode estar numa rota que a tela chama. Os
+     * que aparecem por padrão são os ativos e os com framework, uns 4 aqui, o
+     * que dá ~330ms. Quem revelar o resto paga o preço do resto, e paga uma
+     * vez, no clique.
+     *
+     * **Avisa, nunca puxa.** Decisão registrada quando o item nasceu: `git
+     * pull` automático por cima de mudança não commitada é o tipo de coisa que
+     * este projeto já aprendeu a não fazer sem perguntar. */
+    for (const p of lista) {
+      if (!(p.ativo || (p.existe && p.ligado))) continue
+      p.git = estadoGit(p.raiz)
+    }
     return send(res, 200, { projetos: lista, catalogoModulos: MODULOS_HOOKS, at: Date.now() })
   }
 
@@ -935,7 +971,11 @@ function handler(req, res) {
     }
     const raiz = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
     if (!raiz) return send(res, 200, { existe: false, ligado: false, semPasta: true })
-    return send(res, 200, { raiz, ...retratoFramework(raiz) })
+    /* CC-161: o git vai junto aqui, e não só na lista de módulos. Esta rota é
+       de UM projeto, sob clique (~85ms), e é ela que alimenta a faixa dentro
+       do projeto ativo — que é onde ele olha. Na lista, o mesmo dado custa o
+       número de projetos vezes isso, e por lá só os visíveis pagam. */
+    return send(res, 200, { raiz, ...retratoFramework(raiz), git: estadoGit(raiz) })
   }
 
   /* CC-143: criar projeto novo pelo painel.

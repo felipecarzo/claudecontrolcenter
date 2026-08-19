@@ -28,7 +28,13 @@
  */
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+/* CC-167: `import()` no Windows precisa de URL, não de caminho. Com `D:\...`
+   ele lança ERR_UNSUPPORTED_ESM_URL_SCHEME, e como quase toda chamada aqui
+   está dentro de um `.catch`, o módulo some sem erro visível: foi assim que
+   o interruptor de módulos deixou de valer em 31 hooks, sem ninguém notar. */
+const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
 const sair = () => process.exit(0)
@@ -39,8 +45,8 @@ try { entrada = readFileSync(0, 'utf8') } catch { sair() }
 let dados = null
 try { dados = JSON.parse(entrada) } catch { sair() }
 
-const { acharRaiz, ler } = await import(resolve(AQUI, '../src/frameworkDisco.mjs')).catch(sair)
-const F = await import(resolve(AQUI, '../src/framework.mjs')).catch(sair)
+const { acharRaiz, ler } = await import(urlDeModulo(AQUI, '../src/frameworkDisco.mjs')).catch(sair)
+const F = await import(urlDeModulo(AQUI, '../src/framework.mjs')).catch(sair)
 
 const raiz = acharRaiz(dados?.cwd || process.cwd())
 if (!raiz) sair() // projeto sem framework: silêncio total
@@ -112,7 +118,7 @@ if (modo.trava) {
  */
 if (modo.sugereFrentes) {
   try {
-    const R = await import(resolve(AQUI, '../src/roadmap.mjs'))
+    const R = await import(urlDeModulo(AQUI, '../src/roadmap.mjs'))
     const mapa = R.lerRoadmap(raiz)
     const abertas = R.ordenar(raiz, mapa).porImportancia.filter((f) => f.estado !== 'feito')
     if (abertas.length) {

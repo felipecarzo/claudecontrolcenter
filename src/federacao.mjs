@@ -65,6 +65,18 @@ export function validarPacote(bruto) {
       tempo: bruto.tempo && typeof bruto.tempo === 'object' ? bruto.tempo : null,
       // CC-48: 40 projetos é folgado e limita o estrago de um pacote malformado
       rotas: lista(bruto.rotas, 40),
+      /* CC-165: o resumo dos backlogs. Mesmo teto das rotas, e cada item é
+         recortado campo a campo em vez de aceito inteiro: um `titulos` com
+         mil entradas de 10 KB passaria pelo limite do pacote e só apareceria
+         como tela travada, que é o tipo de defeito que não se lê no código. */
+      backlogs: lista(bruto.backlogs, 40).map((b) => ({
+        projeto: String(b?.projeto || '').slice(0, 80),
+        atualizadoEm: Number(b?.atualizadoEm) || null,
+        frentes: Number(b?.frentes) || 0,
+        abertas: Number(b?.abertas) || 0,
+        titulos: (Array.isArray(b?.titulos) ? b.titulos : [])
+          .slice(0, 6).map((t) => String(t).slice(0, 160)),
+      })).filter((b) => b.projeto),
       em: Number(bruto.em) || Date.now(),
       recebidoEm: Date.now(),
     },
@@ -348,7 +360,47 @@ export const enxugarRotas = (quadros) => quadros
     })),
   }))
 
-export function montarPacote({ maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [] }) {
+/**
+ * CC-165: o backlog de cada projeto, reduzido ao que cabe numa tela.
+ *
+ * Pedido dele ao desenhar o serviço: *"fazendo uma varredura nos projetos
+ * onlines e nos seus backlogs"*. Até aqui o pacote levava agentes, uso e
+ * horas, nunca o que cada projeto tem para fazer, então a VPS sabia QUEM
+ * estava trabalhando e nunca EM QUÊ.
+ *
+ * ## O que viaja, e o que fica
+ *
+ * Só a contagem e os títulos das frentes ABERTAS. Nunca o texto do
+ * `ROADMAP.md`, e a razão é o CC-161: o arquivo viaja pelo git, que é o
+ * transporte com histórico e resolução de conflito. Mandar o conteúdo aqui
+ * criaria uma segunda cópia, mais nova ou mais velha que a do git dependendo
+ * do dia, e ninguém saberia qual vale.
+ *
+ * Medido em 19/08: ler o roadmap dos 23 projetos custa **14ms**, então isto
+ * cabe no ciclo sem o cuidado que as horas exigiram.
+ */
+export function resumirBacklogs(mapas = []) {
+  return mapas
+    .filter((m) => m && m.mapa)
+    .map(({ projeto, mapa }) => {
+      const frentes = (mapa.grupos || []).flatMap((g) => g.frentes || [])
+      const abertas = frentes.filter((f) => f.estado !== 'feito')
+      return {
+        projeto,
+        atualizadoEm: mapa.atualizadoEm || null,
+        frentes: frentes.length,
+        abertas: abertas.length,
+        /* Seis títulos, não todos: o pacote tem teto de 2 MB e a tela mostra
+           uma linha por projeto. Quem quiser a lista inteira abre o projeto,
+           onde o arquivo está por completo. */
+        titulos: abertas.slice(0, 6).map((f) => f.titulo),
+      }
+    })
+}
+
+export function montarPacote({
+  maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [], backlogs = null,
+}) {
   const enxuto = jobs.map((j) => ({
     id: j.id, status: j.status, subject: j.subject, project: j.project, sub: j.sub,
     route: j.route, frente: j.frente, model: j.model, tokens: j.tokens, tipo: j.tipo || 'background',
@@ -356,7 +408,9 @@ export function montarPacote({ maquina, jobs = [], servidores = [], uso = null, 
     detail: j.detail, createdAt: j.createdAt, updatedAt: j.updatedAt, cwd: j.cwd,
     lastPrompt: j.lastPrompt, entregueEmAberto: j.entregueEmAberto, sinais: j.sinais,
   }))
-  return { maquina, jobs: enxuto, servidores, uso, tempo, rotas: enxugarRotas(rotas), em: Date.now() }
+  return {
+    maquina, jobs: enxuto, servidores, uso, tempo, rotas: enxugarRotas(rotas), backlogs, em: Date.now(),
+  }
 }
 
 /**

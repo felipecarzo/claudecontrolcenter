@@ -4084,9 +4084,27 @@ function viewFrameworkLista() {
     const onde = !p.ativo ? '' : `<span class="fw-selo" style="border-color:var(--working);color:var(--working)"
         title="sessão aberta agora${p.maquinas?.length ? ` em: ${p.maquinas.join(', ')}` : ''}">${
   p.maquinas?.length ? esc(p.maquinas.join(' · ')) : 'aberto'}</span>`
+
+    /* CC-161: o git deste projeto, que é o que decide se o backlog daqui é o
+       mais novo. Só aparece quando há o que dizer: repositório em dia não
+       ganha selo, porque o normal não precisa de aviso e uma fileira de "ok"
+       treina o olho a ignorar a linha inteira. */
+    const g = p.git
+    const frase = !g || g.emDia ? '' : g.semUpstream
+      ? `${g.ramo || 'esta branch'} nunca foi empurrada`
+      : [g.sujo ? `${g.sujo} sem commit` : '', g.naoEmpurrados ? `${g.naoEmpurrados} sem push` : '',
+        g.atras ? `${g.atras} pra puxar` : ''].filter(Boolean).join(', ')
+    /* Atrás do remoto é o único que fica em vermelho: os outros dois são
+       trabalho daqui que ainda não saiu, e isso é estado normal de quem está
+       no meio de uma tarefa. Atrás quer dizer que existe coisa pronta lá que
+       este projeto ainda não tem, e editar por cima é como nasce conflito. */
+    const selGit = !frase ? '' : `<span class="fw-selo"
+        style="border-color:var(--${g.atras ? 'failed' : 'waiting'});color:var(--${g.atras ? 'failed' : 'waiting'})"
+        title="o git é o transporte entre as máquinas: ${esc(frase)}. O painel avisa e nunca puxa sozinho.">${esc(frase)}</span>`
     return `<div class="fw-linha${p.ativo ? ' fw-ativo' : ''}">
         <b>${esc(p.projeto)}</b>
         ${onde}
+        ${selGit}
         ${estado}
         ${rotas}
         <span class="fw-mods">${grupos}</span>
@@ -4373,13 +4391,36 @@ function seloFramework(projeto) {
   const f = FRAMEWORKS.get(projeto)
   if (!f || f === 'carregando' || f.semPasta) return ''
 
+  /* CC-161: o git deste projeto, dentro do projeto. É o que responde "o
+     backlog daqui é o mais novo?", e o painel federado nunca respondia: ele
+     mostra agentes e horas, a árvore de arquivos fica invisível.
+
+     Fica ANTES dos retornos antecipados porque não tem nada a ver com
+     framework: projeto sem framework nenhum também fica para trás do remoto,
+     e esconder isso só dele seria arbitrário.
+
+     Só aparece quando há o que dizer. Repositório em dia não ganha selo,
+     porque uma fileira de "ok" treina o olho a pular a linha inteira. */
+  const g = f.git
+  const fraseGit = !g || g.emDia ? '' : g.semUpstream
+    ? `${g.ramo || 'esta branch'} nunca foi empurrada`
+    : [g.sujo ? `${g.sujo} sem commit` : '', g.naoEmpurrados ? `${g.naoEmpurrados} sem push` : '',
+      g.atras ? `${g.atras} pra puxar` : ''].filter(Boolean).join(', ')
+  /* Atrás do remoto é o único vermelho: os outros dois são trabalho daqui que
+     ainda não saiu, estado normal de quem está no meio de uma tarefa. Atrás
+     quer dizer que existe coisa pronta lá que aqui não chegou, e editar por
+     cima disso é como nasce conflito. */
+  const seloGit = !fraseGit ? '' : `<span class="fw-selo"
+      style="border-color:var(--${g.atras ? 'failed' : 'waiting'});color:var(--${g.atras ? 'failed' : 'waiting'})"
+      title="o git é o transporte entre as máquinas. O painel avisa e nunca puxa sozinho.">${esc(fraseGit)}</span>`
+
   if (!f.existe) {
-    return `<button class="btn mini" data-fw="ligar" data-fw-proj="${esc(projeto)}"
+    return `${seloGit}<button class="btn mini" data-fw="ligar" data-fw-proj="${esc(projeto)}"
       title="ligar o framework de engenharia neste projeto">ligar framework</button>`
   }
 
   if (!f.ligado) {
-    return `<span class="fw-selo fw-off" title="o MVP registrado continua guardado">framework desligado</span>
+    return `${seloGit}<span class="fw-selo fw-off" title="o MVP registrado continua guardado">framework desligado</span>
       <button class="btn mini" data-fw="ligar" data-fw-proj="${esc(projeto)}">religar</button>`
   }
 
@@ -4426,6 +4467,7 @@ function seloFramework(projeto) {
 
   return `<span class="fw-selo fw-on" style="border-color:var(--${cor});color:var(--${cor})"
       title="${esc(f.resumo || '')}">${esc(f.tituloFase || 'framework')}</span>
+    ${seloGit}
     <select class="fw-modo" data-fw-modo="${esc(projeto)}" title="${esc(f.explicaModo || '')}">${modos}</select>
     <span class="dim fw-frase" title="${esc(f.resumo || '')}">${esc(frase)}</span>
     ${f.mudancasDeEscopo ? `<span class="fw-selo" title="o escopo do MVP mudou ${f.mudancasDeEscopo} vez(es), com motivo registrado">escopo mudou ${f.mudancasDeEscopo}×</span>` : ''}

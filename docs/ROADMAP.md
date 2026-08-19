@@ -292,7 +292,7 @@ encadeia em sequência, então `claude` teria que terminar antes de
 `remote-control` começar. O certo é uma invocação só, que é o que
 `remotecontrol.mjs` já fazia desde o CC-129. Metade do pedido já existia.
 
-### CC-161 🚧 metade feita, 18/08 (PC) — backlog e docs no estado mais novo entre PC e VPS, via git
+### CC-161 ✅ 19/08 — backlog e docs no estado mais novo entre PC e VPS, via git
 
 **Feito: a trava que avisa que as máquinas divergiram.** `sincronia-guard`,
 evento `Stop`, nível avisa. Conta três coisas que o painel federado não mostra
@@ -317,32 +317,104 @@ dentro do shell transforma `\U` e `\5` do caminho do Windows em escape
 inválido, o hook cai no `catch` e sai calado, e o teste registra um falso
 "passou" enquanto o hook nunca rodou. Aconteceu na primeira tentativa.
 
-**Falta:** *"ativar o projeto pelo cockpit"* puxar do git antes de mostrar o
-estado. Segue sem desenho, e a pergunta continua de pé: se ativar SEMPRE faz
-`git pull`, ou só avisa quando o HEAD está atrás. A segunda é mais segura,
-porque puxar sozinho por cima de mudança não commitada é o tipo de coisa que
-este projeto já aprendeu a não fazer sem perguntar.
+#### ✅ Fechado em 19/08: a tela também mostra, e a decisão foi avisar
 
-### CC-162 ⏸ visão — o limite de 5h/semanal certo quando mais de uma máquina reporta
+**A pergunta era: ativar SEMPRE puxa do git, ou só avisa?** Ficou avisar.
+`git pull` automático por cima de mudança não commitada é ação irreversível
+disparada por um clique que pedia outra coisa, e este projeto já aprendeu a
+não fazer isso sozinho.
 
-Hoje cada painel mostra só a leitura local. Com o PC federado, a tela vai
-receber dois números da MESMA conta, possivelmente diferentes por causa da
-hora da última resposta em cada máquina. Regra a aplicar: o mais recente
-vence, nunca soma — resumida aqui porque é fácil errar por semelhança com o
-item seguinte, que soma de propósito.
+Cada projeto ativo mostra o estado do próprio repositório: quantos arquivos
+sem commit, quantos commits sem push, quantos há para puxar. **Atrás do remoto
+é o único em vermelho** — os outros dois são trabalho daqui que ainda não
+saiu, estado normal de quem está no meio de uma tarefa; atrás quer dizer que
+existe coisa pronta lá que aqui não chegou, e editar por cima é como nasce
+conflito. Repositório em dia não ganha selo nenhum, porque uma fileira de "ok"
+treina o olho a pular a linha inteira.
 
-### CC-163 ⏸ visão — tempo e uso das duas máquinas numa aba só, sem separar por padrão
+**O custo decidiu onde o dado entra**, e foi medido antes: 23 projetos custam
+1905ms (83ms cada). Longe demais para uma rota que a tela chama. Então a lista
+de módulos só calcula para os que estão à mostra (uns 4), e a rota de um
+projeto só, sob clique, calcula sempre.
 
-Ao contrário do CC-162, aqui SOMAR é o comportamento certo: horas trabalhadas
-e tokens gastos são aditivos entre máquinas, e o pacote da federação já faz
-essa conta (`horas e tokens somam entre as máquinas, com a quebra por
-origem`, testado). O que falta, depois do CC-159 ligar o PC:
+**Dois defeitos achados provando, e o segundo era o que importava:**
 
-- decidir se a aba de tempo mostra o total combinado por padrão, com a quebra
-  por máquina como detalhe (em vez do inverso);
-- conferir se o histórico (`src/historico.mjs`, que já existe porque o CLI
-  apaga job antigo) precisa da mesma lógica quando a máquina fica muito tempo
-  sem contato — hoje ele resolve isso só pro lado local.
+1. o selo só aparecia com framework ligado, e git não tem nada a ver com
+   framework: projeto sem framework também fica para trás. Subiu para antes
+   dos retornos antecipados;
+2. **`cwdDoProjeto` devolve a pasta onde o AGENTE roda, não a raiz do
+   repositório.** No `ibrics` isso é `apps/web_ibrics`, com o `.git` três
+   níveis acima, então o painel dizia "sem git" para projeto versionado — o
+   aviso sumia justamente onde havia o que avisar. `estadoGit` agora sobe a
+   árvore, e aceita `.git` como ARQUIVO, que é o formato de worktree (este
+   repositório usa um).
+
+O motor mora em `src/git.mjs`, e o `sincronia-guard` passou a usar o mesmo:
+hook e painel discordando sobre o estado do MESMO repositório seria pior que
+não ter nem um nem outro.
+
+### CC-167 ✅ 19/08 — 31 hooks nunca leram a configuração no Windows, e o interruptor de módulos não valia nada
+
+**Achado por acidente**, ao fazer o `sincronia-guard` importar `src/git.mjs`:
+o import morreu com `ERR_UNSUPPORTED_ESM_URL_SCHEME`. A causa vale para todos:
+`import('D:\\...')` não funciona, porque o `D:` é lido como esquema de URL. É
+preciso `pathToFileURL`.
+
+**Por que ninguém notou:** quase toda chamada estava dentro de
+`.catch(() => null)`, escrita para tolerar módulo ausente. O módulo não estava
+ausente, estava inalcançável — e o `catch` transformou isso em silêncio. O
+efeito prático: `const cfg = await import(...)` sempre `null`, então
+`if (cfg?.hookEnabled && ...)` nunca chegava a perguntar nada.
+
+**Consequência medida: desligar um grupo de proteções pelo painel não
+desligava nada nesta máquina.** O interruptor por projeto do CC-115 existia na
+tela, gravava no config, e os hooks nunca liam. Na VPS funcionava, porque
+`/home/...` é caminho POSIX e o import aceita — o defeito era exclusivo do
+Windows, que é onde ele trabalha.
+
+68 ocorrências em 31 arquivos, corrigidas com script (o `edicao-guard` permite
+para muitos arquivos, desde que escreva em pasta separada e confira antes de
+mover, e foi o que se fez: sintaxe validada nos 31 antes de qualquer cópia).
+
+**Provado nos dois sentidos**, que é o que faz o teste valer: com o grupo
+`codigo` ligado o hook fala; com ele desligado o hook cala. Contra a versão
+antiga, o mesmo import falha com `ERR_UNSUPPORTED_ESM_URL_SCHEME` e o config
+nunca carrega.
+
+**De quebra, um falso positivo no gate**, e ele estava certo em existir: a
+trava que acusa "hook consulta o catálogo e não está nele" passou a acusar
+três hooks por causa da palavra `hookEnabled` dentro do COMENTÁRIO que o
+script inseriu. Ela procura o termo no texto do arquivo, não uma chamada de
+verdade. O comentário foi reescrito sem o termo; a trava fica como está,
+porque a versão exata custaria fazer parse de JavaScript para ganhar pouco.
+
+### CC-162 ✅ 19/08 — o limite de 5h/semanal com mais de uma máquina reportando
+
+**Já estava pronto, e ninguém sabia.** `usoDaConta()` (`src/web.mjs`) escolhe
+a leitura mais recente entre a local e as que chegam nos pacotes, e **nunca
+soma**: o limite é da CONTA, não da máquina, então somar dobraria o número.
+
+Nasceu marcado como visão porque o PC nunca tinha se federado, então o caminho
+nunca tinha sido exercitado. O CC-159 o ligou sem escrever uma linha.
+Conferido em produção: o uso do PC (23% das 5h) viajou dentro do pacote e
+aparece na VPS.
+
+### CC-163 ✅ 19/08 — tempo e uso das duas máquinas somados, com a quebra por origem
+
+**Também já estava pronto.** Ao contrário do CC-162, aqui somar é o certo:
+horas e tokens são aditivos entre máquinas. `mesclarTempo()` já fazia a conta
+com a quebra por origem, e marca o total como `federado` para a tela poder
+dizer que veio de mais de um lugar — misturar cortes diferentes sem avisar
+seria mentira silenciosa.
+
+Mesma história do CC-162: pronto desde o CC-47, nunca exercitado até o PC
+entrar na federação. Há teste no gate desde então (`horas e tokens somam entre
+as máquinas, com a quebra por origem`).
+
+**Sobra uma escolha de tela, e é dele:** se a aba de tempo mostra o total
+combinado por padrão com a quebra por máquina como detalhe, ou o contrário.
+Hoje mostra o combinado com o aviso de federado, que é o comportamento que
+já existia. Registrado como pendência de decisão, não de código.
 
 ## ▶ Frente nova, aberta em 18/08: os agentes que não são Claude, alcançáveis do celular
 

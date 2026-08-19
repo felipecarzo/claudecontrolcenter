@@ -143,6 +143,70 @@ assert.equal(volta.pacote.maquina.nome, 'ALIENWARE-LIPE')
 assert.ok(volta.pacote.recebidoEm > 0)
 ok('pacote sobrevive ao ida e volta por JSON')
 
+// ------------------------------- CC-165: o backlog de cada projeto no pacote
+{
+  const { resumirBacklogs } = await import('./src/federacao.mjs')
+
+  const mapa = {
+    atualizadoEm: 1700000000000,
+    grupos: [
+      {
+        titulo: 'Aberto',
+        frentes: [
+          { titulo: 'CC-01 fazer a coisa', estado: 'aberto' },
+          { titulo: 'CC-02 já foi', estado: 'feito' },
+          { titulo: 'CC-03 outra coisa', estado: 'aberto' },
+        ],
+      },
+    ],
+  }
+
+  const r = resumirBacklogs([{ projeto: 'meu_projeto', mapa }])
+  assert.equal(r.length, 1)
+  assert.equal(r[0].projeto, 'meu_projeto')
+  assert.equal(r[0].frentes, 3)
+  assert.equal(r[0].abertas, 2, 'frente feita não conta como aberta')
+  assert.deepEqual(r[0].titulos, ['CC-01 fazer a coisa', 'CC-03 outra coisa'])
+  ok('o resumo do backlog conta as frentes e separa o que está aberto')
+
+  // projeto sem roadmap simplesmente não entra: mandar `null` faria a outra
+  // ponta mostrar uma linha vazia com o nome do projeto e nada dentro
+  assert.equal(resumirBacklogs([{ projeto: 'sem_roadmap', mapa: null }]).length, 0)
+  assert.equal(resumirBacklogs([]).length, 0)
+  assert.equal(resumirBacklogs([null, undefined]).length, 0)
+  ok('projeto sem roadmap fica de fora, e lista suja não explode')
+
+  // o teto de títulos existe porque o pacote inteiro tem limite de 2 MB
+  const muitas = {
+    grupos: [{ frentes: Array.from({ length: 50 }, (_, i) => ({ titulo: `CC-${i} item`, estado: 'aberto' })) }],
+  }
+  const cortado = resumirBacklogs([{ projeto: 'grande', mapa: muitas }])[0]
+  assert.equal(cortado.abertas, 50, 'a CONTAGEM não pode ser cortada, só a lista')
+  assert.equal(cortado.titulos.length, 6)
+  ok('a lista de títulos tem teto, e a contagem continua inteira')
+
+  // o pacote carrega e o validador higieniza
+  const comBacklog = montarPacote({ maquina: PC, backlogs: r })
+  assert.equal(comBacklog.backlogs[0].projeto, 'meu_projeto')
+  const validado = validarPacote(JSON.parse(JSON.stringify(comBacklog)))
+  assert.equal(validado.ok, true)
+  assert.equal(validado.pacote.backlogs[0].abertas, 2)
+  ok('o backlog sobrevive ao ida e volta por JSON')
+
+  // pacote malformado não pode virar tela travada nem campo estranho
+  const sujoB = validarPacote({
+    maquina: { id: 'x1', nome: 'X' },
+    backlogs: [
+      { projeto: 'ok', frentes: 'muitas', abertas: null, titulos: 'nao é lista' },
+      { semProjeto: true },
+    ],
+  })
+  assert.equal(sujoB.pacote.backlogs.length, 1, 'item sem projeto é descartado')
+  assert.equal(sujoB.pacote.backlogs[0].frentes, 0, 'texto no lugar de número vira zero')
+  assert.deepEqual(sujoB.pacote.backlogs[0].titulos, [], 'texto no lugar de lista vira lista vazia')
+  ok('backlog malformado é higienizado, campo a campo')
+}
+
 // ------------------------------------- CC-166: pedir sessão a outra máquina
 //
 // Casa isolada: a fila mora em disco, e escrever na pasta de federação DE

@@ -35,7 +35,13 @@
  */
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+/* CC-167: `import()` no Windows precisa de URL, não de caminho. Com `D:\...`
+   ele lança ERR_UNSUPPORTED_ESM_URL_SCHEME, e como quase toda chamada aqui
+   está dentro de um `.catch`, o módulo some sem erro visível: foi assim que
+   o interruptor de módulos deixou de valer em 31 hooks, sem ninguém notar. */
+const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
 const sair = () => process.exit(0)
@@ -44,7 +50,7 @@ let dados = null
 try { dados = JSON.parse(readFileSync(0, 'utf8')) } catch { sair() }
 if (dados?.stop_hook_active) sair()
 
-const cfg = await import(resolve(AQUI, '../src/config.mjs')).catch(() => null)
+const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
 if (cfg?.hookEnabled && !cfg.hookEnabled('medir-guard')) sair()
 
 const arquivo = dados?.transcript_path || dados?.transcriptPath

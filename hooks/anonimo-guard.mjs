@@ -29,7 +29,13 @@
  */
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+/* CC-167: `import()` no Windows precisa de URL, não de caminho. Com `D:\...`
+   ele lança ERR_UNSUPPORTED_ESM_URL_SCHEME, e como quase toda chamada aqui
+   está dentro de um `.catch`, o módulo some sem erro visível: foi assim que
+   o interruptor de módulos deixou de valer em 31 hooks, sem ninguém notar. */
+const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
 const liberar = () => process.exit(0)
@@ -61,8 +67,8 @@ try { dados = JSON.parse(entrada) } catch { liberar() }
 const alvo = dados?.tool_input?.file_path
 if (!alvo) liberar()
 
-const { acharRaiz, ler } = await import(resolve(AQUI, '../src/frameworkDisco.mjs')).catch(liberar)
-const { deveMascarar, ehOpaco, mascararArquivo } = await import(resolve(AQUI, '../src/anonimoDisco.mjs')).catch(liberar)
+const { acharRaiz, ler } = await import(urlDeModulo(AQUI, '../src/frameworkDisco.mjs')).catch(liberar)
+const { deveMascarar, ehOpaco, mascararArquivo } = await import(urlDeModulo(AQUI, '../src/anonimoDisco.mjs')).catch(liberar)
 
 // O modo Pierre é por PROJETO, e o projeto é o do arquivo que está sendo lido —
 // não o diretório da sessão. Ler um contrato de outro repositório a partir daqui

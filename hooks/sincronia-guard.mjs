@@ -28,7 +28,17 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+/* `pathToFileURL` e não o caminho cru: no Windows, `import('D:\\...')` morre
+   com ERR_UNSUPPORTED_ESM_URL_SCHEME, porque o `D:` é lido como esquema de
+   URL. O `config.mjs` abaixo escapa disso por estar dentro de um `catch`, e
+   por isso o furo passou despercebido até aqui. */
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+/* CC-167: `import()` no Windows precisa de URL, não de caminho. Com `D:\...`
+   ele lança ERR_UNSUPPORTED_ESM_URL_SCHEME, e como quase toda chamada aqui
+   está dentro de um `.catch`, o módulo some sem erro visível: foi assim que
+   o interruptor de módulos deixou de valer em 31 hooks, sem ninguém notar. */
+const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
 const liberar = () => process.exit(0)
@@ -37,7 +47,7 @@ let dados = null
 try { dados = JSON.parse(readFileSync(0, 'utf8')) } catch { liberar() }
 if (dados?.stop_hook_active) liberar()
 
-const cfg = await import(resolve(AQUI, '../src/config.mjs')).catch(() => null)
+const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
 if (cfg?.hookEnabled && !cfg.hookEnabled('sincronia-guard')) liberar()
 
 /** Sobe a árvore procurando `.git`. Fora de repositório não há o que sincronizar. */
@@ -55,47 +65,32 @@ function acharRepo(dir) {
 const raiz = acharRepo(dados?.cwd)
 if (!raiz) liberar()
 
-/* `execFileSync` sem shell: caminho do Windows com espaço e barra invertida
-   passa intacto, e nada aqui é interpretado por shell nenhum. Silencioso na
-   falha: repositório recém-criado, git ausente ou HEAD solto não são erro
-   deste hook, são motivo para não ter nada a dizer. */
-const git = (...args) => {
+/* O mesmo módulo que a tela usa, e não uma cópia da lógica aqui: hook e painel
+   discordando sobre o estado do MESMO repositório seria pior que não ter nem
+   um nem outro. Mesma razão pela qual a frase do framework mora no motor. */
+const { estadoGit } = await import(pathToFileURL(resolve(AQUI, '../src/git.mjs')).href)
+const e = estadoGit(raiz)
+if (!e || e.emDia) liberar()
+
+const { sujo, atras, naoEmpurrados } = e
+
+/* A lista de arquivos continua saindo daqui: a tela mostra uma frase curta,
+   mas quem está terminando o turno precisa ver O QUE ficou de fora. */
+const pendentes = (() => {
   try {
-    return execFileSync('git', ['-C', raiz, ...args], {
+    return execFileSync('git', ['-C', raiz, 'status', '--porcelain'], {
       encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim()
+    }).trim().split(/\r?\n/).filter(Boolean)
   } catch {
-    return null
+    return []
   }
-}
-
-const sujo = (git('status', '--porcelain') || '')
-  .split(/\r?\n/).filter(Boolean)
-
-/* Quantos commits separam esta máquina do remoto, nos dois sentidos. Sai do
-   que o último `fetch` deixou em disco: sem rede, e sem upstream configurado
-   devolve `null`, que é o caso de branch nova nunca empurrada.
-
-   `git()` devolve `null` quando o comando falha, e `Number(null)` é **zero**,
-   não `NaN` — sem esta checagem, "não existe upstream" viraria "zero commits
-   de diferença", que é uma afirmação bem mais forte do que o que se sabe. */
-const contar = (intervalo) => {
-  const saida = git('rev-list', '--count', intervalo)
-  if (saida === null) return null
-  const n = Number(saida)
-  return Number.isFinite(n) ? n : null
-}
-
-const atras = contar('HEAD..@{upstream}')
-const naoEmpurrados = contar('@{upstream}..HEAD')
-
-if (!sujo.length && !atras && !naoEmpurrados) liberar()
+})()
 
 const linhas = []
-if (sujo.length) {
-  linhas.push(`  · ${sujo.length} arquivo(s) sem commit nesta máquina`)
-  linhas.push(...sujo.slice(0, 5).map((l) => `      ${l.trim()}`))
-  if (sujo.length > 5) linhas.push(`      … e mais ${sujo.length - 5}`)
+if (sujo) {
+  linhas.push(`  · ${sujo} arquivo(s) sem commit nesta máquina`)
+  linhas.push(...pendentes.slice(0, 5).map((l) => `      ${l.trim()}`))
+  if (pendentes.length > 5) linhas.push(`      … e mais ${pendentes.length - 5}`)
 }
 if (naoEmpurrados) linhas.push(`  · ${naoEmpurrados} commit(s) feitos aqui e ainda não empurrados`)
 if (atras) linhas.push(`  · ${atras} commit(s) no remoto que esta máquina ainda não puxou`)

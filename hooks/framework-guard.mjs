@@ -22,7 +22,13 @@
  */
 import { readFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+/* CC-167: `import()` no Windows precisa de URL, não de caminho. Com `D:\...`
+   ele lança ERR_UNSUPPORTED_ESM_URL_SCHEME, e como quase toda chamada aqui
+   está dentro de um `.catch`, o módulo some sem erro visível: foi assim que
+   o interruptor de módulos deixou de valer em 31 hooks, sem ninguém notar. */
+const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
 
@@ -66,8 +72,8 @@ try {
 const caminho = dados?.tool_input?.file_path
 if (!caminho) liberar()
 
-const { acharRaiz, ler, gravar: gravarEstado } = await import(resolve(AQUI, '../src/frameworkDisco.mjs')).catch(liberar)
-const { avaliar, podeEditar, pedir: pedirAutorizacao } = await import(resolve(AQUI, '../src/framework.mjs')).catch(liberar)
+const { acharRaiz, ler, gravar: gravarEstado } = await import(urlDeModulo(AQUI, '../src/frameworkDisco.mjs')).catch(liberar)
+const { avaliar, podeEditar, pedir: pedirAutorizacao } = await import(urlDeModulo(AQUI, '../src/framework.mjs')).catch(liberar)
 
 const alvo = resolve(String(caminho))
 const raiz = acharRaiz(dirname(alvo))
