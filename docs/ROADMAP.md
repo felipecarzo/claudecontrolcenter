@@ -2434,7 +2434,7 @@ runner (a maioria é a fatia mais cara — IA avaliando prompt, ataque a modelo,
 navegador remoto). Ninguém pediu essas ainda, e construir sem pedido é o
 oposto do que este projeto pratica.
 
-### CC-106 Frente: Cockpit de retomada de contexto — ver [[produto/COCKPIT]]
+### CC-106 ✅ Cockpit de retomada de contexto — ver [[produto/COCKPIT]]
 
 Reposicionamento do produto pelo Felipe em 12/08: **os hooks não são o
 produto, são sensor** — o produto é o painel virar o lugar onde ele volta ao
@@ -2443,7 +2443,14 @@ de sucesso de qualquer sinal: não é "impõe boa prática", é "me faz voltar a
 contexto mais rápido?". CC-32, CC-33, CC-34 e CC-35 feitos em 13/08; CC-36 e
 CC-37 seguem abertos.
 
-### CC-107 Frente: Ciclo Felipe → IA → Felipe — ver [[produto/CICLO]]
+**Fechada em 19/08 como frente.** O reposicionamento virou o painel de hoje, e
+o que ele produziu de princípio (a ordem é a informação, número sem frase não
+é discutível, só dado que já está no snapshot) foi extraído para
+[[produto/CRITERIOS-DE-TELA]], que é onde o redesenho vai buscar. CC-36 e
+CC-37 eram enriquecimento de to-do por IA, marcados pelo próprio documento
+como "provavelmente não fazer" — deixam de ser pendência.
+
+### CC-107 ✅ Ciclo Felipe → IA → Felipe — ver [[produto/CICLO]]
 
 Análise de 13/08 sobre 235 mensagens reais dele em 5 projetos, mais 43 pastas
 de memória. Dez padrões com evidência medida. O diagnóstico: o problema não é
@@ -2454,6 +2461,13 @@ presas em memória de um projeto só.
 
 Critério de ordem, o mesmo do [[produto/COCKPIT]]: **isso me faz voltar ao
 contexto mais rápido, ou economiza uma volta do ciclo?**
+
+**Fechada em 19/08.** O diagnóstico já foi aplicado: as sete regras saíram da
+memória de um projeto e viraram seção no `CLAUDE.md` global, valendo em todo
+lugar. E os números que a análise mediu (janela de ~10 minutos por projeto,
+67% de troca entre mensagens seguidas, distribuição bimodal) viraram régua de
+desenho em [[produto/CRITERIOS-DE-TELA]] — que é o que faltava para eles
+decidirem alguma coisa em vez de só descreverem.
 
 ## Limites aceitos hoje
 

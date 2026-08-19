@@ -109,6 +109,10 @@ ao vivo continua automática.
 
 ## O que falta decidir antes de construir
 
+✅ **As três perguntas abaixo foram respondidas em 19/08**, e as respostas
+estão em [[CRITERIOS-DE-TELA]], cada uma amarrada a um número medido ou a uma
+frase dele. Ficam aqui como registro do que estava em aberto:
+
 - Onde exatamente a gaveta do sistema abre (canto, lateral inteira, por
   cima) e como ela se comporta no celular versus no monitor.
 - Se a fusão remoto+servidores dentro do cartão de projeto cabe sem virar um
@@ -116,5 +120,7 @@ ao vivo continua automática.
 - Se "projeto sem atividade" é definido por tempo parado, por agente nenhum
   rodando, ou pelos dois.
 
-Nada disso foi decidido ainda porque é detalhe de construção, não de direção.
-A direção em si já está fechada com ele.
+**Antes de construir, leia [[CRITERIOS-DE-TELA]].** Ele traz as cinco réguas
+que desempatam escolha de layout, e existe justamente para nenhuma decisão de
+tela virar discussão de gosto: a evidência que resolve estava espalhada em
+quatro documentos.
