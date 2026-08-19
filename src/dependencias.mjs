@@ -40,6 +40,11 @@ const CABECA = 8 * 1024
 const EXTENSOES = ['.mjs', '.js', '.jsx', '.ts', '.tsx', '.cjs']
 const PULAR = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'coverage', '.vercel'])
 
+/** No Windows, `path.relative` devolve `\`. O quadro de rotas e o resto do
+ *  projeto falam em `/` — sem isso o grafo combina consigo mesmo mas nunca
+ *  com o que um humano ou outro módulo escreveu. */
+const rel = (de, para) => path.relative(de, para).replace(/\\/g, '/')
+
 /**
  * Todas as formas de um arquivo usar outro, e só as relativas.
  *
@@ -98,16 +103,16 @@ export function mapear(raiz) {
       cabeca = buf.toString('utf8', 0, n)
     } catch { continue }
 
-    const rel = path.relative(raiz, arq)
-    if (!usa.has(rel)) usa.set(rel, new Set())
+    const r = rel(raiz, arq)
+    if (!usa.has(r)) usa.set(r, new Set())
 
     for (const m of cabeca.matchAll(RE_IMPORT)) {
       const destino = resolver(arq, m[1])
       if (!destino) continue // import quebrado ou pacote: não é problema nosso
-      const alvo = path.relative(raiz, destino)
-      usa.get(rel).add(alvo)
+      const alvo = rel(raiz, destino)
+      usa.get(r).add(alvo)
       if (!usadoPor.has(alvo)) usadoPor.set(alvo, new Set())
-      usadoPor.get(alvo).add(rel)
+      usadoPor.get(alvo).add(r)
       ligacoes++
     }
   }
@@ -124,7 +129,7 @@ export function mapear(raiz) {
  * isso o laço não termina.
  */
 export function impactoDe(grafo, arquivo, { profundidade = 4 } = {}) {
-  const alvo = path.relative(grafo.raiz, path.resolve(grafo.raiz, arquivo))
+  const alvo = rel(grafo.raiz, path.resolve(grafo.raiz, arquivo))
   const diretos = [...(grafo.usadoPor.get(alvo) || [])].sort()
 
   const vistos = new Set([alvo])

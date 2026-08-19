@@ -405,6 +405,21 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'sincronia-guard',
+    modulo: 'codigo',
+    nivel: 'avisa',
+    label: 'a outra máquina não vê o que está aqui',
+    script: 'sincronia-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Regra dele ao desenhar a federação em 18/08: "sempre usando o git como '
+      + 'segurança, e sempre mantendo o commit antes de migrar de dispositivos". Avisa '
+      + 'quando há arquivo sem commit, commit sem push, ou commit no remoto que esta '
+      + 'máquina não puxou. Nunca commita nem manda commitar, e não usa rede: lê o que '
+      + 'o último fetch deixou em disco.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'fluxo-guard',
     modulo: 'entrega',
     nivel: 'avisa',

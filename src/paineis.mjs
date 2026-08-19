@@ -106,6 +106,13 @@ export function resolverBinario(cmd, { fork = null } = {}) {
     }
   }
 
+  // `cmd` vem de config.json, editável à mão: entrada velha ou incompleta
+  // (achado em 18/08: `{id:'local'}` sem `cmd` nenhum, sobra de uma versão
+  // anterior deste arquivo) não pode derrubar quem só queria saber "existe
+  // este painel?" — path.join com undefined lança, e essa pergunta roda a
+  // cada 2s dentro do snapshot.
+  if (!cmd || typeof cmd !== 'string') return null
+
   const candidatos = [
     path.join(os.homedir(), '.npm-global', 'bin', cmd),
     path.join(os.homedir(), '.local', 'bin', cmd),

@@ -83,13 +83,113 @@ export function gravarPacote(pacote) {
   return alvo
 }
 
+/* ===================== CC-166: pedidos de uma máquina para outra =====================
+ *
+ * Pedido dele: abrir uma sessão no desktop a partir do celular, *"daí eu já
+ * abro a sessão no app, que é onde eu mais uso"*.
+ *
+ * ## Por que é pergunta, e não ordem
+ *
+ * A VPS **nunca** alcança o PC atrás do NAT. Então quem pergunta é sempre o
+ * PC: no mesmo ciclo de 30s em que ele já empurra o pacote, ele lê o que
+ * ficou guardado para ele. Nenhuma porta nova, nenhum serviço novo.
+ *
+ * ## O que um pedido pode dizer, e o que não pode
+ *
+ * Decisão dele em 18/08, escolhendo entre três desenhos: **só projeto que a
+ * máquina-alvo já conhece**. Um pedido carrega um NOME de projeto, nunca um
+ * comando, nunca um caminho. Quem executa resolve o nome contra a própria
+ * lista de projetos e recusa o que não achar.
+ *
+ * A diferença importa: com comando livre, quem escrevesse na fila da VPS
+ * rodaria qualquer coisa no PC do Felipe. Com nome de projeto, o pior caso é
+ * abrir uma sessão numa pasta que já era dele.
+ *
+ * Pedido é de uso único e some ao ser lido: fila que não esvazia reabriria a
+ * mesma sessão a cada 30 segundos, para sempre. */
+
+const arquivoPedidos = () => path.join(dirFederacao(), '_pedidos.json')
+
+const lerPedidosBrutos = () => {
+  try { return JSON.parse(fs.readFileSync(arquivoPedidos(), 'utf8')) } catch { return [] }
+}
+
+const gravarPedidos = (lista) => {
+  const dir = dirFederacao()
+  fs.mkdirSync(dir, { recursive: true })
+  const tmp = `${arquivoPedidos()}.tmp`
+  fs.writeFileSync(tmp, JSON.stringify(lista, null, 1))
+  fs.renameSync(tmp, arquivoPedidos())
+}
+
+/** Pedido velho é pedido que ninguém foi buscar: a máquina estava desligada, e
+ *  abrir a sessão horas depois seria surpresa, não serviço. */
+export const VALIDADE_PEDIDO_MS = 10 * 60 * 1000
+
+/**
+ * Enfileira "abra uma sessão no projeto X" para a máquina Y.
+ *
+ * `projeto` é um nome, e é higienizado como tal: quem executa ainda vai
+ * conferir se conhece esse projeto, mas nada que pareça caminho pode sequer
+ * ser gravado aqui.
+ */
+export function pedirSessao({ paraMaquina, projeto, de = null, now = Date.now() }) {
+  const alvo = seguro(paraMaquina)
+  const nome = String(projeto || '').trim()
+  if (!alvo) return { ok: false, erro: 'sem máquina de destino' }
+  if (!nome || /[\\/:]|\.\./.test(nome)) return { ok: false, erro: 'nome de projeto inválido' }
+
+  const lista = lerPedidosBrutos().filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
+  /* Mesmo projeto pedido duas vezes seguidas é dedo duplo no botão, não duas
+     sessões. Abrir duas sem querer é o desperdício que a própria tela avisa. */
+  if (lista.some((p) => p.paraMaquina === alvo && p.projeto === nome)) {
+    return { ok: true, jaPedido: true }
+  }
+  lista.push({ id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`, paraMaquina: alvo, projeto: nome, de, em: now })
+  gravarPedidos(lista)
+  return { ok: true, projeto: nome, paraMaquina: alvo }
+}
+
+/**
+ * Os pedidos de uma máquina, e a leitura os CONSOME.
+ *
+ * Some ao ser lido de propósito: fila que não esvazia reabriria a mesma sessão
+ * a cada ciclo de 30 segundos, para sempre. O preço é que uma falha de rede
+ * entre ler e executar perde o pedido, e esse é o lado certo de errar: pedido
+ * perdido custa um clique, pedido repetido custa uma sessão fantasma por
+ * ciclo.
+ */
+export function pegarPedidos(maquina, now = Date.now()) {
+  const alvo = seguro(maquina)
+  if (!alvo) return []
+  const todos = lerPedidosBrutos()
+  const meus = todos.filter((p) => p.paraMaquina === alvo && now - (p.em || 0) < VALIDADE_PEDIDO_MS)
+  if (!meus.length) {
+    /* Aproveita para varrer o que venceu, mas só grava se algo mudou: escrita
+       a cada 30 segundos por máquina, sem motivo, é disco à toa. */
+    const vivos = todos.filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
+    if (vivos.length !== todos.length) gravarPedidos(vivos)
+    return []
+  }
+  gravarPedidos(todos.filter((p) => !meus.includes(p) && now - (p.em || 0) < VALIDADE_PEDIDO_MS))
+  return meus
+}
+
+/** Só para a tela e para o teste: o que está na fila, sem consumir. */
+export const pedidosPendentes = (now = Date.now()) =>
+  lerPedidosBrutos().filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
+
 /** O que as outras máquinas mandaram. Arquivo corrompido é ignorado, nunca
  *  derruba a leitura das demais. */
 export function lerPacotes(now = Date.now()) {
   const dir = dirFederacao()
   let arquivos = []
   try {
-    arquivos = fs.readdirSync(dir).filter((f) => f.endsWith('.json'))
+    /* O `_` na frente marca o que é da casa e não é pacote de máquina
+       (`_pedidos.json`, do CC-166). O `if (!p?.maquina?.id)` abaixo já
+       descartaria, mas por acidente: quem lesse isto depois não teria como
+       saber que existe outro arquivo nesta pasta de propósito. */
+    arquivos = fs.readdirSync(dir).filter((f) => f.endsWith('.json') && !f.startsWith('_'))
   } catch {
     return []
   }

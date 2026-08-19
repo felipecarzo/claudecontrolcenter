@@ -143,4 +143,65 @@ assert.equal(volta.pacote.maquina.nome, 'ALIENWARE-LIPE')
 assert.ok(volta.pacote.recebidoEm > 0)
 ok('pacote sobrevive ao ida e volta por JSON')
 
+// ------------------------------------- CC-166: pedir sessão a outra máquina
+//
+// Casa isolada: a fila mora em disco, e escrever na pasta de federação DE
+// VERDADE do Felipe durante o gate é o defeito que este projeto já cometeu
+// uma vez com o bloco de notas dele.
+{
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-ped-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+
+    // o caminho feliz
+    assert.equal(F.pedirSessao({ paraMaquina: 'ALIENWARE-LIPE', projeto: 'proj_carzo' }).ok, true)
+    assert.equal(F.pedidosPendentes().length, 1)
+    ok('pedido para outra máquina entra na fila')
+
+    // o que NÃO pode virar pedido: nada que pareça caminho
+    assert.equal(F.pedirSessao({ paraMaquina: 'ALIENWARE-LIPE', projeto: '../../etc/passwd' }).ok, false)
+    assert.equal(F.pedirSessao({ paraMaquina: 'ALIENWARE-LIPE', projeto: 'C:/Windows' }).ok, false)
+    assert.equal(F.pedirSessao({ paraMaquina: 'ALIENWARE-LIPE', projeto: '' }).ok, false)
+    assert.equal(F.pedirSessao({ paraMaquina: '', projeto: 'proj_carzo' }).ok, false)
+    assert.equal(F.pedidosPendentes().length, 1, 'nenhum pedido inválido pode ter entrado')
+    ok('nome com caminho, vazio, ou sem destino é recusado antes de ser gravado')
+
+    // dedo duplo no botão não abre duas sessões
+    assert.equal(F.pedirSessao({ paraMaquina: 'ALIENWARE-LIPE', projeto: 'proj_carzo' }).jaPedido, true)
+    assert.equal(F.pedidosPendentes().length, 1)
+    ok('mesmo projeto pedido de novo não duplica a fila')
+
+    // a leitura consome, senão a sessão reabriria a cada ciclo de 30s
+    F.pedirSessao({ paraMaquina: 'VPS', projeto: 'outro_projeto' })
+    const meus = F.pegarPedidos('ALIENWARE-LIPE')
+    assert.equal(meus.length, 1)
+    assert.equal(meus[0].projeto, 'proj_carzo')
+    assert.equal(F.pegarPedidos('ALIENWARE-LIPE').length, 0, 'ler duas vezes traria a mesma sessão de novo')
+    ok('pegar consome o pedido, e é de uso único')
+
+    // e não leva o que é de outra máquina junto
+    assert.equal(F.pedidosPendentes().length, 1, 'o pedido da outra máquina tinha que continuar lá')
+    assert.equal(F.pegarPedidos('VPS')[0].projeto, 'outro_projeto')
+    ok('cada máquina só leva o que é dela')
+
+    // pedido velho é pedido que ninguém foi buscar
+    F.pedirSessao({ paraMaquina: 'ALIENWARE-LIPE', projeto: 'antigo', now: Date.now() - F.VALIDADE_PEDIDO_MS - 1000 })
+    assert.equal(F.pegarPedidos('ALIENWARE-LIPE').length, 0, 'pedido vencido não pode abrir sessão horas depois')
+    ok('pedido vencido não é entregue')
+
+    // a fila não pode ser lida como se fosse pacote de máquina
+    assert.equal(F.lerPacotes().length, 0, '_pedidos.json não é uma máquina')
+    ok('o arquivo da fila não vira máquina fantasma no painel')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
 console.log(`\n${n} grupos de asserção passaram`)

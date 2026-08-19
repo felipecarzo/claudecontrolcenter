@@ -42,6 +42,308 @@ dele dizer `projeto › frente` em vez de texto solto.
 
 ## Aberto
 
+## ▶ Frente nova, aberta em 18/08 (PC): a VPS vira o servidor, o resto vira dado que chega nela
+
+Ideia dele, dessa vez trazida pela sessão do PC: *"a minha ideia (aliás, sua
+ideia) é transformar o cockpit na VPS como servidor (pra ficar fulltime
+online) e o PC e outros dispositivos que eu instalar ficarem como dados
+adicionais. Ex: meus backlogs etc vão ficar alinhados com o projeto que eu tô
+mexendo, os mds desses projetos, porém se eu desligar o PC fica salvo lá no
+projeto o último backlog baseado na última update do git, de forma que se eu
+ligar o Claude na VPS e ativar o projeto na VPS pelo cockpit eu atualizo os
+backlogs de novo (...) assim eu vou estar sempre bem atualizado e sincronizado
+sempre usando o git como segurança, e sempre mantendo o commit antes de migrar
+de dispositivos. A ideia é que os hooks também funcionem aqui no PC, o
+framework, etc, e que dê pra ver os dados do Claude Code como o limite de
+tokens de 5h e semanal. Outra coisa que eu quero é mixar os dados de uso, e
+tudo das abas de tempo uso etc e mesclar com o da VPS, não sei a melhor forma
+de fazer isso mas não faz sentido manter eles separados, precisamos armazenar
+esses dados pra eles serem somados."*
+
+Registrado como visão, não como tarefa — é desenho de sistema, e a forma é
+dele decidir quando chegar a vez. Antes de propor qualquer coisa nova, o que
+já existe e resolve parte disso:
+
+- **A federação já é assimétrica do jeito certo.** `src/federacao.mjs` (CC-47
+  a CC-58) já assume a VPS como servidor e o PC como quem empurra — a
+  topologia é torta por NAT, não por escolha, e está documentada lá. O pacote
+  já soma horas e tokens entre máquinas com a quebra por origem (tem teste
+  cobrindo).
+- **O PC nunca chegou a se conectar.** Existe ticket aberto desde 14/08 em
+  `docs/ROTAS-ATIVAS.md` (rota `sincronia`) com o passo a passo: nome da
+  máquina, token, endereço de destino, botão enviar. Ninguém executou esse
+  passo ainda — é a peça que falta pra tudo que já foi construído passar a
+  aparecer de verdade.
+- **Hooks e framework têm o mesmo furo, outro ticket já escrito** (rota
+  `framework`, 14/08): o hook do MVP está no repositório e chega no PC pelo
+  `git pull`, mas não liga sozinho — falta registrar no `settings.json` do PC
+  (não é versionado) com o caminho certo do Windows, e o
+  `.framework/estado.json` de cada projeto **já viaja no commit**, então essa
+  parte já é git-nativa.
+- **O limite de 5h e semanal já é lido no PC** (`src/uso.mjs`), sem chamada de
+  rede: vem do `rate_limits` que o próprio Claude Code manda pro statusLine, o
+  mesmo número do `/usage`. Mas é a MESMA conta nas duas máquinas — então
+  misturar aqui não é somar, é mostrar a leitura mais recente de QUALQUER
+  máquina, porque o limite é da conta, não do computador. Somar dobraria o
+  número.
+
+O que ainda não existe, e é onde a decisão de forma fica em aberto:
+
+### CC-159 ✅ 18/08 (PC) — ligar o PC na federação de verdade
+
+Nome da máquina (`ALIENWARE-LIPE`) e o token da VPS (lido de lá por SSH,
+read-only) gravados no config do PC via `setMaquina`/`setFederacao`, sem
+precisar do painel no ar — as duas são funções puras sobre o arquivo de
+config. `enviarPara: https://cockpit.carzo.com.br`.
+
+**No meio do caminho, dois achados que não estavam no ticket original:**
+
+1. **`cockpit-auth` bloqueava o próprio mecanismo que o painel já esperava
+   ter.** `curl` contra `/api/federacao` com o `x-cc-token` certo voltava
+   `401 nao autenticado` — a porta de entrada com senha (5181) barra tudo que
+   não tem cookie de sessão de navegador, mesmo o endpoint que já tinha
+   autenticação própria por token. O comentário do `web.mjs` já dizia a
+   intenção ("quem fala aqui é outro painel, não um navegador"); só o
+   `cockpit-auth` nunca tinha sido ajustado pra cumprir. Decisão dele:
+   **isentar só `/api/federacao`, só POST**, do gate de senha — o token
+   próprio continua obrigatório, então nada abre pra quem não tem ele.
+   Aplicado em `~/cockpit-auth.mjs` na VPS (backup datado antes de mexer),
+   serviço reiniciado matando o processo (roda como `claudedev`, sem sudo,
+   `Restart=always` sobe sozinho com o código novo). Conferido nos três
+   sentidos: federação com token → 200; federação sem token → 401 (do
+   painel, não do gate); resto do painel sem cookie → continua pedindo senha.
+2. **`snapshot()` quebrava com `TypeError` toda vez que o PC tentava
+   empurrar**, silenciosamente — o `.catch(() => {})` do timer engolia. Causa:
+   `config.json` deste PC tinha duas entradas velhas em `paineis`
+   (`{id:"local"}`, `{id:"vps"}`, sem `cmd`) que não são mais deste esquema há
+   tempos; `resolverBinario` fazia `path.join(homedir, ..., undefined)` e
+   lançava. Consertado na função (`src/paineis.mjs`): `cmd` que não é string
+   devolve `null` em vez de derrubar quem só queria saber se o painel existe
+   — vale para qualquer entrada malformada futura, não só esta. As duas
+   entradas velhas foram removidas do config local.
+
+**Provado de ponta a ponta**, não só por curl solto: `node cc.mjs --web-only`
+local, `POST /api/federacao/enviar` (a mesma rota que o timer de 30s chama
+sozinho) devolveu `{"ok":true,"status":200}`, e o pacote real
+(`945e1d0c.json`, `ALIENWARE-LIPE`, com o job desta sessão dentro) apareceu em
+`~/.claude/control-center-federacao/` na VPS. Pacotes de teste limpos depois.
+
+### CC-160 ✅ 18/08 (PC) — hooks e framework ligados no PC
+
+`cc hooks sync` + `cc hooks install` (comandos que já existiam, CC-67/CC-72,
+nunca tinham sido rodados aqui): 31 hooks copiados de `hooks/` pro
+`~/.claude/hooks` do PC, 29 registrados no `settings.json`
+(`settings.json.bak` guardado antes de escrever). Antes só 5 dos 34 hooks do
+catálogo estavam instalados — `rota-guard`, `git-add-guard`, `cc-check`,
+`routia-inicio`, `routia-fim`. Faltavam TODOS os que travam escrita, gate do
+framework, diário e o resto do Método Routia.
+
+O `.framework/estado.json` deste projeto já dizia `ligado: true, fase:
+execucao` — o gate nunca tinha o que fazer aqui porque o hook que o aplica
+(`gate-guard`, sucessor do antigo `framework-guard` da ata de 14/08) nunca
+tinha sido registrado no PC. Agora está. **Só vale a partir do próximo
+`/hooks` ou reinício da sessão** — o próprio `cc hooks install` avisa disso, e
+é o Claude Code que recarrega hook registrado no meio de uma sessão, não o
+cockpit.
+
+### CC-164 ✅ 18/08 (PC) — o framework saiu do lugar errado, e o ruído sumiu
+
+*"por favor mude os framework de lugar, já falei isso algumas vezes e tá me
+incomodando muito, pra mim ele não faz sentido aparecendo onde tá e não faz
+sentido aparecer um monte de projeto desativado, tudo com framework desativado
+porque nem no remoto tá ligado"*.
+
+**Registrado como falha de processo, não só de tela: é a terceira vez.** O
+código já confessava o problema — o comentário em `ui.html` diz que o botão
+"módulos por projeto" foi parar no topo da tela de trabalho porque *"a vista
+antiga do cockpit tinha o botão e morreu órfã no redesenho"*. Foi remendo pra
+não perder o acesso, e nunca virou decisão de lugar.
+
+**Onde ele quer, e são dois lugares (palavras dele):**
+
+1. *"na aba de projetos, dentro de cada projeto > ATIVO <"* — o framework
+   deixa de ser uma lista global de todos os projetos da máquina e passa a
+   aparecer dentro do projeto, e só de projeto ativo.
+2. *"em remoto nós vamos ver todas as sessões abertas separadas pelo local
+   onde estão abertas. Os da VPS, os do desktop etc."*
+
+**Qual projeto conta como "ativo":** *"os projetos ligados em uma sessão de
+Claude Code, agy ou opencode ficam destacados, e esses ganham a opção de ligar
+o framework ou não."* Projeto sem sessão nenhuma não aparece — é a causa do
+"monte de projeto desativado" que ele viu no print.
+
+**A tela de framework separada, se existir, é outra coisa:** *"na tela de
+frameworks se tivermos uma, que seria interessante um cockpit só pra controlar
+os frameworks mais rápido, nesse só apareceriam os frameworks"* — ou seja, uma
+tela dedicada onde SÓ há framework, nunca a lista de tudo.
+
+**Mesmo projeto em duas máquinas:** *"isso raramente vai acontecer e se
+acontecer um dia vai ser pra dividir stacks, então a gente diferencia pela
+stack (frontend, backend, jogo etc) e declara onde tá hospedado (VPS, Desktop
+etc)"*. Fecha o CC-162 desta frente por decisão: não é merge, é rótulo.
+
+#### ✅ Feito em 18/08
+
+**Três mudanças, e a que mais valeu não escreveu tela nova.**
+
+1. **A lista deixou de mostrar o disco e passou a mostrar o trabalho.** Corte:
+   sessão viva ou framework ligado. Medido na rota de verdade depois do
+   conserto: **23 projetos no disco, 4 à mostra, 19 atrás de um botão que diz
+   quantos são.** Quem tem framework ligado continua à vista mesmo parado,
+   senão desligar um projeto o faria sumir sem jeito de religar.
+2. **O framework foi para dentro do projeto ativo**, na aba que ele já usa.
+   `seloFramework()` **já existia e estava órfã**: definida, nunca chamada,
+   desde que a vista antiga do cockpit morreu no redesenho. Não era tela
+   faltando, era tela desligada. Ela voltou por cima do alternador de
+   planilha/quadradinhos, e não dentro de um deles: a primeira tentativa
+   entrou só no ramo dos quadradinhos e **não apareceu na tela dele**, que usa
+   planilha. Só o print pegou isso.
+3. **A aba remoto agrupa por máquina**, com as sessões das outras máquinas
+   listadas mas sem botão de ligar: a VPS não alcança este PC atrás do NAT, e
+   botão que promete o que não cumpre é pior que ausência. Ver CC-166.
+
+**CC-162 e CC-163 já estavam prontos, e ninguém sabia.** `usoDaConta()` já
+escolhia a leitura mais recente entre as máquinas sem somar (que é a regra
+certa: o limite é da conta), e `mesclarTempo()` já somava horas e tokens com
+quebra por origem. Os dois nunca tinham rodado de verdade porque **o PC nunca
+tinha se federado** — o CC-159 os ligou sem escrever uma linha. Conferido na
+VPS: `ALIENWARE-LIPE` aparece como máquina remota online, 15 jobs, pacote de
+13 segundos atrás, com o uso do plano do PC dentro.
+
+### CC-165 🚧 metade feita, 18/08 (PC) — o serviço que mantém tudo no ar e varre os projetos sozinho
+
+**Feito: a tela responde "está mesmo sendo enviado?".** Era pergunta dele, sem
+resposta na tela: *"como garantimos que tá tudo sendo vigiado e enviado pro
+cockpit na VPS?"*.
+
+O timer de 30s engole o erro de propósito (`.catch(() => {})`), senão uma
+queda de rede derrubaria o painel. Mas engolir **sem registrar** é o mesmo
+defeito do `total: 0` do CC-124: silêncio com cara de sucesso. Agora o
+resultado do último envio fica guardado e aparece no bloco do painel federado,
+com o erro por extenso quando falha.
+
+Duas linhas, porque são duas perguntas que podem discordar:
+
+- **o último envio funcionou?** (quando, para onde, quantos agentes, se as
+  horas foram junto);
+- **este painel volta sozinho quando a máquina reinicia?** Um pode estar certo
+  com o outro errado, e aí o dado para de fluir amanhã sem nada avisar hoje.
+
+Medido no painel de verdade: `✓ último envio 0m atrás para
+cockpit.carzo.com.br, com 15 agentes e as horas` e `✓ este painel sobe sozinho
+quando a máquina liga`.
+
+**Falta o resto do pedido dele:** *"fazendo uma varredura nos projetos onlines
+e nos seus backlogs"*. O pacote leva agentes, uso e horas, nunca o conteúdo do
+backlog de cada projeto. Depende do CC-161 (git como transporte) para não
+criar duas fontes de verdade sobre o mesmo `ROADMAP.md`.
+
+**O pedido inteiro dele, para o que ainda falta ser medido contra ele:** *"por
+isso eu sugeri serviço, porque ele ficaria on o tempo todo e o cockpit
+reconheceria o serviço e manteria atualizado tudo fulltime fazendo uma
+varredura nos projetos onlines e nos seus backlogs"*.
+
+### CC-166 ✅ 19/08 (PC) — abrir sessão no desktop a partir do cockpit, do celular
+
+**A carona de volta.** A VPS nunca alcança o PC atrás do NAT, então quem
+pergunta é sempre o PC: no mesmo ciclo de 30s em que ele já empurra o pacote,
+a RESPOSTA traz o que ficou guardado no nome dele. Nenhuma porta nova, nenhum
+serviço novo, nenhum buraco de firewall.
+
+**A trava é a que ele escolheu**, entre três desenhos apresentados: o pedido
+carrega um **nome de projeto**, nunca um comando e nunca um caminho. Quem
+executa resolve o nome com `cwdDoProjeto`, que só conhece os projetos daquela
+máquina, e recusa o resto. Com comando livre, quem escrevesse na fila do
+servidor rodaria qualquer coisa no PC dele; com nome de projeto, o pior caso é
+abrir uma sessão numa pasta que já era dele.
+
+Quatro decisões que o teste guarda:
+
+- **pedido é de uso único e some ao ser lido.** Fila que não esvazia reabriria
+  a mesma sessão a cada 30 segundos, para sempre. O preço é perder o pedido se
+  a rede cair entre ler e executar, e esse é o lado certo de errar: pedido
+  perdido custa um clique, pedido repetido custa uma sessão fantasma por ciclo.
+- **vence em 10 minutos.** Pedido velho é pedido que ninguém foi buscar porque
+  a máquina estava desligada, e abrir a sessão horas depois é surpresa, não
+  serviço.
+- **o mesmo projeto pedido duas vezes não duplica.** Dedo duplo no botão não
+  são duas sessões.
+- **teto de 3 por ciclo**, e o atendimento nunca lança: isto roda dentro do
+  timer, e uma exceção mataria o empurrão seguinte junto.
+
+**Provado com servidor HTTP de verdade**, não só unidade: pedido entra pela
+rota, o pacote do PC é aceito, o pedido volta na resposta com a origem, o
+ciclo seguinte vem limpo, o pedido de outra máquina não vem junto, e
+`../../etc/passwd` é recusado. Mais 7 casos de unidade no gate, em casa
+isolada por `CC_HOME`.
+
+**Falta a prova em produção**, e ela depende de commit: a VPS é quem guarda a
+fila, e o código dela ainda é o de 19/08. Enquanto não subir, o botão "abrir
+lá" existe no PC mas a VPS não sabe responder.
+
+**O pedido original, com a ressalva dele mesmo:** *"os do desktop só vão
+aparecer quando o desktop estiver online, daí um botão vai abrir um terminal
+rodando `cd endereço do projeto && claude --dangerously-skip-permissions &&
+remote-control` (escrevi só pra você ter ideia do que eu quero, nem sei se
+isso funciona, daí eu já abro a sessão no app, que é onde eu mais uso)"*.
+
+A linha que ele escreveu não funcionaria como está, e ele já suspeitava: `&&`
+encadeia em sequência, então `claude` teria que terminar antes de
+`remote-control` começar. O certo é uma invocação só, que é o que
+`remotecontrol.mjs` já fazia desde o CC-129. Metade do pedido já existia.
+
+### CC-161 🚧 metade feita, 18/08 (PC) — backlog e docs no estado mais novo entre PC e VPS, via git
+
+**Feito: a trava que avisa que as máquinas divergiram.** `sincronia-guard`,
+evento `Stop`, nível avisa. Conta três coisas que o painel federado não mostra
+(ele mostra agentes, nunca a árvore): arquivo sem commit, commit sem push, e
+commit no remoto que esta máquina não puxou.
+
+Três decisões, com o motivo:
+
+- **Avisa, nunca trava e nunca commita.** A regra dele vence qualquer
+  automação: *"nunca commitar sem que eu peça explicitamente"*. E travar no
+  `Stop` criaria laço, porque commitar é justamente coisa do fim do turno.
+- **Zero rede.** Lê o que o último `fetch` deixou em disco. Hook que fala com
+  a internet no fim de todo turno trava a sessão quando a rede cai.
+- **`null` e zero são coisas diferentes.** `git()` devolve `null` quando o
+  comando falha, e `Number(null)` é **zero**: sem a checagem explícita, "não
+  existe upstream" viraria "zero commits de diferença", afirmação bem mais
+  forte do que o que se sabe. Bug real, achado no debug antes de fechar.
+
+**Nove casos de teste contra repositório git DE VERDADE**, no gate. O teste é
+`.mjs` e não `.sh` como os outros, e isso é achado: montar o JSON de entrada
+dentro do shell transforma `\U` e `\5` do caminho do Windows em escape
+inválido, o hook cai no `catch` e sai calado, e o teste registra um falso
+"passou" enquanto o hook nunca rodou. Aconteceu na primeira tentativa.
+
+**Falta:** *"ativar o projeto pelo cockpit"* puxar do git antes de mostrar o
+estado. Segue sem desenho, e a pergunta continua de pé: se ativar SEMPRE faz
+`git pull`, ou só avisa quando o HEAD está atrás. A segunda é mais segura,
+porque puxar sozinho por cima de mudança não commitada é o tipo de coisa que
+este projeto já aprendeu a não fazer sem perguntar.
+
+### CC-162 ⏸ visão — o limite de 5h/semanal certo quando mais de uma máquina reporta
+
+Hoje cada painel mostra só a leitura local. Com o PC federado, a tela vai
+receber dois números da MESMA conta, possivelmente diferentes por causa da
+hora da última resposta em cada máquina. Regra a aplicar: o mais recente
+vence, nunca soma — resumida aqui porque é fácil errar por semelhança com o
+item seguinte, que soma de propósito.
+
+### CC-163 ⏸ visão — tempo e uso das duas máquinas numa aba só, sem separar por padrão
+
+Ao contrário do CC-162, aqui SOMAR é o comportamento certo: horas trabalhadas
+e tokens gastos são aditivos entre máquinas, e o pacote da federação já faz
+essa conta (`horas e tokens somam entre as máquinas, com a quebra por
+origem`, testado). O que falta, depois do CC-159 ligar o PC:
+
+- decidir se a aba de tempo mostra o total combinado por padrão, com a quebra
+  por máquina como detalhe (em vez do inverso);
+- conferir se o histórico (`src/historico.mjs`, que já existe porque o CLI
+  apaga job antigo) precisa da mesma lógica quando a máquina fica muito tempo
+  sem contato — hoje ele resolve isso só pro lado local.
+
 ## ▶ Frente nova, aberta em 18/08: os agentes que não são Claude, alcançáveis do celular
 
 Pedido dele: *"bota um atalho pro agy e pro opencode, cria uma aba agentes pra eu

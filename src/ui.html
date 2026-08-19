@@ -1570,6 +1570,12 @@
   /* Configuração da federação, na aba remoto. Rótulo em cima do campo abaixo de
      560px: no celular, rótulo e campo lado a lado deixam o campo com 40px. */
   .fed-bloco { border: 1px solid var(--faint); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+  /* CC-165: as duas linhas que dizem se o envio está de pé. Cor no texto, e
+     nunca fundo tingido: é o mesmo motivo pelo qual `.s-working` teve que ser
+     escopado, fundo de estado deixa o texto de dentro ilegível. */
+  .fed-envio { margin: 0 0 6px; font-size: 11.5px; }
+  .fed-envio.ok { color: var(--done); }
+  .fed-envio.ruim { color: var(--failed); }
   .fed-bloco h3 { font-size: 12px; margin: 0 0 6px; }
   .fed-linha { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
   .fed-linha label { font-size: 11px; color: var(--dim); min-width: 132px; }
@@ -1583,6 +1589,19 @@
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
     padding: 6px 10px; border: 1px solid var(--faint); border-radius: 8px; font-size: 11.5px;
   }
+  /* CC-164: projeto com sessão aberta agora. A borda basta, e a barra da
+     esquerda é o que continua legível quando a linha quebra em duas no
+     celular. Nada de fundo tingido: o `.s-working` já provou que fundo de
+     estado torna o texto de dentro ilegível. */
+  .fw-linha.fw-ativo { border-color: var(--working); border-left-width: 3px; }
+  /* CC-164: o framework do projeto ativo, na tela de trabalho. Uma linha por
+     projeto, com o nome dele na frente, porque a faixa serve a vários. */
+  .bl-fw-proj {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 6px 10px; margin-bottom: 4px; font-size: 11.5px;
+    border: 1px solid var(--line); border-left: 3px solid var(--working); border-radius: 8px;
+  }
+  .bl-fw-proj > b { min-width: 0; overflow-wrap: anywhere; }
 
   /* CC-34: pastilhas de frente, sem biblioteca de grid/chart nenhuma. */
   .ck-mini { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
@@ -1812,6 +1831,15 @@
 
   /* aba: remoto */
   .rm-lista { display: grid; gap: 2px; max-width: 720px; }
+  /* CC-164: a faixa que diz de qual máquina é o que vem abaixo. Linha fina em
+     cima em vez de caixa: são poucos grupos, e caixa dentro de caixa some no
+     celular. */
+  .rm-maq { max-width: 720px; margin: 16px 0 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+  .rm-maq h4 {
+    margin: 0 0 6px; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase;
+    display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
+  }
+  .rm-maq h4 .dim { letter-spacing: 0; text-transform: none; font-weight: 400; }
   .rm-linha {
     display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
     padding: 8px 10px; border-radius: 4px; border-bottom: 1px solid var(--line);
@@ -3889,6 +3917,10 @@ const FRAMEWORKS = new Map() // projeto -> retrato | 'carregando'
 // vazia, porque lista vazia AFIRMA que não há projeto nenhum); ou a lista.
 let FW_LISTA = null
 let FW_CATALOGO_MODULOS = null // CC-115: nome e explicação de cada grupo de proteção
+// CC-164: revelar os projetos sem sessão nem framework. Fica fechado por
+// padrão, e não é lembrado entre visitas de propósito: o padrão é a lista
+// curta, e quem revelou uma vez não quer isso para sempre.
+let FW_TODOS = false
 let FEDERACAO = null // CC-47: identidade desta máquina, token e quem reporta aqui
 
 async function carregarFederacao() {
@@ -3949,13 +3981,34 @@ function viewFrameworkLista() {
   if (!FW_LISTA.length) return '<p class="dim">nenhum projeto encontrado nesta máquina</p>'
   const ligados = FW_LISTA.filter((p) => p.existe && p.ligado).length
   const comRotas = FW_LISTA.filter((p) => p.rotas?.ligado).length
+
+  /* CC-164: a lista mostra quem está TRABALHANDO, não o que existe no disco.
+   *
+   * Queixa dele, com o print na mão: *"não faz sentido aparecer um monte de
+   * projeto desativado, tudo com framework desativado porque nem no remoto tá
+   * ligado"*. Eram vinte linhas, e as que importavam eram cinco.
+   *
+   * O corte é sessão viva (`ativo`, do servidor, que já soma as máquinas da
+   * federação) ou framework ligado. Quem tem estado guardado continua à vista
+   * mesmo parado: senão desligar um projeto o faria sumir, e ninguém acharia
+   * de novo para religar. O resto fica atrás de um clique, com a contagem à
+   * mostra, porque esconder sem dizer quanto escondeu é o erro que este
+   * projeto já cometeu no `total: 0` do CC-124. */
+  const relevante = (p) => p.ativo || (p.existe && p.ligado)
+  const aMostra = FW_TODOS ? FW_LISTA : FW_LISTA.filter(relevante)
+  const escondidos = FW_LISTA.length - FW_LISTA.filter(relevante).length
+  const nAtivos = FW_LISTA.filter((p) => p.ativo).length
+
   return `<div class="fw-lista">
-    <p class="dim">${ligados} de ${FW_LISTA.length} projeto${FW_LISTA.length === 1 ? '' : 's'} com o framework ligado,
-      ${comRotas} com rotas de trabalho. Ligar o framework cria <code>.framework/estado.json</code>;
+    <p class="dim">${nAtivos} projeto${nAtivos === 1 ? '' : 's'} com sessão aberta agora,
+      ${ligados} com o framework ligado, ${comRotas} com rotas de trabalho.
+      Ligar o framework cria <code>.framework/estado.json</code>;
       desligar não apaga o MVP. Rotas não se desligam por clique: o arquivo delas guarda o histórico do projeto.
       As pastilhas são os grupos de proteção deste projeto; toque para desligar um grupo só aqui.
       O desligado fica riscado em vermelho.</p>
-    ${FW_LISTA.map((p) => {
+    ${escondidos ? `<button class="btn mini" data-fw-todos>${
+    FW_TODOS ? `esconder os ${escondidos} sem sessão nem framework` : `mostrar mais ${escondidos} sem sessão nem framework`}</button>` : ''}
+    ${aMostra.map((p) => {
     /* O seletor de modo vivia só na vista antiga do cockpit, que morreu órfã
        no redesenho: era por isso que "não tinha como ativar pelo celular".
        Reutiliza o mesmo data-fw-modo, então o handler de change, a confirmação
@@ -4023,8 +4076,17 @@ function viewFrameworkLista() {
           title="perguntas que definem o projeto, uma por vez, com a resposta anterior escolhendo a próxima">${
   entrevistaAqui ? 'fechar entrevista' : 'entrevista'}</button>`
       : ''
-    return `<div class="fw-linha">
+    /* CC-164: onde este projeto está aberto AGORA.
+       Decisão dele sobre o mesmo projeto em duas máquinas: *"a gente
+       diferencia pela stack e declara onde tá hospedado (VPS, Desktop etc)"*.
+       O nome da máquina vem do pacote da federação, então some sozinho quando
+       a máquina para de reportar, em vez de mentir que ainda está aberta. */
+    const onde = !p.ativo ? '' : `<span class="fw-selo" style="border-color:var(--working);color:var(--working)"
+        title="sessão aberta agora${p.maquinas?.length ? ` em: ${p.maquinas.join(', ')}` : ''}">${
+  p.maquinas?.length ? esc(p.maquinas.join(' · ')) : 'aberto'}</span>`
+    return `<div class="fw-linha${p.ativo ? ' fw-ativo' : ''}">
         <b>${esc(p.projeto)}</b>
+        ${onde}
         ${estado}
         ${rotas}
         <span class="fw-mods">${grupos}</span>
@@ -6353,8 +6415,30 @@ function secaoSprint(grupos, total) {
     <button class="bl-ord${sprintPlanilha ? '' : ' on'}" data-sprint-planilha="0">quadradinhos</button>
   </div>`
 
+  /* CC-164: o framework de cada projeto ATIVO, aqui, dentro do projeto.
+   *
+   * Pedido dele pela terceira vez: *"mude os framework de lugar, já falei isso
+   * algumas vezes (…) pra mim ele não faz sentido aparecendo onde tá"*. Ele
+   * nomeou o lugar: *"na aba de projetos, dentro de cada projeto > ATIVO <"*.
+   *
+   * `seloFramework` já existia e estava ÓRFÃ: definida, nunca chamada, desde
+   * que a vista antiga do cockpit morreu no redesenho. É a mesma função, no
+   * lugar que ele pediu, sem tela nova.
+   *
+   * Fica ACIMA do alternador de propósito: planilha e quadradinhos são dois
+   * jeitos de ver as tarefas, e o framework vale para o projeto nos dois. A
+   * primeira tentativa entrou só no ramo dos quadradinhos, e sumiu na tela
+   * dele, que usa planilha. */
+  const projetosAtivos = [...new Set(grupos.map(({ job }) => job.project).filter(Boolean))]
+  const faixaFw = projetosAtivos.map((proj) => {
+    pedirFramework(proj)
+    const selo = seloFramework(proj)
+    return !selo ? '' : `<div class="bl-fw-proj"><b>${esc(proj)}</b>${selo}</div>`
+  }).join('')
+
   return `<section class="bl-sec" id="bl-sprint">
     ${cabecaSecao('Sprint backlog', total, 'o que está sendo feito agora')}
+    ${faixaFw}
     ${total ? alternador : ''}
     ${sprintPlanilha
     ? planilhaSprint(grupos)
@@ -7341,8 +7425,41 @@ function viewFederacao() {
     : outras.map((m) => `<span class="selo-maq${m.semContato ? ' frio' : ''}">${esc(m.nome)}${
       m.semContato ? ` · sem contato há ${age(m.idadeMs)}` : ' · online'}</span>`).join(' ')
 
+  /* CC-165: "está mesmo sendo enviado?", respondido com dado.
+   *
+   * Pergunta dele: *"como garantimos que tá tudo sendo vigiado e enviado pro
+   * cockpit na VPS?"*. O timer de 30s engole o erro de propósito (queda de
+   * rede não pode derrubar o painel), então até aqui um envio quebrado ficava
+   * idêntico a um envio que nunca aconteceu.
+   *
+   * Duas perguntas diferentes, e é por isso que são duas linhas: `empurrando`
+   * diz se o último envio funcionou, `autostart` diz se este painel volta
+   * sozinho depois que a máquina reinicia. Um pode estar certo com o outro
+   * errado, e aí o dado para de fluir amanhã sem nada avisar hoje. */
+  const envio = !f.configurada ? '' : (() => {
+    if (!f.empurrando) {
+      return `<p class="fed-envio dim">Configurado para <code>${esc(f.enviandoPara || '?')}</code>,
+        e ainda não houve nenhum envio neste processo. O primeiro sai junto com a subida do painel,
+        depois é de 30 em 30 segundos.</p>`
+    }
+    const e = f.empurrando
+    return `<p class="fed-envio ${e.ok ? 'ok' : 'ruim'}">
+      ${e.ok ? '✓' : '✗'} último envio ${esc(age(Date.now() - e.em))} atrás para
+      <code>${esc(e.para || '?')}</code>${e.ok
+    ? `, com ${e.jobs} agente(s)${e.comTempo ? ' e as horas' : ''}.`
+    : `: <b>${esc(e.erro || 'falhou')}</b>. O painel local segue inteiro, e a próxima tentativa é em 30s.`}
+    </p>`
+  })()
+
+  const autostart = `<p class="fed-envio ${f.autostart ? 'ok' : 'ruim'}">
+    ${f.autostart
+    ? '✓ este painel sobe sozinho quando a máquina liga, então o envio continua sem ninguém abrir nada.'
+    : '✗ este painel NÃO sobe sozinho: quando a máquina reiniciar, o envio para até alguém abrir o painel. Ligue com <code>cc daemon install</code>.'}
+  </p>`
+
   return `<div class="fed-bloco">
     <h3>painel federado</h3>
+    ${envio}${autostart}
     <p class="dim">Esta máquina se chama <b>${esc(f.maquina?.nome || '?')}</b>.
       ${f.configurada
     ? 'Ela aceita o estado de outras máquinas: use o token abaixo na outra ponta.'
@@ -7435,11 +7552,55 @@ function viewRemoto() {
     ? `${nAtivos} sessão(ões) no ar. Abra outra só se precisar de um agente a mais.`
     : `Nenhuma sessão aberta. ${projetos.length} projeto(s) para escolher.`
 
+  /* CC-164: o que está aberto NAS OUTRAS máquinas, agrupado por máquina.
+   *
+   * Pedido dele: *"em remoto nós vamos ver todas as sessões abertas separadas
+   * pelo local onde estão abertas. Os da VPS, os do desktop etc. Os do desktop
+   * só vão aparecer quando o desktop estiver online"*.
+   *
+   * O dado já chega pronto: os jobs do snapshot vêm mesclados com os pacotes
+   * da federação, cada um com a origem carimbada. Máquina que parou de
+   * reportar simplesmente deixa de ter job aqui, que é exatamente o "só
+   * aparecem quando estiver online" que ele pediu, sem precisar de regra nova.
+   *
+   * Só LISTA, nunca liga: a VPS não alcança este PC atrás do NAT, então botão
+   * de ligar em máquina alheia prometeria o que não pode cumprir. Ver CC-166.
+   */
+  const euId = DATA?.maquina?.id
+  const deFora = new Map()
+  for (const j of (DATA?.jobs || [])) {
+    if (!j.project || !j.origem || j.origem.id === euId) continue
+    const nome = j.origem.nome || 'outra máquina'
+    if (!deFora.has(nome)) deFora.set(nome, new Map())
+    const proj = deFora.get(nome)
+    proj.set(j.project, (proj.get(j.project) || 0) + 1)
+  }
+  const outrasMaquinas = [...deFora.entries()].map(([nome, projs]) => `
+    <div class="rm-maq">
+      <h4>${esc(nome)} <span class="dim">${projs.size} projeto${projs.size === 1 ? '' : 's'} com sessão</span></h4>
+      ${[...projs.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([proj, n]) => `
+        <div class="rm-linha">
+          <span class="rm-nome">${esc(proj)}</span>
+          <span class="hk-badge ok">${n} sessão${n === 1 ? '' : 'es'}</span>
+          <span class="grow"></span>
+          ${/* CC-166: pedir para AQUELA máquina abrir mais uma. Ela pergunta
+                de 30 em 30 segundos, então não abre na hora, e a tela diz
+                isso: botão que promete imediato e demora meio minuto parece
+                quebrado. */ ''}
+          <button class="btn" data-fed-pedir="${esc(nome)}" data-fed-proj="${esc(proj)}"
+            title="pede para ${esc(nome)} abrir outra sessão neste projeto. Ela pergunta a cada 30s, então leva até meio minuto">abrir lá</button>
+        </div>`).join('')}
+    </div>`).join('')
+
+  const meuNome = DATA?.maquina?.nome || 'esta máquina'
+
   return cabecaDaTela('Onde eu quero abrir uma sessão?', vdR, 'bom')
     + viewFederacao() + `<div class="dim" style="margin-bottom:12px">liga uma sessão do Claude Code com Remote Control na pasta do
     projeto escolhido: conecte do celular por <code>claude.ai/code</code>. Na VPS a sessão sobrevive a este painel;
     neste PC uma janela de console abre e fica com ela, "pegar link" só funciona onde tem tmux (Linux).
     <b>mais uma</b> abre outro agente no mesmo projeto.</div>
+  ${outrasMaquinas}
+  <div class="rm-maq"><h4>${esc(meuNome)} <span class="dim">aqui você liga e desliga</span></h4></div>
   ${linhaCasa()}
   <div class="rm-lista">${projetos.map((p) => {
     const on = ativos[p.nome]
@@ -8900,6 +9061,21 @@ document.addEventListener('click', async (e) => {
   }
 
   if (t.closest('[data-fw-lista]')) return abrirFrameworkLista()
+  if (t.closest('[data-fw-todos]')) { FW_TODOS = !FW_TODOS; return render() }
+  const fedPedir = t.closest('[data-fed-pedir]')
+  if (fedPedir) {
+    const { fedPedir: maquina, fedProj: projeto } = fedPedir.dataset
+    return fetch('/api/federacao/pedir', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ maquina, projeto }),
+    }).then((r) => r.json()).then((d) => {
+      if (d.erro || d.error) return toast(d.erro || d.error, 'ruim')
+      toast(d.jaPedido
+        ? `${projeto} já estava na fila de ${maquina}`
+        : `pedido enviado: ${maquina} abre ${projeto} em até 30s`)
+    }).catch(() => toast('não deu para enviar o pedido agora', 'ruim'))
+  }
   if (t.closest('[data-hk-provar]')) return provarHooks()
   if (t.closest('[data-fila-perdida]')) return carregarFilaPerdida()
   if (t.closest('[data-vi-tudo]')) {

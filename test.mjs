@@ -2034,7 +2034,7 @@ if (estRotinas.projetos.length) {
 
     // igual, mas com CRLF: fim de linha não é diferença de conteúdo, e foi o
     // que enganou a comparação de rotinas no CC-42
-    fs.writeFileSync(instalado, fs.readFileSync(doRepo, 'utf8').replace(/\n/g, '\r\n'))
+    fs.writeFileSync(instalado, fs.readFileSync(doRepo, 'utf8').replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'))
     const soRota = HOOKS.filter((h) => h.id === 'rota-guard')
     assert.equal(R.comparar(soRota)[0].estado, 'igual', 'CRLF virou divergência')
 

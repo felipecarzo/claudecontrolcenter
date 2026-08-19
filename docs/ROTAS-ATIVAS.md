@@ -38,7 +38,7 @@ em código, o certo é parar e abrir outra — credencial e edição de arquivo 
 | `cockpit` (anterior) | 🟢 livre | — (ff0d68b2 fechou em 16/08: **CC-93** (guia longo vira etapa, regra + `guia-guard`), **CC-77** (navegacao de um nivel no estreito, `.grupo` duplicada no CSS, e `test-estreito.mjs` medindo as 15 telas), **CC-82** (a estante de documentos, com leitor e `cc doc`), e a Bancada de 7 para 10 camadas, com a sonda de RLS do Supabase. Junto: `fluxo-guard`, a trava de execucao continua do modo restritivo) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
 | `backlog` | 🔴 ocupada | 5805d6bb — CC-23 a CC-41, execução sequencial do backlog planejado (docs/PLANOS.md) | 2026-08-13 |
-| `remote-control` | 🟢 livre | — (ab5121a0 fechou em 17/08, no commit 44ac67b: **CC-129** (o botão que abre sessão na pasta pessoal, com o motor que já aceitava qualquer pasta), **CC-120** (cada porta mostrando os agentes daquele projeto, casados por projeto e não por caminho) e o campo `tem` do snapshot, que é a peça do CC-121 do lado do servidor, medida em 0,52ms por tique) | — |
+| `remote-control` | 🔴 ocupada | 21810399 / 5a0496cf — recado da VPS: pull da backlog, npm test no Windows, CRLF do CC-72, caminho com `\` do CC-86, backlog CC-159 a CC-163 e federação ligada 📁 test.mjs 📁 src/dependencias.mjs 📁 src/web.mjs | hoje |
 | `remote-control` (antes) | 🟢 livre | — (5805d6bb fechou em 2026-08-13: os 3 bugs, ver ticket com o achado de autenticação na VPS que ficou pendente do Felipe) | — |
 | `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **CC-56** (sessao interativa reporta estado, via `CLAUDE_CODE_SESSION_ID`, fora de `jobs/`), **CC-49** (`cc routia presenca`: ativa / orfa / desconhecida, e a distincao entre as duas ultimas e o cuidado central), **CC-48** (rotas viajam no pacote da federacao) e **CC-65** (os 6 hooks globais nao existiam em repo nenhum: agora em `hooks/routia/`). Anterior: cockpit federado, CC-47/51/54/55/57/58) | — |
 | `ideias` | 🟢 livre | — (ff0d68b2 fechou em 17/08: a fila em `docs/.ideias-pendentes.json`, o encerramento que captura sem pedir decisão, o início que processa, e o conserto da trava de desvio que barrava CITAÇÃO dele) | — |
@@ -52,7 +52,8 @@ como restritivo"*.
 
 Escreva `🎚 <modo>` na linha da rota, junto do resto:
 
-    | `front` | 🔴 ocupada | ab5121a0 — telas 🎚 livre 📁 src/ui.html#viewRemoto | hoje |
+    | `front` | 🔴 ocupada | 5a0496cf — CC-164, o framework sai do lugar errado e a lista passa a mostrar só projeto com sessão 📁 src/ui.html | hoje |
+| `front` (antes) | 🟢 livre | — (ab5121a0 tinha `src/ui.html#viewRemoto`; liberada em 19/08 por 5a0496cf depois de conferir que a sessão não existe em máquina nenhuma: ausente no `cc json` do PC, e na VPS a única sessão viva é a4452c23, parada há 3h e já dada como fechada no próprio quadro) | — |
 
 Quem trabalha nessa rota entra nesse modo, e ele **sobrevive ao reinício da
 sessão**, que era o furo da capa por sessão: a sessão morre e renasce com outro

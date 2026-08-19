@@ -11,7 +11,7 @@ import { PROJETOS_DIR as PROJETOS_DIR_SESSOES, readSessoes } from './sessoes.mjs
 import { perdidasDeTodas as perdidasDeTodasAsSessoes } from './fila.mjs'
 // `casaClaude()` e não `os.homedir()`: é o único lugar que resolve a pasta
 // `.claude`, e é o que faz `CC_HOME` isolar o painel de teste do real.
-import { casaClaude } from './platform.mjs'
+import { casaClaude, caminhoAutostart } from './platform.mjs'
 import {
   alternarRota, corDaRota, humanizar as humanizarSilencio, lerQuadro, retratoDoQuadro,
 } from './presenca.mjs'
@@ -22,7 +22,7 @@ import {
 import { origem as origemLocal } from './maquina-id.mjs'
 import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
-  mesclar, mesclarTempo, montarPacote, validarPacote,
+  mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
 import { arquivar, jobsHistoricos, marcosDe, mudouDesde } from './historico.mjs'
@@ -321,6 +321,20 @@ function usoDaConta(local, pacotes) {
 let ultimoTempoEnviado = 0
 const INTERVALO_TEMPO_MS = 10 * 60 * 1000
 
+/* CC-165: o retrato do último empurrão, para a tela poder responder "está
+ * mesmo sendo enviado?".
+ *
+ * Pergunta dele, e ela não tinha resposta na tela: *"como garantimos que tá
+ * tudo sendo vigiado e enviado pro cockpit na VPS?"*. O timer engole o erro
+ * de propósito (`.catch(() => {})`), senão uma queda de rede derrubaria o
+ * painel — mas engolir sem registrar é o mesmo defeito do `total: 0` do
+ * CC-124: silêncio com cara de sucesso. Agora o erro fica guardado aqui e
+ * aparece na tela.
+ *
+ * Memória do processo, não disco: é estado do processo vivo, e a pergunta que
+ * ele responde ("está funcionando AGORA") não sobrevive a um reinício mesmo. */
+let ultimoEmpurrao = null
+
 async function empurrar({ comTempo = null } = {}) {
   const cfg = readConfig()
   const { token, enviarPara } = cfg.federacao || {}
@@ -348,7 +362,45 @@ async function empurrar({ comTempo = null } = {}) {
   }
 
   const pacote = montarPacote({ maquina: s.maquina, jobs: meus, uso: s.uso, tempo })
-  return enviarPacote({ enviarPara, token, pacote })
+  const r = await enviarPacote({ enviarPara, token, pacote })
+  ultimoEmpurrao = {
+    em: Date.now(),
+    ok: Boolean(r?.ok),
+    erro: r?.ok ? null : (r?.erro || `resposta ${r?.status || 'sem status'}`),
+    jobs: meus.length,
+    comTempo: Boolean(tempo),
+    para: enviarPara,
+  }
+  if (r?.ok && r.pedidos?.length) await atenderPedidos(r.pedidos)
+  return r
+}
+
+/**
+ * CC-166: os pedidos que voltaram na carona da resposta.
+ *
+ * A trava é uma só, e é a que ele escolheu entre três desenhos: **o pedido
+ * carrega um NOME de projeto, e `cwdDoProjeto` só resolve o que esta máquina
+ * já conhece**. Nome que não bate com projeto nenhum não vira caminho, não
+ * vira comando, não faz nada. Com comando livre no lugar disso, quem
+ * escrevesse na fila do servidor rodaria qualquer coisa no PC dele.
+ *
+ * Nunca lança: isto roda dentro do timer de 30s, e uma exceção aqui mataria o
+ * empurrão seguinte junto.
+ */
+async function atenderPedidos(pedidos) {
+  for (const p of pedidos.slice(0, 3)) { // teto por ciclo: fila estranha não vira enxame de sessões
+    try {
+      const dir = cwdDoProjeto(null, p.projeto)
+      if (!dir) {
+        console.error(`[federação] pedido recusado, projeto desconhecido: ${p.projeto}`)
+        continue
+      }
+      await ligarRemoto(p.projeto, dir, { mais: false })
+      console.error(`[federação] sessão aberta a pedido de ${p.de || 'outra máquina'}: ${p.projeto}`)
+    } catch (e) {
+      console.error(`[federação] pedido falhou (${p.projeto}): ${e?.message || e}`)
+    }
+  }
 }
 
 const send = (res, code, body, type = 'application/json') => {
@@ -591,8 +643,25 @@ function handler(req, res) {
       const { ok, erro, pacote } = validarPacote(bruto)
       if (!ok) return { error: erro }
       gravarPacote(pacote)
-      return { recebido: pacote.maquina, jobs: pacote.jobs.length }
+      /* CC-166: a resposta do empurrão é a carona de volta.
+         A VPS não alcança o PC atrás do NAT, então este é o único momento em
+         que dá para entregar alguma coisa a ele: ele pergunta de 30 em 30
+         segundos, e leva junto o que ficou guardado no nome dele. Nenhuma
+         porta nova, nenhum serviço novo. */
+      return {
+        recebido: pacote.maquina,
+        jobs: pacote.jobs.length,
+        pedidos: pegarPedidos(pacote.maquina.nome),
+      }
     })
+  }
+
+  /* CC-166: enfileira "abra uma sessão no projeto X" para outra máquina.
+     Só o NOME do projeto viaja: quem executa confere contra a própria lista e
+     recusa o que não conhecer. Ver `pedirSessao` para o porquê. */
+  if (url.pathname === '/api/federacao/pedir' && req.method === 'POST') {
+    return comCorpo(req, res, 2e3, ({ maquina, projeto }) =>
+      pedirSessao({ paraMaquina: maquina, projeto, de: origemLocal().nome }))
   }
 
   // O que chegou de fora, mais a identidade desta máquina. Serve à tela (o
@@ -610,6 +679,13 @@ function handler(req, res) {
       token: cfg.federacao?.token || '',
       configurada: Boolean(cfg.federacao?.token),
       enviandoPara: cfg.federacao?.enviarPara || '',
+      /* CC-165: as duas perguntas dele sobre confiabilidade, respondidas com
+         dado e não com promessa. `empurrando` é o resultado do último envio
+         de verdade (null antes do primeiro); `autostart` diz se este painel
+         volta sozinho quando a máquina reinicia, que é o que separa "está no
+         ar agora" de "fica no ar". */
+      empurrando: ultimoEmpurrao,
+      autostart: fs.existsSync(caminhoAutostart()),
       pacotes: pacotes.map((p) => ({
         maquina: p.maquina, jobs: p.jobs.length, em: p.em, idadeMs: p.idadeMs, semContato: p.semContato,
       })),
@@ -703,6 +779,26 @@ function handler(req, res) {
     const vistos = new Set()
     const lista = []
     const cfgModulos = readConfig() // uma leitura para a lista toda, não uma por projeto
+
+    /* CC-164: quais projetos têm sessão viva AGORA, e de qual máquina.
+     *
+     * Ele viu a lista inteira da máquina e reclamou com razão: *"não faz
+     * sentido aparecer um monte de projeto desativado, tudo com framework
+     * desativado porque nem no remoto tá ligado"*. Projeto sem ninguém
+     * trabalhando nele é ruído entre os que importam.
+     *
+     * Sai do snapshot, que já mescla as máquinas da federação — então um
+     * projeto ativo NA VPS aparece marcado aqui também, com a origem dele,
+     * que é o que ele pediu ao falar em separar por onde está hospedado. */
+    const ativos = new Map()
+    for (const j of snapshot().jobs) {
+      if (!j.project) continue
+      const onde = j.origem?.nome || null
+      const ja = ativos.get(j.project) || new Set()
+      if (onde) ja.add(onde)
+      ativos.set(j.project, ja)
+    }
+
     for (const raiz of findProjects()) {
       const nome = path.basename(raiz)
       if (vistos.has(nome)) continue
@@ -711,9 +807,22 @@ function handler(req, res) {
       // os grupos de proteção com o interruptor por projeto
       const modulos = {}
       for (const m of Object.keys(MODULOS_HOOKS)) modulos[m] = moduloLigado(m, nome, cfgModulos)
-      lista.push({ projeto: nome, raiz, ...retratoFramework(raiz), rotas: situacaoRotas(raiz), modulos })
+      const onde = ativos.get(nome)
+      lista.push({
+        projeto: nome,
+        raiz,
+        ...retratoFramework(raiz),
+        rotas: situacaoRotas(raiz),
+        modulos,
+        ativo: Boolean(onde),
+        maquinas: onde ? [...onde].sort() : [],
+      })
     }
-    lista.sort((a, b) => (b.existe ? 1 : 0) - (a.existe ? 1 : 0) || a.projeto.localeCompare(b.projeto))
+    /* Ativo primeiro, depois quem tem framework, depois alfabético: a ordem
+       responde "onde estou trabalhando" antes de "o que existe nesta pasta". */
+    lista.sort((a, b) => (b.ativo ? 1 : 0) - (a.ativo ? 1 : 0)
+      || (b.existe ? 1 : 0) - (a.existe ? 1 : 0)
+      || a.projeto.localeCompare(b.projeto))
     return send(res, 200, { projetos: lista, catalogoModulos: MODULOS_HOOKS, at: Date.now() })
   }
 
