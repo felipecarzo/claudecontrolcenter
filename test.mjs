@@ -823,6 +823,49 @@ assert.equal(marcarConclusoes(antes, { status: 'x' }), antes.feitoEm, 'patch sem
   } finally { fs.rmSync(tmp, { recursive: true, force: true }) }
 }
 
+/* --- dois itens pausados não podem virar o mesmo cartão ---
+
+   Achado por ELE em 19/08, perguntando se CC-80 e CC-155 eram o mesmo item:
+   no mapa do roadmap os dois apareciam ligados e com a mesma descrição.
+
+   A causa eram duas funções discordando sobre o mesmo texto. `limpar()`, no
+   `roadmap.mjs`, apaga `⏸` junto com os outros marcadores, o que está certo
+   para o texto que vai à tela. Mas `partirTitulo()` usa esse marcador como
+   âncora para saber onde o MOTIVO da pausa acaba e o nome começa. Sem ele,
+   todo item que começa com "⏸ você decide — …" vira nome "você decide", e a
+   chave do cartão (`projeto:nome`) funde os dois.
+
+   O teste guarda as duas pontas: o título cru chega inteiro, e o nome sai
+   diferente para itens diferentes. */
+{
+  const rm2 = await import('./src/roadmap.mjs')
+  const { partirTitulo } = await import('./src/trabalho.mjs')
+
+  const tmp = path.join(os.tmpdir(), `cc-pausa-${Date.now()}`)
+  fs.mkdirSync(path.join(tmp, 'docs'), { recursive: true })
+  fs.writeFileSync(path.join(tmp, 'docs', 'ROADMAP.md'), [
+    '# P', '## Aberto',
+    '### CC-80 ⏸ você decide — o estudo está pronto, falta escolher a forma',
+    '### CC-155 ⏸ você decide — as avenidas em mapa visual, ideia dele em 18/08',
+  ].join('\n'))
+  try {
+    const fs3 = rm2.lerRoadmap(tmp).grupos[0].frentes
+    assert.ok(fs3[0].tituloCru.includes('⏸'), 'o título cru precisa manter o marcador')
+    assert.ok(!fs3[0].titulo.includes('⏸'), 'o título exibido continua sem marcador')
+
+    const a = partirTitulo(fs3[0].tituloCru)
+    const b = partirTitulo(fs3[1].tituloCru)
+    assert.notEqual(a.nome, b.nome, 'dois itens pausados sairiam com o mesmo nome, e viram um cartão só')
+    assert.ok(/estudo/.test(a.nome), `o nome do CC-80 devia falar do estudo, veio "${a.nome}"`)
+    assert.ok(/avenidas/.test(b.nome), `o nome do CC-155 devia falar das avenidas, veio "${b.nome}"`)
+    assert.ok(!/você decide/i.test(a.nome), 'o motivo da pausa não é o nome do item')
+
+    // e sem o marcador o comportamento não pode explodir: título já limpo
+    // continua produzindo algum nome, mesmo que seja o motivo
+    assert.ok(partirTitulo(fs3[0].titulo).nome.length > 0)
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }) }
+}
+
 // --- status: "done" do CLI não quer dizer tarefa terminada ---
 {
   const { statusReal, VIVO_MS } = await import('./src/jobs.mjs')

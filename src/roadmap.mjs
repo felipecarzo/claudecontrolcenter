@@ -281,6 +281,12 @@ export function ordenar(cwd, mapa) {
     const dependentes = deps.get(chave) || 0
     return {
       titulo: f.titulo,
+      /* Vai junto porque este objeto SUBSTITUI a frente daqui para a frente, e
+         quem monta os cartões usa o cru para separar o motivo da pausa do nome
+         do item. Reconstruir campo a campo é o que fez o `tituloCru` sumir na
+         primeira tentativa de consertar isto: o conserto estava certo no
+         `lerRoadmap` e o dado morria aqui, dois passos depois. */
+      tituloCru: f.tituloCru || f.titulo,
       estado: f.estado,
       grupo: g.titulo,
       citacao: f.citacao || null,
@@ -333,7 +339,23 @@ export function lerRoadmap(cwd) {
         grupo = { titulo: '', estado: 'aberto', frentes: [], itens: 0, feitos: 0 }
         grupos.push(grupo)
       }
-      frente = { titulo: limpar(h3[1]), estado: estadoDe(h3[1]), itens: 0, feitos: 0, corpo: [] }
+      /* `tituloCru` guarda a linha com os marcadores, e ele existe por um
+         defeito real, achado por ele em 19/08 ao perguntar se CC-80 e CC-155
+         eram o mesmo item.
+
+         `limpar()` apaga `⏸` junto com os outros marcadores, o que está certo
+         para o texto que vai à tela. Só que `partirTitulo()`, no
+         `trabalho.mjs`, usa o `⏸` como âncora para saber onde o MOTIVO da
+         pausa termina e o nome começa. Sem a âncora, "⏸ você decide — o estudo
+         está pronto" virava nome "você decide" — e como a chave do cartão é
+         `projeto:nome`, os DOIS itens que começam assim viraram o mesmo
+         cartão na tela: clicar em um abria o outro, com a descrição do outro.
+
+         Guardar o cru é mais barato que ensinar `partirTitulo` a adivinhar
+         motivo sem marcador, e não muda nada do que já é exibido. */
+      frente = {
+        titulo: limpar(h3[1]), tituloCru: String(h3[1]).trim(), estado: estadoDe(h3[1]), itens: 0, feitos: 0, corpo: [],
+      }
       grupo.frentes.push(frente)
       continue
     }

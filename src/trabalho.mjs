@@ -87,7 +87,24 @@ export function partirTitulo(titulo) {
     /* O marcador de pausa vem seguido do MOTIVO, não do nome: "⏸ decisão do
        Felipe — o estudo está pronto". Sem comer o motivo junto, o cartão diria
        "decisão do Felipe" como se esse fosse o nome do item — o motivo já
-       aparece no estado, e repetir ali apagaria o nome de verdade. */
+       aparece no estado, e repetir ali apagaria o nome de verdade.
+
+       ⚠️ **O `⏸` já foi embora quando o título chega aqui**, e por isso as duas
+       linhas que dependem dele nunca casaram. `limpar()`, no `roadmap.mjs`,
+       apaga todos os marcadores (`[🔴🟡🟢🔥✅✔⛔⏳📌⏸]`) antes de o título sair
+       de lá, então este passo recebia `você decide — o estudo está pronto` sem
+       marcador nenhum e só o corte genérico agia: nome virava "você decide".
+
+       O estrago era invisível no código e visível na tela: **CC-80 e CC-155
+       viraram o MESMO cartão**. Os dois começam com "⏸ você decide", os dois
+       ficaram com `nome: "você decide"`, e a chave do cartão é
+       `projeto:nome` — clicar em um abria o outro, com a descrição do outro.
+       Foi ele quem viu, perguntando se os dois itens eram a mesma coisa.
+
+       Por isso o marcador é OPCIONAL nos dois padrões abaixo: funciona com ele
+       (título cru) e sem ele (título já limpo). Tirar a limpeza de lá seria
+       consertar pelo lado errado, porque o marcador tem que sumir do texto que
+       aparece na tela. */
     .replace(/^[✅⚠️🔴🟢🟡]+\s*/u, '')
     .replace(/^⏸\s*[^—–]{0,40}[—–]\s*/u, '')
     .replace(/^⏸\s*/u, '')
@@ -185,7 +202,12 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
       const minhas = pendencias.filter((p) => p.projeto === projeto
         && p.frente && casaFrente(p.frente, f.titulo))
 
-      const { limpo, nome, descricao } = partirTitulo(f.titulo)
+      /* `tituloCru` quando existe: ele ainda tem o `⏸`, e `partirTitulo` usa
+         esse marcador para separar o MOTIVO da pausa do nome do item. Com o
+         título já limpo, "⏸ você decide — o estudo está pronto" perdia a
+         âncora e virava nome "você decide", igual em todo item pausado. Ver o
+         comentário em `partirTitulo` e o que isso causou na tela. */
+      const { limpo, nome, descricao } = partirTitulo(f.tituloCru || f.titulo)
       cartoes.push({
         id: idDoTitulo(f.titulo),
         marca: marcaDoItem(f.titulo, posicoes.get(f.titulo) || cartoes.length + 1),

@@ -6581,7 +6581,14 @@ function grupoDeProjeto(g) {
    o estado, e cinco cartões lado a lado formam coluna, que é o que faz uma
    lista de 35 itens ser varrida em vez de lida. */
 function cartaoDoItem(c, projeto) {
-  const chave = `${projeto}:${c.nome}`
+  /* O código do item vem antes do nome, e essa ordem é o conserto de um
+     defeito que ele viu: dois itens com o mesmo nome viravam UM cartão.
+     `CC-80` e `CC-155` abriam com "⏸ você decide", o nome derivado saía igual
+     nos dois, e a chave `projeto:nome` os fundia. Clicar em um abria o outro,
+     mostrando a descrição do outro. O nome é derivado do título e pode
+     repetir; o código é único por construção. Fica o nome como reserva porque
+     nem todo item tem código no roadmap. */
+  const chave = `${projeto}:${c.id || c.nome}`
   const aberto = cartoesAbertos.has(chave) || tudoAberto
   const e = c.estado
   const marca = c.marca || { texto: '', real: false }
