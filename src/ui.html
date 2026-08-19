@@ -1594,6 +1594,28 @@
      celular. Nada de fundo tingido: o `.s-working` já provou que fundo de
      estado torna o texto de dentro ilegível. */
   .fw-linha.fw-ativo { border-color: var(--working); border-left-width: 3px; }
+
+  /* CC-155: o mapa das avenidas. O SVG rola de lado dentro do próprio bloco
+     quando não cabe, e nunca empurra a página: rolagem horizontal no corpo é
+     a queixa que o CC-73 consertou. */
+  .av-sec { max-width: 720px; }
+  .av-mapa { overflow-x: auto; margin: 6px 0 10px; }
+  .av-mapa svg { min-width: 420px; display: block; }
+  .av-frase { margin: 0 0 6px; font-size: 12px; }
+  .av-frase.v-bom { color: var(--done); }
+  .av-frase.v-atencao { color: var(--waiting); }
+  .av-frase.v-ruim { color: var(--failed); }
+  .av-nome { font-size: 11px; font-weight: 600; font-family: var(--mono, ui-monospace, monospace); }
+  .av-arq { font-size: 8.5px; fill: var(--dim); font-family: var(--mono, ui-monospace, monospace); }
+  .av-x { font-size: 10px; font-weight: 700; }
+  .av-legs { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .av-leg {
+    font-size: 11.5px; padding: 4px 8px; border-radius: 6px;
+    border: 1px solid var(--line); border-left: 3px solid var(--line);
+  }
+  .av-leg.colisao { border-left-color: var(--failed); }
+  .av-leg.vizinhanca { border-left-color: var(--waiting); }
+  .av-leg span { color: var(--dim); }
   /* CC-164: o framework do projeto ativo, na tela de trabalho. Uma linha por
      projeto, com o nome dele na frente, porque a faixa serve a vários. */
   .bl-fw-proj {
@@ -8136,6 +8158,113 @@ function desenharMapa() {
  * e ocupada, que são as duas escolhas de verdade — um terceiro estado clicável
  * seria cor sem significado.
  */
+/**
+ * CC-155: o mapa das avenidas.
+ *
+ * Ideia dele em 18/08: *"um mapa com várias linhas, com cores diferentes,
+ * quando se cruza mostra qual a gente está em qual bifurcação se colidindo com
+ * outro agente, enfim, um visual bem fácil de visualizar o que está
+ * acontecendo"*.
+ *
+ * ## Por que faixas horizontais, e não grafo de bolinhas
+ *
+ * Grafo de força dirigida é o desenho bonito e o errado aqui, por dois motivos
+ * medidos neste projeto. O primeiro: ele reclamou de bolinhas uma vez, com
+ * todas as letras (*"eu pedi pra usar linhas e não usar bolinhas"*). O
+ * segundo: grafo precisa de largura, e a tela dele é um celular de 390px.
+ *
+ * Faixa horizontal por rota resolve os dois. Cada avenida é uma linha, os
+ * arquivos são marcos sobre ela, e o cruzamento é um traço vertical ligando
+ * duas faixas. Empilhado, funciona em qualquer largura.
+ *
+ * ## O SVG é escrito à mão, sem biblioteca
+ *
+ * Mesma regra do `graficos.js`: o painel inteiro funciona offline e sem
+ * dependência de runtime.
+ */
+function viewAvenidas() {
+  const a = ROTAS?.avenidas
+  if (!a?.avenidas?.length) return ''
+
+  const vias = a.avenidas
+  const ALT = 34 // altura de cada faixa
+  const TOPO = 8
+  const ESQ = 96 // espaço do nome da rota, à esquerda
+  const larg = 620
+  const alt = TOPO * 2 + vias.length * ALT
+  const y = (i) => TOPO + i * ALT + ALT / 2
+  const linhaDe = new Map(vias.map((v, i) => [v.rota, i]))
+
+  /* A cor diz o ESTADO da avenida, e são três porque respondem coisas
+     diferentes: viva é trabalho acontecendo agora, parada é rota marcada com
+     a sessão calada, e em conflito é a que precisa de ação. Os tokens são os
+     mesmos do resto do painel, para o vermelho aqui querer dizer o que quer
+     dizer em toda tela. */
+  const emConflito = new Set(a.cruzamentos.filter((c) => c.tipo === 'colisao')
+    .flatMap((c) => [c.de, c.para]))
+  const corDe = (v) => (emConflito.has(v.rota) ? 'var(--failed)' : v.viva ? 'var(--working)' : 'var(--faint)')
+
+  const faixas = vias.map((v, i) => {
+    const yy = y(i)
+    const cor = corDe(v)
+    // os arquivos como marcos sobre a faixa, espaçados pelo comprimento dela
+    const passo = (larg - ESQ - 30) / Math.max(v.arquivos.length, 1)
+    const marcos = v.arquivos.map((arq, k) => {
+      const x = ESQ + 20 + k * passo
+      return `<g><circle cx="${x}" cy="${yy}" r="4" fill="${cor}"><title>${esc(arq)}</title></circle>
+        <text x="${x}" y="${yy - 9}" class="av-arq">${esc(arq.split('/').pop())}</text></g>`
+    }).join('')
+    return `<g>
+      <line x1="${ESQ}" y1="${yy}" x2="${larg - 10}" y2="${yy}" stroke="${cor}" stroke-width="2.5"
+        stroke-linecap="round" opacity="${v.viva ? 1 : 0.45}"/>
+      <text x="${ESQ - 8}" y="${yy + 4}" class="av-nome" text-anchor="end" fill="${cor}">${esc(v.rota)}</text>
+      ${marcos}
+    </g>`
+  }).join('')
+
+  /* O cruzamento é o ponto do desenho, e por isso é o único elemento com
+     rótulo próprio: é ele que responde "onde eu vou esbarrar em alguém". */
+  const cruzes = a.cruzamentos.map((c, k) => {
+    const i = linhaDe.get(c.de)
+    const j = linhaDe.get(c.para)
+    if (i == null || j == null) return ''
+    const x = larg - 60 - k * 26
+    const cor = c.tipo === 'colisao' ? 'var(--failed)' : 'var(--waiting)'
+    const oQue = c.tipo === 'colisao'
+      ? `mesmo arquivo nas duas: ${(c.arquivos || []).join(', ')}`
+      : `${(c.ligacoes || []).map((l) => `${l.de} usa ${l.para}`).join('; ')}`
+    return `<g>
+      <line x1="${x}" y1="${y(i)}" x2="${x}" y2="${y(j)}" stroke="${cor}" stroke-width="2"
+        stroke-dasharray="${c.tipo === 'colisao' ? '' : '4 3'}"/>
+      <circle cx="${x}" cy="${(y(i) + y(j)) / 2}" r="7" fill="var(--bg)" stroke="${cor}" stroke-width="2"/>
+      <text x="${x}" y="${(y(i) + y(j)) / 2 + 4}" class="av-x" text-anchor="middle" fill="${cor}">${
+  c.tipo === 'colisao' ? '!' : '~'}</text>
+      <title>${esc(`${c.de} × ${c.para}: ${oQue}`)}</title>
+    </g>`
+  }).join('')
+
+  const legenda = a.cruzamentos.length
+    ? a.cruzamentos.map((c) => `<li class="av-leg ${c.tipo}">
+        <b>${esc(c.de)}</b> × <b>${esc(c.para)}</b>
+        <span>${c.tipo === 'colisao'
+    ? `mesmo arquivo: ${(c.arquivos || []).map(esc).join(', ')}`
+    : (c.ligacoes || []).map((l) => `${esc(l.de)} usa ${esc(l.para)}`).join('; ')}</span>
+      </li>`).join('')
+    : '<li class="av-leg"><span>nenhuma avenida cruza outra agora</span></li>'
+
+  return `<section class="m-git-sec av-sec">
+    <h4>avenidas <span class="path">quem está onde, e onde dois se esbarram</span></h4>
+    <p class="av-frase v-${esc(a.resumo?.cor || 'bom')}">${esc(a.resumo?.frase || '')}</p>
+    <div class="av-mapa">
+      <svg viewBox="0 0 ${larg} ${alt}" width="100%" height="${alt}" role="img"
+        aria-label="mapa das rotas de trabalho e onde elas se cruzam">
+        ${faixas}${cruzes}
+      </svg>
+    </div>
+    <ul class="av-legs">${legenda}</ul>
+  </section>`
+}
+
 function viewRotas() {
   if (!ROTAS) return '<section class="m-git-sec"><h4>rotas</h4><p class="path">lendo…</p></section>'
   if (!ROTAS.existe) {
@@ -8147,7 +8276,8 @@ function viewRotas() {
      arquivos que ela reivindica na coluna ao lado. "eu via as rotas com nomes e
      cores e isso agilizava o entendimento e o formato tabela é muito prático."
      A cor continua no fio da esquerda e na palavra, nunca sozinha. */
-  return `<section class="m-git-sec"><h4>rotas <span class="path">toque no nome para trocar</span></h4>
+  return `${viewAvenidas()}
+    <section class="m-git-sec"><h4>rotas <span class="path">toque no nome para trocar</span></h4>
     <table class="m-rotas-tab"><tbody>${ROTAS.rotas.map((r) => `
       <tr class="c-${r.cor}">
         <td class="rt-nome-c"><button class="m-rota-bt" data-rota="${esc(r.rota)}"

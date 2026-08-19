@@ -2954,3 +2954,91 @@ if (!ESPERADO) {
    gate agora roda inteiro contra dados sintéticos. Zero aqui é informação, não
    falha — antes era o gate morrendo. */
 console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos varridos nesta máquina`)
+
+/* --- CC-155: as avenidas, e onde duas rotas se esbarram ---
+
+   Ideia dele em 18/08: um mapa de linhas onde dá para ver quem está onde e
+   onde dois agentes vão colidir. O motor decide o que é cruzamento; a tela só
+   desenha o que ele disser.
+
+   Os dois tipos de cruzamento são diferentes de propósito: colisão é o mesmo
+   arquivo em duas rotas (conflito certo), vizinhança é arquivo diferente com
+   import entre eles (ninguém avisa, e quebra mesmo assim). */
+{
+  const av = await import('./src/avenidas.mjs')
+
+  const grafo = {
+    usa: new Map([
+      ['src/a.mjs', new Set(['src/b.mjs'])],
+      ['src/b.mjs', new Set()],
+      ['src/z.mjs', new Set()],
+    ]),
+  }
+
+  // rota sem dono, ou sem arquivo, não é avenida
+  const semNada = av.mapear([
+    { rota: 'livre', quem: null, arquivos: [] },
+    { rota: 'sem-arquivo', quem: 'aaa', arquivos: [] },
+  ], grafo)
+  assert.equal(semNada.avenidas.length, 0, 'rota sem dono ou sem arquivo não é avenida')
+  assert.match(av.resumo(semNada).frase, /Nenhuma rota/)
+
+  // duas rotas com arquivos que não se falam: nenhum cruzamento
+  const longe = av.mapear([
+    { rota: 'r1', quem: 'aaa', veredito: 'ativa', arquivos: ['src/a.mjs'] },
+    { rota: 'r2', quem: 'bbb', veredito: 'ativa', arquivos: ['src/z.mjs'] },
+  ], grafo)
+  assert.equal(longe.avenidas.length, 2)
+  assert.equal(longe.cruzamentos.length, 0, 'arquivos sem import entre si não se cruzam')
+  assert.equal(av.resumo(longe).cor, 'bom')
+
+  // vizinhança: arquivos diferentes, mas um importa o outro
+  const vizinhas = av.mapear([
+    { rota: 'r1', quem: 'aaa', veredito: 'ativa', arquivos: ['src/a.mjs'] },
+    { rota: 'r2', quem: 'bbb', veredito: 'ativa', arquivos: ['src/b.mjs'] },
+  ], grafo)
+  assert.equal(vizinhas.cruzamentos.length, 1)
+  assert.equal(vizinhas.cruzamentos[0].tipo, 'vizinhanca')
+  assert.equal(av.resumo(vizinhas).cor, 'atencao')
+
+  // colisão vence vizinhança: o mesmo arquivo em duas rotas é o pior caso
+  const colidindo = av.mapear([
+    { rota: 'r1', quem: 'aaa', veredito: 'ativa', arquivos: ['src/a.mjs', 'src/b.mjs'] },
+    { rota: 'r2', quem: 'bbb', veredito: 'ativa', arquivos: ['src/b.mjs'] },
+  ], grafo)
+  assert.equal(colidindo.cruzamentos.length, 1, 'colisão não pode ser contada duas vezes')
+  assert.equal(colidindo.cruzamentos[0].tipo, 'colisao')
+  assert.deepEqual(colidindo.cruzamentos[0].arquivos, ['src/b.mjs'])
+  assert.equal(av.resumo(colidindo).cor, 'ruim')
+
+  // sem grafo, a colisão continua e a vizinhança some: melhor um mapa a menos
+  // que uma tela que não abre porque a varredura falhou
+  const semGrafo = av.mapear([
+    { rota: 'r1', quem: 'aaa', arquivos: ['src/a.mjs'] },
+    { rota: 'r2', quem: 'bbb', arquivos: ['src/b.mjs'] },
+  ], null)
+  assert.equal(semGrafo.avenidas.length, 2)
+  assert.equal(semGrafo.cruzamentos.length, 0)
+
+  // a mesma rota repetida no quadro (o arquivo é histórico) vira UMA avenida,
+  // e fica a linha que declara arquivos
+  const repetida = av.mapear([
+    { rota: 'r1', quem: 'aaa', arquivos: [] },
+    { rota: 'r1', quem: 'aaa', arquivos: ['src/a.mjs', 'src/b.mjs'] },
+  ], grafo)
+  assert.equal(repetida.avenidas.length, 1, 'rota repetida no quadro não vira duas avenidas')
+  assert.equal(repetida.avenidas[0].arquivos.length, 2)
+
+  // barra invertida do Windows não pode esconder um cruzamento
+  const barras = av.mapear([
+    { rota: 'r1', quem: 'aaa', arquivos: [String.raw`src\a.mjs`] },
+    { rota: 'r2', quem: 'bbb', arquivos: ['src/b.mjs'] },
+  ], grafo)
+  assert.equal(barras.cruzamentos.length, 1, 'caminho com barra invertida tem que casar com o do grafo')
+
+  // viva é diferente de ocupada: o quadro pode anunciar dono de sessão morta
+  const morta = av.mapear([
+    { rota: 'r1', quem: 'aaa', veredito: 'orfa', arquivos: ['src/a.mjs'] },
+  ], grafo)
+  assert.equal(morta.avenidas[0].viva, false, 'rota órfã não pode contar como trânsito')
+}

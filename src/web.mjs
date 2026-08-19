@@ -13,6 +13,8 @@ import { perdidasDeTodas as perdidasDeTodasAsSessoes } from './fila.mjs'
 // `.claude`, e é o que faz `CC_HOME` isolar o painel de teste do real.
 import { casaClaude, caminhoAutostart } from './platform.mjs'
 import { estadoGit } from './git.mjs'
+import { mapear as mapearAvenidas, resumo as resumoAvenidas } from './avenidas.mjs'
+import { mapear as mapearDependencias } from './dependencias.mjs'
 import {
   alternarRota, corDaRota, humanizar as humanizarSilencio, lerQuadro, retratoDoQuadro,
 } from './presenca.mjs'
@@ -1514,7 +1516,27 @@ function handler(req, res) {
         }
       }
     }
-    return send(res, 200, { existe: true, dir, rotas: todas, deFora })
+    /* CC-155: as avenidas. Ideia dele em 18/08, vendo o aviso de vizinhança
+       funcionar: *"um mapa com várias linhas, com cores diferentes, quando se
+       cruza mostra em qual bifurcação se colidindo com outro agente"*.
+
+       As rotas de FORA entram junto: uma sessão na VPS segurando um arquivo é
+       exatamente o tipo de colisão que ninguém vê olhando só a máquina local.
+
+       O grafo só é calculado quando há mais de uma avenida, e é a mesma
+       economia que o `rota-guard` já faz: com uma rota só não existe cruzamento
+       possível, e varrer o projeto para descobrir isso seria pagar por nada. */
+    const paraMapa = [...todas, ...deFora]
+    const comArquivos = paraMapa.filter((r) => r.quem && (r.arquivos || []).length)
+    let grafo = null
+    if (comArquivos.length > 1) {
+      try { grafo = mapearDependencias(dir) } catch { /* sem grafo, sobra a colisão direta */ }
+    }
+    const mapa = mapearAvenidas(paraMapa, grafo)
+
+    return send(res, 200, {
+      existe: true, dir, rotas: todas, deFora, avenidas: { ...mapa, resumo: resumoAvenidas(mapa) },
+    })
   }
 
   if (url.pathname === '/api/rotas/alternar' && req.method === 'POST') {

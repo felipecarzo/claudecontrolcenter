@@ -1633,7 +1633,7 @@ resolve devolve `null` (deixa valer o modo do projeto) em vez do texto cru.
 Novo teste em `test.mjs` prova as duas pontas: apelido resolve para o ID
 certo, nome desconhecido nunca devolve texto que parece um modo válido.
 
-### CC-155 ⏸ você decide — as avenidas em mapa visual, ideia dele em 18/08
+### CC-155 ✅ 19/08 — as avenidas em mapa visual
 
 Palavras dele, sobre a primeira fatia das avenidas (o aviso de vizinhança do
 CC-140): *"a gente consegue colocar visualmente, como se fosse um mapa com
@@ -1653,9 +1653,44 @@ propor forma:
   série e barra, não grafo com linhas cruzando — a peça de "mapa com
   bifurcação" é a única de verdade nova a construir.
 
-Falta ele decidir, quando chegar a vez: onde essa tela mora (aba própria, ou
-dentro da aba de rotas que o CC-102 já esboça), e o quanto de detalhe cabe no
-celular (regra do CC-101 vale aqui também: celular primeiro).
+#### ✅ Feito em 19/08
+
+**Mora dentro do mapa do projeto**, acima da tabela de rotas, e não em aba
+própria: quem pergunta "quem está onde" já está olhando aquela tela, e aba
+nova para um bloco foi exatamente a queixa dele no redesenho.
+
+**Faixas horizontais, não grafo de bolinhas**, e os dois motivos são medidos
+neste projeto. Ele reclamou de bolinhas uma vez, com todas as letras (*"eu
+pedi pra usar linhas e não usar bolinhas"*); e grafo de força dirigida precisa
+de largura, enquanto a tela dele tem 390px. Cada rota é uma linha, os arquivos
+reivindicados são marcos sobre ela, e o cruzamento é um traço vertical ligando
+duas faixas. Empilhado, funciona em qualquer largura.
+
+**Dois tipos de cruzamento, e a diferença é o ponto do recurso:**
+
+- **colisão** (traço cheio, `!`, vermelho): as duas rotas reivindicaram o
+  MESMO arquivo. Conflito certo;
+- **vizinhança** (traço pontilhado, `~`, amarelo): arquivos diferentes, mas um
+  importa o outro. Mexer num quebra o outro, e **nenhuma trava avisa**, porque
+  cada um está no seu arquivo. É o caso que o CC-140 detecta no momento da
+  edição; aqui ele vira desenho, para ser visto ANTES de começar.
+
+O motor é `src/avenidas.mjs`, puro e testado (9 casos), com a tela só
+desenhando o que ele decide. Um nível de import, não profundidade: o grafo é
+aproximado, e duas rotas ligadas por uma corrente de cinco imports não estão
+se cruzando em nenhum sentido que ajude quem olha.
+
+**As rotas de outra máquina entram junto**: uma sessão na VPS segurando um
+arquivo é exatamente a colisão que ninguém vê olhando só a máquina local.
+
+**Provado com dado real, e ele achou uma colisão de verdade na primeira
+execução**: `cockpit` e `remote-control` reivindicando `test.mjs` ao mesmo
+tempo, que é uma disputa que estava acontecendo e ninguém tinha notado.
+
+Um defeito meu, pego pelo teste: eu normalizava a barra invertida do Windows
+só dentro da comparação de import, e a colisão direta comparava texto cru.
+Cruzamento real sumia porque um lado escreveu `src\a.mjs` e o outro
+`src/a.mjs`. Normalizado na entrada.
 
 ### CC-158 ✅ 19/08 — a tela dizia "nenhum projeto encontrado" quando na verdade não tinha conseguido perguntar
 
