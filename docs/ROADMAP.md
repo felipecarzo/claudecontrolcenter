@@ -2178,31 +2178,32 @@ direto, ignorando a casa isolada dos testes. A instância de teste lia a pasta
 real, e um pacote de laboratório teria acabado no painel dele. Corrigido, com
 teste no gate.
 
-### CC-80 ⏸ você decide — o estudo está pronto, falta escolher a forma
+### CC-80 ✅ 19/08 — a visão estrutural: onde mexer primeiro
 
-O estudo que ele pediu está em [[produto/ESTUDO-VISAO-ESTRUTURAL]], com as três
-opções medidas e uma recomendação.
+O estudo ([[produto/ESTUDO-VISAO-ESTRUTURAL]]) mediu três formas e recomendou
+a B: as frentes do roadmap como território, com quem está trabalhando ali e
+o que aquela frente costuma tocar. A pergunta que fechava o item — *a tela é
+pra você decidir prioridade, ou pra eu não quebrar nada?* — ele respondeu:
+*"olharia"*.
 
-**O achado que mais importa:** o problema não é falta de dado. Seis módulos já
-respondem partes da pergunta (85 arquivos e 121 ligações no `dependencias`, 7
-frentes no `roadmap`, rotas, oficinas, tempo, agentes) — o que falta é uma tela
-que junte. E a opção que eu teria feito por instinto (o grafo de arquivos) é a
-que **repete o erro que o campo `frente` corrigiu**: falaria `src/platform.mjs`
-onde ele pensa "Bancada".
+**A peça que faltava, e o estudo já apontava o caminho**: quais arquivos cada
+frente toca. Escrever isso à mão divergiria do código em dias, então sai do
+próprio texto dos commits — cada um já cita os códigos `CC-nnn` que fechou
+(medido: 261 ocorrências nos últimos 400 commits). Casando o código da frente
+com o código citado no commit, e o commit com os arquivos que mudou, o
+cruzamento nasce pronto, sem campo novo pra alguém esquecer de preencher.
 
-**A pergunta que decide, e é dele:** a tela é para ele olhar e decidir
-prioridade, ou para eu olhar e não quebrar nada? Se for a segunda, o `cc deps`
-já basta e este item fecha sem código novo.
+Reaproveita o que já existia: o roadmap já sabe quantos itens cada frente tem
+e quantos estão feitos, e a tela do mapa (CC-102) já desenhava as frentes como
+território. A camada nova é só a linha *"mexe mais em: …"*, derivada, dentro
+da mesma tela — não virou aba nova.
 
-O guarda-chuva dos dois acima, e o mais vago de propósito: ele pediu para
-**estudar**, não para fazer. O que está dito é o critério, não a solução — tem
-que caber no raciocínio visual dele, que é o mesmo motivo pelo qual o cockpit
-existe.
+Motor puro em `src/estrutura.mjs`, 5 casos de teste. Medido: 54ms para ler 400
+commits, cabe na mesma rota que já lê o roadmap, sem relógio próprio.
 
-Vale desenhar contra o que já se sabe dele: ele lê mal texto longo, decide bem
-com mapa, e o vocabulário da tela tem que ser o do ROADMAP dele (foi o achado
-que criou o campo `frente`). Uma tela de rotas que fale em `src/**` em vez de
-"Pierre" repete o erro que o `frente` corrigiu.
+Provado com dado real, clicando na tela de verdade: a frente de hoje mostrou
+`ROADMAP.md, federacao.mjs, hooksCatalogo.mjs, sincronia-guard.mjs, ui.html`
+como os arquivos mais tocados, e batem com o que esta sessão mexeu de fato.
 
 ### CC-103 Frente: o que pre-commit, husky e Danger já resolveram, e nós não
 
@@ -2242,22 +2243,6 @@ caminho `D:/...` e a variável `$TEMP`, que só existem no Windows, então os do
 casos caíam na pasta do próprio repositório. O caso "projeto sem quadro"
 falhava, e os de bloqueio passavam por motivo diferente do que diziam testar.
 Corrigido com pastas de verdade criadas no próprio teste.
-
-### CC-08 ⏸ ambiente — só macOS continua sem prova (não existe Mac aqui)
-
-Era "macOS e Linux nunca rodaram". **Linux saiu da lista em 13 e 14/08**: o
-painel roda em produção nesta VPS Ubuntu, como serviço systemd, e o que foi
-exercitado de verdade cobre quase todo o `platform.mjs` — portas por `ss`,
-processos, matar processo, spawn de painel embutido, proxy HTTP e WebSocket,
-hooks, e o serviço voltando sozinho depois de derrubado. O que ainda não foi
-testado em Linux: `cc daemon install` (aqui o serviço foi criado à mão) e o
-atalho `.desktop`.
-
-**macOS segue sem nenhuma máquina real.** launchd, `lsof`, `.command` e o
-`SIGTERM` no lugar do `taskkill` existem escritos e nunca executaram. Quando
-houver um Mac à mão: `cc` (só leitura, tem que funcionar de primeira) →
-`cc open` → `cc daemon install` → aba de servidores → encerrar um processo de
-teste.
 
 ### CC-104 Frente: Sincronia entre máquinas, aprovada pelo Felipe em 14/08
 

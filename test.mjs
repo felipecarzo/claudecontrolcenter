@@ -2949,6 +2949,78 @@ if (!ESPERADO) {
   }
 }
 
+/* --- CC-80: a visão estrutural, derivada do git, nunca escrita à mão ---
+
+   O estudo (docs/produto/ESTUDO-VISAO-ESTRUTURAL.md) recomendou a opção B:
+   as frentes do roadmap como território, com quais arquivos cada uma toca —
+   derivado dos commits, porque mapa escrito à mão diverge do código em dias.
+
+   `mapear()` é puro: recebe grupos e um histórico já lido, nunca chama git.
+   O que se testa aqui é a REGRA de atribuição, não a leitura do disco. */
+{
+  const est = await import('./src/estrutura.mjs')
+
+  const grupos = [
+    {
+      titulo: 'Frente: Pierre',
+      frentes: [
+        { titulo: 'CC-10 fazer a coisa', estado: 'aberto' },
+        { titulo: 'CC-11 já fechado', estado: 'feito' },
+      ],
+    },
+    {
+      titulo: 'Frente: Bancada',
+      frentes: [{ titulo: 'CC-20 outra coisa', estado: 'aberto' }],
+    },
+  ]
+
+  const commits = [
+    { hash: 'a', codigos: ['CC-10'], arquivos: ['src/pierre.mjs', 'docs/ROADMAP.md'] },
+    { hash: 'b', codigos: ['CC-10'], arquivos: ['src/pierre.mjs'] },
+    { hash: 'c', codigos: ['CC-20'], arquivos: ['src/bancada.mjs'] },
+    { hash: 'd', codigos: ['CC-99'], arquivos: ['src/nada-a-ver.mjs'] }, // código de nenhuma frente
+  ]
+
+  const r = est.mapear({ grupos, commits, jobs: [] })
+
+  const pierre = r.find((g) => g.titulo === 'Frente: Pierre')
+  assert.equal(pierre.total, 2)
+  assert.equal(pierre.abertos, 1, 'item feito não conta como aberto')
+  assert.equal(pierre.arquivos[0].arquivo, 'src/pierre.mjs', 'o mais tocado vem primeiro')
+  assert.equal(pierre.arquivos[0].toques, 2)
+  assert.ok(!pierre.arquivos.some((a) => a.arquivo === 'src/nada-a-ver.mjs'),
+    'commit de outro código não pode contaminar esta frente')
+
+  const bancada = r.find((g) => g.titulo === 'Frente: Bancada')
+  assert.equal(bancada.arquivos.length, 1)
+  assert.equal(bancada.arquivos[0].arquivo, 'src/bancada.mjs')
+
+  // grupo sem nenhum commit correspondente não quebra, só fica sem arquivo
+  const vazio = est.mapear({
+    grupos: [{ titulo: 'Frente: Nada', frentes: [{ titulo: 'CC-77 solo', estado: 'aberto' }] }],
+    commits, jobs: [],
+  })
+  assert.equal(vazio[0].arquivos.length, 0)
+
+  // agente com sessão aberta na frente aparece, e o nome dele casa por
+  // aproximação, do mesmo jeito que o resto da tela já faz
+  const comAgente = est.mapear({
+    grupos, commits,
+    jobs: [{ id: 'j1', status: 'working', frente: 'Bancada' }, { id: 'j2', status: 'done', frente: 'outra coisa' }],
+  })
+  const bancadaComAgente = comAgente.find((g) => g.titulo === 'Frente: Bancada')
+  assert.equal(bancadaComAgente.agentes.length, 1)
+  assert.equal(bancadaComAgente.agentes[0].id, 'j1')
+
+  // teto de 5 arquivos: um sexto commit não pode fazer a lista crescer
+  const muitos = est.mapear({
+    grupos: [{ titulo: 'Frente: Pierre', frentes: [{ titulo: 'CC-10 x', estado: 'aberto' }] }],
+    commits: Array.from({ length: 8 }, (_, i) => ({ hash: `h${i}`, codigos: ['CC-10'], arquivos: [`src/f${i}.mjs`] })),
+    jobs: [],
+  })
+  assert.equal(muitos[0].arquivos.length, 5, 'a lista de arquivos quentes tem teto')
+}
+
 /* O resumo diz o que a MÁQUINA tinha para oferecer, e por isso os dois números
    podem ser zero sem que nada esteja errado: numa VPS sem job de background o
    gate agora roda inteiro contra dados sintéticos. Zero aqui é informação, não

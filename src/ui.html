@@ -2040,6 +2040,10 @@
   .m-grupo.e-aberto { border-left-color: var(--done); }
   .m-grupo.e-feito { border-left-color: var(--idle); opacity: .65; }
   .m-gtit { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  /* CC-80: onde a frente costuma mexer, derivado do git. Recuado sob o
+     título, do mesmo jeito que a barra de fração já é sub-informação dele. */
+  .m-quentes { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; }
+  .m-quentes code { font-size: 10.5px; padding: 1px 5px; border-radius: 4px; background: var(--surface, var(--line)); }
   .m-gtit b { color: var(--fg); font-size: 13px; }
   .m-selo {
     font: 700 11px/1.6 var(--label); letter-spacing: .1em; text-transform: uppercase;
@@ -8126,13 +8130,26 @@ function desenharMapa() {
   const barra = (feitos, itens) => (itens
     ? `<span class="m-frac">${feitos}/${itens}</span>` : '')
 
-  el.innerHTML = cabeca + viewNiveis(naFrente) + viewOrdens() + MAPA.grupos.map((g) => `
+  /* CC-80: onde cada frente costuma mexer, derivado do texto dos commits.
+     Mapa por título porque é a mesma chave que `roadmap.mjs` já usa para
+     agrupar. Título que não bate com nenhum grupo simplesmente não aparece
+     aqui, e a seção continua igual a antes: a camada é aditiva. */
+  const estruturaPor = new Map((MAPA.estrutura || []).map((e) => [e.titulo, e]))
+
+  el.innerHTML = cabeca + viewNiveis(naFrente) + viewOrdens() + MAPA.grupos.map((g) => {
+    const est = estruturaPor.get(g.titulo)
+    const quentes = est?.arquivos?.length ? `<div class="m-quentes">
+        <span class="path">mexe mais em:</span>
+        ${est.arquivos.map((a) => `<code title="${a.toques} commit(s) desta frente tocaram aqui">${esc(a.arquivo.split('/').pop())}</code>`).join(' ')}
+      </div>` : ''
+    return `
     <section class="m-grupo e-${g.estado}">
       <div class="m-gtit">
         <span class="m-selo">${ROTULO_ESTADO[g.estado] || g.estado}</span>
         <b>${esc(g.titulo)}</b>
         ${barra(g.feitos, g.itens)}
       </div>
+      ${quentes}
       ${g.frentes.map((f) => {
         const quantos = naFrente.get(f.titulo.toLowerCase())
           ?? [...naFrente].find(([k]) => f.titulo.toLowerCase().startsWith(k))?.[1] ?? 0
@@ -8142,7 +8159,8 @@ function desenharMapa() {
           ${quantos ? `<span class="m-agentes">${quantos} agente${quantos > 1 ? 's' : ''} aqui</span>` : ''}
         </div>`
       }).join('')}
-    </section>`).join('')
+    </section>`
+  }).join('')
     + `<p class="path m-rodape">lido de <code>${esc((MAPA.arquivo || '').split(/[\\/]/).slice(-2).join('/'))}</code>
         · ${MAPA.linhas} linhas · atualizado ${MAPA.atualizadoEm ? age(Date.now() - MAPA.atualizadoEm) + ' atrás' : '...'}</p>`
     + viewRotas()

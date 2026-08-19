@@ -15,6 +15,7 @@ import { casaClaude, caminhoAutostart } from './platform.mjs'
 import { estadoGit } from './git.mjs'
 import { mapear as mapearAvenidas, resumo as resumoAvenidas } from './avenidas.mjs'
 import { mapear as mapearDependencias } from './dependencias.mjs'
+import { mapear as mapearEstrutura, historicoDeCommits } from './estrutura.mjs'
 import {
   alternarRota, corDaRota, humanizar as humanizarSilencio, lerQuadro, retratoDoQuadro,
 } from './presenca.mjs'
@@ -1334,7 +1335,18 @@ function handler(req, res) {
        git de ~280ms que só acontece quando alguém pede o mapa. */
     let ordens = null
     try { ordens = ordenarRoadmap(cwd, mapa) } catch { /* sem git, fica sem ordem */ }
-    return send(res, 200, { ...mapa, ordens })
+
+    /* CC-80: para cada frente, os arquivos que ela mais toca — derivado do
+       texto dos commits, nunca escrito à mão. Mesma janela de custo que as
+       ordens (~50ms medido em 19/08 neste projeto), então entra no mesmo
+       lugar em vez de virar rota própria. */
+    let estrutura = null
+    try {
+      const commits = historicoDeCommits(cwd)
+      estrutura = mapearEstrutura({ grupos: mapa.grupos, commits, jobs: readJobs() })
+    } catch { /* sem git, fica sem a camada de arquivos */ }
+
+    return send(res, 200, { ...mapa, ordens, estrutura })
   }
 
   // CC-36: enriquecimento de to-dos pelo opencode. Uma chamada por AGENTE
