@@ -57,7 +57,13 @@ export const DIR_SESSOES = () => path.join(casaClaude(), 'control-center-sessoes
  * sobrevive.
  */
 export const DIR_SESSOES_ABRIGO = () => path.join(
-  process.env.XDG_DATA_HOME || path.join(casaClaude(), '..', '.local', 'share'),
+  /* `CC_HOME` vence `XDG_DATA_HOME`, e isto é isolamento de teste, não estilo.
+     Quem define `CC_HOME` está pedindo uma casa inteira separada; deixando o
+     abrigo escapar por `XDG_DATA_HOME`, um teste com casa temporária escreveria
+     no reporte DE VERDADE dele. É a mesma família do apagamento das notas em
+     2026-08-09, e o `CC_HOME` nasceu justamente para fechá-la. */
+  (!process.env.CC_HOME && process.env.XDG_DATA_HOME)
+    || path.join(casaClaude(), '..', '.local', 'share'),
   'agent-cockpit', 'sessoes',
 )
 

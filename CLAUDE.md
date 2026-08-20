@@ -272,6 +272,53 @@ errada por definição.
   isso. Layout de grade é CLASSE (`.com-lateral` / `.so-uma`), nunca `style=`.
   E a varredura em 390 tela a tela virou parte do gate visual: foi ela que
   achou, não a leitura do código.
+- **A armadilha da grade inline voltou, com ela escrita aqui, e o gate não
+  olhava para o arquivo novo.** Em 20/08 ele mandou print do telefone com a
+  tela Trabalho em três colunas dentro de 390px, cada palavra numa linha. Era
+  `style="grid-template-columns: repeat(3, minmax(0,1fr))"` de novo, num bloco
+  criado depois da regra. **A lição não é a regra, é onde ela mora**: regra que
+  só existe em texto volta a ser quebrada. Hoje o `test.mjs` recusa grade de
+  várias colunas em `style=` no `ui_v2.html` e exige regra de estreito para cada
+  grade conhecida — custa milissegundos e não precisa de navegador. Ao ligar, a
+  rede pegou mais três casos que ninguém tinha visto. E o motivo de o gate ter
+  passado é próprio: **`test-estreito.mjs` mede `src/ui.html`, o painel ANTIGO**.
+  O painel novo não tinha verificação de largura nenhuma.
+  Exceção examinada caso a caso: `repeat(auto-fill|auto-fit, minmax(220px,1fr))`
+  se ajusta sozinha e passa; `auto 1fr` (rótulo e valor) também. O que reserva
+  largura declarada não passa.
+- **Erro de EXECUÇÃO não é erro de sintaxe, e o `npm test` só vê o segundo.**
+  Em 21/08 uma variável removida (`frios`) continuou sendo usada numa condição:
+  `renderViewAgora` lançava no meio e tudo depois daquela linha parava. A tela
+  Agora ficou com o bloco central de 12px, embaixo de um cabeçalho prometendo
+  conteúdo. A página carregava, navegava e não acusava nada — foi ELE quem
+  achou, num print. Hoje `npm run test:endereco` abre as 24 telas uma a uma,
+  ouve `Runtime.exceptionThrown` e `console.error`, e recusa tela que abra
+  praticamente vazia. **Ao remover uma variável, procure os usos dela**: o gate
+  não vai te avisar.
+- **Bloco que pode ficar vazio precisa dizer por quê.** Mesma tela, segundo
+  defeito: sem agente esperando e com pendência humana aberta, nem os cartões
+  entravam nem o "tudo limpo" (que exige zero pendências), e sobrava espaço em
+  branco. Espaço vazio não distingue "está tudo bem" de "a leitura falhou", que
+  é a família de defeito mais cara deste painel.
+- **Crase dentro de comentário HTML, dentro de template literal, mata a página
+  inteira em silêncio.** Achado em 20/08 escrevendo o CC-227: um `<!-- … -->`
+  explicativo com `` `proj_controlcenter` `` entre crases estava DENTRO de uma
+  template string do JS. A crase fecha a string. Resultado: `ui_v2.html` parou
+  de compilar, a tela ficou em "Carregando estado do cockpit..." para sempre com
+  ZERO agentes, e **nenhum erro apareceu** — erro de sintaxe acontece antes de
+  qualquer código rodar, então nem `window.onerror` da própria página pega.
+  Comentário dentro de template usa aspas, nunca crase.
+  **O gate conferia a sintaxe do `ui.html` e não a do `ui_v2.html`.** Confere as
+  duas agora. Este foi o TERCEIRO buraco do mesmo tipo achado no mesmo dia
+  (largura de tela, estilo dos gráficos, sintaxe): o painel novo herdou o
+  código e não herdou as redes. Ao mexer nele, pergunte primeiro o que o gate
+  ainda mede só no antigo.
+- **`captureBeyondViewport` desenha caixa de rolagem horizontal no lugar
+  errado.** A tela Trabalho pareceu abrir na terceira coluna do funil, e o
+  `scrollLeft` medido no mesmo instante era ZERO. Quase virou conserto de um
+  defeito que não existe. Para julgar layout de telefone, capture só o que cabe
+  na tela; a captura de página inteira serve para ler conteúdo, não para julgar
+  posição.
 - **Modelo não é campo próprio**, sai de `respawnFlags` (`--model opus[1m]`).
 - **`state.intent` não serve como "o pedido".** É o primeiro prompt, congelado:
   sessão longa que mudou de assunto mostra coisa velha. E em job respawnado ele

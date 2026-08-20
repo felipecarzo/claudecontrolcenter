@@ -52,7 +52,14 @@ const M = await import(urlDeModulo(AQUI, '../src/metaSessao.mjs')).catch(() => n
 if (!M) sair()
 
 let meta = null
-try { meta = JSON.parse(readFileSync(resolve(M.DIR_SESSOES(), `${id}.json`), 'utf8')) } catch { sair() }
+/* CC-225: `lerMetaSessao` em vez de montar o caminho na mão, e o motivo é
+   medido. O reporte mora em DOIS lugares desde o CC-157: a casa (`~/.claude`) e
+   o abrigo, para onde ele cai quando o sandbox tranca a casa. Lendo só a casa,
+   este aviso passou a tarde inteira cobrando uma lista congelada de horas
+   antes, enquanto o painel mostrava a atual. `lerMetaSessao` devolve o arquivo
+   MAIS NOVO entre os dois, que é a única leitura que não discorda da tela. */
+meta = M.lerMetaSessao(id) || {}
+if (!Object.keys(meta).length) sair()
 const tarefas = (meta?.todos || []).map((t) => (typeof t === 'string' ? t : t?.text ?? t?.t)).filter(Boolean)
 if (!tarefas.length) sair()
 

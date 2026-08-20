@@ -133,9 +133,25 @@ function doRoadmap(projetos = []) {
   return saida
 }
 
-export function tudo(jobs = [], { projetos = [] } = {}) {
-  const doArquivo = ler().tarefas.map((t) => ({ ...t, fonte: 'lista' }))
-  const doMapa = doRoadmap(projetos)
+/**
+ * CC-227: toda pendência diz de qual máquina ela veio.
+ *
+ * Pedido dele, olhando um cartão que dizia só `proj_controlcenter / CC-60`:
+ * *"não está falando que está na VPS, não está falando que está no desktop,
+ * não está falando nada. Sendo que eu tinha pedido pra você pra ser uma regra
+ * de todos os quadros"*.
+ *
+ * As três fontes precisam de tratamento diferente, e por isso o carimbo nasce
+ * aqui e não na tela:
+ *  · `agente`: a máquina é a da sessão, e ela já viaja carimbada na federação;
+ *  · `lista` e `roadmap`: são lidas do disco de quem monta a resposta, então a
+ *    máquina é a local. Sem isto, uma pendência escrita no PC apareceria sem
+ *    dono ao ser lida pela VPS.
+ */
+export function tudo(jobs = [], { projetos = [], maquinaLocal = null } = {}) {
+  const daqui = (t) => (maquinaLocal ? { ...t, maquina: maquinaLocal } : t)
+  const doArquivo = ler().tarefas.map((t) => daqui({ ...t, fonte: 'lista' }))
+  const doMapa = doRoadmap(projetos).map(daqui)
 
   const dosAgentes = []
   for (const j of jobs) {
@@ -151,6 +167,10 @@ export function tudo(jobs = [], { projetos = [] } = {}) {
         em: j.updatedAt,
         fonte: 'agente',
         job: j.id,
+        /* A máquina da SESSÃO, nunca a de quem lê: uma pendência de agente do
+           PC continua sendo do PC quando a VPS mostra. */
+        maquina: j.origem?.nome || j.origem?.id || maquinaLocal || null,
+        semContato: Boolean(j.origem?.semContato),
       })
     }
   }

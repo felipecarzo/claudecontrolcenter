@@ -52,7 +52,11 @@ const M = await import(urlDeModulo(AQUI, '../src/metaSessao.mjs')).catch(() => n
 const J = await import(urlDeModulo(AQUI, '../src/jobs.mjs')).catch(() => null)
 if (!M || !J) sair()
 let meta = null
-try { meta = JSON.parse(readFileSync(resolve(M.DIR_SESSOES(), `${id}.json`), 'utf8')) } catch { sair() }
+/* CC-225: o reporte mora em dois lugares (casa e abrigo, desde o CC-157), e
+   `lerMetaSessao` devolve o mais novo entre eles. Montando o caminho na mão,
+   este aviso lia a casa congelada e cobrava tarefa fechada horas antes. */
+meta = M.lerMetaSessao(id) || {}
+if (!Object.keys(meta).length) sair()
 const abertas = (meta?.todos || []).map((t) => J.normalizeTodo(t)).filter((t) => t && !t.done)
 if (!abertas.length) sair()
 

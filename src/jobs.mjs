@@ -278,6 +278,12 @@ export function buildJob(id, state, meta, pins, now) {
     status,
     rawState: state.state ?? null,
     subject: subjectOf(state, meta, last),
+    /* CC-221: quem escreveu esse assunto. Sem isto, o texto que o painel
+       preenche sozinho com o último pedido dele fica IDÊNTICO na tela a um
+       resumo que o agente escreveu, e não havia como saber que catorze dos
+       dezesseis agentes não tinham anotado nada. */
+    subjectDoAgente: Boolean(String(meta.subject || '').trim()),
+    subjectEm: meta.subjectEm || null,
     category: meta.category || null,
     project: meta.project || project,
     sub,
@@ -605,8 +611,30 @@ export function writeMeta(id, patch) {
       `não achei ${id}: não é job em ${JOBS_DIR} nem sessão com transcrito`,
     )
   }
-  const next = mergeMeta(readJson(alvo.file, {}) || {}, patch)
+  const anterior = readJson(alvo.file, {}) || {}
+  const next = mergeMeta(anterior, patch)
   next.updatedAt = new Date().toISOString()
+
+  /* CC-221: quando este assunto foi escrito.
+   *
+   * Ele perguntou o que GARANTE que o agente sempre anote, e a resposta medida
+   * é: nada garante enquanto ninguém consegue ver que não anotou. Em 20/08,
+   * dos 16 agentes no painel, DOIS tinham assunto escrito pelo agente. Os
+   * outros catorze caíam no texto cru que ele digitou, e na tela isso é
+   * indistinguível de um assunto de verdade.
+   *
+   * Só a existência do campo não basta: escrito uma vez às 9h, ele descreve às
+   * 22h um trabalho que acabou de manhã. Com a hora carimbada dá para comparar
+   * com o último pedido dele e cobrar o que está velho, em vez de cobrar o que
+   * está vazio. É a diferença entre "você anotou?" e "isso ainda é verdade?".
+   *
+   * Fica FORA do que o agente manda, de propósito. Ele reescreve o `meta`
+   * inteiro a cada chamada, e carimbo dentro do texto seria apagado na
+   * seguinte, do mesmo jeito que já acontecia com o `feitoEm` das tarefas. */
+  const assuntoNovo = String(patch?.subject || '').trim()
+  if (assuntoNovo && assuntoNovo !== String(anterior.subject || '').trim()) {
+    next.subjectEm = next.updatedAt
+  }
 
   /* CC-157, achado em 19/08: dentro do sandbox do Claude Code a pasta
      `~/.claude` fica somente leitura, e TODA sessão perdia a capacidade de

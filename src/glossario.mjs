@@ -147,6 +147,55 @@ export function buscar(verbetes, q) {
   ].join(' ').toLowerCase().includes(alvo))
 }
 
+/**
+ * CC-229: as explicações longas do "?" do painel.
+ *
+ * A primeira versão usava os `termos:` do cabeçalho, que cabem numa linha. Ele
+ * leu e reprovou: *"voce colocou os '?' bem ruinzinhos (…) voce falou como se
+ * eu fosse um imbecil. Eu quero explicacoes mais tecnicas"*. Uma linha não
+ * comporta explicar o bloco inteiro da tela, de onde vem cada pedaço e o que a
+ * cor significa.
+ *
+ * Então a fonte passa a ser o CORPO de `docs/produto/PALAVRAS-DA-TELA.md`: cada
+ * `## palavra` é uma explicação, e o texto abaixo dela é o que ele lê. Fica
+ * legível como documento e comporta parágrafos, listas e destaque.
+ *
+ * As seções antes da primeira palavra são instruções de escrita, não verbetes:
+ * o `#` do título e o `## Como escrever aqui` ficam de fora.
+ */
+export const ARQUIVO_PALAVRAS = path.join('docs', 'produto', 'PALAVRAS-DA-TELA.md')
+const NAO_E_VERBETE = /^(como escrever aqui|as palavras da tela)$/i
+
+export function lerPalavrasDaTela(projetoDir) {
+  let texto = ''
+  try { texto = fs.readFileSync(path.join(projetoDir, ARQUIVO_PALAVRAS), 'utf8') } catch { return [] }
+
+  // fora o cabeçalho, que já é lido por `lerFrontmatter`
+  if (texto.startsWith('---')) {
+    const fim = texto.indexOf('\n---', 3)
+    if (fim > -1) texto = texto.slice(fim + 4)
+  }
+
+  const palavras = []
+  let atual = null
+  /* CRLF: dividir por \n sozinho deixaria um \r no fim de cada título, e o
+     termo nunca casaria com o que a tela pede. Armadilha já registrada. */
+  for (const linha of texto.split(/\r?\n/)) {
+    const cabecalho = linha.match(/^##\s+(.+?)\s*$/)
+    if (cabecalho) {
+      if (atual) palavras.push(atual)
+      atual = NAO_E_VERBETE.test(cabecalho[1]) ? null : { termo: cabecalho[1], corpo: [] }
+      continue
+    }
+    if (atual) atual.corpo.push(linha)
+  }
+  if (atual) palavras.push(atual)
+
+  return palavras
+    .map((p) => ({ termo: p.termo, texto: p.corpo.join('\n').trim() }))
+    .filter((p) => p.texto)
+}
+
 /** Todos os termos de todos os documentos, achatados e com a origem. É o
  *  glossário de verdade: "o que era mesmo camada 13?" sem abrir arquivo. */
 export function termosDe(verbetes) {

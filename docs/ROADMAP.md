@@ -62,6 +62,491 @@ dele dizer `projeto › frente` em vez de texto solto.
 
 ## Aberto
 
+## ▶ Frente nova, aberta em 20/08 à noite: o que ele apontou olhando no telefone
+
+Ele abriu o cockpit no celular e foi apontando, por partes. Registrado antes de
+executar, com as palavras dele.
+
+### CC-231 ✅ 21/08 — a tela Agora estava quebrada, e o gate não tinha como ver
+
+Ele mandou o print e perguntou: *"essa tela tá c o design correto?"*. Não
+estava, e foram três defeitos, um deles meu, de poucas horas antes.
+
+**1. Eu quebrei a tela no CC-226.** Ao tirar o cartão de máquina calada da faixa
+de urgência, removi o bloco que definia a variável `frios` e deixei ela sendo
+usada na condição do "tudo limpo". `renderViewAgora` lançava no meio, e tudo
+depois daquela linha parava de rodar.
+
+**Isso é erro de EXECUÇÃO, não de sintaxe.** O gate confere se o painel compila
+(CC-227) e passou; a página carregava, navegava e não mostrava erro em lugar
+nenhum. O sintoma era um bloco de 12 pixels de altura embaixo de um cabeçalho
+prometendo "sua atenção é necessária".
+
+**2. O bloco podia ficar mudo mesmo sem erro.** Ele lista agentes (quebrados e
+esperando); as pendências que só ele resolve saem dali de propósito, porque têm
+seção própria abaixo. Sem agente esperando **e** com pendência humana aberta,
+nem os cartões entravam nem o "tudo limpo" (que exige zero pendências), e
+sobrava espaço em branco. Espaço vazio não diz se está tudo bem ou se a leitura
+falhou. Agora o bloco diz o que sabe: *"nenhum agente esperando resposta nem
+travado. O que falta é seu: 2 pendências logo abaixo"*.
+
+**3. A ordem contradizia a promessa da tela.** Ela se chama Agora e diz
+"pendências críticas aguardando sua decisão", mas abria com 22 linhas de
+histórico, num bloco de 375 pixels que empurrava a promessa para fora da
+primeira tela do telefone. A urgência passou para cima.
+
+#### A rede que faltava, e a prova de que ela morde
+
+`npm run test:endereco` agora **abre as 24 telas uma a uma** e cobra duas
+coisas: que nenhuma exceção aconteça, e que nenhuma tela abra praticamente
+vazia. O ouvinte lê `Runtime.exceptionThrown` e `console.error` do próprio
+Chrome.
+
+Provado com o defeito real: disparando `frios.length` na página, a rede devolve
+`ReferenceError: frios is not defined`. Sem essa prova negativa, a verificação
+seria decorativa.
+
+### CC-230 ✅ 21/08 — o "?" alcança as 24 telas do painel
+
+> "ficou otimo!!! mas precisamos aplicar isso a todas as paginas e todos os
+> modulos e tudo que poder inserir no cockpit."
+
+**Cada uma das 24 telas do menu ganhou explicação própria**, no mesmo nível
+técnico do CC-229: o que a tela responde, de quais fontes ela é montada, o que
+ela decide não mostrar, e as armadilhas que moldaram o desenho dela.
+
+Exemplos do que entrou: a tela de servidores explica as três travas para matar
+um processo e por que a lista de protegidos existe; a da VPS explica que aquela
+é a única chamada de rede perigosa do painel e por isso só roda sob clique; a de
+rotinas explica que a cópia local vence a global e que foi assim que 22 rotinas
+ficaram desatualizadas em silêncio.
+
+**A ligação é por derivação, não por lista.** `view-agentes` procura a
+explicação `tela: agentes`, então não existe um segundo lugar para manter em
+dia. Por isso as seções usam o id sem acento (`tela: maquina`), e o nome bonito
+("Máquina") a folha pega do próprio menu.
+
+**Dois jeitos de pedir explicação, para dois tipos de rótulo:**
+
+- `data-explica="rota"` num título que já está no HTML. Uma varredura insere o
+  "?" em todos assim que as explicações chegam, então marcar um rótulo novo é
+  uma linha, sem tocar em código.
+- `ajuda('token')` dentro do código que desenha, onde o "?" nasce junto com o
+  bloco.
+
+O gate mede as duas formas, e mede a cobertura: **tela no menu sem explicação
+escrita é falha**. Sem isso, tela nova nasceria sem "?" e ninguém veria, porque
+o botão simplesmente não aparece.
+
+### CC-229 ✅ 21/08 — as explicações passam a ensinar, e não só definir
+
+Ele leu a primeira versão e reprovou, com razão:
+
+> "voce colocou os '?' bem ruinzinhos. por exemplo em esperando voce ta que a
+> conversa fez uma pergunta e parou, nada anda ali até voce responder. voce
+> falou como se eu fosse um imbecil. (…) Eu quero explicacoes mais tecnicas (…)
+> pode ser bem explicito, a ideia é eu aprender e reaprender sempre."
+
+E escreveu o modelo do que queria: descrever **o bloco inteiro da tela**, o que
+cada pedaço significa, quem produziu cada coisa, o que cada cor quer dizer, e
+onde ver mais.
+
+**O formato tinha que mudar antes do texto.** Definição de uma linha no cabeçalho
+do documento não comporta isso. Agora cada `## palavra` no corpo de
+[produto/PALAVRAS-DA-TELA.md](produto/PALAVRAS-DA-TELA.md) é uma explicação
+inteira, com parágrafos, listas e destaque. São **26**, e o arquivo continua
+legível como documento.
+
+O que cada uma passou a trazer, seguindo o exemplo dele: como o painel decide
+aquele estado (o discriminador de "esperando você" é o sinal, não o campo de
+encerrado), de onde vem cada pedaço do cartão, o que a cor significa, e o número
+com a escala (5 minutos para sem contato, 12 horas de validade do dado herdado,
+10% do preço para cache lido).
+
+**O desenho da folha foi refeito para leitura longa**, não para espiada: corpo
+em 16px com entrelinha 1.65, cabeçalho parado enquanto o texto rola (em texto
+longo, saber de qual palavra se fala evita ler perdido), rolagem dentro da folha
+e não na página, e no telefone ela sobe de baixo, onde o polegar alcança.
+
+**Um defeito que só a captura pegou:** o texto do arquivo é quebrado em 80
+colunas para ser legível, e a primeira versão do conversor tratava cada linha
+como um parágrafo. As frases apareciam partidas no meio na tela. Agora o
+parágrafo só termina em linha vazia, lista ou citação.
+
+O gate ganhou uma medida de descuido: explicação com menos de 200 letras é
+recusada. Não mede estilo, mede a volta da definição de uma linha.
+
+### CC-228 ✅ 20/08 — o "?" que explica cada palavra técnica da tela
+
+> "eu queria que todas as funções e termos técnicos tivessem '?', e quando
+> clicasse tivesse uma explicação bem detalhada do que é o que. é possível?"
+
+O motivo é mais antigo que o pedido, e ele já tinha nomeado em 16/08: *"eu não
+lembro o que que é reporte guard (…) o meu cérebro não consegue absorver tudo"*,
+com o risco junto: *"eu acabo virando uma pessoa dependente"*.
+
+**Metade já existia.** O painel tem um glossário que varre o `docs/` inteiro e
+lê os termos declarados no cabeçalho de cada documento: 65 termos, quase todos
+vocabulário de quem constrói (`meta.json`, `statusReal`, `PreToolUse`).
+
+**O que faltava eram as palavras que aparecem NA TELA dele.** Entraram 27 num
+documento novo, [produto/PALAVRAS-DA-TELA.md](produto/PALAVRAS-DA-TELA.md),
+escritas para ele e não para quem programou: sem nome de arquivo, dizendo o que
+a coisa faz, e com a escala junto quando há número. São 95 termos no total.
+
+**Fonte única, de propósito:** escrever o termo no documento é o que faz o "?"
+nascer, e apagar de lá tira o "?" da tela. Uma lista de textos dentro do painel
+seria a segunda verdade sobre a mesma palavra.
+
+O "?" **só aparece quando existe explicação**. Um "?" que abre e diz "sem
+definição" é pior que nenhum: ensina a não clicar.
+
+#### Dois defeitos silenciosos achados no caminho
+
+1. **Um documento inteiro estava mudo há dias.** O cabeçalho de `PC-E-VPS.md`
+   separava termo e definição com hífen, e o leitor espera dois pontos. Devolvia
+   zero termos, sem erro em lugar nenhum.
+2. **O `catch` do carregamento zerou os 95 termos que já tinham chegado.** O
+   redesenho estava dentro do mesmo `try`, lançou porque a tela ainda não tinha
+   dado nenhum, e o `catch` seguinte apagou tudo. Nenhum "?" aparecia, e a causa
+   parecia ser a leitura, que estava perfeita.
+
+**A trava guarda os dois:** o gate recusa `ajuda('termo')` que cite palavra sem
+explicação, e recusa documento que declare `termos:` e entregue zero.
+
+### CC-227 ✅ 20/08 — a máquina em TODO quadro, e a regra que garante isso
+
+> "por que você não está colocando a regra que eu pedi pra colocar em todos os
+> blocos que tiver projetos ou agente, aonde esse projeto está? (…) está falando
+> um projeto de control center, não está falando que está na VPS, não está
+> falando que está no desktop, não está falando nada. Sendo que eu tinha pedido
+> pra ser uma regra de todos os quadros. (…) cria uma regra também pra
+> certificar de que esse campo vai estar sempre incluso."
+
+**Segunda vez que ele pede.** Na primeira (CC-219) implementei com duas
+economias que inventei sozinho: a etiqueta sumia quando o cockpit conhecia uma
+máquina só, e nos cartões de projeto ela só aparecia quando o projeto estava em
+mais de uma. As duas economias custavam justamente o que o quadro existe para
+responder. As duas saíram.
+
+**Onze quadros ganharam o carimbo**, achados pela varredura e não a olho: a
+pendência humana (o cartão do print dele), a lista de pendências, o cartão de
+projeto, o cabeçalho da tela Trabalho, a fila de mensagens perdidas, a lista de
+projetos do framework, a entrevista, o nascimento de projeto, as rotinas, as
+tarefas e o tempo por projeto.
+
+**A pendência humana não sabia de onde vinha**, e foi a única que precisou de
+mudança no servidor. As três fontes tratam diferente: a de agente carrega a
+máquina da sessão (que viaja carimbada na federação), e as de lista e roadmap
+recebem a máquina de quem monta a resposta. Sem isso, uma pendência lida pela
+VPS apareceria sem dono.
+
+**A trava que ele pediu:** o gate recusa qualquer trecho que imprima o nome do
+projeto sem uma etiqueta de máquina por perto, e recusa o retorno da exceção que
+escondia a etiqueta. O `>` antes da expressão é o que separa texto na tela de
+valor de atributo, senão a regra acusaria o nome do projeto indo para dentro de
+um botão.
+
+#### Quebrei a página inteira escrevendo isto, e o gate deixou passar
+
+Um comentário HTML **dentro** de um template do JavaScript trazia uma crase, que
+fecha a string. A tela ficou em "Carregando estado do cockpit..." para sempre,
+com zero agentes e **nenhum erro visível**: erro de sintaxe acontece antes de
+qualquer código rodar, então nem o capturador de erro da página funciona.
+
+O gate verifica a sintaxe do `ui.html` desde sempre, e não verificava a do
+painel novo. **É o terceiro buraco do mesmo tipo achado hoje** (largura de tela
+no CC-222, estilo dos gráficos no CC-224, sintaxe agora), e os três têm a mesma
+raiz: o painel novo herdou o código e não herdou as redes.
+
+Junto, um segundo erro meu no mesmo trabalho: usei uma variável fora do escopo
+na rota das pendências, e ela passou a derrubar a conexão. A tela dizia "não
+consegui ler as suas pendências", que é exatamente o que ela devia dizer.
+
+### CC-226 ✅ 20/08 — o PC desligado não é a primeira urgência dele
+
+> "uma dúvida sincera: pq a primeira coisa que precisa de mim é o meu pc
+> desktop desligado?"
+
+**Correção de um julgamento meu, feito no CC-218 poucas horas antes.** Ao tirar
+as sessões congeladas da faixa de urgência, coloquei no lugar delas um cartão
+"SEM CONTATO", e o pus em PRIMEIRO lugar, argumentando que saber da queda vale
+mais que o resto. Ele desligou o PC de propósito.
+
+**O painel não sabe distinguir "desligou" de "caiu".** Sem essa distinção, ele
+não pode chamar aquilo de urgência, e a faixa se chama O QUE PRECISA DA SUA
+ATENÇÃO. Colocar ali o que ele mesmo fez de propósito é a tela cobrando uma ação
+que não existe, que é a mesma família de defeito do próprio CC-218.
+
+A informação continua em dois lugares onde ela é contexto e não cobrança: o topo
+(`3 AGENTES +14 sem contato`, mais a pastilha da máquina) e a faixa SEM CONTATO
+da tela de agentes, que lista as sessões uma a uma.
+
+A função do cartão foi removida junto: código que ninguém chama parece peça viva
+para quem chega depois.
+
+Depois da mudança, a primeira coisa da tela é uma pendência de verdade, e o
+contador diz 2, que bate com as duas pendências abertas e nenhum agente vivo
+esperando.
+
+### CC-225 ✅ 20/08 — dois avisos liam um arquivo congelado e cobravam trabalho entregue
+
+Achado pelo sintoma: um aviso do encerramento insistia em cobrar duas tarefas
+escritas em telegrama que **já tinham sido reescritas horas antes**. O painel
+mostrava a lista nova; o aviso, a velha.
+
+**Havia dois arquivos com o mesmo nome, em lugares diferentes, discordando.**
+Desde o CC-157 o reporte de sessão interativa mora na casa (`~/.claude`) ou no
+abrigo, para onde ele cai quando o sandbox tranca a casa. `gravarMetaSessao` e
+`lerMetaSessao` sabem disso; `lerMetaSessao` devolve o mais novo dos dois. Dois
+hooks montavam o caminho da CASA na mão, e liam um arquivo que ninguém escrevia
+mais desde que a gravação passou a cair no abrigo.
+
+O estrago é pior que o incômodo: **cobrança sobre trabalho já entregue é a forma
+mais rápida de um aviso virar barulho ignorado.**
+
+Junto, um furo de isolamento na mesma família: o abrigo escapava por
+`XDG_DATA_HOME` mesmo com `CC_HOME` definido, então um teste com casa temporária
+poderia escrever no reporte de verdade dele. `CC_HOME` agora vence, e o gate
+guarda isso. É a mesma família do apagamento das notas em 2026-08-09.
+
+### CC-224 ✅ 20/08 — os gráficos não desenhavam, e não era coisa de telefone
+
+Print dele, da tela Gráficos: cartões mostrando só rótulos empilhados
+(`claude-opus-5 / claude-fable-5 / 0 $2.7k`), sem desenho nenhum.
+
+**O motor estava certo o tempo todo.** `src/graficos.js` monta as barras em HTML
+puro, e a altura delas mora no CSS da página. Esse bloco existe no painel antigo
+desde sempre e **nunca foi copiado para o novo**: `.g-barras` nascia com altura
+zero, e sobrava o texto solto ao redor. As sete classes estavam no antigo e
+nenhuma no novo.
+
+**A rosca aparecia**, e foi ela que fez o defeito parecer coisa de telefone: é a
+única forma que carrega o próprio tamanho dentro do SVG. Estava quebrado em
+todas as telas, inclusive no PC.
+
+Junto veio o `.g-erro`, o aviso do gráfico que não pode ser montado ("defina a
+taxa por hora"). Sem estilo, ele saía do tamanho do texto comum e parecia um
+parágrafo perdido entre os desenhos. Hoje é âmbar e pequeno.
+
+**A rede olha a família inteira**, não este caso: o gate exige que toda classe
+escrita pelo motor de gráficos tenha estilo no painel novo. São 17, e é o que
+pega a próxima forma que nascer sem desenho.
+
+**Uma pista falsa no caminho, que vale registrar:** o arquivo do motor é
+detectado como binário pelo sistema, e `grep` sem `-a` devolve vazio nele. São
+seis bytes nulos, usados de propósito como separador de chave composta
+(`k + '\0' + s`). Parecia corrupção e não era.
+
+### CC-223 ✅ 20/08 — cada tela do painel tem endereço próprio
+
+> "será que não eh legal cada área do painel ter seu próprio endereço? pq se eu
+> tô no painel e clico em um outro painel e decido clicar em voltar ele não
+> volta pra anterior, e tb se eu atualizar a página ele volta pra aba inicial"
+
+Os dois sintomas tinham a mesma causa: a tela aberta só existia como classe no
+DOM. O navegador não tinha o que empilhar no histórico nem o que ler ao
+recarregar, então voltar saía do painel inteiro e recarregar devolvia o Cockpit.
+
+**É `#hash`, não caminho de URL, e a escolha tem motivo.** O painel é servido em
+três lugares: na raiz, embutido em `/painel/:id/` e atrás de duas camadas de
+proxy no acesso remoto. Endereço com caminho exigiria que cada camada soubesse
+devolver a página; o hash nunca chega ao servidor e funciona igual nos três.
+
+O agente aberto entrou no endereço junto (`#agentes/c4e8a125`), que é o caso que
+ele descreveu: entrar num e querer voltar. E o botão de voltar DA TELA passou a
+usar o histórico do navegador, senão os dois botões discordariam.
+
+**Provado num Chrome de verdade, com o fluxo ao vivo ligado**, em nove casos:
+`npm run test:endereco`. Sem `?static=1` de propósito, pela armadilha já
+registrada: com o fluxo desligado, teste de interação passa sempre e não prova
+nada. Dois casos existem para o que não é feliz: o voltar da tela concordando
+com o do aparelho, e endereço inventado caindo no Cockpit em vez de tela branca.
+
+Junto: `chromePath()` passou a achar o Chrome que o Playwright baixou e a
+respeitar `CC_CHROME`. Sem isso, nenhuma prova de tela rodava nesta VPS, porque
+aqui não existe Chrome instalado no sistema.
+
+### CC-222 ✅ 20/08 — a tela Trabalho quebrava no telefone, e o gate não olhava para ela
+
+Print dele, do telefone, com a tela Trabalho em três colunas dentro de 390px:
+cada palavra numa linha, texto cortado ao meio, cartão mais largo que a tela.
+
+**A causa é uma armadilha que já estava escrita no `CLAUDE.md` desde 16/08:**
+`style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))"` na
+marcação. Estilo inline vence media query e container query, então a tela nunca
+colapsa. Ela voltou num bloco novo mesmo com a regra escrita.
+
+Junto vieram dois defeitos menores, medidos e não adivinhados: o invólucro tinha
+24px de recheio de cada lado (o cartão ficava com 310 numa tela de 390) e o
+cabeçalho não quebrava linha.
+
+**Por que o gate passou.** O teste de tela estreita (`test-estreito.mjs`) mede
+`src/ui.html`, o painel ANTIGO. O painel novo, que é o que ele usa desde 20/08,
+não tinha verificação de largura nenhuma.
+
+**O que ficou no lugar, e é o que importa:** o gate agora recusa grade de várias
+colunas escrita em `style=` no painel novo, e exige que cada grade conhecida
+tenha regra de tela estreita. É uma regra de TEXTO, roda em milissegundos e sem
+navegador.
+
+Ao ligar a rede, ela pegou **mais três casos além do print dele**: a tela de
+projetos (`1.2fr 0.8fr 1fr` com altura de tela cheia) e o índice do construtor
+de gráficos (`1fr 1fr`), os dois consertados junto. Os outros quinze casos do
+arquivo usam `repeat(auto-fill, minmax(220px, 1fr))`, que se ajusta sozinho, e
+foram examinados um a um antes de a regra deixá-los passar.
+
+**Uma armadilha nova, do lado da prova:** a captura de página inteira
+(`captureBeyondViewport`) desenha caixa de rolagem horizontal na posição errada.
+A tela pareceu abrir na terceira coluna, com `scrollLeft` medido em ZERO. Julgar
+layout de telefone pede captura só do que cabe na tela, senão a imagem inventa
+um defeito que não existe.
+
+### CC-220 ✅ 20/08 — no cartão do agente, o projeto e a máquina vêm antes da tarefa
+
+> "algumas coisas simplesmente não definem qual é o projeto da ação do agente
+> (…) o que fica primeiro e não o nome do projeto. Eu acho que o principal em
+> qualquer card é eu identificar qual é o projeto e aonde ele está, se é
+> desktop, VPS, isso é o mais importante de todos. Depois eu queria que ficasse
+> as outras informações."
+
+Hoje o título de cada linha é o assunto, e o projeto aparece na linha de baixo
+misturado com frente, rota e estado. A ordem que ele pediu é: **projeto e
+máquina primeiro, tarefa depois.**
+
+**Feito na lista de agentes e na tela de um agente**, nesta ordem de leitura:
+
+1. `proj_controlcenter` com a etiqueta da máquina ao lado, como título
+2. a tarefa, no corpo
+3. frente e estado, apagados, por último
+
+**Uma regra mudou junto.** A etiqueta de máquina sumia quando o cockpit só
+conhecia uma, para não repetir o mesmo nome em toda linha (CC-219). No cartão do
+agente ela passa a aparecer SEMPRE, porque é a pergunta que o cartão existe para
+responder: *"aonde ele está, se é desktop, VPS, isso é o mais importante de
+todos"*. A economia continua valendo nos cartões de projeto.
+
+Provado em 390px nas duas telas, com o painel reiniciado.
+
+### CC-221 ✅ 20/08 — uma descrição melhor do que está sendo feito, escrita pelo agente
+
+> "eu queria na verdade que a gente pegasse essas informações que estão sendo
+> feitas e colocasse uma descrição melhor do que o que eu enviei. Eu não sei se
+> tem como (…) teria que dar mais trabalho pra IA fazer resumos do que está
+> sendo feito, né? Mas do jeito que está, só o que eu enviei, é legal, mas
+> muitas vezes eu começo divagando, então às vezes me confunde."
+
+**A escolha foi dele**, entre três caminhos com custos diferentes: o próprio
+agente escrevendo, um modelo gratuito da VPS resumindo, ou corte de preâmbulo
+por regra. Escolheu o agente, e devolveu a pergunta que decide tudo:
+
+> "pode ser o próprio agente, como recomendado, mas como vamos garantir que o
+> agente sempre faça isso?"
+
+#### A medição que responde por que a versão anterior não garantia
+
+Dos 16 agentes no painel em 20/08:
+
+| quem escreveu o assunto | quantos |
+|---|---|
+| o agente, com as próprias palavras | **2** |
+| ninguém: era o texto cru dele | 10 |
+| ninguém, e nem texto havia | 4 |
+
+Entre os dez, assuntos como `comite`, `comita` e um caminho de arquivo do
+Windows. **A instrução escrita estava lá desde 16/08 e não segurou** — o mesmo
+padrão que ele já tinha nomeado: regra escrita não prende, gate prende.
+
+Havia dois buracos, e o segundo é invisível:
+
+1. **A cobrança só olhava se o campo existia.** E o painel preenche sozinho com
+   o último pedido dele quando está vazio, então um assunto que ninguém escreveu
+   passava dos dois lados.
+2. **A tela não distinguia.** O texto preenchido automaticamente aparecia
+   idêntico a um resumo escrito. Sem isso visível, catorze agentes passaram sem
+   ninguém notar.
+
+#### O que garante agora
+
+- **O assunto ganhou hora**, gravada fora do que o agente manda (ele reescreve o
+  bloco inteiro a cada anotação, e carimbo dentro do texto seria apagado na
+  chamada seguinte, como já acontecia com as tarefas).
+- **A cobrança olha mais duas coisas, as duas medíveis sem IA nenhuma:** se o
+  assunto é o começo do que ELE digitou (eco, não resumo), e se foi carimbado
+  antes do último pedido dele (descreve o trabalho anterior). Sem carimbo não
+  cobra idade: cobrar no escuro seria ruído, e o carimbo nasce sozinho na
+  próxima anotação.
+- **A tela diz de quem é o texto:** `↑ o que você pediu, o agente não resumiu`.
+
+Cinco casos novos no teste do hook, todos passando, incluindo o assunto próprio
+que tem que PASSAR e o "sem carimbo não cobra". Provado na tela em 390px: a
+sessão que anotou aparece limpa, as catorze que não anotaram aparecem marcadas.
+
+### CC-218 ✅ 20/08 — máquina desligada não pode aparecer como trabalho em andamento
+
+> "ele está mostrando ali projetos que estavam no PC. E eu já desliguei o PC,
+> não tem mais nada rodando. Então ele está com algum problema ali pra
+> identificar projetos em andamento."
+
+**Medido às 19h33 de 20/08, antes de tocar em código.** A rota `/api/jobs`
+devolvia 16 agentes, e 14 deles vinham da máquina `ALIENWARE-LIPE` com
+`origem.semContato = true` e `origem.idadeMs` de 37 minutos. Entre eles, um
+`working` e dois `waiting` — o painel anunciava um agente trabalhando e dois
+esperando resposta dele numa máquina que estava desligada.
+
+**O dado já estava certo, a tela é que não olhava.** `mesclar()` em
+`src/federacao.mjs` carimba `origem` em cada job desde o CC-184, com
+`semContato` decidido por `SEM_CONTATO_MS` (5 minutos). Nenhum dos três
+renderizadores do painel novo (`renderViewAgora`, `renderSprints`,
+`renderAgentes`) lia esse campo. O último pacote do PC congela no disco e cada
+job dele fica posando do último estado para sempre.
+
+**O que mudou, e onde.** Tudo em `src/ui_v2.html`, sem tocar no servidor: o dado
+já vinha certo.
+
+| onde | antes | agora |
+|---|---|---|
+| topo | `16 AGENTES` | `2 AGENTES +14 sem contato` |
+| faixa de atenção | 2 sessões da máquina morta cobrando resposta | um cartão `SEM CONTATO / ALIENWARE-LIPE`, e elas fora da conta de "precisam de você" |
+| cartão de projeto | `andando sozinho`, ponto verde | `sem contato há 1h00`, ponto cinza |
+| tela de agentes | `TRABALHANDO 1` com sessão de PC desligado | faixa `SEM CONTATO 14`, e `TRABALHANDO` só com quem dá sinal |
+| detalhe do agente | o estado congelado sem aviso | linha dizendo que aquilo é o último estado conhecido |
+
+**Provado na tela**, painel reiniciado e captura validada em 390px de verdade
+(`clientWidth` conferido antes de salvar). O gate segue verde, 100 checks.
+
+**A regra que fica:** último estado conhecido não é estado atual. Todo campo
+que atravessa a federação congela quando a outra máquina cala, e exibir isso
+sem carimbo é a tela afirmando o passado no presente.
+
+### CC-219 ✅ 20/08 — cada sessão diz em qual máquina está rodando
+
+> "ele não está discernindo de forma bem clara e específica, que é um projeto
+> que está no desktop. Ele coloca como se fosse um projeto meu geral. É ideal
+> colocar em qual sessão aquele projeto estava rodando. Mesmo que o projeto não
+> seja no desktop em si, que eu rode ele na VPS também em paralelo, é legal
+> saber que naquela sessão específica, ele estava rodando no desktop."
+
+O carimbo é **por sessão, nunca por projeto**: o mesmo projeto roda nas duas
+máquinas ao mesmo tempo, e é isso que ele quer distinguir. `proj_controlcenter`
+hoje tem uma sessão em cada uma, e a tela mostra as duas sob o mesmo cartão sem
+dizer qual é qual.
+
+**O que mudou.** Cada sessão ganhou a etiqueta da máquina, com duas regras que
+existem para o telefone:
+
+1. **Some quando o cockpit só conhece uma máquina.** Carimbar todas as linhas
+   com o mesmo nome é ruído puro.
+2. **No cartão de projeto, aparece uma vez no cabeçalho quando todas as sessões
+   são da mesma máquina, e por linha quando são de máquinas diferentes.** A
+   primeira versão repetia o nome em cada uma das quatro linhas, e em 390px isso
+   comia a largura do assunto. O caso que ele quer distinguir é justamente o
+   misturado, e é só nele que a etiqueta se repete.
+
+**Provado com o caso real:** `proj_controlcenter` rodando nos dois aparelhos ao
+mesmo tempo. O cartão diz `2 agentes · ANDANDO SOZINHO · EM 2 MÁQUINAS`, com uma
+linha `VPS / Trabalhando` e outra `⚠ ALIENWARE-LIPE / Sem contato há 1h00`.
+
 ## ▶ Um cockpit só, com todos os aparelhos dentro
 
 Aberta em 19/08, à noite, com as palavras dele:
@@ -3035,3 +3520,4 @@ Em 16/08 saíram 37 itens, com o texto integral preservado:
 - [2026-08-17](diario/2026-08-17.md) — CC-109, CC-111, CC-113 a CC-123, CC-125 a CC-132, CC-139
 - [2026-08-18](diario/2026-08-18.md) — CC-124, CC-133 a CC-137, CC-143 a CC-154 (texto ainda aqui, poda pendente)
 - [2026-08-19](diario/2026-08-19.md) — CC-138 (decidido), CC-140, CC-101, CC-157, CC-158 (texto ainda aqui, poda pendente)
+- [2026-08-21](diario/2026-08-21.md) — CC-218 a CC-231: os nove apontamentos dele no telefone, o "?" que explica cada tela, e as quatro redes que o painel novo não tinha herdado

@@ -238,6 +238,24 @@ export function abrirNavegador(url) {
  * Só o `test-ui.mjs` usa: o painel em si não depende de navegador nenhum.
  */
 export function chromePath() {
+  /* `CC_CHROME` vem primeiro por um motivo medido: nesta VPS não existe Chrome
+     instalado no sistema, e a única cópia é a que o Playwright baixou dentro de
+     `~/.cache/ms-playwright`. Sem a variável e sem esse palpite, toda prova de
+     tela ficava presa na máquina do Felipe. */
+  if (process.env.CC_CHROME && fs.existsSync(process.env.CC_CHROME)) return process.env.CC_CHROME
+  const doPlaywright = () => {
+    const raiz = path.join(os.homedir(), '.cache', 'ms-playwright')
+    try {
+      for (const d of fs.readdirSync(raiz)) {
+        if (!d.startsWith('chromium-')) continue
+        for (const sub of ['chrome-linux64/chrome', 'chrome-linux/chrome', 'chrome-mac/Chromium.app/Contents/MacOS/Chromium']) {
+          const alvo = path.join(raiz, d, sub)
+          if (fs.existsSync(alvo)) return alvo
+        }
+      }
+    } catch { /* sem Playwright nesta máquina, segue para os candidatos do sistema */ }
+    return null
+  }
   const candidatos = ehWindows
     ? [
         path.join(process.env['PROGRAMFILES'] || 'C:\\Program Files', 'Google\\Chrome\\Application\\chrome.exe'),
@@ -246,7 +264,7 @@ export function chromePath() {
     : ehMac
       ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome']
       : ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/snap/bin/chromium']
-  return candidatos.find((p) => fs.existsSync(p)) || null
+  return candidatos.find((p) => fs.existsSync(p)) || doPlaywright()
 }
 
 /* ------------------------------ pastas ----------------------------- */

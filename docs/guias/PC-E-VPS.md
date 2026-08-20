@@ -5,9 +5,9 @@ atualizado: 2026-08-19
 estado: escrito na VPS, para a sessão do PC ler ANTES de mexer
 resumo: O que mudou na VPS entre 13 e 19/08, e o que não pode ser "consertado" no PC sem quebrar a VPS. Existe porque o PC vai abrir este repositório achando que está corrigindo, e vai desfazer coisa medida.
 termos:
-  casa - a pasta ~/.claude, onde o Claude Code guarda estado
-  abrigo - o lugar alternativo onde a sessão grava quando a casa está trancada
-  sandbox - a caixa isolada em que o Claude Code roda comandos
+  casa: a pasta ~/.claude, onde o Claude Code guarda estado
+  abrigo: o lugar alternativo onde a sessão grava quando a casa está trancada
+  sandbox: a caixa isolada em que o Claude Code roda comandos
 ---
 
 # PC e VPS: o que não desfazer

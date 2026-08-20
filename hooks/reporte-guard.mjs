@@ -99,6 +99,54 @@ if (!String(meta.subject || '').trim()) faltam.push('`subject` — o problema em
 if (!String(meta.frente || '').trim()) faltam.push('`frente` — a seção do docs/ROADMAP.md onde este trabalho entra')
 if (!(meta.todos || []).length) faltam.push('`todos` — a lista do que esta tarefa tem que fechar')
 
+/* ===================== CC-221: existir não basta, tem que ser verdade =====================
+ *
+ * Pergunta dele, ao escolher que o próprio agente escrevesse a descrição:
+ * *"mas como vamos garantir que o agente sempre faça isso?"*.
+ *
+ * A medição de 20/08 responde por que a versão anterior não garantia. Dos 16
+ * agentes no painel, DOIS tinham assunto escrito pelo agente. Dez mostravam o
+ * texto cru que ele digitou, incluindo "comite", "comita" e um caminho de
+ * arquivo do Windows. Quatro não tinham nada. O hook antigo só olhava se o
+ * campo existia, e o painel preenche sozinho com o último pedido dele quando
+ * está vazio: um assunto que ninguém escreveu passava nos dois lados.
+ *
+ * Então a cobrança olha mais duas coisas, e as duas são medíveis sem IA:
+ *
+ *  · **cópia**: o assunto é o começo do que ELE digitou. Não é resumo, é eco.
+ *  · **velho**: o assunto foi carimbado antes do último pedido dele. Ele pediu
+ *    outra coisa, o agente trabalhou nela, e o painel continua descrevendo a
+ *    anterior. Palavra dele sobre por que isso atrapalha: *"muitas vezes eu
+ *    começo divagando, então às vezes me confunde"*.
+ */
+const assunto = String(meta.subject || '').trim()
+if (assunto) {
+  const T = await import(urlDeModulo(AQUI, '../src/transcript.mjs')).catch(() => null)
+  const dele = T?.humanMessagesTail ? T.humanMessagesTail(arquivo) : []
+  const ultimo = dele.length ? dele[dele.length - 1] : null
+
+  const limpar = (t) => String(t || '').toLowerCase().replace(/[^\p{L}\p{N} ]/gu, '').replace(/\s+/g, ' ').trim()
+  const a = limpar(assunto)
+  const p = limpar(ultimo?.texto)
+  /* 24 letras de sobreposição no começo. Curto demais acusaria coincidência de
+     assunto legítimo ("commit" contra "commitar"), e longo demais deixaria
+     passar o eco de um pedido curto. */
+  const eco = a.length >= 12 && p.length >= 12
+    && (p.startsWith(a.slice(0, 24)) || a.startsWith(p.slice(0, 24)))
+  if (eco) {
+    faltam.push('`subject` — hoje ele é o começo do que ELE digitou, não um resumo do trabalho. Escreva com as SUAS palavras o problema que está sendo resolvido')
+  }
+
+  const carimbo = meta.subjectEm ? Date.parse(meta.subjectEm) : NaN
+  /* Sem carimbo, o assunto é de antes desta mudança existir: não dá para saber
+     a idade dele, e cobrar no escuro seria ruído. Ele se carimba sozinho na
+     próxima vez que o agente reescrever. */
+  if (!eco && Number.isFinite(carimbo) && ultimo && ultimo.em > carimbo) {
+    const min = Math.round((ultimo.em - carimbo) / 60000)
+    faltam.push(`\`subject\` — está mais velho que o último pedido dele (${min} min). O painel descreve o trabalho anterior. Reescreva para o que está sendo feito AGORA`)
+  }
+}
+
 if (!faltam.length) sair()
 
 console.error(

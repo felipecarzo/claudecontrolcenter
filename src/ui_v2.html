@@ -124,6 +124,69 @@
     .dot.amber { background-color: var(--amber); }
     .dot.red { background-color: var(--red); box-shadow: 0 0 8px var(--red); }
     .dot.yellow { background-color: var(--yellow); }
+    /* CC-218: a máquina parou de dar sinal, então o estado dela é DESCONHECIDO,
+       não "trabalhando". Cinza sem brilho é o único ponto que não afirma nada. */
+    .dot.mudo { background-color: var(--text-dim); box-shadow: none; }
+    /* CC-219: de qual máquina é esta SESSÃO. Por sessão, nunca por projeto: o
+       mesmo projeto roda nas duas ao mesmo tempo, e distinguir é o pedido. */
+    .maq { display: inline-flex; align-items: center; gap: 4px; flex: none; font-size: 10px;
+           line-height: 1; padding: 3px 6px; border-radius: 5px; white-space: nowrap;
+           border: 1px solid var(--border); color: var(--text-muted); background: var(--bg); }
+    .maq.fria { border-style: dashed; color: var(--text-dim); }
+    /* CC-228: o "?" que explica a palavra ao lado. Discreto por padrão, porque
+       ele fica ao lado de MUITA palavra: se chamasse atenção, a tela viraria um
+       campo de interrogações. Alvo de toque de 24px, que é o mínimo para o dedo
+       no telefone, mesmo o desenho tendo 15. */
+    .ajuda {
+      flex: none; width: 15px; height: 15px; min-width: 15px; padding: 0; margin: 0 0 0 1px;
+      border: 1px solid var(--border); border-radius: 50%; background: transparent;
+      color: var(--text-dim); font: 600 10px/1 system-ui, sans-serif; cursor: pointer;
+      position: relative; vertical-align: middle;
+    }
+    .ajuda::after { content: ''; position: absolute; inset: -5px; }
+    .ajuda:hover, .ajuda:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+    /* A folha aberta. Fica por cima de tudo, inclusive do cabeçalho grudado,
+       e no telefone ela nasce colada embaixo, que é onde o polegar alcança. */
+    /* CC-229: a folha é feita para LER, não para espiar. O texto passou de uma
+       linha para vários parágrafos com listas, então o desenho segue as regras
+       de leitura no telefone: corpo em 16px, entrelinha 1.65, medida de linha
+       limitada, e a barra de rolagem dentro da folha e não na página. */
+    .ajuda-fundo { position: fixed; inset: 0; background: rgba(0,0,0,.62); backdrop-filter: blur(2px);
+                   z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .ajuda-folha { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+                   max-width: 620px; width: 100%; max-height: 84vh; display: flex; flex-direction: column;
+                   box-shadow: 0 24px 60px rgba(0,0,0,.5); overflow: hidden; }
+    /* O cabeçalho fica parado enquanto o texto rola: em explicação longa, saber
+       de qual palavra se está falando é o que evita ler perdido. */
+    .ajuda-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+                 padding: 18px 20px 14px; border-bottom: 1px solid var(--border); flex: none; }
+    .ajuda-etiqueta { display: block; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+                      color: var(--accent); font-weight: 700; margin-bottom: 3px; }
+    .ajuda-folha h3 { font-size: 21px; line-height: 1.2; color: var(--text-main); overflow-wrap: anywhere; }
+    .ajuda-x { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+               background: transparent; color: var(--text-muted); font-size: 13px; cursor: pointer; }
+    .ajuda-x:hover { background: var(--card-hover); color: var(--text-main); }
+    .ajuda-corpo { padding: 16px 20px 4px; overflow-y: auto; overscroll-behavior: contain; }
+    .ajuda-corpo p { font-size: 16px; line-height: 1.65; color: var(--text-muted); margin-bottom: 12px;
+                     overflow-wrap: anywhere; }
+    .ajuda-corpo strong { color: var(--text-main); font-weight: 600; }
+    .ajuda-corpo code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px;
+                        background: rgba(255,255,255,.06); padding: 1px 5px; border-radius: 4px;
+                        color: var(--text-main); overflow-wrap: anywhere; }
+    .ajuda-corpo ul { margin: 0 0 14px; padding-left: 20px; }
+    .ajuda-corpo li { font-size: 15.5px; line-height: 1.6; color: var(--text-muted); margin-bottom: 7px; }
+    .ajuda-corpo blockquote { border-left: 2px solid var(--accent); padding-left: 12px; margin-bottom: 12px;
+                              font-size: 15px; line-height: 1.6; color: var(--text-dim); }
+    .ajuda-folha .fonte { flex: none; padding: 10px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+                          font-size: 11px; color: var(--text-dim); border-top: 1px solid var(--border); }
+    @media (max-width: 700px) {
+      /* Sobe de baixo, colada na borda: é onde o polegar alcança sem trocar a
+         mão de posição, e a barra de baixo do painel continua visível atrás. */
+      .ajuda-fundo { align-items: flex-end; padding: 0; }
+      .ajuda-folha { border-radius: 18px 18px 0 0; max-height: 82vh; border-bottom: 0; }
+      .ajuda-cab { padding: 16px 18px 12px; }
+      .ajuda-corpo { padding: 14px 18px 4px; }
+    }
     .icon-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     .icon-btn:hover { background: var(--card); color: var(--text-main); }
     .avatar { width: 36px; height: 36px; border-radius: 50%; background: #333; overflow: hidden; }
@@ -254,6 +317,65 @@
 
     /* BOTTOM ROW */
     .bottom-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    /* CC-222: o funil da tela Trabalho (o que só ele resolve · sprint · backlog).
+       Nasceu como `style="grid-template-columns: repeat(3, ...)"` direto na
+       marcação, e por isso NENHUMA regra de tela estreita alcançava: em 390px
+       cada coluna ficava com ~110px e o texto quebrava letra por letra. É a
+       mesma armadilha que já custou uma tela inteira em 16/08, e está escrita
+       no CLAUDE.md: layout de grade é CLASSE, nunca `style=`. */
+    .funil-colunas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); min-height: 200px; }
+    .funil-col { padding: 20px; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .funil-col:last-child { border-right: 0; }
+    /* As outras duas grades que a mesma rede pegou: a tela de projetos, com
+       três colunas de altura de tela, e o índice do construtor de gráficos. */
+    .fw-colunas { display: grid; grid-template-columns: 1.2fr 0.8fr 1fr; gap: 24px; height: calc(100vh - 140px); }
+    .idx-colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    /* ===== CC-224: o desenho dos gráficos =====
+     * Print dele, do telefone: os cartões da tela Gráficos mostravam só os
+     * rótulos empilhados, `claude-opus-5 / claude-fable-5 / 0 $2.7k`, sem
+     * desenho nenhum. O motor (`src/graficos.js`) sempre esteve certo: a rosca
+     * aparecia, e ela é a única forma que traz o próprio tamanho no SVG.
+     * As barras são HTML puro, e a altura delas mora no CSS. Este bloco existe
+     * no painel antigo desde sempre e NUNCA foi copiado para o novo, então
+     * `.g-barras` nascia com altura zero e sobrava o texto solto ao redor.
+     * Cores traduzidas para as variáveis do painel novo. */
+    .g-leg { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; color: var(--text-muted); font-size: 11px; }
+    .g-leg i, .g-lista i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+    .g-escala { display: flex; justify-content: space-between; color: var(--text-dim); font-size: 11.5px; margin-top: 6px; }
+    .g-barras { display: flex; align-items: flex-end; gap: 3px; height: 150px; }
+    .g-col { flex: 1; min-width: 3px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+    .g-pilha { display: flex; flex-direction: column-reverse; min-height: 2px; border-radius: 1px 1px 0 0; overflow: hidden; }
+    .g-pilha.neg { opacity: .55; }
+    .g-pilha > i { display: block; width: 100%; }
+    .g-rot { font-size: 11px; color: var(--text-dim); text-align: center; margin-top: 4px;
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Com muitas colunas o rótulo vira tinta ilegível: some, e fica a dica ao tocar. */
+    .g-barras > .g-col:nth-child(n+16) .g-rot, .g-barras:has(> :nth-child(16)) .g-rot { display: none; }
+    .g-svg { width: 100%; height: 200px; display: block; }
+    .g-rosca { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+    .g-rosca svg { width: 140px; height: 140px; flex: none; }
+    .g-lista { list-style: none; margin: 0; padding: 0; flex: 1 1 200px; min-width: 0; }
+    .g-lista li { display: flex; align-items: baseline; gap: 6px; padding: 2px 0; font-size: 12px; }
+    .g-nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+    .g-lista b { color: var(--text-main); font-weight: 600; }
+    .g-pct { color: var(--text-dim); width: 34px; text-align: right; }
+    .g-cal { display: flex; gap: 3px; align-items: flex-start; overflow-x: auto; padding-bottom: 2px; }
+    .g-sem { display: grid; grid-template-rows: repeat(7, 11px); gap: 3px; }
+    .g-cal i { display: block; width: 11px; height: 11px; border-radius: 2px; background: var(--border); }
+    .g-cal i.vazio { background: rgba(255, 255, 255, 0.04); }
+    .g-tab { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .g-tab th { text-align: left; color: var(--text-dim); font-weight: 400; padding: 3px 8px 6px 0; }
+    .g-tab td { padding: 3px 8px 3px 0; color: var(--text-muted); border-top: 1px solid var(--border); }
+    .g-tab .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .g-tab .forte { color: var(--text-main); }
+    .g-tab tr.off td { opacity: .55; }
+    /* O aviso do gráfico que não pode ser montado, como "defina a taxa por hora".
+       Sem estilo ele saía do tamanho do texto comum, e no print dele parecia
+       um parágrafo perdido no meio dos desenhos. */
+    .g-erro { color: var(--amber); font-size: 12px; padding: 10px 0; }
+    .trab-wrap { padding: 24px; max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; overflow-y: auto; height: 100%; }
+    .trab-cab { padding: 16px 24px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border);
+                display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
     
     .log-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
     .log-item { display: flex; gap: 16px; font-size: 13px; }
@@ -353,6 +475,39 @@
         margin: 0 -4px;
         scrollbar-width: none;
       }
+      /* CC-222: o funil vira as mesmas três cartas deslizantes. Empilhar as
+         três em coluna daria uma tela de rolagem sem fim, e a primeira delas
+         ("o que só você resolve") é a que ele abre para ver. Deslizando, as
+         três ocupam a altura de uma e ele passa com o polegar. */
+      .funil-colunas {
+        grid-auto-flow: column;
+        grid-template-columns: none;
+        grid-auto-columns: 88%;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+      }
+      .funil-colunas::-webkit-scrollbar { display: none; }
+      .funil-col { scroll-snap-align: start; padding: 16px; }
+      /* A tela de projetos empilha em vez de deslizar: a coluna do meio depende
+         da escolha feita na primeira, então lado a lado ela seria uma escolha
+         sem contexto. E a altura fixa de tela vira automática, senão as três
+         empilhadas ficam presas dentro de uma janela de uma tela só. */
+      .fw-colunas { grid-template-columns: minmax(0, 1fr); height: auto; gap: 16px; }
+      .idx-colunas { grid-template-columns: minmax(0, 1fr); }
+      /* Os 24px de recheio de cada lado comiam 48 dos 358 disponíveis, e o
+         cartão do projeto ficava com 310 numa tela de 390. A rolagem própria
+         também sai: no telefone quem rola é a página, e caixa que rola dentro
+         de caixa que rola é o que faz o dedo mover a coisa errada. */
+      /* CC-224: no telefone o gráfico ocupa menos altura, senão cada cartão
+         come a tela inteira e ele rola quatro dedos para ver o segundo. */
+      .g-barras { height: 110px; }
+      .g-svg { height: 150px; }
+      .g-rosca { gap: 12px; justify-content: center; }
+      .g-rosca svg { width: 116px; height: 116px; }
+      .trab-wrap { padding: 0; gap: 20px; height: auto; overflow-y: visible; }
+      .trab-cab { padding: 14px 16px; }
       .agora-grid::-webkit-scrollbar, .projetos-grid::-webkit-scrollbar { display: none; }
       .agora-grid > *, .projetos-grid > * { scroll-snap-align: start; }
       /* Cartão único não desliza: ele ocupa a largura toda, senão sobraria uma
@@ -593,7 +748,7 @@
             <div class="metric-item"><div class="metric-label"><span class="dot green"></span> Tarefas fechadas hoje</div><div class="metric-value green" id="resumo-concluidos">0</div></div>
           </div>
 
-          <h2 style="margin-top:24px;">CONSUMO</h2>
+          <h2 style="margin-top:24px;" data-explica="token">CONSUMO</h2>
           <div class="big-number"><span id="consumo-tokens">0</span> <span style="font-size:12px;font-weight:400;color:var(--text-muted);">tokens nos agentes vivos</span></div>
           <!-- CC-189: a linha de tendência VOLTOU, e agora é medida.
                A da maquete era uma curva desenhada à mão no HTML, igual todo
@@ -605,7 +760,7 @@
                Claude Code. -->
           <div id="consumo-uso"></div>
 
-          <h2 style="margin-top:32px;">TEMPO DE FOCO</h2>
+          <h2 style="margin-top:32px;" data-explica="tempo ativo">TEMPO DE FOCO</h2>
           <div style="display:flex;justify-content:space-between;align-items:flex-end;">
             <div class="big-number" id="foco-hoje">…</div>
             <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Hoje</div>
@@ -623,12 +778,11 @@
     <div id="view-agora" class="view-section">
       <div class="grid-container so-uma" style="max-width: 1200px; margin: 0 auto;">
         <div class="main-col">
-          <!-- O que mudou enquanto ele esteve fora. É a pergunta que ele faz
-               ao voltar depois de horas, e é uma marca explícita ("vi tudo"),
-               não um recorte de tempo fixo: sem isso, um projeto que mudou às
-               3 da manhã por outra máquina ficaria invisível. -->
-          <div id="dqo-caixa" style="margin-bottom:24px;"></div>
-
+          <!-- CC-231: a urgência vem PRIMEIRO nesta tela, e o histórico depois.
+               A tela se chama Agora e promete "pendências críticas aguardando
+               sua decisão"; abrir com 22 linhas de o-que-mudou empurrava a
+               promessa para fora da primeira tela do telefone, e o bloco de
+               histórico sozinho media 375 pixels de altura. -->
           <div class="section-header">
             <h2>PENDÊNCIAS E BLOQUEIOS</h2>
             <div style="font-size:12px;color:var(--text-muted);">Sua atenção é necessária para o projeto avançar.</div>
@@ -636,7 +790,13 @@
           <div class="agora-grid" id="page-agora-container" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px;">
             <!-- Renderizado via JS -->
           </div>
-          
+
+          <!-- O que mudou enquanto ele esteve fora. É a pergunta que ele faz
+               ao voltar depois de horas, e é uma marca explícita ("vi tudo"),
+               não um recorte de tempo fixo: sem isso, um projeto que mudou às
+               3 da manhã por outra máquina ficaria invisível. -->
+          <div id="dqo-caixa" style="margin-top:40px;"></div>
+
           <!-- O que só ele resolve: a lista onde o trabalho é DELE, e não da
                máquina. Estava só de leitura; ganhou anotar, marcar e remover,
                que é o que a tela do painel antigo já fazia. -->
@@ -712,7 +872,7 @@
         </div>
         <aside class="metrics-col">
           <div class="card">
-            <h2>QUEM É QUEM</h2>
+            <h2 data-explica="máquina">QUEM É QUEM</h2>
             <div id="esc-legenda"></div>
           </div>
         </aside>
@@ -749,7 +909,7 @@
             <p style="color:var(--text-muted);">lendo a configuração de máquinas…</p>
           </div>
           <div class="section-header">
-            <h2>ONDE ABRIR UMA SESSÃO</h2>
+            <h2 data-explica="agente">ONDE ABRIR UMA SESSÃO</h2>
             <span id="remoto-conta" style="font-size:12px;color:var(--text-muted);"></span>
           </div>
           <div id="remoto-fora"></div>
@@ -798,7 +958,7 @@
         </div>
         <aside class="metrics-col">
           <div class="card">
-            <h2>DE ONDE VÊM AS HORAS</h2>
+            <h2 data-explica="federação">DE ONDE VÊM AS HORAS</h2>
             <div class="metric-list" id="tempo-aparelhos"></div>
             <h2 style="margin-top:24px;">OS SETE DIAS</h2>
             <div class="bars-chart" id="tempo-semana"></div>
@@ -810,7 +970,7 @@
     <!-- VIEW: FRAMEWORK (PROJETOS) -->
     <div id="view-framework" class="view-section">
       <div style="padding: 24px; max-width: 1400px; margin: 0 auto;">
-        <div style="display: grid; grid-template-columns: 1.2fr 0.8fr 1fr; gap: 24px; height: calc(100vh - 140px);">
+        <div class="fw-colunas">
           
           <!-- Coluna 1: Projetos -->
           <div class="card" style="display: flex; flex-direction: column; overflow: hidden;">
@@ -1175,6 +1335,11 @@
           const targetId = item.getAttribute('data-target');
           if (!targetId) return;
 
+          /* CC-223: trocar de tela deixa marca no navegador. Vem ANTES do
+             resto para valer também quando o clique nasce do próprio endereço
+             (aí o hash já é este, e gravar é operação vazia). */
+          gravarEndereco(targetId);
+
           // Atualiza Menu
           document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
           item.classList.add('active');
@@ -1188,6 +1353,11 @@
           if(PAGE_METADATA[targetId]) {
             titleEl.innerText = PAGE_METADATA[targetId].title;
             subTitleEl.innerText = PAGE_METADATA[targetId].subtitle;
+            /* CC-230: toda tela explica a si mesma. O "?" fica no SUBTÍTULO e
+               não no título: no título ele competiria com o nome da tela, que é
+               a maior letra da página. O termo é o id da tela, então nenhuma
+               tela nova nasce sem explicação sem alguém notar. */
+            marcarAjudaDaTela(targetId);
           }
 
           // Esconde todas as views
@@ -1274,6 +1444,56 @@
       document.querySelector(`.nav-item[data-target="${id}"]`)?.click();
     }
 
+    /* ============ CC-223: cada tela tem endereço próprio ============
+     *
+     * Pedido dele, no telefone: *"se eu tô no painel e clico em um outro painel
+     * e decido clicar em voltar ele não volta pra anterior, e tb se eu atualizar
+     * a página ele volta pra aba inicial"*.
+     *
+     * Os dois sintomas têm a mesma causa: a tela aberta só existia como classe
+     * no DOM. O navegador não tinha o que empilhar no histórico nem o que ler
+     * ao recarregar, então o botão de voltar saía do painel inteiro e o F5
+     * devolvia o Cockpit.
+     *
+     * **É `#hash`, não caminho de URL, e a escolha não é estilo.** O painel é
+     * servido em mais de um lugar: na raiz, embutido em `/painel/:id/`, e
+     * atrás de duas camadas de proxy no acesso remoto. Endereço com caminho
+     * (`/agentes`) exigiria que cada uma dessas camadas soubesse devolver a
+     * página; o hash nunca chega ao servidor, e por isso funciona igual nos
+     * três. Recarregar em `/painel/x/#agentes` continua servindo o painel.
+     *
+     * O endereço guarda também o agente aberto (`#agentes/c4e8a125`), que é
+     * justamente o caso que ele descreveu: entrar num e querer voltar.
+     */
+    const TELA_PADRAO = 'view-cockpit';
+    const nomeDaTela = (id) => String(id || '').replace(/^view-/, '');
+    const telaDoNome = (nome) => (nome && document.querySelector(`.nav-item[data-target="view-${nome}"]`)
+      ? `view-${nome}` : null);
+
+    /* Grava só quando MUDA. Escrever o mesmo hash de novo não dispara evento,
+       mas empilharia uma entrada repetida no histórico em alguns navegadores,
+       e aí um toque em voltar não sairia do lugar. */
+    function gravarEndereco(targetId, agente = null) {
+      const novo = '#' + nomeDaTela(targetId) + (agente ? '/' + agente : '');
+      if (location.hash !== novo) location.hash = novo;
+    }
+
+    /* Lê o endereço e leva a tela até ele. Nunca grava: quem grava é o clique,
+       senão as duas pontas ficariam se chamando em círculo. A comparação com o
+       que já está na tela é o que corta o laço. */
+    function aplicarEndereco() {
+      const [nome, agente] = location.hash.replace(/^#/, '').split('/');
+      const alvo = telaDoNome(nome) || TELA_PADRAO;
+      if (document.querySelector('.view-section.active')?.id !== alvo) {
+        document.querySelector(`.nav-item[data-target="${alvo}"]`)?.click();
+      }
+      if (alvo === 'view-agentes') {
+        const querido = agente || null;
+        if (agSelecionado !== querido) { agSelecionado = querido; renderAgentes(); }
+      }
+    }
+    window.addEventListener('hashchange', aplicarEndereco);
+
     /* CC-181: a gaveta do telefone é a barra lateral clonada, não reescrita.
        Clonar em vez de listar à mão garante que uma tela nova apareça nos dois
        lugares sem ninguém lembrar de somar. */
@@ -1322,10 +1542,27 @@
       const el = document.getElementById('agora-container');
       const countEl = document.getElementById('agora-count-text');
 
-      const esperando = DATA.agentes.filter(a => a.status === 'waiting')
+      /* CC-218: quem veio de máquina calada não espera decisão dele. O status
+         é o do instante em que a máquina parou, e ele não tem como responder. */
+      const esperando = DATA.agentes.filter(a => a.status === 'waiting' && !semContato(a))
         .sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
       const items = [];
 
+      /* CC-226: a máquina calada NÃO entra aqui, e a correção é dele.
+       *
+       * No CC-218 eu pus o aviso em primeiro lugar nesta faixa, com o argumento
+       * de que saber da queda vale mais que o resto. Ele abriu o painel e
+       * perguntou: *"uma dúvida sincera: pq a primeira coisa que precisa de mim
+       * é o meu pc desktop desligado?"*.
+       *
+       * Ele tinha desligado o PC de propósito. **O painel não sabe distinguir
+       * "desligou" de "caiu", então não pode chamar isso de urgência**, e esta
+       * faixa se chama O QUE PRECISA DA SUA ATENÇÃO. Colocar aqui o que ele
+       * mesmo fez de propósito é a tela cobrando dele uma ação que não existe.
+       *
+       * A informação continua em dois lugares onde ela é contexto e não
+       * cobrança: o topo (`+14 sem contato`, e a pastilha da máquina) e a faixa
+       * SEM CONTATO da tela de agentes, que lista as sessões uma a uma. */
       esperando.forEach(a => {
         const p = porQueEspera(a);
         items.push(`
@@ -1334,7 +1571,7 @@
             <div class="icon-box ${p.cor}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
             <div>
               <div class="attention-title">${p.rotulo}</div>
-              <h3>${esc(a.project || '?')}${a.frente ? ' / ' + esc(a.frente) : ''}</h3>
+              <h3 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${esc(a.project || '?')}${a.frente ? ' / ' + esc(a.frente) : ''} ${selo(a)}</h3>
             </div>
           </div>
           <p title="${esc(a.subject || '')}">${esc(a.subject || p.frase)}</p>
@@ -1354,7 +1591,14 @@
             <div class="icon-box red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
             <div>
               <div class="attention-title">SÓ VOCÊ RESOLVE</div>
-              <h3>${esc(m.projeto || 'geral')}${m.frente ? ' / ' + esc(m.frente) : ''}</h3>
+              <!-- CC-227: o quadro diz o projeto E onde ele está. Era este
+                   cartão, dizendo só "proj_controlcenter / CC-60", que ele
+                   apontou como não falando nada.
+                   ATENÇÃO: nada de crase aqui dentro. Este comentário mora
+                   DENTRO de um template do JavaScript, e a crase fecha a
+                   string: foi assim que a página inteira parou de carregar,
+                   sem erro visível na tela, só "Carregando..." para sempre. -->
+              <h3 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${esc(m.projeto || 'geral')}${m.frente ? ' / ' + esc(m.frente) : ''} ${seloDe(m.maquina, { frio: m.semContato })}</h3>
             </div>
           </div>
           <p>${esc(m.texto)}</p>
@@ -1364,16 +1608,19 @@
         </div>`);
       });
 
+      /* Tudo o que sobrou nesta lista pede ação dele de verdade: o aviso de
+         máquina calada saiu da faixa no CC-226. */
+      const pedem = items.length;
       if (items.length === 0) {
         pintar(el, `<div class="card" style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 40px;">Nenhuma pendência crítica agora.</div>`);
         countEl.innerText = 'nada espera você';
       } else {
         pintar(el, items.slice(0, 3).join(''));
-        countEl.innerText = `${items.length} precisam de você`;
+        countEl.innerText = pedem ? `${pedem} precisam de você` : 'nada espera você';
       }
 
-      document.getElementById('stat-meu-count').innerText = items.length;
-      document.getElementById('resumo-meu').innerText = items.length;
+      document.getElementById('stat-meu-count').innerText = pedem;
+      document.getElementById('resumo-meu').innerText = pedem;
     }
 
     /* PROJETOS: um cartão por projeto com agente vivo, os agentes dentro com
@@ -1381,7 +1628,249 @@
        fechadas sobre tarefas totais, nunca número sorteado). Ordenado por
        urgência: quem tem gente esperando vem primeiro. */
     const COR_STATUS = { waiting: 'amber', failed: 'red', working: 'green', idle: 'yellow', done: 'green' };
+
+    /* ============ CC-218 e CC-219: de qual máquina, e se dá para acreditar ============
+     *
+     * Apontado por ele em 20/08, olhando no telefone: *"ele está mostrando ali
+     * projetos que estavam no PC. E eu já desliguei o PC, não tem mais nada
+     * rodando"*. Eram 14 sessões da `ALIENWARE-LIPE` posando de vivas, uma
+     * delas TRABALHANDO e duas ESPERANDO RESPOSTA, 37 minutos depois de a
+     * máquina apagar.
+     *
+     * O dado nunca esteve errado. `mesclar()` em `src/federacao.mjs` carimba
+     * `origem` em cada job desde o CC-184, com `semContato` quando o último
+     * pacote passou de `SEM_CONTATO_MS` (5 minutos). A tela é que não lia.
+     *
+     * A regra que nasce daqui vale para qualquer campo vindo de fora: **último
+     * estado conhecido não é estado atual.** Quando a máquina cala, o pacote
+     * dela congela no disco e cada job continua devolvendo o status do instante
+     * em que ela parou. Exibir isso sem carimbo é a tela afirmando o passado no
+     * presente.
+     */
+    const semContato = (j) => !!j.origem?.semContato;
+    const nomeMaquina = (j) => j.origem?.nome || j.origem?.id || null;
+
+    /* Há quanto tempo esta máquina não dá sinal. `idadeMs` é medido na leitura
+       do pacote, do lado de cá, então não depende do relógio da outra. */
+    const mudoHa = (j) => age(j.origem?.idadeMs || 0);
+
+    /* Quantas máquinas o cockpit enxerga agora. Sai dos próprios agentes, e não
+       de uma rota nova: o carimbo de origem já vem em cada um. */
+    let CONHECIDAS = new Set();
+    function recontarMaquinas() {
+      CONHECIDAS = new Set((DATA.agentes || []).map(nomeMaquina).filter(Boolean));
+    }
+
+    /* ============ CC-227: a etiqueta da máquina vale em TODO quadro ============
+     *
+     * Ele já tinha pedido isso no CC-219, e eu enfraqueci a regra em dois
+     * lugares por conta própria: a etiqueta sumia quando o cockpit só conhecia
+     * uma máquina, e nos cartões de projeto ela só aparecia quando o projeto
+     * estava em mais de uma. Ele abriu o painel e cobrou:
+     *
+     * > "por que você não está colocando a regra que eu pediu pra colocar em
+     * > todos os blocos que tiver projetos ou agente, aonde esse projeto está?
+     * > (…) está falando um projeto de control center, não está falando que
+     * > está na VPS, não está falando que está no desktop, não está falando
+     * > nada. Sendo que eu tinha pedido pra ser uma regra de todos os quadros."
+     *
+     * A economia de tinta que eu inventei custava justamente o que o quadro
+     * existe para responder. Agora não há exceção, e o gate guarda isso.
+     */
+    function seloDe(nome, { frio = false, ha = null } = {}) {
+      if (!nome) return '';
+      const dica = frio ? `sem contato com ${nome}${ha ? ` há ${ha}` : ''}` : `está em ${nome}`;
+      return `<span class="maq${frio ? ' fria' : ''}" title="${esc(dica)}">${frio ? '⚠ ' : ''}${esc(nome)}</span>`;
+    }
+
+    /* A etiqueta de uma SESSÃO. Sem exceção: se a sessão tem máquina, ela
+       aparece, mesmo que todas as sessões da tela sejam da mesma. */
+    function selo(j) {
+      return seloDe(nomeMaquina(j), { frio: semContato(j), ha: semContato(j) ? mudoHa(j) : null });
+    }
+
+    /* ============ CC-228: o "?" ao lado de cada palavra técnica ============
+     *
+     * Pedido dele: *"eu queria que todas as funções e termos técnicos tivessem
+     * '?', e quando clicasse tivesse uma explicação bem detalhada do que é o
+     * que"*. E o motivo, que ele já tinha nomeado em 16/08: *"eu não lembro o
+     * que que é reporte guard (…) o meu cérebro não consegue absorver tudo"*,
+     * com o risco junto: *"eu acabo virando uma pessoa dependente"*.
+     *
+     * **A explicação NÃO mora aqui.** Sai do glossário, que já varre o `docs/`
+     * inteiro e lê os termos do cabeçalho de cada documento. Escrever o termo
+     * em `docs/produto/PALAVRAS-DA-TELA.md` é o que faz o "?" nascer; apagar de
+     * lá tira o "?" da tela. Uma lista de textos aqui dentro seria a segunda
+     * fonte da mesma verdade, e um dia as duas discordariam.
+     *
+     * O "?" só aparece quando existe explicação. Um "?" que abre e diz "sem
+     * definição" é pior que nenhum: ensina a não clicar.
+     */
+    let TERMOS = null;   // mapa de termo em minúsculas para a explicação
+    async function carregarTermos() {
+      try {
+        const d = await (await fetch('/api/glossario')).json();
+        /* CC-229: as explicações longas vêm primeiro. O `termos:` curto do
+           cabeçalho dos outros documentos entra só onde não existe explicação
+           longa, para o "?" continuar valendo no vocabulário de dentro. */
+        TERMOS = new Map((d.termos || []).map((t) => [String(t.termo).toLowerCase(), { ...t, curto: true }]));
+        for (const p of d.palavras || []) {
+          TERMOS.set(String(p.termo).toLowerCase(), { termo: p.termo, texto: p.texto, curto: false });
+        }
+      } catch { TERMOS = new Map(); return; }
+      /* O redesenho fica FORA do try que guarda os termos, e isso não é
+         estilo. Na primeira versão ele estava dentro, `renderAll()` lançou
+         porque a tela ainda não tinha dado nenhum, e o `catch` do mesmo
+         encadeamento zerou os 95 termos que já tinham chegado: nenhum "?"
+         aparecia, e a causa parecia ser a leitura, que estava perfeita. */
+      try { renderAll(); } catch { /* a tela ainda não tem dado; o próximo tique desenha */ }
+      /* A tela de abertura não passou por clique nenhum, então o "?" dela
+         precisa ser posto aqui, quando as explicações chegam. */
+      marcarAjudaDaTela(document.querySelector('.view-section.active')?.id || 'view-cockpit');
+      espalharAjudas();
+    }
+
+    /* CC-230: o "?" da tela inteira, ao lado do subtítulo.
+     *
+     * O termo é derivado do id (`view-agentes` vira `tela: agentes`), então não
+     * existe uma segunda lista para manter: tela nova sem explicação escrita
+     * simplesmente não ganha "?", e o gate acusa.
+     */
+    /* CC-230: os rótulos que já existem no HTML da página ganham o "?" por
+     * atributo, e não um a um no código.
+     *
+     * Escrever `data-explica="rota"` num título é tudo o que a tela precisa
+     * fazer; esta função varre todos assim que as explicações chegam. Rótulo
+     * desenhado por JavaScript continua chamando `ajuda('termo')` na hora,
+     * porque ali o "?" nasce junto com o resto do bloco.
+     */
+    function espalharAjudas() {
+      document.querySelectorAll('[data-explica]').forEach((el) => {
+        if (el.querySelector('.ajuda')) return;      // já tem, não duplica a cada tique
+        const html = ajuda(el.dataset.explica);
+        if (html) el.insertAdjacentHTML('beforeend', ` ${html}`);
+      });
+    }
+
+    const termoDaTela = (id) => `tela: ${String(id || '').replace(/^view-/, '')}`;
+    function marcarAjudaDaTela(id) {
+      const sub = document.getElementById('header-subtitle');
+      if (!sub) return;
+      document.getElementById('ajuda-da-tela')?.remove();
+      const html = ajuda(termoDaTela(id));
+      if (!html) return;
+      const span = document.createElement('span');
+      span.id = 'ajuda-da-tela';
+      span.innerHTML = ` ${html}`;
+      sub.appendChild(span);
+    }
+
+    /* O "?" de um termo. Devolve string vazia quando ninguém escreveu a
+       explicação, e é assim que a tela nunca promete o que não tem. */
+    function ajuda(termo) {
+      const achado = TERMOS?.get(String(termo).toLowerCase());
+      if (!achado) return '';
+      return `<button class="ajuda" data-ajuda="${esc(termo)}" title="o que é ${esc(termo)}" aria-label="o que é ${esc(termo)}">?</button>`;
+    }
+
+    /* CC-229: markdown mínimo, do tamanho do que o texto usa (negrito, código,
+     * lista, citação). O projeto não tem dependência de runtime, então o
+     * conversor é escrito aqui mesmo.
+     *
+     * Escapa PRIMEIRO e formata depois: o texto vem do repositório hoje, e
+     * essa ordem mantém o caminho fechado se um dia vier de outro lugar.
+     */
+    function mdCurto(texto) {
+      const linhas = esc(String(texto || '')).split(/\r?\n/);
+      const saida = [];
+      let lista = null;
+      let paragrafo = [];
+      const enfase = (s) => s
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      const fechaLista = () => { if (lista) { saida.push(`<ul>${lista.join('')}</ul>`); lista = null; } };
+      /* O texto do arquivo é quebrado em 80 colunas para ser legível como
+         documento. Uma linha do arquivo NÃO é um parágrafo: sem juntar, a tela
+         partia as frases no meio ("É a fila que decide" numa linha, "o seu dia"
+         na seguinte). Parágrafo termina em linha vazia, lista ou citação. */
+      const fechaParagrafo = () => {
+        if (paragrafo.length) { saida.push(`<p>${enfase(paragrafo.join(' '))}</p>`); paragrafo = []; }
+      };
+      for (const linha of linhas) {
+        const item = linha.match(/^[-*]\s+(.*)$/);
+        if (item) { fechaParagrafo(); (lista ||= []).push(`<li>${enfase(item[1])}</li>`); continue; }
+        const t = linha.trim();
+        /* Linha indentada logo abaixo de um item continua aquele item. */
+        if (lista && t && /^\s+\S/.test(linha)) { lista[lista.length - 1] = lista[lista.length - 1].replace(/<\/li>$/, ` ${enfase(t)}</li>`); continue; }
+        if (!t) { fechaParagrafo(); fechaLista(); continue; }
+        fechaLista();
+        if (t.startsWith('&gt; ')) { fechaParagrafo(); saida.push(`<blockquote>${enfase(t.slice(5))}</blockquote>`); continue; }
+        paragrafo.push(t);
+      }
+      fechaParagrafo();
+      fechaLista();
+      return saida.join('');
+    }
+
+    /* A folha de explicação. Fecha no toque fora, no Esc e no botão, porque no
+       telefone cada uma dessas é o gesto que alguém tenta primeiro. */
+    function abrirAjuda(termo) {
+      const t = TERMOS?.get(String(termo).toLowerCase());
+      if (!t) return;
+      fecharAjuda();
+      const corpo = t.curto ? `<p>${esc(t.definicao)}</p>` : mdCurto(t.texto);
+      /* CC-230: o documento guarda a explicação de tela pelo id, sem acento
+         (`tela: maquina`), porque a ligação é por derivação. O nome bonito
+         ("Máquina") já existe no menu, então a folha pega de lá em vez de
+         manter uma segunda lista de apelidos. */
+      const daTela = /^tela:\s*(.+)$/i.exec(t.termo);
+      const titulo = daTela ? (PAGE_METADATA[`view-${daTela[1].trim()}`]?.title || t.termo) : t.termo;
+      const etiqueta = daTela ? 'o que é esta tela' : 'o que é';
+      const fonte = t.curto
+        ? `resumo de ${esc(t.onde || 'um documento do projeto')}`
+        : 'de docs/produto/PALAVRAS-DA-TELA.md';
+      const fundo = document.createElement('div');
+      fundo.className = 'ajuda-fundo';
+      fundo.id = 'ajuda-aberta';
+      fundo.innerHTML = `
+        <div class="ajuda-folha" role="dialog" aria-modal="true" aria-label="o que é ${esc(titulo)}">
+          <div class="ajuda-cab">
+            <div style="min-width:0;">
+              <span class="ajuda-etiqueta">${esc(etiqueta)}</span>
+              <h3>${esc(titulo)}</h3>
+            </div>
+            <button class="ajuda-x" data-ajuda-fechar aria-label="fechar">✕</button>
+          </div>
+          <div class="ajuda-corpo">${corpo}</div>
+          <span class="fonte">${esc(fonte)}</span>
+        </div>`;
+      fundo.addEventListener('click', (ev) => {
+        if (ev.target === fundo || ev.target.closest('[data-ajuda-fechar]')) fecharAjuda();
+      });
+      document.body.appendChild(fundo);
+      document.body.style.overflow = 'hidden';
+      fundo.querySelector('[data-ajuda-fechar]')?.focus();
+    }
+    function fecharAjuda() {
+      document.getElementById('ajuda-aberta')?.remove();
+      document.body.style.overflow = '';
+    }
+
+    /* A etiqueta de quem SERVE este painel. Vale para tudo que sai do disco de
+       quem responde: projetos varridos, rotinas, tarefas, a fila de mensagens.
+       Abrindo o painel da VPS, esses quadros falam do disco DELA, e sem o
+       carimbo eles pareceriam do aparelho de quem está olhando. */
+    const seloLocal = () => seloDe(DATA.maquina?.nome || DATA.maquina?.id || null);
+
+    /* O cartão "SEM CONTATO" que ficava nas faixas de urgência saiu no CC-226,
+       e a função foi junto: código morto que ninguém chama é armadilha para
+       quem chega depois, porque parece uma peça viva do desenho.
+       A informação continua no topo e na faixa da tela de agentes. */
+
     function fraseDoAgente(j) {
+      /* Antes de qualquer status: se a máquina calou, o status dela é do
+         passado. Dizer "Trabalhando" aqui é a mentira que ele pegou. */
+      if (semContato(j)) return `Sem contato com ${nomeMaquina(j) || 'a máquina'} há ${mudoHa(j)}`;
       if (j.status === 'waiting') return porQueEspera(j).frase;
       if (j.status === 'failed') return 'Quebrou: ' + (j.detail || j.result || 'sem detalhe');
       if (j.status === 'working') return j.inFlight?.[0]?.label ? `Rodando ${j.inFlight[0].label}` : 'Trabalhando';
@@ -1414,8 +1903,16 @@
 
       pintar(el, grupos.map(([nome, jobs], idx) => {
         const ordenados = [...jobs].sort((a, b) => (peso[a.status] ?? 9) - (peso[b.status] ?? 9));
+        /* CC-227: o cabeçalho lista TODAS as máquinas do projeto, e cada linha
+           de agente carrega a sua. Sem exceção: a versão anterior escondia o
+           nome quando o projeto inteiro estava numa máquina só, e era
+           justamente esse o cartão sobre o qual ele disse que a tela "não está
+           falando nada". */
+        const maquinasDoProjeto = [...new Set(jobs.map(nomeMaquina).filter(Boolean))];
         const agentsHTML = ordenados.slice(0, 4).map(j => {
-          const cor = COR_STATUS[j.status] || 'yellow';
+          /* CC-218: máquina calada, ponto cinza. O verde de "trabalhando" era
+             o último estado conhecido posando de agora. */
+          const cor = semContato(j) ? 'mudo' : (COR_STATUS[j.status] || 'yellow');
           const frase = fraseDoAgente(j);
           return `
             <div class="agent-item" data-retomar="${esc(j.sessionId || '')}" title="clique para copiar o comando de retomada">
@@ -1423,7 +1920,7 @@
                 <div class="agent-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
                 <div class="agent-text"><h4>${esc(j.frente || j.subject || j.route || 'sem assunto')}</h4><p title="${esc(frase)}">${esc(frase.length > 42 ? frase.slice(0, 42) + '…' : frase)}</p></div>
               </div>
-              <div class="agent-status"><span class="dot ${cor}"></span></div>
+              <div class="agent-status" style="display:flex;gap:8px;align-items:center;">${selo(j)}<span class="dot ${cor}"></span></div>
             </div>`;
         }).join('') + (jobs.length > 4 ? `<p style="font-size:11px;color:var(--text-dim);padding:4px 0 0;">e mais ${jobs.length - 4} agente(s)</p>` : '');
 
@@ -1435,7 +1932,12 @@
         const total = jobs.reduce((a, j) => a + (j.todos?.length || 0), 0);
         const feitas = jobs.reduce((a, j) => a + (j.todosDone || 0), 0);
         const pct = total ? Math.round(100 * feitas / total) : null;
-        const espera = jobs.some(j => j.status === 'waiting');
+        /* CC-218: a linha de estado do projeto olha só quem ainda dá sinal.
+           Com TODAS as sessões numa máquina calada, o projeto não está "andando
+           sozinho": ninguém sabe o que ele está fazendo. */
+        const vivos = jobs.filter((j) => !semContato(j));
+        const todosFrios = !vivos.length;
+        const espera = vivos.some(j => j.status === 'waiting');
         const cwd = (jobs.find(j => j.cwd)?.cwd || '').replace(/\\/g, '/').split('/').slice(-2).join('/');
 
         return `
@@ -1444,13 +1946,22 @@
             <div class="proj-info" style="display:flex;gap:12px;">
               <div class="proj-icon ${idx % 2 ? 'blue' : ''}">${esc(nome.charAt(0).toUpperCase())}</div>
               <div>
-                <h3>${esc(nome.toUpperCase())}</h3>
+                <!-- CC-227: a máquina fica colada no nome do projeto, que é
+                     onde ele procura. Antes estava só na linha de estado, e só
+                     quando o projeto tinha mais de uma. -->
+                <h3 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${esc(nome.toUpperCase())}
+                  ${maquinasDoProjeto.map((m) => seloDe(m, { frio: todosFrios, ha: todosFrios ? mudoHa(jobs[0]) : null })).join(' ')}</h3>
                 <p>${esc(cwd ? '…/' + cwd : '')}</p>
               </div>
             </div>
             <div class="proj-meta">${jobs.length} agente${jobs.length > 1 ? 's' : ''}</div>
           </div>
-          <div class="proj-section-title"><span class="dot ${espera ? 'amber' : 'green'}"></span> ${espera ? 'esperando você' : 'andando sozinho'}</div>
+          <div class="proj-section-title" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span class="dot ${todosFrios ? 'mudo' : (espera ? 'amber' : 'green')}"></span> ${todosFrios
+              ? 'sem contato há ' + esc(mudoHa(jobs[0]))
+              : (espera ? 'esperando você' : 'andando sozinho')}
+            ${todosFrios ? ajuda('sem contato') : (espera ? ajuda('esperando você') : ajuda('trabalhando'))}
+          </div>
           <div class="agent-list">
             ${agentsHTML}
           </div>
@@ -1517,12 +2028,18 @@
     function renderStats() {
       const s = DATA.summary || {};
       const total = DATA.agentes.length;
-      document.getElementById('stat-agentes-count').innerText = total;
-      document.getElementById('resumo-ag').innerText = total;
-      document.getElementById('resumo-ativos').innerText = s.working ?? 0;
-      document.getElementById('resumo-parados').innerText = s.idle ?? 0;
+      /* CC-218: o `summary` do servidor conta TODO agente conhecido, inclusive
+         os que estão congelados numa máquina que parou de responder. Quem diz
+         "3 trabalhando agora" tem que contar só quem ainda dá sinal, senão o
+         número de cima discorda dos cartões de baixo. */
+      const vivos = DATA.agentes.filter((j) => !semContato(j));
+      document.getElementById('stat-agentes-count').innerText = vivos.length;
+      document.getElementById('resumo-ag').innerText = vivos.length;
+      const conta = (st) => vivos.filter((j) => j.status === st).length;
+      document.getElementById('resumo-ativos').innerText = conta('working');
+      document.getElementById('resumo-parados').innerText = conta('idle');
       const bloqueados = document.getElementById('resumo-bloq');
-      if (bloqueados) bloqueados.innerText = s.failed ?? 0;
+      if (bloqueados) bloqueados.innerText = conta('failed');
       const hoje = new Date().toDateString();
       const entreguesHoje = DATA.agentes.reduce((n, j) =>
         n + Object.values(j.feitoEm || {}).filter(q => new Date(q).toDateString() === hoje).length, 0);
@@ -1537,7 +2054,11 @@
            segundos: o texto dizia SEM CONEXÃO e a bolinha dizia que estava
            tudo bem, na mesma linha. */
         const caiu = document.getElementById('dot-connection')?.classList.contains('red');
-        maq.innerHTML = `<div class="stat-item"><span class="dot ${caiu ? 'red' : 'green'}" id="dot-connection"></span> <span id="stat-agentes-count">${total}</span> AGENTES</div>`
+        /* CC-218: "16 AGENTES" contava 14 sessões de uma máquina desligada. O
+           número grande passa a ser o de quem ainda dá sinal, e o congelado
+           aparece do lado, dito com todas as letras. */
+        const frios = total - vivos.length;
+        maq.innerHTML = `<div class="stat-item"><span class="dot ${caiu ? 'red' : 'green'}" id="dot-connection"></span> <span id="stat-agentes-count">${vivos.length}</span> AGENTES${ajuda('agente')}${frios ? ` <span style="color:var(--text-dim);white-space:nowrap;">+${frios} sem contato</span>${ajuda('sem contato')}` : ''}</div>`
           + DATA.maquinas.map(m => `<div class="stat-item"><span class="dot ${m.semContato ? '' : 'green'}"></span> ${esc((m.nome || m.id || '?').toUpperCase())}${m.semContato ? ' · SEM CONTATO' : ''}</div>`).join('');
       }
 
@@ -1715,7 +2236,7 @@
             <span style="min-width:0;">
               <span style="${m.feito ? 'opacity:.55;text-decoration:line-through;' : ''}overflow-wrap:anywhere;">${esc(m.texto)}</span>
               <span style="display:block;font-size:11px;color:var(--text-dim);margin-top:4px;">
-                ${esc(m.projeto || 'sem projeto')}${m.frente ? ' › ' + esc(m.frente) : ''}${m.fonte === 'agente' ? ' · pedido por um agente' : ''}${m.em ? ' · há ' + age(Date.now() - m.em) : ''}
+                ${seloDe(m.maquina, { frio: m.semContato })} ${esc(m.projeto || 'sem projeto')}${m.frente ? ' › ' + esc(m.frente) : ''}${m.fonte === 'agente' ? ' · pedido por um agente' : ''}${m.em ? ' · há ' + age(Date.now() - m.em) : ''}
               </span>
               ${m.porque ? `<span style="display:block;font-size:11px;color:var(--text-muted);margin-top:4px;overflow-wrap:anywhere;">${esc(m.porque)}</span>` : ''}
             </span>
@@ -1779,7 +2300,7 @@
           el.innerHTML = `<div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;">
             ${f.perdidas.slice(0, 20).map((p) => `
               <div style="border-left:2px solid var(--amber);padding-left:12px;">
-                <div style="font-size:11px;color:var(--text-dim);">${esc(p.projeto || '?')}${p.quando ? ' · ' + new Date(p.quando).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}${p.palavras ? ` · ${p.palavras} palavras` : ''}</div>
+                <div style="font-size:11px;color:var(--text-dim);">${seloLocal()} ${esc(p.projeto || '?')}${p.quando ? ' · ' + new Date(p.quando).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}${p.palavras ? ` · ${p.palavras} palavras` : ''}</div>
                 <div style="font-size:12px;overflow-wrap:anywhere;">${esc(p.texto || '')}</div>
               </div>`).join('')}
             ${f.perdidas.length > 20 ? `<p style="font-size:11px;color:var(--text-dim);">e mais ${f.perdidas.length - 20}</p>` : ''}
@@ -1800,11 +2321,18 @@
        altura para informar nada. */
     let agSelecionado = null;
     let agFiltro = '';
+    /* `termo` é a palavra do glossário que explica a faixa. Fica separado do
+       título porque o título é grito ("ESPERANDO VOCÊ") e o termo é a palavra
+       escrita ("esperando você"). */
     const ZONAS = [
-      { id: 'waiting', titulo: 'ESPERANDO VOCÊ', cor: 'amber' },
-      { id: 'failed', titulo: 'COM FALHA', cor: 'red' },
-      { id: 'working', titulo: 'TRABALHANDO', cor: 'green' },
-      { id: 'idle', titulo: 'PARADOS', cor: 'yellow' },
+      { id: 'waiting', titulo: 'ESPERANDO VOCÊ', cor: 'amber', termo: 'esperando você' },
+      { id: 'failed', titulo: 'COM FALHA', cor: 'red', termo: 'quebrou' },
+      { id: 'working', titulo: 'TRABALHANDO', cor: 'green', termo: 'trabalhando' },
+      /* CC-218: faixa própria para quem veio de máquina que parou de responder.
+         Antes eles se espalhavam pelas outras faixas com o status congelado, e
+         "TRABALHANDO" listava sessão de PC desligado. */
+      { id: 'mudo', titulo: 'SEM CONTATO', cor: 'mudo', termo: 'sem contato' },
+      { id: 'idle', titulo: 'PARADOS', cor: 'yellow', termo: 'parado' },
       { id: 'done', titulo: 'ENTREGARAM', cor: 'green' },
     ];
 
@@ -1828,7 +2356,7 @@
         <span style="font-size:12px;color:var(--text-muted);">${lista.length} de ${DATA.agentes.length} agente(s)</span>`;
 
       zonas.innerHTML = ZONAS.map((z) => {
-        const dela = lista.filter((j) => j.status === z.id);
+        const dela = lista.filter((j) => (semContato(j) ? 'mudo' : j.status) === z.id);
         if (!dela.length) return '';
         const ordenada = z.id === 'waiting'
           ? dela.sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0))  // quem espera há mais tempo primeiro
@@ -1836,7 +2364,7 @@
         return `
           <section style="margin-top:20px;">
             <div class="section-header">
-              <h2><span class="dot ${z.cor}"></span> ${z.titulo}</h2>
+              <h2><span class="dot ${z.cor}"></span> ${z.titulo} ${z.termo ? ajuda(z.termo) : ''}</h2>
               <span style="font-size:12px;color:var(--text-muted);">${dela.length}</span>
             </div>
             <div class="card" style="padding:0;overflow:hidden;">
@@ -1844,14 +2372,27 @@
                 <div class="agent-item" data-ag="${esc(j.id)}" style="padding:12px 20px;${agSelecionado === j.id ? 'background:var(--card-hover);' : ''}">
                   <div class="agent-info" style="flex:1;min-width:0;">
                     <div class="agent-text" style="min-width:0;flex:1;">
-                      <h4>${esc(j.subject || j.lastPrompt || 'sem assunto anotado')}</h4>
-                      <p>${esc(j.project || '?')}${j.frente ? ' › ' + esc(j.frente) : (j.route && j.route !== 'main' ? ' · ' + esc(j.route) : '')} · ${esc(fraseDoAgente(j))}</p>
+                      <!-- CC-220: o projeto e a máquina são o título. Palavras
+                           dele: *"o principal em qualquer card é eu identificar
+                           qual é o projeto e aonde ele está, se é desktop, VPS,
+                           isso é o mais importante de todos"*. Antes o título
+                           era o assunto, e o projeto vinha na linha de baixo
+                           misturado com frente, rota e estado. -->
+                      <h4 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${esc(j.project || 'sem projeto')} ${selo(j, { sempre: true })}</h4>
+                      <!-- CC-221: quando o agente não anotou, o painel preenche
+                           com o último pedido dele. Isso ficava indistinguível
+                           de um resumo escrito, e foi assim que catorze dos
+                           dezesseis agentes passaram sem ninguém notar. Agora a
+                           tela diz de quem é o texto. -->
+                      <p>${esc(j.subject || j.lastPrompt || 'sem assunto anotado')}</p>
+                      ${j.subject && !j.subjectDoAgente ? `<p style="font-size:11px;color:var(--text-dim);">↑ o que você pediu, o agente não resumiu</p>` : ''}
+                      <p style="color:var(--text-dim);">${j.frente ? esc(j.frente) + ' · ' : (j.route && j.route !== 'main' ? esc(j.route) + ' · ' : '')}${esc(fraseDoAgente(j))}</p>
                     </div>
                   </div>
-                  <div style="text-align:right;flex:none;display:flex;gap:14px;align-items:center;">
+                  <div style="text-align:right;flex:none;display:flex;gap:10px;align-items:center;">
                     ${(j.todos || []).length ? `<span style="font-size:11px;color:var(--text-dim);">${j.todosDone || 0}/${j.todos.length}</span>` : ''}
                     <span style="font-size:11px;color:var(--text-dim);white-space:nowrap;">${age(Date.now() - (j.updatedAt || Date.now()))}</span>
-                    <span class="dot ${COR_STATUS[j.status] || 'yellow'}"></span>
+                    <span class="dot ${semContato(j) ? 'mudo' : (COR_STATUS[j.status] || 'yellow')}"></span>
                   </div>
                 </div>`).join('')}
             </div>
@@ -1904,10 +2445,15 @@
         </div>
 
         <div class="card" style="margin-bottom:16px;">
-          <h1 style="font-size:22px;overflow-wrap:anywhere;margin-bottom:6px;">${esc(j.subject || 'sem assunto anotado')}</h1>
-          <p style="margin-bottom:12px;">${esc(j.project || '?')}${j.frente ? ' › ' + esc(j.frente) : ''}${j.route && j.route !== 'main' ? ' · ' + esc(j.route) : ''}</p>
+          <!-- CC-220: o projeto e a máquina abrem a tela, e o assunto vem
+               depois. Mesma inversão da lista: a primeira pergunta é onde isto
+               está rodando, não o que foi digitado. -->
+          <h1 style="font-size:22px;overflow-wrap:anywhere;margin-bottom:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">${esc(j.project || 'sem projeto')} ${selo(j, { sempre: true })}</h1>
+          <p style="margin-bottom:12px;overflow-wrap:anywhere;color:var(--text-main);">${esc(j.subject || 'sem assunto anotado')}</p>
+          ${j.frente || (j.route && j.route !== 'main') ? `<p style="margin-bottom:12px;color:var(--text-dim);font-size:12px;">${j.frente ? esc(j.frente) : ''}${j.frente && j.route && j.route !== 'main' ? ' · ' : ''}${j.route && j.route !== 'main' ? esc(j.route) : ''}</p>` : ''}
+          ${semContato(j) ? `<p style="margin:-6px 0 12px;font-size:12px;color:var(--text-dim);">⚠ ${esc(nomeMaquina(j) || 'a máquina')} não dá sinal há ${esc(mudoHa(j))}. O que está abaixo é o último estado conhecido, não o de agora.</p>` : ''}
           <div style="display:flex;gap:8px;align-items:flex-start;">
-            <span class="dot ${COR_STATUS[j.status] || 'yellow'}" style="margin-top:6px;flex:none;"></span>
+            <span class="dot ${semContato(j) ? 'mudo' : (COR_STATUS[j.status] || 'yellow')}" style="margin-top:6px;flex:none;"></span>
             <span style="min-width:0;overflow-wrap:anywhere;font-size:14px;color:var(--text-main);">${esc(fraseDoAgente(j))}</span>
           </div>
           ${j.inFlight?.length ? `<p style="margin-top:8px;font-size:12px;color:var(--accent);">rodando agora: <code>${esc(j.inFlight[0].label || '')}</code></p>` : ''}
@@ -1960,8 +2506,8 @@
         <div class="bottom-grid">
           <div class="card"><h2>SEM MEXER HÁ</h2><div class="metric-value">${age(Number.isFinite(j.idleMs) ? j.idleMs : Date.now() - (j.updatedAt || Date.now()))}</div></div>
           <div class="card"><h2>ABERTO HÁ</h2><div class="metric-value">${age(j.ageMs)}</div></div>
-          <div class="card"><h2>MODELO</h2><div class="metric-value" style="font-size:15px;">${esc(j.model || '?')}</div></div>
-          <div class="card"><h2>TOKENS</h2><div class="metric-value">${tok(j.tokens)}</div></div>
+          <div class="card"><h2>MODELO ${ajuda('token')}</h2><div class="metric-value" style="font-size:15px;">${esc(j.model || '?')}</div></div>
+          <div class="card"><h2>TOKENS ${ajuda('token')}</h2><div class="metric-value">${tok(j.tokens)}</div></div>
         </div>
 
         <p style="margin-top:14px;font-size:11px;color:var(--text-dim);overflow-wrap:anywhere;">${esc(j.worktreePath || j.cwd || '')}${j.origem?.nome ? ` · em ${esc(j.origem.nome)}` : ''}</p>`;
@@ -2344,7 +2890,7 @@
           return `<div style="border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; background: rgba(255,255,255,0.02);${p.ativo ? 'border-color:var(--accent);' : ''}">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
               <div>
-                <h3 style="color: var(--text-main); font-size: 14px; margin-bottom: 6px;">${esc(p.projeto)}</h3>
+                <h3 style="color: var(--text-main); font-size: 14px; margin-bottom: 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${esc(p.projeto)} ${seloLocal()}</h3>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">${selGit}${selosExtras}</div>
                 ${estado}
               </div>
@@ -2411,7 +2957,7 @@
         </details>`;
       const orfas = !ENTREVISTA_ORFAS ? '' : `<p style="font-size:11px;color:var(--amber);">saiu junto, porque só existia por causa da resposta que você apagou: ${ENTREVISTA_ORFAS.map((o) => esc(o)).join(', ')}</p>`;
       const cabeca = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <b style="font-size:13px;flex:1;">${esc(e.projeto)}</b>
+          <b style="font-size:13px;flex:1;">${esc(e.projeto)} ${seloLocal()}</b>
           <button class="btn compacto" style="font-size:11px;" data-ent-fechar>fechar</button>
         </div>${barra}`;
       if (!p) {
@@ -2466,7 +3012,7 @@
       if (NOVO_PROJ === 'carregando') { alvo.innerHTML = '<p style="color:var(--text-dim);">vendo onde ficam os projetos…</p>'; return; }
       if (NOVO_RESULTADO && NOVO_RESULTADO !== 'criando') {
         const r = NOVO_RESULTADO;
-        alvo.innerHTML = `<p style="color:var(--green);font-size:13px;">✓ nasceu <b>${esc(r.projeto)}</b></p>
+        alvo.innerHTML = `<p style="color:var(--green);font-size:13px;">✓ nasceu <b>${esc(r.projeto)}</b> ${seloLocal()}</p>
           <code style="font-size:11px;color:var(--text-dim);word-break:break-all;">${esc(r.raiz)}</code>
           <ul style="list-style:none;padding:0;margin:10px 0;font-size:12px;">
             ${r.passos.map((p) => `<li style="color:${p.ok ? 'var(--text-muted)' : 'var(--red)'};padding:2px 0;">${p.ok ? '✓' : '✗'} ${esc(p.o_que)}${p.detalhe ? ` <span style="color:var(--text-dim);">(${esc(p.detalhe)})</span>` : ''}</li>`).join('')}
@@ -2991,7 +3537,7 @@
           </div>${corpo}</div>`;
       }).join('');
       const cartoes = projetos.map((p) => `<div class="card" style="margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;"><b>${esc(p.projeto)}</b><span style="font-size:11px;color:var(--text-dim);">${p.rotinas.length} rotina(s)${p.divergentes ? ` · ${p.divergentes} desatualizada(s)` : ''}</span></div>
+        <div style="display:flex;justify-content:space-between;"><b>${esc(p.projeto)}</b> ${seloLocal()}<span style="font-size:11px;color:var(--text-dim);">${p.rotinas.length} rotina(s)${p.divergentes ? ` · ${p.divergentes} desatualizada(s)` : ''}</span></div>
         ${linhas(p)}</div>`).join('');
       const cabeca = totalDiv
         ? `<div class="card" style="border-left:3px solid var(--amber);margin-bottom:14px;"><b>${totalDiv} desatualizada${totalDiv === 1 ? '' : 's'}</b>: a cópia velha vence a nova, e é ela que roda. "usar a global" conserta.</div>`
@@ -3069,9 +3615,9 @@
       const r = PRECO.resumo;
       const resumo = `<div class="bottom-grid" style="margin-bottom:14px;">
         <div class="card"><h2>${precoUnidade === 'sessao' ? 'SESSÕES' : 'TAREFAS'}</h2><div class="metric-value">${r.quantas}</div></div>
-        <div class="card"><h2>MÉDIA POR PROBLEMA</h2><div class="metric-value">${horasDe(r.mediaMs)}</div></div>
-        <div class="card"><h2>TOTAL DE HORAS</h2><div class="metric-value">${horasDe(r.totalMs)}</div></div>
-        <div class="card"><h2>A COBRAR</h2><div class="metric-value green">${brl(r.total)}</div></div>
+        <div class="card"><h2>MÉDIA POR PROBLEMA ${ajuda('custo de API')}</h2><div class="metric-value">${horasDe(r.mediaMs)}</div></div>
+        <div class="card"><h2>TOTAL DE HORAS ${ajuda('tempo ativo')}</h2><div class="metric-value">${horasDe(r.totalMs)}</div></div>
+        <div class="card"><h2>A COBRAR ${ajuda('sobra')}</h2><div class="metric-value green">${brl(r.total)}</div></div>
       </div>`;
       const aviso = `<p style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">O nível sai de sinais de esforço no transcrito, não de entendimento do problema: <b>é palpite, e o palpite é seu para corrigir</b>, clique na linha e escolha.
         ${precoUnidade === 'sessao' ? ' Uma sessão pode ter resolvido mais de uma coisa, então a média por sessão é maior que a média por problema.'
@@ -3088,7 +3634,7 @@
         return `<div class="card" style="padding:0;margin-bottom:6px;${aberta ? 'border-color:var(--accent);' : ''}">
           <div style="padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;" data-preco-abrir="${esc(k)}">
             <span style="flex:2;min-width:140px;font-size:12px;" title="${esc(t.tarefa)}">${esc(t.tarefa)}</span>
-            <span style="flex:1;font-size:11px;color:var(--text-dim);">${esc(t.projeto || '...')}</span>
+            <span style="flex:1;font-size:11px;color:var(--text-dim);">${seloLocal()} ${esc(t.projeto || '...')}</span>
             <span style="font-size:11px;">${NIVEL_ROTULO[t.nivel]}${t.corrigido ? ' ✓' : ''}</span>
             <span style="font-size:11px;color:var(--text-muted);">${horasDe(t.medidoMs)}</span>
             <span style="font-size:11px;color:var(--text-dim);">${t.digitadoMs == null ? '...' : horasDe(t.digitadoMs)}</span>
@@ -3169,7 +3715,7 @@
     function viewIndiceGrafico(idx) {
       if (!indiceGraficoAberto) return '';
       const fonteDe = (f) => (f === 'tempo' ? 'relógio' : 'uso de token');
-      return `<div class="card" style="margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      return `<div class="card idx-colunas" style="margin-bottom:14px;">
         <div><h2>MEDIDAS</h2>
           ${idx.medidas.map((m) => `<div style="font-size:12px;padding:3px 0;">${esc(m.rotulo)} <span style="color:var(--text-dim);">vem do ${fonteDe(m.fonte)}</span></div>`).join('')}
           ${idx.bloqueadas.map((m) => `<div style="font-size:12px;padding:3px 0;color:var(--text-dim);">${esc(m.rotulo)} <span>falta ${esc(m.precisa.replace('+', ' e '))}, defina na aba tempo</span></div>`).join('')}
@@ -3241,7 +3787,7 @@
       const cartoes = DIGEST.projetos.map((p) => {
         const itens = [p.commits.length && `${p.commits.length} commit(s)`, p.marcos.filter((m) => m.tipo === 'todo').length && `${p.marcos.filter((m) => m.tipo === 'todo').length} tarefa(s) fechada(s)`, p.diario.length && `${p.diario.length} dia(s) de diário`].filter(Boolean).join(' · ');
         return `<div class="card" style="margin-bottom:10px;">
-          <b>${esc(p.projeto)}</b> <span style="font-size:11px;color:var(--text-dim);">${itens || 'sem sinal'}</span>
+          <b>${esc(p.projeto)}</b> ${seloLocal()} <span style="font-size:11px;color:var(--text-dim);">${itens || 'sem sinal'}</span>
           ${p.commits.slice(0, 5).map((c) => `<div style="font-size:11px;color:var(--text-muted);padding:2px 0;">${esc(c.assunto)}</div>`).join('')}
         </div>`;
       }).join('');
@@ -3960,9 +4506,9 @@
       document.getElementById('tempo-numeros').innerHTML = `
         <div class="card"><h2>TRABALHO</h2><div class="big-number">${horasDe(totalMs)}</div>
           <p style="font-size:12px;">${projetos.length} projeto(s)${nomeFiltrado ? `, só no ${esc(nomeFiltrado)}` : aparelhos.length > 1 ? `, somando ${aparelhos.length} aparelhos` : ''}</p></div>
-        <div class="card"><h2>TOKENS</h2><div class="big-number">${tok(totalTok)}</div>
+        <div class="card"><h2>TOKENS ${ajuda('token')}</h2><div class="big-number">${tok(totalTok)}</div>
           <p style="font-size:12px;">a maior parte é releitura de cache, que custa 10% da entrada</p></div>
-        <div class="card"><h2>CUSTO DE API</h2><div class="big-number">${nomeFiltrado ? '...' : usd(totalUsd)}</div>
+        <div class="card"><h2>CUSTO DE API ${ajuda('custo de API')}</h2><div class="big-number">${nomeFiltrado ? '...' : usd(totalUsd)}</div>
           <p style="font-size:12px;">${nomeFiltrado
             ? 'o custo não é medido por aparelho: só a máquina que varreu calculou preço'
             : 'referência de esforço, não é o que saiu do seu bolso na assinatura'}</p></div>`;
@@ -3975,7 +4521,12 @@
         <div class="agent-item" style="padding:14px 20px;">
           <div class="agent-info" style="flex:1;min-width:0;">
             <div class="agent-text" style="min-width:0;flex:1;">
-              <h4>${esc(p.projeto)}</h4>
+              <!-- CC-227: as horas deste projeto vieram de quais máquinas.
+                   A quebra detalhada abaixo só aparece com mais de uma; o
+                   carimbo aparece sempre, porque a pergunta "onde isto rodou"
+                   vale igual quando a resposta é uma máquina só. -->
+              <h4 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${esc(p.projeto)}
+                ${(p.porMaquina || []).map((m) => seloDe(m.maquina?.nome || m.maquina?.id)).join(' ') || seloLocal()}</h4>
               <div class="progress-bar" style="margin-top:8px;max-width:340px;"><div class="progress-fill" style="width:${Math.round(100 * p.ativoMs / teto)}%"></div></div>
               ${(p.porMaquina || []).length > 1 ? `<p style="margin-top:6px;">${p.porMaquina.map((m) => `${esc(m.maquina.nome)} ${horasDe(m.ativoMs)}`).join(' · ')}</p>` : ''}
             </div>
@@ -4128,14 +4679,17 @@
       /* Os agentes que QUEBRARAM. Antes esta parte lia uma lista que nunca era
          preenchida, então o cartão nunca aparecia, e o botão "Entendido" não
          fazia nada. Agora sai dos agentes de verdade. */
-      (DATA.agentes || []).filter((a) => a.status === 'failed').forEach((a) => {
+      /* CC-226: máquina calada não entra na faixa de urgência, aqui pelo mesmo
+         motivo do Cockpit. Esta tela é a versão longa daquela. */
+
+      (DATA.agentes || []).filter((a) => a.status === 'failed' && !semContato(a)).forEach((a) => {
         items.push(`
         <div class="card attention-card red" style="height: 100%;">
           <div class="attention-header">
             <div class="icon-box red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></div>
             <div>
               <div class="attention-title">AGENTE QUEBROU</div>
-              <h3>${esc(a.project || '?')}${a.frente ? ' / ' + esc(a.frente) : ''}</h3>
+              <h3 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${esc(a.project || '?')}${a.frente ? ' / ' + esc(a.frente) : ''} ${selo(a)}</h3>
             </div>
           </div>
           <p style="flex: 1;">${esc(a.detail || a.result || a.subject || 'sem detalhe do que falhou')}</p>
@@ -4153,7 +4707,7 @@
          que discorda de si mesma na primeira falha de sincronismo. */
 
       // 4. Agentes aguardando (Âmbar)
-      const waitingAgents = (DATA.agentes || []).filter(a => a.status === 'waiting' && !a.done);
+      const waitingAgents = (DATA.agentes || []).filter(a => a.status === 'waiting' && !a.done && !semContato(a));
       waitingAgents.forEach(a => {
         const hasEntrevista = a.capabilities?.includes('interview');
         items.push(`
@@ -4162,7 +4716,7 @@
             <div class="icon-box amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></div>
             <div>
               <div class="attention-title">AGUARDANDO VOCÊ</div>
-              <h3>${esc(a.project || 'Geral')}</h3>
+              <h3 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${esc(a.project || 'Geral')} ${selo(a)}</h3>
             </div>
           </div>
           <p style="flex: 1;">${esc(porQueEspera(a).frase)}</p>
@@ -4179,7 +4733,17 @@
          verdadeiras, e a tela anunciava tudo limpo com agente travado do lado.
          Agora olha o que existe de verdade, e cala a boca quando alguma
          leitura falhou. */
-      const travados = (DATA.agentes || []).filter((a) => a.status === 'failed' || (a.blockers || []).filter(Boolean).length);
+      const travados = (DATA.agentes || []).filter((a) => !semContato(a)
+        && (a.status === 'failed' || (a.blockers || []).filter(Boolean).length));
+      /* CC-231: a condição olhava `frios`, uma variável que deixou de existir
+         quando o cartão de máquina calada saiu desta faixa (CC-226). Isso não é
+         erro de sintaxe, então o gate passou e o navegador só reclamou em voz
+         baixa: `renderViewAgora` lançava no meio, e a tela Agora ficava com o
+         bloco central VAZIO, 12 pixels de altura, prometendo pendências no
+         cabeçalho e não mostrando nenhuma.
+         Máquina calada não entra mais nesta conta porque ela não entra na
+         lista: contar aqui era pedir que "tudo limpo" dependesse de algo que
+         não aparece na tela. */
       if (!DATA.falhas.size && waitingAgents.length === 0 && (DATA.meu || []).filter((m) => !m.feito).length === 0 && travados.length === 0) {
         items.push(`
         <div class="card attention-card green" style="height: 100%;">
@@ -4194,6 +4758,28 @@
           <div class="attention-actions">
             <button class="btn btn-ghost" onclick="showPage('view-trabalho')">Ver Trabalho Aberto</button>
           </div>
+        </div>`);
+      }
+
+      /* CC-231: bloco nunca fica MUDO.
+       *
+       * Este bloco lista agentes: os que quebraram e os que esperam resposta.
+       * As pendências que só ele resolve saem daqui de propósito, porque têm
+       * seção própria logo abaixo, com anotar, marcar e remover.
+       *
+       * O efeito colateral apareceu no telefone dele: sem agente esperando E
+       * com pendência humana aberta, nem os cartões entravam nem o "tudo limpo"
+       * (que exige zero pendências), e sobrava um vão em branco embaixo de um
+       * cabeçalho prometendo "sua atenção é necessária". Espaço vazio não diz
+       * se está tudo bem ou se a leitura falhou. */
+      if (!items.length) {
+        const minhas = (DATA.meu || []).filter((m) => !m.feito).length;
+        items.push(`
+        <div class="card" style="padding:20px;">
+          <p style="font-size:14px;color:var(--text-main);margin-bottom:6px;">Nenhum agente esperando resposta nem travado.</p>
+          <p style="font-size:13px;color:var(--text-muted);">${minhas
+            ? `O que falta é seu: ${minhas} pendência(s) logo abaixo, em O QUE SÓ VOCÊ RESOLVE.`
+            : 'Nada depende de você neste instante.'}</p>
         </div>`);
       }
 
@@ -4222,7 +4808,12 @@
       (DATA.agentes || []).forEach(job => {
         const p = job.project || 'Geral';
         if (!projetosMap.has(p)) projetosMap.set(p, { nome: p, backlog: [], sprint: [], meu: [] });
-        
+        /* CC-227: o cartão do projeto nesta tela também diz onde ele está. */
+        const m = nomeMaquina(job);
+        if (m && !projetosMap.get(p).maquinas?.includes(m)) {
+          projetosMap.get(p).maquinas = [...(projetosMap.get(p).maquinas || []), m];
+        }
+
         const itensSprint = (job.todos || []).map((t, i) => ({ t, i, job })).filter(x => !x.t.done);
         if (itensSprint.length > 0) {
           projetosMap.get(p).sprint.push(...itensSprint);
@@ -4234,6 +4825,11 @@
         const p = m.projeto || 'Geral';
         if (!projetosMap.has(p)) projetosMap.set(p, { nome: p, backlog: [], sprint: [], meu: [] });
         projetosMap.get(p).meu.push(m);
+        /* Projeto que só tem pendência humana também tem lugar: a máquina vem
+           carimbada na própria pendência desde o CC-227. */
+        if (m.maquina && !projetosMap.get(p).maquinas?.includes(m.maquina)) {
+          projetosMap.get(p).maquinas = [...(projetosMap.get(p).maquinas || []), m.maquina];
+        }
       });
 
       // Converter para array e ordenar (projetos com mais pendências do usuário ou sprint primeiro)
@@ -4323,7 +4919,7 @@
         }).join('');
       };
 
-      let html = `<div style="padding: 24px; max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; overflow-y: auto; height: 100%;">`;
+      let html = `<div class="trab-wrap">`;
       
       if (projetos.length === 0) {
         html += `<div class="empty-state" style="text-align:center; padding: 60px; color: var(--text-muted);">Nenhum trabalho encontrado no backlog ou nos agentes.</div>`;
@@ -4339,9 +4935,10 @@
         html += `
           <div class="project-funnel-card" style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
             
-            <div style="padding: 16px 24px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-              <h2 style="margin: 0; font-size: 18px; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+            <div class="trab-cab">
+              <h2 style="margin: 0; font-size: 18px; color: var(--text-main); display: flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere;">
                 <i class="ph-bold ph-folder" style="color: var(--accent);"></i> ${esc(p.nome)}
+                ${(p.maquinas || []).map((m) => seloDe(m)).join(' ')}
               </h2>
               <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-muted);">
                 ${hasMeu ? `<span style="color: var(--red); font-weight: 600;">${p.meu.length} sua vez</span>` : ''}
@@ -4349,9 +4946,9 @@
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); min-height: 200px;">
+            <div class="funil-colunas">
               <!-- Nível 1: Sua Vez (O mais restrito) -->
-              <div style="padding: 20px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: rgba(239, 68, 68, ${hasMeu ? '0.02' : '0'});">
+              <div class="funil-col" style="background: rgba(239, 68, 68, ${hasMeu ? '0.02' : '0'});">
                 <div style="font-size: 11px; font-weight: 700; color: var(--red); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
                   <span>O Que Só Você Resolve</span>
                   ${hasMeu ? `<span style="background: var(--red); color: white; padding: 2px 6px; border-radius: 10px;">${p.meu.length}</span>` : ''}
@@ -4362,9 +4959,9 @@
               </div>
 
               <!-- Nível 2: Sprint (O que os agentes estão fazendo) -->
-              <div style="padding: 20px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: rgba(139, 92, 246, ${hasSprint ? '0.02' : '0'});">
+              <div class="funil-col" style="background: rgba(139, 92, 246, ${hasSprint ? '0.02' : '0'});">
                 <div style="font-size: 11px; font-weight: 700; color: var(--working); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
-                  <span>Sprint Atual (Agentes)</span>
+                  <span>Sprint Atual (Agentes) ${ajuda('sprint')}</span>
                   ${hasSprint ? `<span style="background: var(--working); color: white; padding: 2px 6px; border-radius: 10px;">${p.sprint.length}</span>` : ''}
                 </div>
                 <div style="flex: 1; overflow-y: auto;">
@@ -4373,9 +4970,9 @@
               </div>
 
               <!-- Nível 3: Product Backlog (O mais largo) -->
-              <div style="padding: 20px; display: flex; flex-direction: column;">
+              <div class="funil-col">
                 <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
-                  <span>Product Backlog</span>
+                  <span>Product Backlog ${ajuda('product backlog')}</span>
                   ${hasBacklog ? `<span style="background: rgba(255,255,255,0.1); color: var(--text-dim); padding: 2px 6px; border-radius: 10px;">${p.backlog.filter(c=>c.estado!=='feito').length}</span>` : ''}
                 </div>
                 <div style="flex: 1; overflow-y: auto; max-height: 400px; padding-right: 4px;">
@@ -4398,6 +4995,7 @@
        (`payload.event === 'AGENTS_UPDATED'`) e por isso nunca conectava. */
     function aplicarSnapshot(snap) {
       DATA.agentes = snap.jobs || [];
+      recontarMaquinas();  // CC-219: a etiqueta de máquina só aparece quando há mais de uma
       DATA.summary = snap.summary || null;
       DATA.uso = snap.uso || null;
       DATA.maquinas = snap.maquinas || [];
@@ -4522,8 +5120,17 @@
        isso. Sem esta linha ela abriria com os cinco apagados, e o telefone
        não teria como saber onde está. */
     marcarBarraBaixo(document.querySelector('.nav-item.active')?.dataset.target || 'view-cockpit');
+    /* CC-223: recarregar volta para onde ele estava. Sem hash na barra, o
+       Cockpit segue sendo a tela de abertura, e nada é gravado: gravar aí
+       queimaria a primeira entrada do histórico com a tela padrão. */
+    if (location.hash.length > 1) aplicarEndereco();
+    /* CC-228: os termos chegam uma vez e ficam. São 68 linhas de texto, lidas
+       do disco, e não mudam durante a sessão. */
+    carregarTermos();
     // Esc fecha a gaveta: é o gesto que todo mundo tenta primeiro no teclado.
     document.addEventListener('keydown', (e) => {
+      // CC-228: a folha de explicação fecha antes da gaveta, porque ela está por cima
+      if (e.key === 'Escape' && document.getElementById('ajuda-aberta')) { fecharAjuda(); return; }
       if (e.key === 'Escape' && !document.getElementById('gaveta')?.hidden) { abrirGaveta(false); return; }
       /* CC-179: "navegar por eles por atalhos", nas palavras dele.
          Só quando a tela dele está aberta, e nunca dentro de um campo: 1 a 9
@@ -4612,14 +5219,25 @@
     document.body.addEventListener('click', async (e) => {
       const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar]');
       if (!tr) return;
+      /* CC-228: vem antes de tudo. O "?" mora dentro de cartões e linhas que já
+         têm clique próprio (abrir agente, marcar feito), e sem sair aqui o
+         toque na explicação dispararia a ação de baixo junto. */
+      if (tr.dataset.ajuda !== undefined) { e.preventDefault(); e.stopPropagation(); return abrirAjuda(tr.dataset.ajuda); }
       if (tr.dataset.trabAbrir) return post('/api/abrir', { dir: tr.dataset.trabAbrir });
       if (tr.dataset.meuFeito) return resolverMeu(tr.dataset.meuFeito);
       if (tr.dataset.escVer) { escNoPalco = tr.dataset.escVer; localStorage.setItem('cc-painel', escNoPalco); return renderEscritorio(); }
       /* Clicar num agente ABRE o agente. Antes alternava seleção, e clicar de
          novo no mesmo fechava, o que fazia o segundo clique parecer que a
          tela travou. Fechar é o botão de voltar, e só ele. */
-      if (tr.dataset.ag) { agSelecionado = tr.dataset.ag; return renderAgentes(); }
-      if (tr.dataset.agVoltar !== undefined) { agSelecionado = null; return renderAgentes(); }
+      /* CC-223: abrir um agente é uma parada no histórico, e o botão de voltar
+         da TELA usa o do navegador. Se fechasse na mão, o toque em voltar do
+         aparelho ainda traria o agente de volta, e ele veria o botão da tela e
+         o do telefone discordando um do outro. */
+      if (tr.dataset.ag) { agSelecionado = tr.dataset.ag; gravarEndereco('view-agentes', tr.dataset.ag); return renderAgentes(); }
+      if (tr.dataset.agVoltar !== undefined) {
+        if (/^#agentes\//.test(location.hash)) return history.back();
+        agSelecionado = null; return renderAgentes();
+      }
       if (tr.dataset.filaBuscar !== undefined) return carregarFila(tr);
       if (tr.dataset.viTudo !== undefined) return post('/api/vi-tudo', {}).then(fetchData);
 

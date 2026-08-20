@@ -19,7 +19,7 @@ import { mapear as mapearEstrutura, historicoDeCommits } from './estrutura.mjs'
 import {
   alternarRota, corDaRota, humanizar as humanizarSilencio, lerQuadro, retratoDoQuadro,
 } from './presenca.mjs'
-import { buscar, lerGlossario, termosDe } from './glossario.mjs'
+import { buscar, lerGlossario, lerPalavrasDaTela, termosDe } from './glossario.mjs'
 import {
   acrescentar as acrescentarMeu, marcar as marcarMeu, remover as removerMeu, tudo as tudoMeu,
 } from './meu.mjs'
@@ -790,7 +790,12 @@ function handler(req, res) {
     const dir = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
       || path.resolve(HERE, '..')
     const verbetes = buscar(lerGlossario(dir), url.searchParams.get('q'))
-    return send(res, 200, { verbetes, termos: termosDe(verbetes), at: Date.now() })
+    /* CC-229: as explicações longas viajam junto, na mesma rota. Rota nova
+       significaria dois pedidos para a mesma pergunta ("o que é isto?"), e o
+       arquivo é pequeno o bastante para não pesar. */
+    return send(res, 200, {
+      verbetes, termos: termosDe(verbetes), palavras: lerPalavrasDaTela(dir), at: Date.now(),
+    })
   }
 
   // O que depende do FELIPE, de todos os projetos, num lugar só.
@@ -809,7 +814,8 @@ function handler(req, res) {
         return acrescentarMeu({ texto, projeto, frente, porque })
       })
     }
-    const tarefas = tudoMeu(snapshot().jobs)
+    // CC-227: a pendência sai daqui já dizendo de qual máquina ela é
+    const tarefas = tudoMeu(snapshot().jobs, { maquinaLocal: origemLocal(readConfig())?.nome || null })
     return send(res, 200, { tarefas, abertas: tarefas.filter((t) => !t.feito).length, at: Date.now() })
   }
 
@@ -1346,7 +1352,7 @@ function handler(req, res) {
     const s = snapshot()
     const lista = projetosDe(s.jobs, findProjects)
     const projetos = carregarProjetos(lista)
-    const pendencias = tudoMeu(s.jobs, { projetos })
+    const pendencias = tudoMeu(s.jobs, { projetos, maquinaLocal: origemLocal(readConfig())?.nome || null })
     /* CC: as siglas vão junto do trabalho, não numa rota à parte. A tela mostra
        o mesmo código em quatro lugares; se cada um resolvesse o nome sozinho,
        seriam quatro contas para a mesma pergunta, e um dia discordariam. */

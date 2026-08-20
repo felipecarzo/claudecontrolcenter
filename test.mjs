@@ -3238,3 +3238,315 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
     console.log(`  ok   nenhum dos ${recentes.length} transcritos recentes mostra recado de máquina como pedido dele`)
   }
 }
+
+/* --- CC-222: layout de grade não pode nascer em `style=` ---
+ *
+ * Ele mandou o print do telefone: a tela Trabalho com três colunas espremidas
+ * em 390px, cada palavra numa linha, texto cortado pela metade. A causa era
+ * `style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))"`
+ * escrito direto na marcação, onde nenhuma regra de tela estreita alcança.
+ *
+ * O CLAUDE.md já registra essa armadilha desde 16/08, quando ela apagou uma
+ * tela inteira, e mesmo assim ela voltou num bloco novo. Regra escrita não
+ * segura; por isso ela vira teste.
+ *
+ * Por que aqui e não numa captura: isto é uma regra de TEXTO, custa
+ * milissegundos e roda sem navegador. O teste visual do estreito
+ * (`test-estreito.mjs`) existe, mas mede o painel ANTIGO — foi exatamente por
+ * isso que este defeito passou pelo gate inteiro sem um aviso.
+ */
+{
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui_v2.html'), 'utf8')
+
+  /* O que passa e o que não passa, decidido olhando os 21 casos reais do
+     arquivo em 20/08, um a um:
+     · `repeat(auto-fill|auto-fit, minmax(220px, 1fr))` PASSA. Ela se ajusta
+       por construção: em 390px o navegador põe uma coluna só, sem precisar de
+       regra nenhuma. São 15 dos 21, e proibir seria ruído sem defeito.
+     · `auto 1fr` PASSA. É o par rótulo e valor, e `auto` não reserva largura.
+     · Trilha com tamanho declarado (`1.2fr 0.8fr 1fr`, `repeat(3, ...)`,
+       `1fr 1fr`) NÃO passa: ela reserva a largura mesmo quando não cabe, e é
+       exatamente esse o defeito do print dele. */
+  const semComentarios = html.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  const inlineGrade = []
+  for (const m of semComentarios.matchAll(/style="([^"]*grid-template-columns[^"]*)"/g)) {
+    const colunas = m[1].match(/grid-template-columns:\s*([^;"]+)/)?.[1]?.trim() || ''
+    if (/repeat\(\s*auto-(fill|fit)/.test(colunas)) continue
+    const trilhas = colunas.split(/\s+(?![^(]*\))/).filter(Boolean)
+    const reserva = /repeat\(\s*[2-9]/.test(colunas)
+      || trilhas.filter((t) => /\d/.test(t)).length > 1
+    if (reserva) inlineGrade.push(colunas.slice(0, 60))
+  }
+  assert.deepEqual(
+    inlineGrade, [],
+    'grade de várias colunas escrita em style= no ui_v2.html. Estilo inline vence\n'
+    + '    media query e container query, então a tela NUNCA colapsa no telefone.\n'
+    + '    Vire classe, com a regra do estreito junto. Encontrado em:\n      '
+    + inlineGrade.join('\n      '),
+  )
+  console.log('  ok   CC-222: nenhuma grade de colunas presa em style= no painel novo')
+
+  /* A regra do estreito tem que existir de verdade para as grades conhecidas.
+     Sem isto, alguém cria a classe, esquece o colapso, e o teste acima passa
+     com a tela igualmente quebrada. */
+  const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'))
+  /* O bloco do estreito é achado pelo padrão, não pelo número: mudar 700 para
+     720 não pode fazer esta verificação passar a examinar o arquivo inteiro e
+     aprovar tudo calada. */
+  const abre = css.search(/@media\s*\(max-width:/)
+  assert.ok(abre > 0, 'o painel novo perdeu o bloco de tela estreita')
+  const estreito = css.slice(abre)
+  for (const classe of ['funil-colunas', 'fw-colunas', 'idx-colunas', 'agora-grid', 'projetos-grid', 'bottom-grid']) {
+    assert.ok(
+      new RegExp(`\\.${classe}\\b`).test(estreito),
+      `.${classe} não tem regra de tela estreita: em 390px ela mantém as colunas largas`,
+    )
+  }
+  console.log('  ok   CC-222: as seis grades do painel novo colapsam no telefone')
+
+  /* --- CC-224: o motor de gráficos desenha em HTML, e o estilo mora aqui ---
+   *
+   * Print dele, do telefone: a tela Gráficos mostrava só rótulos empilhados,
+   * `claude-opus-5 / claude-fable-5 / 0 $2.7k`, sem desenho nenhum. O motor
+   * estava certo o tempo todo. `src/graficos.js` monta as barras em HTML puro
+   * e a ALTURA delas mora no CSS da página; o bloco existe no painel antigo
+   * desde sempre e nunca foi copiado para o novo, então `.g-barras` nascia com
+   * altura zero. A rosca aparecia porque é a única forma que carrega o próprio
+   * tamanho dentro do SVG, e foi isso que fez o defeito parecer coisa de
+   * telefone quando era de todas as telas.
+   *
+   * A rede olha a família inteira: toda classe que o motor escreve tem que ter
+   * estilo. É o que pega a próxima forma nova que nascer sem desenho.
+   */
+  const motor = fs.readFileSync(path.join(process.cwd(), 'src', 'graficos.js'), 'utf8')
+  const usadas = new Set()
+  for (const m of motor.matchAll(/class=["']([^"'$]*)/g)) {
+    m[1].split(/\s+/).filter(Boolean).forEach((c) => usadas.add(c))
+  }
+  assert.ok(usadas.size > 10, 'não achei as classes do motor de gráficos: o padrão de busca envelheceu')
+  const semEstilo = [...usadas].filter((c) => !new RegExp(`\\.${c}\\b`).test(html))
+  assert.deepEqual(
+    semEstilo, [],
+    'o motor de gráficos escreve classes que o painel novo não estiliza, e no navegador\n'
+    + '    isso vira texto solto sem desenho:\n      ' + semEstilo.join('\n      '),
+  )
+  console.log(`  ok   CC-224: as ${usadas.size} classes do motor de gráficos têm estilo no painel novo`)
+}
+
+/* --- CC-225: quem lê reporte de sessão tem que olhar os DOIS lugares ---
+ *
+ * Desde o CC-157 o reporte de uma sessão interativa mora na casa (`~/.claude`)
+ * ou no abrigo, para onde ele cai quando o sandbox tranca a casa. `gravar` já
+ * sabe disso; `lerMetaSessao` também, e devolve o arquivo mais novo entre os
+ * dois. Dois hooks montavam o caminho da CASA na mão.
+ *
+ * O estrago era silencioso e durou uma tarde: o painel mostrava a lista de
+ * tarefas atual, e os avisos cobravam uma lista congelada horas antes, do
+ * arquivo que ninguém escrevia mais. Cobrança sobre trabalho já entregue é a
+ * forma mais rápida de um aviso virar barulho ignorado.
+ */
+{
+  const suspeitos = []
+  for (const f of fs.readdirSync(path.join(process.cwd(), 'hooks')).filter((n) => n.endsWith('.mjs'))) {
+    const src = fs.readFileSync(path.join(process.cwd(), 'hooks', f), 'utf8')
+    /* O que se procura é o caminho montado à mão, não a menção ao módulo. */
+    if (/DIR_SESSOES\(\)\s*,\s*`?\$?\{?\w*id/.test(src) || /join\(\s*M?\.?DIR_SESSOES\(\)/.test(src)) {
+      suspeitos.push(f)
+    }
+  }
+  assert.deepEqual(
+    suspeitos, [],
+    'hook montando o caminho do reporte na mão. Use `lerMetaSessao(id)`, que olha a\n'
+    + '    casa E o abrigo e devolve o mais novo. Lendo só a casa, o aviso cobra uma\n'
+    + '    lista congelada enquanto o painel mostra a atual:\n      ' + suspeitos.join('\n      '),
+  )
+  console.log('  ok   CC-225: nenhum hook lê o reporte de sessão por um lugar só')
+
+  /* O isolamento do abrigo: com `CC_HOME`, nada pode escapar por
+     `XDG_DATA_HOME` para o reporte de verdade dele. */
+  const meta = fs.readFileSync(path.join(process.cwd(), 'src', 'metaSessao.mjs'), 'utf8')
+  assert.match(
+    meta, /!process\.env\.CC_HOME\s*&&\s*process\.env\.XDG_DATA_HOME/,
+    'o abrigo voltou a escapar por XDG_DATA_HOME: teste com casa isolada escreveria no reporte real',
+  )
+  console.log('  ok   CC-225: casa isolada leva o abrigo junto')
+}
+
+/* --- CC-227: quadro que mostra projeto tem que dizer em qual máquina ele está ---
+ *
+ * Regra pedida por ele duas vezes. Na primeira (CC-219) eu implementei com duas
+ * economias que inventei sozinho: a etiqueta sumia quando o cockpit conhecia uma
+ * máquina só, e nos cartões de projeto ela só aparecia quando o projeto estava
+ * em mais de uma. Ele abriu o painel e cobrou de novo:
+ *
+ *   "está falando um projeto de control center, não está falando que está na
+ *    VPS, não está falando que está no desktop, não está falando nada. Sendo
+ *    que eu tinha pedido pra ser uma regra de todos os quadros."
+ *
+ * E pediu a trava junto: *"cria uma regra também pra certificar de que esse
+ * campo vai estar sempre incluso dentro desses quadrados"*. É este bloco.
+ *
+ * Como se mede sem navegador: todo trecho que imprime o nome do projeto tem que
+ * ter uma etiqueta de máquina na mesma expressão. O alcance é a expressão de
+ * template inteira, porque o selo às vezes vem antes do projeto e às vezes
+ * depois, e as duas ordens são legítimas.
+ */
+{
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui_v2.html'), 'utf8')
+  const linhas = html.split(/\r?\n/)
+  /* Os nomes pelos quais o projeto aparece na tela, nas três formas de dado
+     que chegam: agente (`project`), pendência (`projeto`) e grupo (`nome`). */
+  /* O `>` antes da expressão é o que separa TEXTO NA TELA de valor de atributo.
+     Sem ele a regra acusava `data-ent-abrir="${esc(p.projeto)}"`, que é o nome
+     do projeto indo para um botão e não para os olhos dele. */
+  const MOSTRA_PROJETO = />\s*\$\{esc\((?:[a-z]\.project\b|[a-z]\.projeto\b|nome\.toUpperCase\(\))/
+  const TEM_SELO = /selo\w*\(|maquinas/
+
+  const nus = []
+  linhas.forEach((linha, i) => {
+    if (!MOSTRA_PROJETO.test(linha)) return
+    /* A etiqueta pode estar na linha seguinte quando a expressão quebra. */
+    const vizinhanca = [linha, linhas[i + 1] || '', linhas[i - 1] || ''].join(' ')
+    if (!TEM_SELO.test(vizinhanca)) nus.push(`linha ${i + 1}: ${linha.trim().slice(0, 90)}`)
+  })
+  assert.deepEqual(
+    nus, [],
+    'quadro mostrando projeto sem dizer em qual máquina ele está. Ele pediu isso como\n'
+    + '    regra de TODOS os quadros, duas vezes. Use `selo(job)` ou `seloDe(nome)`:\n      '
+    + nus.join('\n      '),
+  )
+  console.log('  ok   CC-227: todo quadro que mostra projeto diz em qual máquina ele está')
+
+  /* A etiqueta não pode voltar a ter exceção escondida. As duas que existiam
+     (`sempre`, e o `misturado ? selo : ''`) foram removidas por causa disso. */
+  const selo = html.slice(html.indexOf('function seloDe'), html.indexOf('function fraseDoAgente'))
+  assert.ok(
+    !/CONHECIDAS\.size\s*<\s*2/.test(selo),
+    'a etiqueta de máquina voltou a sumir quando só existe uma: ele recusou essa economia',
+  )
+  console.log('  ok   CC-227: a etiqueta de máquina não tem exceção')
+
+  /* --- A verificação que faltava, e que teria pego o estrago em 2 segundos ---
+   *
+   * Ao escrever a regra acima eu quebrei a página INTEIRA: um comentário HTML
+   * dentro de um template do JavaScript trazia uma crase, que fecha a string.
+   * A tela ficou em "Carregando estado do cockpit..." para sempre, com ZERO
+   * agentes, e nenhum erro visível: um erro de sintaxe acontece antes de
+   * qualquer código rodar, então nem o capturador de erro da página funciona.
+   *
+   * O gate já fazia isto para `ui.html` desde sempre. Para o painel novo, que
+   * é o que ele usa desde 20/08, não fazia. Este é o terceiro buraco do mesmo
+   * tipo achado hoje (largura de tela, estilo dos gráficos, sintaxe), e todos
+   * têm a mesma raiz: o painel novo herdou o código e não herdou as redes.
+   */
+  const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1])
+  assert.ok(scripts.length >= 2, 'ui_v2.html deixou de ter os blocos de script esperados')
+  scripts.forEach((s, i) => {
+    assert.doesNotThrow(() => new Function(s), `ui_v2.html tem erro de sintaxe no bloco de script ${i}`)
+  })
+  console.log(`  ok   CC-227: os ${scripts.length} blocos de script do painel novo compilam`)
+}
+
+/* --- CC-228: o "?" que promete explicação tem que ter explicação ---
+ *
+ * Pedido dele: *"eu queria que todas as funções e termos técnicos tivessem '?',
+ * e quando clicasse tivesse uma explicação bem detalhada"*.
+ *
+ * A explicação sai do glossário, que lê os termos do cabeçalho dos documentos
+ * em `docs/`. Duas coisas podem falhar em silêncio, e as duas já falharam hoje:
+ *
+ *  1. `ajuda('termo')` citando palavra que ninguém escreveu: o "?" não nasce, a
+ *     tela fica igualzinha, e ninguém descobre que a explicação sumiu.
+ *  2. O cabeçalho escrito com hífen (`termo - texto`) em vez de dois pontos: o
+ *     leitor devolve ZERO termos e o documento inteiro fica mudo. Foi o que
+ *     aconteceu com `PC-E-VPS.md`, que passou dias sem entregar os três termos
+ *     dele sem ninguém notar.
+ */
+{
+  const { lerGlossario, lerPalavrasDaTela, termosDe } = await import('./src/glossario.mjs')
+  const verbetes = lerGlossario(process.cwd())
+  /* CC-229: duas fontes, e a ordem importa na tela. As explicações LONGAS
+     (uma seção `##` por palavra) valem para o que aparece na tela dele; os
+     `termos:` de uma linha continuam servindo ao vocabulário de dentro. */
+  const longas = lerPalavrasDaTela(process.cwd())
+  assert.ok(longas.length > 15, `só ${longas.length} explicações longas: o leitor das seções parou de achar`)
+  const termos = new Set([
+    ...termosDe(verbetes).map((t) => t.termo.toLowerCase()),
+    ...longas.map((p) => p.termo.toLowerCase()),
+  ])
+  assert.ok(termos.size > 20, `o glossário devolveu só ${termos.size} termos: alguma coisa parou de ler`)
+
+  /* Explicação longa que ficou curta demais não cumpre o pedido dele. O piso é
+     baixo de propósito: ele mede o descuido, não o estilo. */
+  const rasas = longas.filter((p) => p.texto.length < 200).map((p) => `${p.termo} (${p.texto.length} letras)`)
+  assert.deepEqual(
+    rasas, [],
+    'explicação curta demais. Ele reprovou a versão de uma linha: "voce falou como se\n'
+    + '    eu fosse um imbecil (…) quero explicacoes mais tecnicas":\n      ' + rasas.join('\n      '),
+  )
+  console.log(`  ok   CC-229: as ${longas.length} explicações longas têm corpo de verdade`)
+
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui_v2.html'), 'utf8')
+  /* As duas formas de pedir explicação: `ajuda('termo')` dentro do código que
+     desenha, e `data-explica="termo"` num rótulo que já está no HTML. As duas
+     somem em silêncio quando o termo não existe, então as duas são medidas. */
+  /* Sem os comentários: o texto que EXPLICA o mecanismo cita `data-explica="termo"`
+     como exemplo, e sem isso a regra acusaria a própria documentação. */
+  const vivo = html.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  const pedidos = [
+    ...[...vivo.matchAll(/ajuda\('([^']+)'\)/g)].map((m) => m[1]),
+    ...[...vivo.matchAll(/data-explica="([^"]+)"/g)].map((m) => m[1]),
+  ]
+  assert.ok(pedidos.length > 0, 'o painel deixou de pedir explicação para qualquer termo')
+  const semTexto = [...new Set(pedidos)].filter((t) => !termos.has(t.toLowerCase()))
+  assert.deepEqual(
+    semTexto, [],
+    'a tela pede o "?" de termos que ninguém explicou. O botão não aparece e o buraco\n'
+    + '    fica invisível. Escreva em docs/produto/PALAVRAS-DA-TELA.md:\n      '
+    + semTexto.join('\n      '),
+  )
+  console.log(`  ok   CC-228: os ${new Set(pedidos).size} termos com "?" na tela têm explicação escrita`)
+
+  /* Documento que declara `termos:` e entrega zero está com o cabeçalho quebrado. */
+  const mudos = []
+  for (const dir of ['docs', 'docs/produto', 'docs/guias', 'docs/planos']) {
+    let arquivos = []
+    try { arquivos = fs.readdirSync(path.join(process.cwd(), dir)).filter((f) => f.endsWith('.md')) } catch { continue }
+    for (const f of arquivos) {
+      const alvo = path.join(dir, f)
+      const texto = fs.readFileSync(path.join(process.cwd(), alvo), 'utf8')
+      if (!/^termos:/m.test(texto)) continue
+      const v = verbetes.find((x) => x.id === alvo.replace(/^docs[/\\]/, '').replace(/\.md$/, '')
+        || String(x.id).endsWith(f.replace(/\.md$/, '')))
+      if (v && !Object.keys(v.termos || {}).length) mudos.push(alvo)
+    }
+  }
+  assert.deepEqual(
+    mudos, [],
+    'documento declara `termos:` e entrega zero. O separador é DOIS PONTOS, não hífen:\n      '
+    + mudos.join('\n      '),
+  )
+  console.log('  ok   CC-228: nenhum documento declara termos e entrega vazio')
+
+  /* --- CC-230: TODA tela do menu explica a si mesma ---
+   *
+   * Pedido dele depois de aprovar a primeira leva: *"precisamos aplicar isso a
+   * todas as paginas e todos os modulos e tudo que poder inserir no cockpit"*.
+   *
+   * A ligação é por derivação, não por lista: `view-agentes` procura a
+   * explicação `tela: agentes`. Isso significa que **tela nova nasce sem "?" e
+   * ninguém percebe**, porque o botão simplesmente não aparece. É esta
+   * verificação que transforma o silêncio em falha.
+   */
+  const telas = [...new Set([...html.matchAll(/data-target="(view-[a-z]+)"/g)].map((m) => m[1]))]
+  assert.ok(telas.length > 15, `só ${telas.length} telas achadas no menu: o padrão de busca envelheceu`)
+  const semExplicacao = telas
+    .map((t) => `tela: ${t.replace(/^view-/, '')}`)
+    .filter((termo) => !longas.some((p) => p.termo.toLowerCase() === termo))
+  assert.deepEqual(
+    semExplicacao, [],
+    'tela no menu sem explicação escrita. O "?" dela não aparece, e o buraco é invisível.\n'
+    + '    Escreva a seção em docs/produto/PALAVRAS-DA-TELA.md:\n      ' + semExplicacao.join('\n      '),
+  )
+  console.log(`  ok   CC-230: as ${telas.length} telas do menu têm explicação própria`)
+}
