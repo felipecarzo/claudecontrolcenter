@@ -49,7 +49,7 @@ import {
   subirServidor, abrirLocal, esquecerCache,
 } from './servers.mjs'
 import {
-  readPaineis, ligarPainel, desligarPainel, portaDe,
+  readPaineis, ligarPainel, desligarPainel, portaDe, falhaAoLigar,
   resolverBinario, _internals as paineisInternals,
 } from './paineis.mjs'
 import { readNotes, writeNotes } from './notes.mjs'
@@ -83,7 +83,7 @@ import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
   setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig, setVisita,
-  setMaquina, setFederacao, moduloLigado, setModuloProjeto,
+  setMaquina, setFederacao, moduloLigado, setModuloProjeto, setPaineisMeus,
   CHAVE_TUDO, visitaGeral, setVisitaGeral,
 } from './config.mjs'
 import { agenda, esquecerCache as esquecerAgenda } from './calendario.mjs'
@@ -100,6 +100,7 @@ import { garantirCambio } from './cambio.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
+const UI_V2 = path.join(HERE, 'ui_v2.html')
 const GRAFICOS = path.join(HERE, 'graficos.js')
 /* O alvo quando ninguém escolheu projeto no filtro.
    `process.cwd()` NÃO serve: como serviço do systemd o painel roda de outro
@@ -361,7 +362,6 @@ async function empurrar({ comTempo = null } = {}) {
           projeto: p.projeto, ativoMs: p.ativoMs, tokens: p.tokens,
         })),
       }
-      ultimoTempoEnviado = agora
     } catch { /* varredura falhou: manda o resto, tempo vai na próxima */ }
   }
 
@@ -381,6 +381,18 @@ async function empurrar({ comTempo = null } = {}) {
 
   const pacote = montarPacote({ maquina: s.maquina, jobs: meus, uso: s.uso, tempo, backlogs })
   const r = await enviarPacote({ enviarPara, token, pacote })
+  /* CC-208: o relógio das horas só anda quando o envio CHEGA.
+   *
+   * Antes ele era carimbado assim que a varredura terminava, ainda dentro do
+   * `try`. Envio que falhava (rede caída, VPS reiniciando, token errado)
+   * jogava fora uma varredura de centenas de MB e, pior, marcava a hora como
+   * enviada: os próximos dez minutos de empurrões iam sem `tempo`, e a outra
+   * ponta ficava esse tempo todo sem saber as horas. É o mesmo defeito que o
+   * CC-205 conserta do outro lado, e aqui na origem.
+   *
+   * Custo de tentar de novo: uma varredura a cada 30s enquanto a rede estiver
+   * caída. Aceitável, e some sozinho no primeiro envio que passar. */
+  if (tempo && r?.ok) ultimoTempoEnviado = agora
   ultimoEmpurrao = {
     em: Date.now(),
     ok: Boolean(r?.ok),
@@ -461,9 +473,39 @@ const comCorpoAsync = (req, res, max, fn) => {
 function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
 
-  if (url.pathname === '/') return send(res, 200, fs.readFileSync(UI, 'utf8'), 'text/html; charset=utf-8')
+  /* CC-176 / CC-186: o painel novo assume a raiz.
+   *
+   * O antigo NÃO foi apagado, e a diferença importa: ele continua inteiro em
+   * `/v1`, servido pelo mesmo processo, e voltar atrás é trocar duas linhas
+   * aqui. Apagar o arquivo seria a única parte irreversível desta troca, e
+   * essa é decisão dele, não consequência automática de uma rota mudar de
+   * lugar. `/v2` continua respondendo para não quebrar link salvo, atalho do
+   * telefone nem captura de tela antiga.
+   */
+  if (url.pathname === '/' || url.pathname === '/v2') {
+    return send(res, 200, fs.readFileSync(UI_V2, 'utf8'), 'text/html; charset=utf-8')
+  }
+  if (url.pathname === '/v1') return send(res, 200, fs.readFileSync(UI, 'utf8'), 'text/html; charset=utf-8')
   if (url.pathname === '/graficos.js') {
     return send(res, 200, fs.readFileSync(GRAFICOS, 'utf8'), 'text/javascript; charset=utf-8')
+  }
+  /* A face condensada do boletim, hospedada aqui e não na Google.
+     Fonte de sistema como voz do produto é o que o piso de qualidade recusa, e
+     Bahnschrift só existe no Windows: em qualquer outra máquina a tela perdia
+     o caráter sem ninguém notar. 18 KB servidos do próprio disco mantêm a
+     promessa de funcionar offline, que buscar na rede quebraria.
+     Cache longo porque o arquivo é imutável: muda de nome se mudar de face. */
+  /* Vale para qualquer face do projeto, não só a primeira: o nome vem do
+     caminho, mas só o nome-base, para que `/../` não vire leitura de disco
+     fora daqui. */
+  if (url.pathname.endsWith('.woff2')) {
+    const f = path.join(HERE, path.basename(url.pathname))
+    if (!fs.existsSync(f)) return send(res, 404, { error: 'fonte ausente' })
+    res.writeHead(200, {
+      'content-type': 'font/woff2',
+      'cache-control': 'public, max-age=31536000, immutable',
+    })
+    return res.end(fs.readFileSync(f))
   }
   if (url.pathname === '/api/jobs') return send(res, 200, snapshot())
 
@@ -1124,6 +1166,18 @@ function handler(req, res) {
 
   // O que a janela flutuante mostra. GET pra montar o painel de configurações
   // sem esperar o primeiro /api/jobs; POST grava a escolha.
+  /* CC-178/179: os painéis que ele monta.
+     Mesma casa do `pip` e pela mesma razão: é preferência de leitura, mora no
+     config e não em `~/.claude/jobs`. O teto de 9 painéis não é técnico, é a
+     tecla: a troca é pelas teclas 1 a 9, e o décimo não teria como ser
+     chamado. Cada painel guarda só nome e ids de bloco. */
+  if (url.pathname === '/api/paineis-meus') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e5, ({ paineis }) => ({ paineis: setPaineisMeus(paineis) }))
+    }
+    return send(res, 200, { paineis: readConfig().paineisMeus || [] })
+  }
+
   if (url.pathname === '/api/pip') {
     if (req.method === 'POST') {
       return comCorpo(req, res, 1e4, ({ blocos, layout }) => ({ pip: setPip({ blocos, layout }) }))
@@ -1420,8 +1474,20 @@ function handler(req, res) {
   // Ligar e desligar recebem `id`, nunca pid: o pid vem da porta declarada no
   // próprio módulo, então a página não consegue mandar encerrar processo
   // arbitrário mesmo se alguém mexer no JavaScript.
+  /* CC-191: subir é assíncrono, e a resposta precisa esperar o suficiente para
+     saber se deu errado. O `spawn` devolve na hora e a falha (`EFTYPE`,
+     `ENOENT`) chega num evento alguns milissegundos depois: respondendo antes
+     dela, a rota diz `ok` e a tela mostra "no ar" com nada no ar. 250ms é o
+     bastante para o evento de erro chegar, e é imperceptível para quem clicou. */
   if (url.pathname === '/api/paineis/ligar' && req.method === 'POST') {
-    return comCorpo(req, res, 1e4, ({ id }) => ({ painel: ligarPainel(id) }))
+    return comCorpoAsync(req, res, 1e4, async ({ id }) => {
+      const painel = ligarPainel(id)
+      if (painel.jaEstava) return { painel }
+      await new Promise((r) => setTimeout(r, 250))
+      const erro = falhaAoLigar(id)
+      if (erro) throw new Error(`não subiu: ${erro}`)
+      return { painel }
+    })
   }
 
   if (url.pathname === '/api/paineis/desligar' && req.method === 'POST') {
