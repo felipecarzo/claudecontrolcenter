@@ -4665,7 +4665,13 @@ function viewTempo() {
 
   const proj = (p) => {
     const aberto = tempoAberto.has(p.projeto) || tudoAberto
-    const porDia = p.diasTrabalhados ? p.ativoMs / p.diasTrabalhados : 0
+    /* CC-206: com duas máquinas, "horas por dia" não é um número, é uma faixa.
+       As horas somam as duas; os dias de calendário podem coincidir ou não, e
+       o pacote não carrega a lista para saber. Dividir pelo maior dos dois
+       inflava o resultado. Aqui o valor mostrado é o do TETO de dias (o mais
+       conservador), e o `title` conta a faixa inteira. */
+    const porDia = p.diasTrabalhados ? p.ativoMs / (p.diasIncerto ? p.diasSomados : p.diasTrabalhados) : 0
+    const porDiaAlto = p.diasTrabalhados ? p.ativoMs / p.diasTrabalhados : 0
     return `<div class="t-proj">
       <div class="t-linha${cls}" data-tempo-proj="${esc(p.projeto)}" tabindex="0">
         <span class="nome">${aberto ? '▾' : '▸'} ${esc(p.projeto)}${
