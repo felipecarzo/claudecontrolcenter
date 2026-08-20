@@ -1,8 +1,8 @@
 ---
 tags: [processo]
 tipo: roadmap
-atualizado: 2026-08-17
-estado: 15 abertos (CC-133 a CC-138 nasceram em 17/08 da varredura de ideias, mais CC-124, CC-129 e as 7 frentes grandes); 2 parados por decisão dele ou por ambiente
+atualizado: 2026-08-20
+estado: ZERO abertos. Em 20/08 o backlog fechou inteiro, 44 itens, a pedido dele ("vamos zerar o backlog"). O painel novo assumiu a raiz e o antigo continua em /v1
 resumo: Só o que está aberto neste projeto. Concluído sai daqui e vira linha no diário. Em 16/08 saíram 37 itens fechados e o arquivo caiu de 2033 para ~547 linhas.
 termos:
   frente: um bloco de trabalho com nome próprio, que o painel mostra como pastilha no cartão
@@ -12,6 +12,18 @@ termos:
 # ROADMAP — o product backlog deste projeto
 
 Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
+
+> ## Zerado em 20/08
+>
+> Os 44 itens estão fechados, cada um com o que foi feito e como foi provado.
+> Ficam aqui, e não no diário, porque foi tudo no mesmo dia e a leitura em
+> sequência conta uma história que a linha do diário não conta.
+>
+> **Uma coisa segue por decisão dele, e não por esquecimento:** o painel antigo
+> não foi apagado. A raiz virou o painel novo, e o antigo continua inteiro em
+> `/v1`. Voltar atrás é trocar duas linhas em `src/web.mjs`. Apagar o arquivo é
+> a única parte irreversível da troca, e ela espera ele rodar o painel novo
+> alguns dias e dizer que pode ir (CC-176).
 
 ## Os três níveis, e o que cada um responde
 
@@ -41,6 +53,364 @@ dele dizer `projeto › frente` em vez de texto solto.
 > isso.
 
 ## Aberto
+
+## ▶ Um cockpit só, com todos os aparelhos dentro
+
+Aberta em 19/08, à noite, com as palavras dele:
+
+> "vamos subir pra vps, quero que esse cockpit tenha tudo aqui no PC
+> funcionando, **como um service**. E quando eu ligar ele passa a conectar o
+> Claude Code do PC com o cockpit na VPS. Assim eu quero que a versão online
+> (cockpit.carzo.com.br) seja **a versão que unifica ambos**, como se o app
+> fosse instalado na VPS e recebe o service do sandbox na VPS, do desktop e de
+> **qualquer outro local** que eu conecte meus agentes. Assim eu tenho
+> controle de todos no mesmo local. E também quero que os dados de trabalhos
+> de todos sejam disponibilizados nos gráficos de tempo, uso etc. **Possam ser
+> somados como um total ou separados por dispositivo.**"
+
+### Metade disto já estava de pé em 19/08, e foi medido ✅
+
+Antes de planejar qualquer coisa, o que este PC respondeu às 21h de 19/08:
+
+| o que | estado medido |
+|---|---|
+| o PC sobe sozinho no logon | **ligado** (`autostart: true`) |
+| o PC empurra para a VPS | **funcionando**: último envio `ok`, com 16 agentes e as horas junto |
+| para onde | `https://cockpit.carzo.com.br` |
+| o pacote leva as horas | sim (`comTempo: true`), com a quebra por máquina |
+
+Ou seja: **o "service" que ele pediu existe e está rodando**. O que falta não é
+construir o canal, é (a) confirmar o outro lado, (b) fazer a tela usar o que já
+chega, e (c) subir o painel novo para lá.
+
+### O que faltava, e fechou ✅
+
+> As três coisas acima foram feitas em 20/08: o outro lado confirmado
+> (CC-183), a tela usando o que chega (CC-184, CC-185, CC-188), e o painel
+> novo servido pela VPS na raiz (CC-186). Os itens abaixo guardam como cada
+> uma foi provada.
+
+### CC-183 ✅ 19/08 — confirmado de ponta a ponta, e um defeito no caminho
+
+Medido na VPS por SSH: **17 agentes, sendo 16 deste PC e 1 dela**, com as duas
+máquinas listadas e nenhuma sem contato. O canal está inteiro.
+
+**Mas o tempo do PC não chegava, e a causa era uma linha.** Na aba de tempo da
+VPS, `porMaquina` listava só a máquina local. O painel do PC dizia "último
+envio com as horas" e estava certo: **o envio tinha, o arquivo é que já tinha
+sido sobrescrito por outro sem**.
+
+As horas viajam a cada 15 minutos (varrer centenas de MB é caro), mas o pacote
+é empurrado a cada 30 segundos, e `gravarPacote` **substituía o arquivo
+inteiro**. Os 29 empurrões seguintes apagavam as horas que o primeiro trouxe:
+a VPS passava 14 minutos e meio de cada 15 sem saber o tempo do PC.
+
+Conserto em `src/federacao.mjs`: o que o pacote novo não traz é **preservado**
+do anterior (`tempo`, `uso`, `servidores`, `rotas`, `backlogs`), e cada campo
+herdado carrega **a própria idade**, porque hora velha exibida como atual é
+pior que hora ausente. Três casos novos em `test-federacao.mjs` guardam isso.
+
+**Provado depois do conserto**, com o painel da VPS reiniciado pela própria
+rota de desligar (sem sudo, o systemd sobe de novo, `MainPID` mudou):
+
+```
+federado: true
+inovallbond        = 153.1h | VPS  0.1h + ALIENWARE-LIPE 153.0h
+proj_controlcenter =  71.7h | VPS 34.6h + ALIENWARE-LIPE  37.0h
+renanMarchon       =  31.0h |             ALIENWARE-LIPE  31.0h
+```
+
+**A soma por dispositivo que ele pediu já existe no dado.** O que falta é a
+tela oferecer a escolha.
+
+### CC-184 ✅ 19/08 — o seletor de aparelho, e o defeito que ele revelou
+
+Um seletor novo na aba de tempo: **todos somados / só VPS / só ALIENWARE**. Só
+aparece quando existe mais de um aparelho com horas no período, e o veredito do
+topo diz de qual recorte está falando, porque a mesma frase com dois números
+diferentes sem dizer que o recorte mudou é como um número passa a mentir sem
+nenhum erro na tela.
+
+O filtro é feito na página, com o que já veio: pedir de novo ao servidor
+dispararia uma varredura de centenas de MB para responder o que já está na mão.
+E não é guardado entre sessões: filtro escondido ativo no dia seguinte é a
+mesma família de mentira.
+
+**Ao provar na VPS, a tela ficou presa em "lendo os transcritos" para sempre.**
+Não era lentidão, e não era o seletor: o desenho morria antes de escrever
+qualquer coisa, com `Cannot read properties of undefined (reading 'toFixed')`.
+
+Causa: o pacote que viaja entre máquinas é **enxuto de propósito** (só projeto,
+horas e tokens). Um projeto que nunca rodou na máquina que está olhando nascia
+sem `custo`, `taxaHora` e `diasTrabalhados`, e a tela quebrava ao formatar o
+primeiro deles. **A aba de tempo nunca funcionou na VPS desde que existe
+federação**, e ninguém viu uma mensagem de erro: o sintoma era a tela parecer
+que ainda estava carregando.
+
+Consertado em `mesclarTempo`: o projeto conhecido só pela outra máquina nasce
+com os campos que a tela formata, e o custo soma tratando ausência como zero,
+sem inventar preço para a máquina remota. Dois casos novos guardam isso.
+
+**Provado na VPS, pelo túnel, com as duas máquinas reportando:**
+
+```
+todos, somados : 419h49, 24 projetos, $6,7k em token
+só VPS         :  51h54,  7 projetos, $3,2k
+```
+
+| # | item | por quê |
+|---|---|---|
+| CC-185 ✅ | a tela de tempo e a de custo com a mesma escolha (total ou por aparelho), e o aviso de qual aparelho não reportou no período | feito em 20\08, e a resposta para a metade do custo é **não dá, e a tela diz por quê**: o preço nasce da varredura dos transcritos, e o transcrito fica na máquina que o gerou (o pacote carrega totais, não sessões). Repartir por proporção de horas seria número inventado com cara de medido, e um seletor que não muda nada é pior que nenhum. A outra metade está feita: máquina conhecida que não trouxe hora no período aparece na coluna dizendo "não reportou", com a frase de que o total é a soma de quem reportou. Provado na VPS, que conhece as duas: cala quando as duas reportam, avisa quando uma fica muda |
+| CC-186 ✅ | **o painel novo (`/v2`) sobe para a VPS** e passa a ser o que `cockpit.carzo.com.br` serve | feito em 20\08. A raiz serve o painel novo, no PC e na VPS. `/v2` continua respondendo para não quebrar link salvo nem atalho do telefone, e o antigo continua inteiro em `/v1`. Ver CC-176 |
+| CC-187 ✅ | um aparelho novo entrar sozinho: instalar, dar nome, colar o token, e ele aparece. Hoje o caminho existe mas foi feito à mão, uma vez, por SSH | feito em 20\08: `cc federar`. Três subcomandos e nada mais: sem argumento mostra a quem esta máquina reporta e como ligar; `ligar --para <url> --token <t> [--nome]` grava e **confirma mandando um pacote de verdade na hora**; `desligar` para de empurrar. A confirmação é o ponto: gravar e dizer "pronto" repetiria o defeito que este dia inteiro consertou, dizer que funcionou sem ter olhado. Provado nos dois desfechos contra a VPS real: token certo devolve "✓ chegou", token errado devolve "✗ não chegou: resposta 401" e explica onde conferir |
+| CC-188 ✅ | o que a tela mostra quando um aparelho fica mudo: idade do último sinal por máquina, e nunca o desaparecimento silencioso | feito em 20\08. Máquina sem sinal continua na lista, com a bolinha apagada e "sem sinal há X" em vez de sumir, no cabeçalho, no cartão de ambiente e na tela de Remoto. Na tela de Tempo ela aparece como "não reportou" (ver CC-185), e do lado do servidor o dado herdado agora tem prazo de 12h (CC-205), então nem o número velho sobrevive calado |
+
+**Uma coisa que não se soma, e precisa continuar não somando:** o limite de 5
+horas e o semanal são da CONTA, não do computador. Somar as duas máquinas
+dobraria o número. O que vale é a leitura mais recente de qualquer aparelho,
+com a marca de onde veio, e isso já é assim.
+
+## ▶ Torre: os painéis que ele monta
+
+Aberta em 19/08, com as palavras dele:
+
+> "podemos também colocar o painel personalizável já que são módulos, então eu
+> vou alterando como eu quiser, e pode ter uma janela de **favoritos** onde eu
+> mesmo adiciono painéis diferentes de todas as seções e monto um ou mais
+> painéis personalizados com informações cruzadas, tipo atalhos, e eu posso
+> criar vários e navegar por eles por atalhos."
+
+**Isto já existe em miniatura.** A janela flutuante tem um registro de blocos
+(`PIP_BLOCO`, `src/ui.html`), cada um com id, rótulo e duas formas de desenho,
+e a escolha de quais aparecem é gravada por `/api/pip`. O que ele descreve é
+esse mecanismo aberto para o painel inteiro.
+
+| # | item | estado |
+|---|---|---|
+| CC-177 ✅ | cada bloco do painel novo nasce como módulo, com id próprio | feito em 20\08: `MODULOS` no `ui_v2.html`, dez blocos com id, rótulo e o container de origem |
+| CC-178 ✅ | a tela onde ele monta um painel escolhendo módulos de qualquer seção | feito em 20\08, tela "Meu painel". **A decisão que barateia tudo:** o painel dele não redesenha nada por conta própria, ele COPIA o bloco pronto a cada tique. Parece preguiça e é o contrário: conserto num bloco aparece aqui de graça, e é impossível esta tela discordar da de origem, porque não existe segunda conta. O preço, pago: o clone perde os `id`, senão `getElementById` passaria a devolver o clone e quebraria a tela de origem em silêncio |
+| CC-179 ✅ | vários painéis dele, salvos, com atalho de teclado para trocar | feito em 20\08. Até nove painéis nomeados, trocados pelas teclas 1 a 9. **O teto de nove não é técnico, é a tecla**: um décimo não teria como ser chamado, e guardar o que não se alcança é dado morto com cara de recurso. O atalho só vale com a tela dele aberta e fora de campo de texto, senão digitar uma nota viraria trocar de painel. Provado: criou dois, marcou três blocos, o palco montou os três com conteúdo real, zero id duplicado, e as teclas 1 e 2 trocaram |
+
+O CC-177 não é tarefa separada de propósito: modularizar depois seria refazer
+as telas. A peça nasce junto com elas; as duas telas de cima vêm depois.
+
+## ▶ Torre: como ele acompanha o trabalho
+
+Aberta em 19/08, também com as palavras dele, e vale para o projeto inteiro,
+não só para o redesenho:
+
+> "alterações que já estejam prototipadas são importantes eu ver, como botões
+> ou zonas e seções de tela. Porém elas precisam ser **itens acessíveis no
+> sprint**, eu preciso ver eles **sendo criados em tempo real** (por isso é
+> importante o painel atualizar em tempo real e o escritório também), senão eu
+> saio do painel e vou fazer outra coisa. A ideia é manter tudo funcionando
+> visualmente **como uma fábrica comigo orquestrando** em um fluxo de tarefas
+> fluente. Então eu posso revisar coisas, desde que elas sejam mostradas pra
+> mim e sejam **testáveis de fato, ou aprováveis** (como protótipos de design).
+> Problemas de lógica eu não sou tão bom quanto você, mas tudo que a
+> experiência humana pode não ser tão óbvia necessita de aprovação minha."
+
+As três regras que saem disso:
+
+1. **Toda zona ou seção de tela é uma tarefa no sprint**, com nome que ele
+   reconhece, marcada enquanto acontece. Ele acompanha pelo painel, não por
+   mensagem.
+2. **O que se mostra tem que ser testável ou aprovável.** Uma tela que abre,
+   um botão que faz o que diz. Descrição de intenção não conta como entrega.
+3. **Lógica é do agente, experiência humana é dele.** Escolha técnica não
+   interrompe; o que decide o uso, sim.
+
+| # | item | estado |
+|---|---|---|
+| CC-180 ✅ | a granularidade do sprint calibrada por isto, no protocolo dos agentes | feito em 20\08, no `AGENTS.md`, que é onde os agentes leem. **O teste é um só: a tarefa cabe numa linha do painel com um resultado conferível?** Se não cabe, é grande demais, e quebrar depois não conserta, porque durante a execução o painel não tem o que mostrar e ele sai. Com a tabela de cortes (uma tarefa por tela, nunca "migrar o painel") e a regra de que zona de tela é tarefa própria com `olho: true` |
+
+## ▶ Torre: a migração do painel
+
+Aberta em 19/08. Ele levou o painel a outras IAs, gostou do que voltou, e
+disse: *"esse tipo de design que eu tava querendo, e você não tava
+encontrando, não sei definir o nome disso mas acho que podemos nomear isso"*.
+
+O nome e as regras estão em [[produto/TORRE]]. **O trabalho é o painel novo**,
+com a cara que o Gemini tentou criar, guiada pela imagem do ChatGPT, e com
+tudo o que o painel de hoje mostra dentro dele. Palavras dele: *"os dados que
+você já criou, tudo isso, as tarefas, os backlogs, tudo isso vai popular esse
+novo painel, não podemos perder nenhuma informação contida no painel atual"*.
+
+**A correção de rota.** A primeira versão desta frente dizia que a direção era
+transplantar a aparência do protótipo para dentro do painel antigo, e dava
+isso como decisão dele. Não era: ele havia dito *"na real não faz muito
+sentido mantermos o antigo se o novo puder ser muito melhor"*, que é o
+contrário. Uma sessão inteira foi gasta melhorando o painel que vai morrer.
+
+O painel novo mora em `src/ui_v2.html`, servido em `/v2` durante a obra, e
+nasce como cópia do de hoje com a casca refeita, para que nada se perca. O
+protótipo do Gemini vira referência em `docs/legacy/`. O `ui_v3.html` (dois
+documentos HTML num arquivo só) e os `rewrite_*.py` são apagados.
+
+**19/08, à noite: o desenho mudou de dono.** Ele levou o painel ao Antigravity,
+que refez o visual (`docs/legacy/antigravity-referencia.html`), e mandou seguir
+esse desenho à risca: módulos em retângulos, leitura por zonas, barra lateral
+com os seis grupos abertos. O painel novo (`src/ui_v2.html`, rota `/v2`) agora
+É essa maquete com os fios ligados: o fluxo ao vivo no formato real (a maquete
+esperava um formato inventado e nunca conectava), fonte hospedada aqui, escape
+de texto de agente, e o cockpit inteiro com dado real. Zero dado inventado: o
+que não tem fonte não aparece.
+
+| # | item | estado |
+|---|---|---|
+| CC-168 ✅ | o documento de conclusões, com o nome e as dez regras | feito |
+| CC-169 ✅ | tokens da Torre, medidos contra fundo E cartão (`tools/contraste.mjs`) | feito |
+| CC-170 ✅ | fontes auto-hospedadas (nada de CDN: o painel funciona offline) | feito |
+| CC-171 ✅ | a casca no desenho do Antigravity, conectada e com dado real | feito |
+| CC-172 ✅ | o cockpit: AGORA, projetos, resumo, consumo, foco, ambiente, tudo real | feito |
+| CC-181 ✅ | o desenho MOBILE da terceira referência dele (cards deslizantes, barra de baixo). Hoje o telefone tem só a adaptação mínima: uma coluna e o menu em fita | **a barra de baixo está feita, em 20\08.** Quatro alvos (Cockpit, Agora, Trabalho, Agentes) mais "Mais", que abre uma gaveta com os 23 destinos agrupados como na barra lateral. A gaveta é CLONE da barra lateral, não uma segunda lista: tela nova aparece nos dois lugares sem ninguém somar. O botão aceso segue a tela, e "Mais" acende quando ela não é uma das quatro (senão a barra diria Cockpit com a VPS na tela). A fita de abas do topo morreu: ela gastava uma linha da primeira dobra repetindo o que a barra de baixo diz melhor. Medido em 390px de verdade (os cinco centros em 39/117/195/273/351, passo 78, que só fecha com 390), alvo de toque de 51px, e 64px de folga para o conteúdo não ficar embaixo da barra. **E os cartões deslizantes, no mesmo dia:** as duas grades do cockpit (atenção e projetos) deslizam de lado no telefone, com `scroll-snap` para o cartão parar inteiro (meio cartão na borda é o que faz a pessoa achar que a lista acabou) e 88% de largura, para a beirada do próximo dizer que há mais sem seta nem texto. Cartão único ocupa 100%, senão sobraria uma faixa vazia sugerindo um segundo que não existe. Medido em 390: cartões de 315px numa grade de 366, encaixe ligado, **e a página não rola de lado**. No monitor, as três colunas intactas. **Dois defeitos de celular saíram junto, achados por medição e não por leitura de código:** a tela de agentes e a de escritório davam **26px de conteúdo dentro de 358 disponíveis** (uma coluna de texto de uma letra de largura), porque a coluna lateral de 300px estava no `style=` do elemento, e estilo inline vence media query. As duas viraram classe (`.com-lateral` / `.so-uma`), e as 23 telas passaram a ser varridas em 390 a cada mudança. Ver CC-213 |
+| CC-213 ✅ | em **cockpit › agora**, "Abrir agente" não levava a lugar nenhum | achado por ele em 20\08. O botão copiava `claude --resume <id>` para a área de transferência e piscava "copiado ✓": clicar não abria nada, e a palavra do botão estava errada. Agora ele leva para a tela de agentes com aquele agente selecionado, limpando o filtro (que esconderia justamente quem ele pediu) e rolando até a linha dele (no telefone o detalhe fica embaixo da lista inteira). Copiar o comando continua existindo, com esse nome, dentro do detalhe, e **avisa quando o navegador nega o clipboard** em vez de piscar "copiado" sobre uma cópia que não houve. Provado em 1400px e em 390px, no PC e na VPS |
+| CC-182 ✅ | as telas do menu, uma a uma. **Medido em 20/08: 8 de 24 entregam conteúdo, 16 abrem o esqueleto** que diz "conecte a API". A tabela completa está abaixo | feito em 20\08, pelos CC-195 a CC-203. **23 de 23 entregam conteúdo**, e o número caiu de 24 para 23 porque cinco destinos sem dado saíram e um nasceu. Provado varrendo o menu item a item, no PC e na VPS: nenhum cai na tela de aviso, zero erro de console |
+| CC-189 ✅ | **a linha de tendência do consumo**, que ele viu no desenho e gostou. Saiu por ser fixa no HTML: era uma curva desenhada à mão, igual todo dia | feito em 20\08, medida. Sai dos tokens por dia da mesma varredura da tela de Tempo. Três regras para não afirmar o que não mediu: some com menos de três dias de consumo (duas bolinhas ligadas parecem tendência e não são), compara os últimos três dias contra os três anteriores (ontem contra hoje transformaria um fim de semana em "caiu 80%"), e cala a boca sobre a direção quando não há as duas metades. Provado no painel vivo: 7 pontos, curva que não é reta, "↑ 106% nos últimos três dias" |
+| CC-190 ✅ | **o escritório de volta**, com os agentes desenhados trabalhando, no painel novo. Lista de painéis, ligar/desligar, quadro embutido por caminho relativo (nunca `localhost:porta`, que num quadro embutido é a máquina de quem olha) e a legenda de quem é cada boneco, que anda com o fluxo sem recriar o quadro | feito |
+| CC-191 ✅ | **o botão "ligar" do escritório não sobe o painel no Windows**: responde `spawn EFTYPE`. Achado ao provar o CC-190 | feito em 20\08, e eram **três defeitos empilhados, não um**. (1) O fork é um `cli.js`, e no Windows `.js` não é executável: `montarComando()` passou a escolher o interpretador certo por extensão (`.js` pelo Node que já está rodando, `.cmd` pelo `cmd.exe`, resto direto), **sempre sem `shell: true`**, que além de não resolver era injeção de comando com argumento dinâmico. (2) A rota respondia `ok` antes de o erro do `spawn` chegar (ele vem num evento, não no `try`), então esperava 250ms e passou a reportar a falha. (3) Depois de subir, a tela relia um **cache de 15s** e seguia dizendo "está parado" com o processo de pé: `force` passou a atravessar até a leitura de porta, e a espera fixa de 2,5s virou pergunta até a resposta mudar, com teto de 12s e frase própria se estourar. Provado de ponta a ponta: porta 0 antes, clique, porta 1 depois, HTTP 200 no painel, e a tela mostrando "desligar" com o escritório embutido |
+| CC-173 ✅ | entender: estrutura, roadmap, tempo e custo, no desenho novo | feito em 20\08: Estrutura (CC-197), Tempo, Custo e Gráficos (CC-201) |
+| CC-174 ✅ | a máquina: framework, hooks, servidores, VPS, federação de verdade | feito em 20\08: Framework e VPS (CC-199), Servidores, Docker, Máquina, Hooks e Rotinas (CC-200), Remoto e Federação (CC-196) |
+| CC-175 ✅ | referência: notas, documentos, glossário, agenda, entrevista | feito em 20\08: Notas (CC-198), Documentos, Bancada e Agenda (CC-202), Glossário (CC-199). A entrevista não virou tela própria de propósito: ela mora dentro do Framework, embaixo do projeto a que pertence, que é a decisão do CC-133 |
+| CC-176 ✅ | a troca: o painel novo assume a raiz e o antigo sai | feito em 20\08, **e a segunda metade ficou de propósito**. A raiz virou o painel novo; o antigo NÃO foi apagado, continua inteiro em `/v1`, servido pelo mesmo processo. Voltar atrás é trocar duas linhas em `web.mjs`. Apagar o `ui.html` é a única parte irreversível da troca, e essa é decisão dele, não consequência automática de uma rota mudar de lugar: fica aberta até ele rodar o painel novo alguns dias e dizer que pode ir |
+
+### A revisão de 20/08: três agentes em paralelo, e o que eles acharam ✅
+
+Ele pediu revisão de erros em todas as etapas, com agentes paralelos. Foram
+três: um lendo o painel novo inteiro atrás de defeito, um mapeando o que falta
+em cada tela, e um revisando as mudanças do dia atrás de regressão.
+
+**Consertado no mesmo dia:**
+
+| o que estava errado | o que acontecia na tela |
+|---|---|
+| **o custo saía DOBRADO em todo projeto** (regressão minha, de hoje) | os campos zerados ficaram do lado errado do espalhamento, e a soma contava a mesma quantia duas vezes. Atingia toda máquina, com ou sem federação. O teste que eu tinha escrito não pegava porque só conferia que o campo existia |
+| **a fatia de custo por aparelho era inventada** | o custo só é calculado por quem varre os transcritos, mas a tela repartia por proporção de horas. Com o filtro ligado, mostrava dólar apurado para uma máquina que nunca reportou preço. Agora o custo some sob filtro, em vez de aparecer errado |
+| **falha de leitura virava "tudo limpo"** | com o servidor fora, a tela anunciava "nenhuma pendência", "sistema rodando liso" e "0 agentes". Servidor caído ficava idêntico a sistema saudável e ocioso. Agora existe uma faixa vermelha dizendo o que não deu para ler |
+| **marcar tarefa gravava lixo e desmarcava sozinha** | a caixinha mandava um índice solto em vez da lista, gravava uma chave inútil no arquivo do agente, não fechava nada, e voltava ao aberto no tique seguinte |
+| **"TUDO LIMPO" com agente travado do lado** | a condição lia duas listas que nunca são preenchidas, então era sempre verdadeira |
+| **a bolinha de conexão voltava a verde sozinha** | ela nascia verde a cada meio minuto, e o texto ao lado dizia "sem conexão": a mesma linha se contradizia |
+| **cinco sinais inventados fixos no HTML** | "custo acima da média (+34%)" e "5 entregas concluídas hoje" ficavam na tela enquanto carregava, e para sempre se a leitura falhasse |
+| **o funil cortava texto de agente sem aviso** | três colunas sem piso de largura, com corte por cima: caminho de arquivo sumia sem reticências e sem rolagem |
+| **três cores usadas e nunca definidas** | a borda colorida do funil simplesmente não era desenhada |
+| **um botão chamando rota que não existe** | "descartar mensagens perdidas" caía em erro no console e o cartão ficava lá |
+| **um seletor que se destruía sendo operado** | navegando pelo teclado, cada seta recriava o elemento e nunca dava para chegar na segunda opção |
+
+**Registrado e ainda aberto:**
+
+| # | o quê |
+|---|---|
+| CC-204 ✅ | o arquivo do pacote entre máquinas pode crescer sem teto agora que campos são preservados, e ele é lido no caminho de 2 em 2 segundos | feito em 20\08: `LIMITE_ARQUIVO` de 4 MB, medido no que vai pro disco (e não no que chega pela rede, que é outro limite). Estourando, o herdado cai primeiro, do mais pesado pro mais leve, e o corte fica registrado no próprio arquivo. Teste guardando |
+| CC-205 ✅ | dado herdado pode ficar velho para sempre sem ninguém notar: se a varredura passar a falhar, a tela mostra a última leitura boa indefinidamente, com a máquina marcada verde | feito em 20\08: `VALIDADE_HERDADO_MS` de 12h. Passou disso, o campo é descartado com o motivo registrado. **Campo ausente a tela sabe dizer, campo velho ela não.** Dois testes: o vencido some, o de um minuto atrás continua de pé (senão o conserto de 19/08 seria desfeito) |
+| CC-206 ✅ | a média por dia mistura horas de duas máquinas com dias de uma só, e superestima | feito em 20\08. A união dos dias de calendário não existe no pacote (ele carrega a contagem, nunca a lista), então o dado passou a carregar a FAIXA: `diasTrabalhados` é o piso, `diasSomados` é o teto, `diasIncerto` diz que há incerteza. A tela mostra "10 a 13d" e a média pelo teto, que é o número conservador. Teste com 10 dias no PC e 3 na VPS |
+| CC-207 ✅ | a tela de gráficos ignora o filtro de aparelho em silêncio | feito em 20\08. Aplicar o filtro é impossível: o recorte por máquina existe no total de cada projeto, não na quebra por dia, e filtrar desenharia gráfico vazio com cara de "não trabalhei". A tela passou a dizer isso, com a razão. Provado ligando e desligando o filtro |
+| CC-208 ✅ | um envio que falha joga a varredura fora e não tenta de novo por dez minutos | feito em 20\08: o relógio das horas só anda quando o envio CHEGA. Antes era carimbado assim que a varredura terminava, então rede caída custava dez minutos de dado, do mesmo jeito que o CC-205 custava do outro lado |
+| CC-209 ✅ | falha de rede em botão volta a parecer sucesso: a função de envio devolve vazio no erro, e a checagem não distingue | feito em 20\08. `post()` devolve `{ ok:false, falhou:true }` com a mensagem, e a faixa vermelha do topo passou a distinguir as duas coisas: leitura que falha diz "a tela está velha", escrita que falha diz **"o seu clique não foi gravado"**. Provado derrubando o `fetch` no navegador |
+| CC-210 ✅ | a tela de trabalho e a de agora se redesenham inteiras a cada dois segundos, perdendo rolagem e foco | feito em 20\08, dois consertos. As duas telas grandes só desenham quando estão abertas (a mesma regra que o escritório já seguia), e todo bloco do fluxo passou por `pintar()`, que **não escreve quando o HTML é idêntico** e **não escreve quando o cursor dele está dentro**. Provado marcando nós do DOM e conferindo que sobrevivem a quatro tiques, mais a prova negativa: desligando a guarda, todos morrem de novo |
+| CC-211 ✅ | dezoito telas de esqueleto mostram uma bolinha verde escrito "Operante" ao lado do aviso de que não há dado | resolvido junto do CC-203 em 20\08: as dezoito viraram tela de verdade ou saíram do menu, e o gerador de maquete foi trocado por um aviso de defeito |
+| CC-212 ✅ | **marcar pendência como feita sem confirmar.** Consertado em 20/08 com a opção mais barata: confirmar antes de marcar, mesmo padrão de "desligar sessão remota". Só pergunta ao MARCAR, nunca ao reabrir. Provado por CDP: cancelar mantém a caixa desmarcada e a pendência aberta; aceitar fecha. **Achado no caminho: a lista de pendências estava DUPLICADA na tela Agora** — o topo ("PENDÊNCIAS E BLOQUEIOS") desenhava de novo o que a seção de baixo já mostrava, com um checkbox sem confirmação nenhuma. A duplicata foi removida, não só corrigida |
+
+### O estado das 24 telas, medido em 20/08 ✅ resolvido no mesmo dia
+
+> **Este bloco é o diagnóstico da manhã de 20/08, e ele já não descreve o
+> painel.** Fica porque é o retrato que originou o trabalho, e porque a
+> comparação vale: eram **8 de 24 com conteúdo, 16 esqueletos**, e o dia
+> fechou com **23 de 23**, sem esqueleto nenhum. O que cada tela ganhou está
+> na tabela dos itens CC-195 a CC-203.
+
+Não é estimativa: um navegador clicou nos 24 destinos do menu, um a um, e mediu
+quanto texto cada tela entrega, quantos controles tem, e se caiu no esqueleto
+genérico do desenho. Nenhuma exceção apareceu no console em nenhuma delas.
+
+**Correção importante, achada na revisão: são 5 telas vivas, não 8.** Três
+delas (framework, glossário e VPS) parecem funcionar e são **maquete com dado
+escrito à mão no HTML**: o glossário traz um verbete inventado, e a tela da VPS
+tem o nome desta máquina chumbado no campo. **É o pior estado da lista**, pior
+que esqueleto: esqueleto avisa que está vazio, maquete afirma um dado falso.
+
+| destino | estado | o que falta |
+|---|---|---|
+| cockpit | **vivo** | nada de estrutural |
+| trabalho | **vivo** | 0 botões: a lista é só leitura, não dá para marcar tarefa |
+| tempo | **vivo** | pronta, com o seletor de aparelho |
+| escritório | **vivo** | o botão de ligar falha nesta máquina (CC-191) |
+| agora | **vivo** | falta a ação de marcar resolvido, que existe no painel antigo |
+| glossário | **MAQUETE, dado falso** | tem um verbete inventado escrito no HTML |
+| framework | **MAQUETE, dado falso** | nenhuma leitura, projetos e estados são fixos |
+| vps | **MAQUETE, dado falso** | o nome da máquina está chumbado no campo |
+| agentes | esqueleto | é a segunda tela mais usada dele. **A primeira a migrar** |
+| servidores | esqueleto | tem ação destrutiva (matar processo), migrar com as três travas |
+| hooks | esqueleto | as proteções que o barram, com ligar e desligar |
+| bancada | esqueleto | a verificação de segurança por projeto |
+| rotas | esqueleto | o quadro de quem está mexendo em qual arquivo |
+| docker | esqueleto | os contêineres desta máquina |
+| máquina | esqueleto | processador, memória e placa de vídeo |
+| notas | esqueleto | **o único conteúdo do painel que não tem outra fonte.** Migrar com cuidado: o campo de texto não pode morrer no redesenho |
+| documentos | esqueleto | a estante, com leitor e editor |
+| fila | esqueleto | o que ele digitou e se perdeu |
+| custo | esqueleto | preço por problema resolvido |
+| digest | esqueleto | o resumo da semana |
+| histórico | esqueleto | o que sobra depois que o programa apaga o agente |
+| estrutura | esqueleto | **conferir se existe no painel antigo**: pode ser invenção do desenho |
+| dependências | esqueleto | idem |
+| ideias | esqueleto | idem |
+
+### Quatro telas do painel antigo estão órfãs no menu novo ✅ resolvido no mesmo dia
+
+> **As quatro ganharam destino próprio em 20/08**: remoto (CC-196), agenda
+> (CC-202), rotinas (CC-200) e gráficos (CC-201). Nenhuma sumiu.
+
+Nenhuma delas tem destino no menu do desenho, e sumiriam sem ninguém decidir
+que sumissem:
+
+| órfã | o que se perde | gravidade |
+|---|---|---|
+| **remoto** | abrir sessão à distância e a federação entre as máquinas. **É justamente o que ele acabou de pedir**, e o desenho novo chumbou pedaços dela dentro da maquete de VPS, sem fio nenhum | **alta** |
+| **agenda** | os compromissos dele, lidos do calendário | média |
+| **rotinas** | quais projetos têm cópia de comando desatualizada. Cabe dentro de "hooks" | média |
+| **gráficos** | os cruzamentos que ele monta. Só sobrevive se a tela de custo os absorver | média |
+
+### Dois destinos do menu não têm o que mostrar ✅ resolvido no mesmo dia
+
+> **Saíram cinco em 20/08 (CC-203)**, não dois: ideias, dependências e
+> histórico não tinham rota nenhuma; rotas e fila duplicavam o que já mora em
+> Estrutura e em Agora. O menu ficou com 23 destinos, todos com dado real.
+
+- **ideias**: o código existe e nunca foi ligado a nada. Zero rota, zero uso.
+  Item de menu prometendo funcionalidade que não existe em lugar nenhum.
+- **dependências**: o subtítulo promete bibliotecas e pacotes; o único código
+  real mostra colisão de frentes em arquivos, coisa completamente diferente.
+
+**E cinco destinos são seção de outra tela, não tela própria**: docker (dentro
+de servidores), máquina (no cabeçalho), resumo da semana (dentro de trabalho),
+fila (dentro de agora), e estrutura + rotas + histórico, que hoje são as três
+partes do MESMO mapa. Quebrar isso em itens de menu desmonta uma tela que
+funciona junta.
+
+Dos 24 destinos, **cerca de 14 justificam item próprio**.
+
+### A ordem de migração, por valor para ele ✅ toda executada em 20/08
+
+Critério: a dor é "não sei o que priorizar agora", com 4 a 15 agentes em
+paralelo. Não é a ordem do menu, é a ordem do uso.
+
+| # | ordem | tela | por quê |
+|---|---|---|---|
+| CC-192 ✅ | 1 | **agentes** | feito em 20/08. Todos agrupados por quem precisa dele primeiro, com filtro, contagem de tarefas e o detalhe ao lado. Um defeito no caminho: agente de outra máquina mostrava "Parado há ..." sem número, porque o tempo ocioso é calculado por quem lê os arquivos e não viaja no pacote. Agora sai do último sinal |
+| CC-193 ✅ | 2 | **agora**, a ação que faltava | feito em 20/08. Anotar, marcar e remover pendência, provado de ponta a ponta: criou, apareceu, apagou. E o "nada depende de você" agora distingue lista vazia de leitura que falhou |
+| CC-194 ✅ | 3 | **fila perdida** | feito em 20/08, dentro de "agora". Leitura cara, só sob clique, com os três estados separados: não achei registro, nada se perdeu, e a lista |
+| CC-195 ✅ | 4 | **o que mudou desde que eu olhei** | feito em 20/08, no topo da tela Agora. Provado com o painel vivo: mostrou 25 mudanças, marcou "vi tudo", zerou |
+| CC-196 ✅ | 5 | **remoto e federação** | feito em 20/08, com item de menu próprio (não existia nenhum). Provado na VPS de verdade: as duas máquinas aparecem, "abrir lá" pede sessão à distância no PC. Um defeito achado e corrigido no caminho: "3 sessãoões" (troca de sufixo em palavra que não aceita) |
+| CC-197 ✅ | 6 | **o mapa** (estrutura, rotas e histórico juntos) | feito em 20\08, tela própria "Estrutura" com seletor de projeto. Provado no painel local (fibraessencia, roadmap real, zero erro) e na VPS (app_escritorio: rotas mostra corretamente "este projeto não usa o Método Routia"; proj_controlcenter: mostra corretamente "sem docs/ROADMAP.md", já que o roadmap só existe no PC). Ficou de fora, de propósito: o mapa visual de rotas cruzadas (avenidas) — vira item próprio |
+| CC-198 ✅ | 7 | **notas** | feito em 20\08, tela própria no menu. Redesenha só ao criar/apagar bloco (não no tique do SSE), mesma disciplina do painel antigo. Provado local (criar, editar título/texto, virar lista, marcar item, apagar com confirmação de dois cliques, zero erro, dado do servidor conferido depois) e na VPS (4 blocos reais do Felipe renderizados sem tocar em nada, zero erro) |
+| CC-199 ✅ | 8 | **as três maquetes viram telas de verdade** | feito em 20\08. Framework: lista real de projetos, ligar/desligar, trocar perfil/modo, grupos de proteção, entrevista embutida numa coluna própria, criar projeto novo — provado respondendo uma pergunta real da entrevista e desfazendo em seguida, sem deixar rastro. Glossário: os documentos reais de docs/, com busca. VPS: organograma nginx/Docker/PM2 por SSH sob clique, provado puxando uma leitura nova de verdade (achou o inovallbond reiniciando sozinho 7x). Os três sem erro, local e na VPS |
+| CC-200 ✅ | 9 | **infra**: servidores, docker, máquina, hooks, rotinas | feito em 20\08, cinco telas. Servidores: kill com dois cliques (o primeiro só arma), provado que o primeiro clique não mata nada de verdade. Docker, Máquina (CPU/RAM/GPU) e Hooks: dado real. Rotinas: tela nova que não existia no v2, achou de novo a divergência do app_maurice já registrada no CLAUDE.md. Os cinco sem erro, local e na VPS — na VPS sem clicar no "encerrar" do próprio painel, óbvio |
+| CC-201 ✅ | 10 | **inteligência**: custo, gráficos, resumo da semana | feito em 20\08. Custo: quanto cobrar por sessão ou tarefa, com correção de nível clicando. Gráficos: o motor `graficos.js` (352 linhas, já pronto) passou a rodar dentro do v2 sem reescrever nada dele, os 8 gráficos prontos desenharam com dado real. Digest: resumo da semana por projeto, sob clique. Os três sem erro, local e na VPS |
+| CC-202 ✅ | 11 | **referência**: documentos, bancada, agenda | feito em 20\08. Documentos: estante completa, provada criando, lendo com markdown e apagando com dois cliques, sem deixar rastro. Na VPS o documento real dele ("Arquitetura de Hábitos") abriu no leitor. Bancada: os quatro níveis com seletor de projeto próprio. Agenda: item de menu que não existia, mostra o formulário certo onde nenhuma agenda está ligada |
+| CC-203 ✅ | 12 | **limpar o menu**: tirar ideias e dependências, e recolher os cinco que são seção | feito em 20\08. Saíram cinco: **ideias**, **dependências** e **histórico** (nenhum tem rota no servidor, eram só nome no menu) e **rotas** e **fila** (duplicavam o que já mora em Estrutura e em Agora). Junto saiu a maquete que gerava tela falsa para qualquer destino sem tela, **com bolinha verde e a palavra "Operante"** (o CC-211): hoje ela diz que a tela não existe e chama isso de defeito. Provado varrendo os 23 itens do menu um a um, no PC e na VPS: todos abrem com dado real, nenhum cai na rede de segurança, zero erro |
+
+O chão (quase-preto ou o verde-oliva) e os textos de ajuda do "?" continuam
+valendo como decisões abertas, agora dentro do painel novo.
 
 ## ▶ Frente nova, aberta em 18/08 (PC): a VPS vira o servidor, o resto vira dado que chega nela
 

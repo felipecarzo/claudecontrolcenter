@@ -39,3 +39,21 @@ docs/.ideias-pendentes.json
 
 # recados entre rotas: estado efemero do hook, nao e historico
 docs/.recados.json
+
+# 20/08: rascunho e sondagem do processo de trabalho, nao do projeto.
+# O repositorio e PUBLICO, e os arquivos de sondagem da VPS carregam saida
+# crua de comando (caminho de credencial, variavel de ambiente). Nada disso
+# tem por que ser lido por quem chega de fora.
+temp.js
+test.js
+vps_logs/
+vps_nuances.*
+vps_prompts.*
+
+# capturas de tela da revisao de design: 67 imagens que provam entrega e
+# envelhecem em um dia. A prova mora no ROADMAP escrita, nao em PNG versionado
+.impeccable/review/
+
+# 20/08: o arquivo esta corrompido, com DOIS documentos HTML dentro dele.
+# Fica fora ate ser refeito ou apagado de vez.
+src/ui_v3.html

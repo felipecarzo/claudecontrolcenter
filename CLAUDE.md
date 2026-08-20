@@ -247,6 +247,31 @@ errada por definição.
   `Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -like '*8123*' } | Stop-Process -Force`.
   Regra prática: quando o módulo passa no teste direto e falha pela rota, o
   suspeito nº 1 é processo velho, não o código.
+  **Aconteceu de novo em 20/08, com esta armadilha já escrita aqui.** Sete
+  processos na porta 8134, todos anteriores ao código novo, e cinco rodadas
+  de teste contra código velho. O que faltou: o `Stop-Process` estava
+  FALHANDO (`ObjectNotFound`, porque `Get-CimInstance` devolve objeto CIM e
+  não processo), e eu não conferi a saída dele. Duas lições novas:
+  a) o comando certo é `... | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
+  b) **matar não é conferir**: a única prova é contar de novo depois, e o
+  `CreationDate` de cada processo contra a hora em que o arquivo foi salvo
+  responde na hora quem está rodando código velho.
+- **Escrever `innerHTML` idêntico NÃO é operação neutra.** O navegador joga
+  fora os nós antigos e cria outros, e vai junto a rolagem de dentro do bloco,
+  o foco de quem estava num campo e o menu nativo aberto. Num painel que
+  redesenha de 2 em 2 segundos, isso é a tela fugindo do dedo dele. Por isso
+  existe `pintar(el, html)` no `ui_v2.html`: só escreve quando o conteúdo MUDA
+  de verdade, e nunca quando o cursor está dentro. Provado marcando nós do DOM
+  e conferindo que sobrevivem a quatro tiques, com a prova negativa junto
+  (desligando a guarda, todos morrem). Bloco novo no fluxo usa `pintar`.
+- **Estilo inline vence media query, e no celular isso apagou uma tela
+  inteira.** `<div class="grid-container" style="grid-template-columns: 1fr 300px">`
+  mantinha a coluna lateral de 300px em 390px de tela: sobravam **26px de
+  conteúdo dentro de 358 disponíveis**, uma coluna de texto de uma letra de
+  largura, na tela de agentes e na de escritório. Nenhuma regra de CSS alcança
+  isso. Layout de grade é CLASSE (`.com-lateral` / `.so-uma`), nunca `style=`.
+  E a varredura em 390 tela a tela virou parte do gate visual: foi ela que
+  achou, não a leitura do código.
 - **Modelo não é campo próprio**, sai de `respawnFlags` (`--model opus[1m]`).
 - **`state.intent` não serve como "o pedido".** É o primeiro prompt, congelado:
   sessão longa que mudou de assunto mostra coisa velha. E em job respawnado ele
@@ -266,6 +291,26 @@ errada por definição.
   linha, `?tab=<id>` escolhe a aba, `?tema=claro|escuro` força o tema, e
   `?novo=1`/`?indice=1` abrem o construtor de gráficos e o índice de dados.
   Sem eles não dá pra ver o layout numa captura.
+- **Captura de tela estreita MENTE por 28% neste PC, e mente calada.** Duas
+  causas independentes, as duas achadas em 19/08 quando uma revisão externa
+  provou que os prints de "390px" eram na verdade um layout de ~500px
+  recortado. O revisor mediu pela geometria dos botões da barra de baixo
+  (centros em 65/188/311, passo 123, que só fecha com largura 500), coisa que
+  eu tinha olhado e não vi.
+  a) **A escala de tela do Windows entra na conta.** `--window-size=390` no
+     Chrome headless produz ~500 CSS px porque o processo herda o DPI do
+     sistema. `--force-device-scale-factor=1` tira o sistema operacional da
+     medida.
+  b) **O CDP conecta na aba errada.** Pegar `lista[0]` de `/json/list` devolve
+     qualquer aba que já estivesse aberta no perfil, então uma captura pedida
+     em 390 media a janela de 1280 da execução anterior. Abrir aba própria por
+     `/json/new` e conectar nela pelo id resolve.
+  O pior dos dois é que 500px ainda cai dentro do ramo estreito do CSS, então
+  a captura PARECE um celular convincente e não mede nada sobre 390. **Toda
+  captura de tela estreita tem que validar a largura antes de salvar**, e a
+  régua barata deste painel é a barra de baixo: com 390 de verdade, os quatro
+  botões cabem inteiros (centros em 51/147/243/339). Se o quarto sai do
+  quadro, a imagem é mais larga do que afirma e não vale como prova.
 - **O `meta.json` é escrito por agente e o formato varia.** Um agente gravou
   `{t: "..."}` no lugar de `{text: "..."}` e o painel exibiu "undefined" com a
   tarefa inteira ali do lado. Toda leitura de `meta` passa por `normalizeTodo` /

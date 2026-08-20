@@ -49,6 +49,37 @@ Cada to-do aceita dois campos além do texto, e os dois mudam o que o Felipe vê
   tarefa é técnica: fica acessível, mas ele não é cobrado a olhar.
 - **`pronto`**: como se saberá que acabou, escrito ANTES de fazer.
 
+### O tamanho de uma tarefa, e o teste que decide
+
+Regra dele, dita em 16/08 sobre como ele acompanha o trabalho:
+
+> "elas precisam ser **itens acessíveis no sprint**, eu preciso ver eles
+> **sendo criados em tempo real** (…) senão eu saio do painel e vou fazer
+> outra coisa. A ideia é manter tudo funcionando visualmente **como uma
+> fábrica comigo orquestrando**."
+
+**O teste é um só: a tarefa cabe numa linha do painel com um resultado que ele
+possa conferir?** Se não cabe, ela é grande demais, e quebrar depois não
+conserta: durante o tempo em que ela roda, o painel não tem nada para mostrar,
+e ele sai.
+
+Já custou caro: em 16/08 "design em cards" foi UMA tarefa que reescreveu a
+tela inteira, e ele passou o trabalho todo sem nada para olhar.
+
+Os cortes práticos:
+
+| grande demais | do tamanho certo |
+|---|---|
+| `refazer a tela de agentes` | `a tela de agentes lista os agentes vivos`, depois `o clique num agente abre o detalhe dele` |
+| `migrar o painel` | uma tarefa por TELA, e cada uma abre de verdade ao fechar |
+| `consertar o mobile` | `o menu vira barra de baixo no telefone`, depois `os cartões param de vazar de lado` |
+
+**Zona ou seção de tela é sempre uma tarefa própria**, com `olho: true`: é
+exatamente o que ele quer revisar enquanto acontece.
+
+E vale a divisão que ele mesmo fez: **lógica é sua, experiência humana é
+dele.** Escolha técnica não vira pergunta; o que decide o uso, sim.
+
 Dependência entre tarefas se escreve NO TEXTO, do jeito que o Felipe escreve:
 `"protocolo atualizado, depende da s03"` ou `"depende do CC-112_s02"`. O
 painel deriva sozinho e põe o selo "espera s03" no quadradinho; quando a
