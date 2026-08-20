@@ -279,6 +279,14 @@ assert.equal(intentMatchesTranscript(null, 'x.jsonl'), null)
     // interrupção: o CLI grava "Request interrupted by user" como mensagem
     { type: 'user', interruptedMessageId: 'x', message: { content: 'Request interrupted' } },
     { type: 'user', message: { content: '<system-reminder>contexto injetado</system-reminder>' } },
+    /* O resumo que o CLI injeta quando o contexto estoura. Achado por ELE em
+       20/08, olhando o painel: *"me explique essa zona de ultimos pedidos (…)
+       e estao em ingles, porque?"*. Não era idioma. Sessão longa é justamente
+       a que mais aparece no painel, então o cartão mais importante era o que
+       mais mentia sobre o que ele tinha pedido. */
+    { type: 'user', isCompactSummary: true, message: { content: 'This session is being continued from a previous conversation that ran out of context.' } },
+    // conversa de sub-agente: é `user` no arquivo e não foi ele que escreveu
+    { type: 'user', isSidechain: true, message: { content: 'pedido interno de um sub-agente' } },
     { type: 'user', message: { content: [{ type: 'text', text: 'o pedido de verdade, o ultimo' }] } },
   ].map((o) => JSON.stringify(o)).join('\n')
 
@@ -305,6 +313,10 @@ assert.equal(intentMatchesTranscript(null, 'x.jsonl'), null)
   for (const j of comTranscript) {
     assert.ok(typeof j.lastPrompt === 'string' && j.lastPrompt.length > 0)
     assert.ok(!j.lastPrompt.startsWith('<'), 'pegou system-reminder como pedido')
+    assert.ok(
+      !j.lastPrompt.startsWith('This session is being continued'),
+      `o painel está mostrando o resumo de contexto do CLI como pedido dele, em ${j.project}`,
+    )
   }
 }
 
@@ -3113,4 +3125,116 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
     { rota: 'r1', quem: 'aaa', veredito: 'orfa', arquivos: ['src/a.mjs'] },
   ], grafo)
   assert.equal(morta.avenidas[0].viva, false, 'rota órfã não pode contar como trânsito')
+}
+
+/* ============ CC-191: como o painel do escritório é CHAMADO ============
+
+   O botão "ligar" respondia `spawn EFTYPE` no Windows e nada subia. A causa é
+   do sistema operacional: o fork do escritório é um `cli.js`, e no Windows um
+   `.js` não é executável. A saída antiga era `shell: true`, que além de não
+   resolver de forma confiável, concatena argumentos na linha de comando do
+   shell sem escapar — injeção real, já registrada no CLAUDE.md deste projeto.
+
+   O que este teste guarda é a decisão: cada tipo de alvo tem um jeito de ser
+   chamado, e nenhum deles usa shell. */
+{
+  const p = await import('./src/paineis.mjs')
+  const ehWin = process.platform === 'win32'
+
+  // o caso que estava quebrado: um .js roda pelo Node que já está aqui
+  const js = p.montarComando('/qualquer/lugar/cli.js', ['--port', '3101'])
+  assert.equal(js.cmd, process.execPath, 'um .js tem que ser chamado pelo Node, nunca direto')
+  assert.deepEqual(js.args, ['/qualquer/lugar/cli.js', '--port', '3101'])
+  assert.equal(js.shell, false, 'shell: true é injeção de comando quando o argumento é dinâmico')
+
+  // binário de npm no Windows é um .cmd, e quem sabe resolver isso é o cmd.exe
+  const cmdWin = p.montarComando('C:/npm/pixel-agents.cmd', ['--host', '127.0.0.1'])
+  if (ehWin) {
+    assert.match(cmdWin.cmd, /cmd\.exe$/i, 'um .cmd precisa do interpretador de comandos')
+    assert.equal(cmdWin.args[0], '/c')
+    assert.equal(cmdWin.args[1], 'C:/npm/pixel-agents.cmd')
+    assert.equal(cmdWin.args[2], '--host', 'cada argumento entra separado, para o Node escapar cada um')
+  }
+  // nome cru sem extensão: no Windows quem acha o .cmd é o cmd.exe; no Linux é executável
+  const cru = p.montarComando('pixel-agents', ['--port', '3101'])
+  assert.equal(cru.shell, false)
+  if (ehWin) assert.match(cru.cmd, /cmd\.exe$/i)
+  else assert.equal(cru.cmd, 'pixel-agents', 'no Linux o binário é chamado direto')
+
+  // nenhum caminho pode devolver shell ligado: é a regra que o defeito ensinou
+  for (const alvo of ['/usr/bin/coisa', 'C:/x/y.cmd', '/a/b.js', 'nome-cru', '/opt/app.mjs']) {
+    assert.equal(p.montarComando(alvo, ['a b', '$(rm -rf /)']).shell, false,
+      `montarComando(${alvo}) não pode pedir shell`)
+  }
+
+  // alvo vazio não pode virar spawn de undefined
+  assert.equal(p.montarComando(null), null)
+  assert.equal(p.montarComando(''), null)
+  console.log('  ok   CC-191: o painel do escritório é chamado pelo interpretador certo, e nunca por shell')
+}
+
+/* ====== A rede contra o marcador que ainda não existe ======
+
+   Pergunta dele em 20/08, e é a certa: *"tudo bem que era mentira, mas como
+   garantimos que isso nao vai acontecer mais?"*
+
+   O filtro do `transcript.mjs` é uma lista do que se conhece, e o CLI ganha
+   campo novo a cada versão: `isCompactSummary` existia e ninguém sabia até ele
+   ver o painel. Lista de exclusão não garante nada sozinha.
+
+   Inverter para lista de inclusão foi MEDIDO e também não serve: nos 266
+   transcritos desta máquina, 37 das 2253 mensagens aceitas não trazem
+   `promptSource`, e algumas são dele ("mate o node orfao somente").
+
+   Então a garantia é esta varredura. Ela lê os transcritos REAIS da máquina e
+   falha quando o último pedido tem cheiro de recado de máquina. Marcador novo
+   que apareça amanhã cai aqui, com o nome do arquivo, antes de virar tela. */
+{
+  const { lastPrompt: ultimo } = await import('./src/transcript.mjs')
+  const base = path.join(os.homedir(), '.claude', 'projects')
+
+  /* Cada padrão é uma frase que o PROGRAMA escreve, nunca uma pessoa. Não é
+     detecção de idioma: é detecção de recado de máquina. */
+  const CHEIRO_DE_MAQUINA = [
+    /^This session is being continued/i,
+    /^Caveat: The messages below were generated/i,
+    /^\[Request interrupted/i,
+    /^Continue from where you left off/i,
+    /^<[a-z-]+>/i,
+    /^Your task is to create a detailed summary/i,
+    /^Analyze the conversation/i,
+  ]
+
+  let arquivos = []
+  try {
+    for (const dir of fs.readdirSync(base)) {
+      const p = path.join(base, dir)
+      try {
+        for (const f of fs.readdirSync(p)) if (f.endsWith('.jsonl')) arquivos.push(path.join(p, f))
+      } catch { /* pasta sem permissão: segue */ }
+    }
+  } catch { /* máquina sem transcritos */ }
+
+  if (!arquivos.length) {
+    console.log('  (pulado: esta máquina não tem transcrito para varrer)')
+  } else {
+    /* Os 60 mais recentes: a varredura inteira leva minutos em 266 arquivos, e
+       o que interessa é o que aparece no painel hoje. */
+    const recentes = arquivos
+      .map((f) => { try { return { f, m: fs.statSync(f).mtimeMs } } catch { return null } })
+      .filter(Boolean).sort((a, b) => b.m - a.m).slice(0, 60).map((x) => x.f)
+
+    const suspeitos = []
+    for (const f of recentes) {
+      const p = ultimo(f)
+      if (!p) continue
+      const cheiro = CHEIRO_DE_MAQUINA.find((re) => re.test(p.trim()))
+      if (cheiro) suspeitos.push(`${path.basename(f)}: ${p.trim().slice(0, 70)}`)
+    }
+    assert.deepEqual(
+      suspeitos, [],
+      `o painel mostraria recado do programa como pedido dele em:\n    ${suspeitos.join('\n    ')}`,
+    )
+    console.log(`  ok   nenhum dos ${recentes.length} transcritos recentes mostra recado de máquina como pedido dele`)
+  }
 }

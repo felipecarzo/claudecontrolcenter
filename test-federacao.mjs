@@ -261,6 +261,134 @@ ok('pacote sobrevive ao ida e volta por JSON')
     // a fila não pode ser lida como se fosse pacote de máquina
     assert.equal(F.lerPacotes().length, 0, '_pedidos.json não é uma máquina')
     ok('o arquivo da fila não vira máquina fantasma no painel')
+
+    /* 19/08: o pacote seguinte não pode apagar o que o anterior trouxe.
+       As horas viajam a cada 15 minutos e o pacote é empurrado a cada 30
+       segundos; substituindo o arquivo inteiro, a VPS ficava 14 minutos e
+       meio de cada 15 sem saber o tempo do PC. Medido na VPS: `porMaquina`
+       da aba de tempo listava só a máquina local. */
+    const maquina = { id: 'aa11bb22', nome: 'DESKTOP-TESTE' }
+    F.gravarPacote({ maquina, jobs: [], em: Date.now() - 60000, tempo: { corteMin: 15, projetos: [{ projeto: 'proj_x', ativoMs: 3600000, tokens: 500 }] } })
+    F.gravarPacote({ maquina, jobs: [], em: Date.now() })
+    const guardado = F.lerPacotes().find((p) => p.maquina.id === 'aa11bb22')
+    assert.ok(guardado?.tempo, 'o empurrão seguinte apagou as horas que o anterior trouxe')
+    assert.equal(guardado.tempo.projetos[0].ativoMs, 3600000)
+    ok('pacote sem horas não apaga as horas do anterior')
+
+    // e a idade do campo herdado é a dele, não a do pacote que chegou agora
+    assert.ok(guardado.idades?.tempo, 'o campo herdado precisa dizer de quando ele é')
+    assert.ok(Date.now() - guardado.idades.tempo >= 59000, 'a idade das horas não pode ser a do pacote novo')
+    ok('hora herdada carrega a própria idade, e não se disfarça de recém-chegada')
+
+    // e quando o pacote novo TRAZ o campo, ele vence o guardado
+    F.gravarPacote({ maquina, jobs: [], em: Date.now(), tempo: { corteMin: 15, projetos: [{ projeto: 'proj_x', ativoMs: 7200000, tokens: 900 }] } })
+    const atualizado = F.lerPacotes().find((p) => p.maquina.id === 'aa11bb22')
+    assert.equal(atualizado.tempo.projetos[0].ativoMs, 7200000, 'hora nova tem que vencer a guardada')
+    ok('quando as horas novas chegam, elas substituem as antigas')
+
+    /* CC-205: preservar sem prazo cria o defeito irmão. Se a varredura passar
+       a falhar do outro lado, a máquina continua empurrando pacotes sem
+       `tempo`, o arquivo continua devolvendo o último bom, e a tela mostra
+       hora de anteontem com a máquina marcada em verde. Campo ausente a tela
+       sabe dizer; campo velho ela não. */
+    const velha = { id: 'cc33dd44', nome: 'PAROU-DE-MEDIR' }
+    const antes = Date.now() - F.VALIDADE_HERDADO_MS - 60000
+    F.gravarPacote({ maquina: velha, jobs: [], em: antes, tempo: { corteMin: 15, projetos: [{ projeto: 'p', ativoMs: 100 }] } })
+    F.gravarPacote({ maquina: velha, jobs: [], em: Date.now() })
+    const expirado = F.lerPacotes().find((p) => p.maquina.id === 'cc33dd44')
+    assert.equal(expirado.tempo, undefined, 'hora vencida não pode continuar sendo servida como se fosse de agora')
+    assert.ok(expirado.descartados?.some((d) => d.campo === 'tempo' && d.motivo === 'velho'), 'o descarte precisa ficar registrado, senão some calado')
+    ok('dado herdado tem prazo, e vencido some em vez de posar de atual')
+
+    // e dentro do prazo ele continua valendo, senão a correção acima teria
+    // desfeito o conserto de 19/08
+    const ainda = { id: 'ee55ff66', nome: 'AINDA-VALE' }
+    F.gravarPacote({ maquina: ainda, jobs: [], em: Date.now() - 60000, tempo: { corteMin: 15, projetos: [{ projeto: 'p', ativoMs: 100 }] } })
+    F.gravarPacote({ maquina: ainda, jobs: [], em: Date.now() })
+    assert.ok(F.lerPacotes().find((p) => p.maquina.id === 'ee55ff66')?.tempo, 'hora de um minuto atrás continua valendo')
+    ok('e dentro do prazo o herdado continua de pé')
+
+    /* CC-204: o teto do ARQUIVO não é o teto do pacote. O que chega pela rede
+       passa por `LIMITE_PACOTE`; o que vai pro disco é isso mais o herdado, e
+       é ele que entra no caminho de 2 em 2 segundos. */
+    const gorda = { id: 'gg77hh88', nome: 'PACOTE-GORDO' }
+    const enche = (n) => ({ corteMin: 15, projetos: [{ projeto: 'x'.repeat(n), ativoMs: 1 }] })
+    F.gravarPacote({ maquina: gorda, jobs: [], em: Date.now(), tempo: enche(F.LIMITE_ARQUIVO) })
+    F.gravarPacote({ maquina: gorda, jobs: [], em: Date.now(), uso: { cincoHoras: { usado: 1 } } })
+    const arquivo = fs.statSync(path.join(F.dirFederacao(), 'gg77hh88.json'))
+    assert.ok(arquivo.size <= F.LIMITE_ARQUIVO, `arquivo passou do teto: ${arquivo.size}`)
+    const cortado = F.lerPacotes().find((p) => p.maquina.id === 'gg77hh88')
+    assert.ok(cortado.uso, 'o que chegou AGORA nunca pode ser a coisa descartada')
+    assert.ok(cortado.descartados?.some((d) => d.campo === 'tempo'), 'o corte precisa dizer o que caiu')
+    ok('o arquivo tem teto próprio, e o herdado cai antes do que acabou de chegar')
+
+    /* CC-206: as horas somam as duas máquinas, os dias vinham de `Math.max`.
+       Com 10 dias no PC e 3 na VPS, as horas das duas caíam dentro dos 10 dias
+       do PC, e "por dia" saía inflada. Agora o dado carrega a faixa. */
+    const doisAparelhos = F.mesclarTempo(
+      { projetos: [{ projeto: 'compartilhado', ativoMs: 36e5 * 20, tokens: 0, custo: 0, custoBrl: 0, taxaHora: 0, diasTrabalhados: 10, dias: [], sessoes: [], uso: [] }] },
+      [{ maquina: { id: 'zz99', nome: 'OUTRA' }, em: Date.now(), tempo: { projetos: [{ projeto: 'compartilhado', ativoMs: 36e5 * 6, tokens: 0, diasTrabalhados: 3 }] } }],
+      { id: 'local1', nome: 'AQUI' },
+    )
+    const comp = doisAparelhos.projetos.find((p) => p.projeto === 'compartilhado')
+    assert.equal(comp.ativoMs, 36e5 * 26, 'as horas continuam somando as duas máquinas')
+    assert.equal(comp.diasTrabalhados, 10, 'o piso é o maior de uma máquina só')
+    assert.equal(comp.diasSomados, 13, 'o teto é a soma, quando nenhum dia coincide')
+    assert.equal(comp.diasIncerto, true, 'com duas máquinas a contagem de dias precisa se declarar incerta')
+    ok('dias de duas máquinas viram faixa, e a média por dia para de inflar')
+
+    // e com uma máquina só nada muda: continua número exato
+    const soUm = F.mesclarTempo(
+      { projetos: [{ projeto: 'sozinho', ativoMs: 36e5 * 5, tokens: 0, custo: 0, custoBrl: 0, taxaHora: 0, diasTrabalhados: 5, dias: [], sessoes: [], uso: [] }] },
+      [],
+      { id: 'local1', nome: 'AQUI' },
+    )
+    assert.equal(soUm.projetos[0].diasIncerto, false, 'uma máquina só não tem incerteza para declarar')
+    ok('e com um aparelho só a contagem segue exata')
+
+    /* 19/08: projeto que só existe na OUTRA máquina precisa nascer com os
+       campos que a tela formata. O pacote é enxuto (só projeto, horas e
+       tokens), e sem isto a aba de tempo morria em
+       `Cannot read properties of undefined (reading 'toFixed')` antes de
+       escrever qualquer coisa. O sintoma era a tela presa em "lendo os
+       transcritos" para sempre, sem nenhuma mensagem de erro. */
+    const mesclado = F.mesclarTempo(
+      { projetos: [{ projeto: 'daqui', ativoMs: 1000, tokens: 10, custo: 1.5, custoBrl: 8, taxaHora: 100, diasTrabalhados: 2, dias: [], sessoes: [], uso: [] }] },
+      F.lerPacotes(),
+      { id: 'local1', nome: 'AQUI' },
+    )
+    const soDeLa = mesclado.projetos.find((p) => p.projeto === 'proj_x')
+    assert.ok(soDeLa, 'o projeto que só existe na outra máquina tem que aparecer')
+    for (const campo of ['custo', 'taxaHora', 'diasTrabalhados']) {
+      assert.notEqual(soDeLa[campo], undefined, `${campo} indefinido quebra a formatação da tela inteira`)
+    }
+    assert.equal(soDeLa.ativoMs, 7200000)
+    assert.equal(soDeLa.porMaquina.length, 1)
+    ok('projeto vindo só da outra máquina nasce formatável, sem campo indefinido')
+
+    /* DINHEIRO NÃO PODE DOBRAR. A primeira versão desta garantia pôs os
+       campos zerados ANTES do espalhamento do projeto, então o valor voltava
+       para dentro e a soma logo abaixo contava duas vezes: todo custo do
+       painel saía dobrado, com ou sem federação. O teste anterior não pegou
+       porque só conferia que o campo não era indefinido. */
+    const daqui = mesclado.projetos.find((p) => p.projeto === 'daqui')
+    assert.equal(daqui.custo, 1.5, 'custo dobrou: o campo foi zerado antes do espalhamento')
+    assert.equal(daqui.custoBrl, 8, 'custo em reais dobrou pelo mesmo motivo')
+    assert.equal(daqui.ativoMs, 1000, 'horas dobraram')
+    assert.equal(daqui.tokens, 10, 'tokens dobraram')
+    ok('somar não conta o mesmo valor duas vezes')
+
+    // e o projeto que existe nas duas soma as horas e guarda a quebra
+    F.gravarPacote({ maquina, jobs: [], em: Date.now(), tempo: { corteMin: 15, projetos: [{ projeto: 'daqui', ativoMs: 500, tokens: 5 }] } })
+    const m2 = F.mesclarTempo(
+      { projetos: [{ projeto: 'daqui', ativoMs: 1000, tokens: 10, custo: 1.5, custoBrl: 8, taxaHora: 100, diasTrabalhados: 2, dias: [], sessoes: [], uso: [] }] },
+      F.lerPacotes(),
+      { id: 'local1', nome: 'AQUI' },
+    )
+    const nos2 = m2.projetos.find((p) => p.projeto === 'daqui')
+    assert.equal(nos2.ativoMs, 1500, 'as horas das duas máquinas têm que somar')
+    assert.equal(nos2.porMaquina.length, 2, 'e a quebra por aparelho tem que sobreviver à soma')
+    ok('projeto tocado nos dois aparelhos soma o total e mantém a quebra')
   } finally {
     if (antes === undefined) delete process.env.CC_HOME
     else process.env.CC_HOME = antes
