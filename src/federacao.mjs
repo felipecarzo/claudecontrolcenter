@@ -83,14 +83,113 @@ export function validarPacote(bruto) {
   }
 }
 
-/** Escrita atômica, a mesma regra do `meta.json`: leitor concorrente nunca
- *  pode pegar arquivo pela metade. */
+/**
+ * Escrita atômica, a mesma regra do `meta.json`: leitor concorrente nunca
+ * pode pegar arquivo pela metade.
+ *
+ * **O que o pacote novo não traz é PRESERVADO do anterior**, e isso não é
+ * zelo: é a correção de um defeito medido em 19/08. As horas viajam de vez em
+ * quando (varrer centenas de MB é caro, então vai a cada 15 minutos), mas o
+ * pacote é empurrado a cada 30 segundos. Substituindo o arquivo inteiro, os
+ * 29 empurrões seguintes APAGAM as horas que o primeiro trouxe, e a VPS
+ * passa 14 minutos e meio de cada 15 sem saber o tempo do PC.
+ *
+ * O sintoma era exatamente esse: na VPS, `porMaquina` da aba de tempo listava
+ * só a máquina local, e o PC aparecia com os agentes mas sem hora nenhuma.
+ * O painel do PC dizia "último envio com as horas" e estava certo: o envio
+ * teve, o arquivo é que já tinha sido sobrescrito por outro sem.
+ *
+ * Cada campo preservado carrega o carimbo de quando chegou, porque hora velha
+ * exibida como atual é pior que hora ausente.
+ */
+const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs']
+
+/**
+ * CC-205: até quando um campo herdado continua valendo.
+ *
+ * Preservar o que o pacote novo não traz conserta o defeito das horas que
+ * sumiam, e cria outro se não tiver fim: se a varredura passar a FALHAR na
+ * outra máquina, ela continua empurrando pacotes sem `tempo`, o arquivo
+ * continua devolvendo o último `tempo` bom, e a tela mostra as horas de
+ * anteontem com a máquina marcada em verde. Ninguém descobre.
+ *
+ * Doze horas é folgado para o ciclo real (as horas viajam a cada 15 minutos) e
+ * curto o bastante para o buraco aparecer no mesmo dia. Passou disso, o campo
+ * é descartado: **campo ausente a tela sabe dizer, campo velho ela não.**
+ */
+export const VALIDADE_HERDADO_MS = 12 * 60 * 60 * 1000
+
+/**
+ * CC-204: teto do arquivo gravado, que é diferente do teto do pacote recebido.
+ *
+ * `LIMITE_PACOTE` mede o que chega pela rede. O arquivo é o que chegou MAIS o
+ * que foi herdado do anterior, então ele pode passar do limite sem nenhum
+ * pacote ter passado. E é este arquivo que entra no caminho de 2 em 2 segundos.
+ *
+ * Estourando, os herdados caem primeiro, do mais pesado para o mais leve: o
+ * que veio agora é o dado de verdade, e o herdado já era conveniência.
+ */
+export const LIMITE_ARQUIVO = 4 * 1024 * 1024
+
 export function gravarPacote(pacote) {
   const dir = dirFederacao()
   fs.mkdirSync(dir, { recursive: true })
   const alvo = path.join(dir, `${pacote.maquina.id}.json`)
+
+  let anterior = null
+  try { anterior = JSON.parse(fs.readFileSync(alvo, 'utf8')) } catch { /* primeiro pacote desta máquina */ }
+
+  const agora = Date.now()
+  const final = { ...pacote }
+  const descartados = []
+  if (anterior) {
+    const idades = { ...(anterior.idades || {}) }
+    for (const campo of CAMPOS_QUE_PERSISTEM) {
+      if (final[campo] == null && anterior[campo] != null) {
+        /* Herdado: mantém a idade que já tinha, ou carimba com a chegada do
+           pacote que o trouxe. */
+        const desde = idades[campo] ?? anterior.em ?? null
+        // CC-205: herdado com prazo. Velho demais some, em vez de posar de novo.
+        if (desde && agora - desde > VALIDADE_HERDADO_MS) {
+          delete idades[campo]
+          descartados.push({ campo, motivo: 'velho', desde })
+          continue
+        }
+        final[campo] = anterior[campo]
+        idades[campo] = desde
+      } else if (final[campo] != null) {
+        idades[campo] = final.em ?? agora
+      }
+    }
+    final.idades = idades
+  } else {
+    final.idades = Object.fromEntries(
+      CAMPOS_QUE_PERSISTEM.filter((c) => final[c] != null).map((c) => [c, final.em ?? agora]),
+    )
+  }
+
+  /* CC-204: o arquivo tem teto próprio, e ele é medido no que vai para o
+     disco. Herdado sai primeiro, começando pelo maior: o que chegou agora é
+     dado, o herdado é conveniência. */
+  let corpo = JSON.stringify(final)
+  if (corpo.length > LIMITE_ARQUIVO) {
+    const herdados = CAMPOS_QUE_PERSISTEM
+      .filter((c) => pacote[c] == null && final[c] != null)
+      .map((c) => ({ campo: c, peso: JSON.stringify(final[c]).length }))
+      .sort((a, b) => b.peso - a.peso)
+    for (const { campo } of herdados) {
+      delete final[campo]
+      delete final.idades[campo]
+      descartados.push({ campo, motivo: 'arquivo grande demais' })
+      corpo = JSON.stringify(final)
+      if (corpo.length <= LIMITE_ARQUIVO) break
+    }
+  }
+  if (descartados.length) final.descartados = descartados
+  corpo = JSON.stringify(final)
+
   const tmp = `${alvo}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(pacote))
+  fs.writeFileSync(tmp, corpo)
   fs.renameSync(tmp, alvo)
   return alvo
 }
@@ -265,12 +364,58 @@ export function mesclarTempo(local, pacotes, origemLocal) {
   const juntar = (resumo, origem) => {
     for (const p of resumo?.projetos || []) {
       const atual = porProjeto.get(p.projeto) || {
-        ...p, ativoMs: 0, tokens: 0, porMaquina: [],
+        /* Os campos que a tela formata precisam EXISTIR, mesmo quando o
+           projeto só é conhecido pela outra máquina.
+
+           O pacote que viaja é enxuto de propósito (só projeto, horas e
+           tokens: `dias` e `sessoes` são o que engorda). Um projeto que nunca
+           rodou aqui nascia sem `custo`, `taxaHora` e `diasTrabalhados`, e a
+           tela de tempo quebrava inteira ao formatar o primeiro deles, com
+           `Cannot read properties of undefined (reading 'toFixed')`.
+
+           O sintoma não parecia erro: a aba ficava para sempre em "lendo os
+           transcritos", porque o desenho morria antes de escrever qualquer
+           coisa. Foi assim que a tela de tempo da VPS nunca funcionou desde
+           que existe federação, sem ninguém ver uma mensagem de erro. */
+        taxaHora: 0, taxaPropria: false,
+        dias: [], sessoes: [], uso: [], usoDias: [],
+        ...p,
+        /* Tudo o que é SOMADO abaixo nasce zerado DEPOIS do spread. Ficando
+           antes, o spread devolvia o valor de `p` para dentro e a soma logo
+           abaixo contava a mesma quantia duas vezes: `custo` e `custoBrl`
+           saíam DOBRADOS em todo projeto de toda máquina, com ou sem
+           federação. É a mesma razão de `ativoMs` e `tokens` já estarem
+           aqui, e eu tinha colocado os novos do lado errado. */
+        ativoMs: 0, tokens: 0, custo: 0, custoBrl: null,
+        diasTrabalhados: 0, diasSomados: 0, diasIncerto: false,
+        porMaquina: [],
         // zerados: quem exibe recalcula com a própria taxa
         valor: 0, custoReal: null, sobra: null,
       }
       atual.ativoMs += p.ativoMs || 0
       atual.tokens += p.tokens || 0
+      /* Custo só existe no resumo de quem calculou (a máquina local); o pacote
+         não carrega. Somar o que vier, tratando ausência como zero, mantém o
+         total honesto sem inventar preço para a máquina remota. */
+      atual.custo = (atual.custo || 0) + (p.custo || 0)
+      if (p.custoBrl != null) atual.custoBrl = (atual.custoBrl || 0) + p.custoBrl
+      /* CC-206: `diasTrabalhados` some com as horas e o número não bate.
+       *
+       * As horas SOMAM as duas máquinas; os dias vinham de `Math.max`, que é o
+       * número de UMA delas. Com 10 dias no PC e 3 na VPS, a divisão punha as
+       * horas das duas dentro dos 10 dias do PC, e "horas por dia" saía inflada.
+       *
+       * O certo seria a união dos dias de calendário, e ela não existe aqui: o
+       * pacote carrega a contagem, nunca a lista. Então o que se guarda é a
+       * FAIXA em que a resposta certa mora, com o `max` como piso (nenhuma
+       * máquina sozinha trabalhou mais dias que isso) e a soma como teto (o
+       * caso em que nenhum dia coincide). Quem exibe decide o que fazer com a
+       * incerteza; o que não pode é ela sumir e virar um número exato falso. */
+      if (p.diasTrabalhados) {
+        atual.diasTrabalhados = Math.max(atual.diasTrabalhados || 0, p.diasTrabalhados)
+        atual.diasSomados = (atual.diasSomados || 0) + p.diasTrabalhados
+        atual.diasIncerto = atual.diasSomados > atual.diasTrabalhados
+      }
       atual.porMaquina.push({ maquina: origem, ativoMs: p.ativoMs || 0, tokens: p.tokens || 0 })
       porProjeto.set(p.projeto, atual)
     }
@@ -278,7 +423,18 @@ export function mesclarTempo(local, pacotes, origemLocal) {
 
   juntar(local, origemLocal)
   for (const pac of pacotes) {
-    if (pac.tempo) juntar(pac.tempo, { ...pac.maquina, idadeMs: pac.idadeMs, semContato: pac.semContato })
+    /* A idade do TEMPO é própria, e não a do pacote: as horas viajam a cada 15
+       minutos e ficam guardadas entre um envio e outro, então um pacote de 10
+       segundos atrás pode carregar hora de 14 minutos. Dizer a idade do pacote
+       aqui faria a tela afirmar que o número é mais fresco do que é. */
+    if (pac.tempo) {
+      const em = pac.idades?.tempo ?? pac.em
+      juntar(pac.tempo, {
+        ...pac.maquina,
+        idadeMs: Number.isFinite(em) ? Date.now() - em : pac.idadeMs,
+        semContato: pac.semContato,
+      })
+    }
   }
 
   const projetos = [...porProjeto.values()].sort((a, b) => b.ativoMs - a.ativoMs)

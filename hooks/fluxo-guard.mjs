@@ -220,11 +220,28 @@ function ultimoPedido(texto) {
    sem próximo passo executável, todas já registradas como estudo ou visão —
    voltavam pra fila do mesmo jeito que um item comum sem ✅. O prefixo
    `(?:CC-\d+\s+)?` deixa o número opcional antes da palavra que classifica. */
+/**
+ * Os itens do backlog que ainda não foram fechados.
+ *
+ * **Item de backlog tem código.** Todo item deste projeto nasce como
+ * `### CC-nnn …`, e a exigência do código não é formalidade: sem ela, qualquer
+ * título de seção contava como tarefa. Ele achou isso em 20/08, com o backlog
+ * já zerado, perguntando *"o guarda ve coisas abertas de resposta anterior…
+ * mas e ai? precisamos resolve-las? ou nao?"*.
+ *
+ * Eram sete, e nenhuma era tarefa: "O que falta", "A ordem de migração, por
+ * valor para ele", "O estado das 24 telas, medido em 20/08". Títulos do texto
+ * que explica a frente, cobrados como se fossem trabalho pendente.
+ *
+ * O custo do defeito é pior que o barulho: a trava que existe para eu não
+ * parar no meio do trabalho passou a cobrar trabalho que não existe, e a
+ * primeira coisa que se aprende com uma cobrança falsa é a ignorá-la.
+ */
 function backlogAberto(raizProjeto) {
   let md = ''
   try { md = readFileSync(join(raizProjeto, 'docs', 'ROADMAP.md'), 'utf8') } catch { return [] }
   return md.split(/\r?\n/)
-    .filter((l) => /^###\s/.test(l)
+    .filter((l) => /^###\s+CC-\d+/i.test(l)
       && !l.includes('✅')
       && !l.includes('⏸')
       && !/^###\s*(?:CC-\d+\s+)?(Frente|Visão|Decis)/i.test(l))

@@ -53,8 +53,10 @@ const PADRAO = [
     porta: 3101,
     cmd: 'pixel-agents',
     args: ['--host', '127.0.0.1', '--port', '3101'],
-    // no Windows o binário do npm é um .cmd: sem shell, o spawn não acha
-    shell: ehWindows,
+    /* `shell` saiu daqui no CC-191: quem decide COMO chamar é `montarComando`,
+       pela extensão do alvo, e nenhum caminho usa shell. O campo continuava
+       aqui sem ninguém ler, e campo morto numa definição é a próxima pessoa
+       achando que ele faz alguma coisa. */
     // onde o fork mora, para `resolverBinario` achar o dist dele antes do
     // pacote global — é o fork que tem as melhorias, não o upstream
     fork: path.join('app_escritorio', 'app', 'dist', 'cli.js'),
@@ -126,6 +128,45 @@ export function resolverBinario(cmd, { fork = null } = {}) {
 }
 
 /**
+ * CC-191: como CHAMAR o que `resolverBinario` achou.
+ *
+ * O botão "ligar" respondia `spawn EFTYPE` no Windows, e a causa é do sistema
+ * operacional, não da tela: o fork do escritório é um `cli.js`, e no Windows um
+ * `.js` NÃO é executável. `spawn` de um `.js` falha; e a saída antiga,
+ * `shell: true`, é pior de duas formas. Ela empurra o comando inteiro pelo
+ * `cmd.exe` com argumentos concatenados sem escapar (injeção real, o próprio
+ * Node avisa), e ainda assim não resolve o `.js` de forma confiável.
+ *
+ * A regra já paga neste projeto, registrada no CLAUDE.md: **nunca `shell: true`
+ * com argumento dinâmico. Invoca-se o interpretador certo como executável, e
+ * cada argumento vai como elemento próprio do array**, que o Node escapa
+ * sozinho ao montar a linha de comando do Windows.
+ *
+ * Três casos, e o primeiro é o que estava quebrado:
+ *   `.js`            → o próprio Node que já está rodando (`process.execPath`),
+ *                      que de quebra garante a MESMA versão de Node
+ *   `.cmd` / `.bat`  → `cmd.exe /c`, porque binário de npm no Windows é isso
+ *   qualquer outro   → direto, sem shell nenhum
+ */
+export function montarComando(alvo, args = []) {
+  if (!alvo) return null
+  const ext = path.extname(alvo).toLowerCase()
+  if (ext === '.js' || ext === '.mjs' || ext === '.cjs') {
+    return { cmd: process.execPath, args: [alvo, ...args], shell: false }
+  }
+  if (ehWindows && (ext === '.cmd' || ext === '.bat')) {
+    return { cmd: process.env.COMSPEC || 'cmd.exe', args: ['/c', alvo, ...args], shell: false }
+  }
+  /* Sem extensão nenhuma no Windows quer dizer que `resolverBinario` não achou
+     arquivo e devolveu o nome cru (`pixel-agents`). Quem resolve o nome para
+     `pixel-agents.cmd` é o `cmd.exe`, e é ele que sabe fazer isso. */
+  if (ehWindows && !ext) {
+    return { cmd: process.env.COMSPEC || 'cmd.exe', args: ['/c', alvo, ...args], shell: false }
+  }
+  return { cmd: alvo, args, shell: false }
+}
+
+/**
  * Onde as pastas de projeto podem estar, sem fixar caminho de máquina.
  *
  * A regra do projeto é que nenhum caminho de máquina entre no código: a pasta é
@@ -187,6 +228,15 @@ export function readPaineis({ force = false } = {}) {
   })
 }
 
+/* CC-191: a última falha ao subir cada painel.
+   Sobe com `detached` e `stdio: 'ignore'` de propósito (tem que sobreviver ao
+   fim deste processo), e o preço disso é que falha e travamento ficam
+   invisíveis: a rota responde `ok` e a tela diz "no ar" com o processo morto
+   por trás. Este mapa é o mínimo para a tela parar de mentir. */
+const ultimaFalha = new Map()
+
+export const falhaAoLigar = (id) => ultimaFalha.get(id) || null
+
 export function ligarPainel(id) {
   const def = definicoes().find((p) => p.id === id)
   if (!def) throw new Error(`painel desconhecido: ${id}`)
@@ -194,15 +244,25 @@ export function ligarPainel(id) {
   const jaEsta = processoNaPorta(def.porta, { force: true })
   if (jaEsta) return { ...def, jaEstava: true, pid: jaEsta.pid }
 
+  ultimaFalha.delete(id) // tentativa nova não herda o erro da anterior
+
   // Destacado e sem stdio: o painel precisa sobreviver ao fim deste processo,
   // senão morre junto com o Control Center — foi exatamente assim que o túnel
   // caiu na primeira tentativa.
-  const filho = spawn(resolverBinario(def.cmd, { fork: def.fork }), def.args, {
+  const alvo = resolverBinario(def.cmd, { fork: def.fork })
+  const chamada = montarComando(alvo, def.args)
+  if (!chamada) throw new Error(`não sei como chamar "${def.cmd}"`)
+  /* CC-191: o erro do `spawn` chega DEPOIS, num evento, e não no `try` de quem
+     chamou. Sem este ouvinte, `spawn EFTYPE` derrubava o processo inteiro do
+     painel (erro não tratado em EventEmitter), e o que ele via era o cockpit
+     morrendo ao clicar em "ligar". Guardar a falha é o que permite a tela
+     contar o que houve, em vez de "ok" com nada no ar. */
+  const filho = spawn(chamada.cmd, chamada.args, {
     detached: true,
     stdio: 'ignore',
-    shell: def.shell,
     windowsHide: true,
   })
+  filho.on('error', (e) => { ultimaFalha.set(def.id, `${e.code || 'erro'} ao chamar ${chamada.cmd}`) })
   filho.unref()
 
   // Sem pid no retorno de propósito: com `shell: true` o pid é o do cmd.exe

@@ -9,6 +9,9 @@
 //   node cc.mjs done "tarefa"      fecha um to-do sem reenviar a lista
 //   node cc.mjs check              usado pelo hook: avisa to-do aberto na entrega
 //   node cc.mjs on|off [--project X]   liga/desliga o reporte
+//   node cc.mjs federar                mostra a que cockpit esta máquina reporta
+//   node cc.mjs federar ligar --para <url> --token <t> [--nome "MEU PC"]
+//   node cc.mjs federar desligar       para de empurrar
 //   node cc.mjs hooks                  lista hooks e se estão ligados
 //   node cc.mjs hooks on|off <id>      liga/desliga um hook específico
 //   node cc.mjs hooks install [--dry-run]  registra os hooks no settings.json
@@ -40,6 +43,8 @@ const argv = process.argv.slice(2)
 const FLAGS_WITH_VALUE = new Set([
   '--port', '--job', '--project', '--dir', '--metodo', '--motivo', '--nome', '--criterio', '--pastas',
   '--prova', '--pronto', '--branch', '--alvo', '--apontou', '--respondeu', '--quem',
+  // CC-187: ligar um aparelho novo ao cockpit sem SSH
+  '--para', '--token',
 ])
 
 const has = (f) => argv.includes(f)
@@ -1003,6 +1008,93 @@ switch (cmd) {
       }
       default:
         die(`uso: node cc.mjs framework [status|iniciar|modo <nome>|entrevista|autorizar [alvo]|mvp|avancar]`)
+    }
+    break
+  }
+
+  /* ===================== CC-187: um aparelho novo entra sozinho =====================
+   *
+   * Pedido dele: *"qualquer outro local que eu conecte meus agentes"*. Isso só
+   * é verdade se ligar uma máquina nova não exigir uma pessoa com SSH: hoje o
+   * caminho existe, e foi percorrido à mão, uma vez, por dentro da VPS.
+   *
+   * Três coisas e nenhuma a mais: como esta máquina se chama, para onde ela
+   * empurra, e o token. O comando confirma na hora mandando um pacote de
+   * verdade, porque configuração que só se prova amanhã não é configuração,
+   * é esperança.
+   */
+  case 'federar': {
+    const { readConfig } = await import('./src/config.mjs')
+    const { setMaquina: gravarMaquina, setFederacao: gravarFederacao } = await import('./src/config.mjs')
+    const sub = arg
+
+    if (!sub || sub === 'status') {
+      const cfg = readConfig()
+      const f = cfg.federacao || {}
+      console.log(`esta máquina : ${cfg.maquina?.nome || '(sem nome)'}${cfg.maquina?.id ? ` (${cfg.maquina.id})` : ''}`)
+      console.log(`empurra para : ${f.enviarPara || '(ninguém)'}`)
+      console.log(`token        : ${f.token ? `${f.token.slice(0, 4)}… (${f.token.length} caracteres)` : '(nenhum)'}`)
+      if (!f.token || !f.enviarPara) {
+        console.log('')
+        console.log('para ligar esta máquina ao cockpit:')
+        console.log('  cc federar ligar --para https://cockpit.exemplo.com --token <o token> [--nome "MEU PC"]')
+        console.log('')
+        console.log('o token é o mesmo do cockpit que recebe, na tela Remoto, campo "senha combinada".')
+      }
+      break
+    }
+
+    if (sub === 'desligar') {
+      gravarFederacao({ token: '', enviarPara: '' })
+      console.log('esta máquina parou de empurrar. O que já chegou lá continua lá.')
+      break
+    }
+
+    if (sub !== 'ligar') {
+      die('uso: cc federar [status]\n'
+        + '     cc federar ligar --para <url> --token <token> [--nome "MEU PC"]\n'
+        + '     cc federar desligar')
+    }
+
+    const para = val('--para', null)
+    const token = val('--token', null)
+    const nome = val('--nome', null)
+
+    if (!para || !token) die('faltou --para <url do cockpit> ou --token <token>')
+    if (!/^https?:\/\//i.test(para)) die(`--para precisa começar com http:// ou https://, recebi "${para}"`)
+
+    if (nome) gravarMaquina({ nome })
+    gravarFederacao({ token, enviarPara: para })
+
+    /* A confirmação é o ponto do comando. Gravar e dizer "pronto" repetiria o
+       defeito que este projeto passou o dia inteiro consertando: dizer que
+       funcionou sem ter olhado. */
+    const cfg = readConfig()
+    console.log(`gravado: ${cfg.maquina?.nome || '(sem nome)'} empurra para ${cfg.federacao.enviarPara}`)
+    console.log('conferindo com um envio de verdade…')
+    const { montarPacote, enviar } = await import('./src/federacao.mjs')
+    const { readJobs } = await import('./src/jobs.mjs')
+    try {
+      /* O pacote de conferência é o mesmo que o painel manda no ciclo normal,
+         só que montado aqui: os jobs desta máquina e nada mais. Mandar um
+         pacote vazio provaria só que o token passa, não que o dado chega. */
+      const meus = readJobs()
+      const r = await enviar({
+        enviarPara: cfg.federacao.enviarPara,
+        token: cfg.federacao.token,
+        pacote: montarPacote({ maquina: cfg.maquina, jobs: meus }),
+      })
+      if (r?.ok) {
+        console.log(`✓ chegou. Abra ${cfg.federacao.enviarPara} e esta máquina já aparece na lista.`)
+      } else {
+        console.log(`✗ não chegou: ${r?.erro || `resposta ${r?.status || 'sem status'}`}`)
+        console.log('  o token e o endereço ficaram gravados. Confira o token no cockpit que recebe e rode de novo.')
+        process.exitCode = 1
+      }
+    } catch (e) {
+      console.log(`✗ não deu para enviar: ${e.message}`)
+      console.log('  o token e o endereço ficaram gravados. Confira se o cockpit está no ar e rode de novo.')
+      process.exitCode = 1
     }
     break
   }

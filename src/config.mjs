@@ -87,6 +87,30 @@ export function setFederacao({ token, enviarPara }) {
   return proxima
 }
 
+/**
+ * CC-178/179: os painéis que ele monta com blocos de qualquer tela.
+ *
+ * Mesma casa do `pip`, e pela mesma razão: é preferência de leitura, e mora
+ * no config em vez de `~/.claude/jobs`, que é do CLI e só se lê.
+ *
+ * O teto de nove não é técnico, é a TECLA: a troca entre painéis é pelas
+ * teclas 1 a 9, e um décimo painel não teria como ser chamado. Guardar o que
+ * não se alcança é dado morto com cara de recurso.
+ *
+ * Cada painel guarda nome e ids de bloco, nunca o conteúdo: o bloco vive na
+ * tela de origem, e copiar o conteúdo aqui criaria uma segunda verdade que
+ * envelhece sozinha.
+ */
+export function setPaineisMeus(paineis) {
+  const cfg = readConfig()
+  const limpos = (Array.isArray(paineis) ? paineis : []).slice(0, 9).map((p) => ({
+    nome: String(p?.nome || '').slice(0, 40),
+    blocos: (Array.isArray(p?.blocos) ? p.blocos : []).slice(0, 20).map((b) => String(b).slice(0, 40)),
+  }))
+  writeConfig({ ...cfg, paineisMeus: limpos })
+  return limpos
+}
+
 /** Sem projeto informado, responde só pelo interruptor global. */
 export function isEnabled(cwd = process.cwd(), cfg = readConfig()) {
   if (!cfg.enabled) return false
