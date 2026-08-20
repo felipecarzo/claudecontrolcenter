@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Agent Cockpit V2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <style>
+    :root {
+      --bg-base: #0B0D0F; 
+      --surface-1: #111418;
+      --surface-2: #171B20;
+      --border: #252A30;
+      --border-highlight: #3D444D;
+      --text-1: #E6E8EA;
+      --text-2: #A1A9B3;
+      --text-3: #7D858E;
+      --accent: #38bdf8;
+      --working: #8b5cf6;
+      --waiting: #f59e0b;
+      --done: #10b981;
+      --font-ui: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-1);
+      font-family: var(--font-ui);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: row;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+    /* --- SIDEBAR --- */
+    .sidebar {
+      width: 240px; flex: none; background: var(--surface-1); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 24px 0; z-index: 50;
+      overflow-y: auto;
+    }
+    .nav-brand {
+      font-size: 16px; font-weight: 800; color: var(--text-1); margin: 0 24px 32px 24px;
+      display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px;
+    }
+    .nav-brand i { color: var(--accent); font-size: 20px; }
+    
+    .nav-group { margin-bottom: 24px; }
+    .nav-group-title {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+      color: var(--text-3); margin: 0 24px 8px 24px;
+    }
+    .nav-btn {
+      background: transparent; border: none; color: var(--text-2); font-size: 13px; font-weight: 500;
+      width: calc(100% - 32px); margin: 2px 16px; padding: 8px 12px; border-radius: 6px;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer; transition: all 0.2s; position: relative; text-align: left;
+    }
+    .nav-btn i { font-size: 16px; opacity: 0.7; }
+    .nav-btn:hover { color: var(--text-1); background: var(--surface-2); }
+    .nav-btn.active { color: var(--text-1); background: rgba(255,255,255,0.05); font-weight: 600; }
+    .nav-btn.active i { opacity: 1; color: var(--accent); }
+
+    /* --- MAIN CONTENT --- */
+    .main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+    
+    header {
+      padding: 24px 48px; display: flex; justify-content: space-between; align-items: center; flex: none;
+      border-bottom: 1px solid var(--border); background: var(--bg-base); z-index: 10;
+    }
+    .cockpit-title { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-1); text-transform: uppercase; }
+    .cockpit-subtitle { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+    
+    .header-stats { display: flex; gap: 24px; align-items: center; }
+    .header-stat { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); font-weight: 600; }
+    .header-stat i { font-size: 14px; }
+    .header-stat.alert { color: var(--waiting); }
+
+    /* --- VIEWS --- */
+    .view {
+      display: none; flex: 1; width: 100%; overflow-x: hidden; overflow-y: auto;
+      padding: 32px 48px;
+    }
+    .view.active { display: block; }
+    
+    /* --- COCKPIT VIEW --- */
+    .section-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;
+      color: var(--text-3); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .grid-agora {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 48px;
+    }
+    .grid-projetos {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px;
+    }
+
+    /* --- WIDGETS --- */
+    .widget {
+      background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+      padding: 20px; transition: all 0.2s ease; position: relative;
+    }
+    .widget-alert { border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.02); }
+    
+    .widget-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .widget-title { font-size: 15px; font-weight: 600; color: var(--text-1); display: flex; align-items: center; gap: 8px; }
+    .widget-title i { font-size: 18px; }
+    .widget-badge {
+      font-size: 10px; text-transform: uppercase; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .badge-alert { background: rgba(245,158,11,0.1); color: var(--waiting); border: 1px solid rgba(245,158,11,0.2); }
+    
+    .agent-row {
+      display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--border);
+    }
+    .agent-row:first-child { border-top: none; padding-top: 0; }
+    .agent-status-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+    }
+    .agent-status-dot.working { background: var(--working); box-shadow: 0 0 8px var(--working); }
+    .agent-status-dot.waiting { background: var(--waiting); box-shadow: 0 0 8px var(--waiting); }
+    .agent-status-dot.done { background: var(--done); }
+    .agent-status-dot.failed { background: var(--failed); }
+    
+    .agent-info { flex: 1; min-width: 0; }
+    .agent-name { font-weight: 600; font-size: 13px; color: var(--text-1); margin-bottom: 2px; }
+    .agent-desc { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+    .agent-action { font-size: 10px; font-weight: 700; color: var(--accent); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: inline-block; }
+
+    .progress-bar { height: 4px; background: var(--surface-2); border-radius: 2px; margin-top: 16px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-top: 8px; }
+
+    /* Outros componentes mantidos do V2 mas planificados */
+    .styled-input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1); padding: 10px 12px; border-radius: 6px; font-family: var(--font-ui); outline: none; margin-bottom: 12px; transition: border-color 0.2s; font-size: 13px; }
+    .styled-input:focus { border-color: var(--border-highlight); }
+    .styled-btn { padding: 8px 16px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1); border-radius: 6px; cursor: pointer; font-family: var(--font-ui); font-weight: 500; font-size: 12px; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+    .styled-btn:hover { background: var(--border); }
+    .styled-btn.primary { background: var(--text-1); color: var(--bg-base); border-color: var(--text-1); font-weight: 600; }
+    .styled-btn.primary:hover { background: #fff; }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 20px; text-align: center; border: 1px dashed var(--border); border-radius: 8px; color: var(--text-3); }
+    .empty-state i { font-size: 24px; margin-bottom: 8px; opacity: 0.5; }
+    .empty-state-title { font-size: 13px; font-weight: 500; color: var(--text-2); }
+
+    /* --- SISTEMA DE AJUDA CONTEXTUAL (?) --- */
+    .help-btn {
+      background: transparent; border: 1px solid var(--text-3); border-radius: 50%;
+      color: var(--text-3); width: 14px; height: 14px; font-size: 9px; font-family: var(--font-mono); font-weight: bold;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: all 0.2s ease; margin-left: 6px; flex-shrink: 0; line-height: 1; padding:0; outline: none;
+    }
+    .help-btn:hover { color: var(--text-1); border-color: var(--text-1); }
+
+    .help-popover {
+      position: fixed; width: 300px; background: var(--surface-2); border: 1px solid var(--border-highlight);
+      border-radius: 8px; padding: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      z-index: 9999; display: none; flex-direction: column; gap: 12px;
+    }
+    .help-popover.visible { display: flex; }
+    .help-popover-title { font-size: 14px; font-weight: 600; color: var(--text-1); border-bottom: 1px solid var(--border); padding-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .help-popover-title i { color: var(--accent); }
+    .help-section { display: flex; flex-direction: column; gap: 4px; }
+    .help-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; color: var(--text-3); }
+    .help-text { font-size: 12px; line-height: 1.5; color: var(--text-2); }
+
+    /* Generic Grid for other views */
+    .generic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+</style>
+<body>
+  <!-- GLOBAL HELP POPOVER -->
+  <div id="global-help-popover" class="help-popover">
+    <div class="help-popover-title"><i class="ph-bold ph-info"></i> <span id="help-pop-title">Título</span></div>
+    <div class="help-section"><div class="help-label">O que é</div><div class="help-text" id="help-pop-oque"></div></div>
+    <div class="help-section"><div class="help-label">Acorda</div><div class="help-text" id="help-pop-acorda" style="color: var(--working);"></div></div>
+    <div class="help-section"><div class="help-label">Mata</div><div class="help-text" id="help-pop-mata" style="color: var(--failed);"></div></div>
+    <div class="help-section"><div class="help-label">Exemplo</div><div class="help-text" id="help-pop-exemplo" style="font-style:italic; border-left:2px solid var(--border); padding-left:8px;"></div></div>
+  </div>
+
+  <nav class="sidebar">
+    <div class="nav-brand"><i class="ph-bold ph-planet"></i> AGENT COCKPIT</div>
+    
+    <div class="nav-group">
+      <div class="nav-group-title">COCKPIT</div>
+      <button class="nav-btn active" data-target="view-cockpit" data-help="aba-telemetria"><i class="ph-bold ph-activity"></i> Agora</button>
+      <button class="nav-btn" data-target="view-trabalho" data-help="aba-planejamento"><i class="ph-bold ph-kanban"></i> Trabalho</button>
+      <button class="nav-btn" data-target="view-projetos" data-help="aba-projetos"><i class="ph-bold ph-buildings"></i> Estrutura</button>
+    </div>
+    
+    <div class="nav-group">
+      <div class="nav-group-title">ENGENHARIA</div>
+      <button class="nav-btn" data-target="view-conectores" data-help="aba-conectores"><i class="ph-bold ph-anchor"></i> Hooks & Servidores</button>
+      <button class="nav-btn" data-target="view-federacao" data-help="aba-federacao"><i class="ph-bold ph-network"></i> Federação</button>
+    </div>
+    
+    <div class="nav-group">
+      <div class="nav-group-title">RECURSOS</div>
+      <button class="nav-btn" data-target="view-conhecimento" data-help="aba-conhecimento"><i class="ph-bold ph-brain"></i> Conhecimento</button>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <header>
+      <div>
+        <div class="cockpit-title" id="page-title">Cockpit</div>
+        <div class="cockpit-subtitle" id="page-subtitle">Visão geral do que importa agora.</div>
+      </div>
+      <div class="header-stats">
+        <div class="header-stat"><i class="ph-fill ph-check-circle" style="color:var(--done)"></i> <span id="top-projetos" style="color:var(--text-1)">0</span> PROJETOS</div>
+        <div class="header-stat"><i class="ph-fill ph-robot" style="color:var(--working)"></i> <span id="top-agentes" style="color:var(--text-1)">0</span> AGENTES</div>
+        <div class="header-stat alert"><i class="ph-fill ph-warning-circle"></i> <span id="top-precisam">0</span> PRECISAM DE VOCÊ</div>
+        <div class="header-stat" style="color:var(--done);"><i class="ph-bold ph-hard-drives"></i> <span id="top-maquinas">PC LOCAL</span></div>
+      </div>
+    </header>
+
+    <!-- TELA 1: COCKPIT (AGORA + PROJETOS) -->
+    <main class="view active" id="view-cockpit">
+      <div class="section-title">AGORA — O QUE PRECISA DA SUA ATENÇÃO</div>
+      <div class="grid-agora" id="list-agora">
+        <!-- Preenchido via JS (viewMeu e viewVez) -->
+      </div>
+      
+      <div class="section-title" style="margin-top:24px; justify-content:space-between;">
+        <div>PROJETOS ATIVOS</div>
+      </div>
+      <div class="grid-projetos" id="list-projetos">
+        <!-- Preenchido via JS (projetos com status detalhado de agentes) -->
+      </div>
+    </main>
+
+    <!-- TELA 2: TRABALHO -->
+    <main class="view" id="view-trabalho">
+      <div class="section-title">BACKLOG DE SPRINT</div>
+      <div class="grid-projetos" id="list-sprint">
+        <!-- Preenchido via JS -->
+      </div>
+      <div class="section-title" style="margin-top:32px;">TAREFAS HUMANAS</div>
+      <div class="grid-projetos" id="list-meu"></div>
+    </main>
+
+    <!-- TELA 3: ESTRUTURA (Projetos / Framework) -->
+    <main class="view" id="view-projetos">
+      <div class="section-title">FRAMEWORK & CONFIGURAÇÕES</div>
+      <div class="generic-grid" id="list-framework-projetos"></div>
+      
+      <div class="section-title" style="margin-top:32px;">MUDANÇAS RECENTES</div>
+      <div class="generic-grid" id="list-dqo"></div>
+    </main>
+
+    <!-- TELA 4: CONHECIMENTO -->
+    <main class="view" id="view-conhecimento">
+      <div class="section-title">BUSCA UNIVERSAL</div>
+      <div class="widget" style="margin-bottom:24px;">
+        <input type="text" id="input-busca" class="styled-input" style="margin:0; border:none; background:transparent; font-size:16px; padding:0;" placeholder="Buscar em notas, documentos e glossário...">
+        <div id="list-busca" style="display:flex; flex-direction:column; gap:16px; margin-top:16px;"></div>
+      </div>
+      
+      <div class="section-title">NOTAS RÁPIDAS</div>
+      <div class="generic-grid" id="list-notas"></div>
+    </main>
+
+    <!-- TELA 5: CONECTORES -->
+    <main class="view" id="view-conectores">
+      <div class="section-title">HOOKS E SERVIDORES</div>
+      <div class="generic-grid">
+        <div id="list-hooks"></div>
+        <div id="list-locais"></div>
+        <div id="list-docker"></div>
+        <div id="list-agenda"></div>
+      </div>
+    </main>
+
+    <!-- TELA 6: FEDERAÇÃO -->
+    <main class="view" id="view-federacao">
+      <div class="section-title">REDE E MALHA</div>
+      <div class="generic-grid">
+        <div id="list-fed-malha"></div>
+        <div id="list-fed-sessoes"></div>
+        <div id="list-vps"></div>
+      </div>
+    </main>
+  </div>
+<script>
+    // --- NAVEGAÇÃO E TABS ---
+    const pageData = {
+      'view-cockpit': { title: 'Cockpit', subtitle: 'Visão geral do que importa agora.' },
+      'view-trabalho': { title: 'Trabalho', subtitle: 'Backlog de sprint e pendências humanas.' },
+      'view-projetos': { title: 'Estrutura', subtitle: 'Framework, configurações e mudanças.' },
+      'view-conhecimento': { title: 'Conhecimento', subtitle: 'Busca universal e notas rápidas.' },
+      'view-conectores': { title: 'Conectores', subtitle: 'Hooks, servidores e agenda.' },
+      'view-federacao': { title: 'Federação', subtitle: 'Rede, sessões remotas e máquinas.' }
+    };
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        const targetId = e.currentTarget.getAttribute('data-target');
+        document.getElementById(targetId).classList.add('active');
+        if (pageData[targetId]) {
+          document.getElementById('page-title').innerText = pageData[targetId].title;
+          document.getElementById('page-subtitle').innerText = pageData[targetId].subtitle;
+        }
+      });
+    });
+
+    // --- STATE E MOCKS ---
+    let STATE = {
+      jobs: [], meu: [], trabalho: {}, notas: [], glossario: { termos: [], verbetes: [] },
+      docs: [], roadmap: [], hooks: [], agenda: { eventos: [] }, servers: [],
+      remoto: { projetos: [], ativos: {} }, federacao: { maquinas: [] }, searchQuery: '',
+      projetos: [], docker: [], rotinas: [], vps: {}
+    };
+
+    const MOCKS = {
+      federacao: { maquinas: [ { nome: 'VPS-CONTABO-MAIN', status: 'online' }, { nome: 'MACBOOK-OFFICE', status: 'offline' } ] },
+      docker: [ { name: 'pg-database', status: 'running', ports: '5432' } ],
+      hooks: [ { id: 'pre-tool-use', label: 'Validação Antes do Uso de Ferramentas', descricao: 'Bloqueia se a ferramenta for destrutiva.', ligado: true } ],
+      agenda: { eventos: [ { titulo: 'Planning Semanal de Sprint', inicio: Date.now() + 3600000, fim: Date.now() + 7200000, local: 'Google Meet' } ] },
+      roadmap: [ { epico: 'Q3 - Automação Total', status: 'em progresso', tarefas: ['Refatorar Agent UI V2', 'Pipeline CI/CD Zero Touch'] } ],
+    };
+
+    function formatAge(ms) {
+      if (!ms || ms < 0) return '0m 0s';
+      let sec = Math.floor(ms / 1000);
+      let min = Math.floor(sec / 60);
+      return `${min}m ${sec % 60}s`;
+    }
+
+    async function apiFetch(path, fallback) {
+      try {
+        const r = await fetch(path);
+        if (!r.ok) throw new Error('API error');
+        return await r.json();
+      } catch (e) { return fallback; }
+    }
+
+    async function carregarTudo() {
+      const [dMeu, dTrab, dNotes, dGloss, dDocs, dHooks, dCal, dSrv, dRem, dProj] = await Promise.all([
+        apiFetch('/api/meu', { tarefas: [] }),
+        apiFetch('/api/trabalho?ordem=importancia', {}),
+        apiFetch('/api/notes', { notes: [] }),
+        apiFetch('/api/glossario', { termos: [], verbetes: [] }),
+        apiFetch('/api/docs', { docs: [] }),
+        apiFetch('/api/hooks', { hooks: MOCKS.hooks }),
+        apiFetch('/api/calendario', MOCKS.agenda),
+        apiFetch('/api/servers', { servers: [] }),
+        apiFetch('/api/remote-control', { projetos: [], ativos: {} }),
+        apiFetch('/api/framework/projetos').then(r => r.projetos || r).catch(() => apiFetch('/api/framework/lista', []))
+      ]);
+
+      STATE.meu = dMeu.tarefas || [];
+      STATE.trabalho = dTrab || {};
+      STATE.notas = dNotes.notes || [];
+      STATE.glossario = dGloss || { termos: [], verbetes: [] };
+      STATE.docs = dDocs.docs || [];
+      STATE.hooks = dHooks.hooks || MOCKS.hooks;
+      STATE.agenda = dCal.eventos ? dCal : MOCKS.agenda;
+      STATE.servers = dSrv.servers || [];
+      STATE.remoto = dRem.projetos ? dRem : { projetos: [], ativos: {} };
+      STATE.projetos = Array.isArray(dProj) ? dProj : (dProj?.projetos || dProj?.lista || []);
+      
+      STATE.federacao = MOCKS.federacao;
+      STATE.docker = MOCKS.docker;
+
+      renderTodasTelas();
+    }
+
+    function renderTodasTelas() {
+      renderCockpit();
+      renderTrabalho();
+      renderProjetos();
+      renderConhecimento();
+      renderConectores();
+      renderFederacao();
+    }
+
+    // TELA 1: COCKPIT
+    function renderCockpit() {
+      const now = Date.now();
+      const waiting = STATE.jobs.filter(j => j.status === 'waiting');
+      const working = STATE.jobs.filter(j => j.status !== 'waiting');
+      
+      document.getElementById('top-projetos').innerText = new Set(STATE.jobs.map(j => j.project)).size;
+      document.getElementById('top-agentes').innerText = STATE.jobs.length;
+      document.getElementById('top-precisam').innerText = waiting.length;
+      
+      const maquinasAtivas = new Set(STATE.jobs.map(j => j.maquina || 'Local')).size;
+      document.getElementById('top-maquinas').innerText = STATE.federacao.maquinas.length > 0 ? (STATE.federacao.maquinas.length + 1) + ' NÓS CONECTADOS' : 'PC LOCAL';
+
+      document.getElementById('list-agora').innerHTML = waiting.length ? waiting.map(j => `
+        <div class="widget widget-alert">
+          <div class="widget-header">
+            <div class="widget-title"><i class="ph-bold ph-warning-circle" style="color:var(--waiting)"></i> ${j.project || '?'}</div>
+            <div class="widget-badge badge-alert">${formatAge(now - (j.updatedAt || now))}</div>
+          </div>
+          <div class="agent-info">
+            <div class="agent-name">${j.subject || 'Pendente'}</div>
+            <div class="agent-desc">${j.detail || 'Aguardando sua ação.'}</div>
+          </div>
+          <div class="agent-action"><i class="ph-bold ph-terminal-window"></i> VER TERMINAL</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-coffee"></i><div class="empty-state-title">Nenhum agente travado</div></div>`;
+
+      // Projetos agrupados com agentes saudáveis
+      const projMap = {};
+      working.forEach(j => {
+        if (!projMap[j.project]) projMap[j.project] = [];
+        projMap[j.project].push(j);
+      });
+
+      const projsHTML = Object.entries(projMap).map(([pname, agents]) => {
+        const agentRows = agents.map(j => `
+          <div class="agent-row">
+            <div class="agent-status-dot ${j.status === 'done' ? 'done' : 'working'}"></div>
+            <div class="agent-info">
+              <div class="agent-name">${j.subject || 'Atividade'}</div>
+              <div class="agent-desc">${j.detail || 'Operação em andamento...'}</div>
+            </div>
+            <div style="font-size:10px; color:var(--text-3); font-family:var(--font-mono);">${formatAge(now - (j.updatedAt||now))}</div>
+          </div>
+        `).join('');
+        return `
+        <div class="widget">
+          <div class="widget-header">
+            <div class="widget-title"><i class="ph-fill ph-folder"></i> ${pname}</div>
+            <div class="widget-badge" style="background:var(--surface-2); color:var(--text-2);">${agents.length} AGENTES</div>
+          </div>
+          ${agentRows}
+        </div>
+        `;
+      });
+      document.getElementById('list-projetos').innerHTML = projsHTML.length ? projsHTML.join('') : `<div class="empty-state"><i class="ph-duotone ph-circles-four"></i><div class="empty-state-title">Nenhum projeto ativo</div></div>`;
+    }
+
+    // TELA 2: TRABALHO
+    function renderTrabalho() {
+      const pendentes = STATE.meu.filter(t => !t.feito);
+      document.getElementById('list-meu').innerHTML = pendentes.length ? pendentes.map(t => `
+        <div class="widget" style="padding: 16px; display: flex; gap: 12px; align-items: flex-start;">
+          <input type="checkbox" style="width: 20px; height: 20px; accent-color: var(--accent); margin-top:2px;" onchange="toggleMeu('${t.id}')">
+          <div>
+            <div style="font-weight: 600; font-size: 15px;">${t.texto}</div>
+            <div style="font-size: 12px; color: var(--text-3); margin-top: 4px;">${t.projeto || 'Geral'}</div>
+          </div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-check-circle"></i><div class="empty-state-title">Sua mesa está limpa</div></div>`;
+
+      const sprintMap = {};
+      STATE.jobs.forEach(j => {
+        if (!sprintMap[j.project]) sprintMap[j.project] = [];
+        sprintMap[j.project].push(j);
+      });
+      let sprintHtml = '';
+      Object.keys(sprintMap).forEach(p => {
+        let tsHtml = '';
+        sprintMap[p].forEach(j => {
+          (j.todos || []).forEach(t => {
+            tsHtml += `
+              <div style="padding:10px; background:rgba(255,255,255,0.02); border-radius:6px; margin-top:8px; display:flex; gap:8px;">
+                <input type="checkbox" ${t.done ? 'checked' : ''} disabled style="margin-top:2px;">
+                <div>
+                  <div style="font-weight:500; font-size:13px; color:var(--text-1);">${t.text}</div>
+                </div>
+              </div>
+            `;
+          });
+        });
+        sprintHtml += `<div class="widget"><div class="widget-header" style="margin-bottom:8px;"><div class="widget-title"><i class="ph-fill ph-folder"></i> ${p}</div></div>${tsHtml || '<div style="font-size:12px;color:var(--text-3)">Sem to-dos.</div>'}</div>`;
+      });
+      document.getElementById('list-sprint').innerHTML = sprintHtml || `<div class="empty-state"><i class="ph-duotone ph-list-checks"></i><div class="empty-state-title">Nenhum agente na sprint</div></div>`;
+    }
+
+    async function toggleMeu(id) {
+      await fetch('/api/meu', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({acao:'marcar', id:id, feito:true}) });
+      carregarTudo();
+    }
+
+    // TELA 3: ESTRUTURA
+    function renderProjetos() {
+      const projs = STATE.projetos;
+      document.getElementById('list-framework-projetos').innerHTML = projs.length ? projs.map(p => `
+        <div class="widget" style="padding: 16px;">
+          <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${p.nome || p}</div>
+          <div style="font-size: 12px; color: var(--text-3);">Framework habilitado</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-folder-notch"></i><div class="empty-state-title">Nenhum projeto monitorado</div></div>`;
+
+      const dqo = STATE.trabalho?.desdeQueOlhei?.marcos || [];
+      document.getElementById('list-dqo').innerHTML = dqo.length ? dqo.map(m => `
+        <div class="widget" style="padding: 16px;">
+          <div style="font-size: 11px; color: var(--text-3); font-family: var(--font-mono);">${new Date(m.em).toLocaleTimeString('pt-BR')} · ${m.projeto || '?'}</div>
+          <div style="font-weight: 500; margin-top: 4px; font-size: 14px;">${m.texto}</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-eye"></i><div class="empty-state-title">Nenhuma novidade desde seu último acesso</div></div>`;
+    }
+
+    // TELA 4: CONHECIMENTO
+    function renderConhecimento() {
+      document.getElementById('list-notas').innerHTML = STATE.notas.length ? STATE.notas.map(n => `
+        <div class="widget" style="padding: 16px;">
+          <div style="font-size: 14px; line-height: 1.5;">${n.text || n.texto || '...'}</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-pencil-simple"></i><div class="empty-state-title">Nenhum rascunho</div></div>`;
+      
+      const input = document.getElementById('input-busca');
+      input.onkeyup = () => {
+        const q = input.value.toLowerCase();
+        const list = document.getElementById('list-busca');
+        if (!q) { list.innerHTML = ''; return; }
+        const termHits = (STATE.glossario.termos||[]).filter(t => t.termo.toLowerCase().includes(q));
+        list.innerHTML = termHits.map(t => `<div class="widget" style="padding:16px;"><b>${t.termo}</b><div style="font-size:13px; color:var(--text-2); margin-top:4px;">${t.definicao}</div></div>`).join('');
+      };
+    }
+
+    // TELA 5: CONECTORES
+    function renderConectores() {
+      document.getElementById('list-hooks').innerHTML = STATE.hooks.map(h => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div><div style="font-weight:600;">${h.label}</div><div style="font-size:12px; color:var(--text-3);">${h.descricao}</div></div>
+          <input type="checkbox" ${h.ligado ? 'checked' : ''} disabled>
+        </div>
+      `).join('');
+
+      document.getElementById('list-locais').innerHTML = STATE.servers.length ? STATE.servers.map(s => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div><div style="font-weight:600;">Porta ${s.port}</div><div style="font-size:12px; color:var(--text-3);">${s.project || 'sistema'}</div></div>
+          <span style="color:var(--done);">Escutando</span>
+        </div>
+      `).join('') : '';
+      
+      const evs = STATE.agenda?.eventos || [];
+      document.getElementById('list-agenda').innerHTML = evs.length ? evs.map(e => `
+        <div class="widget"><b>${e.titulo}</b><div style="font-size:12px; color:var(--text-3);">${new Date(e.inicio).toLocaleTimeString('pt-BR')}</div></div>
+      `).join('') : '';
+    }
+
+    // TELA 6: FEDERAÇÃO
+    function renderFederacao() {
+      const prjs = STATE.remoto.projetos || [];
+      document.getElementById('list-fed-sessoes').innerHTML = prjs.length ? prjs.map(p => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div><div style="font-weight:600;">${p.nome}</div><div style="font-size:11px; color:var(--text-3);">${p.dir}</div></div>
+          <button class="styled-btn" style="width:auto;">LIGAR</button>
+        </div>
+      `).join('') : '';
+
+      document.getElementById('list-fed-malha').innerHTML = STATE.federacao.maquinas.map(m => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-weight:600;"><i class="ph-fill ph-hard-drive"></i> ${m.nome}</div>
+          <span style="color:${m.status==='online'?'var(--done)':'var(--text-3)'}">${m.status}</span>
+        </div>
+      `).join('');
+    }
+
+    // POLLING SSE
+    const evtSource = new EventSource('/events');
+    evtSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.jobs) {
+        STATE.jobs = data.jobs;
+        renderTodasTelas();
+      }
+    };
+    evtSource.onerror = () => console.error("SSE desconectado.");
+
+    carregarTudo();
+    setInterval(carregarTudo, 30000);
+</script>
+
+</body>
+</html>

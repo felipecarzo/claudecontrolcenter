@@ -1,0 +1,462 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-19T00:00:00.000Z",
+  "title": "Design System: Agent Cockpit",
+  "extensions": {
+    "themes": {
+      "noite": {
+        "selector": ":root, :root[data-tema=\"noite\"]",
+        "colorScheme": "dark",
+        "note": "Tema padrao. Os valores do frontmatter do DESIGN.md sao os deste tema."
+      },
+      "papel": {
+        "selector": ":root[data-tema=\"papel\"]",
+        "colorScheme": "light",
+        "note": "Papel de torneio, levemente esverdeado, nao creme. Redefine as mesmas variaveis e nada mais. `auto` e resolvido no JavaScript antes de chegar ao CSS, entao `data-tema` e sempre um tema concreto."
+      }
+    },
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "Chao de Casa Escura",
+        "canonical": "oklch(24.8% 0.012 167.6)",
+        "hex": "#1c2320",
+        "papel": "#e9e7dc",
+        "purpose": "O fundo da pagina, a casa escura do tabuleiro. Verde-oliva, nunca cinza-azulado.",
+        "tonalRamp": ["oklch(15% 0.011 167.6)", "oklch(26% 0.012 167.6)", "oklch(37% 0.011 167.6)", "oklch(48% 0.010 167.6)", "oklch(59% 0.010 167.6)", "oklch(70% 0.009 167.6)", "oklch(82% 0.009 167.6)", "oklch(94% 0.008 167.6)"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Casa Clara",
+        "canonical": "oklch(28.4% 0.013 163.8)",
+        "hex": "#242c28",
+        "papel": "#f6f4ec",
+        "purpose": "Fundo de todo cartao e do campo de formulario. E o par contra o qual todo texto de cartao foi medido.",
+        "tonalRamp": ["oklch(15% 0.013 163.8)", "oklch(26% 0.013 163.8)", "oklch(37% 0.013 163.8)", "oklch(48% 0.012 163.8)", "oklch(59% 0.011 163.8)", "oklch(70% 0.011 163.8)", "oklch(82% 0.010 163.8)", "oklch(94% 0.009 163.8)"]
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Casa Clara Levantada",
+        "hex": "#2c352f",
+        "papel": "#f0eee3",
+        "purpose": "O mesmo cartao sob o ponteiro. Hover e um degrau de superficie, nao uma sombra."
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Regua",
+        "hex": "#3a463e",
+        "papel": "#cfcdbf",
+        "purpose": "Borda de cartao, divisao de secao, trilho de barra de progresso."
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Regua Fina",
+        "hex": "#2f3a33",
+        "papel": "#dddbcf",
+        "purpose": "Divisao dentro do cartao e entre linhas irmas. Tambem serve de fundo de hover no cartao de item."
+      },
+      "fg": {
+        "role": "neutral",
+        "displayName": "Tinta Principal",
+        "canonical": "oklch(91.3% 0.017 91.6)",
+        "hex": "#e6e2d6",
+        "papel": "#2b302b",
+        "purpose": "Texto de leitura. Fica entre 9 e 11 de contraste de proposito: a versao anterior media 16,6 e sangrava nas bordas.",
+        "tonalRamp": ["oklch(15% 0.011 91.6)", "oklch(26% 0.012 91.6)", "oklch(37% 0.013 91.6)", "oklch(48% 0.013 91.6)", "oklch(59% 0.014 91.6)", "oklch(70% 0.015 91.6)", "oklch(82% 0.016 91.6)", "oklch(94% 0.016 91.6)"]
+      },
+      "dim": {
+        "role": "neutral",
+        "displayName": "Tinta Secundaria",
+        "canonical": "oklch(74.7% 0.019 135.0)",
+        "hex": "#a8b0a4",
+        "papel": "#565c54",
+        "purpose": "Apoio: caminho de projeto, prosa de detalhe, rotulo de botao em repouso.",
+        "tonalRamp": ["oklch(15% 0.014 135.0)", "oklch(26% 0.015 135.0)", "oklch(37% 0.016 135.0)", "oklch(48% 0.017 135.0)", "oklch(59% 0.018 135.0)", "oklch(70% 0.019 135.0)", "oklch(82% 0.018 135.0)", "oklch(94% 0.017 135.0)"]
+      },
+      "faint": {
+        "role": "neutral",
+        "displayName": "Tinta Apagada",
+        "canonical": "oklch(68.2% 0.020 137.8)",
+        "hex": "#939c90",
+        "papel": "#64695f",
+        "purpose": "Metadado: idade, contagem, rodape de cartao, secao vazia. 5,39 sobre o fundo e 4,71 sobre o cartao.",
+        "tonalRamp": ["oklch(15% 0.015 137.8)", "oklch(26% 0.016 137.8)", "oklch(37% 0.017 137.8)", "oklch(48% 0.018 137.8)", "oklch(59% 0.019 137.8)", "oklch(70% 0.020 137.8)", "oklch(82% 0.019 137.8)", "oklch(94% 0.018 137.8)"]
+      },
+      "vez": {
+        "role": "primary",
+        "displayName": "Bandeirinha de Relogio",
+        "canonical": "oklch(69.6% 0.142 27.5)",
+        "hex": "#e8776b",
+        "papel": "#a8362c",
+        "purpose": "Reservada a um significado so: a jogada e sua. E TEXTO, nao apenas marca, e por isso foi clareada do vermelho real de bandeira (3,25 sobre o cartao) ate 4,84.",
+        "tonalRamp": ["oklch(15% 0.107 27.5)", "oklch(26% 0.114 27.5)", "oklch(37% 0.121 27.5)", "oklch(48% 0.128 27.5)", "oklch(59% 0.135 27.5)", "oklch(70% 0.142 27.5)", "oklch(82% 0.134 27.5)", "oklch(94% 0.126 27.5)"]
+      },
+      "tinta": {
+        "role": "secondary",
+        "displayName": "Tinta do Boletim",
+        "canonical": "oklch(61.9% 0.022 149.9)",
+        "hex": "#7d8a7f",
+        "papel": "#767c6f",
+        "purpose": "A cor da regua. Nao e corpo de texto, entao o piso e 3:1. Desenha a regua dupla da linha de vez e o polegar da barra de rolagem.",
+        "tonalRamp": ["oklch(15% 0.018 149.9)", "oklch(26% 0.019 149.9)", "oklch(37% 0.020 149.9)", "oklch(48% 0.021 149.9)", "oklch(59% 0.022 149.9)", "oklch(70% 0.021 149.9)", "oklch(82% 0.020 149.9)", "oklch(94% 0.019 149.9)"]
+      },
+      "acento": {
+        "role": "primary",
+        "displayName": "Tinta de Anotacao",
+        "canonical": "oklch(77.9% 0.058 150.5)",
+        "hex": "#9dc2a4",
+        "papel": "#3f6b49",
+        "purpose": "Foco, aba ativa, selecao do navegador, cursor de texto e codigo real de item. Antes era o azul de trabalhando, e por isso todo tema parecia azul.",
+        "tonalRamp": ["oklch(15% 0.042 150.5)", "oklch(26% 0.044 150.5)", "oklch(37% 0.047 150.5)", "oklch(48% 0.050 150.5)", "oklch(59% 0.053 150.5)", "oklch(70% 0.056 150.5)", "oklch(82% 0.057 150.5)", "oklch(94% 0.054 150.5)"]
+      },
+      "working": {
+        "role": "tertiary",
+        "displayName": "Azul de Turno",
+        "canonical": "oklch(69.1% 0.099 253.4)",
+        "hex": "#6f9fd8",
+        "papel": "#245e95",
+        "purpose": "Agente trabalhando agora. No papel foi escurecido de 4,49 (empate na casa decimal) para 5,17.",
+        "tonalRamp": ["oklch(15% 0.075 253.4)", "oklch(26% 0.080 253.4)", "oklch(37% 0.085 253.4)", "oklch(48% 0.090 253.4)", "oklch(59% 0.095 253.4)", "oklch(70% 0.099 253.4)", "oklch(82% 0.093 253.4)", "oklch(94% 0.088 253.4)"]
+      },
+      "waiting": {
+        "role": "tertiary",
+        "displayName": "Ambar de Espera",
+        "canonical": "oklch(75.1% 0.130 79.8)",
+        "hex": "#d9a441",
+        "papel": "#845a0e",
+        "purpose": "Esperando voce. Tambem pinta a estrela de fixado, que e o unico uso nao de estado dela.",
+        "tonalRamp": ["oklch(15% 0.095 79.8)", "oklch(26% 0.101 79.8)", "oklch(37% 0.107 79.8)", "oklch(48% 0.114 79.8)", "oklch(59% 0.120 79.8)", "oklch(70% 0.127 79.8)", "oklch(82% 0.125 79.8)", "oklch(94% 0.118 79.8)"]
+      },
+      "failed": {
+        "role": "tertiary",
+        "displayName": "Magenta de Vinho",
+        "canonical": "oklch(71.7% 0.105 347.3)",
+        "canonicalPapel": "oklch(46.1% 0.140 350.1)",
+        "hex": "#d488b0",
+        "papel": "#8e2f63",
+        "purpose": "Quebrou. Nasceu como o MESMO valor de `--vez` e foi movido para a familia magenta por causa disso: enquanto os dois dividiam o hex, a Regra da Bandeirinha valia so como disciplina de uso. Matiz 347,3 contra 27,5 da bandeirinha, cerca de 40 graus de separacao no circulo, conferido numericamente.",
+        "tonalRamp": ["oklch(15% 0.079 347.3)", "oklch(26% 0.084 347.3)", "oklch(37% 0.089 347.3)", "oklch(48% 0.094 347.3)", "oklch(59% 0.099 347.3)", "oklch(70% 0.105 347.3)", "oklch(82% 0.100 347.3)", "oklch(94% 0.095 347.3)"]
+      },
+      "done": {
+        "role": "tertiary",
+        "displayName": "Verde de Pronto",
+        "canonical": "oklch(68.5% 0.095 152.5)",
+        "hex": "#6aab7d",
+        "papel": "#2f6742",
+        "purpose": "Concluido, barra de progresso, ponto cheio, marcacao de caixa de to-do.",
+        "tonalRamp": ["oklch(15% 0.072 152.5)", "oklch(26% 0.077 152.5)", "oklch(37% 0.082 152.5)", "oklch(48% 0.087 152.5)", "oklch(59% 0.091 152.5)", "oklch(70% 0.095 152.5)", "oklch(82% 0.090 152.5)", "oklch(94% 0.084 152.5)"]
+      },
+      "idle": {
+        "role": "tertiary",
+        "displayName": "Cinza de Fila",
+        "canonical": "oklch(70.1% 0.020 137.8)",
+        "hex": "#99a296",
+        "papel": "#6f6759",
+        "purpose": "Na fila, o estado da maioria dos itens. Foi a cor mais reescrita: no papel media 3,16, a pior medida do painel, e no sol era a primeira a sumir.",
+        "tonalRamp": ["oklch(15% 0.015 137.8)", "oklch(26% 0.016 137.8)", "oklch(37% 0.017 137.8)", "oklch(48% 0.018 137.8)", "oklch(59% 0.019 137.8)", "oklch(70% 0.020 137.8)", "oklch(82% 0.019 137.8)", "oklch(94% 0.018 137.8)"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "O nome do painel, no cabecalho fixo. Existe UM na pagina, e a regra e escopada em `#painel > header h1` porque a regra solta ja cortou a ultima letra do titulo no leitor de documentos."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "O titulo dentro da gaveta lateral de detalhe do agente."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Cabecalho de faixa, de coluna e de grupo de aba. Condensada, caixa alta, espacamento aberto."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prosa. Bloco longo limitado a 74ch. A fonte de largura fixa saiu do texto corrido de proposito: ela tira do olho a pista da forma da palavra."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Aba, etiqueta de categoria, selo de estado, rotulo de secao. Caixa alta so aqui, e nunca em frase."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Onde digito precisa alinhar entre linhas vizinhas: projeto, codigo de item, porta, idade, contagem. Sempre com `tabular-nums`, para o numero nao dancar a cada atualizacao do stream."
+      }
+    },
+    "fonts": [
+      {
+        "name": "Archivo Narrow",
+        "hosting": "self-hosted",
+        "file": "src/archivo-narrow.woff2",
+        "servedAt": "/archivo-narrow.woff2",
+        "servedBy": "src/web.mjs",
+        "weightRange": "400 700",
+        "fontDisplay": "swap",
+        "unicodeRange": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212",
+        "purpose": "A voz do boletim. Hospedada com o projeto porque a face anterior (Bahnschrift) so existe no Windows: fora dele o rotulo caia para uma sans comum e o carater condensado sumia sem aviso."
+      }
+    ],
+    "fontStretch": {
+      "value": "75%",
+      "appliesTo": "h1, .count, .tab, thead th, tr.zone > td, .cat, h3, .col-head, .big",
+      "purpose": "Condensacao extra sobre a face ja condensada, nos rotulos de estrutura. E o que da o aperto de cabecalho de tabela impressa."
+    },
+    "shadows": [
+      {
+        "name": "gaveta",
+        "value": "-24px 0 48px rgba(0, 0, 0, .5)",
+        "purpose": "So no painel lateral que desliza da direita. Direcional e forte, porque ele de fato flutua sobre a pagina."
+      },
+      {
+        "name": "veu",
+        "value": "rgba(0, 0, 0, .45)",
+        "purpose": "O escurecimento por tras da gaveta. Fundo, nao sombra, mas pertence ao mesmo vocabulario de profundidade."
+      },
+      {
+        "name": "sombra",
+        "value": "0 1px 2px rgba(0, 0, 0, .28), 0 4px 12px rgba(0, 0, 0, .18)",
+        "papel": "0 1px 2px rgba(65, 58, 49, .10), 0 4px 12px rgba(65, 58, 49, .06)",
+        "purpose": "Token disponivel para superficie que precise se separar sem desenhar mais uma linha. Excecao declarada, nao padrao: cartao em repouso e plano."
+      }
+    ],
+    "motion": [
+      {
+        "name": "gaveta",
+        "value": "transform .16s ease-out",
+        "purpose": "A entrada e a saida do painel lateral. Dentro de `@media (prefers-reduced-motion: no-preference)`."
+      },
+      {
+        "name": "veu",
+        "value": "opacity .16s ease-out",
+        "purpose": "O escurecimento que acompanha a gaveta. Mesma guarda de movimento reduzido."
+      },
+      {
+        "name": "linha",
+        "value": "background .12s ease",
+        "purpose": "Hover de linha de tabela. Mesma guarda."
+      },
+      {
+        "name": "cara",
+        "value": "transform .15s ease",
+        "purpose": "A seta que gira 90 graus quando um grupo abre."
+      }
+    ],
+    "breakpoints": [
+      { "name": "container-1500", "value": "1500px", "purpose": "O detalhe de hardware sai e o player encolhe." },
+      { "name": "container-1240", "value": "1240px" },
+      { "name": "container-1080", "value": "1080px", "purpose": "A terceira medida de maquina sai." },
+      { "name": "container-900", "value": "900px", "purpose": "A grade do escritorio vira uma coluna." },
+      { "name": "container-640", "value": "640px", "purpose": "A fileira de grupos some e as abas viram fita rolavel." },
+      { "name": "container-620", "value": "620px" },
+      { "name": "container-560", "value": "560px", "purpose": "Rotulo sobe para cima do campo; lado a lado deixaria o campo com 40px." },
+      { "name": "container-460", "value": "460px", "purpose": "A linha de vez cai de quatro para tres colunas e o assunto desce." }
+    ],
+    "breakpointRule": {
+      "kind": "@container",
+      "host": "#painel",
+      "declaration": "container-type: inline-size; container-name: painel",
+      "purpose": "Nunca `@media`. Com a coluna de notas aberta, ou com o painel encaixado na lateral do monitor, a janela continua larga enquanto o painel encolhe: a media query nunca dispararia e a tabela quebraria em vez de compactar."
+    },
+    "icons": {
+      "kind": "inline-svg",
+      "grid": 24,
+      "strokeWidth": 1.6,
+      "stroke": "currentColor",
+      "fill": "none",
+      "filledException": "estrela (favorito precisa da forma cheia para se ler sem cor)",
+      "helper": "ico(nome, { cheio, tam = 15 })",
+      "map": ["estrela", "retomar", "ajuste", "travado"],
+      "alignment": "vertical-align: -.18em",
+      "mask": "--mask-estrela, a mesma estrela como mascara CSS, para pseudo-elemento que nao pode carregar um filho"
+    },
+    "browserSurfaces": [
+      { "name": "selecao", "value": "::selection { background: var(--acento); color: var(--bg) }" },
+      { "name": "cursor", "value": ":root { caret-color: var(--acento) }" },
+      { "name": "marcacao", "value": ":root { accent-color: var(--acento) }" },
+      { "name": "barra-de-rolagem", "value": "scrollbar-width: thin; scrollbar-color: var(--tinta) transparent", "purpose": "`thin` e nao `auto` porque a barra grossa do Windows come 17px de uma tela de 390." },
+      { "name": "polegar", "value": "::-webkit-scrollbar-thumb { background: var(--tinta); border-radius: 0; border: 3px solid var(--bg) }", "purpose": "Raio zero porque a folha e quadrada; a borda de 3px e o respiro que evita a barra colar no conteudo." }
+    ],
+    "radiusScale": {
+      "committed": ["0", "3px", "6px", "10px", "999px", "50%"],
+      "committedPurpose": "Os degraus que carregam a tela: estrutura em 0, controle em 3px, cartao de agente em 6px, cartao de item em 10px, selo em 999px, bolinha em 50%.",
+      "observedDistinctPixelValues": [999, 4, 2, 8, 6, 3, 10, 7, 12, 9, 5, 1],
+      "observedDeclarations": 133,
+      "observedCompound": ["6px 0 0 6px", "1px 1px 0 0", "14px 14px 0 0"],
+      "note": "Doze valores de pixel distintos e deriva anterior a esta reforma, nao escolha. 62 das 133 declaracoes usam os degraus comprometidos; as outras 71 usam valores que ninguem escolheu como sistema, incluindo pares de um pixel de diferenca (4 contra 5, 6 contra 7, 8 contra 9). Componente novo escolhe entre os seis comprometidos."
+    },
+    "fontSizeScale": {
+      "committed": ["11px", "11.5px", "12px", "12.5px", "13px"],
+      "committedPurpose": "Os cinco degraus que carregam a tela quase inteira: 11px (60 usos), 11,5px (55), 12px (47), 13px (20), 12,5px (10).",
+      "observedDistinctValues": ["8.5px", "10px", "10.5px", "11px", "11.5px", "12px", "12.5px", "13px", "13.5px", "14px", "14.5px", "15px", "17px", "20px", "22px"],
+      "observedDeclarations": 223,
+      "note": "Quinze valores distintos, dos quais quatro aparecem uma unica vez (8,5 / 13,5 / 14,5 / 22). Meio pixel de diferenca nao e hierarquia: ninguem le 11px contra 11,5px como dois niveis. Os tamanhos grandes (15, 17, 20, 22) sao papeis reais (corpo e titulo) e nao entram na conta da deriva."
+    },
+    "detector": {
+      "ranAt": "primeira execucao depois de o DESIGN.md existir",
+      "advisories": 91,
+      "breakdown": { "design-system-radius": 62, "design-system-font-size": 25, "design-system-color": 4 },
+      "note": "Avisos mecanicos, nao defeitos visuais. Apontam a deriva de escala registrada em `radiusScale` e `fontSizeScale`. A convergencia e trabalho de backlog, e nao foi feita na passagem que gravou este arquivo."
+    },
+    "touchTargets": [
+      { "name": "botao-estreito", "value": "30px", "purpose": "Piso do botao comum no ramo estreito." },
+      { "name": "botao-mini-estreito", "value": "26px" },
+      { "name": "pilula-gaveta", "value": "34px" },
+      { "name": "atalho-de-dedo", "value": "44px", "purpose": "Os atalhos que ele aperta na rua. Aqui o alvo e dedo, nao ponteiro." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Linha de Vez",
+      "kind": "custom",
+      "refersTo": "turno-linha",
+      "description": "O primeiro viewport. Quem esta esperando voce, ordenado por quem espera ha mais tempo, sob a regua dupla do boletim. A bandeira aparece so na primeira linha.",
+      "html": "<section class=\"ds-vez\"><div class=\"ds-vez-cab\"><span class=\"ds-vez-rot\">sua vez</span><span class=\"ds-vez-n\">3</span><span class=\"ds-vez-outro\">2 rodando sem voce</span></div><button class=\"ds-vez-linha ds-caiu\"><span class=\"ds-vez-bandeira\">&#9650;</span><span class=\"ds-vez-proj\">inovallbond</span><span class=\"ds-vez-que\">a travessia gamificada do Pierre</span><span class=\"ds-vez-quando\">1h12</span></button><button class=\"ds-vez-linha\"><span class=\"ds-vez-bandeira\"></span><span class=\"ds-vez-proj\">app_maurice</span><span class=\"ds-vez-que\">rotina de fechamento sem prova visual</span><span class=\"ds-vez-quando\">24m</span></button></section>",
+      "css": ".ds-vez { max-width: 720px; margin: 0 0 18px; border-top: 2px solid var(--tinta, #7d8a7f); border-bottom: 1px solid var(--tinta, #7d8a7f); padding: 8px 0 0; } .ds-vez-cab { display: flex; align-items: baseline; gap: 8px; padding: 0 2px 6px; } .ds-vez-rot { font-family: \"Archivo Narrow\", sans-serif; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--vez, #e8776b); } .ds-vez-n { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 700; color: var(--fg, #e6e2d6); } .ds-vez-outro { margin-left: auto; font-size: 11.5px; color: var(--faint, #939c90); } .ds-vez-linha { display: grid; grid-template-columns: 14px minmax(0, auto) minmax(0, 1fr) auto; align-items: baseline; gap: 8px; width: 100%; padding: 7px 2px; text-align: left; background: none; border: 0; border-top: 1px solid var(--line-soft, #2f3a33); color: inherit; font: inherit; cursor: pointer; } .ds-vez-linha:first-of-type { border-top: 0; } .ds-vez-linha:hover { background: var(--surface, #242c28); } .ds-vez-linha:focus-visible { outline: 2px solid var(--acento, #9dc2a4); outline-offset: -2px; } .ds-vez-bandeira { color: var(--vez, #e8776b); font-size: 10px; line-height: 1; } .ds-vez-proj { font-family: ui-monospace, monospace; font-size: 12px; color: var(--fg, #e6e2d6); font-weight: 600; } .ds-caiu .ds-vez-proj { color: var(--vez, #e8776b); } .ds-vez-que { font-size: 12.5px; color: var(--dim, #a8b0a4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-vez-quando { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 11px; color: var(--faint, #939c90); white-space: nowrap; }"
+    },
+    {
+      "name": "Cartao de Agente",
+      "kind": "card",
+      "refersTo": "cartao-agente",
+      "description": "A unidade da tela de agentes. O estado e uma barra de 3px na borda esquerda, nunca fundo tingido.",
+      "html": "<article class=\"ds-card ds-s-working\"><header><span class=\"ds-cat\">codigo</span></header><div class=\"ds-c-titulo\">as avenidas, e onde dois agentes vao se esbarrar</div><p class=\"ds-c-proj\">proj_controlcenter &rsaquo; Rotas</p><footer><span class=\"ds-c-frac\">4/7</span><span class=\"ds-c-barra\"><i style=\"width:57%\"></i></span><span class=\"ds-c-idade\">12m</span></footer></article>",
+      "css": ".ds-card { position: relative; display: flex; flex-direction: column; gap: 5px; border: 1px solid var(--line, #3a463e); border-radius: 6px; background: var(--surface, #242c28); padding: 9px 11px 8px 13px; cursor: pointer; min-width: 0; max-width: 300px; } .ds-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 6px 0 0 6px; background: var(--idle, #99a296); } .ds-card.ds-s-working::before { background: var(--working, #6f9fd8); } .ds-card:hover { background: var(--surface-2, #2c352f); } .ds-card > header { display: flex; align-items: center; gap: 6px; min-height: 17px; } .ds-cat { font: 700 11px/1.6 \"Archivo Narrow\", sans-serif; font-stretch: 75%; letter-spacing: .1em; text-transform: uppercase; color: var(--dim, #a8b0a4); border: 1px solid var(--line, #3a463e); border-radius: 2px; padding: 0 5px; flex: none; } .ds-c-titulo { color: var(--fg, #e6e2d6); font-size: 13px; font-weight: 600; line-height: 1.3; } .ds-c-proj { margin: 0; color: var(--dim, #a8b0a4); font-size: 11px; overflow-wrap: anywhere; } .ds-card > footer { display: flex; align-items: center; gap: 8px; margin-top: 3px; padding-top: 7px; border-top: 1px solid var(--line-soft, #2f3a33); font-size: 11px; } .ds-c-frac { color: var(--dim, #a8b0a4); font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; } .ds-c-barra { display: block; width: 44px; height: 3px; background: var(--line, #3a463e); border-radius: 2px; } .ds-c-barra > i { display: block; height: 100%; background: var(--done, #6aab7d); border-radius: 2px; } .ds-c-idade { color: var(--faint, #939c90); font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; margin-left: auto; }"
+    },
+    {
+      "name": "Cartao de Item",
+      "kind": "card",
+      "refersTo": "cartao-item",
+      "description": "A unidade do backlog e do sprint. Borda inferior de 2px carrega o estado, e a altura minima de 106px e o que da uma unica linha de base a fileira inteira.",
+      "html": "<article class=\"ds-ct ds-s-waiting\"><div class=\"ds-ct-cab\"><div class=\"ds-ct-alto\"><span class=\"ds-ct-cod ds-real\">CC-155</span><span class=\"ds-ct-selo ds-c-waiting\">esperando</span></div><div class=\"ds-ct-nome\">o mapa das avenidas, e onde dois agentes se esbarram</div><div class=\"ds-ct-pe\"><span class=\"ds-ct-porque\">depende de CC-148</span><span class=\"ds-ct-idade\">3d</span></div></div></article>",
+      "css": ".ds-ct { display: flex; flex-direction: column; min-width: 0; max-width: 320px; background: var(--surface, #242c28); border: 1px solid var(--line, #3a463e); border-bottom: 2px solid var(--line, #3a463e); border-radius: 10px; overflow: hidden; } .ds-ct.ds-s-waiting { border-bottom-color: var(--waiting, #d9a441); } .ds-ct-cab { display: flex; flex-direction: column; gap: 6px; width: 100%; min-height: 106px; padding: 10px 12px 9px; cursor: pointer; } .ds-ct-cab:hover { background: var(--line-soft, #2f3a33); } .ds-ct-cab:focus-visible { outline: 2px solid var(--acento, #9dc2a4); outline-offset: -2px; } .ds-ct-alto { display: flex; align-items: center; gap: 8px; min-height: 17px; } .ds-ct-cod { font: 700 11.5px/1 ui-monospace, monospace; letter-spacing: .04em; color: var(--faint, #939c90); } .ds-ct-cod.ds-real { color: var(--acento, #9dc2a4); } .ds-ct-selo { margin-left: auto; flex: none; font: 700 11px/1 \"Archivo Narrow\", sans-serif; font-stretch: 75%; letter-spacing: .1em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; white-space: nowrap; border: 1px solid currentColor; background: color-mix(in srgb, currentColor 13%, transparent); } .ds-ct-selo.ds-c-waiting { color: var(--waiting, #d9a441); } .ds-ct-nome { font-size: 14px; font-weight: 600; line-height: 1.34; color: var(--fg, #e6e2d6); overflow-wrap: anywhere; } .ds-ct-pe { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 8px; font: 400 11.5px/1.25 ui-monospace, monospace; color: var(--faint, #939c90); } .ds-ct-idade { flex: none; white-space: nowrap; }"
+    },
+    {
+      "name": "Botao",
+      "kind": "button",
+      "refersTo": "botao",
+      "description": "O controle comum. Fundo de superficie, borda de regua, raio de 3px, fonte de largura fixa. Hover levanta o texto e a borda, sem trocar o fundo.",
+      "html": "<button class=\"ds-btn\">religar</button> <button class=\"ds-btn ds-primario\">salvar</button> <button class=\"ds-btn ds-perigo\">encerrar</button> <button class=\"ds-btn\" disabled>indisponivel</button>",
+      "css": ".ds-btn { background: var(--surface, #242c28); border: 1px solid var(--line, #3a463e); color: var(--dim, #a8b0a4); border-radius: 3px; padding: 4px 10px; min-height: 30px; cursor: pointer; font: 11px ui-monospace, monospace; } .ds-btn:hover { color: var(--fg, #e6e2d6); border-color: var(--faint, #939c90); } .ds-btn:focus-visible { outline: 2px solid var(--acento, #9dc2a4); outline-offset: 2px; } .ds-btn.ds-primario { border-color: var(--acento, #9dc2a4); color: var(--acento, #9dc2a4); } .ds-btn.ds-perigo { color: var(--failed, #d488b0); border-color: color-mix(in srgb, var(--failed, #d488b0) 40%, var(--line, #3a463e)); } .ds-btn.ds-perigo:hover { background: color-mix(in srgb, var(--failed, #d488b0) 16%, var(--surface, #242c28)); } .ds-btn[disabled] { opacity: .4; cursor: not-allowed; }"
+    },
+    {
+      "name": "Campo de Busca",
+      "kind": "input",
+      "refersTo": "campo",
+      "description": "Filtro do cabecalho. Fonte de largura fixa porque o que se digita ali e nome de projeto e caminho, nao prosa.",
+      "html": "<input class=\"ds-campo\" type=\"search\" placeholder=\"filtrar por projeto, rota ou tarefa\">",
+      "css": ".ds-campo { background: var(--surface, #242c28); color: var(--fg, #e6e2d6); border: 1px solid var(--line, #3a463e); border-radius: 3px; padding: 5px 9px; font: 12px ui-monospace, monospace; min-width: 170px; caret-color: var(--acento, #9dc2a4); } .ds-campo::placeholder { color: var(--faint, #939c90); } .ds-campo:focus-visible { outline: 2px solid var(--acento, #9dc2a4); outline-offset: 2px; }"
+    },
+    {
+      "name": "Navegacao de Dois Niveis",
+      "kind": "nav",
+      "refersTo": "aba",
+      "description": "Grupo em cima, aba embaixo. A diferenca sai de tamanho, peso e espessura da regua, nunca de pilula. Dezenove botoes identicos deixam de ser navegacao.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-tab-grupos\"><button class=\"ds-grupo\" aria-selected=\"true\">trabalho<span class=\"ds-n\">12</span></button><button class=\"ds-grupo\">maquina</button><button class=\"ds-grupo\">ajustes</button></div><div class=\"ds-tab-abas\"><button class=\"ds-tab\" aria-selected=\"true\">agentes<span class=\"ds-n\">5</span></button><button class=\"ds-tab\">sprint</button><button class=\"ds-tab\">backlog</button></div></nav>",
+      "css": ".ds-nav { border-bottom: 1px solid var(--line, #3a463e); padding-bottom: 0; } .ds-tab-grupos { display: flex; gap: 2px; flex-wrap: wrap; } .ds-tab-abas { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 2px; } .ds-grupo { background: none; border: 0; border-bottom: 2px solid transparent; padding: 7px 14px; cursor: pointer; color: var(--faint, #939c90); white-space: nowrap; font: 700 13px/1 \"Archivo Narrow\", sans-serif; font-stretch: 75%; letter-spacing: .07em; text-transform: uppercase; } .ds-grupo:hover { color: var(--dim, #a8b0a4); } .ds-grupo[aria-selected=\"true\"] { color: var(--fg, #e6e2d6); border-bottom-color: var(--acento, #9dc2a4); } .ds-tab { background: none; border: 0; border-bottom: 1px solid transparent; border-radius: 0; padding: 5px 9px; cursor: pointer; color: var(--faint, #939c90); white-space: nowrap; font: 500 11px/1 \"Archivo Narrow\", sans-serif; letter-spacing: .08em; } .ds-tab:hover { color: var(--dim, #a8b0a4); } .ds-tab[aria-selected=\"true\"] { color: var(--fg, #e6e2d6); border-bottom-color: var(--acento, #9dc2a4); font-weight: 600; } .ds-n { font-family: ui-monospace, monospace; letter-spacing: 0; color: var(--faint, #939c90); margin-left: 6px; font-size: 11px; }"
+    },
+    {
+      "name": "Cabecalho de Secao com Fio",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Titulo, contagem em pilula e um fio de 1px que corre ate a borda direita. Custa zero conteudo e e o que faz a tela larga parecer terminada em vez de vazia.",
+      "html": "<div class=\"ds-bl-h\"><span class=\"ds-bl-h-t\">sprint em andamento</span><span class=\"ds-bl-h-n\">7</span><span class=\"ds-bl-fio\"></span></div><p class=\"ds-gr-zero\">nada depende de voce agora</p>",
+      "css": ".ds-bl-h { display: flex; align-items: center; gap: 9px; margin: 0 0 11px; flex-wrap: wrap; } .ds-bl-h-t { font: 700 12px/1 \"Archivo Narrow\", sans-serif; font-stretch: 75%; letter-spacing: .07em; text-transform: uppercase; color: var(--fg, #e6e2d6); } .ds-bl-h-n { font: 700 11.5px/1 ui-monospace, monospace; color: var(--dim, #a8b0a4); flex: none; border: 1px solid var(--line, #3a463e); border-radius: 999px; padding: 4px 8px; } .ds-bl-fio { flex: 1 1 24px; min-width: 16px; height: 1px; background: var(--line, #3a463e); } .ds-gr-zero { margin: 0 0 12px; font-size: 12px; color: var(--faint, #939c90); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "O Boletim do Torneio por Correspondencia",
+    "overview": "O mundo e a folha impressa de um torneio de xadrez jogado por carta. O fundo nao e o cinza-azulado de painel generico: e a casa escura do tabuleiro, com verde de oliva dentro, e a superficie de cada cartao e a casa clara. Essa unica escolha e o que separa esta tela de qualquer outro dashboard da categoria, porque ela troca a pergunta. Um painel comum responde \"quanto\"; este responde \"onde eu jogo agora\".\n\nA densidade e de boletim, nao de cartao de metrica. Nao existe numero grande sozinho numa caixa: a informacao esta na ordem das linhas, e quem espera ha mais tempo vem primeiro, exatamente como o relogio de xadrez trata a bandeira caida. A regua dupla, feita de borda mais borda, separa a cabeca da tabela do corpo dela, que e o que o papel faz e a tela quase nunca faz. Onde digito precisa alinhar entre linhas vizinhas, a fonte e de largura fixa com tabular-nums; onde e rotulo, a fonte e condensada, com o feitio de cabecalho de tabela impressa.\n\nA cor obedece a uma disciplina herdada do teletexto: cada cor significa uma coisa so, na tela inteira, sempre. O vermelho de bandeirinha nunca e decoracao. Cor de estado nunca vira fundo, apenas texto, barra fina ou borda, porque fundo tingido deixa o texto de dentro ilegivel e isso ja aconteceu duas vezes neste projeto. O sistema recusa sombra como recurso de leitura e usa superficie e regua no lugar, com uma excecao declarada: a gaveta lateral, que precisa flutuar sobre a pagina.",
+    "keyCharacteristics": [
+      "Tabuleiro como chao: verde-oliva escuro, nao cinza neutro",
+      "Densidade de boletim, zero cartao de metrica grande",
+      "Uma cor, um significado, na tela inteira",
+      "Plano por padrao, com separacao por superficie e por regua",
+      "Condensada para rotulo, largura fixa para digito, humanista para prosa",
+      "Estreito primeiro: 390px e o aparelho de referencia, o monitor herda"
+    ],
+    "rules": [
+      { "name": "A Regra da Bandeirinha", "body": "`--vez` quer dizer uma coisa e so uma: a jogada e sua. Se aparecer em algo que nao e isso, o sistema de cor perdeu o sentido. E ela marca apenas a PRIMEIRA linha da lista, quem espera ha mais tempo. Marcar todas transformaria a excecao em papel de parede. A regra tem dono unico de verdade: nenhum outro token do arquivo carrega o vermelho dela.", "section": "colors" },
+      { "name": "A Regra do Fundo Limpo", "body": "Cor de estado e texto, barra de 3px, ou borda. Nunca fundo. Fundo tingido de estado ja deixou o texto de dentro ilegivel duas vezes neste projeto, uma no cartao de agente e outra na linha de federacao. Classe de estado solta pinta o que nao devia: escope sempre.", "section": "colors" },
+      { "name": "A Regra do Par Medido", "body": "Todo token de texto se mede contra `--bg` e contra `--surface`, porque quase todo texto mora dentro de um cartao. Medir so contra o fundo da pagina ja aprovou cores que reprovavam onde de fato apareciam. E nunca se mede contra `--faint` virando fundo: `--fg` sobre `--faint` da 2,19:1.", "section": "colors" },
+      { "name": "A Regra dos Dois Niveis", "body": "Grupo e a decisao, aba e o detalhe. A diferenca sai de tamanho, peso e espessura da regua, nunca de pilula ou de fundo: o grupo em 13px/700 com regua de 2px, a aba em 11px/500 com regua de 1px. Dezenove botoes identicos deixam de ser navegacao.", "section": "typography" },
+      { "name": "A Regra do Digito Que Nao Danca", "body": "Todo numero que o stream reescreve a cada 2 segundos leva `font-variant-numeric: tabular-nums` e fonte de largura fixa. Sem isso a contagem muda de largura a cada atualizacao e a linha inteira treme.", "section": "typography" },
+      { "name": "A Regra da Palavra Inteira", "body": "Nome de coisa nunca e cortado com reticencias. Caminho comprido quebra no meio, que e feio e legivel; nome cortado e so ilegivel. Caixa alta so em rotulo curto, nunca em frase, porque ela apaga a silhueta da palavra.", "section": "typography" },
+      { "name": "A Regra do Container", "body": "Nenhum breakpoint novo usa `@media`. Se a regra precisa saber a largura, ela pergunta ao `#painel`, nao a janela.", "section": "layout" },
+      { "name": "A Regra do Estreito Primeiro", "body": "Toda direcao nova nasce pensada para 390px, e o monitor largo herda dali. O caminho inverso ja produziu tela que so funciona com a janela cheia.", "section": "layout" },
+      { "name": "A Regra do Fio Ate a Borda", "body": "Cabecalho de secao termina com um fio de 1px que corre ate a borda direita. Custa zero conteudo e e o que faz a tela larga parecer terminada em vez de vazia.", "section": "layout" },
+      { "name": "A Regra da Folha Plana", "body": "Superficie e regua separam; sombra so aparece quando o elemento de fato flutua sobre a pagina (gaveta, dialogo). Cartao em repouso nunca tem sombra.", "section": "elevation" },
+      { "name": "A Regra da Grade de 24", "body": "Todo icone novo entra em `ICONES` como traco em `viewBox=\"0 0 24 24\"`, com `stroke-width: 1.6` e `currentColor`. Sem excecao, e sem biblioteca externa.", "section": "shapes" },
+      { "name": "A Regra da Folha Quadrada", "body": "Raio zero e o padrao da estrutura (regua, linha, barra de rolagem). Raio existe para objeto que se pega, nao para superficie que se le.", "section": "shapes" },
+      { "name": "A Regra dos Seis Degraus", "body": "Raio novo sai de `0`, `3px`, `6px`, `10px`, `999px` ou `50%`. Se o componente parece pedir outro valor, ele esta pedindo outro dos seis, nao um numero inedito. O arquivo hoje tem doze valores de pixel distintos, e isso e deriva, nao sistema.", "section": "shapes" },
+      { "name": "A Regra do Redesenho", "body": "O stream troca o painel inteiro a cada 2 segundos. Nenhum elemento com estado proprio pode morar dentro de bloco redesenhado por timer: textarea perde o cursor, select aberto perde o menu nativo do sistema operacional, e campo em edicao perde o indice.", "section": "components" },
+      { "name": "A Regra da Tag Escopada", "body": "Regra global sobre tag semantica sempre escopada pelo pai, mesmo quando so existe um elemento daquele tipo hoje. Ja colidiu tres vezes: header e footer pintaram faixa cinza dentro do cartao de agente, e h1 cortou a ultima letra do titulo no leitor de documentos.", "section": "components" }
+    ],
+    "dos": [
+      "Do usar `@container` para todo breakpoint novo, com `#painel` como referencia.",
+      "Do medir todo token de texto contra `--bg` e contra `--surface`, nos dois temas, com piso de 4,5:1 para texto e 3:1 para regua.",
+      "Do desenhar icone novo em `ICONES`, grade de 24, `stroke-width: 1.6`, `currentColor`.",
+      "Do dar `tabular-nums` e fonte de largura fixa a todo numero que o stream reescreve.",
+      "Do separar por superficie e por regua; deixar sombra so para o que de fato flutua.",
+      "Do escopar classe de estado no elemento que de fato deve receber a cor.",
+      "Do usar `minmax(min(<piso>, 100%), 1fr)` em toda grade, com o `min()` presente.",
+      "Do projetar para 390px primeiro e deixar o monitor herdar.",
+      "Do escolher raio entre `0`, `3px`, `6px`, `10px`, `999px` e `50%`, e tamanho de fonte entre 11, 11,5, 12, 12,5 e 13 pixels. Sao os degraus que a tela ja usa em volume."
+    ],
+    "donts": [
+      "Don't usar `@media` para largura de layout. A janela larga mente sobre o painel estreito.",
+      "Don't pintar fundo com cor de estado. Estado e texto, barra de 3px ou borda.",
+      "Don't usar `--vez` em nada que nao seja \"a jogada e sua\", e nao marcar mais de uma linha com a bandeira.",
+      "Don't por sombra em cartao em repouso, nem raio na regua, na linha de vez ou na barra de rolagem.",
+      "Don't usar glifo Unicode como icone. A grade de 24 ja existe, e o glifo muda de forma e de peso conforme a fonte de sistema do aparelho.",
+      "Don't depender de face de fonte instalada no sistema para o carater da interface.",
+      "Don't por textarea, select ou campo em edicao dentro de bloco redesenhado pelo stream.",
+      "Don't escrever regra global sobre tag semantica sem escopar pelo pai.",
+      "Don't cortar nome de coisa com reticencias. Quebre no meio.",
+      "Don't acrescentar um raio ou um tamanho de fonte inedito. Doze raios e quinze tamanhos ja e mais do que a tela consegue significar.",
+      "Don't deixar superficie do navegador (selecao, cursor, barra de rolagem) com o padrao do sistema."
+    ]
+  },
+  "knownDivergences": [
+    {
+      "id": "cross-table",
+      "severity": "registrada",
+      "contract": "Uma tabela cruzada, uma linha por projeto.",
+      "build": "A linha de vez (`.vez`) entrega linhas, mas o backlog e o sprint renderizam GRADES de cartoes de item por projeto (`.bl-grade` mais `.ct`).",
+      "note": "A revisao de acabamento classificou como adaptacao sem citacao: defensavel com 77 itens, e nao justificada por nenhuma verdade de produto registrada. Nao canonizada como regra do sistema."
+    },
+    {
+      "id": "escala-espalhada",
+      "severity": "deriva",
+      "build": "133 declaracoes de `border-radius` em doze valores de pixel distintos (999, 4, 2, 8, 6, 3, 10, 7, 12, 9, 5, 1), mais 0, 50% e quatro compostas; e 223 declaracoes de `font-size` em quinze valores distintos, de 8,5 a 22 pixels.",
+      "detector": "91 avisos na primeira execucao apos o DESIGN.md existir: 62 de raio, 25 de tamanho de fonte, 4 de cor.",
+      "note": "Deriva herdada de antes desta reforma, nao escolha de ninguem: o mundo esta comprometido com superficie plana de boletim, e doze raios nao expressam doze intencoes. Nem 4px contra 5px, nem 11px contra 11,5px, sao lidos como dois niveis. Os degraus que valem estao em `extensions.radiusScale` e `extensions.fontSizeScale`. Convergir e trabalho de backlog, deliberadamente NAO feito nesta passagem: sao 71 declaracoes de raio fora dos degraus, mais os tamanhos de fonte avulsos."
+    },
+    {
+      "id": "glifos-residuais",
+      "severity": "cosmetico",
+      "build": "Sobram glifos Unicode em prosa e no mapa `SIMBOLO_TAREFA`, mais setas e cruzes de interface. Todos sentam ao lado de uma palavra.",
+      "note": "O ultimo glifo que funcionava sozinho como icone era o selo de fixado (`content: '★'`), e virou `--mask-estrela`, a mesma estrela da grade de 24 como mascara CSS. A regra (Don't usar glifo Unicode como icone) esta cumprida no que importa; o resto e cosmetico e de risco baixo."
+    },
+    {
+      "id": "semana-corta",
+      "severity": "anterior",
+      "build": "O medidor de uso SEMANA corta na borda direita em 390px.",
+      "note": "Anterior a esta direcao, nao introduzido por ela, e continua aberto."
+    }
+  ],
+  "resolvedSinceFirstRecord": [
+    {
+      "id": "vez-igual-failed",
+      "was": "`--vez` e `--failed` dividiam o mesmo hex nos dois temas, e a Regra da Bandeirinha valia so como disciplina de uso.",
+      "fix": "`--failed` saiu da familia vermelha para o magenta-vinho (#d488b0 no noite, #8e2f63 no papel). Matiz 347,3 contra 27,5, cerca de 40 graus de separacao no circulo. A regra passou a ser cumprida pela cor, nao so pelo lugar."
+    },
+    {
+      "id": "raio-morto",
+      "was": "`--raio: 8px` declarado em `:root` com zero usos.",
+      "fix": "Apagado do `:root`. Nada referencia `var(--raio)` no arquivo."
+    },
+    {
+      "id": "estrela-glifo",
+      "was": "`.card.pinned::after` usava `content: '★'`, o ultimo glifo do arquivo que funcionava de fato como icone.",
+      "fix": "Virou `content: ''` mais `--mask-estrela`, a estrela da grade de 24 como mascara SVG embutida, herdando cor pelo fundo da mascara."
+    }
+  ]
+}

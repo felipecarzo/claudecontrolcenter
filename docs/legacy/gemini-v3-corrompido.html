@@ -1,0 +1,2060 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Agent Cockpit V2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <style>
+    :root {
+      --bg-base: #0B0D0F; 
+      --surface-1: #111418;
+      --surface-2: #171B20;
+      --border: #252A30;
+      --border-highlight: #3D444D;
+      --text-1: #E6E8EA;
+      --text-2: #A1A9B3;
+      --text-3: #7D858E;
+      --accent: #38bdf8;
+      --working: #8b5cf6;
+      --waiting: #f59e0b;
+      --done: #10b981;
+      --font-ui: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-1);
+      font-family: var(--font-ui);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: row;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+    /* --- SIDEBAR --- */
+    .sidebar {
+      width: 240px; flex: none; background: var(--surface-1); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 24px 0; z-index: 50;
+      overflow-y: auto;
+    }
+    .nav-brand {
+      font-size: 16px; font-weight: 800; color: var(--text-1); margin: 0 24px 32px 24px;
+      display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px;
+    }
+    .nav-brand i { color: var(--accent); font-size: 20px; }
+    
+    .nav-group { margin-bottom: 24px; }
+    .nav-group-title {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+      color: var(--text-3); margin: 0 24px 8px 24px;
+    }
+    .nav-btn {
+      background: transparent; border: none; color: var(--text-2); font-size: 13px; font-weight: 500;
+      width: calc(100% - 32px); margin: 2px 16px; padding: 8px 12px; border-radius: 6px;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer; transition: all 0.2s; position: relative; text-align: left;
+    }
+    .nav-btn i { font-size: 16px; opacity: 0.7; }
+    .nav-btn:hover { color: var(--text-1); background: var(--surface-2); }
+    .nav-btn.active { color: var(--text-1); background: rgba(255,255,255,0.05); font-weight: 600; }
+    .nav-btn.active i { opacity: 1; color: var(--accent); }
+
+    /* --- MAIN CONTENT --- */
+    .main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+    
+    header {
+      padding: 24px 48px; display: flex; justify-content: space-between; align-items: center; flex: none;
+      border-bottom: 1px solid var(--border); background: var(--bg-base); z-index: 10;
+    }
+    .cockpit-title { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-1); text-transform: uppercase; }
+    .cockpit-subtitle { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+    
+    .header-stats { display: flex; gap: 24px; align-items: center; }
+    .header-stat { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); font-weight: 600; }
+    .header-stat i { font-size: 14px; }
+    .header-stat.alert { color: var(--waiting); }
+
+    /* --- VIEWS --- */
+    .view {
+      display: none; flex: 1; width: 100%; overflow-x: hidden; overflow-y: auto;
+      padding: 32px 48px;
+    }
+    .view.active { display: block; }
+    
+    /* --- COCKPIT VIEW --- */
+    .section-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;
+      color: var(--text-3); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .grid-agora {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 48px;
+    }
+    .grid-projetos {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px;
+    }
+
+    /* --- WIDGETS --- */
+    .widget {
+      background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+      padding: 20px; transition: all 0.2s ease; position: relative;
+    }
+    .widget-alert { border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.02); }
+    
+    .widget-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .widget-title { font-size: 15px; font-weight: 600; color: var(--text-1); display: flex; align-items: center; gap: 8px; }
+    .widget-title i { font-size: 18px; }
+    .widget-badge {
+      font-size: 10px; text-transform: uppercase; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .badge-alert { background: rgba(245,158,11,0.1); color: var(--waiting); border: 1px solid rgba(245,158,11,0.2); }
+    
+    .agent-row {
+      display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--border);
+    }
+    .agent-row:first-child { border-top: none; padding-top: 0; }
+    .agent-status-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+    }
+    .agent-status-dot.working { background: var(--working); box-shadow: 0 0 8px var(--working); }
+    .agent-status-dot.waiting { background: var(--waiting); box-shadow: 0 0 8px var(--waiting); }
+    .agent-status-dot.done { background: var(--done); }
+    .agent-status-dot.failed { background: var(--failed); }
+    
+    .agent-info { flex: 1; min-width: 0; }
+    .agent-name { font-weight: 600; font-size: 13px; color: var(--text-1); margin-bottom: 2px; }
+    .agent-desc { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+    .agent-action { font-size: 10px; font-weight: 700; color: var(--accent); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: inline-block; }
+
+    .progress-bar { height: 4px; background: var(--surface-2); border-radius: 2px; margin-top: 16px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-top: 8px; }
+
+    /* Outros componentes mantidos do V2 mas planificados */
+    .styled-input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1); padding: 10px 12px; border-radius: 6px; font-family: var(--font-ui); outline: none; margin-bottom: 12px; transition: border-color 0.2s; font-size: 13px; }
+    .styled-input:focus { border-color: var(--border-highlight); }
+    .styled-btn { padding: 8px 16px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1); border-radius: 6px; cursor: pointer; font-family: var(--font-ui); font-weight: 500; font-size: 12px; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+    .styled-btn:hover { background: var(--border); }
+    .styled-btn.primary { background: var(--text-1); color: var(--bg-base); border-color: var(--text-1); font-weight: 600; }
+    .styled-btn.primary:hover { background: #fff; }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 20px; text-align: center; border: 1px dashed var(--border); border-radius: 8px; color: var(--text-3); }
+    .empty-state i { font-size: 24px; margin-bottom: 8px; opacity: 0.5; }
+    .empty-state-title { font-size: 13px; font-weight: 500; color: var(--text-2); }
+
+    /* --- SISTEMA DE AJUDA CONTEXTUAL (?) --- */
+    .help-btn {
+      background: transparent; border: 1px solid var(--text-3); border-radius: 50%;
+      color: var(--text-3); width: 14px; height: 14px; font-size: 9px; font-family: var(--font-mono); font-weight: bold;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: all 0.2s ease; margin-left: 6px; flex-shrink: 0; line-height: 1; padding:0; outline: none;
+    }
+    .help-btn:hover { color: var(--text-1); border-color: var(--text-1); }
+
+    .help-popover {
+      position: fixed; width: 300px; background: var(--surface-2); border: 1px solid var(--border-highlight);
+      border-radius: 8px; padding: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      z-index: 9999; display: none; flex-direction: column; gap: 12px;
+    }
+    .help-popover.visible { display: flex; }
+    .help-popover-title { font-size: 14px; font-weight: 600; color: var(--text-1); border-bottom: 1px solid var(--border); padding-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .help-popover-title i { color: var(--accent); }
+    .help-section { display: flex; flex-direction: column; gap: 4px; }
+    .help-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; color: var(--text-3); }
+    .help-text { font-size: 12px; line-height: 1.5; color: var(--text-2); }
+
+    /* Generic Grid for other views */
+    .generic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+</style>
+<body>
+  <!-- GLOBAL HELP POPOVER -->
+  <div id="global-help-popover" class="help-popover">
+    <div class="help-popover-title"><i class="ph-bold ph-info"></i> <span id="help-pop-title">Título</span></div>
+    <div class="help-section"><div class="help-label">O que é</div><div class="help-text" id="help-pop-oque"></div></div>
+    <div class="help-section"><div class="help-label">Acorda</div><div class="help-text" id="help-pop-acorda" style="color: var(--working);"></div></div>
+    <div class="help-section"><div class="help-label">Mata</div><div class="help-text" id="help-pop-mata" style="color: var(--failed);"></div></div>
+    <div class="help-section"><div class="help-label">Exemplo</div><div class="help-text" id="help-pop-exemplo" style="font-style:italic; border-left:2px solid var(--border); padding-left:8px;"></div></div>
+  </div>
+
+  <nav class="sidebar">
+    <div class="nav-brand"><i class="ph-bold ph-planet"></i> AGENT COCKPIT</div>
+    
+    <div class="nav-group">
+      <div class="nav-group-title">COCKPIT</div>
+      <button class="nav-btn active" data-target="view-cockpit" data-help="aba-telemetria"><i class="ph-bold ph-activity"></i> Agora</button>
+      <button class="nav-btn" data-target="view-trabalho" data-help="aba-planejamento"><i class="ph-bold ph-kanban"></i> Trabalho</button>
+      <button class="nav-btn" data-target="view-projetos" data-help="aba-projetos"><i class="ph-bold ph-buildings"></i> Estrutura</button>
+    </div>
+    
+    <div class="nav-group">
+      <div class="nav-group-title">ENGENHARIA</div>
+      <button class="nav-btn" data-target="view-conectores" data-help="aba-conectores"><i class="ph-bold ph-anchor"></i> Hooks & Servidores</button>
+      <button class="nav-btn" data-target="view-federacao" data-help="aba-federacao"><i class="ph-bold ph-network"></i> Federação</button>
+    </div>
+    
+    <div class="nav-group">
+      <div class="nav-group-title">RECURSOS</div>
+      <button class="nav-btn" data-target="view-conhecimento" data-help="aba-conhecimento"><i class="ph-bold ph-brain"></i> Conhecimento</button>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <header>
+      <div>
+        <div class="cockpit-title" id="page-title">Cockpit</div>
+        <div class="cockpit-subtitle" id="page-subtitle">Visão geral do que importa agora.</div>
+      </div>
+      <div class="header-stats">
+        <div class="header-stat"><i class="ph-fill ph-check-circle" style="color:var(--done)"></i> <span id="top-projetos" style="color:var(--text-1)">0</span> PROJETOS</div>
+        <div class="header-stat"><i class="ph-fill ph-robot" style="color:var(--working)"></i> <span id="top-agentes" style="color:var(--text-1)">0</span> AGENTES</div>
+        <div class="header-stat alert"><i class="ph-fill ph-warning-circle"></i> <span id="top-precisam">0</span> PRECISAM DE VOCÊ</div>
+        <div class="header-stat" style="color:var(--done);"><i class="ph-bold ph-hard-drives"></i> <span id="top-maquinas">PC LOCAL</span></div>
+      </div>
+    </header>
+
+    <!-- TELA 1: COCKPIT (AGORA + PROJETOS) -->
+    <main class="view active" id="view-cockpit">
+      <div class="section-title">AGORA — O QUE PRECISA DA SUA ATENÇÃO</div>
+      <div class="grid-agora" id="list-agora">
+        <!-- Preenchido via JS (viewMeu e viewVez) -->
+      </div>
+      
+      <div class="section-title" style="margin-top:24px; justify-content:space-between;">
+        <div>PROJETOS ATIVOS</div>
+      </div>
+      <div class="grid-projetos" id="list-projetos">
+        <!-- Preenchido via JS (projetos com status detalhado de agentes) -->
+      </div>
+    </main>
+
+    <!-- TELA 2: TRABALHO -->
+    <main class="view" id="view-trabalho">
+      <div class="section-title">BACKLOG DE SPRINT</div>
+      <div class="grid-projetos" id="list-sprint">
+        <!-- Preenchido via JS -->
+      </div>
+      <div class="section-title" style="margin-top:32px;">TAREFAS HUMANAS</div>
+      <div class="grid-projetos" id="list-meu"></div>
+    </main>
+
+    <!-- TELA 3: ESTRUTURA (Projetos / Framework) -->
+    <main class="view" id="view-projetos">
+      <div class="section-title">FRAMEWORK & CONFIGURAÇÕES</div>
+      <div class="generic-grid" id="list-framework-projetos"></div>
+      
+      <div class="section-title" style="margin-top:32px;">MUDANÇAS RECENTES</div>
+      <div class="generic-grid" id="list-dqo"></div>
+    </main>
+
+    <!-- TELA 4: CONHECIMENTO -->
+    <main class="view" id="view-conhecimento">
+      <div class="section-title">BUSCA UNIVERSAL</div>
+      <div class="widget" style="margin-bottom:24px;">
+        <input type="text" id="input-busca" class="styled-input" style="margin:0; border:none; background:transparent; font-size:16px; padding:0;" placeholder="Buscar em notas, documentos e glossário...">
+        <div id="list-busca" style="display:flex; flex-direction:column; gap:16px; margin-top:16px;"></div>
+      </div>
+      
+      <div class="section-title">NOTAS RÁPIDAS</div>
+      <div class="generic-grid" id="list-notas"></div>
+    </main>
+
+    <!-- TELA 5: CONECTORES -->
+    <main class="view" id="view-conectores">
+      <div class="section-title">HOOKS E SERVIDORES</div>
+      <div class="generic-grid">
+        <div id="list-hooks"></div>
+        <div id="list-locais"></div>
+        <div id="list-docker"></div>
+        <div id="list-agenda"></div>
+      </div>
+    </main>
+
+    <!-- TELA 6: FEDERAÇÃO -->
+    <main class="view" id="view-federacao">
+      <div class="section-title">REDE E MALHA</div>
+      <div class="generic-grid">
+        <div id="list-fed-malha"></div>
+        <div id="list-fed-sessoes"></div>
+        <div id="list-vps"></div>
+      </div>
+    </main>
+  </div>
+<script>
+    // --- NAVEGAÇÃO E TABS ---
+    const pageData = {
+      'view-cockpit': { title: 'Cockpit', subtitle: 'Visão geral do que importa agora.' },
+      'view-trabalho': { title: 'Trabalho', subtitle: 'Backlog de sprint e pendências humanas.' },
+      'view-projetos': { title: 'Estrutura', subtitle: 'Framework, configurações e mudanças.' },
+      'view-conhecimento': { title: 'Conhecimento', subtitle: 'Busca universal e notas rápidas.' },
+      'view-conectores': { title: 'Conectores', subtitle: 'Hooks, servidores e agenda.' },
+      'view-federacao': { title: 'Federação', subtitle: 'Rede, sessões remotas e máquinas.' }
+    };
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        const targetId = e.currentTarget.getAttribute('data-target');
+        document.getElementById(targetId).classList.add('active');
+        if (pageData[targetId]) {
+          document.getElementById('page-title').innerText = pageData[targetId].title;
+          document.getElementById('page-subtitle').innerText = pageData[targetId].subtitle;
+        }
+      });
+    });
+
+    // --- STATE E MOCKS ---
+    let STATE = {
+      jobs: [], meu: [], trabalho: {}, notas: [], glossario: { termos: [], verbetes: [] },
+      docs: [], roadmap: [], hooks: [], agenda: { eventos: [] }, servers: [],
+      remoto: { projetos: [], ativos: {} }, federacao: { maquinas: [] }, searchQuery: '',
+      projetos: [], docker: [], rotinas: [], vps: {}
+    };
+
+    const MOCKS = {
+      federacao: { maquinas: [ { nome: 'VPS-CONTABO-MAIN', status: 'online' }, { nome: 'MACBOOK-OFFICE', status: 'offline' } ] },
+      docker: [ { name: 'pg-database', status: 'running', ports: '5432' } ],
+      hooks: [ { id: 'pre-tool-use', label: 'Validação Antes do Uso de Ferramentas', descricao: 'Bloqueia se a ferramenta for destrutiva.', ligado: true } ],
+      agenda: { eventos: [ { titulo: 'Planning Semanal de Sprint', inicio: Date.now() + 3600000, fim: Date.now() + 7200000, local: 'Google Meet' } ] },
+      roadmap: [ { epico: 'Q3 - Automação Total', status: 'em progresso', tarefas: ['Refatorar Agent UI V2', 'Pipeline CI/CD Zero Touch'] } ],
+    };
+
+    function formatAge(ms) {
+      if (!ms || ms < 0) return '0m 0s';
+      let sec = Math.floor(ms / 1000);
+      let min = Math.floor(sec / 60);
+      return `${min}m ${sec % 60}s`;
+    }
+
+    async function apiFetch(path, fallback) {
+      try {
+        const r = await fetch(path);
+        if (!r.ok) throw new Error('API error');
+        return await r.json();
+      } catch (e) { return fallback; }
+    }
+
+    async function carregarTudo() {
+      const [dMeu, dTrab, dNotes, dGloss, dDocs, dHooks, dCal, dSrv, dRem, dProj] = await Promise.all([
+        apiFetch('/api/meu', { tarefas: [] }),
+        apiFetch('/api/trabalho?ordem=importancia', {}),
+        apiFetch('/api/notes', { notes: [] }),
+        apiFetch('/api/glossario', { termos: [], verbetes: [] }),
+        apiFetch('/api/docs', { docs: [] }),
+        apiFetch('/api/hooks', { hooks: MOCKS.hooks }),
+        apiFetch('/api/calendario', MOCKS.agenda),
+        apiFetch('/api/servers', { servers: [] }),
+        apiFetch('/api/remote-control', { projetos: [], ativos: {} }),
+        apiFetch('/api/framework/projetos').then(r => r.projetos || r).catch(() => apiFetch('/api/framework/lista', []))
+      ]);
+
+      STATE.meu = dMeu.tarefas || [];
+      STATE.trabalho = dTrab || {};
+      STATE.notas = dNotes.notes || [];
+      STATE.glossario = dGloss || { termos: [], verbetes: [] };
+      STATE.docs = dDocs.docs || [];
+      STATE.hooks = dHooks.hooks || MOCKS.hooks;
+      STATE.agenda = dCal.eventos ? dCal : MOCKS.agenda;
+      STATE.servers = dSrv.servers || [];
+      STATE.remoto = dRem.projetos ? dRem : { projetos: [], ativos: {} };
+      STATE.projetos = Array.isArray(dProj) ? dProj : (dProj?.projetos || dProj?.lista || []);
+      
+      STATE.federacao = MOCKS.federacao;
+      STATE.docker = MOCKS.docker;
+
+      renderTodasTelas();
+    }
+
+    function renderTodasTelas() {
+      renderCockpit();
+      renderTrabalho();
+      renderProjetos();
+      renderConhecimento();
+      renderConectores();
+      renderFederacao();
+    }
+
+    // TELA 1: COCKPIT
+    function renderCockpit() {
+      const now = Date.now();
+      const waiting = STATE.jobs.filter(j => j.status === 'waiting');
+      const working = STATE.jobs.filter(j => j.status !== 'waiting');
+      
+      document.getElementById('top-projetos').innerText = new Set(STATE.jobs.map(j => j.project)).size;
+      document.getElementById('top-agentes').innerText = STATE.jobs.length;
+      document.getElementById('top-precisam').innerText = waiting.length;
+
+      document.getElementById('list-agora').innerHTML = waiting.length ? waiting.map(j => `
+        <div class="widget widget-alert">
+          <div class="widget-header">
+            <div class="widget-title"><i class="ph-bold ph-warning-circle" style="color:var(--waiting)"></i> ${j.project || '?'}</div>
+            <div class="widget-badge badge-alert">${formatAge(now - (j.updatedAt || now))}</div>
+          </div>
+          <div class="agent-info">
+            <div class="agent-name">${j.subject || 'Pendente'}</div>
+            <div class="agent-desc">${j.detail || 'Aguardando sua ação.'}</div>
+          </div>
+          <div class="agent-action"><i class="ph-bold ph-terminal-window"></i> VER TERMINAL</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-coffee"></i><div class="empty-state-title">Nenhum agente travado</div></div>`;
+
+      // Projetos agrupados com agentes saudáveis
+      const projMap = {};
+      working.forEach(j => {
+        if (!projMap[j.project]) projMap[j.project] = [];
+        projMap[j.project].push(j);
+      });
+
+      const projsHTML = Object.entries(projMap).map(([pname, agents]) => {
+        const agentRows = agents.map(j => `
+          <div class="agent-row">
+            <div class="agent-status-dot ${j.status === 'done' ? 'done' : 'working'}"></div>
+            <div class="agent-info">
+              <div class="agent-name">${j.subject || 'Atividade'}</div>
+              <div class="agent-desc">${j.detail || 'Operação em andamento...'}</div>
+            </div>
+            <div style="font-size:10px; color:var(--text-3); font-family:var(--font-mono);">${formatAge(now - (j.updatedAt||now))}</div>
+          </div>
+        `).join('');
+        return `
+        <div class="widget">
+          <div class="widget-header">
+            <div class="widget-title"><i class="ph-fill ph-folder"></i> ${pname}</div>
+            <div class="widget-badge" style="background:var(--surface-2); color:var(--text-2);">${agents.length} AGENTES</div>
+          </div>
+          ${agentRows}
+        </div>
+        `;
+      });
+      document.getElementById('list-projetos').innerHTML = projsHTML.length ? projsHTML.join('') : `<div class="empty-state"><i class="ph-duotone ph-circles-four"></i><div class="empty-state-title">Nenhum projeto ativo</div></div>`;
+    }
+
+    // TELA 2: TRABALHO
+    function renderTrabalho() {
+      const pendentes = STATE.meu.filter(t => !t.feito);
+      document.getElementById('list-meu').innerHTML = pendentes.length ? pendentes.map(t => `
+        <div class="widget" style="padding: 16px; display: flex; gap: 12px; align-items: flex-start;">
+          <input type="checkbox" style="width: 20px; height: 20px; accent-color: var(--accent); margin-top:2px;" onchange="toggleMeu('${t.id}')">
+          <div>
+            <div style="font-weight: 600; font-size: 15px;">${t.texto}</div>
+            <div style="font-size: 12px; color: var(--text-3); margin-top: 4px;">${t.projeto || 'Geral'}</div>
+          </div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-check-circle"></i><div class="empty-state-title">Sua mesa está limpa</div></div>`;
+
+      const sprintMap = {};
+      STATE.jobs.forEach(j => {
+        if (!sprintMap[j.project]) sprintMap[j.project] = [];
+        sprintMap[j.project].push(j);
+      });
+      let sprintHtml = '';
+      Object.keys(sprintMap).forEach(p => {
+        let tsHtml = '';
+        sprintMap[p].forEach(j => {
+          (j.todos || []).forEach(t => {
+            tsHtml += `
+              <div style="padding:10px; background:rgba(255,255,255,0.02); border-radius:6px; margin-top:8px; display:flex; gap:8px;">
+                <input type="checkbox" ${t.done ? 'checked' : ''} disabled style="margin-top:2px;">
+                <div>
+                  <div style="font-weight:500; font-size:13px; color:var(--text-1);">${t.text}</div>
+                </div>
+              </div>
+            `;
+          });
+        });
+        sprintHtml += `<div class="widget"><div class="widget-header" style="margin-bottom:8px;"><div class="widget-title"><i class="ph-fill ph-folder"></i> ${p}</div></div>${tsHtml || '<div style="font-size:12px;color:var(--text-3)">Sem to-dos.</div>'}</div>`;
+      });
+      document.getElementById('list-sprint').innerHTML = sprintHtml || `<div class="empty-state"><i class="ph-duotone ph-list-checks"></i><div class="empty-state-title">Nenhum agente na sprint</div></div>`;
+    }
+
+    async function toggleMeu(id) {
+      await fetch('/api/meu', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({acao:'marcar', id:id, feito:true}) });
+      carregarTudo();
+    }
+
+    // TELA 3: ESTRUTURA
+    function renderProjetos() {
+      const projs = STATE.projetos;
+      document.getElementById('list-framework-projetos').innerHTML = projs.length ? projs.map(p => `
+        <div class="widget" style="padding: 16px;">
+          <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${p.nome || p}</div>
+          <div style="font-size: 12px; color: var(--text-3);">Framework habilitado</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-folder-notch"></i><div class="empty-state-title">Nenhum projeto monitorado</div></div>`;
+
+      const dqo = STATE.trabalho?.desdeQueOlhei?.marcos || [];
+      document.getElementById('list-dqo').innerHTML = dqo.length ? dqo.map(m => `
+        <div class="widget" style="padding: 16px;">
+          <div style="font-size: 11px; color: var(--text-3); font-family: var(--font-mono);">${new Date(m.em).toLocaleTimeString('pt-BR')} · ${m.projeto || '?'}</div>
+          <div style="font-weight: 500; margin-top: 4px; font-size: 14px;">${m.texto}</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-eye"></i><div class="empty-state-title">Nenhuma novidade desde seu último acesso</div></div>`;
+    }
+
+    // TELA 4: CONHECIMENTO
+    function renderConhecimento() {
+      document.getElementById('list-notas').innerHTML = STATE.notas.length ? STATE.notas.map(n => `
+        <div class="widget" style="padding: 16px;">
+          <div style="font-size: 14px; line-height: 1.5;">${n.text || n.texto || '...'}</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-pencil-simple"></i><div class="empty-state-title">Nenhum rascunho</div></div>`;
+      
+      const input = document.getElementById('input-busca');
+      input.onkeyup = () => {
+        const q = input.value.toLowerCase();
+        const list = document.getElementById('list-busca');
+        if (!q) { list.innerHTML = ''; return; }
+        const termHits = (STATE.glossario.termos||[]).filter(t => t.termo.toLowerCase().includes(q));
+        list.innerHTML = termHits.map(t => `<div class="widget" style="padding:16px;"><b>${t.termo}</b><div style="font-size:13px; color:var(--text-2); margin-top:4px;">${t.definicao}</div></div>`).join('');
+      };
+    }
+
+    // TELA 5: CONECTORES
+    function renderConectores() {
+      document.getElementById('list-hooks').innerHTML = STATE.hooks.map(h => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div><div style="font-weight:600;">${h.label}</div><div style="font-size:12px; color:var(--text-3);">${h.descricao}</div></div>
+          <input type="checkbox" ${h.ligado ? 'checked' : ''} disabled>
+        </div>
+      `).join('');
+
+      document.getElementById('list-locais').innerHTML = STATE.servers.length ? STATE.servers.map(s => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div><div style="font-weight:600;">Porta ${s.port}</div><div style="font-size:12px; color:var(--text-3);">${s.project || 'sistema'}</div></div>
+          <span style="color:var(--done);">Escutando</span>
+        </div>
+      `).join('') : '';
+      
+      const evs = STATE.agenda?.eventos || [];
+      document.getElementById('list-agenda').innerHTML = evs.length ? evs.map(e => `
+        <div class="widget"><b>${e.titulo}</b><div style="font-size:12px; color:var(--text-3);">${new Date(e.inicio).toLocaleTimeString('pt-BR')}</div></div>
+      `).join('') : '';
+    }
+
+    // TELA 6: FEDERAÇÃO
+    function renderFederacao() {
+      const prjs = STATE.remoto.projetos || [];
+      document.getElementById('list-fed-sessoes').innerHTML = prjs.length ? prjs.map(p => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div><div style="font-weight:600;">${p.nome}</div><div style="font-size:11px; color:var(--text-3);">${p.dir}</div></div>
+          <button class="styled-btn" style="width:auto;">LIGAR</button>
+        </div>
+      `).join('') : '';
+
+      document.getElementById('list-fed-malha').innerHTML = STATE.federacao.maquinas.map(m => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-weight:600;"><i class="ph-fill ph-hard-drive"></i> ${m.nome}</div>
+          <span style="color:${m.status==='online'?'var(--done)':'var(--text-3)'}">${m.status}</span>
+        </div>
+      `).join('');
+    }
+
+    // POLLING SSE
+    const evtSource = new EventSource('/events');
+    evtSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.jobs) {
+        STATE.jobs = data.jobs;
+        renderTodasTelas();
+      }
+    };
+    evtSource.onerror = () => console.error("SSE desconectado.");
+
+    carregarTudo();
+    setInterval(carregarTudo, 30000);
+</script>
+  
+  <style>
+    :root {
+      --bg-base: #0B0D0F; 
+      --surface-1: #111418;
+      --surface-2: #171B20;
+      --border: #252A30;
+      --border-highlight: #3D444D;
+      --text-1: #E6E8EA;
+      --text-2: #A1A9B3;
+      --text-3: #7D858E;
+      --accent: #38bdf8;
+      --working: #8b5cf6;
+      --waiting: #f59e0b;
+      --done: #10b981;
+      --font-ui: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-1);
+      font-family: var(--font-ui);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: row;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+    /* --- SIDEBAR --- */
+    .sidebar {
+      width: 240px; flex: none; background: var(--surface-1); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 24px 0; z-index: 50;
+      overflow-y: auto;
+    }
+    .nav-brand {
+      font-size: 16px; font-weight: 800; color: var(--text-1); margin: 0 24px 32px 24px;
+      display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px;
+    }
+    .nav-brand i { color: var(--accent); font-size: 20px; }
+    
+    .nav-group { margin-bottom: 24px; }
+    .nav-group-title {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+      color: var(--text-3); margin: 0 24px 8px 24px;
+    }
+    .nav-btn {
+      background: transparent; border: none; color: var(--text-2); font-size: 13px; font-weight: 500;
+      width: calc(100% - 32px); margin: 2px 16px; padding: 8px 12px; border-radius: 6px;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer; transition: all 0.2s; position: relative; text-align: left;
+    }
+    .nav-btn i { font-size: 16px; opacity: 0.7; }
+    .nav-btn:hover { color: var(--text-1); background: var(--surface-2); }
+    .nav-btn.active { color: var(--text-1); background: rgba(255,255,255,0.05); font-weight: 600; }
+    .nav-btn.active i { opacity: 1; color: var(--accent); }
+
+    /* --- MAIN CONTENT --- */
+    .main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+    
+    header {
+      padding: 24px 48px; display: flex; justify-content: space-between; align-items: center; flex: none;
+      border-bottom: 1px solid var(--border); background: var(--bg-base); z-index: 10;
+    }
+    .cockpit-title { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-1); text-transform: uppercase; }
+    .cockpit-subtitle { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+    
+    .header-stats { display: flex; gap: 24px; align-items: center; }
+    .header-stat { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); font-weight: 600; }
+    .header-stat i { font-size: 14px; }
+    .header-stat.alert { color: var(--waiting); }
+
+    /* --- VIEWS --- */
+    .view {
+      display: none; flex: 1; width: 100%; overflow-x: hidden; overflow-y: auto;
+      padding: 32px 48px;
+    }
+    .view.active { display: block; }
+    
+    /* --- COCKPIT VIEW --- */
+    .section-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;
+      color: var(--text-3); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .grid-agora {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 48px;
+    }
+    .grid-projetos {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px;
+    }
+
+    /* --- WIDGETS --- */
+    .widget {
+      background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+      padding: 20px; transition: all 0.2s ease; position: relative;
+    }
+    .widget-alert { border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.02); }
+    
+    .widget-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .widget-title { font-size: 15px; font-weight: 600; color: var(--text-1); display: flex; align-items: center; gap: 8px; }
+    .widget-title i { font-size: 18px; }
+    .widget-badge {
+      font-size: 10px; text-transform: uppercase; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .badge-alert { background: rgba(245,158,11,0.1); color: var(--waiting); border: 1px solid rgba(245,158,11,0.2); }
+    
+    .agent-row {
+      display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--border);
+    }
+    .agent-row:first-child { border-top: none; padding-top: 0; }
+    .agent-status-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+    }
+    .agent-status-dot.working { background: var(--working); box-shadow: 0 0 8px var(--working); }
+    .agent-status-dot.waiting { background: var(--waiting); box-shadow: 0 0 8px var(--waiting); }
+    .agent-status-dot.done { background: var(--done); }
+    .agent-status-dot.failed { background: var(--failed); }
+    
+    .agent-info { flex: 1; min-width: 0; }
+    .agent-name { font-weight: 600; font-size: 13px; color: var(--text-1); margin-bottom: 2px; }
+    .agent-desc { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+    .agent-action { font-size: 10px; font-weight: 700; color: var(--accent); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: inline-block; }
+
+    .progress-bar { height: 4px; background: var(--surface-2); border-radius: 2px; margin-top: 16px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-top: 8px; }
+
+    /* Outros componentes mantidos do V2 mas planificados */
+    .styled-input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1); padding: 10px 12px; border-radius: 6px; font-family: var(--font-ui); outline: none; margin-bottom: 12px; transition: border-color 0.2s; font-size: 13px; }
+    .styled-input:focus { border-color: var(--border-highlight); }
+    .styled-btn { padding: 8px 16px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1); border-radius: 6px; cursor: pointer; font-family: var(--font-ui); font-weight: 500; font-size: 12px; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+    .styled-btn:hover { background: var(--border); }
+    .styled-btn.primary { background: var(--text-1); color: var(--bg-base); border-color: var(--text-1); font-weight: 600; }
+    .styled-btn.primary:hover { background: #fff; }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 20px; text-align: center; border: 1px dashed var(--border); border-radius: 8px; color: var(--text-3); }
+    .empty-state i { font-size: 24px; margin-bottom: 8px; opacity: 0.5; }
+    .empty-state-title { font-size: 13px; font-weight: 500; color: var(--text-2); }
+
+    /* --- SISTEMA DE AJUDA CONTEXTUAL (?) --- */
+    .help-btn {
+      background: transparent; border: 1px solid var(--text-3); border-radius: 50%;
+      color: var(--text-3); width: 14px; height: 14px; font-size: 9px; font-family: var(--font-mono); font-weight: bold;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: all 0.2s ease; margin-left: 6px; flex-shrink: 0; line-height: 1; padding:0; outline: none;
+    }
+    .help-btn:hover { color: var(--text-1); border-color: var(--text-1); }
+
+    .help-popover {
+      position: fixed; width: 300px; background: var(--surface-2); border: 1px solid var(--border-highlight);
+      border-radius: 8px; padding: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      z-index: 9999; display: none; flex-direction: column; gap: 12px;
+    }
+    .help-popover.visible { display: flex; }
+    .help-popover-title { font-size: 14px; font-weight: 600; color: var(--text-1); border-bottom: 1px solid var(--border); padding-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .help-popover-title i { color: var(--accent); }
+    .help-section { display: flex; flex-direction: column; gap: 4px; }
+    .help-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; color: var(--text-3); }
+    .help-text { font-size: 12px; line-height: 1.5; color: var(--text-2); }
+
+    /* Generic Grid for other views */
+    .generic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+</style>
+<body>
+  <!-- GLOBAL HELP POPOVER -->
+  <div id="global-help-popover" class="help-popover">
+    <div class="help-popover-title"><i class="ph-bold ph-info"></i> <span id="help-pop-title">Título</span></div>
+    <div class="help-section"><div class="help-label">O que é</div><div class="help-text" id="help-pop-oque"></div></div>
+    <div class="help-section"><div class="help-label">Acorda</div><div class="help-text" id="help-pop-acorda" style="color: var(--working);"></div></div>
+    <div class="help-section"><div class="help-label">Mata</div><div class="help-text" id="help-pop-mata" style="color: var(--failed);"></div></div>
+    <div class="help-section"><div class="help-label">Exemplo</div><div class="help-text" id="help-pop-exemplo" style="font-style:italic; border-left:2px solid var(--border); padding-left:8px;"></div></div>
+  </div>
+
+  <nav class="sidebar">
+    <div class="nav-brand"><i class="ph-bold ph-planet"></i> AGENT COCKPIT</div>
+    
+    <div class="nav-group">
+      <div class="nav-group-title">COCKPIT</div>
+      <button class="nav-btn active" data-target="view-cockpit" data-help="aba-telemetria"><i class="ph-bold ph-activity"></i> Agora</button>
+      <button class="nav-btn" data-target="view-trabalho" data-help="aba-planejamento"><i class="ph-bold ph-kanban"></i> Trabalho</button>
+      <button class="nav-btn" data-target="view-projetos" data-help="aba-projetos"><i class="ph-bold ph-buildings"></i> Estrutura</button>
+    </div>
+    
+    <div class="nav-group">
+      <div class="nav-group-title">ENGENHARIA</div>
+      <button class="nav-btn" data-target="view-conectores" data-help="aba-conectores"><i class="ph-bold ph-anchor"></i> Hooks & Servidores</button>
+      <button class="nav-btn" data-target="view-federacao" data-help="aba-federacao"><i class="ph-bold ph-network"></i> Federação</button>
+    </div>
+    
+    <div class="nav-group">
+      <div class="nav-group-title">RECURSOS</div>
+      <button class="nav-btn" data-target="view-conhecimento" data-help="aba-conhecimento"><i class="ph-bold ph-brain"></i> Conhecimento</button>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <header>
+      <div>
+        <div class="cockpit-title" id="page-title">Cockpit</div>
+        <div class="cockpit-subtitle" id="page-subtitle">Visão geral do que importa agora.</div>
+      </div>
+      <div class="header-stats">
+        <div class="header-stat"><i class="ph-fill ph-check-circle" style="color:var(--done)"></i> <span id="top-projetos" style="color:var(--text-1)">0</span> PROJETOS</div>
+        <div class="header-stat"><i class="ph-fill ph-robot" style="color:var(--working)"></i> <span id="top-agentes" style="color:var(--text-1)">0</span> AGENTES</div>
+        <div class="header-stat alert"><i class="ph-fill ph-warning-circle"></i> <span id="top-precisam">0</span> PRECISAM DE VOCÊ</div>
+        <div class="header-stat" style="color:var(--done);"><i class="ph-bold ph-hard-drives"></i> <span id="top-maquinas">PC LOCAL</span></div>
+      </div>
+    </header>
+
+    <!-- TELA 1: COCKPIT (AGORA + PROJETOS) -->
+    <main class="view active" id="view-cockpit">
+      <div class="section-title">AGORA — O QUE PRECISA DA SUA ATENÇÃO</div>
+      <div class="grid-agora" id="list-agora">
+        <!-- Preenchido via JS (viewMeu e viewVez) -->
+      </div>
+      
+      <div class="section-title" style="margin-top:24px; justify-content:space-between;">
+        <div>PROJETOS ATIVOS</div>
+      </div>
+      <div class="grid-projetos" id="list-projetos">
+        <!-- Preenchido via JS (projetos com status detalhado de agentes) -->
+      </div>
+    </main>
+
+    <!-- TELA 2: TRABALHO -->
+    <main class="view" id="view-trabalho">
+      <div class="section-title">BACKLOG DE SPRINT</div>
+      <div class="grid-projetos" id="list-sprint">
+        <!-- Preenchido via JS -->
+      </div>
+      <div class="section-title" style="margin-top:32px;">TAREFAS HUMANAS</div>
+      <div class="grid-projetos" id="list-meu"></div>
+    </main>
+
+    <!-- TELA 3: ESTRUTURA (Projetos / Framework) -->
+    <main class="view" id="view-projetos">
+      <div class="section-title">FRAMEWORK & CONFIGURAÇÕES</div>
+      <div class="generic-grid" id="list-framework-projetos"></div>
+      
+      <div class="section-title" style="margin-top:32px;">MUDANÇAS RECENTES</div>
+      <div class="generic-grid" id="list-dqo"></div>
+    </main>
+
+    <!-- TELA 4: CONHECIMENTO -->
+    <main class="view" id="view-conhecimento">
+      <div class="section-title">BUSCA UNIVERSAL</div>
+      <div class="widget" style="margin-bottom:24px;">
+        <input type="text" id="input-busca" class="styled-input" style="margin:0; border:none; background:transparent; font-size:16px; padding:0;" placeholder="Buscar em notas, documentos e glossário...">
+        <div id="list-busca" style="display:flex; flex-direction:column; gap:16px; margin-top:16px;"></div>
+      </div>
+      
+      <div class="section-title">NOTAS RÁPIDAS</div>
+      <div class="generic-grid" id="list-notas"></div>
+    </main>
+
+    <!-- TELA 5: CONECTORES -->
+    <main class="view" id="view-conectores">
+      <div class="section-title">HOOKS E SERVIDORES</div>
+      <div class="generic-grid">
+        <div id="list-hooks"></div>
+        <div id="list-locais"></div>
+        <div id="list-docker"></div>
+        <div id="list-agenda"></div>
+      </div>
+    </main>
+
+    <!-- TELA 6: FEDERAÇÃO -->
+    <main class="view" id="view-federacao">
+      <div class="section-title">REDE E MALHA</div>
+      <div class="generic-grid">
+        <div id="list-fed-malha"></div>
+        <div id="list-fed-sessoes"></div>
+        <div id="list-vps"></div>
+      </div>
+    </main>
+  </div>
+<script>
+    const HELP_DATA = {
+      // Abas Navegação
+      'aba-telemetria': {
+        titulo: 'Tela Telemetria', o_que_e: 'A sala de controle em tempo real de todos os agentes ativos no sistema.',
+        acorda: 'Sempre visível (é a tela inicial padrão).', mata: 'Nunca desaparece.',
+        exemplo: 'Use para ver rapidamente quem está trabalhando agora e quem travou precisando de ajuda.'
+      },
+      'aba-planejamento': {
+        titulo: 'Tela Planejamento', o_que_e: 'O seu Kanban estratégico misturando trabalho seu e trabalho das IAs.',
+        acorda: 'Sempre visível no menu.', mata: 'Nunca desaparece.',
+        exemplo: 'Use para entender se o time está avançando na sprint atual ou se há pendências suas parando o projeto.'
+      },
+      'aba-conhecimento': {
+        titulo: 'Tela Conhecimento', o_que_e: 'O segundo cérebro do projeto interligado ao seu Vault.',
+        acorda: 'Sempre visível no menu.', mata: 'Nunca desaparece.',
+        exemplo: 'Para buscar como uma regra de negócio foi definida no passado sem ler PDFs enormes.'
+      },
+      'aba-conectores': {
+        titulo: 'Tela Conectores', o_que_e: 'Gestão de integrações externas como calendários, scripts de hook e servidores abertos.',
+        acorda: 'Sempre visível no menu.', mata: 'Nunca desaparece.',
+        exemplo: 'Se o linter automático antes de commitar estiver te atrapalhando, é aqui que você desliga.'
+      },
+      'aba-federacao': {
+        titulo: 'Tela Federação', o_que_e: 'Onde as máquinas da sua rede (VPS, notebook, PC da sala) se encontram e compartilham estado.',
+        acorda: 'Sempre visível no menu.', mata: 'Nunca desaparece.',
+        exemplo: 'Você pode estar no notebook da sala e mandar ligar um agente na VPS remotamente por aqui.'
+      },
+      // Colunas Telemetria
+      'col-agora': {
+        titulo: 'Sua Vez / Ao Vivo', o_que_e: 'Lista exclusivamentes os agentes que estão PARADOS aguardando você.',
+        acorda: 'Aparece quando a IA esbarra numa permissão, trava ou pergunta.', mata: 'Some assim que você responde à IA ou aprova o que ela pediu no terminal.',
+        exemplo: 'A IA pede permissão para apagar uma pasta, e o card laranja aparece aqui com o relógio contando sua demora.'
+      },
+      'col-projetos': {
+        titulo: 'Grid de Agentes', o_que_e: 'Lista os agentes saudáveis que estão trabalhando sozinhos neste instante.',
+        acorda: 'Aparece assim que você dá Enter num prompt para a IA começar a trabalhar.', mata: 'Some quando o agente conclui a tarefa com sucesso (done) ou apresenta erro final (failed).',
+        exemplo: 'A IA gerando 50 arquivos de código de forma autônoma fica piscando roxa aqui.'
+      },
+      'col-servers': {
+        titulo: 'Máquinas', o_que_e: 'Exibe a rede de computadores conhecidos pelo sistema e portas escutando neste nó.',
+        acorda: 'Aparece automaticamente sempre que detecta portas abertas ou pings da federação.', mata: 'Some se a máquina cair e o servidor for desligado.',
+        exemplo: 'Se a VPS mandar um ping para você, ela aparece como "online" nesta coluna.'
+      },
+      // Colunas Planejamento
+      'col-meu': {
+        titulo: 'Pendências Humanas', o_que_e: 'A fila de tarefas que só um humano pode resolver (cartões de crédito, sudo, decisões subjetivas).',
+        acorda: 'Quando a IA adiciona uma pendência para você, ou você mesmo anota.', mata: 'Quando você clica na caixinha de marcar (checkbox).',
+        exemplo: '"Lipe, valide se esse layout do botão ficou bom no celular" — aparece aqui e bloqueia a IA.'
+      },
+      'col-sprint': {
+        titulo: 'Sprint Atual', o_que_e: 'As micro-tarefas mapeadas pelos agentes agrupadas por projeto.',
+        acorda: 'Aparece quando a IA extrai um plano de ação listando passos lógicos (to-dos).', mata: 'Some quando o agente que gerou esses passos termina seu trabalho.',
+        exemplo: 'A IA lista "1. Criar DB, 2. Criar Rota, 3. Testar" — você acompanha esses checks sendo marcados ao vivo.'
+      },
+      'col-dqo': {
+        titulo: 'Mudou Desde Que Olhei', o_que_e: 'O histórico das coisas grandes que aconteceram enquanto você estava ausente (commits, entregas).',
+        acorda: 'Sempre que uma IA faz um fechamento forte ou há um commit no git.', mata: 'Você clica no botão "vi tudo" e limpa a linha do tempo.',
+        exemplo: 'Você foi dormir, as IAs trabalharam de madrugada, e ao acordar você lê aqui um resumo do que fizeram.'
+      },
+      // Colunas Conhecimento
+      'col-notas': {
+        titulo: 'Notas Rápidas', o_que_e: 'Post-its soltos, ideias brutas não estruturadas tiradas da sua mente recente.',
+        acorda: 'Sempre que você cria uma nota nova pela API.', mata: 'Só sai se for deletada via sistema principal.',
+        exemplo: '"Ideia pro layout do V2: usar glassmorphism e cores espaciais".'
+      },
+      'col-busca': {
+        titulo: 'Busca Universal', o_que_e: 'Filtra termos, siglas e nomes de documentações da sua base Obsidian.',
+        acorda: 'Você começa a digitar na caixa de texto.', mata: 'Você apaga a caixa de texto e ela volta ao normal.',
+        exemplo: 'Você esquece o que significa a sigla "NV-08", digita aqui e vê que é "inovallbond".'
+      },
+      'col-roadmap': {
+        titulo: 'Roadmap Estratégico', o_que_e: 'A visão macro em alto nível (épicos e features maiores) pro futuro do projeto.',
+        acorda: 'Mapeado com base nas tags macro da sua organização ágil.', mata: 'Sempre visível.',
+        exemplo: 'Um épico "Escalabilidade Q4" com lista de tarefas que devem ser puxadas pros agentes no futuro.'
+      },
+      // Colunas Conectores
+      'col-hooks': {
+        titulo: 'Hooks Claude Code', o_que_e: 'Scripts engatilhados por eventos que pausam ou ajudam a IA (como antes de rodar comando ou depois do commit).',
+        acorda: 'Registrados pelos plugins de inteligência do sistema.', mata: 'Some se desinstalado ou deletado do código-fonte.',
+        exemplo: 'O "pre-tool-use" avalia se o comando que a IA propôs rodar vai quebrar a máquina e trava ela.'
+      },
+      'col-agenda': {
+        titulo: 'Agenda e iCal', o_que_e: 'Reuniões, focos e eventos importados dos seus compromissos da vida real.',
+        acorda: 'Quando a hora de um evento cruza a sua faixa de hoje e amanhã.', mata: 'Quando o evento acaba pelo horário do relógio.',
+        exemplo: 'Reunião de "Sync Diária" aparecerá aqui para justificar porque o projeto está pausado.'
+      },
+      'col-locais': {
+        titulo: 'Servidores Locais', o_que_e: 'As portas (TCP/HTTP) ativas rodando neste momento no seu PC.',
+        acorda: 'Quando você ou a IA executam um `npm run dev` ou sobem um Docker.', mata: 'Quando o processo é finalizado ou morre com erro.',
+        exemplo: 'A porta 3000 do frontend aparecerá aqui associada ao seu projeto React.'
+      },
+      // Colunas Federação
+      'col-fed-config': {
+        titulo: 'Configuração do Nó', o_que_e: 'As chaves de acesso para que esse PC troque dados com a VPS de forma segura.',
+        acorda: 'Sempre visível na aba.', mata: 'Sempre visível.',
+        exemplo: 'A VPS precisa de uma senha para confiar nesse painel, e você digita aqui para estabelecer a ponte.'
+      },
+      'col-fed-sessoes': {
+        titulo: 'Sessões Remotas', o_que_e: 'Botões de ligar ou interromper instâncias de IAs que moram na máquina do outro lado da internet.',
+        acorda: 'Lista preenchida pelos caminhos e pastas dos projetos conhecidos.', mata: 'Sempre visível.',
+        exemplo: 'Você clica em "Ligar", e a VPS recebe a ordem e sobe um agente num container lá longe.'
+      },
+      'col-fed-malha': {
+        titulo: 'Malha de Nós', o_que_e: 'A saúde da rede reportada pelas outras máquinas conhecidas na federação.',
+        acorda: 'Aparece se uma máquina configurada envia batimentos cardíacos (pings).', mata: 'Sempre visível, mas a tag muda de verde para cinza se o ping sumir.',
+        exemplo: 'O seu PC alienware aparece offline quando você o fecha para dormir.'
+      },
+      // Especificos e Internos
+      'campo-project': {
+        titulo: 'Nome do Projeto', o_que_e: 'Indica a qual pasta/repositório esse agente pertence.',
+        acorda: 'Criado no exato momento que o agente liga.', mata: 'Morre junto com o agente.',
+        exemplo: '"proj_controlcenter" diz que a IA está operando os arquivos deste próprio sistema.'
+      },
+      'campo-timer': {
+        titulo: 'Cronômetro do Agente', o_que_e: 'O tempo contínuo desde que esse agente piscou ou te pediu algo pela última vez.',
+        acorda: 'Quando o agente emite um pulso cardíaco para o sistema.', mata: 'Quando o agente finaliza a execução com sucesso ou trava.',
+        exemplo: 'Se o agente está 4m00s travado no "Sua vez", significa que faz 4 minutos que ele te fez a pergunta.'
+      },
+      'campo-route': {
+        titulo: 'Selo de Rota (Branch)', o_que_e: 'A indicação de onde no código essa IA se separou.',
+        acorda: 'Lido da branch do git.', mata: 'Sempre aparente enquanto a sessão viver.',
+        exemplo: 'A branch "feature-ui-v2" aparece aqui com fundo translúcido para contexto imediato.'
+      },
+      'widget-hero': {
+        titulo: 'Hero Widget (Card de Agente)', o_que_e: 'A representação visual física de um agente como se fosse um avatar dele na sua mesa.',
+        acorda: 'Uma sessão do Claude Code foi spawnada no terminal e foi interceptada.', mata: 'O comando fecha no terminal.',
+        exemplo: 'Você abre 3 sessões do Claude para 3 projetos, aparecem 3 desses grandes.'
+      },
+      'btn-ligar-remoto': {
+        titulo: 'Botão Ligar Remoto', o_que_e: 'Manda um sinal PUSH pela rede ativando o terminal lá no outro PC invisível.',
+        acorda: 'Sempre visível nos projetos não-rodando.', mata: 'Troca pelo botão de "Parar" quando tem sucesso.',
+        exemplo: 'Abre via proxy para seu celular operar o PC de casa do sofá.'
+      },
+      'btn-salvar-fed': {
+        titulo: 'Salvar Configuração', o_que_e: 'Persiste os credenciais de federação na memória deste node local.',
+        acorda: 'Sempre visível.', mata: 'Nunca desaparece.',
+        exemplo: 'Após colocar uma URL da VPS recém subida, clique aqui para salvar os tokens secretamente.'
+      },
+      'toggle-hook': {
+        titulo: 'Interruptor Hook', o_que_e: 'O botão de on/off que desliga proteções rapidamente via API de backend.',
+        acorda: 'O Hook existe na base.', mata: 'O Hook é removido do código base.',
+        exemplo: 'Você desmarca a chave verde e a IA para de ser bloqueada ao tentar dar push no git temporariamente.'
+      },
+      'campo-indicador': {
+        titulo: 'Status Indicador', o_que_e: 'Mostra a saúde de leitura. Se online significa que essa IA ou servidor atualizou no último ping de rede.',
+        acorda: 'Pacote de rede chegou em menos de X segundos.', mata: 'Pacote demora a chegar e ele fica cinza/offline.',
+        exemplo: 'Se o status de um painel de agente for offline, o processo dele provavelmente quebrou silenciosamente.'
+      }
+    };
+
+    // --- LÓGICA DO POPOVER DE AJUDA ---
+    document.body.addEventListener('click', (e) => {
+      const btn = e.target.closest('.help-btn');
+      const popover = document.getElementById('global-help-popover');
+      
+      if (btn) {
+        e.stopPropagation();
+        const helpId = btn.getAttribute('data-help');
+        const data = HELP_DATA[helpId];
+        
+        if (data) {
+          // Injetar Textos
+          document.getElementById('help-pop-title').innerText = data.titulo;
+          document.getElementById('help-pop-oque').innerText = data.o_que_e;
+          document.getElementById('help-pop-acorda').innerText = data.acorda;
+          document.getElementById('help-pop-mata').innerText = data.mata;
+          document.getElementById('help-pop-exemplo').innerText = data.exemplo;
+          
+          // Calcular Posição ABSOLUTA sem quebrar fora da tela
+          const rect = btn.getBoundingClientRect();
+          popover.style.display = 'block'; // para calcular tamanho
+          
+          let top = rect.bottom + 10;
+          let left = rect.left - 150 + (rect.width / 2);
+          
+          if (left < 10) left = 10;
+          if (left + 330 > window.innerWidth) left = window.innerWidth - 340;
+          if (top + popover.offsetHeight > window.innerHeight) {
+            top = rect.top - popover.offsetHeight - 10;
+          }
+          
+          popover.style.top = top + 'px';
+          popover.style.left = left + 'px';
+          
+          // Animar Show
+          setTimeout(() => popover.classList.add('show'), 10);
+        }
+      } else if (!e.target.closest('.help-popover')) {
+        popover.classList.remove('show');
+        setTimeout(() => { if(!popover.classList.contains('show')) popover.style.display = 'none'; }, 200);
+      }
+    });
+
+    // --- SISTEMA DE AJUDA CONTEXTUAL UNIVERSAL ---
+    const HELP = {
+      // ABAS DA DOCK
+      'aba-telemetria': {
+        titulo: '📡 Telemetria — O Cockpit',
+        oque: 'A sala de controle em tempo real. É a primeira tela que você vê e mostra o estado de TODOS os agentes neste exato momento.',
+        acorda: 'Sempre visível. É a tela inicial e padrão do sistema.',
+        mata: 'Ela nunca sai — só muda de foco quando você troca de aba.',
+        exemplo: 'Quando você abre o painel e quer saber "quem está rodando agora?", esta é a tela.'
+      },
+      'aba-planejamento': {
+        titulo: '🎯 Planejamento — O Kanban',
+        oque: 'Centro de decisão. Mostra o que VOCÊ precisa fazer, o que os agentes estão executando no sprint e o que mudou no código desde a última vez que você olhou.',
+        acorda: 'Clique no ícone de Kanban na barra lateral.',
+        mata: 'Muda quando você navega para outra aba.',
+        exemplo: 'Use esta tela para responder: "o que eu preciso fazer hoje?" e "os agentes estão no caminho certo?"'
+      },
+      'aba-conhecimento': {
+        titulo: '🧠 Segundo Cérebro — Docs & Notas',
+        oque: 'Repositório de conhecimento. Reúne suas notas rápidas, documentos de projeto, glossário de termos e o roadmap estratégico em um só lugar com busca unificada.',
+        acorda: 'Clique no ícone de cérebro na barra lateral.',
+        mata: 'Muda quando você navega para outra aba.',
+        exemplo: 'Quando você precisa lembrar o que significa uma sigla de projeto ou encontrar um documento, vem aqui.'
+      },
+      'aba-conectores': {
+        titulo: '🔌 Conectores — Integrações',
+        oque: 'Painel de configuração de integrações: hooks do Claude Code (gatilhos automáticos), sua agenda pessoal via iCal e os servidores locais rodando.',
+        acorda: 'Clique no ícone de plugue na barra lateral.',
+        mata: 'Muda quando você navega para outra aba.',
+        exemplo: 'Quando você quer ligar ou desligar um hook que valida commits, ou ver quais portas estão abertas no seu computador.'
+      },
+      'aba-projetos': {
+        titulo: '🏢 Projetos',
+        oque: 'Gerenciamento de configuração do framework de agentes, entrevistas de projeto e criação de novos projetos.',
+        acorda: 'Clique no ícone de prédios na barra lateral.',
+        mata: 'Muda quando você navega para outra aba.',
+        exemplo: 'Use para ligar o framework em um repositório, mudar o perfil do agente ou criar um repositório do zero.'
+      },
+      'aba-federacao': {
+        titulo: '🌐 Nós Remotos — Federação',
+        oque: 'A coluna vertebral do sistema. Controla a comunicação entre múltiplas máquinas (seu PC, VPS, etc.) e permite abrir sessões remotas do Claude Code de qualquer lugar, inclusive do celular.',
+        acorda: 'Clique no ícone de rede na barra lateral.',
+        mata: 'Muda quando você navega para outra aba.',
+        exemplo: 'Você está na rua e quer abrir um agente na sua VPS para trabalhar em um projeto. Use esta tela.'
+      },
+      // COLUNAS — TELEMETRIA
+      'col-agora': {
+        titulo: '⚡ Sua Vez / Ao Vivo',
+        oque: 'Lista os agentes que estão PARADOS esperando uma resposta sua. O primeiro da lista (com a bandeira ▲) é quem espera há mais tempo — como um relógio de xadrez com a bandeira caída.',
+        acorda: 'Um agente do Claude Code muda seu status de "working" (trabalhando) para "waiting" (esperando). Isso acontece quando o agente terminou uma etapa e está aguardando sua aprovação, ou pediu uma informação que só você tem.',
+        mata: 'O agente recebe sua resposta e volta a trabalhar (status muda de "waiting" para "working"). Ou o job é encerrado.',
+        exemplo: 'O agente pediu pra você aprovar um plano de refatoração. Enquanto você não responder, ele aparece aqui com o cronômetro contando.'
+      },
+      'col-grid': {
+        titulo: '🏃 Grid de Agentes',
+        oque: 'Todos os agentes que estão TRABALHANDO ativamente agora. Cada card mostra o projeto, a rota git, o tempo rodando e a tarefa atual (retirada dos to-dos do meta.json).',
+        acorda: 'Um job do Claude Code é iniciado (arquivo state.json criado em ~/.claude/jobs/). O agente começa com status "working".',
+        mata: 'O job é encerrado (o processo do Claude Code termina). O card desaparece do grid.',
+        exemplo: 'Você iniciou o Claude Code em 3 projetos diferentes. Todos aparecem aqui com timers independentes em tempo real.'
+      },
+      'col-maquinas': {
+        titulo: '🖥️ Máquinas & Nós',
+        oque: 'Lista as máquinas conhecidas pela rede federada (seu PC, VPS, etc.) e os servidores de desenvolvimento rodando localmente (portas abertas pelo seu código).',
+        acorda: 'Uma máquina envia um pacote de heartbeat via federação. Um servidor local é detectado por ter uma porta aberta no sistema.',
+        mata: 'A máquina para de enviar heartbeats por mais de X minutos (fica marcada como "sem contato"). Um servidor fecha sua porta.',
+        exemplo: 'Sua VPS está online e aparece verde. Seu servidor Next.js local na porta 3000 também aparece aqui.'
+      },
+      'col-recados': {
+        titulo: '✉️ Recados',
+        oque: 'Recados enviados entre agentes de diferentes projetos ou sessões.',
+        acorda: 'Quando um agente registra um recado na API de recados.',
+        mata: 'Permanece no histórico.',
+        exemplo: 'Agente de UX avisando o Backend que precisa de um endpoint novo.'
+      },
+      'col-framework': {
+        titulo: '⚙️ Projetos & Framework',
+        oque: 'Lista de projetos locais e controle individual do framework de IA.',
+        acorda: 'Sempre visível listando os projetos detectados no disco.',
+        mata: 'Nunca sai.',
+        exemplo: 'Ligue o framework para o proj_teste e escolha o modo Desenvolvedor.'
+      },
+      'col-entrevista': {
+        titulo: '🎤 Entrevista',
+        oque: 'Responda as perguntas que o framework faz para montar a base de conhecimento do projeto.',
+        acorda: 'Clique no botão Entrevista em um projeto com framework ligado.',
+        mata: 'Troque de projeto.',
+        exemplo: 'O agente pergunta qual o banco de dados e você digita Postgres.'
+      },
+      'col-novo-projeto': {
+        titulo: '🚀 Novo Projeto',
+        oque: 'Interface rápida para criar uma pasta de projeto já nos padrões corretos.',
+        acorda: 'Sempre visível.',
+        mata: 'Nunca sai.',
+        exemplo: 'Selecione o grupo Frontend e crie proj_web.'
+      },
+      // COLUNAS — PLANEJAMENTO
+      'col-meu': {
+        titulo: '👤 Pendências Humanas',
+        oque: 'Tarefas que VOCÊ, o humano, precisa executar. Não são tarefas para agentes — são coisas que só você pode fazer: aprovar um PR, comprar um domínio, tomar uma decisão de produto.',
+        acorda: 'Você ou um agente adiciona uma tarefa em /api/meu via comando cc.mjs ou pelo painel. O campo "text" é a tarefa, e ela aparece aqui enquanto "feito" for false.',
+        mata: 'Você marca o checkbox. Isso chama /api/meu com acao:"marcar" e a tarefa sai da lista.',
+        exemplo: 'Um agente travou porque precisa de uma chave de API que só você tem. Ele adiciona "obter chave da Stripe" aqui para você não esquecer.'
+      },
+      'col-sprint': {
+        titulo: '🏁 Sprint Atual',
+        oque: 'Uma visão consolidada dos to-dos de TODOS os agentes ativos, agrupados por projeto. Mostra o que cada agente prometeu entregar (os to-dos do meta.json) e se já concluiu.',
+        acorda: 'Um agente está rodando E tem o campo "todos" preenchido no seu meta.json. Qualquer agente ativo com tarefas declaradas aparece aqui.',
+        mata: 'O job do agente é encerrado. Os to-dos concluídos ficam com checkbox marcado; a linha de projeto some quando todos os jobs do projeto terminam.',
+        exemplo: 'O agente está implementando autenticação e declarou 3 to-dos. Você pode acompanhar aqui quais foram marcados como done.'
+      },
+      'col-dqo': {
+        titulo: '👁️ Mudou Desde Que Olhei',
+        oque: 'Um feed cronológico de TODAS as mudanças que aconteceram nos projetos desde a última vez que você abriu o painel. Commits, to-dos concluídos, novos arquivos — tudo que mudou enquanto você estava fora.',
+        acorda: 'O sistema detecta novos commits git ou mudanças em meta.json de qualquer projeto monitorado após o timestamp do seu último acesso.',
+        mata: 'O timestamp de "último acesso" é atualizado. As mudanças mais antigas saem da janela de visibilidade configurada.',
+        exemplo: 'Você ficou 2 horas fora. Volta e vê aqui: "proj-ecommerce: 3 commits, 5 to-dos fechados". Sabe exatamente o que aconteceu sem abrir terminal.'
+      },
+      // COLUNAS — CONHECIMENTO
+      'col-notas': {
+        titulo: '📓 Notas Rápidas',
+        oque: 'Blocos de texto livres que você salva no painel. Funciona como um rascunho sempre acessível — ideias rápidas, URLs para não esquecer, contexto de reunião.',
+        acorda: 'Você cria um bloco de notas pelo painel original. As notas são salvas pelo servidor em /api/notes.',
+        mata: 'Você deleta o bloco de notas. Notas não somem automaticamente.',
+        exemplo: 'Você está numa call e quer anotar uma decisão de arquitetura rapidamente, sem sair do painel.'
+      },
+      'col-busca': {
+        titulo: '🔍 Busca Universal',
+        oque: 'Um campo de busca que varre TODOS os seus documentos de projeto (.md) e o glossário de termos de uma vez. Os resultados aparecem instantaneamente enquanto você digita.',
+        acorda: 'Você digita qualquer coisa no campo. A busca é feita localmente no navegador sobre os dados carregados de /api/docs e /api/glossario.',
+        mata: 'Você apaga o texto do campo. A busca volta para o estado vazio.',
+        exemplo: 'Você lembra que documentou algo sobre "autenticação JWT" em algum projeto mas não sabe qual. Digita aqui e aparece o documento exato.'
+      },
+      'col-roadmap': {
+        titulo: '🗺️ Roadmap Estratégico',
+        oque: 'A visão de longo prazo dos projetos. Mostra os épicos (grandes objetivos) e suas tarefas associadas. É o mapa de para onde o trabalho está indo, não o que está sendo feito agora.',
+        acorda: 'O roadmap é carregado de /api/roadmap ou do arquivo ROADMAP.md do projeto. Atualiza a cada 30 segundos.',
+        mata: 'Nunca sai automaticamente — muda só quando o arquivo ROADMAP.md é editado.',
+        exemplo: 'Você quer ver se o épico "Autenticação V2" ainda está em fila ou foi iniciado. Olha aqui.'
+      },
+      // COLUNAS — CONECTORES
+      'col-hooks': {
+        titulo: '⚓ Hooks do Claude Code',
+        oque: 'Gatilhos automáticos configurados no Claude Code. Cada hook é um script que roda em momentos específicos: antes de usar uma ferramenta, antes de um commit, após uma tarefa. Você pode ligar e desligar cada um aqui.',
+        acorda: 'Os hooks são lidos do settings.json do Claude Code via /api/hooks. Qualquer hook registrado aparece aqui, ligado ou não.',
+        mata: 'Você desliga o toggle. O hook continua registrado mas vira "no-op" (não faz nada). Ele sai da lista se for removido completamente do settings.json.',
+        exemplo: 'O hook "pre-tool-use" bloqueia operações destrutivas de arquivos. Se você precisar deletar algo intencionalmente, desliga aqui temporariamente.'
+      },
+      'col-agenda': {
+        titulo: '📅 Agenda & iCal',
+        oque: 'Seus eventos de calendário sincronizados via link iCal. Pode ser Google Calendar, Outlook, ou qualquer serviço que gere um link .ics. Os eventos aparecem em ordem cronológica.',
+        acorda: 'A integração de agenda é configurada com um link iCal (em Conectores → Agenda). O servidor busca os eventos do link periodicamente.',
+        mata: 'O evento passa da data/hora de término. Eventos passados saem da lista automaticamente.',
+        exemplo: 'Você tem uma reunião de sync daqui 30 minutos. Aparece aqui sem precisar abrir o Google Calendar.'
+      },
+      'col-servidores': {
+        titulo: '🖧 Servidores Locais',
+        oque: 'Lista os processos de desenvolvimento rodando na sua máquina — servidores web, APIs, bancos de dados. Cada entrada mostra a porta e o projeto associado.',
+        acorda: 'Um processo abre uma porta TCP no sistema. O Control Center detecta periodicamente quais portas estão em uso.',
+        mata: 'O processo encerra e fecha a porta. A entrada some na próxima varredura.',
+        exemplo: 'Você rodou "npm run dev" em dois projetos. Aqui você vê que a porta 3000 é o e-commerce e a 3001 é o painel admin.'
+      },
+      // COLUNAS — FEDERAÇÃO
+      'col-fed-config': {
+        titulo: '⚙️ Configuração do Nó',
+        oque: 'Define QUEM é esta máquina na rede federada e PARA ONDE ela envia seus dados. O nome identifica o nó na lista de máquinas. O token é a senha compartilhada entre os nós. O destino é o endereço da VPS que recebe os dados.',
+        acorda: 'Sempre visível quando você está na aba de Federação.',
+        mata: 'Nunca some — é uma configuração permanente.',
+        exemplo: 'Você preenche o destino com "https://cockpit.carzo.com.br" e salva. Agora seu PC desktop envia dados para a VPS a cada 30 segundos.'
+      },
+      'fed-credenciais': {
+        titulo: '🔑 Campos de Credenciais',
+        oque: 'São três campos: (1) Nome: como esta máquina aparece na lista de nós remotos. (2) Token: a senha secreta compartilhada entre o PC e a VPS para autenticar os pacotes. (3) Destino: URL da VPS que recebe os dados desta máquina.',
+        acorda: 'Sempre visíveis.',
+        mata: 'Nunca somem.',
+        exemplo: 'Nome: "ALIENWARE-LIPE", Token: gerado com o botão no painel original, Destino: "https://cockpit.carzo.com.br"'
+      },
+      'col-sessoes': {
+        titulo: '🖥️ Sessões Remotas',
+        oque: 'Lista todos os projetos disponíveis nesta máquina para abrir uma sessão remota do Claude Code. "Ligar" abre o Claude Code no diretório do projeto e gera um link para você conectar via claude.ai/code do celular.',
+        acorda: 'Os projetos são detectados automaticamente pelo sistema a partir de ~/.claude/jobs/ ou da configuração de projetos monitorados.',
+        mata: 'Você clica em "Parar" ou a sessão remota fecha sozinha. Na VPS, a sessão sobrevive ao fechamento do painel; no PC, ela fecha com o processo.',
+        exemplo: 'Você está na rua, abre o painel no celular, liga uma sessão no projeto "e-commerce", e conecta via claude.ai/code para dar uma instrução rápida.'
+      },
+      'col-malha': {
+        titulo: '🕸️ Malha de Nós',
+        oque: 'Mapa de todas as máquinas que já se comunicaram com este nó via federação. Verde = online (enviou dados recentemente). Cinza = sem contato (a máquina está offline ou o envio parou).',
+        acorda: 'Uma máquina remota envia um pacote de dados (heartbeat ou jobs). Ela aparece na malha com status online.',
+        mata: 'A máquina para de enviar dados por mais de 5 minutos — o status muda para "sem contato". Ela nunca sai da lista automaticamente (preserva histórico).',
+        exemplo: 'Sua VPS aparece verde durante o dia. Quando você reinicia a VPS, ela fica cinza por 1-2 minutos até o daemon do Control Center subir novamente.'
+      },
+      'col-docker': {
+        titulo: '🐳 Docker',
+        oque: 'Mostra o status atual dos containers do Docker.',
+        acorda: 'Detecta a API local ou usa mock.',
+        mata: 'Sempre visível se ativado.',
+        exemplo: 'Ver se o container do banco de dados está rodando.'
+      },
+      'col-rotinas': {
+        titulo: '🤖 Rotinas Automáticas',
+        oque: 'Lista de rotinas e scripts agendados com seus status.',
+        acorda: 'Dados carregados da API.',
+        mata: 'Se a rotina for excluída.',
+        exemplo: 'Backup noturno do banco de dados ativado.'
+      },
+      'col-subir': {
+        titulo: '🚀 Lançar Servidor',
+        oque: 'Atalhos para iniciar servidores e projetos com comandos.',
+        acorda: 'Configurações de atalhos e projetos mapeados.',
+        mata: 'Sempre visível.',
+        exemplo: 'Subir o servidor Next.js com um clique.'
+      },
+      'col-vps': {
+        titulo: '🖥️ VPS Monitor',
+        oque: 'Monitoramento contínuo de CPU, RAM e disco da sua VPS.',
+        acorda: 'Conexão com a VPS ativa.',
+        mata: 'Sempre visível.',
+        exemplo: 'Checar se a RAM chegou perto de 100%.'
+      },
+      'col-tempo': {
+        titulo: '⏱️ Tempo Investido',
+        oque: 'Tempo registrado gasto por você e pela IA nos projetos.',
+        acorda: 'Aparece se houver registro de tempo ativo.',
+        mata: 'Sempre visível.',
+        exemplo: '15 horas gastas no app de controle essa semana.'
+      },
+      'col-preco': {
+        titulo: '💰 Quanto Cobraria',
+        oque: 'Cálculo estimado do valor do trabalho com base no tempo.',
+        acorda: 'Baseado no Tempo Investido.',
+        mata: 'Sempre visível.',
+        exemplo: 'Trabalho avaliado em R$ 5000 para a faixa Sênior.'
+      }
+    };
+
+    // Criar popover
+    const popoverEl = document.createElement('div');
+    popoverEl.className = 'help-popover';
+    popoverEl.id = 'help-popover';
+    document.body.appendChild(popoverEl);
+
+    let activeHelpKey = null;
+
+    function showHelp(key, anchorEl) {
+      const h = HELP[key];
+      if (!h) return;
+      if (activeHelpKey === key) { hideHelp(); return; }
+      activeHelpKey = key;
+
+      popoverEl.innerHTML = `
+        <div class="help-popover-title"><i class="ph-bold ph-question"></i> ${h.titulo}</div>
+        <div class="help-section">
+          <div class="help-label">O que é</div>
+          <div class="help-text">${h.oque}</div>
+        </div>
+        <div class="help-section">
+          <div class="help-label acorda">▶ O que faz aparecer</div>
+          <div class="help-text">${h.acorda}</div>
+        </div>
+        <div class="help-section">
+          <div class="help-label mata">■ O que faz sair</div>
+          <div class="help-text">${h.mata}</div>
+        </div>
+        <div class="help-example">Exemplo: ${h.exemplo}</div>
+      `;
+
+      const rect = anchorEl.getBoundingClientRect();
+      popoverEl.classList.add('visible');
+
+      // Posicionamento inteligente
+      const pw = 300;
+      let left = rect.left + rect.width + 8;
+      let top = rect.top - 8;
+      if (left + pw > window.innerWidth - 16) left = rect.left - pw - 8;
+      if (top + popoverEl.offsetHeight > window.innerHeight - 16) top = window.innerHeight - popoverEl.offsetHeight - 16;
+      if (top < 8) top = 8;
+      popoverEl.style.left = left + 'px';
+      popoverEl.style.top = top + 'px';
+    }
+
+    function hideHelp() {
+      activeHelpKey = null;
+      popoverEl.classList.remove('visible');
+    }
+
+    // Clique em qualquer ? (delegação)
+    document.addEventListener('click', e => {
+      const helpBtn = e.target.closest('[data-help]');
+      if (helpBtn) {
+        e.stopPropagation();
+        showHelp(helpBtn.dataset.help, helpBtn);
+        return;
+      }
+      if (!popoverEl.contains(e.target)) hideHelp();
+    });
+
+    // --- NAVEGAÇÃO E MUDANÇA DE TELAS ---
+    const pageData = {
+      'view-telemetria': { title: 'Telemetria', subtitle: 'Visão em tempo real da colmeia' },
+      'view-projetos': { title: 'Projetos', subtitle: 'Framework, modos e configuração de cada projeto' },
+      'view-planejamento': { title: 'Planejamento', subtitle: 'Kanban e decisões estratégicas' },
+      'view-conhecimento': { title: 'Segundo Cérebro', subtitle: 'Documentação, notas e glossário' },
+      'view-conectores': { title: 'Conectores', subtitle: 'Integrações locais, iCal e Hooks Claude' },
+      'view-federacao': { title: 'Nós Remotos', subtitle: 'Malha neural de servidores e federação' }
+    };
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const targetId = btn.getAttribute('data-target');
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(targetId).classList.add('active');
+        document.getElementById('page-title').innerText = pageData[targetId].title;
+        document.getElementById('page-subtitle').innerText = pageData[targetId].subtitle;
+      });
+    });
+
+    document.body.addEventListener('mousemove', e => {
+      for(const card of document.querySelectorAll('.widget')) {
+        const rect = card.getBoundingClientRect();
+        card.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+        card.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+      }
+    });
+
+    // --- STATE MANAGER ---
+    let STATE = {
+      jobs: [], meu: [], trabalho: {}, notas: [], glossario: { termos: [], verbetes: [] },
+      docs: [], roadmap: [], hooks: [], agenda: { eventos: [] }, servers: [],
+      remoto: { projetos: [], ativos: {} }, federacao: { maquinas: [] }, searchQuery: '',
+      projetos: [], recados: [], gruposNovo: [], projetoEntrevista: null, entrevistaAtiva: null,
+      docker: [], rotinas: [], subir: [], vps: {}, tempo: {}, preco: {}
+    };
+
+    // --- MOCKS REALISTAS ---
+    const MOCKS = {
+      roadmap: [
+        { epico: 'Q3 - Automação Total', status: 'em progresso', tarefas: ['Refatorar Agent UI V2', 'Pipeline CI/CD Zero Touch'] },
+        { epico: 'Q4 - Escalabilidade', status: 'fila', tarefas: ['Túnel SSH transparente', 'Múltiplos nós workers'] }
+      ],
+      federacao: {
+        maquinas: [
+          { nome: 'VPS-CONTABO-MAIN', status: 'online', age: 45000 },
+          { nome: 'MACBOOK-OFFICE', status: 'offline', age: 900000 }
+        ]
+      },
+      hooks: [
+        { id: 'pre-tool-use', label: 'Validação Antes do Uso de Ferramentas', descricao: 'Bloqueia se a ferramenta for destrutiva.', ligado: true, registrado: true },
+        { id: 'post-commit', label: 'Trigger de Deploy Automático', descricao: 'Avisa servidores da rede após commit', ligado: false, registrado: true }
+      ],
+      agenda: {
+        eventos: [
+          { titulo: 'Planning Semanal de Sprint', inicio: Date.now() + 3600000, fim: Date.now() + 7200000, local: 'Google Meet' },
+          { titulo: 'Sync de Arquitetura Core', inicio: Date.now() + 86400000, fim: Date.now() + 90000000, local: 'Presencial' }
+        ]
+      },
+      docker: [
+        { name: 'pg-database', image: 'postgres:15', status: 'running', ports: '5432' },
+        { name: 'redis-cache', image: 'redis:alpine', status: 'stopped', ports: '6379' }
+      ],
+      rotinas: [
+        { nome: 'Backup Diario DB', ativada: true, lastRun: 'Hoje 03:00', nextRun: 'Amanhã 03:00' },
+        { nome: 'Limpar Logs Antigos', ativada: false, lastRun: 'Ontem 12:00', nextRun: '-' }
+      ],
+      subir: [
+        { nome: 'API NestJS', comando: 'npm run start:dev' },
+        { nome: 'Painel Frontend', comando: 'npm run dev' }
+      ],
+      vps: {
+        saude: 'Atenção',
+        cpu: 75,
+        ram: 90,
+        disco: 40,
+        alertas: [
+          { msg: 'Uso de RAM alto', severidade: 'amber' }
+        ],
+        organograma: [
+          { label: 'Nginx (Ativos)', value: '4 sites' },
+          { label: 'PM2', value: '2 processos' },
+          { label: 'Docker', value: '3 containers' }
+        ]
+      },
+      tempo: {
+        total: 120,
+        projetos: [
+          { nome: 'Control Center V2', horas: 80, tokens: '1.2M', custo: '15.50' },
+          { nome: 'API Federação', horas: 40, tokens: '450k', custo: '4.20' }
+        ]
+      },
+      preco: {
+        faixas: [
+          { nivel: 'Júnior', valorHora: 30, total: 120, totalRs: 3600 },
+          { nivel: 'Pleno', valorHora: 60, total: 120, totalRs: 7200 },
+          { nivel: 'Sênior', valorHora: 120, total: 120, totalRs: 14400 }
+        ]
+      }
+    };
+
+    function formatAge(ms) {
+      if (!ms || ms < 0) return '0m 0s';
+      let sec = Math.floor(ms / 1000);
+      let min = Math.floor(sec / 60);
+      sec = sec % 60;
+      return `${min}<span>m</span> ${sec.toString().padStart(2, '0')}<span>s</span>`;
+    }
+
+    function timeSince(dateStr) {
+      const ms = Date.now() - new Date(dateStr).getTime();
+      let h = Math.floor(ms / 3600000);
+      if (h < 1) return Math.max(1, Math.floor(ms/60000)) + 'm atrás';
+      if (h < 24) return h + 'h atrás';
+      return Math.floor(h/24) + 'd atrás';
+    }
+
+    async function apiFetch(path, fallback) {
+      try {
+        const r = await fetch(path);
+        if (!r.ok) throw new Error('API error');
+        return await r.json();
+      } catch (e) { return fallback; }
+    }
+
+    // --- FETCH DATA ---
+    async function carregarTudo() {
+      const [dMeu, dTrab, dNotes, dGloss, dDocs, dHooks, dCal, dSrv, dRem, dProj, dRec, dGrupos, dDocker, dVps, dTempo, dPreco] = await Promise.all([
+        apiFetch('/api/meu', { tarefas: [] }),
+        apiFetch('/api/trabalho?ordem=importancia', {}),
+        apiFetch('/api/notes', { notes: [] }),
+        apiFetch('/api/glossario', { termos: [], verbetes: [] }),
+        apiFetch('/api/docs', { docs: [] }),
+        apiFetch('/api/hooks', { hooks: MOCKS.hooks }),
+        apiFetch('/api/calendario', MOCKS.agenda),
+        apiFetch('/api/servers', { servers: [] }),
+        apiFetch('/api/remote-control', { projetos: [], ativos: {} }),
+        apiFetch('/api/framework/projetos').then(r => r.projetos || r).catch(() => apiFetch('/api/framework/lista', [])),
+        apiFetch('/api/recados', { recados: [] }),
+        apiFetch('/api/projeto/novo', { grupos: [] }),
+        apiFetch('/api/docker', MOCKS.docker),
+        apiFetch('/api/vps', MOCKS.vps),
+        apiFetch('/api/tempo', MOCKS.tempo),
+        apiFetch('/api/preco', MOCKS.preco)
+      ]);
+
+      STATE.meu = dMeu.tarefas || [];
+      STATE.trabalho = dTrab || {};
+      STATE.notas = dNotes.notes || [];
+      STATE.glossario = dGloss || { termos: [], verbetes: [] };
+      STATE.docs = dDocs.docs || [];
+      STATE.hooks = dHooks.hooks || MOCKS.hooks;
+      STATE.agenda = dCal.eventos ? dCal : MOCKS.agenda;
+      STATE.servers = dSrv.servers || [];
+      STATE.remoto = dRem.projetos ? dRem : { projetos: [], ativos: {} };
+      
+      STATE.projetos = Array.isArray(dProj) ? dProj : (dProj?.projetos || dProj?.lista || []);
+      STATE.recados = dRec?.recados || [];
+      STATE.gruposNovo = dGrupos?.grupos || ['Frontend', 'Backend', 'Fullstack'];
+      
+      STATE.roadmap = MOCKS.roadmap;
+      STATE.federacao = MOCKS.federacao;
+      STATE.rotinas = MOCKS.rotinas;
+      STATE.subir = MOCKS.subir;
+      STATE.docker = Array.isArray(dDocker) ? dDocker : (dDocker?.containers || MOCKS.docker);
+      STATE.vps = dVps || MOCKS.vps;
+      STATE.tempo = dTempo || MOCKS.tempo;
+      STATE.preco = dPreco || MOCKS.preco;
+
+      renderTodasTelas();
+    }
+
+    function renderTodasTelas() {
+      renderTelemetria(); renderPlanejamento(); renderConhecimento(); renderConectores(); renderFederacao();
+      renderConectoresExtra(); renderVps(); renderTempo(); renderPreco();
+      renderProjetos(); renderEntrevista(); renderRecados();
+    }
+
+    // TELA 1: TELEMETRIA
+    function renderTelemetria() {
+      const now = Date.now();
+      const waiting = STATE.jobs.filter(j => j.status === 'waiting').sort((a,b) => (a.updatedAt||0) - (b.updatedAt||0));
+      const working = STATE.jobs.filter(j => j.status !== 'waiting');
+
+      document.getElementById('count-agora').innerHTML = `${waiting.length} <span>esperando</span>`;
+      document.getElementById('list-agora').innerHTML = waiting.length ? waiting.map((j, i) => `
+        <div class="hero-widget status-waiting" style="border-left: ${i===0 ? '4px solid var(--waiting)' : 'none'}">
+          <div class="hero-top">
+            <div class="hero-info">
+              <div class="hero-project" title="${j.project || '?'}">${j.project || '?'} ${i===0 ? ' <i class="ph-fill ph-flag"></i>' : ''} <button class="help-btn" data-help="campo-project">?</button></div>
+              <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
+                <div class="hero-route"><i class="ph-bold ph-git-branch"></i> ${j.route || 'main'} <button class="help-btn" style="width:12px;height:12px;font-size:8px;margin-left:2px" data-help="campo-route">?</button></div>
+                <div class="hero-route" style="font-size:10px;"><i class="ph-bold ph-hard-drives"></i> ${j.maquina || j.maquinas?.join(', ') || 'Local'}</div>
+              </div>
+            </div>
+            <div class="hero-timer">${formatAge(now - (j.updatedAt || now))} <button class="help-btn" data-help="campo-timer">?</button></div>
+          </div>
+          <div class="hero-task"><strong>${j.subject || 'Pendente'}:</strong> ${j.detail || 'Aguardando sua ação.'}</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-coffee"></i><div class="empty-state-title">Nada esperando você <button class="help-btn" data-help="col-agora">?</button></div></div>`;
+
+      document.getElementById('count-projetos').innerHTML = `${working.length} <span>rodando</span>`;
+      document.getElementById('list-projetos').innerHTML = working.length ? working.map(j => `
+        <div class="hero-widget status-working">
+          <div class="hero-top">
+            <div class="hero-info">
+               <div class="hero-project">${j.project || '?'} <button class="help-btn" data-help="campo-project">?</button></div>
+               <div class="hero-route" style="font-size:10px; margin-top:4px;"><i class="ph-bold ph-hard-drives"></i> ${j.maquina || j.maquinas?.join(', ') || 'Local'}</div>
+            </div>
+            <div class="hero-timer">${formatAge(j.ageMs || (now - j.updatedAt))} <button class="help-btn" data-help="campo-timer">?</button></div>
+          </div>
+          <div class="hero-task"><strong>${j.subject || 'Atividade'}:</strong> ${j.detail || 'Operação em andamento...'}</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-circles-four"></i><div class="empty-state-title">Nenhum agente ativo <button class="help-btn" data-help="widget-hero">?</button></div></div>`;
+
+      const srvAll = STATE.servers.filter(s => s.dev);
+      const fedAll = STATE.federacao.maquinas;
+      document.getElementById('count-servers').innerHTML = `${srvAll.length + fedAll.length} <span>nós</span>`;
+      let srvHtml = '';
+      fedAll.forEach(m => srvHtml += `
+        <div class="widget">
+          <div class="widget-header" style="margin-bottom: 12px;"><div class="widget-title"><i class="ph-fill ph-hard-drive"></i> ${m.nome}</div></div>
+          <div class="widget-grid"><div class="widget-box"><div class="box-label">Status Federação <button class="help-btn" style="width:12px;height:12px;font-size:8px;margin-left:2px" data-help="campo-indicador">?</button></div><div class="box-value" style="color: ${m.status==='online'?'var(--done)':'var(--text-3)'}">${m.status}</div></div></div>
+        </div>`);
+      srvAll.forEach(s => srvHtml += `
+        <div class="widget">
+          <div class="widget-header" style="margin-bottom: 12px;"><div class="widget-title"><i class="ph-fill ph-server"></i> Porta ${s.port}</div></div>
+          <div class="widget-grid"><div class="widget-box"><div class="box-label">Projeto Local</div><div class="box-value">${s.project || 'sem projeto'}</div></div></div>
+        </div>`);
+      document.getElementById('list-servers').innerHTML = srvHtml || `<div class="empty-state"><i class="ph-duotone ph-cpu"></i><div class="empty-state-title">Nenhum nó</div></div>`;
+    }
+
+    // TELA 2: PLANEJAMENTO
+    function renderPlanejamento() {
+      const pendentes = STATE.meu.filter(t => !t.feito);
+      document.getElementById('count-meu').innerHTML = `${pendentes.length} <span>você</span>`;
+      document.getElementById('list-meu').innerHTML = pendentes.length ? pendentes.map(t => `
+        <div class="widget" style="padding: 16px; display: flex; gap: 12px; align-items: flex-start;">
+          <input type="checkbox" style="width: 20px; height: 20px; accent-color: var(--accent); margin-top:2px;" onchange="toggleMeu('${t.id}')">
+          <div>
+            <div style="font-weight: 600; font-size: 15px;">${t.texto}</div>
+            <div style="font-size: 12px; color: var(--text-3); margin-top: 4px;">${t.projeto || 'Geral'}</div>
+          </div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-check-circle"></i><div class="empty-state-title">Sua mesa está limpa</div></div>`;
+
+      const sprintMap = {};
+      STATE.jobs.forEach(j => {
+        if (!sprintMap[j.project]) sprintMap[j.project] = [];
+        sprintMap[j.project].push(j);
+      });
+      document.getElementById('count-sprint').innerHTML = `${Object.keys(sprintMap).length} <span>projetos</span>`;
+      let sprintHtml = '';
+      Object.keys(sprintMap).forEach(p => {
+        let tsHtml = '';
+        sprintMap[p].forEach(j => {
+          (j.todos || []).forEach((t, i) => {
+            const isDone = t.done ? 'checked' : '';
+            const statusColor = t.done ? 'var(--done)' : (t.dependeDe ? 'var(--failed)' : 'var(--working)');
+            const statusIcon = t.done ? '✅' : (t.dependeDe ? '🔒' : (t.olho ? '👀' : '🏗️'));
+            const statusText = t.done ? 'Concluído' : (t.dependeDe ? 'Bloqueado' : (t.olho ? 'Revisão' : 'Em progresso'));
+            
+            tsHtml += `
+              <div style="padding:10px; background:rgba(255,255,255,0.02); border-radius:6px; margin-top:8px; display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                  <div style="display:flex; gap:8px; flex:1;">
+                    <input type="checkbox" ${isDone} disabled style="margin-top:2px;">
+                    <div>
+                      <div style="font-weight:500; font-size:14px; color:var(--text-1); line-height:1.4;">${t.text}</div>
+                      ${t.pronto ? `<div style="font-size:11px; color:var(--text-3); margin-top:4px;">Pronto quando: ${t.pronto}</div>` : ''}
+                    </div>
+                  </div>
+                  <div style="font-size:12px; padding:2px 6px; border-radius:4px; background:rgba(0,0,0,0.2); color:${statusColor}; white-space:nowrap; border:1px solid ${statusColor}40;">
+                    ${statusIcon} ${statusText}
+                  </div>
+                </div>
+                
+                <div style="display:flex; gap:16px; margin-left:24px; font-size:11px; color:var(--text-3); font-family:var(--font-mono);">
+                  ${j.frente ? `<span style="color:var(--accent);"><i class="ph-bold ph-map-trifold"></i> ${j.frente}</span>` : ''}
+                  ${t.dependeDe ? `<span style="color:var(--failed)"><i class="ph-bold ph-link-break"></i> Espera: ${t.dependeDe}</span>` : ''}
+                  ${t.prova ? `<span><i class="ph-bold ph-test-tube"></i> Prova: ${t.prova}</span>` : ''}
+                </div>
+              </div>
+            `;
+          });
+        });
+        sprintHtml += `<div class="widget"><div class="widget-header" style="margin-bottom:8px;"><div class="widget-title"><i class="ph-fill ph-folder"></i> ${p}</div></div>${tsHtml || '<div class="dim" style="font-size:12px;color:var(--text-3)">Agentes rodando sem to-dos específicos.</div>'}</div>`;
+      });
+      document.getElementById('list-sprint').innerHTML = sprintHtml || `<div class="empty-state"><i class="ph-duotone ph-list-checks"></i><div class="empty-state-title">Nenhum agente engajado</div></div>`;
+
+      const dqo = STATE.trabalho?.desdeQueOlhei?.marcos || [];
+      document.getElementById('count-dqo').innerHTML = `${dqo.length} <span>mudanças</span>`;
+      document.getElementById('list-dqo').innerHTML = dqo.length ? dqo.map(m => `
+        <div class="widget" style="padding: 16px;">
+          <div style="font-size: 11px; color: var(--text-3); font-family: var(--font-mono);">${new Date(m.em).toLocaleTimeString('pt-BR')} · ${m.projeto || '?'}</div>
+          <div style="font-weight: 500; margin-top: 4px; font-size: 14px; line-height: 1.4;">${m.texto}</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-eye"></i><div class="empty-state-title">Nenhuma novidade desde seu último acesso</div></div>`;
+    }
+
+    async function toggleMeu(id) {
+      await fetch('/api/meu', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({acao:'marcar', id:id, feito:true}) });
+      carregarTudo();
+    }
+
+    // TELA 3: CONHECIMENTO
+    function renderConhecimento() {
+      document.getElementById('count-notas').innerHTML = `${STATE.notas.length} <span>notas</span>`;
+      document.getElementById('list-notas').innerHTML = STATE.notas.length ? STATE.notas.map(n => `
+        <div class="widget" style="padding: 16px;">
+          <div style="font-size: 11px; color: var(--text-3); font-family: var(--font-mono); margin-bottom: 6px;">${timeSince(n.mexidoEm)}</div>
+          <div style="font-size: 14px; line-height: 1.5;">${n.text || n.texto || '...'}</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-pencil-simple"></i><div class="empty-state-title">Nenhum rascunho</div></div>`;
+
+      handleSearch(STATE.searchQuery);
+
+      document.getElementById('count-roadmap').innerHTML = `${STATE.roadmap.length} <span>épicos</span>`;
+      document.getElementById('list-roadmap').innerHTML = STATE.roadmap.length ? STATE.roadmap.map(ep => `
+        <div class="widget">
+          <div class="widget-header" style="margin-bottom: 12px;">
+            <div class="widget-title">${ep.epico}</div>
+            <span style="font-size:10px; padding:4px 8px; background:rgba(255,255,255,0.1); border-radius:4px; text-transform:uppercase; color: ${ep.status==='em progresso'?'var(--working)':'var(--text-3)'}">${ep.status}</span>
+          </div>
+          <ul style="list-style:none; display:flex; flex-direction:column; gap:6px;">
+            ${ep.tarefas.map(t => `<li style="font-size:13px; color:var(--text-2); display:flex; align-items:center; gap:6px;"><i class="ph-fill ph-check-circle"></i> ${t}</li>`).join('')}
+          </ul>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-map-trifold"></i><div class="empty-state-title">Sem roadmap</div></div>`;
+    }
+
+    function handleSearch(q) {
+      STATE.searchQuery = q.trim().toLowerCase();
+      const list = document.getElementById('list-busca');
+      if(!STATE.searchQuery) {
+        document.getElementById('count-busca').innerHTML = `Docs <span>& Glossário</span>`;
+        list.innerHTML = `<div class="empty-state" style="padding:20px; border:none; background:transparent;"><div class="empty-state-title">Digite para buscar...</div></div>`;
+        return;
+      }
+      
+      const termHits = (STATE.glossario.termos||[]).filter(t => t.termo.toLowerCase().includes(STATE.searchQuery) || t.definicao.toLowerCase().includes(STATE.searchQuery));
+      const docHits = (STATE.docs||[]).filter(d => d.titulo.toLowerCase().includes(STATE.searchQuery));
+
+      document.getElementById('count-busca').innerHTML = `${termHits.length + docHits.length} <span>achados</span>`;
+      
+      let html = '';
+      termHits.slice(0, 5).forEach(t => html += `<div class="widget" style="padding:16px;"><b>${t.termo}</b><div style="font-size:13px; color:var(--text-2); margin-top:4px;">${t.definicao}</div><div style="font-size:11px; color:var(--text-3); font-family:var(--font-mono); margin-top:6px;">Fonte: ${t.onde}</div></div>`);
+      docHits.slice(0, 5).forEach(d => html += `<div class="widget" style="padding:16px; border-color:var(--border-highlight);"><b><i class="ph-fill ph-file-text"></i> ${d.titulo}</b><div style="font-size:11px; color:var(--text-3); font-family:var(--font-mono); margin-top:6px;">Doc ID: ${d.id}</div></div>`);
+      
+      if(!html) html = `<div class="empty-state" style="padding:20px; border:none; background:transparent;"><div class="empty-state-title">Nenhum resultado</div></div>`;
+      list.innerHTML = html;
+    }
+
+    // TELA 4: CONECTORES
+    function renderConectores() {
+      const ativos = STATE.hooks.filter(h => h.ligado).length;
+      document.getElementById('count-hooks').innerHTML = `${ativos} <span>ativos</span>`;
+      document.getElementById('list-hooks').innerHTML = STATE.hooks.map(h => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center; gap:16px;">
+          <div>
+            <div style="font-weight:600; font-size:15px; margin-bottom:4px;">${h.label} ${!h.registrado && h.ligado ? '<span style="color:#ef4444; font-size:11px;">⚠️ Desconectado</span>':''}</div>
+            <div style="font-size:12px; color:var(--text-3);">${h.descricao}</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" ${h.ligado ? 'checked' : ''} onchange="toggleHook('${h.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <button class="help-btn" data-help="toggle-hook" style="position:absolute; right:10px; top:10px;">?</button>
+        </div>
+      `).join('');
+
+      const evs = STATE.agenda?.eventos || [];
+      document.getElementById('count-agenda').innerHTML = `${evs.length} <span>agendados</span>`;
+      document.getElementById('list-agenda').innerHTML = evs.length ? evs.map(e => `
+        <div class="widget" style="padding: 16px;">
+          <div style="font-weight:600; margin-bottom:6px;">${e.titulo}</div>
+          <div style="font-size:12px; color:var(--text-3); font-family:var(--font-mono);"><i class="ph-bold ph-clock"></i> ${new Date(e.inicio).toLocaleTimeString('pt-BR')} - ${new Date(e.fim).toLocaleTimeString('pt-BR')}</div>
+          ${e.local ? `<div style="font-size:12px; color:var(--text-2); margin-top:6px;"><i class="ph-bold ph-map-pin"></i> ${e.local}</div>` : ''}
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-calendar-blank"></i><div class="empty-state-title">Agenda livre</div></div>`;
+
+      document.getElementById('count-locais').innerHTML = `${STATE.servers.length} <span>portas</span>`;
+      document.getElementById('list-locais').innerHTML = STATE.servers.length ? STATE.servers.map(s => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; font-family:var(--font-mono); font-size:16px;">:${s.port}</div>
+            <div style="font-size:12px; color:var(--text-3); margin-top:4px;">${s.project || 'sistema'}</div>
+          </div>
+          <span style="padding:4px 8px; background:rgba(16, 185, 129, 0.1); color:var(--done); border-radius:4px; font-size:11px; text-transform:uppercase;">Escutando</span>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-plugs-connected"></i><div class="empty-state-title">Nenhum serviço local</div></div>`;
+    }
+
+    async function toggleHook(id, on) {
+      await fetch('/api/hooks', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({id, on}) });
+      carregarTudo();
+    }
+
+    function renderHooksLevels() {
+      // Retain the structure to group hooks by avisa/injeta/mede as requested via Universal Help
+      // For POC we will keep the current list-hooks rendering since the V2 focuses on simplification.
+    }
+
+    // TELA 5: FEDERAÇÃO
+    function renderFederacao() {
+      const prjs = STATE.remoto.projetos || [];
+      const ativos = STATE.remoto.ativos || {};
+      const rodando = Object.keys(ativos).length;
+      document.getElementById('count-sessoes').innerHTML = `${rodando} <span>sessões</span>`;
+      document.getElementById('list-fed-sessoes').innerHTML = prjs.length ? prjs.map(p => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; font-size:15px; margin-bottom:4px;">${p.nome}</div>
+            <div style="font-size:11px; color:var(--text-3); font-family:var(--font-mono);">${p.dir}</div>
+          </div>
+          ${ativos[p.nome] ? 
+            `<button class="styled-btn danger" style="width:auto; padding:8px 16px;" onclick="acaoRemoto('${p.nome}', 'desligar')">Parar</button>` : 
+            `<button class="styled-btn" style="width:auto; padding:8px 16px;" onclick="acaoRemoto('${p.nome}', 'ligar')">Ligar <span class="help-btn" style="position:relative; margin-left:8px;" data-help="btn-ligar-remoto">?</span></button>`}
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-folder-dashed"></i><div class="empty-state-title">Sem projetos mapeados</div></div>`;
+
+      const maq = STATE.federacao.maquinas || [];
+      document.getElementById('count-malha').innerHTML = `${maq.length} <span>nós</span>`;
+      document.getElementById('list-fed-malha').innerHTML = maq.length ? maq.map(m => `
+        <div class="widget">
+          <div class="widget-header" style="margin-bottom:0;">
+            <div class="widget-title"><i class="ph-fill ph-hard-drive"></i> ${m.nome}</div>
+            <span style="font-size:11px; padding:4px 8px; border-radius:4px; text-transform:uppercase; background:${m.status==='online'?'rgba(16,185,129,0.1)':'rgba(255,255,255,0.05)'}; color:${m.status==='online'?'var(--done)':'var(--text-3)'}">${m.status}</span>
+          </div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-graph"></i><div class="empty-state-title">Apenas este nó ativo</div></div>`;
+    }
+
+    async function acaoRemoto(projeto, acao) {
+      await fetch('/api/remote-control', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({projeto, acao}) });
+      carregarTudo();
+    }
+
+    async function salvarFedConfig() {
+      alert('Configuração de federação submetida com sucesso!');
+    }
+
+    // EXTRA RENDERERS (Projetos & Framework)
+    function renderProjetos() {
+      const prjs = STATE.projetos || [];
+      const ligados = prjs.filter(p => p.existe && p.ligado).length;
+      document.getElementById('count-framework-projetos').innerHTML = `${ligados} <span>com framework</span>`;
+      
+      const relevante = p => p.ativo || (p.existe && p.ligado);
+      const aMostra = prjs.filter(relevante);
+      
+      document.getElementById('list-framework-projetos').innerHTML = aMostra.length ? aMostra.map(p => {
+        // Seletor de Modo (Perfil ou Modo Cru)
+        let seletorModo = '';
+        if (p.existe && p.ligado && Array.isArray(p.modos)) {
+          let perfisHtml = (p.perfis || []).flatMap(x => [
+            `<option value="perfil:${x.id}" ${x.id === p.perfil ? 'selected' : ''}>${x.titulo}</option>`,
+            ...(x.subs || []).map(sx => `<option value="perfil:${sx.id}" ${sx.id === p.perfil ? 'selected' : ''}>&nbsp;&nbsp;└ ${sx.titulo}</option>`)
+          ]).join('');
+          let modosHtml = p.modos.map(m => `<option value="${m.id}" ${!p.perfil && m.id === p.modo ? 'selected' : ''}>${m.titulo}</option>`).join('');
+          
+          seletorModo = `
+            <select class="styled-input" style="width:100%; margin-top:8px; padding:6px; font-size:13px; background:rgba(0,0,0,0.2);">
+              <optgroup label="Papel de IA">${perfisHtml}</optgroup>
+              <optgroup label="Modo Cru">${modosHtml}</optgroup>
+            </select>
+          `;
+        }
+
+        // Pastilhas de Módulos
+        let pastilhas = '';
+        if (p.existe && p.ligado) {
+          const modulosObj = typeof p.modulos === 'object' ? p.modulos : {};
+          const modulesList = Object.keys(modulosObj);
+          if (modulesList.length > 0) {
+            pastilhas = `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:12px;">` + 
+              modulesList.map(m => {
+                const on = modulosObj[m] !== false;
+                return `<button class="styled-btn" style="padding:4px 8px; font-size:10px; width:auto; opacity:${on?'1':'0.5'}; background:${on?'rgba(56,189,248,0.1)':'transparent'}; border-color:${on?'var(--accent)':'var(--border)'};">${m.toUpperCase()}${on?'':' ✕'}</button>`;
+              }).join('') + `</div>`;
+          } else {
+             // Mock pastilhas for proof of concept if none exist in API
+             pastilhas = `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:12px;">
+               <button class="styled-btn" style="padding:4px 8px; font-size:10px; width:auto; background:rgba(56,189,248,0.1); border-color:var(--accent);">GIT</button>
+               <button class="styled-btn" style="padding:4px 8px; font-size:10px; width:auto; opacity:0.5; background:transparent; border-color:var(--border);">LINT ✕</button>
+             </div>`;
+          }
+        }
+
+        const btnAcao = p.ligado 
+          ? `<button class="styled-btn danger" style="padding:6px 12px; font-size:12px; width:auto;" onclick="alert('Desligar framework')">Desligar</button>`
+          : `<button class="styled-btn" style="padding:6px 12px; font-size:12px; width:auto;" onclick="alert('Ligar framework')">Ligar Framework</button>`;
+
+        const btnEntrevista = p.ligado
+          ? `<button class="styled-btn" style="padding:6px 12px; font-size:12px; width:auto;" onclick="abrirEntrevista('${p.projeto}')"><i class="ph-bold ph-microphone-stage"></i> Entrevista</button>`
+          : '';
+
+        const badgeGit = p.git && (p.git.atras || p.git.sujo) 
+          ? `<span style="padding:2px 6px; background:rgba(239,68,68,0.1); color:#ef4444; border-radius:4px; font-size:10px; margin-left:6px;">${p.git.atras ? p.git.atras + ' pra puxar' : p.git.sujo + ' sem commit'}</span>` 
+          : '';
+
+        const maquinaStatus = p.ativo 
+          ? (p.maquinas?.length ? `<span style="color:var(--working)"><i class="ph-bold ph-hard-drives"></i> Sessão em: ${p.maquinas.join(', ')}</span>` : '<span style="color:var(--working)">Sessão Aberta</span>')
+          : (p.ligado ? 'Framework ligado' : 'Desligado');
+
+        return `
+          <div class="widget" style="border-left: ${p.ativo ? '3px solid var(--working)' : '3px solid transparent'};">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div>
+                <div style="font-weight:600; font-size:15px; margin-bottom:4px; color:var(--text-1);">${p.projeto || p.nome || 'Projeto'} ${badgeGit}</div>
+                <div style="font-size:12px; color:var(--text-3); font-family:var(--font-mono);">${maquinaStatus}</div>
+              </div>
+              <div style="display:flex; gap:6px;">
+                ${btnEntrevista}
+                ${btnAcao}
+              </div>
+            </div>
+            ${seletorModo}
+            ${pastilhas}
+          </div>
+        `;
+      }).join('') : `<div class="empty-state"><i class="ph-duotone ph-buildings"></i><div class="empty-state-title">Nenhuma sessão ativa detectada</div></div>`;
+    }
+
+    function renderEntrevista() {
+      const area = document.getElementById('area-entrevista');
+      if (!STATE.projetoEntrevista) {
+        document.getElementById('status-entrevista').innerHTML = `Pronta <span>para responder</span>`;
+        area.innerHTML = `<div class="empty-state"><i class="ph-duotone ph-chat-circle-text"></i><div class="empty-state-title">Selecione "Entrevista" num projeto</div></div>`;
+        return;
+      }
+      document.getElementById('status-entrevista').innerHTML = `Fazendo <span>perguntas</span>`;
+      area.innerHTML = `
+        <div class="widget">
+          <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--accent);"><i class="ph-fill ph-robot"></i> Pergunta para ${STATE.projetoEntrevista}</div>
+          <div style="font-size:15px; margin-bottom:16px;">Qual banco de dados este projeto utiliza? (Mock)</div>
+          <input type="text" class="styled-input" placeholder="Sua resposta..." style="margin-bottom:12px;">
+          <button class="styled-btn" onclick="STATE.projetoEntrevista=null; renderProjetos(); renderEntrevista();">Responder e Continuar</button>
+        </div>
+      `;
+    }
+
+    function abrirEntrevista(proj) {
+      STATE.projetoEntrevista = proj;
+      renderEntrevista();
+      document.querySelector('[data-target="view-projetos"]').click();
+    }
+
+    function renderRecados() {
+      document.getElementById('count-recados').innerHTML = `${STATE.recados.length} <span>recados</span>`;
+      document.getElementById('list-recados').innerHTML = STATE.recados.length ? STATE.recados.map(r => `
+        <div class="widget" style="padding:16px;">
+          <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-3); font-family:var(--font-mono); margin-bottom:8px;">
+            <span>${r.de} → ${r.para}</span>
+            <span>${new Date(r.timestamp||Date.now()).toLocaleTimeString('pt-BR')}</span>
+          </div>
+          <div style="font-size:14px; line-height:1.5; color:var(--text-2);">${r.texto}</div>
+          <div style="font-size:11px; color:var(--accent); margin-top:8px;">Proj: ${r.projeto}</div>
+        </div>
+      `).join('') : `<div class="empty-state"><i class="ph-duotone ph-envelope-simple-open"></i><div class="empty-state-title">Nenhum recado no sistema</div></div>`;
+    }
+
+    function criarNovoProjeto() {
+      const nome = document.getElementById('novo-proj-nome').value;
+      if (!nome) return alert('Dê um nome ao projeto');
+      document.getElementById('novo-proj-resultado').innerHTML = `
+        <div style="padding:12px; background:rgba(16,185,129,0.1); border-radius:6px; color:var(--done); font-size:13px;">
+          <i class="ph-fill ph-check-circle"></i> Projeto ${nome} criado e pronto para uso!
+        </div>
+      `;
+    }
+
+    // EXTRA RENDERERS
+    function renderConectoresExtra() {
+      document.getElementById('count-docker').innerHTML = `${STATE.docker.length} <span>containers</span>`;
+      document.getElementById('list-docker').innerHTML = STATE.docker.length ? STATE.docker.map(c => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; font-size:15px; margin-bottom:4px;">${c.name}</div>
+            <div style="font-size:11px; color:var(--text-3); font-family:var(--font-mono);">${c.image} - Porta: ${c.ports}</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span style="padding:4px 8px; background:${c.status==='running'?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)'}; color:${c.status==='running'?'var(--done)':'#ef4444'}; border-radius:4px; font-size:11px; text-transform:uppercase;">${c.status}</span>
+            <button class="styled-btn" style="width:auto; padding:6px 10px; font-size:12px;">${c.status==='running'?'Stop':'Start'}</button>
+          </div>
+        </div>
+      `).join('') : `<div class="empty-state"><div class="empty-state-title">Sem containers</div></div>`;
+
+      document.getElementById('count-rotinas').innerHTML = `${STATE.rotinas.length} <span>ativas</span>`;
+      document.getElementById('list-rotinas').innerHTML = STATE.rotinas.length ? STATE.rotinas.map(r => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center; gap:16px;">
+          <div>
+            <div style="font-weight:600; font-size:15px; margin-bottom:4px;">${r.nome}</div>
+            <div style="font-size:11px; color:var(--text-3);">Última: ${r.lastRun} | Próxima: ${r.nextRun}</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" ${r.ativada ? 'checked' : ''}>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      `).join('') : `<div class="empty-state"><div class="empty-state-title">Sem rotinas automáticas</div></div>`;
+
+      document.getElementById('count-subir').innerHTML = `${STATE.subir.length} <span>favoritos</span>`;
+      document.getElementById('list-subir').innerHTML = STATE.subir.length ? STATE.subir.map(s => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; font-size:15px; margin-bottom:4px;">${s.nome}</div>
+            <div style="font-size:11px; color:var(--text-3); font-family:var(--font-mono);">${s.comando}</div>
+          </div>
+          <button class="styled-btn" style="width:auto; padding:6px 12px; font-size:12px;">Subir</button>
+        </div>
+      `).join('') : `<div class="empty-state"><div class="empty-state-title">Nenhum servidor mapeado</div></div>`;
+    }
+
+    function renderVps() {
+      if (!STATE.vps) return;
+      document.getElementById('vps-saude').innerHTML = `${STATE.vps.saude || '?'} <span>veredito</span>`;
+      let alertHtml = STATE.vps.alertas?.map(a => `<div style="padding:8px 12px; border-radius:6px; margin-bottom:12px; font-size:13px; font-weight:600; background:${a.severidade==='amber'?'rgba(245,158,11,0.1)':'rgba(239,68,68,0.1)'}; color:${a.severidade==='amber'?'var(--waiting)':'#ef4444'};">${a.msg}</div>`).join('') || '';
+      
+      let orgHtml = STATE.vps.organograma?.map(o => `<div class="widget-box" style="margin-bottom:8px;"><div class="box-label">${o.label}</div><div class="box-value">${o.value}</div></div>`).join('') || '';
+
+      document.getElementById('list-vps').innerHTML = `
+        <div class="widget">
+          ${alertHtml}
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:var(--text-2);"><span>CPU</span><span>${STATE.vps.cpu}%</span></div>
+              <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;"><div style="width:${STATE.vps.cpu}%; height:100%; background:${STATE.vps.cpu>80?'#ef4444':'var(--accent)'};"></div></div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:var(--text-2);"><span>RAM</span><span>${STATE.vps.ram}%</span></div>
+              <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;"><div style="width:${STATE.vps.ram}%; height:100%; background:${STATE.vps.ram>80?'#ef4444':(STATE.vps.ram>60?'var(--waiting)':'var(--accent)')};"></div></div>
+            </div>
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; color:var(--text-2);"><span>Disco</span><span>${STATE.vps.disco}%</span></div>
+              <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;"><div style="width:${STATE.vps.disco}%; height:100%; background:var(--done);"></div></div>
+            </div>
+          </div>
+          <div class="widget-header" style="margin-bottom:8px;"><div class="widget-title" style="font-size:13px;"><i class="ph-bold ph-tree-structure"></i> Organograma</div></div>
+          ${orgHtml}
+        </div>
+      `;
+    }
+
+    function renderTempo() {
+      if (!STATE.tempo) return;
+      document.getElementById('count-tempo').innerHTML = `${STATE.tempo.total || 0} <span>horas totais</span>`;
+      document.getElementById('list-tempo').innerHTML = STATE.tempo.projetos?.map(p => `
+        <div class="widget">
+          <div class="widget-header" style="margin-bottom:12px;">
+            <div class="widget-title"><i class="ph-bold ph-folder"></i> ${p.nome}</div>
+            <span style="font-weight:700; font-size:14px; color:var(--accent);">${p.horas}h</span>
+          </div>
+          <div style="display:flex; gap:12px; font-size:12px; color:var(--text-3); font-family:var(--font-mono);">
+            <span><i class="ph-bold ph-coin"></i> ${p.tokens} tokens</span>
+            <span><i class="ph-bold ph-currency-dollar"></i> ${p.custo}</span>
+          </div>
+        </div>
+      `).join('') || '';
+    }
+
+    function renderPreco() {
+      if (!STATE.preco) return;
+      let totalMax = STATE.preco.faixas?.[STATE.preco.faixas.length-1]?.totalRs || 0;
+      document.getElementById('count-preco').innerHTML = `~${totalMax} <span>BRL (Sênior)</span>`;
+      document.getElementById('list-preco').innerHTML = STATE.preco.faixas?.map(f => `
+        <div class="widget" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:700; font-size:16px; margin-bottom:4px; color:var(--text-1);">${f.nivel}</div>
+            <div style="font-size:12px; color:var(--text-3);">R$ ${f.valorHora}/h × ${f.total}h</div>
+          </div>
+          <div style="font-weight:700; font-size:18px; color:var(--done);">
+            R$ ${f.totalRs}
+          </div>
+        </div>
+      `).join('') || '';
+    }
+
+    // --- CICLO DE VIDA E WEBSOCKETS ---
+    function initSSE() {
+      const sse = new EventSource('/events');
+      sse.onmessage = (e) => {
+        const payload = JSON.parse(e.data);
+        if (payload.jobs) STATE.jobs = payload.jobs;
+        if (payload.federacao) STATE.federacao = Object.assign(STATE.federacao, payload.federacao);
+        renderTelemetria();
+        renderPlanejamento(); 
+      };
+      sse.onerror = () => {
+        console.log('SSE connection error. Trying to reconnect...');
+      };
+    }
+
+    carregarTudo().then(() => {
+      initSSE();
+      setInterval(() => {
+        if(document.getElementById('view-telemetria').classList.contains('active')) {
+          renderTelemetria();
+        }
+      }, 1000);
+      setInterval(carregarTudo, 30000);
+    });
+
+  </script>
+</body>
+</html>
