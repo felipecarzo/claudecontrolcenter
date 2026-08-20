@@ -7,7 +7,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { lastPrompt, intentMatchesTranscript, humanMessagesTail } from './transcript.mjs'
+import { lastPrompt, porQueSemPrompt, origemConfirmada, intentMatchesTranscript, humanMessagesTail } from './transcript.mjs'
 import { sinaisDe } from './sinais.mjs'
 import { arquivoExistenteDe, arquivoMetaDe, gravarMetaSessao, PROJETOS_DIR, sessaoAtual, transcritoDe } from './metaSessao.mjs'
 import { casaClaude } from './platform.mjs'
@@ -294,6 +294,15 @@ export function buildJob(id, state, meta, pins, now) {
     // `intent` é o primeiro prompt e pode estar desatualizado ou até ser de
     // outra conversa — por isso só aparece quando difere, rotulado como inicial.
     lastPrompt: last,
+    /* Por que não há pedido, quando não há: `ninguem-escreveu` (a sessão foi
+       retomada sozinha e ele não digitou nada) ou `nao-consegui-ler`. Sem
+       isto a tela dizia a mesma frase para os dois, e um deles é falha. */
+    semPromptPorque: last ? null : porQueSemPrompt(state.linkScanPath),
+    /* O texto prova ter sido digitado por uma pessoa? `false` não acusa
+       falsidade: diz que o arquivo não trouxe a marca, e a tela mostra essa
+       dúvida em vez de afirmar que foi ele quem escreveu. É a rede para o
+       marcador de sistema que ainda não existe. */
+    promptConfirmado: last ? origemConfirmada(state.linkScanPath) : null,
     intent: state.displayIntent || state.intent || '',
     // false = o intent é de outra conversa; null = sem transcript pra comparar
     intentTrustworthy: intentMatchesTranscript(state.intent, state.linkScanPath),

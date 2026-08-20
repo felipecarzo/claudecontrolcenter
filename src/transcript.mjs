@@ -34,11 +34,22 @@ function readTail(file, bytes) {
  *   - `toolUseResult`        saída de ferramenta
  *   - `isMeta`               injeção de skill/comando (traz o SKILL.md inteiro)
  *   - `interruptedMessageId` o aviso de "Request interrupted by user"
+ *   - `isCompactSummary`     o resumo que o CLI injeta quando o contexto estoura
+ *   - `isSidechain`          conversa de sub-agente, não do usuário
  * Prompt de verdade carrega `promptSource`/`origin`.
+ *
+ * O `isCompactSummary` entrou em 20/08, achado por ele: *"me explique essa
+ * zona de ultimos pedidos (…) e estao em ingles, porque?"*. Não era idioma, e
+ * a pergunta certa era outra: o painel mostrava como pedido dele o texto que
+ * o CLI injeta ao resumir a conversa, que começa com "This session is being
+ * continued from a previous conversation that ran out of context". Sessão
+ * longa é justamente a que mais aparece no painel, então o cartão mais
+ * importante era o que mais mentia.
  */
 function humanText(entry) {
   if (entry?.type !== 'user') return null
   if (entry.toolUseResult || entry.isMeta || entry.interruptedMessageId) return null
+  if (entry.isCompactSummary || entry.isSidechain) return null
   const c = entry.message?.content
   const text = typeof c === 'string'
     ? c
@@ -48,7 +59,31 @@ function humanText(entry) {
   const trimmed = String(text || '').trim()
   // `<system-reminder>`, `<command-name>` e afins não são pedido do usuário
   if (!trimmed || trimmed.startsWith('<')) return null
+  /* Comando de barra SOZINHO é operação da ferramenta, não instrução de
+     trabalho: `/compact` no cartão não diz o que o agente está fazendo, e
+     empurra para fora o pedido de verdade que veio antes dele. Com texto
+     junto (`/fecha e sobe pra VPS`) continua valendo, porque aí ele mandou
+     alguma coisa. */
+  if (/^\/[a-z][\w-]*$/i.test(trimmed)) return null
+  /* O aviso de interrupção às vezes vem SEM `interruptedMessageId`, e aí
+     escapava do marcador. Achado em 20/08 varrendo os 266 transcritos da
+     máquina: 37 mensagens passavam sem marca de humano, e estas estavam
+     entre elas. */
+  if (/^\[Request interrupted by user/i.test(trimmed)) return null
   return trimmed
+}
+
+/**
+ * A entrada prova que veio de uma pessoa?
+ *
+ * `promptSource`/`origin` são os campos que o CLI põe no que o usuário digita.
+ * Medido nos 266 transcritos da máquina em 20/08: de 2253 mensagens que o
+ * filtro aceita, 2216 trazem a marca e 37 não.
+ *
+ * Serve para a tela poder dizer quando não tem certeza da origem do texto.
+ */
+export function veioDePessoa(entry) {
+  return Boolean(entry?.promptSource || entry?.origin)
 }
 
 function scanLines(text, { dropFirst = false, dropLast = false, fromEnd = true } = {}) {
@@ -66,10 +101,17 @@ function scanLines(text, { dropFirst = false, dropLast = false, fromEnd = true }
       continue
     }
     const t = humanText(entry)
-    if (t) return t
+    /* Junto com o texto vai se ele PROVA ter vindo de uma pessoa. Quem chama
+       decide o que fazer com a dúvida; aqui só se registra o que o arquivo
+       diz. */
+    if (t) { ultimaOrigemConfirmada = veioDePessoa(entry); return t }
   }
   return null
 }
+
+/* Origem da última linha que `scanLines` aceitou. Fica fora do retorno para
+   não mudar a assinatura, que é usada em quatro lugares. */
+let ultimaOrigemConfirmada = false
 
 const scanTail = (text, dropFirst) => scanLines(text, { dropFirst, fromEnd: true })
 
@@ -83,9 +125,14 @@ export function lastPrompt(file) {
     return null
   }
   const hit = cache.get(file)
-  if (hit && hit.size === stat.size && hit.mtimeMs === stat.mtimeMs) return hit.prompt
+  if (hit && hit.size === stat.size && hit.mtimeMs === stat.mtimeMs) {
+    origemOk.set(file, hit.origemConfirmada)
+    return hit.prompt
+  }
 
   let prompt = null
+  let leuTudo = false
+  ultimaOrigemConfirmada = false
   for (const bytes of TAILS) {
     let tail
     try {
@@ -94,12 +141,41 @@ export function lastPrompt(file) {
       break
     }
     prompt = scanTail(tail.text, tail.partial)
-    if (prompt || !tail.partial) break // achou, ou já leu o arquivo inteiro
+    leuTudo = !tail.partial
+    if (prompt || leuTudo) break // achou, ou já leu o arquivo inteiro
   }
 
-  cache.set(file, { size: stat.size, mtimeMs: stat.mtimeMs, prompt })
+  /* "Não consegui ler" e "li tudo e não há pedido de pessoa nenhuma" viravam
+     o mesmo `null`, e a tela dizia a mesma coisa para os dois. São estados
+     diferentes: o primeiro é falha, o segundo é fato. Sessão retomada
+     automaticamente ("Continue from where you left off") é o caso real que
+     mostrou isso: 2216 linhas no arquivo e nenhuma escrita por ele. */
+  motivo.set(file, prompt ? null : (leuTudo ? 'ninguem-escreveu' : 'nao-consegui-ler'))
+  origemOk.set(file, ultimaOrigemConfirmada)
+  cache.set(file, { size: stat.size, mtimeMs: stat.mtimeMs, prompt, origemConfirmada: ultimaOrigemConfirmada })
   return prompt
 }
+
+const motivo = new Map()
+const origemOk = new Map()
+
+/**
+ * O último pedido lido prova ter sido digitado por uma pessoa?
+ *
+ * `false` não quer dizer que é falso: quer dizer que o arquivo não traz a
+ * marca, e a tela precisa poder mostrar essa diferença. É o que responde a
+ * pergunta dele de 20/08, *"como garantimos que isso nao vai acontecer
+ * mais?"*, para o marcador que ainda não existe.
+ */
+export const origemConfirmada = (file) => Boolean(origemOk.get(file))
+
+/**
+ * Por que não há último pedido, quando não há.
+ *   `ninguem-escreveu`  a sessão existe e ninguém digitou nada nela
+ *   `nao-consegui-ler`  o arquivo não abriu, ou o pedido está além do que foi lido
+ * Só vale depois de `lastPrompt(file)` no mesmo arquivo.
+ */
+export const porQueSemPrompt = (file) => motivo.get(file) || null
 
 const firstCache = new Map() // o começo do arquivo nunca muda: cache eterno
 
