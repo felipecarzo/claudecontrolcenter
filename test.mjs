@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { projectOf, modelOf, routeOf, statusOf, subjectOf, buildJob, mergeMeta, fmtAge, fmtTokens, readJobs } from './src/jobs.mjs'
 
 // projeto/subprojeto saem do padrão de pastas do Felipe
@@ -3705,7 +3706,7 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
      normalização e os ramos de erro, que é onde os defeitos moram. */
   const { execFileSync } = await import('node:child_process')
   const codigo = `
-    const U = await import('${path.resolve('src/uso.mjs')}')
+    const U = await import('${pathToFileURL(path.resolve('src/uso.mjs')).href}')
     const resposta = ${JSON.stringify(respostaOk)}
     const ok = await U.buscarUsoDaConta({ fetchFn: async () => ({ ok: true, status: 200, json: async () => resposta }) })
     const venceu = await U.buscarUsoDaConta({ agora: Date.now() + 999999999, fetchFn: async () => ({ ok: true, json: async () => resposta }) })
@@ -3754,7 +3755,7 @@ if (process.platform !== 'win32') {
   fs.chmodSync(casa, 0o500) // casa trancada, como o sandbox tranca
 
   const codigo = `
-    const u = await import('${path.resolve('src/uso.mjs')}')
+    const u = await import('${pathToFileURL(path.resolve('src/uso.mjs')).href}')
     const r = u.gravarUso({ rate_limits: { five_hour: { used_percentage: 12 }, seven_day: { used_percentage: 26 } } })
     const lido = u.readUso()
     console.log(JSON.stringify({ gravou: Boolean(r), releu: lido?.cincoHoras?.pct ?? null }))
@@ -3883,8 +3884,12 @@ if (process.platform !== 'win32') {
         escreveu no arquivo gerado em vez de na fonte. */
   const mdEsperado = T.paraMarkdown(mapa)
   if (fs.existsSync('docs/TEST-MAP.md')) {
+    /* No Windows o git converte LF em CRLF ao gravar no disco (`core.autocrlf`),
+       então comparar bruto acusa diferença que não existe no conteúdo — mesma
+       armadilha do parser de roadmap. Normaliza os dois lados antes. */
+    const semCRLF = (s) => s.replace(/\r\n/g, '\n')
     const mdEmDisco = fs.readFileSync('docs/TEST-MAP.md', 'utf8')
-    assert.equal(mdEmDisco, mdEsperado,
+    assert.equal(semCRLF(mdEmDisco), semCRLF(mdEsperado),
       'docs/TEST-MAP.md não bate com a varredura. Ele é gerado por `cc testmap`, '
       + 'nunca editado à mão: rode o comando de novo.')
   }
@@ -4004,7 +4009,7 @@ if (process.platform !== 'win32') {
   }))
 
   const r = rodar(`
-    const C = await import('${path.resolve('src/config.mjs')}')
+    const C = await import('${pathToFileURL(path.resolve('src/config.mjs')).href}')
     const saida = {}
     saida.vazioNoComeco = C.lerTelaAberto()
     saida.abriu = C.setTelaAberto('proj:inovallbond', true).aberto
