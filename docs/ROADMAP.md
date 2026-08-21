@@ -75,7 +75,54 @@ Proposta dele, registrada antes de executar, com as palavras dele:
 > sistema, eu continue acessando ele pelo cockpit no link
 > cockpit.carzo.com.br. Isso é possível?"*
 
-### CC-263 ▶ decidido por ele em 21/08: serviço de verdade, e o pacote completo
+### CC-268 ✅ 21/08: o mapa de testes sujava o git a cada geração
+
+A sessão do PC avisou que sobravam dois arquivos modificados na VPS, e um deles
+era o `TEST-MAP.json`. Conferido: **só o carimbo de hora mudava**, com os 234
+itens idênticos.
+
+Ruído garantido em todo commit futuro, escondendo a única coisa que importa ver
+naquele arquivo, que é o mapa ter mudado de verdade. O `at` saiu do arquivo
+gravado e continua na resposta em memória, para quem consome o mapa. Quem quiser
+saber quando foi gerado pergunta ao git, que guarda isso direito.
+
+**Prova:** gerar duas vezes seguidas passa a produzir arquivo idêntico.
+
+### CC-263 ✅ 21/08: o PC voltou a reportar, e ele confirmou no Windows
+
+**Funcionou.** Ele instalou o serviço no PC e o painel mostra, medido no minuto
+seguinte:
+
+    ALIENWARE-LIPE: último pacote há menos de 1 minuto
+    12 agentes | agentes lá: claude, opencode, agy
+
+Estava **sem contato havia 22 horas**. Agora reporta sozinho, sem o cockpit
+aberto no PC.
+
+E a revisão automática (CC-262) percebeu **sem ninguém avisar**: a tarefa *"ligar
+o PC na federação"* apareceu como resolvida na primeira leitura seguinte, porque
+a prova dela era exatamente a máquina ter mandado pacote.
+
+#### O registro de antes da confirmação dele
+
+**Tudo o que dá para fazer daqui está pronto e no ar**, e o commit `e0219dd` foi
+enviado para a branch `backlog/cc-46-48-49-52-53-56-65`.
+
+**O que falta é dele, e eu não consigo substituir:** rodar o comando no PC, uma
+vez, como administrador, e conferir que a máquina volta a aparecer online no
+painel com o cockpit fechado.
+
+    cd D:\Documentos\Ti\projetos\PESSOAL\proj_controlcenter
+    git pull
+    node "D:\...\proj_controlcenter\cc.mjs" servico instalar
+
+⚠️ **A branch não é a `master`.** Se o PC estiver noutra, o `git pull` não traz
+nada e o comando continua desconhecido, que foi exatamente o erro que ele
+recebeu antes deste commit: *"comando desconhecido: servico"*.
+
+**O sinal objetivo de que funcionou:** hoje o PC aparece como sem contato há 22
+horas. Depois da instalação ele volta a aparecer online, e continua assim mesmo
+sem o painel aberto lá.
 
 **Ele escolheu o serviço de verdade**, aceitando a senha de administrador uma
 vez na instalação, para o PC reportar mesmo antes de qualquer login.

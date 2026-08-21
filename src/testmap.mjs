@@ -315,7 +315,17 @@ export function gravar(raiz = process.cwd(), mapa = montarMapa(raiz)) {
   fs.mkdirSync(dir, { recursive: true })
   const json = path.join(dir, 'TEST-MAP.json')
   const md = path.join(dir, 'TEST-MAP.md')
-  fs.writeFileSync(json, `${JSON.stringify(mapa, null, 1)}\n`)
+  /* O carimbo de hora NÃO vai para o arquivo versionado.
+     Achado em 21/08, quando a sessão do PC avisou que o `TEST-MAP.json` estava
+     sempre modificado: o `at` mudava a cada geração e o git acusava alteração
+     mesmo com o conteúdo idêntico, item por item. Ruído garantido em todo
+     commit futuro, escondendo a única coisa que importa ver, que é o mapa ter
+     mudado de verdade.
+     Quem quiser saber quando foi gerado pergunta ao git, que é quem guarda
+     isso direito. O `at` continua na resposta de `montarMapa()`, para quem
+     consome o mapa em memória. */
+  const { at, ...paraDisco } = mapa
+  fs.writeFileSync(json, `${JSON.stringify(paraDisco, null, 1)}\n`)
   fs.writeFileSync(md, paraMarkdown(mapa))
   return { json, md }
 }
