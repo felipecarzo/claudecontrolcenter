@@ -271,7 +271,7 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
     grupos: comAberto,
     semNada,
     pendencias,
-    veredito: veredito(comAberto, pendencias),
+    veredito: veredito(comAberto, pendencias, jobs),
     ordem,
     at: Date.now(),
   }
@@ -293,8 +293,19 @@ function casaFrente(daSessao, doRoadmap) {
 }
 
 /** A frase do topo. Sem número solto: ele discorda de frase, não de "87". */
-function veredito(grupos, pendencias) {
-  const andando = grupos.flatMap((g) => g.cartoes).filter((c) => c.estado.palavra === 'ANDANDO').length
+function veredito(grupos, pendencias, jobs = []) {
+  /* A frase conta AGENTES, não frentes do roadmap, e a mudança conserta uma
+     contradição que aparecia na tela inteira ao mesmo tempo: o veredito dizia
+     "nada andando agora" enquanto a linha logo abaixo dizia "RODANDO
+     proj_controlcenter", o cabeçalho dizia "1 ATIVOS" e cinco quadrados
+     apareciam marcados como andando.
+
+     Nenhum dos dois números estava errado. Eles contavam universos
+     diferentes, frentes com item em progresso contra agentes vivos, e essa
+     distinção é invisível para quem lê. A regra que sai daqui: o veredito do
+     topo fala do MESMO universo que a tela mostra embaixo dele. */
+  const andando = jobs.filter((j) => j.status === 'working').length
+  const esperando = jobs.filter((j) => j.status === 'waiting').length
   const travadas = pendencias.filter((p) => !p.feito).length
 
   /* O estado de calma, que faltava: a tela era idêntica com cinco coisas
@@ -303,19 +314,19 @@ function veredito(grupos, pendencias) {
 
      `cor` sai junto porque a moldura do topo precisa concordar com a frase:
      dizer "está tudo em ordem" numa faixa laranja seria pior que não dizer. */
-  if (!travadas && !andando) {
-    return { frase: 'nada travado em você, e nada andando agora', cor: 'bom', calmo: true }
+  const parado = (n) => `${n} andando`
+
+  if (!travadas && !esperando && !andando) {
+    return { frase: 'nada esperando você, e nada rodando agora', cor: 'bom', calmo: true }
   }
-  if (!travadas) {
-    return {
-      frase: `nada travado em você. ${andando} frente${andando > 1 ? 's' : ''} andando`,
-      cor: 'bom',
-      calmo: true,
-    }
+  if (!travadas && !esperando) {
+    return { frase: `nada esperando você, ${parado(andando)}`, cor: 'bom', calmo: true }
   }
 
-  const partes = [`${travadas} coisa${travadas > 1 ? 's' : ''} travada${travadas > 1 ? 's' : ''} em você`]
-  if (andando) partes.push(`${andando} frente${andando > 1 ? 's' : ''} andando`)
+  const partes = []
+  if (esperando) partes.push(`${esperando} agente${esperando > 1 ? 's' : ''} esperando você`)
+  if (travadas) partes.push(`${travadas} coisa${travadas > 1 ? 's' : ''} travada${travadas > 1 ? 's' : ''} em você`)
+  if (andando) partes.push(parado(andando))
   return { frase: partes.join(', '), cor: 'atencao', calmo: false }
 }
 

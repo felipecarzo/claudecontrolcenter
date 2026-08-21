@@ -150,7 +150,7 @@
    "verificou": true,
    "escopo": "tudo",
    "detalhe": null,
-   "em": "2026-08-17T13:50:35.045Z"
+   "em": "2026-08-19T15:00:50.381Z"
   },
   "segredo-historico": {
    "ok": true,
@@ -182,8 +182,9 @@
    "ok": true,
    "achados": 1,
    "verificou": true,
+   "escopo": "tudo",
    "detalhe": "1 achado(s): service_role citada no código",
-   "em": "2026-08-16T05:20:44.235Z"
+   "em": "2026-08-19T15:03:21.095Z"
   }
  },
  "reproducao": {

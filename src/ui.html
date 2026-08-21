@@ -5,6 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agent Cockpit</title>
 <style>
+  /* `swap` para a tela nascer legível e trocar quando a face chegar: bloquear
+     texto esperando fonte é pior que um instante de outra letra, e o painel
+     precisa responder rápido. `unicode-range` latino porque é o que a
+     interface usa, e limitar evita baixar o que não se lê aqui. */
+  @font-face {
+    font-family: "Archivo Narrow";
+    src: url("/archivo-narrow.woff2") format("woff2");
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212;
+  }
+  /* As duas vozes da sala de operação, hospedadas aqui pelo mesmo motivo da
+     face acima: o protótipo que chegou de fora as buscava na Google, e o
+     painel inteiro funciona offline. Ambas são de eixo variável, então um
+     arquivo cobre todos os pesos usados.
+     Só entram em uso no tema `torre`; nos outros o mundo tipográfico segue
+     sendo o do boletim. */
+  @font-face {
+    font-family: "Outfit";
+    src: url("/outfit.woff2") format("woff2");
+    font-weight: 300 700;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212;
+  }
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("/jetbrains-mono.woff2") format("woff2");
+    font-weight: 400 600;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212;
+  }
   /* ---------- a paleta, refeita em 17/08 por causa de fadiga visual ----------
 
      Ele perdeu um dia de trabalho: "minha visao ta cansada desse modo que ta,
@@ -33,30 +67,64 @@
 
      Todo tom abaixo foi conferido pela formula de contraste da WCAG. Texto
      principal entre 9 e 11, secundario acima de 5, e NENHUM abaixo de 4,5. */
+  /* ================= BOLETIM DE TORNEIO (seed eabd5065) =================
+
+     O mundo é a folha impressa de um torneio de xadrez por correspondência.
+     Não é tema escuro genérico: o fundo é a CASA ESCURA do tabuleiro, com
+     verde dentro, e a superfície é a CASA CLARA. Um painel neutro de dashboard
+     usaria cinza-azulado; este usa o verde-oliva de tabuleiro de torneio, que
+     é o que separa esta tela de qualquer outra da categoria.
+
+     A regra que rege a cor, doada pelo teletexto ao perder o julgamento:
+     **cada cor significa uma coisa só, em toda a tela, sempre.** O vermelho de
+     bandeirinha (`--vez`) nunca é decoração. Ele quer dizer uma coisa e só
+     uma: a jogada é sua. */
   :root {
-    --bg: #212529;
-    --surface: #2a2f35;
-    --surface-2: #333940;
-    --line: #3a4047;
-    --line-soft: #2f353b;
-    --fg: #d6dade;
-    --dim: #a8b0b8;
+    --bg: #1c2320;
+    --surface: #242c28;
+    --surface-2: #2c352f;
+    --line: #3a463e;
+    --line-soft: #2f3a33;
+    --fg: #e6e2d6;
+    --dim: #a8b0a4;
+
+    /* A bandeirinha do relógio. Reservada, nunca decorativa: se aparecer em
+       algo que não é "a vez é sua", o sistema de cor perdeu o sentido.
+       O vermelho de bandeira de verdade (#d6453a) media 3,25 sobre o cartão, e
+       esta cor é TEXTO, não só marca. Clareada até passar: 4,84 no cartão. */
+    --vez: #e8776b;
+    /* A tinta do boletim, para régua dupla e marca de tabela. Não é corpo de
+       texto, então o piso dela é 3:1, e ela passa com folga nos dois temas. */
+    --tinta: #7d8a7f;
     /* 17/08, segunda medicao. O valor anterior (#868f98) so passava contra o
        FUNDO. Sobre `surface`, que e o fundo de todo cartao, dava 4,11, e o
        rodape do cartao (`.ct-pe`, o porque e a idade) e escrito nele. Medir
        texto contra `bg` quando ele mora dentro de um cartao e medir o par
        errado. Aqui: 5,39 sobre o fundo, 4,71 sobre o cartao. */
-    --faint: #909aa3;
+    --faint: #939c90;
 
-    --working: #6ba7e8;
-    --waiting: #d99a3c;
-    --failed:  #e07b72;
-    --done:    #5fb885;
+    /* Os cinco estados, agora tirados do mundo do torneio em vez do azul de
+       interface genérica. Continuam semânticos e continuam distinguíveis entre
+       si, que é a regra antiga e não muda. O que muda é a família: são tons de
+       tinta e de bandeira, não de sistema operacional. */
+    --working: #6f9fd8;
+    --waiting: #d9a441;
+    /* "Quebrou" sai da família do vermelho, e isso é o conserto de uma promessa
+       do contrato que eu mesmo tinha furado: `--failed` e `--vez` acabaram com
+       o VALOR IDÊNTICO quando ajustei o contraste, então a bandeirinha deixou
+       de ter dono único e a regra inteira de cor funcional perdia o sentido.
+       Achado ao documentar o sistema, medindo, não olhando.
+       O magenta-vinho vem da segunda tinta do boletim, com que se anota
+       partida irregular: a bandeira do relógio nunca serviu para isso.
+       Medido: 6,06 de contraste sobre o fundo, e cerca de 40 graus de matiz
+       separando esta cor da bandeirinha. */
+    --failed:  #d488b0;
+    --done:    #6aab7d;
     /* 4,11 dentro do cartão na primeira versão, e era a cor de "na fila", o
        estado da maioria dos itens. O erro foi medir tudo contra o fundo da
        página quando quase todo texto mora dentro de uma superfície mais clara.
        Aqui vai 5,15 no cartão e 5,89 no fundo. */
-    --idle:    #98a1aa;
+    --idle:    #99a296;
 
     --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
     /* A fonte de leitura, que passou a valer no texto corrido. A de codigo
@@ -64,11 +132,25 @@
        caminho de arquivo. Largura fixa em frase e mais lenta de ler, porque
        tira do olho a pista da forma da palavra. */
     --texto: ui-sans-serif, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-    --label: Bahnschrift, "Segoe UI Variable Display", "Segoe UI", sans-serif;
+    /* A voz do boletim, hospedada com o projeto em vez de tirada do sistema.
+       Era Bahnschrift, que só existe no Windows: em qualquer outra máquina o
+       rótulo caía para uma sans normal e o caráter condensado sumia sem aviso.
+       Uma face escolhida é o que separa mundo de tema, e "a mais próxima que
+       estiver instalada" é falha, não alternativa.
+       Archivo Narrow: grotesca condensada, do feitio de cabeçalho de tabela
+       impressa, e fora da lista de faces que denunciam escolha automática. */
+    --label: "Archivo Narrow", "Segoe UI Variable Display", "Segoe UI", sans-serif;
     /* Sombra no lugar de contorno: separa sem desenhar mais uma linha na tela.
        E o que o Lev4 faz, e o motivo de ele parecer mais suave que o Pierre. */
     --sombra: 0 1px 2px rgba(0, 0, 0, .28), 0 4px 12px rgba(0, 0, 0, .18);
-    --raio: 8px;
+    /* `--raio` saiu: era declarado e tinha ZERO usos no arquivo, achado ao
+       documentar o sistema. Token morto no `:root` é pior que ausência,
+       porque quem chega depois assume que existe uma escala de raio governada
+       por ele e escreve contra uma regra que nunca valeu. */
+    /* A estrela do selo de fixado, como máscara: é a mesma forma do ícone
+       desenhado em `ICONES`, disponível para `::after` que não pode carregar
+       um SVG filho. */
+    --mask-estrela: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 4.5l2.3 4.9 5.2.7-3.8 3.7.9 5.2-4.6-2.5-4.6 2.5.9-5.2L4.5 10l5.2-.7z"/></svg>');
   }
   /* ---------- temas ----------
      Cada tema redefine as mesmas variáveis, e nada mais. `data-tema` é sempre
@@ -87,7 +169,10 @@
      antes era o mesmo azul de "trabalhando", e por isso todo tema parecia azul. */
   :root, :root[data-tema="noite"] {
     color-scheme: dark;
-    --acento: #4da3ff;
+    /* O acento sai do azul de interface e vira a tinta de anotação do boletim:
+       o mesmo verde-claro com que se marca a folha impressa. Isso é o que
+       tirava a cara de "qualquer painel" da tela. */
+    --acento: #9dc2a4;
   }
 
   /* Escuro neutro, contraste alto: o `dim` sobe de 4,0 para 7,2 sobre o fundo. */
@@ -95,32 +180,96 @@
      branco puro com texto quase preto, contraste 17,4 — o mesmo problema do
      escuro, do outro lado. Aqui o texto fica em 9,6 e nenhum tom cai abaixo
      de 4,5. */
+  /* Claro é o papel do boletim de verdade: levemente esverdeado, não creme.
+     Papel barato de torneio puxa para o verde-acinzentado, e essa é a
+     diferença entre o mundo escolhido e o creme que qualquer redesenho
+     entrega. O texto é tinta, não preto. */
   :root[data-tema="papel"] {
     color-scheme: light;
-    --bg: #f2ede2;
-    --surface: #fbf8f1;
-    --surface-2: #f6f1e6;
-    --line: #ddd4c4;
-    --line-soft: #e8e1d4;
-    --fg: #413a31;
-    --dim: #635a4e;
-    --faint: #6f675b;
+    --bg: #e9e7dc;
+    --surface: #f6f4ec;
+    --surface-2: #f0eee3;
+    --line: #cfcdbf;
+    --line-soft: #dddbcf;
+    --fg: #2b302b;
+    --dim: #565c54;
+    --faint: #64695f;
+    --vez: #a8362c;
+    /* No papel a régua precisa ser mais escura que no escuro para render os
+       mesmos 3:1: #8a8f82 media 2,67 sobre o fundo. */
+    --tinta: #767c6f;
     /* Era #9a6b16, que reprovava como TEXTO: 4,01 sobre o fundo e 4,41 sobre o
        cartao. E acento aqui nao e so anel de foco, e o codigo do item
        (`.ct-cod.real`) em todo cartao. Este valor e o `--ambar-fundo` do
        proprio Pierre, que ja tinha sido conferido la pelo mesmo motivo:
        4,88 sobre o fundo, 5,38 sobre o cartao. */
-    --acento: #8f5b1e;
+    --acento: #3f6b49;
 
-    --working: #2a6ba8;
+    /* 4,49 sobre o fundo, e o piso é 4,5. Escurecido o suficiente para passar
+       com folga em vez de empatar na casa decimal: 5,17. */
+    --working: #245e95;
     --waiting: #845a0e;
-    --failed:  #a63f2b;
+    /* Mesmo motivo do escuro: separar "quebrou" da bandeirinha.
+       Medido: 6,19 de contraste sobre o fundo, e cerca de 40 graus de matiz
+       separando as duas, o que é o bastante para não confundir de relance. */
+    --failed:  #8e2f63;
     --done:    #2f6742;
     /* Era #8d8477: 3,16 sobre o fundo, a pior medida do painel inteiro, e logo
        na cor de "na fila", que e o estado da maioria dos quadradinhos. Agora
        4,78. No sol, na rua, era esta que sumia primeiro. */
     --idle:    #6f6759;
     --sombra: 0 1px 2px rgba(65, 58, 49, .10), 0 4px 12px rgba(65, 58, 49, .06);
+  }
+
+  /* O chão da sala de operação. Nasceu em 19/08, quando ele levou o painel a
+     outras IAs e a direção que voltou foi a de painel de missão, não de folha
+     impressa. O nome do estilo é Torre, e as regras estão em
+     `docs/produto/TORRE.md`.
+
+     Este tema muda o CHÃO e nada mais: as cinco cores de estado são as mesmas
+     do boletim, de propósito. A semântica já estava resolvida e ele já leu
+     essa tela; trocar o significado da cor junto com o fundo seria mexer em
+     duas coisas ao mesmo tempo e não saber qual funcionou.
+
+     Existir como tema, e não como interruptor de construção, é o que permite
+     a amostra lado a lado (`?tema=torre` contra `?tema=noite`) sem uma linha
+     de código descartável. Se ele escolher este chão, ele vira o escuro
+     padrão; se escolher o oliva, este bloco sai inteiro.
+
+     Medido por `node tools/contraste.mjs torre`, contra o par (fundo E
+     cartão): nada abaixo do piso, e os cinco estados continuam separados
+     entre si. `tinta` nasceu em #5c646d e reprovou por 2,88 no cartão. */
+  :root[data-tema="torre"] {
+    color-scheme: dark;
+    --bg: #0b0d0f;
+    --surface: #171b20;
+    --surface-2: #1e232a;
+    --line: #252a30;
+    --line-soft: #1c2126;
+    --fg: #e6e8ea;
+    --dim: #a1a9b3;
+    --faint: #8b939c;
+    --tinta: #6b737d;
+    --acento: #7fb98c;
+    /* A sombra do boletim era de tinta sobre papel. Aqui o chão é quase preto,
+       e sombra preta sobre preto não separa nada: o que separa é a borda. */
+    --sombra: 0 1px 2px rgba(0, 0, 0, .5), 0 4px 14px rgba(0, 0, 0, .35);
+
+    /* As duas vozes com emprego fixo, que é a regra T6: largura fixa para o
+       que alinha e é dado, humanista para o que se decide e é frase. O rótulo
+       deixa de ser condensado e passa a ser a mesma voz de texto em caixa
+       alta com espaçamento: numa sala de operação o rótulo é etiqueta de
+       console, não cabeçalho de tabela impressa. */
+    --texto: "Outfit", ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --label: "Outfit", ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+  }
+  /* A regra global de condensar rótulo é do mundo do boletim, onde a face É
+     condensada. Aplicada ao Outfit, que não tem eixo de largura, o navegador
+     sintetiza e a letra deforma. */
+  :root[data-tema="torre"] :is(h1, .count, .tab, thead th, tr.zone > td, .cat, h3, .col-head, .big) {
+    font-stretch: 100%;
+    letter-spacing: .06em;
   }
 
   h1, .count, .tab, thead th, tr.zone > td, .cat, h3, .col-head, .big {
@@ -135,6 +284,27 @@
     display: flex; height: 100vh; overflow: hidden;
   }
   [hidden] { display: none !important; }
+
+  /* ---------- as partes que o navegador desenha ----------
+
+     Seleção, cursor de texto e barra de rolagem vêm com o padrão do navegador,
+     que não pertence a design nenhum. Numa folha de boletim a marca de leitura
+     é a mesma tinta do resto, e deixar o azul do sistema aqui denuncia página
+     montada em vez de construída.
+
+     Vale nos dois temas porque tudo sai de variável. */
+  ::selection { background: var(--acento); color: var(--bg); }
+  :root { accent-color: var(--acento); caret-color: var(--acento); }
+  /* A barra fina, na cor da régua da folha. `thin` em vez de `auto` porque a
+     barra grossa do Windows come 17px de uma tela de 390. */
+  * { scrollbar-width: thin; scrollbar-color: var(--tinta) transparent; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--tinta); border-radius: 0;
+    border: 3px solid var(--bg); /* o respiro que evita a barra colar no conteúdo */
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--dim); }
 
   /* ---------- estrutura: painel | divisória | notas ----------
      O painel é o contêiner de consulta. Sem `container-type`, o breakpoint
@@ -191,6 +361,11 @@
   }
   .count b { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--dim); }
   .count.hot b { color: var(--fg); }
+  /* A única frase alta da barra: quem espera POR ELE. Usa a cor da bandeirinha
+     porque significa exatamente a mesma coisa que ela ("a jogada é sua"), e é
+     o único outro lugar da tela onde ela aparece. Dono único mantido. */
+  .count.vc-voce { color: var(--vez); }
+  .count.vc-voce b { color: var(--vez); font-size: 15px; font-weight: 700; }
   .grow { flex: 1 1 40px; }
   /* juntos num bloco só: soltos, ao quebrar a linha o campo de filtro sobrava
      no meio do cabeçalho enquanto o resto ia pra outra ponta */
@@ -259,12 +434,31 @@
     border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 12.5px; min-height: 34px; }
   .gav-aba:hover { border-color: var(--acento); color: var(--acento); }
   .gav-aba .n { font-family: var(--mono); color: var(--faint); margin-left: 7px; font-size: 11px; }
-  /* a aba dentro do grupo é secundária: sem sublinhado, marcada por fundo */
+  /* A aba dentro do grupo, na mesma língua das colunas de tabela. Era pílula
+     de raio 999 com fundo cheio, o último componente genérico depois que os
+     cartões e as barras laterais saíram, e um mundo não sobrevive a um átomo
+     que fala outro idioma.
+
+     A troca também conserta um contraste que reprovava: `--fg` sobre
+     `--faint` media 2,19:1. Minha verificação pareou cada cor contra o fundo e
+     contra a superfície, e nunca contra `faint` VIRANDO fundo, que é o mesmo
+     erro que o comentário da paleta já registrava sobre medir contra o par
+     errado. Agora a marca é tinta e régua, sem fundo nenhum, e o par medido
+     passa a ser `--fg` sobre `--bg`. */
+  /* A aba é o DETALHE, o grupo é a decisão. Tirar a pílula acertou o
+     vocabulário e apagou a hierarquia junto: os dois níveis ficaram com o
+     mesmo peso, o mesmo tamanho e a mesma régua em linhas vizinhas, e
+     dezenove botões idênticos deixam de ser navegação.
+     A diferença volta por tamanho, peso e régua fina, nunca pela pílula: o
+     grupo em 12px/700 com régua de 2px, a aba em 11px/500 com régua de 1px. */
   .tab-abas .tab {
-    border-bottom: 0; border-radius: 999px; padding: 5px 11px;
-    font-size: 11.5px; letter-spacing: .1em;
+    border-bottom: 1px solid transparent; border-radius: 0; padding: 5px 9px;
+    font: 500 11px/1 var(--label); letter-spacing: .08em; text-transform: none;
+    background: none;
   }
-  .tab-abas .tab[aria-selected="true"] { background: var(--faint); color: var(--fg); }
+  .tab-abas .tab[aria-selected="true"] {
+    background: none; color: var(--fg); border-bottom-color: var(--acento); font-weight: 600;
+  }
 
   main { padding: 4px 20px 60px; }
   #painel > footer { color: var(--faint); font-size: 11px; padding: 0 20px 28px; }
@@ -315,9 +509,19 @@
     #painel > header #maquina { display: none; }
     #painel > header { padding-top: 10px; }
     .linha-abas { flex-wrap: wrap; }
+    /* A faixa de hardware e player DESCE no telefone, e isto é o conserto do
+       primeiro viewport do contrato.
+       Medido na captura de 390px: a linha de vez começava a 31% da altura da
+       tela, empurrada por título, dois medidores de uso, filtro, fileira de
+       abas e um cartão de player mostrando o nome de um vídeo. A tabela nunca
+       entrava na dobra.
+       Nada disso é urgente. CPU, memória e música são ambiente, e ambiente não
+       pode ficar acima da única coisa que a tela existe para responder. `order`
+       resolve sem mexer no HTML, então a ordem de leitura por teclado continua
+       a mesma no monitor. */
     .linha-abas > .modulos {
       margin-left: 0; width: 100%; overflow-x: auto; overscroll-behavior-x: contain;
-      padding-bottom: 2px;
+      padding-bottom: 2px; order: 3;
     }
     /* CC-77: no estreito a navegacao vira UM nivel. As duas fileiras existem
        no HTML e apenas trocam de lugar, para o CSS decidir sozinho — nao ha
@@ -357,15 +561,23 @@
       background-attachment: local, local, scroll, scroll;
     }
     .tab-abas::-webkit-scrollbar { display: none; }
+    /* As mesmas colunas de tabela do monitor, com alvo de dedo.
+       A pílula de raio 999 tinha sido tirada só na regra larga, e ficou aqui,
+       justamente no aparelho onde ele mais lê. É o mesmo formato de erro que
+       o contraste da aba ativa teve: consertado num ramo, esquecido no outro.
+       O alvo de toque continua de 44px pela altura mínima, sem precisar de
+       cápsula: quem carrega o estado é a régua e a tinta. */
     .tab-abas .tab {
-      flex: 0 0 auto; padding: 8px 14px; border-radius: 999px; font-size: 14px;
-      border: 1px solid var(--faint); background: var(--surface); color: var(--dim);
-      border-bottom-color: var(--faint);
+      flex: 0 0 auto; padding: 10px 12px; min-height: 44px; border-radius: 0;
+      font-size: 14px; letter-spacing: .04em;
+      border: 0; border-bottom: 2px solid transparent;
+      background: none; color: var(--dim);
     }
     .tab-abas .tab[aria-selected="true"] {
-      background: var(--acento); border-color: var(--acento); color: var(--bg); font-weight: 600;
+      background: none; border-bottom-color: var(--acento);
+      color: var(--fg); font-weight: 600;
     }
-    .tab-abas .tab .n { color: inherit; opacity: .85; }
+    .tab-abas .tab .n { color: var(--faint); opacity: 1; }
 
     /* a barra dos quatro grupos, colada embaixo */
     #app-bar {
@@ -382,7 +594,8 @@
       font: inherit; font-size: 12px; padding: 6px 0; border-radius: 12px;
       display: grid; gap: 2px; justify-items: center;
     }
-    #app-bar button .ico { font-size: 21px; line-height: 1; }
+    /* SVG em vez de glifo: tamanho declarado, um traço só para os quatro. */
+    #app-bar button .ico { width: 21px; height: 21px; display: block; }
     #app-bar button[aria-selected="true"] { color: var(--acento); font-weight: 700; }
     /* a contagem é aviso, não enfeite: usa a cor de "espera você" */
     #app-bar button .n {
@@ -569,9 +782,17 @@
   .card.s-done::before    { background: var(--done); }
   .card:hover { background: var(--surface-2); border-color: var(--line); }
   .card.sel { border-color: var(--acento); }
+  /* O selo de fixado, desenhado como os outros. Era `content: '★'`, o último
+     glifo do arquivo que funcionava de fato como ícone, e o desenho vem da
+     mesma grade de 24 do resto: máscara com o SVG embutido, para o ::after não
+     precisar de elemento próprio no HTML. `currentColor` continua valendo pela
+     cor de fundo da máscara. */
   .card.pinned::after {
-    content: '★'; position: absolute; top: 7px; right: 9px;
-    color: var(--waiting); font-size: 11px; pointer-events: none;
+    content: ''; position: absolute; top: 7px; right: 9px;
+    width: 11px; height: 11px; pointer-events: none;
+    background: var(--waiting);
+    -webkit-mask: var(--mask-estrela) center / contain no-repeat;
+    mask: var(--mask-estrela) center / contain no-repeat;
   }
   .card > header { display: flex; align-items: center; gap: 6px; min-height: 17px; }
   .cat.vazia { border: 0; padding: 0; }
@@ -738,7 +959,7 @@
      deve ir para o que resta, não para o que já acabou. */
   .item { display: flex; align-items: baseline; gap: 9px; padding: 1px 0 1px 3px; border-radius: 2px;
     border-left: 2px solid var(--done); padding-left: 6px; }
-  .item.done { border-left-color: var(--line); }
+  .item.done { border-bottom-color: var(--line); }
   /* CC-36: explicação do opencode, embaixo do to-do correspondente */
   .todo-explicacao { margin: 0 0 4px 26px; font-size: 11px; color: var(--faint); }
   .todo-explicacao code { font-size: 11.5px; }
@@ -757,7 +978,7 @@
   .item .txt::placeholder { color: var(--faint); }
   .item.done .txt { color: var(--faint); text-decoration: line-through; }
   /* o que está no sprint agora: a tarefa do agente que está trabalhando */
-  .item.agora { border-left-width: 3px; border-left-color: var(--working); }
+  .item.agora { border-bottom-width: 2px; border-bottom-color: var(--working); }
   .item.agora .txt { color: var(--fg); font-weight: 500; }
   .lista > .grupo details.lvl > summary { border-top: 0; padding: 4px 0 4px 3px; }
   .outros { border-top: 1px solid var(--line-soft); padding-top: 6px; }
@@ -768,12 +989,12 @@
      colorida à esquerda repete o motivo sem exigir leitura. */
   .ck-lista { display: grid; gap: 12px; max-width: 900px; }
   .ck-proj {
-    border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border: 1px solid var(--line); border-bottom: 2px solid var(--line);
     border-radius: 4px; background: var(--surface); padding: 12px 14px;
   }
-  .ck-proj.p-failed { border-left-color: var(--failed); }
-  .ck-proj.p-waiting { border-left-color: var(--waiting); }
-  .ck-proj.p-working { border-left-color: var(--working); }
+  .ck-proj.p-failed { border-bottom-color: var(--failed); }
+  .ck-proj.p-waiting { border-bottom-color: var(--waiting); }
+  .ck-proj.p-working { border-bottom-color: var(--working); }
   .ck-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .ck-nome {
     font: 700 14px/1 var(--label); letter-spacing: .07em; text-transform: uppercase;
@@ -885,7 +1106,7 @@
     margin: -2px 0 6px 30px; font-size: 11px; line-height: 1.4; color: var(--dim);
     border-left: 2px solid var(--line); padding-left: 8px;
   }
-  .todo-prova { border-left-color: var(--done); }
+  .todo-prova { border-bottom-color: var(--done); }
   .todo-prova b, .todo-pronto b { color: var(--faint); font-weight: 700; }
 
   /* ---------- a tela que abre: o backlog em cartoes ----------
@@ -936,35 +1157,48 @@
      O TETO de largura e o conserto antigo, e continua valendo: com `flex:1` e
      sem `max-width` viravam quatro caixas de 460px num monitor de 1900, cada
      uma com um numero de dois digitos perdido no canto. */
-  .bl-vistas { display: flex; gap: 8px; margin: 0 0 14px; flex-wrap: wrap; }
-  /* Numero em cima, palavra embaixo. Lado a lado eles pediam 126px cada e as
-     quatro visoes viravam duas fileiras de 104px num telefone, o dobro do que
-     a navegacao pode custar numa tela que existe para caber inteira. */
-  .bl-vista {
-    flex: 1 1 76px; min-width: 0; max-width: 214px;
-    display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
-    border: 1px solid var(--line); border-left: 3px solid var(--line);
-    border-radius: 9px; padding: 8px 10px; background: var(--surface);
-    text-align: left; color: var(--dim); cursor: pointer;
+  /* ============ AS QUATRO VISÕES, COMO CABEÇALHO DE TABELA ============
+
+     Antes eram quatro cartões com número grande em cima e rótulo embaixo. Isso
+     é literalmente o template de métrica que qualquer painel entrega, e é o que
+     ele nomeou como o problema: "mais parece planilha ou lista técnica".
+
+     No boletim de torneio a escolha de que tabela olhar não é um cartão: é o
+     cabeçalho de coluna da própria folha, e a coluna ativa se distingue por
+     peso de tinta, não por caixa. Sem fundo, sem raio, sem borda de caixa. A
+     régua embaixo é a mesma do resto da folha. */
+  .bl-vistas {
+    display: flex; gap: 0; margin: 0 0 14px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--tinta);
   }
-  .bl-vista b { font: 700 17px/1 var(--mono); color: var(--fg); }
-  /* 8px com pouco espacejamento porque "pendencias" tem que caber em UMA linha
-     num botao de 85px: quebrada, ela vira "PENDENCIA" mais um "S" solto, que foi
-     o que a primeira medida entregou. */
+  .bl-vista {
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 6px 12px 7px; margin-bottom: -1px;
+    background: none; border: 0; border-bottom: 2px solid transparent;
+    text-align: left; color: var(--faint); cursor: pointer; min-width: 0;
+  }
+  /* Tabular sempre: o stream reescreve estes números a cada 2 segundos, e
+     dígito de largura variável faz o cabeçalho inteiro tremer. */
+  .bl-vista b {
+    font: 600 13px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--dim);
+  }
   .bl-vista i {
-    font: 700 11px/1.25 var(--label); letter-spacing: .04em; text-transform: uppercase;
+    font: 600 11px/1.25 var(--label); letter-spacing: .1em; text-transform: uppercase;
     font-style: normal; min-width: 0; overflow-wrap: anywhere;
   }
-  .bl-vista:hover { border-color: var(--acento); }
-  .bl-vista:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
-  .bl-vista.v-working { border-left-color: var(--working); }
+  .bl-vista:hover { color: var(--fg); }
+  .bl-vista:hover b { color: var(--fg); }
+  .bl-vista:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+  /* A coluna no ar: tinta cheia e a régua embaixo acesa. É como o boletim
+     marca a partida em curso, e resolve "onde eu estou" sem desenhar caixa. */
+  .bl-vista.on { color: var(--fg); border-bottom-color: var(--acento); }
+  .bl-vista.on b { color: var(--fg); }
+  /* Estado continua semântico, mas só no número, nunca numa borda lateral: a
+     barra colorida à esquerda é o vocabulário de cartão que esta direção
+     recusou. */
   .bl-vista.v-working b { color: var(--working); }
-  .bl-vista.v-waiting { border-left-color: var(--waiting); }
   .bl-vista.v-waiting b { color: var(--waiting); }
-  .bl-vista.v-done { border-left-color: var(--done); }
-  /* A visao no ar. Nao basta a borda: com quatro cartoes iguais lado a lado, 1px
-     de cor nao responde "onde eu estou". O fundo e o texto acesos respondem. */
-  .bl-vista.on { background: var(--line-soft); border-color: var(--acento); color: var(--fg); }
+  .bl-vista.v-done b { color: var(--done); }
 
   /* Cabecalho de secao. O total anda COLADO no nome, em pastilha: antes ele
      morava em `margin-left:auto` e ia parar a 1860px do titulo que conta. */
@@ -1012,12 +1246,12 @@
   .ct {
     display: flex; flex-direction: column; min-width: 0;
     background: var(--surface); border: 1px solid var(--line);
-    border-left: 3px solid var(--line); border-radius: 10px; overflow: hidden;
+    border-bottom: 2px solid var(--line); border-radius: 10px; overflow: hidden;
   }
-  .ct.s-working { border-left-color: var(--working); }
-  .ct.s-waiting { border-left-color: var(--waiting); }
-  .ct.s-failed  { border-left-color: var(--failed); }
-  .ct.s-done    { border-left-color: var(--done); }
+  .ct.s-working { border-bottom-color: var(--working); }
+  .ct.s-waiting { border-bottom-color: var(--waiting); }
+  .ct.s-failed  { border-bottom-color: var(--failed); }
+  .ct.s-done    { border-bottom-color: var(--done); }
 
   /* O corpo clicavel. `min-height` fixo e o que alinha o rodape de todos os
      cartoes fechados da mesma fileira; sem ele a grade fica com a base
@@ -1178,10 +1412,10 @@
   .pl-prova { color: var(--dim); max-width: 260px; }
   /* o estado colore o fio da esquerda, como nos cartões: cor sozinha nunca
      carrega significado, ela repete o que a coluna Status já diz por escrito */
-  .pl-l { border-left: 3px solid transparent; }
-  .pl-l.s-andando { border-left-color: var(--working); }
-  .pl-l.s-travado { border-left-color: var(--waiting); }
-  .pl-l.s-feito { border-left-color: var(--done); }
+  .pl-l { border-bottom: 2px solid transparent; }
+  .pl-l.s-andando { border-bottom-color: var(--working); }
+  .pl-l.s-travado { border-bottom-color: var(--waiting); }
+  .pl-l.s-feito { border-bottom-color: var(--done); }
   .pl-l > td:first-child { padding-left: 8px; }
 
   .m-rotas-tab { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -1352,15 +1586,24 @@
 
   /* O quadradinho. A barra de 3px na esquerda e a mesma linguagem do cartao
      grande, so que agora cerca 54px em vez de 320. */
+  /* No boletim, um resultado não é um cartão: é notação numa casa da tabela. A
+     casa do tabuleiro é quadrada, e é isso que a proporção 1/1 já era. O que
+     muda é o vocabulário: sai a caixa arredondada com fundo tingido e barra
+     lateral, entra a casa com fio fino e a notação centrada.
+
+     O estado deixa de ser fundo colorido e passa a ser a TINTA da notação mais
+     um fio embaixo, do jeito que uma folha impressa marca resultado. Fundo
+     tingido em 30 casas ao mesmo tempo é papel de parede, e foi a queixa dele
+     sobre "NA FILA" repetido em toda parte. */
   .gq {
     aspect-ratio: 1 / 1; min-width: 0; overflow: hidden;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
     padding: 2px; margin: 0; cursor: pointer; color: var(--dim);
-    background: var(--surface); border: 1px solid var(--line);
-    border-left: 3px solid var(--line); border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--line-soft);
+    border-bottom: 2px solid var(--line); border-radius: 2px;
   }
-  /* Sombra interna em vez de `border-color` no hover: a borda esquerda carrega
-     o estado, e trocar a cor dela no hover apagaria a informacao no toque. */
+  /* Sombra interna em vez de `border-color` no hover: o fio de baixo carrega
+     o estado, e trocar a cor dele no hover apagaria a informacao no toque. */
   .gq:hover { box-shadow: inset 0 0 0 1px var(--acento); }
   .gq:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
   .gq-cod { font: 700 11px/1 var(--mono); letter-spacing: 0; color: var(--fg); white-space: nowrap; }
@@ -1372,18 +1615,17 @@
     font: 700 11px/1 var(--label); letter-spacing: .04em; text-transform: uppercase;
     white-space: nowrap; max-width: 100%; overflow: hidden;
   }
-  .gq.s-working { border-color: color-mix(in srgb, var(--working) 40%, var(--line));
-    border-left-color: var(--working); background: color-mix(in srgb, var(--working) 13%, var(--surface)); }
-  .gq.s-working .gq-est { color: var(--working); }
-  .gq.s-waiting { border-color: color-mix(in srgb, var(--waiting) 40%, var(--line));
-    border-left-color: var(--waiting); background: color-mix(in srgb, var(--waiting) 13%, var(--surface)); }
-  .gq.s-waiting .gq-est { color: var(--waiting); }
-  .gq.s-failed { border-color: color-mix(in srgb, var(--failed) 40%, var(--line));
-    border-left-color: var(--failed); background: color-mix(in srgb, var(--failed) 13%, var(--surface)); }
-  .gq.s-failed .gq-est { color: var(--failed); }
-  .gq.s-done { border-color: color-mix(in srgb, var(--done) 40%, var(--line));
-    border-left-color: var(--done); background: color-mix(in srgb, var(--done) 13%, var(--surface)); }
-  .gq.s-done .gq-est { color: var(--done); }
+  /* O estado vive no fio de baixo e na tinta, nunca no fundo. Uma folha de
+     boletim não tinge a casa inteira para dizer o resultado: ela escreve o
+     resultado. */
+  .gq.s-working { border-bottom-color: var(--working); }
+  .gq.s-working .gq-est, .gq.s-working .gq-cod { color: var(--working); }
+  .gq.s-waiting { border-bottom-color: var(--waiting); }
+  .gq.s-waiting .gq-est, .gq.s-waiting .gq-cod { color: var(--waiting); }
+  .gq.s-failed { border-bottom-color: var(--failed); }
+  .gq.s-failed .gq-est, .gq.s-failed .gq-cod { color: var(--failed); }
+  .gq.s-done { border-bottom-color: var(--done); }
+  .gq.s-done .gq-est, .gq.s-done .gq-cod { color: var(--done); }
   .gq.sel { outline: 2px solid var(--acento); outline-offset: 1px; box-shadow: none; }
 
   /* O detalhe abre no lugar, logo abaixo da fileira do quadrado tocado. Nao e
@@ -1392,12 +1634,12 @@
     margin: 9px 0 0; padding: 12px 13px; max-width: 760px;
     display: grid; gap: 8px; overflow: hidden;
     background: var(--surface); border: 1px solid var(--line);
-    border-left: 3px solid var(--line); border-radius: 10px;
+    border-bottom: 2px solid var(--line); border-radius: 10px;
   }
-  .gq-det.s-working { border-left-color: var(--working); }
-  .gq-det.s-waiting { border-left-color: var(--waiting); }
-  .gq-det.s-failed  { border-left-color: var(--failed); }
-  .gq-det.s-done    { border-left-color: var(--done); }
+  .gq-det.s-working { border-bottom-color: var(--working); }
+  .gq-det.s-waiting { border-bottom-color: var(--waiting); }
+  .gq-det.s-failed  { border-bottom-color: var(--failed); }
+  .gq-det.s-done    { border-bottom-color: var(--done); }
   .gq-det-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .gq-det-t {
     font-size: 14.5px; font-weight: 600; line-height: 1.34; color: var(--fg); overflow-wrap: anywhere;
@@ -1421,7 +1663,7 @@
      pergunta que ela responde vem antes de "o que falta": ele abre o painel no
      meio da conversa querendo saber o que aconteceu enquanto lia. */
   .mudou {
-    border: 1px solid var(--line); border-left: 3px solid var(--done);
+    border: 1px solid var(--line); border-bottom: 2px solid var(--done);
     border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; background: var(--surface);
   }
   .mudou h4 {
@@ -1449,7 +1691,7 @@
     margin: -2px 0 6px 30px; font-size: 11px; line-height: 1.45; color: var(--dim);
     border-left: 2px solid var(--failed); padding-left: 8px;
   }
-  .todo-rev.rev-ok { border-left-color: var(--done); }
+  .todo-rev.rev-ok { border-bottom-color: var(--done); }
   .todo-rev b { color: var(--faint); }
   .rev-resp { display: block; color: var(--dim); }
   .rev-aberta { display: block; color: var(--failed); font-size: 11.5px; }
@@ -1532,7 +1774,7 @@
   .doc-leitor ul { margin: 0 0 12px; padding-left: 20px; }
   .doc-leitor li { margin-bottom: 4px; }
   .doc-leitor blockquote {
-    margin: 0 0 12px; padding-left: 12px; border-left: 3px solid var(--faint);
+    margin: 0 0 12px; padding-left: 12px; border-bottom: 2px solid var(--faint);
     color: var(--dim); font-style: italic;
   }
   .doc-leitor pre { background: var(--surface); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; }
@@ -1593,7 +1835,119 @@
      esquerda é o que continua legível quando a linha quebra em duas no
      celular. Nada de fundo tingido: o `.s-working` já provou que fundo de
      estado torna o texto de dentro ilegível. */
-  .fw-linha.fw-ativo { border-color: var(--working); border-left-width: 3px; }
+  .fw-linha.fw-ativo { border-color: var(--working); border-bottom-width: 2px; }
+
+  /* ============ A LINHA DE VEZ (contrato: primeiro viewport) ============
+
+     A régua DUPLA é a assinatura do boletim impresso: no papel, a separação
+     entre o cabeçalho e a tabela nunca é um fio só. Aqui ela é feita com
+     borda mais outline, porque duas bordas reais custariam um elemento a mais
+     por linha.
+
+     Sem cartão, sem sombra, sem canto arredondado: a folha é plana. Cartão com
+     sombra é o vocabulário do painel padrão que esta direção recusou. */
+  .vez {
+    max-width: 720px;
+    margin: 0 0 18px;
+    border-top: 2px solid var(--tinta);
+    border-bottom: 1px solid var(--tinta);
+    padding: 8px 0 0;
+  }
+  .vez-cab { display: flex; align-items: baseline; gap: 8px; padding: 0 2px 6px; }
+  .vez-rot {
+    font-family: var(--label);
+    font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--vez);
+  }
+  .vez-calma .vez-rot { color: var(--dim); }
+  /* Tabular para o número não dançar de largura a cada atualização do stream:
+     é a mesma razão pela qual boletim impresso alinha placar em coluna. */
+  .vez-n {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 15px; font-weight: 700; color: var(--fg);
+  }
+  .vez-outro { margin-left: auto; font-size: 11.5px; color: var(--faint); }
+
+  .vez-linha {
+    display: grid;
+    grid-template-columns: 14px minmax(0, auto) minmax(0, 1fr) auto;
+    align-items: baseline; gap: 3px 8px;
+    width: 100%; padding: 8px 2px; text-align: left;
+    background: none; border: 0; border-top: 1px solid var(--line-soft);
+    color: inherit; font: inherit; cursor: pointer;
+  }
+  .vez-linha:first-of-type { border-top: 0; }
+  .vez-linha:hover { background: var(--surface); }
+  .vez-linha:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+  /* A bandeira caída, e só na que espera há mais tempo. */
+  .vez-bandeira { color: var(--vez); font-size: 10px; line-height: 1; }
+  .vez-proj { font-family: var(--mono); font-size: 12px; color: var(--fg); font-weight: 600; }
+  .vez-linha.caiu .vez-proj { color: var(--vez); }
+  .vez-que {
+    font-size: 12.5px; color: var(--dim);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .vez-quando {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 11px; color: var(--faint); white-space: nowrap;
+  }
+
+  /* A frase e a ação: segunda linha da tira, alinhada sob o assunto.
+     `grid-row: 2` em vez de mais uma coluna porque em 390px não há largura
+     para uma quarta coluna de texto, e o que a tira precisa dizer inteiro é
+     justamente a frase. */
+  .vez-porque {
+    grid-row: 2; grid-column: 2 / -2;
+    font-size: 12px; color: var(--dim);
+    overflow-wrap: anywhere;
+  }
+  /* Cor com dono: "travado" é problema e usa a cor de problema; os outros dois
+     são estado normal de espera e ficam acromáticos. Pintar os três daria a
+     árvore de Natal que a regra T3 recusa. */
+  .vez-porque.t-trava { color: var(--failed); }
+  .vez-ir {
+    grid-row: 2; grid-column: -2 / -1;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--label); font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--faint); white-space: nowrap;
+  }
+  .vez-linha:hover .vez-ir, .vez-linha:focus-visible .vez-ir { color: var(--acento); }
+  /* A que espera há mais tempo é a que ele deve abrir primeiro, e é a única em
+     que o convite fica aceso sem passar o mouse. Mesmo princípio da bandeira:
+     destacar todas seria não destacar nenhuma. */
+  .vez-linha.caiu .vez-ir { color: var(--dim); }
+
+  /* Nada esperando: uma linha só, sem faixa e sem número zero. */
+  .vez-calma {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    border-bottom: 0; padding-bottom: 6px;
+  }
+  /* `min-width: 0` mais `overflow-wrap` porque o assunto é texto livre escrito
+     pelo agente: sem isso ele vaza pela direita em 390px, que foi o que a
+     primeira captura mostrou. */
+  /* Seção sem conteúdo: uma linha discreta, não um bloco com caixa vazia. */
+  .gr-zero { margin: 0 0 12px; font-size: 12px; color: var(--faint); }
+
+  /* Ícone desenhado, alinhado com o texto ao lado. `vertical-align` porque
+     SVG inline senta na linha de base e fica alto demais dentro de botão. */
+  .ico-svg { vertical-align: -.18em; flex: none; }
+
+  .vez-corrido { font-size: 12px; color: var(--dim); min-width: 0; overflow-wrap: anywhere; }
+  .vez-corrido b { font-family: var(--mono); color: var(--fg); font-weight: 600; }
+  .vez-corrido i { font-style: normal; color: var(--faint); }
+
+  @container (max-width: 460px) {
+    /* No celular o assunto sai da linha e vai para baixo, porque três colunas
+       de texto em 390px espremem o nome do projeto até ele deixar de ser
+       reconhecível, e o nome é o que ele procura. */
+    .vez-linha { grid-template-columns: 14px minmax(0, 1fr) auto; }
+    /* As três linhas explícitas: sem isso o assunto e a frase disputam a mesma
+       linha do grid e uma cobre a outra. Foi o que aconteceu ao acrescentar a
+       frase: no largo sobrava coluna, no estreito não. */
+    .vez-que { grid-row: 2; grid-column: 2 / -1; white-space: normal; }
+    .vez-porque { grid-row: 3; grid-column: 2 / -2; }
+    .vez-ir { grid-row: 3; grid-column: -2 / -1; }
+  }
 
   /* CC-155: o mapa das avenidas. O SVG rola de lado dentro do próprio bloco
      quando não cabe, e nunca empurra a página: rolagem horizontal no corpo é
@@ -1611,17 +1965,17 @@
   .av-legs { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
   .av-leg {
     font-size: 11.5px; padding: 4px 8px; border-radius: 6px;
-    border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border: 1px solid var(--line); border-bottom: 2px solid var(--line);
   }
-  .av-leg.colisao { border-left-color: var(--failed); }
-  .av-leg.vizinhanca { border-left-color: var(--waiting); }
+  .av-leg.colisao { border-bottom-color: var(--failed); }
+  .av-leg.vizinhanca { border-bottom-color: var(--waiting); }
   .av-leg span { color: var(--dim); }
   /* CC-164: o framework do projeto ativo, na tela de trabalho. Uma linha por
      projeto, com o nome dele na frente, porque a faixa serve a vários. */
   .bl-fw-proj {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
     padding: 6px 10px; margin-bottom: 4px; font-size: 11.5px;
-    border: 1px solid var(--line); border-left: 3px solid var(--working); border-radius: 8px;
+    border: 1px solid var(--line); border-bottom: 2px solid var(--working); border-radius: 8px;
   }
   .bl-fw-proj > b { min-width: 0; overflow-wrap: anywhere; }
 
@@ -1661,7 +2015,7 @@
   /* CC-87, hooks agrupados por nível. A linha fantasma (ligada e não
      registrada) é a única que ganha cor: ela parece ativa e não faz nada. */
   .hk-grupo { margin-bottom: 14px; }
-  .hk-linha.fantasma { border-left: 3px solid var(--failed); padding-left: 7px; }
+  .hk-linha.fantasma { border-bottom: 2px solid var(--failed); padding-left: 7px; }
   .hk-planejados { margin-top: 10px; }
   .hk-planejados summary { color: var(--dim); font-size: 12px; cursor: pointer; }
 
@@ -1669,7 +2023,7 @@
      por isso usa o mesmo desenho de cartão da entrevista. */
   .np {
     margin: 10px 0 4px; padding: 12px 14px; border-radius: 9px;
-    background: var(--card); border-left: 4px solid var(--acento);
+    background: var(--card); border-bottom: 2px solid var(--acento);
   }
   .np-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 9px; margin: 10px 0; }
   .np-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--dim); }
@@ -1698,7 +2052,7 @@
      precisa ler para responder, e tudo o mais ali é apoio. */
   .ent {
     margin: -2px 0 8px; padding: 12px 14px; border-radius: 9px;
-    background: var(--card); border-left: 4px solid var(--acento);
+    background: var(--card); border-bottom: 2px solid var(--acento);
   }
   .ent-cab { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
   .ent-cab b { font-size: 12px; }
@@ -1745,9 +2099,9 @@
   .fw-aut {
     display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
     margin-top: 8px; padding: 8px 11px; border-radius: 7px;
-    background: var(--surface); border-left: 3px solid var(--waiting);
+    background: var(--surface); border-bottom: 2px solid var(--waiting);
   }
-  .fw-aut.ok { border-left-color: var(--done); }
+  .fw-aut.ok { border-bottom-color: var(--done); }
   .fw-aut b { font-size: 12px; }
   .fw-aut .path { flex: 1 1 200px; }
   /* a confirmação da troca de modo: o que o ARQUIVO diz, não o que foi clicado */
@@ -1759,25 +2113,36 @@
   /* CC-87: o topo de toda tela. Mesmo desenho do veredito da VPS, que foi a
      primeira a usar — a barra colorida à esquerda é o que faz o olho pousar
      ali antes do conteúdo. */
+  /* O título da folha. Boletim impresso abre com o nome da rodada em tinta
+     cheia e uma régua embaixo, não com uma caixa de barra lateral colorida.
+     A barra de 4px era o mesmo vocabulário de callout que o resto da direção
+     recusou; o estado agora vive na cor da própria régua, que é como a folha
+     marca a seção. */
   .tela-cabeca {
-    display: flex; flex-direction: column; gap: 3px; padding: 11px 14px;
-    border-radius: 9px; margin-bottom: 14px; background: var(--card);
-    border-left: 4px solid var(--dim);
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 0 0 9px; margin-bottom: 14px; background: none;
+    border-bottom: 2px solid var(--dim);
   }
-  .tela-cabeca b { font-size: 1.02rem; }
+  .tela-cabeca b { font-size: 1.06rem; letter-spacing: -.01em; }
   .tela-cabeca span { color: var(--dim); font-size: .88rem; }
-  .tela-cabeca.v-bom { border-left-color: var(--done); }
-  .tela-cabeca.v-atencao { border-left-color: var(--waiting); }
-  .tela-cabeca.v-ruim { border-left-color: var(--failed); }
+  /* A régua fica neutra quando há alguém esperando, e isso não é timidez.
+     Com o veredito em âmbar logo acima da linha de vez em vermelho, duas
+     cores de alerta empilhavam a 20px uma da outra, e o contrato reserva o
+     vermelho para um significado só. Duas cores de aviso na mesma faixa não
+     avisam duas vezes: cancelam uma à outra.
+     A linha de vez fica com o sinal, porque é ela que diz o que fazer. */
+  .tela-cabeca.v-bom { border-bottom-color: var(--done); }
+  .tela-cabeca.v-atencao { border-bottom-color: var(--tinta); }
+  .tela-cabeca.v-ruim { border-bottom-color: var(--failed); }
 
   /* CC-83: os três níveis de backlog. A coluna "agora" é derivada de quem
      tem agente — nunca digitada, senão vira artefato que envelhece. */
   .m-niveis { display: grid; gap: 8px; margin-bottom: 16px; }
   .m-nivel { padding: 9px 12px; border-radius: 8px; background: var(--surface);
-    border-left: 3px solid var(--line); }
-  .m-nivel.n-agora { border-left-color: var(--working); }
-  .m-nivel.n-fila { border-left-color: var(--waiting); }
-  .m-nivel.n-prontas { border-left-color: var(--done); opacity: .7; }
+    border-bottom: 2px solid var(--line); }
+  .m-nivel.n-agora { border-bottom-color: var(--working); }
+  .m-nivel.n-fila { border-bottom-color: var(--waiting); }
+  .m-nivel.n-prontas { border-bottom-color: var(--done); opacity: .7; }
   .m-nivel-cab { display: flex; align-items: baseline; gap: 8px; }
   .m-nivel-cab b { font: 700 11px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; }
   .m-nivel-itens { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
@@ -1812,7 +2177,7 @@
      e fio na esquerda porque é fala DELE, o mesmo tratamento das citações. */
   /* CC-122: o que mudou desde a última olhada. Fio na esquerda porque é
      histórico, não tarefa: nada aqui se clica para fazer. */
-  .dqo { margin: 10px 0 4px; border-left: 3px solid var(--done); padding-left: 12px; }
+  .dqo { margin: 10px 0 4px; border-bottom: 2px solid var(--done); padding-left: 12px; }
   .dqo summary { cursor: pointer; font-size: 14px; color: var(--dim); }
   .dqo summary b { color: var(--fg); }
   .dqo-lista { display: grid; gap: 6px; margin: 10px 0; max-height: 320px; overflow-y: auto; }
@@ -1822,7 +2187,7 @@
   .fp-lista { display: grid; gap: 10px; margin-top: 12px; }
   .fp-item {
     background: var(--surface); border-radius: 12px; box-shadow: var(--sombra);
-    border-left: 3px solid var(--acento); padding: 12px 14px;
+    border-bottom: 2px solid var(--acento); padding: 12px 14px;
   }
   .fp-item header { padding: 0; background: none; position: static; }
   .fp-item p { margin: 6px 0 0; font-size: 15px; line-height: 1.5; white-space: pre-wrap; }
@@ -2012,7 +2377,7 @@
   .t-mod { display: flex; gap: 18px; flex-wrap: wrap; color: var(--dim); font-size: 12px; }
 
   .aviso-todo {
-    border: 1px solid var(--waiting); border-left-width: 3px; border-radius: 4px;
+    border: 1px solid var(--waiting); border-bottom-width: 2px; border-radius: 4px;
     background: var(--surface); padding: 10px 12px; margin-bottom: 14px; display: grid; gap: 6px;
   }
   .aviso-todo > b { color: var(--waiting); font-weight: 600; }
@@ -2034,11 +2399,11 @@
   .m-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; position: sticky; top: 0; background: var(--bg); padding-bottom: 8px; }
   .m-todo-ok { color: var(--done); margin-top: 14px; }
   .m-head b { font: 700 15px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; }
-  .m-grupo { margin-bottom: 18px; padding-left: 10px; border-left: 3px solid var(--line); }
-  .m-grupo.e-bloqueado { border-left-color: var(--failed); }
-  .m-grupo.e-esperando { border-left-color: var(--waiting); }
-  .m-grupo.e-aberto { border-left-color: var(--done); }
-  .m-grupo.e-feito { border-left-color: var(--idle); opacity: .65; }
+  .m-grupo { margin-bottom: 18px; padding-left: 10px; border-bottom: 2px solid var(--line); }
+  .m-grupo.e-bloqueado { border-bottom-color: var(--failed); }
+  .m-grupo.e-esperando { border-bottom-color: var(--waiting); }
+  .m-grupo.e-aberto { border-bottom-color: var(--done); }
+  .m-grupo.e-feito { border-bottom-color: var(--idle); opacity: .65; }
   .m-gtit { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
   /* CC-80: onde a frente costuma mexer, derivado do git. Recuado sob o
      título, do mesmo jeito que a barra de fração já é sub-informação dele. */
@@ -2084,16 +2449,16 @@
   /* ---------- preço ---------- */
   .p-niveis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); margin: 4px 0 16px; }
   .p-nivel {
-    border: 1px solid var(--line); border-left-width: 3px; border-radius: 4px;
+    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px;
     background: var(--surface); padding: 10px 12px; display: grid; gap: 4px;
   }
   .p-nivel b { font: 700 11px/1 var(--label); letter-spacing: .07em; text-transform: uppercase; }
   .p-nivel .p-hora { font-size: 20px; color: var(--fg); font-variant-numeric: tabular-nums; }
   .p-nivel .p-hora i { font-size: 12px; color: var(--faint); font-style: normal; }
   .p-nivel input { width: 90px; }
-  .n-junior { color: var(--done); }  .p-nivel.n-junior { border-left-color: var(--done); }
-  .n-pleno  { color: var(--working); } .p-nivel.n-pleno { border-left-color: var(--working); }
-  .n-senior { color: var(--waiting); } .p-nivel.n-senior { border-left-color: var(--waiting); }
+  .n-junior { color: var(--done); }  .p-nivel.n-junior { border-bottom-color: var(--done); }
+  .n-pleno  { color: var(--working); } .p-nivel.n-pleno { border-bottom-color: var(--working); }
+  .n-senior { color: var(--waiting); } .p-nivel.n-senior { border-bottom-color: var(--waiting); }
 
   .p-resumo { display: flex; gap: 32px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--line-soft); }
   .p-resumo div { display: grid; gap: 2px; }
@@ -2288,15 +2653,15 @@
   .vps-form button { justify-self: start; }
   /* ---- a tela responde uma pergunta, e o veredito vem antes do dado ---- */
   .vps-veredito { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px;
-    border-radius: 10px; margin-bottom: 14px; border-left: 4px solid var(--dim); background: var(--card); }
+    border-radius: 10px; margin-bottom: 14px; border-bottom: 2px solid var(--dim); background: var(--card); }
   .vps-veredito b { font-size: 1.05rem; }
-  .vps-veredito.v-bom { border-left-color: var(--done); }
-  .vps-veredito.v-atencao { border-left-color: var(--waiting); }
-  .vps-veredito.v-ruim { border-left-color: var(--failed); }
+  .vps-veredito.v-bom { border-bottom-color: var(--done); }
+  .vps-veredito.v-atencao { border-bottom-color: var(--waiting); }
+  .vps-veredito.v-ruim { border-bottom-color: var(--failed); }
   .vps-alertas { display: grid; gap: 8px; margin-bottom: 18px; }
   .vps-alerta { padding: 10px 14px; border-radius: 8px; background: var(--card);
-    border-left: 3px solid var(--waiting); display: flex; flex-direction: column; gap: 2px; }
-  .vps-alerta.a-grave { border-left-color: var(--failed); }
+    border-bottom: 2px solid var(--waiting); display: flex; flex-direction: column; gap: 2px; }
+  .vps-alerta.a-grave { border-bottom-color: var(--failed); }
   /* o "o que fazer" é o que separa alerta de ruído, então nunca é escondido */
   .vps-alerta span { color: var(--dim); font-size: .86rem; }
   .vps-tec { color: var(--faint); font-size: .76rem; }
@@ -2358,7 +2723,7 @@
   .ag-local { font-size: 11px; }
   /* acontecendo agora ganha a cor de foco; o que já passou apaga mas não some,
      porque "o que eu fiz hoje" é justamente a pergunta do digest de conteúdo */
-  .ag-ev.agora { border-left-color: var(--acento); background: var(--surface); }
+  .ag-ev.agora { border-bottom-color: var(--acento); background: var(--surface); }
   .ag-ev.agora .ag-hora { color: var(--acento); font-weight: 600; }
   .ag-ev.passou { opacity: .5; }
   @container (max-width: 620px) {
@@ -2520,6 +2885,20 @@
        botão que o navegador não suporta não pode aparecer só porque abriu. */
     .ferramentas > .ctl-extra:not([hidden]) { display: none; }
     .ferramentas.aberta > .ctl-extra:not([hidden]) { display: inline-flex; }
+
+    /* A faixa de hardware e player entra no mesmo "⋯", e isso é o conserto do
+       primeiro viewport do contrato.
+       Medido: no telefone ela empurrava a linha de vez para 31% da altura,
+       abaixo de dois medidores de uso e de um cartão de player mostrando o
+       nome de um vídeo. Nada ali é urgente. CPU, memória e música são
+       ambiente, e ambiente acima da única pergunta que a tela responde é
+       ambiente ocupando a dobra.
+       Não some do produto: é o mesmo princípio que os outros controles já
+       seguem aqui, o de cima simples e o resto a um clique. No monitor nada
+       muda. */
+    .linha-abas > .modulos { display: none; }
+    .ferramentas.aberta ~ * .modulos,
+    #painel:has(.ferramentas.aberta) .linha-abas > .modulos { display: flex; }
     #painel > header { padding: 12px 12px 0; }
     main { padding: 4px 12px 40px; }
     #painel > footer { padding: 0 12px 24px; }
@@ -2605,6 +2984,11 @@
   var TEMAS = [
     { id: 'noite', nome: 'escuro', escuro: true },
     { id: 'papel', nome: 'claro', escuro: false },
+    /* Em avaliação: o chão da sala de operação, contra o oliva de tabuleiro.
+       Fica no seletor porque a escolha é dele olhando, e ele olha no aparelho
+       dele, não num print meu. Sai daqui assim que ele decidir: ou vira o
+       escuro padrão, ou o bloco de CSS inteiro é apagado. */
+    { id: 'torre', nome: 'escuro (sala de operação)', escuro: true },
   ]
   // ?tema= existe para a captura de tela: headless não tem preferência de
   // sistema nem localStorage, e sem isso não dá para conferir tema nenhum.
@@ -2634,6 +3018,33 @@
 </script>
 </head>
 <body>
+<!--
+  CONTRATO DE DIREÇÃO. Boletim de Torneio (seed eabd5065, forma 7 de 7)
+
+  THESIS: a folha onde N partidas simultâneas dizem de quem é a vez. Recusa o
+  cartão de métrica com número grande: a pergunta dele nunca foi "quanto", foi
+  "onde eu jogo agora". Xadrez por correspondência é o padrão medido dele:
+  ~10 min por projeto, 67% de troca entre mensagens.
+
+  OWN-WORLD: tabuleiro (casa escura de fundo, casa clara de campo), tinta densa
+  de boletim impresso, e a bandeirinha do relógio em vermelho reservada a UMA
+  coisa, "é a sua vez". Régua dupla de tabela separa seções. Notação
+  monoespaçada onde alinha dígito, condensada nos rótulos.
+
+  STORY: bate o olho, vê em quais projetos a jogada é dele, joga, sai.
+
+  FIRST VIEWPORT: linha de vez no topo, com bandeirinha em quem espera há mais
+  tempo. Abaixo, a tabela de cruzamento, uma linha por projeto. Sem gráfico,
+  sem cartão vazio ocupando altura.
+
+  FORM: candidata 7 da lista ordenada por ressonância. Elevada por três
+  desafiantes derrotados: cor funcional fixa (teletexto), densidade sem medo
+  (campo de dados), foco que recua o resto (parede de catálogo).
+
+  FINISH: unreviewed and undocumented is unfinished; this build ends with the
+  finish review, the verdict, DESIGN.md, and every shipping raster carrying its
+  provenance.
+-->
 <div id="painel">
   <header>
     <div class="top">
@@ -2657,7 +3068,7 @@
         <select id="tema-sel" class="ctl-extra" title="tema do painel" aria-label="tema do painel"></select>
         <button class="btn ctl-extra" id="n-toggle" aria-pressed="false">notas</button>
         <button class="btn ctl-extra" id="pip-toggle" hidden aria-pressed="false">flutuar</button>
-        <button class="btn ctl-extra" id="pip-config-toggle" hidden title="escolher o que aparece na janela flutuante">⚙</button>
+        <button class="btn ctl-extra" id="pip-config-toggle" hidden title="escolher o que aparece na janela flutuante"><svg class="ico-svg" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h9"/><path d="M18 8h1"/><path d="M5 16h3"/><path d="M12 16h7"/><circle cx="16" cy="8" r="2"/><circle cx="10" cy="16" r="2"/></svg></button>
       </div>
     </div>
     <!-- O player divide a linha com as abas: sobra espaço à direita ali, e no
@@ -2761,6 +3172,15 @@ const tempoParams = {
   ate: params.get('ate') || '',
 }
 const tempoAberto = new Set()
+/* CC-184: qual aparelho a tela de tempo está mostrando. Vazio é "todos,
+   somados", que é o padrão porque a pergunta dele começa no total.
+
+   Não é `tempoParams` de propósito: aquilo vira consulta ao servidor, e este
+   recorte é feito com o que a página já tem na mão. Pedir de novo ao servidor
+   dispararia uma varredura de centenas de MB para responder o que já está
+   carregado. Também não é guardado entre sessões: filtro escondido ativo no
+   dia seguinte é como um número passa a mentir sem erro na tela. */
+let tempoMaquina = params.get('aparelho') || ''
 let armed = null              // pid com "encerrar" armado, aguardando confirmação
 let selected = params.get('open') || null
 
@@ -2824,10 +3244,24 @@ const TABS = [
  * levando direto a qualquer uma delas, inclusive as de dentro da gaveta.
  */
 const GRUPOS = [
-  { id: 'agora', label: 'agora', ico: '◉', abas: ['projetos', 'agentes', 'todos', 'meu', 'escritorio'] },
-  { id: 'custo', label: 'custo', ico: '◔', abas: ['tempo', 'graficos', 'preco'] },
-  { id: 'controle', label: 'controle', ico: '✦', gaveta: true, abas: ['servidores', 'vps', 'hooks', 'bancada', 'rotinas', 'remoto'] },
-  { id: 'saber', label: 'saber', ico: '✎', gaveta: true, abas: ['glossario', 'docs', 'agenda'] },
+  /* Os quatro ícones da barra de baixo, desenhados no mesmo traço.
+     Eram glifos Unicode de quatro blocos diferentes (`◉ ◔ ✦ ✎`), e o resultado
+     media quatro pesos visíveis lado a lado numa barra de quatro itens: um
+     preenchido pesado, um fio de cabelo, um sólido, um fino. Glifo não é
+     sistema de ícone, ele é o que a fonte instalada resolveu desenhar.
+
+     Aqui é SVG autoral em `stroke-width: 1.6`, sem preenchimento, todos na
+     mesma grade de 24, e cada forma sai do mundo do boletim de torneio:
+     o relógio de xadrez, a moeda do prêmio, a régua da folha, a caneta de
+     anotar o lance. `currentColor` mantém o estado semântico funcionando. */
+  { id: 'agora', label: 'agora', abas: ['projetos', 'agentes', 'todos', 'meu', 'escritorio'],
+    svg: '<circle cx="12" cy="13" r="7"/><path d="M12 9.5V13l2.5 1.5"/><path d="M9 3.5h6"/>' },
+  { id: 'custo', label: 'custo', abas: ['tempo', 'graficos', 'preco'],
+    svg: '<circle cx="12" cy="12" r="8"/><path d="M12 7v10"/><path d="M14.5 9.5a2.5 2.5 0 0 0-5 .5c0 2.5 5 1.5 5 4a2.5 2.5 0 0 1-5 .5"/>' },
+  { id: 'controle', label: 'controle', gaveta: true, abas: ['servidores', 'vps', 'hooks', 'bancada', 'rotinas', 'remoto'],
+    svg: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/><path d="M9 4v4"/><path d="M15 10v4"/><path d="M7 16v4"/>' },
+  { id: 'saber', label: 'saber', gaveta: true, abas: ['glossario', 'docs', 'agenda'],
+    svg: '<path d="M5 19.5V6a2 2 0 0 1 2-2h10a1 1 0 0 1 1 1v11"/><path d="M7 16h11"/><path d="M5 19.5A1.5 1.5 0 0 1 6.5 18H18v2.5H6.5A1.5 1.5 0 0 1 5 19.5z"/>' },
 ]
 // A aba lembrada pode não existir mais: quem tinha `custo` guardado abriria o
 // painel sem nenhuma aba marcada.
@@ -2864,6 +3298,33 @@ const ZONES = [
 const LABEL = { working: 'ativos', waiting: 'esperando', failed: 'falharam', done: 'prontos', idle: 'parados' }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+/**
+ * O conjunto de ícones, desenhado, no traço do boletim.
+ *
+ * Glifo Unicode e emoji não são sistema de ícone: cada um vem de um bloco
+ * diferente, com peso e alinhamento que a fonte instalada decide. Medido na
+ * barra de baixo antes de trocar: quatro glifos lado a lado renderizavam em
+ * quatro espessuras visíveis, um preenchido pesado ao lado de um fio.
+ *
+ * Uma grade de 24, `stroke-width: 1.6`, sem preenchimento, `currentColor`. A
+ * estrela é a única com variante cheia, porque favorito ligado e desligado
+ * precisam se distinguir sem depender de cor.
+ */
+const ICONES = {
+  estrela: '<path d="M12 4.5l2.3 4.9 5.2.7-3.8 3.7.9 5.2-4.6-2.5-4.6 2.5.9-5.2L4.5 10l5.2-.7z"/>',
+  retomar: '<path d="M4 12a8 8 0 1 1 2.6 5.9"/><path d="M4 19v-5h5"/>',
+  ajuste: '<path d="M5 8h9"/><path d="M18 8h1"/><path d="M5 16h3"/><path d="M12 16h7"/><circle cx="16" cy="8" r="2"/><circle cx="10" cy="16" r="2"/>',
+  travado: '<rect x="5" y="10.5" width="14" height="9" rx="1.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+  'seta-dir': '<path d="M5 12h13"/><path d="M13 7l5 5-5 5"/>',
+}
+
+/** `cheio` só existe para a estrela: favorito é o único estado que precisa da
+ *  forma preenchida para se ler sem cor. */
+const ico = (nome, { cheio = false, tam = 15 } = {}) => `<svg class="ico-svg" viewBox="0 0 24 24"
+  width="${tam}" height="${tam}" aria-hidden="true" focusable="false"
+  fill="${cheio ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.6"
+  stroke-linecap="round" stroke-linejoin="round">${ICONES[nome] || ''}</svg>`
 
 /**
  * CC: auditoria de design em 18/08. Erro de rede caía num `alert()` nativo,
@@ -2974,14 +3435,28 @@ function renderHeader() {
      que importavam. Zero não é informação aqui — é a ausência dela.
 
      `done` fica sempre, mesmo em zero: "0 prontos" é resposta legítima a "o que
-     terminou?", e sem ele a linha ficaria vazia num dia parado. */
-  $('#counts').innerHTML = ['waiting', 'failed', 'working', 'idle', 'done']
-    .filter((k) => (s[k] ?? 0) > 0 || k === 'done')
-    .map((k) => {
-      const n = s[k] ?? 0
-      const hot = n > 0 && (k === 'waiting' || k === 'failed')
-      return `<span class="count${hot ? ' hot' : ''}" style="${hot ? `color:var(--${k})` : ''}"><b>${n}</b>${LABEL[k]}</span>`
-    }).join('') + `<span class="count"><b>${tok(s.tokens)}</b>tokens</span>`
+     terminou?", e sem ele a linha ficaria vazia num dia parado.
+
+     19/08, Torre: o que espera POR ELE deixou de ser mais um contador na fila
+     e virou a frase principal da barra, com destinatário. "1 esperando" é
+     fato; "1 precisa de você" é instrução, e o topo silencioso da direção nova
+     existe para que a única coisa alta seja essa.
+
+     O total de tokens saiu. Ele nunca decidiu nada com esse número no topo: a
+     conta que muda decisão é a de custo por projeto, que mora na aba de tempo
+     com a frase junto. Número solto sem "e daí?" acima da dobra é o que a
+     regra T4 recusa. */
+  const esperam = s.waiting ?? 0
+  $('#counts').innerHTML = (esperam
+    ? `<span class="count vc-voce"><b>${esperam}</b>precisa${esperam > 1 ? 'm' : ''} de você</span>`
+    : '')
+    + ['failed', 'working', 'idle', 'done']
+      .filter((k) => (s[k] ?? 0) > 0 || k === 'done')
+      .map((k) => {
+        const n = s[k] ?? 0
+        const hot = n > 0 && k === 'failed'
+        return `<span class="count${hot ? ' hot' : ''}" style="${hot ? `color:var(--${k})` : ''}"><b>${n}</b>${LABEL[k]}</span>`
+      }).join('')
 
   const sel = $('#proj'), cur = sel.value
   sel.innerHTML = ['<option value="">todos os projetos</option>']
@@ -3122,7 +3597,9 @@ function renderHeader() {
   $('#app-bar').innerHTML = gruposVisiveis.map((g) => {
     const n = soma(g)
     return `<button data-grupo="${g.id}" aria-selected="${g.id === grupoAtivo.id}">
-      <span class="ico" aria-hidden="true">${g.ico}</span>${g.label}${n ? `<span class="n">${n}</span>` : ''}
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+        fill="none" stroke="currentColor" stroke-width="1.6"
+        stroke-linecap="round" stroke-linejoin="round">${g.svg}</svg>${g.label}${n ? `<span class="n">${n}</span>` : ''}
     </button>`
   }).join('')
 }
@@ -3484,10 +3961,10 @@ function cartao(j) {
         <span class="grow"></span>
         <span class="c-acts">
           <button data-act="resume" data-id="${j.id}" ${j.sessionId ? '' : 'disabled'}
-            title="${j.sessionId ? 'copiar claude --resume' : 'sem sessão para retomar'}">↻</button>
+            title="${j.sessionId ? 'copiar claude --resume' : 'sem sessão para retomar'}">${ico('retomar')}</button>
           <button data-act="pin" data-id="${j.id}" class="${j.pinned ? 'on' : ''}"
             title="${j.pinnedAqui ? 'desafixar' : j.pinned ? 'fixado pelo Claude Code' : 'fixar no topo'}"
-            ${j.pinned && !j.pinnedAqui ? 'disabled' : ''}>${j.pinned ? '★' : '☆'}</button>
+            ${j.pinned && !j.pinnedAqui ? 'disabled' : ''}>${ico('estrela', { cheio: j.pinned })}</button>
           <button data-act="path" data-id="${j.id}" title="copiar o caminho da pasta">⧉</button>
         </span>
       </header>
@@ -4597,6 +5074,58 @@ function viewTempo() {
   if (!TEMPO) return '<div class="empty">lendo os transcritos… a primeira vez varre ~800 MB</div>'
   if (TEMPO.error) return `<div class="empty">não deu para ler os transcritos: ${esc(TEMPO.error)}</div>`
 
+  /* CC-184: os aparelhos que têm hora neste período, e o recorte por um deles.
+     A conta é feita AQUI e não no servidor: o pacote já chega com a quebra
+     por origem em cada projeto, então filtrar é reler o que já está na mão.
+     Pedir de novo ao servidor faria uma varredura de centenas de MB para
+     responder o que a página já sabe. */
+  const maquinasComHoras = (() => {
+    const mapa = new Map()
+    for (const p of TEMPO.projetos || []) {
+      for (const m of p.porMaquina || []) {
+        if (m.ativoMs > 0 && m.maquina?.id) mapa.set(m.maquina.id, m.maquina)
+      }
+    }
+    return [...mapa.values()]
+  })()
+  /* O aparelho escolhido pode ter sumido (mudou o período, ou ele parou de
+     reportar). Cair para "todos" é melhor que mostrar uma tela vazia com um
+     filtro invisível ativo. */
+  if (tempoMaquina && !maquinasComHoras.some((m) => m.id === tempoMaquina)) tempoMaquina = ''
+
+  const soDoAparelho = (p) => {
+    if (!tempoMaquina) return p
+    const m = (p.porMaquina || []).find((x) => x.maquina?.id === tempoMaquina)
+    if (!m) return null
+    /* Horas e tokens viram os daquele aparelho, porque foram MEDIDOS por
+       aparelho. O `valor` é recalculado, e pode: é taxa vezes hora, e a hora
+       é dele.
+
+       Custo, custo real e sobra viram nulos. **Custo não se rateia por
+       proporção de horas**: só a máquina que fez a varredura calculou preço,
+       e o pacote que viaja não carrega essa conta. Repartir daria um número
+       inventado com cara de medido, e a coluna diz "custo api" como se
+       tivesse sido apurado. Com o filtro ligado a coluna não aparece, em vez
+       de aparecer errada. */
+    return {
+      ...p,
+      ativoMs: m.ativoMs,
+      tokens: m.tokens,
+      custo: null,
+      custoBrl: null,
+      valor: p.taxaHora ? p.taxaHora * (m.ativoMs / 36e5) : 0,
+      custoReal: null,
+      sobra: null,
+      /* Os dias e as sessões são da varredura local e não vêm quebrados por
+         aparelho: mostrá-los sob um filtro de outra máquina faria o gráfico
+         do projeto contradizer o número do cabeçalho. */
+      dias: [],
+      sessoes: [],
+      diasTrabalhados: 0,
+      porMaquina: [m],
+    }
+  }
+
   const ctl = `
     <div class="t-ctl">
       <label>parada que encerra
@@ -4606,6 +5135,21 @@ function viewTempo() {
       <label>de <input type="date" data-tempo="de" value="${esc(TEMPO.de || '')}"></label>
       <label>até <input type="date" data-tempo="ate" value="${esc(TEMPO.ate || '')}"></label>
       ${TEMPO.de || TEMPO.ate ? '<button class="btn" data-tempo-limpar>período inteiro</button>' : ''}
+      ${/* CC-184: somar tudo ou olhar um aparelho de cada vez. Pedido dele em
+            19/08: "possam ser somados como um total ou separados por
+            dispositivo".
+
+            O seletor só aparece quando existe mais de um aparelho com horas
+            no período: com um só, ele seria uma escolha sem alternativa
+            ocupando espaço, que é a mesma regra do seletor de máquina do
+            cabeçalho. */ ''}
+      ${maquinasComHoras.length > 1 ? `<label title="somar os aparelhos ou olhar um de cada vez">aparelho
+        <select data-tempo-maquina>
+          <option value=""${!tempoMaquina ? ' selected' : ''}>todos, somados</option>
+          ${maquinasComHoras.map((m) => `<option value="${esc(m.id)}"${
+            tempoMaquina === m.id ? ' selected' : ''}>só ${esc(m.nome)}</option>`).join('')}
+        </select>
+      </label>` : ''}
       <label title="0 esconde a coluna de valor">R$ por hora
         <input type="number" min="0" step="10" class="t-taxa" data-taxa value="${TEMPO.taxaGlobal || ''}" placeholder="ex: 140">
       </label>
@@ -4640,12 +5184,22 @@ function viewTempo() {
 
   if (!TEMPO.projetos.length) return ctl + aviso + '<div class="empty">nenhum trabalho no período</div>'
 
-  const totalMs = TEMPO.projetos.reduce((a, p) => a + p.ativoMs, 0)
-  const totalUsd = TEMPO.projetos.reduce((a, p) => a + p.custo, 0)
+  /* A lista que a tela inteira usa daqui para baixo: todos os aparelhos
+     somados, ou só o escolhido. Uma variável, não dois caminhos: dois
+     caminhos dariam dois totais e uma hora eles discordariam. */
+  const projetos = tempoMaquina
+    ? (TEMPO.projetos || []).map(soDoAparelho).filter(Boolean)
+    : (TEMPO.projetos || [])
+  if (!projetos.length) {
+    return ctl + aviso + `<div class="empty">nenhum trabalho deste aparelho no período</div>`
+  }
+
+  const totalMs = projetos.reduce((a, p) => a + p.ativoMs, 0)
+  const totalUsd = projetos.reduce((a, p) => a + p.custo, 0)
   // A coluna de valor só existe depois que uma taxa foi definida: sem taxa,
   // mostrar R$ 0,00 em toda linha diria que o trabalho não vale nada.
-  const comValor = TEMPO.projetos.some((p) => p.taxaHora > 0)
-  const comReal = TEMPO.assinaturaMes > 0
+  const comValor = projetos.some((p) => p.taxaHora > 0)
+  const comReal = TEMPO.assinaturaMes > 0 && !tempoMaquina
   const comSobra = comValor && comReal
   const cls = `${comValor ? ' com-valor' : ''}${comReal ? ' com-real' : ''}${comSobra ? ' com-sobra' : ''}`
 
@@ -4682,11 +5236,17 @@ function viewTempo() {
           esc(m.maquina.nome)} ${horas(m.ativoMs)}</span>`).join('')}`
         : ''}</span>
         <span class="v h">${horas(p.ativoMs)}</span>
-        <span class="v path">${p.diasTrabalhados}d</span>
-        <span class="v path">${horas(porDia)}/dia</span>
+        <span class="v path"${p.diasIncerto ? ` title="entre ${p.diasTrabalhados} e ${p.diasSomados} dias: as duas máquinas trabalharam neste projeto, e não dá para saber quantos dias coincidiram"` : ''}>${
+      p.diasIncerto ? `${p.diasTrabalhados} a ${p.diasSomados}d` : `${p.diasTrabalhados}d`}</span>
+        <span class="v path"${p.diasIncerto ? ` title="entre ${horas(porDia)} e ${horas(porDiaAlto)} por dia, conforme os dias das duas máquinas coincidam ou não"` : ''}>${
+      horas(porDia)}${p.diasIncerto ? '+' : ''}/dia</span>
         <span class="v num">${tok(p.tokens)}</span>
-        <span class="v cif" title="${usd(p.custo)} de API">${p.custoBrl == null ? usd(p.custo) : brl(p.custoBrl)}</span>
-        <span class="v path">${!p.ativoMs ? '...' : (() => {
+        ${/* Com filtro de aparelho, o custo é nulo de propósito (só uma
+              máquina calculou preço). Três pontinhos diz "não sei", que é a
+              verdade; zero diria "não custou nada". */ ''}
+        <span class="v cif" title="${p.custo == null ? 'o custo não é medido por aparelho' : usd(p.custo) + ' de API'}">${
+          p.custo == null ? '...' : p.custoBrl == null ? usd(p.custo) : brl(p.custoBrl)}</span>
+        <span class="v path">${!p.ativoMs || p.custo == null ? '...' : (() => {
           const porHora = p.custo / (p.ativoMs / 36e5)
           return TEMPO.cambio.brlPorUsd ? brl(porHora * TEMPO.cambio.brlPorUsd) + '/h' : usd(porHora) + '/h'
         })()}</span>
@@ -4758,13 +5318,20 @@ function viewTempo() {
     </div>`
   }
 
-  const totalValor = TEMPO.projetos.reduce((a, p) => a + p.valor, 0)
+  const totalValor = projetos.reduce((a, p) => a + p.valor, 0)
   /* CC-87. A pergunta tem duas metades porque a aba tem dois usos: saber quanto
      levou, e saber quanto vale. O veredito responde as duas em uma frase, com o
-     projeto que mais consumiu — que é a informação que ele procura primeiro. */
-  const maior = [...TEMPO.projetos].sort((a, b) => b.ativoMs - a.ativoMs)[0]
+     projeto que mais consumiu, que é a informação que ele procura primeiro. */
+  const maior = [...projetos].sort((a, b) => b.ativoMs - a.ativoMs)[0]
   const emReal = TEMPO.cambio.brlPorUsd ? brl(totalUsd * TEMPO.cambio.brlPorUsd) : usd(totalUsd)
-  const vdT = `${horas(totalMs)} de trabalho e ${emReal} em token no período.`
+  /* O veredito diz de QUAL aparelho está falando quando há filtro: a mesma
+     frase com dois números diferentes, sem dizer que mudou o recorte, é como
+     um número passa a mentir sem nenhum erro na tela. */
+  const nomeFiltrado = tempoMaquina && maquinasComHoras.find((m) => m.id === tempoMaquina)?.nome
+  const vdT = (nomeFiltrado
+    ? `${horas(totalMs)} de trabalho no período, só no ${nomeFiltrado}. O custo não é medido por aparelho.`
+    : `${horas(totalMs)} de trabalho e ${emReal} em token no período${
+      maquinasComHoras.length > 1 ? `, somando ${maquinasComHoras.length} aparelhos` : ''}.`)
     + (maior ? ` O maior é ${maior.projeto}, com ${horas(maior.ativoMs)}.` : '')
 
   return cabecaDaTela('Quanto tempo isso levou, e quanto vale?', vdT, 'bom')
@@ -4777,21 +5344,21 @@ function viewTempo() {
       ${comValor ? '<span class="v">valor</span>' : ''}
       ${comSobra ? '<span class="v">sobra</span>' : ''}
     </div>
-    ${TEMPO.projetos.map(proj).join('')}
+    ${projetos.map(proj).join('')}
     <div class="t-linha${cls}" style="border-top:1px solid var(--line);cursor:default">
       <span class="nome" style="color:var(--faint)">total</span>
       <span class="v h">${horas(totalMs)}</span><span class="v"></span><span class="v"></span>
-      <span class="v num">${tok(TEMPO.projetos.reduce((a, p) => a + p.tokens, 0))}</span>
+      <span class="v num">${tok(projetos.reduce((a, p) => a + p.tokens, 0))}</span>
       <span class="v cif" title="${usd(totalUsd)} de API">${
         TEMPO.cambio.brlPorUsd ? brl(totalUsd * TEMPO.cambio.brlPorUsd) : usd(totalUsd)}</span>
       <span class="v path">${!totalMs ? '' : (() => {
         const porHora = totalUsd / (totalMs / 36e5)
         return TEMPO.cambio.brlPorUsd ? brl(porHora * TEMPO.cambio.brlPorUsd) + '/h' : usd(porHora) + '/h'
       })()}</span>
-      ${comReal ? `<span class="v real">${brl(TEMPO.projetos.reduce((a, p) => a + (p.custoReal || 0), 0))}</span>` : ''}
+      ${comReal ? `<span class="v real">${brl(projetos.reduce((a, p) => a + (p.custoReal || 0), 0))}</span>` : ''}
       ${comValor ? `<span class="v val">${brl(totalValor)}</span>` : ''}
       ${comSobra ? (() => {
-        const s = TEMPO.projetos.reduce((a, p) => a + (p.sobra || 0), 0)
+        const s = projetos.reduce((a, p) => a + (p.sobra || 0), 0)
         return `<span class="v ${s >= 0 ? 'ok' : 'ruim'}">${brl(s)}</span>`
       })() : ''}
     </div>
@@ -5253,7 +5820,7 @@ function viewVps() {
     <div class="vps-topo">
       <div class="col-head" style="margin:0"><span>A VPS está saudável?</span></div>
       <span class="grow"></span>
-      <button class="btn" data-vps-config="1">${vpsConfigAberto ? 'fechar' : '⚙ conexão'}</button>
+      <button class="btn" data-vps-config="1">${vpsConfigAberto ? 'fechar' : `${ico('ajuste')} conexão`}</button>
       <button class="btn" data-vps-atualizar="1" ${vpsAtualizando ? 'disabled' : ''}>${vpsAtualizando ? 'lendo…' : 'atualizar'}</button>
     </div>
     ${vpsConfigAberto ? viewVpsFormulario() : ''}
@@ -5332,7 +5899,7 @@ function cartaoSrv(s) {
         <span class="cat">${esc(s.kind)}</span>
         <span class="grow"></span>
         ${s.dev ? `<button class="srv-fav${s.favorito ? ' on' : ''}" data-srv-fav="${esc(s.chave)}"
-          title="${s.favorito ? 'tirar dos favoritos' : 'marcar como favorito'}">${s.favorito ? '★' : '☆'}</button>` : ''}
+          title="${s.favorito ? 'tirar dos favoritos' : 'marcar como favorito'}">${ico('estrela', { cheio: s.favorito })}</button>` : ''}
         <span class="path">pid ${s.pid}</span>
       </header>
       <b class="c-titulo">${esc(s.titulo || s.name)}</b>
@@ -6002,6 +6569,107 @@ const idadeCurta = (t) => {
    comprime as três em quadradinhos. Sprint primeiro porque é o que acontece
    agora, pendências dele em segundo porque bloqueiam, e o backlog de produto
    por último porque é o mais longo e o menos urgente. */
+/**
+ * A LINHA DE VEZ, o primeiro viewport do contrato de direção.
+ *
+ * No boletim de um torneio por correspondência a primeira coisa que se procura
+ * não é placar nem estatística: é em quais partidas a jogada é sua. Tudo o
+ * mais pode esperar, porque nada anda enquanto você não joga.
+ *
+ * É a resposta direta à dor que ele nomeou, "não saber o que priorizar agora",
+ * e à régua de que ele tem dez minutos e não volta: o que estiver abaixo desta
+ * faixa pode não ser lido, então o que precisa dele mora aqui.
+ *
+ * ## A bandeirinha
+ *
+ * No relógio de xadrez a bandeira cai quando o tempo acaba. Aqui ela marca
+ * quem espera há mais tempo, e é a ÚNICA coisa em toda a tela que usa o
+ * vermelho de bandeira. Cor funcional fixa é a disciplina que o teletexto doou
+ * ao perder o julgamento: se este vermelho aparecer em enfeite, o sistema
+ * inteiro de cor perde o sentido.
+ *
+ * ## Vazio é vitória, e some
+ *
+ * Sem ninguém esperando, a faixa não vira "0 esperando você" ocupando altura:
+ * ela some e dá lugar a uma linha curta do que está rodando. Bloco vazio com
+ * número zero é a definição de espaço gasto sem informação, e no celular dele
+ * cada linha custa uma rolagem.
+ *
+ * ## A fraseologia (19/08)
+ *
+ * Cada tira passou a dizer, com verbo, o que ele tem a fazer ali. Antes ela
+ * mostrava projeto, assunto e idade: três fatos, nenhuma instrução. Numa torre
+ * de controle nada é dito em código para quem decide, e "status: waiting" é
+ * código. A regra está em `docs/produto/TORRE.md`, T5.
+ */
+
+/**
+ * Por que este agente parou, dito para ELE, com verbo.
+ *
+ * A ordem importa: o motivo que o próprio agente escreveu vence a suposição.
+ * Só quando ele não escreveu nada é que se cai na frase geral.
+ */
+function porQueEspera(j) {
+  const travas = (j.blockers || []).filter(Boolean)
+  if (travas.length) {
+    /* O primeiro basta: são frases inteiras, e duas empilhadas ocupariam a
+       tira toda no celular. O resto aparece ao abrir o agente. */
+    const t = typeof travas[0] === 'string' ? travas[0] : (travas[0].text || travas[0].t || '')
+    if (t) return { frase: `travado: ${t}`, tom: 'trava' }
+  }
+  /* Entregou deixando tarefa aberta: o que ele decide aqui não é o trabalho, é
+     se aquilo fica em aberto mesmo. É pedido diferente de "me responda", e por
+     isso tem frase própria. */
+  if (j.entregueEmAberto) return { frase: 'entregou com tarefa em aberto', tom: 'aberto' }
+  return { frase: 'precisa de uma decisão sua', tom: 'decisao' }
+}
+
+function viewVez(jobs = []) {
+  const esperando = jobs.filter((j) => j.status === 'waiting')
+  const rodando = jobs.filter((j) => j.status === 'working')
+
+  /* Quem espera há mais tempo primeiro: a ordem é a informação, e no relógio
+     de xadrez quem está há mais tempo parado é quem tem a bandeira caída. */
+  const porEspera = [...esperando].sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0))
+
+  if (!porEspera.length) {
+    if (!rodando.length) return ''
+    return `<section class="vez vez-calma">
+      <span class="vez-rot">rodando</span>
+      ${rodando.slice(0, 4).map((j) => `<span class="vez-corrido">
+        <b>${esc(j.project || '?')}</b>${j.subject ? ` <i>${esc(j.subject)}</i>` : ''}
+      </span>`).join('')}
+      ${rodando.length > 4 ? `<span class="dim">e mais ${rodando.length - 4}</span>` : ''}
+    </section>`
+  }
+
+  return `<section class="vez">
+    <div class="vez-cab">
+      <span class="vez-rot">sua vez</span>
+      <span class="vez-n">${porEspera.length}</span>
+      ${rodando.length ? `<span class="vez-outro">${rodando.length} rodando sem você</span>` : ''}
+    </div>
+    ${porEspera.map((j, i) => {
+      const p = porQueEspera(j)
+      return `<button class="vez-linha${i === 0 ? ' caiu' : ''}"
+        data-job="${esc(j.id)}" title="abrir este agente">
+      ${/* A bandeira só na primeira, que é quem espera há mais tempo. Marcar
+            todas seria transformar a exceção em papel de parede. */ ''}
+      <span class="vez-bandeira" aria-hidden="true">${i === 0 ? '▲' : ''}</span>
+      <span class="vez-proj">${esc(j.project || '?')}</span>
+      <span class="vez-que">${esc(j.subject || j.lastPrompt || 'sem assunto anotado')}</span>
+      <span class="vez-quando">${esc(age(Date.now() - (j.updatedAt || Date.now())))}</span>
+      ${/* A frase e a ação na mesma linha: a instrução e o que fazer com ela
+            não se separam, que é a regra da ação adjacente (T8). Uma primária
+            só, e ela É a tira inteira; o rótulo existe para que dê para ver
+            que a tira é clicável, coisa que a versão anterior não dizia. */ ''}
+      <span class="vez-porque t-${p.tom}">${esc(p.frase)}</span>
+      <span class="vez-ir" aria-hidden="true">abrir ${ico('seta-dir', { tam: 13 })}</span>
+    </button>`
+    }).join('')}
+  </section>`
+}
+
 function viewTrabalho(jobs = []) {
   if (!TRABALHO) return '<div class="empty">lendo o backlog dos projetos…</div>'
   if (TRABALHO.erro) return `<div class="empty">${esc(TRABALHO.error || TRABALHO.erro)}</div>`
@@ -6035,6 +6703,7 @@ function viewTrabalho(jobs = []) {
     ? { frase: TRABALHO.veredito, cor: minhas.length ? 'atencao' : 'bom', calmo: !minhas.length }
     : TRABALHO.veredito
   return cabecaDaTela('Em que pé está o trabalho?', vd.frase, vd.cor)
+    + viewVez(jobs)
     + viewDesdeQueOlhei()
     + `<nav class="bl-vistas" aria-label="as quatro visões do trabalho">
         ${vista('geral', 'geral', nSprint + minhas.length + nBacklog, 'neutro')}
@@ -6190,12 +6859,18 @@ function vistaGeral(sprint, nSprint, minhas, nBacklog, nMudou) {
       ${focoSprint ? detalhe() : ''}
     </div>
 
-    <div>
+    ${/* Seção sem nada dentro vira UMA linha, não um bloco.
+          Medido na captura de 390px: com zero pendências, esta seção gastava
+          cerca de 90px do telefone para dizer que não havia nada, entre
+          título, pastilha com zero, botão "abrir a lista" e uma caixa vazia
+          com borda. A linha de vez foi construída exatamente para recusar
+          isso, e a regra não pode valer só onde eu me lembrei dela. */ ''}
+    ${minhas.length ? `<div>
       ${cab('Backlog de pendências', minhas.length, 'voce')}
       ${quadVoce
-    ? `<div class="gr-grade">${quadVoce}</div>` : '<p class="bl-nada">nada depende de você agora</p>'}
+    ? `<div class="gr-grade">${quadVoce}</div>` : ''}
       ${focoVoce ? detalhe() : ''}
-    </div>
+    </div>` : '<p class="gr-zero">nada depende de você agora</p>'}
 
     <div>
       ${cab('Product backlog', nBacklog, 'produto')}
@@ -9651,6 +10326,14 @@ document.addEventListener('change', (e) => {
     tempoParams[ctl.dataset.tempo] = ctl.value
     if (ctl.dataset.tempo === 'corte') localStorage.setItem('cc-corte', ctl.value)
     carregarTempo(true) // o corte é recalculado do cache, não relê os arquivos
+  }
+
+  /* CC-184: trocar de aparelho é só redesenhar. O dado de todas as máquinas
+     já veio junto, com a quebra por origem em cada projeto. */
+  const selMaq = e.target.closest('[data-tempo-maquina]')
+  if (selMaq) {
+    tempoMaquina = selMaq.value
+    render()
   }
 })
 

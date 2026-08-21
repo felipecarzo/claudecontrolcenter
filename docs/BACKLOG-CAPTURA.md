@@ -255,3 +255,44 @@ para um servidor que não é da Anthropic, e também enquanto houver credencial 
 gateway configurada. O próprio projeto do roteador documenta isso. Ou seja: dá
 para rodar o Claude com modelo gratuito, mas o preço é perder o Remote Control
 naquela sessão. Os dois não convivem, e não é questão de configuração.
+
+---
+
+## 2026-08-19
+
+### 1. Botão de autorizar pedido do framework não aparece no painel
+
+Projeto `renanMarchon`, sessão PC. O `framework-guard.mjs` bloqueou escrita em
+`tools/experimento_agrupar_por_rua.py` e registrou o pedido em
+`.framework/estado.json` → `pedidos`. Pedi pro Felipe liberar pelo painel; ele
+mandou dois prints do Agent Cockpit (`ui.html`, raiz `/`) e disse:
+
+> "anote isso no handoff do control center, que nao funcionou, nao tem botao
+> de aprovar no control center, simplesmente só aparece isso no print"
+
+**O que os prints mostram:** a tela inicial (cockpit, "SUA VEZ 1") e o detalhe
+do agente `renanMarchon/main` aberto ("ESPERANDO... ÚLTIMO PEDIDO... ESTADO"
+com reticências, campo de notas, "PEDIDO INICIAL", "CONTEXTO TÉCNICO") — nenhum
+dos dois tem o cartão de pedido de framework nem o botão "liberar só este"
+(`src/ui.html:4943-4950`, `fw-pedidos`/`fw-pedido`).
+
+**Apurado no código:** o botão existe em `ui.html`, dentro do card de projeto
+na lista de projetos (`renderProjetos`/seção de Framework), não na tela de
+detalhe do agente que os prints mostram. Duas hipóteses, não testadas: (1) o
+Felipe estava na tela de detalhe do agente, não no card do projeto, e o botão
+está em outro lugar da mesma UI; (2) o card de projeto do `ui.html` não estava
+visível/aberto naquela sessão de painel. Não dá pra saber qual sem repetir o
+fluxo dele passo a passo.
+
+**Contorno usado (não é solução, é workaround pontual):** com autorização
+verbal explícita dele no chat, rodei um script Node avulso chamando direto
+`autorizar()`/`gravar()` de `framework.mjs`/`frameworkDisco.mjs` — o mesmo
+caminho que o clique chamaria via `/api/framework` — pra não escrever o JSON
+na mão. Resolveu o bloqueio daquela sessão, não o bug da tela.
+
+**Fica para quem mexer no Agent Cockpit:** conferir se o card de pedido
+pendente aparece de fato no fluxo real do Felipe (lista de projetos → card →
+seção Framework), ou se a tela de detalhe do agente (a que ele estava vendo)
+deveria mostrar isso também — hoje ela não mostra nada de framework, só
+"ESPERANDO / ÚLTIMO PEDIDO / ESTADO / notas / PEDIDO INICIAL / CONTEXTO
+TÉCNICO".
