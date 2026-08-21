@@ -44,7 +44,28 @@
       background-color: var(--bg);
       color: var(--text-main);
       display: flex;
+      /* CC-241: `100dvh`, e não `100vh`.
+         Queixa dele em 21/08, com print do fim da tela Agora: *"lá no final eu
+         não consigo descer mais, fica quebrado"*. O botão dentro do último
+         bloco não aparecia.
+
+         `100vh` no Chrome do Android é a altura da janela COM A BARRA DE
+         ENDEREÇO RETRAÍDA, que é a maior possível. Com a barra visível, e ela
+         estava visível no print dele, a área real é menor: sobra um pedaço de
+         página embaixo dela. Como o `body` não rola (`overflow: hidden`), esse
+         pedaço fica INALCANÇÁVEL, e nenhum gesto chega nele.
+
+         `100dvh` acompanha a barra do navegador aparecendo e sumindo.
+         `100vh` fica como reserva na linha de cima para navegador velho que não
+         conheça a unidade nova: quem não entende `dvh` ignora a segunda linha e
+         mantém o comportamento de antes, em vez de ficar sem altura nenhuma.
+
+         ⚠️ Não dá para provar isto em Chrome headless: ele não tem barra de
+         endereço, então o defeito não reproduz por construção. Medido lá: a
+         rolagem chega ao fim, o redesenho de 2s não rouba a posição, e nada
+         fica tapado pela barra de baixo. A prova é ele abrir no telefone. */
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
     }
 
@@ -63,7 +84,62 @@
       display: flex;
       flex-direction: column;
       overflow-y: auto;
+      flex: none;
     }
+
+    /**
+     * CC-252: a barra lateral encolhe, e a pergunta foi dele.
+     *
+     * *"essa aba lateral não pode ser colapsada porque?"*. Não podia porque
+     * ninguém tinha feito, e ela é a CAUSA RAIZ do layout apertado: 260px fixos
+     * comidos antes de o conteúdo começar. Numa janela de 800px sobram 540 para
+     * tudo; encolhida, sobram 736.
+     *
+     * Encolher para 64px em vez de sumir de vez: o menu continua alcançável por
+     * ícone, e voltar é um clique. Sumir obrigaria a reabrir para trocar de tela.
+     */
+    /* A barra de rolagem sumiu da lateral. Palavras dele em 21/08: *"esse scroll
+       de rolagem ta muito feio"*. Ela rola do mesmo jeito, com o dedo ou a
+       roda; o que saiu foi o traço cinza cortando uma coluna de 64px. */
+    .sidebar { scrollbar-width: none; }
+    .sidebar::-webkit-scrollbar { display: none; }
+
+    .sidebar.encolhida { --sidebar-width: 64px; overflow-x: hidden; }
+    .sidebar.encolhida .logo-area p,
+    .sidebar.encolhida .nav-section-title,
+    .sidebar.encolhida .sb-nome,
+    .sidebar.encolhida .sidebar-footer span { display: none; }
+    .sidebar.encolhida .logo-area { padding: 16px 0; }
+
+    /* O Saturno aparece só encolhida, no lugar do nome. Pedido dele:
+       *"pode colocar o simbolo do planeta saturno generico no lugar do nome
+       cockpit no topo pq ele ficou escondido colapsado mesmo"*. Antes eram as
+       letras `CC`, que num quadrado de 64px viram duas garatujas sem sentido. */
+    .logo-saturno { display: none; color: var(--accent); }
+    .sidebar.encolhida .logo-saturno { display: block; margin: 0 auto; }
+    .sidebar.encolhida .sb-topo { flex-direction: column; gap: 10px; }
+
+    /* Encolhida, cada item vira um alvo quadrado com o ícone no meio. O `gap: 0`
+       evita o ícone torto quando o rótulo vira largura zero, e o raio arredonda
+       o realce em vez de deixar uma faixa atravessando a coluna. */
+    .sidebar.encolhida .nav-item {
+      justify-content: center; gap: 0; font-size: 0;
+      width: 40px; height: 40px; margin: 2px auto; padding: 0; border-radius: 10px;
+    }
+    .sidebar.encolhida .nav-item svg { flex: none; width: 19px; height: 19px; }
+    .sidebar.encolhida .nav-section { padding: 8px 0; }
+    /* Sem o título do grupo, o que separa as seções é o espaço. Uma linha fina
+       no lugar do rótulo mantém a divisão que o menu aberto tem por palavra. */
+    .sidebar.encolhida .nav-section + .nav-section { border-top: 1px solid var(--border); }
+
+    .sb-encolher {
+      background: none; border: 0; color: var(--text-dim); cursor: pointer;
+      padding: 6px 10px; font-size: 16px; line-height: 1; border-radius: 6px;
+    }
+    .sb-encolher:hover { background: var(--card-hover); color: var(--text-main); }
+    /* Fica fora do `.logo-area` encolhido para não sumir junto com o resto. */
+    .sidebar.encolhida .sb-topo { justify-content: center; }
+    .sb-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .logo-area { padding: 24px; border-bottom: 1px solid var(--border); }
     .logo-area h2 { margin: 0; color: var(--text-main); font-size: 16px; letter-spacing: 0; }
     .logo-area p { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -194,11 +270,53 @@
     .header-actions { display: flex; gap: 12px; align-items: center; }
 
     /* GRID SYSTEM */
+    /**
+     * CC-250: as grades colapsam pelo ESPAÇO QUE SOBRA, não pelo tamanho da
+     * janela.
+     *
+     * Print dele em 21/08, no desktop: *"olha como o responsivo do cockpit fica
+     * quando eu encurto o tamanho do navegador"*. Texto sobreposto, cartões com
+     * a palavra quebrada letra a letra.
+     *
+     * Medido, na tela Cockpit, janela por janela:
+     *
+     *   janela 1280 -> lateral 260, conteúdo 1020, ok
+     *   janela  800 -> lateral 260, conteúdo  540, e a grade fica `93px 320px`
+     *   janela  700 -> lateral   0, conteúdo  700, ok de novo
+     *
+     * **A coluna lateral tem largura FIXA de 320px.** Com 445px de grade,
+     * 320 + 32 de intervalo comem 352, e sobram 93 para a coluna principal. O
+     * `1fr` obedece e encolhe até o texto virar uma letra por linha.
+     *
+     * O único ponto de virada do painel é `@media (max-width: 700px)`, e ele
+     * mede a JANELA. A barra lateral come 260px fixos antes de o conteúdo
+     * começar, então a faixa de 700 a 1100 nunca colapsava: o CSS achava que
+     * ainda era desktop.
+     *
+     * Por isso o `@container`, que é a régua já escrita no `CLAUDE.md` deste
+     * projeto para o caso irmão da coluna de notas: *"com a coluna de notas
+     * aberta a janela continua larga enquanto o painel encolhe; media query
+     * nunca dispararia"*. Aqui quem encolhe é a mesma coisa, por outro motivo.
+     */
+    .main-content { container-type: inline-size; container-name: painel; }
+
     .grid-container {
       display: grid;
-      grid-template-columns: 1fr 320px;
+      /* `minmax(0, 1fr)` e não `1fr`: sem o mínimo zero, conteúdo largo dentro
+         da coluna a empurra e o colapso nunca chega. As variantes com classe já
+         tinham isso desde o CC-181; a regra base tinha ficado para trás. */
+      grid-template-columns: minmax(0, 1fr) 320px;
       gap: 32px;
       align-items: start;
+    }
+
+    /* O limiar sai da conta, não do gosto: a lateral ocupa 320px mais 32 de
+       intervalo, então abaixo de 760px a coluna principal fica com menos de
+       410px, que é onde o texto começa a quebrar feio. */
+    @container painel (max-width: 760px) {
+      .grid-container,
+      .grid-container.com-lateral,
+      .grid-container.so-uma { grid-template-columns: minmax(0, 1fr); }
     }
     /* CC-181: as duas colunas são CLASSE, nunca estilo no elemento.
        Escrito no `style=` do próprio `<div>`, a coluna lateral de 300px
@@ -229,7 +347,15 @@
     /* `minmax(0, 1fr)` e não `1fr`: o piso de `1fr` é o conteúdo, e um
        caminho de arquivo comprido num cartão alargava a coluna até a grade
        inteira passar por baixo da coluna de métricas. */
-    .agora-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    /* CC-250: `auto-fill` no lugar de `repeat(3, ...)`.
+       Três colunas fixas cabem em tela larga e destroem a média: com 445px de
+       grade, cada cartão ficava com 136px e precisava de 214, então o título
+       cortava no meio da palavra (`proj_contro`). Com `auto-fill` a grade
+       decide quantas cabem, e o mínimo de 220px é o que garante que o nome do
+       projeto inteiro entre.
+       É a forma que o gate deste projeto já aceita como exceção à regra de
+       grade estreita, justamente porque ela se ajusta sozinha. */
+    .agora-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
     .attention-card { position: relative; display: flex; flex-direction: column; gap: 16px; }
     .attention-card.red { border-color: rgba(239, 68, 68, 0.3); }
     .attention-card.amber { border-color: rgba(245, 158, 11, 0.3); }
@@ -255,7 +381,20 @@
     .btn-yellow { background: var(--yellow-bg); color: var(--yellow); border-color: rgba(234,179,8,0.2); }
 
     /* PROJETOS CARDS */
-    .projetos-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+    /* CC-250, segunda passada: ele mandou outro print e disse *"mudou pouco"*.
+       Eu tinha consertado só a `.agora-grid`, do topo da tela, e deixado as
+       outras. A varredura achou três com o mesmo `repeat(3, ...)`, e a seção
+       PROJETOS ficava com colunas de 138px, uma letra por linha.
+       **Consertar a que aparece no print é amostra; a varredura é o conserto.** */
+    /* O mínimo é 320px, e NÃO os 220px das outras grades. Medido: com 220 a
+       grade fazia dois cartões de 222px em 445px de espaço, e o conteúdo do
+       cartão de projeto não cabe ali. Ele tem uma lista de agentes por dentro,
+       e cada linha carrega selo de máquina, assunto e hora lado a lado, que é o
+       que precisa de largura. Em 222px o assunto virava uma letra por linha,
+       exatamente o print que ele mandou.
+       Cartão diferente pede mínimo diferente: copiar o 220 das outras foi o que
+       me fez achar que estava resolvido quando não estava. */
+    .projetos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 16px; }
     .agent-text { min-width: 0; }
     .agent-text h4, .agent-text p { overflow-wrap: anywhere; }
     .proj-card { display: flex; flex-direction: column; }
@@ -316,7 +455,8 @@
     .bar-label { font-size: 10px; color: var(--text-muted); flex: none; }
 
     /* BOTTOM ROW */
-    .bottom-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    /* CC-250: mesma troca da `.projetos-grid`, pelo mesmo motivo. */
+    .bottom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
     /* CC-222: o funil da tela Trabalho (o que só ele resolve · sprint · backlog).
        Nasceu como `style="grid-template-columns: repeat(3, ...)"` direto na
        marcação, e por isso NENHUMA regra de tela estreita alcançava: em 390px
@@ -324,12 +464,57 @@
        mesma armadilha que já custou uma tela inteira em 16/08, e está escrita
        no CLAUDE.md: layout de grade é CLASSE, nunca `style=`. */
     .funil-colunas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); min-height: 200px; }
+
+    /**
+     * CC-252: o funil desliza quando o PAINEL é estreito, não só quando a
+     * janela é.
+     *
+     * A regra de deslizar já existia, mas dentro de `@media (max-width: 700px)`.
+     * Com a barra lateral aberta comendo 260px, uma janela de 720px deixa 460px
+     * de painel: as três colunas continuavam lado a lado, com 150px cada.
+     * Medido: um texto ficou com **13px de largura e 1696px de altura**, uma
+     * letra por linha, 36 casos numa tela só.
+     *
+     * As três colunas precisam de uns 280px cada para o texto respirar. Abaixo
+     * de 900px de painel, elas passam a deslizar com o dedo, que é o mesmo
+     * desenho já escolhido para o telefone.
+     */
+    @container painel (max-width: 900px) {
+      .funil-colunas {
+        grid-auto-flow: column;
+        grid-template-columns: none;
+        grid-auto-columns: min(88%, 340px);
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+      }
+      .funil-colunas::-webkit-scrollbar { display: none; }
+      .funil-col { scroll-snap-align: start; }
+    }
     .funil-col { padding: 20px; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
     .funil-col:last-child { border-right: 0; }
     /* As outras duas grades que a mesma rede pegou: a tela de projetos, com
        três colunas de altura de tela, e o índice do construtor de gráficos. */
-    .fw-colunas { display: grid; grid-template-columns: 1.2fr 0.8fr 1fr; gap: 24px; height: calc(100vh - 140px); }
-    .idx-colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    /* CC-252: `minmax(0, ...)` nas três, e `dvh` na altura.
+       Sem o mínimo zero, o conteúdo largo empurra a coluna e o colapso nunca
+       chega; e `100vh` no celular é maior que a área visível (ver CC-241 no
+       `body`). As duas grades colapsam por `@container` logo abaixo. */
+    .fw-colunas {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1fr);
+      gap: 24px;
+      height: calc(100vh - 140px);
+      height: calc(100dvh - 140px);
+    }
+    .idx-colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+
+    @container painel (max-width: 900px) {
+      /* Três colunas de altura de tela não cabem num painel estreito: viram
+         uma, e a altura passa a ser o conteúdo. */
+      .fw-colunas { grid-template-columns: minmax(0, 1fr); height: auto; }
+      .idx-colunas { grid-template-columns: minmax(0, 1fr); }
+    }
     /* ===== CC-224: o desenho dos gráficos =====
      * Print dele, do telefone: os cartões da tela Gráficos mostravam só os
      * rótulos empilhados, `claude-opus-5 / claude-fable-5 / 0 $2.7k`, sem
@@ -378,10 +563,35 @@
                 display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
     
     .log-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+    /**
+     * CC-252: a linha de atividade empilha quando o bloco é estreito.
+     *
+     * Print dele em 21/08, na seção ATIVIDADE RECENTE: *"pq os mesmos erros
+     * estão passando repetidamente?"*. A resposta é que eu vinha consertando a
+     * tela do print, e não a causa, que se repete em todo lugar: **largura
+     * reservada que não encolhe.**
+     *
+     * Aqui é `.log-cat`, com 130px fixos. A linha é `hora + categoria + texto`,
+     * e com a coluna em 250px sobram cerca de 50px para o texto, que empilha
+     * letra por letra. Medido em 1280px de janela também, porque o aperto vem
+     * da COLUNA do bloco, não do tamanho da janela.
+     *
+     * `.log-list` vira container próprio: quem decide o empilhamento é a
+     * largura do bloco, e não a da tela.
+     */
+    .log-list { container-type: inline-size; container-name: logs; }
     .log-item { display: flex; gap: 16px; font-size: 13px; }
-    .log-time { color: var(--text-dim); }
-    .log-cat { color: var(--text-muted); width: 130px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;}
-    .log-text { color: var(--text-main); flex: 1; }
+    .log-time { color: var(--text-dim); flex: none; }
+    .log-cat { color: var(--text-muted); width: 130px; flex: none; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;}
+    .log-text { color: var(--text-main); flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+    @container logs (max-width: 420px) {
+      /* Hora e categoria seguem na primeira linha; o texto ganha a largura
+         inteira embaixo, em vez de espremer numa faixa de 50px. */
+      .log-item { flex-wrap: wrap; gap: 4px 12px; }
+      .log-cat { width: auto; max-width: 60%; }
+      .log-text { flex: 1 0 100%; }
+    }
     
     .signal-list { display: flex; flex-direction: column; gap: 16px; }
     .signal-item { display: flex; gap: 12px; align-items: center; font-size: 13px; color: var(--text-main); }
@@ -427,6 +637,199 @@
        cima, ele era CORTADO sem reticências e sem rolagem. */
     .funil-col { min-width: 0; }
     .funil-col * { overflow-wrap: anywhere; }
+
+    /* ================== CC-245: a tela de conversa (o gate) ==================
+       Uma cor por agente, para ele saber de relance quem respondeu o quê numa
+       conversa que troca de agente no meio. São three fios finos na borda
+       esquerda da bolha, nunca preenchimento: cor de estado como fundo torna o
+       texto ilegível, e isso já aconteceu aqui com o laranja de "trabalhando". */
+    :root {
+      --gate-claude: #C084FC;
+      --gate-opencode: #22D3EE;
+      --gate-agy: #FBBF24;
+    }
+    /* CC-252b: o desenho de chat que ele pediu, com a referência que ele mesmo
+       deu ("como o próprio app do claude").
+       A fala do agente NÃO é uma caixa: caixa com borda em volta de cada
+       resposta transforma leitura em lista de cartões. Só a fala dele ganha
+       fundo, que é o que separa quem falou sem precisar de moldura. */
+    #gate-lista { max-width: 46rem; margin: 0 auto; }
+    .gate-msg {
+      padding: 4px 0 20px; margin-bottom: 4px;
+      /* Texto de agente traz caminho de arquivo e comando: sem isto ele estoura
+         a bolha em 390px, que é a largura que decide neste painel. */
+      overflow-wrap: anywhere; min-width: 0;
+    }
+    .gate-msg p { margin: 0 0 12px; font-size: 15px; line-height: 1.65; }
+    .gate-msg p:last-child { margin-bottom: 0; }
+    /* A fala dele: bloco fechado à direita, do jeito que ele já conhece do
+       aplicativo que usa todo dia. */
+    .gate-de-felipe {
+      background: color-mix(in srgb, var(--accent) 12%, var(--card));
+      border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+      border-radius: 14px; padding: 12px 16px; margin-left: auto;
+      max-width: 85%; width: fit-content; margin-bottom: 22px;
+    }
+    .gate-de-claude, .gate-de-opencode, .gate-de-agy { border-left: 2px solid var(--border); padding-left: 14px; }
+    .gate-de-claude { border-left-color: var(--gate-claude); }
+    .gate-de-opencode { border-left-color: var(--gate-opencode); }
+    .gate-de-agy { border-left-color: var(--gate-agy); }
+    /* O aviso do painel não é fala de ninguém: sem fundo, para não competir com
+       a conversa, mas legível, porque ele conta o que deu errado. */
+    .gate-de-sistema {
+      border: 1px dashed var(--border); border-radius: 10px;
+      padding: 10px 14px; color: var(--text-dim); font-size: 13px;
+    }
+    .gate-cab {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      font-size: 11px; color: var(--text-dim); margin-bottom: 8px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .gate-de-felipe .gate-cab { justify-content: flex-end; }
+
+    /* O texto formatado, que ele pediu. Sem isto a resposta chega crua, com os
+       asteriscos e as cercas de código à mostra. */
+    .gate-md h1, .gate-md h2, .gate-md h3 {
+      font-size: 15px; font-weight: 600; margin: 18px 0 8px;
+      color: var(--text-main); text-transform: none; letter-spacing: 0; white-space: normal;
+    }
+    .gate-md ul, .gate-md ol { margin: 0 0 12px; padding-left: 22px; }
+    .gate-md li { font-size: 15px; line-height: 1.6; margin-bottom: 4px; }
+    .gate-md code {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      background: color-mix(in srgb, var(--text-dim) 16%, transparent);
+      border-radius: 5px; padding: 1px 5px;
+    }
+    .gate-md pre {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; margin: 0 0 12px; overflow-x: auto;
+    }
+    .gate-md pre code { background: none; padding: 0; font-size: 12.5px; line-height: 1.5; }
+    .gate-md strong { color: var(--text-main); font-weight: 600; }
+    .gate-md blockquote {
+      margin: 0 0 12px; padding-left: 12px;
+      border-left: 2px solid var(--border); color: var(--text-dim);
+    }
+
+    /* O gasto da conversa, que ele pediu por escrito. */
+    .gate-gasto {
+      display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+      font-size: 11px; color: var(--text-dim);
+      border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 18px;
+      max-width: 46rem; margin-left: auto; margin-right: auto;
+    }
+    .gate-gasto[hidden] { display: none; }
+    .gate-gasto b { color: var(--text-main); font-weight: 500; }
+
+    /* CC-254: a linha de projeto do Remoto, agora com DOIS destinos.
+       Com os dois botões na mesma linha em 390px, o nome do projeto ficava com
+       uma coluna de duas letras e quebrava no meio da palavra: "app_age nda".
+       O nome fica com a linha inteira e os botões descem para a linha de baixo
+       quando não cabem. */
+    .rc-linha {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      padding: 10px 0; border-top: 1px solid var(--border); font-size: 13px;
+    }
+    .rc-nome { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    @container (max-width: 560px) {
+      .rc-nome { flex: 1 0 100%; }
+    }
+    /* Reserva para quem não tem container declarado no caminho: a regra de
+       container é ignorada em silêncio se nenhum ancestral for container, e
+       "em silêncio" é justamente o que faz isto passar sem ninguém ver. */
+    @media (max-width: 700px) {
+      .rc-nome { flex: 1 0 100%; }
+    }
+
+    /* O submenu de projetos, na própria barra lateral.
+       Teto de altura com rolagem própria: mesmo fechado por padrão, com 16
+       projetos abertos ele empurraria o resto do menu para fora da tela. */
+    .gate-submenu { padding: 2px 0 8px 12px; max-height: 46vh; overflow-y: auto; }
+    .gate-submenu[hidden] { display: none; }
+    /* Com a lateral encolhida sobram 64px, e nome de projeto ali vira uma
+       coluna de uma letra por linha. Some junto com os outros rótulos, pela
+       mesma regra: quem encolheu a barra pediu só os ícones. A escolha de
+       projeto continua alcançável pelo "projetos" no alto da tela. */
+    .sidebar.encolhida .gate-submenu { display: none; }
+    .gate-submenu button {
+      display: block; width: 100%; text-align: left; background: none;
+      border: 0; border-left: 2px solid var(--border); color: var(--text-dim);
+      font-family: inherit; font-size: 12px; padding: 6px 10px; cursor: pointer;
+      /* 34px porque no monitor o alvo é o mouse; no telefone a lateral nem
+         aparece, então o mínimo de 44px do dedo não se aplica aqui. */
+      min-height: 34px;
+    }
+    .gate-submenu button[aria-current="true"] { color: var(--text-main); border-left-color: var(--accent); }
+    .gate-submenu .gate-sub-titulo {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-dim); padding: 6px 10px 2px;
+    }
+    .gate-fer {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+      font-size: 11px; color: var(--text-dim);
+    }
+    .gate-fer span { border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; }
+    .gate-custo { font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+
+    /* A faixa do turno: o que o agente está fazendo AGORA. Existe porque
+       resposta aqui leva minutos, e espaço parado não distingue "pensando" de
+       "morreu". */
+    .gate-agora {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      border: 1px solid var(--accent); border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 10px; font-size: 12px;
+      background: color-mix(in srgb, var(--accent) 6%, var(--card));
+    }
+    /* `display` declarado no autor VENCE o `hidden` do navegador, que é só
+       `display:none` na folha padrão. Sem esta linha, a faixa do turno fica
+       visível e VAZIA para sempre, que é exatamente o espaço em branco que não
+       distingue "nada rodando" de "a tela quebrou". Apareceu na primeira
+       captura em 390px, como uma barra azul sem conteúdo nenhum. */
+    .gate-agora[hidden], .gate-compor[hidden] { display: none; }
+    .gate-agora .gate-fazendo { color: var(--text-main); font-family: 'JetBrains Mono', monospace; }
+
+    /* O compositor é IRMÃO da lista, nunca filho: é o que faz o cursor dele
+       sobreviver ao redesenho de 2 em 2 segundos.
+       E fica ANCORADO no fim da tela, como em qualquer aplicativo de conversa.
+       Como `sticky` ele acabava no meio da lista, com as mensagens seguintes
+       aparecendo depois dele: `sticky` gruda no fim do container, e o container
+       aqui é mais alto que a tela. */
+    .gate-compor {
+      position: fixed; z-index: 40;
+      left: 0; right: 0; bottom: 0;
+      background: var(--bg); border-top: 1px solid var(--border);
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+    .gate-compor > * { max-width: 46rem; margin-left: auto; margin-right: auto; }
+    /* O espaço que a conversa reserva para não terminar embaixo do campo. */
+    #view-gate .main-col { padding-bottom: 150px; }
+    .gate-quem { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    .gate-quem-rot { font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
+    /* Botão, e não `<select>`: menu aberto morre no redesenho, e o popup do
+       sistema vai junto. Ele já perdeu a navegação no telefone por causa disso. */
+    .gate-ag {
+      border: 1px solid var(--border); background: none; color: var(--text-dim);
+      border-radius: 999px; padding: 6px 12px; font-size: 12px; font-family: inherit;
+      cursor: pointer; min-height: 34px;
+    }
+    .gate-ag[aria-pressed="true"] { border-color: var(--accent); color: var(--text-main); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .gate-paga { font-size: 11px; color: var(--text-dim); }
+    .gate-linha { display: flex; gap: 8px; align-items: flex-end; }
+    .gate-linha textarea {
+      flex: 1; min-width: 0; resize: vertical; font-family: inherit; font-size: 15px;
+      background: var(--card); color: var(--text-main);
+      border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+    }
+    .gate-linha textarea:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+    /* O botão não cresce. Sem isto ele levava quase metade da largura em 390px e
+       o campo de escrever ficava com uma coluna estreita, medido na captura. */
+    .gate-linha .btn { min-height: 44px; flex: 0 0 auto; white-space: nowrap; }
+    .gate-conv {
+      display: flex; justify-content: space-between; gap: 10px; align-items: center;
+      border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+      margin-bottom: 8px; cursor: pointer; background: var(--card);
+    }
+    .gate-conv[aria-current="true"] { border-color: var(--accent); }
 
     /* No estreito a maquete quebrava por inteiro: era desenho só de monitor.
        Isto é o mínimo para ler no telefone (tudo numa coluna, o menu vira uma
@@ -532,6 +935,14 @@
       .bb-item svg { width: 20px; height: 20px; }
       .bb-item.active { color: var(--accent); }
 
+      /* No telefone o campo fica ACIMA da barra de baixo, nunca atrás dela.
+         O jeito é `bottom: 0` com recheio da altura da barra, e não `bottom:
+         64px`: a barra não mede exatamente 64 na tela real, e sobrava uma
+         fresta por onde a conversa passava entre o campo e a barra. Com o
+         recheio, o campo cobre até o fim e a barra desenha por cima dele. */
+      .gate-compor { bottom: 0; padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
+      #view-gate .main-col { padding-bottom: 210px; }
+
       /* A gaveta: o resto dos destinos, agrupado como na barra lateral.
          Sobe de baixo porque é de lá que o dedo veio. */
       .gaveta-fundo {
@@ -561,8 +972,22 @@
   
   <aside class="sidebar">
     <div class="logo-area">
-      <h2>AGENT COCKPIT</h2>
-      <p>control center</p>
+      <div class="sb-topo">
+        <!-- CC-252: o Saturno genérico, que só aparece com o menu encolhido. -->
+        <svg class="logo-saturno" viewBox="0 0 24 24" width="24" height="24" fill="none"
+             stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="11.5" r="5.2"></circle>
+          <ellipse cx="12" cy="11.5" rx="10.6" ry="3.1" transform="rotate(-22 12 11.5)"></ellipse>
+        </svg>
+        <div class="sb-nome">
+          <h2>AGENT COCKPIT</h2>
+          <p>control center</p>
+        </div>
+        <!-- CC-252: encolher a barra. Pergunta dele: *"essa aba lateral não
+             pode ser colapsada porque?"*. Ela come 260px fixos antes de o
+             conteúdo começar, e era a causa raiz do layout apertado. -->
+        <button class="sb-encolher" data-sb-encolher title="encolher o menu" aria-label="encolher o menu">‹</button>
+      </div>
     </div>
     
     <div class="nav-section" style="padding-top: 24px;">
@@ -574,6 +999,18 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
         Meu painel
       </a>
+      <!-- CC-245/CC-253: o Coderoom, o nome que ele deu ao lugar onde os três
+           agentes conversam. A conversa mora no painel, e por isso ela é
+           destino de primeira fila, não item de gaveta.
+           O clique abre o submenu de projetos AQUI MESMO, pedido dele: *"na aba
+           lateral quando clicar no desenho do chat pode abrir um sub menu ali
+           mesmo p selecionar os projetos, assim a gente usa melhor o espaço de
+           tela"*. Escolher projeto deixa de gastar uma faixa do conteúdo. -->
+      <a href="#" class="nav-item" data-target="view-gate">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"></path></svg>
+        Coderoom
+      </a>
+      <div id="gate-submenu" class="gate-submenu" hidden></div>
       <a href="#" class="nav-item" data-target="view-agora">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
         Agora
@@ -666,10 +1103,18 @@
       <div class="grid-container">
         <div class="main-col">
         
-        <!-- AGORA -->
-        <section>
+        <!-- CC-156, camada 1: a TRIAGEM, em duas linhas.
+             Ele tem ~10 minutos por projeto e 67% das mensagens seguidas trocam
+             de projeto: esta é a única parte da tela com garantia de ser lida,
+             e por isso ela responde as duas perguntas do primeiro segundo sem
+             exigir um clique. "Precisa de você" vem primeiro porque é ação
+             dele; "rodando agora" é notícia, e notícia não vem antes de ordem.
+             As duas somem quando vazias de verdade, e NENHUMA some quando a
+             leitura falhou: nesse caso elas dizem que falharam. Tela que fica
+             mais calma quando o dado some é o pior defeito possível aqui. -->
+        <section id="sec-precisa">
           <div class="section-header">
-            <h2>AGORA — O QUE PRECISA DA SUA ATENÇÃO</h2>
+            <h2>PRECISA DE VOCÊ AGORA</h2>
             <div style="display:flex;gap:16px;align-items:center;">
               <span style="color:var(--amber);font-size:13px;font-weight:500;" id="agora-count-text">Nenhuma pendência crítica</span>
               <a href="#" class="link" onclick="showPage('view-agora');return false;">Ver tudo &rarr;</a>
@@ -681,6 +1126,17 @@
               Carregando estado do cockpit...
             </div>
           </div>
+        </section>
+
+        <section id="sec-rodando" hidden>
+          <div class="section-header">
+            <h2>RODANDO AGORA</h2>
+            <div style="display:flex;gap:16px;align-items:center;">
+              <span style="color:var(--text-muted);font-size:13px;" id="rodando-count-text"></span>
+              <a href="#" class="link" onclick="showPage('view-agentes');return false;">Ver tudo &rarr;</a>
+            </div>
+          </div>
+          <div class="agora-grid" id="rodando-container"></div>
         </section>
 
         <!-- PROJETOS -->
@@ -749,7 +1205,7 @@
           </div>
 
           <h2 style="margin-top:24px;" data-explica="token">CONSUMO</h2>
-          <div class="big-number"><span id="consumo-tokens">0</span> <span style="font-size:12px;font-weight:400;color:var(--text-muted);">tokens nos agentes vivos</span></div>
+          <div class="big-number"><span id="consumo-tokens">0</span> <span id="consumo-rotulo" style="font-size:12px;font-weight:400;color:var(--text-muted);">tokens nos agentes vivos</span></div>
           <!-- CC-189: a linha de tendência VOLTOU, e agora é medida.
                A da maquete era uma curva desenhada à mão no HTML, igual todo
                dia, dissesse o dado o que dissesse. Esta sai dos tokens por dia
@@ -914,6 +1370,75 @@
           </div>
           <div id="remoto-fora"></div>
           <div id="remoto-aqui"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA: CONVERSA (o gate, CC-245)
+         =====================================================================
+         A conversa é do PAINEL, não do agente. Ele troca de Claude Code para
+         opencode ou agy no meio dela, e o novo recebe o histórico, as regras e
+         o estado do projeto.
+
+         Quatro armadilhas deste projeto aplicadas ANTES de doerem, e cada uma
+         já custou tempo aqui:
+
+         1. O campo de escrever é IRMÃO da lista, nunca filho. O painel se
+            redesenha de 2 em 2 segundos, e textarea dentro do bloco redesenhado
+            perde o cursor no meio da frase.
+         2. A escolha de agente são BOTÕES, nunca um menu. Menu aberto morre no
+            redesenho, e o menu do sistema operacional some junto: foi assim que
+            a navegação fechou na cara dele no telefone.
+         3. A faixa do turno mostra A FERRAMENTA rodando agora. Resposta aqui
+            leva minutos, e bolinha girando não distingue "pensando" de "morreu".
+         4. Coluna única, sem grade em `style=`. O gate de teste recusa, e grade
+            inline já apagou uma tela inteira em 390px.
+
+         ATENÇÃO ao mexer: nada de crase dentro de comentário que fique DENTRO
+         de template do JavaScript. A crase fecha a string, a página inteira
+         para de compilar, e nenhum erro aparece na tela. -->
+    <div id="view-gate" class="view-section">
+      <div class="grid-container so-uma">
+        <div class="main-col">
+          <div class="section-header">
+            <h2>CODEROOM</h2>
+            <div style="display:flex;gap:12px;align-items:center;">
+              <span id="gate-qual" style="font-size:12px;color:var(--text-muted);"></span>
+              <a href="#" class="link" id="gate-trocar">projetos</a>
+            </div>
+          </div>
+
+          <div id="gate-conversas" hidden></div>
+          <!-- O gasto da conversa inteira, que ele pediu por escrito. Fica no
+               topo e não no fim: no fim ele só veria depois de rolar tudo. -->
+          <div id="gate-gasto" class="gate-gasto" hidden></div>
+          <div id="gate-lista"><div class="card" style="color:var(--text-muted);">lendo as conversas…</div></div>
+
+          <!-- A faixa do turno e o campo de escrever ficam FORA do `#gate-lista`,
+               que é o único bloco pintado no tique. É isto que faz o cursor
+               dele sobreviver ao redesenho. -->
+          <div id="gate-agora" class="gate-agora" hidden></div>
+
+          <div id="gate-compor" class="gate-compor">
+            <div class="gate-quem">
+              <span class="gate-quem-rot">responde:</span>
+              <!-- `data-gate-ag`, e NÃO `data-ag`: a tela de Agentes já usa
+                   `data-ag` para escolher um agente da lista, e o ouvinte geral
+                   da página captura qualquer elemento com esse atributo. Com o
+                   nome repetido, tocar aqui para trocar quem responde jogava
+                   ele para a tela de Agentes. Foi assim que ele descreveu:
+                   *"quando eu clico em mudar de agente ele joga pra pagina de
+                   agentes do nada"*. -->
+              <button type="button" class="gate-ag" data-gate-ag="claude" aria-pressed="true">Claude Code</button>
+              <button type="button" class="gate-ag" data-gate-ag="opencode" aria-pressed="false">opencode</button>
+              <button type="button" class="gate-ag" data-gate-ag="agy" aria-pressed="false">agy</button>
+              <span class="gate-paga" id="gate-paga"></span>
+            </div>
+            <div class="gate-linha">
+              <textarea id="gate-txt" rows="2" placeholder="escreva aqui…"></textarea>
+              <button type="button" class="btn" id="gate-enviar">enviar</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1225,9 +1750,15 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
       Cockpit
     </button>
-    <button class="bb-item" data-bb="view-agora">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-      Agora
+    <!-- CC-245: a Conversa entra na barra do telefone no lugar de "Agora", e a
+         troca tem motivo. Quatro alvos mais "mais" é o que cabe em 390px com o
+         rótulo legível, medido no CC-181, então acrescentar um sexto quebraria a
+         barra. Dos cinco candidatos, "Agora" é o único com atalho curto por
+         outro caminho: a mesma lista abre no topo do Cockpit, que é o primeiro
+         alvo da barra. A Conversa não tinha caminho nenhum além da gaveta. -->
+    <button class="bb-item" data-bb="view-gate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"></path></svg>
+      Coderoom
     </button>
     <button class="bb-item" data-bb="view-trabalho">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -1378,6 +1909,18 @@
                ou "parado" sobre um que já subiu. */
             if (targetId === 'view-escritorio') carregarPaineis(true);
             if (targetId === 'view-agentes') renderAgentes();
+            /* CC-239: a tela Trabalho desenha AO NAVEGAR, e não só no tique.
+               Medido em 21/08 com navegador de verdade: 0 elementos e 0px de
+               altura até 1,5s, e só aos 3s ela nascia com 234 elementos. Ela
+               era a única das quatro principais que não estava nesta lista,
+               então esperava o próximo tique do fluxo, que vem de 2 em 2
+               segundos.
+               Ela não quebrava, e é por isso que era cara: três segundos de
+               branco, sem dizer que está carregando, não distinguem "está
+               montando" de "quebrou". `renderViewTrabalho()` já sabe mostrar
+               "Carregando dados do trabalho..." quando ainda não tem dado; o
+               que faltava era ser chamada. */
+            if (targetId === 'view-trabalho') renderViewTrabalho();
             if (targetId === 'view-remoto') { carregarFederacao(); carregarRemoto(); }
             if (targetId === 'view-estrutura') renderMapa();
             if (targetId === 'view-notas') { notesLoaded ? renderNotas() : carregarNotas(); }
@@ -1611,16 +2154,101 @@
       /* Tudo o que sobrou nesta lista pede ação dele de verdade: o aviso de
          máquina calada saiu da faixa no CC-226. */
       const pedem = items.length;
-      if (items.length === 0) {
-        pintar(el, `<div class="card" style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 40px;">Nenhuma pendência crítica agora.</div>`);
+      /* CC-156: as duas leituras que alimentam esta faixa. Vazio por falha de
+         leitura e vazio de verdade são coisas diferentes, e confundir os dois
+         é a família de defeito mais cara deste painel: ele confia no silêncio
+         da tela e concluiria que não há nada a fazer. */
+      const naoLeu = [...DATA.falhas.keys()].filter((k) => k === 'os agentes' || k === 'as suas pendências');
+      const sec = document.getElementById('sec-precisa');
+
+      if (naoLeu.length) {
+        /* A faixa NÃO some quando falhou, mesmo sem item nenhum: sumir aqui é
+           a tela afirmando calma que ela não mediu. */
+        if (sec) sec.hidden = false;
+        pintar(el, `<div class="card attention-card red" style="grid-column: 1 / -1;">
+          <div class="attention-title">NÃO DEU PARA LER</div>
+          <p>Não consegui ler ${esc(naoLeu.join(' nem '))}. Esta lista pode estar incompleta: trate como desconhecido, não como vazio.</p>
+        </div>` + items.slice(0, 3).join(''));
+        countEl.innerText = 'leitura incompleta';
+      } else if (items.length === 0) {
+        /* Vazio de verdade: a seção inteira sai da tela. No telefone cada linha
+           do topo custa uma linha de conteúdo, e "0 pendências" gasta altura
+           para não informar nada. */
+        if (sec) sec.hidden = true;
+        pintar(el, '');
         countEl.innerText = 'nada espera você';
       } else {
+        if (sec) sec.hidden = false;
         pintar(el, items.slice(0, 3).join(''));
         countEl.innerText = pedem ? `${pedem} precisam de você` : 'nada espera você';
       }
 
       document.getElementById('stat-meu-count').innerText = pedem;
       document.getElementById('resumo-meu').innerText = pedem;
+    }
+
+    /* CC-156, a segunda linha da triagem: O QUE ESTÁ RODANDO NESTE MINUTO.
+       Responde, sem clique nenhum, a segunda pergunta de quem abre o painel:
+       "tem alguém trabalhando para mim agora?". Antes ela só era respondível
+       abrindo a tela de agentes, e ele tem dez minutos.
+
+       Três regras que ela carrega:
+       - só agente VIVO e trabalhando. Máquina calada devolve o status do
+         instante em que ela parou, e verde de "trabalhando" vindo de máquina
+         muda é o último estado conhecido posando de agora (CC-218);
+       - cada linha tem frase, nunca só o nome do agente. Número e rótulo sem
+         frase ele não tem como discutir;
+       - some quando vazia de verdade, fala quando a leitura falhou. */
+    function renderRodando() {
+      const el = document.getElementById('rodando-container');
+      const sec = document.getElementById('sec-rodando');
+      const countEl = document.getElementById('rodando-count-text');
+      if (!el || !sec) return;
+
+      const naoLeu = DATA.falhas.has('os agentes');
+      const rodando = DATA.agentes
+        .filter((a) => a.status === 'working' && !semContato(a))
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+      if (naoLeu) {
+        sec.hidden = false;
+        countEl.innerText = 'leitura incompleta';
+        pintar(el, `<div class="card attention-card red" style="grid-column: 1 / -1;">
+          <div class="attention-title">NÃO DEU PARA LER</div>
+          <p>Não consegui ler os agentes. Pode haver trabalho rodando que esta linha não está mostrando.</p>
+        </div>`);
+        return;
+      }
+      if (!rodando.length) {
+        sec.hidden = true;
+        pintar(el, '');
+        return;
+      }
+
+      sec.hidden = false;
+      countEl.innerText = `${rodando.length} trabalhando`;
+      pintar(el, rodando.slice(0, 3).map((a) => {
+        const frase = fraseDoAgente(a);
+        const total = a.todos?.length || 0;
+        const feitas = a.todosDone || 0;
+        return `
+        <div class="card attention-card green">
+          <div class="attention-header">
+            <div class="icon-box green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+            <div>
+              <div class="attention-title">TRABALHANDO</div>
+              <h3 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${esc(a.project || '?')}${a.frente ? ' / ' + esc(a.frente) : ''} ${selo(a)}</h3>
+            </div>
+          </div>
+          <p title="${esc(frase)}">${esc(frase)}</p>
+          <div class="attention-actions">
+            <span style="font-size:11px;color:var(--text-dim);align-self:center;">${total ? `${feitas} de ${total} tarefas fechadas` : 'sem tarefa registrada'}</span>
+            <button class="btn btn-ghost" data-ver-agente="${esc(a.id)}">Abrir agente</button>
+          </div>
+        </div>`;
+      }).join('') + (rodando.length > 3
+        ? `<div class="card" style="display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:12px;">e mais ${rodando.length - 3} trabalhando</div>`
+        : ''));
     }
 
     /* PROJETOS: um cartão por projeto com agente vivo, os agentes dentro com
@@ -2065,8 +2693,45 @@
       /* CONSUMO: os tokens somados dos agentes vivos, e as duas janelas do
          plano com o percentual real. A linha "34% vs ontem" da maquete saiu:
          não existe base de ontem barata, e tendência sem base é invenção. */
+      /**
+       * CC-258: "0 tokens" quando ninguém sabe o número é MENTIRA, e ele pegou.
+       *
+       * Palavras dele em 21/08, com print: *"0 tokens nos agentes vivos? tem
+       * algo claramente errado.."*. Estava: são 8 agentes, 3 vivos, e o painel
+       * anunciava zero consumo.
+       *
+       * A causa era o `|| 0` que estava aqui. **O dado por baixo está certo:**
+       * `sessoes.mjs` devolve `tokens: null` de propósito para sessão
+       * interativa, e o comentário dele previu isto ao pé da letra: *"melhor
+       * dizer que não se sabe do que mostrar zero como se fosse medida"*.
+       * Nesta VPS TODAS as sessões são interativas, então o total é sempre
+       * desconhecido, e o painel vinha exibindo desconhecido como zero.
+       *
+       * Zero e "não sei" são coisas diferentes, e confundir as duas é a família
+       * de defeito mais cara deste painel.
+       */
       const bigTok = document.getElementById('consumo-tokens');
-      if (bigTok) bigTok.innerText = tok(s.tokens || 0);
+      const rotTok = document.getElementById('consumo-rotulo');
+      if (bigTok) {
+        const vivos = (DATA.agentes || []).filter((a) => a.status === 'working' || a.status === 'waiting');
+        const medidos = vivos.filter((a) => typeof a.tokens === 'number');
+        if (!vivos.length) {
+          bigTok.innerText = '0';
+          if (rotTok) rotTok.innerText = 'nenhum agente vivo agora';
+        } else if (!medidos.length) {
+          /* Sessão interativa não tem contagem barata: o total exigiria ler o
+             transcrito inteiro, que é trabalho da aba Tempo. */
+          bigTok.innerText = '?';
+          if (rotTok) rotTok.innerText = `não dá para contar aqui: ${vivos.length} sessão(ões) interativa(s). A aba Tempo mede.`;
+        } else {
+          bigTok.innerText = tok(medidos.reduce((n, a) => n + a.tokens, 0));
+          if (rotTok) {
+            rotTok.innerText = medidos.length === vivos.length
+              ? 'tokens nos agentes vivos'
+              : `tokens em ${medidos.length} de ${vivos.length} agentes vivos, o resto não se sabe`;
+          }
+        }
+      }
       const usoEl = document.getElementById('consumo-uso');
       if (usoEl && DATA.uso) {
         const barra = (rot, j) => !j ? '' : `
@@ -2074,7 +2739,27 @@
             <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;"><span>${rot}</span><span>${Math.round(j.pct)}%</span></div>
             <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, j.pct)}%;${j.pct >= 85 ? 'background:var(--red);' : j.pct >= 60 ? 'background:var(--amber);' : ''}"></div></div>
           </div>`;
-        usoEl.innerHTML = barra('Janela de 5 horas', DATA.uso.cincoHoras) + barra('Semana', DATA.uso.semana);
+        /* CC-259: de QUEM é este número, e de QUANDO.
+           Pergunta dele em 21/08: *"pq os dados de gasto da janela de 5 horas e
+           semanal nao atualizam?"*. Não atualizavam porque **não são desta
+           máquina**: são do PC dele, chegados pela federação, e estavam parados
+           havia 21 horas. A tela mostrava 12% e 26% como se fosse agora e daqui.
+           O dado já vinha com `origem` e `em`; a tela é que não contava. */
+        const origem = DATA.uso.origem?.nome;
+        const idade = DATA.uso.em ? Date.now() - DATA.uso.em : null;
+        const velho = idade !== null && idade > 15 * 60 * 1000;
+        const nota = (origem || velho)
+          ? `<div style="font-size:11px;color:${velho ? 'var(--amber)' : 'var(--text-dim)'};margin-top:8px;">`
+            + `${origem ? `medido em ${esc(origem)}` : 'desta máquina'}`
+            + `${idade !== null ? `, há ${age(idade)}` : ''}`
+            + `${velho ? '. O número só anda quando aquela máquina responde algo.' : ''}</div>`
+          : '';
+        /* CC-261: por que esta máquina não tem número próprio. Sem isto, ele vê
+           o dado velho de outra máquina e não tem como saber o que consertar. */
+        const porque = DATA.uso.semDadoLocalPorque
+          ? `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Aqui não há número porque ${esc(DATA.uso.semDadoLocalPorque)}.</div>`
+          : '';
+        usoEl.innerHTML = barra('Janela de 5 horas', DATA.uso.cincoHoras) + barra('Semana', DATA.uso.semana) + nota + porque;
       }
     }
 
@@ -2212,6 +2897,68 @@
 
     /* ================= AS PENDÊNCIAS DELE =================
        A única lista do painel onde o trabalho é dele, e não da máquina. */
+    /* CC-233: quais tarefas dele estão abertas na tela.
+       Fora da função porque `renderMeu()` roda a cada tique do stream: guardar
+       isto dentro dela fecharia o detalhe sozinho a cada 2 segundos, na cara
+       dele, que é a mesma família do menu que sumia antes de ele conseguir
+       clicar. */
+    const MEU_ABERTO = new Set();
+
+    /**
+     * CC-233: o detalhe de uma tarefa dele, aberto ao tocar no texto.
+     *
+     * Apontado por ele no telefone em 21/08: a linha inteira era um `<label>`
+     * amarrado à caixa de marcar, então tocar no texto para saber o que a
+     * tarefa é abria "Marcar como resolvido?". Palavras dele: *"essa tela não
+     * me serve de nada se eu não puder clicar e ver exatamente o que preciso
+     * resolver"*.
+     *
+     * Mora aqui fora porque existem DUAS listas de pendência dele no arquivo,
+     * com o mesmo defeito: a da tela "o que só você resolve" e a da tela
+     * Trabalho, que é onde ele estava olhando. Duas cópias do detalhe seriam
+     * duas verdades sobre a mesma tarefa.
+     */
+    function detalheMeu(m) {
+      const linhas = [];
+      const quando = m.em ? new Date(m.em) : null;
+      const de = m.fonte === 'agente'
+        ? 'Um agente pediu isto enquanto trabalhava.'
+        : m.fonte === 'roadmap'
+          ? 'Está parado no backlog esperando a sua decisão.'
+          : 'Foi anotado na sua lista.';
+      /* O texto da tarefa NÃO se repete aqui: ele já está na linha logo acima,
+         inteiro. Repetir empurrava o que interessa (o porquê e o onde) para
+         fora da tela do telefone, e a primeira captura mostrou exatamente
+         isso: a mesma frase duas vezes em 390px. */
+      if (m.porque) {
+        linhas.push(`<p style="margin:0 0 10px;font-size:13px;color:var(--text-muted);overflow-wrap:anywhere;">
+          <strong style="color:var(--text-dim);">Por que depende de você:</strong> ${esc(m.porque)}</p>`);
+      } else {
+        /* Bloco que pode ficar vazio precisa dizer por quê: espaço em branco
+           não distingue "não tem motivo escrito" de "a leitura falhou". */
+        linhas.push(`<p style="margin:0 0 10px;font-size:12px;color:var(--text-dim);font-style:italic;">
+          Quem registrou não escreveu por que isto depende de você.</p>`);
+      }
+      /* CC-262: por que ela parece resolvida, dentro do detalhe. O selo na
+         linha diz QUE parece; aqui diz o que foi observado no mundo. */
+      if (m.comoSoube) {
+        linhas.push(`<p style="margin:0 0 10px;font-size:13px;color:${m.pareceResolvida ? 'var(--green)' : 'var(--text-muted)'};overflow-wrap:anywhere;">
+          <strong>Conferido sozinho:</strong> ${esc(m.comoSoube)}</p>`);
+      }
+      linhas.push(`<div style="font-size:12px;color:var(--text-dim);display:flex;flex-direction:column;gap:4px;">
+        <span><strong>Onde:</strong> ${seloDe(m.maquina, { frio: m.semContato })} ${esc(m.projeto || 'sem projeto')}${m.frente ? ' › ' + esc(m.frente) : ''}</span>
+        <span><strong>Desde:</strong> ${quando ? esc(quando.toLocaleDateString('pt-BR')) + ' (há ' + age(Date.now() - m.em) + ')' : 'sem data registrada'}</span>
+        <span><strong>De onde veio:</strong> ${esc(de)}</span>
+      </div>`);
+      linhas.push(`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+        <button class="btn btn-ghost compacto" data-meu-feito-btn="${esc(m.id)}" data-meu-texto="${esc(m.texto)}">${m.feito ? 'reabrir' : 'marcar como resolvido'}</button>
+        ${m.fonte === 'agente' && m.job ? `<button class="btn btn-ghost compacto" data-ver-agente="${esc(m.job)}">abrir o agente que pediu</button>` : ''}
+        ${m.fonte === 'lista' ? `<button class="btn btn-ghost compacto" data-meu-remover="${esc(m.id)}">apagar da lista</button>` : ''}
+        <button class="btn btn-ghost compacto" data-meu-abrir="${esc(m.id)}">fechar</button>
+      </div>`);
+      return `<div style="padding:14px 16px;border-top:1px solid var(--borda);margin-top:10px;">${linhas.join('')}</div>`;
+    }
+
     function renderMeu() {
       const el = document.getElementById('meu-lista');
       if (!el) return;
@@ -2229,22 +2976,24 @@
           : `<p style="font-size:13px;color:var(--text-muted);">nada depende de você agora.</p>`);
         return;
       }
+      const detalhe = detalheMeu;
+
       const linha = (m) => `
-        <div class="agent-item" style="padding:12px 20px;">
-          <label style="display:flex;gap:10px;align-items:flex-start;flex:1;min-width:0;cursor:pointer;">
-            <input type="checkbox" data-meu-marcar="${esc(m.id)}" data-meu-texto="${esc(m.texto)}" ${m.feito ? 'checked' : ''} style="margin-top:3px;flex:none;">
-            <span style="min-width:0;">
+        <div class="agent-item" style="padding:0;display:block;">
+          <div style="display:flex;gap:10px;align-items:flex-start;padding:12px 20px;">
+            <label style="flex:none;margin-top:3px;cursor:pointer;" title="marcar como resolvido">
+              <input type="checkbox" data-meu-marcar="${esc(m.id)}" data-meu-texto="${esc(m.texto)}" ${m.feito ? 'checked' : ''}>
+            </label>
+            <span data-meu-abrir="${esc(m.id)}" style="min-width:0;flex:1;cursor:pointer;" title="ver o que é esta tarefa">
               <span style="${m.feito ? 'opacity:.55;text-decoration:line-through;' : ''}overflow-wrap:anywhere;">${esc(m.texto)}</span>
               <span style="display:block;font-size:11px;color:var(--text-dim);margin-top:4px;">
                 ${seloDe(m.maquina, { frio: m.semContato })} ${esc(m.projeto || 'sem projeto')}${m.frente ? ' › ' + esc(m.frente) : ''}${m.fonte === 'agente' ? ' · pedido por um agente' : ''}${m.em ? ' · há ' + age(Date.now() - m.em) : ''}
               </span>
-              ${m.porque ? `<span style="display:block;font-size:11px;color:var(--text-muted);margin-top:4px;overflow-wrap:anywhere;">${esc(m.porque)}</span>` : ''}
+              ${m.porque && !MEU_ABERTO.has(m.id) ? `<span style="display:block;font-size:11px;color:var(--text-muted);margin-top:4px;overflow-wrap:anywhere;">${esc(m.porque)}</span>` : ''}
             </span>
-          </label>
-          ${/* Só o que ELE escreveu pode ser apagado: pedido de agente some
-                quando o agente resolve, e apagar à mão esconderia o pedido
-                sem resolvê-lo. */ ''}
-          ${m.fonte === 'lista' ? `<button class="btn btn-ghost compacto" style="padding:4px 10px;" data-meu-remover="${esc(m.id)}" title="apagar esta anotação">✕</button>` : ''}
+            <span style="flex:none;font-size:11px;color:var(--text-dim);margin-top:3px;">${MEU_ABERTO.has(m.id) ? '▾' : '▸'}</span>
+          </div>
+          ${MEU_ABERTO.has(m.id) ? detalhe(m) : ''}
         </div>`;
       pintar(el, `<div class="card" style="padding:0;overflow:hidden;">${abertas.map(linha).join('') || '<p style="padding:16px 20px;font-size:13px;color:var(--text-muted);">nada aberto.</p>'}</div>`
         + (feitas.length ? `<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:12px;color:var(--text-muted);">${feitas.length} já resolvida(s)</summary>
@@ -2328,13 +3077,33 @@
       { id: 'waiting', titulo: 'ESPERANDO VOCÊ', cor: 'amber', termo: 'esperando você' },
       { id: 'failed', titulo: 'COM FALHA', cor: 'red', termo: 'quebrou' },
       { id: 'working', titulo: 'TRABALHANDO', cor: 'green', termo: 'trabalhando' },
-      /* CC-218: faixa própria para quem veio de máquina que parou de responder.
-         Antes eles se espalhavam pelas outras faixas com o status congelado, e
-         "TRABALHANDO" listava sessão de PC desligado. */
-      { id: 'mudo', titulo: 'SEM CONTATO', cor: 'mudo', termo: 'sem contato' },
       { id: 'idle', titulo: 'PARADOS', cor: 'yellow', termo: 'parado' },
       { id: 'done', titulo: 'ENTREGARAM', cor: 'green' },
+      /* CC-218: faixa própria para quem veio de máquina que parou de responder.
+         Antes eles se espalhavam pelas outras faixas com o status congelado, e
+         "TRABALHANDO" listava sessão de PC desligado.
+
+         CC-240, pedido dele em 21/08: ela desceu para o FIM e nasce FECHADA.
+         Palavras dele: *"os agentes sem contato por último, porque no momento os
+         trabalhando e os espera etcétera, eles estão separados pelos sem
+         contato (…) tem que ter um botãozinho pra colapsar eles, pra não ficar
+         uma lista enorme com um monte de agente inativo offline. Eles podem
+         colapsar e eu só ativo se eu quiser"*.
+
+         Ela estava na posição 4 de 6, então rachava a lista no meio: o que ele
+         quer ver primeiro ficava separado do resto por uma pilha de máquina
+         desligada. Medido no dia do pedido: 19 agentes, 14 deles parados. */
+      { id: 'mudo', titulo: 'SEM CONTATO', cor: 'mudo', termo: 'sem contato', fechavel: true },
     ];
+
+    /* CC-240: as faixas que ele fechou, por id.
+       Fora de `renderAgentes()` porque ela roda a cada tique do stream: guardar
+       isto dentro dela reabriria a faixa sozinha de 2 em 2 segundos, na cara
+       dele. É a mesma razão de `MEU_ABERTO` existir no escopo do script.
+
+       Nasce com `mudo` dentro: o pedido é que a lista de offline apareça
+       fechada, e ele abre se quiser. */
+    const ZONAS_FECHADAS = new Set(['mudo']);
 
     function renderAgentes() {
       const zonas = document.getElementById('ag-zonas');
@@ -2361,12 +3130,25 @@
         const ordenada = z.id === 'waiting'
           ? dela.sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0))  // quem espera há mais tempo primeiro
           : dela.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        /* CC-240: faixa que pode fechar mostra só o cabeçalho quando fechada.
+           O corpo não é escondido por CSS, ele não é DESENHADO: com 14 agentes
+           parados, montar tudo a cada 2 segundos para deixar invisível seria
+           trabalho jogado fora no telefone dele. */
+        const fechada = z.fechavel && ZONAS_FECHADAS.has(z.id);
+        const botao = z.fechavel
+          ? `<button class="btn btn-ghost compacto" data-zona="${esc(z.id)}" style="padding:2px 10px;font-size:11px;"
+               title="${fechada ? 'mostrar' : 'esconder'} esta faixa">${fechada ? `mostrar (${dela.length})` : 'esconder'}</button>`
+          : '';
         return `
           <section style="margin-top:20px;">
             <div class="section-header">
               <h2><span class="dot ${z.cor}"></span> ${z.titulo} ${z.termo ? ajuda(z.termo) : ''}</h2>
-              <span style="font-size:12px;color:var(--text-muted);">${dela.length}</span>
+              <span style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:12px;color:var(--text-muted);">${dela.length}</span>
+                ${botao}
+              </span>
             </div>
+            ${fechada ? '' : `
             <div class="card" style="padding:0;overflow:hidden;">
               ${ordenada.map((j) => `
                 <div class="agent-item" data-ag="${esc(j.id)}" style="padding:12px 20px;${agSelecionado === j.id ? 'background:var(--card-hover);' : ''}">
@@ -2395,7 +3177,7 @@
                     <span class="dot ${semContato(j) ? 'mudo' : (COR_STATUS[j.status] || 'yellow')}"></span>
                   </div>
                 </div>`).join('')}
-            </div>
+            </div>`}
           </section>`;
       }).join('') || `<p style="margin-top:20px;font-size:13px;color:var(--text-muted);">${DATA.agentes.length ? 'nenhum agente bate com o filtro.' : 'nenhum agente aberto agora.'}</p>`;
     }
@@ -3817,6 +4599,7 @@
      */
     const MODULOS = [
       { id: 'agora', label: 'o que precisa de você', de: 'agora-container' },
+      { id: 'rodando', label: 'o que está rodando agora', de: 'rodando-container' },
       { id: 'projetos', label: 'agentes por projeto', de: 'projetos-container' },
       { id: 'meu', label: 'o que só você resolve', de: 'meu-lista' },
       { id: 'mudou', label: 'o que mudou desde que olhei', de: 'dqo-caixa' },
@@ -4228,9 +5011,46 @@
       const autostart = `<p style="margin:6px 0;font-size:13px;color:${f.autostart ? 'var(--green)' : 'var(--red)'};">
         ${f.autostart ? '✓ este painel sobe sozinho quando a máquina liga.' : '✗ este painel não sobe sozinho: o envio para quando a máquina reiniciar.'}</p>`;
 
+      /**
+       * CC-263: o cartão de instalar o serviço no Windows.
+       *
+       * Pedido dele: *"se eu entrar no cockpit pelo Windows, eu quero ter a
+       * opção de instalar no Windows"*.
+       *
+       * ⚠️ **Este painel NÃO consegue instalar nada no PC dele, e o motivo é
+       * físico:** quem serve esta tela é a VPS, e a VPS nunca alcança o desktop
+       * atrás do NAT. É a mesma topologia torta que faz o desktop empurrar e a
+       * VPS receber. Então o cartão entrega o comando pronto, com o caminho que
+       * a PRÓPRIA máquina reportou, e um botão para copiar.
+       *
+       * Aparece só quando ele está num Windows, e só quando existe uma máquina
+       * Windows conhecida sem serviço reportando. Fora disso é ruído.
+       */
+      const noWindows = /Win/i.test(navigator.platform || '') || /Windows/i.test(navigator.userAgent || '');
+      const pcs = outras.filter((m) => m.raizDoCockpit && /^[A-Za-z]:\\/.test(m.raizDoCockpit));
+      const alvo = pcs[0] || null;
+      const cmdServico = alvo ? `node "${alvo.raizDoCockpit}\\cc.mjs" servico instalar` : null;
+      const cartaoServico = (noWindows && cmdServico) ? `
+        <div class="card" style="margin:10px 0;padding:14px;border-left:3px solid var(--accent);">
+          <h3 style="font-size:13px;margin:0 0 6px;">INSTALAR O SERVIÇO EM ${esc(alvo.nome)}</h3>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;">
+            Faz aquela máquina reportar sozinha, com ela ligada, sem o cockpit aberto e sem ninguém logado.
+            ${alvo.semContato ? `<b style="color:var(--amber);">Ela está sem contato há ${esc(age(alvo.idadeMs))}.</b>` : ''}
+          </p>
+          <code style="display:block;font-size:12px;background:var(--card-hover);padding:10px;border-radius:6px;overflow-wrap:anywhere;">${esc(cmdServico)}</code>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+            <button class="btn btn-ghost compacto" data-copiar="${esc(cmdServico)}">copiar comando</button>
+            <span style="font-size:11px;color:var(--text-dim);align-self:center;">roda no terminal DAQUELA máquina, e pede senha de administrador uma vez</span>
+          </div>
+          <p style="font-size:11px;color:var(--text-dim);margin:10px 0 0;">
+            Este painel não instala sozinho lá: quem serve esta tela é a VPS, e ela nunca alcança o seu PC atrás do roteador.
+            O caminho acima veio da própria máquina, do que ela reportou.
+          </p>
+        </div>` : '';
+
       el.innerHTML = `
         <h2>PAINEL FEDERADO</h2>
-        ${envio}${autostart}
+        ${envio}${autostart}${cartaoServico}
         <p style="font-size:12px;color:var(--text-muted);margin:10px 0;">Esta máquina se chama <b style="color:var(--text-main);">${esc(f.maquina?.nome || '?')}</b>.
           O desktop manda, a VPS recebe: um alcança o outro, nunca ao contrário.</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px;">
@@ -4295,9 +5115,13 @@
             </div>`).join('')}
         </div>`).join('');
 
+      /* O nome sai de `style=` e vira classe: estilo inline VENCE regra de CSS,
+         e foi por isso que a primeira tentativa de fazer o nome ocupar a linha
+         inteira em tela estreita não teve efeito nenhum. É a mesma armadilha
+         que já apagou uma tela inteira em 390px neste painel. */
       const linha = (nome, dir, on, extras) => `
-        <div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--border);font-size:13px;">
-          <span style="flex:1;min-width:0;overflow-wrap:anywhere;">${esc(nome)}</span>
+        <div class="rc-linha">
+          <span class="rc-nome">${esc(nome)}</span>
           ${on ? '<span style="font-size:11px;color:var(--green);">ligado</span>' : ''}
           ${extras?.length ? `<span style="font-size:11px;color:var(--text-dim);">+${extras.length}</span>` : ''}
           <span style="display:flex;gap:6px;">
@@ -4305,7 +5129,14 @@
               ? `<button class="btn btn-ghost compacto" data-remoto-link="${esc(nome)}">pegar link</button>
                  <button class="btn btn-ghost compacto" data-remoto-mais="${esc(nome)}" data-remoto-dir="${esc(dir)}">mais uma</button>
                  <button class="btn btn-ghost compacto" data-remoto-desligar="${esc(nome)}">desligar</button>`
-              : `<button class="btn btn-outline compacto" data-remoto-ligar="${esc(nome)}" data-remoto-dir="${esc(dir)}">ligar</button>`}
+              /* CC-254: ativar um projeto passa a perguntar ONDE abrir.
+                 Pedido dele: *"quando lá no remoto quando eu for ativar 1
+                 projeto, eu vou ter a opção de ativar 1 projeto no agy ou no
+                 cockpit agente"*. É o mesmo gesto de "começar a trabalhar neste
+                 projeto", com destinos diferentes: a sessão do Claude Code como
+                 sempre foi, ou uma conversa no Coderoom. */
+              : `<button class="btn btn-outline compacto" data-remoto-ligar="${esc(nome)}" data-remoto-dir="${esc(dir)}">sessão do Claude</button>
+                 <button class="btn btn-ghost compacto" data-coderoom-abrir="${esc(nome)}" data-coderoom-dir="${esc(dir)}">no Coderoom</button>`}
           </span>
         </div>`;
 
@@ -4581,9 +5412,520 @@
       renderAmbiente();
     }
 
+    /* ================== CC-245: a tela de conversa (o gate) ==================
+     *
+     * A conversa é do painel, e ele troca de agente dentro dela. Aqui só mora a
+     * tela: quem guarda é `src/gate.mjs`, quem chama agente é
+     * `src/gateAgentes.mjs`, e quem monta o contexto do projeto é
+     * `src/gatePacote.mjs`.
+     *
+     * O estado vive em variável, NUNCA no elemento. Campo que guarda o próprio
+     * valor só no DOM perde o que foi digitado no primeiro redesenho, e este
+     * painel se redesenha de 2 em 2 segundos.
+     */
+    const GATE = {
+      id: null,          // a conversa aberta
+      conversas: null,   // null = ainda não li; [] = li e não há nenhuma
+      dados: null,       // a conversa aberta, dobrada
+      agente: 'claude',  // quem responde a próxima
+      escolhendo: false, // a lista de conversas está aberta
+      erro: null,        // falha de leitura, que NUNCA pode virar tela vazia
+      enviando: false,
+      projetos: null,    // os projetos que o painel conhece; null = ainda não li
+      projetoAberto: null,
+      submenuAberto: false, // a lista de projetos na lateral nasce fechada
+      rolarAoAbrir: true,   // conversa se abre pelo fim, que é onde está o agora
+    };
+    const GATE_PAGA = {
+      claude: 'entra com a sua assinatura',
+      opencode: 'entra com os modelos gratuitos',
+      agy: 'entra com a conta Google logada nele',
+    };
+
+    /* Abre uma conversa nova naquele projeto. A pasta sai da lista de projetos
+       que o painel já conhece; sem ela, o servidor recusa, porque conversa sem
+       pasta válida seria agente agindo em lugar nenhum. */
+    async function gateNova(projeto) {
+      const p = (GATE.projetos || []).find((x) => x.nome === projeto);
+      try {
+        const r = await fetch('/api/gate/nova', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ projeto, cwd: p?.dir || undefined }),
+        });
+        if (!r.ok) throw new Error(`resposta ${r.status}`);
+        const d = await r.json();
+        GATE.id = d.id;
+        GATE.dados = null;
+        GATE.rolarAoAbrir = true;
+        GATE.projetoAberto = projeto;
+        GATE.escolhendo = false;
+      } catch (e) {
+        GATE.erro = `não consegui abrir a conversa: ${e.message || e}`;
+      }
+      renderGate();
+      gateBuscar();
+    }
+
+    async function gateBuscar() {
+      const ativa = document.getElementById('view-gate')?.classList.contains('active');
+      if (!ativa) return;
+      /* Os projetos do painel entram uma vez: a lista quase não muda, e pedir a
+         cada tique seria varrer disco de dois em dois segundos. */
+      if (GATE.projetos === null) {
+        GATE.projetos = [];
+        try {
+          const r = await fetch('/api/projetos');
+          if (r.ok) GATE.projetos = (await r.json()).projetos || [];
+        } catch { /* a lista de projetos é conforto, não requisito */ }
+      }
+      try {
+        const r = await fetch('/api/gate/conversas');
+        if (!r.ok) throw new Error(`resposta ${r.status}`);
+        const d = await r.json();
+        GATE.conversas = d.conversas || [];
+        GATE.erro = null;
+        if (!GATE.id && GATE.conversas.length) GATE.id = GATE.conversas[0].id;
+      } catch (e) {
+        /* Falha de leitura NÃO pode virar lista vazia. Ele confia no silêncio da
+           tela, e uma tela que fica quieta quando falhou mente no momento da
+           decisão. É a régua 5 deste projeto. */
+        GATE.erro = String(e.message || e);
+        renderGate();
+        return;
+      }
+      if (GATE.id) {
+        try {
+          const r = await fetch(`/api/gate/conversa?id=${encodeURIComponent(GATE.id)}`);
+          if (!r.ok) throw new Error(`resposta ${r.status}`);
+          GATE.dados = await r.json();
+        } catch (e) {
+          GATE.erro = String(e.message || e);
+        }
+      }
+      renderGate();
+    }
+
+    /* CC-252b: o texto formatado, que ele pediu.
+     *
+     * Escrito à mão, e não trazido de uma biblioteca, pela mesma razão que vale
+     * para o painel inteiro: zero dependência de runtime, e a página tem que
+     * abrir sem rede. São as marcas que um agente usa de verdade, medidas nas
+     * respostas reais deste projeto.
+     *
+     * **O escape vem PRIMEIRO, sempre.** O texto é escrito por um agente que lê
+     * arquivo do disco: se ele devolver um trecho de HTML, ele tem que aparecer
+     * como texto na tela, nunca virar elemento. Por isso `esc()` roda antes de
+     * qualquer marca, e daí em diante só se acrescenta tag nossa.
+     */
+    function gateFormatar(cru) {
+      const linhas = esc(String(cru || '')).split('\n');
+      const fora = [];
+      let dentroDeCodigo = false;
+      let lista = null;   // 'ul' ou 'ol' enquanto uma lista está aberta
+      let paragrafo = [];
+
+      const fecharParagrafo = () => {
+        if (!paragrafo.length) return;
+        fora.push(`<p>${paragrafo.join('<br>')}</p>`);
+        paragrafo = [];
+      };
+      const fecharLista = () => { if (lista) { fora.push(`</${lista}>`); lista = null; } };
+      /* Só depois do escape: o que sobrou de `&lt;` continua texto, e o que
+         entra aqui é tag nossa. */
+      const emLinha = (t) => t
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+
+      for (const linha of linhas) {
+        const cerca = /^\s*```/.test(linha);
+        if (cerca) {
+          fecharParagrafo(); fecharLista();
+          fora.push(dentroDeCodigo ? '</code></pre>' : '<pre><code>');
+          dentroDeCodigo = !dentroDeCodigo;
+          continue;
+        }
+        if (dentroDeCodigo) { fora.push(linha); continue; }
+
+        const titulo = /^(#{1,6})\s+(.*)$/.exec(linha);
+        const item = /^\s*[-*+]\s+(.*)$/.exec(linha);
+        const numerado = /^\s*\d+[.)]\s+(.*)$/.exec(linha);
+        const citacao = /^\s*&gt;\s?(.*)$/.exec(linha);
+
+        if (titulo) {
+          fecharParagrafo(); fecharLista();
+          const n = Math.min(titulo[1].length + 1, 3);
+          fora.push(`<h${n}>${emLinha(titulo[2])}</h${n}>`);
+        } else if (item || numerado) {
+          fecharParagrafo();
+          const quero = item ? 'ul' : 'ol';
+          if (lista !== quero) { fecharLista(); fora.push(`<${quero}>`); lista = quero; }
+          fora.push(`<li>${emLinha((item || numerado)[1])}</li>`);
+        } else if (citacao) {
+          fecharParagrafo(); fecharLista();
+          fora.push(`<blockquote>${emLinha(citacao[1])}</blockquote>`);
+        } else if (!linha.trim()) {
+          fecharParagrafo(); fecharLista();
+        } else {
+          fecharLista();
+          paragrafo.push(emLinha(linha));
+        }
+      }
+      fecharParagrafo(); fecharLista();
+      if (dentroDeCodigo) fora.push('</code></pre>'); // cerca aberta enquanto a resposta ainda cresce
+      return fora.join('\n');
+    }
+
+    const gateMil = (n) => (n >= 1000 ? Math.round(n / 1000) + 'k' : String(n || 0));
+
+    function gateCartao(m) {
+      const de = m.de === 'felipe' ? 'você' : m.de;
+      const quando = m.em ? new Date(m.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+      const fer = (m.ferramentas || []).length
+        ? `<div class="gate-fer">${m.ferramentas.slice(0, 8).map((f) => `<span>${esc(f.nome)}${f.alvo ? ' ' + esc(f.alvo) : ''}</span>`).join('')}${m.ferramentas.length > 8 ? `<span>e mais ${m.ferramentas.length - 8}</span>` : ''}</div>`
+        : '';
+      /* Custo por resposta, e não só o total: custo que ele não vê é custo que
+         ele não decide. O dólar aqui é referência de comparação, nunca fatura,
+         porque ele paga assinatura. */
+      const custo = m.custo && m.custo.dolar != null
+        ? `<div class="gate-custo">US$ ${m.custo.dolar.toFixed(4)}${m.segundos ? ' · ' + m.segundos + 's' : ''}${m.custo.cacheLido ? ' · ' + Math.round(m.custo.cacheLido / 1000) + 'k lidos do cache' : ''}</div>`
+        : '';
+      const erro = m.erro ? `<div class="gate-custo" style="color:var(--red);">${esc(m.erro)}</div>` : '';
+      const texto = m.texto || '';
+      /* A fala DELE não passa pelo formatador: ele digita texto comum, e
+         interpretar asterisco no que ele escreveu mudaria o que ele escreveu.
+         A resposta do agente passa, porque ela vem escrita em marcação. */
+      let corpo;
+      if (m.de === 'felipe') {
+        corpo = `<p>${esc(texto).replace(/\n/g, '<br>')}</p>`;
+      } else if (texto.trim()) {
+        corpo = `<div class="gate-md">${gateFormatar(texto)}</div>`;
+      } else {
+        /* Resposta ainda sem uma palavra: o espaço em branco não distingue
+           "está pensando" de "veio vazia". Cada caso diz o seu. */
+        const frase = m.estado === 'rodando'
+          ? (m.ferramentas?.length ? 'trabalhando…' : 'pensando…')
+          : m.erro ? 'esta resposta não chegou' : 'o agente terminou sem escrever nada';
+        corpo = `<p style="color:var(--text-dim);font-style:italic;">${frase}</p>`;
+      }
+      return `
+        <div class="gate-msg gate-de-${esc(m.de)}">
+          <div class="gate-cab">${esc(de)}${quando ? ' · ' + quando : ''}${m.modelo ? ' · ' + esc(m.modelo) : ''}${m.permissao ? ' · ' + esc(m.permissao) : ''}</div>
+          ${corpo}
+          ${fer}${custo}${erro}
+        </div>`;
+    }
+
+    /* O submenu de projetos na barra lateral (CC-253).
+     *
+     * Um projeto por linha, e as conversas daquele projeto embaixo quando ele
+     * está aberto. Projeto sem conversa nenhuma aparece igual: é dali que ele
+     * começa uma nova, e esconder projeto vazio faria parecer que só dá para
+     * conversar onde já se conversou. */
+    function gateSubmenu() {
+      const el = document.getElementById('gate-submenu');
+      if (!el) return;
+      const naTela = document.getElementById('view-gate')?.classList.contains('active');
+      /* Nasce FECHADO, e só abre quando ele pede.
+         Aberto por padrão, ele empurrava os outros destinos do menu para baixo
+         com uma lista que cresce com o número de projetos e de conversas: com
+         16 projetos, a barra lateral virava a tela inteira. Apontado por ele:
+         *"não faz muito sentido ela ocupar tanto espaço"*. */
+      el.hidden = !naTela || !GATE.submenuAberto;
+      if (el.hidden) return;
+
+      const porProjeto = new Map();
+      for (const c of GATE.conversas || []) {
+        const k = c.projeto || 'sem projeto';
+        if (!porProjeto.has(k)) porProjeto.set(k, []);
+        porProjeto.get(k).push(c);
+      }
+      /* Os projetos que o painel conhece entram mesmo sem conversa: é assim que
+         ele abre a primeira num projeto novo. */
+      for (const p of GATE.projetos || []) if (!porProjeto.has(p.nome)) porProjeto.set(p.nome, []);
+
+      if (!porProjeto.size) {
+        /* Vazio por falha de leitura não pode virar "nenhum projeto ainda":
+           é a mesma mentira que a lista de conversas já evita. */
+        pintar(el, GATE.erro
+          ? `<div class="gate-sub-titulo" style="color:var(--red);">não consegui ler os projetos</div>`
+          : `<div class="gate-sub-titulo">nenhum projeto ainda</div>`);
+        return;
+      }
+
+      /* Só o projeto ABERTO mostra as conversas dele. Todos abertos de uma vez
+         era a segunda metade do inchaço: 16 projetos com 3 conversas cada dão
+         64 linhas numa barra que cabe umas 12. */
+      const aberto = GATE.projetoAberto || GATE.dados?.cabecalho?.projeto || null;
+      pintar(el, [...porProjeto.entries()].map(([proj, convs]) => {
+        const ehOAberto = proj === aberto;
+        const filhas = ehOAberto
+          ? convs.map((c) => `<button type="button" data-conv="${esc(c.id)}" aria-current="${c.id === GATE.id}" style="padding-left:22px;">${esc(c.titulo || 'conversa')}</button>`).join('')
+            + `<button type="button" data-nova="${esc(proj)}" style="padding-left:22px;color:var(--accent);">+ conversa nova</button>`
+          : '';
+        return `<button type="button" data-proj="${esc(proj)}" aria-current="${ehOAberto}">${esc(proj)}${convs.length ? ` <span style="color:var(--text-dim);">${convs.length}</span>` : ''}</button>${filhas}`;
+      }).join(''));
+    }
+
+    function renderGate() {
+      const lista = document.getElementById('gate-lista');
+      const faixa = document.getElementById('gate-agora');
+      const qual = document.getElementById('gate-qual');
+      const caixaConv = document.getElementById('gate-conversas');
+      const compor = document.getElementById('gate-compor');
+      if (!lista) return;
+
+      /* Os botões de agente moram fora do bloco pintado, então só o atributo
+         muda. Reescrever o bloco deles mataria o toque no meio. */
+      document.querySelectorAll('.gate-ag').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.gateAg === GATE.agente)));
+      const paga = document.getElementById('gate-paga');
+      if (paga && paga.textContent !== GATE_PAGA[GATE.agente]) paga.textContent = GATE_PAGA[GATE.agente];
+
+      /* CC-251/CC-253: a escolha é POR PROJETO, e mora na barra lateral.
+         Pedido dele: clicar no ícone abre o submenu ali mesmo, e cada projeto
+         mostra as conversas dele. No telefone a lateral não existe, então a
+         mesma lista continua abrindo dentro do conteúdo. */
+      gateSubmenu();
+
+      const gasto = document.getElementById('gate-gasto');
+      if (gasto) {
+        const g = GATE.dados?.gasto;
+        gasto.hidden = !g || !g.respostas;
+        if (g && g.respostas) {
+          pintar(gasto, `
+            <span><b>${g.respostas}</b> resposta${g.respostas > 1 ? 's' : ''}</span>
+            <span><b>${gateMil(g.saida)}</b> tokens escritos</span>
+            <span><b>${gateMil(g.cacheLido)}</b> lidos do cache</span>
+            ${g.dolar ? `<span>custo de referência <b>US$ ${g.dolar.toFixed(2)}</b></span>` : ''}
+            <span style="flex:1"></span>
+            <span title="você paga assinatura, então isto serve para comparar conversas entre si, nunca como fatura">o dólar é referência, não fatura</span>`);
+        }
+      }
+
+      if (caixaConv) {
+        caixaConv.hidden = !GATE.escolhendo;
+        if (GATE.escolhendo) {
+          const cs = GATE.conversas || [];
+          pintar(caixaConv, cs.length
+            /* Duas regras do projeto valem nesta linha, e as duas foram
+               cobradas por ele antes:
+               - conversa sem projeto DIZ que não tem, em vez de deixar um
+                 espaço mudo, que não distingue "não pertence a projeto nenhum"
+                 de "não consegui ler qual é";
+               - todo quadro que mostra projeto diz em QUAL MÁQUINA ele está.
+                 Aqui a resposta é sempre a máquina local, e não é detalhe: o
+                 agente do gate age no disco de quem serve o painel, e ele olha
+                 isto do telefone, longe das duas máquinas. */
+            ? cs.map((c) => `<div class="gate-conv" data-conv="${esc(c.id)}" aria-current="${c.id === GATE.id}">
+                 <span>${esc(c.titulo || c.projeto || 'conversa')}</span>
+                 <span style="font-size:11px;color:var(--text-dim);">${esc(c.projeto || 'sem projeto')} ${seloDe(DATA.maquina?.nome || 'esta máquina')}</span>
+               </div>`).join('')
+            : `<div class="card" style="color:var(--text-muted);">Nenhuma conversa ainda. Escreva embaixo para começar uma.</div>`);
+        }
+      }
+
+      if (GATE.erro) {
+        if (compor) compor.hidden = false;
+        if (faixa) faixa.hidden = true;
+        pintar(lista, `<div class="card attention-card red">
+          <div class="attention-title">NÃO DEU PARA LER</div>
+          <p>Não consegui ler as conversas: ${esc(GATE.erro)}. Isto não quer dizer que não há nenhuma, quer dizer que não consegui perguntar.</p>
+        </div>`);
+        if (qual) qual.textContent = 'leitura falhou';
+        return;
+      }
+
+      if (GATE.conversas === null) {
+        pintar(lista, `<div class="card" style="color:var(--text-muted);">lendo as conversas…</div>`);
+        return;
+      }
+
+      const d = GATE.dados;
+      if (qual) qual.textContent = d?.cabecalho ? (d.cabecalho.projeto || d.cabecalho.titulo || '') : '';
+
+      if (!GATE.id || !d) {
+        if (faixa) faixa.hidden = true;
+        pintar(lista, `<div class="card" style="color:var(--text-muted);padding:28px;">
+          Nenhuma conversa aberta. Escreva embaixo e eu começo uma neste projeto.
+        </div>`);
+        return;
+      }
+
+      const msgs = d.mensagens || [];
+      /* Antes de repintar: ele já estava no fim? A resposta decide se a tela
+         acompanha o texto novo ou fica onde ele parou de ler. Rolar a tela de
+         alguém que está lendo mais acima é o mesmo crime de reescrever HTML
+         idêntico: a página foge do dedo. */
+      const rolador = document.querySelector('.main-content');
+      const estavaNoFim = !rolador
+        || rolador.scrollHeight - rolador.scrollTop - rolador.clientHeight < 120;
+
+      const mudou = pintar(lista, (d.truncada ? `<div class="gate-msg gate-de-sistema"><p>O começo desta conversa é antigo demais e não cabe na tela. As mensagens abaixo são as mais recentes.</p></div>` : '')
+        + (msgs.length ? msgs.map(gateCartao).join('') : `<div class="card" style="color:var(--text-muted);padding:24px;">Conversa vazia. Escreva embaixo.</div>`));
+
+      /* Conversa se lê pelo fim: é lá que está a resposta de agora. Abrir no
+         começo obrigaria a rolar tudo toda vez, e no telefone isso é a conversa
+         parecendo vazia porque o que interessa está fora da tela. */
+      if (rolador && (GATE.rolarAoAbrir || (mudou && estavaNoFim))) {
+        GATE.rolarAoAbrir = false;
+        requestAnimationFrame(() => { rolador.scrollTop = rolador.scrollHeight; });
+      }
+
+      /* A faixa do turno. Mostra a FERRAMENTA correndo agora, que é o que
+         distingue "trabalhando" de "travado" numa espera de minutos. */
+      if (faixa) {
+        const emVoo = msgs.find((m) => m.turnoId && m.turnoId === d.turnoAberto);
+        if (!d.turnoAberto) {
+          faixa.hidden = true;
+        } else {
+          faixa.hidden = false;
+          const ultima = emVoo?.ferramentas?.[emVoo.ferramentas.length - 1];
+          const ha = emVoo?.em ? age(Date.now() - emVoo.em) : '';
+          pintar(faixa, `<span class="dot green"></span>
+            <span>${esc(emVoo?.de || GATE.agente)} trabalhando${ha ? ' há ' + esc(ha) : ''}</span>
+            <span class="gate-fazendo">${ultima ? esc(ultima.nome + (ultima.alvo ? ' ' + ultima.alvo : '')) : 'pensando'}</span>
+            <span style="flex:1"></span>
+            <button type="button" class="btn btn-ghost" id="gate-parar">parar</button>`);
+        }
+      }
+    }
+
+    /* Ligado UMA vez. Os alvos moram fora do bloco pintado, então o elemento
+       nunca é trocado e o ouvinte não se perde. */
+    function ligarGate() {
+      const txt = document.getElementById('gate-txt');
+      const btn = document.getElementById('gate-enviar');
+      if (!txt || !btn) return;
+
+      document.querySelectorAll('.gate-ag').forEach((b) => b.addEventListener('click', () => {
+        GATE.agente = b.dataset.gateAg;
+        renderGate();
+      }));
+
+      document.getElementById('gate-trocar')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        /* No monitor, o "projetos" do alto abre a MESMA lista da lateral, em
+           vez de uma segunda lista dentro do conteúdo: duas listas para a mesma
+           escolha é o que faz ele não saber qual olhar. No telefone a lateral
+           não existe, e aí a lista abre no conteúdo mesmo. */
+        const temLateral = getComputedStyle(document.querySelector('.sidebar')).display !== 'none';
+        if (temLateral) {
+          GATE.submenuAberto = !GATE.submenuAberto;
+          if (GATE.submenuAberto) GATE.escolhendo = false;
+        } else {
+          GATE.escolhendo = !GATE.escolhendo;
+        }
+        renderGate();
+      });
+
+      /* Clicar no destino do menu também abre e fecha a lista, que é o gesto
+         que ele descreveu: *"quando clicar no desenho do chat pode abrir um sub
+         menu ali mesmo"*. */
+      document.querySelector('.nav-item[data-target="view-gate"]')?.addEventListener('click', () => {
+        const jaEstava = document.getElementById('view-gate')?.classList.contains('active');
+        GATE.submenuAberto = jaEstava ? !GATE.submenuAberto : true;
+        setTimeout(renderGate, 0);
+      });
+
+      /* O mesmo clique serve na lateral e no conteúdo: no telefone a lateral
+         não existe, e a lista abre dentro da tela. Duas listas, um ouvinte. */
+      const escolher = (e) => {
+        const conv = e.target.closest('[data-conv]');
+        const proj = e.target.closest('[data-proj]');
+        const nova = e.target.closest('[data-nova]');
+        if (nova) {
+          gateNova(nova.dataset.nova);
+          return;
+        }
+        if (proj) {
+          /* Clicar no projeto que já está aberto FECHA ele. Sem isso não há
+             como recolher a lista depois de abrir, e ela fica grande de novo. */
+          if (GATE.projetoAberto === proj.dataset.proj) {
+            GATE.projetoAberto = null;
+            renderGate();
+            return;
+          }
+          GATE.projetoAberto = proj.dataset.proj;
+          /* Abrir um projeto já leva à conversa mais recente dele: um clique a
+             menos para chegar onde ele quer, e é o que o painel já faz nas
+             outras telas. */
+          const primeira = (GATE.conversas || []).find((c) => (c.projeto || 'sem projeto') === proj.dataset.proj);
+          if (primeira && primeira.id !== GATE.id) { GATE.id = primeira.id; GATE.dados = null; GATE.rolarAoAbrir = true; gateBuscar(); }
+          renderGate();
+          return;
+        }
+        if (!conv) return;
+        GATE.id = conv.dataset.conv;
+        GATE.escolhendo = false;
+        GATE.dados = null;
+        GATE.rolarAoAbrir = true;
+        renderGate();
+        gateBuscar();
+      };
+      document.getElementById('gate-conversas')?.addEventListener('click', escolher);
+      document.getElementById('gate-submenu')?.addEventListener('click', escolher);
+
+      document.getElementById('gate-agora')?.addEventListener('click', async (e) => {
+        if (!e.target.closest('#gate-parar')) return;
+        try { await fetch('/api/gate/parar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: GATE.id }) }); } catch { /* a tela dirá no próximo tique */ }
+        gateBuscar();
+      });
+
+      /* O rascunho vai para o servidor, porque ele pediu que a conversa não se
+         perca ao sair da janela. Com atraso, senão seria uma escrita por tecla. */
+      let guardar = null;
+      txt.addEventListener('input', () => {
+        clearTimeout(guardar);
+        guardar = setTimeout(() => {
+          if (!GATE.id) return;
+          fetch('/api/gate/rascunho', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: GATE.id, texto: txt.value }) }).catch(() => { /* rascunho é melhor esforço */ });
+        }, 800);
+      });
+
+      const enviar = async () => {
+        const texto = txt.value.trim();
+        if (!texto || GATE.enviando) return;
+        GATE.enviando = true;
+        btn.disabled = true;
+        try {
+          /* Sem conversa aberta, a primeira mensagem cria uma. Ele não deveria
+             precisar criar nada antes de falar. */
+          if (!GATE.id) {
+            const r = await fetch('/api/gate/nova', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({}) });
+            if (!r.ok) throw new Error(`não consegui abrir a conversa (resposta ${r.status})`);
+            GATE.id = (await r.json()).id;
+          }
+          const r = await fetch('/api/gate/mensagem', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ id: GATE.id, texto, agente: GATE.agente }),
+          });
+          if (!r.ok) throw new Error(`a mensagem não foi (resposta ${r.status})`);
+          txt.value = '';
+          GATE.erro = null;
+        } catch (e) {
+          /* Escrita que falha é diferente de leitura que falha: aqui o que ele
+             clicou NÃO aconteceu, e ele precisa saber disso na hora. O texto
+             continua no campo, para ele não perder o que escreveu. */
+          GATE.erro = String(e.message || e);
+        } finally {
+          GATE.enviando = false;
+          btn.disabled = false;
+          renderGate();
+          gateBuscar();
+        }
+      };
+      btn.addEventListener('click', enviar);
+      /* Enter manda, Shift+Enter quebra linha. No telefone o teclado mostra o
+         botão de enviar, e ele escreve mensagem longa ditando. */
+      txt.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); enviar(); }
+      });
+    }
+
     function renderAll() {
       renderFalhas();
       renderAgora();
+      renderRodando();
       renderSprints();
       renderRecados();
       renderSinais();
@@ -4840,18 +6182,40 @@
       });
 
       // Auxiliares de renderização
+      /* CC-233: esta é a lista que ELE tocou no telefone em 21/08. A linha
+         inteira era um `<label>` da caixa de marcar, então tocar no texto para
+         saber o que a tarefa é abria "Marcar como resolvido?". Palavras dele:
+         *"essa tela não me serve de nada se eu não puder clicar e ver exatamente
+         o que preciso resolver"*.
+
+         Havia DUAS listas de pendência dele no arquivo, com a mesma função e o
+         mesmo defeito: a da tela "o que só você resolve" e esta, da tela
+         Trabalho. Consertar só uma deixaria o defeito vivo onde ele estava
+         olhando. */
       const renderMeu = (itens) => {
         if (!itens || itens.length === 0) return '';
         return itens.map(p => `
           <div class="card attention-card red" style="margin-bottom: 8px; padding: 12px; background: rgba(239, 68, 68, 0.05); border-left: 3px solid var(--red);">
-            <label class="ct ct-tar s-waiting" style="display: flex; gap: 8px; align-items: flex-start; cursor: pointer;">
-              <input type="checkbox" data-meu-check="${esc(p.id)}" data-meu-texto="${esc(p.texto)}" aria-label="marcar como resolvida">
-              <div>
+            <div class="ct ct-tar s-waiting" style="display: flex; gap: 8px; align-items: flex-start;">
+              <label style="flex: none; cursor: pointer;" title="marcar como resolvida">
+                <input type="checkbox" data-meu-check="${esc(p.id)}" data-meu-texto="${esc(p.texto)}" aria-label="marcar como resolvida">
+              </label>
+              <div data-meu-abrir="${esc(p.id)}" style="cursor: pointer; min-width: 0; flex: 1;" title="ver o que é esta tarefa">
+                ${/* CC-262: a revisão automática, na ABA TRABALHO, dentro de "o
+                     que só você resolve", que foi onde ele pediu. O selo só
+                     aparece quando a prova diz que sim, e ele continua sendo
+                     quem fecha: aqui é aviso, não ação. */ ''}
+                ${p.pareceResolvida ? `<span class="ct-selo c-done" style="font-size:10px;background:rgba(16,185,129,.2);padding:2px 6px;border-radius:4px;color:#6ee7b7;" title="${esc(p.comoSoube || '')}">parece resolvida</span>` : ''}
                 <span class="ct-selo c-waiting" style="font-size: 10px; background: rgba(239, 68, 68, 0.2); padding: 2px 6px; border-radius: 4px; color: #fca5a5;">você</span>
                 <span style="font-size: 13px; font-weight: 500; color: var(--text-main); margin-left: 6px;">${esc(p.texto)}</span>
-                ${p.porque ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${esc(p.porque)}</div>` : ''}
+                ${/* O motivo aparece aqui só com o item FECHADO: aberto, ele
+                      viria duas vezes seguidas na mesma tela, e em 390px isso
+                      empurra os botões para fora. */ ''}
+                ${p.porque && !MEU_ABERTO.has(p.id) ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${esc(p.porque)}</div>` : ''}
               </div>
-            </label>
+              <span style="flex: none; font-size: 11px; color: var(--text-dim);">${MEU_ABERTO.has(p.id) ? '▾' : '▸'}</span>
+            </div>
+            ${MEU_ABERTO.has(p.id) ? detalheMeu(p) : ''}
           </div>
         `).join('');
       };
@@ -5217,7 +6581,7 @@
     });
 
     document.body.addEventListener('click', async (e) => {
-      const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar]');
+      const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-meu-abrir], [data-meu-feito-btn], [data-zona], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-coderoom-abrir], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar]');
       if (!tr) return;
       /* CC-228: vem antes de tudo. O "?" mora dentro de cartões e linhas que já
          têm clique próprio (abrir agente, marcar feito), e sem sair aqui o
@@ -5292,6 +6656,46 @@
       }
       /* "ligar" e "mais uma" são o mesmo caminho: `mais` faz o servidor
          escolher um rótulo livre em vez de devolver a sessão que já existe. */
+      /* CC-254: o outro destino do mesmo gesto. Abre (ou reusa) a conversa
+         daquele projeto no Coderoom e leva ele para lá, em vez de subir uma
+         sessão de terminal. */
+      if (tr.dataset.coderoomAbrir) {
+        const projeto = tr.dataset.coderoomAbrir;
+        const dir = tr.dataset.coderoomDir;
+        tr.disabled = true; tr.innerText = 'abrindo…';
+        (async () => {
+          try {
+            /* Conversa que já existe naquele projeto é REUSADA. Abrir uma nova
+               a cada clique encheria a lista de conversas vazias com o mesmo
+               nome, e ele perderia o histórico de vista. */
+            const r = await fetch('/api/gate/conversas');
+            const cs = r.ok ? (await r.json()).conversas || [] : [];
+            const existe = cs.find((c) => c.projeto === projeto);
+            if (existe) {
+              GATE.id = existe.id;
+            } else {
+              const n = await fetch('/api/gate/nova', {
+                method: 'POST', headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ projeto, cwd: dir }),
+              });
+              if (!n.ok) throw new Error(`resposta ${n.status}`);
+              GATE.id = (await n.json()).id;
+            }
+            GATE.dados = null;
+            GATE.rolarAoAbrir = true;
+            GATE.projetoAberto = projeto;
+            showPage('view-gate');
+            gateBuscar();
+          } catch (e) {
+            /* Escrita que falha precisa aparecer na hora: o que ele clicou NÃO
+               aconteceu, e um botão que volta ao normal em silêncio faz parecer
+               que aconteceu. */
+            tr.innerText = 'não deu';
+            setTimeout(() => { tr.disabled = false; tr.innerText = 'no Coderoom'; }, 2500);
+          }
+        })();
+        return;
+      }
       if (tr.dataset.remotoLigar || tr.dataset.remotoMais) {
         const mais = Boolean(tr.dataset.remotoMais);
         const projeto = tr.dataset.remotoMais || tr.dataset.remotoLigar;
@@ -5516,6 +6920,46 @@
       if (tr.dataset.agSalvar !== undefined) return salvarCalendario();
       if (tr.dataset.agRemover) return removerCalendario(tr.dataset.agRemover);
 
+      /* CC-233: abrir e fechar o detalhe da tarefa dele. Não fala com o
+         servidor: é estado de tela, e `renderMeu()` já redesenha na hora. */
+      /* CC-252: encolher e devolver a barra lateral.
+         O estado vai para o SERVIDOR (`/api/tela`, do CC-156), e não para este
+         navegador: ele usa celular e PC, e a escolha de menu encolhido é
+         preferência dele, não deste aparelho. */
+      if (tr.dataset.sbEncolher !== undefined) {
+        const sb = document.querySelector('.sidebar');
+        const agora = !sb.classList.contains('encolhida');
+        sb.classList.toggle('encolhida', agora);
+        tr.innerText = agora ? '›' : '‹';
+        tr.title = agora ? 'mostrar o menu' : 'encolher o menu';
+        post('/api/tela', { chave: 'menu:encolhido', aberto: agora }).catch(() => {});
+        return;
+      }
+      /* CC-240: abrir e fechar a faixa de agentes sem contato. Estado de tela,
+         não fala com o servidor, e `renderAgentes()` redesenha na hora. */
+      if (tr.dataset.zona) {
+        const z = tr.dataset.zona;
+        if (ZONAS_FECHADAS.has(z)) ZONAS_FECHADAS.delete(z); else ZONAS_FECHADAS.add(z);
+        return renderAgentes();
+      }
+      if (tr.dataset.meuAbrir) {
+        const id = tr.dataset.meuAbrir;
+        if (MEU_ABERTO.has(id)) MEU_ABERTO.delete(id); else MEU_ABERTO.add(id);
+        /* As duas telas que mostram pendência dele precisam redesenhar: ele
+           pode ter tocado em qualquer uma das duas, e cada uma tem a sua
+           própria função de desenho. */
+        renderMeu();
+        if (document.getElementById('view-trabalho')?.classList.contains('active')) renderViewTrabalho();
+        return;
+      }
+      /* O botão do detalhe passa pela MESMA confirmação da caixa: aqui o clique
+         é deliberado, mas fechar sem querer continua custando o mesmo. */
+      if (tr.dataset.meuFeitoBtn) {
+        const id = tr.dataset.meuFeitoBtn;
+        const item = (DATA.meu || []).find((m) => m.id === id);
+        const fingido = { checked: !item?.feito };
+        return marcarMeu(fingido, id, tr.dataset.meuTexto || '', true);
+      }
       if (tr.dataset.meuRemover) return acaoMeu({ acao: 'remover', id: tr.dataset.meuRemover });
       if (tr.dataset.meuAdd !== undefined) {
         const txt = document.getElementById('meu-txt');
@@ -5627,10 +7071,27 @@
       }
     });
 
+    /* CC-252: a escolha de menu encolhido vem do SERVIDOR, então ela atravessa
+       celular e PC. Falha calada de propósito: se a leitura não responder, o
+       menu abre inteiro, que é o estado seguro. */
+    fetch('/api/tela').then((r) => r.json()).then((d) => {
+      if (!d?.aberto?.['menu:encolhido']) return;
+      document.querySelector('.sidebar')?.classList.add('encolhida');
+      const b = document.querySelector('[data-sb-encolher]');
+      if (b) { b.innerText = '›'; b.title = 'mostrar o menu'; }
+    }).catch(() => {});
+
     fetchData();
     setupSSE();
     carregarFoco();
     carregarMaquinaHw();
+    /* CC-245: ligado uma vez só. Os alvos do gate ficam fora do bloco pintado,
+       então o elemento nunca é trocado e o ouvinte não se perde. */
+    ligarGate();
+    /* A conversa anda no ritmo dela, e só com a tela aberta: buscar de fundo
+       seria pedir o histórico inteiro a cada 2s para uma tela que ninguém está
+       olhando. */
+    setInterval(gateBuscar, 2000);
     setInterval(fetchData, 30000);
     /* A leitura de máquina é local e barata (3ms), mas fica no ritmo dela. */
     setInterval(carregarMaquinaHw, 5000);

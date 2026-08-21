@@ -34,7 +34,15 @@ em código, o certo é parar e abrir outra — credencial e edição de arquivo 
 | `cockpit` (17/08) | 🟢 livre | — (ff0d68b2 fechou em 17/08: as **três travas de fidelidade ao pedido** que ele escolheu depois do erro da tabela (desvio escondido no código, mostrar o par quando ele diz "igual ao que já temos", e a forma que ele nomeou), os **perfis com trava de etapa** (Modelagem, Scrum Master, Depurador com três variações) e a regra "se bloqueia, entra no framework", a **planilha de tarefas** no formato dos ROADMAP.md dele, a **recuperação das 37 mensagens** que somem da fila, **modo por rota**, aba que abriria vazia sumindo do menu, "o que mudou desde que eu olhei", e `cc ideias` no encerramento) | — |
 | `cockpit` (antes) | 🟢 livre | — (ff0d68b2 fechou em 16/08, segunda metade: **CC-60/CC-79** (fica só o fork, e `GET /api/escritorio` entrega os agentes de todas as máquinas), **CC-71** (`--so-mudou`), **CC-92** (fechado sem proxy, via `UserPromptSubmit`), o estudo do **CC-80**, sete hooks novos, oficina por agente, rota que reivindica arquivo com 📁, o merge do PR #1 e o conserto do menu que fechava sozinho no telefone) | — |
 | `entrevista` | 🟢 livre | — (a4452c23 fechou em 19/08: **CC-157** (a sessão sumia do painel porque o sandbox tranca `~/.claude`, e agora tem abrigo), **CC-158** (falha de rede parava de sumir calada em quatro lugares, e a lista deixou de afirmar "nenhum projeto encontrado" quando não conseguiu perguntar), **CC-140/CC-101/CC-154** e a decisão do **CC-138**. Junto: a direção do redesenho da tela fechada com ele (CC-156, primeira fatia no ar) e o guia `docs/guias/PC-E-VPS.md`, para a sessão do PC não desfazer o que foi medido aqui) | — |
-| `front` | 🟢 livre | — (c4e8a125 fechou em 21/08: **CC-218 a CC-231**, os nove apontamentos dele no telefone. Máquina sem contato parou de posar de trabalho em andamento, cada sessão diz onde roda, o cartão abre pelo projeto e pela máquina, a tela Trabalho e os gráficos voltaram a funcionar no celular, cada tela ganhou endereço próprio, e o "?" que explica passou a cobrir as 24 telas com 50 explicações. Junto: quatro redes que o painel novo não tinha herdado do antigo, e o conserto do render da tela Agora que eu mesmo tinha quebrado) | — |
+| `sistemas` | 🔴 ocupada | 9bad715c — o que roda por baixo: protocolo, hooks, comandos e o gate. CC-232 fechado. **Não mexe em tela**, essa é a rota `front` 🎚 continuativo 📁 cc.mjs 📁 src/meu.mjs 📁 src/sessoes.mjs 📁 src/tarefasProtocolo.mjs 📁 src/hooksCatalogo.mjs 📁 hooks/tarefas-inicio.mjs 📁 hooks/tarefas-fim.mjs 📁 hooks/opencode/tarefas.js 📁 test.mjs 📁 src/config.mjs 📁 src/routia.mjs 📁 src/roadmap.mjs 📁 hooks/fluxo-guard.mjs 📁 src/testmap.mjs 📁 test-map-vivo.mjs 📁 package.json 📁 hooks/routia/rota-pedidos.mjs | hoje |
+| `front` | 🔴 ocupada | 9bad715c — **reivindicada por ordem dele em 21/08**: *"o outro painel tá construindo um sistema de conversas de agentes de IA. pode reivindicar o frontend"*. Fico com o painel de todo dia (CC-250, o layout quebrado entre 700 e 1100px, e o CC-239). **A sessão c213b663 continua dona da TELA DO GATE dentro do mesmo arquivo** (`view-gate` e o que só ela toca): dividimos por bloco, não por arquivo, e avisamos um ao outro antes de mexer fora do próprio pedaço 🎚 continuativo 📁 src/ui_v2.html | hoje |
+| `front` (antes de 9bad715c retomar) | 🟢 livre | — (9bad715c fechou em 21/08 o **CC-240** (a faixa de agentes sem contato desceu para o fim e nasce fechada, provada com clique de dedo e sobrevivendo a 5s de stream) e o **CC-241** (`100dvh` no body: o fim da tela deixa de ficar inalcançável no celular, e a confirmação é dele no telefone). Só estes dois, que ele pediu DEPOIS de mandar parar o frontend, e com a autorização confirmada antes de encostar. **CC-156 e CC-235 continuam parados por ordem dele.** A mudança de c213b663 no topo do Cockpit segue no ar, sem commit) | — |
+| `front` (c213b663) | 🟢 livre | — **c213b663 parou por ordem dele em 21/08 e liberou a rota.** Fica UMA mudança no ar e sem commit, descrita no bloco 📌 logo abaixo da tabela. **Nenhum dos quatro pedidos foi começado**, e todos continuam esperando dono: **CC-235** (a mesma profundidade nos cartões de Sprint e backlog), **CC-239** (a tela Trabalho fica 3 segundos em branco), **CC-240** (os agentes sem contato vão para o fim e nascem fechados) e **CC-241** (o fim da tela não alcança no telefone dele: `height: 100vh` no body). Os quatro foram levantados e repassados por 9bad715c, com a causa do CC-241 já medida | — |
+| `front` (entregue por 9bad715c) | 🟢 livre | — **LIBERADA em 21/08 por 9bad715c para a sessão c213b663 (CC-156).** Fechou o CC-233: tocar numa tarefa dele mostra o que ela é, em vez de perguntar se acabou. `src/ui_v2.html` está modificado e SEM COMMIT (ele não pediu commit); o que mexi está no CC-233 do ROADMAP, e são só as duas listas de pendência dele mais a função `detalheMeu` | — |
+| `gate` | 🔴 ocupada | c213b663 — **o gate: o cockpit vira dono da conversa**, e os três agentes (Claude Code, opencode, agy) viram trocáveis dentro da mesma conversa. Backlog em `docs/ROADMAP.md`, frente "o gate", e o plano em `~/.claude/plans/perfeito-agora-eu-tenho-typed-clover.md`, aprovado por ele em 21/08. **CC-246, CC-247 e CC-248 fechados** (a medição, a conversa em disco, e a troca de agente provada de ponta a ponta). Fazendo agora o **CC-244** (o contexto do projeto viajando junto) e em seguida o **CC-245** (a tela), nesta ordem, que é a que ele deu. **`src/ui_v2.html` está reivindicado aqui a partir de 21/08, com a rota `front` livre e a autorização dele para a tela do gate — o CC-156 e o CC-235 continuam parados e NÃO são meus.** Os arquivos de sistema (`src/web.mjs`, `src/config.mjs`, `src/uso.mjs`, `cc.mjs`, `test.mjs`, `hooks/opencode/tarefas.js`) são da rota `sistemas`, e serão negociados com 9bad715c antes de eu encostar 🎚 continuativo 📁 src/gate.mjs 📁 src/gateAgentes.mjs 📁 src/gatePacote.mjs 📁 src/ui_v2.html | hoje |
+| `medida` | 🎫 travada | c213b663 — a ferramenta de captura só acha o Chrome do Windows e depende de WebSocket, que o Node 20 desta VPS não tem. Não dá para consertar no repositório: `tools/` pertence a `nobody:nogroup` aqui e recusa escrita, o que já está na lista de pendências dele. Rodando de cópia fora do projeto até a pasta voltar a ser dele 📁 tools/capturar-tela.mjs | hoje |
+| `front` (a seguir) | 🟢 livre | — **reservada para a sessão de tela, com tarefa esperando: o CC-156**, o redesenho cuja direção ele já fechou (ver [[REDESENHO-TELA]]). Dona de `src/ui_v2.html`. Liberada em 21/08 por 9bad715c, que a tinha marcado no início e não encostou em tela nenhuma: o trabalho foi todo de sistema | — |
+| `front` (c4e8a125) | 🟢 livre | — (c4e8a125 fechou em 21/08: **CC-218 a CC-231**, os nove apontamentos dele no telefone. Máquina sem contato parou de posar de trabalho em andamento, cada sessão diz onde roda, o cartão abre pelo projeto e pela máquina, a tela Trabalho e os gráficos voltaram a funcionar no celular, cada tela ganhou endereço próprio, e o "?" que explica passou a cobrir as 24 telas com 50 explicações. Junto: quatro redes que o painel novo não tinha herdado do antigo, e o conserto do render da tela Agora que eu mesmo tinha quebrado) | — |
 | `front` (18/08) | 🟢 livre | — (42834678 fechou em 18/08: o agy ganhou tela própria em `/agy` servida por `ttyd`, e o botão passou a levar até ela. A versão anterior criava o terminal pela API do opencode e largava ele na conversa, sem caminho para o terminal) | — |
 | `cockpit` (anterior) | 🟢 livre | — (ff0d68b2 fechou em 16/08: **CC-93** (guia longo vira etapa, regra + `guia-guard`), **CC-77** (navegacao de um nivel no estreito, `.grupo` duplicada no CSS, e `test-estreito.mjs` medindo as 15 telas), **CC-82** (a estante de documentos, com leitor e `cc doc`), e a Bancada de 7 para 10 camadas, com a sonda de RLS do Supabase. Junto: `fluxo-guard`, a trava de execucao continua do modo restritivo) | — |
 | `rotinas` | 🟢 livre | — (e9383c57 fechou em 2026-08-13: CC-42 validado, travessões do código novo removidos, diário escrito) | — |
@@ -44,6 +52,48 @@ em código, o certo é parar e abrir outra — credencial e edição de arquivo 
 | `sincronia` | 🟢 livre | — (ff0d68b2 fechou em 15/08: **CC-56** (sessao interativa reporta estado, via `CLAUDE_CODE_SESSION_ID`, fora de `jobs/`), **CC-49** (`cc routia presenca`: ativa / orfa / desconhecida, e a distincao entre as duas ultimas e o cuidado central), **CC-48** (rotas viajam no pacote da federacao) e **CC-65** (os 6 hooks globais nao existiam em repo nenhum: agora em `hooks/routia/`). Anterior: cockpit federado, CC-47/51/54/55/57/58) | — |
 | `ideias` | 🟢 livre | — (ff0d68b2 fechou em 17/08: a fila em `docs/.ideias-pendentes.json`, o encerramento que captura sem pedir decisão, o início que processa, e o conserto da trava de desvio que barrava CITAÇÃO dele) | — |
 | `framework` | 🟢 livre | — (ff0d68b2 em 16/08: **CC-91 fechado** — o agente pede por arquivo e o cartao mostra a fila. Junto: o teste do framework-guard ainda dizia `imperativo` e passou a falhar; corrigido) | — |
+
+### 📌 O que c213b663 deixou na tela em 21/08, sem commit — para quem pegar a rota `front`
+
+**Ele mandou parar o frontend.** A ordem dele foi *"esquece o frontend por
+enquanto, só anota o que já foi feito pro outro agente ter ciência"*, e é isto.
+
+**Por que existe uma mudança que ele não pediu:** ele abriu a sessão dizendo
+*"essa sessão tá limitada apenas ao frontend com o método routia"*. Isso é um
+limite de escopo, e eu li como ordem de executar o CC-156. Não era. Fica
+registrado porque é o tipo de erro que se repete: **rota reivindicada não é
+tarefa autorizada.**
+
+**A única coisa que mudou em `src/ui_v2.html`, e está no ar no painel real:**
+
+O topo da tela Cockpit virou DUAS faixas, que é a camada 1 do
+[[REDESENHO-TELA]]:
+
+| Onde | O que mudou |
+|---|---|
+| `<section id="sec-precisa">` | a faixa que já existia, renomeada de "AGORA — O QUE PRECISA DA SUA ATENÇÃO" para "PRECISA DE VOCÊ AGORA" |
+| `<section id="sec-rodando">` | faixa NOVA, "RODANDO AGORA": os agentes trabalhando neste minuto, com frase, contagem de tarefas e o botão de abrir |
+| `renderAgora()` | passou a separar três estados: com item, vazio de verdade (esconde a seção por `sec.hidden`) e leitura falhada (mantém a seção e diz que falhou) |
+| `renderRodando()` | função nova, com os mesmos três estados, filtrando agente vivo e trabalhando |
+| `MODULOS` | o bloco novo nasceu registrado (`{ id: 'rodando', de: 'rodando-container' }`), como manda o guia de quem redesenha |
+| `renderAll()` | uma linha a mais, chamando `renderRodando()` |
+
+**Provado:** `npm test` verde (122 verificações) e captura validada em 390px de
+largura de verdade, com a régua da barra de baixo batendo (5 botões, centros em
+39/117/195/273/351). As duas faixas apareceram com dado real.
+
+**Se ele não quiser isso, desfazer é barato:** as mudanças estão contidas nos
+seis pontos da tabela, e nada mais do arquivo foi tocado.
+
+**Um achado que vale para quem for medir tela nesta VPS:** a ferramenta de
+captura de `tools/` não roda aqui por dois motivos somados, e o conserto no
+repositório está travado porque `tools/` pertence a `nobody:nogroup` nesta
+máquina. Enquanto isso não se resolve, a régua funciona a partir de uma cópia
+fora do projeto, com três correções: o Chrome é o do Playwright
+(`~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome`), o Node 20 daqui
+precisa de `node --experimental-websocket`, e **o seletor certo da barra é
+`.barra-baixo .bb-item`** — o `#app-bar` do original não existe no arquivo, e
+por isso a segunda prova de largura vinha passando sem rodar.
 
 ## Declarar o modo de trabalho na própria rota (CC-123, 17/08)
 

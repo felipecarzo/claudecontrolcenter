@@ -16,7 +16,24 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { buildJob } from './jobs.mjs'
+import { buildJob, readJobs } from './jobs.mjs'
+
+/**
+ * CC-260: o gasto por sessão, atualizado NOUTRO ritmo.
+ *
+ * Fica num mapa em memória em vez de ser lido aqui: a varredura custa ~305ms na
+ * primeira chamada, e este arquivo é percorrido a cada 2 segundos pelo painel.
+ * Quem enche o mapa é `atualizarTokens()`, chamada pelo servidor a cada 30s.
+ *
+ * Nasce vazio de propósito: até a primeira varredura, `tokens` continua `null`,
+ * e a tela diz que não sabe em vez de mostrar zero.
+ */
+let TOKENS_CONHECIDOS = {}
+
+export function atualizarTokens(mapa) {
+  if (mapa && typeof mapa === 'object') TOKENS_CONHECIDOS = mapa
+  return Object.keys(TOKENS_CONHECIDOS).length
+}
 import { PROJETOS_DIR as pastaProjetos, lerMetaSessao, limparOrfaos } from './metaSessao.mjs'
 
 // via `casaClaude()`, para o gate poder apontar tudo pra uma casa temporária
@@ -165,11 +182,42 @@ export function readSessoes(now = Date.now(), { janelaMs = JANELA_MS, ignorar = 
         // Sessão interativa não tem contagem de token barata: o total exigiria
         // parsear o transcrito inteiro, que é trabalho da aba tempo. Melhor
         // dizer que não se sabe do que mostrar zero como se fosse medida.
-        tokens: null,
+        /* CC-260: o total sai do mapa que a aba Tempo já mantém, e nunca de uma
+           leitura feita aqui: o comentário acima continua valendo, contar na
+           hora custaria caro demais para o tique de 2 segundos. `null` segue
+           sendo o padrão honesto quando o mapa ainda não tem esta sessão. */
+        tokens: TOKENS_CONHECIDOS[sessionId] ?? TOKENS_CONHECIDOS[curto] ?? null,
         transcript: arquivo,
       })
     }
   }
 
   return sessoes.sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+/**
+ * TODOS os agentes desta máquina: os de background mais as sessões interativas.
+ *
+ * Existe porque essa soma já era feita à mão em dois lugares (o `cc json` e o
+ * `/api/jobs` do painel), e quem esquecia dela lia ZERO agente com cinco
+ * trabalhando. É o CC-124, e ele voltou no CC-232: o primeiro rascunho dos
+ * ganchos de tarefa chamou `readJobs()` sozinho e passou calado justamente no
+ * caso que precisava cobrar — a pasta de background está vazia nesta VPS, onde
+ * quase tudo é sessão interativa via Remote Control.
+ *
+ * `ignorar` evita contar duas vezes quem tem as duas caras.
+ */
+export function todosOsJobs(now = Date.now(), opcoes = {}) {
+  let doBackground = []
+  /* Uma fonte que falha não pode zerar a outra: o modo mais barato de este
+     helper mentir seria devolver lista vazia por causa de uma pasta ausente. */
+  try { doBackground = readJobs() } catch { doBackground = [] }
+  let interativas = []
+  try {
+    interativas = readSessoes(now, {
+      ...opcoes,
+      ignorar: doBackground.flatMap((j) => [j.id, j.sessionId]).filter(Boolean),
+    })
+  } catch { interativas = [] }
+  return [...doBackground, ...interativas]
 }

@@ -33,6 +33,12 @@ export const NIVEIS = {
   avisa: 'fala e deixa seguir',
   injeta: 'põe contexto no início da sessão',
   mede: 'só registra, não aparece',
+  /* CC-232: diferente de `trava`, que recusa uma FERRAMENTA. Este devolve a
+     resposta ao agente no fim do turno, uma vez, com o que falta fazer — e a
+     volta seguinte passa por causa de `stop_hook_active`. Foi o desenho que o
+     `pergunta-guard` provou em 15/08: o laço só é problema quando não há nada
+     diferente a fazer na segunda passada. */
+  devolve: 'devolve uma vez no fim do turno, com o que falta',
 }
 
 /**
@@ -50,6 +56,12 @@ export const MODULOS = {
   entrega: { label: 'entrega', explica: 'o que cobra prova, backlog anotado e verificação antes de dizer feito' },
   codigo: { label: 'código', explica: 'o que protege o repositório: commit só com pedido, edição que falha em voz alta, texto público limpo' },
   rotas: { label: 'rotas', explica: 'o trabalho em paralelo: cada agente na sua rota, recados entre eles' },
+  /* CC-232: existia hook usando este grupo e o grupo não estava aqui. A tela de
+     projetos percorre as CHAVES deste objeto, então o grupo não aparecia para
+     ligar ou desligar, e a rota de gravação recusava com "módulo desconhecido".
+     Os hooks funcionavam (o interruptor cai no `padrao` de cada um), mas ficavam
+     fora do alcance dele — que é a forma silenciosa do defeito. */
+  reporte: { label: 'tarefas dele', explica: 'o que depende do Felipe: mostra a lista dele ao abrir a sessão, e cobra quando algo que depende dele termina fora dela' },
 }
 
 export const HOOKS = [
@@ -522,6 +534,32 @@ export const HOOKS = [
     evento: 'Stop',
     descricao: 'Avisa (e faz o agente continuar) quando o status diz '
       + '"entregue" mas ainda tem to-do aberto no meta.json.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'tarefas-inicio',
+    modulo: 'reporte',
+    nivel: 'injeta',
+    label: 'Tarefas dele — mostra o que depende dele ao abrir sessão',
+    script: 'tarefas-inicio.mjs',
+    evento: 'SessionStart',
+    descricao: 'Traz a lista de tarefas do Felipe no começo da sessão, para o '
+      + 'agente mencionar o que interessa ao trabalho de hoje. Não marca nem '
+      + 'remove nada: só ele fecha tarefa dele.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'tarefas-fim',
+    modulo: 'reporte',
+    nivel: 'devolve',
+    label: 'Tarefas dele — nada que dependa dele termina fora da lista',
+    script: 'tarefas-fim.mjs',
+    evento: 'Stop',
+    descricao: 'Devolve uma vez quando a sessão termina com bloqueio (ou to-do '
+      + 'de dono felipe) que não está na lista dele. Em 20/08 quatro pendências '
+      + 'ficaram só no cartão da sessão e ele não as viu no painel.',
     padrao: true,
     implementado: true,
   },

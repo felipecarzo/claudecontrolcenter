@@ -30,6 +30,8 @@ const DEFAULTS = {
   calendarios: [],
   hooks: {},
   visitas: {},
+  // CC-156: o que está aberto na tela, para a escolha atravessar os aparelhos
+  tela: {},
   // Federação (CC-47): identidade desta máquina e as outras que reportam aqui.
   // `maquina` nasce vazia e é preenchida na primeira leitura (`maquina-id.mjs`).
   maquina: null,
@@ -282,6 +284,63 @@ export function setPip({ blocos, layout }) {
   if (PIP_LAYOUTS.includes(layout)) proximo.layout = layout
   writeConfig({ ...cfg, pip: proximo })
   return proximo
+}
+
+/**
+ * CC-156: o que está aberto ou fechado na tela, guardado no SERVIDOR.
+ *
+ * Pedido dele com todas as letras, e é metade do valor do cockpit federado:
+ * hoje isso mora no navegador de cada aparelho, então abrir uma seção no
+ * celular e depois olhar no PC perde a escolha. O painel já é um só para as
+ * duas máquinas; a memória da tela não era.
+ *
+ * ## As três travas, e por que cada uma existe
+ *
+ * 1. **Teto no número de chaves.** Esta é a única escrita do projeto que vem do
+ *    NAVEGADOR com chave livre. Sem teto, um laço na tela enche o config até o
+ *    arquivo ficar impraticável, e o config guarda coisa que não tem outra
+ *    fonte (taxa, câmbio digitado, calendários).
+ * 2. **Teto no tamanho da chave**, pelo mesmo motivo.
+ * 3. **Fechado não se guarda, se apaga.** A tela manda `aberto: false` e a
+ *    chave sai do mapa em vez de virar `false`. Guardar os dois lados faria o
+ *    arquivo crescer para sempre com o que já é o padrão.
+ *
+ * A chave é OPACA de propósito (`proj:inovallbond`, `sprint:...`): quem decide
+ * o que é uma seção é a tela, e um catálogo aqui viraria duas listas para a
+ * mesma coisa, discordando na primeira seção nova.
+ */
+export const TELA_MAX_CHAVES = 500
+export const TELA_MAX_TAMANHO_CHAVE = 120
+
+export function setTelaAberto(chave, aberto) {
+  const k = String(chave || '').trim()
+  if (!k) return { erro: 'sem chave' }
+  if (k.length > TELA_MAX_TAMANHO_CHAVE) {
+    return { erro: `chave longa demais (${k.length}, máximo ${TELA_MAX_TAMANHO_CHAVE})` }
+  }
+  const cfg = readConfig()
+  const atual = { ...(cfg.tela || {}) }
+  if (aberto) {
+    /* O teto só barra chave NOVA: reabrir algo que já está no mapa continua
+       funcionando mesmo no limite, senão a tela travaria justamente para quem
+       mais usa o painel. */
+    if (!(k in atual) && Object.keys(atual).length >= TELA_MAX_CHAVES) {
+      return { erro: `cheio: ${TELA_MAX_CHAVES} seções guardadas. Feche alguma antes de abrir outra.` }
+    }
+    atual[k] = true
+  } else {
+    delete atual[k]
+  }
+  writeConfig({ ...cfg, tela: atual })
+  return { aberto: atual }
+}
+
+export function lerTelaAberto() {
+  const cfg = readConfig()
+  const t = cfg.tela
+  /* Só objeto simples passa. Config corrompido devolvendo array ou texto faria
+     a tela abrir tudo ou nada, sem ninguém saber por quê. */
+  return t && typeof t === 'object' && !Array.isArray(t) ? t : {}
 }
 
 /**

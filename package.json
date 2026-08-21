@@ -26,7 +26,8 @@
     "web": "node cc.mjs --web-only",
     "test": "node test-anonimizar.mjs && node test-framework.mjs && node test-federacao.mjs && node hooks/testar-sincronia-guard.mjs && node test-postinstall.mjs && node test.mjs",
     "test:ui": "node test-ui.mjs",
-    "test:endereco": "node --experimental-websocket test-endereco.mjs"
+    "test:endereco": "node --experimental-websocket test-endereco.mjs",
+    "test:map": "node --experimental-websocket test-map-vivo.mjs"
   },
   "engines": { "node": ">=18" },
   "os": ["win32", "darwin", "linux"]

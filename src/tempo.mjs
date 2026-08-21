@@ -389,4 +389,53 @@ export function resumo({ corteMin = CORTE_PADRAO_MIN, de = null, ate = null, for
   }
 }
 
+/**
+ * CC-260: quanto cada sessão já consumiu, para o cartão do agente.
+ *
+ * Pedido dele em 21/08, depois de ver `?` no cartão: *"segue"*, sobre trazer o
+ * gasto de cada sessão. O número sempre existiu aqui: a varredura já guarda
+ * `porDia` por sessão, com input, output, escrita e leitura de cache.
+ *
+ * ## Por que o cartão dizia `?`
+ *
+ * `sessoes.mjs` devolve `tokens: null` para sessão interativa, e o comentário
+ * de lá explica: contar exigiria ler o transcrito inteiro, que é caro demais
+ * para o tique de 2 segundos do painel. **A conta certa não é ler na hora, é ler
+ * noutro ritmo e guardar.**
+ *
+ * ## O custo, medido
+ *
+ * `varrer()` com cache quente leva **305ms** na primeira chamada do processo e
+ * **1ms** nas seguintes, porque o cache fica em memória. Rodando a cada 30
+ * segundos, o painel de 2 em 2 segundos nunca paga nada.
+ *
+ * ## O que entra na soma
+ *
+ * Tudo o que a sessão consumiu, todos os dias e todos os modelos: entrada,
+ * saída, escrita de cache e leitura de cache. **A leitura de cache é a maior
+ * parte de longe**, e é por isso que o número parece grande: ela custa 10% da
+ * entrada, e a aba de custo quebra isso por tipo. Aqui é volume, não fatura.
+ */
+export function tokensPorSessao({ force = false } = {}) {
+  const v = varrer({ force })
+  const mapa = {}
+  for (const arq of Object.values(v.arquivos || {})) {
+    if (!arq?.sessao) continue
+    let total = 0
+    for (const dia of Object.values(arq.porDia || {})) {
+      for (const u of Object.values(dia || {})) {
+        total += (u.input || 0) + (u.output || 0) + (u.escrita5m || 0) + (u.escrita1h || 0) + (u.leitura || 0)
+      }
+    }
+    /* A chave é o id INTEIRO da sessão e os 8 primeiros: o painel usa o curto
+       nos cartões e o longo no reporte, e procurar pelos dois evita um `join`
+       que falha calado quando o formato muda. */
+    if (total > 0) {
+      mapa[arq.sessao] = total
+      mapa[String(arq.sessao).slice(0, 8)] = total
+    }
+  }
+  return mapa
+}
+
 export const _internals = { lerArquivo, blocosPorDia }

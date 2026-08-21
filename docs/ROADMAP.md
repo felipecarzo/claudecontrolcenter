@@ -62,6 +62,1445 @@ dele dizer `projeto › frente` em vez de texto solto.
 
 ## Aberto
 
+## ▶ Frente nova, aberta em 21/08: o Windows vira máquina que reporta, e a VPS é a tela
+
+Proposta dele, registrada antes de executar, com as palavras dele:
+
+> *"o que eu queria fazer agora é elevar o nível do cockpit. Eu quero criar um
+> sistema pro Windows. Por exemplo, se eu entrar no cockpit pelo Windows, eu
+> quero ter a opção de instalar no Windows, ele vai instalar um serviço, que vai
+> estar sempre atualizando meus agentes, tanto o agy quanto todos os dados dele,
+> as tarefas, etcétera, vai estar tudo valendo no computador, sem eu estar com o
+> cockpit aberto, porque eu quero que o cockpit no Windows seja apenas um
+> sistema, eu continue acessando ele pelo cockpit no link
+> cockpit.carzo.com.br. Isso é possível?"*
+
+### CC-263 ▶ decidido por ele em 21/08: serviço de verdade, e o pacote completo
+
+**Ele escolheu o serviço de verdade**, aceitando a senha de administrador uma
+vez na instalação, para o PC reportar mesmo antes de qualquer login.
+
+**E escolheu mandar tudo**, com as palavras dele: *"quero tudo, os limites do agy
+e do opencode se possível, e o que mais os agentes puderem compartilhar de dados
+pra deixar o cockpit bem completo"*, além dos quatro itens da lista: os agentes e
+suas tarefas, o gasto do plano daquela máquina, as tarefas que só ele resolve, e
+o agy mais o opencode rodando lá.
+
+⚠️ **O limite desta sessão, dito antes de começar:** eu rodo na VPS Linux e
+**não consigo provar um serviço do Windows daqui**. Dá para escrever o código,
+provar o que é testável nos dois sistemas, e deixar o instalador pronto; a prova
+final é ele rodar no PC. Prometer mais que isso seria o "diz que fez" que ele já
+nomeou.
+
+**As quatro peças, e o que foi provado em cada uma:**
+
+1. **modo só reporta** (`cc reportar`) ✅ — empurra e não levanta tela nem porta.
+   Provado com uma máquina de mentira apontando para esta VPS: enviou, chegou.
+2. **o pacote completo** ✅ — passou a levar `meu` (a lista dele daquela
+   máquina), `agentes` (quais das três ferramentas existem lá) e `limites`.
+   Provado de ponta a ponta: `claude (instalado), opencode (instalado), agy
+   (instalado)`.
+3. **o instalador do serviço** ✅ no Linux, ⏳ no Windows — instalou, subiu
+   sozinho, reportou, e foi removido. O caminho do Windows está escrito e **não
+   pôde ser provado daqui**.
+4. **o cartão dentro do cockpit** ✅ — aparece só em navegador Windows, com o
+   comando pronto.
+
+**A decisão difícil do Windows, e por que é assim.** Para rodar sem ninguém
+logado há dois caminhos: como ele (`/ru usuário /rp senha`), que exigiria
+**guardar a senha dele**, ou como SYSTEM, que tem outro perfil e não enxergaria
+`~/.claude`. Vai de SYSTEM **com `CC_HOME` apontando para a pasta dele**, que já
+existe no projeto desde o CC-157. Nenhuma senha guardada em lugar nenhum.
+
+**O limite físico do cartão, e ele precisa estar escrito.** O painel que ele abre
+é servido pela VPS, e **a VPS nunca alcança o desktop atrás do NAT**. Então o
+cartão não instala nada remotamente: ele entrega o comando pronto, com o caminho
+que a própria máquina reportou (`D:\Documentos\Ti\projetos\PESSOAL\proj_controlcenter`),
+e um botão de copiar. Prometer instalação remota seria prometer o impossível.
+
+**Provado nos dois sentidos:** em navegador que se diz Windows o cartão aparece
+com o caminho certo; em Linux ele não aparece. Sem a segunda metade, o teste só
+saberia dizer "hoje aparece".
+
+**O que ele perguntou no meio, e estava certo:** *"se eu jogar cc no terminal
+aleatoriamente nao vai baixar nada pq cc nao é uma biblioteca"*. Por isso o
+comando do cartão é `node "<caminho>\cc.mjs"`, que não depende de nada estar
+instalado no PATH.
+
+**Resposta curta: é possível, e metade já existe.** Medido em 21/08:
+
+| peça | estado |
+|---|---|
+| subir sozinho no Windows | **existe**: `cc daemon install` grava um `.vbs` na pasta Startup, que roda sem piscar janela preta |
+| empurrar para a VPS a cada 30s | **existe**: o empurrador da federação, dentro do processo do painel |
+| entrar na federação sem SSH | **existe**: `cc federar` |
+| a VPS receber e mostrar | **existe e está no ar**, com o dado dele marcado por máquina |
+| rodar SEM ninguém logado | **não existe** |
+| modo "só reporta", sem servir tela | **não existe**: hoje o processo sempre levanta o servidor local |
+| o botão de instalar, dentro do cockpit | **não existe** |
+
+**A decisão que só ele toma, e ela muda o resto:**
+
+O que existe hoje é *autostart de logon*: sobe quando ele entra no Windows. O que
+ele descreveu (*"sem eu estar com o cockpit aberto"*) já é atendido por isso,
+**desde que ele tenha feito login alguma vez depois de ligar o PC**.
+
+Um serviço de verdade (roda com a máquina ligada, antes de qualquer login) exige
+**senha de administrador na instalação**, uma vez. Sem isso, o caminho é a tarefa
+de logon que já existe.
+
+⚠️ **Um risco que precisa ser dito antes de construir:** com o PC reportando
+sozinho e ninguém olhando a tela local, **falha silenciosa vira o modo normal**.
+Se o empurrador parar, a VPS só mostra "sem contato há X", que é exatamente o
+que ele vê hoje sem saber por quê. O desenho precisa de um sinal de vida que
+distinga "não trabalhei" de "parei de reportar", e isso não é enfeite: é a
+condição para o sistema ser confiável quando ele estiver na rua.
+
+**Depende de outra pendência dele:** *"Registrar o hook framework-guard no
+settings.json do PC"*. O que mora no repositório viaja pelo `git pull`; o que
+mora em `~/.claude` não. Um instalador que resolva isso de uma vez fecha as
+duas coisas juntas.
+
+## ▶ Frente nova, aberta em 21/08: o gate, um chat só para os três agentes
+
+Pedido dele, e o plano inteiro está em
+`~/.claude/plans/perfeito-agora-eu-tenho-typed-clover.md`, aprovado por ele no
+mesmo dia. Palavras dele:
+
+> *"eu queria criar um gate, um terminal que salva o harness nosso independente
+> do que a gente tá falando com o agente, assim poderíamos trocar um agente
+> dentro da mesma conversa. e com uma aparência legal, de app, que permitiria eu
+> usar em qualquer lugar todos os meus agentes pelo cockpit."*
+
+**A inversão:** hoje cada ferramenta guarda a própria conversa, e trocar de
+agente significa recomeçar. Aqui a conversa passa a ser do painel, e os três
+viram trocáveis por baixo, cada um entrando com a assinatura dele.
+
+As quatro decisões dele, que não se rediscutem: uma conversa **por projeto**
+(ligada ao Método Routia); viajam junto **a conversa, as regras e o estado do
+projeto**; o agente **pode agir livre, com os hooks como rede**; e perto do teto
+do plano o painel **troca de agente sozinho** e conta que trocou.
+
+### CC-251 ✅ 21/08: a conversa passa a ser organizada por projeto
+
+Pedido dele em 21/08, depois de ver o chat funcionando: *"A gente precisa mudar
+essa tela de conversa, pra ela ficar mais parecida com projetos. E aí você clica
+no projeto e você vê as conversas naquele projeto."*
+
+Hoje a tela abre uma conversa e tem um "trocar de conversa" que lista tudo
+misturado. O que ele quer é o recorte que o painel inteiro já usa: **projeto
+primeiro, conversas dentro.**
+
+Isso encaixa com o que já está feito: a conversa nasce com projeto e pasta, e o
+contexto que viaja junto é do projeto. O que muda é a navegação.
+
+### CC-252 ✅ 21/08: o desenho vira um chat de IA de verdade
+
+Palavras dele: *"o design eu quero algo mais parecido com um chat de ia mesmo,
+como o próprio app do claude"*.
+
+**A referência é o mecanismo, não uma pintura**: ele nomeou um aplicativo que
+ele usa todo dia, e isso é a especificação. O que o app do Claude faz e a tela
+de hoje não faz precisa ser levantado olhando, não deduzido.
+
+### CC-265 ✅ 21/08: trocar de agente jogava ele para a tela de Agentes
+
+Bug dele, no telefone: *"quando eu clico em mudar de agente ele joga pra pagina
+de agentes do nada"*.
+
+**Colisão de nome de atributo.** Os três botões de quem responde usavam
+`data-ag`, e a tela de Agentes já usa `data-ag` para escolher um agente da
+lista. O ouvinte geral da página captura qualquer elemento com esse atributo e
+troca de tela. Tocar em "agy" para trocar quem responde caía naquele ramo.
+
+Renomeado para `data-gate-ag`, e provado com clique de dedo no navegador, com o
+fluxo LIGADO: antes do clique a tela era o Coderoom com o Claude escolhido;
+depois do clique continua o Coderoom, com o agy escolhido.
+
+**A lição vale para qualquer bloco novo neste arquivo:** o ouvinte geral tem uma
+lista de mais de setenta atributos, e um nome repetido não dá erro nenhum, só
+faz a página obedecer ao dono antigo. Atributo de bloco novo leva o nome do
+bloco na frente.
+
+### CC-267 ✅ 21/08: uma skill escrita uma vez, valendo nos três agentes
+
+Pedido dele: *"quero criar um mecanismo que quando cria uma skill ja cria pros
+3, teria como?"*
+
+**Tem, e é mais simples do que parecia: os três usam o MESMO formato.** Uma
+pasta por skill, um `SKILL.md` dentro, frontmatter de `name` e `description`.
+Muda só onde cada um procura, e isso foi medido contra os três programas, não
+lido em documentação:
+
+| agente | onde procura | como se provou |
+|---|---|---|
+| Claude Code | `~/.claude/skills/<nome>/` | a skill de teste apareceu na lista da sessão no mesmo instante |
+| opencode | `~/.config/opencode/skills/<nome>/` | anunciou *"vou carregar a skill prova-tres"* e respondeu a palavra certa |
+| agy | `~/.gemini/config/skills/<nome>/` | respondeu a palavra secreta da skill, e depois descreveu uma skill real dele |
+
+**Os três estão provados.** O agy custou duas descobertas, e as duas falhavam
+sem erro nenhum:
+
+1. **É `~/.gemini/config/skills/`, e não `~/.gemini/skills/`.** O binário cita os
+   dois caminhos e só o primeiro vale. Com o arquivo no lugar errado ele não
+   reclamava: ia procurar a resposta no código do projeto com `grep`, e às vezes
+   inventava uma resposta sobre outro assunto.
+2. **Ele precisa de permissão de leitura declarada**, senão o modo sem terminal
+   recusa abrir o arquivo da skill. O mínimo medido é `read_file(*)` em
+   `permissions.allow`, no arquivo de configuração dele. **Liberar comando não é
+   preciso**: testei com e sem, e sem funciona igual, então ficou sem.
+
+O aviso do próprio binário confunde aqui, e vale registrar: numa das mensagens
+ele diz que regras de permissão *"não se aplicam"* no modo sem terminal e manda
+usar a flag que aprova tudo. **Está errado para leitura**: a regra de
+`read_file` funcionou, e a flag que aprova tudo não era necessária.
+
+Confirmado no fim com uma skill real: perguntei ao agy se ele conhecia
+`organizar-projeto`, e ele descreveu certo o que ela faz.
+
+Feito em `src/skills.mjs`, com 12 verificações: criar nos três de uma vez,
+recusar skill sem descrição (é por ela que o agente decide se usa), recusar nome
+inválido, não sobrescrever por acidente, listar dizendo onde cada uma está e
+onde falta, sincronizar só o que mudou, e remover dos três.
+
+**As 32 skills que ele já tinha foram sincronizadas: 64 cópias, zero falhas, e
+as 32 agora estão nos três.** Conferido depois no opencode, que respondeu
+conhecer `faq` e `organizar-projeto` pelo nome.
+
+Duas decisões que ficam registradas:
+
+- **cópia, e não link simbólico.** O link foi a primeira tentativa e o agy não
+  seguiu. Não dá para saber se cada programa segue link, e cópia sempre
+  funciona. O preço é sincronizar quando a skill muda, e é o que `sincronizar()`
+  faz;
+- **a sincronia compara o CONTEÚDO, nunca a data.** Copiar pasta renova a data
+  do arquivo, e comparar por data reescreveria tudo a cada vez. É a mesma
+  armadilha que o comparador de rotinas deste projeto já levou.
+
+### CC-266 ✅ 21/08, respondido medindo: as skills já valem no Coderoom
+
+Dúvida dele: *"podemos instalar as skills do claude code no coderoom?"*
+
+**Já valem, e não precisa instalar nada.** Perguntei dentro do próprio Coderoom,
+proibindo o uso de ferramenta, e o Claude respondeu que tem **84 skills**
+disponíveis naquela sessão, citando três reais pelo que cada uma faz.
+
+O motivo é simples: o Coderoom chama o `claude` de verdade, na pasta do projeto,
+com as configurações dele. Skill, regra do projeto e proteção continuam valendo
+como valem no terminal.
+
+**A ressalva honesta:** isso vale para o Claude Code. O opencode e o agy não leem
+essa pasta de skills, e teriam que ganhar o equivalente pelo encaixe próprio de
+cada um. Hoje o que chega neles é o pacote de contexto que o painel monta.
+
+### CC-264 ✅ 21/08, primeira fatia: as suas regras valendo em QUALQUER agente
+
+Pedido dele em 21/08, logo depois de perguntar se havia hook de revisão. A frase
+veio cortada, ditada por voz: *"nós poderíamos ligar a questão das que a gente
+tem aqui (…) nós poderemos colocar as pra funcionar lá em qualquer agente?"*.
+Perguntado entre quatro possibilidades, respondeu **"tudo"**: as travas de
+comportamento, as réguas de conferência, as rotas do Método Routia e as regras
+de trabalho dele.
+
+**O pedido é justo e o buraco é real.** Hoje as 43 travas deste projeto seguram
+o Claude Code e mais nada. O opencode e o agy respondem no Coderoom sem saber de
+travessão, sem saber de rota ocupada, sem saber que ele quer prova antes de
+"feito".
+
+**São DUAS metades, e só uma é fácil:**
+
+1. **O que se ENSINA** (as regras, as rotas, as réguas, o jeito de trabalhar
+   dele): entra no prompt de sistema, e o caminho já existe. O Coderoom já
+   entrega contexto para os três, cada um pelo seu caminho.
+2. **O que PRECISA BARRAR** (recusar entrega com travessão, recusar "feito" sem
+   prova): aqui está o problema. Está medido e registrado que **opencode e agy
+   não têm equivalente ao hook de fim de turno**: dá para alimentar na abertura,
+   não dá para recusar na entrega.
+
+**O achado que destrava a segunda metade:** no Coderoom o painel é o dono do
+turno. A resposta do agente passa por ele antes de virar mensagem na tela. Então
+**a trava pode morar no painel**, e não no agente: resposta que viola uma regra
+volta para o agente com o motivo, exatamente como o hook faz com o Claude Code.
+É a mesma mecânica de laço que o `pergunta-guard` já usa, só que do lado de fora.
+
+Isso vale para qualquer agente que venha depois, sem depender de o programa dele
+suportar gancho nenhum.
+
+**As duas metades entraram, com 13 verificações**, e o teto do pacote continua
+com folga (2740 caracteres de 6000).
+
+**A primeira metade está provada de ponta a ponta, e de um jeito que eu não
+esperava.** Pedi ao agy uma frase com travessão. Ele recusou:
+
+> *"Não posso incluir o traço longo: a sua regra proíbe qualquer uso de
+> travessão ou meia risca em texto."*
+
+Insisti dizendo que era teste autorizado do sistema, e ele recusou de novo:
+*"a regra continua ativa mesmo em teste autorizado"*. **O agy nunca soube dessa
+regra antes de hoje**, e ela chegou nele pelo pacote do painel.
+
+**A segunda metade quase ficou sem prova, e por um motivo engraçado:** nenhum
+dos dois agentes aceitou produzir o gatilho depois de ensinado. Tentei três
+vezes, com os dois. Régua que nunca dispara é régua que pode estar quebrada sem
+ninguém saber, então a saída foi um **agente de mentira**, que devolve travessão
+de propósito. `responder()` passou a aceitar um binário no lugar do agente de
+verdade, e isso não tem uso fora do teste.
+
+Com ele, o laço inteiro está provado, nos dois sentidos:
+
+| o que se quis provar | resultado |
+|---|---|
+| o painel devolve quando a regra é quebrada | devolveu, e escreveu na conversa que devolveu |
+| o agente responde de novo | respondeu, e a segunda veio sem traço longo |
+| **não vira laço infinito** | agente que insiste sempre: duas respostas, UMA devolução, e a fila destravou |
+
+A prova de que não há laço é a que importa mais: um gancho que devolve para
+sempre trava a conversa e queima token dele a cada volta.
+
+Uma observação do caminho, que não é defeito meu: o opencode morreu no meio de
+um dos testes, e a conversa registrou `interrompido` com a resposta vazia, em
+vez de deixar espaço em branco. Foi o desenho funcionando.
+
+### CC-262 ✅ 21/08: o submenu inchava a barra lateral, e por que eu não vi
+
+Apontado por ele, olhando no computador: *"aumentou significativamente o tamanho
+da barra lateral. Porque está expondo todos os projetos e todos os chats, né?
+Não seria ideal organizar pra colapsar e só abrir quando a pessoa clicar no
+botão de abrir?"*
+
+**Medido depois do apontamento**, numa tela de 900px de altura:
+
+| estado | altura do submenu | altura do menu inteiro |
+|---|---|---|
+| fechado (agora o padrão) | 0 | 1300 |
+| aberto | 414 | 1714 |
+
+O menu já não cabia na tela antes de mim (1300 contra 900). O submenu somava
+mais 414, e nascia aberto.
+
+Consertado em três partes: **nasce fechado** e abre no clique do destino ou do
+"projetos"; **só o projeto aberto mostra as conversas dele** (todos abertos
+davam 16 projetos vezes as conversas de cada); e **teto de altura com rolagem
+própria**, para nunca empurrar os outros destinos para fora.
+
+**A pergunta dele junto, e ela é a parte que importa:** *"como que essas coisas
+óbvias não passam na sua linha de produção? Você revisa o app usando algum
+navegador, alguma coisa ou você simplesmente nem vê esses problemas?"*
+
+A resposta honesta é que **eu revisei com navegador, e olhei o estado errado**.
+As capturas do monitor saíram com a barra lateral ENCOLHIDA, porque a outra
+sessão tinha acabado de ligar o encolhimento. Com ela encolhida o submenu nem
+aparece, e eu tinha escrito uma regra escondendo ele ali. Então eu olhei a
+imagem, o submenu não estava nela, e eu não percebi que não estava.
+
+**A régua tinha um furo de desenho, não de execução:** ela captura UM estado de
+UMA tela. Um menu que cresce com o dado só incha com dado real e barra aberta, e
+nada me obrigava a combinar os dois. Isso é a terceira vez em dois dias que uma
+régua deste projeto aprova o que não sabe olhar: antes foi a tela de erro do
+navegador passando como captura válida, e a captura de página inteira mostrando
+elemento fixo no lugar errado.
+
+**Temos hook de revisão, e ele rodou.** Pergunta dele no meio da conversa:
+*"nós não temos hook de revisão?"*. Temos: o `visual-guard` recusa a entrega
+quando o turno mexe no visual e não abre nenhuma imagem. Ele passou, e passou
+CERTO pela regra dele, que é "abriu pelo menos uma imagem". O comentário no
+próprio hook explica a escolha: *"exigir duas larguras seria mais correto e
+viraria hook chato"*.
+
+**O furo é o critério, não a execução: uma imagem prova que houve olhar, não
+que se olhou o estado certo.**
+
+Ficou `test-estados.mjs`, que cobre a diferença: abre a mesma tela em cinco
+combinações (lateral aberta e encolhida, submenu aberto e fechado, telefone,
+monitor e a faixa estreita), e reprova vazamento, texto espremido, campo fora
+da tela, rolagem lateral, e **bloco que abre e come mais de metade da tela**,
+que é a medida que teria pego este defeito.
+
+Duas coisas provadas sobre a própria régua, porque régua que só sabe dizer
+"hoje passa" não vale:
+
+- **prova negativa**: desliguei o teto de altura e ela reprovou o estado certo
+  (73% da tela contra os 46% de agora). Com o conserto, os cinco passam;
+- **ela confere se o estado foi mesmo forçado.** Na primeira execução o preparo
+  dizia `window.GATE`, e uma variável declarada dentro do script da página nunca
+  vira propriedade de `window`: os cinco estados mediram o mesmo, e o relatório
+  disse "5 de 5 limpos" sem ter olhado nenhum. **Era o mesmo defeito que este
+  arquivo existe para evitar, dentro dele mesmo.**
+
+### CC-253 ✅ 21/08: o submenu de projetos abre na própria barra lateral
+
+Palavras dele: *"na aba lateral quando clicar no desenho do chat pode abrir um
+sub menu ali mesmo p selecionar os projetos, assim a gente usa melhor o espaço
+de tela"*.
+
+O motivo é dele e é bom: hoje escolher conversa gasta uma faixa do conteúdo. Na
+lateral, a escolha não disputa espaço com a conversa.
+
+### CC-254 ✅ 21/08: ativar um projeto passa a perguntar em qual agente
+
+Palavras dele: *"eu quero que as conversas aqui sejam ativadas, da mesma forma
+que os projetos são ativados no remoto. Então quando lá no remoto quando eu for
+ativar 1 projeto, eu vou ter a opção de ativar 1 projeto no agy ou no cockpit
+agente."*
+
+Hoje a tela Remoto só sobe uma sessão do Claude Code. Com isto, ativar um
+projeto passa a oferecer **onde** abrir: sessão do Claude Code como hoje, o agy,
+ou a conversa do painel.
+
+É o que une as duas telas: o mesmo gesto de "começar a trabalhar neste projeto",
+com destinos diferentes.
+
+**Feito, e provado com clique de dedo no navegador**, não só por leitura de
+código: cliquei em "no Coderoom" na linha do `app_ahtleta`, e a tela trocou para
+o Coderoom com a conversa daquele projeto aberta, sem erro nenhum. Medido: 20
+botões novos e 21 do caminho antigo, na mesma tela.
+
+Duas decisões que ficam registradas:
+
+- **conversa que já existe é REUSADA**, nunca duplicada. Abrir uma nova a cada
+  clique encheria a lista de conversas vazias com o mesmo nome, e ele perderia
+  o histórico de vista;
+- **falha aparece no botão**, que diz "não deu" e volta sozinho. Botão que volta
+  ao normal em silêncio faz parecer que aconteceu.
+
+**A armadilha do estilo inline mordeu de novo, e é a terceira vez neste
+projeto.** Com dois botões na linha, o nome do projeto ficava com uma coluna de
+duas letras em 390px e quebrava no meio da palavra ("app_age nda"). A regra de
+CSS que consertaria não tinha efeito nenhum, porque o `flex:1` estava em
+`style=` no elemento, e **estilo inline vence regra de folha**. O nome virou
+classe. Vale a regra geral já escrita: largura e grade são CLASSE, nunca
+`style=`.
+
+### CC-255 ✅ decidido por ele em 21/08: o nome é **Coderoom**
+
+Ele pediu a troca e deu um exemplo, não um nome fechado: *"Exemplo, a gente muda
+esse nome. Que é o nome dos de todos os nossos agentes unidos num lugar só."*
+Perguntado entre quatro, escreveu o dele: **Coderoom**.
+
+O nome aparece no menu do monitor, na barra do telefone, no título da tela e na
+explicação do "?".
+
+### CC-252b ✅ 21/08: o que ele quer do desenho, com as palavras dele
+
+Perguntado o que falta para ficar parecido com o app do Claude, ele respondeu
+*"tudo, o design, as funcionalidades, texto formatado, uma noção de quantos
+tokens gastamos no geral e em cada resposta, tudo tudo tudo"*, e marcou as
+quatro opções:
+
+1. **a resposta nascendo na tela**, palavra por palavra;
+2. **o texto formatado**: título vira título, lista vira lista, código vira
+   bloco de código;
+3. **a conversa ganhando nome sozinha**, pela primeira mensagem, para ele
+   reconhecer na lista sem abrir;
+4. **respiro e tipografia**: largura de leitura confortável, mais espaço entre
+   as falas, menos borda.
+
+E um quinto que ele acrescentou por escrito, fora das opções: **quanto de token
+foi gasto no geral e em cada resposta.**
+
+**Os cinco entraram, e o desenho da tela foi refeito junto.** O que mudou:
+
+| Antes | Agora |
+|---|---|
+| cada fala era um cartão com borda | só a fala dele tem fundo, e a resposta é texto com um fio colorido do lado |
+| a resposta chegava em blocos de 2 em 2 segundos | o texto cresce no ritmo em que o agente escreve |
+| asteriscos e cercas de código à mostra | título, lista, negrito e bloco de código desenhados |
+| a conversa abria no começo | abre no fim, onde está a resposta de agora |
+| a conversa se chamava pelo projeto | ganha nome pela primeira coisa que ele disse |
+| nenhuma noção de gasto | o total no topo, e o de cada resposta embaixo dela |
+
+Três coisas que só a captura achou, e leitura de código não teria achado:
+
+- **o campo de escrever ficava no meio da conversa.** Ele era `sticky`, que
+  gruda no fim do CONTAINER, e o container é mais alto que a tela. Virou fixo no
+  fim da tela, como em qualquer aplicativo de conversa;
+- **sobrava uma fresta entre o campo e a barra de baixo**, por onde a conversa
+  passava. A barra não mede os 64px que o cálculo supunha;
+- **resposta ainda em branco não dizia nada.** Agora ela diz se está pensando,
+  se está trabalhando com ferramenta, ou se terminou sem escrever.
+
+**Um furo da régua de captura, o segundo em dois dias:** capturar a página
+inteira mostra elemento fixo na posição do fluxo, não onde o olho o veria. Quase
+virei um conserto de um defeito que não existia. A captura de tela de telefone
+agora pega só o que cabe na tela, e a página inteira virou opção explícita.
+
+### CC-246 ✅ 21/08, a medição que destravou tudo, e ela quase não aconteceu
+
+O plano previa quatro perguntas medidas contra os binários reais antes de
+escrever qualquer linha. As quatro foram respondidas, e três mudaram o desenho:
+
+1. **As proteções disparam sem terminal.** Era a pergunta que decidia o risco
+   inteiro, porque a rede que ele nomeou ao dizer "pode agir livre" é essa. Pedi
+   ao agente para escrever um travessão num arquivo de site: a trava barrou, a
+   explicação voltou para ele, e ele parou e ofereceu alternativas. **A rede
+   existe fora do terminal.**
+2. **O pedido tem que ir pela entrada padrão.** Passando o texto como argumento
+   com a entrada aberta, o programa espera 3 segundos e morre. De quebra isso
+   resolve o teto de tamanho da linha de comando, que um histórico grande
+   estouraria com um erro que o sistema engole calado.
+3. **Retomar conversa funciona, e é barato.** Um turno guardou um número, o
+   seguinte devolveu. Primeiro turno: US$ 0,46. Segundo: US$ 0,023, lendo 45 mil
+   tokens do cache. **O medo de custo estava exagerado, e isso mudou a escolha
+   de arquitetura.**
+4. **Sessão perdida falha alto**, com mensagem própria, o que torna o marcador
+   de leitura honesto.
+
+**A sonda errada quase deu resposta errada.** A primeira tentativa pediu o
+travessão num arquivo comum, e passou. Quase virou "as proteções não rodam sem
+terminal", que é falso: aquela trava só cobra em arquivo que outra pessoa vê, de
+propósito, por decisão dele em 16/08. **Sonda que não dispara não prova ausência
+de mecanismo, prova que a sonda estava fora do alvo.**
+
+### CC-247 ✅ 21/08: a conversa mora no painel, e sobrevive ao reinício
+
+`src/gate.mjs`. Dois arquivos por conversa: o cabeçalho pequeno, reescrito de uma
+vez só, e os eventos que apenas crescem. Resposta de agente leva minutos e chega
+em pedaços, e reescrever um arquivo inteiro a cada pedaço perderia tudo num
+travamento no meio.
+
+Três coisas que ele vai sentir, provadas com 21 verificações em pasta de teste:
+
+- **o painel reiniciar no meio de uma resposta não trava mais a conversa**: ela
+  destrava sozinha e diz até onde a resposta chegou;
+- **memória do agente apagada pelo sistema é percebida**, e o painel recomeça
+  mandando tudo de novo, escrevendo isso na tela em vez de reiniciar calado;
+- **turno pela metade não vira contexto** para o agente seguinte, porque meia
+  resposta lida como conclusão é pior que nenhuma.
+
+### CC-248 ✅ 21/08: os três agentes atendem pelo mesmo cano, e a troca funciona
+
+`src/gateAgentes.mjs`. São três gramáticas de resposta diferentes, e o resto do
+painel não precisa saber disso: 14 verificações contra as respostas reais
+capturadas dos três.
+
+**A prova é a tese inteira:** pedi ao Claude que escolhesse uma fruta, e ele
+disse manga. Perguntei ao agy qual fruta tinha sido escolhida, e o agy respondeu
+manga. **O agy não tem memória nenhuma e nunca viu aquela conversa.** Acertou
+porque o painel entregou o histórico.
+
+O marcador de leitura existe **só para o Claude**, e é a única decisão de projeto
+que vale explicar: ele é o único com memória endereçável. Manter marcador para
+quem não tem memória seria arquitetura fingindo.
+
+### CC-244 ✅ 21/08: o contexto do projeto viajando junto
+
+Pedido dele em 21/08, com a ordem de construir: *"vamos criar o mecanismo do
+contexto do projeto viajando junto, e depois a tela"*.
+
+É a resposta dele à pergunta do que atravessa na troca: **a conversa, as regras e
+o estado do projeto**. A conversa já atravessa (CC-248). Falta o resto.
+
+O achado que enxuga o custo pela metade: **metade disso já chega de graça**. Os
+três leem sozinhos as regras do projeto, e as pendências dele já são injetadas
+por mecanismo que existe. O que falta injetar é o que muda a toda hora: o que
+está aberto no mapa do projeto, **quem está em qual rota**, e quais agentes estão
+trabalhando agora.
+
+As rotas são a peça que **impede o agente do gate de atropelar os quatro a quinze
+que já estão trabalhando**. Sem elas, "agir livre" vira colisão.
+
+Teto **por seção, não só total**: o mapa deste projeto sozinho tem 235 KB e
+comeria as rotas inteiras sem ninguém saber. E todo corte se declara.
+
+**Feito em `src/gatePacote.mjs`, com 12 verificações e uma prova de ponta a
+ponta.** Perguntei ao agy, proibindo ferramenta e leitura de arquivo, quais eram
+duas frentes abertas do projeto e qual rota a minha sessão segurava. Ele
+respondeu CC-244 e CC-245, e disse que `c213b663` segura a rota `gate`. **Tudo
+saiu do pacote**, porque ele não tem como saber nada disso sozinho.
+
+Três decisões que ficam registradas:
+
+- **o pacote ficou pequeno**: 1837 caracteres, contra o teto de 6000. O medo era
+  ele comer o turno inteiro, e não come;
+- **o contexto entra por UM caminho só**, nunca dois. O Claude recebe por opção
+  própria do programa, os outros dois recebem colado na frente do pedido, com um
+  cabeçalho dizendo o que é. Sem essa marca, o agente lê o estado do projeto como
+  se fosse ordem dele;
+- **projeto sem mapa DIZ que não achou**, em vez de afirmar que não há nada
+  aberto. É a régua 5 do projeto, e aqui ela evita o agente concluir que não há
+  trabalho quando a leitura é que falhou.
+
+### CC-245 ✅ 21/08: a tela, com cara de app e funcionando no telefone
+
+Também de 21/08, e vem depois do CC-244 por ordem dele.
+
+Tela nova, **sempre ativa**, nas palavras dele: *"pra não correr risco de
+perdermos a conversa quando saímos da janela"*. Isso tem dois sentidos e os dois
+valem: a conversa nunca se perde ao sair da tela, e o que ele começou a digitar
+sem enviar também sobrevive.
+
+Três regiões, coluna única em 390px: as mensagens, a faixa do turno, e o campo de
+escrever. Quatro armadilhas do projeto aplicadas antes de doerem:
+
+- **o campo de escrever fica fora do bloco que se redesenha**, senão o cursor
+  some no meio da frase;
+- **escolha de agente são botões, nunca um menu**, porque menu aberto morre no
+  redesenho e isso já fechou a navegação na cara dele no telefone;
+- **a faixa do turno mostra a ferramenta rodando agora**, porque bolinha girando
+  não distingue "pensando" de "morreu", e resposta aqui leva minutos;
+- **o fluxo de pedaços tem canal próprio**, senão o painel inteiro dispararia a
+  cada palavra, para toda aba aberta.
+
+**A tela está escrita e no ar, e falta o servidor.** As cinco rotas HTTP moram
+em `src/web.mjs`, que é da rota `sistemas`, e foram pedidas com a forma exata.
+Até elas existirem a tela abre dizendo que não conseguiu ler, que é o
+comportamento certo e está provado na captura.
+
+Dois defeitos que a primeira captura em 390px achou, e que leitura de código não
+teria achado:
+
+- **a faixa do turno ficava visível e vazia para sempre.** `display` declarado
+  por nós vence o `hidden` do navegador, que é só `display:none` na folha
+  padrão. O resultado era uma barra azul sem conteúdo nenhum, que é exatamente o
+  espaço em branco que não distingue "nada rodando" de "a tela quebrou";
+- **o botão de enviar comia quase metade da largura**, e o campo de escrever
+  ficava numa coluna estreita.
+
+**As cinco rotas entraram, por ordem direta dele**, depois de eu ter travado
+esperando a rota vizinha: *"eu quero que você implemente agora a janela do chat
+(…) a outra sessão tá simplesmente mexendo em responsividade e frontend, não tem
+nada a ver com o que estamos fazendo"*. `src/web.mjs` foi liberado pela sessão
+dona antes de eu encostar, e o bloco do gate só ACRESCENTA.
+
+**Provado de ponta a ponta pelo endereço, como a tela faz:** conversa criada,
+mensagem enviada, resposta do agy chegando e o turno destravando sozinho. E a
+trava principal recusou o que tinha que recusar: uma conversa apontada para
+`/etc` volta `a pasta /etc está fora da base de projetos`.
+
+Junto vieram três peças que o plano previa e que ficaram provadas aqui:
+
+- **`src/gateTurno.mjs`**, que devolve na hora e acompanha em segundo plano.
+  Esperar a resposta dentro da requisição penduraria o navegador dele por
+  minutos, e no telefone, na rua, isso é a tela morrendo;
+- **mensagem dele nunca se perde**, mesmo chegando com outro agente respondendo:
+  ela é gravada na hora e entra no delta do turno seguinte;
+- **teto de 30 minutos por turno**, senão um agente travado deixaria a conversa
+  presa para sempre e ele não conseguiria mais falar nela.
+
+**Um furo da própria régua, achado aqui e consertado:** a captura aprovou como
+válida uma tela de erro do navegador. O painel reiniciou no instante do print, e
+a página do "site não pode ser alcançado" passou pelas duas provas de largura,
+porque ela não tem barra de baixo e "zero botões" nunca reprovava. A verificação
+nova exige que a página seja o painel, e foi provada nos dois sentidos: recusa a
+página errada, aprova a certa. **Régua que só sabe reprovar o que ela conhece
+aprova o desconhecido calada.**
+
+### CC-249 ✅ 21/08: a troca automática quando a cota aperta, e o furo que ela tinha
+
+Escolha dele: perto do teto do plano, o painel manda para o opencode ou o agy no
+lugar do Claude, e conta que trocou. Mecanicamente é a mesma troca do CC-248.
+
+**O furo, que a medição resolveu de um jeito melhor que o planejado:** a leitura
+de cota nunca teve dado nesta VPS, porque ela grava numa pasta que o sistema
+tranca e falha calada. O plano previa consertar isso. A medição achou caminho
+melhor: **a cota vem dentro de cada resposta do Claude**, então o gate a colhe
+sozinho, sem depender do conserto.
+
+O conserto do outro caminho continua valendo à parte, porque é ele que alimenta a
+barra do painel fora do gate.
+
+**Feito, com 12 verificações.** Quatro decisões que ficam registradas:
+
+- **a troca NUNCA é silenciosa.** A frase vem junto, em português, dizendo qual
+  janela apertou, quem respondeu no lugar, com o que aquele agente paga, e a que
+  horas o Claude volta. Trocar sem contar seria o painel escolhendo por ele, que
+  é o oposto do que ele pediu;
+- **sem saber a cota, não se troca nada.** `null` é "ainda não sei", e tirar o
+  Claude dele com base em desconhecimento seria pior que o problema;
+- **só o Claude é trocado**, porque só ele consome a janela do plano. Trocar
+  opencode por agy não alivia nada;
+- **o estado é o do próprio programa** (`allowed`, `warning`, `rejected`), nunca
+  um percentual calculado por nós. Número sem fonte é número que ele não tem como
+  discutir, e a régua 3 do projeto proíbe.
+
+## ▶ Frente nova, aberta em 21/08: as tarefas dele viram protocolo, e valem para qualquer ferramenta
+
+### CC-261 ✅ 21/08: o gasto do plano passa a ser buscado direto nesta VPS
+
+Ele: *"precisamos resolver isso urgente, pq me ajuda bastante"*. E escolheu, entre
+três caminhos, **buscar direto com a credencial**.
+
+**A medição que justificou mexer numa decisão antiga do projeto:** o painel
+evitava ler credencial de propósito, e isso estava escrito no `CLAUDE.md`. Mas
+aqui o número nunca chegaria de outro jeito. Provado com um marcador novo, que
+registra toda chamada da barra de status:
+
+> **a barra de status NÃO foi chamada nenhuma vez** nesta VPS, ao longo de
+> várias respostas seguidas. As sessões vêm por Remote Control, sem terminal
+> para desenhar barra nenhuma.
+
+**O resultado, medido no painel no ar:**
+
+| | antes | agora |
+|---|---|---|
+| janela de 5 horas | 12% | **5%** |
+| semana | 26% | **34%** |
+| origem | ALIENWARE-LIPE, 21h atrás | esta máquina, 5 segundos |
+
+O número velho não estava só velho: **estava errado nos dois sentidos**, para
+mais numa janela e para menos na outra.
+
+**O que a busca NÃO faz:** não renova token e não escreve no arquivo de
+credencial, que é do Claude Code. Somente leitura. Token vencido devolve o
+motivo e o painel fica com o último valor, a mesma degradação do câmbio.
+
+**O formato é outro, e isso importa:** a barra manda `used_percentage` e data em
+segundos; a conta manda `utilization` e data em texto ISO. A normalização mora
+num lugar só, senão seriam duas verdades sobre a mesma barra.
+
+**Rede no gate**, com `fetch` de mentira, sem tocar rede nem credencial real:
+normalização das duas janelas e da data, e quatro falhas que precisam dizer o
+motivo (token vencido, recusa da conta, resposta sem janelas, rede fora). Mais a
+verificação de que **o token nunca aparece na saída** de nenhum ramo.
+
+### CC-259 ✅ 21/08: o gasto do plano era de OUTRA máquina, e a tela não dizia
+
+Perguntas dele, as três de uma vez: *"mas pq nao sabemos os dados das sessoes? pq
+nao da p contar? e pq os dados de gasto da janela de 5 horas e semanal nao
+atualizam?"*.
+
+**A terceira tem a resposta mais séria: aquele 12% e 26% não é desta máquina.**
+Medido: veio do PC dele pela federação, e estava parado havia **21 horas**. A
+tela mostrava como se fosse daqui e de agora.
+
+O dado já chegava com `origem` e `em`. **A tela é que não contava.** Agora ela
+escreve embaixo das barras de quem é o número e de quando, em âmbar quando passa
+de 15 minutos.
+
+**Por que esta VPS nunca gravou o próprio uso:** o número oficial vem no pacote
+que o Claude Code manda para a barra de status do terminal, a cada resposta. As
+sessões daqui rodam por Remote Control, sem terminal à vista, então a barra não
+é desenhada e o comando nunca é chamado. Conferido dos dois lados: chamado à
+mão, o comando grava certo; sozinho, nunca rodou.
+
+⚠️ **Um erro meu no meio, e ele merece registro:** para testar, mandei um pacote
+de mentira (33% e 44%) para o comando de statusline, **e ele gravou no arquivo
+de verdade**. O painel exibiu número inventado por alguns minutos. Apaguei e
+conferi que voltou ao estado anterior. A regra que eu já sabia e não segui:
+**teste que escreve em dado real do Felipe é defeito, mesmo com limpeza depois**
+(está no `CLAUDE.md`, e foi assim que o gate quase apagou as notas dele).
+Faltou `CC_HOME` apontando para casa temporária, que existe exatamente para isso.
+
+**Sobre as duas primeiras perguntas:** o token de cada sessão está no histórico
+da conversa, arquivos que somam centenas de MB. O painel não lê no caminho
+rápido de propósito, porque a varredura leva alguns segundos e o cartão atualiza
+de dois em dois. A aba Tempo lê, com cache por tamanho e data. Ou seja, **dá para
+contar, e é escolha, não impossibilidade.** Trazer para o cartão do agente é
+decisão dele, e está registrado abaixo.
+
+### CC-260 ✅ 21/08: o gasto de cada sessão aparece no cartão
+
+Ele mandou seguir depois de aprovar o gasto do plano. **O número sempre existiu
+aqui**: a varredura da aba Tempo já guarda `porDia` por sessão, com entrada,
+saída, escrita e leitura de cache.
+
+**O que estava errado não era a falta do dado, era o RITMO da leitura.** Contar
+dentro do tique de 2 segundos custaria caro, e por isso o cartão dizia `?`.
+Medido: `varrer()` leva **305ms na primeira chamada do processo e 1ms nas
+seguintes**, com o cache em memória. Agora ela roda a cada 30 segundos e enche um
+mapa que o painel consulta de graça.
+
+**Resultado, no painel no ar:**
+
+    9bad715c  working   591.194.794 tokens
+    c213b663  working   238.559.004
+    5a0496cf  working   ?
+    35fc1997  waiting   ?
+
+**Os `?` que sobraram estão certos, e é importante que continuem assim:** são
+sessões do PC dele, que chegam pela federação. O transcrito delas não está nesta
+máquina, então o gasto é mesmo desconhecido aqui. A tela já sabe dizer isso:
+*"tokens em 2 de 5 agentes vivos, o resto não se sabe"*.
+
+⚠️ **Uma armadilha do meu lado, que custou uma rodada:** a chave que usei para
+casar sessão com gasto não existia naquele ponto do código (`cabeca.sessao` em
+vez de `sessionId`). O mapa carregava com 50 chaves e nenhum cartão mudava, sem
+erro nenhum. O que achou foi comparar as duas listas lado a lado, não ler o
+código de novo.
+
+**Sobre o tamanho do número:** quase tudo é releitura de cache, que custa 10% da
+entrada. Aqui é volume, não fatura. A aba de custo é que quebra por tipo.
+
+Hoje o cartão diz `?` para sessão interativa. O número existe, mas sai de uma
+varredura cara (a mesma da aba Tempo). Três saídas, e o custo é dele escolher:
+
+1. **Deixar como está.** Barato e honesto, e a aba Tempo responde quando ele
+   quiser o número.
+2. **Ler sob clique**, ao abrir o agente. Uma leitura por vez, sem custo no
+   painel de todo dia.
+3. **Ler no fundo, com cache**, e mostrar no cartão. Mais completo e mais caro:
+   a varredura ficaria rodando para uma tela que ele nem sempre está olhando.
+
+### CC-258 ✅ 21/08: "0 tokens nos agentes vivos" era mentira, não zero
+
+Print dele: *"0 tojens nos agentes vivos? tem algo claramente errado.."*. Estava
+mesmo: 8 agentes, 3 vivos, e o painel anunciando consumo zero.
+
+**O dado por baixo estava CERTO.** `sessoes.mjs` devolve `tokens: null` de
+propósito para sessão interativa, e o comentário dele previu este defeito ao pé
+da letra, meses antes:
+
+> *"Sessão interativa não tem contagem de token barata: o total exigiria
+> parsear o transcrito inteiro, que é trabalho da aba tempo. Melhor dizer que
+> não se sabe do que mostrar zero como se fosse medida."*
+
+**A tela é que desobedecia**, com um `|| 0` que virava desconhecido em zero.
+Nesta VPS **todas** as sessões são interativas, então o total é sempre
+desconhecido, e o painel sempre dizia zero.
+
+| antes | agora |
+|---|---|
+| `0` tokens nos agentes vivos | `?` não dá para contar aqui: 6 sessão(ões) interativa(s). A aba Tempo mede. |
+
+A tela passou a distinguir três situações, que antes viravam a mesma: sem agente
+vivo (zero de verdade), com agente vivo e nenhum medido (`?` mais o motivo e
+onde medir), e parte medida (soma o que sabe e diz de quantos).
+
+**Zero e "não sei" são coisas diferentes**, e confundir os dois é a família de
+defeito mais cara deste painel. É a quarta vez hoje que ela aparece: a barra de
+uso vazia (CC-257), a tela que abria em branco (CC-239), o bloco sem explicação
+(CC-231) e agora esta.
+
+### CC-257 ✅ 21/08: a barra de uso do plano nunca teve dado nesta VPS
+
+Apontado pela sessão do gate, e conferido: **o arquivo do uso simplesmente não
+existia aqui.** A barra do painel mostrava vazio, como se ele não tivesse gasto
+nada do plano.
+
+**A causa é a mesma de outras duas vezes no mesmo dia:** `~/.claude` é somente
+leitura dentro do sandbox, a gravação falhava, o `catch` engolia, e a tela
+afirmava com confiança algo que não sabia. **Barra vazia não distingue "não usei"
+de "não consegui ler"**, que é a família de defeito mais cara deste painel.
+
+`src/uso.mjs` ganhou o mesmo abrigo do `meu.mjs` (CC-232) e do `metaSessao.mjs`
+(CC-157): tenta a casa, cai para `~/.local/share/agent-cockpit/`, e a leitura
+junta os dois preferindo o **mais novo**. A ordem por data importa, e não por
+lugar: o painel roda fora do sandbox e escreve na casa, o agente roda dentro e
+escreve no abrigo.
+
+**Prova:** com a casa trancada de propósito, grava e relê (5h=12%, semana=26%).
+No gate, em subprocesso com casa somente leitura.
+
+O número mudou de CC-251 para CC-257 pela mesma colisão descrita abaixo.
+
+### CC-256 ✅ 21/08: a varredura de verdade, e a barra lateral que ele mandou encolher
+
+> **Nasceu como CC-252 e foi renumerado.** Duas sessões escreveram no backlog no
+> mesmo minuto e chegaram no mesmo número: eu no painel de todo dia, a do gate na
+> conversa. O gate pegou (*"número de item repetido"*), e a regra de desempate
+> foi a ordem no arquivo: quem estava primeiro ficou. As citações de `CC-252`
+> dentro do `ui_v2.html` apontam para este item.
+
+Ele voltou com um print da seção ATIVIDADE RECENTE e quatro perguntas:
+
+> *"pq os mesmos erros estão passando repetidamente? você ta verificando a
+> responsividade do site todo? ta usando a /browser-harness? Além do mais essa
+> aba lateral não pode ser colapsada porque? Ta complicado, você ta usando o
+> opus e ta deixando passar erro de haiku."*
+
+**As três primeiras têm a mesma resposta, e ela é contra mim:** eu media a TELA
+DO PRINT e consertava BLOCO A BLOCO. Isso é amostra, não varredura, e por isso o
+mesmo defeito reaparecia noutro lugar. A quarta pergunta dele era a causa raiz, e
+ele acertou de primeira.
+
+**A varredura que faltava:** 25 telas × 5 larguras, medindo caixa mais alta que
+larga com texto dentro, que é o sintoma de letra por linha.
+
+| | antes | depois |
+|---|---|---|
+| telas com texto empilhado | **3 de 25** | **0 de 25** |
+| pior caso (tela Trabalho, 720px) | texto de **13px de largura por 1696px de altura** | nenhum |
+
+**A causa raiz era a que ele apontou: a barra lateral não encolhia.** 260px
+fixos comidos antes de o conteúdo começar. Agora ela encolhe para 64px, só
+ícones, e o conteúdo passa de 540 para **736px** numa janela de 800. A escolha
+vai para o servidor (`/api/tela`, do CC-156), então atravessa celular e PC.
+
+**Os três defeitos que a varredura achou, e o padrão é sempre o mesmo, largura
+reservada que não encolhe:**
+
+1. `.log-cat` com 130px fixos na linha de atividade: sobravam ~50px para o
+   texto. Agora a linha empilha quando o bloco é estreito, por `@container`
+   próprio do `.log-list`, porque o aperto vem da coluna e não da janela.
+2. `.funil-colunas` mantinha três colunas lado a lado: a regra de deslizar
+   existia, mas só em `@media (max-width: 700px)`, e com a lateral aberta uma
+   janela de 720px deixa 460px de painel. Passou a deslizar por `@container`.
+3. `.fw-colunas` e `.idx-colunas` sem `minmax(0, ...)`, mais `100vh` na altura.
+
+**Um furo na minha própria régua, achado pela sessão do gate:** a varredura
+aprovava como válida a **tela de erro do navegador**. Sem `.view-section`, ela
+não achava nada para reclamar e devolvia "ok". Corrigido: ausência da tela agora
+é falha, e não silêncio. **O número de "0 de 25" só vale por causa desse
+conserto** — antes dele, o zero podia ser tela que nem carregou.
+
+### CC-250 ✅ 21/08: o painel quebrava em janela de navegador estreitada
+
+Print dele em 21/08, no desktop: *"fui conferir mas olha como o responsivo do
+cockpit fica quando eu encurto o tamanho do navegador"*. Na imagem, texto
+sobreposto, cartões de 30px de largura com a palavra quebrada letra a letra, e o
+bloco lateral por cima do conteúdo.
+
+**Reproduzido e medido, largura por largura:**
+
+| janela | barra lateral | sobra para o conteúdo | elementos espremidos |
+|---|---|---|---|
+| 1280 | 260 | 1020 | 43 |
+| 1100 | 260 | 840 | 48 |
+| 900 | 260 | 640 | 49 |
+| 800 | 260 | 540 | 44 |
+| 720 | 260 | **460** | 45 |
+| **700** | **0** | 700 | **1** |
+| 390 | 0 | 390 | 1 |
+
+**A causa está na tabela:** o único ponto de virada do painel é **700px**, e ele
+mede a JANELA. A barra lateral come 260px fixos, então uma janela de 720px deixa
+**460px de conteúdo**, que é território de celular, com o CSS ainda achando que
+é desktop. Abaixo de 700 a lateral some, a barra de baixo entra, e o problema
+desaparece de uma vez.
+
+Ou seja: **a faixa entre 700 e 1100 nunca foi olhada.** O gate mede 390 (o
+telefone dele) e o desenho foi feito em tela larga. O meio ficou sem dono.
+
+⚠️ **Um alerta sobre a medida:** "espremido" aqui é caixa com menos de 90px
+contendo texto de mais de 12 caracteres. Em 1280 ela acusa 43, e parte disso é
+rótulo curto legítimo. **O número não é o defeito; a captura é.** O que a imagem
+mostra em 800px é indiscutível, e é o que ele viu.
+
+**Executado depois que ele mandou:** *"o outro painel tá construindo um sistema
+de conversas de agentes de IA. pode reivindicar o frontend"*. A tela do gate
+continua com a sessão `c213b663`; dividimos o arquivo por BLOCO, não por dono
+único, e avisamos antes de mexer no que é global.
+
+**Duas causas, e as duas eram largura reservada que não encolhe:**
+
+1. **A coluna lateral do `grid-container` é fixa em 320px.** Com 445px de grade,
+   320 mais 32 de intervalo comiam 352, e sobravam 93 para a coluna principal.
+   Agora as grades colapsam por `@container` no `.main-content`, medindo o
+   espaço que SOBRA em vez do tamanho da janela. É a régua que o `CLAUDE.md` já
+   tinha escolhido para o caso irmão da coluna de notas.
+2. **`.agora-grid` pedia `repeat(3, minmax(0,1fr))`.** Três colunas cabem em
+   tela larga e destroem a média: cada cartão ficava com 136px precisando de
+   214, e o título cortava no meio da palavra (`proj_contro`). Virou
+   `auto-fill` com mínimo de 220px, que é a forma que o gate já aceita como
+   exceção justamente por se ajustar sozinha.
+
+**Prova, na largura do print dele (800px):**
+
+| antes | depois |
+|---|---|
+| grade `93px 320px`, texto sobreposto, bloco lateral por cima do conteúdo | uma coluna, dois cartões por linha, títulos inteiros |
+| `PRECISA DE VOCÊ AGORA` em 59px, letra por linha | cabeçalho em linha única |
+| `proj_contro` cortado | `proj_controlcenter / Sincronia entre maquinas` |
+
+Gate verde, incluindo as duas regras de grade que já existiam (CC-222).
+
+**Segunda passada, porque ele mandou outro print e disse *"mudou pouco"*.**
+
+Eu tinha consertado só a grade do topo. A varredura de todas as grades achou
+mais duas com o mesmo `repeat(3, ...)`, e a seção PROJETOS ficava com colunas de
+138px. **Consertar a que aparece no print é amostra; a varredura é o conserto.**
+
+E o mínimo importa: `.projetos-grid` ficou com **320px**, não os 220 das outras.
+Com 220 a grade fazia dois cartões de 222px, e o cartão de projeto não cabe ali
+(ele tem uma lista de agentes dentro, cada linha com selo de máquina, assunto e
+hora lado a lado). Copiar o número da grade vizinha foi o que me fez achar que
+estava resolvido quando não estava.
+
+| medida, em 800px | antes | depois |
+|---|---|---|
+| textos estreitos dentro da seção | 29 | 9, todos rótulos legítimos |
+| largura do cartão de projeto | 222px | 460px |
+
+⚠️ **Duas armadilhas do MÉTODO de medição, e as duas quase me fizeram entregar
+errado:**
+
+1. **A captura rodava em modo celular mesmo pedindo largura de desktop.** O
+   `mobile: true` no Chrome aplica o viewport virtual do telefone, e a mesma
+   página em 800px renderiza diferente do navegador dele em 800px. Resultado: a
+   medição dizia "está certo" e a foto mostrava quebrado, ao mesmo tempo.
+2. **Medir numa execução e fotografar noutra não prova nada.** As duas
+   discordavam, e a saída foi medir e fotografar **na mesma sessão**, no mesmo
+   instante. Quando duas medidas discordam, a primeira suspeita é a diferença
+   entre elas, não a página.
+
+**O que fica:** o rótulo de máquina no topo (`ALIENWARE-LIPE · SEM CONTATO`)
+ainda quebra em três linhas nessa faixa. É pequeno perto do resto, e entra na
+próxima passada.
+
+**A régua que faltava, e vale mais que o conserto:** o `test-map-vivo.mjs` mede
+só 390px. Uma varredura por faixa (390, 720, 900, 1100, 1280) teria pego isto
+sem ele precisar estreitar o navegador. O script está em `larguras.mjs`, no
+scratchpad desta sessão, e merece virar parte do gate visual.
+
+**A régua que faltava, e que vale mais que o conserto:** o `test-map-vivo.mjs`
+mede só 390px. Uma varredura por faixa de largura (390, 720, 900, 1100, 1280)
+teria pego isto sem ele precisar estreitar o navegador. O script está em
+`larguras.mjs`, no scratchpad desta sessão, e merece virar parte do gate visual.
+
+### CC-243 ✅ 21/08, primeira fatia: a burocracia entre agentes saiu do chat
+
+Proposta dele, logo depois do CC-242, e ela é maior que aquele conserto:
+
+> *"esses stops, a parada, o teto, essas coisas que aparecem aqui, não seria
+> mais interessante se isso aparecesse no cockpit, do que aqui no chat, poluindo
+> o chat? Aqui seria interessante aparecer pra mim só coisas que passassem ou
+> que deram um erro, mas se está falando que a rota está marcada, aí é algo que
+> só faz diferença entre os próprios agentes em si. Não faz sentido eu ficar
+> vendo esse furdunço de mensagem no chat, separando o que eu tenho que ler
+> dessas coisas que só servem de burocracia pro próprio agente"*
+
+**O critério é dele e é bom:** no chat, o que passou ou o que quebrou. No
+painel, o resto.
+
+**A superfície, medida:** 38 ganchos ligados. 23 apenas avisam, 10 travam
+ferramenta, 3 injetam contexto no começo, 1 devolve no fim.
+
+**O corte não é por gancho, é por PÚBLICO.** Três famílias, e só uma delas é
+poluição:
+
+| família | exemplo | onde deve viver |
+|---|---|---|
+| corrige a mim, agora | travessão, resumo, teto, fluxo | tem que chegar em mim, e ele vê o efeito, não o mecanismo |
+| decisão dele | pedido de autorização de sessão VIVA | painel, com o botão de decidir |
+| burocracia entre agentes | *"sua rota está marcada ocupada"* | painel, e só |
+
+A terceira é a que ele nomeou. O `routia-fim` escreve `systemMessage` toda vez,
+e **o painel já mostra as rotas** na tela Estrutura, com `/api/rotas` pronta:
+hoje a mesma informação aparece duas vezes, e uma delas no lugar errado.
+
+⚠️ **O risco de simplesmente calar:** rota esquecida marcada é o problema que o
+Método Routia existe para evitar. Silenciar sem colocar em lugar nenhum troca um
+incômodo por um defeito. Por isso a saída é mover, nunca apagar.
+
+**Feito nesta fatia:**
+
+| antes | agora |
+|---|---|
+| lembrete de rota marcada, no chat, toda vez | sai por `stderr`, chega em mim, e a tela Estrutura já mostrava o mesmo |
+| cada pedido gastava 3 linhas, duas delas com comando de terminal | 1 linha, dizendo quem está travado e onde decidir |
+| decidir exigia copiar `node ~/.claude/hooks/...` | `GET /api/rotas` traz os pendentes, `POST /api/rotas/pedido` decide |
+
+**Prova, de ponta a ponta:** criei um pedido, o painel listou, neguei pela rota,
+sumiu da lista. Com rota marcada e sem pedido, o chat recebe **nada** e o
+lembrete continua chegando em mim.
+
+**Dois erros meus no caminho, os dois registrados porque voltam:**
+
+1. `await import` dentro de um handler que não é async **derrubou o painel
+   inteiro** (`SyntaxError: Unexpected reserved word`). O import foi para o topo.
+2. Depois de corrigir, o painel ainda respondia errado: ele tinha subido **20
+   segundos antes** de eu salvar o arquivo. É a armadilha já escrita no
+   `CLAUDE.md` (*"quando o módulo passa no teste direto e falha pela rota, o
+   suspeito nº 1 é processo velho"*), e a régua que resolveu foi comparar a hora
+   de início do processo com a hora de gravação do arquivo.
+
+**O que fica para depois:** os outros ganchos que falam no chat. O corte por
+público (corrige a mim / decisão dele / burocracia) está na tabela acima, e vale
+para todos, mas cada um precisa ser olhado, porque calar o guarda errado é como
+se perde uma trava.
+
+### CC-242 ✅ 21/08: o aviso do fim de resposta cobrava pedido de sessão morta
+
+Ele mandou o fim de uma resposta minha, com **16 linhas de aviso**, e perguntou:
+*"olha a quantidade de mensagens acontecendo no final de cada mensagem. Isso
+está correto?"*.
+
+**Não estava.** Medido no arquivo de pedidos:
+
+| pedido | idade |
+|---|---|
+| `src/anonimizar.mjs` | 158 horas |
+| `src/extrairPdf.mjs` | 158 horas |
+| `src/bancada.mjs` | 129 horas |
+| `src/hooksCatalogo.mjs` | 117 horas |
+| `src/ideias.mjs` | 90 horas |
+
+Quatro a seis dias, todos de sessões que já tinham fechado, repetidos no fim de
+**toda** resposta, para sempre.
+
+**A causa:** `VALIDADE_MS` de 6 horas existia, mas só nascia no ramo
+`autorizado`. Quem AUTORIZA tinha prazo; quem PEDE e não é respondido ficava
+pendurado sem prazo nenhum.
+
+**Expirar não perde nada, e é o ponto:** o `rota-guard` registra o pedido de
+novo na próxima tentativa de edição. Quem ainda precisa pede outra vez, com data
+de hoje. Quem morreu, cala.
+
+**Por que isso não é cosmético.** É a mesma lição que fez o `⏸` nascer no
+`fluxo-guard` e que apareceu de novo hoje no CC-237: **guarda que cobra o
+impossível ensina a ser ignorado.** Dezesseis linhas sobre sessões mortas
+treinam a passar o olho por cima, e aí o pedido de verdade, de alguém travado
+esperando resposta, se perde no meio do ruído. Ele viu isso antes de mim.
+
+**Prova:** de 5 pendentes para 0, sem tocar no arquivo de pedidos (o que muda é
+o que se MOSTRA). No gate, três casos: o de agora aparece, o de 5 horas aparece,
+o de 7 horas some. Mais a prova negativa, porque sem ela o teste só sabe dizer
+"hoje passa": pedido sem data continua visível, para formato antigo não sumir
+calado.
+
+**Instalado nos dois lugares**, porque o que roda é a cópia em
+`~/.claude/hooks/`, não o arquivo do repositório. A pasta é somente leitura
+dentro do sandbox, então a cópia exigiu sair dele.
+
+### CC-241 ✅ 21/08, aguardando a conferência dele no telefone: o fim da tela não alcançava
+
+Print dele em 21/08, no fim da tela Agora: *"lá no final eu não consigo descer
+mais, fica quebrado"*. No print, o bloco `FILA PERDIDA` aparece com o texto
+cortado, e o botão `procurar` que existe dentro dele **não aparece**.
+
+**O que foi medido, no navegador, antes de qualquer hipótese:**
+
+| medida | resultado |
+|---|---|
+| quem rola | `.main-content`, não o documento |
+| a rolagem chega ao fim | **sim**, `scrollTop` alcança o máximo |
+| o redesenho de 2s rouba a rolagem | **não**, ficou parada em 1844 por 8 segundos |
+| algo tapado pela barra de baixo, em 390x844 | **nada**, sobra de 34px |
+
+Então **no meu ambiente não reproduz**, e é isso que aponta a causa: a diferença
+entre o meu navegador e o telefone dele.
+
+**A causa é `height: 100vh` no `body`, junto com `overflow: hidden`.**
+
+    body { display: flex; height: 100vh; overflow: hidden }
+    .main-content { flex: 1; overflow-y: auto }
+
+No Chrome do Android, `100vh` é a altura da janela **com a barra de endereço
+retraída**, que é a maior. Com a barra de endereço na tela, e ela aparece no
+print dele, a área realmente visível é MENOR que `100vh`. O `body` não rola
+(`overflow: hidden`), então esse pedaço a mais fica embaixo da barra do
+navegador e **não existe gesto que o alcance**. O último trecho de conteúdo fica
+inalcançável, que é exatamente a frase dele.
+
+**A correção é `100dvh`** (dynamic viewport height), que acompanha a barra do
+navegador aparecendo e sumindo. O arquivo hoje tem **zero** ocorrências de `dvh`
+ou `svh`. O `env(safe-area-inset-bottom)` já está no padding, então a barra do
+SISTEMA foi considerada; a do NAVEGADOR não.
+
+**Trocado**, com `100vh` mantido na linha de cima como reserva: navegador que
+não conheça `dvh` ignora a segunda linha e fica com o comportamento de antes,
+em vez de perder a altura inteira.
+
+⚠️ **A prova é dele, e ainda não veio.** Chrome headless não tem barra de
+endereço, então o defeito não reproduz aqui por construção: o que dá para
+afirmar é que a causa é essa e que nada quebrou (gate verde, as 24 telas abrem,
+zero erro de execução, largura de 390px conferida). **Marcado como feito, e a
+confirmação continua pendente até ele abrir no telefone.** Se ainda não descer,
+a hipótese seguinte é o `.main-content` e não o `body`.
+
+### CC-240 ✅ 21/08: os sem contato vão para o fim, e nascem fechados
+
+Pedido dele em 21/08, ditado por voz:
+
+> *"coloque na tela de agentes, os agentes sem contato por último, porque no
+> momento os trabalhando e os espera etcétera, eles estão separados pelos sem
+> contato, sendo que os sem contato estão offline, eles poderiam facilmente
+> ficar lá embaixo, e eu acho que tem que ter um botãozinho pra colapsar eles,
+> pra não ficar uma lista enorme com um monte de agente inativo offline. Eles
+> podem colapsar e eu só ativo se eu quiser"*
+
+**A causa está localizada, em `ZONAS` (`src/ui_v2.html`, por volta da linha
+2489):** a faixa `mudo` está na posição 4 de 6, **antes** de `idle` e `done`.
+Então ela racha a lista exatamente como ele descreve, e o que ele quer ver
+primeiro fica separado do resto por uma pilha de máquina desligada.
+
+    waiting · failed · working · [mudo] · idle · done      hoje
+    waiting · failed · working · idle · done · [mudo]      pedido dele
+
+**São duas coisas, e as duas são o pedido:** a faixa vai para o fim, **e** ela
+nasce fechada, com um jeito de abrir. Palavras dele: *"eles podem colapsar e eu
+só ativo se eu quiser"*.
+
+Contexto medido no momento do pedido: 19 agentes, dos quais 14 parados, e o topo
+da tela dele anuncia "+14 sem contato". A lista enorme que ele descreve é real.
+
+**Feito assim:** `ZONAS_FECHADAS`, um conjunto no escopo do script, ao lado de
+`ZONAS`. Fora de `renderAgentes()` de propósito: ela roda a cada tique do
+stream, e guardar o estado dentro dela reabriria a faixa sozinha de dois em dois
+segundos, na cara dele. Mesma razão de `MEU_ABERTO` existir (CC-233).
+
+**A faixa fechada não é escondida por CSS, ela não é DESENHADA.** Com 14 agentes
+parados, montar tudo a cada dois segundos para deixar invisível seria trabalho
+jogado fora no telefone dele.
+
+**Prova, no navegador, com clique de dedo, em 390px de largura real:**
+
+| passo | resultado |
+|---|---|
+| ordem das faixas | `TRABALHANDO`, `PARADOS`, `SEM CONTATO` por último |
+| ao abrir a tela | fechada, botão dizendo `mostrar (14)` |
+| clicar em mostrar | 14 itens aparecem, botão vira `esconder` |
+| **esperar 5 segundos de stream** | **continua aberta**, com os 14 |
+| clicar de novo | volta a 0 itens e `mostrar (14)` |
+
+O quarto passo é o que importa. Sem ele o teste passaria e o defeito clássico
+deste painel voltaria na primeira vez que ele usasse de verdade.
+
+**Fica para depois, se ele pedir:** a escolha vive só nesta aba. `/api/tela`
+está no ar e faria ela atravessar celular e PC, mas ele não pediu isso, e
+gravar no servidor a cada toque tem custo que ninguém mediu ainda.
+
+### CC-239 ✅ 21/08: a tela Trabalho ficava 3 segundos em branco, sem dizer nada
+
+Achado em 21/08 na primeira execução do plano de teste com navegador de verdade,
+em 390x844. Medido, não deduzido:
+
+| quando | conteúdo da tela |
+|---|---|
+| 0,5s | 0 elementos, 0px de altura |
+| 1,5s | 0 elementos, 0px de altura |
+| 3,0s | 234 elementos, 1810px |
+
+**Ela não quebra, e é por isso que é cara:** espaço vazio não distingue "está
+carregando" de "quebrou", e essa é a família de defeito que ele mais acha neste
+painel. Ele abre isso no telefone, na rua, e três segundos de branco parecem
+tela morta.
+
+É a mesma régua já escrita no CC-231: *bloco que pode ficar vazio precisa dizer
+por quê*. Aqui não há sequer bloco.
+
+**A causa:** a tela Trabalho era a única das quatro principais que **não
+desenhava ao navegar**. Quinze telas já chamam a própria função de desenho no
+`showPage`; ela não estava na lista, então esperava o próximo tique do fluxo,
+que vem de dois em dois segundos.
+
+`renderViewTrabalho()` já sabia mostrar *"Carregando dados do trabalho..."*
+quando ainda não tem dado. O que faltava era **ser chamada**.
+
+**Prova, com o fluxo ao vivo ligado (sem `?static=1`, senão o defeito nem
+existe):**
+
+| quando | antes | depois |
+|---|---|---|
+| 150ms | 0 elementos, 0px | 223 elementos, 1810px |
+| 1,5s | 0 elementos, 0px | igual |
+| 3,0s | 234 elementos, 1810px | igual |
+
+Uma linha de código. O trabalho todo foi medir para saber QUAL linha.
+
+Junto, uma nota de método que vale para quem for testar: a Trabalho é a única
+tela que demora a montar, então **teste que mede tela precisa esperar o conteúdo
+nascer, não um relógio fixo**. Sem isso o próprio teste acusa "tela vazia" onde
+não há defeito.
+
+### CC-237 ✅ 21/08: a trava de execução parou de cobrar o que é de outra sessão
+
+Ele abriu a segunda sessão só para tela, e a rota `front` passou para ela com o
+CC-156 e o CC-235 dentro. Deste lado, a trava de execução contínua seguiu
+cobrando os dois a cada parada: **os únicos itens abertos do backlog eram
+justamente os que eu não posso tocar sem pisar no dono da rota.**
+
+É o mesmo defeito que fez o `⏸` nascer, chegando por outro caminho. A frase já
+estava escrita no próprio arquivo do gancho: *guarda que cobra o impossível
+ensina a ser ignorado, e aí ele não segura mais o caso real*.
+
+**A posse sai do quadro de rotas, não de uma marca no item.** Marcar posse no
+`ROADMAP.md` seria uma segunda verdade sobre quem segura o quê, e ela envelhece
+sozinha: a rota muda de dono e o título fica mentindo. O quadro já é a fonte, e
+é lido no começo de toda sessão.
+
+Duas escolhas que o teste guarda, porque as duas erram para o lado perigoso se
+forem invertidas:
+
+- **rota minha continua cobrando.** O que eu mesmo reservei é trabalho meu, e
+  não poder ser cobrado por ele seria o furo ao contrário.
+- **sem saber quem eu sou, o guarda não cala.** Guarda que emudece por falta de
+  dado vira guarda que não existe.
+
+A conta mora em `src/routia.mjs` e não dentro do gancho, porque gancho não é
+importável, e regra que o gate não enxerga volta a quebrar calada. Foi a mesma
+lição do CC-232, no mesmo dia.
+
+### CC-236 ✅ 21/08: o título do backlog é texto de tela, e eu tinha esquecido disso
+
+Ele mandou três prints do telefone lado a lado: *"olha a diferença dos 3"*. O
+pedido principal (a mesma profundidade nas três colunas) é o CC-235, e é da
+sessão de tela. Mas os prints mostraram **dois defeitos meus, escritos horas
+antes**, no cartão do Product Backlog:
+
+| o que apareceu no cartão dele | o que era |
+|---|---|
+| `▶ LIBERADO para construir em 21/08 — o redesenho da tela` | marcador cru mais travessão |
+| `registrado a pedido dele, não implementado — quem marca como pronta não é ele` | rótulo de estado ocupando o lugar do título |
+
+**A lição, e ela é maior que o conserto: o `ROADMAP.md` parece documentação, mas
+o título do item é TEXTO DE INTERFACE.** Ele chega no cartão do celular. A regra
+número 1 do arquivo de instruções dele, contra travessão, vale ali como vale na
+tela, e eu tratei o arquivo como se fosse só meu.
+
+**O `▶` vazava porque a limpeza de marcadores é uma lista fechada.** Marcador
+que não está nela atravessa para o cartão sem nenhum aviso. Entraram os
+símbolos de execução e de lista que aparecem em título.
+
+**Rede no gate**, medindo só os itens ABERTOS, que são os que viram cartão:
+nenhum título com travessão, nenhum marcador sobrando depois da limpeza. Os
+fechados ficam como estão, porque são histórico, e reescrever 88 títulos antigos
+mexeria em registro por um ganho que ninguém vê.
+
+### CC-235 🟢 na sessão de tela: a mesma profundidade nos cartões de Sprint e Product Backlog
+
+Palavras dele, com print da tela Trabalho no telefone:
+
+> *"vamos adicionar o mesmo nível de profundidade nos cards de Sprint e product
+> backlog"*
+
+**O "mesmo nível" é o do CC-233**, entregue minutos antes: tocar no cartão abre
+um detalhe com o que aquilo é, em vez de só oferecer marcar como pronto. Hoje os
+cartões de Sprint repetem *"redesenho da tela do painel"* embaixo de cada um dos
+sete, que é o assunto do agente e não diz nada sobre a tarefa em si.
+
+**Vai para a sessão de tela (`front`), não para a de sistemas**, porque mora em
+`src/ui_v2.html`, que tem dono. Ele pediu para mim, eu repassei.
+
+O que já existe para reusar: `detalheMeu(m)` e o conjunto `MEU_ABERTO`, que
+fazem exatamente isso para as tarefas dele. Cada tipo tem campo próprio para
+mostrar, e nem todos existem nos três: o to-do de agente tem `prova`, `dependeDe`
+e `revisoes`; o item de backlog tem a frente e o estado. **Bloco que pode ficar
+vazio precisa dizer por quê** — é a regra que este projeto já pagou para
+aprender.
+
+### CC-234 ⏸ decisão dele: quem marca a tarefa como pronta não deveria ser ele
+
+Palavras dele, no telefone, logo depois de ver o detalhe da tarefa funcionando:
+
+> *"na verdade quem deveria marcar como pronta nem sou eu. eu deveria falar que
+> fiz mas deveria entrar numa lista de tarefas a conferir ( inclusive poderíamos
+> ter uma lista separada de tarefas prontas que JA FORAM testadas e postas a
+> prova. mas isso eh pro backlog)"*
+
+**Registrado e não executado, porque ele mesmo disse que é para o backlog.**
+
+O que a ideia muda, em uma linha: hoje marcar é o fim; na proposta dele, marcar
+é o começo de uma conferência. Seriam três estados em vez de dois — aberta, ele
+diz que fez, e provada.
+
+Isto conversa direto com o `pronto-guard`, que já exige prova para um agente
+fechar um to-do. **O que ele está pedindo é a versão disso para as tarefas
+dele**, e o argumento é o mesmo: "feito" sem prova é opinião. Vale medir antes
+de desenhar se o custo de conferir cada uma não vira atrito maior que o ganho,
+já que quem confere aqui também é ele.
+
+### CC-233 ✅ 21/08 — tocar na tarefa mostra o que ela é, em vez de perguntar se acabou
+
+Print dele no telefone, com o alerta do navegador aberto na tela: *"eu percebi
+que nas tarefas que só eu resolvo quando eu Clico simplesmente oferece o ficar
+pronto. essa tela não me serve de nada se eu não puder clicar e ver exatamente
+o que preciso resolver"*.
+
+**A causa:** a linha inteira era um `<label>` amarrado à caixa de marcar. Tocar
+em qualquer lugar, inclusive no texto, disparava "Marcar como resolvido?". Não
+havia caminho nenhum para ver a tarefa: o único gesto possível era fechá-la.
+
+**O conserto:** dois alvos separados. A caixa marca, o texto abre um detalhe com
+por que aquilo depende dele, onde é (projeto, frente e máquina), desde quando
+está parado, de onde veio (a lista dele, um agente, ou o backlog), e as ações.
+
+**O achado que quase deixou o defeito vivo:** existiam DUAS listas de pendência
+dele no arquivo, com a mesma função e o mesmo defeito — a da tela "o que só você
+resolve" e a da tela Trabalho. Consertei a primeira, capturei a tela, e o toque
+continuou abrindo o alerta: **ele estava olhando a segunda.** O detalhe hoje é
+uma função só, usada pelas duas.
+
+**Prova:** captura em 390px de largura real, validada antes de salvar, com o
+detalhe aberto por clique de verdade e zero erro de execução no navegador.
+Duas correções saíram da própria captura: o texto da tarefa aparecia duplicado,
+e o motivo vinha duas vezes seguidas com o item aberto.
+
+**Deixado para a sessão de tela** (achado no caminho, não é este item): na tela
+Trabalho, em 390px, a coluna da direita fica cortada e o rótulo de máquina no
+topo sai do quadro. Não é rolagem horizontal da página, é corte dentro do
+cartão do projeto.
+
+
+Proposta dele, registrada antes de qualquer execução, com as palavras dele:
+
+> *"podemos então criar o protocolo de start e end session atrelados a colocar
+> tarefas, gerenciar tarefas e finalizar tarefas. assim qdo o start session
+> trouxer tarefas pendentes ele atualiza no cockpit. o problema é que precisamos
+> atrelar isso ao sistema e não só ao Claude, pq usamos o OPENCODE e o agy aqui
+> tb... poderíamos criar um Hook pra isso atrelado a ligação de um server lá no
+> remoto independente de onde fica"*
+
+### CC-232 ✅ 21/08 — o protocolo de tarefas, valendo nas três ferramentas
+
+**Rumo escolhido por ele: "cada ferramenta avisa".** O Claude Code usa o gancho
+que já tem, o opencode/agy ganha o encaixe equivalente, e as duas escrevem na
+mesma lista.
+
+**O que passou a existir**
+
+| peça | o que faz |
+|---|---|
+| `cc meu list/add/feito/reabrir/remover` | a lista dele pela linha de comando, que era o buraco: existia a lista e a porta HTTP, faltava escrever nela sem navegador |
+| `hooks/tarefas-inicio.mjs` | ao abrir sessão, o que depende dele entra no contexto. Não marca nem remove nada: só ele fecha tarefa dele |
+| `hooks/tarefas-fim.mjs` | devolve UMA vez quando a sessão termina com pendência dele fora da lista |
+| `hooks/opencode/tarefas.js` | o mesmo no opencode/agy, pelo sistema de plugin (`experimental.chat.system.transform`) |
+| `src/tarefasProtocolo.mjs` | a conta, fora do hook, para o gate alcançar |
+| passos novos em `/start-session` e `/end-session` | processar no início, registrar no fim |
+
+**A causa raiz não era descuido, era a rotina apontando para o lugar errado.**
+O passo 5.5 do `/end-session` mandava gravar em `blockers` do `cc set`, que é o
+cartão **daquela sessão** — e o cartão morre quando o CLI apaga o job. A sessão
+de 20/08 seguiu a rotina à risca e as quatro pendências não chegaram na lista.
+É o mesmo defeito que os to-dos tiveram antes de virar checklist de entrega:
+quem seguia o protocolo à risca entregava errado.
+
+**Dois achados que quase mataram o recurso em silêncio**
+
+1. **`readJobs()` sozinho lê ZERO agente nesta VPS.** O primeiro rascunho do
+   hook passou calado no caso real, porque a pasta de background está vazia e
+   tudo aqui é sessão interativa. É o CC-124 de volta. Virou `todosOsJobs()` em
+   `sessoes.mjs`, uma conta só, e o gate recusa hook que chame `readJobs` direto.
+2. **`~/.claude` é somente leitura dentro do sandbox.** Registrar as quatro
+   pendências deu `EROFS` quatro vezes. Sem abrigo, o protocolo seria decorativo
+   justamente onde ele trabalha: o hook mandaria registrar e o comando não
+   conseguiria. `meu.mjs` ganhou o mesmo abrigo do CC-157, a lista junta os dois
+   lugares, e o que não dá para gravar **falha em voz alta** dizendo onde está.
+
+**Prova, medida e não afirmada**
+
+- o hook de fim, contra a sessão real de 20/08: cobra as 5 pendências; ao
+  registrar UMA (com acento e caixa diferentes), passa a cobrar 4; com
+  `stop_hook_active`, cala; sem saber a sessão, cala.
+- o encaixe do opencode, chamado como o opencode chama: leu a lista de verdade
+  pelo binário `cockpit` e acrescentou ao prompt sem apagar o original.
+- **as quatro pendências de 20/08 estão na lista**, e o painel no ar responde
+  8 abertas depois do religamento (`MainPID` 1545099 → 1842470).
+- 9 verificações novas no `npm test`, incluindo a prova de que bloqueio do
+  próprio cartão **não** conta como tarefa registrada — sem ela, o hook olharia
+  para o próprio reflexo e o defeito de 20/08 voltaria inteiro.
+
+**O limite honesto:** no opencode não existe equivalente ao gancho que devolve.
+Lá o protocolo mostra e ensina, mas não segura. Diferença de ferramenta, não
+descuido — e a lição registrada aqui é que instrução escrita não muda
+comportamento sozinha.
+
+#### O registro original, antes da execução
+
+**O que motivou**, medido em 21/08 a pedido dele: as quatro pendências humanas
+do encerramento de 20/08 **não estavam na lista dele**. Ficaram gravadas como
+bloqueios da sessão que as criou, e a lista de tarefas dele mostrava outras
+quatro, de 13/08. A tela afirmava lista em dia sem estar.
+
+**A causa não é a tela, é não haver protocolo.** O encerramento escreve o que
+depende dele no HANDOFF, que é texto, e ninguém garante que aquilo vira tarefa
+no painel. O início lê o HANDOFF e também não garante.
+
+**O que já existe e não precisa ser construído**, conferido no código em 21/08:
+
+| peça | estado |
+|---|---|
+| lista de tarefas dele, com acrescentar/marcar/remover | `src/meu.mjs`, pronta |
+| porta HTTP para gravar de fora | `POST /api/meu`, pronta |
+| painel alcançável de qualquer máquina | `cockpit.carzo.com.br`, no ar atrás de senha |
+| comando de linha para essa lista (`cc meu ...`) | **não existe** |
+| hook de início e de fim que cuide de tarefa | **não existe** |
+
+**O que falta é decisão dele**, porque o ponto difícil é o que ele mesmo
+levantou: hook de `SessionStart`/`SessionEnd` é mecanismo **do Claude Code**, e
+o opencode e o agy não passam por ele. Sem resolver isso, o protocolo nasce
+valendo para um terço das ferramentas, que é o defeito que ele nomeou.
+
 ## ▶ Frente nova, aberta em 20/08 à noite: o que ele apontou olhando no telefone
 
 Ele abriu o cockpit no celular e foi apontando, por partes. Registrado antes de
@@ -2692,7 +4131,22 @@ interruptor de travas por projeto, o histórico e o bloco de notas, que
 continuam presos na casa. O reporte ao painel, que era o que doía, não
 depende mais disso.
 
-### CC-156 ⏸ direção escolhida, aguardando ordem de construir: o redesenho da tela
+### CC-156 🟢 em construção na sessão de tela: o redesenho do painel
+
+> **Quem constrói:** a sessão que pegar a rota `front`, dedicada a tela. Ele
+> abriu um agente só para isso em 21/08, para o trabalho de sistema seguir em
+> paralelo na rota `sistemas`.
+>
+> **A ordem de construir saiu**, e a escolha da frente foi minha: perguntado
+> por onde o agente de tela começaria, ele respondeu que não tinha preferência.
+> Entre as três opções, esta é a única frente de tela aberta — as outras duas
+> eram prontidão e conferência.
+>
+> A direção NÃO se rediscute: ela foi fechada com ele em duas rodadas, está em
+> [[REDESENHO-TELA]], e re-perguntar é o erro registrado no ciclo de trabalho
+> dele. O que se decide durante a construção é forma, não rumo.
+
+
 
 Ele rejeitou os 5 ajustes pontuais da auditoria de design (CC-152) e pediu
 uma direção nova de verdade: *"eu queria que a IA sugerisse um outro visual

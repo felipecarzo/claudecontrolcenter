@@ -228,6 +228,37 @@ errada por definição.
   `hookEnabled('id-desconhecido')` devolve `false`, então o hook sai calado
   achando que está desligado. Custou uma rodada de teste inteira em 15/08: os
   três casos que deviam barrar passavam, e a detecção estava certa o tempo todo.
+- **`readJobs()` sozinho lê ZERO agente nesta VPS, e o silêncio parece acerto.**
+  A pasta de jobs de background está vazia aqui: quase tudo é sessão interativa,
+  que mora noutro caminho. Um hook novo (CC-232) chamou `readJobs()`, não achou
+  nada, e **passou calado justamente no caso que precisava cobrar** — nenhum
+  erro, nenhuma linha na tela. É o CC-124 de volta, dois meses depois, com a
+  correção já escrita no `cc json` e no `/api/jobs` e não reusada. Hoje existe
+  `todosOsJobs()` em `sessoes.mjs`, uma conta só, e o gate recusa hook que chame
+  `readJobs` direto. Regra prática: **quem lê agente lê pelas DUAS fontes**, e
+  lista vazia num painel com agente trabalhando é sintoma disto antes de
+  qualquer outra hipótese.
+- **`~/.claude` é SOMENTE LEITURA dentro do sandbox, e isso mata escrita nova
+  sem aviso nenhum.** Registrado no CC-157 para o reporte de sessão, e reencontrado
+  no CC-232 escrevendo na lista de tarefas dele: `EROFS` quatro vezes seguidas.
+  O estrago não é o erro, é o desenho: um protocolo em que o hook manda registrar
+  e o comando não consegue gravar é decorativo justamente onde ele trabalha.
+  **Módulo novo que ESCREVE em `~/.claude` precisa de abrigo** (cai para
+  `~/.local/share/agent-cockpit/`, respeitando `CC_HOME`), a leitura precisa
+  juntar os dois lugares, e o que não der para gravar **falha em voz alta** —
+  cair no abrigo em silêncio é como o dado parece sumir. Consequência que já
+  enganou: o painel em produção **não recarrega módulo**, então depois de dar
+  abrigo a algo é preciso religar o serviço (`POST /api/shutdown`, o systemd
+  sobe de novo) ou a tela continua mostrando só metade.
+- **Rotina que aponta para o lugar errado produz erro em quem segue o protocolo
+  à risca, e some do radar porque ninguém desobedeceu.** O passo 5.5 do
+  `/end-session` mandava gravar pendência humana em `blockers` do `cc set` — o
+  cartão da sessão, que morre quando o CLI apaga o job. Em 20/08 quatro
+  pendências foram registradas assim, corretamente, e no dia seguinte ele abriu
+  o painel e não viu nenhuma. É a terceira vez que o mesmo formato de defeito
+  aparece (antes: os to-dos que ninguém marcava, e o `frente` que faltava no
+  cartão). **Ao investigar "o agente não registrou X", leia o texto da rotina
+  antes de culpar a execução.**
 - **`fan[]` fica com resíduo** da última tool mesmo depois do job terminar. Só
   exibir enquanto o status é `working`.
 - **Truncar string já colorida corta o código ANSI no meio** e vaza `[0m` na

@@ -2057,6 +2057,20 @@ if (estRotinas.projetos.length) {
   for (const h of HOOKS.filter((x) => x.implementado)) {
     assert.ok(NIVEIS[h.nivel], `${h.id} sem nível declarado`)
   }
+
+  /* CC-232: o GRUPO também precisa existir, e o gate não olhava para isso.
+     A tela de projetos percorre as chaves de `MODULOS`, e a rota de gravação
+     recusa o que não está lá: um hook num grupo não declarado continua
+     funcionando, mas fica fora do alcance dele para ligar ou desligar por
+     projeto. Silencioso dos dois lados — nenhum erro, nenhuma linha na tela.
+     Aconteceu com `reporte`, e só apareceu porque fui conferir na mão. */
+  const { MODULOS: GRUPOS } = await import('./src/hooksCatalogo.mjs')
+  const semGrupo = HOOKS.filter((h) => h.implementado && !GRUPOS[h.modulo])
+  assert.deepEqual(
+    semGrupo.map((h) => `${h.id} (grupo "${h.modulo}")`), [],
+    'hook num grupo que não existe em MODULOS. Ele funciona, mas não aparece '
+    + 'na tela de projetos e não pode ser desligado por projeto.',
+  )
   /* Hook de `Stop` que devolve precisa da guarda de UMA volta.
      A regra antiga era "Stop nunca pode travar", e ela protegia do laço: exit 2
      ali devolve o texto ao modelo e o manda continuar. Mas o que evita o laço é
@@ -3549,4 +3563,688 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
     + '    Escreva a seção em docs/produto/PALAVRAS-DA-TELA.md:\n      ' + semExplicacao.join('\n      '),
   )
   console.log(`  ok   CC-230: as ${telas.length} telas do menu têm explicação própria`)
+}
+
+/* --- CC-263: o pacote da federação leva TUDO que a máquina sabe ---
+ *
+ * Escolha dele em 21/08, ao pedir o serviço do Windows: *"quero tudo, os limites
+ * do agy e do opencode se possível, e o que mais os agentes puderem compartilhar
+ * de dados pra deixar o cockpit bem completo"*.
+ *
+ * A validação existe porque **um pacote é rede entrando em disco**: nada aqui
+ * confia no remetente.
+ */
+{
+  const F = await import('./src/federacao.mjs')
+
+  const base = { maquina: { id: 'aaaa1111', nome: 'PC-TESTE' } }
+  const val = (extra) => F.validarPacote({ ...base, ...extra }).pacote
+
+  /* `undefined` precisa virar `null`, e não sumir: some no `JSON.stringify`, e
+     aí "não sei dizer" vira "o campo nem existe". Foi o que aconteceu na
+     primeira rodada, e levou uma investigação inteira. */
+  const vazio = val({})
+  assert.equal(vazio.meu, null, 'campo ausente vira null, nunca undefined')
+  assert.equal(vazio.agentes, null)
+  assert.equal(vazio.limites, null)
+  assert.ok('meu' in vazio && 'agentes' in vazio && 'limites' in vazio,
+    'os campos precisam EXISTIR no pacote gravado, senão somem do JSON')
+
+  const cheio = val({
+    meu: [{ id: 'x', texto: 'uma tarefa dele', projeto: 'p', em: 1 }, { texto: '' }],
+    agentes: [{ id: 'claude', rotulo: 'Claude Code', instalado: true }, { rotulo: 'sem id' }],
+    limites: { agy: { restam: 3 } },
+  })
+  assert.equal(cheio.meu.length, 1, 'tarefa sem texto é descartada')
+  assert.equal(cheio.agentes.length, 1, 'agente sem id é descartado')
+  assert.equal(cheio.agentes[0].instalado, true)
+  assert.deepEqual(cheio.limites, { agy: { restam: 3 } })
+
+  /* Lista vazia é DIFERENTE de não saber, e a tela precisa dos dois. */
+  assert.deepEqual(val({ meu: [] }).meu, [], '[] quer dizer "sabe, e não tem nenhum"')
+  assert.equal(val({ meu: 'texto' }).meu, null, 'tipo errado vira não sei, nunca estoura')
+  assert.equal(val({ limites: [1, 2] }).limites, null, 'array não é mapa de limites')
+
+  /* Teto por lista: o remetente não decide quanto ocupa na memória de quem
+     recebe. É a mesma regra das rotas e dos backlogs. */
+  const muitos = val({ meu: Array.from({ length: 400 }, (_, i) => ({ id: `t${i}`, texto: `tarefa ${i}` })) })
+  assert.ok(muitos.meu.length <= 200, `sem teto, um pacote pode encher a memória: veio ${muitos.meu.length}`)
+
+  console.log('  ok   CC-263: o pacote leva tarefas, agentes e limites, com teto e sem confiar no remetente')
+}
+
+/* --- CC-262: a revisão das tarefas dele, e o falso positivo que ela quase teve ---
+ *
+ * Pedido dele: *"na aba de trabalho, em o que só você resolve, você poderia
+ * checar o que não precisa mais ser resolvido? (…) revisadas no início de toda
+ * a sessão"*. Motivo: **duas das oito estavam feitas havia dias** e ninguém
+ * sabia.
+ *
+ * O defeito que estas verificações guardam é o pior possível numa lista feita
+ * para ele confiar: **dizer que algo acabou quando não acabou.** Aconteceu na
+ * primeira rodada, com `semarquivo:src/ui.html` respondendo "sumiu" com o
+ * arquivo lá, de 491 KB, porque o painel roda como serviço noutra pasta.
+ */
+{
+  const P = await import('./src/tarefasProva.mjs')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc262-'))
+  fs.mkdirSync(path.join(raiz, 'src'), { recursive: true })
+  fs.writeFileSync(path.join(raiz, 'src', 'existe.html'), 'oi')
+
+  const uma = (prova, extra = {}) => P.revisar([{ id: 'x', texto: 't', prova, ...extra }], { raiz })[0]
+
+  assert.equal(uma('arquivo:src/existe.html').resolvida, true)
+  assert.equal(uma('semarquivo:src/existe.html').resolvida, false)
+  assert.equal(uma('semarquivo:src/sumiu.html').resolvida, true, 'arquivo ausente na pasta CERTA é "sumiu"')
+
+  /* A trava principal: pasta inexistente é NÃO SEI, nunca "sumiu". Sem ela,
+     todo caminho olhado no lugar errado vira tarefa resolvida. */
+  assert.equal(uma('semarquivo:pasta/que/nao/existe/x.html').resolvida, null,
+    'sem a pasta pai, a resposta precisa ser "não consegui checar", e não "sumiu". '
+    + 'É o falso positivo que mandaria ele fechar tarefa que não está feita.')
+  assert.match(uma('semarquivo:pasta/que/nao/existe/x.html').comoSoube, /não consegui checar/)
+
+  /* Caminho absoluto não depende de raiz nenhuma. */
+  assert.equal(uma(`arquivo:${path.join(raiz, 'src', 'existe.html')}`).resolvida, true)
+
+  /* Prova desconhecida ou ausente não vira `false`: viraria "ainda pendente"
+     com ar de conferido, e ninguém saberia que ninguém olhou. */
+  assert.equal(uma('bananinha:1').resolvida, null)
+  assert.match(uma('bananinha:1').comoSoube, /não conheço/)
+  assert.equal(uma(null).resolvida, null)
+  assert.equal(uma(null).comoSoube, null)
+
+  /* Tarefa já feita sai da revisão: revisar o que ele fechou é ruído. */
+  assert.equal(P.revisar([{ id: 'y', prova: 'arquivo:src/existe.html', feito: true }], { raiz }).length, 0)
+
+  /* A raiz do PROJETO vence a do processo, que é o conserto do falso positivo:
+     o painel roda numa pasta que não é projeto nenhum. */
+  const comProjeto = P.revisar(
+    [{ id: 'z', texto: 't', projeto: 'algum', prova: 'arquivo:src/existe.html' }],
+    { raiz: os.tmpdir(), raizDe: () => raiz },
+  )[0]
+  assert.equal(comProjeto.resolvida, true, 'a raiz do projeto da tarefa precisa ser usada antes da do processo')
+
+  fs.rmSync(raiz, { recursive: true, force: true })
+  console.log('  ok   CC-262: a revisão acha o que acabou, e nunca inventa que acabou')
+}
+
+/* --- CC-261: buscar o gasto do plano direto, quando a barra não roda ---
+ *
+ * Medido em 21/08: nesta VPS a barra de status **nunca é chamada**, porque as
+ * sessões vêm por Remote Control e não há terminal para desenhá-la. O painel
+ * exibia o número do PC dele, parado havia 21 horas, como se fosse daqui.
+ *
+ * Ler credencial era evitado de propósito neste projeto. A troca foi decisão
+ * dele: *"precisamos resolver isso urgente, pq me ajuda bastante"*.
+ *
+ * O teste usa um `fetch` de mentira: nada de rede e nada de credencial real.
+ */
+{
+  const U = await import('./src/uso.mjs')
+
+  const respostaOk = {
+    five_hour: { utilization: 5, resets_at: '2026-08-21T21:00:00.000Z' },
+    seven_day: { utilization: 34, resets_at: '2026-08-26T00:00:00.000Z' },
+  }
+  const fetchFalso = (corpo, ok = true, status = 200) => async () => ({
+    ok, status, json: async () => corpo,
+  })
+
+  /* O formato da conta é DIFERENTE do que a barra manda: `utilization` contra
+     `used_percentage`, e data em texto ISO contra segundos. Normalizar é o que
+     impede duas verdades sobre a mesma barra. */
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc261-'))
+  const credFalsa = path.join(casa, '.credentials.json')
+  fs.writeFileSync(credFalsa, JSON.stringify({
+    claudeAiOauth: { accessToken: 'token-de-mentira', expiresAt: Date.now() + 3600000 },
+  }))
+
+  /* `CREDENCIAL` é resolvido na importação, então o caminho é forçado por
+     `CC_HOME` num subprocesso, e não aqui. O que dá para medir direto é a
+     normalização e os ramos de erro, que é onde os defeitos moram. */
+  const { execFileSync } = await import('node:child_process')
+  const codigo = `
+    const U = await import('${path.resolve('src/uso.mjs')}')
+    const resposta = ${JSON.stringify(respostaOk)}
+    const ok = await U.buscarUsoDaConta({ fetchFn: async () => ({ ok: true, status: 200, json: async () => resposta }) })
+    const venceu = await U.buscarUsoDaConta({ agora: Date.now() + 999999999, fetchFn: async () => ({ ok: true, json: async () => resposta }) })
+    const recusa = await U.buscarUsoDaConta({ fetchFn: async () => ({ ok: false, status: 401 }) })
+    const vazia = await U.buscarUsoDaConta({ fetchFn: async () => ({ ok: true, status: 200, json: async () => ({}) }) })
+    const caiu = await U.buscarUsoDaConta({ fetchFn: async () => { throw new Error('rede fora') } })
+    console.log(JSON.stringify({ ok, venceu, recusa, vazia, caiu }))
+  `
+  const r = JSON.parse(execFileSync('node', ['--input-type=module', '-e', codigo], {
+    env: { ...process.env, CC_HOME: casa }, encoding: 'utf8',
+  }))
+
+  assert.equal(r.ok.dados.cincoHoras.pct, 5, '`utilization` precisa virar `pct`')
+  assert.equal(r.ok.dados.semana.pct, 34)
+  assert.equal(r.ok.dados.cincoHoras.resetaEm, Date.parse('2026-08-21T21:00:00.000Z'),
+    'a data vem em texto ISO e precisa virar milissegundos, como o resto do painel usa')
+  assert.ok(r.ok.dados.buscado, 'o dado buscado precisa se identificar como tal')
+
+  /* Cada falha diz o QUE aconteceu. Um `null` mudo faria a barra sumir sem
+     ninguém saber se foi token, rede ou conta. */
+  assert.match(r.venceu.erro, /venceu/, 'token vencido precisa dizer isso')
+  assert.match(r.recusa.erro, /401/, 'recusa da conta precisa trazer o código')
+  assert.match(r.vazia.erro, /sem as janelas/, 'resposta sem as janelas não pode virar zero')
+  assert.match(r.caiu.erro, /não consegui perguntar/, 'falha de rede precisa degradar com motivo')
+  for (const k of ['ok', 'venceu', 'recusa', 'vazia', 'caiu']) {
+    assert.ok(!JSON.stringify(r[k]).includes('token-de-mentira'),
+      `o token vazou na saída de ${k}: nada aqui pode devolver credencial`)
+  }
+  fs.rmSync(casa, { recursive: true, force: true })
+  console.log('  ok   CC-261: o gasto do plano é buscado, normalizado, e cada falha diz o motivo')
+}
+
+/* --- CC-257: a barra de uso do plano nunca teve dado nesta VPS ---
+ *
+ * Apontado em 21/08 pela sessão do gate, e conferido: o arquivo não existia
+ * aqui. `~/.claude` é somente leitura dentro do sandbox, a gravação falhava, o
+ * `catch` engolia, e a tela mostrava barra vazia como se o plano estivesse sem
+ * uso. Barra vazia não distingue "não usei" de "não consegui ler", que é o
+ * defeito mais caro deste painel.
+ */
+if (process.platform !== 'win32') {
+  const { execFileSync } = await import('node:child_process')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc251-'))
+  const casa = path.join(raiz, 'casa')
+  fs.mkdirSync(casa, { recursive: true })
+  fs.chmodSync(casa, 0o500) // casa trancada, como o sandbox tranca
+
+  const codigo = `
+    const u = await import('${path.resolve('src/uso.mjs')}')
+    const r = u.gravarUso({ rate_limits: { five_hour: { used_percentage: 12 }, seven_day: { used_percentage: 26 } } })
+    const lido = u.readUso()
+    console.log(JSON.stringify({ gravou: Boolean(r), releu: lido?.cincoHoras?.pct ?? null }))
+  `
+  try {
+    const saida = JSON.parse(execFileSync('node', ['--input-type=module', '-e', codigo], {
+      env: { ...process.env, CC_HOME: casa }, encoding: 'utf8',
+    }))
+    assert.ok(saida.gravou, 'gravarUso devolveu vazio com a casa trancada')
+    assert.equal(saida.releu, 12,
+      'com a casa somente leitura, o uso precisa cair no abrigo e ser LIDO de volta. '
+      + 'Sem isso a barra do painel fica vazia como se o plano estivesse sem uso.')
+    console.log('  ok   CC-257: o uso do plano grava e relê mesmo com a casa somente leitura')
+  } finally {
+    fs.chmodSync(casa, 0o700)
+    fs.rmSync(raiz, { recursive: true, force: true })
+  }
+}
+
+/* --- CC-242: pedido de autorização também expira, e não só a autorização ---
+ *
+ * Ele mandou o fim de uma resposta com 16 LINHAS de aviso e perguntou se aquilo
+ * estava certo. Não estava: eram 7 pedidos de 90 a 158 horas atrás (4 a 6 dias),
+ * de sessões que já tinham fechado, repetidos no fim de TODA resposta.
+ *
+ * `VALIDADE_MS` existia, mas só nascia no ramo `autorizado`: o pedido sem
+ * resposta ficava pendurado sem prazo nenhum, para sempre.
+ *
+ * Expirar não perde nada, e é o ponto: o `rota-guard` REGISTRA o pedido de novo
+ * na próxima tentativa de edição. Quem ainda precisa, pede outra vez com data
+ * de hoje; quem morreu, cala.
+ */
+{
+  const R = await import('./hooks/routia/rota-pedidos.mjs')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc242-'))
+  fs.mkdirSync(path.join(raiz, 'docs'), { recursive: true })
+  fs.writeFileSync(path.join(raiz, 'docs', 'ROTAS-ATIVAS.md'), '| x | 🔴 ocupada | outro | hoje |\n')
+
+  const HORA = 3600000
+  const agora = Date.now()
+  R.registrar(raiz, { marca: 'aaaa1111', relativo: 'src/novo.mjs', agora })
+  R.registrar(raiz, { marca: 'bbbb2222', relativo: 'src/velho.mjs', agora: agora - 7 * HORA })
+  R.registrar(raiz, { marca: 'cccc3333', relativo: 'src/limite.mjs', agora: agora - 5 * HORA })
+
+  const vistos = R.pendentes(raiz, { agora }).map((p) => p.arquivo).sort()
+  assert.ok(vistos.includes('src/novo.mjs'), 'pedido de agora precisa aparecer, senão ninguém é avisado')
+  assert.ok(vistos.includes('src/limite.mjs'), 'pedido de 5h ainda está dentro do prazo de 6h')
+  assert.ok(!vistos.includes('src/velho.mjs'), 'pedido de 7h precisa expirar: a sessão que pediu já morreu')
+
+  /* A prova negativa: sem o prazo, o velho voltaria. Sem ela o teste só sabe
+     dizer "hoje passa", e não que pegaria a regressão. */
+  const semPrazo = R.ler(raiz).pedidos.filter((p) => p.status === 'pendente')
+  assert.equal(semPrazo.length, 3, 'os três continuam no arquivo: o que muda é o que se MOSTRA')
+  assert.equal(vistos.length, 2)
+
+  /* Pedido sem data conta como vivo: formato antigo não pode sumir calado, que
+     seria trocar um defeito por outro pior. */
+  const d = R.ler(raiz)
+  delete d.pedidos[1].em
+  R.gravar(raiz, d)
+  assert.ok(R.pendentes(raiz, { agora }).some((p) => p.arquivo === 'src/velho.mjs'),
+    'pedido sem data precisa continuar aparecendo, em vez de sumir por falta de campo')
+
+  fs.rmSync(raiz, { recursive: true, force: true })
+  console.log('  ok   CC-242: pedido de autorização expira em 6h, e o sem data continua visível')
+}
+
+/* --- CC-238: o test-map, o mapa do que é testável e verificável ---
+ *
+ * Pedido dele em 21/08: *"criar um test-map, de tudo que tem que ser testavel e
+ * verificavel no site. botões, textos, descrições, etc."*, para *"usar como
+ * teste em diversas ferramentas"*.
+ *
+ * O mapa existe contra o padrão de defeito deste painel: a tela afirmando com
+ * confiança algo que não sabe. Então ele mesmo não pode virar um relatório
+ * bonito, e é isso que estas verificações guardam.
+ */
+{
+  const T = await import('./src/testmap.mjs')
+  const mapa = T.montarMapa(process.cwd())
+
+  /* 1. O mapa não pode ENCOLHER em silêncio. Tela ou endereço novo entra como
+        não coberto; nunca some. É a lição do `hooksCatalogo`, onde peça fora do
+        catálogo saía calada achando que estava desligada. */
+  const html = fs.readFileSync('src/ui_v2.html', 'utf8')
+  const web = fs.readFileSync('src/web.mjs', 'utf8')
+  const telasNoFonte = new Set([...html.matchAll(/data-target="(view-[a-z-]+)"/g)].map((m) => m[1]))
+  const rotasNoFonte = new Set([...web.matchAll(/url\.pathname === '(\/api\/[a-z/-]+)'/g)].map((m) => m[1]))
+  const noMapa = (tipo) => mapa.itens.filter((i) => i.tipo === tipo).length
+
+  assert.equal(noMapa('tela'), telasNoFonte.size,
+    `o mapa tem ${noMapa('tela')} telas e o painel tem ${telasNoFonte.size}: a varredura envelheceu`)
+  assert.equal(noMapa('endereco'), rotasNoFonte.size,
+    `o mapa tem ${noMapa('endereco')} endereços e o servidor tem ${rotasNoFonte.size}`)
+  assert.ok(noMapa('acao') > 50, `só ${noMapa('acao')} ações no mapa: o padrão de busca quebrou`)
+  assert.ok(noMapa('palavra') > 40, `só ${noMapa('palavra')} palavras no mapa`)
+
+  /* 2. Dimensão AUSENTE é diferente de dimensão vazia. A primeira é defeito de
+        leitura, a segunda é trabalho a fazer, e confundir as duas é a família
+        de erro mais cara deste painel. */
+  for (const it of mapa.itens) {
+    for (const dim of Object.keys(T.DIMENSOES)) {
+      assert.ok(it.dimensoes[dim], `${it.id} não declara a dimensão "${dim}"`)
+      assert.ok('coberto' in it.dimensoes[dim], `${it.id}.${dim} sem o campo coberto`)
+    }
+  }
+
+  /* 3. Coberto tem que vir com o COMO. Marcar coberto sem dizer o que foi
+        verificado é o relatório bonito que o mapa existe para evitar. */
+  const semComo = mapa.itens.flatMap((it) => Object.entries(it.dimensoes)
+    .filter(([, v]) => v.coberto && !v.como)
+    .map(([d]) => `${it.id}.${d}`))
+  assert.deepEqual(semComo, [], 'dimensão marcada como coberta sem dizer COMO foi verificada')
+
+  /* 4. A leitura das explicações precisa funcionar de verdade. A primeira
+        versão leu o campo errado (`corpo` em vez de `texto`) e o mapa afirmou
+        que NENHUMA das 50 explicações ensina, o que é falso. Zero aqui é quase
+        sempre bug de leitura, não retrato do projeto. */
+  const palavras = mapa.itens.filter((i) => i.tipo === 'palavra')
+  const profundas = palavras.filter((p) => p.dimensoes.profundo.coberto).length
+  assert.ok(profundas > palavras.length / 2,
+    `só ${profundas} de ${palavras.length} explicações passam em "profundo". `
+    + 'Antes de aceitar isso como verdade, confira se o campo lido existe.')
+
+  /* 5. O markdown é DERIVADO. Regenerar não pode dar diferença: se der, alguém
+        escreveu no arquivo gerado em vez de na fonte. */
+  const mdEsperado = T.paraMarkdown(mapa)
+  if (fs.existsSync('docs/TEST-MAP.md')) {
+    const mdEmDisco = fs.readFileSync('docs/TEST-MAP.md', 'utf8')
+    assert.equal(mdEmDisco, mdEsperado,
+      'docs/TEST-MAP.md não bate com a varredura. Ele é gerado por `cc testmap`, '
+      + 'nunca editado à mão: rode o comando de novo.')
+  }
+  console.log(`  ok   CC-238: o test-map cobre ${mapa.itens.length} itens, e nenhum sem as 5 dimensões`)
+}
+
+/* --- CC-237: a trava de execução contínua parou de cobrar o que é de outra sessão ---
+ *
+ * Em 21/08 ele abriu uma segunda sessão só para tela, e a rota `front` passou
+ * para ela com o CC-156 e o CC-235 dentro. Deste lado a trava seguiu cobrando
+ * os dois a cada parada: os únicos itens abertos do backlog eram justamente os
+ * que eu não posso tocar sem pisar no dono da rota.
+ *
+ * É o mesmo defeito que fez o `⏸` nascer, por outro caminho. **Guarda que cobra
+ * o impossível ensina a ser ignorado**, e aí ele não segura mais o caso real.
+ */
+{
+  const RT = await import('./src/routia.mjs')
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc237-'))
+  fs.mkdirSync(path.join(casa, 'docs'), { recursive: true })
+  fs.writeFileSync(path.join(casa, 'docs', 'ROTAS-ATIVAS.md'), [
+    '| Rota | Status | Quem / o quê | Desde |',
+    '|---|---|---|---|',
+    '| `front` | 🔴 ocupada | c213b663 — **CC-156**, o redesenho, e o **CC-235** | hoje |',
+    '| `sistemas` | 🔴 ocupada | 9bad715c — CC-232 fechado, seguindo | hoje |',
+    '| `antiga` | 🟢 livre | — (fechou o CC-999 semana passada) | — |',
+  ].join('\n'))
+
+  const meu = '9bad715c-1111-2222'
+  assert.equal(RT.donoDoItem('CC-156', casa), 'c213b663')
+  assert.equal(RT.donoDoItem('CC-235', casa), 'c213b663', 'segundo código citado na mesma linha também conta')
+  assert.equal(RT.donoDoItem('CC-232', casa), '9bad715c')
+
+  /* Rota LIVRE é histórico: casar com ela faria item entregue semanas atrás
+     parecer que ainda tem dono, e ninguém mais o pegaria. */
+  assert.equal(RT.donoDoItem('CC-999', casa), null, 'rota livre não pode reivindicar item')
+
+  /* `CC-15` não pode casar dentro de `CC-156`: o quadro cita códigos vizinhos
+     o tempo todo. */
+  assert.equal(RT.donoDoItem('CC-15', casa), null, 'prefixo não pode casar com código maior')
+
+  assert.equal(RT.deOutraSessao('CC-156 o redesenho', casa, meu), true, 'item da rota do outro: não cobrar')
+  assert.equal(RT.deOutraSessao('CC-232 protocolo', casa, meu), false, 'o que EU reservei continua sendo cobrado')
+  assert.equal(RT.deOutraSessao('CC-156 o redesenho', casa, 'c213b663-x'), false, 'o dono continua sendo cobrado pelo próprio item')
+  assert.equal(RT.deOutraSessao('item sem código', casa, meu), false)
+  /* Sem saber quem eu sou, NÃO calar: guarda que emudece por falta de dado
+     vira guarda que não existe. */
+  assert.equal(RT.deOutraSessao('CC-156', casa, null), false, 'sem id de sessão o guarda continua falando')
+
+  /* E o hook precisa mesmo estar usando isso, senão a regra fica órfã. */
+  const hook = fs.readFileSync('hooks/fluxo-guard.mjs', 'utf8')
+  assert.ok(/deOutraSessao/.test(hook), 'o fluxo-guard parou de consultar o quadro de rotas')
+  fs.rmSync(casa, { recursive: true, force: true })
+  console.log('  ok   CC-237: a trava de fluxo não cobra item que está com outra sessão, e continua cobrando o meu')
+}
+
+/* --- CC-236: o que está no cartão do backlog é TELA, e a regra dele vale lá ---
+ *
+ * Ele mandou três prints do telefone em 21/08 comparando as colunas, e dois
+ * defeitos estavam nos cartões do Product Backlog, os dois escritos por mim
+ * horas antes:
+ *
+ *  1. **travessão**, que é a regra número 1 do arquivo de instruções dele;
+ *  2. **`▶` vazando** para dentro do cartão ("▶ LIBERADO para construir em
+ *     21/08"), porque a limpeza de marcadores era uma lista fechada e o
+ *     marcador novo não estava nela.
+ *
+ * O ROADMAP.md parece documentação, mas o título do item É TEXTO DE INTERFACE:
+ * ele aparece no cartão do celular dele. Por isso a regra é medida aqui, e só
+ * nos itens ABERTOS, que são os que chegam na tela. Os fechados ficam como
+ * estão: são histórico, e reescrever 88 títulos antigos mexeria em registro por
+ * um ganho que ninguém vê.
+ */
+{
+  const R = await import('./src/roadmap.mjs')
+  const mapa = R.lerRoadmap('docs/ROADMAP.md')
+  const abertos = []
+  for (const g of mapa.grupos || []) {
+    for (const f of g.frentes || []) if (f.estado !== 'feito') abertos.push(f)
+  }
+  assert.ok(abertos.length, 'nenhum item aberto encontrado: o leitor do roadmap envelheceu')
+
+  const comTravessao = abertos.filter((f) => /[—–]/.test(f.titulo))
+  assert.deepEqual(
+    comTravessao.map((f) => f.titulo), [],
+    'título de item ABERTO com travessão. Isso vira cartão na tela do telefone dele, '
+    + 'e travessão é a regra número 1 do arquivo de instruções. Use dois pontos.',
+  )
+
+  /* O marcador tem que sair na limpeza, senão vira ruído dentro do cartão. */
+  const comMarcador = abertos.filter((f) => /[🔴🟡🟢🔵⚪⚫🔥✅✔☑⛔⏳📌⏸▶►▸➤⏭🚧🆕⭐]/u.test(f.titulo))
+  assert.deepEqual(
+    comMarcador.map((f) => f.titulo), [],
+    'marcador sobrando no título depois da limpeza: ele aparece cru no cartão. '
+    + 'Acrescente o símbolo à lista de `limpar()` em src/roadmap.mjs.',
+  )
+  console.log(`  ok   CC-236: os ${abertos.length} itens abertos viram cartão sem travessão e sem marcador solto`)
+}
+
+/* --- CC-156: o que está aberto na tela mora no SERVIDOR ---
+ *
+ * Pedido dele com todas as letras, e é metade do valor do painel federado:
+ * abrir uma seção no celular e encontrar aberta no PC. Hoje isso vivia no
+ * navegador de cada aparelho.
+ *
+ * Roda em subprocesso com `CC_HOME` próprio porque `CONFIG_FILE` é resolvido
+ * na importação do módulo: mudar a variável depois não isolaria nada, e o
+ * config real dele guarda coisa sem outra fonte (taxa, câmbio digitado,
+ * calendários). É a armadilha do `CONFIG_FILE` não isolado, que já gravou um
+ * calendário de teste no arquivo de verdade.
+ */
+{
+  const { execFileSync } = await import('node:child_process')
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc156-tela-'))
+  const rodar = (codigo) => JSON.parse(execFileSync('node', ['--input-type=module', '-e', codigo], {
+    env: { ...process.env, CC_HOME: casa }, encoding: 'utf8',
+  }))
+
+  const r = rodar(`
+    const C = await import('${path.resolve('src/config.mjs')}')
+    const saida = {}
+    saida.vazioNoComeco = C.lerTelaAberto()
+    saida.abriu = C.setTelaAberto('proj:inovallbond', true).aberto
+    saida.abriuOutra = C.setTelaAberto('sprint:x', true).aberto
+    // fechar APAGA a chave: guardar os dois lados faria o arquivo crescer para
+    // sempre com o que já é o padrão
+    saida.fechou = C.setTelaAberto('proj:inovallbond', false).aberto
+    saida.chaveVazia = C.setTelaAberto('   ', true).erro || null
+    saida.chaveLonga = C.setTelaAberto('x'.repeat(C.TELA_MAX_TAMANHO_CHAVE + 1), true).erro || null
+    // teto: só barra chave NOVA, reabrir o que já está no mapa continua valendo
+    for (let i = 0; i < C.TELA_MAX_CHAVES; i++) C.setTelaAberto('k' + i, true)
+    saida.cheio = C.setTelaAberto('mais-uma', true).erro || null
+    saida.reabrirNoLimite = C.setTelaAberto('k0', true).erro || 'passou'
+    console.log(JSON.stringify(saida))
+  `)
+
+  assert.deepEqual(r.vazioNoComeco, {}, 'config novo tem que começar sem seção nenhuma aberta')
+  assert.deepEqual(r.abriu, { 'proj:inovallbond': true })
+  assert.deepEqual(r.abriuOutra, { 'proj:inovallbond': true, 'sprint:x': true })
+  assert.deepEqual(r.fechou, { 'sprint:x': true }, 'fechar precisa APAGAR a chave, não gravar false')
+  assert.ok(r.chaveVazia, 'chave vazia precisa ser recusada')
+  assert.match(r.chaveLonga || '', /longa demais/, 'chave gigante precisa ser recusada com o tamanho')
+  assert.match(r.cheio || '', /cheio/, 'sem teto, um laço na tela enche o config até ele ficar impraticável')
+  assert.equal(r.reabrirNoLimite, 'passou', 'no limite, reabrir seção que já está no mapa não pode travar')
+  fs.rmSync(casa, { recursive: true, force: true })
+  console.log('  ok   CC-156: o aberto/fechado da tela grava no servidor, com teto e recusa em voz alta')
+
+  /* A recusa não pode sair como sucesso: `comCorpo` carimba `ok: true` em tudo
+     que a função devolve, então a rota precisa LANÇAR para virar 400. */
+  const rota = fs.readFileSync('src/web.mjs', 'utf8')
+  const trecho = rota.slice(rota.indexOf("url.pathname === '/api/tela'"), rota.indexOf("url.pathname === '/api/pip'"))
+  assert.ok(
+    /throw new Error\(r\.erro\)/.test(trecho),
+    'a rota /api/tela precisa LANÇAR quando recusa: devolvendo `{erro}` ela sai com ok:true e status 200, '
+    + 'e quem chama acha que gravou.',
+  )
+  console.log('  ok   CC-156: a rota recusa com status 400, e não com ok:true e um erro pendurado')
+}
+
+/* ==========================================================================
+ * CC-232 — o protocolo de tarefas dele, e por que cada verificação existe
+ *
+ * Medido em 21/08: as quatro pendências humanas do encerramento anterior não
+ * estavam na lista dele. Ficaram gravadas como bloqueios da sessão que as
+ * criou, e a lista mostrava outras quatro, de uma semana antes. Ele abriu o
+ * painel e perguntou se estavam lá, "pq deveriam estar, né?".
+ *
+ * O primeiro rascunho do hook que conserta isso **passou calado no caso real**,
+ * porque chamava `readJobs()` sozinho e a pasta de agentes de background está
+ * vazia nesta VPS. Só o teste manual pegou. É por isso que a conta foi extraída
+ * para `src/tarefasProtocolo.mjs` e é medida aqui.
+ * ========================================================================== */
+{
+  const P = await import('./src/tarefasProtocolo.mjs')
+
+  // a chave de comparação: ditado por voz, com acento e caixa variando
+  assert.equal(P.chaveDe('Conferir os APONTAMENTOS'), P.chaveDe('conferir os apontamentos'))
+  assert.equal(P.chaveDe('a sessão   de ontem'), P.chaveDe('A SESSAO de ontem'))
+  assert.equal(P.chaveDe('  espaço  nas pontas '), 'espaco nas pontas')
+  assert.notEqual(P.chaveDe('conferir o print'), P.chaveDe('conferir o painel'))
+
+  const jobs = [
+    {
+      id: 'aaaa1111',
+      blockers: ['Decidir se apaga a tela antiga', { text: 'Consertar o dono da pasta' }, '', null],
+      todos: [
+        { text: 'Autorizar o sudo', dono: 'felipe', done: false },
+        { text: 'Isso ele já fez', dono: 'felipe', done: true },
+        { text: 'Trabalho meu', dono: 'ia', done: false },
+      ],
+    },
+    { id: 'bbbb2222', blockers: ['Bloqueio de OUTRA sessão'], todos: [] },
+  ]
+
+  const p = P.pendenciasDe(jobs, 'aaaa1111-0000-0000')
+  assert.deepEqual(p, ['Decidir se apaga a tela antiga', 'Consertar o dono da pasta', 'Autorizar o sudo'])
+  console.log('  ok   CC-232: bloqueio e to-do de dono felipe contam; feito, de outro dono e vazio não')
+
+  /* O id da sessão é obrigatório, e isto não é detalhe: sem ele o hook cobraria
+     o bloqueio de OUTRO agente, mandando alguém registrar o que não é seu. */
+  assert.deepEqual(P.pendenciasDe(jobs, null), [])
+  assert.deepEqual(P.pendenciasDe(jobs, 'zzzz9999'), [])
+  assert.ok(!P.pendenciasDe(jobs, 'aaaa1111').includes('Bloqueio de OUTRA sessão'))
+  console.log('  ok   CC-232: sem saber de quem é a sessão, não cobra nada de ninguém')
+
+  // o que já está na lista dele some da cobrança, mesmo escrito diferente
+  const lista = [
+    { texto: 'DECIDIR SE APAGA A TELA ANTIGA', feito: false, fonte: 'lista' },
+    { texto: 'Autorizar o sudo', feito: true, fonte: 'lista' }, // já fechada: volta a contar
+  ]
+  assert.deepEqual(P.faltandoNaLista(p, lista), ['Consertar o dono da pasta', 'Autorizar o sudo'])
+  console.log('  ok   CC-232: tarefa já registrada não vira cobrança, com acento e caixa diferentes')
+
+  /* A verificação que guarda o defeito de 20/08 inteiro: casar com a fonte
+     `agente` faria o hook olhar para o próprio reflexo — o bloqueio confirmando
+     a si mesmo — e a pendência morreria junto com o job, sem nunca chegar na
+     lista dela. */
+  const reflexo = [{ texto: 'Consertar o dono da pasta', feito: false, fonte: 'agente' }]
+  assert.deepEqual(
+    P.faltandoNaLista(['Consertar o dono da pasta'], reflexo),
+    ['Consertar o dono da pasta'],
+    'o bloqueio do próprio cartão não pode contar como "já está na lista dele": '
+    + 'é o defeito de 20/08, em que quatro pendências sumiram com o job',
+  )
+  console.log('  ok   CC-232: bloqueio do próprio cartão não conta como tarefa registrada')
+
+  // os dois hooks precisam estar no catálogo, senão saem calados achando que
+  // estão desligados — armadilha que já custou uma rodada inteira em 15/08
+  const { HOOKS: CAT } = await import('./src/hooksCatalogo.mjs')
+  for (const id of ['tarefas-inicio', 'tarefas-fim']) {
+    const h = CAT.find((x) => x.id === id)
+    assert.ok(h, `${id} fora do hooksCatalogo.mjs: hookEnabled devolve false e o hook sai calado`)
+    assert.ok(fs.existsSync(path.join('hooks', h.script)), `${id}: ${h.script} não existe`)
+  }
+  console.log('  ok   CC-232: os dois hooks estão no catálogo e os arquivos existem')
+
+  /* CC-124 de novo, e é a razão do primeiro rascunho ter falhado: quem lê só
+     `readJobs()` enxerga ZERO agente nesta VPS, onde tudo é sessão interativa. */
+  const S = await import('./src/sessoes.mjs')
+  assert.equal(typeof S.todosOsJobs, 'function', 'todosOsJobs sumiu: os hooks de tarefa dependem dele')
+  /* Só o CÓDIGO conta: os dois arquivos citam `readJobs()` no comentário, para
+     explicar por que não o usam. Medir o texto cru acusaria justamente a
+     explicação do conserto como se fosse o defeito. */
+  const semComentario = (txt) => txt
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+  for (const nome of ['tarefas-inicio', 'tarefas-fim']) {
+    const codigo = semComentario(fs.readFileSync(`hooks/${nome}.mjs`, 'utf8'))
+    assert.ok(
+      !/\breadJobs\s*\(/.test(codigo),
+      `${nome} voltou a chamar readJobs() direto. `
+      + 'Nesta VPS a pasta de background está vazia e o hook passa calado: use todosOsJobs().',
+    )
+    assert.ok(
+      /todosOsJobs\s*\(/.test(codigo),
+      `${nome} não chama todosOsJobs(): sem isso ele não enxerga sessão interativa.`,
+    )
+  }
+  console.log('  ok   CC-232: os hooks somam sessão interativa, não só agente de background')
+
+  /* O encaixe do opencode ACRESCENTA ao prompt de sistema. Substituir apagaria
+     a instrução da própria ferramenta, e o agente perderia o que sabe fazer. */
+  const plugin = fs.readFileSync('hooks/opencode/tarefas.js', 'utf8')
+  assert.ok(/output\.system\.push\(/.test(plugin), 'o encaixe do opencode precisa ACRESCENTAR ao sistema')
+  assert.ok(!/output\.system\s*=/.test(plugin), 'o encaixe do opencode não pode SUBSTITUIR o prompt de sistema')
+  /* Em Linux `cc` é o compilador C. Perguntar a lista de tarefas a ele devolve
+     erro, o `catch` engole, e a lista fica vazia sem sinal nenhum. */
+  assert.ok(
+    /platform\(\)\s*===\s*'linux'\s*\?\s*\['cockpit'\]/.test(plugin),
+    'em Linux o encaixe do opencode não pode tentar `cc`: é o compilador C do sistema',
+  )
+  console.log('  ok   CC-232: o encaixe do opencode acrescenta ao sistema e não chama o compilador C')
+
+  /* A lista dele é texto digitado à mão e não tem outra fonte. Este bloco roda
+     numa casa temporária via `CC_HOME` — a mesma correção que tirou o gate de
+     cima das notas de verdade, candidata à causa do apagamento de 2026-08-09. */
+  {
+    const { execFileSync } = await import('node:child_process')
+    const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc232-'))
+    const env = { ...process.env, CC_HOME: casa }
+    const cc = (...args) => execFileSync('node', ['cc.mjs', 'meu', ...args], { env, encoding: 'utf8' })
+
+    assert.match(cc('list'), /nada esperando por ele/)
+    cc('add', 'uma coisa que depende dele', '--porque', 'teste do gate')
+    /* Duplicata não entra: o encerramento roda mais de uma vez, e a mesma
+       pendência repetida é como uma lista deixa de ser lida. */
+    cc('add', 'uma coisa que depende dele')
+    const aberto = JSON.parse(cc('list', '--json'))
+    assert.equal(aberto.length, 1, 'a mesma tarefa entrou duas vezes na lista dele')
+    assert.equal(aberto[0].porque, 'teste do gate')
+
+    cc('feito', aberto[0].id)
+    assert.match(cc('list'), /nada esperando por ele/)
+    cc('reabrir', aberto[0].id)
+    assert.equal(JSON.parse(cc('list', '--json')).length, 1, 'reabrir não trouxe a tarefa de volta')
+    cc('remover', aberto[0].id)
+    assert.match(cc('list'), /nada esperando por ele/)
+
+    const real = path.join(os.homedir(), '.claude', 'control-center-meu.json')
+    if (fs.existsSync(real)) {
+      const bruto = fs.readFileSync(real, 'utf8')
+      assert.ok(
+        !bruto.includes('uma coisa que depende dele'),
+        'o gate escreveu na lista DE VERDADE dele. CC_HOME não está isolando.',
+      )
+    }
+    fs.rmSync(casa, { recursive: true, force: true })
+    console.log('  ok   CC-232: `cc meu` cria, recusa duplicata, fecha, reabre e remove — em casa isolada')
+  }
+
+  /* --- O abrigo: `~/.claude` é SOMENTE LEITURA dentro do sandbox ---
+   *
+   * Descoberto em 21/08 tentando registrar as quatro pendências de 20/08 pelo
+   * comando novo: `EROFS`, quatro vezes seguidas. Sem o abrigo, o protocolo
+   * inteiro seria decorativo justamente onde ele trabalha — o hook do fim de
+   * sessão mandaria registrar, e o comando não conseguiria.
+   *
+   * É a mesma armadilha do CC-157, que fez uma sessão sumir do painel e ele
+   * dizer que ela parecia "funcionando por fora do cockpit".
+   */
+  if (process.platform !== 'win32') {
+    const { execFileSync } = await import('node:child_process')
+    const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc232-abrigo-'))
+    const casa = path.join(raiz, 'casa')
+    fs.mkdirSync(casa, { recursive: true })
+    const env = { ...process.env, CC_HOME: casa }
+    const cc = (...args) => execFileSync('node', ['cc.mjs', 'meu', ...args], { env, encoding: 'utf8' })
+
+    fs.writeFileSync(
+      path.join(casa, 'control-center-meu.json'),
+      JSON.stringify({ tarefas: [{ id: 'nacasa1', texto: 'mora na casa', feito: false, em: 1 }] }),
+    )
+    fs.chmodSync(casa, 0o500) // trancada, como o sandbox tranca
+    try {
+      cc('add', 'registrada com a casa trancada')
+      const abertas = JSON.parse(cc('list', '--json')).map((t) => t.texto)
+      assert.ok(
+        abertas.includes('mora na casa') && abertas.includes('registrada com a casa trancada'),
+        'com a casa trancada, a lista precisa juntar casa e abrigo. '
+        + `Veio: ${JSON.stringify(abertas)}`,
+      )
+      console.log('  ok   CC-232: casa somente leitura não impede registrar, e a lista junta as duas')
+
+      /* Falhar em VOZ ALTA é metade do conserto: dizer "ok" sem gravar é o
+         defeito que este projeto persegue desde o botão que respondia ok com o
+         processo morto atrás. */
+      let recusou = false
+      try { cc('feito', 'nacasa1') } catch (e) {
+        recusou = true
+        assert.match(
+          String(e.stderr || e.stdout || ''),
+          /não aceitou escrita/,
+          'ao não conseguir gravar, o comando precisa dizer onde a tarefa está e por que falhou',
+        )
+      }
+      assert.ok(recusou, 'fechar tarefa presa na casa trancada respondeu sucesso sem gravar nada')
+      console.log('  ok   CC-232: o que não dá para gravar falha em voz alta, em vez de mentir')
+    } finally {
+      fs.chmodSync(casa, 0o700)
+      fs.rmSync(raiz, { recursive: true, force: true })
+    }
+  }
 }

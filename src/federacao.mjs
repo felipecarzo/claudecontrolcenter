@@ -77,6 +77,31 @@ export function validarPacote(bruto) {
         titulos: (Array.isArray(b?.titulos) ? b.titulos : [])
           .slice(0, 6).map((t) => String(t).slice(0, 160)),
       })).filter((b) => b.projeto),
+      /* CC-263: os três campos novos, e a validação existe porque **nada aqui
+         confia no remetente**: um pacote é rede entrando em disco.
+         `undefined` vira `null` de propósito: "esta máquina não sabe dizer" é
+         resposta legítima, e some no `JSON.stringify` se ficar `undefined`,
+         virando "o campo nem existe". Foi o que aconteceu na primeira rodada. */
+      meu: Array.isArray(bruto.meu)
+        ? bruto.meu.slice(0, 200).map((t) => ({
+          id: String(t?.id || '').slice(0, 40),
+          texto: String(t?.texto || '').slice(0, 400),
+          projeto: t?.projeto ? String(t.projeto).slice(0, 80) : null,
+          frente: t?.frente ? String(t.frente).slice(0, 120) : null,
+          porque: t?.porque ? String(t.porque).slice(0, 400) : null,
+          em: Number(t?.em) || null,
+        })).filter((t) => t.texto)
+        : null,
+      agentes: Array.isArray(bruto.agentes)
+        ? bruto.agentes.slice(0, 20).map((a) => ({
+          id: String(a?.id || '').slice(0, 40),
+          rotulo: String(a?.rotulo || '').slice(0, 60),
+          paga: a?.paga ? String(a.paga).slice(0, 80) : null,
+          instalado: typeof a?.instalado === 'boolean' ? a.instalado : null,
+        })).filter((a) => a.id)
+        : null,
+      limites: bruto.limites && typeof bruto.limites === 'object' && !Array.isArray(bruto.limites)
+        ? bruto.limites : null,
       em: Number(bruto.em) || Date.now(),
       recebidoEm: Date.now(),
     },
@@ -484,7 +509,21 @@ export function rotasDeTodos(locais = [], pacotes = [], origemLocal = 'local') {
 export function maquinasConhecidas(pacotes, origemLocal) {
   return [
     { ...origemLocal, local: true, idadeMs: 0, semContato: false },
-    ...pacotes.map((p) => ({ ...p.maquina, local: false, idadeMs: p.idadeMs, semContato: p.semContato })),
+    ...pacotes.map((p) => ({
+      ...p.maquina,
+      local: false,
+      idadeMs: p.idadeMs,
+      semContato: p.semContato,
+      /* CC-263: onde o projeto mora NAQUELA máquina, tirado do que ela mesma
+         reportou. É o que permite a tela montar o comando de instalar o serviço
+         com o caminho certo, em vez de chutar um `D:\...` que pode não existir.
+         `null` quando a máquina nunca rodou um agente lá dentro. */
+      raizDoCockpit: (p.jobs || [])
+        .map((j) => j.cwd)
+        .find((c) => c && /proj_controlcenter/i.test(c)) || null,
+      /* Quais ferramentas existem lá, para a tela não oferecer o que não há. */
+      agentes: p.agentes || null,
+    })),
   ]
 }
 
@@ -554,8 +593,31 @@ export function resumirBacklogs(mapas = []) {
     })
 }
 
+/**
+ * CC-263: o pacote passou a levar TUDO que a máquina sabe.
+ *
+ * Escolha dele em 21/08: *"quero tudo, os limites do agy e do opencode se
+ * possível, e o que mais os agentes puderem compartilhar de dados pra deixar o
+ * cockpit bem completo"*.
+ *
+ * Os três campos novos, e por que cada um:
+ *
+ * - `meu`: a lista de tarefas DELE daquela máquina. Sem isso cada máquina tem a
+ *   sua, e as do PC ele nunca via daqui. É o mesmo defeito do gasto do plano,
+ *   noutra roupa.
+ * - `agentes`: o que o agy e o opencode estão fazendo lá, junto do Claude. Ele
+ *   citou o agy no pedido, e um cockpit que só enxerga uma das três ferramentas
+ *   mostra um terço do trabalho.
+ * - `limites`: o teto de cada ferramenta naquela máquina, quando ela souber
+ *   dizer. `null` é resposta legítima e diferente de zero.
+ *
+ * O `LIMITE_PACOTE` de 2 MB continua valendo, e agora tem mais o que caber:
+ * campo novo entra enxuto, e o que não couber é cortado por quem monta, nunca
+ * silenciosamente aqui.
+ */
 export function montarPacote({
   maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [], backlogs = null,
+  meu = null, agentes = null, limites = null,
 }) {
   const enxuto = jobs.map((j) => ({
     id: j.id, status: j.status, subject: j.subject, project: j.project, sub: j.sub,
@@ -565,7 +627,12 @@ export function montarPacote({
     lastPrompt: j.lastPrompt, entregueEmAberto: j.entregueEmAberto, sinais: j.sinais,
   }))
   return {
-    maquina, jobs: enxuto, servidores, uso, tempo, rotas: enxugarRotas(rotas), backlogs, em: Date.now(),
+    maquina, jobs: enxuto, servidores, uso, tempo, rotas: enxugarRotas(rotas), backlogs,
+    /* Campo ausente e campo vazio são coisas diferentes na federação: `null`
+       quer dizer "esta máquina não sabe dizer", e `[]` quer dizer "sabe, e não
+       tem nenhum". A tela precisa dos dois para não inventar. */
+    meu, agentes, limites,
+    em: Date.now(),
   }
 }
 

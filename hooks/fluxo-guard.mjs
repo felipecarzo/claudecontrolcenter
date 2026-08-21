@@ -101,8 +101,11 @@ if (pedido && /\?\s*$/.test(pedido.trim())) sair()
 const resposta = E.ultimaResposta(arquivo) || ''
 if (/^\s*(\*\*)?Parada:/im.test(resposta)) sair()
 
-/* 4. backlog: os itens do ROADMAP sem a marca de concluído */
+/* 4. backlog: os itens do ROADMAP sem a marca de concluído, tirando os que
+      estão com OUTRA sessão. Ver `deOutraRota`. */
+const RT = await import(urlDeModulo(AQUI, '../src/routia.mjs')).catch(() => null)
 const abertos = backlogAberto(raiz)
+  .filter((t) => !(RT?.deOutraSessao?.(t, raiz, dados?.session_id)))
 if (!abertos.length) sair()
 
 console.error(
@@ -237,6 +240,33 @@ function ultimoPedido(texto) {
  * parar no meio do trabalho passou a cobrar trabalho que não existe, e a
  * primeira coisa que se aprende com uma cobrança falsa é a ignorá-la.
  */
+/**
+ * O item está com OUTRA sessão? Então não é trabalho meu, e cobrar é errado.
+ *
+ * ## O que motivou, em 21/08
+ *
+ * Ele abriu uma segunda sessão só para tela, e o quadro do Método Routia passou
+ * a rota `front` para ela, com o CC-156 e o CC-235 dentro. Deste lado o hook
+ * continuou cobrando os dois a cada parada: os únicos itens abertos do backlog
+ * eram justamente os que eu não posso tocar sem pisar no dono da rota.
+ *
+ * É exatamente o defeito que o comentário do `⏸` acima descreve, agora por
+ * outro caminho: **guarda que cobra o impossível ensina a ser ignorado**, e aí
+ * ele não segura mais o caso real.
+ *
+ * ## Por que o quadro de rotas, e não uma marca no título
+ *
+ * Marcar o item como "não é seu" no ROADMAP seria uma segunda verdade sobre
+ * posse, e ela envelhece sozinha: a rota muda de dono e o título fica mentindo.
+ * O quadro já é a fonte de quem segura o quê, e é lido no começo de toda sessão.
+ * Derivar dele é a mesma escolha que o resto do projeto faz.
+ *
+ * Rota MINHA continua cobrando, de propósito: o que eu mesmo reservei é
+ * trabalho meu, e não poder ser cobrado por ele seria o furo ao contrário.
+ */
+/* A conta mora em `src/routia.mjs` (`deOutraSessao`), e não aqui, para o gate
+   poder medi-la: hook não é importável, e regra que o gate não enxerga é regra
+   que volta a quebrar calada. */
 function backlogAberto(raizProjeto) {
   let md = ''
   try { md = readFileSync(join(raizProjeto, 'docs', 'ROADMAP.md'), 'utf8') } catch { return [] }

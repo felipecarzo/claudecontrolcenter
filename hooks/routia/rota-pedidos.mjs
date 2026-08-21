@@ -110,9 +110,40 @@ export function autorizado(raiz, { marca, relativo, agora = Date.now() }) {
 }
 
 /** Pedidos que esperam resposta. `excetoDe` tira os da própria sessão. */
-export function pendentes(raiz, { excetoDe = null } = {}) {
+/**
+ * O pedido PENDENTE também expira, e não só a autorização.
+ *
+ * ## O que motivou, medido em 21/08
+ *
+ * Ele mandou o fim de uma resposta minha com **16 linhas de aviso**, perguntando
+ * se aquilo estava certo. Não estava: eram 7 pedidos de **90 a 158 horas atrás**
+ * (4 a 6 dias), de sessões que já tinham fechado, repetidos no fim de TODA
+ * resposta, para sempre.
+ *
+ * `VALIDADE_MS` existia, mas só era aplicada quando alguém autorizava
+ * (`p.expiraEm` só nasce no ramo `autorizado`). O pedido sem resposta ficava
+ * pendurado sem prazo nenhum.
+ *
+ * ## Por que expirar não perde nada
+ *
+ * O pedido é **registrado de novo automaticamente** pelo `rota-guard` na
+ * próxima vez que aquela sessão tentar editar o arquivo. Quem ainda precisa,
+ * pede outra vez, e o pedido volta com data de hoje. Quem morreu, cala.
+ *
+ * ## Por que isso é grave, e não cosmético
+ *
+ * É a mesma lição que o `⏸` do `fluxo-guard` ensinou: **guarda que cobra o
+ * impossível ensina a ser ignorado**. Dezesseis linhas sobre sessões mortas no
+ * fim de cada resposta treinam a passar o olho por cima, e aí o pedido de
+ * verdade, de alguém travado esperando, some no meio do ruído.
+ */
+export function pendentes(raiz, { excetoDe = null, agora = Date.now() } = {}) {
   return ler(raiz).pedidos.filter(
-    (p) => p.status === 'pendente' && (!excetoDe || p.de !== excetoDe),
+    (p) => p.status === 'pendente'
+      && (!excetoDe || p.de !== excetoDe)
+      /* Sem data conta como vivo: pedido antigo de um formato anterior não pode
+         sumir calado, que seria trocar um defeito por outro pior. */
+      && (!p.em || agora - p.em < VALIDADE_MS),
   )
 }
 

@@ -45,6 +45,10 @@ const FLAGS_WITH_VALUE = new Set([
   '--prova', '--pronto', '--branch', '--alvo', '--apontou', '--respondeu', '--quem',
   // CC-187: ligar um aparelho novo ao cockpit sem SSH
   '--para', '--token',
+  // CC-232: a lista de tarefas dele, pela linha de comando
+  '--projeto', '--frente', '--porque', '--sessao', '--painel',
+  // CC-238: o test-map
+  '--falta',
 ])
 
 const has = (f) => argv.includes(f)
@@ -99,8 +103,13 @@ switch (cmd) {
       process.stdin.on('error', () => resolve(''))
     })
     try {
-      const { gravarUso } = await import('./src/uso.mjs')
-      gravarUso(JSON.parse(entrada))
+      const { gravarUso, marcarChamada } = await import('./src/uso.mjs')
+      const dados = JSON.parse(entrada)
+      /* CC-261: registra que a barra FOI chamada, mesmo quando não veio número.
+         É o que distingue "nunca rodou aqui" de "rodou e não trouxe o dado", e
+         os dois deixam a tela igual: sem número. */
+      marcarChamada(Boolean(dados?.rate_limits))
+      gravarUso(dados)
     } catch { /* sem rate_limits, JSON quebrado ou disco cheio: segue o jogo */ }
 
     const embrulhado = val('--wrap')
@@ -1283,6 +1292,282 @@ switch (cmd) {
     } else {
       console.log('  Nada guardado (--so-listar).\n')
     }
+    break
+  }
+  /**
+   * CC-232: a lista de tarefas DELE, pela linha de comando.
+   *
+   * Por que ela precisa existir, medido em 21/08: as quatro pendências humanas
+   * do encerramento anterior não estavam na lista dele. Ficaram gravadas como
+   * bloqueios da sessão que as criou, e a lista mostrava outras quatro, de uma
+   * semana antes. O painel afirmava lista em dia sem estar.
+   *
+   * A lista e a porta HTTP já existiam (`src/meu.mjs`, `POST /api/meu`). O que
+   * não existia era um jeito de escrever nela **sem navegador**, e é isso que
+   * o início e o fim de sessão precisam — e o opencode e o agy também, que não
+   * passam pelo gancho do Claude Code.
+   *
+   * Escreve no arquivo local, nunca por rede: o painel lê o mesmo arquivo, e
+   * depender do servidor estar de pé faria a tarefa dele se perder justamente
+   * quando algo está quebrado.
+   */
+  /**
+   * CC-263: a máquina reporta sem servir tela nenhuma.
+   *
+   * Pedido dele em 21/08: *"eu quero que o cockpit no Windows seja apenas um
+   * sistema, eu continue acessando ele pelo cockpit no link
+   * cockpit.carzo.com.br"*.
+   *
+   * É o coração do serviço do Windows: um processo que acorda, empurra o estado
+   * para a VPS e dorme. **Não levanta servidor, não abre porta, não desenha
+   * nada.** Rodar o painel inteiro só para empurrar seria abrir uma porta local
+   * que ninguém vai visitar.
+   *
+   * `--uma-vez` faz um envio e sai, que é como um agendador do sistema chama.
+   * Sem ela, fica de pé no ritmo do `--cada` (padrão de 30 segundos), que é como
+   * um serviço roda.
+   */
+  /**
+   * CC-263: instalar o serviço que reporta, sem precisar do painel aberto.
+   *
+   * `cc servico instalar` no Windows cria uma tarefa que roda no boot, como
+   * SYSTEM, com `CC_HOME` apontando para a pasta dele. No Linux vira um serviço
+   * de usuário. Os dois chamam `cc reportar`, que empurra e não abre tela.
+   */
+  case 'servico': {
+    const P = await import('./src/platform.mjs')
+    const sub = arg || 'status'
+    const node = process.execPath
+    /* O caminho deste próprio arquivo, que é o que o serviço vai chamar.
+       `import.meta.url` e não `process.argv[1]`: o segundo vem com o caminho do
+       atalho quando o comando é instalado por npm global, e o serviço nasceria
+       apontando para um link que pode sumir. */
+    const script = (await import('node:url')).fileURLToPath(import.meta.url)
+
+    if (sub === 'instalar') {
+      const { readConfig } = await import('./src/config.mjs')
+      const { token, enviarPara } = readConfig().federacao || {}
+      /* Instalar um serviço que não tem para onde reportar é criar um processo
+         que acorda de dois em dois minutos para falhar em silêncio. */
+      if (!token || !enviarPara) die('configure a federação antes: `cc federar`, ou a aba remoto do painel')
+      const r = P.instalarServico({ node, script, cada: Number(val('--cada', '30')) })
+      console.log(r.ok ? `serviço instalado: ${r.alvo}` : `NÃO instalou: ${r.saida || 'sem detalhe'}`)
+      if (!r.ok && P.ehWindows) {
+        console.log('\nNo Windows isto precisa de um terminal aberto como administrador,')
+        console.log('uma vez. Clique com o botão direito no Terminal e escolha')
+        console.log('"Executar como administrador", depois rode este mesmo comando.')
+      }
+      const e = P.estadoServico()
+      console.log(`estado: ${e.instalado ? 'instalado' : 'não instalado'}, ${e.rodando === null ? 'sem saber se roda' : e.rodando ? 'rodando' : 'parado'} (${e.detalhe})`)
+      process.exit(r.ok ? 0 : 1)
+    }
+    if (sub === 'remover') {
+      const r = P.removerServico()
+      console.log(r.ok ? `serviço removido: ${r.saida}` : `não removeu: ${r.saida}`)
+      break
+    }
+    if (sub === 'status') {
+      const e = P.estadoServico()
+      console.log(`\ninstalado: ${e.instalado ? 'sim' : 'não'}`)
+      console.log(`rodando:   ${e.rodando === null ? 'não sei dizer' : e.rodando ? 'sim' : 'não'}`)
+      console.log(`detalhe:   ${e.detalhe}`)
+      console.log(`onde:      ${P.caminhoServico()}\n`)
+      break
+    }
+    die(`não conheço "servico ${sub}". Use: instalar, remover, status`)
+    break
+  }
+  case 'reportar': {
+    const { readConfig } = await import('./src/config.mjs')
+    const cfg = readConfig()
+    const { token, enviarPara } = cfg.federacao || {}
+    if (!token || !enviarPara) {
+      die('federação não configurada nesta máquina. Rode `cc federar` primeiro,\n'
+        + 'ou preencha o token e o endereço na aba remoto do painel.')
+    }
+
+    const W = await import('./src/web.mjs')
+    if (typeof W.empurrar !== 'function') die('esta versão não sabe empurrar sozinha')
+
+    const umaVez = has('--uma-vez')
+    const cada = Math.max(10, Number(val('--cada', '30'))) * 1000
+
+    const bater = async () => {
+      const r = await W.empurrar().catch((e) => ({ ok: false, erro: e.message }))
+      const quando = new Date().toISOString().slice(11, 19)
+      /* Diz o resultado de CADA batida, e o motivo quando falha. Serviço que
+         escreve só "ok" vira serviço que ninguém confere, e falha silenciosa é
+         o modo normal de quebrar quando ninguém está olhando a tela. */
+      console.log(`${quando}  ${r?.ok ? 'enviado' : `FALHOU: ${r?.erro || 'motivo desconhecido'}`}  ->  ${enviarPara}`)
+      return r
+    }
+
+    if (umaVez) {
+      const r = await bater()
+      process.exit(r?.ok ? 0 : 1)
+    }
+    console.log(`reportando para ${enviarPara} a cada ${cada / 1000}s. Ctrl+C para parar.`)
+    await bater()
+    setInterval(bater, cada)
+    break
+  }
+  case 'meu': {
+    const M = await import('./src/meu.mjs')
+    const sub = arg || 'list'
+
+    if (sub === 'add' || sub === 'nova') {
+      const texto = positional[2]
+      if (!texto) die('uso: node cc.mjs meu add "o que depende dele" [--projeto x] [--frente y] [--porque z]')
+      const r = M.acrescentar({
+        texto,
+        projeto: val('--projeto'),
+        frente: val('--frente'),
+        porque: val('--porque'),
+        prova: val('--prova'),
+      })
+      if (!r.ok) die(r.erro)
+      /* `jaExistia` não é erro: o encerramento roda mais de uma vez, e a mesma
+         pendência registrada duas vezes seria ruído na tela dele. */
+      console.log(r.jaExistia ? 'já estava na lista dele, nada mudou' : 'entrou na lista dele')
+      break
+    }
+    if (sub === 'feito' || sub === 'reabrir') {
+      const id = positional[2]
+      if (!id) die(`uso: node cc.mjs meu ${sub} <id>`)
+      const r = M.marcar(id, sub === 'feito')
+      if (!r.ok) die(r.erro)
+      console.log(sub === 'feito' ? `tarefa ${id} marcada como feita` : `tarefa ${id} reaberta`)
+      break
+    }
+    if (sub === 'remover') {
+      const id = positional[2]
+      if (!id) die('uso: node cc.mjs meu remover <id>')
+      const r = M.remover(id)
+      if (!r.ok) die(r.erro)
+      console.log(`tarefa ${id} removida`)
+      break
+    }
+    /**
+     * CC-262: revisar a lista dele, dizendo o que já parece resolvido.
+     *
+     * Ele pediu depois de descobrir que **duas das oito pendências estavam
+     * feitas havia dias** e ninguém sabia. Nunca fecha nada: levanta a mão e ele
+     * decide, porque só ele fecha tarefa dele.
+     */
+    if (sub === 'revisar') {
+      const P = await import('./src/tarefasProva.mjs')
+      const { todosOsJobs } = await import('./src/sessoes.mjs')
+      const lista = M.tudo(todosOsJobs()).filter((t) => !t.feito)
+      const r = P.revisar(lista, { raiz: process.cwd() })
+      if (has('--json')) { console.log(JSON.stringify(r, null, 2)); break }
+
+      const feitas = r.filter((x) => x.resolvida === true)
+      const abertas = r.filter((x) => x.resolvida === false)
+      const cegas = r.filter((x) => x.resolvida === null)
+
+      if (feitas.length) {
+        console.log(`\n${feitas.length} PARECE(M) RESOLVIDA(S), e a prova diz por quê:\n`)
+        for (const t of feitas) {
+          console.log(`  ${t.id}  ${t.texto}`)
+          console.log(`    ${t.comoSoube}`)
+          console.log(`    fecha com:  node cc.mjs meu feito ${t.id}\n`)
+        }
+      }
+      if (abertas.length) {
+        console.log(`${abertas.length} conferida(s) e ainda de pé:`)
+        for (const t of abertas) console.log(`  ${t.texto.slice(0, 60)}  (${t.comoSoube})`)
+        console.log('')
+      }
+      if (cegas.length) {
+        console.log(`${cegas.length} sem prova para conferir sozinho:`)
+        for (const t of cegas) console.log(`  ${t.texto.slice(0, 60)}${t.comoSoube ? `  (${t.comoSoube})` : ''}`)
+        console.log('\n  Dá para ensinar como conferir:  node cc.mjs meu prova <id> "porta:3100"')
+        console.log(`  Tipos: ${Object.keys(P.PROVAS).join(', ')}\n`)
+      }
+      if (!r.length) console.log('\nnada esperando por ele\n')
+      break
+    }
+    if (sub === 'prova') {
+      const id = positional[2]
+      const texto = positional[3]
+      if (!id || !texto) die('uso: node cc.mjs meu prova <id> "porta:3100"')
+      const P = await import('./src/tarefasProva.mjs')
+      if (!P.lerProva(texto)) die(`não conheço essa prova. Tipos: ${Object.keys(P.PROVAS).join(', ')}`)
+      const r = M.definirProva(id, texto)
+      if (!r.ok) die(r.erro)
+      console.log(`tarefa ${id} agora sabe se conferir: ${texto}`)
+      break
+    }
+    if (sub !== 'list' && sub !== 'lista') die(`não conheço "meu ${sub}". Use: list, add, revisar, prova, feito, reabrir, remover`)
+
+    /* A lista completa junta três fontes: o arquivo dele, o que os agentes
+       pediram no `meta.json`, e o backlog parado esperando decisão dele. Só o
+       arquivo é editável por aqui; as outras duas se resolvem na origem, e por
+       isso a saída diz de onde cada uma veio. */
+    /* CC-124 de novo: `readJobs()` sozinho lê só os agentes de background, e
+       nesta VPS quase tudo é sessão interativa. `todosOsJobs()` soma as duas. */
+    const { todosOsJobs } = await import('./src/sessoes.mjs')
+    const tarefas = M.tudo(todosOsJobs())
+    const abertas = tarefas.filter((t) => !t.feito)
+    if (has('--json')) { console.log(JSON.stringify(has('--todas') ? tarefas : abertas, null, 2)); break }
+    if (!abertas.length) { console.log('\nnada esperando por ele\n'); break }
+
+    console.log(`\n${abertas.length} coisa(s) dependem dele:\n`)
+    for (const t of abertas) {
+      const onde = [t.projeto, t.frente].filter(Boolean).join(' › ')
+      const fonte = t.fonte === 'lista' ? '' : `  [${t.fonte}, resolve na origem]`
+      console.log(`── ${t.id}${fonte}`)
+      console.log(`   ${t.texto}`)
+      if (onde) console.log(`   ${onde}`)
+      if (t.porque) console.log(`   porque: ${t.porque}`)
+      console.log('')
+    }
+    console.log('  Fechou uma?  node cc.mjs meu feito <id>\n')
+    break
+  }
+  /**
+   * CC-238: o mapa do que é testável e verificável no painel.
+   *
+   * Pedido dele: *"criar um test-map, de tudo que tem que ser testavel e
+   * verificavel no site"*, para *"usar como teste em diversas ferramentas"*.
+   * Por isso a saída é DADO (`docs/TEST-MAP.json`), com a leitura humana ao
+   * lado (`docs/TEST-MAP.md`) gerada do mesmo mapa.
+   *
+   * `--json` despeja no terminal sem gravar nada, que é como outra ferramenta
+   * consome sem precisar do arquivo em disco.
+   */
+  case 'testmap': {
+    const T = await import('./src/testmap.mjs')
+    const raiz = val('--dir') || process.cwd()
+    const mapa = T.montarMapa(raiz)
+
+    if (has('--json')) { console.log(JSON.stringify(mapa, null, 1)); break }
+
+    /* `--falta <dimensao>` responde a pergunta que ele fez ao pedir o mapa:
+       o que ainda não é verificado. Sem isto, usar o mapa exigiria escrever
+       um filtro toda vez. */
+    const falta = val('--falta')
+    if (falta) {
+      if (!T.DIMENSOES[falta]) die(`não conheço a dimensão "${falta}". Use: ${Object.keys(T.DIMENSOES).join(', ')}`)
+      const lista = mapa.itens.filter((i) => !i.dimensoes[falta]?.coberto
+        && !/não se aplica/.test(i.dimensoes[falta]?.nota || ''))
+      if (has('--lista')) { console.log(JSON.stringify(lista, null, 1)); break }
+      console.log(`\n${lista.length} item(ns) sem "${falta}" coberto: ${T.DIMENSOES[falta]}\n`)
+      for (const i of lista) console.log(`  ${i.tipo.padEnd(13)} ${i.rotulo}  ${i.onde}`)
+      console.log('')
+      break
+    }
+
+    const { json, md } = T.gravar(raiz, mapa)
+    console.log(`\ntest-map gerado:\n  ${json}\n  ${md}\n`)
+    const dims = Object.keys(T.DIMENSOES)
+    console.log(`  ${'tipo'.padEnd(14)}${'itens'.padStart(6)}  ${dims.map((d) => d.padStart(9)).join('')}`)
+    for (const [tipo, r] of Object.entries(mapa.resumo)) {
+      console.log(`  ${tipo.padEnd(14)}${String(r.total).padStart(6)}  `
+        + dims.map((d) => `${r[d]}/${r.total}`.padStart(9)).join(''))
+    }
+    console.log('\n  Coberto quer dizer CITADO em teste, não testado de ponta a ponta.')
+    console.log('  O que falta numa dimensão:  node cc.mjs testmap --falta funciona\n')
     break
   }
   case 'estilo': {

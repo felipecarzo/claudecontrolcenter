@@ -82,6 +82,25 @@ const minhas = linhasDeRota(texto).filter((l) => l.includes('🔴') && l.include
  * Avisa mesmo quando a sessão está sozinha e mesmo sem rota marcada: um pedido
  * pendente é informação nova sobre alguém travado, não um lembrete repetido.
  */
+/**
+ * CC-243: o texto encolheu, e o detalhe foi para o painel.
+ *
+ * Ele mandou o fim de uma resposta com dezesseis linhas disto e disse: *"não faz
+ * sentido eu ficar vendo esse furdunço de mensagem no chat, separando o que eu
+ * tenho que ler dessas coisas que só servem de burocracia pro próprio agente"*.
+ *
+ * Antes, cada pedido gastava TRÊS linhas na conversa: uma dizendo o que era, e
+ * duas com comandos de terminal para copiar e colar. Isso é o oposto do que ele
+ * pediu, porque decidir no terminal é justamente a burocracia.
+ *
+ * Agora o chat leva UMA linha por pedido, e a decisão mora na tela Estrutura do
+ * painel (`GET /api/rotas` traz os pendentes, `POST /api/rotas/pedido` responde
+ * com um clique).
+ *
+ * **Continua falando**, e isso é deliberado: pedido pendente é alguém TRAVADO
+ * esperando resposta, o oposto de burocracia repetida. O que saiu foi o
+ * mecanismo, não o aviso.
+ */
 let textoPedidos = ''
 try {
   const p = await import('./rota-pedidos.mjs')
@@ -89,16 +108,9 @@ try {
   const abertos = p.pendentes(raiz, { excetoDe: marca })
   if (abertos.length) {
     textoPedidos =
-      `Método Routia: ${abertos.length} pedido(s) de autorização esperando você.\n` +
-      abertos
-        .map(
-          (x) =>
-            `  ${x.de} quer editar ${x.arquivo} (${x.tentativas}x)\n` +
-            `    autorizar: node ~/.claude/hooks/rota-pedidos.mjs autorizar ${x.id}\n` +
-            `    negar:     node ~/.claude/hooks/rota-pedidos.mjs negar ${x.id} "motivo"`,
-        )
-        .join('\n') +
-      `\nAutorizar libera só aquele arquivo, para aquela sessão, por 6 horas.`
+      `${abertos.length} agente(s) travado(s) esperando sua autorização: `
+      + abertos.map((x) => `${x.de} em ${x.arquivo}`).join(', ')
+      + `. Responda na tela Estrutura do cockpit.`
   }
 } catch { /* falha aberta: sem módulo, comportamento antigo */ }
 
@@ -145,11 +157,31 @@ const raizProjeto = dirname(dirname(quadro)) // .../docs/ROTAS-ATIVAS.md -> raiz
 // sozinho — alguém travado esperando resposta é sempre notícia.
 if (outroAgenteAtivo(raizProjeto, marca) === false && !textoPedidos) sair()
 
+/**
+ * CC-243: o lembrete de rota marcada SAIU do chat.
+ *
+ * Palavras dele: *"se está falando que a rota está marcada, aí é algo que só faz
+ * diferença entre os próprios agentes em si"*. Está certo, e havia duplicidade:
+ * **o painel já mostra as rotas** na tela Estrutura, com quem segura cada uma,
+ * há quanto tempo está calada e quais arquivos reivindica (`GET /api/rotas`).
+ * A mesma informação aparecia duas vezes, e uma delas na conversa dele.
+ *
+ * ⚠️ **Não foi apagado, foi movido.** Rota esquecida marcada é o problema que o
+ * Método Routia existe para evitar: calar sem colocar em lugar nenhum trocaria
+ * um incômodo por um defeito. O `stderr` continua levando o lembrete até MIM,
+ * que sou quem precisa agir, sem gastar linha na tela dele.
+ *
+ * A regra que fica: **o chat leva o que exige decisão dele; o painel leva o
+ * estado.** Aviso que só um agente resolve não ocupa a conversa.
+ */
 const lembreteRota = `Método Routia: sua rota ainda está marcada 🔴 ocupada em ${quadro}\n`
   + minhas.map((l) => `  ${l}`).join('\n')
   + `\nSe terminou, edite o arquivo e troque por 🟢 livre.`
 
-process.stdout.write(JSON.stringify({
-  systemMessage: textoPedidos ? `${textoPedidos}\n\n${lembreteRota}` : lembreteRota,
-}))
+if (textoPedidos) {
+  /* Pedido pendente é alguém travado esperando ELE. Isso continua na conversa. */
+  process.stdout.write(JSON.stringify({ systemMessage: textoPedidos }))
+} else {
+  process.stderr.write(`${lembreteRota}\n`)
+}
 process.exit(0)

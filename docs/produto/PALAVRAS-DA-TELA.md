@@ -68,6 +68,29 @@ O que ela **não** mostra é tão decidido quanto o que mostra: máquina sem
 contato não entra na faixa de urgência, porque nada ali é atendível enquanto
 ela não voltar.
 
+## tela: gate
+
+Uma conversa só, onde você fala com o Claude Code, o opencode e o agy, e troca
+de um para o outro no meio dela.
+
+A diferença para abrir cada um por fora é onde a conversa mora: **aqui ela é do
+painel, não do agente**. Quando você troca, o novo recebe o que já foi dito, as
+suas regras e o estado do projeto, e continua de onde o outro parou. Cada um
+entra com a assinatura dele: a sua no Claude, a conta Google no agy, os modelos
+gratuitos no opencode.
+
+Uma conversa por projeto, o mesmo recorte das rotas. Ela fica gravada no
+servidor, então o que você escreveu aparece igual no telefone e no computador, e
+o que você começou a digitar sem enviar não se perde ao sair da tela.
+
+Enquanto um agente trabalha, a faixa acima do campo mostra **a ferramenta que
+ele está usando agora**, e não uma bolinha girando: resposta aqui leva minutos,
+e é isso que distingue trabalho em curso de coisa travada.
+
+O agente pode editar arquivo e rodar comando, e as suas proteções continuam
+valendo: se ele tentar algo que uma trava barra, ela barra igual, e a conversa
+mostra o que aconteceu.
+
 ## tela: agora
 
 A versão longa da faixa de urgência do cockpit. Mesma lista, sem corte.

@@ -523,6 +523,119 @@ export function instalarAutostart({ node, script, porta }) {
   return autostartLinux(node, script, porta)
 }
 
+/* -------------------- serviço que reporta (CC-263) ------------------ */
+/**
+ * O PC vira uma máquina que REPORTA, e a tela vive na VPS.
+ *
+ * Pedido dele em 21/08: *"eu quero ter a opção de instalar no Windows, ele vai
+ * instalar um serviço, que vai estar sempre atualizando meus agentes (…) sem eu
+ * estar com o cockpit aberto, porque eu quero que o cockpit no Windows seja
+ * apenas um sistema"*. Ele escolheu o serviço de verdade, aceitando a senha de
+ * administrador uma vez.
+ *
+ * ## Por que isto NÃO é o `instalarAutostart` que já existia
+ *
+ * Aquele sobe o painel **quando ele faz login**, e levanta a tela local. Este
+ * roda **com a máquina ligada**, antes de qualquer login, e não abre tela
+ * nenhuma: só empurra (`cc reportar`).
+ *
+ * ## A decisão difícil do Windows, e por que é assim
+ *
+ * Para rodar sem ninguém logado, o Windows oferece dois caminhos:
+ *
+ *  - **como ele**, com `/ru <usuário> /rp <senha>`: exigiria guardar a senha
+ *    dele em algum lugar. Descartado.
+ *  - **como SYSTEM**, com `/ru SYSTEM`: não pede senha, mas o perfil é outro, e
+ *    `~/.claude` deixaria de ser a pasta dele.
+ *
+ * Vai de SYSTEM, **com `CC_HOME` apontando para a pasta dele**. `CC_HOME` já
+ * existe no projeto desde o CC-157, e é o único lugar que resolve a casa; então
+ * a tarefa roda como SYSTEM e lê o que é dele. SYSTEM tem acesso ao perfil, e
+ * nenhuma senha é guardada em lugar nenhum.
+ *
+ * ⚠️ **Escrito na VPS Linux e NÃO provado no Windows.** O caminho do Linux
+ * abaixo é provável nesta máquina; o do Windows precisa dele. Dizer o contrário
+ * seria o "diz que fez" que ele já nomeou.
+ */
+export const ID_SERVICO = `${ID}-reporte`
+
+export function caminhoServico() {
+  if (ehWindows) return `\\${APP.replace(/\s/g, '')}\\${ID_SERVICO}` // nome da tarefa agendada
+  if (ehMac) return path.join(os.homedir(), 'Library', 'LaunchAgents', `com.${ID_SERVICO}.plist`)
+  return path.join(os.homedir(), '.config', 'systemd', 'user', `${ID_SERVICO}.service`)
+}
+
+function servicoWindows({ node, script, casa, cada }) {
+  const tarefa = caminhoServico()
+  /* `cmd /c set CC_HOME=... &&` porque `schtasks` não tem campo de variável de
+     ambiente: a variável entra na própria linha de comando. As aspas triplas
+     são exigência do `schtasks`, que já consome um nível delas. */
+  const cmd = `cmd /c set "CC_HOME=${casa}" && "${node}" "${script}" reportar --cada ${cada}`
+  const r = quiet('schtasks', [
+    '/create', '/f',
+    '/tn', tarefa,
+    '/tr', cmd,
+    '/sc', 'onstart',
+    '/ru', 'SYSTEM',
+    '/rl', 'HIGHEST',
+  ])
+  return { alvo: tarefa, ok: r.ok, saida: r.out || r.err || '' }
+}
+
+function servicoLinux({ node, script, casa, cada }) {
+  const arquivo = caminhoServico()
+  fs.mkdirSync(path.dirname(arquivo), { recursive: true })
+  fs.writeFileSync(arquivo, `[Unit]
+Description=${APP} — reporte para o cockpit
+
+[Service]
+Environment=CC_HOME=${casa}
+ExecStart=${node} ${script} reportar --cada ${cada}
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=default.target
+`)
+  quiet('systemctl', ['--user', 'daemon-reload'])
+  const r = quiet('systemctl', ['--user', 'enable', '--now', `${ID_SERVICO}.service`])
+  return { alvo: arquivo, ok: r.ok, saida: r.out || r.err || '' }
+}
+
+export function instalarServico({ node, script, casa = casaClaude(), cada = 30 }) {
+  if (ehWindows) return servicoWindows({ node, script, casa, cada })
+  if (ehMac) return { alvo: caminhoServico(), ok: false, saida: 'macOS ainda não tem este caminho' }
+  return servicoLinux({ node, script, casa, cada })
+}
+
+export function removerServico() {
+  if (ehWindows) {
+    const r = quiet('schtasks', ['/delete', '/f', '/tn', caminhoServico()])
+    return { ok: r.ok, saida: r.out || r.err || '' }
+  }
+  if (ehMac) return { ok: false, saida: 'macOS ainda não tem este caminho' }
+  quiet('systemctl', ['--user', 'disable', '--now', `${ID_SERVICO}.service`])
+  const arquivo = caminhoServico()
+  if (fs.existsSync(arquivo)) fs.rmSync(arquivo)
+  quiet('systemctl', ['--user', 'daemon-reload'])
+  return { ok: true, saida: arquivo }
+}
+
+/** Está instalado e rodando? Os dois são diferentes, e a tela precisa dos dois. */
+export function estadoServico() {
+  if (ehWindows) {
+    const r = quiet('schtasks', ['/query', '/tn', caminhoServico()])
+    if (!r.ok) return { instalado: false, rodando: null, detalhe: 'a tarefa não existe' }
+    const texto = String(r.out || '')
+    return { instalado: true, rodando: /Running|Em execu/i.test(texto), detalhe: texto.trim().split(/\r?\n/).pop() || '' }
+  }
+  if (ehMac) return { instalado: false, rodando: null, detalhe: 'macOS ainda não tem este caminho' }
+  const ativo = quiet('systemctl', ['--user', 'is-active', `${ID_SERVICO}.service`])
+  const existe = fs.existsSync(caminhoServico())
+  const estado = String(ativo.out || '').trim()
+  return { instalado: existe, rodando: estado === 'active', detalhe: estado || 'sem resposta do systemd' }
+}
+
 export function desinstalarAutostart() {
   const arquivo = caminhoAutostart()
   if (ehMac) quiet('launchctl', ['unload', arquivo])

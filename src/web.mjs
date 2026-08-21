@@ -29,8 +29,23 @@ import {
   mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos, resumirBacklogs,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
+/* O gate. Importado no TOPO, e não por `import()` dentro do handler: o handler
+   de rota não é async, e `await` ali derruba o painel inteiro com erro de
+   sintaxe, com o systemd reiniciando em laço. Custou uma tarde hoje, na rota
+   vizinha. */
+import {
+  listar as listarGate, criar as criarGate,
+  gravarCabecalho as gravarCabecalhoGate, reconciliar as reconciliarGate,
+} from './gate.mjs'
+import { responder as responderGate, parar as pararGate, conversaAoVivo as conversaAoVivoGate } from './gateTurno.mjs'
+import { vivo as vivoGate } from './gateAgentes.mjs'
 import { arquivar, jobsHistoricos, marcosDe, mudouDesde } from './historico.mjs'
-import { readUso } from './uso.mjs'
+import { readUso, lerChamada as lerChamadaStatusline } from './uso.mjs'
+
+/* CC-262: o resultado da última revisão das pendências dele, por id.
+   Vive em memória e é preenchido por `revisarPendencias()` a cada minuto: as
+   provas rodam comando de sistema, e a aba Trabalho não pode pagar isso. */
+let REVISAO_PENDENCIAS = {}
 import {
   estado as estadoMidia, acao as acaoMidia,
   volume as volumeMidia, mudo as mudoMidia,
@@ -84,8 +99,19 @@ import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
   setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig, setVisita,
   setMaquina, setFederacao, moduloLigado, setModuloProjeto, setPaineisMeus,
-  CHAVE_TUDO, visitaGeral, setVisitaGeral,
+  CHAVE_TUDO, visitaGeral, setVisitaGeral, setTelaAberto, lerTelaAberto,
 } from './config.mjs'
+/* CC-243: os pedidos de autorização passam a chegar no painel, para ele decidir
+   na tela.
+
+   Importado no TOPO. A primeira versão usou `await import` dentro do handler de
+   `/api/rotas`, que não é async, e derrubou o painel inteiro com
+   `SyntaxError: Unexpected reserved word`. Importar aqui é seguro porque o
+   comando de linha do módulo só roda quando ele é o arquivo chamado
+   (`process.argv[1]`), nunca quando é importado. */
+import {
+  pendentes as pendentesDeRota, responder as responderPedidoDeRota,
+} from '../hooks/routia/rota-pedidos.mjs'
 import { agenda, esquecerCache as esquecerAgenda } from './calendario.mjs'
 import { HOOKS, MODULOS as MODULOS_HOOKS } from './hooksCatalogo.mjs'
 import { rodar as provarHooks, testeDe as provaTesteDe } from './hooksProva.mjs'
@@ -303,8 +329,19 @@ function usoDaConta(local, pacotes) {
     local ? { ...local, origem: null } : null,
     ...pacotes.map((p) => (p.uso ? { ...p.uso, origem: p.maquina } : null)),
   ].filter(Boolean)
-  if (!candidatos.length) return null
-  return candidatos.sort((a, b) => (b.em || 0) - (a.em || 0))[0]
+  /* CC-261: por que ESTA máquina não tem número próprio.
+     Sem isso a tela só sabe dizer que o dado é de outra máquina, e não POR QUE
+     o daqui não existe. São dois motivos com consertos diferentes: a barra de
+     status nunca ter sido chamada (o caso do Remote Control, sem terminal), ou
+     ter sido chamada e não trazer `rate_limits`. */
+  const chamada = lerChamadaStatusline()
+  const diagnostico = local ? null : (!chamada
+    ? 'a barra de status nunca rodou nesta máquina'
+    : (chamada.comDado
+      ? 'a barra rodou e trouxe o número, mas ele não foi gravado'
+      : `a barra rodou ${chamada.vezes}x aqui e nunca trouxe o número do plano`))
+  if (!candidatos.length) return diagnostico ? { semDadoPorque: diagnostico } : null
+  return { ...candidatos.sort((a, b) => (b.em || 0) - (a.em || 0))[0], semDadoLocalPorque: diagnostico }
 }
 
 /**
@@ -340,7 +377,10 @@ const INTERVALO_TEMPO_MS = 10 * 60 * 1000
  * ele responde ("está funcionando AGORA") não sobrevive a um reinício mesmo. */
 let ultimoEmpurrao = null
 
-async function empurrar({ comTempo = null } = {}) {
+/* CC-263: exportada para o modo `cc reportar`, que empurra sem levantar tela.
+   É o coração do serviço do Windows: a mesma função que o painel já usava no
+   timer de 30s, agora alcançável de fora. */
+export async function empurrar({ comTempo = null } = {}) {
   const cfg = readConfig()
   const { token, enviarPara } = cfg.federacao || {}
   if (!token || !enviarPara) return { ok: false, erro: 'federação não configurada' }
@@ -379,7 +419,41 @@ async function empurrar({ comTempo = null } = {}) {
     })))
   } catch { /* varredura falhou: o resto do pacote continua valendo */ }
 
-  const pacote = montarPacote({ maquina: s.maquina, jobs: meus, uso: s.uso, tempo, backlogs })
+  /* CC-263: o pacote leva também a lista DELE desta máquina e o que as outras
+     ferramentas estão fazendo aqui. Cada leitura é protegida: uma falha em
+     qualquer delas não pode impedir o envio do resto, senão a máquina inteira
+     some do painel por causa de um campo. */
+  let meuDaqui = null
+  try {
+    const M = await import('./meu.mjs')
+    meuDaqui = M.ler().tarefas.filter((t) => !t.feito)
+  } catch { meuDaqui = null }
+
+  /* Quais das três ferramentas existem NESTA máquina. Lido do catálogo do gate,
+     que já é a fonte de quem é quem; aqui só se acrescenta se o binário está
+     instalado, que é o que muda de máquina para máquina.
+     `null` continua sendo "não sei dizer", e é o que sai quando o catálogo não
+     pode ser lido. */
+  let agentesDaqui = null
+  try {
+    const { AGENTES_GATE } = await import('./gateAgentes.mjs')
+    /* `resolverBinario` mora em `paineis.mjs`, e não em `platform.mjs`: ele
+       nasceu para o botão do escritório, quando um binário instalado por npm
+       global não estava no PATH do serviço systemd e o botão respondia "ok" sem
+       subir nada. O mesmo problema vale aqui. */
+    const { resolverBinario } = await import('./paineis.mjs')
+    agentesDaqui = Object.entries(AGENTES_GATE).map(([id, a]) => ({
+      id,
+      rotulo: a.rotulo,
+      paga: a.paga,
+      instalado: typeof resolverBinario === 'function' ? Boolean(resolverBinario(a.binario)) : null,
+    }))
+  } catch { agentesDaqui = null }
+
+  const pacote = montarPacote({
+    maquina: s.maquina, jobs: meus, uso: s.uso, tempo, backlogs,
+    meu: meuDaqui, agentes: agentesDaqui, limites: null,
+  })
   const r = await enviarPacote({ enviarPara, token, pacote })
   /* CC-208: o relógio das horas só anda quando o envio CHEGA.
    *
@@ -1184,11 +1258,103 @@ function handler(req, res) {
     return send(res, 200, { paineis: readConfig().paineisMeus || [] })
   }
 
+  /**
+   * CC-156: o que está aberto ou fechado na tela, guardado no servidor.
+   *
+   * Pedido dele: abrir uma seção no celular e encontrar ela aberta no PC. Hoje
+   * isso mora no navegador de cada aparelho, e o painel federado já é um só.
+   *
+   * A chave é OPACA (`proj:inovallbond`, `sprint:...`): quem decide o que é
+   * seção é a tela. O erro vai no corpo com status 400 em vez de virar mapa
+   * vazio, porque vazio por erro parece "nunca abri nada" — e essa confusão é
+   * a família de defeito mais cara deste painel.
+   */
+  if (url.pathname === '/api/tela') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 4e3, ({ chave, aberto }) => {
+        const r = setTelaAberto(chave, aberto)
+        /* LANÇA em vez de devolver `{erro}`: `comCorpo` carimba `ok: true` em
+           tudo que ele retorna, então a recusa sairia como sucesso com um erro
+           pendurado do lado. Lançando, a resposta é 400 com `ok: false`, que é
+           o que "falhar em voz alta" quer dizer aqui. */
+        if (r.erro) throw new Error(r.erro)
+        return r
+      })
+    }
+    return send(res, 200, { aberto: lerTelaAberto(), at: Date.now() })
+  }
+
   if (url.pathname === '/api/pip') {
     if (req.method === 'POST') {
       return comCorpo(req, res, 1e4, ({ blocos, layout }) => ({ pip: setPip({ blocos, layout }) }))
     }
     return send(res, 200, { pip: readConfig().pip })
+  }
+
+  /* ==================== O GATE: a conversa é do painel ====================
+   *
+   * Ele fala com Claude Code, opencode e agy numa conversa só, e troca de agente
+   * no meio dela. O histórico, as regras e o estado do projeto ficam AQUI, e por
+   * isso o agente novo continua de onde o anterior parou.
+   *
+   * As rotas são casca fina de propósito: quem guarda é `gate.mjs`, quem chama
+   * agente é `gateAgentes.mjs`, quem monta o contexto é `gatePacote.mjs`, e quem
+   * sabe a ordem é `gateTurno.mjs`.
+   *
+   * **A resposta NUNCA é esperada dentro da requisição.** Ela leva minutos, e o
+   * navegador dele penduraria: no telefone, na rua, isso é a tela morrendo. O
+   * POST devolve assim que o agente sobe, e a tela lê o que já foi gravado.
+   */
+  if (url.pathname === '/api/gate/conversas') {
+    return send(res, 200, { conversas: listarGate(), at: Date.now() })
+  }
+
+  if (url.pathname === '/api/gate/conversa') {
+    const id = url.searchParams.get('id')
+    const c = id ? conversaAoVivoGate(id) : null
+    if (!c) return send(res, 404, { erro: 'conversa não encontrada' })
+    return send(res, 200, c)
+  }
+
+  if (url.pathname === '/api/gate/nova' && req.method === 'POST') {
+    return comCorpo(req, res, 4e3, ({ projeto, cwd, titulo }) => {
+      /* A pasta é obrigatória e recusada fora da base de projetos. **Esta é a
+         trava principal do recurso inteiro**: ele autorizou o agente a agir
+         livre, e uma conversa apontada para o lugar errado seria comando
+         arbitrário na pasta errada. Sem `cwd`, cai na pasta do próprio painel,
+         que é conhecida e está dentro da base. */
+      const alvo = path.resolve(cwd || process.cwd())
+      /* `projectsBase()` é a mesma conta que o resto do painel usa, e ela é
+         descoberta, nunca caminho fixo de máquina. Quando a descoberta falha,
+         a pasta do próprio painel ainda vale: ela é conhecida e é um projeto
+         dele. O que nunca vale é uma pasta arbitrária. */
+      let base = null
+      try { base = path.resolve(projectsBase() || '') } catch { base = null }
+      const dentroDaBase = base && (alvo === base || alvo.startsWith(base + path.sep))
+      const ehOPainel = alvo === path.resolve(process.cwd())
+      if (!dentroDaBase && !ehOPainel) throw new Error(`a pasta ${alvo} está fora da base de projetos`)
+      return criarGate({ titulo, projeto: projeto || path.basename(alvo), cwd: alvo })
+    })
+  }
+
+  if (url.pathname === '/api/gate/mensagem' && req.method === 'POST') {
+    /* 100 KB: ele dita mensagem longa por voz, e cortar o pedido dele calado
+       seria a pior forma de economizar. */
+    return comCorpo(req, res, 1e5, ({ id, texto, agente }) => {
+      if (!id || !String(texto || '').trim()) throw new Error('preciso da conversa e do texto')
+      return responderGate(id, { texto: String(texto), agente: agente || 'claude' })
+    })
+  }
+
+  if (url.pathname === '/api/gate/parar' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id }) => pararGate(id))
+  }
+
+  if (url.pathname === '/api/gate/rascunho' && req.method === 'POST') {
+    return comCorpo(req, res, 1e5, ({ id, texto }) => {
+      gravarCabecalhoGate(id, { rascunho: String(texto || '') })
+      return { gravado: true }
+    })
   }
 
   // Config de conexão + o último retrato lido. Nunca devolve o caminho da
@@ -1352,7 +1518,14 @@ function handler(req, res) {
     const s = snapshot()
     const lista = projetosDe(s.jobs, findProjects)
     const projetos = carregarProjetos(lista)
+    /* CC-262: a revisão entra na ABA TRABALHO, em "o que só você resolve", que
+       foi onde ele pediu: *"na aba de trabalho, em o que só você resolve, você
+       poderia checar o que não precisa mais ser resolvido?"*.
+       O resultado vem do mapa que `revisarPendencias()` mantém noutro ritmo:
+       as provas rodam comando de sistema (`ss`, `systemctl`) e não podem entrar
+       numa rota que ele abre a toda hora. */
     const pendencias = tudoMeu(s.jobs, { projetos, maquinaLocal: origemLocal(readConfig())?.nome || null })
+      .map((p) => (REVISAO_PENDENCIAS[p.id] ? { ...p, ...REVISAO_PENDENCIAS[p.id] } : p))
     /* CC: as siglas vão junto do trabalho, não numa rota à parte. A tela mostra
        o mesmo código em quatro lugares; se cada um resolvesse o nome sozinho,
        seriam quatro contas para a mesma pergunta, e um dia discordariam. */
@@ -1618,8 +1791,35 @@ function handler(req, res) {
     }
     const mapa = mapearAvenidas(paraMapa, grafo)
 
+    /* CC-243: os pedidos de autorização passam a chegar no PAINEL.
+       Até aqui eles só existiam no fim da resposta no chat, e ele reclamou com
+       razão: *"não faz sentido eu ficar vendo esse furdunço de mensagem no
+       chat"*. Decisão dele é decisão dele, e o lugar de decidir é a tela.
+       Falha em silêncio de propósito: o quadro de rotas não pode deixar de
+       responder porque o arquivo de pedidos sumiu. */
+    let pedidos = []
+    try {
+      pedidos = pendentesDeRota(dir).map((p) => ({
+        id: p.id, de: p.de, arquivo: p.arquivo, vezes: p.vezes || 1, em: p.em || null,
+      }))
+    } catch { pedidos = [] }
+
     return send(res, 200, {
-      existe: true, dir, rotas: todas, deFora, avenidas: { ...mapa, resumo: resumoAvenidas(mapa) },
+      existe: true, dir, rotas: todas, deFora, pedidos, avenidas: { ...mapa, resumo: resumoAvenidas(mapa) },
+    })
+  }
+
+  /* CC-243: responder ao pedido pela tela, em vez de por comando no terminal.
+     O texto no chat mandava ele copiar e colar `node ~/.claude/hooks/...`, que
+     é justamente a burocracia que ele quer fora da conversa. */
+  if (url.pathname === '/api/rotas/pedido' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 4e3, async ({ projeto, cwd, id, decisao, motivo }) => {
+      const dir = cwdDoProjeto(cwd, projeto)
+      if (!dir) return { erro: 'projeto desconhecido' }
+      if (!['autorizado', 'negado'].includes(decisao)) return { erro: 'decisão precisa ser autorizado ou negado' }
+      const r = responderPedidoDeRota(dir, { id, decisao, por: 'felipe', motivo: motivo || '' })
+      if (!r) return { erro: `não achei o pedido ${id}` }
+      return { pedido: { id: r.id, status: r.status, expiraEm: r.expiraEm || null } }
     })
   }
 
@@ -1738,10 +1938,68 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
       } else reject(e)
     })
     server.on('listening', () => {
+      /* CC-247: os turnos do gate que ficaram órfãos quando o painel caiu.
+         O filho morre junto com o painel, e sem este conserto a conversa
+         ficaria marcada como ocupada para sempre: ele nunca mais conseguiria
+         mandar mensagem nela. Fecha o turno dizendo até onde a resposta chegou,
+         em vez de deixar sumir. */
+      try { reconciliarGate({ vivo: vivoGate }) } catch { /* conversa nenhuma ainda */ }
+
       // CC-47: o empurrão para a máquina servidora. Fica aqui, e não no tique
       // de 2s do stream, porque é a ÚNICA chamada de rede periódica do painel
       // e 30s já é mais rápido do que o Felipe troca de tela. Sem federação
       // configurada, o timer nem existe.
+      /* CC-261: o gasto do plano, buscado direto.
+         Nesta máquina a barra de status nunca é chamada (Remote Control não tem
+         terminal), então o número oficial não chega sozinho. A busca é a segunda
+         chamada de rede do painel inteiro, junto do câmbio, e por isso vai num
+         ritmo próprio e falha calada: sem contato, fica o último valor. */
+      const buscarUso = () => {
+        import('./uso.mjs')
+          .then((u) => u.atualizarUsoDaConta())
+          .catch(() => {})
+      }
+      const relUso = setInterval(buscarUso, 5 * 60 * 1000)
+      relUso.unref()
+      buscarUso()
+
+      /* CC-260: o gasto por sessão, no ritmo dele e não no do painel.
+         A varredura custa ~305ms na primeira vez e 1ms depois, com o cache em
+         memória. A cada 30 segundos ela roda e enche o mapa que `sessoes.mjs`
+         consulta; o tique de 2 segundos nunca paga essa conta. */
+      const atualizarGastoPorSessao = () => {
+        Promise.all([import('./tempo.mjs'), import('./sessoes.mjs')])
+          .then(([T, S]) => S.atualizarTokens(T.tokensPorSessao()))
+          .catch(() => {})
+      }
+      const relTok = setInterval(atualizarGastoPorSessao, 30_000)
+      relTok.unref()
+      atualizarGastoPorSessao()
+
+      /* CC-262: revisar as pendências DELE, dizendo o que já parece resolvido.
+         A cada minuto, e nunca dentro da rota: as provas rodam comando de
+         sistema, e ele abre a aba Trabalho a toda hora. */
+      const revisarPendencias = () => {
+        Promise.all([import('./meu.mjs'), import('./tarefasProva.mjs'), import('./sessoes.mjs')])
+          .then(([M, P, S]) => {
+            const lista = M.tudo(S.todosOsJobs()).filter((t) => !t.feito)
+            const mapa = {}
+            /* `cwdDoProjeto` já sabe achar a pasta de um projeto pelo nome, e é
+               a mesma conta que o resto do painel usa. Sem ela, o caminho
+               relativo cairia em `/home/claudedev`, que é onde o serviço roda,
+               e a prova responderia sobre o lugar errado. */
+            for (const t of P.revisar(lista, { raiz: process.cwd(), raizDe: (proj) => cwdDoProjeto('', proj) || null })) {
+              if (t.resolvida === null && !t.comoSoube) continue
+              mapa[t.id] = { pareceResolvida: t.resolvida === true, comoSoube: t.comoSoube }
+            }
+            REVISAO_PENDENCIAS = mapa
+          })
+          .catch(() => {})
+      }
+      const relRev = setInterval(revisarPendencias, 60_000)
+      relRev.unref()
+      revisarPendencias()
+
       const { token, enviarPara } = readConfig().federacao || {}
       if (token && enviarPara) {
         const timer = setInterval(() => { empurrar().catch(() => {}) }, 30_000)

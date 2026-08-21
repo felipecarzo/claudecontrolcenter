@@ -85,7 +85,11 @@ const estadoDe = (titulo) => {
 const limpar = (s) => s
   .replace(/^#+\s*/, '')
   .replace(/`[^`]*`/g, '')             // tags tipo `#pierre`
-  .replace(/[🔴🟡🟢🔥✅✔⛔⏳📌⏸]/gu, '')
+  /* CC-236: a lista era fechada, então marcador novo VAZAVA para o cartão. Ele
+     mandou print com "▶ LIBERADO para construir em 21/08" dentro do cartão do
+     backlog, e o `▶` era meu, escrito no título horas antes. Agora entram os
+     marcadores de execução e os sinais de lista que aparecem em título. */
+  .replace(/[🔴🟡🟢🔵⚪⚫🔥✅✔☑⛔⏳📌⏸▶►▸➤⏭🚧🆕⭐]/gu, '')
   .replace(/\s+/g, ' ')
   .trim()
 
