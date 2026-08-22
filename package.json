@@ -3,23 +3,39 @@
   "version": "0.2.0",
   "type": "module",
   "description": "Painel dos agentes do Claude Code rodando em background — terminal e web, com to-dos, custo e servidores locais",
-  "keywords": ["claude", "claude-code", "dashboard", "agents", "tui"],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "dashboard",
+    "agents",
+    "tui"
+  ],
   "license": "MIT",
   "author": "Felipe Cardoso",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/felipecarzo/claudecontrolcenter.git"
   },
-  "bugs": { "url": "https://github.com/felipecarzo/claudecontrolcenter/issues" },
+  "bugs": {
+    "url": "https://github.com/felipecarzo/claudecontrolcenter/issues"
+  },
   "homepage": "https://github.com/felipecarzo/claudecontrolcenter#readme",
-  "bin": { "cc": "./cc.mjs" },
+  "bin": {
+    "cc": "./cc.mjs"
+  },
   "main": "./src/jobs.mjs",
   "exports": {
     ".": "./src/jobs.mjs",
     "./servers": "./src/servers.mjs",
     "./platform": "./src/platform.mjs"
   },
-  "files": ["cc.mjs", "src/", "AGENTS.md", "README.md", "LICENSE"],
+  "files": [
+    "cc.mjs",
+    "src/",
+    "AGENTS.md",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "postinstall": "node src/postinstall.mjs",
     "start": "node cc.mjs",
@@ -27,8 +43,16 @@
     "test": "node test-anonimizar.mjs && node test-framework.mjs && node test-federacao.mjs && node hooks/testar-sincronia-guard.mjs && node test-postinstall.mjs && node test.mjs",
     "test:ui": "node test-ui.mjs",
     "test:endereco": "node --experimental-websocket test-endereco.mjs",
-    "test:map": "node --experimental-websocket test-map-vivo.mjs"
+    "test:map": "node --experimental-websocket test-map-vivo.mjs",
+    "test:travas": "node --experimental-websocket test-travas.mjs",
+    "test:gaveta": "node --experimental-websocket test-gaveta.mjs"
   },
-  "engines": { "node": ">=18" },
-  "os": ["win32", "darwin", "linux"]
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "win32",
+    "darwin",
+    "linux"
+  ]
 }

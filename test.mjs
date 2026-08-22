@@ -3414,8 +3414,19 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
   /* O `>` antes da expressão é o que separa TEXTO NA TELA de valor de atributo.
      Sem ele a regra acusava `data-ent-abrir="${esc(p.projeto)}"`, que é o nome
      do projeto indo para um botão e não para os olhos dele. */
-  const MOSTRA_PROJETO = />\s*\$\{esc\((?:[a-z]\.project\b|[a-z]\.projeto\b|nome\.toUpperCase\(\))/
-  const TEM_SELO = /selo\w*\(|maquinas/
+  /* Duas escritas, e a segunda entrou em 22/08 porque a rede não pegou a tela
+     Projetos: ele abriu, viu 23 cartões sem etiqueta nenhuma e perguntou
+     *"onde tá dizendo que cada projeto está na vps, desktop etc? Achei que
+     tínhamos definido isso"*.
+     A rede só conhecia a forma `>${esc(p.projeto)}` dentro de template. O
+     código novo monta o mesmo HTML por concatenação, `'>' + esc(p.projeto)`,
+     e passava limpo. Uma regra que só cobre um jeito de escrever não é regra,
+     é coincidência. */
+  const MOSTRA_PROJETO = new RegExp(
+    '>\\s*\\$\\{esc\\((?:[a-z]\\.project\\b|[a-z]\\.projeto\\b|nome\\.toUpperCase\\(\\))'
+    + "|>'\\s*\\+\\s*esc\\((?:[a-z]\\.project\\b|[a-z]\\.projeto\\b)",
+  )
+  const TEM_SELO = /selo\w*\(|maquinas|pj-onde/
 
   const nus = []
   linhas.forEach((linha, i) => {
@@ -4252,4 +4263,265 @@ if (process.platform !== 'win32') {
       fs.rmSync(raiz, { recursive: true, force: true })
     }
   }
+}
+
+/* ── CC-280/281/282: a zona inteligente ──────────────────────────────────────
+   Roda inteiro em casa temporária. Teste que escreve em dado real dele é
+   defeito, mesmo com restauração no `finally`: `npm test` interrompido no meio
+   deixa o arquivo pela metade, e foi assim que as notas amanheceram vazias em
+   09/08. */
+{
+  const os = await import('node:os')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-armazem-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = path.join(raiz, '.claude')
+  fs.mkdirSync(process.env.CC_HOME, { recursive: true })
+
+  try {
+    const A = await import(`./src/armazem.mjs?t=${Date.now()}`)
+    const C = await import(`./src/coletores.mjs?t=${Date.now()}`)
+
+    /* 1. Append-only: regravar o mesmo dia acrescenta linha, e a leitura fica
+       com a última. É a propriedade que torna o arquivo seguro contra queda no
+       meio da escrita, e sem teste ela some no primeiro "otimizei para
+       reescrever". */
+    A.gravar([{ dia: '2026-08-01', projeto: 'p', medida: 'm', valor: 1 }])
+    A.gravar([{ dia: '2026-08-01', projeto: 'p', medida: 'm', valor: 9 }])
+    const lido = A.ler({ medida: 'm' })
+    assert.equal(lido.length, 1, 'mesma chave gravada duas vezes tem que virar um registro só na leitura')
+    assert.equal(lido[0].valor, 9, 'a leitura tem que ficar com o valor mais novo')
+    const linhas = fs.readFileSync(A.ARQUIVO(), 'utf8').split('\n').filter(Boolean)
+    assert.equal(linhas.length, 2, 'o arquivo tem que CONSERVAR as duas linhas: quem reescreve pode perder')
+    console.log('  ok   CC-280: append-only, e a leitura fica com o último')
+
+    /* 2. Linha corrompida é o caso NORMAL num arquivo que só cresce, porque um
+       processo morto no meio da escrita corta a última. Ela não pode derrubar
+       a leitura inteira. */
+    fs.appendFileSync(A.ARQUIVO(), '{"dia":"2026-08-02","medi\n', 'utf8')
+    assert.equal(A.ler({ medida: 'm' }).length, 1, 'linha truncada tem que ser pulada, não derrubar a leitura')
+    console.log('  ok   CC-280: linha cortada pela metade não derruba a leitura')
+
+    /* 3. Sem lugar gravável, responde que não gravou em vez de lançar. Armazém
+       que derruba o painel por não conseguir escrever seria pior que armazém
+       vazio, e o retorno é o que permite quem chamou saber. */
+    const guardado = process.env.CC_HOME
+    /* Uma pasta somente leitura, com a casa E o abrigo dentro dela. Apontar
+       para um caminho inexistente NÃO serve: `path.join` normaliza o caminho
+       do abrigo para um lugar válido, e a gravação passa. Foi o que aconteceu
+       ao escrever este teste. */
+    const trancada = path.join(raiz, 'trancada')
+    fs.mkdirSync(trancada, { recursive: true })
+    fs.chmodSync(trancada, 0o500)
+    try {
+      process.env.CC_HOME = path.join(trancada, '.claude')
+      const B = await import(`./src/armazem.mjs?t=${Date.now()}-b`)
+      const r = B.gravar([{ dia: '2026-08-03', medida: 'x', valor: 1 }])
+      assert.equal(r.ok, false, 'sem lugar gravável, `gravar` tem que devolver ok:false')
+      assert.equal(r.onde, null, 'sem gravar, `onde` tem que ser nulo, nunca um caminho que não recebeu nada')
+    } finally {
+      fs.chmodSync(trancada, 0o700)
+      process.env.CC_HOME = guardado
+    }
+    console.log('  ok   CC-280: sem lugar gravável, avisa em vez de derrubar')
+
+    /* 4. A regressão que mais dói: o cruzamento comparando janelas diferentes.
+       Na primeira versão, o git via 28 dias e o transcrito via 9, e o resultado
+       era "51 commits com zero ferramentas" sem nada acusar. */
+    A.gravar([
+      { dia: '2026-08-10', projeto: 'z', medida: 'esforco', valor: 100 },
+      { dia: '2026-08-10', projeto: 'z', medida: 'saida', valor: 10 },
+      { dia: '2026-08-11', projeto: 'z', medida: 'saida', valor: 90 },
+    ])
+    const c = A.cruzar('esforco', 'saida')
+    assert.equal(c.linhas.length, 1, 'o cruzamento tem que render uma linha para o projeto z')
+    assert.equal(
+      c.linhas[0].razao, 10,
+      'o dia 11, que só tem um dos lados, não pode entrar na conta: 100/10 = 10, nunca 100/100 = 1',
+    )
+    assert.ok(c.sozinhos > 0, '`sozinhos` tem que contar o que ficou de fora, senão a tela parece vazia sem dizer por quê')
+    console.log('  ok   CC-282: o cruzamento só usa dias que os dois lados enxergam')
+
+    /* 5. Faixa sem base não pode disparar alarme. Alarme que sempre toca é
+       alarme que se aprende a ignorar, a mesma lição da guarda que cobrava o
+       impossível. */
+    const f = A.faixa('esforco', { projeto: 'z', dia: '2026-08-10' })
+    assert.equal(f.fora, false, 'com um punhado de dias de história, nada pode ser declarado fora da faixa')
+    assert.equal(f.suficiente, false, '`suficiente` tem que dizer que a base é curta')
+    console.log('  ok   CC-284: sem base, o alarme fica calado em vez de gritar')
+
+    /* 6. Toda medida do catálogo precisa de rótulo em português e de ajuda.
+       Medida cujo nome só existe no código chega na tela como sigla, e sigla é
+       exatamente o que ele não tem por que decorar. */
+    for (const [id, def] of Object.entries(C.CATALOGO)) {
+      assert.ok(def.rotulo && def.rotulo !== id, `a medida "${id}" precisa de um rótulo legível, não do próprio id`)
+      assert.ok(def.ajuda && def.ajuda.length > 15, `a medida "${id}" precisa de uma explicação que ensine, não de uma definição circular`)
+    }
+    console.log(`  ok   CC-281: as ${Object.keys(C.CATALOGO).length} medidas têm nome e explicação em português`)
+
+    /* 7. Toda flag com valor tem que estar registrada no cc.mjs. Sem isso,
+         `--dia 2026-08-21` faz a data virar o nome da medida, e o comando
+         responde sobre uma medida inexistente sem acusar nada. Aconteceu ao
+         escrever este próprio comando. */
+    const fonteCc = fs.readFileSync('cc.mjs', 'utf8')
+    const blocoArmazem = fonteCc.slice(fonteCc.indexOf("case 'armazem'"), fonteCc.indexOf("case 'sinc'"))
+    const listaFlags = fonteCc.slice(fonteCc.indexOf('const FLAGS_WITH_VALUE'), fonteCc.indexOf('const positional'))
+    for (const m of blocoArmazem.matchAll(/val\('(--[a-z-]+)'/g)) {
+      assert.ok(listaFlags.includes(`'${m[1]}'`), `a flag ${m[1]} lê valor mas não está em FLAGS_WITH_VALUE: o valor dela vira posicional`)
+    }
+    console.log('  ok   CC-280: as flags com valor estão registradas, e não viram posicional')
+
+    /* 8. O CSV escapa vírgula e aspas. Um projeto com vírgula no nome
+       quebraria a coluna, e planilha aberta torta não avisa: só mostra dado no
+       lugar errado. */
+    A.gravar([{ dia: '2026-08-12', projeto: 'a,b"c', medida: 'm', valor: 3 }])
+    const linhaCsv = A.paraCSV(A.ler({ desde: '2026-08-12', ate: '2026-08-12' })).split('\n')[1]
+    assert.match(linhaCsv, /"a,b""c"/, 'nome com vírgula e aspas tem que sair escapado no CSV')
+    assert.equal(linhaCsv.split(',').length > 5, true, 'o campo escapado continua sendo um campo só para quem lê CSV de verdade')
+    console.log('  ok   CC-286: o CSV escapa vírgula e aspas no nome do projeto')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(raiz, { recursive: true, force: true })
+  }
+}
+
+/* ── CC-298: o recado da trava não pode ter travessão ────────────────────────
+   Achado em 22/08, olhando o log novo de travas no telefone dele: o texto que
+   aparece é "PAROU COM 9 ITENS ABERTOS — modo Continuativo". A regra número um
+   dele proíbe travessão em texto NENHUM, e o sistema que cobra as regras dele
+   estava violando a primeira delas dentro do próprio recado.
+
+   Passou despercebido porque o gate confere travessão no que EU escrevo, nunca
+   no que as travas escrevem. E agora esse texto tem tela própria: ele lê.
+
+   Só o texto de SAÍDA entra aqui. Comentário de código também está na regra,
+   mas é outro item: misturar os dois faria a rede acusar 130 pontos de uma vez
+   e ninguém consertaria nenhum. */
+{
+  const dir = 'hooks'
+  const ofensas = []
+  const soComentario = (l) => /^\s*(\*|\/\/|\/\*)/.test(l)
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.mjs'))) {
+    const linhas = fs.readFileSync(path.join(dir, f), 'utf8').split('\n')
+    linhas.forEach((l, i) => {
+      if (!/[—–]/.test(l) || soComentario(l)) return
+      /* Quem PROCURA o caractere precisa escrevê-lo. São duas as isenções, e
+         as duas são por definição: a trava que caça travessão, e o leitor de
+         roadmap, que limpa o traço dos títulos escritos à mão. Ambas dentro de
+         um padrão de busca, nunca em texto que alguém lê. */
+      if (/\.replace\(|\.match\(|\.test\(|RegExp|TRACO/.test(l)) return
+      ofensas.push(`${f}:${i + 1}  ${l.trim().slice(0, 70)}`)
+    })
+  }
+  assert.equal(
+    ofensas.length, 0,
+    `travessão no recado de trava, e é o texto que ele lê na tela:\n    ${ofensas.slice(0, 12).join('\n    ')}`,
+  )
+  console.log('  ok   CC-298: nenhum recado de trava usa travessão')
+}
+
+/* ── CC-301: o dono de um item também sai da FAIXA ───────────────────────────
+   Medido em 22/08: a rota do gate citava nove números, e os itens CC-277 a
+   CC-280 nasceram depois de ela ser escrita. Sem entender faixa, o filtro não
+   achou dono, tratou tudo como trabalho meu, e a trava de fluxo mandou executar
+   item de outra sessão.
+
+   Quem reserva um bloco de trabalho reserva o que nasce dentro dele. */
+{
+  const os = await import('node:os')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-routia-'))
+  fs.mkdirSync(path.join(raiz, 'docs'), { recursive: true })
+  fs.writeFileSync(path.join(raiz, 'docs', 'ROTAS-ATIVAS.md'), [
+    '| `gate` | 🔴 ocupada | c213b663 — fazendo CC-275 a CC-280, a tela de conversa | hoje |',
+    '| `sistemas` | 🔴 ocupada | 9bad715c — CC-297 e CC-300 | hoje |',
+    '| `velha` | 🟢 livre | — (fechou CC-100 a CC-120) | — |',
+  ].join('\n'), 'utf8')
+
+  const R = await import(`./src/routia.mjs?t=${Date.now()}`)
+  assert.equal(R.donoDoItem('CC-277', raiz), 'c213b663', 'item DENTRO da faixa tem que achar o dono')
+  assert.equal(R.donoDoItem('CC-280', raiz), 'c213b663', 'o fim da faixa entra nela')
+  assert.equal(R.donoDoItem('CC-275', raiz), 'c213b663', 'o começo da faixa entra nela')
+  assert.equal(R.donoDoItem('CC-281', raiz), null, 'logo depois do fim já não é da faixa')
+  assert.equal(R.donoDoItem('CC-297', raiz), '9bad715c', 'o número citado direto continua funcionando')
+  /* Rota LIVRE não dá dono: quem soltou a rota não segura mais nada dentro
+     dela, e tratar como dono devolveria "não é seu" para sempre. */
+  assert.equal(R.donoDoItem('CC-110', raiz), null, 'faixa em rota livre não reserva nada')
+
+  assert.equal(R.deOutraSessao('CC-277', raiz, '9bad715c'), true, 'CC-277 é da outra sessão')
+  assert.equal(R.deOutraSessao('CC-297', raiz, '9bad715c'), false, 'o meu próprio item continua sendo meu')
+  fs.rmSync(raiz, { recursive: true, force: true })
+  console.log('  ok   CC-301: a faixa no quadro de rotas também diz de quem é o item')
+}
+
+/* ── CC-305: caminho de outra máquina não pode virar caminho relativo ─────────
+   Medido em 22/08, e o defeito estava no ar: a federação traz o `cwd` dos
+   agentes do PC dele no formato do Windows (`D:\…\renanMarchon`). No Linux isso
+   não é caminho absoluto, é um nome de pasta com barras invertidas, e
+   `path.dirname` sobe direto para `.` na primeira volta.
+
+   Resultado: a busca achava `docs/ROADMAP.md` do PRÓPRIO PAINEL, e cinco
+   projetos do PC apareciam na tela Trabalho com os mesmos 6 cartões e as mesmas
+   145 fechadas, que eram do proj_controlcenter. Backlog inteiro atribuído a
+   quem não é dono, sem erro nenhum. */
+{
+  const R = await import(`./src/roadmap.mjs?t=${Date.now()}`)
+
+  assert.equal(R.deOutraPlataforma('D:\\Documentos\\Ti\\projetos\\CLIENTS\\renanMarchon'), true,
+    'caminho do Windows com barra invertida é de outra máquina')
+  assert.equal(R.deOutraPlataforma('C:/Users/lfeli/projetos/x'), true,
+    'letra de drive conta mesmo com barra normal, que é como o Node às vezes normaliza')
+  assert.equal(R.deOutraPlataforma('/home/claudedev/projetos/x'), false,
+    'caminho desta máquina não pode ser recusado')
+  assert.equal(R.deOutraPlataforma('docs'), false,
+    'caminho relativo legítimo continua valendo: a recusa é só para marca de outro sistema')
+
+  assert.equal(R.acharRoadmap('D:\\Documentos\\Ti\\projetos\\CLIENTS\\renanMarchon'), null,
+    'pasta do PC dele não pode achar roadmap NENHUM aqui, muito menos o do próprio painel')
+
+  /* O caso MISTO, achado pela sessão do Coderoom depois do primeiro conserto:
+     um `path.resolve` cola o caminho do Windows depois de uma pasta daqui, e o
+     resultado É absoluto, então passava pela primeira versão da guarda. A busca
+     subia um nível e entregava o roadmap DO PAINEL. Na tela isso vira 145
+     tarefas alheias; dentro do pacote de contexto de um agente, o mesmo
+     vazamento fica invisível. */
+  const misto = '/home/claudedev/projetos/proj_controlcenter/D:\\Documentos\\Ti\\x'
+  assert.equal(R.deOutraPlataforma(misto), true, 'a marca do Windows conta em qualquer posição, não só no começo')
+  assert.equal(R.acharRoadmap(misto), null, 'caminho misto não pode achar o roadmap do painel')
+  assert.equal(R.deOutraPlataforma('/tmp/x/C:/Users/y'), true, 'letra de drive no meio também é de outra máquina')
+
+  /* A prova negativa, que é a que importa: sem a guarda, o caminho do Windows
+     encontra o roadmap do painel. Se alguém remover a recusa, este assert cai. */
+  const achado = R.acharRoadmap('/home/claudedev/projetos/proj_controlcenter')
+  assert.ok(!achado || path.isAbsolute(achado),
+    'o que a busca devolve tem que ser caminho absoluto, senão foi resolvido contra a pasta do painel')
+  console.log('  ok   CC-305: pasta de outra máquina não herda o roadmap do painel')
+}
+
+/* ── CC-305, a mesma família no outro lado ───────────────────────────────────
+   A sessão do Coderoom consertou o próprio caminho depois do aviso, e pediu que
+   a prova entrasse aqui: até agora ela vivia num arquivo avulso, fora do gate.
+   Peça guardada só por arquivo que ninguém roda volta a quebrar, e este projeto
+   já tem o caso registrado (o catálogo de hooks).
+
+   O que ela mediu, e vale registrar porque muda a conclusão: a rota dela já
+   recusava caminho do Windows, mas **por acaso**. O `path.resolve` colava
+   `D:\…` na pasta de quem roda, e o que segurava era a checagem de base logo
+   depois. Sorte não é desenho: uma mudança futura que subisse diretórios
+   reabriria o buraco calada, que é exatamente o que aconteceu do meu lado. */
+{
+  const G = await import(`./src/gate.mjs?t=${Date.now()}`)
+  assert.equal(typeof G.deOutraMaquina, 'function', 'o gate precisa expor a recusa, senão ninguém pode conferi-la')
+
+  for (const caminho of [
+    'D:\\Documentos\\Ti\\projetos\\CLIENTS\\renanMarchon',
+    'D:/Documentos/Ti/projetos',
+    'c:/users/lfeli/projetos/x',
+    '\\\\servidor\\pasta',
+  ]) {
+    assert.equal(G.deOutraMaquina(caminho), true, `caminho de outra máquina tem que ser recusado: ${caminho}`)
+  }
+  for (const caminho of ['/home/claudedev/projetos/x', 'docs', './src']) {
+    assert.equal(G.deOutraMaquina(caminho), false, `caminho daqui não pode ser recusado: ${caminho}`)
+  }
+  console.log('  ok   CC-305: o gate também recusa pasta que não é desta máquina')
 }
