@@ -26,7 +26,7 @@
  *
  * ## O que passa
  *
- * - Qualquer coisa em `/tmp` — rascunho é onde script solto deve viver.
+ * - Qualquer coisa em `/tmp`, rascunho é onde script solto deve viver.
  * - Arquivo que não é do repositório.
  * - `>` e `>>` criando arquivo NOVO: aí não há conteúdo para perder, e o
  *   `Write` já cobre o caso quando importa.
@@ -63,7 +63,7 @@ if (!bruto.trim()) sair()
  *
  * O hook barrou o primeiro commit que falava dele mesmo: a mensagem citava
  * `sed -i` como exemplo, dentro de um `git commit -F - <<'MSG'`. Texto passado
- * por heredoc é **dado**, não comando — o shell não o executa, e tratá-lo como
+ * por heredoc é **dado**, não comando, o shell não o executa, e tratá-lo como
  * código transforma o guarda em censor de prosa.
  *
  * Vale para todo heredoc, não só o do commit: escrever um arquivo por `cat > x
@@ -79,7 +79,7 @@ const soEmTemp = (trecho) => /\/tmp\/|\$TMPDIR|mktemp/.test(trecho)
  * As três formas de sobrescrever texto sem ninguém ficar sabendo.
  *
  * Cada padrão vem com o nome do que ele faz, porque a mensagem tem que dizer
- * qual foi o comando — "use o Edit" sem apontar o trecho é conselho, não gate.
+ * qual foi o comando, "use o Edit" sem apontar o trecho é conselho, não gate.
  */
 const FORMAS = [
   { re: /\bsed\s+(-[a-zA-Z]*i|--in-place)\b[^\n|;]*/g, nome: 'sed -i' },
@@ -102,7 +102,7 @@ for (const { re, nome } of FORMAS) {
 if (!achados.length) sair()
 
 console.error(
-  'EDIÇÃO DE ARQUIVO POR SCRIPT — use o Edit, que falha em voz alta.\n\n'
+  'EDIÇÃO DE ARQUIVO POR SCRIPT, use o Edit, que falha em voz alta.\n\n'
   + achados.map((a) => `  ${a.nome}\n    ${a.trecho}`).join('\n')
   + '\n\nEm 16/08 isto trocou o título do CC-77 no ROADMAP e não trocou o corpo: o\n'
   + '`assert` do script falhou, o comando seguinte rodou assim mesmo, e o commit\n'

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CC-161 — o commit que precisa existir antes de trocar de máquina.
+ * CC-161, o commit que precisa existir antes de trocar de máquina.
  *
  * Regra dele, dita ao desenhar a federação em 18/08: *"sempre usando o git
  * como segurança, e sempre mantendo o commit antes de migrar de
@@ -11,14 +11,14 @@
  *
  * Dois sinais, e os dois são silenciosos sem este aviso:
  *
- * 1. **árvore suja** — o que está aqui não chega lá;
- * 2. **HEAD atrás do remoto** — o que está lá não chegou aqui, e continuar
+ * 1. **árvore suja**, o que está aqui não chega lá;
+ * 2. **HEAD atrás do remoto**, o que está lá não chegou aqui, e continuar
  *    editando por cima disso é como se produz conflito.
  *
  * `Stop`, e AVISA sem travar, pelo mesmo motivo do `diario-guard`: commitar é
  * coisa do fim do turno, e travar aqui criaria laço. Some-se a regra dele que
  * vence qualquer automação: *"nunca commitar sem que eu peça explicitamente"*.
- * Este hook nunca commita nada, e nunca manda commitar — ele conta o que a
+ * Este hook nunca commita nada, e nunca manda commitar, ele conta o que a
  * outra máquina não vai enxergar, e quem decide é ele.
  *
  * Nada de rede: `git status` e a contagem contra o remoto saem do que o `git
@@ -96,7 +96,7 @@ if (naoEmpurrados) linhas.push(`  · ${naoEmpurrados} commit(s) feitos aqui e ai
 if (atras) linhas.push(`  · ${atras} commit(s) no remoto que esta máquina ainda não puxou`)
 
 process.stderr.write(
-  `O QUE ESTÁ AQUI A OUTRA MÁQUINA NÃO VÊ — ${dirname(raiz) ? raiz.split(/[\\/]/).pop() : raiz}\n\n`
+  `O QUE ESTÁ AQUI A OUTRA MÁQUINA NÃO VÊ, ${dirname(raiz) ? raiz.split(/[\\/]/).pop() : raiz}\n\n`
   + `${linhas.join('\n')}\n\n`
   + 'O git é o transporte entre o PC e a VPS: o painel federado mostra os '
   + 'agentes, nunca a árvore suja. Sem commit, trabalho feito aqui some da '

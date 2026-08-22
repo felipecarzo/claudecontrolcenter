@@ -4,12 +4,12 @@
  *
  * ## A pergunta dele, em 16/08
  *
- * > "'conferir o resultado, não o assert' — qual hook nos está garantindo a
+ * > "'conferir o resultado, não o assert', qual hook nos está garantindo a
  * > revisão e teste?"
  *
  * A resposta honesta era **nenhum**. Havia onze hooks, e nenhum verificava se o
  * `npm test` tinha rodado depois de mexer no código. O gate existia, mas quem
- * decidia rodá-lo era eu, no mesmo turno em que escrevia o código — que é
+ * decidia rodá-lo era eu, no mesmo turno em que escrevia o código, que é
  * exatamente o arranjo que o framework inteiro existe para não ter.
  *
  * ## O que ele faz
@@ -28,7 +28,7 @@
  * ## O que NÃO conta como editar código
  *
  * `docs/**`, `.md` e o próprio ROADMAP. Escrever documentação não pode obrigar a
- * rodar suíte — hook chato vira hook desligado, que é pior que não ter hook.
+ * rodar suíte, hook chato vira hook desligado, que é pior que não ter hook.
  *
  * Falha ABERTA, uma volta só.
  */
@@ -115,7 +115,7 @@ if (ultimoGate > ultimaEdicao) sair() // rodou o gate depois da última mudança
 const nunca = ultimoGate < 0
 
 console.error(
-  `${nunca ? 'CÓDIGO EDITADO E O GATE NÃO RODOU' : 'O GATE RODOU ANTES DA ÚLTIMA EDIÇÃO'} — rode antes de encerrar.\n\n`
+  `${nunca ? 'CÓDIGO EDITADO E O GATE NÃO RODOU' : 'O GATE RODOU ANTES DA ÚLTIMA EDIÇÃO'}, rode antes de encerrar.\n\n`
   + `Última mudança de código neste turno: ${ondeEditou}\n`
   + (nunca ? '' : 'O `npm test` passou, e DEPOIS o código mudou. Verde de um estado que\n'
     + 'não existe mais: foi assim que a regressão do `4f78264` ficou escondida.\n')

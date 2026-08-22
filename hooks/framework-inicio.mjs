@@ -13,7 +13,7 @@
  *
  * ## Por que injetar em vez de bloquear
  *
- * `SessionStart` não tem como recusar nada — não existe ferramenta para barrar.
+ * `SessionStart` não tem como recusar nada, não existe ferramenta para barrar.
  * O que ele faz é colocar contexto na mesa. Aqui isso basta, porque a trava já
  * existe do outro lado: se eu ignorar a pergunta e for escrever código, o
  * `framework-guard` me recusa. Um conduz, o outro segura.
@@ -57,7 +57,7 @@ if (!estado || estado.ligado === false) sair()
 const modo = F.modoDe(estado)
 const tom = F.tomDe(estado)
 const linhas = [
-  `FRAMEWORK ligado neste projeto — ${F.resumo(estado.metodo, estado)}`,
+  `FRAMEWORK ligado neste projeto, ${F.resumo(estado.metodo, estado)}`,
   `Modo ${modo.titulo}: ${modo.explica}`,
   `Tom ${tom}: ${F.TONS[tom]}`,
   /* A regra que ele chamou de "segredo master do framework", e que eu quebrei
@@ -67,7 +67,7 @@ const linhas = [
 
      A diferença não é estética: em prosa a pergunta fica no fim de um texto
      que ele pode não terminar de ler, e a resposta vira mais prosa. Na
-     ferramenta ela é uma tela, com as opções medidas e o tradeoff visível —
+     ferramenta ela é uma tela, com as opções medidas e o tradeoff visível,
      que é o que ele pediu desde o começo: "no mouse e poucas teclas resolver
      problemas complexos". */
   'REGRA: pergunta decisiva vai no AskUserQuestion, nunca em prosa no meio da '
@@ -80,14 +80,14 @@ const linhas = [
  * de verdade em `descida-guard.mjs`, no Stop, e não precisa deste texto.
  */
 if (modo.padrao) {
-  linhas.push('', `PADRÃO DE TRABALHO — ${modo.padrao.titulo}:`, modo.padrao.resumo)
+  linhas.push('', `PADRÃO DE TRABALHO, ${modo.padrao.titulo}:`, modo.padrao.resumo)
 }
 
 /* O fluxo do modo, quando ele define um. No restritivo é o que dá mecanismo ao
    modo: sem isto, ele é só um rótulo (dívida registrada em produto/FRAMEWORK). */
 if (modo.fluxo) {
   linhas.push(
-    `FLUXO deste modo — pedido novo: ${modo.fluxo.pedidoNovo}.`,
+    `FLUXO deste modo, pedido novo: ${modo.fluxo.pedidoNovo}.`,
     `Só pare para: ${modo.fluxo.paradaLegitima}.`,
     `NÃO pare para: ${modo.fluxo.naoPara}.`,
   )
@@ -113,7 +113,7 @@ if (modo.trava) {
  * "Pra fora" é o roadmap, não a próxima tarefa: as FRENTES abertas, na mesma
  * ordem de importância que a aba do painel já usa (`ordenar()`), para as duas
  * telas nunca discordarem sobre o que é prioridade. Sem roadmap, sem
- * sugestão — silêncio, porque inventar frente sem fonte seria a mesma moldura
+ * sugestão, silêncio, porque inventar frente sem fonte seria a mesma moldura
  * que o `AskUserQuestion` existe para evitar em outro lugar deste arquivo.
  */
 if (modo.sugereFrentes) {
@@ -122,9 +122,9 @@ if (modo.sugereFrentes) {
     const mapa = R.lerRoadmap(raiz)
     const abertas = R.ordenar(raiz, mapa).porImportancia.filter((f) => f.estado !== 'feito')
     if (abertas.length) {
-      linhas.push('', `SUGIRA, NÃO IMPONHA — frentes abertas neste projeto, da mais para a menos importante:`)
+      linhas.push('', `SUGIRA, NÃO IMPONHA, frentes abertas neste projeto, da mais para a menos importante:`)
       for (const f of abertas.slice(0, 5)) {
-        const marca = f.citacao ? ` — nas palavras dele: "${f.citacao}"` : ''
+        const marca = f.citacao ? `, nas palavras dele: "${f.citacao}"` : ''
         linhas.push(`  - [${f.grupo}] ${f.titulo}${f.itens ? ` (${f.itens} item(ns))` : ''}${marca}`)
       }
       linhas.push(
@@ -138,7 +138,7 @@ if (modo.sugereFrentes) {
 
 const p = F.proximaPergunta(estado.metodo, estado)
 if (p) {
-  linhas.push('', `PERGUNTE AO FELIPE ANTES DE SEGUIR — "${p.pergunta}"`)
+  linhas.push('', `PERGUNTE AO FELIPE ANTES DE SEGUIR, "${p.pergunta}"`)
   linhas.push(`(${p.ajuda})`)
   linhas.push('Use AskUserQuestion com estas opções, que vêm do catálogo do framework:')
   for (const o of p.opcoes) linhas.push(`  - ${o.label}: ${o.descricao}`)

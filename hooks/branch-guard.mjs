@@ -14,7 +14,7 @@
  * `git checkout` na pasta compartilhada troca os arquivos debaixo do outro
  * agente no meio de uma edição.
  *
- * É essa a família de comandos que este hook barra — os que **destroem estado**
+ * É essa a família de comandos que este hook barra, os que **destroem estado**
  * de quem não está olhando:
  *
  * | comando | o que ele apaga |
@@ -89,11 +89,11 @@ if (troca && !/\bcheckout\s+.*--\s/.test(cmd)) {
   if (p && (p.sujos || p.novos)) {
     const atual = (git(['branch', '--show-current']) || '').trim() || 'HEAD solta'
     barrar(
-      `TROCAR DE BRANCH COM ${p.sujos + p.novos} ARQUIVO(S) SEM COMMIT — bloqueado.`,
+      `TROCAR DE BRANCH COM ${p.sujos + p.novos} ARQUIVO(S) SEM COMMIT, bloqueado.`,
       `Pasta:  ${cwd}\nAgora:  ${atual}\nDestino: ${troca[1]}\n`
       + `Pendente: ${p.sujos} modificado(s), ${p.novos} novo(s)\n\n`
       + 'O git guarda UMA cópia dos arquivos por pasta. Trocar de branch aqui\n'
-      + 'reescreve o que está no disco — e se outro agente estiver editando esta\n'
+      + 'reescreve o que está no disco, e se outro agente estiver editando esta\n'
       + 'mesma pasta, o arquivo dele muda no meio da frase.\n\n'
       + 'O caminho certo é uma pasta por agente:\n\n'
       + '    node cc.mjs oficina criar <nome>\n\n'
@@ -116,7 +116,7 @@ if (remove) {
   })()
   if (sujo && !/--force|-f\b/.test(cmd)) {
     barrar(
-      `A OFICINA TEM ${sujo} ARQUIVO(S) SEM COMMIT — remoção bloqueada.`,
+      `A OFICINA TEM ${sujo} ARQUIVO(S) SEM COMMIT, remoção bloqueada.`,
       `Pasta: ${alvo}\n\n`
       + 'Remover a worktree apaga a pasta. O que não foi commitado não está em\n'
       + 'lugar nenhum depois disso, e pode ser trabalho de outro agente que ainda\n'
@@ -140,7 +140,7 @@ if (apaga) {
       return achou
     }, null))
     barrar(
-      `A BRANCH "${alvo}" ESTÁ EM USO POR UMA OFICINA — não dá para apagar.`,
+      `A BRANCH "${alvo}" ESTÁ EM USO POR UMA OFICINA, não dá para apagar.`,
       `Oficina: ${pasta}\n\n`
       + 'Alguém pode estar trabalhando nela agora. Feche a oficina primeiro:\n\n'
       + `    node cc.mjs oficina fechar ${alvo}\n\n`
@@ -155,7 +155,7 @@ if (/\bgit\s+reset\s+--hard\b/.test(cmd) || /\bgit\s+clean\s+-[a-z]*f/.test(cmd)
   const p = pendencias()
   if (p && (p.sujos || p.novos)) {
     barrar(
-      `APAGAR ${p.sujos + p.novos} ARQUIVO(S) SEM COMMIT — bloqueado.`,
+      `APAGAR ${p.sujos + p.novos} ARQUIVO(S) SEM COMMIT, bloqueado.`,
       `Pasta: ${cwd}\nPendente: ${p.sujos} modificado(s), ${p.novos} novo(s)\n\n`
       + 'Este comando joga fora trabalho que não está em lugar nenhum, e a pasta\n'
       + 'pode ser de outro agente. A regra do Felipe é confirmar ação destrutiva\n'

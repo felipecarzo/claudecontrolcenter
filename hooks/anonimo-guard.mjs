@@ -20,7 +20,7 @@
  * Todo hook daqui libera quando algo dá errado, porque travar por bug próprio é
  * o jeito mais rápido de ser desligado. **Este é o oposto, e de propósito:** se
  * o mascaramento falhar, a leitura é BLOQUEADA. Falhar aberto aqui significa o
- * dado pessoal passar em claro, e esse erro não tem desfazer — o conteúdo já
+ * dado pessoal passar em claro, e esse erro não tem desfazer: o conteúdo já
  * estaria no contexto do modelo.
  *
  * A exceção que confirma: se o projeto não tem o modo ligado, ele nem entra em
@@ -88,7 +88,7 @@ if (!deveMascarar(alvo)) liberar()
 if (ehOpaco(alvo)) {
   bloquear(`ANONIMIZAÇÃO: ${alvo} é um formato binário (PDF, DOCX) e o mascarador de texto não enxerga o conteúdo dele.
 
-Com o modo Pierre ligado, ler esse arquivo em claro está bloqueado — dizer que
+Com o modo Pierre ligado, ler esse arquivo em claro está bloqueado: dizer que
 protegeu sem ter protegido seria pior que não proteger.
 
 Saídas: converter para texto antes (e aí o mascaramento funciona), ou desligar o
@@ -107,5 +107,5 @@ e isso não tem desfazer.`)
 
 trocarPor(r.copia, `Este arquivo foi anonimizado antes de você ler (modo Pierre).
 ${r.quantos} valor(es) mascarado(s), dos tipos: ${r.tipos.join(', ') || 'nenhum'}.
-${r.duvidosos ? `${r.duvidosos} com confiança baixa — trate as etiquetas com cuidado.\n` : ''}Fale sempre pelas etiquetas (<PESSOA_1>, <EMPRESA_2>): o Felipe vê os nomes reais
+${r.duvidosos ? `${r.duvidosos} com confiança baixa, trate as etiquetas com cuidado.\n` : ''}Fale sempre pelas etiquetas (<PESSOA_1>, <EMPRESA_2>): o Felipe vê os nomes reais
 na tela dele, porque o mapa fica na máquina e nunca sai. Mapa: ${r.id}.`)

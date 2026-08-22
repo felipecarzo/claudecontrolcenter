@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Boa prática pedida pelo Felipe em 18/08: *"seria bom termos isso como boa
- * prática, usando hook, não gate"* — depois de perguntar se os consertos
+ * prática, usando hook, não gate"*, depois de perguntar se os consertos
  * ficam anotados em algum lugar. A resposta já era sim (ROADMAP e diário),
  * mas só porque eu lembrava. Isto tira a memória da equação.
  *
@@ -10,7 +10,7 @@
  * turno). Então avisa, e quem decide é quem lê.
  *
  * O sinal: o turno editou código (fora de `docs/`) e não tocou no diário de
- * hoje. Não distingue "foi conserto" de "foi funcionalidade nova" — a
+ * hoje. Não distingue "foi conserto" de "foi funcionalidade nova", a
  * convenção deste projeto já pede diário pros dois, não só pro conserto.
  */
 import { existsSync, readFileSync } from 'node:fs'
@@ -33,7 +33,7 @@ if (dados?.stop_hook_active) liberar()
 const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
 if (cfg?.hookEnabled && !cfg.hookEnabled('diario-guard')) liberar()
 
-/** Sobe a árvore procurando `docs/diario`. Projeto sem a pasta passa direto —
+/** Sobe a árvore procurando `docs/diario`. Projeto sem a pasta passa direto,
  *  a convenção é opt-in, do jeito que o resto do projeto já trata `docs/`. */
 function acharDocs(dir) {
   let atual = resolve(dir || process.cwd())
@@ -62,7 +62,7 @@ const turno = corte >= 0 ? cauda.slice(corte) : cauda
 
 /* Os `file_path` (Edit/Write/MultiEdit) e `notebook_path` (NotebookEdit)
    citados no turno. Regex sobre o texto bruto do `.jsonl`, no mesmo espírito
-   das outras travas que leem transcrito sem fazer parse de linha por linha —
+   das outras travas que leem transcrito sem fazer parse de linha por linha,
    mais barato, e o pior caso é um falso negativo (não avisa), nunca travar. */
 const RE_ALVO = /"(?:file_path|notebook_path)"\s*:\s*"((?:[^"\\]|\\.)*)"/g
 const alvos = new Set()
@@ -83,11 +83,11 @@ const diarioDeHoje = `docs/diario/${hoje}.md`
 if (relativos.includes(diarioDeHoje)) liberar() // já registrado neste mesmo turno
 
 process.stderr.write(
-  `CÓDIGO MEXIDO SEM PASSAR PELO DIÁRIO — ${forDoDocs.length} arquivo(s) fora de docs/ neste turno:\n\n`
+  `CÓDIGO MEXIDO SEM PASSAR PELO DIÁRIO, ${forDoDocs.length} arquivo(s) fora de docs/ neste turno:\n\n`
   + forDoDocs.slice(0, 6).map((r) => `  · ${r}`).join('\n')
   + (forDoDocs.length > 6 ? `\n  … e mais ${forDoDocs.length - 6}` : '')
   + `\n\n${diarioDeHoje} não foi tocado neste turno.\n\n`
-  + 'Não trava — o fim do turno é exatamente quando o diário se escreve, e '
+  + 'Não trava, o fim do turno é exatamente quando o diário se escreve, e '
   + 'travar aqui criaria laço. Só avisa: se o que mudou vale registro, este é '
   + 'o lugar; se já foi registrado em turno anterior do mesmo dia, ignore.\n',
 )

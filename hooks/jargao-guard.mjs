@@ -100,7 +100,7 @@ const unicos = [...new Map(achados.map((a) => [a.termo.toLowerCase(), a])).value
 if (unicos.length <= LIMITE) sair()
 
 console.error(
-  `${unicos.length} NOMES INTERNOS NA CONVERSA — ele não tem como lembrar disso.\n\n`
+  `${unicos.length} NOMES INTERNOS NA CONVERSA. Ele não tem como lembrar disso.\n\n`
   + unicos.slice(0, 10).map((a) => `  · ${a.termo}  (${a.o})`).join('\n')
   + '\n\nRegra dele, 16/08: "eu não lembro o que que é reporte guard (…) o meu\n'
   + 'cérebro não consegue absorver tudo". O problema não é o tamanho da resposta,\n'
@@ -109,7 +109,7 @@ console.error(
   + '  em vez de  "o reporte-guard devolve quando falta `frente` no meta.json"\n'
   + '  escreva    "se eu trabalhar e não anotar no painel, o sistema me obriga\n'
   + '              a voltar e anotar antes de encerrar"\n\n'
-  + 'O nome fica no código, no backlog e no diário — lugares onde ele PROCURA.\n'
+  + 'O nome fica no código, no backlog e no diário, lugares onde ele PROCURA.\n'
   + 'Na conversa ele só passa os olhos.\n\n'
   + 'Precisa mesmo do nome? Ele vem depois do que faz, entre parênteses e uma\n'
   + 'vez só. Bloco de código não conta: ali o nome exato é obrigatório.\n\n'

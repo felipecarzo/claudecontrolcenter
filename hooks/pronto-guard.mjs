@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CC-97 — "feito" precisa de prova, não de opinião minha.
+ * CC-97, "feito" precisa de prova, não de opinião minha.
  *
  * ## O que ele pediu, em 16/08
  *
@@ -8,7 +8,7 @@
  * > todo o projeto"
  *
  * E, ao escolher como cobrar: **hook no fim do turno**, com a razão dita por
- * ele — *"gate nao, hook, gate nunca funcionou"*.
+ * ele, *"gate nao, hook, gate nunca funcionou"*.
  *
  * ## O que ele cobra
  *
@@ -23,7 +23,7 @@
  *
  * `pronto` é escrito antes ("como se sabe que acabou"), `prova` depois ("o que
  * apareceu"). Juntar os dois num campo só faria promessa e resultado terem a
- * mesma cara — e é exatamente essa diferença que ele não consegue auditar hoje:
+ * mesma cara, e é exatamente essa diferença que ele não consegue auditar hoje:
  *
  * > "você diz que fez. eu confio, e no momento seguinte eu descubro que não
  * > verdade o que você fez não eh exatamente o que eu pedi"
@@ -31,7 +31,7 @@
  * ## Por que compara com o estado do turno anterior
  *
  * Cobrar todo to-do fechado faria o hook reclamar de tarefa que ele mesmo já
- * deixou passar ontem, para sempre. O que interessa é o que **mudou agora** —
+ * deixou passar ontem, para sempre. O que interessa é o que **mudou agora**,
  * e a foto do começo do turno vem do `historico`, que o painel já mantém.
  *
  * Falha ABERTA, uma volta só.
@@ -89,7 +89,7 @@ if (arquivo) {
     const nesteTurno = semProva.filter((t) => turno.includes(t.text.slice(0, 30)))
     if (nesteTurno.length) recentes = nesteTurno
     else sair() // nenhum fechou agora: são pendências antigas, não cobra de novo
-  } catch { /* sem transcrito, cobra todas — errar para o lado de verificar mais */ }
+  } catch { /* sem transcrito, cobra todas, errar para o lado de verificar mais */ }
 }
 
 console.error(
@@ -99,7 +99,7 @@ console.error(
   + '  · `--prova` = a evidência, não a intenção. "npm test verde, 17 telas em\n'
   + '    390px" é prova; "implementado" não é.\n\n'
   + 'Regra dele, 16/08: "nao temos exatamente uma definição de pronto, e isso\n'
-  + 'quebra praticamente todo o projeto". Sem prova, "feito" é opinião minha —\n'
+  + 'quebra praticamente todo o projeto". Sem prova, "feito" é opinião minha,\n'
   + 'e o que ele mais teme é descobrir depois que não era bem isso.\n\n'
   + 'Não conseguiu verificar? Diga isso na prova. "não consegui conferir, falta\n'
   + 'o painel reiniciar" é uma resposta honesta; silêncio não é.\n\n'

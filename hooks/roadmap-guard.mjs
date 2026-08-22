@@ -5,7 +5,7 @@
  * Roda no `Stop` e avisa quando há item concluído parado no ROADMAP. A regra
  * existe escrita há semanas, na linha 3 do próprio arquivo ("Só o que está
  * aberto. Concluído sai daqui e vira linha no diário"), e não foi seguida por
- * ninguém — inclusive por mim, dez vezes em 14/08, quando cada CC fechado virou
+ * ninguém, inclusive por mim, dez vezes em 14/08, quando cada CC fechado virou
  * três parágrafos de "medido em 14/08..." dentro do arquivo. O ROADMAP chegou a
  * 993 linhas com quase metade descrevendo passado.
  *
@@ -57,7 +57,7 @@ try { texto = readFileSync(arquivo, 'utf8') } catch { liberar() }
 const feitas = texto.split(/\r?\n/)
   .filter((l) => /^###\s/.test(l) && /✅/.test(l))
   /* Tira o selo e a data, e MANTÉM o título. A versão anterior cortava tudo a
-     partir do ✅, e como ele escreve `### CC-95 ✅ 16/08 — o agente reporta o
+     partir do ✅, e como ele escreve `### CC-95 ✅ 16/08, o agente reporta o
      trabalho`, o aviso saía como uma lista de códigos secos: "CC-01, CC-03".
      É a queixa dele sobre cartão sem contexto, do lado de dentro da trava:
      "os cards nunca fazem sentido (…) não tem o contexto de que é na verdade".

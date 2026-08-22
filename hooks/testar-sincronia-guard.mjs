@@ -5,7 +5,7 @@
  * `.mjs` e não `.sh` como os outros testes de hook, e o motivo é medido: o
  * caminho de repositório no Windows tem barra invertida, e montar o JSON de
  * entrada dentro do shell transforma `\U` e `\5` em escape inválido. O JSON
- * chega quebrado, o hook cai no `catch` e sai calado — e o teste registra um
+ * chega quebrado, o hook cai no `catch` e sai calado, e o teste registra um
  * falso "passou" enquanto o hook nunca chegou a rodar. Foi exatamente o que
  * aconteceu na primeira tentativa de provar isto.
  *
@@ -27,8 +27,8 @@ const falhas = []
 
 const ok = (nome, condicao, detalhe = '') => {
   if (condicao) { passaram++; console.log(`  ok   ${nome}`) } else {
-    falhas.push(`${nome}${detalhe ? ` — ${detalhe}` : ''}`)
-    console.log(`  FALHA ${nome}${detalhe ? ` — ${detalhe}` : ''}`)
+    falhas.push(`${nome}${detalhe ? `, ${detalhe}` : ''}`)
+    console.log(`  FALHA ${nome}${detalhe ? `, ${detalhe}` : ''}`)
   }
 }
 

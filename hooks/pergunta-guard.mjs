@@ -11,7 +11,7 @@
  * > perguntinha na tela? Aquilo é a regra, o framework tem que usar aquilo."
  *
  * Na primeira vez eu consertei com uma **instrução** no injetor do
- * `SessionStart` — e caí de novo vinte mensagens depois. O erro do conserto é o
+ * `SessionStart`, e caí de novo vinte mensagens depois. O erro do conserto é o
  * que eu mesmo tinha escrito na análise horas antes: instrução escrita não me
  * segura, e o que é dito no começo da sessão compete com tudo que vem depois.
  *
@@ -19,12 +19,12 @@
  *
  * Escrevi que "hook não consegue barrar prosa". Está errado. **O `Stop` recebe o
  * turno inteiro e pode me mandar de volta.** O que estava registrado é que exit
- * 2 no `Stop` cria laço — verdade num gate de documentação, onde não há o que
+ * 2 no `Stop` cria laço, verdade num gate de documentação, onde não há o que
  * fazer diferente na segunda passada. Aqui há: refazer a pergunta na ferramenta.
  *
  * ## O que ele NÃO faz, e é a dúvida que o Felipe levantou
  *
- * Não obriga a perguntar. Ele não olha se existe pergunta — olha se a pergunta
+ * Não obriga a perguntar. Ele não olha se existe pergunta, olha se a pergunta
  * **saiu em prosa**. Executar e reportar não dispara nada.
  *
  * ## As três travas contra virar hook chato
@@ -76,7 +76,7 @@ const fim = semCodigo.trim().split(/\n\s*\n/).slice(-2).join('\n')
  * Perguntas que pedem decisão dele.
  *
  * A lista é curta e específica de propósito: cada padrão a mais é uma chance de
- * barrar pergunta retórica, e **hook chato vira hook desligado** — que é pior
+ * barrar pergunta retórica, e **hook chato vira hook desligado**, que é pior
  * que não ter hook.
  */
 const DECISIVAS = [
@@ -102,11 +102,11 @@ try {
 const ultimaLinha = fim.split('\n').filter(Boolean).pop() || ''
 
 console.error(
-  'PERGUNTA DECISIVA EM PROSA — refaça no AskUserQuestion.\n\n'
+  'PERGUNTA DECISIVA EM PROSA, refaça no AskUserQuestion.\n\n'
   + 'A resposta termina perguntando algo que muda o que será feito:\n'
   + `  "${ultimaLinha.slice(0, 140)}"\n\n`
   + 'Regra dele, em 15/08: "se é pergunta, vira caixa de pergunta". O motivo não\n'
-  + 'é estético — em prosa a pergunta fica no fim de um texto que ele pode não\n'
+  + 'é estético, em prosa a pergunta fica no fim de um texto que ele pode não\n'
   + 'terminar de ler, e a resposta vira mais prosa. Na ferramenta é uma tela, com\n'
   + 'as opções e o tradeoff visíveis, resolvida no toque.\n\n'
   + 'Chame o AskUserQuestion com as opções que você já tem na cabeça, incluindo a\n'

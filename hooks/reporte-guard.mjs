@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CC-95 — o agente reporta no painel, e é cobrado por isso.
+ * CC-95, o agente reporta no painel, e é cobrado por isso.
  *
  * ## O buraco, medido em 16/08
  *
@@ -17,7 +17,7 @@
  * Ele existe desde 08/08 e cobra to-do **aberto** na entrega. Só que ele só
  * dispara **quando existem to-dos**: uma lista vazia passa como se fosse
  * entrega limpa. **Ausência de registro e trabalho terminado tinham a mesma
- * cara**, e é a mesma família de defeito que apareceu três vezes hoje — a
+ * cara**, e é a mesma família de defeito que apareceu três vezes hoje, a
  * ferramenta afirmando mais do que sabe.
  *
  * Este hook cobre o outro lado: não "você deixou to-do aberto?", e sim "você
@@ -26,7 +26,7 @@
  * ## Quando ele cobra, e por que só aí
  *
  * Só quando o turno **mexeu em código ou fechou item do ROADMAP**. Conversa,
- * pergunta e leitura não geram trabalho para o painel mostrar — cobrar ali
+ * pergunta e leitura não geram trabalho para o painel mostrar, cobrar ali
  * transformaria o hook em ruído, e hook chato vira hook desligado.
  *
  * Falha ABERTA, uma volta só.
@@ -91,13 +91,13 @@ if (!meta || !Object.keys(meta).length) {
   try {
     const M = await import(urlDeModulo(AQUI, '../src/metaSessao.mjs'))
     meta = M.lerMetaSessao(id) || {}
-  } catch { /* fica vazio, e aí o hook cobra — que é o certo */ }
+  } catch { /* fica vazio, e aí o hook cobra, que é o certo */ }
 }
 
 const faltam = []
-if (!String(meta.subject || '').trim()) faltam.push('`subject` — o problema em 3 a 6 palavras, não o comando')
-if (!String(meta.frente || '').trim()) faltam.push('`frente` — a seção do docs/ROADMAP.md onde este trabalho entra')
-if (!(meta.todos || []).length) faltam.push('`todos` — a lista do que esta tarefa tem que fechar')
+if (!String(meta.subject || '').trim()) faltam.push('`subject`, o problema em 3 a 6 palavras, não o comando')
+if (!String(meta.frente || '').trim()) faltam.push('`frente`, a seção do docs/ROADMAP.md onde este trabalho entra')
+if (!(meta.todos || []).length) faltam.push('`todos`, a lista do que esta tarefa tem que fechar')
 
 /* ===================== CC-221: existir não basta, tem que ser verdade =====================
  *
@@ -134,7 +134,7 @@ if (assunto) {
   const eco = a.length >= 12 && p.length >= 12
     && (p.startsWith(a.slice(0, 24)) || a.startsWith(p.slice(0, 24)))
   if (eco) {
-    faltam.push('`subject` — hoje ele é o começo do que ELE digitou, não um resumo do trabalho. Escreva com as SUAS palavras o problema que está sendo resolvido')
+    faltam.push('`subject`, hoje ele é o começo do que ELE digitou, não um resumo do trabalho. Escreva com as SUAS palavras o problema que está sendo resolvido')
   }
 
   const carimbo = meta.subjectEm ? Date.parse(meta.subjectEm) : NaN
@@ -143,14 +143,14 @@ if (assunto) {
      próxima vez que o agente reescrever. */
   if (!eco && Number.isFinite(carimbo) && ultimo && ultimo.em > carimbo) {
     const min = Math.round((ultimo.em - carimbo) / 60000)
-    faltam.push(`\`subject\` — está mais velho que o último pedido dele (${min} min). O painel descreve o trabalho anterior. Reescreva para o que está sendo feito AGORA`)
+    faltam.push(`\`subject\`, está mais velho que o último pedido dele (${min} min). O painel descreve o trabalho anterior. Reescreva para o que está sendo feito AGORA`)
   }
 }
 
 if (!faltam.length) sair()
 
 console.error(
-  'TRABALHO SEM REGISTRO NO PAINEL — o painel está mostrando vazio.\n\n'
+  'TRABALHO SEM REGISTRO NO PAINEL, o painel está mostrando vazio.\n\n'
   + 'Este turno mexeu em código ou no ROADMAP, e falta:\n\n'
   + faltam.map((f) => `  · ${f}`).join('\n')
   + '\n\n    node cc.mjs set \'{"subject":"...","frente":"...","todos":[{"text":"...","done":false}]}\'\n\n'
@@ -158,7 +158,7 @@ console.error(
   + '  · fechar um item depois: `node cc.mjs done "texto da tarefa"`\n\n'
   + 'Por que isto é cobrado: em 16/08 um dia inteiro fechou dez itens do ROADMAP\n'
   + 'com ZERO to-dos no painel. O `cc-check` não pegou porque ele cobra to-do\n'
-  + 'ABERTO, e lista vazia passava como entrega limpa — ausência de registro e\n'
+  + 'ABERTO, e lista vazia passava como entrega limpa, ausência de registro e\n'
   + 'trabalho terminado tinham a mesma cara.\n\n'
   + 'A consequência, nas palavras dele: "eu acabo sendo empurrado pro vibecoding\n'
   + 'pq a minha cabeça nao consegue processar". O painel existe para ele não\n'

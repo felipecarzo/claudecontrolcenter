@@ -97,7 +97,7 @@ console.error(
   + '    ---------------------------------- // resumo // ----------------------------------\n\n'
   + 'Acima dela: como você chegou lá, o que mediu, o que descartou.\n'
   + 'Abaixo: o que mudou para ele, e o que ele precisa fazer.\n\n'
-  + 'Ele pediu isto em 16/08 e você implementou no mesmo dia — e não usou na\n'
+  + 'Ele pediu isto em 16/08 e você implementou no mesmo dia, sem usar na\n'
   + 'resposta seguinte. As palavras dele: "eu te peço uma coisa, voce ignora e\n'
   + 'depois fala que foi erro humano pq eu nao pedi o suficiente".\n\n'
   + 'Isto NÃO é para cortar o raciocínio: ele lê o raciocínio, e disse isso na\n'

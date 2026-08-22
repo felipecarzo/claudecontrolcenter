@@ -17,7 +17,7 @@
  *
  * `SessionStart` não tem como recusar nada, e aqui isso é suficiente: quem
  * cobra é a outra metade (`tarefas-fim.mjs`), no fim da sessão. Um mostra, o
- * outro segura — o mesmo par de `framework-inicio` e `framework-guard`.
+ * outro segura, o mesmo par de `framework-inicio` e `framework-guard`.
  *
  * ## O que ele NÃO faz, de propósito
  *
@@ -31,7 +31,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 /* CC-167: `import()` no Windows precisa de URL, não de caminho. Com `D:\...`
    ele lança e, como a chamada está num `.catch`, o módulo sumiria sem erro
-   visível — foi assim que 31 hooks ficaram calados sem ninguém notar. */
+   visível, foi assim que 31 hooks ficaram calados sem ninguém notar. */
 const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
@@ -55,7 +55,7 @@ let tarefas = []
 try {
   /* A lista completa junta o arquivo dele, o que os agentes pediram e o backlog
      parado esperando decisão dele. Sem os jobs ela ainda funciona, só mais
-     pobre — e uma leitura de jobs que falha não pode calar a lista inteira.
+     pobre, e uma leitura de jobs que falha não pode calar a lista inteira.
      `todosOsJobs()` e não `readJobs()`: ver CC-124 no `sessoes.mjs`. */
   const jobs = S?.todosOsJobs ? S.todosOsJobs() : []
   tarefas = M.tudo(jobs).filter((t) => !t.feito)
@@ -124,7 +124,7 @@ if (tarefas.length > 8) linhas.push(`  ... e mais ${tarefas.length - 8}. Lista i
 linhas.push(
   '',
   'O que fazer com isso: MENCIONE as que interessam ao trabalho de hoje, no',
-  'começo da conversa, e siga. Não execute por ele e não marque como feita —',
+  'começo da conversa, e siga. Não execute por ele e não marque como feita,',
   'só ele fecha tarefa dele (`cc meu feito <id>`).',
   'Se ele disser que já resolveu alguma, feche-a; se ele ignorar, não insista.',
 )

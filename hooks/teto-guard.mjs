@@ -100,7 +100,7 @@ const fechadas = Object.entries(meta.feitoEm || {})
 if (fechadas.length <= TETO) sair()
 
 console.error(
-  `${fechadas.length} ENTREGAS SEM ELE VER — pare e mostre.\n\n`
+  `${fechadas.length} ENTREGAS SEM ELE VER. Pare e mostre.\n\n`
   + fechadas.slice(0, 8).map((t) => `  ✓ ${t}`).join('\n')
   + `\n\nO teto é ${TETO} por vez. Em 16/08 fechei nove tarefas de uma vez e ele disse:\n`
   + '"o meu cérebro não consegue absorver tudo (…) eu acabo virando uma pessoa\n'
@@ -108,7 +108,7 @@ console.error(
   + 'Velocidade sem conferência não é produtividade, é dívida: cada entrega que\n'
   + 'ele não acompanhou vira uma surpresa quando quebrar.\n\n'
   + 'Encerre AGORA mostrando o que essas entregas mudam para ele, em cinco linhas.\n'
-  + 'O que sobrou continua no backlog e não se perde — ele retoma quando responder.\n\n'
+  + 'O que sobrou continua no backlog e não se perde: ele retoma quando responder.\n\n'
   + 'Esta é a única volta: a próxima passa.',
 )
 process.exit(2)

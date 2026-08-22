@@ -15,8 +15,8 @@
  * ## O que ele exige, e por que só isso
  *
  * As camadas do **nível declarado do projeto**, e só as que cabem nele. O nível
- * é a escolha dele — `rascunho` num script pessoal, `exposto` num site com dado
- * de cliente — e é o que impede o hook de ser insuportável no lugar errado.
+ * é a escolha dele,`rascunho` num script pessoal, `exposto` num site com dado
+ * de cliente, e é o que impede o hook de ser insuportável no lugar errado.
  * Sem nível declarado, assume `rascunho`: uma camada só, a de segredo, que é a
  * única cujo estrago é irreversível (commit fica no histórico depois de apagar
  * o arquivo).
@@ -29,7 +29,7 @@
  * ## O que ele NUNCA faz
  *
  * Não roda camada sozinho. Uma varredura de minutos disparada no fim do turno,
- * sem ele pedir, é a receita para o recurso ser desligado — e camada de rede
+ * sem ele pedir, é a receita para o recurso ser desligado, e camada de rede
  * fala com servidor de verdade. O hook diz o comando; quem roda é quem trabalha.
  *
  * Falha ABERTA, uma volta só.
@@ -142,12 +142,12 @@ console.error(
   + `  · \`bancada nivel ${nivel} --rodar\` = roda as camadas exigidas por este\n`
   + '    nível, pulando as que não se aplicam ao projeto\n'
   + '  · `--so-mudou` = só nos arquivos que mudaram desde o último commit.\n'
-  + '    Sem git, varre tudo — nunca menos verificação, só menos espera\n\n'
+  + '    Sem git, varre tudo, nunca menos verificação, só menos espera\n\n'
   + 'O `npm test` responde "eu quebrei alguma coisa?". A Bancada responde\n'
-  + '"eu deixei alguma coisa insegura?" — e suíte verde convive muito bem com\n'
+  + '"eu deixei alguma coisa insegura?",e suíte verde convive muito bem com\n'
   + 'chave commitada e tabela sem proteção.\n\n'
   + `Nível errado para este projeto? \`node cc.mjs framework bancada nivel <outro>\`\n`
-  + `— os quatro são: ${Object.keys(C.NIVEIS).join(', ')}.\n`
+  + `Os quatro são: ${Object.keys(C.NIVEIS).join(', ')}.\n`
   + 'Esta é a única volta: a próxima passa.',
 )
 process.exit(2)

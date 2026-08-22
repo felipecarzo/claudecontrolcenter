@@ -12,7 +12,7 @@
  * > em execução do backlog"
  *
  * Está certo, e o buraco é literal: **parar calado passava.** Que é justamente o
- * comportamento que a queixa original nomeia — eu paro, ele acha que o trabalho
+ * comportamento que a queixa original nomeia, eu paro, ele acha que o trabalho
  * segue, e descobre depois que não seguiu.
  *
  * ## A inversão
@@ -34,7 +34,7 @@
  * ## Por que uma volta só, e não até zerar
  *
  * `stop_hook_active` limita a um empurrão por turno. Ignorar isso criaria um
- * laço que executa o backlog inteiro sem ele conseguir entrar no meio — e a
+ * laço que executa o backlog inteiro sem ele conseguir entrar no meio, e a
  * regra dele é a oposta, ele confere cada entrega. Uma volta basta: o efeito é
  * que eu nunca paro sem ter continuado ou dito por que parei.
  *
@@ -83,11 +83,11 @@ try { cauda = readFileSync(arquivo, 'utf8').slice(-160_000) } catch { sair() }
 const corte = cauda.lastIndexOf('"type":"user"')
 const turno = corte >= 0 ? cauda.slice(corte) : cauda
 
-/* 0. o turno é uma ROTINA que termina esperando por ele — ver `rotinaQuePausa` */
+/* 0. o turno é uma ROTINA que termina esperando por ele, ver `rotinaQuePausa` */
 const pausa = rotinaQuePausa(turno, dados?.cwd || process.cwd(), raiz)
 if (pausa) sair()
 
-/* 2. a caixa de pergunta foi usada — a bola está com ele */
+/* 2. a caixa de pergunta foi usada, a bola está com ele */
 if (turno.includes('AskUserQuestion')) sair()
 
 const E = await import(urlDeModulo(AQUI, '../src/estilo.mjs')).catch(() => null)
@@ -109,7 +109,7 @@ const abertos = backlogAberto(raiz)
 if (!abertos.length) sair()
 
 console.error(
-  `PAROU COM ${abertos.length} ITENS ABERTOS — modo ${modo.titulo}.\n\n`
+  `PAROU COM ${abertos.length} ITENS ABERTOS, no modo ${modo.titulo}.\n\n`
   + `Não pare para: ${modo.naoPara || modo.fluxo.naoPara}.\n`
   + `Só pare para: ${modo.fluxo.paradaLegitima}.\n\n`
   + 'Próximos na fila:\n'
@@ -117,7 +117,7 @@ console.error(
   + '\n\nDuas saídas, e só estas duas:\n\n'
   + '  1. EXECUTE agora o próximo item, sem anunciar que vai executar. Anúncio\n'
   + '     não é execução: o turno acaba quando você para de chamar ferramenta.\n'
-  + '  2. Ou abra a resposta com uma linha "Parada: <motivo>" — e o motivo tem\n'
+  + '  2. Ou abra a resposta com uma linha "Parada: <motivo>". O motivo tem\n'
   + '     que ser decisão dele, não dúvida técnica sua. Dúvida técnica você\n'
   + '     resolve e reporta. Se for decisão dele mesmo, use o AskUserQuestion.\n\n'
   + 'Esta é a única volta: a próxima passa.',
@@ -144,7 +144,7 @@ process.exit(2)
  *
  * O conserto **não é uma lista de rotinas escrita aqui dentro**, de propósito:
  * lista aqui envelhece calada quando alguém cria uma rotina nova, e o defeito
- * volta sem aviso. Quem manda é a própria rotina — se o texto dela declara que
+ * volta sem aviso. Quem manda é a própria rotina, se o texto dela declara que
  * termina esperando, a trava obedece. A rotina é a fonte, este arquivo só lê.
  *
  * Duas formas de declarar, e a segunda é a rede para as que já existem:
@@ -155,7 +155,7 @@ process.exit(2)
  *    aprovação"), que é como as 25 rotinas de hoje já dizem isso.
  *
  * E vale a regra do projeto: **a cópia dentro do projeto vence a global**, a
- * mesma coisa que o `rotinas.mjs` já mede — senão a trava leria uma rotina e o
+ * mesma coisa que o `rotinas.mjs` já mede, senão a trava leria uma rotina e o
  * Claude Code executaria outra.
  */
 function rotinaQuePausa(turnoTexto, cwd, raizProjeto) {
@@ -180,7 +180,7 @@ function rotinaQuePausa(turnoTexto, cwd, raizProjeto) {
   return null
 }
 
-/** A última coisa que uma PESSOA escreveu — injeção de skill e saída de tool não contam. */
+/** A última coisa que uma PESSOA escreveu, injeção de skill e saída de tool não contam. */
 function ultimoPedido(texto) {
   const linhas = texto.split('\n')
   for (let i = linhas.length - 1; i >= 0; i -= 1) {
@@ -201,26 +201,26 @@ function ultimoPedido(texto) {
  *
  * O `roadmap.mjs` não serve aqui: ele lê o formato de frentes com `## Aberto`, e
  * este arquivo usa `### CC-NN`. Contar o que não tem ✅ é grosseiro de propósito
- * — o hook precisa de "sobrou trabalho", não do mapa inteiro.
+ *, o hook precisa de "sobrou trabalho", não do mapa inteiro.
  *
  * ## Os dois marcadores, e por que ⏸ precisou existir
  *
- * `✅` é feito. `⏸` é **aberto e parado por motivo que não depende de mim** —
+ * `✅` é feito. `⏸` é **aberto e parado por motivo que não depende de mim**,
  * direção em vez de tarefa, dependência de outro item, ambiente que não existe,
  * ou decisão que só o Felipe toma.
  *
  * Sem essa distinção o hook me devolvia com "6 itens abertos" quando nenhum dos
  * seis era executável, e a única saída seria declarar parada toda vez. Guarda
  * que cobra o impossível ensina a ignorá-lo, e aí ele não segura mais o caso
- * real — que é justamente o que ele existe para pegar.
+ * real, que é justamente o que ele existe para pegar.
  *
  * O motivo vai no próprio título, depois do ⏸, para a lista da devolução ser
  * legível sem abrir o arquivo.
  */
 /* Achado em 18/08: o título de uma frente vem hoje como "### CC-101 Frente:
    ...", com o número ANTES da palavra. A exclusão só casava "### Frente:" sem
-   número, então "CC-101 Frente", "CC-102 Frente" e "CC-104 Frente" — todas
-   sem próximo passo executável, todas já registradas como estudo ou visão —
+   número, então "CC-101 Frente", "CC-102 Frente" e "CC-104 Frente", todas
+   sem próximo passo executável, todas já registradas como estudo ou visão,
    voltavam pra fila do mesmo jeito que um item comum sem ✅. O prefixo
    `(?:CC-\d+\s+)?` deixa o número opcional antes da palavra que classifica. */
 /**

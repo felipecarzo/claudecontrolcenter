@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CC-92, o buraco que o proxy cobriria — fechado sem proxy nenhum.
+ * CC-92, o buraco que o proxy cobriria, fechado sem proxy nenhum.
  *
  * ## O pedido, e por que ele pediu duas coisas
  *
@@ -10,7 +10,7 @@
  * > que eu mandar arquivos de texto, doc, pdf, enfim, tudo com esse modo ligado"
  *
  * O `anonimo-guard` (feito) cobre quando **eu leio um arquivo do disco**. O que
- * ele não vê é o que o Felipe **cola direto no chat** — e era esse o buraco que
+ * ele não vê é o que o Felipe **cola direto no chat**,e era esse o buraco que
  * o proxy fecharia, pondo algo entre o Claude Code e a API.
  *
  * ## Por que este hook substitui o proxy
@@ -34,7 +34,7 @@
  *
  * Todo hook deste repositório libera quando algo dá errado. Estes dois são o
  * oposto, e pela mesma razão: deixar passar não tem desfazer. Uma vez no
- * contexto, o dado já foi para a nuvem — e o transcript guarda em texto puro,
+ * contexto, o dado já foi para a nuvem, e o transcript guarda em texto puro,
  * relido a cada `--resume`.
  *
  * A exceção é só uma, e é o que impede o hook de ser insuportável: **projeto sem
@@ -71,7 +71,7 @@ if (!estado || estado.ligado === false || !estado.anonimizar) liberar()
 
 const texto = String(dados?.prompt || '')
 /* Frase curta não é documento colado. O caso que o proxy cobriria é texto de
-   verdade — contrato, e-mail, ficha —, e o número aqui é generoso de propósito:
+   verdade (contrato, e-mail, ficha), e o número aqui é generoso de propósito:
    cobrar de um pedido de 200 caracteres seria alarme em cima de conversa. */
 if (texto.length < 240) liberar()
 
@@ -80,7 +80,7 @@ try { A = await import(urlDeModulo(AQUI, '../src/anonimizar.mjs')) } catch {
   /* FECHADO: sem o motor não dá para afirmar que está limpo, e afirmar sem
      olhar é o defeito que este hook existe para impedir. */
   process.stderr.write(
-    'MASCARADOR INDISPONÍVEL — não deu para conferir este texto.\n\n'
+    'MASCARADOR INDISPONÍVEL. Não deu para conferir este texto.\n\n'
     + 'O modo de anonimização está ligado neste projeto, e `src/anonimizar.mjs`\n'
     + 'não carregou. Como não dá para afirmar que o texto está limpo, ele não\n'
     + 'passa: uma vez no contexto, o dado já foi para a nuvem e o transcript o\n'
@@ -101,11 +101,11 @@ if (!achado) liberar()
 /* Devolve para ELE, não para mim: `UserPromptSubmit` com exit 2 recusa o envio e
    mostra o stderr. O texto não chega ao modelo, que é o ponto inteiro. */
 process.stderr.write(
-  `DADO PESSOAL NO QUE VOCÊ COLOU — ${achado.quantos} ocorrência(s), não enviei.\n\n`
+  `DADO PESSOAL NO QUE VOCÊ COLOU,${achado.quantos} ocorrência(s), não enviei.\n\n`
   + `Tipos encontrados: ${achado.tipos.join(', ')}\n\n`
   + 'O modo de anonimização está ligado neste projeto. O hook de leitura já\n'
   + 'mascara arquivo que eu abro do disco, mas texto colado no chat passava\n'
-  + 'direto — era esse o buraco que o proxy cobriria (CC-92).\n\n'
+  + 'direto: era esse o buraco que o proxy cobriria (CC-92).\n\n'
   + 'Três saídas:\n'
   + '  1. Salve o texto num arquivo e me mande abrir: ele é mascarado sozinho.\n'
   + '  2. Troque nome, CPF e e-mail por apelido antes de colar.\n'
