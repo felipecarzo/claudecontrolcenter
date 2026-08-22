@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- O ícone do app: um capacete de astronauta, minimalista.
+       Pedido dele em 22/08, depois de três tentativas com planeta: *"pode ser um
+       capacete de astronauta o logo? meio minimalista"*.
+       São três peças e nada mais: o casco redondo, a viseira, e o brilho. A
+       viseira é vazada em vez de desenhada com linha, pelo mesmo motivo que fez
+       o planeta anterior finalmente ficar certo: forma cheia lê melhor num
+       ícone pequeno que contorno fino. -->
+  <rect width="512" height="512" rx="112" fill="#0B0E14"/>
+
+  <defs>
+    <!-- O brilho é um recorte na viseira, e não um desenho por cima: assim ele
+         mostra a cor do casco por baixo, do jeito que um reflexo funciona. -->
+    <mask id="viseira">
+      <rect width="512" height="512" fill="#000"/>
+      <rect x="118" y="176" width="276" height="150" rx="62" fill="#fff"/>
+      <path d="M156 300 L232 196 L266 196 L190 300 Z" fill="#000"/>
+      <path d="M204 300 L280 196 L300 196 L224 300 Z" fill="#000"/>
+    </mask>
+  </defs>
+
+  <g fill="#3B82F6">
+    <!-- O casco: um círculo com a base reta, que é o que faz ler como capacete
+         e não como bola. -->
+    <path d="M256 74 a166 166 0 0 1 166 166 v92 a34 34 0 0 1 -34 34 h-264
+             a34 34 0 0 1 -34 -34 v-92 a166 166 0 0 1 166 -166 z"/>
+  </g>
+  <!-- A viseira vazada: o fundo do ícone aparecendo através do casco. -->
+  <rect width="512" height="512" fill="#0B0E14" mask="url(#viseira)"/>
+</svg>
