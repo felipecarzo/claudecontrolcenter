@@ -43,6 +43,7 @@ import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { resolverBinario } from './paineis.mjs'
 import { ehWindows } from './platform.mjs'
+import { deOutraMaquina } from './gate.mjs'
 
 export const PASTA_LOG = path.join(os.tmpdir(), 'cc-gate')
 
@@ -59,7 +60,11 @@ export const AGENTES_GATE = {
     paga: 'a sua assinatura',
     aceitaModelo: true,
     precisaSessao: true,
-    args: ({ sessao, novaSessao, permissao, cwd, pacote, modelo }) => [
+    /* CC-275: o esforço. Cinco níveis, medidos no `--help`: `low`, `medium`,
+       `high`, `xhigh` e `max`. O agy só tem os três primeiros, e é por isso que
+       a lista de níveis mora no catálogo de cada agente e não num lugar só. */
+    esforcos: ['low', 'medium', 'high', 'xhigh', 'max'],
+    args: ({ sessao, novaSessao, permissao, cwd, pacote, modelo, esforco }) => [
       '-p',
       '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
       '--permission-mode', permissao,
@@ -67,6 +72,7 @@ export const AGENTES_GATE = {
       ...(sessao ? ['--resume', sessao] : ['--session-id', novaSessao]),
       ...(pacote ? ['--append-system-prompt-file', pacote] : []),
       ...(modelo ? ['--model', modelo] : []),
+      ...(esforco ? ['--effort', esforco] : []),
     ],
   },
   opencode: {
@@ -75,21 +81,135 @@ export const AGENTES_GATE = {
     paga: 'os modelos gratuitos',
     aceitaModelo: true,
     modeloPadrao: 'opencode/big-pickle',
+    listar: ['models'],
     precisaSessao: false,
-    args: ({ modelo }) => ['run', '--model', modelo || 'opencode/big-pickle', '--format', 'json'],
+    /* CC-277b: `--file` é o jeito NATIVO dele de receber anexo, e é obrigatório.
+     *
+     * Passar o caminho no texto não funciona com o opencode: ele recusa ler
+     * fora da pasta de trabalho e responde `permission requested:
+     * external_directory (...); auto-rejecting`. Os anexos moram junto da
+     * conversa, que é fora do projeto de propósito, então o caminho no texto
+     * nunca ia passar. Ele mesmo achou isto mandando um print. */
+    args: ({ modelo, anexos = [] }) => [
+      'run', '--model', modelo || 'opencode/big-pickle', '--format', 'json',
+      ...anexos.flatMap((a) => ['--file', a]),
+    ],
   },
   agy: {
     binario: 'agy',
     rotulo: 'agy',
     paga: 'a conta Google logada nele',
-    /* Sem escolha de modelo, de propósito: ele decide pela conta logada, e
-       mandar um nome desconhecido derruba a chamada inteira. A tela diz
-       "definido pela conta Google" e NUNCA fica em branco, porque campo vazio
-       não distingue "não tem" de "não consegui ler". */
-    aceitaModelo: false,
+    /* CC-272: passou a aceitar modelo.
+     *
+     * A nota antiga aqui dizia que ele não aceitava, e que mandar um nome
+     * desconhecido derrubava a chamada. A primeira metade estava errada: `agy
+     * models` lista 14, e `--model` funciona. A segunda continua verdadeira, e
+     * é por isso que a escolha sai da lista dele e nunca de texto digitado.
+     *
+     * Vale registrar o que a lista revela, porque ele já sabia e eu não:
+     * **o agy oferece Claude Sonnet e Opus além dos modelos do Google.** */
+    aceitaModelo: true,
+    listar: ['models'],
     precisaSessao: false,
-    args: () => ['--output-format', 'stream-json'],
+    /* `--add-dir` é obrigatório, e a falta dele não parece um problema de pasta.
+     *
+     * Sem a pasta declarada, o agy não considera o projeto parte do espaço de
+     * trabalho dele: ele aceita LER, e na hora de escrever recusa com "não é um
+     * caminho de artefato válido, artefatos precisam estar em
+     * ~/.gemini/antigravity-cli/brain/<id>/". A mensagem fala de artefato e não
+     * de permissão, então parece defeito do modelo, e a conversa mostrava
+     * resposta vazia.
+     *
+     * Foi assim que ele topou com isto: pediu ao agy para refazer o design de
+     * um site, e a resposta não veio. O Claude nunca sofreu disso porque já
+     * recebia `--add-dir` desde o começo. */
+    /* Três níveis, não cinco: o `--help` do agy diz `low|medium|high`. Mandar
+       um nível que ele não conhece é o mesmo risco de mandar modelo
+       desconhecido, e por isso a lista é dele e não copiada do Claude. */
+    esforcos: ['low', 'medium', 'high'],
+    args: ({ modelo, cwd, esforco, anexos = [] }) => [
+      '--output-format', 'stream-json',
+      ...(cwd ? ['--add-dir', cwd] : []),
+      /* A pasta dos anexos entra no espaço de trabalho dele pelo mesmo motivo
+         do projeto: sem isso ele recusa ABRIR o print, e o turno morre. */
+      ...[...new Set(anexos.map((a) => a.replace(/[/\\][^/\\]+$/, '')))].flatMap((d) => ['--add-dir', d]),
+      ...(modelo ? ['--model', modelo] : []),
+      ...(esforco ? ['--effort', esforco] : []),
+    ],
   },
+}
+
+/* Quanto tempo a lista de modelos vale.
+ *
+ * `agy models` e `opencode models` fazem chamada de rede e levam segundos.
+ * Perguntar a cada abertura de tela seria pagar isso à toa: a lista muda de
+ * mês em mês, não de minuto em minuto. */
+const VALIDADE_MODELOS = 30 * 60 * 1000
+const cacheModelos = new Map()
+
+/**
+ * Os modelos que cada agente aceita, com o rótulo que ele mesmo dá.
+ *
+ * O Claude não tem comando de listar, e a lista dele é escrita aqui: são os
+ * apelidos que o programa aceita, e eles não mudam sozinhos. Os outros dois
+ * perguntam ao próprio binário, que é a única fonte que não envelhece.
+ */
+export async function modelosDe(agente) {
+  const a = AGENTES_GATE[agente]
+  /* Agente sem escolha de modelo ainda pode ter escolha de esforço: são duas
+     coisas independentes, e sair cedo aqui esconderia a segunda. */
+  if (!a?.aceitaModelo) return { agente, modelos: [], esforcos: a?.esforcos || [] }
+
+  const guardado = cacheModelos.get(agente)
+  if (guardado && Date.now() - guardado.em < VALIDADE_MODELOS) return guardado.valor
+
+  let modelos = []
+  let erro = null
+  if (!a.listar) {
+    modelos = [
+      { id: 'opus', rotulo: 'Opus, o mais capaz' },
+      { id: 'sonnet', rotulo: 'Sonnet, o equilibrado' },
+      { id: 'haiku', rotulo: 'Haiku, o mais rápido' },
+      { id: 'fable', rotulo: 'Fable' },
+    ]
+  } else {
+    try {
+      const alvo = resolverBinario(a.binario)
+      const saida = await new Promise((r, x) => {
+        const p = spawn(alvo, a.listar, { stdio: ['ignore', 'pipe', 'ignore'] })
+        let t = ''
+        p.stdout.on('data', (d) => { t += d })
+        p.on('error', x)
+        p.on('close', () => r(t))
+        setTimeout(() => { try { p.kill() } catch { /* já morreu */ } x(new Error('demorou demais')) }, 25000)
+      })
+      for (const linha of saida.split('\n')) {
+        /* Tira a cor do terminal antes de ler: o opencode escreve com código de
+           cor, e sem limpar o id sairia com lixo invisível grudado. */
+        const limpa = linha.replace(/\[[0-9;]*m/g, '').trim()
+        if (!limpa || /^Fetching/i.test(limpa)) continue
+        /* O agy separa id e nome por tabulação; o opencode devolve só o id. */
+        const [id, rotulo] = limpa.split('\t')
+        if (!id || /\s/.test(id)) continue
+        modelos.push({ id, rotulo: (rotulo || id).trim() })
+      }
+    } catch (e) {
+      /* Falha de leitura NUNCA vira lista vazia sem aviso: vazio diria que o
+         agente não tem modelo nenhum, que é outra coisa. */
+      erro = String(e.message || e)
+    }
+  }
+
+  const valor = { agente, modelos, erro, padrao: a.modeloPadrao || null, esforcos: a.esforcos || [] }
+  cacheModelos.set(agente, { em: Date.now(), valor })
+  return valor
+}
+
+/** Os três de uma vez, para a tela pedir uma coisa só. */
+export async function todosOsModelos() {
+  const fora = {}
+  for (const nome of Object.keys(AGENTES_GATE)) fora[nome] = await modelosDe(nome)
+  return fora
 }
 
 export const agenteDe = (nome) => AGENTES_GATE[nome] || AGENTES_GATE.claude
@@ -100,9 +220,14 @@ export const agenteDe = (nome) => AGENTES_GATE[nome] || AGENTES_GATE.claude
  * `texto` é o delta da conversa, já formatado como transcrição por `gate.mjs`.
  * `pacote` é o caminho de um arquivo com o contexto do projeto, ou `null`.
  */
-export function enviar({ agente = 'claude', texto, cwd, permissao = 'acceptEdits', sessao = null, modelo = null, pacote = null, pacoteTexto = null, binario = null }) {
+export function enviar({ agente = 'claude', texto, cwd, permissao = 'acceptEdits', sessao = null, modelo = null, esforco = null, anexos = [], pacote = null, pacoteTexto = null, binario = null }) {
   if (!texto) throw new Error('mensagem vazia')
   if (!cwd) throw new Error('sem pasta: o agente não teria onde agir')
+  /* Última porta antes de o processo subir: `spawn` com `cwd` que não existe
+     falha com ENOENT, um erro que não diz nada sobre a causa real. */
+  if (deOutraMaquina(cwd)) {
+    throw new Error(`a pasta ${cwd} é de outra máquina: o agente não a alcança daqui.`)
+  }
 
   fs.mkdirSync(PASTA_LOG, { recursive: true })
   const turnoId = `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
@@ -127,6 +252,10 @@ export function enviar({ agente = 'claude', texto, cwd, permissao = 'acceptEdits
     sessao, novaSessao, permissao, cwd,
     pacote: usaArquivo ? pacote : null,
     modelo: a.aceitaModelo ? (modelo || a.modeloPadrao || null) : null,
+    /* Nível que aquele agente não conhece nunca é passado: derruba a chamada
+       inteira, igual a modelo desconhecido. */
+    esforco: (a.esforcos || []).includes(esforco) ? esforco : null,
+    anexos,
   })
   const [cmd, cmdArgs] = ehWindows ? ['cmd', ['/c', alvo, ...args]] : [alvo, args]
 
@@ -199,7 +328,11 @@ export function lerTurno(logFile, agente = 'claude', erroFile = null) {
     if (o.type === 'assistant' && o.message?.content) {
       for (const c of o.message.content) {
         if (c.type === 'text' && typeof c.text === 'string') fora.texto += c.text
-        if (c.type === 'tool_use') fora.ferramentas.push({ nome: c.name, alvo: alvoDe(c.input) })
+        /* `alvo` é curto para caber na tela; `caminho` é o inteiro, e é o que
+           o `git diff` precisa. Usar o curto ali fazia o diff nunca achar o
+           arquivo, e a conversa dizia "nenhuma mudança" depois de o agente ter
+           acabado de escrever. */
+        if (c.type === 'tool_use') fora.ferramentas.push({ nome: c.name, alvo: alvoDe(c.input), caminho: caminhoDe(c.input) })
       }
     }
     if (o.type === 'user' && o.message?.content) {
@@ -247,6 +380,28 @@ export function lerTurno(logFile, agente = 'claude', erroFile = null) {
       fora.terminou = true
       fechamento = typeof o.result?.response === 'string' ? o.result.response : fechamento
       fora.estado = o.result?.status === 'SUCCESS' ? 'pronto' : 'falhou'
+      /* O MOTIVO da falha, que estava sendo jogado fora.
+       *
+       * Sem esta linha, um turno do agy que morre por falta de permissão chega
+       * na tela como resposta vazia sem explicação, e ele lê "o agente terminou
+       * sem escrever nada". Foi exatamente o que aconteceu com ele: *"o AGY não
+       * está respondendo (…) fala que o agente terminou sem escrever nada"*.
+       *
+       * A causa estava escrita no registro do turno o tempo todo, e ninguém a
+       * mostrava. Erro engolido é pior que erro na cara. */
+      if (o.result?.error) fora.erro = String(o.result.error)
+      /* Fim sem motivo escrito ainda precisa de uma frase.
+       *
+       * O agy fecha uns turnos com `CANCELED` e nenhum erro, e nesse caso a
+       * conversa mostrava resposta vazia sem explicação, que é a família de
+       * defeito mais cara deste painel. Medido: os dois casos vêm de o agy não
+       * conseguir usar uma ferramenta, e a diferença entre `ERROR` e `CANCELED`
+       * é só se ele desistiu antes ou depois de tentar. */
+      else if (fora.estado === 'falhou' && !fora.erro) {
+        fora.erro = o.result?.status === 'CANCELED'
+          ? 'o agy desistiu deste turno no meio. Quase sempre é ferramenta que ele não tem permissão de usar.'
+          : `o agy terminou com ${o.result?.status || 'estado desconhecido'}`
+      }
       fora.segundos = o.result?.duration_seconds ?? fora.segundos
       const u = o.result?.usage
       if (u) fora.custo = { dolar: null, entrada: u.input_tokens || 0, saida: u.output_tokens || 0, cacheLido: 0, cacheCriado: 0 }
@@ -254,6 +409,13 @@ export function lerTurno(logFile, agente = 'claude', erroFile = null) {
   }
 
   if (fechamento && fechamento.trim()) fora.texto = fechamento
+
+  /* Tira a cor do terminal do texto que vai para a tela.
+   *
+   * O opencode escreve avisos com código de cor no meio da resposta, e no
+   * navegador isso não vira cor nenhuma: vira lixo visível. Ele mandou o print
+   * com `[93m[!m [0m` grudado numa mensagem de erro. */
+  fora.texto = String(fora.texto || '').replace(/?\[[0-9;]*m/g, '')
 
   /* O erro do CLI não vem no fluxo, vem na saída de erro. É de lá que sai a
      prova de que a sessão sumiu, e sem ela o marcador continuaria mentindo. */
@@ -273,6 +435,13 @@ export function lerTurno(logFile, agente = 'claude', erroFile = null) {
   }
 
   return fora
+}
+
+/** O caminho INTEIRO do arquivo que a ferramenta tocou, sem encurtar. */
+function caminhoDe(input) {
+  if (!input || typeof input !== 'object') return null
+  const p = input.file_path || input.filePath || input.path || input.notebook_path
+  return p ? String(p).replace(/\\/g, '/') : null
 }
 
 /** O alvo da ferramenta, para a tela dizer "Edit src/web.mjs" e não só "Edit". */

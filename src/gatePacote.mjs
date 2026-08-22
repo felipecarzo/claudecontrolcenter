@@ -45,6 +45,7 @@ import path from 'node:path'
 import { lerRoadmap } from './roadmap.mjs'
 import { retratoDoQuadro, humanizar } from './presenca.mjs'
 import { todosOsJobs } from './sessoes.mjs'
+import { deOutraMaquina } from './gate.mjs'
 
 /* Os tetos, em caracteres. ~4 caracteres por token, então 6000 é perto de 1500
    tokens por turno. Numa conversa de 30 turnos isso é 45 mil tokens só de
@@ -189,6 +190,15 @@ function secaoAgentes(jobs, projeto) {
 export function montar(conversa, { agente = 'claude', jobs = null } = {}) {
   const cwd = conversa?.cwd
   if (!cwd) throw new Error('sem pasta: não há projeto de que falar')
+  /* A trava está na criação da conversa, mas esta é a leitura, e conversa
+     gravada ANTES dela passaria. Aqui o estrago seria o pior de todos:
+     `lerRoadmap` sobe diretórios, então uma pasta do PC dele resolvida por
+     engano dentro desta faz o pacote levar o backlog do PAINEL para o agente,
+     como se fosse o do projeto dele. Foi assim que 145 tarefas apareceram com
+     o dono errado na tela Trabalho. */
+  if (deOutraMaquina(cwd)) {
+    throw new Error(`a pasta ${cwd} é de outra máquina: não dá para montar o contexto de um projeto que não está aqui.`)
+  }
 
   let agentes = jobs
   if (!agentes) {

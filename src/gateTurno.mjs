@@ -26,6 +26,7 @@ import {
   lerConversa, acrescentar, gravarCabecalho, deltaPara, marcarLido,
   esquecerSessao, guardarCota,
 } from './gate.mjs'
+import { execFileSync } from 'node:child_process'
 import { enviar, lerTurno, vivo, agentePara } from './gateAgentes.mjs'
 import { montar, gravarPacote } from './gatePacote.mjs'
 
@@ -44,6 +45,104 @@ const TETO_MS = 30 * 60 * 1000
 
 /** Os acompanhamentos em curso, para não subir dois na mesma conversa. */
 const emCurso = new Map()
+
+/* ============ CC-280: o que o agente mexeu, linha por linha ============
+ *
+ * A conversa mostrava só o NOME do arquivo editado. Ele pediu para ver o que
+ * mudou de verdade, sem sair da conversa.
+ *
+ * **Como se sabe o que o turno mudou, e por que não basta olhar no fim.** Um
+ * `git diff` no fim mostra tudo o que está diferente do último commit, e não só
+ * o que aquele agente fez: o trabalho de antes apareceria como se fosse dele.
+ * Por isso se tira um retrato ANTES do turno e a diferença sai da comparação.
+ *
+ * Projeto que não é repositório fica de fora, e isso se diz em voz alta em vez
+ * de mostrar um bloco vazio.
+ */
+const GIT_TETO = 400 * 1024
+
+/**
+ * Roda um comando do git e devolve a saída, ou `null` quando falha.
+ *
+ * `umSignificaAchou` existe porque **o código de saída 1 quer dizer coisas
+ * opostas em dois comandos do git**, e confundir os dois derrubou este recurso
+ * duas vezes seguidas:
+ *
+ * - em `diff --no-index`, o 1 quer dizer "ACHEI diferença", que é o sucesso;
+ * - em `ls-files --error-unmatch`, o 1 quer dizer "NÃO achei o arquivo".
+ *
+ * Tratar o 1 como sucesso em tudo fez todo arquivo parecer rastreado, e o diff
+ * saiu vazio. Tratar como falha em tudo fez o arquivo novo não aparecer. Por
+ * isso quem chama diz qual dos dois espera.
+ */
+function gitDo(cwd, args, { umSignificaAchou = false } = {}) {
+  try {
+    return execFileSync('git', ['-C', cwd, ...args], {
+      encoding: 'utf8', maxBuffer: GIT_TETO * 4, timeout: 15000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+  } catch (e) {
+    if (umSignificaAchou && e?.status === 1 && typeof e.stdout === 'string') return e.stdout
+    return null
+  }
+}
+
+/** O retrato de antes: o que já estava mexido quando o turno começou. */
+function retratoAntes(cwd) {
+  if (!cwd || !gitDo(cwd, ['rev-parse', '--is-inside-work-tree'])) return null
+  return {
+    /* O commit em que a árvore estava quando o turno começou.
+     *
+     * É contra ELE que o diff é tirado, e não contra `HEAD`: **o agente pode
+     * commitar**, e aí `git diff HEAD` sai vazio logo depois de ele reescrever
+     * meio projeto. Foi exatamente o que aconteceu na primeira tentativa: a
+     * conversa dizia "nenhuma mudança" com o arquivo criado e commitado. */
+    head: (gitDo(cwd, ['rev-parse', 'HEAD']) || '').trim() || null,
+    naoVersionados: new Set((gitDo(cwd, ['ls-files', '--others', '--exclude-standard']) || '').split('\n').filter(Boolean)),
+  }
+}
+
+/**
+ * O que mudou entre o retrato e agora, restrito aos arquivos que o agente
+ * declarou ter tocado.
+ *
+ * Restringir aos tocados é o que separa o trabalho DELE do que já estava
+ * mexido: sem isso, uma edição minha de meia hora atrás entraria no diff do
+ * turno dele.
+ */
+function mudancasDoTurno(cwd, antes, ferramentas) {
+  if (!cwd || !antes) return null
+  /* O caminho INTEIRO, nunca o alvo curto da tela: o curto é cortado nas duas
+     últimas partes para caber no cartão, e o git nunca acharia o arquivo. */
+  const tocados = [...new Set(
+    (ferramentas || [])
+      .map((f) => f.caminho)
+      .filter(Boolean)
+      .map((a) => (a.startsWith(cwd) ? a.slice(cwd.length).replace(/^\//, '') : a))
+      .filter((a) => a && !a.startsWith('/') && !/\s/.test(a)),
+  )]
+  if (!tocados.length) return null
+
+  const partes = []
+  let cortou = false
+  for (const alvo of tocados) {
+    /* Arquivo que o git ainda NÃO rastreia não aparece em `git diff`, e dizer
+       "nada mudou" num arquivo que o agente acabou de criar seria mentir. Para
+       esses, o diff é contra o vazio.
+       A decisão sai do estado ATUAL do git, e não da lista do retrato: o
+       arquivo recém-criado não estava em lista nenhuma antes do turno, que é
+       justamente o caso a cobrir. */
+    const rastreado = gitDo(cwd, ['ls-files', '--error-unmatch', alvo]) !== null
+    const d = rastreado
+      ? gitDo(cwd, ['diff', antes.head || 'HEAD', '--', alvo], { umSignificaAchou: true })
+      : gitDo(cwd, ['diff', '--no-index', '--', '/dev/null', alvo], { umSignificaAchou: true })
+    if (!d || !d.trim()) continue
+    if (partes.join('').length + d.length > GIT_TETO) { cortou = true; break }
+    partes.push(d)
+  }
+  if (!partes.length) return null
+  return { diff: partes.join('\n'), arquivos: tocados.length, cortou }
+}
 
 /**
  * O nome da conversa, tirado da primeira coisa que ele disse.
@@ -74,12 +173,12 @@ export function tituloDe(texto) {
    devolução: os agentes de verdade recusam produzir o gatilho depois de
    ensinados, e uma régua que nunca dispara é uma régua que pode estar quebrada
    sem ninguém saber. */
-export function responder(id, { texto, agente = 'claude', binario = null }) {
+export function responder(id, { texto, agente = 'claude', modelo = null, esforco = null, anexos = [], binario = null }) {
   const c = lerConversa(id)
   if (!c) throw new Error(`conversa ${id} não existe`)
 
   /* A mensagem dele entra SEMPRE, antes de qualquer decisão. */
-  acrescentar(id, { tipo: 'dele', texto })
+  acrescentar(id, { tipo: 'dele', texto, ...(anexos.length ? { anexos } : {}) })
 
   /* CC-252b: a conversa ganha nome pela primeira mensagem dele, para ele
      reconhecer na lista sem abrir. Só na primeira: renomear a cada mensagem
@@ -112,6 +211,18 @@ export function responder(id, { texto, agente = 'claude', binario = null }) {
     sessao: c.cabecalho.sessoes?.[quem] || null,
     pacote: arqPacote,
     pacoteTexto: pacote.texto,
+    /* O modelo da vez vence o guardado na conversa, e o guardado vence o padrão
+       do agente. Guardar por conversa é o que faz a escolha dele sobreviver ao
+       fechar a tela, em vez de voltar ao padrão a cada mensagem. */
+    modelo: modelo || c.cabecalho.modelos?.[quem] || null,
+    esforco: esforco || c.cabecalho.esforcos?.[quem] || null,
+    /* Os anexos das mensagens que este agente ainda não viu.
+     *
+     * Vão pelo caminho NATIVO de cada um (`--file` no opencode, `--add-dir` no
+     * agy), e não só citados no texto: o opencode recusa ler fora da pasta de
+     * trabalho e devolve `auto-rejecting`, e os anexos moram junto da conversa
+     * de propósito. Foi ele quem achou, mandando um print. */
+    anexos: [...new Set((delta.anexos || []).map((a) => a.caminho).filter(Boolean))],
     binario,
   })
 
@@ -126,9 +237,17 @@ export function responder(id, { texto, agente = 'claude', binario = null }) {
   })
   gravarCabecalho(id, {
     estado: { turnoId: t.turnoId, agente: quem, pid: t.pid, desde: Date.now(), logFile: t.logFile, erroFile: t.erroFile },
+    ...(modelo ? { modelos: { ...(c.cabecalho.modelos || {}), [quem]: modelo } } : {}),
+    ...(esforco ? { esforcos: { ...(c.cabecalho.esforcos || {}), [quem]: esforco } } : {}),
   })
 
-  acompanhar(id, { ...t, agente: quem, ate: delta.ate, cwd: c.cabecalho.cwd, permissao: c.cabecalho.permissao, binario })
+  acompanhar(id, {
+    ...t, agente: quem, ate: delta.ate,
+    cwd: c.cabecalho.cwd, permissao: c.cabecalho.permissao, binario,
+    /* O retrato tirado ANTES do turno. É ele que separa o que este agente fez
+       do que já estava mexido na árvore. */
+    antes: retratoAntes(c.cabecalho.cwd),
+  })
   return { ok: true, turnoId: t.turnoId, agente: quem, trocou: escolha.trocou, motivo: escolha.motivo }
 }
 
@@ -196,6 +315,14 @@ function acompanhar(id, t) {
     if (r.sessaoPerdida) esquecerSessao(id, t.agente)
 
     const estado = estourou ? 'interrompido' : (r.estado || (r.terminou ? 'pronto' : 'interrompido'))
+
+    /* CC-280: o que ele mexeu. Só quando houve ferramenta com alvo: turno de
+       conversa pura não tem o que mostrar, e um bloco vazio ali diria que ele
+       mexeu em algo e não mostrou. */
+    let mudou = null
+    try { mudou = mudancasDoTurno(t.cwd, t.antes, r.ferramentas) } catch { mudou = null }
+    if (mudou) acrescentar(id, { tipo: 'mudancas', turnoId: t.turnoId, ...mudou })
+
     acrescentar(id, {
       tipo: 'fim', turnoId: t.turnoId, estado,
       custo: r.custo, segundos: r.segundos,

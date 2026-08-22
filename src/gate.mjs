@@ -122,6 +122,21 @@ function gravarCabecalhoEm(dir, id, dados) {
  * em SILÊNCIO é como o dado parece sumir, que é a lição do CC-157.
  */
 export function gravarCabecalho(id, patch) {
+  /* O id precisa ser texto, e recusar aqui não é preciosismo.
+   *
+   * Em 22/08 eu mesma chamei `gravarCabecalho(cabecalho)`, passando o objeto
+   * inteiro no lugar do id. O módulo aceitou, montou o nome do arquivo com
+   * `String(objeto)` e gravou um **`[object Object].json`** ao lado das
+   * conversas de verdade, com a conversa inteira aninhada dentro de um campo
+   * `id`. Nenhum erro, e a leitura seguinte devolvia o valor ANTIGO, o que
+   * parece "não gravou" e manda procurar no lugar errado.
+   *
+   * É a família de defeito que este projeto mais paga: escrita que falha em
+   * silêncio e some do radar porque ninguém viu erro. */
+  if (typeof id !== 'string' || !id) {
+    throw new TypeError(`gravarCabecalho espera o id da conversa como texto, e recebeu ${typeof id}. `
+      + 'A ordem é gravarCabecalho(id, { o que muda }).')
+  }
   const dir = ondeMora(id)
   const base = dir ? lerCabecalhoDe(dir, id) : null
   const dados = { ...(base || {}), ...patch, id, mexidaEm: agora() }
@@ -146,8 +161,46 @@ export function gravarCabecalho(id, patch) {
  * validado que ele está dentro da base de projetos: uma conversa apontada para
  * o lugar errado é comando arbitrário na pasta errada.
  */
+/**
+ * O caminho veio de OUTRA máquina e não vale nada aqui?
+ *
+ * O painel é federado: o PC do Felipe empurra os agentes dele para cá, e o
+ * `cwd` deles vem no formato do Windows (`D:\Documentos\...`). No Linux isso
+ * **não é caminho absoluto**: `path.resolve` cola na pasta de quem está
+ * rodando, e `path.dirname` sobe para `.` na primeira volta.
+ *
+ * O estrago disso já aconteceu neste projeto, na tela Trabalho: cinco projetos
+ * do PC apareceram com o backlog do painel, 145 tarefas atribuídas a quem não é
+ * dono, **sem erro nenhum**. Achado pela sessão vizinha em 22/08.
+ *
+ * Aqui a porta é fechada de propósito, e não por acaso: hoje as rotas do gate
+ * recusam esse caminho porque a pasta resolvida não existe, o que é sorte. Uma
+ * mudança futura que suba diretórios reabriria o buraco calada.
+ */
+export function deOutraMaquina(caminho) {
+  const c = String(caminho || '')
+  /* A marca conta em QUALQUER posição, não só no começo.
+   *
+   * A primeira versão desta função olhava só o início (`^[A-Za-z]:`), e a
+   * sessão vizinha achou o furo em 22/08: o caminho MISTO
+   * `/home/claudedev/projetos/proj_controlcenter/D:\Documentos\...` é absoluto
+   * de verdade neste sistema, então passava limpo pelas duas regras. E ele é
+   * justamente o que sobra depois de alguém resolver um caminho do PC dele
+   * contra a pasta de quem está rodando: a forma exata do defeito que esta
+   * guarda existe para pegar.
+   *
+   * Barra invertida em nome de pasta é legal no Linux e praticamente não
+   * existe. Recusar sai mais barato que o defeito que ela esconde. */
+  if (/[A-Za-z]:[\\/]/.test(c)) return true   // D:\ ou D:/, em qualquer lugar
+  if (c.includes('\\')) return true           // \\servidor\pasta, e o caminho misto
+  return false
+}
+
 export function criar({ titulo, projeto, cwd, agentePadrao = 'claude', permissao = 'acceptEdits' }) {
   if (!cwd) throw new Error('conversa sem pasta: o agente não teria onde agir')
+  if (deOutraMaquina(cwd)) {
+    throw new Error(`a pasta ${cwd} é de outra máquina. Abra a conversa na máquina onde esse projeto mora.`)
+  }
   const id = novoId()
   return gravarCabecalho(id, {
     titulo: titulo || projeto || 'conversa',
@@ -236,7 +289,7 @@ export function lerConversa(id, { bytes = GATE_MAX_CAUDA } = {}) {
 
   for (const e of eventos) {
     if (e.tipo === 'dele') {
-      mensagens.push({ de: 'felipe', texto: e.texto, em: e.em, seq: e.seq })
+      mensagens.push({ de: 'felipe', texto: e.texto, em: e.em, seq: e.seq, anexos: e.anexos || [] })
     } else if (e.tipo === 'sistema') {
       mensagens.push({ de: 'sistema', texto: e.texto, em: e.em, seq: e.seq })
     } else if (e.tipo === 'turno') {
@@ -255,6 +308,9 @@ export function lerConversa(id, { bytes = GATE_MAX_CAUDA } = {}) {
          texto completo a cada olhada e marca `substitui`; quem grava pedaço de
          verdade não marca, e aí concatena. */
       if (m) m.texto = e.substitui ? e.texto : m.texto + e.texto
+    } else if (e.tipo === 'mudancas') {
+      const m = porTurno.get(e.turnoId)
+      if (m) m.mudancas = { diff: e.diff, arquivos: e.arquivos, cortou: e.cortou }
     } else if (e.tipo === 'ferramenta') {
       const m = porTurno.get(e.turnoId)
       if (m) m.ferramentas.push({ nome: e.nome, alvo: e.alvo || null, em: e.em })
@@ -344,7 +400,15 @@ export function deltaPara(id, agente) {
   usadas = usadas.filter((m) => m.de === 'felipe' || m.de === 'sistema' || m.estado === 'pronto')
 
   const linhaDe = (m) => {
-    if (m.de === 'felipe') return `[Felipe] ${m.texto}`
+    if (m.de === 'felipe') {
+      /* O anexo entra como CAMINHO, com a instrução de abrir. Os três leem
+         arquivo do disco, e é assim que a imagem chega ao agente sem cada um
+         precisar de um formato próprio. */
+      const anexos = (m.anexos || []).length
+        ? `\n[arquivos que ele anexou, abra para ver]\n${m.anexos.map((a) => `  ${a.caminho}`).join('\n')}`
+        : ''
+      return `[Felipe] ${m.texto}${anexos}`
+    }
     if (m.de === 'sistema') return `[o painel] ${m.texto}`
     return `[${m.de} respondeu] ${m.texto}`
   }
@@ -369,6 +433,9 @@ export function deltaPara(id, agente) {
     mensagens: usadas.length,
     cortadas,
     primeiraVez: !temSessao,
+    /* Os arquivos que ele anexou nas mensagens deste delta. Quem chama entrega
+       pelo caminho nativo de cada agente; o texto acima só os cita. */
+    anexos: usadas.flatMap((m) => m.anexos || []),
   }
 }
 
@@ -439,6 +506,34 @@ export function listar({ arquivadas = false } = {}) {
     }
   }
   return fora.sort((a, b) => (b.mexidaEm || 0) - (a.mexidaEm || 0))
+}
+
+/**
+ * CC-277: guarda um arquivo que ele mandou, e devolve o caminho.
+ *
+ * Ele manda print o tempo todo para mostrar o que está errado. Sem isto, teria
+ * que descrever a imagem em palavras, que é justamente o trabalho que o print
+ * evita.
+ *
+ * **O agente recebe o CAMINHO, não o conteúdo.** Os três leem arquivo do disco,
+ * e o Claude entende imagem ao abrir. Mandar o conteúdo embutido no pedido
+ * exigiria um formato diferente para cada um, e o do agy nem aceita.
+ *
+ * Os arquivos moram junto da conversa, e não numa pasta temporária: eles fazem
+ * parte do histórico, e o histórico sobrevive ao reinício.
+ */
+export function guardarAnexo(id, { nome, dados }) {
+  const cab = lerCabecalho(id)
+  if (!cab) throw new Error(`conversa ${id} não existe`)
+  /* O nome vem do telefone dele e pode ter qualquer coisa dentro. Barra e ponto
+     duplo viram caminho: o arquivo sairia da pasta da conversa e cairia onde
+     quisesse. */
+  const limpo = String(nome || 'anexo').replace(/[^\w.-]+/g, '-').replace(/^\.+/, '').slice(-60) || 'anexo'
+  const dir = path.join(cab._onde, `${id}.anexos`)
+  fs.mkdirSync(dir, { recursive: true })
+  const alvo = path.join(dir, `${Date.now().toString(36)}-${limpo}`)
+  fs.writeFileSync(alvo, Buffer.from(String(dados || ''), 'base64'))
+  return { caminho: alvo, nome: limpo, bytes: fs.statSync(alvo).size }
 }
 
 /**
