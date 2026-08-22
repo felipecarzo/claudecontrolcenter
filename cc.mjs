@@ -47,6 +47,10 @@ const FLAGS_WITH_VALUE = new Set([
   '--para', '--token',
   // CC-232: a lista de tarefas dele, pela linha de comando
   '--projeto', '--frente', '--porque', '--sessao', '--painel',
+  // CC-280: a zona inteligente. Sem esta linha, `--dia 2026-08-21` faz a data
+  // virar o nome da medida, e o comando responde sobre uma medida inexistente
+  // sem acusar nada.
+  '--desde', '--dia', '--por',
   // CC-238: o test-map
   '--falta',
 ])
@@ -1334,6 +1338,146 @@ switch (cmd) {
    * SYSTEM, com `CC_HOME` apontando para a pasta dele. No Linux vira um serviço
    * de usuário. Os dois chamam `cc reportar`, que empurra e não abre tela.
    */
+  /**
+   * CC-269: puxar e enviar sem abrir terminal.
+   *
+   * `cc sinc` mostra o estado de todos os projetos; `cc sinc puxar <projeto>`,
+   * `enviar` e `tudo` executam. Os mesmos verbos que a tela usa, para o comando
+   * e o botão nunca discordarem.
+   */
+  /**
+   * CC-280: a zona inteligente pela linha de comando.
+   *
+   * `coletar` produz e grava, o resto só lê. A separação é de propósito: tudo o
+   * que escreve fica atrás de UM verbo, e um comando que só olha nunca muda
+   * nada por engano.
+   */
+  case 'armazem': {
+    const A = await import('./src/armazem.mjs')
+    const C = await import('./src/coletores.mjs')
+    const sub = arg || 'estado'
+
+    if (sub === 'coletar') {
+      const desde = val('--desde') || null
+      const { registros, transcritos } = await C.coletarTranscritos({ desde })
+      const { findProjects } = await import('./src/install.mjs')
+      const { registros: doGit } = await C.coletarGit(findProjects(), { desde })
+      const r = A.gravar([...registros, ...doGit])
+      console.log(`\n  ${transcritos} conversa(s) lida(s), ${findProjects().length} projeto(s) no git`)
+      console.log(`  ${r.gravados} medida(s) gravada(s) em ${r.onde || '(nenhum lugar gravável)'}\n`)
+      break
+    }
+
+    if (sub === 'estado') {
+      const ms = A.medidas()
+      if (!ms.length) {
+        console.log('\n  O armazém está vazio. Rode `cc armazem coletar` para recolher o que já existe no disco.\n')
+        break
+      }
+      const vivas = ms.filter((m) => C.CATALOGO[m.medida])
+      const orfas = ms.filter((m) => !C.CATALOGO[m.medida])
+      console.log(`\n  ${vivas.length} medida(s) guardada(s):\n`)
+      for (const m of vivas) {
+        console.log(`  ${C.rotuloDaMedida(m.medida).padEnd(26)} ${String(m.dias).padStart(3)} dia(s), ${String(m.projetos.length).padStart(2)} projeto(s), de ${m.primeiro} a ${m.ultimo}`)
+      }
+      /* Medida que saiu do catálogo continua no arquivo, e some da tela. Dizer
+         aqui evita a conclusão de que o dado se perdeu. */
+      if (orfas.length) {
+        console.log(`\n  ${orfas.length} medida(s) antiga(s), guardadas mas fora da tela:`)
+        for (const m of orfas) console.log(`  ${m.medida.padEnd(26)} ${String(m.dias).padStart(3)} dia(s), até ${m.ultimo}`)
+      }
+      console.log('')
+      break
+    }
+
+    if (sub === 'serie') {
+      const medida = positional[2]
+      if (!medida) die('uso: node cc.mjs armazem serie <medida> [--projeto <nome>]')
+      const pontos = A.serie(medida, { projeto: val('--projeto') || null })
+      if (has('--json')) { console.log(JSON.stringify(pontos, null, 1)); break }
+      if (has('--csv')) { console.log(A.paraCSV(A.ler({ medida }))); break }
+      console.log(`\n  ${C.rotuloDaMedida(medida)}:\n`)
+      const teto = Math.max(1, ...pontos.map((p) => p.valor))
+      for (const p of pontos) {
+        const barra = '█'.repeat(Math.max(1, Math.round((p.valor / teto) * 28)))
+        console.log(`  ${p.dia}  ${String(p.valor).padStart(6)}  ${barra}`)
+      }
+      console.log('')
+      break
+    }
+
+    if (sub === 'faixa') {
+      const alvos = positional[2] ? [positional[2]] : A.medidas().map((m) => m.medida)
+      console.log('\n  Cada medida de hoje contra a média das 4 semanas anteriores:\n')
+      for (const m of alvos) {
+        const f = A.faixa(m, { projeto: val('--projeto') || null, dia: val('--dia') || A.hojeISO() })
+        const sinal = f.fora ? `FORA DA FAIXA, ${f.direcao}` : f.suficiente ? 'dentro do normal' : `base curta (${f.base} dia(s))`
+        console.log(`  ${C.rotuloDaMedida(m).padEnd(26)} hoje ${String(f.valor ?? '-').padStart(6)}   média ${String(f.media ?? '-').padStart(8)}   ${sinal}`)
+      }
+      console.log('')
+      break
+    }
+
+    if (sub === 'cruzar') {
+      const [a, b] = [positional[2], positional[3]]
+      if (!a || !b) die('uso: node cc.mjs armazem cruzar <medidaA> <medidaB> [--por dia]')
+      const c = A.cruzar(a, b, { por: val('--por') || 'projeto' })
+      if (has('--json')) { console.log(JSON.stringify(c, null, 1)); break }
+      console.log(`\n  ${C.rotuloDaMedida(a)} por ${C.rotuloDaMedida(b)}, em ${c.diasComuns} dia(s) que os dois lados enxergam:\n`)
+      for (const l of c.linhas) {
+        console.log(`  ${String(l.chave).padEnd(26)} ${String(l.a).padStart(7)} / ${String(l.b).padStart(6)} = ${String(l.razao).padStart(8)}`)
+      }
+      console.log(`\n  típico: ${c.tipico ?? '-'}${c.sozinhos ? `   (${c.sozinhos} registro(s) fora do cruzamento, só um dos lados os vê)` : ''}\n`)
+      break
+    }
+
+    if (sub === 'csv') { console.log(A.paraCSV()); break }
+    if (sub === 'json') { console.log(JSON.stringify(A.ler(), null, 1)); break }
+    if (sub === 'compactar') {
+      const r = A.compactar()
+      console.log(`\n  ${r.antes} linha(s) viraram ${r.depois}. ${r.removidas} superada(s) saíram.\n`)
+      break
+    }
+    die(`não conheço "armazem ${sub}". Use: coletar, estado, serie, faixa, cruzar, csv, json, compactar`)
+    break
+  }
+
+  case 'sinc': {
+    const S = await import('./src/sincronia.mjs')
+    const { findProjects } = await import('./src/install.mjs')
+    const sub = arg || 'estado'
+    const alvo = positional[2]
+
+    const pastas = findProjects().filter(S.ehRepo)
+    const acharPasta = (nome) => pastas.find((p) => path.basename(p) === nome)
+
+    if (sub === 'estado') {
+      const lista = await S.estadoDeVarios(pastas, { buscar: has('--buscar') })
+      if (has('--json')) { console.log(JSON.stringify(lista, null, 1)); break }
+      console.log(`\n${lista.length} projeto(s)${has('--buscar') ? ', consultados agora' : ' (use --buscar para perguntar ao servidor)'}:\n`)
+      for (const e of lista.sort((a, b) => (b.aEnviar + b.soltos) - (a.aEnviar + a.soltos))) {
+        const pend = [
+          e.aEnviar ? `${e.aEnviar} para enviar` : '',
+          e.aReceber ? `${e.aReceber} para receber` : '',
+          e.soltos ? `${e.soltos} sem salvar` : '',
+          e.temPar ? '' : 'nunca enviada',
+        ].filter(Boolean).join(', ')
+        console.log(`  ${e.projeto.padEnd(24)} ${(e.branch || '?').padEnd(32)} ${pend || 'em dia'}`)
+      }
+      console.log('')
+      break
+    }
+    if (!['puxar', 'enviar', 'tudo'].includes(sub)) die(`não conheço "sinc ${sub}". Use: estado, puxar, enviar, tudo`)
+    if (!alvo) die(`uso: node cc.mjs sinc ${sub} <projeto>`)
+    const dir = acharPasta(alvo)
+    if (!dir) die(`não achei o projeto "${alvo}". Veja os nomes com \`cc sinc estado\``)
+
+    const r = sub === 'puxar' ? await S.puxar(dir)
+      : sub === 'enviar' ? await S.enviar(dir, { semGate: has('--sem-gate') })
+        : await S.sincronizar(dir, { semGate: has('--sem-gate') })
+    console.log(JSON.stringify(r, null, 1))
+    process.exit(r.ok ? 0 : 1)
+  }
   case 'servico': {
     const P = await import('./src/platform.mjs')
     const sub = arg || 'status'

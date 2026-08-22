@@ -327,7 +327,18 @@ export function setTelaAberto(chave, aberto) {
     if (!(k in atual) && Object.keys(atual).length >= TELA_MAX_CHAVES) {
       return { erro: `cheio: ${TELA_MAX_CHAVES} seções guardadas. Feche alguma antes de abrir outra.` }
     }
-    atual[k] = true
+    /* CC-309: número passa inteiro, e não vira `true`.
+       A largura da barra lateral que ele arrasta é um estado de tela como os
+       outros, e não tinha onde morar: este mapa só guardava ligado/desligado.
+       Número é truthy, então quem lê o mapa procurando "está aberto?" continua
+       funcionando sem saber da mudança. O único cuidado é não guardar zero, que
+       leria como fechado; a largura tem mínimo de 180. */
+    /* Texto curto também, para a escolha dos quatro atalhos da barra de baixo:
+       ela é uma lista de quatro nomes de tela, e quatro chaves separadas
+       seriam quatro escritas em disco para uma decisão só. O teto de 200 existe
+       para o mapa não virar depósito de texto livre. */
+    atual[k] = typeof aberto === 'number' && Number.isFinite(aberto) && aberto !== 0 ? aberto
+      : (typeof aberto === 'string' && aberto.length && aberto.length <= 200 ? aberto : true)
   } else {
     delete atual[k]
   }

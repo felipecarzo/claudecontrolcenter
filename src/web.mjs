@@ -34,13 +34,19 @@ import { tarefas } from './tarefas.mjs'
    sintaxe, com o systemd reiniciando em laço. Custou uma tarde hoje, na rota
    vizinha. */
 import {
-  listar as listarGate, criar as criarGate,
+  listar as listarGate, criar as criarGate, remover as removerGate, acrescentar as acrescentarGate, guardarAnexo as guardarAnexoGate,
+  deOutraMaquina as deOutraMaquinaGate,
   gravarCabecalho as gravarCabecalhoGate, reconciliar as reconciliarGate,
 } from './gate.mjs'
 import { responder as responderGate, parar as pararGate, conversaAoVivo as conversaAoVivoGate } from './gateTurno.mjs'
-import { vivo as vivoGate } from './gateAgentes.mjs'
+import { vivo as vivoGate, todosOsModelos as todosOsModelosGate } from './gateAgentes.mjs'
 import { arquivar, jobsHistoricos, marcosDe, mudouDesde } from './historico.mjs'
 import { readUso, lerChamada as lerChamadaStatusline } from './uso.mjs'
+
+/* CC-269: carregado uma vez, usado nas duas rotas de sincronia. Fica como
+   promessa e não como `await` no topo, para o arranque do painel não esperar
+   por ele. */
+const sincronia = import('./sincronia.mjs')
 
 /* CC-262: o resultado da última revisão das pendências dele, por id.
    Vive em memória e é preenchido por `revisarPendencias()` a cada minuto: as
@@ -507,6 +513,8 @@ async function atenderPedidos(pedidos) {
   }
 }
 
+const CACHE_PROJETOS = { em: 0, dado: null }
+
 const send = (res, code, body, type = 'application/json') => {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' })
   res.end(typeof body === 'string' ? body : JSON.stringify(body))
@@ -562,6 +570,29 @@ function handler(req, res) {
   if (url.pathname === '/v1') return send(res, 200, fs.readFileSync(UI, 'utf8'), 'text/html; charset=utf-8')
   if (url.pathname === '/graficos.js') {
     return send(res, 200, fs.readFileSync(GRAFICOS, 'utf8'), 'text/javascript; charset=utf-8')
+  }
+
+  /* CC-283: as peças que fazem o painel virar aplicativo instalável.
+   *
+   * Ele salvou o cockpit na tela do telefone e virou atalho de navegador, com
+   * barra de endereço: *"quando eu salvo ele abre como um site só, nao como
+   * app"*. Faltavam três coisas, e são estas.
+   *
+   * O trabalhador de fundo é servido da RAIZ de propósito: ele só governa o
+   * caminho de onde foi servido, e num subcaminho o painel inteiro ficaria de
+   * fora do escopo do aplicativo. */
+  if (url.pathname === '/app.webmanifest') {
+    return send(res, 200, fs.readFileSync(path.join(HERE, 'app.webmanifest'), 'utf8'), 'application/manifest+json; charset=utf-8')
+  }
+  if (url.pathname === '/sw.js') {
+    return send(res, 200, fs.readFileSync(path.join(HERE, 'sw.js'), 'utf8'), 'text/javascript; charset=utf-8')
+  }
+  if (url.pathname === '/icone.svg') {
+    return send(res, 200, fs.readFileSync(path.join(HERE, 'icone.svg'), 'utf8'), 'image/svg+xml; charset=utf-8')
+  }
+  if (url.pathname === '/icone-192.png' || url.pathname === '/icone-512.png') {
+    res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' })
+    return res.end(fs.readFileSync(path.join(HERE, url.pathname.slice(1))))
   }
   /* A face condensada do boletim, hospedada aqui e não na Google.
      Fonte de sistema como voz do produto é o que o piso de qualidade recusa, e
@@ -1269,10 +1300,47 @@ function handler(req, res) {
    * vazio, porque vazio por erro parece "nunca abri nada" — e essa confusão é
    * a família de defeito mais cara deste painel.
    */
+  /**
+   * CC-269: o estado de sincronia de todos os projetos, e as duas ações.
+   *
+   * Pedido dele: *"um botão e resolve"*. Rota separada e só sob clique, porque
+   * `git fetch` fala com a rede: no tique de 2 segundos isso seria a terceira
+   * chamada de rede do painel, multiplicada por 18 projetos.
+   */
+  if (url.pathname === '/api/sincronia') {
+    /* Este handler não é async, então `await` solto aqui quebra o arquivo
+       inteiro: aconteceu hoje mais cedo, com `SyntaxError: Unexpected reserved
+       word`, e o painel ficou reiniciando em laço. */
+    const buscar = url.searchParams.get('buscar') === '1'
+    sincronia
+      .then((S) => S.estadoDeVarios(findProjects().filter(S.ehRepo), { buscar }))
+      .then((lista) => send(res, 200, { projetos: lista, consultado: buscar, at: Date.now() }))
+      .catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
+
+  if (url.pathname === '/api/sincronia/acao' && req.method === 'POST') {
+    /* `comCorpoAsync` porque estas ações demoram: um envio com gate pode levar
+       minutos, e o `comCorpo` comum devolveria antes de terminar. */
+    return comCorpoAsync(req, res, 4e3, async ({ projeto, acao, semGate }) => {
+      const S = await sincronia
+      const dir = findProjects().filter(S.ehRepo).find((p) => path.basename(p) === projeto)
+      if (!dir) return { erro: `não achei o projeto "${projeto}"` }
+      if (!['puxar', 'enviar', 'tudo'].includes(acao)) return { erro: 'ação precisa ser puxar, enviar ou tudo' }
+      const r = acao === 'puxar' ? await S.puxar(dir)
+        : acao === 'enviar' ? await S.enviar(dir, { semGate: Boolean(semGate) })
+          : await S.sincronizar(dir, { semGate: Boolean(semGate) })
+      return { resultado: r }
+    })
+  }
+
   if (url.pathname === '/api/tela') {
     if (req.method === 'POST') {
-      return comCorpo(req, res, 4e3, ({ chave, aberto }) => {
-        const r = setTelaAberto(chave, aberto)
+      return comCorpo(req, res, 4e3, ({ chave, aberto, valor }) => {
+        /* CC-309: `valor` numérico entra para a largura da barra lateral, que
+           é estado de tela como os outros e não tinha onde morar. Sem ele, o
+           painel gravaria `true` e a largura voltaria sempre no padrão. */
+        const r = setTelaAberto(chave, (typeof valor === 'number' || typeof valor === 'string') ? valor : aberto)
         /* LANÇA em vez de devolver `{erro}`: `comCorpo` carimba `ok: true` em
            tudo que ele retorna, então a recusa sairia como sucesso com um erro
            pendurado do lado. Lançando, a resposta é 400 com `ok: false`, que é
@@ -1309,6 +1377,38 @@ function handler(req, res) {
     return send(res, 200, { conversas: listarGate(), at: Date.now() })
   }
 
+  /* CC-276: o modo de trabalho do projeto desta conversa, para trocar sem sair
+     dela. Pedido dele: *"poder mudar o framework ali pelo chat"*.
+     Só LÊ: a troca continua indo pela rota que já existe, para não haver dois
+     caminhos gravando a mesma coisa de jeitos diferentes. */
+  if (url.pathname === '/api/gate/modo') {
+    const cwd = url.searchParams.get('cwd')
+    if (!cwd) return send(res, 400, { erro: 'preciso da pasta do projeto' })
+    /* Caminho de outra máquina não resolve aqui, e resolver por engano é como o
+       backlog de um projeto vira o de outro sem erro nenhum. */
+    if (deOutraMaquinaGate(cwd)) return send(res, 200, { existe: false, deOutraMaquina: true })
+    try {
+      /* `retratoFramework` já monta tudo o que a tela de framework usa: o modo
+         de agora, o título legível, os modos possíveis e os perfis. Montar de
+         novo aqui daria duas contas para a mesma coisa, que é como as duas
+         telas passariam a discordar. */
+      return send(res, 200, retratoFramework(path.resolve(cwd)))
+    } catch (e) {
+      /* Falha de leitura diz que falhou, nunca vira "não tem framework": os
+         dois pareceriam iguais na tela e são opostos. */
+      return send(res, 200, { erro: String(e.message || e) })
+    }
+  }
+
+  /* Os modelos de cada agente. Rota própria e não dentro da lista de conversas:
+     ela pergunta ao binário de dois deles, leva segundos na primeira vez, e a
+     lista de conversas é pedida a cada dois segundos. */
+  if (url.pathname === '/api/gate/modelos') {
+    return todosOsModelosGate()
+      .then((modelos) => send(res, 200, { modelos, at: Date.now() }))
+      .catch((e) => send(res, 200, { modelos: {}, erro: String(e.message || e) }))
+  }
+
   if (url.pathname === '/api/gate/conversa') {
     const id = url.searchParams.get('id')
     const c = id ? conversaAoVivoGate(id) : null
@@ -1323,7 +1423,20 @@ function handler(req, res) {
          livre, e uma conversa apontada para o lugar errado seria comando
          arbitrário na pasta errada. Sem `cwd`, cai na pasta do próprio painel,
          que é conhecida e está dentro da base. */
-      const alvo = path.resolve(cwd || process.cwd())
+      /* CC-326: era `process.cwd()`, e isso abria a pasta pessoal INTEIRA.
+       *
+       * O comentário abaixo dizia que sem `cwd` a conversa cai "na pasta do
+       * próprio painel, que é conhecida e está dentro da base". A frase é
+       * verdadeira quando alguém roda `node cc.mjs` de dentro do repositório, e
+       * FALSA em produção: o serviço do sistema sobe a partir de
+       * `/home/claudedev`, medido em 22/08. Então `ehOPainel` passava a valer
+       * para a casa inteira, com `.ssh`, `.claude` e os arquivos de senha do
+       * cockpit dentro dela, e uma conversa sem pasta ganhava tudo isso.
+       *
+       * `RAIZ_DO_PAINEL` sai do caminho DESTE arquivo, então não depende de
+       * onde alguém chamou o processo. Achado indo conferir outra coisa: uma
+       * conversa real na lista dele estava com `cwd: /home/claudedev`. */
+      const alvo = path.resolve(cwd || RAIZ_DO_PAINEL)
       /* `projectsBase()` é a mesma conta que o resto do painel usa, e ela é
          descoberta, nunca caminho fixo de máquina. Quando a descoberta falha,
          a pasta do próprio painel ainda vale: ela é conhecida e é um projeto
@@ -1331,7 +1444,7 @@ function handler(req, res) {
       let base = null
       try { base = path.resolve(projectsBase() || '') } catch { base = null }
       const dentroDaBase = base && (alvo === base || alvo.startsWith(base + path.sep))
-      const ehOPainel = alvo === path.resolve(process.cwd())
+      const ehOPainel = alvo === path.resolve(RAIZ_DO_PAINEL)
       if (!dentroDaBase && !ehOPainel) throw new Error(`a pasta ${alvo} está fora da base de projetos`)
       return criarGate({ titulo, projeto: projeto || path.basename(alvo), cwd: alvo })
     })
@@ -1340,14 +1453,64 @@ function handler(req, res) {
   if (url.pathname === '/api/gate/mensagem' && req.method === 'POST') {
     /* 100 KB: ele dita mensagem longa por voz, e cortar o pedido dele calado
        seria a pior forma de economizar. */
-    return comCorpo(req, res, 1e5, ({ id, texto, agente }) => {
+    return comCorpo(req, res, 1e5, ({ id, texto, agente, modelo, esforco, anexos }) => {
       if (!id || !String(texto || '').trim()) throw new Error('preciso da conversa e do texto')
-      return responderGate(id, { texto: String(texto), agente: agente || 'claude' })
+      return responderGate(id, {
+        texto: String(texto), agente: agente || 'claude',
+        modelo: modelo || null, esforco: esforco || null,
+        anexos: Array.isArray(anexos) ? anexos : [],
+      })
     })
   }
 
   if (url.pathname === '/api/gate/parar' && req.method === 'POST') {
     return comCorpo(req, res, 1e3, ({ id }) => pararGate(id))
+  }
+
+  /* Apaga uma conversa. Devolve `achou: false` quando não havia nada, em vez de
+     dizer que apagou: "apaguei" sem ter apagado é a mentira mais fácil de
+     contar aqui, porque some justamente o que se usaria para conferir. */
+  if (url.pathname === '/api/gate/apagar' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id }) => {
+      if (!id) throw new Error('preciso saber qual conversa')
+      pararGate(id)
+      return removerGate(id)
+    })
+  }
+
+  /* Escreve um aviso do PAINEL na conversa, sem chamar agente nenhum.
+     Existe porque registrar "o modo mudou" pela rota de mensagem dispararia um
+     turno, e ele pagaria um agente para ler um recado do próprio painel. */
+  if (url.pathname === '/api/gate/nota' && req.method === 'POST') {
+    return comCorpo(req, res, 4e3, ({ id, texto }) => {
+      if (!id || !String(texto || '').trim()) throw new Error('preciso da conversa e do texto')
+      return { evento: acrescentarGate(id, { tipo: 'sistema', texto: String(texto) }) }
+    })
+  }
+
+  /* CC-277: recebe um arquivo que ele mandou e devolve o caminho no disco.
+     O teto é 12 MB porque print de celular moderno passa de 3 MB, e cortar o
+     que ele mandou seria o mesmo que não aceitar. */
+  /* Serve um anexo já gravado, para a conversa mostrar o print que ele mandou.
+     Só entrega o que está DENTRO de uma pasta de anexos do próprio gate: sem
+     essa trava, o caminho vindo do navegador leria qualquer arquivo da
+     máquina. */
+  if (url.pathname === '/api/gate/anexo' && req.method === 'GET') {
+    const caminho = path.resolve(url.searchParams.get('caminho') || '')
+    if (!/[/\\][a-z0-9-]+\.anexos[/\\]/i.test(caminho) || !fs.existsSync(caminho)) {
+      return send(res, 404, { erro: 'anexo não encontrado' })
+    }
+    const tipos = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' }
+    const tipo = tipos[path.extname(caminho).toLowerCase()] || 'application/octet-stream'
+    res.writeHead(200, { 'content-type': tipo, 'cache-control': 'private, max-age=3600' })
+    return res.end(fs.readFileSync(caminho))
+  }
+
+  if (url.pathname === '/api/gate/anexo' && req.method === 'POST') {
+    return comCorpo(req, res, 12e6, ({ id, nome, dados }) => {
+      if (!id || !dados) throw new Error('preciso da conversa e do arquivo')
+      return guardarAnexoGate(id, { nome, dados })
+    })
   }
 
   if (url.pathname === '/api/gate/rascunho' && req.method === 'POST') {
@@ -1417,6 +1580,222 @@ function handler(req, res) {
 
   // Idem: lê ~800MB de transcript na primeira vez. Só a aba de tempo pede, e
   // as vezes seguintes releem apenas o que mudou.
+  /**
+   * CC-287: a tela da zona inteligente.
+   *
+   * Duas rotas, e a divisão é o ponto: **ler é barato, colher é caro.** A
+   * leitura abre o arquivo do armazém e devolve; a colheita varre 173 MB de
+   * conversa e leva segundos.
+   *
+   * Por isso a colheita fica atrás de um POST, disparado por clique, e nunca
+   * entra no fluxo de 2 em 2 segundos. É a mesma regra da varredura de portas e
+   * da leitura da VPS, e ela existe porque já custou o painel inteiro travar.
+   */
+  /**
+   * CC-297: o log das travas, ao vivo.
+   *
+   * Leitura barata de propósito: só a cauda de cada conversa, com cache por
+   * tamanho e data. Medido em 22/08: 134 ms na primeira chamada, 2 ms nas
+   * seguintes. É o que permite esta rota viver perto do fluxo de 2 em 2
+   * segundos, ao contrário da colheita da zona inteligente, que leva 17 s e por
+   * isso mora atrás de um botão.
+   */
+  if (url.pathname === '/api/travas' && req.method === 'POST') {
+    return import('./travas.mjs').then((T) => comCorpo(req, res, 1e5, ({ id, valor }) => {
+      /* `valor` nulo desmarca: marcar por engano tem que ter volta. */
+      const r = T.julgar(id, valor === undefined ? null : valor)
+      return { ok: true, ...r, placar: T.placar() }
+    }))
+  }
+
+  /* A carga completa: varre as conversas inteiras, ~2 s. Fica atrás de um
+     clique pelo mesmo motivo da colheita da zona inteligente. */
+  if (url.pathname === '/api/travas/recolher' && req.method === 'POST') {
+    return import('./travas.mjs').then((T) => {
+      try { send(res, 200, { ok: true, ...T.recolherTudo() }) }
+      catch (e) { send(res, 500, { error: String(e.message || e) }) }
+    })
+  }
+
+  if (url.pathname === '/api/travas') {
+    /* `async` no handler não é estilo: sem ele, o `await import` lá dentro é
+       erro de sintaxe e derruba o servidor inteiro na hora de carregar. Já
+       aconteceu duas vezes neste arquivo. */
+    return import('./travas.mjs').then(async (T) => {
+      try {
+        const limite = Math.min(300, Number(url.searchParams.get('limite')) || 80)
+        const lista = T.eventos({
+          limite,
+          trava: url.searchParams.get('trava') || null,
+          projeto: url.searchParams.get('projeto') || null,
+        })
+        const julgamentos = T.lerJulgamentos()
+        const amplo = T.eventos({ limite: 1000 })
+
+        /* CC-300: o "?" de cada regra. Pedido dele: *"coloque '?' em todas as
+           regras explicando o que são, como se ativam e até o prompt"*.
+           Vai TUDO junto no mesmo pedido, e não numa rota por regra: são 38
+           entradas pequenas, e uma ida à rede por toque abriria um buraco de
+           espera bem no gesto de querer entender. */
+        const H = await import('./hooksCatalogo.mjs')
+        const nomes = [...new Set([
+          ...(H.HOOKS || []).map((h) => h.id),
+          ...amplo.map((e) => e.trava).filter(Boolean),
+        ])]
+        const regras = await Promise.all(nomes.map((n) => T.explicar(n, amplo)))
+
+        send(res, 200, {
+          eventos: lista.map((e) => ({ ...e, julgamento: julgamentos[e.id]?.valor || null })),
+          placar: T.placar(amplo),
+          /* Ordenadas pelas que mais dispararam. As que nunca dispararam vão
+             para o fim, e a tela as separa: são regras vigiando algo que ainda
+             não aconteceu, e isso é diferente de regra inativa. */
+          regras: regras.sort((a, b) => b.vezes - a.vezes),
+          /* Quantos eventos a cauda alcança, para a tela não afirmar que este é
+             o histórico inteiro. Ela vê as últimas horas de cada conversa, não
+             tudo o que já aconteceu. */
+          alcance: amplo.length,
+          /* CC-315: o log lê os transcritos DESTA máquina, então tudo aqui é
+             daqui. Dizer isso é a mesma regra do resto do painel. */
+          maquina: origemLocal(readConfig())?.nome || null,
+          projetos: [...new Set(amplo.map((e) => e.projeto).filter(Boolean))].sort(),
+        })
+      } catch (e) {
+        send(res, 500, { error: String(e.message || e) })
+      }
+    })
+  }
+
+  if (url.pathname === '/api/armazem' && req.method === 'POST') {
+    return import('./coletores.mjs').then(async (C) => {
+      const A = await import('./armazem.mjs')
+      const { findProjects } = await import('./install.mjs')
+      const desde = url.searchParams.get('desde') || null
+      try {
+        const { registros, transcritos } = await C.coletarTranscritos({ desde })
+        const { registros: doGit } = await C.coletarGit(findProjects(), { desde })
+        const r = A.gravar([...registros, ...doGit])
+        /* `onde` volta para a tela de propósito: cair no abrigo em silêncio é
+           exatamente como o dado parece sumir. */
+        send(res, 200, { ok: r.ok, gravados: r.gravados, onde: r.onde, transcritos })
+      } catch (e) {
+        send(res, 500, { error: String(e.message || e) })
+      }
+    })
+  }
+
+  if (url.pathname === '/api/armazem') {
+    return import('./armazem.mjs').then(async (A) => {
+      const C = await import('./coletores.mjs')
+      try {
+        /* Só o que o catálogo conhece hoje.
+           O armazém é append-only e guarda tudo o que já foi gravado, inclusive
+           medida que mudou de nome: `permissões negadas` virou duas em 22/08, e
+           sem este filtro a tela mostraria as três, a antiga congelada no dia
+           em que parou de ser gravada. Dado velho não é apagado, só sai da
+           vitrine; `cc armazem estado` continua listando as órfãs. */
+        const ms = A.medidas().filter((m) => C.CATALOGO[m.medida])
+        const projeto = url.searchParams.get('projeto') || null
+        const series = {}
+        const alarmes = []
+        /* O dia de referência é o último dia FECHADO, nunca o de hoje.
+           Medido em 22/08, às 3 da manhã: o dia em curso tinha 103 ferramentas
+           usadas contra uma média de 900, e três medidas apareciam vazias
+           porque ainda não houve commit. Comparar um dia pela metade com uma
+           média de dias inteiros dá sempre "abaixo do normal", o que enterra o
+           alarme, e uma medida vazia ao lado de uma média cheia parece leitura
+           que falhou. As duas leituras erradas pelo mesmo motivo.
+           A série continua mostrando hoje: quem olha o desenho quer o que está
+           acontecendo agora. Quem lê o julgamento precisa de um dia completo. */
+        const hoje = A.hojeISO()
+        const dias = [...new Set(A.ler().map((r) => r.dia))].sort()
+        const fechados = dias.filter((d) => d < hoje)
+        const ultimo = fechados.length ? fechados[fechados.length - 1] : (dias[dias.length - 1] || '')
+        const emCurso = Boolean(dias.length) && dias[dias.length - 1] === hoje
+        /* CC-288: o grão do tempo, pedido dele. O recorte `de`/`ate` vem da
+           navegação por setas: quem anda no tempo pede uma janela, e mandar a
+           série inteira a cada passo seria carregar um ano para mostrar uma
+           semana. */
+        const grao = ['dia', 'semana', 'mes', 'ano'].includes(url.searchParams.get('grao'))
+          ? url.searchParams.get('grao') : 'dia'
+        const diaValido = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : null)
+        const de = diaValido(url.searchParams.get('de'))
+        const ate = diaValido(url.searchParams.get('ate'))
+
+        const canais = {}
+        for (const m of ms) {
+          const bruta = A.serie(m.medida, { projeto, desde: de, ate })
+          series[m.medida] = A.agregar(bruta, grao, C.agregacaoDe(m.medida))
+          /* O canal roda sobre a série AGREGADA: em grão de mês, o normal de um
+             mês se compara com os meses anteriores, nunca com dias. */
+          canais[m.medida] = A.canal(series[m.medida], grao === 'dia' ? 14 : 6)
+          alarmes.push({ ...A.faixa(m.medida, { projeto, dia: ultimo }), rotulo: C.rotuloDaMedida(m.medida) })
+        }
+
+        /* CC-289: o calendário é sempre por DIA, mesmo quando a curva está em
+           mês. São duas perguntas diferentes: a curva mostra a tendência, o
+           calendário mostra em que dias houve trabalho. */
+        const emFoco = url.searchParams.get('medida') || (ms[0]?.medida ?? null)
+        const diario = emFoco ? A.serie(emFoco, { projeto }) : []
+
+        const projetos = [...new Set(A.ler().map((r) => r.projeto).filter(Boolean))].sort()
+        send(res, 200, {
+          medidas: ms.map((m) => ({
+            ...m,
+            rotulo: C.rotuloDaMedida(m.medida),
+            ajuda: C.CATALOGO[m.medida]?.ajuda || null,
+            agregacao: C.agregacaoDe(m.medida),
+          })),
+          series,
+          canais,
+          grao,
+          de,
+          ate,
+          emFoco,
+          diario,
+          alarmes: alarmes.sort((a, b) => (b.fora === a.fora ? 0 : b.fora ? 1 : -1)),
+          projetos,
+          projeto,
+          dia: ultimo || null,
+          emCurso,
+          /* Os extremos do que existe: a navegação por setas usa isto para não
+             deixar ele andar para um vazio sem fim. */
+          primeiroDia: dias[0] || null,
+          ultimoDia: dias[dias.length - 1] || null,
+          vazio: ms.length === 0,
+        })
+      } catch (e) {
+        send(res, 500, { error: String(e.message || e) })
+      }
+    })
+  }
+
+  if (url.pathname === '/api/armazem/cruzar') {
+    return import('./armazem.mjs').then((A) => {
+      const a = url.searchParams.get('a')
+      const b = url.searchParams.get('b')
+      if (!a || !b) return send(res, 400, { error: 'faltam as duas medidas' })
+      try {
+        send(res, 200, A.cruzar(a, b, { por: url.searchParams.get('por') || 'projeto' }))
+      } catch (e) { send(res, 500, { error: String(e.message || e) }) }
+    })
+  }
+
+  /* A planilha sai pelo mesmo lugar que a tela, e é o pedido dele de
+     "disponibilizar em outros formatos". `attachment` para o navegador salvar
+     em vez de mostrar texto cru. */
+  if (url.pathname === '/api/armazem/csv') {
+    return import('./armazem.mjs').then((A) => {
+      try {
+        res.writeHead(200, {
+          'content-type': 'text/csv; charset=utf-8',
+          'content-disposition': 'attachment; filename="cockpit-medidas.csv"',
+        })
+        res.end(A.paraCSV())
+      } catch (e) { send(res, 500, { error: String(e.message || e) }) }
+    })
+  }
+
   if (url.pathname === '/api/tempo') {
     const num = (v, padrao) => (Number.isFinite(Number(v)) ? Number(v) : padrao)
     const dia = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : null)
@@ -1514,6 +1893,181 @@ function handler(req, res) {
      Junta o backlog de cada projeto, os agentes trabalhando e o que só ele
      resolve. Fora do stream de 2s: lê o roadmap de cada projeto e chama git
      para as idades, o que é caro demais para um tique. */
+  /**
+   * CC-304: a tela Projetos.
+   *
+   * Duas rotas, e a divisão é a mesma que este painel já aprendeu três vezes:
+   * **ler barato para todos, ler caro para um, sob clique.**
+   *
+   * `painel` responde os vinte projetos com o que já está em memória ou custa
+   * uma leitura curta. `um` responde o resto de um projeto só, e existe porque
+   * ler o git custa ~83ms: multiplicado por vinte seriam 1,6s a cada abertura
+   * de tela, dentro de um painel que se atualiza de 2 em 2 segundos.
+   */
+  if (url.pathname === '/api/projetos/painel') {
+    return import('./projetos.mjs').then(async (P) => {
+      try {
+        /* Cache curto, e o prazo sai da medida: ler os roadmaps dos 20
+           projetos custa 468ms e a rota inteira 0,5s. Aceitável ao ABRIR a
+           tela, caro demais para clique repetido ou para dois painéis olhando
+           ao mesmo tempo. 15s é o mesmo prazo da varredura de portas, pelo
+           mesmo motivo. `?force=1` pula, para o botão de atualizar. */
+        const agora = Date.now()
+        if (CACHE_PROJETOS.dado && agora - CACHE_PROJETOS.em < 15_000 && !url.searchParams.has('force')) {
+          return send(res, 200, { ...CACHE_PROJETOS.dado, doCache: true })
+        }
+        const s = snapshot()
+        const lista = projetosDe(s.jobs, findProjects)
+        const projetos = carregarProjetos(lista)
+        const pendencias = tudoMeu(s.jobs, {
+          projetos,
+          maquinaLocal: origemLocal(readConfig())?.nome || null,
+        })
+
+        /* O backlog é contado DIRETO do roadmap de cada projeto, e não de
+           `montarTrabalho`.
+           Medido em 22/08: aquela rota devolve os mesmos 6 cartões e as mesmas
+           145 fechadas para cinco projetos diferentes, inclusive dois que não
+           têm roadmap nenhum. Lendo `lerRoadmap` por projeto, cada um traz o
+           seu: fibraessencia 3 frentes, controlcenter 151, renanMarchon e
+           ibrics zero, porque não têm arquivo. O defeito daquela tela fica
+           registrado à parte; esta não o herda. */
+        const trabalho = {
+          grupos: projetos.map(({ projeto, mapa }) => {
+            const frentes = (mapa?.grupos || []).flatMap((g) => g.frentes || [])
+            const abertas = frentes.filter((f) => f.estado !== 'feito')
+            return {
+              projeto,
+              cartoes: abertas,
+              /* Grupo sem frentes ainda conta itens soltos, que é como os
+                 roadmaps mais simples são escritos. */
+              soltos: (mapa?.grupos || []).reduce((n, g) => n + Math.max(0, (g.itens || 0) - (g.feitos || 0)), 0),
+            }
+          }),
+        }
+
+        /* O tempo entra com o cache que já existe. `force` fica de fora de
+           propósito: reler 800 MB de transcrito não pode acontecer ao abrir
+           uma tela. */
+        let tempo = null
+        try { tempo = resumoTempo({ corteMin: 15 }) } catch { /* segue sem as horas */ }
+
+        /* As conversas do Coderoom: `null` quando a leitura falha, nunca lista
+           vazia. A tela precisa distinguir "não há" de "não consegui ler". */
+        let conversas = null
+        try { conversas = (await import('./gate.mjs')).listar?.() ?? null } catch { conversas = null }
+
+        const dado = {
+          ...P.retrato({
+            jobs: s.jobs,
+            trabalho: { ...trabalho, pendencias },
+            tempo,
+            /* `estadoRemoto()` é assíncrono e é a MESMA fonte que a tela
+               Remoto usa. Duas contas para "que sessão está no ar" acabariam
+               discordando um dia, e o painel já tem caso registrado disso. */
+            sessoesAtivas: await estadoRemoto().catch(() => ({})),
+            conversas,
+          }),
+          /* CC-315: o nome desta máquina viaja com o dado.
+             Ele abriu a tela nova, viu 23 cartões sem etiqueta e perguntou onde
+             estava dito em qual máquina cada projeto mora. A regra é dele, de
+             20/08, e vale para TODO quadro que mostra projeto. */
+          maquina: origemLocal(readConfig())?.nome || null,
+          at: Date.now(),
+        }
+        CACHE_PROJETOS.em = agora
+        CACHE_PROJETOS.dado = dado
+        send(res, 200, dado)
+      } catch (e) {
+        send(res, 500, { error: String(e.message || e) })
+      }
+    })
+  }
+
+  /**
+   * CC-318: a visão de pastas de um projeto.
+   *
+   * Pedido dele: *"podemos criar uma janela pro cockpit ter uma espécie de
+   * visão de pastas dos projetos?"*
+   *
+   * Uma leitura só, sem carregar por pedaço: medido em 22/08, 2ms no
+   * proj_controlcenter e 67ms no inovallbond com quatro níveis. `node_modules`
+   * e companhia não entram, e é por isso que é barato.
+   */
+  if (url.pathname === '/api/projetos/pastas') {
+    const projeto = url.searchParams.get('projeto')
+    if (!projeto) return send(res, 400, { error: 'falta o projeto' })
+    const dir = cwdDoProjeto(url.searchParams.get('cwd'), projeto)
+    if (!dir) return send(res, 404, { error: `não achei a pasta de ${projeto}` })
+
+    return import('./pastas.mjs').then((P) => {
+      try {
+        const fundo = Math.min(5, Math.max(1, Number(url.searchParams.get('fundo')) || 3))
+        send(res, 200, { projeto, maquina: origemLocal(readConfig())?.nome || null, ...P.retrato(dir, { fundo }) })
+      } catch (e) {
+        send(res, 500, { error: String(e.message || e) })
+      }
+    })
+  }
+
+  /**
+   * CC-319: o conteúdo de um arquivo dentro de um projeto.
+   *
+   * **É a rota mais perigosa deste painel**, e por isso a recusa mora no
+   * módulo, não aqui: caminho que sai da pasta do projeto, arquivo que guarda
+   * senha, binário e arquivo grande demais são recusados por `pastas.mjs`,
+   * cada um com o motivo dito.
+   *
+   * A trava que mais importa é a primeira: sem ela, `../../.ssh/id_rsa`
+   * entregaria a chave privada dele pela rede.
+   */
+  if (url.pathname === '/api/projetos/arquivo') {
+    const projeto = url.searchParams.get('projeto')
+    const rel = url.searchParams.get('caminho')
+    if (!projeto || !rel) return send(res, 400, { error: 'falta o projeto ou o caminho' })
+    const dir = cwdDoProjeto(url.searchParams.get('cwd'), projeto)
+    if (!dir) return send(res, 404, { error: `não achei a pasta de ${projeto}` })
+
+    return import('./pastas.mjs').then((P) => {
+      try {
+        const r = P.ler(dir, rel)
+        /* Recusa é 200 com `ok:false`, não erro de rede: a tela precisa MOSTRAR
+           o motivo, e um 403 viraria "falhou" genérico na mão dele. */
+        send(res, 200, { projeto, caminho: rel, ...r })
+      } catch (e) {
+        send(res, 500, { error: String(e.message || e) })
+      }
+    })
+  }
+
+  if (url.pathname === '/api/projetos/um') {
+    const projeto = url.searchParams.get('projeto')
+    if (!projeto) return send(res, 400, { error: 'falta o projeto' })
+    const dir = cwdDoProjeto(url.searchParams.get('cwd'), projeto)
+    if (!dir) return send(res, 404, { error: `não achei a pasta de ${projeto}` })
+
+    return (async () => {
+      /* Cada leitura falha por conta própria e a resposta diz qual falhou. Uma
+         exceção aqui deixaria o cartão inteiro vazio por causa de um pedaço,
+         e bloco vazio não distingue "não há" de "a leitura quebrou". */
+      const parte = async (nome, fn) => {
+        try { return { ok: true, dado: await fn() } }
+        catch (e) { return { ok: false, erro: String(e.message || e), nome } }
+      }
+      const [git, framework, rotinas, roadmap] = await Promise.all([
+        parte('git', async () => (await import('./sincronia.mjs')).estado(dir)),
+        parte('framework', async () => retratoFramework(dir)),
+        parte('rotinas', async () => {
+          const R = await import('./rotinas.mjs')
+          const todas = R.estado()
+          return (todas?.projetos || []).find((x) => path.resolve(x.dir) === path.resolve(dir)) || null
+        }),
+        parte('roadmap', async () => (await import('./roadmap.mjs')).lerRoadmap(dir)),
+      ])
+      send(res, 200, { projeto, dir, git, framework, rotinas, roadmap, at: Date.now() })
+    })().catch((e) => send(res, 500, { error: String(e.message || e) }))
+  }
+
   if (url.pathname === '/api/trabalho') {
     const s = snapshot()
     const lista = projetosDe(s.jobs, findProjects)

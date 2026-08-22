@@ -18,8 +18,44 @@ import path from 'node:path'
 
 const CAMINHOS = [['docs', 'ROADMAP.md'], ['ROADMAP.md'], ['docs', 'roadmap.md'], ['ROADMAP.MD']]
 
-/** Sobe do diretório de trabalho até achar um roadmap. `null` se não houver. */
+/**
+ * Caminho de OUTRA máquina, que não se pode ler aqui.
+ *
+ * A federação traz o `cwd` dos agentes do PC dele, e ele vem no formato do
+ * Windows: `D:\Documentos\Ti\projetos\CLIENTS\renanMarchon`. No Linux isso não
+ * é caminho absoluto, é um NOME DE PASTA com barras invertidas dentro, e tudo
+ * o que se faz com ele passa a ser relativo à pasta onde o painel roda.
+ */
+export const deOutraPlataforma = (p) => {
+  const s = String(p || '')
+  /* A marca conta em QUALQUER posição, não só no começo, e isso não é excesso
+     de zelo: a sessão do Coderoom mediu o caso misto em 22/08, quando um
+     `path.resolve` cola o caminho do Windows depois de uma pasta daqui.
+       /home/claudedev/projetos/proj_controlcenter/D:\Documentos\…\renanMarchon
+     Esse caminho É absoluto, passava pela primeira versão desta guarda, e
+     `acharRoadmap` subia um nível e entregava o roadmap DO PAINEL. Na tela isso
+     virou 145 tarefas alheias; dentro do pacote de contexto de um agente, o
+     mesmo vazamento fica invisível.
+     Barra invertida em nome de pasta é legal no Linux e praticamente não
+     existe: recusar é mais barato que o defeito que ela esconde. */
+  return /[A-Za-z]:[\\/]/.test(s) || s.includes('\\')
+}
+
+/**
+ * Sobe do diretório de trabalho até achar um roadmap. `null` se não houver.
+ *
+ * **Recusa caminho que não é desta máquina, e o motivo é um defeito medido em
+ * 22/08.** Com `D:\…\renanMarchon`, `path.dirname` sobe direto para `.` na
+ * primeira volta, e a busca encontrava `docs/ROADMAP.md` do PRÓPRIO PAINEL.
+ * Resultado: cinco projetos do PC dele apareciam na tela Trabalho com os mesmos
+ * 6 cartões e as mesmas 145 tarefas fechadas, que eram do proj_controlcenter.
+ * Nenhum erro, nenhum aviso, e um backlog inteiro atribuído a quem não é dono.
+ *
+ * Caminho relativo legítimo continua funcionando: a recusa é só para o que
+ * carrega marca de outro sistema operacional.
+ */
 export function acharRoadmap(cwd) {
+  if (deOutraPlataforma(cwd)) return null
   let dir = cwd
   for (let i = 0; i < 8 && dir; i++) {
     for (const partes of CAMINHOS) {

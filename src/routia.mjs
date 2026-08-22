@@ -45,11 +45,28 @@ export function donoDoItem(codigo, raizProjeto) {
   try {
     quadro = fs.readFileSync(path.join(raizProjeto, 'docs', 'ROTAS-ATIVAS.md'), 'utf8')
   } catch { return null }
+  const numero = Number(cod.slice(3))
   for (const linha of quadro.split(/\r?\n/)) {
     if (!linha.includes('🔴')) continue
     /* `\b` no fim para `CC-15` não casar dentro de `CC-156`: o quadro cita
        faixas e códigos vizinhos o tempo todo. */
-    if (!new RegExp(`${cod}\\b`, 'i').test(linha)) continue
+    let meu = new RegExp(`${cod}\\b`, 'i').test(linha)
+
+    /* CC-301: a FAIXA também vale, e sem isto o filtro erra em silêncio no caso
+       mais comum de todos.
+       Medido em 22/08: a rota do gate citava nove números, e os itens CC-277 a
+       CC-280 nasceram DEPOIS de ela ser escrita. O filtro não achou dono, tratou
+       tudo como trabalho meu, e a trava de fluxo me mandou executar item de
+       outra sessão. O quadro já escreve faixas ("CC-218 a CC-231"), e quem
+       reserva um bloco de trabalho reserva o que vier dentro dele. */
+    if (!meu) {
+      for (const f of linha.matchAll(/CC-(\d+)\s+a\s+(?:CC-)?(\d+)/gi)) {
+        const de = Number(f[1])
+        const ate = Number(f[2])
+        if (numero >= Math.min(de, ate) && numero <= Math.max(de, ate)) { meu = true; break }
+      }
+    }
+    if (!meu) continue
     const dono = linha.match(/\b([0-9a-f]{8})\b/i)?.[1]
     if (dono) return dono.toLowerCase()
   }

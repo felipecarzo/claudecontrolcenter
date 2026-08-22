@@ -29,7 +29,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { lerRoadmap, ordenar, pesoDe, citacaoDe } from './roadmap.mjs'
+import { lerRoadmap, ordenar, pesoDe, citacaoDe, deOutraPlataforma } from './roadmap.mjs'
 
 /**
  * O estado do item em uma palavra, com o porquê ao lado.
@@ -358,8 +358,21 @@ function principalDe(raiz) {
  */
 export function projetosDe(jobs = [], achar = () => []) {
   const vistos = new Map()
+
+  /* CC-305: a pasta LOCAL vence a que veio de outra máquina.
+     A federação traz o `cwd` dos agentes do PC no formato do Windows, e um
+     projeto que existe nas duas máquinas ficava com o caminho de lá. O
+     `fibraessencia` tem roadmap próprio nesta VPS e aparecia com backlog zero,
+     porque a lista apontava para `D:\…\fibraessencia`, que aqui não existe. */
+  const locais = new Map()
+  for (const raiz of achar()) locais.set(path.basename(raiz), raiz)
+
   for (const j of jobs) {
     if (!j.cwd || vistos.has(j.project)) continue
+    if (deOutraPlataforma(j.cwd) && locais.has(j.project)) {
+      vistos.set(j.project, locais.get(j.project))
+      continue
+    }
     vistos.set(j.project, j.cwd)
   }
   for (const raiz of achar()) {

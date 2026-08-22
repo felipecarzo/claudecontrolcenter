@@ -1,11 +1,11 @@
-// Catálogo dos hooks que o Control Center conhece — o que já existe de
+// Catálogo dos hooks que o Control Center conhece, o que já existe de
 // verdade (Método Routia, cc check) e o que os próximos épicos do backlog de
 // hooks vão criar. Dado estático, sem I/O: quem lê disco é `hooksRegistro.mjs`
 // (settings.json) e `config.mjs` (o toggle).
 //
 // `registradoVia` existe porque nem todo hook tem script próprio registrado
 // no settings.json: `cc-check` vive dentro de `cc.mjs` e é disparado por
-// `todo-guard.mjs`, que faz `spawnSync` pra ele — procurar por "cc.mjs" no
+// `todo-guard.mjs`, que faz `spawnSync` pra ele, procurar por "cc.mjs" no
 // settings.json nunca acharia nada, e diria "não registrado" pra um hook que
 // está rodando de verdade a cada Stop.
 
@@ -22,19 +22,19 @@ export const EVENTOS = [
  * escolha estava certa em todos, mas **espalhada pelo código de cada um**: não
  * dava para olhar num lugar e saber o que trava e o que só fala.
  *
- * - `trava`  — recusa a ferramenta (exit 2). O agente não passa.
- * - `avisa`  — fala e deixa seguir. Todo hook de `Stop` é assim, e é obrigatório:
+ * - `trava` , recusa a ferramenta (exit 2). O agente não passa.
+ * - `avisa` , fala e deixa seguir. Todo hook de `Stop` é assim, e é obrigatório:
  *              exit 2 no `Stop` devolve o texto ao modelo e cria laço.
- * - `injeta` — põe contexto no começo da sessão, sem barrar nada.
- * - `mede`   — só registra, nunca aparece.
+ * - `injeta`, põe contexto no começo da sessão, sem barrar nada.
+ * - `mede`  , só registra, nunca aparece.
  */
 export const NIVEIS = {
-  trava: 'recusa a ferramenta — o agente não passa',
+  trava: 'recusa a ferramenta, e o agente não passa',
   avisa: 'fala e deixa seguir',
   injeta: 'põe contexto no início da sessão',
   mede: 'só registra, não aparece',
   /* CC-232: diferente de `trava`, que recusa uma FERRAMENTA. Este devolve a
-     resposta ao agente no fim do turno, uma vez, com o que falta fazer — e a
+     resposta ao agente no fim do turno, uma vez, com o que falta fazer, e a
      volta seguinte passa por causa de `stop_hook_active`. Foi o desenho que o
      `pergunta-guard` provou em 15/08: o laço só é problema quando não há nada
      diferente a fazer na segunda passada. */
@@ -42,7 +42,7 @@ export const NIVEIS = {
 }
 
 /**
- * CC-115 — os módulos: o agrupamento que liga e desliga POR PROJETO.
+ * CC-115, os módulos: o agrupamento que liga e desliga POR PROJETO.
  *
  * O interruptor por hook continua global (aba de hooks). O que o projeto pode
  * fazer é desligar um GRUPO inteiro para si: um projeto de estudo sem rotas,
@@ -60,7 +60,7 @@ export const MODULOS = {
      projetos percorre as CHAVES deste objeto, então o grupo não aparecia para
      ligar ou desligar, e a rota de gravação recusava com "módulo desconhecido".
      Os hooks funcionavam (o interruptor cai no `padrao` de cada um), mas ficavam
-     fora do alcance dele — que é a forma silenciosa do defeito. */
+     fora do alcance dele, que é a forma silenciosa do defeito. */
   reporte: { label: 'tarefas dele', explica: 'o que depende do Felipe: mostra a lista dele ao abrir a sessão, e cobra quando algo que depende dele termina fora dela' },
 }
 
@@ -83,7 +83,7 @@ export const HOOKS = [
     id: 'estilo-fim',
     modulo: 'comunicacao',
     nivel: 'mede',
-    label: 'Padrão de resposta — mede sem reclamar',
+    label: 'Padrão de resposta: mede sem reclamar',
     script: 'estilo-fim.mjs',
     evento: 'Stop',
     descricao: 'Mede tamanho e parágrafos de autodefesa da resposta que acabou '
@@ -285,7 +285,7 @@ export const HOOKS = [
     script: 'pronto-guard.mjs',
     evento: 'Stop',
     descricao: 'To-do que passou a done neste turno sem `--prova` devolve uma vez. '
-      + 'Prova é o que foi rodado e o que apareceu, não a intenção — sem ela, '
+      + 'Prova é o que foi rodado e o que apareceu, não a intenção, sem ela, '
       + '"feito" é opinião do agente, que é o que ele mais teme.',
     padrao: true,
     implementado: true,
@@ -299,7 +299,7 @@ export const HOOKS = [
     evento: 'Stop',
     descricao: 'Mexeu em código ou no ROADMAP e o meta.json está sem subject, '
       + 'frente ou to-dos? Devolve. O `cc-check` cobra to-do ABERTO e deixava '
-      + 'lista vazia passar como entrega limpa — ausência de registro e trabalho '
+      + 'lista vazia passar como entrega limpa, ausência de registro e trabalho '
       + 'terminado tinham a mesma cara.',
     padrao: true,
     implementado: true,
@@ -343,7 +343,7 @@ export const HOOKS = [
     evento: 'Stop',
     descricao: 'Editou código e a Bancada do nível declarado do projeto não rodou '
       + 'depois? Devolve uma vez. O `npm test` responde "quebrei alguma coisa?"; a '
-      + 'Bancada responde "deixei alguma coisa insegura?" — e suíte verde convive '
+      + 'Bancada responde "deixei alguma coisa insegura?", e suíte verde convive '
       + 'com chave commitada e tabela sem proteção.',
     padrao: true,
     implementado: true,
@@ -358,7 +358,7 @@ export const HOOKS = [
     matcher: 'Bash',
     descricao: 'Regra dele escrita há meses: "nunca commitar sem que eu peça '
       + 'explicitamente". Em 16/08 foram 15 commits e um pedido. O hook lê a '
-      + 'última mensagem dele e procura a autorização — add, status e diff '
+      + 'última mensagem dele e procura a autorização, add, status e diff '
       + 'continuam livres, porque preparar não é atravessar.',
     padrao: true,
     implementado: true,
@@ -387,7 +387,7 @@ export const HOOKS = [
     evento: 'Stop',
     descricao: 'Se o turno editou código e o `npm test` não rodou DEPOIS da última '
       + 'edição, devolve uma vez. Rodar antes de mexer dá verde de um estado que '
-      + 'não existe mais — foi assim que a regressão do 4f78264 ficou escondida.',
+      + 'não existe mais, foi assim que a regressão do 4f78264 ficou escondida.',
     padrao: true,
     implementado: true,
   },
@@ -401,7 +401,7 @@ export const HOOKS = [
     matcher: 'Bash',
     descricao: 'Barra `sed -i`, `perl -i` e `open(f, "w")` em arquivo do repositório. '
       + 'O Edit RECUSA quando a string não bate; o script não acha, não troca e sai '
-      + 'com código 0 — só um dos dois consegue avisar. /tmp continua livre.',
+      + 'com código 0, só um dos dois consegue avisar. /tmp continua livre.',
     padrao: true,
     implementado: true,
   },
@@ -414,7 +414,7 @@ export const HOOKS = [
     evento: 'Stop',
     descricao: 'Avisa quando há item já concluído ocupando o ROADMAP, que deveria '
       + 'ter virado linha no diário. Estava no settings.json e rodava CALADO desde '
-      + 'que nasceu, por não constar aqui — hookEnabled() devolve false para id '
+      + 'que nasceu, por não constar aqui, hookEnabled() devolve false para id '
       + 'desconhecido, e o hook sai achando que está desligado.',
     padrao: true,
     implementado: true,
@@ -428,7 +428,7 @@ export const HOOKS = [
     evento: 'Stop',
     descricao: 'Pedido do Felipe em 18/08, depois de perguntar se os consertos ficam '
       + 'anotados em algum lugar: avisa quando o turno editou arquivo fora de docs/ e '
-      + 'o diário de hoje não foi tocado. Não distingue conserto de funcionalidade — a '
+      + 'o diário de hoje não foi tocado. Não distingue conserto de funcionalidade, a '
       + 'convenção do projeto já pede diário pros dois.',
     padrao: true,
     implementado: true,
@@ -483,7 +483,7 @@ export const HOOKS = [
     evento: 'Stop',
     descricao: 'Se a resposta TERMINA perguntando algo que muda o que será '
       + 'feito, devolve uma vez pedindo para refazer no AskUserQuestion. Não '
-      + 'obriga a perguntar — só o formato. Uma volta por turno.',
+      + 'obriga a perguntar, só o formato. Uma volta por turno.',
     padrao: true,
     implementado: true,
   },
@@ -491,7 +491,7 @@ export const HOOKS = [
     id: 'recados',
     modulo: 'rotas',
     nivel: 'trava',
-    label: 'Método Routia — agentes do mesmo projeto se falando',
+    label: 'Método Routia: agentes do mesmo projeto se falando',
     script: 'recados.mjs',
     evento: 'PreToolUse',
     descricao: 'Entrega recado de outro agente na PRÓXIMA ferramenta, não no '
@@ -504,7 +504,7 @@ export const HOOKS = [
     id: 'rota-guard',
     modulo: 'rotas',
     nivel: 'trava',
-    label: 'Método Routia — trava edição sem rota',
+    label: 'Método Routia: trava edição sem rota',
     script: 'rota-guard.mjs',
     evento: 'PreToolUse',
     descricao: 'Bloqueia Edit/Write/MultiEdit/NotebookEdit em projeto com '
@@ -516,11 +516,11 @@ export const HOOKS = [
     id: 'git-add-guard',
     modulo: 'codigo',
     nivel: 'trava',
-    label: 'Método Routia — trava git add em massa',
+    label: 'Método Routia: trava git add em massa',
     script: 'git-add-guard.mjs',
     evento: 'PreToolUse',
     descricao: 'Bloqueia "git add ."/"-A"/"-u" e "commit -a" em projeto com '
-      + 'docs/ROTAS-ATIVAS.md — evita levar mudança de rota alheia junto.',
+      + 'docs/ROTAS-ATIVAS.md, evita levar mudança de rota alheia junto.',
     padrao: true,
     implementado: true,
   },
@@ -541,7 +541,7 @@ export const HOOKS = [
     id: 'tarefas-inicio',
     modulo: 'reporte',
     nivel: 'injeta',
-    label: 'Tarefas dele — mostra o que depende dele ao abrir sessão',
+    label: 'Tarefas dele: mostra o que depende dele ao abrir sessão',
     script: 'tarefas-inicio.mjs',
     evento: 'SessionStart',
     descricao: 'Traz a lista de tarefas do Felipe no começo da sessão, para o '
@@ -554,7 +554,7 @@ export const HOOKS = [
     id: 'tarefas-fim',
     modulo: 'reporte',
     nivel: 'devolve',
-    label: 'Tarefas dele — nada que dependa dele termina fora da lista',
+    label: 'Tarefas dele: nada que dependa dele termina fora da lista',
     script: 'tarefas-fim.mjs',
     evento: 'Stop',
     descricao: 'Devolve uma vez quando a sessão termina com bloqueio (ou to-do '
@@ -567,7 +567,7 @@ export const HOOKS = [
     id: 'routia-inicio',
     modulo: 'rotas',
     nivel: 'injeta',
-    label: 'Método Routia — mostra o quadro ao abrir sessão',
+    label: 'Método Routia: mostra o quadro ao abrir sessão',
     script: 'routia-inicio.mjs',
     evento: 'SessionStart',
     descricao: 'Injeta o resumo de docs/ROTAS-ATIVAS.md no início da sessão, '
@@ -579,11 +579,11 @@ export const HOOKS = [
     id: 'routia-fim',
     modulo: 'rotas',
     nivel: 'avisa',
-    label: 'Método Routia — lembra de liberar a rota',
+    label: 'Método Routia: lembra de liberar a rota',
     script: 'routia-fim.mjs',
     evento: 'Stop',
     descricao: 'Lembra (sem bloquear, sem editar sozinho) quando a sessão '
-      + 'termina com uma rota 🔴 ainda marcada no seu nome — mas só fala se '
+      + 'termina com uma rota 🔴 ainda marcada no seu nome, mas só fala se '
       + 'o Control Center confirmar outro agente de verdade ativo no '
       + 'projeto; sozinho, fica quieto.',
     padrao: true,
