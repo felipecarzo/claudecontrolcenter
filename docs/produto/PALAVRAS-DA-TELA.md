@@ -275,6 +275,117 @@ A quebra por máquina aparece quando mais de uma reportou horas naquele projeto,
 e a máquina conhecida que não reportou nada aparece marcada, em vez de sumir e
 fazer o total parecer completo.
 
+## janela: pastas
+
+A visão de pastas de um projeto, aberta pelo botão **pastas** no cartão dele.
+
+**Não é um navegador de arquivos**, que você já tem no editor. O que ela
+acrescenta é a leitura que só faz sentido aqui: **a estrutura que você definiu**,
+e se o projeto a segue.
+
+Em cima, as pastas do seu padrão. Acesa quando existe, apagada quando não. E a
+frase que impede isso de virar cobrança: **pasta que falta não é defeito**,
+porque a sua regra é não criar pasta vazia por simetria. A pasta de aplicativos
+só existe quando há algo que vai para o ar.
+
+A única coisa dita como problema é a falta de controle de versão próprio na
+raiz, e ela é dita como consequência: sem ele, a pasta entra no repositório de
+cima, e tudo o que estiver lá dentro vai junto. Existe um caso real de 34.213
+arquivos engolidos assim.
+
+Embaixo, a árvore. Pastas antes de arquivos, com o tamanho de cada um. Pasta
+pesada de dependência aparece **marcada como fora da conta** em vez de sumir:
+ver que ela existe é diferente de achar que o projeto não tem dependência
+nenhuma. E pasta funda demais diz que não foi lida, em vez de parecer vazia.
+
+Custa 60 milissegundos, porque o que é pesado fica de fora.
+
+**Tocar num arquivo abre o conteúdo ali mesmo**, ao lado da árvore no computador
+e no lugar dela no telefone.
+
+Quatro coisas ele recusa abrir, e cada uma diz o motivo em vez de um "não deu"
+genérico:
+
+- **arquivo que guarda senha ou chave** (`.env`, `.pem`, chave privada). Ele
+  aparece na árvore, marcado e sem botão: você vê que existe e vê que o painel
+  não mostra. Os exemplos (`.env.example`) abrem, porque existem para ser lidos
+- **caminho que sai da pasta do projeto**. Sem essa trava, um caminho com `..`
+  entregaria qualquer arquivo da máquina pela rede
+- **arquivo que não é texto**, detectado pelo conteúdo, não pela extensão
+- **arquivo acima de 512 kB**, dizendo o tamanho que tem
+
+## tela: projetos
+
+Cada projeto com o que é dele, num cartão só.
+
+**O problema que ela resolve, medido:** um projeto está espalhado por 14 telas.
+Para saber como o inovallbond está, era preciso abrir Cockpit (agentes),
+Trabalho (backlog), Estrutura (roadmap), Remoto (sessões), Framework (fase),
+mais Rotinas, Bancada, Tempo, Custo, Travas, Tendências e Digest. O servidor já
+sabia responder por projeto em 21 lugares: o dado existia inteiro e nunca tinha
+sido reunido.
+
+O cartão fechado mostra o que é barato de ler: quantos agentes, quantos itens no
+backlog, quantos só você resolve, e as horas de hoje. **Tocar em "ver tudo" abre
+o que é caro** e busca só daquele projeto: o estado do git, a fase do framework,
+as rotinas que envelheceram e as frentes abertas do roadmap.
+
+A divisão não é estética. Ler o git de um projeto custa cerca de 83
+milissegundos, e são 20 projetos: colocar isso no cartão fechado custaria 1,6
+segundo a cada abertura de tela, num painel que se atualiza sozinho de 2 em 2
+segundos.
+
+**Projeto de outra máquina aparece separado, e sem botão de abrir.** A federação
+traz agentes do seu PC, e a pasta deles não existe aqui: um botão que falha
+depois do clique é pior que botão nenhum.
+
+O filtro começa em "só os que têm algo agora". Trocando para todos, aparecem os
+20, incluindo os que estão quietos.
+
+## tela: travas
+
+As regras do projeto que barraram uma entrega, e se elas ajudaram.
+
+Uma resposta em cada quatro é devolvida por alguma regra, e ela precisa ser
+refeita antes de chegar até você. Esta tela mostra cada devolução em ordem, com
+a hora, qual regra foi, em que projeto, e o recado inteiro quando você abre.
+
+**O botão "ajudou" existe porque falta metade da conta.** Dá para medir quanto
+as regras custam (uma em cada quatro respostas, alguns minutos a mais por
+devolução), e não existe nada medindo se elas melhoraram o resultado: erro
+evitado não deixa rastro. Marcando cada uma, o número nasce de quem sente o
+resultado, sem precisar desligar nenhuma regra para comparar.
+
+A proporção só aparece depois de três marcas na mesma regra. Uma marca só viraria
+"100% ajudou", e um número desses engana mais do que informa.
+
+O log lê apenas o fim de cada conversa, que é o que mantém a tela barata. O botão
+de buscar o histórico inteiro varre tudo uma vez e completa o que faltava.
+
+## tela: tendencias
+
+O que mudou em relação às semanas anteriores, e o que anda junto com o quê.
+
+O painel guarda uma linha por dia, por projeto e por medida. Sem essa história
+gravada não existe tendência, só fotografia: o programa que apaga trabalho
+antigo faz isso sozinho, e a conversa é relida do zero a cada vez.
+
+Cada medida aparece com **o número do dia contra a média das quatro semanas
+anteriores**, porque número solto não diz nada. "319 falhas" não informa se é
+muito nem se está piorando. O que sai da faixa ganha destaque; o que não tem
+história suficiente diz que não tem, em vez de fingir um veredito.
+
+**O cruzamento só usa dias em que as duas medidas foram vistas juntas.** Sem
+isso a conta mistura períodos e mente com confiança: um projeto chegou a
+aparecer com 51 entregas e trabalho nenhum, porque o histórico de entregas
+cobre meses e o de conversa cobre dias.
+
+Recolher é a única ação que escreve, e fica atrás do botão porque varre 173 MB
+de conversa e leva alguns segundos. Abrir a tela apenas lê.
+
+Nada aqui avalia pessoa nem agente. Métrica que vira meta deixa de medir:
+"entregas por dia" ensinaria a picar entrega.
+
 ## tela: custo
 
 Quanto cobrar por problema resolvido, a partir do que já foi feito.

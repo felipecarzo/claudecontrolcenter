@@ -141,6 +141,18 @@
    "de": "desenho",
    "para": "restritivo",
    "quando": "2026-08-17T17:11:55.707Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "restritivo",
+   "para": "dialogo",
+   "quando": "2026-08-22T03:46:07.082Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "dialogo",
+   "para": "restritivo",
+   "quando": "2026-08-22T03:46:25.332Z"
   }
  ],
  "verificacao": {

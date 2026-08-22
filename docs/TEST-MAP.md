@@ -22,21 +22,22 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
-| tela | 25 | 25/25 | 23/25 | 25/25 | 0/25 | 25/25 |
-| acao | 79 | 79/79 | 21/79 | 0/79 | 0/79 | 0/79 |
+| tela | 28 | 28/28 | 25/28 | 28/28 | 0/28 | 28/28 |
+| acao | 115 | 115/115 | 24/115 | 0/115 | 0/115 | 0/115 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 72 | 72/72 | 6/72 | 0/72 | 0/72 | 0/72 |
-| palavra | 51 | 51/51 | 13/51 | 51/51 | 0/51 | 51/51 |
+| endereco | 88 | 88/88 | 6/88 | 0/88 | 0/88 | 0/88 |
+| palavra | 55 | 55/55 | 13/55 | 55/55 | 0/55 | 55/55 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
 ponta.** A diferença está na coluna `como` do JSON, item a item. Inflar
 este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 
-## tela (25)
+## tela (28)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
 | `cockpit` | viva | src/ui_v2.html#view-cockpit | estreito |
+| `projetos` | viva | src/ui_v2.html#view-projetos | estreito |
 | `meus` | viva | src/ui_v2.html#view-meus | estreito |
 | `gate` | viva | src/ui_v2.html#view-gate | estreito |
 | `agora` | viva | src/ui_v2.html#view-agora | estreito |
@@ -45,6 +46,16 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `agentes` | viva | src/ui_v2.html#view-agentes | estreito |
 | `escritorio` | viva | src/ui_v2.html#view-escritorio | funciona, estreito |
 | `remoto` | viva | src/ui_v2.html#view-remoto | funciona, estreito |
+| `tempo` | viva | src/ui_v2.html#view-tempo | estreito |
+| `travas` | viva | src/ui_v2.html#view-travas | estreito |
+| `tendencias` | viva | src/ui_v2.html#view-tendencias | funciona, estreito |
+| `custo` | viva | src/ui_v2.html#view-custo | estreito |
+| `graficos` | viva | src/ui_v2.html#view-graficos | estreito |
+| `digest` | viva | src/ui_v2.html#view-digest | estreito |
+| `notas` | viva | src/ui_v2.html#view-notas | estreito |
+| `documentos` | viva | src/ui_v2.html#view-documentos | estreito |
+| `agenda` | viva | src/ui_v2.html#view-agenda | estreito |
+| `glossario` | viva | src/ui_v2.html#view-glossario | estreito |
 | `framework` | viva | src/ui_v2.html#view-framework | estreito |
 | `hooks` | viva | src/ui_v2.html#view-hooks | estreito |
 | `rotinas` | viva | src/ui_v2.html#view-rotinas | estreito |
@@ -53,26 +64,20 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `docker` | viva | src/ui_v2.html#view-docker | estreito |
 | `vps` | viva | src/ui_v2.html#view-vps | estreito |
 | `maquina` | viva | src/ui_v2.html#view-maquina | estreito |
-| `tempo` | viva | src/ui_v2.html#view-tempo | estreito |
-| `custo` | viva | src/ui_v2.html#view-custo | estreito |
-| `graficos` | viva | src/ui_v2.html#view-graficos | estreito |
-| `digest` | viva | src/ui_v2.html#view-digest | estreito |
-| `notas` | viva | src/ui_v2.html#view-notas | estreito |
-| `documentos` | viva | src/ui_v2.html#view-documentos | estreito |
-| `agenda` | viva | src/ui_v2.html#view-agenda | estreito |
-| `glossario` | viva | src/ui_v2.html#view-glossario | estreito |
 
-## acao (79)
+## acao (115)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
 | `data-target` | viva | src/ui_v2.html | explica, estreito |
+| `data-grupo` | viva | src/ui_v2.html | explica, estreito |
+| `data-nav-grupo` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-gate-ag` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-srv-modo` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-bb` | estatica | src/ui_v2.html | explica, estreito |
 | `data-ver-agente` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-meu-feito` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-retomar` | viva | src/ui_v2.html | funciona, explica, estreito |
+| `data-foco-dia` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-meu-feito-btn` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-meu-remover` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-meu-abrir` | viva | src/ui_v2.html | funciona, explica, estreito |
@@ -90,6 +95,11 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-nota-titulo` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-modo` | viva | src/ui_v2.html | explica, estreito |
 | `data-del` | viva | src/ui_v2.html | explica, estreito |
+| `data-cc-modo` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-cc-proj` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-cc-dir` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-cc-fw` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-cc-ligar` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-fw-modo` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-mod` | viva | src/ui_v2.html | explica, estreito |
 | `data-mod-proj` | viva | src/ui_v2.html | funciona, explica, estreito |
@@ -128,6 +138,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-doc-abrir` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-ag-remover` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-ag-dias` | viva | src/ui_v2.html | funciona, explica, estreito |
+| `data-sinc-acao` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-sinc-proj` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-fed-pedir` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-fed-proj` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-remoto-link` | viva | src/ui_v2.html | funciona, explica, estreito |
@@ -137,12 +149,39 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-remoto-ligar` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-coderoom-abrir` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-coderoom-dir` | viva | src/ui_v2.html | funciona, explica, estreito |
+| `data-coderoom-nova` | viva | src/ui_v2.html | funciona, explica, estreito |
+| `data-coderoom-fechar` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-esc-ver` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-esc-desligar` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-esc-ligar` | viva | src/ui_v2.html | funciona, explica, estreito |
+| `data-bb` | viva | src/ui_v2.html | explica, estreito |
+| `data-bb-pos` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-tg-fechar` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-tg-ir` | viva | src/ui_v2.html | funciona, explica, estreito |
+| `data-pa-fechar-arq` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-pa-arquivo` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-pa-alternar` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-pa-fechar` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-pj-abrir` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-pj-pastas` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-pj-sessao` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-pj-dir` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-pj-conversa` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-trv-fechar-explica` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-trv-explica` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-trv-abrir` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-trv-ajudou` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-trv-atrapalhou` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-tend-andar` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-tend-hoje` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-tend-dia` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-tend-fechar` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-tend-cheia` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-rot` | estatica | src/ui_v2.html | explica, estreito |
 | `data-conv` | viva | src/ui_v2.html | explica, estreito |
 | `data-nova` | viva | src/ui_v2.html | explica, estreito |
 | `data-proj` | viva | src/ui_v2.html | explica, estreito |
+| `data-tira` | viva | src/ui_v2.html | explica, estreito |
 | `data-meu-check` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-todo` | viva | src/ui_v2.html | explica, estreito |
 
@@ -158,7 +197,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_v2.html | explica, estreito |
 | `data-n` | viva | src/ui_v2.html | explica, estreito |
 
-## endereco (72)
+## endereco (88)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -195,18 +234,30 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/hooks/provar` | estatica | src/web.mjs | funciona, explica |
 | `/api/rotinas` | estatica | src/web.mjs | funciona, explica |
 | `/api/paineis-meus` | estatica | src/web.mjs | funciona, explica |
+| `/api/sincronia` | estatica | src/web.mjs | funciona, explica |
+| `/api/sincronia/acao` | estatica | src/web.mjs | funciona, explica |
 | `/api/tela` | estatica | src/web.mjs | explica |
 | `/api/pip` | estatica | src/web.mjs | explica |
 | `/api/gate/conversas` | estatica | src/web.mjs | funciona, explica |
+| `/api/gate/modo` | estatica | src/web.mjs | funciona, explica |
+| `/api/gate/modelos` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/conversa` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/nova` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/mensagem` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/parar` | estatica | src/web.mjs | funciona, explica |
+| `/api/gate/apagar` | estatica | src/web.mjs | funciona, explica |
+| `/api/gate/nota` | estatica | src/web.mjs | funciona, explica |
+| `/api/gate/anexo` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/rascunho` | estatica | src/web.mjs | funciona, explica |
 | `/api/vps` | estatica | src/web.mjs | funciona, explica |
 | `/api/vps/atualizar` | estatica | src/web.mjs | funciona, explica |
 | `/api/calendario` | estatica | src/web.mjs | funciona, explica |
 | `/api/calendario/remover` | estatica | src/web.mjs | funciona, explica |
+| `/api/travas` | estatica | src/web.mjs | funciona, explica |
+| `/api/travas/recolher` | estatica | src/web.mjs | funciona, explica |
+| `/api/armazem` | estatica | src/web.mjs | funciona, explica |
+| `/api/armazem/cruzar` | estatica | src/web.mjs | funciona, explica |
+| `/api/armazem/csv` | estatica | src/web.mjs | funciona, explica |
 | `/api/tempo` | estatica | src/web.mjs | funciona, explica |
 | `/api/cambio` | estatica | src/web.mjs | funciona, explica |
 | `/api/taxa` | estatica | src/web.mjs | funciona, explica |
@@ -215,6 +266,10 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/tarefas` | estatica | src/web.mjs | funciona, explica |
 | `/api/mercado` | estatica | src/web.mjs | funciona, explica |
 | `/api/tarefa` | estatica | src/web.mjs | funciona, explica |
+| `/api/projetos/painel` | estatica | src/web.mjs | funciona, explica |
+| `/api/projetos/pastas` | estatica | src/web.mjs | funciona, explica |
+| `/api/projetos/arquivo` | estatica | src/web.mjs | funciona, explica |
+| `/api/projetos/um` | estatica | src/web.mjs | funciona, explica |
 | `/api/trabalho` | estatica | src/web.mjs | funciona, explica |
 | `/api/vi-tudo` | estatica | src/web.mjs | funciona, explica |
 | `/api/roadmap` | estatica | src/web.mjs | funciona, explica |
@@ -235,7 +290,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/rotas/alternar` | estatica | src/web.mjs | funciona, explica |
 | `/api/shutdown` | estatica | src/web.mjs | funciona, explica |
 
-## palavra (51)
+## palavra (55)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -257,6 +312,10 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `tela: vps` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: maquina` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: tempo` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `janela: pastas` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: projetos` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: travas` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: tendencias` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: custo` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: graficos` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: digest` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |

@@ -13,6 +13,622 @@ termos:
 
 Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
+---
+
+### As oito anotações dele, de 22/08
+
+Ele colou o bloco "ideias" do painel e pediu análise. **Cinco das oito eram o
+redesenho que ele mesmo escolheu em 19/08** ([[produto/REDESENHO-TELA]]) e que
+nunca foi construído: navegação por projeto, cada projeto um cartão inteiro, e o
+que se mexe de vez em quando saindo das abas fixas.
+
+A frase que decidiu tudo é dele: *"isso dá uma boa visão de funções por projeto,
+que é como eu acabo enxergando os trabalhos."*
+
+**Escolha dele sobre o tamanho:** *"podemos fazer a tela de projetos poderosa
+como uma opção definitiva mas não abandonar as outras imediatamente?"* A tela
+nasce como opção, não como substituta.
+
+#### CC-304 ✅ 22/08: a tela Projetos
+
+Um projeto estava espalhado por **14 telas**, e o servidor já sabia responder
+por projeto em 21 lugares: o dado existia inteiro e nunca tinha sido reunido.
+
+Cartão fechado com o barato (agentes, backlog, o que só ele resolve, horas de
+hoje), numa rota com cache de 15s. Abrir busca o caro daquele projeto só: git,
+framework, rotinas e roadmap, em 0,14s.
+
+**A divisão é medida, não estética:** ler o git de um projeto custa ~83ms, e são
+20 projetos. No cartão fechado seriam 1,6s a cada abertura de tela.
+
+Projeto de outra máquina aparece separado e sem botão de abrir: a pasta não
+existe aqui, e botão que falha depois do clique é pior que botão nenhum.
+
+#### CC-305 ✅ 22/08: caminho do Windows virava caminho relativo, e vazava backlog alheio
+
+**Achado ao montar o CC-304, e estava no ar.** A federação traz o `cwd` dos
+agentes do PC no formato do Windows. No Linux isso não é absoluto:
+`path.dirname` sobe direto para `.`, e `acharRoadmap` encontrava
+`docs/ROADMAP.md` **do próprio painel**.
+
+Na tela Trabalho, cinco projetos do PC dele apareciam com os mesmos 6 cartões e
+as mesmas 145 tarefas fechadas, que eram do proj_controlcenter. Sem erro, sem
+aviso.
+
+Três consertos: a recusa em `acharRoadmap`, a pasta local vencendo a de fora em
+`projetosDe`, e a mesma recusa no gate, a pedido da sessão do Coderoom.
+
+**A guarda precisou de duas rodadas.** A primeira só olhava o começo da string,
+e o caso MISTO passava: `/home/claudedev/projetos/proj_controlcenter/D:\…` é
+absoluto de verdade. Quem achou foi a outra sessão, do lado do pacote de
+contexto, onde o mesmo vazamento é invisível porque entra no prompt.
+
+**A lição das duas rodadas: caminho vindo de fora se recusa na ENTRADA, não se
+corrige no uso.** Nós dois fomos pelo uso primeiro, e nas duas vezes sobrou um
+caminho que ninguém tinha imaginado.
+
+#### CC-306 ✅ 22/08: os grupos da barra lateral colapsam, e a ordem mudou
+
+Pedido dele: *"reorganizar a barra lateral, tempo e notas merecem mais
+relevância"* e *"todas as seções (engenharia, infra etc) poderiam colapsar"*.
+
+Ordem nova: AGENTES, INTELIGÊNCIA, RECURSOS, ENGENHARIA, INFRA. Tempo e Notas
+sobem, Infra vai para o fim. Nada é cortado.
+
+O estado de cada grupo vai para o servidor, no mesmo lugar do menu encolhido:
+aberto no computador tem que ser igual no telefone. **Com a barra encolhida o
+colapso é ignorado de propósito**, senão um grupo fechado ficaria inalcançável,
+sem título para reabrir.
+
+#### CC-309 ✅ 22/08: a fronteira que se arrasta, e a grade de todas as telas
+
+Pedido dele: *"que o tamanho da barra seja personalizável arrastando a fronteira
+no desktop"* e *"uma tela cheia de ícones tipo celular seria um expand da tela"*.
+
+A grade monta a partir da própria barra lateral, então tela nova aparece nela
+sem ninguém lembrar de somar. É filha do `body`: dentro do painel, o redesenho
+de 2 em 2 segundos a levaria embora na mão dele.
+
+**O punho custou duas rodadas por um detalhe de 3 pixels.** Ele estava com
+`right:-3px`, meio pixel para fora da barra, e a barra tem `overflow-y:auto`,
+que corta o que sai. O ponto do clique caía na própria barra.
+**Funcionava com evento sintético e falhava com clique de verdade**, que é a
+pior combinação: passa no teste apressado e não funciona na mão dele.
+
+Detalhe do teste que também custou uma rodada: `Input.dispatchMouseEvent` do
+navegador precisa de `buttons:1` no `mouseMoved`, senão nada é tratado como
+arrasto e o defeito parece ser do código.
+
+#### CC-307 ✅ 22/08: a legenda de cores do Escritório
+
+Pedido dele: *"coloca legenda de cores no escritorio"*. Eram cinco cores que só
+quem escreveu o código sabia ler, e não havia legenda em canto nenhum do painel.
+
+**A legenda explica os ESTADOS, não os bonecos**, e a tela diz isso: os bonecos
+do programa embutido têm cor própria, escolhida lá dentro pelo nome do agente, e
+o cockpit não sabe qual é. Prometer que casam seria inventar.
+
+#### CC-308 ✅ 22/08: a configuração desce, na tela Remoto
+
+Pedido dele: *"em remoto tirar a config de vps do topo"*. Ela era o primeiro
+elemento da tela, e são três campos que se preenchem uma vez na vida. O que ele
+usa toda hora, abrir sessão, começava só depois deles.
+
+Foi para o fim, num bloco fechado. **O aviso de falha de envio sobe para o topo
+separadamente:** disso ele precisa saber sem abrir nada.
+
+#### CC-310 ✅ 22/08: os quatro atalhos do telefone viram escolha dele
+
+Pedido dele: *"personalizar os 4 itens da barra inferior(mobile)"*. Quatro é o
+teto medido no CC-181: quatro alvos mais a porta do resto é o que cabe em 390px
+com o rótulo legível. A escolha troca, nunca acrescenta.
+
+**Um defeito de brinde, achado na exploração:** o realce do ícone ativo tinha uma
+lista PARALELA que envelheceu. Ela ainda citava a tela Agora, que saiu da barra,
+e não citava a Conversa, que entrou. No Coderoom acendiam dois ícones; na tela
+Agora, nenhum. Agora a barra e o realce saem da MESMA lista, e a divergência
+deixou de ser possível.
+
+#### CC-311 ✅ 22/08: cinco blocos novos no Meu painel
+
+Pedido dele: *"melhorar a tela de favoritos"*. Eram onze blocos, todos da tela
+Cockpit. Entraram os cinco das telas que nasceram depois, incluindo os projetos.
+
+**O limite honesto, registrado e não escondido:** um bloco é uma cópia viva de um
+pedaço de tela já desenhado, e não aceita parâmetro. Por isso existe "os
+projetos" e não existe "o tempo do inovallbond". Para isso o bloco precisaria de
+uma função de desenho própria, e é o próximo passo.
+
+Junto: a frase de bloco não carregado passou a dizer QUAL aba abrir. Mandar
+"abra a tela de origem" entre 28 é pedir que ele adivinhe.
+
+#### CC-312 ✅ 22/08: o registro do aplicativo deixou de falhar calado
+
+Apontado pela sessão do Coderoom. Um `.catch(() => {})` engolia a falha de
+registrar o trabalhador de fundo, e sem ele o painel deixa de ser instalável no
+telefone sem uma linha em lugar nenhum.
+
+Fala por `console.error`, e não na tela: o teste que abre as 28 telas escuta
+`console.error` e falha se houver um. **Falar ali vira teste vermelho**, que é o
+jeito deste projeto de falar em voz alta sem gastar espaço numa tela que ele lê
+no celular.
+
+#### CC-314 ✅ 22/08: o menu do telefone cabia numa tela, e não cabia
+
+Queixa dele, chegada pela sessão do Coderoom: *"no telefone o menu de mais ta
+muito ruim, basicamente ele fica só num pedaço da tela e isso é inútil, fora que
+o colapsar não funciona nos itens"*.
+
+**Medido em 390px, com clique de verdade:** a gaveta tem 658px de altura e o
+conteúdo dentro dela tinha **1439px**, mais que o dobro. Vinte e oito itens
+rolando numa janelinha.
+
+A segunda queixa era defeito, não gosto. Duas causas:
+
+1. **O toque no título não fazia nada.** A gaveta é a barra CLONADA, e clone não
+   carrega o ouvinte do original. Pior: a função procurava a seção pelo nome e
+   achava a da BARRA, alternando um menu que não estava na mão dele.
+2. **Tudo nascia aberto**, então o colapso, mesmo funcionando, não resolveria a
+   primeira olhada.
+
+Agora: 800px de conteúdo, sete telas à vista e cinco grupos fechados que abrem
+ao toque. Grupo com título nasce fechado na gaveta **independente de como está no
+computador**: são telas com espaço diferente, e copiar o estado de uma para a
+outra traria os 1439px de volta.
+
+#### CC-315 ✅ 22/08: a etiqueta de máquina faltava na tela nova, e ele viu
+
+Ele abriu a tela Projetos, viu 23 cartões e perguntou: *"onde tá dizendo que
+cada projeto está na vps, desktop etc? Achei que tínhamos definido isso."*
+
+**Tinha sido definido, em 20/08, como regra de TODO quadro que mostra projeto, e
+existe rede no gate para isso.** A rede não pegou porque só conhecia uma forma
+de escrever: `>${esc(p.projeto)}` dentro de template. O código novo monta o
+mesmo HTML por concatenação, `'>' + esc(p.projeto)`, e passava limpo.
+
+**Uma regra que só cobre um jeito de escrever não é regra, é coincidência.** A
+rede passou a conhecer as duas formas, e ao ligar acusou dois lugares: a tela
+Projetos e o log de travas. Os dois consertados.
+
+#### CC-316 ✅ 22/08: pasta de rascunho aparecia como projeto
+
+Ele perguntou: *"que projeto é esse fatia0?"*. Não é projeto: é uma pasta que
+outra sessão criou dentro do próprio rascunho dela, com quatro arquivos de teste
+e nenhum `.git`.
+
+O dado já marcava isso (`ehProjeto: false`, calculado no CC-304) e **a tela não
+usava o campo**. Agora elas descem para uma seção que diz o que são. Não somem:
+o agente que trabalha ali é real, e escondê-lo seria pior.
+
+#### CC-318 ✅ 22/08: a janela de pastas
+
+Pedido dele: *"podemos criar uma janela pro cockpit ter uma espécie de visão de
+pastas dos projetos?"*
+
+**O que ela acrescenta a um navegador de arquivos comum:** a estrutura que ele
+definiu, conferida. Acesa quando existe, apagada quando não, e a nota que
+impede isso de virar cobrança, com a regra dele por extenso: *"não criar pasta
+vazia por simetria"*.
+
+O único aviso é a falta de `.git` na raiz, e é dito como consequência, não como
+regra quebrada: a pasta entra no repositório de cima, e existe o caso dos 34.213
+arquivos engolidos.
+
+Custa 60ms porque `node_modules` e companhia ficam de fora. Elas **aparecem
+marcadas como fora da conta** em vez de sumir: ver que existem é diferente de
+achar que o projeto não tem dependência. E pasta funda demais diz que não foi
+lida, distinguindo de vazia.
+
+#### CC-319 ✅ 22/08: abrir o arquivo, e as quatro recusas
+
+Ele testou a janela nova e disse: *"não consigo abrir os arquivos nas pastas"*.
+Faltava mesmo: eu tinha feito a visão, não a leitura.
+
+**Servir conteúdo de arquivo é a coisa mais perigosa que este painel faz**, e
+por isso as recusas vieram antes da leitura, no módulo e não na rota:
+
+1. **caminho que sai do projeto.** `../../.ssh/id_rsa` entregaria a chave
+   privada dele pela rede. A trava compara o caminho JÁ RESOLVIDO com a raiz,
+   nunca procura `..` no texto: `path.resolve` normaliza, e é por isso que
+   comparar o resultado é o que fecha o buraco.
+2. **arquivo que guarda senha.** A regra é dele, escrita: *"nunca imprima o
+   conteúdo deles"*. Existem `.env` de verdade nos projetos desta máquina, com
+   senha de banco dentro. `.example` e `.sample` passam de propósito: existem
+   para ser lidos.
+3. **binário**, detectado por byte zero nos primeiros 8 kB, que é o teste que o
+   git usa. Sem ele, uma imagem viraria uma tela de lixo parecendo defeito.
+4. **acima de 512 kB**, dizendo o tamanho que tem.
+
+**Um achado ao testar:** o `.env` não aparecia na árvore, porque eu escondia
+todo arquivo oculto. Isso faz a tela AFIRMAR que o projeto não tem `.env`, que é
+diferente de não mostrar. Agora ele aparece marcado e sem botão de abrir: as
+duas informações, em vez de nenhuma. Botão que sempre recusa ensinaria a tentar.
+
+#### CC-317: criar projeto no PC e na VPS, decisão dele em 22/08
+
+Palavras dele, respondendo à pergunta que ficou aberta:
+
+> *"a ideia é criar o projeto no desktop e já criar o endereço na vps e se não
+> tiver acesso a vps, permitir que depois possamos copiar o projeto todo pro pc
+> direto desse mesmo botão"*
+
+**Isso muda o desenho, e para melhor.** O canal entre as máquinas hoje aceita só
+o NOME de um projeto que a outra já conhece, nunca caminho nem comando: decisão
+dele em 18/08, para que quem escrevesse na fila da VPS não rodasse qualquer
+coisa no PC. Projeto novo furava isso por definição, e era esse o impasse.
+
+A resposta dele desfaz o impasse: **quem cria é o PC**, que é onde ele está, e a
+VPS só recebe. O pedido que viaja continua sendo dado, não comando.
+
+Três partes:
+
+1. **criar no PC** com o que o criador já faz hoje (pasta no padrão, `git init`,
+   primeiro commit, framework ligado, entrevista aberta)
+2. **abrir o lugar na VPS** no mesmo gesto, quando houver alcance
+3. **sem alcance, o mesmo botão copia depois**, quando a outra máquina voltar
+
+O terceiro é o que mais vale e é o menos óbvio: hoje um projeto criado numa
+máquina fica ilhado até alguém lembrar de publicar. **O `geolev4` está assim
+agora**, e é uma das pendências dele.
+
+#### CC-313: a primeira anotação, que virou decisão dele
+
+*"criar um criador de projetos automatico"*. O criador existe e cria **na
+máquina onde o painel roda**, hoje a VPS. Para criar no PC dele a partir daqui, o
+canal já existe, mas aceita só nome de projeto que a máquina já conhece, nunca
+caminho nem comando: decisão dele em 18/08. Projeto novo fura isso por
+definição.
+
+**Fica esperando ele**, porque é risco que ele assume ou não.
+
+### Zona inteligente: medir para achar tendência
+
+Pedido dele em 22/08: *"conseguimos criar uma zona inteligente? pra gente
+conseguir medir coisas legais e ter mais dados pra medir e achar tendências.
+dados são tudo camarada! a gente pode armazenar mais dados e disponibilizá-los
+em outros formatos e cruzar c dados de projetos, dados globais etc."*
+
+A ideia foi iterada dez vezes antes de virar item, a pedido dele. O caminho
+inteiro, com o que foi descartado e por quê, está em
+[[produto/ZONA-INTELIGENTE]].
+
+**O tamanho do buraco, medido em 22/08:** o disco guarda 173 MB de conversa em
+50 sessões, com 9.938 medidas de duração, 147 recusas de permissão dele, 47
+interrupções, 319 ferramentas que falharam e 490 travadas de hook. Os 17
+projetos somam 1.005 commits em 30 dias. **Desse conjunto todo, o painel lê
+duas coisas: tempo e token.**
+
+#### CC-280: o armazém, com uma medida provada de ponta a ponta
+
+Uma camada que **grava série diária** por projeto, em arquivo texto que se lê
+sem o painel. Append-only, pela lição das notas que amanheceram vazias em
+09/08: quem só acrescenta nunca perde o que já estava lá.
+
+Hoje o dado morre. O Claude Code apaga trabalho antigo sozinho, e o transcrito
+é relido do zero a cada vez. **Sem série gravada não existe tendência, só
+fotografia.**
+
+Uma medida só, de propósito. A forma tem que estar provada antes de escalar
+para vinte.
+
+#### CC-281: as oito medidas que já estão no disco
+
+Recusa de permissão, interrupção dele, ferramenta que falhou, duração por
+ferramenta, hook que travou, erro de API, ferramenta mais usada, tempo até a
+primeira prova. Nenhuma precisa de código novo para ser produzida, só para ser
+lida.
+
+#### CC-282: cruzar esforço com resultado, pela chave projeto mais dia
+
+O cockpit mede esforço (hora, token, dólar) e o git mede resultado (commit,
+linha). Separados, nenhum responde nada. Juntos nascem token por linha que
+sobreviveu, hora de foco por item fechado, e o custo de um commit.
+
+#### CC-283: meia-vida do código
+
+Quanto tempo um trecho sobrevive antes de alguém reescrever por cima. Código
+que morre em 48 horas é retrabalho com outro nome. É a medida mais honesta de
+"acertei de primeira" que existe aqui, e não dá para fraudar sem parar de
+trabalhar.
+
+#### CC-284: a faixa, e o alarme que fala sozinho
+
+Número solto não é tendência. Cada medida aparece com o valor de hoje contra a
+média das quatro semanas anteriores, e o painel avisa quando sai da faixa.
+Precisa de quatro semanas de série acumulada para ter base, então nasce depois
+do CC-280.
+
+**Duas gavetas, e nenhuma é meta:** descritivas ficam na tela para ele decidir;
+de alarme ficam caladas até saírem da faixa. Métrica que vira meta deixa de
+medir, e nada aqui avalia pessoa nem agente. No minuto em que virar boletim,
+ele para de olhar.
+
+#### CC-285: sinal precoce de sessão que vai dar errado
+
+Parar de contar e começar a prever. Os quatro candidatos já estão medidos:
+interrupção dele, mesmo arquivo reeditado três vezes, recusa de permissão em
+sequência, comando falhando repetido. Serve enquanto ainda dá tempo de mudar,
+que é mais do que qualquer contagem no fim do dia faz.
+
+#### CC-286: JSON e CSV pela mesma rota
+
+Ele pediu outros formatos. O mesmo endereço entrega JSON para o gráfico e CSV
+para a planilha, e qualquer ferramenta de fora lê sem pedir licença.
+
+### As guardas: custo, benefício e o que ainda não sabemos
+
+Pergunta dele em 22/08: *"o que sugere que façamos pra entender se as guardas
+são utilizadas corretamente e o quão são efetivas? (…) o que significa essa taxa
+de sucesso, como medimos isso, pros e contras em diversas perspectivas. quase um
+custo x benefício"*.
+
+**O que já foi medido**, nos 502 fins de turno guardados no disco:
+
+| | |
+|---|---|
+| respostas devolvidas por uma guarda | 126, uma em cada quatro |
+| passaram na segunda tentativa | 99% |
+| custo em token | 0,8% de toda a saída do período |
+| custo em tempo, controlado pelo tamanho do turno | 0,5 a 4,5 min por devolução |
+| guardas cuja taxa CAIU com o tempo | **nenhuma** |
+
+**As duas armadilhas achadas na própria medição**, e que valem mais que os
+números:
+
+1. **Os 99% não medem eficácia.** As guardas deste projeto devolvem uma vez só,
+   por construção: a segunda passa porque a trava não age de novo, não porque a
+   resposta ficou melhor.
+2. **O custo em tempo parecia 8 minutos e não é.** Turno devolvido tem mediana
+   de 33 ferramentas contra 7 do turno limpo: são turnos maiores, e turno maior
+   demora mais de qualquer jeito. Comparando turnos do mesmo tamanho, sobra de
+   0,5 a 4,5 minutos.
+
+**O problema de fundo:** erro evitado não deixa rastro. Só o custo deixa. Hoje
+"a guarda funcionou" quer dizer "ela travou", que mede que ela está ligada, não
+que ajudou.
+
+#### CC-297 ✅ 22/08: o log das travas, ao vivo, com o julgamento dele
+
+Pedido dele, depois de ver a análise de custo: *"eu sinto o framework melhorando
+meus resultados. mas podemos ao invés de experimentar, me mostrar as travas em
+tempo real em um log pra mim, pra eu ficar acompanhando, lá no control center"*.
+
+**A escolha dele fecha o experimento de desligar as travas.** Ele sente que
+ajudam e prefere acompanhar.
+
+Tela nova, com 191 registros de 13 regras diferentes, do mais novo para o mais
+velho, filtrável por projeto e por regra. Tocar numa linha abre o recado inteiro
+e dois botões: **ajudou** e **atrapalhou**, com volta.
+
+**Esse botão é a metade que faltava da conta.** Dá para medir quanto as travas
+custam e não havia nada medindo se ajudaram, porque erro evitado não deixa
+rastro. Agora o número vem de quem sente o resultado.
+
+Lê só o fim de cada conversa, com memória do que já leu: 134 ms na primeira
+chamada, 2 ms nas seguintes, contra 17 s de uma varredura completa. O que a
+cauda alcança é acrescentado a um arquivo que só cresce, e o botão de buscar o
+histórico completa o resto.
+
+Provado com clique de dedo em `test-travas.mjs`, fora do gate: marcar, trocar,
+desmarcar, e a marca sobrevivendo a 5 segundos de tela se redesenhando.
+
+#### CC-298 ✅ 22/08: os recados das travas usavam travessão
+
+Achado olhando o log novo no telefone, e o texto era este: *"PAROU COM 9 ITENS
+ABERTOS"*, com um traço longo no meio. A regra número um dele proíbe esse
+caractere em texto nenhum, e **o sistema que cobra as regras dele violava a
+primeira delas dentro do próprio recado**.
+
+Passou despercebido porque o gate confere isso no que EU escrevo, nunca no que
+as travas escrevem. Agora esse texto tem tela própria, e ele lê.
+
+51 ocorrências em 17 arquivos, e uma rede no gate para não voltar. Isentos só os
+padrões de busca que precisam procurar o caractere.
+
+#### CC-299: três travas erram, e eu bati nas três no mesmo turno
+
+Achados enquanto consertava o CC-298. **São os primeiros falsos positivos
+medidos deste framework**, e valem mais que a contagem de quantas vezes as
+travas dispararam.
+
+1. **A trava que exige o editor barrou escrita na pasta temporária.** O texto
+   dela própria autoriza escrever em `/tmp` e conferir antes de mover. Ela olha
+   o comando e não o destino, então barra justamente o caminho que recomenda.
+2. **A trava de branch leu restaurar UM ARQUIVO como trocar de branch.** As duas
+   operações têm a mesma forma no git, e ela anunciou o nome de um arquivo no
+   campo de destino, como se fosse uma branch.
+3. **A mesma trava barrou um DOCUMENTO que citava o comando.** Ao escrever este
+   item, o texto que descreve o defeito acionou o defeito: ela lê a linha de
+   comando inteira, inclusive o conteúdo de um arquivo sendo escrito.
+
+**Trava que erra ensina a ser ignorada**, e é assim que uma regra boa morre. Os
+três casos são de leitura do comando, não de regra errada: a regra está certa e
+o detector é curto demais.
+
+#### CC-300 ✅ 22/08: o "?" de cada regra, com o texto que ela devolve
+
+Pedido dele: *"coloque '?' em todas as regras explicando o que são, como se
+ativam e até o prompt. pra eu entender bem"*.
+
+As 38 regras ganharam "?", inclusive as 25 que nunca dispararam, que ganharam
+seção própria. **Zero ali não quer dizer desligada**, e é justamente a regra que
+ele tem menos chance de entender sozinho: não existe recado dela em lugar
+nenhum.
+
+Seis partes: o que cobra, quando dispara (dito como ele vê, não o nome do evento
+em inglês), o que faz ao disparar, quantas vezes apareceu, **o texto que ela
+devolve**, e onde ela mora.
+
+**O texto vem do log, não do código.** Extrair do código daria um molde cheio de
+buraco: metade do recado é montada na hora, com o número de itens, o nome do
+modo, a lista da fila. O log guarda o que ela realmente disse.
+
+Junto: 28 travessões no catálogo de regras, que passaram a aparecer na tela
+agora que essas descrições são lidas por ele.
+
+#### CC-301 ✅ 22/08: o dono de um item também sai da faixa no quadro de rotas
+
+Achado no mesmo turno, e pelo próprio defeito: a trava de fluxo me mandou
+executar o CC-277, que é da outra sessão.
+
+**A rota do gate citava nove números, e os itens CC-277 a CC-280 nasceram
+depois de a linha ser escrita.** Sem dono achado, tudo vira trabalho de quem
+estiver passando. O quadro já escreve faixas em outras rotas, e o leitor não as
+entendia.
+
+Provado com item dentro da faixa, nas duas pontas, fora dela, e em rota livre,
+que não reserva nada.
+
+**Fica um ticket para c213b663**, porque a linha é dela: o conserto lê faixa, e
+sem a faixa escrita não há o que ler.
+
+#### CC-302 ✅ 22/08: o responsivo quebrado, e a causa valia por todas as telas
+
+Ele mandou dois prints: *"deu problema na responsividade"* (tela Escritório) e
+*"o design da página remoto tá feio"*.
+
+**A regra que colapsa a coluna lateral estava escrita ANTES da regra base no
+arquivo.** Com a mesma especificidade, vence a última: a base desfazia o
+colapso, e o ponto de quebra nunca teve efeito em tela nenhuma desde que foi
+escrito. Com a janela em 851px o painel tinha 591 de largura, bem abaixo do
+limiar de 760, e continuava em duas colunas. O painel embutido do escritório
+ficava com 177px contra 300 da coluna de texto ao lado. Trocar a ordem foi o
+conserto inteiro.
+
+Na tela Remoto, dois blocos com layout escrito no próprio elemento e sem
+permissão de quebrar linha: os botões do token saíam 48 e 118px do cartão, e a
+página ganhava rolagem lateral. Viraram classe.
+
+Junto: campo de texto sem largura declarada nasce com a largura padrão do
+controle e ignora o cartão onde está (206px dentro de um cartão de 216).
+Corrigido na regra base.
+
+**A varredura quase consertou o que estava certo:** o medidor acusou 436
+problemas na tela Cockpit, e eram os cartões que deslizam de lado de propósito,
+sangrando 4px para encostar na borda. Descontando o que rola por dentro, sobrou
+o que era real.
+
+#### CC-303 ✅ 22/08: cada projeto da tela Remoto vira um card
+
+Pedido dele: *"esse design é muito feio, não tem como ser mais moderno. como
+cada projeto ser um card, algo com importância na tela e os botões serem
+configurações dos cards, como painéis tecnológicos"*.
+
+O problema não era cor, era hierarquia: dez projetos viravam dez linhas iguais
+com seis botões cada, e o nome do projeto pesava o mesmo que o botão ao lado.
+No cartão, o nome é o título, o estado é uma faixa de cor no topo, e as ações
+descem agrupadas por DESTINO, Claude Code de um lado e Coderoom do outro. Sem
+o rótulo, "mais uma" aparecia duas vezes no mesmo cartão e nada dizia qual era
+qual.
+
+**Dois defeitos achados só porque o cartão passou a mostrar o estado:**
+
+1. **A tela dizia "parado" sobre o que não tinha lido.** A lista de conversas
+   nasce em `null` (ainda não li) e eu tratei como `[]` (li e não há). Vinte e
+   cinco cartões diziam parado, e um deles tinha três conversas abertas. A tela
+   passou a ler por conta própria, e diz "lendo" enquanto não sabe.
+2. **Reusar um nome de classe herda regra invisível.** O título do cartão pegou
+   `.rc-nome`, que existia para o desenho antigo de linha e carregava
+   `flex: 1 0 100%`. Em 390px o título crescia até 168px de altura com uma
+   palavra dentro, e empurrava os botões para fora da caixa. Na tela larga não
+   aparecia, porque lá sobrava espaço. O bloco antigo saiu junto: **desenho que
+   morre leva as regras dele**, senão elas voltam pelo nome.
+
+#### CC-292: a taxa de cada guarda por 100 respostas, no armazém
+
+A única medida de aprendizado que sai de graça: se a guarda trava menos ao longo
+do tempo, ela ensinou; se a taxa é constante, virou pedágio.
+
+**Tem que ser por 100 respostas, nunca por dia.** Medido nos dois jeitos em
+22/08: por dia, seis guardas pareciam estar caindo; normalizado por volume,
+nenhuma cai e quatro sobem. A diferença é só o dia cheio de trabalho.
+
+#### CC-293: separar guarda de forma de guarda de julgamento
+
+Duas famílias, e só uma se verifica sozinha:
+
+- **de forma** (travessão, jargão, o separador do resumo): a regra é objetiva, e
+  dá para conferir na versão final se ela foi cumprida. Aqui "funcionou" é
+  medível sem ninguém ler.
+- **de julgamento** (fluxo, tarefa vaga, teto): dependem de leitura. Nenhuma
+  conta automática decide se a segunda versão ficou melhor.
+
+Misturar as duas num número só é o que impede saber qual delas está pagando.
+
+#### CC-294: a amostra julgada, 30 devoluções lidas lado a lado
+
+A única forma direta de saber se a devolução agregou: pegar 30 casos, mostrar a
+versão barrada e a que passou, e classificar em melhor, igual ou pior.
+
+Caro e conclusivo. É o que transforma "travou 126 vezes" em "valeu a pena em N
+delas".
+
+#### CC-295: desligar as cinco maiores por uma semana
+
+O experimento que responde de verdade, porque é o único que compara com a
+ausência. Desligar as cinco guardas mais frequentes por um período e medir o que
+muda: pedidos repetidos, retrabalho, tempo por turno.
+
+**Risco assumido:** durante o período, o que elas pegam passa. Só faz sentido
+depois do CC-293, para desligar as de julgamento e manter as de forma, que são
+baratas e verificáveis.
+
+#### CC-296: a guarda que trava uma em cada cinco
+
+`fluxo-guard` responde por 70 das 126 devoluções, e a taxa dela subiu de 14,6%
+para 20,7% por 100 respostas. Uma guarda que barra um quinto de tudo ou cobra
+algo ambíguo demais, ou cobra algo que não dá para atender.
+
+Isto é um item de investigação, não de conserto: a causa precisa ser lida antes
+de mexer. **Regra da casa: ao investigar "o agente não fez X", leia o texto da
+regra antes de culpar a execução.**
+
+#### CC-288: somar por semana, mês e ano
+
+Pedido dele em 22/08: *"ver por semana, mês, ano"*. Hoje a série só existe em
+grão de dia, e um ano de dias vira 365 barras de um pixel.
+
+A soma não é a mesma conta para toda medida: contagem soma, mediana não. Somar
+medianas de duração daria um número que não existe.
+
+#### CC-289: o calendário que anda para trás e para frente
+
+*"eu quero que os dados sejam expostos como calendários, pra eu poder ver uma
+semana pra trás e outra frente"*.
+
+Uma grade de dias com a intensidade da medida, e setas para andar no tempo.
+**Dia sem dado precisa ser diferente de dia com zero**: o primeiro é "não
+trabalhei ou não medi", o segundo é "trabalhei e não aconteceu". Pintar os dois
+igual apaga a diferença que interessa.
+
+#### CC-290: curva de tendência, no formato que ele nomeou
+
+*"em forma de ondas poder tratar como curvas de tendências, como em daytrade"*.
+
+Linha com área, média móvel e **a faixa do normal desenhada em volta**, que é a
+banda que o alarme já calcula: média mais ou menos dois desvios. Ponto fora da
+banda fica marcado no desenho, em vez de só no aviso de cima.
+
+O vocabulário é o dele, e é o de quem olha gráfico de mercado: a leitura que ele
+quer é "está subindo, está dentro do canal, furou para cima".
+
+#### CC-291: qualquer gráfico em tela cheia
+
+*"poder ver em Full screen cada gráfico"*. Barrinha de cartão serve para
+relance; para ler de verdade precisa de tela inteira, com eixo, datas e valores.
+
+#### CC-287: a tela, por último
+
+Consequência, nunca a causa. O painel já tem motor de gráficos que cruza duas
+fontes; o que falta é matéria-prima, não vitrine.
+
+**Fora de escopo, decidido nas dez rodadas:** banco de dados (arquivo texto
+resolve, e sem dependência nova), dado global do mundo como clima e feriado
+(não muda decisão dele; a régua útil é projeto contra projeto, dentro da casa
+dele), e métrica que avalia agente.
+
+---
+
 > ## Zerado em 20/08
 >
 > Os 48 itens estão fechados, cada um com o que foi feito e como foi provado.
@@ -61,6 +677,69 @@ dele dizer `projeto › frente` em vez de texto solto.
 > isso.
 
 ## Aberto
+
+## ▶ Frente nova, aberta em 21/08: sincronizar as máquinas sem terminal
+
+Proposta dele, com as palavras dele:
+
+> *"podemos colocar o git pull, git push, essas coisas como automáticas, como se
+> fossem botões? Quando eu terminar uma sessão no PC, eu posso ir lá no cockpit e
+> colocar o git pull ou git push, um botão e resolve. Ou então a gente cria um
+> sistema de auto git entre os projetos para eles sempre se manterem iguais,
+> porque eu nunca vou ter interesse de ter um projeto na VPS ou no PC
+> desatualizado. Não faz sentido. É mais fácil abrir outra branch, ou eu clonar
+> o projeto pra mexer de novo, do que eu manter eles atualizados, porque eu
+> sempre vou trabalhar com eles sincronizados (…) esse protocolo de git, sempre
+> ter que ficar dando git, pode ser tão cansativo."*
+
+### CC-269 ✅ 21/08: botões no cockpit, sem commit automático
+
+**O tamanho real do problema, medido nos 17 projetos com git da VPS:**
+
+| | quantos |
+|---|---|
+| projetos com arquivo solto | 5 |
+| projetos com commit preso, que a outra máquina não tem | 2 (`inovallbond`, `proj_vps`) |
+| projetos esperando receber | 0 |
+
+Ou seja: **3 commits feitos aqui nunca chegaram no PC dele.** É exatamente o que
+ele descreve, e a queixa é justa.
+
+**A escolha dele, feita depois de ver o custo dos três caminhos:** botão no
+cockpit. Sincronizar sozinho exigiria commitar sozinho, e a regra dele é *"nunca
+commitar sem que eu peça explicitamente"*. Com botão, o cockpit puxa e envia com
+um clique, e o commit continua sendo dele.
+
+**O que cada botão faz, e o que ele mostra quando não dá para seguir:**
+
+- **puxar**: traz o que a outra máquina enviou. Com arquivo solto no projeto, a
+  tela diz quais são, porque puxar por cima de trabalho não salvo é o jeito de
+  perder trabalho.
+- **enviar**: manda o que está commitado aqui. Onde existe `npm test`, ele roda
+  antes: publicar defeito é pior que não publicar.
+- **os dois**: puxar e enviar em sequência, que é o caso dele ao terminar uma
+  sessão no PC.
+
+**A tela mostra o estado de cada projeto** antes de qualquer clique: quantos
+commits para enviar, quantos para receber, e quantos arquivos soltos. Assim ele
+vê onde há trabalho preso sem abrir terminal nenhum.
+
+**Onde ficou:** tela Remoto, abaixo do painel federado, que é onde ele já olha o
+que está de pé em cada máquina. Carregado sob clique, porque perguntar ao
+servidor de git em 18 projetos é rede, e rede não entra no tique de 2 segundos.
+
+**Prova, com clique de dedo no navegador:** consultou os 18, respondeu *"8 fora
+de dia, 10 em dia. Consultado agora."*, e montou 5 botões de ação. Pelo comando,
+`sinc puxar proj_vps` recusou com os três arquivos nomeados, e `sinc puxar
+app_ahtleta` respondeu "já estava em dia".
+
+**Dois erros meus no caminho, e os dois o gate pegou antes de subir:**
+
+1. `await` num handler que não é async, de novo, o mesmo que derrubou o painel
+   horas antes. Desta vez o gate barrou antes de chegar no ar.
+2. O quadro novo mostrava projeto **sem a etiqueta de máquina**, que é regra
+   dele para todo quadro. Aqui valia em dobro: o estado é o DESTA máquina, e o
+   botão age nela.
 
 ## ▶ Frente nova, aberta em 21/08: o Windows vira máquina que reporta, e a VPS é a tela
 
@@ -268,6 +947,1011 @@ depois do clique continua o Coderoom, com o agy escolhido.
 lista de mais de setenta atributos, e um nome repetido não dá erro nenhum, só
 faz a página obedecer ao dono antigo. Atributo de bloco novo leva o nome do
 bloco na frente.
+
+## ▶ Frente nova, aberta em 22/08: o cockpit vira aplicativo de verdade
+
+### CC-331 ✅ 22/08: a lista de projetos do Coderoom no menu do telefone
+
+Parte da frase dele que faltava: *"o colapsar nao funciona nos itens com o
+coderoom e outros que iriamos implementar"*. E é o pedido original da tela, de
+21/08: *"quando clicar no desenho do chat pode abrir um sub menu ali mesmo p
+selecionar os projetos"*.
+
+Funcionava na barra lateral e **nunca** no telefone. Quatro causas empilhadas, e
+todas invisíveis, porque nenhuma dá erro:
+
+1. **O identificador viajava no clone.** A gaveta é uma cópia da barra, então
+   existiam dois nós com o mesmo `id`. Isso não é erro: `getElementById` devolve
+   o primeiro, sempre o da barra, e o da gaveta ficava morto para sempre. Agora
+   o clone perde todo `id` e a pintura acha os dois pela CLASSE.
+2. **O ouvinte era pendurado no elemento**, com `querySelector` no singular. Só
+   o item da barra o recebia, e a gaveta é montada bem depois desse código
+   rodar. Virou delegação no documento.
+3. **O toque na gaveta navegava e fechava a gaveta.** A lista existia e nunca
+   tinha um instante para aparecer. Agora o primeiro toque abre a lista ali
+   mesmo, e o segundo leva para a tela: quem tocou duas vezes quer ir.
+4. **As conversas só eram lidas ao abrir a tela do Coderoom.** Pela gaveta ele
+   nunca chega lá, então a lista aparecia dizendo "nenhum projeto ainda", que é
+   a tela afirmando o que não sabe. `gateBuscar` ganhou um pedido explícito,
+   mantendo a saída rápida no tique automático, que existe para não varrer disco
+   a cada dois segundos.
+
+Provado em 390px com toque de verdade: a gaveta abre, nenhum identificador
+duplicado na página, o toque no Coderoom abre a lista dentro dela com 22 botões
+e 388px de altura, começando pelo `entreg4`.
+
+**Duas lições, e a segunda é sobre teste.** A primeira: em página com menu
+clonado, `querySelector` e `id` são armadilha por construção. Foi a terceira vez
+hoje que a forma singular escondeu o elemento do telefone.
+
+A segunda: **este teste reprovou o conserto certo duas vezes.** Uma porque eu
+media contra o painel velho, com o processo não religado, que é armadilha já
+escrita aqui. Outra porque media 1,2s depois do toque, e a leitura das conversas
+é uma ida ao servidor. Hoje ele espera pelo CONTEÚDO com prazo, em vez de chutar
+um tempo, e assim não fica lento nem mente quando a rede demora.
+
+
+### CC-330 ✅ 22/08: a central escondia 13 dos 21 projetos, e a barra levava ao nada
+
+Ele achou os dois no telefone, no mesmo print: *"apareceu instalar app
+certinho. mas não apareceu o projeto coepiloto pra ativar framework"*.
+
+**O primeiro foi erro de leitura meu, e do tipo mais caro.** A lista do servidor
+traz um campo `existe`, e eu li como "a pasta existe". Ele quer dizer **"este
+projeto já tem framework configurado"**, e vem de `situacaoFramework(raiz).existe`.
+Filtrei por ele e escondi 13 projetos de 21, exatamente os que nunca ligaram o
+framework, que são exatamente os que ele vem à central para ligar.
+
+A pasta do `coepiloto` estava lá o tempo todo, junto com `inovallbond`,
+`proj_carzo`, `mnzs` e mais nove.
+
+Agora entram todos, e o cartão distingue três estados em vez de dois:
+
+| estado | o que o cartão diz |
+|---|---|
+| ligado | os onze modos, com o atual em destaque |
+| desligado | "o modo que você escolheu fica guardado e volta ao religar" |
+| nunca teve | "este projeto nunca teve framework. Ligue para escolher o modo" |
+
+A distinção importa: desligado guarda o modo, nunca configurado não tem o que
+guardar, e o texto antigo dizia a mesma coisa para os dois.
+
+**O segundo estava no mesmo print e eu não tinha visto:** a barra de baixo do
+telefone ainda oferecia "Framework", tela que o CC-329 removeu. Duas causas
+somadas:
+
+1. A remoção do item usava `querySelector`, no singular. **A gaveta do telefone
+   é um CLONE da barra**, então o seletor tem duas respostas e devolve sempre a
+   primeira. É a mesma armadilha que a sessão vizinha tinha acabado de pagar no
+   colapso da gaveta.
+2. A barra de baixo pode ser montada ANTES da remoção, e ela guarda a escolha
+   dele no servidor. `telaConhecida()` já devolve nulo para tela sem item no
+   menu, então bastava remontar depois.
+
+Provado em 390px com clique de verdade: 21 de 21 cartões, o `coepiloto`
+aparecendo com o botão de ligar, a caixa perguntando antes, e a barra de baixo
+agora mostrando `Projetos · Coderoom · Notas · Central · Mais`, sem destino
+morto nem na barra nem na gaveta.
+
+**Medida que fica registrada:** com 21 projetos a central tem 4,5 telas de
+rolagem em 390px, contra 2,1 quando mostrava 7. A ordem põe primeiro quem tem
+sessão no ar, depois quem tem framework ligado, e o resto em ordem alfabética.
+Se incomodar, o caminho conhecido é o que a tela Framework já faz: um botão
+"mostrar mais N sem sessão nem framework". **Não fiz porque esconder projeto é
+exatamente a queixa dele**, e a decisão de esconder de novo é dele.
+
+
+### CC-329 ✅ 22/08: Framework e Remoto viraram blocos dentro da central
+
+Segunda metade do pedido dele: *"podemos manter a tela de framework abaixo dela,
+colapsada com um submenu dessa tela, e o remoto tambem"*. A frase aceitava duas
+leituras, e ele escolheu a literal: **tudo numa tela, em blocos que abrem.**
+
+O menu perdeu duas entradas. "Remoto" virou "Central", e "Framework" saiu.
+
+**Nascem fechados de propósito.** A central responde a pergunta de todo dia (em
+que modo está, tem sessão no ar, liga). O que está abaixo é configuração de vez
+em quando. Abertos, o que ele veria ao entrar seriam três telas de rolagem antes
+do primeiro cartão.
+
+**Por que o framework é movido por JavaScript e não recortado do HTML:** as três
+colunas dele têm identificadores que dezenas de funções procuram pelo nome
+(`fw-lista`, `fw-entrevista`, `fw-novo-projeto`, `fw-conta`). Mover o nó
+preserva todos, e o que estiver pendurado neles; recortar e recolar 50 linhas de
+HTML é onde se perde um `</div>` sem ninguém notar.
+
+A tela antiga é **removida**, não esvaziada. Deixá-la vazia seria pior: a
+varredura que abre as telas uma a uma recusa tela que abra em branco, e com
+razão. O item do menu sai junto, senão sobraria um destino que abre o nada.
+
+Uma armadilha que valeu apanhar antes: a tela do framework carregava DUAS coisas
+ao abrir, e a segunda era `renderNovoProjeto()`. Ao mudar de casa, esquecer isso
+deixaria a coluna "Novo Projeto" em branco dentro do bloco, sem erro nenhum.
+
+Provado com clique de verdade nas duas larguras, 14 verificações cada: os dois
+blocos nascem fechados, abrem e fecham no toque, o alvo do toque tem 44px, as
+três colunas do framework chegaram inteiras, a tela antiga não existe mais, o
+menu não aponta para ela, e nada estoura a largura.
+
+No telefone a central passou de 2,1 para 1,9 telas de rolagem, porque o que era
+duas telas agora é uma sem custar altura.
+
+
+### CC-323 ✅ 22/08 (primeira fatia): a central de comando
+
+Pedido dele, e a leitura confirmada por ele antes de eu construir: **"ligar um
+projeto" é abrir a sessão de agente.**
+
+Antes eram duas telas. Ligar a sessão no Remoto, escolher o modo de trabalho no
+Framework, e a segunda não sabia qual projeto a primeira tinha ligado. Agora um
+cartão por projeto, no topo da tela Remoto, com o gesto na ordem em que ele
+pensa: primeiro o modo, depois ligar, **para a sessão nascer no modo escolhido**
+em vez de ser configurada depois.
+
+O cartão traz: o nome com o selo da máquina, se há sessão no ar, os onze modos
+com o atual em destaque, a explicação do modo escolhido em português, e os dois
+botões (ligar ou desligar o framework, e abrir sessão).
+
+Três decisões que valem guardar:
+
+**Uma fonte só.** Come da mesma `FW_LISTA` que a tela Framework, não de leitura
+própria. Duas leituras do mesmo estado dariam duas verdades na mesma tela, e o
+cartão mostraria um modo enquanto a outra aba mostra outro. O mesmo vale para
+"sessão no ar", que é lido de `DATA.remoto` na hora em vez de guardado num
+conjunto paralelo.
+
+**Botões, não um seletor.** Onze modos pediriam um `<select>`, e menu do sistema
+operacional dentro de bloco redesenhado por timer já fechou a navegação na cara
+dele no telefone.
+
+**Cada ação pergunta antes**, reusando a caixa do CC-325, e a de abrir sessão
+mostra o modo em que ela vai nascer. É a última tela antes de o agente começar a
+trabalhar, e não precisar conferir isso noutro lugar era o pedido.
+
+Provado com clique de verdade nas duas larguras: 7 cartões, uma coluna em 390px
+e três em 1280, nada estourando a tela, nenhuma rolagem lateral, e **cancelar não
+troca o modo no servidor**. Medido no telefone: 259px por cartão, 2,1 telas de
+rolagem para os 7 projetos.
+
+**A rede da sessão vizinha me pegou no caminho**, e foi bom: o gate recusou o
+cartão por mostrar projeto sem dizer em que máquina ele está. Ela tinha acabado
+de estender essa rede para HTML montado por concatenação, que é como a central é
+escrita. Sem isso teria passado.
+
+**Falta a segunda fatia**, que é a outra metade da frase dele: *"podemos manter a
+tela de framework abaixo dela, colapsada com um submenu dessa tela, e o remoto
+tambem"*. A frase aceita duas leituras (seções colapsáveis na mesma tela, ou
+submenu de navegação na lateral), e é ele quem decide.
+
+
+### CC-328 ✅ 22/08: clicar no botão impedia a tela de responder ao clique
+
+Palavras dele: *"eu clico em 'ver tudo' ou 'abrir sessao' e nao consigo, nos
+projetos"*.
+
+Reproduzido nas duas larguras, e o sintoma era pior do que "não funciona": **o
+estado mudava e só a tela ficava para trás**. Medido pelo relógio, o botão
+nunca mudava, nem 50ms depois nem 4 segundos depois:
+
+    antes do clique : PJ_ABERTO=null          | botao="ver tudo"
+    +50ms           : PJ_ABERTO=fibraessencia | botao="ver tudo"
+    +4400ms         : PJ_ABERTO=fibraessencia | botao="ver tudo"
+
+A causa é uma das defesas mais antigas deste painel se voltando contra ele.
+`pintar()` recusa repintar quando o foco está dentro do bloco, para não roubar o
+cursor de quem digita nem fechar o menu de um seletor. A condição era **qualquer
+elemento com foco**:
+
+    if (el.contains(document.activeElement) && document.activeElement !== document.body) return false;
+
+Clicar num `<button>` dá foco a ele. E o botão mora dentro do bloco que ele mesmo
+manda repintar. Ou seja: **todo botão que muda o próprio bloco estava quebrado**,
+e a guarda que protege a digitação bloqueava justamente o gesto dela.
+
+Conferido pelos dois lados, que é o que separa hipótese de causa: a guarda
+respondia "BLOQUEIA a pintura", e tirar o foco fazia a tela pintar na hora.
+
+A guarda agora nomeia o que protege: `input, textarea, select, [contenteditable]`
+e o que for editável. Botão não tem estado a perder.
+
+Provado nas duas metades, e as duas importam. Só a primeira aprovaria remover a
+guarda inteira, e isso traria de volta o cursor sumindo no meio da frase dele:
+
+- 390px e 1280px: "ver tudo" abre, o detalhe entra, e o toque seguinte fecha
+- com o cursor num campo de texto, não repinta
+- com um seletor focado, não repinta, e o menu do sistema sobrevive
+- com um botão focado, repinta
+
+**A lição:** guarda escrita como "qualquer elemento" acerta o caso que motivou
+ela e erra todos os outros. Guarda nova diz o nome do que protege.
+
+### CC-327 ✅ 22/08: a guarda contra pasta errada barrou a pasta certa
+
+Palavras dele, na mesma mensagem: *"abrir conversa da um erro que diz que ele
+nao sabe onde fica o nome do projeto"*.
+
+Era uma regressão minha, de minutos antes. Ao fechar o CC-326 eu fiz a tela
+recusar abrir conversa sem saber a pasta, e olhei uma fonte só: a lista de
+`/api/projetos`. **Essa lista só enxerga quem tem `package.json`.** São 16, e o
+`entreg4` não é um deles, porque é Python. Ele estava trabalhando justamente lá.
+
+A segunda fonte estava do lado o tempo todo: a conversa já aberta naquele
+projeto guarda o `cwd`, gravado e validado contra a base quando ela nasceu. É a
+mesma pasta, e cobre exatamente os projetos que a lista não vê, que são os que
+já provaram existir por terem conversa.
+
+A recusa continua para quem não tem nenhuma das duas, que é o caso que o CC-326
+precisava barrar.
+
+**A lição:** ao fechar um buraco, a pergunta que faltou foi "quem mais passa por
+aqui e não é o atacante?". Eu tinha a resposta a um `curl` de distância.
+
+
+### CC-325 ✅ 22/08: confirmar antes de abrir, encerrar e parar
+
+Palavras dele: *"coloca popover pra confirmaer deciso de abrir conversa,
+encerrar conversa etc"*.
+
+Três decisões do Coderoom passaram a perguntar antes, e cada uma diz o que
+custa, porque o preço é diferente em cada uma:
+
+| decisão | o que a caixa avisa |
+|---|---|
+| abrir conversa | em que pasta o agente vai poder mexer, e quantas já existem ali |
+| encerrar | o histórico some e não volta; os arquivos ficam como estão |
+| parar o agente | o que já chegou fica salvo, o resto se perde e refazer gasta de novo |
+
+**O "toque de novo" saiu.** Encerrar armava o botão por 4 segundos e trocava o
+texto dele. Dois problemas no telefone: o alvo muda debaixo do dedo, e quem não
+lê a tempo toca de novo achando que a primeira vez não pegou, que é confirmar
+por engano.
+
+Não usa o `confirm()` do navegador, e isso é medida, não gosto: ele é caixa do
+sistema operacional, e este painel já registra que elemento com estado do
+sistema não sobrevive num bloco redesenhado de 2 em 2 segundos. Ela mora fora do
+fluxo, irmã do painel.
+
+Quatro coisas que valem para qualquer caixa nova:
+
+- **`@media`, não `@container`.** A regra de ouro daqui é olhar para o
+  `#painel`, porque a coluna de notas o encolhe sem encolher a janela. Esta
+  caixa vive fora dele, cobrindo a janela, então o container não existe e a
+  consulta nunca dispararia.
+- **Ancorada no largo, presa embaixo no estreito.** Amarrar a caixa a um botão
+  da barra de baixo joga ela para fora da tela do telefone.
+- **A posição sai do retângulo do botão medido na hora**, nunca de um `top`
+  chutado, que é o defeito registrado do popover do player.
+- **Tocar fora cancela, nunca confirma.** No telefone, tocar fora é o gesto de
+  desistir.
+
+Provada com clique de verdade nas duas larguras. Em 390px: 366px de largura
+usando a tela, presa a 689px do topo, os dois botões com 40px de altura e o
+toque caindo em cada um. E a verificação que importa mais que "a caixa aparece":
+**cancelar devolve `false`**, não apenas fecha a caixa. Um teste que só abre a
+caixa aprovaria um botão "deixa" que apaga a conversa.
+
+
+### CC-326 ✅ 22/08: uma conversa com a casa INTEIRA, e a trava que não travava
+
+Achado indo conferir outra coisa: na lista de conversas dele havia uma com
+`cwd: /home/claudedev`, a pasta pessoal, em vez da pasta do projeto.
+
+A trava existia e está escrita em letras garrafais no código: *"a pasta é
+obrigatória e recusada fora da base de projetos. Esta é a trava principal do
+recurso inteiro"*. Ela tinha uma saída, e a saída era a própria frase que se
+achava segura:
+
+    const ehOPainel = alvo === path.resolve(process.cwd())
+
+O comentário dizia que sem pasta a conversa cai "na pasta do próprio painel, que
+é conhecida e está dentro da base". Verdade para quem roda `node cc.mjs` de
+dentro do repositório. **Mentira em produção:** o serviço do sistema sobe a
+partir de `/home/claudedev`, medido. Então `ehOPainel` valia para a casa inteira,
+com `.ssh`, `.claude` e os arquivos de senha do cockpit dentro dela.
+
+Ou seja: a trava principal do recurso que autoriza o agente a agir livre
+recusava qualquer pasta arbitrária, menos a única que dá acesso a tudo.
+
+Dois consertos, porque a falha precisou de dois erros para acontecer:
+
+1. **No servidor:** `RAIZ_DO_PAINEL`, que sai do caminho do próprio arquivo, no
+   lugar de `process.cwd()`, que sai de onde alguém chamou o processo. Já
+   existia no arquivo, usado por outras rotas.
+2. **Na tela:** ela mandava `cwd: undefined` quando não achava o projeto na
+   lista, deixando o servidor escolher. Quem sabe o nome da pasta é a tela, e
+   pedir sem ela é sempre engano. Agora avisa e não abre.
+
+Provado pela rota, com o painel religado: a casa inteira é recusada, sem pasta
+cai na raiz do painel, e um projeto de verdade continua funcionando.
+
+**A lição, e ela é sobre comentário:** o comentário afirmava o que a linha
+abaixo dele não garantia, e a afirmação era verdadeira no jeito de rodar em que
+foi escrita. Comentário que justifica uma trava tem que dizer de que jeito de
+rodar ele está falando.
+
+
+### O pedido da central, nas palavras dele (feito: ver CC-323 e CC-329)
+
+Palavras dele:
+
+> *"acho que seria a tela de 'remoto' ser algo mais a ver com uma central de
+> comando, one ligamos os projetos e ali mesmo ja controlamos o framework do
+> projeto ligado. alem disso podemos manter a tela de framework abaixo dela,
+> colapsada com um submenu dessa tela, e o remoto tambem. tende? criar um menu
+> paralelo pra fazer eu ligar um projeto e ali mesmo ja escolher o framework"*
+
+O que ele está descrevendo, na minha leitura: hoje ligar um projeto e escolher o
+modo de trabalho dele são **duas telas separadas**, e a segunda não sabe qual
+projeto a primeira ligou. Ele quer as duas coisas no mesmo gesto.
+
+A forma que ele nomeou, e que é o pedido, não sugestão:
+
+- **uma central**, onde ligar o projeto e escolher o modo acontecem juntos
+- **Framework e Remoto viram submenu dela**, colapsados, não telas de topo
+- **um menu paralelo**: escolhe o projeto na lateral e já configura ali
+
+É o mesmo padrão que o Coderoom já usa, onde clicar no ícone abre a lista de
+projetos no próprio menu. Ele está pedindo que a central herde esse padrão, o
+que é bom sinal: o vocabulário da tela já existe.
+
+**A pergunta que muda o desenho, e que vale conferir com ele antes de construir:**
+"ligar o projeto" é abrir uma sessão de agente naquele projeto (o que a tela
+Remoto faz hoje), ou é ligar o framework nele? As duas leituras cabem na frase,
+e produzem telas diferentes.
+
+**Levantado em 22/08, e a notícia é boa: não precisa de rota nova.**
+`/api/framework/projetos` já devolve, numa chamada só, tudo o que a central
+pediria: o projeto, a pasta, se o framework está ligado, o modo atual com título
+e explicação, se o modo está travado, e os arquivos autorizados. É a mesma fonte
+que a tela Framework usa hoje.
+
+E "ligar o projeto" na tela Remoto é o botão **abrir sessão**, o que sustenta a
+leitura assumida acima. Falta só a confirmação dele.
+
+Ou seja, a central é trabalho de tela juntando duas coisas que já existem, e não
+mexe no servidor. Isso importa porque o servidor é rota de outra sessão: o item
+inteiro cabe dentro de `src/ui_v2.html`.
+
+Rota: tela, `src/ui_v2.html`.
+
+### CC-324 ✅ 22/08: o menu "mais" do telefone, medido
+
+> **Fechado como [[#CC-314]]**, pela sessão `9bad715c`, no mesmo dia em que foi
+> aberto. Os dois números descrevem a mesma queixa: `c213b663` mediu e registrou
+> aqui, `9bad715c` consertou dentro do `ui_v2.html`, onde já estava trabalhando.
+>
+> **O que ficou de fora e continua de pé:** o submenu de projetos do Coderoom
+> não existe na gaveta, porque o clone traz o item e não a lista. É o "e outros
+> que iriamos implementar" da frase dele, e o bloco é de `c213b663`.
+>
+> Resultado medido: de 1439px de conteúdo em 658px de gaveta para 800px, com
+> sete telas à vista e cinco grupos que abrem ao toque.
+
+Palavras dele:
+
+> *"no telefone o menu de mais ta muito ruim, basicamente ele fica só num pedaco
+> da tela e isos é inutil, fora que o colapsar nao funciona nos itens com o
+> coderoom e outros que iriamos implementar"*
+
+Medido em 390px com **clique de verdade**, nunca evento sintético:
+
+| o que | medida |
+|---|---|
+| altura da gaveta | 658px de 844 |
+| conteúdo dentro dela | **1439px**, mais que o dobro do que cabe |
+| itens | 28, em 5 grupos |
+| sobra escurecida em cima | 186px, inúteis |
+
+Ele tem razão nas duas queixas, e a segunda é um defeito, não gosto: cliquei no
+grupo AGENTES e os 28 itens continuaram 28. **Os grupos não colapsam na gaveta**,
+embora colapsem na barra lateral. Sem colapsar, 1439px de conteúdo rolam dentro
+de uma janelinha de 658, que é a definição do que ele chamou de inútil.
+
+E o Coderoom aparece na gaveta **sem a seta de submenu**: a lista de projetos
+que existe na lateral não existe ali. É o "e outros que iriamos implementar" da
+frase dele, já valendo hoje.
+
+Rota: tela, `src/ui_v2.html`.
+
+
+### CC-322 ✅ 22/08: o ícone tinha os quatro cantos brancos
+
+Achado indo conferir o CC-321, antes de ele testar no telefone: os PNGs do app
+tinham `(255,255,255)` nos quatro cantos. O desenho tem cantos arredondados, que
+ficam transparentes, e o PNG foi gravado **sem canal de transparência**, então o
+que estava vazado virou branco.
+
+O estrago apareceria justo onde ele olharia primeiro: um quadrado branco atrás
+de um capacete escuro, na tela inicial do telefone. E arredondar é trabalho do
+sistema, não do arquivo, então o arredondamento nem servia para nada ali.
+
+Junto veio o segundo, que só existe porque o ícone é declarado `maskable`: o
+Android recorta com uma forma que **muda por fabricante**, e só o círculo
+central de 80% do lado está garantido. O capacete chegava a 199px de raio contra
+205 de limite. Cabia, sem folga nenhuma.
+
+Os dois medidos lendo os pixels do arquivo, não olhando a imagem: a cor exata
+dos quatro cantos, e a distância do pixel de desenho mais distante do centro.
+
+Depois: cantos em `(11,14,20)`, o fundo do painel, e o desenho parando em 168px
+contra 205 de limite. Conferido byte a byte que o arquivo novo é o que sai pela
+rede, e não uma cópia guardada em memória.
+
+**A lição:** o arquivo de imagem parecia certo aberto no computador, porque lá
+os cantos transparentes mostram o fundo da página. Ícone se confere pelos
+pixels, e no formato em que ele vai ser usado.
+
+
+### CC-321 ✅ 22/08: instalou no Android e veio atalho, não app
+
+Palavras dele: *"INSTALEI NO chrome no meu android e nao funcionou como app"*.
+
+**A medição desmontou a hipótese óbvia.** O suspeito natural era o arquivo do
+trabalhador de fundo, que eu tinha deixado quase vazio de propósito. Perguntei
+ao próprio Chrome, que sabe responder isso: `Page.getAppManifest` e
+`Page.getInstallabilityErrors` devolveram **os dois vazios**, e o trabalhador
+apareceu ativo. Contra o painel direto, o painel é instalável e sempre foi.
+
+A causa está uma camada acima, e é contra-intuitiva: **quem monta o aplicativo
+do Android não é o telefone dele.** O Chrome manda o manifesto para um servidor
+da Google, e esse servidor baixa os ícones da internet pública, sem o cookie da
+sessão dele. O painel mora atrás de senha, então o mundo recebia 401 e HTML em
+todas as peças:
+
+    /app.webmanifest   401  text/html
+    /icone-192.png     401  text/html
+    /icone-512.png     401  text/html
+
+Sem ícone, a montagem falha e o Chrome cai para o atalho, que abre no navegador
+com barra de endereço. É o sintoma inteiro.
+
+Conserto na porta de entrada (`~/cockpit-auth.mjs`, fora deste repositório):
+quatro caminhos passam sem senha, em lista exata e só em GET. São três desenhos
+e o manifesto. **A página, o fluxo de eventos e todas as rotas de dado continuam
+exigindo senha**, e a prova disso está junto da outra: sete caminhos conferidos
+devolvendo 401, e os dois ícones conferidos como PNG de verdade nas medidas
+certas, não como a página de senha com o tipo mentindo.
+
+Autorizado por ele antes de mexer, com a exposição dita: fica público o capacete
+de astronauta, o nome do app e o nome de duas telas.
+
+**A lição que fica:** defeito de aplicativo instalado não se mede na máquina que
+serve. O painel passava em tudo localmente enquanto falhava no caminho real, e a
+diferença era um pedaço da infraestrutura que nem roda aqui.
+
+
+### CC-320 ✅ 22/08: pasta do PC dele abrindo conversa aqui, e o gate resolvendo errado
+
+Veio de aviso da sessão vizinha, não de defeito visto na tela: os agentes do PC
+dele reportam a pasta no formato do Windows (`D:\Documentos\Ti\projetos\...`).
+No Linux isso **não é caminho absoluto**. Quem tenta resolver não recebe erro:
+recebe a pasta de quem está rodando com o texto do Windows colado no fim.
+
+Do lado dela isso já tinha custado caro: cinco projetos do PC apareceram com o
+backlog do painel, 145 tarefas atribuídas a quem não é dono, sem uma linha de
+erro.
+
+**O que a medição achou, e que muda a conclusão:** as duas rotas do gate já
+recusavam, mas nenhuma das duas por saber o que estava acontecendo.
+`/api/gate/nova` era barrada pela checagem de base de projetos, depois de o
+caminho já ter sido colado errado; `/api/gate/modo` devolvia "não existe" porque
+a pasta inventada realmente não existe. As duas são acaso: qualquer mudança que
+passasse a subir diretórios, como o leitor de roadmap do outro lado faz,
+reabriria o buraco calada.
+
+Agora `deOutraMaquina()` recusa antes de resolver, e a mensagem diz o que fazer
+em vez de só negar: *"abra a conversa na máquina onde esse projeto mora"*.
+
+Nove verificações, incluindo a pasta real que apareceu no aviso. Fica exportada
+de propósito, e a sessão vizinha já a levou para o gate do projeto.
+
+**A trava na criação não bastava, e medir mostrou por quê.** Ela protege
+conversa NOVA. Conversa já gravada em disco entraria pela leitura, e é ali que o
+estrago seria maior: o leitor de roadmap sobe diretórios até achar um, então uma
+pasta do PC dele resolvida por engano dentro desta faz o contexto do projeto
+levar o backlog do PRÓPRIO PAINEL para o agente, apresentado como se fosse o
+dele. Medido com pasta inventada: quatro seções do roadmap do painel, sem erro
+nenhum.
+
+Fechado também na montagem do contexto e no disparo do agente. As 12 conversas
+que existem hoje estão todas em pastas daqui, então nenhuma foi afetada, e a
+prova pela negativa está junto: pasta daqui continua montando o contexto certo.
+
+
+### CC-285 ✅ 22/08: as barras de rolagem fora do tema, e o capacete
+
+Print dele da janela estreita no computador: *"olha como fica quando colapsado
+ao nivel de um smartphone no chrome, ele fica com uma barra perdida ali no canto
+inferior direito, e tambem essa barra branca e cinza fica muito fora do tema"*.
+
+**Eram duas coisas diferentes no mesmo print.**
+
+**1. A barrinha com setas dentro do campo de escrever.** O campo tinha rolagem
+sempre ligada, e o navegador reserva a barra mesmo com o campo VAZIO. A rolagem
+agora só liga quando o texto passa do teto de altura, e quem decide isso é o
+mesmo código que faz o campo crescer.
+
+**2. A barra clara atravessando a tela quase preta.** Sem estilo declarado, o
+navegador desenha a barra dele, e num painel escuro ela vira a coisa mais
+brilhante da página. Agora ela é fina e da cor da borda do painel, **em toda a
+tela e não só no Coderoom**. O cantinho onde as duas barras se encontram também
+é pintado, senão sobra um quadradinho claro no pé.
+
+**3. O ícone virou um capacete de astronauta**, pedido dele na mesma mensagem:
+*"pode ser um capacete de astronauta o logo? meio minimalista"*. Três peças e
+nada mais: o casco com a base reta, que é o que faz ler como capacete e não como
+bola; a viseira vazada; e o brilho, que é um recorte na viseira em vez de um
+traço por cima, para mostrar a cor do casco por baixo, como um reflexo de
+verdade.
+
+### CC-284 ✅ 22/08: zoom travado, e o Saturno de volta no ícone
+
+Dois apontamentos dele depois de instalar.
+
+**1. O zoom quebrava o app.** *"vamos impedir o zoom na tela. isso quebra o
+app"*. Num aplicativo instalado o beliscão não aumenta a letra: ele desloca a
+tela inteira e deixa a barra de baixo fora de alcance, e **não há barra de
+endereço para reenquadrar**. Numa página comum travar isso seria tirar
+acessibilidade dele; aqui é o contrário, porque o layout já é o de telefone.
+
+Travado em dois lugares, porque são dois gestos: a declaração do cabeçalho
+segura o beliscão, e `touch-action: manipulation` segura o **duplo toque**, que
+é o que ele encosta sem querer ao tocar rápido em dois botões seguidos.
+
+**2. O ícone era tosco, e o bom já existia.** *"uma versão original desse app
+que o gemini no agy criou tinha um icone de um planeta com anéis, estilo
+saturno, eu até pedi pra refazer mas voce refez algo bem tosco. se der, recupera
+aquele icone"*.
+
+**Primeira tentativa errada, e ele corrigiu:** peguei o Saturno da barra
+lateral encolhida (CC-252), e ele disse *"não é esse saturno, é um anterior a
+esse"*.
+
+**O certo estava na maquete original**, em `docs/legacy/gemini-referencia.html`:
+era o `ph-planet` do Phosphor, escrito lá como `<i class="ph-bold ph-planet">`.
+Não dá para trazer o arquivo: aquela maquete busca a biblioteca na rede, e o
+painel abre sem rede. Então foi refeito com a diferença que distingue os dois, e
+que era o que dava o ar errado: **o anel passa POR TRÁS do planeta**, some atrás
+dele e reaparece do outro lado. No meu anterior a elipse atravessava por cima.
+
+**Ainda não era, e ele mandou a imagem.** Recusou também a versão do Phosphor, e
+resolveu a conversa mandando o ícone que queria. O que eu não tinha entendido em
+nenhuma das duas tentativas anteriores não era o desenho do planeta: era o
+**preenchimento**. As minhas eram de contorno, com o anel como um fio por cima;
+a dele é sólida, e o anel aparece como uma faixa VAZADA atravessando o planeta,
+com as duas pontas cheias saindo para fora.
+
+Feito com duas máscaras que se recortam: o anel só aparece fora do planeta, e o
+planeta só aparece fora do anel. É isso que abre a faixa vazia no meio sem
+desenhar nenhuma linha.
+
+**A lição, e ela custou três tentativas:** eu tratei "planeta com anéis" como
+descrição de FORMA, e o que distinguia as versões era o ESTILO. Duas rodadas se
+teriam evitado pedindo a imagem na primeira vez que ele disse que estava tosco.
+
+Provado no navegador: a trava aparece nos dois lugares e o manifesto continua
+sem erro nenhum.
+
+### CC-283 ✅ 22/08: instalar no telefone como app, não como atalho
+
+Pergunta dele: *"é possivel transormar o cockpit em um webapp? de forma que ao
+instalar no chrome como app no android ele vire um app mesmo (…) pq no momento
+quando eu salvo ele abre como um site só, nao como app"*.
+
+**É possível, e faltavam três peças.** O endereço já era seguro, que é o
+requisito mais difícil; o resto é declaração.
+
+| peça | o que ela resolve |
+|---|---|
+| `app.webmanifest` | diz o nome, a cor e que a tela abre **sem barra de endereço** |
+| `sw.js` | sem um destes registrado, o Chrome no Android **não oferece instalar**: ele salva um atalho |
+| ícones em PNG (192 e 512) | o Android exige PNG; SVG sozinho não basta |
+
+**O trabalhador de fundo é deliberadamente quase vazio, e isso é decisão.** A
+tentação é guardar a página para abrir sem rede. Aqui seria um desastre: o
+painel muda várias vezes por dia, e o deploy é reiniciar o processo. Uma cópia
+guardada no telefone significaria abrir a versão de ontem **sem nenhum sinal na
+tela**, que é a família de defeito que este projeto mais paga. Some-se a isso
+que o painel só existe com o servidor de pé, porque todo dado vem de rota:
+guardar a casca sem o conteúdo daria uma tela vazia convincente, pior que a
+mensagem honesta de que não há conexão.
+
+Duas coisas que ele vai notar ao instalar: a barra de status do telefone fica
+com o fundo escuro do painel, e segurar o ícone abre atalhos diretos para o
+Coderoom e para o que precisa dele.
+
+**Provado pelo próprio navegador**, não por leitura: `Page.getAppManifest`
+devolveu **zero erros**, o trabalhador ficou registrado e ativo com escopo na
+raiz, e as cinco rotas novas respondem com o tipo certo. Conferido também que o
+proxy com senha não desvia nenhuma delas para os outros serviços da máquina.
+
+## ▶ Frente nova, aberta em 22/08: o Coderoom mais bonito e com o que falta
+
+Pedido dele depois de usar o Coderoom em trabalho de verdade: *"eu quero mexer
+mais nesse painel, quero que ele fique mais bonito e melhor"*. Perguntado onde e
+o quê, escolheu **o Coderoom**, e marcou **a aparência** e **função que falta**.
+
+As sete funções são dele, e três não estavam na minha lista de opções: ele
+escreveu por cima. Ficam registradas com as palavras dele antes de qualquer
+pixel ser tocado, que é a regra que ele mesmo pediu.
+
+### CC-274 ⏸ decisão dele: o texto do raciocínio NÃO vem, e o que dá para fazer
+
+Palavras dele: *"mostrar o thinking se possivel, de forma colapsada"*.
+
+**O "se possível" tinha razão de ser, e a medição fechou a questão: o texto não
+vem.** Medido contra o binário real, com o fluxo detalhado ligado:
+
+- os pedaços de raciocínio CHEGAM, e chegam ao vivo;
+- **o campo de texto deles é sempre vazio** (`thinking: ""`), acompanhado de uma
+  assinatura criptografada;
+- o que tem conteúdo é só a CONTAGEM, que sobe enquanto ele pensa (50, 100, 150
+  tokens estimados), e o total no fim.
+
+O conteúdo é redigido na origem, e não perdido no caminho. **Nenhuma
+configuração do painel muda isso**, então prometer o texto seria inventar.
+
+**O que sobra, e é decisão dele se vale:**
+
+| caminho | o que ele veria | o que custa |
+|---|---|---|
+| mostrar a contagem ao vivo | "pensando… 350 tokens", subindo | quase nada, o dado já chega |
+| mostrar o total no fim | "pensou 2.300 tokens antes de responder" | quase nada |
+| não mostrar nada | a faixa continua dizendo só "pensando…" | nada |
+
+A diferença prática é pequena, mas não é nula: a contagem subindo distingue **"o
+agente está pensando"** de **"o agente travou"**, que é a pergunta real de quem
+espera minutos olhando uma tela parada.
+
+Fica esperando ele escolher, porque foi ele quem pediu o recurso e é ele quem
+diz se o que sobrou ainda vale.
+
+### CC-275 ✅ 22/08: escolher o esforço do modelo
+
+Palavras dele: *"escolher o effort do modelo"*.
+
+**Cada agente tem a lista dele, e isso não é detalhe:** o Claude aceita cinco
+níveis (`low`, `medium`, `high`, `xhigh`, `max`), o agy aceita três, e o
+opencode não aceita nenhum. Mandar um nível que o agente não conhece derruba a
+chamada inteira, igual a modelo desconhecido, então a lista mora no catálogo de
+cada um e nunca é copiada de outro.
+
+O seletor **some** para quem não tem níveis, em vez de aparecer com uma opção
+só: escolha sem alternativa ocupando espaço.
+
+Provado de ponta a ponta: escolhi esforço baixo e conferi o comando que subiu de
+verdade, com `--effort low` na linha. A escolha ficou guardada na conversa, do
+mesmo jeito que o modelo.
+
+### CC-276 ✅ 22/08: mudar o modo de trabalho pelo próprio chat
+
+Palavras dele: *"poder mudar o framework ali pelo chat"*.
+
+O modo de trabalho de um projeto vive numa tela separada, e ele percebe que
+precisa trocar justamente enquanto conversa. Agora troca ali, num seletor ao
+lado do modelo e do esforço, com os onze modos.
+
+Três decisões que ficam:
+
+- **a leitura é própria, a gravação é a que já existia.** A rota nova só LÊ; a
+  troca vai pela mesma rota da tela de framework. Dois caminhos gravando a mesma
+  coisa é como as duas telas passariam a discordar;
+- **a troca fica REGISTRADA na conversa**, com o nome do modo novo. Mudar o
+  jeito de trabalhar sem deixar marca é o tipo de coisa que ele descobre depois
+  sem saber quando aconteceu;
+- **o registro entra por uma rota que não chama agente.** Escrever isso como
+  mensagem normal dispararia um turno, e ele pagaria um agente para ler um
+  recado do próprio painel.
+
+O seletor **some** em projeto sem framework, em vez de oferecer uma escolha que
+não muda nada.
+
+Provado de ponta a ponta com clique de dedo: troquei de Continuativo para Livre
+pela tela, conferi que gravou no disco, e vi o aviso aparecer na conversa. **O
+modo foi devolvido ao que ele tinha depois do teste**, porque ele não pediu essa
+troca.
+
+### CC-282 ✅ 22/08: o opencode recusava o print, e o motivo era outro do que parecia
+
+Ele mandou print da tela com o defeito, poucos minutos depois de o anexo entrar:
+*"deu problema no opencode"*. O print mostrava a resposta dele com o erro cru na
+conversa.
+
+**Dois problemas empilhados, e o segundo só apareceu depois de consertar o
+primeiro.**
+
+**1. O opencode recusa ler fora da pasta de trabalho.** A mensagem era clara no
+print: `permission requested: external_directory (...); auto-rejecting`. Os
+anexos moram junto da conversa de propósito, que é fora do projeto, então o
+caminho no texto nunca ia passar.
+
+O conserto foi usar o caminho NATIVO de cada um, em vez de citar o arquivo no
+texto para todos:
+
+| agente | como recebe o anexo |
+|---|---|
+| Claude Code | o caminho no texto, e ele abre com a ferramenta de leitura |
+| opencode | `--file <caminho>`, que é a opção própria dele |
+| agy | `--add-dir` na pasta dos anexos, além da pasta do projeto |
+
+**2. O modelo do opencode não enxerga imagem.** Com o arquivo enfim chegando, a
+resposta dele foi honesta: *"o modelo que responde aqui não enxerga imagem"*.
+Não é permissão, é o modelo: os gratuitos são de texto.
+
+Medido mandando o MESMO print aos três: Claude e agy descreveram a tela
+corretamente; o opencode não. A tela agora **avisa antes de enviar**, quando há
+imagem anexada e o agente escolhido não enxerga. Sem esse aviso ele gastaria um
+turno inteiro esperando para descobrir.
+
+**Terceiro achado, no mesmo print:** o texto do opencode chegava com código de
+cor de terminal grudado (`[93m`, `[0m`), que no navegador não vira cor nenhuma
+e sim lixo visível. Limpo na leitura.
+
+### CC-277 ✅ 22/08: mandar print e arquivo
+
+Ele manda print o tempo todo para mostrar o que está errado, e o Coderoom só
+aceitava texto. Sem isto ele teria que descrever a imagem em palavras, que é
+justamente o trabalho que o print evita.
+
+**O agente recebe o CAMINHO, não o conteúdo.** Os três leem arquivo do disco, e
+o Claude entende imagem ao abrir. Embutir o conteúdo no pedido exigiria um
+formato diferente para cada um, e o do agy nem aceita.
+
+Provado de ponta a ponta: mandei um print da própria tela do Coderoom e pedi
+para descrever. A resposta:
+
+> *"A tela do Coderoom no celular: você mandou 'Responda so: pronto' e o Claude
+> respondeu (…) com o custo de US$ 0,81 no topo e a barra de escolher agente
+> embaixo."*
+
+Ele abriu a imagem de verdade, com a ferramenta de leitura, e descreveu o que
+está nela.
+
+Quatro decisões que ficam:
+
+- **os arquivos moram junto da conversa**, não numa pasta temporária: fazem
+  parte do histórico, e o histórico sobrevive ao reinício;
+- **o nome do arquivo é limpo antes de virar caminho.** Ele vem do telefone
+  dele, e barra ou ponto duplo tirariam o arquivo da pasta da conversa;
+- **a rota que serve o anexo só entrega o que está numa pasta de anexos do
+  gate.** Sem essa trava, um caminho vindo do navegador leria qualquer arquivo
+  da máquina. Provado nos dois sentidos: a imagem volta 200, e `/etc/passwd`
+  volta 404;
+- **anexo sozinho vale como mensagem.** Exigir texto junto seria recusar o gesto
+  mais comum dele, que é mandar o print e escrever depois.
+
+**Um defeito de layout achado na captura**, e ele é do tipo que só aparece
+olhando: o seletor de esforço nascia escondido enquanto a lista de modelos era
+lida, e aparecia segundos depois **empurrando os vizinhos de lugar**. A barra
+pulava na cara dele no instante em que ele ia tocar. Agora ele nasce presente e
+desligado, dizendo que está lendo.
+
+### CC-278 ✅ 22/08: ditar por voz
+
+Boa parte do que ele escreve é ditado, na rua. O campo ganha um botão de gravar,
+usando o reconhecimento do próprio telefone.
+
+### CC-279 ✅ 22/08: avisar quando o agente terminar
+
+Resposta leva minutos e ele sai da tela. Hoje ele precisa voltar para conferir.
+
+### CC-280 ✅ 22/08: ver o que o agente mexeu, linha por linha
+
+A conversa mostrava só o NOME do arquivo editado. Agora traz o que mudou, num
+bloco fechado embaixo da resposta: verde entra, vermelho sai.
+
+Fechado por padrão, e com teto de altura: um diff aberto empurra a conversa
+inteira para fora da tela, e ele lê no telefone.
+
+**Como se sabe o que aquele turno mudou.** Um diff no fim mostraria tudo o que
+está diferente do último commit, e o trabalho de antes apareceria como se fosse
+do agente. Por isso se tira um retrato ANTES do turno, e o diff é contra ele.
+
+**Três defeitos meus no caminho, e os três davam a MESMA tela: "nenhuma
+mudança" logo depois de o agente escrever o arquivo.** Nenhum dava erro.
+
+1. **Eu usava o caminho encurtado.** O alvo da ferramenta é cortado nas duas
+   últimas partes para caber no cartão, e o git nunca achava o arquivo. Agora o
+   caminho inteiro é guardado junto do curto.
+2. **Eu comparava com o commit atual.** O agente pode commitar, e aí o diff sai
+   vazio logo depois de ele reescrever meio projeto. Agora a comparação é com o
+   commit em que a árvore estava quando o turno começou.
+3. **O código de saída 1 do git quer dizer coisas OPOSTAS em dois comandos**, e
+   eu tratei os dois igual, duas vezes seguidas e nos dois sentidos:
+
+   | comando | o que o código 1 quer dizer |
+   |---|---|
+   | `diff --no-index` | achei diferença, que é o sucesso |
+   | `ls-files --error-unmatch` | não achei o arquivo |
+
+   Tratando 1 como falha em tudo, arquivo novo nunca aparecia. Tratando como
+   sucesso em tudo, todo arquivo parecia rastreado e o diff saía vazio. Agora
+   quem chama diz qual dos dois espera.
+
+A lição é a mesma das réguas de captura: **código de saída não é resposta,
+é convenção de cada comando.** Copiar o tratamento de um para o outro produz
+silêncio, não erro.
+
+### CC-281 ✅ 22/08: o compositor virou uma caixa só, minimalista e colapsada
+
+**Conferido com clique de verdade em 22/08**, depois de a sessão vizinha provar
+que evento sintético passa verde com o botão quebrado na mão dele. Os sete
+botões da barra (anexar, ditar, os três agentes, ajustes, enviar) estão dentro
+da tela em 390px, e `elementFromPoint` no centro de cada um devolve **ele
+mesmo**, não um pai que o cobre. A gaveta de ajustes abre com clique real.
+
+Uma observação que fica registrada e não virou conserto, porque ele não pediu e
+o compositor é dele: os três botões de agente têm **34px de altura**, abaixo dos
+40 que um dedo pede, e o `agy` tem 37px de largura. Funcionam, e a medição
+provou isso. Mexer neles é engordar a barra que ele acabou de pedir minimalista,
+então fica como escolha dele, não minha.
+
+
+Ele mandou prints de TRÊS larguras mostrando o estrago, mais um print do
+aplicativo que usa, como referência. Palavras dele: *"em tres resolucoes
+diferentes, olha como fica o design. queria deixar mais inteligente, enviei o
+claude code como referencia (não é p diminuir as opcoes, mas acho que o caminho
+é deixá-las minimalistas e colapsadas"*.
+
+**O problema, medido nos prints dele:** quatro seletores soltos numa faixa
+própria acima do campo. Em 390px isso virava três linhas de controle antes de
+ele escrever uma palavra.
+
+**Nenhuma opção saiu**, que era a condição dele. O que mudou:
+
+| antes | agora |
+|---|---|
+| faixa de controles + faixa de anexos + linha do campo | **uma caixa só**, com borda única, como na referência |
+| quatro seletores sempre à mostra | os três ajustes finos atrás de um toque |
+| botões com moldura cada um | ícones sem moldura, alvo de toque mantido em 40px |
+| "Claude Code", "o padrão do claude", "esforço padrão" | "Claude", e o resto dentro da gaveta |
+| campo de duas linhas fixas | campo que cresce com o texto até 40% da tela |
+
+Duas decisões de layout que ficam:
+
+- **a barra não quebra linha.** Com quebra, em 390px o botão de enviar caía
+  sozinho numa segunda linha e a caixa crescia de novo, que é exatamente o que
+  este redesenho evita. Quem aperta é o grupo de agentes, que ganhou rolagem
+  própria;
+- **trocar de agente continua a UM toque.** É o gesto central do Coderoom, e
+  colapsar isso junto teria sido diminuir opção, não organizar.
+
+Provado nas três larguras que ele mandou, e a varredura de estados passou nos
+cinco.
+
+### CC-273 ✅ 22/08: o agy não recebia a pasta do projeto, e recusava escrever
+
+Ele voltou com *"agy não tá funcionando"*, depois de eu já ter consertado outra
+coisa no agy. Era defeito diferente, e este era meu.
+
+**O que aconteceu com ele:** pediu ao agy para refazer o design de um site em
+`entreg4`, e a resposta não veio. O motivo estava no registro do turno:
+
+    /home/claudedev/projetos/entreg4/landing/site/index.html is not a valid
+    artifact path; artifacts must be in ~/.gemini/antigravity-cli/brain/<id>/
+
+**A causa: o agy não recebia `--add-dir`.** Sem a pasta declarada, ele não
+considera o projeto parte do espaço de trabalho dele. Aceita LER, e recusa
+ESCREVER. O Claude nunca sofreu disso porque recebia `--add-dir` desde o começo;
+eu simplesmente não tinha dado o mesmo ao agy.
+
+**Por que passou despercebido:** a mensagem fala de "caminho de artefato
+inválido", não de pasta nem de permissão. Parece defeito do modelo. E o turno
+inteiro morre, então a conversa mostrava resposta vazia.
+
+Provado refazendo o caso dele: pedi ao agy para criar um arquivo dentro de
+`entreg4/landing/site`, e ele criou, com o conteúdo certo. O arquivo de prova
+foi apagado depois.
+
+**A lição, que vale para agente novo:** o que o Claude recebe e os outros não é
+exatamente onde os defeitos deles vão nascer. Ao acrescentar um agente, comparar
+argumento por argumento com o que o Claude já leva.
+
+**A validação de campo veio dele, e é a tese do Coderoom inteiro acontecendo:**
+
+> *"ta funcionando, camarada, muito bem, ele acabou de construir uma landing
+> page pro entreg4 e ficou linda, ele errou algumas coisas mas o claude ja pegou
+> os erros e usou de ponto de partida."*
+
+Vale ler a segunda metade com atenção: **o agy construiu, errou, e o Claude
+continuou de onde ele parou, na mesma conversa.** É exatamente o que ele pediu
+quando descreveu o gate, e é a primeira vez que aconteceu em trabalho de
+verdade, não em teste. Nenhum dos dois teria feito sozinho: o agy entregou a
+peça inteira rápido, e o Claude achou os erros porque recebeu o histórico.
+
+### CC-272 ✅ 21/08: escolher o modelo, nos três agentes
+
+Pedido dele: *"eu que eu acho que tem que incluir no Coderoom, é poder mudar o
+modelo (…) o Open Code tem vários modelos, o Claude tem quatro modelos, e o
+Google tem os modelos do Google mas dá pra usar o Claude, opus e o sonet também.
+Então, eu quero que dê pra usar todos os modelos."*
+
+**São 25 no total**, e ele estava certo sobre o agy:
+
+| agente | quantos | de onde sai a lista |
+|---|---|---|
+| Claude Code | 4 | escritos no código: são os apelidos que o programa aceita, e não mudam sozinhos |
+| opencode | 7 (6 gratuitos) | `opencode models`, perguntado ao próprio binário |
+| agy | 14 | `agy models`, e **inclui Claude Sonnet 4.6 e Opus 4.6** além dos modelos do Google |
+
+**Uma anotação minha estava errada e foi corrigida.** O código dizia que o agy
+não aceitava escolha de modelo, que ele decidia pela conta logada, e que mandar
+nome desconhecido derrubava a chamada. A primeira metade era falsa: ele tem
+lista e aceita `--model`. A segunda continua verdadeira, e é por isso que a
+escolha sai da lista dele e **nunca de texto digitado**.
+
+Provado de ponta a ponta: escolhi Claude Opus 4.6 dentro do agy e perguntei qual
+modelo estava respondendo. A resposta foi *"Claude Opus 4.6, via Antigravity"*.
+
+Três decisões que ficam:
+
+- **a escolha é guardada por conversa**, então não volta ao padrão a cada
+  mensagem;
+- **trocar de agente limpa a escolha**, porque modelo de um não existe no outro
+  e nome desconhecido derruba a chamada;
+- **a lista é lida uma vez a cada meia hora.** Perguntar ao binário leva
+  segundos e a lista muda de mês em mês, não de minuto em minuto. Falha de
+  leitura vira uma frase dizendo que não deu, nunca lista vazia.
+
+**O `<select>` é seguro aqui, e só aqui.** Ele mora no compositor, que é irmão
+do bloco redesenhado e nunca é recriado; e mesmo assim ele só se reescreve
+quando muda o agente ou chega a lista, e nunca com o menu aberto. Seletor dentro
+de bloco pintado por timer perde o menu do sistema na mão dele, e isso já fechou
+a navegação na cara dele no telefone.
+
+### CC-270 ✅ 21/08: o agy calava, e eu escondia o motivo
+
+Apontado por ele no primeiro teste de verdade: *"o AGY não está respondendo. Eu
+boto 1 pergunta nele e ele fala que o agente terminou sem escrever nada"*.
+
+**Dois defeitos somados, e o meu era o pior.**
+
+1. **A causa:** o agy tentava rodar um comando (`node check.mjs`) e era barrado,
+   porque eu tinha liberado só leitura de arquivo. O turno morria inteiro.
+2. **O que eu escondia:** o motivo estava escrito no registro do turno o tempo
+   todo, e eu não o lia. `result.error` era jogado fora, e a tela mostrava
+   resposta vazia com a frase mais enganosa possível.
+
+A frase também estava errada: **"terminou sem escrever nada" e "o turno morreu"
+pareciam iguais na tela e são opostos.** Uma é o agente que não teve o que
+dizer; a outra é o trabalho que não aconteceu. Ele leu a primeira e concluiu
+que o agy estava mudo.
+
+Junto veio um terceiro caso: o agy fecha alguns turnos com `CANCELED` e nenhum
+erro escrito. Agora esse também tem frase, e ela diz onde procurar.
+
+**A decisão de liberar foi dele**, perguntado com o risco na frente: o agy passou
+a poder ler, buscar, escrever e rodar comando. A ressalva que ele aceitou é real
+e fica registrada: **o agy não tem as travas que seguram o Claude Code**, e roda
+na máquina que serve cinco sites de cliente.
+
+Provado refazendo a pergunta que falhava para ele: o agy leu o projeto e
+respondeu com uma análise do design.
+
+### CC-271 ✅ 21/08: o Coderoom ganha as mesmas opções da sessão do Claude
+
+Apontado por ele junto: *"quando eu inicio 1 sessão no Code Room, pelo remoto,
+ele não aparece as mesmas opções de pegar link mais 1 e desligar (…) eu posso
+abrir mais de 1 sessão no Code Room, em 1 projeto"*.
+
+Ele tem razão, e isso corrige uma leitura minha: quando ele disse "várias
+conversas separadas por projeto", eu entendi UMA por projeto. São várias
+DENTRO de cada projeto.
+
+Na linha de cada projeto, agora:
+
+| antes | agora |
+|---|---|
+| `no Coderoom` | `abrir conversa (3)` quando já existem, com a contagem |
+| — | `mais uma`, que abre outra no mesmo projeto |
+| — | `fechar todas`, com dois toques, porque apaga conversa |
+
+**"Pegar link" não entra, e o motivo é honesto:** não existe link. A sessão do
+Claude devolve um endereço porque ela mora fora; a conversa do Coderoom mora no
+painel, e o caminho até ela é o próprio botão.
+
+Provado na tela, com o fluxo ligado: projeto com conversa mostra os três botões
+e a contagem certa; projeto sem conversa continua com o `no Coderoom` simples.
 
 ### CC-267 ✅ 21/08: uma skill escrita uma vez, valendo nos três agentes
 
