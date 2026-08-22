@@ -305,6 +305,10 @@
     border: 3px solid var(--bg); /* o respiro que evita a barra colar no conteúdo */
   }
   ::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+  /* CC-285: o canto onde as duas barras se encontram também é pintado pelo
+     navegador, e sem isto sobra um quadradinho claro no pé da tela. Faltava
+     nos dois painéis, e foi o print dele da janela estreita que mostrou. */
+  ::-webkit-scrollbar-corner { background: transparent; }
 
   /* ---------- estrutura: painel | divisória | notas ----------
      O painel é o contêiner de consulta. Sem `container-type`, o breakpoint
