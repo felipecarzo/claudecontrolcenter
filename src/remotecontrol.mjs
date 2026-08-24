@@ -29,7 +29,9 @@
 
 import { spawn, execFile } from 'node:child_process'
 import fs from 'node:fs'
-import { ehWindows } from './platform.mjs'
+import path from 'node:path'
+import { ehWindows, casaClaude } from './platform.mjs'
+import { PROJETOS_DIR, DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
 
 const PREFIXO_SESSAO = 'cc-remote-'
 
@@ -84,6 +86,117 @@ const tmux = (args, ms = 8000) => new Promise((resolve) => {
 /** Só existe no Windows: aqui não tem tmux pra ser a fonte de verdade. */
 const ativosWindows = new Map() // projeto -> { pid, desde, cwd }
 
+/* ── O caminho de volta ─────────────────────────────────────────────────────
+ *
+ * 24/08, e este bloco existe por causa de um estrago meu, não de uma ideia.
+ *
+ * Ele perguntou se uma conversa podia ficar pendurada. Fui olhar, li a hora de
+ * CRIAÇÃO que o tmux informa como se fosse a hora da última atividade, chamei
+ * de "parada há 15 horas" uma conversa que tinha respondido três minutos antes,
+ * e ofereci a ele matar as duas como opção recomendada. Ele aceitou a minha
+ * recomendação e perdeu o acesso ao trabalho que estava fazendo.
+ *
+ * O erro de leitura foi meu, mas o que transformou engano em estrago foi o
+ * desenho: **a única ação que o painel oferecia para uma conversa era a
+ * irreversível.** Não havia soltar, não havia religar, não havia voltar.
+ *
+ * O histórico sempre esteve em disco: reabrir a conversa de 15 horas custou um
+ * comando. O que faltava era alguém guardar QUAL conversa estava ali, porque
+ * depois que a sessão morre o tmux não sabe mais dizer.
+ *
+ * Duas certezas diferentes, e a diferença importa na hora de oferecer o botão:
+ * `medida` é o vínculo gravado quando foi o próprio painel que abriu a conversa
+ * (não tem como errar), e `palpite` é a conversa mais recente daquela pasta,
+ * usada para sessão que já existia antes disto. Com duas conversas abertas no
+ * mesmo projeto, o palpite pode pegar a irmã — por isso ele se anuncia.
+ */
+
+/* Mesma casa dos outros módulos, com o mesmo abrigo: dentro do sandbox
+   `~/.claude` fica somente leitura, e sem queda o vínculo nasceria mudo
+   justamente na máquina onde ele trabalha. Reusa `DIR_SESSOES_ABRIGO` em vez de
+   remontar o caminho, senão `CC_HOME` (o isolamento de teste) escaparia aqui. */
+const DIR_ABRIGO = () => path.join(DIR_SESSOES_ABRIGO(), '..')
+const ARQ_VINCULOS = 'control-center-remoto.json'
+const caminhosVinculo = () => [
+  path.join(casaClaude(), ARQ_VINCULOS),
+  path.join(DIR_ABRIGO(), ARQ_VINCULOS),
+]
+
+/** Junta casa e abrigo. A casa vence, porque é onde se grava quando dá. */
+export function lerVinculos() {
+  const junto = {}
+  for (const p of [...caminhosVinculo()].reverse()) {
+    try { Object.assign(junto, JSON.parse(fs.readFileSync(p, 'utf8'))) } catch { /* sem vínculo ainda */ }
+  }
+  return junto
+}
+
+/** Grava na casa; se ela recusar, cai pro abrigo e DIZ por onde saiu. Escrita
+ *  atômica: um corte no meio não pode deixar o arquivo pela metade. */
+function gravarVinculos(todos) {
+  const erros = []
+  for (const p of caminhosVinculo()) {
+    try {
+      fs.mkdirSync(path.dirname(p), { recursive: true })
+      const tmp = `${p}.tmp`
+      fs.writeFileSync(tmp, JSON.stringify(todos, null, 2))
+      fs.renameSync(tmp, p)
+      return { ok: true, onde: p, abrigo: p !== caminhosVinculo()[0] }
+    } catch (e) { erros.push(`${p}: ${e.code || e.message}`) }
+  }
+  return { ok: false, erro: erros.join(' / ') }
+}
+
+/** A pasta de transcritos daquele projeto. O Claude Code nomeia trocando tudo
+ *  que não é letra ou número por hífen: `/home/x/VPS_coepiloto` vira
+ *  `-home-x-VPS-coepiloto`. */
+const pastaTranscritos = (cwd) => path.join(PROJETOS_DIR(), String(cwd).replace(/[^a-zA-Z0-9]/g, '-'))
+
+/**
+ * Qual conversa está (ou estava) rodando naquela pasta. `depoisDe` filtra pelo
+ * nascimento da sessão, pra não devolver conversa de ontem.
+ */
+export function conversasDe(cwd, { depoisDe = 0 } = {}) {
+  const achadas = []
+  try {
+    for (const nome of fs.readdirSync(pastaTranscritos(cwd))) {
+      if (!nome.endsWith('.jsonl')) continue
+      const st = fs.statSync(path.join(pastaTranscritos(cwd), nome))
+      if (st.mtimeMs < depoisDe) continue
+      achadas.push({ id: nome.slice(0, -6), quando: st.mtimeMs })
+    }
+  } catch { /* pasta não existe: projeto sem conversa nenhuma ainda */ }
+  return achadas.sort((a, b) => b.quando - a.quando)
+}
+
+/** A mais recente delas, que é a que interessa em quase todo lugar. */
+export function conversaDe(cwd, opcoes) {
+  return conversasDe(cwd, opcoes)[0] || null
+}
+
+/**
+ * Só os vínculos que dão volta de verdade: têm conversa gravada e a pasta
+ * ainda existe. Botão que às vezes não faz nada é pior que botão nenhum, e
+ * sessão viva também aparece aqui dentro (sem conversa ainda) enquanto não
+ * falou pela primeira vez.
+ */
+export function caminhosDeVolta() {
+  const uteis = {}
+  for (const [projeto, v] of Object.entries(lerVinculos())) {
+    if (!v || !v.conversa) continue
+    if (v.cwd && !fs.existsSync(v.cwd)) continue
+    uteis[projeto] = v
+  }
+  return uteis
+}
+
+/** Guarda (ou atualiza) o vínculo de um projeto. */
+function anotarVinculo(projeto, dados) {
+  const todos = lerVinculos()
+  todos[projeto] = { ...(todos[projeto] || {}), ...dados }
+  return gravarVinculos(todos)
+}
+
 /** O que está ligado agora. */
 export async function estado() {
   if (ehWindows) {
@@ -91,13 +204,27 @@ export async function estado() {
     for (const [projeto, info] of ativosWindows) out[projeto] = info
     return out
   }
-  const r = await tmux(['list-sessions', '-F', '#{session_name}\t#{session_created}'])
+  /* `pane_current_path` entra junto porque sem a pasta não dá pra saber quando
+     a conversa falou pela última vez — e foi confundir CRIAÇÃO com ATIVIDADE
+     que me fez chamar de "parada há 15 horas", em 24/08, uma conversa que
+     tinha respondido três minutos antes. Uma chamada só, não uma por sessão. */
+  const r = await tmux(['list-sessions', '-F', '#{session_name}\t#{session_created}\t#{pane_current_path}'])
   if (!r.ok) return {} // tmux ausente ou nenhuma sessão viva: mesmo resultado, vazio
   const out = {}
   for (const linha of r.out.split('\n')) {
-    const [nome, criado] = linha.trim().split('\t')
+    const [nome, criado, cwd] = linha.trim().split('\t')
     if (!nome || !nome.startsWith(PREFIXO_SESSAO)) continue
-    out[nome.slice(PREFIXO_SESSAO.length)] = { sessao: nome, desde: (Number(criado) || 0) * 1000 || null }
+    const conversa = cwd ? conversaDe(cwd) : null
+    out[nome.slice(PREFIXO_SESSAO.length)] = {
+      sessao: nome,
+      desde: (Number(criado) || 0) * 1000 || null,
+      cwd: cwd || null,
+      /* A hora da última mensagem, que é o que "parada" quer dizer de verdade.
+         `null` quando não deu pra saber: silêncio aqui é "não sei", nunca
+         "está parada" — a diferença entre os dois é o estrago de 24/08. */
+      ativa: conversa ? conversa.quando : null,
+      conversa: conversa ? conversa.id : null,
+    }
   }
   return out
 }
@@ -107,7 +234,22 @@ export async function estado() {
  * de verdade. Nunca espera terminar: é sessão que fica viva até o Felipe
  * fechar pelo celular, o `desligar` daqui, ou (só no Windows) o painel cair.
  */
-export async function ligar(projeto, cwd, { binario = 'claude', mais = false, esperarMs = 6000 } = {}) {
+export async function ligar(projeto, cwd, {
+  binario = 'claude', mais = false, esperarMs = 6000,
+  /* 24/08: os dois botões que eram um só. `remoto: false` abre a conversa sem
+     expor acesso nenhum: ela vive aqui e ganha o celular depois, por
+     `conectar()`. Medido antes de escrever: uma conversa que nasce sem remoto
+     aceita `/rc` depois.
+
+     E uma correção do que eu mesmo tinha escrito aqui: o endereço NÃO é
+     estável. Medido em três ciclos seguidos, soltar o celular de verdade faz o
+     endereço seguinte ser OUTRO; ele só se repete quando a desconexão não
+     chegou a acontecer. Por isso `conectar()` devolve o endereço de agora, e
+     nada no painel guarda link antigo: link decorado apontaria para o vazio. */
+  remoto = true,
+  /* Id de conversa antiga: em vez de começar do zero, retoma de onde parou. */
+  retomar = null,
+} = {}) {
   if (!cwd || !fs.existsSync(cwd)) return { ok: false, erro: `pasta não existe: ${cwd}` }
 
   const ativos = await estado()
@@ -141,9 +283,13 @@ export async function ligar(projeto, cwd, { binario = 'claude', mais = false, es
   }
 
   const sessao = slug(rotulo)
+  const nascimento = Date.now()
   // Args separados (não uma string só): tmux exec direto, sem passar por
   // shell nenhum — nome de projeto com espaço ou aspas não vira injeção.
-  const r = await tmux(['new-session', '-d', '-s', sessao, '-c', cwd, binario, '--remote-control', rotulo])
+  const argsClaude = [binario]
+  if (remoto) argsClaude.push('--remote-control', rotulo)
+  if (retomar) argsClaude.push('--resume', retomar)
+  const r = await tmux(['new-session', '-d', '-s', sessao, '-c', cwd, ...argsClaude])
   if (!r.ok) return { ok: false, erro: `tmux falhou: ${r.out || 'tmux está instalado?'}` }
 
   /* Responde a pergunta de confiança, senão a sessão nasce parada nela e o
@@ -163,11 +309,36 @@ export async function ligar(projeto, cwd, { binario = 'claude', mais = false, es
   const agora = await tmux(['capture-pane', '-t', sessao, '-p'])
   const tela = agora.ok ? agora.out.split('\n').filter((l) => l.trim()).slice(-12).join('\n') : null
 
-  return { ok: true, ja: false, sessao, rotulo, desde: Date.now(), cwd, confianca, tela }
+  /* O vínculo é gravado AQUI, com a conversa recém-nascida, e é a única
+     certeza que existe: depois que a sessão morre, nada mais sabe dizer qual
+     conversa morava nela. Retomada não precisa procurar, o id já é conhecido. */
+  const achada = retomar ? { id: retomar } : conversaDe(cwd, { depoisDe: nascimento - 2000 })
+  /* Grava mesmo sem conversa achada, porque `desde` sozinho já vale: conversa
+     só ganha arquivo em disco depois da primeira mensagem, e é o nascimento da
+     sessão que depois permite dizer com certeza qual conversa era dela. */
+  anotarVinculo(rotulo, {
+    conversa: achada ? achada.id : null,
+    cwd,
+    certeza: achada ? 'medida' : null,
+    desde: nascimento,
+    encerradaEm: null,
+  })
+
+  return {
+    ok: true, ja: false, sessao, rotulo, desde: nascimento, cwd, confianca, tela,
+    remoto, conversa: achada ? achada.id : null,
+  }
 }
 
-/** Mata a sessão. A conexão remota cai junto: é o processo local que sustenta ela. */
+/**
+ * Mata a sessão, **depois** de anotar o caminho de volta.
+ *
+ * A ordem não é detalhe: assim que o tmux morre não existe mais como
+ * descobrir qual conversa estava ali, e foi exatamente essa informação que
+ * faltou em 24/08 para desfazer o estrago sem garimpo manual.
+ */
 export async function desligar(projeto) {
+  if (!ehWindows) await anotarCaminhoDeVolta(projeto)
   if (ehWindows) {
     const info = ativosWindows.get(projeto)
     if (!info) return { ok: true, ja: false }
@@ -179,7 +350,163 @@ export async function desligar(projeto) {
     return { ok: true, ja: true }
   }
   const r = await tmux(['kill-session', '-t', slug(projeto)])
-  return { ok: true, ja: r.ok }
+  return { ok: true, ja: r.ok, volta: lerVinculos()[projeto] || null }
+}
+
+/** A pasta onde a sessão está de fato, perguntada ao tmux. Serve para a sessão
+ *  que nasceu antes disto existir e não tem vínculo gravado. */
+async function cwdDaSessao(projeto) {
+  const r = await tmux(['display-message', '-p', '-t', slug(projeto), '#{pane_current_path}'])
+  return r.ok ? r.out.trim() : null
+}
+
+/** Antes de matar, guarda qual conversa era e a hora. Nunca lança: falhar em
+ *  anotar não pode impedir o desligar que ele pediu. */
+async function anotarCaminhoDeVolta(projeto) {
+  try {
+    const jaSabido = lerVinculos()[projeto]
+    /* `estado()` já resolve pasta e conversa numa chamada só, e é a leitura
+       mais fresca que existe. O vínculo gravado no ligar entra como reserva,
+       porque conversa que nunca falou ainda não tem arquivo em disco: nesse
+       caso não há histórico para voltar, e prometer volta seria mentira. */
+    const vivo = (await estado())[projeto] || {}
+    const cwd = vivo.cwd || (jaSabido && jaSabido.cwd) || await cwdDaSessao(projeto)
+    if (!cwd) return
+    /* Nasceu quantas conversas nesta pasta desde que a sessão subiu? Se foi
+       exatamente uma, não há o que confundir: é ela, e a certeza é medida.
+       Duas ou mais, o painel não tem como saber qual ele quer, e diz isso em
+       vez de escolher sozinho. Escolher sozinho e não avisar foi o erro. */
+    const desde = vivo.desde || (jaSabido && jaSabido.desde) || 0
+    const candidatas = conversasDe(cwd, { depoisDe: desde })
+    const conversa = vivo.conversa || (jaSabido && jaSabido.conversa) || (candidatas[0] || {}).id || null
+    if (!conversa) return
+    const medida = (jaSabido && jaSabido.certeza === 'medida') || (Boolean(desde) && candidatas.length === 1)
+    anotarVinculo(projeto, {
+      conversa,
+      cwd,
+      certeza: medida ? 'medida' : 'palpite',
+      encerradaEm: Date.now(),
+    })
+  } catch { /* anotar é conforto, desligar é o pedido */ }
+}
+
+/**
+ * Reabre a última conversa daquele projeto, de onde ela parou.
+ *
+ * O histórico nunca esteve em risco: fica em disco, e sobrevive ao processo
+ * morrer. O que não existia era alguém lembrar qual arquivo era.
+ */
+export async function reabrir(projeto, { binario = 'claude', remoto = true } = {}) {
+  const volta = lerVinculos()[projeto]
+  if (!volta || !volta.conversa) {
+    return { ok: false, erro: `não sei qual conversa era a de ${projeto}: não há caminho de volta guardado` }
+  }
+  if (!fs.existsSync(volta.cwd)) return { ok: false, erro: `a pasta sumiu: ${volta.cwd}` }
+  const r = await ligar(projeto, volta.cwd, { binario, remoto, retomar: volta.conversa })
+  return r.ok ? { ...r, retomada: volta.conversa, certeza: volta.certeza || 'palpite' } : r
+}
+
+/* O menu do `/rc`, e o que cada tecla faz nele. Medido em sessão de teste em
+   24/08, não deduzido: `/rc` sempre conecta e abre o menu, com o cursor em
+   "Continue" e "Disconnect this session" duas linhas acima. */
+const TECLAS_DESCONECTAR = ['Up', 'Up', 'Enter']
+
+/**
+ * Espera a tela mostrar o que se procura, olhando de meio em meio segundo.
+ *
+ * A primeira versão esperava um tanto fixo de segundos e falhou na prova: o
+ * comando saiu digitado antes de a tela estar pronta, e o `/rc` foi parar na
+ * conversa como se fosse pergunta. Tempo fixo é chute; ler a tela é medida.
+ */
+async function esperarNaTela(sessao, procurado, { ateMs = 20000, passoMs = 500 } = {}) {
+  const limite = Date.now() + ateMs
+  let ultima = ''
+  while (Date.now() < limite) {
+    const r = await tmux(['capture-pane', '-t', sessao, '-p', '-S', '-80'])
+    if (r.ok) {
+      ultima = r.out
+      if (procurado.test(ultima)) return { ok: true, tela: ultima }
+    }
+    await espera(passoMs)
+  }
+  return { ok: false, tela: ultima }
+}
+
+/** Abre o menu do acesso remoto e devolve a tela dele. Limpa o campo antes:
+ *  digitar por cima de um menu aberto manda o comando pra conversa. */
+async function abrirMenuRemoto(sessao, procurado = /Disconnect this session/i) {
+  await tmux(['send-keys', '-t', sessao, 'Escape'])
+  await espera(600)
+  await tmux(['send-keys', '-t', sessao, '/rc'])
+  await espera(1200) // o CLI precisa reconhecer o comando antes do Enter
+  await tmux(['send-keys', '-t', sessao, 'Enter'])
+  /* Espera o que o CHAMADOR precisa, não "o menu". Medido em 24/08: aceitar
+     o menu servia para desconectar e falhava ao reconectar, porque o endereço
+     leva mais alguns segundos para aparecer depois do menu. Esperar pela coisa
+     certa é a diferença entre passar sempre e passar às vezes. */
+  return esperarNaTela(sessao, procurado)
+}
+
+/** Só existe no Linux, pelo mesmo motivo do `link()`: ler a tela do tmux é a
+ *  única captura de saída que não mata o terminal de verdade da sessão. */
+function soNoLinux(acao) {
+  return { ok: false, erro: `${acao} só funciona onde há tmux; no Windows use a janela que abriu` }
+}
+
+/**
+ * Dá (ou devolve) o acesso pelo celular a uma conversa que já está de pé.
+ *
+ * É o botão que faltava. Antes, perder o acesso remoto não tinha conserto pela
+ * tela: a conversa seguia viva e o único botão oferecido era matar.
+ */
+export async function conectar(projeto) {
+  if (ehWindows) return soNoLinux('conectar')
+  const sessao = slug(projeto)
+  if (!(await tmux(['has-session', '-t', sessao])).ok) {
+    return { ok: false, erro: `não há sessão viva em ${projeto}` }
+  }
+  let menu = await abrirMenuRemoto(sessao, /claude\.ai\/code\/session_/i)
+  if (!/claude\.ai\/code\/session_/i.test(menu.tela)) {
+    await espera(1500)
+    menu = await abrirMenuRemoto(sessao, /claude\.ai\/code\/session_/i)
+  }
+  const url = (menu.tela.match(/https?:\/\/\S*claude\.ai\/code\/\S+/g) || []).pop()
+  await tmux(['send-keys', '-t', sessao, 'Escape']) // fecha o menu, deixa conectado
+  if (!url) return { ok: false, erro: 'liguei o acesso mas não achei o endereço na tela; tenta de novo' }
+  return { ok: true, url: url.replace(/[.,)]+$/, '') }
+}
+
+/**
+ * Solta o celular sem matar nada: a conversa continua viva e trabalhando.
+ *
+ * A dúvida dele em 24/08 era essa, e a resposta medida é que desconectar o
+ * remoto não encosta na conversa, e religar devolve o MESMO endereço.
+ */
+export async function desconectar(projeto) {
+  if (ehWindows) return soNoLinux('desconectar')
+  const sessao = slug(projeto)
+  if (!(await tmux(['has-session', '-t', sessao])).ok) {
+    return { ok: false, erro: `não há sessão viva em ${projeto}` }
+  }
+  /* Uma segunda tentativa, porque medi uma falha em três: o menu às vezes não
+     abre quando o comando chega no meio de um redesenho da tela. Falhar por
+     isso mandaria ele matar a conversa, que é o caminho que este trabalho
+     inteiro existe para evitar. */
+  let menu = await abrirMenuRemoto(sessao)
+  if (!/Disconnect this session/i.test(menu.tela)) {
+    await espera(1500)
+    menu = await abrirMenuRemoto(sessao)
+  }
+  if (!/Disconnect this session/i.test(menu.tela)) {
+    await tmux(['send-keys', '-t', sessao, 'Escape'])
+    return { ok: false, erro: 'o menu do acesso remoto não apareceu como esperado; nada foi mexido' }
+  }
+  for (const tecla of TECLAS_DESCONECTAR) await tmux(['send-keys', '-t', sessao, tecla])
+  await espera(3000)
+  /* Conferir, não confiar: "matar não é conferir" é armadilha registrada deste
+     projeto, e vale igual para desconectar. A sessão TEM que continuar viva. */
+  const viva = (await tmux(['has-session', '-t', sessao])).ok
+  return { ok: true, viva, aviso: viva ? null : 'a sessão caiu junto, o que não era esperado' }
 }
 
 /**

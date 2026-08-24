@@ -63,7 +63,11 @@ import { situacaoRotas } from './routia.mjs'
 import { commitsDesde } from './gitlog.mjs'
 import { digestTodos } from './digest.mjs'
 import { enriquecerTodos } from './opencode.mjs'
-import { ligar as ligarRemoto, desligar as desligarRemoto, estado as estadoRemoto, link as linkRemoto } from './remotecontrol.mjs'
+import {
+  ligar as ligarRemoto, desligar as desligarRemoto, estado as estadoRemoto, link as linkRemoto,
+  conectar as conectarRemoto, desconectar as desconectarRemoto, reabrir as reabrirRemoto,
+  caminhosDeVolta as voltasRemoto,
+} from './remotecontrol.mjs'
 import { garantirMercado } from './mercado.mjs'
 import {
   readServers, killServer, duplicados, recentes, projetosLancaveis,
@@ -694,13 +698,23 @@ function handler(req, res) {
   // lê a tela do tmux, mais caro que o resto do stream.
   if (url.pathname === '/api/remote-control') {
     if (req.method === 'POST') {
-      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, mais }) => {
+      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, mais, remoto }) => {
         if (acao === 'desligar') return desligarRemoto(projeto)
         if (acao === 'link') return linkRemoto(projeto)
+        /* 24/08: abrir, conectar o celular, soltar o celular e encerrar viraram
+           quatro ações separadas. Antes só existiam ligar e matar, e por isso
+           perder o acesso a uma conversa viva não tinha conserto pela tela —
+           foi assim que uma conversa dele em pleno trabalho acabou morta.
+           `conectar` e `desconectar` conversam com o menu do CLI e esperam a
+           tela responder, então podem levar dezenas de segundos: quem chama
+           precisa aguentar a espera, e a tela avisa que está em curso. */
+        if (acao === 'conectar') return conectarRemoto(projeto)
+        if (acao === 'desconectar') return desconectarRemoto(projeto)
+        if (acao === 'reabrir') return reabrirRemoto(projeto, { remoto: remoto !== false })
         const dir = cwdDoProjeto(cwd, projeto)
         if (!dir) throw new Error(`projeto não encontrado: ${projeto}`)
         // `mais`: outro agente na mesma pasta, em vez de devolver o que já existe
-        return ligarRemoto(projeto, dir, { mais: Boolean(mais) })
+        return ligarRemoto(projeto, dir, { mais: Boolean(mais), remoto: remoto !== false })
       })
     }
     /* GET: todo projeto conhecido (pra montar a lista de botões) + o que já
@@ -723,7 +737,13 @@ function handler(req, res) {
     /* CC-129: a pasta pessoal desta máquina, para a tela poder oferecer uma
        sessão avulsa ali. Ela não é projeto e nunca aparece em `projetos`, e o
        navegador não tem como descobrir o caminho sozinho. */
-    return estadoRemoto().then((ativos) => send(res, 200, { projetos, ativos, casa: os.homedir() }))
+    /* `volta`: quais projetos têm conversa guardada para reabrir de onde
+       parou. Sem isto a tela não teria como oferecer o botão só a quem tem
+       caminho de volta de verdade, e um botão que às vezes não faz nada é
+       pior que botão nenhum. */
+    return estadoRemoto().then((ativos) => send(res, 200, {
+      projetos, ativos, casa: os.homedir(), volta: voltasRemoto(),
+    }))
   }
 
   // Containers Docker desta máquina. Fora do stream, mesmo motivo da máquina

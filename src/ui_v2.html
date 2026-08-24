@@ -4716,11 +4716,43 @@
         || (Number(b.ligado) - Number(a.ligado))
         || String(a.projeto).localeCompare(String(b.projeto)));
 
+      /* Cada destino leva o nome em cima dos botões. Sem o rótulo, "mais uma"
+         aparece duas vezes no mesmo cartão, uma para cada destino, e nada diz
+         qual é qual. Mesmas classes do cartão do bloco Remoto: o desenho é o
+         mesmo, e duplicar o estilo faria os dois divergirem na primeira
+         mudança. */
+      const grupoAcoes = (titulo, botoes) => (botoes
+        ? '<div class="rc-grupo"><span class="rc-grupo-nome">' + esc(titulo) + '</span>'
+          + '<div class="rc-botoes">' + botoes + '</div></div>'
+        : '');
+
+      /* Quando aquela conversa falou pela última vez, em português. Uma conta
+         só para os dois cartões que existem (este e o do bloco Remoto), senão
+         um dia os dois discordariam sobre o que é estar parado. Sem saber, diz
+         que não sabe: "parado" sem prova foi exatamente o erro de 24/08. */
+      const falaDe = (projeto) => {
+        const t = ((DATA.remoto?.ativos || {})[projeto] || {}).ativa;
+        if (!t) return 'não sei quando falou pela última vez';
+        const min = Math.round((Date.now() - t) / 60000);
+        if (min < 1) return 'falou agora mesmo';
+        if (min < 60) return 'falou há ' + min + 'min';
+        const h = min / 60;
+        return 'falou há ' + (h < 24 ? Math.round(h) + 'h' : Math.round(h / 24) + 'd');
+      };
+
       pintar(alvo, '<div class="cc-grade">' + ordem.map((p) => {
         const modos = p.modos || [];
         const atual = p.modo || null;
         const oModo = modos.find((m) => m.id === atual);
-        const noAr = CC_SESSOES.has(p.projeto);
+        const nSessoes = CC_SESSOES.quantas(p.projeto);
+        const noAr = nSessoes > 0;
+        /* `null` é "ainda não li as conversas", e é diferente de `[]`, que é
+           "li e não há nenhuma". A mesma distinção do cartão do bloco Remoto:
+           tratar os dois igual faz o cartão afirmar "parado" sobre o que ele
+           não sabe. */
+        const leuConversas = Array.isArray(GATE.conversas);
+        const nConversas = leuConversas
+          ? GATE.conversas.filter((c) => mesmoProjeto(c, p.projeto, p.raiz)).length : 0;
 
         /* Três estados, e cada um diz uma coisa diferente. Antes havia dois, e
            o projeto que nunca teve framework caía no texto de "desligado", que
@@ -4743,16 +4775,51 @@
              disco DESTA máquina, então projeto de outra nunca aparece nela, e
              dizer isso na tela evita que ele procure aqui o que está no PC. */
           +   '<b>' + esc(p.projeto) + ' ' + seloLocal() + '</b>'
-          +   '<span class="cc-selo' + (noAr ? ' cc-no-ar' : '') + '">' + (noAr ? 'sessão no ar' : 'sem sessão') + '</span>'
+          +   '<span class="cc-selo' + (noAr ? ' cc-no-ar' : '') + '">'
+          +     (noAr ? (nSessoes > 1 ? nSessoes + ' sessões no ar' : 'sessão no ar') : 'sem sessão') + '</span>'
           + '</header>'
+          /* A última fala de verdade, ao lado do "no ar". Em 24/08 confundi a
+             hora de CRIAÇÃO da sessão com a da última atividade e recomendei a
+             ele matar uma conversa que tinha respondido três minutos antes.
+             Este é o número que decide se algo está mesmo parado, e ele passa a
+             ficar na tela em vez de morar só na minha cabeça. */
+          + (noAr ? '<p class="cc-explica">' + esc(falaDe(p.projeto)) + '</p>' : '')
           + '<div class="cc-modos">' + botoesModo + '</div>'
           + (p.ligado && oModo?.explica ? '<p class="cc-explica">' + esc(oModo.explica) + '</p>' : '')
-          + '<div class="cc-acoes">'
-          +   '<button type="button" class="btn btn-ghost compacto" data-cc-fw="' + (p.ligado ? 'desligar' : 'ligar') + '"'
-          +     ' data-cc-proj="' + esc(p.projeto) + '" data-cc-dir="' + esc(p.raiz || '') + '">'
-          +     (p.ligado ? 'desligar o framework' : 'ligar o framework') + '</button>'
-          +   '<button type="button" class="btn btn-outline compacto" data-cc-ligar="' + esc(p.projeto) + '"'
-          +     ' data-cc-dir="' + esc(p.raiz || '') + '">abrir sessão</button>'
+          /* CC-332: os dois destinos, cada um com as ações do estado em que
+           * está. Antes havia um botão só, "abrir sessão", que num projeto já
+           * ligado devolvia a sessão existente sem abrir nada e sem avisar. A
+           * leitura dele foi a única possível: "não consigo iniciar direito as
+           * sessões". E o Coderoom não tinha caminho nenhum aqui.
+           *
+           * Os botões são os MESMOS do cartão do bloco Remoto, de propósito:
+           * `data-remoto-*` e `data-coderoom-*` já têm handler provado, com
+           * feedback de falha e a tela da sessão nova. Um par próprio para a
+           * central seria a segunda conta do mesmo gesto, e um dia as duas
+           * discordariam. */
+          + '<div class="rc-grupos">'
+          /* 24/08: as quatro ações, aqui também. Conectar e soltar mexem só no
+             acesso pelo celular, e encerrar guarda o caminho de volta. O botão
+             "retomar" só aparece para quem tem conversa guardada de verdade. */
+          +   grupoAcoes('Claude Code', noAr
+            ? '<button type="button" class="btn btn-ghost compacto" data-remoto-conectar="' + esc(p.projeto) + '">conectar celular</button>'
+              + '<button type="button" class="btn btn-ghost compacto" data-remoto-soltar="' + esc(p.projeto) + '">soltar celular</button>'
+              + '<button type="button" class="btn btn-ghost compacto" data-remoto-mais="' + esc(p.projeto) + '" data-remoto-dir="' + esc(p.raiz || '') + '">mais uma</button>'
+              + '<button type="button" class="btn btn-ghost compacto" data-remoto-desligar="' + esc(p.projeto) + '">encerrar</button>'
+            : '<button type="button" class="btn btn-outline compacto" data-remoto-ligar="' + esc(p.projeto) + '" data-remoto-dir="' + esc(p.raiz || '') + '">abrir sessão</button>'
+              + ((DATA.remoto?.volta || {})[p.projeto]
+                ? '<button type="button" class="btn btn-ghost compacto" data-remoto-reabrir="' + esc(p.projeto) + '">retomar de onde parou</button>'
+                : ''))
+          +   grupoAcoes('Coderoom', nConversas
+            ? '<button type="button" class="btn btn-ghost compacto" data-coderoom-abrir="' + esc(p.projeto) + '" data-coderoom-dir="' + esc(p.raiz || '') + '">abrir' + (nConversas > 1 ? ' (' + nConversas + ')' : '') + '</button>'
+              + '<button type="button" class="btn btn-ghost compacto" data-coderoom-nova="' + esc(p.projeto) + '" data-coderoom-dir="' + esc(p.raiz || '') + '">mais uma</button>'
+              + '<button type="button" class="btn btn-ghost compacto" data-coderoom-fechar="' + esc(p.projeto) + '" data-coderoom-dir="' + esc(p.raiz || '') + '">fechar' + (nConversas > 1 ? ' todas' : '') + '</button>'
+            : '<button type="button" class="btn btn-outline compacto" data-coderoom-abrir="' + esc(p.projeto) + '" data-coderoom-dir="' + esc(p.raiz || '') + '">'
+              + (leuConversas ? 'abrir conversa' : 'lendo…') + '</button>')
+          +   grupoAcoes('Framework',
+            '<button type="button" class="btn btn-ghost compacto" data-cc-fw="' + (p.ligado ? 'desligar' : 'ligar') + '"'
+              + ' data-cc-proj="' + esc(p.projeto) + '" data-cc-dir="' + esc(p.raiz || '') + '">'
+              + (p.ligado ? 'desligar' : 'ligar') + '</button>')
           + '</div>'
           + '</article>';
       }).join('') + '</div>');
@@ -6452,10 +6519,29 @@
            que é "li e não há nenhuma". Tratar os dois igual fazia o cartão
            afirmar "parado" sobre algo que ele não sabia. */
         const leuConversas = Array.isArray(GATE.conversas);
-        const conversas = leuConversas ? GATE.conversas.filter((c) => c.projeto === nome) : [];
+        /* CC-332: casa pela pasta também. Vale aqui pelo mesmo motivo do cartão
+           da central: a conversa guarda o nome de quando nasceu, e as pastas
+           desta máquina foram renomeadas em 23/08. */
+        const conversas = leuConversas ? GATE.conversas.filter((c) => mesmoProjeto(c, nome, dir)) : [];
         const sinal = on ? 'on' : (conversas.length ? 'conv' : 'off');
+
+        /* A hora REAL da última fala, não a de criação da sessão. Em 24/08 li
+           uma pela outra, chamei de "parada há 15 horas" uma conversa que
+           tinha respondido três minutos antes, e a recomendação que saiu daí
+           matou o trabalho dele. Quem olhar esta tela vê o número que decide.
+           E "não sei" aparece como não sei: silêncio aqui já custou caro. */
+        const vivo = ativos[nome] || null;
+        const faladoHa = (t) => {
+          if (!t) return null;
+          const min = Math.round((Date.now() - t) / 60000);
+          if (min < 1) return 'agora mesmo';
+          if (min < 60) return `há ${min}min`;
+          const h = min / 60;
+          return h < 24 ? `há ${Math.round(h)}h` : `há ${Math.round(h / 24)}d`;
+        };
+        const falou = vivo ? faladoHa(vivo.ativa) : null;
         const estadoTxt = on
-          ? 'sessão no ar'
+          ? (falou ? `no ar · falou ${falou}` : 'no ar · última fala desconhecida')
           : (conversas.length
             ? `${conversas.length} conversa${conversas.length > 1 ? 's' : ''}`
             : (leuConversas ? 'parado' : 'lendo…'));
@@ -6467,20 +6553,28 @@
           ? `<div class="rc-grupo"><span class="rc-grupo-nome">${titulo}</span><div class="rc-botoes">${botoes}</div></div>`
           : '');
 
+        /* 24/08: as quatro ações separadas. Antes eram duas, ligar e matar, e
+           quem perdia o acesso ao celular não tinha botão nenhum para
+           recuperar. A saída que sobrava era matar uma conversa viva. Agora
+           conectar e soltar mexem SÓ no acesso, e encerrar guarda o caminho de
+           volta, que é o que faz "retomar de onde parou" existir. */
+        const temVolta = Boolean((DATA.remoto.volta || {})[nome]);
         const doClaude = on
-          ? `<button class="btn btn-ghost compacto" data-remoto-link="${esc(nome)}">link</button>
+          ? `<button class="btn btn-ghost compacto" data-remoto-conectar="${esc(nome)}">conectar celular</button>
+             <button class="btn btn-ghost compacto" data-remoto-soltar="${esc(nome)}">soltar celular</button>
              <button class="btn btn-ghost compacto" data-remoto-mais="${esc(nome)}" data-remoto-dir="${esc(dir)}">mais uma</button>
-             <button class="btn btn-ghost compacto" data-remoto-desligar="${esc(nome)}">desligar</button>`
+             <button class="btn btn-ghost compacto" data-remoto-desligar="${esc(nome)}">encerrar</button>`
           /* CC-254: ativar um projeto pergunta ONDE abrir, e por isso são dois
              grupos e não um. */
-          : `<button class="btn btn-outline compacto" data-remoto-ligar="${esc(nome)}" data-remoto-dir="${esc(dir)}">abrir sessão</button>`;
+          : `<button class="btn btn-outline compacto" data-remoto-ligar="${esc(nome)}" data-remoto-dir="${esc(dir)}">abrir sessão</button>
+             ${temVolta ? `<button class="btn btn-ghost compacto" data-remoto-reabrir="${esc(nome)}">retomar de onde parou</button>` : ''}`;
 
         /* CC-268: "pegar link" não entra no Coderoom porque não existe link: a
            conversa mora no painel, e o caminho até ela é o próprio botão. */
         const doCoderoom = conversas.length
           ? `<button class="btn btn-ghost compacto" data-coderoom-abrir="${esc(nome)}" data-coderoom-dir="${esc(dir)}">abrir${conversas.length > 1 ? ` (${conversas.length})` : ''}</button>
              <button class="btn btn-ghost compacto" data-coderoom-nova="${esc(nome)}" data-coderoom-dir="${esc(dir)}">mais uma</button>
-             <button class="btn btn-ghost compacto" data-coderoom-fechar="${esc(nome)}">fechar${conversas.length > 1 ? ' todas' : ''}</button>`
+             <button class="btn btn-ghost compacto" data-coderoom-fechar="${esc(nome)}" data-coderoom-dir="${esc(dir)}">fechar${conversas.length > 1 ? ' todas' : ''}</button>`
           : `<button class="btn btn-ghost compacto" data-coderoom-abrir="${esc(nome)}" data-coderoom-dir="${esc(dir)}">abrir conversa</button>`;
 
         return `
@@ -9931,7 +10025,7 @@
     });
 
     document.body.addEventListener('click', async (e) => {
-      const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-meu-abrir], [data-meu-feito-btn], [data-zona], [data-foco-dia], [data-sinc-ler], [data-sinc-acao], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-coderoom-abrir], [data-coderoom-nova], [data-coderoom-fechar], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar], [data-tend-cheia], [data-tend-dia], [data-tend-andar], [data-tend-hoje], [data-tend-fechar], [data-trv-abrir], [data-trv-ajudou], [data-trv-atrapalhou], [data-trv-explica], [data-trv-fechar-explica], [data-pj-abrir], [data-pj-sessao], [data-pj-conversa], [data-cc-modo], [data-cc-fw], [data-cc-ligar], [data-nav-grupo], [data-sb-grade], [data-tg-fechar], [data-tg-ir], [data-pj-pastas], [data-pa-fechar], [data-pa-alternar], [data-pa-arquivo], [data-pa-fechar-arq]');
+      const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-meu-abrir], [data-meu-feito-btn], [data-zona], [data-foco-dia], [data-sinc-ler], [data-sinc-acao], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-remoto-conectar], [data-remoto-soltar], [data-remoto-reabrir], [data-coderoom-abrir], [data-coderoom-nova], [data-coderoom-fechar], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar], [data-tend-cheia], [data-tend-dia], [data-tend-andar], [data-tend-hoje], [data-tend-fechar], [data-trv-abrir], [data-trv-ajudou], [data-trv-atrapalhou], [data-trv-explica], [data-trv-fechar-explica], [data-pj-abrir], [data-pj-sessao], [data-pj-conversa], [data-cc-modo], [data-cc-fw], [data-nav-grupo], [data-sb-grade], [data-tg-fechar], [data-tg-ir], [data-pj-pastas], [data-pa-fechar], [data-pa-alternar], [data-pa-arquivo], [data-pa-fechar-arq]');
       if (!tr) return;
       /* CC-228: vem antes de tudo. O "?" mora dentro de cartões e linhas que já
          têm clique próprio (abrir agente, marcar feito), e sem sair aqui o
@@ -10192,21 +10286,102 @@
         return;
       }
       if (tr.dataset.remotoLigar || tr.dataset.remotoMais) {
+        e.preventDefault();
         const mais = Boolean(tr.dataset.remotoMais);
         const projeto = tr.dataset.remotoMais || tr.dataset.remotoLigar;
-        tr.disabled = true; tr.innerText = 'abrindo…';
-        return post('/api/remote-control', { projeto, cwd: tr.dataset.remotoDir, mais })
-          .then((out) => {
+        const dir = tr.dataset.remotoDir;
+        return (async () => {
+          /* CC-332: a confirmação veio do cartão da central, e passou a valer
+             nos dois lugares. O modo aparece aqui de propósito: é a última tela
+             antes de o agente começar a trabalhar, e o pedido dele foi
+             justamente não precisar conferir isso noutro lugar. Projeto fora da
+             lista do framework (a pasta pessoal, por exemplo) simplesmente não
+             mostra a linha do modo. */
+          const alvo = (FW_LISTA || []).find((p) => p.projeto === projeto);
+          const oModo = (alvo?.modos || []).find((m) => m.id === alvo?.modo);
+          const jaTem = CC_SESSOES.quantas(projeto);
+          const ok = await confirmar(tr, {
+            titulo: mais ? `Abrir mais uma sessão em ${projeto}?` : `Abrir sessão em ${projeto}?`,
+            detalhe: '<ul>'
+              + '<li>pasta: <code>' + esc(dir || '?') + '</code></li>'
+              + (alvo ? (alvo.ligado
+                ? '<li>vai nascer no modo <b>' + esc(oModo?.titulo || alvo.modo || 'nenhum') + '</b></li>'
+                : '<li><b>sem framework ligado</b>: nenhuma regra do projeto vai valer</li>') : '')
+              + (jaTem ? `<li>já existe ${jaTem === 1 ? 'uma sessão' : jaTem + ' sessões'} neste projeto, esta é mais uma</li>` : '')
+              + '</ul>',
+            sim: mais ? 'abrir mais uma' : 'abrir sessão',
+          });
+          if (!ok) return;
+          const rotulo = tr.innerText;
+          tr.disabled = true; tr.innerText = 'abrindo…';
+          const out = await post('/api/remote-control', { projeto, cwd: dir, mais });
+          /* `ja: true` é o servidor devolvendo a sessão que JÁ existia, sem
+             abrir nenhuma. Era o silêncio que ele viu em 23/08: clicava em
+             abrir sessão, a rota respondia ok, e a tela não mudava nada. Quem
+             não sabe do `ja` só pode concluir que quebrou. */
+          if (out?.ja) {
+            tr.innerText = 'já estava aberta';
+            setTimeout(() => { tr.disabled = false; tr.innerText = rotulo; }, 2500);
+          } else if (out?.ok && out.tela) {
             /* A tela da sessão nova não é enfeite: subir sem olhar já deu
                "ligado" com processo morto por trás. É onde a pergunta de
                permissão que o painel não responde por ele aparece. */
-            if (out?.ok && out.tela) alert(`${out.rotulo || projeto}\n\n${out.tela}`);
-          })
-          .then(() => carregarRemoto(true));
+            alert(`${out.rotulo || projeto}\n\n${out.tela}`);
+          }
+          await carregarRemoto(true);
+        })();
       }
       if (tr.dataset.remotoDesligar) {
-        if (!confirm(`Desligar a sessão remota de "${tr.dataset.remotoDesligar}"? A conexão do celular cai junto.`)) return;
-        return post('/api/remote-control', { projeto: tr.dataset.remotoDesligar, acao: 'desligar' }).then(() => carregarRemoto(true));
+        /* O aviso mudou em 24/08, e o motivo está no estrago que ele viveu: a
+           frase antiga ("a conexão do celular cai junto") descrevia o efeito
+           pequeno e escondia o grande. Encerrar mata a conversa. Agora o aviso
+           diz isso, diz quando ela falou pela última vez, e diz que dá para
+           voltar. Só cortar o celular virou outro botão. */
+        const alvo = tr.dataset.remotoDesligar;
+        const vivo = (DATA.remoto?.ativos || {})[alvo] || {};
+        const quando = vivo.ativa
+          ? `A última fala dela foi ${new Date(vivo.ativa).toLocaleString('pt-BR')}.`
+          : 'Não consegui saber quando ela falou pela última vez.';
+        if (!confirm(`Encerrar a conversa de "${alvo}"?\n\n${quando}\n\nIsto fecha a conversa, não só o acesso pelo celular. Para só parar de olhar, use "soltar celular".\n\nO histórico fica guardado, e depois dá para retomar de onde parou.`)) return;
+        return post('/api/remote-control', { projeto: alvo, acao: 'desligar' }).then(() => carregarRemoto(true));
+      }
+      /* Conectar e soltar conversam com o menu do programa e esperam a tela
+         responder, o que leva dezenas de segundos. Sem aviso na tela o botão
+         parece morto, e clicar de novo no meio atrapalha o que está em curso:
+         por isso o botão se desabilita enquanto trabalha. */
+      if (tr.dataset.remotoConectar || tr.dataset.remotoSoltar) {
+        const conectando = Boolean(tr.dataset.remotoConectar);
+        const alvo = tr.dataset.remotoConectar || tr.dataset.remotoSoltar;
+        const texto = tr.innerText;
+        tr.innerText = conectando ? 'conectando…' : 'soltando…';
+        tr.disabled = true;
+        return post('/api/remote-control', { projeto: alvo, acao: conectando ? 'conectar' : 'desconectar' })
+          .then(async (out) => {
+            if (conectando && out?.ok && out.url) {
+              try { await navigator.clipboard.writeText(out.url); } catch { }
+              tr.innerText = out.url;
+            } else if (!conectando && out?.ok) {
+              tr.innerText = out.viva ? 'solto, conversa segue viva' : (out.aviso || 'solto');
+            } else {
+              tr.innerText = out?.erro || out?.error || 'não deu';
+            }
+          })
+          .finally(() => setTimeout(() => { tr.innerText = texto; tr.disabled = false; carregarRemoto(true); }, 5000));
+      }
+      if (tr.dataset.remotoReabrir) {
+        const alvo = tr.dataset.remotoReabrir;
+        const volta = (DATA.remoto?.volta || {})[alvo] || {};
+        /* Palpite se anuncia. Com duas conversas abertas no mesmo projeto, a
+           que o painel guardou pode não ser a que ele tem em mente, e deixar
+           isso implícito seria repetir o erro que criou este botão. */
+        if (volta.certeza !== 'medida'
+          && !confirm(`Retomar a conversa de "${alvo}"?\n\nEsta é a conversa mais recente daquela pasta, e não tenho certeza de que é a que você quer. Se havia mais de uma aberta, pode ser a irmã.`)) return;
+        const texto = tr.innerText;
+        tr.innerText = 'retomando…';
+        tr.disabled = true;
+        return post('/api/remote-control', { projeto: alvo, acao: 'reabrir' })
+          .then((out) => { if (!out?.ok) tr.innerText = out?.erro || out?.error || 'não deu'; })
+          .finally(() => setTimeout(() => { tr.innerText = texto; tr.disabled = false; carregarRemoto(true); }, 4000));
       }
       if (tr.dataset.remotoLink) {
         const texto = tr.innerText;
