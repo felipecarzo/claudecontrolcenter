@@ -15,6 +15,197 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 23/08: a trava contra "não vai quebrar nada" dito no escuro
+
+Exigência dele, depois que eu disse que renomear as pastas não quebrava nada e
+quebrou o venv de dois projetos, uma dependência cruzada e quatro conversas do
+painel: *"eu te perguntei se trocar o nome da pasta não ia quebrar nada, você
+disse não e trocou todas. esse tipo de coisa não pode acontecer, precisamos
+repensar em uma regra de hooks que assegure que isso seja verificado de fato,
+forçando os agentes a pesquisarem a melhor forma de assegurar que todas as rotas
+sejam investigadas no momento que eu fizer essas perguntas. se não, perde todo o
+benefício."*
+
+**O que falhou:** eu conferi container, nginx, porta e config, e afirmei "não
+quebra". Não conferi as classes que guardam CAMINHO ABSOLUTO: venv de Python
+(shebang cravado), instalação editável de um projeto dentro do outro, e o estado
+de conversa do painel. Amostra vendida como varredura, de novo.
+
+**A verdade honesta sobre o que um hook consegue:** um hook é script
+determinístico. Ele NÃO verifica se eu pesquisei bem nem se a resposta está
+certa. O que ele faz, e é muito:
+
+1. **Detecta a pergunta dele** ("vai quebrar?", "é seguro?", "tem risco?") e
+   injeta um protocolo obrigatório: proibido responder "não quebra" de uma
+   checagem parcial; enumerar as classes de dependência; checar cada uma de
+   verdade; e responder em DUAS partes, "verifiquei X (com prova)" e "NÃO
+   descartei / não verifiquei Y". A segunda parte é o que faltou.
+2. **Trava a ação irreversível** (renomear/mover/apagar muitas pastas) até que a
+   varredura de impacto tenha rodado nesta sessão. O estrago acontece na AÇÃO,
+   não na frase, então travar a ação protege mais que corrigir a resposta.
+
+**O ativo reusável:** a varredura de impacto de renomear já existe como protótipo
+(`scratchpad/impacto-rename.sh`), com sete classes: venv, serviço do sistema,
+link global do npm, atalho de shell, cópia de trabalho do git, estado do painel,
+script solto. Ela CRESCE quando aparece classe nova, e hoje ela cresceu duas: a
+instalação editável cruzada e a conversa do painel com caminho morto. Vira
+`tools/` e o hook obriga a rodar.
+
+**Wiring:** o hook precisa entrar no catálogo de hooks e no `settings.json`, e os
+dois são de outra sessão agora. Escrever o script é meu; ligar exige combinar.
+
+Decisão dele pendente: o quão agressiva é a trava (só me obrigar a responder
+direito, travar a ação até varrer, ou travar e ainda pedir o "pode" dele).
+
+## ▶ Frente nova, aberta em 23/08: o quadro Kanban de todas as tarefas
+
+Ideia dele, em 23/08: *"a gente consegue fazer um kanban geral de todas as
+tarefas? estilo Trello, com os cards mudando de etapas etc, isso é possível?
+seria interessante?"*
+
+Visão registrada, ainda **não aprovada para execução**. O que a medição já sabe,
+para quando ele decidir o escopo:
+
+- **A tela Trabalho já é um Kanban de leitura** (o funil `o que só ele resolve ·
+  sprint · backlog`, `view-trabalho`). Falta o arrastar, e falta juntar as
+  fontes num quadro só.
+- **O estado de cada tarefa não é um dado editável, é texto na fonte.** O backlog
+  lê o estado do marcador no título (`✅ ⏸`), o cartão do agente lê do
+  `meta.json`, as tarefas dele saem do `cc meu`. **Arrastar um card = reescrever
+  a fonte que é dona dele.** É aí que mora o custo, não no desenho das colunas.
+- **O risco real é o backlog:** é um arquivo de texto que sessões paralelas
+  editam. Mover um card ali é reescrever uma linha num arquivo que outro agente
+  pode estar escrevendo ao mesmo tempo. As tarefas DELE (`cc meu`) não têm esse
+  risco: dono único, e já gravam de volta.
+- Fatia segura para começar: um quadro que REÚNE as três fontes em colunas por
+  etapa, com arrastar só nas tarefas dele primeiro. O escrever-de-volta no
+  backlog entra depois, com a trava de sessão paralela resolvida.
+
+**A pergunta dele que corrige a premissa, 23/08:** *"arrastar é útil? pq quem
+faz é você."* Está certo. Num Trello comum, o humano arrasta para MUDAR o
+estado. Aqui quem muda o estado é o agente, trabalhando: o card vai de "fazendo"
+para "feito" porque a tarefa acabou e foi reportada, não porque alguém arrastou.
+Arrastar como "avançar etapa" é quase todo redundante.
+
+**Onde arrastar continua sendo dele, porque é decisão e não trabalho:**
+- **prioridade e seleção de sprint** — puxar um item do backlog para "próxima",
+  reordenar o que vem primeiro. Isso nenhum agente deriva; é intenção dele.
+- **parar e retomar** — marcar ⏸ "parei por decisão minha", ou reviver.
+- **as tarefas que ele mesmo executa** (`cc meu`: ligar o PC, autorizar sudo).
+- **corrigir o agente** — o card foi reportado errado, ele devolve.
+
+Ou seja: o card anda sozinho pelo eixo do TRABALHO (a fazer → fazendo → feito,
+movido pelos agentes, ao vivo); ele arrasta só no eixo da DECISÃO (o que é
+prioridade, o que fica parado, o que é dele). O quadro é de leitura para o
+primeiro eixo e interativo só no segundo.
+
+### CC-335, aberto em 25/08: Central e Projetos viram uma tela só
+
+Proposta dele no telefone, depois de eu mostrar que a gaveta "sem sessão aberta"
+que eu tinha acabado de criar na Central repetia a lista do bloco Remoto:
+*"temos uma aba 'projetos' já temos o que seria uma boa adição pra misturar com
+central, talvez possamos juntar ambas"*. Filtro no topo, as ligadas primeiro com
+o framework à mostra, as outras com o framework colapsado para configurar como o
+projeto nasce, e em todo cartão ver tudo, pastas, abrir sessão e conversa.
+
+**Registrado, não implementado**, a pedido dele. A proposta inteira, com as
+palavras dele, o custo medido das três leituras (0,6s somadas, então não há
+barreira técnica) e as três decisões que faltam está em
+[[docs/produto/CENTRAL-E-PROJETOS.md]].
+
+Uma decisão já tomada por ele em 25/08: **ligado quer dizer ter sessão de agente
+no ar**, e não conversa aberta. Duas contas para a mesma palavra na mesma tela é
+o defeito que o CC-334 acabou de consertar.
+
+### CC-334 ✅ 25/08: o framework se desligava em dois lugares
+
+Print dele: *"o framework tá desligado em VPS_entreg4 mas mesmo assim ele tá
+'ligado', pra eu desligar eu preciso colocar desligado em dois lugares"*. Eram
+dois estados para um fato só, um MODO chamado Desligado e um interruptor à
+parte, e dava para ficar nos dois ao mesmo tempo.
+
+Feito, e no ar:
+
+- **um controle só** por projeto, a lista com Desligado, os papéis e os modos
+  crus. Escolher num projeto que nunca teve framework liga e já deixa nele
+- **o topo só com quem tem sessão**, o resto numa gaveta contada que lembra se
+  ele deixou aberta. Critério escolhido por ele: ter sessão no ar agora
+- **as zonas repetidas acabaram**: selos de git e rota, fase, portão, módulos e
+  entrevista subiram para o cartão da central, e o bloco de baixo ficou só com a
+  entrevista e o projeto novo
+- prova em `npm run test:framework-unico`, nove verificações por navegador, sem
+  escrever nada no framework real dele (a chamada é interceptada na página)
+
+Falta a parte 4 do mesmo pedido: o **"?"** em entrevista, comunicação, entrega,
+código, rotas e em cada modo. Palavras dele: *"eu quem criei e eu mesmo já
+esqueci o que é"*.
+
+### CC-332, aberto em 23/08: a central de comando não abre sessão nem conversa
+
+Pedido dele, olhando o telefone: *"o painel de sessões quebrou, eu não consigo
+iniciar direito as sessões, só consegui pelo coderoom. e também os botões tão
+errados, as sessões não tão como iniciadas lá, e tb não tem a opção de começar
+sessão no coderoom nem de abrir uma extra (de cada)."*
+
+São quatro pedidos, e o primeiro está medido, não suposto:
+
+1. **Clicar em "abrir sessão" num projeto que já tem sessão não faz nada, e não
+   avisa.** A rota responde `{"ok":true,"ja":true}` (chamada real, 23/08): o
+   servidor devolve a sessão que já existe em vez de abrir outra. O cartão fica
+   igual, sem mensagem nenhuma, e a leitura dele é a única possível: quebrou.
+   Só o bloco Remoto, que nasce fechado embaixo, tem o botão que abre de verdade
+   uma segunda (`mais: true`).
+2. **O cartão não muda quando há sessão no ar.** Diz "sessão no ar" na faixa e
+   oferece o mesmo botão de sempre, sem entrar, sem link, sem desligar.
+3. **Não há caminho para o Coderoom** no cartão da central.
+4. **Não há "abrir uma extra"**, nem de sessão do Claude nem de conversa.
+
+**A causa é a mesma dos quatro:** o cartão da central nasceu no CC-323 com duas
+ações só (framework e abrir sessão), enquanto o desenho completo, com os dois
+destinos e as ações de cada um, ficou no cartão do bloco Remoto, fechado por
+padrão. A central mostra o estado e não oferece o que fazer com ele.
+
+**✅ Feito em 23/08.** O cartão passou a ter os três grupos, com os MESMOS
+botões do cartão do bloco Remoto (`data-remoto-*` e `data-coderoom-*`), nunca um
+par próprio: um segundo caminho para o mesmo gesto discordaria do primeiro um
+dia. Com sessão no ar são link, mais uma e desligar; sem sessão, abrir sessão.
+O Coderoom entrou com abrir, mais uma e fechar. A confirmação que morava só na
+central subiu para o handler compartilhado, e agora vale nos dois lugares. E a
+resposta `ja: true` deixou de ser silêncio: o botão diz "já estava aberta".
+
+**Um quinto defeito apareceu medindo, e é filho da renomeação das pastas de
+23/08.** A conversa do Coderoom guarda o NOME do projeto de quando ela nasceu.
+As quatro conversas de `entreg4` não apareciam no cartão do `VPS_entreg4`, que
+oferecia "abrir conversa" como se não houvesse nenhuma, e clicar ali criaria uma
+quinta ao lado das quatro. O casamento passa pela PASTA antes do nome
+(`mesmoProjeto`), nos três lugares que comparavam: o cartão da central, o cartão
+do Remoto e os botões de abrir e fechar.
+
+**O que NÃO foi resolvido, e não pode ser escondido:** as seis conversas
+gravadas em `~/projetos/proj_controlcenter` continuam invisíveis no cartão do
+`VPS_cockpit`. É o mesmo lugar no disco por um ATALHO, e dois caminhos
+diferentes em texto. Resolver atalho é trabalho do servidor, que é da rota
+`sistemas`, não da tela.
+
+**Prova:** `node --experimental-websocket test-central.mjs`, 19 verificações em
+390px de largura conferida pela régua da barra de baixo, incluindo o aviso de
+"já estava aberta" (com a resposta do servidor simulada, para não deixar sessão
+viva na máquina dele como efeito de teste) e duas provas negativas. O `npm test`
+segue verde, 144 verificações. Falta registrar o comando no `package.json`, que
+é arquivo da rota `sistemas`.
+
+### CC-333, aberto em 23/08: sessões vivas que o painel não mostra a ele
+
+Achado respondendo a pergunta dele (*"tem outras sessões ativas que eu não tenho
+acesso?"*). Sim: há seis sessões `claude` vivas nesta VPS, e o painel mostra
+três. As outras três (`cc-ok-VPS_cockpit`, `cc-prova2`, `cc-teste-limpo`) foram
+abertas hoje à noite por teste, e não aparecem em lugar nenhum porque a leitura
+só conta o que começa com `cc-remote-`. Elas não gastam token paradas, mas ele
+não tem como saber que existem nem como fechá-las pela tela.
+
+Duas decisões dele, e nenhuma tomada por mim: fechar essas três agora, e se o
+painel deve listar toda sessão de agente da máquina ou só as que ele abriu.
+
 ### As oito anotações dele, de 22/08
 
 Ele colou o bloco "ideias" do painel e pediu análise. **Cinco das oito eram o
@@ -6706,44 +6897,3 @@ Em 16/08 saíram 37 itens, com o texto integral preservado:
 - [2026-08-18](diario/2026-08-18.md) — CC-124, CC-133 a CC-137, CC-143 a CC-154 (texto ainda aqui, poda pendente)
 - [2026-08-19](diario/2026-08-19.md) — CC-138 (decidido), CC-140, CC-101, CC-157, CC-158 (texto ainda aqui, poda pendente)
 - [2026-08-21](diario/2026-08-21.md) — CC-218 a CC-231: os nove apontamentos dele no telefone, o "?" que explica cada tela, e as quatro redes que o painel novo não tinha herdado
-### CC-335, aberto em 25/08: Central e Projetos viram uma tela só
-
-Proposta dele no telefone, depois de eu mostrar que a gaveta "sem sessão aberta"
-que eu tinha acabado de criar na Central repetia a lista do bloco Remoto:
-*"temos uma aba 'projetos' já temos o que seria uma boa adição pra misturar com
-central, talvez possamos juntar ambas"*. Filtro no topo, as ligadas primeiro com
-o framework à mostra, as outras com o framework colapsado para configurar como o
-projeto nasce, e em todo cartão ver tudo, pastas, abrir sessão e conversa.
-
-**Registrado, não implementado**, a pedido dele. A proposta inteira, com as
-palavras dele, o custo medido das três leituras (0,6s somadas, então não há
-barreira técnica) e as três decisões que faltam está em
-[[docs/produto/CENTRAL-E-PROJETOS.md]].
-
-Uma decisão já tomada por ele em 25/08: **ligado quer dizer ter sessão de agente
-no ar**, e não conversa aberta. Duas contas para a mesma palavra na mesma tela é
-o defeito que o CC-334 acabou de consertar.
-
-### CC-334 ✅ 25/08: o framework se desligava em dois lugares
-
-Print dele: *"o framework tá desligado em VPS_entreg4 mas mesmo assim ele tá
-'ligado', pra eu desligar eu preciso colocar desligado em dois lugares"*. Eram
-dois estados para um fato só, um MODO chamado Desligado e um interruptor à
-parte, e dava para ficar nos dois ao mesmo tempo.
-
-Feito, e no ar:
-
-- **um controle só** por projeto, a lista com Desligado, os papéis e os modos
-  crus. Escolher num projeto que nunca teve framework liga e já deixa nele
-- **o topo só com quem tem sessão**, o resto numa gaveta contada que lembra se
-  ele deixou aberta. Critério escolhido por ele: ter sessão no ar agora
-- **as zonas repetidas acabaram**: selos de git e rota, fase, portão, módulos e
-  entrevista subiram para o cartão da central, e o bloco de baixo ficou só com a
-  entrevista e o projeto novo
-- prova em `npm run test:framework-unico`, nove verificações por navegador, sem
-  escrever nada no framework real dele (a chamada é interceptada na página)
-
-Falta a parte 4 do mesmo pedido: o **"?"** em entrevista, comunicação, entrega,
-código, rotas e em cada modo. Palavras dele: *"eu quem criei e eu mesmo já
-esqueci o que é"*.
-

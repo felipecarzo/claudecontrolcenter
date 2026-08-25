@@ -2156,7 +2156,7 @@
                veria ao entrar seriam três telas de rolagem antes do primeiro
                cartão. -->
           <details class="cc-bloco">
-          <summary><b>Framework</b><span>ligar, desligar, entrevista e projeto novo</span></summary>
+          <summary><b>Framework</b><span>a entrevista e o projeto novo. Ligar, desligar e escolher o modo agora é no cartão de cima</span></summary>
           <div id="cc-framework-aqui"></div>
           </details>
 
@@ -10383,7 +10383,11 @@
          apaga conversa, e conversa apagada não volta. */
       if (tr.dataset.coderoomFechar) {
         const projeto = tr.dataset.coderoomFechar;
-        const minhas = (GATE.conversas || []).filter((c) => c.projeto === projeto);
+        /* CC-332: pela pasta também, pelo mesmo motivo do botão de abrir. Com
+           a comparação só por nome, o botão dizia "fechar todas" e não fechava
+           nenhuma, porque a conversa guarda o nome de antes da pasta ser
+           renomeada. */
+        const minhas = (GATE.conversas || []).filter((c) => mesmoProjeto(c, projeto, tr.dataset.coderoomDir));
         /* CC-325: era "toque de novo", com 4 segundos para desarmar.
            Trocado pela caixa de confirmação a pedido dele. O "toque de novo"
            tinha dois problemas no telefone: o botão trocava de texto debaixo do
@@ -10424,7 +10428,11 @@
           try {
             const r = await fetch('/api/gate/conversas');
             const cs = r.ok ? (await r.json()).conversas || [] : [];
-            const existe = forcarNova ? null : cs.find((c) => c.projeto === projeto);
+            /* CC-332: pela pasta também. Com a comparação só por nome, o cartão
+               do `VPS_entreg4` abria uma conversa NOVA ao lado das quatro que
+               ele já tinha, porque elas foram gravadas antes de a pasta ser
+               renomeada. */
+            const existe = forcarNova ? null : cs.find((c) => mesmoProjeto(c, projeto, dir));
             if (existe) {
               GATE.id = existe.id;
             } else {

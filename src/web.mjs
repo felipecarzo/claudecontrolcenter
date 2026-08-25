@@ -2420,18 +2420,48 @@ function handler(req, res) {
       connection: 'keep-alive',
     })
     let last = ''
+    /* CC-333, 24/08: a aba PARADA era o vazamento, e ele matava o painel.
+
+       Medido em 16 horas de curva (`~/logs/painel-memoria.log`): com três abas
+       abertas a noite toda, a memória subiu 5 MB por minuto sem parar, de 104
+       MB às 02:22 até 1.972 MB às 08:51, e o painel morreu às 08:52. Sem aba
+       nenhuma, ele fica oito horas em 91 MB. Reproduzido de propósito com
+       cliente que conecta e não lê: 86 MB viraram 120 MB em três minutos.
+
+       A causa não é o dado nem a tela: é que `res.write` NUNCA foi checado.
+       Ele devolve `false` quando o que já se escreveu ainda não saiu, e a
+       partir daí cada retrato novo vira fila na memória do servidor, sem teto.
+       Uma aba deixa de consumir sempre que a tela do telefone apaga.
+
+       Então enquanto o cliente não drena, o tique é PULADO: quem volta de uma
+       tela apagada quer o estado de agora, não a fila do que perdeu. O tique
+       seguinte redesenha tudo de qualquer jeito, e por isso pular é de graça.
+
+       As oito quedas desde 18/08 são todas isto. */
+    let cheio = false
     // `remoto` entra no stream (e no fingerprint) pra ligar/desligar numa
     // aba aparecer na outra sem precisar reabrir — bug relatado em 13/08:
     // "ligado" só atualizava no aparelho que clicou. `estadoRemoto()` no
     // Linux spawna `tmux list-sessions`; barato, e só roda enquanto alguém
     // tem a aba aberta.
     const push = async () => {
+      /* Sai ANTES de montar o retrato: `snapshot()` é a parte cara do tique, e
+         a aba parada não vai ver o resultado de qualquer forma. */
+      if (cheio) return
       const snap = snapshot()
       const remoto = await estadoRemoto()
       const fingerprint = JSON.stringify([snap.jobs, snap.uso, remoto])
       if (fingerprint === last) return
       last = fingerprint
-      res.write(`data: ${JSON.stringify({ ...snap, remoto })}\n\n`)
+      const coube = res.write(`data: ${JSON.stringify({ ...snap, remoto })}\n\n`)
+      if (!coube) {
+        cheio = true
+        /* `last` volta a zero porque enquanto se pula, o que ele tem na tela
+           envelhece: sem isto, a aba que acorda com o mesmo estado de antes
+           cairia no `fingerprint === last` e ficaria parada até algo mudar. */
+        last = ''
+        res.once('drain', () => { cheio = false })
+      }
     }
     push()
     const timer = setInterval(push, 2000)

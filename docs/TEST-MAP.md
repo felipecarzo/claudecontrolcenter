@@ -23,10 +23,10 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
 | tela | 28 | 28/28 | 25/28 | 28/28 | 0/28 | 28/28 |
-| acao | 115 | 115/115 | 24/115 | 0/115 | 0/115 | 0/115 |
+| acao | 109 | 109/109 | 23/109 | 0/109 | 0/109 | 0/109 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
 | endereco | 88 | 88/88 | 6/88 | 0/88 | 0/88 | 0/88 |
-| palavra | 55 | 55/55 | 13/55 | 55/55 | 0/55 | 55/55 |
+| palavra | 64 | 64/64 | 16/64 | 64/64 | 0/64 | 64/64 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
 ponta.** A diferença está na coluna `como` do JSON, item a item. Inflar
@@ -65,7 +65,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `vps` | viva | src/ui_v2.html#view-vps | estreito |
 | `maquina` | viva | src/ui_v2.html#view-maquina | estreito |
 
-## acao (115)
+## acao (109)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -95,18 +95,6 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-nota-titulo` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-modo` | viva | src/ui_v2.html | explica, estreito |
 | `data-del` | viva | src/ui_v2.html | explica, estreito |
-| `data-cc-modo` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-cc-proj` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-cc-dir` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-cc-fw` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-cc-ligar` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-fw-modo` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-mod` | viva | src/ui_v2.html | explica, estreito |
-| `data-mod-proj` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-mod-on` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-ent-abrir` | viva | src/ui_v2.html | explica, estreito |
-| `data-fw` | viva | src/ui_v2.html | explica, estreito |
-| `data-fw-proj` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-ent-voltar` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-ent-op` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-novo-campo` | estatica | src/ui_v2.html | funciona, explica, estreito |
@@ -142,15 +130,18 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-sinc-proj` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-fed-pedir` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-fed-proj` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-remoto-link` | viva | src/ui_v2.html | funciona, explica, estreito |
+| `data-remoto-conectar` | viva | src/ui_v2.html | funciona, explica, estreito |
+| `data-remoto-soltar` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-remoto-mais` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-remoto-dir` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-remoto-desligar` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-remoto-ligar` | viva | src/ui_v2.html | funciona, explica, estreito |
+| `data-remoto-reabrir` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-coderoom-abrir` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-coderoom-dir` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-coderoom-nova` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-coderoom-fechar` | viva | src/ui_v2.html | funciona, explica, estreito |
+| `data-remoto-link` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-esc-ver` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-esc-desligar` | viva | src/ui_v2.html | funciona, explica, estreito |
 | `data-esc-ligar` | viva | src/ui_v2.html | funciona, explica, estreito |
@@ -162,11 +153,14 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-pa-arquivo` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-pa-alternar` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-pa-fechar` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-cc-estado` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-cc-dir` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-mod` | estatica | src/ui_v2.html | explica, estreito |
+| `data-mod-proj` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-mod-on` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-ent-abrir` | estatica | src/ui_v2.html | explica, estreito |
 | `data-pj-abrir` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-pj-pastas` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-pj-sessao` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-pj-dir` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-pj-conversa` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-trv-fechar-explica` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-trv-explica` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-trv-abrir` | estatica | src/ui_v2.html | funciona, explica, estreito |
@@ -290,7 +284,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/rotas/alternar` | estatica | src/web.mjs | funciona, explica |
 | `/api/shutdown` | estatica | src/web.mjs | funciona, explica |
 
-## palavra (55)
+## palavra (64)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -343,6 +337,15 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `sobra` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
 | `corte` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tempo ativo` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
+| `framework` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
+| `modo do framework` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `papel` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `entrevista` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
+| `módulos do framework` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
+| `comunicação` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `entrega` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `código` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tarefas dele` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `rota` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
 | `hook` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `gate` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |

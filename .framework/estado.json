@@ -1,7 +1,7 @@
 {
  "metodo": "mvp-basico",
  "fase": "execucao",
- "ligado": true,
+ "ligado": false,
  "modo": "restritivo",
  "autorizado": [],
  "mvp": {

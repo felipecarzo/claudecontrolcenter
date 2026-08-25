@@ -57,8 +57,10 @@ const PADRAO = [
        pela extensão do alvo, e nenhum caminho usa shell. O campo continuava
        aqui sem ninguém ler, e campo morto numa definição é a próxima pessoa
        achando que ele faz alguma coisa. */
-    // onde o fork mora, para `resolverBinario` achar o dist dele antes do
-    // pacote global — é o fork que tem as melhorias, não o upstream
+    /* onde o fork mora, para `resolverBinario` achar o dist dele antes do
+       pacote global — é o fork que tem as melhorias, não o upstream.
+       O nome da PASTA aqui é o de 16/08; quando ele mudar, quem resgata é
+       `forkRenomeado` logo abaixo. Ver a armadilha na cabeça daquela função. */
     fork: path.join('app_escritorio', 'app', 'dist', 'cli.js'),
   },
 ]
@@ -106,6 +108,8 @@ export function resolverBinario(cmd, { fork = null } = {}) {
       const alvo = path.join(base, fork)
       try { if (fs.existsSync(alvo)) return alvo } catch { /* segue */ }
     }
+    const resgatado = forkRenomeado(fork)
+    if (resgatado) return resgatado
   }
 
   // `cmd` vem de config.json, editável à mão: entrada velha ou incompleta
@@ -174,6 +178,53 @@ export function montarComando(alvo, args = []) {
  * barata — o painel roda de dentro de um projeto, então o irmão dele é o
  * candidato natural.
  */
+/**
+ * O fork quando a PASTA dele mudou de nome.
+ *
+ * Medido em 24/08, com o escritório fora do ar: o caminho do fork era literal
+ * (`app_escritorio/app/dist/cli.js`) e a renomeação das pastas em 23/08
+ * (`app_escritorio` virou `VPS_escritorio`, e no PC dele vira `PC_escritorio`)
+ * o quebrou. O estrago não é o fork sumir da tela — é `resolverBinario` cair
+ * para o pacote global do npm logo abaixo e o botão "ligar" subir o **upstream
+ * sem as melhorias dele**, sem erro nenhum. As duas versões desenham a mesma
+ * sala, então não haveria como notar olhando.
+ *
+ * O que muda é o PREFIXO, que diz a máquina; o sufixo é o nome do projeto e é
+ * o que dá para reconhecer. Então o resgate procura, nas bases conhecidas, uma
+ * pasta que termine no mesmo nome, e reaproveita o resto do caminho.
+ *
+ * Só roda quando o caminho literal falha, e o positivo fica em cache: o painel
+ * pergunta "tem escritório nesta máquina?" a cada leitura de snapshot.
+ */
+const forkCache = new Map()
+function forkRenomeado(fork) {
+  if (forkCache.has(fork)) return forkCache.get(fork)
+
+  const partes = fork.split(/[\\/]/)
+  if (partes.length < 2) return null
+  const [pasta, ...resto] = partes
+  // `app_escritorio` → `escritorio`; pasta sem prefixo nenhum continua servindo
+  const sufixo = (pasta.split('_').pop() || '').toLowerCase()
+  if (!sufixo) return null
+
+  for (const base of basesDeProjetos()) {
+    let entradas = []
+    try { entradas = fs.readdirSync(base) } catch { continue }
+    for (const nome of entradas) {
+      if (nome === pasta) continue // já testado como caminho literal
+      if (!nome.toLowerCase().endsWith(sufixo)) continue
+      const alvo = path.join(base, nome, ...resto)
+      try {
+        if (fs.existsSync(alvo)) {
+          forkCache.set(fork, alvo)
+          return alvo
+        }
+      } catch { /* segue */ }
+    }
+  }
+  return null
+}
+
 function basesDeProjetos() {
   const bases = []
   if (process.env.CC_PROJECTS_BASE) bases.push(process.env.CC_PROJECTS_BASE)
