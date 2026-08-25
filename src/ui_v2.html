@@ -1570,6 +1570,10 @@
        Palavras dele: *"não acho que deva ficar uma barra inteira, nem
        precisa"*. Então o botão é do tamanho dos outros, e o formulário abre
        num cartão embaixo, só quando ele pede. */
+    /* CC-338: sem reancoragem nesta grade. O navegador tenta manter o que
+       está à vista quando algo muda de altura, e num bloco redesenhado a cada
+       dois segundos isso vira a lista pulando sozinha. */
+    #pj-grade, .pj-grade { overflow-anchor: none; }
     .pj-novo-casa{margin:10px 0 0;border:1px solid var(--border);border-radius:10px;background:var(--card);}
     .pj-novo-casa > div{padding:14px 16px !important;}
     #view-remoto .tend-barra{padding:12px 16px;}
@@ -6666,6 +6670,14 @@
       const editando = ativo && ativo !== document.body && el.contains(ativo)
         && (ativo.isContentEditable || (ativo.matches && ativo.matches(GUARDA_FOCO)));
       if (editando) return false;
+      /* CC-338: aqui EXISTIU uma restauração de `scrollTop` ao repintar, e ela
+         saiu no mesmo dia. A queixa dele era real (*"o scroll trava, eu não
+         consigo descer"*), mas a prova negativa derrubou minha hipótese: com o
+         código de ANTES do conserto, posicionando a lista sem gesto, ela ficava
+         parada nos cinco tiques seguintes. O repintar não era o culpado, e
+         guardar posição de rolagem podia brigar com uma rolagem em curso.
+         Fica só `overflow-anchor: none` na grade, que impede o navegador de
+         reancorar sozinho, é uma linha de CSS e não mexe em gesto nenhum. */
       el.__html = html;
       el.innerHTML = html;
       return true;
