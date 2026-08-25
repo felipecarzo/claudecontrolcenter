@@ -7455,10 +7455,25 @@
     function pjCard(p, maquina) {
       const aberto = PJ_ABERTO === p.projeto;
       const classe = p.esperando ? 'tem-espera' : p.vivos ? 'tem-agente' : p.conversas ? 'tem-conversa' : '';
+      // ocioso não pinta a borda: verde para quem está parado seria a mesma mentira, em cor
+      /* CC-337: `ocioso` é um estado próprio, e diz há quanto tempo.
+         Ele pegou o cartão do coepiloto dizendo "1 TRABALHANDO" com a sessão
+         morta havia três horas, no grupo dos sem sessão. Esconder o agente
+         seria trocar uma mentira por outra: ele existe, só não está
+         trabalhando. */
+      const silencio = (t) => {
+        if (!t) return '';
+        const min = Math.round((Date.now() - t) / 60000);
+        if (min < 60) return ' há ' + min + 'min';
+        const h = min / 60;
+        return ' há ' + (h < 24 ? Math.round(h) + 'h' : Math.round(h / 24) + 'd');
+      };
       const estado = p.esperando ? p.esperando + ' esperando você'
         : p.vivos ? p.vivos + ' trabalhando'
         : p.conversas ? p.conversas + ' conversa' + (p.conversas > 1 ? 's' : '')
-        : p.sessaoNoAr ? 'sessão no ar' : 'parado';
+        : p.sessaoNoAr ? 'sessão no ar'
+        : p.ociosos ? p.ociosos + ' ocioso' + (p.ociosos > 1 ? 's' : '') + silencio(p.ociosoDesde)
+        : 'parado';
 
       /* Cada número só entra quando existe. "0 agentes" ocupa espaço e não
          informa nada, e a régua da casa diz que erro de omissão custa menos

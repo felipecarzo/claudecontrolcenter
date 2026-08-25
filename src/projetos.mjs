@@ -95,7 +95,23 @@ export function retrato({
   const hoje = new Date().toISOString().slice(0, 10)
   const saida = lista.map(({ projeto, raiz }) => {
     const meus = agentesPor.get(projeto) || []
-    const vivos = meus.filter((j) => j.status && j.status !== 'done')
+    /* CC-337, 25/08: `idle` sai de `vivos`, e ele achou isto na tela.
+     *
+     * Print dele com o coepiloto no grupo "sem sessão aberta" e o cartão
+     * dizendo "1 TRABALHANDO": *"identifique porque que vps-coepiloto ta ali
+     * se ele ja ta off"*. Medido: a sessão não tinha tmux, não tinha processo,
+     * e o transcrito dela estava parado havia 3h24.
+     *
+     * A causa era esta linha contando qualquer status diferente de `done`.
+     * `idle` quer dizer justamente o contrário de trabalhando: é o que
+     * `statusDe()` devolve depois de 30 minutos de silêncio. Sobrou `working`
+     * (escrevendo agora) e `waiting` (parou há pouco, espera ele), que são os
+     * dois estados em que existe alguém do outro lado.
+     *
+     * `ociosos` não some: vira campo próprio, para a tela poder dizer "1
+     * ocioso" em vez de esconder o agente ou mentir que ele trabalha. */
+    const vivos = meus.filter((j) => j.status === 'working' || j.status === 'waiting')
+    const ociosos = meus.filter((j) => j.status === 'idle')
     const esperando = meus.filter((j) => j.status === 'waiting').length
     const t = tempoPor.get(projeto) || null
     const doDia = (t?.dias || []).find((d) => d.dia === hoje) || null
@@ -123,6 +139,14 @@ export function retrato({
       ehProjeto: daqui && (existe(path.join(raiz, '.git')) || existe(path.join(raiz, 'CLAUDE.md'))),
       agentes: meus.length,
       vivos: vivos.length,
+      ociosos: ociosos.length,
+      /* Há quanto tempo o mais recente dos ociosos falou. A tela precisa DIZER
+         o silêncio, senão "1 ocioso" e "1 ocioso há três dias" viram a mesma
+         linha, e foi confundir idade com atividade que criou o estrago de
+         ontem no controle remoto. */
+      ociosoDesde: ociosos.length
+        ? Math.max(...ociosos.map((j) => Number(j.updatedAt) || 0)) || null
+        : null,
       esperando,
       /* A frente mais citada pelos agentes: é o vocabulário DELE, tirado do
          roadmap, e foi por isso que o campo nasceu. "Pierre" diz algo; o
