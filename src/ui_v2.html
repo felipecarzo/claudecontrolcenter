@@ -5321,6 +5321,11 @@
           <span style="font-size:10px;color:var(--text-dim);">${esc(s.kind)}</span>
           <span style="flex:1;"></span>
           ${s.dev ? `<button class="icon-btn" style="width:24px;height:24px;${s.favorito ? 'color:var(--amber);' : ''}" data-srv-fav="${esc(s.chave)}" title="favorito">★</button>` : ''}
+          ${/* CC-353: de qual máquina é este servidor. Regra da casa para todo
+                quadro que mostra projeto, e aqui vale dobrado: com as duas
+                listas juntas, sem etiqueta ele não sabe onde a porta está
+                escutando. */ ''}
+          ${s.origem?.nome ? seloDe(s.origem.nome, { frio: Boolean(s.remoto) }) : ''}
           <span style="font-size:10px;color:var(--text-dim);">pid ${s.pid}</span>
         </div>
         <b style="font-size:13px;display:block;margin-top:6px;">${esc(s.titulo || s.name)}</b>
@@ -5332,8 +5337,15 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:6px;">
           <span style="font-size:10px;color:var(--text-dim);">${s.startedAt ? 'no ar há ' + age(Date.now() - s.startedAt) : '...'}</span>
           <div style="display:flex;gap:6px;">
-            ${s.url ? `<a class="btn compacto" style="font-size:10px;" href="${esc(s.url)}" target="_blank" rel="noopener">abrir</a>` : ''}
-            ${s.dev && !s.protegido ? `<button class="btn compacto" style="font-size:10px;background:var(--red-bg);color:var(--red);" data-kill="${s.pid}">${killArmado === s.pid ? 'confirmar?' : 'encerrar'}</button>` : ''}
+            ${/* "abrir" num servidor de OUTRA máquina levaria o navegador dele
+                 para a porta desta, que é a armadilha do localhost no iframe de
+                 novo. Some, e a linha diz onde ele precisa abrir. */ ''}
+            ${s.url && !s.remoto ? `<a class="btn compacto" style="font-size:10px;" href="${esc(s.url)}" target="_blank" rel="noopener">abrir</a>` : ''}
+            ${s.remoto ? `<span style="font-size:10px;color:var(--text-dim);">roda em ${esc(s.origem?.nome || 'outra máquina')}</span>` : ''}
+            ${/* Encerrar só o que é daqui: a VPS não alcança o PC, e um botão
+                 vermelho que responde "ok" sem matar nada é pior que botão
+                 nenhum. */ ''}
+            ${!s.remoto && s.dev && !s.protegido ? `<button class="btn compacto" style="font-size:10px;background:var(--red-bg);color:var(--red);" data-kill="${s.pid}">${killArmado === s.pid ? 'confirmar?' : 'encerrar'}</button>` : ''}
           </div>
         </div>
       </div>`;

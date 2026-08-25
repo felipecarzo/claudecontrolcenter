@@ -60,7 +60,22 @@ export function validarPacote(bruto) {
     pacote: {
       maquina: { id, nome: String(bruto.maquina?.nome || id).slice(0, 60) },
       jobs: lista(bruto.jobs, 500),
-      servidores: lista(bruto.servidores, 200),
+      /* CC-353: recortado campo a campo como todo o resto, e não aceito cru.
+         Ele nunca chegou preenchido até hoje, então não há formato antigo a
+         preservar: dá para fechar a porta agora, que é mais barato do que
+         depois. */
+      servidores: Array.isArray(bruto.servidores)
+        ? bruto.servidores.slice(0, 200).map((x) => ({
+          pid: Number(x?.pid) || null,
+          name: String(x?.name || '').slice(0, 80),
+          ports: (Array.isArray(x?.ports) ? x.ports : []).slice(0, 10).map((n) => Number(n) || 0).filter(Boolean),
+          kind: x?.kind ? String(x.kind).slice(0, 40) : null,
+          project: x?.project ? String(x.project).slice(0, 80) : null,
+          path: x?.path ? String(x.path).slice(0, 260) : null,
+          sub: x?.sub ? String(x.sub).slice(0, 80) : null,
+          since: Number(x?.since) || null,
+        })).filter((x) => x.ports.length || x.pid)
+        : null,
       uso: bruto.uso && typeof bruto.uso === 'object' ? bruto.uso : null,
       tempo: bruto.tempo && typeof bruto.tempo === 'object' ? bruto.tempo : null,
       // CC-48: 40 projetos é folgado e limita o estrago de um pacote malformado

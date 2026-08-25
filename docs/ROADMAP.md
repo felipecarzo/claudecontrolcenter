@@ -1258,6 +1258,40 @@ parar, guardar de lado, ou não puxar naquele projeto.
 
 ## ▶ Frente nova, aberta em 25/08: o PC vira serviço
 
+### CC-353 ✅ 25/08: os servidores do PC nunca viajaram, e o campo existia
+
+Pergunta dele: *"eu quero poder ver os servidores locais do desktop etc, tudo
+que puder, ok? você incluiu isso também?"*. Não tinha incluído, e o medido é
+pior que a omissão: **o campo `servidores` existe no pacote desde o começo da
+federação e nunca foi preenchido.** Quem monta o pacote no PC simplesmente não
+passava a lista, então ela viajava vazia.
+
+Isso é a família de defeito mais cara deste painel, na versão mais quieta: um
+campo vazio que persiste não diz "não mandei", diz "não tem nenhum". Ninguém
+teria como desconfiar olhando a tela.
+
+Vai no ritmo do tempo (a cada 2 minutos, não a cada 30 segundos), porque varrer
+portas custa ~3s e não cabe no empurrão. E a validação recorta campo a campo,
+como o resto: nunca chegou preenchido, então dá para fechar a porta agora em vez
+de aceitar objeto cru e consertar depois.
+
+Dois cuidados na tela, e os dois são sobre não oferecer o que não funciona:
+
+- **Encerrar só vale no que é daqui.** A VPS não alcança o PC, e um botão
+  vermelho que responde "ok" sem matar nada é pior que botão nenhum.
+- **"Abrir" some nos remotos.** O endereço apontaria para a porta DESTA máquina,
+  que é a armadilha do `localhost` no iframe de novo, registrada no CLAUDE.md.
+  No lugar dele, a linha diz em qual máquina aquilo roda.
+
+A sugestão de "matar duplicado" passou a olhar só os locais: com as duas listas
+juntas, ela agruparia um servidor daqui com um do PC do mesmo projeto e
+apontaria um número de processo que não existe nesta máquina.
+
+Provado nesta VPS: 11 servidores, todos com a etiqueta da máquina. Os do PC
+aparecem quando ele puxar o código lá.
+
+## ▶ Frente nova, aberta em 25/08: o PC vira serviço
+
 ### CC-351, 25/08: o painel do PC não é serviço, e ele descobriu do jeito ruim
 
 Ele abriu o coepiloto no desktop, trabalhou nele, e a sessão não apareceu ativa

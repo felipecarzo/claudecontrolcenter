@@ -383,6 +383,22 @@ function usoDaConta(local, pacotes) {
 let ultimoTempoEnviado = 0
 const INTERVALO_TEMPO_MS = 10 * 60 * 1000
 
+/* CC-353: os servidores locais também viajam.
+ *
+ * Pergunta dele em 25/08: *"eu quero poder ver os servidores locais do desktop
+ * etc, tudo que puder, ok? você incluiu isso também?"*. Não tinha incluído, e o
+ * medido é pior: o campo `servidores` existe no pacote **desde o começo da
+ * federação e nunca foi preenchido**. Quem montava o pacote simplesmente não
+ * passava a lista, então ela viajava vazia, e um campo vazio que persiste dá a
+ * impressão de que a máquina não tem servidor nenhum.
+ *
+ * Vai no mesmo ritmo do tempo, e pelo mesmo motivo: varrer as portas custa
+ * ~3s e não pode entrar no empurrão de 30 em 30 segundos. Dois minutos é folga
+ * suficiente para ele ver um servidor que acabou de subir sem a varredura
+ * dominar a máquina. */
+let ultimoServidoresEnviado = 0
+const INTERVALO_SERVIDORES_MS = 2 * 60 * 1000
+
 /* CC-165: o retrato do último empurrão, para a tela poder responder "está
  * mesmo sendo enviado?".
  *
@@ -481,8 +497,23 @@ export async function empurrar({ comTempo = null } = {}) {
     retrato = { travas: T.travasDaqui(), framework: T.frameworkDaqui(meus) }
   } catch { /* módulo ausente numa versão antiga: o campo simplesmente não viaja */ }
 
+  /* CC-353: a varredura de portas, no ritmo dela. `null` quando não é a vez,
+     e o campo herda o anterior em vez de zerar: é o mesmo desenho do tempo. */
+  let servidores = null
+  if (agora - ultimoServidoresEnviado > INTERVALO_SERVIDORES_MS) {
+    try {
+      const S = await import('./servers.mjs')
+      /* Só o que a outra ponta usa para desenhar a linha. O objeto cru traz
+         linha de comando inteira, que é o que engorda o pacote. */
+      servidores = (S.readServers() || []).map((x) => ({
+        pid: x.pid, name: x.name, ports: x.ports, kind: x.kind,
+        project: x.project, path: x.path, sub: x.sub, since: x.since,
+      }))
+    } catch { /* varredura falhou: manda o resto, os servidores vão na próxima */ }
+  }
+
   const pacote = montarPacote({
-    maquina: s.maquina, jobs: meus, uso: s.uso, tempo, backlogs,
+    maquina: s.maquina, jobs: meus, uso: s.uso, tempo, backlogs, servidores,
     meu: meuDaqui, agentes: agentesDaqui, limites: null,
     travas: retrato.travas, framework: retrato.framework,
   })
@@ -499,6 +530,9 @@ export async function empurrar({ comTempo = null } = {}) {
    * Custo de tentar de novo: uma varredura a cada 30s enquanto a rede estiver
    * caída. Aceitável, e some sozinho no primeiro envio que passar. */
   if (tempo && r?.ok) ultimoTempoEnviado = agora
+  /* Só marca quando CHEGOU, mesma regra do tempo: envio que falha não pode
+     jogar fora a varredura e ainda calar os próximos dois minutos. */
+  if (servidores && r?.ok) ultimoServidoresEnviado = agora
   ultimoEmpurrao = {
     em: Date.now(),
     ok: Boolean(r?.ok),
@@ -761,11 +795,34 @@ function handler(req, res) {
   // Consultado só pela aba de servidores: a varredura leva ~3s e não pode
   // pesar no painel principal nem no stream.
   if (url.pathname === '/api/servers') {
-    const servers = readServers()
+    const daqui = readServers()
+    /* CC-353: os servidores das OUTRAS máquinas entram na mesma lista.
+       Pedido dele: *"eu quero poder ver os servidores locais do desktop etc,
+       tudo que puder"*. Cada linha já carrega de onde veio, então a tela
+       distingue sem precisar de duas listas.
+       O que NÃO vale para os de fora: encerrar e religar. A VPS não alcança o
+       PC, e um botão que parece funcionar e não faz nada é pior que botão
+       nenhum. Por isso `remoto: true` viaja junto, e a tela desabilita. */
+    const pacotes = lerPacotes()
+    const eu = origemLocal(readConfig())
+    const deFora = pacotes.flatMap((p) => (p.servidores || []).map((x) => ({
+      ...x,
+      remoto: true,
+      origem: { id: p.maquina?.id, nome: p.maquina?.nome, idadeMs: p.idadeMs, semContato: p.semContato },
+    })))
+    const servers = [
+      ...daqui.map((x) => ({ ...x, remoto: false, origem: { ...eu, idadeMs: 0, semContato: false } })),
+      ...deFora,
+    ]
     return send(res, 200, {
       servers,
-      // só os PIDs: a página já tem a lista inteira e não precisa dela de novo
-      duplicados: duplicados(servers).map((g) => ({
+      /* Só os PIDs: a página já tem a lista inteira e não precisa dela de novo.
+         E só os DAQUI: `duplicados` sugere qual processo matar, e a VPS não
+         alcança o PC. Passando a lista misturada, ele agruparia um servidor
+         local com um remoto do mesmo projeto e apontaria para matar um PID que
+         não existe nesta máquina, o que no melhor caso não faz nada e no pior
+         mata outro processo com o mesmo número. */
+      duplicados: duplicados(daqui).map((g) => ({
         project: g.project, kind: g.kind, manter: g.manter.pid, matar: g.matar.map((s) => s.pid),
       })),
       recentes: recentes(),
