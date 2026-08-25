@@ -7,6 +7,50 @@
 O que aconteceu: [diario/2026-08-21.md](diario/2026-08-21.md). Ponteiro, não
 relatório.
 
+## 📮 Recado de fora: a aba Servidores não vê nenhum Next.js (25/08, sessão do VPS_fibraessencia)
+
+**Não é meu projeto e eu não toquei em nada aqui.** Diagnosticado a pedido do
+Felipe, que estranhou um servidor de pé não aparecer no painel.
+
+**O sintoma:** um `next dev` escutando em `127.0.0.1:5199`, respondendo 200,
+**não aparecia** na aba Servidores. Nem ele, nem os cinco sites de cliente que
+rodam nesta VPS em produção, que também são Next. A lista aparece completa e não
+avisa que está faltando gente.
+
+**A causa, medida:** `portasUnix()` em `src/platform.mjs:320` prefere o `lsof` e
+só cai no `ss` quando o `lsof` não existe. Nesta VPS o `lsof` existe, então é ele
+que manda — e ele enxerga 10 portas onde o `ss` enxerga mais de 25.
+
+O Next renomeia o próprio processo para `next-server (v16.2.11)`, e o kernel
+trunca `comm` em 15 caracteres. O resultado, lido de `/proc/<pid>/stat`:
+
+```
+538678 (next-server (v1) S 538626 ...
+        └── o formato é `pid (comm) estado`, e o comm truncado traz um "(" sem fechar
+```
+
+Quem lê esse arquivo balanceando parênteses se perde e descarta o processo em
+silêncio. O `ss` não passa por `/proc/stat` (lê do kernel via netlink) e enxerga
+normalmente.
+
+**Provas, todas reproduzíveis:**
+
+| teste | `ss` | `lsof` |
+|---|---|---|
+| `node -e "...listen(5201)"` (processo chamado `node`) | vê | **vê** |
+| `next dev -p 5199` (processo `next-server (v1`) | vê | **não vê** |
+| next de produção, pid 1149 | vê | **não vê** (`lsof -p 1149` devolve 0 linhas) |
+
+Descartado com medida, para não repetir o caminho: não é permissão (mesmo dono,
+`/proc/<pid>/fd` legível), não é namespace (`mnt`/`pid`/`net`/`user` idênticos
+aos do painel) e não é contêiner (o processo de teste rodava fora de qualquer um).
+
+**Conserto sugerido, não aplicado:** no Linux, usar o `ss` sempre, ou fundir as
+duas fontes por PID. O parse do `ss` já existe logo abaixo, em
+`src/platform.mjs:347-354`, e é o ramo que hoje quase nunca roda. Se preferir
+manter o `lsof`, o mínimo é dizer na tela que a lista pode estar incompleta,
+porque hoje ela cala.
+
 ## ⚠️ Duas coisas antes de encostar em código
 
 **1. O painel novo é o painel.** A raiz (`cockpit.carzo.com.br` e
