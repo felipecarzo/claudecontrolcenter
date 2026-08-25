@@ -753,6 +753,123 @@ não travar o painel, a varredura só interpreta as linhas que têm consumo de
 token e tira a hora das outras por padrão de texto; o resultado fica em cache
 por tamanho e data do arquivo.
 
+## framework
+
+O conjunto de regras de engenharia que passa a valer **naquele projeto**, para
+qualquer agente que abrir sessão nele. Ligado, ele demanda: cobra critério de
+pronto, mantém o backlog em dia e recusa edição que fura o combinado. Desligado,
+a IA é a de sempre.
+
+Ligar cria `.framework/estado.json` na raiz do projeto, e é esse arquivo que
+guarda o MVP, a fase e o modo escolhido. **Desligar não apaga nada disso**: o
+que estava escolhido volta ao religar.
+
+O estado fica num controle só, na Central: a mesma lista onde se escolhe o papel
+e o modo tem "Desligado" como primeira opção. Escolher qualquer outra liga o
+framework naquele projeto, inclusive num que nunca teve.
+
+## modo do framework
+
+Como o agente se comporta enquanto o framework está ligado. São onze, e o que
+muda entre eles é **o que trava, o que pergunta e o que segue sozinho**:
+
+- **Desligado**: a IA é a de sempre, nada é travado
+- **Livre**: conversa solta. Sem um gatilho claro seu, ele pergunta antes de
+  escrever código
+- **Sugestivo**: mostra frentes do projeto para você escolher, e cada passo
+  precisa da sua autorização
+- **Continuativo**: não sai do fluxo. Pedido novo vira item do backlog e a
+  execução continua. Só para no que só você decide
+- **Autônomo**: vai até o fim do backlog sem parar para mostrar. É o modo de
+  quando você não está olhando
+- **Estudo**: entender sem mexer. Escrita em código é recusada, a saída é o que
+  você lê
+- **Depuração**: algo quebrou. Medir antes de mexer, e mexer só onde está o
+  defeito
+- **Desenho**: mexer em tela. Print nas duas larguras, e a forma que você
+  nomeou é obrigatória
+- **Revisão**: apontar sem consertar. Cada achado vira linha no backlog
+- **Pareado**: cada passo é mostrado, e ele espera você antes do próximo
+- **Entrega**: fechar o que está aberto, com prova em cada item e commit
+  preparado
+
+## papel
+
+Um modo com contexto de ofício junto. Em vez de escolher só o comportamento,
+você escolhe **quem** está trabalhando ali, e o modo vem embutido:
+
+- **Designer**: mexer em tela, com você olhando cada passo
+- **Modelagem de sistema**: desenhar o sistema todo antes da primeira linha
+- **Scrum Master**: definir produto e projeto, e só liberar quando bate com o
+  padrão
+- **Depurador**: achar e consertar o que está quebrado. Tem três variações:
+  **Perito** (achar a causa medindo, antes de qualquer conserto), **Pesquisador**
+  (entender e escrever o que descobriu, sem tocar no código) e **Revisor**
+  (olhar o que existe e apontar, sem consertar)
+
+Escolher um papel substitui o modo cru. Os dois vivem na mesma lista, separados
+por grupo, porque respondem a mesma pergunta.
+
+## entrevista
+
+Um roteiro de perguntas que o painel faz **sobre o projeto**, e que se reescreve
+conforme você responde. Serve para o framework saber o que aquele projeto é: o
+que ele entrega, o que conta como pronto, e o que ainda não foi decidido.
+
+Não é conversa com agente. É formulário que muda de pergunta conforme a
+resposta, e o que sai dele alimenta o MVP e a fase que aparecem no cartão.
+
+## módulos do framework
+
+O framework não é tudo ou nada: são **cinco pedaços que se ligam e desligam por
+projeto**, e cada botão no cartão é um deles. Vermelho com um X quer dizer
+desligado ali.
+
+- **comunicação**: como o agente responde a você (tamanho, jargão, o separador
+  antes do resumo, pergunta na caixa de pergunta)
+- **entrega**: o que é exigido antes de dizer que algo está feito (prova,
+  backlog anotado, nenhum item do lote perdido)
+- **código**: o que protege o repositório (commit só quando você pede, edição
+  que falha em voz alta, texto público limpo)
+- **rotas**: o trabalho em paralelo, cada agente na sua faixa, com recado entre
+  eles em vez de edição por cima
+- **tarefas dele**: o único que olha para o que depende de VOCÊ, mostrando a sua
+  lista ao abrir a sessão e cobrando quando algo seu termina fora dela
+
+Cada um tem explicação própria na tela Glossário.
+
+## comunicação
+
+Um dos cinco pedaços do framework que se liga e desliga por projeto. Este
+governa **como o agente responde a você**: tamanho da resposta, jargão proibido,
+o separador antes do resumo, e a exigência de que pergunta que muda o rumo vá
+para a caixa de pergunta, nunca solta no meio do texto.
+
+Desligado neste projeto, o agente responde como responderia sem framework
+nenhum.
+
+## entrega
+
+Um dos cinco pedaços do framework. Governa **o que é preciso antes de dizer que
+algo está feito**: prova de que foi verificado, backlog anotado, e conferência
+de que o pedido em lote não perdeu item pelo caminho.
+
+É o que impede a entrega descrita como pronta sem nunca ter sido aberta na tela.
+
+## código
+
+Um dos cinco pedaços do framework. Governa **o que protege o repositório**:
+commit só quando você pede, edição que falha em voz alta em vez de fingir que
+gravou, e texto público sem as marcas que denunciam escrita de máquina.
+
+## tarefas dele
+
+Um dos cinco pedaços do framework, e o único que olha para **o que depende de
+você**, não do agente. Mostra a sua lista de pendências quando a sessão abre, e
+cobra quando algo que dependia de você termina fora da conversa.
+
+É o que evita que uma decisão sua fique parada semanas sem ninguém lembrar.
+
 ## rota
 
 Uma faixa de trabalho **reservada para uma sessão**, para que duas não mexam no

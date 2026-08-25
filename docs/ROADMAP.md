@@ -6706,3 +6706,44 @@ Em 16/08 saíram 37 itens, com o texto integral preservado:
 - [2026-08-18](diario/2026-08-18.md) — CC-124, CC-133 a CC-137, CC-143 a CC-154 (texto ainda aqui, poda pendente)
 - [2026-08-19](diario/2026-08-19.md) — CC-138 (decidido), CC-140, CC-101, CC-157, CC-158 (texto ainda aqui, poda pendente)
 - [2026-08-21](diario/2026-08-21.md) — CC-218 a CC-231: os nove apontamentos dele no telefone, o "?" que explica cada tela, e as quatro redes que o painel novo não tinha herdado
+### CC-335, aberto em 25/08: Central e Projetos viram uma tela só
+
+Proposta dele no telefone, depois de eu mostrar que a gaveta "sem sessão aberta"
+que eu tinha acabado de criar na Central repetia a lista do bloco Remoto:
+*"temos uma aba 'projetos' já temos o que seria uma boa adição pra misturar com
+central, talvez possamos juntar ambas"*. Filtro no topo, as ligadas primeiro com
+o framework à mostra, as outras com o framework colapsado para configurar como o
+projeto nasce, e em todo cartão ver tudo, pastas, abrir sessão e conversa.
+
+**Registrado, não implementado**, a pedido dele. A proposta inteira, com as
+palavras dele, o custo medido das três leituras (0,6s somadas, então não há
+barreira técnica) e as três decisões que faltam está em
+[[docs/produto/CENTRAL-E-PROJETOS.md]].
+
+Uma decisão já tomada por ele em 25/08: **ligado quer dizer ter sessão de agente
+no ar**, e não conversa aberta. Duas contas para a mesma palavra na mesma tela é
+o defeito que o CC-334 acabou de consertar.
+
+### CC-334 ✅ 25/08: o framework se desligava em dois lugares
+
+Print dele: *"o framework tá desligado em VPS_entreg4 mas mesmo assim ele tá
+'ligado', pra eu desligar eu preciso colocar desligado em dois lugares"*. Eram
+dois estados para um fato só, um MODO chamado Desligado e um interruptor à
+parte, e dava para ficar nos dois ao mesmo tempo.
+
+Feito, e no ar:
+
+- **um controle só** por projeto, a lista com Desligado, os papéis e os modos
+  crus. Escolher num projeto que nunca teve framework liga e já deixa nele
+- **o topo só com quem tem sessão**, o resto numa gaveta contada que lembra se
+  ele deixou aberta. Critério escolhido por ele: ter sessão no ar agora
+- **as zonas repetidas acabaram**: selos de git e rota, fase, portão, módulos e
+  entrevista subiram para o cartão da central, e o bloco de baixo ficou só com a
+  entrevista e o projeto novo
+- prova em `npm run test:framework-unico`, nove verificações por navegador, sem
+  escrever nada no framework real dele (a chamada é interceptada na página)
+
+Falta a parte 4 do mesmo pedido: o **"?"** em entrevista, comunicação, entrega,
+código, rotas e em cada modo. Palavras dele: *"eu quem criei e eu mesmo já
+esqueci o que é"*.
+
