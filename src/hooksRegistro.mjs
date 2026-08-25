@@ -16,11 +16,22 @@ import { casaClaude } from './platform.mjs'
 
 // via `casaClaude()`: o gate precisa apontar isto para uma casa temporária, e
 // escrever no settings.json de verdade num teste seria repetir o erro das notas
-export const SETTINGS_FILE = path.join(casaClaude(), 'settings.json')
+//
+// FUNÇÃO, e não constante, pela mesma razão de `dirFederacao()`: `CC_HOME` pode
+// mudar DEPOIS que o módulo foi carregado. Achado no CC-340 escrevendo o teste
+// do retrato das travas: a casa temporária era montada certa, e a leitura
+// continuava caindo no `settings.json` de verdade porque o caminho já tinha
+// sido resolvido no import — que num teste é sempre antes. O isolamento parecia
+// existir e não existia, e foi por sorte que o caso escolhido era de LEITURA.
+export const arquivoSettings = () => path.join(casaClaude(), 'settings.json')
+
+/** Mantido para quem só quer o caminho para IMPRIMIR (o `cc hooks install`
+ *  mostra onde gravou). Quem vai ler ou escrever usa `arquivoSettings()`. */
+export const SETTINGS_FILE = arquivoSettings()
 
 export function readSettings() {
   try {
-    return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'))
+    return JSON.parse(fs.readFileSync(arquivoSettings(), 'utf8'))
   } catch {
     return null // arquivo ausente ou JSON quebrado: nenhum hook está registrado, do ponto de vista de quem lê
   }
@@ -88,7 +99,7 @@ export function comandoDe(hook, base = pastaHooks()) {
 export function instalar(hooks, { dryRun = false } = {}) {
   const settings = readSettings()
   if (!settings) {
-    return { ok: false, erro: `não consegui ler ${SETTINGS_FILE} — arquivo ausente ou JSON quebrado` }
+    return { ok: false, erro: `não consegui ler ${arquivoSettings()} — arquivo ausente ou JSON quebrado` }
   }
 
   const feitos = []
@@ -120,18 +131,24 @@ export function instalar(hooks, { dryRun = false } = {}) {
   const mudou = feitos.filter((f) => f.acao === 'registrado')
   if (dryRun || !mudou.length) return { ok: true, feitos, gravou: false }
 
+  /* Resolvido AGORA, não no import. A escrita é o caso perigoso desta troca:
+     com o caminho congelado, um teste que setasse `CC_HOME` depois de o módulo
+     já estar em cache gravaria no `settings.json` de verdade dele achando que
+     estava numa casa temporária. É o mesmo caminho que já apagou as notas uma
+     vez, e ali o estrago só apareceu no dia seguinte. */
+  const alvo = arquivoSettings()
   try {
     // cópia antes de sobrescrever: o arquivo é editado à mão e não tem backup
-    try { fs.copyFileSync(SETTINGS_FILE, `${SETTINGS_FILE}.bak`) } catch { /* segue */ }
+    try { fs.copyFileSync(alvo, `${alvo}.bak`) } catch { /* segue */ }
     const texto = JSON.stringify(settings, null, 2)
     JSON.parse(texto) // conferência antes de gravar: settings quebrado desliga TUDO
-    const tmp = `${SETTINGS_FILE}.tmp`
+    const tmp = `${alvo}.tmp`
     fs.writeFileSync(tmp, `${texto}\n`)
-    fs.renameSync(tmp, SETTINGS_FILE)
+    fs.renameSync(tmp, alvo)
   } catch (e) {
     return { ok: false, erro: String(e.message || e), feitos }
   }
-  return { ok: true, feitos, gravou: true, backup: `${SETTINGS_FILE}.bak` }
+  return { ok: true, feitos, gravou: true, backup: `${alvo}.bak` }
 }
 
 

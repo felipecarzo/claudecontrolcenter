@@ -102,6 +102,33 @@ export function validarPacote(bruto) {
         : null,
       limites: bruto.limites && typeof bruto.limites === 'object' && !Array.isArray(bruto.limites)
         ? bruto.limites : null,
+      /* CC-340: as travas e o framework daquela máquina.
+         Nasceu de uma pergunta que não tinha resposta em tela nenhuma: se os
+         ganchos estão mesmo registrados no PC. Sem isto, uma pendência ficou
+         dez dias sem poder ser confirmada nem fechada.
+         `registrado` e `ligado` são três estados, não dois: `true`, `false` e
+         `null` para "aquela máquina não soube dizer". Coagir para booleano aqui
+         transformaria "não sei" em "não está", que é a mentira exata que este
+         campo existe para acabar. */
+      travas: Array.isArray(bruto.travas)
+        ? bruto.travas.slice(0, 60).map((t) => ({
+          id: String(t?.id || '').slice(0, 40),
+          evento: String(t?.evento || '').slice(0, 40),
+          registrado: typeof t?.registrado === 'boolean' ? t.registrado : null,
+          ligado: typeof t?.ligado === 'boolean' ? t.ligado : null,
+        })).filter((t) => t.id)
+        : null,
+      framework: Array.isArray(bruto.framework)
+        ? bruto.framework.slice(0, 60).map((f) => ({
+          projeto: String(f?.projeto || '').slice(0, 80),
+          existe: Boolean(f?.existe),
+          ligado: typeof f?.ligado === 'boolean' ? f.ligado : null,
+          modo: f?.modo ? String(f.modo).slice(0, 40) : null,
+          fase: f?.fase ? String(f.fase).slice(0, 40) : null,
+          perfil: f?.perfil ? String(f.perfil).slice(0, 40) : null,
+          erro: f?.erro ? String(f.erro).slice(0, 120) : null,
+        })).filter((f) => f.projeto)
+        : null,
       em: Number(bruto.em) || Date.now(),
       recebidoEm: Date.now(),
     },
@@ -506,9 +533,22 @@ export function rotasDeTodos(locais = [], pacotes = [], origemLocal = 'local') {
   return Object.fromEntries(porProjeto)
 }
 
-export function maquinasConhecidas(pacotes, origemLocal) {
+export function maquinasConhecidas(pacotes, origemLocal, retratoLocal = null) {
   return [
-    { ...origemLocal, local: true, idadeMs: 0, semContato: false },
+    /* CC-340: a máquina local entra com o MESMO retrato das remotas.
+       Ficou de fora na primeira rodada e o defeito foi visível na hora: a tela
+       dizia "não sabe reportar" sobre a própria máquina em que estava rodando.
+       Sem os dois lados no mesmo formato não há comparação, e comparar é a
+       única coisa que a pergunta dele pedia. Vem de fora porque este módulo é
+       puro: quem chama é que tem licença para tocar em disco. */
+    {
+      ...origemLocal,
+      local: true,
+      idadeMs: 0,
+      semContato: false,
+      travas: retratoLocal?.travas ?? null,
+      framework: retratoLocal?.framework ?? null,
+    },
     ...pacotes.map((p) => ({
       ...p.maquina,
       local: false,
@@ -523,6 +563,13 @@ export function maquinasConhecidas(pacotes, origemLocal) {
         .find((c) => c && /proj_controlcenter/i.test(c)) || null,
       /* Quais ferramentas existem lá, para a tela não oferecer o que não há. */
       agentes: p.agentes || null,
+      /* CC-340: as travas e o framework daquela máquina, para a tela poder
+         responder "os ganchos estão registrados lá?" em vez de deixar a
+         pergunta sem dono. `null` é máquina que ainda não sabe reportar (versão
+         antiga do outro lado), e a tela precisa distinguir isso de "nenhuma
+         trava registrada" — são conclusões opostas sobre o mesmo silêncio. */
+      travas: p.travas || null,
+      framework: p.framework || null,
     })),
   ]
 }
@@ -617,7 +664,7 @@ export function resumirBacklogs(mapas = []) {
  */
 export function montarPacote({
   maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [], backlogs = null,
-  meu = null, agentes = null, limites = null,
+  meu = null, agentes = null, limites = null, travas = null, framework = null,
 }) {
   const enxuto = jobs.map((j) => ({
     id: j.id, status: j.status, subject: j.subject, project: j.project, sub: j.sub,
@@ -632,6 +679,14 @@ export function montarPacote({
        quer dizer "esta máquina não sabe dizer", e `[]` quer dizer "sabe, e não
        tem nenhum". A tela precisa dos dois para não inventar. */
     meu, agentes, limites,
+    /* CC-340: quais travas valem naquela máquina, e em que estado o framework
+       de cada projeto está lá.
+       Fora de `CAMPOS_QUE_PERSISTEM` de propósito, e é decisão, não esquecimento:
+       o retrato é barato e vai em TODO empurrão, então campo ausente quer dizer
+       "esta máquina roda versão que ainda não sabe reportar". Herdando o
+       anterior por 12 horas, uma trava tirada do ar continuaria aparecendo como
+       ativa, que é exatamente o engano que o campo existe para acabar. */
+    travas, framework,
     em: Date.now(),
   }
 }

@@ -7,7 +7,10 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
-import { PROJETOS_DIR as PROJETOS_DIR_SESSOES, readSessoes } from './sessoes.mjs'
+/* `todosOsJobs` e não `readJobs`: a pasta de jobs de background está vazia
+   nesta VPS, onde quase tudo é sessão interativa. Quem lê agente lê pelas DUAS
+   fontes, senão o retrato sai vazio e o vazio parece resposta (CC-124/CC-232). */
+import { PROJETOS_DIR as PROJETOS_DIR_SESSOES, readSessoes, todosOsJobs } from './sessoes.mjs'
 import { perdidasDeTodas as perdidasDeTodasAsSessoes } from './fila.mjs'
 // `casaClaude()` e não `os.homedir()`: é o único lugar que resolve a pasta
 // `.claude`, e é o que faz `CC_HOME` isolar o painel de teste do real.
@@ -57,6 +60,10 @@ import {
   volume as volumeMidia, mudo as mudoMidia,
 } from './midia.mjs'
 import { estado as estadoMaquina } from './maquina.mjs'
+/* CC-340: o retrato das travas desta máquina, para a tela poder pôr local e
+   remota lado a lado. Com cache curto, porque este caminho responde de 2 em 2
+   segundos e o retrato só muda quando alguém registra um hook. */
+import { retratoComCache } from './travasDaMaquina.mjs'
 import { lerRoadmap, ordenar as ordenarRoadmap } from './roadmap.mjs'
 import { findProjects, projectsBase } from './install.mjs'
 import { situacaoRotas } from './routia.mjs'
@@ -295,7 +302,7 @@ const snapshot = () => {
     summary: summarize(todos),
     cockpit,
     uso: usoDaConta(readUso(), pacotes),
-    maquinas: maquinasConhecidas(pacotes, eu),
+    maquinas: maquinasConhecidas(pacotes, eu, retratoComCache(jobs)),
     maquina: eu,
     /* CC-121: o que ESTA máquina tem, para a navegação não oferecer tela que
        abre vazia. No telefone, cinco das dezessete levavam a lugar nenhum.
@@ -460,9 +467,21 @@ export async function empurrar({ comTempo = null } = {}) {
     }))
   } catch { agentesDaqui = null }
 
+  /* CC-340: o retrato das travas e do framework desta máquina.
+     Barato de propósito (um `settings.json` e um `estado.json` por projeto já
+     citado nos jobs), então cabe no empurrão de 30s sem a ressalva que existe
+     para as horas. Falha vira `null`, nunca lista vazia: "não sei dizer" e
+     "não tem nenhuma" levam a conclusões opostas do outro lado. */
+  let retrato = { travas: null, framework: null }
+  try {
+    const T = await import('./travasDaMaquina.mjs')
+    retrato = { travas: T.travasDaqui(), framework: T.frameworkDaqui(meus) }
+  } catch { /* módulo ausente numa versão antiga: o campo simplesmente não viaja */ }
+
   const pacote = montarPacote({
     maquina: s.maquina, jobs: meus, uso: s.uso, tempo, backlogs,
     meu: meuDaqui, agentes: agentesDaqui, limites: null,
+    travas: retrato.travas, framework: retrato.framework,
   })
   const r = await enviarPacote({ enviarPara, token, pacote })
   /* CC-208: o relógio das horas só anda quando o envio CHEGA.
@@ -856,7 +875,7 @@ function handler(req, res) {
     const pacotes = lerPacotes()
     return send(res, 200, {
       maquina: origemLocal(cfg),
-      maquinas: maquinasConhecidas(pacotes, origemLocal(cfg)),
+      maquinas: maquinasConhecidas(pacotes, origemLocal(cfg), retratoComCache(todosOsJobs())),
       // O token VAI para a tela, e é decisão consciente: ele precisa ser
       // copiado para a outra máquina, e quem chega aqui já passou pela senha do
       // `cockpit-auth`. O painel também só escuta em 127.0.0.1. A tela o

@@ -4548,3 +4548,149 @@ if (process.platform !== 'win32') {
   }
   console.log('  ok   CC-305: o gate também recusa pasta que não é desta máquina')
 }
+
+/* ── CC-340: o retrato das travas e do framework viajando na federação ────────
+   Nasceu de uma pergunta dele que NÃO TINHA RESPOSTA: se os ganchos estavam
+   registrados no PC. O pacote não carregava isso, então uma pendência ficou dez
+   dias sem poder ser confirmada nem fechada.
+
+   O contrato que não pode quebrar é um só, e é sobre o silêncio: **"não sei
+   dizer" nunca pode virar "não tem"**. As duas afirmações levam a decisões
+   opostas, e a segunda é a que faz alguém sair registrando hook que já estava
+   registrado, ou desistir de uma trava que está de pé. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc340-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const T = await import(`./src/travasDaMaquina.mjs?casa=${encodeURIComponent(casa)}`)
+
+    /* Casa sem settings.json: não se sabe nada sobre nenhum hook. Devolver `[]`
+       aqui faria a outra ponta desenhar "nenhuma trava registrada", que é
+       afirmar o contrário do que se mediu. */
+    assert.equal(T.travasDaqui(), null,
+      'sem settings legível, o retrato é null, nunca lista vazia')
+
+    fs.writeFileSync(path.join(casa, 'settings.json'), JSON.stringify({
+      hooks: { Stop: [{ hooks: [{ type: 'command', command: 'node /qualquer/lugar/gate-guard.mjs' }] }] },
+    }))
+    const t = T.travasDaqui()
+    assert.ok(Array.isArray(t) && t.length > 0, 'com settings legível, sai a lista do catálogo')
+    const gate = t.find((x) => x.id === 'gate-guard')
+    assert.ok(gate, 'o gate-guard é do catálogo e tem que aparecer no retrato')
+    assert.equal(gate.registrado, true, 'hook citado no settings conta como registrado')
+    assert.ok(t.some((x) => x.registrado === false),
+      'hook ausente do settings conta como NÃO registrado, e isso é diferente de null')
+    assert.ok(t.every((x) => typeof x.ligado === 'boolean'),
+      'o interruptor é sabido sempre: quem lê settings lê o config junto')
+
+    /* `registrado` e `ligado` são perguntas diferentes, e confundir as duas foi
+       o que deixou o assunto no escuro: hook registrado e desligado não faz
+       nada, mas o conserto é outro. */
+    assert.ok(t.every((x) => 'registrado' in x && 'ligado' in x),
+      'os dois estados viajam separados, nunca colapsados num só')
+
+    /* O framework sai do `cwd` do job, e o `cwd` costuma ser SUBPASTA do
+       projeto. Parar na primeira tentativa faria o framework parecer ausente em
+       quase todo mundo, calado. */
+    const proj = path.join(casa, 'projetos', 'VPS_exemplo')
+    const fundo = path.join(proj, 'apps', 'web', 'src')
+    fs.mkdirSync(fundo, { recursive: true })
+    fs.mkdirSync(path.join(proj, '.framework'), { recursive: true })
+    fs.writeFileSync(path.join(proj, '.framework', 'estado.json'),
+      JSON.stringify({ modo: 'restritivo', fase: 'execucao' }))
+
+    const fw = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }])
+    assert.equal(fw.length, 1)
+    assert.equal(fw[0].existe, true, 'tem que subir a árvore a partir da subpasta do job')
+    assert.equal(fw[0].ligado, true,
+      '`ligado` ausente conta como LIGADO: é o formato antigo, e estado velho não pode virar projeto destravado de surpresa')
+    assert.equal(fw[0].modo, 'restritivo')
+
+    fs.writeFileSync(path.join(proj, '.framework', 'estado.json'),
+      JSON.stringify({ ligado: false, modo: 'restritivo' }))
+    assert.equal(T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }])[0].ligado, false,
+      'desligado explicitamente é desligado')
+
+    fs.writeFileSync(path.join(proj, '.framework', 'estado.json'), '{ isto não é json')
+    const quebrado = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }])[0]
+    assert.equal(quebrado.existe, true, 'arquivo ilegível não é projeto sem framework')
+    assert.equal(quebrado.ligado, null, 'leitura que falhou é null, nunca false')
+
+    const semNada = T.frameworkDaqui([{ project: 'VPS_vazio', cwd: path.join(casa, 'projetos') }])
+    assert.equal(semNada[0].existe, false, 'projeto sem framework diz que não existe, e isso é sabido')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+  console.log('  ok   CC-340: o retrato distingue "não sei" de "não tem", e sobe a árvore a partir do job')
+}
+
+{
+  const F = await import(`./src/federacao.mjs?t=${Date.now()}`)
+
+  /* Nada aqui confia no remetente: um pacote é rede entrando em disco. */
+  const { ok, pacote } = F.validarPacote({
+    maquina: { id: 'pc1', nome: 'PC' },
+    travas: [
+      { id: 'gate-guard', evento: 'Stop', registrado: true, ligado: true },
+      { id: 'sujo', evento: 'Stop', registrado: 'sim', ligado: 1 },
+      { id: '', evento: 'Stop', registrado: true },
+    ],
+    framework: [
+      { projeto: 'VPS_x', existe: true, ligado: true, modo: 'restritivo' },
+      { projeto: '', existe: true },
+    ],
+  })
+  assert.equal(ok, true)
+  assert.equal(pacote.travas.length, 2, 'trava sem id é descartada, como todo item sem chave')
+  assert.equal(pacote.framework.length, 1, 'projeto sem nome é descartado')
+  assert.equal(pacote.travas[1].registrado, null,
+    'valor que não é booleano vira null, e não `true` por ser verdadeiro em JavaScript')
+  assert.equal(pacote.travas[1].ligado, null, 'o mesmo para o interruptor: 1 não é sim')
+
+  /* Máquina que roda versão antiga não manda o campo. Isso é "não sei dizer", e
+     precisa continuar sendo null do outro lado. */
+  const antigo = F.validarPacote({ maquina: { id: 'pc2', nome: 'PC velho' } })
+  assert.equal(antigo.pacote.travas, null, 'campo ausente é null, não lista vazia')
+  assert.equal(antigo.pacote.framework, null)
+
+  /* Fora dos campos que persistem, e isso é decisão: o retrato é barato e vai
+     em todo empurrão, então herdar por 12h faria uma trava tirada do ar
+     continuar aparecendo como ativa. */
+  const montado = F.montarPacote({
+    maquina: { id: 'pc1', nome: 'PC' },
+    travas: [{ id: 'gate-guard', evento: 'Stop', registrado: true, ligado: true }],
+    framework: [{ projeto: 'VPS_x', existe: true, ligado: true }],
+  })
+  assert.ok(Array.isArray(montado.travas), 'o campo entra no pacote montado')
+  assert.ok(Array.isArray(montado.framework))
+
+  /* E chega à tela pelo mesmo caminho que já leva os agentes. */
+  const maquinas = F.maquinasConhecidas(
+    [{ maquina: { id: 'pc1', nome: 'PC' }, travas: montado.travas, framework: montado.framework, idadeMs: 0, semContato: false }],
+    { id: 'vps', nome: 'VPS' },
+  )
+  const pc = maquinas.find((m) => m.id === 'pc1')
+  assert.ok(pc.travas?.length, 'as travas da outra máquina chegam ao retrato que a tela consome')
+  assert.ok(pc.framework?.length, 'o framework da outra máquina também')
+  const semRetrato = F.maquinasConhecidas(
+    [{ maquina: { id: 'pc2', nome: 'PC velho' }, idadeMs: 0, semContato: false }],
+    { id: 'vps', nome: 'VPS' },
+  ).find((m) => m.id === 'pc2')
+  assert.equal(semRetrato.travas, null, 'máquina que não sabe reportar continua dizendo null até a tela')
+
+  /* A máquina LOCAL entra com o mesmo formato das remotas. Ficou de fora na
+     primeira rodada e a tela dizia "não sabe reportar" sobre a própria máquina
+     em que estava rodando — sem os dois lados no mesmo formato não há
+     comparação, e comparar é a única coisa que a pergunta pedia. */
+  const comLocal = F.maquinasConhecidas([], { id: 'vps', nome: 'VPS' },
+    { travas: [{ id: 'gate-guard', evento: 'Stop', registrado: true, ligado: true }], framework: [] })
+  assert.ok(comLocal[0].local, 'a primeira é sempre a local')
+  assert.equal(comLocal[0].travas.length, 1, 'a máquina local também mostra as próprias travas')
+  assert.deepEqual(comLocal[0].framework, [], 'e distingue lista vazia de não saber')
+  assert.equal(F.maquinasConhecidas([], { id: 'vps', nome: 'VPS' })[0].travas, null,
+    'sem retrato passado, a local diz null em vez de inventar')
+  console.log('  ok   CC-340: o campo atravessa validação, pacote e retrato sem "não sei" virar "não tem"')
+}

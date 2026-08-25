@@ -1223,6 +1223,65 @@ bloco na frente.
 
 ## ▶ Frente nova, aberta em 22/08: o cockpit vira aplicativo de verdade
 
+### CC-340, aberto em 25/08: o sync do PC vira software instalável, com ícone na barra
+
+Palavras dele, em 25/08: *"poderiamos criar um setup que instale um programinha
+que faça o auto sync e eu possa ver como um software mesmo com link na taskbar
+etc, assim seria algo mais fácil de controlar"*.
+
+Registrado, não implementado. O que motivou: ele perguntou se os ganchos estavam
+registrados no PC e **nem ele nem eu tínhamos como saber**. Medido no mesmo dia:
+o PC (`ALIENWARE-LIPE`) empurra pacote a cada ciclo, e o pacote carrega jobs,
+servidores, uso, tempo, rotas, backlogs, agentes e limites. Não carrega nem os
+ganchos registrados nem o estado do framework. Então a pergunta "as travas valem
+lá?" não tem resposta em tela nenhuma, e a lista de pendências dele guardava um
+"registrar o hook no PC" que ninguém conseguia confirmar nem fechar.
+
+Duas coisas, e vale separar porque a segunda é barata e a primeira não:
+
+1. **O pacote passa a dizer o estado das travas e do framework do PC.** É campo
+   novo no que já trafega, sem serviço novo, e é o que faz a pergunta dele ter
+   resposta. Cuidado conhecido: o pacote é validado campo a campo de propósito,
+   então o campo novo entra com recorte próprio.
+2. **O empurrador vira programa visível no Windows**, com instalador, ícone na
+   barra e um jeito de ligar, desligar e ver a última sincronia. Hoje ele existe
+   e funciona, mas é invisível: a única prova de que está de pé é olhar a idade
+   do pacote do lado da VPS.
+
+Não confundir com a frente de 21/08 ("sincronizar as máquinas sem terminal"),
+que resolveu o *comando*; esta é sobre o sync ter **cara de software**, que é o
+que ele pediu.
+
+**Estado em 25/08.** A parte 1 está pronta e provada de ponta a ponta:
+`src/travasDaMaquina.mjs` tira o retrato, o campo atravessa validação, pacote e
+`maquinasConhecidas`, e a rota que a tela lê responde `38/38 registradas` e
+3 projetos para esta VPS. O PC aparece como `null` (é o valor certo: ele ainda
+não puxou o código). Fora de `CAMPOS_QUE_PERSISTEM` de propósito, para trava
+tirada do ar não continuar aparecendo por 12 horas.
+
+Dois achados que valem mais que o recurso:
+
+- **Não existe hook chamado `framework-guard`.** A pendência dele de 15/08
+  nomeia uma peça que não está no catálogo; o que existe é `gate-guard`, e o
+  "porque" da pendência ("o gate de MVP chega pelo git pull mas não liga sozinho
+  lá") confirma que é esse. É o mesmo formato de defeito das rotinas que
+  apontavam para o lugar errado: ninguém desobedeceu, e por isso ninguém viu.
+- **O isolamento do `settings.json` no gate era de mentira.** `SETTINGS_FILE`
+  era resolvido no import, então `CC_HOME` setado depois não redirecionava nada.
+  A leitura caía no arquivo real e a ESCRITA também — o mesmo caminho que já
+  apagou as notas dele uma vez. Virou `arquivoSettings()`, resolvido na hora.
+
+Falta a parte 2, e ela tem dois pedaços de tamanhos muito diferentes:
+
+1. **A faixa na tela** dizendo, por máquina, se as travas valem lá. O dado já
+   chega; falta desenhar. Bloqueado: `src/ui_v2.html` é da rota `front`, cuja
+   sessão está viva no PC dele.
+2. **O empurrador com cara de programa** no Windows (instalador, ícone na
+   barra). Decisão dele em 25/08: começar pelo que já existe, porque o painel
+   **já é instalável** como aplicativo (tem manifesto e service worker) e o
+   serviço **já sobe no logon**. O que faltava era ver o estado, não instalar
+   coisa nova.
+
 ### CC-331 ✅ 22/08: a lista de projetos do Coderoom no menu do telefone
 
 Parte da frase dele que faltava: *"o colapsar nao funciona nos itens com o
