@@ -58,13 +58,27 @@ interno do Claude Code (nome é hash, não documentado) ou das marcas de rota, e
 duas quebram calado. Local, commitar tudo é seguro; o único risco é o push, e ele
 tem a trava do teste.
 
-**Falta o gatilho: nada CHAMA isso ainda.** O motor existe, mas quem deveria
-dispará-lo no fim de uma sessão é um gancho de encerramento, que mora no
-`settings.json` (config de máquina, não versionada) e encosta na rota de sistema.
-É o próximo passo, e é dele a decisão de ligar. Duas perguntas que sobram: o que
-fazer com arquivo que duas sessões tocaram (o cenário que o Routia evita, mas que
-a `docs/ROTAS-ATIVAS.md` compartilhada sofre toda hora), e se o disparo é por
-gancho de sessão ou por o serviço do painel notar a sessão morrer.
+**✅ Gatilho feito e provado em 25/08** (`hooks/caixa-sair.mjs`, decisão dele de
+ligar automático). Roda no evento de fim de sessão: commita o ponto local (rápido,
+cabe no tempo curto do gancho) e, se for a última a sair E o projeto tiver teste,
+dispara o push em processo separado (rodar teste e push ali dentro seria morto
+pelo tempo). Guarda-costas: **sem teste, não empurra sozinho** — site de cliente
+ganha o commit local seguro, e o push fica para a mão dele.
+
+**Achado que mudou o desenho, e é o mais importante daqui:** este repositório tem
+uma trava (`git-add-guard`), montada em 06/08, exatamente contra "uma sessão
+commitar o que a outra escreveu". A caixa, commitando tudo, faria esse mesmo
+estrago. Por isso `commitAoSair` passou a ser ciente do quadro de rotas: em repo
+multi-sessão, commita **só os arquivos da rota desta sessão**, nunca os de outra;
+sem rota marcada, não commita nada, pela mesma regra da trava. Em repo de sessão
+única (sem o quadro), commita tudo, que é o que aquele repo já permite. Provado
+nos dois casos em `test-caixa.mjs`.
+
+**Falta um passo, e é o registro na config:** o gancho precisa entrar no
+`settings.json` da máquina (não versionado, escrita restrita). Feito isso, ligado.
+Uma pergunta ainda aberta para depois: o disparo por gancho de sessão é o que
+está feito; se um dia quiser, o serviço do painel também poderia notar a sessão
+morrer.
 
 ### Ignorar sozinho os arquivos de ambiente Linux (25/08)
 

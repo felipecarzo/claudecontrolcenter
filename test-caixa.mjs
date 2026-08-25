@@ -30,7 +30,7 @@ try {
   g(trab, 'config', 'user.name', 'teste')
   g(trab, 'config', 'user.email', 'teste@local')
   fs.writeFileSync(path.join(trab, 'README.md'), '# inicio\n')
-  g(trab, 'add', '-A'); g(trab, 'commit', '-m', 'inicial'); g(trab, 'push', '-u', 'origin', 'main')
+  g(trab, 'add', 'README.md'); g(trab, 'commit', '-m', 'inicial'); g(trab, 'push', '-u', 'origin', 'main')
 
   // 1. commit ao sair é LOCAL e não empurra
   try {
@@ -79,6 +79,42 @@ try {
     assert.equal(s.repo, null)
     ok('pasta sem git é dita, não derruba')
   } catch (e) { erro('sem git', e) }
+
+  // 6. repo MULTI-SESSÃO (com quadro de rotas): commita só os arquivos da rota
+  //    desta sessão, nunca os de outra. É a trava contra "commitar o que o outro
+  //    escreveu", agora respeitada pela caixa.
+  try {
+    const remoto2 = path.join(base, 'remoto2.git'); fs.mkdirSync(remoto2)
+    g(remoto2, 'init', '--bare', '-b', 'main')
+    const multi = path.join(base, 'multi')
+    execFileSync('git', ['clone', remoto2, multi], { stdio: ['ignore', 'pipe', 'pipe'] })
+    g(multi, 'config', 'user.name', 't'); g(multi, 'config', 'user.email', 't@t')
+    fs.mkdirSync(path.join(multi, 'docs'), { recursive: true })
+    // o quadro de rotas: a sessão bbbb2222 é dona de meu.txt
+    fs.writeFileSync(path.join(multi, 'docs', 'ROTAS-ATIVAS.md'),
+      '| `x` | 🔴 ocupada | bbbb2222 — trabalho 📁 meu.txt | hoje |\n')
+    g(multi, 'add', 'docs/ROTAS-ATIVAS.md'); g(multi, 'commit', '-m', 'quadro'); g(multi, 'push', '-u', 'origin', 'main')
+
+    fs.writeFileSync(path.join(multi, 'meu.txt'), 'da minha rota\n')
+    fs.writeFileSync(path.join(multi, 'do_outro.txt'), 'de outra sessao, NAO commitar\n')
+    const r = commitAoSair(multi, { sessionId: 'bbbb2222-zzzz' })
+    assert.ok(r.commitou, 'devia ter commitado o meu: ' + (r.motivo || ''))
+    // o arquivo do outro continua sem commit
+    const aindaSujo = g(multi, 'status', '--porcelain')
+    assert.match(aindaSujo, /do_outro\.txt/, 'o arquivo de outra sessão tem que continuar sem commit')
+    assert.doesNotMatch(g(multi, 'show', '--stat', 'HEAD'), /do_outro/, 'o commit não pode ter levado o arquivo do outro')
+    ok('repo multi-sessão: commita só a rota da sessão, deixa o resto para o dono')
+  } catch (e) { erro('multi-sessão respeita a rota', e) }
+
+  // 7. repo multi-sessão, sessão sem rota marcada: não commita nada
+  try {
+    const multi = path.join(base, 'multi')
+    fs.writeFileSync(path.join(multi, 'solto.txt'), 'sem rota\n')
+    const r = commitAoSair(multi, { sessionId: 'cccc3333-sem-rota' })
+    assert.equal(r.commitou, false)
+    assert.match(r.motivo, /rota desta sessão/)
+    ok('repo multi-sessão sem rota marcada: não commita nada (mesma regra da trava de entrada)')
+  } catch (e) { erro('sem rota não commita', e) }
 } finally {
   fs.rmSync(base, { recursive: true, force: true })
 }

@@ -102,21 +102,85 @@ export function situacao(raiz, sessionId = null, now = Date.now()) {
   }
 }
 
+/** Os arquivos que uma linha de rota reivindica, marcados com 📁. Mesma leitura
+ *  do `rota-guard`, para a caixa e a trava nunca discordarem de quem é o quê. */
+function arquivosDaLinha(linha) {
+  const i = linha.indexOf('📁')
+  if (i < 0) return []
+  const brutos = linha.slice(i + 2).split('|')[0].split(/[\s,]+/).map((s) => s.trim().replace(/^`|`$/g, ''))
+  const caminho = /^[\w.@-]+(?:\/[\w.@-]*)*(?:#[\w.-]+)?$/
+  const saida = []
+  for (const bruto of brutos) {
+    const t = bruto.replace(/^📁/, '')
+    if (!t) continue
+    if (!caminho.test(t) || !/[/.]/.test(t)) break
+    saida.push(t.split('#')[0]) // tira a âncora de função: o git commita o arquivo
+  }
+  return saida
+}
+
+/**
+ * Os caminhos que a rota DESTA sessão reivindica no quadro, ou `null` quando o
+ * repositório não usa Routia (sem `docs/ROTAS-ATIVAS.md`).
+ *
+ * `null` e `[]` são coisas diferentes: `null` é "repo de sessão única, pode
+ * commitar tudo", e `[]` é "repo multi-sessão, e esta sessão não reivindicou
+ * nada" — nesse caso a caixa não commita, pela mesma razão que a trava de
+ * entrada existe.
+ */
+export function arquivosDaSessao(raiz, sessionId) {
+  const alvo = raizGit(raiz)
+  let texto = null
+  try { texto = fs.readFileSync(path.join(alvo, 'docs', 'ROTAS-ATIVAS.md'), 'utf8') } catch { return null }
+  const marca = String(sessionId || '').slice(0, 8)
+  if (!marca) return []
+  const claims = []
+  for (const linha of texto.split(/\r?\n/)) {
+    if (!linha.includes('🔴') || !linha.includes(marca)) continue
+    claims.push(...arquivosDaLinha(linha))
+  }
+  return [...new Set(claims)]
+}
+
+/** O caminho modificado é de um dos claims? Casa por prefixo de pasta e por
+ *  arquivo exato, igual ao `rota-guard`. */
+const souDono = (rel, claims) => claims.some((c) => rel === c || rel.startsWith(c.endsWith('/') ? c : c + '/'))
+
 /**
  * O commit interno de quem está saindo: local, sem push.
  *
  * Não faz nada quando não há o que salvar (árvore limpa), e diz isso em vez de
  * criar commit vazio. Marca a sessão na mensagem, para o histórico dizer de
  * quem foi o ponto.
+ *
+ * **Em repositório multi-sessão (com o quadro de rotas), commita só os arquivos
+ * da rota desta sessão, nunca tudo.** É a mesma regra da trava de entrada
+ * (`git-add-guard`), que existe desde 06/08 porque uma sessão commitou o que a
+ * outra tinha acabado de escrever. Sem o quadro (site de cliente, sessão única),
+ * commita tudo, que é o que aquele repositório já permite.
  */
 export function commitAoSair(raiz, { sessionId, quando } = {}) {
   const alvo = raizGit(raiz)
   if (!alvo) return { commitou: false, motivo: 'não é repositório git' }
 
-  const sujo = (git(alvo, ['status', '--porcelain']).saida || '').split(/\r?\n/).filter(Boolean)
-  if (!sujo.length) return { commitou: false, motivo: 'nada para salvar: a árvore está limpa' }
+  const linhas = (git(alvo, ['status', '--porcelain']).saida || '').split(/\r?\n/).filter(Boolean)
+  if (!linhas.length) return { commitou: false, motivo: 'nada para salvar: a árvore está limpa' }
+  // cada linha porcelain é `XY caminho`; rename vem como `orig -> novo`
+  const modificados = linhas.map((l) => l.slice(3).split(' -> ').pop().replace(/^"|"$/g, ''))
 
-  const add = git(alvo, ['add', '-A'])
+  const claims = arquivosDaSessao(alvo, sessionId)
+  let aAdicionar
+  if (claims === null) {
+    aAdicionar = ['-A'] // repo de sessão única: tudo, como ele já permite
+  } else {
+    const meus = modificados.filter((m) => souDono(m, claims))
+    if (!meus.length) {
+      return { commitou: false, motivo: 'repo multi-sessão: nada da rota desta sessão para salvar (o resto é de outras rotas, e a caixa não mexe no que não é seu)' }
+    }
+    aAdicionar = ['--', ...meus]
+  }
+
+  const add = git(alvo, ['add', ...aAdicionar])
   if (!add.ok) return { commitou: false, motivo: `git add falhou: ${add.erro}` }
 
   const curto = String(sessionId || 'sessao').slice(0, 8)
@@ -129,7 +193,8 @@ export function commitAoSair(raiz, { sessionId, quando } = {}) {
   if (!commit.ok) return { commitou: false, motivo: `git commit falhou: ${commit.erro || commit.saida}` }
 
   const hash = (git(alvo, ['rev-parse', '--short', 'HEAD']).saida || '').trim()
-  return { commitou: true, hash, arquivos: sujo.length, quando: quando || null }
+  const arquivos = claims === null ? modificados.length : aAdicionar.length - 1
+  return { commitou: true, hash, arquivos, quando: quando || null }
 }
 
 /** Roda `npm test` sem shell e devolve só se passou e um resumo curto. */
