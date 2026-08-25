@@ -275,7 +275,7 @@ export const NIVEIS = {
     titulo: 'Cliente',
     pergunta: 'o dado de outra pessoa está protegido?',
     explica: 'Alguém de fora usa, com login. A partir daqui o erro não é seu prejuízo, é o dado de um terceiro — e é o nível que o método entrega-cliente exige.',
-    camadas: ['service-role', 'rls-supabase', 'zona-restrita', 'pacote-malicioso', 'navegador'],
+    camadas: ['service-role', 'rls-supabase', 'zona-restrita', 'escalada-navegador', 'idor', 'xss', 'pacote-malicioso', 'navegador'],
   },
   exposto: {
     id: 'exposto',
@@ -877,6 +877,360 @@ export const CAMADAS = [
     },
   },
 
+  /**
+   * A falha 2 do vídeo do Deyvin: regra de acesso decidida no NAVEGADOR.
+   *
+   * Palavras dele: *"delegar permissões de administrador para o navegador é
+   * perigoso, pois o usuário pode alterar valores no Local Storage e elevar seu
+   * nível de acesso"*.
+   *
+   * ## O que esta sonda faz, e onde ela para de propósito
+   *
+   * Abre o endereço num navegador de verdade e lê o `localStorage`, o
+   * `sessionStorage` e os cookies visíveis ao JavaScript, procurando qualquer
+   * coisa com cara de PERMISSÃO: `role`, `isAdmin`, `nivel`, `plano`, `premium`.
+   * Achar uma dessas já é o cheiro: o navegador guarda a decisão que só o
+   * servidor deveria tomar.
+   *
+   * **Presença é gravidade média, não alta.** Muito app guarda `role` só para
+   * mostrar ou esconder menu, e o servidor continua mandando. Acusar isso como
+   * furo grave seria o alarme falso que faz desligar a camada. O que ELEVA para
+   * alta é a prova: se houver uma rota restrita configurada, a sonda troca o
+   * valor suspeito por um elevado, recarrega e vê se a rota passou a responder
+   * conteúdo que antes negava. Aí não é cheiro, é a porta abrindo.
+   *
+   * ## O que ela NUNCA faz
+   *
+   * Não escreve nada no servidor: `localStorage` é do navegador, e a troca só
+   * existe dentro desta aba, que fecha ao fim. Não imprime o VALOR de nenhuma
+   * chave (um token de sessão é segredo), só o NOME dela e o veredito.
+   */
+  {
+    id: 'escalada-navegador',
+    nome: 'Virar admin pelo navegador',
+    grupo: 'dados',
+    custo: 'grátis',
+    duracao: 'segundos',
+    ferramenta: 'Chromium do Playwright, já em cache nesta máquina',
+    explica: 'Abre o site e vê se a permissão (admin, plano, nível) fica guardada no navegador, onde o próprio usuário pode trocar. Se houver rota restrita configurada, tenta trocar de verdade e entrar.',
+    aplicaA: (raiz, cfg) => Boolean(cfg?.alvo),
+    async rodar(raiz, cfg = {}) {
+      const base = String(cfg?.alvo || '').replace(/\/+$/, '')
+      if (!base) return { ok: true, achados: [], verificou: false, nota: 'sem alvo configurado — informe o endereço do site' }
+
+      const nav = await abrirNavegador()
+      if (!nav) return { ok: true, achados: [], verificou: false, nota: 'sem Chromium nesta máquina — instale o Playwright ou rode do PC' }
+
+      // Nome de chave que cheira a decisão de acesso. Ancorado em palavra
+      // conhecida, nunca em entropia: varrer "qualquer booleano" acusaria
+      // preferência de tema e cookie de analytics, e a camada viraria ruído.
+      const RE_PERM = /\b(is_?admin|adm(in)?|role|roles|papel|nivel|n[íi]vel|permiss|acesso|scope|claim|is_?staff|superuser|owner|plano?|plan|premium|pro|tier|assinatura|subscription|vip)\b/i
+      // Valor que, se trocado, ELEVA. Da esquerda para a direita: o que procurar, o que virar.
+      const ELEVACOES = [
+        [/^false$/i, 'true'], [/^0$/, '1'], [/^"?(user|guest|free|basic|comum|cliente)"?$/i, 'admin'],
+        [/^no$/i, 'yes'], [/^disabled$/i, 'enabled'],
+      ]
+
+      const achados = []
+      let verificou = false
+      try {
+        const pagina = await nav.newPage({ viewport: { width: 390, height: 800 } })
+        try {
+          await pagina.goto(base, { waitUntil: 'load', timeout: 20_000 })
+          await pagina.waitForTimeout(1200) // dá tempo do app popular o storage
+          verificou = true
+        } catch (e) {
+          await nav.close().catch(() => {})
+          return { ok: true, achados: [], verificou: false, nota: `a página não abriu: ${String(e.message || e).slice(0, 140)}` }
+        }
+
+        // Retrato do que o navegador guarda. Só chave e "cara" do valor saem
+        // daqui; o valor cru fica dentro do navegador e é descartado.
+        const guardado = await pagina.evaluate(() => {
+          const colher = (store) => {
+            const out = []
+            try { for (let i = 0; i < store.length; i++) { const k = store.key(i); out.push([k, String(store.getItem(k) ?? '')]) } } catch { /* store bloqueado */ }
+            return out
+          }
+          const cookies = document.cookie.split(';').map((c) => c.trim().split('=')).filter((p) => p[0]).map((p) => [p[0], p.slice(1).join('=')])
+          return { local: colher(localStorage), sessao: colher(sessionStorage), cookies }
+        })
+
+        const suspeitas = []
+        for (const [onde, pares] of [['localStorage', guardado.local], ['sessionStorage', guardado.sessao], ['cookie', guardado.cookies]]) {
+          for (const [chave, valor] of pares) {
+            // A chave cheira a permissão, OU o valor inteiro é um "papel" nu.
+            const chaveSuspeita = RE_PERM.test(chave)
+            if (!chaveSuspeita) continue
+            // JWT não conta: é assinado, trocar o corpo o invalida no servidor.
+            const ehJwt = /^eyJ[A-Za-z0-9_-]{10,}\./.test(valor)
+            suspeitas.push({ onde, chave, valor, elevavel: !ehJwt && ELEVACOES.some(([re]) => re.test(valor)), ehJwt })
+          }
+        }
+
+        for (const s of suspeitas) {
+          if (s.ehJwt) continue // não é o furo desta camada; a chave-mestra é da sonda de segredo
+          achados.push({
+            gravidade: 'média',
+            titulo: `a permissão fica no ${s.onde}: "${s.chave}"`,
+            onde: base,
+            conserto: 'o navegador não pode decidir acesso. Toda checagem de "é admin?" vale no servidor, a cada requisição. O que está aqui serve só para pintar a tela, e o servidor confere de novo.',
+          })
+        }
+
+        // A PROVA, só quando ele deu uma rota restrita para mirar. No mundo real
+        // não se sabe qual store o servidor lê, então tenta CADA candidato até
+        // um abrir a porta — parar no primeiro daria falso "seguro".
+        const rota = String(cfg?.rotaRestrita || '').trim()
+        const candidatos = suspeitas.filter((s) => s.elevavel)
+        if (rota && candidatos.length) {
+          const url = rota.startsWith('http') ? rota : base + (rota.startsWith('/') ? rota : '/' + rota)
+          const abrir = async () => {
+            const status = await pagina.goto(url, { waitUntil: 'load', timeout: 20_000 }).then((r) => r?.status() ?? 0).catch(() => 0)
+            const texto = await pagina.evaluate(() => document.body?.innerText?.trim().length || 0)
+            return { status, texto, negou: status >= 300 || texto < 20 }
+          }
+          // 1. Como está hoje: a rota restrita nega para este usuário?
+          const antes = await abrir()
+          if (antes.negou) {
+            for (const alvoTroca of candidatos) {
+              const novo = ELEVACOES.find(([re]) => re.test(alvoTroca.valor))?.[1] || 'admin'
+              // 2. Volta ao começo, troca só este candidato, e recarrega a rota.
+              await pagina.goto(base, { waitUntil: 'load', timeout: 20_000 }).catch(() => {})
+              await pagina.evaluate(({ onde, chave, novo }) => {
+                if (onde === 'localStorage') localStorage.setItem(chave, novo)
+                else if (onde === 'sessionStorage') sessionStorage.setItem(chave, novo)
+                else document.cookie = `${chave}=${novo};path=/`
+              }, { onde: alvoTroca.onde, chave: alvoTroca.chave, novo })
+              const depois = await abrir()
+              // Abriu o que não abria: negava, e passou a entregar conteúdo.
+              if (!depois.negou && depois.status >= 200 && depois.status < 300) {
+                achados.push({
+                  gravidade: 'alta',
+                  titulo: `troquei "${alvoTroca.chave}" no ${alvoTroca.onde} e a rota restrita ABRIU`,
+                  onde: url,
+                  conserto: `antes negava (respondeu ${antes.status}), depois de virar "${novo}" no navegador respondeu ${depois.status} com conteúdo. O acesso está sendo decidido no cliente. Mova a checagem para o servidor.`,
+                })
+                break // uma porta aberta já é a prova; não precisa arrombar as outras
+              }
+            }
+          }
+        }
+
+        await pagina.close()
+      } finally {
+        await nav.close().catch(() => {})
+      }
+
+      return {
+        ok: !achados.some((a) => a.gravidade === 'alta'),
+        achados,
+        verificou,
+        nota: achados.length ? undefined : 'nenhuma permissão guardada no navegador — é o resultado que se quer',
+      }
+    },
+  },
+
+  /**
+   * A falha 3 do vídeo do Deyvin: IDOR, ler dado de outro trocando o número.
+   *
+   * Palavras dele: *"rotas que permitem acesso a dados de outros usuários apenas
+   * alterando o ID no parâmetro, comum em CRUDs gerados por IA sem validação de
+   * dono"*.
+   *
+   * ## Como ela testa
+   *
+   * Recebe um endereço com `{id}` no lugar do número — `.../api/pedido/{id}` — e
+   * pede vários números com a MESMA identidade (o token ou cookie que ele der,
+   * ou nenhum). Se mais de um número devolve um registro DIFERENTE e cheio, sob
+   * a mesma identidade, então trocar o número lê o dado de outra pessoa. É o
+   * furo.
+   *
+   * ## Por que a gravidade depende de ter login
+   *
+   * - **Com token/cookie** (a sonda está logada como uma pessoa): ler vários
+   *   registros distintos é a mesma pessoa vendo o dado de outras. Gravidade
+   *   ALTA, é IDOR clássico.
+   * - **Sem login**: pode ser catálogo público legítimo (`/api/produto/{id}`).
+   *   Gravidade MÉDIA, com a pergunta honesta na tela: se isto devia ser
+   *   privado, é furo; se é catálogo, está certo.
+   *
+   * ## O que ela NUNCA faz
+   *
+   * Só GET, nunca escreve. Não imprime o corpo dos registros — só conta quantos
+   * números distintos devolveram dado, que é o que prova o furo sem vazar o
+   * conteúdo de ninguém no relatório.
+   */
+  {
+    id: 'idor',
+    nome: 'Ler dado de outro pelo número',
+    grupo: 'dados',
+    custo: 'grátis',
+    duracao: 'segundos',
+    ferramenta: '—  (código nosso)',
+    explica: 'Pega um endereço com número de registro (/api/pedido/45) e troca o número. Se voltar o dado de outra pessoa sem conferir o dono, é o furo mais comum em código feito por IA.',
+    aplicaA: (raiz, cfg) => Boolean(cfg?.rotaComId),
+    async rodar(raiz, cfg = {}) {
+      const molde = String(cfg?.rotaComId || '').trim()
+      if (!molde || !molde.includes('{id}')) {
+        return { ok: true, achados: [], verificou: false, nota: 'informe o endereço com {id} onde entra o número, ex.: https://site/api/pedido/{id}' }
+      }
+
+      const cab = {}
+      if (cfg.token) cab.Authorization = `Bearer ${cfg.token}`
+      if (cfg.cookie) cab.Cookie = String(cfg.cookie)
+      const logado = Boolean(cfg.token || cfg.cookie)
+
+      // Números a experimentar. Se ele disse qual é o dele, testa os vizinhos —
+      // é onde o dado de outra pessoa mora. Senão, os primeiros da fila.
+      const meu = cfg.idConhecido != null ? Number(cfg.idConhecido) : null
+      const ids = Number.isFinite(meu)
+        ? [meu, meu - 1, meu - 2, meu + 1, meu + 2].filter((n) => n > 0)
+        : [1, 2, 3, 4, 5]
+
+      const pegar = async (id) => {
+        const ctrl = new AbortController()
+        const t = setTimeout(() => ctrl.abort(), 12_000)
+        try {
+          const r = await fetch(molde.replace('{id}', encodeURIComponent(id)), { headers: cab, redirect: 'manual', signal: ctrl.signal })
+          const corpo = await r.text().catch(() => '')
+          return { status: r.status, corpo }
+        } catch (e) {
+          return { erro: String(e.message || e) }
+        } finally { clearTimeout(t) }
+      }
+
+      // Um número que quase certamente não é de ninguém: se ISSO responder igual,
+      // a rota devolve o mesmo para tudo e não há o que comparar.
+      const controle = await pegar(987654321)
+      if (controle.erro) {
+        return { ok: true, achados: [], verificou: false, nota: `não deu para falar com o endereço: ${controle.erro}` }
+      }
+
+      const lidos = new Map() // corpo distinto -> primeiro id que o devolveu
+      let respondendo = 0
+      for (const id of [...new Set(ids)]) {
+        const r = await pegar(id)
+        if (r.erro || r.status < 200 || r.status >= 300) continue
+        if ((r.corpo || '').trim().length < 20) continue // vazio não é registro
+        respondendo += 1
+        // registro que também volta para o número-controle é resposta genérica,
+        // não dado de dono: descarta, senão página de erro 200 viraria "furo".
+        if (controle.status >= 200 && controle.status < 300 && r.corpo === controle.corpo) continue
+        if (!lidos.has(r.corpo)) lidos.set(r.corpo, id)
+      }
+
+      const distintos = lidos.size
+      const achados = []
+      if (distintos >= 2) {
+        achados.push({
+          gravidade: logado ? 'alta' : 'média',
+          titulo: logado
+            ? `logado como uma pessoa, li ${distintos} registros diferentes só trocando o número`
+            : `${distintos} registros diferentes respondem só trocando o número`,
+          onde: molde,
+          conserto: logado
+            ? 'a rota entrega registro sem conferir se é do dono. Some a checagem de dono no servidor: o registro pedido pertence a quem está pedindo? Se não, 403.'
+            : 'se estes registros deviam ser privados, é IDOR: qualquer um lê pelo número. Se é catálogo público (produto, post), está certo. Confira o que o número devolve.',
+        })
+      }
+
+      return {
+        ok: !achados.some((a) => a.gravidade === 'alta'),
+        achados,
+        verificou: true,
+        nota: achados.length ? undefined
+          : `${respondendo} número(s) responderam, ${distintos} com registro distinto — sem sinal de dado de dono trocando o número`,
+      }
+    },
+  },
+
+  /**
+   * A falha 5 do vídeo do Deyvin: entrada sem tratamento, o XSS refletido.
+   *
+   * Palavras dele: *"falha em validar entradas de usuário, permitindo que
+   * atacantes injetem scripts maliciosos"*.
+   *
+   * ## Como ela testa SEM atacar de verdade
+   *
+   * Manda na URL uma marca inofensiva — uma etiqueta HTML inventada,
+   * `<xsscanary>`, que não roda nada — e abre a página num navegador de verdade.
+   * Se essa etiqueta virar um ELEMENTO na página, o site colou o texto do
+   * usuário como HTML sem escapar: é exatamente o buraco por onde um script
+   * entraria. A marca não executa código; só prova que a porta está aberta.
+   *
+   * Testa dois contextos: a marca solta no corpo, e a marca depois de fechar uma
+   * aspa de atributo (`"><xsscanary>`), que é o outro jeito comum de escapar.
+   *
+   * ## Só refletido, e a sonda diz isso
+   *
+   * Este teste pega o XSS que volta na mesma resposta (busca, parâmetro na URL).
+   * O XSS ARMAZENADO (comentário salvo que ataca quem lê depois) exigiria
+   * ESCREVER no site, e esta casa nunca escreve no alvo. Fica dito na nota.
+   */
+  {
+    id: 'xss',
+    nome: 'Texto do usuário virando código',
+    grupo: 'dados',
+    custo: 'grátis',
+    duracao: 'segundos',
+    ferramenta: 'Chromium do Playwright, já em cache nesta máquina',
+    explica: 'Manda uma marca inofensiva na URL e vê se ela vira elemento na página. Se virar, o site não trata a entrada, e um script entraria pelo mesmo lugar. Não executa nada perigoso.',
+    aplicaA: (raiz, cfg) => Boolean(cfg?.rotaComParam),
+    async rodar(raiz, cfg = {}) {
+      const molde = String(cfg?.rotaComParam || '').trim()
+      if (!molde || !molde.includes('{xss}')) {
+        return { ok: true, achados: [], verificou: false, nota: 'informe a rota com {xss} onde entra o texto, ex.: https://site/busca?q={xss}' }
+      }
+
+      const nav = await abrirNavegador()
+      if (!nav) return { ok: true, achados: [], verificou: false, nota: 'sem Chromium nesta máquina — instale o Playwright ou rode do PC' }
+
+      // Etiquetas inventadas que não existem em site nenhum e não executam nada.
+      const provas = [
+        { marca: 'xsscanary', payload: '<xsscanary>x</xsscanary>', contexto: 'no corpo da página' },
+        { marca: 'xsscanary2', payload: '"><xsscanary2>x</xsscanary2>', contexto: 'quebrando a aspa de um atributo' },
+      ]
+
+      const achados = []
+      let verificou = false
+      try {
+        for (const p of provas) {
+          const url = molde.replace('{xss}', encodeURIComponent(p.payload))
+          const pagina = await nav.newPage({ viewport: { width: 390, height: 800 } })
+          try {
+            await pagina.goto(url, { waitUntil: 'load', timeout: 20_000 })
+            await pagina.waitForTimeout(800)
+            verificou = true
+            // A marca virou elemento? Se sim, o HTML foi parseado, não escapado.
+            const virou = await pagina.evaluate((m) => document.getElementsByTagName(m).length, p.marca)
+            if (virou > 0) {
+              achados.push({
+                gravidade: 'alta',
+                titulo: `o texto que mandei na URL virou HTML na página (${p.contexto})`,
+                onde: url,
+                conserto: 'o site colou a entrada sem escapar. Escape toda entrada antes de mostrar (a maioria dos frameworks faz isso sozinho se você parar de usar innerHTML / dangerouslySetInnerHTML). Aqui um script entraria.',
+              })
+            }
+          } catch { /* uma prova que não abriu não derruba a outra */ } finally {
+            await pagina.close().catch(() => {})
+          }
+        }
+      } finally {
+        await nav.close().catch(() => {})
+      }
+
+      return {
+        ok: !achados.some((a) => a.gravidade === 'alta'),
+        achados,
+        verificou,
+        nota: achados.length
+          ? 'testado só o XSS refletido (o que volta na URL). O armazenado exigiria escrever no site, e a Bancada nunca escreve no alvo.'
+          : 'a marca não virou elemento — a entrada está sendo escapada, que é o resultado que se quer. (Testado só o refletido.)',
+      }
+    },
+  },
+
   /* ==================== as declaradas, ainda sem execução ====================
      Decisão dele em 15/08: *"a bancada precisa ter todas as camadas, mas poder
      rodar elas individualmente"*.
@@ -967,4 +1321,7 @@ const MOTIVO = {
   dependencia: 'este projeto não tem package-lock.json nem pnpm-lock.yaml',
   'zona-restrita': 'nenhuma zona restrita declarada',
   'rls-supabase': 'não achei configuração de Supabase neste projeto',
+  'escalada-navegador': 'nenhum endereço configurado — informe o site a abrir',
+  idor: 'nenhum endereço com {id} configurado — informe a rota de registro a testar',
+  xss: 'nenhuma rota com {xss} configurada — informe onde entra o texto do usuário',
 }

@@ -15,6 +15,63 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 25/08: a caixa de ponto do git multi-agente
+
+Ideia dele, com as palavras dele, registrada para decidir depois (não
+implementar agora):
+
+> *"podemos criar um mecanismo pra isso melhor, um mecanismo de caixa de git
+> multi agentes, assim cada cliente quando for criado bate ponto e quando sair
+> faz um commit interno, e no final o último a sair apaga a luz, confere o git e
+> dá o push."*
+
+O que motivou, medido nesta sessão: **outra sessão commitou enquanto eu
+trabalhava e levou junto minha marca de rota**, um arquivo que eu tinha editado
+e ainda não salvara. Deu certo por acaso (era só documentação), mas é o retrato
+do problema: hoje quem commita varre a árvore inteira e leva trabalho de sessão
+que ainda está mexendo, sem saber.
+
+O desenho que ele propõe, em três batidas:
+
+1. **Bater ponto ao nascer** — cada sessão registra que entrou (já existe meia
+   peça: `cc routia presenca` e o quadro de rotas sabem quem está vivo).
+2. **Commit interno ao sair** — cada sessão fecha o próprio trabalho num commit
+   seu ao encerrar, sem empurrar. Encosta na regra dele de nunca commitar sem
+   pedir: aqui o commit é local e sem push, então talvez passe, talvez precise
+   do aval dele. É a primeira decisão.
+3. **O último apaga a luz** — a última sessão viva confere o git, junta o que
+   ficou e dá o push. "Último a sair" é o que o quadro de presença já sabe
+   dizer.
+
+Decisões que faltam antes de construir: o commit interno é automático ou pede
+aval? O que fazer com arquivo que duas sessões tocaram (o cenário que o Método
+Routia existe para evitar, mas que a `docs/ROTAS-ATIVAS.md` compartilhada sofre
+toda hora)? E onde isso mora: hook de encerramento, ou serviço do painel?
+
+### Ignorar sozinho os arquivos de ambiente Linux (25/08)
+
+Pedido dele, mesmas máquinas, mesma dor:
+
+> *"precisamos criar também um hook que ignore automaticamente nos projetos
+> arquivos de ambientes linux, nossos projetos navegam entre máquinas em
+> sistemas diferentes e isso dá muita dor de cabeça."*
+
+O problema real: `node_modules`, `venv`, `.cache` e binário compilado nascem
+para UM sistema. Quando o projeto viaja de máquina, o ambiente do Linux vaza no
+git e briga com o do Windows.
+
+⚠️ **Ele pediu "hook", e vale medir se hook é o certo antes de fazer.** Um hook
+roda a cada ação e é mais peça para manter; o mesmo efeito sai de um
+`.gitignore` compartilhado aplicado por projeto (parecido com o que a skill de
+organização já faz), ou do `core.excludesFile` global do git, que ignora sem
+nem tocar em cada projeto. A regra dele é que o mecanismo que ele nomeia é o
+pedido, então isto fica como a decisão a levar a ele: hook, gitignore
+compartilhado, ou ignore global. A lista do que entra (`node_modules/`, `venv/`,
+`__pycache__/`, `.cache/`, `*.pyc`, `.DS_Store`) é a mesma nos três.
+
+É irmã da frente "sincronizar as máquinas sem terminal": o que mora no
+repositório viaja, e ambiente de máquina não devia morar lá.
+
 ## ▶ Frente nova, aberta em 23/08: a trava contra "não vai quebrar nada" dito no escuro
 
 Exigência dele, depois que eu disse que renomear as pastas não quebrava nada e
@@ -1538,6 +1595,40 @@ tela, que é o problema que o prefixo existe para resolver.
 Ele mandou o conteúdo do vídeo do Deyvin em 25/08, que era a peça que faltava.
 Cinco falhas e as ferramentas para caçá-las.
 
+**Estado em 25/08: as TRÊS sondas que faltavam já existem e estão provadas.**
+Todas as cinco falhas do vídeo têm caçador. Falta só o modo do framework, que
+ele pediu para deixar por último.
+
+- ✅ **falha 2 (virar admin pelo navegador)** — camada `escalada-navegador`.
+  Lê o que o navegador guarda de permissão; com rota restrita, troca o valor e
+  vê se a porta abre. Provada em três alvos: fibraessencia real (limpo),
+  vulnerável de propósito (pegou média + alta), seguro (média sem alta falsa).
+- ✅ **falha 3 (IDOR, ler dado alheio pelo número)** — camada `idor`. Troca o
+  número na rota e conta registros distintos; alta quando logado. Provada em
+  vulnerável (5 registros lidos, alta) e seguro (só o do dono, sem achado). Não
+  rodou no fibraessencia: não tenho uma rota de API com `{id}` dele, e o site é
+  vitrine. Precisa dele nomear a rota para testar.
+- ✅ **falha 5 (XSS refletido)** — camada `xss`. Injeta uma etiqueta inofensiva
+  na URL e vê se vira elemento na página; testa corpo e quebra de atributo.
+  Provada em vulnerável (as duas marcas viraram HTML, alta) e seguro (escapou,
+  sem achado). Só refletido: o armazenado exigiria escrever no site, e a Bancada
+  nunca escreve no alvo.
+- ✅ **o modo do framework** — método `ciberseguranca` em `src/framework.mjs`,
+  três fases: Superfície (declara o que expõe, trava código até declarar),
+  Execução, Auditoria (as sondas rodaram e vieram limpas). A Auditoria reusa os
+  predicados da Bancada que o `entrega-cliente` já usava. Provado no motor em
+  quatro estados (`test-framework.mjs`): superfície em branco trava, declarada
+  libera, furo de pé fecha a auditoria, tudo limpo abre.
+  ⚠️ **Falta o botão na tela.** Escolher o método hoje vai pelo comando
+  (`cc metodos`, `--metodo ciberseguranca`); o seletor na tela mora em
+  `src/ui_v2.html` e `src/web.mjs`, arquivos de outras sessões. Fica como item
+  de front separado.
+
+As duas sondas entram no nível "cliente" da Bancada (o dado de outra pessoa está
+protegido?). Detalhe delas abaixo, no desenho original.
+
+---
+
 **O achado que muda o tamanho do trabalho: quatro das cinco já têm camada na
 Bancada deste projeto.** O modo não nasce do zero, nasce ordenando o que existe.
 
@@ -1606,7 +1697,7 @@ espalhada** (`projectsBase()` devolve um caminho, não uma lista), e a caixa da
 barra de tarefas do item CC-340 é o mesmo lugar onde essa configuração mora — os
 dois são o mesmo instalador, e fazer dois seria construir duas casas.
 
-### CC-353, aberto em 25/08: puxar o git de todos os projetos ao ligar o PC
+### CC-355, aberto em 25/08: puxar o git de todos os projetos ao ligar o PC
 
 Mesma nota, mesma respiração:
 

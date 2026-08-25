@@ -121,6 +121,14 @@ export const PREDICADOS = {
       .map(([f]) => f)
     return sujas.length ? `verificação acusou problema em: ${sujas.join(', ')}` : null
   },
+
+  // F para o método de segurança (CC-354): antes de liberar código, o projeto
+  // diz o que expõe. Sem isso a auditoria roda tudo em todo lugar e vira ruído
+  // que se desliga — a mesma razão de a Definição vir antes da Execução nos
+  // outros métodos.
+  'superficie-declarada': (e) => ((e?.seguranca?.superficie || []).length
+    ? null
+    : 'antes de liberar código, diga o que este projeto expõe (banco, login, upload, pagamento). É o que decide quais verificações valem'),
 }
 
 /** Métodos prontos. Trocar de método é trocar de dado, nunca de código. */
@@ -256,6 +264,50 @@ export const METODOS = {
         titulo: 'Entregue',
         explica: 'Verificado e no ar. Mudança daqui em diante é escopo novo, e escopo novo se declara.',
         exige: [],
+        trava: [],
+      },
+    ],
+  },
+
+  /**
+   * CC-354: o método de cibersegurança, tirado do vídeo do Deyvin (25/08).
+   *
+   * A diferença dele para o `entrega-cliente`, que também verifica antes de
+   * subir: lá a verificação é um portão de SAÍDA, uma vez, antes do deploy. Aqui
+   * segurança é o ASSUNTO do projeto, e o que trava a Auditoria não é critério
+   * de MVP em aberto, é achado de segurança de pé (`verificacao-limpa`).
+   *
+   * A Auditoria reusa os mesmos predicados da Bancada que o `entrega-cliente`
+   * usa — as sondas `rls-supabase`, `service-role`, `escalada-navegador`,
+   * `idor`, `xss` e as outras entram por `ferramentas-escolhidas`. Método é
+   * dado, não código: o trilho novo não mexeu no motor, só se declarou.
+   *
+   * A fase nova é a Superfície: sem saber o que o projeto expõe, a auditoria não
+   * sabe o que exigir. É o "declare antes de construir" aplicado a segurança.
+   */
+  ciberseguranca: {
+    id: 'ciberseguranca',
+    titulo: 'Cibersegurança: auditar antes de dar por pronto',
+    fases: [
+      {
+        id: 'superficie',
+        titulo: 'Superfície',
+        explica: 'Antes de código: o que este projeto expõe (banco, login, upload, pagamento) e quais verificações ele usa. É o que decide o que auditar.',
+        exige: ['superficie-declarada', 'ferramentas-escolhidas'],
+        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+      },
+      {
+        id: 'execucao',
+        titulo: 'Execução',
+        explica: 'Código liberado. O projeto só é dado como seguro quando a auditoria rodar limpa.',
+        exige: [],
+        trava: [],
+      },
+      {
+        id: 'auditoria',
+        titulo: 'Auditoria',
+        explica: 'As verificações escolhidas na Superfície precisam ter rodado, e sem achar furo. Achado de segurança de pé mantém a fase fechada.',
+        exige: ['verificacao-rodada', 'verificacao-limpa'],
         trava: [],
       },
     ],

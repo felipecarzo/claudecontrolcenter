@@ -501,7 +501,7 @@ ok('todo método declarado usa predicado que existe, e toda fase explica')
    importante aqui é o de baixo, que confere que nenhum deles trouxe predicado
    ou fase que o motor não soubesse tratar. */
 {
-  assert.equal(Object.keys(METODOS).length, 4, 'o catálogo tem que ter os quatro')
+  assert.equal(Object.keys(METODOS).length, 5, 'o catálogo tem que ter os cinco métodos')
 
   // conserto: reproduzir ANTES trava o código, e é o ponto do método
   const c = METODOS.conserto
@@ -548,6 +548,42 @@ ok('todo método declarado usa predicado que existe, e toda fase explica')
   }).portaoAberto, true)
 }
 ok('CC-68: conserto reproduz antes e prova depois; estudo trava código nas duas fases')
+
+/* CC-354: o método de cibersegurança. Superfície trava código até declarar o
+   que o projeto expõe; a Auditoria fecha enquanto uma sonda achar furo. Reusa
+   os predicados da Bancada que o `entrega-cliente` já usava. */
+{
+  const m = METODOS.ciberseguranca
+  assert.ok(m, 'o quinto método precisa existir')
+  assert.deepEqual(m.fases.map((f) => f.id), ['superficie', 'execucao', 'auditoria'])
+  assert.ok(m.fases[0].trava.includes('src/**'), 'a Superfície tem que travar código')
+  assert.equal(m.fases[1].trava.length, 0, 'a Execução não pode travar código')
+
+  // superfície em branco: código travado, com o motivo na pendência
+  const branco = avaliar('ciberseguranca', { ligado: true, fase: 'superficie' })
+  assert.equal(branco.portaoAberto, false)
+  assert.match(branco.pendencias[0], /o que este projeto expõe/)
+
+  // declarou superfície e escolheu ferramenta: libera código
+  const pronto = avaliar('ciberseguranca', {
+    ligado: true, fase: 'superficie',
+    seguranca: { superficie: ['banco', 'login'] }, ferramentas: ['rls-supabase'],
+  })
+  assert.equal(pronto.portaoAberto, true)
+
+  // auditoria: furo de pé mantém fechado; tudo limpo abre
+  const furo = avaliar('ciberseguranca', {
+    ligado: true, fase: 'auditoria',
+    ferramentas: ['rls-supabase'], verificacao: { 'rls-supabase': { ok: false } },
+  })
+  assert.equal(furo.portaoAberto, false, 'furo de segurança de pé não pode passar')
+  const limpo = avaliar('ciberseguranca', {
+    ligado: true, fase: 'auditoria',
+    ferramentas: ['rls-supabase'], verificacao: { 'rls-supabase': { ok: true } },
+  })
+  assert.equal(limpo.portaoAberto, true)
+}
+ok('CC-354: cibersegurança trava código até declarar superfície, e a auditoria fecha com furo de pé')
 
 /* O restritivo NÃO trava código, e isso é decisão dele em 15/08 — corrigindo
    uma implementação minha que copiou o `trava` do sugestivo por engano.
