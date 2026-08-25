@@ -15,6 +15,7 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { ehWindows } from './platform.mjs'
 
 const CAMINHOS = [['docs', 'ROADMAP.md'], ['ROADMAP.md'], ['docs', 'roadmap.md'], ['ROADMAP.MD']]
 
@@ -25,8 +26,14 @@ const CAMINHOS = [['docs', 'ROADMAP.md'], ['ROADMAP.md'], ['docs', 'roadmap.md']
  * Windows: `D:\Documentos\Ti\projetos\CLIENTS\renanMarchon`. No Linux isso não
  * é caminho absoluto, é um NOME DE PASTA com barras invertidas dentro, e tudo
  * o que se faz com ele passa a ser relativo à pasta onde o painel roda.
+ *
+ * No Windows a marca é o normal da casa: todo cwd local tem `C:\` e barra
+ * invertida. Achado em 25/08 rodando `npm test` no PC — `acharRoadmap` não
+ * achava nem o roadmap do próprio projeto, cwd real, sem federação nenhuma no
+ * meio. A guarda só faz sentido em quem NÃO É Windows.
  */
 export const deOutraPlataforma = (p) => {
+  if (ehWindows) return false
   const s = String(p || '')
   /* A marca conta em QUALQUER posição, não só no começo, e isso não é excesso
      de zelo: a sessão do Coderoom mediu o caso misto em 22/08, quando um

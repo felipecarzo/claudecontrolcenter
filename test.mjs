@@ -4303,7 +4303,16 @@ if (process.platform !== 'win32') {
 
     /* 3. Sem lugar gravável, responde que não gravou em vez de lançar. Armazém
        que derruba o painel por não conseguir escrever seria pior que armazém
-       vazio, e o retorno é o que permite quem chamou saber. */
+       vazio, e o retorno é o que permite quem chamou saber.
+       No Windows isto não dá pra testar por chmod: `fs.chmodSync(dir, 0o500)`
+       não bloqueia escrita dentro da pasta (medido em 25/08, escrita passou
+       igual com a pasta "trancada") — trava real de permissão do NTFS pede
+       ACL, não os bits do POSIX. Pula aqui, mesmo padrão do Pierre e dos
+       extratores: escrita não testada não pode fingir que passou. */
+    const { ehWindows } = await import('./src/platform.mjs')
+    if (ehWindows) {
+      console.log('  (pulado: chmod não bloqueia escrita no Windows)')
+    } else {
     const guardado = process.env.CC_HOME
     /* Uma pasta somente leitura, com a casa E o abrigo dentro dela. Apontar
        para um caminho inexistente NÃO serve: `path.join` normaliza o caminho
@@ -4323,6 +4332,7 @@ if (process.platform !== 'win32') {
       process.env.CC_HOME = guardado
     }
     console.log('  ok   CC-280: sem lugar gravável, avisa em vez de derrubar')
+    }
 
     /* 4. A regressão que mais dói: o cruzamento comparando janelas diferentes.
        Na primeira versão, o git via 28 dias e o transcrito via 9, e o resultado
@@ -4464,6 +4474,18 @@ if (process.platform !== 'win32') {
    145 fechadas, que eram do proj_controlcenter. Backlog inteiro atribuído a
    quem não é dono, sem erro nenhum. */
 {
+  /* Achado em 25/08, rodando este gate no PC pela primeira vez: a guarda só
+     faz sentido em quem NÃO É Windows (ver a nota em `deOutraPlataforma`,
+     `src/roadmap.mjs`). No Windows, `D:\…\renanMarchon` não é caminho de
+     "outra máquina" nenhuma — é uma pasta de projeto real DESTE PC (existe de
+     verdade em `D:\Documentos\Ti\projetos\CLIENTS\renanMarchon`), e a guarda
+     tem que deixar passar, senão o painel para de achar o próprio roadmap
+     dela. Testar "isso é recusado" com um caminho que é local de verdade
+     aqui não prova nada — pula, mesmo padrão do Pierre e dos extratores. */
+  const { ehWindows } = await import('./src/platform.mjs')
+  if (ehWindows) {
+    console.log('  (pulado: neste PC, caminho C:\\… é local de verdade, não "de outra máquina")')
+  } else {
   const R = await import(`./src/roadmap.mjs?t=${Date.now()}`)
 
   assert.equal(R.deOutraPlataforma('D:\\Documentos\\Ti\\projetos\\CLIENTS\\renanMarchon'), true,
@@ -4495,6 +4517,7 @@ if (process.platform !== 'win32') {
   assert.ok(!achado || path.isAbsolute(achado),
     'o que a busca devolve tem que ser caminho absoluto, senão foi resolvido contra a pasta do painel')
   console.log('  ok   CC-305: pasta de outra máquina não herda o roadmap do painel')
+  }
 }
 
 /* ── CC-305, a mesma família no outro lado ───────────────────────────────────
