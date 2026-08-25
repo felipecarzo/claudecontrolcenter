@@ -72,6 +72,26 @@ compartilhado, ou ignore global. A lista do que entra (`node_modules/`, `venv/`,
 É irmã da frente "sincronizar as máquinas sem terminal": o que mora no
 repositório viaja, e ambiente de máquina não devia morar lá.
 
+**✅ Feito na VPS em 25/08, pela abordagem de ignore global** (a que ele aceitou
+no lugar do hook). O git já lê `~/.config/git/ignore` sozinho, sem config nem
+hook, e vale para TODOS os repositórios da máquina. Acrescentados ali:
+`node_modules/`, `venv/`, `.venv/`, `__pycache__/`, `*.pyc`, `.pytest_cache/`,
+`.mypy_cache/`, `.ruff_cache/`, `.cache/`, `.turbo/`, `.parcel-cache/`,
+`.DS_Store`, `Thumbs.db`, `desktop.ini`, `.env`, `.env.local`, `.env.*.local`.
+Provado: os de ambiente saem ignorados, e `.env.example`, código e README
+continuam entrando. Só afeta arquivo ainda NÃO rastreado.
+
+**Falta o mesmo no PC**, e é o passo dele: no Windows o arquivo é
+`%USERPROFILE%\.config\git\ignore` (ou apontar `git config --global
+core.excludesFile` para um caminho dele). O conteúdo é o mesmo desta VPS. Está
+na lista de pendências dele.
+
+⚠️ Escolha que sobra dele: ignore GLOBAL (feito) resolve por máquina e não viaja
+no git; um `.gitignore` por projeto viaja no commit mas precisa ser aplicado em
+cada um. Fizemos o global porque é o que tira a dor hoje sem tocar em 20
+projetos. Se ele quiser que a regra viaje junto do repositório, aí é o
+`.gitignore` por projeto, e continua aberto.
+
 ## ▶ Frente nova, aberta em 23/08: a trava contra "não vai quebrar nada" dito no escuro
 
 Exigência dele, depois que eu disse que renomear as pastas não quebrava nada e
