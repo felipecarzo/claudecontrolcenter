@@ -134,6 +134,28 @@ dois são de outra sessão agora. Escrever o script é meu; ligar exige combinar
 Decisão dele pendente: o quão agressiva é a trava (só me obrigar a responder
 direito, travar a ação até varrer, ou travar e ainda pedir o "pode" dele).
 
+## ▶ Conserto solto, 25/08: sessão de Remote Control sumia da Central
+
+Ele viu na tela: *"essa conversa, vps_cockpit-2 não tá aparecendo na central"*.
+
+Medido, não chutado: o cartão de VPS_cockpit contava 2 sessões, e havia 3. A que
+sumia era esta conversa, pilotada pelo celular. A lista de sessões da Central sai
+dos transcritos em `~/.claude/projects/`, e `cabecaDe` (em `src/sessoes.mjs`) lia
+só os primeiros 16 KB de cada um procurando o `cwd` — o campo que diz de qual
+projeto a sessão é. Em sessão de Remote Control o preâmbulo é grande e o primeiro
+`cwd` só aparece no byte ~20 KB. Sem `cwd`, a sessão era descartada inteira, sem
+erro nenhum: o cartão só contava a menos.
+
+Conserto: `cabecaDe` passou a ler em blocos e crescer até achar o `cwd`, com teto
+de 256 KB (o mesmo tamanho da cauda que a aba Tempo já lê). O começo do arquivo
+nunca muda e o resultado é cacheado, então ler mais custa uma vez só. Provado:
+esta sessão passou a aparecer, com a marca "remoto" certa, e VPS_cockpit foi de 2
+para 3. Rede de regressão nova em `test-sessoes.mjs`, com prova negativa
+(transcrito sem `cwd` continua descartado, não inventa projeto).
+
+É a mesma família de defeito já registrada duas vezes: leitura de janela fixa que
+funciona no caso comum e falha calada no caso grande.
+
 ## ▶ Frente nova, aberta em 23/08: o quadro Kanban de todas as tarefas
 
 Ideia dele, em 23/08: *"a gente consegue fazer um kanban geral de todas as

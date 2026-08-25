@@ -48,6 +48,7 @@ export const JANELA_MS = 24 * 60 * 60 * 1000
  *  (mesma lição do `transcript.mjs`, onde ler 25 MB a cada 2s travava tudo). */
 const CABECA_BYTES = 16 * 1024
 const cacheCabeca = new Map() // arquivo -> { cwd, criadoEm, remoto }
+const CABECA_MAX = 256 * 1024 // teto da busca pelo `cwd`, igual à cauda que a aba tempo lê
 
 /**
  * Lê o começo do transcrito atrás do `cwd`.
@@ -61,33 +62,44 @@ export function cabecaDe(arquivo) {
   const emCache = cacheCabeca.get(arquivo)
   if (emCache) return emCache
 
-  let texto = ''
-  try {
-    const fd = fs.openSync(arquivo, 'r')
-    try {
-      const buf = Buffer.alloc(CABECA_BYTES)
-      const lidos = fs.readSync(fd, buf, 0, CABECA_BYTES, 0)
-      texto = buf.subarray(0, lidos).toString('utf8')
-    } finally {
-      fs.closeSync(fd)
-    }
-  } catch {
-    return null
-  }
-
   let cwd = null
   let criadoEm = null
   let remoto = false
-  for (const linha of texto.split('\n')) {
-    if (!linha.trim()) continue
-    let o = null
-    try { o = JSON.parse(linha) } catch { continue } // última linha vem cortada
-    // `bridge-session` é o marcador de Remote Control: a sessão está sendo
-    // pilotada de fora (celular, claude.ai), não de um terminal desta máquina.
-    if (o.type === 'bridge-session') remoto = true
-    if (!cwd && typeof o.cwd === 'string' && o.cwd) cwd = o.cwd
-    if (!criadoEm && o.timestamp) criadoEm = Date.parse(o.timestamp) || null
-    if (cwd && criadoEm) break
+  let fd = null
+  try {
+    fd = fs.openSync(arquivo, 'r')
+    /* Lê em blocos e cresce até achar o `cwd`, não só os primeiros 16 KB.
+       Sessão pilotada pelo celular (Remote Control) tem preâmbulo grande, e o
+       primeiro `cwd` já apareceu no byte ~20 KB: com janela fixa de 16 KB a
+       sessão sumia da Central inteira. O começo do arquivo nunca muda, e o
+       resultado é cacheado, então ler mais custa uma vez só. O teto evita que
+       transcrito gigante sem `cwd` (não devia existir) leia sem fim. */
+    let pos = 0
+    let resto = ''
+    while (pos < CABECA_MAX) {
+      const buf = Buffer.alloc(CABECA_BYTES)
+      const lidos = fs.readSync(fd, buf, 0, CABECA_BYTES, pos)
+      if (lidos <= 0) break
+      pos += lidos
+      const linhas = (resto + buf.subarray(0, lidos).toString('utf8')).split('\n')
+      resto = linhas.pop() // a última pode vir cortada no meio; junta no próximo bloco
+      for (const linha of linhas) {
+        if (!linha.trim()) continue
+        let o = null
+        try { o = JSON.parse(linha) } catch { continue }
+        // `bridge-session` é o marcador de Remote Control: a sessão está sendo
+        // pilotada de fora (celular, claude.ai), não de um terminal desta máquina.
+        if (o.type === 'bridge-session') remoto = true
+        if (!cwd && typeof o.cwd === 'string' && o.cwd) cwd = o.cwd
+        if (!criadoEm && o.timestamp) criadoEm = Date.parse(o.timestamp) || null
+      }
+      if (cwd && criadoEm) break
+      if (lidos < CABECA_BYTES) break // chegou ao fim do arquivo
+    }
+  } catch {
+    return null
+  } finally {
+    if (fd !== null) { try { fs.closeSync(fd) } catch { /* já fechado */ } }
   }
 
   if (!cwd) return null
