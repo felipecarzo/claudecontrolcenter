@@ -166,6 +166,29 @@ dois são de outra sessão agora. Escrever o script é meu; ligar exige combinar
 Decisão dele pendente: o quão agressiva é a trava (só me obrigar a responder
 direito, travar a ação até varrer, ou travar e ainda pedir o "pode" dele).
 
+### CC-355 ✅ 25/08: as sessões do projeto viram uma linha cada na Central
+
+Ele, três vezes: *"eu quero ver as sessões separadas (…) senão eu só consigo usar
+o mesmo pra todas as sessões, eu quero usar diferente pra sessões diferentes da
+mesma sessão"*.
+
+Medido no painel vivo: dois controles remotos ativos no cockpit, `VPS_cockpit` e
+`VPS_cockpit-2` (a "-2" que ele via). O cartão da Central juntava os dois num
+grupo "Claude Code" só, com os botões chaveados pelo NOME do projeto, então
+"conectar celular" sempre pegava a primeira. O backend já agia por rótulo (as
+ações remotas recebem `VPS_cockpit-2` igual), só a tela colapsava.
+
+Conserto em `acoesDeSessao` (`ui_v2.html`): uma linha por rótulo ativo, cada uma
+com conectar/soltar/encerrar chaveados pelo próprio rótulo, mais um "abrir mais
+uma" do projeto. O filtro é o mesmo do `CC_SESSOES.quantas`, que já sabia não
+confundir `VPS_cockpit` com `VPS_cockpit--front`. Rede em `test-central-sessoes.mjs`
+(o headless não sustenta o stream da Central, então a prova visual é dele no
+telefone; o teste guarda a lógica e casa com o código do arquivo).
+
+Rota `front` tomada de fbabdeb0, parada há 96 min e com `ui_v2.html` limpo, com
+autorização dele na hora. O CC-343 dela (explicação do modo) segue pendente e
+intocado.
+
 ## ▶ Conserto solto, 25/08: sessão de Remote Control sumia da Central
 
 Ele viu na tela: *"essa conversa, vps_cockpit-2 não tá aparecendo na central"*.

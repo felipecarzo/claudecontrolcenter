@@ -1624,6 +1624,13 @@
       color:var(--text-dim);margin-bottom:6px;}
     .rc-botoes{display:flex;gap:6px;flex-wrap:wrap;}
     .rc-botoes .btn{flex:0 0 auto;padding:5px 10px;font-size:12px;}
+    /* Uma linha por sessão de controle remoto (VPS_cockpit, VPS_cockpit-2): o
+       nome da sessão em cima, os botões dela embaixo, para o celular poder
+       agir em CADA sessão e não só na primeira. */
+    .rc-sessao{margin-top:6px;padding-left:8px;border-left:2px solid var(--border);}
+    .rc-sessao:first-of-type{margin-top:2px;}
+    .rc-sessao-nome{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
     /* ===== CC-302: os campos da tela Remoto ===== */
     /* `auto-fit` com mínimo de 220px: a grade se ajusta sozinha e nunca reserva
        largura declarada, que é o que o gate exige e o que faz caber em 390px. */
@@ -7757,22 +7764,40 @@
     function acoesDeSessao(p) {
       const nome = p.projeto;
       const dir = p.raiz || p.dir || '';
-      const noAr = CC_SESSOES.has(nome);
       const leuConversas = Array.isArray(GATE.conversas);
       const nConversas = leuConversas
         ? GATE.conversas.filter((c) => mesmoProjeto(c, nome, dir)).length : 0;
       const grupo = (titulo, botoes) => (botoes
         ? '<div class="rc-grupo"><span class="rc-grupo-nome">' + esc(titulo) + '</span>'
           + '<div class="rc-botoes">' + botoes + '</div></div>' : '');
-      return '<div class="rc-grupos">'
-        + grupo('Claude Code', noAr
-          ? '<button type="button" class="btn btn-ghost compacto" data-remoto-conectar="' + esc(nome) + '">conectar celular</button>'
-            + '<button type="button" class="btn btn-ghost compacto" data-remoto-soltar="' + esc(nome) + '">soltar celular</button>'
-            + '<button type="button" class="btn btn-ghost compacto" data-remoto-mais="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '">mais uma</button>'
-            + '<button type="button" class="btn btn-ghost compacto" data-remoto-desligar="' + esc(nome) + '">encerrar</button>'
-          : '<button type="button" class="btn btn-outline compacto" data-remoto-ligar="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '">abrir sessão</button>'
+
+      /* CC-355: uma LINHA POR SESSÃO, não um controle só para o projeto inteiro.
+         O painel abre mais de uma sessão por projeto, com sufixo numerado
+         (`VPS_cockpit`, `VPS_cockpit-2`), e cada uma tem rótulo próprio no
+         backend. Antes o cartão passava só o nome do projeto, então "conectar
+         celular" sempre pegava a primeira: não dava para usar o celular numa
+         sessão diferente. Agora cada rótulo ativo ganha os próprios botões,
+         chaveados pelo rótulo, que é o que as ações remotas já aceitam. */
+      const ativos = DATA.remoto?.ativos || {};
+      const rotulos = Object.keys(ativos)
+        .filter((k) => k === nome || (k.startsWith(nome + '-') && /^-\d+$/.test(k.slice(nome.length))))
+        .sort();
+      const linhaSessao = (rot) => '<div class="rc-sessao"><span class="rc-sessao-nome">' + esc(rot) + '</span>'
+        + '<div class="rc-botoes">'
+        + '<button type="button" class="btn btn-ghost compacto" data-remoto-conectar="' + esc(rot) + '">conectar celular</button>'
+        + '<button type="button" class="btn btn-ghost compacto" data-remoto-soltar="' + esc(rot) + '">soltar celular</button>'
+        + '<button type="button" class="btn btn-ghost compacto" data-remoto-desligar="' + esc(rot) + '">encerrar</button>'
+        + '</div></div>';
+      const claudeCode = rotulos.length
+        ? '<div class="rc-grupo"><span class="rc-grupo-nome">Claude Code · ' + rotulos.length + ' sessõe' + (rotulos.length > 1 ? 's' : '') + '</span>'
+          + rotulos.map(linhaSessao).join('')
+          + '<div class="rc-botoes" style="margin-top:8px;"><button type="button" class="btn btn-outline compacto" data-remoto-mais="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '">abrir mais uma</button></div>'
+          + '</div>'
+        : grupo('Claude Code', '<button type="button" class="btn btn-outline compacto" data-remoto-ligar="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '">abrir sessão</button>'
             + ((DATA.remoto?.volta || {})[nome]
-              ? '<button type="button" class="btn btn-ghost compacto" data-remoto-reabrir="' + esc(nome) + '">retomar de onde parou</button>' : ''))
+              ? '<button type="button" class="btn btn-ghost compacto" data-remoto-reabrir="' + esc(nome) + '">retomar de onde parou</button>' : ''));
+      return '<div class="rc-grupos">'
+        + claudeCode
         + grupo('Coderoom', nConversas
           ? '<button type="button" class="btn btn-ghost compacto" data-coderoom-abrir="' + esc(nome) + '" data-coderoom-dir="' + esc(dir) + '">abrir' + (nConversas > 1 ? ' (' + nConversas + ')' : '') + '</button>'
             + '<button type="button" class="btn btn-ghost compacto" data-coderoom-nova="' + esc(nome) + '" data-coderoom-dir="' + esc(dir) + '">mais uma</button>'
