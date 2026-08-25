@@ -7347,6 +7347,87 @@
         + '</select>';
     };
 
+    /* CC-341, 25/08: o framework de projeto que está NA OUTRA MÁQUINA.
+     *
+     * Queixa dele, com o cockpit online aberto e o PC ligado do lado: *"o que
+     * eu quero é que na VPS ele reconheça o desktop conectado e funcione na
+     * VPS"*. Aqui havia só uma frase, "se configura na máquina onde ele está",
+     * que é verdadeira sobre a REDE (a VPS não alcança o PC atrás do roteador)
+     * e inútil como produto: o canal de recado existe desde 18/08 e já resolve
+     * o mesmo problema para abrir sessão.
+     *
+     * Como funciona: a escolha vira um recado guardado aqui, e o PC vem buscar
+     * no mesmo ciclo de 30s em que já empurra o pacote dele. **A tela DIZ essa
+     * espera** em vez de fingir que mudou na hora: aplicar calado faria o
+     * seletor voltar sozinho no tique seguinte, que é a tela mentindo duas
+     * vezes seguidas.
+     *
+     * O estado atual só aparece se a outra máquina souber reportar (CC-340).
+     * Máquina velha diz `null`, e isso vira um aviso do que fazer. Nunca um
+     * seletor mostrando "Desligado" por não saber, que é a mesma confusão entre
+     * "não sei" e "não tem" que o CC-340 acabou de tirar do pacote.
+     */
+    /* O que foi pedido e ainda não voltou aplicado.
+     *
+     * Sem isto o seletor volta ao valor antigo no tique seguinte, dois segundos
+     * depois do clique, porque o estado da outra máquina só muda quando ELA
+     * aplicar. A tela pareceria ter engolido o gesto. Some quando o estado
+     * reportado passa a bater, ou depois da validade do recado: recado que
+     * ninguém foi buscar (máquina desligada) não pode ficar prometendo para
+     * sempre que a mudança está a caminho. */
+    const CC_FW_PEDIDOS = new Map();
+    const VALIDADE_PEDIDO_MS = 10 * 60 * 1000;
+
+    const fwRemotoDe = (projeto, maquina) => {
+      const m = (DATA.maquinas || []).find((x) => !x.local && (x.nome === maquina || x.id === maquina));
+      if (!m || m.framework == null) return null;
+      return (m.framework || []).find((f) => f.projeto === projeto) || { projeto, existe: false, ligado: false };
+    };
+
+    const blocoFrameworkRemoto = (p) => {
+      const onde = p.maquinaDeFora;
+      if (!onde) return '<p class="cc-explica">este projeto está em outra máquina, e não dá para saber qual.</p>';
+      const fw = fwRemotoDe(p.projeto, onde);
+
+      if (!fw) {
+        return '<p class="cc-explica">' + esc(onde) + ' ainda não conta o estado do framework. '
+          + 'Atualize o cockpit lá (<code>git pull</code> e <code>cc daemon restart</code>) e isto vira controle.</p>';
+      }
+
+      const modos = catModos().filter((m) => m.id !== 'desligado');
+      const desligado = !fw.existe || !fw.ligado || fw.modo === 'desligado';
+      const agora = desligado ? 'desligado' : fw.modo;
+
+      /* O pedido pendente VENCE o estado reportado na hora de escolher o que
+         aparece selecionado, e some assim que a outra máquina confirma. */
+      const pedido = CC_FW_PEDIDOS.get(p.projeto);
+      if (pedido && (pedido.valor === agora || Date.now() - pedido.em > VALIDADE_PEDIDO_MS)) {
+        CC_FW_PEDIDOS.delete(p.projeto);
+      }
+      const pendente = CC_FW_PEDIDOS.get(p.projeto);
+      const escolhido = pendente ? pendente.valor : agora;
+
+      const opcao = (valor, titulo) => '<option value="' + esc(valor) + '"'
+        + (valor === escolhido ? ' selected' : '') + '>' + esc(titulo) + '</option>';
+
+      const rotulo = (id) => (modos.find((m) => m.id === id) || {}).titulo || id;
+
+      return '<div class="cc-linha-estado">'
+        + '<select class="styled-input cc-estado" data-fw-remoto="' + esc(p.projeto) + '"'
+        + ' data-fw-maquina="' + esc(onde) + '" title="muda o framework em ' + esc(onde) + '">'
+        + opcao('desligado', 'Desligado')
+        + (modos.length ? '<optgroup label="modo">'
+          + modos.map((m) => opcao(m.id, m.titulo)).join('')
+          + '</optgroup>' : '')
+        + '</select>'
+        + '</div>'
+        + (pendente
+          ? '<p class="cc-explica">pedido a ' + esc(onde) + ': '
+            + esc(pendente.valor === 'desligado' ? 'Desligado' : rotulo(pendente.valor))
+            + '. Esperando ela aplicar, até 30 segundos.</p>'
+          : '<p class="cc-explica">vale em ' + esc(onde) + '. A mudança chega lá em até 30 segundos.</p>');
+    };
+
     /* Os selos vinham só no bloco de baixo, e são metade do motivo de ele
        preferir aquele: dizem o que está fora de dia sem ele abrir nada. */
     const selosFw = (p) => {
@@ -7538,7 +7619,7 @@
            daqui, e o cartão DIZ isso em vez de mostrar controle morto. */
         + (p.daqui
           ? blocoFramework(fwDe(p.projeto), { colapsado: !CC_SESSOES.has(p.projeto) })
-          : '<p class="cc-explica">o framework deste projeto se configura na máquina onde ele está.</p>')
+          : blocoFrameworkRemoto(p))
         + '<div class="pj-acoes">'
         + '<button class="btn btn-ghost" data-pj-abrir="' + esc(p.projeto) + '">'
         + (aberto ? 'fechar' : 'ver tudo') + '</button>'
@@ -10136,6 +10217,42 @@
        * de modo aplica direto, como o bloco de baixo sempre fez e é a versão
        * que ele disse preferir. Cancelar o desligar repinta, senão a lista
        * ficaria mostrando um estado que não foi gravado. */
+      /* CC-341: o mesmo gesto, para projeto que está na OUTRA máquina.
+       *
+       * Vem antes do controle local de propósito: os dois são `<select>` com a
+       * classe `cc-estado`, e o de baixo cairia no caminho que escreve em disco
+       * DAQUI. Escrever o framework de um projeto do PC dentro da VPS criaria
+       * uma pasta `.framework` numa raiz que não existe, calado.
+       *
+       * Não pergunta nada ao desligar, e a diferença com o controle local é
+       * deliberada: ali o desligar tira as regras de valer AGORA, com sessão no
+       * ar do lado. Aqui é um recado que leva até 30 segundos, e a tela avisa
+       * isso na hora, então o passo a mais só atrapalharia. */
+      const selRemoto = tr.closest?.('[data-fw-remoto]');
+      if (selRemoto) {
+        const projeto = selRemoto.dataset.fwRemoto;
+        const maquina = selRemoto.dataset.fwMaquina;
+        const valor = selRemoto.value;
+        const corpo = valor === 'desligado'
+          ? { maquina, projeto, acao: 'framework-desligar' }
+          : { maquina, projeto, acao: 'framework-modo', modo: valor };
+        selRemoto.disabled = true;
+        return post('/api/federacao/pedir', corpo)
+          .then((d) => {
+            /* O recado pode ser RECUSADO do lado de cá (ação ou modo que não
+               existe). Dizer "pedido" sem olhar a resposta seria a tela
+               afirmando o que não sabe, no mesmo lugar em que este recurso
+               nasceu justamente para acabar com isso. */
+            if (d?.ok === false) {
+              avisarFalha('/api/federacao/pedir', d.erro || 'pedido recusado');
+              return renderCentral();
+            }
+            CC_FW_PEDIDOS.set(projeto, { valor, maquina, em: Date.now() });
+            renderCentral();
+          })
+          .finally(() => { selRemoto.disabled = false; });
+      }
+
       const selEstado = tr.closest?.('[data-cc-estado]');
       if (selEstado) {
         const projeto = selEstado.dataset.ccEstado;

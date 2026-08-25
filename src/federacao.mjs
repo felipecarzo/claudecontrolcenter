@@ -296,21 +296,54 @@ export const VALIDADE_PEDIDO_MS = 10 * 60 * 1000
  * conferir se conhece esse projeto, mas nada que pareça caminho pode sequer
  * ser gravado aqui.
  */
-export function pedirSessao({ paraMaquina, projeto, de = null, now = Date.now() }) {
+/**
+ * CC-341: o recado passa a ter TIPO, e o segundo tipo é o framework.
+ *
+ * Queixa dele em 25/08, olhando o cockpit online com o PC ligado ao lado:
+ * *"o que eu quero é que na VPS ele reconheça o desktop conectado e funcione na
+ * VPS"*. Até aqui a resposta vinha sendo "não dá, a VPS não alcança o PC" — e
+ * isso é verdade sobre a REDE e falso sobre o produto: o canal de recado existe
+ * desde 18/08 e já resolve o mesmo problema para abrir sessão. Faltava ligar o
+ * fio, não inventar topologia.
+ *
+ * A trava que ele escolheu continua inteira, e é o que separa isto de execução
+ * remota: **o recado carrega um NOME de projeto e uma AÇÃO de lista fechada,
+ * nunca um comando e nunca um caminho**. Quem executa resolve o nome contra a
+ * própria lista de projetos, e a ação contra este mesmo conjunto. O pior caso
+ * segue sendo mexer no framework de uma pasta que já era dele.
+ *
+ * `modo` viaja como texto e **não é validado aqui de propósito**: quem sabe
+ * dizer se um modo existe é o motor do framework, do lado que executa. Validar
+ * pela metade nos dois lugares é como um apelido de modo passou a desligar as
+ * travas em silêncio, em 18/08.
+ */
+export const ACOES_DE_PEDIDO = ['sessao', 'framework-ligar', 'framework-desligar', 'framework-modo']
+
+export function pedirSessao({ paraMaquina, projeto, de = null, acao = 'sessao', modo = null, now = Date.now() }) {
   const alvo = seguro(paraMaquina)
   const nome = String(projeto || '').trim()
   if (!alvo) return { ok: false, erro: 'sem máquina de destino' }
   if (!nome || /[\\/:]|\.\./.test(nome)) return { ok: false, erro: 'nome de projeto inválido' }
+  if (!ACOES_DE_PEDIDO.includes(acao)) return { ok: false, erro: `ação desconhecida: ${acao}` }
+  const modoLimpo = modo ? String(modo).trim().slice(0, 40) : null
+  if (modoLimpo && !/^[a-zà-ú-]+$/i.test(modoLimpo)) return { ok: false, erro: 'modo inválido' }
+  if (acao === 'framework-modo' && !modoLimpo) return { ok: false, erro: 'trocar de modo exige dizer qual' }
 
   const lista = lerPedidosBrutos().filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
   /* Mesmo projeto pedido duas vezes seguidas é dedo duplo no botão, não duas
-     sessões. Abrir duas sem querer é o desperdício que a própria tela avisa. */
-  if (lista.some((p) => p.paraMaquina === alvo && p.projeto === nome)) {
+     sessões. Abrir duas sem querer é o desperdício que a própria tela avisa.
+     A AÇÃO entra na comparação: querer abrir sessão e mexer no framework do
+     mesmo projeto no mesmo minuto é pedido legítimo, e sem isto o segundo seria
+     engolido como se fosse dedo duplo. */
+  if (lista.some((p) => p.paraMaquina === alvo && p.projeto === nome && (p.acao || 'sessao') === acao)) {
     return { ok: true, jaPedido: true }
   }
-  lista.push({ id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`, paraMaquina: alvo, projeto: nome, de, em: now })
+  lista.push({
+    id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    paraMaquina: alvo, projeto: nome, de, acao, modo: modoLimpo, em: now,
+  })
   gravarPedidos(lista)
-  return { ok: true, projeto: nome, paraMaquina: alvo }
+  return { ok: true, projeto: nome, paraMaquina: alvo, acao, modo: modoLimpo }
 }
 
 /**

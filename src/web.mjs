@@ -100,7 +100,8 @@ import {
   ligar as ligarFramework, situacao as situacaoFramework,
 } from './frameworkDisco.mjs'
 import {
-  MODOS, PERFIS, autorizar as autorizarFramework, avaliar as avaliarFramework,
+  MODOS, PERFIS, acharModo as acharModoFramework,
+  autorizar as autorizarFramework, avaliar as avaliarFramework,
   faltaNoPerfil, modoDe as modoDeFramework, perfilResolvido, perfisEmArvore,
   resumo as resumoFramework, trocarModo as trocarModoFramework,
 } from './framework.mjs'
@@ -528,8 +529,55 @@ async function atenderPedidos(pedidos) {
         console.error(`[federação] pedido recusado, projeto desconhecido: ${p.projeto}`)
         continue
       }
-      await ligarRemoto(p.projeto, dir, { mais: false })
-      console.error(`[federação] sessão aberta a pedido de ${p.de || 'outra máquina'}: ${p.projeto}`)
+
+      /* CC-341: o recado agora tem tipo. Pedido antigo não tem o campo, e conta
+         como sessão: pacote em trânsito na hora da atualização não pode virar
+         ação nenhuma por engano. */
+      const acao = p.acao || 'sessao'
+      if (acao === 'sessao') {
+        await ligarRemoto(p.projeto, dir, { mais: false })
+        console.error(`[federação] sessão aberta a pedido de ${p.de || 'outra máquina'}: ${p.projeto}`)
+        continue
+      }
+
+      if (acao === 'framework-ligar' || acao === 'framework-desligar') {
+        const r = acao === 'framework-ligar' ? ligarFramework(dir) : desligarFramework(dir)
+        console.error(`[federação] framework ${acao === 'framework-ligar' ? 'ligado' : 'desligado'} `
+          + `a pedido de ${p.de || 'outra máquina'}: ${p.projeto}${r?.ok ? '' : ` (recusado: ${r?.erro})`}`)
+        continue
+      }
+
+      if (acao === 'framework-modo') {
+        /* O modo é resolvido AQUI, pelo motor, e não na ponta que pediu.
+           `acharModo` aceita apelido e título ("continuativo", "autônomo") e
+           devolve nulo para o que não existe. Gravar o texto cru foi o que já
+           DESLIGOU as travas em silêncio uma vez, com o quadro anunciando um
+           modo que não estava valendo. */
+        const achado = acharModoFramework(p.modo)
+        if (!achado) {
+          console.error(`[federação] modo desconhecido, pedido recusado: ${p.modo} (${p.projeto})`)
+          continue
+        }
+        const estado = lerFramework(dir)
+        if (!estado) {
+          console.error(`[federação] ${p.projeto} não tem framework para trocar de modo`)
+          continue
+        }
+        /* `trocarModo` e não gravação direta: ele limpa as autorizações da fase
+           e escreve a linha no histórico. Trocar o campo na mão deixaria
+           autorização dada num modo valendo dentro de outro. */
+        const troca = trocarModoFramework(estado, achado.id, { quando: new Date().toISOString() })
+        if (!troca.ok) {
+          console.error(`[federação] troca recusada (${p.projeto}): ${troca.erro}`)
+          continue
+        }
+        gravarFramework(dir, troca.estado)
+        console.error(`[federação] framework de ${p.projeto} passou para ${achado.id}, `
+          + `a pedido de ${p.de || 'outra máquina'}`)
+        continue
+      }
+
+      console.error(`[federação] ação desconhecida, pedido ignorado: ${acao} (${p.projeto})`)
     } catch (e) {
       console.error(`[federação] pedido falhou (${p.projeto}): ${e?.message || e}`)
     }
@@ -863,9 +911,11 @@ function handler(req, res) {
   /* CC-166: enfileira "abra uma sessão no projeto X" para outra máquina.
      Só o NOME do projeto viaja: quem executa confere contra a própria lista e
      recusa o que não conhecer. Ver `pedirSessao` para o porquê. */
+  /* CC-341: a mesma rota carrega a AÇÃO. Sem `acao` continua sendo "abra uma
+     sessão", que é o que a tela já manda hoje. */
   if (url.pathname === '/api/federacao/pedir' && req.method === 'POST') {
-    return comCorpo(req, res, 2e3, ({ maquina, projeto }) =>
-      pedirSessao({ paraMaquina: maquina, projeto, de: origemLocal().nome }))
+    return comCorpo(req, res, 2e3, ({ maquina, projeto, acao, modo }) =>
+      pedirSessao({ paraMaquina: maquina, projeto, acao: acao || 'sessao', modo: modo || null, de: origemLocal().nome }))
   }
 
   // O que chegou de fora, mais a identidade desta máquina. Serve à tela (o

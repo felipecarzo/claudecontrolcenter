@@ -17,8 +17,8 @@
    "profundo": 28
   },
   "acao": {
-   "total": 109,
-   "existe": 109,
+   "total": 111,
+   "existe": 111,
    "funciona": 23,
    "explica": 0,
    "estreito": 0,
@@ -3838,6 +3838,70 @@
    "id": "acao:cc-dir",
    "tipo": "acao",
    "rotulo": "data-cc-dir",
+   "onde": "src/ui_v2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_v2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:fw-remoto",
+   "tipo": "acao",
+   "rotulo": "data-fw-remoto",
+   "onde": "src/ui_v2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_v2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:fw-maquina",
+   "tipo": "acao",
+   "rotulo": "data-fw-maquina",
    "onde": "src/ui_v2.html",
    "camada": "estatica",
    "dimensoes": {

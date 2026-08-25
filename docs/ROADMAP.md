@@ -1223,6 +1223,41 @@ bloco na frente.
 
 ## ▶ Frente nova, aberta em 22/08: o cockpit vira aplicativo de verdade
 
+### CC-341, 25/08: o framework de projeto do PC, controlado pelo cockpit online
+
+Queixa dele, com o cockpit online aberto e o PC ligado do lado: *"o que eu quero
+é que na VPS ele reconheça o desktop conectado e funcione na VPS"*.
+
+**O que eu vinha respondendo estava certo sobre a rede e errado sobre o
+produto.** "A VPS não alcança o PC atrás do roteador" é verdade e é irrelevante:
+o canal de recado (CC-166) existe desde 18/08, é o PC que pergunta, e ele já
+resolvia exatamente isso para abrir sessão. Faltava ligar o fio. Três respostas
+minhas de "não dá por desenho" custaram a manhã dele, e a lição é a de sempre:
+**quando a resposta for "não dá", conferir se o mecanismo já existe para o
+vizinho.**
+
+O recado ganhou TIPO. A trava que ele escolheu em 18/08 continua inteira, e é o
+que separa isto de execução remota: **nome de projeto e ação de lista fechada,
+nunca comando e nunca caminho.** `modo` viaja como texto e é resolvido do lado
+que executa, porque quem sabe se um modo existe é o motor do framework;
+validar pela metade nos dois lugares foi como um apelido de modo desligou as
+travas em silêncio, em 18/08.
+
+Na tela, a frase morta "o framework deste projeto se configura na máquina onde
+ele está" virou o seletor de verdade. Dois cuidados que não são enfeite:
+
+- **O pedido pendente fica visível.** Sem isso o seletor voltava ao valor antigo
+  dois segundos depois do clique, porque o estado da outra máquina só muda
+  quando ela aplicar, e a tela pareceria ter engolido o gesto.
+- **Máquina que ainda não reporta não vira seletor**, vira a instrução do que
+  fazer. Mostrar "Desligado" por não saber seria repetir a confusão entre "não
+  sei" e "não tem" que o CC-340 acabou de tirar do pacote.
+
+Provado em navegador de verdade, sem exceção nenhuma: hoje a Central mostra o
+aviso de atualizar nos três projetos do PC, e simulando a máquina reportando
+aparecem os três seletores com o modo certo já selecionado. Falta o PC puxar o
+código para o caminho fechar de ponta a ponta.
+
 ### CC-340, aberto em 25/08: o sync do PC vira software instalável, com ícone na barra
 
 Palavras dele, em 25/08: *"poderiamos criar um setup que instale um programinha

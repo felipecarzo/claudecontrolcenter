@@ -4694,3 +4694,67 @@ if (process.platform !== 'win32') {
     'sem retrato passado, a local diz null em vez de inventar')
   console.log('  ok   CC-340: o campo atravessa validação, pacote e retrato sem "não sei" virar "não tem"')
 }
+
+/* ── CC-341: o recado entre máquinas passa a ter tipo ────────────────────────
+   Queixa dele em 25/08, com o cockpit online aberto e o PC ligado do lado:
+   *"o que eu quero é que na VPS ele reconheça o desktop conectado e funcione na
+   VPS"*. A resposta que eu vinha dando ("não dá, a VPS não alcança o PC") é
+   verdade sobre a REDE e falso sobre o produto: o canal existe desde 18/08 e já
+   resolvia isso para abrir sessão.
+
+   A trava que ele escolheu entre três desenhos continua sendo o contrato, e é o
+   que separa isto de execução remota: **nome de projeto e ação de lista
+   fechada, nunca comando e nunca caminho**. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc341-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+
+    const t0 = 1_000_000
+    assert.equal(F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', now: t0 }).acao, 'sessao',
+      'sem dizer a ação, continua sendo abrir sessão: é o que a tela já manda hoje')
+
+    const lig = F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-ligar', now: t0 })
+    assert.equal(lig.ok, true, 'ligar o framework é pedido legítimo')
+
+    /* Abrir sessão e mexer no framework do mesmo projeto no mesmo minuto são
+       dois pedidos, não dedo duplo. Sem a ação na comparação o segundo seria
+       engolido em silêncio, que é o pior jeito de recusar. */
+    assert.equal(F.pegarPedidos('PC', t0).length, 2,
+      'dois pedidos de ações diferentes no mesmo projeto convivem')
+
+    F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-ligar', now: t0 })
+    const dup = F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-ligar', now: t0 })
+    assert.equal(dup.jaPedido, true, 'a MESMA ação repetida continua sendo dedo duplo')
+    F.pegarPedidos('PC', t0)
+
+    /* Lista fechada. É isto que impede a fila de virar execução remota: texto
+       que não está no conjunto não vira pedido nenhum. */
+    assert.equal(F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'rodar-qualquer-coisa', now: t0 }).ok, false,
+      'ação fora da lista é recusada, não gravada')
+    assert.equal(F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-modo', now: t0 }).ok, false,
+      'trocar de modo sem dizer qual é pedido incompleto')
+    assert.equal(F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-modo', modo: 'x; rm -rf /', now: t0 }).ok, false,
+      'modo com pontuação não é modo, é tentativa')
+    assert.equal(F.pegarPedidos('PC', t0).length, 0, 'nenhum dos recusados chegou a ser gravado')
+
+    /* O caminho continua barrado no nome do projeto, como antes. */
+    for (const ruim of ['../outro', 'C:\\Windows', 'a/b']) {
+      assert.equal(F.pedirSessao({ paraMaquina: 'PC', projeto: ruim, acao: 'framework-ligar', now: t0 }).ok, false,
+        `nome que parece caminho continua recusado: ${ruim}`)
+    }
+
+    const bom = F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-modo', modo: 'continuativo', now: t0 })
+    assert.equal(bom.ok, true, 'apelido de modo viaja como texto; quem resolve é o motor do outro lado')
+    const [pego] = F.pegarPedidos('PC', t0)
+    assert.equal(pego.acao, 'framework-modo')
+    assert.equal(pego.modo, 'continuativo')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+  console.log('  ok   CC-341: o recado carrega ação de lista fechada, e nunca comando nem caminho')
+}
