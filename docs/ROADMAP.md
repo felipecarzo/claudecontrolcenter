@@ -43,10 +43,28 @@ O desenho que ele propõe, em três batidas:
    ficou e dá o push. "Último a sair" é o que o quadro de presença já sabe
    dizer.
 
-Decisões que faltam antes de construir: o commit interno é automático ou pede
-aval? O que fazer com arquivo que duas sessões tocaram (o cenário que o Método
-Routia existe para evitar, mas que a `docs/ROTAS-ATIVAS.md` compartilhada sofre
-toda hora)? E onde isso mora: hook de encerramento, ou serviço do painel?
+✅ **Decidido por ele em 25/08: commit ao sair é sozinho, local, e SEM push.** A
+regra de nunca commitar sem pedir vale para o push, que é o que sai da máquina. O
+push fica só com a última a sair, e só com o teste verde.
+
+**✅ Motor feito e provado em 25/08** (`src/caixaGit.mjs`): quem está de ponto
+batido no repositório (sessão viva e não ociosa), se sou a última a sair,
+`commitAoSair` (local, sem push, marca a sessão na mensagem), e `apagarLuz` (roda
+o teste e empurra, só a última). Provado em `test-caixa.mjs` com repositório e
+remoto de mentira no disco: o commit ao sair NÃO chega no remoto, e só o push da
+última chega. Por que commita tudo e não "só os meus arquivos": a árvore é uma
+só e o git não sabe de quem é cada arquivo; separar dependeria do histórico
+interno do Claude Code (nome é hash, não documentado) ou das marcas de rota, e as
+duas quebram calado. Local, commitar tudo é seguro; o único risco é o push, e ele
+tem a trava do teste.
+
+**Falta o gatilho: nada CHAMA isso ainda.** O motor existe, mas quem deveria
+dispará-lo no fim de uma sessão é um gancho de encerramento, que mora no
+`settings.json` (config de máquina, não versionada) e encosta na rota de sistema.
+É o próximo passo, e é dele a decisão de ligar. Duas perguntas que sobram: o que
+fazer com arquivo que duas sessões tocaram (o cenário que o Routia evita, mas que
+a `docs/ROTAS-ATIVAS.md` compartilhada sofre toda hora), e se o disparo é por
+gancho de sessão ou por o serviço do painel notar a sessão morrer.
 
 ### Ignorar sozinho os arquivos de ambiente Linux (25/08)
 
