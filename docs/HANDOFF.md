@@ -1,10 +1,10 @@
 # HANDOFF
 
-**Sessão:** 2026-08-21 · Claude (Opus 5, `c4e8a125`) · **VPS**, rota `front`
-**Último commit:** `00b2a89` · **o trabalho desta sessão ainda NÃO está commitado**
+**Sessão:** 2026-08-25 · Claude (Opus 5, `21e88ed9`) · **VPS**, rota `remote-control`
+**Último commit:** `7334998` · **tudo commitado e empurrado**
 **Branch:** `backlog/cc-46-48-49-52-53-56-65`
 
-O que aconteceu: [diario/2026-08-21.md](diario/2026-08-21.md). Ponteiro, não
+O que aconteceu: [diario/2026-08-25.md](diario/2026-08-25.md). Ponteiro, não
 relatório.
 
 ## 📮 Recado de fora: a aba Servidores não vê nenhum Next.js (25/08, sessão do VPS_fibraessencia)
@@ -61,40 +61,25 @@ de todo dia é trabalho jogado fora.
 **2. [guias/PC-E-VPS.md](guias/PC-E-VPS.md) continua valendo.** Cinco consertos
 que só fazem sentido na VPS, e desfazer volta o defeito sem erro na tela.
 
-## Estado: 14 itens fechados hoje, todos vindos de apontamento dele
+## Estado: quatro itens fechados, dois abertos, e um deles é meu erro pendente
 
-CC-218 a CC-231, cada um com a prova no [ROADMAP.md](ROADMAP.md). **Nada
-executável em aberto.**
+Fechados hoje: **CC-334** (o framework tinha dois interruptores), **CC-336** (o
+cartão desentortou e o criar projeto subiu para a barra), **CC-337** (sessão
+ociosa posava de trabalhando), mais **as quatro ações do controle remoto** com
+caminho de volta ao encerrar.
 
-**A lição que atravessa o dia inteiro:** o painel novo herdou o código do antigo
-e **não herdou as redes**. Isso apareceu quatro vezes, e as quatro viraram
-verificação:
-
-| o gate media | não media | virou |
-|---|---|---|
-| largura no `ui.html` | grade inline no `ui_v2.html` | CC-222 |
-| — | classes do motor de gráficos | CC-224 |
-| sintaxe do `ui.html` | sintaxe do `ui_v2.html` | CC-227 |
-| — | erro de EXECUÇÃO | CC-231, em `npm run test:endereco` |
-
-**Ao mexer no painel novo, pergunte primeiro o que o gate ainda mede só no
-antigo.**
+Abertos: **CC-335**, a fusão de Central e Projetos, registrada por escolha dele e
+com a primeira fatia já no ar; e **CC-338**, a rolagem que ele diz travar no
+aplicativo do PC e que **eu não consegui reproduzir em oito cenários**.
 
 ## Pendências de commit
 
-**Todo o trabalho desta sessão está sem commit**, 19 arquivos. Ele não pediu
-commit, e a regra é não commitar sem pedido explícito.
+Nenhuma. A árvore está limpa e o remoto está em `7334998`.
 
-| grupo | arquivos |
-|---|---|
-| tela | `src/ui_v2.html` |
-| servidor | `src/web.mjs`, `src/jobs.mjs`, `src/meu.mjs`, `src/glossario.mjs`, `src/metaSessao.mjs`, `src/platform.mjs` |
-| hooks | `reporte-guard.mjs`, `fila-guard.mjs`, `tarefa-vaga-guard.mjs`, `testar-reporte-guard.sh` |
-| gate | `test.mjs`, `test-endereco.mjs` (novo), `package.json` |
-| docs | `ROADMAP.md`, `diario/2026-08-21.md`, `HANDOFF.md`, `ROTAS-ATIVAS.md`, `CLAUDE.md`, `produto/PALAVRAS-DA-TELA.md` (novo), `guias/PC-E-VPS.md` |
-
-Nada aqui é de outra sessão: a rota `front` foi marcada no início e liberada no
-fim.
+O sétimo commit levou o trabalho não commitado das OUTRAS sessões (escritório,
+vazamento de memória, as duas travas de 23/08, dois testes), a pedido explícito
+dele para poder baixar no PC. Antes disso, os seis commits meus foram separados
+bloco a bloco para não enterrar o trabalho delas.
 
 ## O que só ele resolve
 
@@ -112,66 +97,49 @@ fim.
 
 ## O que aprendi hoje e não pode se perder
 
-**Ele encontra o que o gate não encontra, e o padrão é sempre o mesmo:** a tela
-afirmando com confiança algo que não sabe. PC desligado como "trabalhando",
-bloco vazio embaixo de cabeçalho prometendo conteúdo, `?` que some sem avisar.
-**Nenhum desses quebra nada; todos mentem.**
-
-**Erro de execução não é erro de sintaxe.** Removi uma variável e deixei o uso
-dela: `renderViewAgora` lançava no meio, a tela Agora ficava com bloco de 12
-pixels, e a página carregava, navegava e não acusava nada. Foi ele quem achou.
-Hoje `npm run test:endereco` abre as 24 telas e ouve os erros do Chrome.
-
-**A instrução escrita não segura, e agora tem número.** Dos 16 agentes no
-painel, **2** escreviam o próprio assunto. A regra existia desde 16/08. O que
-mudou o comportamento foi a cobrança automática, não o texto.
-
-**Medir antes de inverter salvou dois consertos errados hoje:** a captura de
-página inteira desenha caixa deslizante fora do lugar (a tela parecia abrir na
-terceira coluna com a rolagem em zero), e o arquivo do motor de gráficos parece
-binário por causa de bytes nulos que são separador de chave, de propósito.
+1. **`.catch` engole erro de execução do `.then`.** A carga do framework marcava
+   a lista como "erro" e a tela dizia "não consegui ler os projetos" com o
+   servidor respondendo 200. A causa real era um nome trocado numa função que eu
+   tinha acabado de mover. Ao ver "erro" numa carga, desconfie do render antes da
+   rede.
+2. **Arrastar com o botão do mouse não rola container.** Testar toque assim dá
+   falso negativo, e quase virou conserto de defeito inexistente. Toque de
+   verdade se simula por `Input.dispatchTouchEvent`, no protocolo do Chrome.
+3. **Inércia de rolagem falsifica medição.** Medir logo após um gesto mistura o
+   fling com o que se quer medir. Posicione sem gesto (`scrollTop = N`) e espere.
+4. **Hora de criação não é hora de atividade.** Custou o trabalho dele. O tmux
+   informa `session_created`; a última fala sai do arquivo da conversa.
 
 ## Onde as decisões novas moram
 
-- `seloDe(nome)` e `selo(job)` em `ui_v2.html`: a etiqueta de máquina, **sem
-  exceção**. As duas economias que eu tinha inventado foram removidas por
-  pedido dele, e o gate guarda isso.
-- `lerPalavrasDaTela()` em `src/glossario.mjs`: cada `##` de
-  `docs/produto/PALAVRAS-DA-TELA.md` é uma explicação clicável. Escrever a
-  seção é o que faz o "?" nascer.
-- `termoDaTela(id)` em `ui_v2.html`: `view-agentes` procura `tela: agentes`. Por
-  isso as seções de tela usam o id **sem acento**.
-- `data-explica="termo"` num rótulo: `espalharAjudas()` insere o "?" em todos.
-  Rótulo desenhado por JavaScript usa `ajuda('termo')` na hora.
-- `subjectEm` em `src/jobs.mjs`: quando o assunto foi escrito. Fica fora do que
-  o agente manda, senão a anotação seguinte apagaria.
-- `mdCurto()` em `ui_v2.html`: markdown mínimo. Parágrafo só termina em linha
-  vazia, lista ou citação, senão as frases aparecem partidas ao meio.
-- `lerMetaSessao(id)`: a ÚNICA leitura correta do reporte de sessão, porque ele
-  mora em dois lugares. Dois hooks liam só a casa e cobravam lista congelada.
+- [produto/CENTRAL-E-PROJETOS.md](produto/CENTRAL-E-PROJETOS.md) — a fusão das
+  duas telas, com as palavras dele, o custo medido das leituras (0,6s somadas) e
+  as decisões que faltam. **"Ligado" já foi decidido por ele: ter sessão de
+  agente no ar**, não conversa aberta
+- [produto/PALAVRAS-DA-TELA.md](produto/PALAVRAS-DA-TELA.md) — verbetes novos:
+  framework, modo do framework (os onze), papel (os sete), entrevista, módulos do
+  framework e um por módulo
 
 ## Próximo passo exato
 
-1. `git pull` e conferir que a VPS e o PC estão no mesmo commit.
-2. `npm test`. Passa nos dois sistemas.
-3. `npm run test:endereco` com o painel no ar. Precisa de Chrome; na VPS ele sai
-   do cache do Playwright, achado por `chromePath()`.
-4. **Decidir com ele o que fazer com os 19 arquivos sem commit.**
+**1. O CC-338, e só ele destrava o resto.** Falta o print da tela travada, com
+"todos os projetos" no filtro, tirado no aplicativo do PC. Duas coisas nele
+decidem o caminho: se aparece barra de rolagem à direita, e qual é o último
+projeto visível. Último sempre igual quer dizer corte de conteúdo; último
+variando quer dizer gesto interrompido. **Não repita o que já foi descartado**,
+está listado no item do ROADMAP.
 
-**Se for mexer em tela**, entre no perfil Designer (`cc framework perfil
-designer`): ele exige print nas duas larguras e cobra a forma que ele nomeou.
+**2. Se ele trouxer o print, comece por reproduzir na largura exata dele.** As
+oito larguras que testei estão no item; nenhuma falhou.
 
-**Se for medir tela estreita**, use `tools/capturar-tela.mjs` — lembrando que a
-pasta está somente leitura nesta VPS. Captura feita à mão mente por 28% no PC.
-
-**Se for espalhar mais "?"**, são 50 explicações prontas e 12 pontos usados. Um
-rótulo novo custa `data-explica="termo"`, e o gate recusa termo sem explicação.
+**3. O CC-335 continua aberto para as duas decisões que faltam:** o que o cartão
+mostra num projeto de outra máquina, e o que aparece dobrado nos ligados.
 
 ## Arquivos a ler
 
-- [diario/2026-08-21.md](diario/2026-08-21.md), o dia inteiro
-- [ROADMAP.md](ROADMAP.md), CC-218 a CC-231 com a prova de cada um
-- [produto/PALAVRAS-DA-TELA.md](produto/PALAVRAS-DA-TELA.md), as 50 explicações
-  e como escrever mais
-- [guias/PC-E-VPS.md](guias/PC-E-VPS.md), o que não desfazer
-- `CLAUDE.md`, as armadilhas que custaram tempo (três novas hoje)
+- `src/ui_v2.html` — `pjCard`, `blocoFramework`, `acoesDeSessao`, `renderProjetos`
+  e `seletorEstado`. É onde a tela única vive
+- `src/remotecontrol.mjs` — as quatro ações e o caminho de volta
+- `src/projetos.mjs` — `vivos` contra `ociosos`, o conserto do CC-337
+- `test-remoto.mjs` e `test-framework-unico.mjs` — as duas provas novas, ambas
+  fora do gate diário
