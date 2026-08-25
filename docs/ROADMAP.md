@@ -166,6 +166,26 @@ dois são de outra sessão agora. Escrever o script é meu; ligar exige combinar
 Decisão dele pendente: o quão agressiva é a trava (só me obrigar a responder
 direito, travar a ação até varrer, ou travar e ainda pedir o "pode" dele).
 
+### CC-357 ✅ 26/08: cada sessão do controle remoto aponta para a SUA conversa
+
+Pré-requisito do modo por sessão, que ele pediu. Ao ir construir o modo por
+sessão, medi no painel vivo que os dois rótulos (`VPS_cockpit`, `VPS_cockpit-2`)
+apontavam para a MESMA conversa (a mais nova). Um seletor de modo por linha
+mexeria todos na mesma conversa. Foi ele quem antecipou a consequência quando
+perguntei.
+
+A causa: `estado()` usava `conversaDe(cwd)`, que devolve a conversa mais nova da
+pasta, igual para todos os rótulos. O vínculo confiável é o tempo de criação:
+`claude --remote-control` sobe o tmux e, segundos depois, nasce a conversa dele.
+Medido: rótulo às …058 → conversa às …062; rótulo às …432 → conversa às …435.
+`casarConversas` faz o casamento guloso, do rótulo mais antigo ao mais novo,
+cada um com a primeira conversa livre nascida a partir do instante dele.
+Conversa retomada (nascida antes do rótulo) cai no reserva, sem travar.
+
+Provado ao vivo: `VPS_cockpit` → `fbabdeb0`, `VPS_cockpit-2` → `d4b47d4e`, cada um
+o seu. Rede em `test-remoto-conversa.mjs` com os números reais. **Agora dá para
+pendurar o modo por sessão em cima do rótulo certo** (próximo passo).
+
 ### CC-356 ✅ 25/08: as sessões do projeto viram uma linha cada na Central
 
 Ele, três vezes: *"eu quero ver as sessões separadas (…) senão eu só consigo usar

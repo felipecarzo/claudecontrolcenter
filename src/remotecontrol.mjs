@@ -32,6 +32,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { ehWindows, casaClaude } from './platform.mjs'
 import { PROJETOS_DIR, DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
+import { cabecaDe } from './sessoes.mjs'
 
 const PREFIXO_SESSAO = 'cc-remote-'
 
@@ -198,6 +199,70 @@ function anotarVinculo(projeto, dados) {
 }
 
 /** O que está ligado agora. */
+/** As conversas de uma pasta com o NASCIMENTO de cada uma (`criadoEm`), não só
+ *  a modificação. É o nascimento que casa com o rótulo do controle remoto. */
+function nascimentosDe(cwd) {
+  const dir = pastaTranscritos(cwd)
+  const out = []
+  try {
+    for (const nome of fs.readdirSync(dir)) {
+      if (!nome.endsWith('.jsonl')) continue
+      const caminho = path.join(dir, nome)
+      const cab = cabecaDe(caminho)
+      let quando = 0
+      try { quando = fs.statSync(caminho).mtimeMs } catch { /* some entre o readdir e o stat */ }
+      out.push({ id: nome.slice(0, -6), criadoEm: cab?.criadoEm || 0, quando })
+    }
+  } catch { /* pasta não existe: projeto sem conversa nenhuma */ }
+  return out.sort((a, b) => a.criadoEm - b.criadoEm)
+}
+
+/**
+ * CC-357: casa cada rótulo do controle remoto com a SUA conversa.
+ *
+ * O furo anterior: `conversaDe(cwd)` devolvia a conversa mais NOVA da pasta, a
+ * mesma para todos os rótulos daquele projeto. Medido no painel vivo:
+ * `VPS_cockpit` e `VPS_cockpit-2` apontavam ambos para a conversa mais recente.
+ * Consequência que o Felipe pegou: um controle por sessão mexeria todos na
+ * mesma conversa.
+ *
+ * O vínculo confiável é o TEMPO DE CRIAÇÃO: `claude --remote-control` sobe a
+ * sessão do tmux e, poucos segundos depois, nasce a conversa dela. Medido:
+ * `VPS_cockpit` (tmux às …058) → conversa nascida às …062, e `VPS_cockpit-2`
+ * (…432) → …435. Casamento guloso, do rótulo mais antigo para o mais novo, cada
+ * um com a primeira conversa ainda livre nascida a partir do instante dele.
+ *
+ * Conversa retomada (`--resume`) reusa transcrito velho, nascido ANTES do
+ * rótulo, então não casa por tempo: cai no reserva (a mais nova ainda livre),
+ * que não é pior que o comportamento antigo.
+ */
+function casarConversas(sessoes) {
+  const mapa = new Map()
+  const porCwd = new Map()
+  for (const s of sessoes) {
+    if (!s.cwd) continue
+    if (!porCwd.has(s.cwd)) porCwd.set(s.cwd, [])
+    porCwd.get(s.cwd).push(s)
+  }
+  const TOLERANCIA = 5000 // a conversa nasce depois do tmux, mas o relógio pode escorregar
+  for (const [cwd, labels] of porCwd) {
+    const convs = nascimentosDe(cwd)
+    const usadas = new Set()
+    for (const s of [...labels].sort((a, b) => a.criado - b.criado)) {
+      let escolhida = convs.find((c) => !usadas.has(c.id) && c.criadoEm >= s.criado - TOLERANCIA)
+      // reserva: nenhuma nasceu depois (sessão retomada, ou relógio estranho) —
+      // fica com a mais nova ainda livre, como era antes
+      if (!escolhida) {
+        for (let i = convs.length - 1; i >= 0; i--) {
+          if (!usadas.has(convs[i].id)) { escolhida = convs[i]; break }
+        }
+      }
+      if (escolhida) { usadas.add(escolhida.id); mapa.set(s.nome, escolhida) }
+    }
+  }
+  return mapa
+}
+
 export async function estado() {
   if (ehWindows) {
     const out = {}
@@ -210,15 +275,22 @@ export async function estado() {
      tinha respondido três minutos antes. Uma chamada só, não uma por sessão. */
   const r = await tmux(['list-sessions', '-F', '#{session_name}\t#{session_created}\t#{pane_current_path}'])
   if (!r.ok) return {} // tmux ausente ou nenhuma sessão viva: mesmo resultado, vazio
-  const out = {}
+
+  const sessoes = []
   for (const linha of r.out.split('\n')) {
     const [nome, criado, cwd] = linha.trim().split('\t')
     if (!nome || !nome.startsWith(PREFIXO_SESSAO)) continue
-    const conversa = cwd ? conversaDe(cwd) : null
-    out[nome.slice(PREFIXO_SESSAO.length)] = {
-      sessao: nome,
-      desde: (Number(criado) || 0) * 1000 || null,
-      cwd: cwd || null,
+    sessoes.push({ nome, criado: (Number(criado) || 0) * 1000 || 0, cwd: cwd || null })
+  }
+
+  const conversaDe1 = casarConversas(sessoes)
+  const out = {}
+  for (const s of sessoes) {
+    const conversa = conversaDe1.get(s.nome) || null
+    out[s.nome.slice(PREFIXO_SESSAO.length)] = {
+      sessao: s.nome,
+      desde: s.criado || null,
+      cwd: s.cwd,
       /* A hora da última mensagem, que é o que "parada" quer dizer de verdade.
          `null` quando não deu pra saber: silêncio aqui é "não sei", nunca
          "está parada" — a diferença entre os dois é o estrago de 24/08. */
