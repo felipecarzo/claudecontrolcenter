@@ -166,7 +166,7 @@ dois são de outra sessão agora. Escrever o script é meu; ligar exige combinar
 Decisão dele pendente: o quão agressiva é a trava (só me obrigar a responder
 direito, travar a ação até varrer, ou travar e ainda pedir o "pode" dele).
 
-### CC-355 ✅ 25/08: as sessões do projeto viram uma linha cada na Central
+### CC-356 ✅ 25/08: as sessões do projeto viram uma linha cada na Central
 
 Ele, três vezes: *"eu quero ver as sessões separadas (…) senão eu só consigo usar
 o mesmo pra todas as sessões, eu quero usar diferente pra sessões diferentes da
