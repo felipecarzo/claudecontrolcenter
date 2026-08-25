@@ -7520,9 +7520,18 @@
            que é uma fileira flex. Irmão alto numa fileira flex estica os
            outros, então "ver tudo" e "pastas" viraram duas colunas altas do
            lado do bloco. Grupo é bloco, e agora vive fora da fileira.
-           Projeto de outra máquina não ganha botão de abrir: a pasta não
-           existe aqui, e o botão falharia depois do clique. */
-        + (p.daqui ? acoesDeSessao(p) : '')
+           Projeto de outra máquina não ganha os botões de sessão local: a
+           pasta não existe aqui, e eles falhariam depois do clique. Mas
+           ganha "abrir lá". Não abre nada aqui, só deixa um pedido pronto
+           para a máquina de lá pegar no próprio ciclo dela (até 30s), o
+           mesmo caminho que o bloco Remoto já usa para sessão que já existe
+           (CC-166). Sem saber qual máquina é (`maquinaDeFora` nulo, projeto
+           achado só pela pasta), nem o pedido dá para montar. */
+        + (p.daqui ? acoesDeSessao(p)
+          : p.maquinaDeFora
+            ? '<div class="pj-acoes"><button class="btn btn-outline compacto" data-fed-pedir="' + esc(p.maquinaDeFora) + '" data-fed-proj="' + esc(p.projeto) + '" '
+              + 'title="pede para ' + esc(p.maquinaDeFora) + ' abrir uma sessão aqui. Ela pergunta a cada 30s, leva até meio minuto">abrir lá</button></div>'
+            : '')
         /* CC-335: o framework entra no MESMO cartão. Aberto para quem tem
            sessão no ar, guardado numa gaveta para quem não tem, que é a ordem
            que ele pediu. Projeto de outra máquina não tem framework legível

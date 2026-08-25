@@ -134,6 +134,12 @@ export function retrato({
       projeto,
       raiz,
       daqui,
+      /* De qual máquina este projeto é, quando não é daqui. Sai do próprio
+         agente que trouxe o projeto pela federação (`origem.nome`, carimbado
+         em `mesclar()`), o mesmo nome que `pedirSessao` espera em
+         `paraMaquina` — é o que permite o cartão pedir "abra uma sessão aí",
+         em vez de só avisar que o projeto é de outro lugar. */
+      maquinaDeFora: daqui ? null : (meus[0]?.origem?.nome || null),
       /* Pasta que existe aqui mas não é projeto (sem `.git` e sem `CLAUDE.md`)
          é lugar de passagem, não trabalho: scratchpad, pasta temporária. */
       ehProjeto: daqui && (existe(path.join(raiz, '.git')) || existe(path.join(raiz, 'CLAUDE.md'))),
