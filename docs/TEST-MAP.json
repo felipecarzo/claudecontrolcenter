@@ -11,15 +11,15 @@
   "tela": {
    "total": 28,
    "existe": 28,
-   "funciona": 25,
+   "funciona": 26,
    "explica": 28,
    "estreito": 0,
    "profundo": 28
   },
   "acao": {
-   "total": 111,
-   "existe": 111,
-   "funciona": 23,
+   "total": 113,
+   "existe": 113,
+   "funciona": 22,
    "explica": 0,
    "estreito": 0,
    "profundo": 0
@@ -33,8 +33,8 @@
    "profundo": 0
   },
   "endereco": {
-   "total": 88,
-   "existe": 88,
+   "total": 89,
+   "existe": 89,
    "funciona": 6,
    "explica": 0,
    "estreito": 0,
@@ -43,7 +43,7 @@
   "palavra": {
    "total": 64,
    "existe": 64,
-   "funciona": 16,
+   "funciona": 14,
    "explica": 64,
    "estreito": 0,
    "profundo": 64
@@ -332,7 +332,7 @@
      "como": "abre a tela e escuta erro de execução do navegador"
     },
     "funciona": {
-     "coberto": null,
+     "coberto": "test.mjs",
      "como": "a tela é citada, o que NÃO prova que os botões dela funcionam"
     },
     "explica": {
@@ -3867,6 +3867,134 @@
    }
   },
   {
+   "id": "acao:mod-remoto",
+   "tipo": "acao",
+   "rotulo": "data-mod-remoto",
+   "onde": "src/ui_v2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_v2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:mod-proj",
+   "tipo": "acao",
+   "rotulo": "data-mod-proj",
+   "onde": "src/ui_v2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_v2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:mod-maquina",
+   "tipo": "acao",
+   "rotulo": "data-mod-maquina",
+   "onde": "src/ui_v2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_v2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:mod-on",
+   "tipo": "acao",
+   "rotulo": "data-mod-on",
+   "onde": "src/ui_v2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_v2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:fw-remoto",
    "tipo": "acao",
    "rotulo": "data-fw-remoto",
@@ -3943,70 +4071,6 @@
     },
     "funciona": {
      "coberto": "test.mjs",
-     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "ação não tem verbete próprio: quem explica é a tela"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "depende do bloco onde ela aparece"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica a uma ação isolada"
-    }
-   }
-  },
-  {
-   "id": "acao:mod-proj",
-   "tipo": "acao",
-   "rotulo": "data-mod-proj",
-   "onde": "src/ui_v2.html",
-   "camada": "estatica",
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/ui_v2.html",
-     "como": "o atributo existe no fonte"
-    },
-    "funciona": {
-     "coberto": null,
-     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "ação não tem verbete próprio: quem explica é a tela"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "depende do bloco onde ela aparece"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica a uma ação isolada"
-    }
-   }
-  },
-  {
-   "id": "acao:mod-on",
-   "tipo": "acao",
-   "rotulo": "data-mod-on",
-   "onde": "src/ui_v2.html",
-   "camada": "estatica",
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/ui_v2.html",
-     "como": "o atributo existe no fonte"
-    },
-    "funciona": {
-     "coberto": null,
      "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
     },
     "explica": {
@@ -4603,11 +4667,11 @@
    }
   },
   {
-   "id": "acao:meu-check",
+   "id": "acao:kb-card",
    "tipo": "acao",
-   "rotulo": "data-meu-check",
+   "rotulo": "data-kb-card",
    "onde": "src/ui_v2.html",
-   "camada": "viva",
+   "camada": "estatica",
    "dimensoes": {
     "existe": {
      "coberto": "src/ui_v2.html",
@@ -4635,18 +4699,18 @@
    }
   },
   {
-   "id": "acao:todo",
+   "id": "acao:kb-mover",
    "tipo": "acao",
-   "rotulo": "data-todo",
+   "rotulo": "data-kb-mover",
    "onde": "src/ui_v2.html",
-   "camada": "viva",
+   "camada": "estatica",
    "dimensoes": {
     "existe": {
      "coberto": "src/ui_v2.html",
      "como": "o atributo existe no fonte"
     },
     "funciona": {
-     "coberto": "test.mjs",
+     "coberto": null,
      "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
     },
     "explica": {
@@ -5366,6 +5430,39 @@
    "onde": "src/web.mjs",
    "camada": "estatica",
    "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:roadmap/estado",
+   "tipo": "endereco",
+   "rotulo": "/api/roadmap/estado",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
    "dimensoes": {
     "existe": {
      "coberto": "src/web.mjs",
@@ -8785,8 +8882,9 @@
      "como": "o verbete está escrito"
     },
     "funciona": {
-     "coberto": "src/ui_v2.html",
-     "como": "algum ponto da tela usa este termo"
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
     },
     "explica": {
      "coberto": "test.mjs",
@@ -8815,8 +8913,9 @@
      "como": "o verbete está escrito"
     },
     "funciona": {
-     "coberto": "src/ui_v2.html",
-     "como": "algum ponto da tela usa este termo"
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
     },
     "explica": {
      "coberto": "test.mjs",

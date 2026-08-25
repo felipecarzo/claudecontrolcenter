@@ -480,6 +480,125 @@ function autostartWindows(node, script, porta) {
   return arquivo
 }
 
+/**
+ * CC-351: o painel como SERVIÇO supervisionado no Windows.
+ *
+ * O `.vbs` acima sobe o painel no logon e é só isso: se o processo morre,
+ * ninguém o levanta, e não há nada visível para reiniciar. Foi a queixa dele em
+ * 25/08, com o coepiloto aberto no desktop e ausente do cockpit: *"a gente
+ * precisa ter uma forma de rodar num Windows como um serviço de fundo (…) na
+ * hora da emergência eu reinicio ele, e ele volta a funcionar na hora"*.
+ *
+ * ## Por que Tarefa Agendada, e não serviço de `services.msc`
+ *
+ * Um processo Node não sabe conversar com o gerenciador de serviços do Windows;
+ * um serviço de verdade exigiria um programa intermediário de terceiro (WinSW,
+ * NSSM), e a regra deste projeto é não depender de nada externo. Decisão dele
+ * em 25/08, com o custo dos dois lados na mão: **tarefa agendada nativa**.
+ *
+ * O que ela entrega, e é o que ele pediu: sobe no boot antes do logon, se
+ * levanta sozinha quando cai, e para e volta num comando.
+ *
+ * ## O que exige administrador, e o que não
+ *
+ * `/RL HIGHEST` e o gatilho `ONSTART` (antes do logon) exigem elevação. Sem
+ * ela, a tarefa ainda é criada e ainda reinicia sozinha, só que a partir do
+ * logon. A função devolve qual dos dois conseguiu, porque dizer "instalado" sem
+ * dizer em qual dos dois modos seria a meia verdade de sempre.
+ */
+export const NOME_TAREFA = 'AgentCockpit'
+
+export function instalarServicoWindows({ node, script, porta }) {
+  if (!ehWindows) return { ok: false, erro: 'a tarefa agendada é do Windows' }
+
+  /* `schtasks /xml` em vez da linha de comando: as opções de reinício
+     automático (`RestartCount`, `RestartInterval`) NÃO existem como flag do
+     `schtasks /create`, só no XML. Sem elas a tarefa vira o mesmo atalho de
+     logon que já existe, com outro nome. */
+  const xml = (comGatilhoBoot) => `<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>${APP}: o painel dos agentes, supervisionado.</Description>
+  </RegistrationInfo>
+  <Triggers>
+    ${comGatilhoBoot ? '<BootTrigger><Enabled>true</Enabled></BootTrigger>' : ''}
+    <LogonTrigger><Enabled>true</Enabled></LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>${comGatilhoBoot ? 'HighestAvailable' : 'LeastPrivilege'}</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <!-- O coração disto: caiu, volta. Sem prazo para desistir. -->
+    <RestartOnFailure>
+      <Interval>PT1M</Interval>
+      <Count>999</Count>
+    </RestartOnFailure>
+    <!-- Tarefa que "termina" sozinha depois de 3 dias é o padrão do Windows, e
+         seria o painel sumindo sem motivo no meio da semana. -->
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>"${node}"</Command>
+      <Arguments>"${script}" --web-only --port ${porta}</Arguments>
+    </Exec>
+  </Actions>
+</Task>`
+
+  const tmp = path.join(os.tmpdir(), `${ID}-tarefa.xml`)
+  const criar = (comBoot) => {
+    /* UTF-16LE com marca de ordem: o `schtasks` recusa o XML em UTF-8, e a
+       mensagem que ele dá não diz isso. */
+    fs.writeFileSync(tmp, '﻿' + xml(comBoot), 'utf16le')
+    return quiet('schtasks', ['/create', '/tn', NOME_TAREFA, '/xml', tmp, '/f'])
+  }
+
+  /* Tenta o modo bom primeiro. Sem administrador ele falha, e aí cai para o
+     modo que funciona sem elevação, dizendo qual foi. */
+  let r = criar(true)
+  let modo = 'boot'
+  if (!r?.ok) { r = criar(false); modo = 'logon' }
+  try { fs.unlinkSync(tmp) } catch { /* segue */ }
+
+  if (!r?.ok) {
+    return { ok: false, erro: (r?.err || r?.out || 'schtasks recusou').trim().slice(0, 300) }
+  }
+  quiet('schtasks', ['/run', '/tn', NOME_TAREFA])
+  return { ok: true, modo, tarefa: NOME_TAREFA }
+}
+
+/** Derruba e sobe de novo. É o "reiniciar" do botão da bandeja. */
+export function reiniciarServicoWindows() {
+  if (!ehWindows) return { ok: false, erro: 'a tarefa agendada é do Windows' }
+  quiet('schtasks', ['/end', '/tn', NOME_TAREFA])
+  const r = quiet('schtasks', ['/run', '/tn', NOME_TAREFA])
+  return r?.ok ? { ok: true } : { ok: false, erro: (r?.err || 'não consegui subir').trim().slice(0, 200) }
+}
+
+/** Existe? Está rodando? Em que modo? */
+export function estadoServicoWindows() {
+  if (!ehWindows) return { existe: false }
+  const r = quiet('schtasks', ['/query', '/tn', NOME_TAREFA, '/fo', 'LIST'])
+  if (!r?.ok) return { existe: false }
+  const linha = (rotulo) => (new RegExp(rotulo + '\\s*:\\s*(.+)', 'i').exec(r.out || '') || [])[1]?.trim() || null
+  return {
+    existe: true,
+    estado: linha('Status') || linha('Estado'),
+    proxima: linha('Next Run Time') || linha('Próxima Hora de Execução'),
+  }
+}
+
 function autostartMac(node, script, porta) {
   const arquivo = caminhoAutostart()
   fs.mkdirSync(path.dirname(arquivo), { recursive: true })

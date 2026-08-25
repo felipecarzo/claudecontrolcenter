@@ -1221,7 +1221,480 @@ lista de mais de setenta atributos, e um nome repetido não dá erro nenhum, só
 faz a página obedecer ao dono antigo. Atributo de bloco novo leva o nome do
 bloco na frente.
 
+## ▶ Frente nova, aberta em 25/08: onde moram os projetos, e o git em dia
+
+Visão dele em 25/08, dita como *"era uma nota pro futuro mas achei que cabe no
+agora"*. **Registrada, não implementada.** Encaixa no CC-352 abaixo, que é o
+defeito de hoje, e por isso ele mandou agora.
+
+Palavras dele, sem reescrever:
+
+> *"É importante que o cockpit pergunte onde vai ser a pasta de projetos (…)
+> vamos dizer que a pessoa escolha a pasta dela que ela chama de TI. Vai ser
+> então a pasta TI, mas quando ela instala, e no instalador, lá no serviço
+> também, lá na barra de tarefas, vai ter como ela configurar isso. Ela mudar a
+> pasta que ela vai usar. E ela pode adicionar múltiplas pastas também (…) caso
+> ela goste de trabalhar com projetos de música, projetos de outras coisas."*
+
+> *"a ideia do [cockpit] também tem essa questão controle de git. Eu quero
+> garantir que os projetos estão sincronizados. A ideia é que sempre que eu
+> ligar o PC, ele já atualize o git de todos os projetos. Se eu quiser fazer
+> alguma coisa que eu não queira que sobrescreva o trabalho original, tenho que
+> me acostumar a trabalhar com [branch]."*
+
+Ele mesmo marcou que não é produto: *"isso não é um produto, estou falando pra
+mim mesmo na terceira pessoa"*.
+
+**O que hoje impede, e é o motivo de isto virar frente:** a pasta de projetos é
+DESCOBERTA pelos diretórios dos jobs, e dá para forçar por variável de ambiente.
+Não há lugar onde ele escolha, e não existe "várias pastas": é uma só.
+
+⚠️ **Um risco a medir antes de fazer o git automático, e não é detalhe.** Puxar
+sozinho ao ligar o PC encontra trabalho sem commit com frequência (é o estado
+normal aqui: neste momento há onze arquivos modificados e dois novos sem
+commit). Puxar por cima disso ou falha, ou mistura. A pergunta a responder antes
+de escrever código é o que ele quer que aconteça quando isso acontecer: avisar e
+parar, guardar de lado, ou não puxar naquele projeto.
+
+## ▶ Frente nova, aberta em 25/08: o PC vira serviço
+
+### CC-351, 25/08: o painel do PC não é serviço, e ele descobriu do jeito ruim
+
+Ele abriu o coepiloto no desktop, trabalhou nele, e a sessão não apareceu ativa
+no cockpit. A frase: *"eu preciso ter controle total das minhas sessões do
+desktop (…) eu não posso ficar parando pra resolver esse problema"*.
+
+**A crítica dele é justa e fica registrada aqui.** Quando pediu um aplicativo
+instalado, eu respondi que não precisava, que "o serviço já sobe no logon", e ele
+aceitou a minha recomendação. Eu estava errado na parte que importava: o que
+sobe no logon é um `.vbs` na pasta de Inicialização, **atalho e não serviço**.
+Sem supervisão, sem nada visível para reiniciar, e só depois do logon.
+
+O erro de fundo não foi técnico: foi eu recomendar contra um pedido dele sem
+medir o que a recomendação custava. Ele tinha pedido o aplicativo três vezes.
+
+Medido durante a investigação: o empurrador do PC está vivo e mandou 11 sessões,
+e **nenhuma interativa do coepiloto**. São dois defeitos, não um: falta
+supervisão E falta captura. Por isso a ordem que ele escolheu está certa,
+diagnóstico antes de supervisor.
+
+**Decisões dele, com o custo dos dois lados na mão:**
+
+- **Tarefa Agendada nativa**, e não serviço de `services.msc`. Um processo Node
+  não conversa com o gerenciador de serviços do Windows, e um serviço de verdade
+  exigiria trazer um executável de terceiro para um projeto que não depende de
+  nada externo. A tarefa sobe no boot, se levanta sozinha e para num comando.
+- **Ícone de rede com desenho próprio**: *"mas diferente do de rede padrão, pq a
+  gente já usa uma bola verde ou vermelha no screive4me"*. Então dois nós ligados
+  por um traço, e o TRAÇO muda de estado, nunca uma bolinha.
+
+Feito nesta rodada:
+
+- **`cc sessoes`**, o diagnóstico que ele roda no PC. Mostra as duas fontes lado
+  a lado e aponta o caso que suspeito ser a causa: quando uma sessão tem job de
+  background E transcrito, **o job vence**; se ele congelou, o painel mostra o
+  estado velho enquanto ela está sendo escrita.
+- **`cc daemon servico`**, a instalação supervisionada. Reinício automático a
+  cada minuto, sem limite de tentativas, e sem prazo de execução (o padrão do
+  Windows encerra tarefa depois de três dias, que seria o painel sumindo no meio
+  da semana sem motivo).
+- **`cc daemon reiniciar`**, o botão de emergência.
+- **`cc daemon status`** passa a dizer se existe supervisão. Sem isso, "o painel
+  está no ar" não distingue quem tem quem está de pé por sorte.
+
+O XML precisa de UTF-16 com marca de ordem, e o `schtasks` recusa UTF-8 com uma
+mensagem que não diz isso. As opções de reinício não existem como flag da linha
+de comando, só no XML: por isso não dá para criar a tarefa com um comando curto.
+
+Falta: o ícone na bandeja, e o diagnóstico rodado no PC dele.
+
+## ▶ Frente nova, aberta em 25/08: o kambam
+
+### CC-348 ✅ 25/08: o quadro mostrava uma fonte de três, e a perda foi minha
+
+Ele: *"entender por que não estão aparecendo todos os itens e tarefas to-dos dos
+projetos que a gente tem, na VPS e no desktop"*.
+
+Medido: 13 to-dos de agente abertos e 26 pendências dele, e o quadro mostrava
+**zero** dos dois. A tela em funil tinha três colunas por projeto (o que só ele
+resolve, a sprint dos agentes, o backlog) e eu troquei por um quadro que só lia
+o backlog. Sem aviso, sem coluna vazia: ANDANDO ficava zerada com 15 agentes
+trabalhando, e isso parecia dado verdadeiro.
+
+**A lição não é o conserto, é o formato do erro.** Reescrever uma tela é apagar
+o que ela mostrava, e o que some não aparece em teste nenhum: o gate ficou verde
+o tempo todo. Ao trocar uma tela inteira, listar o que a antiga exibia antes de
+escrever a nova.
+
+Depois do conserto: 128 cartões contra 88, ANDANDO em 13, VOCÊ DECIDE em 29.
+Só frente do backlog é arrastável, porque to-do e pendência não têm linha no
+ROADMAP para receber o estado.
+
+**A segunda causa é de dado, e depende dele:** 11 dos 21 projetos não têm
+`docs/ROADMAP.md`, e `carregar()` os descarta em silêncio (`.filter(p => p.mapa)`).
+São `VPS_ahtleta`, `VPS_entreg4`, `VPS_geolev4`, `VPS_ibrics`, `VPS_maurice`,
+`VPS_mnzs`, `VPS_profinance`, `VPS_renanMarchon`, `VPS_sumauma`,
+`VPS_teste_pierre_agenda` e `teste_framework`. Eles aparecem no quadro quando
+têm to-do ou pendência, e nunca com backlog. Criar roadmap para eles é decisão
+dele, não minha.
+
+### CC-347 ✅ 25/08: arrastar o cartão, puxar a fita, e a tela cheia
+
+Três gestos que ele pediu na mesma mensagem.
+
+**Arrastar o cartão** grava o estado no `docs/ROADMAP.md` do projeto, que foi a
+escolha dele entre três desenhos. O estado é um emoji no título `###`, então
+mudar de coluna é trocar um caractere sem tocar no texto que ele escreveu.
+`roadmapEscrita.mjs` fica separado do leitor de propósito: o leitor roda no
+caminho de 2 em 2 segundos, e escrita no arquivo mais disputado do projeto é
+outro risco. Faz cópia antes e **recusa alvo que não bate em exatamente uma
+linha** — trocar o estado do item errado seria pior que não trocar, porque ele
+não veria.
+
+ANDANDO não recebe cartão: ela não vem do arquivo, vem de haver agente na
+frente, e largar ali prometeria uma gravação sem onde acontecer.
+
+**Puxar a fita com o botão direito**, palavras dele: *"como se tivesse
+arrastando mesmo"*. O menu do sistema é bloqueado só DENTRO da fita; fora dela o
+botão direito continua sendo do navegador.
+
+**Tela cheia** num palco próprio, para o filtro e o detalhe não irem junto.
+
+A trava que atravessa os três: **o redesenho de 2 em 2 segundos destrói o que
+está sendo arrastado**, e aqui o estrago é maior que no `<select>`, porque o
+cartão some no meio do gesto. `KB_MEXENDO` segura o render enquanto a mão está
+na tela, e o `mouseup` é ouvido no documento e não na fita — soltando o botão
+fora dela, o painel ficaria congelado para sempre.
+
+Provado de ponta a ponta: arrastar na tela escreveu o marcador no arquivo, o
+quadro releu e o cartão mudou de coluna, e devolver deixou o arquivo **idêntico
+byte a byte** ao de antes do teste. O gesto do botão direito moveu a fita de 0
+para 312 pixels e soltou a trava do redesenho ao terminar.
+
+### CC-346, 25/08: a tela Trabalho vira quadro, primeira fatia
+
+Dois prints dele: a tela com as colunas cortadas pela metade, e um quadro de
+referência. Palavras dele: *"fui verificar o backlog e não consigo navegar, o
+design também tá muito ruim (...) é importante que a gente tenha um kambam bem
+feito e visível como uma ferramenta profissional mesmo"*. Ele pediu para isto
+vir **antes** do resto do backlog.
+
+**O que quebrava a navegação:** coluna de largura fixa dentro de grade de três.
+Grade não transborda, ela espreme, então em 390px sobrava um caco de cada coluna
+e não havia rolagem lateral nenhuma. Agora é uma fita com encaixe, uma coluna
+por parada.
+
+**As colunas são as cinco que existem, e a escolha foi dele.** O quadro de
+referência tinha seis, e três ("A fazer", "Em revisão", "Testes") não saem de
+lugar nenhum aqui: ficariam vazias para sempre. Perguntado com os números na
+mão (85 na fila, 3 esperando ele), escolheu as cinco reais, que `estadoDoItem`
+já produzia e ninguém mostrava como quadro.
+
+FECHADA é contagem e não pilha: 227 cartões abertos empurrariam as outras quatro
+para fora do alcance do polegar.
+
+Provado em 390px e em 1280px, sem exceção: 88 cartões, cinco colunas com os
+números certos, a fita rola e a página não, 27 cartões trazendo a citação dele.
+
+Dois enganos meus no caminho, os dois de premissa e não de código:
+- **`DATA.projetos` nasce como `[]`, que é verdadeiro.** A condição que pedia a
+  lista nunca disparava, e os cartões apareciam sem a etiqueta de máquina, que é
+  regra dele para todo quadro. O gate pegou; eu não.
+- **Navegador com dez abas de fluxo ao vivo mede errado.** Duas medições
+  seguidas disseram "zero cartões" e "zero etiquetas" com o código já correto.
+  Ao investigar tela, feche as abas antes de acreditar no número.
+
+**Falta a segunda fatia:** arrastar cartão entre colunas. Ele escolheu que isso
+**escreve no `docs/ROADMAP.md`** do projeto, que é de onde o estado sai. O
+mecanismo já está mapeado: o estado é um emoji no título `###` (🔴 travada,
+⏸ você decide, ✅ fechada, nada = na fila). ANDANDO não aceita solta, porque não
+vem do arquivo e sim de haver agente na frente.
+
+## ▶ Frente nova, aberta em 25/08: a lista "Edit", escrita por ele no bloco de notas
+
+Ele acumulou 12 pedidos num bloco de notas chamado **Edit**, dentro do próprio
+painel, e em 25/08 mandou ler. Registrados aqui **com as palavras dele**, antes
+de qualquer execução: é a regra que existe desde que uma página inteira foi
+jogada fora por eu ter tratado visão como tarefa.
+
+O contexto que ele deu junto, e que ordena a lista: *"a aba central está sendo a
+mais importante pra mim (…) estou muito feliz com essa página do jeito que
+está"*. **A Central está boa e não se mexe sem pedido.** Os dois itens dela
+abaixo são ajustes que ele nomeou, não redesenho.
+
+### Notas (7 dos 12, e é onde ele quer chegar)
+
+O destino está no item 8: *"imitar o tipo e design de notas da apple como um
+geral"*. Os outros seis são pedaços dele.
+
+1. *"pra ter quebra de linha no modo selecao"*
+2. *"ter como adicionar checklist no meio da nota e nao apenas tranformas a nota toda"*
+3. *"checkbox em qualquer linha com `-`"*
+4. *"depois que voce digita mais que a area inicial ele abre a barra mas some a opcao de esticar a janela de texto"*
+5. *"imitar o tipo e design de notas da apple como um geral"*
+6. *"criar um 'navegar' pelas notas, organizar por pastas, permitir formatacao markdown"*
+7. *"poder mover as notas em hierarquia"*
+
+⚠️ Cuidado que já custou dado: **bloco de nota em modo lista não tem array de
+itens**, o `text` é a única fonte. Os itens 2 e 3 mexem exatamente aí, e um
+array paralelo daria duas verdades para o mesmo conteúdo. Some-se que nota é
+texto digitado à mão, sem outra fonte, e já sumiu uma vez.
+
+### Central (2)
+
+8. *"tirar o 'mais uma' se não tiver sessão aberta"*
+9. *"só mostrar o framework de sessões ativadas"*
+
+### Outros (3)
+
+10. *"colocar um expand pra barra lateral virar uma home de apps (cada item do menu lateral é um app)"*
+11. *"melhorar a tela de favoritos"* (Meu painel)
+12. *"colocar sufixo nos testesdevoo (cada teste de voo ter seu proprio endereço `testedevoo.carzo.com.br/nomedoprojeto`)"*
+
+O item 12 não é deste projeto: mexe no nginx da VPS, que exige root, e o
+`~/dev.sh` hoje serve um projeto por vez na porta 5173. Fica registrado aqui
+porque foi aqui que ele escreveu, mas a execução é outra conversa.
+
+### Ele acrescentou mais 6 na mesma nota, e um deles já estava respondido
+
+Lidos em 25/08, a pedido dele, direto do bloco `Edit`. A nota passou de 12 para
+18 linhas: os seis abaixo nasceram depois do registro acima.
+
+13. *"poder definir as notas com visualização de modulos, como na apple tambem"*
+14. *"adicionar tabulação a notas"*
+15. *"criar grupos de notas, se eu quiser salvar por projeto/empresa por exemplo"*
+16. *"criar um interpretador de plano, que cria htmp/css estilizado com informações animadas e coloridas como slides para eu ler mais facilmente"*
+17. *"mudar todos os projetos do desktop pra um prefixo antes, algo como DESKTOP_nomedoprojeto"*
+18. framework, modos: *"mvp: modo de definição de MVP, tinha e se perdeu (ACHEI, ESSES MODOS EXISTEM AINDA NA VPS)"* e *"cibersecurity: video dayvin"*
+
+**O item 18 ele mesmo respondeu, e a medida confirma:** nada se perdeu. Existem
+quatro fluxos em `src/framework.mjs` (MVP básico, Conserto, Estudo, Entrega para
+cliente) e os modos de comportamento continuam inteiros. Sobra do item só o
+**modo cibersegurança**, que é fluxo novo e depende de ele dizer o que o vídeo
+ensina: sem as etapas, inventar as fases seria inventar o método dele.
+
+**O item 17 já é regra escrita desde 23/08, e não foi aplicado no PC.** A regra
+está no `CLAUDE.md` global com o nome `PC_`; a nota dele pede `DESKTOP_`. Medido
+no pacote que o `ALIENWARE-LIPE` empurra para cá: os projetos chegam
+`fibraessencia`, `coepiloto`, `inovallbond`, `proj_vps`, `proj_controlcenter` —
+**sem prefixo nenhum**. Duas decisões dele antes de qualquer execução: qual dos
+dois nomes vale, e que renomear pasta no Windows é dele, não meu. ⚠️ Renomear
+pasta quebra caminho literal em código: foi exatamente assim que o escritório de
+bonecos parou de subir em 24/08, um dia depois da renomeação daqui.
+
+**Quatro dos onze pedidos de notas são o mesmo desejo dito de quatro jeitos:**
+o 6 (*"navegar, organizar por pastas"*), o 7 (*"mover em hierarquia"*), o 13
+(*"visualização de módulos"*) e o 15 (*"grupos por projeto/empresa"*). Ele
+repetiu porque é o que mais quer, não porque são quatro recursos. Tratar como um
+só — **organizar as notas** — muda o tamanho do trabalho e evita quatro telas
+discordando.
+
+✅ **Decidido por ele em 25/08: é um recurso só.** Os itens 6, 7, 13 e 15 passam
+a ser um trabalho único, "organizar as notas", e quem pegar entrega os quatro
+juntos. Fatiar de novo depois é reabrir a decisão, não simplificar.
+
+✅ **Decidido por ele em 25/08 sobre o item 17: vale `PC_`,** a regra que já
+existe desde 23/08. A nota pedia `DESKTOP_` e ele escolheu manter o par curto com
+o `VPS_` daqui. **O que falta é dele:** renomear as pastas no Windows. Enquanto
+não renomear, os projetos das duas máquinas continuam virando a mesma linha na
+tela, que é o problema que o prefixo existe para resolver.
+
+### CC-354, aberto em 25/08: o modo de cibersegurança, e o que ele já tem pronto
+
+Ele mandou o conteúdo do vídeo do Deyvin em 25/08, que era a peça que faltava.
+Cinco falhas e as ferramentas para caçá-las.
+
+**O achado que muda o tamanho do trabalho: quatro das cinco já têm camada na
+Bancada deste projeto.** O modo não nasce do zero, nasce ordenando o que existe.
+
+| falha do vídeo | o que já existe aqui |
+|---|---|
+| 1. banco sem RLS | ✅ "RLS do Supabase" lê cada tabela como estranho, com a chave que vai no navegador. Mais a "Caça à service_role", que procura a chave que ignora todas as regras onde ela nunca deveria estar |
+| 2. regra de negócio no front | 🟡 parcial: "Zona restrita sem login" bate em `/admin`, `/dashboard` e `/.env` sem sessão. **Não testa o caso do vídeo**: mexer no `localStorage` para virar administrador |
+| 3. IDOR (trocar o id na rota e ler dado alheio) | ❌ não existe camada nenhuma |
+| 4. chave de API no código | ✅ três camadas: segredo no código, segredo no histórico do git, e segredo que ainda funciona |
+| 5. entrada sem tratamento (XSS) | ❌ sem camada própria |
+
+**Ferramentas que ele citou, contra o que já está aqui:** OWASP ZAP já é camada
+("Exposição na internet"). Gitleaks e Semgrep foram **medidos na VPS em 15/08 e
+nenhum estava instalado** — o OpenGrep do vídeo é fork do Semgrep, mesmo lugar.
+**Bandit é de Python** e não alcança projeto nenhum dele, que são JavaScript;
+entra na lista só se algum dia houver Python.
+
+**As três fases que o modo precisa ter**, seguindo o que os outros quatro já
+fazem (fase declara, fase executa, fase prova):
+
+1. **Superfície** — antes de código: o que este projeto expõe (banco, login,
+   upload, pagamento). É o que decide quais camadas se aplicam, e sem isso a
+   auditoria roda tudo em todo lugar e vira barulho que se desliga.
+2. **Execução** — código liberado.
+3. **Auditoria** — as camadas escolhidas rodaram e **vieram limpas**. Isto já é
+   mecânico e já existe: `ferramentas-escolhidas`, `verificacao-rodada` e
+   `verificacao-limpa` são as mesmas verificações que a Entrega para cliente usa.
+
+**O que separa este modo do de Entrega para cliente**, que também verifica antes
+de subir: lá a verificação é um portão de saída, uma vez, antes do deploy. Aqui
+ela é o assunto do projeto, e o que trava não é critério de MVP em aberto, é
+achado de segurança de pé.
+
+**O que falta construir de verdade são as duas camadas que não existem** (IDOR e
+XSS) e o teste do `localStorage` da falha 2. As outras três já rodam hoje.
+
+**A última linha do vídeo é a que mais combina com esta casa:** ele recomenda
+pedir à IA que revise o código procurando essas falhas específicas. Já existe
+aqui uma camada chamada "Auditoria autônoma", e é o lugar onde isso encaixa sem
+peça nova.
+
 ## ▶ Frente nova, aberta em 22/08: o cockpit vira aplicativo de verdade
+
+### CC-352, aberto em 25/08: quem instala escolhe onde ficam os projetos, e pode ter mais de uma pasta
+
+Do bloco de notas `rascunho`, lido em 25/08. Palavras dele, ditadas por voz e
+normalizadas só na pontuação:
+
+> *"É importante que o cockpit pergunte onde vai ser a pasta de projetos (…)
+> vamos dizer que a pessoa escolha a pasta dela que ela chama de TI (…) no
+> instalador, e lá na barra de tarefas, vai ter como ela configurar isso (…) e
+> ela pode adicionar múltiplas pastas também (…) caso ela goste de trabalhar com
+> projetos de música, projetos de outras coisas"*.
+
+Ele mesmo marca que não está desenhando produto para vender: *"isso não é um
+produto, estou falando pra mim mesmo na terceira pessoa"*.
+
+**Onde isso encosta no que já existe:** hoje a pasta de projetos é **descoberta**
+pelos diretórios dos jobs, e `CC_PROJECTS_BASE` força quando preciso. Não há tela
+nem pergunta em lugar nenhum. O serviço desta VPS define a variável, e é por isso
+que o painel de produção sempre listou certo enquanto o `cc` rodado à mão no
+terminal cai no buraco (está escrito em `src/web.mjs`, na rota de projetos).
+
+Duas consequências que o desenho precisa carregar: **uma pasta só é premissa
+espalhada** (`projectsBase()` devolve um caminho, não uma lista), e a caixa da
+barra de tarefas do item CC-340 é o mesmo lugar onde essa configuração mora — os
+dois são o mesmo instalador, e fazer dois seria construir duas casas.
+
+### CC-353, aberto em 25/08: puxar o git de todos os projetos ao ligar o PC
+
+Mesma nota, mesma respiração:
+
+> *"sempre que eu ligar o PC, o cockpit já atualize o git de todos os projetos.
+> Se eu quiser fazer alguma coisa que eu não queira que sobrescreva o trabalho
+> original, tenho que me acostumar a trabalhar com branch. E é isso, porque com
+> o controle do Git é o ideal."*
+
+⚠️ **Isto revê uma decisão que ele tomou em 21/08, e por isso não se executa sem
+ele.** Na frente "sincronizar as máquinas sem terminal" ele escolheu **botão** em
+vez de automático, depois de ver o custo dos três caminhos: sincronizar sozinho
+exigiria commitar sozinho, e a regra dele é nunca commitar sem pedir.
+
+**O que mudou na nota, e é o que destrava:** ele está pedindo **puxar**, não
+enviar. Puxar sozinho não commita nada, e a frase sobre branch é ele aceitando o
+único risco real — puxar por cima de arquivo solto. Os botões do CC-269 já
+recusam nesse caso e nomeiam os arquivos, então a peça de segurança existe.
+
+✅ **Decidido por ele em 25/08: o automático só PUXA.** Enviar continua no botão,
+e nada é commitado sozinho — a regra de 21/08 sobrevive inteira, e o que muda é
+só a metade que não corre risco. Projeto com arquivo solto é **pulado**, nunca
+forçado.
+
+O que o desenho ainda precisa resolver, e não é decisão, é execução: **ninguém
+está olhando a tela na hora em que o PC liga**. Então o resultado tem que
+sobreviver ao momento — quantos foram atualizados, e quais foram pulados por ter
+trabalho não salvo, esperando ele numa tela que ele abre depois. Puxada que
+falha em silêncio é pior que puxada nenhuma, porque ele passa a confiar.
+
+### CC-345 ✅ 25/08: o "ver tudo" de projeto de fora só sabia dizer "não achei a pasta"
+
+Dois apontamentos dele, no mesmo print.
+
+**O detalhe não abria.** Ele abriu o do `coepiloto` e leu *"não deu para ler:
+não achei a pasta de coepiloto"*. A resposta estava certa sobre o disco e é
+inútil para ele: o projeto mora no PC, e a rota de detalhe varre a pasta DESTA
+máquina. Agora o detalhe de projeto de fora é montado do que a federação já
+traz. O resumo de backlog **já viajava no pacote desde o CC-165** e parava em
+`maquinasConhecidas`, sem chegar à tela: era dado pago e não usado.
+
+O que não atravessa a rede **diz que não atravessa**. Git e rotinas exigem ler o
+disco de lá, e bloco vazio não distingue "não tem" de "não deu para saber".
+
+**O botão não dizia o que abre.** Palavras dele: *"esse 'ver tudo' também está
+super sem explicação, ver tudo o quê? Eu entendi que é pra ver o backlog,
+tarefas etc, e eu adorei isso"*. O conteúdo sempre foi backlog, git, rotinas e
+framework; o rótulo é que não contava. Virou "ver backlog, git e rotinas" nos
+projetos daqui e "ver backlog e framework" nos de fora, porque prometer git num
+projeto do PC seria prometer o que ele não vai encontrar.
+
+Provado em 390px: o backlog do `fibraessencia` do PC abre com os títulos reais
+das frentes, os quatro blocos aparecem, nenhum erro de pasta, sem rolagem
+lateral e sem exceção.
+
+### CC-344 ✅ 25/08: escolher o modo no cartão do PC não LIGAVA o framework
+
+Ele: *"mesmo ligando os modos não aparece mais aquelas travas"*. Eu tinha
+respondido na volta anterior que o sumiço das travas não era defeito. Era, e o
+defeito era meu, uma camada abaixo.
+
+Medido no estado que o PC reportava: `proj_controlcenter` com modo `restritivo`
+e **`ligado: false`**. O pedido de modo trocava o campo `modo` e nada mais, então
+o projeto ficava com um modo escolhido e nada valendo. A lista de travas não
+aparece quando nada vale, então o sintoma que ele viu era exatamente o certo
+para um estado que não deveria existir.
+
+O controle local liga e escolhe num gesto só desde o CC-334; o remoto só
+escolhia. O encadeamento foi para quem EXECUTA, não para quem pede: quem pede
+está do outro lado da rede e não sabe se o projeto existe, quanto mais se está
+ligado. Mesma razão de o nome do projeto ser resolvido lá.
+
+Junto foi a segunda metade, que faltava mesmo: **as travas por módulo no cartão
+remoto**. Elas moram no config da máquina e não no `estado.json` do projeto, por
+isso não vinham na leitura do retrato. Agora viajam, e cada clique vira recado
+com a mesma lista fechada dos outros.
+
+Provado nos dois caminhos: a função de desenho devolve o rótulo e os cinco
+botões com o estado certo, e a tela em 390px mostra as cinco travas, a desligada
+marcada, sem rolagem lateral e sem exceção. Um cuidado que o teste pegou: os
+botões remoto e local carregam `data-mod-proj` iguais, e o clique remoto precisa
+vir ANTES do local no tratador, senão escreveria no config desta máquina uma
+trava de projeto que mora em outra, sem ninguém ver.
+
+### CC-342 ✅ 25/08: o controle do framework piscava, e a culpa era de uma premissa minha
+
+Ele viu minutos depois de o CC-341 subir: *"o botão do framework nas sessões do
+PC fica ativado um tempo e depois some, e depois volta"*.
+
+Medido no pacote do PC: `framework` alternava entre 3 e nulo **a cada 15
+segundos**. Assinatura de dois empurradores de 30s defasados, um com o código
+novo e outro com o velho. O de trás mandava pacote sem o campo, e como eu tinha
+deixado o retrato FORA da herança, cada volta dele apagava o dado.
+
+A premissa que quebrou está escrita no CC-340 com todas as letras: *"o retrato é
+barato e vai em TODO empurrão"*. Verdade sobre o código, falso sobre a máquina.
+**Uma máquina pode ter mais de um empurrador**, e eu nunca conferi isso.
+
+Herdar por 12 horas, como os outros campos, trocaria este defeito por um pior e
+mais quieto: trava tirada do ar continuando a posar de ativa. Então a validade
+passou a ser por campo, e o retrato herda por 2 minutos. Atravessa qualquer
+alternância de empurradores, e o buraco de verdade aparece no minuto seguinte.
+
+Provado: 20 amostras seguidas com o campo, nenhuma vazia, contra a alternância
+de antes.
+
+### CC-343 ✅ 25/08: o modo não dizia o que faz, e o sumiço das travas não dizia por quê
+
+Dois apontamentos dele na mesma mensagem.
+
+**O `?` não explica os modos.** Medido: todo modo TEM explicação escrita e boa no
+catálogo, e ela só existia no `title` do `<option>`. Dica de passar o mouse não
+existe em telefone, que é onde ele lê. Some-se que não há verbete "framework" no
+glossário, então aquele `?` nem chega a virar botão, e a ausência parece
+escolha. Agora a explicação do modo escolhido fica escrita embaixo do seletor,
+nos dois cartões, e troca junto com ele.
+
+**As travas sumiram.** *"aqueles outros botões do framework pra desligar as
+travas sumiram também, agora só tem os modos"*. Aqui o comportamento está certo
+(não faz sentido escolher quais travas valem quando nenhuma vale) e a tela não
+ligava uma coisa à outra. Sumiço sem motivo escrito parece defeito, e ele leu
+como defeito. A frase de estado passou a dizer que a lista volta com o
+framework.
 
 ### CC-341, 25/08: o framework de projeto do PC, controlado pelo cockpit online
 

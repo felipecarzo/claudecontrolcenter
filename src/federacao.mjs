@@ -127,6 +127,13 @@ export function validarPacote(bruto) {
           fase: f?.fase ? String(f.fase).slice(0, 40) : null,
           perfil: f?.perfil ? String(f.perfil).slice(0, 40) : null,
           erro: f?.erro ? String(f.erro).slice(0, 120) : null,
+          /* CC-344: as travas daquele projeto, recortadas chave a chave, como
+             todo campo que chega pela rede neste arquivo. */
+          modulos: f?.modulos && typeof f.modulos === 'object' && !Array.isArray(f.modulos)
+            ? Object.fromEntries(Object.entries(f.modulos).slice(0, 20)
+              .filter(([, v]) => typeof v === 'boolean')
+              .map(([k, v]) => [String(k).slice(0, 40), v]))
+            : null,
         })).filter((f) => f.projeto)
         : null,
       em: Number(bruto.em) || Date.now(),
@@ -154,7 +161,28 @@ export function validarPacote(bruto) {
  * Cada campo preservado carrega o carimbo de quando chegou, porque hora velha
  * exibida como atual é pior que hora ausente.
  */
-const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs']
+const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs', 'travas', 'framework']
+
+/**
+ * CC-342: validade POR CAMPO, porque 12 horas não serve para todo mundo.
+ *
+ * `travas` e `framework` ficaram fora da herança no CC-340, de propósito, com o
+ * argumento de que o retrato é barato e vai em TODO empurrão. O argumento
+ * estava certo e a premissa não: **uma máquina pode ter mais de um empurrador**,
+ * e basta um deles rodar versão antiga para o campo ser apagado a cada ciclo.
+ *
+ * Medido no PC dele em 25/08, minutos depois de subir o recurso: o campo
+ * alternava entre 3 projetos e nulo a cada 15 segundos, dois empurradores de
+ * 30s defasados. Na tela isso é o controle do framework aparecendo e sumindo
+ * sozinho, que foi exatamente a queixa dele.
+ *
+ * Herdar por 12 horas seria trocar um defeito por outro mais difícil de notar:
+ * trava tirada do ar continuando a posar de ativa. Dois minutos atravessam
+ * qualquer alternância de empurradores de 30s e ainda deixam o buraco de
+ * verdade aparecer no minuto seguinte.
+ */
+const VALIDADE_POR_CAMPO = { travas: 2 * 60 * 1000, framework: 2 * 60 * 1000 }
+export const validadeDe = (campo) => VALIDADE_POR_CAMPO[campo] ?? VALIDADE_HERDADO_MS
 
 /**
  * CC-205: até quando um campo herdado continua valendo.
@@ -202,7 +230,7 @@ export function gravarPacote(pacote) {
            pacote que o trouxe. */
         const desde = idades[campo] ?? anterior.em ?? null
         // CC-205: herdado com prazo. Velho demais some, em vez de posar de novo.
-        if (desde && agora - desde > VALIDADE_HERDADO_MS) {
+        if (desde && agora - desde > validadeDe(campo)) {
           delete idades[campo]
           descartados.push({ campo, motivo: 'velho', desde })
           continue
@@ -317,9 +345,14 @@ export const VALIDADE_PEDIDO_MS = 10 * 60 * 1000
  * pela metade nos dois lugares é como um apelido de modo passou a desligar as
  * travas em silêncio, em 18/08.
  */
-export const ACOES_DE_PEDIDO = ['sessao', 'framework-ligar', 'framework-desligar', 'framework-modo']
+export const ACOES_DE_PEDIDO = [
+  'sessao', 'framework-ligar', 'framework-desligar', 'framework-modo', 'framework-modulo',
+]
 
-export function pedirSessao({ paraMaquina, projeto, de = null, acao = 'sessao', modo = null, now = Date.now() }) {
+export function pedirSessao({
+  paraMaquina, projeto, de = null, acao = 'sessao', modo = null,
+  modulo = null, ligar = null, now = Date.now(),
+}) {
   const alvo = seguro(paraMaquina)
   const nome = String(projeto || '').trim()
   if (!alvo) return { ok: false, erro: 'sem máquina de destino' }
@@ -329,21 +362,36 @@ export function pedirSessao({ paraMaquina, projeto, de = null, acao = 'sessao', 
   if (modoLimpo && !/^[a-zà-ú-]+$/i.test(modoLimpo)) return { ok: false, erro: 'modo inválido' }
   if (acao === 'framework-modo' && !modoLimpo) return { ok: false, erro: 'trocar de modo exige dizer qual' }
 
+  /* CC-344: ligar ou desligar UM grupo de travas naquele projeto. Mesma regra
+     dos outros campos: nome curto, sem pontuação, e quem executa confere contra
+     o próprio catálogo. */
+  const moduloLimpo = modulo ? String(modulo).trim().slice(0, 40) : null
+  if (moduloLimpo && !/^[a-zà-ú-]+$/i.test(moduloLimpo)) return { ok: false, erro: 'trava inválida' }
+  if (acao === 'framework-modulo') {
+    if (!moduloLimpo) return { ok: false, erro: 'mexer numa trava exige dizer qual' }
+    if (typeof ligar !== 'boolean') return { ok: false, erro: 'a trava precisa dizer se liga ou desliga' }
+  }
+
   const lista = lerPedidosBrutos().filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
   /* Mesmo projeto pedido duas vezes seguidas é dedo duplo no botão, não duas
      sessões. Abrir duas sem querer é o desperdício que a própria tela avisa.
      A AÇÃO entra na comparação: querer abrir sessão e mexer no framework do
      mesmo projeto no mesmo minuto é pedido legítimo, e sem isto o segundo seria
      engolido como se fosse dedo duplo. */
-  if (lista.some((p) => p.paraMaquina === alvo && p.projeto === nome && (p.acao || 'sessao') === acao)) {
+  /* A TRAVA entra na chave junto da ação, pela mesma razão que a ação entrou:
+     mexer em duas travas diferentes do mesmo projeto são dois pedidos, e sem
+     isto o segundo seria engolido como dedo duplo. */
+  if (lista.some((p) => p.paraMaquina === alvo && p.projeto === nome
+    && (p.acao || 'sessao') === acao && (p.modulo || null) === moduloLimpo)) {
     return { ok: true, jaPedido: true }
   }
   lista.push({
     id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-    paraMaquina: alvo, projeto: nome, de, acao, modo: modoLimpo, em: now,
+    paraMaquina: alvo, projeto: nome, de, acao, modo: modoLimpo,
+    modulo: moduloLimpo, ligar: typeof ligar === 'boolean' ? ligar : null, em: now,
   })
   gravarPedidos(lista)
-  return { ok: true, projeto: nome, paraMaquina: alvo, acao, modo: modoLimpo }
+  return { ok: true, projeto: nome, paraMaquina: alvo, acao, modo: modoLimpo, modulo: moduloLimpo }
 }
 
 /**
@@ -603,6 +651,11 @@ export function maquinasConhecidas(pacotes, origemLocal, retratoLocal = null) {
          trava registrada" — são conclusões opostas sobre o mesmo silêncio. */
       travas: p.travas || null,
       framework: p.framework || null,
+      /* CC-345: o resumo dos backlogs daquela máquina, que já viajava no pacote
+         e parava aqui. Sem ele o "ver tudo" de um projeto de fora só sabia
+         dizer "não achei a pasta", porque tentava ler o disco DESTA máquina
+         um projeto que mora em outra. */
+      backlogs: p.backlogs || null,
     })),
   ]
 }

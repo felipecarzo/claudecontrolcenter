@@ -65,6 +65,8 @@ import { estado as estadoMaquina } from './maquina.mjs'
    segundos e o retrato só muda quando alguém registra um hook. */
 import { retratoComCache } from './travasDaMaquina.mjs'
 import { lerRoadmap, ordenar as ordenarRoadmap } from './roadmap.mjs'
+import { trocarEstado as trocarEstadoRoadmap } from './roadmapEscrita.mjs'
+import { ultimaMexida as ultimaMexidaRoadmap, chaveDe as chaveRoadmap } from './roadmapHistorico.mjs'
 import { findProjects, projectsBase } from './install.mjs'
 import { situacaoRotas } from './routia.mjs'
 import { commitsDesde } from './gitlog.mjs'
@@ -558,6 +560,25 @@ async function atenderPedidos(pedidos) {
           console.error(`[federação] modo desconhecido, pedido recusado: ${p.modo} (${p.projeto})`)
           continue
         }
+        /* CC-344: escolher um modo LIGA o framework, como no controle local.
+         *
+         * Sem isto o pedido trocava o campo `modo` e deixava `ligado: false`,
+         * então o projeto ficava com um modo escolhido e nada valendo, e nenhuma
+         * trava aparecia. Foi o que ele viu: *"mesmo ligando os modos não
+         * aparece mais aquelas travas"*. Medido no estado que o PC reportava:
+         * `proj_controlcenter` em `restritivo` com `ligado: false`.
+         *
+         * O encadeamento fica AQUI, e não em quem pede: quem pede está do outro
+         * lado da rede e não sabe se o projeto existe, quanto mais se está
+         * ligado. É a mesma razão de o nome do projeto ser resolvido aqui. */
+        const antes = lerFramework(dir)
+        if (!antes || antes.ligado === false) {
+          const l = ligarFramework(dir)
+          if (!l?.ok && !l?.estado) {
+            console.error(`[federação] não deu para ligar ${p.projeto}: ${l?.erro}`)
+            continue
+          }
+        }
         const estado = lerFramework(dir)
         if (!estado) {
           console.error(`[federação] ${p.projeto} não tem framework para trocar de modo`)
@@ -574,6 +595,20 @@ async function atenderPedidos(pedidos) {
         gravarFramework(dir, troca.estado)
         console.error(`[federação] framework de ${p.projeto} passou para ${achado.id}, `
           + `a pedido de ${p.de || 'outra máquina'}`)
+        continue
+      }
+
+      if (acao === 'framework-modulo') {
+        /* O catálogo é conferido AQUI, do mesmo jeito que o nome do projeto:
+           quem pede está do outro lado da rede. `MODULOS_HOOKS` é o mesmo mapa
+           que a rota local usa, então as duas pontas recusam a mesma coisa. */
+        if (!MODULOS_HOOKS[p.modulo]) {
+          console.error(`[federação] trava desconhecida, pedido recusado: ${p.modulo} (${p.projeto})`)
+          continue
+        }
+        setModuloProjeto(p.projeto, p.modulo, !!p.ligar)
+        console.error(`[federação] trava ${p.modulo} de ${p.projeto} `
+          + `${p.ligar ? 'ligada' : 'desligada'}, a pedido de ${p.de || 'outra máquina'}`)
         continue
       }
 
@@ -914,8 +949,12 @@ function handler(req, res) {
   /* CC-341: a mesma rota carrega a AÇÃO. Sem `acao` continua sendo "abra uma
      sessão", que é o que a tela já manda hoje. */
   if (url.pathname === '/api/federacao/pedir' && req.method === 'POST') {
-    return comCorpo(req, res, 2e3, ({ maquina, projeto, acao, modo }) =>
-      pedirSessao({ paraMaquina: maquina, projeto, acao: acao || 'sessao', modo: modo || null, de: origemLocal().nome }))
+    return comCorpo(req, res, 2e3, ({ maquina, projeto, acao, modo, modulo, ligar }) =>
+      pedirSessao({
+        paraMaquina: maquina, projeto, acao: acao || 'sessao', modo: modo || null,
+        modulo: modulo || null, ligar: typeof ligar === 'boolean' ? ligar : null,
+        de: origemLocal().nome,
+      }))
   }
 
   // O que chegou de fora, mais a identidade desta máquina. Serve à tela (o
@@ -1105,6 +1144,23 @@ function handler(req, res) {
       p.git = estadoGit(p.raiz)
     }
     return send(res, 200, { projetos: lista, catalogoModulos: MODULOS_HOOKS, at: Date.now() })
+  }
+
+  /* CC-347: arrastar um cartão do kambam grava o estado no backlog do projeto.
+     Escolha dele entre três desenhos: escrever no arquivo, guardar só no painel,
+     ou não arrastar. Escrever é o único que não cria duas verdades sobre a mesma
+     pergunta, e o preço é o painel passar a mexer no arquivo mais disputado do
+     projeto. Por isso o módulo faz cópia antes e recusa alvo ambíguo. */
+  if (url.pathname === '/api/roadmap/estado' && req.method === 'POST') {
+    return comCorpo(req, res, 4e3, ({ projeto, id, titulo, para }) => {
+      if (!projeto) return { error: 'sem projeto' }
+      /* A raiz sai do que o painel já conhece, NUNCA do que a página mandar:
+         caminho vindo da tela escreveria markdown em qualquer lugar do disco. */
+      const dir = cwdDoProjeto(null, projeto)
+      if (!dir) return { error: `não conheço o projeto ${projeto}` }
+      const r = trocarEstadoRoadmap(dir, { id: id || null, titulo: titulo || null, para })
+      return r.ok ? r : { error: r.erro }
+    })
   }
 
   // CC-115: liga e desliga um grupo de proteções num projeto. Só o
@@ -2174,13 +2230,31 @@ function handler(req, res) {
        seriam quatro contas para a mesma pergunta, e um dia discordariam. */
     const siglas = todasSiglas(projetos.map((x) => x.raiz), s.jobs)
 
+    const montado = montarTrabalho({
+      projetos,
+      jobs: s.jobs,
+      pendencias,
+      ordem: url.searchParams.get('ordem') === 'tempo' ? 'tempo' : 'importancia',
+    })
+
+    /* CC-349: "parada há quanto tempo" em cada cartão. Sai do mesmo git que já
+       diz quando a frente nasceu, lido pela outra ponta, e com cache por data do
+       arquivo: sem ele, abrir o quadro com dez projetos custaria segundos.
+       Carimbado DEPOIS de montar, porque é aqui que o cartão existe. Cartão sem
+       data fica sem o campo, e a tela omite em vez de dizer "parada há 0". */
+    for (const g of (montado.grupos || [])) {
+      const raiz = projetos.find((p) => p.projeto === g.projeto)?.raiz
+      if (!raiz) continue
+      let mapa = null
+      try { mapa = ultimaMexidaRoadmap(raiz) } catch { continue }
+      for (const c of (g.cartoes || [])) {
+        const quando = mapa.get(chaveRoadmap(c.marca?.real ? c.id : null, c.titulo))
+        if (quando) c.mexidoEm = quando
+      }
+    }
+
     return send(res, 200, {
-      ...montarTrabalho({
-        projetos,
-        jobs: s.jobs,
-        pendencias,
-        ordem: url.searchParams.get('ordem') === 'tempo' ? 'tempo' : 'importancia',
-      }),
+      ...montado,
       siglas,
       /* CC-122: "o que mudou desde que eu olhei", em UMA resposta.
          Estava partida em três telas (o "vi isso" por projeto, o resumo da

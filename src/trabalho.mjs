@@ -367,13 +367,29 @@ export function projetosDe(jobs = [], achar = () => []) {
   const locais = new Map()
   for (const raiz of achar()) locais.set(path.basename(raiz), raiz)
 
+  /* CC-352: o MESMO nome pode vir de duas pastas, e ganha a mais recente.
+     Achado em 25/08, com ele tentando ligar o framework: o PC reportava
+     `D:\Documentos\projetos\fibraessencia` (sessão de 9 minutos) e
+     `D:\Documentos\Ti\projetos\CLIENTS\fibraessencia` (sessões de 4h e 11h),
+     porque ele está movendo os projetos de lugar. O nome sai do último pedaço
+     do caminho, então as duas viravam UM cartão, e qual pasta ele mostrava
+     dependia da ordem em que a sessão aparecia na lista.
+     Para ele isso foi o cartão "sumindo" na hora de ligar o framework; o risco
+     de verdade era escrever na pasta errada sem ninguém ver. Decisão dele em
+     25/08: a pasta antiga é lixo, então vence quem tem sinal mais novo. */
+  const quando = new Map()
   for (const j of jobs) {
-    if (!j.cwd || vistos.has(j.project)) continue
-    if (deOutraPlataforma(j.cwd) && locais.has(j.project)) {
-      vistos.set(j.project, locais.get(j.project))
-      continue
+    if (!j.cwd) continue
+    const daqui = deOutraPlataforma(j.cwd) && locais.has(j.project)
+      ? locais.get(j.project) : j.cwd
+    const t = Number(j.updatedAt) || 0
+    /* Pasta local achada por `achar()` não tem sinal de tempo e não pode perder
+       para um `cwd` remoto por isso: ela entra com o carimbo do job que a
+       trouxe, e o desempate segue sendo entre pastas de verdade. */
+    if (!vistos.has(j.project) || t > (quando.get(j.project) || 0)) {
+      vistos.set(j.project, daqui)
+      quando.set(j.project, t)
     }
-    vistos.set(j.project, j.cwd)
   }
   for (const raiz of achar()) {
     const nome = path.basename(raiz)

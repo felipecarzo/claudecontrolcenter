@@ -33,8 +33,8 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { HOOKS } from './hooksCatalogo.mjs'
-import { hookEnabled, readConfig } from './config.mjs'
+import { HOOKS, MODULOS } from './hooksCatalogo.mjs'
+import { hookEnabled, moduloLigado, readConfig } from './config.mjs'
 import { readSettings, registrado } from './hooksRegistro.mjs'
 import { PASTA, ARQUIVO } from './frameworkDisco.mjs'
 
@@ -82,12 +82,21 @@ export function travasDaqui() {
  * uma sessão do PC não é fato sobre o projeto.
  */
 export function frameworkDaqui(jobs = []) {
+  /* CC-352: o mesmo nome pode vir de duas pastas, e ganha a mais recente.
+     Mesma regra de `projetosDe`, e pelo mesmo motivo: com ele movendo projetos
+     de lugar, o retrato do framework saía da pasta que aparecesse primeiro na
+     lista, não da que ele está usando. */
   const raizes = new Map()
+  const quando = new Map()
   for (const j of jobs) {
     const cwd = j?.cwd
     if (!cwd || typeof cwd !== 'string') continue
     const nome = j.project || path.basename(cwd)
-    if (!raizes.has(nome)) raizes.set(nome, cwd)
+    const t = Number(j.updatedAt) || 0
+    if (!raizes.has(nome) || t > (quando.get(nome) || 0)) {
+      raizes.set(nome, cwd)
+      quando.set(nome, t)
+    }
   }
 
   const saida = []
@@ -117,6 +126,12 @@ export function frameworkDaqui(jobs = []) {
         modo: estado.modo || null,
         fase: estado.fase || null,
         perfil: estado.perfil || null,
+        /* CC-344: quais grupos de trava estão valendo NAQUELE projeto.
+           Moram no config da máquina, não no `estado.json` do projeto, e é por
+           isso que não saem da leitura acima. Sem eles a outra ponta desenha o
+           modo e não tem como desenhar as travas, que foi o que ele estranhou:
+           ligou o modo e a lista continuou sem aparecer. */
+        modulos: Object.fromEntries(Object.keys(MODULOS).map((m) => [m, moduloLigado(m, projeto)])),
       })
     } catch {
       /* Arquivo ilegível não é projeto sem framework: é leitura que falhou, e a

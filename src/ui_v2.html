@@ -518,6 +518,133 @@
        cada coluna ficava com ~110px e o texto quebrava letra por letra. É a
        mesma armadilha que já custou uma tela inteira em 16/08, e está escrita
        no CLAUDE.md: layout de grade é CLASSE, nunca `style=`. */
+    /* ===== CC-346/350: o kambam =====
+     *
+     * Ele mandou dois prints: a tela Trabalho com as colunas cortadas e sem
+     * como chegar nelas, e um quadro de referência. Depois reprovou a primeira
+     * versão inteira e ditou o contrato dos gestos e o desenho dos cartões:
+     * *"como post its (…) o design em si pode copiar design das coisas da
+     * apple, eles acertam bastante"*.
+     *
+     * O que quebrava a navegação era coluna de largura fixa dentro de grade de
+     * três. Grade não transborda, ela espreme: em 390px sobrava um caco de cada
+     * uma. Aqui é uma fita que rola.
+     */
+    .kb-quadro {
+      display: flex; gap: 14px; align-items: flex-start;
+      overflow-x: auto; overflow-y: visible;
+      /* `proximity` e não `mandatory`: ele pediu fluido "como o trello". Preso,
+         a fita briga com a mão no meio do gesto. No estreito ele vira
+         obrigatório, porque lá a coluna tem que fechar inteira na tela. */
+      scroll-snap-type: x proximity;
+      padding: 2px 2px 12px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+    .kb-col {
+      flex: 0 0 310px; scroll-snap-align: start;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: 16px; display: flex; flex-direction: column;
+      max-height: calc(100vh - 250px); min-width: 0;
+    }
+    .kb-col-cab {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 12px 14px 10px;
+      position: sticky; top: 0; background: var(--bg-surface);
+      border-radius: 16px 16px 0 0; z-index: 1;
+    }
+    .kb-col-nome { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    .kb-col-conta { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--bg); color: var(--text-muted); }
+    .kb-col.c-idle    .kb-col-nome { color: var(--text-muted); }
+    .kb-col.c-working .kb-col-nome { color: var(--working); }
+    .kb-col.c-waiting .kb-col-nome { color: var(--waiting); }
+    .kb-col.c-failed  .kb-col-nome { color: var(--failed); }
+    .kb-col.c-done    .kb-col-nome { color: var(--done); }
+    /* A rolagem dos cartões é a normal, de roda e de dedo: ele pediu
+       explicitamente *"scroll normal, desce os cards"*. */
+    .kb-col-corpo { padding: 4px 10px 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 80px; }
+    .kb-vazia { font-size: 12px; color: var(--text-dim); padding: 10px 4px; line-height: 1.5; }
+
+    /* ===== o cartão =====
+     * Da casa que ele citou: canto generoso com sombra baixa em vez de borda
+     * dura, UMA cor forte por cartão (a faixa de estado) e o resto em cinza,
+     * peso de fonte fazendo a hierarquia, e ar entre os blocos. */
+    .kb-card {
+      position: relative;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 13px 14px 11px;
+      cursor: pointer;
+      display: flex; flex-direction: column; gap: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 4px 12px rgba(0,0,0,.10);
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+      touch-action: pan-y;
+    }
+    .kb-card:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,.22), 0 10px 20px rgba(0,0,0,.16); }
+    .kb-card.aberto { border-color: var(--acento); }
+    .kb-card::before {
+      content: ''; position: absolute; left: 14px; right: 14px; top: 0; height: 3px;
+      border-radius: 0 0 3px 3px; background: var(--border);
+    }
+    .kb-card.c-working::before { background: var(--working); }
+    .kb-card.c-waiting::before { background: var(--waiting); }
+    .kb-card.c-failed::before  { background: var(--failed); }
+    .kb-card.c-done::before    { background: var(--done); }
+    .kb-card-titulo {
+      font-size: 13.5px; line-height: 1.4; color: var(--text-main); font-weight: 550;
+      overflow-wrap: anywhere;
+      display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .kb-card-id { font-size: 10.5px; font-weight: 700; color: var(--acento); letter-spacing: .02em; }
+    .kb-tags { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+    .kb-tag {
+      font-size: 10px; line-height: 1.7; padding: 0 8px; border-radius: 999px;
+      background: var(--bg); color: var(--text-muted); border: 1px solid var(--border);
+      white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    }
+    .kb-tag.forte { color: var(--text-main); }
+    .kb-tag.viva  { color: var(--working); border-color: var(--working); }
+    .kb-tag.pausa { color: var(--waiting); border-color: var(--waiting); }
+    .kb-tag.presa { color: var(--failed); border-color: var(--failed); }
+    .kb-card .maq { font-size: 10px; }
+    .kb-card-fala {
+      font-size: 11.5px; color: var(--text-muted); line-height: 1.45;
+      background: var(--bg); border-radius: 9px; padding: 7px 9px;
+      overflow-wrap: anywhere;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* O cartão sendo carregado segue o dedo; o lugar de onde ele saiu fica
+       marcado, senão a coluna "pula" e ele perde a referência do gesto. */
+    .kb-fantasma {
+      position: fixed; z-index: 300; pointer-events: none;
+      transform: rotate(2deg) scale(1.02);
+      box-shadow: 0 12px 32px rgba(0,0,0,.45);
+      opacity: .96;
+    }
+    .kb-card.kb-saindo { opacity: .35; }
+    .kb-col.kb-alvo { outline: 2px dashed var(--acento); outline-offset: -3px; }
+    .kb-quadro.kb-pegando { cursor: grabbing; user-select: none; }
+
+    .kb-detalhe { background: var(--bg-surface); border: 1px solid var(--acento); border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; }
+    .kb-detalhe h3 { font-size: 15px; margin: 0 0 8px; overflow-wrap: anywhere; text-transform: none; white-space: normal; }
+    .kb-detalhe p { font-size: 13px; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
+    .kb-filtros { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+
+    #kb-palco:fullscreen, #kb-palco.kb-cheio { background: var(--bg); padding: 16px; overflow: auto; }
+    #kb-palco:fullscreen .kb-col, #kb-palco.kb-cheio .kb-col { max-height: calc(100vh - 60px); }
+    #kb-palco.kb-cheio { position: fixed; inset: 0; z-index: 200; }
+
+    /* Em telefone a coluna fecha inteira na tela, e o encaixe passa a ser
+       obrigatório: é o que ele chamou de "trava entre as páginas". Largura em
+       CLASSE e nunca em `style=`. */
+    @container painel (max-width: 700px) {
+      .kb-quadro { scroll-snap-type: x mandatory; }
+      .kb-col { flex-basis: min(88vw, 330px); max-height: none; }
+      .kb-col-corpo { max-height: 62vh; }
+    }
+
     .funil-colunas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); min-height: 200px; }
 
     /**
@@ -7237,6 +7364,9 @@
         DATA.projetos = await (await fetch('/api/projetos/painel' + (forcar ? '?force=1' : ''))).json();
       } catch (e) { DATA.projetos = { erro: true, error: String(e.message || e) }; }
       renderProjetos();
+      /* CC-346: o kambam usa a mesma lista para a etiqueta de máquina. Sem esta
+         linha o selo só apareceria no tique seguinte. */
+      if (document.getElementById('view-trabalho')?.classList.contains('active')) renderViewTrabalho();
     }
 
     async function abrirProjeto(nome) {
@@ -7244,6 +7374,9 @@
       PJ_ABERTO = nome;
       renderProjetos();
       if (PJ_DETALHE[nome]) return;
+      /* Projeto de outra máquina não se lê no disco DESTA: a rota abaixo varre a
+         pasta local e responderia "não achei a pasta". */
+      if (maquinaDoProjeto(nome)) return;
       try {
         PJ_DETALHE[nome] = await (await fetch('/api/projetos/um?projeto=' + encodeURIComponent(nome))).json();
       } catch (e) { PJ_DETALHE[nome] = { erro: String(e.message || e) }; }
@@ -7261,7 +7394,52 @@
       return '<div class="pj-bloco"><h5>' + titulo + '</h5><p>' + (corpo || 'nada aqui') + '</p></div>';
     }
 
+    /* Em qual máquina de fora este projeto mora, ou nulo se é daqui. */
+    const maquinaDoProjeto = (nome) => {
+      const lista = DATA.projetos?.projetos;
+      const p = (Array.isArray(lista) ? lista : []).find((x) => x.projeto === nome);
+      return p && !p.daqui ? (p.maquinaDeFora || null) : null;
+    };
+
+    /**
+     * CC-345: o "ver tudo" de um projeto que está na outra máquina.
+     *
+     * Ele abriu o do `coepiloto` e leu *"não deu para ler: não achei a pasta de
+     * coepiloto"*. Certo sobre o disco e inútil para ele: o projeto mora no PC,
+     * e a rota de detalhe varre a pasta DESTA máquina.
+     *
+     * O que dá para responder daqui sai do pacote que já chega: backlog e
+     * framework. O que não viaja DIZ que não viaja, em vez de aparecer vazio.
+     */
+    function pjDetalheRemoto(nome, onde) {
+      const m = (DATA.maquinas || []).find((x) => !x.local && (x.nome === onde || x.id === onde));
+      const fw = (m?.framework || []).find((f) => f.projeto === nome) || null;
+      const bl = (m?.backlogs || []).find((b) => b.projeto === nome) || null;
+      const bloco = (titulo, corpo) => '<div class="pj-bloco"><h5>' + titulo + '</h5><p>' + corpo + '</p></div>';
+
+      return '<div class="pj-detalhe">'
+        + bloco('backlog', (() => {
+          if (m?.backlogs == null) return esc(onde) + ' ainda não conta o backlog dos projetos dela.';
+          if (!bl) return 'sem roadmap neste projeto';
+          const titulos = (bl.titulos || []).filter(Boolean);
+          if (!titulos.length) return bl.abertas ? bl.abertas + ' aberta(s) em ' + bl.frentes + ' seção(ões)' : 'nenhuma frente aberta';
+          return titulos.slice(0, 4).map((t) => esc(t)).join('<br>')
+            + (bl.abertas > titulos.length ? '<br>e mais ' + (bl.abertas - titulos.length) : '');
+        })())
+        + bloco('framework', (() => {
+          if (m?.framework == null) return esc(onde) + ' ainda não conta o estado do framework.';
+          if (!fw?.existe) return 'nunca foi ligado neste projeto';
+          if (!fw.ligado || fw.modo === 'desligado') return 'não está ligado neste projeto';
+          return 'modo <b>' + esc(fw.modo) + '</b>' + (fw.fase ? ', na fase <b>' + esc(fw.fase) + '</b>' : '');
+        })())
+        + bloco('git', 'não viaja entre as máquinas. Só dá para ler em ' + esc(onde) + '.')
+        + bloco('rotinas', 'não viajam entre as máquinas. Só dá para ler em ' + esc(onde) + '.')
+        + '</div>';
+    }
+
     function pjDetalhe(nome) {
+      const deFora = maquinaDoProjeto(nome);
+      if (deFora) return pjDetalheRemoto(nome, deFora);
       const d = PJ_DETALHE[nome];
       if (!d) return '<div class="pj-detalhe"><div class="pj-bloco"><p>lendo o resto deste projeto…</p></div></div>';
       if (d.erro || d.error) return '<div class="pj-detalhe"><div class="pj-bloco"><p>não deu para ler: '
@@ -7316,8 +7494,29 @@
      * papel e o modo. Escolher ela desliga de verdade; escolher qualquer
      * outra liga. O arquivo continua guardando o MVP ao desligar, que é a
      * promessa antiga e não muda. */
-    const catModos = () => ((FW_LISTA || []).find((x) => (x.modos || []).length) || {}).modos || [];
-    const catPerfis = () => ((FW_LISTA || []).find((x) => (x.perfis || []).length) || {}).perfis || [];
+    /* `FW_LISTA` vale `'carregando'` e `'erro'` além da lista, e `.find` numa
+       string explode. Só apareceu quando o cartão de projeto de outra máquina
+       passou a pedir o catálogo CEDO, antes da lista chegar: a varredura de
+       telas pegou três exceções seguidas, e nenhuma delas dava erro na cara
+       dele, só um cartão que não desenhava. Lista de verdade ou nada. */
+    const catLista = () => (Array.isArray(FW_LISTA) ? FW_LISTA : []);
+    const catModos = () => (catLista().find((x) => (x.modos || []).length) || {}).modos || [];
+    const catPerfis = () => (catLista().find((x) => (x.perfis || []).length) || {}).perfis || [];
+
+    /* CC-343: o que cada modo FAZ, escrito na tela.
+     *
+     * Ele apontou que o `?` não explica os modos. Medido: todo modo tem uma
+     * explicação boa no catálogo, e ela só existia no `title` do `<option>`.
+     * Dica de passar o mouse não existe em telefone, que é onde ele lê. E não
+     * há verbete "framework" no glossário, então aquele `?` nem chega a virar
+     * botão: some, e a ausência parece escolha.
+     */
+    const explicaModo = (id) => {
+      if (!id) return '';
+      const m = (catModos() || []).find((x) => x.id === id);
+      const texto = m?.explica || (id === 'desligado' ? 'A IA é a de sempre. Nada é travado.' : '');
+      return texto ? '<p class="cc-explica">' + esc(texto) + '</p>' : '';
+    };
 
     const seletorEstado = (p) => {
       /* Projeto que nunca teve framework vem sem catálogo próprio, e é
@@ -7384,6 +7583,37 @@
       return (m.framework || []).find((f) => f.projeto === projeto) || { projeto, existe: false, ligado: false };
     };
 
+    /* CC-344: as travas do projeto que está na outra máquina.
+     *
+     * Ele ligou o modo pelo cartão do PC e estranhou: *"mesmo ligando os modos
+     * não aparece mais aquelas travas"*. Duas causas, as duas minhas: o pedido
+     * de modo não ligava o framework (consertado do lado que executa), e o
+     * cartão remoto nunca teve esta lista.
+     *
+     * Máquina que ainda não reporta as travas fica SEM a lista, em vez de
+     * mostrar cinco botões chutados como ligados.
+     */
+    const travasRemotas = (projeto, onde, fw) => {
+      const valendo = fw.existe && fw.ligado && fw.modo !== 'desligado';
+      if (!valendo) return '';
+      const cat = FW_CATALOGO_MODULOS || {};
+      const chaves = Object.keys(cat);
+      if (!chaves.length) return '';
+      if (fw.modulos == null) {
+        return '<p class="cc-explica">' + esc(onde) + ' ainda não conta o estado das travas deste projeto.</p>';
+      }
+      const botoes = chaves.map((m) => {
+        const on = fw.modulos?.[m] !== false;
+        return '<button type="button" class="btn compacto cc-mod' + (on ? '' : ' cc-mod-off') + '"'
+          + ' data-mod-remoto="' + esc(m) + '" data-mod-proj="' + esc(projeto) + '"'
+          + ' data-mod-maquina="' + esc(onde) + '" data-mod-on="' + (on ? '0' : '1') + '"'
+          + ' title="' + esc(cat[m].explica || '') + (on ? '' : ' (DESLIGADO neste projeto)') + '">'
+          + esc(cat[m].label) + (on ? '' : ' ✕') + '</button>';
+      }).join('');
+      return '<div class="cc-mods-rotulo">o que o framework governa em ' + esc(onde) + '</div>'
+        + '<div class="cc-mods">' + botoes + '</div>';
+    };
+
     const blocoFrameworkRemoto = (p) => {
       const onde = p.maquinaDeFora;
       if (!onde) return '<p class="cc-explica">este projeto está em outra máquina, e não dá para saber qual.</p>';
@@ -7421,6 +7651,8 @@
           + '</optgroup>' : '')
         + '</select>'
         + '</div>'
+        + explicaModo(escolhido)
+        + travasRemotas(p.projeto, onde, fw)
         + (pendente
           ? '<p class="cc-explica">pedido a ' + esc(onde) + ': '
             + esc(pendente.valor === 'desligado' ? 'Desligado' : rotulo(pendente.valor))
@@ -7465,8 +7697,8 @@
       const situacao = !valendo
         ? '<span class="cc-desligado">' + (fw.existe
             ? (fw.ligado
-              ? 'o framework está instalado e guardando o MVP, mas nada está travado neste modo.'
-              : 'o framework está desligado aqui. O que você escolheu fica guardado e volta ao religar.')
+              ? 'o framework está instalado e guardando o MVP, mas nada está travado neste modo. Por isso a lista de travas não aparece.'
+              : 'o framework está desligado aqui. O que você escolheu fica guardado e volta ao religar, e as travas voltam com ele.')
             : 'este projeto nunca teve framework. Escolha um papel ou modo para ligar.')
           + '</span>'
         : '<div class="cc-fase"><span class="dot ' + (fw.portaoAberto ? 'green' : 'amber') + '"></span> '
@@ -7490,6 +7722,7 @@
       const miolo = (selosFw(fw) ? '<div class="cc-selos">' + selosFw(fw) + '</div>' : '')
         + '<div class="cc-linha-estado">' + seletorEstado(fw) + ajuda('framework') + btnEntrevista
         + (btnEntrevista ? ajuda('entrevista') : '') + '</div>'
+        + explicaModo(valendo ? fw.modo : 'desligado')
         + situacao
         + (modulos
           ? '<div class="cc-mods-rotulo">o que o framework governa aqui ' + ajuda('módulos do framework') + '</div>'
@@ -7621,8 +7854,14 @@
           ? blocoFramework(fwDe(p.projeto), { colapsado: !CC_SESSOES.has(p.projeto) })
           : blocoFrameworkRemoto(p))
         + '<div class="pj-acoes">'
-        + '<button class="btn btn-ghost" data-pj-abrir="' + esc(p.projeto) + '">'
-        + (aberto ? 'fechar' : 'ver tudo') + '</button>'
+        /* CC-345: o rótulo diz O QUE abre. Ele: *"esse 'ver tudo' também está
+           super sem explicação, ver tudo o quê?"*. Projeto de outra máquina
+           lista só o que atravessa a rede. */
+        + '<button class="btn btn-ghost" data-pj-abrir="' + esc(p.projeto) + '"'
+        + ' title="' + (p.daqui
+          ? 'backlog deste projeto, situação do git, rotinas e framework'
+          : 'backlog e framework deste projeto, do jeito que ' + esc(p.maquinaDeFora || 'a outra máquina') + ' reporta') + '">'
+        + (aberto ? 'fechar' : (p.daqui ? 'ver backlog, git e rotinas' : 'ver backlog e framework')) + '</button>'
         + (p.daqui ? '<button class="btn btn-ghost" data-pj-pastas="' + esc(p.projeto) + '">pastas</button>' : '')
         + '</div>'
         + (aberto ? pjDetalhe(p.projeto) : '')
@@ -9763,230 +10002,390 @@
       pintar(el, items.join(''));
     }
 
+    /* Idade em palavra curta. O painel não tem uma função global disso: há
+       quatro versões locais espalhadas, e importar a de outro escopo criaria a
+       quinta com dono errado. */
+    const kbIdade = (t) => {
+      if (!t) return '';
+      const h = (Date.now() - Number(t)) / 3600000;
+      if (h < 1) return 'agora há pouco';
+      if (h < 24) return 'há ' + Math.round(h) + 'h';
+      const d = Math.round(h / 24);
+      return d < 30 ? 'há ' + d + 'd' : 'há ' + Math.round(d / 30) + ' mês(es)';
+    };
+
+    /* Em qual máquina aquele projeto está. Mesma conta de `maquinaDoProjeto`,
+       para não haver duas respostas para a mesma pergunta em telas diferentes. */
+    const seloDoProjeto = (projeto) => {
+      const lista = DATA.projetos?.projetos;
+      const p = (Array.isArray(lista) ? lista : []).find((x) => x.projeto === projeto);
+      if (!p) return '';
+      return p.daqui ? seloDe(DATA.maquina?.nome || 'esta máquina')
+        : seloDe(p.maquinaDeFora || 'outra máquina', { frio: true });
+    };
+
+    let KB_PROJETO = 'todos';
+    let KB_ABERTO = null;
+    let KB_PEDIU_PROJETOS = false;
+    let KB_MEXENDO = false;
+
+    /**
+     * CC-348: o quadro tem TRÊS fontes, não uma.
+     *
+     * Ele: *"entender por que não estão aparecendo todos os itens e tarefas
+     * to-dos dos projetos"*. Medido: 13 to-dos de agente e 26 pendências dele,
+     * e o quadro mostrava zero dos dois. A perda foi minha, ao reescrever a
+     * tela: a versão em funil mostrava as três listas e o quadro só lia o
+     * backlog. Sem aviso, e a coluna ANDANDO ficava zerada com 15 agentes
+     * trabalhando.
+     */
+    function kbCartoes() {
+      const fora = [];
+      for (const g of (DATA.trabalho?.grupos || [])) {
+        for (const c of (g.cartoes || [])) fora.push({ ...c, projeto: g.projeto, fonte: 'frente' });
+      }
+      for (const j of (DATA.agentes || [])) {
+        for (const t of (j.todos || [])) {
+          if (t.done) continue;
+          fora.push({
+            fonte: 'todo', projeto: j.project || 'sem projeto',
+            id: t.codigo || null, marca: { real: Boolean(t.codigo), texto: t.codigo },
+            nome: t.text || t.texto || '', titulo: t.text || t.texto || '',
+            citacao: null, descricao: j.subject || '',
+            estado: { palavra: 'ANDANDO', cor: 'working', porque: j.subject || null },
+            nasceuEm: Number(j.createdAt) || null,
+          });
+        }
+      }
+      for (const m of (DATA.meu || [])) {
+        if (m.feito) continue;
+        fora.push({
+          fonte: 'meu', projeto: m.projeto || 'sem projeto',
+          id: null, marca: { real: false },
+          nome: m.texto || '', titulo: m.texto || '',
+          citacao: null, descricao: m.porque || '',
+          estado: { palavra: 'VOCÊ DECIDE', cor: 'waiting', porque: m.frente || null },
+          nasceuEm: Number(m.em) || null,
+        });
+      }
+      return fora;
+    }
+
+    const kbChave = (c) => c.fonte + '::' + c.projeto + '::' + (c.id || c.titulo);
+
+    const KB_COLUNAS = [
+      { palavra: 'NA FILA', cor: 'idle', vazia: 'nada esperando aqui.' },
+      { palavra: 'ANDANDO', cor: 'working', vazia: 'nenhum agente pegou uma frente agora. Enche sozinha quando alguém começa.' },
+      { palavra: 'VOCÊ DECIDE', cor: 'waiting', vazia: 'nada depende de você neste recorte.' },
+      { palavra: 'TRAVADA', cor: 'failed', vazia: 'nada travado. Enche quando você marca pausa no backlog.' },
+    ];
+
     function renderViewTrabalho() {
       const container = document.getElementById('view-trabalho');
-      if(!container) return;
-
+      if (!container) return;
       if (!DATA.trabalho || !DATA.trabalho.grupos) {
-        container.innerHTML = `<div class="empty-state" style="padding: 40px; text-align: center; color: var(--text-muted);">Carregando dados do trabalho...</div>`;
+        container.innerHTML = '<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-muted);">Carregando o quadro…</div>';
+        return;
+      }
+      /* Mão na tela: arrastando cartão ou puxando a fita. O redesenho de 2 em 2
+         segundos destruiria o elemento no meio do gesto. */
+      if (KB_MEXENDO) return;
+
+      const filtro = container.querySelector('[data-kb-projeto]');
+      if (filtro && document.activeElement === filtro) {
+        if (!filtro.dataset.kbBlur) {
+          filtro.dataset.kbBlur = '1';
+          filtro.addEventListener('blur', () => renderViewTrabalho(), { once: true });
+        }
         return;
       }
 
-      // Agrupar tudo por projeto
-      const projetosMap = new Map();
-
-      // 1. Popular com os grupos do backlog
-      (DATA.trabalho.grupos || []).forEach(g => {
-        if (!projetosMap.has(g.projeto)) projetosMap.set(g.projeto, { nome: g.projeto, backlog: [], sprint: [], meu: [] });
-        projetosMap.get(g.projeto).backlog = g.cartoes || [];
-      });
-
-      // 2. Popular com a sprint (agentes)
-      (DATA.agentes || []).forEach(job => {
-        const p = job.project || 'Geral';
-        if (!projetosMap.has(p)) projetosMap.set(p, { nome: p, backlog: [], sprint: [], meu: [] });
-        /* CC-227: o cartão do projeto nesta tela também diz onde ele está. */
-        const m = nomeMaquina(job);
-        if (m && !projetosMap.get(p).maquinas?.includes(m)) {
-          projetosMap.get(p).maquinas = [...(projetosMap.get(p).maquinas || []), m];
-        }
-
-        const itensSprint = (job.todos || []).map((t, i) => ({ t, i, job })).filter(x => !x.t.done);
-        if (itensSprint.length > 0) {
-          projetosMap.get(p).sprint.push(...itensSprint);
-        }
-      });
-
-      // 3. Popular com as pendências humanas (Meu)
-      (DATA.meu || []).forEach(m => {
-        const p = m.projeto || 'Geral';
-        if (!projetosMap.has(p)) projetosMap.set(p, { nome: p, backlog: [], sprint: [], meu: [] });
-        projetosMap.get(p).meu.push(m);
-        /* Projeto que só tem pendência humana também tem lugar: a máquina vem
-           carimbada na própria pendência desde o CC-227. */
-        if (m.maquina && !projetosMap.get(p).maquinas?.includes(m.maquina)) {
-          projetosMap.get(p).maquinas = [...(projetosMap.get(p).maquinas || []), m.maquina];
-        }
-      });
-
-      // Converter para array e ordenar (projetos com mais pendências do usuário ou sprint primeiro)
-      const projetos = Array.from(projetosMap.values()).sort((a, b) => {
-        const scoreA = (a.meu.length * 100) + (a.sprint.length * 10) + a.backlog.length;
-        const scoreB = (b.meu.length * 100) + (b.sprint.length * 10) + b.backlog.length;
-        return scoreB - scoreA;
-      });
-
-      // Auxiliares de renderização
-      /* CC-233: esta é a lista que ELE tocou no telefone em 21/08. A linha
-         inteira era um `<label>` da caixa de marcar, então tocar no texto para
-         saber o que a tarefa é abria "Marcar como resolvido?". Palavras dele:
-         *"essa tela não me serve de nada se eu não puder clicar e ver exatamente
-         o que preciso resolver"*.
-
-         Havia DUAS listas de pendência dele no arquivo, com a mesma função e o
-         mesmo defeito: a da tela "o que só você resolve" e esta, da tela
-         Trabalho. Consertar só uma deixaria o defeito vivo onde ele estava
-         olhando. */
-      const renderMeu = (itens) => {
-        if (!itens || itens.length === 0) return '';
-        return itens.map(p => `
-          <div class="card attention-card red" style="margin-bottom: 8px; padding: 12px; background: rgba(239, 68, 68, 0.05); border-left: 3px solid var(--red);">
-            <div class="ct ct-tar s-waiting" style="display: flex; gap: 8px; align-items: flex-start;">
-              <label style="flex: none; cursor: pointer;" title="marcar como resolvida">
-                <input type="checkbox" data-meu-check="${esc(p.id)}" data-meu-texto="${esc(p.texto)}" aria-label="marcar como resolvida">
-              </label>
-              <div data-meu-abrir="${esc(p.id)}" style="cursor: pointer; min-width: 0; flex: 1;" title="ver o que é esta tarefa">
-                ${/* CC-262: a revisão automática, na ABA TRABALHO, dentro de "o
-                     que só você resolve", que foi onde ele pediu. O selo só
-                     aparece quando a prova diz que sim, e ele continua sendo
-                     quem fecha: aqui é aviso, não ação. */ ''}
-                ${p.pareceResolvida ? `<span class="ct-selo c-done" style="font-size:10px;background:rgba(16,185,129,.2);padding:2px 6px;border-radius:4px;color:#6ee7b7;" title="${esc(p.comoSoube || '')}">parece resolvida</span>` : ''}
-                <span class="ct-selo c-waiting" style="font-size: 10px; background: rgba(239, 68, 68, 0.2); padding: 2px 6px; border-radius: 4px; color: #fca5a5;">você</span>
-                <span style="font-size: 13px; font-weight: 500; color: var(--text-main); margin-left: 6px;">${esc(p.texto)}</span>
-                ${/* O motivo aparece aqui só com o item FECHADO: aberto, ele
-                      viria duas vezes seguidas na mesma tela, e em 390px isso
-                      empurra os botões para fora. */ ''}
-                ${p.porque && !MEU_ABERTO.has(p.id) ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${esc(p.porque)}</div>` : ''}
-              </div>
-              <span style="flex: none; font-size: 11px; color: var(--text-dim);">${MEU_ABERTO.has(p.id) ? '▾' : '▸'}</span>
-            </div>
-            ${MEU_ABERTO.has(p.id) ? detalheMeu(p) : ''}
-          </div>
-        `).join('');
-      };
-
-      const renderSprint = (itens) => {
-        if (!itens || itens.length === 0) return '';
-        return itens.map(({ t, i, job }) => {
-          const semResposta = (t.revisoes || []).some((r) => !r.respondeu);
-          let esperaHTML = '';
-          if (t.dependeDe) {
-            const alvo = (job.todos || []).find((x) => x.codigo === t.dependeDe);
-            if (alvo?.done) esperaHTML = `<span class="ct-selo c-done" style="font-size: 10px; background: rgba(16, 185, 129, 0.2); color: #6ee7b7; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">${esc(t.dependeDe)} feita</span>`;
-            else esperaHTML = `<span class="ct-selo c-waiting" style="font-size: 10px; background: rgba(245, 158, 11, 0.2); color: #fcd34d; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">espera ${esc(t.dependeDe)}</span>`;
-          }
-          const provaHTML = t.prova ? `<span class="ct-selo c-working" style="font-size: 10px; background: rgba(139, 92, 246, 0.2); color: #c4b5fd; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">com prova</span>` : '';
-          const revHTML = semResposta ? `<span class="ct-selo c-failed" style="font-size: 10px; background: rgba(239, 68, 68, 0.2); color: #fca5a5; padding: 2px 6px; border-radius: 4px; margin-left: 4px;">revisar</span>` : '';
-
-          return `
-          <div class="card" style="margin-bottom: 8px; padding: 12px; background: rgba(139, 92, 246, 0.05); border-left: 3px solid var(--working);">
-            <label class="ct ct-tar s-working" style="display: flex; gap: 8px; align-items: flex-start; cursor: pointer;">
-              <input type="checkbox" data-todo="${esc(job.id)}" data-i="${i}" aria-label="marcar como feita">
-              <div>
-                <span class="ct-cod real" style="font-size: 10px; font-weight: 700; font-family: monospace; color: var(--accent);">${esc(t.codigo || `S${i+1}`)}</span>
-                ${revHTML}
-                ${esperaHTML}
-                ${provaHTML}
-                <span style="font-size: 13px; font-weight: 400; color: var(--text-main); margin-left: 6px;">${esc(t.text)}</span>
-                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${esc(job.role || job.subject || '')}</div>
-              </div>
-            </label>
-          </div>
-          `;
-        }).join('');
-      };
-
-      const renderBacklog = (itens, projectName) => {
-        if (!itens || itens.length === 0) return '';
-        // Filtrar tarefas abertas
-        const abertos = itens.filter(c => c.estado !== 'feito');
-        if (abertos.length === 0) return '';
-
-        return abertos.map(c => {
-          const isFila = c.estado?.palavra === 'NA FILA';
-          const cor = c.estado?.cor || 'neutro';
-          
-          let corCSS = 'var(--text-muted)';
-          let bgCSS = 'rgba(255,255,255,0.05)';
-          if (cor === 'working') { corCSS = 'var(--working)'; bgCSS = 'rgba(139, 92, 246, 0.1)'; }
-          if (cor === 'waiting') { corCSS = 'var(--amber)'; bgCSS = 'rgba(245, 158, 11, 0.1)'; }
-          if (cor === 'done') { corCSS = 'var(--done)'; bgCSS = 'rgba(16, 185, 129, 0.1)'; }
-          
-          return `
-          <div class="card" style="margin-bottom: 8px; padding: 10px 12px; border-left: 2px solid ${corCSS}; background: ${bgCSS}; cursor: pointer;" data-trab-abrir="${esc(`${projectName}:${c.nome}`)}">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <span style="font-size: 10px; font-weight: 700; font-family: monospace; color: var(--text-dim);">${esc(c.marca?.texto || '')}</span>
-              ${!isFila && c.estado ? `<span style="font-size: 10px; font-weight: 600; color: ${corCSS}; text-transform: uppercase;">${esc(c.estado.palavra)}</span>` : ''}
-            </div>
-            <div style="font-size: 13px; font-weight: 400; color: var(--text-main);">${esc(c.rotulo || c.nome)}</div>
-            <div style="display: flex; gap: 8px; font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-              ${c.frente ? `<span>${esc(c.frente)}</span>` : ''}
-              ${c.fracao ? `<span>${c.fracao.feitos}/${c.fracao.itens} fechadas</span>` : ''}
-            </div>
-          </div>
-          `;
-        }).join('');
-      };
-
-      let html = `<div class="trab-wrap">`;
-      
-      if (projetos.length === 0) {
-        html += `<div class="empty-state" style="text-align:center; padding: 60px; color: var(--text-muted);">Nenhum trabalho encontrado no backlog ou nos agentes.</div>`;
+      /* A etiqueta de máquina sai da lista de projetos, e `DATA.projetos` NASCE
+         como `[]`, que é verdadeiro: testar a existência dele nunca dispara. */
+      if (!Array.isArray(DATA.projetos?.projetos) && !KB_PEDIU_PROJETOS) {
+        KB_PEDIU_PROJETOS = true;
+        carregarProjetosTela();
       }
 
-      projetos.forEach(p => {
-        const hasMeu = p.meu.length > 0;
-        const hasSprint = p.sprint.length > 0;
-        const hasBacklog = p.backlog.length > 0;
-        
-        if (!hasMeu && !hasSprint && !hasBacklog) return; // ignora projeto vazio
+      const todos = kbCartoes();
+      const projetos = [...new Set(todos.map((c) => c.projeto))].sort();
+      if (KB_PROJETO !== 'todos' && !projetos.includes(KB_PROJETO)) KB_PROJETO = 'todos';
+      const lista = KB_PROJETO === 'todos' ? todos : todos.filter((c) => c.projeto === KB_PROJETO);
+      const fechadas = (DATA.trabalho.grupos || [])
+        .filter((g) => KB_PROJETO === 'todos' || g.projeto === KB_PROJETO)
+        .reduce((s, g) => s + (g.fechadas || 0), 0);
 
-        html += `
-          <div class="project-funnel-card" style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
-            
-            <div class="trab-cab">
-              <h2 style="margin: 0; font-size: 18px; color: var(--text-main); display: flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere;">
-                <i class="ph-bold ph-folder" style="color: var(--accent);"></i> ${esc(p.nome)}
-                ${(p.maquinas || []).map((m) => seloDe(m)).join(' ')}
-              </h2>
-              <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-muted);">
-                ${hasMeu ? `<span style="color: var(--red); font-weight: 600;">${p.meu.length} sua vez</span>` : ''}
-                ${hasSprint ? `<span style="color: var(--working); font-weight: 600;">${p.sprint.length} na sprint</span>` : ''}
-              </div>
-            </div>
+      /**
+       * CC-350: a curadoria das micro informações, que ele mandou fazer.
+       *
+       * Cada pastilha responde uma pergunta dele: de quem é, onde roda, tem
+       * alguém em cima, há quanto tempo existe, há quanto tempo ninguém
+       * encosta, por que parou, e quantas outras frentes dependem desta.
+       *
+       * O que NÃO entrou, e é decisão: percentual de progresso e prazo. O
+       * quadro de referência tem os dois e aqui NENHUM dos dois existe. Barra
+       * desenhada sobre dado que ninguém preenche é enfeite que mente.
+       */
+      const cartao = (c) => {
+        const chave = kbChave(c);
+        const cor = c.estado?.cor || 'idle';
+        const tag = (t, cl) => (t ? '<span class="kb-tag' + (cl ? ' ' + cl : '') + '">' + esc(t) + '</span>' : '');
+        /* "Mexida há" só quando diz algo NOVO: numa frente aberta e mexida no
+           mesmo dia, repetir a idade duas vezes é ruído. */
+        const mexida = (c.mexidoEm && c.nasceuEm && (c.mexidoEm - c.nasceuEm) > 86400000) ? kbIdade(c.mexidoEm) : null;
 
-            <div class="funil-colunas">
-              <!-- Nível 1: Sua Vez (O mais restrito) -->
-              <div class="funil-col" style="background: rgba(239, 68, 68, ${hasMeu ? '0.02' : '0'});">
-                <div style="font-size: 11px; font-weight: 700; color: var(--red); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
-                  <span>O Que Só Você Resolve</span>
-                  ${hasMeu ? `<span style="background: var(--red); color: white; padding: 2px 6px; border-radius: 10px;">${p.meu.length}</span>` : ''}
-                </div>
-                <div style="flex: 1; overflow-y: auto;">
-                  ${renderMeu(p.meu) || '<div style="font-size: 12px; color: var(--text-muted); opacity: 0.5; font-style: italic;">Livre de pendências humanas.</div>'}
-                </div>
-              </div>
+        return '<article class="kb-card c-' + esc(cor) + (KB_ABERTO === chave ? ' aberto' : '')
+          + '" data-kb-card="' + esc(chave) + '"'
+          /* Só frente do backlog arrasta: to-do e pendência não têm linha no
+             ROADMAP para receber o estado, e arrastável prometeria uma gravação
+             que não aconteceria. */
+          + (c.fonte === 'frente' ? ' data-kb-mover="1"' : '')
+          + ' title="' + (c.fonte === 'frente'
+            ? 'clique para abrir. Segure e arraste para mudar o estado no backlog'
+            : (c.fonte === 'todo' ? 'tarefa de um agente, em andamento' : 'pendência sua')) + '">'
+          + '<div class="kb-tags">'
+          + (c.marca?.real && c.id ? '<span class="kb-card-id">' + esc(c.id) + '</span>' : '')
+          + (KB_PROJETO === 'todos' ? tag(c.projeto, 'forte') + seloDoProjeto(c.projeto) : '')
+          + '</div>'
+          + '<div class="kb-card-titulo">' + esc(c.nome || c.rotulo || c.titulo || '') + '</div>'
+          + (c.citacao ? '<div class="kb-card-fala">' + esc(c.citacao) + '</div>' : '')
+          + '<div class="kb-tags">'
+          + (c.fonte === 'todo' ? tag('agente em cima', 'viva') : '')
+          + (c.fonte === 'meu' ? tag('espera você', 'pausa') : '')
+          + (cor === 'failed' ? tag('travada', 'presa') : '')
+          + (c.estado?.porque ? tag(c.estado.porque, cor === 'failed' ? 'presa' : 'pausa') : '')
+          + (c.nasceuEm ? tag('aberta ' + kbIdade(c.nasceuEm)) : '')
+          + (mexida ? tag('mexida ' + mexida) : '')
+          + (c.desbloqueia?.length ? tag('destrava ' + c.desbloqueia.length, 'forte') : '')
+          + '</div></article>';
+      };
 
-              <!-- Nível 2: Sprint (O que os agentes estão fazendo) -->
-              <div class="funil-col" style="background: rgba(139, 92, 246, ${hasSprint ? '0.02' : '0'});">
-                <div style="font-size: 11px; font-weight: 700; color: var(--working); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
-                  <span>Sprint Atual (Agentes) ${ajuda('sprint')}</span>
-                  ${hasSprint ? `<span style="background: var(--working); color: white; padding: 2px 6px; border-radius: 10px;">${p.sprint.length}</span>` : ''}
-                </div>
-                <div style="flex: 1; overflow-y: auto;">
-                  ${renderSprint(p.sprint) || '<div style="font-size: 12px; color: var(--text-muted); opacity: 0.5; font-style: italic;">Nenhum agente ativo nesta sprint.</div>'}
-                </div>
-              </div>
+      const coluna = (def) => {
+        const dela = lista.filter((c) => (c.estado?.palavra || 'NA FILA') === def.palavra);
+        return '<section class="kb-col c-' + def.cor + '">'
+          + '<header class="kb-col-cab"><span class="kb-col-nome">' + esc(def.palavra) + '</span>'
+          + '<span class="kb-col-conta">' + dela.length + '</span></header>'
+          /* Coluna vazia DIZ por que está vazia: espaço em branco não distingue
+             "está tudo bem" de "a leitura falhou". */
+          + '<div class="kb-col-corpo">'
+          + (dela.length ? dela.map(cartao).join('') : '<p class="kb-vazia">' + esc(def.vazia) + '</p>')
+          + '</div></section>';
+      };
 
-              <!-- Nível 3: Product Backlog (O mais largo) -->
-              <div class="funil-col">
-                <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
-                  <span>Product Backlog ${ajuda('product backlog')}</span>
-                  ${hasBacklog ? `<span style="background: rgba(255,255,255,0.1); color: var(--text-dim); padding: 2px 6px; border-radius: 10px;">${p.backlog.filter(c=>c.estado!=='feito').length}</span>` : ''}
-                </div>
-                <div style="flex: 1; overflow-y: auto; max-height: 400px; padding-right: 4px;">
-                  ${renderBacklog(p.backlog, p.nome) || '<div style="font-size: 12px; color: var(--text-muted); opacity: 0.5; font-style: italic;">Backlog zerado.</div>'}
-                </div>
-              </div>
-            </div>
+      /* FECHADA é contagem, não pilha: 227 cartões abertos empurrariam as
+         outras quatro para fora do alcance do polegar. */
+      const colunaFechada = '<section class="kb-col c-done">'
+        + '<header class="kb-col-cab"><span class="kb-col-nome">FECHADA</span>'
+        + '<span class="kb-col-conta">' + fechadas + '</span></header>'
+        + '<div class="kb-col-corpo"><p class="kb-vazia">'
+        + (fechadas ? esc(fechadas + ' frente(s) já fechadas. Ficam no backlog, fora do quadro.') : 'nada fechado ainda.')
+        + '</p></div></section>';
 
-          </div>
-        `;
+      const aberto = KB_ABERTO ? lista.find((c) => kbChave(c) === KB_ABERTO) : null;
+
+      const html = '<div class="kb-filtros">'
+        + '<select class="styled-input" data-kb-projeto title="mostrar só um projeto">'
+        + '<option value="todos"' + (KB_PROJETO === 'todos' ? ' selected' : '') + '>todos os projetos (' + todos.length + ')</option>'
+        + projetos.map((p) => '<option value="' + esc(p) + '"' + (KB_PROJETO === p ? ' selected' : '') + '>'
+          + esc(p) + ' (' + todos.filter((c) => c.projeto === p).length + ')</option>').join('')
+        + '</select>'
+        + '<span style="font-size:12px;color:var(--text-dim);">' + lista.length + ' no quadro</span>'
+        + '<button class="btn btn-ghost compacto" data-kb-cheio title="abrir o quadro em tela cheia">tela cheia</button>'
+        + '</div>'
+        + (aberto ? kbDetalhe(aberto) : '')
+        /* O palco existe para a tela cheia ter o que expandir sem levar junto o
+           filtro e o cartão aberto. */
+        + '<div id="kb-palco"><div class="kb-quadro">'
+        + KB_COLUNAS.map(coluna).join('') + colunaFechada + '</div></div>';
+
+      pintar(container, html);
+      /* Depois de pintar, sempre: `pintar` troca o HTML quando muda, e os
+         ouvintes morrem junto com os nós antigos. */
+      kbLigarGestos(container);
+    }
+
+    /* O detalhe fica ACIMA do quadro, e não numa coluna lateral: em 390px a
+       lateral vira 26px de conteúdo, defeito que já apagou uma tela inteira. */
+    function kbDetalhe(c) {
+      return '<div class="kb-detalhe">'
+        + '<h3>' + (c.marca?.real && c.id ? esc(c.id) + ' · ' : '') + esc(c.nome || c.titulo || '') + '</h3>'
+        + '<div class="kb-tags" style="margin-bottom:8px;">'
+        + '<span class="kb-tag forte">' + esc(c.projeto) + '</span>' + seloDoProjeto(c.projeto)
+        + '<span class="kb-tag">' + esc(c.estado?.palavra || '') + '</span>'
+        + (c.nasceuEm ? '<span class="kb-tag">aberta ' + esc(kbIdade(c.nasceuEm)) + '</span>' : '')
+        + (c.mexidoEm ? '<span class="kb-tag">mexida ' + esc(kbIdade(c.mexidoEm)) + '</span>' : '')
+        + '</div>'
+        + (c.citacao ? '<p class="kb-card-fala" style="-webkit-line-clamp:unset;">' + esc(c.citacao) + '</p>' : '')
+        + (c.descricao ? '<p>' + esc(c.descricao) + '</p>' : '')
+        + '<button class="btn btn-ghost compacto" data-kb-fechar>fechar</button>'
+        + '</div>';
+    }
+
+    /* Relê SÓ o backlog e repinta. O carregamento geral puxa três rotas, e
+       depois de mover um cartão as outras duas não mudaram. */
+    async function kbRecarregar() {
+      try {
+        const r = await fetch('/api/trabalho?ordem=importancia');
+        if (r.ok) DATA.trabalho = await r.json();
+      } catch (e) { avisarFalha('/api/trabalho', String(e.message || e)); }
+      renderViewTrabalho();
+    }
+
+    function kbTelaCheia() {
+      const alvo = document.getElementById('kb-palco');
+      if (!alvo) return;
+      if (document.fullscreenElement) return document.exitFullscreen?.();
+      /* Se o navegador recusar (dentro de iframe, por exemplo), cai para uma
+         tela cheia só de CSS, que funciona em qualquer lugar. */
+      const p = alvo.requestFullscreen?.();
+      if (p?.catch) p.catch(() => alvo.classList.add('kb-cheio'));
+      else if (!alvo.requestFullscreen) alvo.classList.add('kb-cheio');
+    }
+
+    /**
+     * CC-350: os gestos, com as palavras dele.
+     *
+     * A primeira versão usava o arrasto nativo do navegador e ele reprovou:
+     * *"bem anti intuitiva e ruim no geral (…) eu não sei nem explicar como tá
+     * funcionando"*. Então ele ditou o contrato:
+     *
+     *   · esquerdo pressionado ..... arrasta o cartão
+     *   · esquerdo em clique ....... abre o cartão
+     *   · direito pressionado ...... arrasta o quadro de lado
+     *   · roda ..................... desce os cartões, normal
+     *   · qualquer outro botão ..... não faz nada
+     *
+     * O arrasto nativo saiu porque dá uma imagem fantasma que o navegador
+     * escolhe, não responde a toque, e o cartão "gruda" antes de o gesto virar
+     * arrasto. Com ponteiro, o cartão segue o dedo desde o primeiro pixel e a
+     * distância mínima decide se foi clique ou arrasto.
+     *
+     * O bloqueio dos outros botões é cirúrgico: ele foi explícito, *"é pra
+     * bloquear só fora"*, porque dentro do cartão aberto ele precisa
+     * selecionar texto. Então nada disso alcança `.kb-detalhe`.
+     */
+    const KB_ARRASTO_MINIMO = 6;
+    const KB_BORDA_ROLA = 60;
+
+    function kbLigarGestos(container) {
+      const quadro = container.querySelector('.kb-quadro');
+      if (!quadro || quadro.dataset.kbLigado) return;
+      quadro.dataset.kbLigado = '1';
+      let g = null;
+
+      const colunaEm = (x, y) => {
+        const col = document.elementFromPoint(x, y)?.closest?.('.kb-col');
+        if (!col) return null;
+        return KB_DESTINO[col.querySelector('.kb-col-nome')?.textContent || ''] ? col : null;
+      };
+
+      const limpar = () => {
+        g?.fantasma?.remove();
+        g?.card?.classList.remove('kb-saindo');
+        quadro.querySelectorAll('.kb-alvo').forEach((c) => c.classList.remove('kb-alvo'));
+        quadro.classList.remove('kb-pegando');
+        g = null; KB_MEXENDO = false;
+      };
+
+      quadro.addEventListener('pointerdown', (e) => {
+        if (e.target.closest?.('.kb-detalhe')) return;
+        if (e.button !== 0 && e.button !== 2) { e.preventDefault(); return; }
+
+        if (e.button === 2) {
+          /* Puxar a fita vale em qualquer ponto, inclusive em cima de um
+             cartão: é assim que se empurra uma mesa cheia de papel. */
+          g = { tipo: 'fita', x: e.clientX, scroll: quadro.scrollLeft };
+          quadro.classList.add('kb-pegando');
+          KB_MEXENDO = true;
+          quadro.setPointerCapture?.(e.pointerId);
+          e.preventDefault();
+          return;
+        }
+        const card = e.target.closest?.('[data-kb-mover]');
+        if (e.target.closest?.('button, select, a, input') || !card) return;
+        /* Ainda NÃO é arrasto: é candidato. Sem esse limiar, todo clique com a
+           mão trêmula viraria arrasto, que foi parte do "anti intuitivo". */
+        g = { tipo: 'talvez', card, x: e.clientX, y: e.clientY, chave: card.dataset.kbCard };
+        quadro.setPointerCapture?.(e.pointerId);
       });
 
-      html += `</div>`;
-      pintar(container, html);
+      quadro.addEventListener('pointermove', (e) => {
+        if (!g) return;
+        if (g.tipo === 'fita') { quadro.scrollLeft = g.scroll - (e.clientX - g.x); return; }
+        const dx = e.clientX - g.x; const dy = e.clientY - g.y;
+        if (g.tipo === 'talvez') {
+          if (Math.hypot(dx, dy) < KB_ARRASTO_MINIMO) return;
+          const r = g.card.getBoundingClientRect();
+          const f = g.card.cloneNode(true);
+          f.classList.add('kb-fantasma');
+          f.style.width = r.width + 'px'; f.style.left = r.left + 'px'; f.style.top = r.top + 'px';
+          document.body.appendChild(f);
+          g = { ...g, tipo: 'card', fantasma: f, offX: g.x - r.left, offY: g.y - r.top };
+          g.card.classList.add('kb-saindo');
+          KB_MEXENDO = true;
+        }
+        if (g.tipo !== 'card') return;
+        g.fantasma.style.left = (e.clientX - g.offX) + 'px';
+        g.fantasma.style.top = (e.clientY - g.offY) + 'px';
+        /* Encostou na borda: a fita anda sozinha, senão não dá para levar um
+           cartão até a última coluna sem soltar no meio. */
+        const cx = quadro.getBoundingClientRect();
+        if (e.clientX > cx.right - KB_BORDA_ROLA) quadro.scrollLeft += 14;
+        else if (e.clientX < cx.left + KB_BORDA_ROLA) quadro.scrollLeft -= 14;
+        const col = colunaEm(e.clientX, e.clientY);
+        quadro.querySelectorAll('.kb-alvo').forEach((c) => { if (c !== col) c.classList.remove('kb-alvo'); });
+        col?.classList.add('kb-alvo');
+      });
+
+      quadro.addEventListener('pointerup', async (e) => {
+        if (!g) return;
+        if (g.tipo === 'fita') { limpar(); return; }
+        if (g.tipo === 'talvez') {
+          const chave = g.chave; limpar();
+          KB_ABERTO = KB_ABERTO === chave ? null : chave;
+          return renderViewTrabalho();
+        }
+        const col = colunaEm(e.clientX, e.clientY);
+        const chave = g.chave; limpar();
+        if (!col) return renderViewTrabalho();
+        const para = KB_DESTINO[col.querySelector('.kb-col-nome')?.textContent || ''];
+        const c = kbCartoes().find((x) => kbChave(x) === chave);
+        if (!para || !c) return renderViewTrabalho();
+        const r = await post('/api/roadmap/estado', {
+          projeto: c.projeto, id: c.marca?.real ? c.id : null,
+          titulo: c.titulo || c.nome, para,
+        });
+        /* Recusa é legítima (título repetido, projeto sem ROADMAP). Sem aviso, o
+           cartão voltando sozinho pareceria a tela engolindo o gesto. */
+        if (r?.error) { avisarFalha('/api/roadmap/estado', r.error); return renderViewTrabalho(); }
+        kbRecarregar();
+      });
+
+      quadro.addEventListener('pointercancel', () => limpar());
+      /* O menu do sistema abriria por cima do gesto. Nunca dentro do cartão
+         aberto: ali ele precisa selecionar e copiar texto, e foi ele quem
+         apontou isso. */
+      quadro.addEventListener('contextmenu', (e) => {
+        if (e.target.closest?.('.kb-detalhe')) return;
+        e.preventDefault();
+      });
+      /* Botão do meio cola texto no Linux e abre aba no link. Nada disso tem
+         lugar no quadro; dentro do cartão aberto segue normal. */
+      quadro.addEventListener('auxclick', (e) => {
+        if (e.target.closest?.('.kb-detalhe')) return;
+        e.preventDefault();
+      });
     }
+
+    /* Para qual estado do backlog cada coluna leva. ANDANDO fica de fora: ela
+       não vem do arquivo, vem de haver agente na frente, então largar ali seria
+       prometer uma mudança sem onde ser gravada. */
+    const KB_DESTINO = {
+      'NA FILA': 'aberto',
+      'VOCÊ DECIDE': 'esperando',
+      'TRAVADA': 'bloqueado',
+      'FECHADA': 'feito',
+    };
 
     // ==== API & SSE ====
     /* O snapshot é o mesmo do painel antigo: `jobs`, `summary`, `uso`,
@@ -10228,6 +10627,10 @@
        * deliberada: ali o desligar tira as regras de valer AGORA, com sessão no
        * ar do lado. Aqui é um recado que leva até 30 segundos, e a tela avisa
        * isso na hora, então o passo a mais só atrapalharia. */
+      /* CC-346: o filtro de projeto do kambam. */
+      const selKb = tr.closest?.('[data-kb-projeto]');
+      if (selKb) { KB_PROJETO = selKb.value; KB_ABERTO = null; return renderViewTrabalho(); }
+
       const selRemoto = tr.closest?.('[data-fw-remoto]');
       if (selRemoto) {
         const projeto = selRemoto.dataset.fwRemoto;
@@ -10317,7 +10720,7 @@
     });
 
     document.body.addEventListener('click', async (e) => {
-      const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-meu-abrir], [data-meu-feito-btn], [data-zona], [data-foco-dia], [data-sinc-ler], [data-sinc-acao], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-remoto-conectar], [data-remoto-soltar], [data-remoto-reabrir], [data-coderoom-abrir], [data-coderoom-nova], [data-coderoom-fechar], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar], [data-tend-cheia], [data-tend-dia], [data-tend-andar], [data-tend-hoje], [data-tend-fechar], [data-trv-abrir], [data-trv-ajudou], [data-trv-atrapalhou], [data-trv-explica], [data-trv-fechar-explica], [data-pj-abrir], [data-pj-sessao], [data-pj-conversa], [data-cc-modo], [data-cc-fw], [data-cc-parados], [data-mod], [data-nav-grupo], [data-sb-grade], [data-tg-fechar], [data-tg-ir], [data-pj-pastas], [data-pa-fechar], [data-pa-alternar], [data-pa-arquivo], [data-pa-fechar-arq]');
+      const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-meu-abrir], [data-meu-feito-btn], [data-zona], [data-foco-dia], [data-sinc-ler], [data-sinc-acao], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-remoto-conectar], [data-remoto-soltar], [data-remoto-reabrir], [data-coderoom-abrir], [data-coderoom-nova], [data-coderoom-fechar], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar], [data-tend-cheia], [data-tend-dia], [data-tend-andar], [data-tend-hoje], [data-tend-fechar], [data-trv-abrir], [data-trv-ajudou], [data-trv-atrapalhou], [data-trv-explica], [data-trv-fechar-explica], [data-pj-abrir], [data-pj-sessao], [data-pj-conversa], [data-cc-modo], [data-cc-fw], [data-cc-parados], [data-mod], [data-nav-grupo], [data-sb-grade], [data-tg-fechar], [data-tg-ir], [data-pj-pastas], [data-pa-fechar], [data-pa-alternar], [data-pa-arquivo], [data-pa-fechar-arq], [data-kb-fechar], [data-kb-projeto], [data-kb-cheio], [data-mod-remoto], [data-fw-remoto]');
       if (!tr) return;
       /* CC-228: vem antes de tudo. O "?" mora dentro de cartões e linhas que já
          têm clique próprio (abrir agente, marcar feito), e sem sair aqui o
@@ -10734,8 +11137,31 @@
         return salvarNotas(true);
       }
 
+      /* CC-346/347: fechar o cartão aberto e a tela cheia. Abrir o cartão NÃO
+         passa por aqui: quem decide entre clique e arrasto é o gesto de
+         ponteiro, em `kbLigarGestos`. */
+      if (tr.dataset.kbFechar !== undefined) { KB_ABERTO = null; return renderViewTrabalho(); }
+      if (tr.dataset.kbCheio !== undefined) return kbTelaCheia();
+
       // ===== FRAMEWORK, ENTREVISTA, PROJETO NOVO =====
       if (tr.dataset.fwTodos !== undefined) { FW_TODOS = !FW_TODOS; return renderFwLista(); }
+      /* CC-344: a mesma trava, num projeto que está na outra máquina.
+         Vem ANTES do caminho local: os dois botões carregam `data-mod-proj`, e
+         cair no local escreveria no config DESTA máquina uma trava de um
+         projeto que não mora aqui. Ninguém veria. */
+      if (tr.dataset.modRemoto) {
+        const ligar = tr.dataset.modOn === '1';
+        const rotulo = tr.textContent.replace(' ✕', '').trim();
+        const onde = tr.dataset.modMaquina;
+        if (!ligar && !confirm(`Desligar as proteções de ${rotulo} no projeto ${tr.dataset.modProj}, em ${onde}?\n\n· ${tr.title}\n· nenhum aviso ou trava desse grupo vai disparar lá\n· o pedido chega em até 30 segundos\n· religa neste mesmo botão`)) return;
+        tr.disabled = true;
+        return post('/api/federacao/pedir', {
+          maquina: onde, projeto: tr.dataset.modProj, acao: 'framework-modulo',
+          modulo: tr.dataset.modRemoto, ligar,
+        }).then((d) => {
+          if (d?.ok === false) avisarFalha('/api/federacao/pedir', d.erro || 'pedido recusado');
+        }).finally(() => { tr.disabled = false; });
+      }
       if (tr.dataset.mod) {
         const ligar = tr.dataset.modOn === '1';
         const rotulo = tr.textContent.replace(' ✕', '').trim();

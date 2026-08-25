@@ -4758,3 +4758,161 @@ if (process.platform !== 'win32') {
   }
   console.log('  ok   CC-341: o recado carrega ação de lista fechada, e nunca comando nem caminho')
 }
+
+/* ── CC-342: o retrato não pode piscar ──────────────────────────────────────
+   Ele viu o defeito minutos depois de o CC-341 subir: *"o botão do framework
+   nas sessões do PC fica ativado um tempo e depois some, e depois volta"*.
+
+   Medido no pacote do PC: `framework` alternava entre 3 e nulo a cada 15
+   segundos. Dois empurradores de 30s defasados, um com o código novo e outro
+   com o velho. A premissa do CC-340 ("o retrato vai em TODO empurrão, então não
+   precisa herdar") assumia um empurrador só, e essa suposição não estava escrita
+   em lugar nenhum.
+
+   A herança tem prazo CURTO aqui de propósito: 12 horas resolveria o piscar e
+   criaria o defeito pior, trava tirada do ar posando de ativa. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc342-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+    const maquina = { id: 'pc1', nome: 'PC' }
+    const travas = [{ id: 'gate-guard', evento: 'Stop', registrado: true, ligado: true }]
+    const framework = [{ projeto: 'VPS_x', existe: true, ligado: true, modo: 'restritivo' }]
+
+    F.gravarPacote({ maquina, jobs: [], travas, framework, em: Date.now() })
+    /* O empurrador velho: manda tudo, menos o campo que ele não conhece. */
+    F.gravarPacote({ maquina, jobs: [], em: Date.now() })
+
+    const [p] = F.lerPacotes()
+    assert.equal(p.framework?.length, 1, 'pacote de versão antiga não pode APAGAR o retrato')
+    assert.equal(p.travas?.length, 1, 'o mesmo para as travas')
+
+    /* E o prazo é curto: dois minutos atravessam a alternância de empurradores,
+       e o buraco de verdade aparece no minuto seguinte em vez de daqui a meio
+       dia. */
+    assert.equal(F.validadeDe('framework'), 2 * 60 * 1000, 'o retrato herda por 2 minutos, não por 12 horas')
+    assert.equal(F.validadeDe('travas'), 2 * 60 * 1000)
+    assert.equal(F.validadeDe('tempo'), F.VALIDADE_HERDADO_MS, 'as horas continuam com o prazo longo')
+
+    /* Máquina que parou de reportar de vez: passado o prazo, o campo SOME, e é
+       isso que faz a tela voltar a dizer "não sei" em vez de mentir. */
+    const velho = Date.now() - 3 * 60 * 1000
+    F.gravarPacote({ maquina: { id: 'pc2', nome: 'PC2' }, jobs: [], travas, framework, em: velho })
+    F.gravarPacote({ maquina: { id: 'pc2', nome: 'PC2' }, jobs: [], em: Date.now() })
+    const p2 = F.lerPacotes().find((x) => x.maquina.id === 'pc2')
+    assert.equal(p2.framework, undefined, 'retrato velho demais é descartado, não herdado para sempre')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+  console.log('  ok   CC-342: empurrador de versão antiga não apaga o retrato, e o herdado tem prazo curto')
+}
+
+/* ── CC-344: escolher o modo na outra máquina precisa LIGAR ──────────────────
+   Ele: *"mesmo ligando os modos não aparece mais aquelas travas"*. Medido no
+   estado que o PC reportava: `proj_controlcenter` com modo `restritivo` e
+   `ligado: false`. O pedido trocava o campo `modo` e nada mais, então o projeto
+   ficava com um modo escolhido e NADA valendo, e a lista de travas não aparece
+   quando nada vale. O controle local liga e escolhe num gesto só desde o
+   CC-334; o remoto só escolhia.
+
+   O encadeamento mora em quem EXECUTA, e isso não é detalhe: quem pede está do
+   outro lado da rede e não sabe se o projeto existe, quanto mais se está
+   ligado. Mesma razão de o nome do projeto ser resolvido lá. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc344-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+    const t0 = 2_000_000
+
+    /* A trava nova, com a mesma regra de lista fechada dos outros pedidos. */
+    assert.equal(F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-modulo', now: t0 }).ok, false,
+      'mexer numa trava sem dizer qual é pedido incompleto')
+    assert.equal(F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-modulo', modulo: 'codigo', now: t0 }).ok, false,
+      'sem dizer se liga ou desliga, o pedido é ambíguo e não vale')
+    assert.equal(F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-modulo', modulo: 'a; rm -rf /', ligar: false, now: t0 }).ok, false,
+      'nome de trava com pontuação não é nome, é tentativa')
+
+    const a = F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-modulo', modulo: 'codigo', ligar: false, now: t0 })
+    assert.equal(a.ok, true)
+    const b = F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-modulo', modulo: 'rotas', ligar: false, now: t0 })
+    assert.equal(b.ok, true, 'duas travas diferentes do mesmo projeto são dois pedidos')
+    const dup = F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-modulo', modulo: 'codigo', ligar: false, now: t0 })
+    assert.equal(dup.jaPedido, true, 'a MESMA trava repetida continua sendo dedo duplo')
+
+    const pedidos = F.pegarPedidos('PC', t0)
+    assert.equal(pedidos.length, 2)
+    assert.deepEqual(pedidos.map((p) => p.modulo).sort(), ['codigo', 'rotas'])
+    assert.equal(pedidos[0].ligar, false, 'o liga/desliga viaja junto')
+
+    /* As travas viajam no retrato, senão a outra ponta desenha o modo e não tem
+       como desenhar a lista. */
+    const { pacote } = F.validarPacote({
+      maquina: { id: 'pc1', nome: 'PC' },
+      framework: [{ projeto: 'VPS_x', existe: true, ligado: true, modo: 'restritivo', modulos: { codigo: false, rotas: true, sujo: 'talvez' } }],
+    })
+    assert.deepEqual(pacote.framework[0].modulos, { codigo: false, rotas: true },
+      'só booleano atravessa; o resto é descartado como todo campo que vem da rede')
+    const semModulos = F.validarPacote({
+      maquina: { id: 'pc1', nome: 'PC' },
+      framework: [{ projeto: 'VPS_x', existe: true, ligado: true }],
+    })
+    assert.equal(semModulos.pacote.framework[0].modulos, null,
+      'máquina que não reporta as travas diz null, e a tela não desenha botão chutado')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+  console.log('  ok   CC-344: a trava viaja no recado e no retrato, com a mesma lista fechada')
+}
+
+/* ── CC-352: o mesmo nome vindo de duas pastas ───────────────────────────────
+   Ele estava tentando ligar o framework e o cartão "sumiu". Medido no pacote do
+   PC: `fibraessencia` chegava de DUAS pastas, porque ele está movendo os
+   projetos de lugar. O nome sai do último pedaço do caminho, então as duas
+   viravam um cartão só, e qual pasta ele mostrava dependia da ordem da lista.
+
+   O sintoma para ele foi o cartão trocando debaixo da mão. O risco de verdade
+   era pior e silencioso: ligar o framework na pasta errada.
+
+   Decisão dele em 25/08, com as duas pastas na tela: a antiga é lixo, então
+   vence quem tem sinal mais novo. */
+{
+  const T = await import(`./src/trabalho.mjs?t=${Date.now()}`)
+  const nova = 'D:\\Documentos\\projetos\\fibraessencia'
+  const velha = 'D:\\Documentos\\Ti\\projetos\\CLIENTS\\fibraessencia'
+
+  /* A velha vem PRIMEIRO na lista de propósito: é assim que o defeito
+     acontecia, e testar com a nova na frente passaria por acaso. */
+  const jobs = [
+    { project: 'fibraessencia', cwd: velha, updatedAt: 1000 },
+    { project: 'fibraessencia', cwd: nova, updatedAt: 9000 },
+  ]
+  const r = T.projetosDe(jobs, () => [])
+  assert.equal(r.length, 1, 'continua sendo um projeto só; o que muda é qual pasta ganha')
+  assert.equal(r[0].raiz, nova, 'ganha a pasta com sinal mais recente, não a que aparece primeiro')
+
+  /* E a ordem inversa não pode inverter a resposta: se invertesse, a regra
+     seria "a última da lista", que é o mesmo acaso de antes com outra cara. */
+  const r2 = T.projetosDe([jobs[1], jobs[0]], () => [])
+  assert.equal(r2[0].raiz, nova, 'a ordem da lista não decide nada')
+
+  /* Sem carimbo de tempo em ninguém, alguma pasta tem que sair: o pior seria o
+     projeto sumir da tela por empate. */
+  const semData = T.projetosDe([
+    { project: 'x', cwd: 'D:\\a\\x' },
+    { project: 'x', cwd: 'D:\\b\\x' },
+  ], () => [])
+  assert.equal(semData.length, 1, 'empate sem data ainda devolve o projeto')
+
+  const F = await import(`./src/travasDaMaquina.mjs?t=${Date.now()}`)
+  const fw = F.frameworkDaqui(jobs)
+  assert.equal(fw.length, 1, 'o retrato do framework também vê um projeto só')
+  console.log('  ok   CC-352: duas pastas com o mesmo nome, e ganha a que tem sinal mais novo')
+}

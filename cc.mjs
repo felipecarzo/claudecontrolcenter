@@ -1147,15 +1147,134 @@ switch (cmd) {
         console.log(`painel reiniciado: ${up.url}`)
         break
       }
+      /* CC-351: instalar SUPERVISIONADO. O `install` acima continua sendo o
+         atalho de logon, que funciona sem administrador e não vigia nada. */
+      case 'servico': {
+        const P = await import('./src/platform.mjs')
+        if (!P.ehWindows) die('por enquanto só no Windows. Na VPS quem supervisiona é o systemd.')
+        const alvoScript = (await import('node:url')).fileURLToPath(import.meta.url)
+        const r = P.instalarServicoWindows({ node: process.execPath, script: alvoScript, porta: port })
+        if (!r.ok) die(`não deu: ${r.erro}`)
+        const up = await daemon.ensureUp(port)
+        console.log(`\n  tarefa criada: ${r.tarefa}`)
+        console.log(r.modo === 'boot'
+          ? '  sobe com o Windows, antes de você entrar, e volta sozinha se cair.'
+          : '  sobe quando você entra no Windows, e volta sozinha se cair.\n'
+            + '  (o modo que sobe ANTES do logon precisa de administrador: rode este mesmo\n'
+            + '   comando num terminal aberto como administrador para ganhar isso)');
+        console.log(`  painel: ${up.url}\n`)
+        break
+      }
+      /* O "reiniciar" da emergência: ele não pode ficar caçando `node.exe` no
+         gerenciador de tarefas, que era exatamente a queixa. */
+      case 'reiniciar': {
+        const P = await import('./src/platform.mjs')
+        if (!P.ehWindows) { await daemon.shutdown(port); const up = await daemon.ensureUp(port); console.log(`painel reiniciado: ${up.url}`); break }
+        const r = P.reiniciarServicoWindows()
+        if (!r.ok) die(`não deu: ${r.erro}`)
+        const up = await daemon.ensureUp(port)
+        console.log(`painel reiniciado pela tarefa: ${up.url}`)
+        break
+      }
       case 'status':
       case undefined: {
         const s = await daemon.status(port)
-        console.log(JSON.stringify(s, null, 2))
+        const P = await import('./src/platform.mjs')
+        /* O estado da TAREFA vai junto do estado do processo: sem isso, "o
+           painel está no ar" não distingue quem tem supervisão de quem está de
+           pé por sorte até a próxima queda. */
+        const sup = P.ehWindows ? P.estadoServicoWindows() : null
+        console.log(JSON.stringify({ ...s, supervisao: sup?.existe ? sup : 'não instalada (`cc daemon servico`)' }, null, 2))
         break
       }
       default:
         die(`subcomando desconhecido: daemon ${arg}`)
     }
+    break
+  }
+
+  /**
+   * CC-351: por que uma sessão que ele ABRIU não aparece no cockpit.
+   *
+   * Ele abriu o coepiloto no desktop, ficou trabalhando, e a sessão não apareceu
+   * ativa na VPS. O empurrador estava vivo e mandando outras onze, então não é
+   * rede nem serviço caído: é captura.
+   *
+   * Este comando mostra as DUAS fontes lado a lado, que é onde o defeito mora.
+   * `todosOsJobs` junta os jobs de background com as sessões interativas, e
+   * quando uma sessão tem as duas caras **a de background vence**. Se o job
+   * congelou e o transcrito continua vivo, o painel exibe o congelado: a sessão
+   * aparece como encerrada horas atrás enquanto ele digita nela.
+   *
+   * Só leitura. Não escreve nada, não mexe em `~/.claude/jobs`.
+   */
+  case 'sessoes': {
+    const fsx = await import('node:fs')
+    const px = await import('node:path')
+    const osx = await import('node:os')
+    const S = await import('./src/sessoes.mjs')
+    const { readJobs } = await import('./src/jobs.mjs')
+
+    const agora = Date.now()
+    const min = (t) => Math.round((agora - t) / 60000)
+    const horas = Number(positional[1]) || 3
+
+    console.log(`\n  TRANSCRITOS mexidos nas últimas ${horas}h — é o que o painel deveria enxergar\n`)
+    const vivos = new Map()
+    let n = 0
+    try {
+      for (const d of fsx.readdirSync(S.PROJETOS_DIR)) {
+        const dir = px.join(S.PROJETOS_DIR, d)
+        let ehDir = false
+        try { ehDir = fsx.statSync(dir).isDirectory() } catch { /* segue */ }
+        if (!ehDir) continue
+        for (const f of fsx.readdirSync(dir)) {
+          if (!f.endsWith('.jsonl')) continue
+          const a = px.join(dir, f)
+          const st = fsx.statSync(a)
+          if (agora - st.mtimeMs > horas * 3600e3) continue
+          let cwd = '(sem cwd na cabeça: o painel descarta esta)'
+          try {
+            for (const l of fsx.readFileSync(a, 'utf8').split('\n').slice(0, 40)) {
+              const o = JSON.parse(l)
+              if (o.cwd) { cwd = o.cwd; break }
+            }
+          } catch { /* transcrito ilegível */ }
+          const id = f.slice(0, 8)
+          vivos.set(id, { min: min(st.mtimeMs), cwd })
+          console.log(`  ${id}  mexido há ${String(min(st.mtimeMs)).padStart(4)}min  ${cwd}`)
+          n++
+        }
+      }
+    } catch (e) {
+      console.log(`  não deu para ler ${S.PROJETOS_DIR}: ${e.message}`)
+    }
+    console.log(`  ${n} transcrito(s).`)
+
+    console.log('\n  JOBS de background — quando o id bate, ESTE vence e mascara o de cima\n')
+    let jobs = []
+    try { jobs = readJobs() } catch (e) { console.log(`  não deu para ler: ${e.message}`) }
+    let mascarados = 0
+    for (const j of jobs) {
+      const id = String(j.sessionId || j.id || '').slice(0, 8)
+      const t = Number(j.updatedAt) || 0
+      const vivo = vivos.get(id)
+      /* O caso que interessa: o job diz que acabou e o transcrito diz que está
+         sendo escrito agora. Cinco minutos de folga para não acusar diferença
+         de relógio. */
+      const mascara = vivo && (min(t) - vivo.min) > 5
+      if (mascara) mascarados++
+      console.log(`  ${id}  job parado há ${String(min(t)).padStart(4)}min  ${j.project || ''}`
+        + (mascara ? `   <-- MASCARA uma sessão viva (transcrito de ${vivo.min}min)` : ''))
+    }
+    console.log(`  ${jobs.length} job(s) de background.`)
+
+    console.log(mascarados
+      ? `\n  ${mascarados} sessão(ões) VIVA(S) escondida(s) por job de background congelado.\n`
+        + '  É a causa: o painel mostra o estado velho do job em vez do sinal do transcrito.\n'
+      : '\n  Nenhuma sessão viva mascarada. Se mesmo assim falta alguma no cockpit,\n'
+        + '  compare a lista de cima com o que a tela mostra: o que estiver aqui e não lá\n'
+        + '  é problema de envio, não de captura.\n')
     break
   }
 
