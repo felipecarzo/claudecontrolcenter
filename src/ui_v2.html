@@ -1566,6 +1566,14 @@
     .pj-num b{font-size:16px;font-variant-numeric:tabular-nums;color:var(--text-main);}
     .pj-num span{color:var(--text-dim);font-size:10px;text-transform:uppercase;letter-spacing:.04em;}
     .pj-acoes{display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px;margin-top:auto;}
+    /* CC-336: o criar projeto mora no topo, e cabe na barra que já existe.
+       Palavras dele: *"não acho que deva ficar uma barra inteira, nem
+       precisa"*. Então o botão é do tamanho dos outros, e o formulário abre
+       num cartão embaixo, só quando ele pede. */
+    .pj-novo-casa{margin:10px 0 0;border:1px solid var(--border);border-radius:10px;background:var(--card);}
+    .pj-novo-casa > div{padding:14px 16px !important;}
+    #view-remoto .tend-barra{padding:12px 16px;}
+    #view-remoto .tend-barra .btn{padding:5px 10px;font-size:12px;}
     .pj-acoes .btn{flex:0 0 auto;padding:5px 10px;font-size:12px;}
     .pj-detalhe{border-top:1px solid var(--border);padding-top:10px;display:grid;
       grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
@@ -2533,10 +2541,19 @@
               </select>
             </div>
             <div class="tend-acoes">
+              <!-- CC-336, 25/08: *"o novo projeto, eu acho que tem que ficar,
+                   de repente no topo. E como uma parte do design né? Não acho
+                   que deva ficar uma barra inteira, nem precisa."*
+                   Então é um botão na barra que já existe, e o formulário abre
+                   embaixo dela quando ele clica. O formulário é o MESMO que
+                   vivia no bloco Framework, movido de nó: refazer o formulário
+                   aqui seria a segunda conta do mesmo gesto. -->
+              <button class="btn btn-ghost" id="pj-novo">+ projeto</button>
               <button class="btn btn-ghost" id="pj-atualizar">atualizar</button>
             </div>
             <div class="tend-quando" id="pj-quando"></div>
           </div>
+          <div id="pj-novo-casa" class="pj-novo-casa" hidden></div>
           <div id="pj-grade"></div>
         </div>
       </div>
@@ -7466,14 +7483,19 @@
         + num(p.backlog, 'no backlog') + num(p.soSeus, 'só seus')
         + num(p.horasHoje, 'hoje') + num(p.agentes, 'agentes')
         + '</div>'
-        + '<div class="pj-acoes">'
-        + '<button class="btn btn-ghost" data-pj-abrir="' + esc(p.projeto) + '">'
-        + (aberto ? 'fechar' : 'ver tudo') + '</button>'
-        + (p.daqui ? '<button class="btn btn-ghost" data-pj-pastas="' + esc(p.projeto) + '">pastas</button>' : '')
-        /* Projeto de outra máquina não ganha botão de abrir: a pasta não
+        /* A ordem do cartão, arrumada em 25/08 depois do print dele: primeiro
+           O QUE O PROJETO É (framework, estado, selos), depois O QUE FAZER
+           NELE (a conversa e o Coderoom), e por último as ações de sempre, no
+           rodapé. Antes os selos do framework caíam entre o Coderoom e o
+           seletor, sem nada explicando por quê. */
+        /* 25/08, print dele: *"o design está meio quebrado"*. Estava, e a causa
+           era minha: eu tinha posto os grupos de ação DENTRO de `.pj-acoes`,
+           que é uma fileira flex. Irmão alto numa fileira flex estica os
+           outros, então "ver tudo" e "pastas" viraram duas colunas altas do
+           lado do bloco. Grupo é bloco, e agora vive fora da fileira.
+           Projeto de outra máquina não ganha botão de abrir: a pasta não
            existe aqui, e o botão falharia depois do clique. */
         + (p.daqui ? acoesDeSessao(p) : '')
-        + '</div>'
         /* CC-335: o framework entra no MESMO cartão. Aberto para quem tem
            sessão no ar, guardado numa gaveta para quem não tem, que é a ordem
            que ele pediu. Projeto de outra máquina não tem framework legível
@@ -7481,6 +7503,11 @@
         + (p.daqui
           ? blocoFramework(fwDe(p.projeto), { colapsado: !CC_SESSOES.has(p.projeto) })
           : '<p class="cc-explica">o framework deste projeto se configura na máquina onde ele está.</p>')
+        + '<div class="pj-acoes">'
+        + '<button class="btn btn-ghost" data-pj-abrir="' + esc(p.projeto) + '">'
+        + (aberto ? 'fechar' : 'ver tudo') + '</button>'
+        + (p.daqui ? '<button class="btn btn-ghost" data-pj-pastas="' + esc(p.projeto) + '">pastas</button>' : '')
+        + '</div>'
         + (aberto ? pjDetalhe(p.projeto) : '')
         + '</article>';
     }
@@ -10149,6 +10176,21 @@
       if (tr.id === 'tend-colher') { e.preventDefault(); return colherTendencias(); }
       if (tr.id === 'trv-recolher') { e.preventDefault(); return recolherTravas(); }
       if (tr.id === 'pj-atualizar') { e.preventDefault(); return carregarProjetosTela(true); }
+      if (tr.id === 'pj-novo') {
+        e.preventDefault();
+        const casa = document.getElementById('pj-novo-casa');
+        if (!casa) return;
+        casa.hidden = !casa.hidden;
+        tr.textContent = casa.hidden ? '+ projeto' : 'fechar';
+        /* Abre o formulário DE VERDADE, não a tela intermediária com outro
+           botão. Na primeira versão o clique revelava um "+ novo projeto"
+           azul de largura inteira, que é exatamente a barra que ele disse não
+           querer. Fechar limpa o rascunho, senão a próxima abertura viria com
+           o que sobrou da anterior. */
+        if (!casa.hidden) { if (!NOVO_PROJ) abrirNovoProjeto(); else renderNovoProjeto(); }
+        else { NOVO_PROJ = null; NOVO_RESULTADO = null; renderNovoProjeto(); }
+        return;
+      }
       /* ===== CC-323: a central de comando ===== */
       /* Sem `preventDefault`: quem abre e fecha é o próprio `<details>`, e
          aqui só guardamos a escolha dele para o repintar não desfazer. */
@@ -10935,6 +10977,12 @@
       velha.remove();
       document.querySelectorAll('.nav-item[data-target="view-projetos"]').forEach((a) => a.remove());
       if (typeof montarBarraBaixo === 'function') montarBarraBaixo();
+      /* O criar projeto sai do bloco Framework e vem para a barra de cima.
+         Mover o nó preserva o `fw-novo-projeto` que `renderNovoProjeto()`
+         procura pelo nome, e o formulário continua sendo um só. */
+      const forma = document.getElementById('fw-novo-projeto');
+      const casaNovo = document.getElementById('pj-novo-casa');
+      if (forma && casaNovo) casaNovo.appendChild(forma);
     })();
 
     (() => {
