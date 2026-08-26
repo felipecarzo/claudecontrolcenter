@@ -511,6 +511,14 @@ export const NOME_TAREFA = 'AgentCockpit'
 export function instalarServicoWindows({ node, script, porta }) {
   if (!ehWindows) return { ok: false, erro: 'a tarefa agendada é do Windows' }
 
+  /* CC-351, fechado em 26/08: a tarefa não chama mais `node cc.mjs` direto.
+     Chama `arrancar.ps1`, o ÚNICO lançador, que faz `git pull`, sobe o
+     painel E a bandeja, e prende a PRÓPRIA vida à do painel (painel caiu, o
+     script termina, e é isso que aciona o `RestartOnFailure` abaixo). Sem
+     essa amarração, cada peça precisaria da própria supervisão, que é
+     exatamente o "segundo arranque" que causou o defeito original. */
+  const arrancar = path.join(AQUI, 'arrancar.ps1')
+
   /* `schtasks /xml` em vez da linha de comando: as opções de reinício
      automático (`RestartCount`, `RestartInterval`) NÃO existem como flag do
      `schtasks /create`, só no XML. Sem elas a tarefa vira o mesmo atalho de
@@ -550,8 +558,8 @@ export function instalarServicoWindows({ node, script, porta }) {
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>"${node}"</Command>
-      <Arguments>"${script}" --web-only --port ${porta}</Arguments>
+      <Command>powershell.exe</Command>
+      <Arguments>-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "${arrancar}" -Port ${porta}</Arguments>
     </Exec>
   </Actions>
 </Task>`
