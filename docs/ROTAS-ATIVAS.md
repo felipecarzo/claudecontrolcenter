@@ -211,13 +211,19 @@ nesses instantes.
 - WSL, Tarefa Agendada religando sozinha, cron/timer na VPS, processo
   suspeito na VPS — tudo checado na parte 1, nada mudou
 
-**Palpite, não medido:** o `fetch` do Node (undici) pode tentar IPv6 e IPv4
-em paralelo ou em sequência curta pro mesmo domínio (`cockpit.carzo.com.br`),
-e se uma rota estiver mais lenta que a outra sem falhar de vez, as duas
-poderiam completar — duas chamadas de rede pra um `fetch()` só, do lado de
-quem programou. Bateria com o padrão (curto, poucos segundos, sem processo
-extra). Não confirmei: precisaria testar com IPv6 desligado no roteador ou
-forçar `family: 4` no `fetch`, e não cheguei a fazer isso.
+**Palpite do IPv6, TESTADO e DESCARTADO em 26/08:** cogitei o `fetch` correndo
+IPv6 e IPv4 ao mesmo tempo pro mesmo domínio. `dns.lookup('cockpit.carzo.com.br',
+{ all: true })` devolve UM endereço só, `66.94.117.215`, família 4. Não existe
+registro IPv6 pro domínio, então não tem duas rotas de rede pra correr. Essa
+hipótese caiu.
+
+**Palpite novo, não testado:** conexão parada no pool de `keep-alive` do
+Node. Se o `fetch` reusa uma conexão que a outra ponta (ou algum proxy no
+meio) já fechou por inatividade, a primeira escrita falha em silêncio e o
+`undici` (o motor do `fetch`) pode tentar de novo numa conexão nova sem
+avisar quem chamou — duas chamadas de rede pra uma linha de código só, de
+novo. Bateria com o padrão. Testar: forçar `Connection: close` no `fetch` ou
+desligar keep-alive e ver se o par some.
 
 **Efeito prático agora:** bem menos flicker que antes (só um fantasma
 resolvido já reduz muito), mas a tela Servidores ainda pode piscar vazia às
