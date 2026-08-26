@@ -163,8 +163,26 @@ instalação editável cruzada e a conversa do painel com caminho morto. Vira
 **Wiring:** o hook precisa entrar no catálogo de hooks e no `settings.json`, e os
 dois são de outra sessão agora. Escrever o script é meu; ligar exige combinar.
 
-Decisão dele pendente: o quão agressiva é a trava (só me obrigar a responder
-direito, travar a ação até varrer, ou travar e ainda pedir o "pode" dele).
+✅ **Decidido por ele em 26/08: travar a AÇÃO até a varredura rodar.** E
+construído:
+
+- `hooks/impacto-scan.mjs` — a varredura, com nove classes (venv, git sujo, link
+  global do npm, instalação cruzada, atalho de shell, serviço do systemd,
+  conversas do painel, config do painel, script solto, atalho/symlink). Provada
+  na pasta do cockpit: achou o git sujo, as conversas do painel e o symlink
+  `proj_controlcenter`, exatamente as classes que quebraram em 23/08. Deixa um
+  marcador por pasta varrida.
+- `hooks/quebra-guard.mjs` — o gancho de PreToolUse (Bash) que barra
+  renomear/mover/apagar pasta de `~/projetos/` até a varredura daquela pasta ter
+  rodado (marcador recente). Barra com `exit 2` e manda rodar a varredura, depois
+  responder em duas partes. Arquivo solto e comando comum não são barrados.
+  Provado em `test-quebra.mjs`.
+
+⚠️ **Dois bloqueios de ativação, e são dele:** a pasta `tools/` está trancada
+(`nobody:nogroup`) nesta VPS, então a varredura mora em `hooks/` até o dono ser
+consertado (o ideal é `tools/`, que não sobe pro servidor). E o gancho precisa
+entrar no `settings.json` de CADA máquina para valer, com o caminho local. Na
+VPS foi ligado em 26/08; no PC é passo dele.
 
 ### CC-358 ✅ 26/08: cada sessão tem seu próprio modo, divergindo no mesmo projeto
 
