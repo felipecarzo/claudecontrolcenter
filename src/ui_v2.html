@@ -4921,6 +4921,15 @@
       has(projeto) { return this.quantas(projeto) > 0; },
     };
 
+    /* CC-339: "tem sessão de agente no ar?" pelo dado que ATUALIZA a cada tique
+       (o stream), não pelo controle remoto que só relê ao abrir a tela. Era o
+       congelamento que punha `VPS_fibraessencia` no grupo "com sessão no ar" com
+       o tmux dela já fechado. A definição é a dele (25/08): sessão de agente no
+       ar; conversa parada do Coderoom não conta. Reler o controle remoto a cada
+       2s custaria um `tmux list-sessions` por tique, que é spawn no tique, o que
+       a casa evita de propósito. */
+    const temSessaoNoAr = (p) => Boolean(p && (p.vivos || p.esperando || p.sessaoNoAr));
+
     function renderFwLista() {
       const alvo = document.getElementById('fw-lista');
       const conta = document.getElementById('fw-conta');
@@ -7910,7 +7919,7 @@
            que ele pediu. Projeto de outra máquina não tem framework legível
            daqui, e o cartão DIZ isso em vez de mostrar controle morto. */
         + (p.daqui
-          ? blocoFramework(fwDe(p.projeto), { colapsado: !CC_SESSOES.has(p.projeto) })
+          ? blocoFramework(fwDe(p.projeto), { colapsado: !temSessaoNoAr(p) })
           : blocoFrameworkRemoto(p))
         + '<div class="pj-acoes">'
         /* CC-345: o rótulo diz O QUE abre. Ele: *"esse 'ver tudo' também está
@@ -7970,8 +7979,8 @@
       /* CC-335, a ordem que ele pediu: *"depois as sessões ligadas e depois as
          outras"*. Ligado é ter sessão de agente no ar, decisão dele em 25/08
          entre as quatro que ofereci; conversa parada do Coderoom não conta. */
-      const ligadas = daquiTodos.filter((p) => CC_SESSOES.has(p.projeto));
-      const daqui = daquiTodos.filter((p) => !CC_SESSOES.has(p.projeto));
+      const ligadas = daquiTodos.filter(temSessaoNoAr);
+      const daqui = daquiTodos.filter((p) => !temSessaoNoAr(p));
       pintar(alvo,
         (ligadas.length
           ? '<div class="pj-secao">com sessão no ar agora</div>'

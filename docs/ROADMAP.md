@@ -313,35 +313,27 @@ Uma decisão já tomada por ele em 25/08: **ligado quer dizer ter sessão de age
 no ar**, e não conversa aberta. Duas contas para a mesma palavra na mesma tela é
 o defeito que o CC-334 acabou de consertar.
 
-### CC-339, aberto em 25/08: o cartão agrupa por dado congelado, e diz que há sessão onde não há
+### CC-339 ✅ 26/08: o cartão agrupava por dado congelado, e dizia que havia sessão onde não havia
 
-Ele viu e mandou analisar: *"no cockpit agora em central tem uma sessao
-vps_fibraessencia, mas eu não to entendendo o que ela ta fazendo ali, se ela ta
-off"*. Estava off mesmo: o tmux só tinha a sessão dele, e o cartão continuava no
-grupo "com sessão no ar agora".
+Escolhido o caminho 2 (agrupar pelo dado que já atualiza), por evidência, não por
+gosto: o caminho 1 (reler o controle remoto a cada tique) spawna um
+`tmux list-sessions` por tique, que é spawn no tique de 2s, o que a casa evita de
+propósito. E o próprio comentário do código já dizia a definição dele: "ligado é
+ter sessão de agente no ar".
 
-**A causa é minha, do CC-335.** As duas metades do cartão bebem de fontes com
-ritmos diferentes:
+O grupo "com sessão no ar" usava `CC_SESSOES.has`, que lê o controle remoto
+congelado (só relê ao abrir a tela). Agora usa `temSessaoNoAr(p)`, do stream que
+atualiza a cada 2s (`p.vivos || p.esperando || p.sessaoNoAr`); conversa parada do
+Coderoom não conta, como ele decidiu. O colapso do bloco de framework passou a
+seguir o mesmo sinal, para o cartão no ar mostrar o framework aberto.
 
-| metade | fonte | ritmo |
-|---|---|---|
-| o GRUPO ("com sessão no ar") | `/api/remote-control` | só ao abrir a tela ou clicar num botão |
-| o TEXTO ("1 esperando você") | o stream | a cada 2 segundos |
+Provado na fonte viva: `VPS_fibraessencia` com `sessaoNoAr=false` (off) sai do
+grupo "no ar", e `VPS_cockpit` com `sessaoNoAr=true` fica. É exatamente o que ele
+viu quebrado.
 
-Com a tela aberta, a lista de sessões **congela** no instante da entrada. Antes
-isso era uma lista secundária embaixo; ao fazer o agrupamento do topo depender
-dela, dado velho virou classificação errada na primeira coisa que ele olha. É a
-mesma família do CC-334 e do CC-337: duas contas para o mesmo fato.
-
-Três caminhos, e ele ainda não escolheu:
-
-1. **reler a lista a cada tique.** Mata o congelamento; medido, custa 0,03s
-2. **agrupar pelo dado que já atualiza**, em vez do que congela
-3. **carimbar a hora da leitura no cartão**, deixando o congelamento visível
-
-Achado de passagem, e é outro item: aparecem **dois registros para o mesmo
-projeto**, `VPS_fibraessencia` e `fibraessencia`, resto da renomeação de 23/08.
-O painel os trata como projetos diferentes.
+O sub-item do dado duplicado (`VPS_fibraessencia` vs `fibraessencia`) não
+reaparece na leitura de hoje: só `VPS_fibraessencia` consta. Fica de olho, sem
+conserto agora.
 
 ### CC-338, aberto em 25/08: a rolagem que ele diz travar, e eu não reproduzi
 
