@@ -857,7 +857,7 @@ function handler(req, res) {
   // lê a tela do tmux, mais caro que o resto do stream.
   if (url.pathname === '/api/remote-control') {
     if (req.method === 'POST') {
-      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, mais, remoto }) => {
+      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, mais, remoto, perfil }) => {
         if (acao === 'desligar') return desligarRemoto(projeto)
         if (acao === 'link') return linkRemoto(projeto)
         /* 24/08: abrir, conectar o celular, soltar o celular e encerrar viraram
@@ -873,7 +873,8 @@ function handler(req, res) {
         const dir = cwdDoProjeto(cwd, projeto)
         if (!dir) throw new Error(`projeto não encontrado: ${projeto}`)
         // `mais`: outro agente na mesma pasta, em vez de devolver o que já existe
-        return ligarRemoto(projeto, dir, { mais: Boolean(mais), remoto: remoto !== false })
+        // `perfil`: 'ceo' abre com autoridade total (CC-359); padrão é 'normal'
+        return ligarRemoto(projeto, dir, { mais: Boolean(mais), remoto: remoto !== false, perfil: perfil === 'ceo' ? 'ceo' : 'normal' })
       })
     }
     /* GET: todo projeto conhecido (pra montar a lista de botões) + o que já

@@ -7825,6 +7825,10 @@
           + '<div class="rc-botoes" style="margin-top:8px;"><button type="button" class="btn btn-outline compacto" data-remoto-mais="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '">abrir mais uma</button></div>'
           + '</div>'
         : grupo('Claude Code', '<button type="button" class="btn btn-outline compacto" data-remoto-ligar="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '">abrir sessão</button>'
+            /* CC-359: o perfil de autoridade total. Abre a sessão sem parar para
+               pedir permissão (o "claude_rc_ceo" dele). Fica em botão separado,
+               com aviso na confirmação, para nunca ser o clique de sempre. */
+            + '<button type="button" class="btn btn-ghost compacto" data-remoto-ligar="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '" data-remoto-perfil="ceo" title="abre sem pedir permissão para nada">abrir com autoridade total</button>'
             + ((DATA.remoto?.volta || {})[nome]
               ? '<button type="button" class="btn btn-ghost compacto" data-remoto-reabrir="' + esc(nome) + '">retomar de onde parou</button>' : ''));
       return '<div class="rc-grupos">'
@@ -11104,6 +11108,7 @@
         const mais = Boolean(tr.dataset.remotoMais);
         const projeto = tr.dataset.remotoMais || tr.dataset.remotoLigar;
         const dir = tr.dataset.remotoDir;
+        const perfil = tr.dataset.remotoPerfil === 'ceo' ? 'ceo' : 'normal'; // CC-359
         return (async () => {
           /* CC-332: a confirmação veio do cartão da central, e passou a valer
              nos dois lugares. O modo aparece aqui de propósito: é a última tela
@@ -11115,20 +11120,24 @@
           const oModo = (alvo?.modos || []).find((m) => m.id === alvo?.modo);
           const jaTem = CC_SESSOES.quantas(projeto);
           const ok = await confirmar(tr, {
-            titulo: mais ? `Abrir mais uma sessão em ${projeto}?` : `Abrir sessão em ${projeto}?`,
+            titulo: perfil === 'ceo' ? `Abrir com AUTORIDADE TOTAL em ${projeto}?` : (mais ? `Abrir mais uma sessão em ${projeto}?` : `Abrir sessão em ${projeto}?`),
             detalhe: '<ul>'
               + '<li>pasta: <code>' + esc(dir || '?') + '</code></li>'
+              /* CC-359: o aviso do perfil total é o mais forte da lista, e vem
+                 primeiro: a sessão não vai parar para pedir permissão de nada. */
+              + (perfil === 'ceo' ? '<li style="color:var(--failed);"><b>autoridade total</b>: esta sessão NÃO vai pedir permissão para nada (nem apagar, nem sobrescrever). Só abra assim se você confia no que ela vai fazer sozinha.</li>' : '')
               + (alvo ? (alvo.ligado
                 ? '<li>vai nascer no modo <b>' + esc(oModo?.titulo || alvo.modo || 'nenhum') + '</b></li>'
                 : '<li><b>sem framework ligado</b>: nenhuma regra do projeto vai valer</li>') : '')
               + (jaTem ? `<li>já existe ${jaTem === 1 ? 'uma sessão' : jaTem + ' sessões'} neste projeto, esta é mais uma</li>` : '')
               + '</ul>',
-            sim: mais ? 'abrir mais uma' : 'abrir sessão',
+            sim: perfil === 'ceo' ? 'abrir com autoridade total' : (mais ? 'abrir mais uma' : 'abrir sessão'),
+            perigo: perfil === 'ceo',
           });
           if (!ok) return;
           const rotulo = tr.innerText;
           tr.disabled = true; tr.innerText = 'abrindo…';
-          const out = await post('/api/remote-control', { projeto, cwd: dir, mais });
+          const out = await post('/api/remote-control', { projeto, cwd: dir, mais, perfil });
           /* `ja: true` é o servidor devolvendo a sessão que JÁ existia, sem
              abrir nenhuma. Era o silêncio que ele viu em 23/08: clicava em
              abrir sessão, a rota respondia ok, e a tela não mudava nada. Quem

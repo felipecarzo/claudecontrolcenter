@@ -321,8 +321,14 @@ export async function ligar(projeto, cwd, {
   remoto = true,
   /* Id de conversa antiga: em vez de começar do zero, retoma de onde parou. */
   retomar = null,
+  /* CC-359: o perfil de permissão. `normal` pergunta como sempre; `ceo` abre
+     com autoridade total (`--dangerously-skip-permissions`), o "zero perguntas"
+     que ele chamou de `claude_rc_ceo`. É o único ponto onde o perfil muda algo,
+     e o padrão é o seguro. */
+  perfil = 'normal',
 } = {}) {
   if (!cwd || !fs.existsSync(cwd)) return { ok: false, erro: `pasta não existe: ${cwd}` }
+  const bypass = perfil === 'ceo' ? ['--dangerously-skip-permissions'] : []
 
   const ativos = await estado()
   const existente = ativos[projeto]
@@ -340,7 +346,7 @@ export async function ligar(projeto, cwd, {
       // (spawn não invoca `.cmd` sem ele, e `shell: true` com args dinâmicos
       // é injeção de comando); o cmd só sai quando o claude de dentro sair,
       // então o pid do cmd rastreia exatamente o tempo de vida da sessão.
-      const filho = spawn('cmd', ['/c', binario, '--remote-control', projeto], {
+      const filho = spawn('cmd', ['/c', binario, '--remote-control', projeto, ...bypass], {
         cwd, detached: true, stdio: 'ignore', windowsHide: false,
       })
       filho.unref()
@@ -361,6 +367,7 @@ export async function ligar(projeto, cwd, {
   const argsClaude = [binario]
   if (remoto) argsClaude.push('--remote-control', rotulo)
   if (retomar) argsClaude.push('--resume', retomar)
+  argsClaude.push(...bypass)
   const r = await tmux(['new-session', '-d', '-s', sessao, '-c', cwd, ...argsClaude])
   if (!r.ok) return { ok: false, erro: `tmux falhou: ${r.out || 'tmux está instalado?'}` }
 

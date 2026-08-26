@@ -1631,20 +1631,22 @@ com ruído de voz), verbatim:
 
 > *"claude_rc — Remote Control, pbvvermissões normais"*
 > *"claude_rc_ceo"*
-> *"routific"*
 
-### CC-359, aberto em 26/08: escolher o perfil de permissão ao abrir uma sessão
+### CC-359 ✅ 26/08: escolher o perfil de permissão ao abrir uma sessão
 
-A leitura mais provável das duas primeiras linhas: ele quer abrir a sessão remota
-em DOIS modos de permissão. Um normal (`claude_rc`), e um com autoridade total
-(`claude_rc_ceo`), que é o perfil "ceo" que já existe como skill (administrador,
-zero perguntas). Hoje o botão "abrir sessão" do cartão abre com a permissão
-padrão, sem escolha. A ideia: o cartão oferecer o perfil antes de abrir.
+Ele quer abrir a sessão remota em DOIS modos de permissão. Um normal
+(`claude_rc`), e um com autoridade total (`claude_rc_ceo`), o "zero perguntas".
 
-Registrado, não implementado. Falta a decisão dele sobre o desenho, e uma
-desambiguação: **o que "routific" quer dizer** não está claro. Pode ser um
-terceiro perfil, um projeto, ou ruído de ditado. Não registro como tarefa até
-ele dizer o que é.
+Feito: o cartão da Central ganhou, ao lado de "abrir sessão", o botão **"abrir
+com autoridade total"**. Ele abre a sessão com `--dangerously-skip-permissions`
+(a sessão não para para pedir permissão de nada), e a confirmação mostra o aviso
+mais forte da lista, em vermelho, primeiro. O perfil viaja do botão
+(`data-remoto-perfil="ceo"`) pela rota (`perfil`) até `ligar()`, que só nele
+acrescenta a flag; o padrão continua sendo o seguro. Vale nos dois caminhos
+(tmux na VPS e console no Windows).
+
+(A terceira linha da nota, `routific`, ele mandou ignorar em 26/08: ruído de
+ditado, não é tarefa.)
 
 ### CC-360, aberto em 26/08 (outro projeto): usuários de teste no fibraessência
 
