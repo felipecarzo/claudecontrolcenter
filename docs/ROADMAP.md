@@ -1624,6 +1624,39 @@ mecanismo já está mapeado: o estado é um emoji no título `###` (🔴 travada
 ⏸ você decide, ✅ fechada, nada = na fila). ANDANDO não aceita solta, porque não
 vem do arquivo e sim de haver agente na frente.
 
+## ▶ Frente nova, aberta em 26/08: perfis de permissão ao abrir sessão remota
+
+Da quarta nota do painel, sem título, que faltava ler. Palavras dele (ditadas,
+com ruído de voz), verbatim:
+
+> *"claude_rc — Remote Control, pbvvermissões normais"*
+> *"claude_rc_ceo"*
+> *"routific"*
+
+### CC-359, aberto em 26/08: escolher o perfil de permissão ao abrir uma sessão
+
+A leitura mais provável das duas primeiras linhas: ele quer abrir a sessão remota
+em DOIS modos de permissão. Um normal (`claude_rc`), e um com autoridade total
+(`claude_rc_ceo`), que é o perfil "ceo" que já existe como skill (administrador,
+zero perguntas). Hoje o botão "abrir sessão" do cartão abre com a permissão
+padrão, sem escolha. A ideia: o cartão oferecer o perfil antes de abrir.
+
+Registrado, não implementado. Falta a decisão dele sobre o desenho, e uma
+desambiguação: **o que "routific" quer dizer** não está claro. Pode ser um
+terceiro perfil, um projeto, ou ruído de ditado. Não registro como tarefa até
+ele dizer o que é.
+
+### CC-360, aberto em 26/08 (outro projeto): usuários de teste no fibraessência
+
+Da primeira nota, `PC_fibraessencia`:
+
+> *"vamos criar alguns usuarios bem especificos, todos com o nome de cada uma das
+> pessoas da operação e testar o login e desenvolvimento de cada um na plataforma"*
+
+**Não é do cockpit.** É tarefa do projeto fibraessência (testar login por pessoa
+da operação). Fica anotado aqui porque foi aqui que ele escreveu, mas a execução
+é no repositório do fibraessência, não neste. Vale mover para o backlog de lá.
+
 ## ▶ Frente nova, aberta em 25/08: a lista "Edit", escrita por ele no bloco de notas
 
 Ele acumulou 12 pedidos num bloco de notas chamado **Edit**, dentro do próprio
