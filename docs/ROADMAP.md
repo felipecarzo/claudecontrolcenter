@@ -295,24 +295,6 @@ movido pelos agentes, ao vivo); ele arrasta só no eixo da DECISÃO (o que é
 prioridade, o que fica parado, o que é dele). O quadro é de leitura para o
 primeiro eixo e interativo só no segundo.
 
-### CC-335, aberto em 25/08: Central e Projetos viram uma tela só
-
-Proposta dele no telefone, depois de eu mostrar que a gaveta "sem sessão aberta"
-que eu tinha acabado de criar na Central repetia a lista do bloco Remoto:
-*"temos uma aba 'projetos' já temos o que seria uma boa adição pra misturar com
-central, talvez possamos juntar ambas"*. Filtro no topo, as ligadas primeiro com
-o framework à mostra, as outras com o framework colapsado para configurar como o
-projeto nasce, e em todo cartão ver tudo, pastas, abrir sessão e conversa.
-
-**Registrado, não implementado**, a pedido dele. A proposta inteira, com as
-palavras dele, o custo medido das três leituras (0,6s somadas, então não há
-barreira técnica) e as três decisões que faltam está em
-[[docs/produto/CENTRAL-E-PROJETOS.md]].
-
-Uma decisão já tomada por ele em 25/08: **ligado quer dizer ter sessão de agente
-no ar**, e não conversa aberta. Duas contas para a mesma palavra na mesma tela é
-o defeito que o CC-334 acabou de consertar.
-
 ### CC-339 ✅ 26/08: o cartão agrupava por dado congelado, e dizia que havia sessão onde não havia
 
 Escolhido o caminho 2 (agrupar pelo dado que já atualiza), por evidência, não por
@@ -335,32 +317,33 @@ O sub-item do dado duplicado (`VPS_fibraessencia` vs `fibraessencia`) não
 reaparece na leitura de hoje: só `VPS_fibraessencia` consta. Fica de olho, sem
 conserto agora.
 
-### CC-338, aberto em 25/08: a rolagem que ele diz travar, e eu não reproduzi
+### CC-338 ✅ 26/08: a rolagem que travava no PC — ele confirmou resolvido
 
-Queixa dele, com o filtro em "todos os projetos": *"eu não consigo dar mais
-scroll, o scroll trava, eu não consigo descer, então eu não consigo abrir outros
-projetos"*, e o agravante que ele apontou: *"se você desse um problema eu não
-teria como te ativar de novo"*. Só no aplicativo do PC, e o sintoma é não descer.
+Em 26/08 ele confirmou: *"resolvido"*. Nunca reproduzi em 8 larguras nem com
+toque de verdade; o que entrou foi `overflow-anchor: none` na grade, e o remendo
+de guardar `scrollTop` saiu por prova negativa. Fechado pela palavra dele.
 
-**Aberto, porque não reproduzi.** O que já está descartado, medido:
+### CC-335 ✅ 26/08: Central e Projetos, ele confirmou que já juntou
 
-- rola em 390, 500, 600, 780, 900, 1100, 1280 e 1440px de largura
-- rola com a roda e com arraste de dedo de verdade (toque pelo protocolo do
-  Chrome; arrastar com o botão do mouse não rola em navegador nenhum, e esse
-  teste falso me custou uma rodada)
-- a lista fica parada quando ninguém toca: cinco tiques no mesmo pixel
-- redesenhar os 21 cartões custa 3ms, e a grade nem é recriada sem mudança
-- o cursor sobre os seletores não engole a roda nem troca o modo de nenhum
-  projeto
-- trocar o filtro estando rolado no fim, que é a ordem que ele fez, também rola
+Em 26/08, sobre fundir as duas telas: *"eu acho que já juntou"*. A Central
+absorveu o cartão de Projetos ao longo dos CC-329, CC-330, CC-335, CC-356 e
+CC-358: filtro no topo, ligadas primeiro com o framework à mostra, cada sessão
+com sua linha e seu modo. As três decisões que faltavam em
+[[docs/produto/CENTRAL-E-PROJETOS.md]] deixaram de bloquear, porque o resultado
+já é o que ele queria. Fechado pela leitura dele.
 
-Entrou só `overflow-anchor: none` na grade. **Saiu** um remendo meu que guardava
-o `scrollTop` ao repintar: a prova negativa contra o commit anterior mostrou que
-a lista já ficava parada sem ele.
+### CC-333 ✅ 26/08: as sessões de teste soltas já morreram, e o lixo de teste foi limpo
 
-**O que falta:** print da tela travada, com "todos os projetos". Se aparece
-barra de rolagem à direita e qual o último projeto visível separam corte de
-conteúdo de gesto interrompido.
+As três sessões de teste que preocupavam (`cc-ok-*`, `cc-prova2`, `cc-teste-limpo`)
+não existem mais: medido em 26/08, o tmux só tem as duas de verdade
+(`cc-remote-VPS_cockpit`, `VPS_cockpit-2`). Ele autorizou fechar o que fosse
+sobra, "se não for prejudicial"; não havia sessão de agente sobrando, mas havia
+lixo MEU dos testes de segurança (16 navegadores do Playwright e servidores de
+mentira), que foi fechado sem tocar no painel, no opencode nem nas sessões reais.
+
+Fica em aberto, sem urgência, só a segunda pergunta dele: se o painel deve listar
+TODA sessão de agente da máquina ou só as que ele abriu. Sem sessão órfã hoje,
+não bloqueia.
 
 ### CC-337 ✅ 25/08: sessão parada há horas posava de agente trabalhando
 
@@ -463,18 +446,6 @@ diferentes em texto. Resolver atalho é trabalho do servidor, que é da rota
 viva na máquina dele como efeito de teste) e duas provas negativas. O `npm test`
 segue verde, 144 verificações. Falta registrar o comando no `package.json`, que
 é arquivo da rota `sistemas`.
-
-### CC-333, aberto em 23/08: sessões vivas que o painel não mostra a ele
-
-Achado respondendo a pergunta dele (*"tem outras sessões ativas que eu não tenho
-acesso?"*). Sim: há seis sessões `claude` vivas nesta VPS, e o painel mostra
-três. As outras três (`cc-ok-VPS_cockpit`, `cc-prova2`, `cc-teste-limpo`) foram
-abertas hoje à noite por teste, e não aparecem em lugar nenhum porque a leitura
-só conta o que começa com `cc-remote-`. Elas não gastam token paradas, mas ele
-não tem como saber que existem nem como fechá-las pela tela.
-
-Duas decisões dele, e nenhuma tomada por mim: fechar essas três agora, e se o
-painel deve listar toda sessão de agente da máquina ou só as que ele abriu.
 
 ### As oito anotações dele, de 22/08
 
