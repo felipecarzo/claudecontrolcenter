@@ -1,5 +1,17 @@
 # Fechar o serviço do PC de uma vez (para a sessão que roda no Windows)
 
+## O objetivo, nas palavras dele (26/08)
+
+> *"o nosso objetivo é criar um serviço/app que nos permita sempre ver que o PC
+> está conectado à VPS e passando as infos em tempo real pra lá."*
+
+Tudo abaixo serve a isso. O ícone na bandeja não é enfeite: é o **sempre ver**
+que ele pede. Um olhar na barra de tarefas responde "o PC está ligado à VPS e
+mandando dado agora?" sem abrir nada. O serviço supervisionado é o que garante o
+"sempre": sem ele, a conexão cai e ninguém percebe, que é a dor de hoje.
+
+
+
 > Escrito na VPS em 26/08, a pedido dele, depois de ele dizer: *"to cansado do PC
 > desconectar com a VPS, e nada da gente está com um programa no system tray (…)
 > por que será que não conseguimos fechar essa tarefa? (…) estamos empilhando

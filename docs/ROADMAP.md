@@ -1472,6 +1472,13 @@ aparecem quando ele puxar o código lá.
 
 ## ▶ Frente nova, aberta em 25/08: o PC vira serviço
 
+**O objetivo desta frente, nas palavras dele (26/08):** *"criar um serviço/app
+que nos permita SEMPRE VER que o PC está conectado à VPS e passando as infos em
+tempo real pra lá."* O ícone na bandeja é o "sempre ver"; o serviço
+supervisionado é o que garante o "sempre". **O plano de fechamento, medido e com
+as provas, está em [[docs/FECHAR-SERVICO-PC.md]]** e é para uma sessão rodando no
+PC. Recado enviado à sessão `PC_cockpit` em 26/08.
+
 ### CC-351, 25/08: o painel do PC não é serviço, e ele descobriu do jeito ruim
 
 Ele abriu o coepiloto no desktop, trabalhou nele, e a sessão não apareceu ativa
