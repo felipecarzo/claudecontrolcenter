@@ -9,6 +9,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, PROJECT_DIRS } from './jobs.mjs'
 import { readConfig } from './config.mjs'
+import { ehWindows } from './platform.mjs'
 
 const START = '<!-- control-center:start -->'
 const END = '<!-- control-center:end -->'
@@ -36,7 +37,12 @@ const SKIP = /^([._-]|archived$|node_modules$)/i
  */
 export function projectsBases() {
   const out = []
-  if (process.env.CC_PROJECTS_BASE) out.push(...process.env.CC_PROJECTS_BASE.split(/[:;]/))
+  /* Achado em 26/08: `:` também é a letra de unidade do Windows (`D:\...`), e
+     dividir por `[:;]` ali quebrava QUALQUER caminho no meio, base única
+     incluída. `;` já é o separador nativo do Windows (é o mesmo do PATH),
+     então no Windows ele é o único usado; `:` continua valendo fora daqui. */
+  const separador = ehWindows ? /;/ : /[:;]/
+  if (process.env.CC_PROJECTS_BASE) out.push(...process.env.CC_PROJECTS_BASE.split(separador))
   const cfg = readConfig()
   if (Array.isArray(cfg.projectsBases)) out.push(...cfg.projectsBases)
   if (cfg.projectsBase) out.push(cfg.projectsBase)

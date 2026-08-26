@@ -7,6 +7,7 @@
  */
 import assert from 'node:assert'
 import fs from 'node:fs'
+import path from 'node:path'
 import { liberadoPara, lerLiberado, MARCADOR } from './hooks/commit-auto.mjs'
 
 let falhou = false
@@ -17,8 +18,14 @@ const tinha = fs.existsSync(MARCADOR)
 const backup = tinha ? fs.readFileSync(MARCADOR, 'utf8') : null
 
 // grava o marcador pelo módulo (sem shell), como o `on` faria
+/* Achado em 26/08, primeira vez rodando no PC: a troca por regex
+   (`/\/[^/]+$/`) só reconhece `/`, e o Windows separa pasta com `\`. Sem
+   bater, `.replace` devolve o CAMINHO INTEIRO, e `mkdirSync` cria uma PASTA
+   com o nome do arquivo (`commit-liberado.json/`) em vez da pasta-mãe. O
+   `writeFileSync` seguinte falha com EISDIR, e o `hooks/commit-auto.mjs`
+   real nunca teve esse bug: ele já usa `path.dirname`. */
 function ligar(sessao) {
-  fs.mkdirSync(MARCADOR.replace(/\/[^/]+$/, ''), { recursive: true })
+  fs.mkdirSync(path.dirname(MARCADOR), { recursive: true })
   fs.writeFileSync(MARCADOR, JSON.stringify({ ligado: true, sessao, desde: Date.now() }))
 }
 function desligar() { try { fs.rmSync(MARCADOR, { force: true }) } catch { /* nada */ } }

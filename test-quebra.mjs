@@ -27,11 +27,27 @@ function rodar(comando) {
   } catch (e) { return { code: e.status ?? 1, erro: (e.stderr || '').toString() } }
 }
 
-// acha uma pasta de projeto real para o teste (existe ~/projetos/<algo>)
+/* acha uma pasta de projeto real para o teste (existe ~/projetos/<algo>).
+   Achado em 26/08, rodando isto pela primeira vez no PC: `~/projetos` é
+   convenção só da VPS. No PC os projetos moram em
+   `D:\Documentos\Ti\projetos\{PESSOAL|CLIENTS|...}`, então a pasta nem
+   existe, e `readdirSync` sem guarda derrubava o `npm test` inteiro (exceção
+   não capturada, não "falhou") — tudo que vem depois na cadeia, `test.mjs`
+   incluso, nem chegava a rodar. Pula aqui, mesmo padrão do Pierre e dos
+   extratores: máquina sem o cenário não pode fingir que testou. */
 const projetos = path.join(home, 'projetos')
-const alvo = fs.readdirSync(projetos).find((n) => {
+let listaProjetos = []
+try { listaProjetos = fs.readdirSync(projetos) } catch {
+  console.log('  (pulado: esta máquina não tem ~/projetos, convenção só da VPS)')
+  process.exit(0)
+}
+const alvo = listaProjetos.find((n) => {
   try { return fs.statSync(path.join(projetos, n)).isDirectory() && n.startsWith('VPS_') } catch { return false }
 })
+if (!alvo) {
+  console.log('  (pulado: nenhuma pasta VPS_* dentro de ~/projetos nesta máquina)')
+  process.exit(0)
+}
 const marcador = path.join(home, '.cache', 'agent-cockpit', 'impacto', encodeURIComponent(alvo || 'x'))
 const tinhaMarcador = fs.existsSync(marcador)
 const backup = tinhaMarcador ? fs.readFileSync(marcador, 'utf8') : null

@@ -11,6 +11,14 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { findProjects } from './src/install.mjs'
+import { ehWindows } from './src/platform.mjs'
+
+/* Achado em 26/08, primeira vez rodando no PC: `:` é o separador do `PATH`
+   do Linux, e no Windows ele já está ocupado pela letra de unidade
+   (`D:\...`). Sem jeito de usar `:` entre dois caminhos de Windows, então o
+   teste monta a lista com o separador de cada máquina, igual o código real
+   (`projectsBases`, em `src/install.mjs`) passou a exigir. */
+const SEP = ehWindows ? ';' : ':'
 
 let falhou = false
 const ok = (m) => console.log(`  ok   ${m}`)
@@ -34,15 +42,15 @@ try {
 
   // 2. sem base explícita, varre TODAS as configuradas (via env com duas)
   try {
-    process.env.CC_PROJECTS_BASE = `${p1}:${p2}`
+    process.env.CC_PROJECTS_BASE = `${p1}${SEP}${p2}`
     const todos = findProjects().map((d) => path.basename(d)).sort()
     assert.deepEqual(todos, ['album_novo', 'site_cliente'])
-    ok('sem base explícita, varre as duas pastas configuradas (env com ":")')
+    ok(`sem base explícita, varre as duas pastas configuradas (env com "${SEP}")`)
   } catch (e) { erro('duas pastas', e) }
 
   // 3. pasta repetida não duplica projeto
   try {
-    process.env.CC_PROJECTS_BASE = `${p1}:${p1}`
+    process.env.CC_PROJECTS_BASE = `${p1}${SEP}${p1}`
     const r = findProjects().map((d) => path.basename(d))
     assert.deepEqual(r, ['site_cliente'])
     ok('pasta repetida não duplica o projeto')
