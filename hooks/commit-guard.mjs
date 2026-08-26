@@ -53,6 +53,14 @@ if (!/\bgit\s+commit\b/.test(cmd)) sair()
 // consertar a mensagem de um commit ja autorizado nao e commit novo
 if (/--amend/.test(cmd)) sair()
 
+/* Autorizacao CONTINUA por sessao (26/08). Ele pediu "salva cada item ao
+   fechar", mas essa escolha veio pela caixa de pergunta, que este hook nao le
+   (so mensagem digitada). `commit-auto on` liga um marcador para a sessao dele,
+   e enquanto ele estiver ligado, o commit desta MESMA sessao passa sem cobrar de
+   novo. Vale so para a sessao que ligou: sessao nova nasce com a trava ativa. */
+const auto = await import(urlDeModulo(AQUI, 'commit-auto.mjs')).catch(() => null)
+if (auto?.liberadoPara && auto.liberadoPara(dados?.session_id)) sair()
+
 const arquivo = dados?.transcript_path || dados?.transcriptPath
 if (!arquivo) sair()
 
@@ -160,6 +168,9 @@ process.stderr.write(
   + '  1. Deixe o trabalho pronto e o `git add` feito, se ajudar.\n'
   + '  2. Termine a resposta mostrando o que mudou, e pergunte se pode commitar.\n\n'
   + '`git add`, `status`, `diff` e `log` continuam livres: preparar nao e\n'
-  + 'atravessar. E `--amend` de mensagem tambem passa.\n',
+  + 'atravessar. E `--amend` de mensagem tambem passa.\n\n'
+  + 'Se ele autorizou salvar cada item pela caixa de pergunta (que este hook nao\n'
+  + 'le), ligue a autorizacao continua desta sessao antes de commitar:\n'
+  + '  node hooks/commit-auto.mjs on\n',
 )
 process.exit(2)
