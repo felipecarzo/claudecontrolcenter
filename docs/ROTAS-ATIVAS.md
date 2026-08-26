@@ -181,50 +181,47 @@ sessão travada, que é exatamente o que o método existe para evitar.
 
 ## Tickets pendentes
 
-### 🎫 CC-353/servidores: existe uma SEGUNDA fonte empurrando pela máquina do PC, não identificada, de 1d765cd1 em 26/08
+### 🎫 CC-353/servidores: metade resolvida (um fantasma real, morto), a outra metade continua sem causa, de 1d765cd1 em 26/08
 
 Pedido dele: a tela Servidores não mostra nada do PC. Medido de ponta a ponta,
-com log temporário nos dois lados (removido ao fechar, nada ficou no código).
+com log temporário nos dois lados (removido ao fechar, nada ficou no código,
+e ele mesmo liberou acesso de leitura ao log do nginx pra essa investigação:
+`/etc/sudoers.d/cockpit-diag`, só `tail` naquele arquivo, nada mais).
 
-**Não é o desenho do campo herdado.** `CAMPOS_QUE_PERSISTEM` existe e funciona
-certo: testado isolado, `servidores: null` chegando sozinho herda o valor
-anterior sem problema. **A causa é outra: duas fontes escrevendo no mesmo
-arquivo (`945e1d0c.json`, a máquina `ALIENWARE-LIPE`), e eu não achei a
-segunda.**
+**Parte 1, RESOLVIDA: um processo fantasma de verdade.** `startWeb()` tenta
+até 10 portas se a 8099 estiver ocupada (`8100`, `8101`...), e cada uma que
+consegue escutar liga o PRÓPRIO temporizador de federação. Um restart meu, lá
+pelas 00:48, sobrou na porta 8100 com a 8099 ocupada, e ficou vivo por quase
+2 horas empurrando por baixo dos panos — eu só matava processo olhando a
+porta 8099, nunca as vizinhas. Achado com o log do nginx (o IP de origem das
+chamadas é sempre o mesmo, `186.247.110.235`, o dele; nunca foi outra
+máquina) cruzado com `Get-NetTCPConnection` varrendo todas as portas. Morto,
+confirmado sem mais nenhuma porta de painel além da 8099.
 
-Prova, com carimbo de hora exato nos dois lados (cliente que manda e servidor
-que recebe, tudo instrumentado e depois revertido):
+**Parte 2, NÃO resolvida: mesmo só com um processo, ainda chegam pares de
+pedido, uns 4 a 9 segundos separados um do outro, de tempos em tempos.**
+Fiquei observando o log do nginx sem tocar em mais nada (nem `curl` manual
+meu) e o padrão continuou. Não é o F5 dele: ele não estava mexendo na tela
+nesses instantes.
 
-- Meu processo (único, confirmado por `Get-CimInstance` sem filtro, todas as
-  sessões do Windows, e checando WSL) manda a cada ~30s, sempre batendo
-  `em` idêntico dos dois lados.
-- **Entre um envio meu e o seguinte, chegam OUTROS pacotes que eu não mandei**
-  — `em` que não bate com nenhum log meu, tamanho de bytes diferente do meu
-  (às vezes menor, ~27,8KB contra meus ~31,5KB), às vezes com `servidores`
-  vazio, às vezes com dado de verdade.
-- O padrão se repete com um ritmo próprio (grosso modo +5s e +9s depois do
-  meu), curto demais pra ser o F5 dele na tela e regular demais pra ser
-  coincidência de rede.
+**O que descartei nessa segunda parte, medido:**
+- segundo processo `node` (varri TODA porta em escuta do Windows, não só a
+  faixa 8099–8109)
+- eu mesmo testando com `curl` manual (parei de mexer, o padrão continuou)
+- WSL, Tarefa Agendada religando sozinha, cron/timer na VPS, processo
+  suspeito na VPS — tudo checado na parte 1, nada mudou
 
-**O que descartei, medido, não suposto:**
-- segundo processo `node` ou `powershell` no PC (varredura sem filtro, todas
-  as sessões do Windows)
-- WSL (só existe a distro interna do Docker Desktop, sem processo `node`)
-- a Tarefa Agendada religando sozinha (`schtasks /query` mostrava "Pronto",
-  não "Em execução")
-- cron ou timer systemd na VPS
-- processo suspeito na VPS (`ps aux` limpo)
-- a VPS estar rodando código velho (era verdade à parte — o processo dela
-  tava de pé desde ANTES do commit atual, religuei, o sintoma continuou)
+**Palpite, não medido:** o `fetch` do Node (undici) pode tentar IPv6 e IPv4
+em paralelo ou em sequência curta pro mesmo domínio (`cockpit.carzo.com.br`),
+e se uma rota estiver mais lenta que a outra sem falhar de vez, as duas
+poderiam completar — duas chamadas de rede pra um `fetch()` só, do lado de
+quem programou. Bateria com o padrão (curto, poucos segundos, sem processo
+extra). Não confirmei: precisaria testar com IPv6 desligado no roteador ou
+forçar `family: 4` no `fetch`, e não cheguei a fazer isso.
 
-**O que eu ainda não descartei, por falta de acesso:** o IP de origem real.
-Os dois lados chegam como `127.0.0.1` porque passam pelo proxy da VPS; sem
-`sudo` não dá pra ler o log do nginx nem rodar `tcpdump` pra ver de onde vem
-de verdade.
-
-**Palpite, não medido:** pode ser algo na camada de proxy (nginx →
-`cockpit-auth` → o painel, três camadas, documentado no `CLAUDE.md`) mandando
-a chamada duas vezes. Não confirmei.
+**Efeito prático agora:** bem menos flicker que antes (só um fantasma
+resolvido já reduz muito), mas a tela Servidores ainda pode piscar vazia às
+vezes. Registrado pra quem quiser seguir com a hipótese do IPv6.
 
 ### 📌 Para d4b47d4e: `test-quebra.mjs` derruba o gate inteiro no PC, de 1d765cd1 em 26/08
 
