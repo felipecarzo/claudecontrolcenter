@@ -24,11 +24,31 @@ const SKIP = /^([._-]|archived$|node_modules$)/i
  * config, ou descoberto pelos diretórios dos jobs que o Claude Code já rodou —
  * quem usa o painel necessariamente já rodou agente dentro dos projetos.
  */
+/**
+ * CC-352: TODAS as pastas onde ele guarda projeto, não só uma. Ele pediu poder
+ * apontar mais de uma ("projetos de música, de TI, de outras coisas"). Em ordem
+ * de fonte, e unidas: a variável de ambiente (aceita várias separadas por `:`
+ * ou `;`), a lista `projectsBases` do config, o campo único `projectsBase`
+ * (legado), e — só se nada foi configurado — a descoberta pelos jobs.
+ *
+ * O instalador é quem PREENCHE essa lista na máquina dele (parte do PC); aqui é
+ * a leitura, que faz o painel varrer todas as pastas escolhidas.
+ */
+export function projectsBases() {
+  const out = []
+  if (process.env.CC_PROJECTS_BASE) out.push(...process.env.CC_PROJECTS_BASE.split(/[:;]/))
+  const cfg = readConfig()
+  if (Array.isArray(cfg.projectsBases)) out.push(...cfg.projectsBases)
+  if (cfg.projectsBase) out.push(cfg.projectsBase)
+  const limpo = [...new Set(out.map((p) => String(p || '').trim()).filter(Boolean))]
+  if (limpo.length) return limpo
+  const detectado = detectarBase()
+  return detectado ? [detectado] : []
+}
+
+/** A primeira das pastas, para quem só sabe lidar com uma. */
 export function projectsBase() {
-  if (process.env.CC_PROJECTS_BASE) return process.env.CC_PROJECTS_BASE
-  const cfg = readConfig().projectsBase
-  if (cfg) return cfg
-  return detectarBase()
+  return projectsBases()[0] || null
 }
 
 export function detectarBase(jobs = readJobs()) {
@@ -152,14 +172,21 @@ const dirsIn = (dir) => {
  * Só desce no grupo quando o nível de cima não é projeto por si — assim um
  * monorepo com subpastas não vira N projetos.
  */
-export function findProjects(base = projectsBase()) {
-  if (!base) return [] // sem base conhecida não há o que varrer
-  const found = []
-  for (const dir of dirsIn(base)) {
-    if (isProject(dir)) found.push(dir)
-    else for (const sub of dirsIn(dir)) if (isProject(sub)) found.push(sub)
+export function findProjects(base) {
+  /* Três casos, e a diferença entre "sem argumento" e "nulo" importa:
+     - chamada SEM argumento → varre TODAS as pastas configuradas (CC-352);
+     - `base` explícito (uma pasta) → varre só ela, como antes;
+     - `base` nulo de propósito → não varre nada (é o "não sei a base" do CC-53). */
+  const bases = base === undefined ? projectsBases() : (base ? [base] : [])
+  if (!bases.length) return [] // sem base conhecida não há o que varrer
+  const found = new Set()
+  for (const b of bases) {
+    for (const dir of dirsIn(b)) {
+      if (isProject(dir)) found.add(dir)
+      else for (const sub of dirsIn(dir)) if (isProject(sub)) found.add(sub)
+    }
   }
-  return found.sort()
+  return [...found].sort()
 }
 
 export function syncAll({ base = projectsBase(), dryRun = false, remove = false } = {}) {

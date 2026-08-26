@@ -1795,7 +1795,19 @@ peça nova.
 
 ## ▶ Frente nova, aberta em 22/08: o cockpit vira aplicativo de verdade
 
-### CC-352, aberto em 25/08: quem instala escolhe onde ficam os projetos, e pode ter mais de uma pasta
+### CC-352 🟡 26/08 (base feita, instalador é do PC): pastas de projeto, mais de uma
+
+Decisão dele em 26/08: perguntar na instalação, com várias pastas. A parte que é
+minha e do lado da VPS está **feita**: o cockpit passou a ler de VÁRIAS pastas,
+não só uma. `projectsBases()` une as fontes (variável de ambiente com `:`, a
+lista no config, o campo único legado, e a descoberta como último recurso), e
+`findProjects()` varre todas sem duplicar. Provado em `test-bases.mjs` com duas
+pastas de mentira. Quem só sabe lidar com uma continua funcionando (`projectsBase()`
+devolve a primeira).
+
+**Falta a parte do PC, e é dele:** o instalador PERGUNTAR as pastas e gravar a
+lista no config (`projectsBases`), mais o jeito de mudar isso depois pela barra
+de tarefas. É o mesmo instalador do CC-340. A leitura já espera essa lista.
 
 Do bloco de notas `rascunho`, lido em 25/08. Palavras dele, ditadas por voz e
 normalizadas só na pontuação:
@@ -1820,7 +1832,7 @@ espalhada** (`projectsBase()` devolve um caminho, não uma lista), e a caixa da
 barra de tarefas do item CC-340 é o mesmo lugar onde essa configuração mora — os
 dois são o mesmo instalador, e fazer dois seria construir duas casas.
 
-### CC-355, aberto em 25/08: puxar o git de todos os projetos ao ligar o PC
+### CC-355 ✅ 26/08 (não fazer): puxar o git ao ligar fica no botão
 
 Mesma nota, mesma respiração:
 
@@ -1849,6 +1861,11 @@ está olhando a tela na hora em que o PC liga**. Então o resultado tem que
 sobreviver ao momento — quantos foram atualizados, e quais foram pulados por ter
 trabalho não salvo, esperando ele numa tela que ele abre depois. Puxada que
 falha em silêncio é pior que puxada nenhuma, porque ele passa a confiar.
+
+✅ **Decisão final dele em 26/08: NÃO automatizar. Fica no botão, como está.**
+Ele reviu a própria proposta e escolheu manter o puxar/enviar por clique, sem
+nada disparando ao ligar o PC. Fechado por decisão dele; o botão do CC-269 já
+cobre o caso.
 
 ### CC-345 ✅ 25/08: o "ver tudo" de projeto de fora só sabia dizer "não achei a pasta"
 
