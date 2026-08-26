@@ -1479,7 +1479,7 @@ supervisionado é o que garante o "sempre". **O plano de fechamento, medido e co
 as provas, está em [[docs/FECHAR-SERVICO-PC.md]]** e é para uma sessão rodando no
 PC. Recado enviado à sessão `PC_cockpit` em 26/08.
 
-### CC-351, 25/08: o painel do PC não é serviço, e ele descobriu do jeito ruim
+### CC-351 ✅ 26/08: o painel do PC não é serviço, e ele descobriu do jeito ruim
 
 Ele abriu o coepiloto no desktop, trabalhou nele, e a sessão não apareceu ativa
 no cockpit. A frase: *"eu preciso ter controle total das minhas sessões do
@@ -1527,7 +1527,28 @@ O XML precisa de UTF-16 com marca de ordem, e o `schtasks` recusa UTF-8 com uma
 mensagem que não diz isso. As opções de reinício não existem como flag da linha
 de comando, só no XML: por isso não dá para criar a tarefa com um comando curto.
 
-Falta: o ícone na bandeja, e o diagnóstico rodado no PC dele.
+Fechado em 26/08, no PC dele:
+
+- **`src/bandeja.ps1`**, o ícone na bandeja, desenho dele: dois nós ligados por
+  um traço, e o traço muda de forma (cheio/tracejado/partido) conforme o
+  estado da sincronia. Painel fora do ar vira cinza, único estado que muda a
+  cor de propósito. Confirmado visualmente por ele, ao vivo.
+- **Instalado de verdade**: a Tarefa Agendada (`AgentCockpit`) existe no PC
+  dele, sem exigir administrador pra rodar (só a criação pediu, achado
+  medido nesta máquina, não documentado antes).
+- **Achado que muda a proposta original: `RestartOnFailure` da Tarefa
+  Agendada não funciona.** Medido duas vezes, mais de 2 minutos de espera
+  cada, matando o processo de propósito: nunca religou sozinho, com ou sem
+  administrador. A supervisão real não podia depender disso. `arrancar.ps1`
+  ganhou o próprio laço: religa o painel por dentro, sem esperar o Windows
+  perceber a queda. Testado matando o processo duas vezes seguidas, voltou
+  sozinho em 9 segundos as duas vezes. Trava contra crash-loop (5 quedas em
+  menos de 30s cada, desiste em vez de martelar).
+- **`cc sessoes`** (diagnóstico) e `cc daemon servico` (instalação) já
+  tinham sido feitos numa rodada anterior; esta rodada fechou o resto.
+
+Ainda pendente, sem poder ser feito por aqui: a prova de sobreviver a
+dormir/deslogar o Windows, que só dá pra fazer na próxima pausa natural dele.
 
 ## ▶ Frente nova, aberta em 25/08: o kambam
 

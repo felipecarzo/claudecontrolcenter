@@ -762,6 +762,27 @@ errada por definição.
   janela de verdade (que exige gesto real do usuário, headless não serve):
   extrai o `<style>` do `ui.html`, cola numa página estática com os mesmos
   nomes de classe e um cartão de dado de exemplo, e tira print dessa página.
+- **`RestartOnFailure` da Tarefa Agendada do Windows não religa quando o
+  processo é morto, pelo menos nesta máquina.** Medido em 26/08, não
+  suposto: `Stop-Process -Force` no `node` do painel, esperado mais de 2
+  minutos, nada volta. Testado duas vezes, com administrador e sem, mesmo
+  resultado. `Último resultado: 1` aparece certo na tarefa (o script filho
+  detecta a queda e sai com código de falha, isso funciona), mas o Windows
+  não usa isso pra disparar o reinício automático. Supervisão de processo
+  no Windows não pode depender só disso: `src/arrancar.ps1` tem o próprio
+  laço agora, religa por dentro sem esperar o sistema perceber nada, e a
+  Tarefa Agendada virou rede de segurança para o script inteiro morrer, não
+  a peça que cuida do dia a dia. Antes de confiar em `RestartOnFailure` de
+  novo em qualquer projeto, meça matando o processo e cronometrando, não
+  assuma que a documentação da Microsoft bate com o comportamento real.
+- **Criar Tarefa Agendada nesta máquina exige PowerShell como
+  administrador, mesmo para uma tarefa sem elevação nenhuma no XML.**
+  Medido em 26/08: `schtasks /create` de um XML com `RunLevel` padrão
+  (equivalente a `LeastPrivilege`) ainda devolve "Acesso negado" rodando
+  sem administrador. É criação, não execução: depois de criada, a tarefa
+  roda normalmente sem pedir elevação. Não é código, é política desta
+  máquina especificamente; não assuma que toda máquina Windows se comporta
+  igual.
 
 ## Convenções
 - Commits: `type(scope): mensagem` — sem `Co-Authored-By`
