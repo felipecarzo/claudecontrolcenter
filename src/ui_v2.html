@@ -1631,6 +1631,7 @@
     .rc-sessao:first-of-type{margin-top:2px;}
     .rc-sessao-nome{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px;
       font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+    .rc-modo{margin-top:6px;width:100%;flex:1 1 100%;}
     /* ===== CC-302: os campos da tela Remoto ===== */
     /* `auto-fit` com mínimo de 220px: a grade se ajusta sozinha e nunca reserva
        largura declarada, que é o que o gate exige e o que faz caber em 390px. */
@@ -7782,12 +7783,33 @@
       const rotulos = Object.keys(ativos)
         .filter((k) => k === nome || (k.startsWith(nome + '-') && /^-\d+$/.test(k.slice(nome.length))))
         .sort();
+      /* CC-358: o seletor de MODO de cada sessão, chaveado pela conversa dela.
+         Só os modos de comportamento (o método e o "pronto" continuam do
+         projeto). `modo` vem do backend por sessão; sem ele, cai em "do projeto"
+         para não afirmar um modo que a sessão não escolheu. */
+      const modosCru = catModos().filter((m) => m.id !== 'desligado');
+      const seletorModoSessao = (rot) => {
+        const info = ativos[rot] || {};
+        const conversa = info.conversa || '';
+        if (!conversa) return ''; // sem conversa casada, não há onde gravar o modo
+        const atual = info.modo || '';
+        const op = (v, t, dica, sel) => '<option value="' + esc(v) + '"' + (sel ? ' selected' : '')
+          + ' title="' + esc(dica || '') + '">' + esc(t) + '</option>';
+        return '<select class="styled-input cc-estado rc-modo" data-sessao-modo="' + esc(conversa) + '"'
+          + ' data-sessao-proj="' + esc(nome) + '" data-cc-dir="' + esc(dir) + '"'
+          + ' title="o modo de trabalho SÓ desta sessão">'
+          + op('', 'modo do projeto', 'segue o modo do projeto', !atual)
+          + modosCru.map((m) => op(m.id, m.titulo, m.explica, atual === m.id)).join('')
+          + '</select>';
+      };
       const linhaSessao = (rot) => '<div class="rc-sessao"><span class="rc-sessao-nome">' + esc(rot) + '</span>'
         + '<div class="rc-botoes">'
         + '<button type="button" class="btn btn-ghost compacto" data-remoto-conectar="' + esc(rot) + '">conectar celular</button>'
         + '<button type="button" class="btn btn-ghost compacto" data-remoto-soltar="' + esc(rot) + '">soltar celular</button>'
         + '<button type="button" class="btn btn-ghost compacto" data-remoto-desligar="' + esc(rot) + '">encerrar</button>'
-        + '</div></div>';
+        + '</div>'
+        + seletorModoSessao(rot)
+        + '</div>';
       const claudeCode = rotulos.length
         ? '<div class="rc-grupo"><span class="rc-grupo-nome">Claude Code · ' + rotulos.length + ' sessõe' + (rotulos.length > 1 ? 's' : '') + '</span>'
           + rotulos.map(linhaSessao).join('')
@@ -10693,6 +10715,17 @@
           .finally(() => { selRemoto.disabled = false; });
       }
 
+      /* CC-358: o modo POR SESSÃO. Cada linha de sessão no cartão tem seu
+         seletor, chaveado pela conversa daquela sessão (não pelo projeto). O
+         servidor grava a capa da sessão; o cartão relê de /api/remote-control. */
+      if (tr.dataset.sessaoModo) {
+        const sessao = tr.dataset.sessaoModo;
+        const dir = tr.dataset.ccDir || '';
+        const projeto = tr.dataset.sessaoProj || '';
+        post('/api/framework', { projeto, cwd: dir, acao: 'modo', sessao, modo: tr.value })
+          .then((r) => { if (r?.error) alert(r.error); return carregarRemoto(true); });
+        return;
+      }
       const selEstado = tr.closest?.('[data-cc-estado]');
       if (selEstado) {
         const projeto = selEstado.dataset.ccEstado;

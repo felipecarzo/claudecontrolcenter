@@ -99,7 +99,7 @@ import { todas as todasSiglas } from './siglas.mjs'
 import { arquivosDeclarados } from './oficinas.mjs'
 import {
   desligar as desligarFramework, gravar as gravarFramework, ler as lerFramework,
-  ligar as ligarFramework, situacao as situacaoFramework,
+  ligar as ligarFramework, situacao as situacaoFramework, gravarSessao as gravarModoSessao,
 } from './frameworkDisco.mjs'
 import {
   MODOS, PERFIS, acharModo as acharModoFramework,
@@ -900,9 +900,20 @@ function handler(req, res) {
        parou. Sem isto a tela não teria como oferecer o botão só a quem tem
        caminho de volta de verdade, e um botão que às vezes não faz nada é
        pior que botão nenhum. */
-    return estadoRemoto().then((ativos) => send(res, 200, {
-      projetos, ativos, casa: os.homedir(), volta: voltasRemoto(),
-    }))
+    /* CC-358: cada sessão reporta o MODO dela, lido da capa por sessão
+       (`.framework/sessoes/<id>.json`). É o que faz o seletor de modo por
+       sessão no cartão mostrar o estado certo de cada uma, agora que cada
+       rótulo aponta para a sua conversa (CC-357). Sem conversa casada, sem
+       modo: `null`, e a linha cai no modo do projeto. */
+    return estadoRemoto().then((ativos) => {
+      for (const info of Object.values(ativos)) {
+        if (info?.conversa && info?.cwd) {
+          try { info.modo = lerFramework(info.cwd, { sessao: info.conversa })?.modo || null }
+          catch { info.modo = null }
+        }
+      }
+      return send(res, 200, { projetos, ativos, casa: os.homedir(), volta: voltasRemoto() })
+    })
   }
 
   // Containers Docker desta máquina. Fora do stream, mesmo motivo da máquina
@@ -1283,9 +1294,21 @@ function handler(req, res) {
 
   if (url.pathname === '/api/framework') {
     if (req.method === 'POST') {
-      return comCorpo(req, res, 1e3, ({ projeto, cwd, acao, modo, perfil, alvo, motivo }) => {
+      return comCorpo(req, res, 1e3, ({ projeto, cwd, acao, modo, perfil, alvo, motivo, sessao }) => {
         const raiz = cwdDoProjeto(cwd, projeto)
         if (!raiz) return { error: 'não achei a pasta deste projeto' }
+
+        /* CC-358: o modo por SESSÃO. Com `sessao`, a troca vira a capa daquela
+           conversa (`.framework/sessoes/<id>.json`), não o modo do projeto. É o
+           que ele pediu: divergir o modo entre as sessões do mesmo projeto. Só o
+           modo diverge; método e "pronto" continuam do projeto, de propósito
+           (uma sessão não desliga o framework das outras sem ninguém ver). */
+        if (acao === 'modo' && sessao) {
+          const r = gravarModoSessao(raiz, sessao, { modo })
+          if (!r.ok) return { error: r.erro }
+          // o cartão relê o modo por sessão de `/api/remote-control`; aqui só o aceite
+          return { raiz, sessao, modo: lerFramework(raiz, { sessao })?.modo || null, ok: true }
+        }
 
         /* Perfil pelo clique (17/08): é o que ele escolhe de verdade, porque
            "Designer" ele reconhece e "desenho mais sugestivo" ele teria que

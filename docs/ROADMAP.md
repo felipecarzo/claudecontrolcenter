@@ -166,6 +166,28 @@ dois são de outra sessão agora. Escrever o script é meu; ligar exige combinar
 Decisão dele pendente: o quão agressiva é a trava (só me obrigar a responder
 direito, travar a ação até varrer, ou travar e ainda pedir o "pode" dele).
 
+### CC-358 ✅ 26/08: cada sessão tem seu próprio modo, divergindo no mesmo projeto
+
+O pedido dele: *"eu queria que cada sessão tenha seu próprio framework, mesmo
+ambas sendo do mesmo projeto, assim eu posso divergir o framework de cada
+sessão"*. Decidido com ele: **só o modo de comportamento** diverge; o método e o
+"pronto" continuam do projeto, de propósito (uma sessão não desliga o framework
+das outras sem ninguém ver).
+
+A capa por sessão (`.framework/sessoes/<id>.json`) já existia, guardando modo e
+tom, mas nada na tela deixava escolher por sessão: o único seletor era do
+projeto. Agora cada linha de sessão no cartão (CC-356), já apontando para a sua
+conversa (CC-357), tem o próprio seletor de modo. `/api/remote-control` reporta o
+modo de cada sessão (lido da capa), e `/api/framework` com `sessao` grava a capa
+daquela conversa em vez do modo do projeto.
+
+Provado de ponta a ponta: setar restritivo numa sessão deixa a outra e o projeto
+intactos; o painel vivo reporta o modo por conversa. O headless não sustenta a
+tela, então a prova do seletor é dele no telefone.
+
+`src/web.mjs` emprestado das rotas escritório (parada 31h) e sincronia (4h), só
+com acréscimos, e devolvido.
+
 ### CC-357 ✅ 26/08: cada sessão do controle remoto aponta para a SUA conversa
 
 Pré-requisito do modo por sessão, que ele pediu. Ao ir construir o modo por
