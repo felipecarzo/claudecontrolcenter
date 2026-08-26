@@ -10275,16 +10275,49 @@
     /* O detalhe fica ACIMA do quadro, e não numa coluna lateral: em 390px a
        lateral vira 26px de conteúdo, defeito que já apagou uma tela inteira. */
     function kbDetalhe(c) {
+      /* CC-235, pedido dele: *"o mesmo nível de profundidade nos cards"*. O
+         detalhe genérico repetia o assunto do agente e não dizia o que a tarefa
+         É. Agora cada TIPO tem sua moldura, como o detalhe das tarefas dele:
+         de quem é o gesto, por que existe, o que destrava. Bloco que pode ficar
+         vazio DIZ por quê, que é a regra que este painel já pagou para aprender. */
+      const linha = (rotulo, valor, cor) => '<p style="margin:0 0 9px;font-size:13px;'
+        + 'color:' + (cor || 'var(--text-muted)') + ';overflow-wrap:anywhere;">'
+        + '<strong style="color:var(--text-dim);">' + esc(rotulo) + '</strong> ' + esc(valor) + '</p>';
+      const vazio = (texto) => '<p style="margin:0 0 9px;font-size:12px;color:var(--text-dim);font-style:italic;">'
+        + esc(texto) + '</p>';
+
+      const corpo = [];
+      if (c.fonte === 'meu') {
+        // pendência dele: o "porque" viaja em `descricao`, a frente em estado.porque
+        corpo.push(c.descricao
+          ? linha('Por que depende de você:', c.descricao)
+          : vazio('Quem registrou não escreveu por que isto depende de você.'));
+        if (c.estado?.porque) corpo.push(linha('Frente:', c.estado.porque));
+      } else if (c.fonte === 'todo') {
+        // tarefa de agente: o assunto é o contexto, não a tarefa
+        corpo.push(linha('Quem está nisto:', 'um agente, agora', 'var(--working)'));
+        corpo.push(c.descricao
+          ? linha('No projeto:', c.descricao)
+          : vazio('O agente não escreveu o assunto desta frente.'));
+      } else {
+        // frente do backlog: descrição, o que destrava, e por que parou
+        if (c.citacao) corpo.push('<p class="kb-card-fala" style="-webkit-line-clamp:unset;">' + esc(c.citacao) + '</p>');
+        corpo.push(c.descricao
+          ? '<p style="margin:0 0 9px;font-size:13px;overflow-wrap:anywhere;">' + esc(c.descricao) + '</p>'
+          : vazio('Esta frente não tem descrição escrita no backlog.'));
+        if (c.desbloqueia?.length) corpo.push(linha('Destrava:', c.desbloqueia.length + ' outra(s) frente(s)', 'var(--accent)'));
+        if (c.estado?.porque && c.estado.cor === 'failed') corpo.push(linha('Parou porque:', c.estado.porque, 'var(--failed)'));
+      }
+
       return '<div class="kb-detalhe">'
         + '<h3>' + (c.marca?.real && c.id ? esc(c.id) + ' · ' : '') + esc(c.nome || c.titulo || '') + '</h3>'
-        + '<div class="kb-tags" style="margin-bottom:8px;">'
+        + '<div class="kb-tags" style="margin-bottom:10px;">'
         + '<span class="kb-tag forte">' + esc(c.projeto) + '</span>' + seloDoProjeto(c.projeto)
         + '<span class="kb-tag">' + esc(c.estado?.palavra || '') + '</span>'
         + (c.nasceuEm ? '<span class="kb-tag">aberta ' + esc(kbIdade(c.nasceuEm)) + '</span>' : '')
-        + (c.mexidoEm ? '<span class="kb-tag">mexida ' + esc(kbIdade(c.mexidoEm)) + '</span>' : '')
+        + (c.mexidoEm && c.nasceuEm && (c.mexidoEm - c.nasceuEm) > 86400000 ? '<span class="kb-tag">mexida ' + esc(kbIdade(c.mexidoEm)) + '</span>' : '')
         + '</div>'
-        + (c.citacao ? '<p class="kb-card-fala" style="-webkit-line-clamp:unset;">' + esc(c.citacao) + '</p>' : '')
-        + (c.descricao ? '<p>' + esc(c.descricao) + '</p>' : '')
+        + corpo.join('')
         + '<button class="btn btn-ghost compacto" data-kb-fechar>fechar</button>'
         + '</div>';
     }

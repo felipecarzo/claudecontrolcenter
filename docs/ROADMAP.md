@@ -4156,7 +4156,19 @@ nenhum título com travessão, nenhum marcador sobrando depois da limpeza. Os
 fechados ficam como estão, porque são histórico, e reescrever 88 títulos antigos
 mexeria em registro por um ganho que ninguém vê.
 
-### CC-235 🟢 na sessão de tela: a mesma profundidade nos cartões de Sprint e Product Backlog
+### CC-235 ✅ 26/08: a mesma profundidade nos cartões do quadro de Trabalho
+
+A tela Trabalho virou o quadro Kanban (CC-346/347/348) depois deste pedido, então
+o "Sprint e Product Backlog" de antes não existe mais: hoje todo cartão do quadro
+já abre um detalhe ao toque. O que estava raso era o CONTEÚDO desse detalhe, que
+repetia o assunto do agente e não dizia o que a tarefa É, exatamente a queixa.
+
+Agora o detalhe tem moldura por TIPO, como o das tarefas dele: pendência dele
+mostra "por que depende de você" e a frente; tarefa de agente mostra que um
+agente está nela e em que projeto; frente do backlog mostra a descrição, quantas
+outras frentes ela destrava e por que parou. Bloco que pode ficar vazio diz por
+quê. Provado em `test-kb-detalhe.mjs` nos quatro casos (o headless não sustenta o
+quadro, então o visual é dele no telefone).
 
 Palavras dele, com print da tela Trabalho no telefone:
 
