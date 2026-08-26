@@ -411,7 +411,7 @@ Falta a parte 4 do mesmo pedido: o **"?"** em entrevista, comunicação, entrega
 código, rotas e em cada modo. Palavras dele: *"eu quem criei e eu mesmo já
 esqueci o que é"*.
 
-### CC-332, aberto em 23/08: a central de comando não abre sessão nem conversa
+### CC-332 ✅ 26/08: a central de comando não abria sessão nem conversa
 
 Pedido dele, olhando o telefone: *"o painel de sessões quebrou, eu não consigo
 iniciar direito as sessões, só consegui pelo coderoom. e também os botões tão
@@ -462,8 +462,11 @@ diferentes em texto. Resolver atalho é trabalho do servidor, que é da rota
 390px de largura conferida pela régua da barra de baixo, incluindo o aviso de
 "já estava aberta" (com a resposta do servidor simulada, para não deixar sessão
 viva na máquina dele como efeito de teste) e duas provas negativas. O `npm test`
-segue verde, 144 verificações. Falta registrar o comando no `package.json`, que
-é arquivo da rota `sistemas`.
+segue verde, 144 verificações.
+
+✅ **Fechado em 26/08:** o comando entrou no `package.json` como `test:central`
+(`npm run test:central`), junto dos outros testes de navegador que ficam fora do
+gate diário por exigirem Chrome. Só faltava esse registro.
 
 ### As oito anotações dele, de 22/08
 
@@ -1582,7 +1585,7 @@ quadro releu e o cartão mudou de coluna, e devolver deixou o arquivo **idêntic
 byte a byte** ao de antes do teste. O gesto do botão direito moveu a fita de 0
 para 312 pixels e soltou a trava do redesenho ao terminar.
 
-### CC-346, 25/08: a tela Trabalho vira quadro, primeira fatia
+### CC-346 ✅ 25/08: a tela Trabalho vira quadro, primeira fatia
 
 Dois prints dele: a tela com as colunas cortadas pela metade, e um quadro de
 referência. Palavras dele: *"fui verificar o backlog e não consigo navegar, o
@@ -1710,7 +1713,7 @@ o `VPS_` daqui. **O que falta é dele:** renomear as pastas no Windows. Enquanto
 não renomear, os projetos das duas máquinas continuam virando a mesma linha na
 tela, que é o problema que o prefixo existe para resolver.
 
-### CC-354, aberto em 25/08: o modo de cibersegurança, e o que ele já tem pronto
+### CC-354 ✅ 26/08: o modo de cibersegurança, e o que ele já tem pronto
 
 Ele mandou o conteúdo do vídeo do Deyvin em 25/08, que era a peça que faltava.
 Cinco falhas e as ferramentas para caçá-las.

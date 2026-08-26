@@ -47,7 +47,8 @@
     "test:travas": "node --experimental-websocket test-travas.mjs",
     "test:gaveta": "node --experimental-websocket test-gaveta.mjs",
     "test:remoto": "node test-remoto.mjs",
-    "test:framework-unico": "node test-framework-unico.mjs"
+    "test:framework-unico": "node test-framework-unico.mjs",
+    "test:central": "node --experimental-websocket test-central.mjs"
   },
   "engines": {
     "node": ">=18"
