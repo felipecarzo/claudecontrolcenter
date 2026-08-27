@@ -58,7 +58,19 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* CC-369: arrastar para o lado não pode voltar de página.
+       Pedido dele em 27/08: *"podemos desativar o voltar do app? as vzs eu
+       arrasto pro lado e o navegador volta"*. O painel tem fita que rola na
+       horizontal (o quadro, as pastilhas, as tabelas largas), e ao chegar no fim
+       da rolagem o navegador entende a continuação do gesto como "voltar".
+       Perder a tela no meio de um gesto de leitura é o pior tipo de perda: ele
+       não pediu nada e o trabalho sai do lugar.
+       `none` e não `contain`: `contain` só impede o gesto de VAZAR para o pai,
+       e aqui o pai é a própria janela, onde mora a navegação. */
+    html { overscroll-behavior-x: none; }
+
     body {
+      overscroll-behavior-x: none;
       font-family: 'Inter', sans-serif;
       background-color: var(--bg);
       color: var(--text-main);
@@ -533,6 +545,11 @@
     .kb-quadro {
       display: flex; gap: 14px; align-items: flex-start;
       overflow-x: auto; overflow-y: visible;
+      /* CC-369: a fita do quadro é o lugar onde o gesto de voltar mais acontece,
+         porque ela é feita para ser arrastada de lado. A trava da página já
+         resolve, e esta linha é a segunda defesa: `contain` impede o gesto de
+         escapar da fita quando ela chega ao fim. */
+      overscroll-behavior-x: contain;
       /* `proximity` e não `mandatory`: ele pediu fluido "como o trello". Preso,
          a fita briga com a mão no meio do gesto. No estreito ele vira
          obrigatório, porque lá a coluna tem que fechar inteira na tela. */
@@ -631,6 +648,21 @@
     .kb-detalhe h3 { font-size: 15px; margin: 0 0 8px; overflow-wrap: anywhere; text-transform: none; white-space: normal; }
     .kb-detalhe p { font-size: 13px; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
     .kb-filtros { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+
+    /* CC-363: quem está trabalhando fora do quadro.
+       A cor é a de "esperando" e não a de erro: o agente não quebrou nada, o
+       backlog é que não tem onde pendurar o trabalho dele. Erro vermelho aqui
+       ensinaria a ignorar, que é como uma trava morre.
+       `flex-wrap` e nada de largura declarada: em 390px cada linha empilha
+       sozinha, e grade de colunas em `style=` já apagou duas telas neste
+       projeto. */
+    .kb-soltos { background: var(--bg-surface); border: 1px solid var(--amber); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; }
+    .kb-soltos-cab { font-size: 13px; font-weight: 600; color: var(--amber); margin-bottom: 8px; }
+    .kb-solto-grupo { padding: 6px 0; border-top: 1px solid var(--border); }
+    .kb-solto-grupo:first-of-type { border-top: 0; }
+    .kb-solto { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; padding: 3px 0; }
+    .kb-solto-frente { font-size: 13px; color: var(--text-main); overflow-wrap: anywhere; }
+    .kb-solto-porque { font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; }
 
     #kb-palco:fullscreen, #kb-palco.kb-cheio { background: var(--bg); padding: 16px; overflow: auto; }
     #kb-palco:fullscreen .kb-col, #kb-palco.kb-cheio .kb-col { max-height: calc(100vh - 60px); }
@@ -1061,7 +1093,13 @@
     }
     .fw-aut.ok { border-bottom-color: var(--done); }
     .fw-aut b { font-size: 12px; }
-    .fw-aut .path { flex: 1 1 200px; }
+    /* CC-366, 27/08: o texto explicativo nunca teve tamanho próprio, então
+       herdava o do cartão e saía maior que o rótulo em negrito ao lado dele.
+       No telefone o resultado era o pior possível: com `flex-basis: 200px`
+       dentro de um cartão de ~330px, ele quebrava para uma linha só e virava
+       uma frase grande e solta, com o rótulo que a explica empurrado para fora
+       da tela. Visto no print de 390px, não deduzido do código. */
+    .fw-aut .path { flex: 1 1 140px; font-size: 11.5px; color: var(--text-muted); line-height: 1.35; }
     .fw-pedidos { display: grid; gap: 4px; width: 100%; margin: 4px 0; }
     .fw-pedido { display: flex; align-items: center; gap: 8px; }
     .fw-pedido code {
@@ -1894,6 +1932,12 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
         Cockpit
       </a>
+      <!-- CC-366/367, 27/08: as duas telas de projeto vêm juntas e nesta ordem.
+           Ligados primeiro porque é a pergunta de todo dia ("onde tem alguém
+           trabalhando"); Projetos logo abaixo porque é o mesmo assunto com o
+           recorte maior, e separá-los no menu faria ele procurar em dois
+           lugares distantes o que é uma coisa só. -->
+      <a href="#" class="nav-item" data-target="view-ligados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg> Ligados</a>
       <a href="#" class="nav-item" data-target="view-projetos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> Projetos</a>
       <a href="#" class="nav-item" data-target="view-meus">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -1938,7 +1982,7 @@
       <!-- CC-196: órfã no desenho original. Nenhum dos 24 destinos do menu
            levava até o abrir-sessão-à-distância e a federação entre máquinas,
            mesmo sendo o que ele pediu de unificar o cockpit em 19/08. -->
-      <a href="#" class="nav-item" data-target="view-remoto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="12" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="16" x2="12" y2="21"></line><path d="M6 9l3 2-3 2"></path></svg> Central</a>
+      <a href="#" class="nav-item" data-target="view-remoto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="12" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="16" x2="12" y2="21"></line><path d="M6 9l3 2-3 2"></path></svg> Ajustes</a>
       </div>
     </div>
     <div class="nav-section" data-grupo="INTELIGÊNCIA">
@@ -2278,43 +2322,46 @@
          Abrir sessão à distância, e a ligação entre as máquinas. Era a órfã
          mais grave da migração: nenhum destino do menu levava até ela, e é
          justamente o "cockpit único" que ele pediu em 19/08. -->
+    <!-- TELA: AJUSTES (era a Central de Comando)
+         =====================================================================
+         CC-368, 27/08. Pedido dele, ditado por voz: *"o que eu preciso é: uma
+         tela só com os projetos ligados (…) uma outra tela com todos os
+         projetos (…) e uma outra tela com configuração geral do framework (…)
+         do jeito que está, os projetos estão aparecendo em três lugares
+         diferentes, está muito ruim"*.
+
+         Esta tela era a Central, e acumulou três listas dos mesmos projetos:
+         CC-323 (22/08) trouxe o cartão de comando, CC-329 (22/08) enfiou o
+         Framework aqui dentro e CC-335 (25/08) enfiou a tela Projetos também.
+         Cada passo foi pedido dele e cada um fazia sentido sozinho; juntos
+         viraram uma tela com duas gavetas fechadas por cima do que ele procura.
+
+         Agora ela guarda só o que é ajuste de vez em quando: o método de
+         trabalho e as máquinas. Os projetos moram nas duas telas irmãs,
+         `view-ligados` e `view-projetos`.
+
+         As gavetas nascem ABERTAS, ao contrário de antes. O motivo inverteu
+         junto com o conteúdo: quando havia cartão de projeto no topo, elas
+         empurravam o que importava para baixo; agora elas são o conteúdo, e
+         gaveta fechada por cima do único conteúdo da tela é a tela abrindo
+         vazia. -->
     <div id="view-remoto" class="view-section">
       <div class="grid-container so-uma">
         <div class="main-col">
-          <!-- CC-323: a central de comando. Pedido dele em 22/08:
-               *"acho que seria a tela de 'remoto' ser algo mais a ver com uma
-               central de comando, one ligamos os projetos e ali mesmo ja
-               controlamos o framework do projeto ligado"*.
-
-               Antes eram duas telas: ligar a sessão aqui, escolher o modo de
-               trabalho na tela Framework, e a segunda não sabia qual projeto a
-               primeira tinha ligado. Aqui as duas coisas moram no mesmo cartão,
-               e o modo é escolhido ANTES de ligar, para a sessão nascer nele.
-
-               Ele confirmou a leitura em 22/08: "ligar um projeto" é abrir a
-               sessão de agente, que é o que esta tela já fazia. -->
           <div class="section-header">
-            <h2 data-explica="agente">CENTRAL DE COMANDO</h2>
+            <h2 data-explica="agente">AJUSTES</h2>
             <span id="cc-conta" style="font-size:12px;color:var(--text-muted);"></span>
           </div>
-          <div id="cc-central"><p style="font-size:12px;color:var(--text-muted);">lendo os projetos…</p></div>
-
-          <!-- CC-329: o resto da tela vira bloco que abre. Escolha dele em
-               22/08, entre as duas leituras da frase: *"manter a tela de
-               framework abaixo dela, colapsada"*, tudo numa tela só.
-
-               Nascem FECHADOS de propósito. A central responde a pergunta de
-               todo dia (em que modo está, tem sessão no ar, liga); o que está
-               aqui embaixo é a configuração de vez em quando. Abertos, o que ele
-               veria ao entrar seriam três telas de rolagem antes do primeiro
-               cartão. -->
-          <details class="cc-bloco">
-          <summary><b>Framework</b><span>a entrevista e o projeto novo. Ligar, desligar e escolher o modo agora é no cartão de cima</span></summary>
+          <!-- Sem parágrafo de explicação aqui: o subtítulo da tela, logo acima,
+               já diz o mesmo. Visto no print de 390px, com as duas frases quase
+               idênticas uma embaixo da outra. -->
+          <details class="cc-bloco" open>
+          <summary><b>O método de trabalho</b><span>a entrevista e o retrato geral. Ligar, desligar e escolher o modo é no cartão de cada projeto</span></summary>
           <div id="cc-framework-aqui"></div>
           </details>
 
-          <details class="cc-bloco">
-          <summary><b>Remoto</b><span>as máquinas, as sessões no ar e a sincronia</span></summary>
+          <details class="cc-bloco" open>
+          <summary><b>As máquinas</b><span>as sessões no ar, a sincronia e a configuração da federação</span></summary>
           <div class="section-header" style="margin-top:8px;">
             <h2 data-explica="agente">ONDE ABRIR UMA SESSÃO</h2>
             <span id="remoto-conta" style="font-size:12px;color:var(--text-muted);"></span>
@@ -2686,17 +2733,57 @@
          enxergando os trabalhos".
          O cartao fechado mostra o barato (uma rota, com cache de 15s). Abrir
          busca o caro daquele projeto so: git, framework, rotinas e roadmap. -->
+    <!-- TELA: LIGADOS
+         =====================================================================
+         CC-366, 27/08. Pedido dele: *"uma tela só com os projetos ligados, só
+         com os projetos ligados (…) e os deles cada um pra configurar, as
+         conversas ligadas, as exceções, os testes e etcétera"*.
+
+         **O que conta como ligado é definição dele, dada na mesma conversa:**
+         *"ligado é com sessão ativa no Claude ou coderoom"*. Isso muda a régua
+         de 25/08, que mandava conversa parada do Coderoom não contar.
+
+         A conta NÃO mora aqui. Vem pronta do servidor, no campo `ligado` de
+         cada projeto (CC-365). O motivo é o defeito que esta tela tinha: ela
+         filtrava por uma régua e agrupava por outra, então o mesmo projeto
+         entrava na lista por ter conversa e caía na faixa "sem sessão aberta"
+         logo abaixo.
+
+         O cartão é o MESMO `pjCard` da tela Projetos, de propósito: dois
+         cartões para o mesmo projeto seria a terceira lista voltando pela
+         porta dos fundos, que é exatamente do que ele reclamou. O que muda é
+         que aqui o bloco do método nasce aberto, porque aqui todo mundo tem
+         sessão. -->
+    <div id="view-ligados" class="view-section">
+      <div class="grid-container so-uma">
+        <div class="main-col">
+          <div class="card tend-barra">
+            <div class="tend-acoes">
+              <button class="btn btn-ghost" id="lig-atualizar">atualizar</button>
+            </div>
+            <div class="tend-quando" id="lig-quando"></div>
+          </div>
+          <div id="lig-grade"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA: PROJETOS (todos, sem filtro para clicar)
+         =====================================================================
+         CC-367, 27/08. Ela existia, foi enfiada dentro da Central pelo CC-335
+         em 25/08, e volta a ser tela própria porque foi ele quem pediu:
+         *"uma outra tela com todos os projetos (…) eu posso abrir uma sessão de
+         um projeto que já está aberto também"*.
+
+         **O seletor "mostrar" saiu.** Era ele que escondia os desligados atrás
+         de um gesto, e a queixa foi literal: *"não tem o local pra ver os
+         projetos desligados automaticamente, eu preciso clicar num botão"*.
+         Aqui aparecem todos, sempre; quem quer só os ligados tem a tela ao
+         lado, que é justamente a divisão que ele desenhou. -->
     <div id="view-projetos" class="view-section">
       <div class="grid-container so-uma">
         <div class="main-col">
           <div class="card tend-barra">
-            <div class="tend-filtro">
-              <label for="pj-ver">mostrar</label>
-              <select id="pj-ver" class="styled-input">
-                <option value="ativos">só os que têm algo agora</option>
-                <option value="todos">todos os projetos</option>
-              </select>
-            </div>
             <div class="tend-acoes">
               <!-- CC-336, 25/08: *"o novo projeto, eu acho que tem que ficar,
                    de repente no topo. E como uma parte do design né? Não acho
@@ -2961,7 +3048,8 @@
       'view-estrutura': { title: 'Estrutura', subtitle: 'O mapa de um projeto: as frentes, as rotas, o que mudou.' },
       'view-agentes': { title: 'Agentes', subtitle: 'Controle de agentes e logs detalhados.' },
       'view-escritorio': { title: 'Escritório', subtitle: 'Os agentes desenhados trabalhando, e quem é cada um.' },
-      'view-remoto': { title: 'Central de comando', subtitle: 'Escolher o modo de trabalho de cada projeto e abrir sessão nele. O framework e as máquinas ficam nos blocos abaixo.' },
+      'view-ligados': { title: 'Ligados', subtitle: 'Só os projetos com alguém trabalhando agora: agente, sessão no ar ou conversa aberta. Cada um com os controles dele à mão.' },
+      'view-remoto': { title: 'Ajustes', subtitle: 'O que se mexe de vez em quando: as máquinas e o método de trabalho. Os projetos ficam em Ligados e em Projetos.' },
       'view-hooks': { title: 'Hooks', subtitle: 'Gatilhos automáticos do sistema.' },
       'view-rotinas': { title: 'Rotinas', subtitle: 'As cópias de comando dentro de cada projeto, e se ainda valem.' },
       'view-bancada': { title: 'Bancada', subtitle: 'Este projeto está seguro para quem o alcança?' },
@@ -3081,8 +3169,19 @@
                que mais custa neste painel. */
             if (targetId === 'view-remoto') {
               carregarFederacao(); carregarRemoto(); conversasParaOsCards();
-              carregarProjetosTela(); // CC-335: a lista de projetos agora mora aqui
-              if (!FW_LISTA) carregarFrameworkLista(); else renderCentral();
+              carregarFrameworkLista({ silencioso: Boolean(FW_LISTA) });
+              renderNovoProjeto();
+            }
+            /* CC-366/367: as duas telas de projeto pedem a mesma coisa, e por
+               isso pedem juntas. O cartão precisa das três leituras: a lista
+               (quem existe e quem está ligado), as conversas do Coderoom (que
+               agora contam como ligado) e o framework de cada projeto, que é o
+               que desenha os controles dentro do cartão. Faltando qualquer uma
+               delas o cartão nasce dizendo "parado" sobre algo que não leu. */
+            if (targetId === 'view-ligados' || targetId === 'view-projetos') {
+              carregarProjetosTela();
+              conversasParaOsCards();
+              carregarFrameworkLista({ silencioso: Boolean(FW_LISTA) });
               renderNovoProjeto();
             }
             if (targetId === 'view-estrutura') renderMapa();
@@ -3175,12 +3274,50 @@
     const telaDoNome = (nome) => (nome && document.querySelector(`.nav-item[data-target="view-${nome}"]`)
       ? `view-${nome}` : null);
 
-    /* Grava só quando MUDA. Escrever o mesmo hash de novo não dispara evento,
-       mas empilharia uma entrada repetida no histórico em alguns navegadores,
-       e aí um toque em voltar não sairia do lugar. */
+    /* Grava só quando MUDA, e SUBSTITUI a parada em vez de empilhar uma nova.
+
+       ## CC-370, pedido dele em 27/08
+
+       Ele usa Android, onde voltar é gesto do SISTEMA e nenhum CSS alcança:
+       *"as vzs eu arrasto pro lado e o navegador volta"*. A trava de arrastar
+       (CC-369) resolve o gesto que nasce dentro da página; este resolve o que
+       nasce na borda da tela.
+
+       A causa medida: `location.hash = novo` EMPURRA uma entrada no histórico.
+       Cada troca de aba virava uma parada, e o gesto o tirava da tela em que
+       estava, uma de cada vez. Decisão dele, com o tradeoff na mesa: o voltar
+       não troca de tela nunca.
+
+       `replaceState` troca o endereço sem criar parada. **O endereço continua
+       inteiro**, que é o que importa: recarregar em `#trabalho` volta para o
+       quadro, e o link continua apontando uma tela. O que se perde é o voltar
+       ENTRE telas, e foi escolha dele.
+
+       ⚠️ `replaceState` não dispara `hashchange`, e isso é seguro aqui porque
+       quem chama esta função é o CLIQUE, que já trocou a tela. O ouvinte de
+       `hashchange` serve para quem chega pelo endereço, não para o clique.
+
+       ## A exceção, e ela é um pedido ANTIGO dele
+
+       Trocar de tela substitui; **ABRIR alguma coisa empilha**. Ao entrar num
+       agente, o endereço vira `#agentes/<id>` e essa parada é criada de
+       propósito, porque o gesto de voltar então FECHA o agente e devolve a
+       lista, em vez de tirar ele da tela. Era o que o painel já fazia, e o
+       teste de endereço guarda desde então.
+
+       Isto apareceu ao medir: a primeira versão substituía sempre, e junto com
+       o defeito foi embora um comportamento que ele tinha pedido antes. Ele
+       decidiu ficar com os dois: o gesto fecha o que está aberto, e nunca
+       troca de tela.
+
+       Assim o histórico do painel tem no máximo DUAS paradas: onde ele está, e
+       o que ele abriu por cima. */
     function gravarEndereco(targetId, agente = null) {
       const novo = '#' + nomeDaTela(targetId) + (agente ? '/' + agente : '');
-      if (location.hash !== novo) location.hash = novo;
+      if (location.hash === novo) return;
+      const abrindo = Boolean(agente) && !/\//.test(location.hash);
+      if (abrindo) history.pushState(null, '', novo);
+      else history.replaceState(null, '', novo);
     }
 
     /* Lê o endereço e leva a tela até ele. Nunca grava: quem grava é o clique,
@@ -4861,12 +4998,31 @@
     let NOVO_RESULTADO = null;
     const NOVO_FORM = { nome: '', grupo: '', descricao: '' };
 
-    function carregarFrameworkLista() {
-      FW_LISTA = 'carregando';
-      renderFwLista();
+    /**
+     * CC-364: `silencioso` existe por causa do tique.
+     *
+     * Sem ele, cada volta punha a lista em "carregando" e repintava a tela com
+     * "lendo os projetos…" antes de a resposta chegar. Uma vez, ao abrir, é
+     * informação; a cada 20 segundos é a tela piscando na mão dele. Com
+     * `silencioso` a lista velha continua na tela até a nova chegar, que é o
+     * mesmo princípio do `pintar()`: só trocar o que mudou de verdade.
+     */
+    function carregarFrameworkLista({ silencioso = false } = {}) {
+      if (!silencioso) {
+        FW_LISTA = 'carregando';
+        renderFwLista();
+      }
       fetch('/api/framework/projetos').then((r) => r.json())
         .then((d) => { FW_LISTA = d.projetos || []; FW_CATALOGO_MODULOS = d.catalogoModulos || null; renderFwLista(); renderCentral(); renderProjetos(); })
-        .catch(() => { FW_LISTA = 'erro'; renderFwLista(); renderCentral(); renderProjetos(); });
+        /* Falha de rede numa volta do tique NÃO apaga a lista boa que está na
+           tela: se já havia uma, ela fica, e a volta seguinte tenta de novo. O
+           "erro" só toma a tela quando não há nada para mostrar, que é quando
+           ele precisa mesmo saber. Apagar 23 cartões por causa de um segundo
+           de rede seria a tela sumindo na mão dele. */
+        .catch(() => {
+          if (!Array.isArray(FW_LISTA)) FW_LISTA = 'erro';
+          renderFwLista(); renderCentral(); renderProjetos();
+        });
     }
 
     /* ===== CC-323: a central de comando =====
@@ -4942,10 +5098,17 @@
     /* CC-339: "tem sessão de agente no ar?" pelo dado que ATUALIZA a cada tique
        (o stream), não pelo controle remoto que só relê ao abrir a tela. Era o
        congelamento que punha `VPS_fibraessencia` no grupo "com sessão no ar" com
-       o tmux dela já fechado. A definição é a dele (25/08): sessão de agente no
-       ar; conversa parada do Coderoom não conta. Reler o controle remoto a cada
-       2s custaria um `tmux list-sessions` por tique, que é spawn no tique, o que
-       a casa evita de propósito. */
+       o tmux dela já fechado. Reler o controle remoto a cada 2s custaria um
+       `tmux list-sessions` por tique, que é spawn no tique, o que a casa evita
+       de propósito.
+
+       ⚠️ **CC-365, 27/08: esta função deixou de decidir quem está ligado.** A
+       definição de 25/08 era "sessão de agente no ar, conversa parada do
+       Coderoom não conta", e ele a trocou ao desenhar as três telas: *"ligado é
+       com sessão ativa no Claude ou coderoom"*. Quem responde isso agora é
+       `ligadoDe`, com o campo que vem do servidor. O que sobrou aqui é a
+       pergunta ESTREITA, "tem sessão de agente", que ainda é útil por si: é
+       diferente de ter só uma conversa parada esperando resposta. */
     const temSessaoNoAr = (p) => Boolean(p && (p.vivos || p.esperando || p.sessaoNoAr));
 
     function renderFwLista() {
@@ -4977,8 +5140,13 @@
        *
        * O bloco continua existindo pela entrevista e pelo projeto novo, que
        * são as duas coisas daqui que não cabem num cartão por projeto. */
+      /* CC-368, 27/08: "ali em cima" deixou de existir. Os cartões saíram desta
+         tela e foram para Ligados e Projetos, então o texto passa a apontar
+         para onde a coisa está de verdade. Instrução que aponta para o lugar
+         errado produz erro em quem segue à risca, e some do radar porque
+         ninguém desobedeceu. */
       alvo.innerHTML = `<p style="font-size:12px;color:var(--text-dim);">${nAtivos} com sessão aberta, ${ligados} com framework ligado.
-        Ligar, desligar e escolher o papel agora é no cartão de cada projeto, ali em cima.
+        Ligar, desligar e escolher o papel é no cartão de cada projeto, nas telas <b>Ligados</b> e <b>Projetos</b>.
         Ligar cria <code>.framework/estado.json</code>; desligar não apaga o MVP.</p>`;
       // A entrevista mora na coluna própria: se o projeto aberto sumiu da lista visível, mantém.
       renderEntrevista();
@@ -7409,7 +7577,12 @@
     async function carregarProjetosTela(forcar = false) {
       try {
         DATA.projetos = await (await fetch('/api/projetos/painel' + (forcar ? '?force=1' : ''))).json();
-      } catch (e) { DATA.projetos = { erro: true, error: String(e.message || e) }; }
+      } catch (e) {
+        /* CC-364: com a leitura no tique, uma falha de rede passageira não pode
+           limpar a tela. Se já havia lista, ela fica e a volta seguinte tenta
+           de novo; o aviso de erro só aparece quando não há nada a mostrar. */
+        if (!DATA.projetos?.projetos) DATA.projetos = { erro: true, error: String(e.message || e) };
+      }
       renderProjetos();
       /* CC-346: o kambam usa a mesma lista para a etiqueta de máquina. Sem esta
          linha o selo só apareceria no tique seguinte. */
@@ -7927,6 +8100,8 @@
       return '<article class="pj-card ' + classe + (aberto ? ' aberto' : '') + '">'
         + '<header class="pj-topo"><span class="pj-sinal"></span>'
         + '<span class="pj-estado">' + esc(estado) + '</span>'
+        /* CC-365: o que liga o projeto além do que a linha ao lado já diz. */
+        + (razoesExtras(p) ? '<span class="pj-onde">' + esc(razoesExtras(p)) + '</span>' : '')
         + (p.daqui ? '' : '<span class="pj-onde">outra máquina</span>')
         + '</header>'
         /* A etiqueta de máquina vem colada no nome, e é a regra dele para TODO
@@ -7968,7 +8143,7 @@
            que ele pediu. Projeto de outra máquina não tem framework legível
            daqui, e o cartão DIZ isso em vez de mostrar controle morto. */
         + (p.daqui
-          ? blocoFramework(fwDe(p.projeto), { colapsado: !temSessaoNoAr(p) })
+          ? blocoFramework(fwDe(p.projeto), { colapsado: !ligadoDe(p) })
           : blocoFrameworkRemoto(p))
         + '<div class="pj-acoes">'
         /* CC-345: o rótulo diz O QUE abre. Ele: *"esse 'ver tudo' também está
@@ -7985,33 +8160,87 @@
         + '</article>';
     }
 
-    function renderProjetos() {
-      const alvo = document.getElementById('pj-grade');
-      const quando = document.getElementById('pj-quando');
-      if (!alvo) return;
-      const d = DATA.projetos;
-      if (!d) { pintar(alvo, '<div class="card tend-aviso">lendo os projetos…</div>'); return; }
-      if (d.erro || d.error) {
-        pintar(alvo, '<div class="card tend-aviso">não consegui ler os projetos: ' + esc(d.error || '') + '</div>');
-        return;
-      }
+    /**
+     * CC-365/366/367: as DUAS telas de projeto, pintadas pela mesma função.
+     *
+     * Elas mostram recortes diferentes do mesmo dado, e por isso não podem ser
+     * duas funções: era assim que a tela tinha duas réguas de "ligado" e o
+     * mesmo projeto aparecia num grupo pelo critério A e noutro pelo B.
+     *
+     * `ligadoDe(p)` é o único lugar que responde "está ligado?", e a resposta
+     * vem do servidor (`p.ligado`, CC-365). O segundo ramo existe só para dado
+     * antigo, de um painel que ainda não subiu o campo novo: sem ele a tela
+     * abriria com zero ligados durante o intervalo entre recarregar a página e
+     * reiniciar o serviço, que é vazio mentindo com confiança.
+     */
+    const ligadoDe = (p) => ('ligado' in Object(p)
+      ? Boolean(p.ligado)
+      : Boolean(p.vivos || p.esperando || p.conversas || p.sessaoNoAr));
 
-      const so = document.getElementById('pj-ver')?.value || 'ativos';
-      const ativos = (d.projetos || []).filter((p) => !(p.vivos === 0 && !p.esperando && !p.conversas && !p.sessaoNoAr));
-      const lista = so === 'todos' ? (d.projetos || []) : ativos;
+    /**
+     * O que liga este projeto ALÉM do que a linha de estado já diz.
+     *
+     * A primeira versão listava todos os motivos, e em 390px virou uma frase
+     * atravessada no topo do cartão repetindo o que estava logo abaixo:
+     * "2 trabalhando" ao lado de "agente e sessão no ar e conversa". O que o
+     * cartão não sabia dizer é só o RESTO: um projeto com agente escrevendo E
+     * uma conversa parada esperando resposta mostrava apenas o agente, e a
+     * conversa ficava invisível.
+     *
+     * A linha de estado escolhe um motivo por vez, nesta ordem: agente (quando
+     * há alguém esperando ou trabalhando), depois conversa, depois sessão. O
+     * que sai daqui é o que sobrou dessa escolha.
+     */
+    const razoesExtras = (p) => {
+      const por = Array.isArray(p.ligadoPor) ? p.ligadoPor : [];
+      if (por.length < 2) return '';
+      const jaDito = (p.esperando || p.vivos) ? 'agente' : p.conversas ? 'coderoom' : 'sessao';
+      const nomes = { agente: 'agente', sessao: 'sessão', coderoom: 'conversa' };
+      const resto = por.filter((x) => x !== jaDito).map((x) => nomes[x]).filter(Boolean);
+      return resto.length ? '+ ' + resto.join(', ') : '';
+    };
+
+    function renderProjetos() {
+      const d = DATA.projetos;
+      const grades = [
+        { alvo: document.getElementById('pj-grade'), quando: document.getElementById('pj-quando'), so: 'todos' },
+        { alvo: document.getElementById('lig-grade'), quando: document.getElementById('lig-quando'), so: 'ligados' },
+      ].filter((g) => g.alvo);
+      if (!grades.length) return;
+
+      for (const g of grades) {
+        if (!d) { pintar(g.alvo, '<div class="card tend-aviso">lendo os projetos…</div>'); continue; }
+        if (d.erro || d.error) {
+          pintar(g.alvo, '<div class="card tend-aviso">não consegui ler os projetos: ' + esc(d.error || '') + '</div>');
+          continue;
+        }
+        pintarUmaGrade(g, d);
+      }
+    }
+
+    function pintarUmaGrade({ alvo, quando, so }, d) {
+      const todos = d.projetos || [];
+      const lista = so === 'ligados' ? todos.filter(ligadoDe) : todos;
+      /* `ligados` vem contado do servidor. A conta local é o mesmo resgate do
+         `ligadoDe`, para painel que ainda não subiu o campo. */
+      const nLigados = typeof d.ligados === 'number' ? d.ligados : todos.filter(ligadoDe).length;
 
       if (quando) {
-        pintar(quando, d.total + ' projeto(s)'
+        pintar(quando, (so === 'ligados'
+          ? nLigados + ' ligado(s) de ' + d.total
+          : d.total + ' projeto(s)')
           + (d.deFora ? ', ' + d.deFora + ' de outra máquina' : '')
           + (d.doCache ? ' · leitura guardada' : ''));
       }
 
       if (!lista.length) {
-        /* Vazio com DUAS causas, e a tela diz as duas: nada acontecendo, ou o
-           filtro escondeu. Espaço em branco não separa uma da outra. */
+        /* Vazio com mais de uma causa, e a tela diz qual é. Espaço em branco
+           não separa "não há nada" de "a leitura falhou", que é a família de
+           defeito mais cara deste painel. */
         pintar(alvo, '<div class="card tend-aviso">'
-          + (so === 'ativos'
-            ? 'Nenhum projeto com agente, conversa ou sessão agora. Troque para <b>todos os projetos</b> para ver os ' + d.total + '.'
+          + (so === 'ligados'
+            ? 'Nenhum projeto ligado agora. Ligado é ter agente trabalhando, sessão no ar ou conversa aberta. Os ' + d.total + ' que existem estão em <b>Projetos</b>.'
+              + (d.leuConversas === false ? ' <b>As conversas não foram lidas nesta volta</b>, então pode haver projeto ligado por conversa que não entrou aqui.' : '')
             : 'Nenhum projeto encontrado nesta máquina.')
           + '</div>');
         return;
@@ -8025,30 +8254,35 @@
       const daquiTodos = lista.filter((p) => p.daqui && p.ehProjeto);
       const passagem = lista.filter((p) => p.daqui && !p.ehProjeto);
       const fora = lista.filter((p) => !p.daqui);
+
+      const grade = (itens) => '<div class="pj-grade">' + itens.map((p) => pjCard(p, d.maquina)).join('') + '</div>';
+
+      /* Na tela dos ligados não existe faixa de "ligados": todos ali são, e um
+         título dizendo isso seria repetir o nome da tela a cada rolagem. */
+      if (so === 'ligados') {
+        pintar(alvo, grade(daquiTodos)
+          + (passagem.length ? '<div class="pj-secao">pastas de trabalho, não são projetos</div>' + grade(passagem) : '')
+          + (fora.length ? '<div class="pj-secao">de outra máquina</div>' + grade(fora) : ''));
+        return;
+      }
+
       /* CC-335, a ordem que ele pediu: *"depois as sessões ligadas e depois as
-         outras"*. Ligado é ter sessão de agente no ar, decisão dele em 25/08
-         entre as quatro que ofereci; conversa parada do Coderoom não conta. */
-      const ligadas = daquiTodos.filter(temSessaoNoAr);
-      const daqui = daquiTodos.filter((p) => !temSessaoNoAr(p));
+         outras"*. O que mudou em 27/08 foi só a régua do que é ligado, que
+         agora é a do servidor e inclui a conversa do Coderoom. */
+      const ligadas = daquiTodos.filter(ligadoDe);
+      const daqui = daquiTodos.filter((p) => !ligadoDe(p));
       pintar(alvo,
         (ligadas.length
-          ? '<div class="pj-secao">com sessão no ar agora</div>'
-            + '<div class="pj-grade">' + ligadas.map((p) => pjCard(p, d.maquina)).join('') + '</div>'
-          : '<div class="pj-secao">nenhuma sessão no ar agora</div>')
+          ? '<div class="pj-secao">ligados agora</div>' + grade(ligadas)
+          : '<div class="pj-secao">nenhum projeto ligado agora</div>')
         + (daqui.length
-          ? '<div class="pj-secao">nesta máquina, sem sessão aberta</div>'
-            + '<div class="pj-grade">' + daqui.map((p) => pjCard(p, d.maquina)).join('') + '</div>'
+          ? '<div class="pj-secao">nesta máquina, desligados</div>' + grade(daqui)
           : '')
         + (passagem.length
-          ? '<div class="pj-secao">pastas de trabalho, não são projetos</div>'
-            + '<div class="pj-grade">' + passagem.map((p) => pjCard(p, d.maquina)).join('') + '</div>'
+          ? '<div class="pj-secao">pastas de trabalho, não são projetos</div>' + grade(passagem)
           : '')
         + (fora.length
-          ? '<div class="pj-secao">de outra máquina, sem pasta aqui</div>'
-            + '<div class="pj-grade">' + fora.map((p) => pjCard(p, d.maquina)).join('') + '</div>'
-          : '')
-        + (so === 'ativos' && d.total > lista.length
-          ? '<div class="pj-secao">' + (d.total - lista.length) + ' projeto(s) sem nada acontecendo agora</div>'
+          ? '<div class="pj-secao">de outra máquina, sem pasta aqui</div>' + grade(fora)
           : ''));
     }
 
@@ -10300,6 +10534,48 @@
 
       const aberto = KB_ABERTO ? lista.find((c) => kbChave(c) === KB_ABERTO) : null;
 
+      /**
+       * CC-363: os agentes que estão trabalhando FORA do quadro.
+       *
+       * Medido em 27/08 com dado real: as colunas "andando" e "travada" estavam
+       * vazias enquanto seis agentes trabalhavam, e nenhum dos seis achava o
+       * próprio item. Eles não apareciam em lugar nenhum, e coluna vazia
+       * lê-se como "ninguém está trabalhando".
+       *
+       * Metade era mecânica, o prefixo de máquina no nome do projeto, e o motor
+       * resolveu. A outra metade não tem conserto automático: o agente declarou
+       * uma frente que não existe como item aberto. Adivinhar o item mais
+       * parecido penduraria trabalho de verdade no cartão errado.
+       *
+       * Então a faixa mostra quem está de fora, com o motivo. Ela só existe
+       * quando há alguém: faixa permanente vira enfeite e some do olhar.
+       */
+      const soltos = (DATA.trabalho.soltos || [])
+        .filter((s) => KB_PROJETO === 'todos' || s.projeto === KB_PROJETO);
+      /* Agrupado por MOTIVO, e a frase aparece uma vez por grupo. A primeira
+         versão repetia "a frente que este agente declarou não existe como item
+         aberto do backlog" em quatro linhas seguidas, e num telefone isso é
+         mais alto que a informação: o que muda de linha para linha é o nome do
+         agente, não o motivo. */
+      const porMotivo = [];
+      for (const s of soltos) {
+        const grupo = porMotivo.find((g) => g.porque === s.porque);
+        if (grupo) grupo.itens.push(s); else porMotivo.push({ porque: s.porque, itens: [s] });
+      }
+      const faixaSoltos = soltos.length
+        ? '<div class="kb-soltos"><div class="kb-soltos-cab">'
+          + esc(soltos.length + (soltos.length > 1 ? ' agentes trabalhando fora do quadro' : ' agente trabalhando fora do quadro'))
+          + '</div>'
+          + porMotivo.map((g) => '<div class="kb-solto-grupo">'
+            + g.itens.map((s) => '<div class="kb-solto">'
+              + '<span class="kb-tag forte">' + esc(s.projeto || '?') + '</span>' + seloDoProjeto(s.projeto)
+              + '<span class="kb-solto-frente">' + esc(s.frente || '') + '</span>'
+              + '</div>').join('')
+            + '<div class="kb-solto-porque">' + esc(g.porque || '') + '</div>'
+            + '</div>').join('')
+          + '</div>'
+        : '';
+
       const html = '<div class="kb-filtros">'
         + '<select class="styled-input" data-kb-projeto title="mostrar só um projeto">'
         + '<option value="todos"' + (KB_PROJETO === 'todos' ? ' selected' : '') + '>todos os projetos (' + todos.length + ')</option>'
@@ -10310,6 +10586,7 @@
         + '<button class="btn btn-ghost compacto" data-kb-cheio title="abrir o quadro em tela cheia">tela cheia</button>'
         + '</div>'
         + (aberto ? kbDetalhe(aberto) : '')
+        + faixaSoltos
         /* O palco existe para a tela cheia ter o que expandir sem levar junto o
            filtro e o cartão aberto. */
         + '<div id="kb-palco"><div class="kb-quadro">'
@@ -10729,7 +11006,10 @@
          filtrada la. Trocar as medidas do cruzamento so refaz o cruzamento. */
       if (tr.id === 'tend-projeto') carregarTendencias();
       if (tr.id === 'trv-projeto' || tr.id === 'trv-qual') carregarTravas();
-      if (tr.id === 'pj-ver') renderProjetos();
+      /* CC-367, 27/08: o `pj-ver` saiu. Era o seletor que escondia os
+         desligados atrás de um gesto, e a queixa dele foi literal: *"não tem o
+         local pra ver os projetos desligados automaticamente, eu preciso clicar
+         num botão"*. Quem quer o recorte tem a tela Ligados ao lado. */
       if (tr.dataset.bbPos !== undefined) return trocarNaBarra(Number(tr.dataset.bbPos), tr.value);
       if (tr.id === 'tend-grao') { tendGrao = tr.value; tendFim = null; carregarTendencias(); }
       if (tr.id === 'tend-foco') carregarTendencias();
@@ -10892,7 +11172,7 @@
          comportamento padrao dele impediria o download. */
       if (tr.id === 'tend-colher') { e.preventDefault(); return colherTendencias(); }
       if (tr.id === 'trv-recolher') { e.preventDefault(); return recolherTravas(); }
-      if (tr.id === 'pj-atualizar') { e.preventDefault(); return carregarProjetosTela(true); }
+      if (tr.id === 'pj-atualizar' || tr.id === 'lig-atualizar') { e.preventDefault(); return carregarProjetosTela(true); }
       if (tr.id === 'pj-novo') {
         e.preventDefault();
         const casa = document.getElementById('pj-novo-casa');
@@ -11729,27 +12009,20 @@
      * A tela antiga é removida em seguida. Deixá-la vazia seria pior que
      * removê-la: a varredura que abre as telas uma a uma recusa tela que abra
      * praticamente em branco, e com razão. */
-    /* CC-335, 25/08: a tela Projetos passa a morar DENTRO da central.
+    /* CC-367, 27/08: a tela Projetos VOLTA a ser tela própria.
      *
-     * Mesmo movimento que o Framework sofreu em 22/08, e pelo mesmo motivo:
-     * mover o nó preserva os identificadores que dezenas de funções procuram
-     * (`pj-grade`, `pj-ver`, `pj-quando`), enquanto recortar e recolar HTML é
-     * onde se perde uma tag sem ninguém notar.
+     * O CC-335 (25/08) a tinha movido para dentro da Central, a pedido dele
+     * naquele dia. Dois dias depois ele olhou o resultado e pediu o contrário,
+     * com o motivo: *"os projetos estão aparecendo em três lugares diferentes,
+     * está muito ruim"*. A decisão de 25/08 não estava errada. Ela somou com o
+     * CC-329 (22/08), e as duas juntas puseram três listas na mesma tela, sem
+     * que ninguém olhasse o total.
      *
-     * A tela antiga é removida, e o item dela sai do menu: destino que abre o
-     * nada é pior que destino nenhum, e ele navega por essa lista. */
+     * O que sobrou aqui é só o formulário de criar projeto, que continua sendo
+     * UM nó movido, e não um segundo formulário: ele nasce dentro do bloco
+     * Framework (na tela Ajustes) e vem para a barra da tela Projetos, que é
+     * onde ele pediu que ficasse em 25/08 e continua fazendo sentido. */
     (() => {
-      const velha = document.getElementById('view-projetos');
-      const casa = document.getElementById('cc-central');
-      if (!velha || !casa) return;
-      casa.innerHTML = '';
-      while (velha.firstChild) casa.appendChild(velha.firstChild);
-      velha.remove();
-      document.querySelectorAll('.nav-item[data-target="view-projetos"]').forEach((a) => a.remove());
-      if (typeof montarBarraBaixo === 'function') montarBarraBaixo();
-      /* O criar projeto sai do bloco Framework e vem para a barra de cima.
-         Mover o nó preserva o `fw-novo-projeto` que `renderNovoProjeto()`
-         procura pelo nome, e o formulário continua sendo um só. */
       const forma = document.getElementById('fw-novo-projeto');
       const casaNovo = document.getElementById('pj-novo-casa');
       if (forma && casaNovo) casaNovo.appendChild(forma);
@@ -11830,6 +12103,44 @@
     setInterval(fetchData, 30000);
     /* A leitura de máquina é local e barata (3ms), mas fica no ritmo dela. */
     setInterval(carregarMaquinaHw, 5000);
+
+    /* ===== CC-364: a lista de projetos passa a acompanhar sozinha =====
+     *
+     * Era o defeito que ele descreveu primeiro, e com o caso concreto: *"não
+     * está atualizando automático por exemplo, eu criei um projeto ontem, no
+     * desktop, dei VPS sync (…) esse projeto não apareceu automaticamente,
+     * sendo que deveria"*.
+     *
+     * Medido em 27/08 antes de mexer: o servidor devolvia os 23 projetos, com o
+     * novo dentro. A descoberta nunca esteve quebrada. Quem não relia era a
+     * tela: as duas leituras só rodavam ao ENTRAR nela, e a do framework ainda
+     * tinha uma guarda que impedia a segunda vez. Com a página aberta no
+     * telefone, como ele deixa, projeto criado depois nunca aparecia.
+     *
+     * **Por que 20 segundos, e não os 2 do stream.** A rota custa ~0,5s no
+     * servidor (lê o roadmap de 20 projetos) e já se protege com cache de 15s.
+     * Pedir a cada 2s serviria a mesma resposta guardada em 7 de cada 8 voltas,
+     * gastando rede para nada; 20s fica logo acima do cache, então quase toda
+     * volta traz leitura fresca. Pasta nova aparece em até 20 segundos, que é
+     * mais rápido do que ele consegue trocar de tela e conferir.
+     *
+     * **Só com a tela aberta e visível**, pelas duas razões que a casa já
+     * pagou: leitura cara com ninguém olhando é desperdício, e aba de fundo no
+     * celular acordar para ler disco é a bateria indo embora. */
+    setInterval(() => {
+      /* `SEM_TIQUE` existe para a PROVA NEGATIVA do teste, e é o mesmo padrão
+         do `SEM_GUARDA` que o teste de tela estreita já usa: desligar a peça e
+         conferir que o defeito volta. Teste que só sabe dizer "hoje passa" não
+         prova que pegaria a regressão. */
+      if (window.SEM_TIQUE) return;
+      if (document.hidden) return;
+      const olhando = ['view-ligados', 'view-projetos']
+        .some((id) => document.getElementById(id)?.classList.contains('active'));
+      if (!olhando) return;
+      carregarProjetosTela();
+      conversasParaOsCards();
+      carregarFrameworkLista({ silencioso: true });
+    }, 20000);
   </script>
 </body>
 </html>

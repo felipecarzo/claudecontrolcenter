@@ -113,9 +113,22 @@ try {
   e = await estado()
   conta('voltar fecha o agente e fica em Agentes', e.hash === '#agentes' && e.tela === 'view-agentes' && !e.ag, JSON.stringify(e))
 
-  await js('history.back()'); await esperar(1200)
-  e = await estado()
-  conta('voltar de novo devolve a tela Trabalho', e.hash === '#trabalho' && e.tela === 'view-trabalho', JSON.stringify(e))
+  /* CC-370, decisão dele em 27/08: **voltar de novo NÃO troca de tela.**
+     Ele usa Android, onde voltar é gesto do sistema, e o gesto da borda o
+     tirava da tela em que estava. Trocar de tela passou a SUBSTITUIR a parada
+     em vez de empilhar, então o painel inteiro guarda no máximo duas: onde ele
+     está, e o que ele abriu por cima.
+     O teste anterior afirmava o contrário, e ele decidiu com o tradeoff na
+     mesa. A verificação agora é a que sobrou de pé: navegar não engorda o
+     histórico. `<= 2` e não `=== 1` porque o Chrome já começa com a parada da
+     página em branco antes de navegar. */
+  const paradas = await js('history.length')
+  await js("showPage('view-cockpit')"); await esperar(600)
+  await js("showPage('view-trabalho')"); await esperar(600)
+  await js("showPage('view-agentes')"); await esperar(600)
+  const paradasDepois = await js('history.length')
+  conta('trocar de tela não empilha parada no histórico',
+    paradasDepois === paradas, `antes=${paradas} depois=${paradasDepois}`)
 
   /* O botão de voltar DA TELA e o do aparelho precisam concordar. Fechando o
      agente na mão, o toque em voltar do telefone traria ele de volta, e os dois
