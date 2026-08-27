@@ -1,7 +1,7 @@
 # HANDOFF
 
-**Sessão:** 2026-08-26 · Claude (Sonnet 5, `1d765cd1`) · **PC** (ALIENWARE-LIPE), rota `sistemas`
-**Último commit:** `e78039d` · **tudo commitado e empurrado**
+**Sessão:** 2026-08-26 (noite) · Claude (Opus 5, `721fa1f4`) · **PC** (ALIENWARE-LIPE), rota `sistemas`
+**Último commit:** `ce748ae` · **tudo commitado e empurrado**
 **Branch:** `backlog/cc-46-48-49-52-53-56-65`
 
 O que aconteceu: [diario/2026-08-26.md](diario/2026-08-26.md). Ponteiro, não
@@ -9,95 +9,104 @@ relatório.
 
 ## ⚠️ Antes de encostar em código
 
-**1. `docs/guias/PC-E-VPS.md` continua valendo.** Cinco consertos que só
-fazem sentido na VPS, e desfazer volta o defeito sem erro na tela.
+**1. `docs/guias/PC-E-VPS.md` continua valendo.** Cinco consertos que só fazem
+sentido na VPS, e desfazer volta o defeito sem erro na tela.
 
-**2. Novo hoje: `docs/guias/PC-E-VPS.md` precisa de um sexto ponto, ainda
-não escrito lá — só aqui por enquanto.** Quatro lugares no código supunham
-Linux e quebravam calados no Windows (`deOutraPlataforma` em
-`src/roadmap.mjs`, `projectsBases` em `src/install.mjs`, e dois testes). Se
-mexer em código que trata caminho de arquivo ou máquina, desconfie de
-qualquer coisa que assuma `/` como separador ou `~/projetos` como
-convenção. Quem for atualizar o guia formalmente, os quatro pontos estão no
-diário de hoje.
+**2. O guia precisa de um sexto ponto, ainda não escrito lá.** Já são **seis**
+lugares que supunham Linux e quebravam calados no Windows: `deOutraPlataforma`
+em `src/roadmap.mjs`, `projectsBases` em `src/install.mjs`, dois testes (todos
+de manhã), mais `test-anonimizar.mjs` e `hooks/commit-auto.mjs` (à noite). O
+padrão comum: montar URL de módulo como `file://` mais o caminho cru, ou supor
+`/` como separador. **A função certa é `pathToFileURL` do próprio Node**, sempre.
 
-## Estado: CC-351 fechado, com um achado que muda a supervisão do PC
+**3. Este PC estava 32 commits atrás até hoje à noite.** Se você abrir aqui
+depois de trabalhar na VPS, rode `/vps-sync` antes de qualquer coisa: `npm test`
+passando não prova que o código é o mais novo.
 
-**Fechado hoje:** CC-351 (o ícone na bandeja e o serviço supervisionado),
-mais quatro consertos de plataforma que travavam `npm test` inteiro no PC
-(roadmap.mjs, install.mjs, e dois testes).
+## Estado: CC-361 fechado, CC-362 aberto
 
-**O achado que importa mais que o código:** `RestartOnFailure` da Tarefa
-Agendada do Windows não funciona nesta máquina. Medido, não suposto: matei
-o processo de propósito duas vezes, esperei mais de 2 minutos cada, nunca
-religou sozinho. `src/arrancar.ps1` foi reescrito pra ter o próprio laço de
-religamento, sem depender disso. Provado: matei o processo duas vezes
-seguidas, voltou em 9 segundos as duas vezes.
+**Fechado à noite:** CC-361, o botão de liberar escrita passa a existir na tela
+do dia a dia. A trava do framework barrava o trabalho e mandava clicar num botão
+que **só existia no painel antigo** (`src/ui.html`, servido em `/v1`). Medido com
+um pedido pendente de verdade: zero ocorrência de "código travado" ou "liberar só
+este" na página servida em `/`.
 
-**Também investigado, parcialmente resolvido:** CC-353 (servidores do PC
-sumindo da tela). Achei e matei um processo fantasma vivo há quase 2 horas
-numa porta vizinha (8100), invisível porque toda checagem olhava só a 8099.
-Sobra um padrão menor não explicado, registrado como ticket em
-`docs/ROTAS-ATIVAS.md` com um palpite não testado (keep-alive do `fetch`).
+**Não há foto disso funcionando**, e o motivo é o CC-362 abaixo: o modo desta
+sessão resolve para `restritivo`, que não trava, então o bloco não tinha como
+aparecer numa captura. O que está sob teste é a peça e o caminho do clique.
+
+**Aberto, e é o item mais importante daqui:** **CC-362, a tela diz um modo e a
+trava usa outro.** `.framework/estado.json` diz `sugestivo`, o aviso de abertura
+da sessão diz `sugestivo`, e `frameworkDisco.ler()` devolve `restritivo` para a
+mesma sessão. A marca `🎚` da linha da rota vence o modo do projeto, e nada na
+tela conta isso. O efeito medido: **marcar a própria rota afrouxou a trava de
+escrita da sessão**. É "duas verdades para o mesmo projeto", que o comentário de
+`vigente()` diz que o painel já pagou duas vezes, e desta vez decide se a trava
+trava.
+
+**Também fechado:** o `/vps-sync` completo nas duas pontas. As duas pastas do
+projeto na sandbox (`proj_controlcenter` e `VPS_cockpit`) **são a mesma pasta**,
+ligadas por atalho: puxar numa atualiza a outra, e elas nunca divergem.
 
 ## Pendências de commit
 
-Nenhuma. A árvore está limpa e o remoto está em `e78039d`.
+Nenhuma minha. A árvore está limpa e o remoto está em `ce748ae`.
+
+**Fora do commit de propósito:** `docs/planos/CC-45.md`, arquivo novo dele, que
+já estava aí antes desta sessão e não é trabalho meu.
+
+**Guardado:** `stash@{0}` ("vps-sync 26/08"), o pacote de segurança do começo da
+sessão. Tudo o que estava nele já voltou para a árvore e foi commitado; fica
+guardado por decisão dele.
 
 ## O que só ele resolve
 
-1. **Testar se o painel sobrevive a dormir ou deslogar o PC de verdade.**
-   Só dá pra fazer na próxima pausa natural dele; não posso simular daqui.
-   Se ficar sem religar, a causa mais provável é a mesma família do
-   `RestartOnFailure` (ver acima) — comece verificando se `arrancar.ps1`
-   está mesmo rodando (`Get-CimInstance Win32_Process -Filter
-   "Name='powershell.exe'"` procurando `arrancar` na linha de comando).
-2. **Apagar o `ui.html`.** A raiz já é o painel novo; o antigo continua em
-   `/v1` de propósito. É a única parte irreversível da troca (CC-176),
-   pendente desde 20/08.
+1. **Testar se o painel sobrevive a dormir ou deslogar o PC de verdade.** Só dá
+   pra fazer na próxima pausa natural dele. Se ficar sem religar, comece
+   verificando se `arrancar.ps1` está mesmo rodando.
+2. **Apagar o `ui.html`.** Pendente desde 20/08. **Atenção nova:** o CC-361
+   levou o botão de liberar escrita para o painel novo, então essa dependência
+   deixou de existir. Ainda assim, confira o que mais só existe lá antes.
 3. **Os nomes dos papéis** (Designer, Modelagem de sistema, Scrum Master,
    Depurador com Perito, Pesquisador e Revisor). Pendente desde 20/08.
 4. **A pasta `tools/` está com dono errado na VPS** (`nobody:nogroup`).
-   Contornado com cópia no scratchpad quando precisou, mas o conserto é
-   dele.
 
-## O que aprendi hoje e não pode se perder
+## O que aprendi hoje à noite e não pode se perder
 
-1. **Checar processo por porta fixa esconde vizinho.** Se o código tenta
-   portas alternativas quando a primeira está ocupada (`startWeb()` tenta
-   até 10), a checagem de "só tem um processo?" tem que varrer TODAS as
-   portas possíveis, não só a esperada.
-2. **`RestartOnFailure` do Windows não é garantia.** Documentado acima, com
-   a medição. Quem for mexer em supervisão de processo Windows de novo:
-   não assuma que funciona, teste matando o processo e cronometrando.
-3. **Amend é seguro quando ainda não empurrou.** Errei a mensagem de um
-   commit local hoje (colei texto de outro por engano) e corrigi com
-   `git commit --amend`, com autorização explícita dele, antes do push.
-4. **Documento pessoal nunca entra em pasta rastreada de repositório
-   público**, mesmo que a intenção seja só rascunhar antes de publicar
-   como Artifact. Escrevi um sem querer dentro de `docs/produto/` e peguei
-   antes do commit.
+1. **`grep` no HTML servido acha o código-fonte, não a renderização.** O JS é
+   inline: a string está na página mesmo quando o bloco não renderiza. Cheguei a
+   contar ocorrências e quase chamar isso de prova.
+2. **Ao apresentar os dois lados de um conflito, dizer de ONDE vem cada um é
+   parte do dado.** Inverti os rótulos e ele decidiu certo por sorte.
+3. **Diferença de zero linhas ainda é diferença para o git.** Mudança de modo de
+   arquivo aparece como "modificado" e some do `--stat`, o que faz os dois
+   parecerem discordar. No Windows, `core.fileMode false` é o conserto.
+4. **`git stash pop` com conflito NÃO apaga o pacote guardado.** O que parece
+   perda de dado é o contrário: a rede continua armada.
+5. **O painel na porta 8100 morreu e não voltou.** Quem responde hoje neste PC é
+   a instância da 8099, viva desde 14:17. Se alguém for medir supervisão de
+   processo, esse é um caso real esperando explicação.
 
 ## Próximo passo, se alguém pegar de onde parei
 
-**1. `docs/guias/PC-E-VPS.md` precisa do sexto ponto** (os quatro lugares
-que supunham Linux, listados no diário de hoje). Não é urgente, mas é
-exatamente o tipo de coisa que esse arquivo existe pra guardar.
+**1. CC-362**, acima. É o único item aberto que muda o comportamento de todas as
+sessões, e a correção provavelmente é de tela: dizer qual modo está VALENDO e de
+onde ele veio (projeto, rota ou capa da sessão).
 
-**2. CC-352 tem a parte do PC em aberto**, e conecta direto com o que foi
-construído hoje: o instalador perguntar a pasta de projetos, com a
-configuração acessível pela bandeja (que agora existe). Antes de começar,
-ler o item inteiro no ROADMAP — ele mesmo diz que é o MESMO instalador do
-CC-340, não dois separados.
+**2. `docs/guias/PC-E-VPS.md` precisa do sexto ponto**, agora com seis casos e um
+padrão comum nomeado (ver o topo deste arquivo).
 
-**3. O resíduo do CC-353** (o padrão menor de pedidos pareados) continua
-sem causa confirmada. O ticket em `ROTAS-ATIVAS.md` tem o palpite do
-keep-alive, não testado.
+**3. CC-352 tem a parte do PC em aberto**: o instalador perguntar a pasta de
+projetos, com a configuração acessível pela bandeja. Ler o item inteiro no
+ROADMAP antes: é o MESMO instalador do CC-340, não dois separados.
+
+**4. O resíduo do CC-353** continua sem causa confirmada.
 
 ## Arquivos a ler
 
-- `src/arrancar.ps1` — o lançador único, com o laço de religamento próprio
-- `src/bandeja.ps1` — o ícone, com o desenho do traço que muda de forma
-- `src/roadmap.mjs` — `deOutraPlataforma`, agora com a guarda de plataforma
-- `docs/ROTAS-ATIVAS.md` — o ticket do resíduo de servidores instáveis, no
-  topo da seção de tickets
+- `src/frameworkDisco.mjs` — a função `ler`, onde as três camadas de modo se
+  sobrepõem. É o coração do CC-362
+- `src/framework.mjs` — `vigente()`, e o comentário que já avisava sobre "duas
+  verdades para o mesmo projeto"
+- `src/ui_v2.html` — o bloco `fw-aut`, o que entrou pelo CC-361
+- `docs/ROTAS-ATIVAS.md` — o ticket do resíduo de servidores instáveis

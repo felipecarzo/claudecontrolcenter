@@ -7943,3 +7943,4 @@ Em 16/08 saíram 37 itens, com o texto integral preservado:
 - [2026-08-19](diario/2026-08-19.md) — CC-138 (decidido), CC-140, CC-101, CC-157, CC-158 (texto ainda aqui, poda pendente)
 - [2026-08-21](diario/2026-08-21.md) — CC-218 a CC-231: os nove apontamentos dele no telefone, o "?" que explica cada tela, e as quatro redes que o painel novo não tinha herdado
 - [2026-08-25](diario/2026-08-25.md) — CC-334 a CC-337 e as quatro ações do controle remoto: o dia em que uma recomendação minha matou o trabalho dele, e o desenho passou a ter caminho de volta
+- [2026-08-26](diario/2026-08-26.md) — CC-351 e CC-361, seis consertos de código escrito supondo Linux, o `RestartOnFailure` que não religa, e a trava que pedia um clique sem ter onde clicar
