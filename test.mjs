@@ -2860,9 +2860,9 @@ if (!ESPERADO) {
       + `| \`front\` | 🔴 ocupada | ${sessao} — trabalho 🎚 modo-que-nao-existe 📁 y.mjs | hoje |\n`,
     )
 
-    // "continuativo" é apelido de "restritivo": tem que devolver o ID, não o texto da tela
+    // o que se escreve no quadro tem que devolver o ID do motor, não o texto cru
     const r = D.modoDaRota(dir, sessao)
-    assert.equal(r.modo, 'restritivo', 'apelido de tela tem que resolver para o identificador do motor')
+    assert.equal(r.modo, 'continuativo', 'apelido de tela tem que resolver para o identificador do motor')
     assert.equal(r.rota, 'backlog', 'o nome da rota é o primeiro trecho entre crases da linha')
 
     // nome que não resolve não pode virar modo nenhum: null deixa valer o do projeto,
@@ -2872,6 +2872,62 @@ if (!ESPERADO) {
       `| \`front\` | 🔴 ocupada | ${sessao} — trabalho 🎚 modo-que-nao-existe 📁 y.mjs | hoje |\n`,
     )
     assert.equal(D.modoDaRota(dir, sessao), null, 'modo desconhecido não pode devolver texto cru')
+
+    /* CC-362: sessão apenas CITADA no texto da linha não herda o modo dela.
+       Era o `includes` da marca contra a linha inteira, e a linha carrega o
+       histórico: "TOMADA de <outra sessão>", "LIBERADA de <outra>". Medido no
+       projeto de verdade em 27/08: `721fa1f4` resolvia para o modo da rota de
+       tela sem nunca ter tido essa rota, e era isso que fazia a trava usar um
+       modo que a tela não mostrava.
+
+       A prova negativa é o ponto: sem ela, um teste que só olha o dono passaria
+       igual com o defeito no lugar. */
+    const dono = 'aaaa1111'
+    const citada = 'bbbb2222'
+    fs.writeFileSync(
+      path.join(dir, 'docs', 'ROTAS-ATIVAS.md'),
+      `| \`front\` | 🔴 ocupada | ${dono}: TOMADA de ${citada} em 25/08 🎚 continuativo 📁 y.mjs | hoje |\n`,
+    )
+    assert.equal(D.modoDaRota(dir, dono)?.modo, 'continuativo', 'o dono da linha herda o modo dela')
+    assert.equal(D.modoDaRota(dir, citada), null,
+      'sessão citada no histórico da linha não pode herdar o modo da rota alheia')
+
+    /* E a origem viaja junto com o modo: quem escreve um escreve o outro. Sem
+       isso a tela teria que adivinhar de onde veio, que é como nasceram as
+       "duas verdades para o mesmo projeto". */
+    fs.mkdirSync(path.join(dir, '.framework'), { recursive: true })
+    fs.writeFileSync(path.join(dir, '.framework', 'estado.json'),
+      JSON.stringify({ metodo: 'mvp-basico', fase: 'execucao', ligado: true, modo: 'sugestivo' }))
+
+    const semRota = D.ler(dir, { sessao: 'cccc3333' })
+    assert.equal(semRota.modo, 'sugestivo')
+    assert.equal(semRota._origemModo, 'projeto', 'sem rota nem capa, o modo é o do projeto')
+    assert.equal(semRota._rota, undefined, 'sem rota, não pode sobrar origem de rota nenhuma')
+
+    const comRota = D.ler(dir, { sessao: dono })
+    assert.equal(comRota.modo, 'continuativo')
+    assert.equal(comRota._origemModo, 'rota')
+    assert.equal(comRota._rota, 'front')
+
+    // a capa da sessão vence a rota, e a origem tem que acompanhar a troca
+    fs.mkdirSync(path.join(dir, '.framework', 'sessoes'), { recursive: true })
+    fs.writeFileSync(path.join(dir, '.framework', 'sessoes', `${dono}.json`),
+      JSON.stringify({ modo: 'estudo' }))
+    const comCapa = D.ler(dir, { sessao: dono })
+    assert.equal(comCapa.modo, 'estudo')
+    assert.equal(comCapa._origemModo, 'sessao', 'quem venceu foi a capa, e a origem tem que dizer isso')
+    assert.equal(comCapa._rota, undefined, 'a rota perdeu: não pode continuar posando de origem')
+
+    /* CC-362: campo derivado NÃO pode ser gravado. O caminho real é o
+       `cc framework autorizar`, que faz `gravar(ler(...))`: em 27/08 o
+       `estado.json` deste projeto estava com `_rota: "sistemas"` dentro, de uma
+       rota fechada no dia anterior, e toda sessão sem rota recebia essa origem
+       de volta. Uma tela honesta em cima de um dado desses mente com confiança. */
+    D.gravar(dir, D.ler(dir, { sessao: dono }))
+    const cru = JSON.parse(fs.readFileSync(path.join(dir, '.framework', 'estado.json'), 'utf8'))
+    assert.equal(cru.modo, 'sugestivo', 'gravar não pode promover o modo da sessão a modo do projeto')
+    assert.deepEqual(Object.keys(cru).filter((k) => k.startsWith('_')), [],
+      'nenhum campo derivado pode sobrar no arquivo do projeto')
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }
@@ -4918,6 +4974,149 @@ if (process.platform !== 'win32') {
 }
 
 /* ============================================================================
+ * CC-363: o quadro escondia agente trabalhando, de dois jeitos.
+ *
+ * Medido em 27/08 com o painel no ar: 98 cartões, 93 numa coluna só, e as
+ * colunas "andando" e "travada" VAZIAS com seis agentes trabalhando naquele
+ * minuto. Testado um a um, ZERO dos seis achava o próprio item.
+ *
+ * Causa mecânica: desde a renomeação de 23/08 as pastas têm prefixo de máquina,
+ * e o agente reporta o nome que a máquina DELE usa. O cruzamento exigia nome
+ * idêntico, então `cockpit` nunca encontrava `VPS_cockpit`.
+ *
+ * Causa que não tem conserto automático: o agente declara uma frente que não
+ * existe como item aberto. Aí ele sumia, e coluna vazia lê-se como "ninguém
+ * está trabalhando". Espaço vazio não distingue "tudo bem" de "a leitura
+ * falhou", que é a família de defeito mais cara deste painel.
+ */
+{
+  const T = await import(`./src/trabalho.mjs?t=${Date.now()}`)
+
+  // o prefixo de máquina não pode separar o agente do próprio projeto
+  assert.equal(T.mesmoProjeto('cockpit', 'VPS_cockpit'), true)
+  assert.equal(T.mesmoProjeto('PC_cockpit', 'VPS_cockpit'), true, 'as duas máquinas, o mesmo projeto')
+  assert.equal(T.mesmoProjeto('proj_controlcenter', 'controlcenter'), true, 'o prefixo de tipo, de antes de 23/08')
+  /* A prova negativa, e é ela que impede o conserto de virar defeito:
+     `VPS_cockpit--front` é OUTRA pasta, em outra branch, com um roadmap parado
+     em 16/08. Juntar as duas misturaria backlog de dez dias atrás com o de
+     hoje. Só o prefixo cai; o sufixo é identidade. */
+  assert.equal(T.mesmoProjeto('VPS_cockpit', 'VPS_cockpit--front'), false,
+    'sufixo não é rótulo de máquina: são pastas diferentes, com backlogs diferentes')
+  assert.equal(T.mesmoProjeto('', 'VPS_cockpit'), false, 'nome vazio não casa com todo mundo')
+  assert.equal(T.mesmoProjeto(null, null), false)
+
+  // e o agente que não achou item aparece, com o motivo, em vez de sumir
+  const grupos = [{
+    projeto: 'VPS_cockpit',
+    cartoes: [{ titulo: 'Frente: a bancada', estado: { cor: 'working' } }],
+  }]
+  const soltos = T.soltosDe(grupos, [
+    { id: 'a', project: 'cockpit', frente: 'a bancada', status: 'working' },
+    { id: 'b', project: 'cockpit', frente: 'framework de engenharia', status: 'working' },
+    { id: 'c', project: 'carzo', frente: 'F11 a spec do estudio', status: 'working' },
+    { id: 'd', project: 'cockpit', status: 'working' },
+  ])
+  const ids = soltos.map((s) => s.job)
+  assert.ok(!ids.includes('a'), 'quem já está no quadro não pode aparecer duas vezes')
+  assert.deepEqual(ids, ['b', 'c'], 'só quem não achou item entra, e sem frente não é caso deste aviso')
+  assert.equal(soltos.find((s) => s.job === 'b').motivo, 'sem-item')
+  assert.equal(soltos.find((s) => s.job === 'c').motivo, 'sem-roadmap')
+  for (const s of soltos) assert.ok(s.porque && s.porque.length > 10, 'motivo sem frase é rótulo, não resposta')
+
+  // e o montar() entrega isso junto, senão a tela não tem como mostrar
+  const montado = T.montar({ projetos: [], jobs: [{ id: 'z', project: 'x', frente: 'y' }] })
+  assert.ok(Array.isArray(montado.soltos), 'o quadro tem que carregar os soltos')
+  assert.equal(montado.soltos.length, 1)
+  console.log('  ok   CC-363: o prefixo de máquina não separa mais o agente do projeto, e quem não casa aparece com o motivo')
+}
+
+/* ============================================================================
+ * CC-363, segunda metade: as duas fontes de cartão repetido.
+ *
+ * Medido em 27/08: dos 98 cartões do quadro, 19 eram duplicata ou histórico.
+ *
+ * (a) `VPS_cockpit--front` é ÁRVORE DE TRABALHO do mesmo repositório, com um
+ *     roadmap parado em 16/08, e entregava 15 cartões vencidos. A defesa contra
+ *     isso existe desde 16/08 e não disparava: o arquivo `.git` da árvore guarda
+ *     o caminho da principal com o nome que ela tinha ao nascer
+ *     (`proj_controlcenter`), que hoje é um ATALHO para `VPS_cockpit`.
+ *     `path.resolve` normaliza texto e não segue atalho.
+ *
+ * (b) `fibraessencia` e `VPS_fibraessencia` são dois clones do mesmo remote, na
+ *     mesma branch, e viravam dois projetos porque o nome passou a carregar a
+ *     máquina em 23/08. A regra que ele decidiu em 25/08 vale igual, só que
+ *     aplicada à chave: vence quem tem sinal mais novo.
+ */
+{
+  const T = await import(`./src/trabalho.mjs?t=${Date.now()}`)
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-quadro-'))
+  try {
+    const comRoadmap = (dir, quando) => {
+      fs.mkdirSync(path.join(dir, 'docs'), { recursive: true })
+      fs.writeFileSync(path.join(dir, 'docs', 'ROADMAP.md'), '# r\n\n### Frente: x\n')
+      fs.utimesSync(path.join(dir, 'docs', 'ROADMAP.md'), quando / 1000, quando / 1000)
+      return dir
+    }
+
+    // (a) a árvore de trabalho, com a principal alcançada por ATALHO
+    const principal = comRoadmap(path.join(base, 'VPS_alvo'), 2000000000000)
+    const atalho = path.join(base, 'proj_alvo')
+    let temLink = true
+    try { fs.symlinkSync(principal, atalho, 'dir') } catch { temLink = false }
+
+    if (temLink) {
+      const arvore = comRoadmap(path.join(base, 'VPS_alvo--front'), 1000000000000)
+      fs.writeFileSync(path.join(arvore, '.git'), `gitdir: ${path.join(atalho, '.git', 'worktrees', 'x')}\n`)
+      fs.mkdirSync(path.join(principal, '.git'), { recursive: true })
+
+      const r = T.projetosDe([], () => [principal, arvore])
+      const nomes = r.map((x) => x.projeto)
+      assert.ok(nomes.includes('VPS_alvo'), 'a principal fica')
+      assert.ok(!nomes.includes('VPS_alvo--front'),
+        'árvore de trabalho não é projeto novo, mesmo quando a principal é alcançada por atalho')
+
+      /* A prova negativa: sem a árvore, a principal continua entrando. Sem
+         isto, um filtro que apagasse tudo passaria neste teste. */
+      assert.equal(T.projetosDe([], () => [principal]).length, 1)
+    }
+
+    // (b) dois clones do mesmo projeto, separados só pelo prefixo de máquina
+    const nova = comRoadmap(path.join(base, 'cliente'), 2000000000000)
+    const velha = comRoadmap(path.join(base, 'VPS_cliente'), 1000000000000)
+    const r2 = T.projetosDe([], () => [velha, nova])
+    assert.equal(r2.length, 1, 'o mesmo projeto em duas pastas é UM projeto no quadro')
+    assert.equal(r2[0].raiz, nova, 'vence quem tem sinal mais novo, que é a regra dele de 25/08')
+
+    // e a ordem da lista não pode decidir nada, senão a regra é "o último"
+    assert.equal(T.projetosDe([], () => [nova, velha])[0].raiz, nova, 'a ordem da lista não decide')
+
+    /* Projetos de verdade diferentes continuam separados: o colapso é por
+       PREFIXO, e sufixo é identidade. */
+    const outro = comRoadmap(path.join(base, 'VPS_cliente2'), 1500000000000)
+    assert.equal(T.projetosDe([], () => [nova, outro]).length, 2, 'nomes diferentes seguem sendo dois projetos')
+
+    /* ⚠️ O erro que este conserto quase entregou, e que só a medição pegou.
+       O nome sem prefixo costuma vir de um agente do PC, cujo `cwd` está no
+       formato do Windows e não existe nesta máquina. Desempatando só por tempo,
+       o job de hoje ganhava da pasta local, o roadmap não era lido, e o projeto
+       inteiro sumia do quadro: cinco projetos desapareceram numa passada, num
+       conserto feito para remover dois repetidos.
+       A pasta que EXISTE vence, antes de comparar tempo. É a regra do CC-305. */
+    const doPc = 'D:\\Documentos\\projetos\\cliente'
+    const comJobDoPc = T.projetosDe(
+      [{ project: 'cliente', cwd: doPc, updatedAt: 9999999999999 }],
+      () => [velha],
+    )
+    assert.equal(comJobDoPc.length, 1)
+    assert.equal(comJobDoPc[0].raiz, velha,
+      'a pasta local vence a que veio de outra máquina, mesmo com o sinal de lá sendo mais novo')
+    console.log('  ok   CC-363: árvore de trabalho alcançada por atalho e clone com prefixo param de virar projeto repetido')
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true })
+  }
+}
+
+/* ============================================================================
  * CC-361: o liberar escrita existe na tela que está NO AR, não só na antiga.
  *
  * Medido em 26/08: a trava do framework registrava o pedido certo e mandava
@@ -4929,8 +5128,54 @@ if (process.platform !== 'win32') {
  * É a mesma família dos três buracos de 20/08: o painel novo herdou o código e
  * não herdou as peças. Por isso a rede mora aqui e não na cabeça de ninguém.
  * ========================================================================== */
+/* CC-369: arrastar para o lado não pode voltar de página.
+   Pedido dele em 27/08: "as vzs eu arrasto pro lado e o navegador volta". O
+   painel é feito de fitas que rolam na horizontal, e ao chegar no fim da
+   rolagem o navegador entende a continuação do gesto como "voltar", e a tela
+   some no meio de um gesto de LEITURA, sem ele ter pedido nada.
+   A regra mora aqui porque é uma linha de CSS, invisível em revisão, e some
+   sozinha na primeira vez que alguém reescrever o bloco. */
 {
   const html = fs.readFileSync('src/ui_v2.html', 'utf8')
+  const regra = (seletor) => {
+    const m = new RegExp(`${seletor}\\s*\\{[^}]*\\}`, 's').exec(html)
+    return m ? m[0] : ''
+  }
+  assert.match(regra('html'), /overscroll-behavior-x:\s*none/,
+    'sem isto o gesto de arrastar de lado volta de página no meio da leitura')
+  assert.match(regra('body'), /overscroll-behavior-x:\s*none/,
+    'a trava tem que estar no corpo também: alguns navegadores só olham para um dos dois')
+  /* `contain` não basta na raiz, e a diferença é o defeito inteiro: ele impede
+     o gesto de VAZAR para o pai, e na raiz o pai é a janela, que é justamente
+     quem navega. */
+  assert.doesNotMatch(regra('html'), /overscroll-behavior-x:\s*contain/,
+    'na raiz, `contain` não desliga a navegação por gesto; só `none` desliga')
+  assert.match(regra('\\.kb-quadro'), /overscroll-behavior-x:\s*contain/,
+    'a fita do quadro é onde o gesto mais acontece, e precisa da segunda defesa')
+  console.log('  ok   CC-369: arrastar de lado não volta de página, e a fita do quadro segura o gesto')
+
+  /* CC-370: trocar de tela não empilha histórico.
+     Ele usa Android, onde o gesto de voltar é do sistema e nenhum CSS alcança.
+     Medido em 27/08: `gravarEndereco` fazia `location.hash = novo`, e atribuir
+     ao hash EMPURRA uma entrada no histórico. Cada troca de aba virava uma
+     parada, então o gesto da borda o tirava da tela em que ele estava, uma por
+     uma. Decisão dele: o voltar não troca de tela nunca.
+     `replaceState` troca o endereço sem criar parada. O endereço continua
+     servindo para recarregar e para compartilhar, que é por que ele existe. */
+  const grava = /function gravarEndereco[\s\S]*?\n    \}/.exec(html)?.[0] || ''
+  assert.match(grava, /history\.replaceState/,
+    'trocar de tela voltou a empilhar histórico: no Android o gesto de voltar tira ele da tela')
+  assert.doesNotMatch(grava, /location\.hash\s*=\s*novo/,
+    'atribuir ao hash empurra entrada no histórico, que é exatamente o defeito')
+  /* E o outro lado, que a medição revelou: ABRIR um agente continua empilhando,
+     porque é isso que faz o gesto de voltar FECHAR o que ele abriu em vez de
+     tirá-lo da tela. Trocar tudo por `replaceState` apagava um pedido antigo
+     dele junto com o defeito. */
+  assert.match(grava, /history\.pushState/,
+    'abrir um agente parou de empilhar: o gesto de voltar deixaria de fechar o que ele abriu')
+  assert.match(grava, /abrindo/,
+    'a decisão entre empilhar e substituir tem que ser explícita, não implícita')
+  console.log('  ok   CC-370: trocar de tela não empilha parada, e abrir algo empilha para o voltar fechá-lo')
 
   assert.match(html, /fw-pedidos/, 'o painel novo perdeu a lista de pedidos de liberação')
   assert.match(html, /liberar só este/, 'o painel novo perdeu o botão de liberar UM arquivo')
