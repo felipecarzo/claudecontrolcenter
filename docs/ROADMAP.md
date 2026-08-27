@@ -1131,9 +1131,9 @@ dele dizer `projeto › frente` em vez de texto solto.
 
 ## Aberto
 
-## ▶ Conserto solto, 26/08: o botão de liberar escrita não existe na tela que está no ar
+## ▶ Conserto solto, 26/08: a trava pedia autorização sem ter onde clicar
 
-### CC-361 🔴 26/08: o framework pede autorização e não há onde clicar
+### CC-361 ✅ 26/08: o framework pedia autorização e não havia onde clicar
 
 Medido hoje, quando o framework em modo sugestivo barrou uma edição em
 `hooks/commit-auto.mjs` e disse "ele aparece no cartão do projeto para você
