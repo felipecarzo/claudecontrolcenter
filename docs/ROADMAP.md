@@ -15,6 +15,92 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 27/08: a tela central vira três telas
+
+Pedido dele em 27/08, ditado por voz, com as palavras dele:
+
+> *"eu queria que a gente tivesse um controle melhor do que é remoto e o que é
+> framework, do jeito que está lá está muito ruim, não está atualizando
+> automático por exemplo, eu criei um projeto ontem, no desktop, dei VPS sync
+> (…) esse projeto não apareceu automaticamente, sendo que deveria (…) eu não
+> consigo ver todos os projetos e os projetos ficam misturados (…) não tem o
+> local pra ver os projetos desligados automaticamente, eu preciso clicar num
+> botão (…) do jeito que está, os projetos estão aparecendo em três lugares
+> diferentes, está muito ruim."*
+
+E o desenho que ele mesmo deu:
+
+> *"o que eu preciso é: uma tela só com os projetos ligados, só com os projetos
+> ligados. Uma outra tela, com todos os projetos desligados. E uma outra tela
+> com configuração geral do [framework]. Na tela dos projetos ligados só aparece
+> os projetos ligados e os deles cada um pra configurar, as conversas ligadas, as
+> exceções, os testes e etcétera (…) eu posso abrir uma sessão de um projeto que
+> já está aberto também."*
+
+**O que "ligado" quer dizer, definido por ele na hora:** *"ligado é com sessão
+ativa no Claude ou coderoom"*. É uma mudança em relação à decisão de 25/08, que
+mandava a conversa parada do Coderoom NÃO contar (era o `temSessaoNoAr` de
+hoje). Agora conta: as duas fontes valem.
+
+### Medido antes de projetar (27/08)
+
+- **O projeto novo existe para o servidor.** `/api/framework/projetos` devolve
+  os 23 projetos desta VPS, com `VPS_reunion` e `VPS_coepiloto` dentro. Não é
+  descoberta quebrada.
+- **Quem não atualiza é a tela.** `carregarProjetosTela()` e
+  `carregarFrameworkLista()` só rodam ao ENTRAR na tela, e a segunda ainda tem
+  guarda `if (!FW_LISTA)`. Com a página aberta no celular, projeto criado depois
+  nunca aparece. É a causa direta da queixa dele.
+- **Os três lugares são a mesma tela, aninhados.** CC-329 (22/08) meteu o
+  Framework dentro da tela Remoto e CC-335 (25/08) meteu Projetos também. Sobrou
+  uma tela com a lista de projetos no topo, um `<details>` "Framework" com OUTRA
+  lista dos mesmos projetos, e um `<details>` "Remoto" com uma TERCEIRA lista
+  (onde abrir sessão). As duas gavetas nascem fechadas, então ele precisa clicar
+  para achar qualquer coisa.
+- **Os desligados exigem um gesto.** O seletor nasce em "só os que têm algo
+  agora", e o resto só aparece trocando para "todos os projetos".
+
+### CC-364 ✅ 27/08: a lista de projetos atualiza sozinha
+
+Hoje ela é lida uma vez, ao entrar na tela. Precisa acompanhar o tique do painel
+como o resto acompanha, sem recarregar a página e sem pagar a leitura cara a
+cada 2s: o servidor já cacheia por 15s, então o custo real é do prazo, não do
+pedido. Prova exigida: criar uma pasta de projeto com a tela aberta e vê-la
+entrar sem toque nenhum.
+
+### CC-365 ✅ 27/08: o servidor entrega ligado e desligado já separados
+
+"Ligado" passa a ser uma conta só, no servidor, com as duas fontes que ele
+nomeou (sessão de agente no ar **ou** conversa do Coderoom aberta). Hoje a
+conta mora na tela (`temSessaoNoAr`) e exclui o Coderoom de propósito, o que
+deixou de valer. Duas contas para o mesmo fato é o defeito que este painel já
+pagou várias vezes.
+
+### CC-366 ✅ 27/08: tela dos ligados
+
+Só os projetos com sessão ativa, e cada um com os controles dele à mão: as
+conversas ligadas, as exceções de escrita, os testes, o modo. Sem gaveta
+fechada por cima.
+
+### CC-367 ✅ 27/08: tela de todos os projetos
+
+Todos, sem filtro para clicar, e é daqui que ele abre sessão nova, inclusive
+de projeto que já tem uma aberta.
+
+### CC-368 ✅ 27/08: tela dos ajustes gerais do método
+
+O que é configuração de vez em quando, e não de todo dia: as máquinas, a
+sincronia, o projeto novo, a entrevista.
+
+**Rota:** a parte de servidor e dado (CC-364 e CC-365) é da rota `central`,
+nova. As três telas são `src/ui_v2.html`, da rota `front`, **liberada por
+c82a3fbf em 27/08 a pedido dele** ("peço a vez pra ela"). Ela deixou trabalho
+sem commit no mesmo arquivo (a faixa dos agentes sem item no backlog, e o
+`overscroll-behavior-x` do arrastar de lado): editar por trecho, nunca
+sobrescrever nem dar checkout no arquivo.
+
+---
+
 ## ▶ Frente nova, aberta em 25/08: a caixa de ponto do git multi-agente
 
 Ideia dele, com as palavras dele, registrada para decidir depois (não
@@ -467,6 +553,129 @@ segue verde, 144 verificações.
 ✅ **Fechado em 26/08:** o comando entrou no `package.json` como `test:central`
 (`npm run test:central`), junto dos outros testes de navegador que ficam fora do
 gate diário por exigirem Chrome. Só faltava esse registro.
+
+### CC-370 ✅ 27/08: o gesto de voltar tirava ele da tela, uma de cada vez
+
+Continuação do CC-369, depois de ele dizer a máquina: *"eh no Android, podemos
+transformar o painel em um apk"*.
+
+**Não precisou de APK, e isso foi o primeiro achado.** O painel já é aplicativo
+instalável desde 22/08: manifesto, ícones nos três tamanhos, `display:
+standalone` e trabalhador de fundo, todos servidos e respondendo. No Chrome do
+Android é "Instalar aplicativo", e pronto. Um APK de verdade (empacotado) daria
+ícone na gaveta de apps e nada mais, ao custo de assinar o pacote e instalar
+fora da loja.
+
+**Mas instalar não resolveria o incômodo dele**, e a causa era outra. Medido:
+`gravarEndereco` fazia `location.hash = novo`, e atribuir ao hash EMPURRA uma
+parada no histórico. Cada troca de aba virava uma parada, então o gesto da borda
+do Android o tirava da tela em que estava, uma por vez. No Android o voltar é
+gesto do SISTEMA: a trava de arrastar do CC-369 não alcança.
+
+**O conflito que a medição revelou, e que mudou a decisão dele.** A primeira
+versão trocou tudo por `replaceState`, e três verificações do teste de endereço
+caíram. Elas guardavam um pedido ANTIGO dele: abrir um agente grava
+`#agentes/<id>`, e o gesto de voltar FECHA o agente em vez de sair da tela. O
+conserto tinha apagado isso junto com o defeito, e eu não tinha mostrado esse
+custo ao perguntar, porque não o conhecia. Levado a ele com o dado na mão, ele
+escolheu ficar com os dois.
+
+**Como ficou:** trocar de tela SUBSTITUI a parada, abrir alguma coisa EMPILHA.
+O histórico do painel tem no máximo duas paradas: onde ele está, e o que ele
+abriu por cima. O gesto fecha o que está aberto e nunca troca de tela.
+
+**Prova, no navegador de verdade:** quatro trocas de tela seguidas e o histórico
+continua do mesmo tamanho; o gesto de voltar sobre um agente aberto devolve
+`#agentes` com o agente fechado; e o botão de voltar da tela concorda com o do
+aparelho. As 28 telas seguem abrindo pelo endereço, e recarregar em `#trabalho`
+continua caindo no quadro.
+
+**O que fica anotado sem conserto:** o teste de endereço acusa uma tela "abriu
+praticamente vazia" que MUDA a cada rodada (`view-rotinas` numa, nenhuma na
+seguinte, `view-meus` na terceira). É intermitência de carregamento, não
+regressão desta mudança, e merece medição própria em vez de conserto no escuro.
+
+### CC-369 ✅ 27/08: arrastar para o lado voltava de página
+
+Pedido dele, olhando a tela nova: *"podemos desativar o 'voltar' do app? as vzs
+eu arrasto pro lado e o navegador volta"*.
+
+O painel é feito de fitas que rolam na horizontal, e o quadro é a maior delas:
+foi desenhado para ser arrastado de lado. Ao chegar no fim da rolagem, o
+navegador entende a continuação do MESMO gesto como "voltar", e a tela some no
+meio de um gesto de leitura, sem ele ter pedido nada.
+
+**`none` na raiz, e não `contain`, e a diferença é o defeito inteiro.** `contain`
+impede o gesto de vazar para o elemento pai; na raiz o pai é a janela, que é
+justamente quem navega. Já existiam três `contain` no arquivo, todos dentro de
+blocos de tela estreita, e nenhum na raiz nem no quadro. A fita do quadro ganhou
+`contain` como segunda defesa.
+
+**Prova, no navegador de verdade e não só no código:** com a tela em 390px,
+`html` e `body` medem `none`, o quadro mede `contain`, e o quadro está mesmo com
+rolagem lateral ativa naquele instante, que é a condição em que o gesto acontece.
+O gate guarda as três regras, inclusive recusando `contain` na raiz.
+
+**O limite honesto:** isto desliga o gesto DENTRO da página. No iPhone, deslizar
+a partir da borda da tela é gesto do sistema, e nenhum CSS alcança. Se voltar a
+acontecer, provavelmente é esse, e o caminho seria outro: instalar o painel como
+aplicativo na tela de início, onde o Safari roda sem essa navegação.
+
+### CC-363 ✅ 27/08: o quadro escondia agente trabalhando, e mostrava backlog vencido
+
+**O quadro já existia; o que faltava era o dado chegar certo.** Ele escolheu
+"colunas por etapa" achando que iam nascer, e elas estão prontas desde 25/08
+(CC-346/347/348). Medindo com dado real, o problema era outro: **98 cartões, 93
+numa coluna só**, e as colunas "andando" e "travada" VAZIAS com seis agentes
+trabalhando naquele minuto. Testado um a um, **zero dos seis** achava o próprio
+item.
+
+**Três causas, todas medidas:**
+
+**1. O prefixo de máquina separava o agente do próprio projeto.** Desde a
+renomeação de 23/08 a pasta tem prefixo, e o agente reporta o nome que a máquina
+DELE usa: `cockpit` nunca encontrava `VPS_cockpit`. Agora existe
+`chaveDeProjeto()`, uma conta só, que tira o prefixo de máquina e o de tipo
+(`proj_`, `app_`, `web_`, `game_`). **O sufixo fica**, e a prova negativa está no
+gate: `VPS_cockpit--front` é outra pasta com outro backlog.
+
+**2. Quem não casava simplesmente sumia.** Metade dos casos não tem conserto
+automático possível: o agente declara uma frente que não existe como item aberto
+(o caso medido foi "framework de engenharia", que só existe dentro de um item já
+fechado). Adivinhar o item mais parecido penduraria trabalho de verdade no cartão
+errado. Então o quadro passou a mostrar quem está de fora, com o motivo agrupado.
+É a armadilha que este painel já pagou: **espaço vazio não distingue "está tudo
+bem" de "a leitura falhou"**.
+
+**3. Dezenove dos 98 cartões eram repetição.** `VPS_cockpit--front` é árvore de
+trabalho do mesmo repositório, com roadmap parado em 16/08, e entregava 15
+cartões vencidos. A defesa contra isso existe desde 16/08 e não disparava: o
+arquivo `.git` da árvore guarda o caminho da principal com o nome que ela tinha
+ao nascer (`proj_controlcenter`), hoje um ATALHO para `VPS_cockpit`, e
+`path.resolve` normaliza texto sem seguir atalho. Os outros 4 eram
+`fibraessencia` e `VPS_fibraessencia`, dois clones do mesmo remote na mesma
+branch, separados só pelo prefixo.
+
+**Medido, com o painel no ar, antes e depois:** 9 projetos viraram 7, 98 cartões
+viraram 79, "andando" saiu de 0 para 1, e 5 agentes que não apareciam em lugar
+nenhum passaram a aparecer com o motivo.
+
+**O erro que quase entrou junto, e só a medição pegou.** A primeira versão do
+colapso por chave derrubou **cinco projetos** em vez de dois: o nome sem prefixo
+costuma vir de um agente do PC, cujo caminho não existe nesta máquina, e o
+desempate por tempo fazia o job de hoje do PC ganhar da pasta local. É a regra do
+CC-305 sendo atropelada. A pasta que EXISTE vence antes de qualquer comparação de
+tempo, e o gate guarda esse caso.
+
+**Prova:** `npm test` verde, 187 verificações, com as provas negativas. Captura
+da tela em 390px de largura conferida pela régua da barra de baixo, com os cinco
+botões inteiros no quadro.
+
+**O que ficou de fora, e é decisão dele:** duas pastas do mesmo projeto
+continuam existindo no disco, e a que está mais NOVA é a sem prefixo
+(`fibraessencia`, commit de 26/08, contra `VPS_fibraessencia` em 23/08). O quadro
+agora mostra uma só, mas isso contraria a convenção de 23/08, que diz que toda
+pasta desta VPS começa com `VPS_`. Só ele decide qual apagar.
 
 ### As oito anotações dele, de 22/08
 
@@ -1166,7 +1375,60 @@ modo desta sessão resolve para `restritivo`, que não trava, então o bloco nã
 tinha como aparecer numa captura. O que está provado é a peça e o caminho do
 clique, não a foto.
 
-### CC-362 🔴 26/08: a tela diz um modo e a trava usa outro
+### CC-362 🟡 27/08 (motor feito, tela é da rota `front`): a tela diz um modo e a trava usa outro
+
+**As três causas medidas em 27/08, e nenhuma era "a tela não conta".** O
+diagnóstico de 26/08 apontava para a marca `🎚` vencendo o modo do projeto, o
+que é verdade e é por desenho. O que estava quebrado era outra coisa:
+
+**1. A herança de rota pegava sessão ERRADA.** `modoDaRota()` perguntava se a
+linha do quadro era da sessão com `linha.includes(marca)`, e a linha carrega o
+histórico dela inteiro ("TOMADA de fbabdeb0", "LIBERADA de 1d765cd1"). Qualquer
+sessão **citada** virava dona. Medido no quadro real: `721fa1f4` e `fbabdeb0`
+casavam com a linha da rota de tela sem nunca terem tido essa rota, e era daí
+que vinha o modo que a tela não mostrava. A regra do dono agora mora em um
+lugar só, `donoDaLinha()` em `src/routia.mjs`: o primeiro id depois do `🔴` é
+quem segura a linha, e menção posterior é história, não posse.
+
+O mesmo `includes` está em `src/caixaGit.mjs`, e ali é pior: a caixa de ponto
+reivindicaria os **arquivos** de uma rota alheia e commitaria o que a outra
+sessão escreveu. Aquele arquivo é da rota `caixa`, então virou ticket e recado.
+
+**2. O modo se chamava `restritivo` por dentro e "Continuativo" na tela, e não
+trava nada.** O título mudou em 16/08 e o id ficou para trás, então o registro
+saía carimbado `"modo": "restritivo"` para o modo mais solto depois do
+desligado, e quem lesse o histórico entendia o oposto. Ele escolheu trocar o
+nome por dentro. O nome velho virou apelido e continua chegando no mesmo modo,
+porque está gravado no estado de 12 projetos.
+
+**Junto veio um defeito que ninguém tinha visto:** `modoDe()` fazia
+`MODOS[estado.modo]` direto, sem resolver apelido. Um estado gravado com
+`"modo": "continuativo"` (o nome que a tela mostra, e que o quadro manda
+escrever na marca `🎚`) resolvia para **Livre**, o mais permissivo. É o defeito
+de 18/08 de novo, por outro caminho: nome que não resolve desliga a trava em
+silêncio. Sem consertar isso primeiro, a troca de nome teria derrubado a trava
+dos 12 projetos de uma vez.
+
+**3. Campo derivado estava GRAVADO no arquivo.** `.framework/estado.json` tinha
+`_rota: "sistemas"` dentro, de uma rota fechada no dia anterior, então toda
+sessão sem rota nenhuma recebia essa origem de volta. O caminho é o
+`cc framework autorizar`, que faz `gravar(ler())`: ler injeta a origem, gravar
+persistia junto. A defesa existia e cobria só `_sessao`; agora a regra é o
+prefixo `_`, não a lista. **Uma tela honesta em cima desse dado mentiria com
+confiança**, que é o motivo de isto vir antes da tela.
+
+**Feito e provado:** a origem viaja junto com o modo (`_origemModo`, com
+`origemDoModo()` dando a frase), o aviso de abertura da sessão anuncia
+`Modo Continuativo (do projeto, valendo para todas as sessões)`, e o retrato do
+projeto entrega `origemModo`, `origemModoTexto` e `rotaDoModo` para a tela.
+Gate com os casos novos, inclusive a prova negativa (sessão citada **não**
+herda) e a de que nenhum campo derivado sobra no arquivo.
+
+**Falta:** pintar no cartão do projeto. `src/ui_v2.html` é da rota `front`,
+ocupada, então virou ticket com recado. A frase já vai pronta de propósito:
+duas frases para a mesma coisa é como este item nasceu.
+
+#### O registro original, de 26/08, quando o diagnóstico ainda era só de tela
 
 Achado enquanto se fazia o CC-361. `.framework/estado.json` diz
 `"modo": "sugestivo"`, o aviso de abertura da sessão anuncia "Modo Sugestivo",

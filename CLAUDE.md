@@ -11,8 +11,13 @@
 > Cada um desses consertos parece código defensivo demais para quem chega de
 > fora, e desfazer volta o defeito, sem erro na tela.
 >
-> **`docs/guias/PC-E-VPS.md` lista os cinco, com o que cada um evita e como
+> **`docs/guias/PC-E-VPS.md` lista os seis, com o que cada um evita e como
 > conferir no Windows antes de encostar.** Leia antes, não depois.
+>
+> O sexto, escrito em 27/08, é o único que anda no sentido contrário: **funciona
+> aqui e quebra lá**. São seis lugares que montavam URL de módulo como `file://`
+> mais o caminho cru, ou supunham `/` como separador. A função certa é
+> `pathToFileURL`, do próprio Node, sempre.
 
 ## Projeto
 Painel dos agentes do Claude Code rodando em background. Uma linha por agente,
@@ -259,6 +264,38 @@ errada por definição.
   aparece (antes: os to-dos que ninguém marcava, e o `frente` que faltava no
   cartão). **Ao investigar "o agente não registrou X", leia o texto da rotina
   antes de culpar a execução.**
+- **"Esta linha do quadro é minha?" é pergunta POSICIONAL, nunca textual.** A
+  linha da rota carrega o histórico dela inteiro ("TOMADA de fbabdeb0",
+  "LIBERADA de 1d765cd1"), então `linha.includes(minhaMarca)` responde SIM para
+  toda sessão apenas CITADA. Medido em 27/08 no quadro real: `721fa1f4` e
+  `fbabdeb0` casavam com a linha da rota `front` sem nunca terem sido donas
+  dela. Dois módulos perguntavam assim, e o estrago era de tamanhos diferentes:
+  no framework a sessão herdava o MODO de uma rota alheia (é o CC-362, a trava
+  usando um modo que a tela não mostrava); em `caixaGit.mjs` ela herdaria os
+  ARQUIVOS, e a caixa de ponto commitaria o que a outra sessão escreveu, que é
+  o acidente de 06/08 que o Routia existe para impedir. Hoje a regra é uma só:
+  `donoDaLinha()` e `linhaEhDaSessao()`, em `src/routia.mjs`. O primeiro id
+  depois do `🔴` é quem segura a linha; menção posterior é história, e história
+  não dá posse.
+- **Campo derivado gravado no disco é indistinguível de dado de verdade na
+  leitura seguinte.** `ler()` injeta a origem do modo no objeto que devolve, e o
+  `cc framework autorizar` faz `gravar(ler())`: em 27/08 o `estado.json` deste
+  projeto tinha `_rota: "sistemas"` DENTRO, de uma rota fechada no dia anterior,
+  e toda sessão sem rota nenhuma recebia essa origem de volta. A defesa existia
+  e cobria só `_sessao`, escrito antes de `_rota` nascer. **A regra passou a ser
+  o prefixo `_`, não a lista de nomes**, porque lista de nomes envelhece a cada
+  campo novo e o silêncio é o sintoma. O que isso ensina para além deste
+  arquivo: consertar a TELA antes de limpar o dado faria a tela mentir com mais
+  confiança, e é por isso que a ordem foi essa.
+- **`MODOS[nome]` direto ignora apelido, e o padrão é o modo mais PERMISSIVO.**
+  `modoDe()` fazia a busca crua, então um estado gravado com `"modo":
+  "continuativo"` (o nome que a tela mostra, e que o quadro manda escrever na
+  marca `🎚`) resolvia para `dialogo`, o Livre. Trava desligada em silêncio, com
+  a tela anunciando o modo escolhido como se ele valesse. É o mesmo defeito de
+  18/08 por outro caminho, e a diferença é que aqui ele estava no caminho do
+  ESTADO GRAVADO, não no da linha de comando. Quem lê modo lê por `acharModo`.
+  E cuidado com a consequência: renomear um id sem consertar isso antes teria
+  desligado a trava dos 12 projetos de uma vez.
 - **`fan[]` fica com resíduo** da última tool mesmo depois do job terminar. Só
   exibir enquanto o status é `working`.
 - **Truncar string já colorida corta o código ANSI no meio** e vaza `[0m` na

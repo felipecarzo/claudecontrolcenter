@@ -34,7 +34,7 @@ não mudou e não pode mudar. Todo comando de sistema passa por lá.
 
 ---
 
-## As cinco coisas que o PC provavelmente vai querer "consertar"
+## As seis coisas que o PC provavelmente vai querer "consertar"
 
 ### 1. O abrigo: a sessão grava em dois lugares, e isso é obrigatório
 
@@ -119,6 +119,50 @@ no PC:
 | porta de entrada com senha | `~/cockpit-auth.mjs`, porta 5181 | o painel da VPS é público na internet; o do PC não |
 | `~/dev.sh` | home do `claudedev` | sobe projeto em `testedevoo.carzo.com.br` |
 | chave SSH da VPS | `~/.ssh` | nunca sai daqui |
+
+### 6. Caminho de arquivo virando URL de módulo: use `pathToFileURL`, sempre
+
+Este é o único dos seis que **quebra no Windows e funciona na VPS**, ao
+contrário dos outros cinco. Por isso ele passa despercebido aqui e explode lá.
+
+São **seis** casos já medidos, todos em 26/08, e todos com a mesma forma:
+
+| Onde | O que supunha Linux |
+|---|---|
+| `deOutraPlataforma`, em `src/roadmap.mjs` | separador `/` no caminho |
+| `projectsBases`, em `src/install.mjs` | separador `/` no caminho |
+| dois testes do gate | montavam `file://` mais o caminho cru |
+| `test-anonimizar.mjs` | idem |
+| `hooks/commit-auto.mjs` (o helper do teste) | montava a pasta-mãe com regex de `/` |
+
+**O padrão comum, e é ele que se deve reconhecer:** montar URL de módulo
+concatenando `'file://'` com o caminho, ou tratar `/` como o separador. No
+Linux os dois funcionam por acaso. No Windows o caminho é `D:\...`, a URL sai
+inválida, e o `import()` falha de um jeito que não aponta para a causa.
+
+**A regra:** `pathToFileURL` do próprio Node, que já vem pronto para isso.
+
+A forma que os hooks deste repositório já usam, e que é a de copiar:
+
+```js
+import { pathToFileURL } from 'node:url'
+const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
+```
+
+Cada pedaço: `pathToFileURL` mora em `node:url`, não em `node:path`, que é o
+engano mais comum. `resolve(...p)` junta os pedaços do caminho com o separador
+da máquina, `\` no Windows e `/` no Linux. `.href` é a URL em texto, que é o
+que o `import()` aceita. O errado é `'file://' + caminho`, que só funciona no
+Linux por acaso.
+
+Para separar pasta de arquivo, `path.dirname`, nunca regex de `/`. Foi
+exatamente essa a diferença entre `hooks/commit-auto.mjs`, que estava certo, e
+o helper do teste dele, que estava errado: o de verdade já usava `path.dirname`
+e só o teste montava o caminho à mão.
+
+**Como saber que deu certo:** `npm test` passando nas duas máquinas. Se ele
+passa aqui e falha no Windows num `import()`, o suspeito número 1 é este, antes
+de qualquer outra hipótese.
 
 ---
 
