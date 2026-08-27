@@ -197,9 +197,12 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
     for (const f of ordenadas) {
       if (f.estado === 'feito') continue // fechadas ficam no rodapé, dobradas
 
-      const daFrente = jobs.filter((j) => j.project === projeto
+      /* `mesmoProjeto`, e não `===`: o agente reporta o nome que a MÁQUINA dele
+         usa, e desde 23/08 as pastas têm prefixo de máquina. Ver o comentário
+         de `chaveDeProjeto`. */
+      const daFrente = jobs.filter((j) => mesmoProjeto(j.project, projeto)
         && j.frente && casaFrente(j.frente, f.titulo))
-      const minhas = pendencias.filter((p) => p.projeto === projeto
+      const minhas = pendencias.filter((p) => mesmoProjeto(p.projeto, projeto)
         && p.frente && casaFrente(p.frente, f.titulo))
 
       /* `tituloCru` quando existe: ele ainda tem o `⏸`, e `partirTitulo` usa
@@ -270,11 +273,74 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
   return {
     grupos: comAberto,
     semNada,
+    soltos: soltosDe(grupos, jobs),
     pendencias,
     veredito: veredito(comAberto, pendencias, jobs),
     ordem,
     at: Date.now(),
   }
+}
+
+/**
+ * Os agentes que declararam frente e NÃO acharam item nenhum.
+ *
+ * ## Por que isto não pode ficar em silêncio, medido em 27/08
+ *
+ * O quadro tinha 98 cartões e 93 numa coluna só; "andando" e "travada" estavam
+ * VAZIAS com seis agentes trabalhando naquele minuto. Testado um por um: zero
+ * dos seis achavam o próprio item. O agente que não casa simplesmente **some**,
+ * e uma coluna vazia lê-se como "ninguém está trabalhando", que é o contrário
+ * do que estava acontecendo.
+ *
+ * É a armadilha que este projeto já pagou e escreveu: **espaço vazio não
+ * distingue "está tudo bem" de "a leitura falhou"**, e essa é a família de
+ * defeito mais cara do painel.
+ *
+ * Metade dos casos é mecânica e o `mesmoProjeto` resolveu. A outra metade não
+ * tem conserto automático possível, e é honesto que seja assim: o agente
+ * escreveu uma frente que não existe como item ABERTO daquele roadmap (o caso
+ * medido foi "framework de engenharia", que só existe dentro de um item já
+ * fechado). Adivinhar o item mais parecido seria pendurar trabalho de verdade
+ * no cartão errado, que é pior que não pendurar.
+ *
+ * Então o quadro passa a mostrar o agente com o motivo do lado, em vez de
+ * escondê-lo. Quem lê decide: ou o agente corrige a frente, ou o item não
+ * existe mesmo e precisa nascer.
+ */
+export function soltosDe(grupos, jobs = []) {
+  const porProjeto = new Map()
+  for (const g of grupos) porProjeto.set(chaveDeProjeto(g.projeto), g)
+
+  const fora = []
+  for (const j of jobs) {
+    if (!j?.frente) continue
+    const g = porProjeto.get(chaveDeProjeto(j.project))
+    /* Já casou com algum cartão? Então ele está no quadro, e repetir aqui seria
+       o mesmo agente em dois lugares. */
+    if (g && g.cartoes.some((c) => (c.estado?.cor === 'working')
+      && casaFrente(j.frente, c.titulo))) continue
+
+    fora.push({
+      job: j.id || null,
+      projeto: j.project || null,
+      frente: j.frente,
+      assunto: j.subject || null,
+      status: j.status || null,
+      motivo: !g
+        ? 'sem-roadmap'
+        : 'sem-item',
+      /* A frase pronta mora aqui, junto do motivo, pelo mesmo princípio que o
+         `origemDoModo` do framework: duas frases para a mesma coisa acabam
+         discordando. */
+      /* Frase NEUTRA quanto ao número: a tela agrupa por motivo e mostra uma
+         frase para vários agentes, então "este agente" mentia em quatro linhas
+         de cinco na primeira medição. */
+      porque: !g
+        ? 'projeto sem backlog lido nesta máquina'
+        : 'frente declarada que não existe como item aberto do backlog',
+    })
+  }
+  return fora
 }
 
 /**
@@ -284,6 +350,37 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
  * texto exato falharia em quase todo caso real, e foi por isso que o campo de
  * frente quase não serviu quando nasceu.
  */
+/**
+ * O nome do projeto sem o que é rótulo de MÁQUINA ou de tipo.
+ *
+ * ## Por que existe, medido em 27/08
+ *
+ * A renomeação de 23/08 deu prefixo de máquina às pastas (`VPS_` aqui, `PC_`
+ * no PC dele) e tirou o tipo (`proj_`, `app_`, `web_`, `game_`). O quadro
+ * cruza o agente com o item de backlog exigindo o MESMO nome de projeto, e o
+ * agente reporta o nome que a máquina DELE tem.
+ *
+ * Medido no quadro real: o agente dizia `cockpit` e `coepiloto`, o quadro tinha
+ * `VPS_cockpit` e `VPS_coepiloto`. Três dos seis agentes vivos não achavam o
+ * próprio projeto, e desapareciam do quadro sem nada na tela dizer por quê.
+ *
+ * ⚠️ **O sufixo NÃO é rótulo e fica.** `VPS_cockpit--front` é outra pasta, em
+ * outra branch, com outro roadmap: juntar as duas misturaria um backlog de
+ * 16/08 com o de hoje. Só o prefixo cai.
+ */
+export function chaveDeProjeto(nome) {
+  return String(nome || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/^(vps|pc)_/, '')
+    .replace(/^(proj|app|web|game)_/, '')
+    .trim()
+}
+
+/** O agente e o item de backlog são do mesmo projeto? Uma conta só, porque duas
+ *  discordariam no dia em que uma das máquinas renomear de novo. */
+export const mesmoProjeto = (a, b) => Boolean(chaveDeProjeto(a)) && chaveDeProjeto(a) === chaveDeProjeto(b)
+
 function casaFrente(daSessao, doRoadmap) {
   const norm = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
   const a = norm(daSessao)
@@ -396,11 +493,65 @@ export function projetosDe(jobs = [], achar = () => []) {
     if (!vistos.has(nome)) vistos.set(nome, raiz)
   }
 
-  const raizes = new Set([...vistos.values()].map((r) => path.resolve(r)))
+  /* CC-363: o mesmo projeto em duas pastas que só diferem no PREFIXO.
+     O CC-352 já resolvia nome idêntico vindo de dois caminhos. O que faltava é
+     que desde 23/08 o nome carrega a máquina, então `fibraessencia` e
+     `VPS_fibraessencia` viravam dois projetos e o quadro mostrava o backlog do
+     mesmo cliente duas vezes. Medido em 27/08: mesmo remote, mesma branch, uma
+     das pastas três dias atrás da outra.
+     A regra é a que ele já decidiu em 25/08, aplicada à chave em vez do nome
+     cru: **vence quem tem sinal mais novo**. Sem job por trás não há carimbo,
+     então o desempate cai no roadmap, que é o dado que a tela vai mostrar.
+     O `statSync` só roda quando existe duplicata de verdade, que é raro. */
+  /* ⚠️ **A pasta que existe NESTE disco vence, antes de qualquer comparação de
+     tempo.** É a regra do CC-305, e ignorá-la aqui custou caro na medição de
+     27/08: o nome sem prefixo costuma vir de um agente do PC, com `cwd` no
+     formato do Windows, e esse caminho não existe na VPS. Comparando só por
+     tempo, o job de hoje do PC ganhava da pasta local, o roadmap não era lido,
+     e o projeto sumia do quadro inteiro. Cinco projetos desapareceram assim
+     numa passada, num conserto que existia para remover DOIS repetidos.
+     Entre duas pastas que existem de verdade, aí sim vence a de sinal mais
+     novo, que é a decisão dele de 25/08. */
+  const roadmapDe = (raiz) => {
+    try { return fs.statSync(path.join(raiz, 'docs', 'ROADMAP.md')).mtimeMs } catch { return 0 }
+  }
+  const sinal = (nome, raiz) => {
+    const r = roadmapDe(raiz)
+    // sem roadmap alcançável, este caminho não tem o que mostrar no quadro
+    if (!r) return -1
+    return Math.max(quando.get(nome) || 0, r)
+  }
+  const porChave = new Map()
+  for (const [nome, raiz] of vistos) {
+    const k = chaveDeProjeto(nome)
+    const atual = porChave.get(k)
+    if (!atual || sinal(nome, raiz) > sinal(atual[0], atual[1])) porChave.set(k, [nome, raiz])
+  }
+  if (porChave.size < vistos.size) {
+    const fica = new Set([...porChave.values()].map(([nome]) => nome))
+    for (const nome of [...vistos.keys()]) if (!fica.has(nome)) vistos.delete(nome)
+  }
+
+  /* `realpath`, e não só `resolve`: o caminho da principal sai do arquivo `.git`
+     da árvore de trabalho, escrito quando ela nasceu, e pode apontar para um
+     ATALHO em vez da pasta.
+
+     Medido em 27/08, e é a renomeação de 23/08 chegando aqui: a árvore
+     `VPS_cockpit--front` guarda `gitdir: …/proj_controlcenter/.git/worktrees/…`,
+     nome que a pasta tinha antes. Hoje `proj_controlcenter` é um atalho para
+     `VPS_cockpit`, então a comparação por texto não casava, a defesa contra
+     árvore duplicada não disparava, e o quadro ganhava **15 cartões de um
+     roadmap parado em 16/08** misturados com os de hoje. `resolve` normaliza o
+     texto do caminho e não segue atalho; `realpath` segue.
+
+     O `catch` não é enfeite: metade dos caminhos vem da federação, no formato
+     da outra máquina, e não existe neste disco. */
+  const real = (p) => { try { return fs.realpathSync(p) } catch { return path.resolve(p) } }
+  const raizes = new Set([...vistos.values()].map(real))
   return [...vistos]
     .filter(([, raiz]) => {
       const principal = principalDe(raiz)
-      return !(principal && raizes.has(path.resolve(principal)))
+      return !(principal && raizes.has(real(principal)))
     })
     .map(([projeto, raiz]) => ({ projeto, raiz }))
 }
