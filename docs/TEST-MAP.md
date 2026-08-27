@@ -23,7 +23,7 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
 | tela | 28 | 28/28 | 26/28 | 28/28 | 0/28 | 28/28 |
-| acao | 116 | 116/116 | 22/116 | 0/116 | 0/116 | 0/116 |
+| acao | 119 | 119/119 | 24/119 | 0/119 | 0/119 | 0/119 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
 | endereco | 89 | 89/89 | 6/89 | 0/89 | 0/89 | 0/89 |
 | palavra | 64 | 64/64 | 14/64 | 64/64 | 0/64 | 64/64 |
@@ -65,7 +65,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `vps` | viva | src/ui_v2.html#view-vps | estreito |
 | `maquina` | viva | src/ui_v2.html#view-maquina | estreito |
 
-## acao (116)
+## acao (119)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -162,6 +162,9 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-fw-remoto` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-fw-maquina` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-mod` | estatica | src/ui_v2.html | explica, estreito |
+| `data-fw` | estatica | src/ui_v2.html | explica, estreito |
+| `data-fw-proj` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-fw-alvo` | estatica | src/ui_v2.html | explica, estreito |
 | `data-ent-abrir` | estatica | src/ui_v2.html | explica, estreito |
 | `data-sessao-modo` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-sessao-proj` | estatica | src/ui_v2.html | funciona, explica, estreito |

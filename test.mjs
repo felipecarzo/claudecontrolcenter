@@ -4916,3 +4916,40 @@ if (process.platform !== 'win32') {
   assert.equal(fw.length, 1, 'o retrato do framework também vê um projeto só')
   console.log('  ok   CC-352: duas pastas com o mesmo nome, e ganha a que tem sinal mais novo')
 }
+
+/* ============================================================================
+ * CC-361: o liberar escrita existe na tela que está NO AR, não só na antiga.
+ *
+ * Medido em 26/08: a trava do framework registrava o pedido certo e mandava
+ * clicar num botão que só existia em `src/ui.html` (servido em `/v1`). Quem usa
+ * o painel padrão (`ui_v2.html`) via o trabalho ser barrado sem caminho nenhum
+ * para destravar, a não ser editando o arquivo de estado à mão, que é o que o
+ * modo existe para evitar.
+ *
+ * É a mesma família dos três buracos de 20/08: o painel novo herdou o código e
+ * não herdou as peças. Por isso a rede mora aqui e não na cabeça de ninguém.
+ * ========================================================================== */
+{
+  const html = fs.readFileSync('src/ui_v2.html', 'utf8')
+
+  assert.match(html, /fw-pedidos/, 'o painel novo perdeu a lista de pedidos de liberação')
+  assert.match(html, /liberar só este/, 'o painel novo perdeu o botão de liberar UM arquivo')
+  assert.match(html, /data-fw-alvo=/, 'o botão de liberar não diz QUAL arquivo, então libera o projeto inteiro')
+
+  /* O alvo tem que CHEGAR na rota. Sem ele o clique em "liberar só este"
+     mandaria a mesma coisa que "liberar escrita", e a diferença entre um
+     arquivo e o projeto inteiro é o modo funcionar ou virar decoração. */
+  assert.match(html, /\{ projeto, acao, alvo \}/,
+    'o clique de liberar não repassa o alvo: um arquivo e o projeto inteiro virariam a mesma ação')
+
+  /* Confirmação obrigatória: ele apertou o botão do painel antigo por engano em
+     15/08 justamente por ser imediato demais. */
+  assert.match(html, /vale só para este arquivo/, 'liberar um arquivo deixou de confirmar antes')
+  assert.match(html, /vale para TODOS os arquivos de código/, 'liberar o projeto inteiro deixou de confirmar antes')
+
+  /* E o estilo junto: bloco sem regra herda o que estiver por perto, e este
+     mora dentro do cartão de projeto. */
+  assert.match(html, /\.fw-aut \{/, 'o bloco de autorização ficou sem estilo no painel novo')
+
+  console.log('  ok   CC-361: o liberar escrita está na tela do dia a dia, com alvo e confirmação')
+}

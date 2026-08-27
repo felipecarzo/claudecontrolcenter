@@ -1051,6 +1051,24 @@
        cada lado somado ao do bloco. */
     #cc-framework-aqui > div { padding: 0 !important; max-width: none !important; }
 
+    /* CC-361: o bloco de liberar escrita, vindo do painel antigo. A borda de
+       baixo é o estado: âmbar travado, verde liberado, os mesmos tokens dos
+       outros estados da tela. */
+    .fw-aut {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+      margin-top: 8px; padding: 8px 11px; border-radius: 7px;
+      background: var(--surface); border-bottom: 2px solid var(--waiting);
+    }
+    .fw-aut.ok { border-bottom-color: var(--done); }
+    .fw-aut b { font-size: 12px; }
+    .fw-aut .path { flex: 1 1 200px; }
+    .fw-pedidos { display: grid; gap: 4px; width: 100%; margin: 4px 0; }
+    .fw-pedido { display: flex; align-items: center; gap: 8px; }
+    .fw-pedido code {
+      flex: 1 1 auto; font-size: 11.5px; color: var(--fg);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
     /* ===== CC-325: confirmar antes de agir =====
        Pedido dele em 22/08: *"coloca popover pra confirmaer deciso de abrir
        conversa, encerrar conversa etc"*.
@@ -7743,6 +7761,32 @@
           + esc(cat[m].label) + (on ? '' : ' ✕') + '</button>';
       }).join('');
 
+      /* CC-361: o liberar escrita, que só existia no painel antigo (`ui.html`,
+         servido em `/v1`). Sem ele a trava barra o trabalho e manda clicar num
+         botão que não está na tela: medido em 26/08, com um pedido pendente e
+         zero caminho para atender. Os campos já vinham em `/api/framework`
+         (`modoTrava`, `autorizado`, `pedidos`), só faltava desenhar.
+
+         O "liberar só este" fica ANTES do "liberar escrita", que solta o
+         projeto inteiro: a diferença entre os dois é o modo funcionar ou virar
+         decoração, e por isso a confirmação diz qual dos dois é. */
+      const autorizacao = !valendo || !fw.modoTrava ? '' : (fw.autorizado || []).length
+        ? '<div class="fw-aut ok"><b>código liberado</b>'
+          + '<span class="path">até você trocar de modo, trocar zera esta autorização</span></div>'
+        : '<div class="fw-aut"><b>código travado</b>'
+          + '<span class="path">o modo ' + esc(fw.tituloModo || fw.modo || '')
+          + ' exige sua autorização para eu escrever código</span>'
+          + ((fw.pedidos || []).length
+            ? '<div class="fw-pedidos">' + fw.pedidos.map((p) => '<div class="fw-pedido">'
+              + '<code>' + esc(p.alvo) + '</code>'
+              + '<button type="button" class="btn compacto" data-fw="autorizar"'
+              + ' data-fw-proj="' + esc(fw.projeto) + '" data-fw-alvo="' + esc(p.alvo) + '">'
+              + 'liberar só este</button></div>').join('') + '</div>'
+            : '')
+          + '<button type="button" class="btn btn-ghost compacto" data-fw="autorizar"'
+          + ' data-fw-proj="' + esc(fw.projeto) + '">liberar escrita…</button>'
+          + '</div>';
+
       const entrevistaAqui = ENTREVISTA?.projeto === fw.projeto;
       const btnEntrevista = !valendo ? ''
         : '<button type="button" class="btn btn-ghost compacto" data-ent-abrir="' + esc(fw.projeto) + '">'
@@ -7753,6 +7797,7 @@
         + (btnEntrevista ? ajuda('entrevista') : '') + '</div>'
         + explicaModo(valendo ? fw.modo : 'desligado')
         + situacao
+        + autorizacao
         + (modulos
           ? '<div class="cc-mods-rotulo">o que o framework governa aqui ' + ajuda('módulos do framework') + '</div>'
             + '<div class="cc-mods">' + modulos + '</div>'
@@ -11292,10 +11337,27 @@
       if (tr.dataset.fw) {
         const projeto = tr.dataset.fwProj;
         const acao = tr.dataset.fw;
+        /* CC-361: liberar escrita pergunta antes, e a pergunta diz QUAL das
+           duas é. Ele apertou o botão do painel antigo por engano em 15/08
+           justamente porque era imediato demais e não explicava nada, e a
+           diferença entre um arquivo e o projeto inteiro é o modo funcionar ou
+           virar decoração. */
+        const alvo = tr.dataset.fwAlvo || '';
+        if (acao === 'autorizar' && !confirm(alvo
+          ? 'Liberar a IA para escrever em ' + alvo + '?\n\n'
+            + '· vale só para este arquivo\n'
+            + '· vale até você trocar de modo'
+          : 'Liberar a IA para escrever código em ' + projeto + '?\n\n'
+            + '· vale para TODOS os arquivos de código do projeto\n'
+            + '· vale até você trocar de modo, trocar zera esta autorização\n'
+            + '· documentação e backlog nunca estiveram travados')) return;
         tr.disabled = true;
-        return post('/api/framework', { projeto, acao }).then((f) => {
+        return post('/api/framework', alvo ? { projeto, acao, alvo } : { projeto, acao }).then((f) => {
           if (!f?.error && Array.isArray(FW_LISTA)) FW_LISTA = FW_LISTA.map((p) => (p.projeto === projeto ? { ...p, ...f } : p));
           renderFwLista();
+          /* O bloco vive no cartão de projeto desde a fusão de 25/08, e só
+             `renderFwLista` deixaria o botão clicado com a tela velha atrás. */
+          if (typeof renderProjetos === 'function') renderProjetos();
         });
       }
       if (tr.dataset.entAbrir) return abrirEntrevista(tr.dataset.entAbrir);
