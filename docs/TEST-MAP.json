@@ -9,12 +9,12 @@
  },
  "resumo": {
   "tela": {
-   "total": 28,
-   "existe": 28,
-   "funciona": 26,
-   "explica": 28,
+   "total": 29,
+   "existe": 29,
+   "funciona": 27,
+   "explica": 29,
    "estreito": 0,
-   "profundo": 28
+   "profundo": 29
   },
   "acao": {
    "total": 119,
@@ -41,12 +41,12 @@
    "profundo": 0
   },
   "palavra": {
-   "total": 64,
-   "existe": 64,
+   "total": 65,
+   "existe": 65,
    "funciona": 14,
-   "explica": 64,
+   "explica": 65,
    "estreito": 0,
-   "profundo": 64
+   "profundo": 65
   }
  },
  "itens": [
@@ -68,6 +68,36 @@
     "explica": {
      "coberto": "test.mjs",
      "como": "tem verbete `tela: cockpit`"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "o verbete tem corpo de verdade"
+    }
+   }
+  },
+  {
+   "id": "tela:ligados",
+   "tipo": "tela",
+   "rotulo": "ligados",
+   "onde": "src/ui_v2.html#view-ligados",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test-endereco.mjs",
+     "como": "abre a tela e escuta erro de execução do navegador"
+    },
+    "funciona": {
+     "coberto": "test.mjs",
+     "como": "a tela é citada, o que NÃO prova que os botões dela funcionam"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "tem verbete `tela: ligados`"
     },
     "estreito": {
      "coberto": null,
@@ -8134,7 +8164,7 @@
     },
     "profundo": {
      "coberto": "test.mjs",
-     "como": "corpo com 303 caracteres"
+     "como": "corpo com 979 caracteres"
     }
    }
   },
@@ -8449,6 +8479,37 @@
    }
   },
   {
+   "id": "palavra:tela: ligados",
+   "tipo": "palavra",
+   "rotulo": "tela: ligados",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 977 caracteres"
+    }
+   }
+  },
+  {
    "id": "palavra:tela: projetos",
    "tipo": "palavra",
    "rotulo": "tela: projetos",
@@ -8475,7 +8536,7 @@
     },
     "profundo": {
      "coberto": "test.mjs",
-     "como": "corpo com 1307 caracteres"
+     "como": "corpo com 1736 caracteres"
     }
    }
   },

@@ -158,12 +158,25 @@ declaradas, e repassa também a conexão viva que mantém os bonecos andando.
 
 ## tela: remoto
 
+**Chama-se Ajustes no menu.** É o que se mexe de vez em quando: as máquinas e o
+método de trabalho. Os projetos saíram daqui em 27/08 e foram para as telas
+**Ligados** e **Projetos**.
+
 As máquinas ligadas ao cockpit, e o caminho para **abrir uma sessão à
 distância**: escolher a máquina, o projeto e o agente, do celular.
 
 O pedido de sessão viaja como um arquivo que a outra máquina lê e executa. Cada
 máquina aparece com a idade do último pacote, o que ela trouxe e se está sem
 contato.
+
+Junto ficam a sincronia entre as duas máquinas, a configuração da federação e a
+entrevista do método.
+
+**Por que ela encolheu:** em 22/08 e em 25/08 esta tela recebeu, a pedido dele, a
+tela de framework e a tela de projetos inteiras. Cada mudança fazia sentido
+sozinha; somadas, puseram três listas dos mesmos projetos numa tela só, duas
+delas dentro de gaveta fechada. Ele olhou o resultado em 27/08 e resumiu: *"os
+projetos estão aparecendo em três lugares diferentes, está muito ruim"*.
 
 ## tela: framework
 
@@ -314,6 +327,26 @@ genérico:
 - **arquivo que não é texto**, detectado pelo conteúdo, não pela extensão
 - **arquivo acima de 512 kB**, dizendo o tamanho que tem
 
+## tela: ligados
+
+Só os projetos onde tem alguém trabalhando **agora**, e cada um com os controles
+dele à mão.
+
+**O que conta como ligado** é definição dele, dada em 27/08: *"ligado é com
+sessão ativa no Claude ou coderoom"*. São três fontes, e basta uma: um agente
+trabalhando ou esperando resposta, uma sessão no ar pelo controle remoto, ou uma
+conversa aberta no Coderoom. Agente parado há mais de meia hora **não** conta:
+mostrar um projeto morto anunciando "1 trabalhando" já aconteceu, e ele pegou.
+
+A conta é feita no servidor, num campo só, e as duas telas de projeto leem o
+mesmo campo. Antes eram duas contas diferentes na mesma tela, e o mesmo projeto
+entrava na lista por um critério e caía na faixa "sem sessão aberta" pelo outro.
+
+O cartão é o mesmo da tela **Projetos**, de propósito. O que muda é que aqui o
+bloco do método de trabalho nasce aberto, porque aqui todo mundo tem sessão: o
+modo, as travas, o liberar escrita e a entrevista ficam ao alcance sem abrir
+gaveta nenhuma.
+
 ## tela: projetos
 
 Cada projeto com o que é dele, num cartão só.
@@ -339,8 +372,15 @@ segundos.
 traz agentes do seu PC, e a pasta deles não existe aqui: um botão que falha
 depois do clique é pior que botão nenhum.
 
-O filtro começa em "só os que têm algo agora". Trocando para todos, aparecem os
-20, incluindo os que estão quietos.
+**Aparecem todos, sempre.** Havia um filtro que começava em "só os que têm algo
+agora", e ele era o que escondia os desligados atrás de um clique. Saiu em 27/08,
+a pedido dele: *"não tem o local pra ver os projetos desligados automaticamente,
+eu preciso clicar num botão"*. Quem quer só os ligados tem a tela **Ligados** ao
+lado.
+
+A lista **se atualiza sozinha**, a cada 20 segundos, enquanto a tela está aberta
+e visível. Antes ela era lida uma vez ao entrar e nunca mais, então projeto
+criado depois só aparecia recarregando a página inteira.
 
 ## tela: travas
 

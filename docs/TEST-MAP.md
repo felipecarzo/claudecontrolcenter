@@ -22,21 +22,22 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
-| tela | 28 | 28/28 | 26/28 | 28/28 | 0/28 | 28/28 |
+| tela | 29 | 29/29 | 27/29 | 29/29 | 0/29 | 29/29 |
 | acao | 119 | 119/119 | 24/119 | 0/119 | 0/119 | 0/119 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
 | endereco | 89 | 89/89 | 6/89 | 0/89 | 0/89 | 0/89 |
-| palavra | 64 | 64/64 | 14/64 | 64/64 | 0/64 | 64/64 |
+| palavra | 65 | 65/65 | 14/65 | 65/65 | 0/65 | 65/65 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
 ponta.** A diferença está na coluna `como` do JSON, item a item. Inflar
 este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 
-## tela (28)
+## tela (29)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
 | `cockpit` | viva | src/ui_v2.html#view-cockpit | estreito |
+| `ligados` | viva | src/ui_v2.html#view-ligados | estreito |
 | `projetos` | viva | src/ui_v2.html#view-projetos | estreito |
 | `meus` | viva | src/ui_v2.html#view-meus | estreito |
 | `gate` | viva | src/ui_v2.html#view-gate | estreito |
@@ -295,7 +296,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/rotas/alternar` | estatica | src/web.mjs | funciona, explica |
 | `/api/shutdown` | estatica | src/web.mjs | funciona, explica |
 
-## palavra (64)
+## palavra (65)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -318,6 +319,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `tela: maquina` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: tempo` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `janela: pastas` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: ligados` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: projetos` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: travas` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: tendencias` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |

@@ -43,6 +43,7 @@
     "test": "node test-anonimizar.mjs && node test-framework.mjs && node test-federacao.mjs && node test-sessoes.mjs && node test-caixa.mjs && node test-central-sessoes.mjs && node test-remoto-conversa.mjs && node test-quebra.mjs && node test-kb-detalhe.mjs && node test-bases.mjs && node test-commit-auto.mjs && node hooks/testar-sincronia-guard.mjs && node test-postinstall.mjs && node test.mjs",
     "test:ui": "node test-ui.mjs",
     "test:endereco": "node --experimental-websocket test-endereco.mjs",
+    "test:lista": "node --experimental-websocket test-lista-viva.mjs",
     "test:map": "node --experimental-websocket test-map-vivo.mjs",
     "test:travas": "node --experimental-websocket test-travas.mjs",
     "test:gaveta": "node --experimental-websocket test-gaveta.mjs",

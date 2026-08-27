@@ -130,7 +130,40 @@ export function retrato({
        está mesmo trabalhando. */
     const daqui = !deOutraPlataforma(raiz) && existe(raiz)
 
+    /* ===== CC-365: "ligado" vira UMA conta, e ela mora aqui =====
+     *
+     * Definição dele, dada em 27/08 ao desenhar as três telas: *"ligado é com
+     * sessão ativa no Claude ou coderoom"*. São as duas fontes, e a segunda é
+     * a mudança: em 25/08 ele tinha decidido que conversa parada do Coderoom
+     * NÃO contava, e a tela guardava essa régua num `temSessaoNoAr` próprio.
+     * Agora conta.
+     *
+     * Por que no servidor e não na tela: eram duas contas para o mesmo fato, e
+     * elas já divergiam. A tela FILTRAVA por uma régua (que inclui conversa) e
+     * AGRUPAVA por outra (que exclui) — o mesmo projeto entrava na lista por
+     * ter conversa e caía na faixa "sem sessão aberta" logo abaixo. Duas
+     * verdades no mesmo quadro é o defeito que este painel já pagou várias
+     * vezes.
+     *
+     * `ociosos` fica de fora de propósito: `idle` é o que `statusDe()` devolve
+     * depois de 30 minutos de silêncio, e contá-lo é o CC-337 de volta (ele viu
+     * um projeto morto anunciando "1 TRABALHANDO").
+     *
+     * ⚠️ `conv` é `null` enquanto as conversas não foram lidas, e `null` não
+     * liga ninguém: afirmar "desligado" sobre o que não se leu seria mentir com
+     * confiança. Quem precisa saber olha `leuConversas`, que viaja no topo. */
+    const ligadoPor = [
+      ...(vivos.length ? ['agente'] : []),
+      ...(sessoesAtivas[projeto] ? ['sessao'] : []),
+      ...(conv ? ['coderoom'] : []),
+    ]
+
     return {
+      /* A resposta pronta para a pergunta que a tela faz o tempo todo. */
+      ligado: ligadoPor.length > 0,
+      /* E por QUE ele está ligado: "ligado" sozinho não deixa o cartão dizer se
+         é agente escrevendo agora ou conversa esperando resposta. */
+      ligadoPor,
       projeto,
       raiz,
       daqui,
@@ -186,6 +219,10 @@ export function retrato({
     /* Quantos estão quietos, para a tela poder recolher dizendo quantos são em
        vez de cortar em silêncio. */
     quietos: saida.filter((p) => quieto(p)).length,
+    /* CC-365: as duas contagens que as telas novas mostram no cabeçalho. Saem
+       daqui e não da tela, pelo mesmo motivo de `ligado`: contar de novo lá é
+       criar a segunda verdade. */
+    ligados: saida.filter((p) => p.ligado).length,
     total: saida.length,
     /* Contados à parte para a tela poder dizer quantos são, em vez de os
        misturar ou os cortar em silêncio. */
@@ -203,8 +240,14 @@ export function retrato({
  * A régua está em `docs/produto/CRITERIOS-DE-TELA.md` e foi decidida em 19/08:
  * não é tempo puro. Só o relógio esconderia um projeto que mudou às 3 da manhã
  * por outra máquina, que é exatamente o caso que a federação passou a produzir.
+ *
+ * CC-365: passou a ser o AVESSO de `ligado`, em vez de repetir a conta com
+ * `!==` trocados. Quem chama de fora (com um objeto que não veio de `retrato`)
+ * continua atendido pelo segundo ramo, que é a conta antiga, letra por letra.
  */
-export const quieto = (p) => !p.vivos && !p.esperando && !p.conversas && !p.sessaoNoAr
+export const quieto = (p) => ('ligado' in Object(p)
+  ? !p.ligado
+  : !p.vivos && !p.esperando && !p.conversas && !p.sessaoNoAr)
 
 function maisCitada(lista) {
   if (!lista.length) return null
