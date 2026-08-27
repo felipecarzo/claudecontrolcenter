@@ -1131,6 +1131,62 @@ dele dizer `projeto › frente` em vez de texto solto.
 
 ## Aberto
 
+## ▶ Conserto solto, 26/08: o botão de liberar escrita não existe na tela que está no ar
+
+### CC-361 🔴 26/08: o framework pede autorização e não há onde clicar
+
+Medido hoje, quando o framework em modo sugestivo barrou uma edição em
+`hooks/commit-auto.mjs` e disse "ele aparece no cartão do projeto para você
+liberar SÓ este arquivo". O pedido é registrado certo (`pedidos[]` em
+`.framework/estado.json`, e a rota `/api/framework?projeto=cockpit` devolve
+ele), mas **o botão só existe em `src/ui.html`, o painel antigo**, servido em
+`/v1`. A tela padrão (`src/ui_v2.html`, servida em `/`) tem ZERO ocorrência de
+`autorizar`, `código travado` ou `liberar só este`.
+
+Efeito: quem só usa o painel novo vê a trava barrar o trabalho e **não tem
+caminho nenhum para destravar pela tela** — só editando o arquivo de estado à
+mão, que é justamente o que o modo existe para evitar. O recado do próprio
+guarda aponta para um botão que não está lá.
+
+É a mesma família dos três buracos de 20/08: o painel novo herdou o código e
+não herdou as peças. O que falta é portar o bloco `fw-aut` / `fw-pedidos`
+(`src/ui.html:4944-4966`) e o tratador do clique (`src/ui.html:10054`) para o
+`ui_v2.html`.
+
+**Como saber que fechou:** com um pedido pendente, abrir `/` (não `/v1`), achar
+o arquivo citado no cartão do projeto, clicar em "liberar só este", confirmar, e
+a edição passar a ser aceita sem mexer em `.framework/estado.json` na mão.
+
+✅ **Feito em 26/08 pela rota `sistemas`** (`src/ui_v2.html` emprestado da rota
+`front`, com autorização dele na hora, e devolvido). Entrou o bloco `fw-aut` com
+a lista de pedidos, o botão passa o alvo, a confirmação diz se é um arquivo ou o
+projeto inteiro, e o estilo veio junto. Teste no gate guardando a peça
+(`test.mjs`, "CC-361"), 172 ok. **Não renderizei a tela com a trava ativa**: o
+modo desta sessão resolve para `restritivo`, que não trava, então o bloco não
+tinha como aparecer numa captura. O que está provado é a peça e o caminho do
+clique, não a foto.
+
+### CC-362 🔴 26/08: a tela diz um modo e a trava usa outro
+
+Achado enquanto se fazia o CC-361. `.framework/estado.json` diz
+`"modo": "sugestivo"`, o aviso de abertura da sessão anuncia "Modo Sugestivo",
+e `frameworkDisco.ler()` devolve **`restritivo`** para a mesma sessão. A causa
+é por desenho: `modoDaRota()` lê a marca `🎚` da linha da rota em
+`docs/ROTAS-ATIVAS.md` e ela **vence o modo do projeto**, sem que nada na tela
+diga isso.
+
+O efeito medido hoje: marcar a própria rota com `🎚 continuativo` **afrouxou a
+trava de escrita da sessão**, e o registro da autorização saiu carimbado com
+`"modo": "restritivo"` enquanto tudo o que se lê na tela diz sugestivo.
+
+É exatamente a "duas verdades para o mesmo projeto" que o comentário de
+`vigente()` em `src/framework.mjs` diz que o painel já pagou duas vezes, e desta
+vez ela decide se a trava trava.
+
+**Como saber que fechou:** com uma rota marcada com `🎚`, o cartão do projeto
+diz qual modo está VALENDO e de onde ele veio (projeto, rota ou capa da sessão),
+e o aviso de abertura da sessão anuncia o mesmo modo que a trava usa.
+
 ## ▶ Frente nova, aberta em 21/08: sincronizar as máquinas sem terminal
 
 Proposta dele, com as palavras dele:

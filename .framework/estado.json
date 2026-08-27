@@ -3,7 +3,9 @@
  "fase": "execucao",
  "ligado": true,
  "modo": "sugestivo",
- "autorizado": [],
+ "autorizado": [
+  "hooks/commit-auto.mjs"
+ ],
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
   "criterios": [
@@ -159,6 +161,13 @@
    "de": "restritivo",
    "para": "sugestivo",
    "quando": "2026-08-26T17:51:52.262Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "hooks/commit-auto.mjs",
+   "motivo": "ele escreveu 'libera' no chat em 26/08, depois de o botao do painel nao existir na tela nova (CC-361)",
+   "modo": "restritivo",
+   "quando": "2026-08-27T00:54:41.742Z"
   }
  ],
  "verificacao": {
@@ -210,5 +219,6 @@
   "esperado": "cada tela abre com a pergunta dela no topo e um veredito em uma frase, nas palavras dele"
  },
  "nivelBancada": "rascunho",
- "_rota": "sistemas"
+ "_rota": "sistemas",
+ "pedidos": []
 }
