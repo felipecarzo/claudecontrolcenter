@@ -1,8 +1,8 @@
 {
  "metodo": "mvp-basico",
  "fase": "execucao",
- "ligado": false,
- "modo": "restritivo",
+ "ligado": true,
+ "modo": "sugestivo",
  "autorizado": [],
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
@@ -157,20 +157,8 @@
   {
    "tipo": "modo",
    "de": "restritivo",
-   "para": "revisao",
-   "quando": "2026-08-25T15:02:38.499Z"
-  },
-  {
-   "tipo": "modo",
-   "de": "restritivo",
-   "para": "dialogo",
-   "quando": "2026-08-25T19:37:43.260Z"
-  },
-  {
-   "tipo": "modo",
-   "de": "restritivo",
-   "para": "dialogo",
-   "quando": "2026-08-25T20:00:13.464Z"
+   "para": "sugestivo",
+   "quando": "2026-08-26T17:51:52.262Z"
   }
  ],
  "verificacao": {

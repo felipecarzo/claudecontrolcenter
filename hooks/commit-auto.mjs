@@ -19,6 +19,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 export const MARCADOR = path.join(os.homedir(), '.cache', 'agent-cockpit', 'commit-liberado.json')
 
@@ -46,7 +47,10 @@ function desligar() {
 }
 
 // só roda como CLI quando chamado direto, não quando importado pelo teste/guarda
-if (import.meta.url === `file://${process.argv[1]}`) {
+// `pathToFileURL` e não `file://${...}`: no Windows o caminho é `D:\...`, e a
+// concatenação crua nunca casa com `import.meta.url` (`file:///D:/...`). O
+// bloco inteiro ficava morto lá, calado e com código de saída 0.
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const acao = process.argv[2]
   const sessao = process.env.CLAUDE_CODE_SESSION_ID || process.argv[3] || ''
   if (acao === 'on') {

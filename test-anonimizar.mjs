@@ -23,7 +23,7 @@ import assert from 'node:assert'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { anonimizar, reidentificar, vazou } from './src/anonimizar.mjs'
 import { mascararArquivo } from './src/anonimoDisco.mjs'
 
@@ -55,12 +55,14 @@ if (suiteDoPierre) {
   /* A suíte importa `./anonimizar.ts`, que o Node não executa. Trocamos o
      import pelo port e rodamos o arquivo inteiro, sem tocar no original. */
   const fonte = fs.readFileSync(suiteDoPierre, 'utf8')
-    .replace(/from ["']\.\/anonimizar\.ts["']/, `from ${JSON.stringify(path.join(AQUI, 'src', 'anonimizar.mjs'))}`)
+    /* O import tem que ser URL, não caminho: no Windows `D:\...` faz o Node
+       ler "d:" como protocolo e recusar o módulo (ERR_UNSUPPORTED_ESM_URL_SCHEME). */
+    .replace(/from ["']\.\/anonimizar\.ts["']/, `from ${JSON.stringify(pathToFileURL(path.join(AQUI, 'src', 'anonimizar.mjs')).href)}`)
 
   const temporario = path.join(AQUI, `.anonimizar-sincronia-${process.pid}.mjs`)
   fs.writeFileSync(temporario, fonte, 'utf8')
   try {
-    await import(`file://${temporario}`)
+    await import(pathToFileURL(temporario).href)
     console.log('sincronia com o Pierre: a suíte de lá passa contra o port daqui')
   } finally {
     fs.rmSync(temporario, { force: true })
