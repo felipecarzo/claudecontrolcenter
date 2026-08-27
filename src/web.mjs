@@ -100,6 +100,7 @@ import { arquivosDeclarados } from './oficinas.mjs'
 import {
   desligar as desligarFramework, gravar as gravarFramework, ler as lerFramework,
   ligar as ligarFramework, situacao as situacaoFramework, gravarSessao as gravarModoSessao,
+  origemDoModo,
 } from './frameworkDisco.mjs'
 import {
   MODOS, PERFIS, acharModo as acharModoFramework,
@@ -184,6 +185,16 @@ function retratoFramework(raiz) {
     tituloModo: modo.titulo,
     explicaModo: modo.explica,
     modoTrava: Boolean(modo.trava),
+    /* CC-362: o modo nunca viaja sozinho, a origem vai junto. São três camadas
+       capazes de decidi-lo (projeto, marca 🎚 na linha da rota, capa da sessão),
+       e a tela mostrava só o nome. Quando a rota vencia, o cartão anunciava o
+       modo do projeto e a trava usava outro, sem nada dizer que havia terceira
+       opinião. `de` é para o código escolher o rótulo, `texto` é a frase pronta
+       para quem lê: a tela e o aviso de abertura da sessão usam a MESMA, senão
+       as duas voltam a divergir por caminhos separados. */
+    origemModo: origemDoModo(s.estado).de,
+    origemModoTexto: origemDoModo(s.estado).texto,
+    rotaDoModo: s.estado._rota || null,
     autorizado: s.estado.autorizado || [],
     // CC-91 parte 3: o que eu pedi e ele ainda não liberou
     pedidos: s.estado.pedidos || [],

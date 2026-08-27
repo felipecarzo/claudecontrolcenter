@@ -403,8 +403,8 @@ export const TOM_RECOMENDADO = {
   desligado: 'explicativo',
   dialogo: 'explicativo',
   sugestivo: 'direto',
-  restritivo: 'direto',
-  // contínuo herda o tom do restritivo: é o mesmo fluxo, executando mais longe
+  continuativo: 'direto',
+  // contínuo herda o tom do continuativo: é o mesmo fluxo, executando mais longe
   continuo: 'direto',
   /* Os seis de 17/08. O tom sai do que o modo PRODUZ: estudo e revisão entregam
      texto para ele ler, então explicam; os de execução reportam e calam. */
@@ -514,12 +514,21 @@ export const MODOS = {
    * Um agente que "executa até o fim" não pode parar a cada arquivo. Quem trava
    * por clique é o `sugestivo`, onde a trava É o ponto.
    *
-   * O que o restritivo faz, então: muda o TOM (direto, sem prosa) e o
+   * O que o continuativo faz, então: muda o TOM (direto, sem prosa) e o
    * comportamento (pergunta o objetivo uma vez, monta o backlog, executa). A
-   * contenção vem do Routia, de fora. */
-  restritivo: {
-    id: 'restritivo',
-    titulo: 'Restritivo',
+   * contenção vem do Routia, de fora.
+   *
+   * ⚠️ **Chamava-se `restritivo` por dentro até 27/08, e o nome mentia ao
+   * contrário.** O título virou "Continuativo" em 16/08 e o id ficou para trás,
+   * então o registro saía carimbado `"modo": "restritivo"` para um modo que
+   * **não trava nada**, o mais solto depois do desligado. Quem lesse o
+   * histórico entendia o oposto do que aconteceu, e foi metade do CC-362: a
+   * tela dizia Sugestivo, o carimbo dizia restritivo, e nenhum dos dois era
+   * mentira sozinho. O nome velho segue aceito em `APELIDOS`, porque ele está
+   * gravado no estado de 12 projetos e em todo o histórico deles. */
+  continuativo: {
+    id: 'continuativo',
+    titulo: 'Continuativo',
     explica: 'Não sai do fluxo: pedido novo vira item do backlog e a execução continua. Só para no que só ele decide.',
     /* Definição dele em 16/08, e é a que dá mecanismo ao modo:
      *
@@ -725,14 +734,25 @@ Object.assign(MODOS, {
    invalidaria o estado gravado de cada projeto. */
 MODOS.dialogo.titulo = 'Livre'
 MODOS.dialogo.explica = 'Conversa solta. Sem um gatilho claro seu, eu pergunto antes de escrever código.'
-MODOS.restritivo.titulo = 'Continuativo'
+/* O título já nasce certo desde 27/08, junto com o id. A linha antiga
+   (`MODOS.restritivo.titulo = 'Continuativo'`) era o remendo que mantinha os
+   dois desalinhados. */
 MODOS.continuo.titulo = 'Autônomo'
 MODOS.continuo.explica = 'Vai até o fim do backlog sem parar para mostrar. É o modo de quando você não está olhando.'
 
-/** Apelido para nome novo, aceito na linha de comando e na tela. */
+/**
+ * Apelido para nome novo, aceito na linha de comando, na tela **e no estado
+ * gravado**, este último desde 27/08, quando `modoDe` passou a resolver por
+ * aqui. Antes, nome que não fosse a chave exata caía em `dialogo` calado.
+ *
+ * `restritivo` é o nome que este modo teve até 27/08, e continua entrando por
+ * aqui porque está gravado no `estado.json` de 12 projetos e no histórico
+ * inteiro deles. Apagar da tabela é reescrever o passado; deixar aqui custa
+ * uma linha.
+ */
 export const APELIDOS = {
   livre: 'dialogo',
-  continuativo: 'restritivo',
+  restritivo: 'continuativo',
   autonomo: 'continuo',
   debug: 'depuracao',
   design: 'desenho',
@@ -891,7 +911,16 @@ export function perfisEmArvore() {
 
 /** `dialogo` é o padrão: é o fluxo que já existia antes de os modos nascerem, e
  *  estado antigo (sem o campo) não pode mudar de comportamento sozinho. */
-export const modoDe = (estado) => MODOS[estado?.modo] || MODOS.dialogo
+/* `acharModo`, e não `MODOS[...]` direto: o estado gravado pode trazer um nome
+   antigo, e a busca crua devolvia `undefined`, caindo em `dialogo`, o modo mais
+   PERMISSIVO de todos. É o defeito de 18/08 acontecendo de novo por outro
+   caminho: nome que não resolve desligava a trava em silêncio, e a tela seguia
+   anunciando o modo como se ele valesse.
+
+   Medido em 27/08, antes de existir: um estado com `"modo": "continuativo"` (o
+   nome que a tela mostra, e que o quadro de rotas manda escrever) resolvia para
+   Livre. O apelido já existia e só a linha de comando o usava. */
+export const modoDe = (estado) => acharModo(estado?.modo) || MODOS.dialogo
 
 /**
  * O que vale AGORA neste projeto: o perfil, se houver, senão o modo.

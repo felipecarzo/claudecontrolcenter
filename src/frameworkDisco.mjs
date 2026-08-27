@@ -11,6 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { acharModo, estadoInicial } from './framework.mjs'
+import { linhaEhDaSessao } from './routia.mjs'
 
 export const PASTA = '.framework'
 export const ARQUIVO = 'estado.json'
@@ -74,7 +75,11 @@ export function modoDaRota(raiz, sessao) {
   let texto = null
   try { texto = readFileSync(join(raiz, 'docs', 'ROTAS-ATIVAS.md'), 'utf8') } catch { return null }
   for (const linha of texto.split(/\r?\n/)) {
-    if (!linha.includes('🔴') || !linha.includes(marca)) continue
+    /* `linhaEhDaSessao`, e não `includes`: a linha cita o histórico dela
+       inteiro, então uma sessão só CITADA herdava o modo de uma rota que
+       nunca teve. Medido em 27/08, e é a causa do CC-362. Ver o comentário
+       de `donoDaLinha` em `routia.mjs`, onde a regra mora. */
+    if (!linhaEhDaSessao(linha, marca)) continue
     const m = linha.match(/🎚\s*`?([a-zà-ú-]+)`?/i)
     if (!m) continue
 
@@ -112,23 +117,49 @@ export function ler(raiz, { sessao = process.env.CLAUDE_CODE_SESSION_ID } = {}) 
      escolha mais recente e mais deliberada; a rota vence o projeto porque é o
      que separa frontend de backend sem inventar nome novo, e sobrevive ao
      reinício da sessão, que era o furo da capa. */
+  /* `_origemModo` responde "de ONDE veio o modo que está valendo", e é a peça
+     que faltava para a tela poder contar. Sem ela havia só `_rota`, que ficava
+     na resposta mesmo quando a capa da sessão vencia depois: a origem dizia
+     rota e quem decidia era a capa. Era duas verdades dentro do mesmo objeto,
+     o defeito que este arquivo já tinha pago duas vezes (ver `vigente()` em
+     `framework.mjs`). Agora quem escreve o modo escreve a origem junto, na
+     mesma linha, e não há como uma andar sem a outra. */
   let saida = estado
+  let origem = 'projeto'
+  let rota = null
   const daRota = modoDaRota(raiz, sessao)
-  if (daRota?.modo) saida = { ...saida, modo: daRota.modo, _rota: daRota.rota }
+  if (daRota?.modo) {
+    saida = { ...saida, modo: daRota.modo }
+    origem = 'rota'
+    rota = daRota.rota
+  }
 
+  let capa = null
   try {
-    const capa = JSON.parse(readFileSync(join(raiz, PASTA, 'sessoes', `${id}.json`), 'utf8'))
+    capa = JSON.parse(readFileSync(join(raiz, PASTA, 'sessoes', `${id}.json`), 'utf8'))
+  } catch { /* sessão sem capa é o normal: só existe quando alguém escolheu */ }
+
+  if (capa?.modo || capa?.tom) {
     /* Só os campos de comportamento. Se a capa pudesse sobrepor `ligado` ou o
        MVP, uma sessão desligaria o framework das outras sem ninguém ver. */
-    return {
+    saida = {
       ...saida,
       ...(capa.modo ? { modo: capa.modo } : {}),
       ...(capa.tom ? { tom: capa.tom } : {}),
-      _sessao: id,
     }
-  } catch {
-    return saida === estado ? estado : { ...saida, _sessao: id }
+    if (capa.modo) { origem = 'sessao'; rota = null }
   }
+
+  return { ...saida, _sessao: id, _origemModo: origem, ...(rota ? { _rota: rota } : {}) }
+}
+
+/** De onde veio o modo que está valendo, em português, para a tela. Recebe o
+ *  que `ler()` devolveu. */
+export function origemDoModo(estado) {
+  const de = estado?._origemModo || 'projeto'
+  if (de === 'rota') return { de, texto: `da rota \`${estado._rota}\`, marcada por você no quadro` }
+  if (de === 'sessao') return { de, texto: 'desta sessão, escolhido só para ela' }
+  return { de, texto: 'do projeto, valendo para todas as sessões' }
 }
 
 /** Grava a capa de uma sessão: só modo e tom, nada além. */
@@ -153,14 +184,25 @@ export function gravar(raiz, estado) {
   mkdirSync(pasta, { recursive: true })
   const alvo = join(pasta, ARQUIVO)
 
-  /* Se o estado veio de `ler()` com capa de sessão, o `modo` e o `tom` dele
-     são DA SESSÃO — regravá-los aqui promoveria a escolha de um agente a
-     escolha do projeto, em silêncio. Restaura os dois do arquivo cru antes de
-     escrever; mudança de sessão passa por `gravarSessao`, nunca por aqui. */
+  /* Se o estado veio de `ler()` com alguma camada por cima, o `modo` e o `tom`
+     dele são DA SESSÃO ou DA ROTA, e regravá-los aqui promoveria a escolha de um
+     agente a escolha do projeto, em silêncio. Restaura os dois do arquivo cru
+     antes de escrever; mudança de sessão passa por `gravarSessao`, nunca daqui.
+
+     ⚠️ **Todo campo derivado sai, e a regra é o prefixo `_`, não a lista.**
+     A versão anterior apagava só `_sessao`, e `_rota` (nascido depois) passou
+     direto: em 27/08 o `estado.json` deste projeto estava com `_rota:
+     "sistemas"` GRAVADO, de uma rota fechada no dia anterior. O caminho é o
+     `cc framework autorizar`, que faz `gravar(ler())`: ler injeta a origem,
+     gravar persistia junto. O efeito é o pior tipo para o CC-362: toda sessão
+     SEM rota nenhuma passava a receber uma origem de volta, e uma tela que
+     mostre de onde veio o modo mentiria com confiança. Campo derivado que vira
+     dado é indistinguível de dado de verdade na leitura seguinte. */
   let limpo = estado
-  if (estado && estado._sessao) {
+  const derivados = estado ? Object.keys(estado).filter((k) => k.startsWith('_')) : []
+  if (derivados.length) {
     limpo = { ...estado }
-    delete limpo._sessao
+    for (const k of derivados) delete limpo[k]
     try {
       const cru = JSON.parse(readFileSync(alvo, 'utf8'))
       if ('modo' in cru) limpo.modo = cru.modo; else delete limpo.modo

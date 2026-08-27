@@ -45,7 +45,7 @@ try { entrada = readFileSync(0, 'utf8') } catch { sair() }
 let dados = null
 try { dados = JSON.parse(entrada) } catch { sair() }
 
-const { acharRaiz, ler } = await import(urlDeModulo(AQUI, '../src/frameworkDisco.mjs')).catch(sair)
+const { acharRaiz, ler, origemDoModo } = await import(urlDeModulo(AQUI, '../src/frameworkDisco.mjs')).catch(sair)
 const F = await import(urlDeModulo(AQUI, '../src/framework.mjs')).catch(sair)
 
 const raiz = acharRaiz(dados?.cwd || process.cwd())
@@ -58,7 +58,13 @@ const modo = F.modoDe(estado)
 const tom = F.tomDe(estado)
 const linhas = [
   `FRAMEWORK ligado neste projeto, ${F.resumo(estado.metodo, estado)}`,
-  `Modo ${modo.titulo}: ${modo.explica}`,
+  /* A origem vai JUNTO do modo, na mesma linha, e é o CC-362. Antes o aviso
+     dizia só o nome, e havia três camadas capazes de decidi-lo: o projeto, a
+     marca 🎚 na linha da rota e a capa da sessão. Quando a rota vencia, o aviso
+     continuava anunciando o modo do projeto e a trava usava outro, sem nada na
+     tela contar que existia uma terceira opinião. Nome sem origem é o que
+     torna a divergência invisível. */
+  `Modo ${modo.titulo} (${origemDoModo(estado).texto}): ${modo.explica}`,
   `Tom ${tom}: ${F.TONS[tom]}`,
   /* A regra que ele chamou de "segredo master do framework", e que eu quebrei
      em 15/08 perguntando em prosa no meio de uma resposta longa. Ele:

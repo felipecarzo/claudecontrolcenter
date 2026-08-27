@@ -4,7 +4,20 @@
  "ligado": true,
  "modo": "sugestivo",
  "autorizado": [
-  "hooks/commit-auto.mjs"
+  "hooks/commit-auto.mjs",
+  "src/routia.mjs",
+  "src/frameworkDisco.mjs",
+  "src/caixaGit.mjs",
+  "test-modo-rota.mjs",
+  "src/framework.mjs",
+  "test-framework.mjs",
+  "test.mjs",
+  "hooks/framework-inicio.mjs",
+  "src/web.mjs",
+  "src/trabalho.mjs",
+  "src/ui_v2.html",
+  "src/projetos.mjs",
+  "test-endereco.mjs"
  ],
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
@@ -168,6 +181,97 @@
    "motivo": "ele escreveu 'libera' no chat em 26/08, depois de o botao do painel nao existir na tela nova (CC-361)",
    "modo": "restritivo",
    "quando": "2026-08-27T00:54:41.742Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/routia.mjs",
+   "motivo": "ele escreveu 'libera' no chat em 27/08, para o CC-362 (as tres causas do modo que diverge)",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T01:54:14.719Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/frameworkDisco.mjs",
+   "motivo": "ele escreveu 'libera' no chat em 27/08, para o CC-362 (as tres causas do modo que diverge)",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T01:54:15.027Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/caixaGit.mjs",
+   "motivo": "ele escreveu 'libera' no chat em 27/08, para o CC-362 (as tres causas do modo que diverge)",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T01:54:15.333Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "test-modo-rota.mjs",
+   "motivo": "ele escreveu 'libera' no chat em 27/08, para o CC-362 (as tres causas do modo que diverge)",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T01:54:15.720Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/framework.mjs",
+   "motivo": "ele escolheu 'trocar o nome por dentro' em 27/08, CC-362 terceira causa",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T02:06:43.151Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "test-framework.mjs",
+   "motivo": "CC-362: o teste fixa o id antigo do modo, e o id mudou por escolha dele em 27/08",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T02:07:44.437Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "test.mjs",
+   "motivo": "CC-362: o gate precisa provar que sessao citada nao herda modo de rota alheia, e o id do modo mudou",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T02:10:00.401Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "hooks/framework-inicio.mjs",
+   "motivo": "CC-362: o aviso de abertura precisa dizer de onde veio o modo que esta valendo",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T02:11:43.880Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/web.mjs",
+   "motivo": "CC-362: o cartao do projeto precisa entregar de onde veio o modo que esta valendo",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T02:17:09.676Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/trabalho.mjs",
+   "motivo": "ele escolheu 'os dois, nesta ordem' em 27/08: ligar o agente ao cartao no quadro, depois limpar as duplicatas",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T15:57:35.802Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/ui_v2.html",
+   "motivo": "ele escolheu 'os dois, nesta ordem' em 27/08: ligar o agente ao cartao no quadro, depois limpar as duplicatas",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T15:57:36.079Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/projetos.mjs",
+   "motivo": null,
+   "modo": "sugestivo",
+   "quando": "2026-08-27T17:04:17.842Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "test-endereco.mjs",
+   "motivo": "decisao dele em 27/08: o voltar fecha o que esta aberto e nunca troca de tela; o teste ainda guardava o comportamento antigo",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T17:38:58.906Z"
   }
  ],
  "verificacao": {
@@ -219,6 +323,5 @@
   "esperado": "cada tela abre com a pergunta dela no topo e um veredito em uma frase, nas palavras dele"
  },
  "nivelBancada": "rascunho",
- "_rota": "sistemas",
  "pedidos": []
 }

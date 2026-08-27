@@ -102,7 +102,7 @@ assert.equal(podeEditar('mvp-basico', vazio, 'src/a.mjs').ok, false)
 ok('desligado libera tudo e preserva o MVP; ausência do campo conta como ligado')
 
 // ------------------------------------------------------------- os modos
-const { MODOS, modoDe, autorizar, trocarModo } = await import('./src/framework.mjs')
+const { MODOS, modoDe, acharModo, autorizar, trocarModo } = await import('./src/framework.mjs')
 
 // estado antigo, sem o campo, não pode mudar de comportamento sozinho
 assert.equal(modoDe({}).id, 'dialogo')
@@ -168,15 +168,28 @@ assert.match(resumo('mvp-basico', aut.estado), /autoriza/i)
    (estudo, depuração, desenho, revisão, pareado, entrega), conferidos no bloco
    dos perfis mais abaixo. */
 assert.deepEqual(Object.keys(MODOS).slice(0, 5),
-  ['desligado', 'dialogo', 'sugestivo', 'restritivo', 'continuo'])
+  ['desligado', 'dialogo', 'sugestivo', 'continuativo', 'continuo'])
 assert.equal(Object.keys(MODOS).length, 11, 'mudou a quantidade de modos: confira a tela e o tom de cada um')
 for (const m of Object.values(MODOS)) assert.ok(m.explica && m.titulo, `modo ${m.id} sem texto`)
 // a diferença entre revisão e contínuo é UMA: o teto. Todo o resto do fluxo é
 // igual, e se divergirem em outra coisa o modo virou outra coisa.
 assert.equal(MODOS.continuo.fluxo.semTeto, true)
-assert.notEqual(MODOS.restritivo.fluxo.semTeto, true)
-assert.equal(MODOS.continuo.fluxo.pedidoNovo, MODOS.restritivo.fluxo.pedidoNovo)
-ok('os cinco modos existem, e o contínuo é o restritivo sem o teto')
+assert.notEqual(MODOS.continuativo.fluxo.semTeto, true)
+
+/* CC-362: o nome velho do modo tem que continuar chegando no MESMO modo, e
+   pelo caminho do ESTADO GRAVADO, não só pela linha de comando.
+   O estado de 12 projetos diz `"modo": "restritivo"`; se isso resolvesse para
+   outro modo, a troca de nome teria mudado o comportamento de todos eles em
+   silêncio. E o par inverso guarda o defeito de 18/08: nome que não resolve
+   caía em `dialogo`, o mais permissivo, com a tela anunciando o modo escolhido. */
+assert.equal(modoDe({ modo: 'restritivo' }).id, 'continuativo')
+assert.equal(modoDe({ modo: 'continuativo' }).id, 'continuativo')
+assert.equal(acharModo('restritivo').id, acharModo('continuativo').id)
+assert.equal(modoDe({ modo: 'restritivo' }).trava, false,
+  'o modo que se chamava restritivo NÃO trava: é o nome que mentia, não o comportamento')
+ok('CC-362: o nome velho do modo resolve no mesmo modo, inclusive vindo do estado gravado')
+assert.equal(MODOS.continuo.fluxo.pedidoNovo, MODOS.continuativo.fluxo.pedidoNovo)
+ok('os cinco modos existem, e o contínuo é o continuativo sem o teto')
 
 // ------------------------- os perfis (17/08) e a regra dele
 /* "se tem função bloqueando, entra como framework". O perfil é a combinação de
@@ -251,13 +264,16 @@ ok('os cinco modos existem, e o contínuo é o restritivo sem o teto')
 {
   const F = await import('./src/framework.mjs')
   assert.equal(F.MODOS.dialogo.titulo, 'Livre')
-  assert.equal(F.MODOS.restritivo.titulo, 'Continuativo')
+  assert.equal(F.MODOS.continuativo.titulo, 'Continuativo')
   assert.equal(F.MODOS.continuo.titulo, 'Autônomo')
   assert.equal(F.acharModo('livre').id, 'dialogo')
-  assert.equal(F.acharModo('continuativo').id, 'restritivo')
+  assert.equal(F.acharModo('continuativo').id, 'continuativo')
   assert.equal(F.acharModo('autonomo').id, 'continuo')
   assert.equal(F.acharModo('debug').id, 'depuracao')
-  assert.equal(F.acharModo('restritivo').id, 'restritivo', 'o id antigo continua valendo')
+  /* CC-362: o id passou a ser `continuativo`, igual ao título. O nome velho
+     virou apelido e continua chegando no mesmo modo, e é o que impede a troca
+     de mudar o comportamento dos 12 projetos que têm `restritivo` gravado. */
+  assert.equal(F.acharModo('restritivo').id, 'continuativo', 'o id antigo continua valendo')
   assert.equal(F.acharModo('nao-existe'), null)
   // e os modos novos existem, cada um declarando o que exige
   for (const m of ['estudo', 'depuracao', 'desenho', 'revisao', 'pareado', 'entrega']) {
@@ -591,7 +607,7 @@ ok('CC-354: cibersegurança trava código até declarar superfície, e a auditor
    O teste existe porque o sintoma foi caro: ele desligou o framework três vezes
    numa tarde para eu conseguir trabalhar, o que é o oposto de um framework. */
 {
-  assert.equal(MODOS.restritivo.trava, false, 'o restritivo voltou a travar código')
+  assert.equal(MODOS.continuativo.trava, false, 'o continuativo voltou a travar código')
   assert.equal(MODOS.sugestivo.trava, true, 'o sugestivo tem que travar: a trava É o ponto dele')
   assert.equal(MODOS.dialogo.trava, false)
 
