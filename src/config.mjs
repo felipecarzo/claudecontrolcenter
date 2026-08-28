@@ -113,6 +113,41 @@ export function setPaineisMeus(paineis) {
   return limpos
 }
 
+/**
+ * CC-371: os projetos que ele escolheu acompanhar no quadro.
+ *
+ * Pedido dele em 27/08: *"pegar só dois projetos que eu estou trabalhando
+ * agora, que são os mais importantes (…) é importante que eu possa separar um
+ * ou mais, se um só por vez ia ser ruim também"*. O filtro do quadro era
+ * `todos` ou UM, que é exatamente o caso que ele chamou de ruim.
+ *
+ * **Lista VAZIA significa todos, e não "nenhum".** É a escolha que preserva o
+ * comportamento de quem nunca mexeu nisto, e evita a tela nascer em branco no
+ * dia em que alguém limpar a seleção sem querer. O preço é não existir o
+ * estado "quero ver zero projetos", que ninguém quer.
+ *
+ * Mora aqui, e não no navegador, por decisão dele: ele lê no telefone com a
+ * página aberta o dia inteiro, e a escolha tem que sobreviver ao recarregar e
+ * valer nas duas máquinas.
+ */
+export function projetosDoQuadro(cfg = readConfig()) {
+  return Array.isArray(cfg.quadroProjetos) ? cfg.quadroProjetos : []
+}
+
+export function setProjetosDoQuadro(lista) {
+  const cfg = readConfig()
+  /* Limpa e sem repetido: a lista vem da tela, e nome repetido faria a mesma
+     coluna ser filtrada duas vezes sem efeito visível, o pior tipo de defeito
+     para depurar depois. */
+  const limpos = [...new Set(
+    (Array.isArray(lista) ? lista : [])
+      .map((p) => String(p || '').slice(0, 80).trim())
+      .filter(Boolean),
+  )].slice(0, 40)
+  writeConfig({ ...cfg, quadroProjetos: limpos })
+  return limpos
+}
+
 /** Sem projeto informado, responde só pelo interruptor global. */
 export function isEnabled(cwd = process.cwd(), cfg = readConfig()) {
   if (!cfg.enabled) return false

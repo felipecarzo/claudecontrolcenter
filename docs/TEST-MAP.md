@@ -23,9 +23,9 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
 | tela | 29 | 29/29 | 27/29 | 29/29 | 0/29 | 29/29 |
-| acao | 119 | 119/119 | 24/119 | 0/119 | 0/119 | 0/119 |
+| acao | 120 | 120/120 | 25/120 | 0/120 | 0/120 | 0/120 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 89 | 89/89 | 6/89 | 0/89 | 0/89 | 0/89 |
+| endereco | 90 | 90/90 | 6/90 | 0/90 | 0/90 | 0/90 |
 | palavra | 65 | 65/65 | 14/65 | 65/65 | 0/65 | 65/65 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
@@ -66,7 +66,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `vps` | viva | src/ui_v2.html#view-vps | estreito |
 | `maquina` | viva | src/ui_v2.html#view-maquina | estreito |
 
-## acao (119)
+## acao (120)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -189,6 +189,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-tira` | viva | src/ui_v2.html | explica, estreito |
 | `data-kb-card` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-kb-mover` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-kb-proj` | estatica | src/ui_v2.html | explica, estreito |
 
 ## dado-de-tela (7)
 
@@ -202,7 +203,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_v2.html | explica, estreito |
 | `data-n` | viva | src/ui_v2.html | explica, estreito |
 
-## endereco (89)
+## endereco (90)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -240,6 +241,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/hooks/provar` | estatica | src/web.mjs | funciona, explica |
 | `/api/rotinas` | estatica | src/web.mjs | funciona, explica |
 | `/api/paineis-meus` | estatica | src/web.mjs | funciona, explica |
+| `/api/quadro-projetos` | estatica | src/web.mjs | funciona, explica |
 | `/api/sincronia` | estatica | src/web.mjs | funciona, explica |
 | `/api/sincronia/acao` | estatica | src/web.mjs | funciona, explica |
 | `/api/tela` | estatica | src/web.mjs | explica |

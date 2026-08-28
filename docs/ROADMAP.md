@@ -554,6 +554,73 @@ segue verde, 144 verificações.
 (`npm run test:central`), junto dos outros testes de navegador que ficam fora do
 gate diário por exigirem Chrome. Só faltava esse registro.
 
+### CC-371 ✅ 27/08: escolher VÁRIOS projetos no quadro, não um só
+
+Pedido dele, com as palavras dele:
+
+> *"eu queria que desse pra separar por projetos e fazer uma lista de projetos,
+> por exemplo, pode ser todos os projetos ou selecionar qual projeto eu quero
+> que apareça. Assim eu posso por exemplo pegar só dois projetos que eu estou
+> trabalhando agora, que são os mais importantes e separar, pra acompanhar só
+> eles, entende? Mas é importante que eu possa separar um ou mais, né, se um só
+> por vez ia ser ruim também."*
+
+**O que existe hoje, medido:** o filtro do quadro é um `<select>` de escolha
+única, `todos os projetos` ou UM. `KB_PROJETO` guarda uma string, e quatro
+lugares comparam com `'todos'`. É exatamente o "um só por vez" que ele diz que
+seria ruim.
+
+**O que muda:** `KB_PROJETO` deixa de ser uma string e passa a ser um conjunto.
+Vazio significa todos, que preserva o comportamento de hoje para quem não
+escolher nada.
+
+**Três coisas a decidir antes de construir, e nenhuma é técnica:**
+
+1. **Onde a escolha mora.** Se ficar só na tela, ela se perde ao recarregar, e
+   ele lê no telefone com a página aberta o dia todo. Guardar na configuração
+   faz a escolha viajar entre as máquinas, que pode ser bom ou atrapalhar.
+2. **O que a seleção afeta.** Só o quadro, ou também a faixa de quem está
+   trabalhando fora dele e a contagem do topo? Filtro que pega metade da tela é
+   o tipo de coisa que faz o número parecer errado.
+3. **Como isso conversa com os favoritos**, que já existem no painel e são
+   outra forma de dizer "estes me interessam agora". Duas listas de preferência
+   para a mesma pergunta viram duas verdades, que é o defeito que este painel
+   já pagou três vezes.
+
+⚠️ **`<select multiple>` não serve**, e a armadilha está escrita neste projeto:
+elemento com estado do SISTEMA operacional dentro de bloco redesenhado por timer
+perde o menu aberto na cara dele. A tela do quadro repinta de 2 em 2 segundos, e
+o `<select>` de hoje já precisou de guarda de foco por causa disso.
+
+**Como ficou, com as duas decisões dele:** a escolha mora no servidor
+(`/api/quadro-projetos`), então sobrevive ao recarregar e vale nas duas
+máquinas; e vale na tela Trabalho inteira, incluindo a faixa de quem trabalha
+fora do quadro e as contagens, para nenhum número discordar do que está na
+frente dele. Uma caixinha por projeto, e "todos" é uma caixinha também, não uma
+opção fora da lista: marcar ela é limpar a seleção, que é o mesmo estado.
+
+**A guarda de foco do `<select>` saiu junto.** Ela existia porque menu nativo
+aberto morre no redesenho; botão não tem menu para perder, e segurar o
+redesenho por foco num botão congelaria as contagens sem motivo.
+
+**O defeito que só o clique de verdade pegou, e vale mais que o recurso.** O
+`if` da caixinha nasceu no ouvinte de `change`, herdado do `<select>` que estava
+ali antes. **Botão não dispara `change`.** As caixinhas apareciam, mudavam de
+cor ao passar o dedo, e o clique não fazia NADA, sem erro nenhum na tela. Ler o
+código não pegaria: o `if` estava escrito e correto, no lugar errado. Foi clicar
+no navegador de verdade e medir `KB_PROJETOS.size` antes e depois.
+
+**Prova:** com a tela em 390px, marcar dois projetos leva o quadro de 117
+cartões para 30, a faixa de fora do quadro cai junto, e recarregar mantém os
+dois marcados. O gate guarda que a caixinha é botão, que o clique cai no ouvinte
+certo, e que conjunto vazio significa todos.
+
+**Anotado, sem conserto:** as caixinhas mostram `VPS_cockpit` e
+`proj_controlcenter` como dois projetos, e são a mesma pasta por atalho. O
+`projetosDe` já resolve isso para os cartões de backlog (CC-363), mas as tarefas
+e pendências trazem o nome que o agente reportou. É o mesmo defeito de família,
+noutra fonte.
+
 ### CC-370 ✅ 27/08: o gesto de voltar tirava ele da tela, uma de cada vez
 
 Continuação do CC-369, depois de ele dizer a máquina: *"eh no Android, podemos

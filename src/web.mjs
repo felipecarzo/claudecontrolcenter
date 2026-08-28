@@ -120,6 +120,7 @@ import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
   setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig, setVisita,
   setMaquina, setFederacao, moduloLigado, setModuloProjeto, setPaineisMeus,
+  projetosDoQuadro, setProjetosDoQuadro,
   CHAVE_TUDO, visitaGeral, setVisitaGeral, setTelaAberto, lerTelaAberto,
 } from './config.mjs'
 /* CC-243: os pedidos de autorização passam a chegar no painel, para ele decidir
@@ -1524,6 +1525,15 @@ function handler(req, res) {
       return comCorpo(req, res, 1e5, ({ paineis }) => ({ paineis: setPaineisMeus(paineis) }))
     }
     return send(res, 200, { paineis: readConfig().paineisMeus || [] })
+  }
+
+  /* CC-371: os projetos que ele escolheu acompanhar no quadro. Lista vazia
+     significa TODOS, e não nenhum; ver o comentário em `config.mjs`. */
+  if (url.pathname === '/api/quadro-projetos') {
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 1e4, ({ projetos }) => ({ projetos: setProjetosDoQuadro(projetos) }))
+    }
+    return send(res, 200, { projetos: projetosDoQuadro() })
   }
 
   /**

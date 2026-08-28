@@ -649,6 +649,25 @@
     .kb-detalhe p { font-size: 13px; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
     .kb-filtros { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
 
+    /* CC-371: uma caixinha por projeto, ele marca quantas quiser.
+       `flex-wrap` e largura nenhuma declarada: com 22 projetos e 390px de tela,
+       elas empilham sozinhas. Grade de colunas em `style=` já apagou duas telas
+       neste projeto, e aqui o número de caixinhas muda com o dia.
+       O alvo de toque tem 32px de altura: ele usa no telefone, e caixinha de
+       fonte 12 sem altura mínima vira um alvo de 18px, que erra o dedo. */
+    .kb-caixas { display: flex; flex-wrap: wrap; gap: 6px; }
+    .kb-caixa {
+      display: inline-flex; align-items: center; gap: 6px;
+      min-height: 32px; padding: 4px 10px;
+      background: var(--card); color: var(--text-muted);
+      border: 1px solid var(--border); border-radius: 999px;
+      font-size: 12px; font-family: inherit; cursor: pointer;
+      white-space: nowrap;
+    }
+    .kb-caixa:hover { border-color: var(--accent); color: var(--text-main); }
+    .kb-caixa.ligada { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .kb-caixa-conta { opacity: .7; font-variant-numeric: tabular-nums; }
+
     /* CC-363: quem está trabalhando fora do quadro.
        A cor é a de "esperando" e não a de erro: o agente não quebrou nada, o
        backlog é que não tem onde pendurar o trabalho dele. Erro vermelho aqui
@@ -10375,7 +10394,55 @@
         : seloDe(p.maquinaDeFora || 'outra máquina', { frio: true });
     };
 
-    let KB_PROJETO = 'todos';
+    /**
+     * CC-371: os projetos escolhidos no quadro, e agora são VÁRIOS.
+     *
+     * Pedido dele em 27/08: *"pegar só dois projetos que eu estou trabalhando
+     * agora (…) é importante que eu possa separar um ou mais, se um só por vez
+     * ia ser ruim também"*. Era `KB_PROJETO`, uma string que valia `'todos'` ou
+     * o nome de UM.
+     *
+     * **Conjunto vazio significa TODOS, nunca nenhum.** Preserva o
+     * comportamento de quem nunca mexeu e evita a tela nascer em branco quando
+     * alguém limpar a seleção sem querer.
+     *
+     * A escolha mora no servidor (`/api/quadro-projetos`), decisão dele: ele lê
+     * no telefone com a página aberta o dia todo, e ela tem que sobreviver ao
+     * recarregar e valer nas duas máquinas.
+     *
+     * ⚠️ **Caixinhas, e não `<select multiple>`.** A armadilha está escrita
+     * neste projeto: elemento com estado do SISTEMA operacional dentro de bloco
+     * redesenhado por timer perde o menu aberto na cara dele, e esta tela
+     * repinta de 2 em 2 segundos. O `<select>` de escolha única que estava aqui
+     * já precisou de guarda de foco por isso; a caixinha é um botão, e botão
+     * não tem menu para perder.
+     */
+    let KB_PROJETOS = new Set();
+    let KB_PROJETOS_LIDO = false;
+    const kbTodosProjetos = () => KB_PROJETOS.size === 0;
+    const kbMostra = (projeto) => kbTodosProjetos() || KB_PROJETOS.has(projeto);
+
+    async function kbCarregarEscolha() {
+      if (KB_PROJETOS_LIDO) return;
+      KB_PROJETOS_LIDO = true;
+      try {
+        const r = await fetch('/api/quadro-projetos');
+        if (r.ok) {
+          const { projetos } = await r.json();
+          KB_PROJETOS = new Set(Array.isArray(projetos) ? projetos : []);
+          renderViewTrabalho();
+        }
+      } catch (e) { avisarFalha('/api/quadro-projetos', String(e.message || e)); }
+    }
+
+    /* Grava e repinta. Não espera a resposta para repintar: a escolha é dele e
+       tem que responder ao dedo na hora; se a gravação falhar, o aviso aparece
+       e a tela já mostrou o que ele pediu. */
+    function kbGravarEscolha() {
+      post('/api/quadro-projetos', { projetos: [...KB_PROJETOS] })
+        .catch((e) => avisarFalha('/api/quadro-projetos', String(e.message || e)));
+    }
+
     let KB_ABERTO = null;
     let KB_PEDIU_PROJETOS = false;
     let KB_MEXENDO = false;
@@ -10442,14 +10509,11 @@
          segundos destruiria o elemento no meio do gesto. */
       if (KB_MEXENDO) return;
 
-      const filtro = container.querySelector('[data-kb-projeto]');
-      if (filtro && document.activeElement === filtro) {
-        if (!filtro.dataset.kbBlur) {
-          filtro.dataset.kbBlur = '1';
-          filtro.addEventListener('blur', () => renderViewTrabalho(), { once: true });
-        }
-        return;
-      }
+      /* A guarda de foco do `<select>` saiu junto com ele no CC-371. Ela existia
+         porque menu nativo aberto morre no redesenho e sumia na cara dele; a
+         caixinha é um botão, e botão não tem menu para perder. Segurar o
+         redesenho por foco num botão congelaria as contagens sem motivo. */
+      kbCarregarEscolha();
 
       /* A etiqueta de máquina sai da lista de projetos, e `DATA.projetos` NASCE
          como `[]`, que é verdadeiro: testar a existência dele nunca dispara. */
@@ -10460,10 +10524,13 @@
 
       const todos = kbCartoes();
       const projetos = [...new Set(todos.map((c) => c.projeto))].sort();
-      if (KB_PROJETO !== 'todos' && !projetos.includes(KB_PROJETO)) KB_PROJETO = 'todos';
-      const lista = KB_PROJETO === 'todos' ? todos : todos.filter((c) => c.projeto === KB_PROJETO);
+      /* Projeto escolhido que sumiu da lista (renomeado, ou a pasta saiu) nao
+         pode deixar o quadro vazio para sempre: ele cai da selecao sozinho, e
+         se nao sobrar nenhum a selecao volta a ser todos. */
+      for (const p of [...KB_PROJETOS]) if (!projetos.includes(p)) KB_PROJETOS.delete(p);
+      const lista = todos.filter((c) => kbMostra(c.projeto));
       const fechadas = (DATA.trabalho.grupos || [])
-        .filter((g) => KB_PROJETO === 'todos' || g.projeto === KB_PROJETO)
+        .filter((g) => kbMostra(g.projeto))
         .reduce((s, g) => s + (g.fechadas || 0), 0);
 
       /**
@@ -10496,7 +10563,7 @@
             : (c.fonte === 'todo' ? 'tarefa de um agente, em andamento' : 'pendência sua')) + '">'
           + '<div class="kb-tags">'
           + (c.marca?.real && c.id ? '<span class="kb-card-id">' + esc(c.id) + '</span>' : '')
-          + (KB_PROJETO === 'todos' ? tag(c.projeto, 'forte') + seloDoProjeto(c.projeto) : '')
+          + (KB_PROJETOS.size === 1 ? '' : tag(c.projeto, 'forte') + seloDoProjeto(c.projeto))
           + '</div>'
           + '<div class="kb-card-titulo">' + esc(c.nome || c.rotulo || c.titulo || '') + '</div>'
           + (c.citacao ? '<div class="kb-card-fala">' + esc(c.citacao) + '</div>' : '')
@@ -10551,7 +10618,7 @@
        * quando há alguém: faixa permanente vira enfeite e some do olhar.
        */
       const soltos = (DATA.trabalho.soltos || [])
-        .filter((s) => KB_PROJETO === 'todos' || s.projeto === KB_PROJETO);
+        .filter((s) => kbMostra(s.projeto));
       /* Agrupado por MOTIVO, e a frase aparece uma vez por grupo. A primeira
          versão repetia "a frente que este agente declarou não existe como item
          aberto do backlog" em quatro linhas seguidas, e num telefone isso é
@@ -10576,12 +10643,21 @@
           + '</div>'
         : '';
 
+      /* CC-371: uma caixinha por projeto, e ele marca quantas quiser.
+         "todos" é uma caixinha também, e não uma opção fora da lista: marcar
+         ela é limpar a seleção, que é o mesmo estado. Duas formas de dizer a
+         mesma coisa seriam duas verdades, e o painel já pagou por isso. */
+      const caixa = (rotulo, ligada, quantos, valor) => '<button class="kb-caixa'
+        + (ligada ? ' ligada' : '') + '" data-kb-proj="' + esc(valor) + '"'
+        + ' aria-pressed="' + (ligada ? 'true' : 'false') + '">'
+        + esc(rotulo) + '<span class="kb-caixa-conta">' + quantos + '</span></button>';
+
       const html = '<div class="kb-filtros">'
-        + '<select class="styled-input" data-kb-projeto title="mostrar só um projeto">'
-        + '<option value="todos"' + (KB_PROJETO === 'todos' ? ' selected' : '') + '>todos os projetos (' + todos.length + ')</option>'
-        + projetos.map((p) => '<option value="' + esc(p) + '"' + (KB_PROJETO === p ? ' selected' : '') + '>'
-          + esc(p) + ' (' + todos.filter((c) => c.projeto === p).length + ')</option>').join('')
-        + '</select>'
+        + '<div class="kb-caixas">'
+        + caixa('todos', kbTodosProjetos(), todos.length, '')
+        + projetos.map((p) => caixa(p, KB_PROJETOS.has(p),
+          todos.filter((c) => c.projeto === p).length, p)).join('')
+        + '</div>'
         + '<span style="font-size:12px;color:var(--text-dim);">' + lista.length + ' no quadro</span>'
         + '<button class="btn btn-ghost compacto" data-kb-cheio title="abrir o quadro em tela cheia">tela cheia</button>'
         + '</div>'
@@ -11058,8 +11134,6 @@
        * ar do lado. Aqui é um recado que leva até 30 segundos, e a tela avisa
        * isso na hora, então o passo a mais só atrapalharia. */
       /* CC-346: o filtro de projeto do kambam. */
-      const selKb = tr.closest?.('[data-kb-projeto]');
-      if (selKb) { KB_PROJETO = selKb.value; KB_ABERTO = null; return renderViewTrabalho(); }
 
       const selRemoto = tr.closest?.('[data-fw-remoto]');
       if (selRemoto) {
@@ -11161,7 +11235,26 @@
     });
 
     document.body.addEventListener('click', async (e) => {
-      const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-meu-abrir], [data-meu-feito-btn], [data-zona], [data-foco-dia], [data-sinc-ler], [data-sinc-acao], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-remoto-conectar], [data-remoto-soltar], [data-remoto-reabrir], [data-coderoom-abrir], [data-coderoom-nova], [data-coderoom-fechar], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar], [data-tend-cheia], [data-tend-dia], [data-tend-andar], [data-tend-hoje], [data-tend-fechar], [data-trv-abrir], [data-trv-ajudou], [data-trv-atrapalhou], [data-trv-explica], [data-trv-fechar-explica], [data-pj-abrir], [data-pj-sessao], [data-pj-conversa], [data-cc-modo], [data-cc-fw], [data-cc-parados], [data-mod], [data-nav-grupo], [data-sb-grade], [data-tg-fechar], [data-tg-ir], [data-pj-pastas], [data-pa-fechar], [data-pa-alternar], [data-pa-arquivo], [data-pa-fechar-arq], [data-kb-fechar], [data-kb-projeto], [data-kb-cheio], [data-mod-remoto], [data-fw-remoto]');
+      const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-meu-abrir], [data-meu-feito-btn], [data-zona], [data-foco-dia], [data-sinc-ler], [data-sinc-acao], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-remoto-conectar], [data-remoto-soltar], [data-remoto-reabrir], [data-coderoom-abrir], [data-coderoom-nova], [data-coderoom-fechar], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar], [data-tend-cheia], [data-tend-dia], [data-tend-andar], [data-tend-hoje], [data-tend-fechar], [data-trv-abrir], [data-trv-ajudou], [data-trv-atrapalhou], [data-trv-explica], [data-trv-fechar-explica], [data-pj-abrir], [data-pj-sessao], [data-pj-conversa], [data-cc-modo], [data-cc-fw], [data-cc-parados], [data-mod], [data-nav-grupo], [data-sb-grade], [data-tg-fechar], [data-tg-ir], [data-pj-pastas], [data-pa-fechar], [data-pa-alternar], [data-pa-arquivo], [data-pa-fechar-arq], [data-kb-fechar], [data-kb-proj], [data-kb-cheio], [data-mod-remoto], [data-fw-remoto]');
+
+      /* CC-371: as caixinhas de projeto do quadro.
+         ⚠️ Este `if` morava no ouvinte de `change`, herdado do `<select>` que
+         estava aqui antes. Botão não dispara `change`, então o clique não fazia
+         NADA e a tela não acusava erro nenhum: as caixinhas apareciam, mudavam
+         de cor no hover, e o quadro seguia mostrando tudo. Achado medindo o
+         clique de verdade no navegador, não lendo o código.
+         Sem valor é "todos", que significa limpar a seleção; com valor, liga e
+         desliga aquele projeto. */
+      const cxKb = e.target.closest?.('[data-kb-proj]');
+      if (cxKb) {
+        const alvo = cxKb.dataset.kbProj || '';
+        if (!alvo) KB_PROJETOS.clear();
+        else if (KB_PROJETOS.has(alvo)) KB_PROJETOS.delete(alvo);
+        else KB_PROJETOS.add(alvo);
+        KB_ABERTO = null;
+        kbGravarEscolha();
+        return renderViewTrabalho();
+      }
       if (!tr) return;
       /* CC-228: vem antes de tudo. O "?" mora dentro de cartões e linhas que já
          têm clique próprio (abrir agente, marcar feito), e sem sair aqui o

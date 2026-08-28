@@ -5177,6 +5177,26 @@ if (process.platform !== 'win32') {
     'a decisão entre empilhar e substituir tem que ser explícita, não implícita')
   console.log('  ok   CC-370: trocar de tela não empilha parada, e abrir algo empilha para o voltar fechá-lo')
 
+  /* CC-371: escolher VÁRIOS projetos no quadro.
+     Pedido dele em 27/08: "é importante que eu possa separar um ou mais, se um
+     só por vez ia ser ruim também". O filtro era `todos` ou UM.
+
+     ⚠️ A verificação do OUVINTE não é burocracia. O `if` da caixinha nasceu no
+     ouvinte de `change`, herdado do `<select>` que estava ali antes, e botão
+     não dispara `change`: o clique não fazia nada, sem erro nenhum na tela. As
+     caixinhas apareciam e mudavam de cor no hover, então parecia pronto. Só
+     clicar de verdade no navegador pegou. */
+  assert.match(html, /data-kb-proj=/, 'as caixinhas de projeto sumiram do quadro')
+  assert.doesNotMatch(html, /<select[^>]*data-kb-proj/,
+    '`<select multiple>` perde o menu no redesenho de 2s: a caixinha é botão de propósito')
+  const ouvinteClique = /addEventListener\('click'[\s\S]*$/.exec(html)?.[0] || ''
+  assert.match(ouvinteClique, /data-kb-proj/,
+    'a caixinha voltou para o ouvinte de change, onde o clique nunca chega')
+  /* Conjunto vazio é TODOS, e não nenhum: sem isto, limpar a seleção deixaria
+     o quadro em branco, que parece painel quebrado. */
+  assert.match(html, /KB_PROJETOS\.size === 0/, 'sumiu a regra de que vazio significa todos')
+  console.log('  ok   CC-371: as caixinhas de projeto existem, são botão, e o clique cai no ouvinte certo')
+
   assert.match(html, /fw-pedidos/, 'o painel novo perdeu a lista de pedidos de liberação')
   assert.match(html, /liberar só este/, 'o painel novo perdeu o botão de liberar UM arquivo')
   assert.match(html, /data-fw-alvo=/, 'o botão de liberar não diz QUAL arquivo, então libera o projeto inteiro')
