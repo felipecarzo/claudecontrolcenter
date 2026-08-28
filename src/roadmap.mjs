@@ -99,15 +99,26 @@ export function acharRoadmap(cwd) {
  * a única mudança de estado em 83 títulos reais, e é para melhor.
  */
 const ESTADOS = [
-  { chave: 'bloqueado', emoji: /🔴|⛔/u, palavra: /bloquead|travad|impedid/i },
+  /* ⚠️ **FEITO vem primeiro, e a ordem é a regra.** `find` devolve o primeiro
+     que casa, então quem está no topo vence.
+     Achado em 28/08, ao ensinar o leitor a entender `🔒`: o item
+     `### CC-146 ✅ 18/08 ... 🔒 só ele` passou a ser lido como BLOQUEADO,
+     porque o cadeado casava antes do visto. Um item concluído em 18/08 voltou
+     a ser trabalho aberto, dez dias depois, sem ninguém tocar no arquivo.
+     Concluído é estado TERMINAL: um item feito que cita um cadeado, uma pausa
+     ou uma cor no título continua feito. Marcador novo entra abaixo desta
+     linha, nunca acima. */
+  { chave: 'feito', emoji: /✅|✔/u, palavra: /conclu[íi]d|entregue|hist[óo]rico|feito/i },
+  { chave: 'bloqueado', emoji: /🔴|⛔|🔒/u, palavra: /bloquead|travad|impedid/i },
   /* ⏸ nasceu em 16/08 e é diferente de "esperando" por um detalhe que decide:
      ele diz que o item está aberto e parado por motivo que NÃO depende do
      agente — direção em vez de tarefa, decisão dele, ou ambiente que não
      existe. Sem essa chave o `fluxo-guard` cobrava seis itens impossíveis, e
      guarda que cobra o impossível ensina a ser ignorado. */
   { chave: 'esperando', emoji: /⏸|🟡|⏳/u, palavra: /aguardand|depende d[eao]\s+(?!mim)|decis[ãa]o d(o|ele)|dire[çc][ãa]o/i },
-  { chave: 'feito', emoji: /✅|✔/u, palavra: /conclu[íi]d|entregue|hist[óo]rico|feito/i },
-  { chave: 'aberto', emoji: /🟢/u, palavra: /aberto|agora|pr[óo]xim|fazer/i },
+  /* 🏗️ entrou em 28/08 com a leitura de tabela: o roadmap do carzo usa esse
+     marcador para "em progresso", que é um item ABERTO com alguém dentro. */
+  { chave: 'aberto', emoji: /🟢|🏗/u, palavra: /aberto|agora|pr[óo]xim|fazer/i },
 ]
 
 /** `CC-46 — casa por regex solto` → `casa por regex solto` → `` (etiqueta vazia).
@@ -356,6 +367,48 @@ export function ordenar(cwd, mapa) {
  * Sem o texto inteiro: o painel mostra o mapa, não o documento — quem quer ler
  * tudo abre o arquivo.
  */
+/**
+ * CC-378, 28/08: roadmap escrito em TABELA também vira trabalho.
+ *
+ * Ele: *"não to vendo na aba trabalho o projeto carzo"*. Medido: o roadmap do
+ * carzo tem 39 itens contados e ZERO frentes, porque as tarefas de verdade
+ * moram em tabela, e o leitor só entendia cabeçalho `###` e lista com traço.
+ * As linhas `| INF-01 | Criar projeto Next.js | P0 | Baixa | ✅ | … |` eram
+ * texto solto para ele. Escolha dele entre três: *"ensino o quadro a ler
+ * tabela"*.
+ *
+ * **O cabeçalho é quem manda, e não a posição das colunas.** Cada projeto
+ * monta a tabela dele de um jeito, e ler pela posição faria a coluna
+ * "Prioridade" de um virar o nome da tarefa de outro, em silêncio.
+ *
+ * **E é o cabeçalho que impede o pior caso:** um roadmap tem tabela de legenda,
+ * de branches, de fases. Sem uma coluna que seja TAREFA e outra que seja
+ * STATUS, a tabela não vira nada. É por isso que a legenda de símbolos do
+ * carzo, que tem cinco linhas, continua sendo legenda.
+ */
+const COLUNA = {
+  id: /^(id|c[óo]digo|ref|chave)$/i,
+  tarefa: /^(task|tarefa|item|descri[çc][ãa]o|o que|nome|entrega)$/i,
+  status: /^(status|estado|situa[çc][ãa]o|progresso)$/i,
+}
+
+export function lerCabecalhoDeTabela(linha) {
+  const celulas = String(linha).split('|').slice(1, -1).map((c) => c.trim())
+  if (celulas.length < 2) return null
+  const achar = (re) => celulas.findIndex((c) => re.test(c.replace(/\*/g, '').trim()))
+  const tarefa = achar(COLUNA.tarefa)
+  const status = achar(COLUNA.status)
+  /* As duas são obrigatórias. Uma tabela sem tarefa não descreve trabalho, e
+     uma sem status descreveria trabalho sem dizer se já foi feito, o que
+     encheria o quadro de itens fechados como se fossem abertos. */
+  if (tarefa < 0 || status < 0) return null
+  return { tarefa, status, id: achar(COLUNA.id), largura: celulas.length }
+}
+
+/** A linha `|---|---|` que separa o cabeçalho do corpo. É ela que confirma que
+ *  a linha de cima era mesmo cabeçalho, e não uma linha de dados qualquer. */
+const ehSeparador = (linha) => /^\s*\|[\s:|-]+\|\s*$/.test(linha) && linha.includes('-')
+
 export function lerRoadmap(cwd) {
   const arquivo = acharRoadmap(cwd)
   if (!arquivo) return null
@@ -365,6 +418,11 @@ export function lerRoadmap(cwd) {
   const grupos = []
   let grupo = null
   let frente = null
+  /* O estado da tabela que está sendo lida agora. `candidato` guarda a linha
+     anterior: só a linha `|---|---|` confirma que ela era cabeçalho, e sem essa
+     confirmação qualquer linha com barras viraria tabela. */
+  let tabela = null
+  let candidato = null
 
   // `\r?\n` e não `\n`: com CRLF sobra um `\r` no fim da linha, e `.` no regex
   // NÃO casa `\r`. Resultado: `(.+)$` falhava em todo cabeçalho e o roadmap
@@ -374,6 +432,41 @@ export function lerRoadmap(cwd) {
     const h3 = /^###\s+(?!#)(.+)$/.exec(linha)
     const item = /^\s*[-*]\s+(?!\[)(.+)$/.exec(linha)
     const marcado = /^\s*[-*]\s+\[([ xX])\]\s+(.+)$/.exec(linha)
+
+    /* ===== CC-378: a leitura de tabela ===== */
+    const daTabela = /^\s*\|.*\|\s*$/.test(linha)
+    if (!daTabela) { tabela = null; candidato = null }
+    else if (ehSeparador(linha)) {
+      tabela = candidato ? lerCabecalhoDeTabela(candidato) : null
+      candidato = null
+      continue
+    } else if (tabela) {
+      const celulas = linha.split('|').slice(1, -1).map((c) => c.trim())
+      const nome = celulas[tabela.tarefa] || ''
+      /* Linha sem nome de tarefa é continuação de célula ou sobra de formatação,
+         e virar cartão vazio na tela é pior que ser ignorada. */
+      if (!nome) continue
+      const id = tabela.id >= 0 ? (celulas[tabela.id] || '').replace(/[`*]/g, '').trim() : ''
+      const bruto = (id ? id + ' ' + nome : nome).replace(/\*\*/g, '')
+      if (!grupo) {
+        grupo = { titulo: '', estado: 'aberto', frentes: [], itens: 0, feitos: 0 }
+        grupos.push(grupo)
+      }
+      /* O estado sai da CÉLULA de status, e não do nome: escrito no nome, um
+         "✅" no meio de uma frase marcaria como feito um item que só cita outro. */
+      const item = {
+        titulo: limpar(bruto),
+        tituloCru: bruto,
+        estado: estadoDe(celulas[tabela.status] || ''),
+        itens: 0, feitos: 0, corpo: [],
+        deTabela: true,
+      }
+      grupo.frentes.push(item)
+      grupo.itens++
+      if (item.estado === 'feito') grupo.feitos++
+      frente = null
+      continue
+    } else { candidato = linha; continue }
 
     if (h2) {
       grupo = { titulo: limpar(h2[1]), estado: estadoDe(h2[1]), frentes: [], itens: 0, feitos: 0 }
@@ -424,6 +517,35 @@ export function lerRoadmap(cwd) {
       onde.itens++
       if (feito) onde.feitos++
       if (frente && grupo) { grupo.itens++; if (feito) grupo.feitos++ }
+
+      /* ===== CC-379: a CAIXA de marcar também é uma tarefa =====
+       *
+       * Mesmo problema do CC-378 por outro formato. Alguns roadmaps não usam
+       * cabeçalho por item: escrevem `## Épico 2` e listam as tarefas com
+       * caixa embaixo. Sem frente, nada virava cartão, e o projeto sumia.
+       *
+       * **A caixa é o sinal, e o traço sozinho não é.** Medido em 28/08 nos 12
+       * roadmaps desta máquina: a regra com caixa traz 104 itens de trabalho
+       * real (24 do productVideoMaker, 31 do fibraessencia, 10 do coepiloto e
+       * 7 do inovallbond que dependem DELE), e não traz nenhum falso. A regra
+       * sem a caixa traria junto os 34 itens de "Limites aceitos hoje" deste
+       * projeto, que são limitações documentadas e não trabalho. Um quadro com
+       * lixo dentro é pior que um quadro que perde coisa: ele ensina a não ser
+       * olhado.
+       *
+       * **Só em grupo que não tem nenhuma frente `###`.** Onde há frentes, a
+       * caixa é subtarefa DELAS, e promovê-la duplicaria o mesmo trabalho em
+       * dois níveis. */
+      if (marcado && grupo && !frente) {
+        const texto = String(marcado[2]).replace(/\*\*/g, '').trim()
+        grupo.frentes.push({
+          titulo: limpar(texto),
+          tituloCru: texto,
+          estado: feito ? 'feito' : estadoDe(texto),
+          itens: 0, feitos: 0, corpo: [],
+          daCaixa: true,
+        })
+      }
     }
   }
 

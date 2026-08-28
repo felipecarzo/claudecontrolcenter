@@ -281,4 +281,115 @@ function casa(quadro, { recados = null, pedidos = null } = {}) {
   ok('projeto sem roadmap diz que não tem o arquivo, e não que está vazio')
 }
 
+
+/* ── CC-378: roadmap escrito em tabela ───────────────────────────────────── */
+{
+  const { lerCabecalhoDeTabela, lerRoadmap } = await import('./src/roadmap.mjs')
+
+  const cab = lerCabecalhoDeTabela('| ID | Task | Prioridade | Complexidade | Status | Depende de |')
+  assert.equal(cab.id, 0)
+  assert.equal(cab.tarefa, 1)
+  assert.equal(cab.status, 4)
+  ok('a tabela é lida pelo CABEÇALHO, e não pela posição das colunas')
+
+  /* A prova ao contrário, e é a que impede o estrago: tabela que NÃO descreve
+     trabalho continua não sendo trabalho. Um roadmap tem legenda de símbolos,
+     lista de branches e quadro de fases, e todas são tabelas. */
+  assert.equal(lerCabecalhoDeTabela('| Símbolo | Significado |'), null)
+  assert.equal(lerCabecalhoDeTabela('| Branch | Tipo | Último commit | Estado |'), null)
+  assert.equal(lerCabecalhoDeTabela('| Fase | Escopo | Sprints |'), null)
+  ok('a prova ao contrário: legenda, branches e fases NÃO viram tarefa')
+
+  const raiz = mkdtempSync(join(tmpdir(), 'cc-tabela-'))
+  mkdirSync(join(raiz, 'docs'), { recursive: true })
+  writeFileSync(join(raiz, 'docs', 'ROADMAP.md'), [
+    '# Roadmap',
+    '',
+    '## Legenda',
+    '',
+    '| Símbolo | Significado |',
+    '|---|---|',
+    '| ✅ | Concluído |',
+    '',
+    '## Sprint 0',
+    '',
+    '| ID | Task | Status |',
+    '|---|---|---|',
+    '| INF-01 | Criar o projeto | ✅ |',
+    '| INF-02 | Configurar o build | ⏳ |',
+    '| INF-03 | Subir para o servidor | 🔒 |',
+    '',
+  ].join('\n'))
+
+  const m = lerRoadmap(raiz)
+  const todas = m.grupos.flatMap((g) => g.frentes)
+  assert.equal(todas.length, 3, 'as três da tabela de tarefa, e nenhuma da legenda')
+  assert.equal(todas.filter((f) => f.estado === 'feito').length, 1)
+  assert.equal(todas.find((f) => /INF-03/.test(f.titulo)).estado, 'bloqueado')
+  ok('linha de tabela vira item, com o estado saindo da coluna de status')
+
+  /* ⚠️ A regressão que este teste guarda, paga em 28/08: ao ensinar o `🔒`, ele
+     passou a vencer o `✅` na lista de estados, e um item CONCLUÍDO em 18/08
+     voltou a ser trabalho aberto dez dias depois, sem ninguém tocar no arquivo.
+     Concluído é terminal, e por isso vem primeiro na lista. */
+  writeFileSync(join(raiz, 'docs', 'ROADMAP.md'),
+    '## Feitas\n\n### CC-146 ✅ 18/08: o login do Google 🔒 só ele\n')
+  const m2 = lerRoadmap(raiz)
+  assert.equal(m2.grupos[0].frentes[0].estado, 'feito',
+    'item com visto E cadeado continua FEITO: concluído é estado terminal')
+  ok('a regressão guardada: visto vence cadeado, pausa e cor no mesmo título')
+
+  rmSync(raiz, { recursive: true, force: true })
+}
+
+
+/* ── CC-379: a caixa de marcar também é tarefa ───────────────────────────── */
+{
+  const { lerRoadmap } = await import('./src/roadmap.mjs')
+  const raiz = mkdtempSync(join(tmpdir(), 'cc-caixa-'))
+  mkdirSync(join(raiz, 'docs'), { recursive: true })
+  writeFileSync(join(raiz, 'docs', 'ROADMAP.md'), [
+    '## Épico 1',
+    '',
+    '- [ ] Seleção múltipla e caixa de seleção',
+    '- [x] Copiar e colar elemento',
+    '- explicação solta que não é tarefa',
+    '',
+    '## Limites aceitos hoje',
+    '',
+    '- não há histórico de desfazer',
+    '- o vídeo sai só em 1080p',
+    '',
+    '## Com frentes próprias',
+    '',
+    '### Uma frente de verdade',
+    '',
+    '- [ ] subtarefa dela',
+    '',
+  ].join('\n'))
+
+  const m = lerRoadmap(raiz)
+  const epico = m.grupos.find((g) => /Épico/.test(g.titulo))
+  assert.equal(epico.frentes.length, 2, 'as duas com caixa viram cartão')
+  assert.equal(epico.frentes.filter((f) => f.estado === 'feito').length, 1)
+  ok('item com caixa de marcar vira cartão quando o grupo não tem frente própria')
+
+  /* A prova ao contrário, e ela é a que decide: traço SEM caixa continua sendo
+     explicação. Medido em 28/08, é o que separa 104 tarefas reais dos 34
+     "Limites aceitos hoje" deste projeto, que não são trabalho nenhum. */
+  const limites = m.grupos.find((g) => /Limites/.test(g.titulo))
+  assert.equal(limites.frentes.length, 0,
+    'traço sem caixa é explicação, e um quadro com lixo dentro ensina a não ser olhado')
+  ok('a prova ao contrário: lista sem caixa NÃO vira cartão')
+
+  /* E onde já existe frente, a caixa é subtarefa dela: promovê-la duplicaria o
+     mesmo trabalho em dois níveis do quadro. */
+  const comFrente = m.grupos.find((g) => /frentes próprias/.test(g.titulo))
+  assert.equal(comFrente.frentes.length, 1)
+  assert.equal(comFrente.frentes[0].itens, 1)
+  ok('onde já há frente, a caixa continua sendo subtarefa dela')
+
+  rmSync(raiz, { recursive: true, force: true })
+}
+
 console.log(`\n${passou} verificações, todas passaram.`)
