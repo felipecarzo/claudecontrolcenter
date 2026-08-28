@@ -684,6 +684,12 @@
        cores de alarme iguais fariam a segunda roubar a atenção da primeira. */
     .kb-mudos { border-color: var(--border); }
     .kb-mudos .kb-soltos-cab { color: var(--text-muted); }
+    /* A linha dos sem roadmap é discreta de propósito: ausência não é defeito,
+       e um alarme para 11 projetos normais faria os alarmes de verdade
+       virarem paisagem. */
+    .kb-sem-roadmap { margin-bottom: 14px; font-size: 12px; color: var(--text-dim); }
+    .kb-sem-roadmap > summary { cursor: pointer; padding: 4px 2px; }
+    .kb-sem-lista { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 2px 2px; }
     .kb-solto-grupo { padding: 6px 0; border-top: 1px solid var(--border); }
     .kb-solto-grupo:first-of-type { border-top: 0; }
     .kb-solto { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; padding: 3px 0; }
@@ -10982,6 +10988,34 @@
           + '</div>'
         : '';
 
+      /* CC-380, 28/08: a conta que FECHA.
+       *
+       * Pergunta dele, depois de o carzo voltar: *"como a gente está garantindo
+       * que vai ler esses projetos?"*. A resposta era "não está". Havia um
+       * filtro que descartava, sem avisar, todo projeto sem `docs/ROADMAP.md`:
+       * 11 dos 21 desta máquina saíam por ali ANTES da faixa de aviso existir.
+       *
+       * Agora todo projeto achado no disco cai em um de três lugares: no
+       * quadro, na faixa de aviso, ou nesta linha. A soma tem que bater com o
+       * total, e há teste guardando isso.
+       *
+       * Ela é uma LINHA, e não uma faixa de alarme: projeto sem roadmap não é
+       * defeito. Os sites de cliente em produção não têm nem precisam ter. O
+       * que não pode é ele não saber que existem. */
+      const sem = DATA.trabalho.semRoadmap || [];
+      const linhaSem = sem.length
+        ? '<details class="kb-sem-roadmap"><summary>'
+          + esc(sem.length + (sem.length > 1
+            ? ' projetos sem roadmap, fora do quadro por isso'
+            : ' projeto sem roadmap, fora do quadro por isso'))
+          + '</summary><div class="kb-sem-lista">'
+          /* O selo de máquina vai junto, e é a regra dele para TODO quadro que
+             mostra projeto: *"onde tá dizendo que cada projeto está na vps,
+             desktop etc?"*. Vale aqui como vale no cartão. */
+          + sem.map((x) => '<span class="kb-tag">' + esc(x.projeto) + seloDoProjeto(x.projeto) + '</span>').join('')
+          + '</div></details>'
+        : '';
+
       /* CC-371: uma caixinha por projeto, e ele marca quantas quiser.
          "todos" é uma caixinha também, e não uma opção fora da lista: marcar
          ela é limpar a seleção, que é o mesmo estado. Duas formas de dizer a
@@ -11001,7 +11035,7 @@
         + '<button class="btn btn-ghost compacto" data-kb-cheio title="abrir o quadro em tela cheia">tela cheia</button>'
         + '</div>'
         + (aberto ? kbDetalhe(aberto) : '')
-        + faixaSoltos + faixaMudos
+        + faixaSoltos + faixaMudos + linhaSem
         /* O palco existe para a tela cheia ter o que expandir sem levar junto o
            filtro e o cartão aberto. */
         + '<div id="kb-palco"><div class="kb-quadro">'

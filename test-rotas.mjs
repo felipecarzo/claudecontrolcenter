@@ -274,11 +274,64 @@ function casa(quadro, { recados = null, pedidos = null } = {}) {
   assert.equal(q2.naoRenderam.length, 0)
   ok('a prova ao contrário: projeto que rende cartão NÃO entra na faixa de avisos')
 
-  /* E projeto sem roadmap nenhum diz isso, que é outra coisa. */
+  /* Projeto sem roadmap nenhum é OUTRO caso, e sai numa conta separada:
+     misturá-lo com os que falharam encheria a faixa de aviso com 11 projetos
+     onde não há nada de errado. Site de cliente em produção não tem roadmap. */
   const semArquivo = { projeto: 'VPS_nada', raiz: '/tmp/nada', mapa: null }
   const q3 = montar({ projetos: [semArquivo], jobs: [], pendencias: [] })
-  assert.match(q3.naoRenderam[0].motivo, /não tem docs\/ROADMAP\.md/)
-  ok('projeto sem roadmap diz que não tem o arquivo, e não que está vazio')
+  assert.equal(q3.naoRenderam.length, 0, 'ausência de arquivo não é falha de leitura')
+  assert.equal(q3.semRoadmap.length, 1)
+  assert.equal(q3.semRoadmap[0].projeto, 'VPS_nada')
+  ok('projeto sem roadmap sai contado à parte, e não vira alarme')
+}
+
+/* ── CC-380: a conta tem que fechar ──────────────────────────────────────── */
+{
+  const { montar, carregar } = await import('./src/trabalho.mjs')
+
+  /**
+   * A pergunta dele, depois de o carzo voltar: *"como a gente está garantindo
+   * que vai ler esses projetos?"*.
+   *
+   * Esta é a resposta, e ela é uma conta: **todo projeto que existe no disco
+   * cai em exatamente um de três lugares** (no quadro, na faixa de aviso, ou na
+   * linha dos sem roadmap), e a soma bate com o total. Enquanto isso valer,
+   * nenhum projeto pode sumir calado, nem por formato novo, nem por filtro que
+   * alguém acrescente sem perceber.
+   *
+   * Até 28/08 não fechava: um `.filter()` no fim de `carregar()` descartava os
+   * sem roadmap antes de qualquer aviso, e 11 dos 21 desta máquina saíam por
+   * ali. O quadro só sabia falar dos projetos que já tinham dado certo.
+   */
+  const entrada = [
+    { projeto: 'A_com_frente', raiz: '/tmp/a', mapa: { grupos: [{ titulo: 'G', frentes: [{ titulo: 'x', estado: 'aberto' }], itens: 1 }] } },
+    { projeto: 'B_lido_e_vazio', raiz: '/tmp/b', mapa: { grupos: [{ titulo: 'G', frentes: [], itens: 5 }] } },
+    { projeto: 'C_sem_roadmap', raiz: '/tmp/c', mapa: null },
+    { projeto: 'D_sem_roadmap', raiz: '/tmp/d', mapa: null },
+    { projeto: 'E_sem_secao', raiz: '/tmp/e', mapa: { grupos: [] } },
+  ]
+  const q = montar({ projetos: entrada, jobs: [], pendencias: [] })
+  const somados = q.grupos.length + q.naoRenderam.length + q.semRoadmap.length
+  assert.equal(somados, entrada.length,
+    'projeto sumiu sem ser contado: ' + somados + ' de ' + entrada.length
+    + '. Todo projeto tem que cair no quadro, na faixa de aviso ou na linha dos '
+    + 'sem roadmap. Se esta conta não fecha, algum filtro está descartando em '
+    + 'silêncio, que foi como o carzo passou dias invisível.')
+  ok('a conta fecha: todo projeto cai em um dos três lugares, e nenhum some')
+
+  /* A prova ao contrário: um filtro que descarte algo faz a conta quebrar.
+     É a simulação exata do `.filter((p) => p.mapa)` que existia. */
+  const comFiltro = entrada.filter((p) => p.mapa)
+  const q2 = montar({ projetos: comFiltro, jobs: [], pendencias: [] })
+  const somados2 = q2.grupos.length + q2.naoRenderam.length + q2.semRoadmap.length
+  assert.ok(somados2 < entrada.length, 'com o filtro antigo, dois projetos somem')
+  ok('a prova ao contrário: com o filtro que existia, a conta NÃO fecha')
+
+  /* E `carregar` não pode voltar a filtrar: é ele quem alimenta os três. */
+  const carregados = carregar([{ projeto: 'sem_nada', raiz: '/tmp/inexistente-de-proposito' }])
+  assert.equal(carregados.length, 1, 'carregar devolve o projeto mesmo sem roadmap')
+  assert.equal(carregados[0].mapa, null)
+  ok('carregar entrega o projeto sem roadmap em vez de descartá-lo')
 }
 
 

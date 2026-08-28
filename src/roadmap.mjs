@@ -462,8 +462,12 @@ export function lerRoadmap(cwd) {
         deTabela: true,
       }
       grupo.frentes.push(item)
-      grupo.itens++
-      if (item.estado === 'feito') grupo.feitos++
+      /* ⚠️ **Não incrementa `itens` do grupo, e a falta disso é o conserto.**
+         `itens` conta o que está DENTRO de uma frente (subtarefa), e a tela
+         Projetos soma `itens - feitos` como "backlog solto". Uma linha que
+         virou frente já é contada como frente: somá-la aqui também fazia o
+         carzo anunciar 41 itens de backlog tendo UMA tarefa aberta. Medido em
+         28/08, logo depois de a leitura de tabela entrar. */
       frente = null
       continue
     } else { candidato = linha; continue }
@@ -537,6 +541,11 @@ export function lerRoadmap(cwd) {
        * caixa é subtarefa DELAS, e promovê-la duplicaria o mesmo trabalho em
        * dois níveis. */
       if (marcado && grupo && !frente) {
+        /* Mesma regra da tabela: a caixa que vira frente sai da contagem de
+           item solto do grupo, senão ela é contada duas vezes. O incremento
+           aconteceu logo acima, no caminho normal, e aqui ele é desfeito. */
+        grupo.itens--
+        if (feito) grupo.feitos--
         const texto = String(marcado[2]).replace(/\*\*/g, '').trim()
         grupo.frentes.push({
           titulo: limpar(texto),

@@ -218,13 +218,24 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
    * A regra da casa aplicada de novo: espaço vazio não distingue "está tudo
    * bem" de "a leitura falhou". */
   const naoRenderam = []
+  /* Projeto sem `docs/ROADMAP.md`. Não é erro, é ausência, e por isso fica
+     numa conta separada da faixa de aviso. */
+  const semRoadmap = []
 
   for (const { projeto, raiz, mapa, ordens } of projetos) {
-    if (!mapa?.grupos?.length) {
+    if (!mapa) {
+      /* Sem arquivo nenhum é OUTRO caso, e misturá-lo com os que falharam
+         encheria a faixa de aviso com 11 projetos onde não há nada de errado:
+         site de cliente em produção não tem roadmap e nem precisa ter. Ele sai
+         contado à parte, para o quadro poder dizer quantos são sem gritar. */
+      semRoadmap.push({ projeto, raiz })
+      continue
+    }
+    if (!mapa.grupos?.length) {
       naoRenderam.push({
         projeto,
         raiz,
-        motivo: mapa ? 'o roadmap foi lido e não tem seção nenhuma' : 'este projeto não tem docs/ROADMAP.md',
+        motivo: 'o roadmap foi lido e não tem seção nenhuma',
         itens: 0,
         secoes: 0,
       })
@@ -339,6 +350,7 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
     grupos: comAberto,
     semNada,
     naoRenderam,
+    semRoadmap,
     soltos: soltosDe(grupos, jobs),
     pendencias,
     veredito: veredito(comAberto, pendencias, jobs),
@@ -634,5 +646,16 @@ export function carregar(lista) {
       for (const g of mapa.grupos) for (const f of g.frentes) f.citacao ||= citacaoDe(f.corpo)
     }
     return { projeto, raiz, mapa, ordens }
-  }).filter((p) => p.mapa)
+  })
+  /* ⚠️ **Sem filtro no fim, e a falta dele é o conserto.** Até 28/08 havia um
+     `.filter((p) => p.mapa)` aqui, e ele descartava em silêncio todo projeto
+     sem `docs/ROADMAP.md`. Medido: 11 dos 21 desta máquina saíam por essa
+     porta, ANTES de qualquer aviso, então nem a faixa que diz "li e não
+     consegui mostrar" os enxergava.
+     Pergunta dele que achou isto: *"como a gente está garantindo que vai ler
+     esses projetos?"*. A resposta honesta era "não está": o quadro só sabia
+     falar dos projetos que já tinham dado certo.
+     Quem recebe a lista decide o que fazer com `mapa: null`. É mais trabalho
+     para quem chama e é o único jeito de o projeto não sumir sem ninguém
+     contar. */
 }
