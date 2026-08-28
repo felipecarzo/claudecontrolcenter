@@ -202,9 +202,34 @@ const fracaoHonesta = (f) => (f.feitos > 0 ? { feitos: f.feitos, itens: f.itens 
  */
 export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'importancia' } = {}) {
   const grupos = []
+  /* CC-377, 28/08: os projetos que foram LIDOS e não renderam nada.
+   *
+   * Ele: *"não to vendo na aba trabalho o projeto carzo"*. Medido antes de
+   * mexer: o roadmap do carzo existe, tem 11 seções e 39 itens, e devolve ZERO
+   * frentes, porque ele é escrito em TABELA (`| INF-01 | Task | … | ✅ |`) e o
+   * leitor entende cabeçalho `###`. Sem frente não há cartão, sem cartão o
+   * projeto não entrava nem em `grupos` nem em `semNada`, e sumia inteiro.
+   *
+   * São três projetos assim nesta máquina, com 82 itens de trabalho ao todo,
+   * invisíveis. E o pior não é a falta: é ela ser calada. Ele procurou o
+   * projeto na tela, não achou, e não tinha como saber se era filtro, se era o
+   * arquivo, ou se o painel nem tinha olhado.
+   *
+   * A regra da casa aplicada de novo: espaço vazio não distingue "está tudo
+   * bem" de "a leitura falhou". */
+  const naoRenderam = []
 
   for (const { projeto, raiz, mapa, ordens } of projetos) {
-    if (!mapa?.grupos?.length) continue
+    if (!mapa?.grupos?.length) {
+      naoRenderam.push({
+        projeto,
+        raiz,
+        motivo: mapa ? 'o roadmap foi lido e não tem seção nenhuma' : 'este projeto não tem docs/ROADMAP.md',
+        itens: 0,
+        secoes: 0,
+      })
+      continue
+    }
 
     /* A ordem sai pronta do roadmap quando existe; sem git, cai na ordem do
        arquivo, que é melhor que nenhuma. */
@@ -271,6 +296,22 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
 
     const fechadas = mapa.grupos.flatMap((g) => g.frentes).filter((f) => f.estado === 'feito').length
     if (cartoes.length || fechadas) grupos.push({ projeto, raiz, cartoes, fechadas })
+    else {
+      /* Zero cartões E zero fechadas: o arquivo existe e o leitor não tirou
+         nada dele. Contar o que ele VIU (seções e itens soltos) é o que separa
+         "não há trabalho" de "não consegui ler o formato": um projeto com 39
+         itens e zero frentes está gritando a segunda coisa. */
+      const itens = mapa.grupos.reduce((n, g) => n + (g.itens || 0), 0)
+      naoRenderam.push({
+        projeto,
+        raiz,
+        motivo: itens
+          ? 'o roadmap tem ' + itens + ' item(ns), mas nenhum no formato que o quadro lê'
+          : 'o roadmap não tem nenhum item aberto nem fechado',
+        itens,
+        secoes: mapa.grupos.length,
+      })
+    }
   }
 
   /* O inverso da dependência: quem eu destravo quando fechar. Calculado aqui,
@@ -297,6 +338,7 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
   return {
     grupos: comAberto,
     semNada,
+    naoRenderam,
     soltos: soltosDe(grupos, jobs),
     pendencias,
     veredito: veredito(comAberto, pendencias, jobs),

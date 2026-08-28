@@ -679,6 +679,11 @@
        projeto. */
     .kb-soltos { background: var(--bg-surface); border: 1px solid var(--amber); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; }
     .kb-soltos-cab { font-size: 13px; font-weight: 600; color: var(--amber); margin-bottom: 8px; }
+    /* Borda em cinza, e não âmbar: a faixa de agentes soltos é urgência (tem
+       alguém trabalhando fora do mapa agora), esta é conserto de arquivo. Duas
+       cores de alarme iguais fariam a segunda roubar a atenção da primeira. */
+    .kb-mudos { border-color: var(--border); }
+    .kb-mudos .kb-soltos-cab { color: var(--text-muted); }
     .kb-solto-grupo { padding: 6px 0; border-top: 1px solid var(--border); }
     .kb-solto-grupo:first-of-type { border-top: 0; }
     .kb-solto { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; padding: 3px 0; }
@@ -10952,6 +10957,31 @@
           + '</div>'
         : '';
 
+      /* CC-377, 28/08: os projetos que o quadro LEU e não conseguiu mostrar.
+       *
+       * Ele: *"não to vendo na aba trabalho o projeto carzo"*. O roadmap do
+       * carzo existe e tem 39 itens; o que ele não tem é o formato que o leitor
+       * entende, porque é escrito em tabela. Sem uma frente sequer, o projeto
+       * não virava seção nem linha, e sumia da tela inteira.
+       *
+       * A faixa fica ao lado da dos agentes soltos, e a razão é a mesma: as
+       * duas respondem "por que isto não está no quadro", e essa pergunta não
+       * pode se responder com espaço em branco. Ela diz o NÚMERO de itens que
+       * o leitor viu: 39 itens e zero cartões é uma frase que já explica onde
+       * está o problema, sem ninguém abrir arquivo. */
+      const mudos = DATA.trabalho.naoRenderam || [];
+      const faixaMudos = mudos.length
+        ? '<div class="kb-soltos kb-mudos"><div class="kb-soltos-cab">'
+          + esc(mudos.length + (mudos.length > 1
+            ? ' projetos lidos que não entraram no quadro'
+            : ' projeto lido que não entrou no quadro'))
+          + '</div>'
+          + mudos.map((m) => '<div class="kb-solto-grupo"><div class="kb-solto">'
+            + '<span class="kb-tag forte">' + esc(m.projeto || '?') + '</span>' + seloDoProjeto(m.projeto)
+            + '</div><div class="kb-solto-porque">' + esc(m.motivo || '') + '</div></div>').join('')
+          + '</div>'
+        : '';
+
       /* CC-371: uma caixinha por projeto, e ele marca quantas quiser.
          "todos" é uma caixinha também, e não uma opção fora da lista: marcar
          ela é limpar a seleção, que é o mesmo estado. Duas formas de dizer a
@@ -10971,7 +11001,7 @@
         + '<button class="btn btn-ghost compacto" data-kb-cheio title="abrir o quadro em tela cheia">tela cheia</button>'
         + '</div>'
         + (aberto ? kbDetalhe(aberto) : '')
-        + faixaSoltos
+        + faixaSoltos + faixaMudos
         /* O palco existe para a tela cheia ter o que expandir sem levar junto o
            filtro e o cartão aberto. */
         + '<div id="kb-palco"><div class="kb-quadro">'

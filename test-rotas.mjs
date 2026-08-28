@@ -242,4 +242,43 @@ function casa(quadro, { recados = null, pedidos = null } = {}) {
   ok('os cinco estados do quadro têm cores diferentes entre si')
 }
 
+
+/* ── CC-377: projeto lido que não rende cartão não pode sumir ────────────── */
+{
+  const { montar } = await import('./src/trabalho.mjs')
+
+  /* O caso real do carzo: o roadmap existe, tem seções e itens, e nenhuma
+     frente, porque é escrito em tabela e o leitor entende cabeçalho. */
+  const emTabela = {
+    projeto: 'VPS_carzo',
+    raiz: '/tmp/carzo',
+    mapa: { grupos: [{ titulo: 'Sprint 0', frentes: [], itens: 8 }, { titulo: 'Sprint 1', frentes: [], itens: 31 }] },
+  }
+  const q = montar({ projetos: [emTabela], jobs: [], pendencias: [] })
+  assert.equal(q.grupos.length, 0, 'sem frente não há cartão, e isso continua certo')
+  assert.equal(q.naoRenderam.length, 1)
+  assert.equal(q.naoRenderam[0].projeto, 'VPS_carzo')
+  assert.equal(q.naoRenderam[0].itens, 39)
+  assert.match(q.naoRenderam[0].motivo, /39 item/)
+  ok('projeto com itens e zero frentes aparece com o motivo, em vez de sumir')
+
+  /* A prova ao contrário: projeto que RENDE cartão não entra na lista de
+     mudos. Sem isto, a faixa acusaria todo mundo e viraria paisagem. */
+  const normal = {
+    projeto: 'VPS_ok',
+    raiz: '/tmp/ok',
+    mapa: { grupos: [{ titulo: 'Frente', frentes: [{ titulo: 'fazer algo', estado: 'aberto' }], itens: 1 }] },
+  }
+  const q2 = montar({ projetos: [normal], jobs: [], pendencias: [] })
+  assert.equal(q2.grupos.length, 1)
+  assert.equal(q2.naoRenderam.length, 0)
+  ok('a prova ao contrário: projeto que rende cartão NÃO entra na faixa de avisos')
+
+  /* E projeto sem roadmap nenhum diz isso, que é outra coisa. */
+  const semArquivo = { projeto: 'VPS_nada', raiz: '/tmp/nada', mapa: null }
+  const q3 = montar({ projetos: [semArquivo], jobs: [], pendencias: [] })
+  assert.match(q3.naoRenderam[0].motivo, /não tem docs\/ROADMAP\.md/)
+  ok('projeto sem roadmap diz que não tem o arquivo, e não que está vazio')
+}
+
 console.log(`\n${passou} verificações, todas passaram.`)
