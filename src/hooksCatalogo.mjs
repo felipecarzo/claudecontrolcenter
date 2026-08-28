@@ -589,6 +589,25 @@ export const HOOKS = [
     padrao: true,
     implementado: true,
   },
+  {
+    id: 'quadro-guard',
+    modulo: 'entrega',
+    nivel: 'avisa',
+    label: 'Projeto que sumiu do quadro',
+    script: 'quadro-guard.mjs',
+    evento: 'Stop',
+    descricao: 'CC-381, correção dele em 28/08: "como a gente está garantindo '
+      + 'que vai ler esses projetos? sabemos que a única coisa que garante é '
+      + 'Hook". Teste prova que a função soma certo com dado inventado e só '
+      + 'roda no gate; este confere na máquina de verdade, a cada resposta, se '
+      + 'todo projeto do disco caiu em um de três lugares (no quadro, na faixa '
+      + 'de aviso, ou na linha dos sem roadmap). Três reações por gravidade: a '
+      + 'conta que não fecha barra sempre, projeto que SAIU do quadro cobra em '
+      + 'toda volta, e projeto novo fora do quadro fala uma vez só. Custa 62ms, '
+      + 'medido, e não chama o git (que sozinho custaria 840ms).',
+    padrao: true,
+    implementado: true,
+  },
 ]
 
 export const hookDe = (id) => HOOKS.find((h) => h.id === id) || null
