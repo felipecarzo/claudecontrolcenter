@@ -15,6 +15,186 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 27/08 (noite): ver as rotas, e o que os agentes combinam entre si
+
+**Visão dele, registrada para decidir depois. Nada aqui foi implementado.** Ele
+mesmo enquadrou assim ao terminar: *"eu estou jogando ideias aqui, dá uma
+analisada em tudo o que eu estou falando pra entender melhor, fazer um filtro e
+tenta até melhorar essas ideias"*.
+
+Veio depois de aprovar as três telas: *"ficou muito melhor do que eu imaginei
+(…) eu estou só me adaptando ao sistema"*. E um elogio que é instrução para o
+futuro: *"eu acho muito legal que você botou o que eu falei dentro da tarefa,
+isso é muito bom porque eu consigo identificar pelo que eu falei"* — as palavras
+dele dentro do item são o que o torna reconhecível para ele. Continuar fazendo.
+
+### O que foi medido antes de propor qualquer coisa (27/08)
+
+Isto muda o custo de quase tudo abaixo, e é o motivo de a ordem sugerida ser
+essa:
+
+- **A conversa entre agentes JÁ está gravada, e ninguém a vê.** `docs/.recados.json`
+  tem 13 recados com quem mandou, para quem, de que tipo (aviso, "vou mexer",
+  "liberado", "terminei") e **qual arquivo estava em jogo** em 5 deles.
+- **Os pedidos de autorização também, e é pior:** `docs/.rotas-pedidos.json` tem
+  **16 pedidos, todos com status `pendente`**. Cada um guarda quem pediu, qual
+  arquivo, e quais rotas estavam ocupadas na hora. Nenhum foi respondido nunca,
+  porque não existe tela nenhuma que os mostre. É o formato de defeito que este
+  projeto já registrou três vezes: o mecanismo funciona, o dado se acumula, e o
+  buraco é invisível porque ninguém desobedeceu.
+- **O quadro de rotas tem 53 linhas e 8 ocupadas.** Ele é histórico e estado no
+  mesmo arquivo, e por isso o que vale hoje está afogado. Três sessões seguram
+  as 8: `d4b47d4e` sozinha tem três.
+- **Três das 8 rotas ocupadas não declaram arquivo nenhum.** Sem isso não há
+  como detectar cruzamento: o mapa que ele quer só é tão bom quanto o `📁` que
+  as sessões escrevem.
+- **`situacaoRotas()` só sabe contar.** Devolve `{total, ocupadas}` e nada mais.
+  Quem, em que arquivo e em que modo não sai de lugar nenhum hoje: o parser da
+  linha inteira precisa nascer, e é a peça de que todos os itens abaixo dependem.
+- **A linha de exemplo do modelo (`feature/checkout`) aparece como rota
+  ocupada**, com dono nenhum. Defeito pequeno e barato, mas ele suja qualquer
+  contagem que se faça daqui em diante.
+
+### CC-372 🔵 27/08: uma coluna de PAUSADO no quadro
+
+Nas palavras dele: *"a gente podia criar uma aba extra, entre trabalhando e em
+andamento, só que pausado. Por exemplo, eu não sei se já tem lá uma coluna pra
+isso, eu acho que não, eu posso estar confundindo agora"*.
+
+**Ele tem razão, não existe.** E o dado para preenchê-la existe: `statusDe()` já
+devolve `idle` depois de 30 minutos de silêncio, e hoje esse estado não tem
+coluna, então some. É o CC-337 pela porta de trás: o agente parado não pode
+posar de trabalhando, mas também não pode desaparecer.
+
+⚠️ **A coluna é do quadro, que é da rota `front`.** Quem pegar isto conversa com
+quem estiver no quadro antes de encostar.
+
+### CC-373 🔵 27/08: a cor da rota no cartão
+
+Nas palavras dele: *"seria legal aparecer a cor da rota que ele está, então por
+exemplo se um agente está na rota amarela, em andamento, e um outro agente
+também tem na rota amarela, eu vou ver, né? E aí eu vou ver que esses dois
+agentes estão na mesma rota, eu vou ver que tem risco nisso"*.
+
+O que ele está pedindo, traduzido: **um sinal visual de colisão**, para ele ver
+o risco antes de o estrago acontecer. Cor é o meio; o fim é ver dois agentes no
+mesmo lugar.
+
+**Melhoria a discutir com ele:** cor por rota não escala (são 53 linhas e ele
+não vai decorar paleta), e ela responde "qual rota" quando a pergunta dele é
+"tem alguém junto comigo?". Duas rotas DIFERENTES no mesmo arquivo é o caso
+perigoso, e a cor por rota justamente não o mostraria. Proposta alternativa:
+**pintar o CRUZAMENTO, não a rota.** Cartão sozinho fica neutro; cartão que
+divide arquivo com outra rota ocupada ganha a marca, e tocar nela diz com quem e
+em qual arquivo. Perguntar antes de escolher.
+
+### CC-374 ✅ 27/08: os tickets à mão, por projeto e por rota
+
+Nas palavras dele: *"poderia ter um campo de tickets que são sendo gerados, por
+projeto e por rota. Quando eu estou vendo o Trello e eu clico num card que está
+cruzando com outra rota, eu posso clicar na rota verde e ver o que está sendo, e
+eu posso ver os tíquetes que foram criados, que são as conversas entre os
+agentes pra autorizar o que vai ser feito, o que não vai ser feito"*.
+
+**Este é o de melhor relação entre valor e custo de toda a lista**, e a medida
+acima é o porquê: os 13 recados e os 16 pedidos já estão gravados, com autor,
+alvo, arquivo e data. Falta só uma tela. E os 16 pendentes provam que a falta da
+tela não é cosmética: ela está engolindo decisões que alguém devia ter tomado.
+
+### CC-375 🔵 27/08: trocar o modo do agente sem sair da tela
+
+Nas palavras dele: *"seria legal eu poder mudar de continuativo pra outros modos
+dos agentes que estão sendo marcados aqui também. Talvez não o tempo todo,
+talvez eu aperte um botão eles apareçam e sumam. Mas assim, bem simples, só o
+nome do projeto e o que está, o modo, bem simples, porque é só pra eu ter um
+controle maior do projeto e das tarefas"*.
+
+Ele já desenhou a solução junto do pedido: **aparece sob botão e some**, e mostra
+só projeto e modo. O controle em si já existe no cartão de cada projeto; o que
+falta é a lista curta, de todos de uma vez, sem rolar a tela.
+
+⚠️ **Armadilha conhecida a respeitar aqui:** modo tem TRÊS camadas (projeto,
+rota e sessão), e uma tela que mostre o modo sem dizer de ONDE ele vem repete o
+CC-362. O dado já existe pronto (`origemModo`, `origemModoTexto`, `rotaDoModo`).
+
+### CC-376 🟡 27/08 (fatias 1 e 2 feitas, a "awareness" fica): uma tela só para as rotas, com o mapa dos cruzamentos
+
+Nas palavras dele: *"seria legal ter uma aba lateral dedicada só pra essa questão
+das rotas, pra ver as rotas que estão sendo mexidas entre os agentes, e ver
+também como se fosse um mapa das rotas e de como elas se cruzam, e dos agentes
+que estão nas rotas, como eles estão se cruzando, quais arquivos estão se
+cruzando, quais comandos eles estão mexendo próximos um do outro, pra ver a
+gravidade também de quando esses agentes estão mexendo no mesmo arquivo (…) qual
+é a awareness do agente que está na rota em relação ao que o outro agente está
+fazendo naquela rota e vice-versa"*.
+
+É o maior dos cinco e o que amarra os outros. **Sugestão de fatiar, com o motivo
+de cada corte:**
+
+1. **A lista honesta primeiro**: as 8 ocupadas, quem, desde quando, em que modo,
+   e quais arquivos. Sai do parser novo, é barato, e já mata o problema das 53
+   linhas afogando as 8 que valem.
+2. **O cruzamento depois**: qual arquivo é reivindicado por mais de uma rota
+   ocupada. Hoje daria zero, e zero honesto vale mais que um mapa bonito com
+   dado inventado. **E revela o buraco de verdade:** três rotas não declaram
+   arquivo, então o cruzamento delas é invisível por construção.
+3. **A "awareness" por último, e ela não é um desenho.** Ela é uma PERGUNTA:
+   *este agente sabe o que o outro está fazendo no arquivo dele?* O dado que
+   responde isso são os recados (quem avisou quem, sobre qual arquivo, e se foi
+   respondido). O caso de hoje é o exemplo bom: duas sessões no mesmo arquivo,
+   quatro recados trocados, zero estrago. E é o contrário do acidente de 06/08,
+   em que ninguém avisou ninguém.
+
+**Sobre "quais comandos eles estão mexendo próximos um do outro":** este pedaço
+não tem dado hoje. Nada registra que comando cada sessão roda. Antes de prometer,
+decidir com ele se vale gravar isso, porque é vigilância nova e não sobra de
+algo que já existe.
+
+### A ordem de execução, e as tarefas de cada uma
+
+Escolhida em 27/08 com o "pode seguir" dele. **A ordem não é a dos números:** é a
+do que se apoia em dado que já existe, para as primeiras entregas não dependerem
+de gravar coisa nova.
+
+**Primeira leva (em execução):** CC-374 e a fatia 1 do CC-376 saem juntas. Elas
+partilham a mesma peça que falta, o leitor do quadro de rotas, e separá-las seria
+escrever esse leitor duas vezes.
+
+- [x] **T1.** Escrever `src/rotas.mjs`: lê `docs/ROTAS-ATIVAS.md` linha a linha e
+      devolve, para cada rota, o nome, se está ocupada, o dono, desde quando, o
+      modo declarado e os arquivos que ela reivindica. Hoje `situacaoRotas()` só
+      conta ocupadas, e é por isso que nada além da contagem existe na tela.
+- [x] **T2.** No mesmo módulo, ler `docs/.recados.json` e
+      `docs/.rotas-pedidos.json` e devolver os tickets normalizados: quem, para
+      quem, tipo, arquivo, quando, e se ainda está esperando resposta.
+- [x] **T3.** Cruzar os dois: qual arquivo é reivindicado por mais de uma rota
+      ocupada, e quais rotas não declaram arquivo nenhum (o cruzamento delas é
+      invisível por construção, e a tela precisa dizer isso em vez de calar).
+- [x] **T4.** Abrir `GET /api/rotas` em `src/web.mjs`, entregando o retrato
+      inteiro numa leitura só.
+- [x] **T5.** Criar a tela `view-rotas` no menu lateral: a lista do que está
+      ocupado agora, com dono, idade, modo e arquivos.
+- [x] **T6.** Mostrar os tickets na mesma tela, agrupados por projeto e por rota,
+      com os que esperam resposta em primeiro lugar.
+- [x] **T7.** Marcar os arquivos disputados por mais de uma rota.
+- [x] **T8.** Teste com a prova ao contrário, como manda a casa.
+
+**Não entra nesta leva, e o motivo:** a coluna de pausado (CC-372) e a cor no
+cartão (CC-373) mexem no quadro Kanban, que é de outra sessão. Trocar de dono no
+meio do trabalho dela é o acidente que o Método Routia existe para impedir. O
+CC-375 (trocar o modo numa lista curta) espera a decisão dele sobre onde essa
+lista mora.
+
+### O que eu não faria, e por quê
+
+Nenhum destes cinco é bobagem, mas dois têm o mesmo risco: **virar mais uma tela
+que mostra os mesmos projetos**, que foi exatamente a queixa da tarde. O CC-373
+(cor) e o CC-376 (mapa) só se pagam se responderem uma pergunta que as telas de
+hoje não respondem: *tem alguém no meu caminho agora?* Se acabarem repetindo o
+quadro em outra forma, é melhor não existirem.
+
+---
+
 ## ▶ Frente nova, aberta em 27/08: a tela central vira três telas
 
 Pedido dele em 27/08, ditado por voz, com as palavras dele:

@@ -18,7 +18,9 @@
   "src/ui_v2.html",
   "src/projetos.mjs",
   "test-endereco.mjs",
-  "src/config.mjs"
+  "src/config.mjs",
+  "src/rotas.mjs",
+  "test-rotas.mjs"
  ],
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
@@ -280,6 +282,20 @@
    "motivo": "CC-371, escolha dele em 27/08: escolher varios projetos no quadro, guardado e valendo na tela Trabalho inteira",
    "modo": "sugestivo",
    "quando": "2026-08-27T20:05:22.613Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/rotas.mjs",
+   "motivo": null,
+   "modo": "sugestivo",
+   "quando": "2026-08-28T02:59:46.780Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "test-rotas.mjs",
+   "motivo": null,
+   "modo": "sugestivo",
+   "quando": "2026-08-28T02:59:47.070Z"
   }
  ],
  "verificacao": {
