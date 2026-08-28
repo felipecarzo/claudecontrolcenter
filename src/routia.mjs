@@ -212,7 +212,26 @@ export function situacaoRotas(root) {
   let ocupadas = 0
   // uma linha de tabela por rota; 🔴 é ocupada, 🟢 é livre — o mesmo par que
   // o protocolo manda usar, e o split tolera CRLF (armadilha já paga)
+  //
+  // ⚠️ CC-376, 27/08: as linhas dentro de `<!-- -->` ficam de fora, e isto é a
+  // terceira aparição do mesmo defeito. O quadro guarda EXEMPLOS de como
+  // preencher uma linha ocupada, e eles são linhas de tabela de verdade: a
+  // `feature/checkout`, que nunca existiu, era contada aqui como rota ocupada,
+  // e em 22/08 um exemplo solto chegou a travar `src/ui.html` para valer. A
+  // conta tem que ser por ESTADO, de cima para baixo, porque o comentário abre
+  // numa linha e fecha noutra: nenhuma regex numa linha isolada sabe se ela
+  // está dentro dele. `foraDeComentario` mora em `rotas.mjs`, que é quem lê o
+  // quadro inteiro; aqui a mesma varredura é feita em linha, para este módulo
+  // não passar a depender daquele.
+  let emComentario = false
   for (const linha of texto.split(/\r?\n/)) {
+    const abre = linha.lastIndexOf('<!--')
+    const fecha = linha.lastIndexOf('-->')
+    const jaEstava = emComentario
+    if (abre > fecha) emComentario = true
+    else if (fecha > abre) emComentario = false
+    if (jaEstava && emComentario) continue
+    if (!jaEstava && emComentario) continue
     if (!/^\|\s*[^|]*`[^`]+`/.test(linha)) continue
     total++
     if (linha.includes('🔴')) ocupadas++
