@@ -43,10 +43,34 @@ import { lerRoadmap, ordenar, pesoDe, citacaoDe, deOutraPlataforma } from './roa
 export function estadoDoItem(frente, { agentes = [], pendencias = [] } = {}) {
   if (frente.estado === 'feito') return { palavra: 'FECHADA', cor: 'done', porque: null }
   if (agentes.length) {
+    /* CC-372, 27/08: ter agente NÃO quer dizer estar andando.
+     *
+     * Pedido dele: *"a gente podia criar uma aba extra, entre trabalhando e em
+     * andamento, só que pausado. Eu não sei se já tem lá uma coluna pra isso,
+     * eu acho que não"*. Não tinha.
+     *
+     * `idle` é o que `statusDe()` devolve depois de 30 minutos de silêncio, e
+     * até aqui ele contava como ANDANDO: o item aparecia na coluna de quem está
+     * escrevendo agora, com a sessão parada havia horas. É o CC-337 um nível
+     * acima, e em 25/08 ele pegou exatamente isso num print, um cartão dizendo
+     * "1 TRABALHANDO" com a sessão morta havia três horas.
+     *
+     * Esconder o agente parado seria trocar uma mentira por outra: ele existe e
+     * pegou este item. O que ele não está é trabalhando. Por isso PAUSADA diz
+     * quantos são, e não some com eles. */
+    const ativos = agentes.filter((a) => a.status === 'working' || a.status === 'waiting')
+    if (!ativos.length) {
+      const n = agentes.length
+      return {
+        palavra: 'PAUSADA',
+        cor: 'paused',
+        porque: `${n} agente${n > 1 ? 's' : ''} parado${n > 1 ? 's' : ''}`,
+      }
+    }
     return {
       palavra: 'ANDANDO',
       cor: 'working',
-      porque: `${agentes.length} agente${agentes.length > 1 ? 's' : ''}`,
+      porque: `${ativos.length} agente${ativos.length > 1 ? 's' : ''}`,
     }
   }
   if (pendencias.length) {

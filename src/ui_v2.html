@@ -577,6 +577,7 @@
     .kb-col.c-waiting .kb-col-nome { color: var(--waiting); }
     .kb-col.c-failed  .kb-col-nome { color: var(--failed); }
     .kb-col.c-done    .kb-col-nome { color: var(--done); }
+    .kb-col.c-paused  .kb-col-nome { color: var(--paused); }
     /* A rolagem dos cartões é a normal, de roda e de dedo: ele pediu
        explicitamente *"scroll normal, desce os cards"*. */
     .kb-col-corpo { padding: 4px 10px 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 80px; }
@@ -607,6 +608,7 @@
     .kb-card.c-working::before { background: var(--working); }
     .kb-card.c-waiting::before { background: var(--waiting); }
     .kb-card.c-failed::before  { background: var(--failed); }
+    .kb-card.c-paused::before  { background: var(--paused); }
     .kb-card.c-done::before    { background: var(--done); }
     .kb-card-titulo {
       font-size: 13.5px; line-height: 1.4; color: var(--text-main); font-weight: 550;
@@ -869,7 +871,41 @@
     :root {
       --working: var(--accent);
       --done: var(--green);
+      /* ⚠️ CC-373, 27/08: `--waiting` e `--failed` eram USADOS em nove lugares
+         e nunca tinham sido definidos. Medido no navegador: os títulos das
+         colunas "VOCÊ DECIDE" e "TRAVADA" saíam em `#F8FAFC`, o branco padrão
+         do texto, iguais entre si e iguais a qualquer outro título. Metade do
+         código de cores do quadro estava morta, e em silêncio: variável de CSS
+         que não existe não é erro, é herança.
+         Foi achado indo atender o pedido dele de "aparecer a cor da rota",
+         quando a cor de ESTADO, que é mais antiga, nem funcionava. Os valores
+         são os mesmos que o JS já usava em `COR_STATUS`, então isto alinha o
+         CSS ao que o resto da tela sempre afirmou. */
+      --waiting: var(--amber);
+      --failed: var(--red);
+      /* A coluna nova, PAUSADA. Amarelo e não âmbar: âmbar já é "espera por
+         você", e usar a mesma cor faria a coluna nova dizer que ele precisa
+         agir, quando o caso é o contrário (o agente é que parou). */
+      --paused: var(--yellow);
       --bg-surface: var(--card);
+      /* Mais quatro apelidos que o painel usava sem nunca ter definido, achados
+         na mesma varredura de 27/08. Nenhum tinha valor reserva, então cada um
+         era uma propriedade que simplesmente não era aplicada:
+
+         · `--acento` (4 usos, todos no quadro): a borda do cartão aberto, a cor
+           do código do cartão e o contorno tracejado do alvo ao arrastar. Sem
+           ele, arrastar um cartão não mostrava onde ele ia cair.
+         · `--surface` (2): o fundo das pastilhas de arquivo.
+         · `--fg` e `--text` (1 cada): cor de texto em dois blocos.
+
+         São nomes em português e abreviações que entraram junto com blocos
+         copiados de outras telas. Apontar cada um para o token que já existe é
+         mais honesto que renomear 9 usos: o nome duplo fica, o valor passa a
+         ser um só, e o gate agora recusa o próximo apelido órfão. */
+      --acento: var(--accent);
+      --surface: var(--card-hover);
+      --fg: var(--text-main);
+      --text: var(--text-main);
     }
     /* O funil recebe texto livre de agente: caminho de arquivo e pedido
        ditado. Sem quebra, ele estoura a coluna; com `overflow:hidden` por
@@ -10754,6 +10790,19 @@
     const KB_COLUNAS = [
       { palavra: 'NA FILA', cor: 'idle', vazia: 'nada esperando aqui.' },
       { palavra: 'ANDANDO', cor: 'working', vazia: 'nenhum agente pegou uma frente agora. Enche sozinha quando alguém começa.' },
+      /* CC-372, pedido dele em 27/08: *"a gente podia criar uma aba extra,
+         entre trabalhando e em andamento, só que pausado. Eu não sei se já tem
+         lá uma coluna pra isso, eu acho que não"*. Não tinha, e ele acertou.
+
+         O dado existia e não tinha onde aparecer: um agente vira `idle` depois
+         de 30 minutos de silêncio, e o item dele continuava na coluna ANDANDO
+         como se alguém estivesse escrevendo. É o CC-337 de novo, um nível
+         acima: em 25/08 ele pegou um cartão dizendo "1 TRABALHANDO" com a
+         sessão morta havia três horas.
+
+         Fica ENTRE as duas, e a posição é o argumento: pausado é o que já saiu
+         da fila e ainda não voltou a andar. */
+      { palavra: 'PAUSADA', cor: 'paused', vazia: 'nenhum trabalho começado e parado no meio.' },
       { palavra: 'VOCÊ DECIDE', cor: 'waiting', vazia: 'nada depende de você neste recorte.' },
       { palavra: 'TRAVADA', cor: 'failed', vazia: 'nada travado. Enche quando você marca pausa no backlog.' },
     ];

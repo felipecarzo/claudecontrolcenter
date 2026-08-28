@@ -9,7 +9,7 @@
  * 2026-08-09.
  */
 import assert from 'node:assert'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { cruzamentos, foraDeComentario, lerLinha, lerQuadro, lerTickets, retratoRotas } from './src/rotas.mjs'
@@ -169,6 +169,77 @@ function casa(quadro, { recados = null, pedidos = null } = {}) {
   assert.equal(r.cruzamentos, null)
   ok('projeto sem quadro diz que NÃO usa o método, em vez de posar de tranquilo')
   rmSync(vazio, { recursive: true, force: true })
+}
+
+/* ── CC-372: a coluna de pausado ─────────────────────────────────────────── */
+{
+  const { estadoDoItem } = await import('./src/trabalho.mjs')
+  const frente = { estado: 'aberto', titulo: 'uma frente qualquer' }
+
+  const parado = estadoDoItem(frente, { agentes: [{ status: 'idle' }, { status: 'idle' }] })
+  assert.equal(parado.palavra, 'PAUSADA')
+  assert.equal(parado.cor, 'paused')
+  assert.equal(parado.porque, '2 agentes parados')
+  ok('item com todos os agentes parados vai para PAUSADA, e diz quantos são')
+
+  /* A prova ao contrário, e é ela que dá valor à primeira: UM agente vivo no
+     meio dos parados devolve o item para ANDANDO. Sem isto, a coluna nova
+     engoliria trabalho em curso, que é pior que o defeito que ela conserta. */
+  const misto = estadoDoItem(frente, { agentes: [{ status: 'idle' }, { status: 'working' }] })
+  assert.equal(misto.palavra, 'ANDANDO')
+  assert.equal(misto.porque, '1 agente', 'conta só quem está de fato trabalhando')
+  ok('a prova ao contrário: um agente vivo entre parados mantém o item ANDANDO')
+
+  /* E o motivo de a coluna existir: até 27/08 isto devolvia ANDANDO, com a
+     sessão calada havia horas. Foi o print dele de 25/08. */
+  const soEsperando = estadoDoItem(frente, { agentes: [{ status: 'waiting' }] })
+  assert.equal(soEsperando.palavra, 'ANDANDO')
+  ok('agente que parou para te perguntar continua ANDANDO, e não pausado')
+
+  /* Sem agente nenhum, nada muda: o caminho antigo continua inteiro. */
+  assert.equal(estadoDoItem(frente, { agentes: [] }).palavra, 'NA FILA')
+  ok('item sem agente segue NA FILA, o caminho de antes não mudou')
+}
+
+/* ── CC-373: nenhuma cor usada sem existir ───────────────────────────────── */
+{
+  const html = readFileSync('src/ui_v2.html', 'utf8')
+  const css = html.slice(html.indexOf('<style>'), html.lastIndexOf('</style>'))
+
+  const definidos = new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]))
+  /* Uso COM valor reserva (`var(--x, monospace)`) é escolha deliberada e passa:
+     ali quem escreveu já disse o que acontece se o token não existir. */
+  const semReserva = [...css.matchAll(/var\((--[a-z0-9-]+)\s*(,)?/g)]
+    .filter((m) => !m[2]).map((m) => m[1])
+  const orfaos = [...new Set(semReserva.filter((v) => !definidos.has(v)))]
+
+  assert.deepEqual(orfaos, [], 'cor usada e nunca definida: ' + orfaos.join(', ')
+    + '. Variável de CSS que não existe NÃO é erro no navegador, é herança: a '
+    + 'propriedade simplesmente não é aplicada, e ninguém vê. Medido em 27/08: '
+    + '`--waiting` e `--failed` estavam assim, e os títulos das colunas "VOCÊ '
+    + 'DECIDE" e "TRAVADA" saíam brancos e iguais entre si. Metade do código de '
+    + 'cores do quadro estava morta havia semanas.')
+  ok('nenhuma cor do painel é usada sem estar definida')
+
+  /* A prova ao contrário: a rede pega mesmo? Um uso inventado tem que cair. */
+  const falso = css + '\n.teste { color: var(--cor-que-nao-existe); }'
+  const defsF = new Set([...falso.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]))
+  const orfaosF = [...falso.matchAll(/var\((--[a-z0-9-]+)\s*(,)?/g)]
+    .filter((m) => !m[2] && !defsF.has(m[1])).map((m) => m[1])
+  assert.deepEqual(orfaosF, ['--cor-que-nao-existe'])
+  ok('a prova ao contrário: a rede acusa uma cor inventada')
+
+  /* E os cinco estados do quadro continuam distinguíveis entre si, que é o
+     ponto de eles serem semânticos. Cor repetida faria duas colunas dizerem a
+     mesma coisa, que é o defeito que acabou de ser consertado. */
+  const raiz = /:root\s*\{([^}]*)\}/g
+  let blocos = ''
+  for (const m of css.matchAll(raiz)) blocos += m[1]
+  const valor = (t) => (blocos.match(new RegExp(t + '\\s*:\\s*([^;]+);')) || [])[1]?.trim()
+  const estados = ['--working', '--waiting', '--failed', '--done', '--paused'].map(valor)
+  assert.equal(new Set(estados).size, estados.length,
+    'dois estados do quadro com a mesma cor: ' + estados.join(', '))
+  ok('os cinco estados do quadro têm cores diferentes entre si')
 }
 
 console.log(`\n${passou} verificações, todas passaram.`)
