@@ -22,23 +22,24 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
-| tela | 29 | 29/29 | 27/29 | 29/29 | 0/29 | 29/29 |
+| tela | 30 | 30/30 | 28/30 | 30/30 | 0/30 | 30/30 |
 | acao | 120 | 120/120 | 25/120 | 0/120 | 0/120 | 0/120 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
 | endereco | 90 | 90/90 | 6/90 | 0/90 | 0/90 | 0/90 |
-| palavra | 65 | 65/65 | 14/65 | 65/65 | 0/65 | 65/65 |
+| palavra | 66 | 66/66 | 14/66 | 66/66 | 0/66 | 66/66 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
 ponta.** A diferença está na coluna `como` do JSON, item a item. Inflar
 este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 
-## tela (29)
+## tela (30)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
 | `cockpit` | viva | src/ui_v2.html#view-cockpit | estreito |
 | `ligados` | viva | src/ui_v2.html#view-ligados | estreito |
 | `projetos` | viva | src/ui_v2.html#view-projetos | estreito |
+| `rotas` | viva | src/ui_v2.html#view-rotas | estreito |
 | `meus` | viva | src/ui_v2.html#view-meus | estreito |
 | `gate` | viva | src/ui_v2.html#view-gate | estreito |
 | `agora` | viva | src/ui_v2.html#view-agora | estreito |
@@ -228,6 +229,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/glossario` | estatica | src/web.mjs | funciona, explica |
 | `/api/meu` | estatica | src/web.mjs | funciona, explica |
 | `/api/fila-perdida` | estatica | src/web.mjs | funciona, explica |
+| `/api/rotas` | estatica | src/web.mjs | funciona, explica |
 | `/api/framework/projetos` | estatica | src/web.mjs | funciona, explica |
 | `/api/roadmap/estado` | estatica | src/web.mjs | funciona, explica |
 | `/api/modulos` | estatica | src/web.mjs | funciona, explica |
@@ -293,12 +295,11 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/paineis/ligar` | estatica | src/web.mjs | funciona, explica |
 | `/api/paineis/desligar` | estatica | src/web.mjs | funciona, explica |
 | `/api/escritorio` | estatica | src/web.mjs | funciona, explica |
-| `/api/rotas` | estatica | src/web.mjs | funciona, explica |
 | `/api/rotas/pedido` | estatica | src/web.mjs | funciona, explica |
 | `/api/rotas/alternar` | estatica | src/web.mjs | funciona, explica |
 | `/api/shutdown` | estatica | src/web.mjs | funciona, explica |
 
-## palavra (65)
+## palavra (66)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -321,6 +322,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `tela: maquina` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: tempo` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `janela: pastas` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: rotas` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: ligados` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: projetos` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: travas` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |

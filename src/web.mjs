@@ -69,6 +69,7 @@ import { trocarEstado as trocarEstadoRoadmap } from './roadmapEscrita.mjs'
 import { ultimaMexida as ultimaMexidaRoadmap, chaveDe as chaveRoadmap } from './roadmapHistorico.mjs'
 import { findProjects, projectsBase } from './install.mjs'
 import { situacaoRotas } from './routia.mjs'
+import { retratoRotas } from './rotas.mjs'
 import { commitsDesde } from './gitlog.mjs'
 import { digestTodos } from './digest.mjs'
 import { enriquecerTodos } from './opencode.mjs'
@@ -1159,6 +1160,56 @@ function handler(req, res) {
   //
   // Sob clique, nunca no stream: são ~20 leituras de JSON pequeno, na mesma
   // regra das portas, da VPS e dos processos.
+  /**
+   * CC-374 e CC-376: as rotas do Método Routia e os tickets entre os agentes.
+   *
+   * Pedido dele em 27/08: uma tela lateral para ver *"as rotas que estão sendo
+   * mexidas entre os agentes"*, e *"um campo de tickets (…) que são as conversas
+   * entre os agentes pra autorizar o que vai ser feito"*.
+   *
+   * **Uma leitura só, e sem cache.** Medido em 27/08: varrer os 23 projetos
+   * desta máquina custa 35ms, porque o quadro e os dois arquivos de conversa
+   * são pequenos. Guardar em cache economizaria milissegundos e criaria o
+   * problema que este painel mais paga: a tela afirmando o passado no presente,
+   * justamente numa tela cujo assunto é quem está mexendo AGORA.
+   *
+   * `?projeto=<nome>` responde por um só. Sem parâmetro, responde por todos os
+   * que usam o método, e os que não usam ficam de fora com a contagem à parte:
+   * projeto sem quadro não é projeto tranquilo, é projeto sem vigilância, e a
+   * tela precisa dizer a diferença.
+   */
+  if (url.pathname === '/api/rotas') {
+    const qual = url.searchParams.get('projeto')
+    const projetos = []
+    let semQuadro = 0
+    for (const raiz of findProjects()) {
+      const nome = path.basename(raiz)
+      if (qual && nome !== qual) continue
+      const r = retratoRotas(raiz, { projeto: nome })
+      if (!r.usa) { semQuadro++; continue }
+      projetos.push(r)
+    }
+    /* Quem tem alguém esperando resposta vem primeiro, depois quem tem mais
+       rota ocupada. A ordem responde "onde alguém está travado" antes de "onde
+       há movimento", que é a pergunta mais cara das duas. */
+    projetos.sort((a, b) => b.esperando - a.esperando
+      || b.rotas.filter((x) => x.ocupada).length - a.rotas.filter((x) => x.ocupada).length
+      || a.projeto.localeCompare(b.projeto))
+    return send(res, 200, {
+      projetos,
+      semQuadro,
+      esperando: projetos.reduce((n, p) => n + p.esperando, 0),
+      disputados: projetos.reduce((n, p) => n + (p.cruzamentos?.disputados.length || 0), 0),
+      /* De qual máquina são estes quadros. Regra dele, de 20/08, e vale para
+         TODO quadro que mostra projeto: *"onde tá dizendo que cada projeto está
+         na vps, desktop etc?"*. Aqui são sempre desta máquina, porque o quadro
+         é um arquivo no disco e não viaja pela federação, mas dizer isso é o
+         que impede a tela de parecer falar dos projetos das duas. */
+      maquina: origemLocal(readConfig())?.nome || null,
+      at: Date.now(),
+    })
+  }
+
   if (url.pathname === '/api/framework/projetos') {
     const vistos = new Set()
     const lista = []

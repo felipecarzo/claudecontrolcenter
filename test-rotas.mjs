@@ -1,0 +1,174 @@
+/**
+ * CC-374 e CC-376 — o retrato das rotas e os tickets entre agentes.
+ *
+ * Entra no `npm test` porque não precisa de navegador nem de rede: tudo aqui é
+ * leitura de arquivo num quadro montado à mão numa pasta temporária.
+ *
+ * **Nada escreve em dado real dele.** A casa já pagou por isto uma vez: um
+ * teste que gravava nas notas de verdade é candidato à causa do apagamento de
+ * 2026-08-09.
+ */
+import assert from 'node:assert'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { cruzamentos, foraDeComentario, lerLinha, lerQuadro, lerTickets, retratoRotas } from './src/rotas.mjs'
+
+let passou = 0
+const ok = (nome) => { console.log('  ok   ' + nome); passou++ }
+
+function casa(quadro, { recados = null, pedidos = null } = {}) {
+  const raiz = mkdtempSync(join(tmpdir(), 'cc-rotas-'))
+  mkdirSync(join(raiz, 'docs'), { recursive: true })
+  writeFileSync(join(raiz, 'docs', 'ROTAS-ATIVAS.md'), quadro)
+  if (recados) writeFileSync(join(raiz, 'docs', '.recados.json'), JSON.stringify(recados))
+  if (pedidos) writeFileSync(join(raiz, 'docs', '.rotas-pedidos.json'), JSON.stringify(pedidos))
+  return raiz
+}
+
+/* ── a linha vira objeto ─────────────────────────────────────────────────── */
+{
+  const l = lerLinha('| `front` | 🔴 ocupada | abcd1234 — a tela 🎚 continuativo 📁 src/ui.html 📁 src/web.mjs | 2026-08-27 |')
+  assert.equal(l.rota, 'front')
+  assert.equal(l.ocupada, true)
+  assert.equal(l.dono, 'abcd1234')
+  assert.equal(l.modo, 'continuativo')
+  assert.deepEqual(l.arquivos, ['src/ui.html', 'src/web.mjs'])
+  assert.equal(l.desde, '2026-08-27')
+  ok('a linha do quadro vira rota, dono, modo, arquivos e data')
+}
+
+{
+  /* A regra do dono é POSICIONAL, e é a causa do CC-362. A linha carrega o
+     histórico dela inteiro, então uma sessão apenas CITADA aparece no texto sem
+     nunca ter tido a rota. */
+  const l = lerLinha('| `front` | 🔴 ocupada | aaaa1111 — TOMADA de bbbb2222, que estava calada | hoje |')
+  assert.equal(l.dono, 'aaaa1111')
+  ok('quem toma a rota é o dono, e a sessão citada no histórico não é')
+
+  /* A prova ao contrário: se a pergunta fosse textual, como era antes, a sessão
+     apenas citada passaria. É exatamente o defeito que custou dois módulos. */
+  assert.equal(l.texto.includes('bbbb2222'), true)
+  ok('a prova ao contrário: a sessão citada ESTÁ no texto, e mesmo assim não é dona')
+}
+
+/* ── o exemplo dentro de comentário não é rota ───────────────────────────── */
+{
+  const quadro = [
+    '| Rota | Status | Quem | Desde |',
+    '|---|---|---|---|',
+    '| `real` | 🔴 ocupada | aaaa1111 — trabalho de verdade 📁 src/a.mjs | hoje |',
+    '',
+    '<!--',
+    'Como preencher uma linha ocupada:',
+    '| `feature/checkout` | 🔴 ocupada | id da sessão — "ajustando cupom" | 2026-08-12 |',
+    '-->',
+  ].join('\n')
+  const raiz = casa(quadro)
+  const linhas = lerQuadro(raiz)
+  assert.equal(linhas.length, 1)
+  assert.equal(linhas[0].rota, 'real')
+  ok('exemplo dentro de comentário não vira rota ocupada')
+
+  /* A prova ao contrário, e ela vale muito aqui: SEM o filtro, o exemplo entra.
+     Foi o que aconteceu de verdade, três vezes: a `feature/checkout` que nunca
+     existiu era contada como a oitava rota ocupada deste projeto. */
+  const cru = quadro.split(/\r?\n/).map(lerLinha).filter(Boolean)
+  assert.equal(cru.length, 2)
+  assert.equal(cru[1].rota, 'feature/checkout')
+  ok('a prova ao contrário: sem o filtro, o exemplo POSA de rota ocupada')
+
+  rmSync(raiz, { recursive: true, force: true })
+}
+
+{
+  /* Um comentário que abre e fecha na mesma linha não pode engolir o resto do
+     arquivo, senão o quadro inteiro sumiria por causa de uma nota curta. */
+  const linhas = foraDeComentario([
+    'antes',
+    '<!-- nota curta -->',
+    '| `viva` | 🔴 ocupada | aaaa1111 | hoje |',
+  ])
+  assert.equal(linhas.includes('| `viva` | 🔴 ocupada | aaaa1111 | hoje |'), true)
+  ok('comentário de uma linha só não engole o quadro inteiro')
+}
+
+/* ── o cruzamento, e o que ele NÃO enxerga ───────────────────────────────── */
+{
+  const linhas = [
+    lerLinha('| `a` | 🔴 ocupada | aaaa1111 — 📁 src/mesmo.mjs 📁 src/so-da-a.mjs | hoje |'),
+    lerLinha('| `b` | 🔴 ocupada | bbbb2222 — 📁 src/mesmo.mjs | hoje |'),
+    lerLinha('| `c` | 🔴 ocupada | cccc3333 — sem declarar nada | hoje |'),
+    lerLinha('| `d` | 🟢 livre | — 📁 src/mesmo.mjs | — |'),
+  ]
+  const c = cruzamentos(linhas)
+  assert.equal(c.disputados.length, 1)
+  assert.equal(c.disputados[0].arquivo, 'src/mesmo.mjs')
+  assert.deepEqual(c.disputados[0].quem.map((q) => q.rota).sort(), ['a', 'b'])
+  ok('arquivo com duas rotas ocupadas em cima aparece como disputa')
+
+  /* Rota LIVRE que declara o mesmo arquivo não é disputa: ninguém a segura. */
+  assert.equal(c.disputados[0].quem.length, 2)
+  ok('rota livre não entra na disputa, mesmo declarando o mesmo arquivo')
+
+  /* E o buraco declarado: quem não diz onde mexe é invisível para esta conta.
+     Devolver só a lista de disputas faria a tela afirmar tranquilidade sobre o
+     que não olhou. */
+  assert.deepEqual(c.semArquivo.map((x) => x.rota), ['c'])
+  ok('a rota que não declara arquivo sai contada à parte, e não some')
+}
+
+/* ── os tickets ──────────────────────────────────────────────────────────── */
+{
+  const raiz = casa('| `x` | 🟢 livre | — | — |', {
+    recados: {
+      recados: [
+        { id: 'r1', de: 'aaaa1111', para: 'bbbb2222', tipo: 'vou_mexer', arquivo: 'src/a.mjs', em: 1000, texto: 'posso?' },
+        { id: 'r2', de: 'aaaa1111', para: 'cccc3333', tipo: 'vou_mexer', arquivo: 'src/b.mjs', em: 2000, texto: 'posso?' },
+        { id: 'r3', de: 'bbbb2222', para: 'aaaa1111', tipo: 'liberado', em: 3000, texto: 'pode' },
+        { id: 'r4', de: 'aaaa1111', para: 'todos', tipo: 'aviso', em: 4000, texto: 'fyi' },
+      ],
+    },
+    pedidos: {
+      pedidos: [
+        { id: 'p1', de: 'dddd4444', arquivo: 'src/c.mjs', rotasOcupadas: ['front'], status: 'pendente', tentativas: 3, em: 5000 },
+        { id: 'p2', de: 'dddd4444', arquivo: 'src/d.mjs', rotasOcupadas: [], status: 'autorizado', tentativas: 1, em: 6000 },
+      ],
+    },
+  })
+
+  const t = lerTickets(raiz)
+  assert.equal(t.length, 6)
+  assert.equal(t[0].quando, 6000, 'mais novo primeiro')
+  ok('recados e pedidos saem juntos, do mais novo para o mais velho')
+
+  const esperando = t.filter((x) => x.pedeResposta && !x.respondido)
+  /* r2 (ninguém respondeu) e p1 (pendente). r1 foi respondido por r3, no sentido
+     contrário e depois dele. */
+  assert.deepEqual(esperando.map((x) => x.id).sort(), ['p1', 'r2'])
+  ok('só fica esperando quem pediu resposta e não recebeu')
+
+  const aviso = t.find((x) => x.id === 'r4')
+  assert.equal(aviso.pedeResposta, false)
+  ok('aviso nunca fica devendo resposta, e não vira alarme falso')
+
+  const pedido = t.find((x) => x.id === 'p1')
+  assert.equal(pedido.para, null)
+  assert.equal(pedido.tentativas, 3)
+  ok('pedido de autorização não inventa destinatário, e carrega as tentativas')
+
+  rmSync(raiz, { recursive: true, force: true })
+}
+
+/* ── projeto sem quadro é diferente de projeto tranquilo ─────────────────── */
+{
+  const vazio = mkdtempSync(join(tmpdir(), 'cc-rotas-sem-'))
+  const r = retratoRotas(vazio, { projeto: 'nada' })
+  assert.equal(r.usa, false)
+  assert.deepEqual(r.rotas, [])
+  assert.equal(r.cruzamentos, null)
+  ok('projeto sem quadro diz que NÃO usa o método, em vez de posar de tranquilo')
+  rmSync(vazio, { recursive: true, force: true })
+}
+
+console.log(`\n${passou} verificações, todas passaram.`)

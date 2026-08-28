@@ -1119,6 +1119,35 @@
        uma frase grande e solta, com o rótulo que a explica empurrado para fora
        da tela. Visto no print de 390px, não deduzido do código. */
     .fw-aut .path { flex: 1 1 140px; font-size: 11.5px; color: var(--text-muted); line-height: 1.35; }
+    /* ===== CC-374/CC-376: a tela das rotas =====
+       A grade é `auto-fill` com `minmax`, e não colunas declaradas: ela se
+       ajusta sozinha e passa no gate de tela estreita. Grade de largura fixa em
+       `style=` já apagou uma tela inteira em 390px neste painel, duas vezes. */
+    .rota-grade { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); margin-bottom: 6px; }
+    .rota-ticket, .rota-rota {
+      position: relative; padding: 11px 13px; border-radius: 9px;
+      background: var(--card); border: 1px solid var(--border);
+    }
+    /* A borda de baixo é o estado, os mesmos tokens semânticos do resto da
+       tela: âmbar espera alguém, vermelho é colisão. */
+    .rota-ticket.parado { border-bottom: 2px solid var(--waiting); }
+    .rota-rota.ocupada { border-bottom: 2px solid var(--waiting); }
+    .rota-rota.disputa { border-bottom: 2px solid var(--failed); }
+    .rota-ticket header, .rota-rota header { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 5px; }
+    .rota-ticket header b, .rota-rota header b { font-size: 12.5px; }
+    .rota-quando { font-size: 11px; color: var(--text-dim); margin-left: auto; }
+    .rota-dono { font-size: 11px; color: var(--text-muted); font-family: var(--mono, monospace); }
+    .rota-quem { font-size: 11.5px; color: var(--text-muted); margin: 0 0 4px; }
+    .rota-texto { font-size: 11.5px; color: var(--text-muted); margin: 5px 0 0; line-height: 1.4; }
+    .rota-modo { font-size: 11px; color: var(--text-dim); margin: 0 0 4px; }
+    .rota-arqs { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 0; font-size: 11px; }
+    .rota-arq, .rota-arqs code { font-size: 11px; color: var(--text-main); background: var(--surface); padding: 2px 6px; border-radius: 5px; word-break: break-all; }
+    .rota-sem-arq { font-size: 11px; color: var(--waiting); line-height: 1.35; }
+    .rota-parado { font-size: 11px; color: var(--waiting); margin: 6px 0 0; }
+    .rota-proj { display: block; font-size: 10.5px; color: var(--text-dim); margin-top: 7px; }
+    .rota-conta { font-size: 12px; color: var(--text-muted); }
+    .rota-rodape { font-size: 11px; color: var(--text-dim); margin: 4px 0 18px; }
+    .rota-cego { border-left: 2px solid var(--waiting); }
     .fw-pedidos { display: grid; gap: 4px; width: 100%; margin: 4px 0; }
     .fw-pedido { display: flex; align-items: center; gap: 8px; }
     .fw-pedido code {
@@ -1958,6 +1987,10 @@
            lugares distantes o que é uma coisa só. -->
       <a href="#" class="nav-item" data-target="view-ligados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg> Ligados</a>
       <a href="#" class="nav-item" data-target="view-projetos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> Projetos</a>
+      <!-- CC-376, 27/08: a tela das rotas fica colada nas de projeto porque a
+           pergunta dela é a mesma, um nível abaixo. Não "onde tem alguém", e
+           sim "tem alguém no meu caminho". -->
+      <a href="#" class="nav-item" data-target="view-rotas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="18" r="3"></circle><path d="M6 9v3a3 3 0 0 0 3 3h6"></path><path d="M18 15V9a3 3 0 0 0-3-3H9"></path></svg> Rotas</a>
       <a href="#" class="nav-item" data-target="view-meus">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
         Meu painel
@@ -2752,6 +2785,49 @@
          enxergando os trabalhos".
          O cartao fechado mostra o barato (uma rota, com cache de 15s). Abrir
          busca o caro daquele projeto so: git, framework, rotinas e roadmap. -->
+    <!-- TELA: ROTAS
+         =====================================================================
+         CC-376 e CC-374, 27/08. Pedido dele, ditado por voz:
+
+         "seria legal ter uma aba lateral dedicada so pra essa questao das
+         rotas, pra ver as rotas que estao sendo mexidas entre os agentes (…)
+         quais arquivos estao se cruzando (…) pra ver a gravidade de quando
+         esses agentes estao mexendo no mesmo arquivo"
+
+         e, junto:
+
+         "poderia ter um campo de tickets que sao sendo gerados, por projeto e
+         por rota (…) que sao as conversas entre os agentes pra autorizar o que
+         vai ser feito, o que nao vai ser feito"
+
+         O QUE FOI MEDIDO ANTES DE DESENHAR, e o que mudou por causa disso:
+
+         - 16 pedidos de autorização estavam gravados com estado "pendente", e
+           nenhum tinha sido respondido, porque não existia tela nenhuma que os
+           mostrasse. Por isso o bloco do que ESPERA RESPOSTA vem primeiro, e
+           não os cartões de rota: o que está parado pesa mais que o que anda.
+         - o quadro tem 52 linhas e 7 ocupadas. Ele guarda histórico e estado no
+           mesmo arquivo, e era por isso que ele não conseguia ver o que vale.
+           Aqui só entra o que vale, e o histórico é contado, nunca listado.
+         - três rotas ocupadas não declaravam arquivo nenhum. O cruzamento delas
+           é invisível por construção, e a tela DIZ isso: zero disputas sem esse
+           aviso seria a tela afirmando tranquilidade sobre o que não olhou.
+
+         A ordem dos blocos é a da urgência, não a do assunto. -->
+    <div id="view-rotas" class="view-section">
+      <div class="grid-container so-uma">
+        <div class="main-col">
+          <div class="card tend-barra">
+            <div class="tend-acoes">
+              <button class="btn btn-ghost" id="rota-atualizar">atualizar</button>
+            </div>
+            <div class="tend-quando" id="rota-quando"></div>
+          </div>
+          <div id="rota-corpo"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- TELA: LIGADOS
          =====================================================================
          CC-366, 27/08. Pedido dele: *"uma tela só com os projetos ligados, só
@@ -3067,6 +3143,7 @@
       'view-estrutura': { title: 'Estrutura', subtitle: 'O mapa de um projeto: as frentes, as rotas, o que mudou.' },
       'view-agentes': { title: 'Agentes', subtitle: 'Controle de agentes e logs detalhados.' },
       'view-escritorio': { title: 'Escritório', subtitle: 'Os agentes desenhados trabalhando, e quem é cada um.' },
+      'view-rotas': { title: 'Rotas', subtitle: 'Quem está segurando qual parte do código agora, em quais arquivos, e o que os agentes combinaram entre si para não trombar.' },
       'view-ligados': { title: 'Ligados', subtitle: 'Só os projetos com alguém trabalhando agora: agente, sessão no ar ou conversa aberta. Cada um com os controles dele à mão.' },
       'view-remoto': { title: 'Ajustes', subtitle: 'O que se mexe de vez em quando: as máquinas e o método de trabalho. Os projetos ficam em Ligados e em Projetos.' },
       'view-hooks': { title: 'Hooks', subtitle: 'Gatilhos automáticos do sistema.' },
@@ -3197,6 +3274,10 @@
                agora contam como ligado) e o framework de cada projeto, que é o
                que desenha os controles dentro do cartão. Faltando qualquer uma
                delas o cartão nasce dizendo "parado" sobre algo que não leu. */
+            /* CC-376: a tela pede o retrato ao abrir, e repinta na hora se
+               já tem um. Custo medido: 35ms para os 23 projetos desta máquina,
+               porque o quadro e os dois arquivos de conversa são pequenos. */
+            if (targetId === 'view-rotas') { carregarRotas({ silencioso: Boolean(ROTAS && typeof ROTAS !== 'string') }); }
             if (targetId === 'view-ligados' || targetId === 'view-projetos') {
               carregarProjetosTela();
               conversasParaOsCards();
@@ -8219,6 +8300,185 @@
       return resto.length ? '+ ' + resto.join(', ') : '';
     };
 
+    /* ===== CC-374 e CC-376: a tela das rotas =====
+     *
+     * Um estado só, e ele distingue TRÊS coisas: ainda não li, li e falhou, li
+     * e não há nada. A terceira é a que este painel mais erra, e a mais cara:
+     * uma tela em branco não separa "está tudo tranquilo" de "a leitura
+     * quebrou", e numa tela cujo assunto é colisão entre agentes essa confusão
+     * é justamente a que faz alguém trombar achando que estava livre.
+     */
+    let ROTAS = null; // null | 'carregando' | 'erro' | objeto
+
+    async function carregarRotas({ silencioso = false } = {}) {
+      if (!silencioso && !ROTAS) { ROTAS = 'carregando'; renderRotas(); }
+      try {
+        ROTAS = await (await fetch('/api/rotas')).json();
+      } catch (e) {
+        /* Falha passageira não apaga o retrato bom que já está na tela. */
+        if (!ROTAS || typeof ROTAS === 'string') ROTAS = 'erro';
+      }
+      renderRotas();
+    }
+
+    /* Há quanto tempo, em palavra curta. O quadro guarda a data do dia
+       (`2026-08-27`), não o instante, então o que dá para dizer com honestidade
+       é o dia, e nunca a hora. Fingir precisão que o dado não tem foi como
+       nasceu o estrago de 25/08 no controle remoto. */
+    const desdeEmPalavra = (texto) => {
+      const d = String(texto || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (!d) return String(texto || '').trim();
+      const dias = Math.round((Date.now() - new Date(`${d[1]}-${d[2]}-${d[3]}T12:00:00`)) / 864e5);
+      if (dias <= 0) return 'hoje';
+      if (dias === 1) return 'ontem';
+      return `há ${dias} dias`;
+    };
+
+    const RT_TIPO = {
+      vou_mexer: 'vou mexer num arquivo seu',
+      pare: 'pare e me responda',
+      liberado: 'liberado',
+      terminei: 'terminei',
+      aviso: 'aviso',
+      autorizacao: 'pedido de autorização',
+    };
+
+    function rtCartaoTicket(t, projeto) {
+      const quando = t.quando ? new Date(t.quando).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+      const parado = t.pedeResposta && !t.respondido;
+      return '<article class="rota-ticket' + (parado ? ' parado' : '') + '">'
+        + '<header><b>' + esc(RT_TIPO[t.tipo] || t.tipo) + '</b>'
+        + '<span class="rota-quando">' + esc(quando) + '</span></header>'
+        + '<p class="rota-quem">' + esc(t.de || 'alguém')
+        /* Pedido de autorização não tem destinatário: ele nasce de um bloqueio,
+           e quem responde é quem estiver segurando a rota daquele arquivo.
+           Desenhar uma seta para ninguém faria a tela inventar um interlocutor. */
+        + (t.para ? ' → ' + esc(t.para) : ' → quem estiver segurando a rota')
+        + '</p>'
+        + (t.arquivo ? '<code class="rota-arq">' + esc(t.arquivo) + '</code>' : '')
+        + (t.texto ? '<p class="rota-texto">' + esc(String(t.texto).slice(0, 220)) + (t.texto.length > 220 ? '…' : '') + '</p>' : '')
+        + (parado
+          ? '<p class="rota-parado">esperando resposta'
+            + (t.tentativas > 1 ? ' · tentou ' + t.tentativas + ' vezes' : '') + '</p>'
+          : '')
+        + (projeto ? '<span class="rota-proj">' + esc(projeto) + '</span>' : '')
+        + '</article>';
+    }
+
+    function rtCartaoRota(r, projeto) {
+      const arquivos = r.arquivos.length
+        ? r.arquivos.map((a) => '<code>' + esc(a) + '</code>').join(' ')
+        /* Rota ocupada sem arquivo declarado é o buraco do mapa, e ele não pode
+           aparecer como campo vazio: sem `📁` na linha do quadro, nenhuma
+           colisão dela é detectável, e a tela precisa dizer isso em voz alta. */
+        : '<span class="rota-sem-arq">não diz em quais arquivos mexe, então nenhuma colisão dela é detectável</span>';
+      return '<article class="rota-rota' + (r.ocupada ? ' ocupada' : '') + (r.ticket ? ' com-ticket' : '') + '">'
+        + '<header><span class="dot ' + (r.ocupada ? 'amber' : 'green') + '"></span>'
+        + '<b>' + esc(r.rota) + '</b>'
+        + (r.dono ? '<span class="rota-dono">' + esc(r.dono) + '</span>' : '')
+        + (r.desde ? '<span class="rota-quando">' + esc(desdeEmPalavra(r.desde)) + '</span>' : '')
+        + '</header>'
+        + (r.modo ? '<p class="rota-modo">modo ' + esc(r.modo) + '</p>' : '')
+        + '<p class="rota-arqs">' + arquivos + '</p>'
+        + (projeto ? '<span class="rota-proj">' + esc(projeto) + '</span>' : '')
+        + '</article>';
+    }
+
+    function renderRotas() {
+      const alvo = document.getElementById('rota-corpo');
+      const quando = document.getElementById('rota-quando');
+      if (!alvo) return;
+
+      if (!ROTAS || ROTAS === 'carregando') {
+        pintar(alvo, '<div class="card tend-aviso">lendo os quadros de rota…</div>');
+        return;
+      }
+      if (ROTAS === 'erro' || ROTAS.error) {
+        pintar(alvo, '<div class="card tend-aviso">não consegui ler os quadros de rota. '
+          + '<b>Isto não quer dizer que não há ninguém trabalhando</b>, quer dizer que eu não sei.</div>');
+        return;
+      }
+
+      const ps = ROTAS.projetos || [];
+      if (quando) {
+        pintar(quando, ps.length + ' projeto(s) com o método ligado'
+          + (ROTAS.semQuadro ? ' · ' + ROTAS.semQuadro + ' sem quadro nenhum' : ''));
+      }
+
+      if (!ps.length) {
+        pintar(alvo, '<div class="card tend-aviso">Nenhum projeto desta máquina usa o método das rotas. '
+          + 'Os ' + (ROTAS.semQuadro || 0) + ' que existem não têm quadro, e projeto sem quadro não é '
+          + 'projeto tranquilo: é projeto onde ninguém está vigiando quem mexe no quê.</div>');
+        return;
+      }
+
+      /* Bloco 1: o que está parado esperando alguém. Vem primeiro porque foi o
+         que a medição mostrou: 16 pedidos gravados, nenhum respondido, porque
+         não havia onde vê-los. */
+      const parados = ps.flatMap((p) => p.tickets
+        .filter((t) => t.pedeResposta && !t.respondido)
+        .map((t) => ({ t, projeto: p.projeto })));
+
+      const disputas = ps.flatMap((p) => (p.cruzamentos?.disputados || [])
+        .map((d) => ({ d, projeto: p.projeto })));
+      const semArquivo = ps.flatMap((p) => (p.cruzamentos?.semArquivo || [])
+        .map((x) => ({ x, projeto: p.projeto })));
+
+      const html = []
+
+      html.push('<section><div class="section-header"><h2>ESPERANDO RESPOSTA</h2>'
+        + '<span class="rota-conta">' + parados.length + '</span></div>'
+        + (parados.length
+          ? '<div class="rota-grade">' + parados.map(({ t, projeto }) => rtCartaoTicket(t, projeto)).join('') + '</div>'
+          : '<div class="card tend-aviso">Ninguém está esperando resposta de ninguém agora.</div>')
+        + '</section>');
+
+      /* Bloco 2: as colisões. O aviso sobre quem não declara arquivo anda
+         COLADO no número, e não num rodapé: separado, o zero seria lido como
+         "tudo tranquilo", que é exatamente o que ele não significa aqui. */
+      html.push('<section><div class="section-header"><h2>MESMO ARQUIVO, ROTAS DIFERENTES</h2>'
+        + '<span class="rota-conta">' + disputas.length + '</span></div>'
+        + (disputas.length
+          ? '<div class="rota-grade">' + disputas.map(({ d, projeto }) => '<article class="rota-rota disputa">'
+              + '<header><span class="dot red"></span><b>' + esc(d.arquivo) + '</b></header>'
+              + '<p class="rota-arqs">' + d.quem.map((q) => '<code>' + esc(q.rota) + '</code> <span class="rota-dono">'
+                + esc(q.dono || 'sem dono') + '</span>').join(' · ') + '</p>'
+              + '<span class="rota-proj">' + esc(projeto) + '</span></article>').join('') + '</div>'
+          : '<div class="card tend-aviso">Nenhum arquivo está sendo disputado por duas rotas agora.</div>')
+        + (semArquivo.length
+          ? '<div class="card tend-aviso rota-cego"><b>Mas isto não cobre tudo.</b> '
+            + semArquivo.length + ' rota(s) ocupada(s) não declaram em quais arquivos mexem, '
+            + 'e uma colisão delas seria invisível aqui: '
+            + semArquivo.map(({ x, projeto }) => '<code>' + esc(x.rota) + '</code> (' + esc(projeto) + ')').join(', ')
+            + '.</div>'
+          : '')
+        + '</section>');
+
+      /* Bloco 3: o quadro de cada projeto, ocupadas primeiro. O histórico é
+         CONTADO e nunca listado: eram 52 linhas afogando as 7 que valem, e foi
+         disso que ele reclamou ao pedir a tela. */
+      for (const p of ps) {
+        const ocupadas = p.rotas.filter((r) => r.ocupada);
+        const livres = p.rotas.length - ocupadas.length;
+        /* O selo de máquina anda colado no nome, e é regra dele para TODO
+           quadro que mostra projeto. Aqui todos são desta máquina, porque o
+           quadro de rotas é arquivo no disco e não viaja pela federação. Dizer
+           isso é o que impede a tela de parecer falar das duas. */
+        html.push('<section><div class="section-header"><h2>' + esc(p.projeto)
+          + seloDe(ROTAS.maquina || 'esta máquina') + '</h2>'
+          + '<span class="rota-conta">' + ocupadas.length + ' ocupada(s)</span></div>'
+          + (ocupadas.length
+            ? '<div class="rota-grade">' + ocupadas.map((r) => rtCartaoRota(r, null)).join('') + '</div>'
+            : '<div class="card tend-aviso">Nenhuma rota ocupada aqui agora.</div>')
+          + '<p class="rota-rodape">' + livres + ' livre(s)'
+          + (p.historicas ? ' · ' + p.historicas + ' linha(s) de histórico, fora desta conta' : '')
+          + (p.sessoes.length ? ' · ' + p.sessoes.length + ' sessão(ões) segurando rota' : '')
+          + '</p></section>');
+      }
+
+      pintar(alvo, html.join(''));
+    }
+
     function renderProjetos() {
       const d = DATA.projetos;
       const grades = [
@@ -11266,6 +11526,7 @@
       if (tr.id === 'tend-colher') { e.preventDefault(); return colherTendencias(); }
       if (tr.id === 'trv-recolher') { e.preventDefault(); return recolherTravas(); }
       if (tr.id === 'pj-atualizar' || tr.id === 'lig-atualizar') { e.preventDefault(); return carregarProjetosTela(true); }
+      if (tr.id === 'rota-atualizar') { e.preventDefault(); return carregarRotas(); }
       if (tr.id === 'pj-novo') {
         e.preventDefault();
         const casa = document.getElementById('pj-novo-casa');
@@ -12227,9 +12488,12 @@
          prova que pegaria a regressão. */
       if (window.SEM_TIQUE) return;
       if (document.hidden) return;
-      const olhando = ['view-ligados', 'view-projetos']
-        .some((id) => document.getElementById(id)?.classList.contains('active'));
-      if (!olhando) return;
+      const ativa = (id) => document.getElementById(id)?.classList.contains('active');
+      /* A tela das rotas anda no MESMO relógio, e não num próprio. Dois timers
+         para o mesmo ritmo é a segunda conta do mesmo gesto, e eles derivam:
+         um dia alguém muda um e esquece o outro. */
+      if (ativa('view-rotas')) return carregarRotas({ silencioso: true });
+      if (!ativa('view-ligados') && !ativa('view-projetos')) return;
       carregarProjetosTela();
       conversasParaOsCards();
       carregarFrameworkLista({ silencioso: true });

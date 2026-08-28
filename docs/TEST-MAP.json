@@ -9,12 +9,12 @@
  },
  "resumo": {
   "tela": {
-   "total": 29,
-   "existe": 29,
-   "funciona": 27,
-   "explica": 29,
+   "total": 30,
+   "existe": 30,
+   "funciona": 28,
+   "explica": 30,
    "estreito": 0,
-   "profundo": 29
+   "profundo": 30
   },
   "acao": {
    "total": 120,
@@ -41,12 +41,12 @@
    "profundo": 0
   },
   "palavra": {
-   "total": 65,
-   "existe": 65,
+   "total": 66,
+   "existe": 66,
    "funciona": 14,
-   "explica": 65,
+   "explica": 66,
    "estreito": 0,
-   "profundo": 65
+   "profundo": 66
   }
  },
  "itens": [
@@ -128,6 +128,36 @@
     "explica": {
      "coberto": "test.mjs",
      "como": "tem verbete `tela: projetos`"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "o verbete tem corpo de verdade"
+    }
+   }
+  },
+  {
+   "id": "tela:rotas",
+   "tipo": "tela",
+   "rotulo": "rotas",
+   "onde": "src/ui_v2.html#view-rotas",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test-endereco.mjs",
+     "como": "abre a tela e escuta erro de execução do navegador"
+    },
+    "funciona": {
+     "coberto": "test.mjs",
+     "como": "a tela é citada, o que NÃO prova que os botões dela funcionam"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "tem verbete `tela: rotas`"
     },
     "estreito": {
      "coberto": null,
@@ -5678,6 +5708,39 @@
    }
   },
   {
+   "id": "endereco:rotas",
+   "tipo": "endereco",
+   "rotulo": "/api/rotas",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
    "id": "endereco:framework/projetos",
    "tipo": "endereco",
    "rotulo": "/api/framework/projetos",
@@ -7823,39 +7886,6 @@
    }
   },
   {
-   "id": "endereco:rotas",
-   "tipo": "endereco",
-   "rotulo": "/api/rotas",
-   "onde": "src/web.mjs",
-   "camada": "estatica",
-   "escreve": false,
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/web.mjs",
-     "como": "a rota está declarada"
-    },
-    "funciona": {
-     "coberto": null,
-     "como": "a rota é citada em teste"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "endereço não aparece para ele: não precisa de verbete"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    }
-   }
-  },
-  {
    "id": "endereco:rotas/pedido",
    "tipo": "endereco",
    "rotulo": "/api/rotas/pedido",
@@ -8540,6 +8570,37 @@
     "profundo": {
      "coberto": "test.mjs",
      "como": "corpo com 1864 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:tela: rotas",
+   "tipo": "palavra",
+   "rotulo": "tela: rotas",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 1813 caracteres"
     }
    }
   },

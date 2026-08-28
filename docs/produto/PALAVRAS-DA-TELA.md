@@ -327,6 +327,41 @@ genérico:
 - **arquivo que não é texto**, detectado pelo conteúdo, não pela extensão
 - **arquivo acima de 512 kB**, dizendo o tamanho que tem
 
+## tela: rotas
+
+Quem está segurando qual parte do código agora, e o que os agentes combinaram
+entre si para não trombar um no outro.
+
+**O problema que ela resolve, medido em 27/08:** o quadro das rotas é um arquivo
+que guarda histórico e estado no mesmo lugar. Eram 52 linhas para 7 rotas
+ocupadas de verdade, e o que valia hoje ficava afogado no que já tinha acabado.
+Aqui só entra o que vale. O histórico é contado no rodapé de cada projeto, e
+nunca listado.
+
+**A tela abre pelo que está parado, não pelo que está andando.** O primeiro bloco
+é o que espera resposta de alguém, e ele existe por causa de um achado: havia 16
+pedidos de autorização gravados, todos com estado "pendente", e nenhum tinha
+sido respondido nunca. O mecanismo funcionava, o pedido era registrado, e não
+existia tela nenhuma que o mostrasse. Ninguém desobedeceu, e por isso o buraco
+era invisível.
+
+**Ticket aqui é de dois tipos.** O *recado* é a conversa entre dois agentes ("vou
+mexer num arquivo seu", "liberado", "pare"). O *pedido de autorização* nasce
+quando a trava barra alguém num arquivo que não é da rota dele. O segundo não
+tem destinatário: quem responde é quem estiver segurando a rota daquele arquivo,
+e a tela diz isso em vez de desenhar uma seta para ninguém.
+
+**O bloco das colisões vem com um aviso colado, e ele não é rodapé.** Rota
+ocupada que não declara em quais arquivos mexe é invisível para o cruzamento:
+ela pode estar no mesmo arquivo de outra e nada apareceria. Por isso, quando há
+rotas assim, o número de colisões vem acompanhado de quantas rotas não dá para
+enxergar. Zero disputas sem esse aviso seria a tela afirmando tranquilidade
+sobre o que não olhou.
+
+**Projeto sem quadro não é projeto tranquilo.** É projeto onde ninguém está
+vigiando quem mexe no quê, e a contagem deles aparece à parte, nunca somada aos
+outros.
+
 ## tela: ligados
 
 Só os projetos onde tem alguém trabalhando **agora**, e cada um com os controles
