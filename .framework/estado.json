@@ -17,7 +17,8 @@
   "src/trabalho.mjs",
   "src/ui_v2.html",
   "src/projetos.mjs",
-  "test-endereco.mjs"
+  "test-endereco.mjs",
+  "src/config.mjs"
  ],
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
@@ -272,6 +273,13 @@
    "motivo": "decisao dele em 27/08: o voltar fecha o que esta aberto e nunca troca de tela; o teste ainda guardava o comportamento antigo",
    "modo": "sugestivo",
    "quando": "2026-08-27T17:38:58.906Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/config.mjs",
+   "motivo": "CC-371, escolha dele em 27/08: escolher varios projetos no quadro, guardado e valendo na tela Trabalho inteira",
+   "modo": "sugestivo",
+   "quando": "2026-08-27T20:05:22.613Z"
   }
  ],
  "verificacao": {
