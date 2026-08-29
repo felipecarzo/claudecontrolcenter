@@ -621,6 +621,26 @@ export const MODOS = {
     pergunta: true,
     exigeAutorizacao: true,
     sugereFrentes: true,
+    /* CC-404, 29/08: o Sugestivo passa a exigir a MEDIÇÃO.
+     *
+     * Ele pediu um guarda que cobrasse medir antes de afirmar causa, e o guarda
+     * já existia: `medir-guard`, escrito em 16/08. O que não existia era ele
+     * valer aqui.
+     *
+     * Medido em 29/08, no fim de uma sessão de 30 commits: o `medir-guard`
+     * disparou ZERO vezes. Este projeto está em Sugestivo, e o Sugestivo não
+     * exigia guarda nenhum. Ele valia só em Estudo e Depuração, que são modos
+     * que ele quase não usa.
+     *
+     * **O guarda existia, funcionava, e estava desligado onde o trabalho
+     * acontece.** É o mesmo formato de defeito que a entrevista teve, e o
+     * pedido de autorização antes dela: a peça pronta, o dado acumulando, e
+     * ninguém alcançando.
+     *
+     * Faz sentido justamente aqui: Sugestivo é o modo em que cada passo passa
+     * por ele, e afirmar uma causa errada num modo desses gasta a decisão DELE,
+     * não só o meu tempo. */
+    hooks: { exige: ['medir-guard'], desliga: [] },
   },
   /* `trava: false` desde 15/08, e a correção é conceitual.
    *

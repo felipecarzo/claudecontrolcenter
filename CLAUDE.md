@@ -113,6 +113,57 @@ nem lê, com escrita atômica (tmp + rename).
 Qualquer mudança que escreva em outro arquivo dentro de `~/.claude/jobs/` está
 errada por definição.
 
+## O que fez as decisões saírem melhores, medido em 29/08
+
+Ele perguntou, no fim de uma sessão de 30 commits: *"podemos analisar o que te
+fez tomar decisões hoje melhor que em sessões anteriores?"*. A resposta saiu de
+contagem, não de impressão, e vale mais que qualquer conselho geral.
+
+**20 dos 30 commits registram medição.** Nove são conserto de defeito, e cinco
+registram um erro MEU corrigido no caminho.
+
+### 1. A primeira hipótese esteve errada quase sempre
+
+- *"o projeto novo não apareceu"* → a leitura óbvia era descoberta quebrada. O
+  servidor devolvia os 23 projetos com ele dentro: quem não relia era a tela;
+- *"o carzo não está no quadro"* → o roadmap dele existia, com 39 itens, em
+  formato de tabela que o leitor não entendia;
+- *"escolher Designer não pegou"* → o perfil era gravado; o que ficava para trás
+  era o modo, por uma defesa que restaurava o valor antigo.
+
+Em nenhum dos três a causa era a primeira leitura. **Agir nela teria gasto o dia
+no lugar errado.**
+
+### 2. Medir no NAVEGADOR, não no código
+
+Três defeitos daquele dia não apareceriam lendo arquivo nenhum:
+
+- `--waiting` e `--failed` eram usados em nove lugares e **nunca definidos**.
+  Duas colunas do quadro saíam brancas havia semanas. Variável de CSS que não
+  existe não dá erro: a propriedade só não é aplicada;
+- a tela nova abria com o conteúdo dentro dela e **zero pixel na tela**, por
+  colisão de identificador com outra tela escondida;
+- o mesmo texto saía duas vezes no mesmo cartão.
+
+### 3. As correções curtas dele acharam o que eu não acharia
+
+*"não é sobre isso, é sobre qualquer projeto"*, *"isso é garantia do quê? a
+única coisa que garante é Hook"*, *"eu colo isso aonde?"*, *"não tem modo
+projeto novo"*. Quatro frases, quatro buracos reais, sendo que a última achou
+um painel servindo código velho.
+
+**Frase curta dele não é falta de informação: é o ponteiro para onde olhar.**
+
+### 4. E o achado mais desconfortável: o guarda existia e estava desligado
+
+O `medir-guard` cobra exatamente *"descreveu um sintoma e mexeu sem medir"*, e
+foi escrito em 16/08. Medido em 29/08: **disparou ZERO vezes na sessão inteira**,
+porque só valia nos modos Estudo e Depuração, e o trabalho acontece no Sugestivo.
+
+A disciplina daquele dia não veio do hook. Por isso o Sugestivo passou a exigi-lo:
+peça pronta e desligada onde o trabalho acontece é o formato de defeito que este
+projeto mais repete.
+
 ## Armadilhas (custaram tempo, não redescobrir)
 
 - **`localhost` num iframe é a máquina de QUEM OLHA, não a que serve.** O
