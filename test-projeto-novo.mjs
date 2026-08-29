@@ -386,4 +386,113 @@ const comRespostas = (extra = {}) => ({
   rmSync(base, { recursive: true, force: true })
 }
 
+
+/* ── CC-389 a CC-392: a prosa, o palpite e a frente ──────────────────────── */
+{
+  const E = await import('./src/entrevista.mjs')
+
+  /* A prosa é guardada inteira, e não só o que eu tirei dela: se amanhã eu ler
+     melhor, ou se ele quiser conferir o que deduzi contra o que escreveu, o
+     texto original precisa estar ali. */
+  const g = E.guardarProsa({ entrevista: { respostas: {} } }, 'um app de fotos por evento')
+  assert.equal(g.ok, true)
+  assert.equal(g.estado.entrevista.prosa.texto, 'um app de fotos por evento')
+  assert.equal(E.guardarProsa({}, '   ').ok, false)
+  ok('a prosa é guardada inteira, e prosa vazia é recusada')
+
+  const r = E.preencherDaProsa(g.estado, {
+    entrega: 'um app de fotos', quem: 'eu mesmo', naoExiste: 'x',
+  })
+  assert.deepEqual(r.aceitas, ['entrega', 'quem'])
+  assert.equal(r.recusadas[0].id, 'naoExiste')
+  assert.deepEqual(E.palpites(r.estado).map((p) => p.id), ['entrega', 'quem'])
+  ok('o que eu deduzo da prosa entra marcado como palpite, e o desconhecido é recusado')
+
+  /* ⚠️ A regra central desta frente: **palpite meu não é fala dele.** Sem isto o
+     resumo do projeto citaria como dele uma frase que eu inventei, e ele leria
+     as próprias palavras no lugar errado. */
+  assert.equal(E.colher(r.estado).nome, '', 'palpite não define o pronto')
+  assert.match(E.resumo(r.estado), /deduzido da sua descrição, confirme/)
+  ok('palpite não vira critério de pronto, e sai marcado no resumo')
+
+  const dele = E.responder(r.estado, 'entrega', 'um app que organiza fotos por evento')
+  assert.equal(dele.estado.entrevista.respostas.entrega.de, 'ele')
+  assert.equal(E.colher(dele.estado).nome, 'um app que organiza fotos por evento')
+  ok('quando ele confirma, a resposta vira dele e passa a valer')
+
+  /* A prova ao contrário: palpite não passa por cima do que ele digitou. */
+  const tenta = E.preencherDaProsa(dele.estado, { entrega: 'palpite atrasado' })
+  assert.equal(tenta.recusadas[0].porque, 'ele já respondeu isto')
+  assert.equal(tenta.estado.entrevista.respostas.entrega.texto, 'um app que organiza fotos por evento')
+  ok('a prova ao contrário: palpite NÃO sobrescreve o que ele digitou')
+}
+
+/* ── CC-392: a entrevista não pode destruir MVP escrito à mão ────────────── */
+{
+  const E = await import('./src/entrevista.mjs')
+
+  /**
+   * Este é o defeito mais caro achado em 29/08, e ele estava vivo.
+   *
+   * Cada pergunta pode ter um gancho que grava no estado: "a entrega" escrevia
+   * `mvp.nome` DIRETO. Num projeto que já existe, começar uma entrevista
+   * trocava o MVP escrito à mão pela primeira frase digitada, sem aviso.
+   * **Dez dos onze projetos desta máquina têm MVP escrito à mão.**
+   */
+  const comMvp = {
+    mvp: { nome: 'A v2 do carzo.com.br no ar', criterios: [{ texto: 'a home fala pela casa', feito: false }] },
+    entrevista: { respostas: {} },
+  }
+  const depois = E.responder(comMvp, 'entrega', 'uma frase nova qualquer').estado
+  assert.equal(depois.mvp.nome, 'A v2 do carzo.com.br no ar',
+    'nome de MVP já escrito não pode ser trocado por uma resposta de entrevista')
+  ok('a entrevista não sobrescreve o nome do MVP que já existe')
+
+  /* Acrescentar critério continua valendo: somar não destrói, trocar o nome
+     destrói. As duas coisas vinham do mesmo gancho, e só uma delas apaga. */
+  const maisUm = E.responder(comMvp, 'pronto', 'funciona no celular').estado
+  assert.equal(maisUm.mvp.criterios.length, 2)
+  ok('a prova ao contrário: acrescentar critério continua funcionando')
+
+  /* E projeto NOVO, com ele respondendo, continua ganhando nome e critérios:
+     é o caso para o qual o gancho nasceu, e ele não pode ter sido quebrado. */
+  const novo = E.responder({ mvp: { nome: '', criterios: [] }, entrevista: { respostas: {} } },
+    'entrega', 'um painel de agentes').estado
+  assert.equal(novo.mvp.nome, 'um painel de agentes')
+  ok('projeto novo continua ganhando o nome do MVP pela entrevista')
+}
+
+/* ── CC-391: entrevista de FRENTE, em projeto que já existe ──────────────── */
+{
+  const E = await import('./src/entrevista.mjs')
+
+  let est = {
+    mvp: { nome: 'O site carzo v2', criterios: [{ texto: 'a home fala pela casa', feito: false }] },
+    entrevista: { respostas: {} },
+  }
+  est = E.guardarProsa(est, 'um estúdio de vídeo dentro do site', { frente: 'O estúdio de vídeo' }).estado
+  assert.equal(E.frenteDa(est), 'O estúdio de vídeo')
+
+  est = E.responder(est, 'entrega', 'um estúdio de vídeo no site').estado
+  est = E.responder(est, 'pronto', 'o cliente vê o processo').estado
+
+  /* ⚠️ Uma frente nova NÃO redefine o que o projeto inteiro entrega. */
+  assert.equal(est.mvp.nome, 'O site carzo v2', 'o MVP do projeto fica intocado')
+  assert.equal(est.mvp.criterios.length, 1, 'e os critérios dele também')
+  ok('entrevista de frente não toca no MVP nem nos critérios do projeto')
+
+  /* O que ela produz é backlog, com o nome da frente no título: no roadmap ele
+     precisa distinguir o que veio de qual conversa. */
+  const texto = E.paraBacklog(est, { quando: '2026-08-29' })
+  assert.match(texto, /^## ▶ O estúdio de vídeo \(da entrevista de 29\/08\)/)
+  ok('o backlog da frente entra com o nome dela, ao lado do que já existe')
+
+  /* Trocar de frente zera as respostas: são de outra conversa. Herdá-las faria
+     o backlog novo descrever o trabalho velho, com as palavras de outro dia. */
+  const outra = E.guardarProsa(est, 'outra coisa', { frente: 'Outra frente' }).estado
+  assert.deepEqual(outra.entrevista.respostas, {})
+  assert.equal(E.frenteDa(outra), 'Outra frente')
+  ok('a prova ao contrário: frente nova começa com a conversa em branco')
+}
+
 console.log(`\n${passou} verificações, todas passaram.`)

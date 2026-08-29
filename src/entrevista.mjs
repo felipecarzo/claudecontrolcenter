@@ -286,7 +286,7 @@ export function progresso(estado) {
  * onde as coisas moram), e é o que deixa o roteiro inteiro ser testado sem
  * tocar em arquivo nenhum.
  */
-export function responder(estado, id, entrada, { quando = null } = {}) {
+export function responder(estado, id, entrada, { quando = null, de = 'ele' } = {}) {
   const p = POR_ID[id]
   if (!p) return { ok: false, erro: `pergunta desconhecida: ${id}` }
 
@@ -310,6 +310,17 @@ export function responder(estado, id, entrada, { quando = null } = {}) {
     valor: casa ? casa.valor : null,
     texto: casa ? casa.label : cru,
     quando: quando || new Date().toISOString(),
+    /* CC-390, 29/08: de ONDE veio esta resposta.
+     *
+     * `ele` é o que ele digitou. `prosa` é o que EU deduzi lendo a descrição
+     * que ele escreveu, e é palpite meu até ele confirmar.
+     *
+     * ⚠️ Tratar as duas igual é o erro mais caro que este painel comete: o
+     * resumo do projeto passaria a citar como fala dele uma frase que ele nunca
+     * escreveu. Ele já pegou isso uma vez, em 17/08, quando um cartão mostrou
+     * uma fala dele sobre outro assunto e ele concluiu que eu não tinha
+     * entendido o pedido. */
+    de,
   }
 
   let novo = {
@@ -320,8 +331,37 @@ export function responder(estado, id, entrada, { quando = null } = {}) {
     },
   }
 
-  if (typeof p.aplica === 'function') {
-    novo = p.aplica(novo, resposta, respostasDe(novo))
+  /* ===== CC-392, 29/08: quando o `aplica` da pergunta PODE escrever no MVP =====
+   *
+   * Cada pergunta pode ter um `aplica` que grava direto no estado: "a entrega"
+   * escreve `mvp.nome`, "pronto é" e "primeiro" acrescentam critérios. Isso
+   * existe desde o começo e é bom, mas escrevia em três situações em que não
+   * devia, e as três foram medidas em 29/08:
+   *
+   * 1. **Projeto que já existe.** `mvp.nome` era sobrescrito sem aviso. O carzo
+   *    tem "A v2 do carzo.com.br no ar" escrito à mão, e uma entrevista nova
+   *    trocaria isso pela primeira frase que ele digitasse. Dez projetos têm MVP
+   *    escrito à mão.
+   * 2. **Entrevista de FRENTE.** Uma frente nova não redefine o que o projeto
+   *    inteiro entrega. O que sai dela é backlog.
+   * 3. **Palpite meu.** Resposta deduzida da prosa não é fala dele, e não pode
+   *    virar critério de pronto antes de ele confirmar.
+   *
+   * O `aplica` continua valendo no caso para o qual nasceu: projeto novo, sem
+   * MVP, com ele respondendo. */
+  const ehDeFrente = Boolean(frenteDa(novo))
+  const ehPalpite = de === 'prosa'
+  if (typeof p.aplica === 'function' && !ehDeFrente && !ehPalpite) {
+    const antes = novo.mvp || {}
+    const depois = p.aplica(novo, resposta, respostasDe(novo))
+    const nomeAntes = String(antes.nome || '').trim()
+    const nomeDepois = String(depois?.mvp?.nome || '').trim()
+    /* Nome que JÁ existia não é trocado: acrescentar critério é somar, trocar o
+       nome é apagar. As duas coisas vinham do mesmo gancho, e só uma delas
+       destrói. */
+    novo = (nomeAntes && nomeDepois !== nomeAntes)
+      ? { ...depois, mvp: { ...depois.mvp, nome: nomeAntes } }
+      : depois
   }
 
   /* `terminou` é derivado, nunca digitado: o roteiro pode crescer depois desta
@@ -399,9 +439,21 @@ export function desfazer(estado, id) {
  * que já existe lá, e essa separação é o que impede a entrevista de apagar MVP
  * escrito à mão.
  */
-export function colher(estado) {
+export function colher(estado, { incluirPalpite = false } = {}) {
   const respostas = respostasDe(estado)
-  const texto = (id) => String(respostas[id]?.texto || '').trim()
+  /* ⚠️ CC-390, 29/08: **palpite meu não define o pronto.**
+     Resposta com `de: 'prosa'` é o que EU deduzi lendo a descrição dele, e não
+     o que ele disse. Deixá-la virar critério de MVP faria o projeto inteiro ser
+     planejado em cima de uma frase que ele nunca escreveu, e ele descobriria
+     tarde, quando o backlog já estivesse montado.
+     Ele confirma no modo Sugestivo, que é o que pediu: cada passo passa por
+     ele. Confirmar troca a origem para `ele`, e aí o critério entra. */
+  const vale = (id) => {
+    const r = respostas[id]
+    if (!r) return false
+    return incluirPalpite || r.de !== 'prosa'
+  }
+  const texto = (id) => (vale(id) ? String(respostas[id]?.texto || '').trim() : '')
 
   /* Uma linha por critério, e linhas vazias fora. Ele responde em lista quando
      a pergunta pede lista, e um critério de três linhas na tela vira uma frase
@@ -430,6 +482,12 @@ export function colher(estado) {
  * há nada a perder.
  */
 export function aplicar(estado) {
+  /* CC-391: entrevista DE FRENTE não mexe no MVP do projeto. O pronto do
+     projeto inteiro é outra coisa, escrita à mão em dez deles, e uma frente
+     nova não tem o direito de redefini-lo. O que sai da frente é backlog. */
+  if (frenteDa(estado)) {
+    return { estado, mudou: false, sugestoes: {}, colhido: colher(estado), plano: estado?.plano || {}, deFrente: true }
+  }
   const colhido = colher(estado)
   const mvpAtual = estado?.mvp || {}
   const temNome = Boolean(String(mvpAtual.nome || '').trim())
@@ -514,7 +572,10 @@ export function paraBacklog(estado, { quando = null } = {}) {
     .filter(([, t]) => t)
 
   const linhas = []
-  linhas.push(`## ▶ Da entrevista de ${curto}: ${colhido.nome || 'o que foi combinado'}`)
+  const frente = frenteDa(estado)
+  linhas.push(frente
+    ? `## ▶ ${frente} (da entrevista de ${curto})`
+    : `## ▶ Da entrevista de ${curto}: ${colhido.nome || 'o que foi combinado'}`)
   linhas.push('')
   linhas.push('Itens tirados da entrevista do framework, com as palavras dele.')
   linhas.push('Cada um é um critério de pronto que ele mesmo respondeu.')
@@ -574,6 +635,105 @@ export function planoDe(estado) {
   }
 }
 
+/**
+ * CC-389, 29/08: a prosa vira ponto de partida da entrevista.
+ *
+ * Pedido dele, e ele me corrigiu para chegar aqui:
+ *
+ * > *"a gente define primeiro um projeto em forma de proza e a partir disso nos
+ * > projetamos a entrevista, ex: eu descrevo o projeto e em paralelo o framework
+ * > vai tá configurado nesse modo"*
+ *
+ * O roteiro de 15 perguntas é fixo, e para o caso dele isso está errado: ele
+ * escreve a descrição inteira e depois o framework pergunta de novo o que a
+ * prosa já respondeu. Responder quinze perguntas depois de descrever tudo é
+ * burocracia, e é o atrito que faz uma peça ser abandonada. A entrevista tinha
+ * ZERO uso em 11 projetos.
+ *
+ * ## Quem lê a prosa NÃO é este código
+ *
+ * É o agente. Esta função só recebe o que foi lido e grava, marcando a origem.
+ *
+ * Fazer aqui uma heurística de palavra-chave seria pior que não fazer nada:
+ * ela erraria, e erraria calada. Resposta pré-preenchida errada é pior que
+ * pergunta nenhuma, porque ele confirma sem reler, e a partir daí o projeto
+ * inteiro é planejado em cima de uma frase que ele nunca disse.
+ *
+ * O que fica registrado é que aquilo veio da prosa: a tela mostra como palpite,
+ * ele confirma ou corrige, e só então vira fala dele.
+ */
+export function preencherDaProsa(estado, deduzidas = {}, { quando = null } = {}) {
+  let novo = { ...estado, entrevista: { ...(estado?.entrevista || {}) } }
+  const aceitas = []
+  const recusadas = []
+
+  for (const [id, texto] of Object.entries(deduzidas)) {
+    if (!POR_ID[id]) { recusadas.push({ id, porque: 'pergunta desconhecida' }); continue }
+    /* Já respondido POR ELE nunca é sobrescrito por palpite meu. O contrário
+       vale: palpite pode ser corrigido pelo palpite seguinte, porque nenhum dos
+       dois é dele. */
+    const atual = respostasDe(novo)[id]
+    if (atual && atual.de !== 'prosa') { recusadas.push({ id, porque: 'ele já respondeu isto' }); continue }
+    const r = responder(novo, id, texto, { quando, de: 'prosa' })
+    if (!r.ok) { recusadas.push({ id, porque: r.erro }); continue }
+    novo = r.estado
+    aceitas.push(id)
+  }
+
+  /* A prosa fica guardada inteira, e não só o que eu tirei dela. É a fonte: se
+     amanhã eu ler melhor, ou se ele quiser conferir o que eu deduzi contra o
+     que escreveu, o texto original precisa estar ali. */
+  return { estado: novo, aceitas, recusadas }
+}
+
+/**
+ * Guarda a descrição em prosa, que é por onde tudo começa.
+ *
+ * ## CC-391, 29/08: a entrevista pode ser de uma FRENTE, e não do projeto
+ *
+ * Ele me corrigiu quando tratei isto como caso do carzo: *"não é sobre isso, é
+ * sobre qualquer projeto"*. O fluxo inteiro só nascia com o projeto, e projeto
+ * que já existe não tinha porta nenhuma. Medido no carzo: em `execucao`, MVP
+ * definido, e a única coisa oferecida era a lista dos oito critérios que faltam.
+ *
+ * **A mudança de conceito:** o fluxo deixa de ser DO PROJETO e passa a ser DE
+ * UMA FRENTE. Um projeto tem várias, nascidas em momentos diferentes. O carzo
+ * tem a v1 no ar e a v2 em construção; este painel tem dezenas.
+ *
+ * ⚠️ **Com `frente`, o MVP do projeto não é tocado.** Ele foi escrito à mão em
+ * dez projetos, e a frente nova não tem o direito de redefinir o que o projeto
+ * inteiro entrega. O que sai dela é backlog, e só.
+ */
+export function guardarProsa(estado, texto, { quando = null, frente = null } = {}) {
+  const limpo = String(texto || '').trim()
+  if (!limpo) return { ok: false, erro: 'prosa vazia' }
+  const nome = String(frente || '').trim()
+  return {
+    ok: true,
+    estado: {
+      ...estado,
+      entrevista: {
+        ...(estado?.entrevista || {}),
+        /* Frente nova zera as respostas: são de OUTRA conversa. Herdar as
+           respostas da frente anterior faria o backlog novo nascer descrevendo
+           o trabalho velho, com as palavras de outro dia. */
+        ...(nome && nome !== estado?.entrevista?.frente
+          ? { frente: nome, respostas: {}, terminou: null }
+          : {}),
+        prosa: { texto: limpo, em: quando || new Date().toISOString() },
+      },
+    },
+  }
+}
+
+/** Esta entrevista é de uma frente, ou é a do projeto inteiro? */
+export const frenteDa = (estado) => String(estado?.entrevista?.frente || '').trim() || null
+
+/** O que ainda é palpite meu, esperando ele confirmar. */
+export const palpites = (estado) => Object.entries(respostasDe(estado))
+  .filter(([, r]) => r?.de === 'prosa')
+  .map(([id, r]) => ({ id, header: POR_ID[id]?.header || id, texto: r.texto }))
+
 export function resumo(estado) {
   const respostas = respostasDe(estado)
   const lista = aplicaveis(respostas).filter((p) => respostas[p.id] !== undefined)
@@ -584,7 +744,12 @@ export function resumo(estado) {
      rótulo, parecendo item de outra pergunta. Vira uma linha só. */
   const linhas = lista.map((p) => {
     const texto = respostas[p.id].texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).join(' · ')
-    return `  ${p.header.padEnd(12)} ${texto}`
+    /* O palpite sai marcado, sempre. Sem a marca, o resumo apresenta como fala
+       dele uma frase que eu deduzi, e ele lê as próprias palavras no lugar
+       errado: o erro que ele nomeou em 17/08 e que custa a confiança na tela
+       inteira. */
+    const marca = respostas[p.id].de === 'prosa' ? ' (deduzido da sua descrição, confirme)' : ''
+    return `  ${p.header.padEnd(12)} ${texto}${marca}`
   })
   const fim = estado?.entrevista?.terminou ? 'completa' : `${feitas} de ${total}`
   return [`Entrevista (${fim}):`, ...linhas].join('\n')

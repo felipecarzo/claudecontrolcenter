@@ -15,6 +15,84 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 29/08: a entrevista sai da prosa, e o projeto paralelo
+
+Duas correções dele, em 29/08, depois de eu entregar a sequência de projeto novo.
+Ele perguntou como usar aquilo num projeto que já existe, e as respostas mudaram
+o desenho.
+
+### A primeira: o projeto paralelo
+
+Nas palavras dele:
+
+> *"É um projeto paralelo do meu novo site. Ele só vai entrar no lugar do atual
+> quando estiver pronto."*
+
+**Isto já existe no carzo, e é o padrão dele.** Medido em 29/08: `apps/web` é a
+v1, 100% concluída e no ar; `apps/web_carzov2` é a v2, em construção. Mesmo git,
+mesma pasta de projeto, documento próprio para cada uma. O `docs/ROADMAP.md`
+cobre a v1 e diz isso no topo; a v2 vive noutro arquivo.
+
+**E é justamente daí que veio o defeito que ele achou em 28/08:** o painel lê
+`docs/ROADMAP.md`, encontrou a v1 concluída, e o carzo aparecia com uma tarefa
+só. O trabalho vivo estava num arquivo que o painel não lê.
+
+### A segunda, e ela é maior: a entrevista sai da prosa
+
+Nas palavras dele:
+
+> *"A gente define primeiro um projeto em forma de proza e a partir disso nos
+> projetamos a entrevista, ex: eu descrevo o projeto e em paralelo o framework
+> vai tá configurado nesse modo."*
+
+**O roteiro de 15 perguntas é fixo, e isso está errado para o caso dele.** Ele
+escreve a descrição em prosa, longa, e depois o framework pergunta de novo coisas
+que a prosa já respondeu. Responder quinze perguntas depois de descrever tudo é
+burocracia, e é o tipo de atrito que faz uma peça ser abandonada.
+
+O que ele quer: **a prosa primeiro, e a entrevista derivada dela.** O framework
+lê o que ele escreveu, marca o que já está respondido, e pergunta só o resto.
+
+### CC-389 ✅ 29/08: a prosa vira ponto de partida da entrevista
+
+O texto que ele escreve ao criar o projeto passa a ser guardado e lido. Cada
+pergunta do roteiro ganha uma resposta pré-preenchida quando a prosa já a
+responde, e ele confirma ou corrige em vez de escrever do zero.
+
+⚠️ **Quem lê a prosa é o agente, não uma regra de palavra-chave.** Heurística de
+texto erraria e, pior, erraria calada: uma resposta pré-preenchida errada é pior
+que pergunta nenhuma, porque ele confirma sem reler. O que o framework precisa
+oferecer é o lugar para gravar o que foi lido, e a marca de que aquilo veio da
+prosa e não da boca dele.
+
+### CC-390 ✅ 29/08: pergunta pré-preenchida se distingue de respondida
+
+Na tela e no estado. Resposta que veio da prosa é palpite meu; resposta digitada
+é dele. Tratar as duas igual faz o resumo do projeto citar como fala dele uma
+coisa que ele nunca disse, que é o erro mais caro que este painel comete.
+
+### CC-391 ✅ 29/08: começar o fluxo num projeto que JÁ EXISTE
+
+**Ele me corrigiu quando eu tratei isto como caso do carzo:** *"já estamos
+fazendo lá já. Não é sobre isso, é sobre qualquer projeto."*
+
+O fluxo inteiro que entreguei em 28/08 só nasce com o projeto. Projeto que já
+existe não tem porta: medido no carzo em 29/08, ele está em `execucao`, com MVP
+definido, e a única coisa que o painel oferece é a lista dos oito critérios que
+faltam. Não existe "quero planejar uma coisa nova aqui dentro".
+
+**A mudança de conceito, e ela é a peça:** o fluxo deixa de ser DO PROJETO e
+passa a ser DE UMA FRENTE. Um projeto tem várias, nascidas em momentos
+diferentes: o carzo tem a v1 no ar e a v2 em construção, e este painel tem
+dezenas. Cada frente nova começa pela prosa, ganha a entrevista do que falta, e
+entrega o backlog dela no roadmap que já existe.
+
+⚠️ **Nada do que já está definido pode ser tocado.** O MVP do projeto continua o
+do projeto; a frente nova tem o pronto dela. Misturar os dois apagaria a
+definição que ele escreveu à mão em dez projetos.
+
+---
+
 ## ▶ Frente nova, aberta em 28/08: do texto solto ao projeto andando
 
 Pedido dele em 28/08, com as palavras dele:
