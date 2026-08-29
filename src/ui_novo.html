@@ -1890,6 +1890,26 @@
 
     /* ===== CC-304: a tela Projetos ===== */
     .pj-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+    /* CC-403: onde abrir uma sessão, por máquina. */
+    .rem-maq { margin-bottom: 16px; }
+    .rem-maq h3 {
+      display: flex; align-items: baseline; gap: 8px; margin: 0 2px 7px;
+      font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted);
+    }
+    .rem-maq h3 span { font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--text-dim); }
+    .rem-lista { display: grid; gap: 5px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+    .rem-item {
+      display: flex; align-items: center; gap: 7px; min-height: 44px;
+      padding: 5px 10px; border-radius: 8px;
+      background: var(--card); border: 1px solid var(--border);
+    }
+    .rem-nome {
+      flex: 1 1 auto; min-width: 0; background: none; border: 0; cursor: pointer;
+      color: var(--text-main); font-size: 12.5px; text-align: left; padding: 4px 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .rem-num { font-size: 11px; color: var(--text-dim); }
+
     /* ===== CC-400/401/402: os modos de ver, e o deslizar no telefone ===== */
     .pj-modos { display: flex; gap: 2px; margin-left: auto; }
     .pj-modo {
@@ -2161,7 +2181,7 @@
            trabalhando"); Projetos logo abaixo porque é o mesmo assunto com o
            recorte maior, e separá-los no menu faria ele procurar em dois
            lugares distantes o que é uma coisa só. -->
-      <a href="#" class="nav-item" data-target="view-ligados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg> Ligados</a>
+      <a href="#" class="nav-item" data-target="view-ligados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg> Remoto</a>
       <a href="#" class="nav-item" data-target="view-projetos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> Projetos</a>
       <!-- CC-376, 27/08: a tela das rotas fica colada nas de projeto porque a
            pergunta dela é a mesma, um nível abaixo. Não "onde tem alguém", e
@@ -3025,6 +3045,29 @@
          porta dos fundos, que é exatamente do que ele reclamou. O que muda é
          que aqui o bloco do método nasce aberto, porque aqui todo mundo tem
          sessão. -->
+    <!-- CC-403, 29/08: a tela volta a ser o REMOTO que ele descreveu.
+         =====================================================================
+         Palavras dele: *"Eu gosto de uma versão anterior do remoto, que os
+         projetos eram separados por desktop e vps, e quando voce ativava uma
+         sessão aquele projeto ia pra uma lista de projetos ativos, e podia
+         aparecer ali o framework, simples assim. se a pessoa voltar pro remoto
+         ela ve la o projeto com uma sessão, ela pode iniciar outra no coderoom
+         ou no claude e é isso."*
+
+         A versão que ele descreve existe no git, de antes de 22/08:
+         `renderRemoto()` agrupava os projetos POR MÁQUINA. O que veio depois
+         foi somando três telas numa (CC-323, CC-329, CC-335), e o total nunca
+         foi olhado.
+
+         **A tela Ligados e o Remoto viraram uma só, e isso não é economia de
+         espaço: elas respondiam a mesma pergunta.** Ter as duas seria repetir
+         o erro que ele apontou em 27/08, quando os projetos apareciam em três
+         lugares.
+
+         Três blocos, na ordem do gesto dele:
+           1. o que está ATIVO agora, com o cartão cheio que ele aprovou;
+           2. onde abrir uma sessão, separado por máquina;
+           3. o que se ajusta de vez em quando, fechado. -->
     <div id="view-ligados" class="view-section">
       <div class="grid-container so-uma">
         <div class="main-col">
@@ -3035,6 +3078,12 @@
             <div class="tend-quando" id="lig-quando"></div>
           </div>
           <div id="lig-grade"></div>
+
+          <div class="section-header" style="margin-top:26px;">
+            <h2 data-explica="agente">ONDE ABRIR UMA SESSÃO</h2>
+            <span id="rem-conta" style="font-size:12px;color:var(--text-muted);"></span>
+          </div>
+          <div id="rem-maquinas"></div>
         </div>
       </div>
     </div>
@@ -3329,7 +3378,7 @@
       'view-agentes': { title: 'Agentes', subtitle: 'Controle de agentes e logs detalhados.' },
       'view-escritorio': { title: 'Escritório', subtitle: 'Os agentes desenhados trabalhando, e quem é cada um.' },
       'view-rotas': { title: 'Rotas', subtitle: 'Quem está segurando qual parte do código agora, em quais arquivos, e o que os agentes combinaram entre si para não trombar.' },
-      'view-ligados': { title: 'Ligados', subtitle: 'Só os projetos com alguém trabalhando agora: agente, sessão no ar ou conversa aberta. Cada um com os controles dele à mão.' },
+      'view-ligados': { title: 'Remoto', subtitle: 'O que está trabalhando agora, com os controles à mão, e onde abrir a próxima sessão, separado por máquina.' },
       'view-remoto': { title: 'Ajustes', subtitle: 'O que se mexe de vez em quando: as máquinas e o método de trabalho. Os projetos ficam em Ligados e em Projetos.' },
       'view-hooks': { title: 'Hooks', subtitle: 'Gatilhos automáticos do sistema.' },
       'view-rotinas': { title: 'Rotinas', subtitle: 'As cópias de comando dentro de cada projeto, e se ainda valem.' },
@@ -8583,6 +8632,74 @@
      * tem de backlog, e o gesto que ele mais faz, que é abrir uma sessão. O
      * resto continua a um toque, abrindo o projeto.
      */
+    /**
+     * CC-403, 29/08: onde abrir uma sessão, separado por máquina.
+     *
+     * É a peça que ele lembrava e que tinha sumido: *"os projetos eram
+     * separados por desktop e vps"*.
+     *
+     * **Quem já está ativo NÃO aparece aqui.** Ele sobe para o bloco de cima,
+     * que é a outra metade da frase dele: *"quando você ativava uma sessão
+     * aquele projeto ia pra uma lista de projetos ativos"*. Repetir o projeto
+     * nos dois lugares seria a tela dizendo duas vezes a mesma coisa, que é
+     * exatamente do que ele reclamou em 27/08.
+     */
+    function renderMaquinas() {
+      const alvo = document.getElementById('rem-maquinas');
+      const conta = document.getElementById('rem-conta');
+      if (!alvo) return;
+
+      const d = DATA.projetos;
+      if (!d?.projetos) { pintar(alvo, '<div class="card tend-aviso">lendo os projetos…</div>'); return; }
+
+      /* O nome desta máquina vem do dado, nunca fixo no código: são duas
+         máquinas com nomes que ele escolheu, e chumbar "VPS" aqui faria a tela
+         mentir no PC dele. */
+      const daqui = d.maquina || 'esta máquina';
+      const porMaquina = new Map();
+      for (const p of d.projetos) {
+        if (ligadoDe(p)) continue; // já está em cima
+        if (!p.ehProjeto && p.daqui) continue; // pasta de passagem não é projeto
+        const onde = p.daqui ? daqui : (p.maquinaDeFora || 'outra máquina');
+        if (!porMaquina.has(onde)) porMaquina.set(onde, []);
+        porMaquina.get(onde).push(p);
+      }
+
+      const total = [...porMaquina.values()].reduce((n, l) => n + l.length, 0);
+      if (conta) pintar(conta, total + ' projeto(s) livre(s)');
+
+      if (!porMaquina.size) {
+        pintar(alvo, '<div class="card tend-aviso">Todos os projetos desta máquina já têm sessão aberta.</div>');
+        return;
+      }
+
+      /* A máquina daqui vem primeiro: é onde ele abre sessão na maior parte das
+         vezes, e onde o clique funciona sem esperar a outra ponta responder. */
+      const ordem = [...porMaquina.entries()].sort((a, b) => (a[0] === daqui ? -1 : b[0] === daqui ? 1 : a[0].localeCompare(b[0])));
+
+      pintar(alvo, ordem.map(([nome, lista]) => '<section class="rem-maq">'
+        + '<h3>' + esc(nome) + '<span>' + lista.length + ' projeto(s)</span></h3>'
+        + '<div class="rem-lista">'
+        + lista.sort((a, b) => a.projeto.localeCompare(b.projeto)).map((p) => '<div class="rem-item">'
+          + '<button type="button" class="rem-nome" data-pj-abrir="' + esc(p.projeto) + '">'
+          + esc(p.projeto) + '</button>'
+          + (p.backlog ? '<span class="rem-num">' + p.backlog + '</span>' : '')
+          /* Projeto daqui abre pelos dois caminhos que ele nomeou: *"ela pode
+             iniciar outra no coderoom ou no claude"*. O de outra máquina só
+             pode PEDIR: a pasta não existe aqui, e um botão que falha depois
+             do clique é pior que botão nenhum. */
+          + (p.daqui
+            ? '<button class="btn btn-ghost compacto" data-abrir-sessao="' + esc(p.projeto) + '"'
+              + ' data-abrir-dir="' + esc(p.raiz || '') + '">Claude</button>'
+              + '<button class="btn btn-ghost compacto" data-coderoom-abrir="' + esc(p.projeto) + '"'
+              + ' data-coderoom-dir="' + esc(p.raiz || '') + '">Coderoom</button>'
+            : '<button class="btn btn-outline compacto" data-fed-pedir="' + esc(nome) + '"'
+              + ' data-fed-proj="' + esc(p.projeto) + '"'
+              + ' title="pede para ' + esc(nome) + ' abrir a sessão. Ela pergunta a cada 30s, leva até meio minuto">abrir lá</button>')
+          + '</div>').join('')
+        + '</div></section>').join(''));
+    }
+
     function pjLinha(p, maquina, modo) {
       const compacto = modo === 'compacto';
       const fw = p.daqui ? fwDe(p.projeto) : null;
@@ -8930,6 +9047,11 @@
         { alvo: document.getElementById('lig-grade'), quando: document.getElementById('lig-quando'), so: 'ligados' },
       ].filter((g) => g.alvo);
       if (!grades.length) return;
+
+      /* O bloco das máquinas anda junto: ele lê o mesmo `DATA.projetos`, e
+         chamá-lo de outro lugar criaria duas horas diferentes para o mesmo
+         dado na mesma tela. */
+      renderMaquinas();
 
       for (const g of grades) {
         if (!d) { pintar(g.alvo, '<div class="card tend-aviso">lendo os projetos…</div>'); continue; }

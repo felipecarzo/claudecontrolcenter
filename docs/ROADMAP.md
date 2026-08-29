@@ -141,7 +141,7 @@ permanente.
 Cópia do de hoje, servida noutro endereço, sem tocar na raiz. A partir daí toda
 mudança de tela acontece lá.
 
-### CC-398 🔵 29/08: o Remoto volta a ser o que ele descreve
+### CC-398 ✅ 29/08: o Remoto volta a ser o que ele descreve
 
 Projetos separados por máquina. Ativar uma sessão move o projeto para a lista
 dos ativos, e o framework aparece nele. Voltando ao Remoto, ele vê o projeto com
