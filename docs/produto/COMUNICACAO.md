@@ -123,3 +123,111 @@ no ROADMAP, e os gates que as sustentam.
 E **não implementar o protocolo da outra IA como veio**. Ele contém uma regra
 que contraria o que o Felipe disse na mesma mensagem — cortar o raciocínio.
 Bullets e separação, sim; amputação, não.
+
+---
+
+# A regra de vocabulário, registrada em 2026-08-29
+
+> Veio de uma sessão do **carzo**, e foi ele quem pediu para trazer para cá:
+> *"consegue inserir isso no cockpit lá no handoff pra ele inserir lá como
+> regra global do framework também? isso é muito importante, todas essas regras
+> globais mesmo"*.
+>
+> **Candidata ao `CLAUDE.md` global.** Ele decide quando e como entra.
+
+## O que aconteceu
+
+Eu tinha escrito um catálogo de características de sistema com o vocabulário
+parafraseado em português "humano": as classes viraram "grupos", os atributos
+viraram "características", e os campos viraram uma coluna chamada **"o que
+obriga"**. Ele leu, travou num item, e perdeu tempo.
+
+## As palavras dele
+
+> *"eu percebi que tem uns textos muito nada a ver. Por exemplo, item A3, funil
+> de interesse. Tem o texto 'o que obriga: estágio, próximo passo, motivo de
+> perda'. Eu não consegui entender o que significa (…) o funil de interesse é
+> um motivo de perda? Por quê? Onde você tirou essa característica, será que
+> não tinha uma forma melhor de falar isso?"*
+
+> *"Como assim 'o que obriga'? Não é 'obriga' que é a palavra correta. Se é um
+> sistema (…) é característica da CLASSE. É mais fácil falar isso: é uma
+> classe. Falar usando termos mais próximos da programação, de repente que eu
+> entendo."*
+
+> *"O A é o 'quem'. Quem é uma classe. A classe pode ser uma pessoa, e aí ele
+> vai ter ATRIBUTOS, que é o histórico por pessoa, o funil de interesse (…)
+> fica muito mais fácil explicar assim."*
+
+> *"você está tentando se aproximar do que seria uma coisa feita para o ser
+> humano ler rápido, mas na verdade isso me fez entrar em loop tentando
+> entender o que você quis dizer, e eu perdi o maior tempão. Não faz sentido."*
+
+## A regra
+
+**Em modelagem, o vocabulário de programação é MAIS claro, não menos.** A
+paráfrase parece mais simples e é mais lenta de ler, porque ele traduz de
+volta.
+
+| ❌ | ✅ |
+|---|---|
+| grupo "QUEM: as pessoas e a relação com elas" | classe `Pessoa` |
+| "característica A3, funil de interesse" | atributo `funil` |
+| coluna "o que obriga" | **atributos**, ou **campos** |
+| "histórico por pessoa" | relação um-para-muitos com `Evento` |
+
+## ⚠️ Por que isto NÃO contradiz a regra zero
+
+A regra zero deste arquivo manda nunca citar o nome da peça: `reporte-guard`,
+`frente`, `subject`, `CC-98`. O motivo dela é **memória**: são nomes que só
+existem dentro de um projeto, e ele não tem por que decorá-los.
+
+Classe, atributo, relação e tabela são o oposto: **vocabulário universal que
+ele já tem**. Traduzi-los é que custa tempo dele.
+
+**A linha que separa os dois casos, e é ela que vale como regra:**
+
+> **O nome existe fora deste projeto? Use. Foi inventado aqui? Traduza.**
+
+## A segunda regra, que veio junto
+
+**Todo item de uma lista se explica sozinho**, em três coisas:
+
+1. **o que é**, no vocabulário que ele já tem;
+2. **de onde veio**: a procedência. Ele perguntou *"onde você tirou essa
+   característica?"* e eu não tinha resposta escrita, porque listei de cabeça e
+   apresentei como catálogo. **Item sem procedência é palpite com cara de
+   pesquisa.**
+3. **para que serve**, numa frase que um dono de negócio entenderia.
+
+Se não couber nas três, o item está mal recortado, e o problema não é o texto.
+
+## O texto pronto para o global
+
+```markdown
+## Modelagem: use o vocabulário de programação
+
+Ao explicar estrutura de sistema, use **classe, atributo, relação, tabela,
+chave**. Não parafraseie em português: a paráfrase parece mais simples e é mais
+lenta de ler, porque ele traduz de volta.
+
+❌ "característica A3, funil de interesse, o que obriga: estágio, próximo passo"
+✅ "classe `Pessoa`, atributo `funil`: estágio, próximo passo, motivo de perda"
+
+⚠️ **Não contradiz a regra zero.** A regra zero proíbe nome de peça DESTE
+projeto (`reporte-guard`, `frente`, `CC-98`), que ele não tem por que decorar.
+Classe e atributo são vocabulário universal que ele já tem.
+
+**A linha:** o nome existe fora do projeto? Use. Foi inventado aqui? Traduza.
+
+**Todo item de lista se explica sozinho**, em três: o que é, de onde veio, para
+que serve. Se não couber, o item está mal recortado, e o problema não é o texto.
+```
+
+## Onde nasceu
+
+A aplicação inteira, com o antes e o depois, está no carzo:
+`docs/COMO-EXPLICAR-MODELAGEM.md` e `apps/web_carzov2/src/lib/modelo.ts`. Lá a
+regra virou trava: uma prova recusa atributo sem procedência, e outra recusa
+atributo que se explique usando o próprio nome. As duas pegaram casos meus na
+primeira rodada.

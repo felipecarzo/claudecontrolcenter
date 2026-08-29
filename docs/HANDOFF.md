@@ -61,6 +61,27 @@ guardado por decisão dele.
 
 ## O que só ele resolve
 
+0. ⚠️ **REGRA GLOBAL ESPERANDO A DECISÃO DELE, anotada em 29/08.** Veio de uma
+   sessão do carzo, e ele pediu para registrar aqui: *"isso é muito importante,
+   todas essas regras globais mesmo, depois eu resolvo lá"*.
+
+   **A regra:** em modelagem, use o vocabulário de programação (classe,
+   atributo, relação), e não a paráfrase em português. A paráfrase parece mais
+   simples e é mais lenta de ler, porque ele traduz de volta. Ele travou num
+   catálogo meu e perdeu tempo por causa disso.
+
+   **A linha que a torna compatível com a regra zero:** o nome existe fora
+   deste projeto? Use. Foi inventado aqui? Traduza.
+
+   **Junto vem uma segunda:** todo item de lista se explica sozinho, em três
+   (o que é, de onde veio, para que serve). Item sem procedência é palpite com
+   cara de pesquisa.
+
+   Texto inteiro, com as palavras dele e o bloco pronto para colar no global,
+   no fim de `docs/produto/COMUNICACAO.md`. **Nada foi mexido no `CLAUDE.md`
+   global: a decisão é dele.**
+
+
 1. **Testar se o painel sobrevive a dormir ou deslogar o PC de verdade.** Só dá
    pra fazer na próxima pausa natural dele. Se ficar sem religar, comece
    verificando se `arrancar.ps1` está mesmo rodando.
