@@ -540,7 +540,18 @@ ok('todo método declarado usa predicado que existe, e toda fase explica')
    importante aqui é o de baixo, que confere que nenhum deles trouxe predicado
    ou fase que o motor não soubesse tratar. */
 {
-  assert.equal(Object.keys(METODOS).length, 5, 'o catálogo tem que ter os cinco métodos')
+  // CC-393: entrou o `projeto-novo`, o do projeto que nasce de uma descrição
+  assert.equal(Object.keys(METODOS).length, 6, 'o catálogo tem que ter os seis métodos')
+
+  /* O método novo trava código nas DUAS primeiras fases, e é o ponto dele: não
+     se constrói o que ainda não foi descrito. É a régua do `mvp-basico` uma
+     etapa mais cedo, porque lá o portão é o MVP e aqui é a conversa que o
+     produz. */
+  const pn = METODOS['projeto-novo']
+  assert.deepEqual(pn.fases.map((f) => f.id), ['descricao', 'entrevista', 'planejamento', 'execucao'])
+  assert.ok(pn.fases[0].trava.includes('src/**'), 'a descrição trava código')
+  assert.ok(pn.fases[1].trava.includes('src/**'), 'a entrevista também')
+  assert.deepEqual(pn.fases[2].trava, [], 'planejar não trava: ele pode rascunhar enquanto planeja')
 
   // conserto: reproduzir ANTES trava o código, e é o ponto do método
   const c = METODOS.conserto

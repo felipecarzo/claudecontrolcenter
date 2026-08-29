@@ -7919,6 +7919,17 @@
             opcao('perfil:' + x.id, x.titulo, x.contrataria, !desligado && x.id === p.perfil),
             ...(x.subs || []).map((sx) => opcao('perfil:' + sx.id, sx.titulo, sx.contrataria, !desligado && sx.id === p.perfil, true)),
           ]).join('') + '</optgroup>' : '')
+        /* CC-394, 29/08: o MÉTODO entra no seletor, e é a primeira vez que ele
+           é escolhível. Pergunta dele: *"isso não pode ser um modo novo do
+           framework?"*. Não pode, porque tem fases; mas a pergunta achou o
+           buraco: método nunca teve seletor, e os 11 projetos usavam o padrão
+           porque não havia como escolher outro.
+           Vem ANTES dos modos porque é a pergunta mais de fora: método é o
+           caminho do projeto, modo é como eu me comporto dentro dele. */
+        + ((p.metodos || []).length ? '<optgroup label="caminho do projeto">'
+          + p.metodos.map((m) => opcao('metodo:' + m.id, m.titulo,
+            'fases: ' + (m.fases || []).join(' → '),
+            !desligado && m.id === p.metodo)).join('') + '</optgroup>' : '')
         + (modos.length ? '<optgroup label="modo cru">'
           + modos.map((m) => opcao(m.id, m.titulo, m.explica, !desligado && !p.perfil && m.id === p.modo)).join('')
           + '</optgroup>' : '')
@@ -11615,10 +11626,15 @@
             const r = await post('/api/framework', { projeto, cwd: dir, acao: 'ligar' });
             if (r?.error) { alert(r.error); return carregarFrameworkLista(); }
           }
+          /* Três coisas saem do mesmo seletor, e o prefixo diz qual é: papel,
+             caminho do projeto (o método) e modo cru. */
           const ehPerfil = valor.startsWith('perfil:');
+          const ehMetodo = valor.startsWith('metodo:');
           const r2 = await post('/api/framework', ehPerfil
             ? { projeto, cwd: dir, acao: 'perfil', perfil: valor.slice(7) }
-            : { projeto, cwd: dir, acao: 'modo', modo: valor });
+            : ehMetodo
+              ? { projeto, cwd: dir, acao: 'metodo', metodo: valor.slice(7) }
+              : { projeto, cwd: dir, acao: 'modo', modo: valor });
           if (r2?.error) alert(r2.error);
           return carregarFrameworkLista();
         })();
@@ -11629,9 +11645,12 @@
       if (selModo) {
         const projeto = selModo.dataset.fwModo;
         const ehPerfil = selModo.value.startsWith('perfil:');
-        const pedido = ehPerfil ? selModo.value.slice(7) : selModo.value;
+        const ehMetodo = selModo.value.startsWith('metodo:');
+        const pedido = (ehPerfil || ehMetodo) ? selModo.value.slice(7) : selModo.value;
         CONFIRMA_FW.delete(projeto);
-        post('/api/framework', ehPerfil ? { projeto, acao: 'perfil', perfil: pedido } : { projeto, acao: 'modo', modo: pedido })
+        post('/api/framework', ehPerfil ? { projeto, acao: 'perfil', perfil: pedido }
+          : ehMetodo ? { projeto, acao: 'metodo', metodo: pedido }
+          : { projeto, acao: 'modo', modo: pedido })
           .then(async (f) => {
             if (f?.error) return;
             if (Array.isArray(FW_LISTA)) FW_LISTA = FW_LISTA.map((p) => (p.projeto === projeto ? { ...p, ...f } : p));

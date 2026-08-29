@@ -69,6 +69,27 @@ export const PREDICADOS = {
      Pedido dele: *"depois a criação de um plano, backlog, sprints"*. Antes o
      projeto pulava de definir para executar sem nada no meio, e o roadmap de
      projeto novo ficava vazio para sempre. */
+  /* CC-393, 29/08: os dois portões das fases novas do método `projeto-novo`. */
+  'prosa-escrita': (e) => (String(e?.entrevista?.prosa?.texto || '').trim().length > 20
+    ? null
+    : 'descreva o projeto em texto corrido: é dele que saem as perguntas'),
+  'entrevista-terminada': (e) => {
+    if (e?.entrevista?.terminou) return null
+    const respondidas = Object.keys(e?.entrevista?.respostas || {}).length
+    return respondidas
+      ? `a entrevista está no meio: ${respondidas} respondidas, faltam as outras`
+      : 'a entrevista não começou'
+  },
+  /* ⚠️ Palpite meu não fecha fase. Uma resposta deduzida da prosa e não
+     confirmada por ele deixaria a fase avançar sobre uma frase que ele nunca
+     escreveu, e o projeto inteiro seria planejado em cima dela. */
+  'entrevista-confirmada': (e) => {
+    const naoConfirmadas = Object.entries(e?.entrevista?.respostas || {})
+      .filter(([, r]) => r?.de === 'prosa')
+    return naoConfirmadas.length
+      ? `${naoConfirmadas.length} resposta(s) ainda são palpite meu, tiradas da sua descrição: confirme ou corrija`
+      : null
+  },
   'backlog-escrito': (e) => ((e?.plano?.itens || 0) > 0
     ? null
     : 'o backlog está vazio: nenhum item foi escrito no docs/ROADMAP.md'),
@@ -200,6 +221,58 @@ export const METODOS = {
         id: 'execucao',
         titulo: 'Execução',
         explica: 'Código liberado. O projeto só é dado como pronto quando todos os critérios do MVP estiverem marcados.',
+        exige: ['criterios-todos-marcados'],
+        trava: [],
+      },
+    ],
+  },
+
+  /**
+   * CC-393, 29/08: o método do projeto que nasce de uma descrição em prosa.
+   *
+   * Pedido dele: *"eu chego com um projeto em linguagem natural, e o framework
+   * vai primeiro criar uma definição de pronto e depois a criação de um plano,
+   * backlog, sprints (…) isso tudo em modo sugestivo, eu coloco o projeto e ele
+   * começa a fazer perguntas e vamos desenvolvendo"*.
+   *
+   * E ele mesmo achou o lugar certo, perguntando *"isso não pode ser um modo
+   * novo do framework?"*. Não pode ser modo, porque tem FASES, e fase é coisa de
+   * método. Mas a pergunta revelou o buraco: método nunca teve seletor, e os 11
+   * projetos usam o padrão porque nunca houve como escolher outro.
+   *
+   * **As duas primeiras fases travam código, e é o ponto do método.** Não se
+   * constrói o que ainda não foi descrito. É a mesma régua do `mvp-basico`, uma
+   * etapa mais cedo: lá o portão é o MVP, aqui é a conversa que produz o MVP.
+   */
+  'projeto-novo': {
+    id: 'projeto-novo',
+    titulo: 'Projeto novo: descrever, perguntar, planejar, construir',
+    fases: [
+      {
+        id: 'descricao',
+        titulo: 'Descrição',
+        explica: 'Escreva o projeto em texto corrido, do jeito que você contaria para uma pessoa. É desse texto que as perguntas saem.',
+        exige: ['prosa-escrita'],
+        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+      },
+      {
+        id: 'entrevista',
+        titulo: 'Entrevista',
+        explica: 'Eu preencho o que a sua descrição já responde, marcado como palpite. Você confirma ou corrige, e responde o resto.',
+        exige: ['entrevista-terminada', 'entrevista-confirmada', 'mvp-tem-nome', 'mvp-definido'],
+        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+      },
+      {
+        id: 'planejamento',
+        titulo: 'Planejamento',
+        explica: 'O backlog escrito no roadmap, e a primeira fatia escolhida.',
+        exige: ['backlog-escrito', 'primeira-fatia-escolhida'],
+        trava: [],
+      },
+      {
+        id: 'execucao',
+        titulo: 'Execução',
+        explica: 'Código liberado. O projeto só é dado como pronto quando todos os critérios estiverem marcados.',
         exige: ['criterios-todos-marcados'],
         trava: [],
       },

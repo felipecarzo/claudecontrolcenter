@@ -495,4 +495,33 @@ const comRespostas = (extra = {}) => ({
   ok('a prova ao contrário: frente nova começa com a conversa em branco')
 }
 
+
+/* ── CC-393 e CC-394: o método novo, e o método virando escolha ──────────── */
+{
+  const { METODOS, avaliar, PREDICADOS } = await import('./src/framework.mjs')
+
+  const pn = METODOS['projeto-novo']
+  assert.ok(pn, 'o método do projeto que nasce de uma descrição precisa existir')
+  assert.deepEqual(pn.fases.map((f) => f.id), ['descricao', 'entrevista', 'planejamento', 'execucao'])
+  /* As duas primeiras travam código, e é o ponto do método: não se constrói o
+     que ainda não foi descrito. */
+  assert.ok(pn.fases[0].trava.includes('src/**'))
+  assert.ok(pn.fases[1].trava.includes('src/**'))
+  ok('o método projeto-novo tem quatro fases, e as duas primeiras travam código')
+
+  assert.match(PREDICADOS['prosa-escrita']({}), /descreva o projeto/)
+  assert.equal(PREDICADOS['prosa-escrita']({ entrevista: { prosa: { texto: 'um app que organiza fotos por evento' } } }), null)
+  /* Prosa de três palavras não é descrição: o portão pediria e ele fecharia com
+     qualquer coisa, e a entrevista sairia sem nada para ler. */
+  assert.match(PREDICADOS['prosa-escrita']({ entrevista: { prosa: { texto: 'um app' } } }), /descreva/)
+  ok('o portão da descrição recusa prosa curta demais para ser lida')
+
+  /* ⚠️ Palpite meu não fecha fase. Sem isto, a fase avançaria sobre uma frase
+     que ele nunca escreveu, e o projeto inteiro seria planejado em cima dela. */
+  assert.match(PREDICADOS['entrevista-confirmada']({ entrevista: { respostas: { a: { de: 'prosa' } } } }),
+    /palpite meu/)
+  assert.equal(PREDICADOS['entrevista-confirmada']({ entrevista: { respostas: { a: { de: 'ele' } } } }), null)
+  ok('a fase da entrevista não fecha enquanto houver palpite meu sem confirmação')
+}
+
 console.log(`\n${passou} verificações, todas passaram.`)

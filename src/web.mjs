@@ -104,6 +104,7 @@ import {
   origemDoModo,
 } from './frameworkDisco.mjs'
 import {
+  METODOS,
   MODOS, PERFIS, acharModo as acharModoFramework,
   autorizar as autorizarFramework, avaliar as avaliarFramework,
   faltaNoPerfil, modoDe as modoDeFramework, perfilResolvido, perfisEmArvore,
@@ -205,6 +206,15 @@ function retratoFramework(raiz) {
        de relance. Cada um leva o que exige e o que desliga, para a escolha não
        ser um nome bonito sem consequência declarada. */
     perfil: s.estado.perfil || null,
+    /* CC-394: o método e o catálogo deles. Até 29/08 o método viajava só como
+       nome, e não havia lista: a tela não tinha como oferecer escolha porque
+       não sabia o que existia. */
+    metodo: s.estado.metodo || 'mvp-basico',
+    metodos: Object.values(METODOS).map((m) => ({
+      id: m.id,
+      titulo: m.titulo,
+      fases: m.fases.map((f) => f.titulo),
+    })),
     /* Em ÁRVORE: ele corrigiu em 17/08 que Perito, Pesquisador e Revisor são
        variações do Depurador, não papéis soltos. `falta` diz o que este papel
        está exigindo agora, para a escolha não parecer decorativa. */
@@ -1396,7 +1406,7 @@ function handler(req, res) {
 
   if (url.pathname === '/api/framework') {
     if (req.method === 'POST') {
-      return comCorpo(req, res, 1e3, ({ projeto, cwd, acao, modo, perfil, alvo, motivo, sessao }) => {
+      return comCorpo(req, res, 1e3, ({ projeto, cwd, acao, modo, metodo, perfil, alvo, motivo, sessao }) => {
         const raiz = cwdDoProjeto(cwd, projeto)
         if (!raiz) return { error: 'não achei a pasta deste projeto' }
 
@@ -1416,6 +1426,49 @@ function handler(req, res) {
            "Designer" ele reconhece e "desenho mais sugestivo" ele teria que
            decorar. Guarda o perfil E o modo base, para quem lê o arquivo sem
            passar pelo framework continuar entendendo o que está valendo. */
+        /* CC-394, 29/08: trocar o MÉTODO, que até aqui não tinha caminho nenhum.
+         *
+         * Pergunta dele que achou o buraco: *"isso não pode ser um modo novo do
+         * framework?"*. Não pode, porque tem fases, e fase é de método. Mas
+         * método nunca teve seletor: medido em 29/08, os 11 projetos desta
+         * máquina usam o padrão porque nunca houve como escolher outro, e os
+         * cinco métodos escritos eram alcançáveis só por edição de arquivo.
+         *
+         * ⚠️ **A fase gravada MANDA, e trocar de método não reinicia projeto.**
+         * O método novo tem duas fases antes da execução; se o projeto já está
+         * em `execucao` e a fase fosse recalculada, ele voltaria para a
+         * descrição e teria o código travado de novo. Seria o framework
+         * inventando trabalho que já foi feito, e é o jeito mais rápido de ele
+         * ser desligado. Fase que não existe no método novo cai na ÚLTIMA, que é
+         * a leitura conservadora: quem já andou continua andando. */
+        if (acao === 'metodo') {
+          const estado = lerFramework(raiz, { sessao: null })
+          if (!estado) return { error: 'este projeto não tem framework ligado' }
+          const alvo = String(metodo || '').trim()
+          if (!METODOS[alvo]) return { error: `método desconhecido: ${alvo}` }
+          /* Para onde a fase vai quando o método novo não tem uma com esse
+             nome. Três casos, e o do meio foi achado testando em 29/08: um
+             projeto recém-ligado, na primeira fase do método antigo, caía na
+             ÚLTIMA do novo. Ou seja, ligar o framework e escolher o método
+             mandava o projeto direto para a execução, pulando tudo o que o
+             método existe para fazer. */
+          const fases = METODOS[alvo].fases.map((f) => f.id)
+          const antigas = (METODOS[estado.metodo]?.fases || []).map((f) => f.id)
+          const fase = fases.includes(estado.fase)
+            ? estado.fase
+            /* Ainda na primeira fase do método antigo quer dizer que o projeto
+               não andou: ele começa do começo do método novo. */
+            : antigas.indexOf(estado.fase) <= 0
+              ? fases[0]
+              /* Já andou: não regride. Fase que não existe lá cai na última, e
+                 é a leitura conservadora. Voltar um projeto em execução para a
+                 descrição travaria o código dele de novo, e seria o framework
+                 inventando trabalho que já foi feito. */
+              : fases[fases.length - 1]
+          gravarFramework(raiz, { ...estado, metodo: alvo, fase })
+          return { raiz, ...retratoFramework(raiz) }
+        }
+
         if (acao === 'perfil') {
           const estado = lerFramework(raiz)
           if (!estado) return { error: 'este projeto não tem framework ligado' }

@@ -15,6 +15,55 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 29/08: o método passa a ser escolhível
+
+Pergunta dele, depois de eu dizer que faltava a tela: *"isso não pode ser um
+modo novo do framework?"*
+
+### O que a pergunta revelou, medido em 29/08
+
+O framework tem duas dimensões, e ele só conhecia uma:
+
+- **modo** é comportamento (quanto eu paro para perguntar, se trava código). É
+  o que ele escolhe, num seletor no cartão de cada projeto;
+- **método** é o caminho: quais fases existem e o que cada uma exige.
+
+**O método não tem seletor em lugar nenhum.** Zero ocorrências de escolha de
+método na tela e no servidor. Existem cinco métodos escritos (`mvp-basico`,
+`conserto`, `estudo`, `entrega-cliente`, `ciberseguranca`) e **os 11 projetos
+usam o mesmo**, que é o padrão. Nenhum foi escolhido por ninguém, porque não
+dá para escolher.
+
+A intuição dele estava certa por um motivo real: o fluxo novo tem FASES, então
+é método e não modo. Só que método era uma dimensão morta, e ele nunca ia
+encontrá-la.
+
+**Escolha dele entre as três saídas:** método novo, e o seletor passa a oferecer
+método. Ele descartou virar modo (que faria "modo" significar duas coisas) e
+descartou ser só um botão (que sumiria do mapa depois).
+
+### CC-393 ✅ 29/08: o método `projeto-novo`
+
+Quatro fases, e as duas primeiras travam código porque não se constrói o que
+ainda não foi descrito:
+
+1. **Descrição**: ele escreve a prosa. Portão: prosa escrita;
+2. **Entrevista**: eu preencho o que a prosa responde, ele confirma e responde o
+   resto. Portão: entrevista terminada, com pronto e critérios;
+3. **Planejamento**: o backlog no roadmap e a primeira fatia. Já existe;
+4. **Execução**: os critérios marcados. Já existe.
+
+### CC-394 ✅ 29/08: o método vira escolha na tela
+
+O seletor do cartão ganha um grupo próprio. Conserta o buraco de vez: os cinco
+métodos que já existiam passam a ser alcançáveis, e não só o novo.
+
+⚠️ **Trocar de método num projeto que já anda não pode reiniciá-lo.** A fase
+gravada manda: quem está em execução continua em execução, mesmo que o método
+novo tenha uma fase a mais antes dela.
+
+---
+
 ## ▶ Frente nova, aberta em 29/08: a entrevista sai da prosa, e o projeto paralelo
 
 Duas correções dele, em 29/08, depois de eu entregar a sequência de projeto novo.
