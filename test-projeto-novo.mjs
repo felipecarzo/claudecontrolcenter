@@ -524,4 +524,50 @@ const comRespostas = (extra = {}) => ({
   ok('a fase da entrevista não fecha enquanto houver palpite meu sem confirmação')
 }
 
+
+/* ── CC-397: o painel 2.0 vive ao lado, e a raiz não muda ────────────────── */
+{
+  const v2 = readFileSync('src/ui_v2.html', 'utf8')
+  const v3 = readFileSync('src/ui_novo.html', 'utf8')
+
+  /**
+   * Pedido dele em 29/08: *"vamos executar um plano em etapas p nao atrapalhar
+   * o funcionamento do meu fluxo atual (…) talvez um cockpit 2.0 e só trocar
+   * quando estiver aprovado"*.
+   *
+   * A promessa inteira depende de UMA coisa: o painel de todo dia continuar
+   * intocado enquanto o novo é construído. Este teste é o que segura isso.
+   */
+  assert.ok(!v2.includes('faixa-novo'),
+    'a faixa do painel em construção vazou para o painel de todo dia. A raiz é '
+    + 'o que ele usa na rua, e ela não pode mudar antes de ele aprovar.')
+  ok('a faixa do painel novo não vaza para o que ele usa hoje')
+
+  /* O novo tem que dizer onde ele está. Dois painéis idênticos em endereços
+     diferentes é ele mexendo num achando que é o outro. */
+  assert.ok(v3.includes('faixa-novo'), 'o painel novo precisa se identificar')
+  assert.match(v3, /Cockpit 2\.0/)
+  ok('o painel novo diz que é o painel novo, e aponta o caminho de volta')
+
+  /* Os dois compilam. Erro de sintaxe no painel é o defeito mais caro daqui:
+     acontece antes de qualquer código rodar, e nem `window.onerror` pega. A
+     tela fica em "carregando" para sempre, sem nada na tela. */
+  for (const [nome, html] of [['ui_v2', v2], ['ui_novo', v3]]) {
+    const blocos = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1])
+    assert.ok(blocos.length >= 1, `${nome}.html deixou de ter bloco de script`)
+    for (const [i, b] of blocos.entries()) {
+      assert.doesNotThrow(() => new Function(b), `${nome}.html tem erro de sintaxe no bloco ${i}`)
+    }
+  }
+  ok('os dois painéis compilam, o de hoje e o em construção')
+
+  /* E o servidor serve os dois, em endereços diferentes. Sem isto, a bifurcação
+     existe no disco e não existe para ele. */
+  const web = readFileSync('src/web.mjs', 'utf8')
+  assert.match(web, /url\.pathname === '\/novo'/)
+  assert.match(web, /url\.pathname === '\/' \|\| url\.pathname === '\/v2'/,
+    'a raiz continua servindo o painel de todo dia')
+  ok('a raiz serve o de hoje, e /novo serve o em construção')
+}
+
 console.log(`\n${passou} verificações, todas passaram.`)

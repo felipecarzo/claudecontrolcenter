@@ -151,6 +151,27 @@ import { garantirCambio } from './cambio.mjs'
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
 const UI_V2 = path.join(HERE, 'ui_v2.html')
+/* CC-397, 29/08: o painel em construção, servido AO LADO do que ele usa.
+ *
+ * Pedido dele: *"vamos executar um plano em etapas p nao atrapalhar o
+ * funcionamento do meu fluxo atual (…) talvez um cockpit 2.0 e só trocar quando
+ * estiver aprovado"*.
+ *
+ * O precedente é do próprio projeto, ao contrário: quando o painel novo assumiu
+ * a raiz, o antigo continuou respondendo em `/v1`. Aqui a raiz continua sendo o
+ * de todo dia, e o novo nasce num endereço próprio. A troca, quando ele
+ * aprovar, é uma linha.
+ *
+ * ⚠️ **Isto é bifurcação com data para acabar, não um segundo painel.** O painel
+ * é um arquivo só, e duas versões vivas são duas telas para consertar quando
+ * algo quebrar. */
+/* ⚠️ **`ui_novo.html`, e NÃO `ui_v3.html`.** O nome da série estava queimado:
+ * um `src/ui_v3.html` já existiu e foi para o `.gitignore` em 20/08, corrompido
+ * com dois documentos HTML dentro do mesmo arquivo. A regra continua lá, com o
+ * motivo escrito, e reusar o nome fazia o arquivo novo ser ignorado em silêncio:
+ * o commit saiu SEM ele, e o git avisou por sorte.
+ * Nome com história ruim se confere no `.gitignore` antes de reusar. */
+const UI_V3 = path.join(HERE, 'ui_novo.html')
 const GRAFICOS = path.join(HERE, 'graficos.js')
 /* O alvo quando ninguém escolheu projeto no filtro.
    `process.cwd()` NÃO serve: como serviço do systemd o painel roda de outro
@@ -769,6 +790,11 @@ function handler(req, res) {
     return send(res, 200, fs.readFileSync(UI_V2, 'utf8'), 'text/html; charset=utf-8')
   }
   if (url.pathname === '/v1') return send(res, 200, fs.readFileSync(UI, 'utf8'), 'text/html; charset=utf-8')
+  /* `/novo` é o nome que ele lê no telefone; `/v3` segue a série dos outros.
+     Os dois respondem o mesmo, e nenhum deles é a raiz. */
+  if (url.pathname === '/novo' || url.pathname === '/v3') {
+    return send(res, 200, fs.readFileSync(UI_V3, 'utf8'), 'text/html; charset=utf-8')
+  }
   if (url.pathname === '/graficos.js') {
     return send(res, 200, fs.readFileSync(GRAFICOS, 'utf8'), 'text/javascript; charset=utf-8')
   }
