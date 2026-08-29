@@ -154,6 +154,44 @@ um painel servindo código velho.
 
 **Frase curta dele não é falta de informação: é o ponteiro para onde olhar.**
 
+### A regra que saiu disso, e ela virou verificação
+
+Palavras dele ao ver a análise: *"perfeito, isso pode virar uma regra"*.
+
+> **Peça construída e inalcançável é o defeito mais caro deste projeto, e ele
+> não dá erro nenhum.**
+
+O padrão apareceu QUATRO vezes numa sessão só, sempre igual: a peça existe,
+funciona, e ninguém chega nela.
+
+| A peça | O que estava desligado |
+|---|---|
+| a entrevista do framework | 15 perguntas, e ZERO dos 11 projetos a responderam |
+| os pedidos de autorização | 16 gravados, nenhum respondido, sem tela que os mostrasse |
+| os métodos | cinco escritos, nenhum escolhível em lugar nenhum |
+| o `medir-guard` | escrito em 16/08, ZERO disparos em 30 commits |
+
+**Nenhum deles dava erro.** O dado acumulava, a tela não mentia, e o buraco era
+invisível porque ninguém desobedeceu.
+
+**A regra não ficou só escrita**, porque *"regra que só existe em texto volta a
+ser quebrada"* já estava neste arquivo, e foi paga duas vezes com a grade inline
+que apagou tela em 390px. `test-projeto-novo.mjs` recusa:
+
+- método ou modo do catálogo que nenhuma tela ofereça;
+- guarda implementado que não seja padrão e que nenhum modo exija;
+- rota de API que ninguém chame, contando caminho montado.
+
+O critério de rota compara por PREFIXO. Exigir caminho literal dava cinco falsos
+positivos, medidos: muita chamada é montada, do tipo `/api/midia/` mais a ação.
+
+Ela achou dívida na primeira execução: `/api/marcos`, do CC-23, que nenhuma tela
+consome. **Exceção declarada é diferente de peça esquecida**, e a lista carrega o
+motivo de cada uma.
+
+**Ao construir peça nova, a pergunta final é sempre a mesma: por onde ele chega
+nela?**
+
 ### 4. E o achado mais desconfortável: o guarda existia e estava desligado
 
 O `medir-guard` cobra exatamente *"descreveu um sintoma e mexeu sem medir"*, e

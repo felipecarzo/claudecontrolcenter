@@ -570,4 +570,111 @@ const comRespostas = (extra = {}) => ({
   ok('a raiz serve o de hoje, e /novo serve o em construção')
 }
 
+
+/* ── CC-405: peça construída e inalcançável ──────────────────────────────── */
+{
+  /**
+   * A regra que ele mandou escrever, virando verificação.
+   *
+   * ## O padrão, que apareceu QUATRO vezes numa sessão só
+   *
+   * Sempre a mesma forma: a peça existe, funciona, e ninguém a alcança.
+   *
+   * - a **entrevista** do framework: 15 perguntas encadeadas, e ZERO dos 11
+   *   projetos a tinham respondido. Morava atrás de um botão pequeno dentro de
+   *   um bloco que nasce fechado;
+   * - os **pedidos de autorização** entre agentes: 16 gravados, todos com estado
+   *   "pendente", nenhum respondido, porque não havia tela que os mostrasse;
+   * - os **métodos** do framework: cinco escritos, e os 11 projetos usando o
+   *   padrão porque não existia seletor em lugar nenhum;
+   * - o **`medir-guard`**: escrito em 16/08, e disparou ZERO vezes numa sessão
+   *   de 30 commits, porque só valia em modos que ele quase não usa.
+   *
+   * **Nenhum deles dava erro.** O dado acumulava, a tela não mentia, e o buraco
+   * era invisível porque ninguém desobedeceu.
+   *
+   * Palavras dele ao ver isso: *"perfeito, isso pode virar uma regra"*. E a
+   * lição de onde a regra mora já estava escrita aqui: *"regra que só existe em
+   * texto volta a ser quebrada"*.
+   */
+  const F = await import('./src/framework.mjs')
+  const telas = readFileSync('src/ui_v2.html', 'utf8') + readFileSync('src/ui_novo.html', 'utf8')
+
+  /* 1. Todo MÉTODO e todo MODO precisa ser oferecido por alguma tela.
+        Esta é a verificação que teria pego o defeito de 29/08: cinco métodos
+        escritos e nenhum escolhível, uma dimensão inteira do framework morta. */
+  const ofereceMetodo = /metodo:'\s*\+\s*m\.id|'metodo:' \+ m\.id/.test(telas)
+    || telas.includes("'metodo:' + m.id")
+  assert.ok(ofereceMetodo,
+    'nenhuma tela oferece a escolha de MÉTODO. Foram cinco métodos escritos e '
+    + 'zero escolhíveis até 29/08, e os 11 projetos usavam o padrão porque não '
+    + 'havia como escolher outro.')
+  ok('a tela oferece a escolha de método, e não só de modo')
+
+  const ofereceModo = telas.includes('modos.map') || telas.includes('modo cru')
+  assert.ok(ofereceModo, 'nenhuma tela oferece a escolha de modo')
+  ok('a tela oferece a escolha de modo')
+
+  /* 2. Todo GUARDA implementado é alcançável: ou é padrão, ou algum modo o
+        exige. Guarda que não é nem um nem outro nunca roda, e ninguém percebe. */
+  const C = await import('./src/hooksCatalogo.mjs')
+  const bruto = C.HOOKS || C.default || []
+  const catalogo = (Array.isArray(bruto) ? bruto : Object.values(bruto).flat()).filter(Boolean)
+  const exigidos = new Set()
+  for (const m of Object.values(F.MODOS)) for (const h of (m.hooks?.exige || [])) exigidos.add(h)
+  try {
+    for (const p of F.perfisEmArvore()) {
+      for (const x of [p, ...(p.subs || [])]) {
+        for (const h of (F.perfilResolvido(x.id)?.exige || [])) exigidos.add(h)
+      }
+    }
+  } catch { /* sem perfis, a conta segue pelos modos */ }
+
+  const inalcancaveis = catalogo
+    .filter((h) => h.implementado && h.padrao === false && !exigidos.has(h.id))
+    .map((h) => h.id)
+  assert.deepEqual(inalcancaveis, [],
+    'guarda construído que nunca roda: ' + inalcancaveis.join(', ')
+    + '. Ou ele é padrão, ou algum modo o exige. Foi assim que o `medir-guard` '
+    + 'passou de 16/08 a 29/08 sem disparar uma vez.')
+  ok('nenhum guarda construído está fora de todo modo e fora do padrão')
+
+  /* 3. Toda rota de API é alcançada por alguém do projeto.
+        Compara por PREFIXO: muita chamada é montada (`/api/midia/${acao}`), e
+        exigir o caminho literal daria cinco falsos positivos, medidos. */
+  const web = readFileSync('src/web.mjs', 'utf8')
+  const rotas = [...new Set([...web.matchAll(/url\.pathname === '(\/api\/[a-z0-9/-]+)'/g)].map((m) => m[1]))]
+  const fontes = ['src/ui_v2.html', 'src/ui_novo.html', 'src/ui.html', 'cc.mjs']
+    .map((f) => { try { return readFileSync(f, 'utf8') } catch { return '' } }).join('\n')
+  /**
+   * As exceções, cada uma com o motivo. **Exceção declarada é diferente de peça
+   * esquecida**, e é justamente essa diferença que o teste existe para manter
+   * visível: sem a lista, ou o gate fica vermelho para sempre, ou alguém
+   * afrouxa a regra inteira.
+   */
+  const CONSUMIDAS_DE_FORA = {
+    '/api/escritorio': 'o app do escritório de bonecos é OUTRO projeto, fora deste repositório',
+    '/api/shutdown': 'chamada de fora para reiniciar o painel sem root, e é o que destrava o trabalho remoto',
+    /* ⚠️ Esta NÃO é exceção legítima: é dívida achada por este próprio teste,
+       na primeira vez que ele rodou, em 29/08. A rota nasceu no CC-23 e nenhuma
+       tela a consome. Fica declarada para o gate não ficar vermelho enquanto ele
+       decide entre ligar e remover, e some daqui quando ele decidir. */
+    '/api/marcos': 'DÍVIDA: rota do CC-23 que nenhuma tela chama, esperando decisão dele',
+  }
+  const mortas = rotas.filter((r) => {
+    if (CONSUMIDAS_DE_FORA[r]) return false
+    if (fontes.includes(r)) return false
+    /* `/api/paineis/ligar` conta como alcançada se `/api/paineis/` aparece:
+       é uma chamada montada, e o pedaço fixo é o que dá para conferir. */
+    const pai = r.slice(0, r.lastIndexOf('/') + 1)
+    return pai.length > 5 ? !fontes.includes(pai) : true
+  })
+  assert.deepEqual(mortas, [],
+    'rota de API que ninguém chama: ' + mortas.join(', ')
+    + '. Servidor respondendo o que nenhuma tela pede é peça construída e '
+    + 'inalcançável, o mesmo formato dos 16 pedidos de autorização que ficaram '
+    + 'anos sem resposta porque não havia onde vê-los.')
+  ok('toda rota de API é chamada por alguém, nem que seja por caminho montado')
+}
+
 console.log(`\n${passou} verificações, todas passaram.`)
