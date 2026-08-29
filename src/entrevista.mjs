@@ -330,6 +330,20 @@ export function responder(estado, id, entrada, { quando = null } = {}) {
   const restante = proxima(novo)
   novo.entrevista.terminou = restante ? null : (quando || new Date().toISOString())
 
+  /* CC-382: ao FECHAR a entrevista, ela grava o que apurou.
+   *
+   * Aqui, e não numa chamada separada que alguém precisaria lembrar de fazer:
+   * peça que depende de alguém lembrar é peça que fica de fora, e é exatamente
+   * por isso que a entrevista tinha zero uso em 11 projetos.
+   *
+   * `aplicar` já recusa escrever por cima de MVP feito à mão, então chamar
+   * sempre é seguro. O que colidir volta em `sugestoes`, para a tela mostrar as
+   * duas versões em vez de escolher sozinha. */
+  if (!restante) {
+    const r = aplicar(novo)
+    return { ok: true, estado: r.estado, resposta, proxima: null, sugestoes: r.sugestoes, colhido: r.colhido }
+  }
+
   return { ok: true, estado: novo, resposta, proxima: restante }
 }
 
@@ -357,6 +371,209 @@ export function desfazer(estado, id) {
 }
 
 /** A entrevista em texto, para o resumo do projeto e para o diário. */
+/**
+ * CC-382, 28/08: a entrevista passa a ESCREVER o que apurou.
+ *
+ * ## Por que isto faltava, e o número que prova
+ *
+ * Até aqui a entrevista terminava e devolvia um parágrafo. As respostas ficavam
+ * guardadas em `estado.entrevista.respostas` e não viravam nada: nem MVP, nem
+ * critério de pronto, nem item de backlog.
+ *
+ * Medido em 28/08, nos 11 projetos com framework desta máquina: **zero
+ * responderam a entrevista**. Dez têm MVP nomeado, e nenhum veio dela. Uma peça
+ * que funciona, não produz resultado e por isso ninguém usa.
+ *
+ * Pedido dele: *"eu chego com um projeto em linguagem natural, e o framework
+ * vai primeiro criar uma definição de pronto"*. Isto é a definição de pronto
+ * saindo da conversa em vez de ser digitada de novo.
+ *
+ * ## O que vira o quê
+ *
+ * - **o nome do MVP** sai de "a entrega", que é a pergunta que pede o que o
+ *   projeto entrega quando estiver pronto;
+ * - **os critérios** saem de "pronto é" e de "primeiro", uma linha cada. As
+ *   duas descrevem o que precisa funcionar, e ele costuma responder em lista.
+ *
+ * Função PURA: não toca em disco, não decide se grava. Quem grava é quem sabe o
+ * que já existe lá, e essa separação é o que impede a entrevista de apagar MVP
+ * escrito à mão.
+ */
+export function colher(estado) {
+  const respostas = respostasDe(estado)
+  const texto = (id) => String(respostas[id]?.texto || '').trim()
+
+  /* Uma linha por critério, e linhas vazias fora. Ele responde em lista quando
+     a pergunta pede lista, e um critério de três linhas na tela vira uma frase
+     ilegível dentro do cartão. */
+  const linhas = (id) => texto(id).split(/\r?\n/)
+    .map((l) => l.replace(/^\s*[-*]\s*/, '').trim())
+    .filter(Boolean)
+
+  const criterios = [...new Set([...linhas('pronto'), ...linhas('primeiro')])]
+
+  return {
+    /* O nome cabe numa linha: é rótulo, não descrição. O resto do que ele
+       escreveu continua inteiro nas respostas, e vai para o backlog. */
+    nome: texto('entrega').split(/\r?\n/)[0].trim().slice(0, 120),
+    criterios: criterios.map((texto) => ({ texto, feito: false })),
+  }
+}
+
+/**
+ * O que a entrevista GRAVARIA, e o que ela recusa gravar por cima.
+ *
+ * ⚠️ **MVP escrito à mão vence a entrevista, sempre.** Dez dos onze projetos
+ * têm MVP nomeado por ele, e sobrescrever apagaria esse trabalho sem aviso
+ * nenhum. O que colide sai como SUGESTÃO, para a tela poder mostrar as duas
+ * versões e ele escolher; o que está vazio é preenchido direto, porque ali não
+ * há nada a perder.
+ */
+export function aplicar(estado) {
+  const colhido = colher(estado)
+  const mvpAtual = estado?.mvp || {}
+  const temNome = Boolean(String(mvpAtual.nome || '').trim())
+  const temCriterios = Array.isArray(mvpAtual.criterios) && mvpAtual.criterios.length
+
+  const sugestoes = {}
+  const mvp = { ...mvpAtual }
+
+  if (colhido.nome) {
+    if (temNome && mvpAtual.nome.trim() !== colhido.nome) sugestoes.nome = colhido.nome
+    else if (!temNome) mvp.nome = colhido.nome
+  }
+
+  if (colhido.criterios.length) {
+    if (temCriterios) {
+      /* Critério que já existe não entra de novo, e a comparação é pelo texto
+         sem caixa nem espaço sobrando: ele escreve a mesma coisa de dois jeitos
+         em dias diferentes, e o cartão com o item duplicado é o que aparece. */
+      const chave = (c) => String(c?.texto || c || '').trim().toLowerCase()
+      const jaTem = new Set((mvpAtual.criterios || []).map(chave))
+      const novos = colhido.criterios.filter((c) => !jaTem.has(chave(c)))
+      if (novos.length) sugestoes.criterios = novos
+    } else {
+      mvp.criterios = colhido.criterios
+    }
+  }
+
+  const mudou = mvp.nome !== mvpAtual.nome
+    || (mvp.criterios || []).length !== (mvpAtual.criterios || []).length
+
+  /* O plano entra junto: é o que a fase de planejamento cobra, e ele sai das
+     mesmas respostas. ⚠️ `itens` só conta o que foi ESCRITO no roadmap, e quem
+     escreve é `gravarBacklog`; aqui fica o que a entrevista APURA, e o número
+     de itens é confirmado por quem gravou. Contar aqui como se já estivesse no
+     arquivo abriria o portão sobre um roadmap vazio. */
+  const plano = { ...(estado?.plano || {}), primeira: planoDe(estado).primeira }
+
+  return {
+    estado: (mudou || plano.primeira !== estado?.plano?.primeira)
+      ? { ...estado, mvp, plano }
+      : estado,
+    mudou,
+    sugestoes,
+    colhido,
+    plano,
+  }
+}
+
+/**
+ * CC-383, 28/08: as respostas viram itens abertos de backlog.
+ *
+ * Pedido dele: *"depois a criação de um plano, backlog, sprints"*. O roadmap de
+ * projeto novo nasce vazio, e ficava vazio: a conversa que descreve o trabalho
+ * inteiro morria dentro do estado do framework.
+ *
+ * **Cada critério de pronto vira um item**, e não uma linha de checklist. O
+ * critério é literalmente a resposta de "o que precisa estar funcionando", que
+ * é a mesma pergunta que o backlog responde.
+ *
+ * **A citação é dele, e é o que faz o item ser reconhecível depois.** Palavras
+ * dele em 27/08, sobre os itens que registrei com a fala original dentro:
+ * *"isso é muito bom porque eu consigo identificar pelo que eu falei"*. Um item
+ * de backlog escrito com as minhas palavras é um item que ele lê e não
+ * reconhece.
+ *
+ * Função PURA: devolve o texto em markdown e não decide onde ele vai.
+ */
+export function paraBacklog(estado, { quando = null } = {}) {
+  const colhido = colher(estado)
+  if (!colhido.criterios.length) return null
+
+  const respostas = respostasDe(estado)
+  const dia = String(quando || new Date().toISOString()).slice(0, 10)
+  const [ano, mes, d] = dia.split('-')
+  const curto = `${d}/${mes}`
+
+  /* O contexto que vale a pena carregar para dentro do item: o que o projeto
+     entrega, para quem, e como é hoje. São as três respostas que explicam o
+     porquê, e sem elas o item vira uma linha de tarefa sem causa. */
+  const contexto = ['entrega', 'quem', 'hoje']
+    .map((id) => [id, String(respostas[id]?.texto || '').trim()])
+    .filter(([, t]) => t)
+
+  const linhas = []
+  linhas.push(`## ▶ Da entrevista de ${curto}: ${colhido.nome || 'o que foi combinado'}`)
+  linhas.push('')
+  linhas.push('Itens tirados da entrevista do framework, com as palavras dele.')
+  linhas.push('Cada um é um critério de pronto que ele mesmo respondeu.')
+  linhas.push('')
+
+  if (contexto.length) {
+    linhas.push('**O que foi dito na entrevista:**')
+    linhas.push('')
+    for (const [id, texto] of contexto) {
+      const pergunta = ROTEIRO.find((x) => x.id === id)
+      linhas.push(`- **${pergunta?.header || id}:** ${texto.split(/\r?\n/).join(' ')}`)
+    }
+    linhas.push('')
+  }
+
+  /* A primeira fatia sai marcada, e não é enfeite: ele respondeu qual é, e um
+     backlog sem ordem devolve a ele a mesma pergunta que a entrevista já fez. */
+  const primeiro = String(respostas.primeiro?.texto || '').trim().toLowerCase()
+
+  for (const c of colhido.criterios) {
+    const ehPrimeiro = primeiro && c.texto.toLowerCase() === primeiro
+    linhas.push(`### ${c.texto}${ehPrimeiro ? ' 🟢' : ''}`)
+    linhas.push('')
+    if (ehPrimeiro) {
+      linhas.push('Ele respondeu que esta é a primeira fatia, na pergunta sobre por')
+      linhas.push('onde começar.')
+      linhas.push('')
+    }
+    linhas.push('')
+  }
+
+  return linhas.join('\n')
+}
+
+/**
+ * CC-384, 28/08: o que a fase de planejamento cobra, tirado da entrevista.
+ *
+ * Os dois portões da fase nova perguntam "o backlog está escrito?" e "qual é a
+ * primeira fatia?". As duas respostas já existem na conversa: os critérios são
+ * os itens, e a pergunta "primeiro" é literalmente por onde começar.
+ *
+ * Isto fecha o circuito: a entrevista responde, o backlog é escrito, e o portão
+ * abre sozinho. Sem esta função ele ficaria pedindo, para sempre, uma coisa que
+ * o projeto já tinha.
+ */
+export function planoDe(estado) {
+  const colhido = colher(estado)
+  const respostas = respostasDe(estado)
+  const primeira = String(respostas.primeiro?.texto || '').split(/\r?\n/)[0].trim()
+  return {
+    itens: colhido.criterios.length,
+    /* A primeira fatia é a resposta dele quando ela existe; sem ela, o primeiro
+       critério, que é a ordem em que ele mesmo escreveu. Deixar vazio faria o
+       portão cobrar uma escolha que a entrevista já pediu. */
+    primeira: primeira || colhido.criterios[0]?.texto || '',
+    em: estado?.entrevista?.terminou || null,
+  }
+}
+
 export function resumo(estado) {
   const respostas = respostasDe(estado)
   const lista = aplicaveis(respostas).filter((p) => respostas[p.id] !== undefined)

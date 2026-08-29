@@ -1165,6 +1165,18 @@
        dentro de um cartão de ~330px, ele quebrava para uma linha só e virava
        uma frase grande e solta, com o rótulo que a explica empurrado para fora
        da tela. Visto no print de 390px, não deduzido do código. */
+    /* CC-386: a faixa do passo. Fica no topo do cartão porque responde a
+       pergunta que o cartão inteiro existe para responder: e agora, o quê? */
+    .fw-passo {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 8px; padding: 8px 11px; border-radius: 7px;
+      background: var(--surface); border-left: 2px solid var(--text-dim);
+    }
+    /* Só a entrevista pendente é urgente: é a única que, não sendo feita,
+       deixa o projeto inteiro sem pronto e sem backlog. */
+    .fw-passo.urgente { border-left-color: var(--waiting); }
+    .fw-passo-texto { flex: 1 1 160px; font-size: 11.5px; color: var(--text-muted); line-height: 1.35; }
+    .fw-passo-conta { font-size: 11px; color: var(--text-dim); }
     .fw-aut .path { flex: 1 1 140px; font-size: 11.5px; color: var(--text-muted); line-height: 1.35; }
     /* ===== CC-374/CC-376: a tela das rotas =====
        A grade é `auto-fill` com `minmax`, e não colunas declaradas: ela se
@@ -8112,7 +8124,36 @@
         : '<button type="button" class="btn btn-ghost compacto" data-ent-abrir="' + esc(fw.projeto) + '">'
           + (entrevistaAqui ? 'fechar entrevista' : 'entrevista') + '</button>';
 
-      const miolo = (selosFw(fw) ? '<div class="cc-selos">' + selosFw(fw) + '</div>' : '')
+      /* ===== CC-386: o PASSO, e o botão que leva a ele =====
+       *
+       * Pedido dele em 28/08: *"eu coloco o projeto e ele começa a fazer
+       * perguntas e vamos desenvolvendo"*.
+       *
+       * A causa do problema é medida, e é simples: dos 11 projetos com
+       * framework, ZERO responderam a entrevista. Ela existe, funciona e mora
+       * atrás de um botão pequeno no meio de uma fileira. Ninguém a encontra,
+       * então ninguém a faz, então o pronto continua sendo digitado à mão e o
+       * roadmap nasce vazio.
+       *
+       * Esta faixa é a correção: ela fica em CIMA de tudo no cartão, diz em uma
+       * frase o que fazer agora, e o botão dela é o gesto. O servidor manda a
+       * frase pronta (`passo`) e qual botão destacar (`acao`), para a tela não
+       * ter uma segunda opinião sobre a ordem do trabalho. */
+      const ACOES = {
+        entrevista: { rotulo: 'começar a entrevista', attr: 'data-ent-abrir' },
+        planejar: { rotulo: 'escrever o backlog', attr: 'data-fw-planejar' },
+        avancar: { rotulo: 'avançar de fase', attr: 'data-fw-avancar' },
+      };
+      const acao = ACOES[fw.acao];
+      const passo = !valendo || !fw.passo ? '' : '<div class="fw-passo' + (fw.acao === 'entrevista' ? ' urgente' : '') + '">'
+        + '<span class="fw-passo-texto">' + esc(fw.passo) + '</span>'
+        + (acao ? '<button type="button" class="btn compacto" ' + acao.attr + '="' + esc(fw.projeto) + '">'
+          + esc(acao.rotulo) + '</button>' : '')
+        + (fw.entrevista && !fw.entrevista.terminou && fw.entrevista.feitas
+          ? '<span class="fw-passo-conta">' + fw.entrevista.feitas + ' de ' + fw.entrevista.total + '</span>' : '')
+        + '</div>';
+
+      const miolo = passo + (selosFw(fw) ? '<div class="cc-selos">' + selosFw(fw) + '</div>' : '')
         + '<div class="cc-linha-estado">' + seletorEstado(fw) + ajuda('framework') + btnEntrevista
         + (btnEntrevista ? ajuda('entrevista') : '') + '</div>'
         + explicaModo(valendo ? fw.modo : 'desligado')

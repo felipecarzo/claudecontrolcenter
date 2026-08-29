@@ -409,6 +409,59 @@ export function lerCabecalhoDeTabela(linha) {
  *  a linha de cima era mesmo cabeçalho, e não uma linha de dados qualquer. */
 const ehSeparador = (linha) => /^\s*\|[\s:|-]+\|\s*$/.test(linha) && linha.includes('-')
 
+/**
+ * CC-385, 28/08: a sprint, que é um recorte COM PRAZO.
+ *
+ * Escolha dele, entre as três leituras que ofereci para a palavra "sprint": não
+ * é "a próxima fatia" nem "agrupamento por tema". É recorte com data de começo
+ * e fim, e *"o que não coube volta para a fila"*.
+ *
+ * O prazo mora no TÍTULO da seção, e não em campo à parte, por dois motivos:
+ * o roadmap continua legível por uma pessoa fora do painel, e não nasce um
+ * segundo lugar onde a mesma data pode divergir.
+ *
+ * Formas aceitas, e as duas existem porque ele escreve das duas:
+ *
+ *     ## Sprint 1 (28/08 a 04/09)
+ *     ## Sprint 1 (2026-08-28 a 2026-09-04)
+ *
+ * Sem data, é seção comum: um roadmap cheio de "Sprint" no título sem prazo
+ * nenhum viraria um monte de sprint aberta para sempre, que é o contrário do
+ * que ele pediu.
+ */
+export function prazoDe(titulo) {
+  const t = String(titulo || '')
+  /* ISO primeiro: `2026-08-28` também casaria o padrão curto pelo pedaço
+     `08-28`, e a ordem evita ler o ano como dia. */
+  const iso = t.match(/\((\d{4}-\d{2}-\d{2})\s*(?:a|até|->|→)\s*(\d{4}-\d{2}-\d{2})\)/i)
+  if (iso) return { de: iso[1], ate: iso[2] }
+
+  const curto = t.match(/\((\d{2})\/(\d{2})\s*(?:a|até|->|→)\s*(\d{2})\/(\d{2})\)/i)
+  if (!curto) return null
+  /* Sem ano escrito, o ano é o de agora. É o que ele quer dizer ao escrever
+     28/08, e inventar outro ano seria pior que perguntar. */
+  const ano = new Date().getFullYear()
+  const [, d1, m1, d2, m2] = curto
+  const inicio = `${ano}-${m1}-${d1}`
+  /* Sprint que termina num mês anterior ao de início atravessou o ano. */
+  const fim = `${Number(m2) < Number(m1) ? ano + 1 : ano}-${m2}-${d2}`
+  return { de: inicio, ate: fim }
+}
+
+/**
+ * O estado de uma sprint pela data, sem depender de ninguém marcar nada.
+ *
+ * `null` quando não há prazo. Data que passou é `encerrada`, e é ela que
+ * dispara a pergunta que ele pediu: o que não coube volta para a fila.
+ */
+export function estadoDaSprint(prazo, agora = new Date()) {
+  if (!prazo?.de || !prazo?.ate) return null
+  const hoje = agora.toISOString().slice(0, 10)
+  if (hoje < prazo.de) return 'futura'
+  if (hoje > prazo.ate) return 'encerrada'
+  return 'corrente'
+}
+
 export function lerRoadmap(cwd) {
   const arquivo = acharRoadmap(cwd)
   if (!arquivo) return null
@@ -473,7 +526,18 @@ export function lerRoadmap(cwd) {
     } else { candidato = linha; continue }
 
     if (h2) {
-      grupo = { titulo: limpar(h2[1]), estado: estadoDe(h2[1]), frentes: [], itens: 0, feitos: 0 }
+      /* O prazo sai do título CRU, antes de `limpar()`: ele apaga os
+         marcadores, e o parêntese com as datas some junto se a limpeza vier
+         primeiro. */
+      const prazo = prazoDe(h2[1])
+      grupo = {
+        titulo: limpar(h2[1]),
+        estado: estadoDe(h2[1]),
+        frentes: [],
+        itens: 0,
+        feitos: 0,
+        ...(prazo ? { prazo, sprint: estadoDaSprint(prazo) } : {}),
+      }
       grupos.push(grupo)
       frente = null
       continue

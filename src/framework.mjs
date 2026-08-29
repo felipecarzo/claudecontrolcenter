@@ -43,7 +43,41 @@ export const CODIGO = ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**', 'hoo
  * burocracia que se desliga na terceira semana (achado do CC-32). Por isso
  * nenhum predicado devolve booleano nu.
  */
+/**
+ * CC-387, 28/08: critério de pronto vem em DUAS formas, e as duas valem.
+ *
+ * Medido nesta máquina: **25 critérios são texto puro** (em `VPS_carzo`,
+ * `VPS_escritorio`, `VPS_fibraessencia` e `VPS_renanMarchon`) e 34 são objeto
+ * `{texto, feito}`. O código só entendia a segunda, então `c.texto` devolvia
+ * `undefined` para um quarto de todos eles.
+ *
+ * O sintoma estava na tela e ninguém tinha olhado: o carzo dizia *"faltam 8 de
+ * 8 critérios do MVP: ; ; ; ; ; ; ;"*. Oito pontos e vírgula, nenhum texto.
+ *
+ * É a mesma regra que o painel já segue no `meta.json` dos agentes, escrita há
+ * semanas: **aceitar variação é mais barato que esperar acerto**. O arquivo é
+ * editado à mão, por ele e por mim, e vai continuar vindo dos dois jeitos.
+ *
+ * Texto puro conta como ABERTO, e é a leitura conservadora: dizer que um
+ * critério sem estado está feito seria fechar o projeto por engano.
+ */
+export const criterioTexto = (c) => (typeof c === 'string' ? c : String(c?.texto || '')).trim()
+export const criterioFeito = (c) => (typeof c === 'string' ? false : Boolean(c?.feito))
+
 export const PREDICADOS = {
+  /* CC-384, 28/08: os dois portões da fase de planejamento.
+     Pedido dele: *"depois a criação de um plano, backlog, sprints"*. Antes o
+     projeto pulava de definir para executar sem nada no meio, e o roadmap de
+     projeto novo ficava vazio para sempre. */
+  'backlog-escrito': (e) => ((e?.plano?.itens || 0) > 0
+    ? null
+    : 'o backlog está vazio: nenhum item foi escrito no docs/ROADMAP.md'),
+  /* A primeira fatia é o que separa plano de lista de desejos. Sem ela, sair
+     para a execução é escolher por onde começar no meio do caminho, que é
+     exatamente o que a entrevista já tinha perguntado. */
+  'primeira-fatia-escolhida': (e) => (String(e?.plano?.primeira || '').trim()
+    ? null
+    : 'a primeira fatia não foi escolhida: qual item entra agora'),
   'mvp-definido': (e) => {
     const n = e?.mvp?.criterios?.length || 0
     return n > 0 ? null : 'o MVP não tem nenhum critério de pronto registrado'
@@ -54,9 +88,12 @@ export const PREDICADOS = {
   'criterios-todos-marcados': (e) => {
     const cs = e?.mvp?.criterios || []
     if (!cs.length) return 'não há critério de pronto para conferir'
-    const abertos = cs.filter((c) => !c.feito)
+    const abertos = cs.filter((c) => !criterioFeito(c))
+    /* O texto sai por `criterioTexto`: um quarto dos critérios desta máquina é
+       string pura, e `c.texto` neles devolvia `undefined`. A frase saía como
+       "faltam 8 de 8: ; ; ; ; ; ; ;" e ninguém conseguia agir sobre ela. */
     return abertos.length
-      ? `faltam ${abertos.length} de ${cs.length} critérios do MVP: ${abertos.map((c) => c.texto).join('; ')}`
+      ? `faltam ${abertos.length} de ${cs.length} critérios do MVP: ${abertos.map(criterioTexto).filter(Boolean).join('; ')}`
       : null
   },
   /* CC-68, método `conserto`. Os dois campos abaixo são o que separa conserto
@@ -143,6 +180,21 @@ export const METODOS = {
         explica: 'Antes de escrever código, o projeto precisa dizer o que entrega e como se sabe que ficou pronto.',
         exige: ['mvp-tem-nome', 'mvp-definido'],
         trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+      },
+      {
+        /* CC-384, 28/08. Pedido dele: chegar com o projeto em texto e sair com
+           "plano, backlog, sprints" antes de desenvolver.
+
+           ⚠️ **A trava é mais frouxa que a da definição, de propósito.** Aqui o
+           código já pode nascer: o que não pode é o projeto ir para a execução
+           sem saber por onde começa. Travar `src/**` de novo faria a fase virar
+           uma segunda definição, e ele desligaria o framework no primeiro
+           projeto em que quisesse rascunhar algo enquanto planeja. */
+        id: 'planejamento',
+        titulo: 'Planejamento',
+        explica: 'O que entrega já está definido. Agora o trabalho vira lista: o backlog escrito no roadmap, e a primeira fatia escolhida.',
+        exige: ['backlog-escrito', 'primeira-fatia-escolhida'],
+        trava: [],
       },
       {
         id: 'execucao',

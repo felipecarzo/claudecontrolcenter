@@ -223,6 +223,44 @@ function retratoFramework(raiz) {
     tituloFase: a.tituloFase,
     portaoAberto: a.portaoAberto,
     pendencias: a.pendencias,
+    /* CC-386, 28/08: o PASSO em que o projeto está, e qual é o próximo.
+     *
+     * Pedido dele ao desenhar o projeto que nasce de texto solto: *"eu coloco o
+     * projeto e ele começa a fazer perguntas e vamos desenvolvendo"*. Para isso
+     * a tela precisa saber o que vem agora, e ela não sabia: recebia a fase e as
+     * pendências, e cabia a quem olha deduzir o próximo gesto.
+     *
+     * A causa medida do problema é outra, e mais simples: dos 11 projetos com
+     * framework, ZERO responderam a entrevista. Ela mora atrás de um botão
+     * dentro de um bloco que nasce fechado. Ninguém a encontra, então ninguém a
+     * faz, então o MVP continua sendo digitado à mão e o roadmap nasce vazio.
+     *
+     * `passo` é a frase do que fazer agora, e `acao` diz à tela qual botão
+     * destacar. Sem os dois, "o que falta" continua sendo uma lista de
+     * pendências que não aponta para lugar nenhum. */
+    ...(() => {
+      const prog = progressoEntrevista(s.estado)
+      const fezEntrevista = Boolean(s.estado?.entrevista?.terminou)
+      const temMvp = Boolean(String(s.estado?.mvp?.nome || '').trim())
+      const entrevista = { feitas: prog.feitas, total: prog.total, terminou: s.estado?.entrevista?.terminou || null }
+
+      /* A ordem das perguntas é a ordem do trabalho: primeiro descobrir o que é
+         o projeto, depois planejar, depois construir. */
+      if (!fezEntrevista && !temMvp) {
+        return {
+          entrevista,
+          passo: prog.feitas
+            ? `a entrevista está no meio: ${prog.feitas} de ${prog.total} respondidas`
+            : 'comece pela entrevista: ela define o que é pronto e escreve o backlog',
+          acao: 'entrevista',
+        }
+      }
+      if (a.fase === 'planejamento') {
+        return { entrevista, passo: a.pendencias?.[0] || 'escreva o backlog e escolha por onde começar', acao: 'planejar' }
+      }
+      if (!a.portaoAberto) return { entrevista, passo: a.pendencias?.[0] || 'falta fechar o portão desta fase', acao: null }
+      return { entrevista, passo: a.ultima ? 'tudo pronto nesta fase' : 'o portão está aberto: dá para avançar de fase', acao: 'avancar' }
+    })(),
     resumo: resumoFramework(s.estado.metodo, s.estado),
     mvp: s.estado.mvp || null,
     mudancasDeEscopo: (s.estado.historico || []).filter((h) => h.tipo === 'escopo').length,

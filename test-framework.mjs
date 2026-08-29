@@ -63,21 +63,43 @@ ok('dúvida libera: método desconhecido não pode travar ninguém')
 const definido = { ...vazio, mvp: { nome: 'painel dos agentes', criterios: [{ texto: 'uma linha por agente', feito: false }] } }
 const a1 = avaliar('mvp-basico', definido)
 assert.equal(a1.portaoAberto, true)
-assert.equal(a1.proxima, 'execucao')
+/* CC-384, 28/08: entre definir e executar entrou PLANEJAMENTO. Pedido dele ao
+   desenhar o projeto que nasce de texto solto: "primeiro uma definição de
+   pronto e depois a criação de um plano, backlog, sprints". Antes o projeto
+   pulava direto para o código, e o roadmap de projeto novo ficava vazio. */
+assert.equal(a1.proxima, 'planejamento')
 assert.equal(podeEditar('mvp-basico', definido, 'src/jobs.mjs').ok, true)
-ok('com MVP definido o portão abre e o código libera')
+ok('com MVP definido o portão abre e a próxima fase é planejar')
 
 const av = avancar('mvp-basico', definido)
 assert.equal(av.ok, true)
-assert.equal(av.estado.fase, 'execucao')
+assert.equal(av.estado.fase, 'planejamento')
 assert.equal(avancar('mvp-basico', vazio).ok, false, 'não avança com pendência')
+/* O planejamento cobra as duas coisas que ele nomeou: a lista escrita e a
+   primeira fatia escolhida. Sem elas não se sai daqui. */
 assert.deepEqual(avancar('mvp-basico', av.estado).pendencias, [
-  'faltam 1 de 1 critérios do MVP: uma linha por agente',
+  'o backlog está vazio: nenhum item foi escrito no docs/ROADMAP.md',
+  'a primeira fatia não foi escolhida: qual item entra agora',
 ])
 ok('avançar recusa com o que falta, em vez de avançar calado')
 
+/* ⚠️ **A fase nova não pode empurrar projeto nenhum para trás.** Os 11 projetos
+   desta máquina estão em `definicao` ou `execucao`, e um deles voltar para
+   planejamento seria o framework inventando trabalho que já foi feito. Fase
+   gravada manda: quem está em execução continua em execução. */
+const jaEmExecucao = { ...definido, fase: 'execucao' }
+assert.equal(avaliar('mvp-basico', jaEmExecucao).fase, 'execucao')
+assert.equal(podeEditar('mvp-basico', jaEmExecucao, 'src/jobs.mjs').ok, true)
+ok('projeto que já está em execução não regride para a fase nova')
+
+const planejado = { ...av.estado, plano: { itens: 4, primeira: 'a lista de agentes' } }
+const av2 = avancar('mvp-basico', planejado)
+assert.equal(av2.ok, true)
+assert.equal(av2.estado.fase, 'execucao')
+ok('com backlog escrito e fatia escolhida, o planejamento libera a execução')
+
 // -------------------------------------------------------- definição de pronto
-const emExecucao = av.estado
+const emExecucao = av2.estado
 assert.equal(avaliar('mvp-basico', emExecucao).portaoAberto, false)
 const pronto = { ...emExecucao, mvp: { ...emExecucao.mvp, criterios: [{ texto: 'uma linha por agente', feito: true }] } }
 const a2 = avaliar('mvp-basico', pronto)
@@ -393,7 +415,8 @@ const { escolherFerramentas, registrarVerificacao } = await import('./src/framew
 // o segundo método existe pra provar que método é DADO: 4 fases, sem tocar no motor
 assert.ok(METODOS['entrega-cliente'], 'o segundo método precisa existir')
 assert.equal(METODOS['entrega-cliente'].fases.length, 4)
-assert.equal(METODOS['mvp-basico'].fases.length, 2)
+// CC-384: o mvp-basico passou de 2 para 3 fases, com o planejamento no meio
+assert.equal(METODOS['mvp-basico'].fases.length, 3)
 ok('dois métodos convivem, com número de fases diferente')
 
 // na Definição do entrega-cliente, MVP pronto NÃO basta: falta escolher ferramenta

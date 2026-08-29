@@ -59,32 +59,84 @@ planejamento acontecer.
    e o que não coube volta para a fila. ⚠️ Isso exige o painel passar a guardar
    datas, que hoje ele não faz em item de roadmap.
 
-### CC-382 🔵 28/08: a entrevista passa a ESCREVER o resultado
+### As tarefas, na ordem em que se apoiam
+
+Ordem escolhida em 28/08 com o "faz tudo" dele. **Não é a ordem dos números:**
+é a das dependências. Cada peça usa o que a anterior gravou, e trocar a ordem
+faria as últimas serem escritas contra dado que ainda não existe.
+
+**CC-382, a entrevista grava o que apurou**
+
+- [x] **T1.** `colher(estado)` em `entrevista.mjs`: das respostas guardadas, tira
+      o nome do MVP (a resposta de "a entrega") e os critérios de pronto (a
+      resposta de "pronto é", uma linha cada). Função pura, sem tocar em disco.
+- [x] **T2.** Ao terminar a entrevista, gravar isso no `mvp` do estado. ⚠️ **Nunca
+      por cima de MVP já escrito**: dez projetos têm MVP nomeado à mão, e
+      sobrescrever apagaria trabalho dele sem aviso. Escreve só o que está vazio,
+      e o que colidir vira sugestão, não substituição.
+
+**CC-383, as respostas viram backlog**
+
+- [x] **T3.** `paraBacklog(estado)`: converte as respostas em itens abertos, com
+      título e o texto dele como corpo. A citação é DELE, e é o que faz o item
+      ser reconhecível depois.
+- [x] **T4.** Escrever no `docs/ROADMAP.md`. ⚠️ **Acrescenta, nunca sobrescreve.**
+      Roadmap com conteúdo manda; o que entra vai numa frente própria, datada, e
+      dá para ver o que veio da entrevista e o que foi escrito à mão.
+
+**CC-384, a fase de planejamento**
+
+- [x] **T5.** Fase `planejamento` no `mvp-basico`, entre `definicao` e `execucao`,
+      com portão: não sai dela sem backlog escrito e sem a primeira fatia
+      recortada.
+- [x] **T6.** Os 11 projetos de hoje NÃO podem regredir de fase. Todos estão em
+      `definicao` ou `execucao`, e a fase nova não pode empurrá-los para trás.
+      Há teste exigindo isso.
+
+**CC-385, sprint com prazo**
+
+- [x] **T7.** O leitor de roadmap passa a entender data em item (começo e fim).
+      Hoje ele não guarda data nenhuma.
+- [x] **T8.** Uma sprint é um recorte com as duas datas e os itens dentro. Ao
+      fechar, **o que não coube volta para a fila e isso aparece**: sprint que
+      termina e some leva o não feito junto, calado.
+
+**CC-386, a sequência conduzida**
+
+- [x] **T9.** Consertar a causa do zero medido: a entrevista passa a ser oferecida
+      quando o projeto nasce, e não atrás de um botão dentro de bloco fechado.
+- [x] **T10.** A tela mostra em que passo o projeto está, do texto solto até a
+      primeira fatia, e qual é o próximo. Em modo Sugestivo: cada passo pede
+      autorização, que é o que ele pediu.
+- [x] **T11.** Teste de ponta a ponta: texto solto entra, projeto com pasta, git,
+      pronto, backlog e primeira fatia sai. Com a prova ao contrário.
+
+### CC-382 ✅ 28/08: a entrevista passa a ESCREVER o resultado
 
 Hoje ela termina e devolve um parágrafo. Precisa gravar o que apurou: o nome do
 MVP e os critérios de pronto saem das respostas, e vão para `mvp` no estado do
 projeto. É a ligação que falta, e é a mais barata das cinco.
 
-### CC-383 🔵 28/08: a entrevista vira backlog no roadmap
+### CC-383 ✅ 28/08: a entrevista vira backlog no roadmap
 
 As respostas descrevem entregas ("a entrega", "primeiro", "pronto é"). Cada uma
 vira item aberto no `docs/ROADMAP.md`, que hoje nasce vazio. ⚠️ **Nunca
 sobrescrever roadmap que já tem conteúdo**: acrescenta, e o que já está escrito
 manda.
 
-### CC-384 🔵 28/08: a fase de PLANEJAMENTO, entre definir e executar
+### CC-384 ✅ 28/08: a fase de PLANEJAMENTO, entre definir e executar
 
 Uma fase nova no `mvp-basico`, com portão próprio: não se sai dela sem backlog
 escrito e sem a primeira fatia recortada. Hoje o projeto pula de `definicao`
 para `execucao` sem nada no meio.
 
-### CC-385 🔵 28/08: sprint com prazo
+### CC-385 ✅ 28/08: sprint com prazo
 
 Recorte com data de começo e fim. O que não coube volta para a fila, e isso
 precisa ser visível: sprint que termina e some leva o não feito junto. Exige
 campo de data no item, que o leitor de roadmap ainda não tem.
 
-### CC-386 🔵 28/08: a sequência conduzida, do texto solto ao primeiro commit
+### CC-386 ✅ 28/08: a sequência conduzida, do texto solto ao primeiro commit
 
 O fio que amarra tudo: ele escreve o projeto em linguagem natural, e o painel o
 conduz por criar pasta, entrevista, pronto, plano, backlog, primeira fatia. Em

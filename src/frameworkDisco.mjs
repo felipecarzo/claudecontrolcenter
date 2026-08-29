@@ -252,6 +252,161 @@ export function desligar(raiz) {
   return { ok: true, estado }
 }
 
+/**
+ * CC-383, 28/08: o backlog da entrevista entra no `docs/ROADMAP.md`.
+ *
+ * ⚠️ **ACRESCENTA, nunca sobrescreve, e a diferença aqui é destruição de
+ * trabalho.** O roadmap é o arquivo mais caro de cada projeto dele: são meses
+ * de decisão escrita à mão. Gravar o conteúdo novo por cima apagaria tudo, e
+ * apagaria calado, porque ninguém relê um roadmap logo depois de mexer nele.
+ *
+ * Duas defesas, e as duas importam:
+ *
+ * 1. o texto vai para o FIM do arquivo, depois do que já está lá;
+ * 2. **não entra duas vezes.** A entrevista pode ser refeita, e cada volta
+ *    geraria outro bloco idêntico. A marca é o título com a data, que é o que
+ *    identifica aquela entrevista.
+ *
+ * Sem arquivo, cria um com cabeçalho mínimo: projeto pode ter nascido fora do
+ * botão de criar, e recusar por isso seria empurrar o problema para ele.
+ */
+export function gravarBacklog(raiz, texto, { titulo = null } = {}) {
+  if (!texto || !String(texto).trim()) return { ok: false, erro: 'nada a escrever' }
+  const alvo = join(raiz, 'docs', 'ROADMAP.md')
+
+  let atual = ''
+  let existia = true
+  try { atual = readFileSync(alvo, 'utf8') } catch { existia = false }
+
+  /* A marca de já-escrito é a primeira linha do bloco, que carrega a data. Se
+     ela já está no arquivo, este backlog já entrou e não entra de novo. */
+  const marca = titulo || String(texto).split(/\r?\n/).find((l) => l.startsWith('## '))
+  if (marca && atual.includes(marca.trim())) {
+    return { ok: false, erro: 'este backlog já está no roadmap', jaEstava: true, arquivo: alvo }
+  }
+
+  const cabeca = existia ? '' : [
+    '---',
+    'tipo: roadmap',
+    'resumo: Só o que está aberto. Concluído sai daqui e vira linha no diário.',
+    '---',
+    '',
+    '# ROADMAP',
+    '',
+    'Só o que está **aberto**. Concluído sai daqui e vira linha no diário.',
+    '',
+    '---',
+    '',
+  ].join('\n')
+
+  /* Separador só quando há o que separar, e uma linha em branco garantida
+     entre o que havia e o que entra: markdown cola cabeçalho na linha de cima
+     e o parser passa a ler os dois como um. */
+  const meio = existia && atual.trim() ? `${atual.replace(/\s*$/, '')}\n\n---\n\n` : cabeca
+  const conteudo = `${meio}${String(texto).replace(/\s*$/, '')}\n`
+
+  mkdirSync(dirname(alvo), { recursive: true })
+  const tmp = `${alvo}.tmp`
+  writeFileSync(tmp, conteudo, 'utf8')
+  renameSync(tmp, alvo)
+
+  /* Quantos itens foram MESMO escritos, contados do texto que acabou de entrar
+     no arquivo. É este número que o portão da fase de planejamento lê, e por
+     isso ele não pode vir da entrevista: ali seria o que se pretendia escrever,
+     e aqui é o que está no disco. A diferença aparece quando a gravação falha
+     pela metade. */
+  const itens = (String(texto).match(/^###\s+/gm) || []).length
+  return { ok: true, arquivo: alvo, criou: !existia, itens, bytesAntes: atual.length, bytesDepois: conteudo.length }
+}
+
+/**
+ * CC-385, 28/08: fechar a sprint devolve à fila o que não coube.
+ *
+ * Palavras dele ao escolher o que "sprint" quer dizer: *"o que não coube volta
+ * para a fila"*.
+ *
+ * ⚠️ **Este é o passo em que trabalho some, se for feito calado.** Uma sprint
+ * que termina e é apagada leva junto tudo o que não foi feito, e ninguém
+ * percebe: o item não estava fechado, e some do arquivo como se estivesse.
+ *
+ * Por isso o que sai daqui NÃO é uma limpeza:
+ *
+ * - o título da sprint ganha a marca de encerrada, com o placar do que foi
+ *   feito. Sprint fechada continua legível, e é o histórico dele;
+ * - os itens ABERTOS são movidos para uma seção de fila, com uma linha dizendo
+ *   de onde vieram. Nada é apagado, nada muda de estado;
+ * - o que estava feito fica na sprint, que é onde ele conta a história.
+ *
+ * Devolve o texto novo e o que mudou, sem gravar: quem grava confere primeiro.
+ */
+export function fecharSprint(texto, tituloDaSprint, { quando = null } = {}) {
+  const linhas = String(texto || '').split(/\r?\n/)
+  const dia = String(quando || new Date().toISOString()).slice(0, 10)
+
+  /* Onde a sprint começa e onde ela acaba: do `##` dela até o próximo `##`. */
+  const inicio = linhas.findIndex((l) => /^##\s+(?!#)/.test(l) && l.includes(tituloDaSprint))
+  if (inicio < 0) return { ok: false, erro: 'não achei essa sprint no roadmap' }
+  let fim = linhas.length
+  for (let i = inicio + 1; i < linhas.length; i++) {
+    if (/^##\s+(?!#)/.test(linhas[i])) { fim = i; break }
+  }
+
+  /* Cada item da sprint, com o bloco de texto dele inteiro. Cortar o corpo
+     junto é o que permite mover o item sem perder a explicação. */
+  const dentro = linhas.slice(inicio + 1, fim)
+  const itens = []
+  let atual = null
+  for (const l of dentro) {
+    if (/^###\s+(?!#)/.test(l)) {
+      if (atual) itens.push(atual)
+      atual = { titulo: l, corpo: [] }
+    } else if (atual) atual.corpo.push(l)
+  }
+  if (atual) itens.push(atual)
+
+  const feito = (it) => /✅|✔/u.test(it.titulo)
+  const fechados = itens.filter(feito)
+  const abertos = itens.filter((it) => !feito(it))
+
+  const cabecaNova = `${linhas[inicio].replace(/\s*$/, '')} 🏁 encerrada em ${dia.slice(8, 10)}/${dia.slice(5, 7)}`
+    + ` (${fechados.length} de ${itens.length})`
+
+  const corpoDaSprint = [cabecaNova, '']
+  if (!itens.length) corpoDaSprint.push('Nenhum item entrou nesta sprint.', '')
+  for (const it of fechados) corpoDaSprint.push(it.titulo, ...it.corpo)
+  if (abertos.length) {
+    corpoDaSprint.push(
+      `**${abertos.length} item(ns) não couberam e voltaram para a fila**, na seção logo abaixo.`,
+      '',
+    )
+  }
+
+  const filaNova = abertos.length ? [
+    `## ▶ De volta à fila, da ${tituloDaSprint}`,
+    '',
+    'Estes itens estavam na sprint que fechou e não foram concluídos. Nada aqui',
+    'foi apagado nem marcado: eles voltam abertos, como estavam.',
+    '',
+    ...abertos.flatMap((it) => [it.titulo, ...it.corpo]),
+  ] : []
+
+  const saida = [
+    ...linhas.slice(0, inicio),
+    ...corpoDaSprint,
+    ...filaNova,
+    ...(filaNova.length ? [''] : []),
+    ...linhas.slice(fim),
+  ]
+
+  return {
+    ok: true,
+    texto: saida.join('\n').replace(/\n{4,}/g, '\n\n\n'),
+    fechados: fechados.length,
+    devolvidos: abertos.length,
+    total: itens.length,
+  }
+}
+
 /** Retrato para a tela: existe? está ligado? em que fase? o que falta? */
 export function situacao(raiz) {
   const estado = raiz ? ler(raiz) : null
