@@ -287,6 +287,22 @@ errada por definição.
   campo novo e o silêncio é o sintoma. O que isso ensina para além deste
   arquivo: consertar a TELA antes de limpar o dado faria a tela mentir com mais
   confiança, e é por isso que a ordem foi essa.
+- **`ler()` COM sessão faz `gravar()` ignorar o modo, e isso já mordeu quatro
+  vezes.** A defesa do CC-362 é certa: `gravar()` restaura `modo` e `tom` do
+  arquivo cru sempre que o objeto tem campo com prefixo `_`, para uma sessão não
+  promover a própria escolha a escolha do projeto. Só que ela é CEGA: não
+  distingue a sessão fazendo isso do SERVIDOR gravando o que ele acabou de tocar
+  na tela. E `ler()` com sessão injeta `_origemModo` e `_sessao` sempre.
+  O sintoma é sempre o mesmo, e é o pior tipo: a gravação vira no-op calada, e a
+  tela anuncia a escolha nova enquanto o comportamento é o antigo. Medido em
+  29/08 no carzo, com print dele: escolher o papel **Designer** gravava o perfil
+  e deixava o modo em `continuativo`, que não é nenhum dos dois que o Designer
+  admite. Os quatro guardas de tela dele ficavam desligados, e o cartão exibia
+  um papel que não governava nada.
+  Os quatro lugares que pisaram: `novoProjeto` (modo do projeto novo), a troca de
+  **método**, a de **perfil** e a de **modo**. **Quem grava escolha DELE lê com
+  `{ sessao: null }`.** Quem lê para exibir continua lendo com sessão, que é o
+  ponto de existir a camada.
 - **`MODOS[nome]` direto ignora apelido, e o padrão é o modo mais PERMISSIVO.**
   `modoDe()` fazia a busca crua, então um estado gravado com `"modo":
   "continuativo"` (o nome que a tela mostra, e que o quadro manda escrever na

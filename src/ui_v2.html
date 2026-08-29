@@ -8369,7 +8369,16 @@
         avancar: { rotulo: 'avançar de fase', attr: 'data-fw-avancar' },
       };
       const acao = ACOES[fw.acao];
-      const passo = !valendo || !fw.passo ? '' : '<div class="fw-passo' + (fw.acao === 'entrevista' ? ' urgente' : '') + '">'
+      /* ⚠️ A faixa só aparece quando ACRESCENTA alguma coisa: um botão para
+         tocar, ou uma frase que não está escrita mais abaixo.
+         No print dele de 29/08, o cartão do carzo mostrava "faltam 8 de 8
+         critérios do MVP" duas vezes, uma na faixa e outra embaixo de
+         "Execução". São a mesma string: quando não há ação, `passo` é a
+         primeira pendência, que a linha da fase já diz. Repetir o mesmo texto
+         em dois lugares do mesmo cartão é a tela gastando o espaço dele para
+         não dizer nada de novo. */
+      const repetido = !acao && String(fw.passo || '') === String(fw.pendencias?.[0] || '');
+      const passo = !valendo || !fw.passo || repetido ? '' : '<div class="fw-passo' + (fw.acao === 'entrevista' ? ' urgente' : '') + '">'
         + '<span class="fw-passo-texto">' + esc(fw.passo) + '</span>'
         + (acao ? '<button type="button" class="btn compacto" ' + acao.attr + '="' + esc(fw.projeto) + '">'
           + esc(acao.rotulo) + '</button>' : '')

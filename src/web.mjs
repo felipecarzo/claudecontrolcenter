@@ -1470,7 +1470,25 @@ function handler(req, res) {
         }
 
         if (acao === 'perfil') {
-          const estado = lerFramework(raiz)
+          /* ⚠️ **`{ sessao: null }`, e sem isto o papel vira decoração.**
+           *
+           * Medido em 29/08, no carzo, com ele olhando o print: escolher
+           * "Designer" gravava o perfil e o modo continuava `continuativo`,
+           * que não é nenhum dos dois que o Designer admite. Os quatro guardas
+           * dele ficavam desligados, e o cartão anunciava um papel que não
+           * governava nada. É o CC-362 de novo, por outro caminho.
+           *
+           * A causa: `ler()` COM sessão injeta campos derivados (`_origemModo`,
+           * `_sessao`), e `gravar()` reage a qualquer campo `_` restaurando
+           * `modo` e `tom` do arquivo cru. Essa defesa é certa, e existe para
+           * uma sessão não promover o próprio modo a modo do projeto. Só que
+           * ela é cega: não distingue a sessão tentando isso do SERVIDOR
+           * gravando a escolha que ele acabou de fazer na tela.
+           *
+           * É a terceira vez que isto morde: pegou o `novoProjeto` e o
+           * `metodo` ontem, e o perfil e o modo hoje. Quem grava escolha DELE
+           * lê sem sessão. */
+          const estado = lerFramework(raiz, { sessao: null })
           if (!estado) return { error: 'este projeto não tem framework ligado' }
           if (!perfil || perfil === 'nenhum') {
             const semPerfil = { ...estado }
@@ -1489,7 +1507,9 @@ function handler(req, res) {
         // ações o clique não existe — sobraria a linha de comando, que não serve
         // para quem trabalha do celular.
         if (acao === 'modo' || acao === 'autorizar') {
-          const estado = lerFramework(raiz)
+          /* Sem sessão, pelo mesmo motivo do perfil logo acima: com ela, a
+             gravação do modo escolhido por ele virava no-op calada. */
+          const estado = lerFramework(raiz, { sessao: null })
           if (!estado) return { error: 'este projeto não tem framework ligado' }
           const quando = new Date().toISOString()
           const r = acao === 'modo'
