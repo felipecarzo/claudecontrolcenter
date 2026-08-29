@@ -7881,6 +7881,14 @@
     const catLista = () => (Array.isArray(FW_LISTA) ? FW_LISTA : []);
     const catModos = () => (catLista().find((x) => (x.modos || []).length) || {}).modos || [];
     const catPerfis = () => (catLista().find((x) => (x.perfis || []).length) || {}).perfis || [];
+    /* CC-394, 29/08: o catálogo de MÉTODOS emprestado, pelo mesmo motivo dos
+       modos e dos papéis. Projeto que nunca teve framework vem sem catálogo
+       próprio, e é justamente quem ele abre este seletor para ligar. Sem
+       emprestar, o único projeto sem escolha de caminho seria o novo, que é
+       onde a escolha mais importa.
+       Achado no print dele: um dos cartões da tela vinha sem o grupo "caminho
+       do projeto", e era esse o caso. */
+    const catMetodos = () => (catLista().find((x) => (x.metodos || []).length) || {}).metodos || [];
 
     /* CC-343: o que cada modo FAZ, escrito na tela.
      *
@@ -7926,10 +7934,13 @@
            porque não havia como escolher outro.
            Vem ANTES dos modos porque é a pergunta mais de fora: método é o
            caminho do projeto, modo é como eu me comporto dentro dele. */
-        + ((p.metodos || []).length ? '<optgroup label="caminho do projeto">'
-          + p.metodos.map((m) => opcao('metodo:' + m.id, m.titulo,
+        + ((() => {
+          const metodos = (p.metodos || []).length ? p.metodos : catMetodos();
+          return metodos.length ? '<optgroup label="caminho do projeto">'
+          + metodos.map((m) => opcao('metodo:' + m.id, m.titulo,
             'fases: ' + (m.fases || []).join(' → '),
-            !desligado && m.id === p.metodo)).join('') + '</optgroup>' : '')
+            !desligado && m.id === p.metodo)).join('') + '</optgroup>' : '';
+        })())
         + (modos.length ? '<optgroup label="modo cru">'
           + modos.map((m) => opcao(m.id, m.titulo, m.explica, !desligado && !p.perfil && m.id === p.modo)).join('')
           + '</optgroup>' : '')
