@@ -15,6 +15,78 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 29/08: a tela Análise, e o que ela ainda não explica
+
+Pedido dele em 29/08, com print, e ele começa elogiando:
+
+> *"Camarada eu achei a aba análise simplesmente genial (…) todas essas coisas
+> elas realmente me dão uma informação pra eu retomar um projeto que eu não mexo
+> há muito tempo."*
+
+**Isso é a especificação, não elogio solto:** a tela existe para retomar projeto
+parado. Tudo o que segue é medido contra essa pergunta.
+
+### CC-408 🔵 29/08: o número 58 não diz o que é
+
+Nas palavras dele:
+
+> *"esse número 58 por exemplo, o que fazer agora 58 entrar com o Google, o que
+> que é 58 entendeu? É a tarefa 58 e esse número está onde? O que que isso liga?
+> Pode ser interessante se ligar com alguma coisa, ou significar alguma coisa
+> porque o olhe fale, pô esse dado é interessante, ajuda a tomar uma decisão."*
+
+**É a IMPORTÂNCIA, de 0 a 100**, e ele aparece nu. Medido em `importanciaDe`,
+ela soma cinco coisas: base 20, até +30 por destravar outros itens (15 cada),
++0/10/20 pelo peso, **+15 se o item nasceu de uma fala dele**, +10 se está
+bloqueado, e até +10 pela idade, com teto porque velho não é o mesmo que
+importante.
+
+⚠️ **Isto quebra a regra dele mais antiga sobre número:** *"em vez de border =
+10, escreva o valor do parâmetro de borda está em 10 (de 0 a 100)"*. O número
+sem escala e sem porquê é ruído, e ele apontou exatamente isso.
+
+### CC-409 🔵 29/08: o "?" em cada bloco, botão e aba
+
+> *"eu quero ponto de interrogação, aquele que você clica e tem a explicação do
+> que fazer, do que faz em cada aba, em opção, em cada botão, em cada topo de
+> aba, em cada topo de módulo (…) inclusive o que que vai entrar no lugar desse
+> número."*
+
+O mecanismo já existe e é dele, de 20/08: os `?` que leem
+`docs/produto/PALAVRAS-DA-TELA.md`. O que falta é alcançar os blocos DENTRO das
+telas, e não só as telas.
+
+### CC-410 🔵 29/08: tudo colapsável
+
+> *"tudo colapsarável, tem que ser tudo colapsarável pra economizar espaço em
+> tela. Pra ficar modular."*
+
+⚠️ **E a memória do que ele fechou tem que sobreviver ao redesenho**, senão o
+bloco reabre sozinho a cada dois segundos. É a mesma dor do CC-334 com a gaveta
+dos parados, e do modo de ver dos projetos.
+
+### CC-411 🔵 29/08: a aba das abertas, com cartões
+
+> *"por que que agora, na fila, prontas e as abertas não tem mais uma aba
+> chamada abertas também? Com cards como se fosse realmente o Trello."*
+
+Hoje "AGORA", "NA FILA" e "PRONTAS" são três colunas de texto corrido, e as
+abertas aparecem embaixo num bloco separado. Ele quer as quatro no mesmo lugar,
+e em cartão.
+
+### CC-412 🔵 29/08: a síntese, escrita pela IA
+
+> *"eu acho que a gente pode ter uma forma de uma da IA analisar todos esses
+> dados e me dar uma síntese em cima, tipo um resumo."*
+
+⚠️ **A pergunta que precisa ser respondida antes de construir:** quem escreve
+essa síntese, e quando? O painel não chama modelo nenhum hoje, e a única
+chamada de rede dele é a cotação do dólar. As saídas possíveis são um agente
+gravar o resumo num arquivo que a tela lê, ou o resumo ser derivado por regra
+(sem modelo). São coisas diferentes, e a escolha é dele.
+
+---
+
 ## ▶ Conserto solto, 29/08: a tela de tendências usa nomes de projeto antigos
 
 Achado ao juntar as quatro telas de "escolha um projeto" numa só, com um seletor
