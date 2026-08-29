@@ -15,6 +15,80 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 29/08: o Cockpit 2.0, sem parar o de hoje
+
+Pedido dele, e ele mesmo desenhou o caminho:
+
+> *"vamos executar um plano em etapas p nao atrapalhar o funcionamento do meu
+> fluxo atual (…) talvez um cockpit 2.0 e só trocar quando estiver aprovado."*
+
+### O que NÃO pode mudar, nas palavras dele
+
+Isto é tão importante quanto a lista do que muda, e ele disse antes de eu
+perguntar: *"precisamos ser justos, tem coisas muito boas que nao podem
+mudar."*
+
+- **o quadro Kanban.** *"O kambam ficou muito bom, precisamos manter ele"*;
+- **abrir sessão pelo controle remoto, e o framework ligado nela.** *"o controle
+  de remotos e ativar o framework nas sessões iniciadas ficou bom, mesmo que
+  precisemos reorganizar como eles aparecem"*.
+
+Note a ressalva dele: o que é bom é o QUE essas peças fazem, não onde aparecem.
+Reorganizar a apresentação está liberado; mudar o comportamento, não.
+
+### O que ele quer diferente, e ele descreveu por inteiro
+
+> *"eu ainda acho que nao ficou muito bom o remoto e o framework. Eu gosto de uma
+> versão anterior do remoto, que os projetos eram separados por desktop e vps, e
+> quando voce ativava uma sessão aquele projeto ia pra uma lista de projetos
+> ativos, e podia aparecer ali o framework, simples assim. se a pessoa voltar
+> pro remoto ela ve la o projeto com uma sessão, ela pode iniciar outra no
+> coderoom ou no claude e é isso."*
+
+**A versão que ele descreve existe no git, e eu a li.** É a de antes do commit
+`36886db` (22/08, a central de comando). `renderRemoto()` agrupava os projetos
+POR MÁQUINA, cada uma com os que tinham sessão, e a lista daqui vinha embaixo.
+O que veio depois foi somando: CC-323 trouxe o cartão de comando, CC-329 enfiou
+o framework dentro, CC-335 enfiou a tela Projetos também.
+
+**Cada passo foi pedido dele. O total é que nunca foi olhado.** É a terceira vez
+que este projeto registra esse formato de erro.
+
+### O caminho: um painel novo servido ao lado, e a troca só com aprovação
+
+O precedente existe e é do próprio projeto: quando o painel novo assumiu a raiz,
+o antigo continuou respondendo em `/v1`, e `/v2` ficou como apelido para não
+quebrar link salvo nem atalho de telefone.
+
+O mesmo desenho serve aqui, ao contrário: **o painel de hoje continua na raiz, e
+o 2.0 nasce num caminho próprio.** Ele abre quando quiser, compara com o que usa
+todo dia, e a troca é uma linha quando ele aprovar.
+
+⚠️ **O que isso NÃO resolve, e precisa ser dito:** o painel é um arquivo só, e
+duas versões vivas significam duas telas para consertar quando algo quebrar. O
+prazo importa: isto é uma bifurcação com data para acabar, não um segundo painel
+permanente.
+
+### CC-397 🔵 29/08: o painel 2.0 nasce ao lado, servido em caminho próprio
+
+Cópia do de hoje, servida noutro endereço, sem tocar na raiz. A partir daí toda
+mudança de tela acontece lá.
+
+### CC-398 🔵 29/08: o Remoto volta a ser o que ele descreve
+
+Projetos separados por máquina. Ativar uma sessão move o projeto para a lista
+dos ativos, e o framework aparece nele. Voltando ao Remoto, ele vê o projeto com
+a sessão e pode abrir outra, no Coderoom ou no Claude.
+
+### CC-399 🔵 29/08: o menu redesenhado, com as 29 telas agrupadas
+
+O que sai do mapa medido em `docs/produto/AS-TELAS.md`: três telas quase mortas,
+quatro que são o mesmo gesto, e a infraestrutura espalhada em quatro.
+
+⚠️ **O quadro Kanban entra intocado**, e o mesmo vale para o que abre sessão.
+
+---
+
 ## ▶ Frente nova, aberta em 29/08: o método passa a ser escolhível
 
 Pergunta dele, depois de eu dizer que faltava a tela: *"isso não pode ser um
