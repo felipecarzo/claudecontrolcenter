@@ -36,7 +36,7 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { ligar as ligarFramework } from './frameworkDisco.mjs'
+import { gravar as gravarFramework, ler as lerFramework, ligar as ligarFramework } from './frameworkDisco.mjs'
 import { installInto } from './install.mjs'
 
 /** As pastas de código, que NÃO nascem: ficam aqui para a tela poder explicar
@@ -190,7 +190,33 @@ export function criar(base, { nome, grupo = '', descricao = '', quando = null } 
   /* O modo automático que ele pediu: ligado, em Definição, e com a entrevista
      esperando na primeira pergunta. `ligar` já grava o estado no disco. */
   const fw = ligarFramework(raiz)
-  marcar('o framework ligado, na fase de Definição, com a entrevista aberta', fw.ok)
+  /* CC-388, 28/08: projeto novo nasce em SUGESTIVO, e não em Livre.
+   *
+   * Pedido dele ao desenhar a sequência: *"isso tudo em modo sugestivo, eu
+   * coloco o projeto e ele começa a fazer perguntas e vamos desenvolvendo"*.
+   *
+   * `estadoInicial` continua nascendo em `dialogo`, e isso é de propósito: ele
+   * é usado por quem liga o framework num projeto que já existe e já tem
+   * trabalho andando, e ali trocar o modo seria travar código sem avisar. Aqui
+   * é projeto que nasce agora, sem uma linha escrita, e o modo que ele pediu é
+   * justamente o que faz cada passo passar por ele.
+   *
+   * Sugestivo é o único dos onze modos que trava código E pede autorização por
+   * arquivo, que é o comportamento descrito no pedido. */
+  if (fw.ok) {
+    try {
+      /* ⚠️ `ler()` SEM sessão, e isto não é detalhe: com sessão ele injeta
+         campos derivados (`_origemModo`, `_rota`), e `gravar()` reage a
+         qualquer campo `_` restaurando `modo` e `tom` do arquivo cru. É a
+         defesa do CC-362, que existe para uma sessão não promover o próprio
+         modo a modo do projeto. Ela funcionou contra mim aqui: a primeira
+         versão deste trecho gravava e o modo continuava `dialogo`, calada.
+         Lendo sem sessão, o objeto sai limpo e a gravação vale. */
+      const estado = lerFramework(raiz, { sessao: null })
+      if (estado) gravarFramework(raiz, { ...estado, modo: 'sugestivo' })
+    } catch { /* sem modo escolhido o projeto nasce em Livre, e segue */ }
+  }
+  marcar('o framework ligado em modo Sugestivo, na Definição, com a entrevista aberta', fw.ok)
 
   return { ok: true, raiz, projeto: nome, passos, adiadas: PASTAS_ADIADAS }
 }

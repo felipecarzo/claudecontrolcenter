@@ -351,4 +351,39 @@ const comRespostas = (extra = {}) => ({
   ok('a prova ao contrário: critério sem estado conta como aberto, nunca feito')
 }
 
+
+/* ── CC-388: projeto novo nasce em Sugestivo ─────────────────────────────── */
+{
+  const { criar } = await import('./src/novoProjeto.mjs')
+  const { ler } = await import('./src/frameworkDisco.mjs')
+
+  const base = mkdtempSync(join(tmpdir(), 'cc-base-'))
+  const r = criar(base, { nome: 'projeto_de_teste', descricao: 'um app de fotos' })
+  assert.equal(r.ok, true)
+
+  const estado = ler(r.raiz, { sessao: null })
+  assert.equal(estado.modo, 'sugestivo',
+    'ele pediu "isso tudo em modo sugestivo": é o único modo que trava código E '
+    + 'pede autorização por arquivo, que é o comportamento descrito no pedido')
+  assert.equal(estado.fase, 'definicao')
+  ok('projeto novo nasce em modo Sugestivo, na Definição')
+
+  /* ⚠️ A armadilha que este teste guarda, paga em 28/08: `gravar()` restaura
+     `modo` e `tom` do arquivo cru sempre que o objeto tem campo derivado (`_`),
+     que é a defesa do CC-362. Ler COM sessão traz esses campos, e a gravação
+     virava no-op calada: o modo continuava `dialogo` e nada acusava. */
+  assert.ok(!('_origemModo' in estado), 'ler sem sessão não injeta campo derivado')
+  ok('a armadilha guardada: ler sem sessão é o que faz a gravação do modo valer')
+
+  /* E o resto do que ele pediu nasce junto: pasta própria com git, e os
+     documentos. "separação de pasta pro projeto ter seu próprio git". */
+  const { existsSync } = await import('node:fs')
+  assert.ok(existsSync(join(r.raiz, '.git')), 'git próprio')
+  assert.ok(existsSync(join(r.raiz, 'docs', 'ROADMAP.md')), 'roadmap')
+  assert.ok(existsSync(join(r.raiz, 'CLAUDE.md')), 'instruções do projeto')
+  ok('a pasta nasce com git próprio, roadmap e as instruções do projeto')
+
+  rmSync(base, { recursive: true, force: true })
+}
+
 console.log(`\n${passou} verificações, todas passaram.`)
