@@ -1890,6 +1890,53 @@
 
     /* ===== CC-304: a tela Projetos ===== */
     .pj-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+    /* ===== CC-400/401/402: os modos de ver, e o deslizar no telefone ===== */
+    .pj-modos { display: flex; gap: 2px; margin-left: auto; }
+    .pj-modo {
+      min-width: 34px; min-height: 34px; cursor: pointer; font-size: 13px;
+      background: var(--surface); color: var(--text-muted);
+      border: 1px solid var(--border); border-radius: 7px;
+    }
+    .pj-modo.ativo { color: var(--accent); border-color: var(--accent); }
+
+    /* Lista: uma linha por projeto. Compacto: as mesmas linhas, menores e em
+       colunas, para ver tudo de uma vez. */
+    .pj-grade.pj-modo-lista { grid-template-columns: 1fr; gap: 5px; }
+    .pj-grade.pj-modo-compacto { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 5px; }
+    .pj-linha {
+      display: flex; align-items: center; gap: 8px; min-height: 44px;
+      padding: 6px 11px; border-radius: 8px;
+      background: var(--card); border: 1px solid var(--border);
+    }
+    .pj-linha:hover { border-color: rgba(255,255,255,.16); }
+    .pj-linha-nome {
+      flex: 1 1 auto; display: flex; align-items: center; gap: 6px; min-width: 0;
+      background: none; border: 0; color: var(--text-main); cursor: pointer;
+      font-size: 12.5px; text-align: left; padding: 4px 0;
+    }
+    .pj-linha-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pj-linha-num { display: flex; gap: 8px; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+    .pj-linha-fw { color: var(--text-muted); }
+    .pj-min { min-height: 36px; padding: 4px 9px; }
+    .pj-min .pj-linha-nome { font-size: 11.5px; }
+
+    /* ⚠️ O deslizar de lado no telefone, e a defesa que ele exige.
+       Pedido dele: *"no telefone tenha que ficar scroll pro lado pra ver os
+       projetos e não pra baixo, porque descendo fica uma lista enorme"*.
+       `overscroll-behavior-x: none` e `contain` NÃO são enfeite: sem eles,
+       arrastar de lado no Android volta de página, e isso já foi consertado
+       uma vez no quadro, em 27/08. */
+    @media (max-width: 700px) {
+      .pj-grade.pj-desliza {
+        display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+        overscroll-behavior-x: none; contain: paint;
+        gap: 10px; padding-bottom: 6px;
+      }
+      .pj-grade.pj-desliza > * {
+        flex: 0 0 86%; scroll-snap-align: start; min-width: 0;
+      }
+    }
+
     .pj-card{background:var(--card-hover);border:1px solid var(--border);border-top:2px solid var(--border);
       border-radius:12px;padding:12px 16px 14px;display:flex;flex-direction:column;gap:10px;transition:.15s;}
     .pj-card:hover{border-color:rgba(255,255,255,.16);}
@@ -3018,6 +3065,15 @@
                    aqui seria a segunda conta do mesmo gesto. -->
               <button class="btn btn-ghost" id="pj-novo">+ projeto</button>
               <button class="btn btn-ghost" id="pj-atualizar">atualizar</button>
+              <!-- CC-400: os três modos de ver, com o Google Drive como
+                   referência que ele deu. São BOTÕES e não um menu: menu do
+                   sistema aberto morre no redesenho de 2 segundos, e isso já
+                   fechou na cara dele no telefone. -->
+              <div class="pj-modos" role="group" aria-label="modo de ver">
+                <button type="button" class="pj-modo" data-pj-modo="cartao" title="cartão: tudo à mão">▦</button>
+                <button type="button" class="pj-modo" data-pj-modo="lista" title="lista: uma linha por projeto">☰</button>
+                <button type="button" class="pj-modo" data-pj-modo="compacto" title="compacto: ver tudo de uma vez">⊞</button>
+              </div>
             </div>
             <div class="tend-quando" id="pj-quando"></div>
           </div>
@@ -5218,6 +5274,17 @@
        cartão é repintado a cada mudança do stream, e sem esta memória ela
        fecharia sozinha na cara dele, que é a tela fugindo do dedo. */
     let CC_ABRE_PARADOS = false;
+    /* ===== CC-400, 29/08: três modos de ver os projetos =====
+     *
+     * Pedido dele, com o Google Drive como referência que ele mesmo nomeou:
+     * *"pode ser tipo modo lista e modo foto, igualzinho o Google Drive (…) e eu
+     * acho que ainda pode ter uma forma que é tipo ícones menores, tipo essas
+     * células só que menores"*.
+     *
+     * ⚠️ **Guardado, e não em memória.** O painel se redesenha de 2 em 2
+     * segundos e a escolha voltaria ao padrão na cara dele, que é a mesma dor
+     * do CC-334 com a gaveta dos parados. */
+    let PJ_MODO = localStorage.getItem('cc-pj-modo') || 'cartao';
     const CONFIRMA_FW = new Map();
     let FRAMEWORKS = new Map();
     let ENTREVISTA = null; // null | { projeto, carregando? } | { projeto, ...retrato }
@@ -8503,6 +8570,42 @@
        `d is not defined` no meio do laço: a tela ficava com zero cartões,
        dado carregado e nenhum erro à vista. É a família de defeito que este
        painel mais paga, e desta vez fui eu quem a criou. */
+    /**
+     * CC-401: o projeto DESLIGADO numa linha, em vez de um cartão inteiro.
+     *
+     * Medido no print dele de 29/08: **17 projetos parados**, cada um num
+     * cartão do mesmo tamanho do de um projeto ligado, empilhados. Cada um traz
+     * "abrir sessão", "abrir com autoridade total", "abrir conversa", o estado
+     * do framework e dois botões de pasta. Para um projeto onde não está
+     * acontecendo nada, é o cartão inteiro para dizer que não há nada.
+     *
+     * O que sobra aqui é o que responde de relance: o nome, a máquina, quanto
+     * tem de backlog, e o gesto que ele mais faz, que é abrir uma sessão. O
+     * resto continua a um toque, abrindo o projeto.
+     */
+    function pjLinha(p, maquina, modo) {
+      const compacto = modo === 'compacto';
+      const fw = p.daqui ? fwDe(p.projeto) : null;
+      const ligado = fw && fw.existe && fw.ligado && fw.modo !== 'desligado';
+      return '<article class="pj-linha' + (compacto ? ' pj-min' : '') + '">'
+        + '<button type="button" class="pj-linha-nome" data-pj-abrir="' + esc(p.projeto) + '"'
+        + ' title="abrir este projeto">'
+        + '<span class="pj-linha-txt">' + esc(p.projeto) + '</span>'
+        + seloDe(p.daqui ? (maquina || 'esta máquina') : (p.maquinaDeFora || 'outra máquina'), { frio: !p.daqui })
+        + '</button>'
+        /* Os números só entram quando existem: "0 no backlog" ocupa espaço e
+           não informa nada, e numa linha o espaço é o que há de mais escasso. */
+        + (compacto ? '' : '<span class="pj-linha-num">'
+          + (p.backlog ? p.backlog + ' no backlog' : '')
+          + (ligado ? '<span class="pj-linha-fw">' + esc(fw.tituloModo || '') + '</span>' : '')
+          + '</span>')
+        + (p.daqui && !compacto
+          ? '<button class="btn btn-ghost compacto" data-abrir-sessao="' + esc(p.projeto) + '"'
+            + ' data-abrir-dir="' + esc(p.raiz || '') + '">abrir sessão</button>'
+          : '')
+        + '</article>';
+    }
+
     function pjCard(p, maquina) {
       const aberto = PJ_ABERTO === p.projeto;
       const classe = p.esperando ? 'tem-espera' : p.vivos ? 'tem-agente' : p.conversas ? 'tem-conversa' : '';
@@ -8815,6 +8918,12 @@
     }
 
     function renderProjetos() {
+      /* O botão do modo escolhido fica marcado. Sem isso ele troca e nada na
+         tela confirma qual está valendo, que é o mesmo problema de um seletor
+         sem valor selecionado. */
+      for (const b of document.querySelectorAll('[data-pj-modo]')) {
+        b.classList.toggle('ativo', b.dataset.pjModo === PJ_MODO);
+      }
       const d = DATA.projetos;
       const grades = [
         { alvo: document.getElementById('pj-grade'), quando: document.getElementById('pj-quando'), so: 'todos' },
@@ -8869,12 +8978,39 @@
       const passagem = lista.filter((p) => p.daqui && !p.ehProjeto);
       const fora = lista.filter((p) => !p.daqui);
 
-      const grade = (itens) => '<div class="pj-grade">' + itens.map((p) => pjCard(p, d.maquina)).join('') + '</div>';
+      /**
+       * CC-400/401/402: a grade respeita o modo de ver, e o projeto DESLIGADO
+       * ganha um cartão menor.
+       *
+       * Ele: *"os ligados não têm como colapsar muito, porque tem muita
+       * informação mesmo e é isso que eu gosto (…) eu controlo cada projeto
+       * ligado no mesmo lugar, está ótimo"*. Então o cartão cheio fica de pé
+       * onde ele importa, e é o desligado que encolhe.
+       *
+       * `deslizante` é o telefone: *"talvez no telefone tenha que ficar scroll
+       * pro lado pra ver os projetos e não pra baixo, porque descendo fica uma
+       * lista enorme"*. O precedente é a tela Trabalho, que ele aprovou.
+       */
+      const grade = (itens, { ligados = false } = {}) => {
+        /* Cartão cheio para quem está LIGADO, sempre, e é escolha dele:
+           *"eu controlo cada projeto ligado no mesmo lugar, está ótimo"*. O
+           modo de ver muda o resto. */
+        const modo = ligados ? 'cartao' : PJ_MODO;
+        /* E o deslizar vale onde há cartão cheio, na tela Ligados E na faixa de
+           ligados dentro de Projetos. Medido em 29/08: no celular, a faixa de
+           ligados sozinha tem 8352px de altura em modo cartão. */
+        const classe = 'pj-grade pj-modo-' + modo + (ligados ? ' pj-desliza' : '');
+        return '<div class="' + classe + '">'
+          + itens.map((p) => (modo === 'cartao'
+            ? pjCard(p, d.maquina)
+            : pjLinha(p, d.maquina, modo))).join('')
+          + '</div>';
+      };
 
       /* Na tela dos ligados não existe faixa de "ligados": todos ali são, e um
          título dizendo isso seria repetir o nome da tela a cada rolagem. */
       if (so === 'ligados') {
-        pintar(alvo, grade(daquiTodos)
+        pintar(alvo, grade(daquiTodos, { ligados: true })
           + (passagem.length ? '<div class="pj-secao">pastas de trabalho, não são projetos</div>' + grade(passagem) : '')
           + (fora.length ? '<div class="pj-secao">de outra máquina</div>' + grade(fora) : ''));
         return;
@@ -8887,7 +9023,7 @@
       const daqui = daquiTodos.filter((p) => !ligadoDe(p));
       pintar(alvo,
         (ligadas.length
-          ? '<div class="pj-secao">ligados agora</div>' + grade(ligadas)
+          ? '<div class="pj-secao">ligados agora</div>' + grade(ligadas, { ligados: true })
           : '<div class="pj-secao">nenhum projeto ligado agora</div>')
         + (daqui.length
           ? '<div class="pj-secao">nesta máquina, desligados</div>' + grade(daqui)
@@ -11893,6 +12029,15 @@
          comportamento padrao dele impediria o download. */
       if (tr.id === 'tend-colher') { e.preventDefault(); return colherTendencias(); }
       if (tr.id === 'trv-recolher') { e.preventDefault(); return recolherTravas(); }
+      const btModo = tr.closest?.('[data-pj-modo]');
+      if (btModo) {
+        e.preventDefault();
+        PJ_MODO = btModo.dataset.pjModo;
+        /* Guardado no aparelho: a escolha é dele e não pode voltar ao padrão
+           no tique seguinte. Mesma razão do CC-334. */
+        try { localStorage.setItem('cc-pj-modo', PJ_MODO); } catch { /* aba privada */ }
+        return renderProjetos();
+      }
       if (tr.id === 'pj-atualizar' || tr.id === 'lig-atualizar') { e.preventDefault(); return carregarProjetosTela(true); }
       /* CC-395: a folha do estado do projeto. Abre por botão, fecha no X e no
          fundo, e escolhe por item. Nenhum deles é `<select>`, e é o ponto. */

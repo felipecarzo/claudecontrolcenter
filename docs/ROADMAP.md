@@ -15,6 +15,73 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 29/08: os três modos de ver os projetos
+
+Pedido dele em 29/08, com dois prints do painel novo. **Começa elogiando, e o
+elogio é a especificação:**
+
+> *"Eu tenho que ser justo com a aba projetos também, ela também está muito boa,
+> eu acho que era só a gente simplificar os projetos desativados."*
+
+### O que NÃO muda, e ele disse por quê
+
+> *"os ligados não têm como colapsar muito, porque tem muita informação mesmo e é
+> isso que eu gosto, eu estou gostando dos ligados terem tanta informação ali
+> porque eu controlo cada projeto ligado no mesmo lugar, está ótimo, então talvez
+> não precise mexer nessa aba."*
+
+**O cartão cheio do projeto ligado é uma escolha, não um acidente.** Ele controla
+cada projeto ligado sem sair do lugar, e é isso que o cartão grande entrega.
+Colapsar seria trocar a função pela estética.
+
+### CC-400 ✅ 29/08: três modos de ver, como no Drive
+
+Nas palavras dele:
+
+> *"pode ser tipo modo lista e modo foto, igualzinho o Google Drive, você vê no
+> modo lista dos documentos ou nesse modo que são esses iconezinhos, são esses
+> painéis né? Eu gostei dos 2. E eu acho que ainda pode ter uma forma que é tipo
+> ícones menores, tipo essas células só que menores."*
+
+Três modos, e o Drive é a referência que ele nomeou:
+
+1. **cartão** (o de hoje): tudo à mão, e é o que ele quer para os ligados;
+2. **lista**: uma linha por projeto;
+3. **compacto**: as mesmas células, menores, para ver tudo de uma vez.
+
+Vale para as duas faixas, ligados e desligados: *"da visualização de tudo assim,
+tanto dos desligados quanto os ligados"*.
+
+⚠️ **A escolha tem que sobreviver ao redesenho de 2 segundos**, e ela é dele:
+guardada como a gaveta dos parados já é (CC-334), senão volta ao padrão na cara
+dele a cada tique.
+
+### CC-401 ✅ 29/08: os desligados em grupos menores
+
+> *"os projetos desligados poderiam ficar em grupos menores."*
+
+Medido no print dele: **17 projetos desligados**, cada um num cartão do mesmo
+tamanho do de um projeto ligado, empilhados. Cada um traz "abrir sessão", "abrir
+com autoridade total", "abrir conversa", o estado do framework e dois botões de
+pasta. Para um projeto parado, isso é o cartão inteiro para dizer que não há
+nada acontecendo.
+
+### CC-402 ✅ 29/08: no telefone, o scroll é para o LADO
+
+> *"talvez só tenha que melhorar a responsividade. Talvez no telefone tenha que
+> ficar scroll pro lado pra ver os projetos e não pra baixo, porque descendo fica
+> uma lista enorme. Talvez o ideal seja o scroll lateral, pra deixar mais
+> dinâmico."*
+
+O precedente existe no próprio painel: a tela Trabalho já vira cartas que
+deslizam de lado no estreito, e ele aprovou aquilo.
+
+⚠️ **E existe uma armadilha paga aqui, de 27/08:** arrastar de lado no Android
+volta de página. O quadro resolveu com `overscroll-behavior-x: none` e `contain`,
+e quem fizer isto precisa levar a mesma defesa junto.
+
+---
+
 ## ▶ Frente nova, aberta em 29/08: o Cockpit 2.0, sem parar o de hoje
 
 Pedido dele, e ele mesmo desenhou o caminho:
