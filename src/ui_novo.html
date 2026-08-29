@@ -1890,6 +1890,9 @@
 
     /* ===== CC-304: a tela Projetos ===== */
     .pj-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+    /* CC-407: os seletores de projeto de dentro somem, e o de cima os pilota. */
+    .analise-oculto { display: none !important; }
+
     /* CC-406: as abas da tela de máquinas. */
     .infra-abas { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 14px; }
     .infra-aba {
@@ -2220,10 +2223,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
         Trabalho
       </a>
-      <a href="#" class="nav-item" data-target="view-estrutura">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-        Estrutura
-      </a>
     </div>
 
 
@@ -2234,6 +2233,8 @@
     <div class="nav-section" data-grupo="AGENTES">
       <button class="nav-section-title" data-nav-grupo="AGENTES" aria-expanded="true"><span class="ns-seta">▾</span>AGENTES</button>
       <div class="nav-itens">
+      <!-- CC-407: as quatro telas de "escolha um projeto" viram uma. -->
+      <a href="#" class="nav-item" data-target="view-analise"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg> Análise</a>
       <a href="#" class="nav-item" data-target="view-agentes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Agentes</a>
       <a href="#" class="nav-item" data-target="view-escritorio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg> Escritório</a>
       <!-- CC-196: órfã no desenho original. Nenhum dos 24 destinos do menu
@@ -2246,8 +2247,6 @@
       <button class="nav-section-title" data-nav-grupo="INTELIGÊNCIA" aria-expanded="true"><span class="ns-seta">▾</span>INTELIGÊNCIA</button>
       <div class="nav-itens">
       <a href="#" class="nav-item" data-target="view-tempo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Tempo</a>
-      <a href="#" class="nav-item" data-target="view-travas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Travas</a>
-      <a href="#" class="nav-item" data-target="view-tendencias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg> Tendências</a>
       <a href="#" class="nav-item" data-target="view-custo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Custo</a>
       <a href="#" class="nav-item" data-target="view-graficos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> Gráficos</a>
       <a href="#" class="nav-item" data-target="view-digest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Digest</a>
@@ -2270,7 +2269,6 @@
       <a href="#" class="nav-item" data-target="view-infra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="8" rx="1"></rect><rect x="2" y="13" width="20" height="8" rx="1"></rect><line x1="6" y1="7" x2="6.01" y2="7"></line><line x1="6" y1="17" x2="6.01" y2="17"></line></svg> Máquinas</a>
       <a href="#" class="nav-item" data-target="view-hooks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> Hooks</a>
       <a href="#" class="nav-item" data-target="view-rotinas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.5"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Rotinas</a>
-      <a href="#" class="nav-item" data-target="view-bancada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg> Bancada</a>
       </div>
     </div>
     <div class="nav-section" data-grupo="INFRA">
@@ -2560,6 +2558,53 @@
          perguntas que eram três lugares diferentes no painel antigo,
          reunidas aqui porque respondem à mesma coisa: "onde estou, e o que
          está acontecendo neste projeto". -->
+    <!-- TELA: ANÁLISE
+         =====================================================================
+         CC-407, 29/08. Segunda parte da etapa 3, e ela sai do achado medido:
+         **quatro telas abriam com exatamente o mesmo gesto**, um seletor de
+         projeto no topo e o conteúdo embaixo.
+
+         | tela | o aspecto que ela mostra |
+         |---|---|
+         | Estrutura | as frentes, as rotas e o que mudou |
+         | Travas | o log das regras que barraram |
+         | Tendências | as séries ao longo do tempo |
+         | Bancada | o projeto está seguro para quem o alcança? |
+
+         Juntas viram uma tela com quatro abas, e o ganho é maior que o do menu:
+         **ele escolhe o projeto UMA vez e vê os quatro aspectos.** Antes eram
+         quatro seletores para escolher o mesmo projeto quatro vezes.
+
+         Os nós são MOVIDOS, preservando cada identificador que as funções
+         procuram pelo nome, que é a mesma regra da tela de máquinas. -->
+    <div id="view-analise" class="view-section">
+      <div class="grid-container so-uma">
+        <div class="main-col">
+          <div class="infra-abas" role="tablist">
+            <button type="button" class="infra-aba" data-analise="estrutura">o mapa</button>
+            <button type="button" class="infra-aba" data-analise="travas">o que barrou</button>
+            <button type="button" class="infra-aba" data-analise="tendencias">tendências</button>
+            <button type="button" class="infra-aba" data-analise="bancada">segurança</button>
+          </div>
+          <!-- ⚠️ CC-407, segunda parte: o seletor ÚNICO.
+               A primeira versão juntou as quatro telas e cada uma ficou com o
+               seletor dela: quatro seletores de projeto dentro de uma tela só,
+               que é pior que quatro telas. Visto medindo, não deduzido.
+               Aqui ele escolhe uma vez, e os quatro seguem. -->
+          <div class="card tend-barra" id="analise-barra">
+            <div class="tend-filtro">
+              <label for="analise-proj">projeto</label>
+              <select id="analise-proj" class="styled-input"></select>
+            </div>
+          </div>
+          <div id="analise-estrutura" class="infra-painel"></div>
+          <div id="analise-travas" class="infra-painel" hidden></div>
+          <div id="analise-tendencias" class="infra-painel" hidden></div>
+          <div id="analise-bancada" class="infra-painel" hidden></div>
+        </div>
+      </div>
+    </div>
+
     <div id="view-estrutura" class="view-section">
       <div class="grid-container so-uma">
         <div class="main-col">
@@ -3423,6 +3468,7 @@
       'view-estrutura': { title: 'Estrutura', subtitle: 'O mapa de um projeto: as frentes, as rotas, o que mudou.' },
       'view-agentes': { title: 'Agentes', subtitle: 'Controle de agentes e logs detalhados.' },
       'view-escritorio': { title: 'Escritório', subtitle: 'Os agentes desenhados trabalhando, e quem é cada um.' },
+      'view-analise': { title: 'Análise', subtitle: 'Escolha um projeto uma vez e veja os quatro ângulos: o mapa, o que as regras barraram, as tendências e a segurança.' },
       'view-infra': { title: 'Máquinas', subtitle: 'O que está rodando: esta máquina, as portas em escuta, os containers e a VPS por dentro. Eram quatro telas, e a pergunta era uma só.' },
       'view-rotas': { title: 'Rotas', subtitle: 'Quem está segurando qual parte do código agora, em quais arquivos, e o que os agentes combinaram entre si para não trombar.' },
       'view-ligados': { title: 'Remoto', subtitle: 'O que está trabalhando agora, com os controles à mão, e onde abrir a próxima sessão, separado por máquina.' },
@@ -3558,6 +3604,11 @@
             /* CC-376: a tela pede o retrato ao abrir, e repinta na hora se
                já tem um. Custo medido: 35ms para os 23 projetos desta máquina,
                porque o quadro e os dois arquivos de conversa são pequenos. */
+            if (targetId === 'view-analise') {
+              /* Abre no mapa: é a leitura mais barata das quatro, e a que
+                 responde "onde este projeto está" de relance. */
+              trocarAnalise(document.querySelector('[data-analise].ativo')?.dataset.analise || 'estrutura');
+            }
             if (targetId === 'view-infra') {
               /* Abre na aba que ele deixou, ou na máquina, que é a mais barata
                  das quatro (3ms contra 3s da varredura de portas). */
@@ -12054,6 +12105,7 @@
       if (tr.id === 'tempo-corte') carregarTempo(Number(tr.value));
       /* CC-287: trocar o projeto refaz a leitura no servidor, porque a serie e
          filtrada la. Trocar as medidas do cruzamento so refaz o cruzamento. */
+      if (tr.id === 'analise-proj') return propagarAnalise(tr.value);
       if (tr.id === 'tend-projeto') carregarTendencias();
       if (tr.id === 'trv-projeto' || tr.id === 'trv-qual') carregarTravas();
       /* CC-367, 27/08: o `pj-ver` saiu. Era o seletor que escondia os
@@ -12203,6 +12255,8 @@
          comportamento padrao dele impediria o download. */
       if (tr.id === 'tend-colher') { e.preventDefault(); return colherTendencias(); }
       if (tr.id === 'trv-recolher') { e.preventDefault(); return recolherTravas(); }
+      const abaAnalise = tr.closest?.('[data-analise]');
+      if (abaAnalise) { e.preventDefault(); return trocarAnalise(abaAnalise.dataset.analise); }
       const abaInfra = tr.closest?.('[data-infra]');
       if (abaInfra) { e.preventDefault(); return trocarInfra(abaInfra.dataset.infra); }
       const btModo = tr.closest?.('[data-pj-modo]');
@@ -13078,6 +13132,152 @@
      * UM nó movido, e não um segundo formulário: ele nasce dentro do bloco
      * Framework (na tela Ajustes) e vem para a barra da tela Projetos, que é
      * onde ele pediu que ficasse em 25/08 e continua fazendo sentido. */
+    /* ===== CC-407, 29/08: as quatro telas de "escolha um projeto" viram uma ==
+     *
+     * Medido em 29/08: Estrutura, Travas, Tendências e Bancada abriam com o
+     * MESMO gesto, um seletor de projeto no topo e o conteúdo embaixo. Quatro
+     * telas para escolher o mesmo projeto quatro vezes.
+     *
+     * O ganho aqui é maior que o do menu: ele escolhe o projeto uma vez e vê os
+     * quatro ângulos. */
+    (() => {
+      const PARES = [['estrutura', 'view-estrutura'], ['travas', 'view-travas'],
+        ['tendencias', 'view-tendencias'], ['bancada', 'view-bancada']];
+      for (const [aba, tela] of PARES) {
+        const velha = document.getElementById(tela);
+        const casa = document.getElementById('analise-' + aba);
+        if (!velha || !casa) continue;
+        const miolo = velha.querySelector('.main-col') || velha;
+        while (miolo.firstChild) casa.appendChild(miolo.firstChild);
+        velha.remove();
+      }
+      if (typeof montarBarraBaixo === 'function') montarBarraBaixo();
+    })();
+
+    /**
+     * O seletor único da Análise, e a propagação para os quatro de dentro.
+     *
+     * ## Dois erros meus antes de chegar aqui, e a mesma raiz nos dois
+     *
+     * A primeira versão montava a lista a partir dos seletores das quatro
+     * telas. Ela saía com uma opção vazia: **eles nascem vazios**, e cada tela
+     * preenche o seu quando os dados dela chegam. Tentei consertar observando
+     * as mudanças deles, e aí uma variável foi usada antes de existir e a tela
+     * inteira parou de funcionar.
+     *
+     * Os dois erros têm a mesma raiz: eu estava tratando como FONTE uma coisa
+     * que é consequência. A fonte é `DATA.projetos`, a mesma que as quatro
+     * telas usam para montar os seletores delas.
+     *
+     * Os seletores de dentro continuam existindo, escondidos: cada tela os usa
+     * para disparar a própria leitura, e arrancá-los exigiria mexer em quatro
+     * funções que já funcionam.
+     */
+    function montarSeletorAnalise() {
+      const meu = document.getElementById('analise-proj');
+      if (!meu) return;
+
+      /* Esconde o seletor interno e o rótulo dele. Nem todos vivem dentro de
+         `.tend-filtro`: o do mapa fica solto, e esconder só o que tem a classe
+         deixava dois seletores visíveis na mesma tela. */
+      for (const id of ['mapa-proj', 'trv-projeto', 'tend-projeto', 'bn-proj']) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const caixa = el.closest('.tend-filtro') || el.parentElement;
+        (caixa && caixa.children.length <= 3 ? caixa : el).classList.add('analise-oculto');
+      }
+
+      const lista = (DATA.projetos?.projetos || [])
+        .filter((p) => p.daqui && p.ehProjeto).map((p) => p.projeto).sort();
+      if (!lista.length) return; // sem dado ainda: a próxima volta monta
+
+      const html = '<option value="">todos os projetos</option>'
+        + lista.map((n) => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+      if (meu.innerHTML === html) return;
+      const antes = meu.value;
+      meu.innerHTML = html;
+      if (antes && lista.includes(antes)) meu.value = antes;
+    }
+
+    /**
+     * ⚠️ Quem não tiver a opção pedida fica onde está: mandar um valor que o
+     * seletor não conhece faria a tela responder vazio, e vazio sem explicação
+     * é o defeito que mais custa neste painel.
+     */
+    function propagarAnalise(valor) {
+      for (const id of ['mapa-proj', 'trv-projeto', 'tend-projeto', 'bn-proj']) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (![...el.options].some((o) => o.value === valor)) continue;
+        if (el.value === valor) continue;
+        el.value = valor;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+
+    function trocarAnalise(aba) {
+      /* ⚠️ A lista de projetos é carregada pelas telas Remoto e Projetos, e
+         NUNCA por esta. Sem esta linha o seletor abria com zero opções, e o
+         motivo não era o código do seletor: era o dado que ninguém pediu.
+         Medido no navegador em 29/08, depois de dois consertos no lugar
+         errado. */
+      if (!DATA.projetos?.projetos && typeof carregarProjetosTela === 'function') {
+        carregarProjetosTela().then(montarSeletorAnalise);
+      }
+      montarSeletorAnalise();
+      for (const b of document.querySelectorAll('[data-analise]')) {
+        b.classList.toggle('ativo', b.dataset.analise === aba);
+      }
+      for (const nome of ['estrutura', 'travas', 'tendencias', 'bancada']) {
+        const el = document.getElementById('analise-' + nome);
+        if (el) el.hidden = nome !== aba;
+      }
+      /* Cada aba busca o que precisa, e só quando é aberta. As quatro leituras
+         são caras de jeitos diferentes: a de segurança varre o projeto atrás de
+         segredo, a de tendências lê a série inteira, e a do que barrou puxa o
+         log. */
+      if (aba === 'estrutura' && typeof renderMapa === 'function') renderMapa();
+      if (aba === 'travas' && typeof carregarTravas === 'function') carregarTravas();
+      if (aba === 'tendencias' && typeof carregarTendencias === 'function') carregarTendencias();
+      if (aba === 'bancada' && typeof carregarBancada === 'function') {
+        if (typeof BANCADA !== 'undefined' && BANCADA) renderBancada(); else carregarBancada();
+      }
+      /* ⚠️ Remonta E propaga DEPOIS da carga, e é a segunda metade que faz a
+         junção valer.
+         Só a aba aberta carrega, então as outras três ficam com o seletor
+         vazio: propagar na hora da escolha não alcança nenhuma delas. Ao abrir,
+         a aba nasceria mostrando "todos os projetos" enquanto o seletor de cima
+         diz outro nome, e a tela estaria dizendo duas coisas ao mesmo tempo.
+         Medido no navegador: sem esta linha, os quatro de dentro continuavam
+         vazios depois de escolher. */
+      /* ⚠️ Tenta até conseguir, em vez de chutar um tempo.
+       *
+       * As quatro cargas levam tempos diferentes: medido em 29/08, com 900ms
+       * fixos só o mapa alcançava, e as outras três ficavam vazias. Aumentar o
+       * número seria trocar um chute por outro maior, e ele quebra de novo no
+       * dia em que a máquina estiver ocupada.
+       *
+       * Para de tentar assim que o seletor daquela aba tiver a opção, e desiste
+       * depois de cinco voltas: laço sem fim num painel que se redesenha
+       * sozinho é como se acumula trabalho invisível. */
+      let voltas = 0;
+      const alinhar = () => {
+        montarSeletorAnalise();
+        const meu = document.getElementById('analise-proj');
+        const alvo = { estrutura: 'mapa-proj', travas: 'trv-projeto', tendencias: 'tend-projeto', bancada: 'bn-proj' }[aba];
+        const el = document.getElementById(alvo);
+        if (!meu || !meu.value) return;
+        /* ⚠️ A condição de parada é o VALOR ter pegado, não a opção existir.
+           Medido em 29/08: eu setava, e a carga da aba terminava depois e
+           reescrevia o seletor inteiro, zerando a escolha. Parar ao ver a opção
+           me fazia desistir no exato instante antes de ela ser desfeita. */
+        if (el && el.value === meu.value) return;
+        propagarAnalise(meu.value);
+        if (++voltas < 6) setTimeout(alinhar, 700);
+      };
+      setTimeout(alinhar, 700);
+    }
+
     /* ===== CC-406, 29/08: as quatro telas de infraestrutura viram uma =====
      *
      * Etapa 3 do plano, saída do mapa medido: Máquina, Servidores, Docker e VPS

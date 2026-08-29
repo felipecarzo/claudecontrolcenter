@@ -26,7 +26,7 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | acao | 123 | 123/123 | 25/123 | 0/123 | 0/123 | 0/123 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
 | endereco | 90 | 90/90 | 6/90 | 0/90 | 0/90 | 0/90 |
-| palavra | 67 | 67/67 | 14/67 | 67/67 | 0/67 | 67/67 |
+| palavra | 68 | 68/68 | 14/68 | 68/68 | 0/68 | 68/68 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
 ponta.** A diferença está na coluna `como` do JSON, item a item. Inflar
@@ -302,7 +302,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/rotas/alternar` | estatica | src/web.mjs | funciona, explica |
 | `/api/shutdown` | estatica | src/web.mjs | funciona, explica |
 
-## palavra (67)
+## palavra (68)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -319,6 +319,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `tela: hooks` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: rotinas` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: bancada` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: analise` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: infra` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: servidores` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: docker` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |

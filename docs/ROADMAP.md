@@ -15,6 +15,27 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Conserto solto, 29/08: a tela de tendências usa nomes de projeto antigos
+
+Achado ao juntar as quatro telas de "escolha um projeto" numa só, com um seletor
+que pilota as outras. Três das quatro seguem a escolha; a de tendências não.
+
+**O motivo é real e é dela:** o seletor dela oferece `app_ahtleta`,
+`app_escritorio` e companhia, que são os nomes de ANTES da renomeação de 23/08,
+quando as pastas ganharam o prefixo da máquina. Ela lê de um armazém histórico
+que guardou os nomes de então.
+
+O seletor único não força: quem não tem a opção pedida fica onde está, porque
+mandar um valor desconhecido faria a tela responder vazio, e vazio sem
+explicação é o defeito que mais custa aqui.
+
+**Duas saídas, e a decisão é dele:** ou o armazém passa a normalizar o nome pela
+mesma chave que o resto do painel usa (`chaveDeProjeto`, que já ignora o
+prefixo), ou a tela declara que fala de nomes históricos e para de parecer
+desalinhada com as outras três.
+
+---
+
 ## ▶ Frente nova, aberta em 29/08: os três modos de ver os projetos
 
 Pedido dele em 29/08, com dois prints do painel novo. **Começa elogiando, e o

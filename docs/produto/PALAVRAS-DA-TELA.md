@@ -220,6 +220,27 @@ tem chave no lugar errado, o que responde sem autenticação.
 Cada camada é um teste que pode ser ligado por projeto. Uma corrida é uma
 execução da bancada, com registro próprio e cancelamento.
 
+## tela: analise
+
+**Escolha um projeto uma vez e veja os quatro ângulos:** o mapa dele, o que as
+regras barraram, as tendências e a segurança.
+
+**Eram quatro telas, e todas abriam com o mesmo gesto.** Medido em 29/08:
+Estrutura, Travas, Tendências e Bancada tinham um seletor de projeto no topo e o
+conteúdo embaixo. Para olhar o mesmo projeto por quatro ângulos, você escolhia
+ele quatro vezes.
+
+Nada do conteúdo mudou. Cada aba é a tela antiga inteira, movida para dentro.
+
+- **o mapa**: as frentes do roadmap, as rotas ocupadas, o que mudou nos commits;
+- **o que barrou**: o log das regras que me devolveram, com o motivo de cada uma;
+- **tendências**: as séries ao longo do tempo;
+- **segurança**: este projeto está seguro para quem o alcança?
+
+**Cada aba busca o que precisa só quando você abre.** As quatro são caras de
+jeitos diferentes: a de segurança varre o projeto atrás de segredo exposto, a de
+tendências lê a série inteira, e a do que barrou puxa o log.
+
 ## tela: infra
 
 **Chama-se Máquinas no menu.** É o que está rodando, em quatro abas: esta

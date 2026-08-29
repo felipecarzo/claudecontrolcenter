@@ -41,12 +41,12 @@
    "profundo": 0
   },
   "palavra": {
-   "total": 67,
-   "existe": 67,
+   "total": 68,
+   "existe": 68,
    "funciona": 14,
-   "explica": 67,
+   "explica": 68,
    "estreito": 0,
-   "profundo": 67
+   "profundo": 68
   }
  },
  "itens": [
@@ -8480,6 +8480,37 @@
     "profundo": {
      "coberto": "test.mjs",
      "como": "corpo com 272 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:tela: analise",
+   "tipo": "palavra",
+   "rotulo": "tela: analise",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 950 caracteres"
     }
    }
   },
