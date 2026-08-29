@@ -220,6 +220,25 @@ tem chave no lugar errado, o que responde sem autenticação.
 Cada camada é um teste que pode ser ligado por projeto. Uma corrida é uma
 execução da bancada, com registro próprio e cancelamento.
 
+## tela: infra
+
+**Chama-se Máquinas no menu.** É o que está rodando, em quatro abas: esta
+máquina, as portas em escuta, os containers e a VPS por dentro.
+
+**Eram quatro telas, e a pergunta era uma só.** Medido em 29/08, abrindo cada
+uma: a de máquina mostrava 180 caracteres, que cabem numa linha de outra tela.
+Juntas, ocupavam quatro linhas do menu para responder "o que está de pé aqui".
+
+Nada do conteúdo mudou. Cada aba é a tela antiga inteira, movida para dentro.
+
+**Cada aba busca o que precisa só quando você abre.** Não é economia de código,
+é de tempo e de risco: varrer as portas custa cerca de 3 segundos, e ler a VPS
+usa a sua chave privada por SSH. Nenhuma das duas pode acontecer porque você
+abriu a aba do lado.
+
+**A VPS não carrega sozinha nem quando você abre a aba dela.** Ela é a única
+chamada de rede perigosa do painel, e continua exigindo um clique dentro.
+
 ## tela: servidores
 
 As portas em escuta nesta máquina e o que cada uma é, deduzido da linha de

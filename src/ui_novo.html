@@ -1890,6 +1890,15 @@
 
     /* ===== CC-304: a tela Projetos ===== */
     .pj-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+    /* CC-406: as abas da tela de máquinas. */
+    .infra-abas { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 14px; }
+    .infra-aba {
+      min-height: 38px; padding: 7px 13px; cursor: pointer; font-size: 12px;
+      background: var(--surface); color: var(--text-muted);
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    .infra-aba.ativo { color: var(--accent); border-color: var(--accent); }
+
     /* CC-403: onde abrir uma sessão, por máquina. */
     .rem-maq { margin-bottom: 16px; }
     .rem-maq h3 {
@@ -2257,6 +2266,8 @@
       <button class="nav-section-title" data-nav-grupo="ENGENHARIA" aria-expanded="true"><span class="ns-seta">▾</span>ENGENHARIA</button>
       <div class="nav-itens">
       <a href="#" class="nav-item" data-target="view-framework"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg> Framework</a>
+      <!-- CC-406: as quatro telas de infraestrutura viram uma, com abas. -->
+      <a href="#" class="nav-item" data-target="view-infra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="8" rx="1"></rect><rect x="2" y="13" width="20" height="8" rx="1"></rect><line x1="6" y1="7" x2="6.01" y2="7"></line><line x1="6" y1="17" x2="6.01" y2="17"></line></svg> Máquinas</a>
       <a href="#" class="nav-item" data-target="view-hooks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> Hooks</a>
       <a href="#" class="nav-item" data-target="view-rotinas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.5"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Rotinas</a>
       <a href="#" class="nav-item" data-target="view-bancada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg> Bancada</a>
@@ -2265,10 +2276,6 @@
     <div class="nav-section" data-grupo="INFRA">
       <button class="nav-section-title" data-nav-grupo="INFRA" aria-expanded="true"><span class="ns-seta">▾</span>INFRA</button>
       <div class="nav-itens">
-      <a href="#" class="nav-item" data-target="view-servidores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg> Servidores</a>
-      <a href="#" class="nav-item" data-target="view-docker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg> Docker</a>
-      <a href="#" class="nav-item" data-target="view-vps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg> VPS</a>
-      <a href="#" class="nav-item" data-target="view-maquina"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg> Máquina</a>
       </div>
     </div>
     <!-- CC-309: a fronteira que se arrasta, pedido dele. Só no computador:
@@ -2870,6 +2877,45 @@
          Organograma nginx/Docker/PM2 por SSH. Leitura sob clique, nunca em
          timer: usa a chave privada do Felipe pra entrar num servidor de
          produção, e este painel é processo que fica sempre religado. -->
+    <!-- TELA: MÁQUINAS
+         =====================================================================
+         CC-406, 29/08. Etapa 3 do plano, e ela sai do mapa medido em
+         `docs/produto/AS-TELAS.md`: quatro telas respondiam "o que está
+         rodando", em camadas diferentes.
+
+         | tela | o que mostrava | tamanho medido |
+         |---|---|---|
+         | Máquina | CPU e RAM | 180 caracteres |
+         | Servidores | as portas em escuta | 1668 |
+         | Docker | os containers | 2141 |
+         | VPS | nginx, PM2 e o organograma | 3551 |
+
+         **A Máquina sozinha cabia numa linha de outra tela.** Quatro linhas do
+         menu para uma pergunta só.
+
+         Vira uma tela com quatro abas, e nada do conteúdo muda: os nós são
+         MOVIDOS, preservando cada identificador que as funções procuram pelo
+         nome. Recortar e recolar o HTML é onde se perde uma tag sem ninguém
+         notar, e este projeto já registrou isso duas vezes. -->
+    <div id="view-infra" class="view-section">
+      <div class="grid-container so-uma">
+        <div class="main-col">
+          <!-- As abas são BOTÕES, nunca um menu: menu do sistema aberto morre
+               no redesenho de 2 segundos, e isso já fechou na cara dele. -->
+          <div class="infra-abas" role="tablist">
+            <button type="button" class="infra-aba" data-infra="maquina">esta máquina</button>
+            <button type="button" class="infra-aba" data-infra="servidores">portas</button>
+            <button type="button" class="infra-aba" data-infra="docker">containers</button>
+            <button type="button" class="infra-aba" data-infra="vps">a VPS por dentro</button>
+          </div>
+          <div id="infra-maquina" class="infra-painel"></div>
+          <div id="infra-servidores" class="infra-painel" hidden></div>
+          <div id="infra-docker" class="infra-painel" hidden></div>
+          <div id="infra-vps" class="infra-painel" hidden></div>
+        </div>
+      </div>
+    </div>
+
     <div id="view-vps" class="view-section">
       <div class="grid-container so-uma">
         <div class="main-col">
@@ -3377,6 +3423,7 @@
       'view-estrutura': { title: 'Estrutura', subtitle: 'O mapa de um projeto: as frentes, as rotas, o que mudou.' },
       'view-agentes': { title: 'Agentes', subtitle: 'Controle de agentes e logs detalhados.' },
       'view-escritorio': { title: 'Escritório', subtitle: 'Os agentes desenhados trabalhando, e quem é cada um.' },
+      'view-infra': { title: 'Máquinas', subtitle: 'O que está rodando: esta máquina, as portas em escuta, os containers e a VPS por dentro. Eram quatro telas, e a pergunta era uma só.' },
       'view-rotas': { title: 'Rotas', subtitle: 'Quem está segurando qual parte do código agora, em quais arquivos, e o que os agentes combinaram entre si para não trombar.' },
       'view-ligados': { title: 'Remoto', subtitle: 'O que está trabalhando agora, com os controles à mão, e onde abrir a próxima sessão, separado por máquina.' },
       'view-remoto': { title: 'Ajustes', subtitle: 'O que se mexe de vez em quando: as máquinas e o método de trabalho. Os projetos ficam em Ligados e em Projetos.' },
@@ -3511,6 +3558,11 @@
             /* CC-376: a tela pede o retrato ao abrir, e repinta na hora se
                já tem um. Custo medido: 35ms para os 23 projetos desta máquina,
                porque o quadro e os dois arquivos de conversa são pequenos. */
+            if (targetId === 'view-infra') {
+              /* Abre na aba que ele deixou, ou na máquina, que é a mais barata
+                 das quatro (3ms contra 3s da varredura de portas). */
+              trocarInfra(document.querySelector('[data-infra].ativo')?.dataset.infra || 'maquina');
+            }
             if (targetId === 'view-rotas') { carregarRotas({ silencioso: Boolean(ROTAS && typeof ROTAS !== 'string') }); }
             if (targetId === 'view-ligados' || targetId === 'view-projetos') {
               carregarProjetosTela();
@@ -12151,6 +12203,8 @@
          comportamento padrao dele impediria o download. */
       if (tr.id === 'tend-colher') { e.preventDefault(); return colherTendencias(); }
       if (tr.id === 'trv-recolher') { e.preventDefault(); return recolherTravas(); }
+      const abaInfra = tr.closest?.('[data-infra]');
+      if (abaInfra) { e.preventDefault(); return trocarInfra(abaInfra.dataset.infra); }
       const btModo = tr.closest?.('[data-pj-modo]');
       if (btModo) {
         e.preventDefault();
@@ -13024,6 +13078,61 @@
      * UM nó movido, e não um segundo formulário: ele nasce dentro do bloco
      * Framework (na tela Ajustes) e vem para a barra da tela Projetos, que é
      * onde ele pediu que ficasse em 25/08 e continua fazendo sentido. */
+    /* ===== CC-406, 29/08: as quatro telas de infraestrutura viram uma =====
+     *
+     * Etapa 3 do plano, saída do mapa medido: Máquina, Servidores, Docker e VPS
+     * respondiam "o que está rodando" em camadas diferentes, e ocupavam quatro
+     * linhas do menu. A Máquina sozinha mostrava 180 caracteres.
+     *
+     * **Os nós são MOVIDOS, e não recopiados.** Dezenas de funções procuram os
+     * identificadores pelo nome (`srv-veredito`, `maq-corpo`, `maq-processos`),
+     * e mover preserva todos, junto com o que estiver pendurado neles. Recortar
+     * e recolar HTML é onde se perde uma tag sem ninguém notar, e este projeto
+     * já pagou isso duas vezes.
+     *
+     * As telas antigas são removidas em seguida. Deixá-las vazias seria pior:
+     * a varredura que abre as telas uma a uma recusa tela que abra em branco, e
+     * com razão. */
+    (() => {
+      const PARES = [['maquina', 'view-maquina'], ['servidores', 'view-servidores'],
+        ['docker', 'view-docker'], ['vps', 'view-vps']];
+      for (const [aba, tela] of PARES) {
+        const velha = document.getElementById(tela);
+        const casa = document.getElementById('infra-' + aba);
+        if (!velha || !casa) continue;
+        /* O conteúdo real está dentro do `.main-col`; sem descer até ele, a
+           grade de duas colunas viria junto e a aba herdaria uma coluna lateral
+           que não existe mais aqui. */
+        const miolo = velha.querySelector('.main-col') || velha;
+        while (miolo.firstChild) casa.appendChild(miolo.firstChild);
+        velha.remove();
+      }
+      if (typeof montarBarraBaixo === 'function') montarBarraBaixo();
+    })();
+
+    /* A troca de aba. Só ESCONDE e mostra: o conteúdo continua no DOM, então
+       nada é remontado e nenhuma leitura é refeita ao voltar. */
+    function trocarInfra(aba) {
+      for (const b of document.querySelectorAll('[data-infra]')) {
+        b.classList.toggle('ativo', b.dataset.infra === aba);
+      }
+      for (const nome of ['maquina', 'servidores', 'docker', 'vps']) {
+        const el = document.getElementById('infra-' + nome);
+        if (el) el.hidden = nome !== aba;
+      }
+      /* Cada aba pede o que precisa, e só quando é aberta: varrer portas custa
+         ~3s e ler a VPS usa a chave privada dele por SSH. Nenhuma das duas pode
+         acontecer por abrir a tela ao lado. */
+      if (aba === 'servidores' && typeof carregarServidores === 'function') {
+        if (typeof SERVERS !== 'undefined' && SERVERS) renderServidores(); else carregarServidores();
+      }
+      if (aba === 'docker' && typeof carregarDocker === 'function') carregarDocker();
+      if (aba === 'maquina' && typeof renderMaquina === 'function') { renderMaquina(); carregarProcessos(); }
+      /* A VPS NÃO carrega sozinha, e isso é decisão antiga: ela é a única
+         chamada de rede perigosa do painel, com a chave dele num processo que
+         religa no login. Só sob clique, dentro dela. */
+    }
+
     (() => {
       const forma = document.getElementById('fw-novo-projeto');
       const casaNovo = document.getElementById('pj-novo-casa');
