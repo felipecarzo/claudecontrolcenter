@@ -1165,6 +1165,62 @@
        dentro de um cartão de ~330px, ele quebrava para uma linha só e virava
        uma frase grande e solta, com o rótulo que a explica empurrado para fora
        da tela. Visto no print de 390px, não deduzido do código. */
+    /* ===== CC-395: a folha do estado do projeto =====
+       Sobe de baixo porque é onde o polegar alcança sem esticar, e ele lê no
+       telefone, na rua, com uma mão. */
+    .est-botao {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 8px 11px; border-radius: 8px; cursor: pointer; text-align: left;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text-main);
+      /* 44px é o alvo de toque mínimo, e não é preferência: abaixo disso ele
+         erra o botão no celular, o que já está escrito nos critérios de tela. */
+      min-height: 44px;
+    }
+    .est-botao:hover { border-color: var(--accent); }
+    .est-botao.est-off { color: var(--text-dim); }
+    .est-linhas { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 3px 12px; min-width: 0; }
+    .est-par { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+    .est-rot { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; }
+    .est-val { font-size: 12.5px; color: var(--text-main); overflow-wrap: anywhere; }
+    .est-seta { color: var(--text-dim); font-size: 11px; }
+
+    #est-folha { position: fixed; inset: 0; z-index: 60; }
+    .est-fundo { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+    .est-painel {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      max-height: 82vh; display: flex; flex-direction: column;
+      background: var(--card); border-top: 1px solid var(--border);
+      border-radius: 16px 16px 0 0; padding: 8px 0 0;
+    }
+    /* Em tela larga ela não vira uma faixa de 1400px: fica uma coluna
+       centrada, do tamanho de leitura. */
+    @media (min-width: 720px) {
+      .est-painel { left: 50%; transform: translateX(-50%); width: 460px; border-radius: 16px; bottom: 24px; }
+    }
+    .est-puxador { width: 38px; height: 4px; border-radius: 2px; background: var(--border); margin: 4px auto 10px; }
+    .est-cab { display: flex; align-items: flex-start; gap: 10px; padding: 0 16px 10px; border-bottom: 1px solid var(--border); }
+    .est-cab h3 { font-size: 15px; margin: 0; }
+    .est-cab p { font-size: 11.5px; color: var(--text-muted); margin: 2px 0 0; }
+    .est-cab button { margin-left: auto; }
+    .est-corpo { overflow-y: auto; padding: 8px 12px 20px; }
+    .est-grupo { margin-top: 12px; }
+    .est-grupo h4 {
+      font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
+      color: var(--text-dim); margin: 0 4px 6px; font-weight: 700;
+    }
+    .est-item {
+      display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px;
+      padding: 9px 12px; margin-bottom: 5px; border-radius: 9px; cursor: pointer; text-align: left;
+      background: var(--surface); border: 1px solid transparent; color: var(--text-main);
+    }
+    .est-item:hover { border-color: var(--border); }
+    .est-item.escolhido { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+    .est-item.est-recuo { margin-left: 18px; }
+    .est-item-txt { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .est-item-txt b { font-size: 13px; font-weight: 600; }
+    .est-item-txt span { font-size: 11px; color: var(--text-muted); line-height: 1.35; overflow-wrap: anywhere; }
+    .est-marca { color: var(--accent); font-size: 13px; width: 14px; text-align: center; }
+
     /* CC-386: a faixa do passo. Fica no topo do cartão porque responde a
        pergunta que o cartão inteiro existe para responder: e agora, o quê? */
     .fw-passo {
@@ -7905,47 +7961,193 @@
       return texto ? '<p class="cc-explica">' + esc(texto) + '</p>' : '';
     };
 
+    /**
+     * ===== CC-395, 29/08: o seletor deixa de ser menu do sistema =====
+     *
+     * Ele, olhando o menu aberto no telefone: *"o design desses menus dropdown
+     * não dá p ver ser algo mais bonito e moderno?"*.
+     *
+     * O que ele via não era desenho meu: um `<select>` aberto no Android é uma
+     * lista de rádio do sistema, e nenhuma linha de CSS a alcança. Trocar por
+     * uma folha própria é a única forma de o desenho ser nosso.
+     *
+     * **E isso conserta uma armadilha antiga desta casa, de graça.** Está
+     * escrita há semanas: *"elemento com estado do SISTEMA operacional (menu
+     * aberto, seletor de arquivo, seletor de data) não pode estar dentro de
+     * bloco redesenhado por timer"*. O painel se redesenha de 2 em 2 segundos, e
+     * o menu aberto morria junto: nas palavras dele, *"clico lá e aparece
+     * cockpit etc, antes de dar tempo de eu clicar ele some"*. Havia uma guarda
+     * que segurava o redesenho enquanto o `<select>` tinha foco, e ela existia
+     * só por causa disso.
+     *
+     * O que fica no cartão é um BOTÃO, que não tem estado do sistema para
+     * perder. A folha é filha do `body`, fora do bloco que se redesenha, e é o
+     * mesmo padrão que o painel já usa em cinco lugares.
+     */
     const seletorEstado = (p) => {
-      /* Projeto que nunca teve framework vem sem catálogo próprio, e é
-         justamente quem ele vem aqui ligar. Sem emprestar a lista de outro,
-         o único projeto que não daria para ligar por aqui seria o novo. */
-      const modos = ((p.modos || []).length ? p.modos : catModos()).filter((m) => m.id !== 'desligado');
-      const perfis = (p.perfis || []).length ? p.perfis : catPerfis();
-      /* Três jeitos de estar desligado, e para ele é UM estado só: nunca ter
-         ligado, ter desligado o framework, e estar ligado no modo que não
-         trava nada. O terceiro é o caso do print dele, e era exatamente o que
-         deixava a tela dizendo duas coisas ao mesmo tempo. */
       const desligado = !p.existe || !p.ligado || p.modo === 'desligado';
-      const opcao = (valor, titulo, dica, escolhido, recuo) => '<option value="' + esc(valor) + '"'
-        + (escolhido ? ' selected' : '') + ' title="' + esc(dica || '') + '">'
-        + (recuo ? '&nbsp;&nbsp;└ ' : '') + esc(titulo) + '</option>';
-      return '<select class="styled-input cc-estado" data-cc-estado="' + esc(p.projeto) + '"'
-        + ' data-cc-dir="' + esc(p.raiz || '') + '" title="o estado do framework neste projeto">'
-        + opcao('desligado', 'Desligado', 'A IA é a de sempre. Nada é travado.', desligado)
-        + (perfis.length ? '<optgroup label="papel">'
-          + perfis.flatMap((x) => [
-            opcao('perfil:' + x.id, x.titulo, x.contrataria, !desligado && x.id === p.perfil),
-            ...(x.subs || []).map((sx) => opcao('perfil:' + sx.id, sx.titulo, sx.contrataria, !desligado && sx.id === p.perfil, true)),
-          ]).join('') + '</optgroup>' : '')
-        /* CC-394, 29/08: o MÉTODO entra no seletor, e é a primeira vez que ele
-           é escolhível. Pergunta dele: *"isso não pode ser um modo novo do
-           framework?"*. Não pode, porque tem fases; mas a pergunta achou o
-           buraco: método nunca teve seletor, e os 11 projetos usavam o padrão
-           porque não havia como escolher outro.
-           Vem ANTES dos modos porque é a pergunta mais de fora: método é o
-           caminho do projeto, modo é como eu me comporto dentro dele. */
-        + ((() => {
-          const metodos = (p.metodos || []).length ? p.metodos : catMetodos();
-          return metodos.length ? '<optgroup label="caminho do projeto">'
-          + metodos.map((m) => opcao('metodo:' + m.id, m.titulo,
-            'fases: ' + (m.fases || []).join(' → '),
-            !desligado && m.id === p.metodo)).join('') + '</optgroup>' : '';
-        })())
-        + (modos.length ? '<optgroup label="modo cru">'
-          + modos.map((m) => opcao(m.id, m.titulo, m.explica, !desligado && !p.perfil && m.id === p.modo)).join('')
-          + '</optgroup>' : '')
-        + '</select>';
+      const perfis = (p.perfis || []).length ? p.perfis : catPerfis();
+      const metodos = (p.metodos || []).length ? p.metodos : catMetodos();
+      const modos = ((p.modos || []).length ? p.modos : catModos()).filter((m) => m.id !== 'desligado');
+
+      const achaPerfil = (id) => perfis.flatMap((x) => [x, ...(x.subs || [])]).find((x) => x.id === id);
+      const perfilAtual = !desligado && p.perfil ? achaPerfil(p.perfil) : null;
+      const metodoAtual = !desligado ? metodos.find((m) => m.id === p.metodo) : null;
+      const modoAtual = !desligado ? modos.find((m) => m.id === p.modo) : null;
+
+      /* O botão mostra as TRÊS escolhas de uma vez, e não só uma. O `<select>`
+         mostrava um valor só, então o caminho do projeto ficava invisível até
+         alguém abrir o menu: foi assim que método passou meses sem ninguém
+         reparar que existia. */
+      const linha = (rotulo, valor) => (valor
+        ? '<span class="est-par"><span class="est-rot">' + rotulo + '</span>'
+          + '<span class="est-val">' + esc(valor) + '</span></span>'
+        : '');
+
+      return '<button type="button" class="est-botao' + (desligado ? ' est-off' : '') + '"'
+        + ' data-estado-abrir="' + esc(p.projeto) + '"'
+        + ' data-estado-dir="' + esc(p.raiz || '') + '">'
+        + '<span class="est-linhas">'
+        + (desligado
+          ? '<span class="est-par"><span class="est-val">Desligado</span></span>'
+          : linha('papel', perfilAtual?.titulo)
+            + linha('caminho', metodoAtual?.titulo?.split(':')[0])
+            + linha('modo', modoAtual?.titulo))
+        + '</span><span class="est-seta">▾</span></button>';
     };
+
+    /**
+     * A folha em si. Filha do `body`, e nunca do cartão: dentro dele, o
+     * redesenho de 2 em 2 segundos a destruiria no meio do gesto, que é
+     * exatamente o defeito que ela veio consertar.
+     */
+    let ESTADO_FOLHA = null; // null | { projeto, dir }
+
+    function fecharFolhaEstado() {
+      ESTADO_FOLHA = null;
+      document.getElementById('est-folha')?.remove();
+      document.body.classList.remove('sem-rolagem');
+    }
+
+    function renderFolhaEstado() {
+      if (!ESTADO_FOLHA) return;
+      const p = (Array.isArray(FW_LISTA) ? FW_LISTA : []).find((x) => x.projeto === ESTADO_FOLHA.projeto);
+      if (!p) return fecharFolhaEstado();
+
+      const desligado = !p.existe || !p.ligado || p.modo === 'desligado';
+      const perfis = (p.perfis || []).length ? p.perfis : catPerfis();
+      const metodos = (p.metodos || []).length ? p.metodos : catMetodos();
+      const modos = ((p.modos || []).length ? p.modos : catModos()).filter((m) => m.id !== 'desligado');
+
+      /* Cada opção é um cartão com título e explicação. A explicação estava no
+         `title` do `<option>`, que é dica de passar o mouse: não existe em
+         telefone, que é onde ele lê. Aqui ela sempre aparece. */
+      const item = (valor, titulo, explica, escolhido, recuo) => '<button type="button"'
+        + ' class="est-item' + (escolhido ? ' escolhido' : '') + (recuo ? ' est-recuo' : '') + '"'
+        + ' data-estado-escolher="' + esc(valor) + '">'
+        + '<span class="est-item-txt"><b>' + esc(titulo) + '</b>'
+        + (explica ? '<span>' + esc(explica) + '</span>' : '') + '</span>'
+        + '<span class="est-marca">' + (escolhido ? '✓' : '') + '</span></button>';
+
+      const grupo = (rotulo, corpo) => (corpo
+        ? '<div class="est-grupo"><h4>' + rotulo + '</h4>' + corpo + '</div>' : '');
+
+      let caixa = document.getElementById('est-folha');
+      if (!caixa) {
+        caixa = document.createElement('div');
+        caixa.id = 'est-folha';
+        document.body.appendChild(caixa);
+        document.body.classList.add('sem-rolagem');
+      }
+
+      caixa.innerHTML = '<div class="est-fundo" data-estado-fechar="1"></div>'
+        + '<div class="est-painel" role="dialog" aria-label="como este projeto anda">'
+        + '<div class="est-puxador"></div>'
+        + '<header class="est-cab"><div><h3>Como este projeto anda</h3>'
+        /* O selo de máquina vai junto do nome, como em todo quadro que mostra
+           projeto. Regra dele, de 20/08, e vale numa folha como vale num
+           cartão: ele tem projeto com o mesmo nome nas duas máquinas. */
+        + '<p>' + esc(p.projeto) + seloDoProjeto(p.projeto) + '</p></div>'
+        + '<button type="button" class="btn btn-ghost compacto" data-estado-fechar="1">fechar</button></header>'
+        + '<div class="est-corpo">'
+        + grupo('caminho do projeto', metodos.map((m) => item('metodo:' + m.id,
+          m.titulo.split(':')[0], (m.fases || []).join(' → '),
+          !desligado && m.id === p.metodo)).join(''))
+        + grupo('papel', perfis.flatMap((x) => [
+          item('perfil:' + x.id, x.titulo, x.contrataria, !desligado && x.id === p.perfil),
+          ...(x.subs || []).map((sx) => item('perfil:' + sx.id, sx.titulo, sx.contrataria,
+            !desligado && sx.id === p.perfil, true)),
+        ]).join(''))
+        + grupo('modo', modos.map((m) => item(m.id, m.titulo, m.explica,
+          !desligado && !p.perfil && m.id === p.modo)).join(''))
+        + grupo('', item('desligado', 'Desligado', 'A IA é a de sempre. Nada é travado.', desligado))
+        + '</div></div>';
+    }
+
+    /**
+     * CC-395: escolher no seletor de estado, vindo da folha.
+     *
+     * A lógica é a mesma de antes, quando isto era um `change` de `<select>`.
+     * O que mudou é de onde ela é chamada: agora do clique num item da folha,
+     * porque o menu do sistema saiu de cena.
+     */
+    /**
+     * CC-395: escolher no seletor de estado, vindo da folha.
+     *
+     * A lógica é a mesma de quando isto era um `change` de `<select>`. O que
+     * mudou é de onde ela é chamada: o clique num item da folha, porque o menu
+     * do sistema saiu de cena.
+     */
+    async function escolherEstado(projeto, dir, valor, ancora) {
+      const p = (Array.isArray(FW_LISTA) ? FW_LISTA : []).find((x) => x.projeto === projeto) || {};
+
+      if (valor === 'desligado') {
+        if (!p.ligado) return fecharFolhaEstado();
+        const ok = await confirmar(ancora, {
+          titulo: `Desligar o framework em ${projeto}?`,
+          detalhe: '<ul><li>nenhuma regra de trabalho vai valer neste projeto</li>'
+            + '<li>o MVP e o que você escolheu ficam guardados, e voltam ao religar</li>'
+            + (CC_SESSOES.has(projeto) ? '<li>já existe sessão no ar aqui, e ela para de ser travada</li>' : '')
+            + '</ul>',
+          sim: 'desligar',
+          perigo: true,
+        });
+        if (!ok) return renderCentral();
+        await post('/api/framework', { projeto, cwd: dir, acao: 'desligar' });
+        fecharFolhaEstado();
+        return carregarFrameworkLista();
+      }
+
+      /* Ligar e escolher viraram um gesto só. O servidor já tinha as duas ações
+         separadas, então isto é encadeamento na tela, sem rota nova: escolher
+         num projeto que nunca teve framework liga e já deixa no escolhido. */
+      if (!p.ligado) {
+        const r = await post('/api/framework', { projeto, cwd: dir, acao: 'ligar' });
+        if (r?.error) { alert(r.error); fecharFolhaEstado(); return carregarFrameworkLista(); }
+      }
+
+      /* Três coisas saem da mesma folha, e o prefixo diz qual é: papel,
+         caminho do projeto (o método) e modo cru. */
+      const ehPerfil = valor.startsWith('perfil:');
+      const ehMetodo = valor.startsWith('metodo:');
+      const r2 = await post('/api/framework', ehPerfil
+        ? { projeto, cwd: dir, acao: 'perfil', perfil: valor.slice(7) }
+        : ehMetodo
+          ? { projeto, cwd: dir, acao: 'metodo', metodo: valor.slice(7) }
+          : { projeto, cwd: dir, acao: 'modo', modo: valor });
+      if (r2?.error) alert(r2.error);
+
+      /* A folha FICA aberta depois de escolher, e repinta com a marca no lugar
+         novo. Ele troca papel e modo na mesma visita, e fechar a cada toque o
+         obrigaria a reabrir três vezes. Fecha no X, no fundo, ou no Escape. */
+      await carregarFrameworkLista();
+      renderFolhaEstado();
+    }
+
+    function abrirFolhaEstado(projeto, dir) {
+      ESTADO_FOLHA = { projeto, dir };
+      renderFolhaEstado();
+    }
 
     /* CC-341, 25/08: o framework de projeto que está NA OUTRA MÁQUINA.
      *
@@ -11467,6 +11669,9 @@
     // Esc fecha a gaveta: é o gesto que todo mundo tenta primeiro no teclado.
     document.addEventListener('keydown', (e) => {
       // CC-228: a folha de explicação fecha antes da gaveta, porque ela está por cima
+      /* CC-395: Escape fecha a folha do estado. Ela vem ANTES da ajuda porque
+         é a que está por cima quando as duas estão abertas. */
+      if (e.key === 'Escape' && ESTADO_FOLHA) { fecharFolhaEstado(); return; }
       if (e.key === 'Escape' && document.getElementById('ajuda-aberta')) { fecharAjuda(); return; }
       /* CC-291: o quadro em tela cheia cobre a página inteira, então fecha antes
          de qualquer outra coisa. Sem o Escape, quem abre no computador fica
@@ -11607,50 +11812,6 @@
           .then((r) => { if (r?.error) alert(r.error); return carregarRemoto(true); });
         return;
       }
-      const selEstado = tr.closest?.('[data-cc-estado]');
-      if (selEstado) {
-        const projeto = selEstado.dataset.ccEstado;
-        const dir = selEstado.dataset.ccDir || '';
-        const valor = selEstado.value;
-        const p = (Array.isArray(FW_LISTA) ? FW_LISTA : []).find((x) => x.projeto === projeto) || {};
-        return (async () => {
-          if (valor === 'desligado') {
-            if (!p.ligado) return;
-            const ok = await confirmar(selEstado, {
-              titulo: `Desligar o framework em ${projeto}?`,
-              detalhe: '<ul><li>nenhuma regra de trabalho vai valer neste projeto</li>'
-                + '<li>o MVP e o que você escolheu ficam guardados, e voltam ao religar</li>'
-                + (CC_SESSOES.has(projeto) ? '<li>já existe sessão no ar aqui, e ela para de ser travada</li>' : '')
-                + '</ul>',
-              sim: 'desligar',
-              perigo: true,
-            });
-            if (!ok) return renderCentral();
-            await post('/api/framework', { projeto, cwd: dir, acao: 'desligar' });
-            return carregarFrameworkLista();
-          }
-          /* Ligar e escolher viraram um gesto só. O servidor já tinha as duas
-             ações separadas, então isto é encadeamento na tela, sem rota
-             nova: escolher num projeto que nunca teve framework liga e já
-             deixa no papel escolhido. */
-          if (!p.ligado) {
-            const r = await post('/api/framework', { projeto, cwd: dir, acao: 'ligar' });
-            if (r?.error) { alert(r.error); return carregarFrameworkLista(); }
-          }
-          /* Três coisas saem do mesmo seletor, e o prefixo diz qual é: papel,
-             caminho do projeto (o método) e modo cru. */
-          const ehPerfil = valor.startsWith('perfil:');
-          const ehMetodo = valor.startsWith('metodo:');
-          const r2 = await post('/api/framework', ehPerfil
-            ? { projeto, cwd: dir, acao: 'perfil', perfil: valor.slice(7) }
-            : ehMetodo
-              ? { projeto, cwd: dir, acao: 'metodo', metodo: valor.slice(7) }
-              : { projeto, cwd: dir, acao: 'modo', modo: valor });
-          if (r2?.error) alert(r2.error);
-          return carregarFrameworkLista();
-        })();
-      }
-
       // Trocar o modo/perfil do framework é change num <select>.
       const selModo = tr.closest?.('[data-fw-modo]');
       if (selModo) {
@@ -11710,6 +11871,19 @@
       if (tr.id === 'tend-colher') { e.preventDefault(); return colherTendencias(); }
       if (tr.id === 'trv-recolher') { e.preventDefault(); return recolherTravas(); }
       if (tr.id === 'pj-atualizar' || tr.id === 'lig-atualizar') { e.preventDefault(); return carregarProjetosTela(true); }
+      /* CC-395: a folha do estado do projeto. Abre por botão, fecha no X e no
+         fundo, e escolhe por item. Nenhum deles é `<select>`, e é o ponto. */
+      const abrir = tr.closest?.('[data-estado-abrir]');
+      if (abrir) {
+        e.preventDefault();
+        return abrirFolhaEstado(abrir.dataset.estadoAbrir, abrir.dataset.estadoDir || '');
+      }
+      if (tr.closest?.('[data-estado-fechar]')) { e.preventDefault(); return fecharFolhaEstado(); }
+      const escolher = tr.closest?.('[data-estado-escolher]');
+      if (escolher && ESTADO_FOLHA) {
+        e.preventDefault();
+        return escolherEstado(ESTADO_FOLHA.projeto, ESTADO_FOLHA.dir, escolher.dataset.estadoEscolher, escolher);
+      }
       if (tr.id === 'rota-atualizar') { e.preventDefault(); return carregarRotas(); }
       if (tr.id === 'pj-novo') {
         e.preventDefault();

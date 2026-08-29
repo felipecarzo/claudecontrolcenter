@@ -23,7 +23,7 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
 | tela | 30 | 30/30 | 28/30 | 30/30 | 0/30 | 30/30 |
-| acao | 120 | 120/120 | 25/120 | 0/120 | 0/120 | 0/120 |
+| acao | 123 | 123/123 | 25/123 | 0/123 | 0/123 | 0/123 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
 | endereco | 90 | 90/90 | 6/90 | 0/90 | 0/90 | 0/90 |
 | palavra | 66 | 66/66 | 14/66 | 66/66 | 0/66 | 66/66 |
@@ -67,7 +67,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `vps` | viva | src/ui_v2.html#view-vps | estreito |
 | `maquina` | viva | src/ui_v2.html#view-maquina | estreito |
 
-## acao (120)
+## acao (123)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -155,8 +155,10 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-pa-arquivo` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-pa-alternar` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-pa-fechar` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-cc-estado` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-cc-dir` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-estado-abrir` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-estado-dir` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-estado-escolher` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-estado-fechar` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-mod-remoto` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-mod-proj` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-mod-maquina` | estatica | src/ui_v2.html | funciona, explica, estreito |
@@ -170,6 +172,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-ent-abrir` | estatica | src/ui_v2.html | explica, estreito |
 | `data-sessao-modo` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-sessao-proj` | estatica | src/ui_v2.html | funciona, explica, estreito |
+| `data-cc-dir` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-remoto-perfil` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-pj-abrir` | estatica | src/ui_v2.html | funciona, explica, estreito |
 | `data-pj-pastas` | estatica | src/ui_v2.html | funciona, explica, estreito |
