@@ -15,6 +15,87 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 28/08: do texto solto ao projeto andando
+
+Pedido dele em 28/08, com as palavras dele:
+
+> *"eu chego com um projeto em linguagem natural, e o framework vai primeiro
+> criar uma definição de pronto e depois a criação de um plano, backlog, sprints
+> e definição de documentos necessários, separação de pasta pro projeto ter seu
+> próprio git se for necessário e depois seguir o desenvolvimento. isso tudo em
+> modo sugestivo, eu coloco o projeto e ele começa a fazer perguntas e vamos
+> desenvolvendo."*
+
+### O diagnóstico, medido em 28/08 antes de propor qualquer coisa
+
+**Quatro das sete coisas que ele pediu já estão construídas.** A pasta com git
+próprio, os documentos, a definição de pronto e as perguntas: `novoProjeto.mjs`
+cria pasta, `docs/produto`, `docs/guias`, `docs/diario`, ROADMAP, HANDOFF,
+README, `.gitignore`, `CLAUDE.md` com o protocolo, e roda `git init`. A
+entrevista tem 15 perguntas encadeadas, e uma delas é literalmente *"o que mais
+precisa estar funcionando para você chamar de pronto?"*.
+
+**O problema não é falta de framework. É que as peças não se ligam.**
+`resumo()` da entrevista devolve TEXTO e nada mais: as respostas ficam
+guardadas em `estado.entrevista.respostas` e não viram MVP, nem critério, nem
+item de backlog.
+
+**E a prova de que isso importa está no número:** dos 11 projetos com framework
+ligado nesta máquina, **zero responderam a entrevista**. Dez têm MVP nomeado, e
+nenhum veio dela. Todos usam o mesmo método (`mvp-basico`). A peça existe,
+funciona, e ninguém passa por ela.
+
+**Só existem duas fases** no método: `definicao` e `execucao`. Não há onde o
+planejamento acontecer.
+
+### As duas decisões dele, tomadas na hora
+
+1. **Ligar o que existe, e criar a fase de planejar.** Entre as três saídas que
+   ofereci (método novo, rotina sem trava, ou ligar o que há), ele escolheu a
+   terceira. Os 11 projetos de hoje não mudam: já estão em `execucao`, depois da
+   fase nova.
+2. **Sprint é recorte COM PRAZO.** Ele descartou as outras duas leituras que
+   ofereci (a próxima fatia, e agrupamento por tema): quer data de começo e fim,
+   e o que não coube volta para a fila. ⚠️ Isso exige o painel passar a guardar
+   datas, que hoje ele não faz em item de roadmap.
+
+### CC-382 🔵 28/08: a entrevista passa a ESCREVER o resultado
+
+Hoje ela termina e devolve um parágrafo. Precisa gravar o que apurou: o nome do
+MVP e os critérios de pronto saem das respostas, e vão para `mvp` no estado do
+projeto. É a ligação que falta, e é a mais barata das cinco.
+
+### CC-383 🔵 28/08: a entrevista vira backlog no roadmap
+
+As respostas descrevem entregas ("a entrega", "primeiro", "pronto é"). Cada uma
+vira item aberto no `docs/ROADMAP.md`, que hoje nasce vazio. ⚠️ **Nunca
+sobrescrever roadmap que já tem conteúdo**: acrescenta, e o que já está escrito
+manda.
+
+### CC-384 🔵 28/08: a fase de PLANEJAMENTO, entre definir e executar
+
+Uma fase nova no `mvp-basico`, com portão próprio: não se sai dela sem backlog
+escrito e sem a primeira fatia recortada. Hoje o projeto pula de `definicao`
+para `execucao` sem nada no meio.
+
+### CC-385 🔵 28/08: sprint com prazo
+
+Recorte com data de começo e fim. O que não coube volta para a fila, e isso
+precisa ser visível: sprint que termina e some leva o não feito junto. Exige
+campo de data no item, que o leitor de roadmap ainda não tem.
+
+### CC-386 🔵 28/08: a sequência conduzida, do texto solto ao primeiro commit
+
+O fio que amarra tudo: ele escreve o projeto em linguagem natural, e o painel o
+conduz por criar pasta, entrevista, pronto, plano, backlog, primeira fatia. Em
+modo Sugestivo, que é o que ele pediu: cada passo pede autorização.
+
+**O que este item precisa consertar, e é a causa do zero medido:** a entrevista
+nunca é oferecida quando o projeto nasce. Ela mora atrás de um botão dentro de
+um bloco que nasce fechado, e por isso ninguém a encontra.
+
+---
+
 ## ▶ Frente nova, aberta em 27/08 (noite): ver as rotas, e o que os agentes combinam entre si
 
 **Visão dele, registrada para decidir depois. Nada aqui foi implementado.** Ele
