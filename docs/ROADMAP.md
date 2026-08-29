@@ -26,7 +26,7 @@ Pedido dele em 29/08, com print, e ele começa elogiando:
 **Isso é a especificação, não elogio solto:** a tela existe para retomar projeto
 parado. Tudo o que segue é medido contra essa pergunta.
 
-### CC-408 🔵 29/08: o número 58 não diz o que é
+### CC-408 ✅ 29/08: o número 58 não diz o que é
 
 Nas palavras dele:
 
@@ -45,7 +45,7 @@ importante.
 10, escreva o valor do parâmetro de borda está em 10 (de 0 a 100)"*. O número
 sem escala e sem porquê é ruído, e ele apontou exatamente isso.
 
-### CC-409 🔵 29/08: o "?" em cada bloco, botão e aba
+### CC-409 ✅ 29/08: o "?" em cada bloco, botão e aba
 
 > *"eu quero ponto de interrogação, aquele que você clica e tem a explicação do
 > que fazer, do que faz em cada aba, em opção, em cada botão, em cada topo de
@@ -56,7 +56,7 @@ O mecanismo já existe e é dele, de 20/08: os `?` que leem
 `docs/produto/PALAVRAS-DA-TELA.md`. O que falta é alcançar os blocos DENTRO das
 telas, e não só as telas.
 
-### CC-410 🔵 29/08: tudo colapsável
+### CC-410 ✅ 29/08: tudo colapsável
 
 > *"tudo colapsarável, tem que ser tudo colapsarável pra economizar espaço em
 > tela. Pra ficar modular."*

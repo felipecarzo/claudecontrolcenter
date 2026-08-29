@@ -41,12 +41,12 @@
    "profundo": 0
   },
   "palavra": {
-   "total": 68,
-   "existe": 68,
+   "total": 76,
+   "existe": 76,
    "funciona": 14,
-   "explica": 68,
+   "explica": 76,
    "estreito": 0,
-   "profundo": 68
+   "profundo": 76
   }
  },
  "itens": [
@@ -8480,6 +8480,254 @@
     "profundo": {
      "coberto": "test.mjs",
      "como": "corpo com 272 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:rotas do projeto",
+   "tipo": "palavra",
+   "rotulo": "rotas do projeto",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 530 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:o que mudou",
+   "tipo": "palavra",
+   "rotulo": "o que mudou",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 491 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:importância",
+   "tipo": "palavra",
+   "rotulo": "importância",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 932 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:o que fazer agora",
+   "tipo": "palavra",
+   "rotulo": "o que fazer agora",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 650 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:o que está encalhado",
+   "tipo": "palavra",
+   "rotulo": "o que está encalhado",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 230 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:agora",
+   "tipo": "palavra",
+   "rotulo": "agora",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 519 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:na fila",
+   "tipo": "palavra",
+   "rotulo": "na fila",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 475 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:prontas",
+   "tipo": "palavra",
+   "rotulo": "prontas",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 457 caracteres"
     }
    }
   },

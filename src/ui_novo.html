@@ -1890,6 +1890,34 @@
 
     /* ===== CC-304: a tela Projetos ===== */
     .pj-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+    /* CC-409/410: o bloco dobrável com o "?" no título. */
+    .bloco {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; margin-bottom: 12px;
+    }
+    .bloco > summary {
+      display: flex; align-items: center; gap: 8px; cursor: pointer;
+      padding: 11px 14px; min-height: 44px; list-style: none;
+    }
+    .bloco > summary::-webkit-details-marker { display: none; }
+    .bloco > summary::before { content: '▾'; color: var(--text-dim); font-size: 11px; }
+    .bloco:not([open]) > summary::before { content: '▸'; }
+    .bloco-titulo {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text-muted);
+    }
+    .bloco-corpo { padding: 0 14px 14px; }
+    .bloco-dica { font-size: 11px; color: var(--text-dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+    /* CC-408: o número da importância, com a escala colada. */
+    .mapa-imp {
+      display: inline-block; min-width: 42px; text-align: center;
+      padding: 1px 5px; margin-right: 4px; border-radius: 5px;
+      border: 1px solid; font-size: 11px; font-weight: 700; cursor: help;
+    }
+    .mapa-imp small { font-size: 8.5px; font-weight: 400; opacity: .75; }
+    .mapa-idade { color: var(--text-dim); margin-right: 4px; }
+
     /* CC-407: os seletores de projeto de dentro somem, e o de cima os pilota. */
     .analise-oculto { display: none !important; }
 
@@ -5209,21 +5237,102 @@
       const lista = mapaOrdem === 'tempo' ? vivos(o.porTempo) : vivos(o.porImportancia);
       if (!lista.length) return '';
       const idade = (t) => { if (!t) return ''; const h = (Date.now() - t) / 3600000; return h < 24 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`; };
-      return `<div class="card" style="margin-bottom:20px;">
+      return bloco('mapa-ordens', mapaOrdem === 'importancia' ? 'o que fazer agora' : 'o que está encalhado',
+        mapaOrdem === 'importancia' ? 'o que fazer agora' : 'o que está encalhado', `
         <div style="display:flex;gap:8px;margin-bottom:8px;">
           <button class="btn ${mapaOrdem === 'importancia' ? 'btn-outline' : 'btn-ghost'} compacto" data-mapa-ordem="importancia">o que fazer agora</button>
           <button class="btn ${mapaOrdem === 'tempo' ? 'btn-outline' : 'btn-ghost'} compacto" data-mapa-ordem="tempo">o que está encalhado</button>
         </div>
         <p style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">${mapaOrdem === 'importancia'
-          ? 'por importância: o que destrava outros itens, o que veio de pedido seu, e o peso da frente.'
+          ? 'por importância, de 0 a 100: cada item começa em 20 e sobe por destravar outros (+15 cada), por ter nascido de uma fala sua (+15), pelo peso da frente e pela idade. Passe o dedo no número para ver de onde ele veio.'
           : 'por idade: há quanto tempo o item foi escrito no ROADMAP e continua aberto. Sai do git, não de data escrita à mão.'}</p>
         <ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;">
           ${lista.slice(0, 8).map((i) => `<li style="font-size:12px;">
-            <span style="color:var(--text-dim);">${mapaOrdem === 'tempo' ? esc(idade(i.nasceuEm)) : i.importancia}</span>
+            ${mapaOrdem === 'tempo'
+              ? `<span class="mapa-idade">${esc(idade(i.nasceuEm))}</span>`
+              : selo58(i)}
             ${esc(i.titulo)}${i.dependentes ? ` <span style="color:var(--amber);">${i.dependentes} depende(m)</span>` : ''}
           </li>`).join('')}
-        </ol>
-      </div>`;
+        </ol>`);
+    }
+
+    /**
+     * CC-408, 29/08: o número deixa de ser nu.
+     *
+     * Ele, olhando a tela: *"esse número 58 por exemplo (…) o que que é 58
+     * entendeu? É a tarefa 58 e esse número está onde? O que que isso liga?"*.
+     *
+     * É a IMPORTÂNCIA, de 0 a 100, e ela some cinco coisas: base 20, até +30
+     * por destravar outros itens (15 cada), +0/10/20 pelo peso da frente, **+15
+     * se o item nasceu de uma fala dele**, +10 se está bloqueado, e até +10 pela
+     * idade, com teto porque velho não é o mesmo que importante.
+     *
+     * ⚠️ **Número sem escala é a regra dele mais antiga sendo quebrada:** *"em
+     * vez de border = 10, escreva o valor do parâmetro de borda está em 10, de 0
+     * a 100"*. Escrita em 15/08, e este número nasceu depois dela.
+     *
+     * A faixa vira palavra e cor, porque é assim que ele lê de relance, e o
+     * número exato fica ao lado. E a composição vai no `title`: não dá para
+     * mostrar as cinco parcelas em cada linha sem virar planilha, mas dá para
+     * dizer de onde ele veio quando ele quiser saber.
+     */
+    const FAIXAS_IMPORTANCIA = [
+      { min: 70, palavra: 'urgente', cor: 'var(--failed)' },
+      { min: 50, palavra: 'alta', cor: 'var(--waiting)' },
+      { min: 30, palavra: 'média', cor: 'var(--text-muted)' },
+      { min: 0, palavra: 'baixa', cor: 'var(--text-dim)' },
+    ];
+
+    function selo58(i) {
+      const n = Number(i.importancia) || 0;
+      const faixa = FAIXAS_IMPORTANCIA.find((f) => n >= f.min);
+      /* De onde o número veio, nas parcelas que dá para reconstruir daqui. O
+         resto (peso e idade) mora no servidor e não viaja item a item. */
+      const partes = ['todo item aberto começa em 20'];
+      if (i.dependentes) partes.push(`+${Math.min(30, i.dependentes * 15)} por destravar ${i.dependentes} item(ns)`);
+      if (i.citacao) partes.push('+15 porque nasceu de uma fala sua');
+      if (i.estado === 'bloqueado') partes.push('+10 por estar travado');
+      const dica = `importância ${n} de 100 (${faixa.palavra}). ${partes.join(', ')}. `
+        + 'O resto vem do peso da frente e da idade do item.';
+      return `<span class="mapa-imp" style="color:${faixa.cor};border-color:${faixa.cor};"`
+        + ` title="${esc(dica)}">${n}<small>/100</small></span>`;
+    }
+
+    /* ===== CC-409 e CC-410: todo bloco dobra, e todo bloco explica =====
+     *
+     * Dois pedidos dele no mesmo print, e uma peça só resolve os dois:
+     *
+     * > *"tudo colapsarável, tem que ser tudo colapsarável pra economizar espaço
+     * > em tela. Pra ficar modular."*
+     * > *"eu quero ponto de interrogação (…) em cada aba, em opção, em cada
+     * > botão, em cada topo de aba, em cada topo de módulo."*
+     *
+     * ⚠️ **A memória do que ele fechou mora fora do DOM.** O painel redesenha de
+     * 2 em 2 segundos e recria o `<details>`, então o estado aberto se perderia
+     * a cada tique e o bloco reabriria sozinho na cara dele. É a mesma dor do
+     * CC-334 com a gaveta dos parados, e do modo de ver dos projetos.
+     */
+    const BLOCOS_FECHADOS = new Set((() => {
+      try { return JSON.parse(localStorage.getItem('cc-blocos-fechados') || '[]') } catch { return [] }
+    })());
+
+    function guardarBlocos() {
+      try { localStorage.setItem('cc-blocos-fechados', JSON.stringify([...BLOCOS_FECHADOS])) } catch { /* aba privada */ }
+    }
+
+    /**
+     * Um bloco da tela: título, "?" e conteúdo, tudo dobrável.
+     *
+     * `termo` é o verbete em `docs/produto/PALAVRAS-DA-TELA.md`. Quando ele não
+     * existe, `ajuda()` devolve vazio e o bloco fica sem "?", em vez de mostrar
+     * um botão que abre o nada.
+     */
+    function bloco(id, titulo, termo, conteudo, { extra = '' } = {}) {
+      const fechado = BLOCOS_FECHADOS.has(id);
+      return `<details class="bloco" data-bloco="${esc(id)}"${fechado ? '' : ' open'}>
+        <summary><span class="bloco-titulo">${esc(titulo)}</span>${ajuda(termo)}${extra}</summary>
+        <div class="bloco-corpo">${conteudo}</div>
+      </details>`;
     }
 
     function viewGitMapa() {
@@ -5311,8 +5420,9 @@
         </div>`;
       }).join('')
         + `<p style="font-size:11px;color:var(--text-dim);margin:12px 0 20px;">lido de <code>${esc((DATA.mapa.arquivo || '').split(/[\\/]/).slice(-2).join('/'))}</code> · ${DATA.mapa.linhas} linhas · atualizado ${DATA.mapa.atualizadoEm ? age(Date.now() - DATA.mapa.atualizadoEm) + ' atrás' : '...'}</p>`
-        + `<div class="card" style="margin-bottom:16px;"><h2>ROTAS <span style="font-weight:400;color:var(--text-muted);font-size:11px;">toque no nome para trocar</span></h2>${viewRotasMapa()}</div>`
-        + `<div class="card"><h2>O QUE MUDOU</h2>${viewGitMapa()}</div>`;
+        + bloco('mapa-rotas', 'rotas', 'rotas do projeto', viewRotasMapa(),
+          { extra: '<span class="bloco-dica">toque no nome para trocar</span>' })
+        + bloco('mapa-git', 'o que mudou', 'o que mudou', viewGitMapa());
     }
 
     /* ================= NOTAS =================
@@ -12255,6 +12365,19 @@
          comportamento padrao dele impediria o download. */
       if (tr.id === 'tend-colher') { e.preventDefault(); return colherTendencias(); }
       if (tr.id === 'trv-recolher') { e.preventDefault(); return recolherTravas(); }
+      /* CC-410: lembra o que ele dobrou. O `?` dentro do título NÃO dobra o
+         bloco: sem isto, pedir a explicação fecharia justamente o que ele
+         queria entender. */
+      const somario = tr.closest?.('details.bloco > summary');
+      if (somario && !tr.closest?.('.ajuda')) {
+        const cx = somario.parentElement;
+        const id = cx.dataset.bloco;
+        /* O navegador alterna DEPOIS do clique, então o estado que vale é o
+           contrário do atual. */
+        if (cx.open) BLOCOS_FECHADOS.add(id); else BLOCOS_FECHADOS.delete(id);
+        guardarBlocos();
+        return;
+      }
       const abaAnalise = tr.closest?.('[data-analise]');
       if (abaAnalise) { e.preventDefault(); return trocarAnalise(abaAnalise.dataset.analise); }
       const abaInfra = tr.closest?.('[data-infra]');
@@ -13193,10 +13316,38 @@
 
       const html = '<option value="">todos os projetos</option>'
         + lista.map((n) => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
-      if (meu.innerHTML === html) return;
-      const antes = meu.value;
-      meu.innerHTML = html;
-      if (antes && lista.includes(antes)) meu.value = antes;
+      if (meu.innerHTML !== html) {
+        const antes = meu.value;
+        meu.innerHTML = html;
+        if (antes && lista.includes(antes)) meu.value = antes;
+      }
+
+      /* ⚠️ **Sem escolha, a tela abre vazia**, e o motivo não é o código dela.
+       *
+       * Medido em 29/08: a aba do mapa não montava nada, e a causa era que
+       * ninguém escolhia projeto ao abrir. Antes, cada tela tinha o próprio
+       * seletor e escolhia um padrão; ao juntar as quatro num seletor só, o
+       * padrão se perdeu no caminho.
+       *
+       * Escolhe o primeiro com sessão no ar, que é onde ele provavelmente
+       * estava, e cai no primeiro da lista quando não há nenhum. */
+      if (!meu.value) {
+        const comSessao = (DATA.projetos?.projetos || [])
+          .filter((p) => p.daqui && p.ehProjeto && ligadoDe(p)).map((p) => p.projeto);
+        const escolha = comSessao.find((n) => lista.includes(n)) || lista[0];
+        if (escolha) {
+          meu.value = escolha;
+          propagarAnalise(escolha);
+          /* ⚠️ O mapa NÃO é alcançado pela propagação, e o motivo é um círculo:
+             o seletor dele só ganha opções dentro do próprio render, que sai
+             cedo enquanto não houver projeto escolhido. E quem escolheria o
+             padrão lê `DATA.summary.projects`, que nesta tela está vazio.
+             Medido em 29/08, depois de dois consertos no lugar errado.
+             Aqui a escolha é dita direto a quem sabe abrir o mapa. */
+          if (typeof mapaProjetoAtual !== 'undefined' && !mapaProjetoAtual
+            && typeof abrirMapa === 'function') abrirMapa(escolha);
+        }
+      }
     }
 
     /**

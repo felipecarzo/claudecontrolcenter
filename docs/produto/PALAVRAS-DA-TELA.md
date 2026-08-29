@@ -220,6 +220,118 @@ tem chave no lugar errado, o que responde sem autenticação.
 Cada camada é um teste que pode ser ligado por projeto. Uma corrida é uma
 execução da bancada, com registro próprio e cancelamento.
 
+## rotas do projeto
+
+Quem está segurando qual parte do código deste projeto agora, lido do quadro de
+rotas dele.
+
+Cada linha é uma rota: um nome, quem a marcou, desde quando, e os arquivos que
+ela reivindica. **Tocar no nome troca a sua sessão para aquela rota**, que é o
+gesto do dia a dia quando você entra num projeto onde há mais de um agente.
+
+O quadro guarda histórico e estado no mesmo arquivo, e aqui só entra o que está
+valendo. Para a visão de todos os projetos de uma vez, e para as conversas entre
+os agentes, use a tela **Rotas** no menu.
+
+## o que mudou
+
+Os últimos commits deste projeto, lidos do git.
+
+Serve para uma pergunta específica: você voltou depois de um tempo e precisa
+saber o que aconteceu enquanto esteve fora, sem abrir terminal. É o dado mais
+confiável do painel, porque o git não depende de ninguém anotar nada.
+
+**Vazio aqui quer dizer que a leitura falhou**, e não que nada aconteceu: o
+motivo aparece escrito no lugar da lista, porque as duas coisas são diferentes e
+confundi-las é a família de defeito mais cara deste painel.
+
+## importância
+
+O número de **0 a 100** ao lado de cada item na lista "o que fazer agora". Ele
+responde uma pergunta: se eu pudesse mexer em uma coisa só neste projeto, qual
+seria?
+
+**De onde ele vem, parcela por parcela:**
+
+| o que soma | quanto |
+|---|---|
+| todo item aberto começa em | 20 |
+| destravar outros itens | +15 por item, até 30 |
+| o peso da frente | 0, 10 ou 20 |
+| **ter nascido de uma fala sua** | +15 |
+| estar travado | +10 |
+| a idade do item | até +10 |
+
+**As duas escolhas que valem discussão:** pedido seu vale mais que ideia minha,
+e por isso os +15. E a idade tem teto de 10, de propósito: item velho não é o
+mesmo que item importante, e sem o teto o backlog inteiro seria ordenado por
+poeira.
+
+Item já concluído vale 0. Item esperando decisão sua vale 10 fixo, porque a
+conta de importância não se aplica: ele não anda enquanto você não responder.
+
+**Passe o dedo no número** para ver as parcelas daquele item específico.
+
+## o que fazer agora
+
+A lista ordenada por **importância**, do maior para o menor, e é a resposta para
+"voltei a este projeto depois de semanas, por onde começo".
+
+A ordem não é opinião: cada item carrega um número de 0 a 100 calculado do que
+ele destrava, do peso da frente, de ter nascido de uma fala sua, e da idade.
+Toque no `?` da importância para ver a conta inteira.
+
+**Só entram itens abertos ou travados.** O que já foi fechado sai da lista,
+porque a pergunta aqui é sobre o próximo gesto, não sobre histórico.
+
+São oito de cada vez, e o corte é deliberado: uma lista de quarenta itens
+ordenados por importância vira a mesma coisa que uma lista sem ordem nenhuma.
+
+## o que está encalhado
+
+A mesma lista, ordenada por **idade**: há quanto tempo o item foi escrito e
+continua aberto. O tempo sai do git, e não de data digitada à mão.
+
+Serve para a pergunta oposta: o que está parado há tempo demais para continuar
+parado.
+
+## agora
+
+As frentes com agente trabalhando nelas neste minuto.
+
+**Ela se enche sozinha**, movida pelos agentes: ninguém escreve nada aqui, e é
+isso que a torna confiável. A ligação entre o agente e a frente é o campo que
+ele mesmo preenche no painel ao entender a tarefa.
+
+**Vazia não quer dizer parado.** Quer dizer que nenhum agente declarou estar
+numa frente deste roadmap: pode haver alguém trabalhando e escrevendo uma frente
+que não existe como item aberto, e nesse caso ele aparece na faixa de avisos do
+quadro, não aqui.
+
+## na fila
+
+O que está aberto no roadmap e ainda não tem ninguém dentro.
+
+É o estoque de trabalho já decidido: passou pela conversa, virou item escrito, e
+espera alguém pegar. Um item sai daqui no instante em que um agente declara
+aquela frente, e volta se ele parar.
+
+**O número ao lado do título é o total**, e ele costuma ser bem maior que o que
+cabe na tela: os primeiros mostrados são os do topo do arquivo, não os mais
+importantes. Para a ordem que decide, use "o que fazer agora".
+
+## prontas
+
+O que já foi fechado, mantido para consulta.
+
+**Não é lixo, e por isso não some:** é onde você confere se uma coisa já foi
+resolvida antes de pedir de novo, e é o que dá para mostrar quando alguém
+pergunta o que foi feito no projeto.
+
+A regra de organização daqui é que concluído sai do roadmap e vira linha no
+diário. O que aparece nesta coluna é o que ainda está no arquivo marcado como
+feito, entre a hora em que fechou e a hora em que alguém faz a poda.
+
 ## tela: analise
 
 **Escolha um projeto uma vez e veja os quatro ângulos:** o mapa dele, o que as
