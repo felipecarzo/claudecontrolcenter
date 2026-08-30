@@ -16,29 +16,6 @@ import path from 'node:path'
 const IGNORAR = new Set(['docs', 'assets', '.git', '.claude', '.github', 'node_modules', 'dist', 'build', '.next', '.vercel', '.vscode'])
 
 /**
- * Qual sessão segura o item de backlog `CC-nnn`, segundo o quadro de rotas.
- *
- * Devolve o id de 8 caracteres da sessão dona, ou `null` quando ninguém o
- * reivindicou. Só olha rota 🔴 ocupada: linha livre é histórico, e casar com
- * ela faria um item entregue semanas atrás parecer que tem dono.
- *
- * ## Por que isto existe, achado em 21/08
- *
- * Ele abriu uma segunda sessão só para tela, e a rota `front` passou para ela
- * com o CC-156 e o CC-235 dentro. Do lado de cá, a trava de execução contínua
- * seguiu cobrando os dois a cada parada: os únicos itens abertos do backlog
- * eram justamente os que eu não posso tocar sem pisar no dono da rota.
- *
- * **Guarda que cobra o impossível ensina a ser ignorado**, e aí ele não segura
- * mais o caso real. O mesmo motivo que fez o `⏸` nascer no `fluxo-guard`.
- *
- * ## Por que o quadro, e não uma marca no título do item
- *
- * Marcar posse no `ROADMAP.md` seria uma segunda verdade sobre quem segura o
- * quê, e ela envelhece sozinha: a rota muda de dono e o título fica mentindo.
- * O quadro já é a fonte, e é lido no começo de toda sessão.
- */
-/**
  * Quem é o DONO de uma linha do quadro: o id de 8 caracteres logo depois de
  * `🔴 ocupada |`, em minúsculas, ou `null` se a linha não tiver dono.
  *
@@ -80,6 +57,29 @@ export function linhaEhDaSessao(linha, sessionId) {
   return donoDaLinha(linha) === marca
 }
 
+/**
+ * Qual sessão segura o item de backlog `CC-nnn`, segundo o quadro de rotas.
+ *
+ * Devolve o id de 8 caracteres da sessão dona, ou `null` quando ninguém o
+ * reivindicou. Só olha rota 🔴 ocupada: linha livre é histórico, e casar com
+ * ela faria um item entregue semanas atrás parecer que tem dono.
+ *
+ * ## Por que isto existe, achado em 21/08
+ *
+ * Ele abriu uma segunda sessão só para tela, e a rota `front` passou para ela
+ * com o CC-156 e o CC-235 dentro. Do lado de cá, a trava de execução contínua
+ * seguiu cobrando os dois a cada parada: os únicos itens abertos do backlog
+ * eram justamente os que eu não posso tocar sem pisar no dono da rota.
+ *
+ * **Guarda que cobra o impossível ensina a ser ignorado**, e aí ele não segura
+ * mais o caso real. O mesmo motivo que fez o `⏸` nascer no `fluxo-guard`.
+ *
+ * ## Por que o quadro, e não uma marca no título do item
+ *
+ * Marcar posse no `ROADMAP.md` seria uma segunda verdade sobre quem segura o
+ * quê, e ela envelhece sozinha: a rota muda de dono e o título fica mentindo.
+ * O quadro já é a fonte, e é lido no começo de toda sessão.
+ */
 export function donoDoItem(codigo, raizProjeto) {
   const cod = String(codigo || '').match(/CC-\d+/i)?.[0]
   if (!cod) return null

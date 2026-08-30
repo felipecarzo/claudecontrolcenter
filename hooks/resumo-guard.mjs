@@ -25,7 +25,7 @@
  *
  * Falha ABERTA, uma volta só.
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -79,14 +79,31 @@ if (m.semMarcador) {
 
      Duas voltas a mais de espera são baratas; falso positivo é o caminho mais
      curto para trava desligada, e esta já custou três. */
+  /* ⚠️ **"Parou de crescer" NÃO quer dizer "acabou".** Medido em 30/08, num
+     falso positivo sobre uma resposta que TINHA o separador: o transcrito
+     estava com 18 MB, o turno teve dezenas de chamadas de ferramenta, e entre
+     duas leituras o arquivo ficou do mesmo tamanho por um instante ANTES do
+     último pedaço ser gravado. O guarda desistiu e reclamou de resposta certa.
+
+     A régua nova é o RELÓGIO DO ARQUIVO: enquanto ele foi tocado há pouco, o
+     turno ainda está sendo escrito, e tamanho igual entre duas leituras não
+     prova nada.
+
+     O teto subiu de 6 para 14 voltas, e ele só é pago quando eu JÁ ia
+     reclamar. Falso positivo é o caminho mais curto para trava desligada, e
+     esta já custou quatro. */
+  const PARADO_MS = 700
   let ultimo = texto.length
-  for (let i = 0; i < 6 && m.semMarcador; i += 1) {
+  for (let i = 0; i < 14 && m.semMarcador; i += 1) {
     const ate = Date.now() + 400
     while (Date.now() < ate) { /* espera curta, sem depender de timer assíncrono */ }
     const denovo = E.respostaDoTurno(arquivo) || E.ultimaResposta(arquivo)
     if (!denovo) break
     if (denovo.length > ultimo) { m = E.medir(denovo); ultimo = denovo.length; continue }
-    break // parou de crescer: o turno acabou de verdade
+    /* Tamanho igual: só desiste se o arquivo também parou de ser tocado. */
+    let quieto = false
+    try { quieto = Date.now() - statSync(arquivo).mtimeMs > PARADO_MS } catch { quieto = true }
+    if (quieto) break
   }
 }
 if (!m.semMarcador) sair()

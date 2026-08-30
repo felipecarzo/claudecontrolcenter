@@ -1237,6 +1237,60 @@ export function pedir(estado, { alvo, motivo = null, quando = null }) {
   }
 }
 
+/**
+ * O pedido de liberação, dito em português, sem nome de arquivo solto.
+ *
+ * ## Por que existe, e o que ele conserta
+ *
+ * O botão de liberar já estava na tela desde 26/08, e mostrava `<code>` com o
+ * caminho do arquivo. Isso quebra a regra número um dele, escrita em 16/08:
+ * *"eu não lembro o que que é reporte guard (…) o meu cérebro não consegue
+ * absorver tudo"*. Nome de arquivo é coisa que EU resolvo em dois segundos e
+ * ele não tem por que saber.
+ *
+ * O pedido dele em 29/08 é mais forte que "traduza": *"quando eu precisasse
+ * liberar alguma coisa no painel, ele aparecesse assim pra mim (…) criasse um
+ * botão"*. Botão, e não recado. E o que separa um do outro é o botão carregar
+ * **o que está travado** e **o que acontece se ele liberar**, cada um em uma
+ * frase.
+ *
+ * ⚠️ **A frase é derivada do caminho, e é palpite honesto, não adivinhação.**
+ * Quem pede é um hook, e o hook sabe o arquivo, não a intenção. Dizer "uma
+ * peça nova do painel" é verdade sobre um `.mjs` que ainda não existe;
+ * inventar a finalidade seria mentir com confiança. O caminho continua indo
+ * junto, DEPOIS da frase, para quem quiser procurar.
+ */
+export function descreverAlvo(alvo, { existe = null } = {}) {
+  const caminho = String(alvo || '').replace(/\\/g, '/')
+  if (!caminho || caminho === '**') {
+    return { o_que: 'escrever código neste projeto, em qualquer arquivo', ao_liberar: 'eu passo a poder mexer em código aqui até você trocar de modo' }
+  }
+  const nome = caminho.split('/').pop() || caminho
+  const novo = existe === false
+  const so = novo ? 'criar' : 'mexer em'
+  const fim = `. Só isso fica liberado, o resto continua travado`
+
+  if (/^hooks\//.test(caminho)) {
+    return { o_que: `${so} uma das regras que barram trabalho errado (${nome})`, ao_liberar: `eu ${novo ? 'crio' : 'altero'} essa regra${fim}` }
+  }
+  if (/^test/.test(nome) || /^test/.test(caminho)) {
+    return { o_que: `${so} uma verificação automática (${nome})`, ao_liberar: `eu ${novo ? 'escrevo' : 'altero'} essa verificação${fim}` }
+  }
+  if (/\.html$/.test(nome)) {
+    return { o_que: `${so} uma tela do painel (${nome})`, ao_liberar: `eu ${novo ? 'crio' : 'mudo'} essa tela${fim}` }
+  }
+  if (/\.(md|txt)$/.test(nome)) {
+    return { o_que: `${so} um documento (${nome})`, ao_liberar: `eu ${novo ? 'escrevo' : 'altero'} esse documento${fim}` }
+  }
+  if (/\.(json|ya?ml)$/.test(nome)) {
+    return { o_que: `${so} um arquivo de configuração (${nome})`, ao_liberar: `eu ${novo ? 'crio' : 'altero'} essa configuração${fim}` }
+  }
+  return {
+    o_que: novo ? `criar uma peça nova do painel (${nome})` : `mexer numa peça do painel (${nome})`,
+    ao_liberar: `eu ${novo ? 'escrevo essa peça' : 'altero essa peça'}${fim}`,
+  }
+}
+
 /** Tira o pedido da fila. Chamado ao autorizar ou ao recusar. */
 export function resolverPedido(estado, alvo) {
   return { ...estado, pedidos: (estado?.pedidos || []).filter((p) => p.alvo !== alvo) }
