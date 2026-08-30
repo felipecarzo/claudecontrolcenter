@@ -221,6 +221,68 @@ export function lerTickets(raiz) {
  * é a família de defeito mais cara deste painel. Por isso `semArquivo` sai
  * junto, e a tela é obrigada a contar as duas coisas.
  */
+/**
+ * A "awareness": este agente sabe o que o outro está fazendo no arquivo dele?
+ *
+ * ## O pedido, e por que ele não é um desenho
+ *
+ * Palavras dele em 27/08: *"qual é a awareness do agente que está na rota em
+ * relação ao que o outro agente está fazendo naquela rota e vice-versa"*.
+ *
+ * Isso não é uma tela nova: é uma PERGUNTA, e ela tem resposta no dado que já
+ * existe. Os recados registram quem avisou quem, quando, e sobre o quê. Duas
+ * rotas no mesmo arquivo COM conversa entre os donos é o caso bom, e aconteceu
+ * de verdade em 27/08: duas sessões no mesmo arquivo, quatro recados trocados,
+ * zero estrago. Duas rotas no mesmo arquivo SEM conversa nenhuma é o acidente
+ * de 06/08, em que ninguém avisou ninguém.
+ *
+ * ⚠️ **A conversa conta em qualquer direção, e conta mesmo sem citar o
+ * arquivo.** Quase nenhum recado real traz `arquivo` preenchido: dos 29 medidos
+ * neste projeto, a maioria vem com `null`. Exigir que o recado nomeie o arquivo
+ * disputado daria "ninguém se falou" em todo caso real, e o alarme mais caro é
+ * o que toca sempre.
+ *
+ * ⚠️ **E o silêncio não é acusação de ninguém.** A resposta é sobre a DUPLA,
+ * não sobre um culpado: quem chegou primeiro não tinha como avisar de uma rota
+ * que ainda não existia.
+ */
+export function awareness(disputados = [], tickets = []) {
+  const falou = new Set()
+  for (const t of tickets) {
+    if (!t?.de || !t?.para) continue
+    falou.add(`${t.de}|${t.para}`)
+  }
+  const seConhecem = (a, b) => falou.has(`${a}|${b}`) || falou.has(`${b}|${a}`)
+
+  return disputados.map((d) => {
+    const quem = d.quem || []
+    const pares = []
+    for (let i = 0; i < quem.length; i++) {
+      for (let j = i + 1; j < quem.length; j++) {
+        const a = quem[i]
+        const b = quem[j]
+        pares.push({
+          rotas: [a.rota, b.rota],
+          donos: [a.dono, b.dono],
+          conversaram: seConhecem(a.dono, b.dono),
+          /* Quantos recados existem entre os dois, para a tela poder dizer
+             "quatro recados" em vez de só "conversaram". */
+          recados: tickets.filter((t) => (t.de === a.dono && t.para === b.dono)
+            || (t.de === b.dono && t.para === a.dono)).length,
+        })
+      }
+    }
+    const cegos = pares.filter((p) => !p.conversaram)
+    return {
+      arquivo: d.arquivo,
+      quem,
+      pares,
+      /* O veredito em uma palavra, que é o que cabe no cartão. */
+      estado: !pares.length ? 'sozinho' : cegos.length ? 'cego' : 'avisado',
+    }
+  })
+}
+
 export function cruzamentos(linhas) {
   const vivas = linhas.filter((l) => l.ocupada && !l.historico)
   const porArquivo = new Map()
@@ -268,6 +330,10 @@ export function retratoRotas(raiz, { projeto = null } = {}) {
     tickets,
     esperando: tickets.filter((t) => t.pedeResposta && !t.respondido).length,
     cruzamentos: cruzamentos(linhas),
+    /* CC-376, fatia 3: a awareness viaja junto do cruzamento porque ela é uma
+       propriedade DELE, não uma leitura à parte. Calcular na tela criaria uma
+       segunda conta para "os dois se falaram?", e duas contas discordam. */
+    awareness: awareness(cruzamentos(linhas).disputados, tickets),
     /* Quantas sessões diferentes seguram rota aqui. Uma sessão com três rotas
        não é o mesmo risco que três sessões com uma cada, e o número sozinho
        não distinguia os dois casos. */

@@ -103,6 +103,33 @@ export function setFederacao({ token, enviarPara }) {
  * tela de origem, e copiar o conteúdo aqui criaria uma segunda verdade que
  * envelhece sozinha.
  */
+/**
+ * CC-352: as pastas onde o cockpit procura projeto.
+ *
+ * Pedido dele em 25/08, ditado por voz: *"é importante que o cockpit pergunte
+ * onde vai ser a pasta de projetos (…) e lá na barra de tarefas, vai ter como
+ * ela configurar isso (…) e ela pode adicionar múltiplas pastas também, caso
+ * ela goste de trabalhar com projetos de música, projetos de outras coisas"*.
+ *
+ * ⚠️ **A LEITURA de várias pastas existe desde 26/08, e a escrita não existia.**
+ * `projectsBases()` já unia quatro origens, e a única editável (`projectsBases`
+ * no config) só podia ser mexida abrindo o arquivo à mão. Ele não abre esse
+ * arquivo. Metade do recurso ficou meses inalcançável, e era justamente a
+ * metade que ele pediu.
+ *
+ * **Lista vazia devolve o comportamento automático**, e não "nenhuma pasta":
+ * `projectsBases()` cai na detecção quando não há nada escolhido, então limpar
+ * a lista é voltar ao padrão, nunca ficar sem projeto nenhum.
+ */
+export function setPastasDeProjeto(pastas) {
+  const cfg = readConfig()
+  const limpas = [...new Set((Array.isArray(pastas) ? pastas : [])
+    .map((p) => String(p || '').trim())
+    .filter(Boolean))].slice(0, 20)
+  writeConfig({ ...cfg, projectsBases: limpas })
+  return limpas
+}
+
 export function setPaineisMeus(paineis) {
   const cfg = readConfig()
   const limpos = (Array.isArray(paineis) ? paineis : []).slice(0, 9).map((p) => ({
