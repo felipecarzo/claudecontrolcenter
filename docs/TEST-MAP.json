@@ -35,7 +35,7 @@
   "endereco": {
    "total": 92,
    "existe": 92,
-   "funciona": 6,
+   "funciona": 7,
    "explica": 0,
    "estreito": 0,
    "profundo": 0
@@ -5981,7 +5981,7 @@
      "como": "a rota está declarada"
     },
     "funciona": {
-     "coberto": null,
+     "coberto": "test.mjs",
      "como": "a rota é citada em teste"
     },
     "explica": {

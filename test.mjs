@@ -5285,6 +5285,55 @@ if (process.platform !== 'win32') {
   console.log('  ok   CC-361: o liberar escrita está na tela do dia a dia, com alvo e confirmação')
 }
 
+/* ── CC-433: o MVP existia, chegava na tela, e a tela nunca desenhou ───────
+ *
+ * Pergunta dele em 30/08, ditada por voz: *"por que nas versões dos projetos do
+ * PC eu não tenho as mesmas configurações que eu tenho nos que estão na VPS,
+ * exemplo definição de MVP?"*.
+ *
+ * Fui medir e achei o contrário do esperado: **o painel não mostrava o MVP de
+ * projeto NENHUM**, nem dos daqui. O servidor já entregava o campo inteiro em
+ * `/api/framework`, com nome e critérios, e a tela nunca desenhou. Dez dos
+ * vinte e três projetos desta máquina têm MVP definido, e os dez estavam
+ * invisíveis.
+ *
+ * ⚠️ **A entrevista escreve esse MVP**, e ele já tinha reclamado que ninguém a
+ * usava. Não usar é o SINTOMA: quem responde quinze perguntas e não vê o
+ * resultado em lugar nenhum não responde uma segunda vez.
+ */
+{
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+
+  assert.match(v3, /function blocoMvp\(fw\)/,
+    'a tela precisa saber desenhar o MVP: o servidor entrega há meses e ninguém lia')
+  assert.match(v3, /blocoMvp\(fw\)/,
+    'e alguém precisa CHAMAR: função escrita e não chamada é a peça inalcançável de novo')
+  console.log('  ok   CC-433: a tela desenha o MVP, e o bloco é chamado de verdade')
+
+  /* Sem MVP não desenha nada. Um bloco vazio com o rótulo "pronto quer dizer"
+     e nada embaixo afirmaria que o projeto não tem definição, quando o que
+     acontece é que ela nunca foi escrita. */
+  assert.match(v3, /if \(!m \|\| !m\.nome\) return ''/,
+    'projeto sem MVP não ganha bloco vazio: ausência não é o mesmo que "não definido"')
+  console.log('  ok   CC-433: projeto sem MVP não ganha um bloco em branco')
+
+  /* O contador só entra com critério. "0 de 0" ocupa espaço e não informa
+     nada, que é a régua da casa para todo número desta tela. */
+  assert.match(v3, /criterios\.length\s*\n?\s*\? '<span class="cc-mvp-placar">/,
+    'o placar só aparece quando há critério para contar')
+  console.log('  ok   CC-433: o contador só aparece quando há o que contar')
+
+  /* ⚠️ **Leitura, não edição.** Escolha dele entre as três que apresentei.
+     Editar exigiria mexer na lista fechada de ações do pedido remoto, que é o
+     que impede a fila de virar execução arbitrária na outra máquina. */
+  const F = await import('./src/federacao.mjs')
+  assert.ok(!F.ACOES_DE_PEDIDO.some((a) => /mvp/i.test(a)),
+    'nenhuma ação de MVP entrou na lista do pedido remoto: editar não foi o que '
+    + 'ele escolheu, e a lista fechada é a trava que protege a outra máquina')
+  console.log('  ok   CC-433: nenhuma ação nova entrou na lista fechada do pedido remoto')
+}
+
+
 /* ── CC-431: o nome com barra era recusado, e a recusa estava certa ────────
  *
  * Print dele em 30/08, com o erro na tela: *"o seu clique não foi gravado: nome
