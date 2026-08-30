@@ -2530,7 +2530,7 @@ A ordem sugerida lá dentro, e o segundo item vale destacar: **fazer o pacote
 ficar rico responde à queixa dele imediatamente e não depende de nenhuma decisão
 de arquitetura.**
 
-### CC-434 🔴 30/08: três cópias do mesmo produto, e um dia inteiro perdido nisso
+### CC-434 🟡 30/08: três cópias do mesmo produto (as travas já saíram da velha)
 
 **Medido em 30/08, e é o item que justifica a frente inteira.**
 
@@ -2550,7 +2550,25 @@ PIOR (o CC-362 daqui achou três causas, o refeito achou uma). Nada disso deu
 erro em lugar nenhum: o gate passava nas duas cópias, porque cada uma testava a
 si mesma.
 
-**O que fechar isto exige, e nenhuma parte é código:** um número de versão que
+**Feito em 30/08, e é a metade que não precisava dele:** as 39 travas do PC
+saíram da pasta velha e passaram a rodar da **versão instalada**. Medido antes:
+35 menções à pasta velha e zero à nova. Depois: zero e 41.
+
+⚠️ **O passo do meio quase deixou tudo pior, e vale registrar.** `cc hooks
+install` da instalada **acrescentou** em vez de substituir, porque não reconhece
+como "a mesma trava" um caminho diferente: ficaram 35 velhas mais 41 novas, e
+cada trava rodaria DUAS vezes, uma com código de 27/08. Foi preciso limpar as
+antigas à parte, com cópia de segurança antes.
+
+**E o script de limpeza errou na primeira tentativa, do jeito mais perigoso:**
+ele procurava o caminho em `command`, e `command` é só `"node"` — o caminho mora
+em `args`. Resultado: "0 removidas" e um relatório dizendo que estava limpo, com
+as 35 velhas de pé. Só apareceu porque a contagem foi refeita DEPOIS.
+
+Provado com as travas da instalada respondendo: a abertura de sessão anuncia o
+modo certo, e o gate de escrita decide certo.
+
+**O que fechar o RESTO exige, e nenhuma parte é código:** um número de versão que
 ande, um lugar só que seja o produto, e o hábito de perguntar ao remoto antes de
 abrir trabalho. As travas do PC ainda apontam para `proj_controlcenter`; ele
 decidiu em 30/08 que **o `cockpit` é o produto**.
