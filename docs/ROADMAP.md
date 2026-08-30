@@ -2530,6 +2530,30 @@ A ordem sugerida lá dentro, e o segundo item vale destacar: **fazer o pacote
 ficar rico responde à queixa dele imediatamente e não depende de nenhuma decisão
 de arquitetura.**
 
+### CC-443 ✅ 30/08: o programa abria o painel DESTA máquina, não o cockpit inteiro
+
+Pergunta dele, e ela achou um defeito: *"se eu abrir o cockpit por esse programa
+ele abre o exato mesmo cockpit da vps?"*
+
+**Medido na hora: não.** O painel local mostrava **uma máquina, esta**, com 14
+agentes. A razão é o desenho da conexão, que tem um sentido só: o PC empurra, a
+VPS junta. A pasta de pacotes recebidos **nem existe** no PC, porque ele não
+recebe de ninguém. Abrindo pelo programa, ele veria só o próprio computador
+achando que estava vendo tudo.
+
+**Agora o programa abre o endereço para onde esta máquina reporta**, onde o
+trabalho de todas as máquinas está junto. O painel local vira o plano B: sem
+internet, ou com a VPS fora do ar, ele abre o daqui e **diz que abriu o daqui**.
+
+A frase importa tanto quanto o comportamento: sem ela, uma tela com uma máquina
+só pareceria o cockpit inteiro num dia de rede ruim, que é pior do que não
+abrir. `cc app --local` força o daqui quando ele quiser.
+
+**Um detalhe que decide se funciona:** o painel exposto na internet responde
+`401` até o login. Isso conta como NO AR, e não como fora: o navegador pede a
+senha na janela, e ela fica guardada no perfil próprio dela, então o login é uma
+vez só. Tratar `401` como "fora do ar" faria o programa cair no local sempre.
+
 ### CC-434 🟡 30/08: três cópias do mesmo produto (as travas já saíram da velha)
 
 **Medido em 30/08, e é o item que justifica a frente inteira.**

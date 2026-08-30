@@ -1430,19 +1430,61 @@ switch (cmd) {
    */
   case 'app': {
     const P = await import('./src/platform.mjs')
-    const up = await daemon.ensureUp(port)
-    const r = P.abrirComoApp(up.url)
+    const { readConfig: lerCfg } = await import('./src/config.mjs')
+
+    /* CC-443: o programa abre o cockpit COMPLETO, não o retrato desta máquina.
+     *
+     * Pergunta dele em 30/08: *"se eu abrir o cockpit por esse programa ele
+     * abre o exato mesmo cockpit da vps?"*. Medido na hora: **não**. O painel
+     * local mostrava UMA máquina, esta, porque a conexão tem um sentido só (o
+     * PC empurra, a VPS junta) e a pasta de pacotes recebidos nem existe aqui.
+     *
+     * Então o programa passa a abrir o endereço para onde esta máquina reporta,
+     * onde o trabalho de todas elas está junto. O painel local continua
+     * existindo e vira o plano B: sem internet, ou com a VPS fora do ar, ele
+     * abre o daqui e DIZ que abriu o daqui. Sem essa frase, ele olharia uma
+     * tela com uma máquina só achando que está vendo tudo, que é pior do que
+     * não abrir.
+     */
+    const forcarLocal = has('--local')
+    const alvoRemoto = forcarLocal ? null : (lerCfg().federacao?.enviarPara || null)
+
+    /** No ar é qualquer resposta do servidor, inclusive a que pede senha: `401`
+     *  quer dizer que ele está de pé e vai pedir login na janela, que é o certo
+     *  para um painel exposto na internet. Só falta de resposta conta como fora. */
+    const respondeu = async (url) => {
+      try {
+        const r = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(6000) })
+        return r.status > 0
+      } catch { return false }
+    }
+
+    let url = null
+    let onde = ''
+    if (alvoRemoto && await respondeu(alvoRemoto)) {
+      url = alvoRemoto
+      onde = 'o cockpit inteiro, com todas as máquinas'
+    } else {
+      const up = await daemon.ensureUp(port)
+      url = up.url
+      onde = alvoRemoto
+        ? 'SÓ ESTA MÁQUINA: o cockpit de fora não respondeu agora'
+        : 'só esta máquina (nenhum cockpit de fora configurado)'
+    }
+
+    const r = P.abrirComoApp(url)
     if (r.ok) {
       console.log(`\n  cockpit aberto em janela própria`)
-      console.log(`  ${up.url}\n`)
+      console.log(`  ${onde}`)
+      console.log(`  ${url}\n`)
       break
     }
     /* Falha em voz alta, e ainda assim abre: ficar sem o painel porque a janela
        bonita não deu certo seria trocar o que ele precisa pelo enfeite. */
     console.error(`\n  não consegui abrir em janela própria: ${r.erro}`)
     console.error(r.caiuNaAba
-      ? `  abri numa aba comum: ${up.url}\n`
-      : `  e nem numa aba. Abra à mão: ${up.url}\n`)
+      ? `  abri numa aba comum: ${url}\n`
+      : `  e nem numa aba. Abra à mão: ${url}\n`)
     break
   }
 
