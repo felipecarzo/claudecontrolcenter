@@ -2580,6 +2580,36 @@ A ordem sugerida lá dentro, e o segundo item vale destacar: **fazer o pacote
 ficar rico responde à queixa dele imediatamente e não depende de nenhuma decisão
 de arquitetura.**
 
+### CC-445 🟡 30/08: o framework viaja com o método, o MVP e os pedidos (falta o recebimento)
+
+A lacuna foi levantada pela sessão da VPS em `docs/ALINHAMENTO-2026-08-30.md`,
+como conferência para esta sessão não refazer trabalho: o retrato do framework
+mandava **seis campos** por projeto (`existe`, `ligado`, `modo`, `fase`,
+`perfil`, `modulos`) e ficavam de fora `metodo`, `mvp`, `autorizado`, `pedidos`.
+
+**O que mais falta fazer sentido sem:** a FASE viajava sozinha (`execucao`), e
+fase sem o método que a define não diz de quantas ela é nem o que vem depois. Do
+outro lado dava para desenhar o nome e nada mais.
+
+Segue a condição dele ao aprovar o desenho do coletor: *"as informações que o pc
+passe pra vps as mais ricas possíveis pra gente ter controle dos projetos, das
+tarefas, das sprints, roadmaps, enfim, tudo"*.
+
+**Feito, no lado que MANDA:** `metodo`, `mvp` (nome e até 40 critérios, com o
+feito de cada um), `autorizado` e `pedidos` entram no retrato. Medido: o campo
+passou a ter 11,8 KB, com 11 dos 24 projetos declarando MVP.
+
+⚠️ **FALTA o lado que RECEBE, e sem ele nada disso chega.** Medido no ida e
+volta: `metodo` e `mvp` **somem** na travessia, porque `validarPacote` recorta
+campo a campo (é rede entrando em disco) e não conhece os campos novos. É o
+mesmo defeito do CC-440, e o alinhamento avisou dele com todas as letras antes
+de acontecer de novo.
+
+`src/federacao.mjs` está reivindicado pela rota `front` desde o merge de 30/08.
+**Ticket aberto no quadro, e o arquivo não foi tocado.** O lado que manda ficou
+ligado de propósito: campo desconhecido já é ignorado, então não quebra nada, e
+no dia em que o recebimento entrar funciona sem tocar aqui de novo.
+
 ### CC-443 ✅ 30/08: o programa abria o painel DESTA máquina, não o cockpit inteiro
 
 Pergunta dele, e ela achou um defeito: *"se eu abrir o cockpit por esse programa

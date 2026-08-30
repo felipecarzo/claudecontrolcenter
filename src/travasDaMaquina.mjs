@@ -183,6 +183,43 @@ export function frameworkDaqui(jobs = [], { projetos = null } = {}) {
            modo e não tem como desenhar as travas, que foi o que ele estranhou:
            ligou o modo e a lista continuou sem aparecer. */
         modulos: Object.fromEntries(Object.keys(MODULOS).map((m) => [m, moduloLigado(m, projeto)])),
+
+        /* CC-445: o resto do que o projeto sabe sobre si, e a lista veio do
+           alinhamento que a sessão da VPS escreveu em 30/08.
+           Ele já tinha dito o critério ao aprovar o desenho do coletor: *"as
+           informações que o pc passe pra vps as mais ricas possíveis pra gente
+           ter controle dos projetos, das tarefas, das sprints, roadmaps, enfim,
+           tudo"*.
+
+           `metodo` é o que mais falta fazer sentido sem: a FASE viajava sozinha
+           ("execucao"), e fase sem o caminho que a define não diz de quantas
+           ela é nem o que vem depois. Do outro lado dava para desenhar o nome e
+           nada mais.
+
+           O `mvp` vai com os critérios cortados em 40: é o que responde "o que
+           este projeto entrega" na tela remota, e a lista inteira de um projeto
+           antigo encheria o pacote sozinha. */
+        metodo: estado.metodo || null,
+        mvp: estado.mvp && typeof estado.mvp === 'object'
+          ? {
+            nome: String(estado.mvp.nome || '').slice(0, 300),
+            criterios: (Array.isArray(estado.mvp.criterios) ? estado.mvp.criterios : [])
+              .slice(0, 40)
+              .map((c) => ({ texto: String(c?.texto || '').slice(0, 300), feito: Boolean(c?.feito) })),
+          }
+          : null,
+        /* O que o projeto JÁ liberou e o que está esperando resposta. Sem os
+           dois, o cartão remoto mostra a trava e não tem como mostrar por que
+           ela está segurando alguém agora. */
+        autorizado: (Array.isArray(estado.autorizado) ? estado.autorizado : [])
+          .slice(0, 40).map((a) => String(a).slice(0, 200)),
+        pedidos: (Array.isArray(estado.pedidos) ? estado.pedidos : [])
+          .slice(0, 20)
+          .map((p) => ({
+            alvo: String(p?.alvo || '').slice(0, 200),
+            motivo: p?.motivo ? String(p.motivo).slice(0, 300) : null,
+            quando: p?.quando || null,
+          })),
       })
     } catch {
       /* Arquivo ilegível não é projeto sem framework: é leitura que falhou, e a
