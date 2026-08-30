@@ -2561,16 +2561,36 @@ hora"*.
 - `test-publicar.mjs` no gate, com o caso que prova o ponto inteiro: editar a
   pasta de obras não muda a que roda.
 
-⚠️ **O que FALTA, e não foi feito de propósito:** apontar o que sobe no logon
-para a cópia instalada. Medido em 30/08, e há um obstáculo real: são dois
-caminhos ativos (o `control-center.vbs` do Startup e a Tarefa Agendada), e o
-lançador `src/arrancar.ps1` faz **`git pull` a cada arranque** — a cópia
-instalada não tem `.git`, então ele quebraria ali.
+**O apontamento, feito na sequência:**
 
-**Quem pegar decide uma coisa antes de escrever código:** o lançador da versão
-instalada não puxa nada (ela só muda quando alguém publica), então ou ele ganha
-um ramo sem `git pull`, ou a instalada usa um lançador próprio. Enquanto isso
-não for feito, o mecanismo existe e o benefício ainda não chegou nele.
+- **O lançador aprendeu a diferença.** `src/arrancar.ps1` só faz `git pull`
+  quando a pasta É um repositório. A cópia instalada não tem `.git`, e não deve
+  puxar nada: ela muda quando alguém publica, nunca sozinha. Sem essa guarda o
+  mesmo lançador gritaria "not a git repository" a cada arranque, e a promessa
+  de "a versão que roda não muda sem eu mandar" seria falsa.
+- **O atalho de logon já aponta para a instalada.** Conferido no `.vbs`:
+  `...\AppData\Local\AgentCockpit\cc.mjs`.
+
+⚠️ **O que ainda falta é DELE, e precisa de administrador.** A Tarefa Agendada
+que supervisiona continua apontando para outra pasta, e trocar isso dá "Acesso
+negado" sem elevação, o que já está registrado nas armadilhas desde 26/08.
+
+**E o dado que a medição achou é pior que o esperado:** a tarefa aponta para
+`proj_controlcenter\src\arrancar.ps1`, ou seja, **quem o Windows sobe no logon
+dele hoje é a pasta VELHA**, a de 27/08. É a mesma raiz do CC-434, agora medida
+do lado do sistema operacional.
+
+O comando, num terminal como administrador:
+
+```
+cd "C:\Users\lfeli.ALIENWARE-LIPE\AppData\Local\AgentCockpit"
+node cc.mjs daemon servico --port 8099
+```
+
+**Um resíduo medido junto, e não foi mexido de propósito:** havia três painéis
+vivos, dois na porta 8099. Quem serve é o do `cockpit`; o do `proj_controlcenter`
+está vivo e **não serve nada**, gastando memória à toa. É o mesmo formato do
+CC-353. Matar sem trocar a tarefa antes só o faria voltar.
 
 ### CC-438 🔴 30/08: a síntese pelo opencode provavelmente não funciona no Windows
 
