@@ -210,6 +210,40 @@ export function validarPacote(bruto) {
               .filter(([, v]) => typeof v === 'boolean')
               .map(([k, v]) => [String(k).slice(0, 40), v]))
             : null,
+
+          /* CC-445: o resto do que o projeto sabe sobre si.
+             ⚠️ **Estes campos precisam existir AQUI para chegarem do outro
+             lado.** Esta função recorta campo a campo de propósito, porque é
+             rede entrando em disco, e campo que ela não conhece some CALADO: o
+             pacote sai rico e chega magro, sem erro em lugar nenhum. Aconteceu
+             no CC-440 com o roadmap, e o alinhamento entre as máquinas avisou
+             disto com todas as letras antes de acontecer de novo.
+             `metodo` é o que mais falta: a fase viajava sozinha (`execucao`), e
+             fase sem o método que a define não diz de quantas ela é nem o que
+             vem depois. */
+          metodo: f?.metodo ? String(f.metodo).slice(0, 40) : null,
+          mvp: f?.mvp && typeof f.mvp === 'object' && !Array.isArray(f.mvp)
+            ? {
+              nome: String(f.mvp.nome || '').slice(0, 300),
+              criterios: (Array.isArray(f.mvp.criterios) ? f.mvp.criterios : [])
+                .slice(0, 40)
+                .map((c) => ({ texto: String(c?.texto || '').slice(0, 300), feito: Boolean(c?.feito) }))
+                .filter((c) => c.texto),
+            }
+            : null,
+          /* O que o projeto já liberou, e o que espera resposta. Sem os dois, o
+             cartão remoto desenha a trava e não tem como dizer por que ela está
+             segurando alguém agora. */
+          autorizado: (Array.isArray(f?.autorizado) ? f.autorizado : [])
+            .slice(0, 40).map((a) => String(a).slice(0, 200)).filter(Boolean),
+          pedidos: (Array.isArray(f?.pedidos) ? f.pedidos : [])
+            .slice(0, 20)
+            .map((p) => ({
+              alvo: String(p?.alvo || '').slice(0, 200),
+              motivo: p?.motivo ? String(p.motivo).slice(0, 300) : null,
+              quando: p?.quando ? String(p.quando).slice(0, 40) : null,
+            }))
+            .filter((p) => p.alvo),
         })).filter((f) => f.projeto)
         : null,
       em: Number(bruto.em) || Date.now(),

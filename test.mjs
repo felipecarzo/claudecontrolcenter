@@ -4731,6 +4731,57 @@ if (process.platform !== 'win32') {
       '`ligado` ausente conta como LIGADO: é o formato antigo, e estado velho não pode virar projeto destravado de surpresa')
     assert.equal(fw[0].modo, 'restritivo')
 
+    /* CC-445: o retrato leva o método, o MVP, o autorizado e os pedidos, e a
+       lacuna foi levantada pela sessão da VPS no alinhamento entre as máquinas.
+       O que mais falta fazer sentido sem: a FASE viajava sozinha, e fase sem o
+       método que a define não diz de quantas ela é nem o que vem depois.
+
+       ⚠️ **A asserção que importa é a da TRAVESSIA**, no fim deste bloco:
+       mandar campo novo sem ensinar `validarPacote` a recebê-lo faz o dado sair
+       rico e chegar magro, sem erro em lugar nenhum. Aconteceu no CC-440 com o
+       roadmap, e este caso existe para não acontecer uma terceira vez. */
+    fs.writeFileSync(path.join(proj, '.framework', 'estado.json'), JSON.stringify({
+      metodo: 'mvp-basico', modo: 'sugestivo', fase: 'execucao',
+      mvp: { nome: 'o painel dos agentes', criterios: [{ texto: 'uma linha por agente', feito: true }, { texto: 'falta esta', feito: false }] },
+      autorizado: ['src/x.mjs'],
+      pedidos: [{ alvo: 'src/y.mjs', motivo: 'preciso mexer', quando: '2026-08-30T10:00:00Z' }],
+    }))
+    const rico = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }], { projetos: [] })[0]
+    assert.equal(rico.metodo, 'mvp-basico', 'a fase sem o método não diz de quantas ela é')
+    assert.equal(rico.mvp.nome, 'o painel dos agentes')
+    assert.equal(rico.mvp.criterios.length, 2)
+    assert.equal(rico.mvp.criterios[0].feito, true, 'o que já está pronto viaja junto')
+    assert.deepEqual(rico.autorizado, ['src/x.mjs'])
+    assert.equal(rico.pedidos[0].alvo, 'src/y.mjs', 'o que espera resposta dele também')
+
+    const F445 = await import('./src/federacao.mjs')
+    const viajado = F445.validarPacote(JSON.parse(JSON.stringify(
+      F445.montarPacote({ maquina: { id: 'pc', nome: 'PC' }, framework: [rico] }),
+    ))).pacote.framework[0]
+    assert.equal(viajado.metodo, 'mvp-basico', 'o método TEM que sobreviver à validação')
+    assert.equal(viajado.mvp.nome, 'o painel dos agentes')
+    assert.equal(viajado.mvp.criterios.length, 2)
+    assert.deepEqual(viajado.autorizado, ['src/x.mjs'])
+    assert.equal(viajado.pedidos[0].alvo, 'src/y.mjs')
+
+    // e nada do que vem da rede é copiado como veio
+    const sujo445 = F445.validarPacote({
+      maquina: { id: 'x' },
+      framework: [{
+        projeto: 'p', metodo: 'm'.repeat(200),
+        mvp: { nome: 'n'.repeat(900), criterios: [{ texto: '', feito: 'sim' }, { texto: 't', feito: 1 }] },
+        autorizado: ['a'.repeat(900), ''], pedidos: [{ alvo: '' }, { alvo: 'b', motivo: 'c'.repeat(900) }],
+      }],
+    }).pacote.framework[0]
+    assert.equal(sujo445.metodo.length, 40)
+    assert.equal(sujo445.mvp.nome.length, 300)
+    assert.equal(sujo445.mvp.criterios.length, 1, 'critério sem texto não entra')
+    assert.equal(sujo445.mvp.criterios[0].feito, true, '`feito` vira booleano de verdade')
+    assert.equal(sujo445.autorizado.length, 1, 'entrada vazia não entra')
+    assert.equal(sujo445.pedidos.length, 1, 'pedido sem alvo não entra')
+    assert.equal(sujo445.pedidos[0].motivo.length, 300)
+    console.log('  ok   CC-445: método, MVP, autorizado e pedidos viajam, e chegam do outro lado')
+
     fs.writeFileSync(path.join(proj, '.framework', 'estado.json'),
       JSON.stringify({ ligado: false, modo: 'restritivo' }))
     assert.equal(T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }], { projetos: [] })[0].ligado, false,
