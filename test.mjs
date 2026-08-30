@@ -5285,6 +5285,49 @@ if (process.platform !== 'win32') {
   console.log('  ok   CC-361: o liberar escrita está na tela do dia a dia, com alvo e confirmação')
 }
 
+/* ── CC-434: "fora do quadro" mentia para quem estava DENTRO ───────────────
+ *
+ * Ele, em 30/08: *"ue, nao to vendo o projeto ibrics no painel"*.
+ *
+ * Estava lá, com quatro cartões na coluna ANDANDO, e ao mesmo tempo escondido
+ * atrás de uma linha dobrada que dizia "13 projetos sem roadmap, FORA DO QUADRO
+ * POR ISSO".
+ *
+ * ⚠️ **A causa é uma conta feita em dois lugares que enxergam coisas
+ * diferentes.** Quem decide "está fora" é o servidor, e ele vê duas das três
+ * fontes do quadro: as frentes do roadmap e as pendências dele. A terceira, os
+ * to-dos dos agentes, só existe na tela, e é justamente por ela que o
+ * `VPS_ibrics` entra.
+ *
+ * Projeto sem roadmap MAS com agente trabalhando não está fora de nada. Dizer
+ * que está é a tela afirmando o contrário do que ela desenha logo abaixo, e
+ * esconder o nome numa lista de ausentes é como ele não achou.
+ */
+{
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+
+  assert.match(v3, /const noQuadro = new Set\(todos\.map\(\(c\) => c\.projeto\)\)/,
+    'a lista dos que ficaram de fora tem que ser conferida contra o que a TELA '
+    + 'desenhou, e não só contra o que o servidor contou')
+  assert.match(v3, /semRoadmap \|\| \[\]\)\.filter\(\(x\) => !noQuadro\.has\(x\.projeto\)\)/,
+    'projeto que aparece no quadro nao pode ficar na lista de quem esta fora dele')
+  console.log('  ok   CC-434: quem tem cartão no quadro sai da lista dos ausentes')
+
+  /* E o texto mudou junto: "sem roadmap, fora do quadro por isso" afirmava uma
+     causa que nem sempre é verdade. Agora ele diz o fato observado. */
+  /* ⚠️ Procura no que vai para a TELA, não no arquivo inteiro: a frase antiga
+     continua escrita no comentário que explica o defeito, e ela deve continuar.
+     Comentário é memória; o que mede é o texto que ele lê. */
+  const naTela = v3.match(/' projetos? sem roadmap[^']*'/g) || []
+  assert.ok(naTela.length >= 1, 'a linha dos sem roadmap precisa existir')
+  assert.ok(!naTela.some((t) => /fora do quadro por isso/.test(t)),
+    'a frase antiga dava uma causa que nem sempre vale: projeto sem roadmap pode '
+    + 'estar no quadro por agente. Achado: ' + naTela.join(' | '))
+  assert.ok(naTela.some((t) => /sem nada no quadro/.test(t)))
+  console.log('  ok   CC-434: a frase diz o fato observado, e não uma causa que nem sempre vale')
+}
+
+
 /* ── CC-433: o MVP existia, chegava na tela, e a tela nunca desenhou ───────
  *
  * Pergunta dele em 30/08, ditada por voz: *"por que nas versões dos projetos do

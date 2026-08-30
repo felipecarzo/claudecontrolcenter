@@ -12642,12 +12642,24 @@
        * Ela é uma LINHA, e não uma faixa de alarme: projeto sem roadmap não é
        * defeito. Os sites de cliente em produção não têm nem precisam ter. O
        * que não pode é ele não saber que existem. */
-      const sem = DATA.trabalho.semRoadmap || [];
+      /* ⚠️ **CC-434: "fora do quadro" estava MENTINDO para parte deles.**
+         Ele, em 30/08: *"ué, não tô vendo o projeto ibrics no painel"*. Estava
+         lá, com quatro cartões na coluna ANDANDO, e ao mesmo tempo escondido
+         atrás desta linha dobrada, que diz "fora do quadro por isso".
+         A causa: a conta de quem fica de fora é feita no SERVIDOR, e ele só
+         enxerga duas das três fontes do quadro (as frentes do roadmap e as
+         pendências dele). A terceira, os to-dos dos agentes, só existe aqui na
+         tela, e é justamente por ela que o `VPS_ibrics` entra.
+         Projeto sem roadmap MAS com agente trabalhando não está fora de nada:
+         ele está no quadro, e escondê-lo numa lista de ausentes é a tela
+         afirmando o contrário do que ela mesma desenha logo abaixo. */
+      const noQuadro = new Set(todos.map((c) => c.projeto));
+      const sem = (DATA.trabalho.semRoadmap || []).filter((x) => !noQuadro.has(x.projeto));
       const linhaSem = sem.length
         ? '<details class="kb-sem-roadmap"><summary>'
           + esc(sem.length + (sem.length > 1
-            ? ' projetos sem roadmap, fora do quadro por isso'
-            : ' projeto sem roadmap, fora do quadro por isso'))
+            ? ' projetos sem roadmap e sem nada no quadro'
+            : ' projeto sem roadmap e sem nada no quadro'))
           + '</summary><div class="kb-sem-lista">'
           /* O selo de máquina vai junto, e é a regra dele para TODO quadro que
              mostra projeto: *"onde tá dizendo que cada projeto está na vps,
