@@ -2823,6 +2823,45 @@ deles, que é a guarda contra o lixo. **Custo medido antes de trocar**, porque o
 desenho antigo se justificava por ele: 3,2ms + 2,9ms contra os 6,6ms da versão
 que se dizia barata, num ciclo de 30 segundos.
 
+### CC-446 ✅ 30/08: o log da conexão, que ele pediu na primeira mensagem do dia
+
+**Pedido original dele, e ficou o dia inteiro sem resposta:** *"preciso que esse
+standalone me diga como tá a conexão e os arquivos que tão passando pela
+conexão, tipo um log mesmo"*.
+
+Medido na hora: **não existia histórico nenhum.** O que havia era uma variável
+em memória com UM registro, que some quando o processo reinicia. E ele reinicia
+no logon, ao publicar versão nova, e a cada clique em reiniciar. Um log que
+morre nesses momentos não responde *"funcionou enquanto eu estava fora?"*, que é
+a pergunta.
+
+**Feito, e é o item 1c do desenho do coletor** (a tela mínima que ele escolheu):
+
+- `src/diarioEnvios.mjs` guarda os últimos 200 envios EM DISCO, com o que foi
+  dentro de cada um: agentes, projetos, frentes de roadmap, tamanho, e o erro
+  quando falhou. 200 cobre menos de duas horas a um envio por 30 segundos, que é
+  o alcance de um log de conexão.
+- **O abrigo não é opcional:** `~/.claude` é somente leitura dentro do sandbox
+  da VPS, e escrita nova ali falha calada. Tenta a casa, cai para
+  `~/.local/share/agent-cockpit/`, e quem lê **junta os dois lugares**, senão
+  metade do histórico sumiria sem explicação.
+- `/conexao` é a página, servida fora do painel de propósito: ela precisa
+  responder justamente quando a outra ponta está fora do ar. Sem CSS de fora,
+  sem biblioteca, sem fonte baixada.
+- A gravação fica dentro de `try`: **o log é testemunha, nunca obstáculo.**
+  Falhar em gravar não pode derrubar o envio seguinte.
+
+Provado no ar: `no ar`, último envio com **14 agentes, 11 projetos, 584 frentes,
+176 KB**, e 39 de 39 travas ligadas.
+
+**Dois tropeços do gate no caminho, e os dois estavam certos:**
+
+1. Ele recusou a rota nova como *"rota de API que ninguém chama"*. A regra é
+   boa (servidor respondendo o que nenhuma tela pede é peça inalcançável), e a
+   lista de telas que ele varre não conhecia a página nova. Ensinada.
+2. O mapa de testes ficou desatualizado, e ele avisou que é gerado por comando e
+   nunca editado à mão.
+
 ### CC-439 🟡 30/08: a cópia que RODA, separada da que se edita (motor pronto, falta apontar)
 
 **É o primeiro dos três caminhos, e ele escolheu começar por aqui.** Resolve a

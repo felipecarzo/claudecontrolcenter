@@ -664,7 +664,12 @@ const comRespostas = (extra = {}) => ({
         exigir o caminho literal daria cinco falsos positivos, medidos. */
   const web = readFileSync('src/web.mjs', 'utf8')
   const rotas = [...new Set([...web.matchAll(/url\.pathname === '(\/api\/[a-z0-9/-]+)'/g)].map((m) => m[1]))]
-  const fontes = ['src/ui_v2.html', 'src/ui_novo.html', 'src/ui.html', 'cc.mjs']
+  /* `src/conexao.html` entrou em 30/08 com o CC-446: é a tela mínima da
+     conexão, servida em `/conexao`, e ela existe FORA do painel de propósito
+     (precisa responder quando a outra ponta está fora do ar). Sem ela nesta
+     lista, a rota que ela consome contaria como morta, e o gate mandaria
+     apagar uma peça que tem tela. */
+  const fontes = ['src/ui_v2.html', 'src/ui_novo.html', 'src/ui.html', 'src/conexao.html', 'cc.mjs']
     .map((f) => { try { return readFileSync(f, 'utf8') } catch { return '' } }).join('\n')
   /**
    * As exceções, cada uma com o motivo. **Exceção declarada é diferente de peça
