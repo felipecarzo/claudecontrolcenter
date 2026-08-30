@@ -143,6 +143,33 @@ assert.equal(volta.pacote.maquina.nome, 'ALIENWARE-LIPE')
 assert.ok(volta.pacote.recebidoEm > 0)
 ok('pacote sobrevive ao ida e volta por JSON')
 
+// ----------------------------- CC-440: o contrato entre quem manda e quem lê
+{
+  const { CONTRATO } = await import('./src/federacao.mjs')
+
+  const p = montarPacote({ maquina: PC, jobs: [] })
+  assert.equal(p.contrato, CONTRATO, 'o pacote declara o formato que fala')
+  assert.equal(Object.keys(p)[0], 'contrato', 'primeiro campo: quem depura o JSON cru vê o formato antes do conteúdo')
+  assert.equal(validarPacote(p).pacote.contrato, CONTRATO)
+
+  /* A regra que decide se isto serve para alguma coisa: pacote de versão
+     ANTERIOR continua sendo aceito. Recusar por causa do número faria a máquina
+     sumir do painel sem explicação, e quem olha concluiria que ela está
+     desligada. O número serve para AVISAR, nunca para fechar a porta. */
+  const velho = { ...p }
+  delete velho.contrato
+  const v = validarPacote(velho)
+  assert.equal(v.ok, true, 'pacote sem o campo continua entrando')
+  assert.equal(v.pacote.contrato, 0, '0 quer dizer "não diz", que é toda versão anterior a 30/08')
+
+  // vem da rede, então nada é confiado: texto, negativo e objeto viram 0
+  for (const ruim of ['3; DROP TABLE', -5, null, {}, [], NaN, Infinity]) {
+    assert.equal(validarPacote({ ...p, contrato: ruim }).pacote.contrato, 0, `contrato ${JSON.stringify(ruim)} tinha que virar 0`)
+  }
+  assert.equal(validarPacote({ ...p, contrato: 1.9 }).pacote.contrato, 1, 'quebrado trunca, não arredonda para cima')
+  ok('CC-440: o pacote diz o formato, aceita quem não diz, e não confia no que vem da rede')
+}
+
 // ------------------------------- CC-165: o backlog de cada projeto no pacote
 {
   const { resumirBacklogs } = await import('./src/federacao.mjs')
@@ -176,6 +203,48 @@ ok('pacote sobrevive ao ida e volta por JSON')
   assert.equal(resumirBacklogs([null, undefined]).length, 0)
   ok('projeto sem roadmap fica de fora, e lista suja não explode')
 
+  /* CC-440, 30/08: o campo passa a levar o MAPA, não só a contagem.
+   *
+   * Condição dele ao aprovar o desenho: *"é importante que as informações que o
+   * pc passe pra vps sejam as mais ricas possíveis pra gente ter controle dos
+   * projetos, das tarefas, das sprints, roadmaps, enfim, tudo"*. Até aqui
+   * viajavam a contagem e SEIS títulos, o que só faz sentido para quem está na
+   * mesma máquina e pode abrir o arquivo. Da VPS ele não pode. */
+  const rico = resumirBacklogs([{ projeto: 'meu_projeto', mapa }])[0]
+  assert.equal(rico.lista.length, 3, 'a lista leva TODAS as frentes, não seis')
+  assert.equal(rico.lista[0].grupo, 'Aberto', 'cada frente sabe de que sprint veio')
+  assert.equal(rico.lista[1].estado, 'feito', 'o estado viaja, então a VPS separa feito de aberto')
+  assert.equal(rico.sprints.length, 1)
+  assert.equal(rico.sprints[0].titulo, 'Aberto')
+  assert.equal(rico.cortado, false)
+  // os campos antigos continuam: campo que some é tela que quebra sem erro
+  assert.equal(rico.frentes, 3)
+  assert.deepEqual(rico.titulos, ['CC-01 fazer a coisa', 'CC-03 outra coisa'])
+  ok('CC-440: o backlog leva frentes, sprints e estado, sem perder os campos antigos')
+
+  /* A citação é o que dá sentido à frente para ele, porque são as palavras
+     dele. Vai cortada: uma fala longa vezes 581 frentes seria a maior parte do
+     pacote. */
+  const comFala = resumirBacklogs([{
+    projeto: 'x',
+    mapa: { grupos: [{ titulo: 'G', frentes: [{ titulo: 'T', estado: 'aberto', citacao: 'a'.repeat(900) }] }] },
+  }])[0]
+  assert.equal(comFala.lista[0].citacao.length, 300, 'a fala dele viaja, e cortada')
+
+  /* Cortar em silêncio faria a VPS mostrar 600 de 900 sem ninguém saber, que é
+     o mesmo formato de defeito de campo vazio contra campo ausente. */
+  const gigante = {
+    grupos: [{
+      titulo: 'G',
+      frentes: Array.from({ length: 700 }, (_, i) => ({ titulo: `F${i}`, estado: 'aberto' })),
+    }],
+  }
+  const noTeto = resumirBacklogs([{ projeto: 'grande', mapa: gigante }])[0]
+  assert.equal(noTeto.lista.length, 600, 'o teto protege o pacote')
+  assert.equal(noTeto.frentes, 700, 'mas a contagem continua dizendo a verdade')
+  assert.equal(noTeto.cortado, true, 'e o corte é declarado, nunca silencioso')
+  ok('CC-440: o teto por projeto protege o pacote e avisa quando cortou')
+
   // o teto de títulos existe porque o pacote inteiro tem limite de 2 MB
   const muitas = {
     grupos: [{ frentes: Array.from({ length: 50 }, (_, i) => ({ titulo: `CC-${i} item`, estado: 'aberto' })) }],
@@ -191,6 +260,33 @@ ok('pacote sobrevive ao ida e volta por JSON')
   const validado = validarPacote(JSON.parse(JSON.stringify(comBacklog)))
   assert.equal(validado.ok, true)
   assert.equal(validado.pacote.backlogs[0].abertas, 2)
+
+  /* CC-440: o mapa precisa SOBREVIVER à travessia, e este caso existe porque
+     ele não sobreviveu na primeira tentativa. `validarPacote` recorta campo a
+     campo de propósito (é rede entrando em disco), então campo que ela não
+     conhece some calado: o pacote saía rico daqui e chegava magro do outro
+     lado, sem erro em lugar nenhum. */
+  const doOutroLado = validado.pacote.backlogs[0]
+  assert.equal(doOutroLado.lista.length, 3, 'a lista tem que atravessar a validação')
+  assert.equal(doOutroLado.sprints.length, 1, 'e as sprints também')
+  assert.equal(doOutroLado.lista[0].grupo, 'Aberto')
+
+  // e, como tudo aqui, sem confiar no remetente
+  const sujo = validarPacote({
+    maquina: PC,
+    backlogs: [{
+      projeto: 'x',
+      lista: [{ titulo: 'a'.repeat(900), grupo: 1, estado: {}, peso: 'muito', citacao: 'b'.repeat(900) }],
+      sprints: [{ titulo: '', frentes: 'dez' }],
+      cortado: 'sim',
+    }],
+  }).pacote.backlogs[0]
+  assert.equal(sujo.lista[0].titulo.length, 200, 'título gigante é cortado')
+  assert.equal(sujo.lista[0].citacao.length, 300)
+  assert.equal(sujo.lista[0].peso, null, 'peso que não é número vira null, nunca NaN')
+  assert.equal(sujo.sprints.length, 0, 'sprint sem título não entra')
+  assert.equal(sujo.cortado, true, 'o aviso de corte vira booleano de verdade')
+  ok('CC-440: o mapa atravessa a validação, e nada do que vem da rede é copiado como veio')
   ok('o backlog sobrevive ao ida e volta por JSON')
 
   // pacote malformado não pode virar tela travada nem campo estranho

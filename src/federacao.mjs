@@ -43,6 +43,41 @@ export const LIMITE_PACOTE = 2 * 1024 * 1024
  *  (marcado como velho) em vez de sumir. */
 export const SEM_CONTATO_MS = 5 * 60 * 1000
 
+/**
+ * CC-440 — o número do CONTRATO entre quem manda e quem recebe.
+ *
+ * ## Por que existe
+ *
+ * Proposta dele em 30/08: *"assim independente da versão do programa aqui, a
+ * vps vai receber os dados e ela processa lá"*. Sem um número, isso é esperança:
+ * a validação campo a campo perdoa muita coisa, mas **a VPS não tem como dizer
+ * "este coletor está velho demais", e o coletor não tem como saber que a outra
+ * ponta espera algo novo**. As duas pontas ficam adivinhando pelo silêncio, que
+ * é a família de defeito mais cara deste painel.
+ *
+ * ## Quando SOBE, e é a regra inteira
+ *
+ * Só quando o SIGNIFICADO de um campo muda: ele passa a querer dizer outra
+ * coisa, muda de unidade, ou sai.
+ *
+ * **Acrescentar campo NÃO sobe.** Campo desconhecido já é ignorado por
+ * `validarPacote`, que recorta campo a campo, e é isso que permite as duas
+ * pontas andarem em ritmos diferentes. Subir a cada campo novo transformaria o
+ * número num contador de commits, e a primeira coisa que alguém faria seria
+ * ignorá-lo.
+ *
+ * ## O que NÃO fazer com ele
+ *
+ * **Nunca recusar o pacote por causa do número.** Dado velho com aviso é melhor
+ * que silêncio: recusar calado é a máquina sumindo do painel sem explicação, e
+ * quem olha conclui que aquele computador está desligado. A divergência vira
+ * aviso na tela, nunca porta fechada.
+ *
+ * 1 = o formato de 30/08, o primeiro a se declarar. Pacote sem o campo é `0`,
+ * "não diz", e continua valendo: são todas as versões anteriores a esta.
+ */
+export const CONTRATO = 1
+
 const seguro = (s) => String(s || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40)
 
 /**
@@ -59,6 +94,11 @@ export function validarPacote(bruto) {
     ok: true,
     pacote: {
       maquina: { id, nome: String(bruto.maquina?.nome || id).slice(0, 60) },
+      /* CC-440: qual formato esta máquina fala. Ausente vira `0`, "não diz", que
+         é toda versão anterior a 30/08 — e continua sendo aceita, porque recusar
+         por causa do número faria a máquina sumir do painel sem explicação. O
+         número serve para a tela AVISAR, nunca para fechar a porta. */
+      contrato: Number.isFinite(bruto.contrato) ? Math.max(0, Math.trunc(bruto.contrato)) : 0,
       jobs: lista(bruto.jobs, 500),
       /* CC-353: recortado campo a campo como todo o resto, e não aceito cru.
          Ele nunca chegou preenchido até hoje, então não há formato antigo a
@@ -91,6 +131,27 @@ export function validarPacote(bruto) {
         abertas: Number(b?.abertas) || 0,
         titulos: (Array.isArray(b?.titulos) ? b.titulos : [])
           .slice(0, 6).map((t) => String(t).slice(0, 160)),
+        /* CC-440: o mapa de verdade, recortado com o mesmo rigor do resto.
+           Isto é REDE entrando em disco: cada campo é convertido e cortado, e
+           nada do que chega é copiado como veio. O teto aqui é o mesmo do
+           remetente, e existe de novo porque quem manda pode ser qualquer um. */
+        sprints: (Array.isArray(b?.sprints) ? b.sprints : []).slice(0, TETO_FRENTES).map((s) => ({
+          titulo: String(s?.titulo || '').slice(0, 200),
+          estado: s?.estado ? String(s.estado).slice(0, 24) : null,
+          frentes: Number(s?.frentes) || 0,
+          itens: Number.isFinite(s?.itens) ? Number(s.itens) : null,
+          feitos: Number.isFinite(s?.feitos) ? Number(s.feitos) : null,
+        })).filter((s) => s.titulo),
+        lista: (Array.isArray(b?.lista) ? b.lista : []).slice(0, TETO_FRENTES).map((f) => ({
+          titulo: String(f?.titulo || '').slice(0, 200),
+          grupo: String(f?.grupo || '').slice(0, 200),
+          estado: f?.estado ? String(f.estado).slice(0, 24) : null,
+          itens: Number.isFinite(f?.itens) ? Number(f.itens) : null,
+          feitos: Number.isFinite(f?.feitos) ? Number(f.feitos) : null,
+          peso: Number.isFinite(f?.peso) ? Number(f.peso) : null,
+          citacao: f?.citacao ? String(f.citacao).slice(0, 300) : null,
+        })).filter((f) => f.titulo),
+        cortado: Boolean(b?.cortado),
       })).filter((b) => b.projeto),
       /* CC-263: os três campos novos, e a validação existe porque **nada aqui
          confia no remetente**: um pacote é rede entrando em disco.
@@ -743,30 +804,86 @@ export const enxugarRotas = (quadros) => quadros
  *
  * ## O que viaja, e o que fica
  *
- * Só a contagem e os títulos das frentes ABERTAS. Nunca o texto do
- * `ROADMAP.md`, e a razão é o CC-161: o arquivo viaja pelo git, que é o
- * transporte com histórico e resolução de conflito. Mandar o conteúdo aqui
- * criaria uma segunda cópia, mais nova ou mais velha que a do git dependendo
- * do dia, e ninguém saberia qual vale.
+ * **Nunca o TEXTO do `ROADMAP.md`**, e a razão é o CC-161: o arquivo viaja pelo
+ * git, que é o transporte com histórico e resolução de conflito. Mandar o
+ * conteúdo aqui criaria uma segunda cópia, mais nova ou mais velha que a do git
+ * dependendo do dia, e ninguém saberia qual vale. **Esta regra continua
+ * valendo.** O que viaja é o MAPA lido do arquivo, que é leitura derivada e não
+ * disputa a fonte com o git.
  *
  * Medido em 19/08: ler o roadmap dos 23 projetos custa **14ms**, então isto
  * cabe no ciclo sem o cuidado que as horas exigiram.
+ *
+ * ## CC-440, 30/08: de contagem para o mapa inteiro
+ *
+ * Até aqui viajavam a contagem e SEIS títulos por projeto, e o comentário
+ * original dizia o porquê: *"quem quiser a lista inteira abre o projeto, onde o
+ * arquivo está por completo"*. Isso pressupõe que quem olha está na mesma
+ * máquina. **Da VPS ele não tem como abrir**, e a queixa dele foi exatamente
+ * essa: *"não tenho acesso a todos os formatos (…) dos projetos do PC quando
+ * vou ver lá no cockpit na VPS"*.
+ *
+ * Medido antes de mudar, no PC dele: **581 frentes e 621 itens** nos projetos
+ * daqui. O que viajava eram **5 KB**; o mapa inteiro custa **170 KB**, contra um
+ * teto de 2.048 KB. Cabe com margem de doze vezes, então o corte de seis nunca
+ * foi limitação técnica: foi escolha de quando o consumidor era a tela local.
  */
+/**
+ * Teto por projeto, e o número saiu da medição, não de um palpite redondo.
+ *
+ * Medido no PC dele em 30/08: 581 frentes nos 11 projetos com roadmap, e a
+ * distribuição é torta. O `cockpit` sozinho tem **292**; o segundo maior tem 77.
+ * Um teto de 200 pareceria generoso e cortaria justamente o projeto que ele mais
+ * olha, que é o pior resultado possível.
+ *
+ * 600 cobre o maior de hoje com o dobro de folga, e ainda impede que um arquivo
+ * estranho encha o pacote sozinho. Com o mapa inteiro dos 11, o campo custa 170
+ * KB contra um teto de 2.048 KB.
+ */
+export const TETO_FRENTES = 600
+
 export function resumirBacklogs(mapas = []) {
   return mapas
     .filter((m) => m && m.mapa)
     .map(({ projeto, mapa }) => {
-      const frentes = (mapa.grupos || []).flatMap((g) => g.frentes || [])
+      const grupos = mapa.grupos || []
+      const frentes = grupos.flatMap((g) => (g.frentes || []).map((f) => ({ ...f, grupo: g.titulo })))
       const abertas = frentes.filter((f) => f.estado !== 'feito')
       return {
         projeto,
         atualizadoEm: mapa.atualizadoEm || null,
         frentes: frentes.length,
         abertas: abertas.length,
-        /* Seis títulos, não todos: o pacote tem teto de 2 MB e a tela mostra
-           uma linha por projeto. Quem quiser a lista inteira abre o projeto,
-           onde o arquivo está por completo. */
+        /* Mantido: era o campo inteiro até 30/08, e alguma tela pode estar
+           lendo dele. Campo que some é tela que quebra sem erro. */
         titulos: abertas.slice(0, 6).map((f) => f.titulo),
+
+        /* CC-440: o mapa de verdade, e não só a contagem.
+           Condição dele em 30/08: *"é importante que as informações que o pc
+           passe pra vps sejam as mais ricas possíveis pra gente ter controle
+           dos projetos, das tarefas, das sprints, roadmaps, enfim, tudo"*. */
+        sprints: grupos.slice(0, TETO_FRENTES).map((g) => ({
+          titulo: String(g.titulo || '').slice(0, 200),
+          estado: g.estado || null,
+          frentes: (g.frentes || []).length,
+          itens: g.itens ?? null,
+          feitos: g.feitos ?? null,
+        })),
+        lista: frentes.slice(0, TETO_FRENTES).map((f) => ({
+          titulo: String(f.titulo || '').slice(0, 200),
+          grupo: String(f.grupo || '').slice(0, 200),
+          estado: f.estado || null,
+          itens: f.itens ?? null,
+          feitos: f.feitos ?? null,
+          peso: f.peso ?? null,
+          /* A citação é o que dá sentido à frente para ele, porque são as
+             palavras dele. Cortada, porque uma fala longa multiplicada por 581
+             frentes seria a maior parte do pacote. */
+          citacao: f.citacao ? String(f.citacao).slice(0, 300) : null,
+        })),
+        /* Cortar em silêncio faria a VPS mostrar 200 de 400 sem ninguém saber,
+           que é o mesmo formato de defeito de campo vazio contra campo ausente. */
+        cortado: frentes.length > TETO_FRENTES,
       }
     })
 }
@@ -805,6 +922,9 @@ export function montarPacote({
     lastPrompt: j.lastPrompt, entregueEmAberto: j.entregueEmAberto, sinais: j.sinais,
   }))
   return {
+    /* CC-440: primeiro campo do pacote, de propósito. Quem for depurar isto
+       lendo o JSON cru vê o formato antes de tentar entender o conteúdo. */
+    contrato: CONTRATO,
     maquina, jobs: enxuto, servidores, uso, tempo, rotas: enxugarRotas(rotas), backlogs,
     /* Campo ausente e campo vazio são coisas diferentes na federação: `null`
        quer dizer "esta máquina não sabe dizer", e `[]` quer dizer "sabe, e não
