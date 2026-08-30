@@ -15,6 +15,106 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 29/08: o cartão do agente, e o que ele esconde
+
+Pedido dele em 29/08, ditado por voz, logo depois de ver o botão de avançar de
+fase funcionando. **O elogio abre e é a especificação:**
+
+> *"Que interessante esse botão avançar de fase ali no painel, ele é legal.
+> Seria legal que, quando eu precisasse liberar alguma coisa no painel, ele
+> aparecesse assim pra mim lá no painel, criasse um botão dentro da área onde
+> fica o (…). Uma coisa que eu percebi que está confuso pra mim é: o card podia
+> ficar menor, né? Informações resumidas. Tipo assim, quando você diminui o
+> card, ter uma opção de visualizar os cards menores, e ao invés de serem um do
+> lado do outro com scroll somente, poder ver tipo cards como se fosse Trello,
+> sabe? Card do Trello. Só com o nome e o agente. E aí, se quiser abrir mais
+> sessão e tal, a pessoa abre outra opção. E também uma versão com algum outro
+> design diferente que você possa sugerir. Botar três modos de visualização,
+> né."*
+
+⚠️ **Isto NÃO é o CC-400, que já está feito.** Aquele é sobre os cartões de
+**projeto**, na aba Projetos. Este é sobre os cartões de **agente**, e ele
+chegou pelo mesmo caminho: o cartão carrega tudo, e tudo junto vira nada.
+
+### CC-413 ✅ 29/08: o que depende dele vira botão, não recado
+
+O gatilho, e ele nomeou o modelo: *"quando eu precisasse liberar alguma coisa
+no painel, ele aparecesse assim pra mim (…) criasse um botão"*, como o de
+avançar de fase.
+
+**O caso real que gerou o pedido, no mesmo dia:** no projeto carzo o guarda do
+framework recusou uma escrita em código e registrou o pedido de liberação. O
+pedido apareceu **no chat**, e o chat é onde ele passa os olhos, não onde ele
+procura. Um botão no cartão é onde ele decide.
+
+O que o botão precisa carregar, e é o que separa botão de recado:
+
+- **o que está travado**, em uma frase, sem nome de arquivo solto
+- **o que acontece se ele liberar**, também em uma frase
+- **liberar só aquilo**, e não abrir tudo: foi o que o próprio guarda ofereceu
+
+⚠️ **Toda pendência que hoje só existe em texto é candidata a virar botão**, e
+não só a liberação de escrita: aprovação de plano, escolha entre dois caminhos,
+resposta a pergunta decisiva. O critério é o mesmo: se a sessão não anda sem
+ele, aquilo não pode morar só no chat.
+
+### CC-414 ✅ 29/08: o cartão do agente no modo Trello
+
+> *"cards como se fosse Trello, sabe? Card do Trello. Só com o nome e o agente.
+> E aí, se quiser abrir mais sessão e tal, a pessoa abre outra opção."*
+
+Duas informações no cartão fechado, **e ele disse quais**: o nome do trabalho e
+o agente. O resto abre com um toque.
+
+⚠️ **"Só com o nome e o agente" é a especificação, não uma aproximação.** O
+cartão de hoje mostra estado, tempo, projeto, frente, lista de tarefas e
+botões, e é essa soma que ele chamou de confusa. Acrescentar "só mais um campo
+porque é útil" é desfazer o pedido.
+
+### CC-415 ✅ 29/08: três modos, e a escolha fica guardada
+
+Os três, sendo que o terceiro ele pediu que eu sugerisse:
+
+1. **cartão** — o de hoje, tudo à mão;
+2. **Trello** — nome e agente, abre com um toque;
+3. **fila** — a sugestão, abaixo.
+
+⚠️ **A escolha é dele e tem que sobreviver ao redesenho de 2 segundos**, pela
+mesma razão do CC-400: senão volta ao padrão na cara dele a cada tique.
+
+### CC-416 ✅ 29/08: o terceiro modo, sugerido por mim e aprovado por ele
+
+⚠️ **A proposta é minha, a aprovação é dele.** Ele pediu *"uma versão com algum
+outro design diferente que você possa sugerir"*, eu propus o modo fila, e ele
+respondeu **"serve, pode fazer assim"** em 29/08. Os três modos ficam fechados:
+cartão cheio, Trello, e fila por estado.
+
+**O modo fila não é outro desenho do mesmo cartão: é outra ordenação.** Os dois
+primeiros modos agrupam por projeto, que é como o trabalho está organizado. O
+terceiro agrupa por **estado**, que é como a atenção dele funciona:
+
+| Faixa | O que cai aqui |
+|---|---|
+| esperando você | liberação, aprovação, pergunta decisiva sem resposta |
+| andando | o agente está trabalhando agora |
+| entregue | terminou, e ele ainda não olhou |
+| travado | parou e não é ele que destrava |
+
+Cada agente vira uma tira fina de uma linha. A faixa "esperando você" abre no
+topo e nunca colapsa.
+
+**Por que isto vale a pena, e não é enfeite:** o CC-413 cria botões de
+liberação, e eles vão nascer espalhados por cartões de projetos diferentes.
+Sem um lugar onde o que depende dele se junta, o botão resolve o "onde clicar"
+e não resolve o "como eu descubro que existe". As duas peças juntas fecham o
+problema; separadas, cada uma resolve metade.
+
+E encosta numa dor que ele já registrou: **41 pendências dele espalhadas**,
+algumas paradas há 15 dias. Aquela lista existe e ele não a vê; a faixa é a
+mesma lista onde ele já está olhando.
+
+---
+
 ## ▶ Frente nova, aberta em 29/08: a tela Análise, e o que ela ainda não explica
 
 Pedido dele em 29/08, com print, e ele começa elogiando:
@@ -65,7 +165,7 @@ telas, e não só as telas.
 bloco reabre sozinho a cada dois segundos. É a mesma dor do CC-334 com a gaveta
 dos parados, e do modo de ver dos projetos.
 
-### CC-411 🔵 29/08: a aba das abertas, com cartões
+### CC-411 ✅ 29/08: a aba das abertas, com cartões
 
 > *"por que que agora, na fila, prontas e as abertas não tem mais uma aba
 > chamada abertas também? Com cards como se fosse realmente o Trello."*
@@ -74,7 +174,7 @@ Hoje "AGORA", "NA FILA" e "PRONTAS" são três colunas de texto corrido, e as
 abertas aparecem embaixo num bloco separado. Ele quer as quatro no mesmo lugar,
 e em cartão.
 
-### CC-412 🔵 29/08: a síntese, escrita pela IA
+### CC-412 ✅ 29/08: a síntese, escrita pela IA
 
 > *"eu acho que a gente pode ter uma forma de uma da IA analisar todos esses
 > dados e me dar uma síntese em cima, tipo um resumo."*
@@ -229,7 +329,7 @@ duas versões vivas significam duas telas para consertar quando algo quebrar. O
 prazo importa: isto é uma bifurcação com data para acabar, não um segundo painel
 permanente.
 
-### CC-397 🔵 29/08: o painel 2.0 nasce ao lado, servido em caminho próprio
+### CC-397 ✅ 29/08: o painel 2.0 nasce ao lado, servido em caminho próprio
 
 Cópia do de hoje, servida noutro endereço, sem tocar na raiz. A partir daí toda
 mudança de tela acontece lá.
@@ -240,12 +340,29 @@ Projetos separados por máquina. Ativar uma sessão move o projeto para a lista
 dos ativos, e o framework aparece nele. Voltando ao Remoto, ele vê o projeto com
 a sessão e pode abrir outra, no Coderoom ou no Claude.
 
-### CC-399 🔵 29/08: o menu redesenhado, com as 29 telas agrupadas
+### CC-399 ✅ 29/08: o menu redesenhado, com as telas agrupadas
 
-O que sai do mapa medido em `docs/produto/AS-TELAS.md`: três telas quase mortas,
-quatro que são o mesmo gesto, e a infraestrutura espalhada em quatro.
+O que saiu do mapa medido em `docs/produto/AS-TELAS.md`: três telas quase
+mortas, quatro que eram o mesmo gesto, e a infraestrutura espalhada em quatro.
 
-⚠️ **O quadro Kanban entra intocado**, e o mesmo vale para o que abre sessão.
+⚠️ **O quadro Kanban entrou intocado**, e o mesmo vale para o que abre sessão.
+
+**O que foi feito, em 29/08:** as quatro telas de "escolha um projeto" viraram a
+Análise com abas; as quatro de conhecimento viraram uma; as quatro de
+infraestrutura viraram Máquinas. O menu passou de 29 destinos para 20, em seis
+grupos, e todos com nome.
+
+**Dois defeitos achados olhando o menu de verdade, não o código:**
+
+- o grupo **INFRA aparecia com título e nada embaixo**. Grupo vazio é pior que
+  grupo ausente, porque promete um lugar que não existe. As duas telas que
+  moram nele estavam no grupo errado: Máquinas em ENGENHARIA (que é sobre o
+  método, não sobre o computador) e Ajustes em AGENTES (que é sobre sessões);
+- **oito telas ficavam soltas no alto, sem título nenhum**, então a primeira
+  palavra do menu só aparecia na nona linha. Viraram "O DIA A DIA", que é o que
+  elas são: as telas que ele abre sem motivo especial.
+
+O portão recusa grupo vazio e bloco sem título daqui em diante.
 
 ---
 
@@ -549,7 +666,7 @@ essa:
   ocupada**, com dono nenhum. Defeito pequeno e barato, mas ele suja qualquer
   contagem que se faça daqui em diante.
 
-### CC-372 🔵 27/08: uma coluna de PAUSADO no quadro
+### CC-372 ✅ 29/08: uma coluna de PAUSADO no quadro
 
 Nas palavras dele: *"a gente podia criar uma aba extra, entre trabalhando e em
 andamento, só que pausado. Por exemplo, eu não sei se já tem lá uma coluna pra
@@ -563,7 +680,163 @@ posar de trabalhando, mas também não pode desaparecer.
 ⚠️ **A coluna é do quadro, que é da rota `front`.** Quem pegar isto conversa com
 quem estiver no quadro antes de encostar.
 
-### CC-373 🔵 27/08: a cor da rota no cartão
+### CC-433 🔵 30/08: o MVP de um projeto de outra máquina
+
+Pergunta dele, ditada por voz em 30/08: *"por que nas versões dos projetos do
+PC eu não tenho as mesmas configurações que eu tenho nos que estão na VPS,
+exemplo definição de MVP? Antes de mudar, me fala o que acontece"*.
+
+**A explicação, medida:** o painel roda na VPS e enxerga o disco daqui. Projeto
+local abre de verdade, lendo `.framework/estado.json` (9,6 KB neste projeto, com
+método, fase, modo, autorizações, histórico, verificação e o **MVP** com nome e
+critérios).
+
+Projeto do PC chega por pacote de rede, empurrado a cada 30 segundos, com
+números e resumos. Do método viajam **oito campos**: `projeto, existe, ligado,
+modo, fase, perfil, erro, modulos`. O MVP não está entre eles, nem os critérios,
+nem o histórico, nem as autorizações.
+
+Por isso o cartão remoto mostra o seletor de modo e mais nada: o modo é um dos
+oito, e trocá-lo funciona porque vira um pedido curto que o PC executa.
+
+**Os três caminhos, apresentados a ele, esperando escolha:**
+
+1. **O PC manda o MVP junto, e o painel só MOSTRA.** O mais barato. Resolve
+   "quero ver o MVP do hutukara daqui" e não deixa editar;
+2. **O pedido aprende a carregar texto**, e o PC grava do outro lado. Aí dá para
+   definir o MVP pelo celular. É o mais caro dos três: hoje o pedido só leva
+   ações curtas, e a lista fechada de ações é o que impede a fila de virar
+   execução remota;
+3. **Deixar como está.**
+
+⚠️ **Não decidir sozinho.** Ele pediu a explicação ANTES da mudança, com todas
+as letras, e o caminho 2 mexe na trava que existe para o pedido não virar
+execução arbitrária na outra máquina.
+
+### CC-430 ✅ 30/08: o cartão diz há quanto tempo foi o último sinal
+
+Ele: *"o hatukara não tá parado, tô mexendo nele agora mesmo"*, sobre um cartão
+que dizia parado. Estava certo: entre a medida e aquele instante o agente voltou.
+
+**O painel não vê a tela dele, vê o último sinal**, que é a última escrita da
+sessão empurrada a cada 30s pela outra máquina. Enquanto uma ferramenta longa
+roda, ou enquanto ele lê, esse relógio não anda. Sem a idade, "trabalhando" e
+"trabalhando há 40 minutos" viravam a mesma linha.
+
+### CC-431 ✅ 30/08: o nome com barra era recusado, e a recusa estava certa
+
+Print dele com o erro: *"o seu clique não foi gravado: nome de projeto
+inválido"*. O nome de dois níveis nasceu no CC-427 e esta validação o recusava.
+
+⚠️ **A recusa estava certa em existir:** o nome vira CAMINHO do outro lado, e
+com `..` ou barra no começo o pedido escreveria fora da pasta de projetos da
+outra máquina. Mudou o critério, não a proteção: no máximo dois segmentos,
+nenhum `.` ou `..`, sem barra invertida, sem dois pontos, sem barra no começo
+nem no fim. Treze casos de travessia no portão.
+
+### CC-432 ✅ 30/08: o cartão dizia 1251px de altura para 234px de conteúdo
+
+Duas coisas no mesmo print dele.
+
+**O poço:** a grade que desliza no telefone estica todos os cartões até a altura
+do maior, e um projeto ligado desta máquina tem seletor, módulos e três fileiras
+de ação. `align-items: start` resolve, e o cartão dele caiu para 452px.
+
+**O que não dá para fazer daqui:** *"tb não aparece a opção de colocar pra
+definir mvp, só controles básicos do framework"*. É limite, não defeito, e a
+tela passou a dizer isso. Sem a frase, a ausência parecia defeito: ele procurou
+o botão, não achou, e não tinha como saber se estava quebrado ou se era assim.
+
+### CC-427 ✅ 30/08: a pasta abaixo de `projetos/` nem sempre É o projeto
+
+Queixa dele: *"o projeto pc_hutukara não tá aparecendo pra mim ativo em projetos
+pra eu mexer no framework. e ele tá ativo no pc"*.
+
+Seis agentes do PC em `D:\Documentos\projetos\games\hutukara`, e o painel
+chamava o projeto de **games**, a pasta que agrupa jogos. Sem casar com pasta de
+projeto de verdade, o cartão vinha sem raiz utilizável, e ligar o framework nele
+era impossível. Era o que ele estava tentando fazer.
+
+**Consertado nos dois lados, porque um só não bastava:**
+
+1. **Na origem**, `projectOf` pergunta ao disco: quando a pasta de cima não é
+   projeto e a de baixo é, desce um nível. Vale a partir de quando a outra
+   máquina rodar o código novo. **Só desce um:** `inovallbond/apps/pierre`
+   continua sendo `inovallbond`, senão todo monorepo mudaria de nome;
+2. **Aqui, sem esperar**, porque o dado já viaja: o subprojeto vem no mesmo
+   pacote. Quando o nome não casa com pasta nenhuma desta máquina e o caminho
+   confirma o `sub`, o nome vira o par `games/hutukara`.
+
+⚠️ **O conserto criou um defeito no meio do caminho**, pego medindo: a lista
+passou a dizer `games/hutukara` e a contagem de agentes continuou procurando
+`games`, então o cartão nasceu com zero agentes e cara de desligado com seis
+rodando dentro. Duas contas para a mesma pergunta, que é o defeito que este
+painel mais repete. Hoje é `nomeDoAgenteCom()`, exportada, e o portão guarda.
+
+### CC-429 ✅ 30/08: "ligados agora" ignorava as outras máquinas
+
+Print dele: *"olha, aqui ele tá aparecendo como offline em projetos"*.
+
+A faixa filtrava só os projetos DESTA máquina, então um projeto do PC com agente
+escrevendo cairia junto dos parados, na seção "sem pasta aqui". O painel existe
+para ele ver o que está rodando em qualquer lugar, e a faixa mais importante da
+tela excluía metade do mundo.
+
+⚠️ **Medindo, o caso DELE era outro:** os seis agentes estavam calados, um há 37
+minutos e o resto há horas. A tela estava certa naquele instante. Consertado
+assim mesmo: o defeito existia e ia morder no pior momento, quando houvesse
+trabalho de verdade acontecendo na outra máquina.
+
+### CC-428 ✅ 30/08: o guarda do resumo barrou uma resposta certa
+
+Ele reclamou de "resposta sem o separador" numa resposta que tinha o separador.
+O transcrito estava com 18 MB, o turno teve dezenas de chamadas de ferramenta, e
+o guarda leu antes do último pedaço estar no disco.
+
+A defesa que existia relia até o texto "parar de crescer", e é aí que o
+raciocínio furava: **tamanho igual entre duas leituras não prova que o turno
+acabou**, porque a escrita do último pedaço pode não ter começado. A régua nova
+é o relógio do arquivo.
+
+O próprio arquivo dele já dizia a lição, e ela foi paga pela quarta vez: *"falso
+positivo é o caminho mais curto para hook desligado"*.
+
+### CC-424 ✅ 30/08: as duas telas de projeto viram uma
+
+Ele, olhando o menu: *"então você criou menus novos e deixou os antigos
+repetidos? qual o sentido? deleta os que são redundantes"*.
+
+**Ele estava certo, e a medida mostrou o par inteiro.** Remoto e Projetos
+listavam os MESMOS 34 projetos, com 22 das 24 ações idênticas. O que impedia
+apagar uma das duas na hora: **Projetos juntava tudo que é de fora numa seção
+só, e o Remoto separava por NOME de máquina**, que é o que ele pediu em 27/08
+(*"os projetos eram separados por desktop e vps"*).
+
+A separação veio para Projetos, com contagem por máquina e o aviso de quem está
+sem contato. Aí a outra ficou mesmo redundante e saiu.
+
+⚠️ **Apagada de verdade, e não só do menu:** saiu a tela (33 linhas), a função
+que a alimentava (68 linhas) e as cinco pontas que apontavam para ela. Tela
+órfã no código é a peça inalcançável de novo, que é o defeito que este dia
+inteiro perseguiu. O endereço `#ligados` continua valendo e cai em Projetos,
+para nenhum favorito virar tela em branco.
+
+**Os pares que NÃO foram apagados, com o motivo medido:** Cockpit e Agora dão
+66% de palavras em comum, mas um leva ao outro (resumo e lista inteira);
+Análise e Conhecimento dão 83% porque citam os mesmos nomes de projeto, não
+porque fazem a mesma coisa. A medida conta palavra repetida, não gesto
+repetido, e sozinha ela não decide.
+
+### CC-425 ✅ 30/08: a tela do Coderoom esperava o tique para pedir
+
+Achado pela varredura das telas, que a acusou de "curta": ela abria mostrando
+"lendo as conversas…" por 3 a 5 segundos.
+
+**A leitura responde em 0,02s.** Não havia gancho nenhum ao abrir a tela, então
+ela ficava parada até o tique de 2 em 2 segundos reparar que a tela tinha
+mudado. Agora pede na hora, e enche em 1,5s.
+
+### CC-373 ✅ 29/08: o cruzamento pintado no cartão, e não a cor da rota
 
 Nas palavras dele: *"seria legal aparecer a cor da rota que ele está, então por
 exemplo se um agente está na rota amarela, em andamento, e um outro agente
@@ -574,13 +847,36 @@ O que ele está pedindo, traduzido: **um sinal visual de colisão**, para ele ve
 o risco antes de o estrago acontecer. Cor é o meio; o fim é ver dois agentes no
 mesmo lugar.
 
-**Melhoria a discutir com ele:** cor por rota não escala (são 53 linhas e ele
-não vai decorar paleta), e ela responde "qual rota" quando a pergunta dele é
-"tem alguém junto comigo?". Duas rotas DIFERENTES no mesmo arquivo é o caso
-perigoso, e a cor por rota justamente não o mostraria. Proposta alternativa:
-**pintar o CRUZAMENTO, não a rota.** Cartão sozinho fica neutro; cartão que
-divide arquivo com outra rota ocupada ganha a marca, e tocar nela diz com quem e
-em qual arquivo. Perguntar antes de escolher.
+**Ele aprovou trocar o meio, em 29/08, depois de ver a medida.** O fim era ver o
+risco; a cor era o meio.
+
+**Os três motivos, medidos no quadro real, e o terceiro decide:**
+
+1. **42 rotas neste projeto**, sete ocupadas. Quarenta e duas cores num painel
+   que já usa verde, amarelo, âmbar e vermelho com significado próprio, e que
+   ele lê no telefone;
+2. **zero arquivos disputados hoje.** O caso que ele quer enxergar é raro, e uma
+   cor que aparece sempre para sinalizar algo raro vira paisagem em dois dias;
+3. **a cor por rota diria o CONTRÁRIO do risco.** Duas sessões na mesma rota não
+   acontece, porque a rota tem um dono só e é para isso que ela existe. O perigo
+   é duas rotas **diferentes** no mesmo arquivo, e aí as duas teriam cores
+   diferentes, o que se lê como "estão separados".
+
+**E um achado que a medida trouxe de graça:** duas das sete rotas ocupadas não
+declararam arquivo nenhum. São invisíveis para qualquer conta de cruzamento, e
+pintadas por rota apareceriam tranquilas como as outras. "Não sei onde ele mexe"
+é risco, não ausência de risco, então elas também ganham marca.
+
+**O que foi feito:** cartão sem risco fica neutro, sem cor nova nenhuma. Cartão
+cuja rota divide arquivo com outra rota viva ganha a marca, e tocar nela diz com
+quem e em qual arquivo. A marca aparece nos TRÊS modos de ver, na forma curta
+nos compactos: alarme que some ao trocar a forma de olhar é pior que alarme
+nenhum.
+
+⚠️ **A ligação é pelo ID DA SESSÃO, não pelo campo `route` do agente.** Medido
+em 29/08: os 70 cartões declaram `route: "main"`, que é a branch do CLI, e não a
+rota do método. A primeira versão casava por nome de rota e devolvia nada para
+todos, sempre. O portão fixa isso.
 
 ### CC-374 ✅ 27/08: os tickets à mão, por projeto e por rota
 
@@ -595,7 +891,7 @@ acima é o porquê: os 13 recados e os 16 pedidos já estão gravados, com autor
 alvo, arquivo e data. Falta só uma tela. E os 16 pendentes provam que a falta da
 tela não é cosmética: ela está engolindo decisões que alguém devia ter tomado.
 
-### CC-375 🔵 27/08: trocar o modo do agente sem sair da tela
+### CC-375 ✅ 29/08: trocar o modo do agente sem sair da tela
 
 Nas palavras dele: *"seria legal eu poder mudar de continuativo pra outros modos
 dos agentes que estão sendo marcados aqui também. Talvez não o tempo todo,
@@ -611,7 +907,7 @@ falta é a lista curta, de todos de uma vez, sem rolar a tela.
 rota e sessão), e uma tela que mostre o modo sem dizer de ONDE ele vem repete o
 CC-362. O dado já existe pronto (`origemModo`, `origemModoTexto`, `rotaDoModo`).
 
-### CC-376 🟡 27/08 (fatias 1 e 2 feitas, a "awareness" fica): uma tela só para as rotas, com o mapa dos cruzamentos
+### CC-376 ✅ 29/08 (as três fatias): uma tela só para as rotas, com o mapa dos cruzamentos
 
 Nas palavras dele: *"seria legal ter uma aba lateral dedicada só pra essa questão
 das rotas, pra ver as rotas que estão sendo mexidas entre os agentes, e ver
@@ -638,6 +934,17 @@ de cada corte:**
    respondido). O caso de hoje é o exemplo bom: duas sessões no mesmo arquivo,
    quatro recados trocados, zero estrago. E é o contrário do acidente de 06/08,
    em que ninguém avisou ninguém.
+
+   **Feito em 29/08.** A awareness muda o VEREDITO, não só o texto: cruzamento
+   com recado trocado é âmbar e diz "os donos já trocaram N recados"; sem recado
+   nenhum é vermelho e diz "é exatamente o acidente de 06/08". Pintar os dois
+   igual apagaria a única diferença que ele pediu para ver.
+
+   ⚠️ **A conversa vale nos dois sentidos e sem citar o arquivo.** Dos 29
+   recados reais deste projeto, quase nenhum traz `arquivo` preenchido. Exigir
+   que o recado nomeie o arquivo disputado daria "ninguém se falou" em todo caso
+   real, e o alarme mais caro é o que toca sempre. Recado para uma TERCEIRA
+   sessão não conta, e o portão guarda isso.
 
 **Sobre "quais comandos eles estão mexendo próximos um do outro":** este pedaço
 não tem dado hoje. Nada registra que comando cada sessão roda. Antes de prometer,
@@ -2116,7 +2423,7 @@ modo desta sessão resolve para `restritivo`, que não trava, então o bloco nã
 tinha como aparecer numa captura. O que está provado é a peça e o caminho do
 clique, não a foto.
 
-### CC-362 🟡 27/08 (motor feito, tela é da rota `front`): a tela diz um modo e a trava usa outro
+### CC-362 ✅ 29/08: a tela diz um modo e a trava usa outro
 
 **As três causas medidas em 27/08, e nenhuma era "a tela não conta".** O
 diagnóstico de 26/08 apontava para a marca `🎚` vencendo o modo do projeto, o
@@ -2165,9 +2472,14 @@ projeto entrega `origemModo`, `origemModoTexto` e `rotaDoModo` para a tela.
 Gate com os casos novos, inclusive a prova negativa (sessão citada **não**
 herda) e a de que nenhum campo derivado sobra no arquivo.
 
-**Falta:** pintar no cartão do projeto. `src/ui_v2.html` é da rota `front`,
-ocupada, então virou ticket com recado. A frase já vai pronta de propósito:
-duas frases para a mesma coisa é como este item nasceu.
+**Fechado em 29/08:** o cartão pinta a origem, nos dois painéis. A linha "de
+onde" só aparece quando o modo **não** vem do projeto, que é o caso raro e o
+único que precisa ser dito: pintar todos faria a cor virar paisagem em um dia.
+
+Provado nos dois estados, no navegador: com todos os modos vindo do projeto,
+zero linhas na tela; forçando a origem para uma rota, as oito aparecem com a
+frase inteira. A frase vinha pronta do servidor desde 27/08 e ninguém a pintava,
+então a tela continuava dizendo metade da verdade com a mesma confiança.
 
 #### O registro original, de 26/08, quando o diagnóstico ainda era só de tela
 
@@ -2927,9 +3239,25 @@ lista no config, o campo único legado, e a descoberta como último recurso), e
 pastas de mentira. Quem só sabe lidar com uma continua funcionando (`projectsBase()`
 devolve a primeira).
 
-**Falta a parte do PC, e é dele:** o instalador PERGUNTAR as pastas e gravar a
-lista no config (`projectsBases`), mais o jeito de mudar isso depois pela barra
-de tarefas. É o mesmo instalador do CC-340. A leitura já espera essa lista.
+**Feito em 30/08: a outra metade que ele pediu na mesma frase.** A tela Ajustes
+ganhou o bloco "Onde ficam seus projetos": acrescenta pasta, tira pasta, e mostra
+**quantos projetos cada uma rende**, porque zero é o sintoma de caminho errado
+que ele lê sem abrir terminal. Pasta que não existe é recusada dizendo qual, e
+lista vazia volta ao automático em vez de deixar o painel sem projeto.
+
+⚠️ **A leitura existia desde 26/08 e a escrita não existia em lugar nenhum.** O
+campo do config só podia ser mexido abrindo o arquivo à mão, que é o que ele não
+faz. Metade do recurso ficou meses inalcançável, e era justamente a metade que
+ele pediu.
+
+⚠️ **E o bloco nasceu desenhando VAZIO, sem erro nenhum:** já existia uma função
+com o mesmo nome mais abaixo no arquivo, e a segunda apaga a primeira em
+silêncio. É a mesma família do id repetido que já apagou uma tela inteira aqui.
+O portão agora recusa nome de função repetido, e conferiu as 244 da tela.
+
+**Falta só a parte do PC, e é dele:** o instalador PERGUNTAR as pastas na
+primeira execução, mais o atalho na barra de tarefas. É o mesmo instalador do
+CC-340. A leitura e a escrita já estão prontas dos dois lados.
 
 Do bloco de notas `rascunho`, lido em 25/08. Palavras dele, ditadas por voz e
 normalizadas só na pontuação:
@@ -8101,7 +8429,19 @@ interruptor de travas por projeto, o histórico e o bloco de notas, que
 continuam presos na casa. O reporte ao painel, que era o que doía, não
 depende mais disso.
 
-### CC-156 🟢 em construção na sessão de tela: o redesenho do painel
+### CC-156 ✅ 30/08: o redesenho do painel, e ele virou a raiz
+
+**Fechado com a troca de endereço**, a pedido dele: *"pode substituir o painel
+antigo por esse por favor"*. O painel redesenhado é `cockpit.carzo.com.br`, e os
+dois anteriores continuam alcançáveis em `/v2` e `/v1`, que é a volta atrás.
+
+O resultado, medido: **de 29 destinos de menu para 19**, em seis grupos e todos
+com nome. Quatro conjuntos de telas viraram uma cada (Análise, Conhecimento,
+Máquinas) e o par Remoto/Projetos virou um só. Nenhum endereço antigo quebrou.
+
+⚠️ **O que ele mandou não mudar não mudou:** o quadro Kanban e o caminho de
+abrir sessão entraram intocados, e foi o que ele pediu em 27/08 ao desenhar o
+plano em etapas.
 
 > **Quem constrói:** a sessão que pegar a rota `front`, dedicada a tela. Ele
 > abriu um agente só para isso em 21/08, para o trabalho de sistema seguir em

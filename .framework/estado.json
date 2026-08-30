@@ -2,26 +2,8 @@
  "metodo": "mvp-basico",
  "fase": "execucao",
  "ligado": true,
- "modo": "sugestivo",
- "autorizado": [
-  "hooks/commit-auto.mjs",
-  "src/routia.mjs",
-  "src/frameworkDisco.mjs",
-  "src/caixaGit.mjs",
-  "test-modo-rota.mjs",
-  "src/framework.mjs",
-  "test-framework.mjs",
-  "test.mjs",
-  "hooks/framework-inicio.mjs",
-  "src/web.mjs",
-  "src/trabalho.mjs",
-  "src/ui_v2.html",
-  "src/projetos.mjs",
-  "test-endereco.mjs",
-  "src/config.mjs",
-  "src/rotas.mjs",
-  "test-rotas.mjs"
- ],
+ "modo": "continuativo",
+ "autorizado": [],
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
   "criterios": [
@@ -296,6 +278,61 @@
    "motivo": null,
    "modo": "sugestivo",
    "quando": "2026-08-28T02:59:47.070Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/roadmap.mjs",
+   "motivo": null,
+   "modo": "sugestivo",
+   "quando": "2026-08-28T20:22:16.506Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "hooks/quadro-guard.mjs",
+   "motivo": null,
+   "modo": "sugestivo",
+   "quando": "2026-08-28T23:27:34.681Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/hooksCatalogo.mjs",
+   "motivo": null,
+   "modo": "sugestivo",
+   "quando": "2026-08-28T23:30:24.603Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/entrevista.mjs",
+   "motivo": null,
+   "modo": "sugestivo",
+   "quando": "2026-08-29T02:14:49.786Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/novoProjeto.mjs",
+   "motivo": null,
+   "modo": "sugestivo",
+   "quando": "2026-08-29T02:46:25.718Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/ui_v3.html",
+   "motivo": null,
+   "modo": "sugestivo",
+   "quando": "2026-08-29T20:11:49.549Z"
+  },
+  {
+   "tipo": "autorizacao",
+   "alvo": "src/ui_novo.html",
+   "motivo": null,
+   "modo": "sugestivo",
+   "quando": "2026-08-29T20:15:01.924Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "sugestivo",
+   "para": "continuativo",
+   "quando": "2026-08-29T23:37:45.551Z"
   }
  ],
  "verificacao": {
@@ -347,5 +384,11 @@
   "esperado": "cada tela abre com a pergunta dela no topo e um veredito em uma frase, nas palavras dele"
  },
  "nivelBancada": "rascunho",
- "pedidos": []
+ "pedidos": [
+  {
+   "alvo": "src/sintese.mjs",
+   "motivo": null,
+   "quando": "2026-08-29T23:23:26.589Z"
+  }
+ ]
 }

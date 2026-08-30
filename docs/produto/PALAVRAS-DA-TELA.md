@@ -320,6 +320,22 @@ aquela frente, e volta se ele parar.
 cabe na tela: os primeiros mostrados são os do topo do arquivo, não os mais
 importantes. Para a ordem que decide, use "o que fazer agora".
 
+## abertas
+
+As seções do roadmap que ainda estão abertas, **com o texto que você escreveu
+dentro delas**.
+
+**Não é repetição de "na fila", e a diferença importa:** ali estão as frentes
+soltas, uma linha cada. Aqui está a seção inteira, com o motivo, o que foi
+medido e as suas palavras. É onde a explicação mora.
+
+Antes isso ficava num bloco solto no fim da tela, longe das outras três faixas.
+Sendo uma aba ao lado delas, você compara sem rolar.
+
+Cada cartão mostra até seis itens da seção, e diz quantos ficaram de fora. O
+corte é para a aba continuar legível: uma seção com trinta itens abertos viraria
+uma parede de texto e esconderia as outras.
+
 ## prontas
 
 O que já foi fechado, mantido para consulta.
@@ -695,6 +711,24 @@ documento declara os termos que usa, e esta tela junta todos.
 
 É onde procurar quando a palavra apareceu num texto e não na tela. Os "?"
 espalhados pelo painel saem da mesma fonte.
+
+## tela: conhecimento
+
+Tudo que é texto, num lugar só, em quatro abas.
+
+**Notas** são o que você escreve à mão, blocos livres ou listas, e ficam nesta
+máquina. **Documentos** é a estante: a ideia ditada, o contrato que chegou pelo
+chat, o texto que ainda não virou projeto. **Glossário** é montado sozinho,
+varrendo os documentos dos projetos, e é de onde saem os "?" espalhados pelo
+painel. **A semana** é o que mudou em cada projeto nos últimos sete dias,
+cruzando os commits, as tarefas fechadas e o diário.
+
+As duas primeiras você escreve. As duas últimas o painel lê para você.
+
+Eram quatro telas separadas até 29/08. Viraram uma porque o gesto é o mesmo,
+procurar texto, e quatro linhas de menu para isso faziam você lembrar em qual
+delas tinha guardado a coisa. Os endereços antigos continuam funcionando: quem
+tinha `#notas` guardado cai na aba de notas.
 
 ## agente
 

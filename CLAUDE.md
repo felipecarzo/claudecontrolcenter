@@ -401,6 +401,48 @@ projeto mais repete.
   ESTADO GRAVADO, não no da linha de comando. Quem lê modo lê por `acharModo`.
   E cuidado com a consequência: renomear um id sem consertar isso antes teria
   desligado a trava dos 12 projetos de uma vez.
+- **`Date.now()` como valor PADRÃO de parâmetro desliga qualquer cache, e o
+  cache continua parecendo instalado.** Achado em 29/08 pondo cache no resumo
+  da semana: `digestTodos({ desde = Date.now() - 7 dias })` fazia a chave mudar
+  a cada milissegundo, então toda chamada errava e pagava os ~2s de novo. Não
+  há erro, não há aviso, e a leitura do código diz que o cache existe. As três
+  medidas eram 1856ms, 1794ms, 1851ms — nenhuma delas o zero que denunciaria.
+  Janela padrão se arredonda (aqui, para a hora cheia): commit de sete dias
+  atrás não troca de lado por causa de minutos, e é o que torna a pergunta
+  repetível. Vale para todo padrão derivado do relógio ou do acaso.
+- **Tela que é só um botão PASSA no teste de "abre com conteúdo".** O resumo da
+  semana tinha 16 caracteres na tela — o rótulo de um botão — contra 300 KB de
+  dado pronto do outro lado da rota, e passava porque o limiar era 12. Ninguém
+  clicava, porque um botão cinza sozinho não diz o que traz, e o recurso ficou
+  desligado desde que nasceu sem nunca dar erro. É a peça inalcançável de novo,
+  no formato mais discreto: alcançável por um clique que ninguém tem motivo
+  para dar. O motivo do botão era real (a varredura custa ~2s e não pode entrar
+  no tique de 2 em 2 segundos), e a saída não foi tirar o botão: foi cache no
+  servidor mais a tela pedindo AO ABRIR. **Pergunta ao construir peça cara: o
+  que ela mostra antes do primeiro clique?**
+- **Espera de tempo fixo em teste de tela transforma corrida em teste que
+  oscila.** Com 900ms cegos, a tela dos painéis dele passava numa rodada e
+  falhava na seguinte, sem nada mudar no código — e teste que oscila ensina a
+  ignorar a falha, que é pior que não ter teste. Hoje o teste INSISTE até um
+  teto e reporta quanto cada tela levou. Duas armadilhas dentro dessa, as duas
+  medidas no mesmo dia: (a) **"carregando…" não é o único jeito de dizer
+  espera** — sete telas foram lidas no meio da carga dizendo "lendo…",
+  "calculando…", "abrindo…", "cruzando…", e o sinal comum é reticências no fim
+  de um texto curto; (b) **o laço para no instante em que passa do limiar**, e
+  medir ali é medir cedo: Escritório e Tempo apareceram com 13 e 47 caracteres
+  estando cheias, e eu quase fui consertar duas telas sem defeito.
+- **O mesmo projeto escrito de dois jeitos vira duas séries, e o gráfico não
+  reclama.** Ele apontou "nomes de projeto antigos" na tela de tendências; o
+  problema era maior que o nome. `ibrics` e `web_ibrics` eram duas séries do
+  mesmo projeto no armazém, 18 dias numa e 21 na outra. **E não dava para
+  somar:** em 18 dos 21 dias as duas grafias tinham o MESMO valor, porque é a
+  mesma coleta gravada duas vezes — somar dobraria os commits num gráfico que
+  continua parecendo certo. Hoje `nomeProjeto.mjs` é a conta única (chave para
+  comparar, nome canônico para mostrar) e a fusão acontece só na LEITURA: o
+  arquivo guarda o que foi colhido, com o nome que a máquina tinha no dia.
+  **Dado gravado não se conserta, se interpreta.** A lista de renomeações de
+  verdade (`controlcenter` → `cockpit`) é explícita e curta de propósito: um par
+  errado ali funde duas histórias e o número fica maior e plausível.
 - **`fan[]` fica com resíduo** da última tool mesmo depois do job terminar. Só
   exibir enquanto o status é `working`.
 - **Truncar string já colorida corta o código ANSI no meio** e vaza `[0m` na
