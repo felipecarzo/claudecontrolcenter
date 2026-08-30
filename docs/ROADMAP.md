@@ -2431,6 +2431,79 @@ mais caro, e ele escolheu começar pelo primeiro:
 Electron foi recusado por ele: 90 MB e uma dependência grande num projeto com
 zero. **Escolha dele para a forma:** janela própria, sem cara de navegador.
 
+### CC-440 🔵 30/08: o PC vira coletor, a VPS vira o cérebro (proposta dele, em discussão)
+
+**Proposta de arquitetura dele em 30/08, sem reescrever:**
+
+> *"não como criar um serviço, um programa que funciona como o cockpit, o mesmo
+> cockpit que existe na vps? Uma série de regras no windows que são instaladas a
+> partir do que o windows precisa fazer pra fazer o framework funcionar aqui no
+> meu pc e também nas informações que ele precisa enviar dos projetos pro cockpit
+> mostrar as mesmas infos que ele retém da vps só que aqui do pc também. Acho que
+> seria a forma mais segura disso funcionar, assim independente da versão do
+> programa aqui, a vps vai receber os dados e ela processa lá."*
+
+**Registrado, em discussão, não implementado.** Ele pediu para abstrair junto.
+
+#### O que a medição achou, em 30/08
+
+| o que | número |
+|---|---|
+| módulos em `src/` | 94 (30.332 linhas) |
+| o que o PAINEL inteiro puxa | 75 (26.719 linhas) |
+| **o que um COLETOR puxaria** | **16 (8.079 linhas)** |
+| módulos que só fazem sentido na VPS | 59 |
+| travas que rodam no instante da ação, no PC | **39** |
+| dado bruto que mora no PC (transcritos) | **1.616 MB** |
+| o resumo que viaja hoje, a cada 30s | **6 KB** |
+
+#### Onde a proposta está certa
+
+**O PC hoje carrega 59 módulos que nunca vão servir para nada nele**: as telas,
+os gráficos, o custo por token, a bancada de segurança, o escritório, o docker,
+a estante de documentos. Um coletor seria **30% do tamanho atual**, e a maior
+parte do que quebra e do que precisa ser atualizado sairia daqui.
+
+E a razão de fundo dele é a mais forte: **quanto menos o PC decide, menos a
+versão dele importa.**
+
+#### O limite físico, e ele não some com desenho
+
+**1.616 MB de dado bruto contra 6 KB de resumo, uma razão de 270 mil para um.**
+Os transcritos das conversas, que são a fonte das horas e do custo, **moram no
+PC e não podem viajar**. Então "a VPS processa lá" tem um teto: alguém no PC
+precisa ler o dado grande e resumir. Isso o cockpit já faz.
+
+A divisão que a medição sugere não é "o PC não processa nada", é:
+
+- **o PC lê e RESUME** o que só existe aqui (1,6 GB vira 6 KB);
+- **a VPS decide, cruza, calcula e mostra**, com uma versão só;
+- **as 39 travas continuam no PC**, obrigatoriamente: elas rodam no instante em
+  que o agente escreve um arquivo, e não há como um servidor remoto barrar isso.
+
+#### O furo a resolver antes de qualquer código
+
+**O formato do que viaja não tem número de versão.** `validarPacote` já valida
+campo a campo e ignora o que não conhece, o que perdoa muita coisa, mas não há
+como a VPS dizer *"este coletor é velho demais"* nem como o coletor saber que a
+outra ponta espera algo novo.
+
+**Sem esse contrato versionado, "independente da versão do programa aqui" é uma
+esperança, não uma garantia.** É o primeiro item de qualquer caminho escolhido.
+
+#### As três formas, com o custo de cada uma
+
+1. **Coletor puro** (o que ele descreveu): um serviço pequeno no PC, sem tela.
+   Some o painel local. O mais limpo, e o que mais muda o dia a dia: ver o PC
+   passa a exigir a VPS no ar.
+2. **Coletor com tela mínima**: o serviço mais uma página de diagnóstico local
+   (conexão, últimos envios, travas). Resolve "a VPS caiu e eu não vejo nada".
+3. **Como está, tirando peso**: o painel continua completo no PC, mas os 59
+   módulos de tela ficam de fora do que é instalado. Mais barato, e não entrega
+   a independência de versão que ele quer.
+
+**Decisão dele pendente**, e ela vale a discussão antes do código.
+
 ### CC-434 🔴 30/08: três cópias do mesmo produto, e um dia inteiro perdido nisso
 
 **Medido em 30/08, e é o item que justifica a frente inteira.**
