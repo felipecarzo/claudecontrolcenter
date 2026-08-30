@@ -95,6 +95,14 @@ export async function status(port = DEFAULT_PORT) {
 
 /** Garante o painel no ar e devolve a URL — usado pelo comando `open`. */
 export async function ensureUp(port = DEFAULT_PORT, { waitMs = 8000 } = {}) {
+  /* CC-442: o ícone da barra vem JUNTO, e a queixa dele foi "nao tem nada na
+     barra de tarefas". Quem cria o ícone é o lançador; quem sobe o painel
+     avulso subia só o `node`, então religar o painel devolvia o painel e não o
+     ícone. O `bandeja.ps1` tem instância única por dentro, então chamar com um
+     ícone já de pé é barato: o processo novo vê o mutex tomado e sai calado.
+     Fora do Windows isto responde `ok: false` e segue. */
+  try { so.garantirBandeja?.({ porta: port }) } catch { /* o ícone é enfeite: nunca impede o painel */ }
+
   if (await isUp(port)) return { url: `http://localhost:${port}`, started: false }
   spawnDetached(port)
   const deadline = Date.now() + waitMs

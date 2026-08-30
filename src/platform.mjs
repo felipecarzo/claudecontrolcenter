@@ -234,6 +234,41 @@ export function abrirNavegador(url) {
 }
 
 /**
+ * CC-442 — o ícone na barra de tarefas, garantido.
+ *
+ * Queixa dele em 30/08, direto: *"nao tem nada na barra de tarefas"*.
+ *
+ * A causa é de desenho, não um erro de código: **quem cria o ícone é o
+ * lançador** (`arrancar.ps1`), e quem sobe o painel avulso (`ensureUp`,
+ * `daemon restart`, `cc open`) sobe só o `node`. Então toda vez que alguém
+ * religa o painel sem passar pelo lançador, o painel volta e **o ícone não**.
+ * Foi exatamente o que aconteceu depois da limpeza dos processos duplicados.
+ *
+ * O mutex de instância única mora dentro do próprio `bandeja.ps1`, então
+ * chamar isto com um ícone já de pé é barato e não cria um segundo: o processo
+ * novo vê o mutex tomado e sai calado.
+ *
+ * `detached` e `unref` são obrigatórios: o ícone precisa sobreviver ao comando
+ * que o pediu. É o lado certo da armadilha do CC-29, o mesmo da janela.
+ */
+export function garantirBandeja({ porta = 8099, raiz = null } = {}) {
+  if (!ehWindows) return { ok: false, motivo: 'a bandeja é só do Windows' }
+  const base = raiz || path.resolve(AQUI, '..')
+  const script = path.join(base, 'src', 'bandeja.ps1')
+  if (!fs.existsSync(script)) return { ok: false, motivo: `não achei ${script}` }
+  try {
+    const filho = spawn('powershell', [
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden',
+      '-File', script, '-Port', String(porta),
+    ], { detached: true, stdio: 'ignore', windowsHide: true })
+    filho.unref()
+    return { ok: true, pid: filho.pid }
+  } catch (e) {
+    return { ok: false, motivo: String(e?.message || e) }
+  }
+}
+
+/**
  * CC-441 — o motor de janela que a máquina já tem.
  *
  * Pedido dele em 30/08, e ele teve que cobrar duas vezes: *"queria fechar um
