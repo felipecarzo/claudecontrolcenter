@@ -364,6 +364,36 @@ export const ACOES_DE_PEDIDO = [
   'sessao', 'framework-ligar', 'framework-desligar', 'framework-modo', 'framework-modulo',
 ]
 
+/**
+ * O nome do projeto vira CAMINHO do outro lado, então ele é entrada perigosa.
+ *
+ * ## Por que uma barra passou a ser aceita, em 30/08
+ *
+ * Print dele com o erro na tela: *"o seu clique não foi gravado: nome de
+ * projeto inválido"*, ao trocar o modo do `games/hutukara`. O nome com barra
+ * nasceu no mesmo dia, para consertar o projeto que morava dentro de uma pasta
+ * que só agrupa, e esta validação o recusava inteiro.
+ *
+ * ⚠️ **A recusa estava CERTA em existir**, e afrouxá-la sem critério abriria
+ * travessia de caminho: com `..` ou barra no começo, o pedido escreveria fora
+ * da pasta de projetos da outra máquina. O que muda é o critério, não a
+ * proteção.
+ *
+ * A regra: **no máximo dois segmentos**, cada um com o mesmo alfabeto de antes,
+ * nenhum deles `.` ou `..`, sem barra invertida, sem dois pontos, sem barra no
+ * começo nem no fim. `games/hutukara` passa; `../etc`, `/etc`, `a/b/c` e
+ * `C:\Windows` não.
+ */
+export function nomeDeProjetoSeguro(nome) {
+  const cru = String(nome || '').trim()
+  if (!cru || cru.length > 120) return false
+  if (/[\\:]/.test(cru)) return false
+  if (cru.startsWith('/') || cru.endsWith('/')) return false
+  const partes = cru.split('/')
+  if (partes.length > 2) return false
+  return partes.every((p) => p && p !== '.' && p !== '..' && !/[\0<>|*?"]/.test(p))
+}
+
 export function pedirSessao({
   paraMaquina, projeto, de = null, acao = 'sessao', modo = null,
   modulo = null, ligar = null, now = Date.now(),
@@ -371,7 +401,7 @@ export function pedirSessao({
   const alvo = seguro(paraMaquina)
   const nome = String(projeto || '').trim()
   if (!alvo) return { ok: false, erro: 'sem máquina de destino' }
-  if (!nome || /[\\/:]|\.\./.test(nome)) return { ok: false, erro: 'nome de projeto inválido' }
+  if (!nomeDeProjetoSeguro(nome)) return { ok: false, erro: 'nome de projeto inválido' }
   if (!ACOES_DE_PEDIDO.includes(acao)) return { ok: false, erro: `ação desconhecida: ${acao}` }
   const modoLimpo = modo ? String(modo).trim().slice(0, 40) : null
   if (modoLimpo && !/^[a-zà-ú-]+$/i.test(modoLimpo)) return { ok: false, erro: 'modo inválido' }
