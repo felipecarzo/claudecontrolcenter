@@ -738,6 +738,38 @@ async function atenderPedidos(pedidos) {
         continue
       }
 
+      if (acao === 'recado') {
+        /* CC-434: a única ação que não MEXE em nada — ela só entrega texto.
+           Vira uma linha em `docs/.recados.json` deste projeto, e quem lê é o
+           hook do Routia, na próxima ferramenta que o agente daqui usar.
+           É o mesmo caminho de um recado entre duas sessões da mesma máquina:
+           o que mudou é de onde ele veio.
+
+           Import tardio de propósito, como o resto deste laço: recado é o caso
+           raro, e carregar o motor a cada ciclo de 30s seria pagar sempre pelo
+           que quase nunca acontece. */
+        const R = await import('./recados.mjs')
+        const texto = String(p.texto || '').trim().slice(0, 600)
+        if (!texto) {
+          console.error(`[federação] recado sem texto, ignorado (${p.projeto})`)
+          continue
+        }
+        /* Tipo desconhecido vira aviso em vez de recusar o recado inteiro:
+           perder a mensagem por causa do rótulo dela é o lado errado de errar,
+           e `enviar` LANÇA em tipo inválido, o que mataria o ciclo. O catálogo
+           é conferido aqui, do lado que executa, pela mesma razão que o modo e
+           a trava são. */
+        const tipo = R.TIPOS[p.tipo] ? p.tipo : 'aviso'
+        /* `arquivo: null` fixo: ele é caminho, e caminho vindo da rede é
+           justamente a entrada que este laço nunca aceita. */
+        const r = R.enviar(dir, {
+          de: p.de || 'outra-maquina', para: p.para || 'todos', tipo, texto, arquivo: null,
+        })
+        console.error(`[federação] recado entregue em ${p.projeto}, de ${p.de || 'outra máquina'} `
+          + `para ${r.para}: ${texto.slice(0, 60)}${texto.length > 60 ? '…' : ''}`)
+        continue
+      }
+
       console.error(`[federação] ação desconhecida, pedido ignorado: ${acao} (${p.projeto})`)
     } catch (e) {
       console.error(`[federação] pedido falhou (${p.projeto}): ${e?.message || e}`)
