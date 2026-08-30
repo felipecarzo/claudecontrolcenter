@@ -30,6 +30,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { lerRoadmap, ordenar, pesoDe, citacaoDe, deOutraPlataforma } from './roadmap.mjs'
+import { chaveDeProjeto, mesmoProjeto } from './nomeProjeto.mjs'
 
 /**
  * O estado do item em uma palavra, com o porquê ao lado.
@@ -442,22 +443,12 @@ export function soltosDe(grupos, jobs = []) {
  * `VPS_cockpit` e `VPS_coepiloto`. Três dos seis agentes vivos não achavam o
  * próprio projeto, e desapareciam do quadro sem nada na tela dizer por quê.
  *
- * ⚠️ **O sufixo NÃO é rótulo e fica.** `VPS_cockpit--front` é outra pasta, em
- * outra branch, com outro roadmap: juntar as duas misturaria um backlog de
- * 16/08 com o de hoje. Só o prefixo cai.
+ * ⚠️ **Mudou de casa em 29/08.** Mora em `nomeProjeto.mjs`, porque o armazém de
+ * séries passou a precisar da mesma conta e importar este arquivo arrastaria o
+ * leitor de roadmap junto. Continua sendo exportado daqui: duas contas de "é o
+ * mesmo projeto?" discordariam na próxima renomeação.
  */
-export function chaveDeProjeto(nome) {
-  return String(nome || '')
-    .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/^(vps|pc)_/, '')
-    .replace(/^(proj|app|web|game)_/, '')
-    .trim()
-}
-
-/** O agente e o item de backlog são do mesmo projeto? Uma conta só, porque duas
- *  discordariam no dia em que uma das máquinas renomear de novo. */
-export const mesmoProjeto = (a, b) => Boolean(chaveDeProjeto(a)) && chaveDeProjeto(a) === chaveDeProjeto(b)
+export { chaveDeProjeto, mesmoProjeto, nomeCanonico } from './nomeProjeto.mjs'
 
 function casaFrente(daSessao, doRoadmap) {
   const norm = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
@@ -531,6 +522,40 @@ function principalDe(raiz) {
  * projeto só, e nenhum jeito de saber qual é o de verdade. Fica a principal;
  * a secundária só entra se a principal não estiver na lista.
  */
+/**
+ * O nome do projeto de um agente, corrigindo a pasta que só AGRUPA.
+ *
+ * ## A queixa, e por que a conta mora aqui fora
+ *
+ * Palavras dele em 30/08: *"o projeto pc_hutukara não tá aparecendo pra mim
+ * ativo em projetos pra eu mexer no framework. e ele tá ativo no pc"*.
+ *
+ * Seis agentes do PC em `D:\Documentos\projetos\games\hutukara`, e o nome que
+ * chegava era **games**, a pasta que agrupa jogos. A causa foi consertada na
+ * origem (`projectOf` pergunta ao disco), e essa correção só vale a partir do
+ * momento em que a outra máquina rodar o código novo.
+ *
+ * **Aqui não se adivinha: o subprojeto vem no mesmo pacote.** Quando o nome não
+ * casa com pasta nenhuma desta máquina e existe um `sub` que o caminho
+ * confirma, o par `projeto/sub` é o que ele reconhece.
+ *
+ * ⚠️ **Exportada de propósito.** Quem LISTA projeto e quem CONTA agente
+ * precisam da mesma resposta: a primeira versão ficou dentro de `projetosDe`, a
+ * lista passou a dizer `games/hutukara`, a contagem continuou procurando por
+ * `games`, e o cartão nasceu com zero agentes e aparência de desligado com seis
+ * rodando. Duas contas para a mesma pergunta é o defeito que este painel mais
+ * repete.
+ */
+export function nomeDoAgenteCom(locais = new Map()) {
+  return (j) => {
+    if (!j?.sub || locais.has(j.project)) return j?.project
+    /* Só quando o caminho confirma: `sub` que não está no `cwd` é resíduo de
+       outra volta, e colar dois nomes soltos inventaria um projeto. */
+    const caminho = String(j.cwd || '').replace(/\\/g, '/')
+    return caminho.endsWith('/' + j.sub) ? `${j.project}/${j.sub}` : j.project
+  }
+}
+
 export function projetosDe(jobs = [], achar = () => []) {
   const vistos = new Map()
 
@@ -552,18 +577,38 @@ export function projetosDe(jobs = [], achar = () => []) {
      Para ele isso foi o cartão "sumindo" na hora de ligar o framework; o risco
      de verdade era escrever na pasta errada sem ninguém ver. Decisão dele em
      25/08: a pasta antiga é lixo, então vence quem tem sinal mais novo. */
+  /**
+   * ⚠️ **O nome do projeto vem do agente, e ele pode ter parado uma pasta antes.**
+   *
+   * Queixa dele em 30/08: *"o projeto pc_hutukara não tá aparecendo pra mim
+   * ativo em projetos pra eu mexer no framework. e ele tá ativo no pc"*.
+   *
+   * Seis agentes do PC em `D:\Documentos\projetos\games\hutukara`, e o nome
+   * que chegava era **games**, a pasta que agrupa. A causa foi consertada na
+   * origem (`projectOf` pergunta ao disco), só que a correção só vale a partir
+   * do momento em que a OUTRA máquina rodar o código novo, e ele quer usar
+   * agora.
+   *
+   * **Aqui não se adivinha: o subprojeto vem no mesmo pacote.** Quando o nome
+   * do projeto não casa com pasta nenhuma desta máquina e existe um `sub`, o
+   * par `projeto/sub` é o que ele reconhece, e é o que a pasta de verdade se
+   * chama do outro lado. Sem `sub`, fica o que veio.
+   */
+  const nomeDoAgente = nomeDoAgenteCom(locais)
+
   const quando = new Map()
   for (const j of jobs) {
     if (!j.cwd) continue
-    const daqui = deOutraPlataforma(j.cwd) && locais.has(j.project)
-      ? locais.get(j.project) : j.cwd
+    const nome = nomeDoAgente(j)
+    const daqui = deOutraPlataforma(j.cwd) && locais.has(nome)
+      ? locais.get(nome) : j.cwd
     const t = Number(j.updatedAt) || 0
     /* Pasta local achada por `achar()` não tem sinal de tempo e não pode perder
        para um `cwd` remoto por isso: ela entra com o carimbo do job que a
        trouxe, e o desempate segue sendo entre pastas de verdade. */
-    if (!vistos.has(j.project) || t > (quando.get(j.project) || 0)) {
-      vistos.set(j.project, daqui)
-      quando.set(j.project, t)
+    if (!vistos.has(nome) || t > (quando.get(nome) || 0)) {
+      vistos.set(nome, daqui)
+      quando.set(nome, t)
     }
   }
   for (const raiz of achar()) {

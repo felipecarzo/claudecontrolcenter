@@ -42,6 +42,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { casaClaude } from './platform.mjs'
 import { DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
+import { chaveDeProjeto, nomeCanonico } from './nomeProjeto.mjs'
 
 export const ARQUIVO = () => path.join(casaClaude(), 'control-center-armazem.jsonl')
 
@@ -119,12 +120,46 @@ export function ler({ desde = null, ate = null, projeto = null, medida = null } 
       porChave.set(chaveDe(r), r)
     }
   }
-  let saida = [...porChave.values()]
+  let saida = fundirGrafias([...porChave.values()])
   if (desde) saida = saida.filter((r) => r.dia >= desde)
   if (ate) saida = saida.filter((r) => r.dia <= ate)
-  if (projeto) saida = saida.filter((r) => r.projeto === projeto)
+  if (projeto) saida = saida.filter((r) => chaveDeProjeto(r.projeto) === chaveDeProjeto(projeto))
   if (medida) saida = saida.filter((r) => r.medida === medida)
   return saida.sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : 0))
+}
+
+/**
+ * O mesmo projeto escrito de dois jeitos vira uma série só.
+ *
+ * ## O defeito, medido em 29/08 no arquivo de verdade
+ *
+ * Ele apontou que a tela de tendências mostrava nomes de projeto antigos.
+ * Medindo, o problema era maior que o nome: **`ibrics` e `web_ibrics` eram duas
+ * séries separadas do mesmo projeto**, 18 dias numa e 21 na outra, e a tela
+ * desenhava duas linhas onde existe uma história só.
+ *
+ * ⚠️ **E não dava para somar.** Em 18 dos 21 dias as duas grafias tinham o
+ * MESMO valor: é a mesma coleta gravada duas vezes, não dois pedaços do
+ * trabalho. Somar teria dobrado os commits do ibrics, num gráfico que continua
+ * parecendo certo — que é o formato de defeito mais caro deste painel.
+ *
+ * Por isso funde, e não agrega: sobra um registro por dia e por medida.
+ *
+ * **Quem vence no empate é o último do arquivo**, que é a mesma regra que
+ * `ler()` já usa para a linha repetida. O arquivo é append-only, então o último
+ * é o mais novo. Uma regra só, aplicada duas vezes.
+ *
+ * A fusão acontece só na LEITURA. O arquivo guarda o que foi colhido, com o
+ * nome que a máquina tinha no dia, e nenhuma linha é reescrita: dado gravado
+ * não se conserta, se interpreta.
+ */
+export function fundirGrafias(registros = []) {
+  const porChave = new Map()
+  for (const r of registros) {
+    const chave = `${r.dia}|${chaveDeProjeto(r.projeto || '')}|${r.medida}`
+    porChave.set(chave, r.projeto ? { ...r, projeto: nomeCanonico(r.projeto) } : r)
+  }
+  return [...porChave.values()]
 }
 
 /** Quais medidas existem, com quantos dias e quais projetos cada uma cobre. */

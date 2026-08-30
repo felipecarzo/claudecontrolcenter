@@ -160,16 +160,64 @@ const normalizeList = (v, fn) => (Array.isArray(v) ? v.map(fn).filter(Boolean) :
  *   1. grupo conhecido    → `.../CLIENTS/<projeto>/<sub>`
  *   2. pasta de projetos  → `.../projetos/<projeto>/<sub>` (vale em qualquer máquina)
  *   3. último segmento    → `~/dev/meuapp` vira "meuapp"
+ *
+ * ## ⚠️ A pasta abaixo de `projetos/` nem sempre É o projeto
+ *
+ * Queixa dele em 30/08: *"o projeto pc_hutukara não tá aparecendo pra mim ativo
+ * em projetos pra eu mexer no framework. e ele tá ativo no pc"*.
+ *
+ * Medido: seis agentes do PC trabalhando em
+ * `D:\Documentos\projetos\games\hutukara`, e o painel chamava o projeto de
+ * **games**. A regra 2 pega o segmento logo depois de `projetos`, e ali `games`
+ * é uma pasta que AGRUPA jogos, não um projeto. `hutukara` ficava como `sub`, e
+ * nada na tela usa `sub`.
+ *
+ * O estrago não era só o nome: sem casar com uma pasta de projeto de verdade, o
+ * cartão vinha com `ehProjeto: false` e sem raiz utilizável, então ligar o
+ * framework nele era impossível. Era o que ele estava tentando fazer.
+ *
+ * **A saída é perguntar ao disco, e só quem tem o disco responde.** `ehProjeto`
+ * é opcional de propósito: sem ela o comportamento é o de sempre, que é o caso
+ * de quem lê caminho de OUTRA máquina e não pode olhar nada. Quem roda na
+ * máquina do projeto passa a função e ganha o nome certo.
  */
-export function projectOf(dir) {
+/** Esta pasta é um projeto? `.git` ou `CLAUDE.md` é a mesma régua que
+ *  `findProjects` usa, e duas réguas para a mesma pergunta discordariam. */
+const ehPastaDeProjeto = (dir) => {
+  try { return fs.existsSync(path.join(dir, '.git')) || fs.existsSync(path.join(dir, 'CLAUDE.md')) } catch { return false }
+}
+
+export function projectOf(dir, { ehProjeto = null } = {}) {
   if (!dir) return { project: '—', sub: null }
   const parts = dir.split(/[\\/]/).filter(Boolean)
+  const sep = dir.includes('\\') ? '\\' : '/'
+  const ate = (i) => (dir.startsWith('/') ? '/' : '') + parts.slice(0, i + 1).join(sep)
+
+  /**
+   * Desce um nível quando o de cima é pasta de agrupar e o de baixo é o
+   * projeto. Só desce um: `projetos/inovallbond/apps/pierre` continua sendo
+   * `inovallbond`, porque `inovallbond` É projeto e a busca para nele.
+   */
+  const afinar = (i) => {
+    const nome = parts[i]
+    const filho = parts[i + 1]
+    /* ⚠️ O `sub` é sempre o segmento LOGO DEPOIS do projeto, e quando se desce
+       um nível ele desce junto. Errar isto some com o subprojeto em silêncio,
+       que foi o que aconteceu na primeira versão desta função. */
+    if (!ehProjeto || !filho) return { project: nome, sub: filho ?? null }
+    try {
+      if (!ehProjeto(ate(i)) && ehProjeto(ate(i + 1))) {
+        return { project: filho, sub: parts[i + 2] ?? null }
+      }
+    } catch { /* disco fora de alcance: fica a regra de sempre */ }
+    return { project: nome, sub: filho ?? null }
+  }
 
   const g = parts.findIndex((p) => PROJECT_GROUPS.has(p))
-  if (g >= 0 && parts[g + 1]) return { project: parts[g + 1], sub: parts[g + 2] ?? null }
+  if (g >= 0 && parts[g + 1]) return afinar(g + 1)
 
   const d = parts.findIndex((p) => PROJECT_DIRS.includes(p.toLowerCase()))
-  if (d >= 0 && parts[d + 1]) return { project: parts[d + 1], sub: parts[d + 2] ?? null }
+  if (d >= 0 && parts[d + 1]) return afinar(d + 1)
 
   return { project: parts[parts.length - 1] ?? '—', sub: null }
 }
@@ -261,7 +309,11 @@ const STALE_MS = 10 * 60 * 1000
 
 export function buildJob(id, state, meta, pins, now) {
   const cwd = state.originCwd || state.cwd || ''
-  const { project, sub } = projectOf(cwd)
+  /* ⚠️ **A checagem de disco entra AQUI**, e é o que conserta o nome na origem.
+     Esta função roda na máquina do agente, então o disco está ao alcance: o PC
+     passa a reportar `hutukara` em vez de `games`, e a VPS recebe o nome certo
+     pela federação sem precisar adivinhar nada sobre um disco que não tem. */
+  const { project, sub } = projectOf(cwd, { ehProjeto: ehPastaDeProjeto })
   const todos = normalizeList(meta.todos, normalizeTodo)
   const created = Date.parse(state.createdAt) || now
   const updated = Date.parse(state.updatedAt) || created

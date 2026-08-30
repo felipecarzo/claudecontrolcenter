@@ -192,7 +192,71 @@ export function findProjects(base) {
       else for (const sub of dirsIn(dir)) if (isProject(sub)) found.add(sub)
     }
   }
-  return [...found].sort()
+  return semRepetir([...found]).sort()
+}
+
+/**
+ * Dois nomes para a MESMA pasta contam uma vez só.
+ *
+ * ## O defeito, medido em 29/08 no quadro dele
+ *
+ * O quadro listava `proj_controlcenter` com 8 tarefas e `VPS_cockpit` com 42,
+ * como se fossem dois projetos. **São a mesma pasta**: o primeiro é um atalho
+ * para o segundo, criado quando o projeto foi renomeado, e mantido porque o
+ * serviço do painel guarda o caminho antigo. Todo número saía dobrado, e
+ * qualquer conta por projeto ficava errada sem nada acusar.
+ *
+ * ⚠️ **A conta é pelo caminho REAL, e isso não é detalhe.** Comparar nomes
+ * "parecidos" juntaria `fibraessencia` com `VPS_fibraessencia`, que nesta
+ * mesma máquina são **duas pastas de verdade**, com dois roadmaps e dois
+ * estados de git. Medido antes de escolher a regra: um par é atalho, o outro
+ * não, e só o disco sabe a diferença.
+ *
+ * Quem fica é a pasta de verdade, nunca o atalho: é o nome que existe no git,
+ * no roadmap e no que ele lê.
+ */
+/**
+ * Os apelidos de pasta desta máquina: nome do atalho, nome de verdade.
+ *
+ * `semRepetir` tira o atalho da LISTA de projetos, e isso conserta tudo que é
+ * derivado do disco. Só que existe dado GRAVADO com o nome velho: as pendências
+ * dele, por exemplo, guardam o nome do projeto de quando foram escritas, e nada
+ * mais. Doze delas ainda dizem `proj_controlcenter`.
+ *
+ * Dado gravado não se conserta, se interpreta. Este mapa é o dicionário da
+ * interpretação, e ele sai do DISCO, não de uma lista escrita à mão que
+ * envelhece na primeira renomeação.
+ */
+export function apelidosDePasta(base) {
+  const bases = base === undefined ? projectsBases() : (base ? [base] : [])
+  const apelidos = new Map()
+  for (const b of bases) {
+    let nomes = []
+    try { nomes = fs.readdirSync(b) } catch { continue }
+    for (const nome of nomes) {
+      const dir = path.join(b, nome)
+      try {
+        if (!fs.lstatSync(dir).isSymbolicLink()) continue
+        const real = fs.realpathSync(dir)
+        const nomeReal = path.basename(real)
+        if (nomeReal && nomeReal !== nome) apelidos.set(nome, nomeReal)
+      } catch { /* atalho quebrado não vira apelido */ }
+    }
+  }
+  return apelidos
+}
+
+export function semRepetir(dirs = []) {
+  const porReal = new Map()
+  for (const dir of dirs) {
+    let real = dir
+    try { real = fs.realpathSync(dir) } catch { /* some no meio do caminho: fica o que veio */ }
+    const atual = porReal.get(real)
+    if (!atual) { porReal.set(real, dir); continue }
+    /* Empate desfeito pelo disco: quem for o caminho real vence o atalho. */
+    if (dir === real) porReal.set(real, dir)
+  }
+  return [...porReal.values()]
 }
 
 export function syncAll({ base = projectsBase(), dryRun = false, remove = false } = {}) {

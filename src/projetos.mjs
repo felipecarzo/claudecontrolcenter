@@ -30,6 +30,7 @@ import path from 'node:path'
 import { findProjects } from './install.mjs'
 import { projetosDe } from './trabalho.mjs'
 import { deOutraPlataforma } from './roadmap.mjs'
+import { nomeDoAgenteCom } from './trabalho.mjs'
 
 /** Horas em texto curto. Zero vira null: bloco vazio some, não mostra "0h". */
 const horas = (ms) => {
@@ -54,17 +55,24 @@ export function retrato({
   conversas = null,
   visitas = {},
   achar = findProjects,
+  remotos = [],
 } = {}) {
   const lista = projetosDe(jobs, achar)
 
   /* Agentes vivos por projeto. `done` fica de fora porque o CLI marca `done` ao
      fim de CADA turno, e um agente entregue não é trabalho em andamento: é a
      armadilha registrada que já pôs agente trabalhando na faixa de "prontos". */
+  /* ⚠️ **A MESMA conta de nome que a lista usa.** Agrupar por `j.project` cru
+     enquanto a lista chama o projeto de `games/hutukara` deixa o cartão com
+     zero agentes e cara de desligado, com seis rodando dentro. Medido em 30/08,
+     e foi o defeito que a primeira versão do conserto criou. */
+  const nomeDoAgente = nomeDoAgenteCom(new Map(lista.map((x) => [x.projeto, x.raiz])))
   const agentesPor = new Map()
   for (const j of jobs) {
-    if (!j.project) continue
-    if (!agentesPor.has(j.project)) agentesPor.set(j.project, [])
-    agentesPor.get(j.project).push(j)
+    const nome = nomeDoAgente(j)
+    if (!nome) continue
+    if (!agentesPor.has(nome)) agentesPor.set(nome, [])
+    agentesPor.get(nome).push(j)
   }
 
   /* Um grupo por projeto, e os `cartoes` são os itens abertos do backlog dele.
@@ -186,6 +194,24 @@ export function retrato({
       ociosoDesde: ociosos.length
         ? Math.max(...ociosos.map((j) => Number(j.updatedAt) || 0)) || null
         : null,
+      /* ── CC-430: quando foi o último sinal DESTE projeto, seja qual for ─────
+       *
+       * Ele, em 30/08: *"o hatukara não tá parado, tô mexendo nele agora
+       * mesmo"*, sobre um cartão que dizia parado. E ele estava certo: entre a
+       * medida anterior e aquele instante o agente voltou a trabalhar.
+       *
+       * ⚠️ **O painel não vê a tela dele, vê o último sinal.** O que chega é a
+       * última vez que a sessão escreveu no arquivo de conversa, empurrado a
+       * cada 30 segundos pela outra máquina. Enquanto uma ferramenta longa roda,
+       * ou enquanto ele lê e pensa, esse relógio não anda, e existe uma janela
+       * em que ele está trabalhando e o painel ainda não sabe.
+       *
+       * Sem dizer a idade, "trabalhando" e "trabalhando há 40 minutos" viram a
+       * mesma linha, e ele não tem como saber em qual dos dois está olhando. É
+       * a mesma decisão do `ociosoDesde`, agora para o projeto inteiro. */
+      ultimoSinal: meus.length
+        ? Math.max(...meus.map((j) => Number(j.updatedAt) || 0)) || null
+        : null,
       esperando,
       /* A frente mais citada pelos agentes: é o vocabulário DELE, tirado do
          roadmap, e foi por isso que o campo nasceu. "Pierre" diz algo; o
@@ -213,6 +239,68 @@ export function retrato({
     || (b.backlog - a.backlog)
     || a.projeto.localeCompare(b.projeto)
   ))
+
+  /* ===== CC-422: os projetos da OUTRA máquina, mesmo sem agente aberto =====
+   *
+   * Queixa dele em 29/08, em cinco palavras: *"não consigo ver os projetos do
+   * pc"*.
+   *
+   * Medido: a lista sai de `projetosDe(jobs)`, ou seja, um projeto de fora só
+   * existe aqui se tiver AGENTE aberto lá. O PC tinha 3 agentes em 2 pastas, e
+   * as duas estavam ligadas, então a tela Remoto escondia as duas (ela esconde
+   * o que já tem sessão) e sobrava uma seção vazia.
+   *
+   * E o dado estava chegando o tempo todo: o PC manda 11 backlogs, um por
+   * projeto com roadmap. Onze projetos conhecidos, zero na tela.
+   *
+   * ⚠️ **O mesmo projeto aparece nas DUAS máquinas de propósito.** `cockpit`
+   * existe no PC e aqui, e são duas pastas, dois roadmaps e dois estados de
+   * git. Juntar os dois numa linha só é o que a tela fazia antes de 27/08, e é
+   * a queixa que gerou a separação por máquina: *"os projetos eram separados
+   * por desktop e vps"*.
+   */
+  const jaTem = new Set(saida.filter((p) => !p.daqui).map((p) => `${p.maquinaDeFora}|${p.projeto}`))
+  for (const r of remotos) {
+    if (!r?.projeto || !r?.maquina) continue
+    if (jaTem.has(`${r.maquina}|${r.projeto}`)) continue
+    jaTem.add(`${r.maquina}|${r.projeto}`)
+    saida.push({
+      ligado: false,
+      ligadoPor: [],
+      projeto: r.projeto,
+      raiz: r.raiz || null,
+      daqui: false,
+      maquinaDeFora: r.maquina,
+      /* Ter roadmap com frentes É a prova de que é projeto: não dá para olhar o
+         disco da outra máquina daqui, e afirmar sobre o que não se leu é o
+         defeito que este painel mais paga. */
+      ehProjeto: true,
+      agentes: 0,
+      vivos: 0,
+      ociosos: 0,
+      ociosoDesde: null,
+      /* Projeto que veio só do backlog não tem agente, então não tem sinal.
+         `null` aqui quer dizer "não dá para saber", e não "faz muito tempo". */
+      ultimoSinal: null,
+      esperando: 0,
+      frente: null,
+      sessaoNoAr: false,
+      conversas: null,
+      backlog: r.abertas || 0,
+      frentes: r.frentes || 0,
+      soSeus: 0,
+      horasHoje: null,
+      horasTotal: null,
+      /* Só o que a outra ponta mandou. Campo derivado de disco fica nulo, e
+         nulo aqui quer dizer "não dá para saber daqui", não "é zero". */
+      soDoBacklog: true,
+      /* Quando a máquina parou de responder, e há quanto tempo. A tela precisa
+         DIZER isso: lista igual à de ontem com a máquina desligada é o mesmo
+         defeito das horas congeladas em verde, e ninguém descobre. */
+      semContato: Boolean(r.semContato),
+      idadeMs: r.idadeMs || 0,
+    })
+  }
 
   return {
     projetos: saida,

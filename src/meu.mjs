@@ -27,6 +27,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { casaClaude } from './platform.mjs'
 import { DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
+import { apelidosDePasta } from './install.mjs'
 
 /* CC-232: passou a resolver por `casaClaude()` em vez de `os.homedir()`, sem
    mudar de lugar (os dois dão o mesmo caminho nesta máquina, conferido). O que
@@ -270,7 +271,22 @@ function doRoadmap(projetos = []) {
  *    dono ao ser lida pela VPS.
  */
 export function tudo(jobs = [], { projetos = [], maquinaLocal = null } = {}) {
-  const daqui = (t) => (maquinaLocal ? { ...t, maquina: maquinaLocal } : t)
+  /* ── CC-423: o nome GRAVADO pode ser o apelido de uma pasta ────────────────
+   *
+   * Medido em 29/08 no quadro dele: doze pendências dizem `proj_controlcenter`,
+   * que é um ATALHO para `VPS_cockpit`. O quadro listava as duas como projetos
+   * diferentes, e o mesmo projeto aparecia duas vezes com números partidos.
+   *
+   * O nome foi gravado quando a pendência nasceu, e está certo para aquele dia.
+   * Dado gravado não se conserta, se interpreta: o dicionário sai do disco, na
+   * leitura, e some sozinho no dia em que o atalho for apagado. */
+  let apelidos = new Map()
+  try { apelidos = apelidosDePasta() } catch { /* sem base conhecida, fica o nome cru */ }
+  const nomeCerto = (n) => apelidos.get(n) || n
+  const daqui = (t) => {
+    const base = t.projeto ? { ...t, projeto: nomeCerto(t.projeto) } : t
+    return maquinaLocal ? { ...base, maquina: maquinaLocal } : base
+  }
   const doArquivo = ler().tarefas.map((t) => daqui({ ...t, fonte: 'lista' }))
   const doMapa = doRoadmap(projetos).map(daqui)
 
@@ -281,7 +297,7 @@ export function tudo(jobs = [], { projetos = [], maquinaLocal = null } = {}) {
       dosAgentes.push({
         id: `job:${j.id}:${t.text.slice(0, 20)}`,
         texto: t.text,
-        projeto: j.project,
+        projeto: nomeCerto(j.project),
         frente: j.frente || null,
         porque: j.subject || null,
         feito: false,
