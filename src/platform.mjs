@@ -695,10 +695,51 @@ export function instalarServicoWindows({ node, script, porta }) {
   try { fs.unlinkSync(tmp) } catch { /* segue */ }
 
   if (!r?.ok) {
-    return { ok: false, erro: (r?.err || r?.out || 'schtasks recusou').trim().slice(0, 300) }
+    const texto = (r?.err || r?.out || 'schtasks recusou').trim().slice(0, 300)
+    /* CC-447: "Acesso negado" aqui não é erro de uso, é a política desta
+       máquina, medida em 26/08: criar a tarefa exige terminal como
+       administrador mesmo para uma tarefa sem elevação nenhuma no XML.
+       Quem chama precisa poder DIZER isso e oferecer o caminho, em vez de
+       repetir um erro que parece defeito. Ele cancelou o pedido de elevação
+       uma vez em 30/08 sem saber o que a janela queria. */
+    const precisaAdmin = /acesso negado|access is denied/i.test(texto)
+    return { ok: false, erro: texto, precisaAdmin }
   }
   quiet('schtasks', ['/run', '/tn', NOME_TAREFA])
   return { ok: true, modo, tarefa: NOME_TAREFA }
+}
+
+/**
+ * CC-447: relança o próprio comando pedindo elevação, e é o caminho de um clique.
+ *
+ * Medido em 26/08 e confirmado em 30/08: criar a Tarefa Agendada nesta máquina
+ * dá "Acesso negado" sem administrador, mesmo sem elevação nenhuma no XML. É
+ * política da máquina, não do código, e não há como contornar de dentro.
+ *
+ * O que dá para fazer é **parar de mandar ele abrir um terminal e digitar um
+ * caminho de 60 caracteres**: o Windows sabe pedir a permissão sozinho, com
+ * `-Verb RunAs`, e a janela que aparece é a mesma que ele já conhece.
+ *
+ * ⚠️ **Nunca automático.** Quem chama decide, e só depois de a tentativa normal
+ * ter falhado por falta de permissão. Pedir elevação sem o usuário ter pedido
+ * nada é o tipo de coisa que faz alguém desinstalar o programa.
+ *
+ * Devolve o que aconteceu, e `cancelado` é resposta legítima: em 30/08 o pedido
+ * foi cancelado e o comando ficou sem saber, então o estado continuou errado
+ * sem ninguém dizer por quê.
+ */
+export function pedirElevacao({ node = process.execPath, script, porta = 8099 } = {}) {
+  if (!ehWindows) return { ok: false, erro: 'só no Windows' }
+  if (!script) return { ok: false, erro: 'sem o script a relançar' }
+  const dentro = `& '${node.replace(/'/g, "''")}' '${script.replace(/'/g, "''")}' daemon servico --port ${Number(porta) || 8099}`
+  const r = quiet('powershell', [
+    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
+    `try { Start-Process -FilePath 'powershell' -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-Command',"${dentro.replace(/"/g, '\\"')}" -ErrorAction Stop; 'aceito' } catch { 'cancelado' }`,
+  ])
+  const saida = String(r?.out || '').trim()
+  if (/cancelado/i.test(saida)) return { ok: false, cancelado: true, erro: 'você cancelou a janela de permissão do Windows' }
+  if (!r?.ok) return { ok: false, erro: (r?.err || 'não consegui pedir a permissão').trim().slice(0, 200) }
+  return { ok: true }
 }
 
 /** Derruba e sobe de novo. É o "reiniciar" do botão da bandeja. */

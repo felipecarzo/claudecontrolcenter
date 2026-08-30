@@ -2906,7 +2906,21 @@ negado" sem elevação, o que já está registrado nas armadilhas desde 26/08.
 dele hoje é a pasta VELHA**, a de 27/08. É a mesma raiz do CC-444, agora medida
 do lado do sistema operacional.
 
-O comando, num terminal como administrador:
+**CC-447, 30/08: o comando passou a pedir a permissão sozinho.**
+
+A resposta anterior era mandá-lo abrir outro terminal, como administrador, e
+digitar um caminho de 60 caracteres. **Ele não fez**, e é a resposta certa: a
+instrução era trabalho dele para resolver um problema do programa.
+
+Agora `cc daemon servico` tenta normal, e **só quando esbarra em "Acesso
+negado"** avisa e pede a permissão pelo próprio Windows, com a janela que ele já
+conhece. Cancelar é resposta legítima e é dita em voz alta: em 30/08 o pedido
+foi cancelado e o comando ficou sem saber, então o estado continuou errado sem
+ninguém explicar por quê.
+
+E confere o RESULTADO, não o "aceitei": a janela pode ser confirmada e o comando
+de dentro falhar por outro motivo. Dizer "pronto" nesse caso seria a pior
+resposta possível.
 
 ```
 cd "C:\Users\lfeli.ALIENWARE-LIPE\AppData\Local\AgentCockpit"

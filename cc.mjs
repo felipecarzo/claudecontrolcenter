@@ -1215,7 +1215,35 @@ switch (cmd) {
         if (!P.ehWindows) die('por enquanto só no Windows. Na VPS quem supervisiona é o systemd.')
         await perguntarPastas()
         const alvoScript = (await import('node:url')).fileURLToPath(import.meta.url)
-        const r = P.instalarServicoWindows({ node: process.execPath, script: alvoScript, porta: port })
+        let r = P.instalarServicoWindows({ node: process.execPath, script: alvoScript, porta: port })
+
+        /* CC-447: "Acesso negado" aqui não é erro de uso, é a política desta
+           máquina: criar a Tarefa Agendada exige administrador mesmo para uma
+           tarefa sem elevação nenhuma. Medido em 26/08.
+
+           Até 30/08 a resposta era mandar ele abrir outro terminal e digitar um
+           caminho de 60 caracteres, e ele não fez. O Windows sabe pedir a
+           permissão sozinho, e a janela é a mesma que ele conhece. Só depois da
+           tentativa normal falhar por permissão, e nunca de surpresa. */
+        if (!r.ok && r.precisaAdmin) {
+          console.log('\n  esta máquina exige permissão de administrador para criar a tarefa.')
+          console.log('  vou pedir agora: uma janela do Windows vai aparecer, e é só confirmar.\n')
+          const elev = P.pedirElevacao({ node: process.execPath, script: alvoScript, porta: port })
+          if (elev.cancelado) {
+            die('  você cancelou a janela de permissão, então nada mudou.\n'
+              + '  para tentar de novo: node cc.mjs daemon servico')
+          }
+          if (!elev.ok) die(`  não consegui pedir a permissão: ${elev.erro}`)
+          /* Confere o RESULTADO, e não o "aceitei": a janela pode ter sido
+             confirmada e o comando de dentro falhar por outro motivo, e dizer
+             "pronto" nesse caso seria a pior resposta possível. */
+          const estado = P.estadoServicoWindows?.()
+          if (!estado?.existe) die('  a permissão foi dada, mas a tarefa não apareceu. Rode `cc daemon servico` num terminal como administrador.')
+          console.log(`\n  tarefa criada com a permissão que você deu (${estado.estado || 'pronta'})`)
+          const up2 = await daemon.ensureUp(port)
+          console.log(`  painel: ${up2.url}\n`)
+          break
+        }
         if (!r.ok) die(`não deu: ${r.erro}`)
         const up = await daemon.ensureUp(port)
         console.log(`\n  tarefa criada: ${r.tarefa}`)
