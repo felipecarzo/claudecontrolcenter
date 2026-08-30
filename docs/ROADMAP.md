@@ -2540,9 +2540,18 @@ de arquitetura.**
 | `proj_controlcenter`, no PC | 27/08 | 38 commits |
 | `cockpit`, no PC | 26/08 | **46 commits** |
 
-As três dizem ser a versão `0.2.0` no `package.json`. O número nunca foi movido,
-então ele **não separa nada**, e é justamente a peça que "a mesma versão nos dois
-lados" precisa ter.
+As três diziam ser a versão `0.2.0` no `package.json`. O número nunca tinha sido
+movido, então ele **não separava nada**, e era justamente a peça que "a mesma
+versão nos dois lados" precisa ter.
+
+**Consertado em 30/08:** o produto passou para `0.3.0`, e a regra de quando o
+número sobe está escrita em `src/publicar.mjs`, junto de quem publica. Curta de
+propósito, para ser seguida: o último número sobe em conserto, o do meio quando
+entra recurso ou quando algo muda de comportamento, e o primeiro fica em zero
+enquanto isto for ferramenta dele. **O que o número não precisa fazer é
+distinguir dois commits do mesmo dia**: para isso o carimbo já leva o commit,
+que é exato. Subir a cada publicação o transformaria num contador, e contador
+ninguém lê.
 
 **O custo já apareceu:** uma sessão do PC trabalhou o dia 30/08 inteiro na cópia
 mais atrasada e refez dois consertos que já existiam, um deles com diagnóstico

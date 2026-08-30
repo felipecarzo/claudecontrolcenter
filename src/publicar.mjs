@@ -40,6 +40,28 @@
  * `versao.json` na pasta instalada guarda a versão do `package.json`, o commit,
  * a data e se o gate passou. Sem ele, "a mesma versão nos dois lados" continuaria
  * sem como ser conferida — que é o CC-434, o item que abriu esta frente.
+ *
+ * ## Quando o NÚMERO sobe, e por que ele estava parado
+ *
+ * CC-434, medido em 30/08: as três cópias do produto diziam `0.2.0` e eram
+ * código diferente, com 46 commits de distância entre a mais nova e a mais
+ * velha. **O número nunca tinha sido movido**, então ele não separava nada, e
+ * era justamente a peça que "a mesma versão nos dois lados" precisa ter.
+ *
+ * A regra, e ela é curta de propósito para ser seguida:
+ *
+ * - **o terceiro número** (`0.2.x`) sobe quando o que muda é conserto: nada do
+ *   que já funcionava passa a funcionar diferente;
+ * - **o do meio** (`0.x.0`) sobe quando entra recurso, ou quando algo que ele
+ *   usava passa a se comportar de outro jeito. Foi o caso de 30/08: a versão
+ *   que roda separada da que se edita, o programa em janela própria, e o
+ *   pacote levando o roadmap inteiro;
+ * - **o primeiro** fica em zero enquanto isto for ferramenta dele, e não
+ *   produto para outra pessoa instalar.
+ *
+ * O que o número NÃO precisa fazer: distinguir dois commits do mesmo dia. Para
+ * isso já existe o commit no carimbo, que é exato. Subir o número a cada
+ * publicação o transformaria num contador, e contador ninguém lê.
  */
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
