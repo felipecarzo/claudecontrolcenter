@@ -1179,6 +1179,10 @@
     .est-botao:hover { border-color: var(--accent); }
     .est-botao.est-off { color: var(--text-dim); }
     .est-linhas { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 3px 12px; min-width: 0; }
+    /* CC-362: a origem do modo, quando ele NÃO vem do projeto. Amarelo porque
+       é exceção, não estado normal: o caso comum é o projeto mandar, e pintar
+       todos faria a cor virar paisagem em um dia. */
+    .est-origem .est-val { color: var(--amber, var(--text-muted)); }
     .est-par { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
     .est-rot { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; }
     .est-val { font-size: 12.5px; color: var(--text-main); overflow-wrap: anywhere; }
@@ -2166,9 +2170,9 @@
     <div class="nav-section" data-grupo="RECURSOS">
       <button class="nav-section-title" data-nav-grupo="RECURSOS" aria-expanded="true"><span class="ns-seta">▾</span>RECURSOS</button>
       <div class="nav-itens">
+      <a href="#" class="nav-item" data-target="view-agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Agenda</a>
       <a href="#" class="nav-item" data-target="view-notas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Notas</a>
       <a href="#" class="nav-item" data-target="view-documentos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg> Documentos</a>
-      <a href="#" class="nav-item" data-target="view-agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Agenda</a>
       <a href="#" class="nav-item" data-target="view-glossario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> Glossário</a>
       </div>
     </div>
@@ -3400,8 +3404,6 @@
               renderNovoProjeto();
             }
             if (targetId === 'view-estrutura') renderMapa();
-            if (targetId === 'view-notas') { notesLoaded ? renderNotas() : carregarNotas(); }
-            if (targetId === 'view-glossario') { GLOSSARIO ? renderGlossario() : carregarGlossario(); }
             if (targetId === 'view-vps') carregarVps();
             if (targetId === 'view-servidores') { if (!SERVERS) carregarServidores(); else renderServidores(); }
             if (targetId === 'view-docker') carregarDocker();
@@ -3410,9 +3412,17 @@
             if (targetId === 'view-rotinas') { if (!ROTINAS_DATA) carregarRotinas(); else renderRotinas(); }
             if (targetId === 'view-custo') { if (!PRECO) carregarPreco(); else renderPreco(); }
             if (targetId === 'view-graficos') { DATA.tempo ? renderGraficos() : carregarTempo().then(renderGraficos); }
-            if (targetId === 'view-digest') renderDigest();
+            /* CC-420: a tela do Digest PEDE ao abrir, em vez de ser um botão.
+               Antes ela mostrava 16 caracteres — o rótulo de um botão — com
+               300 KB de dado pronto do outro lado da rota. O botão existia
+               porque a varredura leva ~2s, e esse motivo continua de pé: o que
+               mudou é que agora há cache de 5 minutos no servidor, então abrir
+               custa uma vez e reabrir sai de graça. Segue fora do tique. */
             if (targetId === 'view-bancada') { if (!BANCADA) carregarBancada(); else renderBancada(); }
+            if (targetId === 'view-notas') { notesLoaded ? renderNotas() : carregarNotas(); }
+            if (targetId === 'view-glossario') { GLOSSARIO ? renderGlossario() : carregarGlossario(); }
             if (targetId === 'view-documentos') { if (!DOCS) carregarDocs(); else renderDocs(); }
+            if (targetId === 'view-digest') { DIGEST ? renderDigest() : alternarDigest(); }
             if (targetId === 'view-agenda') { if (!AGENDA) carregarAgenda(); else renderAgenda(); }
             if (targetId === 'view-meus') { MEUS ? renderMeusPaineis() : carregarMeusPaineis(); }
           } else {
@@ -6242,17 +6252,21 @@
        Sob clique, nunca sozinho: cruza histórico + git + diário de ~20
        projetos. */
     let DIGEST = null;
-    async function alternarDigest() {
-      if (DIGEST) { DIGEST = null; return renderDigest(); }
+    async function alternarDigest(force) {
       DIGEST = 'carregando';
       renderDigest();
-      try { DIGEST = await (await fetch('/api/digest')).json(); } catch { DIGEST = { erro: true }; }
+      try { DIGEST = await (await fetch('/api/digest' + (force ? '?force=1' : ''))).json(); } catch { DIGEST = { erro: true }; }
       renderDigest();
     }
     function renderDigest() {
       const alvo = document.getElementById('digest-corpo');
       if (!alvo) return;
-      const botao = `<button class="btn compacto" style="background:var(--accent);color:white;" data-digest>${DIGEST ? 'fechar digest' : 'digest da semana'}</button>`;
+      /* O rótulo diz o que o clique FAZ. "fechar digest" escondia a tela
+         inteira e deixava ela em branco de novo, que era o estado de partida
+         do defeito. Agora o único clique é o que traz dado mais novo. */
+      const idade = (DIGEST && DIGEST.colhidoEm)
+        ? `<span style="font-size:11px;color:var(--text-dim);margin-left:8px;">lido ${new Date(DIGEST.colhidoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>` : '';
+      const botao = `<button class="btn compacto" style="background:var(--accent);color:white;" data-digest>atualizar</button>${idade}`;
       if (!DIGEST) { alvo.innerHTML = botao; return; }
       if (DIGEST === 'carregando') { alvo.innerHTML = botao + '<p style="color:var(--text-dim);margin-top:12px;">cruzando histórico, git e diário de todos os projetos…</p>'; return; }
       if (DIGEST.erro) { alvo.innerHTML = botao + '<p style="color:var(--red);margin-top:12px;">não deu para montar o digest</p>'; return; }
@@ -6260,7 +6274,7 @@
       const cartoes = DIGEST.projetos.map((p) => {
         const itens = [p.commits.length && `${p.commits.length} commit(s)`, p.marcos.filter((m) => m.tipo === 'todo').length && `${p.marcos.filter((m) => m.tipo === 'todo').length} tarefa(s) fechada(s)`, p.diario.length && `${p.diario.length} dia(s) de diário`].filter(Boolean).join(' · ');
         return `<div class="card" style="margin-bottom:10px;">
-          <b>${esc(p.projeto)}</b> ${seloLocal()} <span style="font-size:11px;color:var(--text-dim);">${itens || 'sem sinal'}</span>
+          <b>${esc(p.nome || p.projeto)}</b> ${seloLocal()} <span style="font-size:11px;color:var(--text-dim);">${itens || 'sem sinal'}</span>
           ${p.commits.slice(0, 5).map((c) => `<div style="font-size:11px;color:var(--text-muted);padding:2px 0;">${esc(c.assunto)}</div>`).join('')}
         </div>`;
       }).join('');
@@ -8012,7 +8026,20 @@
           ? '<span class="est-par"><span class="est-val">Desligado</span></span>'
           : linha('papel', perfilAtual?.titulo)
             + linha('caminho', metodoAtual?.titulo?.split(':')[0])
-            + linha('modo', modoAtual?.titulo))
+            /* ⚠️ **CC-362, a última fatia: o modo vem com a ORIGEM colada.**
+               Modo tem três camadas: o projeto (vale para toda sessão), a marca
+               na linha da rota, e a sessão. Em 27/08 a tela mostrava o modo do
+               projeto enquanto a trava obedecia o de uma rota alheia, e nada
+               dizia que existia uma terceira camada.
+               O motor foi consertado naquele dia e a origem já viajava pronta
+               na resposta do servidor. Faltava só isto: pintar. Enquanto não
+               era pintado, a tela continuava dizendo a metade da verdade com a
+               mesma confiança de antes. */
+            + linha('modo', modoAtual?.titulo)
+            + (p.origemModoTexto && p.origemModo !== 'projeto'
+              ? '<span class="est-par est-origem"><span class="est-rot">de onde</span>'
+                + '<span class="est-val">' + esc(p.origemModoTexto) + '</span></span>'
+              : ''))
         + '</span><span class="est-seta">▾</span></button>';
     };
 
@@ -11577,14 +11604,24 @@
           return null;
         }
       };
-      const [snap, meu, trab] = await Promise.all([
+      /* ── CC-419: os painéis dele entram na carga INICIAL, não ao abrir a tela.
+         Medido em 29/08, abrindo a tela dez vezes seguidas: buscada só no
+         clique, a lista às vezes chegava depois do desenho, e a tela ficava em
+         "carregando…" — em duas de dez aberturas. Nada errava, nada avisava, e
+         a tela dele parecia quebrada de vez em quando, que é a pior forma de
+         defeito: a que não dá para reproduzir na hora de mostrar.
+         O JSON é minúsculo (uma linha por painel), então não paga nada por vir
+         junto do resto. */
+      const [snap, meu, trab, meusPaineis] = await Promise.all([
         pedir('/api/jobs', 'os agentes'),
         pedir('/api/meu', 'as suas pendências'),
         pedir('/api/trabalho?ordem=importancia', 'o backlog'),
+        pedir('/api/paineis-meus', 'os seus painéis'),
       ]);
       if (snap) aplicarSnapshot(snap);
       if (meu) DATA.meu = meu.tarefas || [];
       if (trab) DATA.trabalho = trab;
+      if (meusPaineis && !MEUS) MEUS = Array.isArray(meusPaineis.paineis) ? meusPaineis.paineis : [];
       renderAll();
     }
 
@@ -12470,7 +12507,7 @@
       }
 
       // ===== DIGEST =====
-      if (tr.dataset.digest !== undefined) return alternarDigest();
+      if (tr.dataset.digest !== undefined) return alternarDigest(true);
 
       // ===== BANCADA =====
       if (tr.dataset.bnNivel) return bancadaAcao({ acao: 'nivel', nivel: tr.dataset.bnNivel });

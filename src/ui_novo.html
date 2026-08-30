@@ -241,6 +241,10 @@
       justify-content: space-between;
       align-items: flex-start;
       margin-bottom: 32px;
+      /* CC-375: a gaveta dos modos é `absolute` e precisa de alguém a quem se
+         ancorar. Sem esta linha ela se posiciona pela PÁGINA, e no telefone
+         acaba fora da tela: é a mesma armadilha do popover com `top` chutado. */
+      position: relative;
     }
     .header-left p { margin-top: 4px; }
     .header-right {
@@ -1179,6 +1183,10 @@
     .est-botao:hover { border-color: var(--accent); }
     .est-botao.est-off { color: var(--text-dim); }
     .est-linhas { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 3px 12px; min-width: 0; }
+    /* CC-362: a origem do modo, quando ele NÃO vem do projeto. Amarelo porque
+       é exceção, não estado normal: o caso comum é o projeto mandar, e pintar
+       todos faria a cor virar paisagem em um dia. */
+    .est-origem .est-val { color: var(--amber, var(--text-muted)); }
     .est-par { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
     .est-rot { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; }
     .est-val { font-size: 12.5px; color: var(--text-main); overflow-wrap: anywhere; }
@@ -1263,8 +1271,116 @@
     .rota-conta { font-size: 12px; color: var(--text-muted); }
     .rota-rodape { font-size: 11px; color: var(--text-dim); margin: 4px 0 18px; }
     .rota-cego { border-left: 2px solid var(--waiting); }
-    .fw-pedidos { display: grid; gap: 4px; width: 100%; margin: 4px 0; }
-    .fw-pedido { display: flex; align-items: center; gap: 8px; }
+    /* ===== CC-414/415/416: os três modos de ver os agentes ================
+       ⚠️ **Nenhuma grade aqui reserva largura declarada.** `auto-fill` com
+       `minmax` se ajusta sozinho e passa; coluna de largura fixa é a armadilha
+       que já apagou duas telas em 390px, e o gate recusa. */
+    .ag-modos { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px; }
+    .ag-modo { background: none; border: 0; color: var(--text-muted); font: inherit; font-size: 11px;
+      padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+    .ag-modo.ativo { background: var(--card-hover); color: var(--text-main); }
+
+    .ag-trello { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 20px; }
+    .ag-mini { display: grid; gap: 6px; text-align: left; width: 100%; min-width: 0;
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 14px; cursor: pointer; font: inherit; color: inherit; }
+    .ag-mini:hover { background: var(--card-hover); }
+    .ag-mini .dot { justify-self: start; }
+    /* Três linhas e corta: cartão que cresce com o texto desalinha a grade
+       inteira, e o pedido era justamente cartão MENOR. */
+    .ag-mini-nome { font-size: 13px; color: var(--text-main); line-height: 1.35;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .ag-mini-quem { font-size: 11px; color: var(--text-dim); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+    .ag-fila-faixa { margin-top: 18px; }
+    .ag-fila-titulo { display: flex; gap: 8px; align-items: center; font-size: 11px;
+      letter-spacing: .06em; color: var(--text-muted); margin-bottom: 6px; }
+    .ag-fila-titulo span:last-child { margin-left: auto; }
+    /* `auto 1fr auto` é rótulo, texto e valor: não reserva largura, o meio
+       absorve o que sobra. É a exceção examinada da regra de grade. */
+    .ag-tira { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: baseline;
+      width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--border);
+      padding: 8px 4px; cursor: pointer; font: inherit; color: inherit; }
+    .ag-tira:hover { background: var(--card-hover); }
+    .ag-tira-nome { font-size: 12.5px; color: var(--text-main); min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ag-tira-proj { font-size: 11px; color: var(--text-dim); grid-column: 1; }
+    .ag-tira-idade { font-size: 11px; color: var(--text-dim); white-space: nowrap; grid-row: 1 / span 2; align-self: center; }
+
+    /* Máquina remota que parou de responder. Amarelo e não vermelho: ela não
+       quebrou, só está desligada, e vermelho aqui viraria alarme diário. */
+    /* ===== CC-373: a marca de risco no cartão =============================
+       Ela é a EXCEÇÃO, e por isso não tem cor de estado: os cinco estados do
+       painel já usam verde, amarelo, âmbar e vermelho com significado próprio,
+       e disputar essa paleta faria as duas leituras piorarem juntas. */
+    /* ===== CC-352: as pastas de projeto ==================================
+       `1fr auto auto` é nome, contagem e botão: o nome absorve o que sobra e
+       nada reserva largura, que é a exceção examinada da regra contra grade de
+       coluna fixa. */
+    .pj-secao-n { margin-left: 8px; font-weight: normal; color: var(--text-dim); }
+    .pj-secao-fora { margin-left: 8px; font-weight: normal; font-size: 10.5px; color: var(--amber, var(--text-dim)); }
+    .pasta-lista { display: grid; gap: 6px; margin: 8px 0; }
+    .pasta-linha { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center;
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; }
+    .pasta-nome { font-size: 12px; color: var(--text-main); min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+    .pasta-conta { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+    /* Pasta que rende ZERO projeto é o sintoma de caminho errado, e é o único
+       jeito de ele descobrir isso sem abrir terminal. */
+    .pasta-zero { color: var(--amber, var(--text-muted)); }
+    .pasta-fixa { border-style: dashed; }
+    .pasta-porque { font-size: 10.5px; color: var(--text-dim); white-space: nowrap; }
+    .pasta-nova { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .pasta-nova input { flex: 1; min-width: 200px; }
+    .pasta-erro { font-size: 11.5px; color: var(--red); margin-top: 8px; }
+
+    .rt-risco { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px;
+      font: inherit; font-size: 10.5px; padding: 2px 8px; border-radius: 999px;
+      cursor: pointer; background: none; }
+    .rt-disputa { color: var(--red); border: 1px solid var(--red); }
+    .rt-sem-arquivo { color: var(--text-muted); border: 1px dashed var(--border); }
+    /* Cruzamento COM recado trocado não é vermelho: os dois donos sabem um do
+       outro, e é o desfecho que o método quer. Pintar igual ao cego apagaria a
+       única diferença que ele pediu para enxergar. */
+    .rt-avisado { color: var(--amber, var(--text-muted)); border: 1px solid var(--amber, var(--border)); }
+    .rt-so-marca { margin-top: 0; margin-left: 6px; padding: 0 6px; }
+    .rem-fora { font-size: 11px; color: var(--amber, var(--text-dim)); font-weight: normal; margin-left: 8px; }
+
+    /* ===== CC-375: a gaveta dos modos, na barra de cima ==================
+       Ela flutua por cima e não empurra nada: é painel temporário, e painel
+       temporário não reserva espaço permanente. Mesma lição da faixa que
+       roubou largura do painel novo em 29/08. */
+    .modos-caixa { position: absolute; right: 20px; top: 100%; z-index: 120;
+      width: min(420px, calc(100vw - 32px)); max-height: min(60vh, 520px); overflow-y: auto;
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 12px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .modos-lista { display: grid; gap: 8px; }
+    /* `1fr auto` é nome e seletor: não reserva largura, o nome absorve o que
+       sobra. É a exceção examinada da regra contra grade de coluna fixa. */
+    .modos-linha { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+    .modos-proj { font-size: 12.5px; color: var(--text-main); min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .modos-sel { margin: 0; font-size: 12px; padding: 4px 8px; }
+    .modos-origem { grid-column: 1 / -1; font-size: 10.5px; color: var(--text-dim); }
+    .modos-vazio { font-size: 11.5px; color: var(--text-dim); margin: 6px 2px 0; }
+    /* ⚠️ **Medido em 390px: com `right: 20px` a gaveta saía 4px pela esquerda.**
+       A conta de largura (`100vw - 32px`) não sabe do recuo do cabeçalho, então
+       o resultado passava do lado de fora. Em tela estreita ela deixa de ser
+       gaveta e vira faixa: ocupa a largura do cabeçalho e não faz conta
+       nenhuma. Quatro pixels não parecem nada, e é assim que uma tela começa a
+       rolar de lado no telefone dele. */
+    @media (max-width: 700px) {
+      .modos-caixa { left: 0; right: 0; width: auto; }
+    }
+
+    .fw-pedidos { display: grid; gap: 8px; width: 100%; margin: 6px 0; }
+    /* O texto manda e o botão acompanha, e não o contrário: em 390px o botão
+       desce para baixo do texto em vez de espremer a frase numa coluna de duas
+       palavras, que é a armadilha de grade já registrada neste projeto. */
+    .fw-pedido-txt { display: grid; gap: 2px; min-width: 0; flex: 1; }
+    .fw-pedido-efeito { font-size: 11px; color: var(--text-muted); }
+    .fw-pedido { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; }
     .fw-pedido code {
       flex: 1 1 auto; font-size: 11.5px; color: var(--fg);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1890,6 +2006,36 @@
 
     /* ===== CC-304: a tela Projetos ===== */
     .pj-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+    /* CC-411: as quatro faixas do mapa, em abas e cartões. */
+    .mapa-abas { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+    .mapa-aba {
+      display: flex; align-items: center; gap: 5px; min-height: 34px;
+      padding: 5px 11px; cursor: pointer; font-size: 12px; border-radius: 7px;
+      background: var(--surface); color: var(--text-muted); border: 1px solid var(--border);
+    }
+    .mapa-aba.ativo { color: var(--accent); border-color: var(--accent); }
+    .mapa-aba span { font-size: 10.5px; opacity: .75; }
+    .mapa-cartoes { display: grid; gap: 7px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+    .mapa-cartao {
+      padding: 9px 11px; border-radius: 9px; background: var(--surface);
+      border: 1px solid var(--border); border-left: 2px solid var(--border);
+    }
+    .mapa-cartao.com-agente { border-left-color: var(--working); }
+    .mapa-cartao-txt { font-size: 12px; margin: 0; overflow-wrap: anywhere; line-height: 1.35; }
+    .mapa-cartao-pe { display: flex; gap: 8px; margin-top: 6px; font-size: 10.5px; color: var(--text-dim); }
+    .mapa-cartao-ag { color: var(--accent); }
+    .mapa-grupo { grid-column: 1 / -1; }
+    .mapa-grupo header { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+    .mapa-grupo header b { font-size: 12.5px; }
+    .mapa-selo {
+      font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim);
+      border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px;
+    }
+    .mapa-grupo-itens { display: flex; flex-direction: column; gap: 3px; margin-top: 7px; }
+    .mapa-grupo-itens span { font-size: 11.5px; color: var(--text-muted); overflow-wrap: anywhere; }
+    .mapa-mais { font-size: 11px; color: var(--text-dim); margin: 6px 0 0; }
+    .mapa-vazio { font-size: 11.5px; color: var(--text-dim); margin: 0; line-height: 1.4; }
+
     /* CC-409/410: o bloco dobrável com o "?" no título. */
     .bloco {
       background: var(--card); border: 1px solid var(--border);
@@ -1991,6 +2137,15 @@
         display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
         overscroll-behavior-x: none; contain: paint;
         gap: 10px; padding-bottom: 6px;
+        /* ⚠️ **`align-items: start`, e sem isto o cartão vira um poço.**
+           Print dele em 30/08: o cartão do `games/hutukara` com 1251px de
+           altura para 234px de conteúdo, mais de mil pixels de vazio embaixo
+           do nome. `display: flex` estica todos os itens até a altura do
+           MAIOR, que é o padrão (`stretch`), e um cartão de projeto ligado
+           daqui tem seletor, módulos e três fileiras de ação.
+           No telefone isso é a tela inteira em branco entre um cartão e o
+           próximo: ele arrasta e não vê nada. */
+        align-items: start;
       }
       .pj-grade.pj-desliza > * {
         flex: 0 0 86%; scroll-snap-align: start; min-width: 0;
@@ -2022,6 +2177,7 @@
     .pj-frente{font-size:12px;color:var(--text-muted);margin:-4px 0 0;}
     /* Os números do projeto, numa linha que quebra. Cada um só aparece quando
        tem valor: "0 agentes" ocupa espaço e não informa nada. */
+    .pj-sinal-idade { font-size: 10.5px; color: var(--text-dim); margin: 2px 0 0; }
     .pj-numeros{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;}
     .pj-num{display:flex;flex-direction:column;gap:1px;}
     .pj-num b{font-size:16px;font-variant-numeric:tabular-nums;color:var(--text-main);}
@@ -2173,20 +2329,16 @@
   <script src="/graficos.js"></script>
 </head>
 <body>
-  <!-- CC-397: a faixa que diz onde ele está.
-       Sem ela, o painel novo é idêntico ao de todo dia, e ele acabaria mexendo
-       num achando que é o outro. A faixa some quando a troca acontecer. -->
-  <div id="faixa-novo">Cockpit 2.0, em construção. O seu de todo dia continua em <a href="/">/</a>.</div>
-  <style>
-    #faixa-novo {
-      position: sticky; top: 0; z-index: 90; padding: 6px 14px;
-      font-size: 11.5px; text-align: center;
-      background: var(--amber-bg, rgba(245,158,11,.12));
-      color: var(--amber, #F59E0B);
-      border-bottom: 1px solid var(--amber, #F59E0B);
-    }
-    #faixa-novo a { color: inherit; }
-  </style>
+  <!-- ⚠️ **NADA de elemento solto aqui dentro.** Este painel tem
+       `body { display: flex }` EM LINHA, então um filho direto do body não é
+       uma faixa no topo: é uma COLUNA irmã do menu e do conteúdo, e ela come
+       largura.
+       Medido em 29/08, com ele vendo em produção: a faixa de "Cockpit 2.0, em
+       construção" deixava o conteúdo com 284px numa janela de 825px, contra
+       645px do painel de então. Menos espaço que num telefone de 390px.
+       A faixa saiu em 30/08, quando este virou o painel de todo dia. A lição
+       fica: o que for acrescentado aqui precisa estar FORA do fluxo, `fixed` ou
+       `absolute`, nunca solto. -->
   
   <aside class="sidebar">
     <div class="logo-area">
@@ -2211,7 +2363,16 @@
       </div>
     </div>
     
-    <div class="nav-section" style="padding-top: 24px;">
+    <!-- ⚠️ **CC-399: este bloco não tinha título, e os outros cinco tinham.**
+         Oito telas soltas no alto, e a primeira palavra do menu aparecia só na
+         nona linha ("AGENTES"). Um menu em que metade tem nome e metade não é
+         um menu que ele lê duas vezes: uma para achar, outra para entender por
+         que aquilo estava ali.
+         "O DIA A DIA" é o que essas oito são de verdade, e é o critério que
+         separa elas das outras: são as telas que ele abre sem motivo especial. -->
+    <div class="nav-section" data-grupo="O DIA A DIA" style="padding-top: 24px;">
+      <button class="nav-section-title" data-nav-grupo="O DIA A DIA" aria-expanded="true"><span class="ns-seta">▾</span>O DIA A DIA</button>
+      <div class="nav-itens">
       <a href="#" class="nav-item active" data-target="view-cockpit">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
         Cockpit
@@ -2221,7 +2382,6 @@
            trabalhando"); Projetos logo abaixo porque é o mesmo assunto com o
            recorte maior, e separá-los no menu faria ele procurar em dois
            lugares distantes o que é uma coisa só. -->
-      <a href="#" class="nav-item" data-target="view-ligados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg> Remoto</a>
       <a href="#" class="nav-item" data-target="view-projetos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> Projetos</a>
       <!-- CC-376, 27/08: a tela das rotas fica colada nas de projeto porque a
            pergunta dela é a mesma, um nível abaixo. Não "onde tem alguém", e
@@ -2251,6 +2411,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
         Trabalho
       </a>
+      </div>
     </div>
 
 
@@ -2265,10 +2426,6 @@
       <a href="#" class="nav-item" data-target="view-analise"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg> Análise</a>
       <a href="#" class="nav-item" data-target="view-agentes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Agentes</a>
       <a href="#" class="nav-item" data-target="view-escritorio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg> Escritório</a>
-      <!-- CC-196: órfã no desenho original. Nenhum dos 24 destinos do menu
-           levava até o abrir-sessão-à-distância e a federação entre máquinas,
-           mesmo sendo o que ele pediu de unificar o cockpit em 19/08. -->
-      <a href="#" class="nav-item" data-target="view-remoto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="12" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="16" x2="12" y2="21"></line><path d="M6 9l3 2-3 2"></path></svg> Ajustes</a>
       </div>
     </div>
     <div class="nav-section" data-grupo="INTELIGÊNCIA">
@@ -2277,31 +2434,35 @@
       <a href="#" class="nav-item" data-target="view-tempo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Tempo</a>
       <a href="#" class="nav-item" data-target="view-custo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Custo</a>
       <a href="#" class="nav-item" data-target="view-graficos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> Gráficos</a>
-      <a href="#" class="nav-item" data-target="view-digest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Digest</a>
       </div>
     </div>
     <div class="nav-section" data-grupo="RECURSOS">
       <button class="nav-section-title" data-nav-grupo="RECURSOS" aria-expanded="true"><span class="ns-seta">▾</span>RECURSOS</button>
       <div class="nav-itens">
-      <a href="#" class="nav-item" data-target="view-notas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Notas</a>
-      <a href="#" class="nav-item" data-target="view-documentos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg> Documentos</a>
       <a href="#" class="nav-item" data-target="view-agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Agenda</a>
-      <a href="#" class="nav-item" data-target="view-glossario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> Glossário</a>
+      <a href="#" class="nav-item" data-target="view-conhecimento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> Conhecimento</a>
       </div>
     </div>
     <div class="nav-section" data-grupo="ENGENHARIA">
       <button class="nav-section-title" data-nav-grupo="ENGENHARIA" aria-expanded="true"><span class="ns-seta">▾</span>ENGENHARIA</button>
       <div class="nav-itens">
       <a href="#" class="nav-item" data-target="view-framework"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg> Framework</a>
-      <!-- CC-406: as quatro telas de infraestrutura viram uma, com abas. -->
-      <a href="#" class="nav-item" data-target="view-infra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="8" rx="1"></rect><rect x="2" y="13" width="20" height="8" rx="1"></rect><line x1="6" y1="7" x2="6.01" y2="7"></line><line x1="6" y1="17" x2="6.01" y2="17"></line></svg> Máquinas</a>
       <a href="#" class="nav-item" data-target="view-hooks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> Hooks</a>
       <a href="#" class="nav-item" data-target="view-rotinas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.5"></path><polyline points="21 3 21 9 15 9"></polyline></svg> Rotinas</a>
       </div>
     </div>
+    <!-- ⚠️ **CC-399: este grupo existia com o título na tela e NADA embaixo.**
+         Medido em 29/08 abrindo o menu: "INFRA" aparecia como uma seção de
+         verdade, e clicar não levava a lugar nenhum. Grupo vazio é pior que
+         grupo ausente, porque ele promete um lugar que não existe.
+         As duas telas que moram aqui estavam no grupo errado: "Máquinas" em
+         ENGENHARIA (que é sobre o método de trabalho, não sobre o computador)
+         e "Ajustes" em AGENTES (que é sobre as sessões). -->
     <div class="nav-section" data-grupo="INFRA">
       <button class="nav-section-title" data-nav-grupo="INFRA" aria-expanded="true"><span class="ns-seta">▾</span>INFRA</button>
       <div class="nav-itens">
+      <a href="#" class="nav-item" data-target="view-infra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="8" rx="1"></rect><rect x="2" y="13" width="20" height="8" rx="1"></rect><line x1="6" y1="7" x2="6.01" y2="7"></line><line x1="6" y1="17" x2="6.01" y2="17"></line></svg> Máquinas</a>
+      <a href="#" class="nav-item" data-target="view-remoto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="12" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="16" x2="12" y2="21"></line><path d="M6 9l3 2-3 2"></path></svg> Ajustes</a>
       </div>
     </div>
     <!-- CC-309: a fronteira que se arrasta, pedido dele. Só no computador:
@@ -2333,10 +2494,21 @@
           </div>
         </div>
         <div class="header-actions">
+          <!-- CC-375: o painel de modos, que aparece e some.
+               Ele desenhou a solução junto do pedido: *"talvez eu aperte um
+               botão eles apareçam e sumam. Mas assim, bem simples, só o nome do
+               projeto e o que está, o modo"*. Fica na barra de cima porque é de
+               onde ele alcança de qualquer tela, sem rolar nada. -->
+          <button type="button" id="bt-modos" class="btn btn-ghost compacto" data-modos-abrir
+            title="ver e trocar o modo de todos os projetos, sem sair desta tela">modos</button>
           <!-- O avatar do desenho vinha de um serviço na rede; as iniciais
                desenhadas aqui são o mesmo círculo, sem depender de ninguém. -->
           <div class="avatar" style="display:flex;align-items:center;justify-content:center;background:#1c222c;color:#38bdf8;font-size:13px;font-weight:600;">FC</div>
         </div>
+        <!-- A gaveta dos modos. Nasce fechada e vazia: montar 20 projetos a
+             cada tique para deixar escondido seria trabalho jogado fora no
+             telefone dele, que é a mesma decisão das faixas que colapsam. -->
+        <div id="modos-caixa" class="modos-caixa" hidden></div>
       </div>
     </header>
 
@@ -2625,6 +2797,12 @@
               <select id="analise-proj" class="styled-input"></select>
             </div>
           </div>
+          <!-- CC-412: a síntese escrita por IA, no TOPO e antes das abas.
+               Ela fala das quatro juntas, então ficar dentro de uma delas seria
+               dizer que ela é sobre aquela. E fica acima porque é a leitura de
+               relance: ele abre no telefone, lê três frases e decide se precisa
+               descer para os números. -->
+          <div class="card" id="sintese-caixa" style="margin-bottom:12px;"></div>
           <div id="analise-estrutura" class="infra-painel"></div>
           <div id="analise-travas" class="infra-painel" hidden></div>
           <div id="analise-tendencias" class="infra-painel" hidden></div>
@@ -2665,8 +2843,14 @@
          viraram uma tela com duas gavetas fechadas por cima do que ele procura.
 
          Agora ela guarda só o que é ajuste de vez em quando: o método de
-         trabalho e as máquinas. Os projetos moram nas duas telas irmãs,
-         `view-ligados` e `view-projetos`.
+         trabalho, as máquinas e onde ficam as pastas de projeto.
+
+         ⚠️ **CC-424, 30/08: os projetos moram numa tela só, `view-projetos`.**
+         Eram duas telas irmãs, e ele viu: *"você criou menus novos e deixou os
+         antigos repetidos? qual o sentido? deleta os que são redundantes"*.
+         Medido, ele estava certo: as duas listavam os MESMOS 34 projetos, com
+         22 das 24 ações iguais. A separação por nome de máquina, que só a outra
+         fazia, veio para esta, e a outra saiu.
 
          As gavetas nascem ABERTAS, ao contrário de antes. O motivo inverteu
          junto com o conteúdo: quando havia cartão de projeto no topo, elas
@@ -2686,6 +2870,19 @@
           <details class="cc-bloco" open>
           <summary><b>O método de trabalho</b><span>a entrevista e o retrato geral. Ligar, desligar e escolher o modo é no cartão de cada projeto</span></summary>
           <div id="cc-framework-aqui"></div>
+          </details>
+
+          <!-- CC-352: onde o cockpit procura projeto.
+               Pedido dele em 25/08: *"é importante que o cockpit pergunte onde
+               vai ser a pasta de projetos (…) e ela pode adicionar múltiplas
+               pastas também, caso ela goste de trabalhar com projetos de
+               música, projetos de outras coisas"*.
+               A leitura de várias pastas existe desde 26/08 e a escrita não
+               existia em lugar nenhum: só editando o arquivo de configuração à
+               mão, que é o que ele não faz. -->
+          <details class="cc-bloco">
+          <summary><b>Onde ficam seus projetos</b><span>as pastas que o cockpit varre. Pode ser mais de uma</span></summary>
+          <div id="pastas-corpo"></div>
           </details>
 
           <details class="cc-bloco" open>
@@ -3187,38 +3384,6 @@
            1. o que está ATIVO agora, com o cartão cheio que ele aprovou;
            2. onde abrir uma sessão, separado por máquina;
            3. o que se ajusta de vez em quando, fechado. -->
-    <div id="view-ligados" class="view-section">
-      <div class="grid-container so-uma">
-        <div class="main-col">
-          <div class="card tend-barra">
-            <div class="tend-acoes">
-              <button class="btn btn-ghost" id="lig-atualizar">atualizar</button>
-            </div>
-            <div class="tend-quando" id="lig-quando"></div>
-          </div>
-          <div id="lig-grade"></div>
-
-          <div class="section-header" style="margin-top:26px;">
-            <h2 data-explica="agente">ONDE ABRIR UMA SESSÃO</h2>
-            <span id="rem-conta" style="font-size:12px;color:var(--text-muted);"></span>
-          </div>
-          <div id="rem-maquinas"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TELA: PROJETOS (todos, sem filtro para clicar)
-         =====================================================================
-         CC-367, 27/08. Ela existia, foi enfiada dentro da Central pelo CC-335
-         em 25/08, e volta a ser tela própria porque foi ele quem pediu:
-         *"uma outra tela com todos os projetos (…) eu posso abrir uma sessão de
-         um projeto que já está aberto também"*.
-
-         **O seletor "mostrar" saiu.** Era ele que escondia os desligados atrás
-         de um gesto, e a queixa foi literal: *"não tem o local pra ver os
-         projetos desligados automaticamente, eu preciso clicar num botão"*.
-         Aqui aparecem todos, sempre; quem quer só os ligados tem a tela ao
-         lado, que é justamente a divisão que ele desenhou. -->
     <div id="view-projetos" class="view-section">
       <div class="grid-container so-uma">
         <div class="main-col">
@@ -3338,6 +3503,35 @@
     <!-- TELA: DIGEST
          Resumo da semana: commits, tarefas fechadas e diário, por projeto.
          Sob clique, nunca sozinho: é spawn de git em ~20 projetos. -->
+    <!-- TELA: CONHECIMENTO — CC-421, escolha dele em 29/08
+         As quatro telas onde mora conhecimento tinham tamanhos que não se
+         justificavam lado a lado no menu: Notas com 5 blocos, Documentos com
+         1 documento, Glossário com 63 verbetes e o resumo da semana cobrindo
+         10 projetos. Quatro linhas no menu para procurar texto em quatro
+         lugares. Perguntado, ele escolheu "uma tela só, com abas".
+
+         ⚠️ Os nós são MOVIDOS lá embaixo, no JS, e não recortados aqui. É a
+         mesma decisão da Análise e pelo mesmo motivo: cada uma dessas telas
+         tem identificadores que várias funções procuram pelo nome, e mover o
+         nó preserva todos. Recortar e recolar HTML é onde se perde um
+         fechamento sem ninguém notar. -->
+    <div id="view-conhecimento" class="view-section">
+      <div class="grid-container so-uma">
+        <div class="main-col">
+          <div class="infra-abas" role="tablist">
+            <button type="button" class="infra-aba" data-conh="notas">notas</button>
+            <button type="button" class="infra-aba" data-conh="documentos">documentos</button>
+            <button type="button" class="infra-aba" data-conh="glossario">glossário</button>
+            <button type="button" class="infra-aba" data-conh="digest">a semana</button>
+          </div>
+          <div id="conh-notas" class="infra-painel"></div>
+          <div id="conh-documentos" class="infra-painel" hidden></div>
+          <div id="conh-glossario" class="infra-painel" hidden></div>
+          <div id="conh-digest" class="infra-painel" hidden></div>
+        </div>
+      </div>
+    </div>
+
     <div id="view-digest" class="view-section">
       <div class="grid-container so-uma">
         <div class="main-col">
@@ -3499,7 +3693,6 @@
       'view-analise': { title: 'Análise', subtitle: 'Escolha um projeto uma vez e veja os quatro ângulos: o mapa, o que as regras barraram, as tendências e a segurança.' },
       'view-infra': { title: 'Máquinas', subtitle: 'O que está rodando: esta máquina, as portas em escuta, os containers e a VPS por dentro. Eram quatro telas, e a pergunta era uma só.' },
       'view-rotas': { title: 'Rotas', subtitle: 'Quem está segurando qual parte do código agora, em quais arquivos, e o que os agentes combinaram entre si para não trombar.' },
-      'view-ligados': { title: 'Remoto', subtitle: 'O que está trabalhando agora, com os controles à mão, e onde abrir a próxima sessão, separado por máquina.' },
       'view-remoto': { title: 'Ajustes', subtitle: 'O que se mexe de vez em quando: as máquinas e o método de trabalho. Os projetos ficam em Ligados e em Projetos.' },
       'view-hooks': { title: 'Hooks', subtitle: 'Gatilhos automáticos do sistema.' },
       'view-rotinas': { title: 'Rotinas', subtitle: 'As cópias de comando dentro de cada projeto, e se ainda valem.' },
@@ -3518,7 +3711,8 @@
       'view-notas': { title: 'Notas', subtitle: 'Anotações rápidas do projeto.' },
       'view-documentos': { title: 'Documentos', subtitle: 'A sua estante: ideia, texto ditado, contrato que chegou pelo chat.' },
       'view-agenda': { title: 'Agenda', subtitle: 'O que você tem hoje, lido da agenda do Google.' },
-      'view-glossario': { title: 'Glossário', subtitle: 'Dicionário do projeto.' }
+      'view-glossario': { title: 'Glossário', subtitle: 'Dicionário do projeto.' },
+      'view-conhecimento': { title: 'Conhecimento', subtitle: 'O que você escreveu e o que o painel leu: notas, documentos, glossário e o resumo da semana.' }
     };
 
     function setupNavigation() {
@@ -3643,15 +3837,13 @@
               trocarInfra(document.querySelector('[data-infra].ativo')?.dataset.infra || 'maquina');
             }
             if (targetId === 'view-rotas') { carregarRotas({ silencioso: Boolean(ROTAS && typeof ROTAS !== 'string') }); }
-            if (targetId === 'view-ligados' || targetId === 'view-projetos') {
+            if (targetId === 'view-projetos') {
               carregarProjetosTela();
               conversasParaOsCards();
               carregarFrameworkLista({ silencioso: Boolean(FW_LISTA) });
               renderNovoProjeto();
             }
             if (targetId === 'view-estrutura') renderMapa();
-            if (targetId === 'view-notas') { notesLoaded ? renderNotas() : carregarNotas(); }
-            if (targetId === 'view-glossario') { GLOSSARIO ? renderGlossario() : carregarGlossario(); }
             if (targetId === 'view-vps') carregarVps();
             if (targetId === 'view-servidores') { if (!SERVERS) carregarServidores(); else renderServidores(); }
             if (targetId === 'view-docker') carregarDocker();
@@ -3660,9 +3852,28 @@
             if (targetId === 'view-rotinas') { if (!ROTINAS_DATA) carregarRotinas(); else renderRotinas(); }
             if (targetId === 'view-custo') { if (!PRECO) carregarPreco(); else renderPreco(); }
             if (targetId === 'view-graficos') { DATA.tempo ? renderGraficos() : carregarTempo().then(renderGraficos); }
-            if (targetId === 'view-digest') renderDigest();
+            /* CC-420: a tela do Digest PEDE ao abrir, em vez de ser um botão.
+               Antes ela mostrava 16 caracteres — o rótulo de um botão — com
+               300 KB de dado pronto do outro lado da rota. O botão existia
+               porque a varredura leva ~2s, e esse motivo continua de pé: o que
+               mudou é que agora há cache de 5 minutos no servidor, então abrir
+               custa uma vez e reabrir sai de graça. Segue fora do tique. */
             if (targetId === 'view-bancada') { if (!BANCADA) carregarBancada(); else renderBancada(); }
-            if (targetId === 'view-documentos') { if (!DOCS) carregarDocs(); else renderDocs(); }
+            /* CC-421: os quatro ganchos viraram um. O endereço velho de cada
+               uma continua valendo e cai na aba certa, porque favorito e link
+               antigo dele não podem quebrar por causa de uma reorganização. */
+            /* ⚠️ **CC-425: a tela do Coderoom esperava o TIQUE para pedir.**
+               Medido em 30/08: a lista de conversas responde em 0,02s, e a tela
+               levava de 3 a 5 segundos mostrando "lendo as conversas…". Não era
+               a leitura: era não haver gancho nenhum ao abrir, então ela ficava
+               parada até o tique de 2 em 2 segundos passar e reparar que a tela
+               tinha mudado.
+               A varredura das telas acusou como "curta", que é o sintoma certo
+               pelo motivo certo. */
+            if (targetId === 'view-gate') gateBuscar(true);
+            if (targetId === 'view-analise' && !SINTESE) carregarSintese();
+            if (targetId === 'view-remoto' && !PASTAS) carregarPastasDeProjeto();
+            if (targetId === 'view-conhecimento') trocarConhecimento(conhAtiva);
             if (targetId === 'view-agenda') { if (!AGENDA) carregarAgenda(); else renderAgenda(); }
             if (targetId === 'view-meus') { MEUS ? renderMeusPaineis() : carregarMeusPaineis(); }
           } else {
@@ -3790,6 +4001,26 @@
        que já está na tela é o que corta o laço. */
     function aplicarEndereco() {
       const [nome, agente] = location.hash.replace(/^#/, '').split('/');
+      /* CC-421: as quatro telas de conhecimento viraram abas de uma só, e os
+         endereços delas continuam valendo. Favorito e link antigo dele não
+         podem quebrar por causa de uma reorganização de menu: `#notas` abre a
+         tela nova já na aba de notas. */
+      /* ⚠️ **CC-424: o endereço `#ligados` continua valendo.** A tela Remoto
+         saiu do menu porque Projetos passou a fazer tudo que ela fazia, e
+         favorito antigo não pode virar tela em branco por causa disso. */
+      if (nome === 'ligados' || nome === 'remoto-lista') {
+        if (document.querySelector('.view-section.active')?.id !== 'view-projetos') {
+          document.querySelector('.nav-item[data-target="view-projetos"]')?.click();
+        }
+        return;
+      }
+      const ABAS_CONHECIMENTO = { notas: 1, documentos: 1, glossario: 1, digest: 1 };
+      if (ABAS_CONHECIMENTO[nome]) {
+        if (document.querySelector('.view-section.active')?.id !== 'view-conhecimento') {
+          document.querySelector('.nav-item[data-target="view-conhecimento"]')?.click();
+        }
+        return trocarConhecimento(nome);
+      }
       const alvo = telaDoNome(nome) || TELA_PADRAO;
       if (document.querySelector('.view-section.active')?.id !== alvo) {
         document.querySelector(`.nav-item[data-target="${alvo}"]`)?.click();
@@ -4938,6 +5169,47 @@
     /* `termo` é a palavra do glossário que explica a faixa. Fica separado do
        título porque o título é grito ("ESPERANDO VOCÊ") e o termo é a palavra
        escrita ("esperando você"). */
+    /* ===== CC-415 e CC-416: três modos de ver os agentes =================
+     *
+     * Pedido dele em 29/08, com as palavras dele: *"o card podia ficar menor,
+     * né? Informações resumidas (…) cards como se fosse Trello, sabe? Card do
+     * Trello. Só com o nome e o agente (…) e também uma versão com algum outro
+     * design diferente que você possa sugerir. Botar três modos de
+     * visualização"*.
+     *
+     * O terceiro é a minha sugestão, e ele aprovou. **Ele não é outro desenho
+     * do mesmo cartão: é outra ORDENAÇÃO.** Os dois primeiros agrupam por
+     * projeto, que é como o trabalho está organizado. A fila agrupa por
+     * ESTADO, que é como a atenção dele funciona: o que espera ele primeiro, o
+     * resto depois.
+     *
+     * ⚠️ **A escolha tem que sobreviver ao redesenho de 2 em 2 segundos.** Sem
+     * isso ela voltaria ao padrão na cara dele a cada tique, que é o defeito
+     * já registrado no CC-400. Guardada no servidor, como a barra de baixo.
+     */
+    const AG_MODOS = [
+      { id: 'cartao', nome: 'cartão', explica: 'tudo à mão: projeto, assunto, frente, tarefas e idade' },
+      { id: 'trello', nome: 'Trello', explica: 'só o nome do trabalho e o agente. O resto abre com um toque' },
+      { id: 'fila', nome: 'fila', explica: 'uma linha por agente, agrupado pelo que espera você' },
+    ];
+    let AG_MODO = 'cartao';
+
+    async function carregarModoAgentes() {
+      try {
+        const d = await (await fetch('/api/tela')).json();
+        const salvo = d?.aberto?.['agentes:modo'];
+        if (typeof salvo === 'string' && AG_MODOS.some((m) => m.id === salvo)) AG_MODO = salvo;
+      } catch { /* fica o padrão, que é o modo de hoje */ }
+      if (document.getElementById('view-agentes')?.classList.contains('active')) renderAgentes();
+    }
+
+    function trocarModoAgentes(id) {
+      if (!AG_MODOS.some((m) => m.id === id)) return;
+      AG_MODO = id;
+      renderAgentes();
+      post('/api/tela', { chave: 'agentes:modo', aberto: true, valor: id }).catch(() => {});
+    }
+
     const ZONAS = [
       { id: 'waiting', titulo: 'ESPERANDO VOCÊ', cor: 'amber', termo: 'esperando você' },
       { id: 'failed', titulo: 'COM FALHA', cor: 'red', termo: 'quebrou' },
@@ -4985,9 +5257,15 @@
       const lista = DATA.agentes.filter((j) => !q
         || [j.subject, j.project, j.frente, j.route, j.model, j.lastPrompt].some((c) => (c || '').toLowerCase().includes(q)));
 
-      document.getElementById('ag-ctl').innerHTML = `
+      /* O seletor vem DEPOIS do filtro e antes da contagem. Ele é escolha
+         rara, e o filtro é o que ele usa todo dia. */
+      pintar(document.getElementById('ag-ctl'), `
         <input id="ag-q" class="styled-input" placeholder="filtrar por projeto, assunto ou frente…" style="flex:1;min-width:220px;" value="${esc(agFiltro)}">
-        <span style="font-size:12px;color:var(--text-muted);">${lista.length} de ${DATA.agentes.length} agente(s)</span>`;
+        <div class="ag-modos" role="tablist">${AG_MODOS.map((m) => `<button type="button" class="ag-modo${AG_MODO === m.id ? ' ativo' : ''}" data-ag-modo="${esc(m.id)}" title="${esc(m.explica)}">${esc(m.nome)}</button>`).join('')}</div>
+        <span style="font-size:12px;color:var(--text-muted);">${lista.length} de ${DATA.agentes.length} agente(s)</span>`);
+
+      if (AG_MODO === 'trello') return renderAgTrello(zonas, lista);
+      if (AG_MODO === 'fila') return renderAgFila(zonas, lista);
 
       zonas.innerHTML = ZONAS.map((z) => {
         const dela = lista.filter((j) => (semContato(j) ? 'mudo' : j.status) === z.id);
@@ -5034,6 +5312,7 @@
                       <p>${esc(j.subject || j.lastPrompt || 'sem assunto anotado')}</p>
                       ${j.subject && !j.subjectDoAgente ? `<p style="font-size:11px;color:var(--text-dim);">↑ o que você pediu, o agente não resumiu</p>` : ''}
                       <p style="color:var(--text-dim);">${j.frente ? esc(j.frente) + ' · ' : (j.route && j.route !== 'main' ? esc(j.route) + ' · ' : '')}${esc(fraseDoAgente(j))}</p>
+                      ${seloRisco(j)}
                     </div>
                   </div>
                   <div style="text-align:right;flex:none;display:flex;gap:10px;align-items:center;">
@@ -5045,6 +5324,67 @@
             </div>`}
           </section>`;
       }).join('') || `<p style="margin-top:20px;font-size:13px;color:var(--text-muted);">${DATA.agentes.length ? 'nenhum agente bate com o filtro.' : 'nenhum agente aberto agora.'}</p>`;
+    }
+
+    /**
+     * CC-414: o modo Trello, e a especificação é literal.
+     *
+     * Palavras dele: *"cards como se fosse Trello, sabe? Card do Trello. Só com
+     * o nome e o agente. E aí, se quiser abrir mais sessão e tal, a pessoa abre
+     * outra opção."*
+     *
+     * ⚠️ **"Só com o nome e o agente" é o pedido, não uma aproximação.** O
+     * cartão de hoje mostra estado, tempo, projeto, frente, tarefas e botões, e
+     * foi essa soma que ele chamou de confusa. Acrescentar "só mais um campo
+     * porque é útil" é desfazer o pedido. O que fica: o nome do trabalho, o
+     * projeto onde ele roda, e a bolinha de estado, que é cor e não texto.
+     *
+     * A grade se ajusta sozinha (`auto-fill`), e nunca reserva largura fixa:
+     * grade de coluna declarada é a armadilha que já apagou tela em 390px.
+     */
+    function renderAgTrello(zonas, lista) {
+      const ordenada = [...lista].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      if (!ordenada.length) {
+        return pintar(zonas, `<p style="margin-top:20px;font-size:13px;color:var(--text-muted);">${DATA.agentes.length ? 'nenhum agente bate com o filtro.' : 'nenhum agente aberto agora.'}</p>`);
+      }
+      pintar(zonas, '<div class="ag-trello">' + ordenada.map((j) => `
+        <button type="button" class="ag-mini" data-ag="${esc(j.id)}">
+          <span class="dot ${semContato(j) ? 'mudo' : (COR_STATUS[j.status] || 'yellow')}"></span>
+          <span class="ag-mini-nome">${esc(j.subject || j.lastPrompt || 'sem assunto anotado')}</span>
+          <span class="ag-mini-quem">${esc(j.project || 'sem projeto')} ${selo(j, { sempre: true })}${seloRisco(j, { curto: true })}</span>
+        </button>`).join('') + '</div>');
+    }
+
+    /**
+     * CC-416: o modo fila, sugestão minha e aprovada por ele.
+     *
+     * **Não é outro desenho do mesmo cartão, é outra ordenação.** Os dois
+     * primeiros modos agrupam por projeto, que é como o trabalho está
+     * organizado. Este agrupa por ESTADO, que é como a atenção dele funciona:
+     * ele abre o painel para saber o que espera por ele, e não para revisar o
+     * inventário.
+     *
+     * Por isso a faixa de quem espera abre no topo e nunca colapsa, e cada
+     * agente vira uma linha só. Quem quer o detalhe toca e abre.
+     */
+    function renderAgFila(zonas, lista) {
+      const linhas = ZONAS.map((z) => {
+        const dela = lista.filter((j) => (semContato(j) ? 'mudo' : j.status) === z.id);
+        if (!dela.length) return '';
+        const ordenada = z.id === 'waiting'
+          ? dela.sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0))
+          : dela.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        return `<div class="ag-fila-faixa">
+          <div class="ag-fila-titulo"><span class="dot ${z.cor}"></span>${esc(z.titulo)}<span>${dela.length}</span></div>
+          ${ordenada.map((j) => `
+            <button type="button" class="ag-tira" data-ag="${esc(j.id)}">
+              <span class="ag-tira-nome">${esc(j.subject || j.lastPrompt || 'sem assunto anotado')}</span>
+              <span class="ag-tira-proj">${esc(j.project || 'sem projeto')}${seloRisco(j, { curto: true })}</span>
+              <span class="ag-tira-idade">${age(Date.now() - (j.updatedAt || Date.now()))}</span>
+            </button>`).join('')}
+        </div>`;
+      }).join('');
+      pintar(zonas, linhas || `<p style="margin-top:20px;font-size:13px;color:var(--text-muted);">${DATA.agentes.length ? 'nenhum agente bate com o filtro.' : 'nenhum agente aberto agora.'}</p>`);
     }
 
     /* A tela de UM agente: tudo o que ele fez e o que faz agora.
@@ -5098,6 +5438,7 @@
           <h1 style="font-size:22px;overflow-wrap:anywhere;margin-bottom:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">${esc(j.project || 'sem projeto')} ${selo(j, { sempre: true })}</h1>
           <p style="margin-bottom:12px;overflow-wrap:anywhere;color:var(--text-main);">${esc(j.subject || 'sem assunto anotado')}</p>
           ${j.frente || (j.route && j.route !== 'main') ? `<p style="margin-bottom:12px;color:var(--text-dim);font-size:12px;">${j.frente ? esc(j.frente) : ''}${j.frente && j.route && j.route !== 'main' ? ' · ' : ''}${j.route && j.route !== 'main' ? esc(j.route) : ''}</p>` : ''}
+          ${seloRisco(j)}
           ${semContato(j) ? `<p style="margin:-6px 0 12px;font-size:12px;color:var(--text-dim);">⚠ ${esc(nomeMaquina(j) || 'a máquina')} não dá sinal há ${esc(mudoHa(j))}. O que está abaixo é o último estado conhecido, não o de agora.</p>` : ''}
           <div style="display:flex;gap:8px;align-items:flex-start;">
             <span class="dot ${semContato(j) ? 'mudo' : (COR_STATUS[j.status] || 'yellow')}" style="margin-top:6px;flex:none;"></span>
@@ -5211,23 +5552,79 @@
       return conta;
     }
 
+    /* ===== CC-411, 29/08: as quatro faixas viram abas com cartões =====
+     *
+     * Ele, olhando a tela: *"por que que agora, na fila, prontas e as abertas
+     * não tem mais uma aba chamada abertas também? Com cards como se fosse
+     * realmente o Trello."*
+     *
+     * Eram três colunas de texto corrido, com as frentes abertas num bloco
+     * separado lá embaixo. As quatro passam a ser abas do mesmo lugar, e cada
+     * item vira cartão.
+     *
+     * **A quarta aba não é repetição da segunda.** "Na fila" são as FRENTES
+     * abertas, uma linha cada. "Abertas" são os GRUPOS do roadmap, com o texto
+     * que ele escreveu dentro: é onde a explicação mora, e era o bloco que
+     * ficava solto no fim da tela.
+     */
+    let MAPA_FAIXA = localStorage.getItem('cc-mapa-faixa') || 'agora';
+
     function viewNiveisMapa(naFrente) {
       const todas = DATA.mapa.grupos.flatMap((g) => g.frentes);
       const temAgente = (f) => (naFrente.get(f.titulo.toLowerCase()) ?? [...naFrente].find(([k]) => f.titulo.toLowerCase().startsWith(k))?.[1] ?? 0) > 0;
       const feitas = todas.filter((f) => f.estado === 'feito');
       const sprint = todas.filter((f) => f.estado !== 'feito' && temAgente(f));
       const fila = todas.filter((f) => f.estado !== 'feito' && !temAgente(f));
-      const bloco = (rotulo, lista, dica) => `
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;"><b style="font-size:13px;">${rotulo}</b><span style="font-size:12px;color:var(--text-muted);">${lista.length}</span></div>
-          <p style="font-size:11px;color:var(--text-dim);margin:4px 0 8px;">${dica}</p>
-          ${lista.length ? `<div style="display:flex;flex-direction:column;gap:4px;">${lista.slice(0, 8).map((f) => `<span style="font-size:12px;overflow-wrap:anywhere;">${esc(f.titulo)}</span>`).join('')}${lista.length > 8 ? `<span style="font-size:11px;color:var(--text-dim);">e mais ${lista.length - 8}</span>` : ''}</div>` : ''}
-        </div>`;
-      return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px;">
-        ${bloco('AGORA', sprint, 'frentes com agente trabalhando nelas, sai sozinho, ninguém escreve')}
-        ${bloco('NA FILA', fila, 'o resto do que está aberto no roadmap')}
-        ${bloco('PRONTAS', feitas, 'já fechadas, mantidas para consulta')}
-      </div>`;
+      const abertos = (DATA.mapa.grupos || []).filter((g) => g.estado !== 'feito');
+
+      const FAIXAS = [
+        { id: 'agora', rotulo: 'agora', termo: 'agora', n: sprint.length },
+        { id: 'fila', rotulo: 'na fila', termo: 'na fila', n: fila.length },
+        { id: 'abertas', rotulo: 'abertas', termo: 'abertas', n: abertos.length },
+        { id: 'prontas', rotulo: 'prontas', termo: 'prontas', n: feitas.length },
+      ];
+
+      /* Cada frente vira um cartão, e não uma linha de texto: foi o pedido, e
+         o cartão cabe o que a linha não cabia (quantos agentes, o placar de
+         itens, o estado). */
+      const cartao = (f) => {
+        const quantos = naFrente.get(f.titulo.toLowerCase()) ?? [...naFrente].find(([k]) => f.titulo.toLowerCase().startsWith(k))?.[1] ?? 0;
+        return `<article class="mapa-cartao${quantos ? ' com-agente' : ''}">
+          <p class="mapa-cartao-txt">${esc(f.titulo)}</p>
+          <div class="mapa-cartao-pe">
+            ${f.itens ? `<span>${f.feitos}/${f.itens}</span>` : ''}
+            ${quantos ? `<span class="mapa-cartao-ag">${quantos} agente${quantos > 1 ? 's' : ''}</span>` : ''}
+          </div>
+        </article>`;
+      };
+
+      /* A aba "abertas" mostra o GRUPO com o texto dele dentro. É o bloco que
+         antes ficava solto no fim da tela, e é onde a explicação mora. */
+      const cartaoGrupo = (g) => `<article class="mapa-cartao mapa-grupo">
+        <header><span class="mapa-selo">${esc(ROTULO_ESTADO[g.estado] || g.estado)}</span>
+        <b>${esc(g.titulo)}</b>${g.itens ? `<span class="mapa-cartao-pe">${g.feitos}/${g.itens}</span>` : ''}</header>
+        ${g.frentes?.length ? `<div class="mapa-grupo-itens">${g.frentes.slice(0, 6).map((f) => `<span>${esc(f.titulo)}</span>`).join('')}${g.frentes.length > 6 ? `<span class="mapa-mais">e mais ${g.frentes.length - 6}</span>` : ''}</div>` : ''}
+      </article>`;
+
+      const conteudo = MAPA_FAIXA === 'agora' ? sprint.map(cartao)
+        : MAPA_FAIXA === 'fila' ? fila.map(cartao)
+        : MAPA_FAIXA === 'prontas' ? feitas.map(cartao)
+        : abertos.map(cartaoGrupo);
+
+      const VAZIO = {
+        agora: 'Nenhum agente declarou uma frente deste roadmap agora. Ela se enche sozinha quando alguém começa.',
+        fila: 'Nada aberto no roadmap deste projeto.',
+        abertas: 'Nenhuma seção aberta no roadmap.',
+        prontas: 'Nada fechado ainda, ou o concluído já foi para o diário.',
+      };
+
+      const atual = FAIXAS.find((f) => f.id === MAPA_FAIXA) || FAIXAS[0];
+      return bloco('mapa-faixas', atual.rotulo, atual.termo,
+        `<div class="mapa-abas">${FAIXAS.map((f) => `<button type="button" class="mapa-aba${f.id === MAPA_FAIXA ? ' ativo' : ''}" data-mapa-faixa="${f.id}">${f.rotulo}<span>${f.n}</span></button>`).join('')}</div>`
+        + (conteudo.length
+          ? `<div class="mapa-cartoes">${conteudo.slice(0, 30).join('')}</div>`
+            + (conteudo.length > 30 ? `<p class="mapa-mais">e mais ${conteudo.length - 30}</p>` : '')
+          : `<p class="mapa-vazio">${VAZIO[MAPA_FAIXA]}</p>`));
     }
 
     function viewOrdensMapa() {
@@ -5505,6 +5902,11 @@
     });
 
     document.body.addEventListener('change', (e) => {
+      /* CC-375: trocar o modo pela lista curta. Vem antes das notas porque um
+         `return` cedo lá embaixo engoliria este evento. */
+      const sel = e.target.closest?.('[data-modo-proj]');
+      if (sel) return trocarModoDaLista(sel.dataset.modoProj, sel.value);
+
       const campo = e.target.closest('[data-nota-item]');
       if (!campo || campo.value.trim()) return;
       const n = notaDo(campo);
@@ -5571,7 +5973,10 @@
         renderFwLista();
       }
       fetch('/api/framework/projetos').then((r) => r.json())
-        .then((d) => { FW_LISTA = d.projetos || []; FW_CATALOGO_MODULOS = d.catalogoModulos || null; renderFwLista(); renderCentral(); renderProjetos(); })
+        /* CC-375: a gaveta dos modos come da MESMA lista, então ela redesenha
+           aqui junto das outras. Sem esta linha ela abria vazia e ficava vazia:
+           a leitura terminava e ninguém avisava a gaveta. */
+        .then((d) => { FW_LISTA = d.projetos || []; FW_CATALOGO_MODULOS = d.catalogoModulos || null; renderFwLista(); renderCentral(); renderProjetos(); renderModos(); })
         /* Falha de rede numa volta do tique NÃO apaga a lista boa que está na
            tela: se já havia uma, ela fica, e a volta seguinte tenta de novo. O
            "erro" só toma a tela quando não há nada para mostrar, que é quando
@@ -5579,7 +5984,7 @@
            de rede seria a tela sumindo na mão dele. */
         .catch(() => {
           if (!Array.isArray(FW_LISTA)) FW_LISTA = 'erro';
-          renderFwLista(); renderCentral(); renderProjetos();
+          renderFwLista(); renderCentral(); renderProjetos(); renderModos();
         });
     }
 
@@ -5679,6 +6084,17 @@
         if (conta) conta.textContent = '';
         return;
       }
+      /* ⚠️ **`null` é o estado inicial DECLARADO, e ele lançava aqui.**
+         O próprio código diz `null | 'carregando' | 'erro' | array`, e os três
+         primeiros eram tratados menos um: `null.length` derruba a função.
+         Medido em 29/08 na tela Cockpit, e o estrago era em cadeia. Quem chama
+         esta função dentro de um `.then` perde o resto do `.then`, e quem a
+         chama antes de um `fetch` nunca chega a fazer o pedido. Foi assim que
+         a gaveta de modos ficou presa em "lendo o modo de cada projeto…" para
+         sempre: o pedido nunca saiu.
+         Nada aparecia na tela dizendo isso. É a família de defeito que este
+         painel mais paga, e ela entra sempre pelo estado que ninguém lembrou. */
+      if (!Array.isArray(FW_LISTA)) { alvo.innerHTML = '<p style="color:var(--text-dim);">lendo os projetos…</p>'; if (conta) conta.textContent = ''; return; }
       if (!FW_LISTA.length) { alvo.innerHTML = '<p style="color:var(--text-dim);">nenhum projeto encontrado nesta máquina</p>'; if (conta) conta.textContent = '0'; return; }
 
       const nAtivos = FW_LISTA.filter((p) => p.ativo).length;
@@ -6581,21 +6997,234 @@
       alvo.innerHTML = cabeca + barra + viewIndiceGrafico(idx) + (rascunhoGrafico ? construtorGrafico(idx, estado) : '') + (lista.length ? cartoes : '<p style="color:var(--text-dim);">nenhum gráfico, use o + acima</p>');
     }
 
+    /* ===== CC-352: as pastas onde o cockpit procura projeto ===============
+     *
+     * ⚠️ **Só entra pasta que EXISTE, e o erro diz qual falhou.** Gravar um
+     * caminho errado deixa a lista com uma linha muda: o painel varre, não acha
+     * nada, e ele não tem como saber qual das quatro está furada. Por isso cada
+     * pasta mostra quantos projetos rende, e zero é o sintoma que ele lê sem
+     * abrir terminal.
+     *
+     * ⚠️ **Lista vazia volta ao automático, e não a "nenhum projeto".** Quem
+     * limpar a lista sem querer não fica com o painel em branco.
+     */
+    let PASTAS = null;
+
+    async function carregarPastasDeProjeto() {
+      try { PASTAS = await (await fetch('/api/pastas')).json(); } catch { PASTAS = { erro: true }; }
+      renderPastasDeProjeto();
+    }
+
+    function renderPastasDeProjeto() {
+      const alvo = document.getElementById('pastas-corpo');
+      if (!alvo) return;
+      if (!PASTAS) return pintar(alvo, '<p class="modos-vazio">lendo as pastas…</p>');
+      if (PASTAS.erro) return pintar(alvo, '<p class="modos-vazio">não deu para ler as pastas agora.</p>');
+
+      const rende = PASTAS.rende || {};
+      const conta = (p) => (rende[p] === undefined ? '' : '<span class="pasta-conta' + (rende[p] ? '' : ' pasta-zero') + '">'
+        + rende[p] + ' projeto(s)</span>');
+
+      const escolhidas = (PASTAS.escolhidas || []).map((p, i) => '<div class="pasta-linha">'
+        + '<span class="pasta-nome">' + esc(p) + '</span>' + conta(p)
+        + '<button type="button" class="btn btn-ghost compacto" data-pasta-tirar="' + i + '">tirar</button></div>').join('');
+
+      /* As que vêm de fora aparecem SEPARADAS e sem botão de apagar: elas não
+         são editáveis daqui, e oferecer um botão que não funciona é pior que
+         não mostrar. */
+      const deFora = [...(PASTAS.doAmbiente || []), ...(PASTAS.antiga ? [PASTAS.antiga] : [])]
+        .map((p) => '<div class="pasta-linha pasta-fixa">'
+          + '<span class="pasta-nome">' + esc(p) + '</span>' + conta(p)
+          + '<span class="pasta-porque">vem da configuração da máquina</span></div>').join('');
+
+      pintar(alvo, (escolhidas || deFora ? '<div class="pasta-lista">' + escolhidas + deFora + '</div>' : '')
+        + '<div class="pasta-nova">'
+        + '<input class="styled-input" id="pasta-campo" placeholder="/home/voce/projetos" autocapitalize="off" autocorrect="off" spellcheck="false">'
+        + '<button type="button" class="btn compacto" data-pasta-add>acrescentar</button></div>'
+        /* ⚠️ O ternário vai entre parênteses. Sem eles o `+` da concatenação
+           tem precedência sobre o `?`, e a condição passa a ser a string
+           inteira, que é sempre verdadeira: a frase some para sempre e nada
+           acusa. */
+        + ((PASTAS.escolhidas || []).length
+          ? ''
+          : '<p class="modos-vazio">Nenhuma pasta escolhida por você. O cockpit está usando a que ele achou sozinho, e continua assim enquanto a lista estiver vazia.</p>')
+        + '<p id="pasta-erro" class="pasta-erro" hidden></p>');
+    }
+
+    async function gravarPastas(lista) {
+      const erro = document.getElementById('pasta-erro');
+      const r = await post('/api/pastas', { pastas: lista });
+      if (r?.error) {
+        if (erro) { erro.textContent = r.error; erro.hidden = false; }
+        return;
+      }
+      PASTAS = r;
+      renderPastasDeProjeto();
+      /* A lista de projetos inteira muda quando a pasta muda, então vale reler
+         em vez de esperar o próximo tique mostrar o estado antigo. */
+      carregarProjetosTela(true);
+    }
+
+    /* ===== CC-375: trocar o modo de qualquer projeto sem sair da tela =====
+     *
+     * Pedido dele em 27/08: *"seria legal eu poder mudar de continuativo pra
+     * outros modos dos agentes que estão sendo marcados aqui também. Talvez não
+     * o tempo todo, talvez eu aperte um botão eles apareçam e sumam. Mas assim,
+     * bem simples, só o nome do projeto e o que está, o modo, bem simples,
+     * porque é só pra eu ter um controle maior do projeto e das tarefas"*.
+     *
+     * Ele desenhou junto: **aparece sob botão e some**, e mostra só projeto e
+     * modo. O controle já existia no cartão de cada projeto; o que faltava era
+     * ver todos de uma vez sem rolar a tela inteira.
+     *
+     * ⚠️ **Modo tem TRÊS camadas, e mostrar o modo sem dizer de ONDE ele vem
+     * repete o defeito de 27/08.** Um modo pode vir do projeto (vale para toda
+     * sessão), de uma linha de rota, ou da sessão. A tela mostrava o do projeto
+     * e a trava usava outro, sem nada dizer que havia uma terceira. Aqui a
+     * origem vai junto, sempre, em letra miúda.
+     */
+    let MODOS_ABERTO = false;
+
+    function alternarModos() {
+      MODOS_ABERTO = !MODOS_ABERTO;
+      const caixa = document.getElementById('modos-caixa');
+      if (caixa) caixa.hidden = !MODOS_ABERTO;
+      if (!MODOS_ABERTO) return;
+      if (!FW_LISTA || FW_LISTA === 'erro') carregarFrameworkLista();
+      renderModos();
+    }
+
+    function renderModos() {
+      const caixa = document.getElementById('modos-caixa');
+      if (!caixa || !MODOS_ABERTO) return;
+
+      if (!FW_LISTA || FW_LISTA === 'carregando') {
+        return pintar(caixa, '<p class="modos-vazio">lendo o modo de cada projeto…</p>');
+      }
+      if (FW_LISTA === 'erro') {
+        return pintar(caixa, '<p class="modos-vazio">não deu para ler os projetos. O painel tenta de novo ao reabrir.</p>');
+      }
+
+      /* Só quem tem o método ligado entra: projeto sem framework não tem modo,
+         e listá-lo com um traço no lugar do modo encheria a lista de linha que
+         não faz nada. A contagem no fim diz quantos ficaram de fora, senão a
+         lista curta parece lista incompleta. */
+      const comFw = (FW_LISTA || []).filter((f) => f && f.existe && f.ligado && f.modo !== 'desligado');
+      const deFora = (FW_LISTA || []).length - comFw.length;
+
+      if (!comFw.length) {
+        return pintar(caixa, '<p class="modos-vazio">nenhum projeto com o método ligado. Ligue no cartão de um projeto, na tela Projetos.</p>');
+      }
+
+      const modos = comFw[0].modos || [];
+      pintar(caixa, '<div class="modos-lista">'
+        + comFw.sort((a, b) => String(a.projeto).localeCompare(String(b.projeto))).map((f) => '<div class="modos-linha">'
+          + '<span class="modos-proj">' + esc(f.projeto) + '</span>'
+          + '<select class="styled-input modos-sel" data-modo-proj="' + esc(f.projeto) + '">'
+          + modos.map((m) => '<option value="' + esc(m.id) + '"' + (m.id === f.modo || m.titulo === f.tituloModo ? ' selected' : '') + '>' + esc(m.titulo) + '</option>').join('')
+          + '</select>'
+          /* De ONDE vem esse modo. Sem isto a lista mente por omissão: ela
+             mostraria o modo do projeto enquanto a sessão obedece o de uma
+             rota, e nada na tela diria que existe uma terceira camada. */
+          + '<span class="modos-origem">' + esc(f.origemModoTexto || f.origemModo || '') + '</span>'
+          + '</div>').join('') + '</div>'
+        + (deFora ? '<p class="modos-vazio">' + deFora + ' projeto(s) sem o método ligado não aparecem aqui.</p>' : ''));
+    }
+
+    async function trocarModoDaLista(projeto, modo) {
+      const f = await post('/api/framework', { projeto, acao: 'modo', modo });
+      if (f?.error) return;
+      if (Array.isArray(FW_LISTA)) FW_LISTA = FW_LISTA.map((p) => (p.projeto === projeto ? { ...p, ...f } : p));
+      renderModos();
+      renderFwLista();
+      if (typeof renderProjetos === 'function') renderProjetos();
+    }
+
+    /* ========== CC-412: a síntese escrita por IA sobre a Análise ==========
+     *
+     * Pedido dele olhando a tela: *"uma da IA analisar todos esses dados e me
+     * dar uma síntese"*. Quem escreve é o opencode, escolha dele pelo motivo
+     * dele: *"o bom é que ele é gratuito"*.
+     *
+     * Abrir a tela LÊ o texto guardado, e é instantâneo. Pedir um novo é
+     * clique, e demora dezenas de segundos: o botão diz isso antes, para a
+     * espera não parecer travamento.
+     */
+    let SINTESE = null;
+    let sintesePensando = false;
+
+    async function carregarSintese() {
+      try { SINTESE = await (await fetch('/api/sintese')).json(); } catch { SINTESE = null; }
+      renderSintese();
+    }
+
+    async function pedirSintese() {
+      if (sintesePensando) return;
+      sintesePensando = true;
+      renderSintese();
+      try {
+        /* Os números vão daqui, e não são relidos no servidor: a síntese tem
+           que falar do que ele está vendo nesta tela, agora. */
+        const r = await post('/api/sintese', { travas: TRAVAS, armazem: DATA.tend, bancada: BANCADA });
+        if (r && r.ok) SINTESE = r; else SINTESE = { texto: (SINTESE && SINTESE.texto) || null, motivo: (r && r.motivo) || 'não deu para escrever a síntese' };
+      } catch (e) { SINTESE = { texto: (SINTESE && SINTESE.texto) || null, motivo: String(e.message || e) }; }
+      sintesePensando = false;
+      renderSintese();
+    }
+
+    function renderSintese() {
+      const alvo = document.getElementById('sintese-caixa');
+      if (!alvo) return;
+      const botao = `<button class="btn compacto" data-sintese ${sintesePensando ? 'disabled' : ''}>${sintesePensando ? 'escrevendo…' : (SINTESE && SINTESE.texto ? 'escrever de novo' : 'pedir uma leitura')}</button>`;
+      const quando = (SINTESE && SINTESE.em)
+        ? `<span style="font-size:11px;color:var(--text-dim);margin-left:8px;">escrita ${new Date(SINTESE.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>` : '';
+      const cabeca = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <b style="font-size:13px;">O que estes números dizem</b><div>${botao}${quando}</div></div>`;
+
+      /* ⚠️ Bloco que pode ficar vazio precisa dizer POR QUÊ. Espaço em branco
+         não distingue "está tudo bem" de "a leitura falhou", que é a família de
+         defeito mais cara deste painel. */
+      let corpo;
+      if (sintesePensando) {
+        corpo = '<p style="color:var(--text-dim);margin-top:10px;font-size:12px;">lendo os números e escrevendo. Costuma levar de trinta segundos a um minuto, e você pode sair da tela: o texto fica guardado.</p>';
+      } else if (SINTESE && SINTESE.texto) {
+        corpo = `<div style="margin-top:10px;font-size:13px;line-height:1.6;white-space:pre-wrap;">${esc(SINTESE.texto)}</div>`;
+      } else {
+        corpo = '<p style="color:var(--text-dim);margin-top:10px;font-size:12px;">ninguém escreveu uma leitura destes números ainda. O botão pede uma, e ela fica guardada para a próxima vez que você abrir.</p>';
+      }
+      const erro = (SINTESE && SINTESE.motivo)
+        ? `<p style="color:var(--red);margin-top:8px;font-size:11px;">não deu para escrever agora: ${esc(SINTESE.motivo)}</p>` : '';
+      pintar(alvo, cabeca + corpo + erro);
+    }
+
     /* ================= DIGEST (RESUMO DA SEMANA) =================
        Sob clique, nunca sozinho: cruza histórico + git + diário de ~20
        projetos. */
     let DIGEST = null;
-    async function alternarDigest() {
-      if (DIGEST) { DIGEST = null; return renderDigest(); }
+
+    /* ⚠️ **A declaração mora AQUI, e não junto de `trocarConhecimento`.**
+       Escrita lá embaixo, `let` deixa a variável na zona morta até a linha ser
+       avaliada, e `aplicarEndereco()` roda ANTES disso quando a página abre num
+       endereço direto. Resultado medido: quatro exceções e a tela sem trocar de
+       aba, abrindo por `#notas`.
+       É o mesmo erro que a Análise já pagou uma vez, pela mesma causa. Estado
+       usado por gancho de navegação nasce junto do resto do estado. */
+    let conhAtiva = 'notas';
+    async function alternarDigest(force) {
       DIGEST = 'carregando';
       renderDigest();
-      try { DIGEST = await (await fetch('/api/digest')).json(); } catch { DIGEST = { erro: true }; }
+      try { DIGEST = await (await fetch('/api/digest' + (force ? '?force=1' : ''))).json(); } catch { DIGEST = { erro: true }; }
       renderDigest();
     }
     function renderDigest() {
       const alvo = document.getElementById('digest-corpo');
       if (!alvo) return;
-      const botao = `<button class="btn compacto" style="background:var(--accent);color:white;" data-digest>${DIGEST ? 'fechar digest' : 'digest da semana'}</button>`;
+      /* O rótulo diz o que o clique FAZ. "fechar digest" escondia a tela
+         inteira e deixava ela em branco de novo, que era o estado de partida
+         do defeito. Agora o único clique é o que traz dado mais novo. */
+      const idade = (DIGEST && DIGEST.colhidoEm)
+        ? `<span style="font-size:11px;color:var(--text-dim);margin-left:8px;">lido ${new Date(DIGEST.colhidoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>` : '';
+      const botao = `<button class="btn compacto" style="background:var(--accent);color:white;" data-digest>atualizar</button>${idade}`;
       if (!DIGEST) { alvo.innerHTML = botao; return; }
       if (DIGEST === 'carregando') { alvo.innerHTML = botao + '<p style="color:var(--text-dim);margin-top:12px;">cruzando histórico, git e diário de todos os projetos…</p>'; return; }
       if (DIGEST.erro) { alvo.innerHTML = botao + '<p style="color:var(--red);margin-top:12px;">não deu para montar o digest</p>'; return; }
@@ -6603,7 +7232,7 @@
       const cartoes = DIGEST.projetos.map((p) => {
         const itens = [p.commits.length && `${p.commits.length} commit(s)`, p.marcos.filter((m) => m.tipo === 'todo').length && `${p.marcos.filter((m) => m.tipo === 'todo').length} tarefa(s) fechada(s)`, p.diario.length && `${p.diario.length} dia(s) de diário`].filter(Boolean).join(' · ');
         return `<div class="card" style="margin-bottom:10px;">
-          <b>${esc(p.projeto)}</b> ${seloLocal()} <span style="font-size:11px;color:var(--text-dim);">${itens || 'sem sinal'}</span>
+          <b>${esc(p.nome || p.projeto)}</b> ${seloLocal()} <span style="font-size:11px;color:var(--text-dim);">${itens || 'sem sinal'}</span>
           ${p.commits.slice(0, 5).map((c) => `<div style="font-size:11px;color:var(--text-muted);padding:2px 0;">${esc(c.assunto)}</div>`).join('')}
         </div>`;
       }).join('');
@@ -8355,7 +8984,20 @@
           ? '<span class="est-par"><span class="est-val">Desligado</span></span>'
           : linha('papel', perfilAtual?.titulo)
             + linha('caminho', metodoAtual?.titulo?.split(':')[0])
-            + linha('modo', modoAtual?.titulo))
+            /* ⚠️ **CC-362, a última fatia: o modo vem com a ORIGEM colada.**
+               Modo tem três camadas: o projeto (vale para toda sessão), a marca
+               na linha da rota, e a sessão. Em 27/08 a tela mostrava o modo do
+               projeto enquanto a trava obedecia o de uma rota alheia, e nada
+               dizia que existia uma terceira camada.
+               O motor foi consertado naquele dia e a origem já viajava pronta
+               na resposta do servidor. Faltava só isto: pintar. Enquanto não
+               era pintado, a tela continuava dizendo a metade da verdade com a
+               mesma confiança de antes. */
+            + linha('modo', modoAtual?.titulo)
+            + (p.origemModoTexto && p.origemModo !== 'projeto'
+              ? '<span class="est-par est-origem"><span class="est-rot">de onde</span>'
+                + '<span class="est-val">' + esc(p.origemModoTexto) + '</span></span>'
+              : ''))
         + '</span><span class="est-seta">▾</span></button>';
     };
 
@@ -8603,7 +9245,21 @@
           ? '<p class="cc-explica">pedido a ' + esc(onde) + ': '
             + esc(pendente.valor === 'desligado' ? 'Desligado' : rotulo(pendente.valor))
             + '. Esperando ela aplicar, até 30 segundos.</p>'
-          : '<p class="cc-explica">vale em ' + esc(onde) + '. A mudança chega lá em até 30 segundos.</p>');
+          : '<p class="cc-explica">vale em ' + esc(onde) + '. A mudança chega lá em até 30 segundos.</p>')
+        /* ── CC-432: dizer o que NÃO dá para fazer daqui ───────────────────
+           Ele, em 30/08: *"tb não aparece a opção de colocar pra definir mvp,
+           só controles básicos do framework"*.
+           E é verdade: a entrevista, o MVP e o backlog LEEM E ESCREVEM no disco
+           do projeto, e o disco está na outra máquina. Trocar o modo funciona
+           porque vira um pedido de 30 segundos; escrever arquivo não tem como
+           virar pedido sem inventar um protocolo inteiro.
+           ⚠️ **Sem esta frase, a ausência parece defeito.** Ele procurou o
+           botão, não achou, e não tinha como saber se estava quebrado ou se era
+           assim. Espaço vazio não distingue "não existe" de "não consegui", que
+           é a família de defeito mais cara deste painel. */
+        + '<p class="cc-explica">A entrevista, o MVP e o backlog moram no disco de '
+        + esc(onde) + ', então eles se fazem lá. Daqui dá para trocar o modo, ligar e '
+        + 'desligar o método, e pedir uma sessão.</p>';
     };
 
     /* Os selos vinham só no bloco de baixo, e são metade do motivo de ele
@@ -8669,22 +9325,56 @@
          O "liberar só este" fica ANTES do "liberar escrita", que solta o
          projeto inteiro: a diferença entre os dois é o modo funcionar ou virar
          decoração, e por isso a confirmação diz qual dos dois é. */
-      const autorizacao = !valendo || !fw.modoTrava ? '' : (fw.autorizado || []).length
+      /* ⚠️ **Pedido pendente aparece mesmo sem trava, e isso não é detalhe.**
+         Medido em 29/08 neste projeto: a trava recusou um arquivo e gravou o
+         pedido; depois o modo mudou para um que não exige autorização, e o
+         bloco inteiro sumiu da tela com o pedido ainda gravado dentro. Ele
+         ficou com um recado no chat pedindo um clique que a tela não oferecia.
+         Pedido é dele para responder. Se não há mais o que liberar, o botão
+         diz isso e dispensa. Some sozinho seria pior: ele nunca saberia que
+         alguém pediu. */
+      const pedidosAbertos = valendo ? (fw.pedidos || []) : []
+      const semTravaComPedido = valendo && !fw.modoTrava && pedidosAbertos.length
+        ? '<div class="fw-aut"><b>alguém pediu para escrever aqui</b>'
+          + '<span class="path">o modo de agora já permite, então não falta liberação nenhuma. '
+          + 'Dispensar tira o pedido da lista.</span>'
+          + '<div class="fw-pedidos">' + pedidosAbertos.map((p) => '<div class="fw-pedido">'
+            + '<div class="fw-pedido-txt"><b>' + esc(p.o_que || p.alvo) + '</b>'
+            + '<span class="path">' + esc(p.alvo) + '</span></div>'
+            + '<button type="button" class="btn btn-ghost compacto" data-fw="dispensar"'
+            + ' data-fw-proj="' + esc(fw.projeto) + '" data-fw-alvo="' + esc(p.alvo) + '">'
+            + 'dispensar</button></div>').join('') + '</div></div>'
+        : '';
+
+      const autorizacao = semTravaComPedido || (!valendo || !fw.modoTrava ? '' : (fw.autorizado || []).length
         ? '<div class="fw-aut ok"><b>código liberado</b>'
           + '<span class="path">até você trocar de modo, trocar zera esta autorização</span></div>'
         : '<div class="fw-aut"><b>código travado</b>'
           + '<span class="path">o modo ' + esc(fw.tituloModo || fw.modo || '')
           + ' exige sua autorização para eu escrever código</span>'
+          /* ── CC-413, 29/08: o pedido vira BOTÃO, e não recado ────────────
+             Palavras dele: *"quando eu precisasse liberar alguma coisa no
+             painel, ele aparecesse assim pra mim (…) criasse um botão"*.
+             O caso que gerou o pedido aconteceu de novo em 29/08, comigo: a
+             trava recusou um arquivo novo e o pedido apareceu NO CHAT, que é
+             onde ele passa os olhos, não onde ele procura.
+             O que separa botão de recado são as duas frases: o que está
+             travado, e o que muda se ele liberar. O caminho do arquivo vai
+             junto, mas DEPOIS delas e em letra miúda, porque nome de arquivo
+             é coisa que eu resolvo em dois segundos e ele não tem por que
+             saber de cor. */
           + ((fw.pedidos || []).length
             ? '<div class="fw-pedidos">' + fw.pedidos.map((p) => '<div class="fw-pedido">'
-              + '<code>' + esc(p.alvo) + '</code>'
+              + '<div class="fw-pedido-txt"><b>' + esc(p.o_que || p.alvo) + '</b>'
+              + (p.ao_liberar ? '<span class="fw-pedido-efeito">se você liberar, ' + esc(p.ao_liberar) + '</span>' : '')
+              + '<span class="path">' + esc(p.alvo) + '</span></div>'
               + '<button type="button" class="btn compacto" data-fw="autorizar"'
               + ' data-fw-proj="' + esc(fw.projeto) + '" data-fw-alvo="' + esc(p.alvo) + '">'
-              + 'liberar só este</button></div>').join('') + '</div>'
+              + 'liberar</button></div>').join('') + '</div>'
             : '')
           + '<button type="button" class="btn btn-ghost compacto" data-fw="autorizar"'
           + ' data-fw-proj="' + esc(fw.projeto) + '">liberar escrita…</button>'
-          + '</div>';
+          + '</div>');
 
       const entrevistaAqui = ENTREVISTA?.projeto === fw.projeto;
       const btnEntrevista = !valendo ? ''
@@ -8857,62 +9547,6 @@
      * nos dois lugares seria a tela dizendo duas vezes a mesma coisa, que é
      * exatamente do que ele reclamou em 27/08.
      */
-    function renderMaquinas() {
-      const alvo = document.getElementById('rem-maquinas');
-      const conta = document.getElementById('rem-conta');
-      if (!alvo) return;
-
-      const d = DATA.projetos;
-      if (!d?.projetos) { pintar(alvo, '<div class="card tend-aviso">lendo os projetos…</div>'); return; }
-
-      /* O nome desta máquina vem do dado, nunca fixo no código: são duas
-         máquinas com nomes que ele escolheu, e chumbar "VPS" aqui faria a tela
-         mentir no PC dele. */
-      const daqui = d.maquina || 'esta máquina';
-      const porMaquina = new Map();
-      for (const p of d.projetos) {
-        if (ligadoDe(p)) continue; // já está em cima
-        if (!p.ehProjeto && p.daqui) continue; // pasta de passagem não é projeto
-        const onde = p.daqui ? daqui : (p.maquinaDeFora || 'outra máquina');
-        if (!porMaquina.has(onde)) porMaquina.set(onde, []);
-        porMaquina.get(onde).push(p);
-      }
-
-      const total = [...porMaquina.values()].reduce((n, l) => n + l.length, 0);
-      if (conta) pintar(conta, total + ' projeto(s) livre(s)');
-
-      if (!porMaquina.size) {
-        pintar(alvo, '<div class="card tend-aviso">Todos os projetos desta máquina já têm sessão aberta.</div>');
-        return;
-      }
-
-      /* A máquina daqui vem primeiro: é onde ele abre sessão na maior parte das
-         vezes, e onde o clique funciona sem esperar a outra ponta responder. */
-      const ordem = [...porMaquina.entries()].sort((a, b) => (a[0] === daqui ? -1 : b[0] === daqui ? 1 : a[0].localeCompare(b[0])));
-
-      pintar(alvo, ordem.map(([nome, lista]) => '<section class="rem-maq">'
-        + '<h3>' + esc(nome) + '<span>' + lista.length + ' projeto(s)</span></h3>'
-        + '<div class="rem-lista">'
-        + lista.sort((a, b) => a.projeto.localeCompare(b.projeto)).map((p) => '<div class="rem-item">'
-          + '<button type="button" class="rem-nome" data-pj-abrir="' + esc(p.projeto) + '">'
-          + esc(p.projeto) + '</button>'
-          + (p.backlog ? '<span class="rem-num">' + p.backlog + '</span>' : '')
-          /* Projeto daqui abre pelos dois caminhos que ele nomeou: *"ela pode
-             iniciar outra no coderoom ou no claude"*. O de outra máquina só
-             pode PEDIR: a pasta não existe aqui, e um botão que falha depois
-             do clique é pior que botão nenhum. */
-          + (p.daqui
-            ? '<button class="btn btn-ghost compacto" data-abrir-sessao="' + esc(p.projeto) + '"'
-              + ' data-abrir-dir="' + esc(p.raiz || '') + '">Claude</button>'
-              + '<button class="btn btn-ghost compacto" data-coderoom-abrir="' + esc(p.projeto) + '"'
-              + ' data-coderoom-dir="' + esc(p.raiz || '') + '">Coderoom</button>'
-            : '<button class="btn btn-outline compacto" data-fed-pedir="' + esc(nome) + '"'
-              + ' data-fed-proj="' + esc(p.projeto) + '"'
-              + ' title="pede para ' + esc(nome) + ' abrir a sessão. Ela pergunta a cada 30s, leva até meio minuto">abrir lá</button>')
-          + '</div>').join('')
-        + '</div></section>').join(''));
-    }
-
     function pjLinha(p, maquina, modo) {
       const compacto = modo === 'compacto';
       const fw = p.daqui ? fwDe(p.projeto) : null;
@@ -8962,6 +9596,18 @@
       /* Cada número só entra quando existe. "0 agentes" ocupa espaço e não
          informa nada, e a régua da casa diz que erro de omissão custa menos
          que erro de excesso, exceto no topo. */
+      /* "agora mesmo" abaixo de um minuto, porque é o caso em que ele está
+         olhando a tela e mexendo do outro lado. Acima disso, a idade em texto:
+         o número sozinho não diz se é muito ou pouco. */
+      const desdeQuando = (t) => {
+        const s2 = Math.max(0, Math.round((Date.now() - t) / 1000));
+        if (s2 < 60) return 'agora mesmo';
+        const m2 = Math.round(s2 / 60);
+        if (m2 < 60) return 'há ' + m2 + ' min';
+        const h2 = Math.floor(m2 / 60);
+        return h2 < 24 ? 'há ' + h2 + 'h' + String(m2 % 60).padStart(2, '0') : 'há ' + Math.floor(h2 / 24) + ' dia(s)';
+      };
+
       const num = (valor, rotulo) => (valor
         ? '<span class="pj-num"><b>' + esc(String(valor)) + '</b><span>' + rotulo + '</span></span>' : '');
 
@@ -8980,6 +9626,18 @@
         + seloDe(p.daqui ? (maquina || 'esta máquina') : (p.maquinaDeFora || 'outra máquina'), { frio: !p.daqui })
         + '</h4>'
         + (p.frente ? '<p class="pj-frente">' + esc(p.frente) + '</p>' : '')
+        /* ── CC-430: HÁ QUANTO TEMPO foi o último sinal ────────────────────
+           Ele, em 30/08: *"o hatukara não tá parado, tô mexendo nele agora
+           mesmo"*, sobre um cartão que dizia parado. Estava certo: entre a
+           medida e aquele instante o agente voltou.
+           ⚠️ **O painel não vê a tela dele, vê o último sinal**, que é a última
+           escrita da sessão empurrada a cada 30s pela outra máquina. Enquanto
+           uma ferramenta longa roda, ou enquanto ele lê, esse relógio não anda.
+           Sem a idade, "trabalhando" e "trabalhando há 40 minutos" viram a
+           mesma linha, e ele não sabe em qual dos dois está olhando. */
+        + (p.ultimoSinal
+          ? '<p class="pj-sinal-idade">último sinal ' + esc(desdeQuando(p.ultimoSinal)) + '</p>'
+          : '')
         + '<div class="pj-numeros">'
         + num(p.backlog, 'no backlog') + num(p.soSeus, 'só seus')
         + num(p.horasHoje, 'hoje') + num(p.agentes, 'agentes')
@@ -9076,6 +9734,120 @@
      * quebrou", e numa tela cujo assunto é colisão entre agentes essa confusão
      * é justamente a que faz alguém trombar achando que estava livre.
      */
+    /* ===== CC-373: pintar o CRUZAMENTO, e não a rota ======================
+     *
+     * Pedido dele em 27/08: *"seria legal aparecer a cor da rota que ele está
+     * (…) eu vou ver que esses dois agentes estão na mesma rota, eu vou ver que
+     * tem risco nisso"*.
+     *
+     * O fim é ver o risco, e a cor era o meio. Ele aprovou trocar o meio depois
+     * de ver a medida, em 29/08:
+     *
+     * ⚠️ **Três motivos medidos, e o terceiro decide.**
+     *
+     * a) **São 42 rotas neste projeto**, sete ocupadas. Uma cor por rota são 42
+     *    cores num painel que já usa verde, amarelo, âmbar e vermelho com
+     *    significado. Ele lê isso no telefone;
+     * b) **zero arquivos disputados hoje.** O caso que ele quer enxergar é
+     *    raro, e cor que aparece sempre para mostrar algo raro vira paisagem;
+     * c) **a cor por rota diria o CONTRÁRIO do risco.** Duas sessões na mesma
+     *    rota não acontece, porque a rota tem um dono só, e é para isso que ela
+     *    existe. O perigo é duas rotas DIFERENTES no mesmo arquivo, e aí as
+     *    duas teriam cores diferentes, que se lê como "estão separados".
+     *
+     * E junto entra o que a cor não mostraria: **duas das sete rotas ocupadas
+     * não declararam arquivo nenhum**. São invisíveis para qualquer conta de
+     * cruzamento, e pintadas por rota apareceriam tranquilas como as outras.
+     * "Não sei onde ele mexe" é risco, não ausência de risco.
+     */
+    /**
+     * ⚠️ **A rota do método NÃO é o campo `route` do agente.**
+     *
+     * Medido em 29/08, e eu tinha suposto o contrário: os 70 cartões de agente
+     * declaram `route: "main"`, que é a branch do CLI. As rotas do método vivem
+     * no quadro, e o dono de cada uma é o **id da sessão**.
+     *
+     * Casar por nome de rota devolvia null para todos, sempre, e a marca nunca
+     * apareceria: mais uma peça construída e inalcançável, e desta vez a causa
+     * era eu ter lido o nome do campo e assumido o significado.
+     */
+    function rotaDaSessao(j) {
+      if (!j?.id || !ROTAS || typeof ROTAS === 'string') return null;
+      const p = (ROTAS.projetos || []).find((x) => mesmoProjetoNome(x.projeto, j.project));
+      const minha = (p?.rotas || []).find((r) => r.ocupada && !r.historico && r.dono === j.id);
+      return minha ? { rota: minha.rota, projeto: p.projeto } : null;
+    }
+
+    function riscoDaRota(rota, projeto) {
+      if (!rota || !ROTAS || typeof ROTAS === 'string') return null;
+      const p = (ROTAS.projetos || []).find((x) => mesmoProjetoNome(x.projeto, projeto));
+      const c = p?.cruzamentos;
+      if (!c) return null;
+
+      const disputa = (c.disputados || []).filter((d) => (d.quem || []).some((q) => q.rota === rota));
+      if (disputa.length) {
+        const outras = [...new Set(disputa.flatMap((d) => (d.quem || []).map((q) => q.rota)).filter((r) => r !== rota))];
+        /* ── CC-376, fatia 3: a awareness muda o VEREDITO, não só o texto ────
+           Palavras dele: *"qual é a awareness do agente que está na rota em
+           relação ao que o outro agente está fazendo"*. Duas rotas no mesmo
+           arquivo COM recados trocados é o caso bom, e aconteceu de verdade em
+           27/08: quatro recados, zero estrago. Sem conversa nenhuma é o
+           acidente de 06/08, em que ninguém avisou ninguém.
+           Pintar os dois igual apagaria a diferença que ele quer ver. */
+        const aw = (p.awareness || []).filter((x) => (x.quem || []).some((q) => q.rota === rota));
+        const cegos = aw.filter((x) => x.estado === 'cego');
+        const recados = aw.flatMap((x) => x.pares || []).reduce((n, x) => n + (x.recados || 0), 0);
+        const conversa = cegos.length
+          ? ' E os donos NÃO trocaram recado nenhum sobre isso, que é exatamente o acidente de 06/08.'
+          : (recados ? ' Os donos já trocaram ' + recados + ' recado(s), então cada um sabe do outro.' : '');
+        return {
+          tipo: cegos.length ? 'disputa' : 'avisado',
+          marca: cegos.length ? '⚠' : '↔',
+          curto: disputa.length + ' arquivo(s) dividido(s)' + (cegos.length ? ', sem aviso' : ', com aviso'),
+          explica: 'esta rota divide ' + disputa.map((d) => d.arquivo).join(', ')
+            + ' com ' + (outras.length ? outras.join(' e ') : 'outra rota') + '.' + conversa,
+        };
+      }
+      if ((c.semArquivo || []).some((x) => x.rota === rota)) {
+        return {
+          tipo: 'sem-arquivo',
+          marca: '?',
+          curto: 'não disse em que mexe',
+          explica: 'esta rota está ocupada e não declarou arquivo nenhum, então ninguém consegue '
+            + 'saber com quem ela colide. Não é ausência de risco, é risco que não dá para medir.',
+        };
+      }
+      return null;
+    }
+
+    /* Compara nome de projeto tolerando o prefixo de máquina, que é a mesma
+       conta do quadro: o agente reporta o nome da máquina DELE. */
+    const mesmoProjetoNome = (a, b) => {
+      const k = (n) => String(n || '').toLowerCase().replace(/^(vps|pc)_/, '').replace(/^(proj|app|web|game)_/, '').trim();
+      return Boolean(k(a)) && k(a) === k(b);
+    };
+
+    /* A marca no cartão. Neutra por padrão: cartão sem risco não ganha nada,
+       que é o ponto inteiro da decisão dele. */
+    /**
+     * ⚠️ **A marca aparece nos TRÊS modos de ver, e isso não é excesso.**
+     * Ele pediu que o modo Trello mostrasse "só o nome e o agente", e a
+     * especificação vale. Mas risco não é informação de rotina, é alarme: um
+     * alarme que some quando ele troca a forma de olhar é pior que alarme
+     * nenhum, porque ele passa a confiar numa tela que às vezes cala.
+     * A saída é a forma CURTA: nos modos compactos vai só o símbolo, que cabe
+     * ao lado do nome sem virar uma segunda linha de texto.
+     */
+    function seloRisco(j, { curto = false } = {}) {
+      const minha = rotaDaSessao(j);
+      if (!minha) return '';
+      const r = riscoDaRota(minha.rota, j.project);
+      if (!r) return '';
+      return '<button type="button" class="rt-risco rt-' + r.tipo + (curto ? ' rt-so-marca' : '') + '"'
+        + ' data-risco="' + esc(r.explica) + '" title="' + esc(r.explica) + '">'
+        + r.marca + (curto ? '' : ' ' + esc(r.curto)) + '</button>';
+    }
+
     let ROTAS = null; // null | 'carregando' | 'erro' | objeto
 
     async function carregarRotas({ silencioso = false } = {}) {
@@ -9257,14 +10029,13 @@
       const d = DATA.projetos;
       const grades = [
         { alvo: document.getElementById('pj-grade'), quando: document.getElementById('pj-quando'), so: 'todos' },
-        { alvo: document.getElementById('lig-grade'), quando: document.getElementById('lig-quando'), so: 'ligados' },
+        /* CC-424: a segunda grade era da tela Remoto, que saiu em 30/08. Ela
+           listava os MESMOS projetos desta, e a única coisa que só ela fazia,
+           separar por nome de máquina, veio para cá. */
       ].filter((g) => g.alvo);
       if (!grades.length) return;
 
-      /* O bloco das máquinas anda junto: ele lê o mesmo `DATA.projetos`, e
-         chamá-lo de outro lugar criaria duas horas diferentes para o mesmo
-         dado na mesma tela. */
-      renderMaquinas();
+
 
       for (const g of grades) {
         if (!d) { pintar(g.alvo, '<div class="card tend-aviso">lendo os projetos…</div>'); continue; }
@@ -9274,6 +10045,46 @@
         }
         pintarUmaGrade(g, d);
       }
+    }
+
+    /**
+     * Os projetos de fora, QUEBRADOS POR MÁQUINA.
+     *
+     * ## Por que isto existe, e o que ele viu
+     *
+     * Palavras dele em 30/08, olhando o menu: *"então você criou menus novos e
+     * deixou os antigos repetidos? qual o sentido? deleta os que são
+     * redundantes"*.
+     *
+     * Ele estava certo, e medindo o par apareceu inteiro: as telas Remoto e
+     * Projetos listavam **os mesmos 34 projetos**, com 22 das 24 ações iguais.
+     * Só que não eram cópia uma da outra: **Projetos juntava tudo que é de fora
+     * numa seção só**, e o Remoto separava por NOME de máquina, que é o que ele
+     * pediu em 27/08 (*"os projetos eram separados por desktop e vps"*).
+     *
+     * Apagar uma das duas perderia função. Trazer a separação para cá é o que
+     * deixa a outra ser mesmo redundante, e aí ela sai do menu.
+     */
+    function porMaquinaDeFora(fora, grade, rotulo) {
+      if (!fora.length) return '';
+      const grupos = new Map();
+      for (const p of fora) {
+        const onde = p.maquinaDeFora || 'outra máquina';
+        if (!grupos.has(onde)) grupos.set(onde, []);
+        grupos.get(onde).push(p);
+      }
+      /* ⚠️ Máquina fora do ar continua na lista, DIZENDO que está fora: sumir
+         com os projetos dela é a queixa de 29/08 de volta, e um projeto não
+         deixa de existir porque o computador desligou. */
+      return [...grupos.entries()]
+        .sort((x, y) => x[0].localeCompare(y[0]))
+        .map(([onde, lista]) => {
+          const parada = lista.find((p) => p.semContato);
+          return '<div class="pj-secao">' + esc(onde) + (rotulo ? ', ' + rotulo : '')
+            + '<span class="pj-secao-n">' + lista.length + '</span>'
+            + (parada ? '<span class="pj-secao-fora">sem contato há ' + esc(age(parada.idadeMs || 0)) + '</span>' : '')
+            + '</div>' + grade(lista);
+        }).join('');
     }
 
     function pintarUmaGrade({ alvo, quando, so }, d) {
@@ -9347,15 +10158,30 @@
       if (so === 'ligados') {
         pintar(alvo, grade(daquiTodos, { ligados: true })
           + (passagem.length ? '<div class="pj-secao">pastas de trabalho, não são projetos</div>' + grade(passagem) : '')
-          + (fora.length ? '<div class="pj-secao">de outra máquina</div>' + grade(fora) : ''));
+          + porMaquinaDeFora(fora, grade, ''));
         return;
       }
 
       /* CC-335, a ordem que ele pediu: *"depois as sessões ligadas e depois as
          outras"*. O que mudou em 27/08 foi só a régua do que é ligado, que
-         agora é a do servidor e inclui a conversa do Coderoom. */
-      const ligadas = daquiTodos.filter(ligadoDe);
+         agora é a do servidor e inclui a conversa do Coderoom.
+       *
+       * ⚠️ **CC-429, 30/08: "ligados agora" inclui os de OUTRA máquina.**
+       * Print dele: *"olha, aqui ele tá aparecendo como offline em projetos"*,
+       * sobre o `games/hutukara`, que tinha SEIS agentes rodando no PC. Ele
+       * caía na seção da máquina dele, com o rótulo "sem pasta aqui", ao lado
+       * dos que não têm agente nenhum.
+       *
+       * A causa era esta linha: `daquiTodos.filter(ligadoDe)` olha só os
+       * projetos DESTA máquina. O painel existe justamente para ele ver o que
+       * está rodando em qualquer lugar, e a faixa mais importante da tela
+       * excluía metade do mundo por engano.
+       *
+       * O selo da máquina já vai em cada cartão, então juntar não confunde: ele
+       * vê "ligado agora" e, ao lado, de onde. */
+      const ligadas = [...daquiTodos, ...fora].filter(ligadoDe);
       const daqui = daquiTodos.filter((p) => !ligadoDe(p));
+      const foraParados = fora.filter((p) => !ligadoDe(p));
       pintar(alvo,
         (ligadas.length
           ? '<div class="pj-secao">ligados agora</div>' + grade(ligadas, { ligados: true })
@@ -9366,9 +10192,7 @@
         + (passagem.length
           ? '<div class="pj-secao">pastas de trabalho, não são projetos</div>' + grade(passagem)
           : '')
-        + (fora.length
-          ? '<div class="pj-secao">de outra máquina, sem pasta aqui</div>' + grade(fora)
-          : ''));
+        + porMaquinaDeFora(foraParados, grade, 'sem pasta aqui'));
     }
 
     /* ── CC-297: o log das travas ────────────────────────────────────────────
@@ -12062,14 +12886,30 @@
           return null;
         }
       };
-      const [snap, meu, trab] = await Promise.all([
+      /* ── CC-419: os painéis dele entram na carga INICIAL, não ao abrir a tela.
+         Medido em 29/08, abrindo a tela dez vezes seguidas: buscada só no
+         clique, a lista às vezes chegava depois do desenho, e a tela ficava em
+         "carregando…" — em duas de dez aberturas. Nada errava, nada avisava, e
+         a tela dele parecia quebrada de vez em quando, que é a pior forma de
+         defeito: a que não dá para reproduzir na hora de mostrar.
+         O JSON é minúsculo (uma linha por painel), então não paga nada por vir
+         junto do resto. */
+      const [snap, meu, trab, meusPaineis, rotas] = await Promise.all([
         pedir('/api/jobs', 'os agentes'),
         pedir('/api/meu', 'as suas pendências'),
         pedir('/api/trabalho?ordem=importancia', 'o backlog'),
+        pedir('/api/paineis-meus', 'os seus painéis'),
+        /* CC-373: as rotas entram na carga porque a marca de risco vive no
+           cartão do agente, que aparece em cinco telas. Buscá-las só ao abrir a
+           tela de rotas deixaria a marca invisível em todas as outras, que é a
+           peça construída e inalcançável de novo. É um JSON pequeno. */
+        pedir('/api/rotas', 'as rotas'),
       ]);
       if (snap) aplicarSnapshot(snap);
       if (meu) DATA.meu = meu.tarefas || [];
       if (trab) DATA.trabalho = trab;
+      if (meusPaineis && !MEUS) MEUS = Array.isArray(meusPaineis.paineis) ? meusPaineis.paineis : [];
+      if (rotas && (!ROTAS || typeof ROTAS === 'string')) ROTAS = rotas;
       renderAll();
     }
 
@@ -12335,7 +13175,7 @@
     });
 
     document.body.addEventListener('click', async (e) => {
-      const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-meu-abrir], [data-meu-feito-btn], [data-zona], [data-foco-dia], [data-sinc-ler], [data-sinc-acao], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-remoto-conectar], [data-remoto-soltar], [data-remoto-reabrir], [data-coderoom-abrir], [data-coderoom-nova], [data-coderoom-fechar], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar], [data-tend-cheia], [data-tend-dia], [data-tend-andar], [data-tend-hoje], [data-tend-fechar], [data-trv-abrir], [data-trv-ajudou], [data-trv-atrapalhou], [data-trv-explica], [data-trv-fechar-explica], [data-pj-abrir], [data-pj-sessao], [data-pj-conversa], [data-cc-modo], [data-cc-fw], [data-cc-parados], [data-mod], [data-nav-grupo], [data-sb-grade], [data-tg-fechar], [data-tg-ir], [data-pj-pastas], [data-pa-fechar], [data-pa-alternar], [data-pa-arquivo], [data-pa-fechar-arq], [data-kb-fechar], [data-kb-proj], [data-kb-cheio], [data-mod-remoto], [data-fw-remoto]');
+      const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-meu-abrir], [data-meu-feito-btn], [data-zona], [data-foco-dia], [data-sinc-ler], [data-sinc-acao], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-remoto-conectar], [data-remoto-soltar], [data-remoto-reabrir], [data-coderoom-abrir], [data-coderoom-nova], [data-coderoom-fechar], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-sintese], [data-ag-modo], [data-modos-abrir], [data-risco], [data-pasta-add], [data-pasta-tirar], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar], [data-tend-cheia], [data-tend-dia], [data-tend-andar], [data-tend-hoje], [data-tend-fechar], [data-trv-abrir], [data-trv-ajudou], [data-trv-atrapalhou], [data-trv-explica], [data-trv-fechar-explica], [data-pj-abrir], [data-pj-sessao], [data-pj-conversa], [data-cc-modo], [data-cc-fw], [data-cc-parados], [data-mod], [data-nav-grupo], [data-sb-grade], [data-tg-fechar], [data-tg-ir], [data-pj-pastas], [data-pa-fechar], [data-pa-alternar], [data-pa-arquivo], [data-pa-fechar-arq], [data-kb-fechar], [data-kb-proj], [data-kb-cheio], [data-mod-remoto], [data-fw-remoto]');
 
       /* CC-371: as caixinhas de projeto do quadro.
          ⚠️ Este `if` morava no ouvinte de `change`, herdado do `<select>` que
@@ -12380,8 +13220,33 @@
       }
       const abaAnalise = tr.closest?.('[data-analise]');
       if (abaAnalise) { e.preventDefault(); return trocarAnalise(abaAnalise.dataset.analise); }
+      if (tr.dataset.pastaAdd !== undefined) {
+        e.preventDefault();
+        const campo = document.getElementById('pasta-campo');
+        const nova = (campo?.value || '').trim();
+        if (!nova) return;
+        return gravarPastas([...(PASTAS?.escolhidas || []), nova]);
+      }
+      if (tr.dataset.pastaTirar !== undefined) {
+        e.preventDefault();
+        return gravarPastas((PASTAS?.escolhidas || []).filter((_, i) => i !== +tr.dataset.pastaTirar));
+      }
+      if (tr.dataset.risco) { e.preventDefault(); alert(tr.dataset.risco); return; }
+      if (tr.dataset.modosAbrir !== undefined) { e.preventDefault(); return alternarModos(); }
+      const btModoAg = tr.closest?.('[data-ag-modo]');
+      if (btModoAg) { e.preventDefault(); return trocarModoAgentes(btModoAg.dataset.agModo); }
+      if (tr.dataset.sintese !== undefined) { e.preventDefault(); return pedirSintese(); }
+      const abaConh = tr.closest?.('[data-conh]');
+      if (abaConh) { e.preventDefault(); return trocarConhecimento(abaConh.dataset.conh); }
       const abaInfra = tr.closest?.('[data-infra]');
       if (abaInfra) { e.preventDefault(); return trocarInfra(abaInfra.dataset.infra); }
+      const btFaixa = tr.closest?.('[data-mapa-faixa]');
+      if (btFaixa) {
+        e.preventDefault();
+        MAPA_FAIXA = btFaixa.dataset.mapaFaixa;
+        try { localStorage.setItem('cc-mapa-faixa', MAPA_FAIXA); } catch { /* aba privada */ }
+        return renderMapa();
+      }
       const btModo = tr.closest?.('[data-pj-modo]');
       if (btModo) {
         e.preventDefault();
@@ -12391,7 +13256,7 @@
         try { localStorage.setItem('cc-pj-modo', PJ_MODO); } catch { /* aba privada */ }
         return renderProjetos();
       }
-      if (tr.id === 'pj-atualizar' || tr.id === 'lig-atualizar') { e.preventDefault(); return carregarProjetosTela(true); }
+      if (tr.id === 'pj-atualizar') { e.preventDefault(); return carregarProjetosTela(true); }
       /* CC-395: a folha do estado do projeto. Abre por botão, fecha no X e no
          fundo, e escolhe por item. Nenhum deles é `<select>`, e é o ponto. */
       const abrir = tr.closest?.('[data-estado-abrir]');
@@ -12982,7 +13847,7 @@
       }
 
       // ===== DIGEST =====
-      if (tr.dataset.digest !== undefined) return alternarDigest();
+      if (tr.dataset.digest !== undefined) return alternarDigest(true);
 
       // ===== BANCADA =====
       if (tr.dataset.bnNivel) return bancadaAcao({ acao: 'nivel', nivel: tr.dataset.bnNivel });
@@ -13277,6 +14142,58 @@
       if (typeof montarBarraBaixo === 'function') montarBarraBaixo();
     })();
 
+    /* ===== CC-421, 29/08: as quatro telas de conhecimento viram uma =========
+     *
+     * Notas, Documentos, Glossário e o resumo da semana ocupavam quatro linhas
+     * do menu para o mesmo gesto: procurar texto. E os tamanhos não se
+     * justificavam lado a lado — medido em 29/08: 5 blocos de nota, 1
+     * documento, 63 verbetes e 10 projetos no resumo.
+     *
+     * Perguntado com o tradeoff na mesa, ele escolheu juntar em abas.
+     *
+     * Os nós são MOVIDOS, não recortados no HTML: cada uma dessas telas tem
+     * identificadores que várias funções procuram pelo nome (`notes-list`,
+     * `doc-lista`, `gloss-corpo`, `digest-corpo`), e mover preserva todos.
+     * Mesma decisão da Análise, pelo mesmo motivo.
+     *
+     * ⚠️ A tela velha é REMOVIDA em seguida. Deixá-la vazia seria pior: a
+     * varredura que abre as telas uma a uma recusa tela que abre em branco, e
+     * com razão. */
+    (() => {
+      const PARES = [['notas', 'view-notas'], ['documentos', 'view-documentos'],
+        ['glossario', 'view-glossario'], ['digest', 'view-digest']];
+      for (const [aba, tela] of PARES) {
+        const velha = document.getElementById(tela);
+        const casa = document.getElementById('conh-' + aba);
+        if (!velha || !casa) continue;
+        const miolo = velha.querySelector('.main-col') || velha;
+        while (miolo.firstChild) casa.appendChild(miolo.firstChild);
+        velha.remove();
+      }
+      if (typeof montarBarraBaixo === 'function') montarBarraBaixo();
+    })();
+
+    /**
+     * Troca a aba do Conhecimento, e faz a leitura daquela aba.
+     *
+     * ⚠️ **Carregar SÓ a aba aberta, e não as quatro.** O resumo da semana leva
+     * ~2s e o glossário lê os documentos de 20 projetos. Puxar tudo ao abrir a
+     * tela pagaria o preço das quatro para ver uma, e a tela demoraria a
+     * aparecer no telefone. Cada aba paga a dela, uma vez.
+     */
+    function trocarConhecimento(aba) {
+      conhAtiva = aba;
+      for (const b of document.querySelectorAll('[data-conh]')) b.classList.toggle('ativo', b.dataset.conh === aba);
+      for (const nome of ['notas', 'documentos', 'glossario', 'digest']) {
+        const el = document.getElementById('conh-' + nome);
+        if (el) el.hidden = nome !== aba;
+      }
+      if (aba === 'notas' && typeof carregarNotas === 'function') { notesLoaded ? renderNotas() : carregarNotas(); }
+      if (aba === 'documentos' && typeof carregarDocs === 'function') { DOCS ? renderDocs() : carregarDocs(); }
+      if (aba === 'glossario' && typeof carregarGlossario === 'function') { GLOSSARIO ? renderGlossario() : carregarGlossario(); }
+      if (aba === 'digest' && typeof alternarDigest === 'function') { DIGEST ? renderDigest() : alternarDigest(); }
+    }
+
     /**
      * O seletor único da Análise, e a propagação para os quatro de dentro.
      *
@@ -13332,9 +14249,23 @@
        * Escolhe o primeiro com sessão no ar, que é onde ele provavelmente
        * estava, e cai no primeiro da lista quando não há nenhum. */
       if (!meu.value) {
-        const comSessao = (DATA.projetos?.projetos || [])
-          .filter((p) => p.daqui && p.ehProjeto && ligadoDe(p)).map((p) => p.projeto);
-        const escolha = comSessao.find((n) => lista.includes(n)) || lista[0];
+        /* ⚠️ **Ter sessão aberta não quer dizer ter o que MOSTRAR aqui.**
+           Medido em 29/08, abrindo a tela: o padrão caía no `VPS_ibrics`,
+           que tem sessão no ar e não tem roadmap nenhum. As quatro abas do
+           mapa existiam, funcionavam, e a tela abria dizendo "este projeto
+           não tem docs/ROADMAP.md" toda vez.
+           É a peça inalcançável de novo, no formato mais discreto: a porta de
+           entrada leva ao único lugar onde não há nada.
+           A ordem agora é: com sessão E com roadmap, depois qualquer um com
+           roadmap, e só então o primeiro da lista. Cair no último caso é
+           legítimo, é quando nenhum projeto tem roadmap mesmo. */
+        const todos = (DATA.projetos?.projetos || []).filter((p) => p.daqui && p.ehProjeto);
+        const temMapa = (p) => (p.frentes || 0) > 0 || (p.backlog || 0) > 0;
+        const nomes = (l) => l.map((p) => p.projeto).filter((n) => lista.includes(n));
+        const escolha = nomes(todos.filter((p) => ligadoDe(p) && temMapa(p)))[0]
+          || nomes(todos.filter(temMapa))[0]
+          || nomes(todos.filter(ligadoDe))[0]
+          || lista[0];
         if (escolha) {
           meu.value = escolha;
           propagarAnalise(escolha);
@@ -13519,6 +14450,7 @@
          chegar fora de ordem. */
       restaurarGrupos(d);
       carregarBarraBaixo();
+      carregarModoAgentes();
       /* CC-309: a largura escolhida volta com ele, e vem do servidor como o
          resto: aberto no computador tem que ser igual no telefone. */
       const larg = Number(d?.aberto?.['menu:largura'] ?? 0);
@@ -13601,7 +14533,7 @@
          para o mesmo ritmo é a segunda conta do mesmo gesto, e eles derivam:
          um dia alguém muda um e esquece o outro. */
       if (ativa('view-rotas')) return carregarRotas({ silencioso: true });
-      if (!ativa('view-ligados') && !ativa('view-projetos')) return;
+      if (!ativa('view-projetos')) return;
       carregarProjetosTela();
       conversasParaOsCards();
       carregarFrameworkLista({ silencioso: true });
