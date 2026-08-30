@@ -730,7 +730,7 @@ Quatro verificações novas no portão, com a prova ao contrário: o texto atrav
 inteiro, o que é perigoso é cortado, dois recados diferentes não viram um, e o
 recado entregue fica pendente para quem é.
 
-### CC-433 🔵 30/08: o MVP de um projeto de outra máquina
+### CC-433 🟡 30/08: o MVP de um projeto de outra máquina (o dado já chega, falta a tela)
 
 Pergunta dele, ditada por voz em 30/08: *"por que nas versões dos projetos do
 PC eu não tenho as mesmas configurações que eu tenho nos que estão na VPS,
@@ -749,7 +749,7 @@ nem o histórico, nem as autorizações.
 Por isso o cartão remoto mostra o seletor de modo e mais nada: o modo é um dos
 oito, e trocá-lo funciona porque vira um pedido curto que o PC executa.
 
-**Os três caminhos, apresentados a ele, esperando escolha:**
+**Os três caminhos, apresentados a ele:**
 
 1. **O PC manda o MVP junto, e o painel só MOSTRA.** O mais barato. Resolve
    "quero ver o MVP do hutukara daqui" e não deixa editar;
@@ -758,6 +758,29 @@ oito, e trocá-lo funciona porque vira um pedido curto que o PC executa.
    ações curtas, e a lista fechada de ações é o que impede a fila de virar
    execução remota;
 3. **Deixar como está.**
+
+---
+
+**✅ O caminho 1 está FEITO desde 30/08, pelo CC-445.** Os oito campos viraram
+**doze**: entraram `metodo`, `mvp` (nome e até 40 critérios, com o feito de
+cada um), `autorizado` e `pedidos`. O `metodo` era o que mais fazia falta, e não
+estava nem na lista acima: a fase viajava sozinha (`execucao`), e fase sem o
+método que a define não diz de quantas ela é nem o que vem depois.
+
+Medido no PC dele: **11 dos 24 projetos declaram um MVP**, e o campo inteiro
+custa 11,8 KB. A prova mede a travessia, ida e volta, porque nas duas vezes em
+que este tipo de campo foi acrescentado hoje ele saiu rico e chegou magro sem
+erro nenhum.
+
+🎫 **Falta a TELA mostrar**, e ela é da rota `front`: o dado já chega em
+`framework[].mvp` e `framework[].metodo`, pronto para desenhar no cartão do
+projeto remoto. Ticket aberto no quadro.
+
+**Os caminhos 2 e 3 continuam esperando ele**, e a escolha ficou mais barata com
+o 1 pronto: hoje ele já VÊ o MVP de um projeto do PC pela VPS. O que o caminho 2
+acrescentaria é editar de lá, e o custo dele não mudou (a lista fechada de ações
+é o que impede a fila de virar execução remota, e afrouxar isso é decisão de
+risco, não de conveniência).
 
 ⚠️ **Não decidir sozinho.** Ele pediu a explicação ANTES da mudança, com todas
 as letras, e o caminho 2 mexe na trava que existe para o pedido não virar
