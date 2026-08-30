@@ -5617,14 +5617,31 @@ if (process.platform !== 'win32') {
     'o placar só aparece quando há critério para contar')
   console.log('  ok   CC-433: o contador só aparece quando há o que contar')
 
-  /* ⚠️ **Leitura, não edição.** Escolha dele entre as três que apresentei.
-     Editar exigiria mexer na lista fechada de ações do pedido remoto, que é o
-     que impede a fila de virar execução arbitrária na outra máquina. */
+  /* ⚠️ **Era "leitura, não edição", e ele MUDOU de escolha em 30/08.**
+   *
+   * Este bloco afirmava que nenhuma ação de MVP podia entrar na lista fechada
+   * do pedido remoto, porque o caminho 1 (ver de lá) era o que ele tinha
+   * escolhido. Apresentados os três de novo com o 1 já pronto, ele escolheu o 2
+   * com uma palavra: *"quero"*.
+   *
+   * **A asserção não some, ela troca de lado**, e continua guardando a mesma
+   * coisa: que a fila não vira execução remota. O que mudou é o critério.
+   * `framework-mvp` carrega DADO (nome e critérios), nunca comando, nunca
+   * caminho, e o lado que executa recusa criar framework onde não existe.
+   * Ligar o gate continua sendo decisão de quem senta na máquina.
+   */
   const F = await import('./src/federacao.mjs')
-  assert.ok(!F.ACOES_DE_PEDIDO.some((a) => /mvp/i.test(a)),
-    'nenhuma ação de MVP entrou na lista do pedido remoto: editar não foi o que '
-    + 'ele escolheu, e a lista fechada é a trava que protege a outra máquina')
-  console.log('  ok   CC-433: nenhuma ação nova entrou na lista fechada do pedido remoto')
+  assert.ok(F.ACOES_DE_PEDIDO.includes('framework-mvp'),
+    'ele escolheu o caminho 2 em 30/08: sem a ação na lista, definir o MVP de fora não existe')
+
+  /* A trava que continua valendo, e é a que este bloco sempre protegeu: a lista
+     é FECHADA. Ação que ninguém declarou não passa, e é isso que impede a fila
+     de virar execução arbitrária na outra máquina. */
+  assert.equal(F.pedirSessao({ paraMaquina: 'x', projeto: 'p', acao: 'rodar-qualquer-coisa' }).ok, false,
+    'a lista de ações continua fechada: o que não está nela não passa')
+  assert.equal(F.pedirSessao({ paraMaquina: 'x', projeto: 'p', acao: 'framework-mvp' }).ok, false,
+    'e a ação nova exige o conteúdo: pedido de MVP sem MVP não vira nada')
+  console.log('  ok   CC-433: definir o MVP de fora existe, e a lista de ações continua fechada')
 }
 
 

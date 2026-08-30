@@ -738,6 +738,66 @@ async function atenderPedidos(pedidos) {
         continue
       }
 
+      /**
+       * CC-433 caminho 2, escolhido por ele em 30/08 ("quero"): definir o MVP
+       * de um projeto desta máquina a partir da outra.
+       *
+       * Pergunta que originou: *"por que nas versões dos projetos do PC eu não
+       * tenho as mesmas configurações que eu tenho nos que estão na VPS,
+       * exemplo definição de MVP?"*. Ver de lá já funcionava (CC-445); isto é
+       * escrever de lá.
+       *
+       * ⚠️ **RECUSA criar framework onde não existe, e é a diferença entre este
+       * ramo e o do modo.** Escolher modo LIGA o framework de propósito (CC-344,
+       * porque escolher modo com o framework desligado deixava tudo sem valer).
+       * Definir MVP não liga: ligar o gate é decisão de quem senta na máquina, e
+       * fazer isso de longe transformaria um pedido de conteúdo num pedido de
+       * trava. O erro fica no log e o pedido morre aqui.
+       *
+       * O que chega é DADO: nome e critérios, já cortados de quem pediu e
+       * cortados de novo aqui, porque quem executa não pode depender de quem
+       * pede ter limitado. Nenhum caminho, nenhum comando.
+       */
+      if (acao === 'framework-mvp') {
+        const estadoMvp = lerFramework(dir)
+        if (!estadoMvp) {
+          console.error(`[federação] ${p.projeto} não tem framework: MVP recusado`)
+          continue
+        }
+        const pedido = p.mvp && typeof p.mvp === 'object' && !Array.isArray(p.mvp) ? p.mvp : null
+        if (!pedido) {
+          console.error(`[federação] pedido de MVP sem MVP, ignorado (${p.projeto})`)
+          continue
+        }
+        const nomeMvp = String(pedido.nome || '').replace(/\s+/g, ' ').trim().slice(0, 300)
+        const criterios = (Array.isArray(pedido.criterios) ? pedido.criterios : [])
+          .slice(0, 40)
+          .map((c) => ({
+            texto: String(c?.texto || '').replace(/\s+/g, ' ').trim().slice(0, 300),
+            feito: c?.feito === true,
+          }))
+          .filter((c) => c.texto)
+        if (!nomeMvp && !criterios.length) {
+          console.error(`[federação] MVP vazio, ignorado (${p.projeto}): apagar não é pedido remoto`)
+          continue
+        }
+        /* Campo vazio não apaga o que já existe: quem manda só o nome está
+           renomeando, não jogando fora os critérios. Apagar tem que ser gesto
+           declarado, e este caminho não oferece um. */
+        const antesMvp = estadoMvp.mvp || {}
+        gravarFramework(dir, {
+          ...estadoMvp,
+          mvp: {
+            ...antesMvp,
+            nome: nomeMvp || antesMvp.nome || '',
+            criterios: criterios.length ? criterios : (antesMvp.criterios || []),
+          },
+        })
+        console.error(`[federação] MVP de ${p.projeto} definido por ${p.de || 'outra máquina'}: `
+          + `"${(nomeMvp || antesMvp.nome || '').slice(0, 60)}", ${criterios.length || (antesMvp.criterios || []).length} critério(s)`)
+        continue
+      }
+
       if (acao === 'recado') {
         /* CC-434: a única ação que não MEXE em nada — ela só entrega texto.
            Vira uma linha em `docs/.recados.json` deste projeto, e quem lê é o

@@ -589,4 +589,72 @@ ok('pacote sobrevive ao ida e volta por JSON')
   }
 }
 
+/* ------------------------------- CC-433: o MVP definido de outra máquina
+ *
+ * Caminho 2 dos três que foram apresentados a ele, e ele escolheu em 30/08
+ * ("quero"). Ver o MVP de um projeto do PC pela VPS já funcionava; isto é
+ * ESCREVER de lá.
+ *
+ * ⚠️ **O que este bloco protege é a razão pela qual o caminho 2 era caro.** A
+ * lista fechada de ações é o que impede a fila de virar execução remota. O que
+ * se garante aqui: o que viaja é DADO e não comando, o pedido vazio não apaga o
+ * MVP do outro lado, e `feito` só é verdade quando é booleano de verdade.
+ */
+{
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-mvp-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+    assert.ok(F.ACOES_DE_PEDIDO.includes('framework-mvp'), 'sem a ação na lista, pedirSessao recusa tudo')
+
+    const pedir = (extra) => F.pedirSessao({ paraMaquina: 'PC', projeto: 'cockpit', acao: 'framework-mvp', ...extra })
+
+    /* Pedido vazio APAGARIA o MVP do projeto do outro lado, e ele não teria como
+       saber que apagou. Apagar precisa ser gesto declarado, e este caminho não
+       oferece um. */
+    assert.equal(pedir({}).ok, false, 'definir o MVP exige mandar o MVP')
+    assert.equal(pedir({ mvp: { nome: '   ', criterios: [] } }).ok, false, 'MVP vazio não passa')
+    assert.equal(pedir({ mvp: 'texto solto' }).ok, false, 'o que não é objeto não vira MVP')
+    assert.equal(pedir({ mvp: ['a'] }).ok, false, 'nem lista')
+
+    const bom = pedir({
+      mvp: {
+        nome: '  o painel   dos agentes  ',
+        criterios: [
+          { texto: 'uma linha por agente', feito: true },
+          { texto: '   ', feito: true },
+          { texto: 'c'.repeat(900), feito: 'sim' },
+        ],
+      },
+    })
+    assert.equal(bom.ok, true)
+    assert.equal(bom.mvp.nome, 'o painel dos agentes', 'espaço em excesso é normalizado')
+    assert.equal(bom.mvp.criterios.length, 2, 'critério sem texto não entra')
+    assert.equal(bom.mvp.criterios[1].texto.length, 300)
+    /* A string "sim" marcando um critério como pronto seria o pior defeito
+       possível aqui: critério pronto por acidente é exatamente o que este
+       framework existe para não deixar acontecer. */
+    assert.equal(bom.mvp.criterios[1].feito, false, '`feito` só é verdade quando é booleano de verdade')
+
+    const naFila = F.pegarPedidos('PC')
+    assert.equal(naFila.length, 1)
+    assert.equal(naFila[0].acao, 'framework-mvp')
+    assert.ok(naFila[0].mvp?.nome, 'o MVP tem que ATRAVESSAR até quem executa')
+    assert.equal(naFila[0].mvp.criterios.length, 2)
+
+    // e o teto vale: 40 critérios, o mesmo do retrato que volta
+    const muitos = pedir({ mvp: { nome: 'x', criterios: Array.from({ length: 90 }, (_, i) => ({ texto: `c${i}` })) } })
+    assert.equal(muitos.mvp.criterios.length, F.TETO_CRITERIOS)
+    ok('CC-433: o MVP viaja como DADO, o vazio não apaga, e `feito` não aceita texto')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
 console.log(`\n${n} grupos de asserção passaram`)

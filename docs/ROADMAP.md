@@ -730,7 +730,7 @@ Quatro verificações novas no portão, com a prova ao contrário: o texto atrav
 inteiro, o que é perigoso é cortado, dois recados diferentes não viram um, e o
 recado entregue fica pendente para quem é.
 
-### CC-433 🟡 30/08: o MVP de um projeto de outra máquina (o dado já chega, falta a tela)
+### CC-433 ✅ 30/08: o MVP de um projeto de outra máquina, visto e definido de lá
 
 Pergunta dele, ditada por voz em 30/08: *"por que nas versões dos projetos do
 PC eu não tenho as mesmas configurações que eu tenho nos que estão na VPS,
@@ -772,15 +772,37 @@ custa 11,8 KB. A prova mede a travessia, ida e volta, porque nas duas vezes em
 que este tipo de campo foi acrescentado hoje ele saiu rico e chegou magro sem
 erro nenhum.
 
-🎫 **Falta a TELA mostrar**, e ela é da rota `front`: o dado já chega em
-`framework[].mvp` e `framework[].metodo`, pronto para desenhar no cartão do
-projeto remoto. Ticket aberto no quadro.
+**A TELA já estava pronta**, feita pela sessão da VPS no mesmo dia (`blocoMvp`
+no painel novo): ela desenha o MVP, não desenha bloco vazio quando o projeto não
+tem definição, e só mostra o placar quando há critério para contar. O ticket que
+esta sessão abriu para isso nasceu resolvido, e foi fechado ao ser conferido.
 
-**Os caminhos 2 e 3 continuam esperando ele**, e a escolha ficou mais barata com
-o 1 pronto: hoje ele já VÊ o MVP de um projeto do PC pela VPS. O que o caminho 2
-acrescentaria é editar de lá, e o custo dele não mudou (a lista fechada de ações
-é o que impede a fila de virar execução remota, e afrouxar isso é decisão de
-risco, não de conveniência).
+**✅ E o caminho 2 também está feito, escolhido por ele em 30/08 com uma palavra
+("quero"), depois de ver os três de novo com o 1 já pronto.**
+
+Definir o MVP de um projeto do PC a partir da VPS: a ação `framework-mvp` entra
+na lista fechada de pedidos, carregando nome e até 40 critérios.
+
+⚠️ **Por que isto NÃO afrouxa a trava que a lista fechada protege**, que era o
+custo registrado deste caminho:
+
+- o que viaja é **DADO** que vira conteúdo num arquivo de estado, nunca comando,
+  nunca caminho, nunca nome de arquivo;
+- o projeto continua sendo resolvido do lado que executa, que só conhece o que
+  aquela máquina já tem;
+- **quem executa RECUSA criar framework onde não existe.** É a diferença entre
+  este ramo e o do modo, que liga de propósito: ligar o gate é decisão de quem
+  senta na máquina, e fazer isso de longe transformaria um pedido de conteúdo
+  num pedido de trava;
+- **pedido vazio não apaga.** Mandar só o nome renomeia e preserva os critérios.
+  Apagar precisa ser gesto declarado, e este caminho não oferece um;
+- `feito` só é verdade quando é booleano de verdade. A string `"sim"` marcando
+  critério como pronto seria o pior defeito possível aqui.
+
+**A asserção que guardava a decisão antiga não sumiu, trocou de lado:** ela
+afirmava que nenhuma ação de MVP podia existir, e agora afirma que a lista
+continua FECHADA (ação não declarada não passa, e o pedido de MVP sem MVP não
+vira nada). É a mesma proteção, com o critério que ele escolheu.
 
 ⚠️ **Não decidir sozinho.** Ele pediu a explicação ANTES da mudança, com todas
 as letras, e o caminho 2 mexe na trava que existe para o pedido não virar

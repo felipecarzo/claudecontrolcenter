@@ -483,10 +483,36 @@ export const VALIDADE_PEDIDO_MS = 10 * 60 * 1000
  * assim que o outro lado baixar — o que o lançador de lá já faz sozinho ao
  * arrancar, porque ele dá `git pull` antes de subir o painel.
  */
+/* CC-433 caminho 2, escolhido por ele em 30/08 ("quero"): `framework-mvp` é a
+ * sétima, e a segunda que carrega texto que um humano escreveu.
+ *
+ * A pergunta que originou tudo: *"por que nas versões dos projetos do PC eu não
+ * tenho as mesmas configurações que eu tenho nos que estão na VPS, exemplo
+ * definição de MVP?"*. O caminho 1 (ver de lá) já está pronto; este é o de
+ * ESCREVER de lá, e o custo dele estava registrado como decisão de risco.
+ *
+ * ⚠️ **Por que isto NÃO afrouxa a trava que a lista fechada protege.** O medo
+ * escrito no ticket era a fila virar execução remota. Continua não sendo:
+ *
+ * - o que viaja é TEXTO que vira DADO num arquivo de estado, nunca comando,
+ *   nunca caminho, nunca nome de arquivo;
+ * - o projeto continua sendo resolvido por `cwdDoProjeto` do lado que executa,
+ *   que só conhece o que aquela máquina já tem;
+ * - quem executa RECUSA criar framework onde não existe. Escrever MVP num
+ *   projeto sem framework seria ligar o gate de longe, e ligar trava é decisão
+ *   de quem senta na máquina.
+ *
+ * O que ele ganha: definir o pronto de um projeto do PC pelo celular, que era o
+ * pedido. O que ele não ganha, de propósito: rodar qualquer coisa.
+ */
 export const ACOES_DE_PEDIDO = [
   'sessao', 'framework-ligar', 'framework-desligar', 'framework-modo', 'framework-modulo',
-  'recado',
+  'recado', 'framework-mvp',
 ]
+
+/** Teto de critérios num pedido de MVP. O maior MVP real deste PC tem 8, e 40 é
+ *  o mesmo teto que o retrato usa na volta: os dois lados combinam. */
+export const TETO_CRITERIOS = 40
 
 /**
  * O nome do projeto vira CAMINHO do outro lado, então ele é entrada perigosa.
@@ -521,6 +547,7 @@ export function nomeDeProjetoSeguro(nome) {
 export function pedirSessao({
   paraMaquina, projeto, de = null, acao = 'sessao', modo = null,
   modulo = null, ligar = null, texto = null, para = null, tipo = null,
+  mvp = null,
   now = Date.now(),
 }) {
   const alvo = seguro(paraMaquina)
@@ -566,6 +593,35 @@ export function pedirSessao({
   if (tipoLimpo && !/^[a-z_]+$/i.test(tipoLimpo)) return { ok: false, erro: 'tipo de recado inválido' }
   if (acao === 'recado' && !textoLimpo) return { ok: false, erro: 'recado sem texto' }
 
+  /* CC-433: o MVP que ele define de outra máquina. Texto que vira DADO, com os
+     mesmos cortes do retrato que volta, para os dois lados combinarem.
+     `feito` é booleano de verdade e não o que vier: uma string "false" marcaria
+     o critério como pronto, e critério pronto por acidente é a coisa que este
+     framework inteiro existe para não deixar acontecer. */
+  let mvpLimpo = null
+  if (mvp != null) {
+    if (typeof mvp !== 'object' || Array.isArray(mvp)) return { ok: false, erro: 'MVP tem que ser um objeto' }
+    mvpLimpo = {
+      nome: String(mvp.nome || '').replace(/\s+/g, ' ').trim().slice(0, 300),
+      criterios: (Array.isArray(mvp.criterios) ? mvp.criterios : [])
+        .slice(0, TETO_CRITERIOS)
+        .map((c) => ({
+          texto: String(c?.texto || '').replace(/\s+/g, ' ').trim().slice(0, 300),
+          feito: c?.feito === true,
+        }))
+        .filter((c) => c.texto),
+    }
+  }
+  if (acao === 'framework-mvp') {
+    if (!mvpLimpo) return { ok: false, erro: 'definir o MVP exige mandar o MVP' }
+    if (!mvpLimpo.nome && !mvpLimpo.criterios.length) {
+      /* Pedido vazio apagaria o MVP do projeto do outro lado, sem ninguém
+         perceber, e ele não teria como saber que apagou. Apagar tem que ser um
+         gesto declarado, e este não é o caminho para isso. */
+      return { ok: false, erro: 'MVP vazio: diga o nome ou pelo menos um critério' }
+    }
+  }
+
   const lista = lerPedidosBrutos().filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
   /* Mesmo projeto pedido duas vezes seguidas é dedo duplo no botão, não duas
      sessões. Abrir duas sem querer é o desperdício que a própria tela avisa.
@@ -589,12 +645,13 @@ export function pedirSessao({
     id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     paraMaquina: alvo, projeto: nome, de, acao, modo: modoLimpo,
     modulo: moduloLimpo, ligar: typeof ligar === 'boolean' ? ligar : null,
-    texto: textoLimpo, para: paraLimpo, tipo: tipoLimpo, em: now,
+    texto: textoLimpo, para: paraLimpo, tipo: tipoLimpo, mvp: mvpLimpo, em: now,
   })
   gravarPedidos(lista)
   return {
     ok: true, projeto: nome, paraMaquina: alvo, acao,
     modo: modoLimpo, modulo: moduloLimpo, texto: textoLimpo, para: paraLimpo,
+    mvp: mvpLimpo,
   }
 }
 
