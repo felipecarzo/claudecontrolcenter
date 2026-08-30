@@ -106,7 +106,8 @@ import {
 import {
   METODOS,
   MODOS, PERFIS, acharModo as acharModoFramework,
-  autorizar as autorizarFramework, avaliar as avaliarFramework,
+  autorizar as autorizarFramework, avaliar as avaliarFramework, descreverAlvo,
+  resolverPedido as resolverPedidoFramework,
   faltaNoPerfil, modoDe as modoDeFramework, perfilResolvido, perfisEmArvore,
   resumo as resumoFramework, trocarModo as trocarModoFramework,
 } from './framework.mjs'
@@ -122,7 +123,7 @@ import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
   setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig, setVisita,
   setMaquina, setFederacao, moduloLigado, setModuloProjeto, setPaineisMeus,
-  projetosDoQuadro, setProjetosDoQuadro,
+  projetosDoQuadro, setProjetosDoQuadro, setPastasDeProjeto,
   CHAVE_TUDO, visitaGeral, setVisitaGeral, setTelaAberto, lerTelaAberto,
 } from './config.mjs'
 /* CC-243: os pedidos de autorização passam a chegar no painel, para ele decidir
@@ -220,8 +221,17 @@ function retratoFramework(raiz) {
     origemModoTexto: origemDoModo(s.estado).texto,
     rotaDoModo: s.estado._rota || null,
     autorizado: s.estado.autorizado || [],
-    // CC-91 parte 3: o que eu pedi e ele ainda não liberou
-    pedidos: s.estado.pedidos || [],
+    /* CC-91 parte 3: o que eu pedi e ele ainda não liberou.
+       CC-413: cada pedido chega TRADUZIDO, com o que trava e o que muda ao
+       liberar. A conta é aqui e não na tela porque os dois painéis leem esta
+       mesma rota, e duas traduções acabariam discordando. O `existe` sai do
+       disco: criar arquivo novo e alterar um que já roda são riscos diferentes,
+       e a frase precisa dizer qual dos dois é. */
+    pedidos: (s.estado.pedidos || []).map((pd) => {
+      let existe = null
+      try { existe = fs.existsSync(path.join(raiz, pd.alvo)) } catch { existe = null }
+      return { ...pd, ...descreverAlvo(pd.alvo, { existe }) }
+    }),
     modos: Object.values(MODOS).map((m) => ({ id: m.id, titulo: m.titulo, explica: m.explica })),
     /* Os perfis (17/08): a tela mostra a PROFISSÃO, porque é o que ele reconhece
        de relance. Cada um leva o que exige e o que desliga, para a escolha não
@@ -777,24 +787,32 @@ const comCorpoAsync = (req, res, max, fn) => {
 function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
 
-  /* CC-176 / CC-186: o painel novo assume a raiz.
+  /* ===== CC-426, 30/08: o painel de 2.0 assume a RAIZ, a pedido dele ======
    *
-   * O antigo NÃO foi apagado, e a diferença importa: ele continua inteiro em
-   * `/v1`, servido pelo mesmo processo, e voltar atrás é trocar duas linhas
-   * aqui. Apagar o arquivo seria a única parte irreversível desta troca, e
-   * essa é decisão dele, não consequência automática de uma rota mudar de
-   * lugar. `/v2` continua respondendo para não quebrar link salvo, atalho do
-   * telefone nem captura de tela antiga.
-   */
-  if (url.pathname === '/' || url.pathname === '/v2') {
+   * Palavras dele, depois de conferir as telas: *"pode substituir o painel
+   * antigo por esse por favor"*.
+   *
+   * Era o combinado desde 27/08, quando ele desenhou o plano em etapas:
+   * *"vamos executar um plano em etapas p nao atrapalhar o funcionamento do
+   * meu fluxo atual (…) talvez um cockpit 2.0 e só trocar quando estiver
+   * aprovado"*. Esta linha é a aprovação virando endereço.
+   *
+   * ⚠️ **Nenhum painel foi apagado, e a diferença importa.** Os dois anteriores
+   * continuam inteiros, servidos pelo mesmo processo, e voltar atrás é trocar
+   * uma linha aqui. Apagar arquivo seria a única parte irreversível de uma
+   * troca de endereço, e essa é decisão dele, não consequência automática.
+   *
+   * ⚠️ **`/v2` continua sendo o painel de todo dia de ANTES**, e não um apelido
+   * da raiz. Se ele abrir o novo no telefone às três da manhã e algo estiver
+   * quebrado, o caminho de volta tem que existir e ser o mesmo de sempre. */
+  if (url.pathname === '/' || url.pathname === '/novo' || url.pathname === '/v3') {
+    return send(res, 200, fs.readFileSync(UI_V3, 'utf8'), 'text/html; charset=utf-8')
+  }
+  /* O painel de todo dia até 29/08. Continua aqui inteiro: é a volta atrás. */
+  if (url.pathname === '/v2') {
     return send(res, 200, fs.readFileSync(UI_V2, 'utf8'), 'text/html; charset=utf-8')
   }
   if (url.pathname === '/v1') return send(res, 200, fs.readFileSync(UI, 'utf8'), 'text/html; charset=utf-8')
-  /* `/novo` é o nome que ele lê no telefone; `/v3` segue a série dos outros.
-     Os dois respondem o mesmo, e nenhum deles é a raiz. */
-  if (url.pathname === '/novo' || url.pathname === '/v3') {
-    return send(res, 200, fs.readFileSync(UI_V3, 'utf8'), 'text/html; charset=utf-8')
-  }
   if (url.pathname === '/graficos.js') {
     return send(res, 200, fs.readFileSync(GRAFICOS, 'utf8'), 'text/javascript; charset=utf-8')
   }
@@ -1532,6 +1550,20 @@ function handler(req, res) {
         // verdade: o desenho dele é "eu autorizo por clique", e sem estas duas
         // ações o clique não existe — sobraria a linha de comando, que não serve
         // para quem trabalha do celular.
+        /* ── CC-413: dispensar um pedido que perdeu o motivo ────────────────
+           O pedido é gravado pela trava e some quando ele libera. Só que o modo
+           pode MUDAR no meio: medido em 29/08 neste projeto, um pedido ficou
+           gravado depois de o modo passar a não exigir autorização, e aí não
+           havia botão nenhum para respondê-lo, porque o bloco inteiro só é
+           desenhado quando a trava está de pé. Pedido sem resposta possível é a
+           peça inalcançável de novo, e desta vez em cima de uma decisão dele. */
+        if (acao === 'dispensar') {
+          const estado = lerFramework(raiz, { sessao: null })
+          if (!estado) return { error: 'este projeto não tem framework ligado' }
+          gravarFramework(raiz, resolverPedidoFramework(estado, alvo))
+          return { raiz, ...retratoFramework(raiz) }
+        }
+
         if (acao === 'modo' || acao === 'autorizar') {
           /* Sem sessão, pelo mesmo motivo do perfil logo acima: com ela, a
              gravação do modo escolhido por ele virava no-op calada. */
@@ -2392,11 +2424,49 @@ function handler(req, res) {
         let conversas = null
         try { conversas = (await import('./gate.mjs')).listar?.() ?? null } catch { conversas = null }
 
+        /* ── CC-422: os projetos da outra máquina, tirados dos backlogs ────
+           Cada pacote que chega traz um backlog por projeto com roadmap. É a
+           única lista de projetos da outra ponta que existe aqui: o disco dela
+           não é alcançável, e os agentes só revelam as pastas onde alguém está
+           trabalhando agora. */
+        let remotos = []
+        try {
+          const F = await import('./federacao.mjs')
+          /* ⚠️ **Pacote velho não é descartado por quem lê, e isso morde.**
+             `lerPacotes` devolve tudo e só CARIMBA `semContato`. Sem olhar
+             esse carimbo, um PC desligado há três dias continuaria enchendo a
+             tela com treze projetos como se estivesse trabalhando agora, e é a
+             armadilha escrita no próprio módulo: campo ausente a tela sabe
+             dizer, campo velho ela não.
+             A saída não é sumir com eles. Sumir é a queixa dele de volta
+             ("nao consigo ver os projetos do pc"), e um projeto não deixa de
+             existir porque a máquina dele está desligada. Eles ficam, com a
+             idade junto, e a tela diz que a máquina está fora.
+             Uma semana é o corte, e é generoso de propósito: passa fim de
+             semana e viagem, e ainda tira do mapa a máquina que ele aposentou
+             de verdade. */
+          const SEMANA = 7 * 24 * 3600 * 1000
+          remotos = F.lerPacotes()
+            .filter((pac) => (pac.idadeMs || 0) < SEMANA)
+            .flatMap((pac) => (pac.backlogs || [])
+              .filter((b) => b && b.projeto)
+              .map((b) => ({
+                projeto: b.projeto,
+                maquina: pac.maquina?.nome || null,
+                abertas: b.abertas || 0,
+                frentes: b.frentes || 0,
+                semContato: Boolean(pac.semContato),
+                idadeMs: pac.idadeMs || 0,
+              }))
+              .filter((r) => r.maquina))
+        } catch { /* sem federação a tela continua mostrando os daqui */ }
+
         const dado = {
           ...P.retrato({
             jobs: s.jobs,
             trabalho: { ...trabalho, pendencias },
             tempo,
+            remotos,
             /* `estadoRemoto()` é assíncrono e é a MESMA fonte que a tela
                Remoto usa. Duas contas para "que sessão está no ar" acabariam
                discordando um dia, e o painel já tem caso registrado disso. */
@@ -2607,9 +2677,104 @@ function handler(req, res) {
 
   // CC-24: digest semanal entre projetos, cruzando histórico + git + diário +
   // roadmap. Varre ~20 projetos com spawn de git cada — sempre sob clique.
+  /* ===== CC-412: a síntese escrita por IA sobre os números da Análise ======
+   *
+   * Pedido dele olhando a tela: *"uma da IA analisar todos esses dados e me dar
+   * uma síntese"*. Quem escreve é o opencode, escolha dele: *"o bom é que ele é
+   * gratuito"*.
+   *
+   * **GET lê disco e responde na hora.** É o que a tela chama ao abrir, e é o
+   * desenho do painel inteiro: quem lê, lê arquivo.
+   *
+   * **POST chama o modelo e espera.** Leva dezenas de segundos (13s medidos só
+   * para "quanto é 2+2"), então é sempre sob clique. Segurar a resposta não
+   * trava o painel, porque nada aqui é síncrono, e o módulo GRAVA antes de
+   * responder: se ele fechar a aba no meio, o texto não se perde.
+   *
+   * ⚠️ **Os números vêm da TELA, não de uma segunda leitura aqui.** As três
+   * fontes já estão carregadas no navegador quando ele clica, e relê-las no
+   * servidor criaria uma segunda conta que pode discordar do que está na tela.
+   * A síntese tem que falar do que ele está vendo. */
+  /* ===== CC-352: as pastas de projeto, editáveis pela TELA ================
+   *
+   * Pedido dele em 25/08, ditado por voz: *"é importante que o cockpit pergunte
+   * onde vai ser a pasta de projetos (…) e lá na barra de tarefas, vai ter como
+   * ela configurar isso (…) e ela pode adicionar múltiplas pastas também"*.
+   *
+   * ⚠️ **A leitura de várias pastas existe desde 26/08 e NINGUÉM conseguia
+   * escrever essa lista.** `projectsBases()` junta a variável de ambiente, o
+   * campo `projectsBases` do config, o campo antigo e a detecção automática, e
+   * o config só podia ser editado à mão, num arquivo que ele não abre. É a peça
+   * construída e inalcançável de novo, e desta vez a metade que faltava era
+   * justamente a que ele pediu.
+   *
+   * A parte do instalador continua sendo do PC. Esta é a outra metade que ele
+   * pediu na mesma frase, e é a que funciona do telefone. */
+  if (url.pathname === '/api/pastas') {
+    return import('./install.mjs').then(async (I) => {
+      const responder = () => {
+        const cfg = readConfig()
+        return {
+          /* As três origens separadas, porque elas NÃO são iguais: a variável
+             de ambiente e a detecção automática não dá para editar daqui, e uma
+             lista única faria a tela oferecer um botão de apagar que não
+             funciona. */
+          escolhidas: Array.isArray(cfg.projectsBases) ? cfg.projectsBases : [],
+          doAmbiente: (process.env.CC_PROJECTS_BASE || '').split(/[:;]/).map((x) => x.trim()).filter(Boolean),
+          antiga: cfg.projectsBase || null,
+          emUso: I.projectsBases(),
+          /* Quantos projetos cada pasta rende: pasta escrita errada aparece com
+             zero, e zero é o sintoma que ele consegue ler sem abrir terminal. */
+          rende: Object.fromEntries(I.projectsBases().map((b) => [b, I.findProjects(b).length])),
+        }
+      }
+      if (req.method !== 'POST') return send(res, 200, responder())
+
+      return comCorpoAsync(req, res, 1e5, async ({ pastas }) => {
+        if (!Array.isArray(pastas)) return { error: 'esperava uma lista de pastas' }
+        const limpas = [...new Set(pastas.map((x) => String(x || '').trim()).filter(Boolean))]
+        /* Recusa o que não existe, e diz qual: gravar caminho errado deixa a
+           lista com uma linha muda, e ele não teria como saber qual das quatro
+           está furada. */
+        const faltando = limpas.filter((x) => { try { return !fs.statSync(x).isDirectory() } catch { return true } })
+        if (faltando.length) return { error: 'estas pastas não existem nesta máquina: ' + faltando.join(', ') }
+        setPastasDeProjeto(limpas)
+        return { ok: true, ...responder() }
+      })
+    })
+  }
+
+  if (url.pathname === '/api/sintese') {
+    if (req.method === 'POST') {
+      return comCorpoAsync(req, res, 4e6, async (corpo) => {
+        try {
+          const S = await import('./sintese.mjs')
+          return await S.pedir(corpo || {})
+        } catch (e) {
+          /* Nunca devolver o erro cru: ele traz o caminho da máquina, e ele lê
+             isso no telefone. A tradução diz o que ELE pode fazer. */
+          const cru = String(e.message || e)
+          return { ok: false, motivo: /Cannot find module/.test(cru)
+            ? 'a peça que escreve a síntese ainda não está instalada neste painel'
+            : cru.replace(/\/[^\s'"]+/g, '(caminho)').slice(0, 200) }
+        }
+      })
+    }
+    /* Sem motivo no GET, de propósito: "ainda não pedi nenhuma" não é erro, e
+       a mensagem de import falhando traria o caminho da máquina para a tela.
+       O motivo só faz sentido no POST, que é uma tentativa de verdade. */
+    return import('./sintese.mjs')
+      .then((S) => send(res, 200, S.ler() || { texto: null }))
+      .catch(() => send(res, 200, { texto: null }))
+  }
+
   if (url.pathname === '/api/digest') {
     const desde = Number(url.searchParams.get('desde')) || undefined
-    return digestTodos({ desde, jobs: readJobs() }).then((d) => send(res, 200, d))
+    /* `force` existe porque o módulo cacheia por 5 minutos. Sem ele, o botão
+       "atualizar" da tela devolveria o mesmo retrato e pareceria não funcionar,
+       que é o defeito silencioso de todo botão de recarregar com cache atrás. */
+    return digestTodos({ desde, jobs: readJobs(), force: url.searchParams.has('force') })
+      .then((d) => send(res, 200, d))
   }
 
   // CC-35: "o que mudou desde que saí", em commit de verdade — sempre sob
