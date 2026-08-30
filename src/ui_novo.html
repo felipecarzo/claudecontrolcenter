@@ -1138,6 +1138,7 @@
     .cc-mvp-rot { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; }
     .cc-mvp > summary b { color: var(--text-main); font-weight: 500; min-width: 0; }
     .cc-mvp-placar { font-size: 11px; color: var(--text-dim); margin-left: auto; white-space: nowrap; }
+    .cc-mvp-nome { font-size: 12px; color: var(--text-main); margin: 6px 0 0; line-height: 1.45; }
     .cc-mvp-lista { margin: 6px 0 0; padding-left: 2px; list-style: none; display: grid; gap: 3px; }
     .cc-mvp-lista li { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
     .cc-mvp-lista li.feito { color: var(--text-dim); }
@@ -1225,6 +1226,13 @@
     .est-cab p { font-size: 11.5px; color: var(--text-muted); margin: 2px 0 0; }
     .est-cab button { margin-left: auto; }
     .est-corpo { overflow-y: auto; padding: 8px 12px 20px; }
+    /* CC-437: o segundo nível da folha de estado. Fechado é uma linha; aberto,
+       traz os mesmos itens com a mesma aparência dos de cima. */
+    .est-raros { margin: 4px 0 10px; }
+    .est-raros > summary { cursor: pointer; list-style: none; font-size: 11.5px;
+      color: var(--text-dim); padding: 6px 2px; }
+    .est-raros > summary::-webkit-details-marker { display: none; }
+    .est-raros > summary:hover { color: var(--text-main); }
     .est-grupo { margin-top: 12px; }
     .est-grupo h4 {
       font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
@@ -1331,6 +1339,7 @@
        `1fr auto auto` é nome, contagem e botão: o nome absorve o que sobra e
        nada reserva largura, que é a exceção examinada da regra contra grade de
        coluna fixa. */
+    .pj-secao-regra { font-size: 11px; color: var(--text-dim); margin: 0 0 10px; line-height: 1.45; }
     .pj-secao-n { margin-left: 8px; font-weight: normal; color: var(--text-dim); }
     .pj-secao-fora { margin-left: 8px; font-weight: normal; font-size: 10.5px; color: var(--amber, var(--text-dim)); }
     .pasta-lista { display: grid; gap: 6px; margin: 8px 0; }
@@ -1387,6 +1396,22 @@
       .modos-caixa { left: 0; right: 0; width: auto; }
     }
 
+    /* CC-435: a ação ampla não pode parecer irmã da estreita. Ela é um link
+       dentro de uma frase que diz o escopo, e não um botão do mesmo tamanho. */
+    /* CC-436: gavetas de um toque para o que é raro. O resumo parece link, e
+       não botão: botão do mesmo tamanho ao lado de outro convida ao clique
+       errado, que foi o defeito dos dois "liberar". */
+    .rc-mais > summary, .cc-mods-gaveta > summary { cursor: pointer; list-style: none;
+      font-size: 11px; color: var(--text-dim); padding: 4px 2px; display: inline-block; }
+    .rc-mais > summary::-webkit-details-marker, .cc-mods-gaveta > summary::-webkit-details-marker { display: none; }
+    .rc-mais > summary:hover, .cc-mods-gaveta > summary:hover { color: var(--text-main); }
+    .rc-mais { display: inline-block; }
+    .rc-mais[open] { display: block; width: 100%; }
+    .cc-mods-gaveta { margin-top: 6px; }
+    .fw-tudo { font-size: 11px; color: var(--text-dim); margin: 8px 0 0; }
+    .btn-linque { background: none; border: 0; padding: 0; font: inherit;
+      color: var(--text-muted); text-decoration: underline; cursor: pointer; }
+    .btn-linque:hover { color: var(--text-main); }
     .fw-pedidos { display: grid; gap: 8px; width: 100%; margin: 6px 0; }
     /* O texto manda e o botão acompanha, e não o contrário: em 390px o botão
        desce para baixo do texto em vez de espremer a frase numa coluna de duas
@@ -2019,7 +2044,15 @@
     .sidebar.encolhida .nav-section.fechado .nav-itens{display:block;}
 
     /* ===== CC-304: a tela Projetos ===== */
-    .pj-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+    /* ⚠️ **`align-items: start`, e o motivo é o mesmo do telefone.** Item de
+       grade estica até a altura da linha inteira (`stretch` é o padrão), então
+       UM cartão alto dava 1118px a todos os vizinhos, com o conteúdo terminando
+       na metade. Medido em 30/08 com ele reclamando da tela: quatro cartões com
+       exatamente a mesma altura e textos de tamanhos muito diferentes dentro.
+       Já tinha sido consertado na grade que desliza no telefone, em 29/08, e
+       ficou faltando aqui: quem mede layout no telefone não vê a linha da
+       grade larga. */
+    .pj-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-items:start;}
     /* CC-411: as quatro faixas do mapa, em abas e cartões. */
     .mapa-abas { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
     .mapa-aba {
@@ -8877,17 +8910,20 @@
           if (!g.soltos && !g.aEnviar && !g.aReceber) partes.push('tudo salvo e em dia');
           return partes.join(', ');
         })
-        + pjBloco('framework', d.framework, (f) => {
-          if (!f?.ligado) return 'não está ligado neste projeto';
-          return 'modo <b>' + esc(f.tituloModo || f.modo || '?') + '</b>'
-            + (f.fase ? ', na fase <b>' + esc(f.fase) + '</b>' : '');
-        })
+        /* ⚠️ **CC-435: o detalhe NÃO repete o que está três linhas acima.**
+           Ele dizia "modo X, na fase Y", e o botão grande do cartão já diz papel,
+           caminho, modo e fase. Abrir o detalhe e reler a mesma coisa é o que ele
+           chamou de confuso.
+           O que sobra aqui é o que só o detalhe sabe: as rotinas e o backlog. */
         + pjBloco('rotinas', d.rotinas, (r) => {
           if (!r) return 'este projeto não tem cópia de rotina';
           return r.divergentes
             ? '<b>' + r.divergentes + '</b> de ' + (r.rotinas?.length || 0) + ' estão velhas'
             : (r.rotinas?.length || 0) + ' rotina(s), todas em dia';
         })
+        /* O backlog fica, e não é repetição do número de cima: lá é "19 no
+           backlog", aqui são os títulos das frentes abertas. Um conta, o outro
+           diz o que é. */
         + pjBloco('backlog', d.roadmap, (m) => {
           const grupos = m?.grupos || [];
           if (!grupos.length) return 'sem roadmap neste projeto';
@@ -9037,6 +9073,32 @@
       const perfis = (p.perfis || []).length ? p.perfis : catPerfis();
       const metodos = (p.metodos || []).length ? p.metodos : catMetodos();
       const modos = ((p.modos || []).length ? p.modos : catModos()).filter((m) => m.id !== 'desligado');
+      /* ── CC-437: 29 escolhas por projeto, e ele sentiu ────────────────────
+       *
+       * Ele, em 30/08: *"precisamos discutir os frameworks, a gente acabou
+       * criando muita opção, e acho que ficou embolado, precisamos rever"*.
+       *
+       * **Medido nos 12 projetos que têm framework:** método tem 6 opções e
+       * **1 em uso** (os 12 estão no padrão, e ninguém escolheu método nenhuma
+       * vez); fase tem 19 e 2 em uso; modo tem 11 e 6 em uso.
+       *
+       * ⚠️ **Nada é apagado, e o motivo é duro:** modo que some do catálogo
+       * desliga trava em silêncio, e este projeto já pagou por isso em 18/08.
+       * Muda a ORDEM: o que ele usa fica na cara, o que nunca usou vai para um
+       * segundo nível que continua a um toque.
+       *
+       * O modo escolhido AGORA nunca fica escondido, mesmo sendo raro: a gaveta
+       * esconderia justamente o que está valendo naquele cartão. */
+      const COMUNS = new Set(['dialogo', 'sugestivo', 'continuativo', 'estudo', 'desenho']);
+      const modosComuns = modos.filter((m) => COMUNS.has(m.id) || m.id === p.modo);
+      const modosRaros = modos.filter((m) => !COMUNS.has(m.id) && m.id !== p.modo);
+
+      /* Os papéis, achatados: a árvore tem pais e filhos, e a folha mostrava os
+         dois níveis. Aqui o que importa é qual foi escolhido alguma vez. */
+      const PAPEIS_USADOS = new Set(['designer', 'scrum', 'modelagem']);
+      const papeisTodos = perfis.flatMap((x) => [x, ...(x.subs || [])]);
+      const papeisComuns = papeisTodos.filter((x) => PAPEIS_USADOS.has(x.id) || x.id === p.perfil);
+      const papeisRaros = papeisTodos.filter((x) => !PAPEIS_USADOS.has(x.id) && x.id !== p.perfil);
 
       /* Cada opção é um cartão com título e explicação. A explicação estava no
          `title` do `<option>`, que é dica de passar o mouse: não existe em
@@ -9069,16 +9131,36 @@
         + '<p>' + esc(p.projeto) + seloDoProjeto(p.projeto) + '</p></div>'
         + '<button type="button" class="btn btn-ghost compacto" data-estado-fechar="1">fechar</button></header>'
         + '<div class="est-corpo">'
-        + grupo('caminho do projeto', metodos.map((m) => item('metodo:' + m.id,
-          m.titulo.split(':')[0], (m.fases || []).join(' → '),
-          !desligado && m.id === p.metodo)).join(''))
-        + grupo('papel', perfis.flatMap((x) => [
-          item('perfil:' + x.id, x.titulo, x.contrataria, !desligado && x.id === p.perfil),
-          ...(x.subs || []).map((sx) => item('perfil:' + sx.id, sx.titulo, sx.contrataria,
-            !desligado && sx.id === p.perfil, true)),
-        ]).join(''))
-        + grupo('modo', modos.map((m) => item(m.id, m.titulo, m.explica,
+        /* O MODO vem primeiro: é o que ele troca. O método desce para o fim
+           e nasce fechado, porque em doze projetos ninguém o escolheu. */
+        + grupo('modo', modosComuns.map((m) => item(m.id, m.titulo, m.explica,
           !desligado && !p.perfil && m.id === p.modo)).join(''))
+        + (modosRaros.length
+          ? '<details class="est-raros"><summary>outros modos, para casos específicos</summary>'
+            + modosRaros.map((m) => item(m.id, m.titulo, m.explica,
+              !desligado && !p.perfil && m.id === p.modo)).join('')
+            + '</details>'
+          : '')
+        /* Mesma régua do modo, e pelo mesmo motivo: dos sete papéis, três foram
+           escolhidos em algum projeto (medido em 30/08). Os outros quatro
+           continuam a um toque. O escolhido AGORA nunca fica na gaveta. */
+        + grupo('papel', papeisComuns.map((x) => item('perfil:' + x.id, x.titulo,
+          x.contrataria, !desligado && x.id === p.perfil)).join(''))
+        + (papeisRaros.length
+          ? '<details class="est-raros"><summary>outros papéis</summary>'
+            + papeisRaros.map((x) => item('perfil:' + x.id, x.titulo, x.contrataria,
+              !desligado && x.id === p.perfil)).join('')
+            + '</details>'
+          : '')
+        + (metodos.length
+          ? '<details class="est-raros"><summary>caminho do projeto'
+            + (p.metodo && p.metodo !== 'mvp-basico'
+              ? ': ' + esc(String(metodos.find((m) => m.id === p.metodo)?.titulo || p.metodo).split(':')[0]) : '')
+            + '</summary>'
+            + metodos.map((m) => item('metodo:' + m.id, m.titulo.split(':')[0],
+              (m.fases || []).join(' → '), !desligado && m.id === p.metodo)).join('')
+            + '</details>'
+          : '')
         + grupo('', item('desligado', 'Desligado', 'A IA é a de sempre. Nada é travado.', desligado))
         + '</div></div>';
     }
@@ -9255,11 +9337,19 @@
         + '</div>'
         + explicaModo(escolhido)
         + travasRemotas(p.projeto, onde, fw)
+        /* ⚠️ **CC-436: as duas frases fixas saíram do cartão.** Medido em
+           30/08: "vale em ALIENWARE-LIPE, a mudança chega lá em até 30
+           segundos" aparecia em 14 dos 34 cartões, e a de baixo em outros 14.
+           Frase idêntica repetida catorze vezes na mesma tela não é
+           explicação, é ruído: ele lê uma vez e passa a pular todas.
+           Elas viram UMA linha no cabeçalho da seção da máquina, que é onde a
+           regra vale para todos os cartões de lá. O que fica no cartão é só o
+           que muda de projeto para projeto: o pedido pendente. */
         + (pendente
           ? '<p class="cc-explica">pedido a ' + esc(onde) + ': '
             + esc(pendente.valor === 'desligado' ? 'Desligado' : rotulo(pendente.valor))
             + '. Esperando ela aplicar, até 30 segundos.</p>'
-          : '<p class="cc-explica">vale em ' + esc(onde) + '. A mudança chega lá em até 30 segundos.</p>')
+          : '')
         /* ── CC-432: dizer o que NÃO dá para fazer daqui ───────────────────
            Ele, em 30/08: *"tb não aparece a opção de colocar pra definir mvp,
            só controles básicos do framework"*.
@@ -9271,9 +9361,7 @@
            botão, não achou, e não tinha como saber se estava quebrado ou se era
            assim. Espaço vazio não distingue "não existe" de "não consegui", que
            é a família de defeito mais cara deste painel. */
-        + '<p class="cc-explica">A entrevista, o MVP e o backlog moram no disco de '
-        + esc(onde) + ', então eles se fazem lá. Daqui dá para trocar o modo, ligar e '
-        + 'desligar o método, e pedir uma sessão.</p>';
+        ;
     };
 
     /* Os selos vinham só no bloco de baixo, e são metade do motivo de ele
@@ -9331,6 +9419,30 @@
      * remoto, que é a trava que impede a fila de virar execução arbitrária na
      * outra máquina.
      */
+    /**
+     * A primeira pendência, sem repetir o que o bloco do MVP já mostra.
+     *
+     * ⚠️ **Medido em 30/08, no cartão mais alto da tela:** a pendência ocupava
+     * **271px** dizendo *"faltam 9 de 9 critérios do MVP:"* seguida dos nove
+     * critérios inteiros. E logo abaixo, o bloco "pronto quer dizer" traz os
+     * mesmos nove, com o placar e um toque para abrir.
+     *
+     * O mesmo conteúdo duas vezes, um em cima do outro, e foi disso que ele
+     * reclamou: *"essa zona toda aí, tá muito confusa"*.
+     *
+     * Fica a contagem, que é o que a pendência tem de próprio, e os critérios
+     * ficam no lugar que existe para eles.
+     */
+    function primeiraPendencia(fw) {
+      const p = fw.pendencias?.[0];
+      if (!p) return '<p class="cc-explica">portão aberto</p>';
+      /* Só corta quando os critérios estão MESMO logo abaixo: sem o bloco do
+         MVP, cortar aqui esconderia a informação em vez de mudá-la de lugar. */
+      const temMvp = Boolean(fw.mvp?.nome && (fw.mvp.criterios || []).length);
+      const corte = temMvp ? String(p).split(/:\s/)[0] : String(p);
+      return '<p class="cc-explica">' + esc(corte) + (temMvp && corte !== p ? '' : '') + '</p>';
+    }
+
     function blocoMvp(fw) {
       const m = fw?.mvp;
       if (!m || !m.nome) return '';
@@ -9340,8 +9452,14 @@
          informa nada, que é a régua da casa para todo número da tela. */
       const placar = criterios.length
         ? '<span class="cc-mvp-placar">' + feitos + ' de ' + criterios.length + '</span>' : '';
+      /* ⚠️ **O nome do MVP é uma FRASE, e no resumo ele precisa caber.** Medido
+         em 30/08: o do fibraessencia tem 290 caracteres, e sozinho dava 200px
+         de altura no cartão fechado. O nome inteiro fica ao abrir, junto dos
+         critérios, que é onde ele é útil. */
+      const curto = m.nome.length > 90 ? m.nome.slice(0, 88).trimEnd() + '…' : m.nome;
       return '<details class="cc-mvp"><summary><span class="cc-mvp-rot">pronto quer dizer</span>'
-        + '<b>' + esc(m.nome) + '</b>' + placar + '</summary>'
+        + '<b title="' + esc(m.nome) + '">' + esc(curto) + '</b>' + placar + '</summary>'
+        + (curto !== m.nome ? '<p class="cc-mvp-nome">' + esc(m.nome) + '</p>' : '')
         + (criterios.length
           ? '<ul class="cc-mvp-lista">' + criterios.map((c) => '<li' + (c.feito ? ' class="feito"' : '') + '>'
             + (c.feito ? '✓ ' : '') + esc(c.texto || '') + '</li>').join('') + '</ul>'
@@ -9361,7 +9479,7 @@
           + '</span>'
         : '<div class="cc-fase"><span class="dot ' + (fw.portaoAberto ? 'green' : 'amber') + '"></span> '
           + esc(fw.tituloFase || 'em andamento')
-          + '</div><p class="cc-explica">' + esc(fw.pendencias?.[0] || 'portão aberto') + '</p>'
+          + '</div>' + primeiraPendencia(fw)
           + blocoMvp(fw);
 
       const cat = FW_CATALOGO_MODULOS || {};
@@ -9429,8 +9547,15 @@
               + ' data-fw-proj="' + esc(fw.projeto) + '" data-fw-alvo="' + esc(p.alvo) + '">'
               + 'liberar</button></div>').join('') + '</div>'
             : '')
-          + '<button type="button" class="btn btn-ghost compacto" data-fw="autorizar"'
-          + ' data-fw-proj="' + esc(fw.projeto) + '">liberar escrita…</button>'
+          /* ⚠️ **CC-435: os dois "liberar" eram vizinhos com o mesmo verbo.**
+             Um solta UM arquivo, o outro solta o projeto INTEIRO, e a diferença
+             entre eles é o modo funcionar ou virar decoração. Lado a lado, com
+             a mesma palavra, o mais perigoso era o mais fácil de clicar.
+             O do projeto inteiro vira uma linha discreta, com o escopo dito no
+             próprio texto. A confirmação continua explicando qual é qual. */
+          + '<p class="fw-tudo"><button type="button" class="btn-linque" data-fw="autorizar"'
+          + ' data-fw-proj="' + esc(fw.projeto) + '">liberar o projeto inteiro</button>'
+          + ', e não só o que foi pedido</p>'
           + '</div>');
 
       const entrevistaAqui = ENTREVISTA?.projeto === fw.projeto;
@@ -9477,14 +9602,20 @@
         + '</div>';
 
       const miolo = passo + (selosFw(fw) ? '<div class="cc-selos">' + selosFw(fw) + '</div>' : '')
-        + '<div class="cc-linha-estado">' + seletorEstado(fw) + ajuda('framework') + btnEntrevista
-        + (btnEntrevista ? ajuda('entrevista') : '') + '</div>'
+        /* ⚠️ **CC-435: UM "?" por cartão, e não três.** Medido em 30/08: o
+           cartão tinha três, um do framework, um da entrevista e um dos
+           módulos, todos abrindo a mesma folha de ajuda com termos diferentes.
+           Três pontos de interrogação lado a lado não convidam a ler nenhum.
+           Fica o do framework, que é o assunto do bloco inteiro. */
+        + '<div class="cc-linha-estado">' + seletorEstado(fw) + ajuda('framework') + btnEntrevista + '</div>'
         + explicaModo(valendo ? fw.modo : 'desligado')
         + situacao
         + autorizacao
         + (modulos
-          ? '<div class="cc-mods-rotulo">o que o framework governa aqui ' + ajuda('módulos do framework') + '</div>'
-            + '<div class="cc-mods">' + modulos + '</div>'
+          /* CC-436: os cinco botões de módulo viram gaveta. São o ajuste mais
+             raro do cartão, e ocupavam uma fileira inteira em todos eles. */
+          ? '<details class="cc-mods-gaveta"><summary>o que o framework governa aqui</summary>'
+            + '<div class="cc-mods">' + modulos + '</div></details>'
           : '');
 
       if (!colapsado) return '<div class="pj-fw">' + miolo + '</div>';
@@ -9536,20 +9667,28 @@
         return '<select class="styled-input cc-estado rc-modo" data-sessao-modo="' + esc(conversa) + '"'
           + ' data-sessao-proj="' + esc(nome) + '" data-cc-dir="' + esc(dir) + '"'
           + ' title="o modo de trabalho SÓ desta sessão">'
-          + op('', 'modo do projeto', 'segue o modo do projeto', !atual)
+          + op('', 'como o projeto', 'segue o modo do projeto, sem exceção nesta sessão', !atual)
           + modosCru.map((m) => op(m.id, m.titulo, m.explica, atual === m.id)).join('')
           + '</select>';
       };
       const linhaSessao = (rot) => '<div class="rc-sessao"><span class="rc-sessao-nome">' + esc(rot) + '</span>'
         + '<div class="rc-botoes">'
+        /* ⚠️ **CC-436: três botões viraram um mais uma gaveta.** Ele, em 30/08:
+           *"o importante é colapsar informações, se tem muito texto colapsa ou
+           coloca em um botão"*. **conectar celular** é o de todo dia e fica;
+           **soltar** e **encerrar** ficam a um toque, porque os dois desfazem
+           algo e encerrar mata uma sessão sem volta. Nada some: a decisão dele
+           de 29/08 continua de pé, o controle segue no mesmo lugar. */
         + '<button type="button" class="btn btn-ghost compacto" data-remoto-conectar="' + esc(rot) + '">conectar celular</button>'
+        + '<details class="rc-mais"><summary title="soltar o celular ou encerrar esta sessão">mais</summary>'
         + '<button type="button" class="btn btn-ghost compacto" data-remoto-soltar="' + esc(rot) + '">soltar celular</button>'
         + '<button type="button" class="btn btn-ghost compacto" data-remoto-desligar="' + esc(rot) + '">encerrar</button>'
+        + '</details>'
         + '</div>'
         + seletorModoSessao(rot)
         + '</div>';
       const claudeCode = rotulos.length
-        ? '<div class="rc-grupo"><span class="rc-grupo-nome">Claude Code · ' + rotulos.length + ' sessõe' + (rotulos.length > 1 ? 's' : '') + '</span>'
+        ? '<div class="rc-grupo"><span class="rc-grupo-nome">Claude Code · ' + rotulos.length + (rotulos.length > 1 ? ' sessões' : ' sessão') + '</span>'
           + rotulos.map(linhaSessao).join('')
           + '<div class="rc-botoes" style="margin-top:8px;"><button type="button" class="btn btn-outline compacto" data-remoto-mais="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '">abrir mais uma</button></div>'
           + '</div>'
@@ -9697,7 +9836,14 @@
           : '')
         + '<div class="pj-numeros">'
         + num(p.backlog, 'no backlog') + num(p.soSeus, 'só seus')
-        + num(p.horasHoje, 'hoje') + num(p.agentes, 'agentes')
+        /* ⚠️ **CC-435: AGENTES sai quando o topo já diz o mesmo.** Medido em
+           30/08: o cartão mostrava "1 TRABALHANDO" no topo e "1 AGENTES" três
+           linhas abaixo, o mesmo dado por dois caminhos (`p.vivos` e
+           `p.agentes`). Ele: *"essa zona toda aí, tá muito confusa"*.
+           O número fica quando ele ACRESCENTA algo: seis agentes dos quais um
+           trabalha é informação, e é o caso dos projetos da outra máquina. */
+        + num(p.horasHoje, 'hoje')
+        + (p.agentes && p.agentes !== (p.esperando || p.vivos || 0) ? num(p.agentes, 'agentes') : '')
         + '</div>'
         /* A ordem do cartão, arrumada em 25/08 depois do print dele: primeiro
            O QUE O PROJETO É (framework, estado, selos), depois O QUE FAZER
@@ -10140,7 +10286,13 @@
           return '<div class="pj-secao">' + esc(onde) + (rotulo ? ', ' + rotulo : '')
             + '<span class="pj-secao-n">' + lista.length + '</span>'
             + (parada ? '<span class="pj-secao-fora">sem contato há ' + esc(age(parada.idadeMs || 0)) + '</span>' : '')
-            + '</div>' + grade(lista);
+            + '</div>'
+            /* CC-436: a regra que vale para TODOS os cartões desta máquina,
+               dita uma vez. Antes ela estava dentro de cada um dos catorze. */
+            + '<p class="pj-secao-regra">Daqui dá para trocar o modo, ligar e desligar o método, '
+            + 'e pedir uma sessão. A mudança chega em até 30 segundos. A entrevista, o MVP e o '
+            + 'backlog moram no disco de ' + esc(onde) + ', então eles se fazem lá.</p>'
+            + grade(lista);
         }).join('');
     }
 

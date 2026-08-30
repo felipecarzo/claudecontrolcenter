@@ -5285,6 +5285,91 @@ if (process.platform !== 'win32') {
   console.log('  ok   CC-361: o liberar escrita está na tela do dia a dia, com alvo e confirmação')
 }
 
+/* ── CC-435 a 437: o cartão confuso, e as 29 escolhas por projeto ──────────
+ *
+ * Ele, olhando a tela Projetos em 30/08: *"essa zona toda aí, tá muito confusa,
+ * não acha?"*, e depois: *"o importante é colapsar informações, se tem muito
+ * texto colapsa ou coloca em um botão, e precisamos discutir os frameworks, a
+ * gente acabou criando muita opção, e acho que ficou embolado"*.
+ *
+ * ⚠️ **A confusão era obra minha, e de um dia só.** Em 29/08 ele disse o
+ * contrário sobre o MESMO cartão: *"estou gostando dos ligados terem tanta
+ * informação ali porque eu controlo cada projeto ligado no mesmo lugar"*. Entre
+ * os dois dias eu empilhei cinco blocos em cima dessa escolha dele.
+ *
+ * Medido antes de mexer: 18 a 21 botões, até 8 parágrafos de explicação, altura
+ * média de 1171px contra 844px de um telefone inteiro.
+ */
+{
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+
+  /* ── A maior causa não era texto demais: era o MESMO texto duas vezes ───── */
+
+  assert.match(v3, /function primeiraPendencia\(fw\)/,
+    'a pendência precisa parar de repetir os critérios que o bloco do MVP mostra '
+    + 'logo abaixo: media 271px dizendo "faltam 9 de 9 critérios" e listando os nove')
+  assert.match(v3, /const temMvp = Boolean\(fw\.mvp\?\.nome/,
+    'e só corta quando o MVP está MESMO logo abaixo: sem ele, cortar aqui '
+    + 'esconderia a informação em vez de mudá-la de lugar')
+  console.log('  ok   CC-435: a pendência não repete os critérios que o MVP já lista')
+
+  assert.match(v3, /p\.agentes !== \(p\.esperando \|\| p\.vivos \|\| 0\)/,
+    'o número de agentes só entra quando ACRESCENTA algo ao que o topo já diz: '
+    + '"1 TRABALHANDO" e "1 AGENTES" eram o mesmo dado por dois caminhos')
+  console.log('  ok   CC-435: o estado não aparece duas vezes no mesmo cartão')
+
+  /* ⚠️ Um "?" por cartão. Três, lado a lado, não convidam a ler nenhum. */
+  const cartao = v3.slice(v3.indexOf('function blocoFramework'), v3.indexOf('function acoesDeSessao'))
+  const ajudas = (cartao.match(/ajuda\('/g) || []).length
+  assert.ok(ajudas <= 1, `o bloco do framework tem ${ajudas} botões "?", e o teto é 1`)
+  console.log('  ok   CC-435: um único "?" no bloco do framework')
+
+  /* Os dois "liberar" eram vizinhos com o mesmo verbo, e o mais perigoso (o
+     projeto inteiro) era tão fácil de clicar quanto o estreito. */
+  assert.match(v3, /liberar o projeto inteiro/,
+    'a ação ampla precisa dizer o escopo no próprio texto')
+  assert.match(v3, /class="btn-linque" data-fw="autorizar"/,
+    'e não pode ser um botão do mesmo tamanho do "liberar" estreito')
+  console.log('  ok   CC-435: a ação ampla se distingue da estreita pelo texto e pela forma')
+
+  /* ── O texto que se repetia entre cartões ────────────────────────────────── */
+
+  assert.ok(!v3.includes("A entrevista, o MVP e o backlog moram no disco de ' + esc(onde)"),
+    'a frase que aparecia em 14 de 34 cartões saiu do cartão')
+  assert.match(v3, /class="pj-secao-regra"/,
+    'e virou UMA linha no cabeçalho da seção da máquina, onde a regra vale para todos')
+  console.log('  ok   CC-436: a regra da máquina é dita uma vez, e não em catorze cartões')
+
+  /* ── A grade esticava todos os cartões até a altura do maior ────────────── */
+
+  assert.match(v3, /\.pj-grade\{[^}]*align-items:start/,
+    'sem isto, UM cartão alto dá a mesma altura a todos os vizinhos, com o conteúdo '
+    + 'terminando na metade. Já tinha sido consertado na grade do telefone em 29/08')
+  console.log('  ok   CC-436: a grade larga não estica mais os cartões')
+
+  /* ── As 29 escolhas por projeto ──────────────────────────────────────────── */
+
+  assert.match(v3, /const modosRaros = modos\.filter/,
+    'os modos nunca usados saem do primeiro nível da folha')
+  assert.match(v3, /const papeisRaros = papeisTodos\.filter/,
+    'e os papéis seguem a mesma régua')
+  assert.match(v3, /m\.id === p\.modo\);/,
+    'o modo escolhido AGORA nunca fica na gaveta: ela esconderia justo o que vale')
+  console.log('  ok   CC-437: o raro sai do primeiro nível, e o escolhido nunca se esconde')
+
+  /* ⚠️ **NADA foi apagado do catálogo**, e o motivo é duro: modo que some da
+     lista desliga trava em silêncio, e este projeto já pagou por isso em 18/08.
+     O que mudou é a ordem em que a folha oferece. */
+  const F = await import('./src/framework.mjs')
+  assert.equal(Object.keys(F.MODOS).length, 11, 'os 11 modos continuam no catálogo')
+  assert.equal(Object.keys(F.METODOS).length, 6, 'os 6 métodos continuam no catálogo')
+  for (const id of ['continuo', 'depuracao', 'revisao', 'pareado', 'entrega']) {
+    assert.ok(F.MODOS[id], `o modo ${id} não pode sumir: some da tela, não do catálogo`)
+  }
+  console.log('  ok   CC-437: nenhum modo nem método foi apagado, só reordenado')
+}
+
+
 /* ── CC-434: "fora do quadro" mentia para quem estava DENTRO ───────────────
  *
  * Ele, em 30/08: *"ue, nao to vendo o projeto ibrics no painel"*.
