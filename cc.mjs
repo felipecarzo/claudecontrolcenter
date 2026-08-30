@@ -1408,6 +1408,73 @@ switch (cmd) {
     break
   }
 
+  /**
+   * CC-439: a versão que RODA, separada da que se edita.
+   *
+   * Pedido dele em 30/08: *"quero que isso pare de ser um produto que eu vou
+   * criar todo dia (…) ter ele instalado na mesma versão na VPS e no PC"*. A
+   * causa não era falta de instalador, era o comando instalado ser um atalho
+   * para a pasta de obras: uma linha errada salva às 15h derruba o painel dele
+   * às 15h, e não existe versão de ontem para voltar.
+   */
+  case 'versao': {
+    const P = await import('./src/publicar.mjs')
+    const sub = arg
+
+    const mostrar = () => {
+      const s = P.situacao()
+      console.log('')
+      if (!s.publicada) {
+        console.log('  ainda não há versão publicada nesta máquina.')
+        console.log(`  o que roda hoje é a própria pasta de obras: ${s.obras.dir}`)
+        console.log(`\n  publicar a primeira: node cc.mjs versao publicar\n`)
+        return
+      }
+      const q = s.instalada
+      console.log(`  a que RODA   : ${q.versao || 'sem número'}  ${q.commit || ''}  (${q.em ? new Date(q.em).toLocaleString('pt-BR') : 'sem data'})`)
+      console.log(`                 ${s.destino}`)
+      console.log(`  a de OBRAS   : ${s.obras.versao || 'sem número'}  ${s.obras.commit || ''}`)
+      console.log(`                 ${s.obras.dir}`)
+      console.log(s.iguais
+        ? '\n  as duas estão no mesmo ponto.'
+        : '\n  ELAS DIVERGEM: o que você está editando ainda não foi publicado.')
+      console.log(s.temAnterior
+        ? '  dá para voltar para a anterior: node cc.mjs versao voltar\n'
+        : '  não há versão anterior guardada ainda.\n')
+    }
+
+    if (!sub || sub === 'status') { mostrar(); break }
+
+    if (sub === 'publicar') {
+      const comGate = !has('--sem-gate')
+      console.log(comGate ? '\n  rodando o gate antes de publicar...' : '\n  ⚠️  publicando SEM o gate, por pedido explícito')
+      const r = P.publicar({ gate: comGate })
+      if (!r.ok) {
+        console.error(`\n  não publiquei: ${r.erro}`)
+        if (r.detalhe) console.error(`\n${r.detalhe}`)
+        process.exitCode = 1
+        break
+      }
+      console.log(`\n  publicado: ${r.versao || 'sem número'} ${r.commit || ''}`)
+      console.log(`  em ${r.destino}`)
+      if (r.temAnterior) console.log('  a versão de antes ficou guardada, dá para voltar')
+      mostrar()
+      break
+    }
+
+    if (sub === 'voltar') {
+      const r = P.voltar()
+      if (!r.ok) die(`  ${r.erro}`)
+      console.log(`\n  voltou para ${r.agora?.versao || 'a versão anterior'} ${r.agora?.commit || ''}`)
+      console.log('  voltar de novo desfaz isto.')
+      mostrar()
+      break
+    }
+
+    die('uso: node cc.mjs versao [publicar|voltar]')
+    break
+  }
+
   case 'install': {
     const dir = arg || process.cwd()
     const r = install.installInto(dir, { create: has('--create') })

@@ -2536,6 +2536,42 @@ deles, que é a guarda contra o lixo. **Custo medido antes de trocar**, porque o
 desenho antigo se justificava por ele: 3,2ms + 2,9ms contra os 6,6ms da versão
 que se dizia barata, num ciclo de 30 segundos.
 
+### CC-439 🟡 30/08: a cópia que RODA, separada da que se edita (motor pronto, falta apontar)
+
+**É o primeiro dos três caminhos, e ele escolheu começar por aqui.** Resolve a
+causa: hoje o comando instalado é um atalho para a pasta de obras, então uma
+linha errada salva às 15h derruba o painel dele às 15h, e não existe versão de
+ontem para voltar. Está nas armadilhas do `CLAUDE.md` desde 2026-08-08, na
+alínea (c): *"código quebrado no repo quebra o `cc` de todos os agentes na
+hora"*.
+
+**Pronto e provado:**
+
+- `src/publicar.mjs` copia o produto (sem `.git`, sem `docs/`, sem teste, sem
+  `node_modules`) para fora do repositório, com carimbo de versão, commit e
+  data. No Windows vai para `%LOCALAPPDATA%\AgentCockpit`.
+- **O gate roda ANTES e recusa se falhar.** Publicar sem conferir seria o mesmo
+  que ter uma cópia só.
+- **Cada publicação guarda a anterior inteira**, e `voltar()` troca as duas de
+  lugar em vez de descartar: voltar por engano tem conserto. Uma geração só, de
+  propósito — o histórico de verdade está no git.
+- `cc versao`, `cc versao publicar`, `cc versao voltar`.
+- Primeira publicação feita: `0.2.0 ca6e7bc`, e a cópia **roda sozinha fora do
+  repositório** (provado: respondeu com 14 agentes, sem `.git` na pasta).
+- `test-publicar.mjs` no gate, com o caso que prova o ponto inteiro: editar a
+  pasta de obras não muda a que roda.
+
+⚠️ **O que FALTA, e não foi feito de propósito:** apontar o que sobe no logon
+para a cópia instalada. Medido em 30/08, e há um obstáculo real: são dois
+caminhos ativos (o `control-center.vbs` do Startup e a Tarefa Agendada), e o
+lançador `src/arrancar.ps1` faz **`git pull` a cada arranque** — a cópia
+instalada não tem `.git`, então ele quebraria ali.
+
+**Quem pegar decide uma coisa antes de escrever código:** o lançador da versão
+instalada não puxa nada (ela só muda quando alguém publica), então ou ele ganha
+um ramo sem `git pull`, ou a instalada usa um lançador próprio. Enquanto isso
+não for feito, o mecanismo existe e o benefício ainda não chegou nele.
+
 ### CC-438 🔴 30/08: a síntese pelo opencode provavelmente não funciona no Windows
 
 Achado ao unificar, e não é do teste. `pedir()`, em `src/sintese.mjs`, chama
