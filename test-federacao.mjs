@@ -492,4 +492,101 @@ ok('pacote sobrevive ao ida e volta por JSON')
   }
 }
 
+/* ------------------------------------------------ CC-434: recado entre máquinas
+ *
+ * Ele pediu para avisar a sessão do PC e eu respondi que não dava. Ele
+ * corrigiu: *"como não?! a gente se comunica via hooks"*. Ele estava certo
+ * sobre o mecanismo e eu sobre o alcance: o recado do Routia mora em
+ * `docs/.recados.json`, que está no `.gitignore` e nunca sai da máquina.
+ *
+ * Esta fila é a única tubulação viva entre as pontas. O que se garante aqui:
+ * o texto ATRAVESSA inteiro, o que é perigoso não atravessa, e dois recados
+ * diferentes não viram um.
+ */
+{
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-recado-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+    const R = await import('./src/recados.mjs')
+
+    assert.ok(F.ACOES_DE_PEDIDO.includes('recado'), 'sem a ação na lista, pedirSessao recusa tudo')
+
+    // --- o texto atravessa inteiro, e chega com o destinatário certo
+    const env = F.pedirSessao({
+      paraMaquina: 'ALIENWARE-LIPE',
+      projeto: 'cockpit',
+      de: '670e1313',
+      acao: 'recado',
+      para: '2d4e7b74',
+      tipo: 'aviso',
+      texto: 'Dá git pull: o painel novo virou a raiz.',
+    })
+    assert.equal(env.ok, true, env.erro)
+    const fila = F.pegarPedidos('ALIENWARE-LIPE')
+    assert.equal(fila.length, 1)
+    assert.equal(fila[0].acao, 'recado')
+    assert.equal(fila[0].texto, 'Dá git pull: o painel novo virou a raiz.',
+      'o texto tem que chegar inteiro: recado truncado é pior que recado nenhum')
+    assert.equal(fila[0].para, '2d4e7b74')
+    ok('o recado atravessa a fila com texto e destinatário')
+
+    /* PROVA AO CONTRÁRIO: sem o campo `texto` no pedido gravado, a fila
+       repassaria um recado vazio e o outro lado o descartaria em silêncio.
+       Foi assim que o `frente` sumiu do cartão por semanas. */
+    assert.ok('texto' in fila[0], 'o campo tem que ser GRAVADO, não só aceito')
+
+    // --- o que é perigoso não atravessa
+    assert.equal(F.pedirSessao({
+      paraMaquina: 'X', projeto: 'cockpit', acao: 'recado', texto: '   ',
+    }).ok, false, 'recado só com espaço tem que ser recusado')
+    assert.equal(F.pedirSessao({
+      paraMaquina: 'X', projeto: 'cockpit', acao: 'recado', texto: 'oi', para: '../../etc',
+    }).ok, false, 'destinatário vira comparação de id, nunca caminho')
+    assert.equal(F.pedirSessao({
+      paraMaquina: 'X', projeto: 'cockpit', acao: 'recado', texto: 'oi', tipo: 'a/b',
+    }).ok, false, 'tipo com barra tem que ser recusado')
+    const gordo = F.pedirSessao({
+      paraMaquina: 'GORDO', projeto: 'cockpit', acao: 'recado', texto: 'x'.repeat(5000),
+    })
+    assert.equal(gordo.ok, true)
+    assert.equal(gordo.texto.length, 600, 'texto sem teto enche a fila e some com os outros pedidos')
+    ok('destinatário, tipo e tamanho são cortados antes de entrar na fila')
+
+    // --- dois recados diferentes não viram um
+    F.pegarPedidos('DUPLO')
+    F.pedirSessao({ paraMaquina: 'DUPLO', projeto: 'cockpit', acao: 'recado', texto: 'primeiro' })
+    F.pedirSessao({ paraMaquina: 'DUPLO', projeto: 'cockpit', acao: 'recado', texto: 'segundo' })
+    F.pedirSessao({ paraMaquina: 'DUPLO', projeto: 'cockpit', acao: 'recado', texto: 'primeiro' })
+    const dois = F.pegarPedidos('DUPLO')
+    assert.equal(dois.length, 2,
+      'a chave de dedo duplo tem que incluir o texto: sem isso o segundo aviso é engolido calado')
+    assert.deepEqual(dois.map((p) => p.texto), ['primeiro', 'segundo'])
+    ok('dois recados diferentes não viram um, e o repetido continua sendo dedo duplo')
+
+    /* --- e o lado que EXECUTA grava onde o hook do Routia lê.
+       Sem isto o recado chegaria na máquina certa e morreria antes de alguém
+       ler, que é a peça construída e inalcançável de novo. */
+    const proj = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-proj-'))
+    fs.mkdirSync(path.join(proj, 'docs'), { recursive: true })
+    R.enviar(proj, {
+      de: '670e1313', para: '2d4e7b74', tipo: 'aviso', texto: 'dá git pull', arquivo: null,
+    })
+    const chegou = R.pendentes(proj, '2d4e7b74')
+    assert.equal(chegou.length, 1, 'o recado tem que ficar pendente para a sessão de destino')
+    assert.equal(chegou[0].texto, 'dá git pull')
+    assert.equal(R.pendentes(proj, '670e1313').length, 0, 'recado meu não volta para mim')
+    fs.rmSync(proj, { recursive: true, force: true })
+    ok('o recado entregue fica pendente para quem é, e o hook do Routia o encontra')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
 console.log(`\n${n} grupos de asserção passaram`)

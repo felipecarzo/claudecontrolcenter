@@ -5314,6 +5314,205 @@ if (process.platform !== 'win32') {
   console.log('  ok   CC-361: o liberar escrita está na tela do dia a dia, com alvo e confirmação')
 }
 
+/* ── CC-438: "cadê o PC_cockpit?" ─────────────────────────────────────────
+ *
+ * Ele, em 30/08, olhando a tela: *"cadê o pc_cockpit?"*.
+ *
+ * Estava lá, com 38 itens de backlog, chamado de `cockpit`. **Esse é o nome de
+ * verdade da pasta no PC dele**, e o caminho que a própria máquina reporta é
+ * `D:\Documentos\projetos\cockpit`.
+ *
+ * A regra que ele escreveu em 23/08 manda toda pasta do PC começar com `PC_`,
+ * para o mesmo repositório não virar a mesma linha vindo das duas máquinas. As
+ * onze pastas de lá não seguem a regra, e o painel mostra o que existe.
+ *
+ * ⚠️ **Inventar o prefixo na tela seria pior que o problema.** O painel passaria
+ * a mostrar um nome que não existe em disco nenhum, e um dia ele procura
+ * `PC_cockpit` na máquina e não acha.
+ *
+ * O que a regra dele queria evitar era o mesmo trabalho aparecer duas vezes sem
+ * ninguém perceber. Então a tela NOMEIA o par, e o nome continua o verdadeiro.
+ */
+{
+  const os = await import('node:os')
+  const P = await import('./src/projetos.mjs')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-irmao-'))
+
+  try {
+    const local = path.join(raiz, 'VPS_cockpit')
+    fs.mkdirSync(path.join(local, '.git'), { recursive: true })
+
+    const r = P.retrato({
+      jobs: [{ id: 'a', status: 'working', cwd: local, project: 'VPS_cockpit' }],
+      achar: () => [local],
+      remotos: [
+        { projeto: 'cockpit', maquina: 'ALIENWARE-LIPE', abertas: 38 },
+        { projeto: 'so-existe-la', maquina: 'ALIENWARE-LIPE', abertas: 2 },
+      ],
+    })
+    const acha = (n) => r.projetos.find((p) => p.projeto === n)
+
+    /* O par é dito nos DOIS cartões: quem olha o daqui precisa saber que existe
+       lá, e quem olha o de lá precisa saber que existe aqui. */
+    assert.deepEqual(acha('VPS_cockpit').tambemEm, [{ projeto: 'cockpit', onde: 'ALIENWARE-LIPE' }])
+    assert.deepEqual(acha('cockpit').tambemEm, [{ projeto: 'VPS_cockpit', onde: 'aqui' }])
+    console.log('  ok   CC-438: o mesmo projeto nas duas máquinas é nomeado nos dois cartões')
+
+    /* Quem só existe de um lado não ganha par inventado. */
+    assert.equal(acha('so-existe-la').tambemEm, null)
+    console.log('  ok   CC-438: projeto que existe num lugar só não ganha par')
+
+    /* ⚠️ **O sufixo continua separando.** `cockpit--front` é outra árvore de
+       trabalho, com outro roadmap: casar as duas misturaria backlogs de datas
+       diferentes, que é a metade da regra de nomes que erra em silêncio. */
+    const comSufixo = P.retrato({
+      jobs: [{ id: 'a', status: 'working', cwd: local, project: 'VPS_cockpit' }],
+      achar: () => [local],
+      remotos: [{ projeto: 'cockpit--front', maquina: 'ALIENWARE-LIPE', abertas: 15 }],
+    })
+    assert.equal(comSufixo.projetos.find((p) => p.projeto === 'VPS_cockpit').tambemEm, null,
+      'a árvore de trabalho `--front` é outro projeto, e não o irmão deste')
+    console.log('  ok   CC-438: o sufixo de árvore de trabalho não vira par')
+  } finally {
+    fs.rmSync(raiz, { recursive: true, force: true })
+  }
+
+  /* E a tela escreve o par, senão o dado existe e ninguém vê. */
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+  assert.match(v3, /p\.tambemEm\?\.length/)
+  assert.match(v3, /também em /)
+  console.log('  ok   CC-438: a tela escreve o par, e não só o servidor calcula')
+}
+
+
+/* ── CC-435 a 437: o cartão confuso, e as 29 escolhas por projeto ──────────
+ *
+ * Ele, olhando a tela Projetos em 30/08: *"essa zona toda aí, tá muito confusa,
+ * não acha?"*, e depois: *"o importante é colapsar informações, se tem muito
+ * texto colapsa ou coloca em um botão, e precisamos discutir os frameworks, a
+ * gente acabou criando muita opção, e acho que ficou embolado"*.
+ *
+ * ⚠️ **A confusão era obra minha, e de um dia só.** Em 29/08 ele disse o
+ * contrário sobre o MESMO cartão: *"estou gostando dos ligados terem tanta
+ * informação ali porque eu controlo cada projeto ligado no mesmo lugar"*. Entre
+ * os dois dias eu empilhei cinco blocos em cima dessa escolha dele.
+ *
+ * Medido antes de mexer: 18 a 21 botões, até 8 parágrafos de explicação, altura
+ * média de 1171px contra 844px de um telefone inteiro.
+ */
+{
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+
+  /* ── A maior causa não era texto demais: era o MESMO texto duas vezes ───── */
+
+  assert.match(v3, /function primeiraPendencia\(fw\)/,
+    'a pendência precisa parar de repetir os critérios que o bloco do MVP mostra '
+    + 'logo abaixo: media 271px dizendo "faltam 9 de 9 critérios" e listando os nove')
+  assert.match(v3, /const temMvp = Boolean\(fw\.mvp\?\.nome/,
+    'e só corta quando o MVP está MESMO logo abaixo: sem ele, cortar aqui '
+    + 'esconderia a informação em vez de mudá-la de lugar')
+  console.log('  ok   CC-435: a pendência não repete os critérios que o MVP já lista')
+
+  assert.match(v3, /p\.agentes !== \(p\.esperando \|\| p\.vivos \|\| 0\)/,
+    'o número de agentes só entra quando ACRESCENTA algo ao que o topo já diz: '
+    + '"1 TRABALHANDO" e "1 AGENTES" eram o mesmo dado por dois caminhos')
+  console.log('  ok   CC-435: o estado não aparece duas vezes no mesmo cartão')
+
+  /* ⚠️ Um "?" por cartão. Três, lado a lado, não convidam a ler nenhum. */
+  const cartao = v3.slice(v3.indexOf('function blocoFramework'), v3.indexOf('function acoesDeSessao'))
+  const ajudas = (cartao.match(/ajuda\('/g) || []).length
+  assert.ok(ajudas <= 1, `o bloco do framework tem ${ajudas} botões "?", e o teto é 1`)
+  console.log('  ok   CC-435: um único "?" no bloco do framework')
+
+  /* Os dois "liberar" eram vizinhos com o mesmo verbo, e o mais perigoso (o
+     projeto inteiro) era tão fácil de clicar quanto o estreito. */
+  assert.match(v3, /liberar o projeto inteiro/,
+    'a ação ampla precisa dizer o escopo no próprio texto')
+  assert.match(v3, /class="btn-linque" data-fw="autorizar"/,
+    'e não pode ser um botão do mesmo tamanho do "liberar" estreito')
+  console.log('  ok   CC-435: a ação ampla se distingue da estreita pelo texto e pela forma')
+
+  /* ── O texto que se repetia entre cartões ────────────────────────────────── */
+
+  assert.ok(!v3.includes("A entrevista, o MVP e o backlog moram no disco de ' + esc(onde)"),
+    'a frase que aparecia em 14 de 34 cartões saiu do cartão')
+  assert.match(v3, /class="pj-secao-regra"/,
+    'e virou UMA linha no cabeçalho da seção da máquina, onde a regra vale para todos')
+  console.log('  ok   CC-436: a regra da máquina é dita uma vez, e não em catorze cartões')
+
+  /* ── A grade esticava todos os cartões até a altura do maior ────────────── */
+
+  assert.match(v3, /\.pj-grade\{[^}]*align-items:start/,
+    'sem isto, UM cartão alto dá a mesma altura a todos os vizinhos, com o conteúdo '
+    + 'terminando na metade. Já tinha sido consertado na grade do telefone em 29/08')
+  console.log('  ok   CC-436: a grade larga não estica mais os cartões')
+
+  /* ── As 29 escolhas por projeto ──────────────────────────────────────────── */
+
+  assert.match(v3, /const modosRaros = modos\.filter/,
+    'os modos nunca usados saem do primeiro nível da folha')
+  assert.match(v3, /const papeisRaros = papeisTodos\.filter/,
+    'e os papéis seguem a mesma régua')
+  assert.match(v3, /m\.id === p\.modo\);/,
+    'o modo escolhido AGORA nunca fica na gaveta: ela esconderia justo o que vale')
+  console.log('  ok   CC-437: o raro sai do primeiro nível, e o escolhido nunca se esconde')
+
+  /* ⚠️ **NADA foi apagado do catálogo**, e o motivo é duro: modo que some da
+     lista desliga trava em silêncio, e este projeto já pagou por isso em 18/08.
+     O que mudou é a ordem em que a folha oferece. */
+  const F = await import('./src/framework.mjs')
+  assert.equal(Object.keys(F.MODOS).length, 11, 'os 11 modos continuam no catálogo')
+  assert.equal(Object.keys(F.METODOS).length, 6, 'os 6 métodos continuam no catálogo')
+  for (const id of ['continuo', 'depuracao', 'revisao', 'pareado', 'entrega']) {
+    assert.ok(F.MODOS[id], `o modo ${id} não pode sumir: some da tela, não do catálogo`)
+  }
+  console.log('  ok   CC-437: nenhum modo nem método foi apagado, só reordenado')
+}
+
+
+/* ── CC-434: "fora do quadro" mentia para quem estava DENTRO ───────────────
+ *
+ * Ele, em 30/08: *"ue, nao to vendo o projeto ibrics no painel"*.
+ *
+ * Estava lá, com quatro cartões na coluna ANDANDO, e ao mesmo tempo escondido
+ * atrás de uma linha dobrada que dizia "13 projetos sem roadmap, FORA DO QUADRO
+ * POR ISSO".
+ *
+ * ⚠️ **A causa é uma conta feita em dois lugares que enxergam coisas
+ * diferentes.** Quem decide "está fora" é o servidor, e ele vê duas das três
+ * fontes do quadro: as frentes do roadmap e as pendências dele. A terceira, os
+ * to-dos dos agentes, só existe na tela, e é justamente por ela que o
+ * `VPS_ibrics` entra.
+ *
+ * Projeto sem roadmap MAS com agente trabalhando não está fora de nada. Dizer
+ * que está é a tela afirmando o contrário do que ela desenha logo abaixo, e
+ * esconder o nome numa lista de ausentes é como ele não achou.
+ */
+{
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+
+  assert.match(v3, /const noQuadro = new Set\(todos\.map\(\(c\) => c\.projeto\)\)/,
+    'a lista dos que ficaram de fora tem que ser conferida contra o que a TELA '
+    + 'desenhou, e não só contra o que o servidor contou')
+  assert.match(v3, /semRoadmap \|\| \[\]\)\.filter\(\(x\) => !noQuadro\.has\(x\.projeto\)\)/,
+    'projeto que aparece no quadro nao pode ficar na lista de quem esta fora dele')
+  console.log('  ok   CC-434: quem tem cartão no quadro sai da lista dos ausentes')
+
+  /* E o texto mudou junto: "sem roadmap, fora do quadro por isso" afirmava uma
+     causa que nem sempre é verdade. Agora ele diz o fato observado. */
+  /* ⚠️ Procura no que vai para a TELA, não no arquivo inteiro: a frase antiga
+     continua escrita no comentário que explica o defeito, e ela deve continuar.
+     Comentário é memória; o que mede é o texto que ele lê. */
+  const naTela = v3.match(/' projetos? sem roadmap[^']*'/g) || []
+  assert.ok(naTela.length >= 1, 'a linha dos sem roadmap precisa existir')
+  assert.ok(!naTela.some((t) => /fora do quadro por isso/.test(t)),
+    'a frase antiga dava uma causa que nem sempre vale: projeto sem roadmap pode '
+    + 'estar no quadro por agente. Achado: ' + naTela.join(' | '))
+  assert.ok(naTela.some((t) => /sem nada no quadro/.test(t)))
+  console.log('  ok   CC-434: a frase diz o fato observado, e não uma causa que nem sempre vale')
+}
+
+
 /* ── CC-433: o MVP existia, chegava na tela, e a tela nunca desenhou ───────
  *
  * Pergunta dele em 30/08, ditada por voz: *"por que nas versões dos projetos do

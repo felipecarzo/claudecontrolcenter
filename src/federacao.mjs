@@ -421,8 +421,37 @@ export const VALIDADE_PEDIDO_MS = 10 * 60 * 1000
  * pela metade nos dois lugares é como um apelido de modo passou a desligar as
  * travas em silêncio, em 18/08.
  */
+/* CC-434: `recado` é a sexta, e é de espécie diferente das cinco primeiras.
+ *
+ * As outras MEXEM em algo do outro lado (abrem sessão, ligam trava, trocam
+ * modo). Esta só ENTREGA TEXTO: do lado que executa ela vira uma linha em
+ * `docs/.recados.json` daquele projeto, e quem lê é o hook do Routia, na
+ * próxima ferramenta que o agente de lá usar.
+ *
+ * ## Por que precisou existir
+ *
+ * Ele pediu, em 30/08: *"mande um recado pra sessão no pc"*. Eu respondi que o
+ * canal não existia, e ele corrigiu: *"como não?! a gente se comunica via
+ * hooks"*.
+ *
+ * Ele tinha razão sobre o mecanismo, eu sobre o alcance, e as duas coisas cabem
+ * juntas: os hooks do Routia são mesmo o canal entre sessões, e
+ * `docs/.recados.json` está no `.gitignore`, então esse canal morre dentro de
+ * UMA máquina. Entre máquinas só atravessava o git, que exige alguém do outro
+ * lado dar `pull` — e o aviso de dar pull não podia viajar por ele.
+ *
+ * Esta fila é a única tubulação viva entre as pontas, e `pegarPedidos` repassa
+ * qualquer ação sem consultar esta lista. É o lugar certo.
+ *
+ * ⚠️ **Ação desconhecida do lado que executa é ignorada com log, sem quebrar.**
+ * Medido antes de escrever: o PC com código velho só imprime "ação desconhecida"
+ * e segue. Então mandar recado hoje é seguro, e ele passa a chegar de verdade
+ * assim que o outro lado baixar — o que o lançador de lá já faz sozinho ao
+ * arrancar, porque ele dá `git pull` antes de subir o painel.
+ */
 export const ACOES_DE_PEDIDO = [
   'sessao', 'framework-ligar', 'framework-desligar', 'framework-modo', 'framework-modulo',
+  'recado',
 ]
 
 /**
@@ -457,7 +486,8 @@ export function nomeDeProjetoSeguro(nome) {
 
 export function pedirSessao({
   paraMaquina, projeto, de = null, acao = 'sessao', modo = null,
-  modulo = null, ligar = null, now = Date.now(),
+  modulo = null, ligar = null, texto = null, para = null, tipo = null,
+  now = Date.now(),
 }) {
   const alvo = seguro(paraMaquina)
   const nome = String(projeto || '').trim()
@@ -478,6 +508,30 @@ export function pedirSessao({
     if (typeof ligar !== 'boolean') return { ok: false, erro: 'a trava precisa dizer se liga ou desliga' }
   }
 
+  /* CC-434: o recado é o único pedido que carrega TEXTO LIVRE, então é a única
+     entrada aqui que um humano escreve por extenso. Três cortes, e nenhum deles
+     tenta adivinhar conteúdo:
+
+     - o TAMANHO é limitado aqui e de novo do lado que grava (600), porque quem
+       executa não pode depender de quem pede ter limitado;
+     - o DESTINATÁRIO é id curto de sessão ou `todos`, e nada mais: ele vira
+       comparação de igualdade lá, nunca caminho;
+     - o TIPO viaja como texto e é conferido contra o catálogo do lado que
+       executa, pela mesma razão que o modo: validar pela metade nos dois
+       lugares foi como um apelido desligou trava em silêncio em 18/08.
+
+     O que NÃO viaja: `arquivo`. Ele é caminho, e caminho vindo da rede é a
+     entrada perigosa que `nomeDeProjetoSeguro` existe para conter. Quem grava
+     do outro lado põe `null` fixo. */
+  const textoLimpo = texto == null ? null : String(texto).replace(/\s+/g, ' ').trim().slice(0, 600)
+  const paraLimpo = para == null ? null : String(para).trim().slice(0, 12)
+  const tipoLimpo = tipo == null ? null : String(tipo).trim().slice(0, 20)
+  if (paraLimpo && paraLimpo !== 'todos' && !/^[0-9a-z]{4,12}$/i.test(paraLimpo)) {
+    return { ok: false, erro: 'destinatário inválido' }
+  }
+  if (tipoLimpo && !/^[a-z_]+$/i.test(tipoLimpo)) return { ok: false, erro: 'tipo de recado inválido' }
+  if (acao === 'recado' && !textoLimpo) return { ok: false, erro: 'recado sem texto' }
+
   const lista = lerPedidosBrutos().filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
   /* Mesmo projeto pedido duas vezes seguidas é dedo duplo no botão, não duas
      sessões. Abrir duas sem querer é o desperdício que a própria tela avisa.
@@ -487,17 +541,27 @@ export function pedirSessao({
   /* A TRAVA entra na chave junto da ação, pela mesma razão que a ação entrou:
      mexer em duas travas diferentes do mesmo projeto são dois pedidos, e sem
      isto o segundo seria engolido como dedo duplo. */
+  /* CC-434: o TEXTO entra na chave junto da ação e da trava, pela mesma razão
+     que elas entraram. Dois recados diferentes para o mesmo projeto no mesmo
+     minuto são duas mensagens, não dedo duplo, e sem isto a segunda seria
+     engolida em silêncio — que é o pior jeito de perder um aviso. Recado
+     idêntico repetido continua sendo dedo duplo, e esse a chave pega. */
   if (lista.some((p) => p.paraMaquina === alvo && p.projeto === nome
-    && (p.acao || 'sessao') === acao && (p.modulo || null) === moduloLimpo)) {
+    && (p.acao || 'sessao') === acao && (p.modulo || null) === moduloLimpo
+    && (p.texto || null) === textoLimpo)) {
     return { ok: true, jaPedido: true }
   }
   lista.push({
     id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     paraMaquina: alvo, projeto: nome, de, acao, modo: modoLimpo,
-    modulo: moduloLimpo, ligar: typeof ligar === 'boolean' ? ligar : null, em: now,
+    modulo: moduloLimpo, ligar: typeof ligar === 'boolean' ? ligar : null,
+    texto: textoLimpo, para: paraLimpo, tipo: tipoLimpo, em: now,
   })
   gravarPedidos(lista)
-  return { ok: true, projeto: nome, paraMaquina: alvo, acao, modo: modoLimpo, modulo: moduloLimpo }
+  return {
+    ok: true, projeto: nome, paraMaquina: alvo, acao,
+    modo: modoLimpo, modulo: moduloLimpo, texto: textoLimpo, para: paraLimpo,
+  }
 }
 
 /**

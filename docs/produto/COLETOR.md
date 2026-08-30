@@ -197,7 +197,7 @@ caminho só, com o quinto no fim.
 ## O que este desenho NÃO resolve
 
 - **A pasta velha.** Enquanto houver duas cópias do produto na mesma máquina, o
-  problema do CC-434 continua, e ele é anterior a este desenho.
+  problema do CC-444 continua, e ele é anterior a este desenho.
 - **O trabalho de migração.** Separar 59 módulos não é mover arquivo: é achar
   cada lugar em que o painel local lê algo que passaria a vir de fora.
 - **O que fazer quando a VPS está fora do ar por um dia.** A tela mínima diz que

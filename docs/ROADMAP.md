@@ -680,6 +680,56 @@ posar de trabalhando, mas também não pode desaparecer.
 ⚠️ **A coluna é do quadro, que é da rota `front`.** Quem pegar isto conversa com
 quem estiver no quadro antes de encostar.
 
+### CC-434 ✅ 30/08: um recado que atravessa para a outra máquina
+
+Ele pediu, em 30/08: *"mande um recado pra sessão no pc baixar o que você"*
+(mensagem cortada no meio, o sentido é dar `git pull`).
+
+Eu respondi que o canal não existia, e ele corrigiu na hora: *"como não?! a
+gente se comunica via hooks, a sessão é pc_cockpit"*.
+
+**Ele estava certo sobre o mecanismo e eu sobre o alcance, e as duas coisas
+cabem juntas.** Os hooks do Routia são mesmo o canal entre sessões: uma sessão
+escreve, e a outra é interrompida na ferramenta seguinte para ler. Mas o
+arquivo onde isso mora, `docs/.recados.json`, está no `.gitignore` (linha 41,
+conferido), então **esse canal morre dentro de uma máquina**. Entre máquinas só
+atravessava o git, que exige alguém do outro lado dar `pull` — e o aviso de dar
+pull não podia viajar por ele.
+
+**O que foi medido antes de escrever:**
+
+- a fila da federação é a única tubulação viva entre as pontas: o PC empurra a
+  cada 30s e a resposta do POST volta com os pedidos, que o PC executa;
+- ela carregava **cinco ações fechadas e nenhum texto**;
+- `pegarPedidos` **não filtra por ação**: repassa o que estiver na fila. Então o
+  painel que já está no ar leva o recado adiante sem precisar de código novo;
+- ação desconhecida do lado que executa é **ignorada com log, sem quebrar**. É o
+  que torna seguro mandar antes de o outro lado atualizar.
+
+**O que entrou:** a ação `recado` na fila, com texto, destinatário e tipo; e o
+ramo que, do lado que recebe, grava em `docs/.recados.json` daquele projeto —
+de onde o hook do Routia entrega ao agente de lá, exatamente como um recado
+entre duas sessões da mesma máquina. O que muda é só de onde ele veio.
+
+**Os cortes na entrada**, porque é a única ação com texto livre: tamanho com
+teto nos dois lados (600), destinatário limitado a id de sessão ou `todos`, tipo
+conferido contra o catálogo do lado que executa, e `arquivo` **não viaja** —
+caminho vindo da rede é a entrada perigosa que o resto deste laço já recusa.
+
+⚠️ **Falta um pull do outro lado, e só uma vez.** O PC precisa deste código para
+entender a ação nova; enquanto não tiver, o recado chega e é descartado com log.
+O lançador de lá dá `git pull` sozinho ao arrancar o painel, então isso se
+resolve no próximo arranque, ou na hora em que uma sessão de lá baixar.
+
+`src/federacao.mjs` está na rota `sincronia`, de outra sessão. **Partilha
+declarada, com autorização dele na hora**, depois de medir que aquela sessão não
+dá sinal nesta máquina desde 26/08. Recado enviado à dona antes de encostar, e o
+quadro registra o que foi tocado.
+
+Quatro verificações novas no portão, com a prova ao contrário: o texto atravessa
+inteiro, o que é perigoso é cortado, dois recados diferentes não viram um, e o
+recado entregue fica pendente para quem é.
+
 ### CC-433 🔵 30/08: o MVP de um projeto de outra máquina
 
 Pergunta dele, ditada por voz em 30/08: *"por que nas versões dos projetos do
@@ -2554,7 +2604,14 @@ abrir. `cc app --local` força o daqui quando ele quiser.
 senha na janela, e ela fica guardada no perfil próprio dela, então o login é uma
 vez só. Tratar `401` como "fora do ar" faria o programa cair no local sempre.
 
-### CC-434 🟡 30/08: três cópias do mesmo produto (as travas já saíram da velha)
+### CC-444 🟡 30/08: três cópias do mesmo produto (as travas já saíram da velha)
+
+> **Era CC-434 até a junção de 30/08.** A sessão da VPS usou o mesmo número no
+> mesmo dia, para o recado que atravessa entre as máquinas, e o dela chegou
+> primeiro ao repositório. As duas sessões escolheram o número lendo o próprio
+> arquivo, cada uma no seu lado, e as duas leituras estavam certas: **numeração
+> não sobrevive a trabalho em paralelo sem uma fonte só.** É o mesmo defeito que
+> este item descreve, acontecendo com o item.
 
 **Medido em 30/08, e é o item que justifica a frente inteira.**
 
@@ -2727,7 +2784,7 @@ negado" sem elevação, o que já está registrado nas armadilhas desde 26/08.
 
 **E o dado que a medição achou é pior que o esperado:** a tarefa aponta para
 `proj_controlcenter\src\arrancar.ps1`, ou seja, **quem o Windows sobe no logon
-dele hoje é a pasta VELHA**, a de 27/08. É a mesma raiz do CC-434, agora medida
+dele hoje é a pasta VELHA**, a de 27/08. É a mesma raiz do CC-444, agora medida
 do lado do sistema operacional.
 
 O comando, num terminal como administrador:
