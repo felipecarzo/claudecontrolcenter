@@ -231,3 +231,65 @@ A aplicação inteira, com o antes e o depois, está no carzo:
 regra virou trava: uma prova recusa atributo sem procedência, e outra recusa
 atributo que se explique usando o próprio nome. As duas pegaram casos meus na
 primeira rodada.
+
+---
+
+## O QUE VAI ABAIXO DO SEPARADOR, e a correção dele de 30/08
+
+O separador existe desde 16/08 e vinha sendo usado. O que estava errado era **o
+que eu punha embaixo dele**. Palavras dele:
+
+> *"o `---- // resumo // -------` é pra ser auto explicativo, você colocou
+> informações que sozinhas não dizem muito, precisamos melhorar onde a gente
+> organiza essa comunicação e incluir pra ser mais /caveman, mais direto ao
+> ponto e sempre fazendo informações que tragam contexto e de forma simples e
+> metodológica"*
+
+### O defeito, com o exemplo que ele leu
+
+Eu escrevi isto abaixo do separador:
+
+> ~~"Cinco ficaram na fila com o custo à vista, e são trabalho de tela e não de
+> regra"~~
+
+Nenhuma das duas metades se sustenta sozinha. **Cinco o quê.** **Custo à vista
+onde.** **Fila de quê.** Quem leu o parágrafo de cima entende; quem abriu no
+telefone três horas depois, não. E é sempre esse o caso: o resumo é o pedaço
+que ele volta a ler.
+
+### As quatro regras do que vai abaixo do separador
+
+**1. Cada linha se explica sozinha.** O teste: cortar tudo acima do separador e
+reler. Se alguma frase virar enigma, ela está incompleta. Substantivo sem o que
+ele é ("cinco", "as duas", "aquilo") é o erro mais comum.
+
+**2. Número vem com a escala.** `46 de 60 funções` e não `46 funções`.
+`3 de 13 ofícios` e não `faltam 10`. Ele já tinha pedido isso para parâmetro
+("em vez de `border = 10`, escreva de 0 a 100"), e vale igual aqui.
+
+**3. Uma linha por assunto, na ordem em que ele decide.** Primeiro o que mudou
+para ele. Depois o que ele precisa fazer ou decidir. Por último o que eu
+descobri. Prosa corrida obriga a garimpar.
+
+**4. Sem termo do projeto sem tradução colada.** É a regra zero aplicada ao
+resumo: `peça`, `ofício`, `arsenal` e `catálogo` significam coisas específicas
+aqui, e ele não é obrigado a carregar isso na cabeça.
+
+### O modo caveman, e o que ele significa aqui
+
+O plugin `caveman` corta artigo e conectivo. **Não é isso que ele está
+pedindo**, e confundir os dois piora: um resumo telegráfico com contexto
+faltando é o defeito acima, agravado.
+
+O que ele quer é o oposto de floreio, não o oposto de contexto:
+
+| ❌ enfeitado | ❌ telegráfico demais | ✅ |
+|---|---|---|
+| "Vale destacar que consegui avançar bastante nas funções" | "46/60 func ok" | "**46 das 60 funções do arsenal** estão construídas" |
+| "Um ponto que merece atenção é o caixa" | "caixa neg 6 ramos" | "**Seis dos treze ofícios abriam o caixa negativo.** Consertei" |
+
+### Onde isto é cobrado
+
+`hooks/resumo-guard.mjs` cobra **a presença** do separador. Ele não consegue
+julgar o conteúdo, e por isso esta seção existe: a qualidade do que vai embaixo
+é responsabilidade de quem escreve, e o registro dela é aqui.
