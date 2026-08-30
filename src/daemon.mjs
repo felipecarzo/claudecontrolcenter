@@ -40,10 +40,12 @@ function escreverAbridor(porta) {
   fs.writeFileSync(
     arquivo,
     [
-      "' Control Center — gerado por `cc daemon install`, não editar à mão",
-      "' garante o painel no ar e abre no navegador",
+      "' Control Center, gerado por `cc daemon install`, não editar à mão",
+      "' garante o painel no ar e abre em JANELA PRÓPRIA (CC-441)",
+      "' `app` em vez de `open`: ele pediu um programa, não uma aba do navegador.",
+      "' Sem Edge nem Chrome na máquina, o próprio comando cai na aba e avisa.",
       'Set sh = CreateObject("WScript.Shell")',
-      `sh.Run "${q(NODE)} ${q(CC)} open --port ${porta}", 0, True`,
+      `sh.Run "${q(NODE)} ${q(CC)} app --port ${porta}", 0, True`,
       '',
     ].join('\r\n'),
     'latin1',

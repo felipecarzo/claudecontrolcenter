@@ -234,6 +234,86 @@ export function abrirNavegador(url) {
 }
 
 /**
+ * CC-441 — o motor de janela que a máquina já tem.
+ *
+ * Pedido dele em 30/08, e ele teve que cobrar duas vezes: *"queria fechar um
+ * programa no desktop que funcionasse como um programa"*, e ao escolher a
+ * forma: *"janela própria, sem cara de navegador"*.
+ *
+ * ⚠️ **Isto NÃO é um navegador embutido.** É o Edge ou o Chrome que já está
+ * instalado, aberto em modo aplicativo: janela própria, sem barra de endereço,
+ * sem abas, com ícone próprio na barra de tarefas. Zero download, zero
+ * dependência nova, que é a razão de ele ter recusado o Electron ("90 MB e uma
+ * dependência grande num projeto que hoje tem zero").
+ *
+ * O Edge vem primeiro **no Windows** de propósito: ele existe em toda máquina
+ * com Windows 10 ou 11, e o Chrome pode não estar instalado. Numa máquina sem
+ * nenhum dos dois, `null` faz quem chama cair na aba comum, avisando.
+ */
+export function motorDeJanela() {
+  const candidatos = []
+  if (process.env.CC_JANELA) candidatos.push(process.env.CC_JANELA)
+  if (ehWindows) {
+    const pf = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)'
+    const p = process.env.ProgramFiles || 'C:\\Program Files'
+    const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local')
+    candidatos.push(
+      path.join(pf, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+      path.join(p, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+      path.join(p, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(pf, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(local, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    )
+  } else if (ehMac) {
+    candidatos.push(
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    )
+  } else {
+    candidatos.push('/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/microsoft-edge')
+  }
+  for (const c of candidatos) {
+    try { if (fs.existsSync(c)) return c } catch { /* próximo */ }
+  }
+  return null
+}
+
+/**
+ * Abre a url numa janela só dela.
+ *
+ * `detached` e `unref` são obrigatórios aqui, e é o lado CERTO da armadilha do
+ * CC-29: esta janela precisa sobreviver ao comando que a abriu. O outro lado da
+ * mesma armadilha (não dá para capturar a saída de um processo assim) não vale
+ * aqui, porque não há saída a capturar.
+ *
+ * Cada janela ganha um perfil próprio dentro da casa do cockpit, e isso não é
+ * detalhe: sem `--user-data-dir`, o Chrome entrega a ordem para a instância já
+ * aberta do navegador comum e **sai na hora**, abrindo uma aba em vez de uma
+ * janela. Foi assim que a primeira versão "não fez nada".
+ */
+export function abrirComoApp(url, { largura = 1280, altura = 880, perfil = null } = {}) {
+  const exe = motorDeJanela()
+  if (!exe) return { ok: false, erro: 'nenhum Edge ou Chrome encontrado nesta máquina', caiuNaAba: abrirNavegador(url).ok }
+
+  const dados = perfil || path.join(casaClaude(), 'janela-cockpit')
+  try { fs.mkdirSync(dados, { recursive: true }) } catch { /* segue: o navegador reclama sozinho */ }
+
+  try {
+    const filho = spawn(exe, [
+      `--app=${url}`,
+      `--user-data-dir=${dados}`,
+      `--window-size=${largura},${altura}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+    ], { detached: true, stdio: 'ignore', windowsHide: false })
+    filho.unref()
+    return { ok: true, exe, perfil: dados, pid: filho.pid }
+  } catch (e) {
+    return { ok: false, erro: String(e?.message || e), caiuNaAba: abrirNavegador(url).ok }
+  }
+}
+
+/**
  * Onde o Chrome mora, para a captura de tela e o teste da página.
  * Só o `test-ui.mjs` usa: o painel em si não depende de navegador nenhum.
  */

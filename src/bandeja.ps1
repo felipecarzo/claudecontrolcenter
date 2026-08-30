@@ -133,7 +133,18 @@ $menu.Items.Add('-') | Out-Null
 $itemSair = $menu.Items.Add('Sair')
 $notify.ContextMenuStrip = $menu
 
-$itemAbrir.Add_Click({ Start-Process "$base" }) | Out-Null
+# CC-441: abre como PROGRAMA, em janela propria, e nao como aba do navegador.
+# `Start-Process "$base"` entregava a URL ao navegador padrao, que abre mais uma
+# aba no meio das outras: ele pediu um programa. Quem decide o motor de janela e
+# o `cc app`, um lugar so, e sem Edge nem Chrome ele cai na aba sozinho.
+$itemAbrir.Add_Click({
+  try {
+    $cc = Join-Path (Split-Path -Parent $PSScriptRoot) 'cc.mjs'
+    Start-Process -FilePath "node" -ArgumentList $cc, "app", "--port", "$Port" -WindowStyle Hidden
+  } catch {
+    Start-Process "$base"
+  }
+}) | Out-Null
 $itemReiniciar.Add_Click({
   try { Invoke-RestMethod -Uri "$base/api/shutdown" -Method Post -TimeoutSec 4 | Out-Null } catch { }
 }) | Out-Null
@@ -169,7 +180,15 @@ $itemSair.Add_Click({
   $notify.Dispose()
   [System.Windows.Forms.Application]::Exit()
 }) | Out-Null
-$notify.Add_DoubleClick({ Start-Process "$base" }) | Out-Null
+# CC-441: o clique duplo faz o MESMO que o item do menu, em janela propria
+$notify.Add_DoubleClick({
+  try {
+    $cc = Join-Path (Split-Path -Parent $PSScriptRoot) 'cc.mjs'
+    Start-Process -FilePath "node" -ArgumentList $cc, "app", "--port", "$Port" -WindowStyle Hidden
+  } catch {
+    Start-Process "$base"
+  }
+}) | Out-Null
 
 $iconeAtual = $null
 function Atualizar {

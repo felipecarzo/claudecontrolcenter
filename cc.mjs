@@ -1417,6 +1417,35 @@ switch (cmd) {
    * para a pasta de obras: uma linha errada salva às 15h derruba o painel dele
    * às 15h, e não existe versão de ontem para voltar.
    */
+  /**
+   * CC-441: o cockpit abre como PROGRAMA, não como aba.
+   *
+   * Ele pediu duas vezes, e cobrou a segunda: *"queria fechar um programa no
+   * desktop que funcionasse como um programa"*. Janela própria, sem barra de
+   * endereço e sem abas, usando o Edge ou o Chrome que a máquina já tem. Zero
+   * download e zero dependência nova, que foi a razão de ele recusar o Electron.
+   *
+   * Sobe o painel antes se ele estiver fora do ar, então este é o único comando
+   * que ele precisa saber para usar o cockpit.
+   */
+  case 'app': {
+    const P = await import('./src/platform.mjs')
+    const up = await daemon.ensureUp(port)
+    const r = P.abrirComoApp(up.url)
+    if (r.ok) {
+      console.log(`\n  cockpit aberto em janela própria`)
+      console.log(`  ${up.url}\n`)
+      break
+    }
+    /* Falha em voz alta, e ainda assim abre: ficar sem o painel porque a janela
+       bonita não deu certo seria trocar o que ele precisa pelo enfeite. */
+    console.error(`\n  não consegui abrir em janela própria: ${r.erro}`)
+    console.error(r.caiuNaAba
+      ? `  abri numa aba comum: ${up.url}\n`
+      : `  e nem numa aba. Abra à mão: ${up.url}\n`)
+    break
+  }
+
   case 'versao': {
     const P = await import('./src/publicar.mjs')
     const sub = arg
