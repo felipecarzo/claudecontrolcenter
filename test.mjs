@@ -1909,7 +1909,22 @@ if (estRotinas.projetos.length) {
   assert.ok(aqui.commits.length > 0, 'este repositório tem commit — se vier vazio, o parser quebrou')
   const c0 = aqui.commits[0]
   assert.ok(c0.hash && c0.em > 0 && c0.assunto && Array.isArray(c0.arquivos))
-  assert.ok(c0.arquivos.length > 0, 'commit real sempre toca arquivo — numstat não foi parseado')
+
+  /* Afirmava `c0.arquivos.length > 0`, "commit real sempre toca arquivo", e
+     quebrou em 30/08 na primeira junção entre o PC e a VPS: **commit de MERGE
+     não lista arquivo nenhum**, e é o comportamento certo do git, porque o
+     merge não introduz mudança própria.
+     Tentar `-m --first-parent` para o merge mostrar o que trouxe foi descartado
+     depois de medir: `--first-parent` ESCONDE os commits que vieram na junção,
+     e eles são justamente o que ele quer ver quando abre o histórico. Melhor o
+     merge aparecer sem arquivos do que os cinco commits sumirem.
+     Então a asserção passa a ser sobre o PARSER, que é o que este bloco
+     protege: algum commit da janela tem que ter arquivo. */
+  assert.ok(aqui.commits.some((c) => c.arquivos.length > 0),
+    'nenhum commit da janela tem arquivo: o numstat não foi parseado')
+  const naoMerge = aqui.commits.find((c) => c.arquivos.length > 0)
+  assert.ok(naoMerge.arquivos.every((a) => typeof a === 'string' && a.length),
+    'cada arquivo é o caminho, não a linha inteira do numstat')
 
   const semGit = await commitsDesde(os.tmpdir(), 0)
   assert.equal(semGit.ok, false, 'pasta fora de qualquer repo git tem que reportar falha, não lista vazia')
