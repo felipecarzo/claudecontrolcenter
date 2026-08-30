@@ -545,9 +545,15 @@ const comRespostas = (extra = {}) => ({
 
   /* O novo tem que dizer onde ele está. Dois painéis idênticos em endereços
      diferentes é ele mexendo num achando que é o outro. */
-  assert.ok(v3.includes('faixa-novo'), 'o painel novo precisa se identificar')
-  assert.match(v3, /Cockpit 2\.0/)
-  ok('o painel novo diz que é o painel novo, e aponta o caminho de volta')
+  /* ⚠️ **A faixa "em construção" saiu quando o painel virou o de todo dia.**
+     Ela existia para ele não mexer num achando que era o outro, e isso valia
+     enquanto os dois eram irmãos. Com o novo na raiz, ela passaria a avisar
+     todo dia sobre o painel que ele usa: seria a mesma paisagem que o alarme
+     que toca sempre. */
+  assert.ok(!v3.includes('faixa-novo'),
+    'com o painel novo na raiz, a faixa de "em construção" vira aviso permanente '
+    + 'sobre o painel de todo dia, e aviso permanente não avisa nada')
+  ok('a faixa de construção saiu quando o painel deixou de estar em construção')
 
   /* Os dois compilam. Erro de sintaxe no painel é o defeito mais caro daqui:
      acontece antes de qualquer código rodar, e nem `window.onerror` pega. A
@@ -561,13 +567,27 @@ const comRespostas = (extra = {}) => ({
   }
   ok('os dois painéis compilam, o de hoje e o em construção')
 
-  /* E o servidor serve os dois, em endereços diferentes. Sem isto, a bifurcação
-     existe no disco e não existe para ele. */
+  /* ===== CC-426, 30/08: a raiz TROCOU, a pedido dele =====================
+   *
+   * Palavras dele: *"pode substituir o painel antigo por esse por favor"*.
+   *
+   * Até 29/08 esta verificação exigia o contrário, e estava certa: o combinado
+   * de 27/08 era construir ao lado e *"só trocar quando estiver aprovado"*.
+   * Ela barrou a troca até a aprovação chegar, que é exatamente o que ela
+   * existia para fazer.
+   *
+   * ⚠️ **O que ela guarda AGORA é o caminho de volta.** Nenhum painel foi
+   * apagado, e `/v2` tem que continuar servindo o de antes: se ele abrir o novo
+   * no telefone e algo estiver quebrado, voltar não pode depender de eu estar
+   * acordado. Apagar arquivo é a única parte irreversível de uma troca de
+   * endereço, e ela não acontece sozinha. */
   const web = readFileSync('src/web.mjs', 'utf8')
-  assert.match(web, /url\.pathname === '\/novo'/)
-  assert.match(web, /url\.pathname === '\/' \|\| url\.pathname === '\/v2'/,
-    'a raiz continua servindo o painel de todo dia')
-  ok('a raiz serve o de hoje, e /novo serve o em construção')
+  assert.match(web, /url\.pathname === '\/' \|\| url\.pathname === '\/novo'/,
+    'a raiz passou a servir o painel novo em 30/08, a pedido dele')
+  assert.match(web, /url\.pathname === '\/v2'[\s\S]{0,200}UI_V2/,
+    'o painel de antes tem que continuar em /v2: é a volta atrás, e ela não pode sumir')
+  assert.match(web, /url\.pathname === '\/v1'/, 'e o primeiro continua em /v1')
+  ok('a raiz serve o painel novo, e os dois anteriores continuam alcançáveis')
 }
 
 
@@ -675,6 +695,53 @@ const comRespostas = (extra = {}) => ({
     + 'inalcançável, o mesmo formato dos 16 pedidos de autorização que ficaram '
     + 'anos sem resposta porque não havia onde vê-los.')
   ok('toda rota de API é chamada por alguém, nem que seja por caminho montado')
+}
+
+
+/* ── CC-417: o body é FLEX EM LINHA, e elemento solto ali come largura ────── */
+{
+  const v3 = readFileSync('src/ui_novo.html', 'utf8')
+
+  /**
+   * O defeito que ele viu em produção, em 29/08, com print.
+   *
+   * A faixa "Cockpit 2.0, em construção" foi posta como filha direta do
+   * `<body>`. Só que este painel tem `body { display: flex }` em LINHA: um
+   * elemento solto ali não é uma faixa no topo, é uma COLUNA irmã do menu e do
+   * conteúdo, e ela come largura.
+   *
+   * **Medido nos dois painéis, na mesma janela de 825px:** o conteúdo do painel
+   * novo tinha 284px, contra 645px do painel de todo dia. Menos espaço que num
+   * telefone de 390px.
+   *
+   * ⚠️ **A faixa saiu em 30/08**, quando este virou o painel de todo dia, e a
+   * verificação teve que mudar de alvo junto. Ela guardava a FAIXA; agora
+   * guarda a REGRA, que é o que sobrevive: nada de filho direto do body no
+   * fluxo. Rede que morre quando a peça sai deixa a lição só no comentário, e
+   * regra que só existe em texto volta a ser quebrada.
+   */
+  const corpo = v3.slice(v3.indexOf('<body'), v3.indexOf('<aside'))
+  const soltos = [...corpo.matchAll(/^\s*<(div|section|header|footer|p|span|nav)\b([^>]*)>/gm)]
+    .filter((m) => !/position:\s*(fixed|absolute)/.test(m[2]))
+    .map((m) => m[0].trim())
+  assert.deepEqual(soltos, [],
+    'elemento solto como filho direto do body: ele vira COLUNA, porque o body é '
+    + 'flex em linha, e come a largura do conteúdo. Achados: ' + soltos.join(' | '))
+  ok('nada de elemento no fluxo como filho direto do body')
+
+  /* A prova ao contrário: um `<div>` solto inventado tem que ser pego, senão
+     esta rede não mede nada. */
+  const comIntruso = corpo.replace('<body>', '<body>\n  <div id="intruso">oi</div>')
+  const achados = [...comIntruso.matchAll(/^\s*<(div|section|header|footer|p|span|nav)\b([^>]*)>/gm)]
+    .filter((m) => !/position:\s*(fixed|absolute)/.test(m[2]))
+  assert.ok(achados.length >= 1, 'a rede precisa mesmo acusar um elemento solto inventado')
+  ok('a prova ao contrário: um elemento solto inventado é acusado')
+
+  /* E a lição fica escrita no lugar onde alguém vai acrescentar o próximo. */
+  assert.match(corpo, /NADA de elemento solto/,
+    'o aviso tem que estar logo dentro do body, que é onde alguém vai colar o '
+    + 'próximo elemento sem ler o resto do arquivo')
+  ok('o aviso mora onde o próximo elemento vai ser colado')
 }
 
 console.log(`\n${passou} verificações, todas passaram.`)

@@ -4341,6 +4341,8 @@ if (process.platform !== 'win32') {
        com a última. É a propriedade que torna o arquivo seguro contra queda no
        meio da escrita, e sem teste ela some no primeiro "otimizei para
        reescrever". */
+
+
     A.gravar([{ dia: '2026-08-01', projeto: 'p', medida: 'm', valor: 1 }])
     A.gravar([{ dia: '2026-08-01', projeto: 'p', medida: 'm', valor: 9 }])
     const lido = A.ler({ medida: 'm' })
@@ -4356,6 +4358,56 @@ if (process.platform !== 'win32') {
     fs.appendFileSync(A.ARQUIVO(), '{"dia":"2026-08-02","medi\n', 'utf8')
     assert.equal(A.ler({ medida: 'm' }).length, 1, 'linha truncada tem que ser pulada, não derrubar a leitura')
     console.log('  ok   CC-280: linha cortada pela metade não derruba a leitura')
+
+    /* ── CC-418: o mesmo projeto escrito de dois jeitos é UMA série ─────────
+     *
+     * Ele apontou nomes de projeto antigos na tela de tendências. Medindo o
+     * arquivo de verdade, o defeito era maior: `ibrics` e `web_ibrics` eram
+     * duas séries do mesmo projeto, com 18 dos 21 dias repetidos e o MESMO
+     * valor nos dois. Duas linhas no gráfico onde existe uma história só.
+     */
+    A.gravar([
+      { dia: '2026-08-05', projeto: 'web_ibrics', medida: 'git.commits', valor: 7 },
+      { dia: '2026-08-05', projeto: 'ibrics', medida: 'git.commits', valor: 7 },
+      { dia: '2026-08-06', projeto: 'VPS_ibrics', medida: 'git.commits', valor: 3 },
+    ])
+    const ib = A.serie('git.commits', { projeto: 'ibrics' })
+    console.error('DEBUG ib=', JSON.stringify(ib))
+    assert.deepEqual(ib.map((x) => [x.dia, x.valor]), [['2026-08-05', 7], ['2026-08-06', 3]],
+      'três grafias do mesmo projeto viram uma série. E o dia repetido NÃO soma: '
+      + 'é a mesma coleta gravada duas vezes, e somar daria 14 commits num dia de 7.')
+    console.log('  ok   CC-418: as grafias do mesmo projeto viram uma série só, sem dobrar o valor')
+
+    /* Pedir por QUALQUER uma das grafias acha a série inteira. Sem isso, a tela
+       que guardou "web_ibrics" na escolha dele abriria vazia depois da
+       renomeação, sem erro nenhum. */
+    assert.equal(A.serie('git.commits', { projeto: 'web_ibrics' }).length, 2)
+    assert.equal(A.serie('git.commits', { projeto: 'VPS_ibrics' }).length, 2)
+    console.log('  ok   CC-418: pedir por qualquer grafia devolve a série inteira')
+
+    /* O nome que vai para a tela é o de hoje, sem prefixo de máquina nem de
+       tipo. Ele lê isso no telefone: `web_ibrics` não diz nada a ele. */
+    assert.ok(A.ler({ medida: 'git.commits' }).every((r) => r.projeto === 'ibrics'),
+      'a leitura devolve o nome canônico, e nunca a grafia velha')
+    console.log('  ok   CC-418: a tela recebe o nome de hoje, não a grafia gravada')
+
+    /* A prova ao contrário, e é ela que decide se a fusão serve: sem fundir,
+       os dois nomes voltam a ser duas séries. Um teste que só sabe dizer "hoje
+       passa" não prova que pegaria a regressão. */
+    const semFundir = new Set(A.ler({ medida: 'git.commits' }).map((r) => r.projeto))
+    assert.equal(semFundir.size, 1, 'com a fusão, um nome só')
+    const duasSeries = new Set(
+      [{ projeto: 'web_ibrics' }, { projeto: 'ibrics' }].map((r) => r.projeto))
+    assert.equal(duasSeries.size, 2,
+      'e sem passar pela fusão as grafias continuam distintas, que é o defeito')
+    console.log('  ok   CC-418: a prova ao contrário, sem fundir as grafias são duas séries')
+
+    /* ⚠️ O sufixo NÃO é prefixo, e juntar as duas misturaria backlogs de datas
+       diferentes. Esta é a metade da regra que erra em silêncio se cair. */
+    A.gravar([{ dia: '2026-08-05', projeto: 'VPS_ibrics--front', medida: 'git.commits', valor: 99 }])
+    assert.equal(A.serie('git.commits', { projeto: 'ibrics' }).find((x) => x.dia === '2026-08-05').valor, 7,
+      'a árvore de trabalho `--front` é outro projeto, e não entra na série do principal')
+    console.log('  ok   CC-418: o sufixo de árvore de trabalho continua sendo outro projeto')
 
     /* 3. Sem lugar gravável, responde que não gravou em vez de lançar. Armazém
        que derruba o painel por não conseguir escrever seria pior que armazém
@@ -4383,7 +4435,8 @@ if (process.platform !== 'win32') {
       const r = B.gravar([{ dia: '2026-08-03', medida: 'x', valor: 1 }])
       assert.equal(r.ok, false, 'sem lugar gravável, `gravar` tem que devolver ok:false')
       assert.equal(r.onde, null, 'sem gravar, `onde` tem que ser nulo, nunca um caminho que não recebeu nada')
-    } finally {
+
+  } finally {
       fs.chmodSync(trancada, 0o700)
       process.env.CC_HOME = guardado
     }
@@ -4796,11 +4849,24 @@ if (process.platform !== 'win32') {
       'modo com pontuação não é modo, é tentativa')
     assert.equal(F.pegarPedidos('PC', t0).length, 0, 'nenhum dos recusados chegou a ser gravado')
 
-    /* O caminho continua barrado no nome do projeto, como antes. */
-    for (const ruim of ['../outro', 'C:\\Windows', 'a/b']) {
+    /* O caminho continua barrado no nome do projeto.
+     *
+     * ⚠️ **`a/b` saiu desta lista em 30/08, e a mudança é deliberada.** Ele viu
+     * o erro na tela ao trocar o modo do `games/hutukara`: *"o seu clique não
+     * foi gravado: nome de projeto inválido"*. Projeto que mora dentro de uma
+     * pasta que só agrupa TEM dois níveis, e recusá-lo tornava o cartão dele
+     * decorativo.
+     *
+     * O que continua barrado é o que sai da pasta de projetos: `..`, barra no
+     * começo ou no fim, barra invertida, dois pontos, e três níveis ou mais. A
+     * lista completa está no bloco do CC-431. */
+    for (const ruim of ['../outro', 'C:\\Windows', 'a/b/c', '/etc', 'a/..']) {
       assert.equal(F.pedirSessao({ paraMaquina: 'PC', projeto: ruim, acao: 'framework-ligar', now: t0 }).ok, false,
         `nome que parece caminho continua recusado: ${ruim}`)
     }
+    assert.equal(F.pedirSessao({ paraMaquina: 'PC', projeto: 'games/hutukara', acao: 'framework-ligar', now: t0 }).ok, true,
+      'projeto de dois níveis é nome legítimo: existe um assim na máquina dele')
+    F.pegarPedidos('PC', t0)
 
     const bom = F.pedirSessao({ paraMaquina: 'PC', projeto: 'VPS_x', acao: 'framework-modo', modo: 'continuativo', now: t0 })
     assert.equal(bom.ok, true, 'apelido de modo viaja como texto; quem resolve é o motor do outro lado')
@@ -5218,3 +5284,721 @@ if (process.platform !== 'win32') {
 
   console.log('  ok   CC-361: o liberar escrita está na tela do dia a dia, com alvo e confirmação')
 }
+
+/* ── CC-431: o nome com barra era recusado, e a recusa estava certa ────────
+ *
+ * Print dele em 30/08, com o erro na tela: *"o seu clique não foi gravado: nome
+ * de projeto inválido"*, ao trocar o modo do `games/hutukara`.
+ *
+ * O nome com barra nasceu no mesmo dia, para achar o projeto que mora dentro de
+ * uma pasta que só agrupa. E esta validação o recusava inteiro.
+ *
+ * ⚠️ **A recusa estava CERTA em existir.** O nome vira CAMINHO do outro lado da
+ * federação: com `..` ou barra no começo, o pedido escreveria fora da pasta de
+ * projetos da outra máquina. O que mudou é o critério, não a proteção.
+ */
+{
+  const F = await import('./src/federacao.mjs')
+
+  for (const bom of ['games/hutukara', 'VPS_cockpit', 'cockpit--front', 'coepiloto']) {
+    assert.equal(F.nomeDeProjetoSeguro(bom), true, `${bom} tem que passar`)
+  }
+  console.log('  ok   CC-431: nome de dois níveis passa, e os de um continuam passando')
+
+  /* ⚠️ **A lista de ataque, e ela é o motivo de a função existir.** Cada um
+     destes escreveria fora da pasta de projetos da outra máquina. */
+  const ataques = ['../etc/passwd', '/etc/passwd', '..', 'a/..', './x', 'a\\b',
+    'C:\\Windows', 'a:b', 'a/b/c', 'games/', '/games', '', '   ']
+  for (const mau of ataques) {
+    assert.equal(F.nomeDeProjetoSeguro(mau), false, `${JSON.stringify(mau)} tem que ser recusado`)
+  }
+  console.log(`  ok   CC-431: os ${ataques.length} casos de travessia continuam recusados`)
+
+  /* E o caminho inteiro recusa também, não só a função solta: é `pedirSessao`
+     que a tela chama, e testar só a função deixaria a ponta sem rede. */
+  const r = F.pedirSessao({ paraMaquina: 'PC', projeto: '../fora', acao: 'framework-modo', modo: 'estudo' })
+  assert.equal(r.ok, false)
+  assert.match(r.erro, /nome de projeto inválido/)
+  console.log('  ok   CC-431: o pedido inteiro recusa, e não só a função de checar')
+
+  /* Mais de dois níveis não passa, e o motivo não é segurança: é que o nome de
+     projeto com três pedaços não existe neste painel, e aceitar abriria a porta
+     para caminho arbitrário chegar como "nome". */
+  assert.equal(F.nomeDeProjetoSeguro('a/b/c'), false,
+    'três níveis não é nome de projeto: é caminho, e caminho não vem por aqui')
+  console.log('  ok   CC-431: no máximo dois níveis, porque o terceiro já é caminho')
+}
+
+
+/* ── CC-429: "ligados agora" ignorava as outras máquinas ───────────────────
+ *
+ * Print dele em 30/08: *"olha, aqui ele tá aparecendo como offline em
+ * projetos"*, sobre um projeto do PC que tinha seis agentes abertos.
+ *
+ * A faixa "ligados agora" filtrava só os projetos DESTA máquina, então um
+ * projeto de outra caía junto dos parados, na seção com rótulo "sem pasta
+ * aqui". O painel existe justamente para ele ver o que está rodando em
+ * qualquer lugar, e a faixa mais importante da tela excluía metade do mundo.
+ *
+ * ⚠️ **Medindo, o caso dele era outro:** os seis agentes estavam calados, um
+ * há 37 minutos e o resto há horas. A tela estava certa NAQUELE instante, e o
+ * defeito só apareceria quando um deles voltasse a trabalhar. Consertar assim
+ * mesmo é o certo: o defeito existia e ia morder no pior momento, quando
+ * houvesse trabalho de verdade acontecendo na outra máquina.
+ */
+{
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+
+  assert.match(v3, /const ligadas = \[\.\.\.daquiTodos, \.\.\.fora\]\.filter\(ligadoDe\)/,
+    'a faixa "ligados agora" tem que incluir os projetos de outra máquina: um '
+    + 'agente escrevendo no PC é trabalho acontecendo, e é para isso que este '
+    + 'painel existe')
+  console.log('  ok   CC-429: "ligados agora" inclui projeto de outra máquina')
+
+  /* E os de fora que estão PARADOS continuam na seção da máquina deles, senão
+     o mesmo projeto apareceria duas vezes na tela. */
+  assert.match(v3, /const foraParados = fora\.filter\(\(p\) => !ligadoDe\(p\)\)/,
+    'o de fora que subiu para "ligados" não pode aparecer também na seção da '
+    + 'máquina: seria o mesmo cartão duas vezes')
+  assert.match(v3, /porMaquinaDeFora\(foraParados, grade, 'sem pasta aqui'\)/)
+  console.log('  ok   CC-429: quem subiu para ligados não aparece duas vezes')
+
+  /* A régua de "está ligado" continua sendo UMA, e do servidor. Duas contas
+     para isto foi o defeito que criou os grupos que discordavam entre si. */
+  const contas = (v3.match(/const ligadoDe = /g) || []).length
+  assert.equal(contas, 1, 'existe UMA conta de "está ligado", e ela vem do servidor')
+  console.log('  ok   CC-429: continua havendo uma conta só de "está ligado"')
+}
+
+
+/* ── CC-428: o guarda do resumo barrou uma resposta CERTA ──────────────────
+ *
+ * Medido em 30/08: ele reclamou de "resposta sem o separador" numa resposta que
+ * tinha o separador. O transcrito estava com 18 MB, o turno teve dezenas de
+ * chamadas de ferramenta, e o guarda leu antes do último pedaço estar no disco.
+ *
+ * O arquivo dele já dizia a lição, e ela foi paga de novo: *"falso positivo é o
+ * caminho mais curto para hook desligado"*. A defesa que existia relia até o
+ * texto "parar de crescer", e é aí que o raciocínio furava: **tamanho igual
+ * entre duas leituras não prova que o turno acabou**, porque a escrita do
+ * último pedaço pode não ter começado.
+ */
+{
+  const guarda = fs.readFileSync('hooks/resumo-guard.mjs', 'utf8')
+
+  assert.match(guarda, /statSync\(arquivo\)\.mtimeMs/,
+    'a régua de "o turno acabou" tem que olhar o RELÓGIO do arquivo, e não só o '
+    + 'tamanho: tamanho igual entre duas leituras acontece antes do último pedaço '
+    + 'ser gravado, e foi assim que ele barrou uma resposta certa')
+  console.log('  ok   CC-428: o guarda do resumo espera o arquivo parar de ser TOCADO')
+
+  /* O separador que eu escrevo tem que casar com o que a medida procura. Se um
+     dos dois mudar sozinho, o guarda passa a reclamar de toda resposta, e a
+     primeira coisa que acontece é ele desligar a trava. */
+  const E = await import('./src/estilo.mjs')
+  const meu = '---------------------------------- // resumo // ----------------------------------'
+  const longa = Array.from({ length: 6 }, (_, i) => `Parágrafo ${i + 1}, com texto de verdade.`).join('\n\n')
+  assert.equal(E.medir(`${longa}\n\n${meu}\n\nA conclusão.`).semMarcador, false,
+    'o separador que eu escrevo tem que ser reconhecido pela medida')
+  assert.equal(E.medir(longa).semMarcador, true,
+    'e a resposta longa sem ele continua sendo acusada, senão a trava não serve')
+  console.log('  ok   CC-428: o separador que eu escrevo é o que a medida procura')
+
+  /* ⚠️ Resposta curta NÃO precisa de separador, e contar como falha faria o
+     número dizer que eu piorei num dia em que só respondi perguntas rápidas. */
+  assert.equal(E.medir('Uma frase.\n\nOutra frase.').semMarcador, false)
+  console.log('  ok   CC-428: resposta curta sem separador não é falha')
+}
+
+
+/* ── CC-427: a pasta abaixo de `projetos/` nem sempre É o projeto ──────────
+ *
+ * Queixa dele em 30/08: *"o projeto pc_hutukara não tá aparecendo pra mim ativo
+ * em projetos pra eu mexer no framework. e ele tá ativo no pc"*.
+ *
+ * Medido: seis agentes do PC trabalhando em
+ * `D:\Documentos\projetos\games\hutukara`, e o painel chamava o projeto de
+ * **games**. A regra pegava o segmento logo depois de `projetos`, e ali `games`
+ * é uma pasta que AGRUPA jogos, não um projeto.
+ *
+ * O estrago não era o nome: sem casar com pasta de projeto de verdade, o cartão
+ * vinha sem raiz utilizável, e ligar o framework nele era impossível. Era o que
+ * ele estava tentando fazer.
+ */
+{
+  const os = await import('node:os')
+  const J = await import('./src/jobs.mjs')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-agrupa-'))
+
+  try {
+    const base = path.join(raiz, 'projetos')
+    /* Uma pasta que agrupa, com o projeto de verdade um nível abaixo. */
+    const agrupa = path.join(base, 'games')
+    const dentro = path.join(agrupa, 'hutukara')
+    fs.mkdirSync(dentro, { recursive: true })
+    fs.writeFileSync(path.join(dentro, 'CLAUDE.md'), '# hutukara')
+    /* Um projeto direto, que não pode mudar de nome. */
+    const solo = path.join(base, 'sumauma')
+    fs.mkdirSync(solo)
+    fs.writeFileSync(path.join(solo, 'CLAUDE.md'), '# sumauma')
+    /* E um monorepo: o de cima É projeto, então a busca para nele. */
+    const mono = path.join(base, 'inovallbond')
+    const app = path.join(mono, 'apps', 'pierre')
+    fs.mkdirSync(app, { recursive: true })
+    fs.writeFileSync(path.join(mono, 'CLAUDE.md'), '# monorepo')
+    fs.writeFileSync(path.join(app, 'CLAUDE.md'), '# app de dentro')
+
+    const eh = (d) => fs.existsSync(path.join(d, '.git')) || fs.existsSync(path.join(d, 'CLAUDE.md'))
+
+    assert.equal(J.projectOf(dentro, { ehProjeto: eh }).project, 'hutukara',
+      'pasta que agrupa não é projeto: quem tem o CLAUDE.md é')
+    console.log('  ok   CC-427: projeto dentro de pasta que agrupa é achado pelo nome certo')
+
+    /* ⚠️ **Os dois casos que NÃO podem mudar, e o segundo é o que segura a
+       regra.** Descer sempre um nível transformaria todo monorepo em outro
+       projeto: `inovallbond/apps/pierre` viraria `apps`, e o backlog de
+       `inovallbond` sumiria da tela. Só desce quando o de cima NÃO é projeto. */
+    assert.equal(J.projectOf(solo, { ehProjeto: eh }).project, 'sumauma')
+    console.log('  ok   CC-427: projeto direto abaixo de projetos/ continua igual')
+
+    assert.equal(J.projectOf(app, { ehProjeto: eh }).project, 'inovallbond',
+      'o de cima é projeto, então a busca para nele: descer quebraria todo monorepo')
+    assert.equal(J.projectOf(app, { ehProjeto: eh }).sub, 'apps',
+      'e o subprojeto continua sendo o segmento logo depois do projeto')
+    console.log('  ok   CC-427: monorepo não desce, e o subprojeto fica no lugar')
+
+    /* ⚠️ **Sem a checagem, o comportamento é o de SEMPRE.** É o caso de quem lê
+       o caminho de outra máquina: o disco não está ao alcance, e adivinhar seria
+       inventar. Quem roda na máquina do projeto passa a função e acerta na
+       origem, que é onde o nome nasce. */
+    assert.equal(J.projectOf(dentro).project, 'games',
+      'sem disco a regra antiga vale, e ela é honesta sobre o que não dá para saber')
+    assert.equal(J.projectOf(dentro).sub, 'hutukara',
+      'e o nome certo continua viajando no `sub`, para quem souber usar')
+    console.log('  ok   CC-427: sem acesso ao disco, a regra de sempre, sem adivinhação')
+  } finally {
+    fs.rmSync(raiz, { recursive: true, force: true })
+  }
+
+  /* ── O outro lado: a VPS lê o caminho de uma máquina que ela não tem ──────
+   *
+   * O conserto acima acontece na ORIGEM, e só vale quando a outra máquina rodar
+   * o código novo. Ele quer usar agora, e o dado para acertar já viaja junto: o
+   * subprojeto vem no mesmo pacote.
+   */
+  const T = await import('./src/trabalho.mjs')
+  const nome = T.nomeDoAgenteCom(new Map())
+
+  assert.equal(nome({ project: 'games', sub: 'hutukara', cwd: 'D:\\Documentos\\projetos\\games\\hutukara' }),
+    'games/hutukara', 'com o caminho confirmando o `sub`, o nome é o par')
+  console.log('  ok   CC-427: o subprojeto que já viaja no pacote conserta o nome daqui')
+
+  /* ⚠️ **Só quando o caminho CONFIRMA.** `sub` que não está no fim do `cwd` é
+     resíduo de outra volta, e colar dois nomes soltos inventaria um projeto que
+     não existe em máquina nenhuma. */
+  assert.equal(nome({ project: 'games', sub: 'outra-coisa', cwd: 'D:\\Documentos\\projetos\\games\\hutukara' }),
+    'games', 'sub que o caminho não confirma é ignorado, e não inventa projeto')
+  assert.equal(nome({ project: 'sumauma', sub: null, cwd: 'D:\\Documentos\\projetos\\sumauma' }), 'sumauma')
+  console.log('  ok   CC-427: sem confirmação do caminho, fica o nome que veio')
+
+  /* ⚠️ **E quem CONTA agente usa esta mesma função.** A primeira versão deixou
+     a conta dentro de `projetosDe`: a lista passou a dizer `games/hutukara`, a
+     contagem continuou procurando `games`, e o cartão nasceu com zero agentes e
+     cara de desligado com seis rodando dentro. */
+  const proj = fs.readFileSync('src/projetos.mjs', 'utf8')
+  assert.match(proj, /nomeDoAgenteCom/,
+    'quem conta agente tem que usar a mesma conta de nome que a lista, senão o '
+    + 'cartão fica com zero agentes e aparência de desligado')
+  console.log('  ok   CC-427: a contagem de agentes usa a mesma conta de nome que a lista')
+
+  /* E projeto que EXISTE aqui não é renomeado pelo que veio de fora: a pasta
+     local vence, senão o `fibraessencia` desta VPS mudaria de nome por causa do
+     PC. */
+  const comLocal = T.nomeDoAgenteCom(new Map([['fibraessencia', '/home/x/fibraessencia']]))
+  assert.equal(comLocal({ project: 'fibraessencia', sub: 'apps', cwd: 'D:\\p\\fibraessencia\\apps' }), 'fibraessencia')
+  console.log('  ok   CC-427: projeto que existe nesta máquina não é renomeado pelo de fora')
+}
+
+
+/* ── CC-352: as pastas de projeto viram editáveis, e o nome não pode colidir ─
+ *
+ * Pedido dele em 25/08, ditado por voz: *"é importante que o cockpit pergunte
+ * onde vai ser a pasta de projetos (…) e ela pode adicionar múltiplas pastas
+ * também"*.
+ *
+ * ⚠️ **A LEITURA de várias pastas existia desde 26/08 e a escrita não existia
+ * em lugar nenhum.** O campo do config só podia ser mexido abrindo o arquivo à
+ * mão, que é o que ele não faz. Metade do recurso ficou meses inalcançável, e
+ * era justamente a metade que ele pediu.
+ */
+{
+  const os = await import('node:os')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-pastas-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = path.join(raiz, '.claude')
+  fs.mkdirSync(process.env.CC_HOME, { recursive: true })
+
+  try {
+    const C = await import(`./src/config.mjs?t=${Date.now()}`)
+
+    assert.deepEqual(C.setPastasDeProjeto(['/a', '/b', '/a', '  ', null]), ['/a', '/b'],
+      'repetida some, vazia some, e a ordem que ele digitou fica')
+    assert.deepEqual(C.readConfig().projectsBases, ['/a', '/b'])
+    console.log('  ok   CC-352: a lista de pastas é gravada, sem repetida e sem linha vazia')
+
+    /* ⚠️ **Lista vazia volta ao automático, e não a "nenhuma pasta".** Quem
+       limpar a lista sem querer não pode ficar com o painel sem projeto
+       nenhum: `projectsBases()` cai na detecção quando não há escolha. */
+    assert.deepEqual(C.setPastasDeProjeto([]), [])
+    assert.deepEqual(C.readConfig().projectsBases, [])
+    console.log('  ok   CC-352: limpar a lista é voltar ao automático, não ficar sem projeto')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(raiz, { recursive: true, force: true })
+  }
+
+  /* ⚠️ **Duas funções com o MESMO nome no mesmo arquivo: a segunda vence, em
+     silêncio.** Aconteceu escrevendo isto: já existia uma `renderPastas` para
+     a janela de navegar pastas de um projeto, lá embaixo. A minha foi
+     sobrescrita, e o sintoma foi o bloco desenhar VAZIO, sem erro nenhum,
+     enquanto o dado estava carregado ao lado.
+     É a mesma família do id repetido que já apagou uma tela inteira aqui. */
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+  const nomes = [...v3.matchAll(/^\s*(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/gm)].map((m) => m[1])
+  const repetidos = [...new Set(nomes.filter((n, i) => nomes.indexOf(n) !== i))]
+  assert.deepEqual(repetidos, [],
+    'função declarada duas vezes no mesmo arquivo: a segunda apaga a primeira sem erro. '
+    + 'Repetidas: ' + repetidos.join(', '))
+  console.log(`  ok   CC-352: nenhuma das ${new Set(nomes).size} funções da tela tem nome repetido`)
+}
+
+
+/* ── CC-373: o cruzamento é pintado, e não a rota ──────────────────────────
+ *
+ * Pedido dele em 27/08: *"seria legal aparecer a cor da rota que ele está (…)
+ * eu vou ver que esses dois agentes estão na mesma rota, eu vou ver que tem
+ * risco nisso"*. O fim é ver o risco; a cor era o meio, e ele aprovou trocar o
+ * meio depois de ver a medida.
+ *
+ * **Três motivos medidos, e o terceiro decide:** são 42 rotas neste projeto
+ * (42 cores num painel que já usa quatro com significado); há zero arquivos
+ * disputados hoje, então o caso é raro e cor constante viraria paisagem; e a
+ * cor por rota diria o CONTRÁRIO do risco, porque duas rotas no mesmo arquivo
+ * apareceriam com cores DIFERENTES, que se lê como "estão separados".
+ */
+{
+  const R = await import('./src/rotas.mjs')
+
+  const linhas = [
+    { rota: 'front', ocupada: true, historico: false, dono: 'aaa', arquivos: ['src/ui.html', 'src/web.mjs'] },
+    { rota: 'tela', ocupada: true, historico: false, dono: 'bbb', arquivos: ['src/ui.html'] },
+    { rota: 'quebra', ocupada: true, historico: false, dono: 'ccc', arquivos: [] },
+    { rota: 'velha', ocupada: true, historico: true, dono: 'ddd', arquivos: ['src/ui.html'] },
+    { rota: 'livre', ocupada: false, historico: false, dono: null, arquivos: [] },
+  ]
+  const c = R.cruzamentos(linhas)
+
+  assert.equal(c.disputados.length, 1, 'só o arquivo que DUAS rotas vivas seguram é disputa')
+  assert.equal(c.disputados[0].arquivo, 'src/ui.html')
+  assert.deepEqual(c.disputados[0].quem.map((q) => q.rota).sort(), ['front', 'tela'])
+  console.log('  ok   CC-373: arquivo segurado por duas rotas vivas é o cruzamento')
+
+  /* ⚠️ **A linha HISTÓRICA não conta, e é o que separa alarme de ruído.**
+     `velha` também lista `src/ui.html`, e ela já foi liberada. Contá-la faria o
+     painel acusar disputa com quem saiu, todo dia, para sempre. */
+  assert.ok(!c.disputados[0].quem.some((q) => q.rota === 'velha'),
+    'rota já encerrada não disputa nada: acusá-la seria alarme que nunca cala')
+  console.log('  ok   CC-373: rota histórica não entra na disputa')
+
+  /* Rota ocupada que não declarou arquivo: ninguém sabe com quem ela colide.
+     É risco que não dá para medir, não ausência de risco, e por isso ela sai
+     na lista em vez de sair calada. */
+  assert.deepEqual(c.semArquivo.map((x) => x.rota), ['quebra'])
+  console.log('  ok   CC-373: rota ocupada sem arquivo declarado é acusada, não ignorada')
+
+  /* A prova ao contrário, e é ela que impede o alarme de nascer sempre ligado:
+     sem duas rotas no mesmo arquivo, não há nada a pintar. Foi este o número
+     medido no quadro real de 29/08, com sete rotas ocupadas. */
+  const semDisputa = R.cruzamentos([
+    { rota: 'a', ocupada: true, historico: false, dono: 'x', arquivos: ['um.mjs'] },
+    { rota: 'b', ocupada: true, historico: false, dono: 'y', arquivos: ['outro.mjs'] },
+  ])
+  assert.deepEqual(semDisputa.disputados, [],
+    'sem arquivo em comum não existe cruzamento, e o cartão fica neutro')
+  assert.deepEqual(semDisputa.semArquivo, [])
+  console.log('  ok   CC-373: a prova ao contrário, sem arquivo em comum o cartão fica limpo')
+
+  /* A marca é ligada pelo ID DA SESSÃO, e não pelo campo `route` do agente.
+     Medido em 29/08: os 70 cartões declaram `route: "main"`, que é a branch do
+     CLI. Casar por nome de rota devolvia null para todos, sempre, e a marca
+     nunca apareceria. Esta linha fixa a ligação que a tela usa. */
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+  assert.match(v3, /r\.dono === j\.id/,
+    'a rota da sessão casa pelo id dela, nunca pelo campo `route`, que é a branch do CLI')
+  assert.doesNotMatch(v3, /riscoDaRota\(j\.route/,
+    'usar `j.route` aqui faz a marca nunca aparecer: todos os agentes dizem "main"')
+  console.log('  ok   CC-373: a marca casa a sessão pelo id, não pelo campo route')
+
+  /* ── CC-376, fatia 3: a awareness ────────────────────────────────────────
+   *
+   * Palavras dele: *"qual é a awareness do agente que está na rota em relação
+   * ao que o outro agente está fazendo naquela rota e vice-versa"*.
+   *
+   * Não é um desenho, é uma PERGUNTA: os dois donos se falaram? Duas rotas no
+   * mesmo arquivo COM recados trocados é o caso bom, e aconteceu de verdade em
+   * 27/08 (quatro recados, zero estrago). Sem conversa nenhuma é o acidente de
+   * 06/08, em que ninguém avisou ninguém. Pintar os dois igual apagaria a única
+   * diferença que ele pediu para enxergar.
+   */
+  const disputa = [{ arquivo: 'src/ui.html', quem: [{ rota: 'front', dono: 'aaa' }, { rota: 'tela', dono: 'bbb' }] }]
+
+  const avisado = R.awareness(disputa, [
+    { de: 'aaa', para: 'bbb', tipo: 'aviso' },
+    { de: 'bbb', para: 'aaa', tipo: 'liberado' },
+  ])
+  assert.equal(avisado[0].estado, 'avisado', 'com recado dos dois lados, os donos sabem um do outro')
+  assert.equal(avisado[0].pares[0].recados, 2, 'a contagem serve para a tela dizer "2 recados" e não só "conversaram"')
+  console.log('  ok   CC-376: disputa com recado trocado é o caso avisado')
+
+  const cego = R.awareness(disputa, [{ de: 'aaa', para: 'outro-qualquer', tipo: 'aviso' }])
+  assert.equal(cego[0].estado, 'cego',
+    'recado para uma TERCEIRA sessão não avisa quem divide o arquivo, e tratar como aviso '
+    + 'seria dar por seguro justamente o caso do acidente')
+  assert.equal(cego[0].pares[0].recados, 0)
+  console.log('  ok   CC-376: recado para terceiro não conta como aviso entre os dois')
+
+  /* ⚠️ **A conversa vale nos DOIS sentidos, e vale sem citar o arquivo.**
+     Dos 29 recados reais deste projeto, quase nenhum traz `arquivo` preenchido.
+     Exigir que o recado nomeie o arquivo disputado daria "ninguém se falou" em
+     todo caso real, e o alarme mais caro é o que toca sempre. */
+  const soUmLado = R.awareness(disputa, [{ de: 'bbb', para: 'aaa', tipo: 'aviso', arquivo: null }])
+  assert.equal(soUmLado[0].estado, 'avisado',
+    'um recado numa direção só já prova que os dois se conhecem: exigir ida e volta '
+    + 'faria o alarme tocar sobre duplas que se falaram')
+  console.log('  ok   CC-376: um recado em qualquer direção já conta, mesmo sem citar o arquivo')
+
+  /* A prova ao contrário: sem disputa, não há awareness a calcular. É o estado
+     de hoje no quadro real, e um alarme que nasce ligado não é alarme. */
+  assert.deepEqual(R.awareness([], []), [])
+  assert.deepEqual(R.awareness([], [{ de: 'a', para: 'b' }]), [],
+    'recado sem disputa nenhuma não inventa um cruzamento')
+  console.log('  ok   CC-376: a prova ao contrário, sem cruzamento não há o que avisar')
+}
+
+
+/* ── CC-399: o menu não pode ter grupo vazio nem tela solta ────────────────
+ *
+ * Medido em 29/08 abrindo o painel: o grupo "INFRA" aparecia com o título na
+ * tela e NADA embaixo, e oito telas ficavam soltas no alto sem título nenhum,
+ * de modo que a primeira palavra do menu só aparecia na nona linha.
+ *
+ * Grupo vazio é pior que grupo ausente: ele promete um lugar que não existe.
+ * E um menu em que metade tem nome e metade não obriga a ler duas vezes.
+ *
+ * ⚠️ Isto lê o HTML, não o navegador, de propósito: custa milissegundos e
+ * entra no portão de todo dia. A varredura com navegador confere o resultado
+ * DEPOIS dos nós movidos, que é outra pergunta.
+ */
+{
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+  /* ⚠️ **Procurar o fim a partir do começo, e não do arquivo inteiro.**
+     `sidebar-footer` aparece primeiro no CSS, lá em cima, então `indexOf` sem
+     posição inicial devolvia um índice ANTES do começo e a fatia saía vazia.
+     A verificação então não media nada e passava: o pior tipo de teste. */
+  const ini = v3.indexOf('class="sidebar"')
+  const barra = v3.slice(ini, v3.indexOf('sidebar-footer', ini))
+
+  /* Cada `<div class="nav-section">` precisa de pelo menos um destino dentro. */
+  const secoes = [...barra.matchAll(/<div class="nav-section"[^>]*>([\s\S]*?)(?=<div class="nav-section"|$)/g)]
+  assert.ok(secoes.length >= 5, `esperava vários grupos no menu, achei ${secoes.length}`)
+  const vazias = secoes
+    .map((m) => ({ grupo: (m[0].match(/data-grupo="([^"]+)"/) || [])[1] || '(sem nome)', itens: (m[1].match(/data-target="/g) || []).length }))
+    .filter((g) => g.itens === 0)
+  assert.deepEqual(vazias, [],
+    'grupo de menu sem nenhuma tela dentro aparece na tela como seção de verdade, '
+    + 'e clicar nele não leva a lugar nenhum: ' + vazias.map((g) => g.grupo).join(', '))
+  console.log('  ok   CC-399: nenhum grupo do menu está vazio')
+
+  /* E nenhum bloco de telas sem título: ou o grupo tem nome, ou ele não é um
+     grupo. Meio menu nomeado e meio não é o que obriga a ler duas vezes. */
+  const semTitulo = secoes
+    .map((m) => ({ tem: /nav-section-title/.test(m[0]), itens: (m[1].match(/data-target="/g) || []).length }))
+    .filter((g) => g.itens > 0 && !g.tem)
+  assert.equal(semTitulo.length, 0,
+    `${semTitulo.length} bloco(s) do menu têm telas e nenhum título`)
+  console.log('  ok   CC-399: todo bloco do menu com telas dentro tem título')
+
+  /* A prova ao contrário: um grupo vazio inventado tem que ser pego. Sem ela
+     este teste passaria mesmo se o regex não casasse nada. */
+  const comBuraco = barra.replace('<div class="nav-section" data-grupo="INFRA">',
+    '<div class="nav-section" data-grupo="TESTE"><button class="nav-section-title">x</button></div>\n<div class="nav-section" data-grupo="INFRA">')
+  const achadas = [...comBuraco.matchAll(/<div class="nav-section"[^>]*>([\s\S]*?)(?=<div class="nav-section"|$)/g)]
+    .filter((m) => (m[1].match(/data-target="/g) || []).length === 0)
+  assert.ok(achadas.length >= 1, 'a rede precisa mesmo acusar um grupo vazio, senão ela não mede nada')
+  console.log('  ok   CC-399: a prova ao contrário, um grupo vazio inventado é acusado')
+}
+
+
+/* ── CC-423: dois nomes para a MESMA pasta contam uma vez só ───────────────
+ *
+ * Medido em 29/08 no quadro dele: `proj_controlcenter` aparecia com 8 tarefas e
+ * `VPS_cockpit` com 42, como dois projetos. São a mesma pasta. O primeiro é um
+ * atalho para o segundo, criado na renomeação e mantido porque o serviço do
+ * painel guarda o caminho antigo.
+ *
+ * Todo número por projeto saía dobrado, e nada acusava.
+ */
+{
+  const os = await import('node:os')
+  const I = await import('./src/install.mjs')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-atalho-'))
+
+  try {
+    const real = path.join(raiz, 'VPS_projeto')
+    const atalho = path.join(raiz, 'proj_projeto')
+    const outro = path.join(raiz, 'VPS_outro')
+    fs.mkdirSync(real); fs.mkdirSync(outro)
+    fs.symlinkSync(real, atalho, 'dir')
+
+    const r = I.semRepetir([real, atalho, outro])
+    assert.equal(r.length, 2, 'o atalho e a pasta que ele aponta são um projeto só')
+    assert.ok(r.includes(real), 'quem fica é a pasta de VERDADE, que é o nome que existe no git e no roadmap')
+    assert.ok(!r.includes(atalho), 'o atalho não pode ficar: ele não é onde o trabalho mora')
+    assert.ok(r.includes(outro), 'pasta que não é atalho de ninguém continua inteira')
+    console.log('  ok   CC-423: atalho e pasta de verdade viram um projeto só')
+
+    /* A ordem de entrada não pode decidir quem sobrevive: o atalho vindo antes
+       daria o nome errado, e o painel passaria a chamar o projeto pelo apelido
+       velho em toda tela. */
+    const invertido = I.semRepetir([atalho, real, outro])
+    assert.ok(invertido.includes(real) && !invertido.includes(atalho),
+      'o atalho vindo primeiro na lista não pode ganhar da pasta de verdade')
+    console.log('  ok   CC-423: a ordem da lista não decide quem sobrevive, o disco decide')
+
+    /* ⚠️ **A prova que impede o conserto de virar outro defeito.** Comparar
+       nomes "parecidos" juntaria `fibraessencia` e `VPS_fibraessencia`, que na
+       máquina dele são DUAS pastas de verdade, com dois roadmaps e dois
+       estados de git. Só o disco distingue um atalho de uma coincidência de
+       nome, e é por isso que a conta é por caminho real. */
+    const gemeo = path.join(raiz, 'projeto')
+    fs.mkdirSync(gemeo)
+    const doisDeVerdade = I.semRepetir([real, gemeo])
+    assert.equal(doisDeVerdade.length, 2,
+      'nomes parecidos em pastas diferentes continuam sendo dois projetos, e juntá-los '
+      + 'misturaria dois roadmaps sem ninguém perceber')
+    console.log('  ok   CC-423: nome parecido em pasta diferente continua sendo outro projeto')
+
+    /* Pasta que sumiu entre a varredura e a conta não pode derrubar a lista
+       inteira: acontece de verdade quando algo é apagado no meio. */
+    const sumida = path.join(raiz, 'nao-existe-mais')
+    assert.doesNotThrow(() => I.semRepetir([real, sumida]))
+    assert.equal(I.semRepetir([real, sumida]).length, 2)
+    console.log('  ok   CC-423: caminho que não existe mais não derruba a lista')
+  } finally {
+    fs.rmSync(raiz, { recursive: true, force: true })
+  }
+}
+
+
+/* ── CC-422: os projetos da OUTRA máquina, mesmo sem agente aberto ─────────
+ *
+ * Queixa dele em 29/08, em sete palavras: *"nao consigo ver os projetos do pc"*.
+ *
+ * Medido antes de mexer: a lista de projetos saía só dos AGENTES, então um
+ * projeto do PC só existia aqui se alguém estivesse trabalhando nele naquele
+ * momento. O PC tinha 3 agentes em 2 pastas, e a tela esconde o que já tem
+ * sessão aberta, então sobrava uma seção vazia com o nome da máquina dele.
+ *
+ * E o dado chegava o tempo todo: o pacote traz um backlog por projeto com
+ * roadmap. Eram 11 projetos conhecidos e zero na tela.
+ *
+ * ⚠️ **Este módulo não tinha teste nenhum até hoje**, e é por isso que o buraco
+ * durou. Um projeto que some da tela não dá erro em lugar nenhum.
+ */
+{
+  const P = await import('./src/projetos.mjs')
+
+  /* Nenhum agente, nenhuma pasta local: só o que a outra máquina mandou. É o
+     caso exato da queixa dele. */
+  const r = P.retrato({
+    jobs: [],
+    achar: () => [],
+    remotos: [
+      { projeto: 'cockpit', maquina: 'ALIENWARE-LIPE', abertas: 16, frentes: 200 },
+      { projeto: 'ghoscode', maquina: 'ALIENWARE-LIPE', abertas: 16, frentes: 44 },
+    ],
+  })
+  assert.equal(r.projetos.length, 2, 'projeto de fora entra na lista mesmo sem agente aberto lá')
+  assert.equal(r.deFora, 2)
+  const um = r.projetos.find((p) => p.projeto === 'cockpit')
+  assert.equal(um.daqui, false)
+  assert.equal(um.maquinaDeFora, 'ALIENWARE-LIPE',
+    'sem o nome da máquina a tela não sabe em qual seção pôr, e o projeto some de novo')
+  assert.equal(um.backlog, 16)
+  assert.equal(um.ehProjeto, true,
+    'a tela descarta o que não é projeto; ter roadmap com frentes é a prova que dá para ter daqui')
+  assert.equal(um.ligado, false, 'projeto sem agente não pode aparecer como ligado')
+  console.log('  ok   CC-422: o projeto da outra máquina entra na lista sem precisar de agente')
+
+  /* A prova ao contrário: sem passar os remotos, a lista volta a ser vazia. É
+     o estado em que a queixa dele nasceu. */
+  const semRemotos = P.retrato({ jobs: [], achar: () => [] })
+  assert.equal(semRemotos.projetos.length, 0,
+    'é assim que o defeito era: nenhum agente, nenhum projeto, e nada na tela dizendo por quê')
+  console.log('  ok   CC-422: a prova ao contrário, sem os backlogs a seção do PC fica vazia')
+
+  /* ⚠️ **O mesmo nome nas DUAS máquinas continua sendo duas linhas.** `cockpit`
+     existe no PC e aqui, e são duas pastas, dois roadmaps e dois estados de
+     git. Juntar numa linha só é o que a tela fazia antes, e foi a queixa que
+     gerou a separação por máquina: *"os projetos eram separados por desktop e
+     vps"*. */
+  const doisIguais = P.retrato({
+    jobs: [],
+    achar: () => [],
+    remotos: [
+      { projeto: 'cockpit', maquina: 'ALIENWARE-LIPE', abertas: 16 },
+      { projeto: 'cockpit', maquina: 'OUTRA', abertas: 3 },
+    ],
+  })
+  assert.equal(doisIguais.projetos.length, 2, 'o mesmo projeto em duas máquinas são duas linhas')
+  assert.deepEqual(doisIguais.projetos.map((p) => p.maquinaDeFora).sort(), ['ALIENWARE-LIPE', 'OUTRA'])
+  console.log('  ok   CC-422: o mesmo projeto em duas máquinas continua sendo duas linhas')
+
+  /* E o de fora NÃO substitui o de dentro: se a máquina remota reportar um
+     projeto que já veio por agente, a entrada rica (com horas, tarefas e
+     estado) é a que fica. Duplicar aqui poria o mesmo cartão duas vezes na
+     mesma seção. */
+  const jaVeioPorAgente = P.retrato({
+    jobs: [{ id: 'a', status: 'working', cwd: 'D:\\projetos\\cockpit', origem: { nome: 'ALIENWARE-LIPE' } }],
+    achar: () => [],
+    remotos: [{ projeto: 'cockpit', maquina: 'ALIENWARE-LIPE', abertas: 16 }],
+  })
+  assert.equal(jaVeioPorAgente.projetos.filter((p) => p.projeto === 'cockpit').length, 1,
+    'projeto que já veio pelo agente não pode aparecer duas vezes na mesma máquina')
+  console.log('  ok   CC-422: quem já veio pelo agente não vira uma segunda linha')
+
+  /* Entrada quebrada não derruba a leitura: o pacote vem de outra máquina, e
+     campo faltando é o caso normal, não anomalia. */
+  const sujo = P.retrato({
+    jobs: [],
+    achar: () => [],
+    remotos: [null, {}, { projeto: 'x' }, { maquina: 'y' }, { projeto: 'bom', maquina: 'ALIENWARE-LIPE' }],
+  })
+  assert.equal(sujo.projetos.length, 1, 'só a entrada completa entra, e o resto é ignorado sem lançar')
+  console.log('  ok   CC-422: pacote com campo faltando não derruba a lista inteira')
+}
+
+
+/* ── CC-412: a síntese escrita por IA sobre os números da Análise ───────────
+ *
+ * Roda SEM chamar o modelo. O opencode leva ~17s por síntese e depende de rede:
+ * pôr isso no gate faria a verificação inteira depender de um serviço externo,
+ * e uma queda dele apareceria como código quebrado.
+ *
+ * O que se prova aqui é o que pode errar em silêncio: os números que vão para
+ * o modelo, a limpeza da saída, e o caminho do disparo até o disco. O binário é
+ * um script de mentira, e é ele que torna o caminho inteiro testável.
+ */
+{
+  const os = await import('node:os')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-sintese-'))
+  const antesHome = process.env.CC_HOME
+  process.env.CC_HOME = path.join(raiz, '.claude')
+  fs.mkdirSync(process.env.CC_HOME, { recursive: true })
+
+  try {
+    const S = await import(`./src/sintese.mjs?t=${Date.now()}`)
+
+    /* 1. ⚠️ **O número que vai para o modelo tem que sair do campo certo.**
+       A primeira versão usou `disparos` e `camadas[].ok`, que não existem nas
+       rotas: dava "nenhuma regra muda" e "0 de 22 verificações passaram", as
+       duas falsas, e a segunda dizia o CONTRÁRIO do veredito real, que estava
+       aprovado. Síntese com número errado é pior que síntese nenhuma, porque
+       ela é convincente. Este teste fixa os nomes medidos. */
+    const numeros = S.resumo({
+      travas: {
+        regras: [
+          { label: 'a que dispara', trava: 'a', vezes: 3, ajudou: 2, atrapalhou: 0 },
+          { label: 'a que nunca disparou', trava: 'b', vezes: 0 },
+        ],
+        eventos: [1, 2, 3],
+        alcance: 27,
+      },
+      bancada: {
+        nivel: 'rascunho',
+        veredito: { aprovado: true, ok: ['segredo'], falhou: [], faltaRodar: [] },
+        camadas: [{ implementada: true, escolhida: true }, { implementada: true, escolhida: false }],
+      },
+    })
+    assert.match(numeros, /regras escritas: 2/)
+    assert.match(numeros, /nunca dispararam \(1 de 2\).*a que nunca disparou/)
+    assert.match(numeros, /aprovado nesse nível: sim/)
+    assert.match(numeros, /verificações que passaram: 1/)
+    console.log('  ok   CC-412: os números saem dos campos que as rotas realmente têm')
+
+    /* A prova ao contrário do erro que aconteceu: com os campos ANTIGOS, a
+       contagem de aprovadas daria zero, e o texto diria o oposto do veredito. */
+    const comCampoErrado = [{ implementada: true, escolhida: true }].filter((c) => c.ok).length
+    assert.equal(comCampoErrado, 0,
+      'é assim que o campo errado mente: `.ok` não existe na camada, e filtrar por '
+      + 'ele devolve zero sobre uma verificação que passou')
+    console.log('  ok   CC-412: a prova ao contrário, o campo errado devolve zero calado')
+
+    /* 2. A saída do opencode vem com cor de terminal e um cabeçalho de modelo.
+       Sem limpar, esse cabeçalho vira a primeira linha da síntese na tela. */
+    const ESC = String.fromCharCode(27)
+    assert.equal(S.limpar(`${ESC}[0m\n> build · big-pickle\n${ESC}[0m\nO texto.`), 'O texto.')
+    assert.equal(S.limpar(''), '')
+    console.log('  ok   CC-412: a cor de terminal e o cabeçalho do modelo saem do texto')
+
+    /* 3. A regra do travessão vai no pedido. É a regra número um dele, e um
+       texto escrito por outro modelo não a conhece: se ela sumir daqui, a
+       síntese passa a chegar com travessão na tela dele. */
+    assert.match(S.prompt('x'), /NUNCA use travessão/)
+    assert.match(S.prompt('x'), /Português do Brasil/)
+    console.log('  ok   CC-412: o pedido carrega a regra do travessão e a do idioma')
+
+    /* 4. O caminho inteiro, com um binário de mentira no lugar do opencode.
+       É o que prova que o disparo, a leitura da saída e a gravação funcionam
+       juntos, sem depender de rede nem de 17 segundos. */
+    const falso = path.join(raiz, 'opencode-de-mentira')
+    fs.writeFileSync(falso, `#!/bin/sh\nprintf '${'\\033'}[0m\\n> build · big-pickle\\nA leitura escrita pelo modelo.\\n'\n`)
+    fs.chmodSync(falso, 0o755)
+
+    const r = await S.pedir({ travas: { regras: [], eventos: [] } }, { binario: falso })
+    assert.equal(r.ok, true, r.motivo || 'o caminho inteiro tem que responder ok')
+    assert.equal(r.texto, 'A leitura escrita pelo modelo.')
+    assert.ok(r.gravado, 'gravar em silêncio e responder ok esconderia o dado sumindo')
+    console.log('  ok   CC-412: dispara, limpa a saída e grava, tudo num caminho só')
+
+    /* E o que foi gravado é o que se lê de volta. Sem isto, a tela abriria
+       vazia depois de uma síntese que "deu certo". */
+    const lido = S.ler()
+    assert.equal(lido?.texto, 'A leitura escrita pelo modelo.')
+    assert.ok(lido.em > 0, 'a hora tem que ir junto: ele precisa saber se o texto é de hoje')
+    console.log('  ok   CC-412: o que foi gravado é o que a tela lê de volta, com a hora')
+
+    /* 5. Falha em voz alta. Binário que não existe não pode responder ok com
+         texto vazio: a tela mostraria um bloco em branco sem dizer por quê. */
+    const semBinario = await S.rodar('oi', { binario: path.join(raiz, 'nao-existe') })
+    assert.equal(semBinario.ok, false)
+    assert.ok(semBinario.motivo, 'falhar calado é o defeito, não a falha')
+    console.log('  ok   CC-412: sem o programa instalado, avisa em vez de fingir')
+
+    /* E o teto existe: um binário que trava não pode segurar o painel para
+       sempre esperando uma resposta que não vem. */
+    const travado = path.join(raiz, 'trava')
+    fs.writeFileSync(travado, '#!/bin/sh\nsleep 30\n')
+    fs.chmodSync(travado, 0o755)
+    const estourou = await S.rodar('oi', { binario: travado, teto: 400 })
+    assert.equal(estourou.ok, false)
+    assert.match(estourou.motivo, /sem responder/)
+    console.log('  ok   CC-412: o que trava é morto pelo teto, e o painel segue')
+  } finally {
+    if (antesHome === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antesHome
+    fs.rmSync(raiz, { recursive: true, force: true })
+  }
+}
+

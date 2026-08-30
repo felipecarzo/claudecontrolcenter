@@ -33,20 +33,20 @@
    "profundo": 0
   },
   "endereco": {
-   "total": 90,
-   "existe": 90,
+   "total": 92,
+   "existe": 92,
    "funciona": 6,
    "explica": 0,
    "estreito": 0,
    "profundo": 0
   },
   "palavra": {
-   "total": 76,
-   "existe": 76,
+   "total": 78,
+   "existe": 78,
    "funciona": 14,
-   "explica": 76,
+   "explica": 78,
    "estreito": 0,
-   "profundo": 76
+   "profundo": 78
   }
  },
  "itens": [
@@ -591,6 +591,36 @@
    }
   },
   {
+   "id": "tela:agenda",
+   "tipo": "tela",
+   "rotulo": "agenda",
+   "onde": "src/ui_v2.html#view-agenda",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test-endereco.mjs",
+     "como": "abre a tela e escuta erro de execução do navegador"
+    },
+    "funciona": {
+     "coberto": "test.mjs",
+     "como": "a tela é citada, o que NÃO prova que os botões dela funcionam"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "tem verbete `tela: agenda`"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "o verbete tem corpo de verdade"
+    }
+   }
+  },
+  {
    "id": "tela:notas",
    "tipo": "tela",
    "rotulo": "notas",
@@ -638,36 +668,6 @@
     "explica": {
      "coberto": "test.mjs",
      "como": "tem verbete `tela: documentos`"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
-    },
-    "profundo": {
-     "coberto": "test.mjs",
-     "como": "o verbete tem corpo de verdade"
-    }
-   }
-  },
-  {
-   "id": "tela:agenda",
-   "tipo": "tela",
-   "rotulo": "agenda",
-   "onde": "src/ui_v2.html#view-agenda",
-   "camada": "viva",
-   "dimensoes": {
-    "existe": {
-     "coberto": "test-endereco.mjs",
-     "como": "abre a tela e escuta erro de execução do navegador"
-    },
-    "funciona": {
-     "coberto": "test.mjs",
-     "como": "a tela é citada, o que NÃO prova que os botões dela funcionam"
-    },
-    "explica": {
-     "coberto": "test.mjs",
-     "como": "tem verbete `tela: agenda`"
     },
     "estreito": {
      "coberto": null,
@@ -7619,6 +7619,72 @@
    }
   },
   {
+   "id": "endereco:pastas",
+   "tipo": "endereco",
+   "rotulo": "/api/pastas",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:sintese",
+   "tipo": "endereco",
+   "rotulo": "/api/sintese",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
    "id": "endereco:digest",
    "tipo": "endereco",
    "rotulo": "/api/digest",
@@ -8701,6 +8767,37 @@
    }
   },
   {
+   "id": "palavra:abertas",
+   "tipo": "palavra",
+   "rotulo": "abertas",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 637 caracteres"
+    }
+   }
+  },
+  {
    "id": "palavra:prontas",
    "tipo": "palavra",
    "rotulo": "prontas",
@@ -9348,6 +9445,37 @@
     "profundo": {
      "coberto": "test.mjs",
      "como": "corpo com 253 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:tela: conhecimento",
+   "tipo": "palavra",
+   "rotulo": "tela: conhecimento",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 839 caracteres"
     }
    }
   },

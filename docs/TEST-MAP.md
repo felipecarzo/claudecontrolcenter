@@ -25,8 +25,8 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tela | 30 | 30/30 | 28/30 | 30/30 | 0/30 | 30/30 |
 | acao | 123 | 123/123 | 25/123 | 0/123 | 0/123 | 0/123 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 90 | 90/90 | 6/90 | 0/90 | 0/90 | 0/90 |
-| palavra | 76 | 76/76 | 14/76 | 76/76 | 0/76 | 76/76 |
+| endereco | 92 | 92/92 | 6/92 | 0/92 | 0/92 | 0/92 |
+| palavra | 78 | 78/78 | 14/78 | 78/78 | 0/78 | 78/78 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
 ponta.** A diferença está na coluna `como` do JSON, item a item. Inflar
@@ -54,9 +54,9 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `custo` | viva | src/ui_v2.html#view-custo | estreito |
 | `graficos` | viva | src/ui_v2.html#view-graficos | estreito |
 | `digest` | viva | src/ui_v2.html#view-digest | estreito |
+| `agenda` | viva | src/ui_v2.html#view-agenda | estreito |
 | `notas` | viva | src/ui_v2.html#view-notas | estreito |
 | `documentos` | viva | src/ui_v2.html#view-documentos | estreito |
-| `agenda` | viva | src/ui_v2.html#view-agenda | estreito |
 | `glossario` | viva | src/ui_v2.html#view-glossario | estreito |
 | `framework` | viva | src/ui_v2.html#view-framework | estreito |
 | `hooks` | viva | src/ui_v2.html#view-hooks | estreito |
@@ -207,7 +207,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_v2.html | explica, estreito |
 | `data-n` | viva | src/ui_v2.html | explica, estreito |
 
-## endereco (90)
+## endereco (92)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -287,6 +287,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/vi-tudo` | estatica | src/web.mjs | funciona, explica |
 | `/api/roadmap` | estatica | src/web.mjs | funciona, explica |
 | `/api/enriquecer` | estatica | src/web.mjs | funciona, explica |
+| `/api/pastas` | estatica | src/web.mjs | funciona, explica |
+| `/api/sintese` | estatica | src/web.mjs | funciona, explica |
 | `/api/digest` | estatica | src/web.mjs | funciona, explica |
 | `/api/git` | estatica | src/web.mjs | funciona, explica |
 | `/api/maquina` | estatica | src/web.mjs | funciona, explica |
@@ -302,7 +304,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/rotas/alternar` | estatica | src/web.mjs | funciona, explica |
 | `/api/shutdown` | estatica | src/web.mjs | funciona, explica |
 
-## palavra (76)
+## palavra (78)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -326,6 +328,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `o que está encalhado` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `agora` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `na fila` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `abertas` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `prontas` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: analise` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: infra` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
@@ -347,6 +350,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `tela: documentos` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: agenda` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: glossario` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: conhecimento` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `agente` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
 | `sem contato` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
 | `esperando você` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
