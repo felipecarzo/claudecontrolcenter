@@ -5285,6 +5285,77 @@ if (process.platform !== 'win32') {
   console.log('  ok   CC-361: o liberar escrita está na tela do dia a dia, com alvo e confirmação')
 }
 
+/* ── CC-438: "cadê o PC_cockpit?" ─────────────────────────────────────────
+ *
+ * Ele, em 30/08, olhando a tela: *"cadê o pc_cockpit?"*.
+ *
+ * Estava lá, com 38 itens de backlog, chamado de `cockpit`. **Esse é o nome de
+ * verdade da pasta no PC dele**, e o caminho que a própria máquina reporta é
+ * `D:\Documentos\projetos\cockpit`.
+ *
+ * A regra que ele escreveu em 23/08 manda toda pasta do PC começar com `PC_`,
+ * para o mesmo repositório não virar a mesma linha vindo das duas máquinas. As
+ * onze pastas de lá não seguem a regra, e o painel mostra o que existe.
+ *
+ * ⚠️ **Inventar o prefixo na tela seria pior que o problema.** O painel passaria
+ * a mostrar um nome que não existe em disco nenhum, e um dia ele procura
+ * `PC_cockpit` na máquina e não acha.
+ *
+ * O que a regra dele queria evitar era o mesmo trabalho aparecer duas vezes sem
+ * ninguém perceber. Então a tela NOMEIA o par, e o nome continua o verdadeiro.
+ */
+{
+  const os = await import('node:os')
+  const P = await import('./src/projetos.mjs')
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-irmao-'))
+
+  try {
+    const local = path.join(raiz, 'VPS_cockpit')
+    fs.mkdirSync(path.join(local, '.git'), { recursive: true })
+
+    const r = P.retrato({
+      jobs: [{ id: 'a', status: 'working', cwd: local, project: 'VPS_cockpit' }],
+      achar: () => [local],
+      remotos: [
+        { projeto: 'cockpit', maquina: 'ALIENWARE-LIPE', abertas: 38 },
+        { projeto: 'so-existe-la', maquina: 'ALIENWARE-LIPE', abertas: 2 },
+      ],
+    })
+    const acha = (n) => r.projetos.find((p) => p.projeto === n)
+
+    /* O par é dito nos DOIS cartões: quem olha o daqui precisa saber que existe
+       lá, e quem olha o de lá precisa saber que existe aqui. */
+    assert.deepEqual(acha('VPS_cockpit').tambemEm, [{ projeto: 'cockpit', onde: 'ALIENWARE-LIPE' }])
+    assert.deepEqual(acha('cockpit').tambemEm, [{ projeto: 'VPS_cockpit', onde: 'aqui' }])
+    console.log('  ok   CC-438: o mesmo projeto nas duas máquinas é nomeado nos dois cartões')
+
+    /* Quem só existe de um lado não ganha par inventado. */
+    assert.equal(acha('so-existe-la').tambemEm, null)
+    console.log('  ok   CC-438: projeto que existe num lugar só não ganha par')
+
+    /* ⚠️ **O sufixo continua separando.** `cockpit--front` é outra árvore de
+       trabalho, com outro roadmap: casar as duas misturaria backlogs de datas
+       diferentes, que é a metade da regra de nomes que erra em silêncio. */
+    const comSufixo = P.retrato({
+      jobs: [{ id: 'a', status: 'working', cwd: local, project: 'VPS_cockpit' }],
+      achar: () => [local],
+      remotos: [{ projeto: 'cockpit--front', maquina: 'ALIENWARE-LIPE', abertas: 15 }],
+    })
+    assert.equal(comSufixo.projetos.find((p) => p.projeto === 'VPS_cockpit').tambemEm, null,
+      'a árvore de trabalho `--front` é outro projeto, e não o irmão deste')
+    console.log('  ok   CC-438: o sufixo de árvore de trabalho não vira par')
+  } finally {
+    fs.rmSync(raiz, { recursive: true, force: true })
+  }
+
+  /* E a tela escreve o par, senão o dado existe e ninguém vê. */
+  const v3 = fs.readFileSync('src/ui_novo.html', 'utf8')
+  assert.match(v3, /p\.tambemEm\?\.length/)
+  assert.match(v3, /também em /)
+  console.log('  ok   CC-438: a tela escreve o par, e não só o servidor calcula')
+}
+
+
 /* ── CC-435 a 437: o cartão confuso, e as 29 escolhas por projeto ──────────
  *
  * Ele, olhando a tela Projetos em 30/08: *"essa zona toda aí, tá muito confusa,

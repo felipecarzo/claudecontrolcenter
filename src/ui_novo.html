@@ -2224,6 +2224,9 @@
     .pj-frente{font-size:12px;color:var(--text-muted);margin:-4px 0 0;}
     /* Os números do projeto, numa linha que quebra. Cada um só aparece quando
        tem valor: "0 agentes" ocupa espaço e não informa nada. */
+    /* CC-438: o irmão na outra máquina. Discreto: é contexto, não alarme. */
+    .pj-irmao { font-size: 10.5px; color: var(--text-dim); margin: 2px 0 0; }
+    .pj-irmao b { color: var(--text-muted); font-weight: 500; }
     .pj-sinal-idade { font-size: 10.5px; color: var(--text-dim); margin: 2px 0 0; }
     .pj-numeros{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;}
     .pj-num{display:flex;flex-direction:column;gap:1px;}
@@ -9822,6 +9825,18 @@
         + seloDe(p.daqui ? (maquina || 'esta máquina') : (p.maquinaDeFora || 'outra máquina'), { frio: !p.daqui })
         + '</h4>'
         + (p.frente ? '<p class="pj-frente">' + esc(p.frente) + '</p>' : '')
+        /* ── CC-438: o mesmo projeto existe nas duas máquinas ─────────────
+           Ele, em 30/08: *"cadê o PC_cockpit?"*. Estava lá, com 38 itens, com o
+           nome que a pasta tem de verdade no PC: `cockpit`. A regra dele, de
+           23/08, manda o PC usar prefixo `PC_`, e as onze pastas de lá não usam.
+           ⚠️ **Inventar o prefixo na tela seria pior:** o painel mostraria um
+           nome que não existe em disco nenhum, e um dia ele procura e não acha.
+           O que a regra queria evitar era o mesmo trabalho virar duas linhas sem
+           ninguém perceber. Então a tela diz o par, e o nome fica o verdadeiro. */
+        + (p.tambemEm?.length
+          ? '<p class="pj-irmao">também em ' + p.tambemEm.map((x) =>
+            esc(x.onde === 'aqui' ? 'esta máquina' : x.onde) + ', como <b>' + esc(x.projeto) + '</b>').join(' e ') + '</p>'
+          : '')
         /* ── CC-430: HÁ QUANTO TEMPO foi o último sinal ────────────────────
            Ele, em 30/08: *"o hatukara não tá parado, tô mexendo nele agora
            mesmo"*, sobre um cartão que dizia parado. Estava certo: entre a

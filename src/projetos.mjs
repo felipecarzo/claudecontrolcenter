@@ -31,6 +31,7 @@ import { findProjects } from './install.mjs'
 import { projetosDe } from './trabalho.mjs'
 import { deOutraPlataforma } from './roadmap.mjs'
 import { nomeDoAgenteCom } from './trabalho.mjs'
+import { chaveDeProjeto } from './nomeProjeto.mjs'
 
 /** Horas em texto curto. Zero vira null: bloco vazio some, não mostra "0h". */
 const horas = (ms) => {
@@ -222,6 +223,10 @@ export function retrato({
       backlog: backlogPor.get(projeto)?.abertos || 0,
       frentes: backlogPor.get(projeto)?.frentes || 0,
       soSeus: meuPor.get(projeto) || 0,
+      /* CC-438: nasce `null` nos DOIS caminhos, e é preenchido depois que a
+         lista inteira existe. Campo que só aparece num dos ramos obriga quem lê
+         a testar `undefined` e `null`, e um dos dois sempre escapa. */
+      tambemEm: null,
       horasHoje: horas(doDia?.ativoMs),
       horasTotal: horas(t?.ativoMs),
       custoBrl: t?.custoBrl ?? null,
@@ -294,12 +299,51 @@ export function retrato({
       /* Só o que a outra ponta mandou. Campo derivado de disco fica nulo, e
          nulo aqui quer dizer "não dá para saber daqui", não "é zero". */
       soDoBacklog: true,
+      /* ── CC-438: este projeto existe TAMBÉM na outra máquina? ─────────────
+       *
+       * Pergunta dele em 30/08: *"cadê o PC_cockpit?"*. Ele estava lá, com 38
+       * itens de backlog, chamado de `cockpit` — que é o nome de verdade da
+       * pasta no PC. A regra dele, de 23/08, manda toda pasta do PC começar com
+       * `PC_`; as onze de lá não começam, e o painel mostra o que existe.
+       *
+       * ⚠️ **Inventar o prefixo na tela seria pior.** O painel passaria a
+       * mostrar um nome que não existe em disco nenhum, e um dia ele procura
+       * `PC_cockpit` na máquina e não acha.
+       *
+       * O que resolve a confusão de verdade é dizer o que a regra dele queria
+       * evitar: que o mesmo trabalho aparece duas vezes na lista. Dez dos
+       * catorze projetos do PC têm um irmão aqui, e a tela pode nomear o par
+       * em vez de deixar ele descobrir sozinho. */
+      tambemEm: null,
       /* Quando a máquina parou de responder, e há quanto tempo. A tela precisa
          DIZER isso: lista igual à de ontem com a máquina desligada é o mesmo
          defeito das horas congeladas em verde, e ninguém descobre. */
       semContato: Boolean(r.semContato),
       idadeMs: r.idadeMs || 0,
     })
+  }
+
+  /* CC-438: o par entre as máquinas, dito nos DOIS cartões. `chaveDeProjeto`
+     tira o prefixo de máquina, então `cockpit` do PC casa com `VPS_cockpit`
+     daqui, que é exatamente o que a regra de nomes dele queria distinguir.
+     ⚠️ O sufixo continua separando: `cockpit--front` é outra árvore de
+     trabalho, com outro roadmap, e juntar as duas misturaria backlogs. */
+  const porChave = new Map()
+  for (const p of saida) {
+    const k = chaveDeProjeto(p.projeto)
+    if (!k) continue
+    if (!porChave.has(k)) porChave.set(k, [])
+    porChave.get(k).push(p)
+  }
+  for (const [, pares] of porChave) {
+    if (pares.length < 2) continue
+    for (const p of pares) {
+      const outros = pares.filter((x) => x !== p)
+      p.tambemEm = outros.map((x) => ({
+        projeto: x.projeto,
+        onde: x.daqui ? 'aqui' : (x.maquinaDeFora || 'outra máquina'),
+      }))
+    }
   }
 
   return {
