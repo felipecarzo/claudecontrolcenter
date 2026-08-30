@@ -2502,7 +2502,33 @@ esperança, não uma garantia.** É o primeiro item de qualquer caminho escolhid
    módulos de tela ficam de fora do que é instalado. Mais barato, e não entrega
    a independência de versão que ele quer.
 
-**Decisão dele pendente**, e ela vale a discussão antes do código.
+**Decidido por ele em 30/08, na mesma conversa:**
+
+- **Forma: coletor com tela mínima.** Uma página local só de diagnóstico, para
+  ele continuar enxergando o PC quando a VPS cair.
+- **Condição dele, e ela muda o desenho:** *"é importante que as informações que
+  o pc passe pra vps sejam as mais ricas possíveis pra gente ter controle dos
+  projetos, das tarefas, das sprints, roadmaps, enfim, tudo né."*
+- **Começar pelo desenho completo**, escrito antes de qualquer código.
+
+**Medido depois dessa decisão, e é o achado que ela destrava:** hoje o roadmap
+viaja como contagem e seis títulos por projeto, **5 KB**. Existem **581 frentes e
+621 itens** nos projetos deste PC, e mandar o mapa INTEIRO custaria **170 KB**,
+contra um teto de 2.048 KB. Cabe com margem de 12 vezes.
+
+O resumo curto nunca foi limitação técnica: foi escolha de quando quem lia
+estava na mesma máquina. O comentário do código diz isso com todas as letras
+(*"quem quiser a lista inteira abre o projeto"*), e da VPS ele não tem como
+abrir. **É exatamente a queixa dele.**
+
+📄 **O desenho está em [`docs/produto/COLETOR.md`](produto/COLETOR.md)**, com as
+cinco seções que ele pediu: o que fica no PC e por quê, o que fica na VPS, o
+formato do que viaja, como as versões conversam, e instalar numa máquina nova.
+**Esperando ele ler e aprovar.**
+
+A ordem sugerida lá dentro, e o segundo item vale destacar: **fazer o pacote
+ficar rico responde à queixa dele imediatamente e não depende de nenhuma decisão
+de arquitetura.**
 
 ### CC-434 🔴 30/08: três cópias do mesmo produto, e um dia inteiro perdido nisso
 
