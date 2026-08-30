@@ -2388,6 +2388,168 @@ dele dizer `projeto › frente` em vez de texto solto.
 
 ## Aberto
 
+## ▶ Frente nova, aberta em 30/08: fechar o cockpit numa VERSÃO, e ter um dado só
+
+**Esta é a frente mais importante aberta no projeto, e o motivo é o custo dele.**
+
+Pedido dele em 30/08, sem reescrever:
+
+> *"a ideia é que a gente na verdade transforme o cockpit num programa, porque a
+> gente atualiza ele todo dia, não chega num produto final (…) o ideal seria que
+> a gente fechasse ele num produto, mas não pra vender, mas pra ter ele instalado
+> na mesma versão na VPS e no PC, funcionando. E aí a gente começa a trabalhar
+> numa versão 2, em paralelo, num ambiente de teste. Mas o que vai estar
+> funcionando de fato vai ser a versão real, porque eu quero usar isso no
+> trabalho."*
+
+> *"Quero que isso pare de ser um produto que eu vou criar todo dia pra eu passar
+> a criar nele uma vez por semana só, focar em trabalhar nos meus projetos,
+> porque eu estou perdendo muito tempo nele."*
+
+> *"Eu preciso ter uma forma de unificar esses dados definitivamente, nem que
+> seja um projeto que a gente projete com calma. Eu só preciso ter um data."*
+
+**A avaliação que ele pediu, feita em 30/08:**
+
+O cockpit **já é quase um programa**: sobe sozinho no logon, tem ícone na barra,
+atalho no Desktop e se religa quando cai. O que falta é uma coisa só, e ela é a
+causa de ele mexer todo dia: **o comando instalado é um atalho para a pasta onde
+se edita.** A cópia que roda e a cópia em obras são o mesmo arquivo, então uma
+linha errada salva às 15h quebra o painel dele às 15h, e não existe "a versão
+que funcionava" para voltar.
+
+A viabilidade é boa pelo desenho que o projeto sempre teve: **176 arquivos, 68
+mil linhas e ZERO bibliotecas de terceiros**. Três caminhos, do mais barato ao
+mais caro, e ele escolheu começar pelo primeiro:
+
+| caminho | o que resolve | custo |
+|---|---|---|
+| **separar a cópia que roda da que se edita** | a causa. A v1 congela e a v2 se constrói ao lado | pequeno, é configuração |
+| **janela própria**, sem barra de navegador | o "parece um programa". O Windows já tem o motor | pequeno |
+| **um `.exe` único** | instala em máquina sem Node. O próprio Node empacota | médio |
+
+Electron foi recusado por ele: 90 MB e uma dependência grande num projeto com
+zero. **Escolha dele para a forma:** janela própria, sem cara de navegador.
+
+### CC-434 🔴 30/08: três cópias do mesmo produto, e um dia inteiro perdido nisso
+
+**Medido em 30/08, e é o item que justifica a frente inteira.**
+
+| onde | está em | atraso |
+|---|---|---|
+| GitHub, que é o que a VPS usa | 30/08 | a versão viva |
+| `proj_controlcenter`, no PC | 27/08 | 38 commits |
+| `cockpit`, no PC | 26/08 | **46 commits** |
+
+As três dizem ser a versão `0.2.0` no `package.json`. O número nunca foi movido,
+então ele **não separa nada**, e é justamente a peça que "a mesma versão nos dois
+lados" precisa ter.
+
+**O custo já apareceu:** uma sessão do PC trabalhou o dia 30/08 inteiro na cópia
+mais atrasada e refez dois consertos que já existiam, um deles com diagnóstico
+PIOR (o CC-362 daqui achou três causas, o refeito achou uma). Nada disso deu
+erro em lugar nenhum: o gate passava nas duas cópias, porque cada uma testava a
+si mesma.
+
+**O que fechar isto exige, e nenhuma parte é código:** um número de versão que
+ande, um lugar só que seja o produto, e o hábito de perguntar ao remoto antes de
+abrir trabalho. As travas do PC ainda apontam para `proj_controlcenter`; ele
+decidiu em 30/08 que **o `cockpit` é o produto**.
+
+### CC-435 ✅ 30/08: a trava do framework alcança código na raiz, e a entrevista chega ao agente
+
+Trazido do trabalho do PC de 30/08 depois da unificação. Nasceu de um caso real
+no `reunion`: um agente abriu o projeto com framework ligado, **escreveu o código
+todo e depois preencheu o MVP sozinho, com 7 critérios que ele mesmo inventou.**
+
+Três causas, todas fechadas:
+
+1. **`SEMPRE_LIVRE` tinha `'*'`**, que por `casa()` significa "qualquer arquivo
+   na raiz", e `podeEditar` consulta essa lista ANTES de perfil, modo e fase.
+   Projeto de app único era **estruturalmente incapaz de travar qualquer
+   arquivo**. Agora `casa()` entende padrão de raiz com extensão, a lista é
+   explícita, e a raiz entrou em `CODIGO` e no `trava` das fases, numa const só
+   (`TRAVA_CODIGO`) em vez de oito cópias literais.
+2. **A entrevista não era alcançável por agente nenhum.** `src/entrevista.mjs`
+   está pronta desde o CC-133 e tinha dois consumidores, a linha de comando e o
+   painel. `hooks/framework-inicio.mjs` agora abre a sessão com a pergunta do
+   roteiro, uma por vez, e só com o MVP vazio ou a entrevista já começada.
+3. **A recusa do gate mandava preencher o MVP à mão** no `estado.json`: no único
+   momento em que o agente é forçado a lidar com a Definição, a instrução era
+   fazer o que o gate existe para impedir. Agora manda entrevistar.
+
+Continuam livres na raiz: configuração e texto, **teste** (é prova, o oposto do
+que o gate previne) e **atalho de lançamento**, decisão dele sobre o `GRAVAR.bat`
+do `reunion`: *"pode, é só atalho"*.
+
+**Achado de tabela:** os dois testes de hook do framework existiam desde 18/08 e
+**nunca estiveram no `npm test`**. Estavam quebrados no Windows havia semanas, e
+o `testar-framework-inicio.sh` era pior que quebrado: os casos positivos falhavam
+e os NEGATIVOS passavam por vacuidade. Ligados ao gate por
+`test-hooks-framework.mjs`, que pula em voz alta sem `bash`.
+
+### CC-436 ✅ 30/08: ele escolhe as pastas de projeto pelo terminal, pela bandeja e na instalação
+
+A gravação (`setPastasDeProjeto`) e a tela já existiam aqui desde 27/08. Faltavam
+os três lugares do PC, e todos gravam pela mesma função — duas escritas do mesmo
+campo seriam duas verdades sobre onde os projetos moram:
+
+- **`cc pastas`**, com `adicionar` e `remover`. Sem escolha registrada ele diz,
+  com essas palavras, que o painel está adivinhando.
+- **O ícone na barra de tarefas**, item "Adicionar pasta de projetos...", que
+  abre o seletor de pasta do próprio Windows. Caixa de texto foi descartada: um
+  caminho digitado errado só apareceria depois, como painel vazio.
+- **O instalador pergunta na primeira vez**, e só em terminal de verdade:
+  rodando de script ele informa o que adivinhou e segue, porque comando que
+  espera resposta dentro de tarefa agendada trava para sempre sem nada na tela.
+
+**A guarda que mais importa:** enquanto nada foi escolhido, a leitura cai na
+descoberta pelos jobs. Se a primeira pasta escolhida virasse a lista inteira,
+acrescentar "projetos de música" APAGARIA a pasta de trabalho que funcionava, sem
+erro nenhum. Por isso a primeira escolha começa com o que já estava valendo.
+Prova em `test-pastas.mjs`, em casa isolada por `CC_HOME`.
+
+**Armadilha achada e registrada no `CLAUDE.md`:** `CC_HOME` isola o config e
+**não** isola o autostart. Um teste com `--port 8134` reescreveu o
+`control-center.vbs` do Startup dele com a porta errada, calado.
+
+### CC-437 ✅ 30/08: 11 dos 12 projetos com framework sumiam no caminho até a VPS
+
+Queixa dele: *"não tenho acesso a todos os formatos de framework pros projetos do
+PC quando vou ver lá no cockpit na VPS"*. Medido antes de mexer:
+
+| o que | antes | depois |
+|---|---|---|
+| projetos no retrato enviado | 3 | **24** |
+| com framework ligado, visíveis | 1 | **9** |
+| projetos com framework que somem | 11 | **0** |
+| a pasta pessoal dele posando de projeto | sim | não |
+
+A causa era o desenho: `frameworkDaqui()` deduzia a lista de projetos dos `cwd`
+dos **jobs de background**, e ele trabalha em sessão INTERATIVA (3 jobs contra 12
+sessões). É o CC-124 pela terceira vez, com a regra já escrita no `CLAUDE.md`
+("quem lê agente lê pelas DUAS fontes") e um módulo novo que não a seguiu.
+
+Passa a sair da lista de projetos da máquina; os jobs continuam entrando para
+pegar projeto fora das pastas configuradas, mas só quando há `.framework` acima
+deles, que é a guarda contra o lixo. **Custo medido antes de trocar**, porque o
+desenho antigo se justificava por ele: 3,2ms + 2,9ms contra os 6,6ms da versão
+que se dizia barata, num ciclo de 30 segundos.
+
+### CC-438 🔴 30/08: a síntese pelo opencode provavelmente não funciona no Windows
+
+Achado ao unificar, e não é do teste. `pedir()`, em `src/sintese.mjs`, chama
+`spawn(exe, [...])` **sem `shell` e sem `cmd.exe`**, e essa forma nunca sobe um
+`.cmd`. Está nas armadilhas do `CLAUDE.md` desde o CC-29.
+
+Como o opencode é instalado por npm, o que `acharOpencode()` devolve no Windows
+**é** um `.cmd`. O caso do gate que provava o caminho inteiro passou a ser pulado
+aqui, dizendo o motivo, porque um verde que não prova nada seria pior.
+
+**Quem pegar:** o conserto é o padrão de `lancarComando`, invocar `cmd.exe` como
+executável com `/c` e cada argumento separado, nunca `shell: true` com texto
+livre.
+
 ## ▶ Conserto solto, 26/08: a trava pedia autorização sem ter onde clicar
 
 ### CC-361 ✅ 26/08: o framework pedia autorização e não havia onde clicar

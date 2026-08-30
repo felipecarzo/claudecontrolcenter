@@ -74,6 +74,59 @@ const die = (msg) => {
   process.exit(1)
 }
 
+/**
+ * CC-352, a parte do PC: o instalador PERGUNTA onde ficam os projetos.
+ *
+ * Pedido dele em 25/08, com todas as letras: *"é importante que o cockpit
+ * pergunte onde vai ser a pasta de projetos (…) quando ela instala, e no
+ * instalador"*. Até aqui a pasta era só adivinhada pelos diretórios dos jobs, e
+ * não havia lugar nenhum onde ele escolhesse.
+ *
+ * Duas guardas, e as duas vieram de erro conhecido deste projeto:
+ *
+ * 1. **Só pergunta em terminal de verdade** (`isTTY`). O instalador também roda
+ *    de script e da tarefa agendada, e comando que espera resposta ali trava
+ *    para sempre sem nada na tela — é o mesmo formato do servidor de background
+ *    que ficou 11 horas vivo.
+ * 2. **Nunca insiste, e nunca apaga.** Quem já escolheu não é perguntado de
+ *    novo; quem não responde fica com a pasta adivinhada, que é o que já
+ *    funcionava. Instalador que exige resposta para terminar é instalador que
+ *    ele cancela.
+ */
+async function perguntarPastas() {
+  const escolhidas = install.basesEscolhidas()
+  if (escolhidas.length) {
+    console.log(`\n  pastas de projeto já escolhidas: ${escolhidas.join(', ')}`)
+    console.log('  mudar depois: pelo ícone na barra de tarefas, ou `cc pastas`\n')
+    return
+  }
+  const adivinhadas = install.projectsBases()
+  const sugestao = adivinhadas[0] || null
+
+  if (!process.stdin.isTTY) {
+    console.log('\n  onde ficam os seus projetos: ' + (sugestao ? `adivinhei ${sugestao}` : 'ainda não sei'))
+    console.log('  escolher de verdade: pelo ícone na barra de tarefas, ou `cc pastas adicionar "<caminho>"`\n')
+    return
+  }
+
+  const readline = await import('node:readline/promises')
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  try {
+    console.log('\n  Onde ficam os seus projetos?')
+    if (sugestao) console.log(`  (deixe em branco para usar ${sugestao}, que foi o que eu adivinhei)`)
+    console.log('  Pode responder mais de uma pasta, separadas por ponto e vírgula.')
+    const resposta = (await rl.question('  pasta(s): ')).trim()
+    if (!resposta) { console.log('  fica a adivinhada. Dá para mudar depois pelo ícone na barra de tarefas.\n'); return }
+    for (const p of resposta.split(';').map((s) => s.trim()).filter(Boolean)) {
+      const r = install.adicionarBase(p)
+      console.log(r.ok ? `  ok: ${p}` : `  não deu: ${r.erro}`)
+    }
+    console.log('')
+  } finally {
+    rl.close()
+  }
+}
+
 switch (cmd) {
   case 'set': {
     if (!isEnabled()) process.exit(0) // desligado: no-op silencioso, de propósito
@@ -918,6 +971,13 @@ switch (cmd) {
         if (nome) mvp.nome = nome
         if (criterio) mvp.criterios = [...(mvp.criterios || []), { texto: criterio, feito: false }]
         D.gravar(r, { ...e, mvp })
+        /* CC-45: avisa, não recusa. Recusar quebraria o uso legítimo dele
+           corrigindo o próprio MVP, e o caminho de recuperação quando a
+           entrevista trava. Mas o defeito que originou o ticket foi um agente
+           preenchendo os 7 critérios sozinho, então o aviso existe para o
+           agente que chegou aqui pelo caminho errado. */
+        console.log('\n⚠️  se isto não veio de uma resposta DELE, pare: o MVP não é seu para escrever.')
+        console.log('   entreviste com: cc framework entrevista\n')
         mostrar(r)
         break
       }
@@ -1127,6 +1187,7 @@ switch (cmd) {
   case 'daemon': {
     switch (arg) {
       case 'install': {
+        await perguntarPastas()
         const r = daemon.install({ port })
         const up = await daemon.ensureUp(port)
         console.log(`autostart: ${r.vbs}`)
@@ -1152,6 +1213,7 @@ switch (cmd) {
       case 'servico': {
         const P = await import('./src/platform.mjs')
         if (!P.ehWindows) die('por enquanto só no Windows. Na VPS quem supervisiona é o systemd.')
+        await perguntarPastas()
         const alvoScript = (await import('node:url')).fileURLToPath(import.meta.url)
         const r = P.instalarServicoWindows({ node: process.execPath, script: alvoScript, porta: port })
         if (!r.ok) die(`não deu: ${r.erro}`)
@@ -1282,6 +1344,67 @@ switch (cmd) {
     const up = await daemon.ensureUp(port)
     daemon.openBrowser(up.url)
     console.log(up.url)
+    break
+  }
+
+  /**
+   * CC-352, a parte do PC: onde ficam os projetos DELE, e são várias pastas.
+   *
+   * Palavras dele em 25/08: *"é importante que o cockpit pergunte onde vai ser
+   * a pasta de projetos (…) e ela pode adicionar múltiplas pastas também, caso
+   * ela goste de trabalhar com projetos de música, projetos de outras coisas"*.
+   *
+   * Até aqui a pasta era só DESCOBERTA pelos diretórios dos jobs, com
+   * `CC_PROJECTS_BASE` forçando quando preciso, e não havia lugar nenhum onde
+   * ele escolhesse. Este comando é esse lugar no terminal; a bandeja
+   * (`src/bandeja.ps1`) chama daqui, e o instalador pergunta na primeira vez.
+   */
+  case 'pastas': {
+    const sub = arg
+    // positional[0] é o próprio comando ("pastas"), [1] é o subcomando (`arg`)
+    const alvo = positional[2]
+
+    const mostrar = () => {
+      const escolhidas = install.basesEscolhidas()
+      const valendo = install.projectsBases()
+      console.log('')
+      if (escolhidas.length) {
+        console.log('  as suas pastas de projeto:')
+        for (const p of escolhidas) {
+          const some = fs.existsSync(p) ? '' : '   (não existe agora — disco desligado?)'
+          console.log(`    ${p}${some}`)
+        }
+      } else {
+        console.log('  você ainda não escolheu nenhuma pasta.')
+        console.log(`  por enquanto o painel adivinha pelos projetos onde você já rodou agente:`)
+        for (const p of valendo) console.log(`    ${p}`)
+      }
+      if (process.env.CC_PROJECTS_BASE) {
+        console.log(`\n  a variável CC_PROJECTS_BASE também está valendo: ${process.env.CC_PROJECTS_BASE}`)
+      }
+      console.log(`\n  adicionar: node cc.mjs pastas adicionar "D:\\caminho\\da\\pasta"`)
+      console.log(`  remover:   node cc.mjs pastas remover "D:\\caminho\\da\\pasta"\n`)
+    }
+
+    if (!sub) { mostrar(); break }
+    if (sub === 'adicionar') {
+      if (!alvo) die('uso: node cc.mjs pastas adicionar "<caminho da pasta>"')
+      const r = install.adicionarBase(alvo)
+      if (!r.ok) die(r.erro)
+      console.log(r.jaTinha ? 'essa pasta já estava na lista' : `pasta adicionada: ${path.resolve(alvo)}`)
+      mostrar()
+      break
+    }
+    if (sub === 'remover') {
+      if (!alvo) die('uso: node cc.mjs pastas remover "<caminho da pasta>"')
+      const r = install.removerBase(alvo)
+      if (!r.ok) die(r.erro)
+      console.log(`pasta removida: ${path.resolve(alvo)}`)
+      if (r.voltouPraAutomatico) console.log('a lista ficou vazia, então o painel volta a adivinhar sozinho')
+      mostrar()
+      break
+    }
+    die('uso: node cc.mjs pastas [adicionar|remover] "<caminho>"')
     break
   }
 

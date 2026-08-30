@@ -142,14 +142,74 @@ if (modo.sugereFrentes) {
   } catch { /* sem roadmap.mjs ou sem docs/ROADMAP.md: modo sugestivo sem o que sugerir, fica calado */ }
 }
 
-const p = F.proximaPergunta(estado.metodo, estado)
-if (p) {
-  linhas.push('', `PERGUNTE AO FELIPE ANTES DE SEGUIR, "${p.pergunta}"`)
-  linhas.push(`(${p.ajuda})`)
-  linhas.push('Use AskUserQuestion com estas opções, que vêm do catálogo do framework:')
-  for (const o of p.opcoes) linhas.push(`  - ${o.label}: ${o.descricao}`)
-  linhas.push('A resposta livre é automática, não invente uma opção "outro".')
-  linhas.push(`Resolve a pendência: ${p.falta}`)
+/**
+ * CC-45, 30/08: a pergunta de abertura passa a vir da ENTREVISTA.
+ *
+ * `src/entrevista.mjs` está pronta e testada desde o CC-133, com 12 perguntas
+ * que se reescrevem conforme as respostas. Ela tinha dois consumidores, a linha
+ * de comando e o painel, e **nenhum do lado do agente**: a palavra "entrevista"
+ * não aparecia em nada que um agente leia sozinho. Aqui a pergunta vinha de
+ * `F.proximaPergunta`, o formulário plano de 4 perguntas que a entrevista veio
+ * substituir.
+ *
+ * O custo disso foi medido: um agente abriu o `reunion`, escreveu o código
+ * todo, e depois preencheu o MVP sozinho com 7 critérios que ele mesmo
+ * inventou. Nada o impediu, e o Felipe só percebeu depois, perguntando por que
+ * não tinha sido entrevistado.
+ *
+ * Três detalhes que não podem ser perdidos numa revisão:
+ *
+ * 1. **`.catch(() => null)`, nunca `sair`.** Entrevista quebrada não pode
+ *    apagar o resto do contexto que este hook injeta (modo, tom, frentes).
+ * 2. **`q.opcoes || []`.** Cinco das doze perguntas não têm opções, e iterar
+ *    sem guarda quebraria justamente nelas.
+ * 3. **A condição.** Só perguntamos com o MVP vazio OU com a entrevista já
+ *    começada. Sem a primeira metade, todo projeto com framework ligado abriria
+ *    sessão com "O que é este projeto?"; sem a segunda, a entrevista pararia
+ *    sozinha na pergunta 9, quando o primeiro critério é gravado e o MVP deixa
+ *    de estar vazio.
+ *
+ * O formulário antigo continua no `else`, e não é sobra: ele cobre a pendência
+ * de FECHAMENTO ("os critérios que faltam ainda valem?"), que o roteiro da
+ * entrevista, sobre definição, não tem.
+ */
+const daEntrevista = await (async () => {
+  const E = await import(urlDeModulo(AQUI, '../src/entrevista.mjs')).catch(() => null)
+  if (!E) return null
+  const q = E.proxima(estado)
+  if (!q) return null
+  const semMvp = !(estado?.mvp?.criterios || []).length || !(estado?.mvp?.nome || '').trim()
+  const comecada = E.progresso(estado).feitas > 0
+  return semMvp || comecada ? q : null
+})()
+
+if (daEntrevista) {
+  const q = daEntrevista
+  linhas.push('', `PERGUNTE AO FELIPE ANTES DE SEGUIR, "${q.pergunta}"`)
+  if (q.ajuda) linhas.push(`(${q.ajuda})`)
+  linhas.push(`Entrevista de definição, pergunta ${q.feitas + 1} de ${q.total}. UMA por vez:`
+    + ' quatro perguntas juntas viram formulário, e formulário é o que ele não lê.')
+  const opcoes = q.opcoes || []
+  if (opcoes.length) {
+    linhas.push('Use AskUserQuestion com estas opções, que vêm do roteiro:')
+    for (const o of opcoes) linhas.push(`  - ${o.label}: ${o.descricao}`)
+    linhas.push('A resposta livre é automática, não invente uma opção "outro".')
+  } else {
+    linhas.push('Esta pergunta não tem lista de opções: pergunte aberto e guarde as palavras dele.')
+  }
+  linhas.push(`Grave a resposta com: cc framework entrevista responder "<o que ele respondeu>"`)
+  linhas.push('NÃO preencha o MVP sozinho, nem invente critério de pronto.'
+    + ' Um agente já fez isso e é exatamente o que este framework existe para impedir.')
+} else {
+  const p = F.proximaPergunta(estado.metodo, estado)
+  if (p) {
+    linhas.push('', `PERGUNTE AO FELIPE ANTES DE SEGUIR, "${p.pergunta}"`)
+    linhas.push(`(${p.ajuda})`)
+    linhas.push('Use AskUserQuestion com estas opções, que vêm do catálogo do framework:')
+    for (const o of p.opcoes || []) linhas.push(`  - ${o.label}: ${o.descricao}`)
+    linhas.push('A resposta livre é automática, não invente uma opção "outro".')
+    linhas.push(`Resolve a pendência: ${p.falta}`)
+  }
 }
 
 process.stdout.write(`${linhas.join('\n')}\n`)

@@ -8,8 +8,8 @@
  */
 import assert from 'node:assert'
 import {
-  METODOS, PREDICADOS, SEMPRE_LIVRE, avaliar, avancar, casa,
-  estadoInicial, mudarEscopo, podeEditar, resumo,
+  CODIGO, METODOS, PREDICADOS, SEMPRE_LIVRE, TRAVA_CODIGO,
+  avaliar, avancar, casa, estadoInicial, mudarEscopo, podeEditar, resumo,
 } from './src/framework.mjs'
 
 let n = 0
@@ -25,6 +25,22 @@ assert.equal(casa('*', 'src/jobs.mjs'), false, '* não desce pasta')
 assert.equal(casa('src/**', ''), false)
 assert.equal(casa('src/**', 'src\\jobs.mjs'), true, 'caminho do Windows')
 ok('casamento de caminho, inclusive barra invertida')
+
+// CC-45: padrão de raiz COM extensão. O `'*'` sozinho virou um caso particular
+// disto, e é o que permitiu trocar o buraco do SEMPRE_LIVRE por lista explícita.
+assert.equal(casa('*.json', 'package.json'), true)
+assert.equal(casa('*.json', 'src/a.json'), false, 'padrão de raiz não desce pasta')
+assert.equal(casa('*.config.*', 'tailwind.config.ts'), true)
+assert.equal(casa('*.config.*', 'tailwind.ts'), false)
+assert.equal(casa('.*', '.gitignore'), true)
+assert.equal(casa('.*', 'gitignore'), false, 'o ponto é literal, não "qualquer caractere"')
+assert.equal(casa('test*.mjs', 'test-ui.mjs'), true)
+assert.equal(casa('test*.mjs', 'src/test-ui.mjs'), false)
+// dado que vem do disco passa por aqui (`estado.autorizado`): metacaractere não
+// pode virar regex por acidente
+assert.equal(casa('a+b.mjs', 'aab.mjs'), false, 'o + é literal')
+assert.equal(casa('a+b.mjs', 'a+b.mjs'), true)
+ok('CC-45: padrão de raiz com extensão, e metacaractere tratado como letra')
 
 // ------------------------------------------------------------------ estado
 const vazio = estadoInicial()
@@ -47,10 +63,57 @@ assert.equal(g1.ok, false, 'código sem MVP tem que travar')
 assert.equal(g1.pendencias.length, 2)
 ok('sem MVP, código é travado, com as duas pendências nomeadas')
 
-for (const livre of ['docs/HANDOFF.md', 'assets/img/a.png', '.framework/estado.json', 'package.json']) {
+for (const livre of [
+  'docs/HANDOFF.md', 'assets/img/a.png', '.framework/estado.json',
+  // configuração e texto da raiz
+  'package.json', 'README.md', '.gitignore', 'tailwind.config.ts', 'Dockerfile',
+  'pnpm-lock.yaml', 'pyproject.toml',
+  // teste é PROVA, o oposto do que este gate previne
+  'test-framework.mjs', 'test-ui.mjs', 'algo.test.ts',
+  // atalho de lançamento: decisão dele em 30/08 sobre o GRAVAR.bat do reunion
+  'GRAVAR.bat', 'subir.sh',
+]) {
   assert.equal(podeEditar('mvp-basico', vazio, livre).ok, true, `${livre} tinha que passar`)
 }
-ok('docs, assets, o próprio estado e a raiz nunca travam')
+ok('docs, assets, o estado, e configuração/teste/atalho da raiz nunca travam')
+
+/* CC-45, o bloco que prova o conserto. Antes disto o `SEMPRE_LIVRE` tinha `'*'`,
+   e `podeEditar` o consulta ANTES de perfil, modo e fase: projeto que guarda
+   código na raiz era estruturalmente incapaz de travar qualquer coisa. Foi como
+   um agente escreveu o `reunion` inteiro e inventou os critérios de pronto
+   sozinho. A asserção antiga ("a raiz nunca trava") afirmava a coisa certa
+   (configuração passa) pelo motivo errado. */
+for (const codigo of ['index.js', 'app.py', 'server.mjs', 'main.go', 'index.html']) {
+  assert.equal(podeEditar('mvp-basico', vazio, codigo).ok, false,
+    `${codigo} na raiz tinha que travar com o MVP vazio`)
+}
+ok('CC-45: código na raiz trava sem MVP, em projeto de app único')
+
+const prontoRaiz = {
+  ...vazio, fase: 'execucao',
+  mvp: { nome: 'x', criterios: [{ texto: 'a', feito: true }] },
+}
+assert.equal(podeEditar('mvp-basico', prontoRaiz, 'index.js').ok, true,
+  'com o MVP definido a raiz libera: o gate cobra definição, não obediência')
+// o MODO é outra pergunta que o `CODIGO` responde, e ele também aprendeu a raiz
+assert.equal(podeEditar('mvp-basico', { ...prontoRaiz, modo: 'sugestivo' }, 'index.js').ok, false)
+assert.equal(podeEditar('mvp-basico', { ...prontoRaiz, modo: 'sugestivo' }, 'package.json').ok, true)
+ok('CC-45: com MVP a raiz libera, e o modo sugestivo volta a travá-la')
+
+/* Integridade, e é o que impede o furo de voltar em silêncio — foi exatamente
+   assim que ele nasceu, um `'*'` sem porquê escrito ao lado. */
+assert.ok(!SEMPRE_LIVRE.includes('*'),
+  'o `*` sozinho libera a raiz inteira antes de qualquer trava: nunca devolver')
+assert.ok(TRAVA_CODIGO.includes('*'), 'a fase precisa alcançar a raiz')
+assert.ok(CODIGO.includes('*'), 'o modo precisa alcançar a raiz')
+for (const M of Object.values(METODOS)) {
+  for (const f of M.fases) {
+    if (!(f.trava || []).includes('src/**')) continue
+    assert.ok(f.trava.includes('*'),
+      `a fase ${M.id}/${f.id} trava src/** e não trava a raiz: projeto de app único escapa dela`)
+  }
+}
+ok('CC-45: toda fase que trava src/** também trava a raiz')
 
 // método desconhecido e estado corrompido LIBERAM: framework que trava por bug
 // próprio é desligado no mesmo dia

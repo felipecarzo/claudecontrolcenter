@@ -97,9 +97,12 @@ ${veredito.motivoModo}
 Neste modo, escrever código exige autorização explícita do Felipe. Enquanto ela
 não vier, o caminho é perguntar, não decidir sozinho.
 
-Como sair daqui:
-  - ele autoriza pelo painel, ou
-  - o modo volta para "dialogo" em ${raiz}/.framework/estado.json
+Como sair daqui, e as duas saídas são DELE, não suas:
+  - ele autoriza pelo painel, no cartão do projeto, ou
+  - ele troca o modo do projeto ("cc framework modo <nome> --projeto")
+
+Editar o modo em ${raiz}/.framework/estado.json por conta própria é desligar a
+trava que ele ligou. É a mesma família do que o CC-45 consertou aqui embaixo.
 
 Documentação, backlog e o próprio estado continuam livres: é o que a conversa
 produz, e travar isso tornaria impossível registrar a decisão.
@@ -116,9 +119,22 @@ ${a.explica}
 Falta:
 ${veredito.pendencias.map((p) => `  - ${p}`).join('\n')}
 
-Como sair daqui: registre o MVP em ${raiz}/.framework/estado.json, no campo
-"mvp" (nome, e a lista "criterios" com o texto de cada critério de pronto).
-Depois avance a fase com "avancar" do motor, ou escrevendo "fase": "execucao".
+Como sair daqui: ENTREVISTE o Felipe. Rode
+
+  cc framework entrevista
+
+e faça a pergunta que ele devolver, UMA por vez, no AskUserQuestion, com as
+opções que vierem do roteiro. Grave cada resposta com
+
+  cc framework entrevista responder "<o que ele respondeu>"
+
+NÃO preencha o MVP sozinho, e não invente critério de pronto: um agente já fez
+exatamente isso, com 7 critérios que ele mesmo escreveu, e é o que este gate
+existe para impedir. Se ele mandar registrar direto, "cc framework mvp" aceita.
+
+Se o arquivo travado aqui for configuração da raiz e não código de produto, o
+lugar de resolver é a lista SEMPRE_LIVRE em src/framework.mjs: acrescente o
+padrão dele, com o porquê ao lado.
 
 Este é o gate de MVP. Ele não julga se o MVP é bom, só confere se ele existe.
 Desligar no projeto: apague a pasta .framework.`)

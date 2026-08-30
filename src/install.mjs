@@ -8,7 +8,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readJobs, PROJECT_DIRS } from './jobs.mjs'
-import { readConfig } from './config.mjs'
+import { readConfig, setPastasDeProjeto } from './config.mjs'
 import { ehWindows } from './platform.mjs'
 
 const START = '<!-- control-center:start -->'
@@ -55,6 +55,59 @@ export function projectsBases() {
 /** A primeira das pastas, para quem só sabe lidar com uma. */
 export function projectsBase() {
   return projectsBases()[0] || null
+}
+
+/** Só as que foram ESCOLHIDAS, sem a descoberta automática nem a variável de
+ *  ambiente. É o que a bandeja e o instalador mostram como "as suas pastas":
+ *  misturar a adivinhada com a escolhida faria ele apagar uma linha e ela
+ *  voltar sozinha na leitura seguinte. */
+export function basesEscolhidas(cfg = readConfig()) {
+  if (Array.isArray(cfg.projectsBases)) return cfg.projectsBases
+  return cfg.projectsBase ? [cfg.projectsBase] : []
+}
+
+/**
+ * CC-352, a parte do PC: acrescenta uma pasta à lista.
+ *
+ * A gravação é `setPastasDeProjeto`, de `config.mjs`, a MESMA que a tela usa
+ * desde 27/08. Duas funções escrevendo o mesmo campo seriam duas verdades sobre
+ * onde os projetos moram, que é o defeito que este painel já pagou várias
+ * vezes. O que existe aqui é o acrescentar e o tirar, que a tela não precisa
+ * (ela manda a lista inteira de uma vez) e que o terminal, a bandeja e o
+ * instalador precisam.
+ *
+ * ⚠️ **A semeadura não é detalhe.** Enquanto nada foi escolhido, a leitura cai
+ * na descoberta pelos jobs. Se a primeira pasta acrescentada virasse a lista
+ * inteira, escolher "projetos de música" APAGARIA a pasta de trabalho que
+ * funcionava, e o sintoma seria o painel esvaziando sem erro nenhum. Por isso a
+ * primeira escolha começa com o que já estava valendo.
+ */
+export function adicionarBase(caminho) {
+  const bruto = String(caminho || '').trim()
+  if (!bruto) return { ok: false, erro: 'sem caminho' }
+  const p = path.resolve(bruto)
+  if (!fs.existsSync(p)) return { ok: false, erro: `essa pasta não existe: ${p}` }
+  try {
+    if (!fs.statSync(p).isDirectory()) return { ok: false, erro: `isso não é uma pasta: ${p}` }
+  } catch { return { ok: false, erro: `não consegui ler: ${p}` } }
+
+  const escolhidas = basesEscolhidas()
+  const partida = escolhidas.length ? escolhidas : projectsBases()
+  if (partida.some((x) => path.resolve(x) === p)) {
+    return { ok: true, jaTinha: true, bases: setPastasDeProjeto(partida) }
+  }
+  return { ok: true, jaTinha: false, bases: setPastasDeProjeto([...partida, p]) }
+}
+
+/** Tira uma pasta da lista. Lista vazia volta para a descoberta automática, e
+ *  quem chama precisa dizer isso: sumir sem aviso pareceria dado perdido. */
+export function removerBase(caminho) {
+  const p = path.resolve(String(caminho || '').trim())
+  const escolhidas = basesEscolhidas()
+  const partida = escolhidas.length ? escolhidas : projectsBases()
+  const ficam = partida.filter((x) => path.resolve(x) !== p)
+  if (ficam.length === partida.length) return { ok: false, erro: `essa pasta não estava na lista: ${p}` }
+  return { ok: true, bases: setPastasDeProjeto(ficam), voltouPraAutomatico: ficam.length === 0 }
 }
 
 export function detectarBase(jobs = readJobs()) {

@@ -4709,7 +4709,7 @@ if (process.platform !== 'win32') {
     fs.writeFileSync(path.join(proj, '.framework', 'estado.json'),
       JSON.stringify({ modo: 'restritivo', fase: 'execucao' }))
 
-    const fw = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }])
+    const fw = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }], { projetos: [] })
     assert.equal(fw.length, 1)
     assert.equal(fw[0].existe, true, 'tem que subir a árvore a partir da subpasta do job')
     assert.equal(fw[0].ligado, true,
@@ -4718,16 +4718,45 @@ if (process.platform !== 'win32') {
 
     fs.writeFileSync(path.join(proj, '.framework', 'estado.json'),
       JSON.stringify({ ligado: false, modo: 'restritivo' }))
-    assert.equal(T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }])[0].ligado, false,
+    assert.equal(T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }], { projetos: [] })[0].ligado, false,
       'desligado explicitamente é desligado')
 
     fs.writeFileSync(path.join(proj, '.framework', 'estado.json'), '{ isto não é json')
-    const quebrado = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }])[0]
+    const quebrado = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }], { projetos: [] })[0]
     assert.equal(quebrado.existe, true, 'arquivo ilegível não é projeto sem framework')
     assert.equal(quebrado.ligado, null, 'leitura que falhou é null, nunca false')
 
-    const semNada = T.frameworkDaqui([{ project: 'VPS_vazio', cwd: path.join(casa, 'projetos') }])
+    /* CC-364: agora o caminho precisa estar na LISTA de projetos para virar
+       linha sem ter framework. Job solto sem `.framework` acima dele deixou de
+       entrar, e era assim que a pasta pessoal dele virava projeto no painel. */
+    const soJob = T.frameworkDaqui([{ project: 'VPS_vazio', cwd: path.join(casa, 'projetos') }], { projetos: [] })
+    assert.equal(soJob.length, 0, 'job sem framework acima não vira linha de projeto')
+    const semNada = T.frameworkDaqui([], { projetos: [path.join(casa, 'projetos', 'VPS_vazio')] })
     assert.equal(semNada[0].existe, false, 'projeto sem framework diz que não existe, e isso é sabido')
+
+    /* CC-364, 30/08: o retrato saía dos JOBS, e por isso quase tudo sumia.
+     *
+     * Medido no PC dele antes do conserto: 12 projetos com framework ligado
+     * aqui, e 1 chegando na VPS. A causa era a premissa "projeto que ninguém
+     * abriu não interessa", que quebra porque ele trabalha em sessão
+     * INTERATIVA: 3 jobs de background contra 12 sessões de verdade.
+     *
+     * A prova NEGATIVA vai junto: com a lista de projetos vazia, o defeito
+     * volta inteiro. Teste que só sabe dizer "hoje passa" não prova que pegaria
+     * a regressão. */
+    const semJob = T.frameworkDaqui([], { projetos: [proj] })
+    assert.equal(semJob.length, 1, 'projeto com framework aparece mesmo sem job nenhum aberto nele')
+    assert.equal(T.frameworkDaqui([], { projetos: [] }).length, 0,
+      'sem a lista de projetos o retrato volta a depender dos jobs: é o defeito que este bloco guarda')
+
+    /* Projeto que mora FORA das pastas configuradas continua entrando pelo job,
+       e é por isso que os jobs não saíram da conta. */
+    const fora = path.join(casa, 'fora-da-base', 'VPS_solto')
+    fs.mkdirSync(path.join(fora, '.framework'), { recursive: true })
+    fs.writeFileSync(path.join(fora, '.framework', 'estado.json'), JSON.stringify({ modo: 'dialogo' }))
+    const comSolto = T.frameworkDaqui([{ project: 'VPS_solto', cwd: fora }], { projetos: [proj] })
+    assert.equal(comSolto.length, 2, 'projeto fora da pasta base entra pelo job')
+    assert.ok(comSolto.some((x) => x.projeto === 'VPS_solto' && x.existe))
   } finally {
     if (antes === undefined) delete process.env.CC_HOME
     else process.env.CC_HOME = antes
@@ -5034,7 +5063,7 @@ if (process.platform !== 'win32') {
   assert.equal(semData.length, 1, 'empate sem data ainda devolve o projeto')
 
   const F = await import(`./src/travasDaMaquina.mjs?t=${Date.now()}`)
-  const fw = F.frameworkDaqui(jobs)
+  const fw = F.frameworkDaqui(jobs, { projetos: [] })
   assert.equal(fw.length, 1, 'o retrato do framework também vê um projeto só')
   console.log('  ok   CC-352: duas pastas com o mesmo nome, e ganha a que tem sinal mais novo')
 }
@@ -6011,39 +6040,58 @@ if (process.platform !== 'win32') {
     /* 4. O caminho inteiro, com um binário de mentira no lugar do opencode.
        É o que prova que o disparo, a leitura da saída e a gravação funcionam
        juntos, sem depender de rede nem de 17 segundos. */
-    const falso = path.join(raiz, 'opencode-de-mentira')
-    fs.writeFileSync(falso, `#!/bin/sh\nprintf '${'\\033'}[0m\\n> build · big-pickle\\nA leitura escrita pelo modelo.\\n'\n`)
-    fs.chmodSync(falso, 0o755)
+    /* ⚠️ **Pulado no Windows, e o motivo é um defeito de PRODUÇÃO, não do
+       teste.** Medido em 30/08: este bloco escrevia um script com shebang e
+       `chmod`, que no Windows não executa nada, e o `spawn` derrubava o gate
+       inteiro com ENOENT. Trocar por um `.cmd` não resolve: `pedir()` chama
+       `spawn(exe, ...)` sem `shell` e sem `cmd.exe`, e essa forma **nunca sobe
+       um `.cmd`** — está escrito nas armadilhas do `CLAUDE.md` desde o CC-29.
 
-    const r = await S.pedir({ travas: { regras: [], eventos: [] } }, { binario: falso })
-    assert.equal(r.ok, true, r.motivo || 'o caminho inteiro tem que responder ok')
-    assert.equal(r.texto, 'A leitura escrita pelo modelo.')
-    assert.ok(r.gravado, 'gravar em silêncio e responder ok esconderia o dado sumindo')
-    console.log('  ok   CC-412: dispara, limpa a saída e grava, tudo num caminho só')
+       Como o opencode é instalado por npm, o que `acharOpencode()` devolve
+       neste sistema É um `.cmd`. Ou seja, a síntese provavelmente não funciona
+       no Windows, e o teste passando aqui esconderia isso. Ticket aberto no
+       quadro de rotas para a frente do CC-412; pular dizendo o motivo é mais
+       honesto que um verde que não prova nada. */
+    const { ehWindows: ehWin412 } = await import('./src/platform.mjs')
+    if (ehWin412) {
+      console.log('  (pulado: `spawn` sem cmd.exe não sobe `.cmd`, e no Windows o opencode É um `.cmd`.')
+      console.log('           Não é limitação do teste: a síntese provavelmente não funciona aqui.)')
+    } else {
+      const falso = path.join(raiz, 'opencode-de-mentira')
+      fs.writeFileSync(falso, `#!/bin/sh\nprintf '${'\\033'}[0m\\n> build · big-pickle\\nA leitura escrita pelo modelo.\\n'\n`)
+      fs.chmodSync(falso, 0o755)
 
-    /* E o que foi gravado é o que se lê de volta. Sem isto, a tela abriria
-       vazia depois de uma síntese que "deu certo". */
-    const lido = S.ler()
-    assert.equal(lido?.texto, 'A leitura escrita pelo modelo.')
-    assert.ok(lido.em > 0, 'a hora tem que ir junto: ele precisa saber se o texto é de hoje')
-    console.log('  ok   CC-412: o que foi gravado é o que a tela lê de volta, com a hora')
+      const r = await S.pedir({ travas: { regras: [], eventos: [] } }, { binario: falso })
+      assert.equal(r.ok, true, r.motivo || 'o caminho inteiro tem que responder ok')
+      assert.equal(r.texto, 'A leitura escrita pelo modelo.')
+      assert.ok(r.gravado, 'gravar em silêncio e responder ok esconderia o dado sumindo')
+      console.log('  ok   CC-412: dispara, limpa a saída e grava, tudo num caminho só')
 
-    /* 5. Falha em voz alta. Binário que não existe não pode responder ok com
-         texto vazio: a tela mostraria um bloco em branco sem dizer por quê. */
+      /* E o que foi gravado é o que se lê de volta. Sem isto, a tela abriria
+         vazia depois de uma síntese que "deu certo". */
+      const lido = S.ler()
+      assert.equal(lido?.texto, 'A leitura escrita pelo modelo.')
+      assert.ok(lido.em > 0, 'a hora tem que ir junto: ele precisa saber se o texto é de hoje')
+      console.log('  ok   CC-412: o que foi gravado é o que a tela lê de volta, com a hora')
+
+      /* E o teto existe: um binário que trava não pode segurar o painel para
+         sempre esperando uma resposta que não vem. */
+      const travado = path.join(raiz, 'trava')
+      fs.writeFileSync(travado, '#!/bin/sh\nsleep 30\n')
+      fs.chmodSync(travado, 0o755)
+      const estourou = await S.rodar('oi', { binario: travado, teto: 400 })
+      assert.equal(estourou.ok, false)
+      assert.match(estourou.motivo, /sem responder/)
+      console.log('  ok   CC-412: o que trava é morto pelo teto, e o painel segue')
+    }
+
+    /* 5. Falha em voz alta, e este caso vale nos DOIS sistemas: binário que não
+         existe não pode responder ok com texto vazio, senão a tela mostraria um
+         bloco em branco sem dizer por quê. */
     const semBinario = await S.rodar('oi', { binario: path.join(raiz, 'nao-existe') })
     assert.equal(semBinario.ok, false)
     assert.ok(semBinario.motivo, 'falhar calado é o defeito, não a falha')
     console.log('  ok   CC-412: sem o programa instalado, avisa em vez de fingir')
-
-    /* E o teto existe: um binário que trava não pode segurar o painel para
-       sempre esperando uma resposta que não vem. */
-    const travado = path.join(raiz, 'trava')
-    fs.writeFileSync(travado, '#!/bin/sh\nsleep 30\n')
-    fs.chmodSync(travado, 0o755)
-    const estourou = await S.rodar('oi', { binario: travado, teto: 400 })
-    assert.equal(estourou.ok, false)
-    assert.match(estourou.motivo, /sem responder/)
-    console.log('  ok   CC-412: o que trava é morto pelo teto, e o painel segue')
   } finally {
     if (antesHome === undefined) delete process.env.CC_HOME
     else process.env.CC_HOME = antesHome

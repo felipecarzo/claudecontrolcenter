@@ -28,13 +28,20 @@ import { spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { fileURLToPath } from 'node:url'
 
 let passou = 0
 const ok = (nome) => { console.log('  ok   ' + nome); passou++ }
 
 const CASA = mkdtempSync(join(tmpdir(), 'cc-quadro-guard-'))
 const BASE = join(CASA, 'projetos')
-const HOOK = new URL('./hooks/quadro-guard.mjs', import.meta.url).pathname
+/* `.pathname` no Windows devolve `/D:/Documentos/...`, com a barra na frente da
+   letra da unidade, e esse caminho não existe: o `spawnSync` abaixo rodava um
+   arquivo inexistente e o teste falhava inteiro, só aqui. Medido em 30/08. É a
+   nona ocorrência do mesmo padrão neste projeto (ver o ponto 6 de
+   `docs/guias/PC-E-VPS.md`), e a regra é sempre a mesma: caminho que atravessa
+   uma fronteira passa por `fileURLToPath`, nunca por `.pathname`. */
+const HOOK = fileURLToPath(new URL('./hooks/quadro-guard.mjs', import.meta.url))
 
 function projeto(nome, roadmap) {
   const dir = join(BASE, nome)

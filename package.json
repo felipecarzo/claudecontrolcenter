@@ -40,7 +40,7 @@
     "postinstall": "node src/postinstall.mjs",
     "start": "node cc.mjs",
     "web": "node cc.mjs --web-only",
-    "test": "node test-anonimizar.mjs && node test-framework.mjs && node test-federacao.mjs && node test-sessoes.mjs && node test-caixa.mjs && node test-rotas.mjs && node test-quadro-guard.mjs && node test-projeto-novo.mjs && node test-central-sessoes.mjs && node test-remoto-conversa.mjs && node test-quebra.mjs && node test-kb-detalhe.mjs && node test-bases.mjs && node test-commit-auto.mjs && node hooks/testar-sincronia-guard.mjs && node test-postinstall.mjs && node test.mjs",
+    "test": "node test-anonimizar.mjs && node test-framework.mjs && node test-federacao.mjs && node test-sessoes.mjs && node test-caixa.mjs && node test-rotas.mjs && node test-quadro-guard.mjs && node test-projeto-novo.mjs && node test-central-sessoes.mjs && node test-remoto-conversa.mjs && node test-quebra.mjs && node test-kb-detalhe.mjs && node test-bases.mjs && node test-pastas.mjs && node test-commit-auto.mjs && node test-hooks-framework.mjs && node hooks/testar-sincronia-guard.mjs && node test-postinstall.mjs && node test.mjs",
     "test:ui": "node test-ui.mjs",
     "test:endereco": "node --experimental-websocket test-endereco.mjs http://127.0.0.1:5180/ && node --experimental-websocket test-endereco.mjs http://127.0.0.1:5180/novo",
     "test:lista": "node --experimental-websocket test-lista-viva.mjs",

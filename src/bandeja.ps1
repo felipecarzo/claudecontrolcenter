@@ -128,6 +128,8 @@ $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $itemAbrir = $menu.Items.Add('Abrir painel')
 $itemReiniciar = $menu.Items.Add('Reiniciar')
 $menu.Items.Add('-') | Out-Null
+$itemPastas = $menu.Items.Add('Adicionar pasta de projetos...')
+$menu.Items.Add('-') | Out-Null
 $itemSair = $menu.Items.Add('Sair')
 $notify.ContextMenuStrip = $menu
 
@@ -135,6 +137,33 @@ $itemAbrir.Add_Click({ Start-Process "$base" }) | Out-Null
 $itemReiniciar.Add_Click({
   try { Invoke-RestMethod -Uri "$base/api/shutdown" -Method Post -TimeoutSec 4 | Out-Null } catch { }
 }) | Out-Null
+# CC-352: o "lá na barra de tarefas vai ter como ela configurar isso" dele.
+#
+# Usa o seletor de pasta do proprio Windows, nao uma caixa de texto: o caminho e
+# digitado errado com facilidade, e o erro so apareceria depois, como painel
+# vazio. Quem grava e o `cc pastas adicionar`, o MESMO caminho do terminal e do
+# instalador, para nao existirem duas contas do que e "a lista de pastas".
+#
+# `-WindowStyle Hidden` nao serve aqui: o dialogo E a janela. E o `node` chamado
+# com o caminho do executavel atual, porque a bandeja pode estar rodando sem o
+# npm global no PATH (a armadilha do `resolverBinario`, ja paga uma vez).
+$itemPastas.Add_Click({
+  try {
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dlg.Description = 'Onde ficam os seus projetos? Pode adicionar mais de uma pasta.'
+    $dlg.ShowNewFolderButton = $false
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+      $escolhida = $dlg.SelectedPath
+      $cc = Join-Path (Split-Path -Parent $PSScriptRoot) 'cc.mjs'
+      $saida = & node $cc pastas adicionar $escolhida 2>&1 | Out-String
+      [System.Windows.Forms.MessageBox]::Show($saida.Trim(), 'Agent Cockpit — pastas de projeto') | Out-Null
+    }
+    $dlg.Dispose()
+  } catch {
+    [System.Windows.Forms.MessageBox]::Show("nao consegui gravar a pasta: $_", 'Agent Cockpit') | Out-Null
+  }
+}) | Out-Null
+
 $itemSair.Add_Click({
   $notify.Visible = $false
   $notify.Dispose()
