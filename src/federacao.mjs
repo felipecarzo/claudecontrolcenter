@@ -508,6 +508,26 @@ export const VALIDADE_PEDIDO_MS = 10 * 60 * 1000
 export const ACOES_DE_PEDIDO = [
   'sessao', 'framework-ligar', 'framework-desligar', 'framework-modo', 'framework-modulo',
   'recado', 'framework-mvp',
+  /* CC-447: o botão de sincronizar passa a alcançar a OUTRA máquina.
+   *
+   * Pergunta dele em 31/08, olhando o vaivém do dia: *"o pc fez algumas coisas
+   * e aqui você fez outras, o pc tá dando um pull lá pra gente baixar aqui,
+   * atualizar e mandar de volta pra lá, tem ideia melhor?"*.
+   *
+   * A peça já existia inteira desde o CC-269 (`src/sincronia.mjs`), com as
+   * travas certas: não commita, recusa se houver arquivo solto, e roda o gate
+   * antes de enviar. O que faltava era alcance — ela só mexia nos projetos da
+   * máquina onde alguém clicava. É a peça construída e inalcançável de novo,
+   * no formato "alcançável só de onde ninguém está".
+   *
+   * ⚠️ **Isto NÃO resolve divergência.** `puxar` usa `merge --ff-only` de
+   * propósito: quando as duas andaram por caminhos diferentes, ele recusa e
+   * devolve "precisa de você". Foi exatamente o caso de 31/08, com 21 commits
+   * de um lado contra 1 do outro. O botão remoto serve para o caso comum, que
+   * é uma ponta atrás da outra; o encontro de dois trabalhos continua sendo
+   * decisão de gente. Prometer mais que isso seria inventar junção sozinho na
+   * máquina dele, e é o acidente que este projeto inteiro existe para evitar. */
+  'sincronia-puxar', 'sincronia-enviar', 'sincronia-ambos',
 ]
 
 /** Teto de critérios num pedido de MVP. O maior MVP real deste PC tem 8, e 40 é

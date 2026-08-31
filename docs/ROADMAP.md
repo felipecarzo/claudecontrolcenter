@@ -680,6 +680,53 @@ posar de trabalhando, mas também não pode desaparecer.
 ⚠️ **A coluna é do quadro, que é da rota `front`.** Quem pegar isto conversa com
 quem estiver no quadro antes de encostar.
 
+### CC-447 ✅ 31/08: sincronizar a outra máquina daqui, com um clique
+
+Pergunta dele em 31/08, olhando o vaivém do dia: *"o pc fez algumas coisas e
+aqui você fez outras, o pc tá dando um pull lá pra gente baixar aqui, atualizar
+e mandar de volta pra lá, tem ideia melhor?"*.
+
+**O que a medição disse antes de qualquer proposta**, porque a primeira leitura
+seria "o vaivém é caro":
+
+- juntar os 21 commits da máquina dele com o 1 daqui deu **zero conflito**;
+- o que quebrou foi outra coisa: um teste novo dele passa lá e falha aqui,
+  porque mede o disco da máquina junto com o código (consertado no commit
+  anterior);
+- e o tempo perdido no dia foi meu, guardando trabalho de lado no meio do
+  caminho e deixando um pacote de 20/08 voltar por cima.
+
+**Ou seja: o vaivém não é o problema. O problema é que ele depende de alguém
+estar na frente de cada máquina.**
+
+**A peça já existia inteira**, desde o CC-269 (`src/sincronia.mjs`): puxa e
+envia sem terminal, **não commita**, recusa quando há arquivo sem salvar, e roda
+o gate antes de enviar. O que faltava era alcance. Ela só mexia nos projetos da
+máquina onde alguém clicava, e é a peça construída e inalcançável de novo, no
+formato mais discreto: alcançável só de onde ninguém está.
+
+Agora a fila da federação carrega `sincronia-puxar`, `sincronia-enviar` e
+`sincronia-ambos`, e o cartão de projeto da outra máquina ganhou **buscar e
+enviar lá**. Quem decide se dá é o motor do lado que executa, mesma doutrina do
+modo e das travas: quem pede está do outro lado da rede e não sabe nem se a
+pasta é um repositório.
+
+⚠️ **Isto NÃO resolve divergência, de propósito.** O puxar usa `merge
+--ff-only`: quando as duas andaram por caminhos diferentes, ele recusa e diz que
+precisa de gente. Foi exatamente o caso de hoje. Prometer mais seria inventar
+junção sozinho no disco dele, que é o acidente de 06/08 que o Routia existe para
+impedir.
+
+**Prova na tela, e ela pegou um erro meu de medição:** a primeira rodada contou
+14 botões em TODAS as telas e eu quase dei por pronto. Eles estavam no
+documento, escondidos junto com a tela onde moram. Medindo depois de ativar cada
+tela: **14 visíveis em Projetos, zero nas outras**, que é o certo. Estar no DOM
+não é estar na tela, e é a diferença entre "foi construído" e "ele alcança".
+
+Junto, uma correção pequena: a rota que enfileira pedidos passou a repassar o
+texto do recado do CC-434, que até aqui só era alcançável por quem chamasse pelo
+terminal.
+
 ### CC-434 ✅ 30/08: um recado que atravessa para a outra máquina
 
 Ele pediu, em 30/08: *"mande um recado pra sessão no pc baixar o que você"*

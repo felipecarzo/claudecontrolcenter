@@ -823,6 +823,28 @@ async function atenderPedidos(pedidos) {
         continue
       }
 
+      if (acao.startsWith('sincronia-')) {
+        /* CC-447: puxar e enviar na máquina de lá, com um clique daqui.
+           O motor é o mesmo `sincronia.mjs` que o botão local usa, e as travas
+           dele valem inteiras: não commita, recusa com arquivo solto, e roda o
+           gate antes de enviar. Decidir aqui, do lado que executa, é a mesma
+           doutrina do modo e da trava — quem pede está do outro lado da rede e
+           não sabe sequer se a pasta é um repositório. */
+        const S = await import('./sincronia.mjs')
+        const qual = acao.slice('sincronia-'.length)
+        const r = qual === 'puxar' ? await S.puxar(dir)
+          : qual === 'enviar' ? await S.enviar(dir)
+            : await S.sincronizar(dir)
+        /* Falha aqui é comum e ESPERADA (arquivo solto, as duas máquinas
+           divergiram, gate vermelho), e cada uma tem uma frase própria. Ela vai
+           inteira para o log, porque este é o único lugar onde alguém vê por
+           que o clique não fez efeito: a fila não devolve resposta a quem
+           pediu. */
+        console.error(`[federação] ${acao} em ${p.projeto}, a pedido de ${p.de || 'outra máquina'}: `
+          + (r?.ok ? `ok${r.etapa ? ` (${r.etapa})` : ''}` : `recusado — ${r?.erro || 'sem motivo'}`))
+        continue
+      }
+
       if (acao === 'recado') {
         /* CC-434: a única ação que não MEXE em nada — ela só entrega texto.
            Vira uma linha em `docs/.recados.json` deste projeto, e quem lê é o
@@ -1240,10 +1262,15 @@ function handler(req, res) {
   /* CC-341: a mesma rota carrega a AÇÃO. Sem `acao` continua sendo "abra uma
      sessão", que é o que a tela já manda hoje. */
   if (url.pathname === '/api/federacao/pedir' && req.method === 'POST') {
-    return comCorpo(req, res, 2e3, ({ maquina, projeto, acao, modo, modulo, ligar }) =>
+    /* CC-434: `texto`, `para` e `tipo` passam a viajar, senão o recado entre
+       máquinas só existe para quem chama pelo terminal — e peça alcançável
+       apenas de onde ninguém está é o defeito que este painel mais repete.
+       Quem valida continua sendo `pedirSessao`, uma conta só. */
+    return comCorpo(req, res, 2e3, ({ maquina, projeto, acao, modo, modulo, ligar, texto, para, tipo }) =>
       pedirSessao({
         paraMaquina: maquina, projeto, acao: acao || 'sessao', modo: modo || null,
         modulo: modulo || null, ligar: typeof ligar === 'boolean' ? ligar : null,
+        texto: texto || null, para: para || null, tipo: tipo || null,
         de: origemLocal().nome,
       }))
   }

@@ -9364,6 +9364,29 @@
            botão, não achou, e não tinha como saber se estava quebrado ou se era
            assim. Espaço vazio não distingue "não existe" de "não consegui", que
            é a família de defeito mais cara deste painel. */
+        /* ── CC-447: sincronizar o repositório DE LÁ, daqui ────────────────
+           Pergunta dele em 31/08, olhando o vaivém do dia: *"o pc tá dando um
+           pull lá pra gente baixar aqui, atualizar e mandar de volta pra lá,
+           tem ideia melhor?"*.
+
+           O botão de puxar e enviar existe desde o CC-269 e só alcançava os
+           projetos da máquina onde alguém clicava. Peça inteira, inalcançável
+           de onde ele está. Aqui ela ganha a outra ponta.
+
+           ⚠️ **O rótulo diz o que acontece, e o título diz o que NÃO
+           acontece.** Este botão não commita nada e recusa quando as duas
+           máquinas andaram por caminhos diferentes: nesse caso é gente que
+           decide, e prometer o contrário seria inventar junção sozinho no disco
+           dele. A resposta demora até 30 segundos e não volta para a tela, por
+           isso o texto muda para "pedido" em vez de fingir confirmação. */
+        + '<div class="cc-mods-rotulo">o repositório em ' + esc(onde) + '</div>'
+        + '<div class="cc-mods">'
+        + '<button type="button" class="btn compacto" data-sinc-remoto="' + esc(p.projeto) + '"'
+        + ' data-sinc-maquina="' + esc(onde) + '"'
+        + ' title="manda ' + esc(onde) + ' buscar o que está no servidor e enviar o que ela já fechou.'
+        + ' Não faz commit, e para sozinho se lá houver arquivo sem salvar ou se as duas máquinas'
+        + ' tiverem andado por caminhos diferentes.">buscar e enviar lá</button>'
+        + '</div>'
         ;
     };
 
@@ -13346,6 +13369,31 @@
        * ar do lado. Aqui é um recado que leva até 30 segundos, e a tela avisa
        * isso na hora, então o passo a mais só atrapalharia. */
       /* CC-346: o filtro de projeto do kambam. */
+
+      /* CC-447: buscar e enviar na máquina de lá. A resposta da fila diz
+         apenas se o PEDIDO entrou, nunca se o git deu certo: quem executa está
+         do outro lado e não responde para cá. Por isso o botão vira "pedido a
+         ..." e volta ao normal sozinho, em vez de anunciar sucesso que ele não
+         tem como saber. Anunciar aqui seria a tela afirmando o que não sabe,
+         que é o defeito que este cartão inteiro já pagou. */
+      const btSinc = tr.closest?.('[data-sinc-remoto]');
+      if (btSinc) {
+        const projeto = btSinc.dataset.sincRemoto;
+        const maquina = btSinc.dataset.sincMaquina;
+        const antes = btSinc.textContent;
+        btSinc.disabled = true;
+        return post('/api/federacao/pedir', { maquina, projeto, acao: 'sincronia-ambos' })
+          .then((d) => {
+            if (d?.ok === false) {
+              avisarFalha('/api/federacao/pedir', d.erro || 'pedido recusado');
+              btSinc.textContent = antes;
+              return;
+            }
+            btSinc.textContent = 'pedido a ' + maquina + ', até 30s';
+            setTimeout(() => { btSinc.textContent = antes; btSinc.disabled = false; }, 30000);
+          })
+          .catch(() => { btSinc.textContent = antes; btSinc.disabled = false; });
+      }
 
       const selRemoto = tr.closest?.('[data-fw-remoto]');
       if (selRemoto) {

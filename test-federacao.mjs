@@ -657,4 +657,61 @@ ok('pacote sobrevive ao ida e volta por JSON')
   }
 }
 
+/* ------------------------------ CC-447: sincronizar a máquina de lá, daqui
+ *
+ * Pergunta dele em 31/08: *"o pc fez algumas coisas e aqui você fez outras (…)
+ * tem ideia melhor?"*. A peça de puxar e enviar já existia desde o CC-269; o
+ * que faltava era alcançar a outra ponta.
+ *
+ * Aqui se garante só a FILA. O que puxar e enviar fazem é do `sincronia.mjs`,
+ * que tem teste próprio, e repetir a garantia aqui daria duas verdades sobre a
+ * mesma coisa.
+ */
+{
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-sinc-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+
+    for (const a of ['sincronia-puxar', 'sincronia-enviar', 'sincronia-ambos']) {
+      assert.ok(F.ACOES_DE_PEDIDO.includes(a), `sem ${a} na lista, pedirSessao recusa o clique`)
+      assert.equal(F.pedirSessao({ paraMaquina: 'ALIENWARE-LIPE', projeto: 'cockpit', acao: a }).ok,
+        true, `${a} tem que ser aceita`)
+    }
+    const fila = F.pegarPedidos('ALIENWARE-LIPE')
+    assert.equal(fila.length, 3, 'as três são pedidos diferentes, não dedo duplo')
+    assert.deepEqual(fila.map((p) => p.acao),
+      ['sincronia-puxar', 'sincronia-enviar', 'sincronia-ambos'])
+    ok('as três ordens de sincronia atravessam a fila')
+
+    /* PROVA AO CONTRÁRIO: nome parecido não pode passar. O ramo que executa
+       casa por PREFIXO (`sincronia-`), então uma ação inventada chegaria lá e
+       cairia no ramo certo com um verbo que ninguém escreveu — e `sincronizar`
+       é a opção mais destrutiva das três, a que ESCREVE na outra máquina. A
+       lista fechada é o que impede isso, e ela precisa de teste. */
+    assert.equal(F.pedirSessao({
+      paraMaquina: 'X', projeto: 'cockpit', acao: 'sincronia-apagar',
+    }).ok, false, 'ação inventada com o prefixo certo tem que ser recusada na entrada')
+    assert.equal(F.pedirSessao({
+      paraMaquina: 'X', projeto: 'cockpit', acao: 'sincronia-',
+    }).ok, false)
+    ok('nome inventado com o prefixo certo não entra na fila')
+
+    /* O nome do projeto continua sendo a entrada perigosa, e aqui ele vira
+       caminho de repositório do outro lado, onde um comando de git roda. */
+    assert.equal(F.pedirSessao({
+      paraMaquina: 'X', projeto: '../../etc', acao: 'sincronia-ambos',
+    }).ok, false, 'projeto com travessia não pode virar pasta onde o git roda')
+    ok('o alvo da sincronia passa pela mesma peneira de nome de projeto')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
 console.log(`\n${n} grupos de asserção passaram`)
