@@ -251,9 +251,20 @@
       display: flex;
       gap: 32px;
       align-items: center;
+      /* CC-448: achado investigando o print dele do telefone, sem ter mexido
+         nesta regra hoje. `.header-right` é o cabeçalho de TODAS as telas
+         (título "Cockpit", "AGENTES", "modos", avatar), e ele nunca quebrava
+         linha. Medido de verdade num viewport de 390px: sem `flex-wrap`, o
+         conteúdo pedia 556px, 166px além da tela, empurrando a página pro
+         lado inteira. Era isto, não o Coderoom, que cortava "AGENT COCKPIT"
+         em "kpit" no aparelho dele. */
+      flex-wrap: wrap;
     }
     .stats-group { display: flex; flex-direction: column; gap: 8px; }
-    .stat-row { display: flex; gap: 16px; font-size: 12px; font-weight: 500; }
+    /* Mesma causa, um nível abaixo: cada LINHA de estatística ("7 AGENTES ·
+       +14 sem contato · VPS · ALIENWARE-LIPE") também não quebrava, e sozinha
+       já passava dos 390px medidos. */
+    .stat-row { display: flex; gap: 16px; font-size: 12px; font-weight: 500; flex-wrap: wrap; }
     .stat-item { display: flex; align-items: center; gap: 6px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
     .dot.green { background-color: var(--green); box-shadow: 0 0 8px var(--green); }
@@ -1505,29 +1516,99 @@
        O título do cartão é `.rc-titulo` agora, e o desenho antigo não deixou
        regra órfã para trás. */
 
-    /* O submenu de projetos, na própria barra lateral.
-       Teto de altura com rolagem própria: mesmo fechado por padrão, com 16
-       projetos abertos ele empurraria o resto do menu para fora da tela. */
-    .gate-submenu { padding: 2px 0 8px 12px; max-height: 46vh; overflow-y: auto; }
-    .gate-submenu[hidden] { display: none; }
-    /* Com a lateral encolhida sobram 64px, e nome de projeto ali vira uma
-       coluna de uma letra por linha. Some junto com os outros rótulos, pela
-       mesma regra: quem encolheu a barra pediu só os ícones. A escolha de
-       projeto continua alcançável pelo "projetos" no alto da tela. */
-    .sidebar.encolhida .gate-submenu { display: none; }
-    .gate-submenu button {
-      display: block; width: 100%; text-align: left; background: none;
-      border: 0; border-left: 2px solid var(--border); color: var(--text-dim);
-      font-family: inherit; font-size: 12px; padding: 6px 10px; cursor: pointer;
-      /* 34px porque no monitor o alvo é o mouse; no telefone a lateral nem
-         aparece, então o mínimo de 44px do dedo não se aplica aqui. */
-      min-height: 34px;
+    /* CC-448: o organizador de projeto e conversa do Coderoom.
+       Até 31/08 era o submenu que abria DENTRO da barra lateral. Ele pediu
+       para tirar de lá: *"tirar a expansão da barra lateral, deixar ela só o
+       Coderoom, e colocar a organização dos chats dentro da própria tela"*.
+       Hoje só existe um alvo (`#gate-conversas`, dentro de `view-gate`), com
+       espaço de tela de verdade, então os alvos de toque cresceram em vez de
+       ficar no tamanho pensado para um dropdown estreito. */
+    /* CC-448: o cabeçalho da tela quebra em vez de estourar. Ele mandou o
+       print: "CODEROOM" cortado em "OOM" e a página inteira rolada pro lado.
+       `flex-wrap` não depende de medir pixel contra fonte de aparelho nenhum:
+       no pior caso os controles descem, nunca empurram a página. */
+    .gate-header-acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    /* CC-448: "projetos" precisa estar alcançável mesmo com a conversa
+       rolada até o fim. `rolarAoAbrir` leva pro fim de propósito (é onde
+       fica a resposta mais recente), e numa conversa longa isso deixa o
+       cabeçalho, com "projetos", centenas de pixels acima da área visível.
+       Achado só medindo o ponto de toque de verdade contra a posição real na
+       tela: um `.click()` de teste dispara em elemento fora da área visível
+       sem reclamar, e por isso passou primeiro sem eu notar. Ele reclamou:
+       *"agora nem abre mais a conversa sem projeto"*. Não abria porque o
+       toque dele caía sobre as mensagens, não sobre nada clicável. `sticky`
+       é o mesmo remédio que a faixa de falha de leitura já usa nesta mesma
+       página (`#faixa-falha`, z-index 50): gruda no topo da área que rola,
+       nunca soma ao problema de largura porque não afeta altura nenhuma. */
+    #view-gate .section-header {
+      position: sticky; top: 0; z-index: 50; background: var(--bg);
+      padding: 12px 0; margin: -12px 0 4px;
     }
-    .gate-submenu button[aria-current="true"] { color: var(--text-main); border-left-color: var(--accent); }
+    .gate-submenu { padding: 4px 0 10px; max-height: 60vh; overflow-y: auto; }
+    .gate-submenu[hidden] { display: none; }
+    /* CC-448: pediu mais design, menos "lista escrita". Ícone (pasta ou
+       balão de conversa) mais um pouco de respiro visual em cada linha, em
+       vez de só cor de texto e um traço fino na borda. */
+    .gate-submenu button {
+      display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+      background: none; border: 0; border-radius: 8px;
+      color: var(--text-dim); font-family: inherit; font-size: 13px;
+      padding: 8px 10px; cursor: pointer; min-height: 40px;
+    }
+    .gate-submenu button svg { flex: none; width: 16px; height: 16px; opacity: 0.7; }
+    .gate-submenu button[aria-current="true"] {
+      color: var(--text-main); background: var(--bg-surface);
+    }
+    .gate-submenu button[aria-current="true"] svg { opacity: 1; color: var(--accent); }
     .gate-submenu .gate-sub-titulo {
       font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
       color: var(--text-dim); padding: 6px 10px 2px;
     }
+    /* CC-448: "Geral" (a conversa solta, sem projeto) saiu da MESMA lista dos
+       projetos. Palavras dele: *"o botão de novo chat tá dando a impressão de
+       que tá dentro do projeto, e não um chat normal"*. Ele tinha razão: o
+       código a tratava como só mais um projeto, então parecia um. Agora é um
+       cartão próprio, ANTES da lista, com ícone de conversa em vez de pasta. */
+    /* ⚠️ `.gate-submenu button.gate-geral`, não só `.gate-geral`: a primeira
+       rodada usou o seletor sozinho e ela PERDEU para `.gate-submenu button`
+       (uma classe + uma tag pesa mais que uma classe só), então nada daqui
+       aparecia, sem erro nenhum. Só achei comparando o estilo computado no
+       navegador contra o que o CSS dizia; a leitura do arquivo não denuncia
+       especificidade perdendo de especificidade. */
+    .gate-submenu button.gate-geral {
+      display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text-main); font-family: inherit; font-size: 13px;
+      padding: 10px 12px; margin-bottom: 10px; cursor: pointer; min-height: 44px;
+    }
+    .gate-submenu button.gate-geral svg { flex: none; width: 18px; height: 18px; color: var(--accent); opacity: 1; }
+    .gate-submenu button.gate-geral b { font-weight: 600; }
+    .gate-submenu button.gate-geral span.contagem { color: var(--text-dim); font-weight: 400; }
+    /* CC-448: o modo grade, a segunda das duas fatias do Notas da Apple que
+       ele citou como referência ("você consegue visualizar em listras, você
+       consegue visualizar enquadradinhos"). Só as conversas de um projeto
+       ABERTO viram grade; a lista de projetos continua em linha, porque é
+       navegação, não conteúdo para olhar em cartão. */
+    .gate-submenu.modo-grade .gate-filhas {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px; padding: 4px 0 10px 22px;
+    }
+    .gate-submenu.modo-grade .gate-filhas button {
+      border: 1px solid var(--border); border-radius: 10px; padding: 10px; min-height: 64px;
+      display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 4px;
+    }
+    .gate-submenu.modo-grade .gate-filhas button[aria-current="true"] {
+      border-color: var(--accent);
+    }
+    .gate-vista {
+      display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex: none;
+    }
+    .gate-vista button {
+      display: flex; background: none; border: 0; padding: 6px 8px; cursor: pointer;
+      color: var(--text-dim); line-height: 1;
+    }
+    .gate-vista button svg { width: 15px; height: 15px; }
+    .gate-vista button[aria-pressed="true"] { background: var(--bg-surface); color: var(--text-main); }
     .gate-fer {
       display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
       font-size: 11px; color: var(--text-dim);
@@ -2441,18 +2522,19 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
         Meu painel
       </a>
-      <!-- CC-245/CC-253: o Coderoom, o nome que ele deu ao lugar onde os três
-           agentes conversam. A conversa mora no painel, e por isso ela é
+      <!-- CC-245/CC-253/CC-448: o Coderoom, o nome que ele deu ao lugar onde os
+           três agentes conversam. A conversa mora no painel, e por isso ela é
            destino de primeira fila, não item de gaveta.
-           O clique abre o submenu de projetos AQUI MESMO, pedido dele: *"na aba
-           lateral quando clicar no desenho do chat pode abrir um sub menu ali
-           mesmo p selecionar os projetos, assim a gente usa melhor o espaço de
-           tela"*. Escolher projeto deixa de gastar uma faixa do conteúdo. -->
+           ⚠️ Até 31/08 o clique aqui abria um submenu de projetos DENTRO da
+           barra lateral (CC-253). Ele reclamou da organização: *"tirar a
+           expansão da barra lateral, deixar ela só o Coderoom, e colocar a
+           organização dos chats dentro da própria tela do Coderoom"*. Hoje o
+           clique só navega, como qualquer outro item; quem organiza projeto e
+           conversa é a própria tela `view-gate`, em `#gate-conversas`. -->
       <a href="#" class="nav-item" data-target="view-gate">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"></path></svg>
         Coderoom
       </a>
-      <div id="gate-submenu" class="gate-submenu" hidden></div>
       <a href="#" class="nav-item" data-target="view-agora">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
         Agora
@@ -3003,13 +3085,46 @@
         <div class="main-col">
           <div class="section-header">
             <h2>CODEROOM</h2>
-            <div style="display:flex;gap:12px;align-items:center;">
+            <!-- CC-448: ⚠️ era `style="display:flex;gap:12px"` sem quebra de
+                 linha. Coube nos meus testes em 390px, e estourou de verdade
+                 no aparelho dele: print com "CODEROOM" cortado em "OOM" e a
+                 página inteira rolada pro lado. `flex-wrap` é a garantia que
+                 não depende de medir pixel contra fonte de aparelho nenhum, no
+                 pior caso os controles descem para a linha de baixo, nunca
+                 empurram a página para o lado. Virou classe porque estilo
+                 inline não é alcançado por regra nenhuma de tela estreita. -->
+            <div class="gate-header-acoes">
               <span id="gate-qual" style="font-size:12px;color:var(--text-muted);"></span>
+              <!-- CC-448: modo de visualização das conversas, inspirado no
+                   Notas da Apple, que ele citou como referência. Duas fatias
+                   por ora (lista/grade); "com detalhe" e "visualização rápida"
+                   ficam para depois, registrado no ROADMAP.
+                   Ícones SVG, não os caracteres ☰/▦: o resto do painel usa
+                   ícone desenhado em toda parte, e caractere solto rende
+                   diferente (e mais largo) de aparelho para aparelho. Foi
+                   candidato a causa do estouro medido no telefone dele. -->
+              <!-- ⚠️ NÃO chame isto de `gate-modo`: esse id já existe, é o
+                   `<select>` do modo de TRABALHO do framework, mais abaixo
+                   nesta mesma tela. Dois nós com o mesmo id não dão erro, e o
+                   segundo fica morto sem sintoma. Já mordeu este projeto mais
+                   de uma vez (CC-331, `data-ag`). -->
+              <div id="gate-vista" class="gate-vista" role="group" aria-label="modo de visualização">
+                <button type="button" data-gate-vista="lista" aria-pressed="true" title="lista">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
+                </button>
+                <button type="button" data-gate-vista="grade" aria-pressed="false" title="grade">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                </button>
+              </div>
               <a href="#" class="link" id="gate-trocar">projetos</a>
             </div>
           </div>
 
-          <div id="gate-conversas" hidden></div>
+          <!-- CC-448: era o alvo de uma lista PLANA de conversas, separada do
+               submenu agrupado por projeto da barra lateral. As duas foram
+               fundidas: esta div agora É um `.gate-submenu`, pintada por
+               `gateSubmenuEm`, a mesma função que antes só servia a barra. -->
+          <div id="gate-conversas" class="gate-submenu" hidden></div>
           <!-- O gasto da conversa inteira, que ele pediu por escrito. Fica no
                topo e não no fim: no fim ele só veria depois de rolar tudo. -->
           <div id="gate-gasto" class="gate-gasto" hidden></div>
@@ -11221,7 +11336,9 @@
       modo: null,        // o modo de trabalho do projeto desta conversa
       anexos: [],        // o que ele escolheu e ainda não mandou
       projetoAberto: null,
-      submenuAberto: false, // a lista de projetos na lateral nasce fechada
+      /* CC-448: `modo` já existe acima para o modo de TRABALHO do framework.
+         Este é outro: como a lista de conversas se desenha, lista ou grade. */
+      exibicao: 'lista',
       rolarAoAbrir: true,   // conversa se abre pelo fim, que é onde está o agora
     };
     const GATE_PAGA = {
@@ -11311,6 +11428,52 @@
     }
 
     async function gateNova(projeto, ancora = null) {
+      /* CC-448: "Geral" é a conversa solta, sem projeto amarrado. Pedido dele:
+       * *"uma outra opção pra eu criar uma conversa por fora, um chat (…) como
+       * se fosse o meu próprio aplicativo de IA"*.
+       *
+       * Ela NÃO passa pela exigência de pasta abaixo, de propósito: o servidor
+       * já resolve isto sozinho desde o CC-326 (`/api/gate/nova` sem `cwd` cai
+       * na pasta do próprio painel, que é conhecida e está dentro da base, a
+       * mesma trava que protege todo o resto). Reusar essa trava em vez de
+       * inventar uma pasta neutra nova é menos código e é o caminho que já
+       * foi medido seguro.
+       *
+       * ⚠️ **Isto não é um chat "sem agente e sem arquivo".** O agente ainda
+       * roda de verdade, com ferramentas, só que na pasta do painel em vez da
+       * de um projeto. O aviso abaixo diz isso com todas as letras, para não
+       * parecer um bate-papo qualquer quando na verdade dá acesso a arquivo. */
+      if (projeto === GERAL) {
+        const ok = await confirmar(ancora, {
+          titulo: 'Abrir uma conversa geral?',
+          detalhe: '<ul>'
+            + '<li>não fica amarrada a nenhum projeto do painel</li>'
+            + '<li>o agente roda na pasta do próprio painel, com as ferramentas de sempre</li>'
+            + '<li>a conversa que você está vendo agora continua salva</li>'
+            + '</ul>',
+          sim: 'abrir',
+        });
+        if (!ok) return;
+        try {
+          const r = await fetch('/api/gate/nova', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ projeto: GERAL }),
+          });
+          if (!r.ok) throw new Error(`resposta ${r.status}`);
+          const d = await r.json();
+          GATE.id = d.id;
+          GATE.dados = null;
+          GATE.rolarAoAbrir = true;
+          GATE.projetoAberto = GERAL;
+          GATE.escolhendo = false;
+        } catch (e) {
+          GATE.erro = `não consegui abrir a conversa: ${e.message || e}`;
+        }
+        renderGate();
+        gateBuscar();
+        return;
+      }
+
       /* De onde sai a pasta, em duas fontes e nesta ordem.
        *
        * CC-327: a primeira versão olhava SÓ `GATE.projetos`, e isso quebrou o
@@ -11597,20 +11760,19 @@
      * está aberto. Projeto sem conversa nenhuma aparece igual: é dali que ele
      * começa uma nova, e esconder projeto vazio faria parecer que só dá para
      * conversar onde já se conversou. */
+    /* CC-448: chave interna do grupo sem projeto. Nunca sai para o disco:
+       o servidor recebe `projeto: 'Geral'` na criação, texto legível de
+       propósito, porque é o que grava e o que aparece se algo mais ler o
+       arquivo direto. */
+    const GERAL = 'Geral';
+
     function gateSubmenu() {
-      /* CC-331: a lista vale nos DOIS menus, a barra lateral e a gaveta do
-       * telefone. Ele apontou a falta: *"o colapsar nao funciona nos itens com
-       * o coderoom e outros que iriamos implementar"*.
-       *
-       * A gaveta é um CLONE da barra, então o clone trazia um segundo elemento
-       * com o mesmo identificador. Dois nós com o mesmo `id` não dão erro:
-       * `getElementById` simplesmente devolve o primeiro, sempre o da barra, e
-       * a lista da gaveta ficava vazia para sempre. É a mesma armadilha que a
-       * sessão vizinha pagou no colapso da gaveta, e a que me mordeu no
-       * `data-ag`.
-       *
-       * Por isso a busca é por CLASSE e pinta todos. O clone perde o `id` em
-       * `montarGaveta`, para não existir duplicata nenhuma na página. */
+      /* CC-448: até 31/08 este laço pintava DOIS alvos, a barra lateral e o
+       * clone dela na gaveta do telefone. Ele pediu para tirar a organização
+       * de lá, e colocar dentro da própria tela do Coderoom. Hoje só existe
+       * UM `.gate-submenu` na página, `#gate-conversas`, dentro de `view-gate`.
+       * O laço continua por classe (não por id) porque é barato e sobrevive
+       * se um dia outro lugar precisar do mesmo organizador. */
       const alvos = [...document.querySelectorAll('.gate-submenu')];
       if (!alvos.length) return;
       for (const el of alvos) gateSubmenuEm(el);
@@ -11618,60 +11780,79 @@
 
     function gateSubmenuEm(el) {
       if (!el) return;
-      const naTela = document.getElementById('view-gate')?.classList.contains('active');
-      /* Nasce FECHADO, e só abre quando ele pede.
-         Aberto por padrão, ele empurrava os outros destinos do menu para baixo
-         com uma lista que cresce com o número de projetos e de conversas: com
-         16 projetos, a barra lateral virava a tela inteira. Apontado por ele:
-         *"não faz muito sentido ela ocupar tanto espaço"*. */
-      /* Na gaveta o critério é outro, e de propósito. A barra lateral fica
-         SEMPRE na tela, então mostrar a lista de conversas fora do Coderoom
-         seria ocupar espaço com o que ele não está olhando. A gaveta é a
-         própria navegação do telefone: ele abre justamente para escolher para
-         onde ir, e exigir que já estivesse no Coderoom faria a lista nunca
-         aparecer no aparelho onde ele mais usa. */
-      const naGaveta = Boolean(el.closest('.gaveta'));
-      el.hidden = naGaveta ? !GATE.submenuAberto : (!naTela || !GATE.submenuAberto);
+      /* Nasce FECHADO, e só abre quando ele pede, pelo link "projetos".
+         Aberto por padrão empurraria o compositor para baixo da lista inteira
+         de projetos toda vez que a tela abre. */
+      el.hidden = !GATE.escolhendo;
       if (el.hidden) return;
 
       const porProjeto = new Map();
       for (const c of GATE.conversas || []) {
-        const k = c.projeto || 'sem projeto';
+        const k = c.projeto || GERAL;
         if (!porProjeto.has(k)) porProjeto.set(k, []);
         porProjeto.get(k).push(c);
       }
       /* Os projetos que o painel conhece entram mesmo sem conversa: é assim que
          ele abre a primeira num projeto novo. */
       for (const p of GATE.projetos || []) if (!porProjeto.has(p.nome)) porProjeto.set(p.nome, []);
-
-      if (!porProjeto.size) {
-        /* Vazio por falha de leitura não pode virar "nenhum projeto ainda":
-           é a mesma mentira que a lista de conversas já evita. */
-        pintar(el, GATE.erro
-          ? `<div class="gate-sub-titulo" style="color:var(--red);">não consegui ler os projetos</div>`
-          : `<div class="gate-sub-titulo">nenhum projeto ainda</div>`);
-        return;
-      }
+      /* CC-448: "Geral" sempre existe, com conversa ou sem. Pedido dele: ter
+       * uma conversa por fora, um chat, como se fosse o próprio aplicativo de
+       * IA dele, sem projeto amarrado. Sem esta linha o grupo só apareceria
+       * depois da primeira conversa solta já existir, e não haveria onde
+       * clicar para criar a primeira. */
+      if (!porProjeto.has(GERAL)) porProjeto.set(GERAL, []);
+      /* "Geral" no topo. É a entrada mais simples, e foi o primeiro pedido
+         dele nesta frente. Os demais mantêm a ordem de chegada. */
+      const ordenado = [[GERAL, porProjeto.get(GERAL)], ...[...porProjeto.entries()].filter(([k]) => k !== GERAL)];
 
       /* Só o projeto ABERTO mostra as conversas dele. Todos abertos de uma vez
          era a segunda metade do inchaço: 16 projetos com 3 conversas cada dão
          64 linhas numa barra que cabe umas 12. */
       const aberto = GATE.projetoAberto || GATE.dados?.cabecalho?.projeto || null;
-      pintar(el, [...porProjeto.entries()].map(([proj, convs]) => {
+      el.classList.toggle('modo-grade', GATE.exibicao === 'grade');
+
+      /* O selo de máquina volta aqui: existia na lista plana que este
+         organizador substituiu, e sumir seria perder informação por causa
+         só de trocar de desenho. A resposta é sempre a máquina local (o
+         agente do gate roda no disco de quem serve o painel), mas ele olha
+         isto do telefone, longe das duas máquinas, e o rótulo orienta. */
+      const filhasDe = (proj, convs) => `<div class="gate-filhas">`
+        + convs.map((c) => `<button type="button" data-conv="${esc(c.id)}" aria-current="${c.id === GATE.id}" style="padding-left:22px;">`
+          + `<span>${esc(c.titulo || (proj === GERAL ? 'conversa geral' : 'conversa'))}</span>`
+          + `<span style="font-size:11px;color:var(--text-dim);display:block;">${seloDe(DATA.maquina?.nome || 'esta máquina')}</span>`
+          + `</button>`).join('')
+        + `<button type="button" data-nova="${esc(proj)}" style="padding-left:22px;color:var(--accent);">+ conversa nova</button>`
+        + `</div>`;
+
+      /* CC-448: "Geral" saiu do laço e ganhou marcação PRÓPRIA, com ícone de
+         balão de conversa em vez de pasta. Continua usando `data-proj`/
+         `data-nova`, então o clique é o MESMO `escolher()` de sempre; só o
+         desenho é diferente, que era exatamente a queixa dele. */
+      const convsGeral = porProjeto.get(GERAL) || [];
+      const geralAberto = aberto === GERAL;
+      const geralHtml = `<button type="button" class="gate-geral" data-proj="${GERAL}" aria-current="${geralAberto}">`
+        + `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"></path></svg>`
+        + `<span><b>conversa geral</b> (sem projeto amarrado)`
+        + (convsGeral.length ? ` <span class="contagem">${convsGeral.length}</span>` : '')
+        + `</span></button>`
+        + (geralAberto ? filhasDe(GERAL, convsGeral) : '');
+
+      const projetos = ordenado.filter(([proj]) => proj !== GERAL);
+      const projetosHtml = projetos.map(([proj, convs]) => {
         const ehOAberto = proj === aberto;
-        const filhas = ehOAberto
-          ? convs.map((c) => `<button type="button" data-conv="${esc(c.id)}" aria-current="${c.id === GATE.id}" style="padding-left:22px;">${esc(c.titulo || 'conversa')}</button>`).join('')
-            + `<button type="button" data-nova="${esc(proj)}" style="padding-left:22px;color:var(--accent);">+ conversa nova</button>`
-          : '';
-        return `<button type="button" data-proj="${esc(proj)}" aria-current="${ehOAberto}">${esc(proj)}${convs.length ? ` <span style="color:var(--text-dim);">${convs.length}</span>` : ''}</button>${filhas}`;
-      }).join(''));
+        return `<button type="button" data-proj="${esc(proj)}" aria-current="${ehOAberto}">`
+          + `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`
+          + `<span>${esc(proj)}${convs.length ? ` <span style="color:var(--text-dim);">${convs.length}</span>` : ''}</span>`
+          + `</button>${ehOAberto ? filhasDe(proj, convs) : ''}`;
+      }).join('');
+
+      pintar(el, geralHtml + projetosHtml);
     }
 
     function renderGate() {
       const lista = document.getElementById('gate-lista');
       const faixa = document.getElementById('gate-agora');
       const qual = document.getElementById('gate-qual');
-      const caixaConv = document.getElementById('gate-conversas');
       const compor = document.getElementById('gate-compor');
       if (!lista) return;
 
@@ -11763,28 +11944,6 @@
         }
       }
 
-      if (caixaConv) {
-        caixaConv.hidden = !GATE.escolhendo;
-        if (GATE.escolhendo) {
-          const cs = GATE.conversas || [];
-          pintar(caixaConv, cs.length
-            /* Duas regras do projeto valem nesta linha, e as duas foram
-               cobradas por ele antes:
-               - conversa sem projeto DIZ que não tem, em vez de deixar um
-                 espaço mudo, que não distingue "não pertence a projeto nenhum"
-                 de "não consegui ler qual é";
-               - todo quadro que mostra projeto diz em QUAL MÁQUINA ele está.
-                 Aqui a resposta é sempre a máquina local, e não é detalhe: o
-                 agente do gate age no disco de quem serve o painel, e ele olha
-                 isto do telefone, longe das duas máquinas. */
-            ? cs.map((c) => `<div class="gate-conv" data-conv="${esc(c.id)}" aria-current="${c.id === GATE.id}">
-                 <span>${esc(c.titulo || c.projeto || 'conversa')}</span>
-                 <span style="font-size:11px;color:var(--text-dim);">${esc(c.projeto || 'sem projeto')} ${seloDe(DATA.maquina?.nome || 'esta máquina')}</span>
-               </div>`).join('')
-            : `<div class="card" style="color:var(--text-muted);">Nenhuma conversa ainda. Escreva embaixo para começar uma.</div>`);
-        }
-      }
-
       if (GATE.erro) {
         if (compor) compor.hidden = false;
         if (faixa) faixa.hidden = true;
@@ -11839,7 +11998,18 @@
       /* Conversa se lê pelo fim: é lá que está a resposta de agora. Abrir no
          começo obrigaria a rolar tudo toda vez, e no telefone isso é a conversa
          parecendo vazia porque o que interessa está fora da tela. */
-      if (rolador && (GATE.rolarAoAbrir || (mudou && estavaNoFim))) {
+      /* ⚠️ **CC-448: não enquanto ele ainda está ESCOLHENDO.** Clicar num
+         projeto no organizador já leva à conversa mais recente dele (CC-327),
+         e essa mesma troca dispara ESTA rolagem para o fim. Sem a condição
+         `!GATE.escolhendo`, o organizador abre, ele vê "+ conversa nova", e
+         no instante seguinte a página pula pro fim de uma conversa antiga,
+         escondendo o botão que ele acabou de mirar. Achado com toque em
+         coordenada real: o botão existia no clique seguinte de um teste
+         programado, mas sumira da área visível quando medido com o mesmo
+         atraso de rede que existe de verdade. Só a ESCOLHA de uma conversa
+         específica (clique em `data-conv`, que zera `escolhendo` antes de
+         buscar) ainda pula para o fim dela. */
+      if (rolador && !GATE.escolhendo && (GATE.rolarAoAbrir || (mudou && estavaNoFim))) {
         GATE.rolarAoAbrir = false;
         requestAnimationFrame(() => { rolador.scrollTop = rolador.scrollHeight; });
       }
@@ -12129,35 +12299,41 @@
          não pode ser tocado, senão o menu do sistema some debaixo do dedo. */
       document.getElementById('gate-modelo')?.addEventListener('blur', () => renderGate());
 
+      /* CC-448: até 31/08 este clique se comportava diferente no monitor (abria
+         o submenu na barra lateral) e no telefone (abria dentro do conteúdo).
+         A barra lateral não abre mais nada: agora é sempre o mesmo gesto, aqui
+         dentro da tela do Coderoom. */
       document.getElementById('gate-trocar')?.addEventListener('click', (e) => {
         e.preventDefault();
-        /* No monitor, o "projetos" do alto abre a MESMA lista da lateral, em
-           vez de uma segunda lista dentro do conteúdo: duas listas para a mesma
-           escolha é o que faz ele não saber qual olhar. No telefone a lateral
-           não existe, e aí a lista abre no conteúdo mesmo. */
-        const temLateral = getComputedStyle(document.querySelector('.sidebar')).display !== 'none';
-        if (temLateral) {
-          GATE.submenuAberto = !GATE.submenuAberto;
-          if (GATE.submenuAberto) GATE.escolhendo = false;
-        } else {
-          GATE.escolhendo = !GATE.escolhendo;
-        }
+        GATE.escolhendo = !GATE.escolhendo;
         renderGate();
+        /* ⚠️ **Achado só com toque em coordenada real, não com `.click()`
+           disparado por script.** `rolarAoAbrir` deixa a página rolada até o
+           FIM de uma conversa longa, e "projetos" mora lá em cima, no
+           cabeçalho da tela. Ele reclamou: *"agora nem abre mais a conversa
+           sem projeto"*. Não abria porque o toque dele, na posição real da
+           tela, caía sobre as mensagens, não sobre nada clicável: o
+           organizador tinha renderizado fora da tela, sem erro nenhum. Um
+           `.click()` de teste não pega isto, porque ignora a posição na
+           tela e dispara mesmo em elemento fora da área visível. Ao abrir,
+           volta pro topo, onde o organizador vive; ao fechar, deixa como
+           está, sem incomodar quem estava lendo. */
+        if (GATE.escolhendo) {
+          document.getElementById('view-gate')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+        }
       });
 
-      /* Clicar no destino do menu também abre e fecha a lista, que é o gesto
-         que ele descreveu: *"quando clicar no desenho do chat pode abrir um sub
-         menu ali mesmo"*. */
-      /* CC-331: por DELEGAÇÃO, e não pendurado no elemento.
-         `querySelector` no singular pegava só o item da barra lateral, e o
-         mesmo item existe na gaveta do telefone, que é um clone montado bem
-         depois deste código rodar. Resultado: no aparelho onde ele mais usa, o
-         toque no Coderoom nunca abria a lista de projetos. */
-      document.addEventListener('click', (ev) => {
-        if (!ev.target.closest('.nav-item[data-target="view-gate"]')) return;
-        const jaEstava = document.getElementById('view-gate')?.classList.contains('active');
-        GATE.submenuAberto = jaEstava ? !GATE.submenuAberto : true;
-        setTimeout(renderGate, 0);
+      /* CC-448: modo lista/grade, inspirado no Notas da Apple, que ele citou:
+         *"você consegue visualizar em listras, você consegue visualizar
+         enquadradinhos"*. */
+      document.getElementById('gate-vista')?.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-gate-vista]');
+        if (!b) return;
+        GATE.exibicao = b.dataset.gateVista === 'grade' ? 'grade' : 'lista';
+        for (const irmao of b.parentElement.querySelectorAll('[data-gate-vista]')) {
+          irmao.setAttribute('aria-pressed', String(irmao === b));
+        }
+        renderGate();
       });
 
       /* O mesmo clique serve na lateral e no conteúdo: no telefone a lateral
@@ -14326,24 +14502,12 @@
       const naGaveta = tr.closest('.gaveta') && tr.dataset.target;
       if (naGaveta) {
         e.preventDefault();
-        /* CC-331: o Coderoom abre a lista de projetos AQUI, em vez de navegar e
-           fechar a gaveta na cara dele.
-           Foi o pedido dele desde o começo, e o que faltava no telefone:
-           *"quando clicar no desenho do chat pode abrir um sub menu ali mesmo p
-           selecionar os projetos"*. Navegar fechava a gaveta, então a lista
-           existia e nunca tinha um instante para aparecer.
-           O segundo toque, aí sim, leva para a tela: quem tocou duas vezes
-           quer ir, não quer olhar. */
-        if (tr.dataset.target === 'view-gate' && !GATE.submenuAberto) {
-          GATE.submenuAberto = true;
-          gateSubmenu();
-          /* As conversas e os projetos só eram lidos ao ABRIR a tela do
-             Coderoom. Pela gaveta ele nunca chega lá, então a lista aparecia
-             com o texto de "nenhum projeto ainda", que é a tela afirmando o que
-             não sabe. Se ainda não leu, lê agora e repinta. */
-          if (!GATE.conversas) gateBuscar(true).then(gateSubmenu).catch(() => {});
-          return;
-        }
+        /* CC-331 tinha um caso especial aqui: tocar em Coderoom na gaveta
+           abria a lista de projetos ali mesmo, porque navegar fechava a gaveta
+           antes da lista ter um instante para aparecer. CC-448 tirou esse
+           picker de dentro da gaveta (e da barra lateral): quem organiza
+           projeto e conversa agora é só a tela do Coderoom. Um toque nela já
+           é o gesto certo, como em qualquer outro item deste menu. */
         return showPage(tr.dataset.target);
       }
 
