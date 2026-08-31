@@ -17,6 +17,23 @@ const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'pastas-casa-'))
 process.env.CC_HOME = casa
 delete process.env.CC_PROJECTS_BASE
 
+/* ⚠️ **`CC_HOME` isola a configuração, e NÃO isola a descoberta.** Medido em
+   31/08, quando este teste chegou do PC e falhou na VPS sem ter mudado uma
+   linha: sem job nenhum, `detectarBase()` procura as pastas convencionais
+   direto em `os.homedir()`, que é disco de verdade e não passa por `CC_HOME`.
+
+   No Windows dele isso não acha nada, porque os projetos moram noutra unidade;
+   na VPS existe `~/projetos`, então a lista nascia com uma pasta real dentro e
+   três casos caíam em cascata. O teste não estava errado: ele estava medindo a
+   máquina junto com o código.
+
+   `os.homedir()` respeita `HOME` no Linux e `USERPROFILE` no Windows. Apontar
+   os dois para a casa temporária faz a descoberta encontrar o mesmo nada nas
+   duas máquinas, que é a única forma de este teste significar a mesma coisa
+   dos dois lados. Seguro porque roda em processo próprio. */
+process.env.HOME = casa
+process.env.USERPROFILE = casa
+
 const I = await import('./src/install.mjs')
 const C = await import('./src/config.mjs')
 
