@@ -4005,6 +4005,28 @@ aviso de atualizar nos três projetos do PC, e simulando a máquina reportando
 aparecem os três seletores com o modo certo já selecionado. Falta o PC puxar o
 código para o caminho fechar de ponta a ponta.
 
+**Medido em 31/08: o PC já puxou, e a pendência acima estava velha.** A cópia
+instalada tem os três ramos que aplicam o pedido (modo, trava e MVP), conferido
+dentro do arquivo dela, não só no repositório. O caminho está de pé nas duas
+pontas.
+
+**Mas apareceram duas lacunas, e a segunda é a mais cara:**
+
+1. **Nenhum teste exercita o lado que APLICA.** O portão cobre bem quem PEDE
+   (nome de projeto perigoso, modo inventado, texto com comando dentro), e a
+   função que executa do lado do PC não é chamada por teste nenhum. É a peça
+   construída e nunca exercitada, o formato de defeito que este projeto mais
+   repete.
+2. **O pedido aplicado não deixa testemunha.** O registro sai por `console.error`
+   e o processo instalado roda sem log em arquivo, então some. O que sai já é
+   gravado em disco desde 30/08; o que ENTRA, não. Consequência prática: se ele
+   trocar um modo pelo cockpit online e nada acontecer, não há onde olhar para
+   saber se o pedido chegou, se foi recusado, ou se nem foi enviado. É a mesma
+   pergunta dele que originou o log de envios, do outro lado do fio.
+
+Os dois consertos moram em `src/web.mjs`, da rota `front`, cuja sessão está
+viva. Ficam registrados aqui em vez de tomados.
+
 ### CC-340 🟡 25/08 (o programa está pronto, falta só a faixa na tela): o sync do PC vira software instalável, com ícone na barra
 
 Palavras dele, em 25/08: *"poderiamos criar um setup que instale um programinha
@@ -4067,6 +4089,20 @@ Falta a parte 2, e ela tinha dois pedaços de tamanhos muito diferentes:
    e um clique errado na bandeja teria obrigado a digitar tudo de novo pra
    voltar). `cc federar pausar` / `cc federar retomar` fazem o mesmo pelo
    terminal. "Ver a última sincronia" já existia no texto do ícone.
+
+   **Provado na máquina real em 31/08, e o achado é a lição.** Entregar o
+   código não põe o recurso no ar: a cópia instalada (a que roda pra ele, em
+   `%LOCALAPPDATA%\AgentCockpit`) continuava sem o interruptor 15 horas depois
+   do commit, porque publicar é passo separado. Medido por impressão digital
+   dos dois arquivos, que não batiam. Publicado com o portão verde, e ainda
+   assim o painel no ar respondia sem o campo novo: **o processo não recarrega
+   arquivo**, e a armadilha já estava escrita. Derrubado pela rota de encerrar,
+   o supervisor subiu de novo em segundos com o código certo. Só então o ciclo
+   pausar/conferir/retomar funcionou de ponta a ponta na porta 8099, com token
+   e endereço intactos depois, que é a razão de o interruptor existir separado
+   do desligar. **Regra que sai daqui: recurso que mora na cópia instalada só
+   está entregue depois de publicar E religar, e a prova é pedir o campo novo
+   ao processo que está no ar.**
 
 ### CC-331 ✅ 22/08: a lista de projetos do Coderoom no menu do telefone
 
@@ -9850,3 +9886,6 @@ Em 16/08 saíram 37 itens, com o texto integral preservado:
 - [2026-08-21](diario/2026-08-21.md) — CC-218 a CC-231: os nove apontamentos dele no telefone, o "?" que explica cada tela, e as quatro redes que o painel novo não tinha herdado
 - [2026-08-25](diario/2026-08-25.md) — CC-334 a CC-337 e as quatro ações do controle remoto: o dia em que uma recomendação minha matou o trabalho dele, e o desenho passou a ter caminho de volta
 - [2026-08-26](diario/2026-08-26.md) — CC-351 e CC-361, seis consertos de código escrito supondo Linux, o `RestartOnFailure` que não religa, e a trava que pedia um clique sem ter onde clicar
+- [2026-08-27](diario/2026-08-27.md) — CC-362 e a frente das rotas: o modo que a tela anunciava e a trava não usava, com as três causas medidas
+- [2026-08-30](diario/2026-08-30.md) — CC-438, CC-439, CC-444 e CC-352, o Plano de Unificação nomeado, o interruptor da sincronia na bandeja, e o login da VPS que derrubava o próprio servidor
+- [2026-08-31](diario/2026-08-31.md) — o que foi entregue ontem não estava rodando: publicar e religar como parte da entrega, e o controle remoto do framework que funciona sem deixar testemunha

@@ -1,12 +1,26 @@
 # HANDOFF
 
 **Sessão:** 2026-08-30/31 · Claude (Opus 5, `2d4e7b74`/`51c2da13`, mesma sessão
-depois de um `/clear`) · **PC** (ALIENWARE-LIPE), rota `framework`
-**Último commit antes desta sessão:** `cb5d311` · **este encerramento commita e empurra**
-**Branch:** `backlog/cc-46-48-49-52-53-56-65` · **versão `0.3.0`**
+depois de um `/clear`) · **PC** (ALIENWARE-LIPE), sem rota (só documentação)
+**Último commit:** `42f8a30`, já no servidor · **este encerramento commita a documentação de 31/08**
+**Branch:** `backlog/cc-46-48-49-52-53-56-65` · **versão `0.3.0`, publicada e no ar**
 
 O que aconteceu: [diario/2026-08-30.md](diario/2026-08-30.md), seção "À noite,
-no PC". Ponteiro, não relatório.
+no PC", e [diario/2026-08-31.md](diario/2026-08-31.md). Ponteiro, não relatório.
+
+## ⚠️ A armadilha que mordeu hoje, e vai morder de novo
+
+**Push não é entrega.** O interruptor de sincronia foi commitado e empurrado
+ontem à noite, e quinze horas depois ele não existia na máquina dele: a cópia
+instalada (`%LOCALAPPDATA%\AgentCockpit`) é publicada por um passo separado, e o
+encerramento de ontem parou no push.
+
+E publicar sozinho também não basta: **o processo no ar não recarrega arquivo**.
+Depois de publicar, ele continuava respondendo sem o campo novo. Só a rota de
+encerrar, com o supervisor religando, pôs o código novo em serviço.
+
+A prova de que um recurso está entregue é **pedir o campo novo ao processo que
+está no ar**, nunca o commit.
 
 ## ⚠️ Antes de encostar em código
 
@@ -64,6 +78,12 @@ Portão: verde, com o caso do Windows rodando de verdade em vez de pular.
 - **A faixa na tela dizendo, por máquina, se as travas valem lá** (metade do
   item da bandeja que falta): mexe em `src/ui_v2.html`, da rota `front`, cuja
   sessão está viva no PC dele agora. Não toquei.
+- **O controle remoto do framework não deixa testemunha, e ninguém testa o lado
+  que aplica.** Medido em 31/08: o PC já tem os três ramos que executam o pedido
+  (a pendência antiga do mapa dizia o contrário e estava velha). Falta gravar em
+  disco o pedido que CHEGA, como já se grava o que sai, e chamar por teste a
+  função que executa. Os dois moram em `src/web.mjs`, da rota `front`. Detalhe
+  no mapa, no item do controle pelo cockpit online.
 
 ## Pendências de commit
 
