@@ -91,31 +91,38 @@ function Ler-Estado {
   try {
     $resp = Invoke-RestMethod -Uri "$base/api/federacao" -TimeoutSec 4 -ErrorAction Stop
   } catch {
-    return @{ estilo = 'partido'; cinza = $true; texto = "painel fora do ar (porta $Port)" }
+    return @{ estilo = 'partido'; cinza = $true; texto = "painel fora do ar (porta $Port)"; configurada = $false; ativo = $false }
   }
 
   if (-not $resp.configurada) {
-    return @{ estilo = 'partido'; cinza = $false; texto = 'federação não configurada' }
+    return @{ estilo = 'partido'; cinza = $false; texto = 'federação não configurada'; configurada = $false; ativo = $false }
+  }
+
+  # CC-340: pausado é um estado próprio, distinto de "configurado mas nunca
+  # empurrou" e de "parou de mandar por falha". A bandeja precisa saber
+  # separar os três pra não mostrar "Pausar" quando já está pausado.
+  if (-not $resp.ativo) {
+    return @{ estilo = 'partido'; cinza = $false; texto = "sincronização pausada, rumo a $($resp.enviandoPara)"; configurada = $true; ativo = $false }
   }
 
   $emp = $resp.empurrando
   if (-not $emp) {
-    return @{ estilo = 'partido'; cinza = $false; texto = 'ainda não empurrou nada' }
+    return @{ estilo = 'partido'; cinza = $false; texto = 'ainda não empurrou nada'; configurada = $true; ativo = $true }
   }
 
   $idadeSeg = [Math]::Round(([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - [double]$emp.em) / 1000)
   $quando = if ($idadeSeg -lt 60) { "há ${idadeSeg}s" } else { "há $([Math]::Round($idadeSeg / 60))min" }
 
   if (-not $emp.ok) {
-    return @{ estilo = 'partido'; cinza = $false; texto = "último envio falhou ($quando): $($emp.erro)" }
+    return @{ estilo = 'partido'; cinza = $false; texto = "último envio falhou ($quando): $($emp.erro)"; configurada = $true; ativo = $true }
   }
   if ($idadeSeg -lt 45) {
-    return @{ estilo = 'cheio'; cinza = $false; texto = "sincronizando com $($resp.enviandoPara) ($quando)" }
+    return @{ estilo = 'cheio'; cinza = $false; texto = "sincronizando com $($resp.enviandoPara) ($quando)"; configurada = $true; ativo = $true }
   }
   if ($idadeSeg -lt 90) {
-    return @{ estilo = 'tracejado'; cinza = $false; texto = "atrasou ($quando), rumo a $($resp.enviandoPara)" }
+    return @{ estilo = 'tracejado'; cinza = $false; texto = "atrasou ($quando), rumo a $($resp.enviandoPara)"; configurada = $true; ativo = $true }
   }
-  return @{ estilo = 'partido'; cinza = $false; texto = "parou de mandar ($quando), rumo a $($resp.enviandoPara)" }
+  return @{ estilo = 'partido'; cinza = $false; texto = "parou de mandar ($quando), rumo a $($resp.enviandoPara)"; configurada = $true; ativo = $true }
 }
 
 # ── o ícone e o menu ─────────────────────────────────────────────────────────
@@ -129,6 +136,9 @@ $itemAbrir = $menu.Items.Add('Abrir painel')
 $itemReiniciar = $menu.Items.Add('Reiniciar')
 $menu.Items.Add('-') | Out-Null
 $itemPastas = $menu.Items.Add('Adicionar pasta de projetos...')
+$menu.Items.Add('-') | Out-Null
+$itemToggleSync = $menu.Items.Add('Pausar sincronia')
+$itemToggleSync.Enabled = $false
 $menu.Items.Add('-') | Out-Null
 $itemSair = $menu.Items.Add('Sair')
 $notify.ContextMenuStrip = $menu
@@ -175,6 +185,21 @@ $itemPastas.Add_Click({
   }
 }) | Out-Null
 
+
+# CC-340: liga/desliga sem apagar token nem endereço. O rótulo do item já diz
+# a ação que VAI acontecer no clique (o estado ATUAL, não o próximo), pelo
+# mesmo motivo de qualquer botão de liga/desliga.
+$itemToggleSync.Add_Click({
+  try {
+    $cc = Join-Path (Split-Path -Parent $PSScriptRoot) 'cc.mjs'
+    $sub = if ($script:estadoAtual -and $script:estadoAtual.ativo) { 'pausar' } else { 'retomar' }
+    & node $cc federar $sub 2>&1 | Out-Null
+    Atualizar
+  } catch {
+    [System.Windows.Forms.MessageBox]::Show("nao consegui mudar a sincronia: $_", 'Agent Cockpit') | Out-Null
+  }
+}) | Out-Null
+
 $itemSair.Add_Click({
   $notify.Visible = $false
   $notify.Dispose()
@@ -191,14 +216,19 @@ $notify.Add_DoubleClick({
 }) | Out-Null
 
 $iconeAtual = $null
+$script:estadoAtual = $null
 function Atualizar {
   $estado = Ler-Estado
+  $script:estadoAtual = $estado
   $novo = Novo-IconeBandeja -Estilo $estado.estilo -Cinza $estado.cinza
   $velho = $notify.Icon
   $notify.Icon = $novo.icone
   $notify.Text = ("Agent Cockpit`n" + $estado.texto).Substring(0, [Math]::Min(127, ("Agent Cockpit`n" + $estado.texto).Length))
   if ($velho) { $velho.Dispose() }
   $novo.bmp.Dispose()
+
+  $itemToggleSync.Enabled = $estado.configurada
+  $itemToggleSync.Text = if ($estado.ativo) { 'Pausar sincronia' } else { 'Retomar sincronia' }
 }
 
 Atualizar

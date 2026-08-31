@@ -1,14 +1,51 @@
 ---
 tags: [arquitetura, produto]
 tipo: desenho
+nome: Plano de Unificação
 atualizado: 2026-08-30
 estado: proposto, esperando aprovação dele
 ---
 
-# O PC vira coletor, a VPS vira o cérebro
+# Plano de Unificação — o PC vira coletor, a VPS vira o cérebro
 
-Desenho pedido por ele em 30/08, depois de escolher a forma. Nada disto foi
-construído: é o documento para ele ler e aprovar antes.
+Desenho pedido por ele em 30/08, depois de escolher a forma. Nome dado por ele
+no mesmo dia: **Plano de Unificação**. Nada disto foi construído: é o
+documento para ele ler e aprovar antes.
+
+## O escopo cresceu no mesmo dia, e ainda não foi decidido até onde
+
+Palavras dele, na hora de nomear o plano:
+
+> *"transformar a VPS numa central de tratamento dos dados de todos os
+> projetos meus, e de não só mostrar as conclusões desses dados como
+> controlá-los e os frameworks"*
+
+Isto é mais que o desenho abaixo. O que está escrito daqui pra baixo faz a VPS
+**mostrar** o que o PC manda (seção 2) e mantém o controle do framework e das
+travas **no PC**, com o motivo físico na seção 1a: uma trava que roda 20
+milissegundos longe não segura a mão no instante em que o agente escreve o
+arquivo.
+
+**A tensão que precisa ser resolvida por ele, não por mim:** "controlar os
+frameworks" da VPS pode significar duas coisas bem diferentes, e cada uma muda
+o desenho inteiro:
+
+1. A VPS **decide a regra** (qual trava vale, qual modo, qual perfil) e o PC só
+   **executa** o que ela mandou na última sincronia, quer dizer, controle
+   remoto de configuração, não de cada ação em tempo real. Isto cabe no desenho
+   de hoje, é só a seção 2 crescer.
+2. A VPS **participa de cada decisão em tempo real**, tipo aprovar ou barrar
+   uma escrita específica no instante em que ela acontece. Isto contradiz a
+   seção 1a de propósito, e exigiria redesenhar a trava inteira.
+
+**Decidido por ele em 30/08: é a opção 1.** A VPS decide a regra (qual trava
+vale, qual modo, qual perfil), e o PC aplica isso na sincronização seguinte.
+Não é aprovação em tempo real de cada escrita, a seção 1a continua valendo do
+jeito que está. O que muda no desenho: a seção 2 ganha mais um item, "a VPS
+também escreve configuração de framework, não só lê", e o coletor (seção 1)
+precisa buscar essa configuração na sincronização, além de mandar o retrato.
+Ainda não desenhado em detalhe, é o próximo passo se ele quiser seguir com o
+Plano de Unificação.
 
 ## De onde isto veio
 

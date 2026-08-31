@@ -6321,33 +6321,42 @@ if (process.platform !== 'win32') {
 
     /* 4. O caminho inteiro, com um binário de mentira no lugar do opencode.
        É o que prova que o disparo, a leitura da saída e a gravação funcionam
-       juntos, sem depender de rede nem de 17 segundos. */
-    /* ⚠️ **Pulado no Windows, e o motivo é um defeito de PRODUÇÃO, não do
-       teste.** Medido em 30/08: este bloco escrevia um script com shebang e
-       `chmod`, que no Windows não executa nada, e o `spawn` derrubava o gate
-       inteiro com ENOENT. Trocar por um `.cmd` não resolve: `pedir()` chama
-       `spawn(exe, ...)` sem `shell` e sem `cmd.exe`, e essa forma **nunca sobe
-       um `.cmd`** — está escrito nas armadilhas do `CLAUDE.md` desde o CC-29.
+       juntos, sem depender de rede nem de 17 segundos.
 
-       Como o opencode é instalado por npm, o que `acharOpencode()` devolve
-       neste sistema É um `.cmd`. Ou seja, a síntese provavelmente não funciona
-       no Windows, e o teste passando aqui esconderia isso. Ticket aberto no
-       quadro de rotas para a frente do CC-412; pular dizendo o motivo é mais
-       honesto que um verde que não prova nada. */
+       ⚠️ **Rodava só fora do Windows, até o CC-438.** `pedir()` chamava
+       `spawn(exe, ...)` sem `shell` e sem `cmd.exe`, e essa forma nunca sobe
+       um `.cmd` — que é o que `acharOpencode()` devolve quando o opencode é
+       instalado por npm no Windows. Consertado: `rodar()` passou a subir
+       `cmd.exe` como executável no Windows, com `/c` e cada argumento
+       separado do array. O binário de mentira também muda de forma
+       (`.cmd` chamando um `.mjs`, em vez de shebang + `chmod`), mas as
+       verificações abaixo são as mesmas nos dois sistemas. */
     const { ehWindows: ehWin412 } = await import('./src/platform.mjs')
+    let falso, travado
     if (ehWin412) {
-      console.log('  (pulado: `spawn` sem cmd.exe não sobe `.cmd`, e no Windows o opencode É um `.cmd`.')
-      console.log('           Não é limitação do teste: a síntese provavelmente não funciona aqui.)')
+      const falsoJs = path.join(raiz, 'opencode-de-mentira.mjs')
+      fs.writeFileSync(falsoJs, "process.stdout.write('\\u001b[0m\\n> build \\u00b7 big-pickle\\nA leitura escrita pelo modelo.\\n')\n")
+      falso = path.join(raiz, 'opencode-de-mentira.cmd')
+      fs.writeFileSync(falso, '@echo off\r\nnode "%~dp0opencode-de-mentira.mjs"\r\n')
+
+      travado = path.join(raiz, 'trava.cmd')
+      fs.writeFileSync(travado, '@echo off\r\nping 127.0.0.1 -n 31 >nul\r\n')
     } else {
-      const falso = path.join(raiz, 'opencode-de-mentira')
+      falso = path.join(raiz, 'opencode-de-mentira')
       fs.writeFileSync(falso, `#!/bin/sh\nprintf '${'\\033'}[0m\\n> build · big-pickle\\nA leitura escrita pelo modelo.\\n'\n`)
       fs.chmodSync(falso, 0o755)
 
+      travado = path.join(raiz, 'trava')
+      fs.writeFileSync(travado, '#!/bin/sh\nsleep 30\n')
+      fs.chmodSync(travado, 0o755)
+    }
+
+    {
       const r = await S.pedir({ travas: { regras: [], eventos: [] } }, { binario: falso })
       assert.equal(r.ok, true, r.motivo || 'o caminho inteiro tem que responder ok')
       assert.equal(r.texto, 'A leitura escrita pelo modelo.')
       assert.ok(r.gravado, 'gravar em silêncio e responder ok esconderia o dado sumindo')
-      console.log('  ok   CC-412: dispara, limpa a saída e grava, tudo num caminho só')
+      console.log('  ok   CC-412/CC-438: dispara, limpa a saída e grava, tudo num caminho só (Windows inclusive)')
 
       /* E o que foi gravado é o que se lê de volta. Sem isto, a tela abriria
          vazia depois de uma síntese que "deu certo". */
@@ -6358,9 +6367,6 @@ if (process.platform !== 'win32') {
 
       /* E o teto existe: um binário que trava não pode segurar o painel para
          sempre esperando uma resposta que não vem. */
-      const travado = path.join(raiz, 'trava')
-      fs.writeFileSync(travado, '#!/bin/sh\nsleep 30\n')
-      fs.chmodSync(travado, 0o755)
       const estourou = await S.rodar('oi', { binario: travado, teto: 400 })
       assert.equal(estourou.ok, false)
       assert.match(estourou.motivo, /sem responder/)

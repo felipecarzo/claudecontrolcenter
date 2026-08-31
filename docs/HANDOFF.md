@@ -1,105 +1,96 @@
 # HANDOFF
 
-**Sessão:** 2026-08-30 · Claude (Opus 5, `2d4e7b74`) · **PC** (ALIENWARE-LIPE), rota `framework`
-**Último commit:** `85765b2` · **nada empurrado ainda**
+**Sessão:** 2026-08-30/31 · Claude (Opus 5, `2d4e7b74`/`51c2da13`, mesma sessão
+depois de um `/clear`) · **PC** (ALIENWARE-LIPE), rota `framework`
+**Último commit antes desta sessão:** `cb5d311` · **este encerramento commita e empurra**
 **Branch:** `backlog/cc-46-48-49-52-53-56-65` · **versão `0.3.0`**
 
-O que aconteceu: [diario/2026-08-30.md](diario/2026-08-30.md), da metade para
-baixo (a primeira parte é da sessão da VPS). Ponteiro, não relatório.
+O que aconteceu: [diario/2026-08-30.md](diario/2026-08-30.md), seção "À noite,
+no PC". Ponteiro, não relatório.
 
 ## ⚠️ Antes de encostar em código
 
-**1. `git fetch` faz parte do Passo 0.** Esta sessão trabalhou o dia inteiro
-numa cópia **46 commits atrás** da viva, e refez dois consertos que já existiam,
-um deles com diagnóstico pior. O histórico local prova que a pasta é
-consistente, nunca que ela é a mais nova. O aviso já estava escrito e não foi
-seguido.
+**1. `git fetch` faz parte do Passo 0.** Já aconteceu duas vezes neste projeto
+uma sessão trabalhar o dia inteiro numa cópia atrasada. O histórico local prova
+que a pasta é consistente, nunca que ela é a mais nova.
 
 **2. Existe uma cópia INSTALADA, separada desta.** Em
 `%LOCALAPPDATA%\AgentCockpit`. É ela que roda e que serve o painel dele; esta
-pasta é a oficina. Publicar é `cc versao publicar`, que roda o portão antes e
-recusa se falhar. Voltar é `cc versao voltar`.
+pasta é a oficina. Publicar é `cc versao publicar`. A Tarefa Agendada do login
+já aponta pra ela (conferido nesta sessão, não só "aceitei").
 
 **3. `docs/ALINHAMENTO-2026-08-30.md`** é o canal entre as máquinas, porque o
-recado do Routia mora num arquivo que o git ignora e nunca atravessa. Ler antes
-de supor o que a outra ponta fez.
+recado do Routia mora num arquivo que o git ignora e nunca atravessa.
 
-## O que este dia entregou
+## O que esta sessão entregou
 
-Detalhe item a item no ROADMAP. Em uma linha cada:
+- **A síntese pelo opencode passou a rodar no Windows** (era o item 🔴 mais
+  urgente do dia): trocado o jeito de chamar o programa externo, e o teste que
+  antes só avisava "provavelmente não funciona aqui" agora prova de verdade.
+- **A supervisão do Windows no login aponta pro lugar certo.** Rodou o comando
+  que pede a permissão sozinho, ele confirmou a janela, e o resultado foi
+  medido (não só o "aceitei"): sem painel duplicado sobrando.
+- **Nomeado o Plano de Unificação**, em `docs/produto/COLETOR.md`: a VPS virar
+  central de dado E de controle dos projetos. Uma ambiguidade real (controlar
+  REGRA versus controlar cada AÇÃO em tempo real) foi resolvida por ele: a VPS
+  decide a regra, o PC aplica na sincronização seguinte. O desenho inteiro
+  ainda espera aprovação.
+- **Pausar a sincronia pelo ícone da bandeja**, sem apagar token nem endereço
+  (o comando antigo de desligar apagava os dois). `cc federar pausar`/`retomar`
+  no terminal, dois itens de menu na bandeja.
+- **Achado fora da lista: o login da VPS estava crashando o próprio servidor**
+  com certas senhas (decodificação duplicada). Corrigido, com backup, e provado
+  que texto malformado não derruba mais o processo. Fica registrado aqui porque
+  o arquivo (`cockpit-auth.mjs`, na VPS) não é deste repositório.
+- Três itens de tabela que já estavam prontos, só faltava marcar: pastas de
+  projeto pelo terminal/bandeja/instalador, as travas saindo da pasta velha,
+  três cópias virando uma.
 
-- **A trava do framework alcança código na raiz** (CC-435), e a **entrevista
-  chegou ao agente**: antes a recusa mandava preencher o MVP à mão.
-- **Ele escolhe as pastas de projeto** pelo terminal, pela bandeja e na
-  instalação (CC-436).
-- **Os 11 projetos com framework que sumiam** no caminho até a VPS passaram a
-  chegar (CC-437): eram 3 no retrato, hoje são 24.
-- **A cópia que roda separada da que se edita** (CC-439), com `cc versao`.
-- **O cockpit abre como PROGRAMA**, em janela própria (CC-441), e o ícone da
-  barra volta junto ao religar o painel (CC-442).
-- **O programa abre o cockpit INTEIRO**, não o painel desta máquina (CC-443).
-- **O contrato entre as pontas e o pacote rico** (CC-440): o roadmap viaja com
-  581 frentes e 107 sprints, em vez de contagem e seis títulos.
-- **O método e o MVP do PC chegam na VPS** (CC-445, e responde o CC-433).
-- **As travas do PC saíram da pasta velha** e rodam da instalada (CC-444).
-
-Portão: **387 verificações**. Era 172 no começo do dia nesta cópia, e 363 na
-viva.
+Portão: verde, com o caso do Windows rodando de verdade em vez de pular.
 
 ## ⛔ O que espera ELE, e só ele resolve
 
-1. **Um comando num terminal como ADMINISTRADOR.** A supervisão do Windows ainda
-   aponta para a pasta velha, e volta a subi-la no próximo logon. Sem isso a
-   bagunça de painéis duplicados volta:
-
-   ```
-   cd "C:\Users\lfeli.ALIENWARE-LIPE\AppData\Local\AgentCockpit"
-   node cc.mjs daemon servico --port 8099
-   ```
-
-2. **As onze pastas de projeto do PC não têm o prefixo `PC_`**, que a regra dele
-   de 23/08 pede. Levantado pela sessão da VPS. Renomear com sessão aberta
-   quebra caminho, então é decisão e mão dele.
-
-3. **O desenho do coletor** (`docs/produto/COLETOR.md`) espera ele ler e
-   aprovar. Os dois primeiros passos da ordem sugerida já saíram.
-
-4. **Os caminhos 2 e 3 do CC-433**: editar o MVP de um projeto do PC pela VPS
-   exigiria afrouxar a lista fechada de ações da fila, que é decisão de risco.
-
-## Pendências de commit
-
-**Nada empurrado.** Onze commits meus mais o merge com a VPS. `docs/planos/CC-45.md`
-continua fora do commit de propósito, é arquivo dele.
+1. **Ler e aprovar o desenho inteiro do coletor** (`docs/produto/COLETOR.md`).
+   Uma peça dele (o tipo de controle remoto) já foi decidida nesta sessão; o
+   resto do desenho continua esperando.
+2. **As onze pastas de projeto do PC não têm o prefixo `PC_`**, que a regra
+   dele de 23/08 pede. Renomear com sessão aberta quebra caminho, é decisão e
+   mão dele.
+3. **Os caminhos 2 e 3 do CC-433**: editar o MVP de um projeto do PC pela VPS
+   exigiria afrouxar a lista fechada de ações da fila, decisão de risco.
 
 ## O que ficou para outra rota, com ticket no quadro
 
-- **A tela do MVP remoto** (CC-433): o dado chega pronto em `framework[].mvp` e
-  `framework[].metodo`, falta desenhar no cartão. É da rota `front`.
-- **A tela mínima do coletor** e a resposta da VPS dizendo o contrato dela:
-  moram em `src/web.mjs`, que é da mesma rota.
+- **A faixa na tela dizendo, por máquina, se as travas valem lá** (metade do
+  item da bandeja que falta): mexe em `src/ui_v2.html`, da rota `front`, cuja
+  sessão está viva no PC dele agora. Não toquei.
+
+## Pendências de commit
+
+Este encerramento inclui: o conserto da síntese no Windows, o toggle da
+bandeja (`config.mjs`, `web.mjs`, `cc.mjs`, `bandeja.ps1`), o teste do CC-412
+rodando de verdade no Windows, e a documentação (ROADMAP, ROTAS-ATIVAS,
+COLETOR, HANDOFF, diário, mais `docs/planos/CC-45.md` que já existia solto).
+O conserto do `cockpit-auth.mjs` **não entra aqui**: vive só na VPS, fora deste
+repositório.
 
 ## O que aprendi hoje e não pode se perder
 
-1. **Prova que para no que o remetente monta não é prova.** Duas vezes o dado
-   saiu rico e chegou magro, sem erro nenhum, porque quem recebe recorta campo a
-   campo. A rede tem que medir a travessia.
-2. **`String.replace(de, para)` interpreta `$&` e cifrão-crase no texto NOVO.**
-   Um comentário meu com uma regex dentro fez um arquivo ganhar uma cópia
-   inteira de si mesmo no meio de uma linha.
-3. **`CC_HOME` isola o config e NÃO isola o autostart.** Um teste com porta
-   diferente reescreveu o atalho de logon dele, calado.
-4. **O comando que procura aparece na busca.** Uma contagem de processos disse
-   "1 vivo" com zero de pé, porque o próprio comando continha o texto procurado.
-5. **Matar não é conferir, e "0 removidas" pode ser sucesso aparente.** Um script
-   de limpeza procurou o caminho no campo errado e disse que estava limpo.
-6. **Numeração de item não sobrevive a trabalho em paralelo.** As duas sessões
-   escolheram `CC-434` no mesmo dia, cada uma lendo o próprio arquivo, e as duas
-   leituras estavam certas.
+1. **Ter rota marcada não dá acesso ao arquivo inteiro do vizinho.** Empréstimo
+   de arquivo de outra rota precisa ser registrado por escrito, com o recorte
+   exato do que muda, mesmo quando a autorização já foi dada por ele.
+2. **Comando de terminal que apaga configuração pra "desligar" é armadilha se a
+   mesma ação também existir num clique de bandeja.** Um clique errado não pode
+   ter o mesmo custo que digitar um comando de propósito.
+3. **`URLSearchParams.get()` já decodifica.** Decodificar de novo por cima
+   quebra com texto que tem `%` sozinho, e sem `try/catch` em volta isso
+   derruba o processo inteiro, não só aquele pedido.
+4. **502 com senha certa não é sempre "senha errada".** Vale olhar o log do
+   serviço antes de supor.
 
 ## Arquivos a ler
 
-- `docs/produto/COLETOR.md` — o desenho que espera aprovação dele
+- `docs/produto/COLETOR.md` — o desenho que espera aprovação dele, com a peça
+  do controle remoto já decidida
 - `docs/ALINHAMENTO-2026-08-30.md` — o que a VPS fez, escrito por ela
-- `src/publicar.mjs` — a cópia que roda, e a regra de quando a versão sobe
-- `src/federacao.mjs` — o contrato, o pacote rico, o retrato do framework
+- `src/federacao.mjs`, `src/config.mjs` — o campo `ativo` novo na federação

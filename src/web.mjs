@@ -510,8 +510,9 @@ let ultimoEmpurrao = null
    timer de 30s, agora alcançável de fora. */
 export async function empurrar({ comTempo = null } = {}) {
   const cfg = readConfig()
-  const { token, enviarPara } = cfg.federacao || {}
+  const { token, enviarPara, ativo } = cfg.federacao || {}
   if (!token || !enviarPara) return { ok: false, erro: 'federação não configurada' }
+  if (ativo === false) return { ok: false, erro: 'sincronização pausada' }
 
   const s = snapshot()
   const meus = s.jobs.filter((j) => j.origem?.id === s.maquina.id)
@@ -1301,6 +1302,8 @@ function handler(req, res) {
       token: cfg.federacao?.token || '',
       configurada: Boolean(cfg.federacao?.token),
       enviandoPara: cfg.federacao?.enviarPara || '',
+      // CC-340: pausar não apaga token nem endereço, só para de mandar.
+      ativo: cfg.federacao?.ativo !== false,
       /* CC-165: as duas perguntas dele sobre confiabilidade, respondidas com
          dado e não com promessa. `empurrando` é o resultado do último envio
          de verdade (null antes do primeiro); `autostart` diz se este painel
@@ -1335,6 +1338,17 @@ function handler(req, res) {
   // Empurra agora, sob clique: serve para o Felipe testar sem esperar o ciclo.
   if (url.pathname === '/api/federacao/enviar' && req.method === 'POST') {
     return empurrar().then((r) => send(res, 200, r)).catch((e) => send(res, 200, { ok: false, erro: String(e) }))
+  }
+
+  // CC-340: pausar/retomar, sem mexer em token nem endereço. A bandeja chama
+  // estas duas, pelo mesmo `cc federar pausar`/`retomar` que o terminal usa.
+  if (url.pathname === '/api/federacao/pausar' && req.method === 'POST') {
+    setFederacao({ ativo: false })
+    return send(res, 200, { ok: true, ativo: false })
+  }
+  if (url.pathname === '/api/federacao/retomar' && req.method === 'POST') {
+    setFederacao({ ativo: true })
+    return send(res, 200, { ok: true, ativo: true })
   }
 
   // O glossário: os documentos reduzidos ao que cabe numa tela.

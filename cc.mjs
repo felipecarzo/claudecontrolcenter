@@ -1123,9 +1123,28 @@ switch (cmd) {
       break
     }
 
+    /* CC-340: diferente de `desligar`, não mexe em token nem endereço. É o que
+       a bandeja chama, porque ela não tem como pedir o token de volta. */
+    if (sub === 'pausar') {
+      gravarFederacao({ ativo: false })
+      console.log('sincronização pausada. Token e endereço continuam gravados; `cc federar retomar` volta a empurrar.')
+      break
+    }
+    if (sub === 'retomar') {
+      const cfg = readConfig()
+      if (!cfg.federacao?.token || !cfg.federacao?.enviarPara) {
+        die('não há token nem endereço gravados. Use `cc federar ligar --para <url> --token <token>` primeiro.')
+      }
+      gravarFederacao({ ativo: true })
+      console.log(`retomado: empurrando de novo para ${cfg.federacao.enviarPara}.`)
+      break
+    }
+
     if (sub !== 'ligar') {
       die('uso: cc federar [status]\n'
         + '     cc federar ligar --para <url> --token <token> [--nome "MEU PC"]\n'
+        + '     cc federar pausar\n'
+        + '     cc federar retomar\n'
         + '     cc federar desligar')
     }
 
@@ -1137,7 +1156,7 @@ switch (cmd) {
     if (!/^https?:\/\//i.test(para)) die(`--para precisa começar com http:// ou https://, recebi "${para}"`)
 
     if (nome) gravarMaquina({ nome })
-    gravarFederacao({ token, enviarPara: para })
+    gravarFederacao({ token, enviarPara: para, ativo: true })
 
     /* A confirmação é o ponto do comando. Gravar e dizer "pronto" repetiria o
        defeito que este projeto passou o dia inteiro consertando: dizer que

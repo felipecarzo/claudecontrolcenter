@@ -29,7 +29,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
-import { casaClaude } from './platform.mjs'
+import { casaClaude, ehWindows } from './platform.mjs'
 import { DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
 import { nomeCanonico } from './nomeProjeto.mjs'
 
@@ -185,6 +185,13 @@ export function prompt(numeros) {
  * c) **Nada de `detached`.** Quem chama é o processo do painel, que não sai
  *    sozinho. `detached` só serve para sobreviver a quem disparou, e junto com
  *    ele a captura da saída para de funcionar.
+ * d) **No Windows, `cmd.exe` é o executável, nunca `shell: true`.** O opencode
+ *    é instalado por npm, então `exe` é um `.cmd`, e `spawn(exe, args)` sem
+ *    shell nunca sobe isso — está nas armadilhas do `CLAUDE.md` desde o CC-29.
+ *    O padrão é o mesmo de `lancarComando`: `cmd.exe` com `/c` e cada
+ *    argumento como elemento próprio do array. Node escapa cada um sozinho ao
+ *    montar a linha de comando; o prompt (texto arbitrário) nunca passa pelo
+ *    shell.
  */
 export function rodar(textoPrompt, { binario = null, modelo = MODELO, teto = TETO_MS } = {}) {
   const exe = binario || acharOpencode()
@@ -196,9 +203,12 @@ export function rodar(textoPrompt, { binario = null, modelo = MODELO, teto = TET
     let respondido = false
     const responder = (r) => { if (!respondido) { respondido = true; resolve(r) } }
 
+    const args = ['run', '--model', modelo, textoPrompt]
     let filho
     try {
-      filho = spawn(exe, ['run', '--model', modelo, textoPrompt], { stdio: ['ignore', 'pipe', 'pipe'] })
+      filho = ehWindows
+        ? spawn('cmd.exe', ['/c', exe, ...args], { stdio: ['ignore', 'pipe', 'pipe'] })
+        : spawn(exe, args, { stdio: ['ignore', 'pipe', 'pipe'] })
     } catch (e) {
       return responder({ ok: false, motivo: String(e.message || e) })
     }

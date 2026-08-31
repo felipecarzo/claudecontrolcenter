@@ -35,7 +35,7 @@ const DEFAULTS = {
   // Federação (CC-47): identidade desta máquina e as outras que reportam aqui.
   // `maquina` nasce vazia e é preenchida na primeira leitura (`maquina-id.mjs`).
   maquina: null,
-  federacao: { token: '', enviarPara: '', maquinas: {} },
+  federacao: { token: '', enviarPara: '', ativo: true, maquinas: {} },
 }
 
 export const PIP_BLOCOS = ['uso', 'agentes', 'maquina', 'servidores', 'docker', 'processos']
@@ -78,13 +78,19 @@ export function setMaquina({ id, nome }) {
  * Para onde esta máquina empurra o estado, e com que token. Vazio significa
  * "não federa", que é o padrão: quem roda o painel sozinho não precisa de nada
  * disto, e token em repositório público seria erro grave.
+ *
+ * `ativo` é separado de token/enviarPara de propósito: pausar não pode apagar
+ * a configuração. Um clique errado na bandeja (CC-340) que apagasse o token
+ * obrigaria digitar tudo de novo para retomar; `ativo: false` só para o envio,
+ * sem mexer em mais nada.
  */
-export function setFederacao({ token, enviarPara }) {
+export function setFederacao({ token, enviarPara, ativo }) {
   const cfg = readConfig()
   const atual = cfg.federacao || DEFAULTS.federacao
   const proxima = { ...atual }
   if (typeof token === 'string') proxima.token = token.trim()
   if (typeof enviarPara === 'string') proxima.enviarPara = enviarPara.trim().replace(/\/+$/, '')
+  if (typeof ativo === 'boolean') proxima.ativo = ativo
   writeConfig({ ...cfg, federacao: proxima })
   return proxima
 }

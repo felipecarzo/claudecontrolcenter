@@ -2684,7 +2684,14 @@ abrir. `cc app --local` força o daqui quando ele quiser.
 senha na janela, e ela fica guardada no perfil próprio dela, então o login é uma
 vez só. Tratar `401` como "fora do ar" faria o programa cair no local sempre.
 
-### CC-444 🟡 30/08: três cópias do mesmo produto (as travas já saíram da velha)
+### CC-444 ✅ 30/08: três cópias do mesmo produto (as travas já saíram da velha)
+
+**Fechado em 30/08.** O que faltava não era código: número de versão andando
+(feito, virou 0.3.0 com a regra em `src/publicar.mjs`), um lugar só como
+produto (decidido, é o `cockpit`) e o hábito de perguntar ao remoto antes de
+abrir trabalho (registrado neste arquivo). A parte de código, as 39 travas
+saindo da pasta velha, já estava feita. Fecha junto com o CC-439, que resolveu
+o resíduo prático (a Tarefa Agendada apontando pra pasta velha).
 
 > **Era CC-434 até a junção de 30/08.** A sessão da VPS usou o mesmo número no
 > mesmo dia, para o recado que atravessa entre as máquinas, e o dela chegou
@@ -2862,7 +2869,7 @@ Provado no ar: `no ar`, último envio com **14 agentes, 11 projetos, 584 frentes
 2. O mapa de testes ficou desatualizado, e ele avisou que é gerado por comando e
    nunca editado à mão.
 
-### CC-439 🟡 30/08: a cópia que RODA, separada da que se edita (motor pronto, falta apontar)
+### CC-439 ✅ 30/08: a cópia que RODA, separada da que se edita
 
 **É o primeiro dos três caminhos, e ele escolheu começar por aqui.** Resolve a
 causa: hoje o comando instalado é um atalho para a pasta de obras, então uma
@@ -2897,14 +2904,13 @@ hora"*.
 - **O atalho de logon já aponta para a instalada.** Conferido no `.vbs`:
   `...\AppData\Local\AgentCockpit\cc.mjs`.
 
-⚠️ **O que ainda falta é DELE, e precisa de administrador.** A Tarefa Agendada
-que supervisiona continua apontando para outra pasta, e trocar isso dá "Acesso
-negado" sem elevação, o que já está registrado nas armadilhas desde 26/08.
-
-**E o dado que a medição achou é pior que o esperado:** a tarefa aponta para
-`proj_controlcenter\src\arrancar.ps1`, ou seja, **quem o Windows sobe no logon
-dele hoje é a pasta VELHA**, a de 27/08. É a mesma raiz do CC-444, agora medida
-do lado do sistema operacional.
+**Fechado em 30/08.** A tarefa apontava para `proj_controlcenter\src\arrancar.ps1`,
+a pasta VELHA de 27/08, a mesma raiz do CC-444, agora medida do lado do
+sistema operacional. Ele rodou `cc daemon servico --port 8099` na pasta
+instalada e confirmou a janela de elevação. Conferido depois, não só o
+"aceitei": a Tarefa Agendada `AgentCockpit` aponta agora para
+`AppData\Local\AgentCockpit\src\arrancar.ps1`, e a porta 8099 tem um processo
+só vivo, da pasta instalada — sem resíduo da pasta velha para matar.
 
 **CC-447, 30/08: o comando passou a pedir a permissão sozinho.**
 
@@ -2932,19 +2938,23 @@ vivos, dois na porta 8099. Quem serve é o do `cockpit`; o do `proj_controlcente
 está vivo e **não serve nada**, gastando memória à toa. É o mesmo formato do
 CC-353. Matar sem trocar a tarefa antes só o faria voltar.
 
-### CC-438 🔴 30/08: a síntese pelo opencode provavelmente não funciona no Windows
+### CC-438 ✅ 30/08: a síntese pelo opencode não funcionava no Windows
 
-Achado ao unificar, e não é do teste. `pedir()`, em `src/sintese.mjs`, chama
+Achado ao unificar, e não era do teste. `pedir()`, em `src/sintese.mjs`, chamava
 `spawn(exe, [...])` **sem `shell` e sem `cmd.exe`**, e essa forma nunca sobe um
 `.cmd`. Está nas armadilhas do `CLAUDE.md` desde o CC-29.
 
 Como o opencode é instalado por npm, o que `acharOpencode()` devolve no Windows
-**é** um `.cmd`. O caso do gate que provava o caminho inteiro passou a ser pulado
-aqui, dizendo o motivo, porque um verde que não prova nada seria pior.
+**é** um `.cmd`. O caso do gate que provava o caminho inteiro tinha sido pulado,
+dizendo o motivo, porque um verde que não prova nada seria pior.
 
-**Quem pegar:** o conserto é o padrão de `lancarComando`, invocar `cmd.exe` como
-executável com `/c` e cada argumento separado, nunca `shell: true` com texto
-livre.
+**Fechado em 30/08.** `rodar()` passou a subir `cmd.exe` como executável no
+Windows, com `/c` e cada argumento separado do array, o mesmo padrão de
+`lancarComando`. O caso do gate que antes pulava no Windows agora roda de
+verdade lá: binário `.cmd` de mentira (que chama um `.mjs`), passando pelo
+caminho inteiro (`rodar()`, limpeza da saída, gravação em disco, e o teto que
+mata quem trava). `npm test` verde, com prova real e não mais um pulo
+explicado.
 
 ## ▶ Conserto solto, 26/08: a trava pedia autorização sem ter onde clicar
 
@@ -3605,17 +3615,6 @@ acrescenta a flag; o padrão continua sendo o seguro. Vale nos dois caminhos
 (A terceira linha da nota, `routific`, ele mandou ignorar em 26/08: ruído de
 ditado, não é tarefa.)
 
-### CC-360, aberto em 26/08 (outro projeto): usuários de teste no fibraessência
-
-Da primeira nota, `PC_fibraessencia`:
-
-> *"vamos criar alguns usuarios bem especificos, todos com o nome de cada uma das
-> pessoas da operação e testar o login e desenvolvimento de cada um na plataforma"*
-
-**Não é do cockpit.** É tarefa do projeto fibraessência (testar login por pessoa
-da operação). Fica anotado aqui porque foi aqui que ele escreveu, mas a execução
-é no repositório do fibraessência, não neste. Vale mover para o backlog de lá.
-
 ## ▶ Frente nova, aberta em 25/08: a lista "Edit", escrita por ele no bloco de notas
 
 Ele acumulou 12 pedidos num bloco de notas chamado **Edit**, dentro do próprio
@@ -3787,7 +3786,7 @@ peça nova.
 
 ## ▶ Frente nova, aberta em 22/08: o cockpit vira aplicativo de verdade
 
-### CC-352 🟡 26/08 (base feita, instalador é do PC): pastas de projeto, mais de uma
+### CC-352 ✅ 26/08 (fechado via CC-436): pastas de projeto, mais de uma
 
 Decisão dele em 26/08: perguntar na instalação, com várias pastas. A parte que é
 minha e do lado da VPS está **feita**: o cockpit passou a ler de VÁRIAS pastas,
@@ -3813,9 +3812,11 @@ com o mesmo nome mais abaixo no arquivo, e a segunda apaga a primeira em
 silêncio. É a mesma família do id repetido que já apagou uma tela inteira aqui.
 O portão agora recusa nome de função repetido, e conferiu as 244 da tela.
 
-**Falta só a parte do PC, e é dele:** o instalador PERGUNTAR as pastas na
-primeira execução, mais o atalho na barra de tarefas. É o mesmo instalador do
-CC-340. A leitura e a escrita já estão prontas dos dois lados.
+**Fechado em 30/08 pelo CC-436, medido agora e confirmado no código:** `cc
+pastas` (com `adicionar`/`remover`) existe em `cc.mjs`, o ícone "Adicionar
+pasta de projetos..." está em `src/bandeja.ps1`, e o instalador pergunta na
+primeira vez em `src/install.mjs`. Os três gravam pela mesma função, e
+`test-pastas.mjs` está no gate (`npm test`).
 
 Do bloco de notas `rascunho`, lido em 25/08. Palavras dele, ditadas por voz e
 normalizadas só na pontuação:
@@ -4004,7 +4005,7 @@ aviso de atualizar nos três projetos do PC, e simulando a máquina reportando
 aparecem os três seletores com o modo certo já selecionado. Falta o PC puxar o
 código para o caminho fechar de ponta a ponta.
 
-### CC-340, aberto em 25/08: o sync do PC vira software instalável, com ícone na barra
+### CC-340 🟡 25/08 (o programa está pronto, falta só a faixa na tela): o sync do PC vira software instalável, com ícone na barra
 
 Palavras dele, em 25/08: *"poderiamos criar um setup que instale um programinha
 que faça o auto sync e eu possa ver como um software mesmo com link na taskbar
@@ -4052,16 +4053,20 @@ Dois achados que valem mais que o recurso:
   A leitura caía no arquivo real e a ESCRITA também — o mesmo caminho que já
   apagou as notas dele uma vez. Virou `arquivoSettings()`, resolvido na hora.
 
-Falta a parte 2, e ela tem dois pedaços de tamanhos muito diferentes:
+Falta a parte 2, e ela tinha dois pedaços de tamanhos muito diferentes:
 
 1. **A faixa na tela** dizendo, por máquina, se as travas valem lá. O dado já
    chega; falta desenhar. Bloqueado: `src/ui_v2.html` é da rota `front`, cuja
    sessão está viva no PC dele.
-2. **O empurrador com cara de programa** no Windows (instalador, ícone na
-   barra). Decisão dele em 25/08: começar pelo que já existe, porque o painel
-   **já é instalável** como aplicativo (tem manifesto e service worker) e o
-   serviço **já sobe no logon**. O que faltava era ver o estado, não instalar
-   coisa nova.
+2. **Fechado em 30/08: o empurrador com cara de programa** no Windows. O
+   painel já era instalável como aplicativo e o serviço já subia no logon
+   (decisão de 25/08: começar pelo que já existia). O que faltava era **ligar,
+   desligar e ver a última sincronia** direto no ícone. A bandeja ganhou um
+   item de menu que liga e desliga a sincronia sem apagar o token nem o
+   endereço da VPS (achado no caminho: `cc federar desligar` apagava os dois,
+   e um clique errado na bandeja teria obrigado a digitar tudo de novo pra
+   voltar). `cc federar pausar` / `cc federar retomar` fazem o mesmo pelo
+   terminal. "Ver a última sincronia" já existia no texto do ícone.
 
 ### CC-331 ✅ 22/08: a lista de projetos do Coderoom no menu do telefone
 
