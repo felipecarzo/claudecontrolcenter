@@ -22,7 +22,43 @@
 /** Nunca travadas, em método nenhum. Trava em doc quebra o `/end-session`,
  *  lição que o `rota-guard` já aprendeu, e travar o próprio estado tornaria
  *  impossível sair da fase. */
-export const SEMPRE_LIVRE = ['docs/**', 'assets/**', '.framework/**', '*']
+/**
+ * CC-45, 30/08: o `'*'` que estava aqui era um buraco, e ele nunca teve porquê
+ * escrito ao lado (o comentário acima justifica `docs/`, `assets/` e o estado,
+ * e não diz uma palavra sobre ele).
+ *
+ * Por `casa()`, `'*'` significa "qualquer arquivo na raiz". Como `podeEditar`
+ * consulta esta lista ANTES de perfil, modo e fase, todo projeto que guarda
+ * código na raiz, sem `src/`, era estruturalmente incapaz de travar qualquer
+ * arquivo, em qualquer fase, em qualquer modo. Foi assim que um agente escreveu
+ * o `reunion` inteiro e depois inventou os 7 critérios de pronto sozinho.
+ *
+ * No lugar dele entra a lista explícita do que passa sempre na raiz. Três
+ * famílias, e cada uma tem motivo:
+ *
+ * 1. **Configuração e texto.** Não é produto; travar isso só ensina a desligar
+ *    o framework.
+ * 2. **Teste.** O gate existe para impedir código de produto sem pronto
+ *    definido, e teste é prova, o oposto do que ele previne. Sem estes
+ *    padrões, ligar o framework aqui travaria 15 dos 17 `.mjs` da raiz de uma
+ *    vez, e a maioria é teste.
+ * 3. **Atalho de lançamento** (`.bat`, `.sh`, `.cmd`, `.ps1`). Decisão dele em
+ *    30/08, sobre o `GRAVAR.bat` do `reunion`: *"pode, é só atalho"*. Duas
+ *    linhas chamando o Python não são o produto.
+ *
+ * Risco aceito por ele: configuração incomum fora desta lista passa a travar na
+ * fase de Definição. **A saída correta é acrescentar a linha aqui, nunca
+ * devolver o `'*'`** — e a mensagem de recusa do gate diz isso, para o sintoma
+ * apontar para a cura.
+ */
+export const SEMPRE_LIVRE = [
+  'docs/**', 'assets/**', '.framework/**',
+  '*.md', '*.txt', '*.json', '*.jsonc', '*.yml', '*.yaml', '*.toml', '*.lock',
+  '*.ini', '*.cfg', '*.config.*', '.*',
+  'Dockerfile', 'Makefile', 'Procfile', 'LICENSE',
+  'test*.mjs', 'test*.js', 'test*.ts', 'test*.py', '*.test.*', '*_test.*',
+  '*.bat', '*.sh', '*.cmd', '*.ps1',
+]
 
 /**
  * O que conta como código para os MODOS.
@@ -33,7 +69,20 @@ export const SEMPRE_LIVRE = ['docs/**', 'assets/**', '.framework/**', '*']
  * perguntas diferentes: a FASE pergunta "esta etapa bloqueia este caminho?", o
  * MODO pergunta "isto é código?".
  */
-export const CODIGO = ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**', 'hooks/**']
+/**
+ * O que as FASES travam. CC-45: a raiz entrou (`'*'`), senão o arquivo barrado
+ * pelo `SEMPRE_LIVRE` caía no degrau seguinte e passava igual — mexer numa
+ * lista só não mudaria nada. Como o `SEMPRE_LIVRE` é avaliado antes,
+ * configuração, teste e atalho da raiz continuam passando, e sobra o que é
+ * código de verdade.
+ *
+ * Uma const em vez das cinco cópias literais que existiam: era o mesmo array
+ * repetido em cada fase que trava, e o próximo a acrescentar uma pasta ia
+ * acertar quatro e esquecer a quinta.
+ */
+export const TRAVA_CODIGO = ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**', '*']
+
+export const CODIGO = [...TRAVA_CODIGO, 'hooks/**']
 
 /**
  * Predicados: o vocabulário que uma fase usa em `exige`. Cada um devolve `null`
@@ -200,7 +249,7 @@ export const METODOS = {
         titulo: 'Definição',
         explica: 'Antes de escrever código, o projeto precisa dizer o que entrega e como se sabe que ficou pronto.',
         exige: ['mvp-tem-nome', 'mvp-definido'],
-        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+        trava: TRAVA_CODIGO,
       },
       {
         /* CC-384, 28/08. Pedido dele: chegar com o projeto em texto e sair com
@@ -253,14 +302,14 @@ export const METODOS = {
         titulo: 'Descrição',
         explica: 'Escreva o projeto em texto corrido, do jeito que você contaria para uma pessoa. É desse texto que as perguntas saem.',
         exige: ['prosa-escrita'],
-        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+        trava: TRAVA_CODIGO,
       },
       {
         id: 'entrevista',
         titulo: 'Entrevista',
         explica: 'Eu preencho o que a sua descrição já responde, marcado como palpite. Você confirma ou corrige, e responde o resto.',
         exige: ['entrevista-terminada', 'entrevista-confirmada', 'mvp-tem-nome', 'mvp-definido'],
-        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+        trava: TRAVA_CODIGO,
       },
       {
         id: 'planejamento',
@@ -298,7 +347,7 @@ export const METODOS = {
         titulo: 'Reprodução',
         explica: 'Antes de mexer no código: como o defeito aparece, e o que deveria aparecer no lugar. Sem isso, consertar vira tentativa.',
         exige: ['defeito-reproduzido'],
-        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+        trava: TRAVA_CODIGO,
       },
       {
         id: 'execucao',
@@ -338,14 +387,14 @@ export const METODOS = {
         titulo: 'Pergunta',
         explica: 'Que pergunta este estudo responde? Sem ela, estudo vira leitura sem fim.',
         exige: ['pergunta-declarada'],
-        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+        trava: TRAVA_CODIGO,
       },
       {
         id: 'decisao',
         titulo: 'Decisão',
         explica: 'Duas opções ou mais, cada uma com o que foi medido, e a escolha com o porquê. Código continua travado: se virou código, virou outro método.',
         exige: ['opcoes-medidas', 'decisao-registrada'],
-        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+        trava: TRAVA_CODIGO,
       },
     ],
   },
@@ -368,7 +417,7 @@ export const METODOS = {
         titulo: 'Definição',
         explica: 'O que o cliente recebe, como se sabe que está pronto, e quais verificações este projeto usa.',
         exige: ['mvp-tem-nome', 'mvp-definido', 'ferramentas-escolhidas'],
-        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+        trava: TRAVA_CODIGO,
       },
       {
         id: 'execucao',
@@ -419,7 +468,7 @@ export const METODOS = {
         titulo: 'Superfície',
         explica: 'Antes de código: o que este projeto expõe (banco, login, upload, pagamento) e quais verificações ele usa. É o que decide o que auditar.',
         exige: ['superficie-declarada', 'ferramentas-escolhidas'],
-        trava: ['src/**', 'apps/**', 'tools/**', 'lib/**', 'app/**'],
+        trava: TRAVA_CODIGO,
       },
       {
         id: 'execucao',
@@ -548,10 +597,21 @@ export function casa(padrao, rel) {
   const alvo = String(rel || '').replace(/\\/g, '/').replace(/^\.\//, '')
   if (!alvo) return false
   if (padrao === '**') return true
-  if (padrao === '*') return !alvo.includes('/')
   if (padrao.endsWith('/**')) {
     const base = padrao.slice(0, -3)
     return alvo === base || alvo.startsWith(base + '/')
+  }
+  /* CC-45: padrão sem barra e com `*` vale SÓ para a raiz, e o `*` casa
+     qualquer coisa menos a barra. O antigo caso especial do `'*'` sozinho é um
+     particular disto (vira `^[^/]*$`), então ele saiu daqui sem regressão.
+
+     Escapar os metacaracteres antes de montar a regex não é zelo: `estado.autorizado`
+     também passa por `casa()`, e é dado que vem do disco. O `**` é testado
+     acima justamente porque também não tem barra. */
+  if (padrao.includes('*') && !padrao.includes('/')) {
+    if (alvo.includes('/')) return false
+    const corpo = padrao.replace(/[.+^${}()|[\]\\?]/g, (c) => '\\' + c).replace(/\*/g, '[^/]*')
+    return new RegExp(`^${corpo}$`).test(alvo)
   }
   return alvo === padrao
 }

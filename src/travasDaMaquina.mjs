@@ -37,6 +37,7 @@ import { HOOKS, MODULOS } from './hooksCatalogo.mjs'
 import { hookEnabled, moduloLigado, readConfig } from './config.mjs'
 import { readSettings, registrado } from './hooksRegistro.mjs'
 import { PASTA, ARQUIVO } from './frameworkDisco.mjs'
+import { findProjects } from './install.mjs'
 
 /**
  * As travas do catálogo, uma linha por hook implementado.
@@ -69,29 +70,90 @@ export function travasDaqui() {
     }))
 }
 
+/** Sobe a árvore procurando `.framework/estado.json`, igual `acharRaiz`, mas sem
+ *  importá-la: o `cwd` de um job costuma ser uma subpasta do projeto, e parar na
+ *  primeira tentativa faria o framework parecer ausente em quase todo mundo. */
+function acharEstado(raiz) {
+  let atual = raiz
+  for (let i = 0; i < 40; i++) {
+    const alvo = path.join(atual, PASTA, ARQUIVO)
+    if (fs.existsSync(alvo)) return alvo
+    const pai = path.dirname(atual)
+    if (pai === atual) return null
+    atual = pai
+  }
+  return null
+}
+
 /**
- * O framework dos projetos que esta máquina realmente usou, tirado dos `cwd`
- * dos jobs que já estão no pacote.
+ * O framework dos projetos DESTA máquina.
  *
- * Sai dos jobs, e não de uma varredura da pasta de projetos, por duas razões:
- * é barato, e é a mesma fonte que `raizDoCockpit` já usa para descobrir onde o
- * projeto mora naquela máquina. Projeto que ninguém abriu não interessa aqui.
+ * ## CC-364, 30/08: saía dos jobs, e por isso quase tudo sumia
+ *
+ * Queixa dele: *"eu não tenho acesso a todos os formatos de framework que eu
+ * tenho pros projetos do PC quando eu vou ver lá no cockpit na VPS"*. Medido
+ * antes de mexer, no PC dele: **12 projetos com framework ligado aqui, e 1
+ * chegava do outro lado.** Os outros 11 sumiam, e ainda subia lixo junto: a
+ * pasta pessoal dele virava uma linha de projeto.
+ *
+ * A causa estava no desenho, não num erro de código. A versão anterior deduzia
+ * a lista de projetos dos `cwd` dos JOBS DE BACKGROUND, e o comentário dela
+ * dizia o porquê: *"projeto que ninguém abriu não interessa aqui"*. A premissa
+ * quebrou porque ele trabalha em sessão INTERATIVA: eram 3 jobs de background
+ * contra 12 sessões de verdade. É o CC-124 pela terceira vez, e a regra já
+ * estava escrita no `CLAUDE.md` ("quem lê agente lê pelas DUAS fontes") — este
+ * retrato nasceu depois e não a seguiu.
+ *
+ * ## O custo, medido, porque foi ele que decidiu o desenho antigo
+ *
+ * `findProjects()` custa **3,2ms** neste PC, e ler um `estado.json` por projeto
+ * (25 deles) custa **2,9ms**. Somados, é MENOS que os 6,6ms da versão que se
+ * dizia barata. Referência: isto roda a cada 30 SEGUNDOS, e o mesmo empurrão já
+ * lê o roadmap de 23 projetos por 14ms.
+ *
+ * ## As duas fontes, e por que cada uma
+ *
+ * - **A lista de projetos** (`findProjects`) é a que responde "todos os projetos
+ *   do PC", que é o pedido. Dela entra tudo, com framework ou sem: saber que um
+ *   projeto NÃO usa framework é informação, não ausência.
+ * - **Os `cwd` dos jobs** continuam entrando, porque pegam projeto que mora
+ *   fora das pastas configuradas. Mas só quando existe um `.framework` acima
+ *   deles: sem essa guarda, um agente aberto na pasta pessoal a transforma numa
+ *   linha de projeto, que é exatamente o lixo que aparecia.
+ *
+ * `projetos` é injetável para o gate: o teste precisa medir os jobs sem varrer
+ * o disco real da máquina de quem roda.
  *
  * Lê o arquivo cru, sem passar por `ler()`, de propósito: `ler()` sobrepõe modo
  * por rota e por sessão, e o que precisa viajar é o estado DO PROJETO. O modo de
  * uma sessão do PC não é fato sobre o projeto.
  */
-export function frameworkDaqui(jobs = []) {
+export function frameworkDaqui(jobs = [], { projetos = null } = {}) {
   /* CC-352: o mesmo nome pode vir de duas pastas, e ganha a mais recente.
      Mesma regra de `projetosDe`, e pelo mesmo motivo: com ele movendo projetos
      de lugar, o retrato do framework saía da pasta que aparecesse primeiro na
      lista, não da que ele está usando. */
   const raizes = new Map()
   const quando = new Map()
+
+  /* A lista de projetos entra primeiro e com carimbo zero, para que um job do
+     mesmo nome vença no desempate acima: o job sabe qual pasta está sendo usada
+     AGORA, e a lista só sabe que a pasta existe. */
+  const daLista = projetos || (() => { try { return findProjects() } catch { return [] } })()
+  for (const raiz of daLista) {
+    if (!raiz || typeof raiz !== 'string') continue
+    const nome = path.basename(raiz)
+    if (!raizes.has(nome)) { raizes.set(nome, raiz); quando.set(nome, 0) }
+  }
+
   for (const j of jobs) {
     const cwd = j?.cwd
     if (!cwd || typeof cwd !== 'string') continue
     const nome = j.project || path.basename(cwd)
+    /* A guarda contra o lixo: caminho que não está na lista de projetos só vira
+       linha se houver framework acima dele. Com um agente aberto na pasta
+       pessoal, era ela que aparecia no painel da VPS como se fosse projeto. */
+    if (!raizes.has(nome) && !acharEstado(cwd)) continue
     const t = Number(j.updatedAt) || 0
     if (!raizes.has(nome) || t > (quando.get(nome) || 0)) {
       raizes.set(nome, cwd)
@@ -101,18 +163,7 @@ export function frameworkDaqui(jobs = []) {
 
   const saida = []
   for (const [projeto, raiz] of raizes) {
-    /* Sobe a árvore igual `acharRaiz`, mas sem importá-la: o `cwd` de um job
-       costuma ser uma subpasta do projeto, e parar na primeira tentativa faria
-       o framework parecer ausente em quase todo mundo. */
-    let atual = raiz
-    let achado = null
-    for (let i = 0; i < 40; i++) {
-      const alvo = path.join(atual, PASTA, ARQUIVO)
-      if (fs.existsSync(alvo)) { achado = alvo; break }
-      const pai = path.dirname(atual)
-      if (pai === atual) break
-      atual = pai
-    }
+    const achado = acharEstado(raiz)
     if (!achado) { saida.push({ projeto, existe: false, ligado: false }); continue }
     try {
       const estado = JSON.parse(fs.readFileSync(achado, 'utf8'))
@@ -132,6 +183,43 @@ export function frameworkDaqui(jobs = []) {
            modo e não tem como desenhar as travas, que foi o que ele estranhou:
            ligou o modo e a lista continuou sem aparecer. */
         modulos: Object.fromEntries(Object.keys(MODULOS).map((m) => [m, moduloLigado(m, projeto)])),
+
+        /* CC-445: o resto do que o projeto sabe sobre si, e a lista veio do
+           alinhamento que a sessão da VPS escreveu em 30/08.
+           Ele já tinha dito o critério ao aprovar o desenho do coletor: *"as
+           informações que o pc passe pra vps as mais ricas possíveis pra gente
+           ter controle dos projetos, das tarefas, das sprints, roadmaps, enfim,
+           tudo"*.
+
+           `metodo` é o que mais falta fazer sentido sem: a FASE viajava sozinha
+           ("execucao"), e fase sem o caminho que a define não diz de quantas
+           ela é nem o que vem depois. Do outro lado dava para desenhar o nome e
+           nada mais.
+
+           O `mvp` vai com os critérios cortados em 40: é o que responde "o que
+           este projeto entrega" na tela remota, e a lista inteira de um projeto
+           antigo encheria o pacote sozinha. */
+        metodo: estado.metodo || null,
+        mvp: estado.mvp && typeof estado.mvp === 'object'
+          ? {
+            nome: String(estado.mvp.nome || '').slice(0, 300),
+            criterios: (Array.isArray(estado.mvp.criterios) ? estado.mvp.criterios : [])
+              .slice(0, 40)
+              .map((c) => ({ texto: String(c?.texto || '').slice(0, 300), feito: Boolean(c?.feito) })),
+          }
+          : null,
+        /* O que o projeto JÁ liberou e o que está esperando resposta. Sem os
+           dois, o cartão remoto mostra a trava e não tem como mostrar por que
+           ela está segurando alguém agora. */
+        autorizado: (Array.isArray(estado.autorizado) ? estado.autorizado : [])
+          .slice(0, 40).map((a) => String(a).slice(0, 200)),
+        pedidos: (Array.isArray(estado.pedidos) ? estado.pedidos : [])
+          .slice(0, 20)
+          .map((p) => ({
+            alvo: String(p?.alvo || '').slice(0, 200),
+            motivo: p?.motivo ? String(p.motivo).slice(0, 300) : null,
+            quando: p?.quando || null,
+          })),
       })
     } catch {
       /* Arquivo ilegível não é projeto sem framework: é leitura que falhou, e a

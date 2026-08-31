@@ -1909,7 +1909,22 @@ if (estRotinas.projetos.length) {
   assert.ok(aqui.commits.length > 0, 'este repositório tem commit — se vier vazio, o parser quebrou')
   const c0 = aqui.commits[0]
   assert.ok(c0.hash && c0.em > 0 && c0.assunto && Array.isArray(c0.arquivos))
-  assert.ok(c0.arquivos.length > 0, 'commit real sempre toca arquivo — numstat não foi parseado')
+
+  /* Afirmava `c0.arquivos.length > 0`, "commit real sempre toca arquivo", e
+     quebrou em 30/08 na primeira junção entre o PC e a VPS: **commit de MERGE
+     não lista arquivo nenhum**, e é o comportamento certo do git, porque o
+     merge não introduz mudança própria.
+     Tentar `-m --first-parent` para o merge mostrar o que trouxe foi descartado
+     depois de medir: `--first-parent` ESCONDE os commits que vieram na junção,
+     e eles são justamente o que ele quer ver quando abre o histórico. Melhor o
+     merge aparecer sem arquivos do que os cinco commits sumirem.
+     Então a asserção passa a ser sobre o PARSER, que é o que este bloco
+     protege: algum commit da janela tem que ter arquivo. */
+  assert.ok(aqui.commits.some((c) => c.arquivos.length > 0),
+    'nenhum commit da janela tem arquivo: o numstat não foi parseado')
+  const naoMerge = aqui.commits.find((c) => c.arquivos.length > 0)
+  assert.ok(naoMerge.arquivos.every((a) => typeof a === 'string' && a.length),
+    'cada arquivo é o caminho, não a linha inteira do numstat')
 
   const semGit = await commitsDesde(os.tmpdir(), 0)
   assert.equal(semGit.ok, false, 'pasta fora de qualquer repo git tem que reportar falha, não lista vazia')
@@ -4709,25 +4724,105 @@ if (process.platform !== 'win32') {
     fs.writeFileSync(path.join(proj, '.framework', 'estado.json'),
       JSON.stringify({ modo: 'restritivo', fase: 'execucao' }))
 
-    const fw = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }])
+    const fw = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }], { projetos: [] })
     assert.equal(fw.length, 1)
     assert.equal(fw[0].existe, true, 'tem que subir a árvore a partir da subpasta do job')
     assert.equal(fw[0].ligado, true,
       '`ligado` ausente conta como LIGADO: é o formato antigo, e estado velho não pode virar projeto destravado de surpresa')
     assert.equal(fw[0].modo, 'restritivo')
 
+    /* CC-445: o retrato leva o método, o MVP, o autorizado e os pedidos, e a
+       lacuna foi levantada pela sessão da VPS no alinhamento entre as máquinas.
+       O que mais falta fazer sentido sem: a FASE viajava sozinha, e fase sem o
+       método que a define não diz de quantas ela é nem o que vem depois.
+
+       ⚠️ **A asserção que importa é a da TRAVESSIA**, no fim deste bloco:
+       mandar campo novo sem ensinar `validarPacote` a recebê-lo faz o dado sair
+       rico e chegar magro, sem erro em lugar nenhum. Aconteceu no CC-440 com o
+       roadmap, e este caso existe para não acontecer uma terceira vez. */
+    fs.writeFileSync(path.join(proj, '.framework', 'estado.json'), JSON.stringify({
+      metodo: 'mvp-basico', modo: 'sugestivo', fase: 'execucao',
+      mvp: { nome: 'o painel dos agentes', criterios: [{ texto: 'uma linha por agente', feito: true }, { texto: 'falta esta', feito: false }] },
+      autorizado: ['src/x.mjs'],
+      pedidos: [{ alvo: 'src/y.mjs', motivo: 'preciso mexer', quando: '2026-08-30T10:00:00Z' }],
+    }))
+    const rico = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }], { projetos: [] })[0]
+    assert.equal(rico.metodo, 'mvp-basico', 'a fase sem o método não diz de quantas ela é')
+    assert.equal(rico.mvp.nome, 'o painel dos agentes')
+    assert.equal(rico.mvp.criterios.length, 2)
+    assert.equal(rico.mvp.criterios[0].feito, true, 'o que já está pronto viaja junto')
+    assert.deepEqual(rico.autorizado, ['src/x.mjs'])
+    assert.equal(rico.pedidos[0].alvo, 'src/y.mjs', 'o que espera resposta dele também')
+
+    const F445 = await import('./src/federacao.mjs')
+    const viajado = F445.validarPacote(JSON.parse(JSON.stringify(
+      F445.montarPacote({ maquina: { id: 'pc', nome: 'PC' }, framework: [rico] }),
+    ))).pacote.framework[0]
+    assert.equal(viajado.metodo, 'mvp-basico', 'o método TEM que sobreviver à validação')
+    assert.equal(viajado.mvp.nome, 'o painel dos agentes')
+    assert.equal(viajado.mvp.criterios.length, 2)
+    assert.deepEqual(viajado.autorizado, ['src/x.mjs'])
+    assert.equal(viajado.pedidos[0].alvo, 'src/y.mjs')
+
+    // e nada do que vem da rede é copiado como veio
+    const sujo445 = F445.validarPacote({
+      maquina: { id: 'x' },
+      framework: [{
+        projeto: 'p', metodo: 'm'.repeat(200),
+        mvp: { nome: 'n'.repeat(900), criterios: [{ texto: '', feito: 'sim' }, { texto: 't', feito: 1 }] },
+        autorizado: ['a'.repeat(900), ''], pedidos: [{ alvo: '' }, { alvo: 'b', motivo: 'c'.repeat(900) }],
+      }],
+    }).pacote.framework[0]
+    assert.equal(sujo445.metodo.length, 40)
+    assert.equal(sujo445.mvp.nome.length, 300)
+    assert.equal(sujo445.mvp.criterios.length, 1, 'critério sem texto não entra')
+    assert.equal(sujo445.mvp.criterios[0].feito, true, '`feito` vira booleano de verdade')
+    assert.equal(sujo445.autorizado.length, 1, 'entrada vazia não entra')
+    assert.equal(sujo445.pedidos.length, 1, 'pedido sem alvo não entra')
+    assert.equal(sujo445.pedidos[0].motivo.length, 300)
+    console.log('  ok   CC-445: método, MVP, autorizado e pedidos viajam, e chegam do outro lado')
+
     fs.writeFileSync(path.join(proj, '.framework', 'estado.json'),
       JSON.stringify({ ligado: false, modo: 'restritivo' }))
-    assert.equal(T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }])[0].ligado, false,
+    assert.equal(T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }], { projetos: [] })[0].ligado, false,
       'desligado explicitamente é desligado')
 
     fs.writeFileSync(path.join(proj, '.framework', 'estado.json'), '{ isto não é json')
-    const quebrado = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }])[0]
+    const quebrado = T.frameworkDaqui([{ project: 'VPS_exemplo', cwd: fundo }], { projetos: [] })[0]
     assert.equal(quebrado.existe, true, 'arquivo ilegível não é projeto sem framework')
     assert.equal(quebrado.ligado, null, 'leitura que falhou é null, nunca false')
 
-    const semNada = T.frameworkDaqui([{ project: 'VPS_vazio', cwd: path.join(casa, 'projetos') }])
+    /* CC-364: agora o caminho precisa estar na LISTA de projetos para virar
+       linha sem ter framework. Job solto sem `.framework` acima dele deixou de
+       entrar, e era assim que a pasta pessoal dele virava projeto no painel. */
+    const soJob = T.frameworkDaqui([{ project: 'VPS_vazio', cwd: path.join(casa, 'projetos') }], { projetos: [] })
+    assert.equal(soJob.length, 0, 'job sem framework acima não vira linha de projeto')
+    const semNada = T.frameworkDaqui([], { projetos: [path.join(casa, 'projetos', 'VPS_vazio')] })
     assert.equal(semNada[0].existe, false, 'projeto sem framework diz que não existe, e isso é sabido')
+
+    /* CC-364, 30/08: o retrato saía dos JOBS, e por isso quase tudo sumia.
+     *
+     * Medido no PC dele antes do conserto: 12 projetos com framework ligado
+     * aqui, e 1 chegando na VPS. A causa era a premissa "projeto que ninguém
+     * abriu não interessa", que quebra porque ele trabalha em sessão
+     * INTERATIVA: 3 jobs de background contra 12 sessões de verdade.
+     *
+     * A prova NEGATIVA vai junto: com a lista de projetos vazia, o defeito
+     * volta inteiro. Teste que só sabe dizer "hoje passa" não prova que pegaria
+     * a regressão. */
+    const semJob = T.frameworkDaqui([], { projetos: [proj] })
+    assert.equal(semJob.length, 1, 'projeto com framework aparece mesmo sem job nenhum aberto nele')
+    assert.equal(T.frameworkDaqui([], { projetos: [] }).length, 0,
+      'sem a lista de projetos o retrato volta a depender dos jobs: é o defeito que este bloco guarda')
+
+    /* Projeto que mora FORA das pastas configuradas continua entrando pelo job,
+       e é por isso que os jobs não saíram da conta. */
+    const fora = path.join(casa, 'fora-da-base', 'VPS_solto')
+    fs.mkdirSync(path.join(fora, '.framework'), { recursive: true })
+    fs.writeFileSync(path.join(fora, '.framework', 'estado.json'), JSON.stringify({ modo: 'dialogo' }))
+    const comSolto = T.frameworkDaqui([{ project: 'VPS_solto', cwd: fora }], { projetos: [proj] })
+    assert.equal(comSolto.length, 2, 'projeto fora da pasta base entra pelo job')
+    assert.ok(comSolto.some((x) => x.projeto === 'VPS_solto' && x.existe))
   } finally {
     if (antes === undefined) delete process.env.CC_HOME
     else process.env.CC_HOME = antes
@@ -5034,7 +5129,7 @@ if (process.platform !== 'win32') {
   assert.equal(semData.length, 1, 'empate sem data ainda devolve o projeto')
 
   const F = await import(`./src/travasDaMaquina.mjs?t=${Date.now()}`)
-  const fw = F.frameworkDaqui(jobs)
+  const fw = F.frameworkDaqui(jobs, { projetos: [] })
   assert.equal(fw.length, 1, 'o retrato do framework também vê um projeto só')
   console.log('  ok   CC-352: duas pastas com o mesmo nome, e ganha a que tem sinal mais novo')
 }
@@ -5522,14 +5617,31 @@ if (process.platform !== 'win32') {
     'o placar só aparece quando há critério para contar')
   console.log('  ok   CC-433: o contador só aparece quando há o que contar')
 
-  /* ⚠️ **Leitura, não edição.** Escolha dele entre as três que apresentei.
-     Editar exigiria mexer na lista fechada de ações do pedido remoto, que é o
-     que impede a fila de virar execução arbitrária na outra máquina. */
+  /* ⚠️ **Era "leitura, não edição", e ele MUDOU de escolha em 30/08.**
+   *
+   * Este bloco afirmava que nenhuma ação de MVP podia entrar na lista fechada
+   * do pedido remoto, porque o caminho 1 (ver de lá) era o que ele tinha
+   * escolhido. Apresentados os três de novo com o 1 já pronto, ele escolheu o 2
+   * com uma palavra: *"quero"*.
+   *
+   * **A asserção não some, ela troca de lado**, e continua guardando a mesma
+   * coisa: que a fila não vira execução remota. O que mudou é o critério.
+   * `framework-mvp` carrega DADO (nome e critérios), nunca comando, nunca
+   * caminho, e o lado que executa recusa criar framework onde não existe.
+   * Ligar o gate continua sendo decisão de quem senta na máquina.
+   */
   const F = await import('./src/federacao.mjs')
-  assert.ok(!F.ACOES_DE_PEDIDO.some((a) => /mvp/i.test(a)),
-    'nenhuma ação de MVP entrou na lista do pedido remoto: editar não foi o que '
-    + 'ele escolheu, e a lista fechada é a trava que protege a outra máquina')
-  console.log('  ok   CC-433: nenhuma ação nova entrou na lista fechada do pedido remoto')
+  assert.ok(F.ACOES_DE_PEDIDO.includes('framework-mvp'),
+    'ele escolheu o caminho 2 em 30/08: sem a ação na lista, definir o MVP de fora não existe')
+
+  /* A trava que continua valendo, e é a que este bloco sempre protegeu: a lista
+     é FECHADA. Ação que ninguém declarou não passa, e é isso que impede a fila
+     de virar execução arbitrária na outra máquina. */
+  assert.equal(F.pedirSessao({ paraMaquina: 'x', projeto: 'p', acao: 'rodar-qualquer-coisa' }).ok, false,
+    'a lista de ações continua fechada: o que não está nela não passa')
+  assert.equal(F.pedirSessao({ paraMaquina: 'x', projeto: 'p', acao: 'framework-mvp' }).ok, false,
+    'e a ação nova exige o conteúdo: pedido de MVP sem MVP não vira nada')
+  console.log('  ok   CC-433: definir o MVP de fora existe, e a lista de ações continua fechada')
 }
 
 
@@ -6209,40 +6321,65 @@ if (process.platform !== 'win32') {
 
     /* 4. O caminho inteiro, com um binário de mentira no lugar do opencode.
        É o que prova que o disparo, a leitura da saída e a gravação funcionam
-       juntos, sem depender de rede nem de 17 segundos. */
-    const falso = path.join(raiz, 'opencode-de-mentira')
-    fs.writeFileSync(falso, `#!/bin/sh\nprintf '${'\\033'}[0m\\n> build · big-pickle\\nA leitura escrita pelo modelo.\\n'\n`)
-    fs.chmodSync(falso, 0o755)
+       juntos, sem depender de rede nem de 17 segundos.
 
-    const r = await S.pedir({ travas: { regras: [], eventos: [] } }, { binario: falso })
-    assert.equal(r.ok, true, r.motivo || 'o caminho inteiro tem que responder ok')
-    assert.equal(r.texto, 'A leitura escrita pelo modelo.')
-    assert.ok(r.gravado, 'gravar em silêncio e responder ok esconderia o dado sumindo')
-    console.log('  ok   CC-412: dispara, limpa a saída e grava, tudo num caminho só')
+       ⚠️ **Rodava só fora do Windows, até o CC-438.** `pedir()` chamava
+       `spawn(exe, ...)` sem `shell` e sem `cmd.exe`, e essa forma nunca sobe
+       um `.cmd` — que é o que `acharOpencode()` devolve quando o opencode é
+       instalado por npm no Windows. Consertado: `rodar()` passou a subir
+       `cmd.exe` como executável no Windows, com `/c` e cada argumento
+       separado do array. O binário de mentira também muda de forma
+       (`.cmd` chamando um `.mjs`, em vez de shebang + `chmod`), mas as
+       verificações abaixo são as mesmas nos dois sistemas. */
+    const { ehWindows: ehWin412 } = await import('./src/platform.mjs')
+    let falso, travado
+    if (ehWin412) {
+      const falsoJs = path.join(raiz, 'opencode-de-mentira.mjs')
+      fs.writeFileSync(falsoJs, "process.stdout.write('\\u001b[0m\\n> build \\u00b7 big-pickle\\nA leitura escrita pelo modelo.\\n')\n")
+      falso = path.join(raiz, 'opencode-de-mentira.cmd')
+      fs.writeFileSync(falso, '@echo off\r\nnode "%~dp0opencode-de-mentira.mjs"\r\n')
 
-    /* E o que foi gravado é o que se lê de volta. Sem isto, a tela abriria
-       vazia depois de uma síntese que "deu certo". */
-    const lido = S.ler()
-    assert.equal(lido?.texto, 'A leitura escrita pelo modelo.')
-    assert.ok(lido.em > 0, 'a hora tem que ir junto: ele precisa saber se o texto é de hoje')
-    console.log('  ok   CC-412: o que foi gravado é o que a tela lê de volta, com a hora')
+      travado = path.join(raiz, 'trava.cmd')
+      fs.writeFileSync(travado, '@echo off\r\nping 127.0.0.1 -n 31 >nul\r\n')
+    } else {
+      falso = path.join(raiz, 'opencode-de-mentira')
+      fs.writeFileSync(falso, `#!/bin/sh\nprintf '${'\\033'}[0m\\n> build · big-pickle\\nA leitura escrita pelo modelo.\\n'\n`)
+      fs.chmodSync(falso, 0o755)
 
-    /* 5. Falha em voz alta. Binário que não existe não pode responder ok com
-         texto vazio: a tela mostraria um bloco em branco sem dizer por quê. */
+      travado = path.join(raiz, 'trava')
+      fs.writeFileSync(travado, '#!/bin/sh\nsleep 30\n')
+      fs.chmodSync(travado, 0o755)
+    }
+
+    {
+      const r = await S.pedir({ travas: { regras: [], eventos: [] } }, { binario: falso })
+      assert.equal(r.ok, true, r.motivo || 'o caminho inteiro tem que responder ok')
+      assert.equal(r.texto, 'A leitura escrita pelo modelo.')
+      assert.ok(r.gravado, 'gravar em silêncio e responder ok esconderia o dado sumindo')
+      console.log('  ok   CC-412/CC-438: dispara, limpa a saída e grava, tudo num caminho só (Windows inclusive)')
+
+      /* E o que foi gravado é o que se lê de volta. Sem isto, a tela abriria
+         vazia depois de uma síntese que "deu certo". */
+      const lido = S.ler()
+      assert.equal(lido?.texto, 'A leitura escrita pelo modelo.')
+      assert.ok(lido.em > 0, 'a hora tem que ir junto: ele precisa saber se o texto é de hoje')
+      console.log('  ok   CC-412: o que foi gravado é o que a tela lê de volta, com a hora')
+
+      /* E o teto existe: um binário que trava não pode segurar o painel para
+         sempre esperando uma resposta que não vem. */
+      const estourou = await S.rodar('oi', { binario: travado, teto: 400 })
+      assert.equal(estourou.ok, false)
+      assert.match(estourou.motivo, /sem responder/)
+      console.log('  ok   CC-412: o que trava é morto pelo teto, e o painel segue')
+    }
+
+    /* 5. Falha em voz alta, e este caso vale nos DOIS sistemas: binário que não
+         existe não pode responder ok com texto vazio, senão a tela mostraria um
+         bloco em branco sem dizer por quê. */
     const semBinario = await S.rodar('oi', { binario: path.join(raiz, 'nao-existe') })
     assert.equal(semBinario.ok, false)
     assert.ok(semBinario.motivo, 'falhar calado é o defeito, não a falha')
     console.log('  ok   CC-412: sem o programa instalado, avisa em vez de fingir')
-
-    /* E o teto existe: um binário que trava não pode segurar o painel para
-       sempre esperando uma resposta que não vem. */
-    const travado = path.join(raiz, 'trava')
-    fs.writeFileSync(travado, '#!/bin/sh\nsleep 30\n')
-    fs.chmodSync(travado, 0o755)
-    const estourou = await S.rodar('oi', { binario: travado, teto: 400 })
-    assert.equal(estourou.ok, false)
-    assert.match(estourou.motivo, /sem responder/)
-    console.log('  ok   CC-412: o que trava é morto pelo teto, e o painel segue')
   } finally {
     if (antesHome === undefined) delete process.env.CC_HOME
     else process.env.CC_HOME = antesHome

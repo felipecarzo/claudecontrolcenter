@@ -51,11 +51,22 @@ while ($true) {
   # `git pull` best-effort a cada arranque: rede fora do ar não pode impedir
   # o painel de subir com o código que já está no disco. Falha aqui vira
   # aviso, nunca parada.
-  try {
-    $saida = git pull --ff-only 2>&1
-    Write-Output "[arrancar] git pull: $saida"
-  } catch {
-    Write-Output "[arrancar] git pull falhou, seguindo com o código local: $_"
+  #
+  # CC-439: só quando a pasta É um repositório. A cópia INSTALADA (a que roda,
+  # separada da que se edita) não tem `.git` de propósito, e ela não deve puxar
+  # nada: ela muda quando alguém publica, nunca sozinha. Sem esta guarda, o
+  # mesmo lançador na cópia instalada gritaria "not a git repository" a cada
+  # arranque, e pior, a promessa de "a versão que roda não muda sem eu mandar"
+  # seria falsa.
+  if (Test-Path (Join-Path $repo '.git')) {
+    try {
+      $saida = git pull --ff-only 2>&1
+      Write-Output "[arrancar] git pull: $saida"
+    } catch {
+      Write-Output "[arrancar] git pull falhou, seguindo com o código local: $_"
+    }
+  } else {
+    Write-Output "[arrancar] versão instalada (sem .git): não puxa nada, muda só quando alguém publica"
   }
 
   $ultimaPartida = Get-Date

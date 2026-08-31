@@ -510,8 +510,9 @@ let ultimoEmpurrao = null
    timer de 30s, agora alcançável de fora. */
 export async function empurrar({ comTempo = null } = {}) {
   const cfg = readConfig()
-  const { token, enviarPara } = cfg.federacao || {}
+  const { token, enviarPara, ativo } = cfg.federacao || {}
   if (!token || !enviarPara) return { ok: false, erro: 'federação não configurada' }
+  if (ativo === false) return { ok: false, erro: 'sincronização pausada' }
 
   const s = snapshot()
   const meus = s.jobs.filter((j) => j.origem?.id === s.maquina.id)
@@ -633,6 +634,30 @@ export async function empurrar({ comTempo = null } = {}) {
     comTempo: Boolean(tempo),
     para: enviarPara,
   }
+
+  /* CC-446: o envio vira linha de HISTÓRICO, em disco.
+   *
+   * Pedido dele na primeira mensagem de 30/08: *"preciso que esse standalone me
+   * diga como tá a conexão e os arquivos que tão passando pela conexão, tipo um
+   * log mesmo"*. Até aqui existia só a variável acima, com UM registro, que
+   * some quando o processo reinicia — e ele reinicia no logon, ao publicar e a
+   * cada clique em reiniciar. Um log que morre nesses momentos não responde
+   * "funcionou enquanto eu estava fora?".
+   *
+   * Vai com o QUE foi dentro, que é a outra metade da pergunta dele: quantos
+   * projetos, quantas frentes de roadmap, e o tamanho. Dentro de `try` porque
+   * isto roda no ciclo de 30 segundos: falhar em gravar o log não pode derrubar
+   * o envio seguinte. */
+  try {
+    const D = await import('./diarioEnvios.mjs')
+    D.registrar({
+      ...ultimoEmpurrao,
+      projetos: (backlogs || []).length,
+      frentes: (backlogs || []).reduce((a, b) => a + (b.lista?.length || 0), 0),
+      bytes: Buffer.byteLength(JSON.stringify(pacote)),
+    })
+  } catch { /* o log é testemunha, nunca obstáculo */ }
+
   if (r?.ok && r.pedidos?.length) await atenderPedidos(r.pedidos)
   return r
 }
@@ -735,6 +760,66 @@ async function atenderPedidos(pedidos) {
         setModuloProjeto(p.projeto, p.modulo, !!p.ligar)
         console.error(`[federação] trava ${p.modulo} de ${p.projeto} `
           + `${p.ligar ? 'ligada' : 'desligada'}, a pedido de ${p.de || 'outra máquina'}`)
+        continue
+      }
+
+      /**
+       * CC-433 caminho 2, escolhido por ele em 30/08 ("quero"): definir o MVP
+       * de um projeto desta máquina a partir da outra.
+       *
+       * Pergunta que originou: *"por que nas versões dos projetos do PC eu não
+       * tenho as mesmas configurações que eu tenho nos que estão na VPS,
+       * exemplo definição de MVP?"*. Ver de lá já funcionava (CC-445); isto é
+       * escrever de lá.
+       *
+       * ⚠️ **RECUSA criar framework onde não existe, e é a diferença entre este
+       * ramo e o do modo.** Escolher modo LIGA o framework de propósito (CC-344,
+       * porque escolher modo com o framework desligado deixava tudo sem valer).
+       * Definir MVP não liga: ligar o gate é decisão de quem senta na máquina, e
+       * fazer isso de longe transformaria um pedido de conteúdo num pedido de
+       * trava. O erro fica no log e o pedido morre aqui.
+       *
+       * O que chega é DADO: nome e critérios, já cortados de quem pediu e
+       * cortados de novo aqui, porque quem executa não pode depender de quem
+       * pede ter limitado. Nenhum caminho, nenhum comando.
+       */
+      if (acao === 'framework-mvp') {
+        const estadoMvp = lerFramework(dir)
+        if (!estadoMvp) {
+          console.error(`[federação] ${p.projeto} não tem framework: MVP recusado`)
+          continue
+        }
+        const pedido = p.mvp && typeof p.mvp === 'object' && !Array.isArray(p.mvp) ? p.mvp : null
+        if (!pedido) {
+          console.error(`[federação] pedido de MVP sem MVP, ignorado (${p.projeto})`)
+          continue
+        }
+        const nomeMvp = String(pedido.nome || '').replace(/\s+/g, ' ').trim().slice(0, 300)
+        const criterios = (Array.isArray(pedido.criterios) ? pedido.criterios : [])
+          .slice(0, 40)
+          .map((c) => ({
+            texto: String(c?.texto || '').replace(/\s+/g, ' ').trim().slice(0, 300),
+            feito: c?.feito === true,
+          }))
+          .filter((c) => c.texto)
+        if (!nomeMvp && !criterios.length) {
+          console.error(`[federação] MVP vazio, ignorado (${p.projeto}): apagar não é pedido remoto`)
+          continue
+        }
+        /* Campo vazio não apaga o que já existe: quem manda só o nome está
+           renomeando, não jogando fora os critérios. Apagar tem que ser gesto
+           declarado, e este caminho não oferece um. */
+        const antesMvp = estadoMvp.mvp || {}
+        gravarFramework(dir, {
+          ...estadoMvp,
+          mvp: {
+            ...antesMvp,
+            nome: nomeMvp || antesMvp.nome || '',
+            criterios: criterios.length ? criterios : (antesMvp.criterios || []),
+          },
+        })
+        console.error(`[federação] MVP de ${p.projeto} definido por ${p.de || 'outra máquina'}: `
+          + `"${(nomeMvp || antesMvp.nome || '').slice(0, 60)}", ${criterios.length || (antesMvp.criterios || []).length} critério(s)`)
         continue
       }
 
@@ -1165,6 +1250,45 @@ function handler(req, res) {
 
   // O que chegou de fora, mais a identidade desta máquina. Serve à tela (o
   // filtro do topo) e a conferir quem está sem contato.
+  /**
+   * CC-446: a tela mínima da conexão, e o log que ele pediu de manhã.
+   *
+   * *"preciso que esse standalone me diga como tá a conexão e os arquivos que
+   * tão passando pela conexão, tipo um log mesmo"*.
+   *
+   * Fica FORA do painel de propósito, e é o item 1c do desenho do coletor: esta
+   * página tem que responder quando a outra ponta está fora do ar, que é
+   * justamente quando o painel completo não abre. Por isso ela não calcula
+   * nada, não desenha gráfico e não cruza máquina: lê o diário em disco e
+   * mostra.
+   */
+  if (url.pathname === '/api/conexao') {
+    return Promise.all([
+      import('./diarioEnvios.mjs'),
+      import('./travasDaMaquina.mjs').catch(() => null),
+    ]).then(([D, T]) => {
+      const cfg = readConfig()
+      let travas = null
+      try { travas = T ? T.travasDaqui() : null } catch { travas = null }
+      return send(res, 200, {
+        ...D.situacao(),
+        maquina: cfg.maquina || null,
+        reportaPara: cfg.federacao?.enviarPara || null,
+        travas,
+      })
+    }).catch((e) => send(res, 500, { error: String(e?.message || e) }))
+  }
+
+  if (url.pathname === '/conexao' || url.pathname === '/conexao/') {
+    try {
+      const html = fs.readFileSync(path.join(HERE, 'conexao.html'), 'utf8')
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      return res.end(html)
+    } catch (e) {
+      return send(res, 500, { error: `não achei a página da conexão: ${e?.message}` })
+    }
+  }
+
   if (url.pathname === '/api/federacao') {
     const cfg = readConfig()
     const pacotes = lerPacotes()
@@ -1178,6 +1302,8 @@ function handler(req, res) {
       token: cfg.federacao?.token || '',
       configurada: Boolean(cfg.federacao?.token),
       enviandoPara: cfg.federacao?.enviarPara || '',
+      // CC-340: pausar não apaga token nem endereço, só para de mandar.
+      ativo: cfg.federacao?.ativo !== false,
       /* CC-165: as duas perguntas dele sobre confiabilidade, respondidas com
          dado e não com promessa. `empurrando` é o resultado do último envio
          de verdade (null antes do primeiro); `autostart` diz se este painel
@@ -1212,6 +1338,17 @@ function handler(req, res) {
   // Empurra agora, sob clique: serve para o Felipe testar sem esperar o ciclo.
   if (url.pathname === '/api/federacao/enviar' && req.method === 'POST') {
     return empurrar().then((r) => send(res, 200, r)).catch((e) => send(res, 200, { ok: false, erro: String(e) }))
+  }
+
+  // CC-340: pausar/retomar, sem mexer em token nem endereço. A bandeja chama
+  // estas duas, pelo mesmo `cc federar pausar`/`retomar` que o terminal usa.
+  if (url.pathname === '/api/federacao/pausar' && req.method === 'POST') {
+    setFederacao({ ativo: false })
+    return send(res, 200, { ok: true, ativo: false })
+  }
+  if (url.pathname === '/api/federacao/retomar' && req.method === 'POST') {
+    setFederacao({ ativo: true })
+    return send(res, 200, { ok: true, ativo: true })
   }
 
   // O glossário: os documentos reduzidos ao que cabe numa tela.

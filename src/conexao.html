@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cockpit, a conexão</title>
+<!--
+  CC-446: a tela mínima da conexão.
+
+  Pedido dele na primeira mensagem de 30/08: "preciso que esse standalone me
+  diga como tá a conexão e os arquivos que tão passando pela conexão, tipo um
+  log mesmo".
+
+  Fica FORA do painel de propósito, e é o item 1c do desenho do coletor: esta
+  página tem que responder quando a outra ponta está fora do ar, que é
+  justamente quando o painel completo não abre. Ela não calcula nada, não
+  desenha gráfico e não cruza máquina.
+
+  Sem CSS de fora, sem biblioteca, sem fonte baixada: se ela depender de rede
+  para desenhar, ela quebra exatamente no dia em que ele mais precisa dela.
+-->
+<style>
+  :root {
+    --fundo: #0e1116; --carta: #161b22; --linha: #21262d;
+    --texto: #e6edf3; --fraco: #8b949e;
+    --ok: #3fb950; --aviso: #d29922; --erro: #f85149;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --fundo: #f6f8fa; --carta: #fff; --linha: #d0d7de;
+      --texto: #1f2328; --fraco: #656d76;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px; background: var(--fundo); color: var(--texto);
+    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  h1 { font-size: 15px; margin: 0 0 12px; font-weight: 600; }
+  .cartao { background: var(--carta); border: 1px solid var(--linha); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+  .estado { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 600; }
+  .bolha { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .b-ok { background: var(--ok); } .b-aviso { background: var(--aviso); } .b-erro { background: var(--erro); }
+  .sub { color: var(--fraco); margin-top: 6px; }
+  .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+  .medida { background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px; padding: 8px 10px; }
+  .medida b { display: block; font-size: 18px; font-weight: 600; }
+  .medida span { color: var(--fraco); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--fraco); font-weight: 500; padding: 4px 8px 8px 0; }
+  td { padding: 4px 8px 4px 0; border-top: 1px solid var(--linha); white-space: nowrap; }
+  td.larga { white-space: normal; }
+  .rolo { overflow-x: auto; }
+  .falhou { color: var(--erro); }
+  .vazio { color: var(--fraco); padding: 8px 0; }
+  a { color: inherit; }
+</style>
+</head>
+<body>
+  <h1>Cockpit, a conexão</h1>
+  <div id="tudo"><div class="cartao vazio">lendo...</div></div>
+
+<script>
+const $ = (id) => document.getElementById(id)
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+/* Minutos e segundos por extenso: "há 12s" responde a pergunta, "1756..." não. */
+function idade(ms) {
+  if (ms == null) return 'nunca'
+  const s = Math.round(ms / 1000)
+  if (s < 60) return `há ${s}s`
+  if (s < 3600) return `há ${Math.round(s / 60)}min`
+  return `há ${Math.round(s / 3600)}h`
+}
+const hora = (em) => new Date(em).toLocaleTimeString('pt-BR')
+const kb = (b) => (b ? `${Math.round(b / 1024)} KB` : 'sem')
+
+/* A frase vem antes do número, sempre: ele lê a frase e só olha o número se ela
+   disser algo estranho. */
+const FRASES = {
+  'no ar': ['b-ok', 'no ar'],
+  atrasou: ['b-aviso', 'atrasou'],
+  parou: ['b-erro', 'parou de mandar'],
+  falhou: ['b-erro', 'o último envio falhou'],
+  nunca: ['b-aviso', 'nunca mandou nada'],
+}
+
+function desenhar(d) {
+  const [bolha, frase] = FRASES[d.estado] || FRASES.nunca
+  const u = d.ultimo
+  const travasOn = (d.travas || []).filter((t) => t.registrado && t.ligado).length
+  const travasTotal = (d.travas || []).length
+
+  const linhas = (d.envios || []).slice(0, 60).map((e) => `
+    <tr class="${e.ok ? '' : 'falhou'}">
+      <td>${hora(e.em)}</td>
+      <td>${e.ok ? 'chegou' : 'falhou'}</td>
+      <td>${e.jobs || 0} agente(s)</td>
+      <td>${e.projetos || 0} projeto(s)</td>
+      <td>${e.frentes || 0} frente(s)</td>
+      <td>${kb(e.bytes)}</td>
+      <td class="larga">${e.ok ? (e.comTempo ? 'com as horas' : '') : esc(e.erro || '')}</td>
+    </tr>`).join('')
+
+  $('tudo').innerHTML = `
+    <div class="cartao">
+      <div class="estado"><span class="bolha ${bolha}"></span>${frase}</div>
+      <div class="sub">
+        ${u ? `último envio ${idade(d.idadeMs)}, às ${hora(u.em)}` : 'sem nenhum envio guardado'}
+        ${d.reportaPara ? ` &middot; para <a href="${esc(d.reportaPara)}">${esc(d.reportaPara)}</a>` : ' &middot; nenhum cockpit de fora configurado'}
+      </div>
+      <div class="grade">
+        <div class="medida"><b>${d.naUltimaHora}</b><span>envios na última hora</span></div>
+        <div class="medida"><b class="${d.falhasNaUltimaHora ? 'falhou' : ''}">${d.falhasNaUltimaHora}</b><span>falharam</span></div>
+        <div class="medida"><b>${u?.projetos ?? 0}</b><span>projetos no último</span></div>
+        <div class="medida"><b>${u?.frentes ?? 0}</b><span>frentes de roadmap</span></div>
+        <div class="medida"><b>${travasOn}/${travasTotal}</b><span>travas ligadas aqui</span></div>
+        <div class="medida"><b>${kb(u?.bytes)}</b><span>tamanho do último</span></div>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <div class="sub" style="margin:0 0 8px">o que passou pela conexão</div>
+      ${linhas ? `<div class="rolo"><table>
+        <tr><th>hora</th><th></th><th>agentes</th><th>projetos</th><th>frentes</th><th>tamanho</th><th></th></tr>
+        ${linhas}
+      </table></div>` : '<div class="vazio">nada guardado ainda. O primeiro envio aparece aqui em até 30 segundos.</div>'}
+    </div>`
+}
+
+async function ler() {
+  try {
+    const r = await fetch('/api/conexao', { cache: 'no-store' })
+    desenhar(await r.json())
+  } catch (e) {
+    /* Falha em voz alta: uma tela em branco aqui seria lida como "a conexão
+       está bem", que é o oposto do que esta página existe para dizer. */
+    $('tudo').innerHTML = `<div class="cartao"><div class="estado">
+      <span class="bolha b-erro"></span>o painel desta máquina não respondeu</div>
+      <div class="sub">${esc(e.message || e)}</div></div>`
+  }
+}
+ler()
+setInterval(ler, 5000)
+</script>
+</body>
+</html>

@@ -91,31 +91,38 @@ function Ler-Estado {
   try {
     $resp = Invoke-RestMethod -Uri "$base/api/federacao" -TimeoutSec 4 -ErrorAction Stop
   } catch {
-    return @{ estilo = 'partido'; cinza = $true; texto = "painel fora do ar (porta $Port)" }
+    return @{ estilo = 'partido'; cinza = $true; texto = "painel fora do ar (porta $Port)"; configurada = $false; ativo = $false }
   }
 
   if (-not $resp.configurada) {
-    return @{ estilo = 'partido'; cinza = $false; texto = 'federação não configurada' }
+    return @{ estilo = 'partido'; cinza = $false; texto = 'federação não configurada'; configurada = $false; ativo = $false }
+  }
+
+  # CC-340: pausado é um estado próprio, distinto de "configurado mas nunca
+  # empurrou" e de "parou de mandar por falha". A bandeja precisa saber
+  # separar os três pra não mostrar "Pausar" quando já está pausado.
+  if (-not $resp.ativo) {
+    return @{ estilo = 'partido'; cinza = $false; texto = "sincronização pausada, rumo a $($resp.enviandoPara)"; configurada = $true; ativo = $false }
   }
 
   $emp = $resp.empurrando
   if (-not $emp) {
-    return @{ estilo = 'partido'; cinza = $false; texto = 'ainda não empurrou nada' }
+    return @{ estilo = 'partido'; cinza = $false; texto = 'ainda não empurrou nada'; configurada = $true; ativo = $true }
   }
 
   $idadeSeg = [Math]::Round(([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - [double]$emp.em) / 1000)
   $quando = if ($idadeSeg -lt 60) { "há ${idadeSeg}s" } else { "há $([Math]::Round($idadeSeg / 60))min" }
 
   if (-not $emp.ok) {
-    return @{ estilo = 'partido'; cinza = $false; texto = "último envio falhou ($quando): $($emp.erro)" }
+    return @{ estilo = 'partido'; cinza = $false; texto = "último envio falhou ($quando): $($emp.erro)"; configurada = $true; ativo = $true }
   }
   if ($idadeSeg -lt 45) {
-    return @{ estilo = 'cheio'; cinza = $false; texto = "sincronizando com $($resp.enviandoPara) ($quando)" }
+    return @{ estilo = 'cheio'; cinza = $false; texto = "sincronizando com $($resp.enviandoPara) ($quando)"; configurada = $true; ativo = $true }
   }
   if ($idadeSeg -lt 90) {
-    return @{ estilo = 'tracejado'; cinza = $false; texto = "atrasou ($quando), rumo a $($resp.enviandoPara)" }
+    return @{ estilo = 'tracejado'; cinza = $false; texto = "atrasou ($quando), rumo a $($resp.enviandoPara)"; configurada = $true; ativo = $true }
   }
-  return @{ estilo = 'partido'; cinza = $false; texto = "parou de mandar ($quando), rumo a $($resp.enviandoPara)" }
+  return @{ estilo = 'partido'; cinza = $false; texto = "parou de mandar ($quando), rumo a $($resp.enviandoPara)"; configurada = $true; ativo = $true }
 }
 
 # ── o ícone e o menu ─────────────────────────────────────────────────────────
@@ -128,29 +135,100 @@ $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $itemAbrir = $menu.Items.Add('Abrir painel')
 $itemReiniciar = $menu.Items.Add('Reiniciar')
 $menu.Items.Add('-') | Out-Null
+$itemPastas = $menu.Items.Add('Adicionar pasta de projetos...')
+$menu.Items.Add('-') | Out-Null
+$itemToggleSync = $menu.Items.Add('Pausar sincronia')
+$itemToggleSync.Enabled = $false
+$menu.Items.Add('-') | Out-Null
 $itemSair = $menu.Items.Add('Sair')
 $notify.ContextMenuStrip = $menu
 
-$itemAbrir.Add_Click({ Start-Process "$base" }) | Out-Null
+# CC-441: abre como PROGRAMA, em janela propria, e nao como aba do navegador.
+# `Start-Process "$base"` entregava a URL ao navegador padrao, que abre mais uma
+# aba no meio das outras: ele pediu um programa. Quem decide o motor de janela e
+# o `cc app`, um lugar so, e sem Edge nem Chrome ele cai na aba sozinho.
+$itemAbrir.Add_Click({
+  try {
+    $cc = Join-Path (Split-Path -Parent $PSScriptRoot) 'cc.mjs'
+    Start-Process -FilePath "node" -ArgumentList $cc, "app", "--port", "$Port" -WindowStyle Hidden
+  } catch {
+    Start-Process "$base"
+  }
+}) | Out-Null
 $itemReiniciar.Add_Click({
   try { Invoke-RestMethod -Uri "$base/api/shutdown" -Method Post -TimeoutSec 4 | Out-Null } catch { }
 }) | Out-Null
+# CC-352: o "lá na barra de tarefas vai ter como ela configurar isso" dele.
+#
+# Usa o seletor de pasta do proprio Windows, nao uma caixa de texto: o caminho e
+# digitado errado com facilidade, e o erro so apareceria depois, como painel
+# vazio. Quem grava e o `cc pastas adicionar`, o MESMO caminho do terminal e do
+# instalador, para nao existirem duas contas do que e "a lista de pastas".
+#
+# `-WindowStyle Hidden` nao serve aqui: o dialogo E a janela. E o `node` chamado
+# com o caminho do executavel atual, porque a bandeja pode estar rodando sem o
+# npm global no PATH (a armadilha do `resolverBinario`, ja paga uma vez).
+$itemPastas.Add_Click({
+  try {
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dlg.Description = 'Onde ficam os seus projetos? Pode adicionar mais de uma pasta.'
+    $dlg.ShowNewFolderButton = $false
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+      $escolhida = $dlg.SelectedPath
+      $cc = Join-Path (Split-Path -Parent $PSScriptRoot) 'cc.mjs'
+      $saida = & node $cc pastas adicionar $escolhida 2>&1 | Out-String
+      [System.Windows.Forms.MessageBox]::Show($saida.Trim(), 'Agent Cockpit — pastas de projeto') | Out-Null
+    }
+    $dlg.Dispose()
+  } catch {
+    [System.Windows.Forms.MessageBox]::Show("nao consegui gravar a pasta: $_", 'Agent Cockpit') | Out-Null
+  }
+}) | Out-Null
+
+
+# CC-340: liga/desliga sem apagar token nem endereço. O rótulo do item já diz
+# a ação que VAI acontecer no clique (o estado ATUAL, não o próximo), pelo
+# mesmo motivo de qualquer botão de liga/desliga.
+$itemToggleSync.Add_Click({
+  try {
+    $cc = Join-Path (Split-Path -Parent $PSScriptRoot) 'cc.mjs'
+    $sub = if ($script:estadoAtual -and $script:estadoAtual.ativo) { 'pausar' } else { 'retomar' }
+    & node $cc federar $sub 2>&1 | Out-Null
+    Atualizar
+  } catch {
+    [System.Windows.Forms.MessageBox]::Show("nao consegui mudar a sincronia: $_", 'Agent Cockpit') | Out-Null
+  }
+}) | Out-Null
+
 $itemSair.Add_Click({
   $notify.Visible = $false
   $notify.Dispose()
   [System.Windows.Forms.Application]::Exit()
 }) | Out-Null
-$notify.Add_DoubleClick({ Start-Process "$base" }) | Out-Null
+# CC-441: o clique duplo faz o MESMO que o item do menu, em janela propria
+$notify.Add_DoubleClick({
+  try {
+    $cc = Join-Path (Split-Path -Parent $PSScriptRoot) 'cc.mjs'
+    Start-Process -FilePath "node" -ArgumentList $cc, "app", "--port", "$Port" -WindowStyle Hidden
+  } catch {
+    Start-Process "$base"
+  }
+}) | Out-Null
 
 $iconeAtual = $null
+$script:estadoAtual = $null
 function Atualizar {
   $estado = Ler-Estado
+  $script:estadoAtual = $estado
   $novo = Novo-IconeBandeja -Estilo $estado.estilo -Cinza $estado.cinza
   $velho = $notify.Icon
   $notify.Icon = $novo.icone
   $notify.Text = ("Agent Cockpit`n" + $estado.texto).Substring(0, [Math]::Min(127, ("Agent Cockpit`n" + $estado.texto).Length))
   if ($velho) { $velho.Dispose() }
   $novo.bmp.Dispose()
+
+  $itemToggleSync.Enabled = $estado.configurada
+  $itemToggleSync.Text = if ($estado.ativo) { 'Pausar sincronia' } else { 'Retomar sincronia' }
 }
 
 Atualizar

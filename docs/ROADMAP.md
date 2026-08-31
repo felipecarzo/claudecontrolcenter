@@ -730,7 +730,7 @@ Quatro verificações novas no portão, com a prova ao contrário: o texto atrav
 inteiro, o que é perigoso é cortado, dois recados diferentes não viram um, e o
 recado entregue fica pendente para quem é.
 
-### CC-433 🔵 30/08: o MVP de um projeto de outra máquina
+### CC-433 ✅ 30/08: o MVP de um projeto de outra máquina, visto e definido de lá
 
 Pergunta dele, ditada por voz em 30/08: *"por que nas versões dos projetos do
 PC eu não tenho as mesmas configurações que eu tenho nos que estão na VPS,
@@ -749,7 +749,7 @@ nem o histórico, nem as autorizações.
 Por isso o cartão remoto mostra o seletor de modo e mais nada: o modo é um dos
 oito, e trocá-lo funciona porque vira um pedido curto que o PC executa.
 
-**Os três caminhos, apresentados a ele, esperando escolha:**
+**Os três caminhos, apresentados a ele:**
 
 1. **O PC manda o MVP junto, e o painel só MOSTRA.** O mais barato. Resolve
    "quero ver o MVP do hutukara daqui" e não deixa editar;
@@ -758,6 +758,51 @@ oito, e trocá-lo funciona porque vira um pedido curto que o PC executa.
    ações curtas, e a lista fechada de ações é o que impede a fila de virar
    execução remota;
 3. **Deixar como está.**
+
+---
+
+**✅ O caminho 1 está FEITO desde 30/08, pelo CC-445.** Os oito campos viraram
+**doze**: entraram `metodo`, `mvp` (nome e até 40 critérios, com o feito de
+cada um), `autorizado` e `pedidos`. O `metodo` era o que mais fazia falta, e não
+estava nem na lista acima: a fase viajava sozinha (`execucao`), e fase sem o
+método que a define não diz de quantas ela é nem o que vem depois.
+
+Medido no PC dele: **11 dos 24 projetos declaram um MVP**, e o campo inteiro
+custa 11,8 KB. A prova mede a travessia, ida e volta, porque nas duas vezes em
+que este tipo de campo foi acrescentado hoje ele saiu rico e chegou magro sem
+erro nenhum.
+
+**A TELA já estava pronta**, feita pela sessão da VPS no mesmo dia (`blocoMvp`
+no painel novo): ela desenha o MVP, não desenha bloco vazio quando o projeto não
+tem definição, e só mostra o placar quando há critério para contar. O ticket que
+esta sessão abriu para isso nasceu resolvido, e foi fechado ao ser conferido.
+
+**✅ E o caminho 2 também está feito, escolhido por ele em 30/08 com uma palavra
+("quero"), depois de ver os três de novo com o 1 já pronto.**
+
+Definir o MVP de um projeto do PC a partir da VPS: a ação `framework-mvp` entra
+na lista fechada de pedidos, carregando nome e até 40 critérios.
+
+⚠️ **Por que isto NÃO afrouxa a trava que a lista fechada protege**, que era o
+custo registrado deste caminho:
+
+- o que viaja é **DADO** que vira conteúdo num arquivo de estado, nunca comando,
+  nunca caminho, nunca nome de arquivo;
+- o projeto continua sendo resolvido do lado que executa, que só conhece o que
+  aquela máquina já tem;
+- **quem executa RECUSA criar framework onde não existe.** É a diferença entre
+  este ramo e o do modo, que liga de propósito: ligar o gate é decisão de quem
+  senta na máquina, e fazer isso de longe transformaria um pedido de conteúdo
+  num pedido de trava;
+- **pedido vazio não apaga.** Mandar só o nome renomeia e preserva os critérios.
+  Apagar precisa ser gesto declarado, e este caminho não oferece um;
+- `feito` só é verdade quando é booleano de verdade. A string `"sim"` marcando
+  critério como pronto seria o pior defeito possível aqui.
+
+**A asserção que guardava a decisão antiga não sumiu, trocou de lado:** ela
+afirmava que nenhuma ação de MVP podia existir, e agora afirma que a lista
+continua FECHADA (ação não declarada não passa, e o pedido de MVP sem MVP não
+vira nada). É a mesma proteção, com o critério que ele escolheu.
 
 ⚠️ **Não decidir sozinho.** Ele pediu a explicação ANTES da mudança, com todas
 as letras, e o caminho 2 mexe na trava que existe para o pedido não virar
@@ -2438,6 +2483,479 @@ dele dizer `projeto › frente` em vez de texto solto.
 
 ## Aberto
 
+## ▶ Frente nova, aberta em 30/08: fechar o cockpit numa VERSÃO, e ter um dado só
+
+**Esta é a frente mais importante aberta no projeto, e o motivo é o custo dele.**
+
+Pedido dele em 30/08, sem reescrever:
+
+> *"a ideia é que a gente na verdade transforme o cockpit num programa, porque a
+> gente atualiza ele todo dia, não chega num produto final (…) o ideal seria que
+> a gente fechasse ele num produto, mas não pra vender, mas pra ter ele instalado
+> na mesma versão na VPS e no PC, funcionando. E aí a gente começa a trabalhar
+> numa versão 2, em paralelo, num ambiente de teste. Mas o que vai estar
+> funcionando de fato vai ser a versão real, porque eu quero usar isso no
+> trabalho."*
+
+> *"Quero que isso pare de ser um produto que eu vou criar todo dia pra eu passar
+> a criar nele uma vez por semana só, focar em trabalhar nos meus projetos,
+> porque eu estou perdendo muito tempo nele."*
+
+> *"Eu preciso ter uma forma de unificar esses dados definitivamente, nem que
+> seja um projeto que a gente projete com calma. Eu só preciso ter um data."*
+
+**A avaliação que ele pediu, feita em 30/08:**
+
+O cockpit **já é quase um programa**: sobe sozinho no logon, tem ícone na barra,
+atalho no Desktop e se religa quando cai. O que falta é uma coisa só, e ela é a
+causa de ele mexer todo dia: **o comando instalado é um atalho para a pasta onde
+se edita.** A cópia que roda e a cópia em obras são o mesmo arquivo, então uma
+linha errada salva às 15h quebra o painel dele às 15h, e não existe "a versão
+que funcionava" para voltar.
+
+A viabilidade é boa pelo desenho que o projeto sempre teve: **176 arquivos, 68
+mil linhas e ZERO bibliotecas de terceiros**. Três caminhos, do mais barato ao
+mais caro, e ele escolheu começar pelo primeiro:
+
+| caminho | o que resolve | custo |
+|---|---|---|
+| **separar a cópia que roda da que se edita** | a causa. A v1 congela e a v2 se constrói ao lado | pequeno, é configuração |
+| **janela própria**, sem barra de navegador | o "parece um programa". O Windows já tem o motor | pequeno |
+| **um `.exe` único** | instala em máquina sem Node. O próprio Node empacota | médio |
+
+Electron foi recusado por ele: 90 MB e uma dependência grande num projeto com
+zero. **Escolha dele para a forma:** janela própria, sem cara de navegador.
+
+### CC-440 🔵 30/08: o PC vira coletor, a VPS vira o cérebro (proposta dele, em discussão)
+
+**Proposta de arquitetura dele em 30/08, sem reescrever:**
+
+> *"não como criar um serviço, um programa que funciona como o cockpit, o mesmo
+> cockpit que existe na vps? Uma série de regras no windows que são instaladas a
+> partir do que o windows precisa fazer pra fazer o framework funcionar aqui no
+> meu pc e também nas informações que ele precisa enviar dos projetos pro cockpit
+> mostrar as mesmas infos que ele retém da vps só que aqui do pc também. Acho que
+> seria a forma mais segura disso funcionar, assim independente da versão do
+> programa aqui, a vps vai receber os dados e ela processa lá."*
+
+**Registrado, em discussão, não implementado.** Ele pediu para abstrair junto.
+
+#### O que a medição achou, em 30/08
+
+| o que | número |
+|---|---|
+| módulos em `src/` | 94 (30.332 linhas) |
+| o que o PAINEL inteiro puxa | 75 (26.719 linhas) |
+| **o que um COLETOR puxaria** | **16 (8.079 linhas)** |
+| módulos que só fazem sentido na VPS | 59 |
+| travas que rodam no instante da ação, no PC | **39** |
+| dado bruto que mora no PC (transcritos) | **1.616 MB** |
+| o resumo que viaja hoje, a cada 30s | **6 KB** |
+
+#### Onde a proposta está certa
+
+**O PC hoje carrega 59 módulos que nunca vão servir para nada nele**: as telas,
+os gráficos, o custo por token, a bancada de segurança, o escritório, o docker,
+a estante de documentos. Um coletor seria **30% do tamanho atual**, e a maior
+parte do que quebra e do que precisa ser atualizado sairia daqui.
+
+E a razão de fundo dele é a mais forte: **quanto menos o PC decide, menos a
+versão dele importa.**
+
+#### O limite físico, e ele não some com desenho
+
+**1.616 MB de dado bruto contra 6 KB de resumo, uma razão de 270 mil para um.**
+Os transcritos das conversas, que são a fonte das horas e do custo, **moram no
+PC e não podem viajar**. Então "a VPS processa lá" tem um teto: alguém no PC
+precisa ler o dado grande e resumir. Isso o cockpit já faz.
+
+A divisão que a medição sugere não é "o PC não processa nada", é:
+
+- **o PC lê e RESUME** o que só existe aqui (1,6 GB vira 6 KB);
+- **a VPS decide, cruza, calcula e mostra**, com uma versão só;
+- **as 39 travas continuam no PC**, obrigatoriamente: elas rodam no instante em
+  que o agente escreve um arquivo, e não há como um servidor remoto barrar isso.
+
+#### O furo a resolver antes de qualquer código
+
+**O formato do que viaja não tem número de versão.** `validarPacote` já valida
+campo a campo e ignora o que não conhece, o que perdoa muita coisa, mas não há
+como a VPS dizer *"este coletor é velho demais"* nem como o coletor saber que a
+outra ponta espera algo novo.
+
+**Sem esse contrato versionado, "independente da versão do programa aqui" é uma
+esperança, não uma garantia.** É o primeiro item de qualquer caminho escolhido.
+
+#### As três formas, com o custo de cada uma
+
+1. **Coletor puro** (o que ele descreveu): um serviço pequeno no PC, sem tela.
+   Some o painel local. O mais limpo, e o que mais muda o dia a dia: ver o PC
+   passa a exigir a VPS no ar.
+2. **Coletor com tela mínima**: o serviço mais uma página de diagnóstico local
+   (conexão, últimos envios, travas). Resolve "a VPS caiu e eu não vejo nada".
+3. **Como está, tirando peso**: o painel continua completo no PC, mas os 59
+   módulos de tela ficam de fora do que é instalado. Mais barato, e não entrega
+   a independência de versão que ele quer.
+
+**Decidido por ele em 30/08, na mesma conversa:**
+
+- **Forma: coletor com tela mínima.** Uma página local só de diagnóstico, para
+  ele continuar enxergando o PC quando a VPS cair.
+- **Condição dele, e ela muda o desenho:** *"é importante que as informações que
+  o pc passe pra vps sejam as mais ricas possíveis pra gente ter controle dos
+  projetos, das tarefas, das sprints, roadmaps, enfim, tudo né."*
+- **Começar pelo desenho completo**, escrito antes de qualquer código.
+
+**Medido depois dessa decisão, e é o achado que ela destrava:** hoje o roadmap
+viaja como contagem e seis títulos por projeto, **5 KB**. Existem **581 frentes e
+621 itens** nos projetos deste PC, e mandar o mapa INTEIRO custaria **170 KB**,
+contra um teto de 2.048 KB. Cabe com margem de 12 vezes.
+
+O resumo curto nunca foi limitação técnica: foi escolha de quando quem lia
+estava na mesma máquina. O comentário do código diz isso com todas as letras
+(*"quem quiser a lista inteira abre o projeto"*), e da VPS ele não tem como
+abrir. **É exatamente a queixa dele.**
+
+📄 **O desenho está em [`docs/produto/COLETOR.md`](produto/COLETOR.md)**, com as
+cinco seções que ele pediu: o que fica no PC e por quê, o que fica na VPS, o
+formato do que viaja, como as versões conversam, e instalar numa máquina nova.
+**Esperando ele ler e aprovar.**
+
+A ordem sugerida lá dentro, e o segundo item vale destacar: **fazer o pacote
+ficar rico responde à queixa dele imediatamente e não depende de nenhuma decisão
+de arquitetura.**
+
+### CC-445 ✅ 30/08: o framework viaja com o método, o MVP e os pedidos
+
+A lacuna foi levantada pela sessão da VPS em `docs/ALINHAMENTO-2026-08-30.md`,
+como conferência para esta sessão não refazer trabalho: o retrato do framework
+mandava **seis campos** por projeto (`existe`, `ligado`, `modo`, `fase`,
+`perfil`, `modulos`) e ficavam de fora `metodo`, `mvp`, `autorizado`, `pedidos`.
+
+**O que mais falta fazer sentido sem:** a FASE viajava sozinha (`execucao`), e
+fase sem o método que a define não diz de quantas ela é nem o que vem depois. Do
+outro lado dava para desenhar o nome e nada mais.
+
+Segue a condição dele ao aprovar o desenho do coletor: *"as informações que o pc
+passe pra vps as mais ricas possíveis pra gente ter controle dos projetos, das
+tarefas, das sprints, roadmaps, enfim, tudo"*.
+
+**Feito, no lado que MANDA:** `metodo`, `mvp` (nome e até 40 critérios, com o
+feito de cada um), `autorizado` e `pedidos` entram no retrato. Medido: o campo
+passou a ter 11,8 KB, com 11 dos 24 projetos declarando MVP.
+
+**O lado que RECEBE entrou na sequência, com autorização dele na hora ("pode
+seguir").** Antes dele, medido no ida e volta, `metodo` e `mvp` **sumiam** na
+travessia: `validarPacote` recorta campo a campo, porque é rede entrando em
+disco, e campo que ela não conhece some calado. É o mesmo defeito do CC-440, e o
+alinhamento entre as máquinas avisou dele antes de acontecer de novo.
+
+`src/federacao.mjs` estava reivindicado pela rota `front` desde o merge de
+30/08. **Emprestado e declarado nos dois lados do quadro**, com o mesmo caminho
+que ela usou ao pegar este arquivo mais cedo. Só acréscimo: nada do que ela
+escreveu ali foi tocado.
+
+**A rede que guarda isso mede a TRAVESSIA, não a saída** (`test.mjs`, CC-445):
+ida e volta por JSON, mais um caso com lixo em todos os campos novos. Um teste
+que parasse no que o remetente monta teria passado com o dado sumindo no meio, e
+foi assim que o defeito nasceu das duas vezes.
+
+### CC-443 ✅ 30/08: o programa abria o painel DESTA máquina, não o cockpit inteiro
+
+Pergunta dele, e ela achou um defeito: *"se eu abrir o cockpit por esse programa
+ele abre o exato mesmo cockpit da vps?"*
+
+**Medido na hora: não.** O painel local mostrava **uma máquina, esta**, com 14
+agentes. A razão é o desenho da conexão, que tem um sentido só: o PC empurra, a
+VPS junta. A pasta de pacotes recebidos **nem existe** no PC, porque ele não
+recebe de ninguém. Abrindo pelo programa, ele veria só o próprio computador
+achando que estava vendo tudo.
+
+**Agora o programa abre o endereço para onde esta máquina reporta**, onde o
+trabalho de todas as máquinas está junto. O painel local vira o plano B: sem
+internet, ou com a VPS fora do ar, ele abre o daqui e **diz que abriu o daqui**.
+
+A frase importa tanto quanto o comportamento: sem ela, uma tela com uma máquina
+só pareceria o cockpit inteiro num dia de rede ruim, que é pior do que não
+abrir. `cc app --local` força o daqui quando ele quiser.
+
+**Um detalhe que decide se funciona:** o painel exposto na internet responde
+`401` até o login. Isso conta como NO AR, e não como fora: o navegador pede a
+senha na janela, e ela fica guardada no perfil próprio dela, então o login é uma
+vez só. Tratar `401` como "fora do ar" faria o programa cair no local sempre.
+
+### CC-444 ✅ 30/08: três cópias do mesmo produto (as travas já saíram da velha)
+
+**Fechado em 30/08.** O que faltava não era código: número de versão andando
+(feito, virou 0.3.0 com a regra em `src/publicar.mjs`), um lugar só como
+produto (decidido, é o `cockpit`) e o hábito de perguntar ao remoto antes de
+abrir trabalho (registrado neste arquivo). A parte de código, as 39 travas
+saindo da pasta velha, já estava feita. Fecha junto com o CC-439, que resolveu
+o resíduo prático (a Tarefa Agendada apontando pra pasta velha).
+
+> **Era CC-434 até a junção de 30/08.** A sessão da VPS usou o mesmo número no
+> mesmo dia, para o recado que atravessa entre as máquinas, e o dela chegou
+> primeiro ao repositório. As duas sessões escolheram o número lendo o próprio
+> arquivo, cada uma no seu lado, e as duas leituras estavam certas: **numeração
+> não sobrevive a trabalho em paralelo sem uma fonte só.** É o mesmo defeito que
+> este item descreve, acontecendo com o item.
+
+**Medido em 30/08, e é o item que justifica a frente inteira.**
+
+| onde | está em | atraso |
+|---|---|---|
+| GitHub, que é o que a VPS usa | 30/08 | a versão viva |
+| `proj_controlcenter`, no PC | 27/08 | 38 commits |
+| `cockpit`, no PC | 26/08 | **46 commits** |
+
+As três diziam ser a versão `0.2.0` no `package.json`. O número nunca tinha sido
+movido, então ele **não separava nada**, e era justamente a peça que "a mesma
+versão nos dois lados" precisa ter.
+
+**Consertado em 30/08:** o produto passou para `0.3.0`, e a regra de quando o
+número sobe está escrita em `src/publicar.mjs`, junto de quem publica. Curta de
+propósito, para ser seguida: o último número sobe em conserto, o do meio quando
+entra recurso ou quando algo muda de comportamento, e o primeiro fica em zero
+enquanto isto for ferramenta dele. **O que o número não precisa fazer é
+distinguir dois commits do mesmo dia**: para isso o carimbo já leva o commit,
+que é exato. Subir a cada publicação o transformaria num contador, e contador
+ninguém lê.
+
+**O custo já apareceu:** uma sessão do PC trabalhou o dia 30/08 inteiro na cópia
+mais atrasada e refez dois consertos que já existiam, um deles com diagnóstico
+PIOR (o CC-362 daqui achou três causas, o refeito achou uma). Nada disso deu
+erro em lugar nenhum: o gate passava nas duas cópias, porque cada uma testava a
+si mesma.
+
+**Feito em 30/08, e é a metade que não precisava dele:** as 39 travas do PC
+saíram da pasta velha e passaram a rodar da **versão instalada**. Medido antes:
+35 menções à pasta velha e zero à nova. Depois: zero e 41.
+
+⚠️ **O passo do meio quase deixou tudo pior, e vale registrar.** `cc hooks
+install` da instalada **acrescentou** em vez de substituir, porque não reconhece
+como "a mesma trava" um caminho diferente: ficaram 35 velhas mais 41 novas, e
+cada trava rodaria DUAS vezes, uma com código de 27/08. Foi preciso limpar as
+antigas à parte, com cópia de segurança antes.
+
+**E o script de limpeza errou na primeira tentativa, do jeito mais perigoso:**
+ele procurava o caminho em `command`, e `command` é só `"node"` — o caminho mora
+em `args`. Resultado: "0 removidas" e um relatório dizendo que estava limpo, com
+as 35 velhas de pé. Só apareceu porque a contagem foi refeita DEPOIS.
+
+Provado com as travas da instalada respondendo: a abertura de sessão anuncia o
+modo certo, e o gate de escrita decide certo.
+
+**O que fechar o RESTO exige, e nenhuma parte é código:** um número de versão que
+ande, um lugar só que seja o produto, e o hábito de perguntar ao remoto antes de
+abrir trabalho. As travas do PC ainda apontam para `proj_controlcenter`; ele
+decidiu em 30/08 que **o `cockpit` é o produto**.
+
+### CC-435 ✅ 30/08: a trava do framework alcança código na raiz, e a entrevista chega ao agente
+
+Trazido do trabalho do PC de 30/08 depois da unificação. Nasceu de um caso real
+no `reunion`: um agente abriu o projeto com framework ligado, **escreveu o código
+todo e depois preencheu o MVP sozinho, com 7 critérios que ele mesmo inventou.**
+
+Três causas, todas fechadas:
+
+1. **`SEMPRE_LIVRE` tinha `'*'`**, que por `casa()` significa "qualquer arquivo
+   na raiz", e `podeEditar` consulta essa lista ANTES de perfil, modo e fase.
+   Projeto de app único era **estruturalmente incapaz de travar qualquer
+   arquivo**. Agora `casa()` entende padrão de raiz com extensão, a lista é
+   explícita, e a raiz entrou em `CODIGO` e no `trava` das fases, numa const só
+   (`TRAVA_CODIGO`) em vez de oito cópias literais.
+2. **A entrevista não era alcançável por agente nenhum.** `src/entrevista.mjs`
+   está pronta desde o CC-133 e tinha dois consumidores, a linha de comando e o
+   painel. `hooks/framework-inicio.mjs` agora abre a sessão com a pergunta do
+   roteiro, uma por vez, e só com o MVP vazio ou a entrevista já começada.
+3. **A recusa do gate mandava preencher o MVP à mão** no `estado.json`: no único
+   momento em que o agente é forçado a lidar com a Definição, a instrução era
+   fazer o que o gate existe para impedir. Agora manda entrevistar.
+
+Continuam livres na raiz: configuração e texto, **teste** (é prova, o oposto do
+que o gate previne) e **atalho de lançamento**, decisão dele sobre o `GRAVAR.bat`
+do `reunion`: *"pode, é só atalho"*.
+
+**Achado de tabela:** os dois testes de hook do framework existiam desde 18/08 e
+**nunca estiveram no `npm test`**. Estavam quebrados no Windows havia semanas, e
+o `testar-framework-inicio.sh` era pior que quebrado: os casos positivos falhavam
+e os NEGATIVOS passavam por vacuidade. Ligados ao gate por
+`test-hooks-framework.mjs`, que pula em voz alta sem `bash`.
+
+### CC-436 ✅ 30/08: ele escolhe as pastas de projeto pelo terminal, pela bandeja e na instalação
+
+A gravação (`setPastasDeProjeto`) e a tela já existiam aqui desde 27/08. Faltavam
+os três lugares do PC, e todos gravam pela mesma função — duas escritas do mesmo
+campo seriam duas verdades sobre onde os projetos moram:
+
+- **`cc pastas`**, com `adicionar` e `remover`. Sem escolha registrada ele diz,
+  com essas palavras, que o painel está adivinhando.
+- **O ícone na barra de tarefas**, item "Adicionar pasta de projetos...", que
+  abre o seletor de pasta do próprio Windows. Caixa de texto foi descartada: um
+  caminho digitado errado só apareceria depois, como painel vazio.
+- **O instalador pergunta na primeira vez**, e só em terminal de verdade:
+  rodando de script ele informa o que adivinhou e segue, porque comando que
+  espera resposta dentro de tarefa agendada trava para sempre sem nada na tela.
+
+**A guarda que mais importa:** enquanto nada foi escolhido, a leitura cai na
+descoberta pelos jobs. Se a primeira pasta escolhida virasse a lista inteira,
+acrescentar "projetos de música" APAGARIA a pasta de trabalho que funcionava, sem
+erro nenhum. Por isso a primeira escolha começa com o que já estava valendo.
+Prova em `test-pastas.mjs`, em casa isolada por `CC_HOME`.
+
+**Armadilha achada e registrada no `CLAUDE.md`:** `CC_HOME` isola o config e
+**não** isola o autostart. Um teste com `--port 8134` reescreveu o
+`control-center.vbs` do Startup dele com a porta errada, calado.
+
+### CC-437 ✅ 30/08: 11 dos 12 projetos com framework sumiam no caminho até a VPS
+
+Queixa dele: *"não tenho acesso a todos os formatos de framework pros projetos do
+PC quando vou ver lá no cockpit na VPS"*. Medido antes de mexer:
+
+| o que | antes | depois |
+|---|---|---|
+| projetos no retrato enviado | 3 | **24** |
+| com framework ligado, visíveis | 1 | **9** |
+| projetos com framework que somem | 11 | **0** |
+| a pasta pessoal dele posando de projeto | sim | não |
+
+A causa era o desenho: `frameworkDaqui()` deduzia a lista de projetos dos `cwd`
+dos **jobs de background**, e ele trabalha em sessão INTERATIVA (3 jobs contra 12
+sessões). É o CC-124 pela terceira vez, com a regra já escrita no `CLAUDE.md`
+("quem lê agente lê pelas DUAS fontes") e um módulo novo que não a seguiu.
+
+Passa a sair da lista de projetos da máquina; os jobs continuam entrando para
+pegar projeto fora das pastas configuradas, mas só quando há `.framework` acima
+deles, que é a guarda contra o lixo. **Custo medido antes de trocar**, porque o
+desenho antigo se justificava por ele: 3,2ms + 2,9ms contra os 6,6ms da versão
+que se dizia barata, num ciclo de 30 segundos.
+
+### CC-446 ✅ 30/08: o log da conexão, que ele pediu na primeira mensagem do dia
+
+**Pedido original dele, e ficou o dia inteiro sem resposta:** *"preciso que esse
+standalone me diga como tá a conexão e os arquivos que tão passando pela
+conexão, tipo um log mesmo"*.
+
+Medido na hora: **não existia histórico nenhum.** O que havia era uma variável
+em memória com UM registro, que some quando o processo reinicia. E ele reinicia
+no logon, ao publicar versão nova, e a cada clique em reiniciar. Um log que
+morre nesses momentos não responde *"funcionou enquanto eu estava fora?"*, que é
+a pergunta.
+
+**Feito, e é o item 1c do desenho do coletor** (a tela mínima que ele escolheu):
+
+- `src/diarioEnvios.mjs` guarda os últimos 200 envios EM DISCO, com o que foi
+  dentro de cada um: agentes, projetos, frentes de roadmap, tamanho, e o erro
+  quando falhou. 200 cobre menos de duas horas a um envio por 30 segundos, que é
+  o alcance de um log de conexão.
+- **O abrigo não é opcional:** `~/.claude` é somente leitura dentro do sandbox
+  da VPS, e escrita nova ali falha calada. Tenta a casa, cai para
+  `~/.local/share/agent-cockpit/`, e quem lê **junta os dois lugares**, senão
+  metade do histórico sumiria sem explicação.
+- `/conexao` é a página, servida fora do painel de propósito: ela precisa
+  responder justamente quando a outra ponta está fora do ar. Sem CSS de fora,
+  sem biblioteca, sem fonte baixada.
+- A gravação fica dentro de `try`: **o log é testemunha, nunca obstáculo.**
+  Falhar em gravar não pode derrubar o envio seguinte.
+
+Provado no ar: `no ar`, último envio com **14 agentes, 11 projetos, 584 frentes,
+176 KB**, e 39 de 39 travas ligadas.
+
+**Dois tropeços do gate no caminho, e os dois estavam certos:**
+
+1. Ele recusou a rota nova como *"rota de API que ninguém chama"*. A regra é
+   boa (servidor respondendo o que nenhuma tela pede é peça inalcançável), e a
+   lista de telas que ele varre não conhecia a página nova. Ensinada.
+2. O mapa de testes ficou desatualizado, e ele avisou que é gerado por comando e
+   nunca editado à mão.
+
+### CC-439 ✅ 30/08: a cópia que RODA, separada da que se edita
+
+**É o primeiro dos três caminhos, e ele escolheu começar por aqui.** Resolve a
+causa: hoje o comando instalado é um atalho para a pasta de obras, então uma
+linha errada salva às 15h derruba o painel dele às 15h, e não existe versão de
+ontem para voltar. Está nas armadilhas do `CLAUDE.md` desde 2026-08-08, na
+alínea (c): *"código quebrado no repo quebra o `cc` de todos os agentes na
+hora"*.
+
+**Pronto e provado:**
+
+- `src/publicar.mjs` copia o produto (sem `.git`, sem `docs/`, sem teste, sem
+  `node_modules`) para fora do repositório, com carimbo de versão, commit e
+  data. No Windows vai para `%LOCALAPPDATA%\AgentCockpit`.
+- **O gate roda ANTES e recusa se falhar.** Publicar sem conferir seria o mesmo
+  que ter uma cópia só.
+- **Cada publicação guarda a anterior inteira**, e `voltar()` troca as duas de
+  lugar em vez de descartar: voltar por engano tem conserto. Uma geração só, de
+  propósito — o histórico de verdade está no git.
+- `cc versao`, `cc versao publicar`, `cc versao voltar`.
+- Primeira publicação feita: `0.2.0 ca6e7bc`, e a cópia **roda sozinha fora do
+  repositório** (provado: respondeu com 14 agentes, sem `.git` na pasta).
+- `test-publicar.mjs` no gate, com o caso que prova o ponto inteiro: editar a
+  pasta de obras não muda a que roda.
+
+**O apontamento, feito na sequência:**
+
+- **O lançador aprendeu a diferença.** `src/arrancar.ps1` só faz `git pull`
+  quando a pasta É um repositório. A cópia instalada não tem `.git`, e não deve
+  puxar nada: ela muda quando alguém publica, nunca sozinha. Sem essa guarda o
+  mesmo lançador gritaria "not a git repository" a cada arranque, e a promessa
+  de "a versão que roda não muda sem eu mandar" seria falsa.
+- **O atalho de logon já aponta para a instalada.** Conferido no `.vbs`:
+  `...\AppData\Local\AgentCockpit\cc.mjs`.
+
+**Fechado em 30/08.** A tarefa apontava para `proj_controlcenter\src\arrancar.ps1`,
+a pasta VELHA de 27/08, a mesma raiz do CC-444, agora medida do lado do
+sistema operacional. Ele rodou `cc daemon servico --port 8099` na pasta
+instalada e confirmou a janela de elevação. Conferido depois, não só o
+"aceitei": a Tarefa Agendada `AgentCockpit` aponta agora para
+`AppData\Local\AgentCockpit\src\arrancar.ps1`, e a porta 8099 tem um processo
+só vivo, da pasta instalada — sem resíduo da pasta velha para matar.
+
+**CC-447, 30/08: o comando passou a pedir a permissão sozinho.**
+
+A resposta anterior era mandá-lo abrir outro terminal, como administrador, e
+digitar um caminho de 60 caracteres. **Ele não fez**, e é a resposta certa: a
+instrução era trabalho dele para resolver um problema do programa.
+
+Agora `cc daemon servico` tenta normal, e **só quando esbarra em "Acesso
+negado"** avisa e pede a permissão pelo próprio Windows, com a janela que ele já
+conhece. Cancelar é resposta legítima e é dita em voz alta: em 30/08 o pedido
+foi cancelado e o comando ficou sem saber, então o estado continuou errado sem
+ninguém explicar por quê.
+
+E confere o RESULTADO, não o "aceitei": a janela pode ser confirmada e o comando
+de dentro falhar por outro motivo. Dizer "pronto" nesse caso seria a pior
+resposta possível.
+
+```
+cd "C:\Users\lfeli.ALIENWARE-LIPE\AppData\Local\AgentCockpit"
+node cc.mjs daemon servico --port 8099
+```
+
+**Um resíduo medido junto, e não foi mexido de propósito:** havia três painéis
+vivos, dois na porta 8099. Quem serve é o do `cockpit`; o do `proj_controlcenter`
+está vivo e **não serve nada**, gastando memória à toa. É o mesmo formato do
+CC-353. Matar sem trocar a tarefa antes só o faria voltar.
+
+### CC-438 ✅ 30/08: a síntese pelo opencode não funcionava no Windows
+
+Achado ao unificar, e não era do teste. `pedir()`, em `src/sintese.mjs`, chamava
+`spawn(exe, [...])` **sem `shell` e sem `cmd.exe`**, e essa forma nunca sobe um
+`.cmd`. Está nas armadilhas do `CLAUDE.md` desde o CC-29.
+
+Como o opencode é instalado por npm, o que `acharOpencode()` devolve no Windows
+**é** um `.cmd`. O caso do gate que provava o caminho inteiro tinha sido pulado,
+dizendo o motivo, porque um verde que não prova nada seria pior.
+
+**Fechado em 30/08.** `rodar()` passou a subir `cmd.exe` como executável no
+Windows, com `/c` e cada argumento separado do array, o mesmo padrão de
+`lancarComando`. O caso do gate que antes pulava no Windows agora roda de
+verdade lá: binário `.cmd` de mentira (que chama um `.mjs`), passando pelo
+caminho inteiro (`rodar()`, limpeza da saída, gravação em disco, e o teto que
+mata quem trava). `npm test` verde, com prova real e não mais um pulo
+explicado.
+
 ## ▶ Conserto solto, 26/08: a trava pedia autorização sem ter onde clicar
 
 ### CC-361 ✅ 26/08: o framework pedia autorização e não havia onde clicar
@@ -3097,17 +3615,6 @@ acrescenta a flag; o padrão continua sendo o seguro. Vale nos dois caminhos
 (A terceira linha da nota, `routific`, ele mandou ignorar em 26/08: ruído de
 ditado, não é tarefa.)
 
-### CC-360, aberto em 26/08 (outro projeto): usuários de teste no fibraessência
-
-Da primeira nota, `PC_fibraessencia`:
-
-> *"vamos criar alguns usuarios bem especificos, todos com o nome de cada uma das
-> pessoas da operação e testar o login e desenvolvimento de cada um na plataforma"*
-
-**Não é do cockpit.** É tarefa do projeto fibraessência (testar login por pessoa
-da operação). Fica anotado aqui porque foi aqui que ele escreveu, mas a execução
-é no repositório do fibraessência, não neste. Vale mover para o backlog de lá.
-
 ## ▶ Frente nova, aberta em 25/08: a lista "Edit", escrita por ele no bloco de notas
 
 Ele acumulou 12 pedidos num bloco de notas chamado **Edit**, dentro do próprio
@@ -3279,7 +3786,7 @@ peça nova.
 
 ## ▶ Frente nova, aberta em 22/08: o cockpit vira aplicativo de verdade
 
-### CC-352 🟡 26/08 (base feita, instalador é do PC): pastas de projeto, mais de uma
+### CC-352 ✅ 26/08 (fechado via CC-436): pastas de projeto, mais de uma
 
 Decisão dele em 26/08: perguntar na instalação, com várias pastas. A parte que é
 minha e do lado da VPS está **feita**: o cockpit passou a ler de VÁRIAS pastas,
@@ -3305,9 +3812,11 @@ com o mesmo nome mais abaixo no arquivo, e a segunda apaga a primeira em
 silêncio. É a mesma família do id repetido que já apagou uma tela inteira aqui.
 O portão agora recusa nome de função repetido, e conferiu as 244 da tela.
 
-**Falta só a parte do PC, e é dele:** o instalador PERGUNTAR as pastas na
-primeira execução, mais o atalho na barra de tarefas. É o mesmo instalador do
-CC-340. A leitura e a escrita já estão prontas dos dois lados.
+**Fechado em 30/08 pelo CC-436, medido agora e confirmado no código:** `cc
+pastas` (com `adicionar`/`remover`) existe em `cc.mjs`, o ícone "Adicionar
+pasta de projetos..." está em `src/bandeja.ps1`, e o instalador pergunta na
+primeira vez em `src/install.mjs`. Os três gravam pela mesma função, e
+`test-pastas.mjs` está no gate (`npm test`).
 
 Do bloco de notas `rascunho`, lido em 25/08. Palavras dele, ditadas por voz e
 normalizadas só na pontuação:
@@ -3496,7 +4005,7 @@ aviso de atualizar nos três projetos do PC, e simulando a máquina reportando
 aparecem os três seletores com o modo certo já selecionado. Falta o PC puxar o
 código para o caminho fechar de ponta a ponta.
 
-### CC-340, aberto em 25/08: o sync do PC vira software instalável, com ícone na barra
+### CC-340 🟡 25/08 (o programa está pronto, falta só a faixa na tela): o sync do PC vira software instalável, com ícone na barra
 
 Palavras dele, em 25/08: *"poderiamos criar um setup que instale um programinha
 que faça o auto sync e eu possa ver como um software mesmo com link na taskbar
@@ -3544,16 +4053,20 @@ Dois achados que valem mais que o recurso:
   A leitura caía no arquivo real e a ESCRITA também — o mesmo caminho que já
   apagou as notas dele uma vez. Virou `arquivoSettings()`, resolvido na hora.
 
-Falta a parte 2, e ela tem dois pedaços de tamanhos muito diferentes:
+Falta a parte 2, e ela tinha dois pedaços de tamanhos muito diferentes:
 
 1. **A faixa na tela** dizendo, por máquina, se as travas valem lá. O dado já
    chega; falta desenhar. Bloqueado: `src/ui_v2.html` é da rota `front`, cuja
    sessão está viva no PC dele.
-2. **O empurrador com cara de programa** no Windows (instalador, ícone na
-   barra). Decisão dele em 25/08: começar pelo que já existe, porque o painel
-   **já é instalável** como aplicativo (tem manifesto e service worker) e o
-   serviço **já sobe no logon**. O que faltava era ver o estado, não instalar
-   coisa nova.
+2. **Fechado em 30/08: o empurrador com cara de programa** no Windows. O
+   painel já era instalável como aplicativo e o serviço já subia no logon
+   (decisão de 25/08: começar pelo que já existia). O que faltava era **ligar,
+   desligar e ver a última sincronia** direto no ícone. A bandeja ganhou um
+   item de menu que liga e desliga a sincronia sem apagar o token nem o
+   endereço da VPS (achado no caminho: `cc federar desligar` apagava os dois,
+   e um clique errado na bandeja teria obrigado a digitar tudo de novo pra
+   voltar). `cc federar pausar` / `cc federar retomar` fazem o mesmo pelo
+   terminal. "Ver a última sincronia" já existia no texto do ícone.
 
 ### CC-331 ✅ 22/08: a lista de projetos do Coderoom no menu do telefone
 

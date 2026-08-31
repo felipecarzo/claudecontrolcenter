@@ -12,6 +12,12 @@ set -u
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOK="$RAIZ/framework-inicio.mjs"
 T=$(mktemp -d)
+# No Git Bash do Windows, "/tmp/x" so vira caminho de verdade quando passa como
+# ARGUMENTO: o MSYS converte ali. Dentro do JSON no stdin ele viaja cru, o Node
+# resolve pra "C:\tmp\x", nao acha projeto nenhum, e o hook sai calado. Os casos
+# positivos falhavam e os NEGATIVOS passavam por vacuidade, que e pior: verde
+# afirmando que o hook fica quieto quando ele nem tinha achado onde olhar.
+command -v cygpath >/dev/null 2>&1 && T=$(cygpath -m "$T")
 FALHOU=0
 trap 'rm -rf "$T"' EXIT
 
@@ -73,6 +79,30 @@ COM_DESENHO=$(projeto p5 desenho)
 caso "modo desenho ganha o padrao de protótipo primeiro" "$COM_DESENHO" contem "PADRÃO DE TRABALHO"
 caso "e cita a regra de nao descer nivel nenhum" "$COM_DESENHO" contem "não descer nível nenhum"
 caso "modo restritivo nao ganha esse padrao (e so do desenho)" "$COM_ROADMAP" nao-contem "PADRÃO DE TRABALHO"
+
+echo "— CC-45: a pergunta vem da ENTREVISTA, nao do formulario plano —"
+# Ate 30/08 a pergunta de abertura vinha de PERGUNTAS (4 perguntas fixas), e a
+# entrevista de 12 perguntas nao era alcancavel por agente nenhum. Um agente
+# escreveu o `reunion` inteiro e depois inventou os 7 criterios de pronto.
+NOVO=$(projeto p6 dialogo)
+caso "projeto sem MVP e entrevistado" "$NOVO" contem "Entrevista de definição"
+caso "e a primeira pergunta e a do roteiro" "$NOVO" contem "O que é este projeto?"
+caso "com as opcoes do roteiro" "$NOVO" contem "Site ou app para cliente"
+caso "e a ordem de nao preencher sozinho" "$NOVO" contem "NÃO preencha o MVP sozinho"
+caso "nao e mais a pergunta do formulario antigo" "$NOVO" nao-contem "O que este projeto entrega, numa frase?"
+
+# projeto ja definido nao pode ser incomodado com "O que e este projeto?"
+PRONTO="$T/p7"
+mkdir -p "$PRONTO/.framework"
+node -e '
+const fs = require("fs")
+fs.writeFileSync(`${process.argv[2]}/.framework/estado.json`, JSON.stringify({
+  metodo: "mvp-basico", modo: "dialogo", fase: "execucao", ligado: true,
+  mvp: { nome: "o painel dos agentes", criterios: [{ texto: "uma linha por agente", feito: true }] },
+  ferramentas: [], verificacao: {}, autorizado: [], historico: [],
+}, null, 1))
+' x "$PRONTO"
+caso "projeto com MVP pronto nao e entrevistado" "$PRONTO" nao-contem "Entrevista de definição"
 
 echo "— higiene —"
 echo '{}' | node "$HOOK" > /dev/null 2>&1

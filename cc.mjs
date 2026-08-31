@@ -74,6 +74,59 @@ const die = (msg) => {
   process.exit(1)
 }
 
+/**
+ * CC-352, a parte do PC: o instalador PERGUNTA onde ficam os projetos.
+ *
+ * Pedido dele em 25/08, com todas as letras: *"é importante que o cockpit
+ * pergunte onde vai ser a pasta de projetos (…) quando ela instala, e no
+ * instalador"*. Até aqui a pasta era só adivinhada pelos diretórios dos jobs, e
+ * não havia lugar nenhum onde ele escolhesse.
+ *
+ * Duas guardas, e as duas vieram de erro conhecido deste projeto:
+ *
+ * 1. **Só pergunta em terminal de verdade** (`isTTY`). O instalador também roda
+ *    de script e da tarefa agendada, e comando que espera resposta ali trava
+ *    para sempre sem nada na tela — é o mesmo formato do servidor de background
+ *    que ficou 11 horas vivo.
+ * 2. **Nunca insiste, e nunca apaga.** Quem já escolheu não é perguntado de
+ *    novo; quem não responde fica com a pasta adivinhada, que é o que já
+ *    funcionava. Instalador que exige resposta para terminar é instalador que
+ *    ele cancela.
+ */
+async function perguntarPastas() {
+  const escolhidas = install.basesEscolhidas()
+  if (escolhidas.length) {
+    console.log(`\n  pastas de projeto já escolhidas: ${escolhidas.join(', ')}`)
+    console.log('  mudar depois: pelo ícone na barra de tarefas, ou `cc pastas`\n')
+    return
+  }
+  const adivinhadas = install.projectsBases()
+  const sugestao = adivinhadas[0] || null
+
+  if (!process.stdin.isTTY) {
+    console.log('\n  onde ficam os seus projetos: ' + (sugestao ? `adivinhei ${sugestao}` : 'ainda não sei'))
+    console.log('  escolher de verdade: pelo ícone na barra de tarefas, ou `cc pastas adicionar "<caminho>"`\n')
+    return
+  }
+
+  const readline = await import('node:readline/promises')
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  try {
+    console.log('\n  Onde ficam os seus projetos?')
+    if (sugestao) console.log(`  (deixe em branco para usar ${sugestao}, que foi o que eu adivinhei)`)
+    console.log('  Pode responder mais de uma pasta, separadas por ponto e vírgula.')
+    const resposta = (await rl.question('  pasta(s): ')).trim()
+    if (!resposta) { console.log('  fica a adivinhada. Dá para mudar depois pelo ícone na barra de tarefas.\n'); return }
+    for (const p of resposta.split(';').map((s) => s.trim()).filter(Boolean)) {
+      const r = install.adicionarBase(p)
+      console.log(r.ok ? `  ok: ${p}` : `  não deu: ${r.erro}`)
+    }
+    console.log('')
+  } finally {
+    rl.close()
+  }
+}
+
 switch (cmd) {
   case 'set': {
     if (!isEnabled()) process.exit(0) // desligado: no-op silencioso, de propósito
@@ -918,6 +971,13 @@ switch (cmd) {
         if (nome) mvp.nome = nome
         if (criterio) mvp.criterios = [...(mvp.criterios || []), { texto: criterio, feito: false }]
         D.gravar(r, { ...e, mvp })
+        /* CC-45: avisa, não recusa. Recusar quebraria o uso legítimo dele
+           corrigindo o próprio MVP, e o caminho de recuperação quando a
+           entrevista trava. Mas o defeito que originou o ticket foi um agente
+           preenchendo os 7 critérios sozinho, então o aviso existe para o
+           agente que chegou aqui pelo caminho errado. */
+        console.log('\n⚠️  se isto não veio de uma resposta DELE, pare: o MVP não é seu para escrever.')
+        console.log('   entreviste com: cc framework entrevista\n')
         mostrar(r)
         break
       }
@@ -1063,9 +1123,28 @@ switch (cmd) {
       break
     }
 
+    /* CC-340: diferente de `desligar`, não mexe em token nem endereço. É o que
+       a bandeja chama, porque ela não tem como pedir o token de volta. */
+    if (sub === 'pausar') {
+      gravarFederacao({ ativo: false })
+      console.log('sincronização pausada. Token e endereço continuam gravados; `cc federar retomar` volta a empurrar.')
+      break
+    }
+    if (sub === 'retomar') {
+      const cfg = readConfig()
+      if (!cfg.federacao?.token || !cfg.federacao?.enviarPara) {
+        die('não há token nem endereço gravados. Use `cc federar ligar --para <url> --token <token>` primeiro.')
+      }
+      gravarFederacao({ ativo: true })
+      console.log(`retomado: empurrando de novo para ${cfg.federacao.enviarPara}.`)
+      break
+    }
+
     if (sub !== 'ligar') {
       die('uso: cc federar [status]\n'
         + '     cc federar ligar --para <url> --token <token> [--nome "MEU PC"]\n'
+        + '     cc federar pausar\n'
+        + '     cc federar retomar\n'
         + '     cc federar desligar')
     }
 
@@ -1077,7 +1156,7 @@ switch (cmd) {
     if (!/^https?:\/\//i.test(para)) die(`--para precisa começar com http:// ou https://, recebi "${para}"`)
 
     if (nome) gravarMaquina({ nome })
-    gravarFederacao({ token, enviarPara: para })
+    gravarFederacao({ token, enviarPara: para, ativo: true })
 
     /* A confirmação é o ponto do comando. Gravar e dizer "pronto" repetiria o
        defeito que este projeto passou o dia inteiro consertando: dizer que
@@ -1127,6 +1206,7 @@ switch (cmd) {
   case 'daemon': {
     switch (arg) {
       case 'install': {
+        await perguntarPastas()
         const r = daemon.install({ port })
         const up = await daemon.ensureUp(port)
         console.log(`autostart: ${r.vbs}`)
@@ -1152,8 +1232,37 @@ switch (cmd) {
       case 'servico': {
         const P = await import('./src/platform.mjs')
         if (!P.ehWindows) die('por enquanto só no Windows. Na VPS quem supervisiona é o systemd.')
+        await perguntarPastas()
         const alvoScript = (await import('node:url')).fileURLToPath(import.meta.url)
-        const r = P.instalarServicoWindows({ node: process.execPath, script: alvoScript, porta: port })
+        let r = P.instalarServicoWindows({ node: process.execPath, script: alvoScript, porta: port })
+
+        /* CC-447: "Acesso negado" aqui não é erro de uso, é a política desta
+           máquina: criar a Tarefa Agendada exige administrador mesmo para uma
+           tarefa sem elevação nenhuma. Medido em 26/08.
+
+           Até 30/08 a resposta era mandar ele abrir outro terminal e digitar um
+           caminho de 60 caracteres, e ele não fez. O Windows sabe pedir a
+           permissão sozinho, e a janela é a mesma que ele conhece. Só depois da
+           tentativa normal falhar por permissão, e nunca de surpresa. */
+        if (!r.ok && r.precisaAdmin) {
+          console.log('\n  esta máquina exige permissão de administrador para criar a tarefa.')
+          console.log('  vou pedir agora: uma janela do Windows vai aparecer, e é só confirmar.\n')
+          const elev = P.pedirElevacao({ node: process.execPath, script: alvoScript, porta: port })
+          if (elev.cancelado) {
+            die('  você cancelou a janela de permissão, então nada mudou.\n'
+              + '  para tentar de novo: node cc.mjs daemon servico')
+          }
+          if (!elev.ok) die(`  não consegui pedir a permissão: ${elev.erro}`)
+          /* Confere o RESULTADO, e não o "aceitei": a janela pode ter sido
+             confirmada e o comando de dentro falhar por outro motivo, e dizer
+             "pronto" nesse caso seria a pior resposta possível. */
+          const estado = P.estadoServicoWindows?.()
+          if (!estado?.existe) die('  a permissão foi dada, mas a tarefa não apareceu. Rode `cc daemon servico` num terminal como administrador.')
+          console.log(`\n  tarefa criada com a permissão que você deu (${estado.estado || 'pronta'})`)
+          const up2 = await daemon.ensureUp(port)
+          console.log(`  painel: ${up2.url}\n`)
+          break
+        }
         if (!r.ok) die(`não deu: ${r.erro}`)
         const up = await daemon.ensureUp(port)
         console.log(`\n  tarefa criada: ${r.tarefa}`)
@@ -1282,6 +1391,205 @@ switch (cmd) {
     const up = await daemon.ensureUp(port)
     daemon.openBrowser(up.url)
     console.log(up.url)
+    break
+  }
+
+  /**
+   * CC-352, a parte do PC: onde ficam os projetos DELE, e são várias pastas.
+   *
+   * Palavras dele em 25/08: *"é importante que o cockpit pergunte onde vai ser
+   * a pasta de projetos (…) e ela pode adicionar múltiplas pastas também, caso
+   * ela goste de trabalhar com projetos de música, projetos de outras coisas"*.
+   *
+   * Até aqui a pasta era só DESCOBERTA pelos diretórios dos jobs, com
+   * `CC_PROJECTS_BASE` forçando quando preciso, e não havia lugar nenhum onde
+   * ele escolhesse. Este comando é esse lugar no terminal; a bandeja
+   * (`src/bandeja.ps1`) chama daqui, e o instalador pergunta na primeira vez.
+   */
+  case 'pastas': {
+    const sub = arg
+    // positional[0] é o próprio comando ("pastas"), [1] é o subcomando (`arg`)
+    const alvo = positional[2]
+
+    const mostrar = () => {
+      const escolhidas = install.basesEscolhidas()
+      const valendo = install.projectsBases()
+      console.log('')
+      if (escolhidas.length) {
+        console.log('  as suas pastas de projeto:')
+        for (const p of escolhidas) {
+          const some = fs.existsSync(p) ? '' : '   (não existe agora — disco desligado?)'
+          console.log(`    ${p}${some}`)
+        }
+      } else {
+        console.log('  você ainda não escolheu nenhuma pasta.')
+        console.log(`  por enquanto o painel adivinha pelos projetos onde você já rodou agente:`)
+        for (const p of valendo) console.log(`    ${p}`)
+      }
+      if (process.env.CC_PROJECTS_BASE) {
+        console.log(`\n  a variável CC_PROJECTS_BASE também está valendo: ${process.env.CC_PROJECTS_BASE}`)
+      }
+      console.log(`\n  adicionar: node cc.mjs pastas adicionar "D:\\caminho\\da\\pasta"`)
+      console.log(`  remover:   node cc.mjs pastas remover "D:\\caminho\\da\\pasta"\n`)
+    }
+
+    if (!sub) { mostrar(); break }
+    if (sub === 'adicionar') {
+      if (!alvo) die('uso: node cc.mjs pastas adicionar "<caminho da pasta>"')
+      const r = install.adicionarBase(alvo)
+      if (!r.ok) die(r.erro)
+      console.log(r.jaTinha ? 'essa pasta já estava na lista' : `pasta adicionada: ${path.resolve(alvo)}`)
+      mostrar()
+      break
+    }
+    if (sub === 'remover') {
+      if (!alvo) die('uso: node cc.mjs pastas remover "<caminho da pasta>"')
+      const r = install.removerBase(alvo)
+      if (!r.ok) die(r.erro)
+      console.log(`pasta removida: ${path.resolve(alvo)}`)
+      if (r.voltouPraAutomatico) console.log('a lista ficou vazia, então o painel volta a adivinhar sozinho')
+      mostrar()
+      break
+    }
+    die('uso: node cc.mjs pastas [adicionar|remover] "<caminho>"')
+    break
+  }
+
+  /**
+   * CC-439: a versão que RODA, separada da que se edita.
+   *
+   * Pedido dele em 30/08: *"quero que isso pare de ser um produto que eu vou
+   * criar todo dia (…) ter ele instalado na mesma versão na VPS e no PC"*. A
+   * causa não era falta de instalador, era o comando instalado ser um atalho
+   * para a pasta de obras: uma linha errada salva às 15h derruba o painel dele
+   * às 15h, e não existe versão de ontem para voltar.
+   */
+  /**
+   * CC-441: o cockpit abre como PROGRAMA, não como aba.
+   *
+   * Ele pediu duas vezes, e cobrou a segunda: *"queria fechar um programa no
+   * desktop que funcionasse como um programa"*. Janela própria, sem barra de
+   * endereço e sem abas, usando o Edge ou o Chrome que a máquina já tem. Zero
+   * download e zero dependência nova, que foi a razão de ele recusar o Electron.
+   *
+   * Sobe o painel antes se ele estiver fora do ar, então este é o único comando
+   * que ele precisa saber para usar o cockpit.
+   */
+  case 'app': {
+    const P = await import('./src/platform.mjs')
+    const { readConfig: lerCfg } = await import('./src/config.mjs')
+
+    /* CC-443: o programa abre o cockpit COMPLETO, não o retrato desta máquina.
+     *
+     * Pergunta dele em 30/08: *"se eu abrir o cockpit por esse programa ele
+     * abre o exato mesmo cockpit da vps?"*. Medido na hora: **não**. O painel
+     * local mostrava UMA máquina, esta, porque a conexão tem um sentido só (o
+     * PC empurra, a VPS junta) e a pasta de pacotes recebidos nem existe aqui.
+     *
+     * Então o programa passa a abrir o endereço para onde esta máquina reporta,
+     * onde o trabalho de todas elas está junto. O painel local continua
+     * existindo e vira o plano B: sem internet, ou com a VPS fora do ar, ele
+     * abre o daqui e DIZ que abriu o daqui. Sem essa frase, ele olharia uma
+     * tela com uma máquina só achando que está vendo tudo, que é pior do que
+     * não abrir.
+     */
+    const forcarLocal = has('--local')
+    const alvoRemoto = forcarLocal ? null : (lerCfg().federacao?.enviarPara || null)
+
+    /** No ar é qualquer resposta do servidor, inclusive a que pede senha: `401`
+     *  quer dizer que ele está de pé e vai pedir login na janela, que é o certo
+     *  para um painel exposto na internet. Só falta de resposta conta como fora. */
+    const respondeu = async (url) => {
+      try {
+        const r = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(6000) })
+        return r.status > 0
+      } catch { return false }
+    }
+
+    let url = null
+    let onde = ''
+    if (alvoRemoto && await respondeu(alvoRemoto)) {
+      url = alvoRemoto
+      onde = 'o cockpit inteiro, com todas as máquinas'
+    } else {
+      const up = await daemon.ensureUp(port)
+      url = up.url
+      onde = alvoRemoto
+        ? 'SÓ ESTA MÁQUINA: o cockpit de fora não respondeu agora'
+        : 'só esta máquina (nenhum cockpit de fora configurado)'
+    }
+
+    const r = P.abrirComoApp(url)
+    if (r.ok) {
+      console.log(`\n  cockpit aberto em janela própria`)
+      console.log(`  ${onde}`)
+      console.log(`  ${url}\n`)
+      break
+    }
+    /* Falha em voz alta, e ainda assim abre: ficar sem o painel porque a janela
+       bonita não deu certo seria trocar o que ele precisa pelo enfeite. */
+    console.error(`\n  não consegui abrir em janela própria: ${r.erro}`)
+    console.error(r.caiuNaAba
+      ? `  abri numa aba comum: ${url}\n`
+      : `  e nem numa aba. Abra à mão: ${url}\n`)
+    break
+  }
+
+  case 'versao': {
+    const P = await import('./src/publicar.mjs')
+    const sub = arg
+
+    const mostrar = () => {
+      const s = P.situacao()
+      console.log('')
+      if (!s.publicada) {
+        console.log('  ainda não há versão publicada nesta máquina.')
+        console.log(`  o que roda hoje é a própria pasta de obras: ${s.obras.dir}`)
+        console.log(`\n  publicar a primeira: node cc.mjs versao publicar\n`)
+        return
+      }
+      const q = s.instalada
+      console.log(`  a que RODA   : ${q.versao || 'sem número'}  ${q.commit || ''}  (${q.em ? new Date(q.em).toLocaleString('pt-BR') : 'sem data'})`)
+      console.log(`                 ${s.destino}`)
+      console.log(`  a de OBRAS   : ${s.obras.versao || 'sem número'}  ${s.obras.commit || ''}`)
+      console.log(`                 ${s.obras.dir}`)
+      console.log(s.iguais
+        ? '\n  as duas estão no mesmo ponto.'
+        : '\n  ELAS DIVERGEM: o que você está editando ainda não foi publicado.')
+      console.log(s.temAnterior
+        ? '  dá para voltar para a anterior: node cc.mjs versao voltar\n'
+        : '  não há versão anterior guardada ainda.\n')
+    }
+
+    if (!sub || sub === 'status') { mostrar(); break }
+
+    if (sub === 'publicar') {
+      const comGate = !has('--sem-gate')
+      console.log(comGate ? '\n  rodando o gate antes de publicar...' : '\n  ⚠️  publicando SEM o gate, por pedido explícito')
+      const r = P.publicar({ gate: comGate })
+      if (!r.ok) {
+        console.error(`\n  não publiquei: ${r.erro}`)
+        if (r.detalhe) console.error(`\n${r.detalhe}`)
+        process.exitCode = 1
+        break
+      }
+      console.log(`\n  publicado: ${r.versao || 'sem número'} ${r.commit || ''}`)
+      console.log(`  em ${r.destino}`)
+      if (r.temAnterior) console.log('  a versão de antes ficou guardada, dá para voltar')
+      mostrar()
+      break
+    }
+
+    if (sub === 'voltar') {
+      const r = P.voltar()
+      if (!r.ok) die(`  ${r.erro}`)
+      console.log(`\n  voltou para ${r.agora?.versao || 'a versão anterior'} ${r.agora?.commit || ''}`)
+      console.log('  voltar de novo desfaz isto.')
+      mostrar()
+      break
+    }
+
+    die('uso: node cc.mjs versao [publicar|voltar]')
     break
   }
 

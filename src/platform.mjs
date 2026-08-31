@@ -234,6 +234,121 @@ export function abrirNavegador(url) {
 }
 
 /**
+ * CC-442 — o ícone na barra de tarefas, garantido.
+ *
+ * Queixa dele em 30/08, direto: *"nao tem nada na barra de tarefas"*.
+ *
+ * A causa é de desenho, não um erro de código: **quem cria o ícone é o
+ * lançador** (`arrancar.ps1`), e quem sobe o painel avulso (`ensureUp`,
+ * `daemon restart`, `cc open`) sobe só o `node`. Então toda vez que alguém
+ * religa o painel sem passar pelo lançador, o painel volta e **o ícone não**.
+ * Foi exatamente o que aconteceu depois da limpeza dos processos duplicados.
+ *
+ * O mutex de instância única mora dentro do próprio `bandeja.ps1`, então
+ * chamar isto com um ícone já de pé é barato e não cria um segundo: o processo
+ * novo vê o mutex tomado e sai calado.
+ *
+ * `detached` e `unref` são obrigatórios: o ícone precisa sobreviver ao comando
+ * que o pediu. É o lado certo da armadilha do CC-29, o mesmo da janela.
+ */
+export function garantirBandeja({ porta = 8099, raiz = null } = {}) {
+  if (!ehWindows) return { ok: false, motivo: 'a bandeja é só do Windows' }
+  const base = raiz || path.resolve(AQUI, '..')
+  const script = path.join(base, 'src', 'bandeja.ps1')
+  if (!fs.existsSync(script)) return { ok: false, motivo: `não achei ${script}` }
+  try {
+    const filho = spawn('powershell', [
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden',
+      '-File', script, '-Port', String(porta),
+    ], { detached: true, stdio: 'ignore', windowsHide: true })
+    filho.unref()
+    return { ok: true, pid: filho.pid }
+  } catch (e) {
+    return { ok: false, motivo: String(e?.message || e) }
+  }
+}
+
+/**
+ * CC-441 — o motor de janela que a máquina já tem.
+ *
+ * Pedido dele em 30/08, e ele teve que cobrar duas vezes: *"queria fechar um
+ * programa no desktop que funcionasse como um programa"*, e ao escolher a
+ * forma: *"janela própria, sem cara de navegador"*.
+ *
+ * ⚠️ **Isto NÃO é um navegador embutido.** É o Edge ou o Chrome que já está
+ * instalado, aberto em modo aplicativo: janela própria, sem barra de endereço,
+ * sem abas, com ícone próprio na barra de tarefas. Zero download, zero
+ * dependência nova, que é a razão de ele ter recusado o Electron ("90 MB e uma
+ * dependência grande num projeto que hoje tem zero").
+ *
+ * O Edge vem primeiro **no Windows** de propósito: ele existe em toda máquina
+ * com Windows 10 ou 11, e o Chrome pode não estar instalado. Numa máquina sem
+ * nenhum dos dois, `null` faz quem chama cair na aba comum, avisando.
+ */
+export function motorDeJanela() {
+  const candidatos = []
+  if (process.env.CC_JANELA) candidatos.push(process.env.CC_JANELA)
+  if (ehWindows) {
+    const pf = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)'
+    const p = process.env.ProgramFiles || 'C:\\Program Files'
+    const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local')
+    candidatos.push(
+      path.join(pf, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+      path.join(p, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+      path.join(p, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(pf, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      path.join(local, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    )
+  } else if (ehMac) {
+    candidatos.push(
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    )
+  } else {
+    candidatos.push('/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/microsoft-edge')
+  }
+  for (const c of candidatos) {
+    try { if (fs.existsSync(c)) return c } catch { /* próximo */ }
+  }
+  return null
+}
+
+/**
+ * Abre a url numa janela só dela.
+ *
+ * `detached` e `unref` são obrigatórios aqui, e é o lado CERTO da armadilha do
+ * CC-29: esta janela precisa sobreviver ao comando que a abriu. O outro lado da
+ * mesma armadilha (não dá para capturar a saída de um processo assim) não vale
+ * aqui, porque não há saída a capturar.
+ *
+ * Cada janela ganha um perfil próprio dentro da casa do cockpit, e isso não é
+ * detalhe: sem `--user-data-dir`, o Chrome entrega a ordem para a instância já
+ * aberta do navegador comum e **sai na hora**, abrindo uma aba em vez de uma
+ * janela. Foi assim que a primeira versão "não fez nada".
+ */
+export function abrirComoApp(url, { largura = 1280, altura = 880, perfil = null } = {}) {
+  const exe = motorDeJanela()
+  if (!exe) return { ok: false, erro: 'nenhum Edge ou Chrome encontrado nesta máquina', caiuNaAba: abrirNavegador(url).ok }
+
+  const dados = perfil || path.join(casaClaude(), 'janela-cockpit')
+  try { fs.mkdirSync(dados, { recursive: true }) } catch { /* segue: o navegador reclama sozinho */ }
+
+  try {
+    const filho = spawn(exe, [
+      `--app=${url}`,
+      `--user-data-dir=${dados}`,
+      `--window-size=${largura},${altura}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+    ], { detached: true, stdio: 'ignore', windowsHide: false })
+    filho.unref()
+    return { ok: true, exe, perfil: dados, pid: filho.pid }
+  } catch (e) {
+    return { ok: false, erro: String(e?.message || e), caiuNaAba: abrirNavegador(url).ok }
+  }
+}
+
+/**
  * Onde o Chrome mora, para a captura de tela e o teste da página.
  * Só o `test-ui.mjs` usa: o painel em si não depende de navegador nenhum.
  */
@@ -580,10 +695,51 @@ export function instalarServicoWindows({ node, script, porta }) {
   try { fs.unlinkSync(tmp) } catch { /* segue */ }
 
   if (!r?.ok) {
-    return { ok: false, erro: (r?.err || r?.out || 'schtasks recusou').trim().slice(0, 300) }
+    const texto = (r?.err || r?.out || 'schtasks recusou').trim().slice(0, 300)
+    /* CC-447: "Acesso negado" aqui não é erro de uso, é a política desta
+       máquina, medida em 26/08: criar a tarefa exige terminal como
+       administrador mesmo para uma tarefa sem elevação nenhuma no XML.
+       Quem chama precisa poder DIZER isso e oferecer o caminho, em vez de
+       repetir um erro que parece defeito. Ele cancelou o pedido de elevação
+       uma vez em 30/08 sem saber o que a janela queria. */
+    const precisaAdmin = /acesso negado|access is denied/i.test(texto)
+    return { ok: false, erro: texto, precisaAdmin }
   }
   quiet('schtasks', ['/run', '/tn', NOME_TAREFA])
   return { ok: true, modo, tarefa: NOME_TAREFA }
+}
+
+/**
+ * CC-447: relança o próprio comando pedindo elevação, e é o caminho de um clique.
+ *
+ * Medido em 26/08 e confirmado em 30/08: criar a Tarefa Agendada nesta máquina
+ * dá "Acesso negado" sem administrador, mesmo sem elevação nenhuma no XML. É
+ * política da máquina, não do código, e não há como contornar de dentro.
+ *
+ * O que dá para fazer é **parar de mandar ele abrir um terminal e digitar um
+ * caminho de 60 caracteres**: o Windows sabe pedir a permissão sozinho, com
+ * `-Verb RunAs`, e a janela que aparece é a mesma que ele já conhece.
+ *
+ * ⚠️ **Nunca automático.** Quem chama decide, e só depois de a tentativa normal
+ * ter falhado por falta de permissão. Pedir elevação sem o usuário ter pedido
+ * nada é o tipo de coisa que faz alguém desinstalar o programa.
+ *
+ * Devolve o que aconteceu, e `cancelado` é resposta legítima: em 30/08 o pedido
+ * foi cancelado e o comando ficou sem saber, então o estado continuou errado
+ * sem ninguém dizer por quê.
+ */
+export function pedirElevacao({ node = process.execPath, script, porta = 8099 } = {}) {
+  if (!ehWindows) return { ok: false, erro: 'só no Windows' }
+  if (!script) return { ok: false, erro: 'sem o script a relançar' }
+  const dentro = `& '${node.replace(/'/g, "''")}' '${script.replace(/'/g, "''")}' daemon servico --port ${Number(porta) || 8099}`
+  const r = quiet('powershell', [
+    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
+    `try { Start-Process -FilePath 'powershell' -Verb RunAs -Wait -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-Command',"${dentro.replace(/"/g, '\\"')}" -ErrorAction Stop; 'aceito' } catch { 'cancelado' }`,
+  ])
+  const saida = String(r?.out || '').trim()
+  if (/cancelado/i.test(saida)) return { ok: false, cancelado: true, erro: 'você cancelou a janela de permissão do Windows' }
+  if (!r?.ok) return { ok: false, erro: (r?.err || 'não consegui pedir a permissão').trim().slice(0, 200) }
+  return { ok: true }
 }
 
 /** Derruba e sobe de novo. É o "reiniciar" do botão da bandeja. */
