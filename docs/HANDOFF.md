@@ -1,12 +1,12 @@
 # HANDOFF
 
-**Sessão:** 2026-08-30/31 · Claude (Opus 5, `2d4e7b74`/`51c2da13`, mesma sessão
-depois de um `/clear`) · **PC** (ALIENWARE-LIPE), sem rota (só documentação)
-**Último commit:** `42f8a30`, já no servidor · **este encerramento commita a documentação de 31/08**
+**Sessão:** 2026-08-31 · Claude (Opus 5, `670e1313`) · **VPS**, rota `front`
+**Último commit:** `96c39d1`, já no servidor e empurrado
 **Branch:** `backlog/cc-46-48-49-52-53-56-65` · **versão `0.3.0`, publicada e no ar**
 
 O que aconteceu: [diario/2026-08-30.md](diario/2026-08-30.md), seção "À noite,
-no PC", e [diario/2026-08-31.md](diario/2026-08-31.md). Ponteiro, não relatório.
+no PC", e [diario/2026-08-31.md](diario/2026-08-31.md), as duas seções (a do PC
+de manhã e a da VPS à tarde). Ponteiro, não relatório.
 
 ## ⚠️ A armadilha que mordeu hoje, e vai morder de novo
 
@@ -36,7 +36,35 @@ já aponta pra ela (conferido nesta sessão, não só "aceitei").
 **3. `docs/ALINHAMENTO-2026-08-30.md`** é o canal entre as máquinas, porque o
 recado do Routia mora num arquivo que o git ignora e nunca atravessa.
 
-## O que esta sessão entregou
+## O que a sessão da VPS entregou depois desta (31/08, à tarde)
+
+Pergunta dele, olhando o vaivém do dia: *"o pc fez algumas coisas e aqui você
+fez outras (…) tem ideia melhor?"*.
+
+- **O recado entre máquinas passa a atravessar (CC-434).** Ele pediu para
+  avisar a sessão do PC e eu disse que não dava; ele corrigiu: *"como não?! a
+  gente se comunica via hooks"*. Ele tinha razão sobre o mecanismo, eu sobre o
+  alcance: o recado do Routia mora em arquivo que o git ignora e nunca sai da
+  máquina. A fila da federação (a mesma que já leva o pedido de trocar de modo)
+  passou a carregar texto, destinatário e tipo. Provado com recado real: a
+  máquina de casa consumiu em menos de 8 segundos.
+- **O botão de puxar e enviar passa a alcançar a outra máquina (CC-447).** A
+  peça já existia desde o CC-269, com as travas certas (não commita, recusa com
+  arquivo solto, roda o gate antes de enviar), e só funcionava na máquina onde
+  alguém clicava. Agora o cartão de projeto remoto tem **buscar e enviar lá**.
+  Não resolve quando as duas máquinas divergiram de verdade: nesse caso ele
+  segue precisando de gente, de propósito.
+- **Consertado um teste que veio do PC e falhava na VPS** (`test-pastas.mjs`):
+  ele media o disco da máquina junto com o código, porque a descoberta de
+  pastas cai em `os.homedir()`, que não respeita o isolamento de teste.
+- **Um trabalho guardado de 20/08 voltou por cima de 13 arquivos** no meio de um
+  merge. Antes de descartar, medi: das 692 linhas de conteúdo real, 682 já
+  estavam no histórico, e as 10 restantes eram versões velhas do que hoje existe
+  melhor. Restaurado o ponto fechado sem perder nada.
+
+Portão em 406, verde.
+
+## O que a sessão do PC entregou (30/08, à noite)
 
 - **A síntese pelo opencode passou a rodar no Windows** (era o item 🔴 mais
   urgente do dia): trocado o jeito de chamar o programa externo, e o teste que
@@ -87,11 +115,13 @@ Portão: verde, com o caso do Windows rodando de verdade em vez de pular.
 
 ## Pendências de commit
 
-Este encerramento inclui: o conserto da síntese no Windows, o toggle da
-bandeja (`config.mjs`, `web.mjs`, `cc.mjs`, `bandeja.ps1`), o teste do CC-412
-rodando de verdade no Windows, e a documentação (ROADMAP, ROTAS-ATIVAS,
-COLETOR, HANDOFF, diário, mais `docs/planos/CC-45.md` que já existia solto).
-O conserto do `cockpit-auth.mjs` **não entra aqui**: vive só na VPS, fora deste
+**Nenhuma.** O trabalho da VPS de 31/08 (recado entre máquinas, botão de
+sincronizar remoto, conserto de `test-pastas.mjs`) já está commitado e
+empurrado, em dois commits (`5c34078`, `96c39d1`), mais este encerramento.
+
+O que o PC entregou em 30/08 (síntese no Windows, toggle da bandeja, teste do
+CC-412) também já estava commitado antes desta sessão. O conserto do
+`cockpit-auth.mjs` **não entra em commit nenhum**: vive só na VPS, fora deste
 repositório.
 
 ## O que aprendi hoje e não pode se perder
@@ -112,5 +142,9 @@ repositório.
 
 - `docs/produto/COLETOR.md` — o desenho que espera aprovação dele, com a peça
   do controle remoto já decidida
-- `docs/ALINHAMENTO-2026-08-30.md` — o que a VPS fez, escrito por ela
-- `src/federacao.mjs`, `src/config.mjs` — o campo `ativo` novo na federação
+- `docs/ALINHAMENTO-2026-08-30.md` — o que a VPS fez em 30/08, escrito por ela
+- `src/federacao.mjs` — `ACOES_DE_PEDIDO` agora tem `recado` e as três de
+  `sincronia-*`; `pedirSessao` valida texto, destinatário e tipo
+- `src/web.mjs` — o ramo que executa cada ação, dentro de `atenderPedidos`
+- `src/ui_novo.html` — o botão **buscar e enviar lá**, no bloco do framework
+  remoto do cartão de projeto

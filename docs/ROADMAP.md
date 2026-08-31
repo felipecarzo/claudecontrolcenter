@@ -9935,4 +9935,4 @@ Em 16/08 saíram 37 itens, com o texto integral preservado:
 - [2026-08-26](diario/2026-08-26.md) — CC-351 e CC-361, seis consertos de código escrito supondo Linux, o `RestartOnFailure` que não religa, e a trava que pedia um clique sem ter onde clicar
 - [2026-08-27](diario/2026-08-27.md) — CC-362 e a frente das rotas: o modo que a tela anunciava e a trava não usava, com as três causas medidas
 - [2026-08-30](diario/2026-08-30.md) — CC-438, CC-439, CC-444 e CC-352, o Plano de Unificação nomeado, o interruptor da sincronia na bandeja, e o login da VPS que derrubava o próprio servidor
-- [2026-08-31](diario/2026-08-31.md) — o que foi entregue ontem não estava rodando: publicar e religar como parte da entrega, e o controle remoto do framework que funciona sem deixar testemunha
+- [2026-08-31](diario/2026-08-31.md) — o que foi entregue ontem não estava rodando: publicar e religar como parte da entrega, e o controle remoto do framework que funciona sem deixar testemunha; e o recado entre máquinas (CC-434) mais o botão que sincroniza a outra ponta com um clique (CC-447)
