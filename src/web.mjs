@@ -5,6 +5,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { execFile, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
 /* `todosOsJobs` e não `readJobs`: a pasta de jobs de background está vazia
@@ -923,6 +924,86 @@ const comCorpoAsync = (req, res, max, fn) => {
   })
 }
 
+/* CC-450: o remote-control do Antigravity, irmão do que o Claude já tem.
+ *
+ * ⚠️ **Achado em 07/09, depois de medir: o daemon do remote-control NÃO
+ * carrega pasta nenhuma, em lugar algum.** `agy remote-control start --help`
+ * só tem `--name` e `--session` — nada de projeto ou diretório. Quem carrega
+ * isso é o `agy` NORMAL (`--project`, `--new-project`, `--add-dir`), que é
+ * outro comando, outro processo. A pasta vazia ("CLI Project") não era bug
+ * de pasta errada: era a ausência de qualquer sessão do `agy` presa a uma
+ * pasta enquanto o daemon respondia. No PC e no telefone dele sempre existiu
+ * uma dessas duas coisas rodando (o terminal aberto à mão), e é isso que o
+ * site reconhece como "o projeto" — o daemon sozinho só diz "esta máquina
+ * está de pé".
+ *
+ * ⚠️ **O `agy` recusa rodar sem terminal de verdade.** Testado direto:
+ * `agy < /dev/null` sai na hora com "bubbletea: could not open TTY". Precisa
+ * de um terminal FAKE, o mesmo truque que o botão "abrir" já usa por trás
+ * (`ttyd`). Aqui não tem tela pra ele aparecer, então quem faz o papel do
+ * terminal é o `script` do Linux: cria um pseudo-terminal, o `agy` acha que
+ * está numa tela de verdade, e fica esperando, vivo, sem ninguém digitando.
+ * Testado: o processo aguenta parado, ~270MB de memória.
+ *
+ * ⚠️ **Ainda é hipótese, não confirmação.** O que dá pra medir DAQUI (o
+ * processo sobe, fica de pé, não estoura) foi medido. O que só aparece no
+ * navegador DELE (o site reconhecer o projeto certo) continua sem prova.
+ *
+ * ⚠️ **Precisa das duas variáveis do barramento do usuário, à mão.** O
+ * comando depende de um `systemd --user` que só existe porque
+ * `loginctl enable-linger` foi ligado nesta conta (feito por ele,
+ * 07/09). Sem isso, `agy remote-control status` falha com "Failed to
+ * connect to bus: No medium found" — e o processo deste painel, que
+ * sobe como serviço do SISTEMA (não do usuário), não herda essas
+ * variáveis sozinho. Medido contra o próprio serviço rodando, não
+ * suposto: `systemctl show agent-cockpit.service` não traz nenhuma das
+ * duas. */
+const AGY_BIN = path.join(os.homedir(), '.local', 'bin', 'agy')
+const envComBarramento = () => {
+  const uid = process.getuid ? process.getuid() : null
+  if (!uid) return process.env
+  return {
+    ...process.env,
+    XDG_RUNTIME_DIR: `/run/user/${uid}`,
+    DBUS_SESSION_BUS_ADDRESS: `unix:path=/run/user/${uid}/bus`,
+  }
+}
+const agyRemoteControl = (args, cwd) => new Promise((resolve) => {
+  execFile(AGY_BIN, args, { encoding: 'utf8', timeout: 15000, env: envComBarramento(), cwd: cwd || undefined },
+    (erro, saida, erroSaida) => resolve({ ok: !erro, saida: String(saida || erroSaida || erro?.message || '').trim() }))
+})
+const espera = (ms) => new Promise((r) => setTimeout(r, ms))
+
+/* A sessão do `agy` presa a uma pasta, viva num pseudo-terminal, uma de cada
+ * vez (mesma regra do daemon: mata a antiga antes de abrir a nova).
+ *
+ * ⚠️ **Precisa morar FORA de `handler`, no escopo do módulo.** A primeira
+ * versão desta variável estava declarada dentro de `handler(req, res)`, que
+ * roda uma vez POR REQUISIÇÃO — então `agySessaoViva` voltava a `null` a cada
+ * chamada, e `matarAgySessao()` nunca achava nada pra matar. Medido: pedir
+ * "ligar" pra duas pastas seguidas deixava as DUAS sessões vivas ao mesmo
+ * tempo, uma por pasta, quando a intenção era só uma por vez. Aqui em cima,
+ * a variável nasce uma vez só, quando o módulo carrega. */
+let agySessaoViva = null
+const AGY_SESSAO_LOG = path.join(os.tmpdir(), 'agent-cockpit-agy-sessao.typescript')
+const matarAgySessao = () => {
+  if (!agySessaoViva) return
+  try { process.kill(-agySessaoViva.pid, 'SIGTERM') } catch { /* já tinha morrido */ }
+  agySessaoViva = null
+}
+const abrirAgySessao = (dir) => {
+  matarAgySessao()
+  const alvo = dir && fs.existsSync(dir) ? dir : os.homedir()
+  const filho = spawn('script', ['-qc', AGY_BIN, AGY_SESSAO_LOG], {
+    cwd: alvo,
+    detached: true,
+    stdio: 'ignore',
+    env: envComBarramento(),
+  })
+  filho.unref()
+  agySessaoViva = { pid: filho.pid, dir: alvo }
+}
+
 function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
 
@@ -1159,6 +1240,69 @@ function handler(req, res) {
       }
       return send(res, 200, { projetos, ativos, casa: os.homedir(), volta: voltasRemoto() })
     })
+  }
+
+  /* CC-450: o remote-control do Antigravity, irmão do que o Claude já tem.
+   *
+   * ⚠️ **Achado em 07/09, depois de medir: o daemon do remote-control NÃO
+   * carrega pasta nenhuma, em lugar algum.** `agy remote-control start --help`
+   * só tem `--name` e `--session` — nada de projeto ou diretório. Quem carrega
+   * isso é o `agy` NORMAL (`--project`, `--new-project`, `--add-dir`), que é
+   * outro comando, outro processo. A pasta vazia ("CLI Project") não era bug
+   * de pasta errada: era a ausência de qualquer sessão do `agy` presa a uma
+   * pasta enquanto o daemon respondia. No PC e no telefone dele sempre existiu
+   * uma dessas duas coisas rodando (o terminal aberto à mão), e é isso que o
+   * site reconhece como "o projeto" — o daemon sozinho só diz "esta máquina
+   * está de pé".
+   *
+   * ⚠️ **O `agy` recusa rodar sem terminal de verdade.** Testado direto:
+   * `agy < /dev/null` sai na hora com "bubbletea: could not open TTY". Precisa
+   * de um terminal FAKE, o mesmo truque que o botão "abrir" já usa por trás
+   * (`ttyd`). Aqui não tem tela pra ele aparecer, então quem faz o papel do
+   * terminal é o `script` do Linux: cria um pseudo-terminal, o `agy` acha que
+   * está numa tela de verdade, e fica esperando, vivo, sem ninguém digitando.
+   * Testado: o processo aguenta parado, ~270MB de memória.
+   *
+   * ⚠️ **Ainda é hipótese, não confirmação.** O que dá pra medir DAQUI (o
+   * processo sobe, fica de pé, não estoura) foi medido. O que só aparece no
+   * navegador DELE (o site reconhecer o projeto certo) continua sem prova.
+   *
+   * ⚠️ **Precisa das duas variáveis do barramento do usuário, à mão.** O
+   * comando depende de um `systemd --user` que só existe porque
+   * `loginctl enable-linger` foi ligado nesta conta (feito por ele,
+   * 07/09). Sem isso, `agy remote-control status` falha com "Failed to
+   * connect to bus: No medium found" — e o processo deste painel, que
+   * sobe como serviço do SISTEMA (não do usuário), não herda essas
+   * variáveis sozinho. Medido contra o próprio serviço rodando, não
+   * suposto: `systemctl show agent-cockpit.service` não traz nenhuma das
+   * duas. */
+  if (url.pathname === '/api/agy-remote-control') {
+    if (req.method === 'POST') {
+      return comCorpoAsync(req, res, 1e3, async ({ acao, dir }) => {
+        if (acao === 'desligar') {
+          matarAgySessao()
+          return agyRemoteControl(['remote-control', 'stop'])
+        }
+        /* ⚠️ **`start` em cima do que já está ligado não muda a pasta.** O
+           processo já existe (systemd trata `start` de serviço ativo como
+           não-operação), então trocar de projeto sem parar antes deixaria o
+           Antigravity conectado na pasta ANTIGA, com a tela dizendo que
+           trocou. Por isso para primeiro, sempre. */
+        await agyRemoteControl(['remote-control', 'stop'])
+        abrirAgySessao(dir)
+        const r = await agyRemoteControl(['remote-control', 'start', '--name', 'VPS'], dir)
+        /* ⚠️ **A resposta some antes da autenticação terminar, e a tela dele
+           mostrava "offline" até atualizar a página.** O log do serviço
+           (`journalctl --user -u antigravity-cli-daemon`) mostra a linha
+           "Authenticated as ..." de 2 a 8 segundos depois de subir, em seis
+           medições. Sem esperar, a aba nova abria cedo demais. 6s é o meio
+           do intervalo medido, não o pior caso — se ele ainda ver "offline"
+           de vez em quando, é aqui que sobe o número. */
+        if (r.ok) await espera(6000)
+        return r
+      })
+    }
+    return agyRemoteControl(['remote-control', 'status']).then((r) => send(res, 200, r))
   }
 
   // Containers Docker desta máquina. Fora do stream, mesmo motivo da máquina

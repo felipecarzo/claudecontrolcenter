@@ -15,6 +15,491 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+### CC-450 ✅ 07/09: o remote-control do Antigravity, achado dentro do próprio programa
+
+Continuação do CC-449, e ela mudou de rumo no meio do caminho. Vale contar a
+volta inteira, porque o caminho abandonado ensina tanto quanto o que ficou.
+
+#### O caminho que foi abandonado, e por quê
+
+Ele perguntou se a janela gráfica do Antigravity (o editor completo, não só o
+terminal) não podia rodar aqui, dentro de uma janela do cockpit. Medido: o
+programa gráfico pesa perto de 8 GB pra funcionar bem, nesta VPS de 11 GB que
+também hospeda os sites de cliente no ar. Baixei o instalador, testei de
+verdade sob uma tela virtual (abriu, sem travar por processador ou sistema),
+e achei um defeito real: a parte que conversa com a IA dentro do programa
+recusava ligação, com um documento de segurança vencido. Confirmei que o
+documento do SERVIDOR do Google está válido, então o defeito está dentro do
+programa que o Google distribui, não em nada daqui. Sem essa parte, o programa
+gráfico seria só um editor de texto pesado, sem o motivo de ele existir.
+
+#### A pergunta dele que resolveu tudo
+
+Ele estranhou: *"pq funciona aqui no meu pc usar o antigravity com o terminal
+ligado, funcionou no meu telefone inclusive (…) mas na vps nao funciona?
+estranho"*. Essa pergunta apontou pro lugar certo. O que ele tinha usado no
+celular não era o programa gráfico: era o **motor de linha de comando**
+(o mesmo que já roda nesta VPS desde 18/08), com um comando embutido chamado
+`remote-control` — a mesma peça que o Claude Code tem, só que dentro do
+Antigravity. Uma apuração de 18/08 tinha concluído que essa peça não existia;
+estava desatualizada, ou olhou o lugar errado.
+
+**A causa de não funcionar aqui:** essa peça depende de uma parte do sistema
+operacional que mantém processos de fundo vivos sem precisar de ninguém
+logado (o mesmo mecanismo que segura o WhatsApp Web conectado). Essa parte
+nunca tinha sido ligada nesta conta. Ele mesmo rodou, como administrador,
+o comando que liga:
+
+```
+sudo loginctl enable-linger claudedev
+```
+
+Depois disso, o comando `agy remote-control start` (que já existe dentro do
+programa, não foi escrito nada novo) funcionou, e o site do Antigravity
+passou a reconhecer a VPS na lista de máquinas dele, do mesmo jeito que
+reconhece o celular.
+
+#### O que ficou implementado
+
+Um botão **"ligar sessão remota"**, ao lado do que já existia (o terminal),
+no grupo do Antigravity de cada projeto. **A frase abaixo, escrita antes,
+estava errada e a medida do dia 07/09 corrigiu**: dizia que essa peça era
+"por máquina, não por projeto", com a escolha do projeto acontecendo dentro
+do próprio site. Não é assim — ver a seção "CLI Project" mais abaixo.
+
+A rota que o botão chama roda o comando com as duas variáveis de ambiente
+que ele precisa (achadas testando: o serviço do painel, por rodar como
+serviço do SISTEMA e não do usuário, não as herda sozinho).
+
+#### O defeito que ele achou, e por que a primeira prova não pegou
+
+Primeira entrega: *"quando eu clico em ligar sessao remota do antigravity no
+projeto vps_cockpit por exemplo ele até simula abrir, mas ele nao abre
+anda"*. Fui olhar o código, e o comentário que eu mesmo escrevi já dizia
+"manda ele pro site" — só que a linha que manda nunca foi escrita. O botão
+trocava de texto, dizia "ligado", e não abria nada.
+
+Corrigido, testei de novo com `.click()` disparado por script, e passou.
+**Passou errado**, do mesmo jeito que o organizador do Coderoom passou errado
+lá atrás: `.click()` prova que o código roda, não que o toque dele chega. Com
+toque em coordenada real (a mesma prova que o CC-448 deixou como método),
+achei a causa de verdade: o navegador só deixa abrir aba nova NO INSTANTE do
+toque, e o código abria a aba **depois** da resposta do servidor chegar, um
+passo tarde demais para contar como gesto dele. O navegador tratava como
+pop-up e recusava, calado.
+
+A correção certa: abrir a aba em branco NA HORA do toque, e só trocar o
+endereço dela quando a resposta chegar. Testado de novo com toque real, duas
+vezes, a aba do Antigravity abrindo as duas.
+
+#### O segundo print, com dois defeitos juntos
+
+Ele mandou três telas: a VPS aparecia "Offline" ao abrir, virava "Online" só
+depois de atualizar a página, e ao clicar em conectar caía numa conversa
+vazia, "CLI Project", sem projeto nenhum.
+
+**O "Offline" tinha causa medível, e foi corrigido de verdade.** O log do
+próprio serviço mostra a linha "Authenticated as ..." entre 2 e 8 segundos
+depois de subir, em seis medições. A rota agora espera 6 segundos depois de
+ligar, antes de responder, dando tempo da autenticação terminar antes da aba
+carregar a página.
+
+**O "CLI Project" vazio, eu errei duas vezes tentando resolver, e a terceira
+foi diferente: achei o motivo real, dentro do próprio programa, medindo.**
+
+Primeira hipótese (errada): a pasta de onde o comando `remote-control start`
+roda vira o projeto do outro lado. Mandei a pasta certa, testei com `.click()`
+de script, "funcionou" — só que não tinha como essa prova mostrar a pasta
+errada, porque eu nunca no meu teste consegui ENXERGAR o site do Antigravity,
+só o código. Conferindo a pasta REAL do processo que fica de pé
+(`/proc/<pid>/cwd`, não o que o comando de partida recebeu), ela continuava
+sendo a pasta pessoal, sempre. A hipótese caiu.
+
+Segunda volta, em 07/09: perguntei ao próprio programa o que cada comando
+aceita (`agy --help`, `agy remote-control start --help`). O comando que liga
+a VPS como máquina alcançável (`remote-control start`) só tem duas opções, o
+nome da máquina e se some ao sair. Nenhuma delas é projeto ou pasta. Quem
+carrega pasta é um comando DIFERENTE, o `agy` comum, com `--project` e
+`--add-dir` — o mesmo que roda por trás do botão "abrir" (o terminal), que
+sempre funcionou. **A peça que faltava não era uma pasta errada: era não
+existir NENHUMA sessão do `agy` presa a uma pasta enquanto a VPS respondia.**
+No PC e no telefone dele sempre houve as duas coisas rodando juntas (o
+terminal aberto à mão, mais o `remote-control`); aqui só existia a segunda.
+
+**O que mudou:** agora "ligar sessão remota" também abre, por trás, uma
+sessão do `agy` presa à pasta do projeto clicado, sem tela nenhuma pra
+aparecer (o mesmo truque do terminal, um terminal falso criado pelo
+programa `script` do Linux, então o `agy` não recusa por falta de tela).
+Ela fica esperando, viva, do lado do `remote-control`. Trocar de projeto mata
+a sessão antiga antes de abrir a nova, a mesma regra que já valia pro
+`remote-control` sozinho.
+
+**Isto ainda é hipótese testada até onde dá pra medir DAQUI, não confirmação
+do lado de lá.** O que medi: o comando sobe, fica de pé sem cair, ~270 MB de
+memória, presa na pasta certa (conferido no processo de verdade, de novo por
+`/proc/<pid>/cwd`), e troca de projeto mata a sessão anterior igual ao daemon.
+O que só aparece no navegador DELE, e continua sem prova: se o site agora
+reconhece o projeto certo em vez do "CLI Project" vazio. Precisa dele testando
+de novo.
+
+#### Prova
+
+Rota testada direto (não só lida no código): liguei, medi o estado ativo,
+desliguei, religuei, tudo batendo. Toque em coordenada real na tela (não
+`.click()` de script), duas vezes, com a aba nova conferida na lista de abas
+do navegador, não só suposta. As 19 telas do painel inteiro, sem erro de
+execução. `npm test` em 413.
+
+Em 07/09, a sessão presa à pasta: liguei numa pasta, conferi o processo de
+verdade nela (`/proc/<pid>/cwd`); liguei de novo noutra pasta, conferi que a
+sessão antiga tinha morrido e só a nova pasta tinha processo vivo; desliguei,
+conferi que não sobrou nada. Achei e corrigi um defeito no meio do caminho: a
+variável que guarda "qual sessão está viva" tinha nascido dentro da função que
+atende CADA requisição, então ela esquecia tudo entre um clique e outro — o
+sintoma medido era duas sessões vivas ao mesmo tempo, uma por pasta, quando
+devia sobrar só uma. Movida pra fora, testado de novo, corrigido.
+
+**Ele testou no navegador dele em 07/09 e confirmou: "o offline sumiu sim".**
+O atraso de 6 segundos resolveu de verdade, não só na teoria.
+
+O "CLI Project" vazio: a sessão presa à pasta foi testada direto no processo
+(sobe, fica de pé, uma só de cada vez, na pasta certa, ~270 MB). O que ainda
+falta é ele testar de novo no navegador dele e dizer se o projeto certo
+aparece agora, em vez do vazio.
+
+#### O que fica pra trás, sem uso
+
+O instalador do programa gráfico (~220 MB) continua baixado em
+`~/antigravity-grafico/`, sem instalar em lugar nenhum do sistema. Não atrapalha
+nada ficando aí; pode ser apagado quando quiser, ou aproveitado se o Google
+consertar o defeito do documento de segurança algum dia.
+
+### CC-449 ✅ 06/09: o botão do Antigravity que existia e não tinha porta de entrada
+
+Pedido dele em 06/09, sem reescrever:
+
+> *"quero usar o antigravity usando o antigravity pelo navegador no cockpit.
+> como usamos o Claude Code aqui no app, mas o antigravity não tem essa
+> conexão entre o app e um terminal, o terminal precisa estar na mesma
+> máquina que o app, então eu queria que você hospedasse na VPS um app do
+> antigravity a partir daí você liga uma sessão do antigravity no cockpit que
+> ligue com o remote-control no terminal e eu use pelo app no cockpit. além
+> disso coloquei uma versão com autoridade dangerously skip permissions."*
+
+**Registrado, não implementado.** Investiguei antes de responder, porque a
+peça central do pedido já tinha sido apurada uma vez, em 18/08, a pedido
+dele mesmo.
+
+#### O que já existe hoje, e resolve metade do pedido
+
+- **O Antigravity já está hospedado na VPS e já abre pelo navegador dentro do
+  cockpit**, por projeto, na aba de agentes. É um terminal de texto (a
+  ferramenta que serve isso chama `ttyd`), não a janela gráfica dele.
+- **A conta que autentica é a dele, já logada.** Nada disso precisa ser
+  construído: já roda em produção.
+
+#### A peça que falta, e por que não é algo que eu construo
+
+O "elo entre o app e o terminal" que o Claude Code tem — abrir uma sessão e
+receber um link de `claude.ai` que funciona do celular, de qualquer lugar,
+sem precisar estar na mesma rede — **é um recurso oficial do programa do
+Claude, não uma engenharia deste painel.** O painel só organiza em volta
+dele (seguro o terminal aberto, leio a tela para pegar o link, guardo qual
+sessão é qual).
+
+**O Antigravity tem um recurso com nome parecido ("remoto"), mas é outra
+coisa: o editor dele conecta numa máquina remota pelo protocolo comum de
+edição remota (o mesmo que outros editores usam para editar arquivo de
+servidor à distância). É o PC dele alcançando a VPS, não o contrário. E a
+tela de agentes do Antigravity, que é a parte que mostra o trabalho
+acontecendo, **não tem esse recurso nenhum hoje** — isso foi apurado e
+registrado em 18/08, a pedido dele.
+
+**Isto não é um build que falta neste painel. É um recurso que o Antigravity
+ainda não lançou.** Não dá para eu construir o equivalente do lado de cá sem
+o programa colaborar, do mesmo jeito que não dá para dar zoom numa foto além
+do que ela tem de resolução.
+
+#### Sobre hospedar o programa gráfico (a janela inteira, não só o terminal)
+
+Se a ideia for a JANELA do Antigravity (o editor completo, não o texto do
+terminal), isso é uma categoria de infraestrutura diferente de tudo que
+existe hoje aqui: precisaria de uma tela virtual na VPS mais um jeito de
+transmitir essa tela pelo navegador, parecido com acessar um computador
+remoto por imagem. Nada disso está montado, e eu não sei ainda se o
+Antigravity aceita rodar assim sem monitor de verdade — é pergunta para a
+documentação dele, não para este código.
+
+#### A autoridade "dangerously skip permissions"
+
+Já existe, pronta e funcionando, mas **só para o Claude**: é o modo que abre
+a sessão sem perguntar nada, ligado por um botão vermelho com aviso antes de
+confirmar. **O Antigravity não tem (nem precisa) desse mesmo controle**: ele
+já roda sem pedir permissão por padrão, decisão que ele mesmo tomou sabendo
+do risco, em 21/08.
+
+#### A correção dele, e o que mudou de figura
+
+Ele voltou: *"você não entendeu, você vai abrir os projetos no SSH aí, com a
+TAG remote control e vai abrir no antigravity instalado na sua máquina.
+certo?"*. Fui conferir de novo, e a primeira resposta estava incompleta.
+
+**O que eu tinha errado:** eu tinha lido só o painel novo (`src/ui_novo.html`)
+e concluído que o botão do Antigravity nunca existiu. Ele existiu, foi
+construído em 18/08 no painel antigo, e continua rodando: medi o processo de
+verdade na VPS (`ttyd`, na porta 5183, servindo `/agy`), medi a porta de
+entrada que sabe rotear pra ele (`cockpit-auth.mjs`, fora deste repositório),
+e o único elo que faltava era o botão dentro da tela que ele usa hoje.
+
+Não é SSH nem a etiqueta `--remote-control` do Claude (essa é exclusiva do
+programa do Claude, confirmado por uma apuração de 18/08 já registrada): é uma
+peça diferente, já pronta, fazendo o mesmo trabalho para o Antigravity.
+
+#### O que ficou implementado
+
+Um botão "Antigravity" no detalhe de cada projeto, ao lado de "Claude Code" e
+"Coderoom", que leva para `/agy/?arg=<projeto>` (o mesmo padrão que o painel
+antigo já usava, provado). Só navegação: não é chamada de API, porque o
+Antigravity é servido por fora deste servidor, atrás da mesma senha do
+cockpit.
+
+**Prova:** cliquei de verdade num projeto e capturei a navegação real que o
+clique dispara (não só o código lido): `/agy/?arg=sistemaInterno_padrao`, a
+URL certa. Localmente dá 404 porque aqui o teste bate direto no servidor do
+painel, que nunca soube dessa rota (nunca precisou saber: quem sabe é a porta
+de entrada). Na de verdade, essa mesma URL já é a que funciona hoje.
+
+#### O que ainda não tem resposta
+
+- **A janela gráfica do editor** (não o terminal) seguiria sendo outra
+  categoria de trabalho inteira, com tela virtual e transmissão de imagem
+  pelo navegador. Ele não pediu isso de novo depois de eu explicar a
+  diferença, e o pedido dele bateu com o terminal. Registrado aqui caso um
+  dia ele queira a janela cheia.
+- **"Coloquei uma versão com autoridade dangerously skip permissions"**:
+  continua sem resposta. Não sei se é aviso de algo que ele já fez em outro
+  lugar, ou pedido para eu ligar algo. Não assumi nenhum dos dois.
+
+### CC-448 ✅ 31/08: o Coderoom reorganizado, com design inspirado na Apple
+
+Pedido dele em 31/08, ditado por voz, sem reescrever (a transcrição ouviu
+"CodeRum"/"code ruim" onde ele disse Coderoom, o nome que ele já deu a esta
+peça em 25/08):
+
+> *"Precisamos mexer no CodeRum. E peguei muito problema que ele organiza muito
+> mal as conversas na barra lateral. Eu acho que a gente pode tirar a expansão
+> da barra lateral, deixar ela só o Coderoom, e colocar a organização dos chats
+> dentro da própria [aba] do Coderoom. O que eu quero é que a gente tenha a
+> possibilidade de acessar as conversas no Coderoom criadas pelo próprio
+> remoto, pelo controlador de projetos: lá eu posso criar uma conversa no
+> Coderoom por projeto, e eu quero que tenha essa opção de acessar essas
+> janelas já criadas. Mas eu quero também que tenha uma outra opção pra eu
+> criar uma conversa por fora, um chat, pra eu poder variar entre as opções que
+> a gente já tem no ar, até pra conversar coisas de projeto por fora, são só
+> conversas, só chats mesmo, como se fosse o meu próprio aplicativo de IA. E
+> outra coisa, eu quero que a gente se espelhe no design da Apple pra fazer
+> esses ajustes de tela, visualização de conversas, porque a Apple é muito boa
+> em separar as coisas: criar ícones, criar organização de botões. Tipo o
+> aplicativo Notas da Apple: você consegue visualizar em listras, em
+> quadradinhos, com detalhes, sem detalhes, com visualização rápida. Eu acho
+> que tem que ficar bem divididinho."*
+
+**Aprovado em 31/08: "pode seguir, ignore a frase solta que você não
+entendeu".** A frase final ficou mesmo cortada, e ele confirmou para ignorar.
+
+#### O que existe hoje, medido antes de propor qualquer coisa
+
+- A barra lateral já expande **dentro dela mesma** ao clicar em Coderoom: abre
+  um submenu ali (`gate-submenu`, em `src/ui_novo.html`) para escolher o
+  projeto. É esta expansão que ele quer tirar de lá.
+- Dentro da tela do Coderoom (`view-gate`) já existe um link **"projetos"**
+  (`gate-trocar`) que troca de conversa, e a lista de conversas
+  (`gate-conversas`) já existe, mas hoje só nasce a partir de um projeto — não
+  há hoje uma conversa solta, sem projeto.
+- A escolha de quem responde já existe como três botões (`gate-quem`): Claude,
+  opencode, agy. Não achei ainda o que ele quis dizer com "variar entre as
+  opções que a gente já tem no ar" além disso — pode ser isto, ou pode ser algo
+  a mais (modelo dentro de cada agente, por exemplo).
+
+#### O que ele está pedindo, decomposto
+
+1. **Tirar a expansão da barra lateral.** Ela vira só um atalho para o
+   Coderoom, sem abrir submenu ali.
+2. **A organização das conversas (por projeto, entre conversas) passa a viver
+   dentro da própria tela do Coderoom**, não na barra.
+3. **Duas formas de entrar numa conversa:**
+   - as que já nascem de um projeto, pelo controlador de projetos (existe hoje);
+   - uma nova: **conversa solta, sem projeto**, como um chat de uso geral —
+     inclusive para falar de projeto "por fora", sem vincular a nada (não
+     existe hoje).
+4. **O visual das conversas se inspira no aplicativo Notas da Apple**: mais de
+   um jeito de olhar a lista (em linhas, em grade), com e sem detalhe, e uma
+   visualização rápida.
+
+#### O que ficou implementado
+
+1. **A barra lateral parou de abrir o submenu de projetos nela mesma.**
+   `#gate-submenu` foi tirado do `<aside class="sidebar">` (e some junto na
+   gaveta do telefone, que era clone dela). O clique no Coderoom, tanto no
+   monitor quanto no telefone, só navega, como qualquer outro item.
+2. **A organização de projeto e conversa passou a viver dentro da própria tela
+   do Coderoom.** `#gate-conversas` virou o único organizador, pintado pela
+   mesma função (`gateSubmenuEm`) que antes só servia a barra. O que era uma
+   lista PLANA de conversas virou a mesma árvore agrupada por projeto que a
+   barra tinha.
+3. **A conversa solta, sem projeto, existe agora como o grupo "Geral"**, que
+   aparece sempre no topo, com conversa ou sem. Tecnicamente ela usa o mesmo
+   caminho de segurança que já existia desde o CC-326: sem `cwd`, o servidor
+   cai na pasta do próprio painel (`RAIZ_DO_PAINEL`), que é conhecida e está
+   dentro da base. **Ela não é um chat sem agente**: o agente roda de
+   verdade, com as mesmas ferramentas, só que na pasta do painel em vez da de
+   um projeto. O botão avisa isso com todas as letras antes de abrir.
+4. **Duas fatias do Notas da Apple: lista e grade.** Um par de botões (☰ ▦) no
+   cabeçalho do Coderoom troca `GATE.exibicao` entre `lista` (o desenho que já
+   existia) e `grade` (cartões, com o mesmo selo de máquina que a lista
+   plana já mostrava). **"Com detalhe / sem detalhe" e "visualização rápida"
+   NÃO entraram** — são as duas fatias que sobraram do pedido dele, e ficam
+   registradas aqui para não sumir: a diferença de "detalhe" ainda não está
+   desenhada (o que MOSTRA a menos?), e "visualização rápida" (o `Space` do
+   Finder) é uma peça nova inteira, não uma variação de CSS.
+
+#### O que a medida decidiu, e o defeito que quase entrou
+
+- **`GATE.modo` já existia**, para o modo de TRABALHO do framework daquele
+  projeto. O estado novo entrou como `GATE.exibicao`, para não colidir.
+- **Um id repetido quase entrou em produção**: o primeiro rascunho do botão de
+  lista/grade nasceu com `id="gate-modo"`, o MESMO id de um `<select>` que já
+  existia mais abaixo na mesma tela (o modo de trabalho do framework).
+  `getElementById` sempre devolve o primeiro elemento do documento; os
+  ouvintes do select (`change`, `blur`) teriam se pendurado no `<div>` novo, e
+  o seletor de modo do framework morreria em silêncio, sem erro nenhum. Achado
+  só porque uma prova por CDP comparou `tagName` antes de assinar embaixo:
+  virou `id="gate-vista"`, e **o portão ganhou uma verificação permanente**
+  para nenhum id do HTML estático da tela se repetir nunca mais — ela já
+  achava outros dois pares antigos e legítimos (que não são bug: são
+  containers cujo `innerHTML` é reescrito por inteiro, com o mesmo id do
+  marcador estático que substituem), e o teste aprendeu a diferença.
+
+#### O que ainda não tem resposta
+
+- **"Variar entre as opções que a gente já tem no ar"**, na conversa geral: não
+  mudei o seletor de agente (`gate-quem`, Claude/opencode/agy), que já existia
+  igual em toda conversa. Pode ser só isto, ou pode ser algo a mais (modelo
+  dentro de cada agente, por exemplo). Não chutei.
+
+#### O retorno dele, e os dois defeitos reais que vieram junto
+
+Mandei print, ele testou no aparelho e voltou: *"ficou bugado. quebrou a
+responsividade. e não colocou uma forma de ver todos os chats diferente,
+continua a mesma coisa"*.
+
+Medi antes de aceitar a hipótese, em três larguras (390, 360, 320px) com nome
+de projeto forçado bem longo: **zero estouro em qualquer uma**. A prova
+automática não reproduzia o que ele via, e ele mandou o print do aparelho de
+verdade: **"CODEROOM" cortado em "OOM"**, a página inteira rolada para o lado.
+
+**Causa real, achada só com o print dele:** o cabeçalho da tela era
+`<div style="display:flex;gap:12px">` sem `flex-wrap`. Cabia no teste porque
+o Chrome headless mede os caracteres `☰`/`▦` com uma largura; o aparelho dele
+mede outra, provavelmente maior (glifo raro caindo em fonte de reserva).
+**Nenhum teste automatizado alcança isto**: é diferença de fonte entre
+aparelhos, não erro de código que apareça lendo o texto. A correção não tenta
+acertar o pixel: `flex-wrap: wrap` garante que o pior caso é descer para a
+linha de baixo, nunca empurrar a página para o lado, e os caracteres soltos
+viraram ícone SVG, como o resto do painel já usa em toda parte.
+
+**Sobre "continua a mesma coisa":** ele confirmou que o toggle lista/grade era
+o que tinha pedido, o problema era a execução: *"tá muito pouco visual (…) o
+botão de novo chat tá dando a impressão de que tá dentro do projeto, e não um
+chat normal (…) tá parecendo uma lista escrita apenas, não tem design
+organizando como é feito"*. Com razão: o código tratava "Geral" como só mais
+um projeto no mesmo laço, então parecia um. Agora "Geral" tem marcação
+própria, um cartão com ícone de conversa, ANTES da lista de projetos, e cada
+projeto ganhou ícone de pasta.
+
+**Um segundo defeito, achado só comparando o CSS escrito com o CSS
+computado no navegador:** o cartão de "Geral" nasceu com a classe
+`.gate-geral` sozinha, e ela PERDIA para `.gate-submenu button` por
+especificidade (uma classe + uma tag pesa mais que uma classe só). O estilo
+inteiro (fundo, borda, cantos) nunca aplicava, sem erro nenhum, e a leitura do
+CSS não denuncia uma regra perdendo para outra. Só apareceu comparando
+`getComputedStyle` contra o que o arquivo dizia. Corrigido para
+`.gate-submenu button.gate-geral`.
+
+#### O segundo print, e a causa de verdade
+
+Mesmo depois do conserto acima, o estouro continuava: novo print, com o mesmo
+recorte ("kpit" no lugar de "Cockpit", "NTES" no lugar de "AGENTES"), e uma
+queixa nova: *"quando entro em um chat o site fica com espaço sobrando pra
+direita"*.
+
+A pista que resolveu: esse recorte aparecia na **barra de topo**, que existe
+em TODAS as telas, não só no Coderoom. Minha varredura anterior só olhava
+dentro de `#view-gate`; nunca tinha olhado o documento inteiro.
+
+Varrendo o documento inteiro em 390px: `.header-actions` media **556px de
+largura, 166px além da tela**, e `.stat-row` também estourava, os dois sem
+`flex-wrap`. É o cabeçalho compartilhado por TODAS as telas (`.header`,
+`.header-right`, `.stats-group`), e eu não tinha tocado nele hoje: **o defeito
+já existia antes do CC-448, e nenhum teste deste projeto media a largura de
+`ui_novo.html` para pegá-lo.** O Coderoom só ficou visível primeiro porque foi
+onde ele passou mais tempo enquanto eu testava.
+
+Corrigido com o mesmo princípio do resto: `flex-wrap: wrap` em `.header-right`
+e `.stat-row`, sem tentar acertar pixel contra fonte de aparelho nenhum.
+Revarrendo o documento inteiro depois: **zero elementos estourando**, nas três
+larguras. O "espaço sobrando à direita" do chat era o mesmo sintoma, visto de
+outro ângulo: a página inteira ficava mais larga que a tela, e a coluna de
+mensagens (mais estreita) sobrava espaço contra essa largura fantasma.
+
+#### O terceiro retorno, e o achado que virou método
+
+Consertado o estouro, ele voltou: *"agora nem abre mais a conversa sem
+projeto"*. Toda a prova até aqui usava `elemento.click()` disparado por
+script, que **dispara mesmo em elemento fora da área visível da tela**, sem
+reclamar. Um toque de verdade não: ele acontece numa COORDENADA, e só acha
+alguma coisa se houver algo REALMENTE ali naquele ponto da tela.
+
+Troquei a prova por `Input.dispatchMouseEvent` nas coordenadas reais de cada
+botão, e o organizador de fato não existia na área visível: o link "projetos"
+media `top: -922`. Causa: `rolarAoAbrir` leva a conversa para o fim de
+propósito (é onde está a resposta mais recente), e isso empurra o cabeçalho
+inteiro, com "projetos" dentro dele, centenas de pixels para cima da tela.
+
+Dois consertos, um em cada camada:
+
+1. **O cabeçalho da tela do Coderoom virou `position: sticky`.** O mesmo
+   remédio que a faixa de falha de leitura já usa nesta página
+   (`#faixa-falha`, z-index 50): fica grudado no topo da área que rola, então
+   "projetos" está sempre alcançável, não importa quão longa seja a
+   conversa aberta.
+2. **A rolagem para o fim não acontece mais enquanto ele ainda está
+   ESCOLHENDO.** Clicar num projeto no organizador já leva à conversa mais
+   recente dele (comportamento de antes do CC-448, do CC-327), e essa troca
+   disparava a MESMA rolagem que o item 1 resolveu para o cabeçalho, só que
+   agora para o corpo: o organizador abria, ele mirava "+ conversa nova", e a
+   página pulava pro fim de uma conversa antiga embaixo do dedo dele antes do
+   toque completar. A rolagem para o fim só volta a valer quando ele escolhe
+   uma conversa específica.
+
+**O método que fica, para além deste item:** `.click()` de script prova que o
+código FUNCIONA, nunca que ele está ALCANÇÁVEL. As próximas provas de toque
+neste projeto usam coordenada real (`Input.dispatchMouseEvent` no centro do
+elemento, `elementFromPoint` para confirmar quem realmente recebe o toque),
+não `.click()`.
+
+#### Prova
+
+`npm test` em 408. As 19 telas sem erro de execução. Três larguras (390, 360,
+320px) sem nenhum elemento estourando **no documento inteiro**, não só dentro
+do Coderoom, com nome de projeto forçado a ser artificialmente longo. O fluxo
+inteiro (projetos → Geral → + conversa nova → abrir) refeito com **toque em
+coordenada real**, do início ao fim, com `elementFromPoint` confirmando que
+cada toque cai exatamente no botão certo. `getComputedStyle` do cartão "Geral"
+conferido de verdade no navegador, não só
+a presença da classe no HTML. Print do aparelho
+dele como critério de aceite, não a captura automática.
+
 ## ▶ Frente nova, aberta em 29/08: o cartão do agente, e o que ele esconde
 
 Pedido dele em 29/08, ditado por voz, logo depois de ver o botão de avançar de
@@ -4017,7 +4502,7 @@ ligava uma coisa à outra. Sumiço sem motivo escrito parece defeito, e ele leu
 como defeito. A frase de estado passou a dizer que a lista volta com o
 framework.
 
-### CC-341, 25/08: o framework de projeto do PC, controlado pelo cockpit online
+### CC-341 ✅ 25/08: o framework de projeto do PC, controlado pelo cockpit online
 
 Queixa dele, com o cockpit online aberto e o PC ligado do lado: *"o que eu quero
 é que na VPS ele reconheça o desktop conectado e funcione na VPS"*.

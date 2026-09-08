@@ -9848,6 +9848,23 @@
             + '<button type="button" class="btn btn-ghost compacto" data-coderoom-fechar="' + esc(nome) + '" data-coderoom-dir="' + esc(dir) + '">fechar' + (nConversas > 1 ? ' todas' : '') + '</button>'
           : '<button type="button" class="btn btn-outline compacto" data-coderoom-abrir="' + esc(nome) + '" data-coderoom-dir="' + esc(dir) + '">'
             + (leuConversas ? 'abrir conversa' : 'lendo…') + '</button>')
+        /* CC-449: o Antigravity, que já roda nesta VPS desde 18/08 (terminal
+           próprio, servido por `ttyd`, atrás da mesma senha do cockpit), e
+           nunca ganhou botão aqui. O painel antigo tinha ("CASA_DO_AGENTE"),
+           o redesenho não trouxe. Achado só depois de medir de verdade: a
+           rota pública responde, o processo está de pé, só faltava o link. */
+        /* ⚠️ **CC-450: ele testou e conectou numa tela vazia, "CLI
+           Project".** Hipótese testada e descartada: achei que a pasta de
+           onde o comando sobe virava o projeto do outro lado, mandei a
+           pasta certa, e conferindo depois pela pasta REAL do processo
+           (`/proc/<pid>/cwd`), continuava a pasta pessoal, sempre. Ainda não
+           sei o que decide o projeto de uma conexão remota; a pasta
+           continua sendo mandada porque não atrapalha, não porque resolve.
+           O botão demora alguns segundos porque desliga e religa toda vez,
+           o que é preciso de qualquer forma pra não deixar o Antigravity
+           preso na sessão anterior. */
+        + grupo('Antigravity', '<button type="button" class="btn btn-ghost compacto" data-agy-abrir="' + esc(nome) + '" title="abre o terminal do Antigravity deste projeto, numa aba própria">abrir</button>'
+          + '<button type="button" class="btn btn-outline compacto" data-agy-remoto="' + esc(nome) + '" data-agy-dir="' + esc(dir) + '" title="liga o Antigravity nesta VPS, nesta pasta, pro celular ou outro computador">ligar sessão remota</button>')
         + '</div>';
     }
 
@@ -13942,6 +13959,56 @@
           carregarRemoto(true);
         })();
         return;
+      }
+
+      /* CC-449: o Antigravity é servido por fora deste servidor (um terminal
+         próprio, atrás da mesma senha), então não há chamada de API aqui,
+         só navegação. `?arg=` é o mesmo parâmetro que o terminal já sabe ler
+         para abrir naquele projeto, herdado do painel antigo. */
+      if (tr.dataset.agyAbrir) {
+        location.href = `/agy/?arg=${encodeURIComponent(tr.dataset.agyAbrir)}`;
+        return;
+      }
+
+      /* CC-450: liga a peça da VPS que registra ela, NESTA pasta, no site do
+         Antigravity. Não existe "sessão aberta" pra apontar, como o Claude
+         faz. A única resposta que faz sentido aqui é confirmar que ligou e
+         mandar ele pro site. */
+      if (tr.dataset.agyRemoto !== undefined) {
+        const antes = tr.textContent;
+        tr.disabled = true;
+        /* ⚠️ Ele reclamou de duas coisas juntas: a tela do Antigravity abria
+           dizendo "offline" (tinha que atualizar a página pra virar online),
+           e o projeto vinha vazio. A demora aqui (o servidor agora espera
+           alguns segundos antes de responder) é a correção do "offline": dar
+           tempo do processo terminar de se autenticar com o Google antes de
+           mandar ele olhar a página. */
+        tr.textContent = 'ligando… (alguns segundos)';
+        /* ⚠️ **A aba abre AGORA, síncrona com o toque, não depois da resposta
+           do servidor chegar.** Primeira versão abria só dentro do `.then()`,
+           depois do POST responder: o comentário já dizia "manda ele pro
+           site", mas ninguém escreveu a linha, e quando escrevi ali dentro o
+           navegador tratou como pop-up (só considera "gesto dele" o que
+           acontece na hora do toque, não um passo depois). Ele reclamou:
+           "ele até simula abrir, mas ele não abre nada". Abrir uma aba em
+           branco JÁ, com o navegador ainda "lembrando" do toque, e só trocar
+           o endereço dela quando a resposta chegar, é o jeito que os
+           navegadores não bloqueiam. */
+        const aba = window.open('', '_blank');
+        return post('/api/agy-remote-control', { acao: 'ligar', dir: tr.dataset.agyDir })
+          .then((d) => {
+            if (d?.ok === false) {
+              avisarFalha('/api/agy-remote-control', d.erro || d.saida || 'não deu pra ligar');
+              tr.textContent = antes;
+              if (aba) aba.close();
+              return;
+            }
+            if (aba) aba.location = 'https://antigravity.google.com';
+            else avisarFalha('/api/agy-remote-control', 'ligado, mas o navegador bloqueou a aba nova. Abra antigravity.google.com você mesmo');
+            tr.textContent = 'ligado, abrindo…';
+            setTimeout(() => { tr.textContent = antes; tr.disabled = false; }, 8000);
+          })
+          .catch(() => { tr.textContent = antes; tr.disabled = false; });
       }
 
       if (tr.dataset.coderoomAbrir || tr.dataset.coderoomNova) {

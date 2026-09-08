@@ -33,8 +33,8 @@
    "profundo": 0
   },
   "endereco": {
-   "total": 95,
-   "existe": 95,
+   "total": 96,
+   "existe": 96,
    "funciona": 7,
    "explica": 0,
    "estreito": 0,
@@ -5411,6 +5411,39 @@
    "id": "endereco:remote-control",
    "tipo": "endereco",
    "rotulo": "/api/remote-control",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:agy-remote-control",
+   "tipo": "endereco",
+   "rotulo": "/api/agy-remote-control",
    "onde": "src/web.mjs",
    "camada": "estatica",
    "escreve": true,

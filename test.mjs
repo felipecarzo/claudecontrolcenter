@@ -5931,6 +5931,49 @@ if (process.platform !== 'win32') {
     'função declarada duas vezes no mesmo arquivo: a segunda apaga a primeira sem erro. '
     + 'Repetidas: ' + repetidos.join(', '))
   console.log(`  ok   CC-352: nenhuma das ${new Set(nomes).size} funções da tela tem nome repetido`)
+
+  /* CC-448: o mesmo defeito, na família irmã. Quase aconteceu escrevendo o
+   * redesenho do Coderoom: um `<div id="gate-modo">` novo nasceu ANTES, na
+   * ordem do documento, de um `<select id="gate-modo">` que já existia (o
+   * modo de trabalho do framework). `getElementById` sempre devolve o
+   * PRIMEIRO, então os ouvintes do select (`change`, `blur`) teriam se
+   * pendurado no meu `<div>`, e o seletor de modo do framework teria morrido
+   * em silêncio, sem erro nenhum, sem sintoma na tela.
+   *
+   * Achado só porque um script de prova comparou `tagName` antes de assinar
+   * embaixo. É exatamente o tipo de defeito que não se vê lendo o código de
+   * cima para baixo, só rodando a página de verdade — e por isso vira
+   * verificação permanente aqui, e não só uma prova avulsa que se perde. */
+  /* Só o HTML ESTÁTICO, antes do primeiro `<script>` embutido (sem `src`).
+   * Depois dali é template de JavaScript, e o mesmo id aparecer lá é padrão
+   * legítimo e comum neste arquivo: `maq.innerHTML = '...id="x"...'`
+   * REESCREVE o conteúdo de um container que já existe, substituindo o
+   * marcador estático do boot pelo mesmo id, dentro do MESMO elemento. Não
+   * são dois nós vivos ao mesmo tempo, é o mesmo nó regenerado — contar isso
+   * como duplicata deu falso positivo em `dot-connection` e
+   * `stat-agentes-count` na primeira rodada deste teste.
+   *
+   * O perigo real é o outro: dois elementos ESTÁTICOS, ambos sempre no DOM,
+   * como o `gate-modo` do parágrafo acima. Os dois viviam antes do primeiro
+   * `<script>` inline, então cortar ali continua pegando esse caso. */
+  const fimDoEstatico = /<script(?![^>]*\bsrc=)[^>]*>/i.exec(v3)?.index ?? v3.length;
+  const estatico = v3.slice(0, fimDoEstatico);
+  const ids = [...estatico.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
+  const idsRepetidos = [...new Set(ids.filter((n, i) => ids.indexOf(n) !== i))];
+  assert.deepEqual(idsRepetidos, [],
+    'id repetido no HTML estático da tela: getElementById devolve sempre o PRIMEIRO, e o '
+    + 'segundo elemento fica morto sem sintoma nenhum. Repetidos: ' + idsRepetidos.join(', '));
+  console.log(`  ok   CC-448: nenhum dos ${new Set(ids).size} ids da tela está repetido`);
+
+  /* A barra lateral não pode voltar a abrir o organizador do Coderoom nela
+     mesma: foi exatamente a reclamação dele ("tirar a expansão da barra
+     lateral"), e ela some sem erro se alguém reintroduzir o `.gate-submenu`
+     dentro de `.sidebar` sem querer, por exemplo colando um trecho antigo. */
+  const sidebar = /<aside class="sidebar">[\s\S]*?<\/aside>/.exec(v3);
+  assert.ok(sidebar, 'não achei a barra lateral (<aside class="sidebar">) para conferir');
+  assert.ok(!sidebar[0].includes('gate-submenu'),
+    'a barra lateral voltou a ter um .gate-submenu: ele foi tirado de lá a pedido dele em 31/08');
+  console.log('  ok   CC-448: a barra lateral não abre organizador nenhum dentro dela mesma');
 }
 
 
