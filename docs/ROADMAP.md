@@ -15,6 +15,181 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 10/09: o sistema de rotinas, e projeto ativo contra passivo
+
+⚠️ **VISÃO REGISTRADA, NÃO TAREFA.** Ele mandou no fim de 10/09 e fechou com
+*"anote"*. Nada aqui se implementa antes de ele ler e a gente discutir: as
+palavras dele são *"precisamos projetar todo ele e eles cada etapa, prever os
+possíveis problemas e discutir todos"* e *"o prazo precisa ser coordenado entre
+eu e você"*.
+
+### O pedido, nas palavras dele
+
+> *"precisamos criar um sistema de rotinas no nosso framework, um sistema que
+> alinhe as rotinas dos projetos, as minhas rotinas, a minha agenda, prazos
+> realistas e loop Engineering pra fazer você criar coisas mais
+> independentemente de mim mas através de gatilhos de Hook que possam assegurar
+> traves de segurança pra você mesmo usufruir, **como ferramentas e não como
+> travas de fato**, construir hooks que criem comunicações, reações que se
+> comportem como logs etc."*
+
+> *"esse sistema vai funcionar com projetos ativos e passivos, os ativos são os
+> projetos com prazo definido de entrega (…) esse projeto precisa de atenção
+> máxima."*
+
+> *"conforme um projeto entra como ativo e é planejado e levado a prioridade
+> máxima junto c outros, ele passa a criar uma rotina de anotar todo dia como tá
+> o projeto e ele mesmo revisar uma série de coisas que comprovam que as tarefas
+> tão dentro do prazo, e calcular possíveis atrasos. como se fossem agentes
+> atualizando os projetos em tempo real, porém os hooks podem funcionar pra
+> ativar esse comportamento nos agentes nos momentos certos, ou em um agente
+> específico na VPS que verifique a sessão ativa ou o git no caso de nenhuma
+> sessão ativa, pode ser um terminal rodando um agente do opencode fazendo essa
+> verificação (já que é gratuito)."*
+
+> *"os projetos passivos são um princípio diferente, eles fluem em um flow mais
+> livre, 'de boas', pq na verdade eles são paralelos e muitas vezes não precisam
+> de toda essa disciplina. isso seria um tipo de framework secundário que esses
+> projetos estariam submissos quando ligados como ativos ou passivos e **todos os
+> chats nesse projeto seriam ativos ou passivos também**."*
+
+### As sete peças que o pedido contém
+
+1. **Dois regimes de projeto.** `ativo` = prazo de entrega definido, disciplina
+   diária, prioridade máxima. `passivo` = paralelo, fluxo livre, sem a cobrança.
+2. **O regime desce para o CHAT.** Não é só o projeto: cada conversa dentro dele
+   também é ativa ou passiva. É a peça mais nova do pedido e a menos óbvia.
+3. **Rotina diária automática** no projeto ativo: anotar o estado, revisar as
+   provas de que as tarefas estão no prazo, e **calcular atraso previsto**.
+4. **Alinhamento de quatro calendários**: rotina do projeto, rotina dele, agenda
+   dele, e prazo realista. Hoje o painel não conhece nenhum dos dois do meio.
+5. **Loop Engineering**: eu produzir com menos dependência dele, com gatilho de
+   hook segurando o risco.
+6. **Hook como FERRAMENTA, não como trava.** Palavras dele, e é uma inversão do
+   que os hooks deste projeto são hoje: quase todos existem para me BARRAR.
+   Aqui ele quer hook que me DÊ alcance, com segurança embutida.
+7. **Quem executa quando não há ninguém**: agente próprio na VPS que olha a
+   sessão ativa, ou o git quando não há sessão. Sugestão dele: opencode, por ser
+   grátis.
+
+### Os problemas que eu enxergo, para a discussão (nenhum decidido)
+
+Ele pediu explicitamente para prever e discutir todos. Estes são os que já dá
+para nomear, e a lista é material de conversa, não plano:
+
+- **Prazo estimado por quem nunca cumpriu prazo.** Não existe base histórica de
+  ESTIMATIVA neste ecossistema: existe tempo GASTO (a aba de tempo, sólida) e
+  itens fechados, mas ninguém nunca registrou "prometi X, entreguei em Y". Sem
+  isso, "calcular possíveis atrasos" começa chutando. Caminho possível: derivar
+  a primeira régua do que já está medido, e dizer na tela que é régua fraca.
+- **"Comprovar que a tarefa está no prazo" precisa de definição dele.** Prova é
+  commit? é item marcado? é teste verde? Cada uma mede coisa diferente, e a mais
+  fácil de automatizar (commit) é a que menos diz sobre progresso real.
+- **Rotina diária que roda sozinha vira paisagem em uma semana.** É o formato de
+  defeito nº 1 deste projeto (peça construída e inalcançável, alarme que repete
+  e ninguém lê). Se a anotação diária for sempre igual, ele para de ler no
+  terceiro dia. Precisa nascer com critério de SILÊNCIO: quando não falar.
+- **O regime por chat colide com o modo por sessão que já existe.** O framework
+  já tem modo por sessão (`continuativo`, `restritivo`, `dialogo`), e já mordeu
+  quatro vezes com sessão herdando modo de rota alheia. Somar ativo/passivo por
+  chat sem unificar as duas contas repete o defeito com nome novo.
+- **Agenda dele não existe em lugar nenhum do sistema.** Não há integração de
+  calendário, e o painel não sabe se hoje é dia de reunião ou de estrada. Sem
+  isso, "prazo realista" é conta feita no vácuo. Decidir se entra calendário de
+  verdade, ou se ele declara à mão as janelas, é decisão dele e muda o desenho
+  inteiro.
+- **O agente da VPS que roda sem sessão é um processo que ninguém supervisiona.**
+  A armadilha já registrada: servidor subido por tarefa de background nunca
+  termina, e o relógio corre. Se ele rodar de hora em hora, precisa nascer com
+  teto de tempo e prova de que morreu.
+- **Opencode grátis muda de comportamento sem aviso.** O serviço já morreu por
+  falta de memória duas vezes hoje nesta VPS (`oom-kill` registrado). Apoiar a
+  disciplina de prazo num serviço gratuito e instável exige queda para um
+  caminho mais simples quando ele falhar, senão o silêncio dele vira "está tudo
+  em dia".
+- **Hook como ferramenta é desenho novo e sem precedente aqui.** Os 12 hooks
+  atuais barram ou avisam. Um hook que me DÁ alcance (agir sem ele) inverte o
+  ônus: o risco deixa de ser eu ser barrado à toa e passa a ser eu agir demais.
+  A pergunta a responder antes de escrever qualquer linha: **o que exatamente eu
+  posso fazer sozinho, e o que continua exigindo ele?**
+
+### O desenho está escrito: `docs/produto/ROTINAS-ATIVO-PASSIVO.md`
+
+Feito em 10/09, a pedido dele (*"seguir"*), e é o passo que ele pediu junto com
+o registro: *"precisamos projetar todo ele e eles cada etapa"*. **Continua sem
+uma linha de código.**
+
+Traz cinco etapas que entregam sozinhas, na ordem em que se apoiam, e o que já
+existe e não deve ser refeito — o achado que estrutura tudo: **regime é eixo
+NOVO, não substitui modo nem fase**. São três eixos convivendo, e confundi-los
+é o primeiro erro a não cometer.
+
+Um nono problema apareceu ao escrever, e não estava no pedido: **prazo cria
+pressão sobre MIM para declarar progresso**, que é o mesmo incentivo que já fez
+agentes entregarem com tarefa aberta dizendo que estava pronto. A trava contra
+isso (declarar concluído é dele) precisa entrar na PRIMEIRA etapa, não na
+última.
+
+### O que ELE precisa decidir antes de qualquer código
+
+1. **Qual projeto entra como ativo primeiro**, e com que prazo. Ele disse que o
+   prazo é coordenado entre os dois.
+2. **O que conta como prova de que uma tarefa está no prazo.**
+3. **Se a agenda dele entra no sistema**, e como.
+4. **Onde termina a minha autonomia** no Loop Engineering.
+
+---
+
+
+### CC-456 🔴 10/09: dois empurradores no PC, e eu fechei o item medindo o lugar errado
+
+**Correção de um item que EU fechei hoje.** Em 10/09 dei o CC-451 (dois painéis
+no PC) como resolvido, com esta medida: um único Node em escuta na faixa
+8099-8108, contra dois em 09/09. A medida estava certa e a **conclusão estava
+errada**.
+
+**O que a medida nova mostra.** Seis amostras do pacote do PC, tiradas de 12 em
+12 segundos:
+
+```
+contrato=0  contrato=1  contrato=0  contrato=0  contrato=0  contrato=0
+```
+
+O número do contrato **alterna**, e alternar exige DOIS empurradores: o campo
+não herda entre pacotes, então cada envio sobrescreve. Um deles declara `1` (o
+formato de 30/08) e o outro declara `0`, que quer dizer "não sei dizer" — código
+anterior a 30/08.
+
+**É a assinatura exata do CC-342**, o defeito que ELE viu em 25/08: *"o botão do
+framework nas sessões do PC fica ativado um tempo e depois some, e depois
+volta"*. A causa foi tratada lá (herança por campo com prazo curto); a ORIGEM
+nunca foi.
+
+⚠️ **Por que a minha medição não pegou: o segundo empurrador NÃO ESCUTA PORTA
+NENHUMA.** O serviço instalado roda `cc reportar`, e o próprio código diz o que
+ele é (`cc.mjs:1766`): *"os dois chamam `cc reportar`, que empurra e não abre
+tela"*. Medir por porta em escuta acha painel, e **não acha reporte**. Contei
+telas e concluí sobre empurradores.
+
+**A lição, e ela é a regra da casa de novo:** *conferir que o campo medido
+responde a PERGUNTA feita*. A pergunta era "quantos empurram?"; eu medi "quantos
+servem tela?". São coisas diferentes, e a diferença é invisível porque as duas
+respostas são números plausíveis.
+
+**A hipótese mais provável de quem é quem**, não confirmada: o que declara `0` é
+a cópia INSTALADA (`%LOCALAPPDATA%\AgentCockpit`), que só muda com `cc versao
+publicar` e por isso está velha; o que declara `1` é o painel da pasta de obras.
+Isso casa com a armadilha já escrita ("push não é entrega") e explica por que o
+campo `servico` continua chegando vazio mesmo depois do puxar de hoje.
+
+**Como medir daqui, sem depender dele:** a alternância do contrato é o teste, e
+custa seis amostras. Um empurrador só = contrato estável.
+
+**Conserto a discutir:** o painel recusar subir quando já existe um respondendo
+na 8099 continua valendo, mas **não resolve isto** — o reporte não sobe porta. O
+que resolveria é o pacote carregar QUEM empurrou (pid ou origem), e aí a
+alternância vira lista, em vez de sintoma que precisa de seis amostras para
+aparecer.
 
 ### CC-450 ✅ 07/09: o remote-control do Antigravity, achado dentro do próprio programa
 
@@ -3109,15 +3284,31 @@ A divisão que a medição sugere não é "o PC não processa nada", é:
 - **as 39 travas continuam no PC**, obrigatoriamente: elas rodam no instante em
   que o agente escreve um arquivo, e não há como um servidor remoto barrar isso.
 
-#### O furo a resolver antes de qualquer código
+#### O furo a resolver antes de qualquer código — ✅ FECHADO, e ninguém tinha anotado
 
-**O formato do que viaja não tem número de versão.** `validarPacote` já valida
-campo a campo e ignora o que não conhece, o que perdoa muita coisa, mas não há
-como a VPS dizer *"este coletor é velho demais"* nem como o coletor saber que a
-outra ponta espera algo novo.
+**O texto original:** *"o formato do que viaja não tem número de versão.
+`validarPacote` já valida campo a campo e ignora o que não conhece, o que perdoa
+muita coisa, mas não há como a VPS dizer 'este coletor é velho demais' nem como
+o coletor saber que a outra ponta espera algo novo. Sem esse contrato
+versionado, 'independente da versão do programa aqui' é uma esperança, não uma
+garantia. É o primeiro item de qualquer caminho escolhido."*
 
-**Sem esse contrato versionado, "independente da versão do programa aqui" é uma
-esperança, não uma garantia.** É o primeiro item de qualquer caminho escolhido.
+⚠️ **Ele foi construído, e este bloco continuou dizendo que faltava.** Medido em
+10/09, nas duas pontas: `CONTRATO = 1` existe em `src/federacao.mjs`, é o
+PRIMEIRO campo do pacote de propósito, e o código nomeia este item na
+explicação (`federacao.mjs:47`, "CC-440 — o número do CONTRATO entre quem manda
+e quem recebe"). O pacote real do PC chega com o campo dentro.
+
+A regra dele também já está escrita e é boa: **nunca recusar pacote por causa do
+número**. Divergência vira aviso na tela, nunca porta fechada, porque dado velho
+com aviso é melhor que máquina sumindo do painel sem explicação.
+
+**Junto com a decisão de 30/08 acima, este item deixa de ter bloqueio técnico.**
+O que falta é ele ler o desenho e escolher entre as três formas.
+
+⚠️ **De quebra, o contrato virou instrumento de medida.** Foi a alternância dele
+entre `0` e `1` que denunciou os dois empurradores no PC, no CC-456 acima —
+achado que só existiu porque este campo foi construído.
 
 #### As três formas, com o custo de cada uma
 
