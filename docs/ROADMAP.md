@@ -321,11 +321,31 @@ responde a PERGUNTA feita*. A pergunta era "quantos empurram?"; eu medi "quantos
 servem tela?". São coisas diferentes, e a diferença é invisível porque as duas
 respostas são números plausíveis.
 
-**A hipótese mais provável de quem é quem**, não confirmada: o que declara `0` é
-a cópia INSTALADA (`%LOCALAPPDATA%\AgentCockpit`), que só muda com `cc versao
-publicar` e por isso está velha; o que declara `1` é o painel da pasta de obras.
-Isso casa com a armadilha já escrita ("push não é entrega") e explica por que o
-campo `servico` continua chegando vazio mesmo depois do puxar de hoje.
+**A hipótese que eu tinha escrito, e ela MORREU na primeira medida real:** eu
+supus que o empurrador velho fosse a tarefa de reporte instalada. O PC publicou
+às 02h de 10/09, o campo novo chegou, e ele diz `instalado: false`.
+
+⚠️ **E a resposta dele também estava errada, por defeito MEU.** Existem DUAS
+tarefas agendadas neste código, e eu perguntava só por uma:
+
+| tarefa | o que roda | existe no PC dele? |
+|---|---|---|
+| `AgentCockpit` | `arrancar.ps1` (painel + bandeja) | **sim**, criada em 26/08 e confirmada por ele na tela |
+| `\ControlCenter\control-center-reporte` | `cc reportar` | não |
+
+`estadoServicoAsync` perguntava só pela segunda. **Resposta errada sobre
+pergunta certa**, e ela teria me feito investigar uma peça que nunca existiu.
+Corrigido em 10/09: pergunta as duas e diz qual respondeu.
+
+**O que a medida real ENTREGOU, apesar do defeito:** o campo `raiz` do CC-453
+funcionou de primeira. O PC informou `D:\Documentos\projetos\cockpit`, sem
+ninguém adivinhar por texto no caminho de agente nenhum.
+
+**E os dois empurradores continuam lá**, medidos depois da publicação:
+`contrato` em `1, 1, 0, 1`. Com a tarefa de reporte fora da lista de suspeitos,
+sobram o painel da pasta de obras, o atalho de logon e um `cc reportar` aberto à
+mão. A lista de empurradores (commit `05bb27a`) responde isso pelo nome, e ainda
+não chegou: o PC publicou antes desse commit.
 
 **Como medir daqui, sem depender dele:** a alternância do contrato é o teste, e
 custa seis amostras. Um empurrador só = contrato estável.
