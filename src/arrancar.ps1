@@ -74,7 +74,12 @@ while ($true) {
   Write-Output "[arrancar] painel subiu, pid=$($node.Id), $(Get-Date -Format 'HH:mm:ss')"
 
   while (-not $node.HasExited) {
-    if ($bandeja.HasExited) {
+    # CC-459: sair com código 0 é a própria bandeja dizendo "já tem uma de pé,
+    # saí de propósito" (o mutex de instância única, linha 28). Só código
+    # diferente de 0 é queda de verdade. Sem esta distinção, encontrar a vaga
+    # tomada virava religada, que religava, que achava a vaga tomada de novo —
+    # um `Subir-Bandeja` a cada 5 segundos, para sempre.
+    if ($bandeja.HasExited -and $bandeja.ExitCode -ne 0) {
       $bandeja = Subir-Bandeja
     }
     Start-Sleep -Seconds 5

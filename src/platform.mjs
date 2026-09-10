@@ -976,9 +976,35 @@ export function desinstalarAutostart() {
   return null
 }
 
+/** A Tarefa Agendada supervisionada já está instalada nesta máquina? */
+function tarefaAgendadaExiste() {
+  if (!ehWindows) return false
+  try {
+    return quiet('powershell.exe', [
+      '-NoProfile', '-NonInteractive', '-Command',
+      `if (Get-ScheduledTask -TaskName '${NOME_TAREFA}' -ErrorAction SilentlyContinue) { 'sim' }`,
+    ]).out.includes('sim')
+  } catch { return false }
+}
+
 /** Sobe o painel destacado, do mesmo jeito que o login faria. */
 export function subirDestacado({ node, script, porta }) {
   if (ehWindows) {
+    /* CC-456/459: `daemon restart` chamava sempre este caminho, e no Windows
+       ele recriava o `.vbs` (o lançador SEM supervisão, de antes do CC-351)
+       toda vez que o arquivo não existisse — inclusive depois de alguém
+       apagá-lo de propósito por ele já ter virado empurrador duplicado.
+       Se a Tarefa Agendada supervisionada já está instalada, é ela quem deve
+       religar o painel: `arrancar.ps1` sobe painel + bandeja com vigia. Só
+       cai no `.vbs` de novo em quem nunca rodou `cc daemon servico`. */
+    if (tarefaAgendadaExiste()) {
+      const r = quiet('powershell.exe', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        `Start-ScheduledTask -TaskName '${NOME_TAREFA}'`,
+      ])
+      if (r.ok) return r
+      // tarefa existe mas não iniciou (ex: já rodando) — segue pro fallback
+    }
     const vbs = fs.existsSync(caminhoAutostart())
       ? caminhoAutostart()
       : autostartWindows(node, script, porta)

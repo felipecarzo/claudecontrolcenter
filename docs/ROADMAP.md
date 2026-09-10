@@ -141,6 +141,80 @@ isso (declarar concluído é dele) precisa entrar na PRIMEIRA etapa, não na
 ---
 
 
+### CC-459 🔴 10/09: o arranque relança a bandeja para sempre, e sair com sucesso é lido como queda
+
+**Ele viu antes de qualquer medição:** *"tem uns powershell piscando na tela do
+pc"*, depois *"continua criando powershell, preciso resolver isso, ta me
+atrapalhando"*.
+
+**A medida.** Gravando todo `powershell.exe` que nascia, 40 segundos:
+
+```
+17:50:05  17:50:10  17:50:25  17:50:30  17:50:35     (5 de 6, todos pai=51680)
+```
+
+De 5 em 5 segundos, que é exatamente o `Start-Sleep -Seconds 5` do laço em
+`src/arrancar.ps1`. O pai 51680 é o próprio `arrancar.ps1`, subido pela Tarefa
+Agendada às 17:09.
+
+**O ciclo, e ele não termina nunca:**
+
+1. `bandeja.ps1` tem mutex de instância única (linha 28). Achando a vaga tomada,
+   faz `exit 0` calado, e o comentário ali diz que isso é *"o caso normal"*.
+2. `arrancar.ps1` (linha 77) só olha `$bandeja.HasExited`, nunca o código de
+   saída. Saída limpa e queda por erro caem no mesmo `if`.
+3. Relança. Volta ao passo 1, de 5 em 5 segundos, enquanto o painel viver.
+
+**Por que a vaga estava tomada:** dois lançadores, a mesma família do CC-456.
+Uma bandeja de pé desde 12:15 (pai já morto, órfã) e o arranque das 17:09
+batendo nela desde então. O `control-center.vbs` já NÃO está na pasta de
+Inicialização, então o primeiro lançador de hoje é outro e ainda não tem nome.
+
+#### O conserto, uma condição a mais
+
+```powershell
+if ($bandeja.HasExited -and $bandeja.ExitCode -ne 0) { $bandeja = Subir-Bandeja }
+```
+
+Sair com 0 é a bandeja dizendo "já tem uma de pé, saí de propósito". Só saída
+diferente de 0 é queda de verdade, e só ela merece religar.
+
+✅ **APLICADO em 10/09**, pela rota `sincronia` (84be1862), depois que a rota
+ficou livre. A condição de `ExitCode` entrou em `src/arrancar.ps1`, publicada
+na cópia instalada, e a Tarefa Agendada foi parada e religada pra carregar o
+script novo em memória (reiniciar só o painel não bastava — o vigia continuaria
+com o código velho).
+
+**Provado:** contagem de `powershell.exe` medida a cada 5s por 30s depois do
+religamento, estável em 2 (vigia + bandeja) o tempo todo, contra o crescimento
+de antes. Painel de pé, respondendo, com a árvore certa por trás (vigia →
+painel).
+
+⚠️ **Achado no caminho, e é outra causa do mesmo sintoma:** `cc daemon restart`
+(e `cc open`, que usa a mesma função) recriava sozinho o `control-center.vbs`
+sempre que ele não existisse — inclusive depois de alguém apagar de propósito
+por ele já ter virado empurrador duplicado (CC-456). Isso subia um SEGUNDO
+painel sem vigia nenhum, e reabria a raiz do CC-456 a cada `daemon restart`.
+Corrigido: `subirDestacado()` agora prefere `Start-ScheduledTask` quando a
+Tarefa Agendada já está instalada, e só cai no `.vbs` (sem supervisão) em quem
+nunca rodou `cc daemon servico`.
+
+**Histórico, alívio aplicado antes do conserto de raiz:**
+`Stop-ScheduledTask -TaskName AgentCockpit`, que derrubou o laço sem tocar em
+código. Medida na hora: de 5 nascimentos por 40s para 1 por 30s. Foi esse
+alívio que deixou a tarefa parada e sem vigia, e o `cc daemon restart` rodado
+em seguida (pra publicar outro conserto) foi o que recriou o `.vbs` e achou o
+segundo defeito acima.
+
+#### Achado de tabela, do mesmo dia
+
+A barra de rodapé (`statusLine` no `settings.json`) chama
+`bash ~/.claude/statusline.sh` pelo `--wrap` do `cc.mjs`. No Windows isso abre
+`cmd` + `bash` + `conhost` a cada redesenho: 20 disparos em 45 segundos, somando
+as sessões abertas. `cc.mjs:179` faz esse `spawnSync` **sem** `windowsHide:
+true`. Não é a causa do piscar que ele reclamou (essa era a bandeja), mas é a
+mesma família e vale item próprio.
+
 ### CC-458 🔴 10/09: minhas respostas continuam longas demais, e o caveman não resolve
 
 Palavras dele, no fim de 10/09:
