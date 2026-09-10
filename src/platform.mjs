@@ -1046,12 +1046,23 @@ export function subirDestacado({ node, script, porta }) {
        religar o painel: `arrancar.ps1` sobe painel + bandeja com vigia. Só
        cai no `.vbs` de novo em quem nunca rodou `cc daemon servico`. */
     if (tarefaAgendadaExiste()) {
+      /* Achado em 10/09: um `Stop-ScheduledTask -Force` anterior (ou a queda
+         do processo em si) pode deixar a tarefa em estado ZUMBI — o Windows
+         acha que ainda está "Running" e recusa nova instância (0x800710E0),
+         mesmo sem NENHUM processo vivo por trás. `Start-ScheduledTask` sem
+         `-ErrorAction Stop` é erro NÃO terminante do PowerShell: o processo
+         `powershell.exe` sai com código 0 mesmo assim, e `quiet()` lia isso
+         como sucesso — o painel ficava morto e ninguém percebia. `Stop` antes
+         (ignora erro se já estava parada) limpa o zumbi; `-ErrorAction Stop`
+         faz a falha real do `Start` aparecer como falha de verdade. */
       const r = quiet('powershell.exe', [
         '-NoProfile', '-NonInteractive', '-Command',
-        `Start-ScheduledTask -TaskName '${NOME_TAREFA}'`,
+        `Stop-ScheduledTask -TaskName '${NOME_TAREFA}' -ErrorAction SilentlyContinue; ` +
+        `Start-Sleep -Milliseconds 500; ` +
+        `Start-ScheduledTask -TaskName '${NOME_TAREFA}' -ErrorAction Stop`,
       ])
       if (r.ok) return r
-      // tarefa existe mas não iniciou (ex: já rodando) — segue pro fallback
+      // tarefa existe mas não iniciou de verdade — segue pro fallback
     }
     const vbs = fs.existsSync(caminhoAutostart())
       ? caminhoAutostart()
