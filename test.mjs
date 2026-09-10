@@ -5148,6 +5148,22 @@ if (process.platform !== 'win32') {
     F2.gravarPacote({ maquina: m2, jobs: [], origem: { pid: 7, tipo: 'painel' }, em: Date.now() })
     const p2 = F2.lerPacotes().find((x) => x.maquina.id === 'pc6')
     assert.equal(p2.empurradores.length, 1, 'o mesmo processo empurrando duas vezes continua sendo um')
+
+    /* ⚠️ O caso que a primeira versão errava, e ele é o mais importante dos
+       três: empurrador VELHO não manda `origem`. A conta só montava a lista
+       quando `origem` existia, e como o campo não persiste, cada envio do velho
+       APAGAVA a prova de que ele existe. Medido em 10/09 no pacote real: a lista
+       aparecia e sumia a cada dois envios.
+
+       Quem a peça existe para achar era exatamente quem ela não via. */
+    const m3 = { id: 'pc7', nome: 'PC7' }
+    F2.gravarPacote({ maquina: m3, jobs: [], origem: { pid: 500, tipo: 'painel' }, em: Date.now() })
+    F2.gravarPacote({ maquina: m3, jobs: [], em: Date.now() }) // o velho, sem origem
+    const p3 = F2.lerPacotes().find((x) => x.maquina.id === 'pc7')
+    assert.equal(p3.empurradores.length, 2,
+      'o empurrador velho não pode APAGAR a lista: ele entra nela, mesmo sem saber se identificar')
+    assert.ok(p3.empurradores.some((e) => e.tipo === 'antigo' && e.pid === null),
+      'quem não se identifica vira "antigo": não saber QUEM é outra coisa que não saber QUANTOS')
   } finally {
     if (antes === undefined) delete process.env.CC_HOME
     else process.env.CC_HOME = antes

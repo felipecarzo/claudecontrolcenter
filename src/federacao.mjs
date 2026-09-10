@@ -414,16 +414,29 @@ export function gravarPacote(pacote) {
    * sumir da lista sozinho, senão o painel acusaria dois para sempre depois de
    * um único dia com dois — e alarme que não some é alarme que ninguém lê. É a
    * mesma razão da validade curta de `travas` e `framework`. */
+  /* ⚠️ **A primeira versão disto se apagava sozinha, e o defeito era grave:**
+   * ela só montava a lista `if (final.origem)`. Empurrador com código velho não
+   * manda `origem`, então o `if` não entrava, a lista não era regravada, e como
+   * ela não está em `CAMPOS_QUE_PERSISTEM` o campo sumia do arquivo.
+   *
+   * Resultado medido em 10/09, à noite: a cada dois envios a lista aparecia com
+   * um empurrador e nos dois seguintes sumia. **O empurrador velho apagava a
+   * prova de que ele existe** — a peça construída para achá-lo era cega
+   * justamente para ele.
+   *
+   * Agora todo envio entra na lista, inclusive o que não se identifica: ele vira
+   * `{ pid: null, tipo: 'antigo' }`. Não saber QUEM é outra coisa que não saber
+   * QUANTOS, e a pergunta aqui é quantos. */
   const JANELA_EMPURRADORES_MS = 5 * 60 * 1000
-  if (final.origem) {
-    const vistos = Array.isArray(anterior?.empurradores) ? anterior.empurradores : []
-    const chave = (o) => `${o.tipo}:${o.pid}`
-    const atual = { ...final.origem, em: agora }
-    final.empurradores = [
-      ...vistos.filter((v) => agora - (v.em || 0) < JANELA_EMPURRADORES_MS && chave(v) !== chave(atual)),
-      atual,
-    ].slice(-10)
-  }
+  const vistos = Array.isArray(anterior?.empurradores) ? anterior.empurradores : []
+  const chave = (o) => `${o.tipo}:${o.pid ?? '?'}`
+  const atual = final.origem
+    ? { ...final.origem, em: agora }
+    : { pid: null, tipo: 'antigo', em: agora }
+  final.empurradores = [
+    ...vistos.filter((v) => agora - (v.em || 0) < JANELA_EMPURRADORES_MS && chave(v) !== chave(atual)),
+    atual,
+  ].slice(-10)
 
   /* CC-204: o arquivo tem teto próprio, e ele é medido no que vai para o
      disco. Herdado sai primeiro, começando pelo maior: o que chegou agora é
