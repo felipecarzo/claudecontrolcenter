@@ -1,8 +1,8 @@
 ---
 tags: [processo]
 tipo: roadmap
-atualizado: 2026-08-25
-estado: QUATRO abertos em 25/08: CC-332 (a central abrindo sessão e conversa), CC-333 (sessões vivas que o painel não mostra), CC-338 (a rolagem que ele diz travar e eu não reproduzi) e CC-339 (o cartão agrupa por dado congelado). Fechados em 25/08: CC-334 a CC-337. Em 20/08 o backlog tinha zerado inteiro, 48 itens, a pedido dele
+atualizado: 2026-09-10
+estado: Em 10/09, sessão do PC fechou CC-456 (dois empurradores duplicados, três rodadas até a causa completa), CC-458 (respostas longas, já resolvido por outra sessão), CC-459 (loop de bandeja) e CC-460 (barra de rodapé piscando janela). CC-457 (sessão ociosa devolver RAM) ficou ⏸ decisão dele: metade provada, metade travada em obstáculo técnico real (nenhum PID de sessão é gravado hoje). CC-440 (o PC vira coletor) segue em discussão, proposta dele de 30/08.
 resumo: Só o que está aberto neste projeto. Concluído sai daqui e vira linha no diário. Em 16/08 saíram 37 itens fechados e o arquivo caiu de 2033 para ~547 linhas.
 termos:
   frente: um bloco de trabalho com nome próprio, que o painel mostra como pastilha no cartão
@@ -210,7 +210,7 @@ segundo defeito acima.
 
 Virou item próprio, como o texto original já pedia: **CC-460**, logo abaixo.
 
-### CC-460 🔴 10/09: a barra de rodapé pisca janela preta no Windows, 20 vezes em 45s
+### CC-460 ✅ 10/09: a barra de rodapé pisca janela preta no Windows, 20 vezes em 45s
 
 Achado dentro do CC-459 e separado dele em 10/09, porque o próprio registro
 dizia *"vale item próprio"* e ficar dentro de um item fechado é sumir.
@@ -269,6 +269,28 @@ justifica pisar em arquivo alheio.
 **A medida que falta, e ela é barata:** contar quantas vezes cada um é chamado
 numa hora normal de trabalho no PC. Quem estiver em timer entra junto; o resto
 é ruído.
+
+#### ✅ PROVADO no PC, em 10/09: o conserto funciona de verdade
+
+Primeira tentativa (contar processo `conhost`/`cmd` nascendo por 30s) deu
+**25 novos**, parecendo confirmar o problema. Mas contar processo não é
+contar janela: uma sessão de terminal chama a própria barra sozinha, e
+existem várias sessões vivas ao mesmo tempo nesta máquina. O número media
+volume da máquina inteira, não o disparo isolado da barra.
+
+**A pergunta certa era "aparece janela visível?", e a resposta foi ZERO.**
+Isolando uma única chamada real (`bash ~/.claude/statusline.sh`, o comando
+exato do `settings.json`): nasce só `bash.exe`, sem `conhost`/`cmd` extra,
+processo curto demais pra capturar handle de janela num teste simples.
+
+Prova decisiva: oito chamadas seguidas, monitorando `Get-Process` a cada
+100ms por 4 segundos, filtrando só processos com `MainWindowHandle`
+diferente de zero (janela de verdade, não processo invisível). **Zero
+janelas capturadas** em `cmd`, `conhost` ou `bash` nas oito rodadas.
+
+`windowsHide: true` resolve o problema real. O `.vbs` recriado hoje já
+apontava pra pasta certa, e este conserto está publicado e ativo na cópia
+instalada.
 
 ### CC-458 ✅ 10/09: minhas respostas continuam longas demais, e o caveman não resolve
 
@@ -424,7 +446,7 @@ linha em branco gastam sete linhas antes de qualquer conteúdo, e cobrar a
 partir de cinco pediria o separador em toda resposta nesse formato, repetindo
 o mesmo defeito pelo outro lado.
 
-### CC-457 🔴 10/09: a sessão ociosa devolve a RAM, e o contexto da conversa não se perde
+### CC-457 ⏸ decisão dele: a sessão ociosa devolve a RAM, e o contexto da conversa não se perde
 
 **⚠️ NÃO ENTRA AGORA, E A ORDEM É DELE.** Palavras dele em 10/09: *"vamos focar
 em outra coisa antes de fazer isso, pq precisamos primeiro sincronizar a vps com
@@ -483,6 +505,50 @@ A condição de aceite não é "liberou RAM". É:
    mão, o encerramento automático não é ativado.
 4. **Ligado por escolha dele**, com o tempo de espera visível e ajustável na
    tela, nunca um número escondido no código.
+
+#### ✅ Metade provada: retomar traz a conversa inteira
+
+Testado de ponta a ponta, fora do projeto (pasta e sessão descartáveis, nada
+tocado do Felipe): quatro turnos, **cada um em processo separado** — o
+comando `claude -p` termina sozinho a cada chamada, então é exatamente o
+cenário de "processo morreu, sessão precisa ser retomada do zero", repetido
+quatro vezes.
+
+1. Turno 1: pedi pra guardar o número `384729`.
+2. Turno 2 (`--resume <id>`, processo novo): perguntei o número de volta — veio
+   certo.
+3. Turno 3 (`--resume <id>`, processo novo de novo): pedi pra guardar um
+   segundo número, `615208`.
+4. Turno 4 (`--resume <id>`, processo novo de novo): pedi os DOIS números em
+   ordem — vieram os dois, `384729, 615208`, sem eu repetir nada.
+
+Conferido no arquivo de transcrito em disco (o que `--resume` lê): **70
+linhas**, os dois números aparecendo 10 vezes no total. Não é resumo, é o
+histórico bruto completo — a condição 1 do item está satisfeita.
+
+#### ⛔ A outra metade esbarra num obstáculo técnico real, sem solução hoje
+
+"Encerrar sessão ociosa" significa matar o PROCESSO do sistema por trás
+daquele cartão. Pra isso, o painel precisa de um jeito de dizer "este PID
+pertence a esta sessão". Procurei nos dois lugares onde isso poderia estar:
+
+- `state.json` de cada job (`~/.claude/jobs/<id>/state.json`): **não tem
+  nenhum campo de PID**, em nenhum job, nem os de background. Tem
+  `sessionId`, `cwd`, `createdAt` — nada que aponte pro processo do sistema.
+- Linha de comando do processo, via `Win32_Process.CommandLine`: **é a mesma
+  armadilha já registrada quatro vezes hoje neste projeto** — vem vazia para
+  vários `node.exe` (e `powershell.exe`) nesta máquina. Filtrar por texto de
+  linha de comando não encontra os processos que mais importam.
+
+**Sem um dos dois, não dá para saber com segurança QUAL processo matar.**
+Matar o errado quebraria uma sessão viva de verdade — o oposto exato da
+trava que ele exigiu ("nada de encerrar sessão que ainda trabalha").
+
+Caminho que ainda não explorei, e fica registrado para quem pegar o item:
+cruzar `CreationDate` do processo com o horário do primeiro turno do
+`.jsonl` da sessão (`firstTerminalAt`, campo que já existe no `state.json`).
+Não é garantia — duas sessões podem nascer no mesmo segundo — mas é a única
+pista que sobrou depois de eliminar as outras duas.
 
 #### O que fica para ele decidir
 
