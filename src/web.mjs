@@ -1019,17 +1019,50 @@ const matarAgySessao = () => {
   try { process.kill(-agySessaoViva.pid, 'SIGTERM') } catch { /* já tinha morrido */ }
   agySessaoViva = null
 }
+/* ⚠️ **CC-455: sem `--project`, o Antigravity joga a sessão num balde chamado
+ * "CLI Project", e ele fica vazio.** Provado pelos prints dele em 10/09 e pelo
+ * arquivo em disco: `~/.gemini/config/projects/default-cli-project.json` traz
+ * `"name": "CLI Project"` e nasceu em 17/08. Não é estado de erro, é o balde
+ * padrão de sessão de linha de comando que não declara a qual projeto pertence.
+ *
+ * ⚠️ **O nome vai COM o prefixo da máquina, e a versão anterior disto estava
+ * errada.** Eu tinha usado `nomeCanonico()` para mandar `cockpit` em vez de
+ * `VPS_cockpit`, deduzindo dos projetos do PC dele (`vps`, `carzo`). Ele testou:
+ * *"nenhum projeto cockpit"*. Depois ele apontou a pasta pela interface, e o
+ * programa escreveu o arquivo sozinho com **`"name": "VPS_cockpit"`** — o nome
+ * da pasta, cru. Quem nomeia é o Antigravity a partir da pasta, e a conta de
+ * nome canônico deste projeto não tem nada a ver com isso.
+ *
+ * ⚠️ **`--project` NÃO cria projeto, e nem procura pelo nome.** Medido antes de
+ * concluir: o log mostrava `SetProjectID called with projectID: ""` mesmo com o
+ * nome no comando, e um arquivo criado à mão nunca foi lido (hora de acesso
+ * provou). O que decide o projeto é a **pasta**, e a ligação mora no arquivo que
+ * a interface escreve, com este formato:
+ *
+ *     { "id": "<uuid>", "name": "VPS_cockpit",
+ *       "projectResources": { "resources": [ { "gitFolder": {
+ *         "folderUri": "file:///home/claudedev/projetos/VPS_cockpit",
+ *         "defaultBranch": "master" } } ] },
+ *       "settings": {}, "isWorkspaceOnly": false }
+ *
+ * Então o `--project` só resolve para projeto que **já existe**, e existir quer
+ * dizer ter esse arquivo. Enquanto a pasta não tiver o dela, a sessão cai no
+ * balde, e é o comportamento correto do programa, não defeito nosso. */
 const abrirAgySessao = (dir) => {
   matarAgySessao()
   const alvo = dir && fs.existsSync(dir) ? dir : os.homedir()
-  const filho = spawn('script', ['-qc', AGY_BIN, AGY_SESSAO_LOG], {
+  /* O nome da pasta CRU, que é como o Antigravity nomeia o projeto ao apontar
+     para ela. Nada de `nomeCanonico()` aqui: ver o aviso acima. */
+  const projeto = path.basename(alvo)
+  const args = ['-qc', projeto ? `${AGY_BIN} --project ${JSON.stringify(projeto)}` : AGY_BIN, AGY_SESSAO_LOG]
+  const filho = spawn('script', args, {
     cwd: alvo,
     detached: true,
     stdio: 'ignore',
     env: envComBarramento(),
   })
   filho.unref()
-  agySessaoViva = { pid: filho.pid, dir: alvo }
+  agySessaoViva = { pid: filho.pid, dir: alvo, projeto }
 }
 
 function handler(req, res) {
