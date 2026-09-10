@@ -1,0 +1,4 @@
+' Control Center  gerado por `cc daemon install`, não editar à mão
+' sobe o painel em segundo plano no login, sem janela
+Set sh = CreateObject("WScript.Shell")
+sh.Run """C:\Program Files\nodejs\node.exe"" ""C:\Users\lfeli.ALIENWARE-LIPE\AppData\Local\AgentCockpit\cc.mjs"" --web-only --port 8099", 0, False

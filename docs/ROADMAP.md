@@ -141,7 +141,7 @@ isso (declarar concluído é dele) precisa entrar na PRIMEIRA etapa, não na
 ---
 
 
-### CC-457 🔴 10/09: minhas respostas continuam longas demais, e o caveman não resolve
+### CC-458 🔴 10/09: minhas respostas continuam longas demais, e o caveman não resolve
 
 Palavras dele, no fim de 10/09:
 
@@ -286,6 +286,73 @@ pediu blocos curtos e rotulados.
 diferentes, brigando entre si — cinco linhas no máximo, mostre o raciocínio,
 separador acima de três blocos. Cada uma faz sentido sozinha.
 
+### CC-457 🔴 10/09: a sessão ociosa devolve a RAM, e o contexto da conversa não se perde
+
+**⚠️ NÃO ENTRA AGORA, E A ORDEM É DELE.** Palavras dele em 10/09: *"vamos focar
+em outra coisa antes de fazer isso, pq precisamos primeiro sincronizar a vps com
+o pc no cockpit"*. Este item espera a sincronia PC/VPS ficar de pé.
+
+**A frase que abriu o item:** *"eu tenho a sensacao que antigamente eu usava
+mais projetos do que to usando agora e por algum motivo agora a memoria ta
+sempre sendo um problema nos processos, to preocupado"*.
+
+#### A medição, feita no PC dele na madrugada de 10/09
+
+| o que | quanto |
+|---|---|
+| RAM total da máquina | 32,5 GB |
+| uso no momento da queixa | 89,5% (3,4 GB livres) |
+| todos os processos `claude` | 7,6 GB em 31 processos |
+| cada sessão de projeto viva | ~500 MB (350 a 450 MB da sessão, mais ~145 MB do host de terminal) |
+| sessões vivas no painel naquela hora | 8 |
+| Edge | 4,4 GB em 49 processos |
+| pool não-paginado do kernel | 2,5 GB (esperado: 0,2 a 0,8 GB) |
+
+**Duas hipóteses caíram, e as duas eram plausíveis:**
+
+- **Não é vazamento.** Em 30 segundos de amostra, o maior processo cresceu 3,4 MB
+  e o total dos `claude` até caiu 7 MB.
+- **Não é o app desktop.** Fechei e reabri para testar: voltou com 1986 MB contra
+  os 1802 MB de antes. O app custa ~2 GB por natureza, e a troca não devolve nada.
+  Foi ação minha em cima de hipótese minha, e a medição me desmentiu.
+
+**A causa real.** O painel segura cada sessão viva em RAM enquanto o cartão dela
+existe, mesmo ociosa. Antes do painel, fechar a janela do terminal devolvia a
+memória junto. Hoje ela fica de pé esperando ele voltar. O piso de RAM cresce com
+o número de CARTÕES, não com o número de projetos que ele está de fato tocando, e
+é exatamente por isso que a sensação dele ("uso menos projeto e sofro mais") está
+certa.
+
+#### A ideia
+
+Sessão parada há X tempo é encerrada pelo painel, devolvendo os ~500 MB dela. O
+cartão continua no lugar, e retomar volta a conversa.
+
+#### ⚠️ A trava que ele exigiu, e sem ela este item não existe
+
+Palavras dele: *"especifica bem a ideia pra garantir que nao vamos perder os
+contextos das conversas fechadas, precisamos dessa seguranca, especifica isso no
+backlog tambem"*.
+
+A condição de aceite não é "liberou RAM". É:
+
+1. **Retomar traz a conversa inteira.** Não um resumo, não um pedaço, não os
+   últimos N turnos. O histórico completo, igual ao que existia antes de fechar.
+2. **Nada de encerrar sessão que ainda trabalha.** Ociosa quer dizer sem
+   atividade nenhuma. "Esperando input" com trabalho pela metade não é ocioso.
+3. **Provar antes de ligar.** Encerrar uma sessão de propósito, retomar, e
+   conferir o histórico recuperado contra o que existia antes. Sem essa prova na
+   mão, o encerramento automático não é ativado.
+4. **Ligado por escolha dele**, com o tempo de espera visível e ajustável na
+   tela, nunca um número escondido no código.
+
+#### O que fica para ele decidir
+
+- Quanto tempo de ociosidade conta. A sugestão é 2h, e não tem base histórica
+  nenhuma por trás.
+- Se o painel encerra sozinho, ou se ele só avisa no cartão ("parada há 3h,
+  devolver a memória?") e espera o clique.
+
 ### CC-456 🔴 10/09: dois empurradores no PC, e eu fechei o item medindo o lugar errado
 
 **Correção de um item que EU fechei hoje.** Em 10/09 dei o CC-451 (dois painéis
@@ -321,14 +388,13 @@ responde a PERGUNTA feita*. A pergunta era "quantos empurram?"; eu medi "quantos
 servem tela?". São coisas diferentes, e a diferença é invisível porque as duas
 respostas são números plausíveis.
 
-**A hipótese mais provável de quem é quem**, não confirmada: o que declara `0` é
-a cópia INSTALADA (`%LOCALAPPDATA%\AgentCockpit`), que só muda com `cc versao
-publicar` e por isso está velha; o que declara `1` é o painel da pasta de obras.
-Isso casa com a armadilha já escrita ("push não é entrega") e explica por que o
-campo `servico` continua chegando vazio mesmo depois do puxar de hoje.
+### ✅ MEDIDO NO PRÓPRIO PC em 10/09: são dois painéis, e a hipótese estava errada
 
-**Como medir daqui, sem depender dele:** a alternância do contrato é o teste, e
-custa seis amostras. Um empurrador só = contrato estável.
+**A hipótese registrada acima (cópia instalada velha contra pasta de obras) está
+DERRUBADA.** Os dois empurradores são a MESMA cópia instalada, subida por DOIS
+lançadores diferentes no login:
+
+#### O rastreio permanente, do lado do código (feito na VPS)
 
 **A METADE DE MEDIR ESTÁ FEITA (10/09).** O pacote passou a carregar QUEM
 empurrou, e a alternância virou lista:
@@ -361,6 +427,110 @@ não "só um empurrador".
 **O outro conserto continua aberto:** o painel recusar subir quando já existe um
 respondendo na 8099. Ele vale, mas **não resolve isto sozinho** — o reporte não
 sobe porta nenhuma.
+
+#### A causa raiz, medida e corrigida no próprio PC no mesmo dia
+
+| pid | porta | nasceu | quem subiu |
+|---|---|---|---|
+| 22916 | **8099** | 12:15:25 | `control-center.vbs`, na pasta de Inicialização |
+| 25980 | **8100** | 12:16:08 | Tarefa Agendada `AgentCockpit`, via `arrancar.ps1` |
+
+**O segundo não morre por achar a porta ocupada: ele sobe na porta seguinte.**
+`startWeb` (em `src/web.mjs`) tenta 10 portas a partir de 8099, e o timer de 30s
+que empurra é ligado no evento `listening`. Quem cai na 8100 ganha o timer
+igual. Dois painéis, dois timers, dois empurrões.
+
+**O `.vbs` é resíduo do método antigo.** Foi como o painel subia antes da Tarefa
+Agendada, e a instalação nova não o removeu. Os dois apontam para o mesmo
+arquivo e a mesma porta.
+
+#### A prova mais barata é local, e não precisa da VPS
+
+O log de envios (`~/.claude/control-center-envios.json`) já responde sozinho.
+Últimos 60 envios, intervalos em segundos:
+
+```
+21  9  21  9  22  6  24  8  19  11  22  8  21  9  22  7  23  8  20  10 …
+```
+
+Os intervalos **alternam**, e cada PAR consecutivo soma 30s, que é o ciclo
+declarado. Média de um intervalo: 15s. Média de pares: 30s. **Um empurrador só
+daria 30s constante.** Dois empurradores defasados em ~9s dão exatamente isto,
+e a conta cabe numa leitura de arquivo em vez de seis amostras do outro lado.
+
+#### ⚠️ A medida do CC-451 também estava errada, não só a conclusão
+
+O item anterior afirmou "um único Node em escuta na faixa 8099-8108". Refeita
+agora, porta por porta, a faixa tem **DOIS**: 8099 e 8100. Havia dois o tempo
+todo.
+
+**Por que a contagem errou:** `Win32_Process` devolve `CommandLine` **VAZIO**
+para alguns processos Node desta máquina. Na foto de hoje, dois dos três vieram
+sem linha de comando nenhuma, inclusive o dono da 8099. Filtrar Node por texto
+da linha de comando **não vê esses processos**, e o resultado é um número
+plausível e menor que o real.
+
+**Regra que sai daí:** para contar quem serve porta, pergunte à PORTA
+(`Get-NetTCPConnection -State Listen`), nunca à linha de comando. Foi a mesma
+família de erro duas vezes seguidas: medir o campo legível em vez do campo que
+responde à pergunta.
+
+#### Conserto proposto, nesta ordem
+
+1. **Remover o `control-center.vbs` da pasta de Inicialização** (é decisão dele,
+   mexe no login da máquina). Some a causa, não o sintoma.
+2. **O painel recusar subir quando já há um respondendo na faixa.** Hoje o
+   fallback de porta é justamente o que ESCONDE o problema: em vez de falhar
+   visivelmente, ele sobe ao lado e ninguém percebe.
+3. **O pacote carregar QUEM empurrou** (pid e origem). O log de envios hoje grava
+   `em, ok, erro, para, jobs, projetos, frentes, comTempo, bytes` e **nenhum
+   campo de identidade**, então a alternância só aparece como padrão de tempo.
+   ⚠️ **Item 3 já saiu da lista: a VPS entregou no mesmo dia** (ver acima,
+   `origemDoEmpurrao()`). Ficam os itens 1 e 2, e o item 1 também já foi feito
+   (ver abaixo).
+
+### ✅ RESOLVIDO no próprio PC, em 10/09: os três achados, um por um
+
+**1. O lançador antigo (`.vbs` na pasta de Inicialização) foi apagado**, com
+cópia de segurança em `docs/legacy/control-center.vbs.removido-2026-09-10`,
+autorizado por ele. Já não sobe painel duplicado no próximo login.
+
+**2. O comando `cc` do sistema apontava para uma pasta ABANDONADA.** O link
+global do npm resolvia para `D:\Documentos\Ti\projetos\PESSOAL\proj_controlcenter`,
+código congelado em 25/08, sem `export const CONTRATO` (anterior ao CC-440).
+Todo agente que rodava `cc set` neste PC usava esse código velho. Reapontado
+(renomear o link antigo, criar o novo, testar, só então apagar o antigo) para
+`D:\Documentos\projetos\cockpit`, sem tocar em nada dentro da pasta velha
+(conferido: 50 itens antes e depois). Provado: `cc json` responde, a versão
+servida é `agent-cockpit v0.3.0`, o campo `CONTRATO` está presente, e `cc set`
+grava.
+
+**3. A Tarefa Agendada terminou com `0xC000013A` (sinal de controle) às
+12:15:12, bem na hora do boot da máquina (12:15:01), e o vigia (`arrancar.ps1`)
+ficou fora do ar: o painel continuou de pé porque no Windows o filho não morre
+junto com o pai. `RestartOnFailure` (999 tentativas configuradas) não religou
+sozinho, confirmando a armadilha já registrada de 26/08.**
+
+⚠️ **A causa exata do `0xC000013A` não foi confirmada.** O log de eventos da
+Tarefa Agendada vem desligado por padrão, e ligá-lo agora exige administrador
+(tentei, `Acesso negado`). Fica como pendência dele: `wevtutil sl
+Microsoft-Windows-TaskScheduler/Operational /e:true`, rodado com admin, deixa
+rastro pra próxima queda.
+
+**Religado manualmente** (`Start-ScheduledTask`), depois de derrubar o painel
+órfão para não duplicar de novo. Confirmado vivo e sob supervisão:
+
+```
+vigia (arrancar.ps1, pid 51680)
+ ├─ painel (node, porta 8099, pid 93208)
+ └─ bandeja (pid 65128)
+```
+
+⚠️ **Armadilha nova, achada medindo isto:** `Win32_Process.CommandLine` vem
+**vazio** também para processos `powershell.exe` nesta máquina, não só para
+`node.exe` (já registrado). Um filtro por texto na linha de comando (`-like
+'*arrancar*'`) não encontrou o vigia que estava vivo o tempo todo. A régua
+correta aqui foi a árvore de processos (pai/filho), não o texto do comando.
 
 ### CC-450 ✅ 07/09: o remote-control do Antigravity, achado dentro do próprio programa
 
