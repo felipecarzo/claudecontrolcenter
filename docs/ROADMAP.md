@@ -462,6 +462,28 @@ responde a PERGUNTA feita*. A pergunta era "quantos empurram?"; eu medi "quantos
 servem tela?". São coisas diferentes, e a diferença é invisível porque as duas
 respostas são números plausíveis.
 
+#### O defeito de pergunta, do lado da VPS
+
+**A hipótese que a VPS tinha escrito, e ela MORREU na primeira medida real:** a
+suposição era que o empurrador velho fosse a tarefa de reporte instalada. O PC
+publicou às 02h de 10/09, o campo novo chegou, e ele dizia `instalado: false`.
+
+⚠️ **E a resposta também estava errada, por defeito de quem perguntou.** Existem
+DUAS tarefas agendadas neste código, e a pergunta ia só pra uma:
+
+| tarefa | o que roda | existe no PC dele? |
+|---|---|---|
+| `AgentCockpit` | `arrancar.ps1` (painel + bandeja) | **sim**, criada em 26/08 e confirmada por ele na tela |
+| `\ControlCenter\control-center-reporte` | `cc reportar` | não |
+
+`estadoServicoAsync` perguntava só pela segunda. **Resposta errada sobre
+pergunta certa**, e ela teria feito investigar uma peça que nunca existiu.
+Corrigido em 10/09: pergunta as duas e diz qual respondeu.
+
+**O que a medida real ENTREGOU, apesar do defeito:** o campo `raiz` do CC-453
+funcionou de primeira. O PC informou `D:\Documentos\projetos\cockpit`, sem
+ninguém adivinhar por texto no caminho de agente nenhum.
+
 ### ✅ MEDIDO NO PRÓPRIO PC em 10/09: são dois painéis, e a hipótese estava errada
 
 **A hipótese registrada acima (cópia instalada velha contra pasta de obras) está

@@ -907,10 +907,26 @@ export function removerServico() {
 /** Está instalado e rodando? Os dois são diferentes, e a tela precisa dos dois. */
 export function estadoServico() {
   if (ehWindows) {
-    const r = quiet('schtasks', ['/query', '/tn', caminhoServico()])
-    if (!r.ok) return { instalado: false, rodando: null, detalhe: 'a tarefa não existe' }
-    const texto = String(r.out || '')
-    return { instalado: true, rodando: /Running|Em execu/i.test(texto), detalhe: texto.trim().split(/\r?\n/).pop() || '' }
+    /* CC-456, 10/09: mesma correção da gêmea assíncrona, espelhada aqui depois
+       do gate acusar as duas discordando na mesma máquina (`estadoServico`
+       ficou perguntando só pela tarefa de reporte, que não existe neste PC,
+       enquanto `estadoServicoAsync` já perguntava pelas duas). Ver o
+       comentário completo em `estadoServicoAsync`. */
+    const tarefas = [
+      { nome: NOME_TAREFA, rotulo: 'AgentCockpit (painel e bandeja)' },
+      { nome: caminhoServico(), rotulo: 'reporte' },
+    ]
+    for (const t of tarefas) {
+      const r = quiet('schtasks', ['/query', '/tn', t.nome])
+      if (!r.ok) continue
+      const texto = String(r.out || '')
+      return {
+        instalado: true,
+        rodando: /Running|Em execu/i.test(texto),
+        detalhe: `${t.rotulo}: ${texto.trim().split(/\r?\n/).pop() || ''}`.slice(0, 200),
+      }
+    }
+    return { instalado: false, rodando: null, detalhe: 'nenhuma das tarefas existe' }
   }
   if (ehMac) return { instalado: false, rodando: null, detalhe: 'macOS ainda não tem este caminho' }
   return lerEstadoLinux(quiet('systemctl', ['--user', 'is-active', `${ID_SERVICO}.service`]))
@@ -954,10 +970,42 @@ function lerEstadoLinux(r) {
  */
 export async function estadoServicoAsync() {
   if (ehWindows) {
-    const r = await quietAsync('schtasks', ['/query', '/tn', caminhoServico()])
-    if (!r.ok) return { instalado: false, rodando: null, detalhe: 'a tarefa não existe' }
-    const texto = String(r.out || '')
-    return { instalado: true, rodando: /Running|Em execu/i.test(texto), detalhe: texto.trim().split(/\r?\n/).pop() || '' }
+    /* CC-456, 10/09: são DUAS tarefas agendadas neste código, e olhar só uma
+     * responde errado.
+     *
+     * `caminhoServico()` é `\ControlCenter\control-center-reporte`, criada por
+     * `servicoWindows()` para rodar `cc reportar`. `NOME_TAREFA` é
+     * `AgentCockpit`, criada em 26/08 para rodar `arrancar.ps1`, que sobe o
+     * painel e a bandeja — e é ESSA que existe na máquina dele, confirmada por
+     * ele na tela naquele dia.
+     *
+     * A primeira versão disto perguntava só pela de reporte. Medido no pacote
+     * real do PC assim que ele publicou: `instalado: false`, "a tarefa não
+     * existe". **Resposta errada sobre pergunta certa** — o serviço dele está
+     * instalado, com outro nome.
+     *
+     * Pior que errar: eu tinha escrito no CC-456 a hipótese de que o
+     * empurrador velho era essa tarefa de reporte, e teria seguido investigando
+     * uma peça que nunca existiu.
+     *
+     * Pergunta as duas, e diz QUAL respondeu. Nome de tarefa envelhece, e a
+     * lição é a de sempre: **campo que responde outra pergunta é indistinguível
+     * de resposta verdadeira.** */
+    const tarefas = [
+      { nome: NOME_TAREFA, rotulo: 'AgentCockpit (painel e bandeja)' },
+      { nome: caminhoServico(), rotulo: 'reporte' },
+    ]
+    for (const t of tarefas) {
+      const r = await quietAsync('schtasks', ['/query', '/tn', t.nome])
+      if (!r.ok) continue
+      const texto = String(r.out || '')
+      return {
+        instalado: true,
+        rodando: /Running|Em execu/i.test(texto),
+        detalhe: `${t.rotulo}: ${texto.trim().split(/\r?\n/).pop() || ''}`.slice(0, 200),
+      }
+    }
+    return { instalado: false, rodando: null, detalhe: 'nenhuma das duas tarefas existe (AgentCockpit, reporte)' }
   }
   if (ehMac) return { instalado: false, rodando: null, detalhe: 'macOS ainda não tem este caminho' }
   return lerEstadoLinux(await quietAsync('systemctl', ['--user', 'is-active', `${ID_SERVICO}.service`]))
