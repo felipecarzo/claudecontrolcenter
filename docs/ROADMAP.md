@@ -141,7 +141,7 @@ isso (declarar concluído é dele) precisa entrar na PRIMEIRA etapa, não na
 ---
 
 
-### CC-459 🔴 10/09: o arranque relança a bandeja para sempre, e sair com sucesso é lido como queda
+### CC-459 ✅ 10/09: o arranque relança a bandeja para sempre, e sair com sucesso é lido como queda
 
 **Ele viu antes de qualquer medição:** *"tem uns powershell piscando na tela do
 pc"*, depois *"continua criando powershell, preciso resolver isso, ta me
@@ -208,12 +208,34 @@ segundo defeito acima.
 
 #### Achado de tabela, do mesmo dia
 
+Virou item próprio, como o texto original já pedia: **CC-460**, logo abaixo.
+
+### CC-460 🔴 10/09: a barra de rodapé pisca janela preta no Windows, 20 vezes em 45s
+
+Achado dentro do CC-459 e separado dele em 10/09, porque o próprio registro
+dizia *"vale item próprio"* e ficar dentro de um item fechado é sumir.
+
+**Não é a causa do piscar que ELE reclamou** (*"tem uns powershell piscando na
+tela do pc"*) — aquela era a bandeja, e está consertada. É a mesma família, e
+sobrevive ao conserto: mesmo com a bandeja quieta, isto continua abrindo janela.
+
 A barra de rodapé (`statusLine` no `settings.json`) chama
 `bash ~/.claude/statusline.sh` pelo `--wrap` do `cc.mjs`. No Windows isso abre
-`cmd` + `bash` + `conhost` a cada redesenho: 20 disparos em 45 segundos, somando
-as sessões abertas. `cc.mjs:179` faz esse `spawnSync` **sem** `windowsHide:
-true`. Não é a causa do piscar que ele reclamou (essa era a bandeja), mas é a
-mesma família e vale item próprio.
+`cmd` + `bash` + `conhost` a cada redesenho: **20 disparos em 45 segundos**,
+somando as sessões abertas.
+
+**A causa é uma linha:** `cc.mjs:179` faz o `spawnSync` **sem**
+`windowsHide: true`. Todo o resto do projeto passa essa opção; este ponto
+escapou.
+
+⚠️ **Medir antes de dar por consertado.** `windowsHide` esconde a janela do
+processo que o Node sobe, e aqui são três em cadeia (`cmd` chama `bash`, que
+chama o script). Esconder o primeiro pode não esconder os netos, e o teste é o
+mesmo do CC-459: contar janelas nascendo por 30 segundos, com a barra
+redesenhando.
+
+**Só aparece no PC dele.** Esta VPS não tem `conhost` nem `cmd`, então o gate
+nunca vai pegar: a prova é na máquina dele, como foi a do CC-459.
 
 ### CC-458 🔴 10/09: minhas respostas continuam longas demais, e o caveman não resolve
 
@@ -428,6 +450,53 @@ A condição de aceite não é "liberou RAM". É:
   devolver a memória?") e espera o clique.
 
 ### CC-456 🔴 10/09: dois empurradores no PC, e eu fechei o item medindo o lugar errado
+
+#### 10/09, noite: AINDA SÃO DOIS, e eu tinha dito que acabou
+
+A lista de empurradores começou a chegar, e ela contradiz o que ficou
+registrado como resolvido:
+
+```
+painel:24812   painel:92072
+```
+
+Três leituras com 15 segundos entre elas, sempre os mesmos dois. **Os dois são
+`painel`**, nenhum é `reporte`.
+
+⚠️ **O erro foi meu, e é o terceiro do mesmo formato no mesmo dia.** Eu tinha
+medido o campo `contrato` cinco vezes, visto ele ESTÁVEL em `1`, e anunciado a
+ele que o problema tinha acabado. **Alternância estável não prova um empurrador
+só: prova versão igual.** Os dois passaram a rodar o mesmo código depois da
+publicação do PC, e a alternância sumiu sem o segundo processo sumir.
+
+Os três erros de hoje, todos a mesma coisa com nomes diferentes:
+
+| o que perguntei | o que medi | o que concluí |
+|---|---|---|
+| quantos empurram? | portas em escuta | "um só" (o reporte não abre porta) |
+| o serviço está instalado? | uma das duas tarefas agendadas | "não" (era a outra) |
+| ainda são dois? | o contrato alternando | "acabou" (só parou de alternar) |
+
+**Campo que responde outra pergunta é indistinguível de resposta verdadeira**, e
+a defesa não é lembrar disso: é construir a medida que responde a pergunta
+LITERAL. Foi o que a lista de empurradores fez, e ela me corrigiu vinte minutos
+depois de existir.
+
+**Por que a lista só apareceu agora:** o painel DESTA VPS estava servindo código
+de 00h46, anterior ao commit que a criou. Religado por `POST /api/shutdown`,
+com o número do processo mudando como prova. É a armadilha já escrita
+("o servidor não recarrega módulo") mordendo de novo, e ela custou uma
+conclusão errada dita a ele.
+
+**Suspeita não confirmada, passada ao PC por recado:** o próprio CC-459 registra
+que `cc daemon restart` recriava o lançador antigo quando ele não existia, e que
+isso foi corrigido depois. Se o `daemon restart` de publicação rodou ANTES desse
+conserto, ele pode ter subido o segundo painel naquele instante. Os dois pids
+acima respondem, pelo processo pai.
+
+⚠️ **Cuidado herdado do PC para essa investigação:** `CommandLine` vem VAZIO
+naquela máquina, inclusive para `powershell.exe`. Filtro por texto de linha de
+comando não acha nada. Vai pelo pid e pelo pai.
 
 **Correção de um item que EU fechei hoje.** Em 10/09 dei o CC-451 (dois painéis
 no PC) como resolvido, com esta medida: um único Node em escuta na faixa
