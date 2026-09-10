@@ -176,7 +176,21 @@ switch (cmd) {
       const { spawnSync } = await import('node:child_process')
       // 15s: a statusline embrulhada pode chamar ferramenta externa lenta (a
       // do Felipe cai num `npx ccusage` quando o binário não está instalado).
-      const r = spawnSync(embrulhado, { input: entrada, shell: true, encoding: 'utf8', timeout: 15000 })
+      //
+      /* CC-460: `windowsHide` faltava AQUI, e só aqui em todo o projeto.
+         A barra de rodapé redesenha o tempo todo, e cada redesenho subia
+         `cmd` + `bash` + `conhost` no Windows: 20 disparos em 45 segundos,
+         somando as sessões abertas dele. Cada um pisca uma janela preta.
+         ⚠️ Não é a causa do piscar que ELE reclamou (aquela era a bandeja
+         relançando, e já está consertada). É a mesma família, e sobrevive
+         àquele conserto: some a bandeja, isto continua.
+         ⚠️ E não está provado: esconde a janela do processo que o Node sobe,
+         e aqui são três em cadeia. Esconder o primeiro pode não esconder os
+         netos, e esta VPS não tem `conhost` para medir. A prova é na máquina
+         dele, contando janelas nascendo por 30s com a barra redesenhando. */
+      const r = spawnSync(embrulhado, {
+        input: entrada, shell: true, encoding: 'utf8', timeout: 15000, windowsHide: true,
+      })
       saida = r.stdout || ''
     } catch { /* fica com a linha mínima abaixo */ }
 

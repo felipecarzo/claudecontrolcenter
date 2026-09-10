@@ -237,6 +237,39 @@ redesenhando.
 **Só aparece no PC dele.** Esta VPS não tem `conhost` nem `cmd`, então o gate
 nunca vai pegar: a prova é na máquina dele, como foi a do CC-459.
 
+#### Aplicado em 10/09, e NÃO provado
+
+`windowsHide: true` entrou no `spawnSync` de `cc.mjs:191`. Gate verde, mas isso
+não prova nada aqui: a medida é contar janelas nascendo no Windows.
+
+⚠️ **Falta a prova na máquina dele**, e ela é a mesma do CC-459: contar
+`conhost.exe`/`cmd.exe` nascendo por 30 segundos com a barra redesenhando, antes
+e depois. Sem isso, isto é conserto plausível, não conserto medido.
+
+#### Sete irmãos, achados na mesma varredura
+
+Procurando quem mais sobe processo sem esconder janela, fora do
+`src/platform.mjs` (que já passa a opção em todo lugar):
+
+| arquivo | o que roda | com que frequência |
+|---|---|---|
+| `src/git.mjs:41` | `git` | a conferir, pode estar no caminho quente |
+| `src/gateTurno.mjs:80` | `git` | a cada turno |
+| `src/caixaGit.mjs:46,203` | `git`, `npm test` | ao fechar sessão |
+| `src/bancadaCatalogo.mjs:126,131` | `git` | sob clique |
+| `src/hooksProva.mjs:61` | `bash` | sob clique |
+| `src/opencode.mjs:142` | `opencode` | sob clique |
+
+**Não mexi em nenhum**, e o motivo não é cautela vaga: `windowsHide` é seguro e
+barato, mas quatro desses arquivos são de outras rotas, e o que decide a
+prioridade é a FREQUÊNCIA, que eu não medi. O da barra de rodapé disparava 20
+vezes em 45 segundos; um que roda ao fechar sessão pisca uma vez por dia e não
+justifica pisar em arquivo alheio.
+
+**A medida que falta, e ela é barata:** contar quantas vezes cada um é chamado
+numa hora normal de trabalho no PC. Quem estiver em timer entra junto; o resto
+é ruído.
+
 ### CC-458 ✅ 10/09: minhas respostas continuam longas demais, e o caveman não resolve
 
 Palavras dele, no fim de 10/09:
