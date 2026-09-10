@@ -587,6 +587,49 @@ seguinte, deixando-o órfão. Quando publiquei o conserto e rodei
 padrão (8099) e nunca alcançou o órfão da 8100. Os dois ficaram empurrando
 em paralelo até a checagem de portas achar os dois.
 
+#### ✅ Um TERCEIRO empurrador, achado pela VPS depois disto — e ele era invisível pro campo que devia mostrá-lo
+
+A VPS mediu de novo e achou os dois de novo, mas o segundo não era mais o pid
+`24812`: era um processo diferente, com `contrato=0` e sem se identificar
+(sem `origem`), rodando código **anterior a 30/08** — mais velho que a cópia
+instalada de hoje.
+
+**Defeito dela, achado no caminho, e explica por que ninguém tinha visto
+isto antes:** a lista `empurradores` só era montada quando o pacote trazia
+`origem`. O empurrador velho não manda esse campo, então a entrada dele nunca
+entrava na lista — e como o campo não tem validade persistida, ele **sumia a
+cada envio do processo velho**, alternando entre "aparece um" e "some". A
+peça construída para achar múltiplos empurradores era cega justamente para o
+que não se identifica. Corrigido do lado dela: todo envio entra na lista,
+inclusive o que não se identifica (`{pid: null, tipo: 'antigo'}`).
+
+**A busca no PC, sem porta e sem `CommandLine` (as duas armadilhas do dia
+juntas):** nenhum processo na faixa 8099-8108 sobrava, e nenhum dos onze
+`node.exe` vivos tinha caminho visível nos suspeitos. O que sobrou depois de
+eliminar os explicados (Adobe, servidores de desenvolvimento do PC) foi um
+`node.exe` (pid `4100`) nascido no exato minuto do boot (12:15:11), filho de
+`cmd.exe`, neto do `svchost.exe` que hospeda o serviço **Schedule** — veio de
+uma Tarefa Agendada de verdade, mas nenhuma tarefa hoje tem essa ação
+registrada. Conclusão: sobra de uma tarefa **antiga**, do formato de reporte
+antes do CC-351 (`cmd /c set CC_HOME=... && node cc.mjs reportar --cada N`),
+apagada depois de já ter lançado o processo — o processo nunca morre só
+porque a tarefa que o criou foi removida.
+
+**Tinha token de administrador.** `Stop-Process` recusou com `Acesso negado`
+mesmo com `-Force`; matado só depois de rodar como administrador.
+
+**Prova final:** foto de todo `node.exe` vivo na máquina, com pai de cada um.
+Sobra só um pertencente ao cockpit (`92072`, filho da Tarefa Agendada
+`AgentCockpit`); os outros dez são projetos e programas do Felipe, sem
+relação com isto.
+
+⚠️ **Terceira vez no mesmo item que "confirmei e estava incompleto".** A
+régua que teria pego isso mais cedo: quando a contagem de processo e a
+contagem que a OUTRA MÁQUINA vê discordam, a máquina que recebe tem razão até
+prova em contrário — ela está medindo o efeito real (quantos pacotes
+chegam), enquanto medir processo local depende de nunca perder nenhum na
+varredura.
+
 **Correção de um item que EU fechei hoje.** Em 10/09 dei o CC-451 (dois painéis
 no PC) como resolvido, com esta medida: um único Node em escuta na faixa
 8099-8108, contra dois em 09/09. A medida estava certa e a **conclusão estava
