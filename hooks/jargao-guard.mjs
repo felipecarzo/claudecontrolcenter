@@ -97,6 +97,47 @@ for (const { re, o } of PADROES) {
 const unicos = [...new Map(achados.map((a) => [a.termo.toLowerCase(), a])).values()]
   .filter((a) => !new RegExp(`\\([^)]*${a.termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(prosa))
 
+/* CC-457, 10/09: a palavra que PARECE português e só tem sentido aqui.
+ *
+ * Queixa dele: *"não lembro o que é empurrador"*. A palavra tinha aparecido
+ * duas vezes e eu nunca tinha dito o que era.
+ *
+ * Os padrões acima não pegavam, e não é falha deles: eles procuram nome de
+ * PEÇA (arquivo, hook, número de tarefa). `empurrador` é substantivo comum, e
+ * nenhuma regra de texto o separa de prosa normal.
+ *
+ * O que separa é o HISTÓRICO. Este bloco é o primeiro deste projeto a ler a
+ * CONVERSA, e não só a resposta — que é exatamente o buraco que a queixa dele
+ * revelou: cada guarda olhava uma resposta isolada, e ninguém olhava o acúmulo.
+ *
+ * ⚠️ Cobra na PRIMEIRA vez e uma vez só. Explicada, a palavra fica livre pelo
+ * resto da conversa: repetir a explicação seria o outro extremo do mesmo
+ * defeito, e ele nomeou esse também (*"lero lero"*). */
+const anterior = typeof E.jaDitoNaConversa === 'function' ? E.jaDitoNaConversa(arquivo) : ''
+const daCasa = (E.PALAVRAS_DA_CASA || [])
+  .filter((p) => new RegExp(`\\b${p}`, 'i').test(prosa))
+  .filter((p) => !E.foiExplicado(p, prosa))
+  .filter((p) => !E.foiExplicado(p, anterior))
+
+if (daCasa.length) {
+  console.error(
+    `${daCasa.length} PALAVRA(S) DA CASA SEM EXPLICAÇÃO, E ELE NUNCA VIU O QUE SIGNIFICAM.\n\n`
+    + daCasa.map((p) => `  · ${p}`).join('\n')
+    + '\n\nElas parecem português comum, e só têm sentido dentro deste projeto.\n'
+    + 'Conferido na conversa inteira, não só nesta resposta: nenhuma foi\n'
+    + 'explicada antes.\n\n'
+    + 'Ele em 10/09, sobre uma delas: "eu já esqueci o que estávamos fazendo,\n'
+    + 'não lembro o que é empurrador".\n\n'
+    + 'Diga o que a coisa é, na primeira vez que ela aparecer:\n\n'
+    + '  em vez de  "o empurrador do PC parou"\n'
+    + '  escreva    "o programa que manda os dados do PC pra VPS parou"\n\n'
+    + 'Uma vez só. Explicada, a palavra fica livre pelo resto da conversa.\n'
+    + 'Repetir a explicação é o mesmo defeito pelo outro lado.\n\n'
+    + 'Esta é a única volta: a próxima passa.',
+  )
+  process.exit(2)
+}
+
 if (unicos.length <= LIMITE) sair()
 
 console.error(

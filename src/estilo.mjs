@@ -277,9 +277,28 @@ export function medir(texto) {
   /* CC-96: a resposta longa separou raciocínio de conclusão?
      `precisava` é o que torna a medida honesta — resposta curta sem marcador
      não é falha, e contá-la como tal faria o número dizer que eu piorei num dia
-     em que só respondi perguntas rápidas. */
+     em que só respondi perguntas rápidas.
+
+     CC-457, 10/09: passou a contar LINHAS, e antes contava blocos.
+
+     O limite era `paragrafos.length > 3`, escrito quando "muitos parágrafos"
+     era um bom palpite para "resposta longa". Deixou de ser no dia em que ele
+     pediu blocos curtos e rotulados: *"descrição dos termos e solução, nessa
+     divisão"*.
+
+     Medido na primeira resposta em que tentei o formato dele: 9 linhas em cinco
+     blocos curtos (etiqueta, problema, termos, conflito, solução), e o guarda
+     cobrou. A mesma coisa em prosa corrida, com 20 linhas e dois parágrafos,
+     passava. **Quem escrevia curto e separado era punido; quem escrevia longo e
+     grudado passava** — o contrário do que ele quer.
+
+     Doze, e não cinco: o formato que ele escolheu tem quatro blocos separados
+     por linha em branco, o que gasta sete linhas antes de qualquer conteúdo.
+     Cobrar a partir de cinco pediria o separador em toda resposta que use o
+     formato, e seria o mesmo defeito pelo outro lado. */
   const marcador = /^\s*-{4,}\s*\/\/\s*resumo\s*\/\/\s*-{4,}\s*$/im.test(semCodigo)
-  const precisava = paragrafos.length > 3
+  const linhasDeProsa = semCodigo.split('\n').filter((l) => l.trim()).length
+  const precisava = linhasDeProsa > 12
 
   return {
     linhas: limpo.split('\n').length,
@@ -358,6 +377,96 @@ export function respostaDoTurno(arquivo, limite = 400 * 1024) {
     }
   }
   return blocos.length ? blocos.join('\n\n') : null
+}
+
+/**
+ * CC-457: tudo o que eu já disse nesta conversa, ANTES do turno atual.
+ *
+ * ## Por que existe
+ *
+ * Queixa dele em 10/09: *"não lembro o que é empurrador"*. A palavra tinha
+ * aparecido duas vezes, e eu nunca tinha dito o que era.
+ *
+ * O guarda de jargão que já existia não pegava, e não é defeito dele: ele
+ * procura NOME DE PEÇA (arquivo, hook, número de tarefa). `empurrador` é
+ * palavra em português comum que só tem sentido especial aqui — nenhum padrão
+ * de texto separa isso de prosa normal.
+ *
+ * O que separa é o HISTÓRICO: usei o termo antes e expliquei? Para responder
+ * isso é preciso ler o que já foi dito, e não só a resposta de agora. É a peça
+ * que faltava, e o motivo é o mesmo da queixa: **cada guarda olhava uma
+ * resposta isolada, e ninguém olhava a conversa.**
+ *
+ * ## O teto de 400 KB
+ *
+ * Mesma razão do `respostaDoTurno`: transcrito passa de 25 MB, e ler inteiro a
+ * cada resposta travaria o turno. 400 KB cobrem dezenas de trocas, que é a
+ * janela em que ele lembra ou não de uma palavra. Conversa mais antiga que
+ * isso, ele já esqueceu de qualquer jeito.
+ */
+export function jaDitoNaConversa(arquivo, limite = 400 * 1024) {
+  let texto = ''
+  try {
+    const { size } = fs.statSync(arquivo)
+    const tamanho = Math.min(size, limite)
+    const fd = fs.openSync(arquivo, 'r')
+    const buf = Buffer.alloc(tamanho)
+    fs.readSync(fd, buf, 0, tamanho, size - tamanho)
+    fs.closeSync(fd)
+    texto = buf.toString('utf8')
+  } catch { return '' }
+
+  const linhas = texto.split('\n')
+  /* Até onde vai o "antes": o turno atual começa na última fala de uma PESSOA,
+     e o que veio depois é a resposta que está sendo conferida agora. Incluí-la
+     faria o termo contar como "já explicado" por ele mesmo. */
+  let fim = linhas.length
+  for (let i = linhas.length - 1; i >= 0; i -= 1) {
+    let j = null
+    try { j = JSON.parse(linhas[i]) } catch { continue }
+    if (j?.type !== 'user' || j.isMeta || j.toolUseResult) continue
+    fim = i
+    break
+  }
+
+  const blocos = []
+  for (let i = 0; i < fim; i += 1) {
+    let j = null
+    try { j = JSON.parse(linhas[i]) } catch { continue }
+    if (j?.type !== 'assistant') continue
+    for (const b of j.message?.content || []) {
+      if (b?.type === 'text' && String(b.text).trim()) blocos.push(b.text)
+    }
+  }
+  return blocos.join('\n\n')
+}
+
+/**
+ * CC-457: as palavras que PARECEM português comum e só têm sentido aqui.
+ *
+ * Lista curta e escrita à mão de propósito, ao contrário dos padrões do guarda
+ * de jargão: não há regra de texto que separe `empurrador` de qualquer outro
+ * substantivo. Só quem conhece o projeto sabe que ele carrega significado.
+ *
+ * Entra aqui a palavra que, dita a alguém de fora, faria a pessoa perguntar
+ * "o quê?". Sai daqui a palavra que ele já usa sozinho (`commit`, `deploy`,
+ * `branch`): essas são vocabulário dele, não meu.
+ */
+export const PALAVRAS_DA_CASA = [
+  'empurrador', 'empurrão', 'pacote', 'rota', 'frente', 'regime',
+  'guarda', 'trava', 'retrato', 'coletor', 'balde', 'cartão',
+]
+
+/** Um termo foi explicado neste texto? Explicar é dizer o que a coisa É. */
+export function foiExplicado(termo, texto) {
+  const t = termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  /* Duas formas contam, e a segunda é a que as instruções dele pedem: o efeito
+     primeiro e o nome entre parênteses depois ("o programa que manda os dados
+     (empurrador)"). A primeira versão disto só aceitava o nome ANTES do
+     parêntese, e por isso reprovava justamente o formato preferido. */
+  const explicaDepois = `${t}\\s*(?:=|:|,\\s*(?:que|o)\\s)|${t}\\b[^.\\n]{0,40}\\b(?:é|e|quer dizer|significa|chamo de)\\b`
+  const nomeEntreParenteses = `\\([^)]*${t}`
+  return new RegExp(`${explicaDepois}|${nomeEntreParenteses}`, 'i').test(texto)
 }
 
 export function ultimaResposta(arquivo, limite = 256 * 1024) {

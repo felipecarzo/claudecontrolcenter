@@ -278,6 +278,16 @@ export function validarPacote(bruto) {
           raiz: bruto.servico.raiz ? String(bruto.servico.raiz).slice(0, 260) : null,
         }
         : null,
+      /* CC-456: rótulo de diagnóstico, e o remetente pode mentir — então o
+         `tipo` é recortado contra lista FECHADA, como toda ação da fila. Nome
+         desconhecido vira `avulso` em vez de entrar cru: é texto que vai parar
+         na tela, e a tela não pode virar eco do que a rede mandou. */
+      origem: bruto.origem && typeof bruto.origem === 'object' && !Array.isArray(bruto.origem)
+        ? {
+          pid: Number(bruto.origem.pid) || null,
+          tipo: ['painel', 'reporte', 'avulso'].includes(bruto.origem.tipo) ? bruto.origem.tipo : 'avulso',
+        }
+        : null,
       em: Number(bruto.em) || Date.now(),
       recebidoEm: Date.now(),
     },
@@ -388,6 +398,31 @@ export function gravarPacote(pacote) {
     final.idades = Object.fromEntries(
       CAMPOS_QUE_PERSISTEM.filter((c) => final[c] != null).map((c) => [c, final.em ?? agora]),
     )
+  }
+
+  /* CC-456: a LISTA de quem empurrou, e é aqui que ela precisa morar.
+   *
+   * O pacote é sobrescrito a cada 30 segundos, então guardar só a origem do
+   * último envio não revela nada: com dois empurradores alternando, cada
+   * leitura mostra um, e os dois parecem o mesmo processo trocando de humor.
+   * Foi exatamente o que fez a alternância do contrato precisar de SEIS
+   * amostras seguidas para aparecer, em 10/09.
+   *
+   * Guardando os vistos recentemente, a mesma pergunta vira uma leitura só.
+   *
+   * ⚠️ **A janela é curta (5 min) de propósito.** Empurrador que morreu tem de
+   * sumir da lista sozinho, senão o painel acusaria dois para sempre depois de
+   * um único dia com dois — e alarme que não some é alarme que ninguém lê. É a
+   * mesma razão da validade curta de `travas` e `framework`. */
+  const JANELA_EMPURRADORES_MS = 5 * 60 * 1000
+  if (final.origem) {
+    const vistos = Array.isArray(anterior?.empurradores) ? anterior.empurradores : []
+    const chave = (o) => `${o.tipo}:${o.pid}`
+    const atual = { ...final.origem, em: agora }
+    final.empurradores = [
+      ...vistos.filter((v) => agora - (v.em || 0) < JANELA_EMPURRADORES_MS && chave(v) !== chave(atual)),
+      atual,
+    ].slice(-10)
   }
 
   /* CC-204: o arquivo tem teto próprio, e ele é medido no que vai para o
@@ -1133,6 +1168,44 @@ export function resumirBacklogs(mapas = []) {
  * campo novo entra enxuto, e o que não couber é cortado por quem monta, nunca
  * silenciosamente aqui.
  */
+/**
+ * CC-456: QUEM empurrou este pacote.
+ *
+ * ## Por que existe
+ *
+ * Uma máquina pode ter mais de um empurrador, e isso não é hipótese: é a causa
+ * do CC-342 (o retrato piscando na tela dele) e do CC-451. O problema é que
+ * **até hoje não havia como perguntar**, só como deduzir — e a dedução exigia
+ * seis amostras seguidas vendo o número do contrato alternar entre `0` e `1`.
+ *
+ * Pior: em 10/09 eu fechei o CC-451 como resolvido medindo as PORTAS em escuta
+ * no PC, achei uma só, e concluí que havia um empurrador só. **A medida estava
+ * certa e a conclusão errada**: o segundo empurrador é o serviço instalado, que
+ * roda `cc reportar` e, nas palavras do próprio código, "empurra e não abre
+ * tela". Contar tela nunca ia achá-lo.
+ *
+ * ## Como sabe qual é qual
+ *
+ * Os dois caminhos chamam a MESMA `empurrar()` em `web.mjs`, então não dá para
+ * distinguir por função. O que os separa é a linha de comando que subiu o
+ * processo, e é ela que se lê aqui. Fica dentro deste arquivo de propósito:
+ * assim `montarPacote` se identifica sozinho, e nenhum chamador precisa mudar
+ * (o de `web.mjs`, o de `cc.mjs` e os dos testes seguem iguais).
+ *
+ * ## O que NÃO fazer com isto
+ *
+ * Não é identidade de máquina nem credencial: é rótulo de diagnóstico, e o
+ * remetente pode mentir. Serve para a tela dizer "dois empurradores aqui", e
+ * nunca para decidir se um pacote vale.
+ */
+export function origemDoEmpurrao() {
+  const linha = (process.argv || []).join(' ')
+  const tipo = /\breportar\b/.test(linha) ? 'reporte'
+    : /--web-only|\bweb\b|--port\b/.test(linha) ? 'painel'
+      : 'avulso'
+  return { pid: process.pid || null, tipo }
+}
+
 export function montarPacote({
   maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [], backlogs = null,
   meu = null, agentes = null, limites = null, travas = null, framework = null, servico = null,
@@ -1166,6 +1239,11 @@ export function montarPacote({
        cada empurrão, `null` quando a máquina não sabe dizer (nunca `false` —
        "não sei" e "não está instalado" levam a conclusões opostas). */
     servico,
+    /* CC-456: quem empurrou. Calculado aqui, não recebido por parâmetro, para
+       nenhum chamador precisar mudar — e porque quem sabe qual processo é este
+       é este processo. FORA de `CAMPOS_QUE_PERSISTEM` de propósito: herdar
+       origem apagaria justamente a alternância que o campo existe para revelar. */
+    origem: origemDoEmpurrao(),
     em: Date.now(),
   }
 }

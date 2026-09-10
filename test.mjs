@@ -5092,6 +5092,70 @@ if (process.platform !== 'win32') {
   console.log('  ok   CC-452: o estado do serviço viaja no pacote, recortado e com validade curta')
 }
 
+/* ── CC-456: dois empurradores viram LISTA, não seis amostras ────────────────
+   Em 10/09 eu fechei o CC-451 medindo as portas em escuta no PC: achei uma só
+   e concluí que havia um empurrador só. A medida estava certa e a conclusão
+   errada — o segundo é o serviço instalado, que roda `cc reportar` e "empurra
+   e não abre tela". Contar tela nunca ia achá-lo.
+
+   A alternância do número do contrato denunciava, mas exigia seis amostras
+   seguidas. Com a lista, a mesma pergunta é uma leitura. */
+{
+  const F = await import('./src/federacao.mjs')
+
+  /* O rótulo sai da linha de comando de quem roda, e é o único jeito: os dois
+     caminhos chamam a MESMA `empurrar()`, então não se distinguem por função. */
+  const o = F.origemDoEmpurrao()
+  assert.ok(['painel', 'reporte', 'avulso'].includes(o.tipo), 'o tipo vem da lista fechada')
+  assert.ok(o.pid > 0, 'o pid identifica o processo')
+
+  const base = { maquina: { id: 'cccc3333', nome: 'PC' } }
+  const val = (extra) => F.validarPacote({ ...base, ...extra }).pacote
+
+  assert.equal(val({}).origem, null, 'pacote de versão antiga não tem origem, e isso é null, não erro')
+  assert.deepEqual(
+    val({ origem: { pid: 42, tipo: 'reporte' } }).origem,
+    { pid: 42, tipo: 'reporte' },
+  )
+  /* Rótulo inventado pelo remetente não entra cru: vira `avulso`. É texto que
+     vai parar na tela, e a tela não pode virar eco do que a rede mandou. */
+  assert.equal(val({ origem: { pid: 1, tipo: 'painel<script>' } }).origem.tipo, 'avulso')
+  assert.equal(val({ origem: [1, 2] }).origem, null, 'array não é o formato de origem')
+
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc456-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F2 = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+    const maquina = { id: 'pc5', nome: 'PC5' }
+    const grava = (origem) => F2.gravarPacote({ maquina, jobs: [], origem, em: Date.now() })
+
+    /* DOIS empurradores alternando, que é o caso real do PC dele. */
+    grava({ pid: 100, tipo: 'painel' })
+    grava({ pid: 200, tipo: 'reporte' })
+    grava({ pid: 100, tipo: 'painel' })
+    const [p] = F2.lerPacotes()
+    assert.equal(p.empurradores.length, 2, 'dois processos distintos, mesmo alternando três envios')
+    assert.deepEqual(
+      p.empurradores.map((e) => e.tipo).sort(),
+      ['painel', 'reporte'],
+      'a lista nomeia os dois, e é isso que dispensa as seis amostras',
+    )
+
+    /* A prova ao contrário: um empurrador só não pode virar dois. */
+    const m2 = { id: 'pc6', nome: 'PC6' }
+    F2.gravarPacote({ maquina: m2, jobs: [], origem: { pid: 7, tipo: 'painel' }, em: Date.now() })
+    F2.gravarPacote({ maquina: m2, jobs: [], origem: { pid: 7, tipo: 'painel' }, em: Date.now() })
+    const p2 = F2.lerPacotes().find((x) => x.maquina.id === 'pc6')
+    assert.equal(p2.empurradores.length, 1, 'o mesmo processo empurrando duas vezes continua sendo um')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+  console.log('  ok   CC-456: dois empurradores viram lista, e um só não vira dois')
+}
+
 /* ── CC-452: a gêmea assíncrona responde o mesmo formato ─────────────────────
    `estadoServico()` usa `quiet` (síncrono); dentro do ciclo de 30s que
    alimenta o pacote, isso travaria o event loop — a mesma regra do sensor de
@@ -5922,12 +5986,58 @@ if (process.platform !== 'win32') {
      primeira coisa que acontece é ele desligar a trava. */
   const E = await import('./src/estilo.mjs')
   const meu = '---------------------------------- // resumo // ----------------------------------'
-  const longa = Array.from({ length: 6 }, (_, i) => `Parágrafo ${i + 1}, com texto de verdade.`).join('\n\n')
+  /* CC-457: "longa" passou a ser contada em LINHAS, e o teste tinha que mudar
+     junto — 6 parágrafos de uma linha cada não são uma resposta longa, e a
+     régua antiga dizia que sim. */
+  const longa = Array.from({ length: 15 }, (_, i) => `Linha ${i + 1}, com texto de verdade.`).join('\n')
   assert.equal(E.medir(`${longa}\n\n${meu}\n\nA conclusão.`).semMarcador, false,
     'o separador que eu escrevo tem que ser reconhecido pela medida')
   assert.equal(E.medir(longa).semMarcador, true,
     'e a resposta longa sem ele continua sendo acusada, senão a trava não serve')
   console.log('  ok   CC-428: o separador que eu escrevo é o que a medida procura')
+
+  /* CC-457: o formato que ELE escolheu em 10/09 não pode ser barrado pelo
+     guarda, e era exatamente o que acontecia. Ele conta linhas agora, então
+     quatro blocos curtos passam e prosa corrida longa continua sendo cobrada.
+     A prova ao contrário está logo abaixo, e é ela que impede alguém "consertar"
+     isto de volta afrouxando a trava para tudo. */
+  const formatoDele = [
+    '[tarefa: nome curto]', '',
+    'problema: o guarda cobra separador acima de tres blocos', '',
+    'termos: guarda = script que confere minha resposta antes de eu entregar', '',
+    'solucao: passa a contar linhas',
+  ].join('\n')
+  assert.equal(E.medir(formatoDele).precisavaMarcador, false,
+    'o formato problema/termos/solução tem 4 blocos e é CURTO: não pode pedir separador')
+  const prosaLonga = Array.from({ length: 20 }, (_, i) => `linha corrida ${i}`).join('\n')
+  assert.equal(E.medir(prosaLonga).precisavaMarcador, true,
+    'e prosa corrida longa continua cobrada, mesmo com poucos blocos — era ela que escapava antes')
+  console.log('  ok   CC-457: o formato dele passa, e a prosa longa continua cobrada')
+
+  /* CC-457: a palavra que PARECE português e só tem sentido aqui.
+     Queixa dele em 10/09: "não lembro o que é empurrador". A palavra tinha
+     aparecido duas vezes e eu nunca tinha dito o que era. Os padrões do guarda
+     de jargão não pegavam, e não é falha deles: procuram nome de PEÇA, e este
+     é substantivo comum. Só o HISTÓRICO separa. */
+  assert.ok(E.PALAVRAS_DA_CASA.includes('empurrador'),
+    'a palavra da queixa dele precisa estar na lista, senão o conserto não cobre o caso que o originou')
+  assert.equal(E.foiExplicado('empurrador', 'o empurrador do PC parou'), false,
+    'usar sem dizer o que é continua sendo cobrado')
+  assert.equal(E.foiExplicado('empurrador', 'o empurrador, que é o programa que manda os dados, parou'), true)
+  /* ⚠️ Este é o formato que as INSTRUÇÕES dele pedem (o efeito primeiro, o nome
+     entre parênteses depois), e a primeira versão da conta reprovava ele. */
+  assert.equal(E.foiExplicado('empurrador', 'o programa que manda os dados (empurrador) parou'), true,
+    'o formato preferido dele — efeito primeiro, nome entre parênteses — tem que passar')
+  assert.equal(E.foiExplicado('empurrador', 'empurrador = quem manda os dados'), true)
+
+  /* A prova ao contrário: explicada UMA vez, a palavra fica livre. Cobrar de
+     novo seria o mesmo defeito pelo outro lado, e ele nomeou esse também. */
+  const guardaJargao = fs.readFileSync('hooks/jargao-guard.mjs', 'utf8')
+  assert.match(guardaJargao, /jaDitoNaConversa/,
+    'o guarda tem que olhar a CONVERSA, não só a resposta: é o buraco que a queixa dele revelou')
+  assert.match(guardaJargao, /foiExplicado\(p, anterior\)/,
+    'e usar o histórico para não cobrar duas vezes a mesma palavra')
+  console.log('  ok   CC-457: palavra da casa cobrada na primeira vez, e livre depois de explicada')
 
   /* ⚠️ Resposta curta NÃO precisa de separador, e contar como falha faria o
      número dizer que eu piorei num dia em que só respondi perguntas rápidas. */
