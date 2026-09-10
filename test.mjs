@@ -5028,6 +5028,171 @@ if (process.platform !== 'win32') {
   console.log('  ok   CC-342: empurrador de versão antiga não apaga o retrato, e o herdado tem prazo curto')
 }
 
+/* ── CC-452: ninguém sabia dizer se o serviço estava instalado no PC ─────────
+   `estadoServico()` (src/platform.mjs) sabia responder desde sempre, e nunca
+   entrava no pacote que viaja entre as máquinas — a mesma peça construída e
+   inalcançável de sempre. Campo novo, mesmo formato de recorte e mesma
+   validade curta (2 minutos) que travas/framework já usam, pelo mesmo motivo:
+   uma máquina pode ter mais de um empurrador, e sem prazo curto um serviço
+   desinstalado continuaria "instalado" para sempre no pacote herdado. */
+{
+  const F = await import('./src/federacao.mjs')
+  const base = { maquina: { id: 'bbbb2222', nome: 'PC-SERVICO' } }
+  const val = (extra) => F.validarPacote({ ...base, ...extra }).pacote
+
+  const vazio = val({})
+  assert.equal(vazio.servico, null, 'sem servico no pacote bruto, o campo é null, não some')
+  assert.ok('servico' in vazio, 'o campo precisa EXISTIR no pacote gravado')
+
+  const cheio = val({ servico: { instalado: true, rodando: false, detalhe: 'inactive' } })
+  assert.deepEqual(cheio.servico, { instalado: true, rodando: false, detalhe: 'inactive', raiz: null },
+    'sem `raiz` no bruto o campo existe e vale null: é o CC-453, e ausente tem que ser distinguível')
+
+  assert.equal(val({ servico: 'instalado' }).servico, null, 'tipo errado vira null, nunca estoura')
+  assert.equal(val({ servico: [true] }).servico, null, 'array não é o formato de servico')
+  assert.equal(
+    val({ servico: { instalado: 'sim', rodando: 1, detalhe: 'x'.repeat(300) } }).servico.instalado,
+    null,
+    'instalado que não é booleano vira null, nunca false — "não sei" e "não está" são coisas diferentes',
+  )
+  assert.equal(val({ servico: { instalado: 'sim', rodando: 1, detalhe: 'x'.repeat(300) } }).servico.rodando, null)
+  assert.equal(
+    val({ servico: { instalado: true, rodando: true, detalhe: 'x'.repeat(300) } }).servico.detalhe.length,
+    200,
+    'detalhe tem teto, como todo texto que chega pela rede',
+  )
+
+  assert.equal(F.validadeDe('servico'), 2 * 60 * 1000, 'mesma validade curta de travas/framework, mesmo motivo')
+
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc452-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F2 = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+    const maquina = { id: 'pc3', nome: 'PC3' }
+    const servico = { instalado: true, rodando: true, detalhe: 'active' }
+
+    F2.gravarPacote({ maquina, jobs: [], servico, em: Date.now() })
+    /* Empurrador velho: manda tudo, menos o campo que ele não conhece. */
+    F2.gravarPacote({ maquina, jobs: [], em: Date.now() })
+    const [p] = F2.lerPacotes()
+    assert.deepEqual(p.servico, servico, 'pacote de versão antiga não pode apagar o campo')
+
+    /* Passado o prazo, o campo some — "não sei dizer" em vez de mentir. */
+    const velho = Date.now() - 3 * 60 * 1000
+    F2.gravarPacote({ maquina: { id: 'pc4', nome: 'PC4' }, jobs: [], servico, em: velho })
+    F2.gravarPacote({ maquina: { id: 'pc4', nome: 'PC4' }, jobs: [], em: Date.now() })
+    const p2 = F2.lerPacotes().find((x) => x.maquina.id === 'pc4')
+    assert.equal(p2.servico, undefined, 'servico velho demais é descartado, não herdado para sempre')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+  console.log('  ok   CC-452: o estado do serviço viaja no pacote, recortado e com validade curta')
+}
+
+/* ── CC-452: a gêmea assíncrona responde o mesmo formato ─────────────────────
+   `estadoServico()` usa `quiet` (síncrono); dentro do ciclo de 30s que
+   alimenta o pacote, isso travaria o event loop — a mesma regra do sensor de
+   hardware do CLAUDE.md ("onde a resposta alimenta a tela, use a versão que
+   não bloqueia"). Não dá para fixar o valor aqui (varia com a máquina que
+   roda o teste), só que as DUAS concordam no formato: três chaves, os dois
+   booleanos podem ser `null`, nunca outro tipo. */
+{
+  const sincrono = plat.estadoServico()
+  const assincrono = await plat.estadoServicoAsync()
+  for (const r of [sincrono, assincrono]) {
+    assert.ok('instalado' in r && 'rodando' in r && 'detalhe' in r, 'as três chaves têm que existir')
+    assert.ok(typeof r.instalado === 'boolean', 'instalado nunca é null: a própria pergunta sabe responder')
+    assert.ok(r.rodando === null || typeof r.rodando === 'boolean')
+  }
+  assert.equal(sincrono.rodando, assincrono.rodando, 'as duas medem a mesma máquina, no mesmo instante')
+  console.log('  ok   CC-452: estadoServico e estadoServicoAsync concordam no formato')
+}
+
+/* ── CC-452: "não consegui perguntar" não pode virar "não está rodando" ──────
+   Achado provando o campo novo de ponta a ponta NESTA VPS, não no teste: a
+   chamada volta com `Failed to connect to bus: No medium found` (não há
+   barramento de systemd de usuário numa sessão sem login), e a função
+   respondia `rodando: false` — afirmação categórica sobre algo que ela não
+   chegou a medir, viajando para a outra máquina como se fosse fato.
+
+   É o mesmo princípio que `travas`/`framework` seguem desde o CC-340, aqui
+   pela porta dos fundos: coagir "não sei" para "não está" é a mentira exata
+   que estes campos existem para acabar. */
+{
+  const { _internals } = plat
+  if (_internals?.lerEstadoLinux) {
+    const ler = _internals.lerEstadoLinux
+    assert.equal(ler({ ok: false, out: 'Failed to connect to bus: No medium found' }).rodando, null,
+      'falha ao FALAR com o systemd vira "não sei", nunca "não está rodando"')
+    assert.equal(ler({ ok: false, out: 'inactive' }).rodando, false,
+      'o systemd dizendo inactive é resposta legítima, e continua sendo false')
+    assert.equal(ler({ ok: true, out: 'active' }).rodando, true)
+    assert.equal(ler({ ok: false, out: 'failed' }).rodando, false)
+    assert.equal(ler({ ok: false, out: '' }).rodando, null, 'sem resposta nenhuma também é "não sei"')
+    console.log('  ok   CC-452: falha ao consultar o systemd vira "não sei", não "não está rodando"')
+  }
+}
+
+/* ── CC-453: o cartão de instalar o serviço sumia por nome de pasta velho ────
+   Existe um cartão pronto na tela ("INSTALAR O SERVIÇO EM <máquina>"), com o
+   comando montado e o botão de copiar. Ele só aparece quando a VPS descobre
+   onde o cockpit mora na outra máquina, e essa descoberta procurava o texto
+   `proj_controlcenter` no caminho de um agente qualquer — nome que a pasta
+   perdeu em 23/08, quando ele tirou o prefixo de tipo. Devolvia `null` sempre,
+   e o cartão sumia sem erro nenhum.
+
+   ⚠️ Trocar o texto por `cockpit` seria o conserto ERRADO, e a sessão dona do
+   arquivo avisou disso no recado: quebra de novo no próximo renome, e o PC já
+   tem DUAS pastas com "cockpit" no nome. A máquina passou a reportar. */
+{
+  const F = await import('./src/federacao.mjs')
+  const pacote = (extra) => ({
+    maquina: { id: 'pc9', nome: 'PC' }, jobs: [], idadeMs: 0, semContato: false, ...extra,
+  })
+  const local = { id: 'vps', nome: 'VPS' }
+  const daMaquina = (p) => F.maquinasConhecidas([p], local).find((m) => m.id === 'pc9')
+
+  /* O caminho que a máquina reporta vence, e é o único que não depende de
+     nome de pasta nem de haver agente rodando lá dentro. */
+  assert.equal(
+    daMaquina(pacote({ servico: { instalado: true, rodando: true, detalhe: 'x', raiz: 'D:\\Ti\\projetos\\PC_cockpit' } })).raizDoCockpit,
+    'D:\\Ti\\projetos\\PC_cockpit',
+    'quem sabe onde o cockpit está é o cockpit, não um palpite sobre o caminho de outro agente',
+  )
+
+  /* A pasta com o nome de HOJE, sem a máquina reportar: era isto que o regex
+     velho não achava, e é o defeito que ele viu na tela. */
+  assert.equal(
+    daMaquina(pacote({ jobs: [{ cwd: 'D:\\Ti\\projetos\\PC_cockpit' }] })).raizDoCockpit,
+    null,
+    'sem a máquina reportar, o nome novo não é adivinhado — e é por isso que ela precisa reportar',
+  )
+
+  /* Versão antiga do outro lado (não manda `servico`): o palpite velho segue
+     valendo, senão o conserto tiraria da tela quem já aparecia. */
+  assert.equal(
+    daMaquina(pacote({ jobs: [{ cwd: 'D:\\Ti\\projetos\\PESSOAL\\proj_controlcenter' }] })).raizDoCockpit,
+    'D:\\Ti\\projetos\\PESSOAL\\proj_controlcenter',
+    'máquina que ainda não reporta continua sendo achada pelo caminho antigo',
+  )
+
+  /* E o reportado vence o palpite quando os dois existem: a pasta pode ter
+     sido renomeada e o histórico de jobs ainda carregar o nome velho. */
+  assert.equal(
+    daMaquina(pacote({
+      jobs: [{ cwd: 'D:\\velho\\proj_controlcenter' }],
+      servico: { instalado: true, rodando: null, detalhe: 'x', raiz: 'D:\\novo\\PC_cockpit' },
+    })).raizDoCockpit,
+    'D:\\novo\\PC_cockpit',
+    'o que a máquina diz agora vence o que o histórico de caminhos sugere',
+  )
+
+  console.log('  ok   CC-453: a máquina diz onde o cockpit dela está, em vez de a VPS adivinhar por nome de pasta')
+}
+
 /* ── CC-344: escolher o modo na outra máquina precisa LIGAR ──────────────────
    Ele: *"mesmo ligando os modos não aparece mais aquelas travas"*. Medido no
    estado que o PC reportava: `proj_controlcenter` com modo `restritivo` e

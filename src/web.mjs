@@ -15,7 +15,7 @@ import { PROJETOS_DIR as PROJETOS_DIR_SESSOES, readSessoes, todosOsJobs } from '
 import { perdidasDeTodas as perdidasDeTodasAsSessoes } from './fila.mjs'
 // `casaClaude()` e não `os.homedir()`: é o único lugar que resolve a pasta
 // `.claude`, e é o que faz `CC_HOME` isolar o painel de teste do real.
-import { casaClaude, caminhoAutostart } from './platform.mjs'
+import { casaClaude, caminhoAutostart, estadoServicoAsync } from './platform.mjs'
 import { estadoGit } from './git.mjs'
 import { mapear as mapearAvenidas, resumo as resumoAvenidas } from './avenidas.mjs'
 import { mapear as mapearDependencias } from './dependencias.mjs'
@@ -591,6 +591,34 @@ export async function empurrar({ comTempo = null } = {}) {
     retrato = { travas: T.travasDaqui(), framework: T.frameworkDaqui(meus) }
   } catch { /* módulo ausente numa versão antiga: o campo simplesmente não viaja */ }
 
+  /* CC-452: o serviço de fundo desta máquina está instalado? está rodando?
+     `estadoServico()` sabia responder desde sempre e nunca entrava no pacote,
+     então daqui era impossível distinguir "o serviço está de pé e empurrando"
+     de "o serviço morreu e quem empurra é o painel aberto à mão" — as duas
+     coisas produzem exatamente o mesmo sinal. É o mesmo buraco que as travas
+     tiveram até 25/08, e que deixou uma pendência dez dias sem poder ser
+     confirmada nem fechada.
+     Barato como o retrato acima (um `schtasks`/`systemctl`), então cabe no
+     empurrão de 30s. A versão ASSÍNCRONA de propósito: a síncrona usa
+     `execFileSync` e travaria o event loop junto com o stream dos agentes.
+     Falha vira `null`, nunca `false`: "não sei dizer" e "não está instalado"
+     levam a conclusões opostas do outro lado. */
+  let servico = null
+  try {
+    /* CC-453: junto vai ONDE o cockpit mora nesta máquina, e é a peça que
+       fazia o cartão de instalar o serviço nunca aparecer.
+       A VPS descobria isso procurando o texto `proj_controlcenter` no caminho
+       de um agente qualquer — nome que ele aposentou em 23/08 ao tirar o
+       prefixo de tipo das pastas. A busca devolvia `null` sempre, e o cartão
+       sumia sem erro nenhum. Trocar o texto por `cockpit` seria pior: quebra
+       de novo no próximo renome, e casa com qualquer pasta que tenha a palavra
+       (o PC já tem duas).
+       `RAIZ_DO_PAINEL` sai do caminho DESTE arquivo, então é a única resposta
+       que não depende de nome de pasta, de haver agente rodando lá dentro, nem
+       de adivinhação. Quem sabe onde o cockpit está é o cockpit. */
+    servico = { ...(await estadoServicoAsync()), raiz: path.resolve(RAIZ_DO_PAINEL) }
+  } catch { /* versão antiga ou SO sem este caminho */ }
+
   /* CC-353: a varredura de portas, no ritmo dela. `null` quando não é a vez,
      e o campo herda o anterior em vez de zerar: é o mesmo desenho do tempo. */
   let servidores = null
@@ -609,7 +637,7 @@ export async function empurrar({ comTempo = null } = {}) {
   const pacote = montarPacote({
     maquina: s.maquina, jobs: meus, uso: s.uso, tempo, backlogs, servidores,
     meu: meuDaqui, agentes: agentesDaqui, limites: null,
-    travas: retrato.travas, framework: retrato.framework,
+    travas: retrato.travas, framework: retrato.framework, servico,
   })
   const r = await enviarPacote({ enviarPara, token, pacote })
   /* CC-208: o relógio das horas só anda quando o envio CHEGA.

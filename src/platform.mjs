@@ -913,10 +913,54 @@ export function estadoServico() {
     return { instalado: true, rodando: /Running|Em execu/i.test(texto), detalhe: texto.trim().split(/\r?\n/).pop() || '' }
   }
   if (ehMac) return { instalado: false, rodando: null, detalhe: 'macOS ainda não tem este caminho' }
-  const ativo = quiet('systemctl', ['--user', 'is-active', `${ID_SERVICO}.service`])
+  return lerEstadoLinux(quiet('systemctl', ['--user', 'is-active', `${ID_SERVICO}.service`]))
+}
+
+/**
+ * CC-452: "o systemd respondeu que não está ativo" é diferente de "não consegui
+ * nem perguntar", e as duas coisas caíam no mesmo `false`.
+ *
+ * Medido em 09/09 ao provar o campo novo de ponta a ponta nesta VPS: a chamada
+ * volta com `Failed to connect to bus: No medium found` (o barramento do
+ * systemd de usuário não existe em sessão sem login gráfico), e a função
+ * respondia `rodando: false` — afirmação categórica sobre algo que ela não
+ * chegou a medir. É a mesma mentira que `travas` e `framework` já não contam
+ * desde o CC-340, aqui pela porta dos fundos, e ela viajaria para a outra
+ * máquina como se fosse fato.
+ */
+function lerEstadoLinux(r) {
+  const estado = String(r.out || '').trim()
   const existe = fs.existsSync(caminhoServico())
-  const estado = String(ativo.out || '').trim()
-  return { instalado: existe, rodando: estado === 'active', detalhe: estado || 'sem resposta do systemd' }
+  /* `is-active` sai com código != 0 tanto para "inactive" (resposta legítima)
+     quanto para falha de verdade. O que separa os dois é o TEXTO: o systemd
+     responde uma palavra só (`inactive`, `failed`, `activating`); qualquer
+     outra coisa é erro dele, não estado do serviço. */
+  const respondeu = /^(active|inactive|failed|activating|deactivating|reloading|unknown)$/.test(estado)
+  return {
+    instalado: existe,
+    rodando: respondeu ? estado === 'active' : null,
+    detalhe: estado || 'sem resposta do systemd',
+  }
+}
+
+/**
+ * CC-452: a mesma pergunta, sem travar o event loop.
+ *
+ * `estadoServico()` usa `quiet` (`execFileSync`), e isto agora entra no ciclo
+ * de 30s que empurra o pacote pra federação — a mesma regra do sensor de
+ * hardware vale aqui: "onde a resposta alimenta a tela, use a versão que não
+ * bloqueia". `estadoServico()` continua existindo pro uso avulso (CLI, tela
+ * local), essa versão é só pra quem está dentro do ciclo que já é async.
+ */
+export async function estadoServicoAsync() {
+  if (ehWindows) {
+    const r = await quietAsync('schtasks', ['/query', '/tn', caminhoServico()])
+    if (!r.ok) return { instalado: false, rodando: null, detalhe: 'a tarefa não existe' }
+    const texto = String(r.out || '')
+    return { instalado: true, rodando: /Running|Em execu/i.test(texto), detalhe: texto.trim().split(/\r?\n/).pop() || '' }
+  }
+  if (ehMac) return { instalado: false, rodando: null, detalhe: 'macOS ainda não tem este caminho' }
+  return lerEstadoLinux(await quietAsync('systemctl', ['--user', 'is-active', `${ID_SERVICO}.service`]))
 }
 
 export function desinstalarAutostart() {
@@ -1012,3 +1056,8 @@ export function atalhosPossiveis() {
   if (!dir) return []
   return [`${APP}.lnk`, `${APP}.url`, `${APP}.command`, `${APP}.desktop`].map((n) => path.join(dir, n))
 }
+
+/* Mesma saída do `vps.mjs`: o que o teste precisa alcançar sem virar API
+   pública. `lerEstadoLinux` decide "não sei" contra "não está", e essa decisão
+   é justamente a que precisa de prova nos dois sentidos. */
+export const _internals = { lerEstadoLinux }

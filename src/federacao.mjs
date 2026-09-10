@@ -118,13 +118,30 @@ export function validarPacote(bruto) {
         : null,
       uso: bruto.uso && typeof bruto.uso === 'object' ? bruto.uso : null,
       tempo: bruto.tempo && typeof bruto.tempo === 'object' ? bruto.tempo : null,
-      // CC-48: 40 projetos é folgado e limita o estrago de um pacote malformado
-      rotas: lista(bruto.rotas, 40),
+      /* CC-48: 40 projetos é folgado e limita o estrago de um pacote malformado.
+         CC-449: `null` sobrevive à validação, e a razão está no bloco abaixo. */
+      rotas: bruto.rotas == null ? null : lista(bruto.rotas, 40),
       /* CC-165: o resumo dos backlogs. Mesmo teto das rotas, e cada item é
          recortado campo a campo em vez de aceito inteiro: um `titulos` com
          mil entradas de 10 KB passaria pelo limite do pacote e só apareceria
          como tela travada, que é o tipo de defeito que não se lê no código. */
-      backlogs: lista(bruto.backlogs, 40).map((b) => ({
+      /* CC-449: `null` e `[]` deixam de ser a mesma coisa aqui, e a diferença é
+         o que faz a herança funcionar.
+         `gravarPacote` preserva o campo que o pacote novo NÃO traz, testando
+         `== null`. Como este recorte convertia ausente em `[]`, o campo nunca
+         era ausente: um pacote em que a varredura do roadmap FALHOU na outra
+         ponta chegava com lista vazia, e vazio apagava o mapa inteiro que já
+         tinha chegado antes. Sem erro, sem descarte registrado, e com
+         `idades.backlogs` carimbado como se fosse dado fresco.
+         Medido em 01/09, em casa isolada e lado a lado: no mesmo caso, `tempo`
+         herdava e `backlogs` era zerado. E o retrato real do PC guardado aqui
+         estava assim, com `backlogs: 0` e `rotas: 0`.
+         `servidores`, duas dezenas de linhas acima, sempre fez o certo — este é
+         o formato que os dois campos passam a seguir.
+         ⚠️ Vazio de VERDADE continua vazio: máquina sem nenhum projeto com
+         roadmap manda `[]` e grava `[]`. Herdar isso também seria trocar um
+         defeito por outro pior, com mapa de anteontem posando de atual. */
+      backlogs: bruto.backlogs == null ? null : lista(bruto.backlogs, 40).map((b) => ({
         projeto: String(b?.projeto || '').slice(0, 80),
         atualizadoEm: Number(b?.atualizadoEm) || null,
         frentes: Number(b?.frentes) || 0,
@@ -246,6 +263,21 @@ export function validarPacote(bruto) {
             .filter((p) => p.alvo),
         })).filter((f) => f.projeto)
         : null,
+      /* CC-452: mesmo recorte campo a campo dos vizinhos. `instalado`/`rodando`
+         viram `null` (nunca `false`) quando o valor que chegou não é booleano:
+         coagir aqui trocaria "esta máquina não sabe dizer" por "não está
+         instalado", que é a mentira exata que este campo existe para acabar. */
+      servico: bruto.servico && typeof bruto.servico === 'object' && !Array.isArray(bruto.servico)
+        ? {
+          instalado: typeof bruto.servico.instalado === 'boolean' ? bruto.servico.instalado : null,
+          rodando: typeof bruto.servico.rodando === 'boolean' ? bruto.servico.rodando : null,
+          detalhe: bruto.servico.detalhe ? String(bruto.servico.detalhe).slice(0, 200) : null,
+          /* CC-453: onde o cockpit mora naquela máquina, dito por ela mesma.
+             Teto de 260 como os outros caminhos que chegam pela rede (é o
+             limite clássico do Windows, e o mesmo que `servidores.path` usa). */
+          raiz: bruto.servico.raiz ? String(bruto.servico.raiz).slice(0, 260) : null,
+        }
+        : null,
       em: Number(bruto.em) || Date.now(),
       recebidoEm: Date.now(),
     },
@@ -271,7 +303,7 @@ export function validarPacote(bruto) {
  * Cada campo preservado carrega o carimbo de quando chegou, porque hora velha
  * exibida como atual é pior que hora ausente.
  */
-const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs', 'travas', 'framework']
+const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs', 'travas', 'framework', 'servico']
 
 /**
  * CC-342: validade POR CAMPO, porque 12 horas não serve para todo mundo.
@@ -291,7 +323,7 @@ const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs',
  * qualquer alternância de empurradores de 30s e ainda deixam o buraco de
  * verdade aparecer no minuto seguinte.
  */
-const VALIDADE_POR_CAMPO = { travas: 2 * 60 * 1000, framework: 2 * 60 * 1000 }
+const VALIDADE_POR_CAMPO = { travas: 2 * 60 * 1000, framework: 2 * 60 * 1000, servico: 2 * 60 * 1000 }
 export const validadeDe = (campo) => VALIDADE_POR_CAMPO[campo] ?? VALIDADE_HERDADO_MS
 
 /**
@@ -920,9 +952,19 @@ export function maquinasConhecidas(pacotes, origemLocal, retratoLocal = null) {
          reportou. É o que permite a tela montar o comando de instalar o serviço
          com o caminho certo, em vez de chutar um `D:\...` que pode não existir.
          `null` quando a máquina nunca rodou um agente lá dentro. */
-      raizDoCockpit: (p.jobs || [])
-        .map((j) => j.cwd)
-        .find((c) => c && /proj_controlcenter/i.test(c)) || null,
+      /* CC-453: a máquina DIZ onde o cockpit dela está, e isso vem primeiro.
+         A busca por texto abaixo é a versão original, de quando não havia como
+         perguntar, e ela estava quebrada desde 23/08: procurava
+         `proj_controlcenter`, nome que a pasta deixou de ter quando ele tirou o
+         prefixo de tipo. Devolvia `null` sempre, e o cartão de instalar o
+         serviço sumia da tela sem erro nenhum — peça construída e inalcançável,
+         o formato de defeito que este projeto mais repete.
+         Ela FICA, e não como zelo: máquina rodando versão anterior a hoje não
+         manda `servico.raiz`, e para essas o palpite velho ainda é melhor que
+         nada. Some sozinha quando as duas pontas estiverem em dia. */
+      raizDoCockpit: p.servico?.raiz
+        || (p.jobs || []).map((j) => j.cwd).find((c) => c && /proj_controlcenter/i.test(c))
+        || null,
       /* Quais ferramentas existem lá, para a tela não oferecer o que não há. */
       agentes: p.agentes || null,
       /* CC-340: as travas e o framework daquela máquina, para a tela poder
@@ -960,14 +1002,20 @@ export function maquinasConhecidas(pacotes, origemLocal, retratoLocal = null) {
  * inovallbond passa de 60 KB, quase todo histórico de rota fechada, e o limite
  * de pacote é 2 MB para a federação inteira.
  */
-export const enxugarRotas = (quadros) => quadros
+/* CC-449: `null` entra e `null` sai, em vez de estourar.
+   Desde que ausente deixou de virar lista vazia na validação, "não consegui ler
+   os quadros" é um valor que a montagem precisa saber carregar: o remetente que
+   não pôde varrer manda ausente, e a outra ponta herda o que já tinha. Sem esta
+   linha, o mesmo caso derruba a montagem do pacote INTEIRO, e a máquina some do
+   painel por causa de um campo. */
+export const enxugarRotas = (quadros) => (quadros == null ? null : quadros
   .filter((q) => q?.projeto)
   .map((q) => ({
     projeto: q.projeto,
     ocupadas: (q.ocupadas || []).map((o) => ({
       rota: o.rota, id: o.id, ultimoSinal: o.ultimoSinal, veredito: o.veredito,
     })),
-  }))
+  })))
 
 /**
  * CC-165: o backlog de cada projeto, reduzido ao que cabe numa tela.
@@ -1087,7 +1135,7 @@ export function resumirBacklogs(mapas = []) {
  */
 export function montarPacote({
   maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [], backlogs = null,
-  meu = null, agentes = null, limites = null, travas = null, framework = null,
+  meu = null, agentes = null, limites = null, travas = null, framework = null, servico = null,
 }) {
   const enxuto = jobs.map((j) => ({
     id: j.id, status: j.status, subject: j.subject, project: j.project, sub: j.sub,
@@ -1113,6 +1161,11 @@ export function montarPacote({
        anterior por 12 horas, uma trava tirada do ar continuaria aparecendo como
        ativa, que é exatamente o engano que o campo existe para acabar. */
     travas, framework,
+    /* CC-452: instalado/rodando/detalhe do serviço de fundo nesta máquina.
+       Mesma regra do retrato (travas/framework): barato, calculado sozinho a
+       cada empurrão, `null` quando a máquina não sabe dizer (nunca `false` —
+       "não sei" e "não está instalado" levam a conclusões opostas). */
+    servico,
     em: Date.now(),
   }
 }

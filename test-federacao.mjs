@@ -714,4 +714,88 @@ ok('pacote sobrevive ao ida e volta por JSON')
   }
 }
 
+/* ===================================================================
+ * CC-449: lista vazia não pode APAGAR o mapa que já tinha chegado.
+ *
+ * Este bloco existe porque o defeito era invisível dos dois lados. `gravarPacote`
+ * preserva o campo que o pacote novo não traz, testando `== null`; `validarPacote`
+ * convertia ausente em `[]`; e `[]` não é `null`. Resultado medido em 01/09 no
+ * retrato real do PC guardado nesta VPS: `backlogs: 0` e `rotas: 0`, com
+ * `idades.backlogs` carimbado como se fosse dado fresco.
+ *
+ * A rede mede a TRAVESSIA INTEIRA, não a saída da validação: monta, serializa,
+ * valida e GRAVA, que é onde a herança acontece. Um teste que parasse antes do
+ * disco passaria com o mapa sumindo no passo seguinte.
+ * =================================================================== */
+{
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-herda-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa
+  try {
+    const F = await import(`./src/federacao.mjs?casa=${encodeURIComponent(casa)}`)
+    const MAQ = { id: 'ccc33333', nome: 'PC-DE-TESTE' }
+    const viajar = (campos) => F.validarPacote(JSON.parse(JSON.stringify(F.montarPacote({ maquina: MAQ, ...campos })))).pacote
+    const noDisco = () => JSON.parse(fs.readFileSync(path.join(F.dirFederacao(), `${MAQ.id}.json`), 'utf8'))
+    const mapa = [{
+      projeto: 'cockpit',
+      frentes: 2,
+      abertas: 1,
+      titulos: ['uma frente'],
+      lista: [{ titulo: 'uma frente', grupo: 'Aberto' }, { titulo: 'outra', grupo: 'Aberto' }],
+      sprints: [{ titulo: 'Aberto', frentes: 2 }],
+    }]
+
+    // --- ausente continua ausente depois da validação
+    assert.equal(viajar({ backlogs: null }).backlogs, null,
+      'varredura que falhou tem que chegar como AUSENTE, não como lista vazia')
+    assert.equal(viajar({ rotas: null }).rotas, null, 'mesma regra para as rotas')
+
+    // --- vazio de verdade continua vazio, e isso é diferente de ausente
+    assert.deepEqual(viajar({ backlogs: [] }).backlogs, [],
+      'máquina sem nenhum projeto com roadmap diz isso, e não vira ausente')
+    assert.deepEqual(viajar({ rotas: [] }).rotas, [])
+    ok('ausente e vazio deixam de ser a mesma coisa na travessia')
+
+    // --- o mapa chega, e o pacote seguinte sem varredura NÃO o apaga
+    F.gravarPacote(viajar({ backlogs: mapa }))
+    assert.equal(noDisco().backlogs[0].lista.length, 2, 'o mapa tem que chegar inteiro ao disco')
+    F.gravarPacote(viajar({ backlogs: null }))
+    assert.equal(noDisco().backlogs?.[0]?.lista.length, 2,
+      'pacote sem varredura não pode apagar o mapa que já estava no disco')
+    ok('o mapa sobrevive a um pacote em que a varredura falhou na outra ponta')
+
+    /* Prova negativa: com o comportamento ANTIGO (ausente virando `[]`) o mesmo
+       caminho apaga. Sem esta metade, o teste acima só sabe dizer "hoje passa" e
+       não prova que pegaria a regressão. */
+    F.gravarPacote({ ...viajar({ backlogs: mapa }) })
+    F.gravarPacote({ ...viajar({ backlogs: mapa }), backlogs: [] })
+    assert.deepEqual(noDisco().backlogs, [],
+      'do jeito antigo o mapa era apagado: é isto que a guarda evita')
+    ok('a prova negativa: lista vazia no lugar de ausente ainda zera o campo')
+
+    /* E o vazio LEGÍTIMO continua chegando ao disco. Herdar também neste caso
+       seria trocar um defeito por outro pior: mapa de anteontem posando de
+       atual, que é o mesmo motivo de o herdado ter prazo de validade. */
+    F.gravarPacote(viajar({ backlogs: mapa }))
+    F.gravarPacote(viajar({ backlogs: [] }))
+    assert.deepEqual(noDisco().backlogs, [],
+      'máquina que passou a não ter roadmap nenhum tem que poder dizer isso')
+    ok('vazio declarado pela outra máquina continua valendo, e não é herdado')
+
+    /* O campo das horas é a referência: ele já se comportava assim, e foi
+       medindo os dois lado a lado que o defeito apareceu. */
+    F.gravarPacote(viajar({ tempo: { total: 42 } }))
+    F.gravarPacote(viajar({}))
+    assert.equal(noDisco().tempo?.total, 42, 'as horas seguem herdando como antes')
+    ok('o conserto não mexeu no campo que já herdava certo')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME
+    else process.env.CC_HOME = antes
+    fs.rmSync(casa, { recursive: true, force: true })
+  }
+}
+
 console.log(`\n${n} grupos de asserção passaram`)
