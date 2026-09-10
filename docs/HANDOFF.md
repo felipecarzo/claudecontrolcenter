@@ -1,22 +1,47 @@
 # HANDOFF
 
-**Sessões:** 2026-09-10 · **DUAS**, e o arquivo carrega as duas:
-`e2b33ef8` (rota `sincronia`, encerrada) e `670e1313` (rota `front`, que
-acrescentou o CC-455 e este cabeçalho depois que ela saiu).
-**Último commit:** `762ce7e` · ⚠️ **HÁ TRABALHO SEM COMMIT** (ver abaixo)
+**Sessões:** 2026-09-10 · **TRÊS**: `e2b33ef8` (VPS, rota `sincronia`),
+`670e1313` (VPS, rota `front`) e a do PC, que trabalhou em paralelo o dia todo.
+**Último commit:** `fb2da79`, empurrado · **ÁRVORE LIMPA**
 **Branch:** `backlog/cc-46-48-49-52-53-56-65`
 
-⚠️ **Não existe outra sessão viva para commitar.** `e2b33ef8` pediu que outra o
-fizesse e encerrou; medido em 10/09, as demais rotas estão caladas há 339h e
-397h, e só a `front` dá sinal. **Quem abrir isto é quem commita.**
+✅ **Nada pendente de commit.** O aviso antigo desta seção foi cumprido: são
+oito commits em 10/09, todos no servidor, com as duas máquinas no mesmo ponto.
 
 O que aconteceu: [diario/2026-09-10.md](diario/2026-09-10.md). Ponteiro, não
 relatório.
 
-## ⛔ PRIMEIRA COISA: commitar o que está na árvore
+## ⚠️ A lição do dia, e ela custou quatro fechamentos errados
 
-Ele pediu explicitamente que outra sessão commite. **7 arquivos modificados,
-+720 linhas**, tudo com gate verde (`npm test`, 0 falhas):
+**Medir um número plausível que responde OUTRA pergunta é indistinguível de
+resposta certa.** Quatro vezes em 10/09, todas minhas:
+
+| a pergunta | o que medi | o que conclui | por que errou |
+|---|---|---|---|
+| quantos empurram? | portas em escuta | "um só" | o de reporte não abre porta |
+| o serviço está instalado? | uma das duas tarefas agendadas | "não" | era a outra |
+| ainda são dois? | o contrato alternando | "acabou" | só parou de alternar |
+| a lista prova quantos? | a própria lista | "um só" | ela se apagava com quem procurava |
+
+**A defesa é construção, não disciplina.** Lembrar de "medir direito" falhou
+quatro vezes seguidas. O que funcionou foi construir a medida que responde a
+pergunta LITERAL: a lista de empurradores foi a primeira a responder "quantos?"
+com um número de quantos, e desmentiu três conclusões em vinte minutos.
+
+Da sessão do PC, ao fechar: *"sem a terceira leitura eu teria fechado errado de
+novo"*.
+
+## ⚠️ Esta sessão fica ABERTA como porta, e não como trabalho
+
+Decisão dele ao encerrar em 10/09: *"deixa ela aberta só como uma porta da
+sessão de cockpit no pc caso ele precise puxar algo"*.
+
+`e2b33ef8` continua alcançável por `SendMessage` a partir do PC, com o contexto
+limpo. **Não tem trabalho em curso, não tem rota reivindicada, e a `sincronia`
+está livre no quadro.** Quem chegar aqui não herda nada: começa do zero e usa
+este arquivo.
+
+## Histórico: o que estava pendente e já foi resolvido
 
 ```
 docs/ROADMAP.md      docs/ROTAS-ATIVAS.md  src/federacao.mjs
