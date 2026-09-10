@@ -491,7 +491,45 @@ A condição de aceite não é "liberou RAM". É:
 - Se o painel encerra sozinho, ou se ele só avisa no cartão ("parada há 3h,
   devolver a memória?") e espera o clique.
 
-### CC-456 🔴 10/09: dois empurradores no PC, e eu fechei o item medindo o lugar errado
+### CC-456 ✅ 10/09: dois empurradores no PC, e eu fechei o item medindo o lugar errado
+
+#### O desfecho, com as duas máquinas concordando por medidas independentes
+
+**Eram TRÊS ao todo, achados em três rodadas**, e cada rodada só existiu porque
+a anterior foi conferida em vez de aceita:
+
+| # | quem era | como foi achado | por que escapou antes |
+|---|---|---|---|
+| 1 | painel duplicado, dois lançadores no login | pelo PC, medindo portas | — |
+| 2 | órfão na porta 8100 | pelos pids que mandei daqui | `/api/shutdown` só mira a porta padrão (8099) |
+| 3 | processo de tarefa agendada JÁ APAGADA | pelo processo PAI, no PC | sem porta, sem `CommandLine`, sem se identificar |
+
+**O terceiro é o mais instrutivo.** Foi lançado no boot de hoje por uma tarefa
+que existia naquela hora e foi apagada depois. Ficou rodando código do formato
+antigo de reporte (`cmd.exe` chamando `node` direto), sem porta em escuta e sem
+`CommandLine` visível: **as duas armadilhas do dia ao mesmo tempo**. Tinha token
+de administrador, e o terminal da sessão do PC não conseguia matar. Ele rodou
+como administrador.
+
+**Confirmado daqui, por medida independente:** o empurrador antigo parou de
+enviar (última vez há 174s, contra 10s do certo, medido no mesmo instante), o
+`contrato` estabilizou em `1` em seis leituras seguidas, e a entrada velha saiu
+da lista sozinha ao vencer a janela de 5 minutos, que é exatamente o desenho.
+
+**Foto final no PC:** um único `node.exe` do cockpit, pid 92072, filho da Tarefa
+Agendada certa.
+
+⚠️ **Quatro fechamentos errados antes deste**, todos meus, e todos a mesma
+coisa: medir um número plausível que responde OUTRA pergunta. Portas em vez de
+empurradores; uma das duas tarefas agendadas em vez das duas; contrato estável
+em vez de contagem; e a lista que se apagava justamente com quem ela existia
+para achar. Palavras da sessão do PC ao fechar: *"sem a terceira leitura eu
+teria fechado errado de novo"*.
+
+**A defesa que sobrou, e ela é construção, não disciplina:** a medida tem que
+responder a pergunta LITERAL. A lista de empurradores foi a primeira que
+respondeu "quantos?" com um número de quantos, e ela desmentiu três conclusões
+em vinte minutos.
 
 #### 10/09, noite: AINDA SÃO DOIS, e eu tinha dito que acabou
 
