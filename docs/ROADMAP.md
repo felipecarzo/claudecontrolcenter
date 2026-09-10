@@ -15,6 +15,7 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+
 ### CC-450 ✅ 07/09: o remote-control do Antigravity, achado dentro do próprio programa
 
 Continuação do CC-449, e ela mudou de rumo no meio do caminho. Vale contar a
