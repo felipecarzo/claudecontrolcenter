@@ -279,7 +279,7 @@ export function medir(texto) {
      não é falha, e contá-la como tal faria o número dizer que eu piorei num dia
      em que só respondi perguntas rápidas.
 
-     CC-457, 10/09: passou a contar LINHAS, e antes contava blocos.
+     CC-458, 10/09: passou a contar LINHAS, e antes contava blocos.
 
      O limite era `paragrafos.length > 3`, escrito quando "muitos parágrafos"
      era um bom palpite para "resposta longa". Deixou de ser no dia em que ele

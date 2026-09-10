@@ -237,7 +237,7 @@ redesenhando.
 **Só aparece no PC dele.** Esta VPS não tem `conhost` nem `cmd`, então o gate
 nunca vai pegar: a prova é na máquina dele, como foi a do CC-459.
 
-### CC-458 🔴 10/09: minhas respostas continuam longas demais, e o caveman não resolve
+### CC-458 ✅ 10/09: minhas respostas continuam longas demais, e o caveman não resolve
 
 Palavras dele, no fim de 10/09:
 
@@ -381,6 +381,15 @@ pediu blocos curtos e rotulados.
 **Isto é o item inteiro em miniatura:** três regras dele, escritas em dias
 diferentes, brigando entre si — cinco linhas no máximo, mostre o raciocínio,
 separador acima de três blocos. Cada uma faz sentido sozinha.
+
+#### ✅ RESOLVIDO, no mesmo dia
+
+`medir()` em `src/estilo.mjs` passou a contar **linhas de prosa** (código à
+parte), cobrando o separador a partir de 12 — não mais parágrafos. O formato
+de blocos curtos e rotulados deixou de ser punido: quatro blocos separados por
+linha em branco gastam sete linhas antes de qualquer conteúdo, e cobrar a
+partir de cinco pediria o separador em toda resposta nesse formato, repetindo
+o mesmo defeito pelo outro lado.
 
 ### CC-457 🔴 10/09: a sessão ociosa devolve a RAM, e o contexto da conversa não se perde
 
