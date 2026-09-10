@@ -578,6 +578,15 @@ acima respondem, pelo processo pai.
 naquela máquina, inclusive para `powershell.exe`. Filtro por texto de linha de
 comando não acha nada. Vai pelo pid e pelo pai.
 
+**Detalhe cronológico da causa 2, o órfão de porta**, para quem quiser a
+sequência exata: religuei a Tarefa Agendada manualmente às 18:13, antes de
+publicar o conserto do `.vbs`, e o painel caiu no fallback de porta (8100)
+por achar a 8099 ocupada — o vigia que o supervisionava morreu num passo
+seguinte, deixando-o órfão. Quando publiquei o conserto e rodei
+`cc daemon restart` de novo às 18:28, o `/api/shutdown` só mira a porta
+padrão (8099) e nunca alcançou o órfão da 8100. Os dois ficaram empurrando
+em paralelo até a checagem de portas achar os dois.
+
 **Correção de um item que EU fechei hoje.** Em 10/09 dei o CC-451 (dois painéis
 no PC) como resolvido, com esta medida: um único Node em escuta na faixa
 8099-8108, contra dois em 09/09. A medida estava certa e a **conclusão estava
