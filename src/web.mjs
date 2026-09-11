@@ -174,6 +174,8 @@ const UI_V2 = path.join(HERE, 'ui_v2.html')
  * o commit saiu SEM ele, e o git avisou por sorte.
  * Nome com história ruim se confere no `.gitignore` antes de reusar. */
 const UI_V3 = path.join(HERE, 'ui_novo.html')
+/* CC-461, 10/09: a versão simples, servida AO LADO do atual, sem mexer nele. */
+const UI_SIMPLES = path.join(HERE, 'ui_simples.html')
 const GRAFICOS = path.join(HERE, 'graficos.js')
 /* O alvo quando ninguém escolheu projeto no filtro.
    `process.cwd()` NÃO serve: como serviço do systemd o painel roda de outro
@@ -1094,6 +1096,7 @@ function handler(req, res) {
     return send(res, 200, fs.readFileSync(UI_V2, 'utf8'), 'text/html; charset=utf-8')
   }
   if (url.pathname === '/v1') return send(res, 200, fs.readFileSync(UI, 'utf8'), 'text/html; charset=utf-8')
+  if (url.pathname === '/simples') return send(res, 200, fs.readFileSync(UI_SIMPLES, 'utf8'), 'text/html; charset=utf-8')
   if (url.pathname === '/graficos.js') {
     return send(res, 200, fs.readFileSync(GRAFICOS, 'utf8'), 'text/javascript; charset=utf-8')
   }
