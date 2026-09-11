@@ -2517,6 +2517,9 @@
     .c2-meta{font-size:11px;color:var(--text-dim);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
     .c2-linha{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;}
     .c2-linha:hover,.c2-linha.sel{background:var(--bg);}
+    .c2-linha>div:first-child{min-width:0;}
+    .c2-linha>div:first-child>b{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
+    .c2-linha>div:last-child{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;align-content:flex-start;max-width:100%;}
     .c2-badge{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);white-space:nowrap;}
     .c2-badge.red{border-color:var(--red);color:var(--red);} .c2-badge.ok{border-color:var(--done);color:var(--done);}
     .c2-insp{position:sticky;top:70px;padding:14px 16px;min-width:0;}
@@ -6300,7 +6303,7 @@
         /* CC-375: a gaveta dos modos come da MESMA lista, então ela redesenha
            aqui junto das outras. Sem esta linha ela abria vazia e ficava vazia:
            a leitura terminava e ninguém avisava a gaveta. */
-        .then((d) => { FW_LISTA = d.projetos || []; FW_CATALOGO_MODULOS = d.catalogoModulos || null; renderFwLista(); renderCentral(); renderProjetos(); renderModos(); })
+        .then((d) => { FW_LISTA = d.projetos || []; FW_CATALOGO_MODULOS = d.catalogoModulos || null; renderFwLista(); renderCentral(); renderProjetos(); renderModos(); if (typeof c2RenderProjetos === 'function') c2RenderProjetos(); })
         /* Falha de rede numa volta do tique NÃO apaga a lista boa que está na
            tela: se já havia uma, ela fica, e a volta seguinte tenta de novo. O
            "erro" só toma a tela quando não há nada para mostrar, que é quando
@@ -6308,7 +6311,7 @@
            de rede seria a tela sumindo na mão dele. */
         .catch(() => {
           if (!Array.isArray(FW_LISTA)) FW_LISTA = 'erro';
-          renderFwLista(); renderCentral(); renderProjetos(); renderModos();
+          renderFwLista(); renderCentral(); renderProjetos(); renderModos(); if (typeof c2RenderProjetos === 'function') c2RenderProjetos();
         });
     }
 
@@ -15285,8 +15288,24 @@
          cabeçalho sem as pastilhas. */
       document.body.classList.toggle('c2-inicio', v === 'view-inicio');
       if (v === 'view-inicio') c2RenderInicio();
-      else if (v === 'view-projetos2') c2RenderProjetos();
+      else if (v === 'view-projetos2') { c2GarantirFramework(); c2RenderProjetos(); }
       else if (v === 'view-servidores2') c2RenderServidores();
+    }
+
+    /* Carrega o framework quando a tela de Projetos abre, e só uma vez.
+     *
+     * A primeira versão disparava isto a partir do CLIQUE no item de menu, mas
+     * um clique só chama listener que já existia no momento do clique. Ao
+     * abrir a página direto num endereço como `#projetos2` (recarregar a
+     * página nesta aba, por exemplo), o próprio código do painel dispara um
+     * clique PROGRAMÁTICO cedo, antes deste listener nascer no fim do
+     * arquivo: o clique acontecia, mas ninguém aqui estava ouvindo ainda.
+     *
+     * Aqui não depende de QUANDO a tela ficou ativa, só de ELA ESTAR ativa: é
+     * checado a cada `c2Render()`, e o `== null` garante que só busca uma vez
+     * (o estado vira 'carregando' e depois um array, nunca volta a `null`). */
+    function c2GarantirFramework() {
+      if (typeof FW_LISTA !== 'undefined' && FW_LISTA == null) carregarFrameworkLista();
     }
     function c2Ligar(on) {
       clearInterval(C2.timer); C2.timer = null;
@@ -15479,11 +15498,60 @@
         + c2Bloco('SERVIÇOS', serv, '<a href="#servidores2" style="font-size:11px">ver todos</a>'));
     }
 
+    /* O framework é lido do disco desta máquina (findProjects), não do que
+       tem sessão agora. A lista de projetos do cockpit 2 e a lista do
+       framework são DUAS fontes diferentes, e é preciso casar as duas pela
+       mesma chave. Ver c2ProjetosTodos, logo abaixo. */
+    const c2Chave = (nome) => String(nome || '').toLowerCase().replace(/^(vps|pc)_/, '').replace(/^(proj|app|web|game)_/, '').trim();
+    const c2NomeLimpo = (nome) => String(nome || '').replace(/^(VPS|PC|vps|pc)_/, '').replace(/^(proj|app|web|game)_/, '').trim() || String(nome || '');
+    const c2FwDe = (chave) => (Array.isArray(FW_LISTA) ? FW_LISTA : []).find((f) => c2Chave(f.projeto) === chave) || null;
+
+    /**
+     * Todo projeto desta máquina, não só o que teve sessão nas últimas 24h.
+     *
+     * ## O defeito, nas palavras dele em 11/09
+     *
+     * "os projetos ligados aqui no pc, tem VARIOS, e eles nao tao aparecendo
+     * no cockpit pra eu usar o framework"
+     *
+     * `/api/cockpit2` deriva a lista de `jobs` (quem tem sessão recente).
+     * `/api/framework/projetos` deriva de `findProjects()`, uma varredura de
+     * disco: TODOS os projetos da máquina, com ou sem sessão. Um projeto sem
+     * ninguém trabalhando nele agora simplesmente não existia na tela de
+     * Projetos, e sem aparecer não tinha como ligar o framework nele.
+     *
+     * A lista viva continua na ORDEM que o servidor já calculou (quem espera
+     * você primeiro). Os que só existem no disco entram depois, em ordem
+     * alfabética, com os campos de sessão zerados. Não é chute: é "nada
+     * aconteceu aqui hoje", que é a verdade.
+     */
+    function c2ProjetosTodos(D) {
+      const vistos = new Set((D.projetos || []).map((p) => p.chave));
+      const extras = [];
+      if (Array.isArray(FW_LISTA)) {
+        for (const f of FW_LISTA) {
+          const chave = c2Chave(f.projeto);
+          if (!chave || vistos.has(chave)) continue;
+          vistos.add(chave);
+          extras.push({
+            chave, nome: c2NomeLimpo(f.projeto), presenca: [], espera: [], sessoes: [],
+            servicos: [], frenteEmCurso: null, pendencias: [], horasHoje: null, ultimos7: [], vivas: 0,
+          });
+        }
+      }
+      extras.sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
+      return [...(D.projetos || []), ...extras];
+    }
+
     function c2Linha(p) {
       const b = [];
       if (p.espera.length) b.push(c2chip(p.espera.length + ' espera você', 'red'));
       if (p.vivas) b.push(c2chip(p.vivas + ' viva(s)', 'ok'));
       if (p.servicos.length) b.push(c2chip(p.servicos.length + ' no ar'));
+      /* O estado do framework, de relance. É a queixa dele, "onde tá o
+         framework", respondida já na lista, sem precisar abrir o inspetor. */
+      const fw = c2FwDe(p.chave);
+      if (fw) b.push(fw.existe ? c2chip('framework: ' + (fw.tituloFase || fw.fase || 'ligado'), fw.ligado && fw.modo !== 'desligado' ? 'ok' : '') : c2chip('sem framework'));
       return '<div class="c2-linha' + (C2.sel === p.chave ? ' sel' : '') + '" data-c2-projeto="' + esc(p.chave) + '">'
         + '<div><b>' + esc(p.nome) + '</b> ' + c2Presenca(p.presenca)
         + '<div class="c2-meta">' + (p.frenteEmCurso ? esc(p.frenteEmCurso) : 'sem frente em curso') + (p.horasHoje != null ? ' · hoje ' + c2h(p.horasHoje) : '') + ' ' + c2spark(p.ultimos7) + '</div></div>'
@@ -15491,6 +15559,15 @@
     }
     function c2Inspetor(p) {
       if (!p) return '<p class="c2-vazio">escolha um projeto na lista.</p>';
+      /* CC-506: o framework tinha sumido do inspetor (fase, MVP, modo, a
+         entrevista). `blocoFramework` já existe pronto, com tudo isso e o
+         botão que liga o framework quando o projeto nunca teve. É o mesmo
+         motor que o cartão antigo usava; aqui ele só ganha lugar de novo. */
+      const fwFrame = (() => {
+        const fw = c2FwDe(p.chave);
+        if (!fw) return Array.isArray(FW_LISTA) ? '' : '<p class="c2-vazio">lendo o framework…</p>';
+        return blocoFramework(fw, { colapsado: false });
+      })();
       /* Linhas de cartão, nunca tabela: o inspetor tem 409px e a tabela saía
          com 423, jogando os botões para fora e quebrando 24 células em três
          linhas. Duas linhas por item cabem aqui e no telefone. */
@@ -15509,6 +15586,7 @@
       return '<button class="btn compacto c2-voltar" data-c2-voltar>← lista</button>'
         + '<h3 style="margin:6px 0 2px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">' + esc(p.nome) + ' ' + c2Presenca(p.presenca) + (p.presenca.length > 1 ? '<span class="c2-mini">' + esc(p.presenca.join(' e ')) + '</span>' : '') + '</h3>'
         + '<div class="c2-meta">' + (p.frenteEmCurso ? 'em curso: ' + esc(p.frenteEmCurso) : 'sem frente em curso') + (p.horasHoje != null ? ' · hoje ' + c2h(p.horasHoje) : '') + '</div>'
+        + '<h4>FRAMEWORK</h4>' + (fwFrame || '<p class="c2-vazio">esta pasta não tem marcador de projeto de código (.git, CLAUDE.md) nesta máquina, então o framework não enxerga ela.</p>')
         + '<h4>DECISÕES (' + p.espera.length + ')</h4>' + (p.espera.length ? p.espera.map(c2Aviso).join('') : '<p class="c2-vazio">nenhuma.</p>')
         + '<h4>SESSÕES (' + p.sessoes.length + ')</h4>' + (sess || '<p class="c2-vazio">nenhuma sessão viva nas últimas 24h.</p>')
         + '<h4>SERVIÇOS (' + p.servicos.length + ')</h4>' + (serv || '<p class="c2-vazio">nada no ar deste projeto.</p>')
@@ -15519,11 +15597,12 @@
       const D = C2.dados; const lista = document.getElementById('c2-lista'); const insp = document.getElementById('c2-insp'); const view = document.getElementById('view-projetos2');
       if (!lista || !insp) return;
       if (!D) { pintar(lista, C2.erro ? c2Falha() : '<p class="c2-vazio">lendo…</p>'); return; }
+      const todos = c2ProjetosTodos(D);
       const estreito = window.matchMedia('(max-width: 700px)').matches;
-      if (!C2.sel && D.projetos[0] && !estreito) C2.sel = D.projetos[0].chave;
-      const p = D.projetos.find((x) => x.chave === C2.sel) || null;
+      if (!C2.sel && todos[0] && !estreito) C2.sel = todos[0].chave;
+      const p = todos.find((x) => x.chave === C2.sel) || null;
       view.classList.toggle('c2-aberto', Boolean(p));
-      pintar(lista, D.projetos.length ? D.projetos.map(c2Linha).join('') : '<p class="c2-vazio" style="padding:14px">nenhum projeto com sinal nas últimas 24h.</p>');
+      pintar(lista, todos.length ? todos.map(c2Linha).join('') : '<p class="c2-vazio" style="padding:14px">nenhum projeto encontrado.</p>');
       pintar(insp, c2Inspetor(p));
     }
 

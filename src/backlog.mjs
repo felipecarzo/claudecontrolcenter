@@ -66,6 +66,138 @@ export const ESTADOS = [
   { codigo: 'KO', rotulo: 'cancelado', desc: 'não vai acontecer, com o motivo escrito', esteira: 5 },
 ]
 
+/* ===================================================================
+   O VOCABULÁRIO DO ITEM, decidido por ele em 11/09
+   ===================================================================
+
+   Ele parou o trabalho de tela e nomeou a raiz: *"precisamos transformar o
+   projeto num FRAMEWORK"*, e a primeira peça é o item deixar de ser prosa.
+
+   > *"não é pra colocar 'o felipe pediu p eu fazer um framework', é 'pedido:
+   > construcao de sistema - intenção: ~ criar framework pra gerenciar agentes
+   > - definição de pronto: blablabla'"*
+
+   O `~` marca a única parte interpretada; o resto é código rastreável.
+
+   ## O que foi MEDIDO antes de escolher as etiquetas (543 itens, 11/09)
+
+   Ele perguntou se faltava etiqueta (prazo, importância, hora). O dado
+   respondeu, e recusou duas delas:
+
+   - **524 de 543 itens fecharam no MESMO dia em que nasceram.** Prazo seria
+     campo vazio em 9 de cada 10, e campo vazio na tela vira ruído. Prazo de
+     verdade é do projeto, não do item.
+   - **`peso` está preenchido em 8%**, com quatro valores. Campo que 92%
+     ignora mente. Vira `tamanho`, com três valores e obrigatório na criação,
+     que é quando quem escreve sabe.
+   - **`depende` está em 0%.** Nunca foi usado; fica como está, sem promoção.
+   - **Das 300 provas escritas, 27 citam comando ou teste.** As outras 273 só
+     um humano confere. É por isso que `conferir` existe: sem ele o leitor
+     diário que ele pediu (*"uma máquina ler rápido a documentação de todos os
+     projetos ativos todo dia e verificar se as tarefas tão prontas"*) não tem
+     como funcionar.
+   - **`origem` está em 100%**, porque é derivado e nunca digitado. É o molde
+     de campo que sobrevive.
+
+   ## A regra de convivência com os 543 que já existem
+
+   Decisão dele: **só os itens ABERTOS vão para o formato novo.** Item fechado
+   é história e ninguém vai relê-lo. Por isso a exigência vale na CRIAÇÃO e
+   para item aberto, e nunca para `OK`/`KO` antigo. */
+
+/** O que o item É. Um por item, obrigatório. */
+export const NATUREZAS = [
+  { codigo: 'DEF', rotulo: 'defeito', desc: 'existia e quebrou' },
+  { codigo: 'PED', rotulo: 'pedido', desc: 'não existe e precisa existir' },
+  { codigo: 'DEC', rotulo: 'decisão', desc: 'só ele resolve, e a escolha muda o que será feito' },
+  { codigo: 'MED', rotulo: 'medição', desc: 'descobrir antes de agir, sem mexer em nada' },
+  { codigo: 'DOC', rotulo: 'registro', desc: 'texto que alguém vai ler, sem código' },
+]
+
+/** Onde o item mexe. Escolhida por quem escreve: 211 dos 543 títulos batem em
+ *  duas áreas, então derivar por palavra erraria em quase metade. */
+export const AREAS = [
+  { codigo: 'dado', desc: 'o que é gravado e lido: formato, campo, registro' },
+  { codigo: 'tela', desc: 'o que ele vê e clica' },
+  { codigo: 'agente', desc: 'sessões, rotas, recados, os três programas' },
+  { codigo: 'maquinas', desc: 'as duas máquinas, portas, serviço, publicação' },
+  { codigo: 'trava', desc: 'o que barra: ganchos, gates, guardas' },
+  { codigo: 'texto', desc: 'documento, roadmap, glossário, a forma de falar' },
+]
+
+/** O tamanho, na escala dele. Obrigatório na criação. */
+export const TAMANHOS = [
+  { codigo: 'P', desc: 'minutos, cabe numa linha do painel' },
+  { codigo: 'M', desc: 'até uma hora' },
+  { codigo: 'G', desc: 'mais que isso: quebre em dois antes de começar' },
+]
+
+/**
+ * QUEM consegue dizer que está pronto. O campo que faz o leitor diário existir.
+ *
+ * Formato `modo:texto`, e o modo é fechado:
+ *   auto:<comando>          a máquina roda e sabe sozinha
+ *   olho:<o que olhar>      alguém abre a tela e vê
+ *   dele:<o que confirmar>  só ele pode dizer
+ */
+export const MODOS_DE_CONFERIR = ['auto', 'olho', 'dele']
+
+/** Quem destrava um item parado. `mundo:` é o que não depende de ninguém aqui. */
+export const MODOS_DE_TRAVA = ['dele', 'item', 'mundo']
+
+/** Até onde o estrago chega. É o que separa o reversível do que sai da máquina. */
+export const RISCOS = [
+  { codigo: 'local', desc: 'só esta máquina, e dá para desfazer' },
+  { codigo: 'compartilhado', desc: 'outra máquina ou outra sessão sente' },
+  { codigo: 'cliente', desc: 'chega em quem paga' },
+]
+
+const TETO_INTENCAO = 140
+
+const listaTem = (lista, v) => lista.some((x) => (x.codigo || x) === v)
+
+/**
+ * O item está no formato novo? Devolve a lista do que falta.
+ *
+ * Separada de `problemas()` de propósito: aquela vale para os 543 itens que já
+ * existem, e passar a recusá-los transformaria o arquivo inteiro em erro.
+ */
+export function problemasDoFormato(item) {
+  const p = []
+  if (!item || typeof item !== 'object') return ['não é um objeto']
+  if (!item.natureza) p.push('falta natureza (DEF, PED, DEC, MED ou DOC)')
+  else if (!listaTem(NATUREZAS, item.natureza)) p.push(`natureza desconhecida: ${item.natureza}`)
+  if (!item.area) p.push('falta area (dado, tela, agente, maquinas, trava ou texto)')
+  else if (!listaTem(AREAS, item.area)) p.push(`area desconhecida: ${item.area}`)
+  if (!item.tamanho) p.push('falta tamanho (P, M ou G)')
+  else if (!listaTem(TAMANHOS, item.tamanho)) p.push(`tamanho fora da escala: ${item.tamanho}`)
+  if (!item.intencao) p.push('falta intencao')
+  else if (String(item.intencao).length > TETO_INTENCAO) p.push(`intencao com ${String(item.intencao).length} caracteres, o teto é ${TETO_INTENCAO}`)
+  if (!item.pronto) p.push('falta pronto: o que se observa quando estiver feito')
+  if (!item.conferir) p.push(`falta conferir (${MODOS_DE_CONFERIR.join(':, ')}:)`)
+  else {
+    const [modo, ...resto] = String(item.conferir).split(':')
+    if (!MODOS_DE_CONFERIR.includes(modo)) p.push(`conferir começa por ${MODOS_DE_CONFERIR.join(', ')}, e veio "${modo}"`)
+    else if (!resto.join(':').trim()) p.push(`conferir "${modo}:" sem dizer o quê`)
+  }
+  if (item.trava) {
+    const [modo, ...resto] = String(item.trava).split(':')
+    if (!MODOS_DE_TRAVA.includes(modo)) p.push(`trava começa por ${MODOS_DE_TRAVA.join(', ')}, e veio "${modo}"`)
+    else if (modo !== 'dele' && !resto.join(':').trim()) p.push(`trava "${modo}:" sem dizer o quê`)
+  }
+  if (item.risco && !listaTem(RISCOS, item.risco)) p.push(`risco desconhecido: ${item.risco}`)
+  return p
+}
+
+/** O item já nasceu no formato novo? Serve para a tela separar sem cobrar. */
+export const noFormatoNovo = (item) => Boolean(item?.natureza && item?.area && item?.conferir)
+
+/** O que a tela mostra no lugar do título livre: natureza, área e intenção. */
+export function comoSeLe(item) {
+  if (!noFormatoNovo(item)) return item?.titulo || ''
+  return `${item.natureza} ${item.area}: ${item.intencao}`
+}
+
 const PORCODIGO = new Map(ESTADOS.map((e) => [e.codigo, e]))
 export const ehEstado = (c) => PORCODIGO.has(String(c || '').toUpperCase())
 export const estadoDe = (c) => PORCODIGO.get(String(c || '').toUpperCase()) || null
@@ -94,6 +226,11 @@ export function problemas(item) {
   if (item.estado === 'KO' && !item.porque) p.push('cancelado sem motivo')
   if (item.estado === 'TR' && !item.porque) p.push('travado sem a causa escrita')
   if (item.estado === 'DE' && !item.decisao) p.push('esperando decisão dele sem dizer qual é a decisão')
+  /* Formato novo: cobrado só de quem JÁ está nele, e de item aberto que nasceu
+     depois da virada. Item fechado antes de 11/09 é história, e decisão dele é
+     que história não se reescreve. Sem esta linha, os 510 fechados virariam
+     510 erros na primeira leitura. */
+  if (noFormatoNovo(item)) p.push(...problemasDoFormato(item))
   return p
 }
 
@@ -147,7 +284,18 @@ export function proximoId(itens, prefixo = 'CC') {
   return `${prefixo}-${maior + 1}`
 }
 
-/** Acrescenta um item, já validado. Devolve o item gravado. */
+/**
+ * Acrescenta um item, já validado. Devolve o item gravado.
+ *
+ * ⚠️ **Item novo NÃO NASCE fora do formato**, e é escolha dele de 11/09,
+ * perguntado na hora: o comando recusa e diz o que falta. O outro caminho era
+ * deixar nascer torto e cobrar depois numa lista, e lista de cobrança é o que
+ * este projeto já viu apodrecer três vezes.
+ *
+ * `permitirAntigo` existe para UM caso, e só: trazer para o dado o que já
+ * estava escrito em prosa (a migração, e os 543 itens de antes). Quem chama
+ * declara, e o padrão é recusar.
+ */
 export function acrescentar(campos, arquivo = caminhoPadrao()) {
   const { itens } = ler(arquivo)
   const item = {
@@ -164,9 +312,26 @@ export function acrescentar(campos, arquivo = caminhoPadrao()) {
     citacao: campos.citacao || null,
     depende: campos.depende || [],
     origem: campos.origem || 'agente',
+    /* Os campos do formato novo. `null` quando quem chamou não passou, e aí a
+       recusa abaixo explica o que falta, em vez de gravar meio item. */
+    natureza: campos.natureza || null,
+    area: campos.area || null,
+    tamanho: campos.tamanho || null,
+    intencao: campos.intencao || null,
+    pronto: campos.pronto || null,
+    conferir: campos.conferir || null,
+    trava: campos.trava || null,
+    risco: campos.risco || null,
   }
-  const p = problemas(item)
-  if (p.length) throw new Error(`item recusado: ${p.join('; ')}`)
+  /* O título continua existindo para quem lê de fora do painel, mas quem manda
+     é a intenção: sem título, ele é escrito a partir dela. */
+  if (!item.titulo && item.intencao) item.titulo = item.intencao
+  /* `problemas()` já cobra o formato quando o item JÁ está nele; aqui a cobrança
+     é do item que nem começou. Sem o `Set`, quem manda meio formato recebia a
+     mesma queixa duas vezes. */
+  const p = new Set(problemas(item))
+  if (!campos.permitirAntigo) for (const x of problemasDoFormato(item)) p.add(x)
+  if (p.size) throw new Error(`item recusado: ${[...p].join('; ')}`)
   if (itens.some((i) => i.id === item.id)) throw new Error(`id repetido: ${item.id}`)
   itens.push(item)
   gravar(itens, arquivo)

@@ -33,15 +33,19 @@ t('arquivo que não existe devolve vazio, sem explodir', () => {
   assert.equal(r.existe, false)
 })
 
+/* `permitirAntigo` desde 11/09: o item passou a exigir natureza, área,
+   tamanho, intenção, pronto e conferir, e quem testa o formato NOVO é o
+   test-backlog-formato.mjs. Aqui o assunto é outro (id, estados, recusas), e
+   o item de teste é o de antes da virada, que continua tendo que funcionar. */
 t('acrescentar grava e devolve o item', () => {
-  const i = acrescentar({ titulo: 'a fundação', frente: 'fundacao', estado: 'B1', peso: 3 }, arq)
+  const i = acrescentar({ titulo: 'a fundação', frente: 'fundacao', estado: 'B1', peso: 3, permitirAntigo: true }, arq)
   assert.equal(i.id, 'CC-1')
   assert.equal(i.estado, 'B1')
   assert.equal(ler(arq).itens.length, 1)
 })
 
 t('o id anda sozinho e nunca reusa número', () => {
-  acrescentar({ titulo: 'segundo', frente: 'fundacao' }, arq)
+  acrescentar({ titulo: 'segundo', frente: 'fundacao', permitirAntigo: true }, arq)
   const { itens } = ler(arq)
   assert.equal(itens[1].id, 'CC-2')
   assert.equal(proximoId(itens), 'CC-3')
@@ -59,8 +63,13 @@ recusa('cancelar sem motivo é recusado', () => mover('CC-2', 'KO', {}, arq), 's
 recusa('travar sem a causa é recusado', () => mover('CC-2', 'TR', {}, arq), 'sem a causa')
 recusa('esperar decisão dele sem dizer qual é recusado', () => mover('CC-2', 'DE', {}, arq), 'sem dizer qual')
 recusa('estado inventado é recusado', () => mover('CC-2', 'ZZ', {}, arq), 'estado desconhecido')
-recusa('id repetido é recusado', () => acrescentar({ id: 'CC-1', titulo: 'clone', frente: 'x' }, arq), 'id repetido')
-recusa('peso fora da escala é recusado', () => acrescentar({ titulo: 'x', frente: 'y', peso: 4 }, arq), 'peso fora da escala')
+/* `permitirAntigo` aqui pelo mesmo motivo dos dois acima, e a falta dele
+   derrubou o gate em 11/09: sem a marca, o item novo é recusado ANTES por
+   faltar natureza, e o teste passa a medir outra coisa. A mensagem de erro
+   dizia "falta natureza" onde o teste esperava "id repetido", que é o sintoma
+   exato de verificação que deixou de verificar o que dizia. */
+recusa('id repetido é recusado', () => acrescentar({ id: 'CC-1', titulo: 'clone', frente: 'x', permitirAntigo: true }, arq), 'id repetido')
+recusa('peso fora da escala é recusado', () => acrescentar({ titulo: 'x', frente: 'y', peso: 4, permitirAntigo: true }, arq), 'peso fora da escala')
 
 t('item sem campo obrigatório é apontado, não engolido', () => {
   const p = problemas({ id: 'CC-9' })

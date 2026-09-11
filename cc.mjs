@@ -1572,6 +1572,171 @@ switch (cmd) {
    * `fechar` recusa sem `--prova`, e a recusa vem do próprio `backlog.mjs`:
    * é trava, não lembrete.
    */
+  /**
+   * `cc regras`: o que esta máquina DECLARA para as outras obedecerem.
+   *
+   * Plano de Unificação, aprovado por ele em 11/09: *"a VPS decide a regra e o
+   * PC executa o que ela mandou na última sincronia"*. As cinco ações que já
+   * existiam eram EVENTO (acontecem uma vez, quando ele clica); isto é ESTADO
+   * (vale sempre, e quem divergir volta na sincronia seguinte).
+   *
+   * Sem comando, seria peça inalcançável, que é o defeito que este projeto mais
+   * repete: declaração que só se escreve editando JSON à mão não vale nada.
+   */
+  /**
+   * `cc sincronia`: o ciclo de 30 segundos está rodando AGORA?
+   *
+   * Pergunta dele em 11/09, e ela é a pergunta certa: *"eu acredito que esse
+   * sistema que verifica a cada 30 segundos exista, mas onde ele tá, como eu
+   * garanto que funciona?!"*.
+   *
+   * Antes disto, a resposta exigia ler código ou confiar em mim. A trava do
+   * ciclo é discreta e vale a pena saber: ele SÓ LIGA quando há endereço e
+   * senha configurados (`web.mjs`, no fim do `subir()`), e sem isso não existe
+   * erro, não existe aviso, e o painel funciona igual.
+   *
+   * `--esperar` fica olhando até ver o próximo empurrão acontecer, que é a
+   * única prova que não depende de acreditar em mim: ele vê o relógio andar.
+   */
+  case 'sincronia': {
+    const alvo = `http://localhost:${port}/api/federacao`
+    const esperar = argv.includes('--esperar')
+    const buscar = async () => {
+      const r = await fetch(alvo)
+      if (!r.ok) throw new Error(`o painel respondeu ${r.status}`)
+      return r.json()
+    }
+
+    let d
+    try { d = await buscar() } catch (e) {
+      console.log(`\n  não consegui falar com o painel em ${alvo}`)
+      console.log(`  ${e.message}\n  O painel está no ar? \`cc\` sobe ele.\n`)
+      break
+    }
+
+    const f = d.empurrando || {}
+    const temConfig = Boolean(d.token && d.enviandoPara)
+    console.log('')
+    if (!temConfig) {
+      console.log('  ⛔ o ciclo de 30 segundos NÃO está ligado nesta máquina.')
+      console.log(`     endereço: ${d.enviandoPara || 'não configurado'}   senha: ${d.token ? 'ok' : 'não configurada'}`)
+      console.log('\n  Ele só liga com os dois. Sem isso não há erro nem aviso: o painel funciona igual,')
+      console.log('  e nada viaja. Configurar: node cc.mjs federar <endereço> <senha>\n')
+      break
+    }
+    if (d.ativo === false) {
+      console.log('  ⏸ a sincronia está PAUSADA por você (a bandeja pausa sem apagar a senha).')
+      console.log('     retomar: pelo ícone na bandeja, ou POST /api/federacao/retomar\n')
+      break
+    }
+
+    const idade = f.em ? Math.round((Date.now() - f.em) / 1000) : null
+    console.log(`  ligada, mandando para ${d.enviandoPara}`)
+    console.log(`  último envio: ${f.em ? new Date(f.em).toLocaleTimeString('pt-BR') : 'nenhum ainda'}${idade != null ? `, há ${idade}s` : ''}`)
+    console.log(`  deu certo: ${f.ok ? 'sim' : 'NÃO'}${f.erro ? `  (${String(f.erro).slice(0, 70)})` : ''}`)
+    console.log(`  levou: ${f.jobs ?? '?'} sessões`)
+    /* 90 segundos é três ciclos: um atraso pontual não pode virar alarme, e
+       três seguidos já não são acaso. */
+    if (idade != null && idade > 90) {
+      console.log(`\n  ⚠️ passou de três ciclos sem envio. O painel pode ter sido reiniciado, ou a outra ponta está fora.`)
+    }
+    console.log('')
+
+    if (!esperar) {
+      console.log('  para VER acontecer, sem acreditar em mim: node cc.mjs sincronia --esperar\n')
+      break
+    }
+
+    console.log('  esperando o próximo envio (até 70 segundos)...')
+    const antes = f.em
+    const ate = Date.now() + 70_000
+    while (Date.now() < ate) {
+      await new Promise((s) => setTimeout(s, 3000))
+      let agora
+      try { agora = await buscar() } catch { continue }
+      const e = agora.empurrando || {}
+      if (e.em && e.em !== antes) {
+        console.log(`\n  ✅ empurrou de novo às ${new Date(e.em).toLocaleTimeString('pt-BR')}, ${Math.round((e.em - antes) / 1000)}s depois do anterior.`)
+        console.log(`     ${e.ok ? 'deu certo' : 'FALHOU: ' + (e.erro || 'sem motivo')}, com ${e.jobs ?? '?'} sessões.\n`)
+        break
+      }
+      process.stdout.write('.')
+    }
+    if (Date.now() >= ate) console.log('\n\n  ⚠️ 70 segundos e nenhum envio novo. O ciclo devia ser de 30s: algo está errado.\n')
+    break
+  }
+
+  case 'regras': {
+    const R = await import('./src/regras.mjs')
+    const sub = arg
+    const valorDe = (nome) => {
+      const i = argv.indexOf(`--${nome}`)
+      return i >= 0 ? argv[i + 1] : null
+    }
+
+    if (sub === 'declarar') {
+      const maquina = valorDe('maquina')
+      const projeto = valorDe('projeto')
+      if (!maquina || !projeto) {
+        console.log('\n  uso: node cc.mjs regras declarar --maquina <nome> --projeto <nome> [--modo <m>] [--ligado sim|nao]\n')
+        break
+      }
+      const regras = {}
+      if (valorDe('modo')) regras.modo = valorDe('modo')
+      if (valorDe('ligado')) regras.ligado = valorDe('ligado') === 'sim'
+      if (valorDe('metodo')) regras.metodo = valorDe('metodo')
+      const { MODOS } = await import('./src/framework.mjs')
+      const { MODULOS } = await import('./src/hooksCatalogo.mjs')
+      const r = R.declarar({ maquina, projeto, regras }, { modos: Object.keys(MODOS || {}), modulos: Object.keys(MODULOS || {}) })
+      console.log('')
+      console.log(r.ok
+        ? `  declarado para ${maquina} / ${projeto}: ${JSON.stringify(r.regras)}\n  vale na próxima sincronia daquela máquina.\n`
+        : `  recusado: ${r.erro}\n`)
+      break
+    }
+
+    if (sub === 'esquecer') {
+      const maquina = valorDe('maquina')
+      const projeto = valorDe('projeto')
+      if (!maquina || !projeto) { console.log('\n  uso: node cc.mjs regras esquecer --maquina <nome> --projeto <nome>\n'); break }
+      R.esquecer({ maquina, projeto })
+      console.log(`\n  esqueci a declaração de ${maquina} / ${projeto}. Aquela máquina para de ser corrigida.\n`)
+      break
+    }
+
+    if (sub === 'aplicadas') {
+      const linhas = R.aplicadas({ limite: Number(valorDe('limite')) || 20 })
+      console.log('')
+      if (!linhas.length) { console.log('  nenhuma regra foi aplicada por declaração ainda.\n'); break }
+      for (const l of linhas) {
+        const oque = l.campo === 'modulo' ? `módulo ${l.modulo}` : l.campo
+        console.log(`  ${String(l.em || '').slice(0, 16).replace('T', ' ')}  ${String(l.projeto).padEnd(18)} ${String(oque).padEnd(10)} ${l.de} → ${l.para}   (de ${l.de_maquina || '?'})`)
+      }
+      console.log('')
+      break
+    }
+
+    const tudo = (() => { try { return JSON.parse(fs.readFileSync(R.arquivoDeclaracoes(), 'utf8')) } catch { return {} } })()
+    console.log('')
+    const maquinas = Object.keys(tudo)
+    if (!maquinas.length) {
+      console.log('  esta máquina não declara regra nenhuma para as outras.')
+      console.log('\n  declarar: node cc.mjs regras declarar --maquina <nome> --projeto <nome> --modo <m>')
+      console.log('  o que já foi aplicado por declaração: node cc.mjs regras aplicadas\n')
+      break
+    }
+    for (const m of maquinas) {
+      console.log(`  ${m}`)
+      for (const [p, d] of Object.entries(tudo[m])) {
+        console.log(`    ${p.padEnd(20)} ${JSON.stringify(d.regras)}   declarado em ${String(d.em).slice(0, 16).replace('T', ' ')}`)
+      }
+      console.log('')
+    }
+    console.log('  o que já foi aplicado: node cc.mjs regras aplicadas')
+    console.log('')
+    break
+  }
+
   case 'backlog': {
     const B = await import('./src/backlog.mjs')
     const sub = arg
@@ -1596,11 +1761,44 @@ switch (cmd) {
     }
 
     if (sub === 'novo' || sub === 'abrir') {
-      const titulo = argv.slice(argv.indexOf(sub) + 1).filter((a) => !a.startsWith('--')).join(' ')
-      if (!titulo) { console.log('\n  uso: node cc.mjs backlog novo "o que precisa ser feito" --frente <nome>\n'); break }
+      /* O texto solto vira a INTENÇÃO, não mais o título: decisão dele em
+         11/09, quando o item deixou de ser prosa. O título continua sendo
+         escrito a partir dela, para quem lê o arquivo fora do painel. */
+      /* Para na PRIMEIRA opção: `filter` sobre tudo pegava também os valores
+         das opções, e a intenção saía com 220 caracteres de `--pronto` e
+         `--conferir` colados dentro. */
+      const depois = argv.slice(argv.indexOf(sub) + 1)
+      const ateAOpcao = depois.findIndex((a) => a.startsWith('--'))
+      const intencao = (ateAOpcao === -1 ? depois : depois.slice(0, ateAOpcao)).join(' ')
+      if (!intencao) {
+        console.log('\n  uso: node cc.mjs backlog novo "o que precisa ser feito" \\')
+        console.log('         --natureza DEF|PED|DEC|MED|DOC   o que é')
+        console.log('         --area dado|tela|agente|maquinas|trava|texto')
+        console.log('         --tamanho P|M|G')
+        console.log('         --pronto "o que se observa quando estiver feito"')
+        console.log('         --conferir auto:<comando> | olho:<o que olhar> | dele:<o que confirmar>')
+        console.log('         --frente <codigo>   [--trava dele|item:CC-nnn|mundo:<o quê>]  [--risco local|compartilhado|cliente]\n')
+        break
+      }
       try {
-        const i = B.acrescentar({ titulo, frente: valorDe('frente') || 'sem frente', estado: valorDe('estado') || 'B1', peso: Number(valorDe('peso')) || null, origem: 'felipe' })
-        console.log(`\n  ${i.id}  ${i.titulo}\n`)
+        const i = B.acrescentar({
+          intencao,
+          frente: valorDe('frente') || 'sem frente',
+          estado: valorDe('estado') || 'B1',
+          peso: Number(valorDe('peso')) || null,
+          origem: 'felipe',
+          natureza: valorDe('natureza'),
+          area: valorDe('area'),
+          tamanho: valorDe('tamanho'),
+          pronto: valorDe('pronto'),
+          conferir: valorDe('conferir'),
+          trava: valorDe('trava'),
+          risco: valorDe('risco'),
+          /* `--antigo` é a única porta para gravar fora do formato, e existe
+             para a migração do que já estava em prosa. */
+          permitirAntigo: argv.includes('--antigo'),
+        })
+        console.log(`\n  ${i.id}  ${B.comoSeLe(i)}\n`)
       } catch (e) { console.log(`\n  recusado: ${e.message}\n`) }
       break
     }

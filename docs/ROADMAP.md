@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-49 abertos, 513 fechados, 562 no total. Gerado em 2026-09-11.
+50 abertos, 520 fechados, 570 no total. Gerado em 2026-09-11.
 
 ## tarefas
 
@@ -47,12 +47,6 @@
 |---|---|---|---|
 | CC-340 | prova | 1 | a faixa na tela que mostra a sincronia do PC (o programa já está pronto) |
 
-## federação
-
-| id | estado | peso | o que é |
-|---|---|---|---|
-| CC-440 | definida | 5 | Plano de Unificacao: o PC coleta, a VPS trata e decide as regras |
-
 ## painel simples
 
 | id | estado | peso | o que é |
@@ -71,9 +65,7 @@
 
 | id | estado | peso | o que é |
 |---|---|---|---|
-| CC-491 | definida | - | quero que o desktop veja a vps tbm, o framework precisa criar essa conexao, mesmo que de forma barata, mas que tenha seguranca, consistencia e qualidade (decisao dele em 11/09: o desktop PUXA o retrato federado da VPS; mesmo token, HTTPS, validado campo a campo, cache de 30s, fora do tique de 2s) cockpit 2 |
 | CC-496 | definida | - | so quero que as informacoes redundantes sumam e as importantes sejam organizadas de forma correta; coisa que eu veja pouco mas bem organizada pode ser util; o problema e coisa pouco util no dia a dia virar ruido no meio do importante cockpit 2 |
-| CC-506 | definida | - | print 1: no inspetor do projeto, onde ta o framework? (fase, MVP, modo nao aparecem) cockpit 2 |
 | CC-507 | definida | - | print 2: o cartao 'quem espera voce' e nome horrivel e frase de efeito. quem e esse quem? e um card de TAREFA: do projeto tal, da tarefa tal, o que falta de mim. hoje nao da essas informacoes de forma inteligente cockpit 2 |
 | CC-508 | definida | - | print 2: agente que ENTREGOU (6 de 6 tarefas, commit a99fded) aparece como 'parou sem perguntar', e ao abrir cai numa tela que nao diz nada cockpit 2 |
 | CC-509 | definida | - | print 2: em Agentes, clicar em 'o que ele entregou' (a99fded) vai pra tela de erro {error: not found} cockpit 2 |
@@ -89,11 +81,9 @@
 | CC-503 | definida | - | projetos ativos e inativos definidos pela intencao do cliente; robos pra vasculhar os sites dos clientes procurando problemas eventuais framework |
 | CC-504 | definida | - | o framework precisa limitar a forma como a IA fala: pouco texto na tela, todo texto explicativo ao ponto e extremamente explicito, e perguntas pra tomada de decisao, sempre perguntas. formato: 'Achei o erro. O erro era X.' e a explicacao complexa colapsada ou salva no framework pra ler depois. nada de 'achei o erro, e nao era o que eu pensava' framework |
 | CC-505 | definida | - | o framework existe pra limitar os gaps de comunicacao entre humano e IA no desenvolvimento: ele olha 6 projetos, perde o contexto, e texto longo piora a retencao dele. o trabalho dele e decisao e captar erro no mundo real, nao ler explicacao framework |
-| CC-510 | definida | - | o item do framework tem natureza, area, tamanho, intencao (~140), pronto e conferir obrigatorios; trava e risco quando o caso aparece; titulo livre deixa de existir (fechado por ele em 11/09) framework |
 | CC-511 | definida | - | conferir: auto <comando> / olho <o que olhar> / dele <o que ele confirma>. e o campo que faz o leitor diario existir: hoje so 27 de 300 provas citam comando framework |
 | CC-512 | definida | - | trava: dele / CC-nnn / mundo <o que>. hoje e prosa no porque, e o painel nao consegue somar quem espera o que framework |
 | CC-513 | definida | - | risco: local / compartilhado / cliente. hoje e invisivel, e e a diferenca entre publicar e derrubar site de cliente framework |
-| CC-514 | definida | - | tamanho P M G obrigatorio na criacao; o peso antigo apodreceu em 8 por cento e sai framework |
 | CC-515 | definida | - | RECUSADO com motivo medido: prazo e data no item (524 de 543 fecham no mesmo dia), importancia livre (ja apodreceu), hora gasta digitada (ja e derivada dos transcritos) framework |
 | CC-516 | definida | - | os 110 itens 'herdado sem estado' sao cabecalhos de prosa da migracao, nao tarefas: marcar NT para o leitor pular, sem apagar framework |
 | CC-520 | definida | - | falso positivo da trava da fala: citar o proprio padrao entre aspas conta como narracao (barrou a resposta que explicava a trava) framework |
@@ -104,3 +94,9 @@
 | CC-525 | definida | - | projeto novo nasce com: registro (cliente, ativo, site), backlog vazio e CLAUDE.md. pasta de documento nasce quando tiver documento (decisao dele 11/09) framework |
 | CC-526 | definida | - | projeto ativo parado ha 7 dias aparece na tela do leitor diario, com quantos dias; ele decide se marca inativo (decisao dele 11/09) framework |
 | CC-528 | definida | - | agente sem item declarado: o aviso diz 'sem item declarado' com todas as letras, e uma peca passa a cobrar isso do agente antes da entrega (decisao dele 11/09) framework |
+| CC-529 | definida | - | a pasta tools/ da VPS pertencia a nobody e travava o git pull: 113 arquivos com dono errado, corrigidos em 11/09 com chown para claudedev (pendencia antiga dele, fechada) framework |
+| CC-530 | definida | - | a tela do leitor diario, com o que fechou sozinho e o que travou |
+| CC-532 | definida | - | regra global: toda mudanca diz onde ficou e para quem vale (CLAUDE.md global, 11/09) |
+| CC-533 | definida | - | regra global: trava que me barra nao vira conversa (CLAUDE.md global, 11/09) |
+| CC-535 | definida | - | carga fria da tela Projetos nao disparava o framework: clique programatico acontecia antes do listener nascer |
+| CC-536 | definida | - | quadro-guard trata rename deliberado como regressao (rhydon virou sysgen por pedido dele em outra sessao) |

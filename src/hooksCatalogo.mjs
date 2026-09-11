@@ -265,6 +265,19 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'onde-guard',
+    modulo: 'comunicacao',
+    nivel: 'avisa',
+    label: 'mudou o comportamento sem dizer onde ficou',
+    script: 'onde-guard.mjs',
+    evento: 'Stop',
+    descricao: 'Resposta que anuncia comportamento novo ("a partir de agora", "salvei") '
+      + 'e não diz o LUGAR (ganchos, instruções global, memória do projeto, repositório, '
+      + 'só a conversa) devolve. Ele roda 6 a 8 sessões e precisa saber se vale nas outras.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'fala-guard',
     modulo: 'comunicacao',
     nivel: 'avisa',

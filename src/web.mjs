@@ -811,7 +811,81 @@ export async function empurrar({ comTempo = null } = {}) {
   } catch { /* o log é testemunha, nunca obstáculo */ }
 
   if (r?.ok && r.pedidos?.length) await atenderPedidos(r.pedidos)
+  /* CC-440, Plano de Unificação: as regras que a outra máquina DECLARA.
+     Diferente dos pedidos acima, que são evento e acontecem uma vez, isto é
+     estado: vale sempre, e quem divergir volta na sincronia seguinte. */
+  if (r?.ok && r.regras) await obedecerRegras(r.regras, r.maquina || null)
   return r
+}
+
+/**
+ * As regras que ESTA máquina declarou para outra, prontas para viajar.
+ *
+ * Síncrona e barata (um JSON pequeno), porque roda dentro do POST que recebe o
+ * pacote, a cada 30 segundos, por máquina. Falha de leitura devolve `{}`, que
+ * é "não declaro nada", e nunca `null`: do outro lado, campo ausente e objeto
+ * vazio precisam significar a mesma coisa segura, que é não mudar nada.
+ */
+function regrasDeclaradasPara(nomeDaMaquina) {
+  if (!nomeDaMaquina) return {}
+  try {
+    const arq = path.join(casaClaude(), 'cockpit-regras.json')
+    const tudo = JSON.parse(fs.readFileSync(arq, 'utf8'))
+    return tudo[nomeDaMaquina] || {}
+  } catch { return {} }
+}
+
+/**
+ * CC-440: obedecer ao que a outra máquina declarou.
+ *
+ * Aprovado por ele em 11/09 na forma completa: *"a VPS decide a regra (qual
+ * trava vale, qual modo, qual perfil) e o PC executa o que ela mandou na
+ * última sincronia"*.
+ *
+ * As quatro travas moram em `regras.mjs` e são testadas lá; aqui só se aplica
+ * o que `diferencas()` apontou, pelo MESMO caminho que já atende os pedidos.
+ * Duas formas de aplicar a mesma coisa é como o modo passou a divergir da tela
+ * em 27/08, e não vai acontecer de novo por este arquivo.
+ *
+ * Nunca lança: roda dentro do ciclo de 30s, e uma exceção aqui mataria o
+ * empurrão seguinte junto.
+ */
+async function obedecerRegras(declaracoes, deMaquina) {
+  try {
+    const R = await import('./regras.mjs')
+    const FD = await import('./frameworkDisco.mjs')
+
+    /* O estado ATUAL de cada projeto desta máquina, que é contra o que a
+       declaração é comparada. `mexidoEm` é o que faz a trava da escolha local
+       valer: sem ele, o clique dele no painel seria desfeito no minuto
+       seguinte. */
+    const local = {}
+    for (const projeto of Object.keys(declaracoes || {})) {
+      const dir = cwdDoProjeto(projeto)
+      if (!dir) continue
+      const raiz = FD.acharRaiz(dir)
+      if (!raiz) continue
+      const e = FD.ler(raiz, { sessao: null })
+      if (!e) continue
+      local[projeto] = { ligado: e.ligado, modo: e.modo, metodo: e.metodo, modulos: e.modulos, mexidoEm: e.mexidoEm || e.em || null }
+    }
+
+    const mudancas = R.diferencas(declaracoes, local)
+    const aplicaveis = mudancas.filter((m) => m.campo && !m.pulou)
+    if (!aplicaveis.length) return
+
+    for (const m of aplicaveis) {
+      const dir = cwdDoProjeto(m.projeto)
+      if (!dir) continue
+      if (m.campo === 'modo') await atenderPedidos([{ acao: 'framework-modo', projeto: m.projeto, modo: m.para }])
+      else if (m.campo === 'ligado') await atenderPedidos([{ acao: m.para ? 'framework-ligar' : 'framework-desligar', projeto: m.projeto }])
+      else if (m.campo === 'modulo') await atenderPedidos([{ acao: 'framework-modulo', projeto: m.projeto, modulo: m.modulo, ligado: m.para }])
+    }
+    R.registrar(aplicaveis, { de: deMaquina })
+    console.error(`[federação] ${aplicaveis.length} regra(s) aplicadas por declaração de ${deMaquina || 'outra máquina'}`)
+  } catch (e) {
+    console.error('[federação] não consegui obedecer às regras declaradas:', e?.message || e)
+  }
 }
 
 /**
@@ -1584,6 +1658,15 @@ function handler(req, res) {
         recebido: pacote.maquina,
         jobs: pacote.jobs.length,
         pedidos: pegarPedidos(pacote.maquina.nome),
+        /* CC-440, Plano de Unificação: as regras DECLARADAS para esta máquina
+           vão na mesma carona dos pedidos. A diferença entre as duas coisas é a
+           natureza: pedido acontece uma vez, regra vale sempre e é reafirmada a
+           cada empurrão. É o que ele aprovou em 11/09, e é o que faz a máquina
+           que divergiu voltar ao combinado sem ninguém clicar em nada.
+           Objeto vazio quando não há declaração: campo ausente não pode ser
+           lido como "desligue tudo" do outro lado. */
+        regras: regrasDeclaradasPara(pacote.maquina?.nome),
+        maquina: origemLocal(readConfig())?.nome || null,
       }
 
       /* Plano do cockpit 2, M5: na mesma carona vai o RETRATO desta máquina, e
