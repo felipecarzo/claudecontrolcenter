@@ -272,9 +272,15 @@ export function montar({ projetos = [], jobs = [], pendencias = [], ordem = 'imp
          âncora e virava nome "você decide", igual em todo item pausado. Ver o
          comentário em `partirTitulo` e o que isso causou na tela. */
       const { limpo, nome, descricao } = partirTitulo(f.tituloCru || f.titulo)
+      /* Backlog em dado traz o id num campo próprio, e aí não há o que adivinhar.
+         Em prosa, o id só existe se alguém escreveu no título: medido em 11/09,
+         **152 dos 226 cartões não tinham** e o painel inventava `#01`, `#02`.
+         Preferir o campo é o que faz a migração de um projeto aparecer na tela
+         sem mexer em tela nenhuma. */
+      const idReal = f.id || idDoTitulo(f.titulo)
       cartoes.push({
-        id: idDoTitulo(f.titulo),
-        marca: marcaDoItem(f.titulo, posicoes.get(f.titulo) || cartoes.length + 1),
+        id: idReal,
+        marca: f.id ? { texto: f.id, real: true } : marcaDoItem(f.titulo, posicoes.get(f.titulo) || cartoes.length + 1),
         /* O que a linha mostra: o título inteiro, sem o código nem a data, que
            já têm coluna própria. Partir em nome e descrição servia ao cartão,
            que tinha um nome grande em cima e a prosa embaixo. Numa lista de uma

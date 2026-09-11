@@ -31,6 +31,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { casaClaude } from './platform.mjs'
 import { DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
+import { mesmoProjeto } from './nomeProjeto.mjs'
 
 const CAUDA = 512 * 1024
 
@@ -206,7 +207,12 @@ export function eventos({ limite = 80, desde = null, trava = null, projeto = nul
   let todos = [...porId.values()]
   if (desde) todos = todos.filter((e) => e.quando && e.quando >= desde)
   if (trava) todos = todos.filter((e) => e.trava === trava)
-  if (projeto) todos = todos.filter((e) => e.projeto === projeto)
+  /* `mesmoProjeto` e não `===`: as pastas carregam prefixo de máquina desde
+     23/08, então `VPS_inovallbond` e `inovallbond` são o mesmo projeto e a
+     comparação crua os separava. Queixa dele em 11/09: *"não reconhece os
+     projetos como um só (vps e Pc)"*. A conta já existia e só três dos 95
+     módulos a usavam. */
+  if (projeto) todos = todos.filter((e) => mesmoProjeto(e.projeto, projeto))
   todos.sort((a, b) => String(b.quando).localeCompare(String(a.quando)))
   return todos.slice(0, limite)
 }

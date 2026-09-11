@@ -27,6 +27,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { casaClaude } from './platform.mjs'
 import { DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
+import { mesmoProjeto } from './nomeProjeto.mjs'
 import { apelidosDePasta } from './install.mjs'
 
 /* CC-232: passou a resolver por `casaClaude()` em vez de `os.homedir()`, sem
@@ -138,7 +139,16 @@ export function acrescentar({ texto, projeto = null, frente = null, porque = nul
   const todas = ler().tarefas
   // mesmo texto no mesmo projeto não entra duas vezes: eu registro isto de
   // dentro de sessões diferentes, e ele leria a mesma coisa duplicada
-  if (todas.some((x) => x.texto === t && x.projeto === projeto && !x.feito)) {
+  /* `mesmoProjeto` e não `===`: a mesma pendência registrada da VPS
+     (`VPS_cockpit`) e do PC (`cockpit`) entrava duas vezes na lista dele, e
+     ele lia a mesma coisa duplicada. Os dois lados carimbam o nome que a
+     própria máquina usa. */
+  /* Os dois sem projeto contam como iguais, e `mesmoProjeto` devolve `false`
+     nesse caso de propósito (sem nome não casa com sem nome por acidente).
+     Aqui a pergunta é outra: "já registrei esta MESMA tarefa?". Sem este ramo,
+     toda pendência solta dele entraria de novo a cada sessão. */
+  const iguais = (a, b) => (!a && !b) || mesmoProjeto(a, b)
+  if (todas.some((x) => x.texto === t && iguais(x.projeto, projeto) && !x.feito)) {
     return { ok: true, jaExistia: true, tarefas: todas }
   }
   /* CC-262: `prova` é como se sabe, sozinho, que esta tarefa acabou. Opcional

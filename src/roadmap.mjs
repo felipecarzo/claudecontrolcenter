@@ -345,6 +345,15 @@ export function ordenar(cwd, mapa) {
          primeira tentativa de consertar isto: o conserto estava certo no
          `lerRoadmap` e o dado morria aqui, dois passos depois. */
       tituloCru: f.tituloCru || f.titulo,
+      /* Mesma razão do `tituloCru` logo acima, e o mesmo erro pego duas vezes:
+         quem vem do backlog em dado traz id, código de estado e prova em campo
+         próprio, e reconstruir sem eles faz o painel voltar a inventar `#01`
+         com o id verdadeiro ali do lado. */
+      id: f.id || null,
+      codigo: f.codigo || null,
+      prova: f.prova || null,
+      porque: f.porque || null,
+      decisao: f.decisao || null,
       estado: f.estado,
       grupo: g.titulo,
       citacao: f.citacao || null,
@@ -462,7 +471,88 @@ export function estadoDaSprint(prazo, agora = new Date()) {
   return 'corrente'
 }
 
+/**
+ * O backlog em dado, quando o projeto já tem um.
+ *
+ * Desde 11/09 este projeto guarda o backlog em `docs/backlog.jsonl`, com id e
+ * estado de verdade, e o `ROADMAP.md` passou a ser saída gerada. Ler o dado
+ * direto é melhor que reinterpretar o markdown que saiu dele: o id vem real, o
+ * estado vem do código gravado, e some a chance de o parser discordar do
+ * gerador.
+ *
+ * Os outros 27 projetos continuam em prosa, e continuam caindo no leitor de
+ * markdown logo abaixo. **Por isso a escolha é por arquivo existir, e não por
+ * configuração**: migração projeto a projeto não depende de ninguém lembrar de
+ * ligar uma chave.
+ */
+function lerBacklogEmDado(cwd) {
+  if (deOutraPlataforma(cwd)) return null
+  /* Sobe igual ao `acharRoadmap`, e pelo mesmo motivo: o `cwd` de um agente
+     costuma ser uma subpasta do projeto (`apps/web`), e parar no primeiro
+     nível deixaria de achar o backlog do monorepo inteiro. */
+  let arquivo = null
+  let dir = cwd
+  for (let i = 0; i < 8 && dir; i++) {
+    const alvo = path.join(dir, 'docs', 'backlog.jsonl')
+    try { if (fs.statSync(alvo).isFile()) { arquivo = alvo; break } } catch { /* segue */ }
+    const pai = path.dirname(dir)
+    if (pai === dir) break
+    dir = pai
+  }
+  if (!arquivo) return null
+  let cru
+  try { cru = fs.readFileSync(arquivo, 'utf8') } catch { return null }
+
+  /* `estado: 'feito'` é o vocabulário que o resto do painel já usa; o código de
+     produção é o do backlog. Traduzir aqui, num lugar só, evita que cada tela
+     invente a própria correspondência. */
+  const FEITOS = new Set(['OK', 'KO'])
+  const ROTULO = { B0: 'ideia', B1: 'na fila', EM: 'andando', PR: 'falta a prova', DE: 'você decide', TR: 'travada', OK: 'feito', KO: 'cancelada' }
+
+  const porFrente = new Map()
+  let total = 0
+  for (const linha of cru.split(/\r?\n/)) {
+    const l = linha.trim()
+    if (!l || l.startsWith('//')) continue
+    let o
+    try { o = JSON.parse(l) } catch { continue }
+    if (!o || !o.id || !o.titulo) continue
+    total++
+    const nome = o.frente || 'sem frente'
+    if (!porFrente.has(nome)) porFrente.set(nome, [])
+    porFrente.get(nome).push({
+      id: o.id,
+      titulo: String(o.titulo),
+      estado: FEITOS.has(o.estado) ? 'feito' : (ROTULO[o.estado] || 'aberto'),
+      codigo: o.estado,
+      peso: o.peso ?? null,
+      prova: o.prova || null,
+      porque: o.porque || null,
+      decisao: o.decisao || null,
+      itens: [],
+      tarefas: [],
+    })
+  }
+  if (!total) return null
+
+  /* Uma frente por grupo, e o grupo carrega o nome dela: o quadro agrupa por
+     `##` no markdown, e aqui o equivalente é o campo `frente`. */
+  const grupos = [...porFrente.entries()].map(([nome, frentes]) => ({
+    titulo: nome,
+    nome,
+    frentes,
+    itens: [],
+  }))
+  return { arquivo, grupos, deDado: true, total }
+}
+
 export function lerRoadmap(cwd) {
+  /* O dado vence a prosa quando existe. Ordem deliberada: enquanto os dois
+     existirem no mesmo projeto, quem manda tem que ser sempre o mesmo, senão
+     nasce a segunda verdade que a migração de 11/09 existe para matar. */
+  const emDado = lerBacklogEmDado(cwd)
+  if (emDado) return emDado
+
   const arquivo = acharRoadmap(cwd)
   if (!arquivo) return null
   let texto
