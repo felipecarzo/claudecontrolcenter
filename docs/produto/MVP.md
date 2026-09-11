@@ -22,6 +22,27 @@ em nenhum.** As sete entregas ficaram prontas, e o histórico está em
 
 **✅ Aprovada por ele em 11/09**, com uma palavra: *"aprovado"*.
 
+### O que os três cortes marcam hoje, medido em 11/09 pela manhã
+
+Ele mandou *"seguir o MVP até o fim"*, e isto é o resultado, medido no painel
+vivo desta máquina. Cada linha é número, não impressão.
+
+| | antes | agora |
+|---|---|---|
+| exigências do framework ativas nesta máquina | não havia lista | **44 de 45**, e a única que falta é a versão publicada, que é decisão dele |
+| Claude Code, opencode e antigravity | 1 de 3 | **3 de 3** |
+| quem avisa quando uma peça cai | ninguém | comando, hook de início (uma vez por dia) e bloco na tela Máquinas |
+| itens do quadro com id inventado | **152 de 226 (67%)** | **0 de 523** |
+| projetos com backlog em dado | 0 | **15**, com 1.509 itens e nenhum sem id |
+| primeiro lugar do placar de travas | `sem nome`, 334 | `pergunta-guard`, 36. As 333 quebras foram para bloco próprio |
+| itens de menu | 20 | **10** na versão nova, com o design intacto |
+| projetos fora do quadro | 13, sem saída escrita | 13, **com o comando de entrada na própria tela** |
+
+**O que continua aberto, e por quê:** as 10 telas escondidas ainda não viraram
+gaveta dentro das que ficaram (CC-477), e o arquivo passou para a rota
+`cockpit2` de outra sessão em 11/09. O corte 2 fecha quando isso acontecer, ou
+quando o redesenho dela tornar o item sem sentido.
+
 Ele escolheu os três na pergunta direta, e a ordem abaixo é a de dependência,
 não de importância: o primeiro sustenta os outros dois.
 

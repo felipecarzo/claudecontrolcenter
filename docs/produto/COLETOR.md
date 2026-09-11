@@ -3,14 +3,27 @@ tags: [arquitetura, produto]
 tipo: desenho
 nome: Plano de Unificação
 atualizado: 2026-08-30
-estado: proposto, esperando aprovação dele
+estado: ✅ APROVADO por ele em 11/09, na forma completa (a VPS decide as regras, o PC executa)
 ---
 
-# Plano de Unificação — o PC vira coletor, a VPS vira o cérebro
+# Plano de Unificação: o PC vira coletor, a VPS vira o cérebro
 
 Desenho pedido por ele em 30/08, depois de escolher a forma. Nome dado por ele
-no mesmo dia: **Plano de Unificação**. Nada disto foi construído: é o
-documento para ele ler e aprovar antes.
+no mesmo dia: **Plano de Unificação**.
+
+## ✅ APROVADO em 11/09, e na forma completa
+
+Esperou 12 dias por uma pergunta que nunca foi feita direito. Ele escolheu
+*"aprovado, pode construir"* entre quatro opções, e a escolhida é a que faz a
+**VPS decidir as regras** (qual trava vale, qual modo, qual perfil em cada
+projeto), com o PC executando o que ela mandou na última sincronia. A opção
+menor, só mostrar os dados sem controlar, foi recusada.
+
+Isto confirma por escolha o que a seção seguinte já tinha resolvido em 30/08: é
+controle remoto de CONFIGURAÇÃO, não de cada ação em tempo real. A razão física
+continua valendo e não mudou com a aprovação: uma trava que roda a 20
+milissegundos de distância não segura a mão no instante em que o agente escreve
+o arquivo.
 
 ## O escopo cresceu no mesmo dia, e ainda não foi decidido até onde
 

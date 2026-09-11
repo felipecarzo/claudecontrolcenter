@@ -3412,6 +3412,12 @@
     <div id="view-maquina" class="view-section">
       <div class="grid-container so-uma">
         <div class="main-col">
+          <!-- CC-474: o framework está ativo AQUI? Corte 1 do MVP da v2.
+               `cc maquina` responde no terminal, e ele abre o painel, não o
+               terminal. Medido em 11/09: os dois hooks que SÃO o framework
+               estavam desligados nesta máquina havia semanas, e nada em lugar
+               nenhum dizia isso. -->
+          <div id="maq-framework" style="margin-bottom:18px;"></div>
           <div id="maq-corpo" class="bottom-grid"><p style="color:var(--text-dim);">lendo…</p></div>
           <div id="maq-processos" style="margin-top:20px;"></div>
         </div>
@@ -3839,6 +3845,22 @@
 
     /* Por que este agente parou, dito com verbo. O motivo que o próprio agente
        escreveu vence a frase geral. */
+    /**
+     * CC-466: o que a sessão FEZ, e não o que ela disse que ia fazer.
+     *
+     * Medido em 11/09: 13 das 18 sessões desta máquina não reportavam nada ao
+     * painel, e todas as mudas eram interativas. Nelas o cartão mostrava o
+     * ÚLTIMO PEDIDO dele como assunto, e o último pedido costuma ser "seguir"
+     * ou "ok", que não diz nada sobre o trabalho.
+     *
+     * Isto vem do transcrito: arquivo escrito, teste rodado, commit feito.
+     * Fica ABAIXO do que o agente declarou, nunca por cima: quando ele
+     * declarou, ele sabe o porquê, e o transcrito só sabe o quê.
+     */
+    const feitoNaSessao = (a) => (a.feito?.frase
+      ? `<p style="margin:4px 0 0;font-size:12px;color:var(--text-dim);" title="lido do transcrito, sem o agente precisar reportar">${esc(a.feito.frase)}</p>`
+      : '');
+
     function porQueEspera(j) {
       const t = (j.blockers || []).filter(Boolean)[0];
       const texto = typeof t === 'string' ? t : (t?.text || t?.t || '');
@@ -4012,7 +4034,7 @@
             if (targetId === 'view-vps') carregarVps();
             if (targetId === 'view-servidores') { if (!SERVERS) carregarServidores(); else renderServidores(); }
             if (targetId === 'view-docker') carregarDocker();
-            if (targetId === 'view-maquina') { renderMaquina(); carregarProcessos(); }
+            if (targetId === 'view-maquina') { renderMaquina(); carregarInstalacao(); carregarProcessos(); }
             if (targetId === 'view-hooks') { if (!HOOKS_DATA) carregarHooks(); else renderHooks(); }
             if (targetId === 'view-rotinas') { if (!ROTINAS_DATA) carregarRotinas(); else renderRotinas(); }
             if (targetId === 'view-custo') { if (!PRECO) carregarPreco(); else renderPreco(); }
@@ -4321,6 +4343,7 @@
             </div>
           </div>
           <p title="${esc(a.subject || '')}">${esc(a.subject || p.frase)}</p>
+          ${feitoNaSessao(a)}
           <div class="attention-actions">
             <span style="font-size:11px;color:var(--text-dim);align-self:center;">há ${age(Date.now() - (a.updatedAt || Date.now()))}</span>
             <button class="btn btn-${p.cor}" data-ver-agente="${esc(a.id)}">Abrir agente</button>
@@ -4444,6 +4467,7 @@
             </div>
           </div>
           <p title="${esc(frase)}">${esc(frase)}</p>
+          ${feitoNaSessao(a)}
           <div class="attention-actions">
             <span style="font-size:11px;color:var(--text-dim);align-self:center;">${total ? `${feitas} de ${total} tarefas fechadas` : 'sem tarefa registrada'}</span>
             <button class="btn btn-ghost" data-ver-agente="${esc(a.id)}">Abrir agente</button>
@@ -6798,6 +6822,60 @@
     }
 
     /* ---- Máquina (tela própria) ---- */
+    /**
+     * CC-474: o framework está ativo nesta máquina?
+     *
+     * Três estados, e o terceiro é o que este painel mais erra quando falta:
+     * lendo, respondeu, e NÃO CONSEGUI LER. Leitura falhada que se parece com
+     * "está tudo bem" é o corte 3 do MVP ao contrário.
+     *
+     * Sob demanda, não no fluxo de 2 em 2 segundos: a resposta muda de hora em
+     * hora, e o tique é para o que muda de segundo em segundo.
+     */
+    let INSTALACAO = null;
+    async function carregarInstalacao() {
+      try {
+        const r = await fetch('/api/instalacao');
+        if (!r.ok) throw new Error('resposta ' + r.status);
+        INSTALACAO = await r.json();
+      } catch (e) { INSTALACAO = { falhou: String(e.message || e) }; }
+      renderInstalacao();
+    }
+
+    function renderInstalacao() {
+      const alvo = document.getElementById('maq-framework');
+      if (!alvo) return;
+      if (!INSTALACAO) { pintar(alvo, '<div class="card"><p style="color:var(--text-dim);margin:0;">lendo o estado do framework…</p></div>'); return; }
+      if (INSTALACAO.falhou) {
+        pintar(alvo, '<div class="card tend-aviso"><b>Não consegui ler o estado do framework.</b>'
+          + '<p style="margin:6px 0 0;">' + esc(INSTALACAO.falhou) + '. O que aparece abaixo é sobre a máquina, não sobre o framework.</p></div>');
+        return;
+      }
+      const falta = INSTALACAO.faltando || [];
+      const cor = falta.length ? 'var(--amber, #f0b74a)' : 'var(--done, #7fd39a)';
+      pintar(alvo, '<div class="card" style="border-left:3px solid ' + cor + ';">'
+        + '<div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;">'
+        + '<b style="font-size:14px;">O framework nesta máquina</b>'
+        + '<span style="color:var(--text-muted);">' + esc(INSTALACAO.frase) + '</span>'
+        + '<span style="flex:1;"></span>'
+        + '<button class="btn compacto" data-instalacao-reler>reler</button>'
+        + '</div>'
+        + (falta.length
+          ? '<div style="margin-top:12px;">'
+            + falta.map((f) => '<div style="padding:7px 0;border-top:1px solid var(--linha,#2e2e33);">'
+              + '<div><b>' + esc(f.titulo) + '</b> <span style="color:var(--text-dim);font-size:11px;">' + esc((INSTALACAO.gravidades?.[f.gravidade]?.label) || f.gravidade) + '</span></div>'
+              + '<div style="color:var(--text-muted);font-size:12px;overflow-wrap:anywhere;">' + esc(f.detalhe) + '</div>'
+              + '<div style="color:var(--text-dim);font-size:11px;">por quê: ' + esc(f.porque) + '</div>'
+              + '</div>').join('')
+            + '<p style="margin:12px 0 0;color:var(--text-dim);font-size:12px;">Para ligar, no terminal: <code>cc maquina ligar</code> (ensaio: <code>--ensaio</code>). O painel não mexe no seu settings.json sozinho.</p>'
+            + '</div>'
+          : '<p style="margin:10px 0 0;color:var(--text-muted);">Nada a fazer: tudo que o framework exige está no lugar aqui.</p>')
+        + (INSTALACAO.naoSei?.length
+          ? '<p style="margin:10px 0 0;color:var(--text-dim);font-size:12px;">' + INSTALACAO.naoSei.length + ' item(ns) não deram para conferir: ' + esc(INSTALACAO.naoSei.map((n) => n.titulo).join(', ')) + '</p>'
+          : '')
+        + '</div>');
+    }
+
     function renderMaquina() {
       const alvo = document.getElementById('maq-corpo');
       if (!alvo) return;
@@ -10749,7 +10827,34 @@
         + '</div>';
 
       const mudas = (d.regras || []).filter((r) => r.vezes === 0);
-      pintar(placar, '<div class="section-header"><h2>CADA REGRA</h2></div>'
+
+      /* **O que QUEBROU, antes do placar** (corte 3 do MVP da v2, 11/09).
+       *
+       * Até hoje isto se misturava às regras no mesmo número, e o resultado era
+       * uma "regra" chamada `sem nome` em primeiro lugar, com 334 de 485
+       * eventos, que na verdade era um único hook estourando a cada fim de
+       * turno em todo projeto. Ele olhava essa tela e não tinha como saber.
+       *
+       * Vem em cima porque é a única coisa aqui que pede conserto: regra que
+       * barra está fazendo o trabalho dela; hook que quebra não está fazendo
+       * nada, e ninguém percebe. */
+      const quebras = d.quebras || [];
+      const blocoQuebras = quebras.length
+        ? '<div class="section-header"><h2>PROGRAMAS QUEBRADOS</h2></div>'
+          + '<div class="card tend-aviso" style="margin-bottom:18px;">'
+          + '<p style="margin:0 0 10px;">Isto não é regra te barrando: é hook que estourou e não fez o trabalho dele. '
+          + 'Some do placar de propósito, e aparece aqui porque pede conserto.</p>'
+          + quebras.slice(0, 6).map((q) => '<div style="display:flex;gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid var(--linha,#2e2e33);">'
+            + '<b style="min-width:56px;">' + q.vezes + 'x</b>'
+            + '<span style="flex:1;overflow-wrap:anywhere;">' + esc(q.causa) + '</span>'
+            + '<span style="color:var(--text-dim);font-size:11px;white-space:nowrap;">' + esc((q.projetos || []).slice(0, 2).join(', ')) + '</span>'
+            + '</div>').join('')
+          + (quebras.length > 6 ? '<p style="margin:10px 0 0;color:var(--text-dim);">e mais ' + (quebras.length - 6) + '</p>' : '')
+          + '</div>'
+        : '';
+
+      pintar(placar, blocoQuebras
+        + '<div class="section-header"><h2>CADA REGRA</h2></div>'
         + '<div class="bottom-grid">' + d.placar.slice(0, 12).map(cartao).join('') + '</div>'
         + (mudas.length
           ? '<div class="section-header" style="margin-top:22px;"><h2>AS QUE NUNCA DISPARARAM</h2></div>'
@@ -13048,6 +13153,15 @@
              mostra projeto: *"onde tá dizendo que cada projeto está na vps,
              desktop etc?"*. Vale aqui como vale no cartão. */
           + sem.map((x) => '<span class="kb-tag">' + esc(x.projeto) + seloDoProjeto(x.projeto) + '</span>').join('')
+          /* CC-478: a lista dizia QUEM está fora e nunca COMO entrar, e por isso
+             os mesmos projetos apareciam aqui havia semanas. Agora o caminho
+             está escrito, e é um comando só, rodado dentro do projeto. Sem
+             isto a lista é uma reclamação sem saída, que é o formato de aviso
+             que ele deixa de ler na terceira vez. */
+          + '<p style="margin:10px 0 0;color:var(--text-dim);font-size:12px;line-height:1.5;">'
+          + 'Para um deles entrar no quadro, abra uma sessão nele e rode <code>cc backlog migrar --ensaio</code> '
+          + '(traz o que já está escrito no roadmap) ou <code>cc backlog novo "primeira coisa a fazer"</code> '
+          + '(começa do zero). Projeto sem backlog não entra sozinho.</p>'
           + '</div></details>'
         : '';
 
@@ -13717,6 +13831,10 @@
       if (abaConh) { e.preventDefault(); return trocarConhecimento(abaConh.dataset.conh); }
       const abaInfra = tr.closest?.('[data-infra]');
       if (abaInfra) { e.preventDefault(); return trocarInfra(abaInfra.dataset.infra); }
+      /* CC-474: reler o estado do framework. Sob clique porque a resposta muda
+         de hora em hora, e ele quer conferir logo depois de rodar
+         `cc maquina ligar` no terminal. */
+      if (tr.closest?.('[data-instalacao-reler]')) { e.preventDefault(); INSTALACAO = null; renderInstalacao(); return carregarInstalacao(); }
       const btFaixa = tr.closest?.('[data-mapa-faixa]');
       if (btFaixa) {
         e.preventDefault();
@@ -14924,6 +15042,7 @@
         if (typeof SERVERS !== 'undefined' && SERVERS) renderServidores(); else carregarServidores();
       }
       if (aba === 'docker' && typeof carregarDocker === 'function') carregarDocker();
+      if (aba === 'maquina' && typeof carregarInstalacao === 'function') carregarInstalacao();
       if (aba === 'maquina' && typeof renderMaquina === 'function') { renderMaquina(); carregarProcessos(); }
       /* A VPS NÃO carrega sozinha, e isso é decisão antiga: ela é a única
          chamada de rede perigosa do painel, com a chave dele num processo que

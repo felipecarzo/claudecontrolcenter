@@ -685,6 +685,15 @@ const comRespostas = (extra = {}) => ({
        tela a consome. Fica declarada para o gate não ficar vermelho enquanto ele
        decide entre ligar e remover, e some daqui quando ele decidir. */
     '/api/marcos': 'DÍVIDA: rota do CC-23 que nenhuma tela chama, esperando decisão dele',
+    /* Pedida pela sessão `0174a7a8` em 11/09, pelo recado do Routia, para a
+       tela nova que ela está construindo (`ui_cockpit2.html`, rota `cockpit2`).
+       Ela não pôde acrescentar sozinha porque `src/web.mjs` está reivindicado
+       aqui; eu pus as três linhas e avisei.
+       **Exceção com prazo, não permanente:** vira dívida no dia em que o
+       Cockpit 2 for descartado sem consumir a rota, e some daqui quando a tela
+       dela passar a chamá-la. A diferença entre esta e a `/api/marcos` acima é
+       que existe alguém construindo o consumidor agora. */
+    '/api/cockpit2': 'a tela do Cockpit 2 está sendo escrita pela sessão 0174a7a8, que pediu a rota por recado em 11/09',
   }
   const mortas = rotas.filter((r) => {
     if (CONSUMIDAS_DE_FORA[r]) return false

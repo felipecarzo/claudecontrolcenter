@@ -58,17 +58,49 @@ function lerCauda(file, bytes = CAUDA) {
  * inteiro não serve para ninguém ler, e o recado sim: é ele que diz o que
  * precisa ser refeito.
  */
+/**
+ * O recado é de uma TRAVA, ou é um hook que quebrou?
+ *
+ * ## Por que a diferença importa
+ *
+ * Corte 3 do MVP da v2: *"o painel não mente nunca"*. Medido em 11/09, no
+ * placar real deste PC: **"sem nome" era o primeiro lugar, com 334
+ * ocorrências**, mais que todas as travas de verdade somadas. Destes, **333
+ * eram um único hook quebrado** (`routia-fim` importando um arquivo que nunca
+ * foi instalado), que estourava a cada fim de turno em todo projeto.
+ *
+ * Ele olhou essa tela e não tinha como saber. Um número que mistura "a regra
+ * do projeto me barrou" com "um programa quebrou" não responde nenhuma das
+ * duas perguntas, e é exatamente a queixa dele: *"as informações jogadas
+ * acabam perdendo o sentido"*.
+ *
+ * ## O critério, e por que ele é conservador
+ *
+ * Só entra como falha o que tem assinatura inequívoca de erro de execução:
+ * módulo que não existe, arquivo que não existe, erro de sintaxe, comando
+ * desconhecido. Na dúvida, continua sendo trava: classificar uma trava de
+ * verdade como "erro de sistema" a esconderia do placar, e o placar é o que
+ * ele usa para decidir quais travas desligar.
+ */
+const ASSINATURA_DE_QUEBRA = /ERR_MODULE_NOT_FOUND|Cannot find module|No such file or directory|SyntaxError|ReferenceError|is not recognized as|command not found|EACCES|ENOENT|node:internal\/modules|at ModuleJob|Node\.js v\d/i
+
+/** O mesmo que `lerErro`, exportado para o gate medir sem tocar em disco. */
+export const classificarRecado = (texto) => lerErro(texto)
+
 function lerErro(texto) {
   const s = String(texto || '')
   const nome = s.match(/hooks\/([a-z0-9-]+)\.(?:mjs|js)/)?.[1] || null
   const corpo = s.replace(/^\s*\[node [^\]]*\]:\s*/, '').trim()
   const linhas = corpo.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  const detalhe = linhas.slice(1).join('\n').slice(0, 1200) || null
   return {
     trava: nome,
     /* A primeira linha é o título do recado, em maiúsculas, e é o que cabe numa
        linha de log. O resto vira o detalhe, que só aparece quando ele abre. */
     titulo: linhas[0] || corpo.slice(0, 120) || 'sem texto',
-    detalhe: linhas.slice(1).join('\n').slice(0, 1200) || null,
+    detalhe,
+    /* Hook que QUEBROU não é regra que barrou. Ver `ASSINATURA_DE_QUEBRA`. */
+    quebra: ASSINATURA_DE_QUEBRA.test(corpo),
   }
 }
 
@@ -122,7 +154,7 @@ function eventosDoArquivo(file) {
     const errs = Array.isArray(o.hookErrors) ? o.hookErrors : []
     if (!errs.length) continue
     for (const e of errs) {
-      const { trava, titulo, detalhe } = lerErro(e)
+      const { trava, titulo, detalhe, quebra } = lerErro(e)
       eventos.push({
         /* O id junta sessão, hora e nome: é estável entre leituras, que é o que
            permite o julgamento dele sobreviver ao próximo tique. */
@@ -131,6 +163,7 @@ function eventosDoArquivo(file) {
         trava,
         titulo,
         detalhe,
+        quebra,
         sessao,
         projeto: projetoDe(o.cwd || cwd),
       })
@@ -204,7 +237,16 @@ export function eventos({ limite = 80, desde = null, trava = null, projeto = nul
   for (const e of daCauda) porId.set(e.id, e)
   if (guardarNovos && novos.length) guardar(novos)
 
-  let todos = [...porId.values()]
+  /* **Campo novo classifica o histórico VELHO também, e sem isso ele nasce
+     mentindo.** O `quebra` entrou em 11/09, e os 300+ eventos já gravados em
+     disco não o tinham: eles continuariam somando no placar de travas como
+     "sem nome", que é exatamente o defeito que o campo existe para matar.
+     É a mesma armadilha do `VERSAO_CACHE` em `tempo.mjs`, e a saída aqui é
+     mais barata: a classificação é derivada do texto, então dá para recalcular
+     na leitura em vez de forçar releitura de tudo. */
+  let todos = [...porId.values()].map((e) => (
+    'quebra' in e ? e : { ...e, quebra: ASSINATURA_DE_QUEBRA.test(`${e.titulo || ''}\n${e.detalhe || ''}`) }
+  ))
   if (desde) todos = todos.filter((e) => e.quando && e.quando >= desde)
   if (trava) todos = todos.filter((e) => e.trava === trava)
   /* `mesmoProjeto` e não `===`: as pastas carregam prefixo de máquina desde
@@ -288,6 +330,13 @@ export function placar(lista = eventos({ limite: 1000 })) {
   const j = lerJulgamentos()
   const m = new Map()
   for (const e of lista) {
+    /* **Hook quebrado fica FORA do placar.** Ele era o primeiro lugar aqui, com
+       334 de 485 eventos, e nenhum deles era uma regra barrando coisa alguma:
+       era um único import quebrado estourando a cada fim de turno. Contá-lo
+       junto respondia a pergunta errada duas vezes. Quem pergunta "quais regras
+       mais me barram?" vê só regra; quem pergunta "o que está quebrado?" tem
+       `quebras()` logo abaixo. */
+    if (e.quebra) continue
     const k = e.trava || 'sem nome'
     if (!m.has(k)) m.set(k, { trava: k, vezes: 0, ajudou: 0, atrapalhou: 0, semMarca: 0 })
     const x = m.get(k)
@@ -306,6 +355,36 @@ export function placar(lista = eventos({ limite: 1000 })) {
       : null,
     julgadas: x.ajudou + x.atrapalhou,
   })).sort((a, b) => b.vezes - a.vezes)
+}
+
+/**
+ * O que está QUEBRADO, separado do que está barrando.
+ *
+ * A outra metade do corte 3 do MVP: tirar o hook quebrado do placar de travas
+ * resolveria a mentira e criaria uma pior, o silêncio. Os 333 erros de `routia-fim`
+ * ficariam invisíveis, e foi a visibilidade deles (mesmo no lugar errado) que
+ * levou ao conserto em 11/09.
+ *
+ * Agrupa pela primeira linha do erro, que é onde mora a causa, e diz quantas
+ * vezes e quando foi a última. Uma linha por problema, não por ocorrência: 333
+ * linhas do mesmo erro é ruído, "333 vezes" é informação.
+ */
+export function quebras(lista = eventos({ limite: 1000 })) {
+  const m = new Map()
+  for (const e of lista) {
+    if (!e.quebra) continue
+    /* A chave é a linha da causa, não o título: o título costuma ser o começo
+       do rastro de pilha, igual para erros diferentes. */
+    const causa = (String(e.detalhe || '').split('\n').find((l) => /Cannot find module|No such file|not recognized|Error/i.test(l)) || e.titulo || 'sem causa legível').trim().slice(0, 160)
+    if (!m.has(causa)) m.set(causa, { causa, vezes: 0, ultima: null, projetos: new Set(), hook: e.trava || null })
+    const x = m.get(causa)
+    x.vezes += 1
+    if (e.projeto) x.projetos.add(e.projeto)
+    if (!x.ultima || String(e.quando) > String(x.ultima)) x.ultima = e.quando
+  }
+  return [...m.values()]
+    .map((x) => ({ ...x, projetos: [...x.projetos] }))
+    .sort((a, b) => b.vezes - a.vezes)
 }
 
 /**
@@ -339,11 +418,11 @@ export function recolherTudo() {
       try { o = JSON.parse(linha) } catch { continue }
       const errs = Array.isArray(o.hookErrors) ? o.hookErrors : []
       for (const e of errs) {
-        const { trava, titulo, detalhe } = lerErro(e)
+        const { trava, titulo, detalhe, quebra } = lerErro(e)
         achados.push({
           id: `${sessao}|${o.timestamp || ''}|${trava || 'sem-nome'}`,
           quando: o.timestamp || null,
-          trava, titulo, detalhe, sessao,
+          trava, titulo, detalhe, quebra, sessao,
           projeto: projetoDe(o.cwd || cwd),
         })
       }
