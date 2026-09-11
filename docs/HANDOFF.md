@@ -1,130 +1,73 @@
 # HANDOFF
 
-**Sessão:** 2026-09-10 · PC (`84be1862`), depois de puxar o dia inteiro da VPS
-(`e2b33ef8`/`670e1313`, que fechou e ficou como porta em standby)
-**Último commit antes deste encerramento:** `b3b3249`, empurrado
+**Sessão:** 2026-09-11 · PC (`56665382`), a sessão que seguiu o MVP até o fim e
+depois construiu o Plano de Unificação
+**Último commit:** `cce65d1`, empurrado localmente, **não deu push ainda**
 **Branch:** `backlog/cc-46-48-49-52-53-56-65`
 
-O que aconteceu, dos dois lados: [diario/2026-09-10.md](diario/2026-09-10.md).
-Ponteiro, não relatório.
+Duas sessões trabalharam nos mesmos arquivos hoje, coordenadas pelo recado do
+Routia: esta (`56665382`) e a do Cockpit 2 (`0174a7a8`, rota `cockpit2`). **Já
+está tudo commitado**, os dois lados: nada a fazer na próxima sessão além de
+`git push` quando ele pedir.
 
-## O que fechou hoje, com prova
+## O que esta sessão fechou, com prova
 
-- **CC-456, três rodadas até a causa completa.** Dois lançadores duplicados no
-  login, um órfão numa porta escondida (sobra de comando manual), e um terceiro
-  vindo de uma Tarefa Agendada já apagada (token de administrador, matado pelo
-  Felipe). Foto final: um único processo do cockpit vivo na máquina.
-- **CC-459**, o loop de bandeja relançando a cada 5s: causa e conserto
-  herdados de outra sessão que ficou travada por rota, aplicado e provado
-  (contagem de processo estável por 30s+).
-- **CC-460**, a barra de status piscando janela preta: provado de verdade
-  agora (não só publicado). Contar processo enganava (25 em 30s, era volume
-  de várias sessões); contar JANELA VISÍVEL deu zero em oito rodadas.
-- **CC-458**, respostas longas: já estava resolvido por outra sessão, só uma
-  referência de número desatualizada.
-- Merge com o trabalho da VPS (o campo `servico` correto, a lista de
-  empurradores, o conserto do statusline) sem perder nada dos dois lados.
+- **Os três cortes do MVP da v2**, todos medidos no painel real: 45 de 45
+  peças do framework ativas nesta máquina; quadro com 0 cartões de id
+  inventado (eram 152 de 226); backlog em dado em 15 projetos.
+- **A causa das janelas do Edge que incomodavam ele**: não era o painel, era
+  o `npm test`, que abria uma janela real a cada rodada. `CC_SEM_NAVEGADOR=1`
+  trava isso em `abrirNavegador` e `abrirComoApp`, os dois, com teste.
+- **O painel deixou de depender só de relato**: `src/observado.mjs` lê o
+  transcrito e diz o que a sessão FEZ (arquivo escrito, teste, commit), sem
+  o agente reportar. Foi de 5 para 9 de 18 sessões com trabalho visível.
+- **Plano de Unificação aprovado e construído**: `src/regras.mjs`, a VPS
+  declara a regra e o PC obedece na sincronia. Quatro travas, prova de ponta
+  a ponta com 10 passos. `cc regras` para declarar/ver.
+- **`cc sincronia`**, pedido direto dele: *"como eu garanto que funciona?!"*.
+  Responde se o ciclo de 30s está ligado, e `--esperar` mostra o próximo
+  envio acontecer na hora.
+- **As 4 decisões que esperavam ele**, registradas: marcar tarefa pronta vira
+  proposta+confirmação (CC-234, ainda B1, não construída); o raciocínio do
+  Coderoom fica de lado (CC-274, KO); o Plano de Unificação aprovado (CC-440,
+  OK); a sessão ociosa fica só com retomada manual (CC-457, KO).
+- **Os 24 itens do jogo do inovallbond fechados**, com a frase dele como
+  prova: *"o jogo ta pronto"*.
 
-## ⏸ CC-457, decisão dele — metade provada, metade travada
+## ⚠️ Antes de mexer em código
 
-Retomar sessão traz a conversa inteira: **provado**, fora do projeto, quatro
-turnos em processos separados, histórico completo confirmado em disco (70
-linhas, os dois dados de teste voltando certos no turno 4).
+**Duas sessões nos mesmos arquivos hoje.** `cc.mjs`, `src/web.mjs`,
+`src/backlog.mjs`, `src/hooksCatalogo.mjs` têm trabalho das duas, já
+combinado e commitado. Se abrir uma sessão nova, `docs/ROTAS-ATIVAS.md` tem
+a rota `cockpit2` (dela) e o que sobrou livre.
 
-Desligar sozinho uma sessão parada: **travado de verdade**, não é dúvida
-técnica resolvível agora. Nem `state.json` do Claude Code, nem
-`Win32_Process.CommandLine` (vazio nesta máquina para vários processos, a
-mesma armadilha do dia) guardam qual PID pertence a qual sessão. Sem isso,
-não dá para garantir que o processo certo seria morto.
+**O backlog é dado agora, não texto.** `docs/backlog.jsonl` é a fonte;
+`docs/ROADMAP.md` é gerado (`cc backlog gerar`). Editar o markdown à mão não
+adianta, o gate recusa se os dois não baterem.
 
-Caminho não testado, registrado no ROADMAP: cruzar `CreationDate` do
-processo com `firstTerminalAt` do `state.json`. Não é garantia (duas sessões
-podem nascer no mesmo segundo), é a única pista que sobrou.
+**`CC_SEM_NAVEGADOR=1`** em qualquer coisa que possa subir o painel. Regra
+no `CLAUDE.md` do projeto agora, com o que foi medido.
 
-## ⚠️ A lição do dia, e ela custou quatro fechamentos errados (e um quinto, no PC)
+## O que fica aberto, backend (17 itens, `node cc.mjs backlog`)
 
-**Medir um número plausível que responde OUTRA pergunta é indistinguível de
-resposta certa.** Já eram quatro erros do mesmo formato na VPS (ver diário);
-no PC ainda apareceu um quinto: testar processo nascendo em vez de testar
-janela visível, quando o CC-460 pareceu confirmar um problema que já tinha
-sido resolvido.
+Sem decisão pendente dele: são trabalho, não escolha. Frentes: medição
+(6 itens: exportar, tela do armazém, somas, calendário, tendência, tela
+cheia), travas (6: taxa por 100, separar forma de julgamento, amostra
+julgada, desligar as 5 maiores, achar a que barra 1 em 5, três que erraram
+juntas), projetos (2: a primeira anotação virou decisão, criar projeto igual
+nas duas máquinas), fundação (1: propor fechamento com confirmação, CC-234),
+painel simples (1: apagar ui.html e ui_v2.html com o gate migrado antes).
 
-**A defesa é construção, não disciplina.** A lista de empurradores (nova,
-feita hoje) e o teste de janela visível (feito hoje) são exemplos do mesmo
-princípio: construir a medida que responde a pergunta LITERAL, não confiar
-em lembrar de medir direito.
+## O que fica aberto, da outra sessão (Cockpit 2)
 
-## ⚠️ Antes de encostar em código
-
-**1. `git fetch` faz parte do Passo 0.**
-
-**2. Existe uma cópia INSTALADA, separada desta**, em
-`%LOCALAPPDATA%\AgentCockpit` (no PC). É ela que roda e serve o painel dele;
-esta pasta é a oficina. Publicar é `cc versao publicar`, e depois disso o
-processo precisa ser religado de verdade — `cc daemon restart` já prefere a
-Tarefa Agendada quando ela existe (conserto de hoje), mas religar sem
-publicar antes serve código velho.
-
-**3. Para contar processo do cockpit no Windows: vá pela PORTA
-(`Get-NetTCPConnection -State Listen`) e pela ÁRVORE de processos (pai/filho),
-nunca pela linha de comando.** `Win32_Process.CommandLine` vem vazio para
-vários `node.exe` e `powershell.exe` nesta máquina — mordeu quatro vezes só
-hoje.
-
-**4. `docs/ALINHAMENTO-2026-08-30.md`** é o canal entre as máquinas quando o
-recado do Routia (que mora em arquivo ignorado pelo git) não atravessa.
-
-## O botão de religar a VPS (frente de ontem, continua no ar)
-
-Vive em `~/cockpit-auth.mjs`, fora deste repositório, na rota `/__religar`.
-Provado por ele em produção. Três travas: senha digitada na hora, só age com
-sinal real de problema, cooldown de 24h. Só chama `restart` da API da
-Contabo, nunca reset nem reinstall.
-
-## A VPS fica como porta, não como trabalho
-
-Decisão dele ao encerrar a sessão de lá: *"deixa ela aberta só como uma porta
-da sessão de cockpit no pc caso ele precise puxar algo"*. Contexto limpo, sem
-rota reivindicada. Quem for falar com ela manda o pedido completo, sem supor
-que ela lembra de algo desta conversa.
-
-## ⛔ O que espera ELE, e só ele resolve
-
-1. **Ler e aprovar o desenho do coletor** (`docs/produto/COLETOR.md`),
-   pendência herdada de 31/08.
-2. **As onze pastas de projeto do PC sem o prefixo `PC_`**, pendência
-   herdada de 23/08.
-3. **CC-457**, a metade travada: decidir se vale investir no caminho do
-   `firstTerminalAt` (sem garantia), ou deixar só a retomada manual (já
-   funciona) sem o encerramento automático.
-4. **O pedido das 60 conversas do Antigravity acumuladas**, aberto desde a
-   madrugada de 10/09, esperando ele escolher entre revisar por números ou
-   abrir a lista e apontar títulos.
-
-## O que ficou para outra rota
-
-- **A tela do CC-452/453 não existe ainda**: o dado (serviço instalado, onde
-  o cockpit mora) já chega, falta mostrar no cartão — `src/ui_novo.html`,
-  rota `front`.
-- **A sessão do Antigravity não morre com o painel**, fica órfã ao reiniciar
-  o serviço (~270 MB). Rota `front`.
-- **O painel podia avisar quando a sessão do Antigravity cai no balde
-  genérico** em vez de abrir o projeto certo — o log já distingue os dois
-  casos, falta ligar na tela.
-- **`entreg4` na VPS reiniciando sem parar** (briga de porta com roteador de
-  teste, sem risco). Não tratado.
-- **Sete arquivos com o mesmo defeito do CC-460** (`git.mjs`, `gateTurno.mjs`,
-  `caixaGit.mjs`, `bancadaCatalogo.mjs`, `hooksProva.mjs`, `opencode.mjs`)
-  sem `windowsHide`. Não mexidos: quatro são de outras rotas, e falta medir a
-  frequência de cada um antes de decidir prioridade.
+Não mexi, não sei o estado exato. Ela estava em `src/ui_cockpit2.html`
+quando esta sessão encerrou. Ver `docs/produto/COCKPIT2-PESQUISA.md` e a
+linha `cockpit2` em `docs/ROTAS-ATIVAS.md`.
 
 ## Arquivos a ler
 
-- `docs/ROADMAP.md`, seções CC-456 a CC-460 — a história completa de hoje,
-  com as provas
-- `~/cockpit-auth.mjs` — o botão de religar, fora do repositório
-- `src/federacao.mjs` — `origemDoEmpurrao()`, a lista de empurradores
-- `src/platform.mjs` — `estadoServico()`/`estadoServicoAsync()` (espelhadas),
-  `subirDestacado()` (prefere Tarefa Agendada agora)
-- `src/arrancar.ps1` — o conserto do loop de bandeja (`ExitCode`)
-- `docs/produto/COLETOR.md` — o desenho que espera aprovação dele
+- `docs/produto/MVP.md` — os três cortes da v2, aprovados
+- `docs/produto/COLETOR.md` — o Plano de Unificação, aprovado
+- `src/regras.mjs`, `src/observado.mjs`, `src/instalacao.mjs` — o trabalho
+  desta sessão
+- `docs/backlog.jsonl` — a fonte do backlog, 17 itens meus abertos
