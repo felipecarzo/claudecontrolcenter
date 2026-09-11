@@ -608,6 +608,59 @@ export const HOOKS = [
     padrao: true,
     implementado: true,
   },
+  /* ⚠️ **Os dois hooks que SÃO o framework, e eles faltavam nesta lista.**
+   *
+   * Medido em 11/09, depois de ele perguntar se o framework funcionava no
+   * desktop: `framework-guard` e `framework-inicio` existiam em disco, prontos,
+   * e **não estavam registrados no `settings.json` deste PC**. A palavra
+   * "framework" não aparecia uma vez sequer lá dentro.
+   *
+   * A causa de ninguém ter percebido é esta lista: o verificador compara a
+   * máquina com o CATÁLOGO, e o catálogo não declarava os dois. Peça que não é
+   * declarada não pode ser cobrada como ausente, então a falta era invisível.
+   * É o defeito mais caro deste projeto no formato mais discreto.
+   *
+   * **`padrao: true`, e a primeira versão errou nisto.** Escrevi `false`
+   * achando que registrar na máquina ligaria o framework em todo projeto. Não
+   * liga: os dois hooks leem `.framework/estado.json` e LIBERAM quando o
+   * arquivo não existe ou traz `ligado: false`. O interruptor continua sendo
+   * por projeto, e dele. Registrar é só o que faz esse interruptor valer.
+   *
+   * Quem pegou o erro foi o gate deste projeto (`test-projeto-novo.mjs`):
+   * *"guarda construído que nunca roda: ou ele é padrão, ou algum modo o
+   * exige"*. É exatamente a regra escrita depois do `medir-guard`, que passou
+   * de 16/08 a 29/08 sem disparar uma vez. Ela funcionou no primeiro caso novo
+   * depois de escrita. */
+  {
+    id: 'framework-guard',
+    modulo: 'entrega',
+    nivel: 'trava',
+    label: 'O gate do método, por projeto',
+    script: 'framework-guard.mjs',
+    evento: 'PreToolUse',
+    descricao: 'O ponto onde o framework aplica o método escolhido: recusa '
+      + 'edição quando a fase atual exige algo que ainda não foi feito (MVP sem '
+      + 'critério, verificação não rodada). Sem ele registrado, o método fica '
+      + 'escrito no estado do projeto e não governa nada, que era o caso deste '
+      + 'PC até 11/09.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'framework-inicio',
+    modulo: 'entrega',
+    nivel: 'injeta',
+    label: 'A entrevista que conduz o começo da sessão',
+    script: 'framework-inicio.mjs',
+    evento: 'SessionStart',
+    descricao: 'A metade do framework que PUXA em vez de recusar: injeta, ao '
+      + 'abrir a sessão, onde o projeto está, com que tom falar, e a próxima '
+      + 'pergunta a fazer quando há pendência. Pedido dele: "ele me demandaria '
+      + 'tarefas estruturais de um sistema, pra gente definir o que a gente vai '
+      + 'fazer".',
+    padrao: true,
+    implementado: true,
+  },
 ]
 
 export const hookDe = (id) => HOOKS.find((h) => h.id === id) || null
