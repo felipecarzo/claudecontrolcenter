@@ -15,6 +15,346 @@ Só o que está **aberto**. Concluído sai daqui e vira linha no diário.
 
 ---
 
+## ▶ Frente nova, aberta em 10/09 (noite): reformular o cockpit, versão simples
+
+⚠️ **VISÃO REGISTRADA, NÃO TAREFA.** Mensagem dele no fim de 10/09. Nada aqui
+se implementa antes de ele decidir o rumo (ver "O que ELE decide", abaixo).
+
+### O pedido, nas palavras dele
+
+> *"precisamos reformular o cockpit, fazer uma versão mais simples, pq tem
+> muitas janelas no atual, e na verdade tem muita coisa que eu nao entendo como
+> funciona, ou que nao sao atualizadas sempre retroativamente, e eu nem sei se
+> da p atualizar tudo, é muita coisa, precisariamos criar um framework que
+> obrigasse todas as ias a respeitariem hierarquias de producao tageadas que
+> atualizassem automaticamente o painel. do jeito que ta, ta pura bagunca..."*
+
+### As três queixas que o pedido contém
+
+1. **Janela demais.** Ele não acha o que precisa, e não sabe o que cada tela faz.
+2. **Dado que não se atualiza sozinho.** Tela que mostra o que alguém escreveu
+   à mão, e ninguém mais escreve. É a peça inalcançável de novo, no formato
+   contrário: alcançável, e vazia por dentro.
+3. **Falta de contrato.** Os agentes alimentam o painel por boa vontade (o
+   `cc set`), e quem não segue o protocolo some da tela sem erro nenhum. Ele
+   quer o contrário: **hierarquia de produção com etiqueta, obrigatória, e o
+   painel se atualiza a partir dela**, não de relatório voluntário.
+
+### O que foi medido em 10/09, antes de opinar
+
+- **32 telas** no painel que está no ar (`ui_novo.html`, 15.058 linhas):
+  agenda, agentes, agora, análise, bancada, cockpit, conhecimento, custo,
+  digest, docker, documentos, escritório, estrutura, framework, gate,
+  glossário, gráficos, hooks, infra, máquina, meus, notas, projetos, remoto,
+  rotas, rotinas, servidores, tempo, tendências, trabalho, travas, vps.
+- **Três painéis convivendo** no repositório: `ui.html` (10.585 linhas, o
+  antigo em `/v1`), `ui_v2.html` (12.907) e `ui_novo.html` (15.058). 38.697
+  linhas de tela no total.
+- **95 módulos** em `src/` e **51 hooks** no repositório.
+- A queixa 3 tem relação direta com a frente de rotinas logo abaixo (ativo
+  contra passivo): as duas pedem a mesma coisa por ângulos diferentes, o
+  painel deixar de depender de relato voluntário. **Devem ser desenhadas
+  juntas, não como duas frentes.**
+
+### O que ELE decidiu em 10/09 (noite), nas palavras dele
+
+1. **Rumo: podar, em cópia separada.** *"podar o atual, vamos criar um cockpit
+   'v2' pra nao mexer no atual"*. ⚠️ O nome "v2" já existe no repositório
+   (`ui_v2.html`, o painel anterior ao atual). A cópia nova precisa de outro
+   nome de arquivo, senão a série queima de novo (já aconteceu com `ui_v3`).
+2. **Corte: análise antes da conversa.** *"vamos conversar sobre isso, quero
+   que voce mesmo rode uma analise primeiro baseado em alguns criterios"*.
+   Critérios propostos e escolhidos por ele: ver abaixo, quando fechar.
+3. **O que é "tag", na definição dele:** *"quando falo tag é de tag de
+   programacao, uma linha de codigo, uma id, um dado rastreavel"*. O problema
+   nomeado: *"um projeto cria uma tarefa e executa, essa tarefa vai pro handoff
+   quando? e esse handoff ta organizado como? algum bot le ele sempre e
+   atualiza o status do projeto no cockpit em tempo real? (…) as ias criam os
+   documentos meio que dentro de um padrao, mas um padrao que nao tem tag, nao
+   ta em linguagem natural de programacao, ta em 'resenha', ou seja, nao tem
+   como rodar um hook ou um script que transforme isso em dado real."*
+
+   Tradução para o desenho: **HANDOFF, diário e ROADMAP são prosa**. Um script
+   não lê prosa. O contrato que ele quer é: tarefa nasce com id, muda de estado
+   por dado (não por parágrafo), e o painel lê o dado. O que já existe nessa
+   direção e não deve ser refeito: `meta.json` do agente (to-dos com código
+   `s15`, `feitoEm` por texto), `.framework/estado.json` por projeto, e o
+   leitor de ROADMAP (`roadmap.mjs`, que hoje tenta extrair dado de prosa e
+   já zerou uma vez por causa de `\r`).
+
+### Os cinco critérios da análise (quatro aceitos por ele, um somado por mim)
+
+1. **Fonte do dado.** `auto` = o painel lê sistema, git, transcrito ou hook.
+   `prosa` = um script tenta extrair dado de texto escrito por agente (ROADMAP,
+   ROTAS-ATIVAS). `relato` = o agente escreve `meta.json` por vontade própria.
+   `ele` = digitado por ele.
+2. **Frescor.** Medido no painel vivo (porta 8099) em 10/09 à noite: tamanho
+   da resposta, tempo, e se veio dado ou lista vazia.
+3. **Evidência de uso.** Dias de diário (de 22) que citam a tela. ⚠️ Palavra
+   comum infla: "tempo", "agora", "trabalho", "máquina", "projetos" aparecem
+   por outros motivos. Vale como piso, não como prova.
+4. **Custo de manter.** Linhas do `ui_novo.html` que citam o nome, e módulos
+   próprios.
+5. **Alcance** (somado): 1 = item do menu; 2 = aba dentro de outra tela.
+
+### A análise, tela por tela (10/09, noite)
+
+Menu: **20 itens em 5 grupos**. Outras **12 telas já viraram abas** dentro de
+Análise, Máquinas e Conhecimento (fusões de 22/08 e 29/08).
+
+| Tela (menu) | Fonte | Vivo em 10/09 | Diários | Peso | Veredito proposto |
+|---|---|---|---|---|---|
+| Cockpit (casa) | auto + relato | 2s, 53 KB | 17 | 59 | **fica** |
+| Agora | relato (`cc set`, `cc meu`) | 2s | 20* | 179 | **fica**, é "o que precisa de você" |
+| Projetos | auto + **prosa** (ROADMAP) | 0,4s | 19* | 307 | **fica**, absorve Framework, Estrutura e Agentes |
+| Trabalho | **prosa** + relato | 4,1s, 130 KB | 19* | 95 | fica **só se** o backlog virar dado; hoje é kanban de prosa |
+| Rotas | **prosa** (ROTAS-ATIVAS.md, 615 linhas) | 0,3s, 115 KB | 16 | 69 | **fica**, e é o exemplo nº 1 da queixa 3 |
+| Agentes | auto | 2s | 16 | 164 | **gaveta** dentro de Projetos |
+| Gate | disco | **vazio** (0 conversas) | 16 | **411** | **decisão dele**: peça mais cara do painel, sem dado hoje |
+| Meu painel | ele | **vazio** (0 painéis) | 0 | 3 | **sai** |
+| Escritório | painel externo | 2,6s | 6 | 10 | **sai** da versão simples |
+| Análise › Estrutura | **prosa** (ROADMAP) | com projeto | 9 | 20 | funde em Projetos |
+| Análise › Travas | auto (log dos hooks) | **fresco**, 01:26 de hoje, 146 KB | 10 | 48 | **fica**, único log vivo do que barrou |
+| Análise › Tendências | armazém | **vazio** (0 séries) | 0 | 24 | **sai** |
+| Análise › Bancada | sob clique | 9,5 KB | 5 | 53 | gaveta em Projetos |
+| Tempo | auto (transcritos) | 0,8s, 63 KB | 20* | 125 | **fica** |
+| Custo | derivado + rede (câmbio, mercado) | ok | 17* | 33 | gaveta em Tempo |
+| Gráficos | derivado | ok | 4 | 38 | gaveta em Tempo |
+| Agenda | Google | **não configurado** | 7 | 42 | **sai** até a frente de rotinas decidir a agenda |
+| Conhecimento › Notas | ele | 1 nota (Pierre) | 9 | 46 | fica, é texto dele |
+| Conhecimento › Documentos | ele | **vazio** | 7 | 21 | **sai** |
+| Conhecimento › Glossário | auto (docs do projeto) | 94 KB com projeto | 5 | 21 | gaveta em Projetos |
+| Conhecimento › Digest | auto (git de 20 projetos) | **23 segundos** por chamada | 3 | 34 | **sai** da simples (custo) |
+| Framework | estado.json + escolhas dele | 3,6s, 88 KB | 15 | 129 | funde no cartão do projeto (já está duplicado lá) |
+| Hooks | catálogo + settings.json | 19 KB | 10 | 30 | gaveta em Ajustes |
+| Rotinas | varredura | 1,2 KB | 8 | 32 | gaveta em Ajustes |
+| Máquinas (4 abas) | auto, sob clique | 0,3 a 2,4s | 8 a 20* | 104+ | **fica** como UMA tela, sem abas |
+| Ajustes | config | ok | 2 | 15 | **fica** |
+
+\* palavra comum, contagem inflada.
+
+**Números que saem da tabela:**
+
+- **5 telas vazias hoje**: Meu painel, Gate, Tendências, Documentos, Agenda.
+  Nenhuma dá erro. É a peça inalcançável no formato "alcançável e oca".
+- **4 telas dependem de prosa lida por regex**: Projetos, Trabalho, Estrutura,
+  Rotas. São exatamente as que ele diz não entender. É a queixa 3 medida.
+- **Só 1 hook alimenta o painel** (`tarefas-fim`); os outros 50 barram ou
+  avisam. O contrato "obrigar a atualizar" não existe: existe cobrança.
+- **Proposta de menu da versão simples: 7 itens** (Agora, Projetos, Trabalho,
+  Rotas, Travas, Tempo, Máquinas) mais Ajustes. De 20 para 8.
+
+### Decidido por ele em 10/09 (noite), depois da tabela
+
+- **O corte serve como ponto de partida** (*"Serve, segue com os 8"*).
+- **O Coderoom entra como tela principal.** Menu da versão simples fica com
+  **9 itens**: Agora, Projetos, Trabalho, Rotas, Travas, Tempo, Máquinas,
+  Coderoom, Ajustes.
+- ⚠️ **Lição de vocabulário, paga na hora:** a tabela dizia "Gate", ele não
+  reconheceu (*"esqueci o que é o gate"*, *"o gate é o coderoom?"*). "Gate" é
+  o nome de CÓDIGO (`view-gate`, `src/gate.mjs`); **"Coderoom" é o nome DELE**,
+  e é o único que pode aparecer na conversa e na tela nova. A linha da tabela
+  acima está com o nome errado de propósito, para a lição ficar visível.
+- A leitura "zero conversas" vale para ESTE PC em 10/09; o ROADMAP mostra uso
+  real do Coderoom em 30/08 e 31/08. Não é peça sem uso, é peça sem dado aqui.
+
+### O caminho, em micro-tarefas (nenhuma começada)
+
+Regra dele de 16/08: para DECIDIR, o protótipo é inteiro; para EXECUTAR, é em
+fatias que cabem numa linha do painel. Então a primeira entrega é um
+protótipo navegável das 9 telas com dado real, para ele aprovar ou recusar o
+conjunto, e só depois a execução tela a tela.
+
+- **CC-461 ❌ 10/09: tela escrita do zero, RECUSADA por ele e apagada.**
+  Palavras dele: *"sinceramente? horrivel"*, *"apaga tudo isso que voce fez"*.
+
+  **O erro, e ele é de leitura do pedido.** Ele pediu menos JANELA, e eu
+  entendi menos PAINEL: escrevi uma tela nova, com layout próprio, cartões
+  próprios, tipografia própria. Nada disso estava no pedido, e o design do
+  painel atual está aprovado por ele há semanas. A correção, nas palavras
+  dele: *"o design do cockpit antigo pode ficar, na verdade pode duplicar
+  tudo do antigo nesse quesito, ele ta muito bom, o problema dela é que as
+  informacoes jogadas acabam perdendo o sentido"*.
+
+  **A frase que define a frente inteira, e que eu não tinha:** o problema
+  NÃO é a aparência, NÃO é a quantidade de telas em si. É que **a informação
+  chega jogada e perde o sentido**. Menos janela é consequência disso, não a
+  causa.
+
+  Feito na hora: `src/ui_simples.html` virou **cópia byte a byte** de
+  `src/ui_novo.html` (15.058 linhas), servida em `/simples`. Ponto de partida
+  é o painel bom, e o trabalho passa a ser SUBTRAIR e dar sentido, não
+  desenhar. A rota nova em `web.mjs` continua (uma linha, empréstimo
+  autorizado).
+
+  **Achado de máquina que fica:** o Windows desta máquina RESERVA as faixas
+  de porta 8101 a 8300 e 8426 a 8725 (`netsh interface ipv4 show
+  excludedportrange`), então `--port 8123` falha com `EACCES` e parece porta
+  ocupada por outro processo. Instância de teste vai na 8377.
+
+- **CC-461b** · a lista dele, item a item. Ele disse que vai fazer na mão:
+  *"vou ter que fazer na mao, um a um… mas tudo bem, vamos la, vou fazer uma
+  lista"*. **Nada se mexe na cópia antes da lista chegar**, e cada item dela
+  vira uma linha aqui, com as palavras dele.
+
+### Pergunta 1 da lista dele: "o framework está funcionando no desktop também?"
+
+Medido no painel vivo deste PC em 10/09, noite. **Resposta: em três camadas,
+e só a primeira estava inteira.**
+
+**1. O estado existe.** 28 projetos conhecidos, **10 com framework ligado**:
+cockpit, fibraessencia, rhydon, carzo, coepiloto, hutukara, renanMarchon e
+reunion com modo escolhido; entreg4 e escritorio ligados com modo
+`desligado`. Todos com método `mvp-basico` e MVP declarado.
+
+**2. Os guardas rodam.** 65 hooks registrados no `settings.json` deste PC.
+**470 eventos de trava na janela lida**, 50 deles hoje. Os que disparam de
+verdade são os de estilo e fluxo, que valem a cada resposta: `pergunta-guard`
+34, `resumo-guard` 33, `travessao-guard` 19, `fluxo-guard` 16, `jargao-guard`
+11, `todo-guard` 7, `tarefas-fim` 7.
+
+**3. ⚠️ Um hook estava QUEBRADO desde sempre neste PC, e o erro dele era o
+maior item do placar.** `routia-fim` (o que lembra de liberar a rota ao sair)
+importa `acharCC.mjs`, e esse arquivo **nunca foi instalado** em
+`~/.claude/hooks/`: existe no repositório e na cópia instalada do cockpit, e
+não na pasta de onde o hook roda. Resultado: `ERR_MODULE_NOT_FOUND` a cada
+fim de turno, em TODO projeto deste PC. **320 dos 470 eventos** eram esse
+mesmo erro, mais que todas as travas de verdade somadas.
+
+**Corrigido em 10/09**: arquivo copiado, hook testado e saindo limpo.
+
+**O que isso ensina, e vale para a frente inteira:** o placar da tela Travas
+tinha **"sem nome" no topo, com 334 ocorrências**. Um nome que não é nome,
+liderando o quadro, e ninguém perguntou o que era. É a queixa dele escrita em
+número: *"as informações jogadas acabam perdendo o sentido"*. A causa é uma
+linha: `lerErro()` tira o nome da trava do texto do erro, e erro de MÓDULO
+não cita o hook que falhou no formato esperado. Erro do sistema virava trava
+anônima e se misturava com trava de verdade no mesmo placar.
+
+**Consequência para o desenho da versão simples:** todo número na tela precisa
+responder "quantos disso é ruído?". Um placar que não separa "regra do
+projeto barrou" de "hook quebrou" mede duas coisas diferentes na mesma linha.
+
+### Os 11 pontos dele, cada um com a medição deste PC (11/09, madrugada)
+
+Ele pediu ponto a ponto, das duas mensagens, *"sem leru leru"*. Tudo abaixo é
+número medido nesta máquina. **O achado que muda o rumo está no ponto 8.**
+
+**O pedido de fundo, nas palavras dele:** *"o meu computador é uma ferramenta
+de trabalho e eu quero que o framework seja parte ativa do sistema (…) quero
+que o sistema funcione mais focado no desenvolvimento com o framework do que
+ser um sistema propriamente dito"*. E o diagnóstico dele: *"o framework atua
+como uma gambiarra, os hooks funcionam hoje e amanhã já são inexistentes, não
+tem uma fundação firme"*.
+
+**1. "o framework atua como uma gambiarra"** — confirmado, e a medição é pior
+que a queixa. Ver ponto 8.
+
+**2. "os hooks funcionam hoje e amanhã já são inexistentes"** — confirmado.
+**14 hooks** existem no repositório e não estão instalados nesta máquina.
+**7** estão instalados e ninguém registrou, então nunca rodam.
+
+**3. "não tem uma fundação firme"** — confirmado, com causa nomeada. Os 41
+hooks ativos rodam da CÓPIA INSTALADA (`%LOCALAPPDATA%\AgentCockpit\hooks`),
+não do repositório. `git pull` não muda o que roda: só `cc versao publicar`
+muda. Nada compara as duas versões, nunca.
+
+**4. "em Trabalho não tem todos os projetos"** — confirmado: **15 de 28**. Os
+13 de fora não têm `docs/ROADMAP.md` (12) ou têm roadmap sem item nenhum (1,
+o escritorio). A regra de hoje é: sem roadmap escrito à mão, sem cartão.
+
+**5. "VPS_INOVALLBOND tem tarefas do jogo que já tá pronto há mais de 1 mês"**
+— confirmado, e é sistêmico, não um caso. `NV-02 Jogo do evento` está NA FILA
+há 25 dias. E o inovallbond tem **ZERO itens fechados** num backlog de 22.
+**Oito dos 15 projetos do quadro nunca fecharam nada**: inovallbond,
+boxboutique, ibrics, vps, coepiloto, ratomacaco, reunion,
+geminiChromiunExtension.
+
+**6. "não são atualizadas sempre retroativamente"** — confirmado, e a causa é
+o ponto 5. Fechar item é ato manual dentro de um arquivo de texto. Ninguém
+faz, nada cobra, e o quadro envelhece sozinho.
+
+**7. "não reconhece os projetos como um só (vps e Pc)"** — a conta EXISTE e
+funciona: `chaveDeProjeto('VPS_inovallbond')` e `chaveDeProjeto('inovallbond')`
+dão o mesmo. O furo é o alcance dela: **só 3 dos 95 módulos a usam**
+(`trabalho`, `projetos`, `armazem`). Outros 16 que agrupam por projeto
+comparam texto cru, então cada tela pode responder diferente.
+
+**8. ⛔ "não funciona direito no desktop"** — ele não funciona, ponto. **Os
+dois hooks que SÃO o framework não estão registrados nesta máquina:**
+`framework-guard` (o que bloqueia edição fora do método escolhido) e
+`framework-inicio` (a entrevista que conduz o começo da sessão). Os dois
+existem em disco, prontos, dentro da cópia instalada. A palavra "framework"
+**não aparece nenhuma vez** no `settings.json` deste PC. O que roda são 41
+guardas de ESTILO e de PROCESSO (travessão, jargão, resumo, to-do), que são
+outra coisa.
+
+**9. "não funciona direito com outras ias (antigravity e OPENCODE)"** —
+confirmado. Opencode: o encaixe existe no repositório
+(`hooks/opencode/tarefas.js`) e **não está instalado**, a pasta
+`~/.config/opencode/plugin/` nem existe. Antigravity: **não há ponto de
+integração nenhum**, nem escrito. E há um limite real de ferramenta já
+medido: o opencode não tem equivalente ao `Stop` que recusa uma entrega, então
+lá o framework só consegue lembrar.
+
+**10. "tem muitas janelas, muita coisa que eu não entendo"** — confirmado: 32
+telas, 20 no menu, 5 vazias hoje.
+
+**11. "as informações jogadas acabam perdendo o sentido"** — confirmado, com o
+número mais duro da noite. **152 dos 226 cartões do quadro (67%) não têm
+identificador. O painel inventa um para conseguir desenhar** (`marca.real =
+false`). O que ele chama de tag não existe em dois terços do backlog.
+
+### A leitura que junta os onze, e ela é uma só
+
+As peças estão construídas e **desligadas no ponto onde o trabalho acontece**.
+Não falta código: falta INSTALAÇÃO GARANTIDA. Hoje instalar é ato manual em
+quatro lugares diferentes (o `settings.json` do Claude, a pasta de plugin do
+opencode, a cópia publicada do painel, e arquivos soltos em `~/.claude/hooks`),
+e **nada em lugar nenhum compara o que devia estar ligado com o que está**.
+
+É o padrão que este arquivo já registra desde 29/08 (*"peça construída e
+inalcançável é o defeito mais caro deste projeto, e ele não dá erro nenhum"*),
+agora medido uma camada abaixo: não é a tela que não alcança a peça, é a
+máquina que não carrega a peça.
+
+### CC-468 · a fundação que os onze pontos pedem
+
+Duas peças, e nesta ordem:
+
+1. **Um manifesto de instalação**: um arquivo no repositório declara o que o
+   framework EXIGE de uma máquina para ser considerado ativo ali (cada hook
+   com seu evento, o plugin do opencode, o comando no PATH, a versão publicada
+   batendo com o repositório).
+2. **Um verificador que roda sozinho**: compara a declaração com a máquina
+   real, diz o que falta em uma linha por item, e aparece no painel. Sem ele,
+   o conserto de hoje apaga sozinho amanhã, que é a queixa dele sobre
+   gambiarra em uma frase.
+
+Isso é fundação. Regime ativo e passivo, tarefa com id de verdade, rotina
+diária e painel enxuto se apoiam nela, e nenhum deles faz sentido antes.
+- **CC-462** · Projetos: um cartão por projeto, com agentes, framework e
+  estrutura DENTRO do cartão, sem tela separada.
+- **CC-463** · Trabalho, Rotas, Travas, Tempo, Máquinas: cada uma lendo a rota
+  que já existe, sem módulo novo.
+- **CC-464** · Coderoom: a tela atual transplantada, sem redesenho.
+- **CC-465** · Ajustes: só o que muda de vez em quando.
+- **CC-466** · o contrato com etiqueta (queixa 3): tarefa nasce com id, muda de
+  estado por dado, o painel lê o dado. Desenho junto com a frente de rotinas
+  logo abaixo. **É a peça de valor; as cinco acima são a casca que a mostra.**
+- **CC-467** · apagar `ui.html` e `ui_v2.html` com o gate migrado antes (30
+  verificações apontam para o v2). Só quando a simples estiver aprovada.
+
+**Sobre apagar `ui_v2.html` e `ui.html` (pergunta dele):** os dois continuam
+SERVIDOS (`/v2` e `/v1`, como volta atrás) e `ui_v2.html` é citado em **30
+verificações do gate** (`test.mjs` 9, `test-central-sessoes` 7, `testmap` 7,
+`test-projeto-novo` 4, `test-kb-detalhe` 2, `test-rotas` 1). Apagar hoje
+derruba o `npm test`. Último commit: `ui.html` 22/08, `ui_v2.html` 30/08,
+`ui_novo.html` 07/09. O arquivo também está na rota `front` de outra sessão.
+Apagar é tarefa própria, com o gate migrado antes, não um `rm`.
+
+---
+
 ## ▶ Frente nova, aberta em 10/09: o sistema de rotinas, e projeto ativo contra passivo
 
 ⚠️ **VISÃO REGISTRADA, NÃO TAREFA.** Ele mandou no fim de 10/09 e fechou com

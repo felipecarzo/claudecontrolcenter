@@ -202,6 +202,32 @@ A disciplina daquele dia não veio do hook. Por isso o Sugestivo passou a exigi-
 peça pronta e desligada onde o trabalho acontece é o formato de defeito que este
 projeto mais repete.
 
+## ⛔ NUNCA abrir janela de navegador na cara dele
+
+Pedido dele em 11/09, de madrugada, depois de eu religar o painel várias vezes
+publicando um conserto: *"ta abrindo um endereço 127.0.0.1 no edge?"*, e em
+seguida *"isso tava me atrapalhando muito (…) é inadmissível"*.
+
+**A regra:** todo comando que um agente roda e que PODE subir o painel vai com
+`CC_SEM_NAVEGADOR=1`. A variável está em `abrirNavegador()`, em
+`src/platform.mjs`, e faz a função sair calada devolvendo `{ ok: true,
+pulado: true }`. Quem clicou no atalho continua vendo a janela abrir, que é o
+que um clique promete.
+
+Não é só incômodo: cada aba come memória, e nesta mesma noite a máquina matou
+um processo de teste por falta dela.
+
+**O que foi medido, e o que não foi:** `cc daemon restart` e `cc versao
+publicar` foram medidos duas vezes cada, contando JANELA VISÍVEL (não
+processo, que é o erro do CC-460), e **nenhum dos dois abriu**. A janela que
+ele viu às 01:42 saiu de outro caminho, provavelmente o lançador
+(`arrancar.ps1`) sendo acionado logo depois do reinício. A trava cobre todos
+os caminhos que passam por `abrirNavegador`; se ainda assim abrir, o suspeito
+é o lançador, que chama PowerShell direto.
+
+**Para ver a tela:** a skill `navegador` tem perfil próprio e não incomoda.
+`browser-harness` só quando a tarefa exigir os logins dele.
+
 ## Armadilhas (custaram tempo, não redescobrir)
 
 - **`localhost` num iframe é a máquina de QUEM OLHA, não a que serve.** O
