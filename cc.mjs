@@ -1549,6 +1549,179 @@ switch (cmd) {
     break
   }
 
+  /**
+   * `cc maquina`: o framework está ativo AQUI?
+   *
+   * Nasceu da pergunta dele em 11/09 (*"o framework tá funcionando no desktop
+   * também?"*), que ninguém conseguia responder sem uma tarde de medição. A
+   * resposta honesta era não, e de três jeitos diferentes, nenhum com erro na
+   * tela.
+   *
+   * Sem argumento só OLHA. `ligar` age, e tem ensaio (`--ensaio`) porque mexer
+   * no `settings.json` dele sem mostrar antes é o tipo de coisa que ele precisa
+   * ver acontecer.
+   */
+  /**
+   * `cc backlog`: o backlog em dado, pelo terminal.
+   *
+   * Existe porque o backlog virou dado em 11/09 e sem comando ele seria peça
+   * inalcançável: dado que só se edita abrindo o `.jsonl` na mão é pior que a
+   * prosa que ele substituiu. A pergunta final deste projeto é sempre a mesma,
+   * *por onde ele chega nela*, e a resposta é aqui.
+   *
+   * `fechar` recusa sem `--prova`, e a recusa vem do próprio `backlog.mjs`:
+   * é trava, não lembrete.
+   */
+  case 'backlog': {
+    const B = await import('./src/backlog.mjs')
+    const sub = arg
+    const valorDe = (nome) => {
+      const i = argv.indexOf(`--${nome}`)
+      return i >= 0 ? argv[i + 1] : null
+    }
+
+    if (sub === 'migrar') {
+      const M = await import('./src/migrarBacklog.mjs')
+      const ensaio = argv.includes('--ensaio')
+      const r = M.migrar(process.cwd(), { ensaio, forcar: argv.includes('--forcar') })
+      console.log('')
+      if (!r.ok) {
+        console.log(`  não migrei: ${r.motivo}`)
+        console.log('\n  começar um backlog do zero: node cc.mjs backlog novo "<primeiro item>"\n')
+        break
+      }
+      console.log(`  ${r.total} itens (${r.abertos} abertos, ${r.fechados} fechados)`)
+      console.log(ensaio ? '\n  foi ensaio: nada escrito. Valendo, tire o --ensaio.\n' : `\n  gravado em ${r.destino}\n  o ROADMAP.md em prosa continua onde estava.\n`)
+      break
+    }
+
+    if (sub === 'novo' || sub === 'abrir') {
+      const titulo = argv.slice(argv.indexOf(sub) + 1).filter((a) => !a.startsWith('--')).join(' ')
+      if (!titulo) { console.log('\n  uso: node cc.mjs backlog novo "o que precisa ser feito" --frente <nome>\n'); break }
+      try {
+        const i = B.acrescentar({ titulo, frente: valorDe('frente') || 'sem frente', estado: valorDe('estado') || 'B1', peso: Number(valorDe('peso')) || null, origem: 'felipe' })
+        console.log(`\n  ${i.id}  ${i.titulo}\n`)
+      } catch (e) { console.log(`\n  recusado: ${e.message}\n`) }
+      break
+    }
+
+    if (sub === 'fechar' || sub === 'mover') {
+      const id = argv[argv.indexOf(sub) + 1]
+      const estado = sub === 'fechar' ? 'OK' : (valorDe('para') || '').toUpperCase()
+      if (!id) { console.log(`\n  uso: node cc.mjs backlog ${sub} <ID> ${sub === 'fechar' ? '--prova "como testei"' : '--para <CODIGO>'}\n`); break }
+      try {
+        const i = B.mover(id, estado, {
+          prova: valorDe('prova') || undefined,
+          porque: valorDe('porque') || undefined,
+          decisao: valorDe('decisao') || undefined,
+        })
+        console.log(`\n  ${i.id} → ${B.estadoDe(i.estado).rotulo}\n`)
+      } catch (e) { console.log(`\n  recusado: ${e.message}\n`) }
+      break
+    }
+
+    /* O que os commits já disseram que fechou. Roda git uma vez, sob comando:
+       no tique de 2 em 2 segundos custaria 840ms medidos, e no fim de sessão o
+       git já está sendo chamado de qualquer jeito. */
+    if (sub === 'sincronizar') {
+      const { execFileSync } = await import('node:child_process')
+      const ensaio = argv.includes('--ensaio')
+      const desde = valorDe('desde') || '30 days ago'
+      let linhas = []
+      try {
+        linhas = execFileSync('git', ['log', `--since=${desde}`, '--pretty=%s%n%b'], { cwd: process.cwd(), encoding: 'utf8', timeout: 20000 }).split('\n')
+      } catch (e) {
+        console.log(`\n  não consegui ler o git: ${e.message.slice(0, 80)}\n`)
+        break
+      }
+      const r = B.sincronizarComCommits(linhas, { ensaio })
+      console.log('')
+      if (!r.feitos.length) { console.log(`  nenhum commit dos últimos ${desde} diz ter fechado item deste backlog.`); console.log('\n  a forma que conta é explícita: "fecha CC-123" na mensagem do commit.\n'); break }
+      for (const f of r.feitos) console.log(`  ${f.acao.padEnd(22)} ${f.id}${f.titulo ? '  ' + f.titulo.slice(0, 52) : ''}`)
+      console.log(ensaio ? '\n  foi ensaio: nada mudou.\n' : '\n  regere o roadmap com: node cc.mjs backlog gerar\n')
+      break
+    }
+
+    if (sub === 'gerar') {
+      const fs2 = await import('node:fs')
+      const alvo = path.join(process.cwd(), 'docs', 'ROADMAP.md')
+      fs2.writeFileSync(alvo, B.comoMarkdown(), 'utf8')
+      console.log(`\n  ${alvo} regerado a partir do dado\n`)
+      break
+    }
+
+    const r = B.retrato()
+    console.log('')
+    if (!r.existe) {
+      console.log('  este projeto ainda não tem backlog em dado.')
+      console.log('\n  trazer do ROADMAP.md em prosa: node cc.mjs backlog migrar --ensaio')
+      console.log('  começar do zero:                node cc.mjs backlog novo "<primeiro item>"\n')
+      break
+    }
+    console.log(`  ${r.abertos} abertos · ${r.fechados} fechados · ${r.total} no total`)
+    if (r.ruins.length) console.log(`  ⚠️  ${r.ruins.length} linha(s) que não valem: ${r.ruins[0].erro}`)
+    if (r.parados.length) {
+      console.log('')
+      console.log(`  ⏳ ${r.parados.length} parado(s) há mais de 30 dias. Ainda valem?`)
+      for (const i of r.parados.slice(0, 5)) console.log(`     ${i.id.padEnd(9)} há ${B.diasDesde(i.mexido)} dias   ${String(i.titulo).slice(0, 48)}`)
+      if (r.parados.length > 5) console.log(`     e mais ${r.parados.length - 5}`)
+      console.log('     fechar em lote é decisão sua: node cc.mjs backlog fechar <ID> --prova "..."')
+    }
+    console.log('')
+    for (const f of r.frentes) {
+      console.log(`  ${f.nome}`)
+      for (const i of f.itens) {
+        const e = B.estadoDe(i.estado)
+        /* A idade na própria linha, e não só no alarme de 30 dias: o caso que
+           ele levantou (o jogo do inovallbond) tem 25 dias, e um corte fixo o
+           esconderia. Dado na mão dele vale mais que alarme que eu calibro. */
+        const d = B.diasDesde(i.mexido)
+        const idade = d > 60 ? `${Math.round(d / 30)}m` : d > 0 ? `${d}d` : 'hoje'
+        console.log(`    ${i.id.padEnd(9)} ${e.rotulo.padEnd(13)} ${idade.padStart(5)}  ${String(i.titulo).slice(0, 56)}`)
+      }
+      console.log('')
+    }
+    console.log('  fechar: node cc.mjs backlog fechar <ID> --prova "como testei"')
+    console.log('')
+    break
+  }
+
+  case 'maquina': {
+    const I = await import('./src/instalacao.mjs')
+    const sub = arg
+
+    if (sub === 'ligar') {
+      const ensaio = argv.includes('--ensaio')
+      const r = I.ligar({ dryRun: ensaio })
+      console.log('')
+      if (!r.feitos.length) console.log('  nada a ligar: o que falta não se resolve por aqui.')
+      for (const f of r.feitos) console.log(`  ${f.acao.padEnd(14)} ${f.id}`)
+      if (r.sobrou.length) {
+        console.log('')
+        console.log('  fica de fora, porque troca o painel que está no ar e é decisão sua:')
+        for (const s of r.sobrou) console.log(`    ${s}   → node cc.mjs versao publicar`)
+      }
+      console.log(ensaio ? '\n  foi ensaio: nada foi escrito.\n' : '\n  pronto. Confira com: node cc.mjs maquina\n')
+      break
+    }
+
+    const r = I.conferir()
+    console.log('')
+    console.log(`  ${r.maquina}: ${r.frase}`)
+    console.log('')
+    if (!r.faltando.length && !r.naoSei.length) { console.log('  nada a fazer.\n'); break }
+    for (const f of r.faltando) {
+      console.log(`  ${I.GRAVIDADE[f.gravidade].label.padEnd(10)} ${f.titulo}`)
+      console.log(`             ${f.detalhe}`)
+      console.log(`             por quê: ${f.porque}`)
+    }
+    for (const n of r.naoSei) console.log(`  não sei    ${n.titulo}: ${n.detalhe}`)
+    console.log('')
+    console.log('  ligar o que falta: node cc.mjs maquina ligar   (ensaio: --ensaio)')
+    console.log('')
+    break
+  }
+
   case 'versao': {
     const P = await import('./src/publicar.mjs')
     const sub = arg

@@ -597,30 +597,48 @@ assert.equal(inst.detectarBase([{ cwd: '/home/ana/projects/x' }, { cwd: '/home/a
    no arquivo, e o número deixou de identificar coisa nenhuma. É o oposto do que
    o sistema de código estável existe para fazer, e conferir a olho não escala
    num arquivo de 500 linhas. */
+/* O backlog deste projeto virou DADO em 11/09, por decisão dele, e este bloco
+   mudou de alvo junto: antes lia `### CC-nn` do markdown, que era a única
+   âncora que a prosa tinha. Agora a fonte é `docs/backlog.jsonl`, e o markdown
+   é saída gerada.
+
+   A verificação ficou mais forte de propósito. Antes só pegava id repetido no
+   texto; agora exige que o markdown BATA com o dado, que é a regra que faz a
+   segunda verdade não nascer. Enquanto os dois forem editáveis, o dia em que
+   discordarem ninguém vai saber qual estava certo, e foi assim que 110 itens
+   ficaram sem estado nenhum no arquivo antigo. */
 {
-  const roadmap = fs.readFileSync(path.join(process.cwd(), 'docs', 'ROADMAP.md'), 'utf8')
-  const vistos = new Map()
+  const { ler, comoMarkdown, problemas } = await import('./src/backlog.mjs')
+  const { itens, ruins } = ler()
+
+  assert.deepEqual(ruins, [], `docs/backlog.jsonl tem linha que não vale: ${ruins.map((r) => `linha ${r.linha}, ${r.erro}`).join('; ')}`)
+
+  const vistos = new Set()
   const repetidos = []
-  for (const linha of roadmap.split(/\r?\n/)) {
-    const m = linha.match(/^###\s+((?:CC|NV|FB|VP)-\d+)\b/)
-    if (!m) continue
-    if (vistos.has(m[1])) repetidos.push(`${m[1]} (também em "${vistos.get(m[1]).slice(0, 40)}")`)
-    else vistos.set(m[1], linha.replace(/^###\s*/, ''))
+  for (const i of itens) {
+    if (vistos.has(i.id)) repetidos.push(i.id)
+    vistos.add(i.id)
   }
   /* A mensagem diz o arquivo E o próximo número livre. Sugestão de outra sessão
      em 17/08, depois de esbarrar nisto: "se ele apontar o arquivo e o número
      vizinho livre na própria mensagem de erro, quem esbarrar resolve sem ter que
      ler o roadmap inteiro". Vale para toda mensagem de gate: acusar sem dar a
      saída é a burocracia que se desliga na terceira semana. */
-  const maior = Math.max(0, ...[...vistos.keys()]
+  const maior = Math.max(0, ...[...vistos]
     .filter((k) => k.startsWith('CC-')).map((k) => Number(k.slice(3)) || 0))
   assert.deepEqual(repetidos, [],
-    `número de item repetido em docs/ROADMAP.md: ${repetidos.join('; ')}.`
+    `id repetido em docs/backlog.jsonl: ${repetidos.join('; ')}.`
     + ` O próximo livre é CC-${maior + 1}.`)
-  /* O piso existe para o teste não passar por não achar nada. 20 é folgado
-     contra os 34 itens de hoje; escrevi 50 de cabeça na primeira versão e o
-     próprio gate me corrigiu, que é o comportamento certo dele. */
-  assert.ok(vistos.size >= 20, `o leitor de itens do roadmap achou só ${vistos.size} seções`)
+
+  /* O piso existe para o teste não passar por não achar nada. */
+  assert.ok(itens.length >= 20, `o backlog em dado tem só ${itens.length} itens`)
+
+  const tortos = itens.flatMap((i) => problemas(i).map((p) => `${i.id}: ${p}`))
+  assert.deepEqual(tortos, [], `item fora do contrato: ${tortos.slice(0, 5).join('; ')}`)
+
+  const emDisco = fs.readFileSync(path.join(process.cwd(), 'docs', 'ROADMAP.md'), 'utf8')
+  assert.equal(emDisco, comoMarkdown(),
+    'docs/ROADMAP.md não bate com docs/backlog.jsonl. Ele é GERADO: regere em vez de editar à mão.')
 }
 
 /* CC-128: a regra dele, "se tem função bloqueando, entra como framework".
