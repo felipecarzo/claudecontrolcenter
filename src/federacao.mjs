@@ -1229,6 +1229,13 @@ export function montarPacote({
     remoto: j.remoto || false, todos: j.todos, todosDone: j.todosDone, blockers: j.blockers,
     detail: j.detail, createdAt: j.createdAt, updatedAt: j.updatedAt, cwd: j.cwd,
     lastPrompt: j.lastPrompt, entregueEmAberto: j.entregueEmAberto, sinais: j.sinais,
+    /* Plano do cockpit 2, M7: a última fala do agente viaja junto, e é o que
+       permite o cartão "precisa de você" da outra máquina dizer O QUE ele
+       perguntou. Sem ela sobra o assunto, que foi a queixa dele em 11/09:
+       *"o texto é vago, não diz nada"*. Quem preenche é quem monta o pacote, e
+       só para sessão parada: ler a cauda de toda sessão viva a cada 30s seria
+       pagar caro por um texto que ninguém vai ler. */
+    ultimaFala: j.ultimaFala || null,
   }))
   return {
     /* CC-440: primeiro campo do pacote, de propósito. Quem for depurar isto
@@ -1272,7 +1279,12 @@ export async function enviar({ enviarPara, token, pacote }) {
   try {
     const r = await fetch(`${enviarPara}/api/federacao`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cc-token': token },
+      /* `x-cc-quer-retrato`: plano do cockpit 2, M6. Diz ao outro lado que
+         esta máquina sabe receber o retrato dele na resposta. Servidor antigo
+         ignora o cabeçalho e responde como sempre; servidor novo falando com
+         cliente antigo (sem o cabeçalho) também responde como sempre. É o que
+         faz as duas pontas poderem subir em dias diferentes sem combinar nada. */
+      headers: { 'content-type': 'application/json', 'x-cc-token': token, 'x-cc-quer-retrato': '1' },
       body: corpo,
       signal: AbortSignal.timeout(10_000),
     })

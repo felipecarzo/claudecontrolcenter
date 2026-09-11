@@ -2468,7 +2468,7 @@
 
        Por isso o corte é por CSS e não por bisturi no HTML: **nada do desenho
        muda**, as telas continuam existindo e alcançáveis pelo endereço
-       (`/simples#view-agentes`), e desfazer é apagar este bloco. Deletar o
+       (`/cockpit2#view-agentes`), e desfazer é apagar este bloco. Deletar o
        HTML seria irreversível e mexeria no que ele aprovou.
 
        Os dez que ficam saíram da escolha dele depois da medição tela a tela:
@@ -2487,22 +2487,96 @@
          Hooks         gaveta de Ajustes
          Rotinas       gaveta de Ajustes
        =================================================================== */
+    /* Cockpit 2, rodada 2 (11/09), palavras dele: "tem algumas janelas que eu
+       gosto do antigo: conhecimento, agenda, tempo, custo, gráficos, hooks,
+       análise, agentes e o escritório". Elas VOLTAM ao menu. Somem só as
+       substituídas (Cockpit e Agora viram Início; Projetos ganhou versão nova)
+       e as medidas como vazias ou duplicadas em 10/09 (Meu painel sem painel
+       criado, Framework duplicado no cartão do projeto, Rotinas em Ajustes). */
     .nav-item[data-target="view-meus"],
-    .nav-item[data-target="view-agentes"],
-    .nav-item[data-target="view-escritorio"],
-    .nav-item[data-target="view-custo"],
-    .nav-item[data-target="view-graficos"],
-    .nav-item[data-target="view-agenda"],
-    .nav-item[data-target="view-conhecimento"],
     .nav-item[data-target="view-framework"],
-    .nav-item[data-target="view-hooks"],
-    .nav-item[data-target="view-rotinas"] { display: none; }
+    .nav-item[data-target="view-rotinas"],
+    .nav-item[data-target="view-cockpit"],
+    .nav-item[data-target="view-agora"],
+    .nav-item[data-target="view-projetos"] { display: none; }
 
     /* Grupo que ficou sem nenhum item visível não pode deixar o título
        sozinho na barra: um cabeçalho apontando para o vazio é exatamente o
        tipo de coisa que faz ele perguntar "o que é isso?". */
     .nav-section[data-grupo="RECURSOS"],
     .nav-section[data-grupo="ENGENHARIA"] { display: none; }
+    /* ===== Cockpit 2: Início, Projetos com inspetor, Servidores federado ===== */
+    .c2-duas{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
+    .c2-h{font-size:11px;letter-spacing:.08em;color:var(--text-dim);margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;}
+    .c2-aviso{border-left:3px solid var(--text-dim);padding:10px 12px;margin-bottom:10px;background:var(--bg);border-radius:8px;}
+    .c2-aviso.pergunta{border-color:var(--red);} .c2-aviso.travado{border-color:var(--amber);}
+    .c2-aviso.pendencia{border-color:var(--accent);} .c2-aviso.rodando{border-color:var(--working, var(--accent));}
+    .c2-rotulo{font-size:10px;letter-spacing:.08em;color:var(--text-dim);display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+    .c2-perg{font-size:14px;color:var(--text-main);margin:4px 0;overflow-wrap:anywhere;}
+    .c2-opc{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:11px;margin:2px 4px 2px 0;color:var(--text-muted);}
+    .c2-meta{font-size:11px;color:var(--text-dim);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+    .c2-linha{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;}
+    .c2-linha:hover,.c2-linha.sel{background:var(--bg);}
+    .c2-badge{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);white-space:nowrap;}
+    .c2-badge.red{border-color:var(--red);color:var(--red);} .c2-badge.ok{border-color:var(--done);color:var(--done);}
+    .c2-insp{position:sticky;top:70px;padding:14px 16px;min-width:0;}
+    .c2-insp h4{margin:14px 0 6px;font-size:11px;letter-spacing:.08em;color:var(--text-dim);}
+    .c2-vazio{color:var(--text-dim);font-size:12px;padding:8px 0;margin:0;}
+    .c2-tab{width:100%;border-collapse:collapse;font-size:12px;}
+    .c2-tab td,.c2-tab th{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top;}
+    .c2-tab th{font-size:10px;letter-spacing:.08em;color:var(--text-dim);font-weight:500;}
+    .c2-spark{display:inline-flex;gap:1px;align-items:flex-end;height:14px;vertical-align:middle;}
+    .c2-spark i{display:block;width:3px;background:var(--accent);opacity:.7;}
+    .c2-voltar{display:none;}
+    .c2-tres{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;}
+    .c2-bloco{padding:14px 16px;min-width:0;}
+    .c2-kv{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:4px 0;border-bottom:1px dashed var(--border);}
+    .c2-kv:last-child{border-bottom:0;}
+    .c2-kv b{font-weight:600;color:var(--text-main);}
+    .c2-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin:4px 0 8px;}
+    .c2-bar i{display:block;height:100%;background:var(--accent);}
+    .c2-bar.alto i{background:var(--amber);} .c2-bar.cheio i{background:var(--red);}
+    /* Sem `max-height` aqui de propósito: o corte por altura tira a linha pela
+       metade e nada na tela diz que continua, que é o defeito D1 do plano. Quem
+       decide quantas linhas cabem é o JS, que sabe contá-las e escrever o resto. */
+    .c2-nota{font-size:12px;color:var(--text-muted);white-space:pre-wrap;overflow-wrap:anywhere;margin:2px 0 6px;}
+    /* Todo link destas telas usa o acento do tema. Sem isto o navegador pinta
+       o azul padrão dele (`#0000EE`) com sublinhado, que não é cor de tema
+       nenhum e aparecia em 9 lugares só na tela de início. */
+    #c2-inicio a, #c2-lista a, #c2-insp a, #c2-serv a{color:var(--accent);text-decoration:none;}
+    #c2-inicio a:hover, #c2-lista a:hover, #c2-insp a:hover, #c2-serv a:hover{text-decoration:underline;}
+    /* A linha de uma sessão ou de um serviço dentro do inspetor. Era `<table>`,
+       e a tabela ficava 14px mais larga que o cartão: os botões saíam para fora
+       e 24 células quebravam em três linhas. Duas linhas de texto resolvem, e
+       a mesma marcação serve ao telefone sem rolagem lateral. */
+    .c2-item{padding:8px 0;border-bottom:1px solid var(--border);min-width:0;}
+    .c2-item:last-child{border-bottom:0;}
+    .c2-item-l1{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;min-width:0;}
+    .c2-item-l1 b{font-weight:600;}
+    .c2-item-l2{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:4px;min-width:0;}
+    .c2-item-l2 .btn{flex:0 0 auto;}
+    .c2-item-l2 .c2-mini{min-width:0;overflow-wrap:anywhere;}
+    .c2-num{font-size:22px;font-weight:600;color:var(--text-main);line-height:1.1;}
+    .c2-dias{display:flex;gap:4px;align-items:flex-end;height:36px;margin:6px 0;}
+    .c2-dias i{flex:1;background:var(--accent);opacity:.75;border-radius:2px 2px 0 0;min-height:2px;}
+    .c2-dias-rot{display:flex;gap:4px;font-size:10px;color:var(--text-dim);} .c2-dias-rot span{flex:1;text-align:center;}
+    .c2-mini{font-size:11px;color:var(--text-dim);}
+    #view-projetos2 .grid-container.com-lateral{grid-template-columns:minmax(0,1fr) minmax(320px,44%);}
+    /* ponytail: media query e nao @container, ate o inspetor virar tela empilhada de verdade */
+    @media (max-width:700px){
+      #view-projetos2 .grid-container.com-lateral{grid-template-columns:minmax(0,1fr);}
+      #view-projetos2.c2-aberto .main-col{display:none;}
+      .c2-insp{position:static;} .c2-voltar{display:inline-block;margin-bottom:8px;}
+      .c2-tab{display:block;overflow-x:auto;}
+      /* No telefone, o topo herdado comia 318 dos 844 pixels antes do primeiro
+         bloco, e as pastilhas dele (quantos agentes, quantos precisam de você)
+         repetem o que esta tela já mostra maior logo abaixo. Some só no Início,
+         e só no estreito: nas outras telas elas continuam sendo o único lugar
+         onde esse número aparece. A classe é ligada por `c2Render`. */
+      body.c2-inicio .main-content > header .stats-group{display:none;}
+      body.c2-inicio .main-content > header{padding-bottom:10px;}
+      body.c2-inicio #header-subtitle{display:none;}
+    }
   </style>
   <script src="/graficos.js"></script>
 </head>
@@ -2551,7 +2625,10 @@
     <div class="nav-section" data-grupo="O DIA A DIA" style="padding-top: 24px;">
       <button class="nav-section-title" data-nav-grupo="O DIA A DIA" aria-expanded="true"><span class="ns-seta">▾</span>O DIA A DIA</button>
       <div class="nav-itens">
-      <a href="#" class="nav-item active" data-target="view-cockpit">
+      <a href="#" class="nav-item active" data-target="view-inicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> Início</a>
+      <a href="#" class="nav-item" data-target="view-projetos2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> Projetos</a>
+      <a href="#" class="nav-item" data-target="view-servidores2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg> Servidores</a>
+      <a href="#" class="nav-item" data-target="view-cockpit">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
         Cockpit
       </a>
@@ -2691,7 +2768,7 @@
       </div>
     </header>
 
-    <div id="view-cockpit" class="view-section active">
+    <div id="view-cockpit" class="view-section">
       <div class="grid-container">
         <div class="main-col">
         
@@ -3794,6 +3871,29 @@
       </div>
     </div>
 
+    <!-- COCKPIT 2: as três telas que mudam de verdade. Leem só /api/cockpit2.
+         Pesquisa e desenho em docs/produto/COCKPIT2-PESQUISA.md, seção 9. -->
+    <div id="view-inicio" class="view-section active">
+      <div class="grid-container so-uma">
+        <div class="main-col" id="c2-inicio" style="gap:16px;"><p class="c2-vazio">lendo…</p></div>
+      </div>
+    </div>
+    <div id="view-projetos2" class="view-section">
+      <div class="grid-container com-lateral">
+        <div class="main-col" style="gap:0;">
+          <div class="card" id="c2-lista" style="padding:0;"><p class="c2-vazio">lendo…</p></div>
+        </div>
+        <aside class="card c2-insp" id="c2-insp"><p class="c2-vazio">escolha um projeto na lista.</p></aside>
+      </div>
+    </div>
+    <div id="view-servidores2" class="view-section">
+      <div class="grid-container so-uma">
+        <div class="main-col">
+          <div class="card" id="c2-serv" style="padding:14px 16px;"><p class="c2-vazio">lendo…</p></div>
+        </div>
+      </div>
+    </div>
+
     <dialog id="doc-edit" style="border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text-main);padding:20px;width:min(560px,90vw);">
       <h2 style="margin:0 0 14px;font-size:15px;">novo documento</h2>
       <input type="hidden" data-doc-id>
@@ -3924,7 +4024,10 @@
       'view-documentos': { title: 'Documentos', subtitle: 'A sua estante: ideia, texto ditado, contrato que chegou pelo chat.' },
       'view-agenda': { title: 'Agenda', subtitle: 'O que você tem hoje, lido da agenda do Google.' },
       'view-glossario': { title: 'Glossário', subtitle: 'Dicionário do projeto.' },
-      'view-conhecimento': { title: 'Conhecimento', subtitle: 'O que você escreveu e o que o painel leu: notas, documentos, glossário e o resumo da semana.' }
+      'view-conhecimento': { title: 'Conhecimento', subtitle: 'O que você escreveu e o que o painel leu: notas, documentos, glossário e o resumo da semana.' },
+      'view-inicio': { title: 'Início', subtitle: 'Decisões, sessões, tarefas, notas, kanban, semana, limites, máquinas e serviços.' },
+      'view-projetos2': { title: 'Projetos', subtitle: 'Um projeto é um só; ao lado dele, onde ele está vivo. Escolha um e o detalhe abre do lado.' },
+      'view-servidores2': { title: 'Servidores', subtitle: 'O que está no ar, em qual máquina, com a porta e o projeto.' }
     };
 
     function setupNavigation() {
@@ -4157,7 +4260,22 @@
      * O endereço guarda também o agente aberto (`#agentes/c4e8a125`), que é
      * justamente o caso que ele descreveu: entrar num e querer voltar.
      */
-    const TELA_PADRAO = 'view-cockpit';
+    /* Cockpit 2: a tela de chegada passou a ser Início, e não mais Cockpit.
+       A padrão TEM que estar no menu: quando o endereço não casa com nada,
+       cair numa tela escondida deixa a barra lateral sem nenhum item aceso e
+       ele sem saber onde está. */
+    const TELA_PADRAO = 'view-inicio';
+    /* Endereços que não têm mais item de menu próprio, e continuam valendo.
+       Dois motivos, e os dois já custaram tela morta neste painel: favorito
+       antigo dele não pode virar tela em branco, e link escrito DENTRO do
+       painel (o bloco da VPS no Início aponta para `#vps`) não pode levar a
+       lugar nenhum. Medido em 11/09: `#vps` abria a tela Cockpit. */
+    const APELIDOS_DE_TELA = {
+      cockpit: 'view-inicio', agora: 'view-inicio',
+      projetos: 'view-projetos2', ligados: 'view-projetos2', 'remoto-lista': 'view-projetos2',
+      servidores: 'view-servidores2',
+      vps: 'view-infra', docker: 'view-infra', maquina: 'view-infra', processos: 'view-infra',
+    };
     const nomeDaTela = (id) => String(id || '').replace(/^view-/, '');
     const telaDoNome = (nome) => (nome && document.querySelector(`.nav-item[data-target="view-${nome}"]`)
       ? `view-${nome}` : null);
@@ -4220,12 +4338,6 @@
       /* ⚠️ **CC-424: o endereço `#ligados` continua valendo.** A tela Remoto
          saiu do menu porque Projetos passou a fazer tudo que ela fazia, e
          favorito antigo não pode virar tela em branco por causa disso. */
-      if (nome === 'ligados' || nome === 'remoto-lista') {
-        if (document.querySelector('.view-section.active')?.id !== 'view-projetos') {
-          document.querySelector('.nav-item[data-target="view-projetos"]')?.click();
-        }
-        return;
-      }
       const ABAS_CONHECIMENTO = { notas: 1, documentos: 1, glossario: 1, digest: 1 };
       if (ABAS_CONHECIMENTO[nome]) {
         if (document.querySelector('.view-section.active')?.id !== 'view-conhecimento') {
@@ -4233,7 +4345,7 @@
         }
         return trocarConhecimento(nome);
       }
-      const alvo = telaDoNome(nome) || TELA_PADRAO;
+      const alvo = APELIDOS_DE_TELA[nome] || telaDoNome(nome) || TELA_PADRAO;
       if (document.querySelector('.view-section.active')?.id !== alvo) {
         document.querySelector(`.nav-item[data-target="${alvo}"]`)?.click();
       }
@@ -8581,7 +8693,7 @@
      * é o que cabe em 390px com o rótulo legível (CC-181). Um quinto quebraria
      * a barra, então a escolha troca, nunca acrescenta.
      */
-    const BARRA_PADRAO = ['view-cockpit', 'view-gate', 'view-trabalho', 'view-agentes'];
+    const BARRA_PADRAO = ['view-inicio', 'view-projetos2', 'view-trabalho', 'view-servidores2'];
     let BARRA_BAIXO = BARRA_PADRAO.slice();
 
     /* Ícone e nome saem da PRÓPRIA barra lateral: tela nova aparece na escolha
@@ -15100,6 +15212,375 @@
       conversasParaOsCards();
       carregarFrameworkLista({ silencioso: true });
     }, 20000);
+
+    /* ===================== COCKPIT 2 =====================
+       Início, Projetos com inspetor e Servidores. Tudo aqui lê UMA rota,
+       /api/cockpit2, a cada 5s enquanto uma destas telas está aberta.
+       Nada de crase em comentário aqui dentro. */
+    const C2 = { dados: null, erro: null, sel: null, timer: null, filtroDisp: null, armado: null };
+    const C2_VIEWS = new Set(['view-inicio', 'view-projetos2', 'view-servidores2']);
+    const c2ms = (ms) => (ms == null ? '' : age(ms));
+    const c2h = (ms) => (ms == null ? '' : (ms < 3600000 ? Math.round(ms / 60000) + 'm' : (ms / 3600000).toFixed(1).replace('.0', '') + 'h'));
+    const c2chip = (t, cls = '') => '<span class="c2-badge ' + cls + '">' + esc(t) + '</span>';
+    const c2disp = (nome) => (nome ? seloDe(nome) : '');
+    /* Onde o projeto está vivo, na palavra dele: *"quando ele ta ativo no pc
+       fica escrito alienware ali, se for VPS fica escrito vps, e se for ambos
+       beleza, fica escrito ambos"*. Com duas máquinas, o nome de cada uma vai
+       na dica, para a linha não crescer. */
+    const c2Presenca = (lista) => {
+      const l = lista || [];
+      if (!l.length) return c2chip('sem sinal');
+      if (l.length === 1) return c2disp(l[0]);
+      return '<span class="c2-badge ok" title="' + esc(l.join(' e ')) + '">ambos</span>';
+    };
+    const c2spark = (arr) => {
+      if (!arr || !arr.length) return '';
+      const max = Math.max(...arr, 1);
+      return '<span class="c2-spark" title="últimos 7 dias">' + arr.map((v) => '<i style="height:' + Math.max(2, Math.round(14 * v / max)) + 'px"></i>').join('') + '</span>';
+    };
+    const c2Falha = () => '<div class="card" style="padding:14px;border-left:3px solid var(--red)"><b>NÃO DEU PARA LER</b><div class="c2-meta">' + esc(C2.erro || '') + ' · trate como desconhecido, não como vazio.</div></div>';
+    const c2Hora = (t) => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    /* As leituras que só o Início usa, cada uma com validade própria. O kanban
+       custa 2s no servidor e por isso vale 60s; nenhuma entra no tique de 5s
+       das outras telas. Falha de uma não zera as outras. */
+    const C2X = { em: {}, dados: {}, erro: {} };
+    async function c2Extra(nome, url, validadeMs) {
+      const agora = Date.now();
+      if (C2X.em[nome] && agora - C2X.em[nome] < validadeMs) return;
+      C2X.em[nome] = agora;
+      try {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        C2X.dados[nome] = await r.json(); C2X.erro[nome] = null;
+      } catch (e) { C2X.erro[nome] = e.message || 'falha'; }
+    }
+    const c2Extras = () => Promise.all([
+      c2Extra('trabalho', '/api/trabalho', 60000),
+      c2Extra('notes', '/api/notes', 30000),
+      c2Extra('vps', '/api/vps', 30000),
+      c2Extra('maquina', '/api/maquina', 10000),
+      c2Extra('agenda', '/api/calendario', 300000),
+    ]);
+    async function c2Buscar() {
+      try {
+        const r = await fetch('/api/cockpit2');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        C2.dados = await r.json(); C2.erro = null;
+      } catch (e) { C2.erro = e.message || 'falha'; }
+      c2Render();
+      if (document.querySelector('.view-section.active')?.id === 'view-inicio') { await c2Extras(); c2Render(); }
+    }
+    function c2Render() {
+      const v = document.querySelector('.view-section.active')?.id;
+      /* O título do topo vem do clique na barra; chegando pelo endereço, a
+         barra clonada do telefone às vezes responde primeiro e o título fica
+         o da tela antiga. Aqui ele é conferido contra a tela que está ativa. */
+      if (C2_VIEWS.has(v) && PAGE_METADATA[v]) {
+        const tt = document.getElementById('header-title'); const st = document.getElementById('header-subtitle');
+        if (tt && tt.innerText !== PAGE_METADATA[v].title) { tt.innerText = PAGE_METADATA[v].title; if (st) st.innerText = PAGE_METADATA[v].subtitle; }
+      }
+      /* Quem manda no topo enxuto do telefone é esta classe, e ela vale só na
+         tela de início. Sai ao trocar de tela, senão as outras herdariam um
+         cabeçalho sem as pastilhas. */
+      document.body.classList.toggle('c2-inicio', v === 'view-inicio');
+      if (v === 'view-inicio') c2RenderInicio();
+      else if (v === 'view-projetos2') c2RenderProjetos();
+      else if (v === 'view-servidores2') c2RenderServidores();
+    }
+    function c2Ligar(on) {
+      clearInterval(C2.timer); C2.timer = null;
+      if (on) { c2Buscar(); C2.timer = setInterval(c2Buscar, 5000); }
+    }
+
+    /* O cartão de aviso: o quê, de quem, onde, o que ele faz, há quanto tempo. */
+    function c2Aviso(e) {
+      const pend = e.tipo === 'pendencia';
+      /* Rótulo é ESTADO, em uma palavra, não frase. "SÓ VOCÊ RESOLVE" e
+         "PAROU SEM PERGUNTAR" eram frase; o que o cartão precisa dizer é o
+         estado do item, e o resto vem nos campos: projeto, tarefa, máquina. */
+      const rot = pend ? 'PENDÊNCIA' : ({ pergunta: 'PERGUNTA', travado: 'TRAVADO', parou: 'PAROU', 'parou sem perguntar': 'PAROU' }[e.rotulo] || e.rotulo);
+      const cls = pend ? 'pendencia' : (e.rotulo === 'pergunta' ? 'pergunta' : (e.rotulo === 'travado' ? 'travado' : 'parou'));
+      const acoes = pend
+        ? '<button class="btn compacto" data-meu-feito="' + esc(e.id) + '">feito</button>'
+        : '<button class="btn compacto" data-ver-agente="' + esc(e.id) + '">' + (e.acao === 'abrir' ? 'abrir' : 'responder') + '</button>';
+      const perg = e.pergunta ? esc(e.pergunta) : '<span style="color:var(--text-dim)">sem pergunta legível: abra e veja onde parou</span>';
+      const opcs = e.opcoes && e.opcoes.length
+        ? '<div>' + e.opcoes.map((o) => '<span class="c2-opc">' + esc(o) + '</span>').join('') + (e.quantas > 1 ? '<span class="c2-opc">+' + (e.quantas - 1) + ' pergunta(s)</span>' : '') + '</div>'
+        : '';
+      return '<div class="c2-aviso ' + cls + '">'
+        + '<div class="c2-rotulo"><span>' + rot + '</span><span>· ' + esc(e.nome) + (e.frente ? ' / ' + esc(e.frente) : '') + '</span>' + c2disp(e.dispositivo) + '</div>'
+        + '<div class="c2-perg">' + perg + '</div>' + opcs
+        + '<div class="c2-meta"><span>há ' + c2ms(e.desdeMs) + '</span>'
+        + (e.assunto ? '<span title="assunto do agente">· ' + esc(e.assunto) + '</span>' : '')
+        + (e.porque ? '<span>· ' + esc(e.porque) + '</span>' : '')
+        + '<span style="margin-left:auto">' + acoes + '</span></div></div>';
+    }
+
+    const c2Bloco = (titulo, corpo, direita) => '<section class="card c2-bloco"><h3 class="c2-h"><span>' + titulo + '</span><span>' + (direita || '') + '</span></h3>' + corpo + '</section>';
+    const c2Nao = (oque, erro) => '<p class="c2-vazio" style="color:var(--red)">não deu para ler ' + esc(oque) + (erro ? ': ' + esc(erro) : '') + '. Trate como desconhecido, não como vazio.</p>';
+    const c2Barra = (rotulo, pct, nota) => {
+      const p = Math.max(0, Math.min(100, Number(pct) || 0));
+      return '<div class="c2-kv" style="border:0;padding-bottom:0"><span>' + esc(rotulo) + '</span><b>' + p + '%</b></div>'
+        + '<div class="c2-bar' + (p >= 90 ? ' cheio' : (p >= 70 ? ' alto' : '')) + '"><i style="width:' + p + '%"></i></div>'
+        + (nota ? '<div class="c2-mini" style="margin-top:-4px;margin-bottom:6px">' + esc(nota) + '</div>' : '');
+    };
+    const c2Data = (t) => (t ? new Date(t).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '');
+    const c2DiaSem = (iso) => ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][new Date(iso + 'T12:00:00').getDay()];
+
+    /* O Início, rodada 2 (11/09), na ordem que ele deu: avisos, o que roda,
+       tarefas, notas, ideias e agenda, kanban, semana, limites, máquinas,
+       serviços. Cada bloco lê uma fonte que já existe; nenhum inventa. */
+    function c2RenderInicio() {
+      const D = C2.dados; const raiz = document.getElementById('c2-inicio');
+      if (!raiz) return;
+      if (!D) { pintar(raiz, C2.erro ? c2Falha() : '<p class="c2-vazio">lendo…</p>'); return; }
+      const r = D.resumo; const lido = c2Hora(D.lidoEm); const X = C2X.dados; const XE = C2X.erro;
+      const faixa = '<div class="c2-meta" style="font-size:12px">'
+        + D.dispositivos.map((d) => '<span>' + esc(d.nome) + ' ' + (d.contato ? '●' : '○') + '</span>').join('')
+        + '<span>· ' + r.servicos + ' serviço(s) no ar</span><span>· ' + r.projetos + ' projeto(s) com sinal</span>'
+        + '<span style="margin-left:auto">lido às ' + lido + (C2.erro ? ' · <b style="color:var(--red)">falha na última leitura</b>' : '') + ' · ' + (D.custoMs || 0) + 'ms</span></div>';
+
+      const agentes = D.espera.filter((e) => e.tipo === 'agente');
+      const espera = agentes.length ? agentes.map(c2Aviso).join('') : '<p class="c2-vazio">nenhum agente espera você, lido às ' + lido + '.</p>';
+      const rodando = D.rodando.length
+        ? D.rodando.map((s) => '<div class="c2-aviso rodando"><div class="c2-rotulo"><span>' + esc(s.tipo) + '</span>' + c2disp(s.dispositivo) + '</div>'
+          + '<div class="c2-perg">' + esc(s.nome) + (s.frente ? ' / ' + esc(s.frente) : '') + '</div>'
+          + '<div class="c2-meta"><span>' + esc(s.assunto || '') + '</span><span>· ' + (s.ferramenta ? esc(s.ferramenta) : 'pensando') + '</span><span>· há ' + c2ms(s.desdeMs) + '</span>'
+          + (s.todos ? '<span>· ' + s.todosDone + '/' + s.todos + ' tarefas</span>' : '')
+          + '<span style="margin-left:auto"><button class="btn compacto" data-ver-agente="' + esc(s.id) + '">abrir</button></span></div></div>').join('')
+        : '<p class="c2-vazio">nenhum agente trabalhando neste minuto.</p>';
+
+      const pend = D.espera.filter((e) => e.tipo === 'pendencia');
+      const tarefas = pend.length
+        ? pend.slice(0, 5).map((t) => '<div class="c2-kv"><span>' + esc(t.pergunta) + '<div class="c2-mini">' + esc(t.nome) + (t.desdeMs != null ? ' · há ' + c2ms(t.desdeMs) : '') + '</div></span><button class="btn compacto" data-meu-feito="' + esc(t.id) + '">feito</button></div>').join('')
+          + (pend.length > 5 ? '<div class="c2-mini" style="margin-top:6px"><a href="#trabalho">+' + (pend.length - 5) + ' na tela Trabalho</a></div>' : '')
+        : '<p class="c2-vazio">nada depende de você agora.</p>';
+
+      let notas;
+      if (XE.notes && !X.notes) notas = c2Nao('as notas', XE.notes);
+      else if (!X.notes) notas = '<p class="c2-vazio">lendo…</p>';
+      else {
+        const todas = X.notes.notes || [];
+        const ns = todas.slice(0, 2);
+        /* Cinco linhas por nota, e o que não coube é DITO. Cortar por altura
+           no CSS deixava a última linha pela metade sem nada avisar, e ele
+           não tinha como saber que a nota continuava. */
+        const TETO = 5;
+        notas = ns.length ? ns.map((n) => {
+          const linhas = String(n.text || '').split('\n').filter((l) => l.trim());
+          const mostra = linhas.slice(0, TETO);
+          const resto = linhas.length - mostra.length;
+          return '<div style="margin-bottom:8px"><b style="font-size:12px">' + esc(n.title || 'sem título') + '</b>'
+            + '<div class="c2-nota">' + esc(mostra.join('\n')).replace(/\[x\] /gi, '☑ ').replace(/\[ \] /g, '☐ ') + '</div>'
+            + (resto > 0 ? '<div class="c2-mini"><a href="#notas">mais ' + resto + ' linha(s) nesta nota</a></div>' : '') + '</div>';
+        }).join('')
+          + (todas.length > 2 ? '<div class="c2-mini"><a href="#notas">mais ' + (todas.length - 2) + ' nota(s)</a></div>' : '')
+          : '<p class="c2-vazio">nenhuma nota. <a href="#notas">escrever</a></p>';
+      }
+
+      const ideias = (D.ideias || []).length
+        ? (D.ideias || []).slice(0, 3).map((i) => '<div class="c2-kv"><span>' + esc(i.texto) + '<div class="c2-mini">' + esc(i.nome) + (i.em ? ' · ' + c2Data(i.em) : '') + '</div></span></div>').join('')
+          + ((D.ideias || []).length > 3 ? '<div class="c2-mini"><a href="#trabalho">+' + ((D.ideias || []).length - 3) + ' ideia(s)</a></div>' : '')
+        : '<p class="c2-vazio">nenhuma ideia guardada esperando virar item.</p>';
+      let agenda;
+      if (XE.agenda && !X.agenda) agenda = c2Nao('a agenda', XE.agenda);
+      else if (!X.agenda) agenda = '<p class="c2-vazio">lendo…</p>';
+      else if (!X.agenda.configurado) agenda = '<p class="c2-vazio">agenda não configurada nesta máquina. <a href="#agenda">configurar</a></p>';
+      else {
+        const evs = (X.agenda.eventos || []).slice(0, 4);
+        agenda = evs.length ? evs.map((e) => '<div class="c2-kv"><span>' + esc(e.titulo || e.nome || e.summary || 'evento') + '</span><b>' + esc(c2Data(e.inicio || e.start || e.em)) + '</b></div>').join('') : '<p class="c2-vazio">nada nos próximos dias.</p>';
+      }
+
+      let kanban;
+      if (XE.trabalho && !X.trabalho) kanban = c2Nao('o kanban', XE.trabalho);
+      else if (!X.trabalho) kanban = '<p class="c2-vazio">lendo o kanban…</p>';
+      else {
+        const T = X.trabalho;
+        const linhas = (T.grupos || []).map((g) => {
+          const c = { andando: 0, pausada: 0, fila: 0, outro: 0 }; let emCurso = null;
+          for (const k of (g.cartoes || [])) {
+            const p = String(k.estado?.palavra || '').toUpperCase();
+            if (p === 'ANDANDO') { c.andando += 1; if (!emCurso) emCurso = k.titulo || k.nome; }
+            else if (p === 'PAUSADA') c.pausada += 1;
+            else if (p === 'NA FILA') c.fila += 1;
+            else c.outro += 1;
+          }
+          return { projeto: g.projeto, ...c, fechadas: g.fechadas || 0, emCurso, ativo: c.andando + c.pausada + c.outro };
+        }).sort((a, b) => b.ativo - a.ativo || b.fila - a.fila).slice(0, 6);
+        kanban = (T.veredito?.frase ? '<div class="c2-mini" style="margin-bottom:6px">' + esc(T.veredito.frase) + '</div>' : '')
+          + (linhas.length ? linhas.map((l) => '<div class="c2-kv" style="flex-direction:column;align-items:flex-start;gap:3px"><span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>' + esc(l.projeto) + '</b>'
+            + (l.andando ? '<span class="c2-badge ok">' + l.andando + ' andando</span>' : '') + (l.pausada ? '<span class="c2-badge red">' + l.pausada + ' pausada</span>' : '') + '<span class="c2-mini">' + l.fila + ' na fila · ' + l.fechadas + ' feitas</span></span>'
+            + (l.emCurso ? '<span class="c2-mini" title="' + esc(l.emCurso) + '">em curso: ' + esc(l.emCurso.length > 70 ? l.emCurso.slice(0, 68) + '…' : l.emCurso) + '</span>' : '') + '</div>').join('')
+            : '<p class="c2-vazio">nenhum backlog lido.</p>')
+          + '<div class="c2-mini" style="margin-top:6px"><a href="#trabalho">abrir o kanban</a></div>';
+      }
+
+      const S = D.semana || {};
+      const semana = !S.disponivel
+        ? '<p class="c2-vazio">sem cache de tempo ainda: abra a tela Tempo uma vez.</p>'
+        : '<div class="c2-num">' + c2h(S.totalMs) + '</div><div class="c2-mini">nos últimos 7 dias, tempo ativo</div>'
+          + '<div class="c2-dias">' + S.dias.map((d) => '<i title="' + esc(d.dia) + ': ' + c2h(d.ms) + '" style="height:' + Math.max(2, Math.round(36 * d.ms / Math.max(1, ...S.dias.map((x) => x.ms)))) + 'px"></i>').join('') + '</div>'
+          + '<div class="c2-dias-rot">' + S.dias.map((d) => '<span>' + c2DiaSem(d.dia) + '</span>').join('') + '</div>'
+          + (S.porProjeto || []).slice(0, 3).map((p) => '<div class="c2-kv"><span>' + esc(p.nome) + '</span><b>' + c2h(p.ms) + '</b></div>').join('')
+          + '<div class="c2-mini" style="margin-top:6px"><a href="#tempo">tempo e custo</a></div>';
+
+      const U = (typeof DATA !== 'undefined' && DATA.uso) ? DATA.uso : null;
+      const limites = (U
+        ? c2Barra('Claude · janela de 5 horas', U.cincoHoras?.pct, U.cincoHoras?.resetaEm ? 'reseta às ' + c2Hora(U.cincoHoras.resetaEm) : '')
+          + c2Barra('Claude · semana', U.semana?.pct, U.semana?.resetaEm ? 'reseta ' + c2Data(U.semana.resetaEm) : '')
+          + (U.em ? '<div class="c2-mini">lido há ' + age(Date.now() - U.em) + '</div>' : '')
+        : '<p class="c2-vazio">o uso do Claude ainda não chegou: ele só anda quando o Claude responde.</p>')
+        + '<div class="c2-kv" style="margin-top:8px"><span>agy</span><span class="c2-mini">sem medição: o agy não entrega o uso do plano</span></div>';
+
+      const M = X.maquina; const V = X.vps;
+      const notebook = XE.maquina && !M ? c2Nao('o notebook', XE.maquina) : !M ? '<p class="c2-vazio">lendo…</p>'
+        : '<div class="c2-kv"><span>processador</span><b>' + (M.cpu?.uso ?? '?') + '%</b></div>'
+          + '<div class="c2-kv"><span>memória</span><b>' + (M.ram?.usadaGB ?? '?') + ' de ' + (M.ram?.totalGB ?? '?') + ' GB · ' + (M.ram?.uso ?? '?') + '%</b></div>'
+          + (M.gpu ? '<div class="c2-kv"><span>placa de vídeo</span><b>' + (M.gpu.uso ?? '?') + '% · ' + (M.gpu.temp != null ? M.gpu.temp + '°C' : '') + (M.gpu.vramUsadaGB != null ? ' · ' + M.gpu.vramUsadaGB + '/' + M.gpu.vramTotalGB + ' GB' : '') + '</b></div>' : '')
+          + '<div class="c2-mini" style="margin-top:6px"><a href="#infra">máquina por dentro</a></div>';
+      const vps = XE.vps && !V ? c2Nao('a VPS', XE.vps) : !V ? '<p class="c2-vazio">lendo…</p>'
+        : !V.configurado ? '<p class="c2-vazio">VPS não configurada aqui. <a href="#infra">configurar</a></p>'
+        : (V.saude?.frase ? '<div class="c2-kv" style="border:0"><span style="color:var(--' + (V.saude.cor === 'ok' ? 'done' : V.saude.cor === 'atencao' ? 'amber' : 'red') + ')">' + esc(V.saude.frase) + '</span></div>' : '')
+          + (V.snapshot ? '<div class="c2-kv"><span>memória</span><b>' + Math.round((V.snapshot.ram?.usadoMB || 0) / 1024 * 10) / 10 + ' de ' + Math.round((V.snapshot.ram?.totalMB || 0) / 1024 * 10) / 10 + ' GB</b></div>'
+            + '<div class="c2-kv"><span>disco</span><b>' + (V.snapshot.disco?.usadoGB ?? '?') + ' de ' + (V.snapshot.disco?.totalGB ?? '?') + ' GB</b></div>'
+            + '<div class="c2-kv"><span>programas</span><b>' + ((V.snapshot.docker || []).length) + ' em caixa · ' + ((V.snapshot.pm2 || []).length) + ' soltos</b></div>'
+            + '<div class="c2-mini" style="margin-top:6px">retrato de ' + c2Data(V.snapshot.em) + (V.saude?.alertas?.length ? ' · ' + V.saude.alertas.length + ' aviso(s)' : '') + ' · <a href="#vps">ver e atualizar</a></div>'
+            : '<p class="c2-vazio">nunca lida. <a href="#vps">atualizar</a></p>');
+
+      const serv = D.servicos.length
+        ? D.servicos.slice(0, 12).map((s) => c2chip((s.nomeProjeto || s.nome) + (s.porta ? ' :' + s.porta : '') + ' · ' + s.dispositivo)).join(' ')
+          + (D.servicos.length > 12 ? ' <a href="#servidores2">+' + (D.servicos.length - 12) + '</a>' : '')
+        : '<span class="c2-vazio">nada no ar.</span>';
+
+      pintar(raiz, '<div class="card" style="padding:10px 16px">' + faixa + '</div>'
+        + '<div class="c2-duas">'
+        /* Rótulo é NOME DE COISA, nunca frase. Ele recusou "quem espera você"
+           em 11/09: *"que porra de linguagem essa IA camarada? Quem espera o
+           quê? Quem é esse 'quem'? É um card de tarefas, do projeto, da tarefa
+           tal"*. O gate recusa rótulo em forma de frase. */
+        + c2Bloco('DECISÕES', espera, String(agentes.length))
+        + c2Bloco('SESSÕES', rodando, String(D.rodando.length))
+        + '</div>'
+        + '<div class="c2-tres">'
+        + c2Bloco('TAREFAS', tarefas, pend.length + ' aberta(s)')
+        + c2Bloco('NOTAS', notas, '<a href="#notas" style="font-size:11px">todas</a>')
+        + c2Bloco('IDEIAS', ideias + '<h3 class="c2-h" style="margin-top:12px"><span>AGENDA</span></h3>' + agenda, (D.ideias || []).length + ' ideia(s)')
+        + '</div>'
+        + '<div class="c2-tres">'
+        + c2Bloco('KANBAN', kanban, '<a href="#trabalho" style="font-size:11px">abrir</a>')
+        + c2Bloco('SEMANA', semana, '')
+        + c2Bloco('LIMITES', limites, '')
+        + '</div>'
+        + '<div class="c2-duas">'
+        + c2Bloco('NOTEBOOK · ' + esc(D.dispositivos[0]?.nome || ''), notebook, '')
+        + c2Bloco('VPS', vps, '')
+        + '</div>'
+        + c2Bloco('SERVIÇOS', serv, '<a href="#servidores2" style="font-size:11px">ver todos</a>'));
+    }
+
+    function c2Linha(p) {
+      const b = [];
+      if (p.espera.length) b.push(c2chip(p.espera.length + ' espera você', 'red'));
+      if (p.vivas) b.push(c2chip(p.vivas + ' viva(s)', 'ok'));
+      if (p.servicos.length) b.push(c2chip(p.servicos.length + ' no ar'));
+      return '<div class="c2-linha' + (C2.sel === p.chave ? ' sel' : '') + '" data-c2-projeto="' + esc(p.chave) + '">'
+        + '<div><b>' + esc(p.nome) + '</b> ' + c2Presenca(p.presenca)
+        + '<div class="c2-meta">' + (p.frenteEmCurso ? esc(p.frenteEmCurso) : 'sem frente em curso') + (p.horasHoje != null ? ' · hoje ' + c2h(p.horasHoje) : '') + ' ' + c2spark(p.ultimos7) + '</div></div>'
+        + '<div style="text-align:right">' + b.join(' ') + '</div></div>';
+    }
+    function c2Inspetor(p) {
+      if (!p) return '<p class="c2-vazio">escolha um projeto na lista.</p>';
+      /* Linhas de cartão, nunca tabela: o inspetor tem 409px e a tabela saía
+         com 423, jogando os botões para fora e quebrando 24 células em três
+         linhas. Duas linhas por item cabem aqui e no telefone. */
+      const corEstado = (e) => (e === 'espera você' ? ' red' : (e === 'trabalhando' ? ' ok' : ''));
+      const sess = p.sessoes.map((s) => '<div class="c2-item">'
+        + '<div class="c2-item-l1"><b>' + esc(s.tipo) + '</b>' + c2disp(s.dispositivo)
+        + '<span class="c2-badge' + corEstado(s.estado) + '">' + esc(s.estado) + '</span></div>'
+        + '<div class="c2-item-l2"><span class="c2-mini">' + esc(s.modelo || 'sem modelo')
+        + (s.ferramenta ? ' · ' + esc(s.ferramenta) : '') + ' · há ' + c2ms(s.desdeMs)
+        + (s.todos ? ' · ' + s.todosDone + '/' + s.todos + ' tarefas' : '') + '</span>'
+        + '<button class="btn compacto" data-ver-agente="' + esc(s.id) + '">abrir</button></div></div>').join('');
+      const serv = p.servicos.map((s) => '<div class="c2-item">'
+        + '<div class="c2-item-l1"><b>' + esc(s.nome) + '</b>' + (s.porta ? '<span class="c2-badge">porta ' + s.porta + '</span>' : '') + c2disp(s.dispositivo) + '</div>'
+        + '<div class="c2-item-l2"><span class="c2-mini">' + esc(s.tipo) + (s.desdeMs != null ? ' · há ' + c2ms(s.desdeMs) : '') + '</span>'
+        + (s.url ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">abrir ↗</a>' : '') + '</div></div>').join('');
+      return '<button class="btn compacto c2-voltar" data-c2-voltar>← lista</button>'
+        + '<h3 style="margin:6px 0 2px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">' + esc(p.nome) + ' ' + c2Presenca(p.presenca) + (p.presenca.length > 1 ? '<span class="c2-mini">' + esc(p.presenca.join(' e ')) + '</span>' : '') + '</h3>'
+        + '<div class="c2-meta">' + (p.frenteEmCurso ? 'em curso: ' + esc(p.frenteEmCurso) : 'sem frente em curso') + (p.horasHoje != null ? ' · hoje ' + c2h(p.horasHoje) : '') + '</div>'
+        + '<h4>DECISÕES (' + p.espera.length + ')</h4>' + (p.espera.length ? p.espera.map(c2Aviso).join('') : '<p class="c2-vazio">nenhuma.</p>')
+        + '<h4>SESSÕES (' + p.sessoes.length + ')</h4>' + (sess || '<p class="c2-vazio">nenhuma sessão viva nas últimas 24h.</p>')
+        + '<h4>SERVIÇOS (' + p.servicos.length + ')</h4>' + (serv || '<p class="c2-vazio">nada no ar deste projeto.</p>')
+        + '<h4>PENDÊNCIAS (' + p.pendencias.length + ')</h4>' + (p.pendencias.length ? p.pendencias.map(c2Aviso).join('') : '<p class="c2-vazio">nenhuma.</p>')
+        + '<h4>MAIS</h4><div class="c2-meta"><a href="#trabalho">kanban</a> · <a href="#rotas">rotas</a> · <a href="#tempo">tempo</a> · <a href="#analise">análise</a></div>';
+    }
+    function c2RenderProjetos() {
+      const D = C2.dados; const lista = document.getElementById('c2-lista'); const insp = document.getElementById('c2-insp'); const view = document.getElementById('view-projetos2');
+      if (!lista || !insp) return;
+      if (!D) { pintar(lista, C2.erro ? c2Falha() : '<p class="c2-vazio">lendo…</p>'); return; }
+      const estreito = window.matchMedia('(max-width: 700px)').matches;
+      if (!C2.sel && D.projetos[0] && !estreito) C2.sel = D.projetos[0].chave;
+      const p = D.projetos.find((x) => x.chave === C2.sel) || null;
+      view.classList.toggle('c2-aberto', Boolean(p));
+      pintar(lista, D.projetos.length ? D.projetos.map(c2Linha).join('') : '<p class="c2-vazio" style="padding:14px">nenhum projeto com sinal nas últimas 24h.</p>');
+      pintar(insp, c2Inspetor(p));
+    }
+
+    function c2RenderServidores() {
+      const D = C2.dados; const raiz = document.getElementById('c2-serv');
+      if (!raiz) return;
+      if (!D) { pintar(raiz, C2.erro ? c2Falha() : '<p class="c2-vazio">lendo…</p>'); return; }
+      const disps = [...new Set(D.servicos.map((s) => s.dispositivo))];
+      const f = C2.filtroDisp || 'todos';
+      const filtro = '<div class="c2-meta" style="margin-bottom:10px"><span>dispositivo:</span>'
+        + ['todos', ...disps].map((d) => '<button class="btn compacto' + (f === d ? ' ativo' : '') + '" data-c2-disp="' + esc(d) + '"' + (f === d ? ' style="background:var(--accent);color:white"' : '') + '>' + esc(d) + '</button>').join('')
+        + '<span style="margin-left:auto">' + D.servicos.length + ' no ar · lido às ' + c2Hora(D.lidoEm) + '</span></div>';
+      const lista = D.servicos.filter((s) => f === 'todos' || s.dispositivo === f)
+        .sort((a, b) => String(a.nomeProjeto || 'zzz').localeCompare(String(b.nomeProjeto || 'zzz')) || (a.porta || 0) - (b.porta || 0));
+      const linhas = lista.map((s) => '<tr><td>' + (s.nomeProjeto ? '<b>' + esc(s.nomeProjeto) + '</b>' : '<span class="c2-vazio">sem projeto</span>') + '</td>'
+        + '<td>' + esc(s.tipo) + ' · ' + esc(s.nome) + (s.detalhe ? '<div class="c2-meta">' + esc(s.detalhe) + '</div>' : '') + '</td>'
+        + '<td>' + (s.porta ?? '') + '</td><td>' + c2disp(s.dispositivo) + '</td><td>' + (s.desdeMs != null ? 'há ' + c2ms(s.desdeMs) : '') + '</td>'
+        + '<td><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">' + (s.url ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">abrir ↗</a>' : '')
+        + (s.encerravel ? '<button class="btn compacto" data-c2-kill="' + s.pid + '">' + (C2.armado === s.pid ? 'confirmar' : 'encerrar') + '</button>' : '') + '</div></td></tr>').join('');
+      pintar(raiz, filtro + (linhas
+        ? '<table class="c2-tab"><thead><tr><th>projeto</th><th>serviço</th><th>porta</th><th>dispositivo</th><th>desde</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table>'
+        : '<p class="c2-vazio">nada no ar nesse filtro.</p>'));
+    }
+
+    document.addEventListener('click', async (ev) => {
+      const li = ev.target.closest('[data-c2-projeto]');
+      if (li) { C2.sel = li.dataset.c2Projeto; c2RenderProjetos(); return; }
+      if (ev.target.closest('[data-c2-voltar]')) { C2.sel = null; c2RenderProjetos(); return; }
+      const fd = ev.target.closest('[data-c2-disp]');
+      if (fd) { C2.filtroDisp = fd.dataset.c2Disp; c2RenderServidores(); return; }
+      const k = ev.target.closest('[data-c2-kill]');
+      if (k) {
+        const pid = Number(k.dataset.c2Kill);
+        if (C2.armado !== pid) {
+          C2.armado = pid; c2RenderServidores();
+          setTimeout(() => { if (C2.armado === pid) { C2.armado = null; c2RenderServidores(); } }, 4000);
+          return;
+        }
+        C2.armado = null;
+        try { await post('/api/kill', { pid }); } catch (e) { C2.erro = 'não deu para encerrar: ' + (e.message || e); }
+        setTimeout(c2Buscar, 800);
+      }
+    });
+    document.querySelectorAll('.nav-item').forEach((n) => n.addEventListener('click', () => {
+      const t = n.getAttribute('data-target');
+      c2Ligar(C2_VIEWS.has(t));
+      if (C2_VIEWS.has(t)) setTimeout(c2Render, 0);
+    }));
+    window.addEventListener('hashchange', () => setTimeout(() => {
+      const v = document.querySelector('.view-section.active')?.id;
+      c2Ligar(C2_VIEWS.has(v));
+    }, 0));
+    window.addEventListener('load', () => setTimeout(() => {
+      if (!location.hash || location.hash === '#') document.querySelector('.nav-item[data-target="view-inicio"]')?.click();
+      const v = document.querySelector('.view-section.active')?.id;
+      if (C2_VIEWS.has(v)) c2Ligar(true);
+    }, 60));
   </script>
 </body>
 </html>

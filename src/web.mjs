@@ -8,6 +8,7 @@ import path from 'node:path'
 import { execFile, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
+import * as observado from './observado.mjs'
 /* `todosOsJobs` e não `readJobs`: a pasta de jobs de background está vazia
    nesta VPS, onde quase tudo é sessão interativa. Quem lê agente lê pelas DUAS
    fontes, senão o retrato sai vazio e o vazio parece resposta (CC-124/CC-232). */
@@ -174,8 +175,10 @@ const UI_V2 = path.join(HERE, 'ui_v2.html')
  * o commit saiu SEM ele, e o git avisou por sorte.
  * Nome com história ruim se confere no `.gitignore` antes de reusar. */
 const UI_V3 = path.join(HERE, 'ui_novo.html')
-/* CC-461, 10/09: a versão simples, servida AO LADO do atual, sem mexer nele. */
-const UI_SIMPLES = path.join(HERE, 'ui_simples.html')
+/* CC-461, 10/09: a versão simples, servida AO LADO do atual, sem mexer nele.
+   Renomeada para `ui_cockpit2.html` em 11/09 por decisão dele numa sessão
+   paralela: a tela deixou de ser "a versão simples" e virou o Cockpit 2. */
+const UI_COCKPIT2 = path.join(HERE, 'ui_cockpit2.html')
 const GRAFICOS = path.join(HERE, 'graficos.js')
 /* O alvo quando ninguém escolheu projeto no filtro.
    `process.cwd()` NÃO serve: como serviço do systemd o painel roda de outro
@@ -372,6 +375,35 @@ const snapshot = () => {
     ignorar: doBackground.flatMap((j) => [j.id, j.sessionId]),
   })
   const jobs = [...doBackground, ...interativas]
+
+  /* CC-466: o que a sessão FEZ, lido do transcrito, sem ela precisar contar.
+   *
+   * Medido em 11/09, nas duas fontes: 13 das 18 sessões desta máquina não
+   * reportavam nada, e todas as mudas eram interativas. `cc set` descobre o
+   * job pelo ambiente, que sessão interativa não tem, então o protocolo
+   * dependia do agente lembrar de um comando que ali nem funciona.
+   *
+   * Isto NÃO substitui o reporte: quando o agente declarou assunto e frente,
+   * o que ele declarou continua valendo, porque ele sabe o PORQUÊ e o
+   * transcrito só sabe o quê. Isto preenche o silêncio, que era a maioria.
+   *
+   * Barato: lê a cauda de 256 KB com cache por tamanho e mtime, igual ao
+   * `transcript.mjs`. Transcrito que não cresceu não é relido. */
+  for (const j of jobs) {
+    try {
+      const arquivo = j.transcript || observado.transcritoDe(j.sessionId || j.id)
+      const r = observado.observar(arquivo, { raiz: j.cwd })
+      if (!r.leu) continue
+      j.feito = {
+        arquivos: r.arquivos.slice(0, 6),
+        escritas: r.escritas,
+        testes: r.testes,
+        commits: r.commits,
+        frase: observado.frase(r),
+      }
+    } catch { /* transcrito ilegível não pode derrubar o retrato inteiro */ }
+  }
+
   // Vai junto do snapshot porque tem que aparecer em toda aba, sempre: é
   // leitura de um JSON de 200 bytes, não pesa no tique de 2s.
   //
@@ -508,6 +540,70 @@ const INTERVALO_SERVIDORES_MS = 2 * 60 * 1000
  * ele responde ("está funcionando AGORA") não sobrevive a um reinício mesmo. */
 let ultimoEmpurrao = null
 
+/* Plano do cockpit 2, M5 e M7: o retrato DESTA máquina, pronto para viajar na
+ * resposta do empurrão, mais a última fala das sessões paradas.
+ *
+ * ## Por que existe, e por que não é o `empurrar()`
+ *
+ * A topologia é torta e continua sendo: o desktop alcança a VPS, a VPS nunca
+ * alcança o desktop atrás de NAT. Então a única direção VPS para desktop que
+ * existe é a RESPOSTA do empurrão, que já carrega os pedidos desde o CC-166.
+ * É por ela que o retrato volta, e é isso que faz "ambos" existir no desktop.
+ * Sem porta nova, sem rota nova, sem chave nova: mesmo token, mesmo HTTPS,
+ * mesma validação campo a campo na chegada.
+ *
+ * `empurrar()` MONTA E ENVIA, e não dá para reusar só a primeira metade sem
+ * reescrever a função de outra rota. Esta monta e devolve, com o que é barato:
+ * jobs, portas, uso do plano, travas, framework e serviço. Fora ficam as horas
+ * (varredura de 800 MB) e os backlogs, que continuam indo pelo empurrão normal
+ * de quem tem o que empurrar.
+ *
+ * O cache de 20s é requisito, não enfeite: isto responde a um pedido que chega
+ * de 30 em 30 segundos por máquina, e `readServers()` custa ~1,7s frio.
+ */
+let retratoCache = { em: 0, pacote: null }
+async function retratoDestaMaquina() {
+  if (retratoCache.pacote && Date.now() - retratoCache.em < 20_000) return retratoCache.pacote
+  const s = snapshot()
+  const meus = s.jobs.filter((j) => !j.origem || j.origem.id === s.maquina.id)
+
+  let servidores = null
+  try {
+    const S = await import('./servers.mjs')
+    servidores = (S.readServers() || []).map((x) => ({
+      pid: x.pid, name: x.name, ports: x.ports, kind: x.kind,
+      project: x.project, path: x.path, sub: x.sub, since: x.since,
+    }))
+  } catch { /* varredura falhou: o resto do retrato continua valendo */ }
+
+  let retrato = { travas: null, framework: null }
+  try {
+    const T = await import('./travasDaMaquina.mjs')
+    retrato = { travas: T.travasDaqui(), framework: T.frameworkDaqui(meus) }
+  } catch { /* versão sem o módulo: o campo não viaja */ }
+
+  let servico = null
+  try { servico = { ...(await estadoServicoAsync()), raiz: path.resolve(RAIZ_DO_PAINEL) } } catch { /* SO sem este caminho */ }
+
+  const pacote = montarPacote({
+    maquina: s.maquina, jobs: await comUltimaFala(meus), uso: s.uso, servidores,
+    travas: retrato.travas, framework: retrato.framework, servico,
+  })
+  retratoCache = { em: Date.now(), pacote }
+  return pacote
+}
+
+/* A última fala do agente entra SÓ nas sessões paradas esperando ele: é onde
+   a frase decide alguma coisa, e ler a cauda de toda sessão viva a cada 30s
+   seria pagar caro por texto que ninguém leria. Falha vira campo ausente, que
+   do outro lado é "não sei dizer" e faz o cartão oferecer abrir. */
+async function comUltimaFala(jobs) {
+  try {
+    const C2 = await import('./cockpit2.mjs')
+    return jobs.map((j) => (j.status === 'waiting' ? { ...j, ultimaFala: C2.falaDeJob(j) } : j))
+  } catch { return jobs }
+}
+
 /* CC-263: exportada para o modo `cc reportar`, que empurra sem levantar tela.
    É o coração do serviço do Windows: a mesma função que o painel já usava no
    timer de 30s, agora alcançável de fora. */
@@ -637,11 +733,36 @@ export async function empurrar({ comTempo = null } = {}) {
   }
 
   const pacote = montarPacote({
-    maquina: s.maquina, jobs: meus, uso: s.uso, tempo, backlogs, servidores,
+    /* `comUltimaFala`: plano do cockpit 2, M7. Só as sessões paradas levam a
+       frase, e é o que faz o cartão da outra máquina dizer o que o agente
+       perguntou em vez de repetir o assunto. */
+    maquina: s.maquina, jobs: await comUltimaFala(meus), uso: s.uso, tempo, backlogs, servidores,
     meu: meuDaqui, agentes: agentesDaqui, limites: null,
     travas: retrato.travas, framework: retrato.framework, servico,
   })
   const r = await enviarPacote({ enviarPara, token, pacote })
+
+  /* Plano do cockpit 2, M6: a carona de VOLTA.
+   *
+   * O outro lado devolve o retrato dele (e o das outras máquinas que ele
+   * conhece) quando o `enviar()` pede pelo cabeçalho. Guardar aqui é o que faz
+   * ESTA máquina enxergar a outra: `lerPacotes()` já é lido por `/api/jobs`,
+   * `/api/servers`, `/api/projetos/painel` e `/api/tempo`, então as telas
+   * passam a mostrar as duas sem nenhuma delas mudar.
+   *
+   * Cada retrato é validado campo a campo pelo mesmo `validarPacote` da porta
+   * de entrada: o que chega pela rede nunca é gravado como veio. O retrato
+   * desta própria máquina é descartado, senão o painel leria a si mesmo como
+   * se fosse gente de fora. Dentro de `try` porque roda no ciclo de 30s. */
+  if (r?.ok && Array.isArray(r.retratos)) {
+    for (const bruto of r.retratos.slice(0, 10)) {
+      try {
+        const v = validarPacote(bruto)
+        if (!v.ok || v.pacote.maquina.id === s.maquina.id) continue
+        gravarPacote(v.pacote)
+      } catch { /* um retrato ruim não pode derrubar o ciclo do resto */ }
+    }
+  }
   /* CC-208: o relógio das horas só anda quando o envio CHEGA.
    *
    * Antes ele era carimbado assim que a varredura terminava, ainda dentro do
@@ -1096,7 +1217,7 @@ function handler(req, res) {
     return send(res, 200, fs.readFileSync(UI_V2, 'utf8'), 'text/html; charset=utf-8')
   }
   if (url.pathname === '/v1') return send(res, 200, fs.readFileSync(UI, 'utf8'), 'text/html; charset=utf-8')
-  if (url.pathname === '/simples') return send(res, 200, fs.readFileSync(UI_SIMPLES, 'utf8'), 'text/html; charset=utf-8')
+  if (url.pathname === '/cockpit2' || url.pathname === '/simples') return send(res, 200, fs.readFileSync(UI_COCKPIT2, 'utf8'), 'text/html; charset=utf-8')
   if (url.pathname === '/graficos.js') {
     return send(res, 200, fs.readFileSync(GRAFICOS, 'utf8'), 'text/javascript; charset=utf-8')
   }
@@ -1447,7 +1568,10 @@ function handler(req, res) {
     if (!esperado) return send(res, 403, { error: 'federação desligada nesta máquina' })
     if (req.headers['x-cc-token'] !== esperado) return send(res, 401, { error: 'token inválido' })
 
-    return comCorpo(req, res, LIMITE_PACOTE, (bruto) => {
+    /* `comCorpoAsync` e não `comCorpo`: montar o retrato da resposta lê disco e
+       devolve promessa. Sem o `await`, a resposta sairia com uma promessa
+       dentro e o outro lado receberia um campo vazio sem erro nenhum. */
+    return comCorpoAsync(req, res, LIMITE_PACOTE, async (bruto) => {
       const { ok, erro, pacote } = validarPacote(bruto)
       if (!ok) return { error: erro }
       gravarPacote(pacote)
@@ -1456,11 +1580,33 @@ function handler(req, res) {
          que dá para entregar alguma coisa a ele: ele pergunta de 30 em 30
          segundos, e leva junto o que ficou guardado no nome dele. Nenhuma
          porta nova, nenhum serviço novo. */
-      return {
+      const resposta = {
         recebido: pacote.maquina,
         jobs: pacote.jobs.length,
         pedidos: pegarPedidos(pacote.maquina.nome),
       }
+
+      /* Plano do cockpit 2, M5: na mesma carona vai o RETRATO desta máquina, e
+         só para quem pediu pelo cabeçalho. Cliente antigo recebe exatamente o
+         que recebia antes.
+         Vão junto os retratos das OUTRAS máquinas guardadas aqui: é o que
+         permite duas pontas se enxergarem através de quem está no meio. O do
+         próprio remetente fica de fora, senão ele receberia de volta o que
+         acabou de mandar e trataria como notícia de fora. */
+      if (req.headers['x-cc-quer-retrato'] !== '1') return resposta
+      const retratos = []
+      try { retratos.push(await retratoDestaMaquina()) } catch { /* sem retrato, a resposta segue inteira */ }
+      try {
+        for (const p of lerPacotes()) {
+          if (p?.maquina?.id && p.maquina.id !== pacote.maquina.id) retratos.push(p)
+        }
+      } catch { /* nenhum vizinho guardado */ }
+      /* O teto do pacote vale para a resposta também: acima dele vai só o
+         desta máquina, que é o que o outro lado veio buscar. */
+      const tudo = { ...resposta, retratos }
+      return JSON.stringify(tudo).length > LIMITE_PACOTE
+        ? { ...resposta, retratos: retratos.slice(0, 1) }
+        : tudo
     })
   }
 
@@ -2518,6 +2664,13 @@ function handler(req, res) {
         send(res, 200, {
           eventos: lista.map((e) => ({ ...e, julgamento: julgamentos[e.id]?.valor || null })),
           placar: T.placar(amplo),
+          /* **O que QUEBROU, separado do que barrou** (corte 3 do MVP da v2,
+             11/09). Antes os dois somavam no mesmo placar, e "sem nome" era o
+             primeiro lugar com 334 de 485 eventos, todos de um único hook
+             estourando. Tirar do placar sem mostrar aqui trocaria a mentira
+             pelo silêncio: foi justamente a visibilidade desses erros, ainda
+             que no lugar errado, que levou ao conserto. */
+          quebras: T.quebras(amplo),
           /* Ordenadas pelas que mais dispararam. As que nunca dispararam vão
              para o fim, e a tela as separa: são regras vigiando algo que ainda
              não aconteceu, e isso é diferente de regra inativa. */
@@ -3195,6 +3348,44 @@ function handler(req, res) {
   if (url.pathname === '/api/maquina') {
     return estadoMaquina({ force: url.searchParams.has('force') })
       .then((d) => send(res, 200, d))
+      .catch((e) => send(res, 500, { erro: String(e.message || e) }))
+  }
+
+  /**
+   * CC-474: o framework está ativo nesta máquina?
+   *
+   * Corte 1 do MVP da v2. `cc maquina` responde no terminal, e a tela precisa
+   * responder também: ele abre o painel, não o terminal. Medido em 11/09, os
+   * dois hooks que SÃO o framework estavam desligados aqui havia semanas, e
+   * nada, em lugar nenhum, dizia isso.
+   *
+   * Lê disco (o `settings.json` e algumas pastas) e é barata: sem `spawn`, sem
+   * rede. Ainda assim fica fora do fluxo de 2 em 2 segundos, porque a resposta
+   * muda de hora em hora, não de segundo em segundo.
+   */
+  /* Rota do Cockpit 2, pedida por `0174a7a8` em 11/09 pelo recado do Routia.
+     Só acréscimo: tudo que ela faz mora em `src/cockpit2.mjs`, que é dela. */
+  if (url.pathname === '/api/cockpit2') {
+    return import('./cockpit2.mjs')
+      .then(async (m) => send(res, 200, await m.responder()))
+      .catch((e) => send(res, 500, { erro: String(e.message || e) }))
+  }
+
+  if (url.pathname === '/api/instalacao') {
+    return import('./instalacao.mjs')
+      .then((I) => {
+        const r = I.conferir()
+        send(res, 200, {
+          maquina: r.maquina,
+          frase: r.frase,
+          total: r.total,
+          ok: r.ok,
+          faltando: r.faltando.map((f) => ({ id: f.id, titulo: f.titulo, detalhe: f.detalhe, porque: f.porque, gravidade: f.gravidade })),
+          naoSei: r.naoSei.map((f) => ({ id: f.id, titulo: f.titulo, detalhe: f.detalhe })),
+          gravidades: I.GRAVIDADE,
+          at: Date.now(),
+        })
+      })
       .catch((e) => send(res, 500, { erro: String(e.message || e) }))
   }
 

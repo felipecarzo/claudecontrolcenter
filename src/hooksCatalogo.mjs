@@ -265,6 +265,20 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'fala-guard',
+    modulo: 'comunicacao',
+    nivel: 'avisa',
+    label: 'contou o caminho em vez do fato',
+    script: 'fala-guard.mjs',
+    evento: 'Stop',
+    descricao: 'A resposta que narra a própria investigação ("não era o que eu pensava", '
+      + '"erro meu", "achei mais um") devolve, com a troca escrita ao lado. Pedido dele em '
+      + '11/09: fato, causa em uma linha, pergunta na caixa. A linha de anúncio antes de '
+      + 'usar ferramenta NÃO conta, porque é regra dele.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'jargao-guard',
     modulo: 'comunicacao',
     nivel: 'avisa',
@@ -643,6 +657,26 @@ export const HOOKS = [
       + 'critério, verificação não rodada). Sem ele registrado, o método fica '
       + 'escrito no estado do projeto e não governa nada, que era o caso deste '
       + 'PC até 11/09.',
+    padrao: true,
+    implementado: true,
+  },
+  /* CC-475: o verificador de instalação fala sozinho, uma vez por dia.
+     `cc maquina` responde bem, e comando que ninguem digita e peca
+     inalcancavel. Este hook conserta o fato de ninguem perguntar. */
+  {
+    id: 'maquina-inicio',
+    modulo: 'entrega',
+    nivel: 'avisa',
+    label: 'Peça do framework desligada nesta máquina',
+    script: 'maquina-inicio.mjs',
+    evento: 'SessionStart',
+    descricao: 'Confere, uma vez por dia, se o que o framework exige desta '
+      + 'máquina está no lugar: os hooks registrados, o encaixe do opencode, o '
+      + 'arquivo que o routia-fim importa, a leitura liberada no antigravity. '
+      + 'Fala só quando falta algo, e nunca sobre a versão publicada, que '
+      + 'diverge o dia inteiro em quem desenvolve. Medido em 11/09: os dois '
+      + 'hooks do framework estavam desligados neste PC havia semanas e nada '
+      + 'avisava.',
     padrao: true,
     implementado: true,
   },

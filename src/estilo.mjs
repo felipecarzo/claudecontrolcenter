@@ -296,14 +296,33 @@ export function medir(texto) {
      por linha em branco, o que gasta sete linhas antes de qualquer conteúdo.
      Cobrar a partir de cinco pediria o separador em toda resposta que use o
      formato, e seria o mesmo defeito pelo outro lado. */
+  /* 11/09: a régua passou a ser LINHA NA TELA, e não linha no arquivo.
+   *
+   * Queixa dele, olhando uma resposta de 8 parágrafos: *"muito textoooooo, que
+   * coisa, isso vai contra tudo que estamos definindo, olha que confusão"*.
+   * Medida na hora: 8 linhas no arquivo, 129 palavras. O limite de 12 linhas
+   * não cobrou, porque cada parágrafo é UMA linha longa no arquivo, e na tela
+   * dele vira quatro.
+   *
+   * Contar blocos seria voltar ao defeito que o CC-458 consertou em 10/09:
+   * punia bloco curto rotulado (o formato que ele pediu) e deixava passar
+   * prosa longa grudada. Linha na tela pune o certo: parágrafo de 300
+   * caracteres conta como as quatro linhas que ele ocupa, e cinco blocos
+   * curtos continuam contando cinco.
+   *
+   * 80 caracteres é a largura de leitura dele no telefone, medida na barra de
+   * baixo do painel (390px, fonte de 13px). Não é chute de tipografia. */
   const marcador = /^\s*-{4,}\s*\/\/\s*resumo\s*\/\/\s*-{4,}\s*$/im.test(semCodigo)
-  const linhasDeProsa = semCodigo.split('\n').filter((l) => l.trim()).length
-  const precisava = linhasDeProsa > 12
+  const LARGURA = 80
+  const linhasNaTela = semCodigo.split('\n').filter((l) => l.trim())
+    .reduce((soma, l) => soma + Math.max(1, Math.ceil(l.trim().length / LARGURA)), 0)
+  const precisava = linhasNaTela > 12
 
   return {
     linhas: limpo.split('\n').length,
     palavras: semCodigo.split(/\s+/).filter(Boolean).length,
     paragrafos: paragrafos.length,
+    linhasNaTela,
     autodefesa: trechos.length,
     marcador,
     precisavaMarcador: precisava,
