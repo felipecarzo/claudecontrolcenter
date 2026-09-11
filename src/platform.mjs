@@ -227,7 +227,26 @@ export function pararMidia() {
 
 /* ---------------------------- navegador ---------------------------- */
 
+/**
+ * Abre o painel no navegador padrão.
+ *
+ * ⚠️ **`CC_SEM_NAVEGADOR=1` desliga isto, e a trava existe por pedido dele.**
+ *
+ * Em 11/09, de madrugada, publiquei um conserto com `cc daemon restart` várias
+ * vezes seguidas, e cada uma abriu uma aba do Edge na cara dele enquanto ele
+ * trabalhava. Palavras dele: *"isso tava me atrapalhando muito (…) é
+ * inadmissível"*, e o motivo é mais que incômodo: cada aba come memória, e a
+ * máquina já derrubou processo por falta dela nesta mesma noite.
+ *
+ * Agente que religa o painel para testar precisa **exportar `CC_SEM_NAVEGADOR=1`**,
+ * e aí o painel sobe calado. Quem clicou no atalho continua vendo a janela
+ * abrir, que é o que ele espera de um clique.
+ *
+ * Devolve `{ ok: true, pulado: true }` quando pula: quem chama não pode
+ * confundir "não abri de propósito" com falha.
+ */
 export function abrirNavegador(url) {
+  if (process.env.CC_SEM_NAVEGADOR === '1') return { ok: true, pulado: true }
   if (ehWindows) return quiet('cmd', ['/c', 'start', '', url]) // `start` é do cmd, não um .exe
   if (ehMac) return quiet('open', [url])
   return quiet('xdg-open', [url])
@@ -327,6 +346,17 @@ export function motorDeJanela() {
  * janela. Foi assim que a primeira versão "não fez nada".
  */
 export function abrirComoApp(url, { largura = 1280, altura = 880, perfil = null } = {}) {
+  /* ⛔ **A trava vale aqui também, e foi AQUI que a janela nascia.**
+   *
+   * Medido em 11/09, depois de ele reclamar: cinco janelas do Edge abriram
+   * entre 01:53 e 01:58, uma por minuto. Não era o painel (medi `daemon
+   * restart` e `versao publicar` duas vezes cada, nenhum abriu): era o
+   * `npm test`. O `test-janela.mjs` chama esta função de verdade, e como a
+   * máquina TEM Edge, ela abria uma janela real a cada execução do gate.
+   *
+   * O teste continua valendo: ele confere o formato da resposta, não a janela.
+   * Com a trava, o gate para de abrir nada e devolve `pulado: true`. */
+  if (process.env.CC_SEM_NAVEGADOR === '1') return { ok: true, pulado: true, perfil: perfil || null }
   const exe = motorDeJanela()
   if (!exe) return { ok: false, erro: 'nenhum Edge ou Chrome encontrado nesta máquina', caiuNaAba: abrirNavegador(url).ok }
 
