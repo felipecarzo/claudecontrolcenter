@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-50 abertos, 520 fechados, 570 no total. Gerado em 2026-09-11.
+55 abertos, 523 fechados, 578 no total. Gerado em 2026-09-12.
 
 ## tarefas
 
@@ -100,3 +100,13 @@
 | CC-533 | definida | - | regra global: trava que me barra nao vira conversa (CLAUDE.md global, 11/09) |
 | CC-535 | definida | - | carga fria da tela Projetos nao disparava o framework: clique programatico acontecia antes do listener nascer |
 | CC-536 | definida | - | quadro-guard trata rename deliberado como regressao (rhydon virou sysgen por pedido dele em outra sessao) |
+
+## cockpit2
+
+| id | estado | peso | o que é |
+|---|---|---|---|
+| CC-539 | definida | - | framework so reconhece projeto com pasta ja marcada; ideia dele: projeto nasce no framework, pastas no PC/VPS vem depois, sincronizadas |
+| CC-541 | definida | - | github automatico: declarar projeto ja cria o repo via gh repo create e grava no registro |
+| CC-542 | definida | - | provisionar pasta local: novoProjeto.mjs clona o repo do registro em vez de git init quando ele existe, e marca provisionado |
+| CC-543 | definida | - | tela: criarProjeto vira declarar + criar aqui por maquina; c2ProjetosTodos le do registro de verdade em vez do remendo de hoje |
+| CC-544 | definida | - | migracao: os 29 projetos achados hoje por findProjects viram entradas do registro, casados PC/VPS por nomeProjeto.chaveDeProjeto |

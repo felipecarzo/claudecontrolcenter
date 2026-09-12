@@ -25,7 +25,7 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tela | 30 | 30/30 | 28/30 | 30/30 | 0/30 | 30/30 |
 | acao | 123 | 123/123 | 25/123 | 0/123 | 0/123 | 0/123 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 97 | 97/97 | 7/97 | 0/97 | 0/97 | 0/97 |
+| endereco | 98 | 98/98 | 7/98 | 0/98 | 0/98 | 0/98 |
 | palavra | 78 | 78/78 | 14/78 | 78/78 | 0/78 | 78/78 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
@@ -207,7 +207,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_v2.html | explica, estreito |
 | `data-n` | viva | src/ui_v2.html | explica, estreito |
 
-## endereco (97)
+## endereco (98)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -243,6 +243,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/bancada` | estatica | src/web.mjs | funciona, explica |
 | `/api/framework` | estatica | src/web.mjs | explica |
 | `/api/projeto/novo` | estatica | src/web.mjs | funciona, explica |
+| `/api/registro/projetos` | estatica | src/web.mjs | funciona, explica |
 | `/api/entrevista` | estatica | src/web.mjs | funciona, explica |
 | `/api/recados` | estatica | src/web.mjs | explica |
 | `/api/marcos` | estatica | src/web.mjs | funciona, explica |
