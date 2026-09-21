@@ -177,22 +177,41 @@ export function gravarCabecalho(id, patch) {
  * recusam esse caminho porque a pasta resolvida não existe, o que é sorte. Uma
  * mudança futura que suba diretórios reabriria o buraco calada.
  */
-export function deOutraMaquina(caminho) {
+/* A pergunta depende de ONDE o painel está rodando, e a primeira versão desta
+ * função esqueceu disso. Ela nasceu na VPS, onde `D:\Documentos\...` de fato só
+ * pode ser do PC dele, e virou "todo caminho com letra de unidade é de fora".
+ * No Windows, porém, TODO caminho tem letra de unidade e barra invertida: a
+ * guarda passou a recusar o disco da própria máquina, e o Coderoom não abria
+ * conversa em projeto nenhum. Medido em 21/09 neste PC, com uma pasta que
+ * existe: `400 — a pasta D:\Documentos\projetos\vps é de outra máquina`.
+ *
+ * `plataforma` é parâmetro para o teste poder conferir os dois lados numa
+ * máquina só. Em uso normal ninguém passa. */
+export function deOutraMaquina(caminho, plataforma = process.platform) {
   const c = String(caminho || '')
-  /* A marca conta em QUALQUER posição, não só no começo.
-   *
-   * A primeira versão desta função olhava só o início (`^[A-Za-z]:`), e a
-   * sessão vizinha achou o furo em 22/08: o caminho MISTO
-   * `/home/claudedev/projetos/proj_controlcenter/D:\Documentos\...` é absoluto
-   * de verdade neste sistema, então passava limpo pelas duas regras. E ele é
-   * justamente o que sobra depois de alguém resolver um caminho do PC dele
-   * contra a pasta de quem está rodando: a forma exata do defeito que esta
-   * guarda existe para pegar.
-   *
-   * Barra invertida em nome de pasta é legal no Linux e praticamente não
-   * existe. Recusar sai mais barato que o defeito que ela esconde. */
-  if (/[A-Za-z]:[\\/]/.test(c)) return true   // D:\ ou D:/, em qualquer lugar
-  if (c.includes('\\')) return true           // \\servidor\pasta, e o caminho misto
+
+  /* O caminho MISTO é o mesmo defeito nos dois sistemas, e é o que sobra
+   * depois de alguém resolver o caminho de uma máquina contra a pasta de quem
+   * está rodando: `/home/claudedev/projetos/x/D:\Documentos\...` no Linux,
+   * `D:\Documentos\x\/home/claudedev/...` aqui. Achado pela sessão vizinha em
+   * 22/08: ele é absoluto de verdade, então passava limpo pelas regras que
+   * olhavam só o começo. Letra de unidade fora da primeira posição nunca é
+   * caminho legítimo, em sistema nenhum. */
+  if (/.[A-Za-z]:[\\/]/.test(c)) return true
+
+  if (plataforma === 'win32') {
+    /* Aqui `D:\…` é o normal. O que não é daqui é o caminho POSIX absoluto,
+     * que é a forma dos projetos da VPS, e o UNC, que aponta para um servidor
+     * de rede por definição. */
+    if (/^\//.test(c)) return true            // /home/claudedev/projetos/x
+    if (/^\\\\/.test(c)) return true          // \\servidor\pasta
+    return false
+  }
+
+  /* Linux e Mac. Barra invertida em nome de pasta é legal e praticamente não
+   * existe: recusar sai mais barato que o defeito que ela esconde. */
+  if (/^[A-Za-z]:[\\/]/.test(c)) return true  // D:\ ou D:/ no começo
+  if (c.includes('\\')) return true           // \\servidor\pasta, e o misto
   return false
 }
 

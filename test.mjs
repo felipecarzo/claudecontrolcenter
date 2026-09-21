@@ -4677,18 +4677,48 @@ if (process.platform !== 'win32') {
   const G = await import(`./src/gate.mjs?t=${Date.now()}`)
   assert.equal(typeof G.deOutraMaquina, 'function', 'o gate precisa expor a recusa, senão ninguém pode conferi-la')
 
+  /* 21/09: os dois lados, numa máquina só. A versão anterior conferia só o
+     painel rodando em Linux, e por isso não viu o defeito que quebrou o
+     Coderoom no PC dele: lá TODO caminho tem letra de unidade e barra
+     invertida, então a guarda recusava o disco da própria máquina e nenhuma
+     conversa abria. O que é "de outra máquina" depende de onde o painel roda,
+     e o teste tem que dizer de onde está perguntando. */
   for (const caminho of [
     'D:\\Documentos\\Ti\\projetos\\CLIENTS\\renanMarchon',
     'D:/Documentos/Ti/projetos',
     'c:/users/lfeli/projetos/x',
     '\\\\servidor\\pasta',
   ]) {
-    assert.equal(G.deOutraMaquina(caminho), true, `caminho de outra máquina tem que ser recusado: ${caminho}`)
+    assert.equal(G.deOutraMaquina(caminho, 'linux'), true, `rodando em Linux, caminho do PC tem que ser recusado: ${caminho}`)
   }
   for (const caminho of ['/home/claudedev/projetos/x', 'docs', './src']) {
-    assert.equal(G.deOutraMaquina(caminho), false, `caminho daqui não pode ser recusado: ${caminho}`)
+    assert.equal(G.deOutraMaquina(caminho, 'linux'), false, `rodando em Linux, caminho daqui não pode ser recusado: ${caminho}`)
   }
-  console.log('  ok   CC-305: o gate também recusa pasta que não é desta máquina')
+
+  /* O painel rodando no Windows dele. É o caso que faltava. */
+  for (const caminho of [
+    'D:\\Documentos\\projetos\\vps',
+    'D:/Documentos/projetos/vps',
+    'c:/users/lfeli/projetos/x',
+    'docs',
+    './src',
+  ]) {
+    assert.equal(G.deOutraMaquina(caminho, 'win32'), false, `rodando no Windows, o disco daqui não pode ser recusado: ${caminho}`)
+  }
+  for (const caminho of ['/home/claudedev/projetos/x', '\\\\servidor\\pasta']) {
+    assert.equal(G.deOutraMaquina(caminho, 'win32'), true, `rodando no Windows, caminho de fora tem que ser recusado: ${caminho}`)
+  }
+
+  /* O caminho MISTO, que é o mesmo defeito dos dois lados: o que sobra quando
+     alguém resolve o caminho de uma máquina contra a pasta de quem roda. */
+  for (const plataforma of ['linux', 'win32']) {
+    assert.equal(G.deOutraMaquina('/home/claudedev/projetos/x/D:\\Documentos\\y', plataforma), true,
+      `caminho misto tem que ser recusado em ${plataforma}`)
+    assert.equal(G.deOutraMaquina('D:\\Documentos\\x\\c:/users/y', plataforma), true,
+      `caminho misto ao contrário tem que ser recusado em ${plataforma}`)
+  }
+
+  console.log('  ok   CC-305: o gate recusa pasta que não é desta máquina, nos dois sistemas')
 }
 
 /* ── CC-340: o retrato das travas e do framework viajando na federação ────────

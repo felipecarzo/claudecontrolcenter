@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-55 abertos, 523 fechados, 578 no total. Gerado em 2026-09-12.
+55 abertos, 524 fechados, 579 no total. Gerado em 2026-09-21.
 
 ## tarefas
 
