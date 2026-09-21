@@ -694,6 +694,11 @@ const comRespostas = (extra = {}) => ({
        dela passar a chamá-la. A diferença entre esta e a `/api/marcos` acima é
        que existe alguém construindo o consumidor agora. */
     '/api/cockpit2': 'a tela do Cockpit 2 está sendo escrita pela sessão 0174a7a8, que pediu a rota por recado em 11/09',
+    /* CC-540, Fase 1 de 5 (plano aprovado em 11/09). Fase 1 é só o módulo e a
+       rota do registro central; quem consome pela tela é a Fase 4 (CC-543,
+       `criarProjeto()` em `ui_cockpit2.html`), ainda não escrita.
+       **Exceção com prazo**: some daqui quando o CC-543 fechar. */
+    '/api/registro/projetos': 'CC-540 Fase 1: o registro central; a tela que consome é o CC-543, ainda não escrito',
   }
   const mortas = rotas.filter((r) => {
     if (CONSUMIDAS_DE_FORA[r]) return false

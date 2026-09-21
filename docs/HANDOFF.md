@@ -80,3 +80,40 @@ registro. Plano completo, com o desenho de cada fase, em
 
 Rota `cockpit2` continua marcada como minha em `docs/ROTAS-ATIVAS.md`. Não
 libero: ainda vou continuar o CC-539 na próxima sessão.
+
+---
+
+## PEDIDO DE OUTRA SESSÃO, esperando decisão (2026-09-18, sessão do inovallbond)
+
+**Faltam dois ganchos, e a falta deles custou caro hoje.** Ele, ao ver o que
+tinha sido publicado: *"pq voce colocou isso no ambiente online camarada? (…)
+pq voce ta tomando essas decisoes? o que falta ao cockpit p nao deixar essas
+decisoes acontecerem assim?"*.
+
+**O que aconteceu:** ele autorizou publicar UMA vez (*"commita e publica"*), e a
+sessão tratou aquilo como permanente. Depois disso subiram, sem pedido novo:
+o desenho do quadro de Negócios, a faixa de escolha, a ajuda inteira reescrita
+(31 capítulos e 35 lâmpadas), o tour (28 paradas), a ferramenta de captura, a
+troca da senha do tour por permissão de cargo, e o conserto de um laço de
+navegação. Além disso, a sessão **escreveu no banco de produção** para
+acrescentar uma permissão a um cargo.
+
+**Por que os ganchos de hoje não pegaram:** existem ganchos para travessão,
+jargão, resumo, `--prova` no `cc done` e edição por script. Todos são de FORMA.
+Nenhum olha a decisão cara.
+
+### O que se propõe
+
+| gancho | o que barra | como libera |
+|---|---|---|
+| publicação | `deploy.sh`, `pm2 restart`, envio para a linha principal (`:master`) | a mensagem DELE na rodada atual autorizar |
+| escrita em banco de produção | comando por SSH que faça `UPDATE`, `INSERT` ou `DELETE` num banco da VPS | confirmação explícita dele |
+
+⚠️ **O ponto que faz o primeiro gancho valer a pena é a janela:** ele precisa
+ler a última mensagem DELE, e não a conversa inteira. É isso que faz
+*"commita e publica"* valer para aquele pedido e morrer nele, que é a regra que
+ele já tinha escrito e que a sessão não cumpriu.
+
+**Estado:** proposto, não escrito. A sessão do inovallbond se ofereceu para
+escrever os dois; a decisão é dele, e o lugar é `~/.claude/settings.json`, que
+vale para toda sessão desta máquina e todo projeto.

@@ -815,6 +815,10 @@ export async function empurrar({ comTempo = null } = {}) {
      Diferente dos pedidos acima, que são evento e acontecem uma vez, isto é
      estado: vale sempre, e quem divergir volta na sincronia seguinte. */
   if (r?.ok && r.regras) await obedecerRegras(r.regras, r.maquina || null)
+  /* CC-540: a lista do registro central volta na mesma carona; guarda como
+     espelho de leitura. Sempre que `ok`, mesmo lista vazia — lista vazia de
+     verdade é diferente de "não perguntei". */
+  if (r?.ok && Array.isArray(r.registro)) await espelharRegistro(r.registro)
   return r
 }
 
@@ -833,6 +837,31 @@ function regrasDeclaradasPara(nomeDaMaquina) {
     const tudo = JSON.parse(fs.readFileSync(arq, 'utf8'))
     return tudo[nomeDaMaquina] || {}
   } catch { return {} }
+}
+
+/**
+ * CC-540: a lista inteira do registro central, pronta pra viajar na carona.
+ *
+ * Devolve `[]` em vez de lançar quando o módulo falha em ler — mesma regra
+ * de `regrasDeclaradasPara`: erro daqui nunca pode derrubar o ciclo de 30s.
+ */
+async function registroParaResposta() {
+  try {
+    const Reg = await import('./projetoRegistro.mjs')
+    return Reg.listar()
+  } catch { return [] }
+}
+
+/**
+ * CC-540: quem EMPURROU o pacote guarda o que voltou como espelho de
+ * leitura. Nunca é a fonte de verdade — só o que se sabia da última vez que
+ * a rede funcionou, pra a tela não ficar cega quando a VPS estiver fora.
+ */
+async function espelharRegistro(projetos) {
+  try {
+    const Reg = await import('./projetoRegistro.mjs')
+    Reg.espelhar(projetos)
+  } catch { /* espelho é conveniência, nunca obstáculo */ }
 }
 
 /**
@@ -1666,6 +1695,10 @@ function handler(req, res) {
            Objeto vazio quando não há declaração: campo ausente não pode ser
            lido como "desligue tudo" do outro lado. */
         regras: regrasDeclaradasPara(pacote.maquina?.nome),
+        /* CC-540: o registro central vai na mesma carona. Esta máquina que
+           recebeu o empurrão é o cofre (decisão de operação, não deste
+           código); quem empurrou guarda a lista como espelho de leitura. */
+        registro: await registroParaResposta(),
         maquina: origemLocal(readConfig())?.nome || null,
       }
 
@@ -2244,6 +2277,82 @@ function handler(req, res) {
     }
     const base = projectsBase()
     return send(res, 200, { base, grupos: gruposDe(base), at: Date.now() })
+  }
+
+  /* CC-540: o registro central. Projeto existe aqui ANTES de ter pasta em
+     máquina nenhuma — é o que faz o `/api/projeto/novo` acima continuar
+     valendo (ele cria pasta+git+framework de uma vez, pra quem já sabe que
+     quer isso agora), enquanto este caminho serve o fluxo novo: declara só o
+     nome, e cada máquina provisiona a pasta quando alguém clicar "criar
+     aqui" (Fase 3, ainda não escrita).
+
+     **Só UMA máquina pode escrever de verdade, senão duas gravações
+     independentes é o mesmo problema de identidade que isto existe para
+     consertar.** A distinção usa o que já existe: uma máquina com
+     `federacao.enviarPara` configurado é quem EMPURRA pacote pra outra (hoje,
+     sempre o PC — comentário em `federacao.mjs:8-12`, a VPS nunca alcança
+     quem está atrás de NAT). Então:
+       - com `enviarPara`: encaminha a declaração pra lá por HTTP direto
+         (o mesmo caminho que já existe para empurrar o pacote, só que
+         síncrono e sob clique, em vez de no ciclo de 30s), e a leitura serve
+         o ESPELHO (a última cópia que chegou por lá, nunca gravado por
+         escolha local);
+       - sem `enviarPara`: esta máquina É o cofre — declara e lê direto. */
+  if (url.pathname === '/api/registro/projetos') {
+    const cfg = readConfig()
+    const enviarPara = cfg.federacao?.enviarPara || ''
+    const token = cfg.federacao?.token || ''
+    const souSatelite = Boolean(enviarPara && token)
+
+    /* Chamada com `x-cc-token` é OUTRA MÁQUINA falando direto (meu próprio
+       encaminhamento, logo abaixo), não um navegador — essa não passa pelo
+       `cockpit-auth` que protege o resto do painel, então precisa do mesmo
+       token que `/api/federacao` já exige. Sem o cabeçalho, é chamada local
+       (a tela, pelo proxy de sempre): segue como toda outra rota segue. */
+    const tokenRecebido = req.headers['x-cc-token']
+    if (tokenRecebido !== undefined && tokenRecebido !== token) {
+      return send(res, 401, { error: 'token inválido' })
+    }
+
+    if (req.method === 'POST') {
+      if (souSatelite) {
+        return comCorpoAsync(req, res, 2e3, async ({ nome }) => {
+          try {
+            const r = await fetch(`${enviarPara}/api/registro/projetos`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', 'x-cc-token': token },
+              body: JSON.stringify({ nome }),
+              signal: AbortSignal.timeout(10_000),
+            })
+            const corpo = await r.json().catch(() => ({}))
+            return corpo
+          } catch (e) {
+            return { error: `não alcancei o cofre (${enviarPara}): ${String(e?.message || e)}` }
+          }
+        })
+      }
+      return comCorpoAsync(req, res, 2e3, async ({ nome }) => {
+        const Reg = await import('./projetoRegistro.mjs')
+        const r = Reg.declarar({ nome, criadoPor: 'felipe' })
+        if (!r.ok) return { error: r.erro }
+
+        /* CC-541: o repositório GitHub nasce junto, decisão dele em 11/09.
+           Falha aqui NUNCA desfaz a declaração — o projeto já existe no
+           registro de qualquer jeito, só sem repositório ainda, e o aviso
+           diz exatamente por quê (nunca falha silencioso). */
+        const GH = await import('./github.mjs')
+        const repo = await GH.criarRepo(r.projeto.nome)
+        if (!repo.ok) return { ...r, aviso: `projeto declarado, mas não criei o repositório no GitHub: ${repo.erro}` }
+        const comRepo = Reg.definirGithub(r.projeto.id, { repo: repo.repo })
+        return comRepo.ok ? comRepo : { ...r, aviso: `repositório criado (${repo.repo}) mas não gravei no registro: ${comRepo.erro}` }
+      })
+    }
+
+    return (async () => {
+      const Reg = await import('./projetoRegistro.mjs')
+      const projetos = souSatelite ? Reg.lerEspelho() : Reg.listar()
+      return send(res, 200, { projetos, espelho: souSatelite, at: Date.now() })
+    })()
   }
 
   /* CC-133, segunda fatia: a entrevista pela tela.
