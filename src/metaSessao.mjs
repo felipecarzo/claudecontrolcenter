@@ -26,6 +26,7 @@
  * comum aqui.
  */
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { casaClaude } from './platform.mjs'
 
@@ -96,6 +97,14 @@ export function transcritoDe(sessionId) {
     const alvo = path.join(pasta, `${sessionId}.jsonl`)
     if (fs.existsSync(alvo)) return alvo
   }
+
+  // Antigravity (agy): sessões em ~/.gemini/antigravity-cli/brain/<sessionId>
+  try {
+    const brainDir = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain')
+    const agyLog = path.join(brainDir, sessionId, '.system_generated', 'logs', 'transcript.jsonl')
+    if (fs.existsSync(agyLog)) return agyLog
+  } catch { /* sem pasta brain */ }
+
   return null
 }
 

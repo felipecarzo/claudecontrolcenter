@@ -653,6 +653,15 @@ function acharSessaoPorPrefixo(curto) {
       if (achado) return path.basename(achado, '.jsonl')
     }
   } catch { /* sem pasta de transcritos: não é sessão */ }
+
+  // Antigravity (agy): achar pasta em ~/.gemini/antigravity-cli/brain/ pelo prefixo
+  try {
+    const brainDir = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain')
+    const achado = fs.readdirSync(brainDir, { withFileTypes: true })
+      .find((d) => d.isDirectory() && d.name.startsWith(curto))
+    if (achado) return achado.name
+  } catch { /* sem pasta brain */ }
+
   return null
 }
 

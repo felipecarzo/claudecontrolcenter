@@ -6,12 +6,18 @@ que ele está resolvendo**. Essa parte o agente escreve, em `meta.json`.
 ## O comando
 
 ```bash
+# Windows
 node D:/Documentos/Ti/projetos/PESSOAL/proj_controlcenter/cc.mjs set '<json>'
+
+# Linux / VPS / Antigravity (agy)
+node /home/claudedev/projetos/VPS_cockpit/cc.mjs set '<json>'
+# ou 'cc set' se o cc estiver no PATH
 ```
 
-Descobre o job sozinho por `$CLAUDE_JOB_DIR`. Fora de um job, passe
-`--job <id>`. O JSON é **merge parcial**: o que não for mencionado fica como
-está. Mandar `null` num campo apaga esse campo.
+Descobre o job sozinho por `$CLAUDE_JOB_DIR`. Fora de um job (ou em agentes
+como Antigravity / Agy), passe `--job <id>` (usando o ID da sessão ou conversa).
+O JSON é **merge parcial**: o que não for mencionado fica como está. Mandar
+`null` num campo apaga esse campo.
 
 ## Quando escrever
 
@@ -79,6 +85,20 @@ exatamente o que ele quer revisar enquanto acontece.
 
 E vale a divisão que ele mesmo fez: **lógica é sua, experiência humana é
 dele.** Escolha técnica não vira pergunta; o que decide o uso, sim.
+
+### Decisão humana e perguntas estruturadas (Modo Sugestivo / Direcionamento)
+
+Quando o projeto estiver em modo **Sugestivo** ou quando for preciso perguntar
+direcionamento, gosto visual ou escopo:
+
+- **Claude Code**: use a ferramenta `AskUserQuestion`.
+- **Antigravity (Agy)**: use a ferramenta nativa `ask_question`.
+
+> **Pergunta decisiva nunca sai em prosa.** O Felipe opera o cockpit como uma
+> fábrica: mouse e poucas teclas para resolver problemas complexos. Devolver
+> texto em prosa com "o que você acha?" quando há ferramenta de perguntas com
+> opções é erro de protocolo. As opções devem ser respostas diretas em primeira
+> pessoa com a recomendada prefixada por `(Recommended)`.
 
 Dependência entre tarefas se escreve NO TEXTO, do jeito que o Felipe escreve:
 `"protocolo atualizado, depende da s03"` ou `"depende do CC-112_s02"`. O
