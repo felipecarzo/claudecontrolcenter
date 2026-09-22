@@ -75,6 +75,30 @@ const PERGUNTAS_DE_ABERTURA = [
   /Yes, I trust this folder/i,
 ]
 
+/**
+ * CC-546: o que a tela da sessão diz sobre por que ela não vai servir.
+ *
+ * Medido em 21/09 na VPS: o login do Claude Code de lá venceu em 20/09, a
+ * credencial foi zerada ao abrir sessão, e toda sessão desde então subia com
+ * "Not logged in · Run /login" no rodapé. O painel dizia "ligado", e "conectar
+ * celular" devolvia "não achei o endereço na tela", que é verdade e não ajuda:
+ * sessão deslogada nunca imprime endereço nenhum. Ele clicou em três botões e
+ * concluiu que o painel tinha quebrado.
+ *
+ * A regra é a mesma das perguntas de abertura: ler a tela em vez de confiar no
+ * "ok" do tmux. Só que aqui não há tecla que resolva. Logar é dele, na máquina
+ * onde a sessão mora, e o botão tem que dizer isso com todas as letras.
+ *
+ * Exportada e pura de propósito: é a única parte disto que dá para provar sem
+ * tmux, e o teste roda no Windows também.
+ */
+const DESLOGADA = /Not logged in/i
+export function motivoDaTela(tela) {
+  if (DESLOGADA.test(String(tela || ''))) return 'deslogada'
+  return null
+}
+const ERRO_DESLOGADA = 'o Claude Code desta máquina está deslogado: rode /login nela e abra a sessão de novo'
+
 const espera = (ms) => new Promise((r) => setTimeout(r, ms))
 
 const tmux = (args, ms = 8000) => new Promise((resolve) => {
@@ -403,9 +427,15 @@ export async function ligar(projeto, cwd, {
     encerradaEm: null,
   })
 
+  /* CC-546: a sessão subiu, mas se a tela diz "Not logged in" ela não vai
+     servir para nada, e "ok" sozinho é o mesmo engano das perguntas de
+     abertura. Continua `ok: true` porque a sessão EXISTE (e precisa aparecer
+     na lista para ele poder encerrá-la); o aviso é o que a tela mostra. */
+  const deslogada = motivoDaTela(tela) === 'deslogada'
   return {
     ok: true, ja: false, sessao, rotulo, desde: nascimento, cwd, confianca, tela,
     remoto, conversa: achada ? achada.id : null,
+    deslogada, aviso: deslogada ? ERRO_DESLOGADA : null,
   }
 }
 
@@ -544,6 +574,11 @@ export async function conectar(projeto) {
   if (!(await tmux(['has-session', '-t', sessao])).ok) {
     return { ok: false, erro: `não há sessão viva em ${projeto}` }
   }
+  /* CC-546: olhar a tela ANTES de abrir o menu. Sessão deslogada não tem
+     endereço para dar, e tentar o menu nela só devolvia "não achei o endereço",
+     que esconde a causa. */
+  const antes = await tmux(['capture-pane', '-t', sessao, '-p'])
+  if (antes.ok && motivoDaTela(antes.out) === 'deslogada') return { ok: false, erro: ERRO_DESLOGADA, deslogada: true }
   let menu = await abrirMenuRemoto(sessao, /claude\.ai\/code\/session_/i)
   if (!/claude\.ai\/code\/session_/i.test(menu.tela)) {
     await espera(1500)
@@ -599,7 +634,11 @@ export async function link(projeto) {
   const r = await tmux(['capture-pane', '-t', slug(projeto), '-p', '-S', '-500'])
   if (!r.ok) return { ok: false, erro: `sessão não encontrada: ${r.out}` }
   const achados = r.out.match(/https?:\/\/\S+/g)
-  if (!achados) return { ok: false, erro: 'sem link na tela ainda, tenta de novo em alguns segundos' }
+  if (!achados) {
+    // CC-546: sem link porque está deslogada é outra conversa, e o botão tem que dizer qual.
+    if (motivoDaTela(r.out) === 'deslogada') return { ok: false, erro: ERRO_DESLOGADA, deslogada: true }
+    return { ok: false, erro: 'sem link na tela ainda, tenta de novo em alguns segundos' }
+  }
   return { ok: true, url: achados[achados.length - 1] }
 }
 
