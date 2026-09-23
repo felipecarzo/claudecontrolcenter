@@ -101,6 +101,33 @@ const ERRO_DESLOGADA = 'o Claude Code desta máquina está deslogado: rode /logi
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms))
 
+/**
+ * Qual `claude` chamar. Existe porque o painel roda como serviço, e o PATH de
+ * um serviço NÃO é o PATH do login: medido em 22/09/2026 nesta VPS, o serviço
+ * enxerga só as pastas do sistema, nenhuma do usuário.
+ *
+ * Consequência que quase passou batido: com o CLI instalado na pasta do usuário
+ * (o `claude install`, que é a via de atualização de quem não tem senha de
+ * administrador), o terminal dele usava a versão nova e as sessões abertas PELO
+ * PAINEL continuavam subindo a antiga, sem erro nenhum na tela — a versão só
+ * aparece dentro da sessão, e ninguém olha.
+ *
+ * Por isso a preferência é explícita: instalação do usuário primeiro, PATH
+ * depois. Quem passar um caminho ou outro nome continua mandando.
+ */
+export function binarioClaude(pedido = 'claude') {
+  if (pedido !== 'claude') return pedido
+  const casa = process.env.HOME || process.env.USERPROFILE || ''
+  if (!casa) return pedido
+  const candidatos = ehWindows
+    ? [path.join(casa, '.local', 'bin', 'claude.exe'), path.join(casa, '.local', 'bin', 'claude')]
+    : [path.join(casa, '.local', 'bin', 'claude')]
+  for (const c of candidatos) {
+    try { fs.accessSync(c, fs.constants.X_OK); return c } catch { /* segue para o PATH */ }
+  }
+  return pedido
+}
+
 const tmux = (args, ms = 8000) => new Promise((resolve) => {
   execFile('tmux', args, { encoding: 'utf8', timeout: ms, maxBuffer: 4 * 1024 * 1024 },
     (erro, saida, err) => resolve(erro
@@ -370,7 +397,7 @@ export async function ligar(projeto, cwd, {
       // (spawn não invoca `.cmd` sem ele, e `shell: true` com args dinâmicos
       // é injeção de comando); o cmd só sai quando o claude de dentro sair,
       // então o pid do cmd rastreia exatamente o tempo de vida da sessão.
-      const filho = spawn('cmd', ['/c', binario, '--remote-control', projeto, ...bypass], {
+      const filho = spawn('cmd', ['/c', binarioClaude(binario), '--remote-control', projeto, ...bypass], {
         cwd, detached: true, stdio: 'ignore', windowsHide: false,
       })
       filho.unref()
@@ -388,7 +415,7 @@ export async function ligar(projeto, cwd, {
   const nascimento = Date.now()
   // Args separados (não uma string só): tmux exec direto, sem passar por
   // shell nenhum — nome de projeto com espaço ou aspas não vira injeção.
-  const argsClaude = [binario]
+  const argsClaude = [binarioClaude(binario)]
   if (remoto) argsClaude.push('--remote-control', rotulo)
   if (retomar) argsClaude.push('--resume', retomar)
   argsClaude.push(...bypass)
