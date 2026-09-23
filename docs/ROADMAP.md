@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-55 abertos, 525 fechados, 580 no total. Gerado em 2026-09-22.
+58 abertos, 525 fechados, 583 no total. Gerado em 2026-09-23.
 
 ## tarefas
 
@@ -33,6 +33,7 @@
 | CC-295 | definida | 1 | desligar as cinco travas maiores por uma semana, e medir |
 | CC-296 | definida | 2 | achar a trava que barra uma em cada cinco respostas |
 | CC-299 | definida | 3 | três travas erram, e eu bati nas três no mesmo turno |
+| CC-549 | definida | - | o verificador de vocabulario cobra palavra ja explicada na mesma conversa: disparou tres vezes seguidas em respostas que nem a usam |
 
 ## projetos
 
@@ -46,6 +47,8 @@
 | id | estado | peso | o que é |
 |---|---|---|---|
 | CC-340 | prova | 1 | a faixa na tela que mostra a sincronia do PC (o programa já está pronto) |
+| CC-547 | definida | - | o status diz 'painel fora do ar' quando a sessao esta em rede isolada e nao enxerga a porta: ja deu alarme falso de queda do cockpit |
+| CC-548 | definida | - | o Chrome da VPS nao alcanca porta local: a rota do container ate o host esta fechada e abrir exige regra de firewall com root |
 
 ## painel simples
 
