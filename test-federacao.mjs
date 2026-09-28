@@ -814,4 +814,13 @@ ok('pacote sobrevive ao ida e volta por JSON')
   ok('pacote sem a fala herda a do anterior só quando o job não se mexeu')
 }
 
+/* CC-684: processador, memória e vídeo viajam no pacote, recortados, só número. */
+{
+  const v = validarPacote({ maquina: { id: 'pc', nome: 'PC' }, hw: { cpu: { uso: 42, nucleos: '16', lixo: 'x' }, ram: { uso: 'abc', usadaGB: 12.5, totalGB: 32 }, gpu: { uso: 7, temp: 51, script: '<b>' } } })
+  assert.deepEqual(v.pacote.hw, { cpu: { uso: 42, nucleos: 16 }, ram: { uso: null, usadaGB: 12.5, totalGB: 32 }, gpu: { uso: 7, temp: 51, vramUsadaGB: null, vramTotalGB: null } })
+  assert.equal(validarPacote({ maquina: { id: 'pc' } }).pacote.hw, null, 'máquina que não manda fica null, não zero')
+  assert.equal(montarPacote({ maquina: { id: 'pc' }, hw: { cpu: { uso: 1 } } }).hw.cpu.uso, 1)
+  ok('o hardware da máquina viaja no pacote, recortado campo a campo')
+}
+
 console.log(`\n${n} grupos de asserção passaram`)

@@ -742,6 +742,7 @@ export async function empurrar({ comTempo = null } = {}) {
     maquina: s.maquina, jobs: await comUltimaFala(meus), uso: s.uso, tempo, backlogs, servidores,
     meu: meuDaqui, agentes: agentesDaqui, limites: null,
     travas: retrato.travas, framework: retrato.framework, servico,
+    hw: await estadoMaquina().then((m) => (m ? { cpu: m.cpu, ram: m.ram, gpu: m.gpu } : null)).catch(() => null),
   })
   const r = await enviarPacote({ enviarPara, token, pacote })
 

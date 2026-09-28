@@ -28,6 +28,8 @@ import { estado as estadoRC, saudeDaTela } from './remotecontrol.mjs'
 import { execFile } from 'node:child_process'
 import { registrar as registrarHistorico } from './decisaoHistorico.mjs'
 import * as resumoAgy from './resumoAgy.mjs'
+import { raioX } from './raioX.mjs'
+import { createHash } from 'node:crypto'
 import { casaClaude as casaClaudeDir, memoriaDosProcessos } from './platform.mjs'
 
 const CAUDA = 256 * 1024
@@ -653,6 +655,7 @@ export function montar({
         contato: !m.semContato,
         idadeMs: m.idadeMs ?? null,
         empurradores: Array.isArray(m.empurradores) ? m.empurradores : [],
+        hw: m.hw || null,
       }))
       : [{ id: local.id, nome: disp, local: true, contato: true, idadeMs: 0 }],
     projetos: lista,
@@ -954,6 +957,18 @@ export async function responder() {
       s.resumoIA = resumoAgy.obter(s.conversa, s.marca)
     }
   } catch { /* resumo é conveniência: falhar aqui não derruba a tela */ }
+  /* CC-683: o pedido de permissão explica o comando. A leitura fixa (raio) é
+     calculada na hora; a frase do agy chega em segundos e vem marcada. */
+  try {
+    for (const e of dados.espera || []) {
+      if (e.rotulo !== 'permissão' || !e.comando) continue
+      e.raio = raioX(e.comando)
+      const k = 'perm::' + createHash('sha1').update(e.comando).digest('hex').slice(0, 16)
+      const r = resumoAgy.obterTexto(k)
+      if (!r) resumoAgy.pedirTexto({ k, prompt: 'Um agente de programação pediu permissão para rodar este comando de terminal. Escreva em português do Brasil, sem travessão, no máximo 3 frases curtas, para quem não é programador: em que máquina roda, o que ele faz exatamente, quais pastas ou serviços toca e se pode estragar algo no ar. Sem markdown. Não use ferramentas.\n\nCOMANDO:\n' + e.comando.slice(0, 1500) })
+      e.explicacaoIA = r?.texto ? { texto: r.texto } : { estado: 'resumindo' }
+    }
+  } catch { /* explicação é conveniência */ }
   /* CC-582: o histórico de decisões por projeto aprende a cada leitura. */
   try { registrarHistorico(dados, { agora, fechadasPorEle: lerFechadas() }) } catch { /* histórico não derruba a tela */ }
   /* As ideias dele que ainda não viraram item, uma fila por projeto. Só dos

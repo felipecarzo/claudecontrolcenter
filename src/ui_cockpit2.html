@@ -373,6 +373,11 @@
     .lat-btn { display: none !important; }
     #lateral-dir { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 384px; overflow-y: auto; padding: 18px 16px 24px; background: var(--bg); border-left: 1px solid var(--border); z-index: 35; box-sizing: border-box; }
     #lateral-dir .c2-aviso { margin-bottom: 12px; }
+    /* CC-684: limites e máquinas no topo da barra. */
+    .lat-maq { border: 1px solid var(--border); border-radius: 12px; margin: 0 0 12px; background: var(--card); }
+    .lat-maq-cab { display: flex; align-items: center; gap: 6px; width: 100%; padding: 8px 10px; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+    .lat-maq-corpo { padding: 0 10px 10px; }
+    .lat-maq-l { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
     #lateral-dir .ses-filtros { margin: 10px 0 14px; padding: 10px 12px; }
     #lateral-dir .ses-fil-linha { flex-direction: column; gap: 6px; }
     #lateral-dir .ses-fil-resumo { margin: 10px 0 14px; }
@@ -947,6 +952,10 @@
       .sl-voltar { display: inline-flex; }
       .sl-conversa { max-height: 60vh; }
     }
+    .perm-raio { margin: 0 0 8px; padding: 0 0 0 18px; font-size: 13px; line-height: 1.5; color: var(--text-main); }
+    .perm-raio li.perigo { color: var(--amber, #f59e0b); font-weight: 600; }
+    .perm-ia { margin: 0 0 8px; font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+    .perm-ia-rot { display: block; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
     .perm-cmd { margin: 4px 0 8px; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); font: 12.5px/1.5 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow-y: auto; color: var(--text-main); }
     /* CC-610: cartão travado enquanto o painel aperta a tecla no terminal. */
     .c2-processando { pointer-events: none; }
@@ -15995,6 +16004,7 @@
       let g = {}; try { g = JSON.parse(localStorage.getItem('c2-lat-f') || '{}'); } catch { /* sem nada guardado */ }
       LAT.F = { disp: g.disp || null, cats: new Set(g.cats || []), projs: new Set(g.projs || []) };
       try { LAT.filtrosAbertos = localStorage.getItem('c2-lat-filtros-abertos') !== 'nao'; } catch { LAT.filtrosAbertos = true; }
+      try { LAT.maqAberto = localStorage.getItem('c2-lat-maq') !== 'nao'; } catch { LAT.maqAberto = true; }
     })();
     const latGuardar = () => { try { localStorage.setItem('c2-lat-f', JSON.stringify({ disp: LAT.F.disp, cats: [...LAT.F.cats], projs: [...LAT.F.projs] })); localStorage.setItem('c2-lat-filtros-abertos', LAT.filtrosAbertos ? 'sim' : 'nao'); } catch { /* só conveniência */ } };
     document.addEventListener('click', (ev) => {
@@ -16002,6 +16012,7 @@
       const d = ev.target.closest('[data-lat-disp]'); if (d) { LAT.F.disp = d.dataset.latDisp || null; latGuardar(); return c2RenderLateral(); }
       const c = ev.target.closest('[data-lat-cat]'); if (c) { alterna(LAT.F.cats, c.dataset.latCat); latGuardar(); return c2RenderLateral(); }
       const pj = ev.target.closest('[data-lat-proj]'); if (pj) { alterna(LAT.F.projs, pj.dataset.latProj); latGuardar(); return c2RenderLateral(); }
+      if (ev.target.closest('[data-lat-maq]')) { LAT.maqAberto = !LAT.maqAberto; try { localStorage.setItem('c2-lat-maq', LAT.maqAberto ? 'sim' : 'nao'); } catch { /* só conveniência */ } return c2RenderLateral(); }
       if (ev.target.closest('[data-lat-limpar]')) { LAT.F.disp = null; LAT.F.cats.clear(); LAT.F.projs.clear(); latGuardar(); return c2RenderLateral(); }
       if (ev.target.closest('[data-lat-filtros]')) { LAT.filtrosAbertos = !LAT.filtrosAbertos; latGuardar(); return c2RenderLateral(); }
     });
@@ -16022,7 +16033,23 @@
       const botao = '<button class="c2-dec-op' + (LAT.filtrosAbertos ? ' on' : '') + '" data-lat-filtros style="min-height:30px;padding:4px 10px;font-size:12px">' + ic('kanban', 13) + ' filtros' + (ativos.length ? ' <span class="c2-mini">' + ativos.length + '</span>' : '') + (LAT.filtrosAbertos ? ' ▴' : ' ▾') + '</button>';
       const resumo = '<button class="ses-fil-resumo" data-lat-filtros>' + (ativos.length ? 'filtrando: <b>' + ativos.map(esc).join(' · ') + '</b>' : 'sem filtro: todas as sessões') + '</button>';
       const limparL = ativos.length ? ' <button class="c2-link" data-lat-limpar>limpar filtros</button>' : '';
-      pintar(el, cab(vis.length) + botao + limparL + (LAT.filtrosAbertos ? fil : resumo)
+      /* CC-684, pedido dele: "o limite da sessão do claude, a memória, gpu etc
+         do PC e VPS no topo da barra lateral (mas colocar opção de colapsar)".
+         A máquina daqui lê /api/maquina; a outra, o que ela mandou no pacote
+         (só depois de o painel de lá receber este código). */
+      if (LAT.maqAberto) c2MaquinaLer();
+      const U = (typeof DATA !== 'undefined' && DATA.uso) ? DATA.uso : null;
+      const jn = (...xs) => xs.filter(Boolean).join(' · ');
+      const hwLinha = (h) => !h ? '<span class="c2-mini">não mandou esses números ainda</span>'
+        : '<span class="c2-mini">processador <b>' + (h.cpu?.uso ?? '?') + '%</b> · memória <b>' + (h.ram?.uso ?? '?') + '%</b>' + (h.ram?.totalGB ? ' (' + String(h.ram.usadaGB).replace('.', ',') + ' de ' + String(h.ram.totalGB).replace('.', ',') + ' GB)' : '')
+          + (h.gpu ? ' · vídeo <b>' + (h.gpu.uso ?? '?') + '%</b>' + (h.gpu.temp != null ? ' ' + h.gpu.temp + '°C' : '') : '') + '</span>';
+      const maqs = (C2.dados.dispositivos || []).map((d) => '<div class="lat-maq-l"><b>' + esc(d.nome) + '</b><span class="dot ' + (d.contato ? 'green' : 'red') + '"></span>' + hwLinha(d.local ? C2.maq : d.hw) + '</div>').join('');
+      const maqCorpo = (U ? c2Barra('Claude · 5 horas', U.cincoHoras?.pct, jn(U.cincoHoras?.resetaEm ? 'zera às ' + c2Hora(U.cincoHoras.resetaEm) : ''))
+          + c2Barra('Claude · semana', U.semana?.pct, jn(U.semana?.resetaEm ? 'zera ' + c2Data(U.semana.resetaEm) : '')) : '<p class="c2-mini">uso do Claude ainda não chegou</p>') + maqs;
+      const maqBloco = '<div class="lat-maq"><button class="lat-maq-cab" data-lat-maq>' + ic('maquina', 14) + ' <b>limites e máquinas</b><span class="c2-mini">'
+        + (U && U.cincoHoras?.pct != null ? ' 5h ' + U.cincoHoras.pct + '%' : '') + (U && U.semana?.pct != null ? ' · semana ' + U.semana.pct + '%' : '') + '</span><span style="margin-left:auto">' + (LAT.maqAberto ? '▴' : '▾') + '</span></button>'
+        + (LAT.maqAberto ? '<div class="lat-maq-corpo">' + maqCorpo + '</div>' : '') + '</div>';
+      pintar(el, cab(vis.length) + maqBloco + botao + limparL + (LAT.filtrosAbertos ? fil : resumo)
         + (vis.length ? vis.map((x) => (x.dec ? (x.dec.grupo ? c2AvisoGrupo(x.dec) : c2Aviso(x.dec)) : c2CartaoSessao(x.sess))).join('') : '<p class="c2-vazio">nenhuma sessão neste filtro.</p>'));
     }
     document.addEventListener('click', (ev) => {
@@ -16221,6 +16248,15 @@
         + (fechaveis.length ? '<button class="c2-link" data-grupo-fechar="' + esc(JSON.stringify(fechaveis)) + '">fechar todas</button> ' : '')
         + '<button class="c2-link" data-grupo-abrir="' + esc(g.chave) + '">' + (aberto ? 'esconder' : 'ver as ' + g.itens.length) + '</button></span></div></div>';
     }
+    /* CC-683: o que o comando faz, em duas camadas. A de cima é lida do
+       próprio texto (não erra); a de baixo é a frase do agy, marcada. */
+    function c2RaioX(e) {
+      if (!e.raio || !e.raio.length) return '';
+      return '<ul class="perm-raio">' + e.raio.map((f) => '<li' + (f.perigo ? ' class="perigo"' : '') + '>' + esc(f.texto) + '</li>').join('') + '</ul>'
+        + (e.explicacaoIA && e.explicacaoIA.texto
+          ? '<div class="perm-ia"><span class="perm-ia-rot">explicação da IA</span>' + esc(e.explicacaoIA.texto) + '</div>'
+          : e.explicacaoIA ? '<div class="perm-ia"><span class="perm-ia-rot">explicação da IA</span><i>chegando…</i></div>' : '');
+    }
     function c2Aviso(e) {
       const pend = e.tipo === 'pendencia';
       /* Rótulo é ESTADO, em uma palavra, não frase. "SÓ VOCÊ RESOLVE" e
@@ -16296,6 +16332,7 @@
         /* CC-606: o pedido de permissão mostra o que o agente quer rodar. */
         + (e.rotulo === 'permissão' ? '<div class="ses-contexto-rot">o terminal pede permissão para ' + esc(e.ferramenta || '') + '</div>'
           + (e.comando ? '<pre class="perm-cmd">' + esc(e.comando) + '</pre>' : '')
+          + c2RaioX(e)
           /* CC-609: permitir ou negar daqui, só sessão desta máquina. */
           + (daqui && e.conversa && e.permissaoId && permEst && permEst.estado === 'indo'
             ? '<div class="perm-proc"><span class="perm-gira"></span>processando: ' + (permEst.sim ? 'permitindo' : 'negando') + '…</div>'

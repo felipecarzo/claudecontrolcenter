@@ -117,6 +117,16 @@ export function validarPacote(bruto) {
         })).filter((x) => x.ports.length || x.pid)
         : null,
       uso: bruto.uso && typeof bruto.uso === 'object' ? bruto.uso : null,
+      /* CC-684: recortado campo a campo, só número. */
+      hw: bruto.hw && typeof bruto.hw === 'object' ? (() => {
+        const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : null)
+        const h = bruto.hw
+        return {
+          cpu: h.cpu ? { uso: n(h.cpu.uso), nucleos: n(h.cpu.nucleos) } : null,
+          ram: h.ram ? { uso: n(h.ram.uso), usadaGB: n(h.ram.usadaGB), totalGB: n(h.ram.totalGB) } : null,
+          gpu: h.gpu ? { uso: n(h.gpu.uso), temp: n(h.gpu.temp), vramUsadaGB: n(h.gpu.vramUsadaGB), vramTotalGB: n(h.gpu.vramTotalGB) } : null,
+        }
+      })() : null,
       tempo: bruto.tempo && typeof bruto.tempo === 'object' ? bruto.tempo : null,
       /* CC-48: 40 projetos é folgado e limita o estrago de um pacote malformado.
          CC-449: `null` sobrevive à validação, e a razão está no bloco abaixo. */
@@ -1016,6 +1026,7 @@ export function maquinasConhecidas(pacotes, origemLocal, retratoLocal = null) {
       local: false,
       idadeMs: p.idadeMs,
       semContato: p.semContato,
+      hw: p.hw || null,
       /* 26/09: quantos programas enviaram desta máquina nos últimos 5 min.
          Mais de um é o defeito que faz cartão sumir e voltar na tela. */
       empurradores: Array.isArray(p.empurradores) ? p.empurradores.map((e) => ({ tipo: e.tipo || null, pid: e.pid ?? null })) : [],
@@ -1244,7 +1255,7 @@ export function origemDoEmpurrao() {
 
 export function montarPacote({
   maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [], backlogs = null,
-  meu = null, agentes = null, limites = null, travas = null, framework = null, servico = null,
+  meu = null, agentes = null, limites = null, travas = null, framework = null, servico = null, hw = null,
 }) {
   const enxuto = jobs.map((j) => ({
     id: j.id, status: j.status, subject: j.subject, project: j.project, sub: j.sub,
@@ -1282,6 +1293,10 @@ export function montarPacote({
        cada empurrão, `null` quando a máquina não sabe dizer (nunca `false` —
        "não sei" e "não está instalado" levam a conclusões opostas). */
     servico,
+    /* CC-684: processador, memória e placa de vídeo desta máquina, para a
+       barra lateral mostrar as duas. Mesma regra do retrato: barato, calculado
+       a cada empurrão, `null` quando a máquina não sabe dizer. */
+    hw,
     /* CC-456: quem empurrou. Calculado aqui, não recebido por parâmetro, para
        nenhum chamador precisar mudar — e porque quem sabe qual processo é este
        é este processo. FORA de `CAMPOS_QUE_PERSISTEM` de propósito: herdar
