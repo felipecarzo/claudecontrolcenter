@@ -22,192 +22,265 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
-| tela | 30 | 30/30 | 28/30 | 30/30 | 0/30 | 30/30 |
-| acao | 123 | 123/123 | 25/123 | 0/123 | 0/123 | 0/123 |
+| tela | 23 | 23/23 | 18/23 | 23/23 | 0/23 | 23/23 |
+| acao | 203 | 203/203 | 35/203 | 0/203 | 0/203 | 0/203 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 98 | 98/98 | 7/98 | 0/98 | 0/98 | 0/98 |
-| palavra | 78 | 78/78 | 14/78 | 78/78 | 0/78 | 78/78 |
+| endereco | 115 | 115/115 | 7/115 | 0/115 | 0/115 | 0/115 |
+| palavra | 81 | 81/81 | 12/81 | 81/81 | 0/81 | 81/81 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
 ponta.** A diferença está na coluna `como` do JSON, item a item. Inflar
 este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 
-## tela (30)
+## tela (23)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
-| `cockpit` | viva | src/ui_v2.html#view-cockpit | estreito |
-| `ligados` | viva | src/ui_v2.html#view-ligados | estreito |
-| `projetos` | viva | src/ui_v2.html#view-projetos | estreito |
-| `rotas` | viva | src/ui_v2.html#view-rotas | estreito |
-| `meus` | viva | src/ui_v2.html#view-meus | estreito |
-| `gate` | viva | src/ui_v2.html#view-gate | estreito |
-| `agora` | viva | src/ui_v2.html#view-agora | estreito |
-| `trabalho` | viva | src/ui_v2.html#view-trabalho | estreito |
-| `estrutura` | viva | src/ui_v2.html#view-estrutura | estreito |
-| `agentes` | viva | src/ui_v2.html#view-agentes | estreito |
-| `escritorio` | viva | src/ui_v2.html#view-escritorio | funciona, estreito |
-| `remoto` | viva | src/ui_v2.html#view-remoto | estreito |
-| `tempo` | viva | src/ui_v2.html#view-tempo | estreito |
-| `travas` | viva | src/ui_v2.html#view-travas | estreito |
-| `tendencias` | viva | src/ui_v2.html#view-tendencias | funciona, estreito |
-| `custo` | viva | src/ui_v2.html#view-custo | estreito |
-| `graficos` | viva | src/ui_v2.html#view-graficos | estreito |
-| `digest` | viva | src/ui_v2.html#view-digest | estreito |
-| `agenda` | viva | src/ui_v2.html#view-agenda | estreito |
-| `notas` | viva | src/ui_v2.html#view-notas | estreito |
-| `documentos` | viva | src/ui_v2.html#view-documentos | estreito |
-| `glossario` | viva | src/ui_v2.html#view-glossario | estreito |
-| `framework` | viva | src/ui_v2.html#view-framework | estreito |
-| `hooks` | viva | src/ui_v2.html#view-hooks | estreito |
-| `rotinas` | viva | src/ui_v2.html#view-rotinas | estreito |
-| `bancada` | viva | src/ui_v2.html#view-bancada | estreito |
-| `servidores` | viva | src/ui_v2.html#view-servidores | estreito |
-| `docker` | viva | src/ui_v2.html#view-docker | estreito |
-| `vps` | viva | src/ui_v2.html#view-vps | estreito |
-| `maquina` | viva | src/ui_v2.html#view-maquina | estreito |
+| `agentes` | viva | src/ui_cockpit2.html#view-agentes | estreito |
+| `meus` | viva | src/ui_cockpit2.html#view-meus | estreito |
+| `framework` | viva | src/ui_cockpit2.html#view-framework | estreito |
+| `rotinas` | viva | src/ui_cockpit2.html#view-rotinas | estreito |
+| `cockpit` | viva | src/ui_cockpit2.html#view-cockpit | estreito |
+| `agora` | viva | src/ui_cockpit2.html#view-agora | estreito |
+| `projetos` | viva | src/ui_cockpit2.html#view-projetos | estreito |
+| `inicio` | viva | src/ui_cockpit2.html#view-inicio | estreito |
+| `decisoes` | viva | src/ui_cockpit2.html#view-decisoes | funciona, estreito |
+| `ideias` | viva | src/ui_cockpit2.html#view-ideias | funciona, estreito |
+| `rotas` | viva | src/ui_cockpit2.html#view-rotas | estreito |
+| `gate` | viva | src/ui_cockpit2.html#view-gate | estreito |
+| `trabalho` | viva | src/ui_cockpit2.html#view-trabalho | estreito |
+| `analise` | viva | src/ui_cockpit2.html#view-analise | estreito |
+| `escritorio` | viva | src/ui_cockpit2.html#view-escritorio | funciona, estreito |
+| `tempo` | viva | src/ui_cockpit2.html#view-tempo | estreito |
+| `custo` | viva | src/ui_cockpit2.html#view-custo | estreito |
+| `graficos` | viva | src/ui_cockpit2.html#view-graficos | estreito |
+| `agenda` | viva | src/ui_cockpit2.html#view-agenda | estreito |
+| `conhecimento` | viva | src/ui_cockpit2.html#view-conhecimento | funciona, estreito |
+| `hooks` | viva | src/ui_cockpit2.html#view-hooks | estreito |
+| `infra` | viva | src/ui_cockpit2.html#view-infra | funciona, estreito |
+| `remoto` | viva | src/ui_cockpit2.html#view-remoto | estreito |
 
-## acao (123)
+## acao (203)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
-| `data-target` | viva | src/ui_v2.html | explica, estreito |
-| `data-grupo` | viva | src/ui_v2.html | explica, estreito |
-| `data-nav-grupo` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-gate-ag` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-srv-modo` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-ver-agente` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-meu-feito` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-retomar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-foco-dia` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-meu-feito-btn` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-meu-remover` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-meu-abrir` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-meu-marcar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-zona` | viva | src/ui_v2.html | explica, estreito |
-| `data-ag` | viva | src/ui_v2.html | explica, estreito |
-| `data-trab-abrir` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-mapa-ordem` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-rota` | viva | src/ui_v2.html | explica, estreito |
-| `data-rota-ocupar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-criar-todo-roadmap` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-nota-check` | viva | src/ui_v2.html | explica, estreito |
-| `data-nota-item` | viva | src/ui_v2.html | explica, estreito |
-| `data-nota-add` | viva | src/ui_v2.html | explica, estreito |
-| `data-nota-titulo` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-modo` | viva | src/ui_v2.html | explica, estreito |
-| `data-del` | viva | src/ui_v2.html | explica, estreito |
-| `data-ent-voltar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-ent-op` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-novo-campo` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-abrir` | viva | src/ui_v2.html | explica, estreito |
-| `data-copiar` | viva | src/ui_v2.html | explica, estreito |
-| `data-srv-nome` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-srv-nota` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-srv-fav` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-kill` | viva | src/ui_v2.html | explica, estreito |
-| `data-subir-cwd` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-subir-cmd` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-hk-toggle` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-rt-ver` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-rt-sync` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-rt-del` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-mercado` | viva | src/ui_v2.html | explica, estreito |
-| `data-preco-abrir` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-preco-nivel` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-preco-horas` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-rasc-g` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-g-editar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-g-remover` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-meus-ver` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-meus-bloco` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-bn-camada` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-bn-nivel` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-doc-editar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-doc-apagar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-doc-abrir` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-ag-remover` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-ag-dias` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-sinc-acao` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-sinc-proj` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-fed-pedir` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-fed-proj` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-remoto-conectar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-remoto-soltar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-remoto-mais` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-remoto-dir` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-remoto-desligar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-remoto-ligar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-remoto-reabrir` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-coderoom-abrir` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-coderoom-dir` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-coderoom-nova` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-coderoom-fechar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-remoto-link` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-esc-ver` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-esc-desligar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-esc-ligar` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-bb` | viva | src/ui_v2.html | explica, estreito |
-| `data-bb-pos` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-tg-fechar` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-tg-ir` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-pa-fechar-arq` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-pa-arquivo` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-pa-alternar` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-pa-fechar` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-estado-abrir` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-estado-dir` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-estado-escolher` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-estado-fechar` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-mod-remoto` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-mod-proj` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-mod-maquina` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-mod-on` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-fw-remoto` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-fw-maquina` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-mod` | estatica | src/ui_v2.html | explica, estreito |
-| `data-fw` | estatica | src/ui_v2.html | explica, estreito |
-| `data-fw-proj` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-fw-alvo` | estatica | src/ui_v2.html | explica, estreito |
-| `data-ent-abrir` | estatica | src/ui_v2.html | explica, estreito |
-| `data-sessao-modo` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-sessao-proj` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-cc-dir` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-remoto-perfil` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-pj-abrir` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-pj-pastas` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-trv-fechar-explica` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-trv-explica` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-trv-abrir` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-trv-ajudou` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-trv-atrapalhou` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-tend-andar` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-tend-hoje` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-tend-dia` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-tend-fechar` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-tend-cheia` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-rot` | estatica | src/ui_v2.html | explica, estreito |
-| `data-conv` | viva | src/ui_v2.html | explica, estreito |
-| `data-nova` | viva | src/ui_v2.html | explica, estreito |
-| `data-proj` | viva | src/ui_v2.html | explica, estreito |
-| `data-tira` | viva | src/ui_v2.html | explica, estreito |
-| `data-kb-card` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-kb-mover` | estatica | src/ui_v2.html | funciona, explica, estreito |
-| `data-kb-proj` | estatica | src/ui_v2.html | explica, estreito |
+| `data-ses-acao` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-atalho` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-target` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-grupo` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-nav-grupo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-fonte` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-analise` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-gate-vista` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-gate-ag` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-infra` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-srv-modo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pj-modo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-conh` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-ver-agente` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-meu-feito` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-retomar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-foco-dia` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-meu-feito-btn` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-meu-remover` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-meu-abrir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-meu-marcar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ag-modo` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-zona` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-ag` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-trab-abrir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-mapa-faixa` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-mapa-ordem` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-bloco` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-rota` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-rota-ocupar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-criar-todo-roadmap` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-nota-check` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-nota-item` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-nota-add` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-nota-titulo` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-modo` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-del` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-ent-voltar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ent-op` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-remoto-ligar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-remoto-dir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-remoto-quieto` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-novo-campo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-abrir` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-copiar` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-srv-nome` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-srv-nota` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-srv-fav` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-kill` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-subir-cwd` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-subir-cmd` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-hk-toggle` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-rt-ver` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-rt-sync` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-rt-del` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-mercado` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-preco-abrir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-preco-nivel` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-preco-horas` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-rasc-g` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-g-editar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-g-remover` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pasta-tirar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-modo-proj` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-meus-ver` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-meus-bloco` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-bn-camada` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-bn-nivel` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-doc-editar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-doc-apagar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-doc-abrir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ag-remover` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ag-dias` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sinc-acao` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sinc-proj` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-fed-pedir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-fed-proj` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-remoto-conectar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-remoto-soltar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-remoto-mais` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-remoto-desligar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-remoto-reabrir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-coderoom-abrir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-coderoom-dir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-coderoom-nova` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-coderoom-fechar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-remoto-link` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-esc-ver` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-esc-desligar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-esc-ligar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-bb` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-bb-pos` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-tg-fechar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-tg-ir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pa-fechar-arq` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pa-arquivo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pa-alternar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pa-fechar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-estado-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-estado-dir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-estado-escolher` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-estado-fechar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-mod-remoto` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-mod-proj` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-mod-maquina` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-mod-on` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-fw-remoto` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-fw-maquina` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sinc-remoto` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sinc-maquina` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-mod` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-fw` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-fw-proj` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-fw-alvo` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-ent-abrir` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-sessao-modo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sessao-proj` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-cc-dir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-remoto-perfil` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-agy-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-agy-remoto` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-agy-dir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pj-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-abrir-sessao` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-abrir-dir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pj-pastas` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-risco` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-trv-fechar-explica` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-trv-explica` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-trv-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-trv-ajudou` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-trv-atrapalhou` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-tend-andar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-tend-hoje` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-tend-dia` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-tend-fechar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-tend-cheia` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-rot` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-conv` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-nova` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-proj` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-tira` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-kb-card` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-kb-mover` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-kb-proj` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-kb-aba` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sino-ir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-aviso-id` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-aba` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-hist-proj` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-trazer` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-reabrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-marca` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ses-modo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-repetidas` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-grupo-fechar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-grupo-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-depois` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-x` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-fechar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-depois-modo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-id` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-perm` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-perm-conv` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-perm-id` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-dec-multi` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-txt` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-livre` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-op` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dec-enviar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-msg` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-msg-conversa` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-tarefa-desfazer` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-tarefa-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-tarefa-feita` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-colap` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-fala-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ses-sel` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ses-conversa` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ses-nome` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sessao-parar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sessao-nome` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-dev-subir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-gav-acao` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-gav-grupo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-gav-item` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-bloco-expandir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ideia-acao` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ideia-id` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ideia-raiz` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ini-aba` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-busca-i` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pj-etq-tirar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pj-ir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pj-nome` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pj-chave` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pj-aba` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pj-detalhe` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pj-filtro` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ide-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ide-acao` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ide-i` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 
 ## dado-de-tela (7)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
-| `data-explica` | estatica | src/ui_v2.html | explica, estreito |
-| `data-ajuda` | viva | src/ui_v2.html | explica, estreito |
-| `data-meu-texto` | viva | src/ui_v2.html | funciona, explica, estreito |
-| `data-i` | viva | src/ui_v2.html | explica, estreito |
-| `data-note` | viva | src/ui_v2.html | explica, estreito |
-| `data-como` | estatica | src/ui_v2.html | explica, estreito |
-| `data-n` | viva | src/ui_v2.html | explica, estreito |
+| `data-explica` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-ajuda` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-meu-texto` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-i` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-note` | viva | src/ui_cockpit2.html | explica, estreito |
+| `data-como` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-n` | viva | src/ui_cockpit2.html | explica, estreito |
 
-## endereco (98)
+## endereco (115)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -218,6 +291,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/servers` | estatica | src/web.mjs | funciona, explica |
 | `/api/servidor` | estatica | src/web.mjs | funciona, explica |
 | `/api/projetos` | estatica | src/web.mjs | funciona, explica |
+| `/api/dev-teste` | estatica | src/web.mjs | funciona, explica |
 | `/api/subir` | estatica | src/web.mjs | funciona, explica |
 | `/api/abrir` | estatica | src/web.mjs | funciona, explica |
 | `/api/remote-control` | estatica | src/web.mjs | funciona, explica |
@@ -237,6 +311,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/meu` | estatica | src/web.mjs | funciona, explica |
 | `/api/fila-perdida` | estatica | src/web.mjs | funciona, explica |
 | `/api/rotas` | estatica | src/web.mjs | funciona, explica |
+| `/api/projetos/resumo` | estatica | src/web.mjs | funciona, explica |
+| `/api/etiquetas` | estatica | src/web.mjs | funciona, explica |
 | `/api/framework/projetos` | estatica | src/web.mjs | funciona, explica |
 | `/api/roadmap/estado` | estatica | src/web.mjs | funciona, explica |
 | `/api/modulos` | estatica | src/web.mjs | funciona, explica |
@@ -250,6 +326,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/hooks` | estatica | src/web.mjs | funciona, explica |
 | `/api/hooks/provar` | estatica | src/web.mjs | funciona, explica |
 | `/api/rotinas` | estatica | src/web.mjs | funciona, explica |
+| `/api/foco` | estatica | src/web.mjs | funciona, explica |
 | `/api/paineis-meus` | estatica | src/web.mjs | funciona, explica |
 | `/api/quadro-projetos` | estatica | src/web.mjs | funciona, explica |
 | `/api/sincronia` | estatica | src/web.mjs | funciona, explica |
@@ -262,6 +339,19 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/gate/conversa` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/nova` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/mensagem` | estatica | src/web.mjs | funciona, explica |
+| `/api/decisao/responder` | estatica | src/web.mjs | funciona, explica |
+| `/api/decisao/permitir` | estatica | src/web.mjs | funciona, explica |
+| `/api/sessao/fala` | estatica | src/web.mjs | funciona, explica |
+| `/api/sessao/conversa` | estatica | src/web.mjs | funciona, explica |
+| `/api/decisao/historico` | estatica | src/web.mjs | funciona, explica |
+| `/api/decisao/fechar` | estatica | src/web.mjs | funciona, explica |
+| `/api/decisao/reabrir` | estatica | src/web.mjs | funciona, explica |
+| `/api/decisao/depois` | estatica | src/web.mjs | funciona, explica |
+| `/api/decisao/trazer` | estatica | src/web.mjs | funciona, explica |
+| `/api/ideias` | estatica | src/web.mjs | funciona, explica |
+| `/api/ideias/todas` | estatica | src/web.mjs | funciona, explica |
+| `/api/decisao/parar` | estatica | src/web.mjs | funciona, explica |
+| `/api/decisao/mensagem` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/parar` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/apagar` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/nota` | estatica | src/web.mjs | funciona, explica |
@@ -310,10 +400,13 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/rotas/alternar` | estatica | src/web.mjs | funciona, explica |
 | `/api/shutdown` | estatica | src/web.mjs | funciona, explica |
 
-## palavra (78)
+## palavra (81)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
+| `tela: inicio` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: decisoes` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: ideias` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: cockpit` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: gate` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: agora` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
@@ -380,8 +473,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `framework` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
 | `modo do framework` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `papel` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
-| `entrevista` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
-| `módulos do framework` | estatica | docs/produto/PALAVRAS-DA-TELA.md | nada |
+| `entrevista` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `módulos do framework` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `comunicação` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `entrega` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `código` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |

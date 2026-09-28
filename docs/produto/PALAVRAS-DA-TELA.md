@@ -49,6 +49,59 @@ O modelo é o exemplo que ele escreveu:
 Regras que continuam valendo: número vem com a escala, comando de terminal vem
 quebrado parte por parte, e nome de arquivo só entre parênteses no fim.
 
+## tela: inicio
+
+O resumo de tudo numa tela só, na ordem em que você decide: primeiro o que
+espera você, depois o que está rodando, e por fim tarefas, notas, quadro, semana,
+limites do plano, máquinas e serviços no ar.
+
+O bloco **Decisões** junta as sessões paradas esperando você. Cada cartão diz o
+estado numa palavra (PERGUNTA, PAROU, TRAVADO), de qual projeto e máquina ele é,
+e a última fala do agente, lida do arquivo da conversa. Quando o agente fez uma
+pergunta com opções, **as opções viram botões e dá para responder daqui**: você
+toca uma opção (ou "outra resposta…" para escrever), toca "enviar resposta", e o
+painel entrega a resposta na sessão apertando as teclas no terminal dela.
+
+Isso só vale para sessão aberta pelo painel nesta máquina, porque é o terminal
+dela que recebe as teclas. Antes de apertar, o painel confere que a pergunta
+ainda está na tela; se o agente já seguiu, ele recusa e diz por quê, em vez de
+mandar uma tecla solta para o agente. Pergunta sem resposta fica aqui pelo
+tempo que for, mesmo com a sessão parada há horas.
+
+O bloco **Sessões** mostra quem está trabalhando agora, com o assunto e há
+quanto tempo. O resto dos blocos resume as outras telas, e cada um tem o atalho
+para a tela inteira.
+
+## tela: decisoes
+
+No menu, "Sessões": a central de todas as sessões abertas, as desta máquina e
+as do PC. A que espera você aparece primeiro, com as opções para responder com
+um toque; as outras (trabalhando ou paradas) mostram a última fala do agente e
+um campo para mandar o próximo passo. Consultas repetidas do mesmo lugar viram
+um cartão só.
+
+Os filtros de cima escolhem o estado (esperando você, trabalhando, paradas), a
+máquina e o projeto. As abas "Fechadas e antigas" e "Histórico" guardam o que
+saiu da lista e tudo o que já apareceu, com como terminou.
+
+## tela: ideias
+
+Tudo o que você falou com cara de ideia nas conversas desta máquina, e o que
+aconteceu com cada uma. "Cara de ideia" é mensagem longa que começa com "e se",
+"tive uma ideia", "podemos", "proponho" e parecidos: a regra saiu das suas
+próprias mensagens.
+
+Cada ideia tem um estado. **Nunca virou item**: está numa conversa e não
+aparece no backlog do projeto. **Na fila**: o painel achou, de hora em hora, e
+ela também aparece na Início. **Aprovada**: você tocou "virar item", e a próxima
+sessão daquele projeto registra no backlog com as suas palavras. **Já no
+backlog**: alguém já registrou. **Descartada**: você disse que não vira, e ela
+não volta.
+
+Os filtros de cima escolhem o estado (o padrão é o que ainda pede decisão) e o
+projeto, e a busca procura qualquer palavra no texto. Tocar numa ideia abre o
+texto inteiro. As conversas do PC não entram: elas ficam guardadas lá.
+
 ## tela: cockpit
 
 A tela de abertura. Responde uma pergunta só: **o que exige você agora**.

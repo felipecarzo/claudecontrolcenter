@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-58 abertos, 525 fechados, 583 no total. Gerado em 2026-09-23.
+91 abertos, 581 fechados, 672 no total. Gerado em 2026-09-28.
 
 ## tarefas
 
@@ -113,3 +113,46 @@
 | CC-542 | definida | - | provisionar pasta local: novoProjeto.mjs clona o repo do registro em vez de git init quando ele existe, e marca provisionado |
 | CC-543 | definida | - | tela: criarProjeto vira declarar + criar aqui por maquina; c2ProjetosTodos le do registro de verdade em vez do remendo de hoje |
 | CC-544 | definida | - | migracao: os 29 projetos achados hoje por findProjects viram entradas do registro, casados PC/VPS por nomeProjeto.chaveDeProjeto |
+
+## cockpit novo
+
+| id | estado | peso | o que é |
+|---|---|---|---|
+| CC-550 | definida | - | cockpit novo: uma tela com resumo de tudo |
+| CC-551 | definida | - | cockpit novo: um Trello das tarefas dos agentes |
+| CC-552 | definida | - | cockpit novo: um lugar para ligar as sessoes e controlar o framework |
+| CC-553 | definida | - | cockpit novo: manter o coderoom, que ja esta otimo |
+| CC-554 | definida | - | cockpit novo: ligar e desligar servidores npm, localhost e tudo que come memoria |
+| CC-555 | definida | - | cockpit novo: manter o escritorio com todos os agentes, que ja esta perfeito |
+| CC-556 | definida | - | cockpit novo: responder decisoes do agente pelo painel, nao so pelo chat |
+| CC-557 | definida | - | cockpit novo: uma engenharia tipo SDD que deixa o agente decidir e fazer sozinho o que nao depende de mim |
+| CC-558 | definida | - | cockpit novo: uma area de construcao de design para os projetos |
+| CC-559 | definida | - | cockpit novo: notas continua importante, mas o app de notas precisa melhorar |
+| CC-560 | definida | - | apagar o painel antigo v2: ficam so o principal e o cockpit 2 |
+| CC-561 | definida | - | o principal tem informacao demais, nao se atualiza sozinho e acumula coisa velha que polui e ele nunca usa |
+| CC-562 | definida | - | estudar o JEV (modelo barato de decisao sim/nao e nota) para rodar num modelo barato ou no Gemini pelo agy, nao aqui |
+| CC-564 | definida | - | responder pelo painel as perguntas das sessoes do PC: medir se um gancho na pergunta entrega a resposta, sem depender de tela |
+| CC-565 | definida | - | cockpit novo: um lugar para ler as ideias dele e filtrar por projeto e outras coisas |
+| CC-566 | definida | - | Inicio: botao expandir nos blocos, o bloco ocupa duas colunas |
+| CC-567 | definida | - | tela so para as decisoes |
+| CC-568 | definida | - | filtro de decisoes por projeto, sem poluir |
+| CC-569 | definida | - | redesenho da Inicio: paleta e profundidade da imagem do ChatGPT |
+| CC-570 | definida | - | redesenho: icones em SVG de traco fino, do mesmo conjunto, em quadrado colorido |
+| CC-571 | definida | - | redesenho: barra de cima com busca, sino, tema e avatar |
+| CC-572 | definida | - | redesenho: boas-vindas com a pastilha de saude no lugar da faixa das maquinas |
+| CC-573 | definida | - | redesenho: quatro numeros com icone, de N e barra |
+| CC-574 | definida | - | redesenho: abas na Inicio |
+| CC-575 | definida | - | redesenho: cartao de decisao com icone, etiqueta, descricao e seta |
+| CC-576 | definida | - | redesenho: cartao de sessao com bolinha e pastilha de estado |
+| CC-577 | definida | - | redesenho: notas rapidas em linhas com o campo no pe |
+| CC-578 | definida | - | redesenho: coluna da direita com foco do dia, tarefas, kanban e ideias |
+| CC-579 | definida | - | redesenho: menu lateral com item ativo em pilula e cartao Sistema online |
+| CC-580 | definida | - | redesenho: Sessoes, Tarefas, Notas e Kanban como itens do menu |
+| CC-581 | definida | - | visao: area onde a IA pede prazo dos projetos, alinha expectativas, debate prazos e gera o foco do dia |
+
+## central de controle
+
+| id | estado | peso | o que é |
+|---|---|---|---|
+| CC-603 | ideia | - | tema claro para o cockpit novo |
+| CC-631 | andando | - | proposta do ChatGPT para a tela Sessoes: lista a esquerda, conversa no meio, resumo a direita |

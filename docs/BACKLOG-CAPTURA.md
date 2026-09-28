@@ -296,3 +296,16 @@ seção Framework), ou se a tela de detalhe do agente (a que ele estava vendo)
 deveria mostrar isso também — hoje ela não mostra nada de framework, só
 "ESPERANDO / ÚLTIMO PEDIDO / ESTADO / notas / PEDIDO INICIAL / CONTEXTO
 TÉCNICO".
+
+## 2026-09-26
+
+**Ferramenta para limpar alarme falso das travas.** Dito numa sessão do Ahtleta Corrida, depois de uma explicação sobre manutenção de travas:
+
+> "hmmmm voce me deu uma ideia, preciso melhorar então o cockpit e a forma que ele me mostrar essa filtragem de alarme falso, preciso criar uma ferramenta que facilite eu limpar isso"
+
+E a crença que puxou a conversa, dele: *"eu sempre achei que o ideal era construir travas que nao precisassem de manutenção"*.
+
+**Apurado** (sessão 55858f1e, VPS_ahtleta-corrida):
+- A seção "travas" do ROADMAP já tem a base disto: CC-292 (taxa de cada trava por 100 respostas), CC-293 (separar trava de forma de trava de julgamento), CC-294 (amostra julgada), CC-295 (desligar as cinco maiores e medir), CC-296, CC-299 e CC-549. A ideia nova é a **ferramenta de limpeza**: ver na tela os disparos de cada trava, marcar acerto ou alarme falso, e decidir o destino da trava ali mesmo.
+- Medido na sessão: as travas que conferem fato (edição por script, mensagem presa na fila) acertaram todas as vezes; as que adivinham pela palavra deram 4 alarmes falsos (forma-guard viu "tabela" e "aba" que ele não pediu, jargao-guard cobrou "frente", quadro-guard repetiu a cada resposta e só calou editando `~/.local/share/agent-cockpit/quadro-foto.json` à mão, que é o CC-536 de novo).
+- Falta de saída: a quadro-guard diz "até você decidir que ele não deve mais estar lá", mas não existe comando para registrar essa decisão.
