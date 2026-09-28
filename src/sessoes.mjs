@@ -44,6 +44,33 @@ export const PROJETOS_DIR = pastaProjetos()
  *  acontecendo agora". */
 export const JANELA_MS = 24 * 60 * 60 * 1000
 
+/**
+ * As sessões ABERTAS de verdade nesta máquina (27/09). A lista de sessões sai
+ * das conversas gravadas nas últimas 24h, e conversa gravada não diz se o
+ * programa ainda está aberto: a sessão de teste, já fechada, seguia
+ * "conectada" e "parada esperando você". O Claude Code mantém um registro por
+ * processo em `~/.claude/sessions/<pid>.json`, com o id da conversa; vale o que
+ * tiver processo vivo. Sem o registro (outra máquina, casa de teste), devolve
+ * null e ninguém é marcado: melhor não saber do que afirmar que fechou.
+ */
+export function sessoesAbertas() {
+  const dir = path.join(path.dirname(PROJETOS_DIR), 'sessions')
+  let nomes
+  try { nomes = fs.readdirSync(dir).filter((f) => f.endsWith('.json')) } catch { return null }
+  /* CC-606: sessionId -> status do registro. `waiting` é o terminal parado
+     num pedido de permissão (medido em 27/09 com o ahtleta-escalada). */
+  const abertas = new Map()
+  for (const f of nomes) {
+    try {
+      const o = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
+      if (!o.sessionId || !o.pid) continue
+      process.kill(o.pid, 0) // lança se o processo não existe mais
+      abertas.set(o.sessionId, o.status || null)
+    } catch { /* registro velho ou ilegível: não conta como aberta */ }
+  }
+  return abertas
+}
+
 /** Cabeça do arquivo: onde mora o `cwd`. Nunca muda, então o cache é eterno
  *  (mesma lição do `transcript.mjs`, onde ler 25 MB a cada 2s travava tudo). */
 const CABECA_BYTES = 16 * 1024
@@ -65,6 +92,7 @@ export function cabecaDe(arquivo) {
   let cwd = null
   let criadoEm = null
   let remoto = false
+  let entrada = null
   let fd = null
   try {
     fd = fs.openSync(arquivo, 'r')
@@ -90,10 +118,15 @@ export function cabecaDe(arquivo) {
         // `bridge-session` é o marcador de Remote Control: a sessão está sendo
         // pilotada de fora (celular, claude.ai), não de um terminal desta máquina.
         if (o.type === 'bridge-session') remoto = true
+        /* 27/09: `sdk-cli` é o `claude -p`, sessão disparada por PROGRAMA (um
+           teste, um script), não aberta por ele. Ela roda, responde e acaba:
+           ninguém responde a ela. Sem esta marca, dois testes da skill das
+           gavetas, rodados na pasta do sumauma, viraram "decisões" dele. */
+        if (!entrada && typeof o.entrypoint === 'string') entrada = o.entrypoint
         if (!cwd && typeof o.cwd === 'string' && o.cwd) cwd = o.cwd
         if (!criadoEm && o.timestamp) criadoEm = Date.parse(o.timestamp) || null
       }
-      if (cwd && criadoEm) break
+      if (cwd && criadoEm && entrada) break
       if (lidos < CABECA_BYTES) break // chegou ao fim do arquivo
     }
   } catch {
@@ -103,7 +136,7 @@ export function cabecaDe(arquivo) {
   }
 
   if (!cwd) return null
-  const achado = { cwd, criadoEm, remoto }
+  const achado = { cwd, criadoEm, remoto, porPrograma: entrada === 'sdk-cli' }
   cacheCabeca.set(arquivo, achado)
   return achado
 }
@@ -151,6 +184,7 @@ const pastasEm = (dir) => {
 export function readSessoes(now = Date.now(), { janelaMs = JANELA_MS, ignorar = [] } = {}) {
   const jaVistos = new Set(ignorar.filter(Boolean))
   const sessoes = []
+  const abertas = sessoesAbertas()
 
   for (const pasta of pastasEm(PROJETOS_DIR)) {
     for (const arquivo of arquivosEm(pasta)) {
@@ -176,7 +210,12 @@ export function readSessoes(now = Date.now(), { janelaMs = JANELA_MS, ignorar = 
         createdAt: new Date(cabeca.criadoEm || atualizado).toISOString(),
         updatedAt: new Date(atualizado).toISOString(),
         linkScanPath: arquivo,
-        state: statusDe(idade),
+        /* CC-621, print dele: "demorou mas aparece". Pela idade do arquivo, a
+           sessão parada num pedido conta como trabalhando no primeiro minuto
+           (acabou de escrever), e o cartão só nascia depois. O registro do
+           Claude Code diz `waiting` um segundo depois do pedido (medido no
+           dengonator: pedido às 21:42:05, registro às 21:42:06). */
+        state: abertas?.get(sessionId) === 'waiting' ? 'waiting' : statusDe(idade),
         fan: [],
         tokens: 0,
       }
@@ -191,6 +230,12 @@ export function readSessoes(now = Date.now(), { janelaMs = JANELA_MS, ignorar = 
         // O que a tela precisa para não mentir sobre o que é cada linha.
         tipo: 'interativa',
         remoto: cabeca.remoto,
+        porPrograma: Boolean(cabeca.porPrograma),
+        /* true/false quando o registro existe; undefined quando não se sabe.
+           Sessão por programa nunca está no registro depois de acabar, e não
+           precisa: ela já sai pela marca própria. */
+        aberta: abertas ? abertas.has(sessionId) : undefined,
+        permissao: abertas?.get(sessionId) === 'waiting',
         // Sessão interativa não tem contagem de token barata: o total exigiria
         // parsear o transcrito inteiro, que é trabalho da aba tempo. Melhor
         // dizer que não se sabe do que mostrar zero como se fosse medida.

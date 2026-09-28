@@ -686,13 +686,31 @@ export function projetosDe(jobs = [], achar = () => []) {
 }
 
 /** Lê o roadmap de cada projeto, com as duas ordens. Uma leitura por projeto. */
+/* CC-585, 27/09: `ordenar` pergunta ao git a história de cada projeto, e isso
+   custava 2,2 s SÍNCRONOS a cada abertura do Kanban (21 projetos), travando o
+   painel inteiro: um clique de 0,002 s esperava 3,5 s. As ordens só mudam
+   quando muda o roadmap ou entra commit, então o cache é por essas duas datas:
+   a do ROADMAP.md e a de `.git/logs/HEAD`, que o git atualiza a cada commit,
+   checkout e reset. Sem uma delas, recalcula como antes. */
+const cacheOrdens = new Map() // raiz -> { chave, ordens }
+const dataDe = (f) => { try { return fs.statSync(f).mtimeMs } catch { return 0 } }
+function ordensComCache(raiz, mapa) {
+  const gitLog = dataDe(path.join(raiz, '.git', 'logs', 'HEAD'))
+  const chave = gitLog ? `${mapa.arquivo || ''}:${mapa.arquivo ? dataDe(mapa.arquivo) : 0}:${gitLog}` : null
+  const c = chave && cacheOrdens.get(raiz)
+  if (c && c.chave === chave) return c.ordens
+  const ordens = ordenar(raiz, mapa)
+  if (chave) cacheOrdens.set(raiz, { chave, ordens })
+  return ordens
+}
+
 export function carregar(lista) {
   return lista.map(({ projeto, raiz }) => {
     let mapa = null
     let ordens = null
     try { mapa = lerRoadmap(raiz) } catch { /* projeto sem roadmap */ }
     if (mapa) {
-      try { ordens = ordenar(raiz, mapa) } catch { /* sem git: fica sem ordem */ }
+      try { ordens = ordensComCache(raiz, mapa) } catch { /* sem git: fica sem ordem */ }
       // a citação alimenta o cartão, e o parser já a extrai do corpo
       for (const g of mapa.grupos) for (const f of g.frentes) f.citacao ||= citacaoDe(f.corpo)
     }

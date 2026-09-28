@@ -203,7 +203,7 @@ function casa(quadro, { recados = null, pedidos = null } = {}) {
 
 /* ── CC-373: nenhuma cor usada sem existir ───────────────────────────────── */
 {
-  const html = readFileSync('src/ui_v2.html', 'utf8')
+  const html = readFileSync('src/ui_cockpit2.html', 'utf8')
   const css = html.slice(html.indexOf('<style>'), html.lastIndexOf('</style>'))
 
   const definidos = new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]))

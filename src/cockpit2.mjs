@@ -23,6 +23,12 @@ import { chaveDeProjeto, nomeCanonico } from './nomeProjeto.mjs'
 import { CACHE_FILE as TEMPO_CACHE, resumo as resumoTempo } from './tempo.mjs'
 import { lerFila } from './ideias.mjs'
 import { lerPacotes, mesclar, maquinasConhecidas } from './federacao.mjs'
+import { lerFechadas, lerMantidas, chaveDoCartao, lerDepois, depoisVale, permissaoDaTela } from './decisao.mjs'
+import { estado as estadoRC } from './remotecontrol.mjs'
+import { execFile } from 'node:child_process'
+import { registrar as registrarHistorico } from './decisaoHistorico.mjs'
+import * as resumoAgy from './resumoAgy.mjs'
+import { casaClaude as casaClaudeDir } from './platform.mjs'
 
 const CAUDA = 256 * 1024
 const MIN_PORTA = 1024
@@ -51,6 +57,22 @@ const semMarcadores = (s) => String(s || '')
   .map((l) => l.replace(/^\s*#{1,6}\s+/, ''))
   .join('\n')
 
+/* CC-589, 27/09: o resumo do cartão. Os agentes dele separam o raciocínio do
+   que mudou para ele com a linha "// resumo //"; o resumo é o que vem ABAIXO
+   dela. Sem a linha, as três primeiras frases. Nenhuma chamada a modelo. */
+export function resumoDaFala(txt) {
+  const linhas = String(txt || '').split('\n')
+  const i = linhas.findIndex((l) => /\/\/\s*resumo\s*\/\//i.test(l))
+  const corpo = i >= 0 ? linhas.slice(i + 1).join('\n') : null
+  const limpo = (s) => s.split('\n').map((l) => l.replace(/^\s*#{1,6}\s+/, '').replace(/\*\*([^*]*)\*\*/g, '$1').replace(/`([^`]*)`/g, '$1').trimEnd())
+    .filter((l, k, a) => l.trim() || (k > 0 && a[k - 1].trim())).join('\n').trim()
+  if (corpo && corpo.trim()) { const r = limpo(corpo); return r.length > 900 ? r.slice(0, 897).trimEnd() + '…' : r }
+  const t = semMarcadores(txt).replace(/\s+/g, ' ').trim()
+  const frases = t.match(/[^.!?]+[.!?]+(\s|$)/g) || [t]
+  const r = frases.slice(0, 3).join('').trim()
+  return r.length > 420 ? r.slice(0, 417).trimEnd() + '…' : r
+}
+
 const primeiraFrase = (s) => {
   const t = semMarcadores(s).replace(/\s+/g, ' ').trim()
   const m = t.match(/^(.{20,240}?[.!?])\s/)
@@ -65,27 +87,176 @@ const primeiraFrase = (s) => {
 export function falaDasLinhas(texto, { parcial = false } = {}) {
   const linhas = String(texto || '').split('\n')
   if (parcial) linhas.shift()
+  /* 27/09: pergunta já respondida (no terminal ou pelo painel) não é mais
+     pergunta. Lendo de trás para frente, a resposta (tool_result) aparece
+     ANTES da pergunta; sem guardar isso, o cartão mostrava a pergunta enquanto
+     o agente já pensava na resposta. */
+  const respondidas = new Set()
+  /* CC-606: a última ação ainda sem resultado. Com o registro dizendo
+     `waiting`, é o que o terminal está pedindo para permitir. */
+  let pendente; let achou = false
+  const r = (x) => (x && pendente ? { ...x, pendente } : x)
   for (let i = linhas.length - 1; i >= 0; i -= 1) {
     const l = linhas[i].trim()
-    if (!l || !l.includes('"assistant"')) continue
+    if (!l) continue
+    if (l.includes('"tool_result"')) {
+      try {
+        const u = JSON.parse(l)
+        if (u?.type === 'user') for (const x of (u.message?.content || [])) if (x?.type === 'tool_result' && x.tool_use_id) respondidas.add(x.tool_use_id)
+      } catch { /* linha cortada */ }
+    }
+    if (!l.includes('"assistant"')) continue
     let e = null
     try { e = JSON.parse(l) } catch { continue }
     if (e?.type !== 'assistant' || e.isSidechain) continue
     const partes = Array.isArray(e.message?.content) ? e.message.content : []
-    const pergunta = partes.find((p) => p?.type === 'tool_use' && p.name === 'AskUserQuestion')
+    if (!achou) {
+      achou = true
+      const p = partes.find((x) => x?.type === 'tool_use' && x.name !== 'AskUserQuestion' && !respondidas.has(x.id))
+      if (p) pendente = { id: p.id || null, nome: p.name, descricao: String(p.input?.description || '').slice(0, 200), comando: String(p.input?.command || p.input?.file_path || p.input?.url || '').slice(0, 600) }
+    }
+    const pergunta = partes.find((p) => p?.type === 'tool_use' && p.name === 'AskUserQuestion' && !respondidas.has(p.id))
+    const jaRespondida = partes.some((p) => p?.type === 'tool_use' && p.name === 'AskUserQuestion' && respondidas.has(p.id))
+    if (jaRespondida && !pergunta) {
+      const t = partes.filter((p) => p?.type === 'text').map((p) => p.text).join(' ').trim()
+      return r({ tipo: 'fala', texto: t ? primeiraFrase(t) : 'pergunta respondida, o agente está seguindo', resumo: t ? resumoDaFala(t) : null, opcoes: [], quantas: 0, em: e.timestamp || null, respondida: true })
+    }
     if (pergunta) {
       const qs = Array.isArray(pergunta.input?.questions) ? pergunta.input.questions : []
       const q = qs[0] || {}
+      /* CC-596, print dele de um cartão "sem info nenhuma": o contexto é o que
+         o agente escreveu ANTES de perguntar, na mesma resposta e nas anteriores
+         até a última mensagem dele (Felipe). Sai da própria conversa. */
+      const antes = [partes.filter((p) => p?.type === 'text').map((p) => p.text).join('\n')]
+      for (let j = i - 1; j >= 0 && j > i - 400; j -= 1) {
+        const lj = linhas[j].trim(); if (!lj) continue
+        let x = null
+        try { x = JSON.parse(lj) } catch { continue }
+        if (x?.isSidechain) continue
+        const cs = Array.isArray(x?.message?.content) ? x.message.content : (typeof x?.message?.content === 'string' ? [{ type: 'text', text: x.message.content }] : [])
+        if (x?.type === 'user' && cs.some((c) => c?.type === 'text')) break // a mensagem dele: o contexto começa depois dela
+        if (x?.type === 'assistant') antes.unshift(cs.filter((c) => c?.type === 'text').map((c) => c.text).join('\n'))
+      }
+      /* O que explica a pergunta é o que veio por ÚLTIMO antes dela: junta de
+         trás para frente até ~700 letras, em vez de pegar o começo da sequência
+         (que medido no ahtleta-corrida era "Renderizo o corredor…", e a parte que
+         importava, "Montei três propostas de logo…", ficava de fora). */
+      const falas = antes.filter((t) => t && t.trim())
+      const escolhidas = []
+      for (let k = falas.length - 1; k >= 0; k -= 1) {
+        escolhidas.unshift(falas[k])
+        if (escolhidas.join('\n\n').length > 700) break
+      }
+      const contextoCru = escolhidas.join('\n\n').trim()
       return {
         tipo: 'pergunta',
         texto: String(q.question || '').trim() || null,
         opcoes: (q.options || []).map((o) => String(o?.label || '')).filter(Boolean),
+        contexto: contextoCru ? resumoDaFala(contextoCru) : null,
         quantas: qs.length,
         em: e.timestamp || null,
+        /* CC-556: o id e as perguntas inteiras, para responder pelo painel.
+           O servidor confere de novo no transcrito antes de apertar tecla. */
+        id: pergunta.id || null,
+        perguntas: qs.map((x) => ({
+          pergunta: String(x?.question || '').trim(),
+          opcoes: (x?.options || []).map((o) => String(o?.label || '')).filter(Boolean),
+          /* CC-596: a explicação que o agente escreveu para cada opção. */
+          descricoes: (x?.options || []).filter((o) => o?.label).map((o) => String(o?.description || '')),
+          multipla: Boolean(x?.multiSelect),
+        })),
       }
     }
     const txt = partes.filter((p) => p?.type === 'text').map((p) => p.text).join(' ').trim()
-    if (txt) return { tipo: 'fala', texto: primeiraFrase(txt), opcoes: [], quantas: 0, em: e.timestamp || null }
+    if (txt) return r({ tipo: 'fala', texto: primeiraFrase(txt), resumo: resumoDaFala(txt), opcoes: [], quantas: 0, em: e.timestamp || null })
+  }
+  return pendente ? { tipo: 'fala', texto: null, opcoes: [], quantas: 0, em: null, pendente } : null
+}
+
+/**
+ * CC-589: a última resposta INTEIRA do agente, para o "ver resposta completa"
+ * do cartão. Só conversa desta máquina; o id é conferido antes de virar nome de
+ * arquivo, para a rota não servir de leitor de arquivo qualquer.
+ */
+/**
+ * CC-631: as últimas falas da conversa, dos dois lados, para o modo lista da
+ * tela Sessões. Puro sobre o texto do transcrito. Fica de fora o que não é
+ * fala de gente: saída de ferramenta, texto de skill, comando, sub-agente.
+ */
+export function falasDaConversa(texto, { parcial = false, limite = 30 } = {}) {
+  const linhas = String(texto || '').split('\n'); if (parcial) linhas.shift()
+  const out = []
+  for (const l of linhas) {
+    /* Linha gigante é imagem embutida (print): parsear custava segundos e não
+       tem fala para mostrar. */
+    if (l.length > 200000) continue
+    if (!l.includes('"user"') && !l.includes('"assistant"')) continue
+    let o = null
+    try { o = JSON.parse(l) } catch { continue }
+    if (o?.isSidechain || o?.isMeta) continue
+    const c = o?.message?.content
+    if (o.type === 'user') {
+      const t = typeof c === 'string' ? c : (Array.isArray(c) ? c.filter((x) => x?.type === 'text').map((x) => x.text).join('\n') : '')
+      if (!t || !t.trim() || /^\s*<(command|system|local-command|task-notification)/.test(t)) continue
+      out.push({ quem: 'voce', texto: t.trim().slice(0, 6000), em: o.timestamp || null })
+    } else if (o.type === 'assistant' && Array.isArray(c)) {
+      const t = c.filter((x) => x?.type === 'text').map((x) => x.text).join('\n').trim()
+      const perg = c.find((x) => x?.type === 'tool_use' && x.name === 'AskUserQuestion')
+      const txt = t || (perg ? (perg.input?.questions || []).map((q) => q.question).join('\n') : '')
+      if (!txt) continue
+      /* A mesma resposta do agente chega em várias linhas seguidas: junta. */
+      const ult = out[out.length - 1]
+      if (ult && ult.quem === 'agente' && ult.junta) { ult.texto = (ult.texto + '\n\n' + txt).slice(-8000); ult.em = o.timestamp || ult.em }
+      else out.push({ quem: 'agente', texto: txt.slice(0, 8000), em: o.timestamp || null, junta: true })
+    }
+  }
+  return out.slice(-limite).map(({ junta, ...x }) => x)
+}
+
+export function conversaRecente(conversa) {
+  if (!/^[0-9a-f-]{8,40}$/i.test(String(conversa || ''))) return null
+  const base = path.join(casaClaudeDir(), 'projects')
+  let arquivo = null
+  try {
+    for (const d of fs.readdirSync(base, { withFileTypes: true })) {
+      if (!d.isDirectory()) continue
+      const f = path.join(base, d.name, conversa + '.jsonl')
+      if (fs.existsSync(f)) { arquivo = f; break }
+    }
+  } catch { return null }
+  if (!arquivo) return null
+  let st
+  try { st = fs.statSync(arquivo) } catch { return null }
+  const c = cacheConversa.get(arquivo)
+  if (c && c.size === st.size && c.mtimeMs === st.mtimeMs) return c.r
+  const { texto, parcial } = lerCauda(arquivo, 1024 * 1024)
+  const r = { falas: falasDaConversa(texto, { parcial }) }
+  cacheConversa.set(arquivo, { size: st.size, mtimeMs: st.mtimeMs, r })
+  return r
+}
+const cacheConversa = new Map()
+
+export function falaCompleta(conversa) {
+  if (!/^[0-9a-f-]{8,40}$/i.test(String(conversa || ''))) return null
+  const base = path.join(casaClaudeDir(), 'projects')
+  let arquivo = null
+  try {
+    for (const d of fs.readdirSync(base, { withFileTypes: true })) {
+      if (!d.isDirectory()) continue
+      const f = path.join(base, d.name, conversa + '.jsonl')
+      if (fs.existsSync(f)) { arquivo = f; break }
+    }
+  } catch { return null }
+  if (!arquivo) return null
+  const { texto, parcial } = lerCauda(arquivo)
+  const linhas = texto.split('\n'); if (parcial) linhas.shift()
+  for (let i = linhas.length - 1; i >= 0; i -= 1) {
+    if (!linhas[i].includes('"assistant"')) continue
+    let e = null
+    try { e = JSON.parse(linhas[i]) } catch { continue }
+    if (e?.type !== 'assistant' || e.isSidechain) continue
+    const txt = (e.message?.content || []).filter((p) => p?.type === 'text').map((p) => p.text).join('\n').trim()
+    if (txt) return { texto: txt.length > 20000 ? txt.slice(0, 20000) + '\n…' : txt, em: e.timestamp || null }
   }
   return null
 }
@@ -102,6 +273,18 @@ export function ultimaFalaDoAgente(arquivo) {
   try {
     const { texto, parcial } = lerCauda(arquivo)
     fala = falaDasLinhas(texto, { parcial })
+    /* CC-596: o contexto da pergunta pode estar antes do pedaço final lido
+       (256 KB). Medido no ahtleta-corrida: as últimas linhas carregavam imagem
+       embutida, e o pedaço cobria só elas. Pergunta sem contexto relê até 4 MB,
+       uma vez por mudança do arquivo (o resultado fica no cache abaixo). */
+    if (fala?.tipo === 'pergunta' && !fala.contexto) {
+      const maior = lerCauda(arquivo, 4 * 1024 * 1024)
+      const f2 = falaDasLinhas(maior.texto, { parcial: maior.parcial })
+      if (f2?.tipo === 'pergunta' && f2.contexto) fala.contexto = f2.contexto
+    }
+    /* CC-556: a conversa é o nome do transcrito. É ela que o painel manda de
+       volta para responder a pergunta pelo terminal da sessão. */
+    if (fala) fala.conversa = path.basename(arquivo, '.jsonl')
   } catch { fala = null }
   cacheFala.set(arquivo, { size: st.size, mtimeMs: st.mtimeMs, fala })
   return fala
@@ -117,8 +300,18 @@ export function ultimaFalaDoAgente(arquivo) {
  */
 export function falaDeJob(job, { soParado = true } = {}) {
   if (!job) return null
-  if (soParado && job.status !== 'waiting') return null
+  if (soParado && job.status !== 'waiting' && !job.permissao) return null
   return ultimaFalaDoAgente(transcritoDe(job))
+}
+
+/** Conversa desta máquina em que o agente ainda não disse nada. Só olha
+ *  arquivo pequeno: conversa grande já teve troca, e ler inteira custaria. */
+export function conversaSemFala(arquivo) {
+  if (!arquivo) return false
+  try {
+    if (fs.statSync(arquivo).size > CAUDA) return false
+    return !/"type"\s*:\s*"assistant"/.test(fs.readFileSync(arquivo, 'utf8'))
+  } catch { return false }
 }
 
 const cacheTranscrito = new Map() // id do job -> caminho
@@ -143,6 +336,11 @@ const tipoDaSessao = (j) => {
 
 const estadoDaSessao = (j) => {
   if (j.stale) return 'sem sinal'
+  /* 27/09: o programa da sessão foi fechado (registro de sessões abertas do
+     Claude Code). A conversa gravada continua, mas não há ninguém do outro
+     lado: nem conectada, nem decisão. */
+  if (j.aberta === false) return 'encerrada'
+  if (j.permissao) return 'espera você' // CC-606: parada no pedido de permissão
   if (j.status === 'working') return 'trabalhando'
   if (j.status === 'waiting') return 'espera você'
   if (j.status === 'failed') return 'falhou'
@@ -155,6 +353,12 @@ const bloqueioDe = (j) => {
   return typeof b === 'string' ? b : (b?.text || b?.t || null)
 }
 
+/** Pasta pessoal de usuário, em qualquer sistema: `C:\Users\fulano`,
+ *  `/home/fulano`, `/Users/fulano`. Só a pasta em si; subpasta é projeto. */
+export function ehPastaPessoal(cwd) {
+  return /^(?:[A-Za-z]:)?[\\/](?:Users|home)[\\/][^\\/]+[\\/]?$/i.test(String(cwd || '').trim())
+}
+
 /** O que o cartão de aviso mostra sobre um agente parado. Sem fala legível,
  *  diz isso com todas as letras em vez de devolver o assunto. */
 export function avisoDoAgente(j, fala, dispositivo, agora) {
@@ -165,16 +369,30 @@ export function avisoDoAgente(j, fala, dispositivo, agora) {
     desdeMs: Math.max(0, agora - (j.updatedAt || agora)), sessao: tipoDaSessao(j),
   }
   if (travado) return { ...base, rotulo: 'travado', pergunta: travado, opcoes: [], acao: 'destravar' }
+  /* CC-606: o terminal parado num pedido de permissão. */
+  if (j.permissao && fala?.pendente) {
+    const pd = fala.pendente
+    return { ...base, rotulo: 'permissão', pergunta: pd.descricao || ('quer usar ' + pd.nome), ferramenta: pd.nome, comando: pd.comando || null, permissaoId: pd.id || null, opcoes: [], acao: 'responder' }
+  }
   if (fala?.tipo === 'pergunta' && fala.texto) {
-    return { ...base, rotulo: 'pergunta', pergunta: fala.texto, opcoes: fala.opcoes, quantas: fala.quantas, acao: 'responder' }
+    return {
+      ...base, rotulo: 'pergunta', pergunta: fala.texto, opcoes: fala.opcoes, quantas: fala.quantas, acao: 'responder',
+      contexto: fala.contexto || null, perguntasTodas: fala.perguntas || null,
+      responder: fala.id && fala.conversa ? { conversa: fala.conversa, id: fala.id, perguntas: fala.perguntas || [] } : null,
+    }
   }
   if (fala?.tipo === 'fala' && fala.texto) {
-    return { ...base, rotulo: 'parou', pergunta: fala.texto, opcoes: [], acao: 'responder' }
+    return { ...base, rotulo: 'parou', pergunta: fala.texto, resumo: fala.resumo || null, opcoes: [], acao: 'responder' }
   }
   return { ...base, rotulo: 'parou sem perguntar', pergunta: null, opcoes: [], acao: 'abrir' }
 }
 
 const porTempo = (a, b) => (b.desdeMs || 0) - (a.desdeMs || 0)
+/** CC-561: pendência parada há mais disto sai das decisões e vai para a gaveta. */
+export const GAVETA_MS = 7 * 24 * 3600 * 1000
+/** Cartão de agente parado SEM pergunta, sem movimento há mais disto, sai
+ *  sozinho das decisões (26/09). Pergunta com opções nunca sai sozinha. */
+export const TRAVADA_MS = 2 * 3600 * 1000
 
 /* O rótulo da ferramenta em voo às vezes é a linha de comando INTEIRA: medido
    em 11/09, um `Bash` veio com 240 caracteres de `cd ... && node ... | grep`,
@@ -211,9 +429,12 @@ function servicoDoContainer(c, chaves, dispositivo) {
 export function montar({
   jobs = [], servers = [], containers = [], tarefas = [], tempo = null,
   local = { id: null, nome: 'esta máquina' }, agora = Date.now(), falaDe = () => null,
-  ignorar = [], maquinas = null,
+  ignorar = [], maquinas = null, fechadas = new Set(), mantidas = new Set(), depois = {}, blocosTempo = null,
 } = {}) {
   const disp = local.nome || 'esta máquina'
+  let fechadasOcultas = 0
+  let travadasOcultas = 0
+  const ocultas = []
   /* De qual máquina veio esta linha. O que chega pela federação carrega
      `origem`; o que é daqui não carrega nada. É esta função que faz o projeto
      ser UM só com a máquina ao lado, em vez de dois projetos. */
@@ -245,18 +466,93 @@ export function montar({
     if (!p) continue
     const semContato = Boolean(j.origem?.semContato)
     const onde = ondeEsta(j)
-    if (!p.raiz && j.cwd && !j.origem) p.raiz = j.cwd
+    /* A pasta só vale se a sessão é DESTA máquina. ⚠️ `mesclar` carimba
+       `origem` também nas sessões locais (o mesmo defeito de 23/09 na fala):
+       "sem origem" deixava todo projeto sem pasta, e a fila de ideias nunca
+       era lida. Medido em 26/09: as filas tinham 2 ideias, a Início mostrava 0. */
+    const daqui = !j.origem || (local.id && j.origem.id === local.id)
+    if (!p.raiz && j.cwd && daqui) p.raiz = j.cwd
+    /* 26/09, item 1 da tela Projetos ("limpar a lista"): a pasta pessoal de
+       OUTRA máquina (C:\Users\fulano, /home/fulano) também não é projeto. A
+       daqui já sai por `ignorar`; a de lá não dá para saber pelo nome, só pela
+       pasta. Não some do painel: as decisões e sessões dela continuam na
+       Início; só a lista de Projetos a deixa de fora. */
+    if (ehPastaPessoal(j.cwd)) p.pastaPessoal = true
     if (!semContato && !j.stale) p.presenca.add(onde)
     p.ultimaAtividade = Math.max(p.ultimaAtividade, j.updatedAt || 0)
+    /* 26/09, item 4 da Início: a linha da sessão mostrava o PEDIDO dele
+       (o `subject` cai no último prompt quando o agente não resumiu), e não o
+       que o agente está fazendo. A última fala do agente vai junto, e a
+       conversa também, para o botão de parar saber qual terminal é. Só para
+       quem trabalha agora: a leitura tem cache por tamanho do arquivo. */
+    /* Item 6 da tela Projetos (26/09): a parada também mostra a última fala,
+       não só a que trabalha. */
+    const falaSessao = (j.status === 'working' || j.status === 'waiting' || j.status === 'idle') && !j.stale && !semContato ? falaDe(j) : null
     p.sessoes.push({
       id: j.id, tipo: tipoDaSessao(j), dispositivo: onde, modelo: j.model || null,
       estado: estadoDaSessao(j), ferramenta: ferramentaCurta(j.inFlight?.[0]?.label) || null,
       desdeMs: Math.max(0, agora - (j.updatedAt || agora)), frente: j.frente || null, assunto: j.subject || null,
       todos: j.todos?.length || 0, todosDone: j.todosDone || 0,
+      fala: falaSessao?.texto || null, conversa: falaSessao?.conversa || null,
+      resumo: falaSessao?.resumo || null, marca: falaSessao?.em || null,
+      porPrograma: Boolean(j.porPrograma),
     })
     if ((j.status === 'working' || j.status === 'waiting') && j.frente && !p.frenteEmCurso) p.frenteEmCurso = j.frente
-    if (j.status === 'waiting' && !j.stale && !semContato) {
-      p.espera.push(avisoDoAgente(j, falaDe(j), onde, agora))
+    if (!j.stale && !semContato && j.aberta !== false && (j.status === 'waiting' || j.status === 'idle' || j.status === 'working')) {
+      /* Três regras de 23 e 26/09, nesta ordem:
+         1. Pergunta com opções entra NA HORA, qualquer que seja o estado: o
+            "espera você" só vale depois de 1 minuto sem escrever, e a pergunta
+            já estava lá (pedido dele, item 3 da Início). E não envelhece:
+            ociosa há horas com pergunta aberta continua esperando.
+         2. Parada SEM pergunta há mais de 2 horas sai sozinha ("auto-deletar
+            decisões que estão travadas"), e sai contada, não calada.
+         3. Cartão que ele fechou some até a sessão se mexer (fala nova muda a
+            marca e o cartão volta, porque aí é outra decisão). */
+      const fala = falaDe(j)
+      /* Sessão "trabalhando" com outra ferramenta em andamento (Edit, Bash)
+         não está parada na pergunta, mesmo que ela seja a última fala do
+         arquivo: o teste do motor pegou isso na primeira versão. */
+      const outraFerramenta = j.status === 'working' && (j.inFlight || []).some((x) => x?.label && !/AskUserQuestion/i.test(x.label))
+      /* CC-606: pedido de permissão conta como pergunta: entra na hora e não envelhece. */
+      const ehPergunta = (fala?.tipo === 'pergunta' && !outraFerramenta) || Boolean(j.permissao && fala?.pendente)
+      /* 26/09: sessão aberta pelo painel e ainda sem conversa nenhuma virava
+         "parou sem pergunta legível" na Decisões. Não há decisão ali: ela
+         espera o primeiro pedido dele, e já aparece em Sessões. */
+      if (!fala && conversaSemFala(transcritoDe(j))) continue
+      /* 26/09, print dele do app com 8 sessões conectadas: parada sem
+         pergunta começa "espera você" e, com o tempo, vira "ociosa", e aí
+         saía da Decisões SEM ir para "Fechadas e antigas". Sumia calada, com
+         "write 'pode codar' to unblock coding" esperando ele. Ociosa com fala
+         do agente é parada também, e segue a regra das 2 horas. */
+      const ociosaComFala = j.status === 'idle' && Boolean(fala?.texto)
+      /* 27/09: sessão disparada por programa (`claude -p`) não é decisão
+         dele: rodou, respondeu e acabou, e não há a quem responder. Dois
+         testes da skill das gavetas, rodados na pasta do sumauma, apareceram
+         como "PAROU · sumauma" por causa da regra da ociosa com fala. */
+      if (j.porPrograma) continue
+      if (ehPergunta || j.status === 'waiting' || ociosaComFala) {
+        const aviso = avisoDoAgente(j, fala, onde, agora)
+        aviso.marca = fala?.em || null
+        /* Para onde mandar mensagem livre. Só existe para sessão DAQUI: a
+           conversa de outra máquina não tem terminal que o painel alcance. */
+        aviso.conversa = fala?.conversa || null
+        aviso.esperaTerminal = Boolean(j.permissao) // CC-638: o registro diz que o terminal espera
+        /* 26/09, tela Decisões item 4: o que sai da lista também vai, marcado,
+           para a aba "Fechadas e antigas", com "reabrir". Cartão reaberto
+           (mantidas) não some pela idade. */
+        const k = chaveDoCartao(aviso.id, aviso.marca)
+        /* CC-630: "para depois" vem antes de tudo, inclusive de pergunta. */
+        const dp = depois[aviso.id]
+        if (dp && depoisVale(dp, aviso.marca, agora)) ocultas.push({ ...aviso, oculta: 'depois', depoisModo: dp.modo, depoisAte: dp.ate || null })
+        else if (fechadas.has(k)) { fechadasOcultas += 1; ocultas.push({ ...aviso, oculta: 'fechada' }) }
+        /* 27/09, decisão dele: "um projeto ativo sempre aparece". Sessão
+           com o programa ABERTO nunca sai sozinha pela idade: só sai quando é
+           desligada, volta a trabalhar, ou ele fecha o cartão. A regra das 2
+           horas fica só para quem não se sabe se está aberto (a outra máquina,
+           os jobs de fundo). */
+        else if (!ehPergunta && j.aberta !== true && aviso.desdeMs > TRAVADA_MS && !mantidas.has(k)) { travadasOcultas += 1; ocultas.push({ ...aviso, oculta: 'antiga' }) }
+        else p.espera.push(aviso)
+      }
     }
   }
 
@@ -281,6 +577,13 @@ export function montar({
   }
 
   const soltas = []
+  /* CC-561, a gaveta. Medido em 25/09: a Início listava 76 decisões, e só 5
+     eram agentes esperando; as outras 71 eram pendências dele, 65 com mais de
+     7 dias e 28 com mais de um mês. As perguntas vivas ficavam afogadas.
+     Pendência parada há mais de 7 dias sai das decisões e vai para a gaveta:
+     continua no cartão do projeto e na gaveta, e NADA é apagado. Quem fecha
+     pendência continua sendo só ele. */
+  const gaveta = []
   for (const t of tarefas) {
     if (t.feito) continue
     const p = t.projeto ? projetoDe(t.projeto) : null
@@ -289,10 +592,15 @@ export function montar({
       pergunta: t.texto, porque: t.porque || null, dispositivo: t.maquina || disp,
       desdeMs: t.em ? Math.max(0, agora - t.em) : null, acao: 'feito',
     }
-    if (p) { p.pendencias.push(pend); p.espera.push(pend) } else soltas.push(pend)
+    if (p) p.pendencias.push(pend)
+    if (pend.desdeMs != null && pend.desdeMs > GAVETA_MS) { gaveta.push(pend); continue }
+    if (p) p.espera.push(pend); else soltas.push(pend)
   }
 
-  const semana = semanaDe(tempo, agora)
+  /* 26/09: com os trechos do cache, a semana sai por relógio e por agente,
+     no dia de Brasília; sem eles, cai na conta antiga pelos totais. */
+  const semana = blocosTempo ? semanaDosBlocos(blocosTempo, { agora }) : semanaDe(tempo, agora)
+  if (blocosTempo && local.nome) semana.fonte = local.nome
   if (tempo?.projetos) {
     const hoje = new Date(agora).toISOString().slice(0, 10)
     for (const tp of tempo.projetos) {
@@ -322,6 +630,15 @@ export function montar({
 
   const espera = [...lista.flatMap((p) => p.espera), ...soltas].sort(porTempo)
   const rodando = lista.flatMap((p) => p.sessoes.filter((s) => s.estado === 'trabalhando').map((s) => ({ ...s, projeto: p.chave, nome: p.nome })))
+  /* 26/09: o bloco Sessões da Início passa a mostrar TODAS as conectadas,
+     não só quem trabalha neste minuto ("as duas coisas"). Trabalhando no
+     topo, depois quem espera ele, depois as ociosas; dentro de cada uma, a
+     mais recente primeiro. Sem sinal e entregue ficam de fora. */
+  const ORDEM_ESTADO = { trabalhando: 0, 'espera você': 1, ociosa: 2 }
+  /* Sessão disparada por programa só conta enquanto trabalha: depois, o
+     programa acabou e não há ninguém conectado ali (27/09). */
+  const conectadas = lista.flatMap((p) => p.sessoes.filter((s) => s.estado in ORDEM_ESTADO && (!s.porPrograma || s.estado === 'trabalhando')).map((s) => ({ ...s, projeto: p.chave, nome: p.nome })))
+    .sort((a, b) => ORDEM_ESTADO[a.estado] - ORDEM_ESTADO[b.estado] || (a.desdeMs || 0) - (b.desdeMs || 0))
 
   return {
     /* As máquinas vêm de quem sabe (a federação); sem essa lista, esta máquina
@@ -335,10 +652,18 @@ export function montar({
         local: Boolean(m.local ?? (m.id && m.id === local.id)),
         contato: !m.semContato,
         idadeMs: m.idadeMs ?? null,
+        empurradores: Array.isArray(m.empurradores) ? m.empurradores : [],
       }))
       : [{ id: local.id, nome: disp, local: true, contato: true, idadeMs: 0 }],
     projetos: lista,
     espera,
+    /* A mais velha primeiro: é a que mais precisa de uma decisão, nem que
+       seja "não vale mais". */
+    gaveta: gaveta.sort((a, b) => (b.desdeMs || 0) - (a.desdeMs || 0)),
+    /* As decisões que saíram da lista (fechadas por ele ou paradas há mais
+       de 2 horas), para a aba da tela Decisões. */
+    ocultas: ocultas.sort(porTempo),
+    conectadas,
     rodando,
     servicos,
     semana,
@@ -346,6 +671,8 @@ export function montar({
       projetos: lista.length, comPresenca: lista.filter((p) => p.presenca.length).length,
       espera: espera.length, agentesEsperando: espera.filter((e) => e.tipo === 'agente').length,
       pendencias: espera.filter((e) => e.tipo === 'pendencia').length,
+      gaveta: gaveta.length,
+      fechadasOcultas, travadasOcultas,
       rodando: rodando.length, servicos: servicos.length,
     },
     lidoEm: agora,
@@ -354,6 +681,71 @@ export function montar({
 
 /** Os últimos 7 dias, do cache de tempo: total, um valor por dia, e os
  *  projetos que mais levaram. Sem cache, vem vazio e a tela diz isso. */
+/**
+ * A semana a partir dos TRECHOS de trabalho de cada conversa (26/09, item 11
+ * da Início). Três defeitos medidos no bloco antigo, que usava os totais:
+ *   1. somava sessões em paralelo: o "hoje" tinha 12,8h numa madrugada que
+ *      só tinha ~8h de relógio;
+ *   2. virava o dia à meia-noite de Londres (21h de Brasília);
+ *   3. não dizia que é só esta máquina.
+ * Aqui saem as DUAS contas: horas de agente (a soma de todas as sessões) e
+ * horas de relógio (a união dos trechos: houve algum agente trabalhando).
+ * `sessoes` é o mapa do cache de tempo: { arquivo: { cwd, blocos: [[ini, fim]] } }.
+ * Puro. O fuso é fixo em -3h: o Brasil não tem horário de verão desde 2019.
+ */
+export function semanaDosBlocos(sessoes, { agora = Date.now(), corteMs = 15 * 60_000, fusoMs = -3 * 3600_000 } = {}) {
+  const diaLocal = (ms) => new Date(ms + fusoMs).toISOString().slice(0, 10)
+  const inicioDoDia = (dia) => Date.parse(`${dia}T00:00:00Z`) - fusoMs
+  const dias = []
+  for (let i = 6; i >= 0; i -= 1) dias.push({ dia: diaLocal(agora - i * 86_400_000), ms: 0, relogioMs: 0 })
+  const janelaIni = inicioDoDia(dias[0].dia)
+  /* Junta trechos vizinhos que cabem no corte, como a tela Tempo faz. */
+  const juntar = (bs) => {
+    const out = []
+    for (const [i, f] of [...bs].sort((a, b) => a[0] - b[0])) {
+      const u = out[out.length - 1]
+      if (u && i - u[1] <= corteMs) u[1] = Math.max(u[1], f)
+      else out.push([i, f])
+    }
+    return out
+  }
+  /* Soma por dia local, cortando o trecho na meia-noite de Brasília. */
+  const somarNosDias = (trechos, campo, porProj = null, proj = null) => {
+    for (const [i0, f] of trechos) {
+      let i = Math.max(i0, janelaIni)
+      while (i < f) {
+        const dia = diaLocal(i)
+        const fimDia = inicioDoDia(dia) + 86_400_000
+        const fim = Math.min(f, fimDia)
+        const d = dias.find((x) => x.dia === dia)
+        if (d) { d[campo] += fim - i; if (porProj) porProj.set(proj, (porProj.get(proj) || 0) + (fim - i)) }
+        i = fim
+      }
+    }
+  }
+  const porProjeto = new Map()
+  const todos = []
+  let temAlgo = false
+  for (const s of Object.values(sessoes || {})) {
+    const bs = (s?.blocos || []).filter(([, f]) => f >= janelaIni)
+    if (!bs.length) continue
+    temAlgo = true
+    const unidos = juntar(bs)
+    const proj = nomeCanonico(path.basename(String(s.cwd || '?')))
+    somarNosDias(unidos, 'ms', porProjeto, proj)
+    todos.push(...unidos)
+  }
+  somarNosDias(juntar(todos), 'relogioMs')
+  return {
+    disponivel: temAlgo || Object.keys(sessoes || {}).length > 0,
+    totalMs: dias.reduce((a, d) => a + d.ms, 0),
+    relogioMs: dias.reduce((a, d) => a + d.relogioMs, 0),
+    dias,
+    porProjeto: [...porProjeto.entries()].map(([nome, ms]) => ({ nome, ms })).sort((a, b) => b.ms - a.ms),
+    fonte: 'esta máquina',
+  }
+}
+
 export function semanaDe(tempo, agora = Date.now()) {
   const dias = []
   for (let i = 6; i >= 0; i -= 1) {
@@ -381,6 +773,18 @@ export function semanaDe(tempo, agora = Date.now()) {
 /* ───────────────────────────── a rota ───────────────────────────── */
 
 let tempoCache = { em: 0, dados: null }
+/* Os trechos crus do cache de tempo, para a semana (26/09). Mesmo cuidado do
+   `tempoBarato`: só lê o que a tela Tempo já gravou, e relê no máximo a cada
+   minuto, porque a Início chama a cada 5 segundos. */
+let blocosCache = { em: 0, dados: null }
+function blocosDoTempo() {
+  if (Date.now() - blocosCache.em < 60_000) return blocosCache.dados
+  let dados = null
+  try { dados = JSON.parse(fs.readFileSync(TEMPO_CACHE, 'utf8')).arquivos || null } catch { dados = null }
+  blocosCache = { em: Date.now(), dados }
+  return dados
+}
+
 function tempoBarato() {
   /* Só lê o que a aba Tempo já gravou. Sem cache no disco, a varredura custa
      segundos e não cabe numa rota que a tela chama a cada 5s. */
@@ -427,20 +831,81 @@ export async function responder() {
   try { const m = maquinaLocal(); local = { id: m.id, nome: m.nome } } catch { /* fica o padrão */ }
   const tempo = tempoBarato()
   const dados = montar({
-    jobs, servers, containers, tarefas, tempo, local, agora, maquinas,
+    jobs, servers, containers, tarefas, tempo, local, agora, maquinas, fechadas: lerFechadas(), mantidas: lerMantidas(), depois: lerDepois(), blocosTempo: blocosDoTempo(),
     /* Sessão da outra máquina traz a fala pronta no pacote: o transcrito dela
        está no disco de lá e não atravessa. Quem é daqui é lido do arquivo. */
-    falaDe: (j) => (j.origem ? (j.ultimaFala || null) : ultimaFalaDoAgente(transcritoDe(j))),
+    /* ⚠️ `mesclar` carimba `origem` também nas sessões DESTA máquina (medido em
+       23/09: `origem.id` igual ao `eu.id`). Perguntar só "tem origem?" tratava
+       toda sessão local como de fora, lia `ultimaFala` (que só o pacote traz),
+       achava nada, e o cartão dizia "sem pergunta legível" para qualquer
+       pergunta daqui. De fora é só quem tem origem de OUTRA máquina. */
+    falaDe: (j) => (j.origem && (!eu || j.origem.id !== eu.id) ? (j.ultimaFala || null) : ultimaFalaDoAgente(transcritoDe(j))),
     ignorar: [path.basename(os.homedir())],
   })
+  /* CC-638, print dele: o pedido de rede do sandbox ("Allow network
+     connection to overpass-api.de?") não aparecia. Ele não é ação na conversa
+     principal (veio de um ajudante em segundo plano), então só a TELA do
+     terminal sabe dele. Só para sessão que o registro marca como esperando e
+     que o painel não achou como permissão, e só as do tmux do painel. */
+  try {
+    const candidatos = (dados.espera || []).filter((e) => e.tipo === 'agente' && e.esperaTerminal && e.rotulo !== 'permissão' && e.conversa)
+    if (candidatos.length) {
+      const sessoesRC = await estadoRC().catch(() => ({}))
+      for (const e of candidatos) {
+        const s = Object.values(sessoesRC || {}).find((x) => x?.conversa === e.conversa)
+        if (!s?.sessao) continue
+        const tela = await new Promise((ok) => execFile('tmux', ['capture-pane', '-t', s.sessao, '-p', '-S', '-60'], { encoding: 'utf8', timeout: 3000 }, (err, out) => ok(err ? '' : out)))
+        const pr = permissaoDaTela(tela)
+        if (!pr) continue
+        Object.assign(e, { rotulo: 'permissão', pergunta: pr.titulo + (pr.detalhe ? ': ' + pr.detalhe.replace(/\n/g, ' · ') : ''), ferramenta: 'rede', comando: pr.detalhe || pr.pergunta, permissaoId: 'tela:' + pr.chave, acao: 'responder' })
+      }
+    }
+  } catch { /* a tela é um extra: sem ela, o cartão fica como estava */ }
+  /* CC-599: o resumo do agy para cada sessão parada DESTA máquina (decisão
+     dele: automático, um por parada). Pede o que falta e junta o que está
+     pronto; o pedido roda em segundo plano, esta leitura não espera. */
+  try {
+    const arquivoDe = new Map()
+    for (const j of locais) { const a = transcritoDe(j); if (a) arquivoDe.set(path.basename(a, '.jsonl'), a) }
+    const alvo = (x) => x && x.conversa && arquivoDe.has(x.conversa)
+    for (const e of dados.espera || []) {
+      if (e.tipo !== 'agente' || !alvo(e)) continue
+      resumoAgy.pedir({ conversa: e.conversa, marca: e.marca, arquivo: arquivoDe.get(e.conversa) })
+      e.resumoIA = resumoAgy.obter(e.conversa, e.marca)
+    }
+    for (const s of dados.conectadas || []) {
+      if (s.estado === 'trabalhando' || s.porPrograma || !alvo(s)) continue
+      resumoAgy.pedir({ conversa: s.conversa, marca: s.marca, arquivo: arquivoDe.get(s.conversa) })
+      s.resumoIA = resumoAgy.obter(s.conversa, s.marca)
+    }
+  } catch { /* resumo é conveniência: falhar aqui não derruba a tela */ }
+  /* CC-582: o histórico de decisões por projeto aprende a cada leitura. */
+  try { registrarHistorico(dados, { agora, fechadasPorEle: lerFechadas() }) } catch { /* histórico não derruba a tela */ }
   /* As ideias dele que ainda não viraram item, uma fila por projeto. Só dos
      projetos com sinal: varrer 29 pastas a cada 5s não cabe aqui. */
   dados.ideias = []
-  for (const p of dados.projetos) {
+  /* 26/09: além dos projetos com sessão, TODAS as pastas de `projetos/` que
+     têm fila. A varredura de hora em hora guarda ideia de projeto sem sessão
+     aberta (o carzo, medido), e só olhar quem tem sessão escondia essas. São
+     poucos arquivos pequenos, um `existsSync` por pasta. */
+  const raizes = new Map(dados.projetos.filter((p) => p.raiz).map((p) => [p.raiz, p]))
+  for (const base of new Set([...raizes.keys()].map((r) => path.dirname(r)).concat(path.join(os.homedir(), 'projetos')))) {
+    let nomes = []
+    try { nomes = fs.readdirSync(base, { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith('.')).map((d) => d.name) } catch { continue }
+    for (const n of nomes) {
+      const r = path.join(base, n)
+      if (!raizes.has(r) && fs.existsSync(path.join(r, 'docs', '.ideias-pendentes.json'))) raizes.set(r, { chave: chaveDeProjeto(n), nome: nomeCanonico(n), raiz: r })
+    }
+  }
+  for (const p of raizes.values()) {
     if (!p.raiz) continue
     try {
       for (const i of (lerFila(p.raiz)?.pendentes || [])) {
-        dados.ideias.push({ projeto: p.chave, nome: p.nome, texto: String(i.texto || i.trecho || '').slice(0, 240), em: i.em || i.quando || null })
+        dados.ideias.push({
+          projeto: p.chave, nome: p.nome, texto: String(i.texto || i.trecho || '').slice(0, 240), em: i.em || i.quando || null,
+          /* 26/09: id e raiz para os botões "virar item" e "descartar". */
+          id: i.id || null, raiz: p.raiz, aprovada: Boolean(i.aprovada),
+        })
       }
     } catch { /* fila ilegível conta como vazia */ }
   }

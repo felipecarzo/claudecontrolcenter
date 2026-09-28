@@ -136,6 +136,33 @@ export function setPastasDeProjeto(pastas) {
   return limpas
 }
 
+/**
+ * O foco do dia (CC-578), escrito por ele: "eu escrevo". Mora aqui e não no
+ * navegador para valer no telefone e no computador. Texto vazio apaga.
+ */
+export function setFoco(texto) {
+  const cfg = readConfig()
+  const t = String(texto || '').trim().slice(0, 300)
+  const foco = t ? { texto: t, em: Date.now() } : null
+  writeConfig({ ...cfg, foco })
+  return foco
+}
+
+/**
+ * Etiquetas de projeto (26/09, tela Projetos): "etiquetas você escreve". Por
+ * chave de projeto, até 6 de até 24 letras. Lista vazia apaga a entrada.
+ */
+export function setEtiquetas(projeto, lista) {
+  const cfg = readConfig()
+  const chave = String(projeto || '').trim().slice(0, 80)
+  if (!chave) return cfg.etiquetas || {}
+  const limpas = [...new Set((Array.isArray(lista) ? lista : []).map((t) => String(t || '').trim().slice(0, 24)).filter(Boolean))].slice(0, 6)
+  const etiquetas = { ...(cfg.etiquetas || {}) }
+  if (limpas.length) etiquetas[chave] = limpas; else delete etiquetas[chave]
+  writeConfig({ ...cfg, etiquetas })
+  return etiquetas
+}
+
 export function setPaineisMeus(paineis) {
   const cfg = readConfig()
   const limpos = (Array.isArray(paineis) ? paineis : []).slice(0, 9).map((p) => ({

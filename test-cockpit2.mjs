@@ -1,7 +1,11 @@
 // O motor do cockpit 2: a fala do agente, a presença e a montagem do modelo.
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { falaDasLinhas, montar, avisoDoAgente, semanaDe, _internals } from './src/cockpit2.mjs'
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { falaDasLinhas, montar, avisoDoAgente, semanaDe, semanaDosBlocos, conversaSemFala, ehPastaPessoal, resumoDaFala, falasDaConversa, _internals } from './src/cockpit2.mjs'
+import { primeiraFrase, paragrafoDepois } from './src/projetoResumo.mjs'
+import { contextoDaConversa } from './src/resumoAgy.mjs'
 
 let ok = 0
 const t = (nome, fn) => { fn(); ok += 1; console.log(`  ok  ${nome}`) }
@@ -88,6 +92,114 @@ t('montar: o mesmo projeto em duas grafias vira UM, com presença', () => {
   assert.equal(d.rodando[0].ferramenta, 'Edit')
   assert.equal(d.servicos.length, 2)
   assert.equal(d.resumo.espera, 2)
+})
+
+t('26/09, Semana: relógio é a união, agente é a soma, e o dia vira à meia-noite de Brasília', () => {
+  const H = 3600e3
+  const ag = Date.parse('2026-09-26T08:00:00Z') // 05h de Brasília
+  const s = {
+    a: { cwd: '/p/VPS_a', blocos: [[ag - 4 * H, ag - 1 * H]] }, // 01h às 04h, dia 26
+    b: { cwd: '/p/VPS_b', blocos: [[ag - 3 * H, ag - 2 * H]] }, // 02h às 03h, em paralelo
+    c: { cwd: '/p/VPS_a', blocos: [[Date.parse('2026-09-26T01:00:00Z'), Date.parse('2026-09-26T02:00:00Z')]] }, // 22h de Brasília, dia 25
+  }
+  const r = semanaDosBlocos(s, { agora: ag })
+  const [d25, d26] = r.dias.slice(-2)
+  assert.deepEqual([d25.dia, d25.ms / H, d25.relogioMs / H], ['2026-09-25', 1, 1], 'às 22h de Brasília ainda é dia 25; o corte de Londres jogava no 26')
+  assert.deepEqual([d26.ms / H, d26.relogioMs / H], [4, 3], 'duas sessões em paralelo somam 4h de agente em 3h de relógio')
+})
+
+t('26/09: sessão DESTA máquina carimbada com origem dá a pasta ao projeto; a de outra máquina, não', () => {
+  const d = montar({
+    jobs: [
+      job({ id: 'l', project: 'a', cwd: '/proj/a', origem: { id: 'm1', nome: 'vps' } }),
+      job({ id: 'f', project: 'b', cwd: 'D:\\proj\\b', origem: { id: 'pc', nome: 'pc' } }),
+    ],
+    local: { id: 'm1', nome: 'vps' }, agora, falaDe: () => null,
+  })
+  const raiz = Object.fromEntries(d.projetos.map((p) => [p.chave, p.raiz]))
+  assert.equal(raiz.a, '/proj/a', 'o carimbo de origem da própria máquina apagava a pasta (e a fila de ideias nunca era lida)')
+  assert.ok(!raiz.b, 'pasta de outra máquina não pode virar raiz aqui')
+})
+
+t('26/09: pergunta entra NA HORA, parada sem pergunta há mais de 2h sai, e cartão fechado some', () => {
+  const PERG = { tipo: 'pergunta', texto: 'Publico?', opcoes: ['sim'], quantas: 1, em: 'p1' }
+  const FALA = (em) => ({ tipo: 'fala', texto: 'terminei', opcoes: [], quantas: 0, em })
+  const base = { agora, tarefas: [] }
+  // 1. trabalhando há segundos, com a pergunta aberta: entra já
+  let d = montar({ ...base, jobs: [job({ id: 'a', status: 'working', updatedAt: agora - 5000 })], falaDe: () => PERG })
+  assert.deepEqual(d.espera.map((e) => e.rotulo), ['pergunta'], 'pergunta esperava 1 minuto de silêncio para aparecer')
+  // 2. parada sem pergunta há 3h: sai, e sai contada
+  d = montar({ ...base, jobs: [job({ id: 'b', status: 'waiting', updatedAt: agora - 3 * 3600_000 })], falaDe: () => FALA('f1') })
+  assert.equal(d.espera.length, 0, 'travada há 3h continuava nas decisões')
+  assert.equal(d.resumo.travadasOcultas, 1)
+  // ...mas pergunta de 3h NÃO sai (pergunta pendente não envelhece)
+  d = montar({ ...base, jobs: [job({ id: 'c', status: 'idle', updatedAt: agora - 3 * 3600_000 })], falaDe: () => PERG })
+  assert.equal(d.espera.length, 1)
+  // 3. fechado some; fala nova (outra marca) traz de volta
+  const fechadas = new Set(['d::f1'])
+  d = montar({ ...base, fechadas, jobs: [job({ id: 'd', status: 'waiting' })], falaDe: () => FALA('f1') })
+  assert.equal(d.espera.length, 0)
+  assert.equal(d.resumo.fechadasOcultas, 1)
+  d = montar({ ...base, fechadas, jobs: [job({ id: 'd', status: 'waiting' })], falaDe: () => FALA('f2') })
+  assert.equal(d.espera.length, 1, 'a sessão se mexeu: o cartão é outra decisão e volta')
+})
+
+t('26/09: ociosa com fala do agente não some calada; conectadas lista todas; reaberta fica', () => {
+  const FALA = { tipo: 'fala', texto: "write 'pode codar' to unblock coding", opcoes: [], quantas: 0, em: 'f1' }
+  const base = { agora, tarefas: [] }
+  // ociosa recente com fala: é decisão
+  let d = montar({ ...base, jobs: [job({ id: 'o1', status: 'idle', updatedAt: agora - 50 * 60_000 })], falaDe: () => FALA })
+  assert.equal(d.espera.length, 1, 'ociosa com fala sumia da Decisões')
+  // ociosa antiga: vai para as ocultas, marcada, em vez de sumir
+  d = montar({ ...base, jobs: [job({ id: 'o2', status: 'idle', updatedAt: agora - 8 * 3600_000 })], falaDe: () => FALA })
+  assert.equal(d.espera.length, 0)
+  assert.deepEqual(d.ocultas.map((o) => o.oculta), ['antiga'], 'antiga tem que ir para "Fechadas e antigas"')
+  // reaberta (mantida) volta mesmo antiga
+  d = montar({ ...base, mantidas: new Set(['o2::f1']), jobs: [job({ id: 'o2', status: 'idle', updatedAt: agora - 8 * 3600_000 })], falaDe: () => FALA })
+  assert.equal(d.espera.length, 1, 'reaberta sumiu de novo pela idade')
+  // 27/09: sessão disparada por programa (claude -p) nunca é decisão nem conectada parada
+  d = montar({ ...base, jobs: [job({ id: 'p1', status: 'idle', porPrograma: true, updatedAt: agora - 40 * 60_000 })], falaDe: () => FALA })
+  assert.equal(d.espera.length, 0, 'teste rodado por programa virou decisão dele')
+  assert.equal(d.conectadas.length, 0)
+  // 27/09: programa fechado (fora do registro de abertas) não é conectada nem decisão
+  d = montar({ ...base, jobs: [job({ id: 'f1', status: 'idle', aberta: false, updatedAt: agora - 26 * 60_000 })], falaDe: () => FALA })
+  assert.equal(d.espera.length, 0, 'sessão fechada seguia como decisão')
+  assert.equal(d.conectadas.length, 0, 'sessão fechada seguia como conectada')
+  // sem saber (aberta undefined, ex.: a outra máquina), nada muda
+  d = montar({ ...base, jobs: [job({ id: 'f2', status: 'idle', updatedAt: agora - 26 * 60_000 })], falaDe: () => FALA })
+  assert.equal(d.espera.length, 1)
+  // conectadas: trabalhando primeiro, ociosa depois
+  d = montar({ ...base, jobs: [job({ id: 'x', project: 'X', status: 'idle', updatedAt: agora - 60_000 }), job({ id: 'y', project: 'Y', status: 'working', updatedAt: agora - 5000 })], falaDe: () => null })
+  assert.deepEqual(d.conectadas.map((s) => s.estado), ['trabalhando', 'ociosa'])
+})
+
+t('CC-561: pendência de mais de 7 dias vai para a gaveta, sem sumir do projeto; a recente fica nas decisões', () => {
+  const dia = 86400_000
+  const d = montar({
+    jobs: [job({ id: 'j1', project: 'a', status: 'working' })],
+    tarefas: [
+      { id: 'velha', texto: 'decidir a landing', projeto: 'a', em: agora - 8 * dia },
+      { id: 'nova', texto: 'conferir o print', projeto: 'a', em: agora - 1 * dia },
+    ],
+    agora, falaDe: () => null,
+  })
+  assert.deepEqual(d.espera.filter((e) => e.tipo === 'pendencia').map((e) => e.id), ['nova'], 'a velha poluía as decisões')
+  assert.deepEqual(d.gaveta.map((e) => e.id), ['velha'])
+  assert.equal(d.resumo.gaveta, 1)
+  assert.deepEqual(d.projetos[0].pendencias.map((e) => e.id).sort(), ['nova', 'velha'], 'no cartão do projeto as duas continuam: gaveta não é apagar')
+})
+
+t('CC-556: sessão ociosa há horas com PERGUNTA pendente continua nas decisões; sem pergunta, não', () => {
+  const PERG = { tipo: 'pergunta', texto: 'Publico hoje?', opcoes: ['sim', 'não'], quantas: 1 }
+  const d = montar({
+    jobs: [
+      job({ id: 'perg', project: 'a', status: 'idle', updatedAt: agora - 3 * 3600_000 }),
+      job({ id: 'muda', project: 'b', status: 'idle', updatedAt: agora - 3 * 3600_000 }),
+    ],
+    agora, falaDe: (j) => (j.id === 'perg' ? PERG : { tipo: 'fala', texto: 'terminei', opcoes: [], quantas: 0 }),
+  })
+  assert.deepEqual(d.espera.map((e) => e.id), ['perg'], 'a pergunta de 3h atrás some da Início se a idade vencer')
+  assert.equal(d.espera[0].rotulo, 'pergunta')
 })
 
 t('federado: o mesmo projeto nas duas máquinas vira UM, com as duas presenças', () => {
@@ -231,7 +343,7 @@ const UI = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf
 const DE_FRASE = /(?<![a-zà-ÿ])(que|quem|você|voce|seu|sua|meu|minha|está|esta|espera|precisa|falta|só|no ar|do dia)(?![a-zà-ÿ])/i
 
 const rotulos = [
-  ...[...UI.matchAll(/c2Bloco\('([^']{2,40})'/g)].map((m) => ({ onde: 'bloco do Início', texto: m[1] })),
+  ...[...UI.matchAll(/(?:c2Bloco|iniBloco)\('([^']{2,40})'/g)].map((m) => ({ onde: 'bloco do Início', texto: m[1] })),
   ...[...UI.matchAll(/'<h4>([^<'(]{2,40})/g)].map((m) => ({ onde: 'seção do inspetor', texto: m[1] })),
   ...[...UI.matchAll(/<th>([^<]{2,40})<\/th>/g)].map((m) => ({ onde: 'coluna da tabela', texto: m[1] })),
 ]
@@ -251,6 +363,106 @@ t('a regra do rótulo pega o caso que ele recusou (prova negativa)', () => {
   assert.ok(!DE_FRASE.test('DECISÕES'))
   assert.ok(!DE_FRASE.test('SERVIÇOS'))
   assert.ok(!DE_FRASE.test('SEMANA'))
+})
+
+t('descrição do projeto: primeira frase da seção Projeto, sem marcação', () => {
+  const md = '# x\n\n## Projeto\n> citação que não conta\n\nPainel dos **agentes** do `Claude`. Segunda frase.\n\n## Outra\ntexto'
+  assert.equal(primeiraFrase(paragrafoDepois(md, /^##\s+Projeto\b/i)), 'Painel dos agentes do Claude.')
+  assert.equal(paragrafoDepois('## Outra\nnada', /^##\s+Projeto\b/i), null, 'sem a seção, não inventa')
+  assert.equal(primeiraFrase(''), null)
+  assert.ok(primeiraFrase('a'.repeat(300)).length <= 160, 'frase longa é cortada')
+})
+
+t('27/09: pergunta já respondida (tool_result depois dela) não volta como pergunta', () => {
+  const perg = JSON.stringify({ type: 'assistant', timestamp: 't1', message: { content: [{ type: 'tool_use', name: 'AskUserQuestion', id: 'q1', input: { questions: [{ question: 'Logo?', options: [{ label: 'A' }] }] } }] } })
+  const resp = JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'q1', content: 'A' }] } })
+  assert.equal(falaDasLinhas(perg).tipo, 'pergunta', 'sem resposta, é pergunta')
+  const f = falaDasLinhas(perg + '\n' + resp)
+  assert.notEqual(f.tipo, 'pergunta', 'respondida no terminal seguia como pergunta')
+  assert.equal(f.respondida, true)
+})
+
+t('CC-596: a pergunta traz o contexto (o que o agente disse antes) e a explicação de cada opção', () => {
+  const ele = JSON.stringify({ type: 'user', message: { content: 'faz o logo' } })
+  const a1 = JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'Montei três propostas de logo.' }] } })
+  const perg = JSON.stringify({ type: 'assistant', timestamp: 't', message: { content: [{ type: 'text', text: 'Sugiro A.' }, { type: 'tool_use', name: 'AskUserQuestion', id: 'q9', input: { questions: [{ question: 'Qual logo?', options: [{ label: 'A', description: 'empilhado' }, { label: 'B', description: 'em linha' }] }] } }] } })
+  const f = falaDasLinhas([ele, a1, perg].join('\n'))
+  assert.equal(f.tipo, 'pergunta')
+  assert.match(f.contexto, /três propostas/)
+  assert.match(f.contexto, /Sugiro A/)
+  assert.deepEqual(f.perguntas[0].descricoes, ['empilhado', 'em linha'])
+  assert.equal(falaDasLinhas([a1, ele, perg].join('\n')).contexto, 'Sugiro A.', 'o contexto para na mensagem dele')
+})
+
+t('CC-589: o resumo é o trecho abaixo de "// resumo //"; sem ele, três frases', () => {
+  const com = 'Medi tudo.\nDescartei X.\n\n---- // resumo // ----\n\n- **Feito:** a tela.\n- Falta: o PC.'
+  assert.equal(resumoDaFala(com), '- Feito: a tela.\n- Falta: o PC.')
+  assert.equal(resumoDaFala('Um. Dois. Três. Quatro.'), 'Um. Dois. Três.')
+  assert.ok(resumoDaFala('a'.repeat(2000) + '.').length <= 421)
+})
+
+t('pasta pessoal de qualquer máquina não é projeto; subpasta dela é', () => {
+  assert.equal(ehPastaPessoal('C:\\Users\\lfeli.ALIENWARE-LIPE'), true)
+  assert.equal(ehPastaPessoal('/home/claudedev'), true)
+  assert.equal(ehPastaPessoal('/Users/felipe/'), true)
+  assert.equal(ehPastaPessoal('C:\\Users\\lfeli\\projetos\\tradutor'), false)
+  assert.equal(ehPastaPessoal('/home/claudedev/projetos/VPS_cockpit'), false)
+  assert.equal(ehPastaPessoal(null), false)
+})
+
+t('sessão aberta sem conversa não é decisão; com fala do agente, é', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c2-vazia-'))
+  const f = join(dir, 'x.jsonl')
+  writeFileSync(f, '{"type":"mode"}\n{"type":"system","subtype":"bridge_status"}\n')
+  assert.equal(conversaSemFala(f), true)
+  writeFileSync(f, '{"type":"user"}\n{"type":"assistant","message":{}}\n')
+  assert.equal(conversaSemFala(f), false)
+  assert.equal(conversaSemFala(join(dir, 'nao-existe.jsonl')), false)
+  assert.equal(conversaSemFala(null), false)
+  rmSync(dir, { recursive: true })
+})
+
+t('permissão: ação sem resultado + registro "waiting" vira cartão de permissão; com resultado, não', () => {
+  const acao = assistente([{ type: 'text', text: 'Vou fotografar.' }, { type: 'tool_use', id: 'b1', name: 'Bash', input: { command: 'node fotos3.mjs', description: 'Clica em Começar e fotografa' } }])
+  const f = falaDasLinhas([usuario('testa'), acao].join('\n'))
+  assert.equal(f.pendente.nome, 'Bash')
+  assert.equal(f.pendente.comando, 'node fotos3.mjs')
+  const a = avisoDoAgente(job({ permissao: true }), f, 'vps', agora)
+  assert.equal(a.rotulo, 'permissão')
+  assert.equal(a.pergunta, 'Clica em Começar e fotografa')
+  assert.notEqual(avisoDoAgente(job(), f, 'vps', agora).rotulo, 'permissão', 'sem o registro dizer waiting, não é permissão')
+  const feita = linha({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'b1', content: 'ok' }] } })
+  assert.equal(falaDasLinhas([usuario('testa'), acao, feita].join('\n')).pendente, undefined)
+})
+
+t('CC-631: a conversa traz as falas dos dois lados, junta a resposta em partes e pula o que não é fala', () => {
+  const txt = [
+    usuario('me mostre o plano'),
+    linha({ type: 'user', isMeta: true, message: { content: 'texto de skill' } }),
+    assistente([{ type: 'text', text: 'Vou ler.' }, { type: 'tool_use', name: 'Read', input: {} }]),
+    linha({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'x', content: 'arquivo' }] } }),
+    assistente([{ type: 'text', text: 'Aqui está.' }]),
+    assistente([{ type: 'text', text: 'de um sub-agente' }], { isSidechain: true }),
+    usuario('<command-name>/clear</command-name>'),
+    usuario('valeu'),
+  ].join('\n')
+  const f = falasDaConversa(txt)
+  assert.deepEqual(f.map((x) => x.quem + ':' + x.texto), ['voce:me mostre o plano', 'agente:Vou ler.\n\nAqui está.', 'voce:valeu'])
+})
+
+t('resumo do agy: contexto começa no último pedido dele e ignora o que veio antes', () => {
+  const L = (o) => JSON.stringify(o)
+  const txt = [
+    L({ type: 'user', message: { content: 'pedido velho' } }),
+    L({ type: 'assistant', message: { content: [{ type: 'text', text: 'resposta velha' }] } }),
+    L({ type: 'user', isMeta: true, message: { content: 'texto de skill' } }),
+    L({ type: 'user', message: { content: 'faz o logo' } }),
+    L({ type: 'assistant', message: { content: [{ type: 'text', text: 'Montei.' }, { type: 'tool_use', name: 'Edit', input: { file_path: 'a.js' } }] } }),
+  ].join('\n')
+  const c = contextoDaConversa(txt)
+  assert.ok(c.startsWith('PEDIDO DO DONO: faz o logo'))
+  assert.ok(c.includes('AGENTE: Montei.') && c.includes('AÇÃO Edit'))
+  assert.ok(!c.includes('velh') && !c.includes('skill'))
 })
 
 console.log(`\n${ok} ok, 0 falhas (cockpit2)`)

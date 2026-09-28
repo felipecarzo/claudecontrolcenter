@@ -363,6 +363,18 @@ export const VALIDADE_HERDADO_MS = 12 * 60 * 60 * 1000
  */
 export const LIMITE_ARQUIVO = 4 * 1024 * 1024
 
+/** Copia `ultimaFala` do pacote anterior para o job que chegou sem ela e não
+ *  se mexeu desde então. Muda `final` no lugar e devolve quantas herdou. */
+export function herdarFalas(final, anterior) {
+  const antes = new Map((anterior?.jobs || []).filter((j) => j && j.id && j.ultimaFala).map((j) => [j.id, j]))
+  let n = 0
+  for (const j of final.jobs || []) {
+    const a = j && j.id ? antes.get(j.id) : null
+    if (a && j.ultimaFala == null && a.updatedAt === j.updatedAt) { j.ultimaFala = a.ultimaFala; n += 1 }
+  }
+  return n
+}
+
 export function gravarPacote(pacote) {
   const dir = dirFederacao()
   fs.mkdirSync(dir, { recursive: true })
@@ -427,6 +439,14 @@ export function gravarPacote(pacote) {
    * Agora todo envio entra na lista, inclusive o que não se identifica: ele vira
    * `{ pid: null, tipo: 'antigo' }`. Não saber QUEM é outra coisa que não saber
    * QUANTOS, e a pergunta aqui é quantos. */
+  /* 26/09, medido com print dele ("algumas tarefas aparecem, somem,
+   * reaparecem"): com dois empurradores no PC, o de código velho não manda
+   * `ultimaFala`, e a pergunta do agente sumia a cada envio dele, voltando no
+   * seguinte. O cartão alternava entre PERGUNTA e "parou sem perguntar" de 15
+   * em 15 segundos. Pacote sem a fala herda a do anterior quando o job é o
+   * mesmo e não se mexeu (mesmo `updatedAt`): aí a fala não pode ter mudado. */
+  herdarFalas(final, anterior)
+
   const JANELA_EMPURRADORES_MS = 5 * 60 * 1000
   const vistos = Array.isArray(anterior?.empurradores) ? anterior.empurradores : []
   const chave = (o) => `${o.tipo}:${o.pid ?? '?'}`
@@ -996,6 +1016,9 @@ export function maquinasConhecidas(pacotes, origemLocal, retratoLocal = null) {
       local: false,
       idadeMs: p.idadeMs,
       semContato: p.semContato,
+      /* 26/09: quantos programas enviaram desta máquina nos últimos 5 min.
+         Mais de um é o defeito que faz cartão sumir e voltar na tela. */
+      empurradores: Array.isArray(p.empurradores) ? p.empurradores.map((e) => ({ tipo: e.tipo || null, pid: e.pid ?? null })) : [],
       /* CC-263: onde o projeto mora NAQUELA máquina, tirado do que ela mesma
          reportou. É o que permite a tela montar o comando de instalar o serviço
          com o caminho certo, em vez de chutar um `D:\...` que pode não existir.

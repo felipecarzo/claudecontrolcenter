@@ -27,6 +27,7 @@ import {
 import { buscar, lerGlossario, lerPalavrasDaTela, termosDe } from './glossario.mjs'
 import {
   acrescentar as acrescentarMeu, marcar as marcarMeu, remover as removerMeu, tudo as tudoMeu,
+  descartar as descartarMeu,
 } from './meu.mjs'
 import { origem as origemLocal } from './maquina-id.mjs'
 import {
@@ -67,6 +68,8 @@ import { estado as estadoMaquina } from './maquina.mjs'
    segundos e o retrato só muda quando alguém registra um hook. */
 import { retratoComCache } from './travasDaMaquina.mjs'
 import { lerRoadmap, ordenar as ordenarRoadmap } from './roadmap.mjs'
+import { resumoDoProjeto } from './projetoResumo.mjs'
+import { marcarRespondida as marcarRespondidaHist, listar as listarHistorico } from './decisaoHistorico.mjs'
 import { trocarEstado as trocarEstadoRoadmap } from './roadmapEscrita.mjs'
 import { ultimaMexida as ultimaMexidaRoadmap, chaveDe as chaveRoadmap } from './roadmapHistorico.mjs'
 import { findProjects, projectsBase } from './install.mjs'
@@ -89,7 +92,7 @@ import {
   readPaineis, ligarPainel, desligarPainel, portaDe, falhaAoLigar,
   resolverBinario, _internals as paineisInternals,
 } from './paineis.mjs'
-import { readNotes, writeNotes } from './notes.mjs'
+import { readNotes, writeNotes, acrescentarNota } from './notes.mjs'
 import * as docs from './documentos.mjs'
 // estáticos, não `await import` dentro da rota: a função que trata a requisição
 // não é async, e o `await` ali quebrou o servidor inteiro por erro de sintaxe —
@@ -124,7 +127,7 @@ import { resumo as resumoTempo } from './tempo.mjs'
 import {
   setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
   setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig, setVisita,
-  setMaquina, setFederacao, moduloLigado, setModuloProjeto, setPaineisMeus,
+  setMaquina, setFederacao, moduloLigado, setModuloProjeto, setPaineisMeus, setFoco, setEtiquetas,
   projetosDoQuadro, setProjetosDoQuadro, setPastasDeProjeto,
   CHAVE_TUDO, visitaGeral, setVisitaGeral, setTelaAberto, lerTelaAberto,
 } from './config.mjs'
@@ -150,10 +153,10 @@ import { SECOES as SECOES_VPS, veredito as veredictoVps } from './vpsSaude.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
 import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
+import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao } from './decisao.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
-const UI_V2 = path.join(HERE, 'ui_v2.html')
 /* CC-397, 29/08: o painel em construção, servido AO LADO do que ele usa.
  *
  * Pedido dele: *"vamos executar um plano em etapas p nao atrapalhar o
@@ -1309,18 +1312,23 @@ function handler(req, res) {
    * uma linha aqui. Apagar arquivo seria a única parte irreversível de uma
    * troca de endereço, e essa é decisão dele, não consequência automática.
    *
-   * ⚠️ **`/v2` continua sendo o painel de todo dia de ANTES**, e não um apelido
-   * da raiz. Se ele abrir o novo no telefone às três da manhã e algo estiver
-   * quebrado, o caminho de volta tem que existir e ser o mesmo de sempre. */
-  if (url.pathname === '/' || url.pathname === '/novo' || url.pathname === '/v3') {
+   * ⚠️ **Em 23/09 ele mandou apagar o `/v2`**, o painel de todo dia até 29/08:
+   * *"pode deletar o cockpit V2 antigo, vamos ficar com o principal e esses
+   * cockpit 2"*. O caminho de volta agora é o git, não um endereço. */
+  /* ===== CC-636, 27/09: o cockpit novo assume a RAIZ, a pedido dele ======
+     Palavras dele: *"podemos substituir o cockpit novo no lugar do antigo
+     como principal e colocar o atual como antigo, pq esse novo já tá muito
+     melhor"*. A raiz e o `/cockpit2` (endereço que ele já usa) entregam o
+     novo; o de antes fica em `/antigo` (e nos endereços velhos `/novo` e
+     `/v3`). Nada apagado: voltar é trocar estas linhas. O service worker não
+     guarda página (`sw.js`), então o aplicativo instalado já abre o novo. */
+  if (url.pathname === '/' || url.pathname === '/cockpit2' || url.pathname === '/simples') {
+    return send(res, 200, fs.readFileSync(UI_COCKPIT2, 'utf8'), 'text/html; charset=utf-8')
+  }
+  if (url.pathname === '/antigo' || url.pathname === '/novo' || url.pathname === '/v3') {
     return send(res, 200, fs.readFileSync(UI_V3, 'utf8'), 'text/html; charset=utf-8')
   }
-  /* O painel de todo dia até 29/08. Continua aqui inteiro: é a volta atrás. */
-  if (url.pathname === '/v2') {
-    return send(res, 200, fs.readFileSync(UI_V2, 'utf8'), 'text/html; charset=utf-8')
-  }
   if (url.pathname === '/v1') return send(res, 200, fs.readFileSync(UI, 'utf8'), 'text/html; charset=utf-8')
-  if (url.pathname === '/cockpit2' || url.pathname === '/simples') return send(res, 200, fs.readFileSync(UI_COCKPIT2, 'utf8'), 'text/html; charset=utf-8')
   if (url.pathname === '/graficos.js') {
     return send(res, 200, fs.readFileSync(GRAFICOS, 'utf8'), 'text/javascript; charset=utf-8')
   }
@@ -1379,7 +1387,9 @@ function handler(req, res) {
   // stream compara os jobs pra decidir se manda evento.
   if (url.pathname === '/api/notes') {
     if (req.method === 'POST') {
-      return comCorpo(req, res, 5e6, ({ notes }) => ({ notes: writeNotes(notes) }))
+      /* `nova`: a nota rápida da Início (26/09). Só acrescenta no topo, sem
+         reenviar a lista, para não atropelar uma edição aberta na tela Notas. */
+      return comCorpo(req, res, 5e6, ({ notes, nova }) => (nova !== undefined ? acrescentarNota(nova) : { notes: writeNotes(notes) }))
     }
     return send(res, 200, { notes: readNotes() })
   }
@@ -1455,6 +1465,29 @@ function handler(req, res) {
 
   // Varre o disco atrás de pastas de projeto: só o construtor de "subir" pede.
   if (url.pathname === '/api/projetos') return send(res, 200, { projetos: projetosLancaveis() })
+
+  /* 26/09, item 7 da tela Projetos, decisão dele: na VPS o "subir" é pelo
+     endereço de teste (~/dev.sh), nunca `npm run dev` solto, que cairia nas
+     portas 3000 a 3021 dos sites de cliente. A lista de nomes sai do próprio
+     script, e só nome dela é aceito: nada de comando vindo da tela. */
+  if (url.pathname === '/api/dev-teste') {
+    const script = path.join(os.homedir(), 'dev.sh')
+    let nomes = []
+    try {
+      const txt = fs.readFileSync(script, 'utf8')
+      nomes = [...txt.matchAll(/^\s*([\w-]+)\)\s*echo "\$HOME\/([^:"]+):(\w+):(\d+)"/gm)]
+        .map((m) => ({ nome: m[1], pasta: path.join(os.homedir(), m[2]), tipo: m[3], porta: Number(m[4]), url: 'https://testedevoo.carzo.com.br/' + m[1] + '/' })) // CC-628: sem a barra final o nginx dá 404 (medido no maurice)
+    } catch { /* sem o script nesta máquina: lista vazia, e a tela não oferece */ }
+    if (req.method !== 'POST') return send(res, 200, { nomes })
+    return comCorpo(req, res, 1e3, ({ nome }) => {
+      const alvo = nomes.find((n) => n.nome === nome)
+      if (!alvo) return { ok: false, erro: 'nome desconhecido pelo ~/dev.sh' }
+      const log = fs.openSync(path.join(os.homedir(), 'logs', 'dev-teste-painel.log'), 'a')
+      const filho = spawn(script, [alvo.nome], { detached: true, stdio: ['ignore', log, log], env: { ...process.env, CC_SEM_NAVEGADOR: '1' } })
+      filho.unref()
+      return { ok: true, url: alvo.url }
+    })
+  }
 
   if (url.pathname === '/api/subir' && req.method === 'POST') {
     return comCorpo(req, res, 1e4, (corpo) => ({ subiu: subirServidor(corpo) }))
@@ -1884,6 +1917,7 @@ function handler(req, res) {
       return comCorpo(req, res, 4e3, ({ acao, id: alvo, texto, projeto, frente, porque, feito }) => {
         if (acao === 'marcar') return marcarMeu(alvo, feito)
         if (acao === 'remover') return removerMeu(alvo)
+        if (acao === 'descartar') return descartarMeu(alvo)
         return acrescentarMeu({ texto, projeto, frente, porque })
       })
     }
@@ -1966,6 +2000,20 @@ function handler(req, res) {
       maquina: origemLocal(readConfig())?.nome || null,
       at: Date.now(),
     })
+  }
+
+  /* 26/09, tela Projetos: descrição (do CLAUDE.md) e contagem do roadmap de
+     cada projeto desta máquina, pela mesma descoberta do framework. Chave é a
+     pasta; a tela casa pelo nome. */
+  if (url.pathname === '/api/projetos/resumo') {
+    const out = {}
+    for (const raiz of findProjects()) {
+      try { out[path.basename(raiz)] = resumoDoProjeto(raiz) } catch { /* um projeto ilegível não derruba a lista */ }
+    }
+    return send(res, 200, { projetos: out, etiquetas: readConfig().etiquetas || {}, em: Date.now() })
+  }
+  if (url.pathname === '/api/etiquetas' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ projeto, etiquetas }) => ({ ok: true, etiquetas: setEtiquetas(projeto, etiquetas) }))
   }
 
   if (url.pathname === '/api/framework/projetos') {
@@ -2482,6 +2530,12 @@ function handler(req, res) {
      config e não em `~/.claude/jobs`. O teto de 9 painéis não é técnico, é a
      tecla: a troca é pelas teclas 1 a 9, e o décimo não teria como ser
      chamado. Cada painel guarda só nome e ids de bloco. */
+  /* CC-578: o foco do dia, que ele escreve na Início. */
+  if (url.pathname === '/api/foco') {
+    if (req.method === 'POST') return comCorpo(req, res, 1e4, ({ texto }) => ({ ok: true, foco: setFoco(texto) }))
+    return send(res, 200, { foco: readConfig().foco || null })
+  }
+
   if (url.pathname === '/api/paineis-meus') {
     if (req.method === 'POST') {
       return comCorpo(req, res, 1e5, ({ paineis }) => ({ paineis: setPaineisMeus(paineis) }))
@@ -2669,6 +2723,99 @@ function handler(req, res) {
         modelo: modelo || null, esforco: esforco || null,
         anexos: Array.isArray(anexos) ? anexos : [],
       })
+    })
+  }
+
+  /* CC-556: responder pelo painel a pergunta que o agente fez. A peça confere
+     três vezes antes e depois (transcrito pendente, pergunta na tela, resposta
+     gravada) e devolve `ok: false` com o motivo, nunca finge. */
+  if (url.pathname === '/api/decisao/responder' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 2e4, async ({ conversa, id, respostas }) => {
+      const r = await responderDecisao({ conversa, id, respostas })
+      // CC-582: o histórico registra que esta foi respondida pelo painel.
+      if (r && r.ok) marcarRespondidaHist(String(conversa || '').slice(0, 8))
+      return r
+    })
+  }
+  /* CC-609: permitir uma vez ou negar o pedido de permissão do terminal. */
+  if (url.pathname === '/api/decisao/permitir' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e3, async ({ conversa, id, decisao }) => {
+      const r = await permitirSessao({ conversa, id, decisao })
+      if (r && r.ok) marcarRespondidaHist(String(conversa || '').slice(0, 8))
+      return r
+    })
+  }
+  /* CC-582: o histórico de decisões, de um projeto (pela chave) ou de todos. */
+  /* CC-589: a última resposta inteira de uma sessão, para "ver resposta
+     completa". Só desta máquina; o id é conferido em `falaCompleta`. */
+  if (url.pathname === '/api/sessao/fala') {
+    return import('./cockpit2.mjs').then((m) => {
+      const f = m.falaCompleta(url.searchParams.get('conversa'))
+      send(res, f ? 200 : 404, f || { erro: 'conversa não encontrada nesta máquina' })
+    }).catch((e) => send(res, 500, { erro: String(e.message || e) }))
+  }
+  /* CC-631: as últimas falas da conversa, para o modo lista da tela Sessões. */
+  if (url.pathname === '/api/sessao/conversa') {
+    return import('./cockpit2.mjs').then((m) => {
+      const r = m.conversaRecente(url.searchParams.get('conversa'))
+      send(res, r ? 200 : 404, r || { erro: 'conversa não encontrada nesta máquina' })
+    }).catch((e) => send(res, 500, { erro: String(e.message || e) }))
+  }
+  if (url.pathname === '/api/decisao/historico') {
+    return send(res, 200, { itens: listarHistorico({ projeto: url.searchParams.get('projeto') || null }) })
+  }
+  /* 26/09, item 3 da Início: fechar um cartão (some até a sessão se mexer) e
+     mandar mensagem livre para uma sessão parada. */
+  if (url.pathname === '/api/decisao/fechar' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id, marca }) => fecharDecisao({ id, marca }))
+  }
+  /* 26/09, tela Decisões item 4: reabrir o que ele fechou ou o que saiu pela
+     idade. */
+  if (url.pathname === '/api/decisao/reabrir' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id, marca }) => reabrirDecisao({ id, marca }))
+  }
+  /* CC-630: "para depois" (guardar com a forma de voltar) e "trazer de volta". */
+  if (url.pathname === '/api/decisao/depois' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id, marca, modo }) => adiarDecisao({ id, marca, modo }))
+  }
+  if (url.pathname === '/api/decisao/trazer' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id }) => trazerDecisao({ id }))
+  }
+  /* 26/09, item 8: "virar item" (aprova; a próxima sessão do projeto
+     registra) e "descartar" (sai da fila e não volta). A raiz vem da tela, então
+     só vale se for uma pasta de projeto de verdade dentro de `projetos/`. */
+  if (url.pathname === '/api/ideias' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 2e4, async ({ acao, raiz, id, texto }) => {
+      const { raizDoProjeto } = await import('./ideiasVarredura.mjs')
+      if (!raiz || raizDoProjeto(raiz) !== raiz || !fs.existsSync(raiz)) return { ok: false, erro: 'pasta de projeto inválida' }
+      const I = await import('./ideias.mjs')
+      /* Ideia antiga da tela Ideias ainda não está na fila: entra primeiro,
+         com o texto que a tela mandou, e só então recebe a decisão dele. */
+      if (texto && !(I.lerFila(raiz).pendentes || []).some((p) => p.id === id)) {
+        I.guardar(raiz, [{ texto }])
+        if (I.idDe(texto) !== id) return { ok: false, erro: 'o texto não bate com a ideia' }
+      }
+      if (acao === 'aprovar') return I.aprovar(raiz, id)
+      if (acao === 'descartar') return I.resolver(raiz, id)
+      return { ok: false, erro: 'ação desconhecida' }
+    })
+  }
+  /* A tela Ideias (26/09): todas, com o estado de cada uma. A primeira leitura
+     custa uns 8s; depois vem do cache por tamanho de arquivo. */
+  if (url.pathname === '/api/ideias/todas') {
+    import('./ideiasVarredura.mjs')
+      .then(({ indice }) => send(res, 200, { ideias: indice(), at: Date.now() }))
+      .catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
+  if (url.pathname === '/api/decisao/parar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e3, ({ conversa }) => pararSessao({ conversa }))
+  }
+  if (url.pathname === '/api/decisao/mensagem' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 2e4, async ({ conversa, texto }) => {
+      const r = await mensagemDecisao({ conversa, texto })
+      if (r && r.ok) marcarRespondidaHist(String(conversa || '').slice(0, 8))
+      return r
     })
   }
 
@@ -3323,9 +3470,14 @@ function handler(req, res) {
   }
 
   if (url.pathname === '/api/trabalho') {
-    const s = snapshot()
-    const lista = projetosDe(s.jobs, findProjects)
-    const projetos = carregarProjetos(lista)
+    /* CC-585, 27/09: esta rota levava 3,7 s SÍNCRONOS e travava o painel
+       inteiro nesse tempo (um pedido de 0,002 s esperou 3,5 s). `_tempos`
+       diz quanto cada etapa custou, para o conserto mirar a certa. */
+    const _t = {}; let _t0 = Date.now()
+    const marca = (k) => { const n = Date.now(); _t[k] = n - _t0; _t0 = n }
+    const s = snapshot(); marca('snapshot')
+    const lista = projetosDe(s.jobs, findProjects); marca('projetosDe')
+    const projetos = carregarProjetos(lista); marca('carregarProjetos')
     /* CC-262: a revisão entra na ABA TRABALHO, em "o que só você resolve", que
        foi onde ele pediu: *"na aba de trabalho, em o que só você resolve, você
        poderia checar o que não precisa mais ser resolvido?"*.
@@ -3334,10 +3486,11 @@ function handler(req, res) {
        numa rota que ele abre a toda hora. */
     const pendencias = tudoMeu(s.jobs, { projetos, maquinaLocal: origemLocal(readConfig())?.nome || null })
       .map((p) => (REVISAO_PENDENCIAS[p.id] ? { ...p, ...REVISAO_PENDENCIAS[p.id] } : p))
+    marca('pendencias')
     /* CC: as siglas vão junto do trabalho, não numa rota à parte. A tela mostra
        o mesmo código em quatro lugares; se cada um resolvesse o nome sozinho,
        seriam quatro contas para a mesma pergunta, e um dia discordariam. */
-    const siglas = todasSiglas(projetos.map((x) => x.raiz), s.jobs)
+    const siglas = todasSiglas(projetos.map((x) => x.raiz), s.jobs); marca('siglas')
 
     const montado = montarTrabalho({
       projetos,
@@ -3345,6 +3498,7 @@ function handler(req, res) {
       pendencias,
       ordem: url.searchParams.get('ordem') === 'tempo' ? 'tempo' : 'importancia',
     })
+    marca('montar')
 
     /* CC-349: "parada há quanto tempo" em cada cartão. Sai do mesmo git que já
        diz quando a frente nasceu, lido pela outra ponta, e com cache por data do
@@ -3361,20 +3515,24 @@ function handler(req, res) {
         if (quando) c.mexidoEm = quando
       }
     }
+    marca('mexidoEm')
+    const desde = (() => {
+      const em = visitaGeral()
+      if (em == null) return { em: null, marcos: [] }
+      return { em, marcos: mudouDesde(em, { jobs: s.jobs }) }
+    })()
+    marca('desdeQueOlhei')
 
     return send(res, 200, {
       ...montado,
       siglas,
+      _tempos: _t,
       /* CC-122: "o que mudou desde que eu olhei", em UMA resposta.
          Estava partida em três telas (o "vi isso" por projeto, o resumo da
          semana e o "o que mudou" do mapa), e ele trabalha do telefone, onde
          atravessar três telas para montar a resposta na cabeça é o mesmo que
          não ter. Sai daqui porque esta é a tela que abre. */
-      desdeQueOlhei: (() => {
-        const em = visitaGeral()
-        if (em == null) return { em: null, marcos: [] }
-        return { em, marcos: mudouDesde(em, { jobs: s.jobs }) }
-      })(),
+      desdeQueOlhei: desde,
     })
   }
 
@@ -3994,6 +4152,28 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
         const timer = setInterval(() => { empurrar().catch(() => {}) }, 30_000)
         timer.unref() // não pode segurar o processo de pé sozinho
         empurrar().catch(() => {}) // um primeiro envio, para não esperar meio minuto
+      }
+      /* 26/09, item 8 da Início: a varredura das ideias dele. A primeira olha
+         7 dias (pegou 2 ideias que nunca viraram item no ensaio), as seguintes
+         24 horas, de hora em hora. Custa ~1 a 2,5s e só lê. Espera 90s para
+         não disputar com a subida do painel. */
+      /* Depois de varrer, aquece o índice da tela Ideias: sem isso a primeira
+         abertura dele esperaria uns 8 segundos. */
+      const varrerIdeias = (janelaMs) => import('./ideiasVarredura.mjs').then((m) => { m.varrer({ janelaMs }); m.indice() }).catch(() => {})
+      setTimeout(() => varrerIdeias(7 * 86400000), 90_000).unref()
+      /* CC-585: aquece o cache das ordens do Kanban logo depois de subir, para
+         o primeiro toque dele não pagar os ~5 s da primeira leitura do git. */
+      setTimeout(() => { try { carregarProjetos(projetosDe(snapshot().jobs, findProjects)) } catch { /* só aquecimento */ } }, 20_000).unref()
+      setInterval(() => varrerIdeias(86400000), 3600_000).unref()
+      /* 26/09, item 13 da Início: o retrato da VPS estava de 13/08 porque só
+         renovava no clique. Decisão dele: renovar sozinho de hora em hora.
+         SÓ no modo local (o painel rodando NA VPS, lendo a própria máquina):
+         no PC a leitura usa a chave SSH dele, e ali a regra continua sendo
+         só sob clique. Custa ~5s e só lê. */
+      if (process.env.CC_VPS_LOCAL === '1') {
+        const retratoVps = () => atualizarSnapshot().catch(() => {})
+        setTimeout(retratoVps, 120_000).unref()
+        setInterval(retratoVps, 3600_000).unref()
       }
       resolve({ server, url: `http://localhost:${server.address().port}` })
     })

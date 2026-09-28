@@ -6404,14 +6404,21 @@
       renderNovoProjeto();
       fetch('/api/projeto/novo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...NOVO_FORM, nome }) })
         .then((r) => r.json()).then((d) => {
-          if (d.error) { NOVO_RESULTADO = null; return renderNovoProjeto(); }
+          /* 25/09: o erro era apagado calado, e o formulário voltava ao
+             começo como se nada tivesse acontecido. Ele criou "tradutor",
+             nada nasceu, e nem ele nem o servidor sabiam dizer por quê. */
+          if (d.error) { NOVO_RESULTADO = null; renderNovoProjeto(); return avisoNovoProjeto('não criou: ' + d.error); }
           NOVO_RESULTADO = d;
           NOVO_FORM.nome = ''; NOVO_FORM.descricao = '';
           ENTREVISTA = { projeto: d.projeto, ...d.entrevista };
           ENTREVISTA_RASCUNHO = ''; ENTREVISTA_ORFAS = null;
           renderEntrevista();
           carregarFrameworkLista();
-        }).catch(() => { NOVO_RESULTADO = null; renderNovoProjeto(); });
+        }).catch((err) => { NOVO_RESULTADO = null; renderNovoProjeto(); avisoNovoProjeto('o pedido não chegou ao painel: ' + (err && err.message || 'sem resposta')); });
+    }
+    function avisoNovoProjeto(msg) {
+      const alvo = document.getElementById('fw-novo-projeto');
+      if (alvo) alvo.insertAdjacentHTML('afterbegin', '<p style="color:var(--red);font-size:13px;margin:0 0 8px;">' + esc(msg) + '</p>');
     }
 
     function renderNovoProjeto() {
@@ -7362,7 +7369,7 @@
       const modos = comFw[0].modos || [];
       pintar(caixa, '<div class="modos-lista">'
         + comFw.sort((a, b) => String(a.projeto).localeCompare(String(b.projeto))).map((f) => '<div class="modos-linha">'
-          + '<span class="modos-proj">' + esc(f.projeto) + '</span>'
+          + '<span class="modos-proj">' + esc(f.projeto) + ' ' + seloLocal() + '</span>'
           + '<select class="styled-input modos-sel" data-modo-proj="' + esc(f.projeto) + '">'
           + modos.map((m) => '<option value="' + esc(m.id) + '"' + (m.id === f.modo || m.titulo === f.tituloModo ? ' selected' : '') + '>' + esc(m.titulo) + '</option>').join('')
           + '</select>'

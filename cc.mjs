@@ -2057,7 +2057,9 @@ switch (cmd) {
       console.log(`\n${ps.length} ideia(s) dele esperando virar item (ou serem descartadas).\n`)
       for (const p of ps) {
         const q = p.quando ? new Date(p.quando).toLocaleString('pt-BR') : 'sem hora'
-        console.log(`── ${p.id}  ${q}`)
+        /* 26/09: ele pode ter aprovado pelo painel; aí a sessão registra sem
+           perguntar de novo (passo 2.5 do /start-session). */
+        console.log(`── ${p.id}  ${q}${p.aprovada ? '  ✓ APROVADA por ele no painel: registre sem perguntar' : ''}`)
         console.log(p.texto.split('\n').map((l) => `   ${l}`).join('\n').slice(0, 1200))
         console.log('')
       }
@@ -2374,9 +2376,15 @@ switch (cmd) {
     if (sub === 'add' || sub === 'nova') {
       const texto = positional[2]
       if (!texto) die('uso: node cc.mjs meu add "o que depende dele" [--projeto x] [--frente y] [--porque z]')
+      /* 26/09, item 5 da Início: 41 das 72 pendências abertas nasceram SEM
+         projeto e caíam num bloco "geral" que não ajuda a triar. O agente
+         sempre cria de dentro de um projeto; sem `--projeto`, vale a pasta.
+         Só dentro de `projetos/`: fora dali o nome seria "claudedev" ou "tmp". */
+      const { projectOf } = await import('./src/jobs.mjs')
+      const daPasta = /[\\/]projetos[\\/]/i.test(process.cwd()) ? projectOf(process.cwd()).project : null
       const r = M.acrescentar({
         texto,
-        projeto: val('--projeto'),
+        projeto: val('--projeto') || daPasta,
         frente: val('--frente'),
         porque: val('--porque'),
         prova: val('--prova'),

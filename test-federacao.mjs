@@ -6,7 +6,7 @@
 import assert from 'node:assert'
 import {
   LIMITE_PACOTE, SEM_CONTATO_MS, carimbar, maquinasConhecidas, mesclar,
-  mesclarTempo, montarPacote, validarPacote,
+  mesclarTempo, montarPacote, validarPacote, herdarFalas,
 } from './src/federacao.mjs'
 
 let n = 0
@@ -796,6 +796,22 @@ ok('pacote sobrevive ao ida e volta por JSON')
     else process.env.CC_HOME = antes
     fs.rmSync(casa, { recursive: true, force: true })
   }
+}
+
+// 26/09: o empurrador velho não manda a fala; ela não pode sumir por isso.
+{
+  const fala = { tipo: 'pergunta', texto: 'Reinicia agora?' }
+  const anterior = { jobs: [{ id: 'j1', updatedAt: 100, ultimaFala: fala }, { id: 'j2', updatedAt: 100, ultimaFala: fala }] }
+  const novo = { jobs: [{ id: 'j1', updatedAt: 100 }, { id: 'j2', updatedAt: 200 }, { id: 'j3', updatedAt: 100 }] }
+  assert.equal(herdarFalas(novo, anterior), 1)
+  assert.deepEqual(novo.jobs[0].ultimaFala, fala, 'job parado herda a fala do envio anterior')
+  assert.equal(novo.jobs[1].ultimaFala, undefined, 'job que se mexeu NÃO herda: a fala pode ter mudado')
+  assert.equal(novo.jobs[2].ultimaFala, undefined, 'job novo não inventa fala')
+  const comFala = { jobs: [{ id: 'j1', updatedAt: 100, ultimaFala: { tipo: 'fala', texto: 'nova' } }] }
+  herdarFalas(comFala, anterior)
+  assert.equal(comFala.jobs[0].ultimaFala.texto, 'nova', 'fala que chegou vale mais que a herdada')
+  assert.equal(herdarFalas({ jobs: [{ id: 'j1' }] }, null), 0, 'sem pacote anterior, nada a herdar')
+  ok('pacote sem a fala herda a do anterior só quando o job não se mexeu')
 }
 
 console.log(`\n${n} grupos de asserção passaram`)

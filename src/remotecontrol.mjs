@@ -102,6 +102,23 @@ const ERRO_DESLOGADA = 'o Claude Code desta máquina está deslogado: rode /logi
 const espera = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /**
+ * O que fazer na pergunta de confiança, olhando só a tela. Puro, para o teste
+ * cobrir as duas ordens de opção que já existiram:
+ *   - 'confirmar': a linha com o cursor (❯) é a do "Yes";
+ *   - 'descer': o "Yes" está na tela, mas o cursor está noutra opção;
+ *   - 'sem-yes': a pergunta está lá e não existe "Yes" para escolher.
+ */
+export function passoDaConfianca(tela) {
+  const linhas = String(tela || '').split('\n')
+  const cursor = linhas.find((l) => l.includes('❯')) || ''
+  if (/Yes, I trust this folder/i.test(cursor)) return 'confirmar'
+  if (linhas.some((l) => /Yes, I trust this folder/i.test(l))) return 'descer'
+  return 'sem-yes'
+}
+
+const ultimasLinhas = (tela, n = 6) => String(tela || '').split('\n').map((l) => l.trim()).filter(Boolean).slice(-n).join(' / ') || '(vazia)'
+
+/**
  * Qual `claude` chamar. Existe porque o painel roda como serviço, e o PATH de
  * um serviço NÃO é o PATH do login: medido em 22/09/2026 nesta VPS, o serviço
  * enxerga só as pastas do sistema, nenhuma do usuário.
@@ -326,6 +343,21 @@ export async function estado() {
      tinha respondido três minutos antes. Uma chamada só, não uma por sessão. */
   const r = await tmux(['list-sessions', '-F', '#{session_name}\t#{session_created}\t#{pane_current_path}'])
   if (!r.ok) return {} // tmux ausente ou nenhuma sessão viva: mesmo resultado, vazio
+  function conversasDoRegistro() {
+    const mapa = new Map()
+    const dir = path.join(casaClaude(), 'sessions')
+    let nomes = []
+    try { nomes = fs.readdirSync(dir).filter((f) => f.endsWith('.json')) } catch { return mapa }
+    for (const f of nomes) {
+      try {
+        const o = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
+        if (!o.sessionId || !o.pid || !o.tmux) continue
+        process.kill(o.pid, 0) // processo morto: registro velho, não vale
+        mapa.set(String(o.tmux).split(':')[0], o.sessionId)
+      } catch { /* ilegível ou morto */ }
+    }
+    return mapa
+  }
 
   const sessoes = []
   for (const linha of r.out.split('\n')) {
@@ -335,9 +367,20 @@ export async function estado() {
   }
 
   const conversaDe1 = casarConversas(sessoes)
+  /* 27/09, print dele: "não consigo responder pelo cockpit". O terminal do
+     ahtleta-corrida foi aberto em 23/09 com uma conversa, e depois passou a
+     rodar OUTRA (nova conversa no mesmo terminal). O casamento por pasta e
+     horário seguia apontando a antiga, e responder pelo painel dizia "não está
+     num terminal aberto pelo painel". O Claude Code registra, por processo
+     vivo, a conversa de AGORA e o terminal em que ela roda
+     (`~/.claude/sessions/<pid>.json`, campo `tmux`). Esse registro vale mais
+     que a adivinhação; ela fica só para quem não aparece nele. */
+  const doRegistro = conversasDoRegistro()
   const out = {}
   for (const s of sessoes) {
-    const conversa = conversaDe1.get(s.nome) || null
+    const casada = conversaDe1.get(s.nome) || null
+    const reg = doRegistro.get(s.nome)
+    const conversa = reg ? { id: reg, quando: casada && casada.id === reg ? casada.quando : null } : casada
     out[s.nome.slice(PREFIXO_SESSAO.length)] = {
       sessao: s.nome,
       desde: s.criado || null,
@@ -430,9 +473,33 @@ export async function ligar(projeto, cwd, {
   let confianca = false
   const primeira = await tmux(['capture-pane', '-t', sessao, '-p', '-S', '-200'])
   if (primeira.ok && PERGUNTAS_DE_ABERTURA.some((re) => re.test(primeira.out))) {
+    /* ⚠️ Nunca mais Enter às cegas. Medido em 24/09: na 2.1.231 o cursor
+       começava em "Yes, I trust this folder"; na 2.1.281 a ordem inverteu e
+       começa em "No, exit". O mesmo Enter passou a FECHAR a sessão, e o
+       Maurice não abria sem erro nenhum na tela. Agora o cursor desce até a
+       linha do "Yes", conferindo na tela a cada passo, e só então confirma.
+       Se a tela não tiver "Yes", não aperta nada e diz por quê. */
+    let tela = primeira.out
+    for (let i = 0; i < 4 && passoDaConfianca(tela) === 'descer'; i += 1) {
+      await tmux(['send-keys', '-t', sessao, 'Down'])
+      await espera(400)
+      tela = (await tmux(['capture-pane', '-t', sessao, '-p'])).out || ''
+    }
+    if (passoDaConfianca(tela) !== 'confirmar') {
+      await tmux(['kill-session', '-t', sessao])
+      return { ok: false, erro: 'a sessão parou na pergunta de confiança da pasta e não achei a opção "Yes" na tela; nada foi confirmado. Última tela: ' + ultimasLinhas(tela) }
+    }
     await tmux(['send-keys', '-t', sessao, 'Enter'])
     confianca = true
     await espera(2500)
+  }
+
+  /* A segunda metade da mesma lição: sessão que morre na abertura não pode
+     sumir calada. O tmux acaba junto com o Claude Code, então "não existe
+     mais" logo depois de subir é morte na abertura, e a tela que ficou na
+     primeira captura é o único registro do motivo. */
+  if (!(await tmux(['has-session', '-t', sessao])).ok) {
+    return { ok: false, erro: 'a sessão fechou logo ao abrir. Última tela: ' + ultimasLinhas(primeira.out) }
   }
 
   // A tela vai junto: "ok" sem olhar a tela já enganou neste projeto antes.

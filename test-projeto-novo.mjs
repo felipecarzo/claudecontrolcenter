@@ -18,7 +18,7 @@
  * Nada aqui escreve em projeto de verdade: tudo em pasta temporária.
  */
 import assert from 'node:assert'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { aplicar, colher, paraBacklog, proxima, responder } from './src/entrevista.mjs'
@@ -527,7 +527,9 @@ const comRespostas = (extra = {}) => ({
 
 /* ── CC-397: o painel 2.0 vive ao lado, e a raiz não muda ────────────────── */
 {
-  const v2 = readFileSync('src/ui_v2.html', 'utf8')
+  /* Desde 23/09 o `ui_v2.html` não existe (apagado por ordem dele). Os dois
+     painéis que ficam são o principal e o cockpit 2, conferidos lado a lado. */
+  const v2 = readFileSync('src/ui_cockpit2.html', 'utf8')
   const v3 = readFileSync('src/ui_novo.html', 'utf8')
 
   /**
@@ -558,7 +560,7 @@ const comRespostas = (extra = {}) => ({
   /* Os dois compilam. Erro de sintaxe no painel é o defeito mais caro daqui:
      acontece antes de qualquer código rodar, e nem `window.onerror` pega. A
      tela fica em "carregando" para sempre, sem nada na tela. */
-  for (const [nome, html] of [['ui_v2', v2], ['ui_novo', v3]]) {
+  for (const [nome, html] of [['ui_cockpit2', v2], ['ui_novo', v3]]) {
     const blocos = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1])
     assert.ok(blocos.length >= 1, `${nome}.html deixou de ter bloco de script`)
     for (const [i, b] of blocos.entries()) {
@@ -582,12 +584,21 @@ const comRespostas = (extra = {}) => ({
    * acordado. Apagar arquivo é a única parte irreversível de uma troca de
    * endereço, e ela não acontece sozinha. */
   const web = readFileSync('src/web.mjs', 'utf8')
-  assert.match(web, /url\.pathname === '\/' \|\| url\.pathname === '\/novo'/,
-    'a raiz passou a servir o painel novo em 30/08, a pedido dele')
-  assert.match(web, /url\.pathname === '\/v2'[\s\S]{0,200}UI_V2/,
-    'o painel de antes tem que continuar em /v2: é a volta atrás, e ela não pode sumir')
+  /* CC-636, 27/09: a raiz passou ao cockpit novo (ui_cockpit2.html), a pedido
+     dele, e o anterior ficou em /antigo. O caminho de volta é o /antigo. */
+  assert.match(web, /url\.pathname === '\/' \|\| url\.pathname === '\/cockpit2'[^\n]*\n\s*return send\(res, 200, fs\.readFileSync\(UI_COCKPIT2/,
+    'a raiz serve o cockpit novo desde 27/09, a pedido dele')
+  assert.match(web, /url\.pathname === '\/antigo' \|\| url\.pathname === '\/novo'[^\n]*\n\s*return send\(res, 200, fs\.readFileSync\(UI_V3/,
+    'o cockpit anterior continua servido em /antigo')
+  /* 23/09: a decisão que este teste esperava chegou. Ele mandou apagar o
+     `/v2` ("pode deletar o cockpit V2 antigo"). O teste passa a segurar o
+     contrário: o endereço não volta por engano, e o motivo fica no código. */
+  assert.doesNotMatch(web, /url\.pathname === '\/v2'/,
+    'o /v2 foi apagado por ordem dele em 23/09 e não pode voltar sem outra ordem')
+  assert.ok(!existsSync('src/ui_v2.html'), 'o arquivo do painel antigo voltou para a árvore')
+  assert.match(web, /pode deletar o cockpit V2 antigo/, 'a ordem dele que apagou o /v2 tem que ficar escrita junto do código')
   assert.match(web, /url\.pathname === '\/v1'/, 'e o primeiro continua em /v1')
-  ok('a raiz serve o painel novo, e os dois anteriores continuam alcançáveis')
+  ok('a raiz serve o painel novo, o /v2 saiu por ordem dele, e o /v1 continua')
 }
 
 
@@ -618,7 +629,7 @@ const comRespostas = (extra = {}) => ({
    * texto volta a ser quebrada"*.
    */
   const F = await import('./src/framework.mjs')
-  const telas = readFileSync('src/ui_v2.html', 'utf8') + readFileSync('src/ui_novo.html', 'utf8')
+  const telas = readFileSync('src/ui_cockpit2.html', 'utf8') + readFileSync('src/ui_novo.html', 'utf8')
 
   /* 1. Todo MÉTODO e todo MODO precisa ser oferecido por alguma tela.
         Esta é a verificação que teria pego o defeito de 29/08: cinco métodos
@@ -669,7 +680,10 @@ const comRespostas = (extra = {}) => ({
      (precisa responder quando a outra ponta está fora do ar). Sem ela nesta
      lista, a rota que ela consome contaria como morta, e o gate mandaria
      apagar uma peça que tem tela. */
-  const fontes = ['src/ui_v2.html', 'src/ui_novo.html', 'src/ui.html', 'src/conexao.html', 'cc.mjs']
+  /* `ui_cockpit2.html` entrou em 23/09: é tela de verdade, servida em
+     `/cockpit2`, e sem ela na lista toda rota que só o cockpit 2 chama
+     precisava virar exceção, que é o caminho para peça esquecida passar. */
+  const fontes = ['src/ui_novo.html', 'src/ui.html', 'src/ui_cockpit2.html', 'src/conexao.html', 'cc.mjs']
     .map((f) => { try { return readFileSync(f, 'utf8') } catch { return '' } }).join('\n')
   /**
    * As exceções, cada uma com o motivo. **Exceção declarada é diferente de peça

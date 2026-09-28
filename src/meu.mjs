@@ -199,6 +199,36 @@ export function marcar(idAlvo, feito = true) {
   })
 }
 
+/**
+ * Muda só o projeto de uma pendência (26/09, item 5 da Início). Existe porque
+ * 41 das 72 abertas nasceram sem projeto e caíam num "geral" que não ajuda a
+ * triar. Não fecha, não reabre, não mexe no texto: só diz de qual projeto é.
+ */
+export function definirProjeto(idAlvo, projeto) {
+  return mexerNa(idAlvo, (d) => {
+    const t = d.tarefas.find((x) => x.id === idAlvo)
+    if (!t) return { ok: false, erro: 'tarefa não encontrada' }
+    t.projeto = projeto || null
+    return null
+  })
+}
+
+/**
+ * CC-561: "não vale mais". Fecha como `marcar`, e guarda que foi DESCARTADA,
+ * não resolvida. Existe para a triagem da gaveta não precisar de `remover`,
+ * que apaga sem volta: descartar deixa o histórico dizendo o que aconteceu.
+ */
+export function descartar(idAlvo) {
+  return mexerNa(idAlvo, (d) => {
+    const t = d.tarefas.find((x) => x.id === idAlvo)
+    if (!t) return { ok: false, erro: 'tarefa não encontrada' }
+    t.feito = true
+    t.feitoEm = Date.now()
+    t.descartada = true
+    return null
+  })
+}
+
 export function remover(idAlvo) {
   return mexerNa(idAlvo, (d) => {
     d.tarefas = d.tarefas.filter((x) => x.id !== idAlvo)

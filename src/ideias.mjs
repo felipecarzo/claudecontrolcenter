@@ -138,7 +138,7 @@ export const ARQUIVO_FILA = (raiz) => path.join(raiz, 'docs', '.ideias-pendentes
 
 /** Identidade estável de uma ideia: o texto dela, resumido. A mesma ideia vista
  *  em duas sessões não entra duas vezes. */
-const idDe = (texto) => {
+export const idDe = (texto) => {
   const base = semAcento(texto).replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 400)
   let h = 0
   for (let i = 0; i < base.length; i += 1) h = (h * 31 + base.charCodeAt(i)) >>> 0
@@ -186,6 +186,22 @@ export function guardar(raiz, achados, { sessao = null } = {}) {
   const pendentes = [...conhecidos.values()]
   gravarFila(raiz, { pendentes, descartados: [...descartados] })
   return { novos, total: pendentes.length, arquivo: ARQUIVO_FILA(raiz) }
+}
+
+/**
+ * Marca como aprovada pelo painel (26/09, item 8 da Início): ele tocou "virar
+ * item". A ideia continua na fila, e a sessão seguinte daquele projeto
+ * registra no backlog com as palavras dele, sem perguntar de novo (passo 2.5
+ * do `/start-session`). Quem escreve continua sendo o agente.
+ */
+export function aprovar(raiz, id) {
+  const fila = lerFila(raiz)
+  const alvo = (fila.pendentes || []).find((p) => p.id === id)
+  if (!alvo) return { ok: false, erro: `não achei a ideia ${id}` }
+  alvo.aprovada = true
+  alvo.aprovadaEm = new Date().toISOString()
+  gravarFila(raiz, { pendentes: fila.pendentes, descartados: fila.descartados || [] })
+  return { ok: true }
 }
 
 /**

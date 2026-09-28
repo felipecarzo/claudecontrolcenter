@@ -6,6 +6,12 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { projectOf, modelOf, routeOf, statusOf, subjectOf, buildJob, mergeMeta, fmtAge, fmtTokens, readJobs } from './src/jobs.mjs'
 
+/* Os painéis que ficam, depois que o `ui_v2.html` foi apagado em 23/09 por
+   ordem dele ("vamos ficar com o principal e esses cockpit 2"). As proteções
+   de tela que só olhavam o antigo passaram a olhar estes dois: apagar o
+   painel sem mudar a rede de lugar deixaria os que ficam sem nenhuma. */
+const PAINEIS_QUE_FICAM = ['ui_novo.html', 'ui_cockpit2.html']
+
 // projeto/subprojeto saem do padrão de pastas do Felipe
 assert.deepEqual(projectOf('D:\\Documentos\\Ti\\projetos\\CLIENTS\\inovallbond\\minigame-evento-v2'), {
   project: 'inovallbond', sub: 'minigame-evento-v2',
@@ -1922,7 +1928,11 @@ if (estRotinas.projetos.length) {
 // acaso), mas trava qualquer regressão na forma do retorno.
 {
   const { commitsDesde } = await import('./src/gitlog.mjs')
-  const aqui = await commitsDesde(process.cwd(), 0)
+  /* CC-563: com `0` ele lia o histórico inteiro (394 commits em 25/09), que
+     leva de 5 a 10s e às vezes passa dos 20s do limite: medido 20,1s numa
+     rodada de cinco. Era a falha que aparecia e sumia do gate. O teste confere
+     o FORMATO do retorno, e um mês de commits basta para isso. */
+  const aqui = await commitsDesde(process.cwd(), Date.now() - 30 * 86400000)
   assert.equal(aqui.ok, true)
   assert.ok(aqui.commits.length > 0, 'este repositório tem commit — se vier vazio, o parser quebrou')
   const c0 = aqui.commits[0]
@@ -3359,8 +3369,8 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
  * (`test-estreito.mjs`) existe, mas mede o painel ANTIGO — foi exatamente por
  * isso que este defeito passou pelo gate inteiro sem um aviso.
  */
-{
-  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui_v2.html'), 'utf8')
+for (const PAINEL of PAINEIS_QUE_FICAM) {
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', PAINEL), 'utf8')
 
   /* O que passa e o que não passa, decidido olhando os 21 casos reais do
      arquivo em 20/08, um a um:
@@ -3383,7 +3393,7 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
   }
   assert.deepEqual(
     inlineGrade, [],
-    'grade de várias colunas escrita em style= no ui_v2.html. Estilo inline vence\n'
+    `grade de várias colunas escrita em style= no ${PAINEL}. Estilo inline vence\n`
     + '    media query e container query, então a tela NUNCA colapsa no telefone.\n'
     + '    Vire classe, com a regra do estreito junto. Encontrado em:\n      '
     + inlineGrade.join('\n      '),
@@ -3495,8 +3505,8 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
  * template inteira, porque o selo às vezes vem antes do projeto e às vezes
  * depois, e as duas ordens são legítimas.
  */
-{
-  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui_v2.html'), 'utf8')
+for (const PAINEL of PAINEIS_QUE_FICAM) {
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', PAINEL), 'utf8')
   const linhas = html.split(/\r?\n/)
   /* Os nomes pelos quais o projeto aparece na tela, nas três formas de dado
      que chegam: agente (`project`), pendência (`projeto`) e grupo (`nome`). */
@@ -3515,7 +3525,10 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
     '>\\s*\\$\\{esc\\((?:[a-z]\\.project\\b|[a-z]\\.projeto\\b|nome\\.toUpperCase\\(\\))'
     + "|>'\\s*\\+\\s*esc\\((?:[a-z]\\.project\\b|[a-z]\\.projeto\\b)",
   )
-  const TEM_SELO = /selo\w*\(|maquinas|pj-onde/
+  /* `.onde` entrou em 23/09, quando a rede passou a olhar o principal e o
+     cockpit 2: a frase "está em <máquina>, como <projeto>" já escreve a máquina
+     por extenso, e exigir selo ali seria dizer a máquina duas vezes. */
+  const TEM_SELO = /selo\w*\(|maquinas|pj-onde|\b[a-z]\.onde\b/
 
   const nus = []
   linhas.forEach((linha, i) => {
@@ -3555,9 +3568,9 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
    * têm a mesma raiz: o painel novo herdou o código e não herdou as redes.
    */
   const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1])
-  assert.ok(scripts.length >= 2, 'ui_v2.html deixou de ter os blocos de script esperados')
+  assert.ok(scripts.length >= 2, `${PAINEL} deixou de ter os blocos de script esperados`)
   scripts.forEach((s, i) => {
-    assert.doesNotThrow(() => new Function(s), `ui_v2.html tem erro de sintaxe no bloco de script ${i}`)
+    assert.doesNotThrow(() => new Function(s), `${PAINEL} tem erro de sintaxe no bloco de script ${i}`)
   })
   console.log(`  ok   CC-227: os ${scripts.length} blocos de script do painel novo compilam`)
 }
@@ -3601,7 +3614,9 @@ console.log(`ok — ${real.length} jobs reais, ${findProjects().length} projetos
   )
   console.log(`  ok   CC-229: as ${longas.length} explicações longas têm corpo de verdade`)
 
-  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui_v2.html'), 'utf8')
+  /* Os dois painéis que ficam, lidos juntos: o termo usado em qualquer um
+     precisa ter explicação. */
+  const html = PAINEIS_QUE_FICAM.map((f) => fs.readFileSync(path.join(process.cwd(), 'src', f), 'utf8')).join('\n')
   /* As duas formas de pedir explicação: `ajuda('termo')` dentro do código que
      desenha, e `data-explica="termo"` num rótulo que já está no HTML. As duas
      somem em silêncio quando o termo não existe, então as duas são medidas. */
@@ -3939,8 +3954,10 @@ if (process.platform !== 'win32') {
 
   /* 1. O mapa não pode ENCOLHER em silêncio. Tela ou endereço novo entra como
         não coberto; nunca some. É a lição do `hooksCatalogo`, onde peça fora do
-        catálogo saía calada achando que estava desligada. */
-  const html = fs.readFileSync('src/ui_v2.html', 'utf8')
+        catálogo saía calada achando que estava desligada.
+        Desde 23/09 o mapa lê o cockpit 2: ele tem todas as telas do principal
+        e mais três, então nenhuma tela saiu do mapa com a troca. */
+  const html = fs.readFileSync('src/ui_cockpit2.html', 'utf8')
   const web = fs.readFileSync('src/web.mjs', 'utf8')
   const telasNoFonte = new Set([...html.matchAll(/data-target="(view-[a-z-]+)"/g)].map((m) => m[1]))
   const rotasNoFonte = new Set([...web.matchAll(/url\.pathname === '(\/api\/[a-z/-]+)'/g)].map((m) => m[1]))
@@ -5589,8 +5606,8 @@ if (process.platform !== 'win32') {
    some no meio de um gesto de LEITURA, sem ele ter pedido nada.
    A regra mora aqui porque é uma linha de CSS, invisível em revisão, e some
    sozinha na primeira vez que alguém reescrever o bloco. */
-{
-  const html = fs.readFileSync('src/ui_v2.html', 'utf8')
+for (const PAINEL of PAINEIS_QUE_FICAM) {
+  const html = fs.readFileSync(`src/${PAINEL}`, 'utf8')
   const regra = (seletor) => {
     const m = new RegExp(`${seletor}\\s*\\{[^}]*\\}`, 's').exec(html)
     return m ? m[0] : ''

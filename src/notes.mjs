@@ -39,7 +39,24 @@ function normalizeNote(n) {
     // única fonte — item feito é a linha prefixada com "[x] ". Sem lista
     // paralela, alternar o modo não migra nada e o arquivo segue legível.
     kind: n.kind === 'check' ? 'check' : 'text',
+    /* 26/09, item 7 da Início: quando foi mexida por último, para o resumo
+       mostrar as recentes e não as duas primeiras da lista. Nota antiga, sem
+       o campo, fica com 0 e vai para o fim. */
+    em: Number.isFinite(Number(n.em)) ? Number(n.em) : 0,
   }
+}
+
+/**
+ * Uma nota nova no topo, sem reenviar as outras (26/09, "anotar rápido" da
+ * Início). Existe porque a gravação normal manda a lista INTEIRA: a Início
+ * mandando a lista dela podia atropelar uma edição aberta na tela Notas.
+ * Aqui o servidor lê o que está no disco e só acrescenta.
+ */
+export function acrescentarNota(texto, titulo = '') {
+  const t = String(texto || '').trim()
+  if (!t) return { ok: false, erro: 'nota vazia' }
+  const notas = writeNotes([{ title: titulo, text: t }, ...readNotes()])
+  return { ok: true, nota: notas[0] }
 }
 
 export const _internals = { normalizeNote }
@@ -88,6 +105,14 @@ export function writeNotes(notes) {
 
   const antes = readNotes()
   guardarAnterior(antes, limpo.length === 0)
+  /* A hora só anda quando o CONTEÚDO muda: a tela grava a lista inteira a
+     cada tecla, e mudar a altura do bloco ou reordenar não é "mexer na nota". */
+  const porId = new Map(antes.map((n) => [n.id, n]))
+  const agora = Date.now()
+  for (const n of limpo) {
+    const v = porId.get(n.id)
+    n.em = !v ? agora : (v.text !== n.text || v.title !== n.title ? agora : (v.em || n.em || 0))
+  }
 
   fs.mkdirSync(path.dirname(NOTES_FILE), { recursive: true })
   const tmp = `${NOTES_FILE}.tmp`

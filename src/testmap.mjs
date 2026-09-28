@@ -110,7 +110,7 @@ const dimensao = (coberto, como, nota = null) => {
  * colateral bom é que tela nova nasce sem explicação e o mapa acusa.
  */
 function telas(raiz, cache, palavras) {
-  const html = ler(raiz, 'src/ui_v2.html')
+  const html = ler(raiz, 'src/ui_cockpit2.html')
   const ids = [...new Set([...html.matchAll(/data-target="(view-[a-z-]+)"/g)].map((m) => m[1]))]
   const verbetes = new Map(palavras.map((p) => [p.termo.toLowerCase(), p]))
 
@@ -128,7 +128,7 @@ function telas(raiz, cache, palavras) {
       id: `tela:${curto}`,
       tipo: 'tela',
       rotulo: curto,
-      onde: `src/ui_v2.html#${id}`,
+      onde: `src/ui_cockpit2.html#${id}`,
       camada: 'viva',
       dimensoes: {
         /* O CC-231 fez o `test-endereco` abrir TODAS as telas do menu, uma a
@@ -149,7 +149,7 @@ function telas(raiz, cache, palavras) {
 
 /** Os tipos de ação (`data-*`). É o vocabulário do que dá para clicar. */
 function acoes(raiz, cache) {
-  const html = ler(raiz, 'src/ui_v2.html')
+  const html = ler(raiz, 'src/ui_cockpit2.html')
   const nomes = [...new Set([...html.matchAll(/data-([a-z-]+)=/g)].map((m) => `data-${m[1]}`))]
   /* `data-i`, `data-n` e afins carregam DADO, não ação. Separá-los evita
      encher o mapa de item que ninguém vai clicar. */
@@ -162,11 +162,11 @@ function acoes(raiz, cache) {
       id: `acao:${nome.replace(/^data-/, '')}`,
       tipo: dado ? 'dado-de-tela' : 'acao',
       rotulo: nome,
-      onde: 'src/ui_v2.html',
+      onde: 'src/ui_cockpit2.html',
       /* Nasce em execução? Então só o DOM sabe onde ela aparece. */
       camada: emTemplate ? 'viva' : 'estatica',
       dimensoes: {
-        existe: dimensao('src/ui_v2.html', 'o atributo existe no fonte'),
+        existe: dimensao('src/ui_cockpit2.html', 'o atributo existe no fonte'),
         funciona: dimensao(citadoEm(raiz, [nome, camelo(nome)], cache),
           'o nome aparece num teste, o que ainda não prova o clique de ponta a ponta'),
         explica: dimensao(null, null, 'ação não tem verbete próprio: quem explica é a tela'),
@@ -203,7 +203,7 @@ function enderecos(raiz, cache) {
 
 /** As palavras que a tela explica, e os pontos que usam cada uma. */
 function palavrasDaTela(raiz, palavras) {
-  const html = ler(raiz, 'src/ui_v2.html')
+  const html = ler(raiz, 'src/ui_cockpit2.html')
   const usados = new Set([
     ...[...html.matchAll(/data-explica="([^"]+)"/g)].map((m) => m[1]),
     ...[...html.matchAll(/ajuda\('([^']+)'\)/g)].map((m) => m[1]),
@@ -220,7 +220,7 @@ function palavrasDaTela(raiz, palavras) {
       camada: 'estatica',
       dimensoes: {
         existe: dimensao('test.mjs', 'o verbete está escrito'),
-        funciona: dimensao(usada ? 'src/ui_v2.html' : null, usada ? 'algum ponto da tela usa este termo' : null,
+        funciona: dimensao(usada ? 'src/ui_cockpit2.html' : null, usada ? 'algum ponto da tela usa este termo' : null,
           usada ? null : 'escrita e nunca usada: o "?" dela não aparece em lugar nenhum'),
         explica: dimensao('test.mjs', 'o gate recusa termo declarado sem corpo'),
         estreito: dimensao(null, null, 'não se aplica'),

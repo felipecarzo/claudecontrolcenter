@@ -2,7 +2,7 @@
  * CC-235: o detalhe do cartão do quadro tem profundidade por TIPO.
  *
  * O headless não sustenta o quadro (mesmo motivo da Central), então a prova
- * visual é do Felipe. Este teste extrai `kbDetalhe` do `ui_v2.html`, roda com
+ * visual é do Felipe. Este teste extrai `kbDetalhe` do `ui_cockpit2.html`, roda com
  * stubs, e confere que cada fonte (pendência dele, tarefa de agente, frente do
  * backlog) gera a moldura própria, e que bloco vazio diz por quê.
  */
@@ -13,7 +13,7 @@ let falhou = false
 const ok = (m) => console.log(`  ok   ${m}`)
 const erro = (m, e) => { falhou = true; console.error(`  FALHOU ${m}\n         ${e?.message || e}`) }
 
-const html = fs.readFileSync(new URL('./src/ui_v2.html', import.meta.url), 'utf8')
+const html = fs.readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
 // pega o corpo da função kbDetalhe
 const ini = html.indexOf('function kbDetalhe(c) {')
 assert.ok(ini > 0, 'kbDetalhe precisa existir')
