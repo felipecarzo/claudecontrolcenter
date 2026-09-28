@@ -16002,6 +16002,7 @@
       const d = ev.target.closest('[data-lat-disp]'); if (d) { LAT.F.disp = d.dataset.latDisp || null; latGuardar(); return c2RenderLateral(); }
       const c = ev.target.closest('[data-lat-cat]'); if (c) { alterna(LAT.F.cats, c.dataset.latCat); latGuardar(); return c2RenderLateral(); }
       const pj = ev.target.closest('[data-lat-proj]'); if (pj) { alterna(LAT.F.projs, pj.dataset.latProj); latGuardar(); return c2RenderLateral(); }
+      if (ev.target.closest('[data-lat-limpar]')) { LAT.F.disp = null; LAT.F.cats.clear(); LAT.F.projs.clear(); latGuardar(); return c2RenderLateral(); }
       if (ev.target.closest('[data-lat-filtros]')) { LAT.filtrosAbertos = !LAT.filtrosAbertos; latGuardar(); return c2RenderLateral(); }
     });
     const lateralAtiva = () => LAT.on && window.innerWidth >= 1700;
@@ -16020,7 +16021,8 @@
       const { vis, html: fil, ativos } = c2Filtrar(itens, LAT.F, { disp: 'data-lat-disp', cat: 'data-lat-cat', proj: 'data-lat-proj' });
       const botao = '<button class="c2-dec-op' + (LAT.filtrosAbertos ? ' on' : '') + '" data-lat-filtros style="min-height:30px;padding:4px 10px;font-size:12px">' + ic('kanban', 13) + ' filtros' + (ativos.length ? ' <span class="c2-mini">' + ativos.length + '</span>' : '') + (LAT.filtrosAbertos ? ' ▴' : ' ▾') + '</button>';
       const resumo = '<button class="ses-fil-resumo" data-lat-filtros>' + (ativos.length ? 'filtrando: <b>' + ativos.map(esc).join(' · ') + '</b>' : 'sem filtro: todas as sessões') + '</button>';
-      pintar(el, cab(vis.length) + botao + (LAT.filtrosAbertos ? fil : resumo)
+      const limparL = ativos.length ? ' <button class="c2-link" data-lat-limpar>limpar filtros</button>' : '';
+      pintar(el, cab(vis.length) + botao + limparL + (LAT.filtrosAbertos ? fil : resumo)
         + (vis.length ? vis.map((x) => (x.dec ? (x.dec.grupo ? c2AvisoGrupo(x.dec) : c2Aviso(x.dec)) : c2CartaoSessao(x.sess))).join('') : '<p class="c2-vazio">nenhuma sessão neste filtro.</p>'));
     }
     document.addEventListener('click', (ev) => {
@@ -16116,8 +16118,14 @@
          campo de mensagem. A pasta pessoal (o simulador) fica de fora, como na
          Início, e as consultas dele seguem no cartão das repetidas. */
       const itens = c2ListaSessoes(esperando, idsDepois);
-      if (!(C2.sesCats instanceof Set)) C2.sesCats = new Set();
+      /* CC-682, pedido dele: os filtros "perduram entre sessões" (lembrados no
+         aparelho) e há um botão que limpa tudo. */
+      if (!(C2.sesCats instanceof Set)) {
+        let g = {}; try { g = JSON.parse(localStorage.getItem('c2-ses-f') || '{}'); } catch { /* nada guardado */ }
+        C2.sesDisp = g.disp || null; C2.sesCats = new Set(g.cats || []); C2.decProjs = new Set(g.projs || []);
+      }
       if (!(C2.decProjs instanceof Set)) C2.decProjs = new Set();
+      try { localStorage.setItem('c2-ses-f', JSON.stringify({ disp: C2.sesDisp || null, cats: [...C2.sesCats], projs: [...C2.decProjs] })); } catch { /* só conveniência */ }
       const FS = { get disp() { return C2.sesDisp; }, cats: C2.sesCats, projs: C2.decProjs };
       const { vis, html: filtros, ativos } = c2Filtrar(itens, FS, { disp: 'data-ses-disp', cat: 'data-ses-cat', proj: 'data-dec-proj' });
       /* CC-631, decisão dele: "deixe o modo atual como uma opção (…) e
@@ -16134,7 +16142,8 @@
       if (C2.sesFiltrosAbertos == null) { try { C2.sesFiltrosAbertos = localStorage.getItem('c2-ses-filtros') !== 'fechado'; } catch { C2.sesFiltrosAbertos = true; } }
       const botaoFiltros = '<button class="c2-dec-op' + (C2.sesFiltrosAbertos ? ' on' : '') + '" data-ses-filtros-alternar style="min-height:32px;padding:4px 12px;font-size:12px">' + ic('kanban', 14) + ' filtros' + (ativos.length ? ' <span class="c2-mini">' + ativos.length + '</span>' : '') + (C2.sesFiltrosAbertos ? ' ▴' : ' ▾') + '</button>';
       const resumoFiltros = '<button class="ses-fil-resumo" data-ses-filtros-alternar>' + (ativos.length ? 'filtrando: <b>' + ativos.map(esc).join(' · ') + '</b>' : 'sem filtro: todas as sessões') + ' <span class="c2-mini">· mostrar filtros</span></button>';
-      pintar(raiz, topo + '<div class="ses-barra">' + modoBts + botaoFiltros + '</div>' + (C2.sesFiltrosAbertos ? filtros : resumoFiltros) + (vis.length
+      const limpar = ativos.length ? '<button class="c2-link" data-ses-limpar>limpar filtros</button>' : '';
+      pintar(raiz, topo + '<div class="ses-barra">' + modoBts + botaoFiltros + limpar + '</div>' + (C2.sesFiltrosAbertos ? filtros : resumoFiltros) + (vis.length
         ? (C2.sesModo === 'lista' ? c2ModoLista(vis)
           : '<div class="c2-mosaico">' + vis.map((x) => (x.dec ? (x.dec.grupo ? c2AvisoGrupo(x.dec) : c2Aviso(x.dec)) : c2CartaoSessao(x.sess))).join('') + '</div>')
         : '<p class="c2-vazio">nenhuma sessão neste filtro, lido às ' + c2Hora(C2.dados.lidoEm || Date.now()) + '.</p>'));
@@ -16599,6 +16608,7 @@
       if (sesCat || ev.target.closest('[data-ses-disp],[data-dec-proj]')) { const t = document.getElementById('dec-tela'); if (t) t.style.minHeight = t.offsetHeight + 'px'; }
       /* CC-652: tocar soma ou tira; o "todas" limpa. */
       const alternar = (conj, v) => { if (!v || v === 'todas') conj.clear(); else if (conj.has(v)) conj.delete(v); else conj.add(v); };
+      if (ev.target.closest('[data-ses-limpar]')) { C2.sesDisp = null; C2.sesCats.clear(); C2.decProjs.clear(); return c2RenderDecisoes(); }
       if (ev.target.closest('[data-ses-filtros-alternar]')) { C2.sesFiltrosAbertos = !C2.sesFiltrosAbertos; try { localStorage.setItem('c2-ses-filtros', C2.sesFiltrosAbertos ? 'aberto' : 'fechado'); } catch { /* só conveniência */ } return c2RenderDecisoes(); }
       if (sesCat) { alternar(C2.sesCats || (C2.sesCats = new Set()), sesCat.dataset.sesCat); return c2RenderDecisoes(); }
       const sesDisp = ev.target.closest('[data-ses-disp]');
