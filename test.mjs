@@ -6120,6 +6120,23 @@ for (const PAINEL of PAINEIS_QUE_FICAM) {
     'e usar o histórico para não cobrar duas vezes a mesma palavra')
   console.log('  ok   CC-457: palavra da casa cobrada na primeira vez, e livre depois de explicada')
 
+  /* CC-549, medido em 28/09: "guarda" cobrada numa resposta que só dizia
+     "fica guardada no aparelho", e "cartão" cobrada depois de explicada
+     ("Cartão" é cada bloco…), porque o \b não conta "ã" como letra. */
+  assert.equal(E.usaPalavra('guarda', 'a escolha fica guardada no aparelho'), false, 'guardada não é guarda')
+  assert.equal(E.usaPalavra('guarda', 'o guarda de edição barrou'), true)
+  assert.equal(E.usaPalavra('cartão', 'os cartões da tela'), true, 'o plural conta')
+  assert.equal(E.usaPalavra('rota', 'a rotação do disco'), false)
+  assert.equal(E.foiExplicado('cartão', '"Cartão" é cada bloco retangular da tela'), true, 'explicação com acento e aspas passa')
+  const casaVelha = process.env.HOME
+  process.env.HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'jargao-'))
+  try {
+    E.anotarExplicadas('sessao-teste', ['guarda'])
+    assert.ok(E.explicadasDaSessao('sessao-teste').has('guarda'), 'explicada uma vez, lembrada na sessão inteira')
+    assert.equal(E.explicadasDaSessao('outra-sessao').size, 0, 'e só naquela sessão')
+  } finally { process.env.HOME = casaVelha }
+  console.log('  ok   CC-549: palavra de verdade (acento, plural, sem "guardar") e lembrança por sessão')
+
   /* ⚠️ Resposta curta NÃO precisa de separador, e contar como falha faria o
      número dizer que eu piorei num dia em que só respondi perguntas rápidas. */
   assert.equal(E.medir('Uma frase.\n\nOutra frase.').semMarcador, false)

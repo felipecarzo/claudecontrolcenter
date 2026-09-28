@@ -64,6 +64,8 @@ caso('anúncio antes da ferramenta (regra dele)', 0, 'Vou ler o quadro de rotas 
 caso('causa em uma linha', 0, 'A lista voltou a ter 10 serviços. A federação carimba origem em toda linha, e o filtro não distinguia.')
 caso('dentro de bloco de código não conta', 0, 'O conserto:\n```\nachei mais um erro, e não era o que eu pensava\n```\nPronto.')
 caso('resposta vazia não barra', 0, '')
+caso('citar o padrão entre aspas para explicá-lo (CC-520)', 0, 'A trava barra frases como "não era o que eu pensava", que contam o caminho.')
+caso('a mesma frase fora das aspas continua barrada', 2, 'A trava existe, e não era o que eu pensava: ela barra a frase.')
 
 /* Prova negativa: com o padrão desligado, o caso que barra tem que passar.
    Sem isto, o teste só sabe dizer que hoje funciona. */

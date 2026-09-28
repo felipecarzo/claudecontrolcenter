@@ -34,6 +34,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
 import { casaClaude } from './platform.mjs'
 
 export const ARQUIVO_PADRAO = () => path.join(casaClaude(), 'control-center-estilo.md')
@@ -476,16 +477,48 @@ export const PALAVRAS_DA_CASA = [
   'guarda', 'trava', 'retrato', 'coletor', 'balde', 'cartão',
 ]
 
+/* CC-549: fronteira de palavra que entende acento. O `\b` do JavaScript não
+   conta "ã" como letra: "cartão é" nunca batia (cartão explicada e cobrada de
+   novo), e "guarda" sem fronteira no fim casava com "guardada" e "guardar"
+   (cobrada em resposta que nem usava a palavra). Medido em 28/09. */
+const escRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+export function formasDe(p) {
+  const f = new Set([p, p + 's', p + 'es'])
+  if (/ão$/.test(p)) f.add(p.replace(/ão$/, 'ões'))
+  return [...f]
+}
+/** O texto usa a palavra (ou o plural dela), e não uma palavra que começa igual? */
+export function usaPalavra(p, texto) {
+  return new RegExp(`(?<!\\p{L})(?:${formasDe(p).map(escRe).join('|')})(?!\\p{L})`, 'iu').test(String(texto || ''))
+}
+
+/* A lembrança das palavras já explicadas, por sessão. A conversa relida tem
+   teto de 400 KB, e numa sessão longa a explicação de horas atrás saía da
+   janela e a palavra voltava a ser cobrada. */
+const DIR_EXPLICADAS = () => path.join(os.homedir(), '.local', 'share', 'agent-cockpit', 'jargao')
+export function explicadasDaSessao(sessao) {
+  try { return new Set(JSON.parse(fs.readFileSync(path.join(DIR_EXPLICADAS(), String(sessao) + '.json'), 'utf8'))) } catch { return new Set() }
+}
+export function anotarExplicadas(sessao, termos) {
+  if (!sessao || !termos?.length) return
+  const todas = explicadasDaSessao(sessao)
+  for (const t of termos) todas.add(t)
+  try {
+    fs.mkdirSync(DIR_EXPLICADAS(), { recursive: true })
+    fs.writeFileSync(path.join(DIR_EXPLICADAS(), String(sessao) + '.json'), JSON.stringify([...todas]))
+  } catch { /* sem a lembrança, vale a conversa relida */ }
+}
+
 /** Um termo foi explicado neste texto? Explicar é dizer o que a coisa É. */
 export function foiExplicado(termo, texto) {
-  const t = termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const t = `(?:${formasDe(termo).map(escRe).join('|')})`
   /* Duas formas contam, e a segunda é a que as instruções dele pedem: o efeito
      primeiro e o nome entre parênteses depois ("o programa que manda os dados
      (empurrador)"). A primeira versão disto só aceitava o nome ANTES do
      parêntese, e por isso reprovava justamente o formato preferido. */
-  const explicaDepois = `${t}\\s*(?:=|:|,\\s*(?:que|o)\\s)|${t}\\b[^.\\n]{0,40}\\b(?:é|e|quer dizer|significa|chamo de)\\b`
+  const explicaDepois = `${t}["'”»]?\\s*(?:=|:|,\\s*(?:que|o)\\s)|${t}(?!\\p{L})[^.\\n]{0,40}(?<!\\p{L})(?:é|e|quer dizer|significa|chamo de)(?!\\p{L})`
   const nomeEntreParenteses = `\\([^)]*${t}`
-  return new RegExp(`${explicaDepois}|${nomeEntreParenteses}`, 'i').test(texto)
+  return new RegExp(`${explicaDepois}|${nomeEntreParenteses}`, 'iu').test(texto)
 }
 
 export function ultimaResposta(arquivo, limite = 256 * 1024) {

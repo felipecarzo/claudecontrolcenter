@@ -109,8 +109,11 @@ projeto('VPS_mudo', '## Só prosa\n\nnenhum item aqui, só explicação.\n')
      não. */
   const foto = join(CASA, '.local', 'share', 'agent-cockpit', 'quadro-foto.json')
   mkdirSync(join(CASA, '.local', 'share', 'agent-cockpit'), { recursive: true })
+  /* A regressão de verdade: a pasta continua no disco e o quadro parou de
+     mostrá-la. (CC-536: pasta que SUMIU do disco é rename, não regressão.) */
+  projeto('VPS_sumiu', '## Só prosa\n\nnada aqui.\n')
   writeFileSync(foto, JSON.stringify({
-    noQuadro: ['VPS_bom', 'VPS_sumiu'],
+    noQuadro: ['VPS_bom', 'VPS_sumiu', 'VPS_renomeado'],
     jaAvisados: ['VPS_mudo', 'VPS_outroMudo'],
   }))
 
@@ -131,6 +134,11 @@ projeto('VPS_mudo', '## Só prosa\n\nnenhum item aqui, só explicação.\n')
      do que saiu, e não da lista inteira. */
   assert.ok(!/VPS_bom/.test(b.texto))
   ok('quem continua no quadro não entra no aviso de regressão')
+
+  /* CC-536: rhydon virou sysgen por pedido dele, e o guarda acusava. Projeto
+     cuja pasta não existe mais foi renomeado ou apagado: não é regressão. */
+  assert.ok(!/VPS_renomeado/.test(b.texto))
+  ok('projeto renomeado (pasta que não existe mais) não é acusado como regressão')
 }
 
 /* ── falha aberta: erro do guarda nunca trava trabalho ───────────────────── */

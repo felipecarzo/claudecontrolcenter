@@ -43,6 +43,9 @@ function normalizeNote(n) {
        mostrar as recentes e não as duas primeiras da lista. Nota antiga, sem
        o campo, fica com 0 e vai para o fim. */
     em: Number.isFinite(Number(n.em)) ? Number(n.em) : 0,
+    /* CC-666, o Armário: a gaveta da nota. Nota sem gaveta mora em "notas",
+       e é assim que as de antes continuam onde sempre estiveram. */
+    gaveta: corta(n.gaveta || 'notas', 40),
   }
 }
 

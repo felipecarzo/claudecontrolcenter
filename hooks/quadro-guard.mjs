@@ -148,7 +148,11 @@ if (somados !== conta.total) {
 
 /* ── nível 2: um projeto SAIU do quadro. Regressão, cobra toda vez ───────── */
 const agoraNoQuadro = new Set(conta.noQuadro)
-const sairam = [...antesNoQuadro].filter((p) => !agoraNoQuadro.has(p))
+/* CC-536: só é regressão se a pasta ainda está no disco. Projeto renomeado ou
+   apagado (rhydon virou sysgen por pedido dele) sumiu do disco, e acusar isso
+   como defeito era alarme falso; a foto nova o tira da conta. */
+const noDisco = new Set(listaCrua.map((p) => p.projeto))
+const sairam = [...antesNoQuadro].filter((p) => !agoraNoQuadro.has(p) && noDisco.has(p))
 if (sairam.length) {
   /* A foto NÃO é atualizada aqui, de propósito: enquanto o projeto não voltar,
      o guarda cobra de novo na resposta seguinte. É a diferença entre este

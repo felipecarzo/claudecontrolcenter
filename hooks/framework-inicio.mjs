@@ -97,6 +97,22 @@ if (modo.fluxo) {
     `Só pare para: ${modo.fluxo.paradaLegitima}.`,
     `NÃO pare para: ${modo.fluxo.naoPara}.`,
   )
+  /* CC-557, decisão dele em 28/09: especificação primeiro. A fila é a mesma
+     conta do `cc backlog fila` e do painel: o que o agente prova sozinho vai
+     em ordem, sem perguntar; o que não tem especificação ganha pronto e como
+     conferir ANTES de ser feito; o que é dele não é do agente. */
+  try {
+    const B = await import(urlDeModulo(AQUI, '../src/backlog.mjs'))
+    const arq = resolve(raiz, 'docs', 'backlog.jsonl')
+    const f = B.filaDoAgente(B.ler(arq).itens)
+    if (f.sozinho.length + f.semEspec.length + f.dele.length) {
+      linhas.push(`FILA DO AGENTE (especificação primeiro): ${f.sozinho.length} item(ns) que você faz e prova sozinho, em ordem, sem perguntar`
+        + (f.sozinho[0] ? `; o próximo é ${f.sozinho[0].id} (${String(f.sozinho[0].titulo).slice(0, 90)})` : '')
+        + `. ${f.semEspec.length} sem especificação: antes de executar um desses, escreva o que é pronto e como conferir `
+        + '(node cc.mjs backlog especificar <ID> --pronto "..." --conferir "auto:..."). '
+        + `${f.dele.length} esperam ele: não são seus. Lista inteira: node cc.mjs backlog fila.`)
+    }
+  } catch { /* projeto sem backlog: sem fila */ }
 }
 
 if (modo.trava) {

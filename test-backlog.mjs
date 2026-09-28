@@ -9,7 +9,7 @@ import assert from 'node:assert'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { acrescentar, comoMarkdown, ESTADOS, fechadosNosCommits, gravar, ler, mover, problemas, proximoId, retrato, sincronizarComCommits } from './src/backlog.mjs'
+import { acrescentar, comoMarkdown, especificar, ESTADOS, fechadosNosCommits, filaDoAgente, gravar, ler, mover, problemas, proximoId, retrato, sincronizarComCommits } from './src/backlog.mjs'
 
 let ok = 0
 const t = (nome, fn) => { fn(); ok++; console.log('  ok  ', nome) }
@@ -157,6 +157,32 @@ t('a gravação ordena por número, não por ordem de chegada', () => {
   const fora = path.join(casa, 'ordem.jsonl')
   gravar([{ id: 'CC-10', titulo: 'a', estado: 'B0', frente: 'f' }, { id: 'CC-2', titulo: 'b', estado: 'B0', frente: 'f' }], fora)
   assert.deepEqual(ler(fora).itens.map((i) => i.id), ['CC-2', 'CC-10'])
+})
+
+/* CC-557: a fila do agente, especificação primeiro. */
+t('fila: sozinho, sem especificação e dele, com ideia e fechado de fora', () => {
+  const it = (id, campos) => ({ id, titulo: id, estado: 'B1', criado: '2026-09-01', ...campos })
+  const f = filaDoAgente([
+    it('A', { pronto: 'a tela mostra X', conferir: 'auto:teste Y' }),
+    it('B', { pronto: 'foto em 390', conferir: 'olho:foto' }),
+    it('C', { pronto: '', conferir: null }),
+    it('D', { pronto: 'ele aprova', conferir: 'dele:abrir no telefone' }),
+    it('E', { pronto: 'x feito e provado', conferir: 'auto:y', trava: 'dele' }),
+    it('F', { estado: 'B0', pronto: 'ideia', conferir: 'auto:z' }),
+    it('G', { estado: 'OK', pronto: 'fechado ja', conferir: 'auto:z' }),
+    it('H', { estado: 'EM', pronto: 'em curso agora', conferir: 'auto:w', criado: '2026-09-20' }),
+  ])
+  assert.deepEqual(f.sozinho.map((x) => x.id), ['H', 'A', 'B'], 'em curso primeiro, depois os mais antigos')
+  assert.deepEqual(f.semEspec.map((x) => x.id), ['C'])
+  assert.deepEqual(f.dele.map((x) => x.id).sort(), ['D', 'E'])
+})
+t('especificar grava pronto e conferir, e recusa conferir sem modo válido', () => {
+  const arq = path.join(casa, 'espec.jsonl')
+  acrescentar({ titulo: 'coisa a especificar', natureza: 'PED', area: 'tela', tamanho: 'P', conferir: 'auto:x', pronto: 'provisorio', risco: 'local', origem: 'felipe', citacao: 'x', intencao: 'x' }, arq)
+  const id = ler(arq).itens[0].id
+  const i = especificar(id, { pronto: 'a lista mostra os itens do filtro', conferir: 'auto:teste de tela' }, arq)
+  assert.equal(i.pronto, 'a lista mostra os itens do filtro')
+  assert.throws(() => especificar(id, { conferir: 'talvez:nao sei' }, arq))
 })
 
 fs.rmSync(casa, { recursive: true, force: true })

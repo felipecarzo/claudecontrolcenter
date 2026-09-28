@@ -87,11 +87,14 @@ try {
 /* CC-675: a saúde da sessão lida no rodapé, com as telas medidas em 28/09. */
 try {
   const { saudeDaTela: f } = await import('./src/remotecontrol.mjs')
-  assert.deepEqual(f('❯ \n───\n  ⏸ manual mode on         ✔ Update installed\n                          /rc'), { celular: true, presa: null })
-  assert.deepEqual(f('● Remote Control disconnected (code 4090)\n❯ monta\n───\n  ⏸ manual mode on\n                          /rc failed'), { celular: false, presa: null })
-  assert.deepEqual(f('Do you trust the files in this folder?\n ❯ 1. Yes, I trust this folder\n   2. No, exit\n Enter to confirm · Esc to cancel'), { celular: null, presa: 'parada na pergunta de confiança da pasta' })
-  assert.deepEqual(f('  4. Estudo\n  5. Type something.\n───\n  6. Chat about this\nEnter to select · ↑/↓ to navigate · Esc to cancel\n─── VPS_ecommerce_apps ─'), { celular: null, presa: null }, 'pergunta do agente não é sessão presa')
-  ok('a tela diz se o celular caiu e se a sessão está presa num menu')
+  assert.deepEqual(f('❯ \n───\n  ⏸ manual mode on         ✔ Update installed\n                          /rc'), { celular: true, presa: null, trabalhando: false })
+  assert.deepEqual(f('● Remote Control disconnected (code 4090)\n❯ monta\n───\n  ⏸ manual mode on\n                          /rc failed'), { celular: false, presa: null, trabalhando: false })
+  assert.deepEqual(f('Do you trust the files in this folder?\n ❯ 1. Yes, I trust this folder\n   2. No, exit\n Enter to confirm · Esc to cancel'), { celular: null, presa: 'parada na pergunta de confiança da pasta', trabalhando: false })
+  assert.deepEqual(f('  4. Estudo\n  5. Type something.\n───\n  6. Chat about this\nEnter to select · ↑/↓ to navigate · Esc to cancel\n─── VPS_ecommerce_apps ─'), { celular: null, presa: null, trabalhando: false }, 'pergunta do agente não é sessão presa')
+  assert.equal(f('  ⎿  Running…\n✢ Frolicking… (13m 45s · ↓ 31.9k tokens)\n───\n❯ \n───\n  ⏵⏵ auto mode on\n                    /rc').trabalhando, true, 'turno em andamento')
+  assert.equal(f('✻ Crunched for 16m 53s · done 4:47 AM\n───\n❯ \n───\n  ⏸ manual mode on\n                    /rc').trabalhando, false, 'turno acabado')
+  assert.equal(f('Network request outside of sandbox\n Host: r.jina.ai\n Do you want to allow this connection?\n ❯ 1. Yes\n   2. No').celular, null, 'com o pedido na tela, não dá para saber do celular')
+  ok('a tela diz se o celular caiu, se a sessão está presa num menu e se está trabalhando')
 } catch (e) { erro('saúde da sessão', e) }
 
 if (falhou) process.exit(1)

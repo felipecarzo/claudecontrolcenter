@@ -2854,6 +2854,71 @@ function handler(req, res) {
       .catch((e) => send(res, 500, { error: String(e.message || e) }))
     return
   }
+  /* CC-530: o leitor do dia, de todos os projetos com backlog. */
+  if (url.pathname === '/api/leitor') {
+    import('./backlog.mjs').then((B) => {
+      const projetos = []
+      for (const raiz of findProjects()) {
+        const { itens, existe } = B.ler(path.join(raiz, 'docs', 'backlog.jsonl'))
+        if (!existe) continue
+        const l = B.leitorDoDia(itens)
+        if (l.fechados || l.dele.length || l.travados.length) projetos.push({ raiz, nome: path.basename(raiz).replace(/^(VPS|PC)_/i, ''), ...l })
+      }
+      projetos.sort((a, b) => b.fechados - a.fechados || b.dele.length - a.dele.length)
+      return send(res, 200, { projetos, em: Date.now() })
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
+  /* CC-557: a fila do agente de um projeto (especificação primeiro). */
+  if (url.pathname === '/api/backlog/fila') {
+    const raiz = url.searchParams.get('raiz')
+    if (!findProjects().includes(raiz)) return send(res, 404, { error: 'projeto desconhecido' })
+    import('./backlog.mjs').then((B) => {
+      const { itens, existe } = B.ler(path.join(raiz, 'docs', 'backlog.jsonl'))
+      if (!existe) return send(res, 200, { existe: false })
+      const f = B.filaDoAgente(itens)
+      const curto = (xs) => ({ n: xs.length, itens: xs.slice(0, 5).map((x) => ({ id: x.id, titulo: x.titulo })) })
+      return send(res, 200, { existe: true, sozinho: curto(f.sozinho), semEspec: curto(f.semEspec), dele: curto(f.dele) })
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
+  /* CC-666, o Armário: gavetas, arquivos e a documentação dos projetos. As
+     notas continuam em /api/notes, com a gaveta como campo. */
+  if (url.pathname === '/api/armario') {
+    import('./armario.mjs').then((A) => {
+      if (req.method !== 'POST') return send(res, 200, A.listar())
+      /* 21 MB de corpo: o arquivo de até 15 MB chega em base64, que cresce um terço. */
+      return comCorpo(req, res, 21e6, (b) => {
+        if (b.acao === 'gaveta-criar') return A.criarGaveta(b.nome)
+        if (b.acao === 'gaveta-renomear') return A.renomearGaveta(b.id, b.nome)
+        if (b.acao === 'gaveta-apagar') return A.apagarGaveta(b.id)
+        if (b.acao === 'arquivo-subir') return A.subirArquivo(b)
+        if (b.acao === 'arquivo-apagar') return A.apagarArquivo(b.id)
+        if (b.acao === 'arquivo-mover') return A.moverArquivo(b.id, b.gaveta)
+        return { ok: false, erro: 'ação desconhecida' }
+      })
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
+  if (url.pathname === '/api/armario/arquivo') {
+    import('./armario.mjs').then((A) => {
+      const a = A.arquivoParaServir(url.searchParams.get('id'))
+      if (!a) return send(res, 404, { error: 'arquivo não existe' })
+      res.writeHead(200, { 'content-type': a.mime, 'content-length': a.bytes, 'content-disposition': `inline; filename="${encodeURIComponent(a.nome)}"`, 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'", 'cache-control': 'private, max-age=3600' })
+      fs.createReadStream(a.caminho).pipe(res)
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
+  if (url.pathname === '/api/armario/docs') {
+    import('./armario.mjs').then((A) => {
+      const raiz = url.searchParams.get('raiz'); const rel = url.searchParams.get('caminho')
+      if (!findProjects().includes(raiz)) return send(res, 404, { error: 'projeto desconhecido' })
+      if (!rel) return send(res, 200, { docs: A.docsDe(raiz) })
+      const texto = A.lerDoc(raiz, rel)
+      return send(res, texto == null ? 404 : 200, texto == null ? { error: 'documento não existe' } : { caminho: rel, texto })
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
   /* CC-654, área de design 1/4: identidade de cada projeto, só leitura. */
   if (url.pathname === '/api/design') {
     import('./design.mjs')
@@ -4243,6 +4308,16 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
          SÓ no modo local (o painel rodando NA VPS, lendo a própria máquina):
          no PC a leitura usa a chave SSH dele, e ali a regra continua sendo
          só sob clique. Custa ~5s e só lê. */
+      /* CC-547: o painel do serviço anota a porta em que subiu, e o
+         `cc status` lê daqui. Sem isso ele olhava a 8099 e dizia "fora do
+         ar" com o painel na 5180. Instância de teste não anota. */
+      if (process.env.INVOCATION_ID || process.env.CC_VPS_LOCAL === '1') {
+        try {
+          const dirP = path.join(os.homedir(), '.local', 'share', 'agent-cockpit')
+          fs.mkdirSync(dirP, { recursive: true })
+          fs.writeFileSync(path.join(dirP, 'porta'), String(server.address().port))
+        } catch { /* sem a anotação, o status cai na porta padrão */ }
+      }
       if (process.env.CC_VPS_LOCAL === '1') {
         const retratoVps = () => atualizarSnapshot().catch(() => {})
         setTimeout(retratoVps, 120_000).unref()

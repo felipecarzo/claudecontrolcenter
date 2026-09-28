@@ -682,8 +682,17 @@ export function saudeDaTela(tela) {
   const presa = !menu || ehPergunta ? null
     : /trust this folder/i.test(perto) ? 'parada na pergunta de confiança da pasta' : 'parada num menu esperando tecla'
   /* Com menu aberto o rodapé some: não dá para saber do celular (null). */
-  const celular = /\/rc failed/i.test(fim) ? false : /(^|\s)\/rc\s*$/m.test(fim) ? true : menu ? null : false
-  return { celular, presa }
+  /* Pedido de permissão ou pergunta na tela também esconde o rodapé: o print
+     dele de 28/09 mostrava "sem celular" com o app conectado. */
+  const celular = /\/rc failed/i.test(fim) ? false : /(^|\s)\/rc\s*$/m.test(fim) ? true : (menu || ehPergunta) ? null : false
+  /* 28/09, print dele: "se a sessão tá executando uma tarefa, não deveria
+     estar em trabalhando?". O ecommerce_apps passou 16 minutos instalando
+     dependências e o cartão dizia PAROU: o registro do Claude Code não conta
+     isso. A tela conta: turno em andamento é a linha do verbo com reticências
+     e o tempo corrido ("✢ Frolicking… (13m 45s · ↓ 31.9k tokens)"); acabado,
+     vira "✻ Crunched for 16m 53s". */
+  const trabalhando = /[✢✻✶✳✽*·]\s+\p{L}+…\s*\((?:\d+h\s*)?(?:\d+m\s*)?\d+s/u.test(linhas.slice(-18).join('\n'))
+  return { celular, presa, trabalhando }
 }
 async function guardarRascunho(sessao) {
   const r = await tmux(['capture-pane', '-t', sessao, '-p', '-e'])

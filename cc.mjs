@@ -42,7 +42,7 @@ const argv = process.argv.slice(2)
 // como o alvo a autorizar. Achado testando o CLI do framework em 14/08.
 const FLAGS_WITH_VALUE = new Set([
   '--port', '--job', '--project', '--dir', '--metodo', '--motivo', '--nome', '--criterio', '--pastas',
-  '--prova', '--pronto', '--branch', '--alvo', '--apontou', '--respondeu', '--quem',
+  '--prova', '--pronto', '--conferir', '--branch', '--alvo', '--apontou', '--respondeu', '--quem',
   // CC-187: ligar um aparelho novo ao cockpit sem SSH
   '--para', '--token',
   // CC-232: a lista de tarefas dele, pela linha de comando
@@ -1207,12 +1207,13 @@ switch (cmd) {
 
   case 'status': {
     const d = describe()
-    const s = await daemon.status(port)
+    const s = await daemon.status(process.argv.includes('--port') ? port : daemon.portaDoPainel())
     console.log(`reporte global: ${d.global ? 'ligado' : 'desligado'}`)
     console.log(`projeto atual (${d.project}): ${d.projectEnabled ? 'ligado' : 'desligado'}`)
     if (d.disabledProjects.length) console.log(`desligados: ${d.disabledProjects.join(', ')}`)
     console.log(`autostart: ${s.installed ? s.autostart : 'não instalado'}`)
-    console.log(`painel: ${s.running ? `no ar em http://localhost:${s.port}` : 'fora do ar'}`)
+    /* CC-547: dentro da área isolada, "não respondeu" não quer dizer "caiu". */
+    console.log(`painel: ${s.running ? `no ar em http://localhost:${s.port}` : s.isolada ? 'não dá para ver daqui: esta sessão roda numa área isolada da rede, e o painel pode estar no ar (confira em https://cockpit.carzo.com.br)' : 'fora do ar'}`)
     if (s.shortcut) console.log(`atalho: ${s.shortcut}`)
     break
   }
@@ -1803,6 +1804,29 @@ switch (cmd) {
       break
     }
 
+    /* CC-557: a fila do agente (especificação primeiro). */
+    if (sub === 'fila') {
+      const f = B.filaDoAgente(B.ler().itens)
+      if (argv.includes('--json')) { console.log(JSON.stringify({ sozinho: f.sozinho.map((x) => x.id), semEspec: f.semEspec.map((x) => x.id), dele: f.dele.map((x) => x.id) })); break }
+      const linha = (x) => `    ${x.id.padEnd(9)} ${x.titulo.slice(0, 70)}`
+      console.log(`\n  faço sozinho (${f.sozinho.length}): pronto escrito e conferência minha, sem trava dele`)
+      f.sozinho.slice(0, 15).forEach((x) => console.log(linha(x)))
+      console.log(`\n  sem especificação (${f.semEspec.length}): especificar antes de fazer`)
+      f.semEspec.slice(0, 15).forEach((x) => console.log(linha(x)))
+      console.log(`\n  espera ele (${f.dele.length})`)
+      f.dele.slice(0, 15).forEach((x) => console.log(linha(x)))
+      console.log('\n  especificar: node cc.mjs backlog especificar <ID> --pronto "o que é pronto" --conferir "auto:como confiro"\n')
+      break
+    }
+    if (sub === 'especificar') {
+      const id = argv[argv.indexOf(sub) + 1]
+      if (!id || id.startsWith('--')) { console.log('\n  uso: node cc.mjs backlog especificar <ID> --pronto "o que é pronto" --conferir "auto|olho|dele:como confiro"\n'); break }
+      try {
+        const i = B.especificar(id, { pronto: valorDe('pronto'), conferir: valorDe('conferir') })
+        console.log(`\n  ${i.id} especificado\n    pronto: ${i.pronto}\n    conferir: ${i.conferir}\n`)
+      } catch (e) { console.log(`\n  não especifiquei: ${e.message}\n`); process.exitCode = 1 }
+      break
+    }
     if (sub === 'fechar' || sub === 'mover') {
       const id = argv[argv.indexOf(sub) + 1]
       const estado = sub === 'fechar' ? 'OK' : (valorDe('para') || '').toUpperCase()

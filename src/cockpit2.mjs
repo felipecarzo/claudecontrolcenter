@@ -877,7 +877,18 @@ export async function responder() {
     for (const [rotulo, s] of rcTodas) {
       const saude = saudeDaTela(telaDe.get(s.sessao))
       const c = (dados.conectadas || []).find((x) => s.conversa && (x.conversa === s.conversa || x.id === String(s.conversa).slice(0, 8)))
-      if (c) { Object.assign(c, { celular: saude.celular, presa: saude.presa, rotuloRC: rotulo }); continue }
+      if (c) {
+        Object.assign(c, { celular: saude.celular, presa: saude.presa, rotuloRC: rotulo })
+        /* A tela diz que o turno está em andamento: a sessão trabalha, mesmo
+           que o registro diga parada. Sai o cartão de "parou" dela (pergunta
+           e permissão ficam: essas pedem resposta de qualquer jeito). */
+        if (saude.trabalhando && c.estado !== 'trabalhando') {
+          c.estado = 'trabalhando'
+          if (!(dados.rodando || []).some((x) => x.id === c.id)) (dados.rodando || (dados.rodando = [])).push(c)
+          dados.espera = (dados.espera || []).filter((e) => !(e.tipo === 'agente' && e.conversa === s.conversa && e.rotulo !== 'pergunta' && e.rotulo !== 'permissão'))
+        }
+        continue
+      }
       const p = (dados.projetos || []).find((x) => x.raiz && x.raiz === s.cwd)
       ;(dados.conectadas || (dados.conectadas = [])).push({
         id: String(s.conversa || rotulo).slice(0, 8), tipo: 'remote control', dispositivo: local.nome || 'esta máquina', modelo: null,

@@ -71,6 +71,10 @@ if (!texto) sair()
 const prosa = texto
   .replace(/```[\s\S]*?```/g, ' ')
   .replace(/^\s{4,}\S.*$/gm, ' ')
+  /* CC-520: citação entre aspas também sai. Citar o padrão para explicá-lo
+     ("frases como "não era o que eu pensava"") não é contar o caminho; a
+     mesma frase fora das aspas continua cobrada. */
+  .replace(/"[^"\n]{1,200}"|“[^”\n]{1,200}”|«[^»\n]{1,200}»/g, ' ')
 
 /**
  * Os padrões, e o que cada um substitui.

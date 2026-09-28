@@ -2,6 +2,7 @@
 // mora em platform.mjs; aqui fica só a lógica que vale em todos.
 
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as so from './platform.mjs'
@@ -17,6 +18,23 @@ export const vbsPath = so.caminhoAutostart
 export const desktopDir = so.pastaDesktop
 
 /** O painel já está no ar nessa porta? Serve pra não subir duplicado. */
+/**
+ * CC-547: rodando dentro da área isolada do Claude Code (o sandbox), a sessão
+ * não enxerga a porta do painel: a conexão é recusada igual a painel caído, e
+ * o status afirmava "fora do ar" com o painel no ar (alarme falso medido). O
+ * sinal é a variável que o próprio sandbox põe no ambiente.
+ */
+export const redeIsolada = () => process.env.SANDBOX_RUNTIME === '1'
+
+/** A porta em que o painel do serviço subiu (anotada por ele), ou a padrão. */
+export function portaDoPainel() {
+  try {
+    const n = Number(fs.readFileSync(path.join(os.homedir(), '.local', 'share', 'agent-cockpit', 'porta'), 'utf8').trim())
+    if (Number.isInteger(n) && n > 0 && n < 65536) return n
+  } catch { /* nunca anotada */ }
+  return DEFAULT_PORT
+}
+
 export async function isUp(port = DEFAULT_PORT) {
   try {
     const res = await fetch(`http://127.0.0.1:${port}/api/jobs`, { signal: AbortSignal.timeout(1500) })
@@ -89,6 +107,7 @@ export async function status(port = DEFAULT_PORT) {
     autostart: fs.existsSync(auto) ? auto : null,
     running: await isUp(port),
     port,
+    isolada: redeIsolada(),
     shortcut: atalho || null,
   }
 }
@@ -104,6 +123,9 @@ export async function ensureUp(port = DEFAULT_PORT, { waitMs = 8000 } = {}) {
   try { so.garantirBandeja?.({ porta: port }) } catch { /* o ícone é enfeite: nunca impede o painel */ }
 
   if (await isUp(port)) return { url: `http://localhost:${port}`, started: false }
+  /* Subir aqui dentro criaria um SEGUNDO painel, vivo mas inalcançável de
+     fora: o processo esquecido que já custou uma sessão "ativa" por 11 horas. */
+  if (redeIsolada()) throw new Error('esta sessão roda numa área isolada da rede e não enxerga o painel; não subi outro para não criar um painel invisível. Confira em https://cockpit.carzo.com.br')
   spawnDetached(port)
   const deadline = Date.now() + waitMs
   while (Date.now() < deadline) {

@@ -84,6 +84,22 @@ Os filtros de cima escolhem o estado (esperando você, trabalhando, paradas), a
 máquina e o projeto. As abas "Fechadas e antigas" e "Histórico" guardam o que
 saiu da lista e tudo o que já apareceu, com como terminou.
 
+## tela: armario
+
+O lugar das suas coisas, organizado em gavetas, no jeito do Notes da Apple:
+gavetas à esquerda, a lista no meio e a nota aberta à direita. No telefone,
+uma coluna por vez, com "voltar".
+
+A gaveta **Notas** tem as notas de sempre. As outras gavetas são suas: toque em
+"nova gaveta" e dê um nome. Dentro de qualquer gaveta dá para criar nota ou
+subir arquivo (imagem, áudio, PDF ou texto, até 15 MB). A nota salva sozinha
+enquanto você escreve, e o rodapé dela diz quando salvou e em que gaveta está.
+
+Embaixo ficam os projetos: cada um é uma gaveta só de leitura com a
+documentação da pasta docs dele, formatada para ler.
+
+Gaveta só é apagada vazia, para nada sumir junto sem aviso.
+
 ## tela: design
 
 A identidade visual de cada projeto, lida do arquivo de design que o projeto

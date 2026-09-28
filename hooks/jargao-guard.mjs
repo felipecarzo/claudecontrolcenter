@@ -114,10 +114,15 @@ const unicos = [...new Map(achados.map((a) => [a.termo.toLowerCase(), a])).value
  * resto da conversa: repetir a explicação seria o outro extremo do mesmo
  * defeito, e ele nomeou esse também (*"lero lero"*). */
 const anterior = typeof E.jaDitoNaConversa === 'function' ? E.jaDitoNaConversa(arquivo) : ''
+/* CC-549: a palavra usada de fato (não "guardar" por "guarda", com acento e
+   plural), e a lembrança por sessão do que já foi explicado. */
+const sessao = String(arquivo || '').split(/[\\/]/).pop().replace(/\.jsonl$/, '')
+const jaExplicadas = typeof E.explicadasDaSessao === 'function' ? E.explicadasDaSessao(sessao) : new Set()
+const explicadasAgora = (E.PALAVRAS_DA_CASA || []).filter((p) => E.foiExplicado(p, prosa) || E.foiExplicado(p, anterior))
+if (typeof E.anotarExplicadas === 'function') E.anotarExplicadas(sessao, explicadasAgora)
 const daCasa = (E.PALAVRAS_DA_CASA || [])
-  .filter((p) => new RegExp(`\\b${p}`, 'i').test(prosa))
-  .filter((p) => !E.foiExplicado(p, prosa))
-  .filter((p) => !E.foiExplicado(p, anterior))
+  .filter((p) => (typeof E.usaPalavra === 'function' ? E.usaPalavra(p, prosa) : new RegExp(`\\b${p}`, 'i').test(prosa)))
+  .filter((p) => !explicadasAgora.includes(p) && !jaExplicadas.has(p))
 
 if (daCasa.length) {
   console.error(

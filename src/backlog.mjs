@@ -357,6 +357,67 @@ export function mover(id, estado, extras = {}, arquivo = caminhoPadrao()) {
   return novo
 }
 
+/**
+ * CC-557, decisão dele em 28/09: engenharia de "especificação primeiro". Todo
+ * item ganha o que é pronto e como conferir, e o agente executa sozinho, em
+ * fila, o que ele mesmo prova. A fila tem três grupos, e é a MESMA conta para
+ * o comando, a abertura da sessão e o painel:
+ *  - sozinho: pronto escrito, conferido por máquina ou por foto (auto, olho),
+ *    sem trava dele e sem ser decisão;
+ *  - semEspec: falta o pronto ou o como conferir (especificar antes de fazer);
+ *  - dele: conferir é dele, trava é dele, ou é uma decisão.
+ * Ideia ainda não avaliada (B0) fica de fora: ela não é pedido ainda.
+ */
+export function filaDoAgente(itens) {
+  const abertos = itens.filter((x) => estaAberto(x) && !['DE', 'TR', 'B0'].includes(x.estado))
+  const ordem = (a, b) => (a.estado === 'EM' ? 0 : 1) - (b.estado === 'EM' ? 0 : 1) || String(a.criado || '').localeCompare(String(b.criado || '')) || a.id.localeCompare(b.id)
+  const modo = (x) => String(x.conferir || '').split(':')[0]
+  const ehDele = (x) => modo(x) === 'dele' || x.trava === 'dele' || x.natureza === 'DEC'
+  const temEspec = (x) => String(x.pronto || '').trim().length >= 10 && MODOS_DE_CONFERIR.includes(modo(x))
+  const dele = abertos.filter(ehDele).sort(ordem)
+  const semEspec = abertos.filter((x) => !ehDele(x) && !temEspec(x)).sort(ordem)
+  const sozinho = abertos.filter((x) => !ehDele(x) && temEspec(x)).sort(ordem)
+  return { sozinho, semEspec, dele }
+}
+
+/**
+ * CC-522/530: o leitor do dia de UM projeto. O que fechou desde ontem (e
+ * quanto disso o agente provou sozinho, conferência auto ou olho), o que
+ * espera ele (a mesma conta da fila) e o que travou. Calculado na hora a
+ * partir do backlog: o "roda de manhã e grava um arquivo" do pedido original
+ * vira leitura sob demanda, que dá o mesmo resultado sem mais um processo.
+ */
+export function leitorDoDia(itens, agora = new Date()) {
+  const dia = (d) => d.toISOString().slice(0, 10)
+  const ontem = new Date(agora.getTime() - 86400000)
+  const recentes = new Set([dia(agora), dia(ontem)])
+  const fechados = itens.filter((x) => x.estado === 'OK' && recentes.has(String(x.fechado || '')))
+  const sozinho = fechados.filter((x) => /^(auto|olho)/.test(String(x.conferir || '')))
+  const f = filaDoAgente(itens)
+  const curto = (x) => ({ id: x.id, titulo: x.titulo })
+  return {
+    fechados: fechados.length,
+    sozinho: sozinho.map(curto),
+    dele: f.dele.map(curto),
+    travados: itens.filter((x) => x.estado === 'TR').map(curto),
+  }
+}
+
+/** Grava a especificação de um item: o que é pronto e como conferir. */
+export function especificar(id, { pronto, conferir } = {}, arquivo = caminhoPadrao()) {
+  const { itens } = ler(arquivo)
+  const i = itens.find((x) => x.id === id)
+  if (!i) throw new Error(`não achei ${id}`)
+  const novo = { ...i, mexido: hoje() }
+  if (pronto != null) novo.pronto = String(pronto).trim()
+  if (conferir != null) novo.conferir = String(conferir).trim()
+  const p = problemas(novo)
+  if (p.length) throw new Error(p.join('; '))
+  itens[itens.indexOf(i)] = novo
+  gravar(itens, arquivo)
+  return novo
+}
+
 /** O retrato para a tela e para o terminal. */
 export function retrato(arquivo = caminhoPadrao()) {
   const { itens, ruins, existe } = ler(arquivo)

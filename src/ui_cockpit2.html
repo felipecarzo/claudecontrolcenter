@@ -373,6 +373,9 @@
     .lat-btn { display: none !important; }
     #lateral-dir { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 384px; overflow-y: auto; padding: 18px 16px 24px; background: var(--bg); border-left: 1px solid var(--border); z-index: 35; box-sizing: border-box; }
     #lateral-dir .c2-aviso { margin-bottom: 12px; }
+    #lateral-dir .ses-filtros { margin: 10px 0 14px; padding: 10px 12px; }
+    #lateral-dir .ses-fil-linha { flex-direction: column; gap: 6px; }
+    #lateral-dir .ses-fil-resumo { margin: 10px 0 14px; }
     .lat-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; }
     .lat-cab b { font-size: 15px; }
     @media (min-width: 1700px) {
@@ -963,11 +966,55 @@
     .num-abas { margin: 0 0 14px; }
     /* CC-675: saúde da sessão no cartão. */
     .c2-saude { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 8px 0 4px; }
+    /* CC-340: a faixa da sincronia na tela Máquinas. */
+    .maq-sinc { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 16px 0 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--raio, 14px); font-size: 13px; }
+    .maq-sinc-i { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     /* CC-674: filtros de Sessões recolhíveis. */
     .ses-barra { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .ses-barra .ses-modo { margin: 0; }
     .ses-fil-resumo { display: block; width: 100%; text-align: left; margin: 12px 0 18px; padding: 10px 14px; border: 1px dashed var(--border); border-radius: var(--raio, 14px); background: none; color: var(--text-dim); font: inherit; font-size: 13px; cursor: pointer; }
     .ses-fil-resumo b { color: var(--text-main); font-weight: 600; }
+    /* CC-557: fila do agente no detalhe do projeto. */
+    .pj-fila-g { margin: 0 0 10px; }
+    .pj-fila-g .c2-mini { margin-left: 8px; }
+    .pj-fila-g ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+    /* CC-666: o Armário, no jeito do Notes da Apple. */
+    .arm { display: grid; grid-template-columns: 230px 320px minmax(0, 1fr); gap: 14px; height: calc(100dvh - 190px); min-height: 460px; }
+    .arm-col { background: var(--card); border: 1px solid var(--border); border-radius: var(--raio, 14px); overflow-y: auto; padding: 12px; min-width: 0; }
+    .arm-sec { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); margin: 14px 6px 6px; }
+    .arm-g { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; font-size: 14px; cursor: pointer; }
+    .arm-g:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+    .arm-g.on { background: color-mix(in srgb, var(--accent) 16%, transparent); font-weight: 600; }
+    .arm-g .c2-mini { margin-left: auto; }
+    .arm-cab { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; flex-wrap: wrap; }
+    .arm-cab b { font-size: 16px; margin-right: auto; }
+    .arm-it { display: block; width: 100%; text-align: left; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--border); background: none; color: inherit; font: inherit; cursor: pointer; }
+    .arm-it.on { background: color-mix(in srgb, var(--c-decisao, #f59e0b) 16%, transparent); border-radius: 10px; }
+    .arm-it b { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .arm-it span { display: block; font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+    #arm-ed { display: flex; flex-direction: column; }
+    .arm-titulo { font-size: 22px; font-weight: 700; border: 0; background: none; color: var(--text-main); padding: 4px 2px; outline: none; width: 100%; }
+    .arm-corpo { flex: 1; min-height: 300px; border: 0; background: none; color: var(--text-main); font: inherit; font-size: 15px; line-height: 1.6; padding: 6px 2px; outline: none; resize: none; width: 100%; }
+    /* A nota é papel liso, como no Notes da Apple: sem o relevo que o tema dá
+       a todo campo (a regra do tema tem força de id, por isso o #arm-ed). */
+    :root #arm-ed .arm-titulo, :root #arm-ed .arm-corpo { box-shadow: none !important; background: none !important; border: 0 !important; }
+    #arm-ed .md h1, #arm-ed .md h2, #arm-ed .md h3 { text-transform: none; letter-spacing: 0; color: var(--text-main); margin: 18px 0 8px; }
+    #arm-ed .md h1 { font-size: 24px; } #arm-ed .md h2 { font-size: 19px; } #arm-ed .md h3 { font-size: 16px; }
+    .arm-rodape { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 12px; color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; }
+    .arm-rodape select { font: inherit; font-size: 12px; }
+    .arm-prev img { max-width: 100%; border-radius: 10px; }
+    .arm-prev iframe { width: 100%; height: 70vh; border: 0; border-radius: 10px; background: #fff; }
+    .arm-prev audio { width: 100%; }
+    .arm-voltar { display: none; }
+    @media (max-width: 899px) {
+      .arm { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
+      .arm-col { max-height: none; }
+      .arm.arm-v-gavetas #arm-lista, .arm.arm-v-gavetas #arm-ed,
+      .arm.arm-v-lista #arm-gav, .arm.arm-v-lista #arm-ed,
+      .arm.arm-v-item #arm-gav, .arm.arm-v-item #arm-lista { display: none; }
+      .arm-voltar { display: inline-flex; }
+      .arm-corpo { min-height: 55vh; }
+    }
     /* CC-671: cartões da tela Ideias. */
     .ide-lista { display: flex; flex-direction: column; gap: 12px; }
     .ide-cab { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
@@ -3377,7 +3424,7 @@
       <!-- CC-580, decisão dele em 26/09: "atalhos para onde já moram". -->
 
       <a href="#trabalho" class="nav-item" data-atalho="trabalho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"></path><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> Tarefas</a>
-      <a href="#notas" class="nav-item" data-atalho="notas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M14 3v6h6"></path><path d="M8 13h8M8 17h5"></path></svg> Notas</a>
+      <a href="#" class="nav-item" data-target="view-armario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M4 12h16"></path><path d="M10 7.5h4M10 16.5h4"></path></svg> Armário</a>
       <a href="#trabalho" class="nav-item" data-atalho="trabalho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M12 4v16"></path></svg> Kanban</a>
       <a href="#" class="nav-item" data-target="view-ideias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"></path></svg> Ideias</a>
       <a href="#" class="nav-item" data-target="view-design"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"></circle><circle cx="17.5" cy="10.5" r="1.5"></circle><circle cx="8.5" cy="7.5" r="1.5"></circle><circle cx="6.5" cy="12.5" r="1.5"></circle><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A5.6 5.6 0 0 0 22 9.8C22 5.5 17.5 2 12 2z"></path></svg> Design</a>
@@ -4469,6 +4516,17 @@
       </div>
     </div>
 
+    <!-- CC-666: o Armário (gavetas, notas estilo Notes da Apple, arquivos e a
+         documentação dos projetos). -->
+    <div id="view-armario" class="view-section">
+      <div id="arm" class="arm arm-v-gavetas">
+        <aside id="arm-gav" class="arm-col"></aside>
+        <section id="arm-lista" class="arm-col"></section>
+        <section id="arm-ed" class="arm-col"><p class="c2-vazio">escolha uma nota, um arquivo ou um documento.</p></section>
+      </div>
+      <input type="file" id="arm-arquivo" accept="image/*,audio/*,application/pdf,text/plain" hidden multiple>
+    </div>
+
     <div id="view-design" class="view-section">
       <div class="grid-container so-uma">
         <div class="main-col">
@@ -4612,6 +4670,7 @@
       'view-decisoes': { title: 'Sessões', subtitle: 'Todas as sessões abertas: responda, mande o próximo passo, filtre por estado, máquina e projeto.' },
       'view-gate': { title: 'Coderoom', subtitle: 'Conversas com os agentes que nascem no painel, por projeto.' },
       'view-ideias': { title: 'Ideias', subtitle: 'O que você falou com cara de ideia nas conversas, e o que aconteceu com cada uma.' },
+      'view-armario': { title: 'Armário', subtitle: '' },
       'view-design': { title: 'Design', subtitle: 'A identidade de cada projeto: cores, fontes, marca e as regras do arquivo de design.' }
     };
 
@@ -4930,7 +4989,12 @@
       /* ⚠️ **CC-424: o endereço `#ligados` continua valendo.** A tela Remoto
          saiu do menu porque Projetos passou a fazer tudo que ela fazia, e
          favorito antigo não pode virar tela em branco por causa disso. */
-      const ABAS_CONHECIMENTO = { notas: 1, documentos: 1, glossario: 1, digest: 1 };
+      /* CC-666: #notas (os links da Início) abre o Armário, na gaveta Notas. */
+      if (nome === 'notas' || nome === 'armario') {
+        if (document.querySelector('.view-section.active')?.id !== 'view-armario') document.querySelector('.nav-item[data-target="view-armario"]')?.click();
+        return;
+      }
+      const ABAS_CONHECIMENTO = { documentos: 1, glossario: 1, digest: 1 };
       if (ABAS_CONHECIMENTO[nome]) {
         if (document.querySelector('.view-section.active')?.id !== 'view-conhecimento') {
           document.querySelector('.nav-item[data-target="view-conhecimento"]')?.click();
@@ -13876,11 +13940,10 @@
          defeito: a que não dá para reproduzir na hora de mostrar.
          O JSON é minúsculo (uma linha por painel), então não paga nada por vir
          junto do resto. */
-      const [snap, meu, trab, meusPaineis, rotas] = await Promise.all([
+      const [snap, meu, trab, rotas] = await Promise.all([
         pedir('/api/jobs', 'os agentes'),
         pedir('/api/meu', 'as suas pendências'),
         pedir('/api/trabalho?ordem=importancia', 'o backlog'),
-        pedir('/api/paineis-meus', 'os seus painéis'),
         /* CC-373: as rotas entram na carga porque a marca de risco vive no
            cartão do agente, que aparece em cinco telas. Buscá-las só ao abrir a
            tela de rotas deixaria a marca invisível em todas as outras, que é a
@@ -13890,7 +13953,6 @@
       if (snap) aplicarSnapshot(snap);
       if (meu) DATA.meu = meu.tarefas || [];
       if (trab) DATA.trabalho = trab;
-      if (meusPaineis && !MEUS) MEUS = Array.isArray(meusPaineis.paineis) ? meusPaineis.paineis : [];
       if (rotas && (!ROTAS || typeof ROTAS === 'string')) ROTAS = rotas;
       renderAll();
     }
@@ -15613,7 +15675,10 @@
     setInterval(() => {
       if ([...DATA.falhas.keys()].some((k) => !k.startsWith('POST '))) fetchData();
     }, 20000);
-    carregarFoco();
+    /* 28/09, medido: esta leitura das horas custava 3 s na abertura de TODA
+       tela e segurava as outras respostas (Sessões esperava 6 s pelos
+       cartões). O destino dela era a tela Cockpit, apagada hoje. */
+    if (document.getElementById('foco-hoje')) carregarFoco();
     carregarMaquinaHw();
     /* CC-245: ligado uma vez só. Os alvos do gate ficam fora do bloco pintado,
        então o elemento nunca é trocado e o ouvinte não se perde. */
@@ -15721,6 +15786,7 @@
       c2Extra('vps', '/api/vps', 30000),
       c2Extra('maquina', '/api/maquina', 10000),
       c2Extra('agenda', '/api/calendario', 300000),
+      c2Extra('leitor', '/api/leitor', 60000),
     ]);
     /* ── O sino (26/09) ──────────────────────────────────────────────────
        Conta as MESMAS decisões do bloco Decisões (agente esperando você), e
@@ -15807,7 +15873,14 @@
       pintar(el, '<b><i class="' + (ok ? '' : 'fora') + '"></i><em>' + (C2.erro ? 'Leitura falhou' : ok ? 'Sistema online' : esc(semSinal.join(', ')) + ' sem sinal') + '</em></b>'
         + '<span>' + D.resumo.servicos + ' serviços · ' + D.resumo.projetos + ' projetos</span>');
     }
-    async function c2Buscar() {
+    /* 28/09: o dado era pedido 3 vezes seguidas na abertura, uma em cima da
+       outra; quem chama durante um pedido em andamento espera o mesmo. */
+    let c2BuscaEmCurso = null;
+    function c2Buscar() {
+      if (!c2BuscaEmCurso) c2BuscaEmCurso = c2BuscarAgora().finally(() => { c2BuscaEmCurso = null; });
+      return c2BuscaEmCurso;
+    }
+    async function c2BuscarAgora() {
       try {
         const r = await fetch('/api/cockpit2');
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -15845,7 +15918,92 @@
        da Início em grade larga. O filtro por projeto mora AQUI e não na
        Início ("não quero poluir"), e só aparece quando há mais de um projeto:
        com um só, ele não filtraria nada. */
+    /* CC-681: a lista de sessões e os filtros viraram funções, para a tela
+       Sessões e a barra lateral usarem a MESMA conta, cada uma com o seu
+       conjunto de filtros. O que está aqui é o que vivia dentro da tela. */
+    const C2_CATS = [['todas', 'Todas'], ['perguntas', 'Perguntas'], ['esperando', 'Esperando você'], ['trabalhando', 'Trabalhando'], ['parada', 'Paradas']];
+    const c2EhPergItem = (x) => x.dec && !x.dec.grupo && (x.dec.rotulo === 'pergunta' || x.dec.rotulo === 'permissão');
+    function c2ListaSessoes(esperando, idsDepois) {
+      const ehPerg = (e) => !e.grupo && (e.rotulo === 'pergunta' || e.rotulo === 'permissão');
+      /* ── CC-588 e CC-594, 27/09: a CENTRAL. Toda sessão aberta tem cartão,
+         não só a que perguntou. A que espera ele usa o cartão de decisão; as
+         outras, o cartão de sessão. A pasta pessoal fica de fora. */
+      const pessoalDec = new Set((C2.dados.projetos || []).filter((p) => p.pastaPessoal).map((p) => p.chave));
+      const idsDec = new Set(esperando.flatMap((e) => (e.grupo ? e.itens.map((x) => x.id) : [e.id])));
+      const itens = [
+        ...esperando.map((e) => ({ dec: e, cat: 'esperando', nome: e.nome, disp: e.dispositivo, ordem: ehPerg(e) ? 0 : 1, t: e.desdeMs || 0 })),
+        ...(C2.dados.conectadas || []).filter((s) => !pessoalDec.has(s.projeto) && !idsDec.has(s.id) && !idsDepois.has(s.id)).map((s) => {
+          const cat = s.estado === 'trabalhando' ? 'trabalhando' : s.estado === 'espera você' ? 'esperando' : 'parada';
+          return { sess: s, cat, nome: s.nome, disp: s.dispositivo, ordem: { esperando: 1, trabalhando: 2, parada: 3 }[cat], t: s.desdeMs || 0 };
+        }),
+      ];
+      /* CC-605: pergunta e permissão na frente; o resto na ordem em que
+         APARECEU, guardada neste aparelho. */
+      const chaveOrd = (x) => (x.dec ? (x.dec.grupo ? 'g:' + (x.dec.nome || x.dec.rotulo || '') : x.dec.id) : x.sess.id);
+      if (!C2.ordemVista) { try { C2.ordemVista = JSON.parse(localStorage.getItem('c2-ordem') || '{}'); } catch { C2.ordemVista = {}; } }
+      const OV = C2.ordemVista;
+      let seq = Math.max(0, ...Object.values(OV));
+      let mudou = false;
+      for (const x of [...itens].sort((a, b) => b.t - a.t)) { const k = chaveOrd(x); if (!(k in OV)) { OV[k] = ++seq; mudou = true; } }
+      if (mudou) {
+        const vivas = new Set(Object.keys(OV).length > 200 ? itens.map(chaveOrd) : Object.keys(OV));
+        for (const k of Object.keys(OV)) if (!vivas.has(k)) delete OV[k];
+        try { localStorage.setItem('c2-ordem', JSON.stringify(OV)); } catch { /* só conveniência */ }
+      }
+      /* CC-612 e CC-648: pergunta, depois parada esperando, depois trabalhando;
+         o cartão respondido desliza para o fim enquanto carrega. */
+      const saindo = (x) => {
+        const d = x.dec; const id = d ? d.id : x.sess.id;
+        const p = C2.proc.get(id);
+        if (p && (!p.fim || p.ok)) return true;
+        if (d && d.responder && C2.dec[d.responder.id] && (C2.dec[d.responder.id].envio === 'indo' || C2.dec[d.responder.id].envio === 'ok')) return true;
+        if (d && d.permissaoId && C2.perm && C2.perm[d.permissaoId] && (C2.perm[d.permissaoId].estado === 'indo' || C2.perm[d.permissaoId].estado === 'ok')) return true;
+        return false;
+      };
+      const naFrente = (x) => (saindo(x) ? 9 : c2EhPergItem(x) ? 0 : x.cat === 'trabalhando' ? 2 : 1);
+      return itens.sort((a, b) => naFrente(a) - naFrente(b) || OV[chaveOrd(a)] - OV[chaveOrd(b)]);
+    }
+    /* Os filtros (máquina, estado, projeto; CC-604, CC-626, CC-627, CC-652)
+       aplicados a um conjunto F = { disp, cats: Set, projs: Set }, com os
+       nomes de atributo de quem desenha. Devolve os visíveis, as fileiras e o
+       que está valendo, para a linha do filtro recolhido. */
+    function c2Filtrar(itens, F, at) {
+      const cats = [...F.cats].filter((k) => C2_CATS.some(([c]) => c === k && c !== 'todas'));
+      const disps = {}; for (const x of itens) disps[x.disp] = (disps[x.disp] || 0) + 1;
+      if (F.disp && !(F.disp in disps)) disps[F.disp] = 0;
+      const daMaq = itens.filter((x) => !F.disp || x.disp === F.disp);
+      const porCat = (k) => (k === 'todas' ? daMaq : k === 'perguntas' ? daMaq.filter(c2EhPergItem) : daMaq.filter((x) => x.cat === k));
+      const naCat = (x) => cats.some((k) => (k === 'perguntas' ? c2EhPergItem(x) : x.cat === k));
+      const daCat = cats.length ? daMaq.filter(naCat) : daMaq;
+      const projs = {}; for (const x of daCat) projs[x.nome] = (projs[x.nome] || 0) + 1;
+      for (const p of F.projs) if (!(p in projs)) projs[p] = 0;
+      const vis = daCat.filter((x) => !F.projs.size || F.projs.has(x.nome));
+      const chip = (attr, on, val, rot, n) => '<button class="c2-dec-op' + (on ? ' on' : '') + '" style="min-height:32px;padding:4px 10px;font-size:12px" ' + attr + '="' + esc(val) + '">' + esc(rot) + ' <span class="c2-mini">' + n + '</span></button>';
+      const html = '<div class="ses-filtros">'
+        + (Object.keys(disps).length > 1 || F.disp ? '<div class="ses-fil-linha"><span class="ses-fil-rot">máquina</span><div class="c2-dec-ops">' + chip(at.disp, !F.disp, '', 'as duas máquinas', itens.length)
+          + Object.entries(disps).map(([d, n]) => chip(at.disp, F.disp === d, d, d, n)).join('') + '</div></div>' : '')
+        + '<div class="ses-fil-linha"><span class="ses-fil-rot">estado</span><div class="c2-dec-ops">' + C2_CATS.map(([k, rot]) => chip(at.cat, k === 'todas' ? !cats.length : cats.includes(k), k, rot, porCat(k).length)).join('') + '</div></div>'
+        + (Object.keys(projs).length > 1 ? '<div class="ses-fil-linha"><span class="ses-fil-rot">projeto</span><div class="c2-dec-ops">' + chip(at.proj, !F.projs.size, '', 'todos os projetos', daCat.length)
+          + Object.entries(projs).sort((a, b) => b[1] - a[1]).map(([p, n]) => chip(at.proj, F.projs.has(p), p, p, n)).join('') + '</div></div>' : '')
+        + '</div>';
+      const ativos = [F.disp, ...cats.map((k) => (C2_CATS.find(([c]) => c === k) || [])[1]), ...[...F.projs]].filter(Boolean);
+      return { vis, html, ativos };
+    }
     const LAT = { on: (() => { try { return localStorage.getItem('c2-lateral') === 'on'; } catch { return false; } })() };
+    /* CC-681: os filtros da barra, lembrados no aparelho. */
+    (() => {
+      let g = {}; try { g = JSON.parse(localStorage.getItem('c2-lat-f') || '{}'); } catch { /* sem nada guardado */ }
+      LAT.F = { disp: g.disp || null, cats: new Set(g.cats || []), projs: new Set(g.projs || []) };
+      try { LAT.filtrosAbertos = localStorage.getItem('c2-lat-filtros-abertos') !== 'nao'; } catch { LAT.filtrosAbertos = true; }
+    })();
+    const latGuardar = () => { try { localStorage.setItem('c2-lat-f', JSON.stringify({ disp: LAT.F.disp, cats: [...LAT.F.cats], projs: [...LAT.F.projs] })); localStorage.setItem('c2-lat-filtros-abertos', LAT.filtrosAbertos ? 'sim' : 'nao'); } catch { /* só conveniência */ } };
+    document.addEventListener('click', (ev) => {
+      const alterna = (conj, v) => { if (!v || v === 'todas') conj.clear(); else if (conj.has(v)) conj.delete(v); else conj.add(v); };
+      const d = ev.target.closest('[data-lat-disp]'); if (d) { LAT.F.disp = d.dataset.latDisp || null; latGuardar(); return c2RenderLateral(); }
+      const c = ev.target.closest('[data-lat-cat]'); if (c) { alterna(LAT.F.cats, c.dataset.latCat); latGuardar(); return c2RenderLateral(); }
+      const pj = ev.target.closest('[data-lat-proj]'); if (pj) { alterna(LAT.F.projs, pj.dataset.latProj); latGuardar(); return c2RenderLateral(); }
+      if (ev.target.closest('[data-lat-filtros]')) { LAT.filtrosAbertos = !LAT.filtrosAbertos; latGuardar(); return c2RenderLateral(); }
+    });
     const lateralAtiva = () => LAT.on && window.innerWidth >= 1700;
     function c2RenderLateral() {
       document.body.classList.toggle('lateral-on', LAT.on);
@@ -15853,12 +16011,17 @@
       if (!el || !lateralAtiva()) return;
       const cab = (n) => '<div class="lat-cab"><b>Responder sem sair daqui' + (n != null ? ' <span class="c2-mini">' + n + '</span>' : '') + '</b><button class="c2-link" data-lateral-alternar>fechar</button></div>';
       if (!C2.dados) return pintar(el, cab() + '<p class="c2-vazio">lendo…</p>');
-      if (document.querySelector('.view-section.active')?.id === 'view-decisoes') return pintar(el, cab() + '<p class="c2-vazio">Você está em Sessões: os mesmos cartões estão aqui ao lado.</p>');
-      /* A mesma lista e a mesma ordem da tela Sessões: pergunta e permissão
-         primeiro, depois o resto que espera ele. */
-      const perg = (e) => e.rotulo === 'pergunta' || e.rotulo === 'permissão';
-      const itens = c2DecisoesVisiveis(C2.dados).filter((e) => !e.grupo).sort((a, b) => (perg(b) - perg(a)) || (a.desdeMs || 0) - (b.desdeMs || 0));
-      pintar(el, cab(itens.length) + (itens.length ? itens.map(c2Aviso).join('') : '<p class="c2-vazio">nada esperando você agora.</p>'));
+      /* CC-681, pedido dele: "no meio só os agentes que estão perguntando e na
+         barra lateral só os que tão trabalhando". A mesma lista de Sessões,
+         com um conjunto de filtros SÓ da barra, recolhível e lembrado no
+         aparelho. Vale também na própria tela Sessões. */
+      const depoisIds = new Set((C2.dados.ocultas || []).filter((o) => o.oculta === 'depois').map((o) => o.id));
+      const itens = c2ListaSessoes(c2DecisoesVisiveis(C2.dados), depoisIds);
+      const { vis, html: fil, ativos } = c2Filtrar(itens, LAT.F, { disp: 'data-lat-disp', cat: 'data-lat-cat', proj: 'data-lat-proj' });
+      const botao = '<button class="c2-dec-op' + (LAT.filtrosAbertos ? ' on' : '') + '" data-lat-filtros style="min-height:30px;padding:4px 10px;font-size:12px">' + ic('kanban', 13) + ' filtros' + (ativos.length ? ' <span class="c2-mini">' + ativos.length + '</span>' : '') + (LAT.filtrosAbertos ? ' ▴' : ' ▾') + '</button>';
+      const resumo = '<button class="ses-fil-resumo" data-lat-filtros>' + (ativos.length ? 'filtrando: <b>' + ativos.map(esc).join(' · ') + '</b>' : 'sem filtro: todas as sessões') + '</button>';
+      pintar(el, cab(vis.length) + botao + (LAT.filtrosAbertos ? fil : resumo)
+        + (vis.length ? vis.map((x) => (x.dec ? (x.dec.grupo ? c2AvisoGrupo(x.dec) : c2Aviso(x.dec)) : c2CartaoSessao(x.sess))).join('') : '<p class="c2-vazio">nenhuma sessão neste filtro.</p>'));
     }
     document.addEventListener('click', (ev) => {
       if (!ev.target.closest('[data-lateral-alternar]')) return;
@@ -15952,86 +16115,11 @@
          (com as opções); as outras, o cartão de sessão, com a última fala e o
          campo de mensagem. A pasta pessoal (o simulador) fica de fora, como na
          Início, e as consultas dele seguem no cartão das repetidas. */
-      const pessoalDec = new Set((C2.dados.projetos || []).filter((p) => p.pastaPessoal).map((p) => p.chave));
-      const idsDec = new Set(esperando.flatMap((e) => (e.grupo ? e.itens.map((x) => x.id) : [e.id])));
-      const itens = [
-        ...esperando.map((e) => ({ dec: e, cat: 'esperando', nome: e.nome, disp: e.dispositivo, ordem: ehPerg(e) ? 0 : 1, t: e.desdeMs || 0 })),
-        ...(C2.dados.conectadas || []).filter((s) => !pessoalDec.has(s.projeto) && !idsDec.has(s.id) && !idsDepois.has(s.id)).map((s) => {
-          const cat = s.estado === 'trabalhando' ? 'trabalhando' : s.estado === 'espera você' ? 'esperando' : 'parada';
-          return { sess: s, cat, nome: s.nome, disp: s.dispositivo, ordem: { esperando: 1, trabalhando: 2, parada: 3 }[cat], t: s.desdeMs || 0 };
-        }),
-      ];
-      /* CC-605, pedido dele: "novas tarefas entrem no final e tarefas não
-         mexidas não sejam alteradas (as que têm decisões e perguntas sempre
-         ficam na frente)". Antes a mais recente ia para o topo e empurrava a
-         fila enquanto ele lia. Agora: pergunta e permissão na frente; o resto
-         na ordem em que APARECEU, guardada neste aparelho. Mudar de estado
-         (trabalhando para parada) não muda o lugar. */
-      const chaveOrd = (x) => (x.dec ? (x.dec.grupo ? 'g:' + (x.dec.nome || x.dec.rotulo || '') : x.dec.id) : x.sess.id);
-      if (!C2.ordemVista) { try { C2.ordemVista = JSON.parse(localStorage.getItem('c2-ordem') || '{}'); } catch { C2.ordemVista = {}; } }
-      const OV = C2.ordemVista;
-      let seq = Math.max(0, ...Object.values(OV));
-      let mudou = false;
-      for (const x of [...itens].sort((a, b) => b.t - a.t)) { const k = chaveOrd(x); if (!(k in OV)) { OV[k] = ++seq; mudou = true; } }
-      if (mudou) {
-        /* Cartão que some e volta (leitura do PC falhando um tique) mantém o
-           lugar: só limpa as ausentes quando a memória passa de 200. */
-        const vivas = new Set(Object.keys(OV).length > 200 ? itens.map(chaveOrd) : Object.keys(OV));
-        for (const k of Object.keys(OV)) if (!vivas.has(k)) delete OV[k];
-        try { localStorage.setItem('c2-ordem', JSON.stringify(OV)); } catch { /* só conveniência */ }
-      }
-      /* CC-612, regra dele: "primeiro as sessões que tão fazendo pergunta,
-         segundo as que têm mensagens sem resposta e por último as executando
-         tarefas em andamento". Dentro de cada degrau, a ordem de chegada. */
-      /* CC-648, pedido dele: o cartão respondido vai para o fim da lista
-         enquanto carrega (e fica lá com o "enviado"), e o próximo sobe. Com
-         erro, volta para o lugar dele. */
-      const saindo = (x) => {
-        const d = x.dec; const id = d ? d.id : x.sess.id;
-        const p = C2.proc.get(id);
-        if (p && (!p.fim || p.ok)) return true;
-        if (d && d.responder && C2.dec[d.responder.id] && (C2.dec[d.responder.id].envio === 'indo' || C2.dec[d.responder.id].envio === 'ok')) return true;
-        if (d && d.permissaoId && C2.perm && C2.perm[d.permissaoId] && (C2.perm[d.permissaoId].estado === 'indo' || C2.perm[d.permissaoId].estado === 'ok')) return true;
-        return false;
-      };
-      const naFrente = (x) => (saindo(x) ? 9 : x.dec && !x.dec.grupo && (x.dec.rotulo === 'pergunta' || x.dec.rotulo === 'permissão') ? 0 : x.cat === 'trabalhando' ? 2 : 1);
-      itens.sort((a, b) => naFrente(a) - naFrente(b) || OV[chaveOrd(a)] - OV[chaveOrd(b)]);
-      /* CC-626, ideia dele: "nesses estados não seria bom ter um pras
-         perguntas?". Perguntas com opções e pedidos de permissão: o que pede
-         resposta direta. "Esperando você" continua contendo esses também. */
-      const CATS = [['todas', 'Todas'], ['perguntas', 'Perguntas'], ['esperando', 'Esperando você'], ['trabalhando', 'Trabalhando'], ['parada', 'Paradas']];
-      /* CC-652, pedido dele: "selecionar 1 ou mais" no estado e no projeto.
-         Cada filtro é um conjunto; vazio é "todas". */
+      const itens = c2ListaSessoes(esperando, idsDepois);
       if (!(C2.sesCats instanceof Set)) C2.sesCats = new Set();
       if (!(C2.decProjs instanceof Set)) C2.decProjs = new Set();
-      const cats = [...C2.sesCats].filter((k) => CATS.some(([c]) => c === k && c !== 'todas'));
-      const ehPergItem = (x) => x.dec && !x.dec.grupo && (x.dec.rotulo === 'pergunta' || x.dec.rotulo === 'permissão');
-      /* CC-627, pedido dele: a máquina fica ACIMA do estado e é "imutável":
-         trocar o estado nunca a desfaz. Antes ela era contada dentro do estado
-         escolhido e, sem sessão daquela máquina no estado, voltava sozinha a
-         "as duas máquinas". Agora a máquina filtra primeiro, conta sobre todas
-         as sessões, e o estado conta dentro dela. Máquina escolhida sem sessão
-         nenhuma continua escolhida, com 0. */
-      const disps = {}; for (const x of itens) disps[x.disp] = (disps[x.disp] || 0) + 1;
-      if (C2.sesDisp && !(C2.sesDisp in disps)) disps[C2.sesDisp] = 0;
-      const daMaq = itens.filter((x) => !C2.sesDisp || x.disp === C2.sesDisp);
-      const porCat = (k) => (k === 'todas' ? daMaq : k === 'perguntas' ? daMaq.filter(ehPergItem) : daMaq.filter((x) => x.cat === k));
-      const naCat = (x) => cats.some((k) => (k === 'perguntas' ? ehPergItem(x) : x.cat === k));
-      const daCat = cats.length ? daMaq.filter(naCat) : daMaq;
-      const projs = {}; for (const x of daCat) projs[x.nome] = (projs[x.nome] || 0) + 1;
-      /* Projeto escolhido sem sessão no estado fica escolhido, com 0: mesma
-         regra da máquina (CC-627), senão a escolha dele some sozinha. */
-      for (const p of C2.decProjs) if (!(p in projs)) projs[p] = 0;
-      const vis = daCat.filter((x) => !C2.decProjs.size || C2.decProjs.has(x.nome));
-      const chip = (attr, on, val, rot, n) => '<button class="c2-dec-op' + (on ? ' on' : '') + '" style="min-height:32px;padding:4px 10px;font-size:12px" ' + attr + '="' + esc(val) + '">' + esc(rot) + ' <span class="c2-mini">' + n + '</span></button>';
-      const filtros = '<div class="ses-filtros">'
-        /* CC-604, "esse design tá todo colado": cada fileira com rótulo e espaço. */
-        + (Object.keys(disps).length > 1 || C2.sesDisp ? '<div class="ses-fil-linha"><span class="ses-fil-rot">máquina</span><div class="c2-dec-ops">' + chip('data-ses-disp', !C2.sesDisp, '', 'as duas máquinas', itens.length)
-          + Object.entries(disps).map(([d, n]) => chip('data-ses-disp', C2.sesDisp === d, d, d, n)).join('') + '</div></div>' : '')
-        + '<div class="ses-fil-linha"><span class="ses-fil-rot">estado</span><div class="c2-dec-ops">' + CATS.map(([k, rot]) => chip('data-ses-cat', k === 'todas' ? !cats.length : cats.includes(k), k, rot, porCat(k).length)).join('') + '</div></div>'
-        + (Object.keys(projs).length > 1 ? '<div class="ses-fil-linha"><span class="ses-fil-rot">projeto</span><div class="c2-dec-ops">' + chip('data-dec-proj', !C2.decProjs.size, '', 'todos os projetos', daCat.length)
-          + Object.entries(projs).sort((a, b) => b[1] - a[1]).map(([p, n]) => chip('data-dec-proj', C2.decProjs.has(p), p, p, n)).join('') + '</div></div>' : '')
-        + '</div>';
+      const FS = { get disp() { return C2.sesDisp; }, cats: C2.sesCats, projs: C2.decProjs };
+      const { vis, html: filtros, ativos } = c2Filtrar(itens, FS, { disp: 'data-ses-disp', cat: 'data-ses-cat', proj: 'data-dec-proj' });
       /* CC-631, decisão dele: "deixe o modo atual como uma opção (…) e
          coloque o modo alternativo de visualização". O mosaico segue igual;
          "lista" mostra lista, conversa e resumo. A escolha fica no aparelho. */
@@ -16044,7 +16132,6 @@
          filtro o que quero e colapso de novo". Recolhida, fica uma linha
          dizendo o que está valendo, que também abre. A escolha fica no aparelho. */
       if (C2.sesFiltrosAbertos == null) { try { C2.sesFiltrosAbertos = localStorage.getItem('c2-ses-filtros') !== 'fechado'; } catch { C2.sesFiltrosAbertos = true; } }
-      const ativos = [C2.sesDisp, ...cats.map((k) => (CATS.find(([c]) => c === k) || [])[1]), ...[...C2.decProjs]].filter(Boolean);
       const botaoFiltros = '<button class="c2-dec-op' + (C2.sesFiltrosAbertos ? ' on' : '') + '" data-ses-filtros-alternar style="min-height:32px;padding:4px 12px;font-size:12px">' + ic('kanban', 14) + ' filtros' + (ativos.length ? ' <span class="c2-mini">' + ativos.length + '</span>' : '') + (C2.sesFiltrosAbertos ? ' ▴' : ' ▾') + '</button>';
       const resumoFiltros = '<button class="ses-fil-resumo" data-ses-filtros-alternar>' + (ativos.length ? 'filtrando: <b>' + ativos.map(esc).join(' · ') + '</b>' : 'sem filtro: todas as sessões') + ' <span class="c2-mini">· mostrar filtros</span></button>';
       pintar(raiz, topo + '<div class="ses-barra">' + modoBts + botaoFiltros + '</div>' + (C2.sesFiltrosAbertos ? filtros : resumoFiltros) + (vis.length
@@ -16443,7 +16530,11 @@
         P[id] = { estado: 'indo', sim };
         c2RenderDecisoes(); c2RenderInicio();
         try {
-          const r = await fetch('/api/decisao/permitir', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: perm.dataset.permConv, id, decisao: perm.dataset.perm }) }).then(c2Json);
+          /* 28/09, print dele: o cartão ficou em "processando" enquanto ele já
+             tinha respondido no app. O servidor, com a máquina sobrecarregada,
+             demorou a responder, e a espera não tinha teto. Agora tem: 20 s. */
+          const r = await fetch('/api/decisao/permitir', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: perm.dataset.permConv, id, decisao: perm.dataset.perm }), signal: AbortSignal.timeout(20000) }).then(c2Json)
+            .catch((e) => ({ ok: false, erro: e.name === 'TimeoutError' ? 'sem resposta do painel em 20 s: confira na sessão (pode ter sido respondido lá)' : e.message }));
           P[id] = r.ok ? { estado: 'ok', sim } : { estado: 'erro', sim, erro: r.erro || 'falhou' };
           /* CC-649: o "permitido" vale 4 s. Se o mesmo pedido ainda estiver lá
              depois disso, os botões voltam em vez de o aviso ficar pendurado. */
@@ -17195,6 +17286,19 @@
           + '</div>').join('')
           + '<div class="c2-mini"><a href="#ideias">' + ((D.ideias || []).length > 3 ? '+' + ((D.ideias || []).length - 3) + ' ideia(s) · ' : '') + 'todas as ideias</a></div>'
         : '<p class="c2-vazio">nenhuma ideia sua esperando virar item. O painel procura nas conversas de hora em hora.</p>';
+      /* CC-530: o leitor do dia (especificação primeiro). Por projeto: o que
+         fechou, quanto o agente provou sozinho, o que espera ele e o que
+         travou; embaixo, os itens que ele fechou sozinho. */
+      const LD = X.leitor;
+      const leitorHtml = XE.leitor && !LD ? c2Nao('o leitor do dia', XE.leitor)
+        : !LD ? '<p class="c2-vazio">lendo…</p>'
+        : !LD.projetos.length ? '<p class="c2-vazio">nada fechou nem espera você nas últimas 24 horas.</p>'
+        : LD.projetos.slice(0, 6).map((p) => '<div class="c2-kv" style="flex-wrap:wrap;gap:6px"><b>' + esc(p.nome) + '</b><span class="c2-mini">fechou ' + p.fechados + '</span>'
+            + (p.sozinho.length ? '<span class="ini-pilula" style="--q:var(--c-sessao)">sozinho ' + p.sozinho.length + '</span>' : '')
+            + (p.dele.length ? '<span class="ini-pilula" style="--q:var(--c-decisao)">espera você ' + p.dele.length + '</span>' : '')
+            + (p.travados.length ? '<span class="ini-pilula" style="--q:var(--red)">travou ' + p.travados.length + '</span>' : '') + '</div>').join('')
+          + (() => { const soz = LD.projetos.flatMap((p) => p.sozinho.map((x) => ({ ...x, nome: p.nome }))).slice(0, 4);
+            return soz.length ? '<div class="c2-mini" style="margin-top:8px">provado sozinho: ' + soz.map((x) => esc(x.nome) + ' ' + esc(x.id) + ' (' + esc(String(x.titulo).slice(0, 50)) + ')').join(' · ') + '</div>' : ''; })();
       let agenda;
       if (XE.agenda && !X.agenda) agenda = c2Nao('a agenda', XE.agenda);
       else if (!X.agenda) agenda = '<p class="c2-vazio">lendo…</p>';
@@ -17396,6 +17500,7 @@
         ['tudo', c2Bloco('NOTAS', notas, '<a href="#notas" style="font-size:11px">todas</a>')],
         ['tudo', c2Bloco('IDEIAS', ideias + '<h3 class="c2-h" style="margin-top:12px"><span>AGENDA</span></h3>' + agenda, (D.ideias || []).length + ' ideia(s)')],
         ['tudo', c2Bloco('KANBAN', kanban, '<a href="#trabalho" style="font-size:11px">abrir</a>')],
+        ['tudo', c2Bloco('O AGENTE, SOZINHO', leitorHtml, 'últimas 24 h')],
         ['mensagens', c2Bloco('MENSAGENS', mensagens, String(msgs.length))],
         ['atividade', c2Bloco('ATIVIDADE', atividade, A && A.dados ? commits.length + ' hoje' : '')],
         ['tudo', c2Bloco('SEMANA', semana, '')],
@@ -17881,8 +17986,21 @@
           : H.itens.length ? '<div class="hist-lista">' + H.itens.slice(0, 40).map(c2LinhaHistorico).join('') + '</div>'
           : '<p class="c2-vazio">nada gravado ainda deste projeto. O histórico começou em 27/09.</p>');
       }
+      /* CC-557: a fila do agente deste projeto (especificação primeiro). */
+      const raizFila = (c2FwDe(p.chave) || {}).raiz || p.raiz;
+      const FL = raizFila && C2.fila && C2.fila[raizFila];
+      if (raizFila && (!FL || Date.now() - FL.em > 30000) && !(FL && FL.lendo)) {
+        (C2.fila ||= {})[raizFila] = { ...(FL || {}), lendo: true, em: FL?.em || 0 };
+        fetch('/api/backlog/fila?raiz=' + encodeURIComponent(raizFila)).then(c2Json).then((r) => { C2.fila[raizFila] = { ...r, em: Date.now() }; c2RenderProjetos(); }).catch(() => { C2.fila[raizFila] = { existe: false, em: Date.now() }; });
+      }
+      const grupoFila = (rot, cor, g, dica) => '<div class="pj-fila-g"><span class="ini-pilula" style="--q:' + cor + '">' + rot + ' · ' + g.n + '</span><span class="c2-mini">' + dica + '</span>'
+        + (g.itens.length ? '<ul>' + g.itens.slice(0, 3).map((x) => '<li><b>' + esc(x.id) + '</b> ' + esc(String(x.titulo).slice(0, 90)) + '</li>').join('') + '</ul>' : '') + '</div>';
+      const filaHtml = !FL || FL.lendo && !FL.existe ? '' : !FL.existe ? '' : '<h4>FILA DO AGENTE</h4>'
+        + grupoFila('faz sozinho', 'var(--c-sessao)', FL.sozinho, 'o agente pega em ordem e prova sem perguntar')
+        + grupoFila('sem especificação', 'var(--c-decisao)', FL.semEspec, 'ganha o que é pronto e como conferir antes de ser feito')
+        + grupoFila('espera você', 'var(--red)', FL.dele, 'conferência ou decisão sua');
       const corpo = aba === 'geral'
-        ? fwLinha + secoes.decisoes + secoes.sessoes + secoes.servicos + secoes.tarefas + secoes.mais
+        ? fwLinha + filaHtml + secoes.decisoes + secoes.sessoes + secoes.servicos + secoes.tarefas + secoes.mais
         : secoes[aba] + hist;
       return '<button class="btn compacto c2-voltar" data-c2-voltar>← lista</button>' + cab + abas + corpo;
     }
@@ -18059,7 +18177,13 @@
         : C2.srvModo === 'tabela'
           ? '<table class="c2-tab"><thead><tr><th>projeto</th><th>serviço</th><th>memória</th><th>porta</th><th>dispositivo</th><th>desde</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table>'
           : '<div class="c2-mosaico">' + lista.map(cartao).join('') + '</div>';
-      pintar(raiz, topo + filtros + modoBts + corpo
+      /* CC-340: a sincronia das outras máquinas, em uma linha cada: se estão
+         mandando os dados delas e há quanto tempo chegou o último envio. */
+      const fora = (D.dispositivos || []).filter((d) => !d.local);
+      const faixa = fora.length ? '<div class="maq-sinc">' + fora.map((d) => '<span class="maq-sinc-i"><span class="dot ' + (d.contato ? 'green' : 'red') + '"></span><b>' + esc(d.nome) + '</b> '
+        + (d.contato ? 'mandando os dados · último envio há ' + c2ms(d.idadeMs || 0) : '<span style="color:var(--red)">parou de mandar os dados' + (d.idadeMs ? ' há ' + c2ms(d.idadeMs) : '') + '</span>')
+        + (d.empurradores && d.empurradores.length ? '<span class="c2-mini"> · pelo ' + esc(d.empurradores.map((e) => e.tipo === 'painel' ? 'painel de lá' : e.tipo).join(', ')) + '</span>' : '') + '</span>').join('') + '</div>' : '';
+      pintar(raiz, topo + faixa + filtros + modoBts + corpo
         + '<p class="c2-mini" style="margin-top:18px">lido às ' + c2Hora(D.lidoEm) + '. Processos um a um e o retrato da VPS por SSH ficam no <a href="#maquina" class="c2-link">detalhe da máquina</a>.</p>');
       c2Encaixar();
     }
@@ -18171,6 +18295,177 @@
       const b = ev.target.closest('[data-dsg-proj]');
       if (b) designAbrir(b.dataset.dsgProj);
     });
+    /* ── CC-666: o Armário ────────────────────────────────────────────────
+       Três colunas no PC (gavetas, lista, item) e uma por vez no celular,
+       como o Notes da Apple. A nota salva sozinha enquanto ele escreve: o
+       editor é desenhado UMA vez por item, e digitar só mexe no dado, senão
+       o cursor fugiria a cada redesenho. */
+    const ARM = { dados: null, notas: null, gaveta: 'notas', proj: null, item: null, busca: '', docs: {}, doc: null, salvando: null, erro: null, apagar: null };
+    const armVista = (v) => { const el = document.getElementById('arm'); if (el) el.className = 'arm arm-v-' + v; };
+    async function armCarregar() {
+      try {
+        const [a, n] = await Promise.all([fetch('/api/armario').then(c2Json), fetch('/api/notes').then(c2Json)]);
+        ARM.dados = a; ARM.notas = n.notes || []; ARM.erro = null;
+      } catch (e) { ARM.erro = e.message || 'falha'; }
+      armGavetas(); armLista();
+    }
+    const armData = (ms) => { if (!ms) return ''; const d = new Date(ms); const hoje = new Date().toDateString() === d.toDateString(); return hoje ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }); };
+    const armTam = (b) => (b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+    function armGavetas() {
+      const el = document.getElementById('arm-gav'); if (!el) return;
+      if (ARM.erro && !ARM.dados) return pintar(el, '<p class="c2-vazio" style="color:var(--red)">não deu para ler o armário: ' + esc(ARM.erro) + '</p>');
+      if (!ARM.dados) return pintar(el, '<p class="c2-vazio">lendo…</p>');
+      const g = (id, nome, n, icn, extra = '') => '<button class="arm-g' + (!ARM.proj && ARM.gaveta === id ? ' on' : '') + '" data-arm-gaveta="' + esc(id) + '"' + extra + '>' + ic(icn, 15) + '<span>' + esc(nome) + '</span><span class="c2-mini">' + n + '</span></button>';
+      pintar(el, '<div class="arm-sec">gavetas</div>'
+        + ARM.dados.gavetas.map((x) => g(x.id, x.nome, (ARM.notas || []).filter((n) => (n.gaveta || 'notas') === x.id).length + ARM.dados.arquivos.filter((a) => a.gaveta === x.id).length, x.fixa ? 'nota' : 'pasta')).join('')
+        + (ARM.novaGaveta ? '<div class="c2-msg" style="margin:6px 0"><input data-arm-nova-nome placeholder="nome da gaveta" enterkeyhint="done"><button class="c2-enviar" data-arm-nova-criar aria-label="criar">' + ic('mais', 15) + '</button></div>' + (ARM.erroGaveta ? '<p class="c2-mini" style="color:var(--red);margin:0 6px 6px">' + esc(ARM.erroGaveta) + '</p>' : '')
+          : '<button class="arm-g" data-arm-nova>' + ic('mais', 15) + '<span>nova gaveta</span></button>')
+        + '<div class="arm-sec">documentação dos projetos</div>'
+        + ARM.dados.projetos.map((p) => '<button class="arm-g' + (ARM.proj === p.raiz ? ' on' : '') + '" data-arm-proj="' + esc(p.raiz) + '">' + ic('kanban', 15) + '<span>' + esc(p.nome) + '</span><span class="c2-mini">' + p.docs + '</span></button>').join(''));
+    }
+    function armNotasDaGaveta() {
+      const t = ARM.busca.trim().toLowerCase();
+      return (ARM.notas || []).filter((n) => (n.gaveta || 'notas') === ARM.gaveta && (!t || (n.title + ' ' + n.text).toLowerCase().includes(t))).sort((a, b) => (b.em || 0) - (a.em || 0));
+    }
+    function armLista() {
+      const raiz = document.getElementById('arm-lista'); if (!raiz || !ARM.dados) return;
+      /* A busca fica FORA do bloco repintado: com o cursor dentro, o bloco não
+         é repintado, e a lista pararia de filtrar enquanto ele digita. */
+      if (!document.getElementById('arm-lista-corpo')) raiz.innerHTML = '<input id="arm-busca" class="styled-input" placeholder="buscar nesta gaveta…" enterkeyhint="search" style="width:100%;box-sizing:border-box;margin:0 0 10px"><div id="arm-lista-corpo"></div>';
+      const busca = document.getElementById('arm-busca'); if (busca) busca.hidden = Boolean(ARM.proj);
+      const el = document.getElementById('arm-lista-corpo');
+      const voltar = '<button class="c2-link arm-voltar" data-arm-vista="gavetas">‹ gavetas</button>';
+      if (ARM.proj) {
+        const p = ARM.dados.projetos.find((x) => x.raiz === ARM.proj) || {};
+        const lista = ARM.docs[ARM.proj];
+        if (!lista) { fetch('/api/armario/docs?raiz=' + encodeURIComponent(ARM.proj)).then(c2Json).then((r) => { ARM.docs[p.raiz] = r.docs || []; armLista(); }); }
+        return pintar(el, '<div class="arm-cab">' + voltar + '<b>' + esc(p.nome || '') + '</b><span class="c2-mini">só leitura</span></div>'
+          + (!lista ? '<p class="c2-vazio">lendo…</p>' : lista.map((d) => '<button class="arm-it' + (ARM.item === 'doc:' + d ? ' on' : '') + '" data-arm-doc="' + esc(d) + '"><b>' + esc(d.split('/').pop().replace(/\.md$/i, '')) + '</b><span>' + esc(d) + '</span></button>').join('')));
+      }
+      const gav = ARM.dados.gavetas.find((x) => x.id === ARM.gaveta) || ARM.dados.gavetas[0];
+      const notas = armNotasDaGaveta();
+      const arqs = ARM.dados.arquivos.filter((a) => a.gaveta === ARM.gaveta && (!ARM.busca || a.nome.toLowerCase().includes(ARM.busca.toLowerCase())));
+      const icArq = (m) => (/^image/.test(m) ? 'pasta' : /^audio/.test(m) ? 'pulso' : 'nota');
+      pintar(el, '<div class="arm-cab">' + voltar + '<b>' + esc(gav?.nome || 'Notas') + '</b>'
+        + '<button class="btn pj-novo-btn" data-arm-nova-nota>' + ic('mais', 14) + 'nota</button><button class="btn" data-arm-subir>' + ic('mais', 14) + 'arquivo</button></div>'
+        + (ARM.subindo ? '<p class="c2-mini">' + esc(ARM.subindo) + '</p>' : '')
+        + (!notas.length && !arqs.length ? '<p class="c2-vazio">' + (ARM.busca ? 'nada com essa busca.' : 'gaveta vazia. Crie uma nota ou suba um arquivo.') + '</p>' : '')
+        + notas.map((n) => { const linhas = String(n.text || '').split('\n').filter((l) => l.trim()); const tit = n.title || linhas[0] || 'nota sem título';
+          return '<button class="arm-it' + (ARM.item === n.id ? ' on' : '') + '" data-arm-nota="' + esc(n.id) + '"><b>' + esc(tit) + '</b><span>' + esc(armData(n.em)) + '  ' + esc((n.title ? linhas[0] : linhas[1]) || 'sem mais texto') + '</span></button>'; }).join('')
+        + arqs.map((a) => '<button class="arm-it' + (ARM.item === a.id ? ' on' : '') + '" data-arm-arq="' + esc(a.id) + '"><b>' + ic(icArq(a.mime), 13) + ' ' + esc(a.nome) + '</b><span>' + esc(armData(a.em)) + '  ' + armTam(a.bytes) + '</span></button>').join(''));
+    }
+    function armMover(tipo, id, atual) {
+      return '<select data-arm-mover="' + tipo + ':' + esc(id) + '" aria-label="mover para outra gaveta">' + ARM.dados.gavetas.map((g) => '<option value="' + esc(g.id) + '"' + (g.id === atual ? ' selected' : '') + '>' + esc(g.nome) + '</option>').join('') + '</select>';
+    }
+    function armEditor() {
+      const el = document.getElementById('arm-ed'); if (!el) return;
+      const voltar = '<button class="c2-link arm-voltar" data-arm-vista="lista">‹ lista</button>';
+      const apagarBt = (tipo, id) => (ARM.apagar === id ? '<span>apagar mesmo?</span><button class="c2-link" style="color:var(--red)" data-arm-apagar-sim="' + tipo + ':' + esc(id) + '">sim, apagar</button><button class="c2-link" data-arm-apagar-nao>não</button>' : '<button class="c2-link" style="color:var(--red)" data-arm-apagar="' + esc(id) + '">apagar</button>');
+      if (String(ARM.item || '').startsWith('doc:')) {
+        const d = ARM.doc;
+        el.innerHTML = voltar + (!d ? '<p class="c2-vazio">lendo…</p>' : '<div class="md" style="font-size:15px;line-height:1.6;overflow-wrap:anywhere">' + mdParaHtml(d.texto) + '</div><div class="arm-rodape">' + esc(d.caminho) + ' · só leitura</div>');
+        return;
+      }
+      const n = (ARM.notas || []).find((x) => x.id === ARM.item);
+      if (n) {
+        el.innerHTML = voltar + '<input class="arm-titulo" data-arm-titulo placeholder="título" value="' + esc(n.title || '') + '">'
+          + '<textarea class="arm-corpo" data-arm-corpo placeholder="escreva aqui…">' + esc(n.text || '') + '</textarea>'
+          + '<div class="arm-rodape"><span id="arm-salvo">' + (n.em ? 'editada ' + esc(armData(n.em)) : 'nova') + '</span><span>gaveta ' + armMover('nota', n.id, n.gaveta || 'notas') + '</span><span style="margin-left:auto">' + apagarBt('nota', n.id) + '</span></div>';
+        return;
+      }
+      const a = ARM.dados?.arquivos.find((x) => x.id === ARM.item);
+      if (a) {
+        const url = '/api/armario/arquivo?id=' + encodeURIComponent(a.id);
+        const prev = /^image/.test(a.mime) ? '<img src="' + url + '" alt="">' : /^audio/.test(a.mime) ? '<audio controls src="' + url + '"></audio>' : a.mime === 'application/pdf' ? '<iframe src="' + url + '" title="' + esc(a.nome) + '"></iframe>' : '<iframe src="' + url + '" title="' + esc(a.nome) + '"></iframe>';
+        el.innerHTML = voltar + '<b style="font-size:17px;margin:4px 0 10px;display:block;overflow-wrap:anywhere">' + esc(a.nome) + '</b><div class="arm-prev">' + prev + '</div>'
+          + '<div class="arm-rodape"><span>' + armTam(a.bytes) + ' · ' + esc(armData(a.em)) + '</span><a class="c2-link" href="' + url + '" target="_blank" rel="noopener">abrir ↗</a><span>gaveta ' + armMover('arq', a.id, a.gaveta) + '</span><span style="margin-left:auto">' + apagarBt('arq', a.id) + '</span></div>';
+        return;
+      }
+      el.innerHTML = '<p class="c2-vazio">escolha uma nota, um arquivo ou um documento.</p>';
+    }
+    let armTimer = null;
+    function armSalvarLogo() {
+      clearTimeout(armTimer);
+      const s = document.getElementById('arm-salvo'); if (s) s.textContent = 'salvando…';
+      armTimer = setTimeout(async () => {
+        try {
+          const r = await fetch('/api/notes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ notes: ARM.notas }) }).then(c2Json);
+          if (Array.isArray(r.notes)) { const aqui = ARM.notas; ARM.notas = r.notes.map((x) => aqui.find((y) => y.id === x.id) || x); }
+          const s2 = document.getElementById('arm-salvo'); if (s2) s2.textContent = 'salvo ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        } catch { const s2 = document.getElementById('arm-salvo'); if (s2) { s2.textContent = 'NÃO SALVOU: sem resposta do painel'; s2.style.color = 'var(--red)'; } }
+        armLista();
+      }, 700);
+    }
+    async function armPost(corpo) { return fetch('/api/armario', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo) }).then(c2Json); }
+    document.addEventListener('input', (ev) => {
+      const n = (ARM.notas || []).find((x) => x.id === ARM.item);
+      if (!n) return;
+      if (ev.target.matches('[data-arm-titulo]')) { n.title = ev.target.value; n.em = Date.now(); armSalvarLogo(); }
+      else if (ev.target.matches('[data-arm-corpo]')) { n.text = ev.target.value; n.em = Date.now(); armSalvarLogo(); }
+      else if (ev.target.id === 'arm-busca') { ARM.busca = ev.target.value; armLista(); }
+    });
+    document.addEventListener('change', async (ev) => {
+      const m = ev.target.closest('[data-arm-mover]'); if (!m) return;
+      const [tipo, id] = m.dataset.armMover.split(/:(.*)/s);
+      if (tipo === 'nota') { const n = ARM.notas.find((x) => x.id === id); if (n) { n.gaveta = m.value; n.em = Date.now(); armSalvarLogo(); } }
+      else { await armPost({ acao: 'arquivo-mover', id, gaveta: m.value }); const a = ARM.dados.arquivos.find((x) => x.id === id); if (a) a.gaveta = m.value; }
+      ARM.gaveta = m.value; armGavetas(); armLista();
+    });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target.matches('[data-arm-nova-nome]')) { ev.preventDefault(); document.querySelector('[data-arm-nova-criar]')?.click(); } });
+    document.getElementById('arm-arquivo')?.addEventListener('change', async (ev) => {
+      const fs = [...ev.target.files]; ev.target.value = '';
+      for (const f of fs) {
+        if (f.size > 15 * 1024 * 1024) { ARM.subindo = f.name + ' passa de 15 MB e não subiu'; armLista(); continue; }
+        ARM.subindo = 'subindo ' + f.name + '…'; armLista();
+        const dados = await new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(f); });
+        const r = await armPost({ acao: 'arquivo-subir', gaveta: ARM.gaveta, nome: f.name, mime: f.type, dados }).catch((e) => ({ ok: false, erro: e.message }));
+        ARM.subindo = r.ok ? null : 'não subiu ' + f.name + ': ' + (r.erro || r.error || 'sem resposta');
+        if (r.ok) { ARM.dados.arquivos.unshift(r.arquivo); ARM.item = r.arquivo.id; armEditor(); }
+      }
+      armGavetas(); armLista();
+    });
+    document.addEventListener('click', async (ev) => {
+      const t = ev.target;
+      const v = t.closest('[data-arm-vista]'); if (v) return armVista(v.dataset.armVista);
+      const g = t.closest('[data-arm-gaveta]');
+      if (g) { ARM.gaveta = g.dataset.armGaveta; ARM.proj = null; ARM.item = null; ARM.busca = ''; const b = document.getElementById('arm-busca'); if (b) b.value = ''; armGavetas(); armLista(); armEditor(); return armVista('lista'); }
+      const pj = t.closest('[data-arm-proj]');
+      if (pj) { ARM.proj = pj.dataset.armProj; ARM.item = null; armGavetas(); armLista(); armEditor(); return armVista('lista'); }
+      if (t.closest('[data-arm-nova]')) { ARM.novaGaveta = true; armGavetas(); return document.querySelector('[data-arm-nova-nome]')?.focus(); }
+      if (t.closest('[data-arm-nova-criar]')) {
+        const nome = document.querySelector('[data-arm-nova-nome]')?.value || '';
+        const r = await armPost({ acao: 'gaveta-criar', nome });
+        if (!r.ok) { ARM.erroGaveta = r.erro || 'não criou'; armGavetas(); return; }
+        ARM.novaGaveta = false; ARM.erroGaveta = null; await armCarregar(); ARM.gaveta = r.gaveta.id; ARM.proj = null; armGavetas(); armLista(); return armVista('lista');
+      }
+      if (t.closest('[data-arm-nova-nota]')) {
+        const n = { id: 'n' + Date.now().toString(36), title: '', text: '', kind: 'text', h: 120, gaveta: ARM.gaveta, em: Date.now() };
+        ARM.notas.unshift(n); ARM.item = n.id; armLista(); armEditor(); armVista('item'); armSalvarLogo();
+        return document.querySelector('[data-arm-titulo]')?.focus();
+      }
+      if (t.closest('[data-arm-subir]')) return document.getElementById('arm-arquivo')?.click();
+      const nt = t.closest('[data-arm-nota]'); if (nt) { ARM.item = nt.dataset.armNota; ARM.apagar = null; armLista(); armEditor(); return armVista('item'); }
+      const aq = t.closest('[data-arm-arq]'); if (aq) { ARM.item = aq.dataset.armArq; ARM.apagar = null; armLista(); armEditor(); return armVista('item'); }
+      const dc = t.closest('[data-arm-doc]');
+      if (dc) {
+        ARM.item = 'doc:' + dc.dataset.armDoc; ARM.doc = null; armLista(); armEditor(); armVista('item');
+        const r = await fetch('/api/armario/docs?raiz=' + encodeURIComponent(ARM.proj) + '&caminho=' + encodeURIComponent(dc.dataset.armDoc)).then(c2Json).catch(() => null);
+        ARM.doc = r && r.texto != null ? r : { caminho: dc.dataset.armDoc, texto: 'não deu para ler este documento.' }; return armEditor();
+      }
+      const ap = t.closest('[data-arm-apagar]'); if (ap) { ARM.apagar = ap.dataset.armApagar; return armEditor(); }
+      if (t.closest('[data-arm-apagar-nao]')) { ARM.apagar = null; return armEditor(); }
+      const sim = t.closest('[data-arm-apagar-sim]');
+      if (sim) {
+        const [tipo, id] = sim.dataset.armApagarSim.split(/:(.*)/s);
+        if (tipo === 'nota') { ARM.notas = ARM.notas.filter((x) => x.id !== id); armSalvarLogo(); }
+        else { await armPost({ acao: 'arquivo-apagar', id }); ARM.dados.arquivos = ARM.dados.arquivos.filter((x) => x.id !== id); }
+        ARM.item = null; ARM.apagar = null; armGavetas(); armLista(); armEditor(); return armVista('lista');
+      }
+    });
+    document.querySelectorAll('.nav-item[data-target="view-armario"]').forEach((n) => n.addEventListener('click', () => setTimeout(armCarregar, 0)));
+    const armarioSeAtiva = () => { if (document.querySelector('.view-section.active')?.id === 'view-armario' && !ARM.dados) armCarregar(); };
+    window.addEventListener('hashchange', () => setTimeout(armarioSeAtiva, 0));
+    window.addEventListener('load', () => setTimeout(armarioSeAtiva, 150));
     async function ideiasCarregar() {
       const raiz = document.getElementById('ideias-tela');
       if (!raiz) return;
