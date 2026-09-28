@@ -362,18 +362,67 @@ export function permissaoDaTela(tela) {
   if (q < 0 || !teclaDaPermissao(tela, 'sim')) return null
   let ini = q - 1
   while (ini >= 0 && !/^[─━-]{10,}\s*$/.test(linhas[ini].trim())) ini -= 1
-  const bloco = linhas.slice(ini + 1, q).map((l) => l.trim()).filter((l) => l && !/^Tip:|auto mode/i.test(l))
+  /* A dica "Tip: auto mode…" quebra em duas linhas ("… choose" / "below"):
+     as duas saem. Medido no coepiloto em 27/09. */
+  const bloco = linhas.slice(ini + 1, q).map((l) => l.trim()).filter((l) => l && !/^Tip:|auto mode/i.test(l) && !/^below$/i.test(l))
   if (!bloco.length) return null
   const titulo = bloco[0]
-  const detalhe = bloco.slice(1).join('\n')
+  /* O comando vem com "│" na frente de cada linha; a descrição, sem. */
+  const cmd = bloco.slice(1).filter((l) => l.startsWith('│')).map((l) => l.replace(/^│\s?/, ''))
+  const outras = bloco.slice(1).filter((l) => !l.startsWith('│'))
+  const detalhe = cmd.length ? cmd.join('\n') : outras.join('\n')
+  const descricao = cmd.length ? outras.join(' ') : ''
   let h = 5381
   for (const c of titulo + '|' + detalhe) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0
-  return { titulo, detalhe, pergunta: linhas[q].trim(), chave: h.toString(36) }
+  return { titulo, detalhe, descricao, pergunta: linhas[q].trim(), chave: h.toString(36) }
+}
+
+/* ── CC-651: os pedidos que o gancho de permissão gravou ──────────────────
+   A mesma pasta que `hooks/permissao-painel.mjs` usa. O painel marca que está
+   aberto (o gancho só espera quando há alguém olhando), lê os pedidos vivos e
+   responde gravando a decisão ao lado do pedido. */
+export const DIR_PERMISSOES = () => path.join(DIR_SESSOES_ABRIGO(), '..', 'permissoes')
+
+export function marcarPainelAberto(dir = DIR_PERMISSOES()) {
+  try {
+    fs.mkdirSync(dir, { recursive: true })
+    const f = path.join(dir, '.painel-aberto')
+    const t = new Date()
+    try { fs.utimesSync(f, t, t) } catch { fs.writeFileSync(f, '') }
+  } catch { /* sem a marca, o gancho não espera: o pedido vai ao terminal */ }
+}
+
+export function lerPedidosDoGancho(dir = DIR_PERMISSOES(), agora = Date.now()) {
+  let nomes = []
+  try { nomes = fs.readdirSync(dir).filter((n) => /^[0-9a-f-]+\.json$/.test(n)) } catch { return [] }
+  const out = []
+  for (const n of nomes) {
+    try {
+      const p = JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8'))
+      if (p && p.id && (!p.ate || p.ate > agora)) out.push(p)
+    } catch { /* gravando agora */ }
+  }
+  return out.sort((a, b) => (a.em || 0) - (b.em || 0))
+}
+
+/** Responde um pedido do gancho. Confirma que o gancho leu (o pedido some). */
+export async function responderGancho(idGancho, decisao, { dir = DIR_PERMISSOES(), esperar = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  if (!/^[0-9a-f-]{6,20}$/.test(String(idGancho || ''))) return { ok: false, erro: 'pedido inválido' }
+  const arq = path.join(dir, idGancho + '.json')
+  if (!fs.existsSync(arq)) return { ok: false, erro: 'esse pedido já passou para o terminal (mais de 30 s) ou foi respondido lá: responda na sessão' }
+  try { fs.writeFileSync(path.join(dir, idGancho + '.resposta.json'), JSON.stringify({ decisao, em: Date.now() })) } catch (e) { return { ok: false, erro: 'não consegui gravar a resposta: ' + e.message } }
+  for (let i = 0; i < 20; i += 1) {
+    await esperar(200)
+    if (!fs.existsSync(arq)) return { ok: true }
+  }
+  return { ok: false, erro: 'gravei a resposta, mas o Claude Code não confirmou: confira na sessão' }
 }
 
 /** Permite (uma vez) ou nega o pedido de permissão da sessão. */
 export async function permitir({ conversa, id, decisao }, deps = DEPS) {
   if (!conversa || !id || !['sim', 'nao'].includes(decisao)) return { ok: false, erro: 'faltou dizer a conversa, o pedido ou a decisão' }
+  /* CC-651: pedido que veio do gancho se responde pelo gancho, sem tecla. */
+  if (String(id).startsWith('gancho:')) return responderGancho(String(id).slice(7), decisao, deps.gancho || {})
   const sessoes = await deps.sessoes().catch(() => ({}))
   const aqui = Object.values(sessoes || {}).find((s) => s?.conversa === conversa)
   if (!aqui?.sessao) return { ok: false, erro: 'essa conversa não está num terminal aberto pelo painel: responda direto nela' }
@@ -393,11 +442,24 @@ export async function permitir({ conversa, id, decisao }, deps = DEPS) {
   }
   const r = await deps.apertar(aqui.sessao, tecla)
   if (!r?.ok) return { ok: false, erro: 'o terminal recusou a tecla' }
-  for (let i = 0; i < 10; i += 1) {
+  /* CC-649, print dele: "tá falando que permitiu, mas não permitiu". Duas
+     brechas medidas em 27/09:
+     1. a conferência tratava leitura de tela FALHA (vazia) como "o pedido
+        sumiu", e respondia ok com o pedido ainda lá. Agora só conta leitura
+        que veio, e que mostra o pedido fora da tela;
+     2. com três opções, o número pode só mover o cursor. Se o pedido segue na
+        tela com o cursor na opção escolhida, vai um Enter, uma vez. */
+  const mesmoPedido = (t) => (daTela ? (permissaoDaTela(t)?.chave === String(id).slice(5)) : Boolean(teclaDaPermissao(t, 'sim')))
+  let enter = false
+  for (let i = 0; i < 12; i += 1) {
     await deps.esperar(500)
-    if (!teclaDaPermissao(await deps.capturar(aqui.sessao), 'sim')) return { ok: true, sessao: aqui.sessao }
+    const t = await deps.capturar(aqui.sessao)
+    if (typeof t !== 'string' || !t.trim()) continue
+    if (!mesmoPedido(t)) return { ok: true, sessao: aqui.sessao }
+    const cursor = t.match(/❯\s*(\d)\./)
+    if (!enter && i >= 1 && cursor && cursor[1] === tecla) { enter = true; await deps.apertar(aqui.sessao, 'Enter') }
   }
-  return { ok: false, erro: 'apertei, mas o menu continua na tela: confira na sessão' }
+  return { ok: false, erro: 'apertei, mas o pedido continua na tela do terminal: confira na sessão' }
 }
 
 /**

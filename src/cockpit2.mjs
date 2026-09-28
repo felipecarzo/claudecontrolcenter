@@ -23,12 +23,12 @@ import { chaveDeProjeto, nomeCanonico } from './nomeProjeto.mjs'
 import { CACHE_FILE as TEMPO_CACHE, resumo as resumoTempo } from './tempo.mjs'
 import { lerFila } from './ideias.mjs'
 import { lerPacotes, mesclar, maquinasConhecidas } from './federacao.mjs'
-import { lerFechadas, lerMantidas, chaveDoCartao, lerDepois, depoisVale, permissaoDaTela } from './decisao.mjs'
-import { estado as estadoRC } from './remotecontrol.mjs'
+import { lerFechadas, lerMantidas, chaveDoCartao, lerDepois, depoisVale, permissaoDaTela, lerPedidosDoGancho } from './decisao.mjs'
+import { estado as estadoRC, saudeDaTela } from './remotecontrol.mjs'
 import { execFile } from 'node:child_process'
 import { registrar as registrarHistorico } from './decisaoHistorico.mjs'
 import * as resumoAgy from './resumoAgy.mjs'
-import { casaClaude as casaClaudeDir } from './platform.mjs'
+import { casaClaude as casaClaudeDir, memoriaDosProcessos } from './platform.mjs'
 
 const CAUDA = 256 * 1024
 const MIN_PORTA = 1024
@@ -842,25 +842,89 @@ export async function responder() {
     falaDe: (j) => (j.origem && (!eu || j.origem.id !== eu.id) ? (j.ultimaFala || null) : ultimaFalaDoAgente(transcritoDe(j))),
     ignorar: [path.basename(os.homedir())],
   })
+  /* CC-554: quanto cada serviço desta máquina come de memória (com os filhos). */
+  try {
+    const pids = [...new Set((dados.servicos || []).filter((s) => s.tipo === 'porta' && s.pid && s.dispositivo === local.nome).map((s) => s.pid))]
+    const mem = await memoriaDosProcessos(pids)
+    const pinta = (s) => { if (s && s.pid && mem.has(s.pid)) s.memoria = mem.get(s.pid) }
+    for (const s of dados.servicos || []) pinta(s)
+    for (const p of dados.projetos || []) for (const s of p.servicos || []) pinta(s)
+  } catch { /* sem a memória, a tela segue como antes */ }
   /* CC-638, print dele: o pedido de rede do sandbox ("Allow network
      connection to overpass-api.de?") não aparecia. Ele não é ação na conversa
      principal (veio de um ajudante em segundo plano), então só a TELA do
-     terminal sabe dele. Só para sessão que o registro marca como esperando e
-     que o painel não achou como permissão, e só as do tmux do painel. */
+     terminal sabe dele.
+     CC-640, pedido dele: "quero que tudo apareça". Medido no mesmo projeto:
+     com um ajudante trabalhando em segundo plano, o registro marca a sessão
+     como OCUPADA (`busy`) mesmo com o terminal parado no pedido, e a regra
+     antiga (só quem o registro diz esperando) nunca olhava. Agora a TELA de
+     toda sessão aberta pelo painel é lida a cada leitura (poucas sessões,
+     alguns milissegundos cada), e pedido na tela vira cartão, qualquer que
+     seja o estado do registro. Cartão que já veio da conversa fica como está. */
   try {
-    const candidatos = (dados.espera || []).filter((e) => e.tipo === 'agente' && e.esperaTerminal && e.rotulo !== 'permissão' && e.conversa)
-    if (candidatos.length) {
-      const sessoesRC = await estadoRC().catch(() => ({}))
-      for (const e of candidatos) {
-        const s = Object.values(sessoesRC || {}).find((x) => x?.conversa === e.conversa)
-        if (!s?.sessao) continue
-        const tela = await new Promise((ok) => execFile('tmux', ['capture-pane', '-t', s.sessao, '-p', '-S', '-60'], { encoding: 'utf8', timeout: 3000 }, (err, out) => ok(err ? '' : out)))
-        const pr = permissaoDaTela(tela)
-        if (!pr) continue
-        Object.assign(e, { rotulo: 'permissão', pergunta: pr.titulo + (pr.detalhe ? ': ' + pr.detalhe.replace(/\n/g, ' · ') : ''), ferramenta: 'rede', comando: pr.detalhe || pr.pergunta, permissaoId: 'tela:' + pr.chave, acao: 'responder' })
-      }
+    const rcTodas = Object.entries(await estadoRC().catch(() => ({})) || {}).filter(([, s]) => s?.sessao)
+    const telaDe = new Map(await Promise.all(rcTodas.map(([, s]) => new Promise((ok) => execFile('tmux', ['capture-pane', '-t', s.sessao, '-p', '-S', '-60'], { encoding: 'utf8', timeout: 3000 }, (err, out) => ok([s.sessao, err ? '' : out]))))))
+    const sessoesRC = rcTodas.map(([, s]) => s).filter((s) => s.conversa)
+    const telas = sessoesRC.map((s) => telaDe.get(s.sessao) || '')
+    /* CC-675, pedido dele: "o cockpit tem que reconhecer que temos sessões
+       congeladas ou perdidas (…) temos que ser capazes de enxergá-las".
+       Garantia: TODA sessão viva num terminal do painel aparece na lista,
+       com a saúde lida na tela (celular ligado? presa num menu?). A que o
+       registro do Claude Code dava por sem sinal (fibraessencia, 2 dias com o
+       celular caído) ou que nunca teve conversa (boxboutique, parado na
+       pergunta de confiança) entra marcada como perdida, em vez de sumir. */
+    const local = (dados.dispositivos || []).find((d) => d.local) || {}
+    for (const [rotulo, s] of rcTodas) {
+      const saude = saudeDaTela(telaDe.get(s.sessao))
+      const c = (dados.conectadas || []).find((x) => s.conversa && (x.conversa === s.conversa || x.id === String(s.conversa).slice(0, 8)))
+      if (c) { Object.assign(c, { celular: saude.celular, presa: saude.presa, rotuloRC: rotulo }); continue }
+      const p = (dados.projetos || []).find((x) => x.raiz && x.raiz === s.cwd)
+      ;(dados.conectadas || (dados.conectadas = [])).push({
+        id: String(s.conversa || rotulo).slice(0, 8), tipo: 'remote control', dispositivo: local.nome || 'esta máquina', modelo: null,
+        estado: 'ociosa', perdida: true, desdeMs: Math.max(0, agora - (s.ativa || s.desde || agora)),
+        projeto: p ? p.chave : path.basename(s.cwd || rotulo), nome: p ? p.nome : path.basename(s.cwd || rotulo),
+        conversa: s.conversa || null, fala: null, assunto: saude.presa || 'viva no terminal, sem sinal no registro do Claude Code',
+        celular: saude.celular, presa: saude.presa, rotuloRC: rotulo, todos: 0, todosDone: 0,
+      })
     }
+    /* CC-645, print dele: respondeu no terminal e o cartão continuou, com
+       "o pedido na tela não é o do cartão". O cartão vinha da conversa
+       gravada, e o botão confere a tela: duas fontes. Nas sessões do painel,
+       a TELA é a única fonte do cartão de permissão. Sem pedido na tela, o
+       cartão sai; com pedido, ele usa o que está na tela. */
+    const doPainel = new Set(sessoesRC.map((s) => s.conversa))
+    const naTela = new Map(sessoesRC.map((s, i) => [s.conversa, permissaoDaTela(telas[i])]))
+    dados.espera = (dados.espera || []).filter((e) => !(e.tipo === 'agente' && e.rotulo === 'permissão' && doPainel.has(e.conversa) && !naTela.get(e.conversa)))
+    sessoesRC.forEach((s, i) => {
+      const pr = naTela.get(s.conversa)
+      if (!pr) return
+      const campos = { rotulo: 'permissão', pergunta: pr.descricao || (pr.titulo + (pr.detalhe ? ': ' + pr.detalhe.split('\n')[0] : '')), ferramenta: /network/i.test(pr.titulo) ? 'rede' : (pr.titulo.split(' ')[0] || 'ação'), comando: pr.detalhe || pr.pergunta, permissaoId: 'tela:' + pr.chave, acao: 'responder', marca: 'tela:' + pr.chave }
+      const ja = (dados.espera || []).find((e) => e.tipo === 'agente' && e.conversa === s.conversa)
+      if (ja) { Object.assign(ja, campos); return }
+      const c = (dados.conectadas || []).find((x) => x.conversa === s.conversa || x.id === String(s.conversa).slice(0, 8))
+      if (!c) return
+      ;(dados.espera || (dados.espera = [])).unshift({ tipo: 'agente', id: c.id, projeto: c.projeto, nome: c.nome, frente: c.frente || null, assunto: c.assunto || null, dispositivo: c.dispositivo, modelo: c.modelo || null, desdeMs: 0, sessao: c.tipo, conversa: s.conversa, opcoes: [], ...campos })
+    })
   } catch { /* a tela é um extra: sem ela, o cartão fica como estava */ }
+  /* CC-651: os pedidos do gancho de permissão valem MAIS que a tela e a
+     conversa: vêm do próprio Claude Code, de qualquer origem (inclusive de
+     ajudante em segundo plano), e se respondem sem apertar tecla. */
+  try {
+    for (const pg of lerPedidosDoGancho(undefined, agora)) {
+      const c = (dados.conectadas || []).find((x) => x.conversa === pg.sessao || x.id === String(pg.sessao || '').slice(0, 8))
+      const campos = {
+        rotulo: 'permissão', pergunta: (pg.ajudante ? 'Ajudante em segundo plano: ' : '') + (pg.descricao || ('quer usar ' + (pg.ferramenta || 'uma ferramenta'))),
+        ferramenta: pg.ferramenta || 'ação', comando: pg.comando || null, permissaoId: 'gancho:' + pg.id, acao: 'responder',
+        marca: 'gancho:' + pg.id, conversa: pg.sessao, prazo: pg.ate || null, doAjudante: Boolean(pg.ajudante),
+      }
+      const ja = (dados.espera || []).find((e) => e.tipo === 'agente' && e.conversa === pg.sessao)
+      if (ja) { Object.assign(ja, campos); continue }
+      ;(dados.espera || (dados.espera = [])).unshift({
+        tipo: 'agente', id: c ? c.id : String(pg.sessao || pg.id).slice(0, 8), projeto: c ? c.projeto : path.basename(pg.cwd || ''), nome: c ? c.nome : path.basename(pg.cwd || 'sessão'),
+        frente: c?.frente || null, assunto: c?.assunto || null, dispositivo: c ? c.dispositivo : local.nome, modelo: c?.modelo || null, desdeMs: Math.max(0, agora - (pg.em || agora)), sessao: c?.tipo || 'claude code', opcoes: [], ...campos,
+      })
+    }
+  } catch { /* sem os pedidos do gancho, ficam os da tela e da conversa */ }
   /* CC-599: o resumo do agy para cada sessão parada DESTA máquina (decisão
      dele: automático, um por parada). Pede o que falta e junta o que está
      pronto; o pedido roda em segundo plano, esta leitura não espera. */

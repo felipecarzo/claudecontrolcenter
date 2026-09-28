@@ -84,6 +84,21 @@ Os filtros de cima escolhem o estado (esperando você, trabalhando, paradas), a
 máquina e o projeto. As abas "Fechadas e antigas" e "Histórico" guardam o que
 saiu da lista e tudo o que já apareceu, com como terminou.
 
+## tela: design
+
+A identidade visual de cada projeto, lida do arquivo de design que o projeto
+já guarda (o `DESIGN.md` na raiz, ou em `docs/guias/`). Toque num projeto em
+cima para ver as cores, as fontes, os arquivos de marca e, no fim, o texto
+inteiro com as regras.
+
+As cores vêm do cabeçalho do arquivo quando ele tem um, cada uma com o nome
+que o projeto dá a ela. Quando o arquivo é só texto, as cores são as citadas
+nele, e embaixo de cada uma aparece a linha de onde saiu. Projeto sem arquivo
+de design fica na lista recolhida "outros projetos".
+
+Por enquanto a tela só mostra. Ajustar pelo painel grava dentro do projeto, e
+vem depois de você ver esta primeira versão.
+
 ## tela: ideias
 
 Tudo o que você falou com cara de ideia nas conversas desta máquina, e o que

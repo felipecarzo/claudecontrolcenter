@@ -520,6 +520,35 @@ export function listarPortas() {
   return ehWindows ? portasWindows() : portasUnix()
 }
 
+/**
+ * CC-554, pedido dele: "cada processo que ocupa memória aparece com quanto
+ * come". Bytes de cada processo SOMANDO os filhos (um servidor Next abre
+ * processos de trabalho por baixo, e só o pai mentiria para menos). Unix pelo
+ * `ps`, numa chamada só. No Windows fica vazio: `tasklist` por processo é
+ * lento demais para o tique da tela.
+ */
+export async function memoriaDosProcessos(pids) {
+  if (ehWindows || !pids || !pids.length) return new Map()
+  const r = await quietAsync('ps', ['-eo', 'pid=,ppid=,rss='], 5000)
+  if (!r.ok) return new Map()
+  const rss = new Map(); const filhos = new Map()
+  for (const l of r.out.split('\n')) {
+    const [p, pp, k] = l.trim().split(/\s+/).map(Number)
+    if (!p) continue
+    rss.set(p, (k || 0) * 1024)
+    if (!filhos.has(pp)) filhos.set(pp, [])
+    filhos.get(pp).push(p)
+  }
+  const soma = (p, vistos) => {
+    if (vistos.has(p)) return 0
+    vistos.add(p)
+    let t = rss.get(p) || 0
+    for (const f of filhos.get(p) || []) t += soma(f, vistos)
+    return t
+  }
+  return new Map(pids.map((p) => [p, soma(p, new Set())]))
+}
+
 export function matarProcesso(pid) {
   if (ehWindows) {
     const r = quiet('taskkill', ['/PID', String(pid), '/T', '/F'])

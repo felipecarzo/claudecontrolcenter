@@ -74,5 +74,25 @@ try {
   ok('o remotecontrol.mjs casa por tempo de criação')
 } catch (e) { erro('código usa criadoEm', e) }
 
+/* 28/09: religar o celular apagava o texto digitado e não enviado. */
+try {
+  const { rascunhoDaTela: r } = await import('./src/remotecontrol.mjs')
+  assert.equal(r('───\n❯ monta as perguntas pra kolibri\n───'), 'monta as perguntas pra kolibri')
+  assert.equal(r('───\n❯ \x1b[2mcommit\x1b[0m\n───'), '', 'sugestão esmaecida não é rascunho')
+  assert.equal(r('❯ Continue\n  Enter to select · Esc'), '', 'menu aberto não é rascunho')
+  assert.equal(r('❯ \n'), '')
+  ok('o rascunho do campo sobrevive a religar e soltar o celular')
+} catch (e) { erro('rascunho do campo', e) }
+
+/* CC-675: a saúde da sessão lida no rodapé, com as telas medidas em 28/09. */
+try {
+  const { saudeDaTela: f } = await import('./src/remotecontrol.mjs')
+  assert.deepEqual(f('❯ \n───\n  ⏸ manual mode on         ✔ Update installed\n                          /rc'), { celular: true, presa: null })
+  assert.deepEqual(f('● Remote Control disconnected (code 4090)\n❯ monta\n───\n  ⏸ manual mode on\n                          /rc failed'), { celular: false, presa: null })
+  assert.deepEqual(f('Do you trust the files in this folder?\n ❯ 1. Yes, I trust this folder\n   2. No, exit\n Enter to confirm · Esc to cancel'), { celular: null, presa: 'parada na pergunta de confiança da pasta' })
+  assert.deepEqual(f('  4. Estudo\n  5. Type something.\n───\n  6. Chat about this\nEnter to select · ↑/↓ to navigate · Esc to cancel\n─── VPS_ecommerce_apps ─'), { celular: null, presa: null }, 'pergunta do agente não é sessão presa')
+  ok('a tela diz se o celular caiu e se a sessão está presa num menu')
+} catch (e) { erro('saúde da sessão', e) }
+
 if (falhou) process.exit(1)
 console.log('test-remoto-conversa: ok')

@@ -153,7 +153,7 @@ import { SECOES as SECOES_VPS, veredito as veredictoVps } from './vpsSaude.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
 import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
-import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao } from './decisao.mjs'
+import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto } from './decisao.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
@@ -1478,7 +1478,38 @@ function handler(req, res) {
       nomes = [...txt.matchAll(/^\s*([\w-]+)\)\s*echo "\$HOME\/([^:"]+):(\w+):(\d+)"/gm)]
         .map((m) => ({ nome: m[1], pasta: path.join(os.homedir(), m[2]), tipo: m[3], porta: Number(m[4]), url: 'https://testedevoo.carzo.com.br/' + m[1] + '/' })) // CC-628: sem a barra final o nginx dá 404 (medido no maurice)
     } catch { /* sem o script nesta máquina: lista vazia, e a tela não oferece */ }
+    /* 28/09: os criados pelo botão "criar teste de voo" moram numa lista à
+       parte, que o ~/dev.sh também lê (as sessões não podem editar o script). */
+    const EXTRA = path.join(os.homedir(), '.config', 'testedevoo', 'projetos.txt')
+    try {
+      for (const m of fs.readFileSync(EXTRA, 'utf8').matchAll(/^([\w-]+):([^:\n]+):(\w+):(\d+)\s*$/gm)) {
+        if (!nomes.some((n) => n.nome === m[1])) nomes.push({ nome: m[1], pasta: path.join(os.homedir(), m[2]), tipo: m[3], porta: Number(m[4]), url: 'https://testedevoo.carzo.com.br/' + m[1] + '/' })
+      }
+    } catch { /* lista ainda não existe */ }
     if (req.method !== 'POST') return send(res, 200, { nomes })
+    if (url.searchParams.get('acao') === 'criar') {
+      /* Projeto sem teste de voo: o painel escolhe nome e porta, e abre uma
+         sessão no projeto com o pedido escrito. Quem ajusta o projeto e
+         registra na lista é a sessão, que enxerga o código. */
+      return comCorpoAsync(req, res, 1e3, async ({ projeto, cwd }) => {
+        const dir = cwdDoProjeto(cwd, projeto)
+        if (!dir) return { ok: false, erro: 'projeto não encontrado nesta máquina' }
+        if (nomes.some((n) => dir === n.pasta || dir.startsWith(n.pasta + path.sep) || n.pasta.startsWith(dir + path.sep))) return { ok: false, erro: 'este projeto já tem teste de voo' }
+        const nome = String(projeto).replace(/^(VPS|PC)_/i, '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'projeto'
+        if (nomes.some((n) => n.nome === nome)) return { ok: false, erro: 'já existe um teste de voo chamado ' + nome }
+        const usadas = new Set(nomes.map((n) => n.porta))
+        let porta = 5251; while (usadas.has(porta) && porta < 5299) porta += 1
+        if (usadas.has(porta)) return { ok: false, erro: 'acabaram as portas do teste de voo (5250 a 5299)' }
+        const rel = path.relative(os.homedir(), dir)
+        const pedido = `Crie o teste de voo deste projeto, pedido do Felipe pelo painel. Ele deve abrir em https://testedevoo.carzo.com.br/${nome}/ . `
+          + `1) Descubra qual app deste projeto sobe como servidor web e em qual pasta (se houver mais de um, pergunte qual). `
+          + `2) Ajuste o projeto para funcionar sob o prefixo /${nome}/ usando o que o ~/dev.sh passa: Vite le VITE_BASE, Next le DEV_BASE_PATH no next.config (basePath), Expo recebe EXPO_BASE_URL, Python recebe PREFIXO e PORTA. Nao mude o comportamento de producao. `
+          + `3) Acrescente UMA linha em ~/.config/testedevoo/projetos.txt no formato ${nome}:<pasta do app a partir da home, ex.: ${rel}>:<vite|next|expo|python>:${porta} (crie a pasta se faltar; nao edite o ~/dev.sh). `
+          + `4) Rode ~/dev.sh ${nome} e confira que o endereco abre de verdade, sem tela branca. 5) Me diga o endereco no fim.`
+        const r = await ligarRemoto(projeto, dir, { mais: true, remoto: true, perfil: 'normal', pedido })
+        return r && r.ok !== false ? { ok: true, nome, porta } : r
+      })
+    }
     return comCorpo(req, res, 1e3, ({ nome }) => {
       const alvo = nomes.find((n) => n.nome === nome)
       if (!alvo) return { ok: false, erro: 'nome desconhecido pelo ~/dev.sh' }
@@ -2288,6 +2319,9 @@ function handler(req, res) {
             ? trocarModoFramework(estado, modo, { quando })
             : autorizarFramework(estado, { alvo: alvo || '**', motivo: motivo || null, quando })
           if (!r.ok) return { error: r.erro }
+          /* Papel vale por cima do modo (`vigente()`): escolher modo com papel
+             ligado gravava e não mudava nada. Quem escolhe modo larga o papel. */
+          if (acao === 'modo') delete r.estado.perfil
           gravarFramework(raiz, r.estado)
           return { raiz, ...retratoFramework(raiz) }
         }
@@ -2803,9 +2837,47 @@ function handler(req, res) {
   /* A tela Ideias (26/09): todas, com o estado de cada uma. A primeira leitura
      custa uns 8s; depois vem do cache por tamanho de arquivo. */
   if (url.pathname === '/api/ideias/todas') {
-    import('./ideiasVarredura.mjs')
-      .then(({ indice }) => send(res, 200, { ideias: indice(), at: Date.now() }))
+    Promise.all([import('./ideiasVarredura.mjs'), import('./resumoAgy.mjs')])
+      .then(([{ indice }, A]) => {
+        /* CC-671: título e resumo curtos, feitos pelo agy em segundo plano. O
+           que ainda não está pronto entra na fila, e a tela mostra o texto
+           cortado até lá. */
+        const ideias = indice().map((i) => {
+          const k = 'ideia::' + i.raiz + '::' + i.id
+          const r = A.obterTexto(k)
+          if (!r) A.pedirTexto({ k, prompt: 'Esta é uma ideia que o dono de um projeto de software ditou, muitas vezes por voz (pode ter erro de fala). Escreva em português do Brasil, sem travessão, exatamente duas linhas, sem mais nada:\nTITULO: até 7 palavras, o assunto da ideia\nRESUMO: até 2 frases curtas, o que ele quer\nNão use ferramentas.\n\nIDEIA:\n' + String(i.texto || '').slice(0, 4000) })
+          const t = r?.texto || ''
+          return { ...i, titulo: (t.match(/TITULO:\s*(.+)/i) || [])[1]?.trim() || null, resumo: (t.match(/RESUMO:\s*([\s\S]+)/i) || [])[1]?.trim() || null, resumindo: r?.estado === 'resumindo' }
+        })
+        send(res, 200, { ideias, at: Date.now() })
+      })
       .catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
+  /* CC-654, área de design 1/4: identidade de cada projeto, só leitura. */
+  if (url.pathname === '/api/design') {
+    import('./design.mjs')
+      .then((D) => {
+        const raiz = url.searchParams.get('raiz')
+        if (!raiz) return send(res, 200, { projetos: D.listar() })
+        if (!findProjects().includes(raiz)) return send(res, 404, { error: 'projeto desconhecido' })
+        return send(res, 200, D.identidade(raiz))
+      })
+      .catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
+  if (url.pathname === '/api/design/arquivo') {
+    import('./design.mjs').then((D) => {
+      const alvo = D.caminhoDeMarca(url.searchParams.get('raiz'), url.searchParams.get('caminho'))
+      if (!alvo) return send(res, 404, { error: 'arquivo não servido' })
+      const tipo = { svg: 'image/svg+xml', png: 'image/png', webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg' }[alvo.split('.').pop().toLowerCase()]
+      fs.readFile(alvo, (err, dado) => {
+        if (err) return send(res, 404, { error: 'arquivo não servido' })
+        /* SVG de projeto pode ter script: a política impede que ele rode aqui. */
+        res.writeHead(200, { 'content-type': tipo, 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'", 'cache-control': 'max-age=300' })
+        res.end(dado)
+      })
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
     return
   }
   if (url.pathname === '/api/decisao/parar' && req.method === 'POST') {
@@ -3716,6 +3788,7 @@ function handler(req, res) {
   /* Rota do Cockpit 2, pedida por `0174a7a8` em 11/09 pelo recado do Routia.
      Só acréscimo: tudo que ela faz mora em `src/cockpit2.mjs`, que é dela. */
   if (url.pathname === '/api/cockpit2') {
+    marcarPainelAberto() // CC-651: o gancho de permissão só espera com o painel aberto
     return import('./cockpit2.mjs')
       .then(async (m) => send(res, 200, await m.responder()))
       .catch((e) => send(res, 500, { erro: String(e.message || e) }))

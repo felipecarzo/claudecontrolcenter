@@ -420,6 +420,9 @@ export async function ligar(projeto, cwd, {
      que ele chamou de `claude_rc_ceo`. É o único ponto onde o perfil muda algo,
      e o padrão é o seguro. */
   perfil = 'normal',
+  /* 28/09: texto digitado na sessão assim que ela fica pronta (o botão
+     "criar teste de voo" abre a sessão já com o pedido escrito). */
+  pedido = null,
 } = {}) {
   if (!cwd || !fs.existsSync(cwd)) return { ok: false, erro: `pasta não existe: ${cwd}` }
   const bypass = perfil === 'ceo' ? ['--dangerously-skip-permissions'] : []
@@ -502,6 +505,14 @@ export async function ligar(projeto, cwd, {
     return { ok: false, erro: 'a sessão fechou logo ao abrir. Última tela: ' + ultimasLinhas(primeira.out) }
   }
 
+  if (pedido) {
+    /* -l manda o texto literal, sem o tmux interpretar nome de tecla; o
+       Enter vai separado. Args em lista: nada passa por shell. */
+    await espera(1500)
+    await tmux(['send-keys', '-t', sessao, '-l', String(pedido).slice(0, 4000)])
+    await espera(300)
+    await tmux(['send-keys', '-t', sessao, 'Enter'])
+  }
   // A tela vai junto: "ok" sem olhar a tela já enganou neste projeto antes.
   const agora = await tmux(['capture-pane', '-t', sessao, '-p'])
   const tela = agora.ok ? agora.out.split('\n').filter((l) => l.trim()).slice(-12).join('\n') : null
@@ -635,6 +646,55 @@ async function esperarNaTela(sessao, procurado, { ateMs = 20000, passoMs = 500 }
   return { ok: false, tela: ultima }
 }
 
+/**
+ * O texto digitado e ainda não enviado no campo da sessão. Puro.
+ *
+ * 28/09: religar o celular no fibraessencia apagou "monta as perguntas pra
+ * mandar pra kolibri", que estava no campo: abrir o menu limpa o campo. A
+ * sugestão esmaecida do Claude Code (ESC[2m) não é texto dele e fica de fora;
+ * menu aberto não tem rascunho. ponytail: só a primeira linha do campo.
+ */
+export function rascunhoDaTela(tela) {
+  const t = String(tela || '').replace(/\x1b\[2m[^\x1b]*(\x1b\[(0|22)m)?/g, '').replace(/\x1b\[[0-9;]*m/g, '')
+  if (/Enter to (select|confirm)/i.test(t)) return ''
+  const linhas = t.split('\n').filter((l) => /^\s*❯[\s\u00a0]/.test(l))
+  const ult = linhas.pop()
+  return ult ? ult.replace(/^\s*❯[\s\u00a0]+/, '').trimEnd() : ''
+}
+/**
+ * CC-675: a saúde de uma sessão do painel, lida no rodapé da tela. Pura.
+ * Pedido dele: "o cockpit tem que reconhecer que temos sessões congeladas ou
+ * perdidas". Medido em 28/09: o fibraessencia estava vivo há 2 dias com
+ * "/rc failed" no rodapé (celular caído, code 4090), e o boxboutique parado
+ * na pergunta de confiança da pasta. Nenhum dos dois aparecia no painel.
+ *  - celular: true com "/rc" no rodapé, false com "/rc failed" ou sem "/rc";
+ *  - presa: o texto do menu que espera tecla, ou null.
+ */
+export function saudeDaTela(tela) {
+  const linhas = String(tela || '').replace(/\x1b\[[0-9;]*m/g, '').split('\n').filter((l) => l.trim())
+  const fim = linhas.slice(-4).join('\n')
+  const menu = /Enter to (select|confirm)|Esc to cancel/i.test(fim)
+  const perto = linhas.slice(-16).join('\n')
+  /* Pergunta do agente (AskUserQuestion) e pedido de permissão também são
+     menus, e o painel já os mostra como cartão: não é sessão presa (medido no
+     ecommerce_apps, 28/09). Presa é o menu que ninguém mais mostra. */
+  const ehPergunta = /Type something|Chat about this|Do you want to|allow this connection/i.test(perto)
+  const presa = !menu || ehPergunta ? null
+    : /trust this folder/i.test(perto) ? 'parada na pergunta de confiança da pasta' : 'parada num menu esperando tecla'
+  /* Com menu aberto o rodapé some: não dá para saber do celular (null). */
+  const celular = /\/rc failed/i.test(fim) ? false : /(^|\s)\/rc\s*$/m.test(fim) ? true : menu ? null : false
+  return { celular, presa }
+}
+async function guardarRascunho(sessao) {
+  const r = await tmux(['capture-pane', '-t', sessao, '-p', '-e'])
+  return r.ok ? rascunhoDaTela(r.out) : ''
+}
+async function devolverRascunho(sessao, texto) {
+  if (!texto) return
+  await espera(500)
+  await tmux(['send-keys', '-t', sessao, '-l', texto])
+}
+
 /** Abre o menu do acesso remoto e devolve a tela dele. Limpa o campo antes:
  *  digitar por cima de um menu aberto manda o comando pra conversa. */
 async function abrirMenuRemoto(sessao, procurado = /Disconnect this session/i) {
@@ -673,6 +733,7 @@ export async function conectar(projeto) {
      que esconde a causa. */
   const antes = await tmux(['capture-pane', '-t', sessao, '-p'])
   if (antes.ok && motivoDaTela(antes.out) === 'deslogada') return { ok: false, erro: ERRO_DESLOGADA, deslogada: true }
+  const rascunho = await guardarRascunho(sessao)
   let menu = await abrirMenuRemoto(sessao, /claude\.ai\/code\/session_/i)
   if (!/claude\.ai\/code\/session_/i.test(menu.tela)) {
     await espera(1500)
@@ -680,6 +741,7 @@ export async function conectar(projeto) {
   }
   const url = (menu.tela.match(/https?:\/\/\S*claude\.ai\/code\/\S+/g) || []).pop()
   await tmux(['send-keys', '-t', sessao, 'Escape']) // fecha o menu, deixa conectado
+  await devolverRascunho(sessao, rascunho)
   if (!url) return { ok: false, erro: 'liguei o acesso mas não achei o endereço na tela; tenta de novo' }
   return { ok: true, url: url.replace(/[.,)]+$/, '') }
 }
@@ -700,6 +762,7 @@ export async function desconectar(projeto) {
      abre quando o comando chega no meio de um redesenho da tela. Falhar por
      isso mandaria ele matar a conversa, que é o caminho que este trabalho
      inteiro existe para evitar. */
+  const rascunho = await guardarRascunho(sessao)
   let menu = await abrirMenuRemoto(sessao)
   if (!/Disconnect this session/i.test(menu.tela)) {
     await espera(1500)
@@ -707,10 +770,12 @@ export async function desconectar(projeto) {
   }
   if (!/Disconnect this session/i.test(menu.tela)) {
     await tmux(['send-keys', '-t', sessao, 'Escape'])
+    await devolverRascunho(sessao, rascunho)
     return { ok: false, erro: 'o menu do acesso remoto não apareceu como esperado; nada foi mexido' }
   }
   for (const tecla of TECLAS_DESCONECTAR) await tmux(['send-keys', '-t', sessao, tecla])
   await espera(3000)
+  await devolverRascunho(sessao, rascunho)
   /* Conferir, não confiar: "matar não é conferir" é armadilha registrada deste
      projeto, e vale igual para desconectar. A sessão TEM que continuar viva. */
   const viva = (await tmux(['has-session', '-t', sessao])).ok

@@ -149,11 +149,29 @@ await t('CC-638: o pedido de rede do sandbox é lido da tela, e permitir aperta 
   assert.equal(teclaDaPermissao(TELA, 'sim'), '1')
   assert.equal(teclaDaPermissao(TELA, 'nao'), '3')
   assert.equal(permissaoDaTela('terminei\n❯ '), null)
+  // CC-640: a tela real do coepiloto, com a dica quebrada e o comando com "│".
+  const BASH = '────────────────\n Bash command (unsandboxed)\n Tip: auto mode handles these prompts for you — choose "switch to auto mode"\n below\n   │ cd /tmp/x &&\n   │ python -c "print(1)"\n   Fotografa a barra de navegação com os ícones\n Do you want to proceed?\n ❯ 1. Yes\n   2. Yes, and switch to auto mode\n   3. No\n Esc to cancel · Tab to amend'
+  const pb = permissaoDaTela(BASH)
+  assert.equal(pb.titulo, 'Bash command (unsandboxed)')
+  assert.equal(pb.detalhe, 'cd /tmp/x &&\npython -c "print(1)"')
+  assert.equal(pb.descricao, 'Fotografa a barra de navegação com os ícones')
   let tela = TELA; const log = []
   const deps = { sessoes: async () => ({ p: { sessao: 's', conversa: 'c1' } }), lerTranscrito: () => '', capturar: async () => tela, apertar: async (s, k) => { log.push(k); tela = 'seguiu'; return { ok: true } }, esperar: async () => {} }
   assert.equal((await permitir({ conversa: 'c1', id: 'tela:outra', decisao: 'sim' }, deps)).ok, false, 'pedido trocado não recebe o sim')
   assert.equal((await permitir({ conversa: 'c1', id: 'tela:' + pr.chave, decisao: 'sim' }, deps)).ok, true)
   assert.deepEqual(log, ['1'])
+  // CC-649: leitura de tela que falha depois de apertar NÃO é sucesso.
+  let lidas = 0
+  const falha = { ...deps, capturar: async () => (lidas++ === 0 ? TELA : null), apertar: async () => ({ ok: true }) }
+  assert.equal((await permitir({ conversa: 'c1', id: 'tela:' + pr.chave, decisao: 'sim' }, falha)).ok, false, 'tela vazia era lida como pedido atendido')
+  // CC-649: o número só move o cursor; o Enter de reserva confirma.
+  let t2 = TELA; const log2 = []
+  const cursor = { ...deps, capturar: async () => t2, apertar: async (s, k) => { log2.push(k); if (k === 'Enter') t2 = 'seguiu'; return { ok: true } } }
+  assert.equal((await permitir({ conversa: 'c1', id: 'tela:' + pr.chave, decisao: 'sim' }, cursor)).ok, true)
+  assert.deepEqual(log2, ['1', 'Enter'])
+  // e se nem o Enter resolve, diz que não foi
+  const teimoso = { ...deps, capturar: async () => TELA, apertar: async () => ({ ok: true }) }
+  assert.equal((await permitir({ conversa: 'c1', id: 'tela:' + pr.chave, decisao: 'sim' }, teimoso)).ok, false)
 })
 
 await t('CC-630: para depois nas três formas de voltar, e trazer de volta', async () => {

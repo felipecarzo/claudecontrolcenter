@@ -89,9 +89,9 @@ function proximo() {
   rodando = job
   try { fs.mkdirSync(CAIXA(), { recursive: true }) } catch { /* segue */ }
   let texto = ''
-  try { texto = fs.readFileSync(job.arquivo, 'utf8') } catch { /* sem arquivo */ }
-  const ctx = contextoDaConversa(texto.slice(-4 * 1024 * 1024))
-  execFile(AGY, ['--sandbox', '--effort', 'low', '--print-timeout', '90s', '-p', PEDIDO + ctx],
+  if (!job.prompt) { try { texto = fs.readFileSync(job.arquivo, 'utf8') } catch { /* sem arquivo */ } }
+  const prompt = job.prompt || PEDIDO + contextoDaConversa(texto.slice(-4 * 1024 * 1024))
+  execFile(AGY, ['--sandbox', '--effort', 'low', '--print-timeout', '90s', '-p', prompt],
     { cwd: CAIXA(), timeout: 120000, maxBuffer: 1024 * 1024 },
     (err, stdout) => {
       const saida = String(stdout || '').trim()
@@ -123,5 +123,22 @@ export function obter(conversa, marca) {
   if (r?.texto) return { texto: r.texto }
   if (rodando?.k === k) return { estado: 'resumindo' }
   if (fila.some((f) => f.k === k)) return { estado: 'na fila' }
+  return null
+}
+
+/* CC-671: o mesmo agy, a mesma fila e o mesmo arquivo, para texto pronto (a
+   tela Ideias pede título e resumo de cada ideia). A chave vem de quem pede. */
+export function pedirTexto({ k, prompt }) {
+  if (!k || !prompt || !fs.existsSync(AGY)) return
+  const r = ler()[k]
+  if (r && (r.texto || Date.now() - r.em < ESPERA_FALHA_MS)) return
+  if ((rodando && rodando.k === k) || fila.some((f) => f.k === k) || fila.length >= MAX_FILA) return
+  fila.push({ k, prompt })
+  proximo()
+}
+export function obterTexto(k) {
+  const r = ler()[k]
+  if (r?.texto) return { texto: r.texto }
+  if (rodando?.k === k || fila.some((f) => f.k === k)) return { estado: 'resumindo' }
   return null
 }
