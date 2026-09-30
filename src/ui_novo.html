@@ -11454,7 +11454,7 @@
       id: null,          // a conversa aberta
       conversas: null,   // null = ainda não li; [] = li e não há nenhuma
       dados: null,       // a conversa aberta, dobrada
-      agente: 'claude',  // quem responde a próxima
+      agente: 'agy',  // quem responde a próxima
       escolhendo: false, // a lista de conversas está aberta
       erro: null,        // falha de leitura, que NUNCA pode virar tela vazia
       enviando: false,
@@ -11573,16 +11573,36 @@
        * de um projeto. O aviso abaixo diz isso com todas as letras, para não
        * parecer um bate-papo qualquer quando na verdade dá acesso a arquivo. */
       if (projeto === GERAL) {
+        const todosProjs = new Set([GERAL]);
+        for (const p of GATE.projetos || []) todosProjs.add(p.nome);
+        for (const c of GATE.conversas || []) if (c.projeto) todosProjs.add(c.projeto);
+        if (typeof FW_LISTA !== 'undefined' && Array.isArray(FW_LISTA)) {
+          for (const f of FW_LISTA) if (f.projeto) todosProjs.add(f.projeto);
+        }
+        const listaOrd = [...todosProjs].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        
+        const optHtml = listaOrd.map(p => `<option value="${esc(p)}"${p === GERAL ? ' selected' : ''}>${esc(p)}</option>`).join('');
+        const selectHtml = `<select id="novo-proj-escolha" class="styled-input" style="margin-top:16px;width:100%;box-sizing:border-box;">${optHtml}</select>`;
+
         const ok = await confirmar(ancora, {
-          titulo: 'Abrir uma conversa geral?',
-          detalhe: '<ul>'
-            + '<li>não fica amarrada a nenhum projeto do painel</li>'
-            + '<li>o agente roda na pasta do próprio painel, com as ferramentas de sempre</li>'
+          titulo: 'Onde abrir a conversa nova?',
+          detalhe: '<p>Escolha o projeto onde o agente vai trabalhar:</p>'
+            + selectHtml
+            + '<ul style="margin-top:16px;opacity:0.8">'
+            + '<li>escolher <b>Geral</b> abre uma conversa solta, na pasta do painel</li>'
             + '<li>a conversa que você está vendo agora continua salva</li>'
             + '</ul>',
           sim: 'abrir',
         });
         if (!ok) return;
+        
+        const selNode = document.getElementById('novo-proj-escolha');
+        const escolhido = selNode ? selNode.value : GERAL;
+        
+        if (escolhido !== GERAL) {
+          return gateNova(escolhido, ancora);
+        }
+        
         try {
           const r = await fetch('/api/gate/nova', {
             method: 'POST', headers: { 'content-type': 'application/json' },

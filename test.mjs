@@ -5837,7 +5837,7 @@ for (const PAINEL of PAINEIS_QUE_FICAM) {
      lista desliga trava em silêncio, e este projeto já pagou por isso em 18/08.
      O que mudou é a ordem em que a folha oferece. */
   const F = await import('./src/framework.mjs')
-  assert.equal(Object.keys(F.MODOS).length, 11, 'os 11 modos continuam no catálogo')
+  assert.equal(Object.keys(F.MODOS).length, 12, 'os 12 modos continuam no catálogo (planejamento entrou em 29/09, CC-714)')
   assert.equal(Object.keys(F.METODOS).length, 6, 'os 6 métodos continuam no catálogo')
   for (const id of ['continuo', 'depuracao', 'revisao', 'pareado', 'entrega']) {
     assert.ok(F.MODOS[id], `o modo ${id} não pode sumir: some da tela, não do catálogo`)

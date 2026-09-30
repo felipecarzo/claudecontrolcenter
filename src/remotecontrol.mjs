@@ -353,11 +353,20 @@ export async function estado() {
         const o = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
         if (!o.sessionId || !o.pid || !o.tmux) continue
         process.kill(o.pid, 0) // processo morto: registro velho, não vale
-        mapa.set(String(o.tmux).split(':')[0], o.sessionId)
+        const nome = String(o.tmux).split(':')[0]
+        ;(mapa.get(nome) || mapa.set(nome, []).get(nome)).push({ id: o.sessionId, cwd: o.cwd || null, nome: o.nameSource === 'user' ? (o.name || null) : null })
       } catch { /* ilegível ou morto */ }
     }
     return mapa
   }
+  /* CC-708 e CC-706, medido em 29/09: o terminal `VPS_cockpit-2` tinha DOIS
+     processos registrados. A sessão de verdade (na pasta do projeto) e um
+     Claude de teste que ela rodou em /tmp, que herdou o terminal. Ficava o
+     último lido, o de teste: a pergunta da tela ia para a conversa errada e a
+     resposta pelo painel procurava o terminal pela conversa errada. Vence o
+     registro que está na MESMA pasta do terminal. */
+  const doTerminal = (lista, cwd) => (!lista || !lista.length ? null
+    : (lista.find((x) => cwd && x.cwd === cwd) || lista[0]))
 
   const sessoes = []
   for (const linha of r.out.split('\n')) {
@@ -379,7 +388,8 @@ export async function estado() {
   const out = {}
   for (const s of sessoes) {
     const casada = conversaDe1.get(s.nome) || null
-    const reg = doRegistro.get(s.nome)
+    const regE = doTerminal(doRegistro.get(s.nome), s.cwd)
+    const reg = regE && regE.id
     const conversa = reg ? { id: reg, quando: casada && casada.id === reg ? casada.quando : null } : casada
     out[s.nome.slice(PREFIXO_SESSAO.length)] = {
       sessao: s.nome,
@@ -390,6 +400,11 @@ export async function estado() {
          "está parada" — a diferença entre os dois é o estrago de 24/08. */
       ativa: conversa ? conversa.quando : null,
       conversa: conversa ? conversa.id : null,
+      // CC-708: o nome que ele deu à sessão no Claude Code ("VPS_coderoom"), para
+      // duas sessões do mesmo projeto não aparecerem as duas como "cockpit".
+      // Só o nome que ELE deu (`nameSource: user`): o automático é pasta mais um
+      // código aleatório ("vps-cockpit-64"), e ele pediu para tirar.
+      nomeSessao: (regE && regE.nome) || null,
     }
   }
   return out

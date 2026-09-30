@@ -51,4 +51,83 @@ await t('sem resposta no prazo, o gancho sai calado e o painel avisa que passou'
   assert.match(r.erro, /terminal/)
 })
 
+/* CC-699: o modo "pergunte antes" do Coderoom, que roda no PreToolUse. */
+const antes = { ...pedido, hook_event_name: 'PreToolUse' }
+
+await t('Coderoom: pede mesmo sem painel aberto, e o "sim" vira allow do PreToolUse', async () => {
+  const dir = casa()
+  const hook = principal({ entrada: antes, dir, esperar: rapido, espera: 5000, coderoom: 'conv1' })
+  await new Promise((r) => setTimeout(r, 30))
+  const [p] = lerPedidosDoGancho(dir)
+  assert.equal(p.coderoom, 'conv1')
+  await responderGancho(p.id, 'sim', { dir, esperar: rapido })
+  const s = (await hook).hookSpecificOutput
+  assert.equal(s.hookEventName, 'PreToolUse'); assert.equal(s.permissionDecision, 'allow')
+})
+
+await t('Coderoom: sem resposta no prazo, BARRA dizendo por quê (sair calado liberaria)', async () => {
+  const dir = casa()
+  const s = (await principal({ entrada: antes, dir, esperar: rapido, espera: 60, coderoom: 'conv1' })).hookSpecificOutput
+  assert.equal(s.permissionDecision, 'deny'); assert.match(s.permissionDecisionReason, /ninguém respondeu/)
+})
+
+await t('fora do Coderoom, o PreToolUse é ignorado (o gancho normal só atende PermissionRequest)', async () => {
+  const dir = casa(); writeFileSync(join(dir, '.painel-aberto'), '')
+  assert.equal(await principal({ entrada: antes, dir, esperar: rapido, espera: 60 }), null)
+})
+
+/* CC-723: a ferramenta "perguntar" do Coderoom. */
+const M = await import('./src/mcpPainel.mjs')
+
+await t('perguntar: grava a pergunta com as opcoes e devolve a escolha feita no painel', async () => {
+  const dir = casa()
+  const r = M.perguntar({ pergunta: 'azul ou verde?', opcoes: ['azul', 'verde'] }, { dir, esperar: rapido, espera: 5000, coderoom: 'c9' })
+  await new Promise((x) => setTimeout(x, 30))
+  const [p] = lerPedidosDoGancho(dir)
+  assert.equal(p.tipo, 'pergunta'); assert.deepEqual(p.opcoes, ['azul', 'verde']); assert.equal(p.coderoom, 'c9')
+  const rp = await permitir({ conversa: 'gate:c9', id: 'gancho:' + p.id, decisao: 'escolha:verde' }, { gancho: { dir, esperar: rapido } })
+  assert.equal(rp.ok, true)
+  assert.equal(await r, 'O Felipe respondeu: verde')
+})
+
+await t('perguntar: sem resposta no prazo, manda o agente parar sem decidir', async () => {
+  const s = await M.perguntar({ pergunta: 'x?', opcoes: ['a', 'b'] }, { dir: casa(), esperar: rapido, espera: 60 })
+  assert.match(s, /Não decida por ele/)
+})
+
+await t('perguntar: agente encerrado tira a pergunta da tela na hora', async () => {
+  const dir = casa(); let morto = false
+  const r = M.perguntar({ pergunta: 'x?', opcoes: ['a', 'b'] }, { dir, esperar: rapido, espera: 5000, cancelado: () => morto })
+  await new Promise((x) => setTimeout(x, 30))
+  assert.equal(lerPedidosDoGancho(dir).length, 1)
+  morto = true
+  assert.match(await r, /Cancelado/)
+  assert.equal(lerPedidosDoGancho(dir).length, 0)
+})
+
+await t('escolha so vale para pedido do gancho; pergunta de terminal continua sim/nao', async () => {
+  const r = await permitir({ conversa: 'c1', id: 'tela:x', decisao: 'escolha:verde' }, { sessoes: async () => ({}) })
+  assert.equal(r.ok, false)
+})
+
+await t('o servidor MCP lista a ferramenta e recusa nome desconhecido', async () => {
+  const l = await M.atender({ jsonrpc: '2.0', id: 1, method: 'tools/list' })
+  assert.equal(l.result.tools[0].name, 'perguntar')
+  const e = await M.atender({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'outra' } })
+  assert.ok(e.error)
+  assert.equal(await M.atender({ jsonrpc: '2.0', method: 'notifications/initialized' }), null)
+})
+
+await t('CC-726: "sempre permitir" pelo painel devolve as regras que o Claude Code sugeriu', async () => {
+  const dir = casa(); writeFileSync(join(dir, '.painel-aberto'), '')
+  const sug = [{ type: 'addRules', rules: [{ toolName: 'Bash', ruleContent: 'bash aud/run.sh:*' }], behavior: 'allow', destination: 'localSettings' }]
+  const hook = principal({ entrada: { ...pedido, permission_suggestions: sug }, dir, esperar: rapido, espera: 5000 })
+  await new Promise((r) => setTimeout(r, 30))
+  const [p] = lerPedidosDoGancho(dir)
+  assert.deepEqual(p.sugestoes, sug, 'o pedido guarda as sugestões, e o cartão oferece o botão')
+  const r = await permitir({ conversa: 'c1', id: 'gancho:' + p.id, decisao: 'sempre' }, { gancho: { dir, esperar: rapido } })
+  assert.equal(r.ok, true)
+  assert.deepEqual((await hook).hookSpecificOutput.decision, { behavior: 'allow', updatedPermissions: sug })
+})
+
 console.log(`\n${ok} verificações do gancho de permissão, todas passaram`)

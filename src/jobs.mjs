@@ -134,7 +134,16 @@ function normalizeRevisao(r) {
   }
 }
 
+/* CC-722, revisão de segurança: o link vem do meta.json que qualquer agente
+   grava (e agente pode sofrer injeção de prompt) ou de pacote de outra
+   máquina. `javascript:` num cartão, com um toque, rodaria no painel, que
+   executa comando na máquina. Só http e https passam. */
+const LINK_OK = /^https?:\/\//i
 export function normalizeLink(raw) {
+  const l = normalizeLinkCru(raw)
+  return l && LINK_OK.test(String(l.url).trim()) ? l : null
+}
+function normalizeLinkCru(raw) {
   if (typeof raw === 'string') {
     const url = raw.trim()
     if (!url) return null
@@ -626,6 +635,8 @@ export function revisarTodo(id, texto, { apontou = null, respondeu = null, quem 
  * impede um `--job` digitado errado de criar estado órfão para sempre.
  */
 export function caminhoDoEstado(id) {
+  // CC-722, revisão de segurança: "../../projetos/X" gravaria meta.json em qualquer pasta
+  if (!/^[\w-]+$/.test(String(id || ''))) return null
   const dir = path.join(JOBS_DIR, id)
   if (fs.existsSync(dir)) return { tipo: 'job', file: path.join(dir, 'meta.json') }
 

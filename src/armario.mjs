@@ -76,13 +76,25 @@ export function apagarGaveta(id) {
 
 const gavetaExiste = (g) => g === 'notas' || gavetas().some((x) => x.id === g)
 
-export function subirArquivo({ gaveta, nome, mime, dados }) {
+/* CC-709: arquivo pode pertencer a um projeto (a raiz dele), como a nota. Só
+   projeto que esta máquina conhece; vazio tira do projeto. */
+const projetoValido = (p) => !p || findProjects().includes(p)
+export function projetoDoArquivo(id, projeto) {
+  if (!projetoValido(projeto)) return { ok: false, erro: 'projeto desconhecido' }
+  const lista = arquivos(); const a = lista.find((x) => x.id === id)
+  if (!a) return { ok: false, erro: 'arquivo não existe' }
+  a.projeto = projeto || null; gravarJson(ARQ_ARQUIVOS(), lista)
+  return { ok: true }
+}
+
+export function subirArquivo({ gaveta, nome, mime, dados, projeto }) {
   if (!gavetaExiste(gaveta)) return { ok: false, erro: 'gaveta não existe' }
+  if (!projetoValido(projeto)) return { ok: false, erro: 'projeto desconhecido' }
   if (!TIPOS.test(String(mime || ''))) return { ok: false, erro: 'tipo de arquivo não aceito (imagem, áudio, PDF ou texto)' }
   const buf = Buffer.from(String(dados || '').replace(/^data:[^,]*,/, ''), 'base64')
   if (!buf.length) return { ok: false, erro: 'arquivo vazio' }
   if (buf.length > LIMITE_ARQUIVO) return { ok: false, erro: 'arquivo maior que 15 MB' }
-  const a = { id: novoId('a'), gaveta, nome: path.basename(String(nome || 'arquivo')).slice(0, 120), mime, bytes: buf.length, em: Date.now() }
+  const a = { id: novoId('a'), gaveta, projeto: projeto || null, nome: path.basename(String(nome || 'arquivo')).slice(0, 120), mime, bytes: buf.length, em: Date.now() }
   fs.mkdirSync(DIR_BLOBS(), { recursive: true })
   fs.writeFileSync(path.join(DIR_BLOBS(), a.id), buf)
   gravarJson(ARQ_ARQUIVOS(), [a, ...arquivos()])
@@ -110,8 +122,10 @@ export function arquivoParaServir(id) {
 }
 
 /* A documentação de um projeto: os .md da pasta docs (até dois níveis) e o
-   README da raiz. Diário e legado ficam de fora: são histórico, não o que o
-   projeto é, e sozinhos passariam de cem arquivos em alguns projetos. */
+   README da raiz. CC-709, decisão dele em 29/09: as abas do Armário são as
+   pastas do padrão, e diário e legado são duas delas; antes ficavam de fora
+   por volume. O teto era 80 e cortava calado (o cockpit tinha 80 exatos). */
+export const TETO_DOCS = 600
 export function docsDe(raiz) {
   const achados = []
   const dirDocs = path.join(raiz, 'docs')
@@ -121,13 +135,13 @@ export function docsDe(raiz) {
     for (const d of nomes) {
       if (d.name.startsWith('.')) continue
       const f = path.join(dir, d.name)
-      if (d.isDirectory()) { if (nivel < 2 && !/^(legacy|diario|legado|arquivo)$/i.test(d.name)) varrer(f, nivel + 1) }
+      if (d.isDirectory()) { if (nivel < 2) varrer(f, nivel + 1) }
       else if (/\.md$/i.test(d.name)) achados.push(path.relative(raiz, f))
     }
   }
   if (fs.existsSync(path.join(raiz, 'README.md'))) achados.push('README.md')
   varrer(dirDocs, 1)
-  return achados.slice(0, 80)
+  return achados.slice(0, TETO_DOCS)
 }
 /** Um documento de projeto: só projeto conhecido, só .md, só dentro dele. */
 export function lerDoc(raiz, rel) {

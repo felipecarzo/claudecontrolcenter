@@ -56,5 +56,18 @@ try {
   fs.rmSync(casa, { recursive: true, force: true })
 }
 
+/* CC-727: o `idle` do registro do Claude Code vira "parou" na hora; o `busy`
+   não manda; sem registro, vale a idade do arquivo como antes. */
+try {
+  const { estadoDaSessao } = await import('./src/sessoes.mjs')
+  assert.strictEqual(estadoDaSessao('idle', 5000), 'waiting', 'acabou de responder: parou na hora, sem esperar o minuto')
+  assert.strictEqual(estadoDaSessao('busy', 5000), 'working')
+  assert.strictEqual(estadoDaSessao('busy', 40 * 60 * 1000), 'idle', 'busy não mantém trabalhando quem está calado há 40 min')
+  assert.strictEqual(estadoDaSessao(undefined, 5000), 'working', 'sem registro, a regra da idade de antes')
+  assert.strictEqual(estadoDaSessao('waiting', 5000), 'waiting')
+  assert.strictEqual(estadoDaSessao('idle', 40 * 60 * 1000), 'idle')
+  console.log('  ok   CC-727: registro idle vira parou na hora')
+} catch (e) { erro('CC-727: estado pelo registro', e) }
+
 if (falhou) process.exit(1)
 console.log('test-sessoes: ok')

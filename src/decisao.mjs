@@ -343,6 +343,14 @@ export function teclaDaPermissao(tela, decisao) {
   const sim = t.match(/^[\s❯]*(\d)\.\s+Yes\s*$/m)
   const nao = t.match(/^[\s❯]*(\d)\.\s+No\b/m)
   if (!sim || !nao) return null
+  /* CC-726, pedido dele: o "sempre permitir" do terminal e do app. É a opção
+     "Yes, and don't ask again…" ou "Yes, allow all edits…". A de "switch to
+     auto mode" NÃO conta: ela muda o modo da sessão inteira. Sem a opção na
+     tela, null: o cartão não oferece o que o terminal não tem. */
+  if (decisao === 'sempre') {
+    const s = t.match(/^[\s❯]*(\d)\.\s+Yes,\s+(?!and switch)(?:and don.t ask again|allow all|always)/im)
+    return s ? s[1] : null
+  }
   return decisao === 'sim' ? sim[1] : nao[1]
 }
 
@@ -420,7 +428,10 @@ export async function responderGancho(idGancho, decisao, { dir = DIR_PERMISSOES(
 
 /** Permite (uma vez) ou nega o pedido de permissão da sessão. */
 export async function permitir({ conversa, id, decisao }, deps = DEPS) {
-  if (!conversa || !id || !['sim', 'nao'].includes(decisao)) return { ok: false, erro: 'faltou dizer a conversa, o pedido ou a decisão' }
+  /* CC-723: a pergunta do Coderoom responde com `escolha:<opção>`. Só pelo
+     gancho: pergunta de terminal continua sendo responder na sessão. */
+  const escolha = String(id || '').startsWith('gancho:') && /^escolha:.{1,300}$/s.test(String(decisao || ''))
+  if (!conversa || !id || (!escolha && !['sim', 'nao', 'sempre'].includes(decisao))) return { ok: false, erro: 'faltou dizer a conversa, o pedido ou a decisão' }
   /* CC-651: pedido que veio do gancho se responde pelo gancho, sem tecla. */
   if (String(id).startsWith('gancho:')) return responderGancho(String(id).slice(7), decisao, deps.gancho || {})
   const sessoes = await deps.sessoes().catch(() => ({}))
@@ -431,6 +442,7 @@ export async function permitir({ conversa, id, decisao }, deps = DEPS) {
   if (!daTela && (!pend || pend.id !== id)) return { ok: false, erro: 'esse pedido já foi respondido ou trocou: recarregue' }
   const tela = await deps.capturar(aqui.sessao)
   const tecla = teclaDaPermissao(tela, decisao)
+  if (!tecla && decisao === 'sempre' && teclaDaPermissao(tela, 'sim')) return { ok: false, erro: 'o terminal não oferece "sempre permitir" para este pedido: use permitir uma vez' }
   if (!tecla) return { ok: false, erro: 'o pedido de permissão não está na tela da sessão agora, então não apertei nada' }
   /* O pedido da tela tem que ser o do cartão: sem isso, um pedido novo que
      apareceu no meio receberia o "sim" dado ao anterior. */

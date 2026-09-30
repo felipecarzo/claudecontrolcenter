@@ -8,6 +8,7 @@ const casa = mkdtempSync(join(tmpdir(), 'armario-'))
 process.env.HOME = casa
 process.env.CC_HOME = join(casa, '.claude')
 const A = await import('./src/armario.mjs')
+const N = await import('./src/notes.mjs')
 let ok = 0; const t = (n, f) => { f(); ok += 1; console.log('  ok   ' + n) }
 
 t('gaveta nova, e nome repetido (ou "Notas") recusado', () => {
@@ -25,10 +26,26 @@ t('arquivo sobe, tipo perigoso não, e gaveta com coisa dentro não se apaga', (
   assert.equal(A.apagarArquivo(r.arquivo.id).ok, true)
   assert.equal(A.apagarGaveta(g.id).ok, true)
 })
-t('documentação: docs até dois níveis e README, sem diário nem legado', () => {
+/* CC-709, decisão dele em 29/09: as abas do Armário são as pastas do padrão, e
+   diário e legado são duas delas. Antes ficavam de fora. */
+t('documentação: docs até dois níveis e README, com diário e legado', () => {
   const raiz = join(casa, 'proj')
   for (const d of ['docs/produto', 'docs/diario', 'docs/legacy']) mkdirSync(join(raiz, d), { recursive: true })
   for (const f of ['README.md', 'docs/ROADMAP.md', 'docs/produto/VISAO.md', 'docs/diario/2026-09-28.md', 'docs/legacy/velho.md']) writeFileSync(join(raiz, f), '# x')
-  assert.deepEqual(A.docsDe(raiz).sort(), ['README.md', 'docs/ROADMAP.md', 'docs/produto/VISAO.md'])
+  assert.deepEqual(A.docsDe(raiz).sort(), ['README.md', 'docs/ROADMAP.md', 'docs/diario/2026-09-28.md', 'docs/legacy/velho.md', 'docs/produto/VISAO.md'])
+})
+t('projeto do arquivo: projeto desconhecido recusado, vazio tira do projeto', () => {
+  const r = A.subirArquivo({ gaveta: 'notas', nome: 'y.png', mime: 'image/png', dados: Buffer.from('oi').toString('base64'), projeto: '/nao/existe' })
+  assert.equal(r.ok, false, 'projeto que a máquina não conhece não entra')
+  const s = A.subirArquivo({ gaveta: 'notas', nome: 'y.png', mime: 'image/png', dados: Buffer.from('oi').toString('base64') })
+  assert.equal(s.ok, true); assert.equal(s.arquivo.projeto, null)
+  assert.equal(A.projetoDoArquivo(s.arquivo.id, '/nao/existe').ok, false)
+  assert.equal(A.projetoDoArquivo(s.arquivo.id, '').ok, true)
+  assert.equal(A.projetoDoArquivo('nao-existe', '').ok, false)
+  A.apagarArquivo(s.arquivo.id)
+})
+t('a nota guarda o projeto dela ao gravar', () => {
+  const [n] = N.writeNotes([{ title: 'x', text: 'y', projeto: '/home/p/VPS_x' }])
+  assert.equal(n.projeto, '/home/p/VPS_x')
 })
 console.log(`${ok} ok, 0 falhas (armário)`)

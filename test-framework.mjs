@@ -254,7 +254,8 @@ assert.match(resumo('mvp-basico', aut.estado), /autoriza/i)
    dos perfis mais abaixo. */
 assert.deepEqual(Object.keys(MODOS).slice(0, 5),
   ['desligado', 'dialogo', 'sugestivo', 'continuativo', 'continuo'])
-assert.equal(Object.keys(MODOS).length, 11, 'mudou a quantidade de modos: confira a tela e o tom de cada um')
+// 12 desde 29/09: planejamento (CC-714), tom explicativo, oferecido na lista do Coderoom
+assert.equal(Object.keys(MODOS).length, 12, 'mudou a quantidade de modos: confira a tela e o tom de cada um')
 for (const m of Object.values(MODOS)) assert.ok(m.explica && m.titulo, `modo ${m.id} sem texto`)
 // a diferença entre revisão e contínuo é UMA: o teto. Todo o resto do fluxo é
 // igual, e se divergirem em outra coisa o modo virou outra coisa.

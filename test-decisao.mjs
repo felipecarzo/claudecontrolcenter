@@ -316,4 +316,20 @@ await t('CC-609: permitir e negar leem o número da tela, e recusam pedido troca
   assert.equal((await permitir({ conversa: 'c1', id: 'outro', decisao: 'sim' }, deps)).ok, false)
 })
 
+await t('CC-726: "sempre permitir" aperta a opção de não perguntar de novo, e nunca a de trocar para o modo automático', async () => {
+  const EDIT = 'Do you want to make this edit to settings.json?\n❯ 1. Yes\n  2. Yes, allow all edits during this session (shift+tab)\n  3. No, and tell Claude what to do differently (esc)\nEsc to cancel'
+  const REDE = ' Network request outside of sandbox\n   Do you want to allow this connection?\n   ❯ 1. Yes\n     2. Yes, and don\'t ask again for overpass-api.de\n     3. No, and tell Claude what to do differently (esc)'
+  const AUTO = '────────────────────────────────────────\n Bash command\n   │ ls\n Do you want to proceed?\n❯ 1. Yes\n  2. Yes, and switch to auto mode\n  3. No\nEsc to cancel'
+  assert.equal(teclaDaPermissao(EDIT, 'sempre'), '2')
+  assert.equal(teclaDaPermissao(REDE, 'sempre'), '2')
+  assert.equal(teclaDaPermissao(AUTO, 'sempre'), null, 'trocar a sessão para o modo automático não é "sempre permitir"')
+  assert.equal(teclaDaPermissao(AUTO, 'sim'), '1', 'o de uma vez segue igual')
+  // sem a opção na tela, o servidor diz por quê em vez de apertar outra coisa
+  const log = []
+  const deps = { sessoes: async () => ({ a: { conversa: 'c1', sessao: 's1' } }), lerTranscrito: () => '', capturar: async () => AUTO, apertar: async (s, k) => { log.push(k); return { ok: true } }, esperar: async () => {} }
+  const pr = permissaoDaTela(AUTO)
+  const r = await permitir({ conversa: 'c1', id: 'tela:' + pr.chave, decisao: 'sempre' }, deps)
+  assert.equal(r.ok, false); assert.match(r.erro, /não oferece/); assert.deepEqual(log, [])
+})
+
 console.log(`\n${ok} verificações das decisões pelo painel, todas passaram`)

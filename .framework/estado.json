@@ -2,7 +2,7 @@
  "metodo": "mvp-basico",
  "fase": "execucao",
  "ligado": true,
- "modo": "continuativo",
+ "modo": "desligado",
  "autorizado": [],
  "mvp": {
   "nome": "abrir o painel e saber o estado de todos os agentes sem entrar em nenhum",
@@ -333,6 +333,42 @@
    "de": "sugestivo",
    "para": "continuativo",
    "quando": "2026-08-29T23:37:45.551Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "continuativo",
+   "para": "desenho",
+   "quando": "2026-09-28T21:16:25.452Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "desenho",
+   "para": "dialogo",
+   "quando": "2026-09-28T22:25:02.020Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "dialogo",
+   "para": "desenho",
+   "quando": "2026-09-30T02:20:05.012Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "desenho",
+   "para": "desligado",
+   "quando": "2026-09-30T02:20:07.138Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "desligado",
+   "para": "planejamento",
+   "quando": "2026-09-30T02:57:55.827Z"
+  },
+  {
+   "tipo": "modo",
+   "de": "planejamento",
+   "para": "desligado",
+   "quando": "2026-09-30T03:37:20.542Z"
   }
  ],
  "verificacao": {

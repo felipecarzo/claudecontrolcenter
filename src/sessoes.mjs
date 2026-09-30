@@ -16,6 +16,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { listar as listarCoderoom, ultimoDoAgente } from './gate.mjs'
 import { buildJob, readJobs } from './jobs.mjs'
 
 /**
@@ -155,6 +156,20 @@ export function statusDe(idadeMs) {
   return 'idle'
 }
 
+/* CC-727, queixa dele em 30/09: "o agente já parou de trabalhar e demora
+   muito pra atualizar que parou no cockpit". Pela idade do arquivo, a sessão
+   que acabou de responder contava como trabalhando por mais 60 s. O registro
+   do Claude Code diz `idle` na hora em que o turno acaba, e esse sinal é
+   confiável: vira "parou" na hora. O `busy` NÃO manda (com ajudante em
+   segundo plano ele fica `busy` parado num pedido, CC-640), então sem `idle`
+   segue a regra da idade, e a tela do terminal corrige o resto. */
+export function estadoDaSessao(doRegistro, idadeMs) {
+  if (doRegistro === 'waiting') return 'waiting'
+  const pelaIdade = statusDe(idadeMs)
+  if (doRegistro === 'idle' && pelaIdade === 'working') return 'waiting'
+  return pelaIdade
+}
+
 const arquivosEm = (dir) => {
   try {
     return fs.readdirSync(dir, { withFileTypes: true })
@@ -215,7 +230,7 @@ export function readSessoes(now = Date.now(), { janelaMs = JANELA_MS, ignorar = 
            (acabou de escrever), e o cartão só nascia depois. O registro do
            Claude Code diz `waiting` um segundo depois do pedido (medido no
            dengonator: pedido às 21:42:05, registro às 21:42:06). */
-        state: abertas?.get(sessionId) === 'waiting' ? 'waiting' : statusDe(idade),
+        state: estadoDaSessao(abertas?.get(sessionId), idade),
         fan: [],
         tokens: 0,
       }
@@ -276,5 +291,60 @@ export function todosOsJobs(now = Date.now(), opcoes = {}) {
       ignorar: doBackground.flatMap((j) => [j.id, j.sessionId]).filter(Boolean),
     })
   } catch { interativas = [] }
-  return [...doBackground, ...interativas]
+  
+  let coderoom = []
+  try {
+    coderoom = listarCoderoom({ arquivadas: false }).map(c => {
+      const isWorking = c.estado !== null
+      const statusStr = isWorking ? 'working' : 'waiting' // Se não tem agente trabalhando, pode estar esperando o usuário
+
+      /* A última resposta do agente, lida do log da conversa. É o que faz o
+         cartão de Sessões mostrar fala e resumo no coderoom, e o que permite
+         responder por ele: sem isto, o cartão só sabia o nome da conversa. */
+      const ultima = ultimoDoAgente(c.id)
+
+      const state = {
+        sessionId: c.id,
+        cwd: c.cwd || '',
+        createdAt: new Date(c.criadaEm || now).toISOString(),
+        updatedAt: new Date(c.mexidaEm || c.criadaEm || now).toISOString(),
+        state: statusStr,
+        fan: [],
+        tokens: 0,
+        template: c.estado?.agente || c.agentePadrao || 'claude',
+      }
+      const meta = {
+        subject: c.titulo,
+        project: c.projeto,
+        status: isWorking ? `respondendo (${state.template})` : 'aguardando',
+      }
+      
+      const job = buildJob(c.id, state, meta, [], now)
+      return {
+        ...job,
+        tipo: 'coderoom', // Para que a UI reconheça como coderoom
+        /* Qual agente responde nesta conversa. `buildJob` não repassa o
+           `template`, e o cartão precisa dele para não dizer "claude code
+           (fundo)" embaixo de uma conversa do opencode. */
+        template: state.template,
+        /* CC-728: o modelo escolhido para esse agente nesta conversa (vazio é o
+           padrão dele), para o cartão em Sessões mostrar e deixar trocar. */
+        model: c.modelos?.[state.template] || null,
+        aberta: true,
+        permissao: false, // Coderoom tem permissões aceitas automaticamente
+        transcript: null,
+        /* Texto cru, do jeito que o agente escreveu. Quem decide o que é a
+           "primeira frase" e o "resumo" é o `cockpit2.mjs`, que é quem já
+           faz isso para o Claude Code, e os dois caminhos precisam cair no
+           mesmo formato. */
+        ultima: ultima ? { de: ultima.de, texto: ultima.texto, em: ultima.em } : null,
+        origem: { id: 'coderoom', nome: 'Coderoom', idadeMs: 0, semContato: false },
+      }
+    })
+  } catch (e) {
+    console.error('Erro ao ler sessoes do coderoom', e)
+    coderoom = []
+  }
+
+  return [...doBackground, ...interativas, ...coderoom]
 }

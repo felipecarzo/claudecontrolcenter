@@ -23,7 +23,7 @@ import { chaveDeProjeto, nomeCanonico } from './nomeProjeto.mjs'
 import { CACHE_FILE as TEMPO_CACHE, resumo as resumoTempo } from './tempo.mjs'
 import { lerFila } from './ideias.mjs'
 import { lerPacotes, mesclar, maquinasConhecidas } from './federacao.mjs'
-import { lerFechadas, lerMantidas, chaveDoCartao, lerDepois, depoisVale, permissaoDaTela, lerPedidosDoGancho } from './decisao.mjs'
+import { lerFechadas, lerMantidas, chaveDoCartao, lerDepois, depoisVale, permissaoDaTela, teclaDaPermissao, lerPedidosDoGancho } from './decisao.mjs'
 import { estado as estadoRC, saudeDaTela } from './remotecontrol.mjs'
 import { execFile } from 'node:child_process'
 import { registrar as registrarHistorico } from './decisaoHistorico.mjs'
@@ -332,8 +332,39 @@ function transcritoDe(job) {
 /* ───────────────────────────── o modelo ───────────────────────────── */
 
 const tipoDaSessao = (j) => {
+  if (j.tipo === 'coderoom') return 'coderoom'
   if (j.tipo === 'interativa') return j.remoto ? 'remote control' : 'claude code'
   return 'claude code (fundo)'
+}
+
+/**
+ * A fala de uma conversa do coderoom, no MESMO formato da fala lida do arquivo
+ * de transcrição do Claude Code.
+ *
+ * O motivo de existir é o pedido dele: o cartão das sessões do opencode tinha
+ * que ser igual ao do Claude, com resumo e com campo para responder. O
+ * histórico do coderoom não é um `.jsonl` do Claude Code, é o log do gate, e
+ * `falaDe` só sabe ler o primeiro. Esta função é a ponte, e ela fica aqui, ao
+ * lado de `primeiraFrase` e `resumoDaFala`, para os dois caminhos nunca
+ * divergirem no que é "resumo" e no que é "primeira frase".
+ *
+ * O `conversa` sai com o prefixo `gate:` porque é ele que diz ao resto do
+ * painel para onde mandar a resposta: `decisao.mjs` escreve no terminal, o
+ * coderoom tem o caminho dele. Sem o prefixo, os dois se confundem e a
+ * mensagem vai para o terminal errado.
+ */
+const falaDoCoderoom = (j) => {
+  if (!j.ultima?.texto) return null
+  return {
+    tipo: 'fala',
+    texto: primeiraFrase(j.ultima.texto),
+    /* O marcador `// resumo //` é dos agentes do Claude Code; no coderoom o
+       resumo que vale é o automático (o agy lê o texto e escreve), pedido logo
+       abaixo em `responder()`. */
+    resumo: resumoDaFala(j.ultima.texto),
+    conversa: 'gate:' + j.id,
+    em: j.ultima.em || null,
+  }
 }
 
 const estadoDaSessao = (j) => {
@@ -369,6 +400,8 @@ export function avisoDoAgente(j, fala, dispositivo, agora) {
     tipo: 'agente', id: j.id, projeto: chaveDeProjeto(j.project), nome: nomeCanonico(j.project),
     frente: j.frente || null, assunto: j.subject || null, dispositivo, modelo: j.model || null,
     desdeMs: Math.max(0, agora - (j.updatedAt || agora)), sessao: tipoDaSessao(j),
+    // CC-728: quem responde na conversa do Coderoom, para o seletor do cartão
+    agente: j.tipo === 'coderoom' ? (j.template || null) : null,
   }
   if (travado) return { ...base, rotulo: 'travado', pergunta: travado, opcoes: [], acao: 'destravar' }
   /* CC-606: o terminal parado num pedido de permissão. */
@@ -489,12 +522,18 @@ export function montar({
        quem trabalha agora: a leitura tem cache por tamanho do arquivo. */
     /* Item 6 da tela Projetos (26/09): a parada também mostra a última fala,
        não só a que trabalha. */
-    const falaSessao = (j.status === 'working' || j.status === 'waiting' || j.status === 'idle') && !j.stale && !semContato ? falaDe(j) : null
+    const falaSessao = (j.status === 'working' || j.status === 'waiting' || j.status === 'idle') && !j.stale && !semContato
+      ? (j.tipo === 'coderoom' ? falaDoCoderoom(j) : falaDe(j))
+      : null
     p.sessoes.push({
       id: j.id, tipo: tipoDaSessao(j), dispositivo: onde, modelo: j.model || null,
       estado: estadoDaSessao(j), ferramenta: ferramentaCurta(j.inFlight?.[0]?.label) || null,
       desdeMs: Math.max(0, agora - (j.updatedAt || agora)), frente: j.frente || null, assunto: j.subject || null,
       todos: j.todos?.length || 0, todosDone: j.todosDone || 0,
+      /* Qual agente responde nesta sessão. Só o coderoom tem: lá a escolha é
+         dele e muda de conversa para conversa, e sem isso o cartão dizia
+         "claude code (fundo)" para uma conversa do opencode. */
+      agente: j.tipo === 'coderoom' ? (j.template || null) : null,
       fala: falaSessao?.texto || null, conversa: falaSessao?.conversa || null,
       resumo: falaSessao?.resumo || null, marca: falaSessao?.em || null,
       porPrograma: Boolean(j.porPrograma),
@@ -510,7 +549,11 @@ export function montar({
             decisões que estão travadas"), e sai contada, não calada.
          3. Cartão que ele fechou some até a sessão se mexer (fala nova muda a
             marca e o cartão volta, porque aí é outra decisão). */
-      const fala = falaDe(j)
+      /* CC-728: conversa do Coderoom não tem transcrito do Claude Code; a fala
+         dela sai do log do gate. Lida pelo caminho do terminal, vinha vazia, e
+         o aviso "parou" nascia sem fala e sem conversa: sem campo de resposta
+         e sem o seletor de quem responde (medido em 30/09). */
+      const fala = j.tipo === 'coderoom' ? falaDoCoderoom(j) : falaDe(j)
       /* Sessão "trabalhando" com outra ferramenta em andamento (Edit, Bash)
          não está parada na pergunta, mesmo que ela seja a última fala do
          arquivo: o teste do motor pegou isso na primeira versão. */
@@ -864,8 +907,11 @@ export async function responder() {
      toda sessão aberta pelo painel é lida a cada leitura (poucas sessões,
      alguns milissegundos cada), e pedido na tela vira cartão, qualquer que
      seja o estado do registro. Cartão que já veio da conversa fica como está. */
+  const nomeDaConversa = new Map() // CC-708: conversa -> nome que ele deu à sessão
   try {
     const rcTodas = Object.entries(await estadoRC().catch(() => ({})) || {}).filter(([, s]) => s?.sessao)
+    // sem nome dado por ele, vale o do terminal ("VPS_cockpit-2"); a tela esconde o que repete o projeto
+    for (const [rotulo, s] of rcTodas) if (s.conversa) nomeDaConversa.set(s.conversa, s.nomeSessao || rotulo)
     const telaDe = new Map(await Promise.all(rcTodas.map(([, s]) => new Promise((ok) => execFile('tmux', ['capture-pane', '-t', s.sessao, '-p', '-S', '-60'], { encoding: 'utf8', timeout: 3000 }, (err, out) => ok([s.sessao, err ? '' : out]))))))
     const sessoesRC = rcTodas.map(([, s]) => s).filter((s) => s.conversa)
     const telas = sessoesRC.map((s) => telaDe.get(s.sessao) || '')
@@ -881,7 +927,7 @@ export async function responder() {
       const saude = saudeDaTela(telaDe.get(s.sessao))
       const c = (dados.conectadas || []).find((x) => s.conversa && (x.conversa === s.conversa || x.id === String(s.conversa).slice(0, 8)))
       if (c) {
-        Object.assign(c, { celular: saude.celular, presa: saude.presa, rotuloRC: rotulo })
+        Object.assign(c, { celular: saude.celular, presa: saude.presa, rotuloRC: rotulo, sessaoNome: s.nomeSessao || rotulo })
         /* A tela diz que o turno está em andamento: a sessão trabalha, mesmo
            que o registro diga parada. Sai o cartão de "parou" dela (pergunta
            e permissão ficam: essas pedem resposta de qualquer jeito). */
@@ -912,7 +958,9 @@ export async function responder() {
     sessoesRC.forEach((s, i) => {
       const pr = naTela.get(s.conversa)
       if (!pr) return
-      const campos = { rotulo: 'permissão', pergunta: pr.descricao || (pr.titulo + (pr.detalhe ? ': ' + pr.detalhe.split('\n')[0] : '')), ferramenta: /network/i.test(pr.titulo) ? 'rede' : (pr.titulo.split(' ')[0] || 'ação'), comando: pr.detalhe || pr.pergunta, permissaoId: 'tela:' + pr.chave, acao: 'responder', marca: 'tela:' + pr.chave }
+      const campos = { rotulo: 'permissão', pergunta: pr.descricao || (pr.titulo + (pr.detalhe ? ': ' + pr.detalhe.split('\n')[0] : '')), ferramenta: /network/i.test(pr.titulo) ? 'rede' : (pr.titulo.split(' ')[0] || 'ação'), comando: pr.detalhe || pr.pergunta, permissaoId: 'tela:' + pr.chave, acao: 'responder', marca: 'tela:' + pr.chave,
+        // CC-726: o terminal oferece "sempre permitir" para este pedido?
+        sempre: Boolean(teclaDaPermissao(telas[i], 'sempre')) }
       const ja = (dados.espera || []).find((e) => e.tipo === 'agente' && e.conversa === s.conversa)
       if (ja) { Object.assign(ja, campos); return }
       const c = (dados.conectadas || []).find((x) => x.conversa === s.conversa || x.id === String(s.conversa).slice(0, 8))
@@ -925,13 +973,25 @@ export async function responder() {
      ajudante em segundo plano), e se respondem sem apertar tecla. */
   try {
     for (const pg of lerPedidosDoGancho(undefined, agora)) {
-      const c = (dados.conectadas || []).find((x) => x.conversa === pg.sessao || x.id === String(pg.sessao || '').slice(0, 8))
+      /* CC-723: pedido do Coderoom cai no cartão da PRÓPRIA conversa
+         (`gate:<id>`), e não num cartão solto com o número da sessão do Claude. */
+      const conv = pg.coderoom ? 'gate:' + pg.coderoom : pg.sessao
+      const c = (dados.conectadas || []).find((x) => x.conversa === conv || x.id === String(conv || '').slice(0, 8))
+      const ehPergunta = pg.tipo === 'pergunta'
       const campos = {
-        rotulo: 'permissão', pergunta: (pg.ajudante ? 'Ajudante em segundo plano: ' : '') + (pg.descricao || ('quer usar ' + (pg.ferramenta || 'uma ferramenta'))),
-        ferramenta: pg.ferramenta || 'ação', comando: pg.comando || null, permissaoId: 'gancho:' + pg.id, acao: 'responder',
-        marca: 'gancho:' + pg.id, conversa: pg.sessao, prazo: pg.ate || null, doAjudante: Boolean(pg.ajudante),
+        rotulo: ehPergunta ? 'pergunta' : 'permissão',
+        pergunta: ehPergunta ? pg.pergunta : (pg.ajudante ? 'Ajudante em segundo plano: ' : '') + (pg.descricao || ('quer usar ' + (pg.ferramenta || 'uma ferramenta'))),
+        /* CC-723: as opções da pergunta do Coderoom, uma por botão. */
+        escolhas: ehPergunta ? (pg.opcoes || []) : null,
+        ferramenta: pg.ferramenta || 'ação', comando: ehPergunta ? null : pg.comando || null, permissaoId: 'gancho:' + pg.id, acao: 'responder',
+        marca: 'gancho:' + pg.id, conversa: conv, prazo: pg.ate || null, doAjudante: Boolean(pg.ajudante),
+        // CC-726: o gancho guarda as regras que o Claude Code sugere; com elas, dá para "sempre permitir"
+        sempre: Array.isArray(pg.sugestoes) && pg.sugestoes.length > 0,
+        /* CC-699: pedido do "pergunte antes" do Coderoom. Sem resposta ele é
+           BARRADO, não vai para terminal nenhum, e o cartão precisa dizer isso. */
+        doCoderoom: Boolean(pg.coderoom),
       }
-      const ja = (dados.espera || []).find((e) => e.tipo === 'agente' && e.conversa === pg.sessao)
+      const ja = (dados.espera || []).find((e) => e.tipo === 'agente' && e.conversa === conv)
       if (ja) { Object.assign(ja, campos); continue }
       ;(dados.espera || (dados.espera = [])).unshift({
         tipo: 'agente', id: c ? c.id : String(pg.sessao || pg.id).slice(0, 8), projeto: c ? c.projeto : path.basename(pg.cwd || ''), nome: c ? c.nome : path.basename(pg.cwd || 'sessão'),
@@ -939,6 +999,14 @@ export async function responder() {
       })
     }
   } catch { /* sem os pedidos do gancho, ficam os da tela e da conversa */ }
+  // CC-708: toda pergunta e permissão leva o nome da sessão de onde veio
+  /* CC-727, pedido dele: "nomear os chats de forma que fique entendível no
+     sessões qual a sessão do coderoom". O cartão mostrava só o projeto, e
+     duas conversas no mesmo projeto eram dois "VPS_cockpit" iguais. O título
+     da conversa entra no mesmo lugar do nome da sessão de terminal. */
+  for (const j of jobs) if (j.tipo === 'coderoom' && j.subject && !nomeDaConversa.has('gate:' + j.id)) nomeDaConversa.set('gate:' + j.id, j.subject)
+  for (const s of dados.conectadas || []) if (!s.sessaoNome && s.conversa && nomeDaConversa.has(s.conversa)) s.sessaoNome = nomeDaConversa.get(s.conversa)
+  for (const e of dados.espera || []) if (e.conversa && nomeDaConversa.has(e.conversa)) e.sessaoNome = nomeDaConversa.get(e.conversa)
   /* CC-599: o resumo do agy para cada sessão parada DESTA máquina (decisão
      dele: automático, um por parada). Pede o que falta e junta o que está
      pronto; o pedido roda em segundo plano, esta leitura não espera. */
@@ -955,6 +1023,23 @@ export async function responder() {
       if (s.estado === 'trabalhando' || s.porPrograma || !alvo(s)) continue
       resumoAgy.pedir({ conversa: s.conversa, marca: s.marca, arquivo: arquivoDe.get(s.conversa) })
       s.resumoIA = resumoAgy.obter(s.conversa, s.marca)
+    }
+    /* O coderoom não tem arquivo de transcrição, e é por isso que o cartão dele
+       não tinha resumo. O texto que o agente acabou de escrever está no job, e
+       o mesmo agy da fila de cima o resume: é a peça de que o Claude Code
+       (CC-599) é servido, com a entrada diferente.
+       A chave é a conversa, e não a marca: no coderoom o texto muda só quando
+       o turno acaba, e uma chave por escrita faria o mesmo resumo ser pedido
+       de novo a cada tique. */
+    const textoDoCoderoom = new Map()
+    for (const j of jobs) if (j.tipo === 'coderoom' && j.ultima?.texto) textoDoCoderoom.set('gate:' + j.id, j.ultima.texto)
+    for (const s of dados.conectadas || []) {
+      const txt = s.conversa && textoDoCoderoom.get(s.conversa)
+      if (!txt || s.estado === 'trabalhando' || s.porPrograma) continue
+      const k = 'sess::' + s.conversa
+      const r = resumoAgy.obterTexto(k)
+      if (!r) resumoAgy.pedirTexto({ k, prompt: 'Um agente de programação acabou de responder no Coderoom, a tela de conversa do painel de projetos dele. Escreva em português do Brasil, sem travessão, no máximo 3 frases curtas: o que ele fez, o que ele mudou e o que falta. Para quem não é programador. Sem markdown. Não use ferramentas.\n\nRESPOSTA DO AGENTE:\n' + txt.slice(0, 4000) })
+      s.resumoIA = r
     }
   } catch { /* resumo é conveniência: falhar aqui não derruba a tela */ }
   /* CC-683: o pedido de permissão explica o comando. A leitura fixa (raio) é

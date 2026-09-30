@@ -46,6 +46,9 @@ function normalizeNote(n) {
     /* CC-666, o Armário: a gaveta da nota. Nota sem gaveta mora em "notas",
        e é assim que as de antes continuam onde sempre estiveram. */
     gaveta: corta(n.gaveta || 'notas', 40),
+    /* CC-709, decisão dele em 29/09: a nota pode pertencer a um projeto (a
+       pasta raiz dele), e aparece ao lado da documentação daquele projeto. */
+    projeto: n.projeto ? corta(String(n.projeto), 400) : null,
   }
 }
 
@@ -55,10 +58,11 @@ function normalizeNote(n) {
  * mandando a lista dela podia atropelar uma edição aberta na tela Notas.
  * Aqui o servidor lê o que está no disco e só acrescenta.
  */
-export function acrescentarNota(texto, titulo = '') {
+export function acrescentarNota(texto, titulo = '', projeto = null) {
   const t = String(texto || '').trim()
   if (!t) return { ok: false, erro: 'nota vazia' }
-  const notas = writeNotes([{ title: titulo, text: t }, ...readNotes()])
+  // CC-712: "Salvar no projeto" no Coderoom manda a nota já ligada ao projeto
+  const notas = writeNotes([{ title: titulo, text: t, projeto: projeto || null }, ...readNotes()])
   return { ok: true, nota: notas[0] }
 }
 

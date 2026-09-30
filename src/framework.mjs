@@ -584,6 +584,7 @@ export const TOM_RECOMENDADO = {
      texto para ele ler, então explicam; os de execução reportam e calam. */
   estudo: 'explicativo',
   revisao: 'explicativo',
+  planejamento: 'explicativo', // o plano é texto para ele ler e aprovar
   depuracao: 'explicativo', // a causa medida é o produto, e ela precisa do porquê
   desenho: 'direto',
   pareado: 'direto',
@@ -906,6 +907,29 @@ Object.assign(MODOS, {
     hooks: {
       exige: ['roadmap-guard', 'reporte-guard'],
       desliga: [],
+    },
+  },
+  /* CC-714, 29/09, pedido dele: *"cria sim!"*, para um modo em que o agente só
+     planeja. É o primeiro modo que vale nos TRÊS agentes do Coderoom, porque
+     cada um tem o seu modo de plano nativo (medido em 29/09): `--permission-mode
+     plan` no Claude, `--mode plan` no agy, `--agent plan` no opencode. No
+     Claude Code comum, a trava é a mesma da Revisão: só escreve em docs, que é
+     onde o plano mora. */
+  planejamento: {
+    id: 'planejamento',
+    titulo: 'Planejamento',
+    explica: 'Só ler e propor um plano. Nenhuma edição de código até você aprovar.',
+    trava: true,
+    pergunta: false,
+    soEscreve: ['docs/**', '*.md'],
+    hooks: {
+      exige: [],
+      desliga: [],
+    },
+    padrao: {
+      titulo: 'plano primeiro, código só depois do seu sim',
+      resumo: 'Leia o que precisar e entregue um plano: o que muda, em quais arquivos, '
+        + 'o risco e como vai provar. Não edite código. Termine perguntando se pode executar.',
     },
   },
   pareado: {

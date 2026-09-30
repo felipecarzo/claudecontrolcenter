@@ -846,7 +846,7 @@ export function lerPacotes(now = Date.now()) {
  * pode exigir reescrever histórico.
  */
 export const carimbar = (lista, origem) =>
-  (Array.isArray(lista) ? lista : []).map((x) => ({ ...x, origem }))
+  (Array.isArray(lista) ? lista : []).map((x) => ({ ...x, origem: x.origem || origem }))
 
 /**
  * Junta local com remoto.

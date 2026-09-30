@@ -34,7 +34,7 @@ import { pathToFileURL } from 'node:url'
 const ESPERA_MS = 30000
 const PAINEL_VIVO_MS = 20000
 
-const pasta = () => path.join(
+export const pasta = () => path.join(
   (!process.env.CC_HOME && process.env.XDG_DATA_HOME) || path.join(process.env.CC_HOME || os.homedir(), '.local', 'share'),
   'agent-cockpit', 'permissoes',
 )
@@ -51,12 +51,34 @@ export function resumoDaEntrada(ferramenta, entrada) {
   return { descricao, comando }
 }
 
-export async function principal({ entrada, dir = pasta(), agora = Date.now, esperar = (ms) => new Promise((r) => setTimeout(r, ms)), espera = ESPERA_MS } = {}) {
+/* CC-699: o modo "pergunte antes" do Coderoom.
+ *
+ * Medido em 29/09: sem terminal (`claude -p`), o `PermissionRequest` NUNCA
+ * dispara. O Claude recusa sozinho o que precisaria de permissão, e ainda
+ * responde "feito" sem ter feito. O que dispara é o `PreToolUse`, e ele segura
+ * a ferramenta enquanto espera: `deny` barrou o comando, `allow` deixou rodar.
+ *
+ * Três diferenças do modo normal, e as três são de propósito:
+ *  - não depende de painel aberto: quem escolheu "pergunte antes" quer ser
+ *    perguntado, e a resposta pode vir do telefone minutos depois;
+ *  - espera 10 min, não 30 s;
+ *  - sem resposta, BARRA dizendo por quê. No modo normal o silêncio devolve o
+ *    pedido ao terminal; aqui não há terminal, e liberar calado seria o
+ *    contrário do que ele pediu. */
+export const ESPERA_CODEROOM_MS = 10 * 60 * 1000
+const saidaAntes = (dec, motivo) => ({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: dec, permissionDecisionReason: motivo } })
+
+export async function principal({ entrada, dir = pasta(), agora = Date.now, esperar = (ms) => new Promise((r) => setTimeout(r, ms)), espera = ESPERA_MS, coderoom = null } = {}) {
   const j = entrada
-  if (!j || j.hook_event_name !== 'PermissionRequest') return null
-  let vivo = 0
-  try { vivo = fs.statSync(path.join(dir, '.painel-aberto')).mtimeMs } catch { return null }
-  if (agora() - vivo > PAINEL_VIVO_MS) return null
+  if (coderoom) {
+    if (!j || j.hook_event_name !== 'PreToolUse') return null
+    espera = espera === ESPERA_MS ? ESPERA_CODEROOM_MS : espera
+  } else {
+    if (!j || j.hook_event_name !== 'PermissionRequest') return null
+    let vivo = 0
+    try { vivo = fs.statSync(path.join(dir, '.painel-aberto')).mtimeMs } catch { return null }
+    if (agora() - vivo > PAINEL_VIVO_MS) return null
+  }
   const id = crypto.randomUUID().slice(0, 13)
   const arq = path.join(dir, id + '.json')
   const resp = path.join(dir, id + '.resposta.json')
@@ -66,13 +88,26 @@ export async function principal({ entrada, dir = pasta(), agora = Date.now, espe
     fs.writeFileSync(arq + '.tmp', JSON.stringify({
       id, sessao: j.session_id || null, cwd: j.cwd || null, ajudante: j.agent_id || null, tipoAjudante: j.agent_type || null,
       ferramenta: j.tool_name || null, descricao, comando, em: agora(), ate: agora() + espera,
+      // CC-726: as regras que o Claude Code sugere para "sempre permitir" este tipo de pedido
+      sugestoes: Array.isArray(j.permission_suggestions) && j.permission_suggestions.length ? j.permission_suggestions : null,
+      ...(coderoom ? { coderoom } : {}),
     }))
     fs.renameSync(arq + '.tmp', arq)
-  } catch { return null }
+  } catch { return coderoom ? saidaAntes('deny', 'o painel não conseguiu registrar o pedido de permissão') : null }
   try {
     for (let t = 0; t < espera; t += 300) {
       let r = null
       try { r = JSON.parse(fs.readFileSync(resp, 'utf8')) } catch { /* ainda não */ }
+      if (r && (r.decisao === 'sim' || r.decisao === 'nao') && coderoom) {
+        return r.decisao === 'sim' ? saidaAntes('allow', 'aprovado pelo Felipe no painel') : saidaAntes('deny', 'o Felipe negou no painel')
+      }
+      /* CC-726, pedido dele: "sempre permitir" devolve as regras que o próprio
+         Claude Code sugeriu, e ele deixa de perguntar por este tipo de ação.
+         Sem sugestão, vale como permitir uma vez (o cartão nem oferece). */
+      if (r && r.decisao === 'sempre' && !coderoom) {
+        const sug = Array.isArray(j.permission_suggestions) && j.permission_suggestions.length ? j.permission_suggestions : null
+        return { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: sug ? { behavior: 'allow', updatedPermissions: sug } : { behavior: 'allow' } } }
+      }
       if (r && (r.decisao === 'sim' || r.decisao === 'nao')) {
         return r.decisao === 'sim'
           ? { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'allow' } } }
@@ -80,7 +115,7 @@ export async function principal({ entrada, dir = pasta(), agora = Date.now, espe
       }
       await esperar(300)
     }
-    return null
+    return coderoom ? saidaAntes('deny', `ninguém respondeu no painel em ${Math.round(espera / 60000)} min. Pare e diga ao Felipe o que precisava fazer.`) : null
   } finally {
     try { fs.unlinkSync(arq) } catch { /* já saiu */ }
     try { fs.unlinkSync(resp) } catch { /* não houve */ }
@@ -88,8 +123,11 @@ export async function principal({ entrada, dir = pasta(), agora = Date.now, espe
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  principal({ entrada: lerEntrada() })
+  const iCr = process.argv.indexOf('--coderoom')
+  principal({ entrada: lerEntrada(), coderoom: iCr > 0 ? (process.argv[iCr + 1] || 'sem-id') : null })
     .then((saida) => { if (saida) process.stdout.write(JSON.stringify(saida)) })
-    .catch(() => { /* nunca travar o Claude Code */ })
+    /* Nunca travar o Claude Code. No Coderoom, erro BARRA: sair calado ali
+       liberaria a ferramenta que ele pediu para aprovar. */
+    .catch(() => { if (iCr > 0) process.stdout.write(JSON.stringify(saidaAntes('deny', 'o gancho de permissão falhou'))) })
     .finally(() => process.exit(0))
 }
