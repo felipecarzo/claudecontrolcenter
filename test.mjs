@@ -642,7 +642,10 @@ assert.equal(inst.detectarBase([{ cwd: '/home/ana/projects/x' }, { cwd: '/home/a
   const tortos = itens.flatMap((i) => problemas(i).map((p) => `${i.id}: ${p}`))
   assert.deepEqual(tortos, [], `item fora do contrato: ${tortos.slice(0, 5).join('; ')}`)
 
-  const emDisco = fs.readFileSync(path.join(process.cwd(), 'docs', 'ROADMAP.md'), 'utf8')
+  /* 30/09: no Windows o git entrega o arquivo com CRLF, e a comparação crua
+     reprovava o PC sempre, barrando a publicação lá. A diferença é só o fim de
+     linha, não o conteúdo. */
+  const emDisco = fs.readFileSync(path.join(process.cwd(), 'docs', 'ROADMAP.md'), 'utf8').replace(/\r\n/g, '\n')
   assert.equal(emDisco, comoMarkdown(),
     'docs/ROADMAP.md não bate com docs/backlog.jsonl. Ele é GERADO: regere em vez de editar à mão.')
 }
