@@ -33,6 +33,9 @@ import { pathToFileURL } from 'node:url'
 
 const ESPERA_MS = 30000
 const PAINEL_VIVO_MS = 20000
+/* CC-735: abaixo do tempo que o instalador dá ao gancho (90 s), senão o Claude
+   Code mata o gancho no meio da espera. */
+export const ESPERA_REMOTO_MS = 75000
 
 export const pasta = () => path.join(
   (!process.env.CC_HOME && process.env.XDG_DATA_HOME) || path.join(process.env.CC_HOME || os.homedir(), '.local', 'share'),
@@ -78,6 +81,12 @@ export async function principal({ entrada, dir = pasta(), agora = Date.now, espe
     let vivo = 0
     try { vivo = fs.statSync(path.join(dir, '.painel-aberto')).mtimeMs } catch { return null }
     if (agora() - vivo > PAINEL_VIVO_MS) return null
+    /* CC-735: ele está no painel da OUTRA máquina. A resposta atravessa a rede
+       (sobe em ~2 s, desce na carona seguinte), e ele ainda precisa ver e
+       tocar: 30 s não bastam. */
+    let remoto = 0
+    try { remoto = fs.statSync(path.join(dir, '.remoto-vendo')).mtimeMs } catch { /* só local */ }
+    if (espera === ESPERA_MS && agora() - remoto < PAINEL_VIVO_MS) espera = ESPERA_REMOTO_MS
   }
   const id = crypto.randomUUID().slice(0, 13)
   const arq = path.join(dir, id + '.json')

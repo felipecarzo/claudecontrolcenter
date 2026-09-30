@@ -23,9 +23,9 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
 | tela | 15 | 15/15 | 9/15 | 15/15 | 0/15 | 15/15 |
-| acao | 245 | 245/245 | 38/245 | 0/245 | 0/245 | 0/245 |
+| acao | 247 | 247/247 | 39/247 | 0/247 | 0/247 | 0/247 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 129 | 129/129 | 7/129 | 0/129 | 0/129 | 0/129 |
+| endereco | 130 | 130/130 | 7/130 | 0/130 | 0/130 | 0/130 |
 | palavra | 83 | 83/83 | 10/83 | 83/83 | 0/83 | 83/83 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
@@ -52,7 +52,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `conhecimento` | viva | src/ui_cockpit2.html#view-conhecimento | funciona, estreito |
 | `remoto` | viva | src/ui_cockpit2.html#view-remoto | estreito |
 
-## acao (245)
+## acao (247)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -235,6 +235,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-repetidas` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-grupo-fechar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-grupo-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-eti-k` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-eti` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-meu-feito` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-dec-depois` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-dec-x` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
@@ -314,7 +316,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-n` | viva | src/ui_cockpit2.html | explica, estreito |
 
-## endereco (129)
+## endereco (130)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -375,6 +377,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/gate/mensagem` | estatica | src/web.mjs | funciona, explica |
 | `/api/decisao/responder` | estatica | src/web.mjs | funciona, explica |
 | `/api/decisao/permitir` | estatica | src/web.mjs | funciona, explica |
+| `/api/sessao/etiqueta` | estatica | src/web.mjs | funciona, explica |
 | `/api/sessao/fala` | estatica | src/web.mjs | funciona, explica |
 | `/api/sessao/conversa` | estatica | src/web.mjs | funciona, explica |
 | `/api/decisao/historico` | estatica | src/web.mjs | funciona, explica |

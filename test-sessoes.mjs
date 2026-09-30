@@ -69,5 +69,34 @@ try {
   console.log('  ok   CC-727: registro idle vira parou na hora')
 } catch (e) { erro('CC-727: estado pelo registro', e) }
 
+/* CC-740: sessão de Remote Control ganha o endereço dela no app. */
+try {
+  const casa2 = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-app-'))
+  const a = path.join(casa2, 'rc.jsonl')
+  fs.writeFileSync(a, [
+    JSON.stringify({ type: 'bridge-session', bridgeSessionId: 'cse_015QLnZAg2mNXWAj7gfZcPiZ' }),
+    JSON.stringify({ type: 'user', cwd: '/p/x', timestamp: '2026-09-30T10:00:00Z' }),
+  ].join('\n') + '\n')
+  const b = path.join(casa2, 'ruim.jsonl')
+  fs.writeFileSync(b, [
+    JSON.stringify({ type: 'bridge-session', bridgeSessionId: 'cse_x"><script>' }),
+    JSON.stringify({ type: 'user', cwd: '/p/x', timestamp: '2026-09-30T10:00:00Z' }),
+  ].join('\n') + '\n')
+  assert.strictEqual(cabecaDe(a).appUrl, 'https://claude.ai/code/session_015QLnZAg2mNXWAj7gfZcPiZ')
+  assert.strictEqual(cabecaDe(b).appUrl, null, 'id fora do formato não vira link')
+  fs.rmSync(casa2, { recursive: true, force: true })
+  console.log('  ok   CC-740: sessão de Remote Control tem o link do app')
+} catch (e) { erro('CC-740: link do app', e) }
+
+/* CC-737: a etiqueta do agy sai da primeira linha e não entra no texto. */
+try {
+  const { lerEtiqueta } = await import('./src/resumoAgy.mjs')
+  assert.deepStrictEqual(lerEtiqueta('ETIQUETA: TESTAR\nO agente subiu a tela nova.'), { etiqueta: 'testar', texto: 'O agente subiu a tela nova.' })
+  assert.strictEqual(lerEtiqueta('**ETIQUETA:** responder  (decisão)\nx').etiqueta, 'responder', 'aguenta negrito e comentário')
+  assert.deepStrictEqual(lerEtiqueta('Resumo sem etiqueta.'), { etiqueta: null, texto: 'Resumo sem etiqueta.' })
+  assert.strictEqual(lerEtiqueta('O texto fala de ETIQUETA: NADA no meio').etiqueta, null, 'só vale na primeira linha')
+  console.log('  ok   CC-737: etiqueta responder/testar/nada lida do resumo')
+} catch (e) { erro('CC-737: etiqueta', e) }
+
 if (falhou) process.exit(1)
 console.log('test-sessoes: ok')

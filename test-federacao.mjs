@@ -485,6 +485,18 @@ ok('pacote sobrevive ao ida e volta por JSON')
     assert.equal(nos2.ativoMs, 1500, 'as horas das duas máquinas têm que somar')
     assert.equal(nos2.porMaquina.length, 2, 'e a quebra por aparelho tem que sobreviver à soma')
     ok('projeto tocado nos dois aparelhos soma o total e mantém a quebra')
+
+    /* CC-735: responder daqui a permissão de lá. Lista fechada, id no formato do gancho. */
+    const antesPerm = F.pedidosPendentes().length
+    assert.equal(F.pedirPermissao({ paraMaquina: 'ALIENWARE-LIPE', idGancho: 'ab12cd34-ef56', decisao: 'sim' }).ok, true)
+    assert.equal(F.pedirPermissao({ paraMaquina: 'ALIENWARE-LIPE', idGancho: 'ab12cd34-ef56', decisao: 'sim' }).jaPedido, true, 'dedo duplo não vira duas ordens')
+    assert.equal(F.pedirPermissao({ paraMaquina: 'ALIENWARE-LIPE', idGancho: 'x; rm -rf /', decisao: 'sim' }).ok, false, 'id fora do formato do gancho')
+    assert.equal(F.pedirPermissao({ paraMaquina: 'ALIENWARE-LIPE', idGancho: 'ab12cd34', decisao: 'rode isto' }).ok, false, 'decisão fora da lista')
+    assert.equal(F.pedidosPendentes().length, antesPerm + 1)
+    const [ordem] = F.pegarPedidos('ALIENWARE-LIPE').filter((p) => p.acao === 'permissao')
+    assert.deepEqual([ordem.idGancho, ordem.decisao], ['ab12cd34-ef56', 'sim'])
+    assert.deepEqual(F.recortarPermissoes([{ id: '../x' }, { id: 'ab12cd34', comando: 'ls', sugestoes: [{}] }]).map((p) => [p.id, p.sempre]), [['ab12cd34', true]])
+    ok('resposta de permissão para outra máquina: só id do gancho e sim/nao/sempre')
   } finally {
     if (antes === undefined) delete process.env.CC_HOME
     else process.env.CC_HOME = antes
@@ -821,6 +833,17 @@ ok('pacote sobrevive ao ida e volta por JSON')
   assert.equal(validarPacote({ maquina: { id: 'pc' } }).pacote.hw, null, 'máquina que não manda fica null, não zero')
   assert.equal(montarPacote({ maquina: { id: 'pc' }, hw: { cpu: { uso: 1 } } }).hw.cpu.uso, 1)
   ok('o hardware da máquina viaja no pacote, recortado campo a campo')
+}
+
+/* CC-733: a outra máquina precisa saber que a sessão fechou ou pede permissão. */
+{
+  const p = montarPacote({ maquina: PC, jobs: [{ id: 'a', aberta: false }, { id: 'b', aberta: true, permissao: true, porPrograma: true }, { id: 'c' }] })
+  const v = validarPacote(p).pacote.jobs
+  assert.equal(v[0].aberta, false, 'sessão fechada chega fechada')
+  assert.equal(v[1].permissao, true, 'parada em pedido de permissão chega parada')
+  assert.equal(v[1].porPrograma, true)
+  assert.equal(v[2].aberta, undefined, 'sem registro continua "não sei", nunca "fechada"')
+  ok('aberta, permissao e porPrograma atravessam de uma máquina para a outra')
 }
 
 console.log(`\n${n} grupos de asserção passaram`)

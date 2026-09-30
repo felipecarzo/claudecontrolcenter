@@ -84,6 +84,26 @@ const seguro = (s) => String(s || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40
  * Valida o que chegou pela rede. Nada aqui confia no remetente: id sujo vira
  * caminho de arquivo, e lista gigante vira memória.
  */
+/* CC-735: o id que o gancho de permissão gera (`randomUUID().slice(0, 13)`). */
+export const ID_GANCHO = /^[0-9a-f-]{6,20}$/
+export const DECISOES_REMOTAS = ['sim', 'nao', 'sempre']
+
+export const recortarPermissoes = (v) => (Array.isArray(v) ? v : [])
+  .filter((p) => ID_GANCHO.test(String(p?.id || '')))
+  .slice(0, 20)
+  .map((p) => ({
+    id: String(p.id),
+    sessao: p.sessao ? String(p.sessao).slice(0, 60) : null,
+    cwd: p.cwd ? String(p.cwd).slice(0, 260) : null,
+    ajudante: p.ajudante ? String(p.ajudante).slice(0, 60) : null,
+    ferramenta: p.ferramenta ? String(p.ferramenta).slice(0, 60) : null,
+    descricao: String(p.descricao || '').slice(0, 300),
+    comando: String(p.comando || '').slice(0, 1500),
+    em: Number(p.em) || null,
+    ate: Number(p.ate) || null,
+    sempre: Boolean(p.sempre ?? (Array.isArray(p.sugestoes) && p.sugestoes.length)),
+  }))
+
 export function validarPacote(bruto) {
   if (!bruto || typeof bruto !== 'object') return { ok: false, erro: 'pacote vazio' }
   const id = seguro(bruto.maquina?.id)
@@ -100,6 +120,10 @@ export function validarPacote(bruto) {
          número serve para a tela AVISAR, nunca para fechar a porta. */
       contrato: Number.isFinite(bruto.contrato) ? Math.max(0, Math.trunc(bruto.contrato)) : 0,
       jobs: lista(bruto.jobs, 500),
+      /* CC-735: os pedidos de permissão abertos naquela máquina, para serem
+         respondidos daqui. Recortados campo a campo: o id volta como ordem, e
+         só passa no formato que o gancho gera. */
+      permissoes: recortarPermissoes(bruto.permissoes),
       /* CC-353: recortado campo a campo como todo o resto, e não aceito cru.
          Ele nunca chegou preenchido até hoje, então não há formato antigo a
          preservar: dá para fechar a porta agora, que é mais barato do que
@@ -810,6 +834,27 @@ export function pegarPedidos(maquina, now = Date.now()) {
   return meus
 }
 
+/**
+ * CC-735: responder daqui o pedido de permissão de uma sessão da outra máquina.
+ *
+ * Decisão dele em 30/09: "responder daqui". A ordem carrega só o id do pedido
+ * (no formato do gancho) e uma decisão de lista fechada. Quem executa entrega a
+ * decisão ao gancho de lá, pelo mesmo arquivo de resposta que o painel local
+ * usa; id que não existe lá não faz nada. Não tem projeto, porque não mexe em
+ * pasta nenhuma.
+ */
+export function pedirPermissao({ paraMaquina, idGancho, decisao, de = null, now = Date.now() }) {
+  const alvo = seguro(paraMaquina)
+  if (!alvo) return { ok: false, erro: 'sem máquina de destino' }
+  if (!ID_GANCHO.test(String(idGancho || ''))) return { ok: false, erro: 'pedido inválido' }
+  if (!DECISOES_REMOTAS.includes(decisao)) return { ok: false, erro: 'decisão inválida' }
+  const lista = lerPedidosBrutos().filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
+  if (lista.some((p) => p.acao === 'permissao' && p.paraMaquina === alvo && p.idGancho === idGancho)) return { ok: true, jaPedido: true }
+  lista.push({ id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`, paraMaquina: alvo, acao: 'permissao', idGancho, decisao, de, em: now })
+  gravarPedidos(lista)
+  return { ok: true, enviado: true }
+}
+
 /** Só para a tela e para o teste: o que está na fila, sem consumir. */
 export const pedidosPendentes = (now = Date.now()) =>
   lerPedidosBrutos().filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
@@ -1256,11 +1301,12 @@ export function origemDoEmpurrao() {
 export function montarPacote({
   maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [], backlogs = null,
   meu = null, agentes = null, limites = null, travas = null, framework = null, servico = null, hw = null,
+  permissoes = [],
 }) {
   const enxuto = jobs.map((j) => ({
     id: j.id, status: j.status, subject: j.subject, project: j.project, sub: j.sub,
     route: j.route, frente: j.frente, model: j.model, tokens: j.tokens, tipo: j.tipo || 'background',
-    remoto: j.remoto || false, todos: j.todos, todosDone: j.todosDone, blockers: j.blockers,
+    remoto: j.remoto || false, appUrl: j.appUrl || null, todos: j.todos, todosDone: j.todosDone, blockers: j.blockers,
     detail: j.detail, createdAt: j.createdAt, updatedAt: j.updatedAt, cwd: j.cwd,
     lastPrompt: j.lastPrompt, entregueEmAberto: j.entregueEmAberto, sinais: j.sinais,
     /* Plano do cockpit 2, M7: a última fala do agente viaja junto, e é o que
@@ -1270,12 +1316,21 @@ export function montarPacote({
        só para sessão parada: ler a cauda de toda sessão viva a cada 30s seria
        pagar caro por um texto que ninguém vai ler. */
     ultimaFala: j.ultimaFala || null,
+    /* CC-733: sem estes três, a VPS não sabia que a sessão do PC tinha sido
+       fechada (seguia "espera você" por 30 min e "ociosa" por 24 h), nem que
+       ela estava parada num pedido de permissão, nem que era sessão de script.
+       O PC já calculava os três; o corte era aqui. `undefined` continua
+       querendo dizer "não sei" (PC sem registro de sessões). */
+    aberta: j.aberta,
+    permissao: Boolean(j.permissao),
+    porPrograma: Boolean(j.porPrograma),
   }))
   return {
     /* CC-440: primeiro campo do pacote, de propósito. Quem for depurar isto
        lendo o JSON cru vê o formato antes de tentar entender o conteúdo. */
     contrato: CONTRATO,
     maquina, jobs: enxuto, servidores, uso, tempo, rotas: enxugarRotas(rotas), backlogs,
+    permissoes: recortarPermissoes(permissoes),
     /* Campo ausente e campo vazio são coisas diferentes na federação: `null`
        quer dizer "esta máquina não sabe dizer", e `[]` quer dizer "sabe, e não
        tem nenhum". A tela precisa dos dois para não inventar. */

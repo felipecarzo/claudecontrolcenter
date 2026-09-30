@@ -130,4 +130,22 @@ await t('CC-726: "sempre permitir" pelo painel devolve as regras que o Claude Co
   assert.deepEqual((await hook).hookSpecificOutput.decision, { behavior: 'allow', updatedPermissions: sug })
 })
 
+/* CC-735: ele olhando o painel da outra máquina, o gancho espera 75 s, não 30. */
+await t('olhando de outra máquina, o gancho espera mais e a resposta de lá vira allow', async () => {
+  const { ESPERA_REMOTO_MS } = await import('./hooks/permissao-painel.mjs')
+  const { marcarPainelAberto, painelAbertoAgora } = await import('./src/decisao.mjs')
+  const dir = casa(); marcarPainelAberto(dir, { remoto: true })
+  assert.equal(painelAbertoAgora(dir), false, 'a marca remota não conta como alguém olhando ESTE painel')
+  const hook = principal({ entrada: pedido, dir, esperar: rapido })
+  await new Promise((r) => setTimeout(r, 30))
+  const [p] = lerPedidosDoGancho(dir)
+  assert.equal(p.ate - p.em, ESPERA_REMOTO_MS)
+  await responderGancho(p.id, 'sim', { dir, esperar: rapido })
+  assert.deepEqual((await hook).hookSpecificOutput.decision, { behavior: 'allow' })
+  marcarPainelAberto(dir)
+  await new Promise((r) => setTimeout(r, 600))
+  marcarPainelAberto(dir)
+  assert.equal(painelAbertoAgora(dir), true, 'leitura local depois da remota conta')
+})
+
 console.log(`\n${ok} verificações do gancho de permissão, todas passaram`)

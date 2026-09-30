@@ -11,8 +11,9 @@
  * - grava em arquivo temporário, relê, e só então troca;
  * - `--conferir` não muda nada, só diz se já está instalado.
  *
- * Tempo do gancho: 40 s, porque ele espera a resposta do painel por até 30 s
- * (e só quando o painel está aberto; sem painel, sai na hora).
+ * Tempo do gancho: 90 s. Ele espera a resposta do painel por até 30 s, ou 75 s
+ * quando ele está olhando de outra máquina (CC-735); sem painel, sai na hora.
+ * Rodar de novo sobe o tempo de quem instalou com 40 s.
  */
 import { copyFileSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -33,12 +34,19 @@ try { cfg = JSON.parse(readFileSync(ALVO, 'utf8')) } catch (e) {
 
 cfg.hooks ||= {}
 cfg.hooks.PermissionRequest ||= []
-const jaTem = cfg.hooks.PermissionRequest.some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('permissao-painel.mjs')))
+const nossos = cfg.hooks.PermissionRequest.flatMap((g) => (g.hooks || []).filter((h) => String(h.command || '').includes('permissao-painel.mjs')))
+/* CC-735: 90 s, porque olhando de outra máquina o gancho espera até 75 s. */
+const TEMPO = 90
+const curtos = nossos.filter((h) => !(h.timeout >= TEMPO))
 
-if (jaTem) { console.log('o gancho de permissão do cockpit JÁ está instalado.'); process.exit(0) }
-if (SO_CONFERIR) { console.log('ele NÃO está instalado. Rode sem --conferir para instalar.'); process.exit(0) }
+if (nossos.length && !curtos.length) { console.log('o gancho de permissão do cockpit JÁ está instalado.'); process.exit(0) }
+if (SO_CONFERIR) {
+  console.log(nossos.length ? `instalado, mas com tempo curto (${curtos[0].timeout || 'padrão'} s). Rode sem --conferir para subir para ${TEMPO} s.` : 'ele NÃO está instalado. Rode sem --conferir para instalar.')
+  process.exit(0)
+}
 
-cfg.hooks.PermissionRequest.push({ hooks: [{ type: 'command', command: COMANDO, timeout: 40 }] })
+if (nossos.length) for (const h of curtos) h.timeout = TEMPO
+else cfg.hooks.PermissionRequest.push({ hooks: [{ type: 'command', command: COMANDO, timeout: TEMPO }] })
 
 const carimbo = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
 const copia = `${ALVO}.antes-da-permissao-painel-${carimbo}`
@@ -55,6 +63,6 @@ try {
   console.error(`falhou ao gravar: ${e.message}. O original está intacto; cópia em ${copia}`)
   process.exit(1)
 }
-console.log('instalado.')
+console.log(nossos.length ? `tempo do gancho subiu para ${TEMPO} s.` : 'instalado.')
 console.log(`  cópia de segurança: ${copia}`)
 console.log('  vale para as sessões abertas DEPOIS de agora (as que já estão abertas precisam reabrir).')

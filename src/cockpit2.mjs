@@ -336,6 +336,9 @@ const tipoDaSessao = (j) => {
   if (j.tipo === 'interativa') return j.remoto ? 'remote control' : 'claude code'
   return 'claude code (fundo)'
 }
+/* CC-740: o endereço da sessão no app do Claude. Vem pela rede quando a sessão
+   é de outra máquina, então só passa no formato exato. */
+const appUrlDe = (j) => (/^https:\/\/claude\.ai\/code\/session_[A-Za-z0-9]{10,60}$/.test(String(j?.appUrl || '')) ? j.appUrl : null)
 
 /**
  * A fala de uma conversa do coderoom, no MESMO formato da fala lida do arquivo
@@ -537,6 +540,7 @@ export function montar({
       fala: falaSessao?.texto || null, conversa: falaSessao?.conversa || null,
       resumo: falaSessao?.resumo || null, marca: falaSessao?.em || null,
       porPrograma: Boolean(j.porPrograma),
+      appUrl: appUrlDe(j),
     })
     if ((j.status === 'working' || j.status === 'waiting') && j.frente && !p.frenteEmCurso) p.frenteEmCurso = j.frente
     if (!j.stale && !semContato && j.aberta !== false && (j.status === 'waiting' || j.status === 'idle' || j.status === 'working')) {
@@ -582,6 +586,7 @@ export function montar({
            conversa de outra máquina não tem terminal que o painel alcance. */
         aviso.conversa = fala?.conversa || null
         aviso.esperaTerminal = Boolean(j.permissao) // CC-638: o registro diz que o terminal espera
+        aviso.appUrl = appUrlDe(j) // CC-740
         /* 26/09, tela Decisões item 4: o que sai da lista também vai, marcado,
            para a aba "Fechadas e antigas", com "reabrir". Cartão reaberto
            (mantidas) não some pela idade. */
@@ -984,7 +989,8 @@ export async function responder() {
         /* CC-723: as opções da pergunta do Coderoom, uma por botão. */
         escolhas: ehPergunta ? (pg.opcoes || []) : null,
         ferramenta: pg.ferramenta || 'ação', comando: ehPergunta ? null : pg.comando || null, permissaoId: 'gancho:' + pg.id, acao: 'responder',
-        marca: 'gancho:' + pg.id, conversa: conv, prazo: pg.ate || null, doAjudante: Boolean(pg.ajudante),
+        // CC-739: pedido de pasta não tem ninguém esperando, então não tem prazo
+        marca: 'gancho:' + pg.id, conversa: conv, prazo: pg.tipo === 'pasta' ? null : pg.ate || null, doAjudante: Boolean(pg.ajudante),
         // CC-726: o gancho guarda as regras que o Claude Code sugere; com elas, dá para "sempre permitir"
         sempre: Array.isArray(pg.sugestoes) && pg.sugestoes.length > 0,
         /* CC-699: pedido do "pergunte antes" do Coderoom. Sem resposta ele é
@@ -999,6 +1005,35 @@ export async function responder() {
       })
     }
   } catch { /* sem os pedidos do gancho, ficam os da tela e da conversa */ }
+  /* CC-735, decisão dele em 30/09 ("responder daqui"): os pedidos de permissão
+     das OUTRAS máquinas, que chegam no pacote. A resposta vira ordem na fila
+     daquela máquina (`remoto:<máquina>:<id>`), e o cartão some quando o pacote
+     seguinte chega sem o pedido. Máquina calada há mais de 5 min fica de fora:
+     o gancho de lá já desistiu. */
+  try {
+    for (const p of pacotes) {
+      if (p.semContato) continue
+      const maq = p.maquina?.nome || p.maquina?.id
+      for (const pg of p.permissoes || []) {
+        const curto = String(pg.sessao || '').slice(0, 8)
+        const c = (dados.conectadas || []).find((x) => x.dispositivo === maq && x.id === curto)
+        const campos = {
+          rotulo: 'permissão',
+          pergunta: (pg.ajudante ? 'Ajudante em segundo plano: ' : '') + (pg.descricao || ('quer usar ' + (pg.ferramenta || 'uma ferramenta'))),
+          escolhas: null, ferramenta: pg.ferramenta || 'ação', comando: pg.comando || null,
+          permissaoId: `remoto:${maq}:${pg.id}`, acao: 'responder', marca: `remoto:${maq}:${pg.id}`,
+          conversa: c?.conversa || pg.sessao, prazo: null, doAjudante: Boolean(pg.ajudante), sempre: Boolean(pg.sempre), deOutraMaquina: maq,
+        }
+        const ja = (dados.espera || []).find((e) => e.tipo === 'agente' && e.dispositivo === maq && e.id === curto)
+        if (ja) { Object.assign(ja, campos); continue }
+        ;(dados.espera || (dados.espera = [])).unshift({
+          tipo: 'agente', id: c ? c.id : curto || pg.id, projeto: c ? c.projeto : String(pg.cwd || '').split(/[\\/]/).pop(), nome: c ? c.nome : String(pg.cwd || 'sessão').split(/[\\/]/).pop(),
+          frente: c?.frente || null, assunto: c?.assunto || null, dispositivo: maq, modelo: c?.modelo || null,
+          desdeMs: Math.max(0, (p.em || agora) - (pg.em || p.em || agora)) + (p.idadeMs || 0), sessao: c?.tipo || 'claude code', opcoes: [], ...campos,
+        })
+      }
+    }
+  } catch { /* sem os pedidos de fora, ficam os daqui */ }
   // CC-708: toda pergunta e permissão leva o nome da sessão de onde veio
   /* CC-727, pedido dele: "nomear os chats de forma que fique entendível no
      sessões qual a sessão do coderoom". O cartão mostrava só o projeto, e
@@ -1038,7 +1073,7 @@ export async function responder() {
       if (!txt || s.estado === 'trabalhando' || s.porPrograma) continue
       const k = 'sess::' + s.conversa
       const r = resumoAgy.obterTexto(k)
-      if (!r) resumoAgy.pedirTexto({ k, prompt: 'Um agente de programação acabou de responder no Coderoom, a tela de conversa do painel de projetos dele. Escreva em português do Brasil, sem travessão, no máximo 3 frases curtas: o que ele fez, o que ele mudou e o que falta. Para quem não é programador. Sem markdown. Não use ferramentas.\n\nRESPOSTA DO AGENTE:\n' + txt.slice(0, 4000) })
+      resumoAgy.pedirTexto({ k, prompt: 'Um agente de programação acabou de responder no Coderoom, a tela de conversa do painel de projetos dele. Escreva em português do Brasil, sem travessão, no máximo 3 frases curtas: o que ele fez, o que ele mudou e o que falta. Para quem não é programador. Sem markdown. Não use ferramentas.\n\n' + resumoAgy.INSTRUCAO_ETIQUETA + 'RESPOSTA DO AGENTE:\n' + txt.slice(0, 4000), comEtiqueta: true })
       s.resumoIA = r
     }
   } catch { /* resumo é conveniência: falhar aqui não derruba a tela */ }

@@ -391,13 +391,28 @@ export function permissaoDaTela(tela) {
    responde gravando a decisão ao lado do pedido. */
 export const DIR_PERMISSOES = () => path.join(DIR_SESSOES_ABRIGO(), '..', 'permissoes')
 
-export function marcarPainelAberto(dir = DIR_PERMISSOES()) {
+/* CC-735: `remoto` é ele olhando o painel da OUTRA máquina. Marca as duas: a
+   de sempre (o gancho espera) e `.remoto-vendo` (o gancho espera mais, porque
+   a resposta atravessa a rede). */
+export function marcarPainelAberto(dir = DIR_PERMISSOES(), { remoto = false } = {}) {
   try {
     fs.mkdirSync(dir, { recursive: true })
-    const f = path.join(dir, '.painel-aberto')
     const t = new Date()
-    try { fs.utimesSync(f, t, t) } catch { fs.writeFileSync(f, '') }
+    for (const nome of remoto ? ['.painel-aberto', '.remoto-vendo'] : ['.painel-aberto']) {
+      const f = path.join(dir, nome)
+      try { fs.utimesSync(f, t, t) } catch { fs.writeFileSync(f, '') }
+    }
   } catch { /* sem a marca, o gancho não espera: o pedido vai ao terminal */ }
+}
+
+/** CC-735: alguém leu ESTE painel nos últimos 20 s (a marca remota não conta). */
+export function painelAbertoAgora(dir = DIR_PERMISSOES(), agora = Date.now()) {
+  try {
+    const aberto = fs.statSync(path.join(dir, '.painel-aberto')).mtimeMs
+    let remoto = 0
+    try { remoto = fs.statSync(path.join(dir, '.remoto-vendo')).mtimeMs } catch { /* nunca */ }
+    return agora - aberto < 20000 && aberto > remoto + 500
+  } catch { return false }
 }
 
 export function lerPedidosDoGancho(dir = DIR_PERMISSOES(), agora = Date.now()) {

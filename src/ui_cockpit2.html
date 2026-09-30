@@ -4324,6 +4324,10 @@
     .ini-saude b { display: block; color: var(--text-main); font-size: 14px; font-weight: 600; }
     .ini-saude span { display: block; font-size: 12px; color: var(--text-dim); }
     .ini-saude svg { color: var(--accent); }
+    /* CC-737: "espera de você: resposta · teste · nada", a correção da etiqueta do agy */
+    .c2-eti-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 2px; font-size: 13px; color: var(--text-dim); }
+    .c2-eti { border: 1px solid var(--border, rgba(0,0,0,.12)); background: transparent; color: var(--text-dim); border-radius: 999px; padding: 4px 10px; min-height: 30px; font: inherit; cursor: pointer; transition: background .2s, color .2s; }
+    .c2-eti.on { background: var(--c-dev); border-color: var(--c-dev); color: #fff; }
     .ini-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
     .ini-stat { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; padding: 18px 18px 16px; text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; }
     .ini-stat:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); transform: translateY(-1px); }
@@ -17766,7 +17770,7 @@
     /* CC-681: a lista de sessões e os filtros viraram funções, para a tela
        Sessões e a barra lateral usarem a MESMA conta, cada uma com o seu
        conjunto de filtros. O que está aqui é o que vivia dentro da tela. */
-    const C2_CATS = [['todas', 'Todas'], ['perguntas', 'Perguntas'], ['esperando', 'Esperando você'], ['trabalhando', 'Trabalhando'], ['parada', 'Paradas']];
+    const C2_CATS = [['todas', 'Todas'], ['perguntas', 'Perguntas'], ['esperando', 'Esperando você'], ['qa', 'Pronto para QA'], ['trabalhando', 'Trabalhando'], ['parada', 'Paradas']];
     const c2EhPergItem = (x) => x.dec && !x.dec.grupo && (x.dec.rotulo === 'pergunta' || x.dec.rotulo === 'permissão');
     function c2ListaSessoes(esperando, idsDepois) {
       const ehPerg = (e) => !e.grupo && (e.rotulo === 'pergunta' || e.rotulo === 'permissão');
@@ -17776,10 +17780,10 @@
       const pessoalDec = new Set((C2.dados.projetos || []).filter((p) => p.pastaPessoal).map((p) => p.chave));
       const idsDec = new Set(esperando.flatMap((e) => (e.grupo ? e.itens.map((x) => x.id) : [e.id])));
       const itens = [
-        ...esperando.map((e) => ({ dec: e, cat: 'esperando', nome: e.nome, disp: e.dispositivo, ordem: ehPerg(e) ? 0 : 1, t: e.desdeMs || 0 })),
+        ...esperando.map((e) => ({ dec: e, cat: !e.grupo && c2EhQA(e) ? 'qa' : 'esperando', nome: e.nome, disp: e.dispositivo, ordem: ehPerg(e) ? 0 : 1, t: e.desdeMs || 0 })),
         ...(C2.dados.conectadas || []).filter((s) => !pessoalDec.has(s.projeto) && !idsDec.has(s.id) && !idsDepois.has(s.id)).map((s) => {
-          const cat = s.estado === 'trabalhando' ? 'trabalhando' : s.estado === 'espera você' ? 'esperando' : 'parada';
-          return { sess: s, cat, nome: s.nome, disp: s.dispositivo, ordem: { esperando: 1, trabalhando: 2, parada: 3 }[cat], t: s.desdeMs || 0 };
+          const cat = s.estado === 'trabalhando' ? 'trabalhando' : c2EhQA(s) ? 'qa' : s.estado === 'espera você' ? 'esperando' : 'parada';
+          return { sess: s, cat, nome: s.nome, disp: s.dispositivo, ordem: { esperando: 1, qa: 1.5, trabalhando: 2, parada: 3 }[cat], t: s.desdeMs || 0 };
         }),
       ];
       /* CC-605: pergunta e permissão na frente; o resto na ordem em que
@@ -17927,15 +17931,18 @@
       const idsDecTopo = new Set(esperando.flatMap((e) => (e.grupo ? e.itens.map((x) => x.id) : [e.id])));
       const outras = (C2.dados.conectadas || []).filter((s) => !pessoalTopo.has(s.projeto) && !idsDecTopo.has(s.id) && !idsDepois.has(s.id));
       const nTrab = outras.filter((s) => s.estado === 'trabalhando').length;
-      const nParada = outras.filter((s) => s.estado === 'ociosa').length;
+      /* CC-737: quem só espera um teste dele sai de "Esperando você" e de "Paradas" e vai para QA. */
+      const nQA = esperando.filter((e) => !e.grupo && c2EhQA(e)).length + outras.filter(c2EhQA).length;
+      const nParada = outras.filter((s) => s.estado === 'ociosa' && !c2EhQA(s)).length;
       const stat = (icn, cor, rot, n, sub) => '<div class="card ini-stat">' + icQuad(icn, cor, 44) + '<div><div class="ini-stat-rot">' + rot + '</div><div class="ini-stat-n"><b>' + n + '</b><span>' + sub + '</span></div></div></div>';
       /* CC-705, regras de design dele: os números rolam; abas, modo e filtros
          ficam numa faixa presa no topo (`fixo`), como em Projetos. */
       const statsH = '<div class="ini-stats">'
-        + stat('chat', 'var(--c-decisao)', 'Esperando você', esperando.length + outras.filter((s) => s.estado === 'espera você').length, nPerg ? nPerg + ' com opções' : 'responda por aqui')
+        + stat('chat', 'var(--c-decisao)', 'Esperando você', esperando.filter((e) => e.grupo || !c2EhQA(e)).length + outras.filter((s) => s.estado === 'espera você' && !c2EhQA(s)).length, nPerg ? nPerg + ' com opções' : 'responda por aqui')
         + stat('raio', 'var(--c-sessao)', 'Trabalhando', nTrab, 'agora')
         + stat('pausa', 'var(--c-tarefa)', 'Paradas', nParada, 'sem pedir nada')
-        + stat('relogio', 'var(--c-dev)', 'Fechadas e antigas', ocultas.length, 'fora da lista')
+        /* CC-737: o quarto número virou QA; "Fechadas e antigas" já tem aba com a contagem. */
+        + stat('check', 'var(--c-dev)', 'Pronto para QA', nQA, 'esperam seu teste')
         + '</div>';
       const abasH = '<div class="card ini-abas">'
         + '<button class="ini-aba' + (aba === 'esperando' ? ' on' : '') + '" data-dec-aba="esperando">' + ic('raio', 17) + 'Sessões<span class="ini-n">' + (esperando.length + outras.length) + '</span></button>'
@@ -18104,6 +18111,24 @@
           ? '<div class="perm-ia"><span class="perm-ia-rot">explicação da IA</span>' + esc(e.explicacaoIA.texto) + '</div>'
           : e.explicacaoIA ? '<div class="perm-ia"><span class="perm-ia-rot">explicação da IA</span><i>chegando…</i></div>' : '');
     }
+    /* CC-737, pedido dele: "um novo status, além de dependem de mim". O agy
+       etiqueta cada parada (responder, testar, nada) no mesmo resumo; "testar"
+       vira PRONTO PARA QA, para ele testar todas de uma vez. Pergunta e
+       permissão nunca viram QA: essas pedem resposta, sempre. */
+    const c2Eti = (x) => (x && x.resumoIA && x.resumoIA.etiqueta) || null;
+    const c2EhQA = (x) => c2Eti(x) === 'testar' && x.rotulo !== 'pergunta' && x.rotulo !== 'permissão' && x.estado !== 'trabalhando';
+    function c2EtiLinha(x) {
+      const k = x && x.resumoIA && x.resumoIA.k;
+      if (!k || x.rotulo === 'pergunta' || x.rotulo === 'permissão' || x.estado === 'trabalhando') return '';
+      const at = c2Eti(x);
+      const op = (v, rot) => '<button class="c2-eti' + (at === v ? ' on' : '') + '" data-eti-k="' + esc(k) + '" data-eti="' + v + '">' + rot + '</button>';
+      return '<div class="c2-eti-linha"><span>espera:</span>' + op('responder', 'resposta') + op('testar', 'teste') + op('nada', 'nada') + '</div>';
+    }
+    /* CC-740, "ainda não consigo mexer nesses?": sessão aberta por Remote
+       Control tem endereço no app do Claude, e lá ele responde, escolhe opção
+       e aprova, inclusive as do PC, que o painel não alcança. */
+    const c2AppLink = (u) => (/^https:\/\/claude\.ai\/code\/session_[A-Za-z0-9]{10,60}$/.test(String(u || ''))
+      ? '<a class="c2-link" href="' + esc(u) + '" target="_blank" rel="noopener">abrir no app</a>' : '');
     function c2Aviso(e) {
       const pend = e.tipo === 'pendencia';
       /* Rótulo é ESTADO, em uma palavra, não frase. "SÓ VOCÊ RESOLVE" e
@@ -18116,7 +18141,7 @@
         /* 26/09, print dele: "o design tá grotesco". Eram três botões brancos
            grandes empilhados disputando com o texto da decisão. Agora abrir é
            link discreto e fechar é um × no canto, como notificação. */
-        : '<button class="c2-link" data-ver-agente="' + esc(e.id) + '">' + (e.acao === 'abrir' ? 'abrir' : (e.responder || e.conversa ? 'abrir sessão' : 'responder')) + '</button>';
+        : c2AppLink(e.appUrl) + '<button class="c2-link" data-ver-agente="' + esc(e.id) + '">' + (e.acao === 'abrir' ? 'abrir' : (e.responder || e.conversa ? 'abrir sessão' : 'responder')) + '</button>';
       /* "tem que ter opção de fechar um pedido": some até a sessão se mexer;
          aí é outra decisão e o cartão volta. */
       /* CC-629 e CC-630, pedidos dele: o X pede confirmação ("pra não apagar
@@ -18162,10 +18187,12 @@
       /* 26/09, "era só o design": a marcação é a de antes (rótulo, pergunta
          inteira, opções, ações), e o visual novo entra só como ícone
          colorido no rótulo e pelo CSS. */
-      const [icn, cor] = DEC_VISUAL[pend ? 'pendencia' : e.rotulo] || ['relogio', 'var(--c-decisao)'];
+      const qa = !pend && c2EhQA(e);
+      const [icn, cor] = qa ? ['check', 'var(--c-dev)'] : DEC_VISUAL[pend ? 'pendencia' : e.rotulo] || ['relogio', 'var(--c-decisao)'];
       const decIndo = e.responder && C2.dec[e.responder.id] && C2.dec[e.responder.id].envio === 'indo';
+      /* CC-738, pedido dele: a máquina sempre no mesmo lugar, colada ao estado. */
       return '<div class="c2-aviso ' + cls + ((permEst && permEst.estado === 'indo') || decIndo || c2ProcAtivo(e.id) ? ' c2-processando' : '') + '" data-aviso-id="' + esc(e.id) + '">'
-        + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span>' + rot + '</span>' + c2tagProj(cor, e.nome, e.frente, e.sessaoNome) + c2disp(e.dispositivo) + xFechar + '</div>'
+        + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span>' + (qa ? 'PRONTO PARA QA' : rot) + '</span>' + c2disp(e.dispositivo) + c2tagProj(cor, e.nome, e.frente, e.sessaoNome) + xFechar + '</div>'
         + barra
         /* CC-675: a mesma faixa de saúde do cartão de sessão; o caso real do
            fibraessencia era uma sessão ESPERANDO com o celular caído. */
@@ -18174,7 +18201,7 @@
         + '<div class="c2-perg">' + perg + '</div>'
         /* CC-599: o resumo do agy, em pergunta e em parada. */
         /* Na permissão o resumo é da parada anterior e diria "não precisa de nada seu". */
-        + (!pend && e.rotulo !== 'permissão' ? c2BlocoIA(e.resumoIA, e.id) : '')
+        + (!pend && e.rotulo !== 'permissão' ? c2BlocoIA(e.resumoIA, e.id) + c2EtiLinha(e) : '')
         /* CC-589: a parada sem pergunta também tem resumo e resposta completa. */
         + (e.rotulo === 'parou' ? c2BlocoResumo(e.pergunta, e.resumo, e.conversa, daqui, e.resumoIA?.texto) : '')
         /* CC-596: a pergunta vem com o contexto, o que o agente disse antes. */
@@ -18197,11 +18224,14 @@
           + (e.comando ? '<pre class="perm-cmd">' + esc(e.comando) + '</pre>' : '')
           + c2RaioX(e)
           /* CC-609: permitir ou negar daqui, só sessão desta máquina. */
-          + (daqui && e.conversa && e.permissaoId && permEst && permEst.estado === 'indo'
+          + ((daqui || e.deOutraMaquina) && e.conversa && e.permissaoId && permEst && permEst.estado === 'indo'
             ? '<div class="perm-proc"><span class="perm-gira"></span>processando: ' + (permEst.sim ? 'permitindo' : 'negando') + '…</div>'
-            : daqui && e.conversa && e.permissaoId && permEst && permEst.estado === 'ok'
-            ? '<div class="c2-mini" style="color:var(--green, #22c55e);margin:6px 0">' + (permEst.sim ? 'permitido, a sessão seguiu' : 'negado, a sessão seguiu') + '</div>'
-            : daqui && e.conversa && e.permissaoId
+            : (daqui || e.deOutraMaquina) && e.conversa && e.permissaoId && permEst && permEst.estado === 'ok'
+            ? '<div class="c2-mini" style="color:var(--green, #22c55e);margin:6px 0">' + (e.deOutraMaquina
+              /* CC-735: de outra máquina, o "ok" é a ordem na fila; o cartão some quando o pacote seguinte chega sem o pedido. */
+              ? (permEst.sim ? 'permitido' : 'negado') + ', enviado ao ' + esc(e.deOutraMaquina)
+              : (permEst.sim ? 'permitido, a sessão seguiu' : 'negado, a sessão seguiu')) + '</div>'
+            : (daqui || e.deOutraMaquina) && e.conversa && e.permissaoId
             ? (permEst && permEst.estado === 'erro' ? '<div class="c2-mini" style="color:var(--red);margin:4px 0">' + esc(permEst.erro) + '</div>' : '')
               + '<div class="perm-botoes"><button class="btn perm-sim" data-perm="sim" data-perm-conv="' + esc(e.conversa) + '" data-perm-id="' + esc(e.permissaoId) + '">permitir uma vez</button>'
               // CC-726, pedido dele: o "sempre permitir" do terminal, quando o terminal oferece
@@ -18436,6 +18466,15 @@
          C2.perm, e não no botão: o cartão é redesenhado a cada 2 s, e o botão
          desabilitado voltava a aceitar toque ("permite que eu aperte mais
          vezes"). Enquanto espera, o cartão inteiro fica travado em "processando". */
+      /* CC-737: ele corrige a etiqueta do agy; a tela muda na hora e o servidor guarda. */
+      const eti = ev.target.closest('[data-eti-k]');
+      if (eti) {
+        const k = eti.dataset.etiK, v = eti.dataset.eti;
+        for (const x of [...(C2.dados?.espera || []), ...(C2.dados?.conectadas || [])]) if (x.resumoIA && x.resumoIA.k === k) x.resumoIA.etiqueta = v;
+        eti.blur(); c2RenderDecisoes(); c2RenderInicio();
+        fetch('/api/sessao/etiqueta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k, etiqueta: v }) }).catch(() => {});
+        return;
+      }
       const perm = ev.target.closest('[data-perm]');
       if (perm) {
         const id = perm.dataset.permId;
@@ -18925,7 +18964,7 @@
 
     function c2CartaoSessao(s) {
       const EST = { trabalhando: ['raio', 'var(--c-sessao)', 'trabalhando'], 'espera você': ['pausa', 'var(--c-decisao)', 'espera você'], ociosa: ['pausa', 'var(--c-tarefa)', 'parada'] };
-      const [icn, cor, rot] = EST[s.estado] || ['relogio', 'var(--text-dim)', s.estado];
+      const [icn, cor, rot] = c2EhQA(s) ? ['check', 'var(--c-dev)', 'pronto para QA'] : EST[s.estado] || ['relogio', 'var(--text-dim)', s.estado];
       const local = (C2.dados?.dispositivos || []).find((d) => d.local);
       /* CC-728: conversa do Coderoom aparece com a "máquina" Coderoom, mas roda
          neste mesmo painel: é daqui, e os controles de escrever valem. */
@@ -18940,21 +18979,22 @@
       const corAg = { claude: 'var(--gate-claude)', opencode: 'var(--gate-opencode)', agy: 'var(--gate-agy)' }[s.agente] || 'var(--c-sessao)';
       return '<div class="c2-aviso rodando' + (s.estado === 'trabalhando' ? '' : ' parada') + (c2ProcAtivo(s.id) ? ' c2-processando' : '') + '" data-aviso-id="' + esc(s.id) + '">'
         + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span class="ini-pilula" style="--q:' + cor + '">' + esc(rot) + '</span>'
+        + c2disp(s.dispositivo) // CC-738: a máquina sempre colada ao estado
         + (s.agente ? '<span class="ini-pilula" style="--q:' + corAg + '">' + esc(s.agente) + '</span>' : '')
-        + c2tagProj('var(--c-projeto)', s.nome, s.frente, s.sessaoNome) + c2disp(s.dispositivo) + '</div>'
+        + c2tagProj('var(--c-projeto)', s.nome, s.frente, s.sessaoNome) + '</div>'
         + c2SaudeBloco(s)
         + c2ProcBloco(s.id)
         + '<div class="c2-perg">' + (s.fala ? esc(c2semMd(s.fala)) : '<span style="color:var(--text-dim)">' + esc(s.assunto || 'sem fala do agente ainda') + '</span>') + '</div>'
-        + c2BlocoIA(s.resumoIA, s.id)
+        + c2BlocoIA(s.resumoIA, s.id) + c2EtiLinha(s)
         + c2BlocoResumo(s.fala, s.resumo, s.conversa, daqui, s.resumoIA?.texto)
         + (daqui && coderoom ? c2GateQuem(s) : '')
-        + (daqui && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">para escrever nela, abra a sessão no ' + esc(s.dispositivo || 'outro computador') + '.</div>' : ''))
+        + (daqui && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela, abra a sessão no ' + esc(s.dispositivo || 'outro computador') + '.') + '</div>' : ''))
         + '<div class="c2-meta"><span class="c2-meta-t">' + ic('relogio', 13) + 'há ' + c2ms(s.desdeMs) + '</span>' + (s.estado === 'trabalhando' ? '<span class="c2-meta-ass">' + (s.ferramenta ? esc(s.ferramenta) : 'pensando') + '</span>' : '')
         + '<span class="c2-acoes">' + (daqui ? c2FwChip(s.projeto) : '') + c2TesteVoo(s.projeto) + (s.estado === 'trabalhando' && daqui && s.conversa ? '<button class="c2-link" style="color:var(--red)" data-sessao-parar="' + esc(s.conversa) + '" data-sessao-nome="' + esc(s.nome) + '">parar</button>' : '')
         /* CC-727: renomear a conversa do Coderoom daqui mesmo. */
         + (daqui && coderoom ? '<button class="c2-link" data-gate-renomear="' + esc(s.conversa.slice(5)) + '" data-gate-titulo="' + esc(s.sessaoNome || '') + '">renomear</button>' : '')
         + (s.estado !== 'trabalhando' && daqui && !coderoom ? c2AcoesRapidas(s.conversa, s.nome) : '')
-        + '<button class="c2-link" data-ver-agente="' + esc(s.id) + '">abrir sessão</button></span></div></div>';
+        + c2AppLink(s.appUrl) + '<button class="c2-link" data-ver-agente="' + esc(s.id) + '">abrir sessão</button></span></div></div>';
     }
     /* CC-607, pedido dele: o teste de voo do projeto no cartão da sessão. Só
        projeto que o ~/dev.sh conhece; no ar vira link, fora do ar, "subir". */

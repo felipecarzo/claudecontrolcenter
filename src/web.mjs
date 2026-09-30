@@ -34,6 +34,7 @@ import { origem as origemLocal } from './maquina-id.mjs'
 import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
   mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos, resumirBacklogs,
+  pedirPermissao, ID_GANCHO, DECISOES_REMOTAS,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
 /* O gate. Importado no TOPO, e não por `import()` dentro do handler: o handler
@@ -46,7 +47,7 @@ import {
   gravarCabecalho as gravarCabecalhoGate, reconciliar as reconciliarGate,
   lerCabecalho as lerCabecalhoGate, ultimoDoAgente as ultimoDoAgenteGate, falasDe as falasDeGate,
 } from './gate.mjs'
-import { responder as responderGate, parar as pararGate, conversaAoVivo as conversaAoVivoGate } from './gateTurno.mjs'
+import { responder as responderGate, parar as pararGate, conversaAoVivo as conversaAoVivoGate, liberarPasta as liberarPastaGate } from './gateTurno.mjs'
 import { vivo as vivoGate, todosOsModelos as todosOsModelosGate } from './gateAgentes.mjs'
 import { arquivar, jobsHistoricos, marcosDe, mudouDesde } from './historico.mjs'
 import { readUso, lerChamada as lerChamadaStatusline } from './uso.mjs'
@@ -165,7 +166,7 @@ import { SECOES as SECOES_VPS, veredito as veredictoVps } from './vpsSaude.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
 import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
-import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto, lerPedidosDoGancho } from './decisao.mjs'
+import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto, lerPedidosDoGancho, responderGancho, painelAbertoAgora } from './decisao.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
@@ -554,6 +555,10 @@ const INTERVALO_SERVIDORES_MS = 2 * 60 * 1000
  * Memória do processo, não disco: é estado do processo vivo, e a pergunta que
  * ele responde ("está funcionando AGORA") não sobrevive a um reinício mesmo. */
 let ultimoEmpurrao = null
+/* CC-735: relógios do ciclo curto (pedido de permissão aberto) e de "ele está
+   olhando o painel da outra máquina". */
+let ultimoEnvioEm = 0
+let vendoDeLaAte = 0
 
 /* Plano do cockpit 2, M5 e M7: o retrato DESTA máquina, pronto para viajar na
  * resposta do empurrão, mais a última fala das sessões paradas.
@@ -755,8 +760,14 @@ export async function empurrar({ comTempo = null } = {}) {
     meu: meuDaqui, agentes: agentesDaqui, limites: null,
     travas: retrato.travas, framework: retrato.framework, servico,
     hw: await estadoMaquina().then((m) => (m ? { cpu: m.cpu, ram: m.ram, gpu: m.gpu } : null)).catch(() => null),
+    // CC-735: os pedidos de permissão abertos aqui, para serem respondidos de lá
+    permissoes: (() => { try { return lerPedidosDoGancho().filter((p) => !p.coderoom) } catch { return [] } })(),
   })
+  ultimoEnvioEm = Date.now()
   const r = await enviarPacote({ enviarPara, token, pacote })
+  /* CC-735: a outra ponta diz se ele está olhando o painel de lá agora. Com
+     isso o gancho daqui espera a resposta dele em vez de sair calado. */
+  if (r?.ok && r.vendo) vendoDeLaAte = Date.now() + 40_000
 
   /* Plano do cockpit 2, M6: a carona de VOLTA.
    *
@@ -948,6 +959,16 @@ async function obedecerRegras(declaracoes, deMaquina) {
 async function atenderPedidos(pedidos) {
   for (const p of pedidos.slice(0, 3)) { // teto por ciclo: fila estranha não vira enxame de sessões
     try {
+      /* CC-735: resposta a um pedido de permissão daqui, dada na outra
+         máquina. Não tem projeto: vai direto ao gancho, que só conhece os
+         pedidos que ele mesmo abriu. Id e decisão conferidos de novo aqui. */
+      if (p.acao === 'permissao') {
+        const r = ID_GANCHO.test(String(p.idGancho || '')) && DECISOES_REMOTAS.includes(p.decisao)
+          ? await responderGancho(p.idGancho, p.decisao)
+          : { ok: false, erro: 'pedido ou decisão inválidos' }
+        console.error(`[federação] permissão ${p.idGancho}: ${p.decisao}, a pedido de ${p.de || 'outra máquina'}: ${r.ok ? 'ok' : 'recusado, ' + r.erro}`)
+        continue
+      }
       const dir = cwdDoProjeto(null, p.projeto)
       if (!dir) {
         console.error(`[federação] pedido recusado, projeto desconhecido: ${p.projeto}`)
@@ -1800,6 +1821,9 @@ function handler(req, res) {
            código); quem empurrou guarda a lista como espelho de leitura. */
         registro: await registroParaResposta(),
         maquina: origemLocal(readConfig())?.nome || null,
+        /* CC-735: ele está com o painel daqui aberto agora? O outro lado usa
+           para o gancho de permissão de lá esperar a resposta dele. */
+        vendo: painelAbertoAgora(),
       }
 
       /* Plano do cockpit 2, M5: na mesma carona vai o RETRATO desta máquina, e
@@ -2819,9 +2843,26 @@ function handler(req, res) {
   /* CC-609: permitir uma vez ou negar o pedido de permissão do terminal. */
   if (url.pathname === '/api/decisao/permitir' && req.method === 'POST') {
     return comCorpoAsync(req, res, 1e3, async ({ conversa, id, decisao }) => {
+      /* CC-735: pedido de outra máquina (`remoto:<máquina>:<id>`) vira ordem na
+         fila dela; chega lá na próxima carona, em até ~2 s. */
+      const rem = /^remoto:([^:]{1,60}):(.+)$/.exec(String(id || ''))
+      if (rem) return pedirPermissao({ paraMaquina: rem[1], idGancho: rem[2], decisao, de: origemLocal(readConfig())?.nome || null })
+      /* CC-739: pasta fora do projeto que o opencode do Coderoom quis. Não há
+         processo esperando: o painel libera na conversa e reenvia. */
+      if (String(id || '').startsWith('gancho:') && ['sim', 'nao'].includes(decisao)) {
+        const lp = liberarPastaGate(String(id).slice(7), decisao === 'sim')
+        if (lp) return lp
+      }
       const r = await permitirSessao({ conversa, id, decisao })
       if (r && r.ok) marcarRespondidaHist(String(conversa || '').slice(0, 8))
       return r
+    })
+  }
+  /* CC-737: ele corrige a etiqueta do agy (responder, testar, nada) com um toque. */
+  if (url.pathname === '/api/sessao/etiqueta' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e3, async ({ k, etiqueta }) => {
+      const R = await import('./resumoAgy.mjs')
+      return R.corrigirEtiqueta(String(k || '').slice(0, 200), etiqueta) ? { ok: true } : { ok: false, erro: 'resumo não encontrado ou etiqueta inválida' }
     })
   }
   /* CC-582: o histórico de decisões, de um projeto (pela chave) ou de todos. */
@@ -4446,6 +4487,22 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
         const timer = setInterval(() => { empurrar().catch(() => {}) }, 30_000)
         timer.unref() // não pode segurar o processo de pé sozinho
         empurrar().catch(() => {}) // um primeiro envio, para não esperar meio minuto
+        /* CC-735: com pedido de permissão aberto, o ciclo cai de 30 s para 2 s,
+           nos dois sentidos (o pedido sobe, a resposta desce na carona). E
+           enquanto ele olha o painel da outra máquina, este painel conta como
+           aberto, senão o gancho sai na hora sem esperar ninguém. */
+        let enviando = false
+        const curto = setInterval(() => {
+          const agora = Date.now()
+          if (agora < vendoDeLaAte) marcarPainelAberto(undefined, { remoto: true })
+          if (enviando || agora - ultimoEnvioEm < 2000) return
+          let abertos = 0
+          try { abertos = lerPedidosDoGancho().filter((p) => !p.coderoom).length } catch { /* sem pasta */ }
+          if (!abertos) return
+          enviando = true
+          empurrar().catch(() => {}).finally(() => { enviando = false })
+        }, 1000)
+        curto.unref()
       }
       /* 26/09, item 8 da Início: a varredura das ideias dele. A primeira olha
          7 dias (pegou 2 ideias que nunca viraram item no ensaio), as seguintes

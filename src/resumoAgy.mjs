@@ -79,9 +79,38 @@ export function contextoDaConversa(texto) {
   return out.join('\n').slice(-10000)
 }
 
-const PEDIDO = `Resuma em português do Brasil, em no máximo 4 linhas curtas, para o dono do projeto que lê no celular: o que o agente fez desde o pedido, em que ponto parou, e se espera alguma coisa do dono. Sem jargão técnico, sem travessão. Não use ferramentas, só leia o texto abaixo.
+/* CC-737, pedido dele em 30/09: separar a sessão que espera RESPOSTA dele da
+   que espera um TESTE dele ("pronto para QA"), para testar todas de uma vez.
+   A etiqueta vem do mesmo resumo, na primeira linha: nenhuma chamada nova. */
+export const INSTRUCAO_ETIQUETA = `A PRIMEIRA linha da sua resposta é só uma destas três etiquetas, sozinha:
+ETIQUETA: RESPONDER  (o agente espera uma resposta, decisão, senha ou ordem do dono)
+ETIQUETA: TESTAR  (o agente entregou algo e espera o dono abrir, testar ou conferir)
+ETIQUETA: NADA  (não espera nada do dono: seguiu sozinho, ou só informou)
+Depois, o texto pedido.
 
 `
+const PEDIDO = `Resuma em português do Brasil, em no máximo 4 linhas curtas, para o dono do projeto que lê no celular: o que o agente fez desde o pedido, em que ponto parou, e se espera alguma coisa do dono. Sem jargão técnico, sem travessão. Não use ferramentas, só leia o texto abaixo.
+
+${INSTRUCAO_ETIQUETA}`
+
+const ETIQUETAS = { RESPONDER: 'responder', TESTAR: 'testar', NADA: 'nada' }
+/** Separa a etiqueta da primeira linha do resto do texto. Sem etiqueta, null. */
+export function lerEtiqueta(saida) {
+  const m = /^\s*\**\s*ETIQUETA\s*:\s*\**\s*(RESPONDER|TESTAR|NADA)\b[^\n]*\n?/i.exec(String(saida || ''))
+  if (!m) return { etiqueta: null, texto: String(saida || '').trim() }
+  return { etiqueta: ETIQUETAS[m[1].toUpperCase()], texto: String(saida).slice(m[0].length).trim() }
+}
+
+/* A correção dele, com um toque no cartão, vence o agy e fica guardada por parada. */
+export function corrigirEtiqueta(k, etiqueta) {
+  if (!k || !['responder', 'testar', 'nada'].includes(etiqueta)) return false
+  const c = ler()
+  if (!c[k]?.texto) return false // só corrige resumo que existe: a chave vem da tela
+  c['eti::' + k] = { etiqueta, em: Date.now() }
+  gravar()
+  return true
+}
+const etiquetaDe = (k, r) => ler()['eti::' + k]?.etiqueta || r?.etiqueta || null
 
 function proximo() {
   if (rodando || !fila.length) return
@@ -98,7 +127,7 @@ function proximo() {
       const c = ler()
       c[job.k] = err || !saida
         ? { erro: String(err?.message || 'resposta vazia').slice(0, 200), em: Date.now() }
-        : { texto: saida.replace(/[—–]/g, ',').slice(0, 1200), em: Date.now() }
+        : (() => { const { etiqueta, texto } = lerEtiqueta(saida); return { texto: texto.replace(/[—–]/g, ',').slice(0, 1200), etiqueta, em: Date.now() } })()
       gravar()
       rodando = null
       proximo()
@@ -110,7 +139,8 @@ export function pedir({ conversa, marca, arquivo }) {
   if (!conversa || !arquivo || !fs.existsSync(AGY)) return
   const k = chave(conversa, marca)
   const r = ler()[k]
-  if (r && (r.texto || Date.now() - r.em < ESPERA_FALHA_MS)) return
+  // CC-737: resumo antigo, de antes da etiqueta, é pedido de novo uma vez
+  if (r && ((r.texto && 'etiqueta' in r) || (!r.texto && Date.now() - r.em < ESPERA_FALHA_MS))) return
   if ((rodando && rodando.k === k) || fila.some((f) => f.k === k) || fila.length >= MAX_FILA) return
   fila.push({ k, conversa, marca, arquivo })
   proximo()
@@ -120,7 +150,7 @@ export function pedir({ conversa, marca, arquivo }) {
 export function obter(conversa, marca) {
   const k = chave(conversa, marca)
   const r = ler()[k]
-  if (r?.texto) return { texto: r.texto }
+  if (r?.texto) return { texto: r.texto, etiqueta: etiquetaDe(k, r), k }
   if (rodando?.k === k) return { estado: 'resumindo' }
   if (fila.some((f) => f.k === k)) return { estado: 'na fila' }
   return null
@@ -128,17 +158,17 @@ export function obter(conversa, marca) {
 
 /* CC-671: o mesmo agy, a mesma fila e o mesmo arquivo, para texto pronto (a
    tela Ideias pede título e resumo de cada ideia). A chave vem de quem pede. */
-export function pedirTexto({ k, prompt }) {
+export function pedirTexto({ k, prompt, comEtiqueta = false }) {
   if (!k || !prompt || !fs.existsSync(AGY)) return
   const r = ler()[k]
-  if (r && (r.texto || Date.now() - r.em < ESPERA_FALHA_MS)) return
+  if (r && ((r.texto && (!comEtiqueta || 'etiqueta' in r)) || (!r.texto && Date.now() - r.em < ESPERA_FALHA_MS))) return
   if ((rodando && rodando.k === k) || fila.some((f) => f.k === k) || fila.length >= MAX_FILA) return
   fila.push({ k, prompt })
   proximo()
 }
 export function obterTexto(k) {
   const r = ler()[k]
-  if (r?.texto) return { texto: r.texto }
+  if (r?.texto) return { texto: r.texto, etiqueta: etiquetaDe(k, r), k }
   if (rodando?.k === k || fila.some((f) => f.k === k)) return { estado: 'resumindo' }
   return null
 }

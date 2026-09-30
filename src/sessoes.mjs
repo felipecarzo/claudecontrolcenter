@@ -93,6 +93,7 @@ export function cabecaDe(arquivo) {
   let cwd = null
   let criadoEm = null
   let remoto = false
+  let appUrl = null
   let entrada = null
   let fd = null
   try {
@@ -118,7 +119,14 @@ export function cabecaDe(arquivo) {
         try { o = JSON.parse(linha) } catch { continue }
         // `bridge-session` é o marcador de Remote Control: a sessão está sendo
         // pilotada de fora (celular, claude.ai), não de um terminal desta máquina.
-        if (o.type === 'bridge-session') remoto = true
+        if (o.type === 'bridge-session') {
+          remoto = true
+          /* CC-740: `cse_X` é a sessão `claude.ai/code/session_X` no app (medido em
+             30/09 com a própria sessão). Com isto, sessão de outra máquina ganha
+             "abrir no app", onde ele responde o que o painel não alcança. */
+          const m = /^cse_([A-Za-z0-9]{10,60})$/.exec(String(o.bridgeSessionId || ''))
+          if (m) appUrl = 'https://claude.ai/code/session_' + m[1]
+        }
         /* 27/09: `sdk-cli` é o `claude -p`, sessão disparada por PROGRAMA (um
            teste, um script), não aberta por ele. Ela roda, responde e acaba:
            ninguém responde a ela. Sem esta marca, dois testes da skill das
@@ -137,7 +145,7 @@ export function cabecaDe(arquivo) {
   }
 
   if (!cwd) return null
-  const achado = { cwd, criadoEm, remoto, porPrograma: entrada === 'sdk-cli' }
+  const achado = { cwd, criadoEm, remoto, appUrl, porPrograma: entrada === 'sdk-cli' }
   cacheCabeca.set(arquivo, achado)
   return achado
 }
@@ -245,6 +253,7 @@ export function readSessoes(now = Date.now(), { janelaMs = JANELA_MS, ignorar = 
         // O que a tela precisa para não mentir sobre o que é cada linha.
         tipo: 'interativa',
         remoto: cabeca.remoto,
+        appUrl: cabeca.appUrl || null,
         porPrograma: Boolean(cabeca.porPrograma),
         /* true/false quando o registro existe; undefined quando não se sabe.
            Sessão por programa nunca está no registro depois de acabar, e não

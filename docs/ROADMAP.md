@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-74 abertos, 691 fechados, 765 no total. Gerado em 2026-09-30.
+83 abertos, 691 fechados, 774 no total. Gerado em 2026-09-30.
 
 ## tarefas
 
@@ -111,6 +111,14 @@
 | CC-729 | definida | - | cockpit demora a mostrar que o agente parou (ate 65 s) e a resposta parece demorar a chegar |
 | CC-730 | definida | - | Coderoom quebrado: controles vazando sobre a barra direita com o chat estreito, e 404 ao abrir conversa apagada |
 | CC-731 | definida | - | npm test chama o agy de verdade (test-gate-memoria, nome da conversa): 3 pedidos de rede por rodada e cota gasta |
+| CC-732 | definida | - | Sessoes do PC ficam presas e nao atualizam no Cockpit da VPS |
+| CC-733 | definida | - | Sessoes do PC que fecharam continuam aparecendo no Cockpit da VPS |
+| CC-734 | definida | - | Sessoes do PC que nem aparecem no Cockpit da VPS |
+| CC-735 | definida | - | Decisoes, alertas e permissoes das sessoes do PC aparecem e sao respondidas pelo Cockpit da VPS |
+| CC-736 | definida | - | Celular: zona de filtros de Sessoes abre sozinha em aparelho novo e cobre 80% da tela, escondendo o cartao |
+| CC-737 | definida | - | Separar sessoes paradas em: espera resposta dele, espera teste dele, nao espera nada; filtro para testar todas de uma vez |
+| CC-738 | definida | - | Cartao de sessao: chip da maquina (VPS, PC) sempre no mesmo lugar, logo apos o estado; hoje muda de linha conforme os outros chips |
+| CC-740 | definida | - | Cartao de sessao de outra maquina: botao abrir no app (claude.ai/code/session_X) para responder sessoes do PC abertas por Remote Control |
 
 ## sincronia
 
@@ -139,3 +147,4 @@
 | id | estado | peso | o que é |
 |---|---|---|---|
 | CC-710 | definida | - | cada modelo e cada nivel de esforco do Coderoom diz pra que e melhor e quanto custa, com base em benchmarks |
+| CC-739 | definida | - | opencode no Coderoom pede pelo painel quando quer mexer em pasta fora do projeto, em vez de recusar sozinho |
