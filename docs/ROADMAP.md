@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-83 abertos, 691 fechados, 774 no total. Gerado em 2026-09-30.
+90 abertos, 691 fechados, 781 no total. Gerado em 2026-09-30.
 
 ## tarefas
 
@@ -148,3 +148,10 @@
 |---|---|---|---|
 | CC-710 | definida | - | cada modelo e cada nivel de esforco do Coderoom diz pra que e melhor e quanto custa, com base em benchmarks |
 | CC-739 | definida | - | opencode no Coderoom pede pelo painel quando quer mexer em pasta fora do projeto, em vez de recusar sozinho |
+| CC-741 | definida | - | harness de design no Coderoom: regras de design no contexto do agente e conferencia do resultado apos cada resposta |
+| CC-742 | definida | - | Coderoom manda um resumo das regras de design dele junto de cada mensagem |
+| CC-743 | definida | - | depois de resposta que mexe em tela, o Coderoom roda o build e anexa fotos em celular e computador |
+| CC-744 | definida | - | revisor visual no Coderoom: um agente olha as fotos da resposta e aponta defeito |
+| CC-745 | definida | - | regras de comportamento no Coderoom: sempre portugues, nao prometer conferencia que nao fez, e o painel cobra |
+| CC-746 | definida | - | Coderoom orienta o agente a quebrar sempre o trabalho em microtarefas |
+| CC-747 | definida | - | resposta longa do agente no Coderoom mostra um resumo curto e a mensagem inteira fica recolhida |

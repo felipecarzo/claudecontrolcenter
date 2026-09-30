@@ -27,6 +27,7 @@ import {
   esquecerSessao, guardarCota, lerCabecalho,
 } from './gate.mjs'
 import * as resumoAgy from './resumoAgy.mjs'
+import { fotografar, mexeuEmTela } from './gateFotos.mjs'
 import { execFileSync } from 'node:child_process'
 import { enviar, lerTurno, vivo, agentePara, servidorOpencodeVivo, garantirServidorOpencode } from './gateAgentes.mjs'
 import { montar, gravarPacote } from './gatePacote.mjs'
@@ -133,6 +134,29 @@ function nomearSozinho(id) {
       clearInterval(tique); esperandoNome.delete(id)
       const agora = lerCabecalho(id)
       if (nome && agora && !agora.tituloDele) gravarCabecalho(id, { titulo: nome, tituloAuto: true })
+    }
+  }, 5000)
+  tique.unref?.()
+}
+
+/* ============ CC-747: o resumo da resposta longa ============
+ * Pedido dele: "criar resumos do que o agente falou e poder colapsar a
+ * mensagem maior". Resposta acima do teto ganha até 3 frases do agy (grátis,
+ * na mesma fila dos outros resumos); a tela mostra o resumo e recolhe o resto. */
+export const RESUMO_A_PARTIR = 600
+function resumirSozinho(id, turnoId, texto) {
+  if (process.env.CC_SEM_AGY || String(texto || '').length < RESUMO_A_PARTIR) return
+  const k = `resumo:gate:${id}:${turnoId}`
+  resumoAgy.pedirTexto({ k, prompt: 'Resuma a resposta abaixo, de um agente de programação para o Felipe, em no máximo 3 frases curtas em português do Brasil: '
+    + 'o que foi feito, o que mudou para ele e o que falta ou o que ele precisa decidir. Sem travessão, sem markdown, sem nome de arquivo. Não use ferramentas.\n\n'
+    + 'RESPOSTA:\n' + String(texto).slice(0, 6000) })
+  let voltas = 0
+  const tique = setInterval(() => {
+    const r = resumoAgy.obterTexto(k)
+    if (r?.texto || !r || ++voltas > 60) {
+      clearInterval(tique)
+      const limpo = String(r?.texto || '').replace(/[—–]/g, ',').trim()
+      if (limpo) acrescentar(id, { tipo: 'resumo', turnoId, texto: limpo.slice(0, 600) })
     }
   }, 5000)
   tique.unref?.()
@@ -374,7 +398,11 @@ export function responder(id, { texto, agente = 'agy', modelo = null, esforco = 
     /* CC-728: o último agente usado vira o da conversa, e é ele que responde
        quando ele escreve pelo cartão em Sessões. */
     agentePadrao: quem,
-    estado: { turnoId: t.turnoId, agente: quem, pid: t.pid, desde: Date.now(), logFile: t.logFile, erroFile: t.erroFile, ate: delta.ate },
+    /* `revisar` e `semMemoria` vão gravados para a retomada depois de um
+       reinício (CC-700) não perdê-los. Medido em 30/09 na simulação: o painel
+       religou no meio do pedido com revisão, a resposta terminou e a revisão
+       nunca foi pedida. */
+    estado: { turnoId: t.turnoId, agente: quem, pid: t.pid, desde: Date.now(), logFile: t.logFile, erroFile: t.erroFile, ate: delta.ate, revisar, semMemoria: flash },
     ...(modelo ? { modelos: { ...(c.cabecalho.modelos || {}), [quem]: modelo } } : {}),
     ...(esforco ? { esforcos: { ...(c.cabecalho.esforcos || {}), [quem]: esforco } } : {}),
   })
@@ -484,8 +512,13 @@ function acompanhar(id, t) {
 
     if (estado !== 'pronto') return
     nomearSozinho(id)
+    resumirSozinho(id, t.turnoId, r.texto)
     if (t.revisao) return voltarDaRevisao(id, t, r.texto)
+    cobrarConferencia(id, r)
     if (!t.jaVoltou && devolverParaCorrigir(id, t, r.texto)) return
+    /* CC-743/744: resposta que mexeu em tela ganha build, fotos e o revisor
+       visual; a revisão de texto do agy fica para o que não é tela. */
+    if (mexeuEmTela(r.ferramentas) && !process.env.CC_SEM_FOTOS) return conferirTela(id, t, r.texto)
     if (t.revisar) pedirRevisao(id, t, r.texto, mudou)
   }, OLHAR_MS)
 
@@ -619,7 +652,13 @@ function devolverParaCorrigir(id, t, texto) {
  *
  * O revisor é o agy, que é gratuito; se o autor for o agy, revisa o opencode. */
 export const revisorPara = (autor) => (autor === 'agy' ? 'opencode' : 'agy')
-export const REVISAO_OK = /^\s*\**\s*REVIS[ÃA]O OK/i
+/* O veredito vale em qualquer linha, não só na primeira: o revisor costuma
+   abrir com "Vou ler as fotos..." e só depois escrever. Medido em 30/09: um
+   REVISÃO OK na segunda linha virou "apontou problemas" e mandou corrigir o
+   que estava certo. Problema é só quando ele ESCREVE que há problema. */
+export const REVISAO_OK = /(^|\n)\s*\**\s*REVIS[ÃA]O OK/i
+export const REVISAO_PROBLEMAS = /REVIS[ÃA]O:\s*PROBLEMAS/i
+export const revisaoAprovou = (texto) => !REVISAO_PROBLEMAS.test(texto || '') && REVISAO_OK.test(texto || '')
 
 export function pedidoDeRevisao(autor, texto, mudou) {
   const diff = mudou?.diff ? String(mudou.diff).slice(0, 20000) : ''
@@ -654,8 +693,63 @@ function pedirRevisao(id, t, texto, mudou) {
   acompanhar(id, { ...novo, agente: quem, cwd: t.cwd, revisao: true, autor: t.agente, autorPermissao: t.permissao, binario: t.binario })
 }
 
+/* ============ CC-745: o painel cobra a conferência prometida ============
+ * Simulação de 30/09: "reconfiro no navegador" com uma ferramenta só, o build.
+ * Não barra a resposta (não há como provar o contrário pelo texto), mas deixa
+ * escrito na conversa, onde ele lê. */
+const DISSE_QUE_CONFERIU = /\b(confer\w*|reconfir\w*|verifiq\w*|verifiquei|olhei|testei)\b.{0,50}\b(navegador|browser|na tela|visualmente|no celular)/i
+const USOU_NAVEGADOR = /browser|chrome|screenshot|playwright|puppeteer|navegador|cdp/i
+export function cobrarConferencia(id, r) {
+  if (!DISSE_QUE_CONFERIU.test(r.texto || '')) return false
+  if ((r.ferramentas || []).some((f) => USOU_NAVEGADOR.test(`${f.nome} ${f.alvo || ''}`))) return false
+  acrescentar(id, { tipo: 'sistema', texto: 'O agente disse que conferiu no navegador, mas nesta resposta não usou navegador nenhum. Trate como não conferido.' })
+  return true
+}
+
+/* ============ CC-743/744: fotos da tela e o revisor visual ============ */
+async function conferirTela(id, t, texto) {
+  const cab = lerCabecalho(id)
+  if (!cab?.cwd) return
+  acrescentar(id, { tipo: 'sistema', texto: 'Conferindo a tela: build e fotos em celular e computador.' })
+  const saida = path.join(cab._onde, `${id}.anexos`, `fotos-${t.turnoId}`)
+  const res = await fotografar({ cwd: cab.cwd, saida })
+  if (!res.ok) { acrescentar(id, { tipo: 'sistema', texto: `Não consegui fotografar a tela: ${res.erro}.` }); return }
+  acrescentar(id, { tipo: 'fotos', turnoId: t.turnoId, fotos: res.fotos })
+  /* Revisor só na primeira volta (a correção não é revisada de novo) e só se
+     ninguém mandou mensagem nova enquanto as fotos saíam. */
+  if (t.jaVoltou || lerConversa(id)?.turnoAberto) return
+  pedirRevisaoVisual(id, t, texto, res.fotos, saida)
+}
+
+export function pedidoDeRevisaoVisual(autor, texto, fotos) {
+  return [
+    `O Felipe pediu mudanças de tela ao ${autor}. Abaixo estão as fotos do site DEPOIS da resposta, tiradas pelo painel.`,
+    'Abra cada imagem com a ferramenta de leitura e aponte defeitos visuais OBJETIVOS: texto cortado ou sobreposto, elemento em cima de outro, pouco contraste, algo saindo da tela no celular, espaçamento quebrado.',
+    'Não opine sobre gosto. Você está em modo de leitura: não edite nada.',
+    'Se estiver tudo certo, comece com "REVISÃO OK". Se houver defeito, comece com "REVISÃO: PROBLEMAS" e liste um por linha, dizendo em qual foto e onde.',
+    '',
+    'FOTOS:', ...fotos.map((f) => '  ' + f),
+    '', `--- resposta do ${autor} ---`, String(texto || '').slice(0, 3000),
+  ].join('\n')
+}
+
+function pedirRevisaoVisual(id, t, texto, fotos, dirFotos) {
+  const c = lerConversa(id)
+  /* Claude, porque enxerga imagem; haiku, porque roda a cada resposta de tela
+     e gasta da assinatura dele. */
+  const novo = enviar({
+    agente: 'claude', modelo: 'haiku', texto: pedidoDeRevisaoVisual(t.agente, texto, fotos),
+    cwd: t.cwd || c?.cabecalho?.cwd, conversa: id, somenteLer: true, dirsExtras: [dirFotos],
+    binario: t.binario || null,
+  })
+  if (!novo.ok) { acrescentar(id, { tipo: 'sistema', texto: `Não consegui pedir a revisão visual: ${novo.erro}` }); return }
+  acrescentar(id, { tipo: 'turno', turnoId: novo.turnoId, agente: 'claude', modelo: novo.modelo, revisao: true })
+  gravarCabecalho(id, { estado: { turnoId: novo.turnoId, agente: 'claude', pid: novo.pid, desde: Date.now(), logFile: novo.logFile, erroFile: novo.erroFile } })
+  acompanhar(id, { ...novo, agente: 'claude', cwd: t.cwd, revisao: true, autor: t.agente, autorPermissao: t.permissao, binario: t.binario })
+}
+
 function voltarDaRevisao(id, t, texto) {
-  if (REVISAO_OK.test(texto || '')) return
+  if (revisaoAprovou(texto)) return
   const c = lerConversa(id)
   acrescentar(id, { tipo: 'sistema', texto: `O ${t.agente} apontou problemas. Mandei a revisão ao ${t.autor} para corrigir, uma vez.` })
   const novo = enviar({

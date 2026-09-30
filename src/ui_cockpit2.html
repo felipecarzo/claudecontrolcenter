@@ -2877,6 +2877,13 @@
     .gate-anexo button { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 14px; padding: 0 2px; }
     /* Os anexos JÁ ENVIADOS, dentro da bolha da fala dele. */
     .gate-msg .gate-vistos { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    /* CC-747: resumo da resposta longa e o texto inteiro recolhido */
+    .gate-msg .gate-resumo { line-height: 1.5; }
+    .gate-msg .gate-resumo .ini-pilula { margin-right: 6px; }
+    .gate-msg .gate-inteira { margin-top: 8px; }
+    .gate-msg .gate-inteira > summary { cursor: pointer; list-style: none; padding: 6px 0; min-height: 32px; }
+    .gate-msg .gate-inteira > summary::-webkit-details-marker { display: none; }
+    .gate-msg .gate-inteira[open] > summary { margin-bottom: 6px; }
     .gate-msg .gate-vistos img { max-width: 160px; max-height: 160px; border-radius: 8px; border: 1px solid var(--border); }
     .gate-msg .gate-vistos a { font-size: 11px; color: var(--text-dim); }
     .gate-conv {
@@ -13553,6 +13560,16 @@
               : `<a href="/api/gate/anexo?caminho=${encodeURIComponent(a.caminho)}">${esc(a.nome)}</a>`).join('')}</div>`
           : '';
         corpo = `<p>${esc(texto).replace(/\n/g, '<br>')}</p>${vistos}`;
+      } else if (texto.trim() && texto.length >= 600 && m.estado !== 'rodando' && m.turnoId) {
+        /* CC-747, pedido dele: "criar resumos do que o agente falou e poder
+           colapsar a mensagem maior". O resumo é do agy e chega uns segundos
+           depois; até lá, o começo do texto faz as vezes dele. A escolha de
+           abrir fica guardada: a conversa se redesenha e fecharia na cara dele. */
+        const aberto = (GATE.abertos || (GATE.abertos = new Set())).has(m.turnoId);
+        const topo = m.resumo
+          ? `<div class="gate-resumo"><span class="ini-pilula" style="--q:var(--accent)">resumo</span> ${esc(m.resumo)}</div>`
+          : `<div class="gate-resumo" style="color:var(--text-dim)">${esc(texto.replace(/[#*`>_]/g, '').slice(0, 280))}…</div>`;
+        corpo = topo + `<details class="gate-inteira" data-gate-inteira="${esc(m.turnoId)}"${aberto ? ' open' : ''}><summary class="c2-link">ver resposta completa (${Math.round(texto.length / 100) / 10} mil caracteres)</summary><div class="gate-md">${gateFormatar(texto)}</div></details>`;
       } else if (texto.trim()) {
         corpo = `<div class="gate-md">${gateFormatar(texto)}</div>`;
       } else {
@@ -13588,6 +13605,7 @@
         <div class="gate-msg gate-de-${esc(m.de)}">
           ${cabHtml}
           ${corpo}
+          ${(m.fotos || []).length ? `<div class="c2-mini" style="margin-top:8px">a tela depois desta resposta, fotografada pelo painel:</div><div class="gate-vistos">${m.fotos.map((f) => `<a href="/api/gate/anexo?caminho=${encodeURIComponent(f)}" target="_blank" rel="noopener"><img src="/api/gate/anexo?caminho=${encodeURIComponent(f)}" alt="${/celular/.test(f) ? 'foto no celular' : 'foto no computador'}"></a>`).join('')}</div>` : ''}
           ${fer}${mudou}${custo}${erro}${salvar}
         </div>`;
     }
@@ -18937,6 +18955,14 @@
       return '<div class="c2-mini" style="display:flex;gap:8px;align-items:center;margin:6px 0"><span style="flex:none;white-space:nowrap">quem responde:</span>'
         + '<select class="gate-sel" style="flex:1;min-width:0" data-gate-quem="' + esc(id) + '" data-atual="' + esc(atual) + '">' + grupos + '</select></div>';
     }
+    /* CC-747: lembrar qual resposta longa ele abriu. `toggle` não borbulha,
+       por isso a escuta é na captura. */
+    document.addEventListener('toggle', (ev) => {
+      const d = ev.target;
+      if (!d.matches || !d.matches('[data-gate-inteira]')) return;
+      const A = GATE.abertos || (GATE.abertos = new Set());
+      if (d.open) A.add(d.dataset.gateInteira); else A.delete(d.dataset.gateInteira);
+    }, true);
     /* CC-728: trocar quem responde numa conversa do Coderoom, pelo cartão. */
     document.addEventListener('change', async (ev) => {
       const sel = ev.target.closest && ev.target.closest('[data-gate-quem]');

@@ -129,7 +129,7 @@ export const AGENTES_GATE = {
        `high`, `xhigh` e `max`. O agy só tem os três primeiros, e é por isso que
        a lista de níveis mora no catálogo de cada agente e não num lugar só. */
     esforcos: ['low', 'medium', 'high', 'xhigh', 'max'],
-    args: ({ sessao, novaSessao, permissao, cwd, pacote, modelo, esforco, conversa, somenteLer }) => [
+    args: ({ sessao, novaSessao, permissao, cwd, pacote, modelo, esforco, conversa, somenteLer, dirsExtras = [] }) => [
       '-p',
       '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
       /* CC-699: "pergunte antes" não é um modo do Claude, é o modo padrão MAIS
@@ -143,6 +143,8 @@ export const AGENTES_GATE = {
          dele não a conhece, e sem terminal o pedido seria recusado calado. */
       ...(conversa ? ['--mcp-config', configPainelMcp(conversa), '--allowedTools', 'mcp__painel__perguntar'] : []),
       '--add-dir', cwd,
+      // CC-744: a pasta das fotos, para o revisor visual abrir as imagens
+      ...dirsExtras.flatMap((d) => ['--add-dir', d]),
       ...(sessao ? ['--resume', sessao] : ['--session-id', novaSessao]),
       ...(pacote ? ['--append-system-prompt-file', pacote] : []),
       ...(modelo ? ['--model', modelo] : []),
@@ -305,7 +307,7 @@ export const agenteDe = (nome) => AGENTES_GATE[nome] || AGENTES_GATE.claude
  * `texto` é o delta da conversa, já formatado como transcrição por `gate.mjs`.
  * `pacote` é o caminho de um arquivo com o contexto do projeto, ou `null`.
  */
-export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', conversa = null, somenteLer = false, flash = false, pastas = [], sessao = null, modelo = null, esforco = null, anexos = [], pacote = null, pacoteTexto = null, binario = null }) {
+export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', conversa = null, somenteLer = false, flash = false, pastas = [], dirsExtras = [], sessao = null, modelo = null, esforco = null, anexos = [], pacote = null, pacoteTexto = null, binario = null }) {
   if (!texto) throw new Error('mensagem vazia')
   if (!cwd) throw new Error('sem pasta: o agente não teria onde agir')
   /* Última porta antes de o processo subir: `spawn` com `cwd` que não existe
@@ -334,7 +336,7 @@ export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', 
     : texto
 
   const args = a.args({
-    sessao, novaSessao, permissao, cwd, conversa, somenteLer,
+    sessao, novaSessao, permissao, cwd, conversa, somenteLer, dirsExtras,
     /* Flash só vale com o servidor respondendo; senão vai do jeito normal e o
        servidor sobe para a próxima. Sem sessão nos dois casos: é "sem memória". */
     flash: flash && agente === 'opencode' && ocVivo,
@@ -425,12 +427,16 @@ export function lerTurno(logFile, agente = 'agy', erroFile = null) {
     cota: null, barradoPorProtecao: false,
   }
   let fechamento = null
+  let ultimoBloco = null
 
   for (const o of eventos) {
     /* ---- Claude ---- */
     if (o.type === 'assistant' && o.message?.content) {
       for (const c of o.message.content) {
-        if (c.type === 'text' && typeof c.text === 'string') fora.texto += c.text
+        /* Bloco idêntico ao anterior não entra de novo: quando uma trava de fim
+           de resposta faz o Claude responder outra vez, ele repete o texto
+           inteiro, e a conversa mostrava tudo duas vezes (medido em 30/09). */
+        if (c.type === 'text' && typeof c.text === 'string' && c.text !== ultimoBloco) { fora.texto += c.text; ultimoBloco = c.text }
         /* `alvo` é curto para caber na tela; `caminho` é o inteiro, e é o que
            o `git diff` precisa. Usar o curto ali fazia o diff nunca achar o
            arquivo, e a conversa dizia "nenhuma mudança" depois de o agente ter
@@ -489,7 +495,11 @@ export function lerTurno(logFile, agente = 'agy', erroFile = null) {
       if (o.part.reason === 'stop') { fora.terminou = true; fora.estado = 'pronto' }
     }
     if (o.type === 'tool_use' && o.part?.tool) {
-      fora.ferramentas.push({ nome: o.part.tool, alvo: o.part?.state?.input?.filePath || null })
+      /* O comando entra também (curto): sem ele, o painel acusou "não usou
+         navegador" numa resposta em que o opencode rodou um roteiro próprio
+         com o Chrome e abriu a foto (medido em 30/09). */
+      const inp = o.part?.state?.input || {}
+      fora.ferramentas.push({ nome: o.part.tool, alvo: inp.filePath || (inp.command ? String(inp.command).slice(0, 300) : null), caminho: inp.filePath || null })
     }
 
     /* ---- agy ---- */

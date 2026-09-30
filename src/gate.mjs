@@ -323,6 +323,14 @@ function dobrar(cab, eventos) {
          texto completo a cada olhada e marca `substitui`; quem grava pedaço de
          verdade não marca, e aí concatena. */
       if (m) m.texto = e.substitui ? e.texto : m.texto + e.texto
+    } else if (e.tipo === 'resumo') {
+      // CC-747: o resumo curto de uma resposta longa, escrito pelo agy
+      const m = porTurno.get(e.turnoId)
+      if (m) m.resumo = e.texto || null
+    } else if (e.tipo === 'fotos') {
+      // CC-743: as fotos da tela tiradas pelo painel depois da resposta
+      const m = porTurno.get(e.turnoId)
+      if (m) m.fotos = e.fotos || []
     } else if (e.tipo === 'mudancas') {
       const m = porTurno.get(e.turnoId)
       if (m) m.mudancas = { diff: e.diff, arquivos: e.arquivos, cortou: e.cortou }

@@ -51,7 +51,8 @@ import { deOutraMaquina } from './gate.mjs'
    tokens por turno. Numa conversa de 30 turnos isso é 45 mil tokens só de
    contexto, e é por isso que o número mora aqui em cima, visível, e não escondido
    no meio de uma função. */
-export const GATE_MAX_PACOTE = 6000
+// 8500 desde 30/09: entrou a seção das regras de design (até 2200, CC-742)
+export const GATE_MAX_PACOTE = 8500
 export const GATE_MAX_ROADMAP = 2000
 export const GATE_MAX_ROTAS = 1500
 export const GATE_MAX_AGENTES = 1500
@@ -153,7 +154,32 @@ const REGRAS = [
   'Não cite nome de arquivo, de trava ou de código de tarefa como se ele soubesse o que é. Diga o que a coisa faz com ele.',
   'Antes de editar um arquivo, veja se ele já tem dono na lista de rotas acima. Rota de outra sessão não é sua.',
   'Se o mesmo pedido vier duas vezes, pare e pergunte o que a palavra quer dizer. A causa quase nunca é implementação errada.',
+  /* CC-745 e CC-746, da simulação de 30/09 (clone do MNZS pelo opencode): ele
+     abria em inglês, e no último pedido prometeu "reconfiro no navegador" e
+     rodou só o build. E pedido dele: "tentar quebrar tarefas em microtarefas
+     sempre". */
+  'Responda sempre em português do Brasil, do começo ao fim, inclusive a primeira frase.',
+  'Quebre todo pedido em microtarefas antes de começar: liste os passos numerados, faça um de cada vez e diga em qual passo está.',
+  'Não diga que conferiu o que não conferiu. Se escrever que vai olhar no navegador, olhe; se não tiver como, diga que não conferiu.',
 ]
+
+/* CC-742: as regras de design dele, lidas AO VIVO do arquivo delas, para cada
+   regra nova que ele der entrar sozinha. Vai o mapa (uma linha por regra) e a
+   conferência antes de entregar; o texto longo de cada regra fica de fora pelo
+   tamanho. O agente não alcança o arquivo sozinho: o opencode recusa pasta fora
+   do projeto, medido em 30/09. */
+export const ARQ_REGRAS_DESIGN = () => path.join(os.homedir(), '.claude', 'skills', 'regras-design', 'SKILL.md')
+export const GATE_MAX_DESIGN = 2200
+export function secaoDesign(arq = ARQ_REGRAS_DESIGN()) {
+  let cru = ''
+  try { cru = fs.readFileSync(arq, 'utf8') } catch { return null }
+  const mapa = [...cru.matchAll(/^\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|/gm)].map((m) => `  ${m[1]}. ${m[2]}`)
+  const i = cru.search(/^## Confer[êe]ncia/m)
+  const conf = i < 0 ? [] : cru.slice(i).split('\n').slice(1).filter((l) => /^\d+\.\s/.test(l)).map((l) => `  ☐ ${l.replace(/^\d+\.\s*/, '')}`)
+  if (!mapa.length) return null
+  const linhas = ['  Vale para qualquer tela que você fizer ou mexer:', ...mapa, '  Antes de dizer que terminou uma tela, confira cada item e diga como conferiu:', ...conf]
+  return { titulo: 'AS REGRAS DE DESIGN DELE', ...cortar(linhas, GATE_MAX_DESIGN, 'regras de design') }
+}
 
 function secaoRegras() {
   return {
@@ -222,12 +248,14 @@ export function montar(conversa, { agente = 'agy', jobs = null } = {}) {
     /* As regras vêm ANTES do estado do projeto: é o que decide COMO ele
        responde, e o resto é o que ele responde SOBRE. */
     secaoRegras(),
+    secaoDesign(),
     secaoRoadmap(cwd),
     secaoRotas(cwd, agentes || []),
     secaoAgentes(agentes || [], conversa.projeto),
   ]
 
-  const partes = secoes.map((s) => `## ${s.titulo}\n${s.linhas.join('\n')}${s.rodape ? '\n  ' + s.rodape : ''}`)
+  const presentes = secoes.filter(Boolean)
+  const partes = presentes.map((s) => `## ${s.titulo}\n${s.linhas.join('\n')}${s.rodape ? '\n  ' + s.rodape : ''}`)
   let texto = ['# O estado do projeto agora, escrito pelo painel', ...partes].join('\n\n')
 
   /* O teto total é a última rede, depois dos tetos por seção. Chegar aqui já é
@@ -240,8 +268,8 @@ export function montar(conversa, { agente = 'agy', jobs = null } = {}) {
 
   return {
     texto,
-    secoes: secoes.map((s) => ({ titulo: s.titulo, linhas: s.linhas.length, cortadas: s.cortadas })),
-    cortes: secoes.reduce((a, s) => a + (s.cortadas || 0), 0),
+    secoes: presentes.map((s) => ({ titulo: s.titulo, linhas: s.linhas.length, cortadas: s.cortadas })),
+    cortes: presentes.reduce((a, s) => a + (s.cortadas || 0), 0),
     cortadoNoTotal,
     bytes: texto.length,
     agente,

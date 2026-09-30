@@ -11,6 +11,8 @@ const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gate-mem-'))
 process.env.CC_HOME = casa
 // CC-731: turno de mentira que termina "pronto" não pode pedir nome ao agy de verdade
 process.env.CC_SEM_AGY = '1'
+// CC-743: nem build nem foto de verdade dentro do teste
+process.env.CC_SEM_FOTOS = '1'
 const G = await import('./src/gate.mjs')
 const A = await import('./src/gateAgentes.mjs')
 
@@ -46,6 +48,56 @@ try {
     const d = G.deltaPara(id, 'opencode', { semMemoria: true, soUltima: true })
     assert.ok(d.texto.includes('segunda'))
     assert.ok(!d.texto.includes('primeira') && !d.texto.includes('resposta do opencode'))
+  })
+  const Pk = await import('./src/gatePacote.mjs')
+  passa('CC-742: regras de design lidas do arquivo delas, mapa e conferencia', () => {
+    const arq = path.join(casa, 'regras.md')
+    fs.writeFileSync(arq, '## Mapa\n\n| # | regra | f |\n|---|---|---|\n| 1 | Nada surge do nada | m |\n| 2 | Cor nunca fala sozinha | l |\n\n## Conferência antes de dizer que terminou\n\n1. Cliquei em tudo.\n2. Olhei em cinza.\n')
+    const s = Pk.secaoDesign(arq)
+    assert.ok(s.linhas.some((l) => l.includes('1. Nada surge do nada')))
+    assert.ok(s.linhas.some((l) => l.includes('☐ Olhei em cinza.')))
+    assert.equal(Pk.secaoDesign(path.join(casa, 'nao-existe.md')), null)
+  })
+  const F = await import('./src/gateFotos.mjs')
+  const Tu = await import('./src/gateTurno.mjs')
+  passa('CC-743: so resposta que mexe em arquivo de tela pede fotos', () => {
+    assert.equal(F.mexeuEmTela([{ nome: 'edit', alvo: 'src/components/Hero.jsx' }]), true)
+    assert.equal(F.mexeuEmTela([{ nome: 'Edit', caminho: '/p/src/index.css' }]), true)
+    assert.equal(F.mexeuEmTela([{ nome: 'Bash', alvo: 'npm run build' }, { nome: 'edit', alvo: 'README.md' }]), false)
+  })
+  passa('CC-744: o pedido do revisor visual leva os caminhos das fotos e o formato da resposta', () => {
+    const p = Tu.pedidoDeRevisaoVisual('opencode', 'mudei o hero', ['/x/celular.jpg', '/x/computador.jpg'])
+    assert.ok(p.includes('/x/celular.jpg') && p.includes('REVISÃO OK') && p.includes('mudei o hero'))
+  })
+  passa('revisao: veredito vale em qualquer linha, e problema so quando escrito', () => {
+    assert.equal(Tu.revisaoAprovou('Vou ler as fotos.\nREVISÃO OK\nTudo certo.'), true)
+    assert.equal(Tu.revisaoAprovou('REVISÃO: PROBLEMAS\n- play em cima do texto'), false)
+    assert.equal(Tu.revisaoAprovou('olhei e achei estranho'), false)
+  })
+  passa('texto repetido do Claude (resposta de novo por trava de fim) entra uma vez', () => {
+    const log = path.join(casa, 'dup.jsonl')
+    const a = (t) => JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: t }] } })
+    fs.writeFileSync(log, [a('Vou ler. '), a('REVISÃO OK'), a('REVISÃO OK')].join('\n') + '\n')
+    assert.equal(A.lerTurno(log, 'claude').texto, 'Vou ler. REVISÃO OK')
+  })
+  passa('comando do opencode entra no alvo, e a cobranca ve o navegador usado', () => {
+    const log = path.join(casa, 'oc-cmd.jsonl')
+    fs.writeFileSync(log, JSON.stringify({ type: 'tool_use', part: { tool: 'bash', state: { input: { command: 'cd /tmp/x && node heroshot.cjs # chrome cdp 9333' } } } }) + '\n')
+    const r = A.lerTurno(log, 'opencode')
+    assert.match(r.ferramentas[0].alvo, /heroshot/)
+    const { id: ic2 } = G.criar({ titulo: 'c2', projeto: 'p', cwd: casa })
+    assert.equal(Tu.cobrarConferencia(ic2, { texto: 'Conferi no navegador.', ferramentas: r.ferramentas }), false)
+  })
+  passa('CC-745: disse que conferiu no navegador sem usar navegador ganha aviso; usando, nao', () => {
+    const { id: ic } = G.criar({ titulo: 'c', projeto: 'p', cwd: casa })
+    assert.equal(Tu.cobrarConferencia(ic, { texto: 'Pronto, reconfiro no navegador depois.', ferramentas: [{ nome: 'bash', alvo: 'npm run build' }] }), true)
+    assert.equal(Tu.cobrarConferencia(ic, { texto: 'Conferi no navegador.', ferramentas: [{ nome: 'mcp__chrome__screenshot' }] }), false)
+    assert.equal(Tu.cobrarConferencia(ic, { texto: 'Mudei a cor.', ferramentas: [] }), false)
+    assert.ok(G.lerConversa(ic).mensagens.some((m) => /não usou navegador/.test(m.texto || '')))
+  })
+  passa('CC-745/746: portugues, microtarefas e nao prometer conferencia vao no contexto', () => {
+    const t = Pk.montar({ cwd: casa, projeto: 'p' }, { jobs: [] }).texto
+    assert.match(t, /sempre em português/); assert.match(t, /microtarefas/); assert.match(t, /Não diga que conferiu/)
   })
   passa('agy, mesmo com id guardado, recebe a conversa inteira', () => {
     const d = G.deltaPara(id, 'agy')
@@ -102,6 +154,10 @@ try {
   ].map((o) => JSON.stringify(o)).join('\n') + '\n')
   G.gravarCabecalho(id2, { estado: { turnoId: 'r1', agente: 'claude', pid: process.pid, desde: Date.now(), logFile: logR, ate: 1 } })
   assert.equal(T.retomar(id2), true)
+  passa('o turno grava revisar e semMemoria, para a retomada nao perder (medido na simulacao de 30/09)', () => {
+    const fonte = fs.readFileSync('./src/gateTurno.mjs', 'utf8')
+    assert.match(fonte, /ate: delta\.ate, revisar, semMemoria: flash \}/)
+  })
   await new Promise((r) => setTimeout(r, 900))
   passa('turno retomado depois do reinicio fecha pronto, com o texto e a sessao', () => {
     const c = G.lerConversa(id2)
@@ -119,9 +175,15 @@ let e = ''; process.stdin.on('data', (d) => (e += d)).on('end', () => {
   console.log(JSON.stringify({ type: 'result', subtype: 'success', duration_ms: 1, usage: {} }))
 })`)
   fs.chmodSync(falso, 0o755)
+  /* No Windows um .mjs não roda como programa (achado por baa1393b: este
+     bloco reprovava no PC e barrava a publicação). O Coderoom lá dispara por
+     `cmd /c`, então um .cmd que chama o Node com o falso resolve. */
+  const { ehWindows } = await import('./src/platform.mjs')
+  const binFalso = ehWindows ? falso.replace(/\.mjs$/, '.cmd') : falso
+  if (ehWindows) fs.writeFileSync(binFalso, `@"${process.execPath}" "${falso}" %*\r\n`)
   const rodar = async (texto) => {
     const { id: cid } = G.criar({ titulo: 'rev', projeto: 'p', cwd: casa })
-    T.responder(cid, { texto, agente: 'claude', binario: falso, revisar: true })
+    T.responder(cid, { texto, agente: 'claude', binario: binFalso, revisar: true })
     for (let i = 0; i < 60; i++) {
       await new Promise((r) => setTimeout(r, 200))
       const c = G.lerConversa(cid)
