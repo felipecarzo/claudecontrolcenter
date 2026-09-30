@@ -24,11 +24,88 @@
  */
 import {
   lerConversa, acrescentar, gravarCabecalho, deltaPara, marcarLido,
-  esquecerSessao, guardarCota,
+  esquecerSessao, guardarCota, lerCabecalho,
 } from './gate.mjs'
+import * as resumoAgy from './resumoAgy.mjs'
 import { execFileSync } from 'node:child_process'
-import { enviar, lerTurno, vivo, agentePara } from './gateAgentes.mjs'
+import { enviar, lerTurno, vivo, agentePara, servidorOpencodeVivo, garantirServidorOpencode } from './gateAgentes.mjs'
 import { montar, gravarPacote } from './gatePacote.mjs'
+import { ler as lerFramework } from './frameworkDisco.mjs'
+import { modoDe } from './framework.mjs'
+import { DIR_PERMISSOES } from './decisao.mjs'
+import fs from 'node:fs'
+import path from 'node:path'
+
+/**
+ * CC-723: tira da tela a pergunta e a permissão em aberto desta conversa.
+ * Parar ou apagar a conversa mata o agente e a ferramenta junto, sem chance de
+ * ela limpar o que gravou; e resposta que terminou não tem pedido vivo. Medido
+ * em 30/09: sem isto, a pergunta ficava pendurada numa conversa já apagada.
+ */
+export function limparPedidos(id) {
+  const dir = DIR_PERMISSOES()
+  let nomes = []
+  try { nomes = fs.readdirSync(dir).filter((n) => /^[0-9a-f-]+\.json$/.test(n)) } catch { return 0 }
+  let n = 0
+  for (const nome of nomes) {
+    try {
+      const p = JSON.parse(fs.readFileSync(path.join(dir, nome), 'utf8'))
+      if (p?.coderoom === id) { fs.unlinkSync(path.join(dir, nome)); n++ }
+    } catch { /* sendo gravado agora */ }
+  }
+  return n
+}
+
+/* ============ CC-727: o nome curto da conversa, escrito pelo agy ============
+ *
+ * Pedido dele: entender em Sessões qual conversa do Coderoom está mexendo. O
+ * título era a primeira mensagem cortada ("Use a ferramenta perguntar para me
+ * perguntar qual fruta eu"). Depois da primeira resposta, o agy (grátis, na
+ * mesma fila dos resumos do painel) escreve 3 a 6 palavras. Nome dado por ele
+ * (`tituloDele`) nunca é trocado. */
+const esperandoNome = new Set()
+export function limparNome(texto) {
+  const t = String(texto || '').split('\n').map((l) => l.trim()).find(Boolean) || ''
+  const n = t.replace(/^(nome|titulo|título)\s*:\s*/i, '').replace(/[*"'`“”]/g, '').replace(/[—–]/g, ' ').replace(/[.!?:;]+$/, '').replace(/\s+/g, ' ').trim()
+  return n.length >= 3 && n.length <= 60 ? n : null
+}
+function nomearSozinho(id) {
+  /* CC-731: teste nunca chama o agy de verdade. Medido por baa1393b em 30/09:
+     o test-gate-memoria disparava o agy 3 vezes por rodada, gastando cota e
+     virando pedido de permissão de rede na sessão que rodava o teste. */
+  if (process.env.CC_SEM_AGY) return
+  const c = lerConversa(id)
+  const cab = c?.cabecalho
+  if (!cab || cab.tituloDele || cab.tituloAuto || esperandoNome.has(id)) return
+  const dele = c.mensagens.find((m) => m.de === 'felipe')
+  const resp = c.mensagens.find((m) => m.de !== 'felipe' && m.de !== 'sistema' && m.estado === 'pronto')
+  if (!dele || !resp) return
+  const k = 'titulo:gate:' + id
+  resumoAgy.pedirTexto({ k, prompt: 'Dê um nome curto para esta conversa, de 3 a 6 palavras, em português do Brasil, que diga o assunto. '
+    + 'Sem aspas, sem travessão, sem ponto final. Responda só o nome. Não use ferramentas.\n\n'
+    + 'PRIMEIRA MENSAGEM DELE:\n' + String(dele.texto || '').slice(0, 1500) + '\n\nRESPOSTA DO AGENTE:\n' + String(resp.texto || '').slice(0, 1500) })
+  esperandoNome.add(id)
+  let voltas = 0
+  const tique = setInterval(() => {
+    const r = resumoAgy.obterTexto(k)
+    const nome = r?.texto ? limparNome(r.texto) : null
+    if (nome || !r || ++voltas > 60) {
+      clearInterval(tique); esperandoNome.delete(id)
+      const agora = lerCabecalho(id)
+      if (nome && agora && !agora.tituloDele) gravarCabecalho(id, { titulo: nome, tituloAuto: true })
+    }
+  }, 5000)
+  tique.unref?.()
+}
+
+/** O modo do framework do projeto, ou null quando ele não usa framework. */
+export function modoDoProjeto(cwd) {
+  if (!cwd) return null
+  try {
+    const est = lerFramework(cwd, { sessao: null })
+    return est ? modoDe(est).id : null
+  } catch { return null }
+}
 
 /* De quanto em quanto tempo o acompanhamento olha o log.
  *
@@ -173,7 +250,7 @@ export function tituloDe(texto) {
    devolução: os agentes de verdade recusam produzir o gatilho depois de
    ensinados, e uma régua que nunca dispara é uma régua que pode estar quebrada
    sem ninguém saber. */
-export function responder(id, { texto, agente = 'claude', modelo = null, esforco = null, anexos = [], binario = null }) {
+export function responder(id, { texto, agente = 'agy', modelo = null, esforco = null, anexos = [], binario = null, revisar = false }) {
   const c = lerConversa(id)
   if (!c) throw new Error(`conversa ${id} não existe`)
 
@@ -198,19 +275,36 @@ export function responder(id, { texto, agente = 'claude', modelo = null, esforco
   if (escolha.trocou) acrescentar(id, { tipo: 'sistema', texto: escolha.motivo })
   const quem = escolha.agente
 
-  const delta = deltaPara(id, quem)
+  /* CC-716: o modo Flash do opencode é por conversa. Sem memória: recebe a
+     conversa inteira e não toca na sessão nem no marcador do modo Normal,
+     para a troca de volta não herdar um marcador de mensagens que a sessão
+     nunca viu. O servidor sobe em segundo plano se não estiver de pé. */
+  const flash = quem === 'opencode' && ['flash', 'avulso'].includes(c.cabecalho.opencodeModo)
+  if (flash && !servidorOpencodeVivo()) garantirServidorOpencode().catch(() => {})
+  const avulso = flash && c.cabecalho.opencodeModo === 'avulso'
+  const delta = deltaPara(id, quem, { semMemoria: flash, soUltima: avulso })
   const pacote = montar(c.cabecalho, { agente: quem })
   const turnoId = `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
   const arqPacote = gravarPacote(pacote, turnoId)
+
+  /* CC-714: projeto no modo Planejamento sobe o agente no modo de plano dele.
+     Lido com `sessao: null`: é a escolha do PROJETO, a mesma que a tela mostra. */
+  const planejar = modoDoProjeto(c.cabecalho.cwd) === 'planejamento'
 
   const t = enviar({
     agente: quem,
     texto: delta.texto,
     cwd: c.cabecalho.cwd,
     permissao: c.cabecalho.permissao || 'acceptEdits',
-    sessao: c.cabecalho.sessoes?.[quem] || null,
-    pacote: arqPacote,
-    pacoteTexto: pacote.texto,
+    somenteLer: planejar,
+    flash,
+    conversa: id,
+    sessao: flash ? null : c.cabecalho.sessoes?.[quem] || null,
+    /* CC-718: avulso vai sem o estado do projeto. Medido em 30/09: a lista de
+       agentes do pacote traz a PRÓPRIA conversa, com a primeira mensagem dele
+       como título, e a pergunta "qual palavra eu pedi" foi respondida por ali. */
+    pacote: avulso ? null : arqPacote,
+    pacoteTexto: avulso ? null : pacote.texto,
     /* O modelo da vez vence o guardado na conversa, e o guardado vence o padrão
        do agente. Guardar por conversa é o que faz a escolha dele sobreviver ao
        fechar a tela, em vez de voltar ao padrão a cada mensagem. */
@@ -233,17 +327,20 @@ export function responder(id, { texto, agente = 'claude', modelo = null, esforco
 
   acrescentar(id, {
     tipo: 'turno', turnoId: t.turnoId, agente: quem,
-    modelo: t.modelo, permissao: t.permissao,
+    modelo: t.modelo, permissao: planejar ? 'planejamento' : t.permissao,
   })
   gravarCabecalho(id, {
-    estado: { turnoId: t.turnoId, agente: quem, pid: t.pid, desde: Date.now(), logFile: t.logFile, erroFile: t.erroFile },
+    /* CC-728: o último agente usado vira o da conversa, e é ele que responde
+       quando ele escreve pelo cartão em Sessões. */
+    agentePadrao: quem,
+    estado: { turnoId: t.turnoId, agente: quem, pid: t.pid, desde: Date.now(), logFile: t.logFile, erroFile: t.erroFile, ate: delta.ate },
     ...(modelo ? { modelos: { ...(c.cabecalho.modelos || {}), [quem]: modelo } } : {}),
     ...(esforco ? { esforcos: { ...(c.cabecalho.esforcos || {}), [quem]: esforco } } : {}),
   })
 
   acompanhar(id, {
     ...t, agente: quem, ate: delta.ate,
-    cwd: c.cabecalho.cwd, permissao: c.cabecalho.permissao, binario,
+    cwd: c.cabecalho.cwd, permissao: c.cabecalho.permissao, binario, revisar, semMemoria: flash,
     /* O retrato tirado ANTES do turno. É ele que separa o que este agente fez
        do que já estava mexido na árvore. */
     antes: retratoAntes(c.cabecalho.cwd),
@@ -263,7 +360,8 @@ export function responder(id, { texto, agente = 'claude', modelo = null, esforco
 function acompanhar(id, t) {
   const antigo = emCurso.get(id)
   if (antigo) clearInterval(antigo.tique)
-  const comecou = Date.now()
+  /* Retomado depois de um reinício, o teto conta do começo de verdade. */
+  const comecou = t.desde || Date.now()
   let ultimoGravado = ''
   let gravadoEm = 0
   let ultimasFer = 0
@@ -301,6 +399,7 @@ function acompanhar(id, t) {
     if (!acabou) return
 
     clearInterval(tique)
+    limparPedidos(id)
     emCurso.delete(id)
 
     /* O texto final vai para o disco antes do `fim`, senão o último trecho
@@ -329,7 +428,10 @@ function acompanhar(id, t) {
       erro: estourou ? `passou de ${Math.round(TETO_MS / 60000)} minutos e eu parei de esperar` : r.erro,
     })
 
-    if (estado === 'pronto') {
+    /* O turno do REVISOR não mexe na memória dele: a sessão dele só viu o
+       pedido de revisão, e marcar a conversa como lida faria ele, mais tarde
+       como autor, receber só o fim da conversa achando que sabe o começo. */
+    if (estado === 'pronto' && !t.revisao && !t.semMemoria) {
       const cab = lerConversa(id)?.cabecalho
       if (r.sessao && cab) gravarCabecalho(id, { sessoes: { ...(cab.sessoes || {}), [t.agente]: r.sessao } })
       /* Só marca quem leu de verdade: turno que falhou não leu nada, e marcar
@@ -338,7 +440,11 @@ function acompanhar(id, t) {
     }
     gravarCabecalho(id, { estado: null })
 
-    if (estado === 'pronto' && !t.jaVoltou) devolverParaCorrigir(id, t, r.texto)
+    if (estado !== 'pronto') return
+    nomearSozinho(id)
+    if (t.revisao) return voltarDaRevisao(id, t, r.texto)
+    if (!t.jaVoltou && devolverParaCorrigir(id, t, r.texto)) return
+    if (t.revisar) pedirRevisao(id, t, r.texto, mudou)
   }, OLHAR_MS)
 
   emCurso.set(id, { tique, turnoId: t.turnoId, agente: t.agente, texto: '', ferramentas: [] })
@@ -351,6 +457,24 @@ function acompanhar(id, t) {
  * memória. Sem isto, a resposta apareceria em saltos de dois em dois segundos,
  * que é o ritmo da gravação, e não no ritmo em que o agente escreve.
  */
+/**
+ * CC-700: volta a acompanhar um turno cujo agente sobreviveu ao reinício.
+ *
+ * Hoje o agente morre junto com o painel, e isto não roda. Com
+ * `KillMode=process` no serviço (exige root), ele sobrevive, e sem esta função
+ * ninguém voltaria a ler o log: a resposta ficaria "em andamento" para sempre,
+ * que é pior que o corte de hoje, porque o corte ao menos diz que parou. Não
+ * devolve para corrigir travessão (`jaVoltou`): o retrato de antes do turno se
+ * perdeu com a memória do painel, e a devolução é um extra, não o essencial.
+ */
+export function retomar(id) {
+  const c = lerConversa(id)
+  const e = c?.cabecalho?.estado
+  if (!e?.turnoId || !e.logFile || emCurso.has(id)) return false
+  acompanhar(id, { ...e, cwd: c.cabecalho.cwd, permissao: c.cabecalho.permissao, antes: null, jaVoltou: true })
+  return true
+}
+
 export function conversaAoVivo(id) {
   const c = lerConversa(id)
   if (!c) return null
@@ -414,7 +538,7 @@ export function conferir(texto) {
  */
 function devolverParaCorrigir(id, t, texto) {
   const falta = conferir(texto)
-  if (!falta) return
+  if (!falta) return false
 
   acrescentar(id, {
     tipo: 'sistema',
@@ -427,16 +551,88 @@ function devolverParaCorrigir(id, t, texto) {
     texto: falta.recado,
     cwd: t.cwd || c?.cabecalho?.cwd,
     permissao: t.permissao || c?.cabecalho?.permissao || 'acceptEdits',
+    conversa: id,
     sessao: c?.cabecalho?.sessoes?.[t.agente] || null,
     binario: t.binario || null,
   })
   if (!novo.ok) {
     acrescentar(id, { tipo: 'sistema', texto: `Não consegui devolver para o ${t.agente}: ${novo.erro}` })
-    return
+    return false
   }
   acrescentar(id, { tipo: 'turno', turnoId: novo.turnoId, agente: t.agente, modelo: t.modelo, permissao: t.permissao })
-  gravarCabecalho(id, { estado: { turnoId: novo.turnoId, agente: t.agente, pid: novo.pid, desde: Date.now() } })
-  acompanhar(id, { ...novo, agente: t.agente, ate: t.ate, cwd: t.cwd, permissao: t.permissao, binario: t.binario, jaVoltou: true })
+  gravarCabecalho(id, { estado: { turnoId: novo.turnoId, agente: t.agente, pid: novo.pid, desde: Date.now(), logFile: novo.logFile, erroFile: novo.erroFile, ate: t.ate } })
+  /* `revisar` viaja junto: a revisão pedida vale para a resposta corrigida. */
+  acompanhar(id, { ...novo, agente: t.agente, ate: t.ate, cwd: t.cwd, permissao: t.permissao, binario: t.binario, jaVoltou: true, revisar: t.revisar })
+  return true
+}
+
+/* ================= CC-701: a revisão em dupla, quando ele pede ================
+ *
+ * Decisão dele em 29/09: só quando ele pedir, mensagem a mensagem. Um segundo
+ * agente lê a resposta e o que mudou nos arquivos, em modo de leitura (medido:
+ * `--mode plan` no agy, `--agent plan` no opencode), e diz se está certo. Se
+ * apontar problema, o autor recebe a revisão UMA vez para corrigir. Uma volta
+ * só pelo mesmo motivo da trava do travessão: o autor que não conserta na
+ * segunda não conserta na terceira, e cada volta é token dele.
+ *
+ * O revisor é o agy, que é gratuito; se o autor for o agy, revisa o opencode. */
+export const revisorPara = (autor) => (autor === 'agy' ? 'opencode' : 'agy')
+export const REVISAO_OK = /^\s*\**\s*REVIS[ÃA]O OK/i
+
+export function pedidoDeRevisao(autor, texto, mudou) {
+  const diff = mudou?.diff ? String(mudou.diff).slice(0, 20000) : ''
+  return [
+    `O Felipe pediu REVISÃO da resposta abaixo, escrita pelo ${autor} para o último pedido dele.`,
+    'Leia com olhar crítico: ela atende o que ele pediu? Há erro, afirmação sem prova, ou mudança de código com defeito?',
+    'Você está em modo de leitura. Não edite nenhum arquivo.',
+    'Se estiver tudo certo, comece a resposta com "REVISÃO OK" e diga em uma linha por quê.',
+    'Se houver problema, comece com "REVISÃO: PROBLEMAS" e liste cada um numa linha, com o arquivo quando houver.',
+    '',
+    `--- resposta do ${autor} ---`,
+    String(texto || '').slice(0, 20000),
+    ...(diff ? ['', '--- o que mudou nos arquivos ---', diff, ...(mudou.cortou || String(mudou.diff).length > 20000 ? ['[diferença cortada por tamanho]'] : [])] : []),
+  ].join('\n')
+}
+
+function pedirRevisao(id, t, texto, mudou) {
+  const quem = revisorPara(t.agente)
+  const c = lerConversa(id)
+  const novo = enviar({
+    agente: quem, texto: pedidoDeRevisao(t.agente, texto, mudou),
+    cwd: t.cwd || c?.cabecalho?.cwd, conversa: id, somenteLer: true,
+    binario: t.binario || null,
+  })
+  if (!novo.ok) {
+    acrescentar(id, { tipo: 'sistema', texto: `Não consegui pedir a revisão ao ${quem}: ${novo.erro}` })
+    return
+  }
+  acrescentar(id, { tipo: 'sistema', texto: `Revisão pedida: o ${quem} vai ler a resposta do ${t.agente} e o que mudou, sem editar nada.` })
+  acrescentar(id, { tipo: 'turno', turnoId: novo.turnoId, agente: quem, modelo: novo.modelo, revisao: true })
+  gravarCabecalho(id, { estado: { turnoId: novo.turnoId, agente: quem, pid: novo.pid, desde: Date.now(), logFile: novo.logFile, erroFile: novo.erroFile } })
+  acompanhar(id, { ...novo, agente: quem, cwd: t.cwd, revisao: true, autor: t.agente, autorPermissao: t.permissao, binario: t.binario })
+}
+
+function voltarDaRevisao(id, t, texto) {
+  if (REVISAO_OK.test(texto || '')) return
+  const c = lerConversa(id)
+  acrescentar(id, { tipo: 'sistema', texto: `O ${t.agente} apontou problemas. Mandei a revisão ao ${t.autor} para corrigir, uma vez.` })
+  const novo = enviar({
+    agente: t.autor,
+    texto: `O ${t.agente} revisou sua última resposta e escreveu:\n\n${texto}\n\nCorrija o que for procedente e diga o que mudou. Se discordar de algum ponto, explique por quê.`,
+    cwd: t.cwd || c?.cabecalho?.cwd, conversa: id,
+    permissao: t.autorPermissao || c?.cabecalho?.permissao || 'acceptEdits',
+    sessao: c?.cabecalho?.sessoes?.[t.autor] || null,
+    modelo: c?.cabecalho?.modelos?.[t.autor] || null,
+    binario: t.binario || null,
+  })
+  if (!novo.ok) {
+    acrescentar(id, { tipo: 'sistema', texto: `Não consegui devolver ao ${t.autor}: ${novo.erro}` })
+    return
+  }
+  const ate = c?.ultimoSeq || 0
+  acrescentar(id, { tipo: 'turno', turnoId: novo.turnoId, agente: t.autor, modelo: novo.modelo, permissao: novo.permissao })
+  gravarCabecalho(id, { estado: { turnoId: novo.turnoId, agente: t.autor, pid: novo.pid, desde: Date.now(), logFile: novo.logFile, erroFile: novo.erroFile, ate } })
+  acompanhar(id, { ...novo, agente: t.autor, ate, cwd: t.cwd, permissao: novo.permissao, binario: t.binario, jaVoltou: true })
 }
 
 /** Parar é decisão dele, e não efeito colateral de trocar de agente. */
@@ -445,6 +641,7 @@ export function parar(id) {
   const pid = c?.cabecalho?.estado?.pid
   if (!pid) return { ok: false, erro: 'nenhum agente respondendo agora' }
   try { process.kill(pid, 'SIGTERM') } catch { /* já morreu */ }
+  limparPedidos(id)
   acrescentar(id, { tipo: 'sistema', texto: 'Você parou esta resposta. O que já tinha chegado continua acima.' })
   return { ok: true }
 }

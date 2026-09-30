@@ -215,7 +215,7 @@ export function deOutraMaquina(caminho, plataforma = process.platform) {
   return false
 }
 
-export function criar({ titulo, projeto, cwd, agentePadrao = 'claude', permissao = 'acceptEdits' }) {
+export function criar({ titulo, projeto, cwd, agentePadrao = 'agy', permissao = 'acceptEdits' }) {
   if (!cwd) throw new Error('conversa sem pasta: o agente não teria onde agir')
   if (deOutraMaquina(cwd)) {
     throw new Error(`a pasta ${cwd} é de outra máquina. Abra a conversa na máquina onde esse projeto mora.`)
@@ -298,11 +298,7 @@ function lerLinhas(dir, id, bytes) {
  * mesmo jeito que `lerResposta()` já faz com as duas gramáticas do opencode e do
  * agy. A tela nunca vê pedaço solto.
  */
-export function lerConversa(id, { bytes = GATE_MAX_CAUDA } = {}) {
-  const cab = lerCabecalho(id)
-  if (!cab) return null
-  const eventos = lerLinhas(cab._onde, id, bytes)
-
+function dobrar(cab, eventos) {
   const mensagens = []
   const porTurno = new Map()
 
@@ -314,7 +310,7 @@ export function lerConversa(id, { bytes = GATE_MAX_CAUDA } = {}) {
     } else if (e.tipo === 'turno') {
       const m = {
         de: e.agente, turnoId: e.turnoId, em: e.em, seq: e.seq,
-        modelo: e.modelo || null, permissao: e.permissao || null,
+        modelo: e.modelo || null, permissao: e.permissao || null, revisao: Boolean(e.revisao),
         texto: '', ferramentas: [], estado: 'rodando', custo: null, segundos: null, erro: null,
       }
       porTurno.set(e.turnoId, m)
@@ -343,6 +339,19 @@ export function lerConversa(id, { bytes = GATE_MAX_CAUDA } = {}) {
       }
     }
   }
+  return mensagens
+}
+
+function sinalDoTurno(logFile) {
+  if (!logFile) return null
+  try { return fs.statSync(logFile).mtimeMs } catch { return null }
+}
+
+export function lerConversa(id, { bytes = GATE_MAX_CAUDA } = {}) {
+  const cab = lerCabecalho(id)
+  if (!cab) return null
+  const eventos = lerLinhas(cab._onde, id, bytes)
+  const mensagens = dobrar(cab, eventos)
 
   /* CC-252b: o gasto da conversa inteira, somado das respostas.
    *
@@ -374,8 +383,65 @@ export function lerConversa(id, { bytes = GATE_MAX_CAUDA } = {}) {
        pode ter um `turno` sem `fim` para sempre, e é o cabeçalho que diz se
        alguém ainda está esperando por ele. */
     turnoAberto: cab.estado?.turnoId || null,
+    /* A hora do último sinal do agente: cada evento do stream, inclusive o
+       raciocínio (que chega VAZIO, medido em 29/09: 76 sinais sem uma letra
+       num turno), é uma linha nova no log. O log parado é o agente calado, que
+       é o que distingue "pensando" de "travou". */
+    sinalEm: sinalDoTurno(cab.estado?.logFile),
     truncada: eventos.length > 0 && mensagens[0]?.seq > 1,
   }
+}
+
+/* ===================== a última resposta do agente ===================== */
+
+/**
+ * A última coisa que um agente respondeu nesta conversa, ou `null`.
+ *
+ * É o que o cartão de Sessões do painel mostra, e o que ele usa para pedir o
+ * resumo automático. A conversa do Claude Code tem arquivo de transcrição para
+ * isso; a do coderoom não tem, porque o histórico dela É o log daqui. Sem esta
+ * função o cartão do coderoom só mostrava o nome da conversa, sem fala e sem
+ * resumo, e o campo de resposta não aparecia.
+ *
+ * ## Por que só a CAUDA
+ *
+ * O painel relê isto a cada tique de 5 segundos, para TODA conversa aberta.
+ * Ler o log inteiro desse jeito é o caminho curto para o painel ficar lento em
+ * conversa longa, e é o que este projeto já pagou (CC-252b, o gasto). A cauda
+ * traz a última resposta na quase totalidade dos casos: um turno que não cabe
+ * nela é uma resposta maior que o teto, e aí a linha do meio se perde, que é
+ * exatamente o corte que `lerLinhas` já sabe fazer.
+ *
+ * E o resultado é guardado por tamanho e hora do arquivo, para conversa parada
+ * não custar leitura nenhuma.
+ */
+const cacheUltima = new Map()
+export function ultimoDoAgente(id, { bytes = 96 * 1024 } = {}) {
+  const cab = lerCabecalho(id)
+  if (!cab) return null
+  let st = null
+  try { st = fs.statSync(arquivosDe(cab._onde, id).log) } catch { return null }
+  const guardado = cacheUltima.get(id)
+  if (guardado && guardado.size === st.size && guardado.mtimeMs === st.mtimeMs) return guardado.r
+  let r = null
+  for (const m of dobrar(cab, lerLinhas(cab._onde, id, bytes)).reverse()) {
+    if (m.de === 'felipe' || m.de === 'sistema') continue
+    if (!String(m.texto || '').trim()) continue
+    r = { de: m.de, texto: m.texto, em: m.em || null, seq: m.seq || null, pronto: m.estado === 'pronto' }
+    break
+  }
+  /* Conversa apagada não pode ficar ocupando memória para sempre: o limite é
+     holgado de propósito, e a 200 ele limpa tudo, que é barato. */
+  if (cacheUltima.size > 200) cacheUltima.clear()
+  cacheUltima.set(id, { size: st.size, mtimeMs: st.mtimeMs, r })
+  return r
+}
+
+/** A conversa inteira em mensagens, no formato que o painel já sabe ler. */
+export function falasDe(id, opts) {
+  const c = lerConversa(id, opts)
+  if (!c) return null
+  return c.mensagens.map((m) => ({ quem: m.de === 'felipe' ? 'voce' : 'agente', de: m.de, texto: m.texto || '', em: m.em || null }))
 }
 
 /* ============================ o delta ============================ */
@@ -383,17 +449,14 @@ export function lerConversa(id, { bytes = GATE_MAX_CAUDA } = {}) {
 /**
  * O que este agente ainda não viu, formatado como TRANSCRIÇÃO.
  *
- * ## Por que só o Claude tem marcador
+ * ## Por que só quem está em `COM_MEMORIA` tem marcador
  *
  * O marcador só se paga para quem tem memória endereçável. O Claude tem
- * `--resume`, e a sessão dele já contém tudo o que ele mesmo respondeu. O agy é
- * um tiro só, sem memória nenhuma. O opencode tem sessão por pasta, mas ela não
- * é endereçável nem consultável: não dá para perguntar o que ela já contém.
+ * `--resume`, e desde o CC-698 o opencode tem `--session`: a sessão de cada um
+ * já contém tudo o que ele mesmo respondeu. O agy é um tiro só, e para ele o
+ * delta é a conversa inteira, sempre, com teto.
  *
- * Manter três marcadores quando só um serve seria arquitetura fingindo. Para os
- * outros dois o delta é a conversa inteira, sempre, com teto.
- *
- * ## Por que o delta do Claude não inclui os turnos dele
+ * ## Por que o delta de quem tem memória não inclui os turnos dele
  *
  * Eles já estão na sessão retomada. Incluí-los faria ele reler o que já sabe, e
  * pagar por isso duas vezes.
@@ -405,18 +468,31 @@ export function lerConversa(id, { bytes = GATE_MAX_CAUDA } = {}) {
  * `promptEnriquecimento` já se mediu o modelo tratar o prefixo como turno de
  * conversa em vez de instrução.
  */
-export function deltaPara(id, agente) {
+/* CC-698: quem retoma a própria conversa, medido em 29/09. O opencode entrou
+   (`--session` lembrou o número guardado no turno anterior). O agy ficou de
+   fora: `--conversation` devolve um id NOVO a cada chamada, e ele "lembrou" a
+   palavra vasculhando arquivos da pasta (22 leituras, 159 mil tokens). O
+   `conversation_id` dele continua sendo guardado, mas não serve para retomar. */
+const COM_MEMORIA = new Set(['claude', 'opencode'])
+
+export function deltaPara(id, agente, { semMemoria = false, soUltima = false } = {}) {
   const c = lerConversa(id)
   if (!c) return null
 
-  const temSessao = Boolean(c.cabecalho.sessoes?.[agente])
-  const marcador = agente === 'claude' && temSessao ? (c.cabecalho.marcadores?.claude || 0) : 0
+  /* `semMemoria`: o modo Flash do opencode (CC-716) vai sem sessão, então
+     recebe a conversa inteira mesmo com uma sessão do modo Normal guardada. */
+  const temSessao = !semMemoria && COM_MEMORIA.has(agente) && Boolean(c.cabecalho.sessoes?.[agente])
+  const marcador = temSessao ? (c.cabecalho.marcadores?.[agente] || 0) : 0
 
   let usadas = c.mensagens.filter((m) => (m.seq || 0) > marcador)
-  if (agente === 'claude' && temSessao) usadas = usadas.filter((m) => m.de !== 'claude')
+  if (temSessao) usadas = usadas.filter((m) => m.de !== agente)
   /* Turno que não terminou não entra: meia resposta como contexto é pior que
      nenhuma, porque o agente seguinte a trata como conclusão. */
   usadas = usadas.filter((m) => m.de === 'felipe' || m.de === 'sistema' || m.estado === 'pronto')
+  /* CC-718: o modo avulso do opencode recebe SÓ a última mensagem dele, sem
+     histórico nenhum. Pedido dele: esquecer de verdade, ao lado do flash que
+     relê a conversa. */
+  if (soUltima) usadas = usadas.filter((m) => m.de === 'felipe').slice(-1)
 
   const linhaDe = (m) => {
     if (m.de === 'felipe') {
@@ -599,7 +675,13 @@ export function reconciliar({ vivo = () => false } = {}) {
   for (const cab of listar({ arquivadas: true })) {
     const t = cab.estado?.turnoId
     if (!t) continue
-    if (cab.estado?.pid && vivo(cab.estado.pid)) continue
+    /* CC-700: agente vivo depois do reinício volta a ser acompanhado. Import
+       dinâmico porque `gateTurno` importa este módulo; o ciclo só existe em
+       tempo de execução, quando os dois já carregaram. */
+    if (cab.estado?.pid && vivo(cab.estado.pid)) {
+      import('./gateTurno.mjs').then((m) => m.retomar(cab.id)).catch(() => { /* sem retomar, fica como hoje */ })
+      continue
+    }
     acrescentar(cab.id, {
       tipo: 'fim', turnoId: t, estado: 'interrompido',
       erro: 'o painel reiniciou antes de esta resposta terminar',

@@ -41,11 +41,76 @@ import os from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { resolverBinario } from './paineis.mjs'
 import { ehWindows } from './platform.mjs'
 import { deOutraMaquina } from './gate.mjs'
 
 export const PASTA_LOG = path.join(os.tmpdir(), 'cc-gate')
+
+/* CC-699: o modo "pergunte antes". O gancho do painel roda antes de cada
+   comando e edição e espera a resposta dele até 10 min (medido em 29/09: sem
+   terminal, só esse evento dispara; o de permissão nunca). O tempo do gancho
+   passa um pouco dos 10 min para quem dá a resposta de "ninguém respondeu"
+   ser o gancho, e não o Claude matando ele. */
+export const PERGUNTE_ANTES = 'pergunteAntes'
+const GANCHO_PERMISSAO = fileURLToPath(new URL('../hooks/permissao-painel.mjs', import.meta.url))
+/* ============ CC-716: o modo Flash do opencode (servidor aberto) ============
+ *
+ * Medido em 29/09: `opencode run` sozinho leva 15 a 22 s até o primeiro sinal,
+ * quase tudo subida. Com `opencode serve` aberto e `run --attach`, 6 a 8 s.
+ * O preço, também medido: com `--attach`, `--session` não devolve NADA (5 de 5),
+ * então Flash é sem memória. Decisão dele: os dois, por conversa, com os nomes
+ * dele: "flash mode (nomemory)" e "normal".
+ *
+ * O servidor sobe na primeira mensagem Flash e fica de pé. Com
+ * `KillMode=process` no serviço ele sobrevive ao painel religar, e a conferência
+ * ao carregar o módulo o reencontra. Enquanto não responde, a mensagem vai do
+ * jeito normal (sem `--attach`): lenta, nunca quebrada. Porta fora das
+ * reservadas desta VPS (3000 a 3021 são de cliente, 5173/5180/5181 do painel). */
+export const OC_PORTA = Number(process.env.CC_OPENCODE_PORTA) || 4199
+export const OC_URL = `http://127.0.0.1:${OC_PORTA}`
+let ocVivo = false
+let ocSubindo = false
+
+export async function conferirServidorOpencode() {
+  try {
+    const r = await fetch(OC_URL + '/', { signal: AbortSignal.timeout(1500) })
+    ocVivo = r.status < 500
+  } catch { ocVivo = false }
+  return ocVivo
+}
+
+export async function garantirServidorOpencode() {
+  if (await conferirServidorOpencode()) return true
+  if (ocSubindo) return false
+  ocSubindo = true
+  try {
+    /* `detached` aqui é certo: o servidor PRECISA sobreviver a quem o subiu, e
+       não há saída para capturar (ver a armadilha do CC-29 no CLAUDE.md). */
+    const p = spawn(resolverBinario('opencode'), ['serve', '--port', String(OC_PORTA), '--hostname', '127.0.0.1'], {
+      cwd: os.homedir(), detached: true, stdio: 'ignore', windowsHide: true,
+    })
+    p.on('error', () => { /* sem opencode instalado, Flash cai no normal */ })
+    p.unref()
+    for (let i = 0; i < 40 && !(await conferirServidorOpencode()); i++) await new Promise((r) => setTimeout(r, 500))
+    return ocVivo
+  } finally { ocSubindo = false }
+}
+
+export const servidorOpencodeVivo = () => ocVivo
+// reencontra um servidor que sobreviveu ao painel religar
+conferirServidorOpencode().catch(() => {})
+
+const MCP_PAINEL = fileURLToPath(new URL('./mcpPainel.mjs', import.meta.url))
+export function configPainelMcp(conversa) {
+  return JSON.stringify({ mcpServers: { painel: { command: process.execPath, args: [MCP_PAINEL, '--coderoom', conversa || 'sem-id'] } } })
+}
+
+export function configPergunteAntes(conversa) {
+  const cmd = [process.execPath, GANCHO_PERMISSAO, '--coderoom', conversa || 'sem-id'].map((p) => `"${String(p).replace(/"/g, '')}"`).join(' ')
+  return JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash|Edit|Write|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: cmd, timeout: 660 }] }] } })
+}
 
 /**
  * O catálogo.
@@ -64,10 +129,19 @@ export const AGENTES_GATE = {
        `high`, `xhigh` e `max`. O agy só tem os três primeiros, e é por isso que
        a lista de níveis mora no catálogo de cada agente e não num lugar só. */
     esforcos: ['low', 'medium', 'high', 'xhigh', 'max'],
-    args: ({ sessao, novaSessao, permissao, cwd, pacote, modelo, esforco }) => [
+    args: ({ sessao, novaSessao, permissao, cwd, pacote, modelo, esforco, conversa, somenteLer }) => [
       '-p',
       '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
-      '--permission-mode', permissao,
+      /* CC-699: "pergunte antes" não é um modo do Claude, é o modo padrão MAIS
+         o gancho que segura cada comando e edição até ele responder no painel.
+         Vai por `--settings` desta chamada só, sem tocar a configuração geral.
+         CC-714: o modo Planejamento vence os dois: `plan` só lê. */
+      '--permission-mode', somenteLer ? 'plan' : permissao === PERGUNTE_ANTES ? 'default' : permissao,
+      ...(!somenteLer && permissao === PERGUNTE_ANTES ? ['--settings', configPergunteAntes(conversa)] : []),
+      /* CC-723: a ferramenta "perguntar", que pausa e espera a resposta dele no
+         painel. Liberada nesta chamada: a lista geral de ferramentas liberadas
+         dele não a conhece, e sem terminal o pedido seria recusado calado. */
+      ...(conversa ? ['--mcp-config', configPainelMcp(conversa), '--allowedTools', 'mcp__painel__perguntar'] : []),
       '--add-dir', cwd,
       ...(sessao ? ['--resume', sessao] : ['--session-id', novaSessao]),
       ...(pacote ? ['--append-system-prompt-file', pacote] : []),
@@ -90,8 +164,17 @@ export const AGENTES_GATE = {
      * external_directory (...); auto-rejecting`. Os anexos moram junto da
      * conversa, que é fora do projeto de propósito, então o caminho no texto
      * nunca ia passar. Ele mesmo achou isto mandando um print. */
-    args: ({ modelo, anexos = [] }) => [
+    /* CC-698: `--session` retoma a conversa dele, medido em 29/09 nesta VPS: o
+       primeiro turno guardou "4817", o segundo, retomado, respondeu "4817". O
+       número sai do `sessionID` de cada evento. Sessão que sumiu falha alto,
+       com "Session not found" na saída de erro. */
+    args: ({ modelo, sessao, somenteLer, flash, cwd, anexos = [] }) => [
       'run', '--model', modelo || 'opencode/big-pickle', '--format', 'json',
+      /* CC-716: Flash vai pelo servidor aberto, com a pasta explícita (sem
+         `--dir` ele trabalharia na pasta do servidor) e sem sessão. */
+      ...(flash ? ['--attach', OC_URL, '--dir', cwd] : sessao ? ['--session', sessao] : []),
+      /* CC-701: o revisor não edita. `plan` é o agente de leitura dele. */
+      ...(somenteLer ? ['--agent', 'plan'] : []),
       ...anexos.flatMap((a) => ['--file', a]),
     ],
   },
@@ -127,8 +210,10 @@ export const AGENTES_GATE = {
        um nível que ele não conhece é o mesmo risco de mandar modelo
        desconhecido, e por isso a lista é dele e não copiada do Claude. */
     esforcos: ['low', 'medium', 'high'],
-    args: ({ modelo, cwd, esforco, anexos = [] }) => [
+    args: ({ modelo, cwd, esforco, somenteLer, anexos = [] }) => [
       '--output-format', 'stream-json',
+      /* CC-701: o revisor não edita. `--mode plan` é o modo de leitura dele. */
+      ...(somenteLer ? ['--mode', 'plan'] : []),
       ...(cwd ? ['--add-dir', cwd] : []),
       /* A pasta dos anexos entra no espaço de trabalho dele pelo mesmo motivo
          do projeto: sem isso ele recusa ABRIR o print, e o turno morre. */
@@ -220,7 +305,7 @@ export const agenteDe = (nome) => AGENTES_GATE[nome] || AGENTES_GATE.claude
  * `texto` é o delta da conversa, já formatado como transcrição por `gate.mjs`.
  * `pacote` é o caminho de um arquivo com o contexto do projeto, ou `null`.
  */
-export function enviar({ agente = 'claude', texto, cwd, permissao = 'acceptEdits', sessao = null, modelo = null, esforco = null, anexos = [], pacote = null, pacoteTexto = null, binario = null }) {
+export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', conversa = null, somenteLer = false, flash = false, sessao = null, modelo = null, esforco = null, anexos = [], pacote = null, pacoteTexto = null, binario = null }) {
   if (!texto) throw new Error('mensagem vazia')
   if (!cwd) throw new Error('sem pasta: o agente não teria onde agir')
   /* Última porta antes de o processo subir: `spawn` com `cwd` que não existe
@@ -249,7 +334,10 @@ export function enviar({ agente = 'claude', texto, cwd, permissao = 'acceptEdits
     : texto
 
   const args = a.args({
-    sessao, novaSessao, permissao, cwd,
+    sessao, novaSessao, permissao, cwd, conversa, somenteLer,
+    /* Flash só vale com o servidor respondendo; senão vai do jeito normal e o
+       servidor sobe para a próxima. Sem sessão nos dois casos: é "sem memória". */
+    flash: flash && agente === 'opencode' && ocVivo,
     pacote: usaArquivo ? pacote : null,
     modelo: a.aceitaModelo ? (modelo || a.modeloPadrao || null) : null,
     /* Nível que aquele agente não conhece nunca é passado: derruba a chamada
@@ -265,8 +353,14 @@ export function enviar({ agente = 'claude', texto, cwd, permissao = 'acceptEdits
     /* A entrada é `pipe` porque o pedido vai por ela (medição 2). A saída e o
        erro vão para arquivo por `fd` cru, que é o que sobrevive ao fim deste
        processo e o que a tela lê enquanto a resposta cresce. */
+    /* CC-723: o opencode recebe a ferramenta "perguntar" por variável de
+       ambiente (medido em 30/09: perguntou, recebeu a escolha e seguiu). Só no
+       modo normal: no flash quem roda é o servidor aberto, que não lê a
+       configuração desta chamada. */
+    const comPergunta = agente === 'opencode' && conversa && !(flash && ocVivo)
     const filho = spawn(cmd, cmdArgs, {
       cwd, stdio: ['pipe', saida, erro], windowsHide: true,
+      ...(comPergunta ? { env: { ...process.env, OPENCODE_CONFIG_CONTENT: JSON.stringify({ mcp: { painel: { type: 'local', command: [process.execPath, MCP_PAINEL, '--coderoom', conversa], enabled: true } } }) } } : {}),
     })
     filho.on('error', () => { /* falha aberta: binário ausente não derruba o painel */ })
     filho.stdin.on('error', () => { /* o filho pode morrer antes de ler tudo */ })
@@ -314,7 +408,7 @@ const ehRecusaDeHook = (t) => /PreToolUse:.*hook error|hook error:/i.test(String
  *   `{event:'result',result:{response,usage}}` fechando com a resposta INTEIRA
  *   (por isso o fechamento vence o acúmulo, senão o texto sairia duplicado).
  */
-export function lerTurno(logFile, agente = 'claude', erroFile = null) {
+export function lerTurno(logFile, agente = 'agy', erroFile = null) {
   const eventos = linhas(logFile)
   const fora = {
     texto: '', ferramentas: [], custo: null, segundos: null,
@@ -367,6 +461,24 @@ export function lerTurno(logFile, agente = 'claude', erroFile = null) {
 
     /* ---- opencode ---- */
     if (o.type === 'text' && typeof o.part?.text === 'string') fora.texto += o.part.text
+    if (typeof o.sessionID === 'string' && o.sessionID) fora.sessao = fora.sessao || o.sessionID
+    /* O opencode não tem evento de resultado: cada etapa fecha com
+       `step_finish`, e a ÚLTIMA traz `reason: "stop"` (as do meio dizem
+       "tool-calls"). Sem ler isto, todo turno dele acabava pela morte do
+       processo e ficava "interrompido", e a sessão nunca era guardada, porque
+       ela só se guarda em turno pronto. Medido em 29/09. */
+    if (o.type === 'step_finish' && o.part) {
+      const k = o.part.tokens || {}
+      const c = fora.custo || { dolar: 0, entrada: 0, saida: 0, cacheLido: 0, cacheCriado: 0 }
+      fora.custo = {
+        dolar: c.dolar + (Number(o.part.cost) || 0),
+        entrada: c.entrada + (k.input || 0),
+        saida: c.saida + (k.output || 0),
+        cacheLido: c.cacheLido + (k.cache?.read || 0),
+        cacheCriado: c.cacheCriado + (k.cache?.write || 0),
+      }
+      if (o.part.reason === 'stop') { fora.terminou = true; fora.estado = 'pronto' }
+    }
     if (o.type === 'tool_use' && o.part?.tool) {
       fora.ferramentas.push({ nome: o.part.tool, alvo: o.part?.state?.input?.filePath || null })
     }
@@ -422,7 +534,7 @@ export function lerTurno(logFile, agente = 'claude', erroFile = null) {
   if (erroFile) {
     let e = ''
     try { e = fs.readFileSync(erroFile, 'utf8') } catch { /* pode não existir */ }
-    if (/No conversation found with session ID/i.test(e)) {
+    if (/No conversation found with session ID|Session not found/i.test(e)) {
       fora.sessaoPerdida = true
       /* Esta frase VENCE o erro genérico do fechamento, e não é detalhe: o
          fluxo fecha com "error_during_execution", que descreve o sintoma. A

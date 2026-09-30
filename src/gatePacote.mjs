@@ -187,7 +187,7 @@ function secaoAgentes(jobs, projeto) {
  * agy é o único que não recebe as pendências dele por mecanismo próprio, então
  * para ele vale acrescentar a linha que diz onde procurar.
  */
-export function montar(conversa, { agente = 'claude', jobs = null } = {}) {
+export function montar(conversa, { agente = 'agy', jobs = null } = {}) {
   const cwd = conversa?.cwd
   if (!cwd) throw new Error('sem pasta: não há projeto de que falar')
   /* A trava está na criação da conversa, mas esta é a leitura, e conversa
