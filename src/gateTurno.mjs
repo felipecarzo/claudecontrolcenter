@@ -35,6 +35,7 @@ import { modoDe } from './framework.mjs'
 import { DIR_PERMISSOES } from './decisao.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
+import crypto from 'node:crypto'
 
 /**
  * CC-723: tira da tela a pergunta e a permissão em aberto desta conversa.
@@ -42,7 +43,7 @@ import path from 'node:path'
  * ela limpar o que gravou; e resposta que terminou não tem pedido vivo. Medido
  * em 30/09: sem isto, a pergunta ficava pendurada numa conversa já apagada.
  */
-export function limparPedidos(id) {
+export function limparPedidos(id, { manterPastas = false } = {}) {
   const dir = DIR_PERMISSOES()
   let nomes = []
   try { nomes = fs.readdirSync(dir).filter((n) => /^[0-9a-f-]+\.json$/.test(n)) } catch { return 0 }
@@ -50,10 +51,49 @@ export function limparPedidos(id) {
   for (const nome of nomes) {
     try {
       const p = JSON.parse(fs.readFileSync(path.join(dir, nome), 'utf8'))
-      if (p?.coderoom === id) { fs.unlinkSync(path.join(dir, nome)); n++ }
+      if (p?.coderoom === id && !(manterPastas && p.tipo === 'pasta')) { fs.unlinkSync(path.join(dir, nome)); n++ }
     } catch { /* sendo gravado agora */ }
   }
   return n
+}
+
+/**
+ * CC-739: o opencode quis mexer fora do projeto e recusou sozinho. O pedido
+ * fica no painel ("liberar nesta conversa e repetir?") até ele responder: não
+ * há processo esperando, é o painel que libera e reenvia (ver `liberarPasta`).
+ */
+export function pedirPasta(id, padroes) {
+  const dir = DIR_PERMISSOES()
+  const agora = Date.now()
+  const pid = crypto.randomUUID().slice(0, 13)
+  try {
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, pid + '.json'), JSON.stringify({
+      id: pid, tipo: 'pasta', coderoom: id, sessao: 'gate:' + id, padroes,
+      ferramenta: 'pasta fora do projeto',
+      descricao: 'O opencode quis mexer fora da pasta do projeto e foi recusado. Liberar nesta conversa e repetir?',
+      comando: padroes.join(', '), em: agora, ate: agora + 24 * 3600 * 1000,
+    }))
+    return pid
+  } catch { return null }
+}
+
+/** Resposta ao pedido de pasta: libera na conversa e reenvia, ou só registra o não. */
+export function liberarPasta(pedidoId, sim) {
+  const arq = path.join(DIR_PERMISSOES(), pedidoId + '.json')
+  let p = null
+  try { p = JSON.parse(fs.readFileSync(arq, 'utf8')) } catch { return { ok: false, erro: 'esse pedido não existe mais' } }
+  if (p?.tipo !== 'pasta') return null
+  try { fs.unlinkSync(arq) } catch { /* já saiu */ }
+  const id = p.coderoom
+  const cab = lerCabecalho(id)
+  if (!cab) return { ok: false, erro: 'a conversa não existe mais' }
+  if (!sim) {
+    acrescentar(id, { tipo: 'sistema', texto: `Você não liberou ${p.padroes.join(', ')}. O opencode continua sem acesso fora do projeto.` })
+    return { ok: true }
+  }
+  gravarCabecalho(id, { opencodePastas: [...new Set([...(cab.opencodePastas || []), ...p.padroes])] })
+  return responder(id, { texto: `Liberei o acesso a ${p.padroes.join(', ')} nesta conversa. Tente de novo o que você ia fazer.`, agente: 'opencode' })
 }
 
 /* ============ CC-727: o nome curto da conversa, escrito pelo agy ============
@@ -298,6 +338,7 @@ export function responder(id, { texto, agente = 'agy', modelo = null, esforco = 
     permissao: c.cabecalho.permissao || 'acceptEdits',
     somenteLer: planejar,
     flash,
+    pastas: c.cabecalho.opencodePastas || [],
     conversa: id,
     sessao: flash ? null : c.cabecalho.sessoes?.[quem] || null,
     /* CC-718: avulso vai sem o estado do projeto. Medido em 30/09: a lista de
@@ -399,7 +440,8 @@ function acompanhar(id, t) {
     if (!acabou) return
 
     clearInterval(tique)
-    limparPedidos(id)
+    limparPedidos(id, { manterPastas: true })
+    if (t.agente === 'opencode' && r.pastasRecusadas?.length) pedirPasta(id, r.pastasRecusadas)
     emCurso.delete(id)
 
     /* O texto final vai para o disco antes do `fim`, senão o último trecho

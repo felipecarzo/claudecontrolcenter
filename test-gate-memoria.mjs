@@ -69,6 +69,13 @@ try {
     assert.equal(r.estado, 'pronto')
     assert.equal(r.custo.entrada, 150)
   })
+  passa('CC-739: pasta recusada pelo opencode e lida da saida de erro, sem cor', () => {
+    const log = path.join(casa, 'oc-pasta.jsonl'); const err = path.join(casa, 'oc-pasta.err')
+    fs.writeFileSync(log, ''); fs.writeFileSync(err, '\x1b[93m\x1b[1m! \x1b[0mpermission requested: external_directory (/tmp/*, /home/x/*); auto-rejecting\n')
+    const r = A.lerTurno(log, 'opencode', err)
+    assert.deepEqual(r.pastasRecusadas, ['/tmp/*', '/home/x/*'])
+    assert.ok(!/\x1b/.test(r.erro || ''))
+  })
   passa('sessao perdida do opencode e detectada', () => {
     const log = path.join(casa, 'oc2.jsonl'); const err = path.join(casa, 'oc2.err')
     fs.writeFileSync(log, ''); fs.writeFileSync(err, 'Error: Session not found\n')

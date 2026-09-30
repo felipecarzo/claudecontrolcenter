@@ -305,7 +305,7 @@ export const agenteDe = (nome) => AGENTES_GATE[nome] || AGENTES_GATE.claude
  * `texto` é o delta da conversa, já formatado como transcrição por `gate.mjs`.
  * `pacote` é o caminho de um arquivo com o contexto do projeto, ou `null`.
  */
-export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', conversa = null, somenteLer = false, flash = false, sessao = null, modelo = null, esforco = null, anexos = [], pacote = null, pacoteTexto = null, binario = null }) {
+export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', conversa = null, somenteLer = false, flash = false, pastas = [], sessao = null, modelo = null, esforco = null, anexos = [], pacote = null, pacoteTexto = null, binario = null }) {
   if (!texto) throw new Error('mensagem vazia')
   if (!cwd) throw new Error('sem pasta: o agente não teria onde agir')
   /* Última porta antes de o processo subir: `spawn` com `cwd` que não existe
@@ -358,9 +358,18 @@ export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', 
        modo normal: no flash quem roda é o servidor aberto, que não lê a
        configuração desta chamada. */
     const comPergunta = agente === 'opencode' && conversa && !(flash && ocVivo)
+    /* CC-739: as pastas fora do projeto que ele liberou nesta conversa.
+       Medido em 30/09: `permission.external_directory` com "allow" deixa o
+       opencode escrever em /tmp, e sem a regra ele recusa sozinho. */
+    const liberadas = agente === 'opencode' && pastas.length
+      ? { permission: { external_directory: Object.fromEntries(pastas.map((p) => [p, 'allow'])) } } : {}
+    const config = {
+      ...(comPergunta ? { mcp: { painel: { type: 'local', command: [process.execPath, MCP_PAINEL, '--coderoom', conversa], enabled: true } } } : {}),
+      ...liberadas,
+    }
     const filho = spawn(cmd, cmdArgs, {
       cwd, stdio: ['pipe', saida, erro], windowsHide: true,
-      ...(comPergunta ? { env: { ...process.env, OPENCODE_CONFIG_CONTENT: JSON.stringify({ mcp: { painel: { type: 'local', command: [process.execPath, MCP_PAINEL, '--coderoom', conversa], enabled: true } } }) } } : {}),
+      ...(Object.keys(config).length ? { env: { ...process.env, OPENCODE_CONFIG_CONTENT: JSON.stringify(config) } } : {}),
     })
     filho.on('error', () => { /* falha aberta: binário ausente não derruba o painel */ })
     filho.stdin.on('error', () => { /* o filho pode morrer antes de ler tudo */ })
@@ -545,6 +554,16 @@ export function lerTurno(logFile, agente = 'agy', erroFile = null) {
       fora.erro = fora.erro || e.trim().split('\n').slice(-1)[0]
     }
   }
+  /* A mensagem de erro vem da saída de erro do opencode, pintada de cor. Sem
+     isto ele via "[93m[1m! [0mpermission requested" cru na conversa (30/09). */
+  if (fora.erro) fora.erro = String(fora.erro).replace(/\x1b\[[0-9;]*m/g, '')
+  /* CC-739: as pastas fora do projeto que o opencode quis e recusou sozinho.
+     O `run` dele recusa na hora e não espera ninguém (lido no código dele,
+     versão 1.18.30), então o painel pergunta DEPOIS. */
+  let tudoErro = ''
+  try { tudoErro = erroFile ? fs.readFileSync(erroFile, 'utf8') : '' } catch { /* sem saída de erro */ }
+  fora.pastasRecusadas = [...new Set([...tudoErro.matchAll(/permission requested: external_directory \(([^)]*)\); auto-rejecting/g)]
+    .flatMap((m) => m[1].split(',').map((s) => s.trim()).filter(Boolean)))]
 
   return fora
 }
