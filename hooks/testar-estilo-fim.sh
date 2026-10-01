@@ -56,7 +56,8 @@ const erros = []
 if (d.respostas.length !== 1) erros.push("deveria haver uma medida, ha " + d.respostas.length)
 if (u.paragrafos !== 4) erros.push("paragrafos: esperava 4, veio " + u.paragrafos)
 if (!u.autodefesa) erros.push("nao contou a abertura de autodefesa (\"Nao fiz essa parte de proposito\")")
-if (!u.semMarcador) erros.push("resposta longa sem separador tinha que ser marcada")
+// desde 11/09 a régua é linha NA TELA: só falta separador acima de 12 linhas
+if (u.semMarcador !== (u.linhasNaTela > 12 && !u.marcador)) erros.push("falta de separador marcada fora da regra das 12 linhas na tela (" + u.linhasNaTela + " linhas)")
 if (u.trechos) erros.push("o TEXTO dele nao pode ir para o arquivo de medidas, so o numero")
 if (erros.length) { console.log("   " + erros.join("\n   ")); process.exit(1) }
 ' "$MEDIDAS"

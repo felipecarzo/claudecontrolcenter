@@ -1,0 +1,75 @@
+[
+  {
+    "id": "mnzs",
+    "nome": "mnzs",
+    "tipo": "estatico",
+    "repo": "/home/claudedev/projetos/VPS_mnzs",
+    "dir": ".",
+    "build": "npm run build",
+    "saida": "dist",
+    "destino": "/var/www/mnzs",
+    "url": "https://mnzs.carzo.com.br/",
+    "usuarioBuild": "claudedev"
+  },
+  {
+    "id": "ahtleta-running",
+    "nome": "Ahtleta Running",
+    "tipo": "estatico",
+    "repo": "/home/claudedev/projetos/VPS_ahtleta-corrida",
+    "dir": ".",
+    "build": "npx expo export -p web --output-dir dist-running",
+    "saida": "dist-running",
+    "destino": "/var/www/ahtleta-running",
+    "url": "https://running.ahtleta.com.br/",
+    "usuarioBuild": "claudedev"
+  },
+  {
+    "id": "ahtleta-climbing",
+    "nome": "Ahtleta Climbing",
+    "tipo": "estatico",
+    "repo": "/home/claudedev/projetos/VPS_ahtleta-escalada",
+    "dir": ".",
+    "build": "npx expo export -p web --output-dir dist-climbing",
+    "env": { "EXPO_PUBLIC_CONTAS_DEMO": "1" },
+    "saida": "dist-climbing",
+    "destino": "/var/www/ahtleta-climbing",
+    "url": "https://climbing.ahtleta.com.br/",
+    "usuarioBuild": "claudedev"
+  },
+  {
+    "id": "entreg4-landing",
+    "nome": "entreg4 (página de venda)",
+    "tipo": "estatico",
+    "repo": "/home/claudedev/projetos/VPS_entreg4",
+    "dir": "landing",
+    "build": null,
+    "saida": "site",
+    "destino": "/var/www/entreg4-landing",
+    "url": "https://entreg4.carzo.com.br/",
+    "usuarioBuild": "claudedev"
+  },
+  {
+    "id": "entreg4-app-holding",
+    "nome": "entreg4 (página provisória do app)",
+    "tipo": "estatico",
+    "repo": "/home/claudedev/projetos/VPS_entreg4",
+    "dir": "landing",
+    "build": null,
+    "saida": "app-holding",
+    "destino": "/var/www/entreg4-app-holding",
+    "url": "https://app.entreg4.carzo.com.br/",
+    "usuarioBuild": "claudedev"
+  },
+  {
+    "id": "lev4-landing",
+    "nome": "lev4 (página de venda)",
+    "tipo": "estatico",
+    "repo": "/home/claudedev/projetos/VPS_renanMarchon",
+    "dir": ".",
+    "build": null,
+    "saida": "landing",
+    "destino": "/var/www/lev4-landing",
+    "url": "https://lev4.carzo.com.br/",
+    "usuarioBuild": "claudedev"
+  }
+]

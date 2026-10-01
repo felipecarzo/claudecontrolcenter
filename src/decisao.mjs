@@ -103,8 +103,12 @@ export function proximaManha(agora = Date.now()) {
 }
 
 /** O cartão continua guardado? Puro. */
-export function depoisVale(d, marca, agora = Date.now()) {
+export function depoisVale(d, marca, agora = Date.now(), { pergunta = false } = {}) {
   if (!d) return false
+  /* 01/10, escolha dele: "pergunta nova volta". Uma sessão em "para depois"
+     que faz pergunta NOVA (a fala mudou desde que ele adiou) está travada
+     esperando decisão: volta para Sessões, em qualquer modo. */
+  if (pergunta && (d.marca || '') !== (marca || '')) return false
   if (d.modo === 'mexer') return (d.marca || '') === (marca || '')
   if (d.modo === 'amanha') return agora < (d.ate || 0)
   return true
@@ -312,6 +316,94 @@ export async function parar({ conversa }, deps = DEPS) {
 }
 
 /**
+ * CC-757, pedido dele em 30/09: trocar o modelo e o esforço da sessão pelo
+ * cartão. O Claude Code aceita os dois como comando numa sessão aberta
+ * (`/model <apelido>` e `/effort <nível>`, lidos do programa instalado,
+ * 2.1.231), então isto digita o comando no terminal dela, como o campo de
+ * mensagem já faz. As duas listas são FECHADAS: o que a tela manda nunca vira
+ * texto livre no terminal.
+ *
+ * ⚠️ Escrito e testado com terminal simulado. NÃO foi provado contra um Claude
+ * de verdade: o menu de comandos com barra pode pegar o Enter antes do
+ * comando. Por isso a resposta diz `confirmado` só quando a tela mostra o
+ * valor novo; sem isso volta com aviso, nunca com sucesso afirmado.
+ */
+/* 30/09, pedido dele: "tem que ter todos os modelos". Os apelidos (sempre o
+   mais novo de cada família) e os nomes completos que o Claude Code 2.1.231
+   conhece, lidos do programa. Qual a conta aceita só o terminal diz: se ele
+   recusar, a troca volta com aviso, nunca como feita. */
+export const MODELOS_SESSAO = ['fable', 'opus', 'sonnet', 'haiku',
+  'claude-fable-5-1', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5-5', 'claude-sonnet-5', 'claude-haiku-4-5',
+  'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'claude-sonnet-4-5']
+export const ESFORCOS_SESSAO = ['low', 'medium', 'high', 'xhigh', 'max']
+
+/**
+ * Modelo e esforço que a sessão está usando AGORA: os da última resposta
+ * gravada no histórico (`model` e `effort`, medidos em 30/09). Lê só o fim do
+ * arquivo, com cache por tamanho, porque roda a cada leitura da tela.
+ */
+const cacheConfig = new Map()
+export function configAtual(arquivo) {
+  let st = null
+  try { st = fs.statSync(arquivo) } catch { return null }
+  const c = cacheConfig.get(arquivo)
+  if (c && c.tam === st.size) return c.valor
+  let valor = null
+  let fd = null
+  try {
+    fd = fs.openSync(arquivo, 'r')
+    const n = Math.min(st.size, 256 * 1024)
+    const buf = Buffer.alloc(n)
+    fs.readSync(fd, buf, 0, n, st.size - n)
+    const linhas = buf.toString('utf8').split('\n')
+    for (let i = linhas.length - 1; i >= 0 && !valor; i -= 1) {
+      if (!linhas[i].includes('"type":"assistant"')) continue
+      let o = null; try { o = JSON.parse(linhas[i]) } catch { continue }
+      const modelo = o?.message?.model
+      if (!modelo || modelo === '<synthetic>') continue
+      valor = { modelo, esforco: o.effort || o.perTurnEffort || null }
+    }
+  } catch { valor = null } finally { if (fd !== null) try { fs.closeSync(fd) } catch { /* já fechado */ } }
+  cacheConfig.set(arquivo, { tam: st.size, valor })
+  return valor
+}
+
+export async function trocarConfig({ conversa, modelo = null, esforco = null }, deps = DEPS) {
+  if (!conversa) return { ok: false, erro: 'faltou dizer qual conversa' }
+  if (!modelo && !esforco) return { ok: false, erro: 'faltou dizer o modelo ou o esforço' }
+  if (modelo && !MODELOS_SESSAO.includes(modelo)) return { ok: false, erro: 'modelo fora da lista' }
+  if (esforco && !ESFORCOS_SESSAO.includes(esforco)) return { ok: false, erro: 'esforço fora da lista' }
+  const sessoes = await deps.sessoes().catch(() => ({}))
+  const aqui = Object.values(sessoes || {}).find((s) => s?.conversa === conversa)
+  if (!aqui?.sessao) return { ok: false, erro: 'essa conversa não está num terminal aberto pelo painel: troque direto nela' }
+  if (!telaNoCampo(await deps.capturar(aqui.sessao, { cor: true }))) {
+    return { ok: false, erro: 'a sessão não está esperando texto agora (está trabalhando ou num menu), então não mudei nada' }
+  }
+  const feitos = []
+  for (const [comando, valor] of [['model', modelo], ['effort', esforco]]) {
+    if (!valor) continue
+    const r1 = await deps.escrever(aqui.sessao, `/${comando} ${valor}`)
+    if (!r1?.ok) return { ok: false, erro: 'o terminal recusou o comando', feitos }
+    await deps.esperar(300)
+    const r2 = await deps.apertar(aqui.sessao, 'Enter')
+    if (!r2?.ok) return { ok: false, erro: 'o terminal recusou o Enter', feitos }
+    let visto = false
+    for (let i = 0; i < 8 && !visto; i += 1) {
+      await deps.esperar(500)
+      const tela = String(await deps.capturar(aqui.sessao) || '')
+      visto = new RegExp(`(set|changed|now using)[^\\n]{0,60}\\b${valor}\\b|\\b${valor}\\b[^\\n]{0,30}(set|selected)`, 'i').test(tela)
+    }
+    feitos.push({ comando, valor, confirmado: visto })
+    // duas trocas seguidas: a segunda só entra com o campo livre de novo
+    if (modelo && esforco && comando === 'model') await deps.esperar(800)
+  }
+  const naoVistos = feitos.filter((f) => !f.confirmado)
+  return naoVistos.length
+    ? { ok: true, sessao: aqui.sessao, feitos, aviso: 'mandei o comando, mas a tela não mostrou a confirmação: confira na sessão' }
+    : { ok: true, sessao: aqui.sessao, feitos }
+}
+
+/**
  * CC-609: a última ação do agente (fora AskUserQuestion) ainda sem resultado.
  * É o que o terminal está pedindo para permitir. Puro.
  */
@@ -329,6 +421,17 @@ export function acaoPendente(texto) {
   return ultima && !feitas.has(ultima.id) ? ultima : null
 }
 
+/* 01/10, medido gravando a tela a cada segundo: o texto de um pedido JÁ
+   respondido continua visível mais acima (na saída de um comando, por exemplo),
+   e a leitura da tela inteira o achava. O pedido de verdade é a caixa de baixo,
+   depois da última linha divisória; sem divisória, vale a tela toda. */
+export function caixaDeBaixo(tela) {
+  const linhas = String(tela || '').split('\n')
+  let i = linhas.length - 1
+  while (i >= 0 && !/^\s*─{20,}\s*$/.test(linhas[i])) i -= 1
+  return i < 0 ? linhas.join('\n') : linhas.slice(i + 1).join('\n')
+}
+
 /**
  * CC-609: a tecla do menu de permissão, lida da TELA. Medido em 27/09 (versão
  * da VPS): "Do you want to proceed?", "1. Yes", "2. Yes, and switch to auto
@@ -336,7 +439,7 @@ export function acaoPendente(texto) {
  * again"), então o número sai da tela e nunca é fixo. Puro; null se não é o menu.
  */
 export function teclaDaPermissao(tela, decisao) {
-  const t = String(tela || '')
+  const t = caixaDeBaixo(tela)
   /* O pedido de rede do sandbox não tem "Esc to cancel" (o esc vem dentro da
      opção 3), mas tem a pergunta "Do you want to…". Um dos dois basta. */
   if (!/Esc to cancel|Do you want to/i.test(t)) return null
@@ -512,19 +615,39 @@ export async function responder({ conversa, id, respostas }, deps = DEPS) {
     return { ok: false, erro: 'a pergunta não está na tela da sessão agora, então não apertei nada' }
   }
 
+  /* 30/09, print dele: "a pergunta 2 não apareceu na tela; parei no meio".
+     Medido no terminal: na pergunta com PRÉVIA desenhada ao lado das opções,
+     o número só move o cursor e é o Enter que escolhe; a tela ficou parada na
+     pergunta 1. Em vez de adivinhar pelo formato, confere: se a tela ainda
+     está na mesma pergunta (e não na revisão), manda UM Enter e confere de
+     novo. A revisão tem texto próprio, e ali um Enter a mais enviaria tudo. */
+  const naRevisao = (t) => /Review your answers|Submit answers|Ready to submit your answers/.test(String(t || ''))
+  const aindaNa = (t, i) => !naRevisao(t) && telaMostra(t, pend.perguntas[i].pergunta)
+  const empurrar = async (anterior) => {
+    if (anterior < 0 || pend.perguntas[anterior].multipla) return
+    if (aindaNa(await deps.capturar(aqui.sessao), anterior)) { await deps.apertar(aqui.sessao, 'Enter'); await deps.esperar(500) }
+  }
+
   let atual = 0
   for (const p of passos) {
     /* Antes da primeira tecla de cada pergunta seguinte, a tela tem que ter
        avançado para ela. Sem isso, um menu que não avançou recebe a resposta
        da pergunta 2 como se fosse da 1. */
     if (p.pergunta !== undefined && p.pergunta !== atual) {
+      const anterior = atual
       atual = p.pergunta
       await deps.esperar(500)
-      if (!telaMostra(await deps.capturar(aqui.sessao), pend.perguntas[atual].pergunta)) {
+      let tela = await deps.capturar(aqui.sessao)
+      if (!telaMostra(tela, pend.perguntas[atual].pergunta) || aindaNa(tela, anterior)) { await empurrar(anterior); tela = await deps.capturar(aqui.sessao) }
+      if (!telaMostra(tela, pend.perguntas[atual].pergunta)) {
         return { ok: false, erro: `a pergunta ${atual + 1} não apareceu na tela; parei no meio, confira a sessão` }
       }
     }
-    if (p.revisao) await deps.esperar(500)
+    if (p.revisao) {
+      await deps.esperar(500)
+      if (!naRevisao(await deps.capturar(aqui.sessao))) await empurrar(pend.perguntas.length - 1)
+      if (!naRevisao(await deps.capturar(aqui.sessao))) return { ok: false, erro: 'respondi, mas a tela de revisão não apareceu; parei antes de enviar, confira a sessão' }
+    }
     const r = p.texto !== undefined ? await deps.escrever(aqui.sessao, p.texto) : await deps.apertar(aqui.sessao, p.tecla)
     if (!r?.ok) return { ok: false, erro: `o terminal recusou a tecla: ${r?.out || 'sem motivo'}` }
     await deps.esperar(250)

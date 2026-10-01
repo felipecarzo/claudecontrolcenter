@@ -42,10 +42,20 @@ export function operacoes(arquivo, limite = LIMITE_PADRAO) {
   const saida = []
   for (const linha of bruto.split('\n')) {
     // filtro barato antes do parse: são 410 linhas de fila em 20 mil
-    if (!linha.includes('"queue-operation"')) continue
+    /* CC-776, medido em 01/10: mensagem que ele manda enquanto eu trabalho tem
+       `remove` sem `dequeue`, mas CHEGA, como anexo `queued_command` no meio do
+       turno. Sem contar isso como entrega, a trava cobrava citar o que eu já
+       tinha recebido e atendido. */
+    const anexo = linha.includes('"queued_command"')
+    if (!anexo && !linha.includes('"queue-operation"')) continue
     try {
       const d = JSON.parse(linha)
       if (d?.type === 'queue-operation' && d.content) saida.push(d)
+      else if (anexo && d?.attachment?.type === 'queued_command') {
+        const pr = d.attachment.prompt
+        const content = typeof pr === 'string' ? pr : Array.isArray(pr) ? pr.map((x) => x?.text || '').join('') : ''
+        if (content) saida.push({ type: 'queue-operation', operation: 'dequeue', content, timestamp: d.timestamp, entregueNoMeio: true })
+      }
     } catch { /* linha cortada no fim do arquivo */ }
   }
   return saida
@@ -158,4 +168,34 @@ export function respostasDesde(arquivo, desde, limite = LIMITE_PADRAO) {
 export function perdidasDesde(arquivo, desde, opcoes = {}) {
   const corte = typeof desde === 'number' ? desde : Date.parse(desde || '') || 0
   return perdidas(arquivo, opcoes).filter((p) => (Date.parse(p.quando || '') || 0) >= corte)
+}
+
+/* CC-776: ele dita por voz e digita no telefone ("m,as coloca no acklog e
+   segue"). Eu cito corrigindo ("coloca no backlog e segue"), e a comparação de
+   palavra exata nunca casava: a trava cobrava a mesma frase a cada turno por 2
+   horas. Palavra de 4 letras ou mais casa com uma letra de diferença, ou quando
+   uma contém a outra ("acklog" dentro de "backlog"). */
+function distancia1(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return false
+  let i = 0, j = 0, dif = 0
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i += 1; j += 1; continue }
+    if ((dif += 1) > 1) return false
+    if (a.length > b.length) i += 1; else if (b.length > a.length) j += 1; else { i += 1; j += 1 }
+  }
+  return dif + (a.length - i) + (b.length - j) <= 1
+}
+export const palavraCasa = (a, b) => a === b || (Math.min(a.length, b.length) >= 4 && (a.includes(b) || b.includes(a) || distancia1(a, b)))
+/** Citada = um trecho de até 5 palavras seguidas do texto dele aparece em sequência na minha resposta. */
+export function citou(dele, minha) {
+  if (!dele.length) return true
+  const k = Math.min(5, dele.length)
+  for (let i = 0; i + k <= dele.length; i += 1) {
+    for (let j = 0; j + k <= minha.length; j += 1) {
+      let ok = true
+      for (let t = 0; t < k && ok; t += 1) ok = palavraCasa(dele[i + t], minha[j + t])
+      if (ok) return true
+    }
+  }
+  return false
 }

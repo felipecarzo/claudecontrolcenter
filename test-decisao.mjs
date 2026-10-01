@@ -130,7 +130,43 @@ await t('menu que não avança para a pergunta 2 para no meio, sem mandar a resp
   const r = await responder({ conversa: 'c1', id: 'a1', respostas: [{ opcao: 0 }, { opcao: 1 }] }, f.deps)
   assert.equal(r.ok, false)
   assert.match(r.erro, /pergunta 2 não apareceu/)
-  assert.deepEqual(f.log, ['1'])
+  assert.deepEqual(f.log, ['1', 'Enter'], 'tenta UM Enter (pergunta com prévia) e para se ainda não avançou')
+})
+
+/* 30/09, o caso real (print dele): na pergunta com prévia o número só move o
+   cursor; o Enter escolhe. O painel confere a tela e manda o Enter só quando
+   ela não avançou, e nunca na tela de revisão. */
+await t('pergunta com prévia: o número move, o Enter escolhe; revisão só recebe o 1', async () => {
+  let tela = 'Fruta?\n❯ 1. Maca'
+  const log = []
+  const t0 = pergunta('a1', DUAS)
+  let txt = t0
+  const deps = {
+    sessoes: async () => ({ proj: { sessao: 's', conversa: 'c1' } }),
+    lerTranscrito: () => txt,
+    capturar: async () => tela,
+    apertar: async (s, k) => {
+      log.push(k)
+      if (k === 'Enter' && /Fruta/.test(tela)) tela = 'Bicho?\n❯ 1. Gato' // só o Enter avança, como no terminal real
+      else if (k === 'Enter' && /Bicho/.test(tela)) tela = 'Review your answers\n❯ 1. Submit answers'
+      else if (k === '1' && /Submit answers/.test(tela)) txt = `${t0}\n${resposta('a1')}`
+      return { ok: true }
+    },
+    escrever: async () => ({ ok: true }),
+    esperar: async () => {},
+  }
+  const r = await responder({ conversa: 'c1', id: 'a1', respostas: [{ opcao: 1 }, { opcao: 0 }] }, deps)
+  assert.equal(r.ok, true, r.erro)
+  assert.deepEqual(log, ['2', 'Enter', '1', 'Enter', '1'])
+})
+
+await t('sem a tela de revisão depois da última, para antes de mandar o 1', async () => {
+  const f = falso({ tela: (log) => (log.includes('1') ? 'Bicho?\n❯ 1. Gato' : 'Fruta?'), transcrito: pergunta('a1', DUAS), confirma: false })
+  f.deps.apertar = async (s, k) => { f.log.push(k); return { ok: true } }
+  const r = await responder({ conversa: 'c1', id: 'a1', respostas: [{ opcao: 0 }, { opcao: 0 }] }, f.deps)
+  assert.equal(r.ok, false)
+  assert.match(r.erro, /revisão não apareceu/)
+  assert.equal(f.log.filter((k) => k === '1').length, 2, 'o 1 da revisão não foi mandado')
 })
 
 await t('teclas enviadas sem confirmação no transcrito: não finge sucesso', async () => {
@@ -148,6 +184,11 @@ await t('CC-638: o pedido de rede do sandbox é lido da tela, e permitir aperta 
   assert.equal(pr.detalhe, 'Host: overpass-api.de')
   assert.equal(teclaDaPermissao(TELA, 'sim'), '1')
   assert.equal(teclaDaPermissao(TELA, 'nao'), '3')
+  // 01/10, medido: pedido já respondido cujo texto ficou visível mais acima não é pedido
+  const L = '─'.repeat(40)
+  const VELHO = ' Do you want to proceed?\n ❯ 1. Yes\n   3. No\n Esc to cancel\n\n· Nucleating…\n' + L + '\n❯ \n' + L + '\n  ⏵⏵ accept edits on'
+  assert.equal(teclaDaPermissao(VELHO, 'sim'), null, 'o texto velho acima da caixa de digitar não conta')
+  assert.equal(teclaDaPermissao('saída\n' + L + '\n Bash command\n\n Do you want to proceed?\n ❯ 1. Yes\n   2. Yes, and switch to auto mode\n   3. No\n\n Esc to cancel', 'sim'), '1', 'o pedido na caixa de baixo continua valendo')
   assert.equal(permissaoDaTela('terminei\n❯ '), null)
   // CC-640: a tela real do coepiloto, com a dica quebrada e o comando com "│".
   const BASH = '────────────────\n Bash command (unsandboxed)\n Tip: auto mode handles these prompts for you — choose "switch to auto mode"\n below\n   │ cd /tmp/x &&\n   │ python -c "print(1)"\n   Fotografa a barra de navegação com os ícones\n Do you want to proceed?\n ❯ 1. Yes\n   2. Yes, and switch to auto mode\n   3. No\n Esc to cancel · Tab to amend'
@@ -187,6 +228,10 @@ await t('CC-630: para depois nas três formas de voltar, e trazer de volta', asy
   assert.equal(adiar({ id: 'd', modo: 'qualquer' }, arq, agora).ok, false)
   const d = lerDepois(arq)
   assert.equal(depoisVale(d.a, 'outra', agora + 9e9), true, 'manual: só volta quando ele trouxer')
+  // 01/10, escolha dele: pergunta nova tira de "para depois", em qualquer modo; a mesma pergunta continua guardada
+  assert.equal(depoisVale(d.a, 'outra', agora, { pergunta: true }), false, 'manual: pergunta nova volta')
+  assert.equal(depoisVale(d.c, 'outra', agora + 3600e3, { pergunta: true }), false, 'amanhã: pergunta nova volta antes das 8h')
+  assert.equal(depoisVale(d.b, 'm1', agora, { pergunta: true }), true, 'a mesma pergunta que ele adiou continua guardada')
   assert.equal(depoisVale(d.b, 'm1', agora), true)
   assert.equal(depoisVale(d.b, 'm2', agora), false, 'mexer: fala nova traz de volta')
   assert.equal(depoisVale(d.c, 'm1', agora + 3600e3), true)
@@ -269,6 +314,50 @@ await t('mensagem livre: só escreve com a tela no campo de digitar', async () =
   // com pergunta aberta, manda usar os botões
   const r3 = await enviarMensagem({ conversa: 'c1', texto: 'oi' }, { ...deps, lerTranscrito: () => pergunta('a1', COR) })
   assert.match(r3.erro, /botões da pergunta/)
+})
+
+/* 30/09: o modelo e o esforço atuais saem da última resposta do histórico. */
+await t('modelo e esforço atuais: os da última resposta, pulando a sintética', async () => {
+  const { configAtual } = await import('./src/decisao.mjs')
+  const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
+  const arq = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cfg-')), 'c.jsonl')
+  const L = (o) => JSON.stringify(o)
+  fs.writeFileSync(arq, [
+    L({ type: 'assistant', message: { model: 'claude-opus-5-5' }, effort: 'high' }),
+    L({ type: 'user', message: { content: 'oi' } }),
+    L({ type: 'assistant', message: { model: 'claude-sonnet-5-5' }, effort: 'medium' }),
+    L({ type: 'assistant', message: { model: '<synthetic>' } }),
+  ].join('\n') + '\n')
+  assert.deepEqual(configAtual(arq), { modelo: 'claude-sonnet-5-5', esforco: 'medium' })
+  fs.appendFileSync(arq, L({ type: 'assistant', message: { model: 'claude-haiku-4-5' }, effort: 'low' }) + '\n')
+  assert.deepEqual(configAtual(arq), { modelo: 'claude-haiku-4-5', esforco: 'low' }, 'arquivo cresceu, o cache não segura o valor velho')
+  assert.equal(configAtual(arq + '.nao'), null)
+})
+
+/* CC-757: trocar modelo e esforço pelo cartão, com listas fechadas. */
+await t('trocar modelo e esforço: só da lista, digita o comando e confere pela tela', async () => {
+  const { trocarConfig } = await import('./src/decisao.mjs')
+  const log = []; let tela = 'pronto\n❯ '
+  const deps = {
+    sessoes: async () => ({ p: { sessao: 's', conversa: 'c1' } }),
+    capturar: async () => tela,
+    escrever: async (s, x) => { log.push(x); return { ok: true } },
+    apertar: async (s, k) => { log.push(k); const ult = log[log.length - 2] || ''; tela = /model/.test(ult) ? '⎿ Set model to Opus\n❯ ' : '⎿ Set effort level to high\n❯ '; return { ok: true } },
+    esperar: async () => {},
+  }
+  const r = await trocarConfig({ conversa: 'c1', modelo: 'opus', esforco: 'high' }, deps)
+  assert.equal(r.ok, true); assert.equal(r.aviso, undefined, 'as duas confirmadas pela tela')
+  assert.deepEqual(log, ['/model opus', 'Enter', '/effort high', 'Enter'])
+  // fora da lista: nada é digitado
+  const antes = log.length
+  assert.match((await trocarConfig({ conversa: 'c1', modelo: 'opus; rm -rf /' }, deps)).erro, /fora da lista/)
+  assert.match((await trocarConfig({ conversa: 'c1', esforco: 'turbo' }, deps)).erro, /fora da lista/)
+  assert.equal(log.length, antes, 'recusa antes de tocar no terminal')
+  // sessão trabalhando (sem o campo livre): não mexe
+  assert.match((await trocarConfig({ conversa: 'c1', modelo: 'sonnet' }, { ...deps, capturar: async () => 'Enter to confirm' })).erro, /não mudei nada/)
+  // tela sem confirmação: sucesso com aviso, nunca afirmado
+  const semEco = await trocarConfig({ conversa: 'c1', modelo: 'haiku' }, { ...deps, apertar: async () => ({ ok: true }), capturar: async () => '❯ ' })
+  assert.equal(semEco.ok, true); assert.match(semEco.aviso, /não mostrou a confirmação/)
 })
 
 await t('parar manda Esc e confirma pela tela; conversa fora do painel é recusada', async () => {

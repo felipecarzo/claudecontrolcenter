@@ -47,6 +47,7 @@ const arquivo = dados?.transcript_path || dados?.transcriptPath
 if (!arquivo) sair()
 
 const F = await import(urlDeModulo(AQUI, '../src/fila.mjs')).catch(() => null)
+const { citou } = F || {}
 const E = await import(urlDeModulo(AQUI, '../src/estilo.mjs')).catch(() => null)
 if (!F || !E) sair()
 
@@ -77,17 +78,8 @@ const normal = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
    pra modo" não casava com a janela "podemos criar hook pra modo". O caso passou
    a falhar no próprio teste, o que é o comportamento certo dele. */
 const palavrasDe = (s) => normal(s).split(/[^a-z0-9]+/).filter((p) => p.length > 2)
-const respostaCrua = palavrasDe(resposta).join(' ')
 
-const citada = (texto) => {
-  const palavras = palavrasDe(texto)
-  if (!palavras.length) return true
-  if (palavras.length < 5) return respostaCrua.includes(palavras.join(' '))
-  for (let i = 0; i + 5 <= palavras.length; i += 1) {
-    if (respostaCrua.includes(palavras.slice(i, i + 5).join(' '))) return true
-  }
-  return false
-}
+const citada = (texto) => citou(palavrasDe(texto), palavrasDe(resposta))
 
 const naoCitadas = perdidas.filter((p) => !citada(p.texto))
 if (!naoCitadas.length) sair()

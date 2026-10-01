@@ -58,6 +58,16 @@ if (!arquivo) sair()
 const texto = E.respostaDoTurno(arquivo) || E.ultimaResposta(arquivo)
 if (!texto) sair()
 
+/* 01/10, quinto falso positivo: o registro cortado no instante da reclamação
+   tinha a resposta inteira, com o separador, mas na hora do gancho o último
+   pedaço ainda não estava no disco. O Claude Code entrega a resposta final no
+   próprio pedido do gancho (`last_assistant_message`), sem corrida nenhuma:
+   se ela já traz o separador, não há o que cobrar. */
+const final = dados?.last_assistant_message
+const textoFinal = typeof final === 'string' ? final
+  : Array.isArray(final?.content) ? final.content.map((b) => b?.text || '').join('\n') : ''
+if (textoFinal && !E.medir(textoFinal).semMarcador && /\/\/ resumo \/\//.test(textoFinal)) sair()
+
 /* A mesma medição que a aba de estilo usa: uma conta só, para a tela e o hook
    nunca discordarem sobre a mesma resposta. */
 let m = E.medir(texto)
