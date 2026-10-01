@@ -256,6 +256,43 @@ caminho só, com o quinto no fim.
 5. **Conferir de ponta a ponta** e mostrar o resultado na tela: mandou, chegou,
    a VPS respondeu, e o contrato bate.
 
+### A forma que ele quer, dita em 30/09 (CC-753)
+
+Os cinco passos acima ainda pressupõem o repositório e o Node na máquina. Ele
+quer o contrário, nas palavras dele (ditado por voz):
+
+> *"1 programa que eu instalasse no Windows e virasse 1 serviço automático (…)
+> se eu comprar 1 computador amanhã, pra instalar o cockpit nele pra pegar os
+> projetos dele e funcionar (…) eu queria executar 1 instalável, rodar o
+> servidor e acabou."*
+
+E o passo seguinte, também dele: *"no futuro (…) 1 programa separado, do
+cockpit fora do navegador pra funcionar outras permissões melhores (…) o
+programinha com o visualizador do cockpit no computador, rodando 1 serviço ao
+mesmo tempo, é 1 executável, eu não preciso programar o cockpit no computador"*.
+
+### O Cockpit como central, com a controladora dele (CC-769, 30/09)
+
+Ditado por voz, "muito importante", nas palavras dele:
+
+> *"Cada cartão ter como eu clicar e ele ir pra aba dele no meu computador. Eu
+> uso 1 controladora (…) eu rodo 1 serviço nela que permite que (…) com 6
+> botões eu ando por vários desktops, cada desktop é 1 projeto. E aí eu queria
+> que dentro do cockpit, eu clicar num botão dentro do cartão, nas sessões ou em
+> qualquer lugar, pra que o meu controlador receba 1 comando pra ir pro desktop
+> que controla esse projeto. E aí (…) criar 1 popup em algum canto da tela, que
+> se eu clicar ali eu volto pro cockpit. (…) eu reconfiguro pra algum botão ser
+> sempre ir e voltar pro cockpit. Então o cockpit é sempre meio que o central."*
+
+Ele disse que, se der para fazer com o Cockpit do jeito que está hoje, já
+ajuda muito, antes do instalável. O primeiro passo técnico é descobrir que
+comando o serviço da controladora aceita para trocar de desktop (ele disse o
+nome por voz; conferir com ele qual é o programa).
+
+O repositório continua existindo para desenvolver e testar; **o produto na
+máquina dele é o instalável**. Visão registrada, sem data e sem desenho técnico
+ainda: é trabalho grande e pede decisão dele sobre o caminho antes de começar.
+
 ## O que este desenho NÃO resolve
 
 - **A pasta velha.** Enquanto houver duas cópias do produto na mesma máquina, o

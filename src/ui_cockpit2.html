@@ -408,7 +408,7 @@
        nos temas saltado, como os outros campos (CC-641, CC-642). */
     .n-block textarea { background: var(--card) !important; border-radius: 12px !important; line-height: 1.55; font-size: 14px; }
     :root[data-tema] .n-block textarea { background: var(--bg) !important; border-color: transparent !important; box-shadow: var(--neu-fora); }
-    /* CC-677: barra de responder sessões, só a partir de 1700 px. */
+    /* CC-677: barra de responder sessões; CC-748: em toda largura (ver abaixo). */
     .lat-btn { display: none !important; }
     #lateral-dir { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 384px; overflow-y: auto; padding: 18px 16px 24px; background: var(--bg); border-left: 1px solid var(--border); z-index: 35; box-sizing: border-box; }
     #lateral-dir .c2-aviso { margin-bottom: 12px; }
@@ -427,7 +427,34 @@
       body.lateral-on .main-content { margin-right: 384px; }
       body.lateral-on #lateral-dir { display: block; }
       body.lateral-on .lat-btn { color: var(--accent); }
+      #lat-fundo { display: none; }
     }
+    /* CC-748: abaixo de 1700 px a barra é gaveta que desliza por cima (regra 1:
+       nada surge do nada), com fundo escurecido que fecha ao tocar. */
+    @media (max-width: 1699px) {
+      .lat-btn { display: inline-flex !important; }
+      #lateral-dir { display: block; width: min(420px, 92vw); transform: translateX(105%); visibility: hidden; transition: transform .28s ease, visibility 0s linear .28s; z-index: 70; box-shadow: -14px 0 34px rgba(0,0,0,.18); overscroll-behavior: contain; }
+      body.lat-gaveta #lateral-dir { transform: none; visibility: visible; transition: transform .28s ease; }
+      body.lat-gaveta .lat-btn { color: var(--accent); }
+      #lat-fundo { position: fixed; inset: 0; background: rgba(0,0,0,.28); z-index: 69; opacity: 0; pointer-events: none; transition: opacity .28s; }
+      body.lat-gaveta #lat-fundo { opacity: 1; pointer-events: auto; }
+    }
+    /* 30/09: o controle único de filtros, em uma peça (botão principal + × + ⚙). */
+    .fil-grupo { display: inline-flex; align-items: stretch; max-width: 100%; border-radius: 11px; background: var(--card); box-shadow: var(--neu-fora, 0 1px 3px rgba(0,0,0,.12)); overflow: hidden; vertical-align: middle; }
+    .fil-grupo > button { border: 0; background: transparent; color: var(--text-main); font: inherit; font-size: 12.5px; min-height: 36px; cursor: pointer; transition: background .2s, color .2s; }
+    .fil-grupo > button:hover { background: var(--card-hover); }
+    .fil-principal { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px; min-width: 0; }
+    .fil-principal.on { color: var(--accent); }
+    .fil-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+    .fil-seta { display: inline-block; font-size: 10px; color: var(--text-dim); transition: transform .25s; }
+    .fil-principal.on .fil-seta { transform: rotate(180deg); }
+    .fil-lado { width: 38px; flex: none; border-left: 1px solid var(--border) !important; color: var(--text-dim) !important; font-size: 16px !important; }
+    .fil-lado.on { color: var(--accent) !important; }
+    #lateral-dir .fil-grupo { margin: 0 0 12px; display: flex; }
+    #lateral-dir .fil-principal { flex: 1; }
+    .lat-botoes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .lat-cfg { margin: 10px 0 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+    .lat-cfg-ops { display: flex; flex-wrap: wrap; gap: 6px; }
     .view-section { display: none; }
     .view-section.active { display: block; }
 
@@ -915,6 +942,74 @@
     .c2-aviso .c2-acoes { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border); }
     .c2-acoes .c2-link { display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 12.5px; text-decoration: none; line-height: 1; }
     .c2-acoes .c2-link:hover { border-color: var(--accent); }
+    /* a descoberta: sites no ar sem deploy cadastrado */
+    .dep-sugs { padding: 12px 16px; margin: 0 0 14px; } .dep-sugs > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; min-height: 36px; }
+    .dep-sug { padding: 12px 0; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+    .dep-campo { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--text-dim); }
+    .dep-campo input, .dep-campo select { font: inherit; font-size: 13.5px; color: var(--text-main); background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 7px 9px; min-height: 36px; }
+    /* CC-789: a confirmação do deploy dentro do cartão do projeto */
+    .dep-conf { margin: 10px 0 6px; padding: 12px; border-radius: 12px; background: var(--card); box-shadow: var(--neu-fora, 0 0 0 1px var(--border)); display: flex; flex-direction: column; gap: 8px; }
+    .dep-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .dep-cab .c2-mini { margin-left: auto; }
+    .dep-info { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--text-dim); } .dep-info b { color: var(--text-main); font-weight: 600; }
+    .dep-linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .dep-cod { flex: 1 1 180px; min-width: 0; font: 600 20px/1 ui-monospace, monospace; letter-spacing: .3em; text-align: center; padding: 10px; border: 0; border-radius: 10px; background: var(--bg); color: var(--text-main); box-shadow: var(--neu-dentro, inset 0 1px 3px rgba(0,0,0,.15)); outline: none; }
+    .dep-cod::placeholder { font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-dim); }
+    .dep-cod:focus { box-shadow: var(--neu-dentro, inset 0 1px 3px rgba(0,0,0,.15)), 0 0 0 2px var(--accent); }
+    /* CC-778: a faixa do desfazer, embaixo, acima da barra do celular */
+    #c2-desf { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 180; display: flex; align-items: center; gap: 14px; max-width: min(520px, calc(100vw - 32px)); padding: 10px 12px 12px 16px; border-radius: 12px; background: var(--text-main); color: var(--bg); box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: 14px; overflow: hidden; opacity: 0; pointer-events: none; transform: translate(-50%, 16px); transition: opacity .2s, transform .2s; }
+    #c2-desf.aberto { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+    @media (max-width: 899px) { #c2-desf { bottom: calc(84px + env(safe-area-inset-bottom)); } }
+    .c2-desf-txt { flex: 1; min-width: 0; }
+    .c2-desf-b { flex: none; border: 0; background: none; color: inherit; text-decoration: underline; text-underline-offset: 3px; font: inherit; font-weight: 700; min-height: 36px; padding: 0 8px; cursor: pointer; }
+    .c2-desf-barra { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--accent, #6366f1); transform-origin: left; }
+    /* a faixa do ditado ao vivo: 3 linhas, as últimas palavras à vista */
+    #c2-ouvindo { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 181; width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 14px 12px; border-radius: 14px; background: var(--text-main); color: var(--bg); box-shadow: 0 10px 30px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transform: translate(-50%, 16px); transition: opacity .2s, transform .2s; }
+    #c2-ouvindo.aberto { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+    .c2-ouv-cab > span { flex: 1; min-width: 0; }
+    .c2-ouv-b { flex: none; border: 1px solid currentColor; background: none; color: inherit; font: inherit; font-size: 13px; min-height: 34px; padding: 0 12px; border-radius: 9px; cursor: pointer; opacity: .9; }
+    .c2-ouv-b.forte { background: var(--bg); color: var(--text-main); border-color: transparent; font-weight: 700; opacity: 1; }
+    @media (max-width: 899px) { #c2-ouvindo { bottom: calc(84px + env(safe-area-inset-bottom)); } }
+    .c2-ouv-cab { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 8px; }
+    .c2-ouv-cab > span { opacity: .75; }
+    .c2-ouv-ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--red, #ef4444); animation: c2-pulso 1.2s ease-in-out infinite; flex: none; }
+    .c2-ouv-txt { font-size: 15.5px; line-height: 1.45; max-height: calc(1.45em * 3); overflow-y: auto; overflow-wrap: anywhere; scrollbar-width: none; }
+    .c2-ouv-txt.vazio { opacity: .6; font-style: italic; }
+    input.gravando, textarea.gravando { font-style: italic; }
+    input.gravando::placeholder, textarea.gravando::placeholder { color: var(--red, #ef4444); opacity: 1; }
+    @keyframes c2-desf-conta { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+    /* ditar por voz: o microfone do cartão e o que aparece em qualquer campo */
+    .c2-voz { flex: none; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: transparent; color: var(--text-dim); cursor: pointer; transition: background .2s, color .2s; }
+    .c2-voz:hover { color: var(--text-main); background: var(--card-hover); }
+    .c2-voz.ouvindo { color: #fff; background: var(--red); animation: c2-pulso 1.2s ease-in-out infinite; }
+    .c2-voz.erro { color: var(--red); }
+    /* CC-781, print dele: "tem um microfone no topo da coderoom". O `display`
+       acima vence o atributo `hidden`, e o flutuante ficava sempre à vista, sem
+       posição, no canto de cima de toda página. */
+    .c2-voz[hidden] { display: none; }
+    .c2-voz-flut { position: fixed; z-index: 150; width: 34px; height: 34px; background: var(--card); box-shadow: var(--neu-fora, 0 1px 4px rgba(0,0,0,.18)); }
+    @keyframes c2-pulso { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); } 50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); } }
+    /* CC-772: o menu do botão direito, com o mesmo relevo dos cartões (regra 5) */
+    .c2-ctx { position: fixed; z-index: 200; min-width: 220px; max-width: min(320px, 92vw); max-height: 80vh; overflow-y: auto; padding: 6px; border-radius: 12px; background: var(--card); box-shadow: 0 12px 34px rgba(0,0,0,.22), var(--neu-fora, 0 0 0 1px var(--border)); opacity: 0; transform: scale(.96); transform-origin: top left; transition: opacity .14s, transform .14s; }
+    .c2-ctx.aberto { opacity: 1; transform: none; }
+    .c2-ctx-g + .c2-ctx-g { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
+    .c2-ctx-t { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-dim); padding: 6px 10px 3px; }
+    .c2-ctx-i { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text-main); font: inherit; font-size: 13.5px; padding: 8px 10px; min-height: 36px; border-radius: 8px; cursor: pointer; }
+    .c2-ctx-i:hover, .c2-ctx-i:focus-visible { background: var(--card-hover); }
+    .c2-ctx-i.perigo { color: var(--red); }
+    /* CC-763: o cartão agrupado, com as linhas de cada sessão e os cartões dentro */
+    .grp-lista { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+    .grp-item { display: flex; gap: 10px; align-items: baseline; padding: 8px 10px; border-radius: 10px; background: var(--bg); }
+    .grp-txt { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .grp-t { flex: none; white-space: nowrap; }
+    .grp-cartoes { display: flex; flex-direction: column; gap: 12px; margin: 12px 0 4px; }
+    .grp-cartoes > .c2-aviso { margin: 0; }
+    /* CC-756: a zona de ações recolhida desliza para fechar (regra 1: nada some de uma vez). */
+    .c2-aviso .c2-acoes { max-height: 260px; overflow: hidden; transition: max-height .28s ease, opacity .2s, padding .28s, margin .28s, border-color .28s; }
+    .c2-aviso:not(.acoes-on) .c2-acoes { max-height: 0; opacity: 0; padding-top: 0; margin-top: 0; border-top-color: transparent; pointer-events: none; }
+    .c2-acoes .c2-cfg-sel { min-height: 34px; font-size: 12.5px; padding: 4px 8px; max-width: 46%; }
+    .c2-acoes-tg { margin-left: auto; border: 1px solid var(--border); background: var(--bg); color: var(--text-dim); border-radius: 9px; padding: 6px 11px; min-height: 32px; font: inherit; font-size: 12.5px; cursor: pointer; }
+    .c2-acoes-tg .c2-acoes-seta { display: inline-block; transition: transform .25s; }
+    .c2-aviso.acoes-on .c2-acoes-tg .c2-acoes-seta { transform: rotate(180deg); }
     .c2-acoes .c2-link[data-ses-acao="encerrar"], .c2-acoes .c2-link[data-sessao-parar] { color: var(--red) !important; border-color: color-mix(in srgb, var(--red) 35%, transparent); }
     .c2-acoes .c2-link[data-ver-agente] { background: var(--accent); border-color: transparent; color: #fff; }
     .c2-acoes .c2-fw-chip { color: var(--c-projeto); border-color: color-mix(in srgb, var(--c-projeto) 40%, transparent); margin-right: auto; }
@@ -1152,6 +1247,15 @@
     .dsg-texto .md { font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
     .ses-filtros { display: flex; flex-direction: column; gap: 12px; margin: 18px 0 20px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--raio, 14px); background: var(--card); }
     .ses-fil-linha { display: flex; align-items: flex-start; gap: 12px; }
+    /* CC-752: a ordem das categorias, cada uma com ‹ › para andar */
+    .ses-ordem { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    /* mesmo relevo dos chips de filtro (print dele: o que destoa sai do design) */
+    .ses-ord { display: inline-flex; align-items: center; gap: 2px; border: 0; border-radius: 10px; padding: 1px; font-size: 12px; background: var(--card); box-shadow: var(--neu-fora, 0 1px 3px rgba(0,0,0,.12)); transition: transform .25s; }
+    .ses-ord > span { padding: 0 4px; white-space: nowrap; }
+    .ses-ord b { color: var(--text-dim); font-weight: 600; }
+    .ses-ord-b { width: 30px; height: 30px; border: 0; border-radius: 999px; background: transparent; color: var(--text-main); font-size: 16px; cursor: pointer; }
+    .ses-ord-b:hover:not(:disabled) { background: var(--card-hover); }
+    .ses-ord-b:disabled { opacity: .25; cursor: default; }
     .ses-fil-rot { flex: none; width: 64px; padding-top: 9px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
     .ses-fil-linha .c2-dec-ops { gap: 8px; }
     @media (max-width: 640px) {
@@ -1813,7 +1917,7 @@
       #view-gate #gate-qual::-webkit-scrollbar { display: none; }
       #view-gate #gate-qual .gate-cab-conv { flex-wrap: nowrap; white-space: nowrap; }
       #view-gate #gate-qual .gate-cab-conv > span, #view-gate .gate-ficha { flex: none; }
-      #view-gate #gate-busca { flex: none; width: 110px; margin-left: auto !important; }
+      #view-gate #gate-busca { flex: none; width: 150px; }
     }
     /* CC-722, revisão do celular (medido em 390 nas 17 telas): nenhuma rolava
        de lado nem cortava nada; o que sobrou foi letra de 10px (etiqueta de
@@ -1925,7 +2029,12 @@
     .gl-proj-txt > span { font-size: 11.5px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .gl-seta { color: var(--text-dim); transition: transform .18s; }
     .gl-proj.fechado .gl-seta { transform: rotate(-90deg); }
-    .gl-proj-nova { flex: none; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: none; color: var(--text-muted); cursor: pointer; }
+    /* CC-773, pedido dele: o "+" de 28 px colado no nome do projeto (que recolhe
+       o grupo) fazia tocar no errado. Agora tem nome, tamanho de toque, relevo de
+       botão e distância do nome. */
+    .gl-proj-cab { gap: 10px !important; }
+    .gl-proj-nova { flex: none; min-width: 64px; height: 36px; padding: 0 12px; gap: 4px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: var(--card); box-shadow: var(--neu-leve); color: var(--text-main); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+    .gl-seta { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; }
     .gl-proj-nova:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
     .gl-proj-convs { margin: 2px 0 0 14px; padding-left: 8px; border-left: 2px solid color-mix(in srgb, var(--border) 80%, transparent); }
     .gl-proj-convs .sl-item { padding: 8px !important; }
@@ -1947,6 +2056,14 @@
     }
 
     /* Topo do painel: cabeçalho sólido integrado, sem transparência, o chat não vaza por trás */
+    /* CC-762: busca vira lupa; o campo só aparece quando aberto */
+    #view-gate .gate-lupa, #view-gate .gate-canto-tg { flex: none; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: var(--card); color: var(--text-dim); box-shadow: var(--neu-fora, 0 1px 3px rgba(0,0,0,.12)); cursor: pointer; font-size: 18px; line-height: 1; }
+    #view-gate .gate-lupa { margin-left: auto; }
+    #view-gate .gate-lupa[aria-expanded="true"], #view-gate .gate-canto.aberto .gate-canto-tg { color: var(--accent); }
+    #view-gate #gate-busca:not(.aberta) { display: none; }
+    /* CC-762: o ⋯ recolhe modos, letra e tema; sino e barra lateral ficam à vista */
+    #view-gate .gate-canto:not(.aberto) #bt-modos, #view-gate .gate-canto:not(.aberto) .fonte-ctl > :not(.lat-btn) { display: none !important; }
+    #view-gate .gate-canto:not(:has(#bt-modos, .fonte-ctl)) .gate-canto-tg { display: none; }
     #view-gate .gate-painel-topo {
       flex: 0 0 auto;
       display: flex;
@@ -2064,6 +2181,8 @@
     }
     .gate-msg { word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; min-width: 0; }
     .gate-msg pre { white-space: pre-wrap; overflow-x: auto; word-break: break-word; }
+    /* 14,5 px no computador, como ele aprovou ("ele tava ótimo antes", 30/09).
+       Eu tinha subido para 16/17 lendo "aumentar o texto" como letra: errado. */
     .gate-msg p { margin: 0 0 10px; font-size: 14.5px; line-height: 1.6; }
     .gate-msg p:last-child { margin-bottom: 0; }
 
@@ -2141,6 +2260,12 @@
       color: var(--text-main); text-transform: none; letter-spacing: 0; white-space: normal;
     }
     .gate-md ul, .gate-md ol { margin: 0 0 10px; padding-left: 20px; }
+    /* CC-721: tabela do agente, rolando de lado só dentro da caixa */
+    .gate-md .gate-tabela { max-width: 100%; overflow-x: auto; margin: 0 0 12px; border: 1px solid var(--border); border-radius: 10px; }
+    .gate-md table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+    .gate-md th, .gate-md td { padding: 7px 11px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+    .gate-md th { font-weight: 600; background: var(--bg); white-space: nowrap; }
+    .gate-md tr:last-child td { border-bottom: 0; }
     .gate-md li { font-size: 14.5px; line-height: 1.6; margin-bottom: 4px; }
     .gate-md code {
       font-family: 'JetBrains Mono', monospace; font-size: 13px;
@@ -2877,6 +3002,115 @@
     .gate-anexo button { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 14px; padding: 0 2px; }
     /* Os anexos JÁ ENVIADOS, dentro da bolha da fala dele. */
     .gate-msg .gate-vistos { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    /* CC-768: no ultrawide a conversa usa o espaço vazio dos lados (era 768 px
+       numa área de 1646). Dividida, cada metade volta ao teto de antes. */
+    @media (min-width: 1900px) { #view-gate #gate-centro:not(.gate-dividido) #gate-lista { max-width: 1180px; } }
+
+    /* CC-767: o miolo dividido em duas conversas. A primeira é a de sempre; a
+       segunda é o próprio Coderoom em modo enxuto num quadro ao lado, e por isso
+       funciona igual (escrever, parar, fotos, revisão). Cada uma rola sozinha
+       e tem a caixa de escrita presa embaixo (regras 4 e 6). */
+    #gate-centro.gate-dividido { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto auto minmax(0, 1fr) auto; column-gap: 16px; }
+    #gate-centro.gate-dividido > * { grid-column: 1; min-width: 0; }
+    /* CC-786, desenho dele: UM topo, em cima das duas colunas */
+    #gate-centro.gate-dividido > .gate-painel-topo { grid-row: 1; grid-column: 1 / -1; }
+    #gate-centro.gate-dividido > #gate-conversas { grid-row: 2; }
+    #gate-centro.gate-dividido > #gate-gasto { grid-row: 3; }
+    #gate-centro.gate-dividido > #gate-agora { grid-row: 4; }
+    #gate-centro.gate-dividido > #gate-canvas { grid-row: 5; min-height: 0; }
+    #gate-centro.gate-dividido > #gate-compor { grid-row: 6; }
+    /* a coluna da direita é só conversa e caixa de escrita, sem moldura própria:
+       o desenho é o mesmo da esquerda, porque é o mesmo Coderoom lá dentro */
+    #gate-centro.gate-dividido > .gate-par { grid-column: 2; grid-row: 2 / 7; position: relative; min-height: 0; overflow: hidden; animation: gate-par-entra .22s ease-out; }
+    /* CC-804: o painel está religando; a conversa na tela continua, com o aviso no título */
+    #view-gate.gate-reconectando #gate-titulo::after { content: ' · reconectando…'; font-weight: 400; color: var(--text-dim); }
+    /* CC-788: dentro do quadro (do tamanho da tela), só a conversa aparece; o
+       resto da página de dentro existe (a barra dela é copiada para fora) mas
+       não pinta nada no recorte, nem as alças de recolher */
+    html.embutido body { visibility: hidden; }
+    html.embutido #view-gate .main-col > #gate-centro { visibility: visible; }
+    html.embutido .gate-alca { display: none !important; }
+    /* CC-788: dentro do quadro (do tamanho da tela), a conversa se fixa no recorte da coluna */
+    html.embutido #view-gate .main-col > #gate-centro { position: fixed !important; left: var(--par-x, 0) !important; top: var(--par-y, 0) !important; width: var(--par-w, 100vw) !important; height: var(--par-h, 100vh) !important; max-height: none !important; margin: 0 !important; }
+    /* a coluna ativa (a que ele tocou por último): contorno leve na conversa */
+    html.gate-col-ativa #gate-canvas { outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent); outline-offset: 3px; transition: outline-color .2s; }
+    /* CC-786: com a coluna da direita ativa, a barra mostra a cópia da barra dela */
+    #gate-ctx.espelhando > :not(#gate-ctx-espelho) { display: none !important; }
+    #gate-ctx-espelho { display: contents; }
+    #gate-ctx-espelho > * { order: -1; }
+    .gate-par iframe { flex: 1; width: 100%; border: 0; background: transparent; }
+    @keyframes gate-par-entra { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { #gate-centro.gate-dividido > .gate-par { animation: none; } }
+    /* O modo enxuto, dentro do quadro: só a conversa e a caixa de escrita. */
+    html.embutido .sidebar, html.embutido #gate-lado, html.embutido #gate-ctx, html.embutido .mobile-nav, html.embutido .bottom-nav, html.embutido .main-content > .header, html.embutido .gate-voltar, html.embutido .barra-baixo { display: none !important; }
+    /* CC-786: o fechar da coluna da direita mora no topo único, no fim */
+    #view-gate #gate-par-x { display: none; }
+    #view-gate #gate-centro.gate-dividido #gate-par-x { display: inline-flex; }
+    /* CC-777, print dele: "por que o design delas tá tão diferente?". O quadro
+       tem ~830 px e o Coderoom se desenhava no modo celular. Aqui ele segue o
+       lado esquerdo: mesma letra, sem a faixa de números nem as etiquetas do
+       topo (que à esquerda moram na barra da direita), e sem a moldura dupla.
+       Os botões de agente ficam: é o único lugar de escolher o agente dele. */
+    html.embutido .gate-msg p, html.embutido .gate-md li { font-size: 14.5px !important; }
+    html.embutido #gate-gasto, html.embutido #gate-qual { display: none !important; }
+    html.embutido #gate-centro { box-shadow: none !important; background: transparent !important; border: 0 !important; }
+    html.embutido body, html.embutido .main-content { background: transparent !important; }
+    html.embutido .main-content { margin-left: 0 !important; padding: 8px !important; }
+    html.embutido #view-gate .main-col { grid-template-columns: minmax(0, 1fr) !important; }
+    /* CC-786: o topo é um só, o da página de fora; dentro do quadro ele some, e
+       o espaço dele é ocupado pelo topo de fora, que passa por cima das duas */
+    html.embutido #view-gate #gate-centro .gate-painel-topo { display: none !important; }
+    /* medido: 8 px da página + 20 px da moldura desciam o topo e subiam a caixa
+       de escrita 28 px em relação à esquerda */
+    html.embutido .main-content { padding: 0 !important; }
+    html.embutido #view-gate #gate-centro { padding: 0 !important; }
+    /* CC-783, pedido dele: a lupa junto dos ícones da direita, e abrir os três
+       pontinhos encolhe o título em vez de crescer a faixa, em qualquer largura.
+       Uma linha sempre; o título cede primeiro (encolhe 20 vezes mais rápido
+       que os controles). CC-794: título e etiquetas continuam com os pontinhos
+       abertos ("continuar mostrando praticamente as mesmas coisas"). */
+    #view-gate #gate-centro .gate-painel-topo { flex-wrap: nowrap !important; }
+    #view-gate #gate-centro #gate-titulo { flex: 0 20 auto; min-width: 3em; max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #view-gate #gate-centro .gate-header-acoes { flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; justify-content: safe flex-end; overflow-x: auto; scrollbar-width: none; }
+    #view-gate #gate-centro .gate-header-acoes::-webkit-scrollbar { display: none; }
+    /* CC-792: área que rola corta o que passa da borda, sombra inclusive; a
+       folga por dentro (desfeita por fora) dá lugar à sombra dos ícones */
+    #view-gate #gate-centro .gate-header-acoes { padding: 12px 10px; margin: -12px -10px; }
+    /* CC-801, print dele: na barra, a fileira de agentes passava 9 px da borda
+       do cartão (agy cortado). A regra "uma linha só" do topo vencia a da barra. */
+    #view-gate #gaj-topo #gate-qual .gate-fichas, #view-gate #gaj-topo #gate-qual .gate-cab-conv { flex-wrap: wrap !important; white-space: normal; min-width: 0; max-width: 100%; }
+    #view-gate #gaj-topo .gate-ficha { max-width: 100%; min-width: 0; }
+    #view-gate #gaj-topo .gate-ficha span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    /* CC-793, pedido dele: os números da conversa moram no painel lateral. A
+       faixa sai de cima da conversa SEMPRE; a primeira versão a mantinha com o
+       painel recolhido, e ele cobrou: "eu falei p esconder". */
+    #view-gate #gate-gasto { display: none !important; }
+    /* CC-791, print dele: modos com 33 px e canto de 6, sino redondo de 40, letra
+       com 33. No topo do Coderoom, tudo na régua da lupa: 36 px, canto de 10. */
+    #view-gate .gate-painel-topo #bt-modos { height: 36px !important; border-radius: 10px !important; padding: 0 14px !important; display: inline-flex; align-items: center; background: var(--card) !important; box-shadow: var(--neu-fora) !important; border: 0 !important; }
+    #view-gate .gate-painel-topo .sino { width: 36px !important; height: 36px !important; border-radius: 10px !important; background: var(--card) !important; box-shadow: var(--neu-fora) !important; }
+    #view-gate .gate-painel-topo .fonte-ctl { height: 36px !important; align-items: center; }
+    #view-gate #gate-centro .gate-canto { margin-left: 0; }
+    /* CC-794, print dele: "pq depois de abrir as opções centralizam?". A lupa
+       tinha margem automática, e o X (mesma classe) também: o espaço livre se
+       dividia entre as duas e o grupo ia para o meio. A fileira já encosta à
+       direita sozinha. */
+    #view-gate #gate-centro .gate-lupa { margin-left: 0; }
+    /* as etiquetas só usam a sobra: o nome da conversa vale mais (medido em 1024 px: "Cod…" contra "parada VP") */
+    #view-gate #gate-centro #gate-qual { flex: 1 1 0 !important; min-width: 0; }
+
+    /* CC-764: prova de vida no fim da resposta em andamento */
+    .gate-msg .gate-vivo { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--text-dim); }
+    .gate-pontos { display: inline-flex; gap: 4px; }
+    .gate-pontos i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .3; animation: gate-pulso 1.2s infinite ease-in-out; }
+    .gate-pontos i:nth-child(2) { animation-delay: .2s; }
+    .gate-pontos i:nth-child(3) { animation-delay: .4s; }
+    @keyframes gate-pulso { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+    @media (prefers-reduced-motion: reduce) { .gate-pontos i { animation: none; opacity: .7; } }
+    /* CC-755: o bloco do revisor na gaveta, uma linha por escolha */
+    .gate-revisor { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+    .gate-revisor label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .gate-revisor select { flex: 1; min-width: 0; }
     /* CC-747: resumo da resposta longa e o texto inteiro recolhido */
     .gate-msg .gate-resumo { line-height: 1.5; }
     .gate-msg .gate-resumo .ini-pilula { margin-right: 6px; }
@@ -2886,6 +3120,68 @@
     .gate-msg .gate-inteira[open] > summary { margin-bottom: 6px; }
     .gate-msg .gate-vistos img { max-width: 160px; max-height: 160px; border-radius: 8px; border: 1px solid var(--border); }
     .gate-msg .gate-vistos a { font-size: 11px; color: var(--text-dim); }
+    /* CC-807: o link do endereço de teste, na etiqueta da conversa */
+    .gate-link-teste { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; font-size: 13.5px; font-weight: 700; text-decoration: none; color: var(--accent); background: var(--card); box-shadow: var(--neu-fora, 0 1px 3px rgba(0,0,0,.15)); white-space: nowrap; }
+    .gate-link-teste:hover { filter: brightness(1.12); }
+    /* CC-710: o "i" ao lado do modelo e do esforço, e a janela com as descrições */
+    /* o seletor tem largura de conteúdo (o texto mais longo da lista); sem o
+       `flex: 1 1 0` e `width: 0` ele empurrava a linha para fora do cartão da
+       barra lateral, e levava os outros seletores junto (print dele em 01/10) */
+    .gate-sel-linha { display: flex; gap: 6px; align-items: center; width: 100%; min-width: 0; box-sizing: border-box; }
+    .gate-sel-linha:has(> select[hidden]) { display: none; }
+    .gate-sel-linha > .gate-sel { flex: 1 1 0; width: 0 !important; min-width: 0; }
+    .gate-i { flex: none; width: 36px; height: 36px; border: 0; border-radius: 10px; background: var(--card); color: var(--accent); font: italic 700 17px/1 Georgia, serif; box-shadow: var(--neu-fora, 0 1px 3px rgba(0,0,0,.15)); cursor: pointer; }
+    .gate-i:hover { filter: brightness(1.1); }
+    #gate-info { position: fixed; inset: 0; z-index: 410; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(12, 14, 18, .72); opacity: 0; transition: opacity .18s ease-out; }
+    #gate-info[hidden] { display: none; }
+    #gate-info.aberta { opacity: 1; }
+    #gate-info .gi-janela { width: min(760px, 100%); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; background: var(--bg, var(--card)); color: var(--text-main); border-radius: 18px; box-shadow: 0 18px 60px rgba(0,0,0,.5); overflow: hidden; }
+    #gate-info header { display: flex; align-items: center; gap: 12px; padding: 14px 16px 6px; }
+    #gate-info h2 { flex: 1; margin: 0; font-size: 18px; text-transform: none; letter-spacing: 0; }
+    #gate-info .gal-bt { width: 44px; height: 44px; border: 0; border-radius: 12px; background: var(--card); color: inherit; font-size: 20px; cursor: pointer; box-shadow: var(--neu-fora); }
+    #gate-info .gi-nota { margin: 0; padding: 0 16px 8px; font-size: 14px; color: var(--text-dim); }
+    #gate-info .gi-abas { display: flex; gap: 8px; padding: 4px 16px 10px; }
+    #gate-info .gi-abas button { flex: 1; min-height: 44px; border: 0; border-radius: 12px; background: var(--card); color: var(--text-dim); font-size: 15px; cursor: pointer; box-shadow: var(--neu-fora); }
+    #gate-info .gi-abas button[aria-selected="true"] { color: var(--text-main); font-weight: 700; box-shadow: var(--neu-dentro); }
+    #gate-info .gi-esforco { margin: 0 16px 10px; padding: 10px 14px; border-radius: 12px; box-shadow: var(--neu-dentro); font-size: 14.5px; }
+    #gate-info .gi-esforco p { margin: 4px 0 0; }
+    #gate-info .gi-esforco.foco { outline: 2px solid var(--accent); }
+    #gate-info .gi-corpo { overflow-y: auto; padding: 4px 16px 16px; display: grid; gap: 12px; overscroll-behavior: contain; }
+    #gate-info .gi-cartao { padding: 14px; border-radius: 14px; background: var(--card); box-shadow: var(--neu-fora); }
+    #gate-info .gi-cartao.em-uso { outline: 2px solid var(--accent); }
+    #gate-info .gi-cartao h3 { margin: 0 0 8px; font-size: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    #gate-info .gi-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    #gate-info .gi-chip { padding: 3px 10px; border-radius: 999px; font-size: 13.5px; font-weight: 600; background: var(--bg, transparent); box-shadow: var(--neu-dentro); color: var(--text-dim); }
+    #gate-info .gi-chip.ok { color: var(--green, #1fa971); }
+    #gate-info .gi-chip.aviso { color: var(--waiting, #d98e04); }
+    #gate-info .gi-chip.uso { color: var(--accent); }
+    #gate-info .gi-resumo { margin: 0 0 8px; font-size: 15px; line-height: 1.45; }
+    #gate-info .gi-lista { margin: 6px 0; font-size: 14.5px; }
+    #gate-info .gi-lista ul { margin: 4px 0 0; padding: 0; list-style: none; }
+    #gate-info .gi-lista li { padding-left: 24px; position: relative; line-height: 1.4; margin: 3px 0; }
+    #gate-info .gi-lista li::before { position: absolute; left: 0; font-weight: 700; }
+    #gate-info .gi-lista li.bom::before { content: '✓'; color: var(--green, #1fa971); }
+    #gate-info .gi-lista li.evite::before { content: '✕'; color: var(--failed, #e5484d); }
+    #gate-info details { margin-top: 8px; font-size: 14px; color: var(--text-dim); }
+    #gate-info summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+    #gate-info details p { margin: 4px 0; line-height: 1.4; }
+    @media (max-width: 699px) { #gate-info { padding: 0; align-items: stretch; } #gate-info .gi-janela { max-height: none; border-radius: 0; width: 100%; } }
+    @media (prefers-reduced-motion: reduce) { #gate-info { transition: none; } }
+    /* CC-798: a galeria das fotos, por cima de tudo, fundo escuro nos dois temas */
+    #gate-galeria { position: fixed; inset: 0; z-index: 400; display: flex; flex-direction: column; background: rgba(12, 14, 18, .97); color: #f2f4f7; opacity: 0; transition: opacity .18s ease-out; }
+    #gate-galeria[hidden] { display: none; }
+    #gate-galeria.aberta { opacity: 1; }
+    #gate-galeria .gal-topo { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+    #gate-galeria .gal-nome { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #gate-galeria .gal-conta { font-size: 14px; opacity: .75; }
+    #gate-galeria .gal-palco { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 8px 16px; }
+    #gate-galeria img { max-width: min(92vw, 1400px); max-height: calc(100dvh - 110px); object-fit: contain; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.5); animation: gal-entra .18s ease-out; }
+    #gate-galeria .gal-bt { flex: none; width: 48px; height: 48px; border: 0; border-radius: 12px; background: rgba(255,255,255,.12); color: inherit; font-size: 26px; line-height: 1; cursor: pointer; }
+    #gate-galeria .gal-bt:hover { background: rgba(255,255,255,.22); }
+    @media (max-width: 699px) { #gate-galeria img { max-width: calc(100vw - 128px); } #gate-galeria .gal-palco { padding: 0 4px 16px; gap: 4px; } }
+    @keyframes gal-entra { from { opacity: 0; transform: scale(.98); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { #gate-galeria, #gate-galeria img { transition: none; animation: none; } }
+    .gate-msg .gate-vistos a.gate-foto { display: flex; flex-direction: column; gap: 4px; max-width: 160px; font-size: 12px; text-decoration: none; }
     .gate-conv {
       display: flex; justify-content: space-between; gap: 10px; align-items: center;
       border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
@@ -4069,7 +4365,10 @@
     .c2-x:hover{background:rgba(var(--tinta),.06);color:var(--text-main);}
     .c2-link{background:none;border:0;color:var(--accent);font:inherit;font-size:12px;cursor:pointer;padding:8px 0 8px 8px;}
     .c2-link:hover{text-decoration:underline;}
-    .c2-msg{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:10px;padding:2px 3px 2px 12px;background:var(--card);margin-top:10px;}
+    .c2-msg{display:flex;align-items:flex-end;gap:6px;border:1px solid var(--border);border-radius:10px;padding:2px 3px 2px 12px;background:var(--card);margin-top:10px;}
+    /* a caixa de resposta cresce com o texto, até ~8 linhas */
+    .c2-msg textarea{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text-main);font:inherit;font-size:13px;line-height:20px;padding:7px 0;margin:0;resize:none;field-sizing:content;min-height:34px;max-height:calc(8 * 20px + 14px);overflow-y:auto;box-sizing:border-box;}
+    :root[data-tema] .c2-msg textarea { box-shadow: none; background: transparent; }
     .c2-msg:focus-within{border-color:var(--accent);}
     .c2-msg input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text-main);font:inherit;font-size:13px;height:34px;}
     .c2-enviar{flex:none;width:34px;height:34px;border-radius:8px;border:0;background:var(--accent);color:#fff;cursor:pointer;display:grid;place-items:center;}
@@ -4198,7 +4497,8 @@
     /* CC-705: a mesma faixa presa na tela Sessões (abas, modo e filtros). Ela
        mora dentro do cartão da tela, então o fundo é o do cartão e ela se
        estende até as bordas dele. */
-    .dec-fixo { position: sticky; top: -32px; z-index: 20; background: inherit; margin: 0 -16px; padding: 10px 16px 2px; }
+    /* 30/09, print dele: "isso tá muito colado". Folga de 16 px entre a faixa presa e os cartões. */
+    .dec-fixo { position: sticky; top: -32px; z-index: 20; background: inherit; margin: 0 -16px; padding: 10px 16px 16px; }
     .dec-fixo .ini-abas { flex-wrap: wrap; overflow: visible; margin-bottom: 12px; }
     /* Os filtros abertos passavam de 500px e, presos, cobriam a tela (medido:
        faixa de 645 em 800). Ficam na faixa, com teto e rolagem própria. */
@@ -4305,6 +4605,21 @@
     .c2-tag-sessao > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sl-sessao { font-weight: 500; font-size: 12px; color: var(--text-muted); }
     .c2-aviso .c2-rotulo .maq { font-size: 11.5px; padding: 4px 7px; gap: 5px; }
+    /* CC-754: o cadeado no canto; azul quando o cartão está travado no lugar */
+    .c2-aviso .c2-rotulo .c2-cad { position: absolute; top: 12px; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: none; color: var(--text-dim); cursor: pointer; transition: background .2s, color .2s; }
+    .c2-aviso .c2-rotulo .c2-cad-dec { right: 82px; }
+    .c2-aviso .c2-rotulo .c2-cad-ses { right: 10px; }
+    .c2-aviso .c2-rotulo .c2-cad:hover { color: var(--text-main); background: var(--card-hover); }
+    .c2-aviso .c2-rotulo .c2-cad.on { color: #fff; background: var(--accent, #4f46e5); }
+    .c2-aviso:has(.c2-cad.on) { box-shadow: 0 0 0 2px var(--accent, #4f46e5); }
+    /* CC-771: pré-preso tem o cadeado tracejado na cor de destaque; selecionado, o cartão ganha contorno tracejado */
+    .c2-aviso .c2-rotulo .c2-cad.pre { color: var(--accent, #4f46e5); }
+    .c2-aviso.c2-sel:has(.c2-cad.pre) { outline: 2px dashed var(--accent, #4f46e5); outline-offset: 2px; }
+    .c2-aviso .c2-rotulo:has(.c2-cad-dec) { padding-right: 118px; }
+    .c2-aviso .c2-rotulo:has(.c2-cad-ses) { padding-right: 46px; }
+    /* CC-751: máquina numa linha, projeto na de baixo, largura inteira, em toda tela */
+    .c2-aviso .c2-rotulo .c2-onde { flex: 0 0 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin-top: 2px; }
+    .c2-aviso .c2-rotulo .c2-onde-l { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; }
     .c2-aviso .c2-rotulo .maq svg, .c2-tag-proj svg { flex: none; }
     .c2-aviso .c2-rotulo .c2-x { position: absolute; top: 10px; right: 10px; }
     /* CC-630: o relógio do "para depois", ao lado do X. */
@@ -4967,8 +5282,18 @@
                   </button>
                 </div>
                 <a href="#" class="link" id="gate-trocar">projetos</a>
-                <input id="gate-busca" type="search" placeholder="buscar..." style="margin-left: 8px; max-width: 120px; font-size: 12px; padding: 4px 8px; border-radius: 4px;" class="topo-busca" aria-label="buscar na conversa">
+                <!-- CC-762, pedido dele: "a barra de buscar pode ser um ícone de lupa que abre um buscar" -->
+                <button type="button" class="gate-lupa" id="gate-lupa" title="buscar na conversa" aria-label="buscar na conversa" aria-expanded="false"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
+                <input id="gate-busca" type="search" placeholder="buscar..." style="font-size: 12px; padding: 4px 8px; border-radius: 4px;" class="topo-busca" aria-label="buscar na conversa">
                 <script>
+                  (() => {
+                    const lupa = document.getElementById('gate-lupa'); const campo = document.getElementById('gate-busca');
+                    if (!lupa || !campo) return;
+                    const pintarBusca = (aberta) => { campo.classList.toggle('aberta', aberta); lupa.setAttribute('aria-expanded', aberta); };
+                    lupa.addEventListener('click', () => { const abrir = !campo.classList.contains('aberta'); pintarBusca(abrir); if (abrir) campo.focus(); else { campo.value = ''; campo.dispatchEvent(new Event('input')); } });
+                    campo.addEventListener('blur', () => { if (!campo.value) pintarBusca(false); });
+                    campo.addEventListener('keydown', (e) => { if (e.key === 'Escape') { campo.value = ''; campo.dispatchEvent(new Event('input')); campo.blur(); pintarBusca(false); } });
+                  })();
                   document.getElementById('gate-busca')?.addEventListener('input', function(e) {
                     const termo = e.target.value.toLowerCase();
                     const msgs = document.querySelectorAll('#gate-lista .gate-msg, #gate-lista .c2-aviso, #gate-lista .gate-de-claude, #gate-lista .gate-de-felipe, #gate-lista .gate-de-agy, #gate-lista .gate-de-opencode, #gate-lista .gate-de-sistema');
@@ -4979,7 +5304,13 @@
                   });
                 </script>
                 <!-- CC-720: modos, sino, letra, tema e aba lateral, dentro do painel do chat -->
-                <div id="gate-canto" class="gate-canto"></div>
+                <!-- CC-762: "os modos podem ficar colapsados". O ⋯ recolhe modos, letra e tema; sino e barra lateral ficam sempre à vista. -->
+                <div id="gate-canto" class="gate-canto"><button type="button" class="gate-canto-tg" data-gate-canto-tg title="mais opções: modos, letra e tema" aria-label="mais opções" aria-expanded="false">⋯</button></div>
+                <script>try { if (localStorage.getItem('c2-gate-canto') === 'aberto') { const c = document.getElementById('gate-canto'); c.classList.add('aberto'); c.querySelector('.gate-canto-tg').setAttribute('aria-expanded', 'true'); } } catch {}</script>
+                <!-- CC-774/775/782: abrir ao lado mora no menu da conversa (três
+                     pontinhos e botão direito); aqui só o fechar do lado direito,
+                     ícone igual aos vizinhos e por último, como o fechar de janela. -->
+                <button type="button" class="gate-lupa" id="gate-par-x" title="fechar esta conversa ao lado" aria-label="fechar esta conversa ao lado"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
               </div>
             </div>
 
@@ -5051,8 +5382,9 @@
                 <!-- A gaveta dos ajustes. Fica DENTRO da caixa e nasce fechada:
                      aberta por padrão era o que empurrava a conversa para cima. -->
                 <div class="gate-gaveta" id="gate-gaveta" hidden>
-                  <select id="gate-modelo" class="gate-sel" aria-label="modelo"></select>
-                  <select id="gate-esforco" class="gate-sel" aria-label="esforço"></select>
+                  <!-- CC-710: o "i" abre o que cada modelo faz melhor e quando é econômico -->
+                  <div class="gate-sel-linha"><select id="gate-modelo" class="gate-sel" aria-label="modelo"></select><button type="button" class="gate-i" data-gate-info="modelo" aria-label="o que cada modelo faz melhor" title="o que cada modelo faz melhor">i</button></div>
+                  <div class="gate-sel-linha"><select id="gate-esforco" class="gate-sel" aria-label="esforço"></select><button type="button" class="gate-i" data-gate-info="esforco" aria-label="o que muda em cada nível de esforço" title="o que muda em cada nível de esforço">i</button></div>
                   <select id="gate-modo" class="gate-sel" aria-label="modo de trabalho"></select>
                   <select id="gate-permissao" class="gate-sel" aria-label="permissão" hidden>
                     <option value="acceptEdits">edita sem perguntar</option>
@@ -5064,6 +5396,23 @@
                     <option value="flash">flash (mais rápido, relê a conversa)</option>
                     <option value="avulso">avulso (mais rápido, só a última mensagem)</option>
                   </select>
+                  <!-- CC-755: quem revisa, em todas as conversas: padrão, reserva
+                       (sem crédito no padrão, vai para ela) e a revisão visual
+                       automática depois de resposta que mexe em tela. -->
+                  <div class="gate-revisor" id="gate-revisor">
+                    <label class="c2-mini">revisor <select id="gate-rev-principal" class="gate-sel" aria-label="revisor padrão"></select></label>
+                    <label class="c2-mini">reserva <select id="gate-rev-reserva" class="gate-sel" aria-label="revisor reserva"></select></label>
+                    <label class="c2-mini"><input type="checkbox" id="gate-rev-visual"> revisão visual automática</label>
+                    <label class="c2-mini">tirar o Claude acima de <input type="number" id="gate-rev-teto" min="10" max="100" step="5" style="width:64px" class="gate-sel">% da janela de 5 horas</label>
+                  </div>
+                  <!-- CC-797: o painel percorre o site sozinho para as fotos; com
+                       login, ele precisa de um usuário de teste deste projeto. -->
+                  <div class="gate-revisor" id="gate-acesso">
+                    <span class="c2-mini">login de teste deste projeto, para as fotos passarem da tela de entrada</span>
+                    <input type="text" id="gate-acesso-u" class="gate-sel" placeholder="usuário" autocomplete="off" aria-label="usuário de teste">
+                    <input type="text" id="gate-acesso-s" class="gate-sel" placeholder="senha" autocomplete="off" aria-label="senha de teste">
+                    <button type="button" id="gate-acesso-ok" class="gate-sel">salvar login de teste</button>
+                  </div>
                   <!-- CC-701: vale para a PRÓXIMA mensagem e desliga sozinho. -->
                   <button type="button" id="gate-revisar" class="gate-sel" aria-pressed="false">com revisão: não</button>
                   <span class="gate-paga" id="gate-paga"></span>
@@ -11927,7 +12276,10 @@
     let ROTAS = null; // null | 'carregando' | 'erro' | objeto
 
     async function carregarRotas({ silencioso = false } = {}) {
-      if (!silencioso && !ROTAS) { ROTAS = 'carregando'; renderRotas(); }
+      /* CC-722, varredura em 390 de 01/10: a aba abria em branco de 1 a 4 s,
+         porque a busca do relógio é silenciosa. Silêncio serve para não apagar
+         o que já está na tela; sem nada na tela, o aviso de leitura aparece. */
+      if (!ROTAS) { ROTAS = 'carregando'; renderRotas(); }
       try {
         ROTAS = await (await fetch('/api/rotas')).json();
       } catch (e) {
@@ -13041,6 +13393,264 @@
       exibicao: 'lista',
       rolarAoAbrir: true,   // conversa se abre pelo fim, que é onde está o agora
     };
+    /* CC-767, pedido dele no ultrawide: "abrir mais um chat do lado". Escolha
+       dele: "abrir em outra janela". O endereço `/?conv=<id>#gate` abre o
+       Coderoom já nessa conversa, e cada janela segue a sua. */
+    try {
+      const q = new URLSearchParams(location.search);
+      const convDoEndereco = q.get('conv');
+      if (convDoEndereco && /^[a-z0-9-]{3,40}$/i.test(convDoEndereco)) { GATE.id = convDoEndereco; GATE.rolarAoAbrir = true; }
+      // o modo enxuto da segunda coluna da tela dividida
+      if (q.get('embutido') === '1') document.documentElement.classList.add('embutido');
+    } catch { /* endereço sem conversa: abre a mais recente, como antes */ }
+
+    /* CC-767, pedido dele: a tela do Coderoom dividida em duas conversas. A
+       segunda é um quadro com o próprio Coderoom em modo enxuto; o quadro é
+       criado UMA vez e só troca de endereço quando ele troca a conversa (quadro
+       recriado recarrega, que é a tela piscando). */
+    const gateParLer = () => { try { return localStorage.getItem('gate-par') || null; } catch { return null; } };
+    const gateParGravar = (v) => { try { v ? localStorage.setItem('gate-par', v) : localStorage.removeItem('gate-par'); } catch { /* só conveniência */ } };
+    function gateParAplicar() {
+      const centro = document.getElementById('gate-centro');
+      if (!centro) return;
+      const par = gateParLer();
+      let caixa = centro.querySelector(':scope > .gate-par');
+      if (!par || document.documentElement.classList.contains('embutido') || window.innerWidth < 1600 || par === GATE.id) {
+        if (caixa) caixa.remove();
+        centro.classList.remove('gate-dividido');
+        // dentro do quadro quem marca a coluna ativa é a página de fora
+        if (!document.documentElement.classList.contains('embutido')) document.documentElement.classList.remove('gate-col-ativa');
+        if (GATE_PAR_ATIVA !== 'esq') { GATE_PAR_ATIVA = 'esq'; gateParEspelhar(); } // CC-786: sem divisão, tudo volta a ser da conversa de fora
+        return;
+      }
+      document.documentElement.classList.toggle('gate-col-ativa', GATE_PAR_ATIVA === 'esq');
+      if (!caixa) {
+        caixa = document.createElement('div');
+        caixa.className = 'gate-par';
+        caixa.innerHTML = '<iframe title="conversa ao lado"></iframe>';
+        centro.appendChild(caixa);
+      }
+      const ifr = caixa.querySelector('iframe');
+      if (ifr.dataset.conv !== par) { ifr.dataset.conv = par; ifr.src = '/?conv=' + encodeURIComponent(par) + '&embutido=1#gate'; ifr.onload = gateParMedir; }
+      if (!centro.classList.contains('gate-dividido')) { centro.classList.add('gate-dividido'); requestAnimationFrame(gateParMedir); }
+      if (!caixa._olho) { caixa._olho = new ResizeObserver(() => gateParMedir()); caixa._olho.observe(caixa); }
+    }
+    /* CC-788, "é só colocar idêntico os dois lados": o quadro estreito fazia a
+       página de dentro se achar num celular (regras de até 899 px: caixa de
+       escrita invertida, conversa sem a moldura). Agora o quadro tem o tamanho
+       da TELA, deslocado para trás da coluna, e a conversa de dentro se fixa
+       exatamente no recorte da coluna. Mesma largura de tela, mesmas regras,
+       mesmo desenho; o que passa do recorte é cortado e não recebe toque. */
+    function gateParMedir() {
+      const caixa = document.querySelector('#gate-centro.gate-dividido > .gate-par'); if (!caixa) return;
+      const ifr = caixa.querySelector('iframe'); const r = caixa.getBoundingClientRect();
+      ifr.style.cssText = `position:absolute;left:${-r.left}px;top:${-r.top}px;width:${innerWidth}px;height:${innerHeight}px;max-width:none`;
+      try {
+        const s = ifr.contentDocument.documentElement.style;
+        s.setProperty('--par-x', r.left + 'px'); s.setProperty('--par-y', r.top + 'px');
+        s.setProperty('--par-w', r.width + 'px'); s.setProperty('--par-h', r.height + 'px');
+      } catch { /* quadro carregando: o onload mede de novo */ }
+    }
+    /* O fechar mora dentro do quadro (na própria conversa da direita), e avisa a
+       tela de fora, que é quem desfaz a divisão. Mesma origem, só essa mensagem. */
+    document.addEventListener('click', (ev) => {
+      if (!(ev.target.closest && ev.target.closest('#gate-par-x'))) return;
+      try { window.parent.postMessage({ tipo: 'gate-par-fechar' }, location.origin); } catch { /* fora do quadro não há o que fechar */ }
+    });
+    window.addEventListener('message', (ev) => {
+      if (ev.origin !== location.origin || ev.data?.tipo !== 'gate-par-fechar') return;
+      gateParGravar(null); gateParAplicar();
+    });
+    /* CC-774: abrir uma conversa ao lado, pelo menu dela (três pontinhos ou
+       botão direito). Em tela estreita não há ao lado: abre no lugar. */
+    function gateAbrirAoLado(id) {
+      if (window.innerWidth < 1600 || id === GATE.id) {
+        GATE.id = id; GATE.dados = null; GATE.rolarAoAbrir = true; gateBuscar(); return;
+      }
+      gateParGravar(id); gateParAplicar();
+    }
+    window.addEventListener('resize', () => requestAnimationFrame(gateParAplicar));
+
+    /* CC-786, desenho dele em 30/09: UM topo em cima das duas conversas, e
+       embaixo duas colunas iguais. Escolha dele: o título, o fechar e a barra da
+       direita seguem a coluna tocada por último.
+       A coluna da direita continua sendo o quadro (o Coderoom inteiro, enxuto),
+       que monta a barra dela escondida. Com ela ativa, a página de fora mostra
+       uma CÓPIA dessa barra e repassa cada toque para o original, lá dentro. A
+       cópia mantém os `id` (o desenho da barra depende deles) e fica DEPOIS dos
+       originais escondidos: quem busca por id acha o original primeiro. O
+       repasse acha o original pela posição na árvore. `var`: o título lê isto
+       e pode rodar antes desta linha. */
+    var GATE_PAR_ATIVA = 'esq';
+    const gateParQuadro = () => document.querySelector('#gate-centro.gate-dividido > .gate-par iframe');
+    function gateParTitulo() {
+      if (GATE_PAR_ATIVA !== 'dir') return null;
+      try { return gateParQuadro()?.contentDocument?.getElementById('gate-titulo')?.textContent || null; } catch { return null; }
+    }
+    function gateParAtivar(lado) {
+      const ifr = gateParQuadro();
+      GATE_PAR_ATIVA = ifr ? lado : 'esq';
+      document.documentElement.classList.toggle('gate-col-ativa', Boolean(ifr) && GATE_PAR_ATIVA === 'esq');
+      try { ifr?.contentDocument?.documentElement.classList.toggle('gate-col-ativa', GATE_PAR_ATIVA === 'dir'); } catch { /* quadro ainda carregando */ }
+      gateParEspelhar();
+      try { renderGate(); } catch { /* a próxima volta pinta */ }
+    }
+    const gateParCaminho = (el, raiz) => { const p = []; for (; el && el !== raiz; el = el.parentElement) p.unshift([...el.parentElement.children].indexOf(el)); return p; };
+    const gateParSeguir = (raiz, p) => p.reduce((e, i) => e && e.children[i], raiz);
+    function gateParEspelhar() {
+      const ctx = document.getElementById('gate-ctx'); if (!ctx) return;
+      const ifr = GATE_PAR_ATIVA === 'dir' ? gateParQuadro() : null;
+      let esp = document.getElementById('gate-ctx-espelho');
+      ctx.classList.toggle('espelhando', Boolean(ifr));
+      if (!ifr) { esp?.remove(); return; }
+      let fonte = null; try { fonte = ifr.contentDocument.getElementById('gate-ctx'); } catch { /* carregando */ }
+      if (!fonte) return;
+      if (!esp) {
+        esp = document.createElement('div'); esp.id = 'gate-ctx-espelho'; ctx.append(esp);
+        const repassar = (ev) => {
+          const t = ev.target; const orig = gateParSeguir(fonte, gateParCaminho(t, esp));
+          const campo = t.closest && t.closest('input, select, textarea, label');
+          if (ev.type === 'click' && campo) return; // campo nativo: o que vale é o change/input abaixo
+          ev.stopPropagation(); // a página de fora não pode agir na conversa DELA
+          if (!orig) return;
+          if (ev.type === 'click') { ev.preventDefault(); orig.click(); }
+          else { if ('checked' in t && t.type === 'checkbox') orig.checked = t.checked; else orig.value = t.value; orig.dispatchEvent(new Event(ev.type, { bubbles: true })); }
+          setTimeout(gateParEspelhar, 250);
+        };
+        for (const tipo of ['click', 'change', 'input']) esp.addEventListener(tipo, repassar, true);
+      }
+      const foco = document.activeElement; // não redesenha campo em uso; botão clicado não conta
+      if (esp.contains(foco) && foco.matches('input, select, textarea')) return;
+      const html = fonte.innerHTML;
+      if (esp.innerHTML !== html) esp.innerHTML = html; // compara com a tela, não com a última cópia: se algo pintar por cima, volta
+      const a = fonte.querySelectorAll('select, input, textarea'); const b = esp.querySelectorAll('select, input, textarea');
+      a.forEach((x, i) => { if (!b[i]) return; if (x.type === 'checkbox') b[i].checked = x.checked; else b[i].value = x.value; });
+      const tit = document.getElementById('gate-titulo'); const nome = gateParTitulo();
+      if (tit && nome && tit.textContent !== nome) tit.textContent = nome;
+    }
+    /* CC-710, pedido dele em 30/09: um "i" nos modelos "explicando o que cada
+       modelo de cada IA é melhor, pq o opencode tem um monte e a gente só usa o
+       bigpickle". Abre uma janela por cima, com uma aba por IA, e cada modelo em
+       cartão: o que é, melhor para, evite, custo, velocidade, se enxerga imagem.
+       Números e fonte ficam a um toque (regra 8 de design). O que não tem
+       descrição diz que não tem, e o que tem pouco dado diz isso na cara. */
+    var GATE_INFO = null;
+    const GATE_INFO_AG = { claude: 'Claude', opencode: 'opencode', agy: 'agy' };
+    function gateInfoAbrir(foco) {
+      let g = document.getElementById('gate-info');
+      if (!g) {
+        g = document.createElement('div'); g.id = 'gate-info'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true'); g.setAttribute('aria-label', 'o que cada modelo faz melhor');
+        document.body.appendChild(g);
+        g.addEventListener('click', (e) => {
+          const t = e.target.closest('[data-info-ag]'); if (t) { GATE_INFO.ag = t.dataset.infoAg; GATE_INFO.foco = null; return gateInfoPintar(); }
+          if (e.target.closest('[data-info-x]') || e.target === g) gateInfoFechar();
+        });
+      }
+      GATE_INFO = { ag: GATE.agente || 'opencode', foco };
+      gateInfoPintar(); g.hidden = false; requestAnimationFrame(() => g.classList.add('aberta'));
+      g.querySelector('[data-info-x]')?.focus();
+    }
+    function gateInfoFechar() { const g = document.getElementById('gate-info'); if (!g) return; g.classList.remove('aberta'); GATE_INFO = null; setTimeout(() => { if (!GATE_INFO) g.hidden = true; }, 180); }
+    function gateInfoPintar() {
+      const g = document.getElementById('gate-info'); const ag = GATE_INFO.ag; const d = GATE.modelos?.[ag];
+      const emUso = GATE.agente === ag ? (GATE.modelo || d?.padrao || '') : '';
+      const chip = (t, cls = '') => `<span class="gi-chip ${cls}">${esc(t)}</span>`;
+      const img = (v) => v === true ? chip('vê imagem', 'ok') : v === false ? chip('não vê imagem', 'aviso') : chip('imagem: não confirmado');
+      const custoCls = { 'gratis': 'ok', 'barato': 'ok', 'medio': '', 'caro': 'aviso' };
+      const rotCusto = { 'gratis': 'grátis', 'barato': 'barato', 'medio': 'custo médio', 'caro': 'caro' };
+      const rotVel = { 'rapido': 'rápido', 'medio': 'velocidade média', 'lento': 'lento' };
+      const cartao = (m) => {
+        const i = m.info;
+        if (!i) return `<article class="gi-cartao"><h3>${esc(m.rotulo || m.id)}${m.id === emUso ? ' ' + chip('em uso', 'uso') : ''}</h3><p class="gi-resumo">Ainda sem descrição de uso para este modelo.</p></article>`;
+        return `<article class="gi-cartao${m.id === emUso ? ' em-uso' : ''}">
+          <h3>${esc(i.nome)}${m.id === emUso ? ' ' + chip('em uso', 'uso') : ''}${m.id === d?.padrao ? ' ' + chip('padrão', '') : ''}</h3>
+          <div class="gi-chips">${chip(rotCusto[i.custo] || i.custo, custoCls[i.custo] || '')}${chip(rotVel[i.velocidade] || i.velocidade)}${img(i.imagem)}${i.confianca === 'baixa' ? chip('pouco dado público', 'aviso') : ''}</div>
+          <p class="gi-resumo">${esc(i.resumo)}</p>
+          <div class="gi-lista"><b>Melhor para</b><ul>${(i.bom || []).map((x) => `<li class="bom">${esc(x)}</li>`).join('')}</ul></div>
+          <div class="gi-lista"><b>Evite</b><ul>${(i.evitar || []).map((x) => `<li class="evite">${esc(x)}</li>`).join('')}</ul></div>
+          <details><summary>números e fonte</summary><p>${esc(i.numeros || 'sem número confiável')}</p>${i.fonte ? `<p><a href="${esc(i.fonte)}" target="_blank" rel="noopener">fonte da pesquisa</a></p>` : ''}</details>
+        </article>`;
+      };
+      const corpo = !GATE.modelos ? '<p class="gi-resumo">Lendo os modelos…</p>'
+        : d?.erro ? `<p class="gi-resumo">Não consegui ler a lista de modelos do ${esc(GATE_INFO_AG[ag])}. Tente de novo em alguns segundos.</p>`
+        : !(d?.modelos || []).length ? '<p class="gi-resumo">Este agente não tem escolha de modelo: usa o que já vem nele.</p>'
+        : d.modelos.map(cartao).join('');
+      g.innerHTML = `<div class="gi-janela">
+        <header><h2>O que cada modelo faz melhor</h2><button type="button" class="gal-bt" data-info-x aria-label="fechar">✕</button></header>
+        <p class="gi-nota">Pesquisado em ${esc((GATE.infoData || '').split('-').reverse().join('/') || '30/09/2026')} com benchmarks e preços públicos. Onde não há número confiável, diz isso. Preço e nota envelhecem.</p>
+        <nav class="gi-abas" role="tablist">${Object.keys(GATE_INFO_AG).map((k) => `<button type="button" role="tab" aria-selected="${k === ag}" data-info-ag="${k}">${esc(GATE_INFO_AG[k])}${GATE.agente === k ? ' · usando' : ''}</button>`).join('')}</nav>
+        <section id="gi-esforco" class="gi-esforco${GATE_INFO.foco === 'esforco' ? ' foco' : ''}"><b>Esforço</b><p>${esc(d?.esforcoInfo || 'Este agente não tem nível de esforço.')}</p></section>
+        <div class="gi-corpo">${corpo}</div></div>`;
+      if (GATE_INFO.foco === 'esforco') g.querySelector('#gi-esforco')?.scrollIntoView({ block: 'nearest' });
+    }
+    document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-gate-info]'); if (b) gateInfoAbrir(b.dataset.gateInfo); });
+    document.addEventListener('keydown', (e) => { if (GATE_INFO && e.key === 'Escape') gateInfoFechar(); });
+
+    /* CC-798, pedido dele: "quando eu abro fotos no coderoom, eu quero que abra
+       em modo galeria dentro do próprio cockpit". Tocar numa foto da conversa
+       abre por cima de tudo, com o nome da tela, setas, deslizar no celular, e
+       fecha no X, no Esc ou tocando fora. Na coluna da direita da tela dividida,
+       quem abre é a página de fora: dentro do quadro ela ficaria espremida. */
+    var GATE_GAL = null;
+    function gateGaleria(fotos, i) {
+      if (document.documentElement.classList.contains('embutido')) { try { return window.parent.gateGaleria(fotos, i); } catch { /* sem página de fora: abre aqui */ } }
+      let g = document.getElementById('gate-galeria');
+      if (!g) {
+        g = document.createElement('div'); g.id = 'gate-galeria'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true'); g.setAttribute('aria-label', 'fotos da tela');
+        document.body.appendChild(g);
+        g.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-gal]');
+          if (b) return b.dataset.gal === 'x' ? gateGaleriaFechar() : gateGaleriaIr(Number(b.dataset.gal));
+          if (!e.target.closest('img')) gateGaleriaFechar();
+        });
+        let x0 = null;
+        g.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+        g.addEventListener('touchend', (e) => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) gateGaleriaIr(dx < 0 ? 1 : -1); });
+      }
+      GATE_GAL = { fotos, i };
+      gateGaleriaPintar();
+      g.hidden = false; requestAnimationFrame(() => g.classList.add('aberta'));
+    }
+    function gateGaleriaIr(passo) { if (!GATE_GAL) return; const n = GATE_GAL.fotos.length; GATE_GAL.i = (GATE_GAL.i + passo + n) % n; gateGaleriaPintar(); }
+    function gateGaleriaFechar() { const g = document.getElementById('gate-galeria'); if (!g) return; g.classList.remove('aberta'); GATE_GAL = null; setTimeout(() => { if (!GATE_GAL) g.hidden = true; }, 180); }
+    function gateGaleriaPintar() {
+      const g = document.getElementById('gate-galeria'); const { fotos, i } = GATE_GAL; const f = fotos[i]; const varias = fotos.length > 1;
+      g.innerHTML = `<div class="gal-topo"><span class="gal-nome">${esc(f.nome)}</span><span class="gal-conta">${i + 1} de ${fotos.length}</span><button type="button" class="gal-bt" data-gal="x" aria-label="fechar a galeria">✕</button></div>`
+        + `<div class="gal-palco">${varias ? '<button type="button" class="gal-bt gal-seta" data-gal="-1" aria-label="foto anterior">‹</button>' : ''}<img src="${esc(f.src)}" alt="${esc(f.nome)}">${varias ? '<button type="button" class="gal-bt gal-seta" data-gal="1" aria-label="próxima foto">›</button>' : ''}</div>`;
+    }
+    document.addEventListener('keydown', (e) => {
+      if (!GATE_GAL) return;
+      if (e.key === 'Escape') gateGaleriaFechar(); else if (e.key === 'ArrowRight') gateGaleriaIr(1); else if (e.key === 'ArrowLeft') gateGaleriaIr(-1);
+    });
+    // as fotos da conversa (as do painel e as anexadas) abrem na galeria, não em aba nova
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest && e.target.closest('.gate-vistos a'); if (!a || !a.querySelector('img')) return;
+      e.preventDefault();
+      const todas = [...a.closest('.gate-vistos').querySelectorAll('a')].filter((x) => x.querySelector('img'));
+      gateGaleria(todas.map((x) => ({ src: x.href, nome: x.querySelector('span')?.textContent || x.querySelector('img').alt || 'foto' })), todas.indexOf(a));
+    }, true);
+
+    /* CC-790, print dele: a direita ficava uns 8 px acima da esquerda. A medida
+       só refazia quando a coluna mudava de TAMANHO; se ela só se desloca (o topo
+       da página some depois de carregar), o recorte ficava na posição velha. */
+    let gateParPos = '';
+    setInterval(() => {
+      if (GATE_PAR_ATIVA === 'dir') gateParEspelhar();
+      const c = document.querySelector('#gate-centro.gate-dividido > .gate-par'); if (!c) return;
+      /* CC-800, print dele: escuro fora e claro na coluna da direita. O tema é
+         lido quando a página abre; trocado depois, o quadro ficava no antigo. */
+      try { const d = c.querySelector('iframe')?.contentDocument?.documentElement; const tema = document.documentElement.dataset.tema; if (d && tema && d.dataset.tema !== tema) d.dataset.tema = tema; } catch { /* quadro carregando */ }
+      const r = c.getBoundingClientRect(); const pos = [r.left, r.top, r.width, r.height, innerWidth, innerHeight].map(Math.round).join();
+      if (pos !== gateParPos) { gateParPos = pos; gateParMedir(); }
+    }, 800);
+    // qual coluna foi tocada por último: a de fora ouve a si mesma, e o quadro avisa
+    for (const tipo of ['pointerdown', 'focusin']) document.addEventListener(tipo, (ev) => {
+      if (document.documentElement.classList.contains('embutido')) { try { window.parent.postMessage({ tipo: 'gate-par-ativa' }, location.origin); } catch { /* fora do quadro */ } return; }
+      if (GATE_PAR_ATIVA === 'dir' && ev.target.closest && ev.target.closest('#gate-canvas, #gate-compor')) gateParAtivar('esq');
+    }, true);
+    window.addEventListener('message', (ev) => {
+      if (ev.origin === location.origin && ev.data?.tipo === 'gate-par-ativa' && GATE_PAR_ATIVA !== 'dir') gateParAtivar('dir');
+    });
     const GATE_PAGA = {
       claude: 'entra com a sua assinatura',
       opencode: 'entra com os modelos gratuitos',
@@ -13320,36 +13930,67 @@
      * com "nenhum projeto ainda", a tela afirmando o que não sabe.
      *
      * Sob pedido explícito, lê. No tique automático, continua saindo cedo. */
-    async function gateBuscar(mesmoFechada = false) {
+    /* CC-804, pedido dele em 30/09: "o coderoom ta bem pesado e as conversas
+       abrem misturadas". Com o servidor ocupado a leitura passava de 2 s, que é
+       o intervalo do tique: as leituras se sobrepunham e chegavam FORA DE ORDEM,
+       e a resposta velha de uma conversa sobrescrevia a atual. Agora é uma
+       leitura do tique por vez (o tique que cai no meio de uma é descartado), e
+       o pedido DELE (abrir outra conversa) roda na hora, sem esperar a leitura
+       lenta da anterior. Cada leitura leva um número, e resposta mais velha que
+       a última aplicada nunca é pintada. */
+    var GATE_EM_VOO = 0, GATE_SEQ = 0, GATE_APLICADA = 0;
+    async function gateBuscar(mesmoFechada = false, tique = false) {
+      if (tique && GATE_EM_VOO > 0) return;
+      GATE_EM_VOO++;
+      try { await gateBuscarUma(mesmoFechada, ++GATE_SEQ); } finally { GATE_EM_VOO--; }
+    }
+    async function gateBuscarUma(mesmoFechada = false, seq = 0) {
       const ativa = document.getElementById('view-gate')?.classList.contains('active');
       if (!ativa && !mesmoFechada) return;
       /* Os projetos do painel entram uma vez: a lista quase não muda, e pedir a
          cada tique seria varrer disco de dois em dois segundos. */
+      /* CC-804: sem `await`. Medido em 30/09 com a VPS sem memória: essa rota
+         levou 22 s, e a lista de conversas esperava por ela para aparecer. */
       if (GATE.projetos === null) {
         GATE.projetos = [];
-        try {
-          const r = await fetch('/api/projetos');
-          if (r.ok) GATE.projetos = (await r.json()).projetos || [];
-        } catch { /* a lista de projetos é conforto, não requisito */ }
+        fetch('/api/projetos').then((r) => r.ok ? r.json() : null)
+          .then((d) => { if (d) { GATE.projetos = d.projetos || []; renderGate(); } })
+          .catch(() => { /* a lista de projetos é conforto, não requisito */ });
       }
       /* Os modelos também entram uma vez só: a leitura pergunta ao binário de
-         dois dos três agentes e leva segundos. */
+         dois dos três agentes e leva segundos. Sem `await`: esperar por eles
+         segurava a conversa, e o lado direito da tela dividida abria vazio
+         (CC-777). */
       if (GATE.modelos === null) {
         GATE.modelos = {};
-        try {
-          const r = await fetch('/api/gate/modelos');
-          if (r.ok) GATE.modelos = (await r.json()).modelos || {};
-        } catch { /* o seletor dirá que não conseguiu ler */ }
-        renderGate();
+        fetch('/api/gate/modelos').then((r) => r.ok ? r.json() : null)
+          .then((d) => {
+            if (d) { GATE.modelos = d.modelos || {}; GATE.infoData = d.infoData || null; }
+            // CC-799: leitura que falhou pergunta de novo em 30 s, em vez de ficar assim até recarregar
+            if (!d || d.erro || Object.values(GATE.modelos).some((m) => m?.erro)) setTimeout(() => { GATE.modelos = null; }, 30000);
+            renderGate();
+          })
+          .catch(() => { setTimeout(() => { GATE.modelos = null; }, 30000); });
       }
+      const vista = document.getElementById('view-gate');
       try {
         const r = await fetch('/api/gate/conversas');
         if (!r.ok) throw new Error(`resposta ${r.status}`);
         const d = await r.json();
         GATE.conversas = d.conversas || [];
         GATE.erro = null;
+        vista?.classList.remove('gate-reconectando');
         if (!GATE.id && GATE.conversas.length) GATE.id = GATE.conversas[0].id;
       } catch (e) {
+        /* CC-804, print dele ("resposta 502"): painel religando devolve 502 por
+           uns segundos, e o cartão vermelho apagava a conversa que estava na
+           tela. Com conversa já carregada, a tela segue com ela e avisa no
+           título que está reconectando; a próxima leitura certa tira o aviso.
+           Continua sendo falha VISÍVEL (régua 5), só que no tamanho dela. */
+        if (GATE.conversas && /^resposta 50[234]$|Failed to fetch|NetworkError|Load failed/.test(String(e.message || e))) {
+          vista?.classList.add('gate-reconectando');
+          return;
+        }
         /* Falha de leitura NÃO pode virar lista vazia. Ele confia no silêncio da
            tela, e uma tela que fica quieta quando falhou mente no momento da
            decisão. É a régua 5 deste projeto. */
@@ -13362,12 +14003,18 @@
          está mais na lista dá lugar à primeira, sem erro. */
       if (GATE.id && !GATE.conversas.some((c) => c.id === GATE.id)) { GATE.id = GATE.conversas[0]?.id || null; GATE.dados = null; }
       if (GATE.id) {
+        const pedida = GATE.id;
         try {
-          const r = await fetch(`/api/gate/conversa?id=${encodeURIComponent(GATE.id)}`);
+          const r = await fetch(`/api/gate/conversa?id=${encodeURIComponent(pedida)}`);
+          if (GATE.id !== pedida) return; // trocou de conversa no meio: esta resposta é de outra, e a próxima leitura já vem
           if (r.status === 404) { GATE.id = null; GATE.dados = null; GATE.erro = null; renderGate(); return; }
           if (!r.ok) throw new Error(`resposta ${r.status}`);
-          GATE.dados = await r.json();
+          const dados = await r.json();
+          if (GATE.id !== pedida || seq < GATE_APLICADA) return;
+          GATE_APLICADA = seq;
+          GATE.dados = dados;
         } catch (e) {
+          if (GATE.id !== pedida) return;
           GATE.erro = String(e.message || e);
         }
         /* O modo do projeto é lido quando a conversa TROCA, não a cada tique:
@@ -13422,8 +14069,25 @@
         .replace(/`([^`]+)`/g, '<code>$1</code>')
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+      /* CC-721, print dele: tabela do agente aparecia crua ("| País | Capital |").
+         Linhas seguidas entre barras viram tabela; a linha de traços separa o
+         cabeçalho. Rola de lado dentro da própria caixa, nunca a página. */
+      let tabela = [];
+      const ehLinhaDeTabela = (l) => /^\s*\|.*\|\s*$/.test(l);
+      const celulas = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+      const fecharTabela = () => {
+        if (!tabela.length) return;
+        const sep = tabela.findIndex((l) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l));
+        const cab = sep === 1 ? celulas(tabela[0]) : null;
+        const corpo = tabela.filter((l, i) => i !== sep && !(cab && i === 0));
+        fora.push('<div class="gate-tabela"><table>' + (cab ? '<thead><tr>' + cab.map((c) => `<th>${emLinha(c)}</th>`).join('') + '</tr></thead>' : '')
+          + '<tbody>' + corpo.map((l) => '<tr>' + celulas(l).map((c) => `<td>${emLinha(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>');
+        tabela = [];
+      };
 
       for (const linha of linhas) {
+        if (!dentroDeCodigo && ehLinhaDeTabela(linha)) { fecharParagrafo(); fecharLista(); tabela.push(linha); continue; }
+        fecharTabela();
         const cerca = /^\s*```/.test(linha);
         if (cerca) {
           fecharParagrafo(); fecharLista();
@@ -13457,7 +14121,7 @@
           paragrafo.push(emLinha(linha));
         }
       }
-      fecharParagrafo(); fecharLista();
+      fecharTabela(); fecharParagrafo(); fecharLista();
       if (dentroDeCodigo) fora.push('</code></pre>'); // cerca aberta enquanto a resposta ainda cresce
       return fora.join('\n');
     }
@@ -13573,6 +14237,18 @@
       } else if (texto.trim()) {
         corpo = `<div class="gate-md">${gateFormatar(texto)}</div>`;
       } else {
+        corpo = null;
+      }
+      /* CC-764, pedido dele: "fica parecendo uma última resposta que parou.
+         seria legal um chatzinho pensando, um loading". Resposta com texto e
+         ainda em andamento ganha, no fim, a linha animada com o tempo desde o
+         último sinal. O opencode só manda o texto quando termina cada etapa,
+         então enquanto ele escreve um arquivo grande esta linha é a prova de vida. */
+      if (corpo && m.estado === 'rodando') {
+        const calado = GATE.dados?.sinalEm ? Date.now() - GATE.dados.sinalEm : 0;
+        corpo += `<div class="gate-vivo"><span class="gate-pontos"><i></i><i></i><i></i></span> trabalhando${calado > 5000 ? ' · último sinal há ' + esc(gateSeg(calado)) : ''}</div>`;
+      }
+      if (corpo === null) {
         /* Resposta ainda sem uma palavra: o espaço em branco não distingue
            "está pensando" de "veio vazia". Cada caso diz o seu. */
         /* `falhou` sem motivo NÃO pode virar "terminou sem escrever nada": as
@@ -13584,7 +14260,9 @@
           : m.estado === 'falhou' ? 'esta resposta não chegou até o fim'
           : m.erro ? 'esta resposta não chegou'
           : 'o agente terminou sem escrever nada';
-        corpo = `<p style="color:var(--text-dim);font-style:italic;">${frase}</p>`;
+        corpo = m.estado === 'rodando'
+          ? `<div class="gate-vivo" style="margin-top:0"><span class="gate-pontos"><i></i><i></i><i></i></span> ${frase}</div>`
+          : `<p style="color:var(--text-dim);font-style:italic;">${frase}</p>`;
       }
       const corAg = { claude: 'var(--gate-claude)', opencode: 'var(--gate-opencode)', agy: 'var(--gate-agy)' }[m.de] || 'var(--c-projeto)';
       const cabHtml = m.de === 'felipe'
@@ -13605,7 +14283,11 @@
         <div class="gate-msg gate-de-${esc(m.de)}">
           ${cabHtml}
           ${corpo}
-          ${(m.fotos || []).length ? `<div class="c2-mini" style="margin-top:8px">a tela depois desta resposta, fotografada pelo painel:</div><div class="gate-vistos">${m.fotos.map((f) => `<a href="/api/gate/anexo?caminho=${encodeURIComponent(f)}" target="_blank" rel="noopener"><img src="/api/gate/anexo?caminho=${encodeURIComponent(f)}" alt="${/celular/.test(f) ? 'foto no celular' : 'foto no computador'}"></a>`).join('')}</div>` : ''}
+          ${(m.fotos || []).length ? `<div class="c2-mini" style="margin-top:8px">a tela depois desta resposta, fotografada pelo painel:</div><div class="gate-vistos">${m.fotos.map((f) => {
+            // CC-780: "01-lista-celular.jpg" vira "lista · celular"; cada foto diz qual tela é
+            const nome = (f.split(/[\\/]/).pop() || '').replace(/\.jpe?g$/i, '').replace(/^\d+-/, '').replace(/-(celular|computador)$/, ' · $1');
+            return `<a class="gate-foto" href="/api/gate/anexo?caminho=${encodeURIComponent(f)}" target="_blank" rel="noopener"><img src="/api/gate/anexo?caminho=${encodeURIComponent(f)}" alt="foto: ${esc(nome)}"><span>${esc(nome)}</span></a>`;
+          }).join('')}</div>` : ''}
           ${fer}${mudou}${custo}${erro}${salvar}
         </div>`;
     }
@@ -13646,8 +14328,14 @@
        recolhe, para nunca ficarem fora de alcance. */
     function gateLimpo() {
       const v = document.getElementById('view-gate'); const mc = v && v.closest('.main-content'); if (!v || !mc) return;
-      const topoFora = v.classList.contains('active') && innerWidth >= 900;
-      const barraAberta = topoFora && innerWidth >= 1280 && !v.classList.contains('gate-ctx-escondido');
+      // CC-782: o quadro da tela dividida é estreito, mas é computador
+      const topoFora = v.classList.contains('active') && (innerWidth >= 900 || document.documentElement.classList.contains('embutido'));
+      /* CC-786: no quadro da direita a barra segue a da página de fora, onde ela
+         aparece espelhada; aberta, quem responde sai da caixa de escrita, e as
+         duas caixas ficam iguais, como no desenho dele. */
+      let barraFora = null;
+      if (document.documentElement.classList.contains('embutido')) { try { barraFora = !window.parent.document.getElementById('view-gate')?.classList.contains('gate-ctx-escondido'); } catch { barraFora = true; } }
+      const barraAberta = barraFora ?? (topoFora && innerWidth >= 1280 && !v.classList.contains('gate-ctx-escondido'));
       const pecas = {
         modos: document.getElementById('bt-modos'), modosCaixa: document.getElementById('modos-caixa'), canto: document.querySelector('.topo-canto'),
         etiquetas: document.getElementById('gate-qual'), quem: document.querySelector('#view-gate .gate-quem'), gaveta: document.getElementById('gate-gaveta'),
@@ -13671,6 +14359,8 @@
         if (era && pecas.gaveta) { pecas.gaveta.hidden = true; btAj?.setAttribute('aria-expanded', 'false'); }
       }
       gateMedirTopo();
+      // CC-786: a coluna da direita segue esta barra (aberta, quem responde sai da caixa dela)
+      try { if (era !== barraAberta) gateParQuadro()?.contentWindow?.gateLimpo?.(); } catch { /* quadro carregando */ }
     }
     new MutationObserver(() => gateLimpo()).observe(document.getElementById('view-gate'), { attributes: true, attributeFilter: ['class'] });
     window.addEventListener('resize', () => requestAnimationFrame(gateLimpo));
@@ -13911,12 +14601,17 @@
       const cab = GATE.dados?.cabecalho; const tit = document.getElementById('gate-titulo'); const qual = document.getElementById('gate-qual');
       if (!tit || !qual) return;
       if (!cab) { if (tit.textContent !== 'CODEROOM') tit.textContent = 'CODEROOM'; return; }
-      const nome = cab.projeto || 'conversa geral';
+      // CC-786: com a tela dividida e a coluna da direita ativa, o topo é dela
+      const nome = gateParTitulo() || cab.projeto || 'conversa geral';
       if (tit.textContent !== nome) tit.textContent = nome;
       const maq = (typeof DATA !== 'undefined' && DATA.maquina?.nome) || 'esta máquina';
       const pasta = String(cab.cwd || '').replace(/^\/home\/[^/]+/, '~');
       const html = '<span class="gate-cab-conv">' + (GATE.dados.turnoAberto ? '<span class="ini-pilula" style="--q:var(--c-sessao)">trabalhando</span>' : '<span class="ini-pilula" style="--q:var(--text-dim)">parada</span>')
-        + '<span>' + ic('maquina', 12) + ' ' + esc(maq) + '</span>' + (pasta ? '<span>' + ic('pasta', 12) + ' ' + esc(pasta) + '</span>' : '') + '</span>'
+        // CC-762: o caminho da pasta saiu daqui; ele está na barra da direita
+        + '<span' + (pasta ? ' title="' + esc(pasta) + '"' : '') + '>' + ic('maquina', 12) + ' ' + esc(maq) + '</span></span>'
+        /* CC-807, "ele não fez testedevoo, como eu testo?": o projeto no endereço
+           de teste vira um link na própria conversa, sem ele precisar perguntar. */
+        + (GATE.dados.testedevoo?.url ? '<a class="gate-link-teste" href="' + esc(GATE.dados.testedevoo.url) + '" target="_blank" rel="noopener" title="' + esc(GATE.dados.testedevoo.url) + '">abrir no testedevoo ↗</a>' : '')
         /* CC-712, decisão dele: os agentes DESTA conversa no topo, como fichas.
            Entra quem já falou nela (tem sessão guardada) e quem responde agora;
            a acesa é quem responde. Tocar troca o agente, pelo mesmo caminho do
@@ -13935,7 +14630,8 @@
     function gateContexto() {
       // CC-717: os blocos moram num filho; o topo da barra é dos ajustes, que não rolam
       const el = document.getElementById('gate-ctx-blocos'); const d = GATE.dados; const cab = d?.cabecalho;
-      if (!el || window.innerWidth < 1280) return;
+      // CC-786: a coluna da direita monta a barra dela escondida, e a de fora a espelha
+      if (!el || (window.innerWidth < 1280 && !document.documentElement.classList.contains('embutido'))) return;
       if (!cab) { pintar(el, '<div class="card gctx-bloco"><p class="c2-vazio">abra uma conversa.</p></div>'); return; }
       const cwd = cab.cwd || '';
       const g = GATE_GIT[cwd];
@@ -13959,7 +14655,7 @@
         // CC-713: os números que moravam na faixa de gasto em cima da conversa
         + (gasto.saida != null ? linha('tokens escritos', gateMil(gasto.saida)) : '')
         + (gasto.cacheLido != null ? linha('lidos do cache', gateMil(gasto.cacheLido)) : '')
-        + linha('gasto', gasto.dolar != null ? 'US$ ' + Number(gasto.dolar).toFixed(2).replace('.', ',') : 'zero')
+        + linha('custo de referência', gasto.dolar != null ? 'US$ ' + Number(gasto.dolar).toFixed(2).replace('.', ',') : 'zero')
         + linha('criada', cab.criadaEm ? c2Data(new Date(cab.criadaEm).toISOString()) : 'sem registro');
       const blocoGit = !cwd ? '<p class="c2-mini">conversa sem pasta de projeto.</p>'
           : !git ? '<p class="c2-mini">' + (GATE_GIT[cwd]?.lendo ? 'lendo o git…' : 'sem git nesta pasta.') + '</p>'
@@ -14098,7 +14794,10 @@
         document.addEventListener('mouseup', onUp);
       }
       const lado = document.getElementById('gate-lado-corpo');
-      if (GATE_LADO.vendoLista === null) GATE_LADO.vendoLista = window.innerWidth < 900;
+      /* CC-767: na coluna ao lado (modo enxuto) é sempre a conversa: o quadro
+         tem ~830 px, e abaixo de 900 a tela achava que era celular e mostrava a
+         lista, que ali fica escondida (medido: a coluna saiu vazia). */
+      if (GATE_LADO.vendoLista === null) GATE_LADO.vendoLista = !document.documentElement.classList.contains('embutido') && window.innerWidth < 900;
       tela.classList.toggle('gate-vendo-lista', GATE_LADO.vendoLista);
       const convs = (GATE.conversas || []).filter((c) => GATE_LADO.vendoArquivadas ? c.arquivada : !c.arquivada);
       const projDe = (c) => c.projeto || 'Geral';
@@ -14142,16 +14841,19 @@
       const itens = [...grupos.entries()].map(([p, cs]) => {
         const fechado = GATE_LADO.fechados.has(p);
         return '<div class="gl-proj' + (fechado ? ' fechado' : '') + '" data-gl-k="' + esc(p) + '"><div class="gl-proj-cab">'
-          + '<button type="button" class="gl-proj-alterna" data-gl-recolher="' + esc(p) + '" aria-expanded="' + !fechado + '">' + icQuad('pasta', pjCor(p), 26)
+          + '<button type="button" class="gl-proj-alterna" data-gl-recolher="' + esc(p) + '" aria-expanded="' + !fechado + '" title="' + (fechado ? 'abrir' : 'recolher') + ' o projeto ' + esc(p) + '">' + icQuad('pasta', pjCor(p), 26)
           + '<span class="gl-proj-txt"><b>' + esc(p === 'Geral' ? 'conversa geral' : p) + ' <span class="c2-mini">' + cs.length + '</span></b>' + (descDe(p) ? '<span>' + esc(descDe(p)) + '</span>' : '') + '</span>'
           + '<span class="gl-seta">▾</span></button>'
-          + '<button type="button" class="gl-proj-nova" data-gl-nova="' + esc(p) + '" title="conversa nova em ' + esc(p) + '" aria-label="conversa nova em ' + esc(p) + '">' + ic('mais', 14) + '</button></div>'
+          + '<button type="button" class="gl-proj-nova" data-gl-nova="' + esc(p) + '" title="conversa nova em ' + esc(p) + '" aria-label="conversa nova em ' + esc(p) + '">' + ic('mais', 14) + 'nova</button></div>'
           + (fechado ? '' : '<div class="gl-proj-convs">' + cs.map((c) => itemConv(c)
         + '<div class="sl-acoes" style="margin-left:auto;">'
         + '<details class="sl-menu" style="position:relative;">'
         + '<summary class="icon-btn sl-btn" style="width:28px;height:28px;border:none;background:transparent;box-shadow:none;">' + ic('pontos', 16) + '</summary>'
         + '<div class="sl-menu-box card" style="position:absolute; right:0; top:100%; min-width:130px; padding:6px; border-radius:8px; display:flex; flex-direction:column; gap:2px; z-index:100;">'
         + '<button type="button" class="btn" data-gl-acao="' + (c.arquivada ? 'desarquivar' : 'arquivar') + '" style="justify-content:flex-start; padding:6px 10px; font-size:12.5px; border:none; box-shadow:none; background:transparent;">' + ic('pasta', 14) + ' <span style="margin-left:6px">' + (c.arquivada ? 'Desarquivar' : 'Arquivar') + '</span></button>'
+        /* CC-774: abrir ao lado, dividindo a tela (também pelo botão direito,
+           que copia as opções deste menu). */
+        + '<button type="button" class="btn" data-gl-acao="lado" style="justify-content:flex-start; padding:6px 10px; font-size:12.5px; border:none; box-shadow:none; background:transparent;">' + ic('seta', 14) + ' <span style="margin-left:6px">Abrir ao lado</span></button>'
         /* CC-727: renomear, o mesmo que o cartão em Sessões oferece. */
         + '<button type="button" class="btn" data-gl-acao="renomear" style="justify-content:flex-start; padding:6px 10px; font-size:12.5px; border:none; box-shadow:none; background:transparent;">' + ic('lapis', 14) + ' <span style="margin-left:6px">Renomear</span></button>'
         + '<button type="button" class="btn" data-gl-acao="apagar" style="justify-content:flex-start; padding:6px 10px; font-size:12.5px; color:var(--red); border:none; box-shadow:none; background:transparent;">' + ic('lixeira', 14) + ' <span style="margin-left:6px">Excluir</span></button>'
@@ -14208,16 +14910,26 @@
         const op = acao.dataset.glAcao;
         if (op === 'apagar') {
           return gateConfirmarApagar(id);
+        } else if (op === 'lado') {
+          acao.closest('.sl-menu')?.removeAttribute('open');
+          gateAbrirAoLado(id);
+          return;
         } else if (op === 'renomear') {
           const atual = (GATE.conversas || []).find((x) => x.id === id)?.titulo || '';
           const novo = prompt('Nome desta conversa:', atual);
           if (!novo || !novo.trim()) return;
           const r = await fetch('/api/gate/renomear', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, titulo: novo }) }).then((x) => x.json()).catch((e) => ({ erro: e.message }));
           if (!r?.ok) alert('não consegui renomear: ' + (r?.erro || 'erro'));
+          else if (atual) c2Desfazer('Conversa renomeada', async () => { await c2Post('/api/gate/renomear', { id, titulo: atual }); try { const rr = await fetch('/api/gate/conversas').then((x) => x.json()); if (rr && rr.conversas) GATE.conversas = rr.conversas; } catch { /* a próxima leitura corrige */ } gateLadoRender(); }); // CC-778
           try { const res = await fetch('/api/gate/conversas'); const rr = await res.json(); if (rr && rr.conversas) GATE.conversas = rr.conversas; } catch (e) {}
           return gateLadoRender();
         } else if (op === 'arquivar' || op === 'desarquivar') {
           try { await fetch('/api/gate/arquivar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, arquivar: op === 'arquivar' }) }); } catch (e) { console.error(e); }
+          c2Desfazer(op === 'arquivar' ? 'Conversa arquivada' : 'Conversa de volta às ativas', async () => { // CC-778
+            await c2Post('/api/gate/arquivar', { id, arquivar: op !== 'arquivar' });
+            try { const rr = await fetch('/api/gate/conversas').then((x) => x.json()); if (rr && rr.conversas) GATE.conversas = rr.conversas; } catch { /* a próxima leitura corrige */ }
+            gateLadoRender();
+          });
         }
         // Force refresh of conversations list
         GATE.id = null; GATE.dados = null; 
@@ -14275,7 +14987,8 @@
 
       /* Os botões de agente moram fora do bloco pintado, então só o atributo
          muda. Reescrever o bloco deles mataria o toque no meio. */
-      document.querySelectorAll('.gate-ag').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.gateAg === GATE.agente)));
+      // CC-786: os da cópia da barra são da conversa da direita, não desta
+      document.querySelectorAll('.gate-ag').forEach((b) => { if (!b.closest('#gate-ctx-espelho')) b.setAttribute('aria-pressed', String(b.dataset.gateAg === GATE.agente)); });
       const paga = document.getElementById('gate-paga');
       if (paga && paga.textContent !== GATE_PAGA[GATE.agente]) paga.textContent = GATE_PAGA[GATE.agente];
 
@@ -14357,6 +15070,42 @@
         if (selOc.value !== v) selOc.value = v;
       }
 
+      // CC-767: a tela dividida acompanha a conversa aberta (idempotente)
+      gateParAplicar();
+
+      /* CC-797: o login de teste é do projeto: lido quando a conversa troca,
+         e nunca por cima de campo que ele está digitando. */
+      if (GATE.id && GATE.acessoDe !== GATE.id) {
+        GATE.acessoDe = GATE.id;
+        fetch('/api/gate/acesso?id=' + encodeURIComponent(GATE.id)).then((r) => r.json()).then((d) => {
+          for (const [el, v] of [['gate-acesso-u', d.acesso?.usuario], ['gate-acesso-s', d.acesso?.senha]]) { const c = document.getElementById(el); if (c && c !== document.activeElement) c.value = v || ''; }
+        }).catch(() => {});
+      }
+      /* CC-755: o revisor. Lido uma vez; as listas de modelo são as mesmas do
+         seletor de agente. Não reescreve seletor aberto. */
+      if (GATE.revisor === undefined) {
+        GATE.revisor = null;
+        fetch('/api/gate/revisor').then((r) => r.json()).then((d) => { GATE.revisor = d; renderGate(); }).catch(() => {});
+      }
+      const opcoesRev = (atual, comNenhuma) => {
+        const NOMES = { claude: 'Claude', opencode: 'opencode', agy: 'agy' };
+        const v = atual ? atual.agente + '|' + (atual.modelo || '') : '';
+        const op = (val, rot) => `<option value="${esc(val)}"${val === v ? ' selected' : ''}>${esc(rot)}</option>`;
+        return (comNenhuma ? op('', 'nenhuma') : '') + ['claude', 'opencode', 'agy'].map((a) => `<optgroup label="${NOMES[a]}">${op(a + '|', NOMES[a] + ' · padrão')}${(GATE.modelos?.[a]?.modelos || []).map((m) => op(a + '|' + m.id, NOMES[a] + ' · ' + (m.rotulo || m.id))).join('')}</optgroup>`).join('');
+      };
+      if (GATE.revisor) {
+        const marcaRev = JSON.stringify(GATE.revisor) + '|' + Object.keys(GATE.modelos || {}).length;
+        const pr = document.getElementById('gate-rev-principal'), rs = document.getElementById('gate-rev-reserva'), vi = document.getElementById('gate-rev-visual');
+        if (pr && pr !== document.activeElement && rs !== document.activeElement && pr.dataset.marca !== marcaRev) {
+          pr.dataset.marca = marcaRev;
+          pr.innerHTML = opcoesRev(GATE.revisor.principal, false);
+          rs.innerHTML = opcoesRev(GATE.revisor.reserva, true);
+        }
+        if (vi) vi.checked = GATE.revisor.visualAuto !== false;
+        const tt = document.getElementById('gate-rev-teto');
+        if (tt && tt !== document.activeElement) tt.value = Math.round((GATE.revisor.tetoJanela || 0.75) * 100);
+      }
+
       /* CC-701: a revisão pedida aparece no próprio campo de escrever, porque a
          gaveta vive fechada e ele mandaria achando que não ia com revisão. */
       const btR = document.getElementById('gate-revisar');
@@ -14425,7 +15174,12 @@
 
       if (!GATE.id || !d) {
         if (faixa) faixa.hidden = true;
-        pintar(lista, `<div class="card" style="color:var(--text-muted);padding:28px;">
+        /* CC-804: com conversa escolhida e a leitura ainda a caminho, a tela
+           dizia "Nenhuma conversa aberta" por 1 a 3 segundos, como se ela
+           tivesse sumido. Escolhida e carregando é "abrindo". */
+        pintar(lista, GATE.id
+          ? `<div class="card" style="color:var(--text-muted);padding:28px;">Abrindo a conversa…</div>`
+          : `<div class="card" style="color:var(--text-muted);padding:28px;">
           Nenhuma conversa aberta. Escreva embaixo e eu começo uma neste projeto.
         </div>`);
         return;
@@ -14484,7 +15238,11 @@
           const semSinal = esperandoVoce
             ? `<span style="color:var(--c-decisao)">esperando sua resposta, logo abaixo</span>`
             : calado > GATE_SEM_SINAL_MS
-            ? `<span style="color:var(--waiting)">sem sinal há ${esc(gateSeg(calado))}${ultima ? ' (' + esc(ultima.nome) + ' pode estar demorando)' : ''}</span>`
+            /* Sem culpar a ferramenta: o opencode só avisa dela quando ACABA,
+               então a última da lista já terminou e o silêncio é o modelo
+               pensando (print dele de 30/09: "bash pode estar demorando" com um
+               comando de ler arquivo que tinha acabado). */
+            ? `<span style="color:var(--waiting)">sem sinal há ${esc(gateSeg(calado))}${ultima ? ' (última ação: ' + esc(ultima.nome) + ')' : ''}</span>`
             : '';
           /* O aviso vem LOGO depois da bolinha: no telefone a faixa é uma linha
              só com rolagem lateral, e no fim ele ficava cortado na borda
@@ -14703,6 +15461,31 @@
         } finally { alvo.disabled = false; renderGate(); }
       });
       document.getElementById('gate-oc-modo')?.addEventListener('blur', () => renderGate());
+
+      /* CC-755: gravar a escolha do revisor. */
+      const gravarRevisor = async (corpo) => {
+        try {
+          const r = await fetch('/api/gate/revisor', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo) });
+          const d = r.ok ? await r.json() : null;
+          if (!d?.ok) throw new Error(d?.erro || 'resposta ' + r.status);
+          GATE.revisor = { principal: d.principal, reserva: d.reserva, visualAuto: d.visualAuto, tetoJanela: d.tetoJanela };
+        } catch (err) { GATE.erro = 'não consegui gravar o revisor: ' + (err.message || err); }
+        renderGate();
+      };
+      const lerSel = (v) => { if (!v) return null; const [agente, modelo] = v.split('|'); return { agente, modelo: modelo || null }; };
+      document.getElementById('gate-rev-principal')?.addEventListener('change', (e) => gravarRevisor({ principal: lerSel(e.target.value) }));
+      document.getElementById('gate-rev-reserva')?.addEventListener('change', (e) => gravarRevisor({ reserva: lerSel(e.target.value) }));
+      document.getElementById('gate-rev-visual')?.addEventListener('change', (e) => gravarRevisor({ visualAuto: e.target.checked }));
+      document.getElementById('gate-rev-teto')?.addEventListener('change', (e) => gravarRevisor({ tetoJanela: Math.min(100, Math.max(10, Number(e.target.value) || 75)) / 100 }));
+      // CC-797: o login de teste do projeto desta conversa
+      document.getElementById('gate-acesso-ok')?.addEventListener('click', async (e) => {
+        const b = e.currentTarget; b.textContent = 'salvando…';
+        try {
+          const r = await c2Post('/api/gate/acesso', { id: GATE.id, usuario: document.getElementById('gate-acesso-u').value, senha: document.getElementById('gate-acesso-s').value });
+          b.textContent = !r?.ok ? 'não consegui salvar, tente de novo' : r.acesso ? 'salvo: as próximas fotos entram com ele' : 'login de teste apagado';
+        } catch { b.textContent = 'não consegui salvar, tente de novo'; }
+        setTimeout(() => { b.textContent = 'salvar login de teste'; }, 2500);
+      });
 
       document.getElementById('gate-revisar')?.addEventListener('click', () => {
         GATE.revisar = !GATE.revisar;
@@ -17531,7 +18314,7 @@
     /* A conversa anda no ritmo dela, e só com a tela aberta: buscar de fundo
        seria pedir o histórico inteiro a cada 2s para uma tela que ninguém está
        olhando. */
-    setInterval(gateBuscar, 2000);
+    setInterval(() => { if (!document.hidden) gateBuscar(false, true); }, 2000);
     /* CC-715: com resposta em andamento, a conversa aberta é relida a cada
        meio segundo. O tique de 2 s somava até 2 s a cada novidade (a primeira
        palavra, o fim), e ele sentia o chat lento. Só a conversa, sem a lista:
@@ -17613,6 +18396,12 @@
        projeto não aparece. */
     const c2SessaoMostra = (proj, sessao) => Boolean(sessao) && c2Chave(sessao) !== c2Chave(proj);
     const c2tagSessao = (proj, sessao) => (c2SessaoMostra(proj, sessao) ? '<span class="ini-tag c2-tag-sessao" title="nome da sessão">' + ic('chat', 12) + '<span>' + esc(sessao) + '</span></span>' : '');
+    /* CC-751, regra 12 de design, pedido repetido dele: "a máquina e o nome do
+       projeto 1 embaixo do outro, sempre no mesmo local, independente do tamanho
+       da tela". Bloco de largura inteira, máquina numa linha e projeto na outra,
+       igual em todo cartão de sessão. */
+    const c2Onde = (disp, projHtml) => '<div class="c2-onde"><div class="c2-onde-l">' + (c2disp(disp) || '<span class="maq">' + ic('maquina', 12) + 'máquina?</span>') + '</div>'
+      + '<div class="c2-onde-l">' + projHtml + '</div></div>';
     const c2tagProj = (cor, nome, frente, sessao) => '<span class="ini-tag c2-tag-proj" style="--q:' + cor + '">' + ic('pasta', 13) + '<span>' + esc(nome) + (frente ? ' / ' + esc(frente) : '') + '</span></span>' + c2tagSessao(nome, sessao);
     /* Onde o projeto está vivo, na palavra dele: *"quando ele ta ativo no pc
        fica escrito alienware ali, se for VPS fica escrito vps, e se for ambos
@@ -17827,8 +18616,137 @@
         if (d && d.permissaoId && C2.perm && C2.perm[d.permissaoId] && (C2.perm[d.permissaoId].estado === 'indo' || C2.perm[d.permissaoId].estado === 'ok')) return true;
         return false;
       };
-      const naFrente = (x) => (saindo(x) ? 9 : c2EhPergItem(x) ? 0 : x.cat === 'trabalhando' ? 2 : 1);
-      return itens.sort((a, b) => naFrente(a) - naFrente(b) || OV[chaveOrd(a)] - OV[chaveOrd(b)]);
+      /* CC-752, pedido dele: a ordem das categorias é escolha dele, guardada no
+         aparelho. O respondido desliza para o fim enquanto carrega. */
+      const ord = c2OrdemCats();
+      const naFrente = (x) => (saindo(x) ? 99 : ord.indexOf(c2EhPergItem(x) ? 'perguntas' : x.cat));
+      let lista = itens.sort((a, b) => naFrente(a) - naFrente(b) || OV[chaveOrd(a)] - OV[chaveOrd(b)]);
+      /* CC-759, pedido dele: "notificações novas entram no topo por 5 segundos
+         (...) respeite o cadeado (...) poder desativar". A primeira leitura da
+         página marca tudo como visto; depois, o que aparece pela primeira vez
+         fica 5 s no topo e desliza para o lugar da ordem. */
+      const agoraN = Date.now();
+      if (!C2.vistoEm) { C2.vistoEm = new Map(); for (const x of lista) C2.vistoEm.set(chaveOrd(x), 0); }
+      for (const x of lista) if (!C2.vistoEm.has(chaveOrd(x))) C2.vistoEm.set(chaveOrd(x), agoraN);
+      if (c2NovosNoTopo()) {
+        const novos = lista.filter((x) => agoraN - (C2.vistoEm.get(chaveOrd(x)) || 0) < 5000 && !saindo(x));
+        if (novos.length) {
+          lista = [...novos, ...lista.filter((x) => !novos.includes(x))];
+          // o relógio conta só o que FALTA: redesenho no meio não pode reiniciar os 5 s
+          const falta = Math.max(...novos.map((x) => 5000 - (agoraN - C2.vistoEm.get(chaveOrd(x))))) + 60;
+          clearTimeout(C2.novosT); C2.novosT = setTimeout(() => { c2RenderDecisoes(); }, falta);
+        }
+      }
+      /* CC-754, regra 13 de design: o cartão em que ele escreve (cursor dentro)
+         ou que ele travou no cadeado fica na MESMA posição da leitura anterior,
+         mesmo que outros entrem acima. O resto se reorganiza em volta. */
+      const focado = document.activeElement && document.activeElement.closest ? document.activeElement.closest('[data-aviso-id]')?.dataset.avisoId : null;
+      /* 30/09, relato dele: "sempre que tem alguma atividade no cockpit ele muda
+         o lugar das coisas e isso interrompe o microfone". O cartão em que ele
+         dita fica preso como o do cursor, mesmo sem foco (tocar no microfone
+         tira o foco do campo). */
+      const ditando = typeof C2_DITADO !== 'undefined' && C2_DITADO && C2_DITADO.msgId;
+      // CC-771: o cartão selecionado (pré-preso, o padrão) fica no lugar enquanto estiver selecionado
+      const sel = C2.selecionado && c2Nivel(C2.selecionado) === 'pre' ? C2.selecionado : null;
+      const presos = new Set([...c2Travados(), ...(focado ? [focado] : []), ...(ditando ? [ditando] : []), ...(sel ? [sel] : [])]);
+      const antes = C2.ordemAnterior || [];
+      const fixos = presos.size ? lista.filter((x) => presos.has(chaveOrd(x)) && antes.includes(chaveOrd(x))) : [];
+      if (fixos.length) {
+        const resto = lista.filter((x) => !fixos.includes(x));
+        for (const x of fixos.sort((a, b) => antes.indexOf(chaveOrd(a)) - antes.indexOf(chaveOrd(b)))) resto.splice(Math.min(antes.indexOf(chaveOrd(x)), resto.length), 0, x);
+        lista = resto;
+      }
+      C2.ordemAnterior = lista.map(chaveOrd);
+      return lista;
+    }
+    /* CC-756, pedido dele: "essa zona inteira poderia ficar oculta". A zona de
+       ações do cartão abre e fecha por um botão, fechada por padrão, lembrada
+       por cartão no aparelho. */
+    function c2AcoesAbertas() {
+      if (!C2.acoesAbertas) { try { C2.acoesAbertas = new Set(JSON.parse(localStorage.getItem('c2-acoes-abertas') || '[]')); } catch { C2.acoesAbertas = new Set(); } }
+      return C2.acoesAbertas;
+    }
+    const c2AcoesBotao = (id) => '<button class="c2-acoes-tg" data-acoes-tg="' + esc(id) + '" aria-expanded="' + c2AcoesAbertas().has(id) + '">ações <span class="c2-acoes-seta">▾</span></button>';
+    /* CC-754: os cartões travados no cadeado, lembrados no aparelho. */
+    function c2Travados() {
+      if (!C2.travados) { try { C2.travados = new Set(JSON.parse(localStorage.getItem('c2-travados') || '[]')); } catch { C2.travados = new Set(); } }
+      return C2.travados;
+    }
+    function c2Travar(id, ligar) {
+      const t = c2Travados();
+      if (ligar) t.add(id); else t.delete(id);
+      try { localStorage.setItem('c2-travados', JSON.stringify([...t])); } catch { /* só conveniência */ }
+    }
+    /* CC-771, palavras dele: "3 níveis de cadeado, solto, pré-preso e preso. O
+       solto é livre, se eu clicar um card ele só fica locked enquanto tá
+       selecionado, e o locked é que ele não sai da posição mais". O pré-preso é
+       o padrão de todo cartão: a queixa era "o lock só tá funcionando se eu
+       apertar o cadeado". Solto é a exceção, lembrada no aparelho. */
+    function c2Soltos() {
+      if (!C2.soltos) { try { C2.soltos = new Set(JSON.parse(localStorage.getItem('c2-soltos') || '[]')); } catch { C2.soltos = new Set(); } }
+      return C2.soltos;
+    }
+    function c2Nivel(id) { return c2Travados().has(id) ? 'preso' : c2Soltos().has(id) ? 'solto' : 'pre'; }
+    function c2PorNivel(id, nivel) {
+      const s = c2Soltos();
+      if (nivel === 'solto') s.add(id); else s.delete(id);
+      try { localStorage.setItem('c2-soltos', JSON.stringify([...s])); } catch { /* só conveniência */ }
+      c2Travar(id, nivel === 'preso');
+    }
+    const C2_NIVEL = {
+      pre: ['pré-preso: fica no lugar enquanto estiver selecionado (toque para prender de vez)', 'M8 11V7a4 4 0 0 1 8 0v4'],
+      preso: ['preso: não sai do lugar até enviar a resposta (toque para soltar)', 'M8 11V7a4 4 0 0 1 8 0v4'],
+      solto: ['solto: muda de lugar livremente, mesmo selecionado (toque para pré-prender)', 'M8 11V7a4 4 0 0 1 7.5-2'],
+    };
+    const c2Cadeado = (id, cls) => {
+      const n = c2Nivel(id);
+      return '<button class="c2-cad ' + cls + (n === 'preso' ? ' on' : n === 'pre' ? ' pre' : '') + '" data-cad="' + esc(id) + '" title="' + C2_NIVEL[n][0] + '" aria-label="cadeado do cartão, ' + C2_NIVEL[n][0] + '" aria-pressed="' + (n === 'preso') + '">'
+        + '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"' + (n === 'pre' ? ' stroke-dasharray="3 2.5"' : '') + '/><path d="' + C2_NIVEL[n][1] + '"/></svg></button>';
+    };
+    // seleção: tocar num cartão seleciona; tocar fora de qualquer cartão solta
+    const c2SelPintar = () => document.querySelectorAll('.c2-aviso[data-aviso-id]').forEach((c) => c.classList.toggle('c2-sel', c.dataset.avisoId === C2.selecionado));
+    document.addEventListener('pointerdown', (ev) => {
+      const c = ev.target.closest && ev.target.closest('.c2-aviso[data-aviso-id]');
+      const novo = c ? c.dataset.avisoId : (ev.target.closest && ev.target.closest('.c2-cartoes, #view-decisoes, #view-inicio') ? null : C2.selecionado);
+      if (novo !== C2.selecionado) { C2.selecionado = novo; c2SelPintar(); }
+    }, true);
+    /* CC-752: "o pronto pra QA aparecer lá por último (...) mas pode ser que em
+       algum momento estou trabalhando só com os testes (...) botar eles em 1º". */
+    const C2_ORDEM_PADRAO = ['perguntas', 'esperando', 'parada', 'trabalhando', 'qa'];
+    // CC-759: começa ligado para ele ver; desligar fica lembrado no aparelho
+    const c2NovosNoTopo = () => { try { return localStorage.getItem('c2-novos-topo') !== 'nao'; } catch { return true; } };
+    function c2OrdemCats() {
+      if (!C2.ordemCats) {
+        let g = null; try { g = JSON.parse(localStorage.getItem('c2-ordem-cats') || 'null'); } catch { /* sem nada guardado */ }
+        const ok = Array.isArray(g) ? g.filter((k) => C2_ORDEM_PADRAO.includes(k)) : [];
+        C2.ordemCats = [...ok, ...C2_ORDEM_PADRAO.filter((k) => !ok.includes(k))];
+      }
+      return C2.ordemCats;
+    }
+    function c2MoverCat(k, dir) {
+      const o = [...c2OrdemCats()];
+      const i = o.indexOf(k); const j = i + dir;
+      if (i < 0 || j < 0 || j >= o.length) return;
+      [o[i], o[j]] = [o[j], o[i]];
+      C2.ordemCats = o;
+      try { localStorage.setItem('c2-ordem-cats', JSON.stringify(o)); } catch { /* só conveniência */ }
+    }
+    function c2OrdemLinha() {
+      const o = c2OrdemCats();
+      const rot = (k) => (C2_CATS.find(([c]) => c === k) || [k, k])[1];
+      const padrao = o.join() === C2_ORDEM_PADRAO.join();
+      return '<div class="ses-fil-linha"><span class="ses-fil-rot">ordem</span><div class="ses-ordem">'
+        + o.map((k, i) => '<span class="ses-ord"><button class="ses-ord-b" data-ord-mov="' + k + '" data-ord-dir="-1" aria-label="mover ' + esc(rot(k)) + ' para antes"' + (i === 0 ? ' disabled' : '') + '>‹</button>'
+          + '<span><b>' + (i + 1) + '</b> ' + esc(rot(k)) + '</span>'
+          + '<button class="ses-ord-b" data-ord-mov="' + k + '" data-ord-dir="1" aria-label="mover ' + esc(rot(k)) + ' para depois"' + (i === o.length - 1 ? ' disabled' : '') + '>›</button></span>').join('')
+        + (padrao ? '' : '<button class="c2-link" data-ord-padrao>voltar ao padrão</button>') + '</div></div>'
+        /* 30/09, print dele: "o novos no topo tá completamente fora do design". Linha
+           própria, com as duas escolhas no mesmo formato de chip dos outros filtros. */
+        + (() => {
+          const on = c2NovosNoTopo();
+          const ch = (liga, rot) => '<button class="c2-dec-op' + (on === liga ? ' on' : '') + '" style="min-height:32px;padding:4px 10px;font-size:12px" data-novos-topo="' + (liga ? 'sim' : 'nao') + '" aria-pressed="' + (on === liga) + '">' + rot + '</button>';
+          return '<div class="ses-fil-linha"><span class="ses-fil-rot">novos</span><div class="c2-dec-ops">' + ch(true, 'no topo por 5 s') + ch(false, 'direto no lugar') + '</div></div>';
+        })();
     }
     /* Os filtros (máquina, estado, projeto; CC-604, CC-626, CC-627, CC-652)
        aplicados a um conjunto F = { disp, cats: Set, projs: Set }, com os
@@ -17855,33 +18773,84 @@
         + '<div class="ses-fil-linha"><span class="ses-fil-rot">estado</span><div class="c2-dec-ops">' + C2_CATS.map(([k, rot]) => chip(at.cat, k === 'todas' ? !cats.length : cats.includes(k), k, rot, porCat(k).length)).join('') + '</div></div>'
         + (Object.keys(projs).length > 1 ? '<div class="ses-fil-linha"><span class="ses-fil-rot">projeto</span><div class="c2-dec-ops">' + chip(at.proj, !F.projs.size, '', 'todos os projetos', daCat.length)
           + Object.entries(projs).sort((a, b) => b[1] - a[1]).map(([p, n]) => chip(at.proj, F.projs.has(p), p, p, n)).join('') + '</div></div>' : '')
+        + c2OrdemLinha()
         + '</div>';
       const ativos = [...ds, ...cats.map((k) => (C2_CATS.find(([c]) => c === k) || [])[1]), ...[...F.projs]].filter(Boolean);
       return { vis, html, ativos };
     }
-    const LAT = { on: (() => { try { return localStorage.getItem('c2-lateral') === 'on'; } catch { return false; } })() };
-    /* CC-681: os filtros da barra, lembrados no aparelho. */
-    (() => {
-      let g = {}; try { g = JSON.parse(localStorage.getItem('c2-lat-f') || '{}'); } catch { /* sem nada guardado */ }
-      LAT.F = { disps: new Set(g.disps || (g.disp ? [g.disp] : [])), cats: new Set(g.cats || []), projs: new Set(g.projs || []) }; // CC-707: o `disp` antigo vira a primeira escolha
-      try { LAT.filtrosAbertos = localStorage.getItem('c2-lat-filtros-abertos') !== 'nao'; } catch { LAT.filtrosAbertos = true; }
-      try { LAT.maqAberto = localStorage.getItem('c2-lat-maq') !== 'nao'; } catch { LAT.maqAberto = true; }
-    })();
-    const latGuardar = () => { try { localStorage.setItem('c2-lat-f', JSON.stringify({ disps: [...LAT.F.disps], cats: [...LAT.F.cats], projs: [...LAT.F.projs] })); localStorage.setItem('c2-lat-filtros-abertos', LAT.filtrosAbertos ? 'sim' : 'nao'); } catch { /* só conveniência */ } };
+    /* 30/09, print dele: "essa parte tem que ficar mais unida, é a mesma opção
+       mas separada e ocupando espaço (…) o que está sendo filtrado pode ficar no
+       próprio botão". Um controle só: o que filtra escrito no botão, × para
+       limpar e, onde houver, a engrenagem colada. Serve a barra e a Sessões. */
+    function c2FilGrupo({ ativos, aberto, alternar, limpar, extra = '' }) {
+      const txt = ativos.length ? ativos.map(esc).join(' · ') : 'todas as sessões';
+      return '<div class="fil-grupo"><button class="fil-principal' + (aberto ? ' on' : '') + '" ' + alternar + ' aria-expanded="' + aberto + '" title="' + (aberto ? 'esconder os filtros' : 'mostrar os filtros') + '">'
+        + ic('kanban', 14) + '<span class="fil-txt">' + txt + '</span><span class="fil-seta">▾</span></button>'
+        + (ativos.length ? '<button class="fil-lado" ' + limpar + ' title="limpar filtros" aria-label="limpar filtros">×</button>' : '')
+        + extra + '</div>';
+    }
+    const LAT = { on: (() => { try { return localStorage.getItem('c2-lateral') === 'on'; } catch { return false; } })(), gaveta: false };
+    /* CC-681: filtros abertos e o bloco das máquinas, lembrados no aparelho. */
+    /* CC-736: sem escolha guardada, filtros fechados fora da tela larga (no celular cobriam a gaveta inteira). */
+    try { const g = localStorage.getItem('c2-lat-filtros-abertos'); LAT.filtrosAbertos = g ? g !== 'nao' : window.innerWidth >= 1700; } catch { LAT.filtrosAbertos = false; }
+    /* CC-749, pedido dele: "na sessão, ela mostrasse os filtros de 1 jeito, e
+       nas outras ela mostrasse de outro". Cada página guarda os PRÓPRIOS
+       filtros e blocos. O padrão: em Sessões, só quem está trabalhando (o meio
+       já mostra quem pergunta, pedido dele no CC-681); nas outras, tudo, para
+       responder dali sem sair da página. */
+    const LAT_NOMES = { decisoes: 'Sessões', armario: 'Armário', projetos2: 'Projetos', gate: 'Coderoom', inicio: 'Início', kanban: 'Kanban' };
+    const latPagina = () => ((document.querySelector('.view-section.active') || {}).id || 'view-geral').slice(5);
+    /* 30/09, print dele: "pq essa parte saiu de sessoes? pode colocar pra colapsar, mas nao tira totalmente". Em Sessões o bloco das máquinas fica, recolhido. */
+    const latPadrao = (pag) => (pag === 'decisoes' ? { cats: ['trabalhando'], maq: true, maqAberto: false, lista: true } : { cats: [], maq: true, maqAberto: true, lista: true });
+    let LAT_PAGS = {}; try { LAT_PAGS = JSON.parse(localStorage.getItem('c2-lat-pag') || '{}') || {}; } catch { LAT_PAGS = {}; }
+    function latCfg() {
+      const pag = latPagina();
+      if (!LAT.cfg || LAT.cfg.pag !== pag) {
+        const g = LAT_PAGS[pag] || null; const p = latPadrao(pag);
+        LAT.cfg = { pag, maq: g ? g.maq !== false : p.maq, lista: g ? g.lista !== false : p.lista, maqAberto: g && typeof g.maqAberto === 'boolean' ? g.maqAberto : p.maqAberto,
+          F: { disps: new Set((g && g.disps) || []), cats: new Set(g ? (g.cats || []) : p.cats), projs: new Set((g && g.projs) || []) } };
+      }
+      return LAT.cfg;
+    }
+    const latGuardar = () => {
+      const c = latCfg();
+      LAT_PAGS[c.pag] = { disps: [...c.F.disps], cats: [...c.F.cats], projs: [...c.F.projs], maq: c.maq, lista: c.lista, maqAberto: c.maqAberto };
+      try { localStorage.setItem('c2-lat-pag', JSON.stringify(LAT_PAGS)); localStorage.setItem('c2-lat-filtros-abertos', LAT.filtrosAbertos ? 'sim' : 'nao'); } catch { /* só conveniência */ }
+    };
     document.addEventListener('click', (ev) => {
       const alterna = (conj, v) => { if (!v || v === 'todas') conj.clear(); else if (conj.has(v)) conj.delete(v); else conj.add(v); };
-      const d = ev.target.closest('[data-lat-disp]'); if (d) { alterna(LAT.F.disps, d.dataset.latDisp); latGuardar(); return c2RenderLateral(); }
-      const c = ev.target.closest('[data-lat-cat]'); if (c) { alterna(LAT.F.cats, c.dataset.latCat); latGuardar(); return c2RenderLateral(); }
-      const pj = ev.target.closest('[data-lat-proj]'); if (pj) { alterna(LAT.F.projs, pj.dataset.latProj); latGuardar(); return c2RenderLateral(); }
-      if (ev.target.closest('[data-lat-maq]')) { LAT.maqAberto = !LAT.maqAberto; try { localStorage.setItem('c2-lat-maq', LAT.maqAberto ? 'sim' : 'nao'); } catch { /* só conveniência */ } return c2RenderLateral(); }
-      if (ev.target.closest('[data-lat-limpar]')) { LAT.F.disps.clear(); LAT.F.cats.clear(); LAT.F.projs.clear(); latGuardar(); return c2RenderLateral(); }
+      const F = latCfg().F;
+      const d = ev.target.closest('[data-lat-disp]'); if (d) { alterna(F.disps, d.dataset.latDisp); latGuardar(); return c2RenderLateral(); }
+      const c = ev.target.closest('[data-lat-cat]'); if (c) { alterna(F.cats, c.dataset.latCat); latGuardar(); return c2RenderLateral(); }
+      const pj = ev.target.closest('[data-lat-proj]'); if (pj) { alterna(F.projs, pj.dataset.latProj); latGuardar(); return c2RenderLateral(); }
+      if (ev.target.closest('[data-lat-maq]')) { latCfg().maqAberto = !latCfg().maqAberto; latGuardar(); return c2RenderLateral(); }
+      if (ev.target.closest('[data-lat-limpar]')) {
+        const antes = [[...F.disps], [...F.cats], [...F.projs]]; // CC-778
+        F.disps.clear(); F.cats.clear(); F.projs.clear(); latGuardar();
+        c2Desfazer('Filtros da barra limpos', () => { antes[0].forEach((v) => F.disps.add(v)); antes[1].forEach((v) => F.cats.add(v)); antes[2].forEach((v) => F.projs.add(v)); latGuardar(); });
+        return c2RenderLateral();
+      }
       if (ev.target.closest('[data-lat-filtros]')) { LAT.filtrosAbertos = !LAT.filtrosAbertos; latGuardar(); return c2RenderLateral(); }
+      /* CC-750: o botão "esta página" e as escolhas dentro dele. */
+      if (ev.target.closest('[data-lat-cfg]')) { LAT.cfgAberto = !LAT.cfgAberto; return c2RenderLateral(); }
+      const bl = ev.target.closest('[data-lat-bloco]'); if (bl) { const k = bl.dataset.latBloco; latCfg()[k] = !latCfg()[k]; if (k === 'maq' && latCfg().maq) latCfg().maqAberto = true; latGuardar(); return c2RenderLateral(); }
+      if (ev.target.closest('[data-lat-padrao]')) { delete LAT_PAGS[latPagina()]; LAT.cfg = null; try { localStorage.setItem('c2-lat-pag', JSON.stringify(LAT_PAGS)); } catch { /* só conveniência */ } return c2RenderLateral(); }
     });
-    const lateralAtiva = () => LAT.on && window.innerWidth >= 1700;
+    /* CC-748, pedido dele: a barra também nas telas menores. A partir de 1700 px
+       ela empurra o conteúdo, como sempre; abaixo disso vira gaveta por cima,
+       que começa fechada a cada abertura (lembrar aberta cobriria o celular). */
+    const latLarga = () => window.innerWidth >= 1700;
+    const lateralAtiva = () => (latLarga() ? LAT.on : LAT.gaveta);
+    window.addEventListener('hashchange', () => { LAT.cfg = null; LAT.cfgAberto = false; requestAnimationFrame(c2RenderLateral); });
     function c2RenderLateral() {
       document.body.classList.toggle('lateral-on', LAT.on);
+      document.body.classList.toggle('lat-gaveta', !latLarga() && LAT.gaveta);
+      if (!document.getElementById('lat-fundo')) {
+        const f = document.createElement('div'); f.id = 'lat-fundo'; f.setAttribute('data-lateral-alternar', ''); document.body.appendChild(f);
+      }
       const el = document.getElementById('lateral-dir');
       if (!el || !lateralAtiva()) return;
+      const CFG = latCfg();
       const cab = (n) => '<div class="lat-cab"><b>Responder sem sair daqui' + (n != null ? ' <span class="c2-mini">' + n + '</span>' : '') + '</b><button class="c2-link" data-lateral-alternar>fechar</button></div>';
       if (!C2.dados) return pintar(el, cab() + '<p class="c2-vazio">lendo…</p>');
       /* CC-681, pedido dele: "no meio só os agentes que estão perguntando e na
@@ -17890,15 +18859,20 @@
          aparelho. Vale também na própria tela Sessões. */
       const depoisIds = new Set((C2.dados.ocultas || []).filter((o) => o.oculta === 'depois').map((o) => o.id));
       const itens = c2ListaSessoes(c2DecisoesVisiveis(C2.dados), depoisIds);
-      const { vis, html: fil, ativos } = c2Filtrar(itens, LAT.F, { disp: 'data-lat-disp', cat: 'data-lat-cat', proj: 'data-lat-proj' });
-      const botao = '<button class="c2-dec-op' + (LAT.filtrosAbertos ? ' on' : '') + '" data-lat-filtros style="min-height:30px;padding:4px 10px;font-size:12px">' + ic('kanban', 13) + ' filtros' + (ativos.length ? ' <span class="c2-mini">' + ativos.length + '</span>' : '') + (LAT.filtrosAbertos ? ' ▴' : ' ▾') + '</button>';
-      const resumo = '<button class="ses-fil-resumo" data-lat-filtros>' + (ativos.length ? 'filtrando: <b>' + ativos.map(esc).join(' · ') + '</b>' : 'sem filtro: todas as sessões') + '</button>';
-      const limparL = ativos.length ? ' <button class="c2-link" data-lat-limpar>limpar filtros</button>' : '';
+      const { vis, html: fil, ativos } = c2Filtrar(itens, CFG.F, { disp: 'data-lat-disp', cat: 'data-lat-cat', proj: 'data-lat-proj' });
+      const nomePag = LAT_NOMES[CFG.pag] || CFG.pag;
+      /* CC-750: "1 botãozinho ali do lado de filtros" para configurar a página atual; colado ao controle. */
+      const botao = c2FilGrupo({ ativos: CFG.lista ? ativos : [], aberto: LAT.filtrosAbertos, alternar: 'data-lat-filtros', limpar: 'data-lat-limpar',
+        extra: '<button class="fil-lado' + (LAT.cfgAberto ? ' on' : '') + '" data-lat-cfg title="escolher o que a barra mostra em ' + esc(nomePag) + '" aria-label="configurar a barra nesta página">⚙</button>' })
+        + (LAT.cfgAberto ? '<div class="lat-cfg"><div class="c2-mini">Vale só em <b>' + esc(nomePag) + '</b>. Os filtros de baixo também ficam guardados só para esta página.</div>'
+          + '<div class="lat-cfg-ops"><button class="c2-eti' + (CFG.maq ? ' on' : '') + '" data-lat-bloco="maq">limites e máquinas</button>'
+          + '<button class="c2-eti' + (CFG.lista ? ' on' : '') + '" data-lat-bloco="lista">sessões e perguntas</button></div>'
+          + (LAT_PAGS[CFG.pag] ? '<button class="c2-link" data-lat-padrao>voltar ao padrão desta página</button>' : '<span class="c2-mini">usando o padrão desta página</span>') + '</div>' : '');
       /* CC-684, pedido dele: "o limite da sessão do claude, a memória, gpu etc
          do PC e VPS no topo da barra lateral (mas colocar opção de colapsar)".
          A máquina daqui lê /api/maquina; a outra, o que ela mandou no pacote
          (só depois de o painel de lá receber este código). */
-      if (LAT.maqAberto) c2MaquinaLer();
+      if (CFG.maq && CFG.maqAberto) c2MaquinaLer();
       const U = (typeof DATA !== 'undefined' && DATA.uso) ? DATA.uso : null;
       const jn = (...xs) => xs.filter(Boolean).join(' · ');
       const hwLinha = (h) => !h ? '<span class="c2-mini">não mandou esses números ainda</span>'
@@ -17908,24 +18882,89 @@
       const maqCorpo = (U ? c2Barra('Claude · 5 horas', U.cincoHoras?.pct, jn(U.cincoHoras?.resetaEm ? 'zera às ' + c2Hora(U.cincoHoras.resetaEm) : ''))
           + c2Barra('Claude · semana', U.semana?.pct, jn(U.semana?.resetaEm ? 'zera ' + c2Data(U.semana.resetaEm) : '')) : '<p class="c2-mini">uso do Claude ainda não chegou</p>') + maqs;
       const maqBloco = '<div class="lat-maq"><button class="lat-maq-cab" data-lat-maq>' + ic('maquina', 14) + ' <b>limites e máquinas</b><span class="c2-mini">'
-        + (U && U.cincoHoras?.pct != null ? ' 5h ' + U.cincoHoras.pct + '%' : '') + (U && U.semana?.pct != null ? ' · semana ' + U.semana.pct + '%' : '') + '</span><span style="margin-left:auto">' + (LAT.maqAberto ? '▴' : '▾') + '</span></button>'
-        + (LAT.maqAberto ? '<div class="lat-maq-corpo">' + maqCorpo + '</div>' : '') + '</div>';
-      pintar(el, cab(vis.length) + maqBloco + botao + limparL + (LAT.filtrosAbertos ? fil : resumo)
-        + (vis.length ? vis.map((x) => (x.dec ? (x.dec.grupo ? c2AvisoGrupo(x.dec) : c2Aviso(x.dec)) : c2CartaoSessao(x.sess))).join('') : '<p class="c2-vazio">nenhuma sessão neste filtro.</p>'));
+        + (U && U.cincoHoras?.pct != null ? ' 5h ' + U.cincoHoras.pct + '%' : '') + (U && U.semana?.pct != null ? ' · semana ' + U.semana.pct + '%' : '') + '</span><span style="margin-left:auto">' + (CFG.maqAberto ? '▴' : '▾') + '</span></button>'
+        + (CFG.maqAberto ? '<div class="lat-maq-corpo">' + maqCorpo + '</div>' : '') + '</div>';
+      pintar(el, cab(CFG.lista ? vis.length : null) + (CFG.maq ? maqBloco : '') + botao
+        + (CFG.lista ? (LAT.filtrosAbertos ? fil : '')
+          + (vis.length ? vis.map((x) => (x.dec ? (x.dec.grupo ? c2AvisoGrupo(x.dec) : c2Aviso(x.dec)) : c2CartaoSessao(x.sess))).join('') : '<p class="c2-vazio">nenhuma sessão neste filtro.</p>')
+          : '<p class="c2-vazio">as sessões estão escondidas nesta página: ligue em "esta página".</p>'));
     }
     document.addEventListener('click', (ev) => {
       if (!ev.target.closest('[data-lateral-alternar]')) return;
-      LAT.on = !LAT.on;
-      try { localStorage.setItem('c2-lateral', LAT.on ? 'on' : 'off'); } catch { /* só conveniência */ }
-      if (LAT.on) { c2Ligar(true); c2Buscar(); }
+      let abriu;
+      if (latLarga()) {
+        LAT.on = !LAT.on; abriu = LAT.on;
+        try { localStorage.setItem('c2-lateral', LAT.on ? 'on' : 'off'); } catch { /* só conveniência */ }
+      } else { LAT.gaveta = !LAT.gaveta; abriu = LAT.gaveta; } // CC-748: gaveta, não lembrada
+      if (abriu) { c2Ligar(true); c2Buscar(); }
       c2RenderLateral();
     });
     window.addEventListener('resize', () => requestAnimationFrame(c2RenderLateral));
+    /* CC-772, pedido dele: "desativa o botão direito do navegador no cockpit, o
+       botão direito vai funcionar internamente, com opções do próprio cockpit
+       (...) lugares com opções de 3 pontinhos saem no botão direito". O menu
+       não duplica ação nenhuma: cada item clica no botão que já existe. Em
+       campo de texto continua o do navegador, senão ele perde o colar. */
+    (() => {
+      let menu = null;
+      const fechar = () => { if (menu) { menu.remove(); menu = null; } };
+      const rotulo = (b) => (b.getAttribute('aria-label') || b.textContent || b.title || '').replace(/\s+/g, ' ').trim();
+      const botoes = (raiz, sel) => [...raiz.querySelectorAll(sel)].filter((b) => rotulo(b) && !b.disabled);
+      document.addEventListener('contextmenu', (ev) => {
+        const alvo = ev.target;
+        if (alvo.closest('input, textarea, select, [contenteditable="true"]')) return; // o do navegador, para colar
+        ev.preventDefault();
+        fechar();
+        const grupos = [];
+        const selecao = String(window.getSelection() || '').trim();
+        if (selecao) grupos.push({ titulo: 'texto', itens: [{ rot: 'copiar o texto selecionado', faz: () => navigator.clipboard?.writeText(selecao) }] });
+        // as opções dos três pontinhos (conversas do Coderoom)
+        const conv = alvo.closest('.sl-item, .gl-proj-convs > *');
+        const tres = conv && conv.querySelector('.sl-menu-box');
+        if (tres) grupos.push({ titulo: 'conversa', itens: botoes(tres, 'button').map((b) => ({ rot: rotulo(b), perigo: b.style.color.includes('red'), faz: () => b.click() })) });
+        // as ações do cartão de sessão
+        const card = alvo.closest('.c2-aviso[data-aviso-id]');
+        if (card) {
+          const itens = botoes(card, '.c2-acoes button, .c2-acoes a').filter((b) => !b.closest('.grp-cartoes') || card.contains(b))
+            .map((b) => ({ rot: rotulo(b), perigo: /encerrar|parar/i.test(rotulo(b)), faz: () => b.click() }));
+          const cad = card.querySelector('[data-cad]'); if (cad) itens.push({ rot: cad.classList.contains('on') ? 'destravar o cartão' : 'travar o cartão no lugar', faz: () => cad.click() });
+          const dep = card.querySelector('[data-dec-depois]'); if (dep) itens.push({ rot: 'deixar para depois', faz: () => dep.click() });
+          const x = card.querySelector('[data-dec-x]'); if (x) itens.push({ rot: 'fechar o cartão', perigo: true, faz: () => x.click() });
+          const proj = card.querySelector('.c2-onde-l:nth-child(2) .c2-tag-proj');
+          if (proj) itens.push({ rot: 'copiar o nome do projeto', faz: () => navigator.clipboard?.writeText(proj.innerText.trim()) });
+          if (itens.length) grupos.push({ titulo: 'este cartão', itens });
+        }
+        grupos.push({ titulo: 'cockpit', itens: [
+          { rot: 'atualizar agora', faz: () => (typeof c2Buscar === 'function' ? c2Buscar() : location.reload()) },
+          { rot: document.body.classList.contains('lateral-on') || document.body.classList.contains('lat-gaveta') ? 'fechar a barra lateral' : 'abrir a barra lateral', faz: () => document.querySelector('.lat-btn')?.click() },
+          { rot: 'voltar ao topo', faz: () => { window.scrollTo({ top: 0, behavior: 'smooth' }); document.querySelector('.view-section.active')?.scrollTo?.({ top: 0, behavior: 'smooth' }); } },
+        ] });
+        menu = document.createElement('div');
+        menu.className = 'c2-ctx'; menu.setAttribute('role', 'menu');
+        menu.innerHTML = grupos.map((g, gi) => '<div class="c2-ctx-g"><div class="c2-ctx-t">' + esc(g.titulo) + '</div>'
+          + g.itens.map((it, ii) => '<button type="button" role="menuitem" class="c2-ctx-i' + (it.perigo ? ' perigo' : '') + '" data-ctx="' + gi + ':' + ii + '">' + esc(it.rot) + '</button>').join('') + '</div>').join('');
+        document.body.appendChild(menu);
+        const r = menu.getBoundingClientRect();
+        menu.style.left = Math.max(8, Math.min(ev.clientX, innerWidth - r.width - 8)) + 'px';
+        menu.style.top = Math.max(8, Math.min(ev.clientY, innerHeight - r.height - 8)) + 'px';
+        requestAnimationFrame(() => menu && menu.classList.add('aberto'));
+        menu.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-ctx]'); if (!b) return;
+          const [gi, ii] = b.dataset.ctx.split(':').map(Number);
+          fechar(); try { grupos[gi].itens[ii].faz(); } catch (err) { console.error('menu', err); }
+        });
+      });
+      document.addEventListener('click', (e) => { if (menu && !menu.contains(e.target)) fechar(); }, true);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fechar(); });
+      window.addEventListener('scroll', fechar, true);
+      window.addEventListener('resize', fechar);
+    })();
     /* Barra lembrada no aparelho: ao abrir a página numa tela que não lê o
        painel (Kanban, Números…), a leitura começa assim mesmo. */
     setTimeout(() => { if (lateralAtiva()) c2Ligar(true); }, 0);
     function c2RenderDecisoes() {
       try { c2RenderLateral(); } catch (e) { console.error('barra lateral', e); }
+      requestAnimationFrame(() => { try { c2CrescerTodos(); } catch { /* só conveniência */ } });
       const raiz = document.getElementById('dec-tela');
       if (!raiz) return;
       if (document.getElementById('view-decisoes')?.classList.contains('active')) c2GarantirFramework(); // CC-635: o botão do framework no cartão
@@ -18036,11 +19075,11 @@
       /* CC-674, pedido dele: "ocultar essa zona c algum botão (…) eu abro,
          filtro o que quero e colapso de novo". Recolhida, fica uma linha
          dizendo o que está valendo, que também abre. A escolha fica no aparelho. */
-      if (C2.sesFiltrosAbertos == null) { try { C2.sesFiltrosAbertos = localStorage.getItem('c2-ses-filtros') !== 'fechado'; } catch { C2.sesFiltrosAbertos = true; } }
-      const botaoFiltros = '<button class="c2-dec-op' + (C2.sesFiltrosAbertos ? ' on' : '') + '" data-ses-filtros-alternar style="min-height:32px;padding:4px 12px;font-size:12px">' + ic('kanban', 14) + ' filtros' + (ativos.length ? ' <span class="c2-mini">' + ativos.length + '</span>' : '') + (C2.sesFiltrosAbertos ? ' ▴' : ' ▾') + '</button>';
-      const resumoFiltros = '<button class="ses-fil-resumo" data-ses-filtros-alternar>' + (ativos.length ? 'filtrando: <b>' + ativos.map(esc).join(' · ') + '</b>' : 'sem filtro: todas as sessões') + ' <span class="c2-mini">· mostrar filtros</span></button>';
-      const limpar = ativos.length ? '<button class="c2-link" data-ses-limpar>limpar filtros</button>' : '';
-      pintar(raiz, statsH + fixo('<div class="ses-barra">' + modoBts + botaoFiltros + limpar + '</div>' + (C2.sesFiltrosAbertos ? filtros : resumoFiltros)) + (vis.length
+      /* CC-736: aparelho novo no celular abria os filtros e eles cobriam ~80% da tela. Sem escolha guardada, só abrem em tela larga. */
+      if (C2.sesFiltrosAbertos == null) { try { const g = localStorage.getItem('c2-ses-filtros'); C2.sesFiltrosAbertos = g ? g !== 'fechado' : window.innerWidth >= 900; } catch { C2.sesFiltrosAbertos = false; } }
+      // 30/09, pedido dele: filtros num controle só, com o que filtra escrito no próprio botão
+      const botaoFiltros = c2FilGrupo({ ativos, aberto: C2.sesFiltrosAbertos, alternar: 'data-ses-filtros-alternar', limpar: 'data-ses-limpar' });
+      pintar(raiz, statsH + fixo('<div class="ses-barra">' + modoBts + botaoFiltros + '</div>' + (C2.sesFiltrosAbertos ? filtros : '')) + (vis.length
         ? (C2.sesModo === 'lista' ? c2ModoLista(vis)
           : '<div class="c2-mosaico">' + vis.map((x) => (x.dec ? (x.dec.grupo ? c2AvisoGrupo(x.dec) : c2Aviso(x.dec)) : c2CartaoSessao(x.sess))).join('') + '</div>')
         : '<p class="c2-vazio">nenhuma sessão neste filtro, lido às ' + c2Hora(C2.dados.lidoEm || Date.now()) + '.</p>'));
@@ -18107,14 +19146,19 @@
       const aberto = C2.gruposAbertos.has(g.chave);
       const maisNova = Math.min(...g.itens.map((e) => e.desdeMs || 0));
       const fechaveis = g.itens.filter((e) => e.tipo === 'agente').map((e) => [e.id, e.marca || '']);
+      /* CC-763, print dele: "o que eu faço com uma sessão assim? não explica
+         nada, não tem resumo do agy, nem opção de fechar ou responder". Fechado,
+         uma linha por sessão com o resumo; aberto, o cartão inteiro de cada uma,
+         com responder, fechar e ações. */
+      const linha = (e) => '<div class="grp-item"><span class="grp-txt">' + esc(c2semMd((e.resumoIA && e.resumoIA.texto) || e.pergunta || e.fala || e.assunto || 'sem fala legível: abra para ver onde parou')) + '</span>'
+        + '<span class="c2-mini grp-t">há ' + c2ms(e.desdeMs) + '</span></div>';
       const lista = aberto
-        ? '<div style="margin-top:8px">' + g.itens.map((e) => '<div class="c2-kv"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c2semMd(e.pergunta || e.fala || e.assunto || 'sem fala legível')) + '</span>'
-          + '<span class="c2-mini" style="white-space:nowrap">há ' + c2ms(e.desdeMs) + (e.id ? ' · <button class="c2-link" data-ver-agente="' + esc(e.id) + '">abrir</button>' : '') + '</span></div>').join('') + '</div>'
-        : '';
-      return '<div class="c2-aviso parou" data-repetidas="' + esc(g.chave) + '" data-aviso-id="' + esc(g.itens[0].id || '') + '">'
-        + '<div class="c2-rotulo">' + icQuad('raio', 'var(--c-sessao)', 26) + '<span>REPETIDAS</span><span class="ini-tag" style="--q:var(--c-sessao)">' + esc(g.nome) + '</span>' + c2disp(g.dispositivo) + '</div>'
-        + '<div class="c2-perg">' + g.itens.length + ' ' + frase + ', a mais nova há ' + c2ms(maisNova) + '</div>'
-        + '<div class="c2-mini">' + esc(c2semMd(g.itens[0].assunto || g.itens[0].pergunta || '')).slice(0, 90) + '</div>'
+        ? '<div class="grp-cartoes">' + g.itens.map((e) => c2Aviso(e)).join('') + '</div>'
+        : '<div class="grp-lista">' + g.itens.map(linha).join('') + '</div>';
+      return '<div class="c2-aviso parou c2-grupo" data-repetidas="' + esc(g.chave) + '" data-aviso-id="' + esc('grupo:' + g.chave) + '">'
+        + '<div class="c2-rotulo">' + icQuad('raio', 'var(--c-sessao)', 26) + '<span>AGRUPADAS</span>' + c2Onde(g.dispositivo, '<span class="ini-tag c2-tag-proj" style="--q:var(--c-sessao)">' + ic('pasta', 13) + '<span>' + esc(g.nome) + '</span></span>') + '</div>'
+        + '<div class="c2-perg">' + g.itens.length + ' ' + frase + ' do mesmo projeto, a mais nova há ' + c2ms(maisNova) + '</div>'
+        + '<div class="c2-mini">Juntei para não encher a tela. ' + (aberto ? 'Cada uma abaixo tem responder, fechar e ações.' : 'Toque em "ver as ' + g.itens.length + '" para responder ou fechar cada uma.') + '</div>'
         + lista
         + '<div class="c2-meta"><span style="margin-left:auto">'
         + (fechaveis.length ? '<button class="c2-link" data-grupo-fechar="' + esc(JSON.stringify(fechaveis)) + '">fechar todas</button> ' : '')
@@ -18209,8 +19253,8 @@
       const [icn, cor] = qa ? ['check', 'var(--c-dev)'] : DEC_VISUAL[pend ? 'pendencia' : e.rotulo] || ['relogio', 'var(--c-decisao)'];
       const decIndo = e.responder && C2.dec[e.responder.id] && C2.dec[e.responder.id].envio === 'indo';
       /* CC-738, pedido dele: a máquina sempre no mesmo lugar, colada ao estado. */
-      return '<div class="c2-aviso ' + cls + ((permEst && permEst.estado === 'indo') || decIndo || c2ProcAtivo(e.id) ? ' c2-processando' : '') + '" data-aviso-id="' + esc(e.id) + '">'
-        + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span>' + (qa ? 'PRONTO PARA QA' : rot) + '</span>' + c2disp(e.dispositivo) + c2tagProj(cor, e.nome, e.frente, e.sessaoNome) + xFechar + '</div>'
+      return '<div class="c2-aviso ' + cls + (C2.selecionado === e.id ? ' c2-sel' : '') + ((permEst && permEst.estado === 'indo') || decIndo || c2ProcAtivo(e.id) ? ' c2-processando' : '') + (pend || c2AcoesAbertas().has(e.id) ? ' acoes-on' : '') + '" data-aviso-id="' + esc(e.id) + '">'
+        + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span>' + (qa ? 'PRONTO PARA QA' : rot) + '</span>' + xFechar + (pend ? '' : c2Cadeado(e.id, 'c2-cad-dec')) + c2Onde(e.dispositivo, c2tagProj(cor, e.nome, e.frente, e.sessaoNome)) + '</div>'
         + barra
         /* CC-675: a mesma faixa de saúde do cartão de sessão; o caso real do
            fibraessencia era uma sessão ESPERANDO com o celular caído. */
@@ -18267,7 +19311,8 @@
         + '<div class="c2-meta"><span class="c2-meta-t">' + ic('relogio', 13) + 'há ' + c2ms(e.desdeMs) + '</span>'
         + (e.assunto ? '<span class="c2-meta-ass" title="' + esc(e.assunto) + '">' + esc(e.assunto) + '</span>' : '')
         + (e.porque ? '<span class="c2-meta-ass">' + esc(e.porque) + '</span>' : '')
-        + '<span class="c2-acoes">' + (pend ? '' : (daqui ? c2FwChip(e.projeto) : '') + c2TesteVoo(e.projeto)) + (!pend && daqui && !semTexto ? c2AcoesRapidas(e.conversa, e.nome) : '')
+        + (pend ? '' : c2AcoesBotao(e.id))
+        + '<span class="c2-acoes">' + (pend ? '' : (daqui ? c2FwChip(e.projeto) : '') + c2TesteVoo(e.projeto)) + (!pend && daqui && !semTexto && !String(e.conversa || '').startsWith('gate:') ? c2AcoesRapidas(e.conversa, e.nome, e.cfgAtual) : '') /* conversa do Coderoom não é terminal: o /exit chegaria ao agente como mensagem (30/09) */
           // CC-727: renomear a conversa do Coderoom pelo cartão
           + (daqui && String(e.conversa || '').startsWith('gate:') ? '<button class="c2-link" data-gate-renomear="' + esc(String(e.conversa).slice(5)) + '" data-gate-titulo="' + esc(e.sessaoNome || '') + '">renomear</button>' : '')
           + acoes + '</span></div></div>';
@@ -18367,14 +19412,339 @@
        não só no campo, porque a Início redesenha; `pintar` não reescreve com
        o cursor dentro, então digitar não perde nada. */
     C2.msg = C2.msg || {};
+    /* CC-789: publicar no ar pelo Cockpit. A tela só PEDE; a confirmação é na
+       página do lado protegido (/deploy-seguro/), com o código do autenticador.
+       Sem o lado protegido instalado, a linha nem aparece. */
+    function c2DeployLer(forcar) {
+      const D = C2.deploy;
+      if (!forcar && D && (Date.now() - D.em < (D.pedidos?.some((p) => p.estado === 'esperando' || p.estado === 'rodando') ? 5000 : 60000))) return;
+      if (C2.deployLendo) return;
+      C2.deployLendo = true;
+      fetch('/api/deploy/estado').then(c2Json).then((d) => { C2.deploy = { ...d, em: Date.now() }; })
+        .catch(() => { C2.deploy = { instalado: false, alvos: [], pedidos: [], historico: [], em: Date.now() }; })
+        .finally(() => { C2.deployLendo = false; try { c2RenderProjetos(); } catch { /* a tela Projetos ainda não existe */ } });
+    }
+    function c2DeployLinha(p) {
+      c2DeployLer();
+      const D = C2.deploy;
+      if (!D || !D.instalado) return '';
+      // pela pasta quando o cartão tem; senão pelo nome normalizado ("VPS_mnzs" vira "mnzs"): o cartão do mnzs chega sem pasta.
+      // Um repositório pode ter mais de um site (o entreg4 tem a página de venda e a provisória do app): uma linha por site.
+      return (D.alvos || []).filter((a) => a.repo && ((p.raiz && a.repo.replace(/\/$/, '') === String(p.raiz).replace(/\/$/, ''))
+        || c2Chave(a.repo.replace(/\/$/, '').split('/').pop()) === p.chave)).map((alvo) => c2DeployAlvo(D, alvo)).join('');
+    }
+    /* Pedido dele: "deveríamos criar um processo que automatize isso, sem gastar
+       tokens". O lado protegido descobre os sites (nginx, PM2, Docker) e sugere o
+       repositório; aqui ele confere, troca o que estiver errado e cadastra com o
+       código. Recolhido por padrão. */
+    function c2DeploySugestoes() {
+      c2DeployLer();
+      const D = C2.deploy;
+      if (!D || !D.instalado) return '';
+      const S = C2.deploySug;
+      if (!S || Date.now() - S.lidoEm > 5 * 60 * 1000) {
+        if (!C2.deploySugLendo) { C2.deploySugLendo = true; fetch('/api/deploy/sugestoes').then(c2Json).then((d) => { C2.deploySug = { ...d, lidoEm: Date.now() }; }).catch(() => {}).finally(() => { C2.deploySugLendo = false; try { c2RenderProjetos(); } catch { /* sem a tela */ } }); }
+        if (!S) return '';
+      }
+      const lista = S.sugestoes || [];
+      if (!lista.length) return '';
+      const aberto = !!C2.deploySugAberto;
+      const nomeRepo = (r) => String(r || '').split('/').pop();
+      const TIPO = { estatico: 'estático', docker: 'Docker', pm2: 'PM2', systemd: 'serviço do sistema', manual: 'sem jeito de religar' };
+      const linha = (s, i) => {
+        const st = (C2.deploySugMsg || {})[c2DeploySugChave(s)];
+        const ond = s.tipo === 'estatico' ? 'pasta ' + s.destino : s.tipo === 'pm2' ? 'processo PM2 ' + s.processo + ' em ' + s.dirProducao
+          : s.tipo === 'systemd' ? 'serviço ' + s.unidade + ' rodando de ' + s.dirProducao : s.tipo === 'manual' ? 'porta ' + s.porta + (s.comando ? ': ' + s.comando : '') : 'Docker em ' + s.dirProducao;
+        const cab = '<div class="dep-sug" data-dep-sug="' + i + '"><div class="dep-cab"><b>' + esc(s.dominio) + '</b><span class="ini-pilula" style="--q:var(--c-dev)">' + esc(TIPO[s.tipo] || s.tipo) + '</span></div>'
+          + '<div class="dep-info"><span>' + esc(ond) + '</span></div>';
+        if (s.tipo === 'manual') return cab + '<div class="c2-mini">Roda solto, fora do Docker, do PM2 e dos serviços do sistema: não há como religar com segurança por aqui. Para publicar, ele precisa virar um desses três.</div></div>';
+        return cab
+          + '<label class="dep-campo">vem do repositório<select data-dep-repo>' + '<option value="">escolha…</option>' + (S.repos || []).map((r) => '<option value="' + esc(r) + '"' + (r === s.repo ? ' selected' : '') + '>' + esc(nomeRepo(r)) + '</option>').join('') + '</select></label>'
+          + '<label class="dep-campo">subpasta dentro do repositório<input data-dep-dir value="."></label>'
+          + (s.tipo === 'estatico' ? '<label class="dep-campo">comando que gera (vazio se a página já está pronta)<input data-dep-build value="npm run build"></label><label class="dep-campo">pasta que sai do comando<input data-dep-saida value="dist"></label>' : '')
+          + '<div class="dep-linha"><input class="dep-cod" data-dep-sug-cod inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="código do autenticador"><button class="btn compacto c2-primario" data-dep-cadastrar="' + i + '">cadastrar</button></div>'
+          + (st ? '<div class="c2-mini" style="color:' + (st.ok ? 'var(--green)' : 'var(--red)') + '">' + esc(st.msg) + '</div>' : '') + '</div>';
+      };
+      return '<details class="card dep-sugs"' + (aberto ? ' open' : '') + '><summary data-dep-sug-tg>' + ic('seta', 15) + '<b>Sites no ar sem deploy cadastrado</b><span class="ini-n">' + lista.length + '</span></summary>'
+        + '<p class="c2-mini" style="margin:6px 0 10px">Encontrados pelo lado protegido no nginx, no PM2 e no Docker. Confira de que repositório cada um vem e cadastre com o código do autenticador: depois disso, o botão "publicar no ar" aparece no projeto.</p>'
+        + lista.map(linha).join('') + '</details>';
+    }
+    // o aviso fica preso ao site, não à posição: a lista encolhe a cada cadastro
+    function c2DeploySugChave(s) { return s.dominio + '|' + (s.destino || s.dirProducao || s.porta); }
+    document.addEventListener('toggle', (ev) => { if (ev.target.classList && ev.target.classList.contains('dep-sugs')) C2.deploySugAberto = ev.target.open; }, true);
+    document.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('[data-dep-cadastrar]'); if (!b) return;
+      const i = Number(b.dataset.depCadastrar); const s = (C2.deploySug?.sugestoes || [])[i]; const box = b.closest('[data-dep-sug]'); const chave = s && c2DeploySugChave(s);
+      if (!s || !box) return;
+      const v = (sel) => box.querySelector(sel)?.value?.trim() ?? '';
+      const repo = v('[data-dep-repo]'); const codigo = v('[data-dep-sug-cod]').replace(/\D/g, '');
+      const msg = (ok, m) => { (C2.deploySugMsg || (C2.deploySugMsg = {}))[chave] = { ok, msg: m }; c2RenderProjetos(); };
+      if (!repo) return msg(false, 'escolha de qual repositório o site vem');
+      if (codigo.length !== 6) return msg(false, 'o código tem 6 números');
+      const alvo = { id: s.dominio.replace(/\.(carzo\.)?com\.br$/, ''), nome: s.dominio, tipo: s.tipo, repo, dir: v('[data-dep-dir]') || '.', url: s.url,
+        ...(s.tipo === 'estatico' ? { destino: s.destino, build: v('[data-dep-build]') || null, saida: v('[data-dep-saida]') || '.' } : { dirProducao: s.dirProducao, processo: s.processo, servico: s.servico, unidade: s.unidade }) };
+      b.disabled = true; b.blur(); box.querySelector('[data-dep-sug-cod]')?.blur();
+      const r = await c2Post('/api/deploy/cadastrar', { codigo, alvo });
+      msg(!!(r && r.ok), (r && r.msg) || 'o lado protegido não respondeu');
+      if (r && r.ok) { delete C2.deploySugMsg[chave]; C2.deploySug = null; c2Toast(r.msg + ': o botão "publicar no ar" já aparece no projeto'); c2DeployLer(true); }
+    });
+    function c2DeployAlvo(D, alvo) {
+      const ultimo = [...(D.pedidos || []), ...(D.historico || [])].filter((x) => x.alvo === alvo.id).sort((a, b) => (b.fim || b.em) - (a.fim || a.em))[0];
+      const quando = (t) => new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      /* Escolha dele em 30/09: "pode até pedir o código dentro do próprio card".
+         O pedido esperando abre aqui mesmo: o que sobe, o campo do código e recusar. */
+      if (ultimo && ultimo.estado === 'esperando') {
+        const st = (C2.deployMsg || {})[ultimo.id];
+        return '<div class="dep-conf"><div class="dep-cab">' + ic('seta', 15) + '<b>publicar ' + esc(alvo.nome) + ' no ar</b><span class="c2-mini">pedido às ' + quando(ultimo.em) + '</span></div>'
+          + '<div class="dep-info"><span>ramo <b>' + esc(ultimo.ramo || '?') + '</b></span><span>último commit <b>' + esc(ultimo.commit || '?') + '</b></span>'
+          + (ultimo.novos ? '<span>' + ultimo.novos.length + ' commit(s) novos desde a última publicação</span>' : '<span>primeira publicação por aqui</span>')
+          + (ultimo.arquivosSemCommit ? '<span style="color:var(--red)">' + ultimo.arquivosSemCommit + ' arquivo(s) sem commit vão junto</span>' : '') + '</div>'
+          + '<div class="dep-linha"><input class="dep-cod" data-deploy-cod="' + esc(ultimo.id) + '" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="código do autenticador" aria-label="código do autenticador">'
+          + '<button class="btn compacto c2-primario" data-deploy-ok="' + esc(ultimo.id) + '">confirmar</button>'
+          + '<button class="c2-link" data-deploy-nao="' + esc(ultimo.id) + '">recusar</button></div>'
+          + (st ? '<div class="c2-mini" style="color:' + (st.ok ? 'var(--green)' : 'var(--red)') + '">' + esc(st.msg) + '</div>' : '') + '</div>';
+      }
+      const situacao = !ultimo ? '<span class="c2-mini">nenhuma publicação por aqui ainda</span>'
+        : ultimo.estado === 'rodando' ? '<span class="c2-mini"><span class="perm-gira"></span> publicando agora…</span>'
+        : ultimo.estado === 'publicado' ? '<span class="c2-mini" style="color:var(--green)">publicado em ' + quando(ultimo.fim) + '</span>'
+        : ultimo.estado === 'falhou' ? '<span class="c2-mini" style="color:var(--red)">falhou em ' + quando(ultimo.fim) + ': ' + esc(ultimo.erro || '') + '</span>'
+        : '<span class="c2-mini">' + esc(ultimo.estado) + '</span>';
+      const ocupado = ultimo && (ultimo.estado === 'esperando' || ultimo.estado === 'rodando');
+      return '<div class="pj-mod-acoes pj-abrir-em" style="margin:6px 0 4px;align-items:center;flex-wrap:wrap"><span class="c2-mini">no ar</span>'
+        + '<button class="btn compacto" data-deploy-pedir="' + esc(alvo.id) + '"' + (ocupado ? ' disabled' : '') + ' title="pede a publicação; você confirma com o código do autenticador">' + ic('seta', 14) + 'publicar no ar</button>'
+        + '<a class="c2-link" href="' + esc(alvo.url) + '" target="_blank" rel="noopener">abrir o site</a> ' + situacao + '</div>';
+    }
+    document.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('[data-deploy-pedir]'); if (!b) return;
+      b.disabled = true; b.blur();
+      const r = await c2Post('/api/deploy/pedir', { alvo: b.dataset.deployPedir });
+      if (r && r.ok) c2Toast(r.jaPedido ? 'já tem um pedido esperando: digite o código no cartão' : 'pedido feito: digite o código do autenticador no cartão', 6000);
+      else c2Toast('não pedi: ' + ((r && r.erro) || 'o lado protegido não respondeu'));
+      c2DeployLer(true);
+      setTimeout(() => document.querySelector('[data-deploy-cod]')?.focus(), 1200);
+    });
+    /* confirmar ou recusar com o código, no próprio cartão */
+    document.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('[data-deploy-ok], [data-deploy-nao]'); if (!b) return;
+      const recusar = b.hasAttribute('data-deploy-nao'); const id = recusar ? b.dataset.deployNao : b.dataset.deployOk;
+      const campo = document.querySelector('[data-deploy-cod="' + CSS.escape(id) + '"]');
+      const codigo = (campo?.value || '').replace(/\D/g, '');
+      if (!recusar && codigo.length !== 6) { (C2.deployMsg || (C2.deployMsg = {}))[id] = { ok: false, msg: 'o código tem 6 números' }; return c2RenderProjetos(); }
+      // com o cursor no campo a tela não redesenha (proteção de quem digita): solta antes, senão o aviso nunca aparece
+      b.disabled = true; b.blur(); campo?.blur();
+      const r = await c2Post(recusar ? '/api/deploy/recusar' : '/api/deploy/confirmar', { id, codigo });
+      (C2.deployMsg || (C2.deployMsg = {}))[id] = { ok: !!(r && r.ok), msg: (r && r.msg) || 'o lado protegido não respondeu' };
+      if (r && r.ok) c2Toast(r.msg);
+      c2RenderProjetos(); c2DeployLer(true);
+      if (!(r && r.ok)) setTimeout(() => { const c = document.querySelector('[data-deploy-cod="' + CSS.escape(id) + '"]'); if (c) { c.value = ''; c.focus(); } }, 50);
+    });
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter' || !ev.target.matches('[data-deploy-cod]')) return;
+      ev.preventDefault(); document.querySelector('[data-deploy-ok="' + CSS.escape(ev.target.dataset.deployCod) + '"]')?.click();
+    });
+    /* CC-778, pedido dele: "um desfazer quando a pessoa aperta algum botão".
+       Escolha dele: só nas ações que o painel consegue voltar; envio para a
+       sessão sai na hora, como antes. Uma faixa só, embaixo, por 7 s; a ação
+       seguinte substitui a faixa (o desfazer vale para a última). */
+    let C2_DESF = null;
+    function c2Desfazer(texto, voltar, ms = 7000) {
+      let el = document.getElementById('c2-desf');
+      if (!el) {
+        el = document.createElement('div'); el.id = 'c2-desf'; el.setAttribute('role', 'status');
+        el.innerHTML = '<span class="c2-desf-txt"></span><button type="button" class="c2-desf-b">desfazer</button><i class="c2-desf-barra"></i>';
+        document.body.appendChild(el);
+        el.querySelector('.c2-desf-b').addEventListener('click', async () => {
+          const d = C2_DESF; if (!d) return;
+          C2_DESF = null; clearTimeout(d.t); el.classList.remove('aberto');
+          try { await d.voltar(); } catch (e) { console.error('desfazer', e); }
+          c2RenderDecisoes(); c2RenderInicio(); if (typeof c2RenderLateral === 'function') c2RenderLateral();
+        });
+      }
+      if (C2_DESF) clearTimeout(C2_DESF.t);
+      el.querySelector('.c2-desf-txt').textContent = texto;
+      el.querySelector('.c2-desf-b').hidden = !voltar; // sem ação de volta, é só aviso
+      const barra = el.querySelector('.c2-desf-barra'); barra.style.animation = 'none'; void barra.offsetWidth; barra.style.animation = 'c2-desf-conta ' + ms + 'ms linear forwards';
+      el.classList.add('aberto');
+      C2_DESF = voltar ? { voltar, t: setTimeout(() => { el.classList.remove('aberto'); C2_DESF = null; }, ms) } : null;
+      if (!voltar) { clearTimeout(c2Desfazer.t); c2Desfazer.t = setTimeout(() => { if (!C2_DESF) el.classList.remove('aberto'); }, ms); }
+    }
+    const c2Post = (rota, corpo) => fetch(rota, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(15000) }).then(c2Json).catch(() => null);
+    /* Pedido dele, urgente, 30/09: "botão de áudio (...) qualquer parte que eu
+       tenha que digitar (...) o que for mais barato". O mais barato é o
+       reconhecimento do próprio aparelho, o mesmo do ditado do Coderoom
+       (CC-278): custo zero, sem servidor. O ditado entra no FIM do que já
+       estava escrito, e vale para qualquer campo. */
+    const C2_OUVINTE = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    const C2_MIC = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+    let C2_DITADO = null;
+    /* CC-779, relato dele: "o microfone na transcrição não funcionou no PC nem
+       no telefone". Três consertos, sem o aparelho dele para medir: (1) o erro
+       aparece na faixa de baixo, não só na dica do botão, que no celular
+       ninguém vê; (2) a tela se redesenha a cada tique e troca o campo por
+       outro igual: o ditado procura o campo VIVO a cada resultado, e grava no
+       rascunho do cartão; (3) no Android o modo contínuo repete e se perde:
+       lá é uma frase por toque. */
+    const C2_ANDROID = /Android/i.test(navigator.userAgent);
+    const C2_ERROS_VOZ = {
+      'not-allowed': 'o navegador não deixou usar o microfone: libere o microfone nas permissões do site',
+      'service-not-allowed': 'o ditado está desligado neste aparelho (no iPhone, ligue a Siri e o Ditado nos Ajustes)',
+      'audio-capture': 'nenhum microfone encontrado neste aparelho',
+      network: 'o ditado precisa de internet e a conexão falhou',
+      'no-speech': 'não ouvi nada: toque e fale logo em seguida',
+      'language-not-supported': 'este navegador não entende português no ditado',
+    };
+    /* 30/09, relato dele: "o áudio agora foi, porém ele corta automaticamente
+       após uns 3 segundos de fala". O reconhecimento do navegador se desliga
+       sozinho na primeira pausa (no Android, sempre). Agora ele RELIGA a cada
+       pausa e segue escrevendo no fim, até ele tocar de novo no microfone.
+       Para sozinho só depois de 3 religadas seguidas sem ouvir nada, ou 5 min. */
+    function c2Ditar(campo, botao) {
+      if (!C2_OUVINTE || !campo) return;
+      const msgIdNovo = campo.closest('[data-msg]')?.dataset.msg || null;
+      if (C2_DITADO) {
+        const era = C2_DITADO; era.parar = true; try { era.r.stop(); } catch { /* já parado */ }
+        if (era.campo === campo || (era.msgId && era.msgId === msgIdNovo)) return; // tocar de novo para
+      }
+      const msgId = msgIdNovo;
+      const vivo = () => (campo.isConnected ? campo : (msgId && document.querySelector('[data-msg="' + CSS.escape(msgId) + '"] [data-msg-texto]')) || campo);
+      const botaoVivo = () => (botao && botao.isConnected ? botao : (msgId && document.querySelector('[data-msg="' + CSS.escape(msgId) + '"] [data-voz]')) || botao);
+      const marcar = (ouvindo, erro) => { const b = botaoVivo(); if (!b) return; b.classList.toggle('ouvindo', ouvindo); b.classList.toggle('erro', !!erro); b.title = erro || (ouvindo ? 'ouvindo: toque de novo para parar' : 'ditar por voz'); };
+      /* 30/09, pedido dele com print: a transcrição aparece AO VIVO na faixa de
+         baixo (até 3 linhas, as últimas palavras à vista); o campo só diz
+         "gravando". Ao parar, o texto inteiro entra no campo, no fim do que já
+         estava escrito. */
+      const original = campo.value || '';
+      const phOriginal = campo.placeholder || '';
+      /* 30/09, pedido dele: "deixe eu navegar pelo cockpit e o áudio se mantém
+         gravando, e quando terminar eu posso cancelar nesse popup mesmo". A
+         faixa tem parar e cancelar; ele navega e o ditado segue (trocar de tela
+         não recarrega a página). Silêncio só encerra depois de 1 minuto, porque
+         ele lê a tela calado entre uma fala e outra. */
+      const sessao = { campo, botao, msgId, parar: false, cancelar: false, r: null, ouviuAlgo: false, ultimoSom: Date.now(), comecou: Date.now(), falado: '' };
+      C2_DITADO = sessao;
+      marcar(true);
+      const pintarCampo = () => { const c = vivo(); c.value = ''; c.placeholder = '● gravando… o texto aparece embaixo'; c.classList.add('gravando'); };
+      pintarCampo();
+      c2Ouvindo(sessao.falado);
+      const fim = (erro) => {
+        if (C2_DITADO === sessao) C2_DITADO = null;
+        marcar(false, erro);
+        c2Ouvindo(null);
+        const c = vivo();
+        c.classList.remove('gravando'); c.placeholder = phOriginal;
+        const falado = sessao.cancelar ? '' : sessao.falado.trim(); // cancelar descarta o que foi falado
+        c.value = falado ? (original ? original.replace(/\s*$/, ' ') : '') + falado : original;
+        if (msgId && C2.msg && C2.msg[msgId]) C2.msg[msgId].texto = c.value; // o redesenho seguinte mostra o mesmo texto
+        c.dispatchEvent(new Event('input', { bubbles: true })); // o rascunho continua sendo guardado
+        // se ele navegou para outra tela, diz para onde o texto foi
+        const foraDaVista = !c.isConnected || !c.offsetParent;
+        const onde = foraDaVista ? (msgId ? ' no cartão de onde você começou (em Sessões)' : ' no campo de onde você começou') : '';
+        if (sessao.cancelar) c2Toast('ditado descartado');
+        else if (erro) c2Toast(erro);
+        else if (sessao.ouviuAlgo) c2Toast('ditado pronto' + onde + ': confira e envie');
+        else c2Toast('não ouvi nada: toque e fale logo em seguida');
+      };
+      const ligar = () => {
+        let r;
+        try { r = new C2_OUVINTE(); } catch (e) { return fim('não consegui ligar o ditado: ' + e.message); }
+        r.lang = 'pt-BR'; r.continuous = !C2_ANDROID; r.interimResults = true;
+        sessao.r = r;
+        const base = sessao.falado ? sessao.falado.replace(/\s*$/, ' ') : ''; // cada religada continua do fim
+        let ouviuAqui = false; let errou = false;
+        r.onresult = (e) => {
+          ouviuAqui = true; sessao.ouviuAlgo = true;
+          let dito = '';
+          for (let i = 0; i < e.results.length; i += 1) dito += e.results[i][0].transcript;
+          sessao.falado = base + dito.replace(/^\s+/, '');
+          c2Ouvindo(sessao.falado);
+          if (!vivo().classList.contains('gravando')) pintarCampo(); // a tela se redesenhou: volta o aviso
+        };
+        r.onerror = (e) => {
+          if (e.error === 'no-speech' || e.error === 'aborted') return; // pausa: o onend religa
+          errou = true; fim(C2_ERROS_VOZ[e.error] || 'o ditado parou: ' + e.error);
+        };
+        r.onend = () => {
+          if (errou) return;
+          if (sessao.parar) return fim();
+          if (ouviuAqui) sessao.ultimoSom = Date.now();
+          if (Date.now() - sessao.ultimoSom > 60 * 1000) return fim('parei: 1 minuto sem ouvir nada. O que você falou foi para o campo.');
+          if (Date.now() - sessao.comecou > 10 * 60 * 1000) return fim('parei: 10 minutos de ditado. O que você falou foi para o campo.');
+          setTimeout(() => { if (!sessao.parar && C2_DITADO === sessao) ligar(); }, 120);
+        };
+        try { r.start(); } catch (e) { errou = true; fim('não consegui ligar o microfone: ' + e.message); }
+      };
+      ligar();
+    }
+    /* A faixa do ditado ao vivo: aberta enquanto o microfone estiver ligado,
+       até 3 linhas, rolada para as últimas palavras. null fecha. */
+    function c2Ouvindo(texto) {
+      let el = document.getElementById('c2-ouvindo');
+      if (texto === null) { if (el) el.classList.remove('aberto'); return; }
+      if (!el) {
+        el = document.createElement('div'); el.id = 'c2-ouvindo'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+        el.innerHTML = '<div class="c2-ouv-cab"><i class="c2-ouv-ponto"></i><span>ouvindo · pode navegar à vontade</span>'
+          + '<button type="button" class="c2-ouv-b" data-ouv="cancelar">cancelar</button><button type="button" class="c2-ouv-b forte" data-ouv="parar">parar</button></div><div class="c2-ouv-txt"></div>';
+        document.body.appendChild(el);
+        el.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-ouv]'); const d = C2_DITADO; if (!b || !d) return;
+          d.cancelar = b.dataset.ouv === 'cancelar'; d.parar = true;
+          try { d.r && d.r.stop(); } catch { /* já parado: o onend fecha */ }
+        });
+      }
+      const t = el.querySelector('.c2-ouv-txt');
+      t.textContent = texto || 'fale agora…'; t.classList.toggle('vazio', !texto);
+      t.scrollTop = t.scrollHeight;
+      document.getElementById('c2-desf')?.classList.remove('aberto'); // uma faixa por vez
+      el.classList.add('aberto');
+    }
+    /* Aviso curto na mesma faixa do desfazer, sem o botão. */
+    function c2Toast(texto, ms = 4500) {
+      c2Desfazer(texto, null, ms);
+    }
+    document.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-voz]'); if (!b) return;
+      const campo = b.closest('[data-msg]')?.querySelector('[data-msg-texto]') || C2_VOZ_ALVO;
+      c2Ditar(campo, b);
+    });
+    /* Qualquer outro campo do Cockpit: um microfone pequeno aparece no canto
+       do campo tocado. O Coderoom tem o dele e os cartões também. */
+    let C2_VOZ_ALVO = null;
+    if (C2_OUVINTE) {
+      const flut = document.createElement('button');
+      flut.type = 'button'; flut.className = 'c2-voz c2-voz-flut'; flut.hidden = true; flut.setAttribute('data-voz', ''); flut.setAttribute('aria-label', 'ditar por voz'); flut.title = 'ditar por voz'; flut.innerHTML = C2_MIC;
+      flut.addEventListener('mousedown', (e) => e.preventDefault()); // o foco fica no campo
+      document.body.appendChild(flut);
+      const serve = (el) => el && el.matches && el.matches('textarea, input:not([type]), input[type="text"], input[type="search"]')
+        && !el.closest('[data-msg], #gate-caixa, .gate-escrever') && el.id !== 'gate-txt' && !el.readOnly && !el.disabled
+        && el.inputMode !== 'numeric'; // campo só de números (o código do deploy) não precisa de ditado
+      const posicionar = () => {
+        if (!C2_VOZ_ALVO || flut.hidden) return;
+        const r = C2_VOZ_ALVO.getBoundingClientRect();
+        // campo escondido ou fora da tela: nada de microfone solto no canto
+        if (!C2_VOZ_ALVO.isConnected || r.width < 40 || r.height < 14 || r.bottom < 0 || r.top > innerHeight) { flut.hidden = true; return; }
+        flut.style.left = Math.min(innerWidth - 44, r.right - 40) + 'px';
+        flut.style.top = (C2_VOZ_ALVO.tagName === 'TEXTAREA' ? r.bottom - 40 : r.top + (r.height - 34) / 2) + 'px';
+      };
+      document.addEventListener('focusin', (e) => { if (serve(e.target)) { C2_VOZ_ALVO = e.target; flut.hidden = false; posicionar(); } });
+      document.addEventListener('focusout', (e) => { if (e.target === C2_VOZ_ALVO && !(C2_DITADO && C2_DITADO.campo === e.target)) setTimeout(() => { if (document.activeElement !== C2_VOZ_ALVO) flut.hidden = true; }, 150); });
+      window.addEventListener('scroll', posicionar, true); window.addEventListener('resize', posicionar);
+    }
     function c2MsgForm(e) {
       const st = C2.msg[e.id] || (C2.msg[e.id] = { texto: '', envio: null });
-      const aviso = st.envio === 'indo' ? '<span class="c2-mini">mandando…</span>'
+      // CC-770: enquanto a faixa do cartão mostra o andamento ou o resultado, a linha do campo não repete; quando ela some, o erro fica aqui
+      const aviso = C2.proc.get(e.id) ? ''
+        : st.envio === 'indo' ? '<span class="c2-mini">mandando…</span>'
         : st.envio === 'ok' ? '<span class="c2-mini" style="color:var(--green)">mandado: a sessão recebeu</span>'
         : st.envio && st.envio.erro ? '<span class="c2-mini" style="color:var(--red)">' + esc(st.envio.erro) + '</span>' : '';
       /* Uma linha só, no jeito de campo de conversa, com a seta dentro. */
       return '<div data-msg="' + esc(e.id) + '" data-msg-conversa="' + esc(e.conversa) + '">'
-        + '<div class="c2-msg"><input data-msg-texto placeholder="responder a esta sessão…" value="' + esc(st.texto) + '" enterkeyhint="send">'
+        + (C2_DITADO && C2_DITADO.msgId === e.id
+          /* 30/09, pergunta dele: "se o card aumentasse junto com o tamanho do
+             texto". Caixa que cresce com o texto (até ~8 linhas, depois rola por
+             dentro); Enter envia, Shift+Enter pula linha. */
+          ? '<div class="c2-msg"><textarea data-msg-texto rows="1" class="gravando" placeholder="● gravando… o texto aparece embaixo" enterkeyhint="send"></textarea>' // redesenho no meio do ditado
+          : '<div class="c2-msg"><textarea data-msg-texto rows="1" placeholder="responder a esta sessão…" enterkeyhint="send">' + esc(st.texto) + '</textarea>')
+        + (C2_OUVINTE ? '<button type="button" class="c2-voz" data-voz aria-label="ditar por voz" title="ditar por voz">' + C2_MIC + '</button>' : '')
         + '<button class="c2-enviar" data-msg-enviar aria-label="mandar" title="mandar"' + (st.envio === 'indo' ? ' disabled' : '') + '>'
         + '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>'
         + (aviso ? '<div style="margin-top:4px">' + aviso + '</div>' : '') + '</div>';
@@ -18421,12 +19791,22 @@
       if (ev.key === 'Enter' && ev.target.matches('[data-nota-texto]')) { ev.preventDefault(); c2AnotarRapido(); }
     });
     document.addEventListener('keydown', (ev) => {
-      if (ev.key !== 'Enter' || !ev.target.matches('[data-msg-texto]')) return;
+      if (ev.key !== 'Enter' || ev.shiftKey || ev.isComposing || !ev.target.matches('[data-msg-texto]')) return;
       ev.preventDefault();
       ev.target.closest('[data-msg]')?.querySelector('[data-msg-enviar]')?.click();
     });
+    /* A caixa de resposta cresce com o texto. `field-sizing` faz sozinho onde
+       existe; onde não existe (Safari antigo), a conta é aqui. */
+    const C2_CRESCE_CSS = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('field-sizing', 'content');
+    function c2Crescer(el) {
+      if (C2_CRESCE_CSS || !el || el.tagName !== 'TEXTAREA') return;
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 8 * 20 + 16) + 'px';
+    }
+    const c2CrescerTodos = () => { if (!C2_CRESCE_CSS) document.querySelectorAll('textarea[data-msg-texto]').forEach(c2Crescer); };
     document.addEventListener('input', (ev) => {
       if (!ev.target.matches('[data-msg-texto]')) return;
+      c2Crescer(ev.target);
       const id = ev.target.closest('[data-msg]')?.dataset.msg;
       if (id) (C2.msg[id] || (C2.msg[id] = { texto: '', envio: null })).texto = ev.target.value;
     });
@@ -18484,13 +19864,61 @@
          C2.perm, e não no botão: o cartão é redesenhado a cada 2 s, e o botão
          desabilitado voltava a aceitar toque ("permite que eu aperte mais
          vezes"). Enquanto espera, o cartão inteiro fica travado em "processando". */
+      /* CC-762: o ⋯ do cabeçalho do Coderoom, lembrado no aparelho. */
+      const ctg = ev.target.closest('[data-gate-canto-tg]');
+      if (ctg) {
+        const canto = ctg.closest('.gate-canto'); const ab = !canto.classList.contains('aberto');
+        canto.classList.toggle('aberto', ab); ctg.setAttribute('aria-expanded', ab);
+        try { localStorage.setItem('c2-gate-canto', ab ? 'aberto' : 'fechado'); } catch { /* só conveniência */ }
+        return;
+      }
+      /* CC-756: abre e fecha a zona de ações sem redesenhar (a animação é do CSS). */
+      const atg = ev.target.closest('[data-acoes-tg]');
+      if (atg) {
+        const id = atg.dataset.acoesTg; const A = c2AcoesAbertas();
+        if (A.has(id)) A.delete(id); else A.add(id);
+        try { localStorage.setItem('c2-acoes-abertas', JSON.stringify([...A].slice(-200))); } catch { /* só conveniência */ }
+        document.querySelectorAll('.c2-aviso[data-aviso-id="' + CSS.escape(id) + '"]').forEach((c) => c.classList.toggle('acoes-on', A.has(id)));
+        document.querySelectorAll('[data-acoes-tg="' + CSS.escape(id) + '"]').forEach((b) => b.setAttribute('aria-expanded', A.has(id)));
+        return;
+      }
+      /* CC-754: o cadeado liga e desliga a trava do cartão no lugar. */
+      const cad = ev.target.closest('[data-cad]');
+      if (cad) {
+        // CC-771: pré-preso, preso, solto, e volta
+        const idCad = cad.dataset.cad; const antes = c2Nivel(idCad); const depois = { pre: 'preso', preso: 'solto', solto: 'pre' }[antes];
+        c2PorNivel(idCad, depois);
+        cad.blur(); c2RenderDecisoes(); if (typeof c2RenderLateral === 'function') c2RenderLateral();
+        c2Desfazer({ preso: 'Cartão preso no lugar', solto: 'Cartão solto: muda de lugar livremente', pre: 'Cartão pré-preso: fica no lugar enquanto selecionado' }[depois], () => { c2PorNivel(idCad, antes); c2RenderDecisoes(); }); // CC-778
+        return;
+      }
+      /* CC-759: liga e desliga o "novos no topo". */
+      const nt = ev.target.closest('[data-novos-topo]');
+      if (nt) {
+        try { localStorage.setItem('c2-novos-topo', nt.dataset.novosTopo === 'nao' ? 'nao' : 'sim'); } catch { /* só conveniência */ }
+        nt.blur(); c2RenderDecisoes(); if (typeof c2RenderLateral === 'function') c2RenderLateral();
+        return;
+      }
+      /* CC-752: mover uma categoria na ordem, ou voltar ao padrão. */
+      const ordB = ev.target.closest('[data-ord-mov], [data-ord-padrao]');
+      if (ordB) {
+        { const antes = [...c2OrdemCats()]; c2Desfazer('Ordem mudada', () => { C2.ordemCats = antes; try { localStorage.setItem('c2-ordem-cats', JSON.stringify(antes)); } catch { /* só conveniência */ } }); } // CC-778
+        if (ordB.hasAttribute('data-ord-padrao')) { C2.ordemCats = [...C2_ORDEM_PADRAO]; try { localStorage.removeItem('c2-ordem-cats'); } catch { /* só conveniência */ } }
+        else c2MoverCat(ordB.dataset.ordMov, Number(ordB.dataset.ordDir));
+        ordB.blur(); c2RenderDecisoes(); if (typeof c2RenderLateral === 'function') c2RenderLateral();
+        return;
+      }
       /* CC-737: ele corrige a etiqueta do agy; a tela muda na hora e o servidor guarda. */
       const eti = ev.target.closest('[data-eti-k]');
       if (eti) {
         const k = eti.dataset.etiK, v = eti.dataset.eti;
-        for (const x of [...(C2.dados?.espera || []), ...(C2.dados?.conectadas || [])]) if (x.resumoIA && x.resumoIA.k === k) x.resumoIA.etiqueta = v;
+        const porEti = (val) => { for (const x of [...(C2.dados?.espera || []), ...(C2.dados?.conectadas || [])]) if (x.resumoIA && x.resumoIA.k === k) x.resumoIA.etiqueta = val; };
+        const antes = ([...(C2.dados?.espera || []), ...(C2.dados?.conectadas || [])].find((x) => x.resumoIA && x.resumoIA.k === k) || {}).resumoIA?.etiqueta || null;
+        porEti(v);
         eti.blur(); c2RenderDecisoes(); c2RenderInicio();
         fetch('/api/sessao/etiqueta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k, etiqueta: v }) }).catch(() => {});
+        const nomeEti = { responder: 'resposta', testar: 'teste', nada: 'nada' };
+        if (antes && antes !== v) c2Desfazer('Agora espera: ' + nomeEti[v], async () => { porEti(antes); await c2Post('/api/sessao/etiqueta', { k, etiqueta: antes }); }); // CC-778
         return;
       }
       const perm = ev.target.closest('[data-perm]');
@@ -18511,9 +19939,23 @@
           const r = await fetch('/api/decisao/permitir', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: perm.dataset.permConv, id, decisao: perm.dataset.perm }), signal: AbortSignal.timeout(20000) }).then(c2Json)
             .catch((e) => ({ ok: false, erro: e.name === 'TimeoutError' ? 'sem resposta do painel em 20 s: confira na sessão (pode ter sido respondido lá)' : e.message }));
           P[id] = r.ok ? { estado: 'ok', sim, escolha } : { estado: 'erro', sim, escolha, erro: r.erro || 'falhou' };
-          /* CC-649: o "permitido" vale 4 s. Se o mesmo pedido ainda estiver lá
-             depois disso, os botões voltam em vez de o aviso ficar pendurado. */
-          if (r.ok) setTimeout(() => { if (P[id] && P[id].estado === 'ok') { delete P[id]; c2RenderDecisoes(); c2RenderInicio(); } }, 4000);
+          if (r.ok && perm.closest('[data-aviso-id]')) c2Travar(perm.closest('[data-aviso-id]').dataset.avisoId, false); // CC-754: respondeu, destrava
+          /* 30/09, relato dele: "fica carregando, daí antes de sumir ele volta a
+             perguntar por uns segundos e depois some". Reproduzido: os botões
+             voltavam aos 4 s porque a leitura seguinte ainda trazia o pedido (a
+             tela do terminal e o registro demoram a perceber a resposta). Só
+             que o "ok" do servidor JÁ é confirmado (tecla conferida na tela, ou
+             gancho que leu a resposta): o pedido respondido some e fica
+             escondido por 1 minuto, mesmo que a leitura atrasada o traga. */
+          if (r.ok) setTimeout(() => { c2MarcarRespondido(id); delete P[id]; c2RenderDecisoes(); c2RenderInicio(); }, 1500);
+          /* 01/10, print dele: "esses avisos deveriam ficar carregando no fim da
+             lista e eles voltam pro topo mesmo já tendo sido apertados". Medido:
+             o pedido fica ~6 s na tela e é respondido no app ou no terminal; o
+             toque que chega depois achava a tela sem pedido e o cartão voltava
+             com erro. Pedido que já saiu da tela foi respondido: o cartão some. */
+          else if (/não está na tela|já foi respondido|já passou para o terminal|respondido lá/.test(r.erro || '')) {
+            c2MarcarRespondido(id); delete P[id]; c2Toast('Esse pedido já tinha sido respondido em outro lugar');
+          }
         } catch (err) { P[id] = { estado: 'erro', sim, erro: 'o painel não respondeu: ' + err.message }; }
         c2RenderDecisoes(); c2RenderInicio();
         return setTimeout(c2Buscar, 1000);
@@ -18528,7 +19970,8 @@
         if (c2ProcAtivo(idP)) return;
         if (idP) c2Proc(idP, 'processando: parando a sessão…'); else { parar.disabled = true; parar.textContent = 'parando…'; } // CC-647
         try {
-          const r = await fetch('/api/decisao/parar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: parar.dataset.sessaoParar }) }).then(c2Json);
+          const r = await fetch('/api/decisao/parar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: parar.dataset.sessaoParar }), signal: AbortSignal.timeout(20000) }).then(c2Json)
+            .catch((e) => ({ ok: false, erro: e.name === 'TimeoutError' ? 'sem confirmação em 20 s, confira na sessão' : e.message })); // CC-725
           if (idP) c2ProcFim(idP, r.ok, r.ok ? (r.aviso ? 'Esc enviado' : 'sessão parada') : 'não parou: ' + (r.erro || ''));
           else parar.textContent = r.ok ? 'parada' : 'não parou';
         } catch { if (idP) c2ProcFim(idP, false, 'o painel não respondeu'); else parar.textContent = 'sem resposta'; }
@@ -18550,7 +19993,8 @@
         if (c2ProcAtivo(idC)) return;
         c2Proc(idC, encerrar ? 'processando: encerrando a sessão…' : 'processando: mandando continuar…');
         try {
-          const r = await fetch('/api/decisao/mensagem', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: acaoS.dataset.sesConversa, texto: encerrar ? '/exit' : 'pode continuar' }) }).then(c2Json);
+          const r = await fetch('/api/decisao/mensagem', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: acaoS.dataset.sesConversa, texto: encerrar ? '/exit' : 'pode continuar' }), signal: AbortSignal.timeout(30000) }).then(c2Json)
+            .catch((e) => ({ ok: false, erro: e.name === 'TimeoutError' ? 'sem confirmação em 30 s, confira na sessão' : e.message })); // CC-725
           c2ProcFim(idC, r.ok, r.ok ? (encerrar ? 'sessão encerrada' : 'enviado: pode continuar') : 'não foi: ' + (r.erro || r.error || 'sem motivo dito'));
           if (!r.ok) return;
           const e = (C2.dados?.espera || []).find((x) => x.conversa === acaoS.dataset.sesConversa);
@@ -18575,7 +20019,12 @@
          troca (sesTrocar), que também anima os cartões. */
       /* CC-652: tocar soma ou tira; o "todas" limpa. */
       const alternar = (conj, v) => { if (!v || v === 'todas') conj.clear(); else if (conj.has(v)) conj.delete(v); else conj.add(v); };
-      if (ev.target.closest('[data-ses-limpar]')) { C2.sesDisps.clear(); C2.sesCats.clear(); C2.decProjs.clear(); return sesTrocar(c2RenderDecisoes); }
+      if (ev.target.closest('[data-ses-limpar]')) {
+        const antes = [new Set(C2.sesDisps), new Set(C2.sesCats), new Set(C2.decProjs)]; // CC-778
+        C2.sesDisps.clear(); C2.sesCats.clear(); C2.decProjs.clear();
+        c2Desfazer('Filtros limpos', () => { [C2.sesDisps, C2.sesCats, C2.decProjs] = antes; });
+        return sesTrocar(c2RenderDecisoes);
+      }
       if (ev.target.closest('[data-ses-filtros-alternar]')) { C2.sesFiltrosAbertos = !C2.sesFiltrosAbertos; try { localStorage.setItem('c2-ses-filtros', C2.sesFiltrosAbertos ? 'aberto' : 'fechado'); } catch { /* só conveniência */ } return sesTrocar(c2RenderDecisoes); }
       if (sesCat) { alternar(C2.sesCats || (C2.sesCats = new Set()), sesCat.dataset.sesCat); return sesTrocar(c2RenderDecisoes); }
       const sesDisp = ev.target.closest('[data-ses-disp]');
@@ -18603,13 +20052,15 @@
       if (grupoAbrir) {
         const k = grupoAbrir.dataset.grupoAbrir;
         C2.gruposAbertos.has(k) ? C2.gruposAbertos.delete(k) : C2.gruposAbertos.add(k);
-        return c2RenderInicio();
+        // CC-763: redesenhava só o Início; em Sessões e na barra o toque parecia não fazer nada
+        grupoAbrir.blur(); c2RenderInicio(); return c2RenderDecisoes();
       }
       const grupoFechar = ev.target.closest('[data-grupo-fechar]');
       if (grupoFechar) {
         grupoFechar.disabled = true; grupoFechar.textContent = 'fechando…';
         const itens = JSON.parse(grupoFechar.dataset.grupoFechar || '[]');
         await Promise.all(itens.map(([id, marca]) => fetch('/api/decisao/fechar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, marca: marca || null }) }).catch(() => null)));
+        c2Desfazer(itens.length + ' cartões fechados', async () => { await Promise.all(itens.map(([id, marca]) => c2Post('/api/decisao/reabrir', { id, marca: marca || null }))); await c2Buscar(); }); // CC-778
         return c2Buscar();
       }
       /* CC-629 e CC-630: primeiro toque abre a confirmação (ou a escolha do
@@ -18635,6 +20086,7 @@
       if (depModo) {
         depModo.closest('.dec-conf-bts').querySelectorAll('button').forEach((b) => { b.disabled = true; });
         depModo.textContent = 'guardando…';
+        { const idD = depModo.dataset.decId; c2Desfazer('Guardado para depois', async () => { await c2Post('/api/decisao/trazer', { id: idD }); await c2Buscar(); }); } // CC-778
         try { await fetch('/api/decisao/depois', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: depModo.dataset.decId, marca: depModo.dataset.decMarca || null, modo: depModo.dataset.decDepoisModo }) }); } catch { /* o próximo tique mostra */ }
         C2.depAberto = null;
         return c2Buscar();
@@ -18649,6 +20101,7 @@
       if (fechar) {
         C2.xConf = null;
         fechar.disabled = true;
+        { const idF = fechar.dataset.decFechar, mF = fechar.dataset.decMarca || null; c2Desfazer('Cartão fechado', async () => { await c2Post('/api/decisao/reabrir', { id: idF, marca: mF }); await c2Buscar(); }); } // CC-778
         try { await fetch('/api/decisao/fechar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: fechar.dataset.decFechar, marca: fechar.dataset.decMarca || null }) }); } catch { /* o próximo tique mostra */ }
         return c2Buscar();
       }
@@ -18664,11 +20117,14 @@
         st.envio = 'indo';
         c2Proc(id, 'processando: enviando a mensagem…'); // CC-647
         try {
-          const r = await fetch('/api/decisao/mensagem', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: box.dataset.msgConversa, texto: st.texto }) }).then(c2Json);
+          // CC-725: teto também aqui (o servidor leva no máximo ~20 s)
+          const r = await fetch('/api/decisao/mensagem', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: box.dataset.msgConversa, texto: st.texto }), signal: AbortSignal.timeout(30000) }).then(c2Json)
+            .catch((e) => ({ ok: false, erro: e.name === 'TimeoutError' ? 'o painel não confirmou em 30 s: a mensagem pode ter ido, confira na sessão' : e.message }));
           st.envio = r.ok ? 'ok' : { erro: r.erro || r.error || 'não deu certo, sem motivo dito' };
           c2ProcFim(id, r.ok, r.ok ? 'enviado para a sessão' : 'não foi: ' + (r.erro || r.error || 'sem motivo dito'));
           if (r.ok) {
             st.texto = '';
+            c2Travar(id, false); // CC-754: enviou, o cartão volta a andar
             const e = (C2.dados?.espera || []).find((x) => x.id === id);
             if (e) setTimeout(() => c2MarcarEnviada(e), 3000);
             setTimeout(c2Buscar, 3200);
@@ -18718,10 +20174,16 @@
         alvo.blur();
         st.envio = 'indo'; c2RenderInicio(); c2RenderDecisoes();
         try {
-          const r = await fetch('/api/decisao/responder', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: e.responder.conversa, id: k, respostas: st.esc }) }).then(c2Json);
+          /* CC-725, print dele: preso em "processando: enviando a resposta". O
+             envio não tinha teto; o servidor leva no máximo ~27 s (teclas de até
+             5 s cada mais 10 s esperando a sessão confirmar), então 35 s. */
+          const r = await fetch('/api/decisao/responder', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: e.responder.conversa, id: k, respostas: st.esc }), signal: AbortSignal.timeout(35000) }).then(c2Json);
           st.envio = r.ok ? 'ok' : { erro: r.erro || r.error || 'não deu certo, sem motivo dito' };
           if (r.ok) { setTimeout(() => { c2MarcarEnviada(e); c2Rep(); }, 3000); setTimeout(c2Buscar, 3200); } // CC-648: fica 3 s no fim com o "respondido"
-        } catch (err) { st.envio = { erro: 'o painel não respondeu: ' + err.message }; }
+        } catch (err) {
+          st.envio = { erro: err.name === 'TimeoutError' ? 'o painel não confirmou em 35 s: a resposta pode ter ido, confira na sessão' : 'o painel não respondeu: ' + err.message };
+          setTimeout(c2Buscar, 500); // se foi, o cartão some na próxima leitura
+        }
       }
       c2RenderInicio(); c2RenderDecisoes();
     });
@@ -18906,8 +20368,48 @@
        o commit (…) eu vou botar ali /exit que aí ele finaliza a sessão". Os dois
        atalhos de sempre, numa sessão parada desta máquina. Encerrar pede
        confirmação: a conversa acaba ali (fica gravada no disco). */
-    const c2AcoesRapidas = (conversa, nome) => (conversa
-      ? '<button class="c2-link" data-ses-acao="continuar" data-ses-conversa="' + esc(conversa) + '" data-ses-nome="' + esc(nome) + '">continuar</button>'
+    /* CC-757, pedido dele: "mudar os modelos do Claude Code e o esforço (…)
+       usar todos os meus agentes num lugar só". Listas fechadas, iguais às do
+       servidor; escolher manda o comando para o terminal da sessão. */
+    /* 30/09, pedido dele: "todos os modelos e todos os esforços", e o atual já
+       marcado. A lista é a mesma do servidor (MODELOS_SESSAO). */
+    const c2NomeModelo = (id) => {
+      const m = /^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:-|$)/.exec(String(id || ''));
+      return m ? m[1][0].toUpperCase() + m[1].slice(1) + ' ' + m[2] + (m[3] ? '.' + m[3] : '') : String(id || '');
+    };
+    const C2_MODELOS = [['fable', 'Fable (o mais novo)'], ['opus', 'Opus (o mais novo)'], ['sonnet', 'Sonnet (o mais novo)'], ['haiku', 'Haiku (o mais novo)'],
+      ...['claude-fable-5-1', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'claude-sonnet-4-5'].map((id) => [id, c2NomeModelo(id)])];
+    const C2_ESFORCOS = [['low', 'baixo'], ['medium', 'médio'], ['high', 'alto'], ['xhigh', 'muito alto'], ['max', 'máximo']];
+    const c2ConfigSel = (conversa, cfg) => {
+      const mAt = cfg && cfg.modelo; const eAt = cfg && cfg.esforco;
+      const temModelo = C2_MODELOS.some(([v]) => v === mAt);
+      return '<select class="gate-sel c2-cfg-sel" data-cfg-conversa="' + esc(conversa) + '" data-cfg="modelo" aria-label="trocar o modelo desta sessão" title="modelo desta sessão">'
+          + (mAt ? (temModelo ? '' : '<option value="" selected>' + esc(c2NomeModelo(mAt)) + '</option>') : '<option value="">modelo…</option>')
+          + C2_MODELOS.map(([v, r]) => '<option value="' + v + '"' + (v === mAt ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>'
+        + '<select class="gate-sel c2-cfg-sel" data-cfg-conversa="' + esc(conversa) + '" data-cfg="esforco" aria-label="trocar o esforço desta sessão" title="esforço desta sessão">'
+          + (eAt ? '' : '<option value="">esforço…</option>')
+          + C2_ESFORCOS.map(([v, r]) => '<option value="' + v + '"' + (v === eAt ? ' selected' : '') + '>esforço ' + r + '</option>').join('') + '</select>';
+    };
+    document.addEventListener('change', async (ev) => {
+      const sel = ev.target.closest && ev.target.closest('[data-cfg-conversa]');
+      if (!sel || !sel.value) return;
+      const idC = sel.closest('[data-aviso-id]')?.dataset.avisoId;
+      const campo = sel.dataset.cfg; const valor = sel.value;
+      const rot = campo === 'modelo' ? (C2_MODELOS.find(([v]) => v === valor) || [])[1] : 'esforço ' + (C2_ESFORCOS.find(([v]) => v === valor) || [])[1];
+      sel.disabled = true;
+      if (idC) c2Proc(idC, 'processando: trocando para ' + rot + '…');
+      try {
+        const r = await fetch('/api/decisao/config', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: sel.dataset.cfgConversa, [campo]: valor }), signal: AbortSignal.timeout(30000) }).then(c2Json)
+          .catch((e) => ({ ok: false, erro: e.name === 'TimeoutError' ? 'sem confirmação em 30 s, confira na sessão' : e.message }));
+        if (idC) c2ProcFim(idC, r.ok, r.ok ? (r.aviso ? 'mandei ' + rot + ', a sessão não confirmou: confira nela' : 'trocado para ' + rot) : 'não trocou: ' + (r.erro || 'sem motivo dito'));
+      } catch { if (idC) c2ProcFim(idC, false, 'o painel não respondeu'); }
+      sel.disabled = false; // fica no escolhido; a próxima leitura do histórico confirma
+      c2RenderDecisoes();
+    });
+    const c2AcoesRapidas = (conversa, nome, cfg) => (conversa
+      // conversa do Coderoom troca de modelo pelo "quem responde", não por comando de terminal
+      ? (String(conversa).startsWith('gate:') ? '' : c2ConfigSel(conversa, cfg))
+        + '<button class="c2-link" data-ses-acao="continuar" data-ses-conversa="' + esc(conversa) + '" data-ses-nome="' + esc(nome) + '">continuar</button>'
         + '<button class="c2-link" style="color:var(--red)" data-ses-acao="encerrar" data-ses-conversa="' + esc(conversa) + '" data-ses-nome="' + esc(nome) + '">encerrar</button>'
       : '');
     /* CC-675: o que a tela da sessão diz de ruim, com o conserto a um toque.
@@ -19003,11 +20505,11 @@
          `conversa`; aqui é só o que é BOTÃO que muda. */
       const coderoom = String(s.conversa || '').startsWith('gate:');
       const corAg = { claude: 'var(--gate-claude)', opencode: 'var(--gate-opencode)', agy: 'var(--gate-agy)' }[s.agente] || 'var(--c-sessao)';
-      return '<div class="c2-aviso rodando' + (s.estado === 'trabalhando' ? '' : ' parada') + (c2ProcAtivo(s.id) ? ' c2-processando' : '') + '" data-aviso-id="' + esc(s.id) + '">'
+      return '<div class="c2-aviso rodando' + (C2.selecionado === s.id ? ' c2-sel' : '') + (s.estado === 'trabalhando' ? '' : ' parada') + (c2ProcAtivo(s.id) ? ' c2-processando' : '') + (c2AcoesAbertas().has(s.id) ? ' acoes-on' : '') + '" data-aviso-id="' + esc(s.id) + '">'
         + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span class="ini-pilula" style="--q:' + cor + '">' + esc(rot) + '</span>'
-        + c2disp(s.dispositivo) // CC-738: a máquina sempre colada ao estado
         + (s.agente ? '<span class="ini-pilula" style="--q:' + corAg + '">' + esc(s.agente) + '</span>' : '')
-        + c2tagProj('var(--c-projeto)', s.nome, s.frente, s.sessaoNome) + '</div>'
+        + c2Cadeado(s.id, 'c2-cad-ses')
+        + c2Onde(s.dispositivo, c2tagProj('var(--c-projeto)', s.nome, s.frente, s.sessaoNome)) + '</div>'
         + c2SaudeBloco(s)
         + c2ProcBloco(s.id)
         + '<div class="c2-perg">' + (s.fala ? esc(c2semMd(s.fala)) : '<span style="color:var(--text-dim)">' + esc(s.assunto || 'sem fala do agente ainda') + '</span>') + '</div>'
@@ -19016,10 +20518,11 @@
         + (daqui && coderoom ? c2GateQuem(s) : '')
         + (daqui && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela, abra a sessão no ' + esc(s.dispositivo || 'outro computador') + '.') + '</div>' : ''))
         + '<div class="c2-meta"><span class="c2-meta-t">' + ic('relogio', 13) + 'há ' + c2ms(s.desdeMs) + '</span>' + (s.estado === 'trabalhando' ? '<span class="c2-meta-ass">' + (s.ferramenta ? esc(s.ferramenta) : 'pensando') + '</span>' : '')
+        + c2AcoesBotao(s.id)
         + '<span class="c2-acoes">' + (daqui ? c2FwChip(s.projeto) : '') + c2TesteVoo(s.projeto) + (s.estado === 'trabalhando' && daqui && s.conversa ? '<button class="c2-link" style="color:var(--red)" data-sessao-parar="' + esc(s.conversa) + '" data-sessao-nome="' + esc(s.nome) + '">parar</button>' : '')
         /* CC-727: renomear a conversa do Coderoom daqui mesmo. */
         + (daqui && coderoom ? '<button class="c2-link" data-gate-renomear="' + esc(s.conversa.slice(5)) + '" data-gate-titulo="' + esc(s.sessaoNome || '') + '">renomear</button>' : '')
-        + (s.estado !== 'trabalhando' && daqui && !coderoom ? c2AcoesRapidas(s.conversa, s.nome) : '')
+        + (s.estado !== 'trabalhando' && daqui && !coderoom ? c2AcoesRapidas(s.conversa, s.nome, s.cfgAtual) : '')
         + c2AppLink(s.appUrl) + '<button class="c2-link" data-ver-agente="' + esc(s.id) + '">abrir sessão</button></span></div></div>';
     }
     /* CC-607, pedido dele: o teste de voo do projeto no cartão da sessão. Só
@@ -19076,7 +20579,13 @@
     }
     function c2FoiEnviada(e) {
       const t = C2.enviadas && C2.enviadas.get(e.id + '::' + (e.marca || ''));
-      return Boolean(t && Date.now() - t < 180000);
+      if (t && Date.now() - t < 180000) return true;
+      // pedido de permissão (ou escolha do Coderoom) já respondido com confirmação
+      const p = e.permissaoId && C2.permRespondidas && C2.permRespondidas.get(e.permissaoId);
+      return Boolean(p && Date.now() - p < 60000);
+    }
+    function c2MarcarRespondido(permissaoId) {
+      (C2.permRespondidas || (C2.permRespondidas = new Map())).set(permissaoId, Date.now());
     }
 
     /* O agente escreve em markdown, e o cartão mostrava os asteriscos crus
@@ -20089,7 +21598,8 @@
            Antigravity, os três daqui (os botões e cliques do painel antigo). */
         + (pjSessaoBtn(p) ? '<div class="pj-mod-acoes pj-abrir-em" style="margin:10px 0 4px"><span class="c2-mini">abrir sessão em</span>' + pjSessaoBtn(p, 'Claude Code')
           + '<button class="btn compacto" data-coderoom-nova="' + esc(c2FwDe(p.chave).projeto) + '" data-coderoom-dir="' + esc(c2FwDe(p.chave).raiz || p.raiz) + '">' + ic('mais', 14) + 'Coderoom</button>'
-          + '<button class="btn compacto" data-agy-abrir="' + esc(c2FwDe(p.chave).projeto) + '">' + ic('mais', 14) + 'Antigravity</button></div>' : '');
+          + '<button class="btn compacto" data-agy-abrir="' + esc(c2FwDe(p.chave).projeto) + '">' + ic('mais', 14) + 'Antigravity</button></div>' : '')
+        + c2DeployLinha(p);
       /* As abas do detalhe: "Visão geral" é tudo o que o detalhe já mostrava,
          na mesma ordem; as outras filtram uma seção só. */
       const secoes = {
@@ -20221,6 +21731,12 @@
           + stat('pausa', 'var(--c-decisao)', 'Em espera', conta.espera, 'esperando você')
           + stat('relogio', 'var(--c-dev)', 'Offline', conta.parado, 'sem sessão nem terminal aberto')
           + '</div>');
+        // descoberta do deploy: os sites no ar que ainda não têm deploy cadastrado
+        if (statsEl) {
+          let sugEl = document.getElementById('pj-deploy-sug');
+          if (!sugEl) { sugEl = document.createElement('div'); sugEl.id = 'pj-deploy-sug'; statsEl.after(sugEl); }
+          pintar(sugEl, c2DeploySugestoes());
+        }
         pintar(topo, '<div class="card ini-abas pj-filtros" role="tablist">'
           + PJ_FILTROS.map(([k, rot, n]) => '<button role="tab" aria-selected="' + ((C2.pjFiltro || 'todos') === k) + '" class="ini-aba' + ((C2.pjFiltro || 'todos') === k ? ' on' : '') + '" data-pj-filtro="' + k + '">' + rot + '<span class="ini-n">' + n + '</span></button>').join('')
           /* CC-634: a aba só dos frameworks, no fim das abas de filtro. */

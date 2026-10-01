@@ -27,13 +27,15 @@ import {
   esquecerSessao, guardarCota, lerCabecalho,
 } from './gate.mjs'
 import * as resumoAgy from './resumoAgy.mjs'
-import { fotografar, mexeuEmTela } from './gateFotos.mjs'
+import { fotografar, mexeuEmTela, enderecoDe } from './gateFotos.mjs'
 import { execFileSync } from 'node:child_process'
 import { enviar, lerTurno, vivo, agentePara, servidorOpencodeVivo, garantirServidorOpencode } from './gateAgentes.mjs'
 import { montar, gravarPacote } from './gatePacote.mjs'
 import { ler as lerFramework } from './frameworkDisco.mjs'
 import { modoDe } from './framework.mjs'
 import { DIR_PERMISSOES } from './decisao.mjs'
+import { revisorDe } from './config.mjs'
+import { readUso } from './uso.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
@@ -346,6 +348,18 @@ export function responder(id, { texto, agente = 'agy', modelo = null, esforco = 
   const flash = quem === 'opencode' && ['flash', 'avulso'].includes(c.cabecalho.opencodeModo)
   if (flash && !servidorOpencodeVivo()) garantirServidorOpencode().catch(() => {})
   const avulso = flash && c.cabecalho.opencodeModo === 'avulso'
+  /* CC-813, medido na simulação 3 (jogo): com 77 a 138 mil tokens de sessão o
+     opencode grátis travava, parava no meio e respondia vazio; a mesma tarefa
+     numa sessão limpa (26 a 59 mil) saiu inteira. Passou do limite, a próxima
+     mensagem abre sessão NOVA e leva a conversa em transcrição. Feito aqui, e
+     não no fim da resposta, para as voltas automáticas do painel (retomar,
+     resumir, consertar o endereço) seguirem na sessão em curso. */
+  let sessaoZerada = false
+  if (quem === 'opencode' && !flash && c.cabecalho.sessoes?.opencode && (c.cabecalho.contextoOpencode || 0) > LIMITE_CONTEXTO) {
+    esquecerSessao(id, 'opencode', `a sessão dele chegou a ${Math.round(c.cabecalho.contextoOpencode / 1000)} mil tokens de contexto, e acima de uns ${Math.round(LIMITE_CONTEXTO / 1000)} mil o modelo grátis trava, para no meio e responde vazio`)
+    gravarCabecalho(id, { contextoOpencode: 0 })
+    sessaoZerada = true
+  }
   const delta = deltaPara(id, quem, { semMemoria: flash, soUltima: avulso })
   const pacote = montar(c.cabecalho, { agente: quem })
   const turnoId = `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
@@ -364,7 +378,7 @@ export function responder(id, { texto, agente = 'agy', modelo = null, esforco = 
     flash,
     pastas: c.cabecalho.opencodePastas || [],
     conversa: id,
-    sessao: flash ? null : c.cabecalho.sessoes?.[quem] || null,
+    sessao: flash || sessaoZerada ? null : c.cabecalho.sessoes?.[quem] || null,
     /* CC-718: avulso vai sem o estado do projeto. Medido em 30/09: a lista de
        agentes do pacote traz a PRÓPRIA conversa, com a primeira mensagem dele
        como título, e a pergunta "qual palavra eu pedi" foi respondida por ali. */
@@ -464,6 +478,15 @@ function acompanhar(id, t) {
     if (r.cota) guardarCota(id, r.cota)
 
     const estourou = Date.now() - comecou > TETO_MS
+    /* CC-803: o vigia de silêncio. O agente calado há tempo demais (sem
+       ferramenta nova, sem texto, sem filho trabalhando, sem esperar resposta
+       dele) é parado, e a saída dele cai na retomada de baixo, que pede para ele
+       agir. Medido em 30/09: um bloco grande de código deixa o registro parado
+       por ~140 s, então o limite é MAIOR que isso. */
+    if (!t.silencio && !r.terminou && t.agente === 'opencode' && vivo(t.pid) && silencioDoTurno(t, id) > SILENCIO_MS) {
+      t.silencio = true
+      try { process.kill(t.pid, 'SIGTERM') } catch { /* já saiu */ }
+    }
     const acabou = r.terminou || !vivo(t.pid) || estourou
     if (!acabou) return
 
@@ -498,6 +521,18 @@ function acompanhar(id, t) {
       erro: estourou ? `passou de ${Math.round(TETO_MS / 60000)} minutos e eu parei de esperar` : r.erro,
     })
 
+    /* CC-803: o que o prumo barrou nesta resposta, contado na conversa. É como
+       ele fica sabendo que o agente tentou sair do projeto ou rodear. */
+    try {
+      const arqPrumo = t.logFile && String(t.logFile).replace(/\.jsonl$/, '.prumo')
+      if (arqPrumo && fs.existsSync(arqPrumo)) {
+        const barras = fs.readFileSync(arqPrumo, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l))
+        const nome = { rodeio: 'lendo demais sem escrever', repeticao: 'repetindo o mesmo comando', fora: 'mexendo fora do projeto' }
+        const conta = {}; for (const b of barras) conta[b.regra] = (conta[b.regra] || 0) + 1
+        if (barras.length) acrescentar(id, { tipo: 'sistema', texto: `O prumo segurou o ${t.agente} ${barras.length === 1 ? 'uma vez' : barras.length + ' vezes'}: ${Object.entries(conta).map(([r, n]) => `${nome[r] || r} (${n})`).join(', ')}.` })
+      }
+    } catch { /* o aviso é conforto: sem ele a resposta segue igual */ }
+
     /* O turno do REVISOR não mexe na memória dele: a sessão dele só viu o
        pedido de revisão, e marcar a conversa como lida faria ele, mais tarde
        como autor, receber só o fim da conversa achando que sabe o começo. */
@@ -508,8 +543,31 @@ function acompanhar(id, t) {
          ali faria o agente perder para sempre o que nunca chegou a ver. */
       marcarLido(id, t.agente, t.ate)
     }
-    gravarCabecalho(id, { estado: null })
+    // CC-813: o tamanho da sessão do opencode, para a próxima mensagem decidir se troca
+    gravarCabecalho(id, { estado: null, ...(t.agente === 'opencode' && !t.revisao && !t.semMemoria && r.contexto ? { contextoOpencode: r.contexto } : {}) })
 
+    /* CC-796: medido em 30/09, o opencode sai no meio sem erro nenhum (registro
+       parado logo depois de um comando, processo morto, ninguém mandou parar).
+       Duas vezes no mesmo dia. Queda que não foi ordem dele é retomada UMA vez. */
+    const parouPelaMao = PARADOS.delete(id)
+    /* CC-805, achado na simulação 3: o opencode PARA sozinho quando a pasta é
+       recusada (e o painel já pergunta a ele), e isso não é queda. A retomada
+       disparava também aí, e mandava um "continue" em cima do pedido de pasta. */
+    if (estado === 'interrompido' && !estourou && !parouPelaMao && !t.revisao && !t.retomado && !r.pastasRecusadas?.length) {
+      if (t.silencio) {
+        return devolver(id, t, `Você ficou ${rotuloTempo(SILENCIO_MS)} sem agir: nem ferramenta, nem resposta. Retome do passo em que estava e faça a próxima ação concreta agora: escreva o código ou rode o comando. Não volte a pesquisar o que já viu.`,
+          `O ${t.agente} ficou ${rotuloTempo(SILENCIO_MS)} sem sinal. O prumo parou a resposta e pediu que retome, uma vez.`, { retomado: true })
+      }
+      return devolver(id, t, 'Sua última resposta caiu no meio (o processo saiu sem erro). Continue exatamente de onde parou, no passo em que estava, sem recomeçar.',
+        `O ${t.agente} caiu no meio sem erro. Pedi que continue de onde parou, uma vez.`, { retomado: true })
+    }
+
+    /* CC-755: revisão que falhou (sem crédito, cota, erro) tenta a reserva. */
+    if (t.revisao && estado !== 'pronto' && t.reservaRevisao) {
+      const rr = t.reservaRevisao
+      acrescentar(id, { tipo: 'sistema', texto: `O ${t.agente} não conseguiu revisar${r.erro ? ' (' + String(r.erro).slice(0, 120) + ')' : ''}. A revisão foi para a reserva.` })
+      return despacharRevisao(id, t, rr, rr.fila)
+    }
     if (estado !== 'pronto') return
     nomearSozinho(id)
     resumirSozinho(id, t.turnoId, r.texto)
@@ -518,7 +576,12 @@ function acompanhar(id, t) {
     if (!t.jaVoltou && devolverParaCorrigir(id, t, r.texto)) return
     /* CC-743/744: resposta que mexeu em tela ganha build, fotos e o revisor
        visual; a revisão de texto do agy fica para o que não é tela. */
-    if (mexeuEmTela(r.ferramentas) && !process.env.CC_SEM_FOTOS) return conferirTela(id, t, r.texto)
+    /* CC-803, medido na simulação 3: três vezes no mesmo dia o opencode trabalhou
+       (ferramentas rodaram) e terminou SEM escrever nada, e o Felipe ficou sem
+       saber o que foi feito nem onde ver. Quem lê o painel não lê código. */
+    const semResposta = estado === 'pronto' && !t.resumoPedido && t.agente === 'opencode' && !String(r.texto || '').trim() && (r.ferramentas || []).length > 0
+    if (mexeuEmTela(r.ferramentas) && !process.env.CC_SEM_FOTOS) return conferirTela(id, t, r.texto, { revisar: t.revisar || revisorDe().visualAuto, semResposta })
+    if (semResposta) return pedirResumo(id, t)
     if (t.revisar) pedirRevisao(id, t, r.texto, mudou)
   }, OLHAR_MS)
 
@@ -651,7 +714,6 @@ function devolverParaCorrigir(id, t, texto) {
  * segunda não conserta na terceira, e cada volta é token dele.
  *
  * O revisor é o agy, que é gratuito; se o autor for o agy, revisa o opencode. */
-export const revisorPara = (autor) => (autor === 'agy' ? 'opencode' : 'agy')
 /* O veredito vale em qualquer linha, não só na primeira: o revisor costuma
    abrir com "Vou ler as fotos..." e só depois escrever. Medido em 30/09: um
    REVISÃO OK na segunda linha virou "apontou problemas" e mandou corrigir o
@@ -675,22 +737,66 @@ export function pedidoDeRevisao(autor, texto, mudou) {
   ].join('\n')
 }
 
-function pedirRevisao(id, t, texto, mudou) {
-  const quem = revisorPara(t.agente)
+/* ============ CC-755: quem revisa, escolhido por ele, com reserva ============
+ * Pedido dele: "definir qual é o modelo padrão e qual o secundário, tipo uma
+ * fila, não tendo crédito num vai pro outro". O padrão e a reserva moram na
+ * configuração do painel. O Claude perto do teto do plano pula direto para a
+ * reserva (a mesma conta do CC-249); e revisão que FALHA tenta a reserva uma vez. */
+/* Quem enxerga imagem, medido em 30/09 pedindo a cor de fundo e a primeira
+   palavra de uma foto do clone: Claude sim, agy sim, opencode (big-pickle)
+   respondeu "NAO VEJO IMAGEM". */
+export const VE_IMAGEM = { claude: true, agy: true, opencode: false }
+
+/** Quanto da janela de 5 horas do Claude já foi usado (0 a 1), o maior entre o
+ *  registro do painel (statusLine, se tiver menos de 3 h) e o que veio na
+ *  última resposta do Claude nesta conversa. */
+export function usoDaJanela(cota, uso = (() => { try { return readUso() } catch { return null } })(), agora = Date.now()) {
+  const doPainel = uso?.cincoHoras && agora - (uso.em || 0) < 3 * 3600e3 ? (uso.cincoHoras.pct || 0) / 100 : 0
+  return Math.max(doPainel, Number(cota?.utilizacao5h) || 0)
+}
+
+export function escolherRevisores(cota, cfg = revisorDe(), { visual = false, uso } = {}) {
+  let fila = [cfg.principal, cfg.reserva].filter(Boolean)
+  /* Revisão de foto só com quem enxerga; se a reserva não enxerga, o agy
+     entra no lugar dela (é o outro que enxerga). */
+  if (visual) {
+    fila = fila.filter((r) => VE_IMAGEM[r.agente])
+    if (!fila.some((r) => r.agente !== 'claude')) fila.push({ agente: 'agy', modelo: null })
+  }
+  /* CC-758: trava de segurança. O Claude sai da fila acima do teto da janela
+     (75%, escolha dele) ou quando ele mesmo avisou que está perto do fim. */
+  const cheio = usoDaJanela(cota, uso) >= cfg.tetoJanela
+  const livres = fila.filter((r) => r.agente !== 'claude' || (!cheio && !agentePara('claude', cota).trocou))
+  return livres
+}
+
+function despacharRevisao(id, t, { texto, dirs = [], oque }, fila) {
+  const [quem, ...resto] = fila
+  if (!quem) { acrescentar(id, { tipo: 'sistema', texto: 'Não há revisor disponível: o padrão e a reserva estão sem crédito ou desligados.' }); return }
   const c = lerConversa(id)
   const novo = enviar({
-    agente: quem, texto: pedidoDeRevisao(t.agente, texto, mudou),
-    cwd: t.cwd || c?.cabecalho?.cwd, conversa: id, somenteLer: true,
+    agente: quem.agente, modelo: quem.modelo, texto,
+    cwd: t.cwd || c?.cabecalho?.cwd, conversa: id, somenteLer: true, dirsExtras: dirs,
     binario: t.binario || null,
   })
   if (!novo.ok) {
-    acrescentar(id, { tipo: 'sistema', texto: `Não consegui pedir a revisão ao ${quem}: ${novo.erro}` })
+    acrescentar(id, { tipo: 'sistema', texto: `Não consegui pedir a revisão ao ${quem.agente}: ${novo.erro}` })
+    if (resto.length) despacharRevisao(id, t, { texto, dirs, oque }, resto)
     return
   }
-  acrescentar(id, { tipo: 'sistema', texto: `Revisão pedida: o ${quem} vai ler a resposta do ${t.agente} e o que mudou, sem editar nada.` })
-  acrescentar(id, { tipo: 'turno', turnoId: novo.turnoId, agente: quem, modelo: novo.modelo, revisao: true })
-  gravarCabecalho(id, { estado: { turnoId: novo.turnoId, agente: quem, pid: novo.pid, desde: Date.now(), logFile: novo.logFile, erroFile: novo.erroFile } })
-  acompanhar(id, { ...novo, agente: quem, cwd: t.cwd, revisao: true, autor: t.agente, autorPermissao: t.permissao, binario: t.binario })
+  acrescentar(id, { tipo: 'sistema', texto: `Revisão pedida: o ${quem.agente}${quem.modelo ? ' (' + quem.modelo + ')' : ''} vai ${oque}, sem editar nada.` })
+  acrescentar(id, { tipo: 'turno', turnoId: novo.turnoId, agente: quem.agente, modelo: novo.modelo, revisao: true })
+  gravarCabecalho(id, { estado: { turnoId: novo.turnoId, agente: quem.agente, pid: novo.pid, desde: Date.now(), logFile: novo.logFile, erroFile: novo.erroFile } })
+  acompanhar(id, {
+    ...novo, agente: quem.agente, cwd: t.cwd, revisao: true, autor: t.autor || t.agente, autorPermissao: t.autorPermissao || t.permissao, binario: t.binario,
+    // se esta revisão falhar, a próxima da fila tenta, uma vez
+    reservaRevisao: resto.length ? { texto, dirs, oque, fila: resto } : null,
+  })
+}
+
+function pedirRevisao(id, t, texto, mudou) {
+  despacharRevisao(id, t, { texto: pedidoDeRevisao(t.agente, texto, mudou), oque: `ler a resposta do ${t.agente} e o que mudou` },
+    escolherRevisores(lerCabecalho(id)?.cota))
 }
 
 /* ============ CC-745: o painel cobra a conferência prometida ============
@@ -707,17 +813,41 @@ export function cobrarConferencia(id, r) {
 }
 
 /* ============ CC-743/744: fotos da tela e o revisor visual ============ */
-async function conferirTela(id, t, texto) {
+async function conferirTela(id, t, texto, { revisar = true, semResposta = false } = {}) {
   const cab = lerCabecalho(id)
   if (!cab?.cwd) return
-  acrescentar(id, { tipo: 'sistema', texto: 'Conferindo a tela: build e fotos em celular e computador.' })
+  const alvo = enderecoDe(cab.cwd)
+  acrescentar(id, { tipo: 'sistema', texto: alvo
+    ? `Conferindo o endereço de teste (${alvo.url}): o painel abre, percorre o site (login, menu, cartões) e fotografa cada tela no celular e no computador.`
+    : 'Conferindo a tela: build, e o painel percorre o site (login, menu, cartões) fotografando cada tela no celular e no computador.' })
   const saida = path.join(cab._onde, `${id}.anexos`, `fotos-${t.turnoId}`)
   const res = await fotografar({ cwd: cab.cwd, saida })
-  if (!res.ok) { acrescentar(id, { tipo: 'sistema', texto: `Não consegui fotografar a tela: ${res.erro}.` }); return }
-  acrescentar(id, { tipo: 'fotos', turnoId: t.turnoId, fotos: res.fotos })
+  if (res.ok) acrescentar(id, { tipo: 'fotos', turnoId: t.turnoId, fotos: res.fotos })
+  /* CC-807, medido na simulação 3: o jogo respondia 200 e estava quebrado
+     (prefixo duplicado: 404 no script, página sem estilo). O que o Felipe abre é
+     o ENDEREÇO, então é ele que se confere, e o que estiver errado volta ao
+     agente, uma vez, com a lista na mão. */
+  if (res.endereco && (!res.ok || res.problemas?.length)) {
+    const lista = [...(res.ok ? [] : [res.erro]), ...(res.problemas || [])].slice(0, 5)
+    if (!t.enderecoCorrigido) {
+      return devolver(id, t, `O painel abriu ${res.endereco.url} e achou problema:\n${lista.map((p) => '- ' + p).join('\n')}\nConserte, abra o endereço de novo para conferir (sem 404 e sem erro no console), e responda em uma linha dizendo o que era.`,
+        `O endereço de teste está com problema: ${lista.slice(0, 2).join('; ')}${lista.length > 2 ? ` e mais ${lista.length - 2}` : ''}. Devolvi ao ${t.agente} para consertar, uma vez.`, { enderecoCorrigido: true })
+    }
+    acrescentar(id, { tipo: 'sistema', texto: `O endereço de teste ainda tem problema depois da correção: ${lista.join('; ')}.` })
+  }
+  if (!res.ok) { acrescentar(id, { tipo: 'sistema', texto: `Não consegui fotografar a tela: ${res.erro}.` }); if (semResposta) pedirResumo(id, t); return }
+  if (semResposta) return pedirResumo(id, t) // sem texto não há o que revisar; o resumo vem primeiro
+  /* CC-800, print dele: a lista inteira de falhas, com erro técnico, enchia a
+     conversa. Fica a conta e as duas primeiras, em português. */
+  if (res.falhas?.length) {
+    const curtas = res.falhas.slice(0, 2).map((f) => f.split(':')[0].trim())
+    acrescentar(id, { tipo: 'sistema', texto: `${res.falhas.length === 1 ? 'Uma tela não saiu' : `${res.falhas.length} telas não saíram`} na foto (${curtas.join(', ')}${res.falhas.length > 2 ? ' e outras' : ''}).` })
+  }
   /* Revisor só na primeira volta (a correção não é revisada de novo) e só se
      ninguém mandou mensagem nova enquanto as fotos saíam. */
-  if (t.jaVoltou || lerConversa(id)?.turnoAberto) return
+  /* CC-755: com a revisão visual automática desligada por ele, só as fotos;
+     "com revisão" na mensagem ainda pede a revisão. */
+  if (!revisar || t.jaVoltou || lerConversa(id)?.turnoAberto) return
   pedirRevisaoVisual(id, t, texto, res.fotos, saida)
 }
 
@@ -734,18 +864,70 @@ export function pedidoDeRevisaoVisual(autor, texto, fotos) {
 }
 
 function pedirRevisaoVisual(id, t, texto, fotos, dirFotos) {
+  /* Quem revisa sai da escolha dele (CC-755); o padrão é o Claude Haiku, que
+     enxerga imagem e é barato. */
+  despacharRevisao(id, t, { texto: pedidoDeRevisaoVisual(t.agente, texto, fotos), dirs: [dirFotos], oque: 'olhar as fotos da tela' },
+    escolherRevisores(lerCabecalho(id)?.cota, revisorDe(), { visual: true }))
+}
+
+/* CC-796: paradas por ordem dele (botão parar); a queda sem ordem é retomada */
+const PARADOS = new Set()
+
+/* CC-803: quanto o agente pode ficar calado. Medido: silêncio de 138 s com o
+   modelo escrevendo um arquivo grande, em máquina carregada; 300 s dá folga. */
+export const SILENCIO_MS = Number(process.env.CC_SILENCIO_MS) || 5 * 60 * 1000
+
+/* CC-813: a partir de quantos tokens de sessão o opencode ganha sessão nova.
+   Medido: falhas só apareceram acima de 77 mil; 80 mil dá folga sem trocar à toa. */
+export const LIMITE_CONTEXTO = Number(process.env.CC_LIMITE_CONTEXTO) || 80000
+const rotuloTempo = (ms) => ms >= 60000 ? `${Math.round(ms / 60000)} minutos` : `${Math.round(ms / 1000)} segundos`
+
+/** Há quanto tempo o turno está calado, ou 0 se não dá para chamar de calado. */
+function silencioDoTurno(t, id) {
+  try {
+    // esperando a resposta DELE (pergunta ou permissão): o silêncio é legítimo
+    const dir = DIR_PERMISSOES()
+    if (fs.existsSync(dir)) {
+      for (const nome of fs.readdirSync(dir)) {
+        try { const p = JSON.parse(fs.readFileSync(path.join(dir, nome), 'utf8')); if (p?.coderoom === id) return 0 } catch { /* sendo gravado */ }
+      }
+    }
+    // uma ferramenta rodando (npm install, build): o registro só anda quando ela termina.
+    // O servidor de perguntas é filho fixo do opencode e não conta.
+    const filhos = execFileSync('pgrep', ['-a', '-P', String(t.pid)], { encoding: 'utf8', timeout: 3000 }).split('\n')
+    if (filhos.some((l) => l.trim() && !/mcpPainel|opencode-prumo/.test(l))) return 0
+  } catch { /* pgrep sai com 1 quando não há filho: segue para a medida */ }
+  try { return Date.now() - fs.statSync(t.logFile).mtimeMs } catch { return 0 }
+}
+
+/**
+ * Manda ao MESMO agente um pedido do painel (continuar de onde caiu), com a
+ * sessão dele, e acompanha a volta carregando as marcas do turno.
+ */
+function devolver(id, t, texto, aviso, marcas = {}) {
   const c = lerConversa(id)
-  /* Claude, porque enxerga imagem; haiku, porque roda a cada resposta de tela
-     e gasta da assinatura dele. */
+  acrescentar(id, { tipo: 'sistema', texto: aviso })
   const novo = enviar({
-    agente: 'claude', modelo: 'haiku', texto: pedidoDeRevisaoVisual(t.agente, texto, fotos),
-    cwd: t.cwd || c?.cabecalho?.cwd, conversa: id, somenteLer: true, dirsExtras: [dirFotos],
+    agente: t.agente, texto,
+    cwd: t.cwd || c?.cabecalho?.cwd, conversa: id,
+    permissao: t.permissao || c?.cabecalho?.permissao || 'acceptEdits',
+    sessao: c?.cabecalho?.sessoes?.[t.agente] || null,
+    modelo: c?.cabecalho?.modelos?.[t.agente] || null,
     binario: t.binario || null,
   })
-  if (!novo.ok) { acrescentar(id, { tipo: 'sistema', texto: `Não consegui pedir a revisão visual: ${novo.erro}` }); return }
-  acrescentar(id, { tipo: 'turno', turnoId: novo.turnoId, agente: 'claude', modelo: novo.modelo, revisao: true })
-  gravarCabecalho(id, { estado: { turnoId: novo.turnoId, agente: 'claude', pid: novo.pid, desde: Date.now(), logFile: novo.logFile, erroFile: novo.erroFile } })
-  acompanhar(id, { ...novo, agente: 'claude', cwd: t.cwd, revisao: true, autor: t.agente, autorPermissao: t.permissao, binario: t.binario })
+  if (!novo.ok) { acrescentar(id, { tipo: 'sistema', texto: `Não consegui falar com o ${t.agente}: ${novo.erro}` }); return }
+  const ate = c?.ultimoSeq || 0
+  const revisar = marcas.revisar ?? t.revisar
+  acrescentar(id, { tipo: 'turno', turnoId: novo.turnoId, agente: t.agente, modelo: novo.modelo, permissao: novo.permissao })
+  // ponytail: a marca `retomado` não vai para o estado gravado; se o painel religar no meio, a volta segue o caminho comum
+  gravarCabecalho(id, { estado: { turnoId: novo.turnoId, agente: t.agente, pid: novo.pid, desde: Date.now(), logFile: novo.logFile, erroFile: novo.erroFile, ate, revisar } })
+  acompanhar(id, { ...novo, agente: t.agente, ate, cwd: t.cwd, permissao: novo.permissao, binario: t.binario, jaVoltou: t.jaVoltou, retomado: t.retomado, ...marcas, revisar })
+}
+
+/** CC-803: o agente trabalhou e não disse nada; pede o resumo, em linguagem simples, uma vez. */
+function pedirResumo(id, t) {
+  devolver(id, t, 'Você terminou sem escrever nada ao Felipe, e ele não lê código. Responda agora em 2 ou 3 linhas simples: o que você fez, o que ficou faltando e, se o projeto está no endereço de teste, o endereço em linha própria.',
+    `O ${t.agente} trabalhou e terminou sem escrever nada. Pedi um resumo em linguagem simples, uma vez.`, { resumoPedido: true })
 }
 
 function voltarDaRevisao(id, t, texto) {
@@ -777,6 +959,7 @@ export function parar(id) {
   const pid = c?.cabecalho?.estado?.pid
   if (!pid) return { ok: false, erro: 'nenhum agente respondendo agora' }
   try { process.kill(pid, 'SIGTERM') } catch { /* já morreu */ }
+  PARADOS.add(id) // queda por ordem dele não é retomada sozinha
   limparPedidos(id)
   acrescentar(id, { tipo: 'sistema', texto: 'Você parou esta resposta. O que já tinha chegado continua acima.' })
   return { ok: true }

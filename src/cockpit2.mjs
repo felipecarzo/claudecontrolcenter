@@ -23,7 +23,7 @@ import { chaveDeProjeto, nomeCanonico } from './nomeProjeto.mjs'
 import { CACHE_FILE as TEMPO_CACHE, resumo as resumoTempo } from './tempo.mjs'
 import { lerFila } from './ideias.mjs'
 import { lerPacotes, mesclar, maquinasConhecidas } from './federacao.mjs'
-import { lerFechadas, lerMantidas, chaveDoCartao, lerDepois, depoisVale, permissaoDaTela, teclaDaPermissao, lerPedidosDoGancho } from './decisao.mjs'
+import { configAtual, lerFechadas, lerMantidas, chaveDoCartao, lerDepois, depoisVale, permissaoDaTela, teclaDaPermissao, lerPedidosDoGancho } from './decisao.mjs'
 import { estado as estadoRC, saudeDaTela } from './remotecontrol.mjs'
 import { execFile } from 'node:child_process'
 import { registrar as registrarHistorico } from './decisaoHistorico.mjs'
@@ -593,7 +593,7 @@ export function montar({
         const k = chaveDoCartao(aviso.id, aviso.marca)
         /* CC-630: "para depois" vem antes de tudo, inclusive de pergunta. */
         const dp = depois[aviso.id]
-        if (dp && depoisVale(dp, aviso.marca, agora)) ocultas.push({ ...aviso, oculta: 'depois', depoisModo: dp.modo, depoisAte: dp.ate || null })
+        if (dp && depoisVale(dp, aviso.marca, agora, { pergunta: ehPergunta })) ocultas.push({ ...aviso, oculta: 'depois', depoisModo: dp.modo, depoisAte: dp.ate || null })
         else if (fechadas.has(k)) { fechadasOcultas += 1; ocultas.push({ ...aviso, oculta: 'fechada' }) }
         /* 27/09, decisão dele: "um projeto ativo sempre aparece". Sessão
            com o programa ABERTO nunca sai sozinha pela idade: só sai quando é
@@ -845,7 +845,25 @@ function tempoBarato() {
   return tempoCache.dados
 }
 
-export async function responder() {
+/* CC-724, 01/10, print dele: "não apareceu no cockpit", um pedido de permissão
+   que ficou na tela sem virar cartão. Medido: naquele minuto o painel não
+   respondeu esta rota em 20 s. A montagem leva 0,4 s sozinha, mas dentro do
+   painel levava de 2 a 14 s, porque cada tela aberta (celular, PC, Coderoom,
+   teste) pede a montagem inteira a cada 5 s e elas disputam o mesmo processo.
+   Pedidos simultâneos agora esperam a MESMA montagem, e uma de menos de 2 s
+   atrás é reaproveitada: a tela pede de 5 em 5, então 2 s não atrasam nada. */
+let montando = null
+let ultimaMontagem = { em: 0, dados: null }
+export function responder() {
+  if (ultimaMontagem.dados && Date.now() - ultimaMontagem.em < 2000) return Promise.resolve(ultimaMontagem.dados)
+  if (montando) return montando
+  montando = montarResposta()
+    .then((d) => { ultimaMontagem = { em: Date.now(), dados: d }; return d })
+    .finally(() => { montando = null })
+  return montando
+}
+
+async function montarResposta() {
   const t0 = Date.now()
   const agora = Date.now()
 
@@ -1049,6 +1067,8 @@ export async function responder() {
     const arquivoDe = new Map()
     for (const j of locais) { const a = transcritoDe(j); if (a) arquivoDe.set(path.basename(a, '.jsonl'), a) }
     const alvo = (x) => x && x.conversa && arquivoDe.has(x.conversa)
+    /* 30/09, pedido dele: o seletor de modelo e esforço já vem marcado no que a sessão usa. */
+    for (const x of [...(dados.espera || []), ...(dados.conectadas || [])]) if (alvo(x)) x.cfgAtual = configAtual(arquivoDe.get(x.conversa))
     for (const e of dados.espera || []) {
       if (e.tipo !== 'agente' || !alvo(e)) continue
       resumoAgy.pedir({ conversa: e.conversa, marca: e.marca, arquivo: arquivoDe.get(e.conversa) })

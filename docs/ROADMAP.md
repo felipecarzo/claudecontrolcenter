@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-90 abertos, 691 fechados, 781 no total. Gerado em 2026-09-30.
+113 abertos, 737 fechados, 850 no total. Gerado em 2026-10-01.
 
 ## tarefas
 
@@ -105,7 +105,6 @@
 | CC-720 | definida | - | Coderoom: faixa de cima some sempre, controles dentro do painel do chat, etiquetas na barra direita; FC sai do cockpit todo |
 | CC-721 | definida | - | Coderoom: tabela em markdown na resposta do agente aparece crua (/ Pais / Capital /) em vez de tabela |
 | CC-722 | definida | - | revisao geral do cockpit: responsividade no celular (todas as telas em 390) e seguranca |
-| CC-724 | definida | - | investigar a fundo por que algumas perguntas e pedidos de permissao nao aparecem no cockpit |
 | CC-725 | definida | - | pergunta respondida pelo painel fica presa em processando: enviando a resposta (VPS_coderoom, 30/09) |
 | CC-726 | definida | - | cartao de permissao com o terceiro botao: sempre permitir, como no terminal e no app |
 | CC-729 | definida | - | cockpit demora a mostrar que o agente parou (ate 65 s) e a resposta parece demorar a chegar |
@@ -119,6 +118,27 @@
 | CC-737 | definida | - | Separar sessoes paradas em: espera resposta dele, espera teste dele, nao espera nada; filtro para testar todas de uma vez |
 | CC-738 | definida | - | Cartao de sessao: chip da maquina (VPS, PC) sempre no mesmo lugar, logo apos o estado; hoje muda de linha conforme os outros chips |
 | CC-740 | definida | - | Cartao de sessao de outra maquina: botao abrir no app (claude.ai/code/session_X) para responder sessoes do PC abertas por Remote Control |
+| CC-748 | definida | - | A barra (lateral geral) usavel em telas menores, nao so no ultrawide |
+| CC-749 | definida | - | Filtros da barra personalizados por pagina: em Sessoes mostra so parte; em Armario e outras, geral, com responder perguntas por ali |
+| CC-750 | definida | - | Botao ao lado de filtros na barra para configurar o que ela mostra naquela pagina |
+| CC-751 | definida | - | Cartao de sessao: maquina e projeto um embaixo do outro, sempre no mesmo lugar em qualquer largura (pedido repetido) |
+| CC-752 | definida | - | Ordem das categorias em Sessoes escolhivel nos filtros (ex.: pronto para QA por ultimo por padrao, ou primeiro quando focar em testes) |
+| CC-753 | definida | - | Instalavel unico do Cockpit para Windows: executa, vira servico automatico e pega os projetos da maquina, sem repositorio nem programar nela |
+| CC-754 | definida | - | Cartao parado enquanto ele escreve; cadeado azul trava o cartao no lugar ate enviar a resposta, mesmo saindo do campo |
+| CC-756 | definida | - | Zona de acoes do cartao (modo, teste de voo, continuar, encerrar, abrir) recolhivel, oculta por padrao |
+| CC-757 | definida | - | Trocar modelo e esforco da sessao pelo cartao (Claude Code: /model e esforco; agy e opencode depois), para usar todos os agentes num lugar |
+| CC-759 | definida | - | Botao que liga: cartao novo entra no topo por ~5 s para ser visto e depois desce ao lugar da ordem, respeitando o cadeado; desligavel |
+| CC-762 | definida | - | Cabecalho do Coderoom compacto: sem o caminho da pasta (ja esta na barra direita), busca vira lupa que abre, modos recolhidos |
+| CC-763 | definida | - | Cartao Repetidas nao explica nada: dizer o que e (varias paradas do mesmo projeto), resumo do agy de cada uma, responder e fechar uma a uma |
+| CC-765 | definida | - | Widescreen de Sessoes: paineis como os do Coderoom, reordenaveis, com adicionar e recolocar; talvez duas sessoes lado a lado |
+| CC-769 | definida | - | Botao no cartao leva ao desktop do projeto no PC via a controladora; popup em cada desktop volta ao Cockpit, que vira a central |
+| CC-772 | definida | - | Botao direito do Cockpit com menu proprio: as opcoes dos tres pontinhos e acoes do cartao, no lugar do menu do navegador |
+| CC-778 | definida | - | Desfazer nos botoes: faixa feito/desfazer nas acoes reversiveis e, se ele quiser, espera curta antes dos envios a sessao |
+| CC-779 | definida | - | Microfone de ditar nao funcionou no PC nem no telefone (cartoes e campos), testado por ele em 30/09 |
+| CC-785 | definida | - | Resposta de pergunta com previa (varias perguntas) parava no meio: o numero so move o cursor, falta o Enter |
+| CC-787 | definida | - | Cartao respondido voltava a perguntar por uns segundos antes de sumir (leitura atrasada da tela e do registro) |
+| CC-789 | definida | - | URGENTE: sistema de deploy pelo Cockpit, com confirmacao de seguranca, para publicar os sistemas no ar sem precisar do PC |
+| CC-795 | definida | - | Coderoom: com o menu de tres pontos aberto, os controles vao para o meio do cabecalho e as fichas (estado, maquina, agentes) somem |
 
 ## sincronia
 
@@ -146,12 +166,20 @@
 
 | id | estado | peso | o que é |
 |---|---|---|---|
-| CC-710 | definida | - | cada modelo e cada nivel de esforco do Coderoom diz pra que e melhor e quanto custa, com base em benchmarks |
 | CC-739 | definida | - | opencode no Coderoom pede pelo painel quando quer mexer em pasta fora do projeto, em vez de recusar sozinho |
 | CC-741 | definida | - | harness de design no Coderoom: regras de design no contexto do agente e conferencia do resultado apos cada resposta |
-| CC-742 | definida | - | Coderoom manda um resumo das regras de design dele junto de cada mensagem |
-| CC-743 | definida | - | depois de resposta que mexe em tela, o Coderoom roda o build e anexa fotos em celular e computador |
-| CC-744 | definida | - | revisor visual no Coderoom: um agente olha as fotos da resposta e aponta defeito |
-| CC-745 | definida | - | regras de comportamento no Coderoom: sempre portugues, nao prometer conferencia que nao fez, e o painel cobra |
-| CC-746 | definida | - | Coderoom orienta o agente a quebrar sempre o trabalho em microtarefas |
 | CC-747 | definida | - | resposta longa do agente no Coderoom mostra um resumo curto e a mensagem inteira fica recolhida |
+| CC-761 | definida | - | segunda simulacao no Coderoom: um sistema inspirado no Pierre, seguindo as regras de design, simulando o Felipe construir |
+| CC-802 | definida | - | Simulação 3: o Coderoom cria um jogo ponta a ponta e roda no testedevoo; cada demora ou silêncio do modelo vira trava |
+| CC-803 | definida | - | Coderoom: hook que segura o modelo no projeto quando ele demora ou fica mudo (lista do que vir na simulação 3) |
+| CC-809 | definida | - | Coderoom: pedido de pasta que é a casa inteira (/home/x/*) mostra aviso de risco no cartão e sugere só o ~/dev.sh |
+| CC-811 | definida | - | Coderoom: agente retomado após silêncio ficou calado de novo (passo 7, 298 s); decidir o que fazer na segunda queda |
+| CC-812 | definida | - | Coderoom: pedido de resumo à resposta vazia também veio vazio (passo 8); painel monta o resumo sozinho das ferramentas |
+| CC-814 | definida | - | Coderoom: opencode como servidor vivo pela API (sessão também no terminal), permissão e pergunta ao vivo, compactação nativa |
+| CC-815 | definida | - | Simulação 4: o Coderoom transforma o jogo em 3D, combate espacial com cockpit e naves inimigas, no testedevoo |
+
+## sem frente
+
+| id | estado | peso | o que é |
+|---|---|---|---|
+| CC-806 | definida | - | Deploy: descoberta automatica dos sites no ar e cadastro pelo Cockpit com o codigo do autenticador |

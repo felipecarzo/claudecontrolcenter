@@ -49,6 +49,8 @@ import {
 } from './gate.mjs'
 import { responder as responderGate, parar as pararGate, conversaAoVivo as conversaAoVivoGate, liberarPasta as liberarPastaGate } from './gateTurno.mjs'
 import { vivo as vivoGate, todosOsModelos as todosOsModelosGate } from './gateAgentes.mjs'
+import { INFO_MODELOS, INFO_ESFORCO, INFO_MODELOS_DATA } from './gateModelosInfo.mjs'
+import { enderecoDe as enderecoDeGate } from './gateFotos.mjs'
 import { arquivar, jobsHistoricos, marcosDe, mudouDesde } from './historico.mjs'
 import { readUso, lerChamada as lerChamadaStatusline } from './uso.mjs'
 
@@ -143,6 +145,7 @@ import {
   setMaquina, setFederacao, moduloLigado, setModuloProjeto, setPaineisMeus, setFoco, setEtiquetas,
   projetosDoQuadro, setProjetosDoQuadro, setPastasDeProjeto,
   CHAVE_TUDO, visitaGeral, setVisitaGeral, setTelaAberto, lerTelaAberto,
+  revisorDe, setRevisor, acessoTesteDe, setAcessoTeste,
 } from './config.mjs'
 /* CC-243: os pedidos de autorização passam a chegar no painel, para ele decidir
    na tela.
@@ -166,7 +169,7 @@ import { SECOES as SECOES_VPS, veredito as veredictoVps } from './vpsSaude.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
 import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
-import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto, lerPedidosDoGancho, responderGancho, painelAbertoAgora } from './decisao.mjs'
+import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto, lerPedidosDoGancho, responderGancho, painelAbertoAgora, trocarConfig } from './decisao.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const UI = path.join(HERE, 'ui.html')
@@ -2764,8 +2767,16 @@ function handler(req, res) {
      ela pergunta ao binário de dois deles, leva segundos na primeira vez, e a
      lista de conversas é pedida a cada dois segundos. */
   if (url.pathname === '/api/gate/modelos') {
+    /* CC-710: cada modelo leva a descrição de uso (o "i" da barra lateral); o
+       que não tem descrição vai com `info: null`, e a tela diz que não tem. */
     return todosOsModelosGate()
-      .then((modelos) => send(res, 200, { modelos, at: Date.now() }))
+      .then((modelos) => {
+        const comInfo = {}
+        for (const [ag, v] of Object.entries(modelos || {})) {
+          comInfo[ag] = { ...v, modelos: (v.modelos || []).map((m) => ({ ...m, info: INFO_MODELOS[m.id] || null })), esforcoInfo: INFO_ESFORCO[ag] || null }
+        }
+        send(res, 200, { modelos: comInfo, at: Date.now(), infoData: INFO_MODELOS_DATA })
+      })
       .catch((e) => send(res, 200, { modelos: {}, erro: String(e.message || e) }))
   }
 
@@ -2777,7 +2788,10 @@ function handler(req, res) {
        própria tela do Coderoom mostrar os botões, e não só Sessões. */
     let pedidos = []
     try { pedidos = lerPedidosDoGancho().filter((p) => p.coderoom === id) } catch { /* sem pedidos, a conversa segue */ }
-    return send(res, 200, { ...c, pedidos })
+    // CC-807: o endereço de teste do projeto, para a tela mostrar o link ("como eu testo?")
+    let testedevoo = null
+    try { testedevoo = enderecoDeGate(c.cabecalho?.cwd) } catch { /* sem endereço, sem link */ }
+    return send(res, 200, { ...c, pedidos, testedevoo })
   }
 
   if (url.pathname === '/api/gate/nova' && req.method === 'POST') {
@@ -2857,6 +2871,51 @@ function handler(req, res) {
       if (r && r.ok) marcarRespondidaHist(String(conversa || '').slice(0, 8))
       return r
     })
+  }
+  /* CC-789: o Cockpit só PEDE o deploy e lê o andamento. Quem executa é o lado
+     protegido (root, 127.0.0.1:5193), e só depois do código do autenticador
+     digitado na página DELE, /deploy-seguro/. Sem o lado protegido instalado,
+     responde `instalado: false` e a tela não mostra o botão. */
+  if (url.pathname.startsWith('/api/deploy/')) {
+    const ponte = (rota, op = {}) => fetch('http://127.0.0.1:5193' + rota, { ...op, signal: AbortSignal.timeout(8000) })
+      .then(async (r) => ({ status: r.status, corpo: await r.json() }))
+    if (url.pathname === '/api/deploy/estado' && req.method === 'GET') {
+      return Promise.all([ponte('/api/alvos'), ponte('/api/pedidos')])
+        .then(([a, p]) => {
+          // só conta como instalado se a resposta tem o formato dele (a 5190 era de outro programa)
+          if (!Array.isArray(a.corpo) || !Array.isArray(p.corpo?.pedidos)) throw new Error('não é o lado protegido')
+          send(res, 200, { instalado: true, alvos: a.corpo, pedidos: p.corpo.pedidos, historico: p.corpo.historico || [] })
+        })
+        .catch(() => send(res, 200, { instalado: false, alvos: [], pedidos: [], historico: [] }))
+    }
+    /* Escolha dele em 30/09: o código é digitado no próprio cartão. O Cockpit
+       só repassa; quem confere o código, bloqueia e publica é o lado protegido. */
+    if ((url.pathname === '/api/deploy/confirmar' || url.pathname === '/api/deploy/recusar') && req.method === 'POST') {
+      return comCorpoAsync(req, res, 1e3, async ({ id, codigo }) => {
+        if (!/^[0-9a-f]{6,24}$/.test(String(id || ''))) return { ok: false, msg: 'pedido inválido' }
+        try { const r = await ponte(url.pathname.replace('/api/deploy/', '/api/'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, codigo: String(codigo || '').slice(0, 8) }) }); return r.corpo } catch { return { ok: false, msg: 'o lado protegido do deploy não respondeu' } }
+      })
+    }
+    // descoberta e cadastro: o Cockpit só repassa; quem valida e confere o código é o lado protegido
+    if (url.pathname === '/api/deploy/sugestoes' && req.method === 'GET') {
+      return ponte('/api/sugestoes').then((r) => send(res, 200, r.corpo)).catch(() => send(res, 200, { sugestoes: [], repos: [] }))
+    }
+    if (url.pathname === '/api/deploy/cadastrar' && req.method === 'POST') {
+      return comCorpoAsync(req, res, 8e3, async (d) => {
+        try { const r = await ponte('/api/cadastrar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ codigo: String(d.codigo || '').slice(0, 8), alvo: d.alvo || {} }) }); return r.corpo } catch { return { ok: false, msg: 'o lado protegido do deploy não respondeu' } }
+      })
+    }
+    if (url.pathname === '/api/deploy/pedir' && req.method === 'POST') {
+      return comCorpoAsync(req, res, 1e3, async ({ alvo }) => {
+        if (!/^[a-z0-9-]{2,40}$/.test(String(alvo || ''))) return { ok: false, erro: 'alvo inválido' }
+        try { const r = await ponte('/api/pedir', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ alvo, de: 'cockpit' }) }); return r.corpo } catch { return { ok: false, erro: 'o lado protegido do deploy não respondeu: está instalado?' } }
+      })
+    }
+  }
+  /* CC-757: trocar modelo e esforço da sessão pelo cartão. As listas são
+     conferidas de novo dentro de `trocarConfig`. Só sessão deste terminal. */
+  if (url.pathname === '/api/decisao/config' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e3, async ({ conversa, modelo, esforco }) => trocarConfig({ conversa: String(conversa || '').slice(0, 80), modelo: modelo || null, esforco: esforco || null }))
   }
   /* CC-737: ele corrige a etiqueta do agy (responder, testar, nada) com um toque. */
   if (url.pathname === '/api/sessao/etiqueta' && req.method === 'POST') {
@@ -3116,6 +3175,22 @@ function handler(req, res) {
       gravarCabecalhoGate(String(id), { agentePadrao: agente, modelos })
       return { ok: true, agente, modelo: modelo || null }
     })
+  }
+
+  /* CC-755: quem revisa no Coderoom (padrão e reserva) e a revisão visual
+     automática. Vale para todas as conversas. */
+  if (url.pathname === '/api/gate/revisor' && req.method === 'GET') return send(res, 200, revisorDe())
+  if (url.pathname === '/api/gate/revisor' && req.method === 'POST') {
+    return comCorpo(req, res, 2e3, (b) => ({ ok: true, ...setRevisor(b || {}) }))
+  }
+
+  /* CC-797: o login de teste do projeto desta conversa, para as fotos */
+  if (url.pathname === '/api/gate/acesso' && req.method === 'GET') {
+    const cwd = lerCabecalhoGate(url.searchParams.get('id') || '')?.cwd
+    return send(res, 200, { acesso: acessoTesteDe(cwd) })
+  }
+  if (url.pathname === '/api/gate/acesso' && req.method === 'POST') {
+    return comCorpo(req, res, 1e3, ({ id, usuario, senha }) => ({ ok: true, acesso: setAcessoTeste(lerCabecalhoGate(id || '')?.cwd, { usuario, senha }) }))
   }
 
   /* CC-727: renomear a conversa. `tituloDele` impede o nome automático de

@@ -149,6 +149,61 @@ export function setFoco(texto) {
 }
 
 /**
+ * CC-755: o revisor do Coderoom, escolhido por ele. Um padrão e uma reserva,
+ * "tipo uma rota": sem crédito no padrão, a revisão sai pela reserva. E o
+ * interruptor da revisão visual automática, que roda depois de toda resposta
+ * que mexe em tela. O padrão é o Claude Haiku, escolha dele ("muito barato").
+ */
+export const AGENTES_REVISOR = ['claude', 'opencode', 'agy']
+/* Reserva padrão: o opencode, o único com limite de uso vasto ("o único com
+   limite de uso vasto de fato é o opencode", 30/09). Teto: acima de 75% da
+   janela de 5 horas do Claude, a revisão automática deixa o Claude (ele subiu de
+   60 para 75 na mesma resposta). */
+export const REVISOR_PADRAO = { principal: { agente: 'claude', modelo: 'haiku' }, reserva: { agente: 'opencode', modelo: null }, visualAuto: true, tetoJanela: 0.75 }
+export function revisorDe(cfg = readConfig()) {
+  const r = cfg.revisor || {}
+  const ok = (x, d) => (x && AGENTES_REVISOR.includes(x.agente) ? { agente: x.agente, modelo: x.modelo || null } : d)
+  return {
+    principal: ok(r.principal, REVISOR_PADRAO.principal),
+    reserva: r.reserva === null ? null : ok(r.reserva, REVISOR_PADRAO.reserva),
+    visualAuto: r.visualAuto !== false,
+    tetoJanela: Number.isFinite(r.tetoJanela) && r.tetoJanela > 0 && r.tetoJanela <= 1 ? r.tetoJanela : REVISOR_PADRAO.tetoJanela,
+  }
+}
+export function setRevisor({ principal, reserva, visualAuto, tetoJanela } = {}) {
+  const cfg = readConfig()
+  const atual = revisorDe(cfg)
+  const limpa = (x) => (x && AGENTES_REVISOR.includes(x.agente) ? { agente: x.agente, modelo: x.modelo ? String(x.modelo).slice(0, 120) : null } : null)
+  const novo = {
+    principal: principal !== undefined ? (limpa(principal) || atual.principal) : atual.principal,
+    reserva: reserva !== undefined ? limpa(reserva) : atual.reserva,
+    visualAuto: visualAuto !== undefined ? Boolean(visualAuto) : atual.visualAuto,
+    tetoJanela: Number.isFinite(Number(tetoJanela)) && Number(tetoJanela) > 0 && Number(tetoJanela) <= 1 ? Number(tetoJanela) : atual.tetoJanela,
+  }
+  writeConfig({ ...cfg, revisor: novo })
+  return revisorDe(readConfig())
+}
+
+/**
+ * CC-797: login de teste por projeto, para o painel passar da tela de login
+ * quando explora o site para as fotos. Escolha dele: "o painel explora
+ * sozinho", com usuário e senha cadastrados uma vez por projeto. É login de
+ * protótipo (no Pierre, felipe / 1234), não senha de verdade. Usuário vazio apaga.
+ */
+export function acessoTesteDe(cwd, cfg = readConfig()) {
+  const a = cwd && cfg.acessosTeste?.[cwd]
+  return a?.usuario ? { usuario: a.usuario, senha: a.senha || '' } : null
+}
+export function setAcessoTeste(cwd, { usuario, senha } = {}) {
+  if (!cwd) throw new Error('preciso saber de qual projeto')
+  const cfg = readConfig(); const todos = { ...(cfg.acessosTeste || {}) }
+  const u = String(usuario || '').trim().slice(0, 120)
+  if (u) todos[cwd] = { usuario: u, senha: String(senha || '').slice(0, 120) }; else delete todos[cwd]
+  writeConfig({ ...cfg, acessosTeste: todos })
+  return acessoTesteDe(cwd)
+}
+
+/**
  * Etiquetas de projeto (26/09, tela Projetos): "etiquetas você escreve". Por
  * chave de projeto, até 6 de até 24 letras. Lista vazia apaga a entrada.
  */

@@ -41,7 +41,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { resolverBinario } from './paineis.mjs'
 import { ehWindows } from './platform.mjs'
 import { deOutraMaquina } from './gate.mjs'
@@ -103,6 +103,8 @@ export const servidorOpencodeVivo = () => ocVivo
 conferirServidorOpencode().catch(() => {})
 
 const MCP_PAINEL = fileURLToPath(new URL('./mcpPainel.mjs', import.meta.url))
+// CC-803: o plugin que segura o modelo no projeto (ver src/gatePrumo.mjs)
+const PRUMO = fileURLToPath(new URL('../hooks/opencode-prumo.mjs', import.meta.url))
 export function configPainelMcp(conversa) {
   return JSON.stringify({ mcpServers: { painel: { command: process.execPath, args: [MCP_PAINEL, '--coderoom', conversa || 'sem-id'] } } })
 }
@@ -247,8 +249,11 @@ export async function modelosDe(agente) {
      coisas independentes, e sair cedo aqui esconderia a segunda. */
   if (!a?.aceitaModelo) return { agente, modelos: [], esforcos: a?.esforcos || [] }
 
+  /* CC-799, print dele em 30/09 ("não consegui ler os modelos"): com a máquina
+     ocupada a leitura passou do tempo, e a FALHA ficou guardada como resposta
+     pelo prazo inteiro. Falha vale 30 segundos; depois, pergunta de novo. */
   const guardado = cacheModelos.get(agente)
-  if (guardado && Date.now() - guardado.em < VALIDADE_MODELOS) return guardado.valor
+  if (guardado && Date.now() - guardado.em < (guardado.valor.erro ? 30000 : VALIDADE_MODELOS)) return guardado.valor
 
   let modelos = []
   let erro = null
@@ -365,13 +370,18 @@ export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', 
        opencode escrever em /tmp, e sem a regra ele recusa sozinho. */
     const liberadas = agente === 'opencode' && pastas.length
       ? { permission: { external_directory: Object.fromEntries(pastas.map((p) => [p, 'allow'])) } } : {}
+    /* CC-803: o prumo, só no modo normal (no flash quem roda é o servidor, que
+       não lê a configuração desta chamada). `CC_SEM_PRUMO` desliga; os testes
+       do painel usam, para não carregar o plugin num agente de mentira. */
+    const comPrumo = agente === 'opencode' && !(flash && ocVivo) && !process.env.CC_SEM_PRUMO
     const config = {
       ...(comPergunta ? { mcp: { painel: { type: 'local', command: [process.execPath, MCP_PAINEL, '--coderoom', conversa], enabled: true } } } : {}),
       ...liberadas,
+      ...(comPrumo ? { plugin: [pathToFileURL(PRUMO).href] } : {}),
     }
     const filho = spawn(cmd, cmdArgs, {
       cwd, stdio: ['pipe', saida, erro], windowsHide: true,
-      ...(Object.keys(config).length ? { env: { ...process.env, OPENCODE_CONFIG_CONTENT: JSON.stringify(config) } } : {}),
+      ...(Object.keys(config).length ? { env: { ...process.env, OPENCODE_CONFIG_CONTENT: JSON.stringify(config), ...(comPrumo ? { CC_PRUMO_ARQ: logFile.replace(/\.jsonl$/, '.prumo'), CC_PRUMO_LIBERADAS: pastas.join(',') } : {}) } } : {}),
     })
     filho.on('error', () => { /* falha aberta: binário ausente não derruba o painel */ })
     filho.stdin.on('error', () => { /* o filho pode morrer antes de ler tudo */ })
@@ -402,6 +412,11 @@ const linhas = (arquivo) => {
   }
   return fora
 }
+
+/* Pedaços de texto de um mesmo turno (um por etapa do agente) chegam colados:
+   "antes de mexer.O nome do arquivo", visto no print de 30/09. Entre um pedaço
+   e outro vai uma linha em branco, a não ser que já haja espaço. */
+const juntar = (ate, novo) => (!ate || /\s$/.test(ate) || /^\s/.test(novo) ? novo : '\n\n' + novo)
 
 /** Uma proteção barrou a ferramenta. É assim que a recusa chega, medido. */
 const ehRecusaDeHook = (t) => /PreToolUse:.*hook error|hook error:/i.test(String(t || ''))
@@ -436,7 +451,7 @@ export function lerTurno(logFile, agente = 'agy', erroFile = null) {
         /* Bloco idêntico ao anterior não entra de novo: quando uma trava de fim
            de resposta faz o Claude responder outra vez, ele repete o texto
            inteiro, e a conversa mostrava tudo duas vezes (medido em 30/09). */
-        if (c.type === 'text' && typeof c.text === 'string' && c.text !== ultimoBloco) { fora.texto += c.text; ultimoBloco = c.text }
+        if (c.type === 'text' && typeof c.text === 'string' && c.text !== ultimoBloco) { fora.texto += juntar(fora.texto, c.text); ultimoBloco = c.text }
         /* `alvo` é curto para caber na tela; `caminho` é o inteiro, e é o que
            o `git diff` precisa. Usar o curto ali fazia o diff nunca achar o
            arquivo, e a conversa dizia "nenhuma mudança" depois de o agente ter
@@ -456,6 +471,9 @@ export function lerTurno(logFile, agente = 'agy', erroFile = null) {
         tipo: o.rate_limit_info.rateLimitType || null,
         estado: o.rate_limit_info.status || null,
         resetaEm: Number.isFinite(o.rate_limit_info.resetsAt) ? o.rate_limit_info.resetsAt * 1000 : null,
+        /* CC-758: quanto da janela de 5 horas já foi (0 a 1). É o que corta o
+           Claude da revisão automática antes do teto (visto em 30/09: 0.19). */
+        utilizacao5h: Number.isFinite(o.rate_limit_info.unifiedWindows?.five_hour?.utilization) ? o.rate_limit_info.unifiedWindows.five_hour.utilization : null,
       }
     }
     if (o.type === 'result') {
@@ -475,7 +493,7 @@ export function lerTurno(logFile, agente = 'agy', erroFile = null) {
     if (o.type === 'system' && o.subtype === 'init' && o.session_id) fora.sessao = o.session_id
 
     /* ---- opencode ---- */
-    if (o.type === 'text' && typeof o.part?.text === 'string') fora.texto += o.part.text
+    if (o.type === 'text' && typeof o.part?.text === 'string') fora.texto += juntar(fora.texto, o.part.text)
     if (typeof o.sessionID === 'string' && o.sessionID) fora.sessao = fora.sessao || o.sessionID
     /* O opencode não tem evento de resultado: cada etapa fecha com
        `step_finish`, e a ÚLTIMA traz `reason: "stop"` (as do meio dizem
@@ -492,6 +510,10 @@ export function lerTurno(logFile, agente = 'agy', erroFile = null) {
         cacheLido: c.cacheLido + (k.cache?.read || 0),
         cacheCriado: c.cacheCriado + (k.cache?.write || 0),
       }
+      /* CC-813: o tamanho da sessão agora, que é o que o modelo relê a cada passo:
+         o que entrou no ÚLTIMO passo (novo + cache lido + cache escrito). Não
+         se soma como o custo: cada passo reenvia a sessão inteira. */
+      if (k.input != null || k.cache) fora.contexto = (k.input || 0) + (k.cache?.read || 0) + (k.cache?.write || 0)
       if (o.part.reason === 'stop') { fora.terminou = true; fora.estado = 'pronto' }
     }
     if (o.type === 'tool_use' && o.part?.tool) {
