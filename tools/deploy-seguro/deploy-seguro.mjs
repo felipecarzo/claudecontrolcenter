@@ -396,9 +396,9 @@ export function cadastrarAlvo(novo) {
 }
 
 /* ── o servidor ────────────────────────────────────────────────────────── */
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-const corpoDe = (req, max = 4096) => new Promise((ok, falha) => { let t = ''; req.on('data', (d) => { t += d; if (t.length > max) { req.destroy(); falha(new Error('grande demais')) } }); req.on('end', () => ok(t)) })
-const json = (res, c, o) => { res.writeHead(c, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(o)) }
+export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+export const corpoDe = (req, max = 4096) => new Promise((ok, falha) => { let t = ''; req.on('data', (d) => { t += d; if (t.length > max) { req.destroy(); falha(new Error('grande demais')) } }); req.on('end', () => ok(t)) })
+export const json = (res, c, o) => { res.writeHead(c, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(o)) }
 
 async function infoDoRepo(alvo) {
   const op = { cwd: alvo.repo, usuario: alvo.usuarioBuild }
