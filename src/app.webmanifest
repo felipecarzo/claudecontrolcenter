@@ -1,6 +1,6 @@
 {
-  "name": "Agent Cockpit",
-  "short_name": "Cockpit",
+  "name": "Ogumia",
+  "short_name": "Ogumia",
   "description": "O painel dos agentes: o que precisa de você agora, o que está rodando, e a conversa com os três.",
   "start_url": "/",
   "scope": "/",

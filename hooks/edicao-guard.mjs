@@ -50,6 +50,25 @@ const sair = () => process.exit(0)
 
 let dados = null
 try { dados = JSON.parse(readFileSync(0, 'utf8')) } catch { sair() }
+
+/* CC-847 (Nisaba): arquivo travado por uma micro tarefa do maestro não se edita
+   de outra sessão. Trava de verdade, pedido dele: "regra pode não ser seguida". */
+if (/^(Edit|Write|MultiEdit|NotebookEdit)$/.test(dados?.tool_name || '')) {
+  const alvo = dados?.tool_input?.file_path || dados?.tool_input?.notebook_path
+  const T = alvo ? await import(urlDeModulo(AQUI, '../src/travaArquivo.mjs')).catch(() => null) : null
+  const t = T?.travaDe(resolve(dados?.cwd || process.cwd(), alvo), { quem: process.env.CC_TRAVA_DONO || null })
+  if (t) { console.error(T.mensagemDeTrava(t)); process.exit(2) }
+  /* CC-851 (Nisaba): código só com tarefa andando; backlog só pelo comando.
+     Desliga pelo interruptor do gancho ou pelo módulo Nisaba do projeto. */
+  if (alvo) {
+    const cfgN = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
+    if (!cfgN?.hookEnabled || cfgN.hookEnabled('nisaba-guard', undefined, null)) {
+      const N = await import(urlDeModulo(AQUI, '../src/nisabaGuard.mjs')).catch(() => null)
+      const r = N?.avaliarEdicao(resolve(dados?.cwd || process.cwd(), alvo), { ligado: (p) => !cfgN?.moduloLigado || cfgN.moduloLigado('nisaba', p) })
+      if (r?.bloquear) { console.error(r.motivo); process.exit(2) }
+    }
+  }
+}
 if (dados?.tool_name !== 'Bash') sair()
 
 const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
@@ -70,10 +89,19 @@ if (!bruto.trim()) sair()
  * <<EOF` com um exemplo dentro é legítimo, e é como este próprio repositório
  * escreve script de teste.
  */
+/* CC-299, três falsos positivos medidos em 01/10, todos no mesmo dia:
+   - `grep "… sed -i …"` foi barrado: procurar o texto não é rodar o comando.
+     O argumento de quem só LÊ (grep, rg) vira dado, como o heredoc;
+   - `node -e "…writeFileSync(process.env.TMPDIR + …)"` foi barrado: a pasta
+     temporária escrita do jeito do Node não era reconhecida;
+   - `cd /tmp/… && …` com o trecho a mais de 120 caracteres do caminho foi
+     barrado: comando que começa entrando no rascunho trabalha no rascunho. */
 const cmd = bruto.replace(/<<-?\s*['"]?(\w+)['"]?[\s\S]*?^\1\s*$/gm, '<<heredoc>>')
+  .replace(/\b(?:grep|egrep|fgrep|rg|ugrep|ag)\b[^|;&\n]*/g, '<<busca>>')
+if (/^\s*cd\s+["']?(?:\/tmp\/|\$TMPDIR|\$\{TMPDIR)/.test(cmd)) sair()
 
 /* Rascunho é o lugar certo do script solto, e não tem o que perder lá. */
-const soEmTemp = (trecho) => /\/tmp\/|\$TMPDIR|mktemp/.test(trecho)
+const soEmTemp = (trecho) => /\/tmp\/|\$TMPDIR|mktemp|process\.env\.TMPDIR|tmpdir\(\)/.test(trecho)
 
 /**
  * As três formas de sobrescrever texto sem ninguém ficar sabendo.

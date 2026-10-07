@@ -120,108 +120,19 @@ assert.equal(fmtTokens(0), '—')
   }
 }
 
-// o script da página não roda em Node, mas erro de sintaxe dá pra pegar aqui
-const html = fs.readFileSync(new URL('./src/ui.html', import.meta.url), 'utf8')
-// São dois blocos: o do tema, no head, e o da página, no fim do body. Pegar só
-// o primeiro faria este teste validar 15 linhas e dar a página inteira por boa.
-const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1])
-assert.equal(scripts.length, 2, 'ui.html deixou de ter os dois blocos de script esperados')
-for (const s of scripts) {
-  assert.doesNotThrow(() => new Function(s), 'ui.html tem erro de sintaxe no JS')
-}
-const script = scripts.join('\n')
-
-// F11: toda aba precisa morar em algum grupo, e nenhum grupo pode apontar pra
-// aba que não existe. Sem isto, acrescentar aba nova a deixa invisível na tela
-// (ela existe em TABS, mas nenhuma das quatro portas a mostra) — e o defeito
-// não aparece em nenhum outro teste, porque o JS continua válido.
+/* CC-467: o painel antigo saiu. As verificações que liam o arquivo
+   dele (abas e grupos, lista de temas, base64url do opencode, rotas /api/jobs)
+   testavam código que só existia nele; o painel novo tem as suas (CC-227 abaixo
+   confere a sintaxe dos blocos de script). Ficou só a que vale para qualquer
+   página: cor inválida em variável CSS é ignorada em silêncio pelo navegador
+   (já aconteceu com `#8manual` e um dígito devanagari no meio do hex). */
 {
-  const trecho = (nome) => script.match(new RegExp(`const ${nome} = \\[[\\s\\S]*?\\n\\]`))?.[0]
-  const fonte = `${trecho('TABS')}\n${trecho('GRUPOS')}\nreturn { TABS, GRUPOS }`
-  const { TABS, GRUPOS } = new Function(fonte)()
-  const cobertas = new Set(GRUPOS.flatMap((g) => g.abas))
-  const orfas = TABS.filter((t) => !cobertas.has(t.id)).map((t) => t.id)
-  const fantasmas = [...cobertas].filter((id) => !TABS.some((t) => t.id === id))
-  assert.deepEqual(orfas, [], `aba sem grupo (invisível na tela): ${orfas.join(', ')}`)
-  assert.deepEqual(fantasmas, [], `grupo aponta pra aba inexistente: ${fantasmas.join(', ')}`)
-  assert.ok(GRUPOS.every((g) => g.abas.length), 'grupo vazio não pode existir')
-}
-
-/* `?tema=` existe só para print de tela: headless não tem preferência de
-   sistema nem localStorage. Achado numa auditoria de design em 18/08: o valor
-   da URL era comparado só contra o `id` interno (noite/papel), nunca contra o
-   `nome` mostrado no seletor (escuro/claro) — que é a forma que a própria
-   documentação deste projeto ensinava a usar. `?tema=escuro` e `?tema=claro`
-   caíam sempre no mesmo fallback, e dois prints "nos dois temas" saíam byte a
-   byte idênticos sem erro nenhum. */
-{
-  const trechoTemas = script.match(/var TEMAS = \[[\s\S]*?\n {2}\]/)?.[0]
-  assert.ok(trechoTemas, 'ui.html perdeu a lista de TEMAS')
-  const fonte = `${trechoTemas}
-    function casar(alvo) {
-      var t = TEMAS.find(function (x) { return x.id === alvo || x.nome === alvo })
-      return t ? t.id : 'noite'
-    }
-    return casar`
-  const casar = new Function(fonte)()
-  assert.equal(casar('noite'), 'noite', 'o id continua funcionando')
-  assert.equal(casar('papel'), 'papel')
-  assert.equal(casar('escuro'), 'noite', 'o nome exibido tem que resolver pro id certo')
-  assert.equal(casar('claro'), 'papel', 'o nome exibido tem que resolver pro id certo')
-  assert.equal(casar('cor-que-nao-existe'), 'noite', 'valor desconhecido cai no escuro, nunca quebra')
-}
-
-for (const rota of ['/api/jobs', '/api/meta', '/api/notes', '/events']) {
-  assert.ok(script.includes(rota), `ui.html não usa ${rota}`)
-}
-
-/* --- CC-149: a codificação que abre o opencode já na pasta certa ---
-
-   `?directory=` na URL NÃO faz nada na página web do opencode: esse parâmetro
-   só existe no esquema de link do app de DESKTOP, lido de uma string, nunca
-   da barra de endereço do navegador — testado direto contra o servidor real
-   em 18/08, o corpo `{"directory":...}` foi ignorado.
-
-   O caminho de verdade é a pasta na PRÓPRIA url, como segmento, em
-   base64url. Achado lendo o bundle JS da SPA do opencode (funções `ln()` e
-   `_ne()` daquele código, não deste projeto). O valor abaixo foi conferido
-   contra o servidor de produção rodando de verdade: pedir essa URL abriu a
-   pasta certa, sem cair no erro que o próprio app declara para pasta
-   desconhecida. Guardar aqui é o que impede alguém trocar a fórmula sem
-   perceber que ela para de bater com o que o opencode espera. */
-{
-  const fonte = script.match(/const base64url = \([\s\S]*?\n/)?.[0]
-  assert.ok(fonte, 'ui.html perdeu a função base64url do CC-149')
-  const base64url = new Function(`${fonte}\nreturn base64url`)()
-
-  assert.equal(
-    base64url('/home/claudedev/projetos/proj_controlcenter'),
-    'L2hvbWUvY2xhdWRlZGV2L3Byb2pldG9zL3Byb2pfY29udHJvbGNlbnRlcg',
-    'a codificação da pasta mudou — é a mesma que o servidor de produção confirmou abrir de verdade',
-  )
-  // nunca pode sobrar +, / ou = : são os caracteres que tornam um valor
-  // inseguro dentro de segmento de URL, e é isso que "url" no nome promete
-  for (const pasta of ['/home/x', '/home/x/y-z_w.a', '/tmp/pasta com espaço']) {
-    assert.doesNotMatch(base64url(pasta), /[+/=]/, `sobrou caractere inseguro para "${pasta}"`)
+  const html = fs.readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+  for (const [, nome, valor] of html.matchAll(/(--[a-z0-9-]+):\s*(#[^;]+);/gi)) {
+    assert.match(valor.trim(), /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i,
+      `cor inválida em ${nome}: "${valor.trim()}"`)
   }
 }
-// Cor inválida em variável CSS é ignorada em silêncio pelo navegador: o tema
-// carrega, só que aquele tom cai no valor herdado. Já aconteceu duas vezes na
-// mesma edição (`#8manual` e um dígito devanagari no meio do hex).
-for (const [, nome, valor] of html.matchAll(/(--[a-z0-9-]+):\s*(#[^;]+);/gi)) {
-  assert.match(valor.trim(), /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i,
-    `cor inválida em ${nome}: "${valor.trim()}"`)
-}
-// cada tema declarado no CSS precisa aparecer na lista que a tela oferece,
-// senão vira paleta que ninguém consegue escolher
-for (const [, id] of html.matchAll(/:root\[data-tema="([a-z]+)"\]/g)) {
-  assert.ok(script.includes(`'${id}'`), `tema "${id}" existe no CSS e não está na lista do seletor`)
-}
-
-// o painel tem que reagir ao próprio espaço: com as notas abertas a janela
-// segue larga, então media query não serve de breakpoint
-assert.ok(html.includes('container-type: inline-size'), 'painel não é contêiner de consulta')
-assert.ok(!/@media[^{]*max-width[^{]*\{[^}]*hide-sm/.test(html), 'hide-sm voltou a depender da janela')
 
 // contra os jobs reais da máquina: não pode explodir nem inventar campo
 const real = readJobs()
@@ -1504,7 +1415,7 @@ for (const d of [tmpRotia, tmpSrc, tmpVazio]) fs.rmSync(d, { recursive: true, fo
     assert.deepEqual(R.log(raiz), [])
     assert.deepEqual(R.pendentes(raiz, 'sessao-a'), [])
 
-    const r1 = R.enviar(raiz, { de: 'sessaoaaaa', para: 'sessaobbbb', tipo: 'vou_mexer', texto: 'vou mexer no ui.html', arquivo: 'src/ui.html' })
+    const r1 = R.enviar(raiz, { de: 'sessaoaaaa', para: 'sessaobbbb', tipo: 'vou_mexer', texto: 'vou mexer na tela', arquivo: 'src/ui_cockpit2.html' })
     assert.equal(r1.de, 'sessaoaa') // curto: 8 caracteres, sempre
     assert.equal(r1.para, 'sessaobb')
     assert.throws(() => R.enviar(raiz, { de: 'a', para: 'b', tipo: 'tipo-que-nao-existe', texto: 'x' }),
@@ -2223,36 +2134,13 @@ if (estRotinas.projetos.length) {
 
 /* --- CC-91: o cartão do framework confirma o que GRAVOU ---
    Ele trocou o modo duas vezes em 15/08, a tela confirmou, e o arquivo
-   continuava o mesmo. O gate guarda as três peças do conserto. */
+   continuava o mesmo. CC-467: migrado para o painel novo; as outras peças
+   (posição do autorizar no seletor, texto do "?") eram markup do painel antigo. */
 {
-  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui.html'), 'utf8')
-
-  // 1. a confirmação relê do servidor em vez de repetir o que foi clicado
+  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui_cockpit2.html'), 'utf8')
   assert.match(html, /CONFIRMA_FW/, 'sumiu a confirmação da troca de modo')
-  /* A comparação virou `gravado === pedido` em 17/08, quando o mesmo seletor
-     passou a escolher também PERFIL: comparar sempre com `conferido.modo` daria
-     "erro" ao escolher uma profissão, porque o modo gravado é o base dela. O que
-     o gate guarda é a regra, não a linha: relê do arquivo e compara com o que
-     foi pedido. */
   assert.match(html, /gravado === pedido/, 'a confirmação parou de comparar pedido com arquivo')
-  assert.match(html, /ehPerfil \? conferido\.perfil : conferido\.modo/,
-    'a confirmação tem que olhar o campo certo: perfil quando foi perfil')
-  assert.match(html, /fw-salvo ruim/, 'sumiu o aviso de gravação que falhou')
-
-  /* 2. o autorizar NÃO pode voltar para perto do seletor: ele apertou por
-     engano justamente por isso. O seletor fica no `seloFramework`, e o botão
-     tem que estar dentro de `.fw-aut`, que é bloco próprio. */
-  const i = html.indexOf('function seloFramework(')
-  const corpo = html.slice(i, html.indexOf('\nfunction ', i + 10))
-  assert.ok(corpo.includes('fw-aut'), 'o autorizar saiu do bloco próprio')
-  const posSeletor = corpo.indexOf('class="fw-modo"')
-  const posAut = corpo.indexOf('data-fw="autorizar"')
-  assert.ok(posAut < posSeletor || corpo.slice(posSeletor, posAut).includes('fw-aut'),
-    'o botão de autorizar voltou a ficar colado no seletor de modo')
-
-  // 3. a confirmação do clique diz o que vai acontecer, não só "tem certeza?"
   assert.match(html, /vale at[ée] voc[êe] trocar de modo/, 'a confirmação parou de dizer o prazo')
-  assert.match(html, /data-ajuda="Liberar escrita/, 'sumiu a explicação do "?" do autorizar')
 }
 
 /* --- Bancada: catálogo inteiro, cada camada rodando sozinha ---
@@ -2320,83 +2208,9 @@ if (estRotinas.projetos.length) {
   assert.match(P.deMarkdown('<script>x</script>'), /&lt;script&gt;/)
 }
 
-/* --- CC-87: toda tela responde uma pergunta, escrita no topo ---
-   Regra 1 da frente. O gate guarda a REGRA, não o texto: se alguém acrescentar
-   uma tela sem pergunta, ninguém notaria — foi assim que 11 das 15 ficaram
-   mudas até 15/08. */
-{
-  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui.html'), 'utf8')
+/* CC-87 (cada tela do painel antigo abria com uma pergunta, via cabecaDaTela) saiu com o painel antigo, CC-467. */
 
-  assert.match(html, /function cabecaDaTela\(/, 'sumiu o componente do topo de tela')
-
-  // as telas já convertidas têm que continuar chamando
-  // viewCockpit saiu da lista em 17/08: a vista morreu órfã no redesenho dos
-  // cards e foi removida; quem responde pela aba é a viewTrabalho.
-  for (const [fn, pergunta] of [
-    ['viewMeu', 'O que depende de mim?'],
-    ['viewGlossario', 'O que é isso mesmo?'],
-    ['viewTrabalho', 'Em que pé está o trabalho?'],
-  ]) {
-    const i = html.indexOf(`function ${fn}(`)
-    assert.ok(i > 0, `${fn} sumiu`)
-    const corpo = html.slice(i, html.indexOf('\nfunction ', i + 10))
-    assert.ok(corpo.includes('cabecaDaTela('), `${fn} não usa o topo padrão`)
-    assert.ok(corpo.includes(pergunta), `${fn} perdeu a pergunta "${pergunta}"`)
-  }
-
-  /* Vista definida e nunca chamada é a classe de erro que deixou os controles
-     do framework dois dias inalcançáveis no celular (17/08): o redesenho trocou
-     a vista da aba e ninguém notou que a antiga, com o seletor de modo dentro,
-     ficou sem porta. Contagem textual: a definição conta 1; qualquer chamada
-     soma. */
-  {
-    const defs = [...html.matchAll(/function (view[A-Z]\w*)\(/g)].map((m) => m[1])
-    const orfas = defs.filter((v) => html.split(`${v}(`).length - 1 <= 1)
-    assert.deepEqual(orfas, [], `vista(s) sem porta de entrada: ${orfas.join(', ')}`)
-  }
-
-  /* A VPS é a que inaugurou o padrão, com nome próprio (`vps-veredito`) porque
-     veio antes. Se ela deixar de ter veredito, a regra morreu na origem. */
-  assert.match(html, /vps-veredito/, 'a aba VPS perdeu o veredito')
-
-  // as cores do veredito são as mesmas dos estados, não inventadas
-  for (const c of ['v-bom', 'v-atencao', 'v-ruim']) {
-    assert.ok(html.includes(`.tela-cabeca.${c}`), `falta a cor ${c}`)
-  }
-}
-
-/* --- CC-73: o painel não pode rolar de lado ---
-   Não dá para medir layout sem navegador, e o Chrome desta VPS exige um token
-   que o hook de segredo (com razão) não deixa ler. Então o que este teste
-   guarda é a REGRA, não o pixel: as três peças que impedem o vazamento têm que
-   continuar no arquivo. Se alguém remover uma, a barra horizontal volta e só
-   apareceria num print meses depois — foi assim que ela viveu até 15/08. */
-{
-  const html = fs.readFileSync(path.join(process.cwd(), 'src', 'ui.html'), 'utf8')
-  const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'))
-
-  assert.match(css, /#painel\s*{[^}]*overflow-x:\s*hidden/s, 'o #painel voltou a poder rolar de lado')
-  assert.match(css, /\.rolagem\s*{[^}]*overflow-x:\s*auto/s, 'sumiu a caixa que segura conteúdo largo')
-  assert.match(css, /@container[^{]*\(max-width:\s*640px\)/, 'sumiu o ajuste de tela estreita da faixa de módulos')
-
-  // a tabela de tempo é o conteúdo largo conhecido, e tem que estar embrulhada
-  const tabela = html.indexOf('t-linha t-head')
-  assert.ok(tabela > 0)
-  assert.ok(
-    html.lastIndexOf('class="rolagem"', tabela) > tabela - 200,
-    'a tabela de tempo saiu de dentro da .rolagem',
-  )
-
-  /* Breakpoint é `@container`, nunca `@media`: com a coluna de notas aberta a
-     janela continua larga enquanto o painel encolhe, então media query não
-     dispararia. Armadilha já registrada no CLAUDE.md. */
-  // comentário é onde a regra está EXPLICADA, então sai antes da contagem
-  const semComentario = css.replace(/\/\*[\s\S]*?\*\//g, '')
-  assert.equal(
-    (semComentario.match(/@media[^{]*max-width/g) || []).length, 0,
-    'entrou uma media query de largura: neste painel o breakpoint é @container',
-  )
-}
+/* CC-73 (o painel antigo não rola de lado: #painel, .rolagem, @container) saiu com o painel antigo, CC-467. A largura do novo é medida por test-estreito.mjs e test-cockpit2.mjs. */
 
 /* --- VPS: veredito, não valor ---
    A tela mostrava o que a máquina TEM e ele tinha que traduzir sozinho. Os
@@ -2829,6 +2643,9 @@ if (!ESPERADO) {
   const E = await import('./src/entrevista.mjs')
 
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-novoproj-'))
+  // CC-525: criar projeto declara no registro central (~/.claude); teste não escreve em dado real
+  const casaAntes = process.env.CC_HOME
+  process.env.CC_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-novoproj-casa-'))
   try {
     // nome vira caminho de disco: recusar é mais barato que consertar depois
     assert.ok(N.validarNome('app agenda'), 'espaço no nome tem que ser recusado')
@@ -2843,9 +2660,13 @@ if (!ESPERADO) {
     const raiz = r.raiz
 
     // o esqueleto de documentação, que todo projeto tem desde o primeiro minuto
-    for (const p of ['docs/produto', 'docs/guias', 'docs/diario', 'docs/ROADMAP.md',
+    for (const p of ['docs/ROADMAP.md', 'docs/backlog.jsonl',
       'docs/HANDOFF.md', 'docs/README.md', 'CLAUDE.md', '.gitignore']) {
       assert.ok(fs.existsSync(path.join(raiz, p)), `faltou ${p}`)
+    }
+    // CC-525: pasta de documento só nasce quando houver documento
+    for (const p of ['docs/produto', 'docs/guias', 'docs/diario']) {
+      assert.ok(!fs.existsSync(path.join(raiz, p)), `${p} não pode nascer vazia`)
     }
 
     // e as pastas de código NÃO nascem: pasta vazia por simetria esconde quais
@@ -2883,6 +2704,8 @@ if (!ESPERADO) {
     assert.equal(path.basename(path.dirname(comGrupo.raiz)), 'CLIENTS')
     assert.deepEqual(N.gruposDe(base), [{ nome: 'CLIENTS', projetos: 1 }])
   } finally {
+    fs.rmSync(process.env.CC_HOME, { recursive: true, force: true })
+    if (casaAntes === undefined) delete process.env.CC_HOME; else process.env.CC_HOME = casaAntes
     fs.rmSync(base, { recursive: true, force: true })
   }
 }
@@ -3565,7 +3388,7 @@ for (const PAINEL of PAINEIS_QUE_FICAM) {
    * agentes, e nenhum erro visível: um erro de sintaxe acontece antes de
    * qualquer código rodar, então nem o capturador de erro da página funciona.
    *
-   * O gate já fazia isto para `ui.html` desde sempre. Para o painel novo, que
+   * O gate já fazia isto para `ui_cockpit2.html` desde sempre. Para o painel novo, que
    * é o que ele usa desde 20/08, não fazia. Este é o terceiro buraco do mesmo
    * tipo achado hoje (largura de tela, estilo dos gráficos, sintaxe), e todos
    * têm a mesma raiz: o painel novo herdou o código e não herdou as redes.
@@ -3741,7 +3564,7 @@ for (const PAINEL of PAINEIS_QUE_FICAM) {
  *
  * O defeito que estas verificações guardam é o pior possível numa lista feita
  * para ele confiar: **dizer que algo acabou quando não acabou.** Aconteceu na
- * primeira rodada, com `semarquivo:src/ui.html` respondendo "sumiu" com o
+ * primeira rodada, com `semarquivo:src/ui_cockpit2.html` respondendo "sumiu" com o
  * arquivo lá, de 491 KB, porque o painel roda como serviço noutra pasta.
  */
 {
@@ -3765,6 +3588,13 @@ for (const PAINEL of PAINEIS_QUE_FICAM) {
 
   /* Caminho absoluto não depende de raiz nenhuma. */
   assert.equal(uma(`arquivo:${path.join(raiz, 'src', 'existe.html')}`).resolvida, true)
+
+  /* CC-234: `iguais:a=b`, a cópia instalada já é a do repositório? */
+  fs.writeFileSync(path.join(raiz, 'src', 'gemeo.html'), 'oi')
+  fs.writeFileSync(path.join(raiz, 'src', 'velho.html'), 'tchau')
+  assert.equal(uma('iguais:src/existe.html=src/gemeo.html').resolvida, true)
+  assert.equal(uma('iguais:src/existe.html=src/velho.html').resolvida, false)
+  assert.equal(uma('iguais:src/existe.html=pasta/que/nao/existe/x.html').resolvida, null, 'caminho que não dá para olhar é "não sei", nunca "diferente"')
 
   /* Prova desconhecida ou ausente não vira `false`: viraria "ainda pendente"
      com ar de conferido, e ninguém saberia que ninguém olhou. */
@@ -5594,7 +5424,7 @@ if (process.platform !== 'win32') {
  * CC-361: o liberar escrita existe na tela que está NO AR, não só na antiga.
  *
  * Medido em 26/08: a trava do framework registrava o pedido certo e mandava
- * clicar num botão que só existia em `src/ui.html` (servido em `/v1`). Quem usa
+ * clicar num botão que só existia no painel antigo (servido em `/v1`). Quem usa
  * o painel padrão (`ui_v2.html`) via o trabalho ser barrado sem caminho nenhum
  * para destravar, a não ser editando o arquivo de estado à mão, que é o que o
  * modo existe para evitar.
@@ -5841,7 +5671,7 @@ for (const PAINEL of PAINEIS_QUE_FICAM) {
      O que mudou é a ordem em que a folha oferece. */
   const F = await import('./src/framework.mjs')
   assert.equal(Object.keys(F.MODOS).length, 12, 'os 12 modos continuam no catálogo (planejamento entrou em 29/09, CC-714)')
-  assert.equal(Object.keys(F.METODOS).length, 6, 'os 6 métodos continuam no catálogo')
+  assert.equal(Object.keys(F.METODOS).length, 7, 'os 7 métodos continuam no catálogo (produto entrou em 04/10, CC-902)')
   for (const id of ['continuo', 'depuracao', 'revisao', 'pareado', 'entrega']) {
     assert.ok(F.MODOS[id], `o modo ${id} não pode sumir: some da tela, não do catálogo`)
   }
@@ -6370,21 +6200,21 @@ for (const PAINEL of PAINEIS_QUE_FICAM) {
   const R = await import('./src/rotas.mjs')
 
   const linhas = [
-    { rota: 'front', ocupada: true, historico: false, dono: 'aaa', arquivos: ['src/ui.html', 'src/web.mjs'] },
-    { rota: 'tela', ocupada: true, historico: false, dono: 'bbb', arquivos: ['src/ui.html'] },
+    { rota: 'front', ocupada: true, historico: false, dono: 'aaa', arquivos: ['src/ui_cockpit2.html', 'src/web.mjs'] },
+    { rota: 'tela', ocupada: true, historico: false, dono: 'bbb', arquivos: ['src/ui_cockpit2.html'] },
     { rota: 'quebra', ocupada: true, historico: false, dono: 'ccc', arquivos: [] },
-    { rota: 'velha', ocupada: true, historico: true, dono: 'ddd', arquivos: ['src/ui.html'] },
+    { rota: 'velha', ocupada: true, historico: true, dono: 'ddd', arquivos: ['src/ui_cockpit2.html'] },
     { rota: 'livre', ocupada: false, historico: false, dono: null, arquivos: [] },
   ]
   const c = R.cruzamentos(linhas)
 
   assert.equal(c.disputados.length, 1, 'só o arquivo que DUAS rotas vivas seguram é disputa')
-  assert.equal(c.disputados[0].arquivo, 'src/ui.html')
+  assert.equal(c.disputados[0].arquivo, 'src/ui_cockpit2.html')
   assert.deepEqual(c.disputados[0].quem.map((q) => q.rota).sort(), ['front', 'tela'])
   console.log('  ok   CC-373: arquivo segurado por duas rotas vivas é o cruzamento')
 
   /* ⚠️ **A linha HISTÓRICA não conta, e é o que separa alarme de ruído.**
-     `velha` também lista `src/ui.html`, e ela já foi liberada. Contá-la faria o
+     `velha` também lista `src/ui_cockpit2.html`, e ela já foi liberada. Contá-la faria o
      painel acusar disputa com quem saiu, todo dia, para sempre. */
   assert.ok(!c.disputados[0].quem.some((q) => q.rota === 'velha'),
     'rota já encerrada não disputa nada: acusá-la seria alarme que nunca cala')
@@ -6430,7 +6260,7 @@ for (const PAINEL of PAINEIS_QUE_FICAM) {
    * 06/08, em que ninguém avisou ninguém. Pintar os dois igual apagaria a única
    * diferença que ele pediu para enxergar.
    */
-  const disputa = [{ arquivo: 'src/ui.html', quem: [{ rota: 'front', dono: 'aaa' }, { rota: 'tela', dono: 'bbb' }] }]
+  const disputa = [{ arquivo: 'src/ui_cockpit2.html', quem: [{ rota: 'front', dono: 'aaa' }, { rota: 'tela', dono: 'bbb' }] }]
 
   const avisado = R.awareness(disputa, [
     { de: 'aaa', para: 'bbb', tipo: 'aviso' },

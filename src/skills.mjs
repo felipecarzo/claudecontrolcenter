@@ -151,6 +151,36 @@ export function sincronizar({ nomes = null } = {}) {
   return { feitos }
 }
 
+/**
+ * 02/10: as skills que o PRÓPRIO cockpit traz (a do Nisaba), versionadas em
+ * `skills/<nome>/SKILL.md` no repositório. O painel instala ao subir, nos três
+ * agentes, só quando o conteúdo mudou. É o painel que grava porque ele roda fora
+ * do isolamento das sessões, onde `~/.claude/skills` é somente leitura.
+ */
+export const dirDoRepositorio = () => path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'skills')
+
+export function instalarDoRepositorio({ origem = dirDoRepositorio() } = {}) {
+  const feitos = []
+  let nomes = []
+  try { nomes = fs.readdirSync(origem).filter((n) => valido(n) && fs.existsSync(path.join(origem, n, 'SKILL.md'))) } catch { return { feitos } }
+  for (const nome of nomes) {
+    const texto = fs.readFileSync(path.join(origem, nome, 'SKILL.md'), 'utf8')
+    for (const d of DESTINOS) {
+      const alvo = path.join(d.dir(), nome, 'SKILL.md')
+      try {
+        let atual = null; try { atual = fs.readFileSync(alvo, 'utf8') } catch { /* nova */ }
+        if (atual === texto) continue
+        fs.mkdirSync(path.dirname(alvo), { recursive: true })
+        fs.writeFileSync(alvo, texto)
+        feitos.push({ skill: nome, agente: d.agente, acao: atual == null ? 'criada' : 'atualizada' })
+      } catch (e) {
+        feitos.push({ skill: nome, agente: d.agente, acao: 'falhou', erro: String(e.message || e) })
+      }
+    }
+  }
+  return { feitos }
+}
+
 /** Apaga a skill dos três lugares, dizendo de onde saiu de cada um. */
 export function remover(nome) {
   if (!valido(nome)) throw new Error(`nome inválido: "${nome}"`)

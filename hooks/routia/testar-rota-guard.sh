@@ -6,7 +6,10 @@
 # fixo no código, e na VPS esse caminho não existe: o hook liberava certo (por
 # não haver quadro) e o teste contava como falha. Resultado, medido: o Routia
 # rodava na VPS sem nenhum teste válido cobrindo ele.
-HOOK="$HOME/.claude/hooks/rota-guard.mjs"
+# 01/10: testa o arquivo do REPOSITÓRIO, que é o que vai ser instalado. Testar
+# a cópia de ~/.claude/hooks media o código velho e aprovava conserto não feito.
+# Para conferir a cópia instalada: HOOK=~/.claude/hooks/rota-guard.mjs bash ...
+HOOK="${HOOK:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/rota-guard.mjs}"
 BASE="${TMPDIR:-/tmp}/rota-guard-teste-$$"
 REPO="$BASE/projeto-com-quadro"
 SEM_QUADRO="$BASE/projeto-sem-quadro"
@@ -35,6 +38,7 @@ pastas-controladas: [apps, tools]
 | `back` | 🔴 ocupada | beef5678 — dados 📁 apps/ui.html#renderTabs apps/web.mjs | hoje |
 | `repetido` | 🔴 ocupada | eeee2222 — tres arquivos 📁 apps/um.mjs 📁 apps/dois.mjs 📁 apps/tres.mjs | hoje |
 | `base-owner` | 🔴 ocupada | ffff4444 — a base 📁 apps/base.mjs | hoje |
+| `historia` | 🔴 ocupada | 77776666 — mexe 📁 apps/hist.mjs · antes liberada a cafe0000 em 30/09 | hoje |
 QUADRO
 
 # CC-140, aviso de vizinhança: precisa de import DE VERDADE no disco, porque
@@ -90,6 +94,16 @@ caso "partilha declarada: front edita o arquivo dividido" "libera" \
 
 caso "sem declarar: terceiro barrado no arquivo dividido" "bloqueia" \
   "{\"session_id\":\"cafe0000-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/ui.html\"}}"
+
+# 01/10, CC-702: posse e POSICIONAL. A linha que so CITA uma sessao no
+# historico nao e dela: antes, cafe0000 contava a linha `historia` como sua e
+# editava o arquivo de 77776666 sem barreira (medido no quadro real: cockpit2 e
+# gate se citavam e nenhuma barrava a outra).
+caso "citada no historico nao vira dona" "bloqueia" \
+  "{\"session_id\":\"cafe0000-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/hist.mjs\"}}"
+
+caso "a dona de verdade edita" "libera" \
+  "{\"session_id\":\"77776666-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/hist.mjs\"}}"
 
 caso "posse inteira: front barrado no arquivo so do back" "bloqueia" \
   "{\"session_id\":\"aaaa1111-ffff\",\"tool_input\":{\"file_path\":\"$REPO/apps/web.mjs\"}}"

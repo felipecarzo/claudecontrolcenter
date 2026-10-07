@@ -596,9 +596,11 @@ os caminhos que passam por `abrirNavegador`; se ainda assim abrir, o suspeito
   O pior dos dois é que 500px ainda cai dentro do ramo estreito do CSS, então
   a captura PARECE um celular convincente e não mede nada sobre 390. **Toda
   captura de tela estreita tem que validar a largura antes de salvar**, e a
-  régua barata deste painel é a barra de baixo: com 390 de verdade, os quatro
-  botões cabem inteiros (centros em 51/147/243/339). Se o quarto sai do
-  quadro, a imagem é mais larga do que afirma e não vale como prova.
+  régua barata deste painel é a faixa do topo (CC-966): com 390 de verdade, o
+  botão de menu tem centro em 30, o sino em 316 e o botão do painel de
+  responder em 360 (CC-970; o `test-estreito-v2.mjs` confere). Se o último
+  botão sai em outro lugar, a imagem é mais larga do que afirma e não vale
+  como prova.
 - **O `meta.json` é escrito por agente e o formato varia.** Um agente gravou
   `{t: "..."}` no lugar de `{text: "..."}` e o painel exibiu "undefined" com a
   tarefa inteira ali do lado. Toda leitura de `meta` passa por `normalizeTodo` /

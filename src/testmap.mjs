@@ -62,7 +62,6 @@ export const DIMENSOES = {
 const TESTES = [
   { arquivo: 'test.mjs', roda: 'npm test', navegador: false },
   { arquivo: 'test-endereco.mjs', roda: 'npm run test:endereco', navegador: true },
-  { arquivo: 'test-estreito.mjs', roda: 'node test-estreito.mjs', navegador: true },
   { arquivo: 'test-ui.mjs', roda: 'npm run test:ui', navegador: true },
   { arquivo: 'test-framework.mjs', roda: 'npm test', navegador: false },
   { arquivo: 'test-federacao.mjs', roda: 'npm test', navegador: false },
@@ -139,7 +138,7 @@ function telas(raiz, cache, palavras) {
         funciona: dimensao(citadoEm(raiz, [id, curto], cache), 'a tela é citada, o que NÃO prova que os botões dela funcionam'),
         explica: dimensao(verbete ? 'test.mjs' : null, verbete ? 'tem verbete `tela: ' + curto + '`' : null,
           verbete ? null : 'sem explicação escrita: o "?" desta tela não nasce'),
-        estreito: dimensao(null, null, 'test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)'),
+        estreito: dimensao(null, null, 'a largura do painel novo, tela por tela, ainda não tem teste próprio'),
         profundo: dimensao(ensina ? 'test.mjs' : null, ensina ? 'o verbete tem corpo de verdade' : null,
           ensina ? null : 'explicação curta demais: define sem ensinar'),
       },

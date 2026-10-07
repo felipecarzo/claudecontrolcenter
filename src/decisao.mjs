@@ -25,7 +25,29 @@
 import fs from 'node:fs'
 import { execFile } from 'node:child_process'
 import path from 'node:path'
-import { transcritoDe, DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
+import { transcritoDe, DIR_SESSOES_ABRIGO, PROJETOS_DIR } from './metaSessao.mjs'
+
+/* CC-694: "não está num terminal aberto pelo painel" valia para dois casos
+   diferentes, e o cartão não dizia qual. Sessão FECHADA (não está no registro
+   de sessões abertas do Claude Code) diz isso com todas as letras; aberta noutro
+   lugar (app, outro terminal) continua mandando responder direto nela. */
+export function sessaoAberta(conversa, dir = path.join(path.dirname(PROJETOS_DIR()), 'sessions')) {
+  let nomes; try { nomes = fs.readdirSync(dir).filter((f) => f.endsWith('.json')) } catch { return null }
+  for (const f of nomes) {
+    try {
+      const o = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
+      if (o.sessionId !== conversa || !o.pid) continue
+      process.kill(o.pid, 0)
+      return true
+    } catch { /* registro velho ou processo morto */ }
+  }
+  return false
+}
+function semTerminal(conversa, verbo, deps) {
+  const aberta = (deps.aberta || sessaoAberta)(conversa)
+  if (aberta === false) return { ok: false, fechada: true, erro: 'essa sessão já foi fechada: não há ninguém do outro lado para receber' }
+  return { ok: false, erro: `essa conversa não está num terminal aberto pelo painel: ${verbo} direto nela` }
+}
 import { estado as estadoDasSessoes } from './remotecontrol.mjs'
 
 /* ── Cartões fechados por ele (26/09) ─────────────────────────────────────
@@ -275,7 +297,7 @@ export async function enviarMensagem({ conversa, texto }, deps = DEPS) {
   if (!conversa || !msg) return { ok: false, erro: 'faltou a conversa ou o texto' }
   const sessoes = await deps.sessoes().catch(() => ({}))
   const aqui = Object.values(sessoes || {}).find((s) => s?.conversa === conversa)
-  if (!aqui?.sessao) return { ok: false, erro: 'essa conversa não está num terminal aberto pelo painel: mande direto nela' }
+  if (!aqui?.sessao) return semTerminal(conversa, 'mande', deps)
   const antes = deps.lerTranscrito(conversa) || ''
   if (perguntaPendente(antes)) return { ok: false, erro: 'a sessão está com uma pergunta aberta: responda pelos botões da pergunta' }
   if (!telaNoCampo(await deps.capturar(aqui.sessao, { cor: true }))) {
@@ -305,7 +327,7 @@ export async function parar({ conversa }, deps = DEPS) {
   if (!conversa) return { ok: false, erro: 'faltou dizer qual conversa' }
   const sessoes = await deps.sessoes().catch(() => ({}))
   const aqui = Object.values(sessoes || {}).find((s) => s?.conversa === conversa)
-  if (!aqui?.sessao) return { ok: false, erro: 'essa conversa não está num terminal aberto pelo painel: pare direto nela' }
+  if (!aqui?.sessao) return semTerminal(conversa, 'pare', deps)
   const r = await deps.apertar(aqui.sessao, 'Escape')
   if (!r?.ok) return { ok: false, erro: 'o terminal recusou a tecla' }
   for (let i = 0; i < 6; i += 1) {
@@ -375,7 +397,7 @@ export async function trocarConfig({ conversa, modelo = null, esforco = null }, 
   if (esforco && !ESFORCOS_SESSAO.includes(esforco)) return { ok: false, erro: 'esforço fora da lista' }
   const sessoes = await deps.sessoes().catch(() => ({}))
   const aqui = Object.values(sessoes || {}).find((s) => s?.conversa === conversa)
-  if (!aqui?.sessao) return { ok: false, erro: 'essa conversa não está num terminal aberto pelo painel: troque direto nela' }
+  if (!aqui?.sessao) return semTerminal(conversa, 'troque', deps)
   if (!telaNoCampo(await deps.capturar(aqui.sessao, { cor: true }))) {
     return { ok: false, erro: 'a sessão não está esperando texto agora (está trabalhando ou num menu), então não mudei nada' }
   }
@@ -554,7 +576,7 @@ export async function permitir({ conversa, id, decisao }, deps = DEPS) {
   if (String(id).startsWith('gancho:')) return responderGancho(String(id).slice(7), decisao, deps.gancho || {})
   const sessoes = await deps.sessoes().catch(() => ({}))
   const aqui = Object.values(sessoes || {}).find((s) => s?.conversa === conversa)
-  if (!aqui?.sessao) return { ok: false, erro: 'essa conversa não está num terminal aberto pelo painel: responda direto nela' }
+  if (!aqui?.sessao) return semTerminal(conversa, 'responda', deps)
   const daTela = String(id).startsWith('tela:')
   const pend = daTela ? null : acaoPendente(deps.lerTranscrito(conversa))
   if (!daTela && (!pend || pend.id !== id)) return { ok: false, erro: 'esse pedido já foi respondido ou trocou: recarregue' }
@@ -602,7 +624,7 @@ export async function responder({ conversa, id, respostas }, deps = DEPS) {
 
   const sessoes = await deps.sessoes().catch(() => ({}))
   const aqui = Object.values(sessoes || {}).find((s) => s?.conversa === conversa)
-  if (!aqui?.sessao) return { ok: false, erro: 'essa conversa não está num terminal aberto pelo painel: responda direto nela' }
+  if (!aqui?.sessao) return semTerminal(conversa, 'responda', deps)
 
   const pend = perguntaPendente(deps.lerTranscrito(conversa))
   if (!pend || pend.id !== id) return { ok: false, erro: 'essa pergunta já foi respondida ou trocou: recarregue' }

@@ -5,10 +5,11 @@
 # o que aconteceu o dia inteiro em 16/08 — dez itens do ROADMAP fechados, zero
 # to-dos no painel — e o `cc-check` não pegou porque ele cobra to-do ABERTO.
 set -u
-H="$HOME/projetos/proj_controlcenter/hooks/reporte-guard.mjs"
+H="${HOOK:-$HOME/projetos/proj_controlcenter/hooks/reporte-guard.mjs}"
 T=$(mktemp -d)
 export CC_HOME="$T/casa"
-mkdir -p "$CC_HOME/control-center-sessoes"
+mkdir -p "$CC_HOME/control-center-sessoes" "$T/semback" "$T/comback/docs"
+echo '{"id":"CC-7","titulo":"x","estado":"B1","frente":"x"}' > "$T/comback/docs/backlog.jsonl"
 SESSAO="aaaaaaaa-bbbb-cccc-dddd-eeeeffff0000"
 export CLAUDE_CODE_SESSION_ID="$SESSAO"
 
@@ -27,7 +28,7 @@ const ev=[JSON.stringify({type:"user",message:{content:"vai"}})]
 if (process.argv[3] !== "nada") ev.push(JSON.stringify({type:"assistant",
   message:{content:[{type:"tool_use",name:"Edit",input:{file_path:process.argv[3]}}]}}))
 fs.writeFileSync(process.argv[2], ev.join("\n"))' x "$tr" "$2"
-  echo "{\"transcript_path\":\"$tr\",\"session_id\":\"$SESSAO\"}" | node "$H" > /dev/null 2>&1
+  echo "{\"transcript_path\":\"$tr\",\"session_id\":\"$SESSAO\",\"cwd\":\"$T/semback\"}" | node "$H" > /dev/null 2>&1
   local s=$?
   [ "$s" = "$3" ] && echo "  ok     $1" || echo "  FALHOU $1 (saiu $s, esperava $3)"
 }
@@ -73,7 +74,7 @@ const ev=[
     message:{content:[{type:"tool_use",name:"Edit",input:{file_path:"/x/src/app.mjs"}}]}}),
 ]
 fs.writeFileSync(process.argv[2], ev.join("\n"))' x "$tr" "$2" "$3"
-  echo "{\"transcript_path\":\"$tr\",\"session_id\":\"$SESSAO\"}" | node "$H" > /dev/null 2>&1
+  echo "{\"transcript_path\":\"$tr\",\"session_id\":\"$SESSAO\",\"cwd\":\"$T/semback\"}" | node "$H" > /dev/null 2>&1
   local s=$?
   [ "$s" = "$4" ] && echo "  ok     $1" || echo "  FALHOU $1 (saiu $s, esperava $4)"
 }
@@ -106,5 +107,24 @@ meta '{"subject":"o painel mentia sobre a maquina desligada","frente":"x","todos
 casoPedido "sem carimbo, nao cobra idade" \
   "agora muda a ordem do cartao, projeto e maquina primeiro" \
   "2026-08-20T13:00:00.000Z" 0
+
+# ===== CC-528: em projeto com backlog, a sessao declara o item em que trabalha =====
+# $1 nome  $2 esperado   (payload com cwd de um projeto que TEM docs/backlog.jsonl)
+casoItem() {
+  local tr="$T/t.jsonl"
+  node -e '
+const fs=require("fs")
+fs.writeFileSync(process.argv[2],[JSON.stringify({type:"user",message:{content:"vai"}}),JSON.stringify({type:"assistant",message:{content:[{type:"tool_use",name:"Edit",input:{file_path:"/x/src/app.mjs"}}]}})].join("\n"))' x "$tr"
+  echo "{\"transcript_path\":\"$tr\",\"session_id\":\"$SESSAO\",\"cwd\":\"$T/comback\"}" | node "$H" > /dev/null 2>&1
+  local s=$?
+  [ "$s" = "$2" ] && echo "  ok     $1" || echo "  FALHOU $1 (saiu $s, esperava $2)"
+}
+echo "— CC-528: projeto com backlog cobra o item declarado —"
+meta "$COMPLETO"
+casoItem "meta completo mas sem item: devolve"                      2
+meta '{"subject":"o backlog visivel","frente":"x","item":"CC-999","todos":[{"text":"a"}]}'
+casoItem "item que nao existe no backlog: devolve"                  2
+meta '{"subject":"o backlog visivel","frente":"x","item":"CC-7","todos":[{"text":"a"}]}'
+casoItem "item real declarado: passa"                               0
 
 rm -rf "$T"

@@ -1,5 +1,28 @@
 # Protocolo do agente — como alimentar o Agent Cockpit
 
+Conferência padrão: auto:npm test
+(validada em 02/10: o teste geral do cockpit)
+
+## Escopo do projeto
+
+Agent Cockpit: o painel dos agentes do Claude Code, onde também mora o Nisaba (backlog em dado, maestro e conferência). Uma linha por agente, agrupada por projeto. Sem dependência de runtime: só Node 18 ou mais.
+
+- `cc.mjs`: entrada única (CLI, servidor web, daemon, `set`, `done`, `backlog`).
+- `src/`: um módulo por assunto. `platform.mjs` concentra o que depende do sistema operacional. `web.mjs` é o servidor HTTP e as rotas. `ui_cockpit2.html` e `ui_novo.html` são as telas.
+- `src/backlog.mjs`, `src/maestro.mjs` e `src/conferencia.mjs`: o Nisaba.
+- `hooks/`: os guardas do Claude Code (`*-guard.mjs`, Routia). Hook novo entra em `src/hooksCatalogo.mjs` antes de funcionar.
+- `skills/`: skills distribuídas pelo painel. `test*.mjs` na raiz: o gate.
+- `docs/README.md`: mapa da documentação. `CLAUDE.md`: as armadilhas já pagas.
+
+Regras para qualquer tarefa:
+
+- `state.json` e `pins.json` em `~/.claude/jobs` são do CLI: só leitura. A única escrita ali é `meta.json`.
+- `process.platform` só em `src/platform.mjs`. Nenhum caminho de máquina fixo. A pasta `.claude` sai de `casaClaude()`.
+- Na VPS, `~/.claude` é somente leitura no sandbox: módulo que escreve lá precisa de abrigo.
+- O servidor não recarrega módulo. Mexeu em `src/`, religue (`POST /api/shutdown`, o systemd sobe de novo).
+- Comando que pode subir o painel vai com `CC_SEM_NAVEGADOR=1`. Teste nunca escreve em dado real: use `CC_HOME`.
+- Peça nova precisa de caminho até ela na tela. `npm test` passa antes de entregar.
+
 O `state.json` do Claude Code sabe *que* um agente está rodando. Não sabe **o
 que ele está resolvendo**. Essa parte o agente escreve, em `meta.json`.
 
@@ -146,6 +169,7 @@ node .../cc.mjs set '{"status":"entregue","blockers":null,"links":[{"label":"pai
 |---|---|
 | `subject` | 3 a 6 palavras, em português, o **problema** — não o comando rodado |
 | `frente` | título da seção do `docs/ROADMAP.md` onde isto entra — é o que liga o cartão ao mapa do projeto |
+| `item` | código do item do `docs/backlog.jsonl` em que a sessão trabalha (ex.: `CC-340`). Obrigatório em projeto que tem backlog: o aviso "espera você" mostra projeto / item / o que falta dele, e sem isto diz **sem item declarado** |
 | `category` | `feature` · `bug` · `deploy` · `research` · `refactor` · `docs` · `ops` · o que fizer sentido |
 | `route` | a rota de `docs/ROTAS-ATIVAS.md` que este agente possui, quando o projeto usa esse protocolo |
 | `status` | uma frase do passo atual — vence o `detail` automático |
@@ -158,6 +182,117 @@ node .../cc.mjs set '{"status":"entregue","blockers":null,"links":[{"label":"pai
 `todos` é a única lista que substitui em vez de somar — assim marcar um item
 como feito não vira concatenação duplicada. Os checkboxes do painel web
 escrevem por esse mesmo caminho.
+
+## Cartas para aprovar
+
+Quando o Felipe precisa **olhar e aprovar** várias coisas de um projeto (telas, textos, fotos, decisões
+de rota) e o caminho natural é uma pergunta de cada vez, o agente de **qualquer projeto** monta um
+baralho. Ele aprova no Tinder do cockpit ("Decidir um por um", origem "cartas"), no celular, por toque
+ou voz. Os votos ficam no próprio projeto, para o agente ler.
+
+**Onde fica, dentro do projeto:**
+
+- `docs/cartas/<deck>.json`: o baralho. O nome do deck usa só letras minúsculas, números e `-` (até 40).
+- `docs/cartas/img/`: as imagens. Só jpg, png ou webp, e **sempre dentro de `docs/cartas/`**.
+- `docs/cartas/<deck>.votos.jsonl`: os votos. **O agente nunca escreve nele**; só o cockpit acrescenta.
+
+**O formato exato** (o que `validarDeck`, em `src/cartas.mjs`, aceita; campo a mais é recusado):
+
+```json
+{
+  "titulo": "Telas do login",
+  "criado": "2026-10-04T12:00:00Z",
+  "cartas": [
+    {
+      "id": "tela-1",
+      "titulo": "Tela de entrada",
+      "pergunta": "Pode seguir com esta tela?",
+      "olhe": "O botão de entrar e a mensagem de erro de senha.",
+      "passos": ["Abra a tela no telefone", "Digite uma senha errada"],
+      "img": "docs/cartas/img/tela-1.png",
+      "link": "https://testedevoo.carzo.com.br/login",
+      "opcoes": ["Aprovo", "Não aprovo"],
+      "multipla": false
+    }
+  ]
+}
+```
+
+Regras do formato: até 200 cartas; `id` único (letras, números, `_` e `-`, até 60); só `id` e `titulo` são
+obrigatórios na carta; `passos` até 10 textos; `link` só `http` ou `https`; `opcoes` de 1 a 4 (sem
+`opcoes`, valem "Aprovo" e "Não aprovo"); `multipla: true` deixa marcar várias opções. **Nenhum texto leva
+travessão** (o validador recusa). Com a opção "Aprovo", deslizar para a direita já aprova.
+
+**Como validar, antes de avisar o Felipe:**
+
+```bash
+node ~/projetos/VPS_cockpit/cc.mjs cartas validar docs/cartas/<deck>.json
+```
+
+Sai `deck válido: n cartas`, ou a lista de erros (código de saída 1). Baralho inválido não aparece no
+Tinder: some em silêncio.
+
+**Como ler os votos**, rodando dentro da pasta do projeto:
+
+```bash
+node ~/projetos/VPS_cockpit/cc.mjs cartas votos <deck>
+```
+
+Cada linha traz a data, a carta, as opções escolhidas e a nota dele, se houver. `Não aprovo` com nota é o
+motivo para refazer.
+
+**A regra:**
+
+1. **O voto abre trabalho, e o trabalho entra no backlog ANTES de agir.** Leia os votos, registre um item
+   (ou mais) no `docs/backlog.jsonl` pelo `cc.mjs backlog`, com as palavras dele na nota, e só então mexa
+   no código.
+2. **Carta nunca pergunta o que já tem item no backlog.** Se a resposta já está num item (decidido, em
+   andamento ou pronto), a carta é ruído: confira o backlog antes de montar o baralho.
+3. Pergunta que o agente faz **em sessão** continua uma a uma, pelas perguntas estruturadas. Carta é para
+   aprovar material, não para substituir a pergunta.
+4. Carta já votada não volta: para pedir de novo, crie outra carta com outro `id`.
+
+## Artefatos de engenharia do sprint
+
+Ao começar trabalho de um sprint, rode dentro da pasta do projeto:
+
+```bash
+node cc.mjs sprint artefatos
+```
+
+Ele lista o que o sprint pede (MER, mapa de telas, contrato das rotas, casos de uso, modelo de ameaças,
+diagrama de sequência), para que serve e onde fica. Produza os marcados **A FAZER** no caminho indicado,
+**antes** do código que depende deles. O artefato é texto em Markdown (diagrama em Mermaid quando couber).
+Os já marcados "feito" você só atualiza se o seu trabalho mudar o que eles descrevem.
+
+## Design do projeto
+
+O painel tem uma área de design por projeto (tela Design, no menu). O que ela guarda fica **dentro do
+projeto**, para você ler:
+
+- `DESIGN.md` (ou o arquivo de design que o projeto já tem): a identidade. Ele troca cor e fonte e
+  acrescenta regras pelo painel, na seção `## Regras do painel`. Siga o arquivo ao mexer em tela.
+- `docs/design/telas/<tela>/v<N>.html` (ou `.png`, `.jpg`, `.webp`): as telas desenhadas antes do código.
+  `<tela>` usa só letras minúsculas, números e `-`. **Cada versão nova é um arquivo novo** (v1, v2, v3);
+  nunca reescreva uma versão que ele já viu. A página é um HTML sozinho, com o estilo dentro dela ou em
+  arquivo da mesma pasta, sem buscar nada na internet. O painel fotografa no celular e no computador.
+- `docs/design/mural.jsonl` e `docs/design/mural/`: o mural de referências dele (prints, links e recados).
+  Só leitura para o agente.
+- `docs/cartas/design.json`: o baralho das aprovações de design. **Quem escreve é o painel**; o agente
+  nunca escreve nele nem nos votos.
+
+**Como saber o que ele aprovou**, rodando dentro da pasta do projeto:
+
+```bash
+node ~/projetos/VPS_cockpit/cc.mjs cartas votos design
+```
+
+`Aprovo` na carta `tela-<tela>-v<N>` quer dizer: é essa versão que vira código. `Pedir ajuste`, com a nota,
+pede a versão N+1. As cartas `antes-depois-...` são o antes e depois do site, das fotos do Coderoom. No
+Coderoom, o painel entrega tudo isso no contexto de cada resposta, na seção "O DESIGN DESTE PROJETO".
+
+**A regra:** código de tela só a partir da versão aprovada. O voto abre trabalho, e o trabalho entra no
+backlog antes de agir, como nas cartas.
 
 ## Onde isso está ligado
 

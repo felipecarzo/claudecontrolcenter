@@ -177,9 +177,14 @@ const lerCache = () => {
 }
 
 const gravarCache = (cache) => {
-  const tmp = `${CACHE_FILE}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(cache))
-  fs.renameSync(tmp, CACHE_FILE)
+  /* CC-899: cache é dado derivado. Com ~/.claude somente leitura (sandbox da
+     VPS) a gravação falhava com EROFS e derrubava o `cc sprint capacidade`;
+     sem cache só se relê tudo na próxima vez. */
+  try {
+    const tmp = `${CACHE_FILE}.tmp`
+    fs.writeFileSync(tmp, JSON.stringify(cache))
+    fs.renameSync(tmp, CACHE_FILE)
+  } catch { /* relê na próxima */ }
 }
 
 /** Varre os transcripts, relendo só o que mudou de tamanho ou data. */

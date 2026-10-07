@@ -517,6 +517,7 @@ function lerBacklogEmDado(cwd) {
     let o
     try { o = JSON.parse(l) } catch { continue }
     if (!o || !o.id || !o.titulo) continue
+    if (o.pai) continue // micro tarefa: aparece no pai, não como item do mapa (padrão de projeto, 01/10)
     total++
     const nome = o.frente || 'sem frente'
     if (!porFrente.has(nome)) porFrente.set(nome, [])

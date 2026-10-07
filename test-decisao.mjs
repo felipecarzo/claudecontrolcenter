@@ -121,8 +121,17 @@ await t('pergunta já respondida ou trocada: recusa sem apertar', async () => {
 
 await t('conversa fora de terminal do painel: diz para responder nela', async () => {
   const f = falso({ tela: 'Qual cor?', transcrito: pergunta('a1', COR), conversa: 'outra' })
-  const r = await responder({ conversa: 'c1', id: 'a1', respostas: [{ opcao: 0 }] }, f.deps)
+  const r = await responder({ conversa: 'c1', id: 'a1', respostas: [{ opcao: 0 }] }, { ...f.deps, aberta: () => true })
   assert.match(r.erro, /terminal aberto pelo painel/)
+})
+
+/* CC-694: sessão FECHADA diz isso com todas as letras, em vez de mandar
+   responder numa sessão que não existe mais. */
+await t('sessão fechada: o cartão diz que não há ninguém do outro lado', async () => {
+  const f = falso({ tela: 'Qual cor?', transcrito: pergunta('a1', COR), conversa: 'outra' })
+  const r = await responder({ conversa: 'c1', id: 'a1', respostas: [{ opcao: 0 }] }, { ...f.deps, aberta: () => false })
+  assert.equal(r.fechada, true)
+  assert.match(r.erro, /já foi fechada/)
 })
 
 await t('menu que não avança para a pergunta 2 para no meio, sem mandar a resposta errada', async () => {
@@ -365,7 +374,8 @@ await t('parar manda Esc e confirma pela tela; conversa fora do painel é recusa
   const deps = { sessoes: async () => ({ p: { sessao: 's', conversa: 'c1' } }), apertar: async (s, k) => { log.push(k); tela = '⎿ Interrupted · What should Claude do instead?'; return { ok: true } }, capturar: async () => tela, esperar: async () => {} }
   assert.deepEqual(await parar({ conversa: 'c1' }, deps), { ok: true, sessao: 's' })
   assert.deepEqual(log, ['Escape'])
-  assert.match((await parar({ conversa: 'x' }, deps)).erro, /terminal aberto pelo painel/)
+  assert.match((await parar({ conversa: 'x' }, { ...deps, aberta: () => true })).erro, /terminal aberto pelo painel/)
+  assert.match((await parar({ conversa: 'x' }, { ...deps, aberta: () => false })).erro, /já foi fechada/)
 })
 
 await t('sessão DESTA máquina lê a fala do próprio transcrito, mesmo carimbada com origem', async () => {

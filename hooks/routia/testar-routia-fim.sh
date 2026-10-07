@@ -90,7 +90,8 @@ fs.writeFileSync(process.argv[1], JSON.stringify({ pedidos: [{
 }] }))
 ' "$COM_A_MINHA/docs/.rotas-pedidos.json"
 fala "avisa quem esta travado esperando resposta" sim "cafe0000" "$COM_A_MINHA" "$MINHA"
-fala "e diz o comando de autorizar, nao so que existe pedido" sim "autorizar" "$COM_A_MINHA" "$MINHA"
+# desde 21/08 o pedido se responde na tela, nao por comando; em 01/10 a tela virou Analise > rotas
+fala "e diz onde responder, nao so que existe pedido" sim "Análise › rotas" "$COM_A_MINHA" "$MINHA"
 
 echo "— higiene —"
 echo '{}' | node "$HOOK" > /dev/null 2>&1

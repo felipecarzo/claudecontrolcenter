@@ -10,7 +10,10 @@ import assert from 'node:assert/strict'
 const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gate-mem-'))
 process.env.CC_HOME = casa
 process.env.CC_SILENCIO_MS = '1500' // CC-803: o vigia de silêncio, com limite de teste
+process.env.CC_SEM_NICE = '1' // o agente de produção cede a vez (prioridade 10); no teste, com limite de segundos, não
 process.env.CC_LIMITE_CONTEXTO = '50000' // CC-813: o limite de contexto, com valor de teste
+process.env.CC_LIMITE_PRESO_MS = '1200' // CC-826: o tempo parado depois de uma falha de limite, com valor de teste
+process.env.CC_ESPERAS_LIMITE_MS = '400' // a espera do limite do grátis: uma só, curta, no teste
 // CC-731: turno de mentira que termina "pronto" não pode pedir nome ao agy de verdade
 process.env.CC_SEM_AGY = '1'
 // CC-743: nem build nem foto de verdade dentro do teste
@@ -302,6 +305,14 @@ let e = ''; process.stdin.on('data', (d) => (e += d)).on('end', () => {
     assert.equal(F.enderecoDe('/p/outro'), null, 'projeto que não está no ar não tem endereço')
     process.env.CC_DEV_MAPA = path.join(casa, 'nao-existe.json')
     assert.equal(F.enderecoDe('/p/VPS_jogo'), null, 'sem mapa não quebra')
+    // CC-819: mapa zerado por outra sessão, mas o projeto está na lista registrada
+    process.env.CC_DEV_MAPA = path.join(casa, 'mapa-zerado.json'); fs.writeFileSync(process.env.CC_DEV_MAPA, '{}')
+    const lista = path.join(casa, 'projetos.txt'); fs.writeFileSync(lista, `outro:projetos/VPS_outro:vite:5290\njogo:${path.relative(os.homedir(), '/p/VPS_jogo')}:vite:5294\n`)
+    process.env.CC_DEV_LISTA = lista
+    const reg = F.enderecoDe('/p/VPS_jogo')
+    assert.equal(reg.nome, 'jogo'); assert.equal(reg.foraDoMapa, true, 'avisa que o roteador perdeu o registro')
+    assert.equal(F.enderecoDe('/p/sem-registro'), null)
+    delete process.env.CC_DEV_LISTA
   })
   /* CC-803: resposta vazia. Um opencode que roda uma ferramenta e termina sem
      escrever nada é pedido a resumir, uma vez; o que escreve normalmente, não. */
@@ -324,6 +335,241 @@ let e = ''; process.stdin.on('data', (d) => (e += d)).on('end', () => {
     assert.deepEqual(msgsCalado.filter((m) => m.de === 'opencode').map((m) => (m.texto || '') + ':' + m.estado), [':pronto', 'Fiz o ajuste.:pronto'])
     assert.equal(msgsCalado.filter((m) => m.de === 'sistema' && /terminou sem escrever nada/.test(m.texto)).length, 1)
   })
+  /* CC-812: calado também depois do pedido de resumo. O painel escreve o resumo
+     sozinho, do que o agente fez, e não pede uma terceira vez. */
+  const caladoSempre = path.join(casa, 'opencode-calado-sempre.mjs')
+  fs.writeFileSync(caladoSempre, `#!/usr/bin/env node
+let e = ''; process.stdin.on('data', (d) => (e += d)).on('end', () => {
+  console.log(JSON.stringify({ type: 'tool_use', part: { type: 'tool', tool: 'edit', state: { status: 'completed', input: { filePath: '/p/jogo/src/main.js' }, output: 'ok' } } }))
+  console.log(JSON.stringify({ type: 'tool_use', part: { type: 'tool', tool: 'bash', state: { status: 'completed', input: { command: 'npm run build' }, output: 'ok' } } }))
+  console.log(JSON.stringify({ type: 'step_finish', part: { reason: 'stop', tokens: {} } })); process.exit(0)
+})`)
+  fs.chmodSync(caladoSempre, 0o755)
+  const binCaladoSempre = ehWindows ? caladoSempre.replace(/\.mjs$/, '.cmd') : caladoSempre
+  if (ehWindows) fs.writeFileSync(binCaladoSempre, `@"${process.execPath}" "${caladoSempre}" %*\r\n`)
+  const { id: cidCS } = G.criar({ titulo: 'calado sempre', projeto: 'p', cwd: casa })
+  T.responder(cidCS, { texto: 'faça', agente: 'opencode', binario: binCaladoSempre })
+  for (let i = 0; i < 60; i++) { await new Promise((r) => setTimeout(r, 200)); const c = G.lerConversa(cidCS); if (!c.turnoAberto && i > 12 && c.mensagens.some((m) => m.de === 'sistema' && /montado pelo painel/.test(m.texto || ''))) break }
+  const msgsCS = G.lerConversa(cidCS).mensagens
+  passa('CC-812: calado depois do pedido de resumo, o painel escreve o resumo do que ele fez, sem pedir de novo', () => {
+    const resumo = msgsCS.find((m) => m.de === 'sistema' && /montado pelo painel/.test(m.texto || ''))
+    assert.ok(resumo, 'o painel escreveu o resumo')
+    assert.match(resumo.texto, /main\.js/); assert.match(resumo.texto, /npm run build/)
+    assert.equal(msgsCS.filter((m) => m.de === 'opencode').length, 2, 'duas tentativas, e não uma terceira')
+  })
+  /* CC-739: o "sim" ao pedido de pasta externa. A pasta fica guardada na
+     conversa e o opencode recebe a permissão na chamada seguinte; o "não" só
+     registra. O opencode falso devolve a configuração que recebeu. */
+  const ecoa = path.join(casa, 'opencode-ecoa.mjs')
+  fs.writeFileSync(ecoa, `#!/usr/bin/env node
+process.stdin.on('data', () => {}).on('end', () => {
+  console.log(JSON.stringify({ type: 'text', part: { type: 'text', text: 'CONFIG=' + (process.env.OPENCODE_CONFIG_CONTENT || '') } }))
+  console.log(JSON.stringify({ type: 'step_finish', part: { reason: 'stop', tokens: {} } })); process.exit(0)
+})`)
+  fs.chmodSync(ecoa, 0o755)
+  const binEcoa = ehWindows ? ecoa.replace(/\.mjs$/, '.cmd') : ecoa
+  if (ehWindows) fs.writeFileSync(binEcoa, `@"${process.execPath}" "${ecoa}" %*\r\n`)
+  const { id: cidLibera } = G.criar({ titulo: 'pasta liberada', projeto: 'p', cwd: casa })
+  const pidNao = T.pedirPasta(cidLibera, ['/tmp/fora-nao/*'])
+  T.liberarPasta(pidNao, false)
+  const pidSim = T.pedirPasta(cidLibera, ['/tmp/fora-sim/*'])
+  T.liberarPasta(pidSim, true, { binario: binEcoa })
+  for (let i = 0; i < 50; i++) { await new Promise((r) => setTimeout(r, 200)); const c = G.lerConversa(cidLibera); if (!c.turnoAberto && c.mensagens.some((m) => m.de === 'opencode' && m.estado === 'pronto')) break }
+  const cPasta = G.lerConversa(cidLibera)
+  passa('CC-739: o sim guarda a pasta na conversa e o opencode recebe a permissão; o não só registra', () => {
+    assert.deepEqual(cPasta.cabecalho.opencodePastas, ['/tmp/fora-sim/*'], 'só a liberada fica guardada')
+    assert.ok(cPasta.mensagens.some((m) => m.de === 'sistema' && /não liberou \/tmp\/fora-nao/.test(m.texto || '')))
+    const resposta = cPasta.mensagens.find((m) => m.de === 'opencode')?.texto || ''
+    assert.match(resposta, /external_directory/); assert.match(resposta, /fora-sim[^"]*":"allow"/)
+    assert.doesNotMatch(resposta, /fora-nao/)
+  })
+  /* CC-828: o maestro. As peças que não chamam IA: ler o plano e o robô. */
+  const Ma = await import('./src/maestro.mjs')
+  passa('CC-828: a mensagem de conserto leva o erro exato do robô', () => {
+    // o plano passa pelo contrato (CC-837), testado em test-tarefa.mjs
+    assert.match(Ma.textoDaTarefa({ id: 'X-2', intencao: 'a', pronto: 'faz x', arquivos: [] }, 'o build falhou:\nX'), /NÃO passou.*\n.*build falhou[\s\S]*Corrija só isso/)
+  })
+  /* Padrão de projeto (01/10): o plano vira filhas no backlog do projeto, e o escopo vai para o AGENTS.md. */
+  const BkMa = await import('./src/backlog.mjs')
+  const projMa = fs.mkdtempSync(path.join(os.tmpdir(), 'VPS_sim-teste-'))
+  // com build o robô já tem como provar; sem ele, o plano ganha a tarefa do teste (CC-919, medido em test-tarefa.mjs)
+  fs.writeFileSync(path.join(projMa, 'package.json'), '{"scripts":{"build":"x"}}')
+  const gMa = Ma.gravarPlano(projMa, 'quero um contador de monstros', [{ titulo: 'criar o contador', pedido: 'pôr o contador no html', arquivos: ['index.html'] }, { titulo: 'contar', pedido: 'somar ao matar', arquivos: [] }])
+  passa('padrão: o plano do maestro vira um item com micro tarefas filhas, e o ROADMAP mostra o andamento', () => {
+    const { itens } = BkMa.ler(path.join(projMa, 'docs', 'backlog.jsonl'))
+    assert.deepEqual(itens.map((x) => [x.id, x.pai || null]), [['SM-1', null], ['SM-2', 'SM-1'], ['SM-3', 'SM-1']])
+    assert.equal(itens[0].citacao, 'quero um contador de monstros'); assert.deepEqual(itens[1].arquivos, ['index.html'])
+    assert.match(fs.readFileSync(path.join(projMa, 'docs', 'ROADMAP.md'), 'utf8'), /SM-1 \| definida · 0 de 2/)
+    assert.equal(Ma.paiAberto(itens), 'SM-1')
+    assert.equal(Ma.garantirEscopo(projMa, 'jogo em src/main.js'), true)
+    assert.equal(Ma.garantirEscopo(projMa, 'outro'), false, 'escopo que já existe não é trocado')
+    assert.match(fs.readFileSync(path.join(projMa, 'AGENTS.md'), 'utf8'), /## Escopo do projeto\n\njogo em src\/main\.js/)
+  })
+  fs.rmSync(projMa, { recursive: true, force: true })
+  passa('CC-828: conversa com foto em andamento conta como ocupada (a tarefa seguinte espera)', () => {
+    assert.equal(Ma.ocupada({ turnoAberto: 't1', mensagens: [] }), true)
+    assert.equal(Ma.ocupada({ turnoAberto: null, mensagens: [{ de: 'sistema', texto: 'Conferindo o endereço de teste (...)' }] }), true)
+    assert.equal(Ma.ocupada({ turnoAberto: null, mensagens: [{ de: 'claude', texto: 'REVISÃO OK' }] }), false)
+  })
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-'))
+  const { execFileSync: exS } = await import('node:child_process')
+  exS('git', ['init', '-q'], { cwd: repo }); fs.writeFileSync(path.join(repo, 'a.txt'), 'x'); exS('git', ['add', '.'], { cwd: repo })
+  const antesMa = Date.now(); await new Promise((r) => setTimeout(r, 30))
+  const nada = await Ma.conferir(repo, antesMa)
+  fs.writeFileSync(path.join(repo, 'b.txt'), 'novo')
+  const algo = await Ma.conferir(repo, antesMa)
+  // o jogo recebe commit automático ao fim de cada resposta: o robô tem de ver o que já entrou em commit
+  const cfgGit = ['-c', 'user.email=t@t', '-c', 'user.name=t']
+  exS('git', [...cfgGit, 'commit', '-qm', 'base'], { cwd: repo })
+  const headMa = await Ma.headDe(repo); const antes2 = Date.now(); await new Promise((r) => setTimeout(r, 30))
+  fs.writeFileSync(path.join(repo, 'c.txt'), 'x'); exS('git', ['add', '.'], { cwd: repo }); exS('git', [...cfgGit, 'commit', '-qm', 'auto'], { cwd: repo })
+  const comitado = await Ma.conferir(repo, antes2, headMa)
+  passa('CC-828: o robo reprova tarefa que nao mexeu em nada e aprova a que mexeu, mesmo ja commitada', () => {
+    assert.equal(nada.ok, false); assert.match(nada.erro, /nenhum arquivo/)
+    assert.equal(algo.ok, true); assert.deepEqual(algo.mexidos, ['b.txt'])
+    assert.equal(comitado.ok, true); assert.deepEqual(comitado.mexidos, ['c.txt'])
+  })
+  /* CC-839 (Nisaba): ponto de volta e menor privilégio. */
+  fs.writeFileSync(path.join(repo, 'a.txt'), 'trabalho sem commit de outra sessão')
+  fs.writeFileSync(path.join(repo, 'u.txt'), 'solto de antes')
+  const pontoMa = await Ma.pontoDeVolta(repo)
+  const antes3 = Date.now(); await new Promise((r) => setTimeout(r, 30))
+  fs.writeFileSync(path.join(repo, 'a.txt'), 'ruim'); fs.writeFileSync(path.join(repo, 'u.txt'), 'ruim'); fs.writeFileSync(path.join(repo, 'n.txt'), 'nasceu')
+  fs.mkdirSync(path.join(repo, 'docs'), { recursive: true }); fs.writeFileSync(path.join(repo, 'docs', 'eventos.jsonl'), '{}\n')
+  const mexidos3 = await Ma.mexidosDesde(repo, antes3, headMa)
+  const desfeitos = await Ma.voltar(repo, pontoMa, mexidos3)
+  passa('CC-839: o diário do maestro não conta como arquivo mexido pelo agente', () => {
+    assert.deepEqual(mexidos3, ['a.txt', 'n.txt', 'u.txt'])
+  })
+  passa('CC-839: reprovada, volta ao ponto: o trabalho sem commit de outra sessão sobrevive, o novo some', () => {
+    assert.deepEqual(desfeitos.sort(), ['a.txt', 'n.txt', 'u.txt'])
+    assert.equal(fs.readFileSync(path.join(repo, 'a.txt'), 'utf8'), 'trabalho sem commit de outra sessão')
+    assert.equal(fs.readFileSync(path.join(repo, 'u.txt'), 'utf8'), 'solto de antes')
+    assert.equal(fs.existsSync(path.join(repo, 'n.txt')), false)
+  })
+  // 01/10: a conta pelo CONTEÚDO. Regravar igual não conta; commit no meio não confunde.
+  fs.writeFileSync(path.join(repo, 'velho.txt'), 'mudança de uma rodada anterior, sem commit')
+  const fotoAntes = await Ma.fotoDoConteudo(repo)
+  fs.writeFileSync(path.join(repo, 'a.txt'), fs.readFileSync(path.join(repo, 'a.txt'))) // regravado igual
+  exS('git', ['add', '.'], { cwd: repo }); exS('git', [...cfgGit, 'commit', '-qm', 'commit automático no meio'], { cwd: repo })
+  fs.writeFileSync(path.join(repo, 'novo.txt'), 'o agente criou')
+  const mudados = Ma.mudadosEntre(fotoAntes, await Ma.fotoDoConteudo(repo))
+  passa('robô pelo conteúdo: só o que o agente mudou conta; regravação igual e commit no meio não', () => {
+    assert.deepEqual(mudados, ['novo.txt'])
+  })
+  // 01/10, visto ao vivo: `cat > index.html` regravou o arquivo inteiro e passou. Agora é reescrita destrutiva.
+  fs.writeFileSync(path.join(repo, 'grande.html'), Array.from({ length: 200 }, (_, i) => `<p>linha ${i}</p>`).join('\n') + '\n')
+  fs.writeFileSync(path.join(repo, 'medio.js'), Array.from({ length: 200 }, (_, i) => `const v${i} = ${i}`).join('\n') + '\n')
+  exS('git', ['add', '.'], { cwd: repo }); exS('git', [...cfgGit, 'commit', '-qm', 'base grande'], { cwd: repo })
+  const pontoGrande = await Ma.pontoDeVolta(repo)
+  fs.writeFileSync(path.join(repo, 'grande.html'), '<p>só isto</p>\n')
+  fs.appendFileSync(path.join(repo, 'medio.js'), 'const nova = 1\n')
+  const destrutivos = await Ma.encolhidos(repo, pontoGrande, ['grande.html', 'medio.js'])
+  passa('reescrita destrutiva: arquivo que perde quase tudo é apontado; mudança pequena não', () => {
+    assert.deepEqual(destrutivos, ['grande.html (200 para 1 linhas)'])
+  })
+  passa('CC-839: mexer fora dos arquivos declarados é apontado; lista vazia não restringe', () => {
+    assert.deepEqual(Ma.foraDoDeclarado(['src/a.js', 'src/b.js'], ['src/a.js']), ['src/b.js'])
+    assert.deepEqual(Ma.foraDoDeclarado(['./src/a.js'], ['src/a.js']), [])
+    assert.deepEqual(Ma.foraDoDeclarado(['x'], []), [])
+  })
+  fs.rmSync(repo, { recursive: true, force: true })
+  /* CC-829: o opencode sobe ENXUTO: sem as instruções e skills herdadas do Claude
+     Code e sem as 7 ferramentas que quase não usa (medido: 25,5 mil -> 5,5 mil
+     tokens de entrada por passo). O falso devolve o que recebeu pelo ambiente. */
+  const envFalso = path.join(casa, 'opencode-env.mjs')
+  fs.writeFileSync(envFalso, `#!/usr/bin/env node
+process.stdin.resume(); process.stdin.on('end', () => {
+  let cfg = {}; try { cfg = JSON.parse(process.env.OPENCODE_CONFIG_CONTENT || '{}') } catch {}
+  const r = { semHeranca: process.env.OPENCODE_DISABLE_CLAUDE_CODE || null, ferramentasFora: Object.values(cfg.tools || {}).filter((v) => v === false).length }
+  console.log(JSON.stringify({ type: 'text', part: { type: 'text', text: JSON.stringify(r) } }))
+  console.log(JSON.stringify({ type: 'step_finish', part: { reason: 'stop', tokens: {} } })); process.exit(0)
+})`)
+  fs.chmodSync(envFalso, 0o755)
+  const binEnv = ehWindows ? envFalso.replace(/\.mjs$/, '.cmd') : envFalso
+  if (ehWindows) fs.writeFileSync(binEnv, `@"${process.execPath}" "${envFalso}" %*\r\n`)
+  const lerEnv = async () => {
+    const { id: cid } = G.criar({ titulo: 'env', projeto: 'p', cwd: casa })
+    T.responder(cid, { texto: 'faça', agente: 'opencode', binario: binEnv })
+    for (let i = 0; i < 60; i++) { await new Promise((r) => setTimeout(r, 200)); const c = G.lerConversa(cid); if (!c.turnoAberto && i > 8) break }
+    return JSON.parse(G.lerConversa(cid).mensagens.find((m) => m.de === 'opencode').texto)
+  }
+  const enxutoLido = await lerEnv()
+  process.env.CC_OPENCODE_HERDA = '1'; const herdaLido = await lerEnv(); delete process.env.CC_OPENCODE_HERDA
+  passa('CC-829: o opencode sobe enxuto (sem heranca do Claude Code, 6 ferramentas fora, patch FICA) e o interruptor volta ao antigo', () => {
+    // 01/10: patch fica, é a única ferramenta de editar de alguns modelos grátis
+    assert.deepEqual(enxutoLido, { semHeranca: '1', ferramentasFora: 6 })
+    assert.deepEqual(herdaLido, { semHeranca: null, ferramentasFora: 0 })
+  })
+  /* CC-823: limite de uso do modelo grátis. O falso devolve "Rate limit exceeded"
+     no modelo padrão (duas vezes e some, como o opencode real) e responde
+     normal em qualquer outro; a variante "todos" limita todos os modelos. */
+  const mkLimite = (nome, todos, falhas = 2) => {
+    const arq = path.join(casa, nome)
+    fs.writeFileSync(arq, `#!/usr/bin/env node
+const modelo = process.argv[process.argv.indexOf('--model') + 1] || ''
+process.stdin.resume(); process.stdin.on('end', () => {
+  if (${todos ? 'true' : "/big-pickle/.test(modelo)"}) {
+    for (let i = 0; i < ${falhas}; i++) console.error('timestamp=2026-10-01T12:00:0' + i + 'Z level=ERROR message="stream error" error.error="AI_APICallError: Rate limit exceeded. Please try again later."')
+    return setTimeout(() => process.exit(0), 20000)
+  }
+  console.log(JSON.stringify({ type: 'text', part: { type: 'text', text: 'ok com ' + modelo } }))
+  console.log(JSON.stringify({ type: 'step_finish', part: { reason: 'stop', tokens: {} } })); process.exit(0)
+})`)
+    fs.chmodSync(arq, 0o755)
+    const bin = ehWindows ? arq.replace(/\.mjs$/, '.cmd') : arq
+    if (ehWindows) fs.writeFileSync(bin, `@"${process.execPath}" "${arq}" %*\r\n`)
+    return bin
+  }
+  const esperaCid = async (cid, cond) => { for (let i = 0; i < 150; i++) { await new Promise((r) => setTimeout(r, 200)); const c = G.lerConversa(cid); if (!c.turnoAberto && i > 10 && cond(c.mensagens)) return c.mensagens } return G.lerConversa(cid).mensagens }
+  const { id: cidLimite } = G.criar({ titulo: 'limite', projeto: 'p', cwd: casa })
+  T.responder(cidLimite, { texto: 'faça', agente: 'opencode', binario: mkLimite('opencode-limite.mjs', false) })
+  const msgsLimite = await esperaCid(cidLimite, (m) => m.some((x) => x.texto && /^ok com/.test(x.texto)))
+  passa('CC-823: limite de uso do modelo vira aviso com a causa e o MESMO pedido vai a outro modelo gratis', () => {
+    assert.ok(msgsLimite.some((m) => m.de === 'opencode' && m.texto === 'ok com opencode/mimo-v2.6-flash-free'), 'respondeu o modelo reserva')
+    assert.ok(msgsLimite.some((m) => m.de === 'sistema' && /limite de uso.*Troquei para mimo-v2\.6-flash/.test(m.texto)), 'a conversa conta a causa')
+    assert.equal(msgsLimite.filter((m) => m.de === 'felipe').length, 1, 'o pedido dele não aparece duas vezes')
+    assert.ok(!msgsLimite.some((m) => /caiu no meio|sem sinal/.test(m.texto || '')), 'não é queda nem silêncio')
+    assert.equal(G.lerConversa(cidLimite).cabecalho.modelos?.opencode, undefined, 'o modelo reserva não vira escolha dele')
+  })
+  /* CC-826: UMA falha e o opencode nunca mais escreve (7 dos 31 turnos reais).
+     O painel espera um tempo sem atividade e troca, em vez de deixar o vigia de
+     silêncio levar 5 minutos. */
+  T.esquecerLimites()
+  const { id: cidPreso } = G.criar({ titulo: 'preso depois de uma falha', projeto: 'p', cwd: casa })
+  const t0Preso = Date.now()
+  T.responder(cidPreso, { texto: 'faça', agente: 'opencode', binario: mkLimite('opencode-limite-uma.mjs', false, 1) })
+  const msgsPreso = await esperaCid(cidPreso, (m) => m.some((x) => x.texto && /^ok com/.test(x.texto)))
+  passa('CC-826: uma falha de limite e silencio logo depois ja troca de modelo, sem esperar o vigia de 5 min', () => {
+    assert.ok(msgsPreso.some((m) => m.de === 'opencode' && m.texto === 'ok com opencode/mimo-v2.6-flash-free'))
+    assert.ok(msgsPreso.some((m) => m.de === 'sistema' && /limite de uso/.test(m.texto)))
+    assert.ok(Date.now() - t0Preso < 15000, 'em segundos, e não em minutos')
+  })
+  // (a memória do limite fica: o teste a seguir depende dela)
+  // o painel lembra o limite por uns minutos: o PRÓXIMO pedido já começa pelo modelo que funciona
+  const { id: cidLembra } = G.criar({ titulo: 'lembra o limite', projeto: 'p', cwd: casa })
+  T.responder(cidLembra, { texto: 'outro pedido', agente: 'opencode', binario: mkLimite('opencode-limite.mjs', false) })
+  const msgsLembra = await esperaCid(cidLembra, (m) => m.some((x) => x.texto && /^ok com/.test(x.texto)))
+  passa('CC-823: o painel lembra o limite e o proximo pedido ja comeca pelo modelo reserva', () => {
+    assert.ok(msgsLembra.some((m) => m.de === 'opencode' && m.texto === 'ok com opencode/mimo-v2.6-flash-free'))
+    assert.ok(msgsLembra.some((m) => m.de === 'sistema' && /deu limite de uso há pouco.*Comecei esta resposta por mimo/.test(m.texto)))
+    assert.ok(!msgsLembra.some((m) => m.de === 'opencode' && m.estado === 'interrompido'), 'sem esperar o limite de novo')
+  })
+  T.esquecerLimites()
+  const { id: cidTodos } = G.criar({ titulo: 'todos limitados', projeto: 'p', cwd: casa })
+  // teto 'opencode': o teste nunca chama o Antigravity nem o Claude de verdade; a subida da fila é provada em test-tarefa.mjs
+  T.responder(cidTodos, { texto: 'faça', agente: 'opencode', binario: mkLimite('opencode-limite-todos.mjs', true), teto: 'opencode' })
+  const msgsTodos = await esperaCid(cidTodos, (m) => m.some((x) => /Parei de tentar/.test(x.texto || '')))
+  passa('CC-823/840: com a fila no teto, ESPERA o limite e tenta de novo sozinho; so depois desiste e oferece outro agente', () => {
+    const esperas = msgsTodos.filter((m) => m.de === 'sistema' && /estão no limite de uso agora.*Espero/.test(m.texto))
+    assert.equal(esperas.length, 1, 'uma espera (o teste usa uma só, curta)')
+    const fim = msgsTodos.find((m) => m.de === 'sistema' && /Parei de tentar/.test(m.texto))
+    assert.ok(fim, 'depois das esperas, desiste')
+    assert.deepEqual(fim.acoes.map((a) => a.agente), ['claude', 'agy'])
+    assert.equal(msgsTodos.filter((m) => m.de === 'felipe').length, 1, 'o pedido dele não se repete na conversa')
+    assert.ok(msgsTodos.indexOf(fim) > msgsTodos.indexOf(esperas[0]), 'tentou de novo depois de esperar')
+  })
+  T.esquecerLimites() // os testes seguintes usam o modelo padrão de novo
   /* CC-813: sessão do opencode grande demais é trocada por uma nova, levando a
      conversa em transcrição. O falso fala "vi o historico" só se o pedido
      trouxer os DOIS pedidos: com a sessão mantida, o 2º chegaria sozinho. */
@@ -355,7 +601,8 @@ let e = ''; process.stdin.on('data', (d) => (e += d)).on('end', () => {
   fs.writeFileSync(mudo, `#!/usr/bin/env node
 let e = ''; process.stdin.on('data', (d) => (e += d)).on('end', () => {
   const fim = (t) => { console.log(JSON.stringify({ type: 'text', part: { type: 'text', text: t } })); console.log(JSON.stringify({ type: 'step_finish', part: { reason: 'stop', tokens: {} } })); process.exit(0) }
-  if (/sem agir/.test(e)) return fim('retomei')
+  // CC-811: a retomada por silêncio vem em sessão NOVA, com a conversa em transcrição
+  if (/sem agir/.test(e)) return fim(/\\[Felipe\\] faça/.test(e) ? 'retomei com historico' : 'retomei sem historico')
   console.log(JSON.stringify({ type: 'text', part: { type: 'text', text: 'comecei' } }))
   setTimeout(() => process.exit(0), 20000)
 })`)
@@ -367,8 +614,30 @@ let e = ''; process.stdin.on('data', (d) => (e += d)).on('end', () => {
   for (let i = 0; i < 60; i++) { await new Promise((r) => setTimeout(r, 200)); const c = G.lerConversa(cidMudo); if (!c.turnoAberto && i > 20 && c.mensagens.filter((m) => m.de === 'opencode').length >= 2) break }
   const msgsMudo = G.lerConversa(cidMudo).mensagens
   passa('CC-803: agente calado alem do limite e parado e pedido a retomar UMA vez', () => {
-    assert.deepEqual(msgsMudo.filter((m) => m.de === 'opencode').map((m) => `${m.texto}:${m.estado}`), ['comecei:interrompido', 'retomei:pronto'])
+    assert.deepEqual(msgsMudo.filter((m) => m.de === 'opencode').map((m) => `${m.texto}:${m.estado}`), ['comecei:interrompido', 'retomei com historico:pronto'])
     assert.ok(msgsMudo.some((m) => m.de === 'sistema' && /sem sinal.*prumo parou/.test(m.texto)), 'a conversa conta o que aconteceu')
+  })
+  /* CC-811: a retomada TAMBÉM fica calada. O painel para, conta o que foi
+     mexido nas duas tentativas e deixa as saídas na mão dele (botões). */
+  const mudoSempre = path.join(casa, 'opencode-mudo-sempre.mjs')
+  fs.writeFileSync(mudoSempre, `#!/usr/bin/env node
+process.stdin.resume()
+console.log(JSON.stringify({ type: 'tool_use', part: { type: 'tool', tool: 'write', state: { status: 'completed', input: { filePath: '/p/src/jogo.js' }, output: 'x' } } }))
+setTimeout(() => process.exit(0), 20000)`)
+  fs.chmodSync(mudoSempre, 0o755)
+  const binMudoSempre = ehWindows ? mudoSempre.replace(/\.mjs$/, '.cmd') : mudoSempre
+  if (ehWindows) fs.writeFileSync(binMudoSempre, `@"${process.execPath}" "${mudoSempre}" %*\r\n`)
+  const { id: cidSempre } = G.criar({ titulo: 'mudo sempre', projeto: 'p', cwd: casa })
+  T.responder(cidSempre, { texto: 'faça', agente: 'opencode', binario: binMudoSempre })
+  for (let i = 0; i < 80; i++) { await new Promise((r) => setTimeout(r, 200)); const c = G.lerConversa(cidSempre); if (!c.turnoAberto && i > 20 && c.mensagens.some((m) => /calado de novo/.test(m.texto || ''))) break }
+  const msgsSempre = G.lerConversa(cidSempre).mensagens
+  passa('CC-811: segunda queda calada vira aviso com o que foi mexido e botoes para outros agentes', () => {
+    const aviso = msgsSempre.find((m) => m.de === 'sistema' && /calado de novo/.test(m.texto))
+    assert.ok(aviso, 'o aviso existe')
+    assert.match(aviso.texto, /jogo\.js/, 'diz o que o agente chegou a mexer')
+    assert.deepEqual(aviso.acoes.map((a) => a.agente), ['claude', 'agy'], 'as saídas são os outros dois agentes')
+    assert.match(aviso.acoes[0].texto, /Continue de onde ele parou/)
+    assert.equal(msgsSempre.filter((m) => m.de === 'sistema' && /calado de novo/.test(m.texto)).length, 1, 'avisa uma vez só')
   })
   /* CC-805: o opencode PARA sozinho quando a pasta é recusada. Isso não é queda:
      tem de virar pedido de pasta, e não o "continue de onde parou". */

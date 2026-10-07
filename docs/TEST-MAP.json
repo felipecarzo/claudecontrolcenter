@@ -9,17 +9,17 @@
  },
  "resumo": {
   "tela": {
-   "total": 15,
-   "existe": 15,
-   "funciona": 9,
-   "explica": 15,
+   "total": 17,
+   "existe": 17,
+   "funciona": 11,
+   "explica": 17,
    "estreito": 0,
-   "profundo": 15
+   "profundo": 17
   },
   "acao": {
-   "total": 267,
-   "existe": 267,
-   "funciona": 43,
+   "total": 337,
+   "existe": 337,
+   "funciona": 47,
    "explica": 0,
    "estreito": 0,
    "profundo": 0
@@ -33,20 +33,20 @@
    "profundo": 0
   },
   "endereco": {
-   "total": 139,
-   "existe": 139,
-   "funciona": 7,
+   "total": 159,
+   "existe": 159,
+   "funciona": 3,
    "explica": 0,
    "estreito": 0,
    "profundo": 0
   },
   "palavra": {
-   "total": 83,
-   "existe": 83,
+   "total": 85,
+   "existe": 85,
    "funciona": 10,
-   "explica": 83,
+   "explica": 85,
    "estreito": 0,
-   "profundo": 83
+   "profundo": 85
   }
  },
  "itens": [
@@ -72,7 +72,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -102,7 +102,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -132,7 +132,67 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "o verbete tem corpo de verdade"
+    }
+   }
+  },
+  {
+   "id": "tela:tarefas",
+   "tipo": "tela",
+   "rotulo": "tarefas",
+   "onde": "src/ui_cockpit2.html#view-tarefas",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test-endereco.mjs",
+     "como": "abre a tela e escuta erro de execução do navegador"
+    },
+    "funciona": {
+     "coberto": "test.mjs",
+     "como": "a tela é citada, o que NÃO prova que os botões dela funcionam"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "tem verbete `tela: tarefas`"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "o verbete tem corpo de verdade"
+    }
+   }
+  },
+  {
+   "id": "tela:caminho",
+   "tipo": "tela",
+   "rotulo": "caminho",
+   "onde": "src/ui_cockpit2.html#view-caminho",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test-endereco.mjs",
+     "como": "abre a tela e escuta erro de execução do navegador"
+    },
+    "funciona": {
+     "coberto": "test.mjs",
+     "como": "a tela é citada, o que NÃO prova que os botões dela funcionam"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "tem verbete `tela: caminho`"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -162,7 +222,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -192,7 +252,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -222,7 +282,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -252,7 +312,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -282,7 +342,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -312,7 +372,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -342,7 +402,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -372,7 +432,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -402,7 +462,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -432,7 +492,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -462,7 +522,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -492,7 +552,7 @@
     "estreito": {
      "coberto": null,
      "como": null,
-     "nota": "test-estreito.mjs ainda mede o painel ANTIGO (src/ui.html)"
+     "nota": "a largura do painel novo, tela por tela, ainda não tem teste próprio"
     },
     "profundo": {
      "coberto": "test.mjs",
@@ -2709,6 +2769,38 @@
    }
   },
   {
+   "id": "acao:g-cheio",
+   "tipo": "acao",
+   "rotulo": "data-g-cheio",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:g-editar",
    "tipo": "acao",
    "rotulo": "data-g-editar",
@@ -2746,6 +2838,166 @@
    "rotulo": "data-g-remover",
    "onde": "src/ui_cockpit2.html",
    "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:ia-testar",
+   "tipo": "acao",
+   "rotulo": "data-ia-testar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:ia-remover",
+   "tipo": "acao",
+   "rotulo": "data-ia-remover",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:ia-chave",
+   "tipo": "acao",
+   "rotulo": "data-ia-chave",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:ia-salvar",
+   "tipo": "acao",
+   "rotulo": "data-ia-salvar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:tend-fechar",
+   "tipo": "acao",
+   "rotulo": "data-tend-fechar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
    "dimensoes": {
     "existe": {
      "coberto": "src/ui_cockpit2.html",
@@ -3642,70 +3894,6 @@
    "rotulo": "data-esc-ligar",
    "onde": "src/ui_cockpit2.html",
    "camada": "viva",
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/ui_cockpit2.html",
-     "como": "o atributo existe no fonte"
-    },
-    "funciona": {
-     "coberto": null,
-     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "ação não tem verbete próprio: quem explica é a tela"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "depende do bloco onde ela aparece"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica a uma ação isolada"
-    }
-   }
-  },
-  {
-   "id": "acao:bb",
-   "tipo": "acao",
-   "rotulo": "data-bb",
-   "onde": "src/ui_cockpit2.html",
-   "camada": "viva",
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/ui_cockpit2.html",
-     "como": "o atributo existe no fonte"
-    },
-    "funciona": {
-     "coberto": "test.mjs",
-     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "ação não tem verbete próprio: quem explica é a tela"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "depende do bloco onde ela aparece"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica a uma ação isolada"
-    }
-   }
-  },
-  {
-   "id": "acao:bb-pos",
-   "tipo": "acao",
-   "rotulo": "data-bb-pos",
-   "onde": "src/ui_cockpit2.html",
-   "camada": "estatica",
    "dimensoes": {
     "existe": {
      "coberto": "src/ui_cockpit2.html",
@@ -5109,38 +5297,6 @@
    }
   },
   {
-   "id": "acao:tend-fechar",
-   "tipo": "acao",
-   "rotulo": "data-tend-fechar",
-   "onde": "src/ui_cockpit2.html",
-   "camada": "estatica",
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/ui_cockpit2.html",
-     "como": "o atributo existe no fonte"
-    },
-    "funciona": {
-     "coberto": null,
-     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "ação não tem verbete próprio: quem explica é a tela"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "depende do bloco onde ela aparece"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica a uma ação isolada"
-    }
-   }
-  },
-  {
    "id": "acao:tend-cheia",
    "tipo": "acao",
    "rotulo": "data-tend-cheia",
@@ -5461,6 +5617,166 @@
    }
   },
   {
+   "id": "acao:gate-acao",
+   "tipo": "acao",
+   "rotulo": "data-gate-acao",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:gate-form",
+   "tipo": "acao",
+   "rotulo": "data-gate-form",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:gate-fop",
+   "tipo": "acao",
+   "rotulo": "data-gate-fop",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:gate-extra",
+   "tipo": "acao",
+   "rotulo": "data-gate-extra",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:gate-enviar",
+   "tipo": "acao",
+   "rotulo": "data-gate-enviar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "viva",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:gctx-ir",
    "tipo": "acao",
    "rotulo": "data-gctx-ir",
@@ -5752,6 +6068,38 @@
    "id": "acao:gate-citar",
    "tipo": "acao",
    "rotulo": "data-gate-citar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:painel-k",
+   "tipo": "acao",
+   "rotulo": "data-painel-k",
    "onde": "src/ui_cockpit2.html",
    "camada": "estatica",
    "dimensoes": {
@@ -6229,6 +6577,102 @@
    }
   },
   {
+   "id": "acao:esq-acao",
+   "tipo": "acao",
+   "rotulo": "data-esq-acao",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:esq-alvo",
+   "tipo": "acao",
+   "rotulo": "data-esq-alvo",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:esq-nome",
+   "tipo": "acao",
+   "rotulo": "data-esq-nome",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:sino-ir",
    "tipo": "acao",
    "rotulo": "data-sino-ir",
@@ -6433,6 +6877,134 @@
     },
     "funciona": {
      "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:faixa-tudo",
+   "tipo": "acao",
+   "rotulo": "data-faixa-tudo",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:faixa-itens",
+   "tipo": "acao",
+   "rotulo": "data-faixa-itens",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:faixa",
+   "tipo": "acao",
+   "rotulo": "data-faixa",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": "test.mjs",
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:bb",
+   "tipo": "acao",
+   "rotulo": "data-bb",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": "test.mjs",
      "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
     },
     "explica": {
@@ -7125,6 +7697,134 @@
    }
   },
   {
+   "id": "acao:gate-arquivar",
+   "tipo": "acao",
+   "rotulo": "data-gate-arquivar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:tdr-abrir",
+   "tipo": "acao",
+   "rotulo": "data-tdr-abrir",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:anda-refazer",
+   "tipo": "acao",
+   "rotulo": "data-anda-refazer",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:anda-tirar",
+   "tipo": "acao",
+   "rotulo": "data-anda-tirar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:dec",
    "tipo": "acao",
    "rotulo": "data-dec",
@@ -7317,6 +8017,134 @@
    }
   },
   {
+   "id": "acao:arq",
+   "tipo": "acao",
+   "rotulo": "data-arq",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": "test.mjs",
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:arq-op",
+   "tipo": "acao",
+   "rotulo": "data-arq-op",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:arq-extra",
+   "tipo": "acao",
+   "rotulo": "data-arq-extra",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:arq-enviar",
+   "tipo": "acao",
+   "rotulo": "data-arq-enviar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:dep-sug",
    "tipo": "acao",
    "rotulo": "data-dep-sug",
@@ -7361,6 +8189,102 @@
     },
     "funciona": {
      "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:git-abrir",
+   "tipo": "acao",
+   "rotulo": "data-git-abrir",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:git-msg",
+   "tipo": "acao",
+   "rotulo": "data-git-msg",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:git-ok",
+   "tipo": "acao",
+   "rotulo": "data-git-ok",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": "test.mjs",
      "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
     },
     "explica": {
@@ -7605,6 +8529,614 @@
    }
   },
   {
+   "id": "acao:msg-cwd",
+   "tipo": "acao",
+   "rotulo": "data-msg-cwd",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:msg-sug-i",
+   "tipo": "acao",
+   "rotulo": "data-msg-sug-i",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-lugar",
+   "tipo": "acao",
+   "rotulo": "data-cam-lugar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-lugar-onde",
+   "tipo": "acao",
+   "rotulo": "data-cam-lugar-onde",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-abrir",
+   "tipo": "acao",
+   "rotulo": "data-cam-abrir",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-na-lista",
+   "tipo": "acao",
+   "rotulo": "data-cam-na-lista",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-x",
+   "tipo": "acao",
+   "rotulo": "data-cam-x",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-y",
+   "tipo": "acao",
+   "rotulo": "data-cam-y",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-trecho",
+   "tipo": "acao",
+   "rotulo": "data-cam-trecho",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-w",
+   "tipo": "acao",
+   "rotulo": "data-cam-w",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-h",
+   "tipo": "acao",
+   "rotulo": "data-cam-h",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-alvo",
+   "tipo": "acao",
+   "rotulo": "data-cam-alvo",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-modo",
+   "tipo": "acao",
+   "rotulo": "data-cam-modo",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-por",
+   "tipo": "acao",
+   "rotulo": "data-cam-por",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-proj-ir",
+   "tipo": "acao",
+   "rotulo": "data-cam-proj-ir",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:nome",
+   "tipo": "acao",
+   "rotulo": "data-nome",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": "test.mjs",
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-lugar-id",
+   "tipo": "acao",
+   "rotulo": "data-cam-lugar-id",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:cam-lugar-ir",
+   "tipo": "acao",
+   "rotulo": "data-cam-lugar-ir",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:pedido-grupo",
+   "tipo": "acao",
+   "rotulo": "data-pedido-grupo",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:tarefa-desfazer",
    "tipo": "acao",
    "rotulo": "data-tarefa-desfazer",
@@ -7701,6 +9233,166 @@
    }
   },
   {
+   "id": "acao:tdr-orig",
+   "tipo": "acao",
+   "rotulo": "data-tdr-orig",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:tdr-proj",
+   "tipo": "acao",
+   "rotulo": "data-tdr-proj",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:tdr-carta",
+   "tipo": "acao",
+   "rotulo": "data-tdr-carta",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:tdr-op",
+   "tipo": "acao",
+   "rotulo": "data-tdr-op",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:carta-explicar",
+   "tipo": "acao",
+   "rotulo": "data-carta-explicar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:colap",
    "tipo": "acao",
    "rotulo": "data-colap",
@@ -7736,6 +9428,102 @@
    "id": "acao:fala-abrir",
    "tipo": "acao",
    "rotulo": "data-fala-abrir",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:ses-fixar",
+   "tipo": "acao",
+   "rotulo": "data-ses-fixar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:ses-painel-por",
+   "tipo": "acao",
+   "rotulo": "data-ses-painel-por",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:ses-painel-tirar",
+   "tipo": "acao",
+   "rotulo": "data-ses-painel-tirar",
    "onde": "src/ui_cockpit2.html",
    "camada": "estatica",
    "dimensoes": {
@@ -8277,6 +10065,38 @@
    }
   },
   {
+   "id": "acao:bloco-recolher",
+   "tipo": "acao",
+   "rotulo": "data-bloco-recolher",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:ideia-acao",
    "tipo": "acao",
    "rotulo": "data-ideia-acao",
@@ -8373,6 +10193,38 @@
    }
   },
   {
+   "id": "acao:proj-inativo",
+   "tipo": "acao",
+   "rotulo": "data-proj-inativo",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:ini-aba",
    "tipo": "acao",
    "rotulo": "data-ini-aba",
@@ -8437,6 +10289,38 @@
    }
   },
   {
+   "id": "acao:proj-criar-aqui",
+   "tipo": "acao",
+   "rotulo": "data-proj-criar-aqui",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:pj-etq-tirar",
    "tipo": "acao",
    "rotulo": "data-pj-etq-tirar",
@@ -8472,6 +10356,70 @@
    "id": "acao:pj-aba",
    "tipo": "acao",
    "rotulo": "data-pj-aba",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:prod-parte",
+   "tipo": "acao",
+   "rotulo": "data-prod-parte",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:prod-seg",
+   "tipo": "acao",
+   "rotulo": "data-prod-seg",
    "onde": "src/ui_cockpit2.html",
    "camada": "estatica",
    "dimensoes": {
@@ -8629,9 +10577,361 @@
    }
   },
   {
+   "id": "acao:dsg-votar",
+   "tipo": "acao",
+   "rotulo": "data-dsg-votar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:dsg-escolha",
+   "tipo": "acao",
+   "rotulo": "data-dsg-escolha",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:dsg-nota",
+   "tipo": "acao",
+   "rotulo": "data-dsg-nota",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:dsg-mural-sim",
+   "tipo": "acao",
+   "rotulo": "data-dsg-mural-sim",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:dsg-mural-apagar",
+   "tipo": "acao",
+   "rotulo": "data-dsg-mural-apagar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:dsg-tam",
+   "tipo": "acao",
+   "rotulo": "data-dsg-tam",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:dsg-proj",
    "tipo": "acao",
    "rotulo": "data-dsg-proj",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:dsg-cor",
+   "tipo": "acao",
+   "rotulo": "data-dsg-cor",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:dsg-de",
+   "tipo": "acao",
+   "rotulo": "data-dsg-de",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:dsg-fonte-salvar",
+   "tipo": "acao",
+   "rotulo": "data-dsg-fonte-salvar",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:dsg-fonte",
+   "tipo": "acao",
+   "rotulo": "data-dsg-fonte",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "acao:dsg-aba",
+   "tipo": "acao",
+   "rotulo": "data-dsg-aba",
    "onde": "src/ui_cockpit2.html",
    "camada": "estatica",
    "dimensoes": {
@@ -9314,7 +11614,7 @@
      "como": "a rota está declarada"
     },
     "funciona": {
-     "coberto": "test.mjs",
+     "coberto": null,
      "como": "a rota é citada em teste"
     },
     "explica": {
@@ -9347,7 +11647,7 @@
      "como": "a rota está declarada"
     },
     "funciona": {
-     "coberto": "test.mjs",
+     "coberto": null,
      "como": "a rota é citada em teste"
     },
     "explica": {
@@ -9764,39 +12064,6 @@
    }
   },
   {
-   "id": "endereco:visita",
-   "tipo": "endereco",
-   "rotulo": "/api/visita",
-   "onde": "src/web.mjs",
-   "camada": "estatica",
-   "escreve": true,
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/web.mjs",
-     "como": "a rota está declarada"
-    },
-    "funciona": {
-     "coberto": null,
-     "como": "a rota é citada em teste"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "endereço não aparece para ele: não precisa de verbete"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    }
-   }
-  },
-  {
    "id": "endereco:federacao",
    "tipo": "endereco",
    "rotulo": "/api/federacao",
@@ -10034,6 +12301,39 @@
    "onde": "src/web.mjs",
    "camada": "estatica",
    "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:pedidos",
+   "tipo": "endereco",
+   "rotulo": "/api/pedidos",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
    "dimensoes": {
     "existe": {
      "coberto": "src/web.mjs",
@@ -10490,39 +12790,6 @@
    }
   },
   {
-   "id": "endereco:recados",
-   "tipo": "endereco",
-   "rotulo": "/api/recados",
-   "onde": "src/web.mjs",
-   "camada": "estatica",
-   "escreve": false,
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/web.mjs",
-     "como": "a rota está declarada"
-    },
-    "funciona": {
-     "coberto": "test.mjs",
-     "como": "a rota é citada em teste"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "endereço não aparece para ele: não precisa de verbete"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    }
-   }
-  },
-  {
    "id": "endereco:marcos",
    "tipo": "endereco",
    "rotulo": "/api/marcos",
@@ -10853,39 +13120,6 @@
    }
   },
   {
-   "id": "endereco:pip",
-   "tipo": "endereco",
-   "rotulo": "/api/pip",
-   "onde": "src/web.mjs",
-   "camada": "estatica",
-   "escreve": true,
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/web.mjs",
-     "como": "a rota está declarada"
-    },
-    "funciona": {
-     "coberto": "test.mjs",
-     "como": "a rota é citada em teste"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "endereço não aparece para ele: não precisa de verbete"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    }
-   }
-  },
-  {
    "id": "endereco:gate/conversas",
    "tipo": "endereco",
    "rotulo": "/api/gate/conversas",
@@ -10922,6 +13156,39 @@
    "id": "endereco:gate/modo",
    "tipo": "endereco",
    "rotulo": "/api/gate/modo",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:ia/provedores",
+   "tipo": "endereco",
+   "rotulo": "/api/ia/provedores",
    "onde": "src/web.mjs",
    "camada": "estatica",
    "escreve": false,
@@ -11381,6 +13648,171 @@
    }
   },
   {
+   "id": "endereco:cartas/explicar",
+   "tipo": "endereco",
+   "rotulo": "/api/cartas/explicar",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:explicacoes",
+   "tipo": "endereco",
+   "rotulo": "/api/explicacoes",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:cartas",
+   "tipo": "endereco",
+   "rotulo": "/api/cartas",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:cartas/votar",
+   "tipo": "endereco",
+   "rotulo": "/api/cartas/votar",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:cartas/img",
+   "tipo": "endereco",
+   "rotulo": "/api/cartas/img",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
    "id": "endereco:sessao/etiqueta",
    "tipo": "endereco",
    "rotulo": "/api/sessao/etiqueta",
@@ -11711,12 +14143,177 @@
    }
   },
   {
+   "id": "endereco:carga",
+   "tipo": "endereco",
+   "rotulo": "/api/carga",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
    "id": "endereco:leitor",
    "tipo": "endereco",
    "rotulo": "/api/leitor",
    "onde": "src/web.mjs",
    "camada": "estatica",
    "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:projeto/ativo",
+   "tipo": "endereco",
+   "rotulo": "/api/projeto/ativo",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:backlog/provas",
+   "tipo": "endereco",
+   "rotulo": "/api/backlog/provas",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:backlog/lugar",
+   "tipo": "endereco",
+   "rotulo": "/api/backlog/lugar",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:backlog/aprovar",
+   "tipo": "endereco",
+   "rotulo": "/api/backlog/aprovar",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
    "dimensoes": {
     "existe": {
      "coberto": "src/web.mjs",
@@ -11912,6 +14509,171 @@
    "id": "endereco:armario/docs",
    "tipo": "endereco",
    "rotulo": "/api/armario/docs",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:design/editar",
+   "tipo": "endereco",
+   "rotulo": "/api/design/editar",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:design/telas",
+   "tipo": "endereco",
+   "rotulo": "/api/design/telas",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:design/fotografar",
+   "tipo": "endereco",
+   "rotulo": "/api/design/fotografar",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:design/mural",
+   "tipo": "endereco",
+   "rotulo": "/api/design/mural",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:design/comparar",
+   "tipo": "endereco",
+   "rotulo": "/api/design/comparar",
    "onde": "src/web.mjs",
    "camada": "estatica",
    "escreve": false,
@@ -12371,9 +15133,174 @@
    }
   },
   {
+   "id": "endereco:gate/maestro",
+   "tipo": "endereco",
+   "rotulo": "/api/gate/maestro",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
    "id": "endereco:gate/nota",
    "tipo": "endereco",
    "rotulo": "/api/gate/nota",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:arquiteto/responder",
+   "tipo": "endereco",
+   "rotulo": "/api/arquiteto/responder",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:arquiteto/comecar",
+   "tipo": "endereco",
+   "rotulo": "/api/arquiteto/comecar",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:produto",
+   "tipo": "endereco",
+   "rotulo": "/api/produto",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:produto/seguranca",
+   "tipo": "endereco",
+   "rotulo": "/api/produto/seguranca",
    "onde": "src/web.mjs",
    "camada": "estatica",
    "escreve": true,
@@ -12833,6 +15760,39 @@
    }
   },
   {
+   "id": "endereco:custo",
+   "tipo": "endereco",
+   "rotulo": "/api/custo",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
    "id": "endereco:taxa",
    "tipo": "endereco",
    "rotulo": "/api/taxa",
@@ -13262,39 +16222,6 @@
    }
   },
   {
-   "id": "endereco:enriquecer",
-   "tipo": "endereco",
-   "rotulo": "/api/enriquecer",
-   "onde": "src/web.mjs",
-   "camada": "estatica",
-   "escreve": true,
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/web.mjs",
-     "como": "a rota está declarada"
-    },
-    "funciona": {
-     "coberto": null,
-     "como": "a rota é citada em teste"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "endereço não aparece para ele: não precisa de verbete"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    }
-   }
-  },
-  {
    "id": "endereco:pastas",
    "tipo": "endereco",
    "rotulo": "/api/pastas",
@@ -13394,6 +16321,138 @@
    }
   },
   {
+   "id": "endereco:caminho",
+   "tipo": "endereco",
+   "rotulo": "/api/caminho",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:sprints/conta",
+   "tipo": "endereco",
+   "rotulo": "/api/sprints/conta",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:git/mudancas",
+   "tipo": "endereco",
+   "rotulo": "/api/git/mudancas",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
+   "id": "endereco:git/salvar",
+   "tipo": "endereco",
+   "rotulo": "/api/git/salvar",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": true,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    }
+   }
+  },
+  {
    "id": "endereco:git",
    "tipo": "endereco",
    "rotulo": "/api/git",
@@ -13466,105 +16525,6 @@
    "onde": "src/web.mjs",
    "camada": "estatica",
    "escreve": false,
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/web.mjs",
-     "como": "a rota está declarada"
-    },
-    "funciona": {
-     "coberto": null,
-     "como": "a rota é citada em teste"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "endereço não aparece para ele: não precisa de verbete"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    }
-   }
-  },
-  {
-   "id": "endereco:midia",
-   "tipo": "endereco",
-   "rotulo": "/api/midia",
-   "onde": "src/web.mjs",
-   "camada": "estatica",
-   "escreve": true,
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/web.mjs",
-     "como": "a rota está declarada"
-    },
-    "funciona": {
-     "coberto": null,
-     "como": "a rota é citada em teste"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "endereço não aparece para ele: não precisa de verbete"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    }
-   }
-  },
-  {
-   "id": "endereco:midia/acao",
-   "tipo": "endereco",
-   "rotulo": "/api/midia/acao",
-   "onde": "src/web.mjs",
-   "camada": "estatica",
-   "escreve": true,
-   "dimensoes": {
-    "existe": {
-     "coberto": "src/web.mjs",
-     "como": "a rota está declarada"
-    },
-    "funciona": {
-     "coberto": null,
-     "como": "a rota é citada em teste"
-    },
-    "explica": {
-     "coberto": null,
-     "como": null,
-     "nota": "endereço não aparece para ele: não precisa de verbete"
-    },
-    "estreito": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    },
-    "profundo": {
-     "coberto": null,
-     "como": null,
-     "nota": "não se aplica"
-    }
-   }
-  },
-  {
-   "id": "endereco:midia/volume",
-   "tipo": "endereco",
-   "rotulo": "/api/midia/volume",
-   "onde": "src/web.mjs",
-   "camada": "estatica",
-   "escreve": true,
    "dimensoes": {
     "existe": {
      "coberto": "src/web.mjs",
@@ -13887,6 +16847,68 @@
    }
   },
   {
+   "id": "palavra:tela: caminho",
+   "tipo": "palavra",
+   "rotulo": "tela: caminho",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 1562 caracteres"
+    }
+   }
+  },
+  {
+   "id": "palavra:tela: tarefas",
+   "tipo": "palavra",
+   "rotulo": "tela: tarefas",
+   "onde": "docs/produto/PALAVRAS-DA-TELA.md",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "test.mjs",
+     "como": "o verbete está escrito"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": null,
+     "nota": "escrita e nunca usada: o \"?\" dela não aparece em lugar nenhum"
+    },
+    "explica": {
+     "coberto": "test.mjs",
+     "como": "o gate recusa termo declarado sem corpo"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": "test.mjs",
+     "como": "corpo com 897 caracteres"
+    }
+   }
+  },
+  {
    "id": "palavra:tela: decisoes",
    "tipo": "palavra",
    "rotulo": "tela: decisoes",
@@ -13913,7 +16935,7 @@
     },
     "profundo": {
      "coberto": "test.mjs",
-     "como": "corpo com 545 caracteres"
+     "como": "corpo com 825 caracteres"
     }
    }
   },
@@ -13944,7 +16966,7 @@
     },
     "profundo": {
      "coberto": "test.mjs",
-     "como": "corpo com 681 caracteres"
+     "como": "corpo com 874 caracteres"
     }
    }
   },
@@ -13975,7 +16997,7 @@
     },
     "profundo": {
      "coberto": "test.mjs",
-     "como": "corpo com 660 caracteres"
+     "como": "corpo com 1764 caracteres"
     }
    }
   },
@@ -14068,7 +17090,7 @@
     },
     "profundo": {
      "coberto": "test.mjs",
-     "como": "corpo com 1075 caracteres"
+     "como": "corpo com 1354 caracteres"
     }
    }
   },

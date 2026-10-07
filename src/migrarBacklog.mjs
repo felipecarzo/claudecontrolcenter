@@ -40,55 +40,11 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { gravar, problemas } from './backlog.mjs'
+import { comoMarkdown, gravar, problemas, siglaDe } from './backlog.mjs'
 import { nascimentos } from './roadmap.mjs'
 
-/** Siglas escolhidas à mão, onde a automática ficaria ruim ou ambígua. */
-const SIGLAS = new Map([
-  ['cockpit', 'CC'],
-  ['inovallbond', 'NV'],
-  ['fibraessencia', 'FB'],
-  ['boxboutique', 'BX'],
-  ['ibrics', 'IB'],
-  ['ghoscode', 'GH'],
-  ['coepiloto', 'CP'],
-  ['productvideomaker', 'PV'],
-  ['ratomacaco', 'RM'],
-  ['reunion', 'RU'],
-  ['rhydon', 'RH'],
-  ['carzo', 'CZ'],
-  ['vps', 'VP'],
-  ['escritorio', 'ES'],
-  ['entreg4', 'EN'],
-  ['hutukara', 'HK'],
-  ['renanmarchon', 'RN'],
-  /* `cockpit--front` é OUTRA pasta, com outra branch e outro backlog, e daria
-     `CC` pela regra automática. Dois projetos com a mesma sigla viram um item
-     só no dia em que dois backlogs forem somados numa tela, e o número fica
-     maior e plausível. É o mesmo cuidado da lista de renomeações. */
-  ['cockpitfront', 'CF'],
-  ['maurice', 'MC'],
-  ['sumauma', 'SU'],
-  ['mnzs', 'MZ'],
-  ['profinance', 'PF'],
-  ['ahtleta', 'AT'],
-  ['geolev4', 'GL'],
-])
-
-/**
- * A sigla de um projeto: duas ou três letras, estáveis.
- *
- * Estável importa mais que bonita: a sigla vira parte do id, e id que muda
- * quebra toda referência já escrita. Por isso a lista acima é explícita, e a
- * regra automática só cobre o que não está nela.
- */
-export function siglaDe(projeto) {
-  const cru = String(projeto || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-  if (SIGLAS.has(cru)) return SIGLAS.get(cru)
-  const consoantes = cru.replace(/[aeiou]/g, '')
-  const base = (consoantes.length >= 2 ? consoantes : cru).slice(0, 2)
-  return (base || 'XX').toUpperCase()
-}
+/* A sigla mora em backlog.mjs desde 01/10: o maestro e a entrevista também numeram itens. */
+export { siglaDe }
 
 /**
  * Limpa o texto para virar título de item.
@@ -332,6 +288,17 @@ export function migrar(raiz, { projeto = path.basename(raiz), ensaio = false, fo
   } catch { /* sem git, ou repositório estranho: fica a data do texto */ }
   if (!itens.length) return { projeto, ok: false, motivo: 'o roadmap não tem nenhum item que eu saiba ler' }
 
+  /* Padrão de projeto (01/10): o item migrado já sai no formato novo, resumido.
+     Pedido dele: "manter o que já foi feito nos roadmaps antigos, converter pro
+     modo novo e colocar como foi feito, super resumido". O fechado leva a
+     própria linha como prova; o texto corrido fica na cópia em docs/legacy. */
+  for (const i of itens) {
+    if (i.origem === 'migrado-fantasma') continue
+    const intencao = String(i.titulo).replace(/\s+/g, ' ').trim().slice(0, 140)
+    // ponytail: a prosa não diz a área; 'tela' é o palpite comum, corrigir item a item quando importar
+    Object.assign(i, { natureza: 'PED', area: 'tela', tamanho: 'M', intencao, pronto: i.prova || intencao, conferir: `olho:${intencao}` })
+  }
+
   const ruins = itens.flatMap((i) => problemas(i).map((p) => `${i.id}: ${p}`))
   if (ruins.length) return { projeto, ok: false, motivo: `${ruins.length} item(ns) fora do contrato: ${ruins[0]}` }
 
@@ -340,4 +307,95 @@ export function migrar(raiz, { projeto = path.basename(raiz), ensaio = false, fo
     try { gravar(itens, destino) } catch (e) { return { projeto, ok: false, motivo: `não consegui gravar: ${e.message}` } }
   }
   return { projeto, ok: true, total: itens.length, abertos, fechados: itens.length - abertos, destino, ensaio }
+}
+
+/* ===================================================================
+   Padrão de projeto (01/10): a migração em lote, com ensaio primeiro.
+   Decisão dele: migrar todos agora, mas ele vê o relatório antes de
+   qualquer escrita. Fora do lote: arquivo morto, resultado de teste,
+   pasta de simulação, atalho (o `proj_controlcenter` aponta para o
+   cockpit) e projeto com sessão trabalhando nele no momento.
+   =================================================================== */
+
+const FORA_DO_LOTE = /^(_arquivo|_template|allure-results|scratch)|^VPS_sim-|teste|^tmp/i
+/** Projetos com fonte própria de tarefa, tratados à parte no relatório. */
+const A_PARTE = new Map([
+  ['carzo', 'gera o ROADMAP de PEDIDOS.md: converter PEDIDOS.md, não o ROADMAP'],
+  ['cockpitfront', 'outra branch do cockpit, com backlog próprio: decidir se junta'],
+])
+
+/** O que a migração faria num projeto. Só lê. */
+export function ensaioDoProjeto(raiz) {
+  const projeto = path.basename(raiz)
+  const chave = projeto.replace(/^(VPS|PC)_/i, '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const tem = (...p) => fs.existsSync(path.join(raiz, ...p))
+  const fonte = caminhoRoadmap(raiz)
+  let roadmap = ''; try { roadmap = fonte ? fs.readFileSync(fonte, 'utf8') : '' } catch { /* sem leitura */ }
+  const gerado = roadmap.includes('GERADO por src/backlog.mjs')
+  let ocupadas = 0; try { ocupadas = (fs.readFileSync(path.join(raiz, 'docs', 'ROTAS-ATIVAS.md'), 'utf8').match(/🔴/g) || []).length } catch { /* sem quadro */ }
+  const base = { projeto, sigla: siglaDe(projeto), agents: tem('AGENTS.md'), ocupadas }
+  if (A_PARTE.has(chave)) return { ...base, situacao: 'à parte', nota: A_PARTE.get(chave) }
+  if (tem('docs', 'backlog.jsonl')) {
+    const linhas = fs.readFileSync(path.join(raiz, 'docs', 'backlog.jsonl'), 'utf8').split(/\r?\n/).filter((l) => l.trim()).length
+    return { ...base, situacao: gerado ? 'já no padrão' : 'tem backlog, roadmap à mão', total: linhas, nota: gerado ? null : 'só gerar o ROADMAP do backlog (o à mão vai para o legacy)' }
+  }
+  if (!fonte) return { ...base, situacao: 'sem roadmap', total: 0, nota: 'nasce backlog vazio e ROADMAP gerado' }
+  const r = migrar(raiz, { projeto, ensaio: true })
+  const itens = r.ok ? extrair(roadmap, { sigla: siglaDe(projeto) }) : []
+  const linhas = roadmap.split(/\r?\n/).filter((l) => l.trim() && !/^\s*(#|[-*]\s|\||---|<!--|>)/.test(l)).length
+  return {
+    ...base, situacao: r.ok ? 'roadmap à mão' : 'não converte', total: r.total || 0, abertos: r.abertos || 0, fechados: r.fechados || 0,
+    fantasmas: itens.filter((i) => i.origem === 'migrado-fantasma').length, prosa: linhas, nota: r.ok ? null : r.motivo,
+  }
+}
+
+/** O ensaio em todos os projetos da base. */
+export function ensaioEmLote(base) {
+  const fora = []
+  const linhas = []
+  for (const nome of fs.readdirSync(base).sort()) {
+    const raiz = path.join(base, nome)
+    let st; try { st = fs.lstatSync(raiz) } catch { continue }
+    if (!st.isDirectory() || nome.startsWith('.')) { if (st.isSymbolicLink()) fora.push({ projeto: nome, motivo: 'atalho para outra pasta' }); continue }
+    if (FORA_DO_LOTE.test(nome)) { fora.push({ projeto: nome, motivo: 'arquivo morto, teste ou simulação' }); continue }
+    if (!fs.existsSync(path.join(raiz, '.git'))) { fora.push({ projeto: nome, motivo: 'sem git próprio' }); continue }
+    const e = ensaioDoProjeto(raiz)
+    if (e.ocupadas) e.nota = [e.nota, `${e.ocupadas} rota(s) ocupada(s) no quadro: confirmar antes`].filter(Boolean).join('; ')
+    linhas.push(e)
+  }
+  return { linhas, fora }
+}
+
+/**
+ * Põe um projeto no padrão, valendo. O original vai INTEIRO para
+ * `docs/legacy/ROADMAP-antes-da-migracao.md` antes de qualquer escrita, e
+ * cópia que já existe não é sobrescrita (ganha a data no nome).
+ */
+export async function aplicarPadrao(raiz) {
+  const e = ensaioDoProjeto(raiz)
+  if (['à parte', 'já no padrão', 'não converte'].includes(e.situacao)) return { ...e, feito: false }
+  const docs = path.join(raiz, 'docs')
+  // medido em 01/10: VPS_ghoscode é do usuário nobody; sem escrita, nada começa
+  try { for (const p of [raiz, docs]) if (fs.existsSync(p)) fs.accessSync(p, fs.constants.W_OK) } catch { return { ...e, feito: false, nota: 'pasta sem permissão de escrita para este usuário' } }
+  const backlog = path.join(docs, 'backlog.jsonl')
+  const fonte = caminhoRoadmap(raiz)
+  fs.mkdirSync(path.join(docs, 'legacy'), { recursive: true })
+  if (fonte) {
+    let copia = path.join(docs, 'legacy', 'ROADMAP-antes-da-migracao.md')
+    if (fs.existsSync(copia)) copia = copia.replace(/\.md$/, `-${new Date().toISOString().slice(0, 10)}.md`)
+    fs.copyFileSync(fonte, copia)
+  }
+  if (e.situacao === 'roadmap à mão') {
+    const r = migrar(raiz)
+    if (!r.ok) return { ...e, feito: false, nota: r.motivo }
+  }
+  if (e.situacao === 'sem roadmap') fs.writeFileSync(backlog, '')
+  const alvo = path.join(docs, 'ROADMAP.md')
+  if (fonte && path.resolve(fonte) !== path.resolve(alvo)) fs.rmSync(fonte) // a cópia já está no legacy
+  fs.writeFileSync(alvo, comoMarkdown(backlog), 'utf8')
+  if (!fs.existsSync(path.join(raiz, 'AGENTS.md'))) {
+    const { AGENTS } = await import('./novoProjeto.mjs')
+    fs.writeFileSync(path.join(raiz, 'AGENTS.md'), AGENTS(path.basename(raiz).replace(/^(VPS|PC)_/i, ''), ''))
+  }
+  return { ...e, feito: true }
 }

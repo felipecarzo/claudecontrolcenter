@@ -204,11 +204,23 @@ livre deixa de existir: a tela mostra `natureza + area + intencao`.
 - **hora gasta**: já é derivada dos transcritos pela aba Tempo. Digitar seria
   uma segunda verdade.
 
+## Onde cada pergunta está respondida hoje (07/10, CC-500)
+
+De 11/09 para cá a raiz virou peça. A resposta de cada pergunta, e onde mexer:
+
+| Pergunta | Resposta hoje | Peça |
+|---|---|---|
+| 1. Como nasce um projeto | O projeto é declarado no registro central antes de ter pasta (decisão dele, CC-539). O botão de projeto novo cria a pasta com o prefixo da máquina, o repositório no GitHub e a entrada no registro | `src/projetoRegistro.mjs` (`declarar`), `src/novoProjeto.mjs` (`criar`) |
+| 2. Como o framework age no projeto | Pelo Nisaba: o backlog em dado, os estados, a conferência automática que só o robô fecha, as travas que barram edição sem tarefa e pergunta em prosa, e o arquiteto que propõe o próximo passo | `src/backlog.mjs`, `src/conferencia.mjs`, `hooks/`, `src/arquiteto.mjs`, manual em [[NISABA-METODO]] |
+| 3. Como o projeto se registra | Cada máquina manda as próprias pastas para o registro da VPS (o cofre): na migração e, no PC, pela sincronização (CC-861). Projeto em comum ganha a máquina, novo ganha entrada, nada duplica | `src/migrarRegistro.mjs` (`migrar`, `receberPastas`), `cc registro enviar` |
+| 4. Como o framework reconhece o registro | Pelo nome canônico: `VPS_x`, `PC_x` e `x` são o mesmo projeto. As pastas são descobertas pelas bases de projeto, nunca por lista digitada | `src/nomeProjeto.mjs` (`chaveDeProjeto`), `src/install.mjs` (`findProjects`) |
+
+A frente também virou código: catálogo por projeto em `docs/frentes.json`, conferido ao criar item (`src/frentes.mjs`).
+
 ## Aberto
 
 - o vocabulário: os tipos de pedido derivados dos 543 itens (proposta a
   seguir, para ele cortar)
-- a frente como código
-- o formato da resposta da IA como trava, não só como texto
+- o formato da resposta da IA como trava, não só como texto (parte feita: separador, onde ficou, pergunta em formulário, sem nome interno)
 - o leitor diário: o que ele produz e onde ele escreve
-- os robôs nos sites dos clientes (registrado, sem desenho ainda)
+- os robôs nos sites dos clientes (registrado, sem desenho ainda: CC-503)

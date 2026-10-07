@@ -21,9 +21,15 @@ import assert from 'node:assert'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { aplicar, colher, paraBacklog, proxima, responder } from './src/entrevista.mjs'
-import { gravarBacklog } from './src/frameworkDisco.mjs'
+import { aplicar, colher, itensDoBacklog, proxima, responder } from './src/entrevista.mjs'
+import { fecharEntrevista, gravarBacklog } from './src/frameworkDisco.mjs'
+import { ler as lerBacklog } from './src/backlog.mjs'
 import { lerRoadmap } from './src/roadmap.mjs'
+
+/* CC-525: criar projeto agora declara no registro central, que mora em ~/.claude.
+   Teste que escreve em dado real é defeito (e este escreveu "projeto-de-teste" nele,
+   medido em 02/10): tudo aqui roda numa casa temporária. */
+process.env.CC_HOME = mkdtempSync(join(tmpdir(), 'cc-projeto-novo-'))
 
 let passou = 0
 const ok = (nome) => { console.log('  ok   ' + nome); passou++ }
@@ -107,19 +113,17 @@ const comRespostas = (extra = {}) => ({
   ok('a gravação acontece no fechamento, e não numa chamada avulsa')
 }
 
-/* ── CC-383: as respostas viram backlog ──────────────────────────────────── */
+/* ── CC-383: as respostas viram backlog (em dado desde 01/10) ────────────── */
 {
-  const texto = paraBacklog(comRespostas(), { quando: '2026-08-28' })
-  assert.match(texto, /^## ▶ Da entrevista de 28\/08/)
-  assert.match(texto, /### abre no celular/)
-  assert.match(texto, /### a lista de agentes na tela 🟢/, 'a primeira fatia sai marcada')
-  assert.match(texto, /eu, do celular, na rua/, 'a fala dele viaja junto')
-  ok('cada critério vira item aberto, com as palavras dele no contexto')
+  const itens = itensDoBacklog(comRespostas())
+  assert.deepEqual(itens.map((x) => x.intencao), ['a lista de agentes na tela', 'abre no celular', 'mostra quem está trabalhando', 'atualiza sozinho'],
+    'a primeira fatia vem primeiro')
+  assert.equal(itens[0].primeiro, true)
+  assert.equal(itens[1].citacao, 'abre no celular', 'a fala dele viaja junto')
+  ok('cada critério vira item, com as palavras dele, a primeira fatia na frente')
 
-  /* Sem critério não há backlog, e devolver um bloco vazio encheria o roadmap
-     de seção sem conteúdo. */
-  assert.equal(paraBacklog({ entrevista: { respostas: {} } }), null)
-  ok('entrevista sem resposta não gera bloco vazio no roadmap')
+  assert.equal(itensDoBacklog({ entrevista: { respostas: {} } }), null)
+  ok('entrevista sem resposta não gera item vazio')
 }
 
 /* ── CC-383: gravar sem destruir ─────────────────────────────────────────── */
@@ -129,44 +133,33 @@ const comRespostas = (extra = {}) => ({
   const ANTIGO = '# ROADMAP\n\n## Uma frente que já existia\n\n### item antigo\n\ntexto que não pode sumir\n'
   writeFileSync(join(raiz, 'docs', 'ROADMAP.md'), ANTIGO)
 
-  const texto = paraBacklog(comRespostas(), { quando: '2026-08-28' })
-  const r = gravarBacklog(raiz, texto)
+  const r = gravarBacklog(raiz, itensDoBacklog(comRespostas()))
   assert.equal(r.ok, true)
-  assert.ok(r.bytesDepois > r.bytesAntes)
+  assert.equal(r.novos.length, 4)
+  assert.equal(readFileSync(join(raiz, 'docs', 'ROADMAP.md'), 'utf8'), ANTIGO,
+    'roadmap escrito à mão (projeto ainda não migrado) não é tocado')
+  const { itens } = lerBacklog(join(raiz, 'docs', 'backlog.jsonl'))
+  assert.deepEqual(itens.map((x) => [x.estado, x.origem]), Array(4).fill(['B1', 'felipe']))
+  ok('os itens entram no backlog do projeto, e o roadmap feito à mão continua inteiro')
 
-  const depois = readFileSync(join(raiz, 'docs', 'ROADMAP.md'), 'utf8')
-  assert.match(depois, /texto que não pode sumir/,
-    'o roadmap é o arquivo mais caro do projeto: nada nele pode ser apagado')
-  assert.match(depois, /### abre no celular/)
-  ok('o backlog entra no fim do roadmap, e o que já estava lá continua inteiro')
-
-  /* A prova ao contrário: a entrevista pode ser refeita, e cada volta geraria
-     outro bloco idêntico. A segunda gravação recusa. */
-  const r2 = gravarBacklog(raiz, texto)
+  const r2 = gravarBacklog(raiz, itensDoBacklog(comRespostas()))
   assert.equal(r2.ok, false)
   assert.equal(r2.jaEstava, true)
-  ok('a prova ao contrário: o mesmo backlog não entra duas vezes')
-
-  /* E o parser lê o que foi escrito. Gerar markdown que o próprio leitor não
-     entende seria escrever para ninguém, e é o defeito que o carzo tinha. */
-  const mapa = lerRoadmap(raiz)
-  const titulos = mapa.grupos.flatMap((g) => g.frentes).map((f) => f.titulo)
-  assert.ok(titulos.includes('item antigo'), 'o item antigo continua legível')
-  assert.ok(titulos.includes('abre no celular'), 'o item novo é lido pelo quadro')
-  ok('o quadro lê o que a entrevista escreveu, sem passo manual no meio')
-
+  assert.equal(lerBacklog(join(raiz, 'docs', 'backlog.jsonl')).itens.length, 4)
+  ok('a prova ao contrário: a entrevista refeita não duplica item')
   rmSync(raiz, { recursive: true, force: true })
 }
 
 /* ── projeto sem roadmap nenhum ──────────────────────────────────────────── */
 {
   const raiz = mkdtempSync(join(tmpdir(), 'cc-proj-sem-'))
-  const r = gravarBacklog(raiz, paraBacklog(comRespostas(), { quando: '2026-08-28' }))
+  const r = gravarBacklog(raiz, itensDoBacklog(comRespostas()))
   assert.equal(r.ok, true)
   assert.equal(r.criou, true)
-  const mapa = lerRoadmap(raiz)
-  assert.ok(mapa.grupos.flatMap((g) => g.frentes).length >= 3)
-  ok('projeto sem roadmap ganha um, em vez de a gravação ser recusada')
+  assert.match(readFileSync(join(raiz, 'docs', 'ROADMAP.md'), 'utf8'), /GERADO por src\/backlog\.mjs/)
+  const titulos = lerRoadmap(raiz).grupos.flatMap((g) => g.frentes).map((f) => f.titulo)
+  assert.ok(titulos.some((t) => /abre no celular/.test(t)), 'o quadro lê o item novo')
+  ok('projeto sem roadmap ganha backlog e o roadmap gerado dele, e o quadro lê')
   rmSync(raiz, { recursive: true, force: true })
 }
 
@@ -300,13 +293,13 @@ const comRespostas = (extra = {}) => ({
   assert.equal(estado.fase, 'planejamento')
   ok('ponta a ponta: as respostas abrem o portão da definição sozinhas')
 
-  // 4. o backlog é escrito no roadmap
-  const r = gravarBacklog(raiz, paraBacklog(estado, { quando: '2026-08-28' }))
-  assert.equal(r.ok, true)
-  assert.ok(r.itens >= 2, 'os itens contados são os que entraram no arquivo')
+  // 4. fechar a entrevista escreve o backlog e anota no plano quantos itens são
+  const f = fecharEntrevista(raiz, estado, itensDoBacklog(estado))
+  assert.equal(f.gravou.ok, true)
+  assert.ok(f.estado.plano.itens >= 2, 'os itens contados são os que entraram no arquivo')
 
   // 5. o plano fecha com o que foi escrito, e o portão do planejamento abre
-  estado = { ...estado, plano: { itens: r.itens, primeira: planoDe(estado).primeira } }
+  estado = { ...f.estado, plano: { ...f.estado.plano, primeira: planoDe(estado).primeira } }
   const noPlanejamento = avaliar('mvp-basico', estado)
   assert.equal(noPlanejamento.portaoAberto, true, noPlanejamento.pendencias?.join(' / '))
   estado = avancar('mvp-basico', estado).estado
@@ -316,7 +309,7 @@ const comRespostas = (extra = {}) => ({
   // 6. e o quadro lê o que saiu de tudo isso
   const mapa = lerRoadmap(raiz)
   const titulos = mapa.grupos.flatMap((g) => g.frentes).map((f) => f.titulo)
-  assert.ok(titulos.includes('abre no celular'))
+  assert.ok(titulos.some((t) => /abre no celular/.test(t)))
   ok('ponta a ponta: o texto solto virou item no quadro, sem passo manual')
 
   /* A prova ao contrário: sem responder nada, a sequência NÃO anda. Se andasse,
@@ -325,7 +318,7 @@ const comRespostas = (extra = {}) => ({
   const vazio = { ...estadoInicial('mvp-basico'), entrevista: { respostas: {} } }
   assert.equal(avaliar('mvp-basico', vazio).portaoAberto, false)
   assert.equal(avancar('mvp-basico', vazio).ok, false)
-  assert.equal(paraBacklog(vazio), null)
+  assert.equal(itensDoBacklog(vazio), null)
   ok('a prova ao contrário: sem a entrevista, nada anda e nada é escrito')
 
   rmSync(raiz, { recursive: true, force: true })
@@ -351,6 +344,88 @@ const comRespostas = (extra = {}) => ({
   ok('a prova ao contrário: critério sem estado conta como aberto, nunca feito')
 }
 
+
+/* ── CC-525: projeto novo nasce com registro, backlog vazio e CLAUDE.md ───── */
+{
+  const { criar } = await import('./src/novoProjeto.mjs')
+  const R = await import('./src/projetoRegistro.mjs')
+  const { readdirSync, statSync } = await import('node:fs')
+
+  const base = mkdtempSync(join(tmpdir(), 'cc-base-525-'))
+  const r = criar(base, { nome: 'loja_da_ana', cliente: 'Ana', ativo: true, site: 'https://loja.exemplo.com.br' })
+  assert.equal(r.ok, true, JSON.stringify(r.passos))
+
+  const reg = R.achar('loja-da-ana')
+  assert.ok(reg, 'o projeto novo tem que nascer no registro')
+  assert.equal(reg.cliente, 'Ana'); assert.equal(reg.ativo, true); assert.equal(reg.site, 'https://loja.exemplo.com.br')
+  assert.equal(readFileSync(join(r.raiz, 'docs', 'backlog.jsonl'), 'utf8'), '', 'backlog nasce vazio')
+  assert.ok(existsSync(join(r.raiz, 'CLAUDE.md')), 'CLAUDE.md nasce junto')
+  const vazias = readdirSync(join(r.raiz, 'docs')).filter((n) => statSync(join(r.raiz, 'docs', n)).isDirectory() && readdirSync(join(r.raiz, 'docs', n)).length === 0)
+  assert.deepEqual(vazias, [], 'pasta de documento só nasce quando houver documento: ' + vazias.join(', '))
+  ok('CC-525: nasce com registro (cliente, ativo, site), backlog vazio, CLAUDE.md e nenhuma pasta vazia em docs')
+
+  // declarado antes (o caminho "declarar e criar aqui"): só atualiza os três campos, não recusa nem duplica
+  R.declarar({ nome: 'outro_site' })
+  const r2 = criar(base, { nome: 'outro_site', cliente: 'Bia', site: 'https://outro.exemplo.com' })
+  assert.equal(r2.ok, true)
+  assert.equal(R.listar().filter((p) => p.id === 'outro-site').length, 1, 'não duplica o registro')
+  assert.equal(R.achar('outro-site').cliente, 'Bia')
+  ok('CC-525: projeto já declarado no registro é atualizado, nunca duplicado')
+}
+
+/* ── CC-542: criar aqui clona do repositório quando ele existe, e git init quando não ── */
+{
+  const { criar } = await import('./src/novoProjeto.mjs')
+  const R = await import('./src/projetoRegistro.mjs')
+  const { execFileSync } = await import('node:child_process')
+  const g = (cwd, ...a) => execFileSync('git', a, { cwd, stdio: 'pipe', encoding: 'utf8' })
+
+  // um "GitHub" de mentira: repositório local com uma história e um arquivo dele
+  const origem = mkdtempSync(join(tmpdir(), 'cc-origem-'))
+  g(origem, 'init', '-q'); g(origem, 'config', 'user.email', 't@t'); g(origem, 'config', 'user.name', 't')
+  writeFileSync(join(origem, 'LEIAME-DELE.txt'), 'veio do repositório')
+  g(origem, 'add', '-A'); g(origem, 'commit', '-q', '-m', 'historia anterior')
+
+  const base = mkdtempSync(join(tmpdir(), 'cc-base-542-'))
+  R.declarar({ nome: 'com_repo' })
+  R.definirGithub('com-repo', { repo: origem })
+  const r = criar(base, { nome: 'com_repo', maquina: 'VPS-teste' })
+  assert.equal(r.ok, true, JSON.stringify(r))
+  assert.equal(readFileSync(join(r.raiz, 'LEIAME-DELE.txt'), 'utf8'), 'veio do repositório', 'a pasta nasceu do repositório')
+  assert.match(g(r.raiz, 'log', '--oneline'), /historia anterior/, 'a história do repositório veio junto')
+  assert.ok(existsSync(join(r.raiz, 'docs', 'backlog.jsonl')) && existsSync(join(r.raiz, 'CLAUDE.md')), 'o esqueleto preenche o que faltava')
+  assert.doesNotMatch(g(r.raiz, 'log', '--oneline'), /nasce o projeto/, 'não commita por cima da história dele')
+  assert.equal(R.achar('com-repo').maquinas['VPS-teste'].provisionado, true, 'o registro reflete a máquina provisionada')
+  ok('CC-542: com repositório no registro, a pasta é clonada, mantém a história e o registro marca a máquina')
+
+  const r2 = criar(base, { nome: 'sem_repo', maquina: 'VPS-teste' })
+  assert.equal(r2.ok, true)
+  assert.match(g(r2.raiz, 'log', '--oneline'), /nasce o projeto sem_repo/, 'sem repositório: git init e primeiro commit, como sempre')
+  assert.equal(R.achar('sem-repo').maquinas['VPS-teste'].raiz, r2.raiz)
+  ok('CC-542: sem repositório, git init e primeiro commit, e o registro também marca a máquina')
+
+  R.declarar({ nome: 'repo_quebrado' })
+  const r3 = criar(base, { nome: 'repo_quebrado', repo: '/nao/existe/nenhum.git', maquina: 'VPS-teste' })
+  assert.equal(r3.ok, false); assert.match(r3.erro, /não consegui clonar/)
+  assert.ok(!existsSync(join(base, 'repo_quebrado')), 'clone que falha não deixa pasta pela metade')
+  ok('CC-542: clone que falha diz a causa e não deixa pasta pela metade')
+}
+
+/* ── CC-870: registro que não grava vira passo falho, e a criação termina ─── */
+{
+  const { criar } = await import('./src/novoProjeto.mjs')
+  const base = mkdtempSync(join(tmpdir(), 'cc-base-870-'))
+  // um caminho que passa por DENTRO de um arquivo comum: criar a pasta do registro falha na hora (ENOTDIR).
+  // (Não usar /proc: o mkdir recursivo do Node gira sem fim ali.)
+  writeFileSync(join(base, 'arquivo-comum'), 'x')
+  const r = criar(base, { nome: 'registro_mudo', registro: join(base, 'arquivo-comum', 'sub', 'registro.json'), maquina: 'VPS-teste' })
+  assert.equal(r.ok, true, 'a criação não pode quebrar no meio: ' + JSON.stringify(r).slice(0, 200))
+  const passo = r.passos.find((p) => p.o_que.startsWith('o registro do projeto'))
+  assert.ok(passo && passo.ok === false && /não consegui gravar o registro/.test(passo.detalhe), 'o registro que não grava vira passo marcado como falho, com a causa')
+  assert.ok(existsSync(join(r.raiz, 'docs', 'backlog.jsonl')) && existsSync(join(r.raiz, 'CLAUDE.md')) && existsSync(join(r.raiz, '.git')), 'o resto da criação ficou pronto')
+  assert.ok(r.passos.some((p) => /framework ligado/.test(p.o_que) && p.ok), 'e o framework também')
+  ok('CC-870: registro que não grava vira passo falho e a criação termina com o resto feito')
+}
 
 /* ── CC-388: projeto novo nasce em Sugestivo ─────────────────────────────── */
 {
@@ -379,9 +454,11 @@ const comRespostas = (extra = {}) => ({
      documentos. "separação de pasta pro projeto ter seu próprio git". */
   const { existsSync } = await import('node:fs')
   assert.ok(existsSync(join(r.raiz, '.git')), 'git próprio')
-  assert.ok(existsSync(join(r.raiz, 'docs', 'ROADMAP.md')), 'roadmap')
+  assert.ok(existsSync(join(r.raiz, 'docs', 'backlog.jsonl')), 'backlog em dado')
+  assert.match(readFileSync(join(r.raiz, 'docs', 'ROADMAP.md'), 'utf8'), /GERADO por src\/backlog\.mjs/, 'roadmap gerado do backlog')
+  assert.match(readFileSync(join(r.raiz, 'AGENTS.md'), 'utf8'), /## Escopo do projeto\n\num app de fotos/, 'escopo no AGENTS.md')
   assert.ok(existsSync(join(r.raiz, 'CLAUDE.md')), 'instruções do projeto')
-  ok('a pasta nasce com git próprio, roadmap e as instruções do projeto')
+  ok('a pasta nasce no padrão: git próprio, backlog, roadmap gerado, AGENTS.md com o escopo')
 
   rmSync(base, { recursive: true, force: true })
 }
@@ -483,8 +560,7 @@ const comRespostas = (extra = {}) => ({
 
   /* O que ela produz é backlog, com o nome da frente no título: no roadmap ele
      precisa distinguir o que veio de qual conversa. */
-  const texto = E.paraBacklog(est, { quando: '2026-08-29' })
-  assert.match(texto, /^## ▶ O estúdio de vídeo \(da entrevista de 29\/08\)/)
+  assert.equal(E.itensDoBacklog(est)[0].frente, 'O estúdio de vídeo')
   ok('o backlog da frente entra com o nome dela, ao lado do que já existe')
 
   /* Trocar de frente zera as respostas: são de outra conversa. Herdá-las faria
@@ -597,8 +673,11 @@ const comRespostas = (extra = {}) => ({
     'o /v2 foi apagado por ordem dele em 23/09 e não pode voltar sem outra ordem')
   assert.ok(!existsSync('src/ui_v2.html'), 'o arquivo do painel antigo voltou para a árvore')
   assert.match(web, /pode deletar o cockpit V2 antigo/, 'a ordem dele que apagou o /v2 tem que ficar escrita junto do código')
-  assert.match(web, /url\.pathname === '\/v1'/, 'e o primeiro continua em /v1')
-  ok('a raiz serve o painel novo, o /v2 saiu por ordem dele, e o /v1 continua')
+  /* CC-467, 02/10: o primeiro painel também saiu (src/ui.html e a rota /v1), com as
+     verificações dele migradas ou retiradas com motivo. Ficou o /antigo (UI_V3). */
+  assert.doesNotMatch(web, /url\.pathname === '\/v1'/, 'o /v1 saiu com o painel antigo (CC-467) e não pode voltar sem outra ordem')
+  assert.ok(!existsSync('src/ui.html'), 'o arquivo do primeiro painel voltou para a árvore')
+  ok('a raiz serve o painel novo, o /v2 e o /v1 saíram, e o /antigo continua')
 }
 
 
@@ -683,7 +762,7 @@ const comRespostas = (extra = {}) => ({
   /* `ui_cockpit2.html` entrou em 23/09: é tela de verdade, servida em
      `/cockpit2`, e sem ela na lista toda rota que só o cockpit 2 chama
      precisava virar exceção, que é o caminho para peça esquecida passar. */
-  const fontes = ['src/ui_novo.html', 'src/ui.html', 'src/ui_cockpit2.html', 'src/conexao.html', 'cc.mjs']
+  const fontes = ['src/ui_novo.html', 'src/ui_cockpit2.html', 'src/conexao.html', 'cc.mjs']
     .map((f) => { try { return readFileSync(f, 'utf8') } catch { return '' } }).join('\n')
   /**
    * As exceções, cada uma com o motivo. **Exceção declarada é diferente de peça
@@ -699,6 +778,9 @@ const comRespostas = (extra = {}) => ({
        tela a consome. Fica declarada para o gate não ficar vermelho enquanto ele
        decide entre ligar e remover, e some daqui quando ele decidir. */
     '/api/marcos': 'DÍVIDA: rota do CC-23 que nenhuma tela chama, esperando decisão dele',
+    /* CC-856 (07/10): a dívida das dez rotas do primeiro painel acabou. Câmbio, taxa e
+       assinatura ganharam tela (Ajustes, "O custo do seu trabalho"); visita, recados,
+       janela flutuante, enriquecer e o player de mídia saíram do servidor. */
     /* Pedida pela sessão `0174a7a8` em 11/09, pelo recado do Routia, para a
        tela nova que ela está construindo (`ui_cockpit2.html`, rota `cockpit2`).
        Ela não pôde acrescentar sozinha porque `src/web.mjs` está reivindicado

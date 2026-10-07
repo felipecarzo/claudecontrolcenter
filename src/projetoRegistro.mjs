@@ -74,7 +74,7 @@ export function achar(id, { arquivo = arquivoRegistro() } = {}) {
  * Recusa nome repetido (mesmo id) — declarar de novo o que já existe seria
  * apagar o que as máquinas já provisionaram silenciosamente.
  */
-export function declarar({ nome, criadoPor = null }, { arquivo = arquivoRegistro() } = {}) {
+export function declarar({ nome, criadoPor = null, cliente = null, ativo = true, site = null }, { arquivo = arquivoRegistro() } = {}) {
   const limpo = String(nome || '').trim()
   if (!limpo) return { ok: false, erro: 'declaração sem nome' }
   const id = idDe(limpo)
@@ -85,6 +85,11 @@ export function declarar({ nome, criadoPor = null }, { arquivo = arquivoRegistro
 
   const entrada = {
     id, nome: limpo, estado: 'declarado',
+    /* CC-525: de quem é, se está vivo, e onde está no ar. `ativo` é decisão dele
+       (o leitor do dia pergunta quando passa de 7 dias parado, CC-526). */
+    cliente: cliente ? String(cliente).trim() : null,
+    ativo: ativo !== false,
+    site: site ? String(site).trim() : null,
     github: null,
     maquinas: {},
     criadoEm: hoje(), criadoPor,
@@ -92,6 +97,18 @@ export function declarar({ nome, criadoPor = null }, { arquivo = arquivoRegistro
   d.projetos.push(entrada)
   gravarArquivo(d, arquivo)
   return { ok: true, projeto: entrada }
+}
+
+/** Muda cliente, ativo ou site de um projeto já declarado. Só estes três: o resto tem dono próprio. */
+export function atualizarDados(id, campos, { arquivo = arquivoRegistro() } = {}) {
+  const d = lerArquivo(arquivo)
+  const p = d.projetos.find((x) => x.id === id)
+  if (!p) return { ok: false, erro: `projeto desconhecido: ${id}` }
+  if ('cliente' in campos) p.cliente = campos.cliente ? String(campos.cliente).trim() : null
+  if ('ativo' in campos) p.ativo = campos.ativo !== false
+  if ('site' in campos) p.site = campos.site ? String(campos.site).trim() : null
+  gravarArquivo(d, arquivo)
+  return { ok: true, projeto: p }
 }
 
 /** Grava o repositório GitHub criado para o projeto (Fase 2 usa isto). */

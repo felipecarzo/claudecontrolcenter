@@ -32,6 +32,7 @@ import path from 'node:path'
 import { casaClaude } from './platform.mjs'
 import { DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
 import { mesmoProjeto } from './nomeProjeto.mjs'
+import { hookDe } from './hooksCatalogo.mjs'
 
 const CAUDA = 512 * 1024
 
@@ -355,6 +356,27 @@ export function placar(lista = eventos({ limite: 1000 })) {
       : null,
     julgadas: x.ajudou + x.atrapalhou,
   })).sort((a, b) => b.vezes - a.vezes)
+}
+
+/**
+ * CC-293: o placar em duas somas, por FAMÍLIA da trava.
+ *
+ * `forma` decide por checagem mecânica (padrão de texto, comando, arquivo,
+ * estado). `julgamento` precisa ler o sentido do que foi dito ou feito. Elas
+ * erram de jeitos diferentes: forma erra por regex burro, julgamento erra por
+ * leitura ruim, e somar tudo escondia qual das duas estava atrapalhando.
+ * Trava que o catálogo não conhece cai em `sem família`, que aparece em vez de
+ * sumir: some-se ela e a soma deixa de bater com o placar.
+ */
+export function placarPorFamilia(linhas = placar()) {
+  const soma = () => ({ travas: 0, vezes: 0, ajudou: 0, atrapalhou: 0, semMarca: 0 })
+  const r = { forma: soma(), julgamento: soma(), 'sem família': soma() }
+  for (const x of linhas) {
+    const f = hookDe(x.trava)?.familia
+    const a = r[f] || r['sem família']
+    a.travas += 1; a.vezes += x.vezes; a.ajudou += x.ajudou; a.atrapalhou += x.atrapalhou; a.semMarca += x.semMarca
+  }
+  return r
 }
 
 /**

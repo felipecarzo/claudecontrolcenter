@@ -1,45 +1,45 @@
 # HANDOFF
 
-**Sessão:** 2026-09-23 a 28/09 · VPS (`47373acb`), rota `decisoes` (liberada no
-encerramento). Ponteiro, não relatório: o que foi feito está em
-`docs/diario/2026-09-28.md` e no `docs/backlog.jsonl`.
-**Último commit:** o deste encerramento (depois de `76d8e3a`)
+**Sessões:** duas na VPS até 07/10, `2c01df04` (rota `gate`) e `baa1393b` (rota `cockpit2`). Ponteiro, não
+relatório: o feito está em `docs/diario/2026-10-07.md` (uma seção por sessão) e no histórico de cada item
+(`node cc.mjs backlog historia <ID>`).
+**Commit:** o trabalho das duas sessões foi commitado junto em 07/10, a pedido dele. Ficaram de fora `scratch/` e
+`screenshot-coderoom.png` na raiz (rascunho, não é do projeto).
 **Branch:** `backlog/cc-46-48-49-52-53-56-65`
 
-## Pendência de commit desta sessão
+## Próximo (sessão baa1393b)
 
-Nenhuma: tudo vai no commit do encerramento (código, docs e fotos das provas).
+- **CC-960**, pedido dele para a próxima conversa: trocar modelo e esforço sozinho pela complexidade. Desenho já
+  escolhido por ele: trava nos ajudantes, modelo e esforço por projeto, planeja Opus e executa Sonnet. Correção
+  dele: decidir o modelo ANTES, por critérios, e orientar a sessão seguinte, sem refazer trabalho. Depois, CC-959.
+- Em prova esperando o celular dele: CC-966 (menu do celular) e os outros PR do Caminho e da segurança.
+- Tarefas dele (lista "meu"): reinstalar o deploy seguro e a porta de entrada como root, religar o painel, trocar
+  as chaves vazadas, cabeçalhos do nginx.
 
-## Task em andamento e próximo passo exato
+## Em andamento quando a sessão 2c01df04 fechou
 
-Não há task pela metade. O próximo trabalho é a **fila do agente**
-(especificação primeiro, CC-557, decisão dele em 28/09):
+- **Conta de Casa** (`~/projetos/VPS_conta-de-casa`): o robô estava tirando os endereços repetidos do backup
+  (pedido dele na revisão CN-175). Conversa do arquiteto: `41s39k-v4cf`. Antes de rodar qualquer passo do
+  arquiteto, leia a conversa e o backlog do projeto: pode haver pergunta aberta esperando ele.
+- **CC-879 pela metade:** o cartão do Coderoom nas Sessões ainda não mostra as tarefas nem o resumo do agy.
 
-```
-node cc.mjs backlog fila
-```
+## Esperando ele
 
-Hoje: 20 itens que o agente faz e prova sozinho, em ordem; 16 esperam ele;
-nenhum sem especificação. O próximo é o CC-234 (propor fechar pendência dele
-quando o painel acha prova). A abertura de sessão no modo continuativo já diz
-isso sozinha. Item sem especificação: `node cc.mjs backlog especificar <ID>
---pronto "..." --conferir "auto:..."` antes de fazer.
+- CC-892: como ver os agentes do robô sem virarem conversas (três caminhos oferecidos, ele não escolheu).
+- CC-895: link do testedevoo para app Node simples (exige mexer no `~/dev.sh` e no roteador: autorização dele).
+- CC-925: o formato das perguntas que chegam a ele (só produto), para desenhar junto.
+- 13 itens em PR esperando o olho dele (vigia, Esquecidas, fotos com login, travas de pergunta e outros).
 
-Na fila também: CC-564 (responder pelo painel as perguntas das sessões do PC)
-e CC-541 a 544 (registro central de projeto, pela metade desde 12/09).
+## Na fila
 
-## Arquivos a ler
+CC-876 e CC-877 (etapas 5 e 6 do arquiteto), CC-868 (modo automático, "em segundo lugar" por decisão dele).
 
-- `docs/produto/PADROES-DO-PAINEL.md`: as 14 regras de tela, tiradas dos
-  pedidos dele; toda tela nova segue
-- `src/backlog.mjs` (`filaDoAgente`, `especificar`, `leitorDoDia`)
-- `src/remotecontrol.mjs` (`saudeDaTela`, `rascunhoDaTela`)
-- `src/armario.mjs`, `hooks/permissao-painel.mjs`
+## Arquivos a ler antes de mexer no arquiteto
 
-## Estado do ROADMAP
-
-Gerado de `docs/backlog.jsonl` (`node cc.mjs backlog gerar`), em dia neste
-commit.
+- `src/arquiteto.mjs` (passo, responder, executarFicha, as travas `jaTeveObraAprovada` e `podeAutomatico`)
+- `src/auditoria.mjs` (as regras das perguntas), `src/maestro.mjs` (`todosOsTestes`, `decisoesDele`, a escada),
+  `src/vigia.mjs`
+- `docs/CC-867.md` (o plano aprovado)
 
 ---
 

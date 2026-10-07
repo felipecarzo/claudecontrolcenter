@@ -28,12 +28,12 @@ function casa(quadro, { recados = null, pedidos = null } = {}) {
 
 /* ── a linha vira objeto ─────────────────────────────────────────────────── */
 {
-  const l = lerLinha('| `front` | 🔴 ocupada | abcd1234 — a tela 🎚 continuativo 📁 src/ui.html 📁 src/web.mjs | 2026-08-27 |')
+  const l = lerLinha('| `front` | 🔴 ocupada | abcd1234 — a tela 🎚 continuativo 📁 src/ui_cockpit2.html 📁 src/web.mjs | 2026-08-27 |')
   assert.equal(l.rota, 'front')
   assert.equal(l.ocupada, true)
   assert.equal(l.dono, 'abcd1234')
   assert.equal(l.modo, 'continuativo')
-  assert.deepEqual(l.arquivos, ['src/ui.html', 'src/web.mjs'])
+  assert.deepEqual(l.arquivos, ['src/ui_cockpit2.html', 'src/web.mjs'])
   assert.equal(l.desde, '2026-08-27')
   ok('a linha do quadro vira rota, dono, modo, arquivos e data')
 }

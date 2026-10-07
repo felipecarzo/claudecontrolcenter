@@ -352,6 +352,8 @@ export function buildJob(id, state, meta, pins, now) {
     // Frente do ROADMAP.md do projeto, declarada pelo agente. É o que liga o
     // cartão ao mapa e faz o assunto parar de ser texto solto.
     frente: meta.frente || meta.front || null,
+    // CC-527/528: o item do backlog em que a sessão trabalha (ex.: CC-340), declarado por ela
+    item: meta.item || null,
     model: modelOf(state.respawnFlags),
     agent: agentOf(state),
     tokens: state.tokens ?? 0,

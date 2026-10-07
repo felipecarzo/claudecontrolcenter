@@ -71,7 +71,11 @@ if (!quadro) sair()
 let texto
 try { texto = readFileSync(quadro, 'utf8') } catch { sair() }
 
-const minhas = linhasDeRota(texto).filter((l) => l.includes('🔴') && l.includes(marca))
+/* 01/10, CC-702: posse é POSICIONAL (o primeiro id depois do 🔴), como em
+   donoDaLinha() de src/routia.mjs. Linha que só CITA esta sessão no histórico
+   não é dela. Repetida aqui porque este hook roda copiado em ~/.claude/hooks. */
+const donoDaLinha = (l) => String(l || '').slice(Math.max(0, String(l || '').indexOf('🔴'))).match(/\b([0-9a-f]{8})\b/i)?.[1]?.toLowerCase() ?? null
+const minhas = linhasDeRota(texto).filter((l) => l.includes('🔴') && donoDaLinha(l) === String(marca).toLowerCase())
 
 /**
  * Pedidos de outras sessões esperando resposta. Este é o único momento em que o
@@ -110,7 +114,8 @@ try {
     textoPedidos =
       `${abertos.length} agente(s) travado(s) esperando sua autorização: `
       + abertos.map((x) => `${x.de} em ${x.arquivo}`).join(', ')
-      + `. Responda na tela Estrutura do cockpit.`
+      // 01/10: a tela Estrutura virou a aba "rotas" da Análise no cockpit novo, com o bloco do que espera resposta primeiro
+      + `. Responda no cockpit, em Análise › rotas.`
   }
 } catch { /* falha aberta: sem módulo, comportamento antigo */ }
 

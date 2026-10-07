@@ -84,6 +84,19 @@ function ondeOlhar(rel, { raiz, raizDoProjeto } = {}) {
  * em `false` seria o defeito que este painel persegue o tempo todo.
  */
 export const PROVAS = {
+  /* CC-234, 01/10: "a cópia instalada já é a do repositório?". Nasceu da
+     pendência de instalar a trava corrigida em ~/.claude/hooks, pasta que só
+     ele escreve. `iguais:a=b`, com `~` valendo a pasta pessoal. */
+  iguais: {
+    explica: 'os dois arquivos estão iguais',
+    checar: (arg, ctx) => {
+      const [a, b] = String(arg).split('=').map((x) => x.trim().replace(/^~(?=\/)/, process.env.HOME || ''))
+      if (!a || !b) return null
+      const ca = ondeOlhar(a, ctx); const cb = ondeOlhar(b, ctx)
+      if (!ca || !cb) return null
+      try { return fs.readFileSync(ca).equals(fs.readFileSync(cb)) } catch { return null }
+    },
+  },
   porta: {
     explica: 'algo está escutando naquela porta',
     checar: (arg) => {
@@ -148,6 +161,11 @@ export const PROVAS = {
     },
   },
 }
+
+/* CC-234: o resultado da última revisão, por id da tarefa. Quem revisa é o
+   servidor, a cada minuto (as provas rodam comando de sistema); a montagem dos
+   cartões do Cockpit novo só LÊ daqui, sem pagar a checagem. */
+export const ultimaRevisao = { mapa: {}, em: 0 }
 
 /** `porta:3100` vira `{ tipo, arg }`. Prova desconhecida devolve `null` em vez
  *  de estourar: texto digitado à mão erra, e errar não pode calar a lista. */

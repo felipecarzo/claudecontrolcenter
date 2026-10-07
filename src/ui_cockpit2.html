@@ -221,16 +221,16 @@
        não pediu nada e o trabalho sai do lugar.
        `none` e não `contain`: `contain` só impede o gesto de VAZAR para o pai,
        e aqui o pai é a própria janela, onde mora a navegação. */
-    html { overscroll-behavior-x: none; }
-    /* pedido dele em 07/10: arrastar o dedo para baixo no topo recarregava o app. "none" na raiz desliga o
-       puxar para atualizar do Chrome do Android (no navegador e no app instalado); a rolagem de dentro continua. */
-    html, body { overscroll-behavior-y: none; }
+    /* pedido dele em 07/10: arrastar o dedo para baixo no topo recarregava o app. "none" na raiz e no corpo
+       desliga o puxar para atualizar do Chrome do Android (no navegador e no app instalado); a rolagem de dentro continua. */
+    html { overscroll-behavior-x: none; overscroll-behavior-y: none; }
     /* CC-971: aviso de que a tela mostra o dado guardado enquanto o novo chega */
     #c2-guardado { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; max-width: calc(100vw - 32px); padding: 8px 14px; border-radius: 999px; background: var(--bg); box-shadow: var(--neu-leve); color: var(--text-dim); font-size: 14px; white-space: nowrap; animation: c2GuardadoEntra .2s ease-out; pointer-events: none; }
     @keyframes c2GuardadoEntra { from { opacity: 0; transform: translate(-50%, 6px); } }
 
     body {
       overscroll-behavior-x: none;
+      overscroll-behavior-y: none;
       font-family: 'Inter', sans-serif;
       background-color: var(--bg);
       color: var(--text-main);

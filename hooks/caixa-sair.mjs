@@ -49,6 +49,11 @@ if (process.argv[2] === '--empurrar') {
   process.exit(0)
 }
 
+/* CC-886, 03/10: chamada do arquiteto (`claude -p`, só lê e propõe, nunca edita) não é sessão de trabalho:
+   o ponto dela commitava tudo que estivesse sujo no projeto, inclusive a junção que ele deixou preparada
+   para commit, e dezenas de `wip(ponto ...)` no Conta de Casa. `CC_SEM_PONTO=1` dispensa. */
+if (process.env.CC_SEM_PONTO === '1') process.exit(0)
+
 /* MODO 1: o gancho de verdade. Lê o evento do stdin. */
 let entrada = ''
 try { entrada = fs.readFileSync(0, 'utf8') } catch { /* sem stdin: segue com vazio */ }

@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join, resolve } from 'node:path'
 import { acharModo, estadoInicial } from './framework.mjs'
 import { linhaEhDaSessao } from './routia.mjs'
+import * as B from './backlog.mjs'
 
 export const PASTA = '.framework'
 export const ARQUIVO = 'estado.json'
@@ -253,70 +254,50 @@ export function desligar(raiz) {
 }
 
 /**
- * CC-383, 28/08: o backlog da entrevista entra no `docs/ROADMAP.md`.
+ * CC-383, 28/08: o backlog da entrevista entra no projeto.
  *
- * ⚠️ **ACRESCENTA, nunca sobrescreve, e a diferença aqui é destruição de
- * trabalho.** O roadmap é o arquivo mais caro de cada projeto dele: são meses
- * de decisão escrita à mão. Gravar o conteúdo novo por cima apagaria tudo, e
- * apagaria calado, porque ninguém relê um roadmap logo depois de mexer nele.
+ * Padrão de projeto (01/10): os itens vão para o `docs/backlog.jsonl`, que é o
+ * lugar único de tarefa, e o ROADMAP é gerado a partir dele. ROADMAP escrito à
+ * mão (projeto ainda não migrado) não é tocado: são meses de decisão escrita.
  *
- * Duas defesas, e as duas importam:
+ * **Não entra duas vezes.** A entrevista pode ser refeita: item com a mesma
+ * intenção que já está no backlog é pulado.
  *
- * 1. o texto vai para o FIM do arquivo, depois do que já está lá;
- * 2. **não entra duas vezes.** A entrevista pode ser refeita, e cada volta
- *    geraria outro bloco idêntico. A marca é o título com a data, que é o que
- *    identifica aquela entrevista.
- *
- * Sem arquivo, cria um com cabeçalho mínimo: projeto pode ter nascido fora do
- * botão de criar, e recusar por isso seria empurrar o problema para ele.
+ * `itens` devolvido é o que está NO ARQUIVO depois de gravar (os novos mais os
+ * que já estavam), e é o número que o portão do planejamento lê.
  */
-export function gravarBacklog(raiz, texto, { titulo = null } = {}) {
-  if (!texto || !String(texto).trim()) return { ok: false, erro: 'nada a escrever' }
-  const alvo = join(raiz, 'docs', 'ROADMAP.md')
-
-  let atual = ''
-  let existia = true
-  try { atual = readFileSync(alvo, 'utf8') } catch { existia = false }
-
-  /* A marca de já-escrito é a primeira linha do bloco, que carrega a data. Se
-     ela já está no arquivo, este backlog já entrou e não entra de novo. */
-  const marca = titulo || String(texto).split(/\r?\n/).find((l) => l.startsWith('## '))
-  if (marca && atual.includes(marca.trim())) {
-    return { ok: false, erro: 'este backlog já está no roadmap', jaEstava: true, arquivo: alvo }
+export function gravarBacklog(raiz, itens) {
+  if (!itens?.length) return { ok: false, erro: 'nada a escrever' }
+  const arq = B.caminhoPadrao(raiz)
+  const { itens: atuais, existe } = B.ler(arq)
+  const chave = (t) => String(t || '').trim().toLowerCase()
+  const ja = new Set(atuais.map((x) => chave(x.intencao || x.titulo)))
+  const prefixo = B.prefixoDoProjeto(atuais, raiz)
+  const novos = []
+  for (const i of itens) {
+    if (ja.has(chave(i.intencao))) continue
+    novos.push(B.acrescentar({
+      prefixo, natureza: 'PED', area: 'tela', tamanho: 'M', estado: 'B1', origem: 'felipe',
+      intencao: i.intencao, pronto: i.pronto, citacao: i.citacao, frente: i.frente,
+      conferir: `olho:${i.pronto}`.slice(0, 300),
+    }, arq))
   }
+  B.regerarRoadmap(raiz)
+  if (!novos.length) return { ok: false, erro: 'este backlog já está no projeto', jaEstava: true, arquivo: arq, itens: itens.length }
+  return { ok: true, arquivo: arq, criou: !existe, itens: itens.length, novos: novos.map((x) => x.id) }
+}
 
-  const cabeca = existia ? '' : [
-    '---',
-    'tipo: roadmap',
-    'resumo: Só o que está aberto. Concluído sai daqui e vira linha no diário.',
-    '---',
-    '',
-    '# ROADMAP',
-    '',
-    'Só o que está **aberto**. Concluído sai daqui e vira linha no diário.',
-    '',
-    '---',
-    '',
-  ].join('\n')
-
-  /* Separador só quando há o que separar, e uma linha em branco garantida
-     entre o que havia e o que entra: markdown cola cabeçalho na linha de cima
-     e o parser passa a ler os dois como um. */
-  const meio = existia && atual.trim() ? `${atual.replace(/\s*$/, '')}\n\n---\n\n` : cabeca
-  const conteudo = `${meio}${String(texto).replace(/\s*$/, '')}\n`
-
-  mkdirSync(dirname(alvo), { recursive: true })
-  const tmp = `${alvo}.tmp`
-  writeFileSync(tmp, conteudo, 'utf8')
-  renameSync(tmp, alvo)
-
-  /* Quantos itens foram MESMO escritos, contados do texto que acabou de entrar
-     no arquivo. É este número que o portão da fase de planejamento lê, e por
-     isso ele não pode vir da entrevista: ali seria o que se pretendia escrever,
-     e aqui é o que está no disco. A diferença aparece quando a gravação falha
-     pela metade. */
-  const itens = (String(texto).match(/^###\s+/gm) || []).length
-  return { ok: true, arquivo: alvo, criou: !existia, itens, bytesAntes: atual.length, bytesDepois: conteudo.length }
+/**
+ * Fecha a entrevista: grava os itens no backlog e anota no plano quantos são.
+ * Chamada por quem responde a última pergunta (a tela e o terminal), para a
+ * gravação não depender de alguém lembrar de pedir.
+ */
+export function fecharEntrevista(raiz, estado, itens) {
+  if (!itens?.length) return { estado, gravou: null }
+  const r = gravarBacklog(raiz, itens)
+  const novo = { ...estado, plano: { ...(estado?.plano || {}), itens: r.itens } }
+  gravar(raiz, novo)
+  return { estado: novo, gravou: r }
 }
 
 /**

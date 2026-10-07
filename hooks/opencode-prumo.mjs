@@ -16,7 +16,9 @@
  */
 import fs from 'node:fs'
 import os from 'node:os'
+import path from 'node:path'
 import { novoEstado, avaliar } from '../src/gatePrumo.mjs'
+import { mensagemDeTrava, travaDe } from '../src/travaArquivo.mjs'
 
 const sessoes = new Map()
 
@@ -28,6 +30,12 @@ export const Prumo = async (ctx) => ({
       if (!sessoes.has(sid)) sessoes.set(sid, novoEstado())
       const liberadas = String(process.env.CC_PRUMO_LIBERADAS || '').split(',').map((s) => s.trim().replace(/\/?\*+$/, '')).filter(Boolean)
       r = avaliar(sessoes.get(sid), input?.tool, output?.args || {}, { cwd: ctx?.directory || ctx?.worktree || process.cwd(), home: os.homedir(), liberadas })
+      // CC-847 (Nisaba): arquivo travado por micro tarefa de OUTRA conversa não se edita
+      const alvo = output?.args?.filePath || output?.args?.file_path || output?.args?.path
+      if (!r.bloquear && alvo && /^(write|edit|patch|multiedit)$/i.test(input?.tool || '')) {
+        const t = travaDe(path.resolve(ctx?.directory || ctx?.worktree || process.cwd(), alvo), { quem: process.env.CC_TRAVA_DONO || null })
+        if (t) r = { bloquear: true, regra: 'trava', motivo: mensagemDeTrava(t) }
+      }
       if (r.bloquear && process.env.CC_PRUMO_ARQ) {
         try { fs.appendFileSync(process.env.CC_PRUMO_ARQ, JSON.stringify({ em: Date.now(), regra: r.regra, tool: input?.tool, motivo: r.motivo }) + '\n') } catch { /* anotar é conforto */ }
       }

@@ -68,7 +68,7 @@ td,th{padding:8px 6px;border-bottom:1px solid #2c2721;text-align:left}
 /** O CSS do painel de verdade, para prévia de layout. */
 export function cssDoPainel() {
   try {
-    const html = fs.readFileSync(path.join(AQUI, 'ui.html'), 'utf8')
+    const html = fs.readFileSync(path.join(AQUI, 'ui_cockpit2.html'), 'utf8')
     return (html.match(/<style>([\s\S]*?)<\/style>/) || [])[1] || ''
   } catch { return '' }
 }

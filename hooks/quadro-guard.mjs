@@ -115,10 +115,12 @@ try {
     noQuadro: q.grupos.map((g) => g.projeto).sort(),
     avisados: q.naoRenderam.map((x) => ({ projeto: x.projeto, motivo: x.motivo })),
     semRoadmap: (q.semRoadmap || []).map((x) => x.projeto).sort(),
+    // 01/10: projeto com tudo fechado vira a linha "sem nada aberto" no fim da tela, e não era contado
+    semNada: [...(q.semNada || [])].sort(),
   }
 } catch { sair() }
 
-const somados = conta.noQuadro.length + conta.avisados.length + conta.semRoadmap.length
+const somados = conta.noQuadro.length + conta.avisados.length + conta.semRoadmap.length + conta.semNada.length
 
 /* Sem projeto nenhum não há o que conferir, e insistir aqui seria cobrar de
    quem trabalha numa máquina que ainda não tem projeto algum. */
@@ -130,7 +132,7 @@ const jaAvisados = new Set(foto?.jaAvisados || [])
 
 /* ── nível 1: a conta não fecha. Defeito de código, barra sempre ─────────── */
 if (somados !== conta.total) {
-  const conhecidos = new Set([...conta.noQuadro, ...conta.semRoadmap, ...conta.avisados.map((a) => a.projeto)])
+  const conhecidos = new Set([...conta.noQuadro, ...conta.semRoadmap, ...conta.semNada, ...conta.avisados.map((a) => a.projeto)])
   const sumidos = listaCrua.map((p) => p.projeto).filter((n) => !conhecidos.has(n))
   console.error(
     `A CONTA DOS PROJETOS NÃO FECHA: ${somados} de ${conta.total}.\n\n`
@@ -152,7 +154,9 @@ const agoraNoQuadro = new Set(conta.noQuadro)
    apagado (rhydon virou sysgen por pedido dele) sumiu do disco, e acusar isso
    como defeito era alarme falso; a foto nova o tira da conta. */
 const noDisco = new Set(listaCrua.map((p) => p.projeto))
-const sairam = [...antesNoQuadro].filter((p) => !agoraNoQuadro.has(p) && noDisco.has(p))
+// fechar tudo não é sumir: o projeto continua na tela, na linha "sem nada aberto"
+const semNada = new Set(conta.semNada)
+const sairam = [...antesNoQuadro].filter((p) => !agoraNoQuadro.has(p) && !semNada.has(p) && noDisco.has(p))
 if (sairam.length) {
   /* A foto NÃO é atualizada aqui, de propósito: enquanto o projeto não voltar,
      o guarda cobra de novo na resposta seguinte. É a diferença entre este

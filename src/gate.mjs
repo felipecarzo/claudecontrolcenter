@@ -306,7 +306,7 @@ function dobrar(cab, eventos) {
     if (e.tipo === 'dele') {
       mensagens.push({ de: 'felipe', texto: e.texto, em: e.em, seq: e.seq, anexos: e.anexos || [] })
     } else if (e.tipo === 'sistema') {
-      mensagens.push({ de: 'sistema', texto: e.texto, em: e.em, seq: e.seq })
+      mensagens.push({ de: 'sistema', texto: e.texto, em: e.em, seq: e.seq, ...(Array.isArray(e.acoes) && e.acoes.length ? { acoes: e.acoes } : {}), ...(Array.isArray(e.fotos) && e.fotos.length ? { fotos: e.fotos } : {}) })
     } else if (e.tipo === 'turno') {
       const m = {
         de: e.agente, turnoId: e.turnoId, em: e.em, seq: e.seq,
@@ -481,7 +481,8 @@ export function falasDe(id, opts) {
    fora: `--conversation` devolve um id NOVO a cada chamada, e ele "lembrou" a
    palavra vasculhando arquivos da pasta (22 leituras, 159 mil tokens). O
    `conversation_id` dele continua sendo guardado, mas não serve para retomar. */
-const COM_MEMORIA = new Set(['claude', 'opencode'])
+// 01/10: o agente API guarda a própria conversa (src/iaDireta.mjs) e retoma pela sessão, como o opencode
+const COM_MEMORIA = new Set(['claude', 'opencode', 'api'])
 
 export function deltaPara(id, agente, { semMemoria = false, soUltima = false } = {}) {
   const c = lerConversa(id)

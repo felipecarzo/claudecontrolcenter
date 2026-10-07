@@ -56,8 +56,30 @@ export function enderecoDe(cwd) {
     const pasta = path.resolve(cwd || '')
     const casa = (d) => { const p = path.resolve(d || ''); return p === pasta || p.startsWith(pasta + path.sep) || pasta.startsWith(p + path.sep) }
     const nome = Object.keys(mapa).find((k) => path.resolve(mapa[k].dir || '') === pasta) || Object.keys(mapa).find((k) => casa(mapa[k].dir))
-    return nome ? { nome, url: `${ENDERECO_BASE}/${nome}/` } : null
-  } catch { return null }
+    if (nome) return { nome, url: `${ENDERECO_BASE}/${nome}/` }
+  } catch { /* sem mapa: ainda vale a lista de endereços registrados, logo abaixo */ }
+  return enderecoRegistrado(cwd)
+}
+
+/**
+ * CC-819, medido em 01/10: outra sessão zerou o mapa do roteador e o jogo, com o
+ * servidor vivo, passou a dar 404 no endereço. O que sobrevive a isso é a lista
+ * de projetos registrados (`~/.config/testedevoo/projetos.txt`, uma linha
+ * `nome:pasta-a-partir-da-casa:tipo:porta`). Achado por ela, o endereço volta
+ * marcado `foraDoMapa`, e quem confere reergue o projeto com `~/dev.sh <nome>`.
+ */
+function enderecoRegistrado(cwd) {
+  try {
+    const lista = fs.readFileSync(process.env.CC_DEV_LISTA || path.join(os.homedir(), '.config', 'testedevoo', 'projetos.txt'), 'utf8')
+    const pasta = path.resolve(cwd || '')
+    for (const linha of lista.split('\n')) {
+      const [nome, dir] = linha.trim().split(':')
+      if (!nome || !dir) continue
+      const d = path.resolve(os.homedir(), dir)
+      if (d === pasta || d.startsWith(pasta + path.sep) || pasta.startsWith(d + path.sep)) return { nome, url: `${ENDERECO_BASE}/${nome}/`, foraDoMapa: true }
+    }
+  } catch { /* sem lista, sem endereço */ }
+  return null
 }
 
 /**
@@ -71,6 +93,11 @@ export async function fotografar({ cwd, saida }) {
   const endereco = enderecoDe(cwd)
   if (endereco) {
     fs.mkdirSync(saida, { recursive: true })
+    // CC-819: registrado mas fora do mapa do roteador = endereço 404 com o servidor possivelmente vivo
+    if (endereco.foraDoMapa && fs.existsSync(path.join(cwd, 'package.json'))) {
+      await rodar(process.env.CC_DEV_SH || path.join(os.homedir(), 'dev.sh'), [endereco.nome], { timeout: 90000 })
+      await new Promise((r) => setTimeout(r, 6000))
+    }
     const plano = { explorar: true, acesso: acessoTesteDe(cwd), entrar: [], telas: [], url: endereco.url }
     const c = await rodar(process.execPath, ['--experimental-websocket', ESTE, '--captura', '-', saida, JSON.stringify(plano)], { timeout: 240000 })
     const fotos = fs.readdirSync(saida).filter((f) => f.endsWith('.jpg')).sort().map((f) => path.join(saida, f))
@@ -93,6 +120,20 @@ export async function fotografar({ cwd, saida }) {
   const fotos = fs.readdirSync(saida).filter((f) => f.endsWith('.jpg')).sort().map((f) => path.join(saida, f))
   if (!fotos.length) return { ok: false, erro: 'o build passou, mas a foto falhou: ' + c.err.split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 200) }
   return { ok: true, fotos, falhas: c.err.split('\n').filter((l) => l.startsWith('tela:')).map((l) => l.slice(5).trim()) }
+}
+
+/**
+ * CC-894: fotografa um ENDEREÇO qualquer (o app que o arquiteto subiu numa porta de teste), com o mesmo
+ * explorador do painel. Devolve `{ ok, fotos, problemas, falhas, erro }`, e nunca lança.
+ */
+export async function fotografarUrl({ cwd, url, saida, acesso = null }) {
+  fs.mkdirSync(saida, { recursive: true })
+  const plano = { explorar: true, acesso: acesso || acessoTesteDe(cwd), entrar: [], telas: [], url }
+  const c = await rodar(process.execPath, ['--experimental-websocket', ESTE, '--captura', '-', saida, JSON.stringify(plano)], { timeout: 240000 })
+  const fotos = fs.readdirSync(saida).filter((f) => f.endsWith('.jpg')).sort().map((f) => path.join(saida, f))
+  let problemas = []; try { problemas = JSON.parse(fs.readFileSync(path.join(saida, '_problemas.json'), 'utf8')) } catch { /* sem anotação */ }
+  if (!fotos.length) return { ok: false, problemas, erro: `não consegui fotografar ${url}: ` + (c.err.split('\n').filter(Boolean).slice(-1)[0]?.slice(0, 160) || 'sem resposta') }
+  return { ok: true, fotos, problemas, falhas: c.err.split('\n').filter((l) => l.startsWith('tela:')).map((l) => l.slice(5).trim()) }
 }
 
 /* Os passos rodam DENTRO da página. `preencher` usa o setter nativo e dispara
@@ -168,6 +209,21 @@ async function capturar(dist, saida, plano) {
   const { browserContextId } = await cdpNav('Target.createBrowserContext', { disposeOnDetach: true })
   const { targetId } = await cdpNav('Target.createTarget', { url: 'about:blank', browserContextId })
   const tab = { id: targetId, webSocketDebuggerUrl: `${CDP.replace(/^http/, 'ws')}/devtools/page/${targetId}` }
+  /* CC-822, medido em 01/10: o pai mata este processo no limite de tempo, e num
+     jogo 3D renderizado por software a conferência passava dele. Morto sem
+     passar pelo `finally`, deixava a aba aberta, e 12 abas do jogo em loop
+     mantiveram a VPS inteira a 20 de carga. Duas defesas: um PRAZO PRÓPRIO,
+     menor que o do pai, que encerra a exploração com o que já tem; e a limpeza
+     também no SIGTERM. */
+  const limite = Date.now() + (plano.prazoMs || 190000)
+  const semTempo = () => Date.now() > limite
+  let limpou = false
+  const limpar = async () => {
+    if (limpou) return; limpou = true
+    await cdpNav('Target.closeTarget', { targetId }).catch(() => {})
+    await cdpNav('Target.disposeBrowserContext', { browserContextId }).catch(() => {})
+  }
+  process.on('SIGTERM', () => { limpar().finally(() => process.exit(1)) })
   const ws = new WebSocket(tab.webSocketDebuggerUrl)
   await new Promise((r, x) => { ws.addEventListener('open', r); ws.addEventListener('error', x) })
   let n = 0; const esp = new Map()
@@ -197,6 +253,7 @@ async function capturar(dist, saida, plano) {
   const limpo = (t) => String(t).replace(/[^\p{L}\p{N} _-]/gu, '').trim().slice(0, 40) || 'tela'
   try {
     for (const [larg, alt, tam] of [[390, 844, 'celular'], [1440, 900, 'computador']]) {
+      if (semTempo()) { console.error(`tela: ${tam}: o tempo da conferência acabou antes deste tamanho`); break }
       const tela = (h) => cdp('Emulation.setDeviceMetricsOverride', { width: larg, height: h, deviceScaleFactor: 1, mobile: larg < 700 })
       /* Mais que a primeira tela: medido em 30/09, a foto do computador parava
          antes do player, e o revisor não conseguiu confirmar o conserto. Teto
@@ -235,6 +292,7 @@ async function capturar(dist, saida, plano) {
           }
           const vistos = new Set([await ev('document.body.innerText')])
           for (const a of alvos.slice(0, ALVOS_MAX)) {
+            if (semTempo()) { console.error(`tela: ${a.texto} (${tam}): o tempo da conferência acabou antes de chegar aqui`); continue }
             try {
               await cdp('Page.navigate', { url }); await dorme(2200)
               if (plano.acesso && await ev(JS_TEM_SENHA)) await entrar() // login que não sobrevive à recarga
@@ -267,7 +325,7 @@ async function capturar(dist, saida, plano) {
   } finally {
     try { fs.writeFileSync(path.join(saida, '_problemas.json'), JSON.stringify([...problemas].slice(0, 8))) } catch { /* sem anotação, o painel segue sem problemas */ }
     ws.close()
-    await cdpNav('Target.disposeBrowserContext', { browserContextId }).catch(() => {})
+    await limpar()
     nav.close(); srv?.close()
   }
 }

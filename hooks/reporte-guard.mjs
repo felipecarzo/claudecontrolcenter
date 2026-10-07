@@ -99,6 +99,17 @@ if (!String(meta.subject || '').trim()) faltam.push('`subject`, o problema em 3 
 if (!String(meta.frente || '').trim()) faltam.push('`frente`, a seção do docs/ROADMAP.md onde este trabalho entra')
 if (!(meta.todos || []).length) faltam.push('`todos`, a lista do que esta tarefa tem que fechar')
 
+/* CC-528: em projeto com backlog, a sessão declara o ITEM em que trabalha. Sem isso o
+   aviso dele ("espera você") fica sem dono: ele vê o projeto e não sabe de qual item
+   se trata. Só vale onde há docs/backlog.jsonl (projeto sem backlog não tem item). */
+let backlogTexto = null
+try { backlogTexto = readFileSync(resolve(dados?.cwd || process.cwd(), 'docs', 'backlog.jsonl'), 'utf8') } catch { /* projeto sem backlog: não se cobra item */ }
+if (backlogTexto !== null) {
+  const item = String(meta.item || '').trim()
+  if (!item) faltam.push('`item`, o código do item do docs/backlog.jsonl em que você trabalha (ex.: CC-340). Sem item declarado, o aviso dele fica sem dono')
+  else if (!backlogTexto.includes(`"id":"${item}"`)) faltam.push(`\`item\` ${item} não existe no docs/backlog.jsonl deste projeto: use o código de um item real`)
+}
+
 /* ===================== CC-221: existir não basta, tem que ser verdade =====================
  *
  * Pergunta dele, ao escolher que o próprio agente escrevesse a descrição:

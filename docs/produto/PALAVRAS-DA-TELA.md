@@ -72,6 +72,52 @@ O bloco **Sessões** mostra quem está trabalhando agora, com o assunto e há
 quanto tempo. O resto dos blocos resume as outras telas, e cada um tem o atalho
 para a tela inteira.
 
+## tela: caminho
+
+O backlog de um projeto desenhado como uma estrada, para ver de relance o que
+já foi feito, onde o trabalho está agora e o que falta.
+
+Cada frente do projeto (cockpit, coderoom, travas...) é um trecho. Quando uma
+frente não tem mais nada aberto, ela é um marco alcançado e fica verde com o
+visto. O ponto azul é onde há trabalho andando agora, com a etiqueta "você está
+aqui", e a chegada é o fim do backlog. Toque num trecho para ver os itens dele:
+o que anda, o que está na fila e o que fechou por último.
+
+Nada aqui é declarado à mão: o desenho sai do backlog que os agentes já
+mantêm. Item cancelado não conta nem como feito nem como faltando, para a
+porcentagem dizer só quanto do que ainda vale já foi andado.
+
+Os sprints que já passaram usam a data real em que cada item fechou: a data
+escrita no próprio item, o diário do projeto, o commit e, por último, a data em
+que o item foi criado. O que fechou sem nenhuma data conhecida fica num trecho
+à parte, "Antes do histórico", fora da conta de velocidade.
+
+Cada item aberto tem um botão com o lugar dele na fila: agora, fim do dia, fim do sprint,
+fim do backlog ou fora do MVP. Tocar abre a lista dos cinco lugares e mais "sem lugar", e a
+escolha muda na hora a ordem do trabalho dos agentes, porque a fila deles segue o Caminho. O
+que ficou para o fim do dia e não andou aparece como "sobrou de" com a data. O que está fora
+do MVP fica guardado embaixo da estrada, fora da porcentagem, e só volta quando você escolher
+outro lugar. Ideia nova que ainda não tem lugar fica em "Ideias esperando o seu lugar".
+
+## tela: tarefas
+
+O lugar das suas demandas: o que você pede aos agentes e o que depende de você.
+
+Você escreve ou dita um pedido, o painel adivinha o projeto pelo texto (e você
+pode trocar), e o pedido entra na fila dos agentes daquele projeto, com as suas
+palavras guardadas. Embaixo, cada pedido mostra o andamento: na fila, em
+andamento, em prova, feita ou travada.
+
+Do outro lado ficam as tarefas que só você resolve, agrupadas por projeto, e a
+gaveta com as paradas há mais de 7 dias, para limpar em lote. Nada some sem o
+seu toque.
+
+Embaixo disso fica o caminho do projeto que você escolher, na estrada ou em
+lista: os sprints já feitos, o atual e os próximos. Cada item mostra "o que é"
+e "o que muda para você", escritos uma vez pelo AGY (o Gemini do plano Google)
+e guardados. Enquanto a explicação não chega, aparece o texto do agente,
+marcado como tal. O estado de cada item vem em palavra, ícone e cor.
+
 ## tela: decisoes
 
 No menu, "Sessões": a central de todas as sessões abertas, as desta máquina e
@@ -83,6 +129,11 @@ um cartão só.
 Os filtros de cima escolhem o estado (esperando você, trabalhando, paradas), a
 máquina e o projeto. As abas "Fechadas e antigas" e "Histórico" guardam o que
 saiu da lista e tudo o que já apareceu, com como terminou.
+
+Em tela larga, no modo lista, a tela vira painéis lado a lado: a lista, a
+sessão escolhida, a conversa e, se você fixar, uma segunda sessão ao lado. Cada
+painel muda de lugar pelas setas e sai pelo "×"; o que saiu volta pelo botão
+com o nome dele, em cima. No celular nada muda.
 
 ## tela: armario
 
@@ -98,6 +149,10 @@ enquanto você escreve, e o rodapé dela diz quando salvou e em que gaveta está
 Embaixo ficam os projetos: cada um é uma gaveta só de leitura com a
 documentação da pasta docs dele, formatada para ler.
 
+Os links "todas" e o nome de cada nota na Início abrem direto a nota, na aba
+Notas. No rodapé da nota, "copiar" leva o título e o texto para colar onde
+quiser, numa conversa ou numa mensagem.
+
 Gaveta só é apagada vazia, para nada sumir junto sem aviso.
 
 ## tela: design
@@ -112,8 +167,26 @@ que o projeto dá a ela. Quando o arquivo é só texto, as cores são as citadas
 nele, e embaixo de cada uma aparece a linha de onde saiu. Projeto sem arquivo
 de design fica na lista recolhida "outros projetos".
 
-Por enquanto a tela só mostra. Ajustar pelo painel grava dentro do projeto, e
-vem depois de você ver esta primeira versão.
+Dá para ajustar pelo painel, e o arquivo de design do projeto muda junto: toque
+numa cor para trocar, toque em "trocar" ao lado de uma fonte, ou escreva uma
+regra nova embaixo de "regras do painel". Antes de gravar, o painel guarda uma
+cópia da versão anterior do arquivo fora do projeto, com data, para nada se
+perder. Projeto sem arquivo de design ganha um ao receber a primeira regra.
+
+A aba **Telas** mostra as telas que um agente desenhou antes de programar, cada
+uma com a última versão fotografada no celular e no computador. "Aprovar esta
+versão" diz ao agente que é ela que vira código; "pedir ajuste", com o que
+ajustar, pede a próxima versão. A mesma carta aparece no "Decidir um por um",
+e o voto vale nos dois lugares.
+
+A aba **Mural** junta as referências do projeto: um print, o link de um site
+de inspiração ou um recado do tipo "quero assim". Fica guardado dentro do
+projeto, e o agente lê as mais novas antes de mexer em tela.
+
+A aba **Antes e depois** põe lado a lado as duas últimas rodadas de fotos que o
+Coderoom tirou do site deste projeto, tela por tela, no celular ou no
+computador. Aprovar guarda o seu voto; pedir ajuste guarda e manda o pedido
+para a conversa do Coderoom, e o agente continua dali.
 
 ## tela: ideias
 
@@ -174,6 +247,11 @@ e é isso que distingue trabalho em curso de coisa travada.
 O agente pode editar arquivo e rodar comando, e as suas proteções continuam
 valendo: se ele tentar algo que uma trava barra, ela barra igual, e a conversa
 mostra o que aconteceu.
+
+Na coluna da direita, em tela larga, cada bloco (a conversa, o git, o projeto,
+os arquivos, os agentes e as notas) sobe ou desce pelas setas, recolhe pelo
+título e sai pelo "×". O que saiu fica numa linha embaixo, para recolocar com um
+toque. A ordem fica guardada no aparelho.
 
 ## tela: agora
 

@@ -229,6 +229,11 @@ export function validarPacote(bruto) {
         : null,
       limites: bruto.limites && typeof bruto.limites === 'object' && !Array.isArray(bruto.limites)
         ? bruto.limites : null,
+      /* CC-861: as pastas de projeto daquela máquina, para o cofre completar o registro
+         central. Só vem de vez em quando (ao subir e por comando), então ausente é `null`. */
+      pastas: Array.isArray(bruto.pastas)
+        ? bruto.pastas.slice(0, 300).map((p) => ({ raiz: String(p?.raiz || '').slice(0, 300), ativo: p?.ativo === true })).filter((p) => p.raiz)
+        : null,
       /* CC-340: as travas e o framework daquela máquina.
          Nasceu de uma pergunta que não tinha resposta em tela nenhuma: se os
          ganchos estão mesmo registrados no PC. Sem isto, uma pendência ficou
@@ -1301,7 +1306,7 @@ export function origemDoEmpurrao() {
 export function montarPacote({
   maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [], backlogs = null,
   meu = null, agentes = null, limites = null, travas = null, framework = null, servico = null, hw = null,
-  permissoes = [],
+  permissoes = [], pastas = null,
 }) {
   const enxuto = jobs.map((j) => ({
     id: j.id, status: j.status, subject: j.subject, project: j.project, sub: j.sub,
@@ -1352,6 +1357,8 @@ export function montarPacote({
        barra lateral mostrar as duas. Mesma regra do retrato: barato, calculado
        a cada empurrão, `null` quando a máquina não sabe dizer. */
     hw,
+    /* CC-861: as pastas de projeto desta máquina, só quando quem chama manda. */
+    ...(pastas ? { pastas } : {}),
     /* CC-456: quem empurrou. Calculado aqui, não recebido por parâmetro, para
        nenhum chamador precisar mudar — e porque quem sabe qual processo é este
        é este processo. FORA de `CAMPOS_QUE_PERSISTEM` de propósito: herdar

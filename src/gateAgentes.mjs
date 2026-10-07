@@ -36,8 +36,10 @@
  * nunca `shell: true` com argumento dinâmico, que é injeção de comando real e
  * não questão de estilo. Ver o cabeçalho de `opencode.mjs`.
  */
+import { limparSegredos } from './segredo.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
+import { estaSegurando, motivoDeSegurar } from './vigiaCarga.mjs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
@@ -45,6 +47,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { resolverBinario } from './paineis.mjs'
 import { ehWindows } from './platform.mjs'
 import { deOutraMaquina } from './gate.mjs'
+// 01/10, pedido dele: APIs de IA (pagas e gratuitas) no Coderoom. Módulo de baa1393b.
+import { envParaOpencode, listar as listarProvedores, modelos as modelosDoProvedor } from './provedoresIA.mjs'
+const IA_DIRETA = fileURLToPath(new URL('./iaDireta.mjs', import.meta.url))
 
 export const PASTA_LOG = path.join(os.tmpdir(), 'cc-gate')
 
@@ -103,6 +108,13 @@ export const servidorOpencodeVivo = () => ocVivo
 conferirServidorOpencode().catch(() => {})
 
 const MCP_PAINEL = fileURLToPath(new URL('./mcpPainel.mjs', import.meta.url))
+// CC-829: as ferramentas do opencode desligadas para o pedido ficar leve (cada uma manda o esquema inteiro em todo passo)
+/* 01/10, medido ao vivo: `patch` NÃO pode sair. Para alguns modelos grátis
+   (mimo, nemotron, os que a fila usa quando o big-pickle bate no limite) ela é
+   a ÚNICA ferramenta de editar ("unavailable tool 'edit'. Available: bash, glob,
+   grep, read..."), e sem ela o agente regrava o arquivo inteiro com `cat >`:
+   foi assim que o index.html do jogo perdeu 257 linhas. */
+const FERRAMENTAS_FORA = { webfetch: false, todowrite: false, todoread: false, task: false, skill: false, list: false }
 // CC-803: o plugin que segura o modelo no projeto (ver src/gatePrumo.mjs)
 const PRUMO = fileURLToPath(new URL('../hooks/opencode-prumo.mjs', import.meta.url))
 export function configPainelMcp(conversa) {
@@ -174,6 +186,9 @@ export const AGENTES_GATE = {
        com "Session not found" na saída de erro. */
     args: ({ modelo, sessao, somenteLer, flash, cwd, anexos = [] }) => [
       'run', '--model', modelo || 'opencode/big-pickle', '--format', 'json',
+      /* CC-823: só as linhas de ERRO do próprio opencode vão para a saída de
+         erro, e é por elas que o painel vê o limite de uso na hora. */
+      ...(flash ? [] : ['--print-logs', '--log-level', 'ERROR']),
       /* CC-716: Flash vai pelo servidor aberto, com a pasta explícita (sem
          `--dir` ele trabalharia na pasta do servidor) e sem sessão. */
       ...(flash ? ['--attach', OC_URL, '--dir', cwd] : sessao ? ['--session', sessao] : []),
@@ -226,6 +241,18 @@ export const AGENTES_GATE = {
       ...(esforco ? ['--effort', esforco] : []),
     ],
   },
+  /* 01/10, escolha dele ("os dois"): o agente que fala DIRETO com o provedor,
+     com a chave dele. Sem os 5 s de partida do opencode e sem o travamento
+     depois de erro (medido). Só conversa: não edita arquivo do projeto.
+     Escreve no formato que `lerTurno` já lê (pedaços do agy, fim do Claude). */
+  api: {
+    binario: 'node',
+    rotulo: 'API',
+    paga: 'a sua chave de API',
+    aceitaModelo: true,
+    precisaSessao: false,
+    args: ({ modelo, sessao }) => [IA_DIRETA, '--modelo', modelo || '', ...(sessao ? ['--sessao', sessao] : [])],
+  },
 }
 
 /* Quanto tempo a lista de modelos vale.
@@ -257,7 +284,15 @@ export async function modelosDe(agente) {
 
   let modelos = []
   let erro = null
-  if (!a.listar) {
+  /* O agente API lista os modelos de cada provedor em que ele cadastrou chave,
+     como "provedor/modelo". Sem chave nenhuma, a lista vazia vem com o motivo. */
+  if (agente === 'api') {
+    const com = listarProvedores().filter((p) => p.temChave)
+    if (!com.length) erro = 'nenhuma chave de API cadastrada: cadastre em Coderoom › APIs de IA'
+    for (const p of com) {
+      try { for (const m of await modelosDoProvedor(p.id)) modelos.push({ id: `${p.id}/${m.id}`, rotulo: `${p.nome} · ${m.id}${m.gratis ? ' (grátis)' : ''}` }) } catch (e) { erro = `${p.nome}: ${e.message}` }
+    }
+  } else if (!a.listar) {
     modelos = [
       { id: 'opus', rotulo: 'Opus, o mais capaz' },
       { id: 'sonnet', rotulo: 'Sonnet, o equilibrado' },
@@ -297,6 +332,9 @@ export async function modelosDe(agente) {
   return valor
 }
 
+/** Chave cadastrada ou apagada: a lista do agente API precisa ser lida de novo. */
+export const esquecerModelos = (agente) => cacheModelos.delete(agente)
+
 /** Os três de uma vez, para a tela pedir uma coisa só. */
 export async function todosOsModelos() {
   const fora = {}
@@ -321,6 +359,10 @@ export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', 
     throw new Error(`a pasta ${cwd} é de outra máquina: o agente não a alcança daqui.`)
   }
 
+  /* CC-857: com a máquina sobrecarregada (carga acima de 2x os núcleos por um minuto),
+     agente novo espera: a tela mostra a causa e o "tentar de novo". */
+  if (estaSegurando()) { const e = new Error(motivoDeSegurar()); e.segurado = true; throw e }
+
   fs.mkdirSync(PASTA_LOG, { recursive: true })
   const turnoId = `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
   const logFile = path.join(PASTA_LOG, `${turnoId}.jsonl`)
@@ -336,9 +378,11 @@ export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', 
      recebem colado na frente do pedido, separado com um cabeçalho que diz o que
      é: sem essa marca, o agente lê o estado do projeto como se fosse ordem. */
   const usaArquivo = Boolean(pacote) && a.aceitaArquivoDeContexto !== false && agente === 'claude'
-  const corpo = (!usaArquivo && pacoteTexto)
+  /* CC-841 (Nisaba): esta é a saída única para os modelos. Segredo (chave,
+     senha, valor de .env) é trocado por um aviso aqui, para qualquer agente. */
+  const corpo = limparSegredos((!usaArquivo && pacoteTexto)
     ? `${pacoteTexto}\n\n--- fim do estado do projeto. a conversa começa abaixo. ---\n\n${texto}`
-    : texto
+    : texto)
 
   const args = a.args({
     sessao, novaSessao, permissao, cwd, conversa, somenteLer, dirsExtras,
@@ -374,16 +418,43 @@ export function enviar({ agente = 'agy', texto, cwd, permissao = 'acceptEdits', 
        não lê a configuração desta chamada). `CC_SEM_PRUMO` desliga; os testes
        do painel usam, para não carregar o plugin num agente de mentira. */
     const comPrumo = agente === 'opencode' && !(flash && ocVivo) && !process.env.CC_SEM_PRUMO
+    /* CC-829, pedido dele em 01/10: "menos tokens, menos processamento, para
+       ela conseguir funcionar sem pausas gigantes". Medido com o mesmo "responda
+       ok" (tokens de ENTRADA por passo): 25,5 mil de carga fixa; sem as
+       instruções e skills herdadas do Claude Code, 12,8 mil; e sem as sete
+       ferramentas que o agente quase não usa aqui (sub-agente, lista de tarefas,
+       web, skills, patch e list), 5,5 mil: menos 78%. Conferido que escrever,
+       rodar comando e ler arquivo seguem funcionando. As regras do Felipe chegam
+       pelo pacote do painel e pelo AGENTS.md do projeto. `CC_OPENCODE_HERDA=1`
+       volta ao jeito antigo. */
+    const opencodeEnxuto = agente === 'opencode' && process.env.CC_OPENCODE_HERDA !== '1'
     const config = {
+      ...(opencodeEnxuto ? { tools: FERRAMENTAS_FORA } : {}),
       ...(comPergunta ? { mcp: { painel: { type: 'local', command: [process.execPath, MCP_PAINEL, '--coderoom', conversa], enabled: true } } } : {}),
       ...liberadas,
       ...(comPrumo ? { plugin: [pathToFileURL(PRUMO).href] } : {}),
     }
+    /* 01/10: as chaves de API que ele cadastrou chegam ao opencode, que passa a
+       oferecer os modelos daqueles provedores. */
+    /* CC-829, pedido dele em 01/10: "usar menos processamento, menos tokens, para
+       ela conseguir funcionar sem pausas gigantes". Medido: um "responda ok"
+       custava 25,5 mil tokens de ENTRADA só de carga fixa, e com esta variável
+       cai para 12,8 mil (metade): o opencode deixa de ler as instruções globais
+       e as 74 skills do Claude Code, que não eram dele e pesavam em cada passo.
+       As regras do Felipe que importam chegam pelo pacote do painel e pelo
+       AGENTS.md do projeto. `CC_OPENCODE_HERDA=1` volta ao jeito antigo. */
+    const chavesIA = agente === 'opencode' ? { ...envParaOpencode(), ...(opencodeEnxuto ? { OPENCODE_DISABLE_CLAUDE_CODE: '1' } : {}) } : {}
     const filho = spawn(cmd, cmdArgs, {
       cwd, stdio: ['pipe', saida, erro], windowsHide: true,
-      ...(Object.keys(config).length ? { env: { ...process.env, OPENCODE_CONFIG_CONTENT: JSON.stringify(config), ...(comPrumo ? { CC_PRUMO_ARQ: logFile.replace(/\.jsonl$/, '.prumo'), CC_PRUMO_LIBERADAS: pastas.join(',') } : {}) } } : {}),
+      // CC-847: CC_TRAVA_DONO é a chave da conversa: passa pelos arquivos que a micro tarefa DELA travou, e só por esses
+      env: { ...process.env, ...chavesIA, ...(conversa ? { CC_TRAVA_DONO: `gate:${conversa}` } : {}), ...(Object.keys(config).length ? { OPENCODE_CONFIG_CONTENT: JSON.stringify(config) } : {}), ...(comPrumo ? { CC_PRUMO_ARQ: logFile.replace(/\.jsonl$/, '.prumo'), CC_PRUMO_LIBERADAS: pastas.join(',') } : {}) },
     })
     filho.on('error', () => { /* falha aberta: binário ausente não derruba o painel */ })
+    /* 02/10: com 6 sessões e vários agentes, a VPS chegou a 98% de CPU e o painel
+       (um processo só) respondia tarde e parecia cair. Agente de fundo cede a vez:
+       prioridade 10 (de -20 a 19), a mesma conta que `nice -n 10`. */
+    // CC_SEM_NICE=1: os testes do gate têm limite de segundos e rodam sob a carga da VPS; lá não se cede a vez
+    if (!process.env.CC_SEM_NICE) try { os.setPriority(filho.pid, 10) } catch { /* já saiu, ou sem permissão: segue na normal */ }
     filho.stdin.on('error', () => { /* o filho pode morrer antes de ler tudo */ })
     filho.stdin.end(corpo)
     fs.closeSync(saida)
@@ -528,6 +599,14 @@ export function lerTurno(logFile, agente = 'agy', erroFile = null) {
     const passo = o.step_update
     if (passo?.step_type === 'agent_response' && typeof passo.text_delta === 'string') fora.texto += passo.text_delta
     if (passo?.step_type === 'tool_use') fora.ferramentas.push({ nome: passo.tool_name || 'ferramenta', alvo: null })
+    /* CC-928, medido em 06/10: o agy de hoje escreve `step_type: 'tool'` (não mais `tool_use`), com o mesmo passo
+       repetido em vários `step_update` (rodando, depois feito). Sem isto o painel via ZERO ferramentas do agy em
+       todo turno: nada em "o que mudou", e o vigia o acusaria de responder sem fazer. Conta uma vez, quando termina. */
+    if (passo?.step_type === 'tool' && passo.state === 'DONE' && passo.tool_name) {
+      const p = passo.tool_info?.parameters || {}
+      const caminho = p.AbsolutePath || p.TargetFile || p.FilePath || null
+      fora.ferramentas.push({ nome: passo.tool_name, alvo: caminho || (p.CommandLine ? String(p.CommandLine).slice(0, 300) : null), caminho })
+    }
     if (o.event === 'init' && o.conversation_id) fora.sessao = fora.sessao || o.conversation_id
     if (o.event === 'result') {
       fora.terminou = true
@@ -583,7 +662,10 @@ export function lerTurno(logFile, agente = 'agy', erroFile = null) {
          (recomeçar mandando a conversa inteira). */
       fora.erro = 'a sessão anterior não existe mais'
     } else if (e.trim() && !fora.terminou) {
-      fora.erro = fora.erro || e.trim().split('\n').slice(-1)[0]
+      /* CC-823: com `--print-logs` a saída de erro traz linhas de log
+         (`timestamp=... level=ERROR ...`). Elas não são "o erro" para mostrar. */
+      const falas = e.trim().split('\n').filter((l) => !/^timestamp=/.test(l))
+      if (falas.length) fora.erro = fora.erro || falas.slice(-1)[0]
     }
   }
   /* A mensagem de erro vem da saída de erro do opencode, pintada de cor. Sem
@@ -596,6 +678,17 @@ export function lerTurno(logFile, agente = 'agy', erroFile = null) {
   try { tudoErro = erroFile ? fs.readFileSync(erroFile, 'utf8') : '' } catch { /* sem saída de erro */ }
   fora.pastasRecusadas = [...new Set([...tudoErro.matchAll(/permission requested: external_directory \(([^)]*)\); auto-rejecting/g)]
     .flatMap((m) => m[1].split(',').map((s) => s.trim()).filter(Boolean)))]
+  /* CC-823, a causa do "agente calado" medida em 01/10: o modelo gratuito do
+     opencode devolve "Rate limit exceeded", e o CLI tenta de novo 3 vezes em
+     SILÊNCIO, por minutos. O log do opencode tinha 19 desses hoje, nos mesmos
+     horários das paradas. Duas falhas seguidas (ou a desistência final) bastam:
+     uma só costuma passar na tentativa seguinte. */
+  if (agente === 'opencode' && !fora.terminou) {
+    const falhas = (tudoErro.match(/Rate limit exceeded/g) || []).length
+    fora.falhasLimite = falhas
+    fora.limiteTaxa = falhas >= 2 || /AI_RetryError[^\n]*Rate limit/.test(tudoErro)
+    if (fora.limiteTaxa) fora.erro = 'o modelo gratuito está com limite de uso (rate limit)'
+  }
 
   return fora
 }

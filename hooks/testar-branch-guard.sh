@@ -27,6 +27,14 @@ caso "checkout -b com trabalho"          "git checkout -b nova"   2 sujo
 caso "checkout de ARQUIVO nao e troca"   "git checkout -- a.txt"  0 sujo
 caso "git switch com trabalho"           "git switch outra"       2 sujo
 
+echo "— CC-299: restaurar arquivo e citar o comando nao sao troca —"
+caso "checkout HEAD arquivo restaura, nao troca"  "git checkout HEAD a.txt"  0 sujo
+caso "heredoc citando git checkout passa"         "git commit -F - <<'MSG'
+nao use git checkout outra aqui
+MSG"  0 sujo
+caso "grep procurando git switch passa"           "grep -n 'git switch com trabalho' x.sh"  0 sujo
+caso "checkout de branch ainda barra"             "git checkout outra && echo ok"  2 sujo
+
 echo "— destruir o que nao foi commitado —"
 caso "reset --hard com trabalho"         "git reset --hard"       2 sujo
 caso "reset --hard na pasta limpa"       "git reset --hard"       0

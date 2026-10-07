@@ -9,13 +9,14 @@
 case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) echo "testes de travas: pulados no Windows (nunca medidos lá)"; exit 0 ;; esac
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 falhas=0; total=0
-for f in testar-*.sh; do
+# 01/10: os do Routia moram em routia/ e escrevem "FALHA" (não "FALHOU"); os dois ficavam de fora
+for f in testar-*.sh routia/testar-*.sh; do
   [ "$f" = testar-comum.sh ] || [ "$f" = testar-travas.sh ] && continue
   total=$((total + 1))
   saida=$(timeout 120 bash "$f" 2>&1)
-  if echo "$saida" | grep -q "FALHOU"; then
+  if echo "$saida" | grep -qE "FALHOU|FALHA "; then
     falhas=$((falhas + 1))
-    echo "== $f"; echo "$saida" | grep -A4 "FALHOU" | head -12
+    echo "== $f"; echo "$saida" | grep -A4 -E "FALHOU|FALHA " | head -12
   fi
 done
 if [ "$falhas" -gt 0 ]; then echo "testes de travas: $falhas de $total arquivos com falha"; exit 1; fi

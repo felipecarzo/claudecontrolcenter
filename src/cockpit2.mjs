@@ -28,7 +28,43 @@ import { estado as estadoRC, saudeDaTela } from './remotecontrol.mjs'
 import { execFile } from 'node:child_process'
 import { registrar as registrarHistorico } from './decisaoHistorico.mjs'
 import * as resumoAgy from './resumoAgy.mjs'
+import { ultimaRevisao } from './tarefasProva.mjs'
 import { raioX } from './raioX.mjs'
+import * as observado from './observado.mjs'
+import { ler as lerBacklogDe, estaAberto as itemAberto } from './backlog.mjs'
+import { lerCabecalho as lerCabecalhoGate } from './gate.mjs'
+import { perguntaDoArquiteto } from './arquiteto.mjs'
+
+/* CC-493: sessão sem frente declarada recebe um PALPITE de frente, deduzido dos arquivos
+   que ela mexeu (o que o transcrito mostra) contra os itens abertos do backlog do projeto.
+   Sempre marcado como palpite na tela: dedução não é declaração. O trabalho caro (ler a
+   cauda do transcrito) tem cache por tamanho e mtime em observado.mjs; o backlog tem o seu aqui. */
+const cacheBacklogPalpite = new Map()
+function itensAbertosDe(raizProjeto) {
+  const arq = path.join(raizProjeto, 'docs', 'backlog.jsonl')
+  let mtime; try { mtime = fs.statSync(arq).mtimeMs } catch { return [] }
+  const c = cacheBacklogPalpite.get(arq)
+  if (c && c.mtime === mtime) return c.itens
+  const itens = lerBacklogDe(arq).itens.filter(itemAberto)
+  cacheBacklogPalpite.set(arq, { mtime, itens })
+  return itens
+}
+function raizDoBacklog(cwd) {
+  let d = cwd
+  for (let i = 0; i < 5 && d && d !== path.dirname(d); i++, d = path.dirname(d)) {
+    if (fs.existsSync(path.join(d, 'docs', 'backlog.jsonl'))) return d
+  }
+  return null
+}
+export function palpiteDeFrente(j) {
+  if (!j || j.frente || !j.cwd) return null
+  try {
+    const raiz = raizDoBacklog(j.cwd); if (!raiz) return null
+    const arquivo = j.transcript || observado.transcritoDe(j.sessionId || j.id)
+    const r = observado.frenteProvavel(observado.observar(arquivo, { raiz: j.cwd }), itensAbertosDe(raiz))
+    return r ? { frente: r.frente, porque: r.porque } : null
+  } catch { return null }
+}
 import { createHash } from 'node:crypto'
 import { casaClaude as casaClaudeDir, memoriaDosProcessos } from './platform.mjs'
 
@@ -356,6 +392,16 @@ const appUrlDe = (j) => (/^https:\/\/claude\.ai\/code\/session_[A-Za-z0-9]{10,60
  * coderoom tem o caminho dele. Sem o prefixo, os dois se confundem e a
  * mensagem vai para o terminal errado.
  */
+/** A conversa foi aberta pelo maestro? Marca `origem`, ou o jeito que ele as batiza: "<ficha>: <micro tarefa>" e "Maestro: ...". */
+export const conversaDoMaestro = (h) => Boolean(h) && (h.origem === 'maestro' || /^[A-Z]{2,5}-\d+: /.test(h.titulo || '') || /^maestro\b|pelo maestro/i.test(h.titulo || ''))
+
+/** CC-957: marca `esquecida` em sessão (e cartão de espera) sem atividade há `limite` ou mais. Trabalhando nunca é esquecida. Devolve o limite usado. */
+export function marcarEsquecidas(dados, limite = Number(process.env.CC_ESQUECIDA_MS) || 3 * 864e5) {
+  for (const c of dados.conectadas || []) if (c && c.estado !== 'trabalhando' && Number(c.desdeMs) >= limite) c.esquecida = true
+  for (const e of dados.espera || []) if (e && e.tipo === 'agente' && Number(e.desdeMs) >= limite) e.esquecida = true
+  return limite
+}
+
 const falaDoCoderoom = (j) => {
   if (!j.ultima?.texto) return null
   return {
@@ -377,11 +423,24 @@ const estadoDaSessao = (j) => {
      lado: nem conectada, nem decisão. */
   if (j.aberta === false) return 'encerrada'
   if (j.permissao) return 'espera você' // CC-606: parada no pedido de permissão
+  if (entregou(j)) return 'entregou' // CC-508
   if (j.status === 'working') return 'trabalhando'
   if (j.status === 'waiting') return 'espera você'
   if (j.status === 'failed') return 'falhou'
   if (j.status === 'done') return 'entregou'
   return 'ociosa'
+}
+
+/* CC-508, print dele: um agente que ENTREGOU (6 de 6 tarefas, commit feito)
+   aparecia como "parou sem perguntar" em Esperando você. Entregou = o agente
+   declarou que terminou, ou fechou todas as tarefas da lista; e não está
+   trabalhando nem pedindo permissão. Vira "entregou" em Sessões, sem cartão
+   de parada. Pergunta aberta continua sendo cartão (decidido no laço). */
+export function entregou(j) {
+  if (j.status === 'working' || j.permissao) return false
+  if (/^(done|entregue|entregou|pronto|concluido|concluído)$/i.test(String(j.detail || '').trim())) return true
+  const n = j.todos?.length || 0
+  return n > 0 && j.todosDone === n
 }
 
 const bloqueioDe = (j) => {
@@ -401,7 +460,7 @@ export function avisoDoAgente(j, fala, dispositivo, agora) {
   const travado = bloqueioDe(j)
   const base = {
     tipo: 'agente', id: j.id, projeto: chaveDeProjeto(j.project), nome: nomeCanonico(j.project),
-    frente: j.frente || null, assunto: j.subject || null, dispositivo, modelo: j.model || null,
+    frente: j.frente || null, frentePalpite: palpiteDeFrente(j), item: j.item || null, assunto: j.subject || null, dispositivo, modelo: j.model || null,
     desdeMs: Math.max(0, agora - (j.updatedAt || agora)), sessao: tipoDaSessao(j),
     // CC-728: quem responde na conversa do Coderoom, para o seletor do cartão
     agente: j.tipo === 'coderoom' ? (j.template || null) : null,
@@ -525,13 +584,14 @@ export function montar({
        quem trabalha agora: a leitura tem cache por tamanho do arquivo. */
     /* Item 6 da tela Projetos (26/09): a parada também mostra a última fala,
        não só a que trabalha. */
-    const falaSessao = (j.status === 'working' || j.status === 'waiting' || j.status === 'idle') && !j.stale && !semContato
+    // CC-508: a que entregou também leva a última fala, que é o resumo da entrega ao abrir
+    const falaSessao = (j.status === 'working' || j.status === 'waiting' || j.status === 'idle' || entregou(j)) && !j.stale && !semContato
       ? (j.tipo === 'coderoom' ? falaDoCoderoom(j) : falaDe(j))
       : null
     p.sessoes.push({
       id: j.id, tipo: tipoDaSessao(j), dispositivo: onde, modelo: j.model || null,
       estado: estadoDaSessao(j), ferramenta: ferramentaCurta(j.inFlight?.[0]?.label) || null,
-      desdeMs: Math.max(0, agora - (j.updatedAt || agora)), frente: j.frente || null, assunto: j.subject || null,
+      desdeMs: Math.max(0, agora - (j.updatedAt || agora)), frente: j.frente || null, frentePalpite: palpiteDeFrente(j), item: j.item || null, assunto: j.subject || null,
       todos: j.todos?.length || 0, todosDone: j.todosDone || 0,
       /* Qual agente responde nesta sessão. Só o coderoom tem: lá a escolha é
          dele e muda de conversa para conversa, e sem isso o cartão dizia
@@ -579,6 +639,8 @@ export function montar({
          testes da skill das gavetas, rodados na pasta do sumauma, apareceram
          como "PAROU · sumauma" por causa da regra da ociosa com fala. */
       if (j.porPrograma) continue
+      // CC-508: entregou não é parada; só uma pergunta aberta ainda vira cartão
+      if (entregou(j) && !ehPergunta) continue
       if (ehPergunta || j.status === 'waiting' || ociosaComFala) {
         const aviso = avisoDoAgente(j, fala, onde, agora)
         aviso.marca = fala?.em || null
@@ -641,6 +703,9 @@ export function montar({
       tipo: 'pendencia', id: t.id, projeto: p?.chave || null, nome: p?.nome || 'geral', frente: t.frente || null,
       pergunta: t.texto, porque: t.porque || null, dispositivo: t.maquina || disp,
       desdeMs: t.em ? Math.max(0, agora - t.em) : null, acao: 'feito',
+      /* CC-234: a prova que o servidor conferiu. Só ACUSA: quem fecha é ele. */
+      pareceResolvida: ultimaRevisao.mapa[t.id]?.pareceResolvida === true,
+      comoSoube: ultimaRevisao.mapa[t.id]?.comoSoube || null,
     }
     if (p) p.pendencias.push(pend)
     if (pend.desdeMs != null && pend.desdeMs > GAVETA_MS) { gaveta.push(pend); continue }
@@ -988,7 +1053,7 @@ async function montarResposta() {
       if (ja) { Object.assign(ja, campos); return }
       const c = (dados.conectadas || []).find((x) => x.conversa === s.conversa || x.id === String(s.conversa).slice(0, 8))
       if (!c) return
-      ;(dados.espera || (dados.espera = [])).unshift({ tipo: 'agente', id: c.id, projeto: c.projeto, nome: c.nome, frente: c.frente || null, assunto: c.assunto || null, dispositivo: c.dispositivo, modelo: c.modelo || null, desdeMs: 0, sessao: c.tipo, conversa: s.conversa, opcoes: [], ...campos })
+      ;(dados.espera || (dados.espera = [])).unshift({ tipo: 'agente', id: c.id, projeto: c.projeto, nome: c.nome, frente: c.frente || null, frentePalpite: c.frentePalpite || null, item: c.item || null, assunto: c.assunto || null, dispositivo: c.dispositivo, modelo: c.modelo || null, desdeMs: 0, sessao: c.tipo, conversa: s.conversa, opcoes: [], ...campos })
     })
   } catch { /* a tela é um extra: sem ela, o cartão fica como estava */ }
   /* CC-651: os pedidos do gancho de permissão valem MAIS que a tela e a
@@ -1019,7 +1084,7 @@ async function montarResposta() {
       if (ja) { Object.assign(ja, campos); continue }
       ;(dados.espera || (dados.espera = [])).unshift({
         tipo: 'agente', id: c ? c.id : String(pg.sessao || pg.id).slice(0, 8), projeto: c ? c.projeto : path.basename(pg.cwd || ''), nome: c ? c.nome : path.basename(pg.cwd || 'sessão'),
-        frente: c?.frente || null, assunto: c?.assunto || null, dispositivo: c ? c.dispositivo : local.nome, modelo: c?.modelo || null, desdeMs: Math.max(0, agora - (pg.em || agora)), sessao: c?.tipo || 'claude code', opcoes: [], ...campos,
+        frente: c?.frente || null, frentePalpite: c?.frentePalpite || null, item: c?.item || null, assunto: c?.assunto || null, dispositivo: c ? c.dispositivo : local.nome, modelo: c?.modelo || null, desdeMs: Math.max(0, agora - (pg.em || agora)), sessao: c?.tipo || 'claude code', opcoes: [], ...campos,
       })
     }
   } catch { /* sem os pedidos do gancho, ficam os da tela e da conversa */ }
@@ -1046,7 +1111,7 @@ async function montarResposta() {
         if (ja) { Object.assign(ja, campos); continue }
         ;(dados.espera || (dados.espera = [])).unshift({
           tipo: 'agente', id: c ? c.id : curto || pg.id, projeto: c ? c.projeto : String(pg.cwd || '').split(/[\\/]/).pop(), nome: c ? c.nome : String(pg.cwd || 'sessão').split(/[\\/]/).pop(),
-          frente: c?.frente || null, assunto: c?.assunto || null, dispositivo: maq, modelo: c?.modelo || null,
+          frente: c?.frente || null, frentePalpite: c?.frentePalpite || null, item: c?.item || null, assunto: c?.assunto || null, dispositivo: maq, modelo: c?.modelo || null,
           desdeMs: Math.max(0, (p.em || agora) - (pg.em || p.em || agora)) + (p.idadeMs || 0), sessao: c?.tipo || 'claude code', opcoes: [], ...campos,
         })
       }
@@ -1060,6 +1125,73 @@ async function montarResposta() {
   for (const j of jobs) if (j.tipo === 'coderoom' && j.subject && !nomeDaConversa.has('gate:' + j.id)) nomeDaConversa.set('gate:' + j.id, j.subject)
   for (const s of dados.conectadas || []) if (!s.sessaoNome && s.conversa && nomeDaConversa.has(s.conversa)) s.sessaoNome = nomeDaConversa.get(s.conversa)
   for (const e of dados.espera || []) if (e.conversa && nomeDaConversa.has(e.conversa)) e.sessaoNome = nomeDaConversa.get(e.conversa)
+  /* CC-867, print dele em 02/10: o cartão do arquiteto dizia "sem pergunta legível" e não
+     tinha nada clicável, porque a pergunta de verdade só existia dentro do Coderoom. Com
+     pergunta aberta do arquiteto na conversa, o cartão leva as opções e vira pergunta. */
+  try {
+    for (const e of dados.espera || []) {
+      // o cartão da conversa do Coderoom chega com `sessao: 'coderoom'` e o id dela, sem `conversa` (medido em 02/10)
+      const idGate = e.sessao === 'coderoom' ? e.id : String(e.conversa || '').startsWith('gate:') ? String(e.conversa).slice(5) : null
+      if (e.tipo !== 'agente' || !idGate) continue
+      const cab = lerCabecalhoGate(idGate)
+      /* SÓ na conversa do próprio arquiteto. Antes valia para toda conversa com a mesma pasta, e a pergunta
+         apareceu colada em cada conversa de micro tarefa do projeto (04/10: "ficou super confuso"), e a resposta
+         dele saiu de dentro da "CN-37: Criar banco SQLite". */
+      if (!String(cab?.titulo || '').startsWith('Arquiteto · ')) continue
+      const q = cab.cwd && perguntaDoArquiteto(cab.cwd)
+      if (q) Object.assign(e, { rotulo: 'pergunta', pergunta: q.pergunta, arquiteto: q })
+    }
+  } catch { /* sem a pergunta, o cartão fica como estava */ }
+  /* CC-879, print dele em 02/10: "eu sou obrigado a ver, não posso responder e não sei o que
+     significa". Eram 21 conversas que o MAESTRO cria (uma por micro tarefa, titulo "SIM-39: ...")
+     juntas num cartão AGRUPADAS. Elas terminam sozinhas e não esperam nada dele: parada sem
+     pergunta nem permissão não é "esperando você". Seguem inteiras no Coderoom. */
+  /* CC-879, print dele em 02/10: "tem que ter como eu falar algo, e usar skill" em todo cartão parado
+     ou esperando. O cartão da conversa do Coderoom chegava sem `conversa` e sem pasta, e sem eles a tela
+     não monta o campo de mensagem. Entram aqui, no mesmo formato que a pergunta do Coderoom já usa. */
+  try {
+    for (const x of [...(dados.espera || []), ...(dados.conectadas || [])]) {
+      if (x.sessao !== 'coderoom' && x.tipo !== 'coderoom') continue
+      if (!x.id) continue
+      if (!x.conversa) x.conversa = 'gate:' + x.id
+      if (!x.cwd) x.cwd = lerCabecalhoGate(x.id)?.cwd || null
+    }
+  } catch { /* sem eles, o cartão fica sem campo, como antes */ }
+  try {
+    dados.espera = (dados.espera || []).filter((e) => !(e.tipo === 'agente' && e.sessao === 'coderoom'
+      && e.rotulo !== 'pergunta' && e.rotulo !== 'permissão' && conversaDoMaestro(lerCabecalhoGate(e.id))))
+    // a mesma conversa também entra na lista de sessões conectadas, como "espera você" e "pronto para QA"
+    dados.conectadas = (dados.conectadas || []).filter((s) => !(s.tipo === 'coderoom' && s.estado !== 'trabalhando'
+      && conversaDoMaestro(lerCabecalhoGate(s.id))))
+  } catch { /* sem o filtro, aparecem como antes */ }
+  /* CC-957, decisão dele em 07/10: "parada é uma coisa, me esperando é outra". Sessão sem atividade dos DOIS lados há 3 dias
+     ou mais é Esquecida: sai de "parou" e de "esperando você" (a tela agrupa à parte), e o sino avisa quantas estão abertas
+     e quanta memória ocupam, oferecendo desligar. Medido no dia: 4 esquecidas (142 h, 113 h, 80 h, 57 h) e 5 sessões do
+     Claude ligadas somando ~2,4 GB de 12 GB. Nada é desligado sozinho. */
+  try {
+    const LIMITE = marcarEsquecidas(dados)
+    // memória: o processo `claude --remote-control <rótulo>` de cada sessão desta máquina
+    const pidDe = new Map()
+    try {
+      const ps = await new Promise((ok) => execFile('ps', ['-eo', 'pid=,args='], { maxBuffer: 4e6 }, (e, out) => ok(String(out || ''))))
+      for (const l of ps.split('\n')) { const m = /^\s*(\d+)\s+\S*claude\s+--remote-control\s+(\S+)/.exec(l); if (m) pidDe.set(m[2], Number(m[1])) }
+    } catch { /* sem ps: sem memória */ }
+    const esq = (dados.conectadas || []).filter((c) => c.esquecida)
+    const mem = await memoriaDosProcessos([...new Set(esq.map((c) => pidDe.get(c.rotuloRC)).filter(Boolean))]).catch(() => new Map())
+    const itens = esq.map((c) => {
+      const pid = pidDe.get(c.rotuloRC)
+      const m = pid && mem.get(pid)
+      const coderoom = c.tipo === 'coderoom' || String(c.conversa || '').startsWith('gate:')
+      return {
+        id: c.id, nome: c.sessaoNome || c.nome || c.projeto, projeto: c.projeto, dispositivo: c.dispositivo, desdeMs: c.desdeMs,
+        memoriaMB: m ? Math.round(m / 1048576) : null, // a soma vem em bytes, com os filhos
+        // o que o botão faz: conversa do Coderoom arquiva (não ocupa memória); sessão do Claude desta máquina desliga
+        acao: coderoom ? 'arquivar' : (c.rotuloRC && c.dispositivo === local.nome ? 'desligar' : null),
+        alvo: coderoom ? String(c.conversa || 'gate:' + c.id).replace(/^gate:/, '') : c.rotuloRC || null,
+      }
+    })
+    dados.esquecidas = { limiteDias: Math.round(LIMITE / 864e5), quantas: itens.length, memoriaMB: itens.reduce((t, i) => t + (i.memoriaMB || 0), 0), itens }
+  } catch { dados.esquecidas = null }
   /* CC-599: o resumo do agy para cada sessão parada DESTA máquina (decisão
      dele: automático, um por parada). Pede o que falta e junta o que está
      pronto; o pedido roda em segundo plano, esta leitura não espera. */
@@ -1088,7 +1220,8 @@ async function montarResposta() {
        de novo a cada tique. */
     const textoDoCoderoom = new Map()
     for (const j of jobs) if (j.tipo === 'coderoom' && j.ultima?.texto) textoDoCoderoom.set('gate:' + j.id, j.ultima.texto)
-    for (const s of dados.conectadas || []) {
+    // CC-879: o cartão de "esperando você" também; antes só a lista de conectadas recebia o resumo
+    for (const s of [...(dados.espera || []), ...(dados.conectadas || [])]) {
       const txt = s.conversa && textoDoCoderoom.get(s.conversa)
       if (!txt || s.estado === 'trabalhando' || s.porPrograma) continue
       const k = 'sess::' + s.conversa

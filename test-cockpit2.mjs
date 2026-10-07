@@ -1096,7 +1096,8 @@ t('CC-966: na faixa do celular o sino é plano (a sombra em relevo passava da bo
 
 t('puxar para baixo no topo não recarrega o app no celular (pedido dele em 07/10)', () => {
   const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
-  assert.ok(ui.includes('html, body { overscroll-behavior-y: none; }'))
+  assert.ok(ui.includes('html { overscroll-behavior-x: none; overscroll-behavior-y: none; }'))
+  assert.ok(/body \{\s*overscroll-behavior-x: none;\s*overscroll-behavior-y: none;/.test(ui))
 })
 
 t('CC-970: topo do celular com buscar, sino e o painel de responder à direita; no PC os dois botões somem', () => {

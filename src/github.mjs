@@ -40,6 +40,10 @@ export function repoDeUrl(saida) {
 export async function criarRepo(nome, { privado = true } = {}) {
   const limpo = String(nome || '').trim()
   if (!limpo) return { ok: false, erro: 'sem nome' }
+  /* CC-541: antes de tentar, diz com todas as letras se falta o gh ou o login.
+     Sem isto o aviso era a primeira linha crua do erro do gh, em inglês. */
+  const gh = await ghDisponivel()
+  if (!gh.ok) return { ok: false, erro: gh.motivo }
   const r = await quietAsync('gh', ['repo', 'create', limpo, privado ? '--private' : '--public'], 20_000)
   if (!r.ok) return { ok: false, erro: r.out.split('\n')[0] || 'gh recusou, sem detalhe' }
   const repo = repoDeUrl(r.out)

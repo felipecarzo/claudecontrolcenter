@@ -38,6 +38,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { gravar as gravarFramework, ler as lerFramework, ligar as ligarFramework } from './frameworkDisco.mjs'
 import { installInto } from './install.mjs'
+import { caminhoPadrao, regerarRoadmap } from './backlog.mjs'
+import * as R from './projetoRegistro.mjs'
+import { maquina as maquinaLocal } from './maquina-id.mjs'
 
 /** As pastas de código, que NÃO nascem: ficam aqui para a tela poder explicar
  *  por que a pasta veio "vazia", e para quem ler saber que a omissão é
@@ -66,23 +69,18 @@ export function validarNome(nome) {
   return null
 }
 
-const ROADMAP = (nome) => `---
-tags: [roadmap]
-tipo: execucao
----
+/* Padrão de projeto (01/10): a tarefa mora no `docs/backlog.jsonl` (micro tarefa
+   é filha de um item), o ROADMAP é gerado dele, e o escopo geral fica no
+   AGENTS.md, que o opencode lê sozinho e o maestro preenche se faltar. */
+export const AGENTS = (nome, descricao) => `# ${nome}
 
-# ROADMAP — ${nome}
+${descricao ? `## Escopo do projeto\n\n${descricao}\n` : 'Escopo ainda não escrito: o maestro grava aqui na primeira vez que planejar.\n'}
+No ar: não
 
-O que está aberto AGORA. Item concluído sai daqui e vira linha no diário: este
-arquivo é execução, não histórico.
+## Onde fica cada coisa
 
-## ▶ Frente: definir o projeto
-
-### Responder a entrevista
-
-O painel abre a entrevista na primeira pergunta. Cada resposta escolhe a
-próxima, e no fim o nome do projeto, os critérios de pronto e as verificações
-ficam gravados nos campos do framework.
+- \`docs/backlog.jsonl\`: todas as tarefas, uma por linha. Micro tarefa é filha de um item (campo \`pai\`).
+- \`docs/ROADMAP.md\`: gerado do backlog. Não edite à mão.
 `
 
 const HANDOFF = (nome, quando) => `# HANDOFF
@@ -119,7 +117,8 @@ const README_DOCS = (nome) => `# Documentação de ${nome}
 - \`produto/\` — o que isso é e por quê, sem data
 - \`guias/\` — como funciona por dentro
 - \`diario/\` — o que aconteceu, um arquivo por dia, nunca reescrito
-- \`ROADMAP.md\` — o que fazer agora, só o que está aberto
+- \`backlog.jsonl\`: as tarefas, a fonte
+- \`ROADMAP.md\`: gerado do backlog, o que está aberto
 - \`HANDOFF.md\` — o estado da última sessão, sobrescrito a cada encerramento
 
 Um fato mora em um lugar só. Para repetir, aponte com \`[[link]]\` em vez de
@@ -145,7 +144,7 @@ function git(raiz, ...args) {
  * já custou caro aqui, e um passo que falhou (o `git` que não existe na
  * máquina) precisa aparecer como falha, não sumir.
  */
-export function criar(base, { nome, grupo = '', descricao = '', quando = null } = {}) {
+export function criar(base, { nome, grupo = '', descricao = '', quando = null, cliente = null, ativo = true, site = null, registro = undefined, repo = null, maquina = null } = {}) {
   const erro = validarNome(nome)
   if (erro) return { ok: false, erro }
   if (grupo && validarNome(grupo)) return { ok: false, erro: `grupo inválido: ${validarNome(grupo)}` }
@@ -158,30 +157,56 @@ export function criar(base, { nome, grupo = '', descricao = '', quando = null } 
   const passos = []
   const marcar = (o_que, ok = true, detalhe = null) => passos.push({ o_que, ok, detalhe })
 
-  fs.mkdirSync(path.join(raiz, 'docs', 'produto'), { recursive: true })
-  fs.mkdirSync(path.join(raiz, 'docs', 'guias'), { recursive: true })
-  fs.mkdirSync(path.join(raiz, 'docs', 'diario'), { recursive: true })
-  marcar('a pasta do projeto, com docs em produto, guias e diário')
+  /* CC-525, decisão dele em 11/09: pasta de documento nasce quando tiver documento.
+     Antes nasciam produto, guias e diário vazios, e o git nem guarda pasta vazia. */
+  /* CC-542: se o projeto já tem repositório (no registro, ou passado aqui), a pasta
+     NASCE DELE: clona em vez de `git init`. Sem repositório, nasce vazia como sempre.
+     Aceita URL, caminho local ou "dono/nome" do GitHub. Falha no clone desfaz a pasta
+     parcial e diz a causa: pasta meio clonada é pior que pasta nenhuma. */
+  const opcReg = registro ? { arquivo: registro } : {}
+  const idReg = R.idDe(nome)
+  const repoDe = repo || R.achar(idReg, opcReg)?.github?.repo || null
+  const urlDe = (x) => (/^[\w.-]+\/[\w.-]+$/.test(x) && !fs.existsSync(x) ? `https://github.com/${x}.git` : x)
+  let clonado = false
+  if (repoDe) {
+    fs.mkdirSync(paiDoGrupo, { recursive: true })
+    try {
+      execFileSync('git', ['clone', urlDe(repoDe), raiz], { stdio: 'pipe', timeout: 120000 })
+      clonado = true
+      marcar(`a pasta do projeto, clonada de ${repoDe}`)
+    } catch (e) {
+      fs.rmSync(raiz, { recursive: true, force: true })
+      return { ok: false, erro: `não consegui clonar ${repoDe}: ${String(e.stderr || e.message || e).trim().split('\n').pop()}` }
+    }
+  }
+  fs.mkdirSync(path.join(raiz, 'docs'), { recursive: true })
+  if (!clonado) marcar('a pasta do projeto, com docs (as subpastas nascem quando houver documento)')
+  /* Num repositório clonado já existe conteúdo: o esqueleto só preenche o que FALTA. */
+  const seFalta = (arq, texto) => { if (!fs.existsSync(arq)) fs.writeFileSync(arq, texto) }
 
   const carimbo = quando || new Date().toISOString().slice(0, 10)
-  fs.writeFileSync(path.join(raiz, 'docs', 'ROADMAP.md'), ROADMAP(nome))
-  fs.writeFileSync(path.join(raiz, 'docs', 'HANDOFF.md'), HANDOFF(nome, carimbo))
-  fs.writeFileSync(path.join(raiz, 'docs', 'README.md'), README_DOCS(nome))
-  fs.writeFileSync(path.join(raiz, '.gitignore'), GITIGNORE)
-  marcar('o roadmap, o handoff e o mapa da documentação')
+  seFalta(caminhoPadrao(raiz), '')
+  regerarRoadmap(raiz)
+  seFalta(path.join(raiz, 'AGENTS.md'), AGENTS(nome, descricao))
+  seFalta(path.join(raiz, 'docs', 'HANDOFF.md'), HANDOFF(nome, carimbo))
+  seFalta(path.join(raiz, 'docs', 'README.md'), README_DOCS(nome))
+  seFalta(path.join(raiz, '.gitignore'), GITIGNORE)
+  marcar('o backlog, o roadmap gerado dele, o AGENTS.md com o escopo, o handoff e o mapa da documentação')
 
   /* O CLAUDE.md nasce com o bloco do protocolo do painel, não vazio: projeto
      novo sem ele é agente que trabalha sem reportar, e o painel só descobre
      depois, quando alguém estranha a ausência. */
   const cm = path.join(raiz, 'CLAUDE.md')
-  fs.writeFileSync(cm, `# ${nome}\n\n${descricao ? `${descricao}\n\n` : ''}`)
+  seFalta(cm, `# ${nome}\n\n${descricao ? `${descricao}\n\n` : ''}`)
   const inst = installInto(raiz, { create: true })
   marcar('o CLAUDE.md com o protocolo do painel', inst.action !== 'missing', inst.action)
 
-  const temGit = git(raiz, 'init', '-b', 'master') || git(raiz, 'init')
-  marcar('um repositório na raiz do projeto, que é a regra número 1', temGit,
+  const temGit = clonado || git(raiz, 'init', '-b', 'master') || git(raiz, 'init')
+  marcar(clonado ? 'o repositório que veio do clone fica na raiz do projeto' : 'um repositório na raiz do projeto, que é a regra número 1', temGit,
     temGit ? null : 'o git não respondeu nesta máquina')
-  if (temGit) {
+  /* Clonado: o esqueleto que faltava fica por commitar, para ELE revisar. Commitar em
+     repositório que já tem história seria decidir por ele. */
+  if (temGit && !clonado) {
     git(raiz, 'add', '-A')
     const commitou = git(raiz, 'commit', '-m', `chore: nasce o projeto ${nome}`)
     marcar('o primeiro commit', commitou, commitou ? null : 'o git não tem nome e e-mail configurados aqui')
@@ -218,7 +243,27 @@ export function criar(base, { nome, grupo = '', descricao = '', quando = null } 
   }
   marcar('o framework ligado em modo Sugestivo, na Definição, com a entrevista aberta', fw.ok)
 
-  return { ok: true, raiz, projeto: nome, passos, adiadas: PASTAS_ADIADAS }
+  /* CC-525: o projeto nasce com registro (cliente, ativo, site). Já declarado antes
+     (o caminho "declarar e criar aqui") só atualiza os três campos; não declara de novo. */
+  const opc = opcReg
+  const id = idReg
+  /* CC-870: o registro mora em ~/.claude, que pode estar somente leitura (dentro do sandbox, por
+     exemplo) ou sem disco. Antes o erro de gravação soltava uma exceção NO MEIO da criação: a
+     pasta, o git e o backlog já tinham nascido e o chamador recebia um erro seco. Agora a falha
+     vira passo marcado como falho, com a causa, e a criação termina com o resto feito. */
+  const tentar = (fn) => { try { return fn() } catch (e) { return { ok: false, erro: `não consegui gravar o registro: ${e.code || ''} ${e.message || e}`.replace(/\s+/g, ' ').trim() } } }
+  const reg = tentar(() => (R.achar(id, opc)
+    ? R.atualizarDados(id, { cliente, ativo, site }, opc)
+    : R.declarar({ nome, cliente, ativo, site }, opc)))
+  marcar('o registro do projeto (cliente, ativo, site)', reg.ok, reg.ok ? null : reg.erro)
+  /* CC-542: o registro reflete a máquina provisionada (a pasta que acabou de nascer aqui). */
+  if (reg.ok) {
+    const nomeMaquina = maquina || (() => { try { return maquinaLocal().nome } catch { return null } })()
+    const prov = nomeMaquina ? tentar(() => R.provisionarNestaMaquina(id, { maquina: nomeMaquina, raiz }, opc)) : { ok: false, erro: 'sem nome de máquina' }
+    marcar(`o registro marca a pasta desta máquina${nomeMaquina ? ` (${nomeMaquina})` : ''}`, prov.ok, prov.ok ? null : prov.erro)
+  }
+
+  return { ok: true, raiz, projeto: nome, passos, adiadas: PASTAS_ADIADAS, registro: reg.projeto || null }
 }
 
 /**

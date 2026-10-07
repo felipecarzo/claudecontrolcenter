@@ -15,6 +15,7 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
+import { estaSegurando, motivoDeSegurar } from './vigiaCarga.mjs'
 import { quiet, ehWindows } from './platform.mjs'
 import { resolverBinario } from './paineis.mjs'
 
@@ -123,6 +124,8 @@ const agenteDe = (nome) => AGENTES[String(nome || 'opencode')] || AGENTES.openco
 export function dispararTarefa(prompt, {
   cwd = process.cwd(), modelo = null, binario = null, agente = 'opencode',
 } = {}) {
+  // CC-857: máquina sobrecarregada: o disparo espera, com a causa escrita
+  if (estaSegurando()) return { id: null, logFile: null, ok: false, erro: motivoDeSegurar(), segurado: true }
   fs.mkdirSync(PASTA_LOG, { recursive: true })
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
   const logFile = path.join(PASTA_LOG, `${id}.jsonl`)
@@ -143,6 +146,7 @@ export function dispararTarefa(prompt, {
       cwd, stdio: ['ignore', saida, saida], windowsHide: true,
     })
     filho.on('error', () => { /* falha aberta: binário ausente não pode derrubar quem chamou */ })
+    try { os.setPriority(filho.pid, 10) } catch { /* já saiu, ou sem permissão: segue na normal (02/10: cede a vez ao painel) */ }
     fs.closeSync(saida)
     // No Windows, `pid` é do `cmd.exe` que embrulha o binário, não do
     // `opencode` em si — mas serve igual pra saber se "a coisa toda" ainda

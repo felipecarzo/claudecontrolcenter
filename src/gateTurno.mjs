@@ -30,6 +30,7 @@ import * as resumoAgy from './resumoAgy.mjs'
 import { fotografar, mexeuEmTela, enderecoDe } from './gateFotos.mjs'
 import { execFileSync } from 'node:child_process'
 import { enviar, lerTurno, vivo, agentePara, servidorOpencodeVivo, garantirServidorOpencode } from './gateAgentes.mjs'
+import { FILA_DE_MODELOS, RESERVA_OPENCODE, chaveDe, proximoDegrau, rotuloDe } from './filaModelos.mjs'
 import { montar, gravarPacote } from './gatePacote.mjs'
 import { ler as lerFramework } from './frameworkDisco.mjs'
 import { modoDe } from './framework.mjs'
@@ -39,6 +40,7 @@ import { readUso } from './uso.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import * as Vigia from './vigia.mjs'
 
 /**
  * CC-723: tira da tela a pergunta e a permissão em aberto desta conversa.
@@ -82,7 +84,7 @@ export function pedirPasta(id, padroes) {
 }
 
 /** Resposta ao pedido de pasta: libera na conversa e reenvia, ou só registra o não. */
-export function liberarPasta(pedidoId, sim) {
+export function liberarPasta(pedidoId, sim, { binario = null } = {}) { // binario: só o teste usa, com um opencode falso
   const arq = path.join(DIR_PERMISSOES(), pedidoId + '.json')
   let p = null
   try { p = JSON.parse(fs.readFileSync(arq, 'utf8')) } catch { return { ok: false, erro: 'esse pedido não existe mais' } }
@@ -96,7 +98,7 @@ export function liberarPasta(pedidoId, sim) {
     return { ok: true }
   }
   gravarCabecalho(id, { opencodePastas: [...new Set([...(cab.opencodePastas || []), ...p.padroes])] })
-  return responder(id, { texto: `Liberei o acesso a ${p.padroes.join(', ')} nesta conversa. Tente de novo o que você ia fazer.`, agente: 'opencode' })
+  return responder(id, { texto: `Liberei o acesso a ${p.padroes.join(', ')} nesta conversa. Tente de novo o que você ia fazer.`, agente: 'opencode', ...(binario ? { binario } : {}) })
 }
 
 /* ============ CC-727: o nome curto da conversa, escrito pelo agy ============
@@ -158,7 +160,9 @@ function resumirSozinho(id, turnoId, texto) {
     if (r?.texto || !r || ++voltas > 60) {
       clearInterval(tique)
       const limpo = String(r?.texto || '').replace(/[—–]/g, ',').trim()
-      if (limpo) acrescentar(id, { tipo: 'resumo', turnoId, texto: limpo.slice(0, 600) })
+      /* 05/10: conversa apagada entre o pedido do resumo e a resposta. Exceção solta num relógio derruba o painel inteiro
+         (aconteceu: um teste apagou a conversa 3 minutos depois do turno e o painel caiu). Sem conversa, não há onde escrever. */
+      if (limpo) { try { acrescentar(id, { tipo: 'resumo', turnoId, texto: limpo.slice(0, 600) }) } catch { /* conversa apagada */ } }
     }
   }, 5000)
   tique.unref?.()
@@ -316,12 +320,14 @@ export function tituloDe(texto) {
    devolução: os agentes de verdade recusam produzir o gatilho depois de
    ensinados, e uma régua que nunca dispara é uma régua que pode estar quebrada
    sem ninguém saber. */
-export function responder(id, { texto, agente = 'agy', modelo = null, esforco = null, anexos = [], binario = null, revisar = false }) {
+export function responder(id, { texto, agente = 'agy', modelo = null, esforco = null, anexos = [], binario = null, revisar = false, reenvio = false, tentados = [], esperas = 0, teto = null }) {
   const c = lerConversa(id)
   if (!c) throw new Error(`conversa ${id} não existe`)
 
-  /* A mensagem dele entra SEMPRE, antes de qualquer decisão. */
-  acrescentar(id, { tipo: 'dele', texto, ...(anexos.length ? { anexos } : {}) })
+  /* A mensagem dele entra SEMPRE, antes de qualquer decisão. Exceto no reenvio
+     (CC-823): o pedido é o mesmo, indo a outro modelo, e a conversa não pode
+     mostrar que ele o escreveu duas vezes. */
+  if (!reenvio) acrescentar(id, { tipo: 'dele', texto, ...(anexos.length ? { anexos } : {}) })
 
   /* CC-252b: a conversa ganha nome pela primeira mensagem dele, para ele
      reconhecer na lista sem abrir. Só na primeira: renomear a cada mensagem
@@ -360,6 +366,16 @@ export function responder(id, { texto, agente = 'agy', modelo = null, esforco = 
     gravarCabecalho(id, { contextoOpencode: 0 })
     sessaoZerada = true
   }
+  /* CC-823: o modelo da vez. Se o escolhido acabou de dar limite de uso, a
+     resposta já começa por um da reserva, e a conversa conta por quê. */
+  let modeloDaVez = modelo || c.cabecalho.modelos?.[quem] || null
+  if (quem === 'opencode' && !flash && !reenvio) {
+    const livre = modeloLivre(modeloDaVez)
+    if (livre !== (modeloDaVez || RESERVA_OPENCODE[0])) {
+      acrescentar(id, { tipo: 'sistema', texto: `O modelo ${nomeCurto(modeloDaVez || RESERVA_OPENCODE[0])} do opencode deu limite de uso há pouco. Comecei esta resposta por ${nomeCurto(livre)}, para não perder tempo esperando.` })
+      modeloDaVez = livre
+    }
+  }
   const delta = deltaPara(id, quem, { semMemoria: flash, soUltima: avulso })
   const pacote = montar(c.cabecalho, { agente: quem })
   const turnoId = `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
@@ -387,7 +403,7 @@ export function responder(id, { texto, agente = 'agy', modelo = null, esforco = 
     /* O modelo da vez vence o guardado na conversa, e o guardado vence o padrão
        do agente. Guardar por conversa é o que faz a escolha dele sobreviver ao
        fechar a tela, em vez de voltar ao padrão a cada mensagem. */
-    modelo: modelo || c.cabecalho.modelos?.[quem] || null,
+    modelo: modeloDaVez,
     esforco: esforco || c.cabecalho.esforcos?.[quem] || null,
     /* Os anexos das mensagens que este agente ainda não viu.
      *
@@ -417,13 +433,16 @@ export function responder(id, { texto, agente = 'agy', modelo = null, esforco = 
        religou no meio do pedido com revisão, a resposta terminou e a revisão
        nunca foi pedida. */
     estado: { turnoId: t.turnoId, agente: quem, pid: t.pid, desde: Date.now(), logFile: t.logFile, erroFile: t.erroFile, ate: delta.ate, revisar, semMemoria: flash },
-    ...(modelo ? { modelos: { ...(c.cabecalho.modelos || {}), [quem]: modelo } } : {}),
+    // o modelo reserva do reenvio vale só para esta resposta: a escolha dele não muda (CC-823)
+    ...(modelo && !reenvio ? { modelos: { ...(c.cabecalho.modelos || {}), [quem]: modelo } } : {}),
     ...(esforco ? { esforcos: { ...(c.cabecalho.esforcos || {}), [quem]: esforco } } : {}),
   })
 
   acompanhar(id, {
     ...t, agente: quem, ate: delta.ate,
     cwd: c.cabecalho.cwd, permissao: c.cabecalho.permissao, binario, revisar, semMemoria: flash,
+    ...(teto ? { teto } : {}), // CC-840: até onde a fila de modelos pode subir nesta resposta
+    ...(reenvio ? { modelosTentados: tentados, esperas } : {}),
     /* O retrato tirado ANTES do turno. É ele que separa o que este agente fez
        do que já estava mexido na árvore. */
     antes: retratoAntes(c.cabecalho.cwd),
@@ -450,6 +469,8 @@ function acompanhar(id, t) {
   let ultimasFer = 0
 
   const tique = setInterval(() => {
+    // conversa apagada com o agente ainda trabalhando: para de olhar, em vez de lançar dentro do relógio e derrubar o painel (05/10)
+    if (!lerCabecalho(id)) { clearInterval(tique); emCurso.delete(id); return }
     const r = lerTurno(t.logFile, t.agente, t.erroFile)
 
     /* O texto vivo fica em MEMÓRIA, e a tela o lê daqui.
@@ -477,13 +498,32 @@ function acompanhar(id, t) {
 
     if (r.cota) guardarCota(id, r.cota)
 
+    /* CC-930: o modelo ainda não disse nada nem usou ferramenta depois de 90 s. Medido em 06/10: é o sinal que antecede
+       a resposta de fachada ("criei", sem ter feito). Avisa uma vez, para ele saber que não é o painel travado. */
+    if (!t.avisouEspera && !r.terminou && !r.texto && !r.ferramentas.length && Date.now() - comecou > Vigia.ESPERA_ALERTA_MS && ['opencode', 'agy'].includes(t.agente)) {
+      t.avisouEspera = true
+      try { acrescentar(id, { tipo: 'sistema', texto: `Vigia: o modelo${t.modelo ? ' ' + t.modelo : ''} ainda não começou a responder depois de ${Math.round((Date.now() - comecou) / 1000)} s. É o serviço dele congestionado, não o painel.` }) } catch { /* conversa apagada */ }
+      Vigia.registrar({ tipo: 'espera', conversa: id, agente: t.agente, modelo: t.modelo || null, segundos: Math.round((Date.now() - comecou) / 1000) })
+    }
+
     const estourou = Date.now() - comecou > TETO_MS
     /* CC-803: o vigia de silêncio. O agente calado há tempo demais (sem
        ferramenta nova, sem texto, sem filho trabalhando, sem esperar resposta
        dele) é parado, e a saída dele cai na retomada de baixo, que pede para ele
        agir. Medido em 30/09: um bloco grande de código deixa o registro parado
        por ~140 s, então o limite é MAIOR que isso. */
-    if (!t.silencio && !r.terminou && t.agente === 'opencode' && vivo(t.pid) && silencioDoTurno(t, id) > SILENCIO_MS) {
+    /* CC-823: limite de uso do modelo grátis. O opencode fica tentando de novo
+       em silêncio por minutos; o painel vê o erro na hora e não espera. */
+    /* CC-826, medido na simulação 5: de 31 turnos com limite de uso, 24 deram
+       duas falhas e a desistência em ~16 s, e 7 deram UMA falha e nunca mais
+       escreveram nada (300 s presos, até o vigia de silêncio). Uma falha mais
+       um tempo sem atividade nenhuma vale como preso. */
+    if (!t.limiteTaxa && t.agente === 'opencode' && !r.terminou && vivo(t.pid)
+      && (r.limiteTaxa || (r.falhasLimite >= 1 && semAtividadeHa(t) > LIMITE_PRESO_MS))) {
+      t.limiteTaxa = true
+      try { process.kill(t.pid, 'SIGTERM') } catch { /* já saiu */ }
+    }
+    if (!t.silencio && !t.limiteTaxa && !r.terminou && t.agente === 'opencode' && vivo(t.pid) && silencioDoTurno(t, id) > SILENCIO_MS) {
       t.silencio = true
       try { process.kill(t.pid, 'SIGTERM') } catch { /* já saiu */ }
     }
@@ -521,6 +561,13 @@ function acompanhar(id, t) {
       erro: estourou ? `passou de ${Math.round(TETO_MS / 60000)} minutos e eu parei de esperar` : r.erro,
     })
 
+    // CC-930: o vigia lê o turno inteiro e acusa o que deu errado, na conversa e no registro
+    const achado = Vigia.diagnosticoDoTurno({ agente: t.agente, estado, texto: r.texto, ferramentas: r.ferramentas, erro: estourou ? 'passou do teto de tempo' : r.erro, somenteLer: Boolean(t.somenteLer) })
+    if (achado) {
+      try { acrescentar(id, { tipo: 'sistema', texto: Vigia.notaDoVigia(achado, t.modelo) }) } catch { /* conversa apagada */ }
+      Vigia.registrar({ ...achado, conversa: id, turnoId: t.turnoId, agente: t.agente, modelo: t.modelo || null, segundos: Math.round((Date.now() - comecou) / 1000) })
+    }
+
     /* CC-803: o que o prumo barrou nesta resposta, contado na conversa. É como
        ele fica sabendo que o agente tentou sair do projeto ou rodear. */
     try {
@@ -553,13 +600,24 @@ function acompanhar(id, t) {
     /* CC-805, achado na simulação 3: o opencode PARA sozinho quando a pasta é
        recusada (e o painel já pergunta a ele), e isso não é queda. A retomada
        disparava também aí, e mandava um "continue" em cima do pedido de pasta. */
+    // CC-823: limite de uso não é queda: trocar de modelo, e não retomar no mesmo
+    if (t.limiteTaxa && !parouPelaMao && !t.revisao) return trocarModelo(id, t)
     if (estado === 'interrompido' && !estourou && !parouPelaMao && !t.revisao && !t.retomado && !r.pastasRecusadas?.length) {
       if (t.silencio) {
-        return devolver(id, t, `Você ficou ${rotuloTempo(SILENCIO_MS)} sem agir: nem ferramenta, nem resposta. Retome do passo em que estava e faça a próxima ação concreta agora: escreva o código ou rode o comando. Não volte a pesquisar o que já viu.`,
-          `O ${t.agente} ficou ${rotuloTempo(SILENCIO_MS)} sem sinal. O prumo parou a resposta e pediu que retome, uma vez.`, { retomado: true })
+        return devolver(id, t, `Você ficou ${rotuloTempo(SILENCIO_MS)} sem agir: nem ferramenta, nem resposta. Retome do passo em que estava e faça a próxima ação concreta agora: escreva o código ou rode o comando. Não volte a pesquisar o que já viu. Confira no projeto o que já está feito antes de repetir.`,
+          `O ${t.agente} ficou ${rotuloTempo(SILENCIO_MS)} sem sinal. O prumo parou a resposta e pediu que retome, uma vez, numa sessão nova (a que travou fica de lado).`,
+          { retomado: true, sessaoNova: true, motivoSessao: `a anterior ficou ${rotuloTempo(SILENCIO_MS)} calada` })
       }
       return devolver(id, t, 'Sua última resposta caiu no meio (o processo saiu sem erro). Continue exatamente de onde parou, no passo em que estava, sem recomeçar.',
         `O ${t.agente} caiu no meio sem erro. Pedi que continue de onde parou, uma vez.`, { retomado: true })
+    }
+
+    /* CC-811: a segunda queda calada (a retomada também travou). O painel para de
+       insistir, conta o que o agente chegou a mexer nas duas tentativas e deixa
+       as saídas na mão dele: outro agente, com um toque. Parar calado aqui era o
+       defeito: a conversa ficava com duas respostas vazias e nenhuma explicação. */
+    if (estado === 'interrompido' && !estourou && !parouPelaMao && !t.revisao && t.retomado && !r.pastasRecusadas?.length) {
+      try { avisarSegundaQueda(id, t, r) } catch { /* o aviso é conforto: sem ele a resposta termina como antes */ }
     }
 
     /* CC-755: revisão que falhou (sem crédito, cota, erro) tenta a reserva. */
@@ -580,6 +638,9 @@ function acompanhar(id, t) {
        (ferramentas rodaram) e terminou SEM escrever nada, e o Felipe ficou sem
        saber o que foi feito nem onde ver. Quem lê o painel não lê código. */
     const semResposta = estado === 'pronto' && !t.resumoPedido && t.agente === 'opencode' && !String(r.texto || '').trim() && (r.ferramentas || []).length > 0
+    /* CC-812, simulação 3 passo 8: o pedido de resumo também voltou vazio. O
+       painel não pede uma terceira vez: escreve ele mesmo, do que o agente fez. */
+    if (estado === 'pronto' && t.resumoPedido && !String(r.texto || '').trim()) return resumoDoPainel(id, t, r)
     if (mexeuEmTela(r.ferramentas) && !process.env.CC_SEM_FOTOS) return conferirTela(id, t, r.texto, { revisar: t.revisar || revisorDe().visualAuto, semResposta })
     if (semResposta) return pedirResumo(id, t)
     if (t.revisar) pedirRevisao(id, t, r.texto, mudou)
@@ -877,6 +938,16 @@ const PARADOS = new Set()
    modelo escrevendo um arquivo grande, em máquina carregada; 300 s dá folga. */
 export const SILENCIO_MS = Number(process.env.CC_SILENCIO_MS) || 5 * 60 * 1000
 
+/* CC-826: quanto tempo sem NENHUMA atividade (saída ou erro) depois de uma falha
+   de limite de uso para considerar o opencode preso. Uma falha que o CLI supera
+   volta a escrever em poucos segundos; 45 s dá folga. */
+export const LIMITE_PRESO_MS = Number(process.env.CC_LIMITE_PRESO_MS) || 45000
+function semAtividadeHa(t) {
+  const m = (f) => { try { return fs.statSync(f).mtimeMs } catch { return 0 } }
+  const ultima = Math.max(m(t.logFile), m(t.erroFile), t.desde || 0)
+  return Date.now() - ultima
+}
+
 /* CC-813: a partir de quantos tokens de sessão o opencode ganha sessão nova.
    Medido: falhas só apareceram acima de 77 mil; 80 mil dá folga sem trocar à toa. */
 export const LIMITE_CONTEXTO = Number(process.env.CC_LIMITE_CONTEXTO) || 80000
@@ -884,6 +955,13 @@ const rotuloTempo = (ms) => ms >= 60000 ? `${Math.round(ms / 60000)} minutos` : 
 
 /** Há quanto tempo o turno está calado, ou 0 se não dá para chamar de calado. */
 function silencioDoTurno(t, id) {
+  /* A medida barata vem PRIMEIRO. Esta função roda a cada olhada (300 ms) de
+     cada resposta aberta, e as duas conferências de baixo gastam um processo
+     (`pgrep`) e a leitura de uma pasta: medido em 01/10 com a VPS saturada,
+     o próprio vigia era carga. Registro andando = não está calado, e sai aqui. */
+  let parado = 0
+  try { parado = Date.now() - fs.statSync(t.logFile).mtimeMs } catch { return 0 }
+  if (parado <= SILENCIO_MS) return 0
   try {
     // esperando a resposta DELE (pergunta ou permissão): o silêncio é legítimo
     const dir = DIR_PERMISSOES()
@@ -905,13 +983,27 @@ function silencioDoTurno(t, id) {
  * sessão dele, e acompanha a volta carregando as marcas do turno.
  */
 function devolver(id, t, texto, aviso, marcas = {}) {
-  const c = lerConversa(id)
+  let c = lerConversa(id)
   acrescentar(id, { tipo: 'sistema', texto: aviso })
+  /* CC-811, medido na simulação 4: o agente retomado na MESMA sessão que acabou
+     de travar ficou calado de novo (298 s, no passo 7). Com `sessaoNova` a volta
+     abre sessão limpa e leva a conversa em transcrição, e a instrução do painel
+     vai no fim, porque a transcrição termina pedindo para responder o Felipe. */
+  let pacoteArq = null; let pacoteTexto = null
+  if (marcas.sessaoNova) {
+    esquecerSessao(id, t.agente, marcas.motivoSessao || 'a sessão anterior travou')
+    c = lerConversa(id)
+    const delta = deltaPara(id, t.agente)
+    if (delta) texto = `${delta.texto}\n\n[instrução do painel, siga esta] ${texto}`
+    // sessão nova não tem as regras do projeto na memória: o pacote vai de novo
+    try { const pac = montar(c.cabecalho, { agente: t.agente }); pacoteArq = gravarPacote(pac, `${Date.now().toString(36)}-nova`); pacoteTexto = pac.texto } catch { /* sem pacote, o pedido segue */ }
+  }
   const novo = enviar({
     agente: t.agente, texto,
     cwd: t.cwd || c?.cabecalho?.cwd, conversa: id,
     permissao: t.permissao || c?.cabecalho?.permissao || 'acceptEdits',
-    sessao: c?.cabecalho?.sessoes?.[t.agente] || null,
+    sessao: marcas.sessaoNova ? null : c?.cabecalho?.sessoes?.[t.agente] || null,
+    ...(pacoteArq ? { pacote: pacoteArq, pacoteTexto } : {}),
     modelo: c?.cabecalho?.modelos?.[t.agente] || null,
     binario: t.binario || null,
   })
@@ -924,10 +1016,113 @@ function devolver(id, t, texto, aviso, marcas = {}) {
   acompanhar(id, { ...novo, agente: t.agente, ate, cwd: t.cwd, permissao: novo.permissao, binario: t.binario, jaVoltou: t.jaVoltou, retomado: t.retomado, ...marcas, revisar })
 }
 
+// CC-840: a lista dos grátis e a fila inteira (grátis, Antigravity, Haiku) moram em filaModelos.mjs
+export { RESERVA_OPENCODE }
+const nomeCurto = (m) => String(m || '').replace(/^opencode\//, '').replace(/-free$/, '')
+
+/* Quais modelos acabaram de dar limite de uso, e até quando valer o lembrete.
+   Em memória de propósito: é um fato de poucos minutos, e o painel religando
+   só repete uma tentativa. Medido em 01/10: big-pickle e mimo limitados, e o
+   nemotron-ultra respondendo em 22 s, ao mesmo tempo. */
+const LIMITADOS = new Map()
+const LEMBRAR_LIMITE_MS = 5 * 60 * 1000
+export const esquecerLimites = () => LIMITADOS.clear()
+const modeloLivre = (base) => {
+  const agora = Date.now()
+  const limitado = (m) => (LIMITADOS.get(m) || 0) > agora
+  const atual = base || RESERVA_OPENCODE[0]
+  if (!limitado(atual)) return atual
+  return RESERVA_OPENCODE.find((m) => !limitado(m)) || atual
+}
+
+/**
+ * CC-823 e CC-840: o modelo da vez está com limite de uso. Reenvia o MESMO
+ * pedido ao próximo degrau da fila (filaModelos.mjs): os grátis, depois o
+ * Antigravity, por último o Haiku. Só com a fila inteira esgotada entra a
+ * espera, que antes era o único caminho depois dos grátis.
+ */
+function trocarModelo(id, t) {
+  const atual = chaveDe({ agente: t.agente, modelo: t.modelo })
+  const tentados = [...new Set([...(t.modelosTentados || []), atual])]
+  for (const m of tentados) LIMITADOS.set(m, Date.now() + LEMBRAR_LIMITE_MS)
+  const proximo = proximoDegrau({ tentados, teto: t.teto || null })
+  const quem = rotuloDe({ agente: t.agente, modelo: t.modelo })
+  if (!proximo) {
+    /* Escolha dele em 01/10 (77% das respostas do dia no limite do grátis):
+       a fila inteira no limite, o painel espera e tenta de novo SOZINHO, do
+       começo da fila, com o intervalo dobrando. Depois de ~1 hora desiste e
+       devolve a escolha a ele. */
+    const espera = (t.esperas || 0)
+    if (espera < ESPERAS_LIMITE.length) {
+      const ms = ESPERAS_LIMITE[espera]
+      const volta = new Date(Date.now() + ms).toTimeString().slice(0, 5)
+      acrescentar(id, { tipo: 'sistema', texto: `Todos os modelos que esta resposta pode usar estão no limite de uso agora (${tentados.length} tentados${t.teto ? `, até o teto ${t.teto}` : ': os grátis, o Antigravity e o Haiku'}). Espero ${Math.round(ms / 60000)} minutos e tento de novo sozinho, às ${volta}, começando pelos grátis (espera ${espera + 1} de ${ESPERAS_LIMITE.length}).` })
+      gravarCabecalho(id, { esperandoLimite: Date.now() + ms })
+      setTimeout(() => {
+        if (!lerCabecalho(id)) return // conversa apagada durante a espera (05/10)
+        gravarCabecalho(id, { esperandoLimite: null })
+        if (lerConversa(id)?.turnoAberto) return // ele mandou outra coisa no meio: a vez é dela
+        for (const d of FILA_DE_MODELOS) LIMITADOS.delete(chaveDe(d))
+        const ult = [...(lerConversa(id)?.mensagens || [])].reverse().find((m) => m.de === 'felipe')
+        responder(id, { texto: ult?.texto || '(continue)', agente: 'opencode', modelo: null, binario: t.binario || null, reenvio: true, tentados: [], esperas: espera + 1, teto: t.teto || null })
+      }, ms).unref?.()
+      return
+    }
+    acrescentar(id, {
+      tipo: 'sistema',
+      texto: `A fila de modelos seguiu no limite de uso por mais de uma hora (${ESPERAS_LIMITE.length} esperas). Parei de tentar. Você escolhe: mandar de novo mais tarde, ou um agente específico (os botões abaixo).`,
+      acoes: ['claude', 'agy'].map((a) => ({ rotulo: `Tentar com ${a === 'claude' ? 'o Claude' : 'o agy'}`, agente: a, texto: 'Os modelos estavam com limite de uso. Faça o meu último pedido.' })),
+    })
+    return
+  }
+  const subiu = proximo.agente !== t.agente
+  acrescentar(id, { tipo: 'sistema', texto: `${quem} está com limite de uso (rate limit). ${subiu ? `Os grátis acabaram por agora: subi um degrau da fila e mandei o pedido para ${rotuloDe(proximo)}.` : `Troquei para ${rotuloDe(proximo)} e mandei o pedido de novo.`}` })
+  const ultimo = [...(lerConversa(id)?.mensagens || [])].reverse().find((m) => m.de === 'felipe')
+  responder(id, { texto: ultimo?.texto || '(continue)', agente: proximo.agente, modelo: proximo.modelo, binario: subiu ? null : t.binario || null, reenvio: true, tentados, esperas: t.esperas || 0, teto: t.teto || null })
+}
+// ponytail: a espera vive num setTimeout; se o painel religar no meio dela, a tentativa seguinte se perde (o cabeçalho fica com `esperandoLimite` vencido)
+export const ESPERAS_LIMITE = (process.env.CC_ESPERAS_LIMITE_MS || '120000,240000,480000,900000,900000,900000').split(',').map(Number)
+
+const ESCREVE = /^(write|edit|patch|multiedit)$/i
+
+/** CC-811: o que o agente chegou a escrever nas duas últimas tentativas (nomes de arquivo, sem repetir). */
+function arquivosMexidos(id, agente) {
+  const msgs = (lerConversa(id)?.mensagens || []).filter((m) => m.de === agente).slice(-2)
+  return [...new Set(msgs.flatMap((m) => m.ferramentas || []).filter((f) => ESCREVE.test(f.nome) && (f.caminho || f.alvo)).map((f) => path.basename(String(f.caminho || f.alvo))))]
+}
+
+function avisarSegundaQueda(id, t, r) {
+  const feitos = arquivosMexidos(id, t.agente)
+  const outros = ['claude', 'agy'].filter((a) => a !== t.agente)
+  const nomeAg = { claude: 'o Claude', agy: 'o agy', opencode: 'o opencode' }
+  acrescentar(id, {
+    tipo: 'sistema',
+    texto: `O ${t.agente} ficou calado de novo depois de retomado, e parei por aqui para não insistir em vão. ${feitos.length ? `Nas duas tentativas ele mexeu em: ${feitos.slice(0, 8).join(', ')}${feitos.length > 8 ? ' e outros' : ''}.` : 'Nas duas tentativas ele não chegou a mexer em nenhum arquivo.'} Você escolhe: tentar com outro agente (os botões abaixo), ou mandar uma mensagem.`,
+    acoes: outros.map((a) => ({
+      rotulo: `Tentar com ${nomeAg[a]}`, agente: a,
+      texto: `O ${t.agente} travou no meio do meu último pedido${feitos.length ? ` (ele já mexeu em ${feitos.slice(0, 8).join(', ')})` : ''}. Continue de onde ele parou: confira no projeto o que já está feito e termine o que faltou.`,
+    })),
+  })
+}
+
 /** CC-803: o agente trabalhou e não disse nada; pede o resumo, em linguagem simples, uma vez. */
 function pedirResumo(id, t) {
   devolver(id, t, 'Você terminou sem escrever nada ao Felipe, e ele não lê código. Responda agora em 2 ou 3 linhas simples: o que você fez, o que ficou faltando e, se o projeto está no endereço de teste, o endereço em linha própria.',
     `O ${t.agente} trabalhou e terminou sem escrever nada. Pedi um resumo em linguagem simples, uma vez.`, { resumoPedido: true })
+}
+
+/** CC-812: o resumo escrito pelo painel, sem depender do modelo: arquivos, comandos e o endereço de teste. */
+export function resumoDoPainel(id, t, r) {
+  const msgs = (lerConversa(id)?.mensagens || []).filter((m) => m.de === t.agente).slice(-2)
+  const ferramentas = [...msgs.flatMap((m) => m.ferramentas || []), ...(r.ferramentas || [])]
+  const arquivos = [...new Set(ferramentas.filter((f) => ESCREVE.test(f.nome) && (f.caminho || f.alvo)).map((f) => path.basename(String(f.caminho || f.alvo))))]
+  const comandos = [...new Set(ferramentas.filter((f) => /^bash$/i.test(f.nome) && f.alvo).map((f) => String(f.alvo).split('\n')[0].slice(0, 80)))]
+  let endereco = null; try { endereco = enderecoDe(t.cwd || lerConversa(id)?.cabecalho?.cwd) } catch { /* sem endereço de teste */ }
+  const partes = [`O ${t.agente} terminou sem escrever nada, nem depois do pedido de resumo. Este resumo foi montado pelo painel, a partir do que ele fez:`]
+  partes.push(arquivos.length ? `Arquivos que ele mexeu: ${arquivos.slice(0, 10).join(', ')}${arquivos.length > 10 ? ` e mais ${arquivos.length - 10}` : ''}.` : 'Ele não escreveu em nenhum arquivo.')
+  if (comandos.length) partes.push(`Comandos que ele rodou: ${comandos.slice(0, 5).join(' · ')}${comandos.length > 5 ? ` e mais ${comandos.length - 5}` : ''}.`)
+  if (endereco) partes.push(`Para ver o resultado:\n${endereco}`)
+  acrescentar(id, { tipo: 'sistema', texto: partes.join('\n\n') })
 }
 
 function voltarDaRevisao(id, t, texto) {

@@ -100,6 +100,7 @@ const AUTORIZOU = [
   /\bfa[çc]a? o commit\b/i,
   /\bpush\b/i,                      // pedir push implica commitar o que falta
   /\bend-?session\b/i,              // a rotina de encerramento commita por desenho
+  /(?:^|\s)\/deploy\b/i,            // a skill /deploy commita, da push e pede a publicacao (autorizado por ele em 02/10)
 ]
 
 if (AUTORIZOU.some((re) => re.test(pedido))) sair()

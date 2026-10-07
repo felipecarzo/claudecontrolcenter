@@ -56,7 +56,11 @@ if (dados?.tool_name !== 'Bash') sair()
 const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
 if (cfg?.hookEnabled && !cfg.hookEnabled('branch-guard')) sair()
 
-const cmd = String(dados?.tool_input?.command || '')
+/* CC-299: texto de heredoc é dado (mensagem de commit, arquivo escrito por
+   `cat <<EOF`), não comando; citar `git checkout` ali não troca branch nenhuma. */
+const cmd = String(dados?.tool_input?.command || '').replace(/<<-?\s*['"]?(\w+)['"]?[\s\S]*?^\1\s*$/gm, '<<heredoc>>')
+  // procurar o texto (grep "git switch …") também não é rodar: medido em 01/10, barrou uma busca
+  .replace(/\b(?:grep|egrep|fgrep|rg|ugrep|ag)\b[^|;&\n]*/g, '<<busca>>')
 if (!/\bgit\b/.test(cmd)) sair()
 
 const cwd = dados?.cwd || process.cwd()
@@ -84,7 +88,11 @@ const barrar = (titulo, corpo) => {
 
 /* ---- trocar de branch com trabalho pendente ---- */
 const troca = /\bgit\s+(?:checkout|switch)\s+(?!-{1,2}\s|--\s)(?:-b\s+|-B\s+|-c\s+)?([^\s;&|]+)/.exec(cmd)
-if (troca && !/\bcheckout\s+.*--\s/.test(cmd)) {
+/* CC-299: `git checkout HEAD a.txt` (ou <commit> <arquivo>) restaura arquivo,
+   não troca de branch: com dois ou mais argumentos que não são opção, o
+   segundo em diante é caminho. */
+const argsDaTroca = troca ? cmd.slice(troca.index).split(/[;&|\n]/)[0].trim().split(/\s+/).slice(2).filter((a) => !a.startsWith('-')) : []
+if (troca && !/\bcheckout\s+.*--\s/.test(cmd) && !(/\bcheckout\b/.test(troca[0]) && argsDaTroca.length >= 2)) {
   const p = pendencias()
   if (p && (p.sujos || p.novos)) {
     const atual = (git(['branch', '--show-current']) || '').trim() || 'HEAD solta'

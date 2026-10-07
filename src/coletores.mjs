@@ -53,6 +53,7 @@ export const MEDIDAS_TRANSCRITO = {
   'interrupcao': { rotulo: 'interrupções dele', ajuda: 'ele cortou a resposta no meio: sinal de rumo errado' },
   'hook.travou': { rotulo: 'travadas de guarda', ajuda: 'uma regra do projeto barrou a entrega e mandou refazer' },
   'api.erro': { rotulo: 'falhas de conexão', ajuda: 'a resposta não chegou por problema de rede ou serviço' },
+  'respostas': { rotulo: 'respostas dadas', ajuda: 'quantas vezes o agente terminou de responder: é o "por 100" da taxa de cada trava' },
 }
 
 /**
@@ -83,7 +84,7 @@ async function lerTranscrito(caminho) {
     if (!porDia.has(dia)) {
       porDia.set(dia, {
         'tool.chamadas': 0, 'tool.erro': 0, 'permissao.regra': 0, 'permissao.dele': 0,
-        'interrupcao': 0, 'hook.travou': 0, 'api.erro': 0, duracoes: [],
+        'interrupcao': 0, 'hook.travou': 0, 'api.erro': 0, 'respostas': 0, duracoes: [],
       })
     }
     return porDia.get(dia)
@@ -130,6 +131,8 @@ async function lerTranscrito(caminho) {
        saber qual das duas sem ir ver. */
     if (linha.includes('"hookErrors":["')) d['hook.travou'] += 1
     if (linha.includes('"isApiErrorMessage":true')) d['api.erro'] += 1
+    // fim de resposta: o agente parou de falar e devolveu a vez
+    if (linha.includes('"stop_reason":"end_turn"')) d['respostas'] += 1
 
     const m = linha.match(/"durationMs":(\d+)/)
     if (m) d.duracoes.push(Number(m[1]))
@@ -147,7 +150,7 @@ async function lerTranscrito(caminho) {
 export async function coletarTranscritos({ desde = null, base = null } = {}) {
   const raiz = base || path.join(casaClaude(), 'projects')
   let pastas = []
-  try { pastas = fs.readdirSync(raiz) } catch { return [] }
+  try { pastas = fs.readdirSync(raiz) } catch { return { registros: [], transcritos: 0 } }
 
   /* Acumula por dia e projeto ANTES de virar registro: um projeto tem várias
      sessões no mesmo dia, e cada uma é um arquivo. */
@@ -299,8 +302,50 @@ export async function coletarGit(dirs = [], { desde = null } = {}) {
   return { registros }
 }
 
+/**
+ * CC-292: a taxa de cada trava, por 100 respostas, um ponto por dia.
+ *
+ * Contar devoluções cruas engana: dia de muito trabalho tem mais de tudo. O que
+ * diz se uma trava piorou é a proporção. O "por 100" sai de duas fontes que já
+ * existem: as devoluções do log de travas e as respostas dos transcritos.
+ *
+ * **A série vai na coluna `projeto` com o nome da trava**, porque o armazém só
+ * sabe separar uma medida por essa coluna, e `serie(medida, { projeto: '*' })`
+ * já devolve uma linha por valor dela. Dia sem nenhuma resposta medida fica
+ * de fora: dividir por zero escreveria um número que não existe.
+ *
+ * Hook quebrado (`quebra`) não entra: não é regra barrando, é defeito.
+ */
+export function coletarTravas({ eventos = [], registros = [], desde = null } = {}) {
+  const respostas = new Map()
+  for (const r of registros) {
+    if (r.medida === 'respostas') respostas.set(r.dia, (respostas.get(r.dia) || 0) + r.valor)
+  }
+  const contas = new Map()
+  for (const e of eventos) {
+    if (e.quebra || !e.trava || !e.quando) continue
+    const dia = String(e.quando).slice(0, 10)
+    if (desde && dia < desde) continue
+    const k = `${dia}|${e.trava}`
+    contas.set(k, (contas.get(k) || 0) + 1)
+  }
+  const saida = []
+  for (const [k, vezes] of contas) {
+    const [dia, trava] = k.split('|')
+    const total = respostas.get(dia)
+    if (!total) continue
+    saida.push({ dia, projeto: trava, medida: 'travas.por100', valor: Number((vezes / total * 100).toFixed(2)), de: 'travas' })
+  }
+  return { registros: saida }
+}
+
 /** Todas as medidas conhecidas, com rótulo, para a tela e para o comando. */
 export const CATALOGO = { ...MEDIDAS_TRANSCRITO, ...MEDIDAS_GIT,
+  'travas.por100': {
+    rotulo: 'devoluções por 100 respostas',
+    ajuda: 'quantas vezes a trava devolveu o agente a cada 100 respostas dele; uma linha por trava',
+    agregacao: 'media',
+  },
   'tool.duracao.mediana': {
     rotulo: 'duração típica (ms)',
     ajuda: 'quanto demora a ferramenta do meio, em milissegundos',

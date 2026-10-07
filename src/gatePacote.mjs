@@ -39,6 +39,8 @@
  * corte se declara** no próprio texto: truncar calado é a família de defeito que
  * este projeto mais paga.
  */
+import { limparSegredos } from './segredo.mjs'
+import { secaoDesignDoProjeto } from './designContexto.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -249,6 +251,7 @@ export function montar(conversa, { agente = 'agy', jobs = null } = {}) {
        responde, e o resto é o que ele responde SOBRE. */
     secaoRegras(),
     secaoDesign(),
+    secaoDesignDoProjeto(cwd),
     secaoRoadmap(cwd),
     secaoRotas(cwd, agentes || []),
     secaoAgentes(agentes || [], conversa.projeto),
@@ -287,7 +290,7 @@ export function gravarPacote(pacote, turnoId) {
   const dir = path.join(os.tmpdir(), 'cc-gate')
   fs.mkdirSync(dir, { recursive: true })
   const arq = path.join(dir, `${turnoId}.contexto.md`)
-  fs.writeFileSync(arq, pacote.texto)
+  fs.writeFileSync(arq, limparSegredos(pacote.texto)) // CC-841: segredo nunca vai para modelo
   return arq
 }
 

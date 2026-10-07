@@ -235,13 +235,22 @@ const relBarra = relativo.split(sep).join('/')
    só uma parte deixa de barrar quem TAMBÉM declarou o mesmo arquivo na própria
    rota — os dois assumiram a divisão por escrito. Reivindicar o arquivo sem
    `#` continua sendo posse inteira, como sempre foi. */
+/* 01/10, CC-702: "esta linha é minha?" é pergunta POSICIONAL. A linha carrega
+   o histórico dela ("liberado a baa1393b", "devolvido para a gate (2c01df04)"),
+   e `linha.includes(marca)` dava posse a toda sessão apenas CITADA. Medido no
+   quadro deste projeto: a rota `cockpit2` e a `gate` se citavam, cada uma
+   contava a linha da outra como sua, e nenhuma barrava a outra no arquivo da
+   tela. A conta é a de `donoDaLinha()` em src/routia.mjs, repetida aqui porque
+   este hook roda copiado em ~/.claude/hooks, longe do src/. */
+const donoDaLinha = (l) => String(l || '').slice(Math.max(0, String(l || '').indexOf('🔴'))).match(/\b([0-9a-f]{8})\b/i)?.[1]?.toLowerCase() ?? null
+const ehMinha = (l) => l.includes('🔴') && donoDaLinha(l) === marca.toLowerCase()
 const soCaminho = (a) => a.split('#')[0]
 const cobre = (a, rel) => rel === soCaminho(a) || rel.startsWith(soCaminho(a).replace(/\/?$/, '/'))
-const minhasLinhas = linhasDeRota(texto).filter((l) => l.includes('🔴') && l.includes(marca))
+const minhasLinhas = linhasDeRota(texto).filter(ehMinha)
 const declareiEste = minhasLinhas.some((l) => (arquivosDaLinha(l) || []).some((a) => cobre(a, relBarra)))
 
 const donoDoArquivo = linhasDeRota(texto).find((l) => {
-  if (!l.includes('🔴') || l.includes(marca)) return false
+  if (!l.includes('🔴') || ehMinha(l)) return false
   const alvos = arquivosDaLinha(l)
   return alvos?.some((a) => cobre(a, relBarra) && !(a.includes('#') && declareiEste))
 })
@@ -265,7 +274,7 @@ if (donoDoArquivo) {
 }
 
 // Uma rota vale se está ocupada E carrega o id desta sessão.
-const marcada = linhasDeRota(texto).some(l => l.includes('🔴') && l.includes(marca))
+const marcada = linhasDeRota(texto).some(ehMinha)
 if (marcada) {
   const aviso = await avisoDeVizinhanca(achado.raiz, relBarra, texto, marca).catch(() => '')
   if (aviso) {
@@ -304,7 +313,7 @@ if (marcada) {
  */
 async function avisoDeVizinhanca(raiz, relBarra, texto, marca) {
   const outrasComArquivo = linhasDeRota(texto)
-    .filter((l) => l.includes('🔴') && !l.includes(marca) && (arquivosDaLinha(l) || []).length)
+    .filter((l) => l.includes('🔴') && !ehMinha(l) && (arquivosDaLinha(l) || []).length)
   if (!outrasComArquivo.length) return ''
 
   const D = await importDependencias()

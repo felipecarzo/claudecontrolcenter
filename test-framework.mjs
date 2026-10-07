@@ -400,7 +400,7 @@ ok('os cinco modos existem, e o contínuo é o continuativo sem o teto')
   fsx.writeFileSync(px.join(raiz, 'docs', 'ROTAS-ATIVAS.md'), [
     '| Rota | Status | Quem | Desde |',
     '|---|---|---|---|',
-    '| `front` | 🔴 ocupada | aaaa1111 — telas 🎚 dialogo 📁 src/ui.html | hoje |',
+    '| `front` | 🔴 ocupada | aaaa1111 — telas 🎚 dialogo 📁 src/ui_cockpit2.html | hoje |',
     '| `back` | 🔴 ocupada | bbbb2222 — dados 📁 src/web.mjs | hoje |',
   ].join('\n'))
 
@@ -605,7 +605,8 @@ ok('todo método declarado usa predicado que existe, e toda fase explica')
    ou fase que o motor não soubesse tratar. */
 {
   // CC-393: entrou o `projeto-novo`, o do projeto que nasce de uma descrição
-  assert.equal(Object.keys(METODOS).length, 6, 'o catálogo tem que ter os seis métodos')
+  // CC-902: entrou o `produto` (criação de produto)
+  assert.equal(Object.keys(METODOS).length, 7, 'o catálogo tem que ter os sete métodos')
 
   /* O método novo trava código nas DUAS primeiras fases, e é o ponto dele: não
      se constrói o que ainda não foi descrito. É a régua do `mvp-basico` uma

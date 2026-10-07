@@ -1,0 +1,11 @@
+{
+  "cockpit": "o painel do Cockpit: telas, dados e como ele se comporta",
+  "coderoom": "o chat com os agentes dentro do painel",
+  "framework": "o método de trabalho por projeto: modos, entrevista e regras do método",
+  "travas": "as regras automáticas que conferem o trabalho dos agentes",
+  "projetos": "criar, registrar e acompanhar os projetos",
+  "fundacao": "a base do sistema: backlog, tarefas e rotas",
+  "sincronia": "PC e VPS vendo o mesmo estado",
+  "padrao": "o padrão de projeto: micro tarefa como filha do item e o que vem com ele",
+  "maquinas": "a saúde e a carga das máquinas (VPS e PC)"
+}

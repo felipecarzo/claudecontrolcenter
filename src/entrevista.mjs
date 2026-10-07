@@ -105,7 +105,7 @@ export const ROTEIRO = [
     pergunta: (r) => {
       const quem = txt(r.quem)
       return quem
-        ? `O que ${quem.length > 40 ? 'essa pessoa' : quem} faz hoje, sem isso?`
+        ? `O que ${(quem.length > 40 || /[.!?;]/.test(quem)) ? 'essa pessoa' : quem} faz hoje, sem isso?`
         : 'O que a pessoa faz hoje, sem isso?'
     },
     header: 'Hoje',
@@ -543,71 +543,34 @@ export function aplicar(estado) {
  * projeto novo nasce vazio, e ficava vazio: a conversa que descreve o trabalho
  * inteiro morria dentro do estado do framework.
  *
- * **Cada critério de pronto vira um item**, e não uma linha de checklist. O
- * critério é literalmente a resposta de "o que precisa estar funcionando", que
- * é a mesma pergunta que o backlog responde.
+ * **Cada critério de pronto vira um item.** O critério é literalmente a
+ * resposta de "o que precisa estar funcionando", que é a mesma pergunta que o
+ * backlog responde.
  *
  * **A citação é dele, e é o que faz o item ser reconhecível depois.** Palavras
- * dele em 27/08, sobre os itens que registrei com a fala original dentro:
- * *"isso é muito bom porque eu consigo identificar pelo que eu falei"*. Um item
- * de backlog escrito com as minhas palavras é um item que ele lê e não
- * reconhece.
+ * dele em 27/08: *"isso é muito bom porque eu consigo identificar pelo que eu
+ * falei"*.
  *
- * Função PURA: devolve o texto em markdown e não decide onde ele vai.
+ * Padrão de projeto (01/10): sai como ITENS para o `docs/backlog.jsonl`, e não
+ * mais como prosa no ROADMAP; o mapa é gerado a partir deles. A primeira fatia
+ * (a resposta de "por onde começar") vem primeiro, para ganhar o menor número.
+ *
+ * Função PURA: devolve a lista e não decide onde ela vai.
  */
-export function paraBacklog(estado, { quando = null } = {}) {
+export function itensDoBacklog(estado) {
   const colhido = colher(estado)
   if (!colhido.criterios.length) return null
-
   const respostas = respostasDe(estado)
-  const dia = String(quando || new Date().toISOString()).slice(0, 10)
-  const [ano, mes, d] = dia.split('-')
-  const curto = `${d}/${mes}`
-
-  /* O contexto que vale a pena carregar para dentro do item: o que o projeto
-     entrega, para quem, e como é hoje. São as três respostas que explicam o
-     porquê, e sem elas o item vira uma linha de tarefa sem causa. */
-  const contexto = ['entrega', 'quem', 'hoje']
-    .map((id) => [id, String(respostas[id]?.texto || '').trim()])
-    .filter(([, t]) => t)
-
-  const linhas = []
-  const frente = frenteDa(estado)
-  linhas.push(frente
-    ? `## ▶ ${frente} (da entrevista de ${curto})`
-    : `## ▶ Da entrevista de ${curto}: ${colhido.nome || 'o que foi combinado'}`)
-  linhas.push('')
-  linhas.push('Itens tirados da entrevista do framework, com as palavras dele.')
-  linhas.push('Cada um é um critério de pronto que ele mesmo respondeu.')
-  linhas.push('')
-
-  if (contexto.length) {
-    linhas.push('**O que foi dito na entrevista:**')
-    linhas.push('')
-    for (const [id, texto] of contexto) {
-      const pergunta = ROTEIRO.find((x) => x.id === id)
-      linhas.push(`- **${pergunta?.header || id}:** ${texto.split(/\r?\n/).join(' ')}`)
-    }
-    linhas.push('')
-  }
-
-  /* A primeira fatia sai marcada, e não é enfeite: ele respondeu qual é, e um
-     backlog sem ordem devolve a ele a mesma pergunta que a entrevista já fez. */
   const primeiro = String(respostas.primeiro?.texto || '').trim().toLowerCase()
-
-  for (const c of colhido.criterios) {
-    const ehPrimeiro = primeiro && c.texto.toLowerCase() === primeiro
-    linhas.push(`### ${c.texto}${ehPrimeiro ? ' 🟢' : ''}`)
-    linhas.push('')
-    if (ehPrimeiro) {
-      linhas.push('Ele respondeu que esta é a primeira fatia, na pergunta sobre por')
-      linhas.push('onde começar.')
-      linhas.push('')
-    }
-    linhas.push('')
-  }
-
-  return linhas.join('\n')
+  const frente = frenteDa(estado) || colhido.nome || 'o que foi combinado'
+  const itens = colhido.criterios.map((c) => ({
+    intencao: c.texto.replace(/\s+/g, ' ').slice(0, 140),
+    pronto: c.texto,
+    citacao: c.texto,
+    frente,
+    primeiro: Boolean(primeiro && c.texto.toLowerCase() === primeiro),
+  }))
+  return [...itens.filter((x) => x.primeiro), ...itens.filter((x) => !x.primeiro)]
 }
 
 /**
