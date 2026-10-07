@@ -139,6 +139,18 @@ export const PREDICADOS = {
       ? `${naoConfirmadas.length} resposta(s) ainda são palpite meu, tiradas da sua descrição: confirme ou corrija`
       : null
   },
+  /* CC-902: os dois portões do método `produto`. As datas moram no estado e o conteúdo em docs/produto.json. */
+  'produto-definido': (e) => (e?.produto?.definicao ? null : 'confirme a definição de produto'),
+  'mapa-aprovado': (e) => (e?.produto?.mapa ? null : 'aprove o mapa do produto'),
+  /* CC-922: o produto só fecha sem requisito de segurança TESTÁVEL falhando. O veredito é a cópia que
+     `conferirSeguranca` (src/segurancaProduto.mjs) grava no estado depois de rodar a varredura sob comando; este arquivo
+     não lê disco. Suspeito e não medido não barram: aparecem em `node cc.mjs seguranca requisitos`. */
+  'seguranca-testavel-limpa': (e) => {
+    const barra = e?.produto?.seguranca?.barra || []
+    return barra.length
+      ? `${barra.length} requisito(s) de segurança que dá para testar não cumprem (conferido em ${String(e.produto.seguranca.quando || '').slice(0, 10)}): ${barra.join(' | ')}. Conserte e rode node cc.mjs seguranca requisitos.`
+      : null
+  },
   'backlog-escrito': (e) => ((e?.plano?.itens || 0) > 0
     ? null
     : 'o backlog está vazio: nenhum item foi escrito no docs/ROADMAP.md'),
@@ -323,6 +335,55 @@ export const METODOS = {
         titulo: 'Execução',
         explica: 'Código liberado. O projeto só é dado como pronto quando todos os critérios estiverem marcados.',
         exige: ['criterios-todos-marcados'],
+        trava: [],
+      },
+    ],
+  },
+
+  /**
+   * CC-902, 04/10: "Criação de produto". Começa pela entrevista que já existe e segue até a
+   * definição de produto e o mapa das partes, antes de qualquer rota ou código.
+   *
+   * ⚠️ **A primeira fase se chama `definicao` de propósito.** `perguntaDaEntrevista` (arquiteto)
+   * só pergunta nessa fase, e assim a entrevista roda sem mudança nenhuma.
+   */
+  produto: {
+    id: 'produto',
+    titulo: 'Criação de produto: entrevista, definição, mapa e rota',
+    fases: [
+      {
+        id: 'definicao',
+        titulo: 'Entrevista',
+        explica: 'Responda as perguntas do projeto. É o que ele é, para quem, e como se sabe que ficou pronto.',
+        exige: ['entrevista-terminada', 'mvp-tem-nome', 'mvp-definido'],
+        trava: TRAVA_CODIGO,
+      },
+      {
+        id: 'produto',
+        titulo: 'Definição de produto',
+        explica: 'Confirme a definição: o que é, para quem, o problema e como se sabe que deu certo.',
+        exige: ['produto-definido'],
+        trava: TRAVA_CODIGO,
+      },
+      {
+        id: 'mapa',
+        titulo: 'Mapa do produto',
+        explica: 'As partes que quem usa percorre, com o que precisa ser verdade em cada uma. Você aprova o mapa.',
+        exige: ['mapa-aprovado'],
+        trava: TRAVA_CODIGO,
+      },
+      {
+        id: 'planejamento',
+        titulo: 'Rota',
+        explica: 'O backlog escrito no roadmap, e a primeira fatia escolhida.',
+        exige: ['backlog-escrito', 'primeira-fatia-escolhida'],
+        trava: [],
+      },
+      {
+        id: 'execucao',
+        titulo: 'Execução',
+        explica: 'Código liberado. O projeto só é dado como pronto quando todos os critérios estiverem marcados e nenhum requisito de segurança que dá para testar estiver falhando.',
+        exige: ['criterios-todos-marcados', 'seguranca-testavel-limpa'],
         trava: [],
       },
     ],

@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import {
   NATUREZAS, AREAS, TAMANHOS, MODOS_DE_CONFERIR, MODOS_DE_TRAVA, RISCOS,
-  problemas, problemasDoFormato, noFormatoNovo, comoSeLe, acrescentar, ler,
+  problemas, problemasDoFormato, noFormatoNovo, comoSeLe, acrescentar, ler, LUGARES, lugarDe,
 } from './src/backlog.mjs'
 
 let ok = 0
@@ -83,7 +83,7 @@ t('item ANTIGO continua válido: a virada não transforma história em erro', ()
 })
 
 t('item MEIO no formato é cobrado, porque prometeu e não cumpriu', () => {
-  const meio = { id: 'CC-2', titulo: 'x', estado: 'B1', frente: 'f', natureza: 'PED', area: 'tela', conferir: 'olho:x' }
+  const meio = { id: 'CC-2', titulo: 'x', estado: 'B1', frente: 'fundacao', natureza: 'PED', area: 'tela', conferir: 'olho:x' }
   const p = problemas(meio)
   assert.ok(p.some((x) => x.includes('tamanho')), p.join('; '))
   assert.ok(p.some((x) => x.includes('pronto')), p.join('; '))
@@ -95,7 +95,7 @@ t('o que a tela lê é natureza, área e intenção, sem título livre', () => {
 
 t('item novo não nasce fora do formato', () => {
   writeFileSync(arq, '')
-  assert.throws(() => acrescentar({ titulo: 'so prosa', frente: 'f' }, arq), /falta natureza/)
+  assert.throws(() => acrescentar({ titulo: 'so prosa', frente: 'fundacao' }, arq), /falta natureza/)
   const i = acrescentar({ ...bom }, arq)
   assert.equal(i.natureza, 'PED')
   assert.equal(i.titulo, bom.intencao, 'sem título, ele nasce da intenção')
@@ -115,9 +115,26 @@ t('a recusa não repete a mesma queixa duas vezes', () => {
 
 t('a porta da migração existe e é declarada', () => {
   writeFileSync(arq, '')
-  const i = acrescentar({ titulo: 'veio da prosa', frente: 'f', permitirAntigo: true }, arq)
+  const i = acrescentar({ titulo: 'veio da prosa', frente: 'fundacao', permitirAntigo: true }, arq)
   assert.equal(i.titulo, 'veio da prosa')
   assert.equal(noFormatoNovo(i), false)
+})
+
+t('CC-958: o lugar é um vocabulário fechado de cinco, e item sem lugar continua válido', () => {
+  assert.deepEqual(LUGARES.map((l) => l.codigo), ['agora', 'dia', 'sprint', 'backlog', 'fora'])
+  const antigo = { id: 'CC-1', titulo: 'o que era escrito em prosa', estado: 'OK', frente: 'fundacao', prova: 'testei' }
+  assert.deepEqual(problemas({ ...antigo }), [])
+  assert.ok(problemas({ ...antigo, lugar: { onde: 'amanha', em: '2026-10-07T12:00:00.000Z' } }).some((m) => m.includes('lugar desconhecido')))
+  assert.deepEqual(problemas({ ...antigo, lugar: null }), [])
+  writeFileSync(arq, '')
+  acrescentar({ ...bom, lugar: { onde: 'dia', em: new Date().toISOString() } }, arq)
+  assert.equal(ler(arq).ruins.length, 0)
+})
+
+t('CC-958: "(depois do MVP)" no começo do título é fora do MVP, e o lugar gravado vence', () => {
+  assert.equal(lugarDe({ titulo: '(depois do MVP) x' }), 'fora')
+  assert.equal(lugarDe({ titulo: '(depois do MVP) x', lugar: { onde: 'sprint', em: '2026-10-07T12:00:00.000Z' } }), 'sprint')
+  assert.equal(lugarDe({ titulo: 'x (depois do MVP)' }), null)
 })
 
 rmSync(casa, { recursive: true, force: true })

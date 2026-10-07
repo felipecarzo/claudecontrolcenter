@@ -104,6 +104,18 @@ fs.writeFileSync(`${process.argv[2]}/.framework/estado.json`, JSON.stringify({
 ' x "$PRONTO"
 caso "projeto com MVP pronto nao e entrevistado" "$PRONTO" nao-contem "Entrevista de definição"
 
+echo "CC-958: a fila segue o Caminho e a ideia nova pede o lugar"
+FILA=$(projeto p8 continuativo)
+node -e '
+const fs = require("fs"); const d = process.argv[2]
+const it = (id, x) => JSON.stringify({ id, titulo: "item " + id, estado: "B1", frente: "x", criado: "2026-09-01", pronto: "pronto escrito aqui", conferir: "auto:node x.mjs", ...x })
+fs.writeFileSync(d + "/docs/backlog.jsonl", [it("XX-1", {}), it("XX-2", { lugar: { onde: "agora", em: "2026-10-07T12:00:00.000Z" } }), it("XX-3", { titulo: "(depois do MVP) guardado", criado: "2026-08-01" })].join("\n") + "\n")
+' x "$FILA"
+caso "a fila diz que segue o Caminho" "$FILA" contem "na ordem do Caminho"
+caso "o proximo e o que ele mandou para agora" "$FILA" contem "O próximo é XX-2"
+caso "fora do MVP nao e o proximo" "$FILA" nao-contem "O próximo é XX-3"
+caso "a ideia nova pede o lugar" "$FILA" contem "IDEIA NOVA DELE"
+
 echo "— higiene —"
 echo '{}' | node "$HOOK" > /dev/null 2>&1
 [ $? = 0 ] && echo "  ok     entrada vazia não trava a abertura da sessão" || { echo "  FALHOU entrada vazia"; FALHOU=1; }

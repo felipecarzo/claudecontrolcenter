@@ -29,6 +29,7 @@ import { casaClaude } from './platform.mjs'
 import { DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
 import { mesmoProjeto } from './nomeProjeto.mjs'
 import { apelidosDePasta } from './install.mjs'
+import { pendencias as doBacklogDele, resolver as resolverDoBacklog } from './esperaDele.mjs'
 
 /* CC-232: passou a resolver por `casaClaude()` em vez de `os.homedir()`, sem
    mudar de lugar (os dois dão o mesmo caminho nesta máquina, conferido). O que
@@ -190,6 +191,9 @@ function mexerNa(idAlvo, transformar) {
 }
 
 export function marcar(idAlvo, feito = true) {
+  /* CC-915: pendência que veio do backlog de um projeto. Fecha o item de lá, e só
+     quando o motivo é conferir; reabrir não existe (o item voltaria a PR pelo backlog). */
+  if (String(idAlvo).startsWith('backlog:')) return feito ? resolverDoBacklog(idAlvo) : { ok: false, erro: 'esta pendência vem do backlog do projeto: reabra o item lá' }
   return mexerNa(idAlvo, (d) => {
     const t = d.tarefas.find((x) => x.id === idAlvo)
     if (!t) return { ok: false, erro: 'tarefa não encontrada' }
@@ -219,6 +223,7 @@ export function definirProjeto(idAlvo, projeto) {
  * que apaga sem volta: descartar deixa o histórico dizendo o que aconteceu.
  */
 export function descartar(idAlvo) {
+  if (String(idAlvo).startsWith('backlog:')) return { ok: false, erro: 'esta pendência vem do backlog do projeto: cancele ou responda o item lá' }
   return mexerNa(idAlvo, (d) => {
     const t = d.tarefas.find((x) => x.id === idAlvo)
     if (!t) return { ok: false, erro: 'tarefa não encontrada' }
@@ -329,6 +334,9 @@ export function tudo(jobs = [], { projetos = [], maquinaLocal = null } = {}) {
   }
   const doArquivo = ler().tarefas.map((t) => daqui({ ...t, fonte: 'lista' }))
   const doMapa = doRoadmap(projetos).map(daqui)
+  // CC-915: o que os backlogs em dado esperam dele (decisão, trava, prova a conferir)
+  let doBacklog = []
+  try { doBacklog = doBacklogDele().map((t) => daqui({ ...t, projeto: nomeCerto(t.projeto) })) } catch { /* sem leitura dos backlogs, fica a fila de antes */ }
 
   const dosAgentes = []
   for (const j of jobs) {
@@ -353,7 +361,7 @@ export function tudo(jobs = [], { projetos = [], maquinaLocal = null } = {}) {
   }
 
   const vistos = new Set()
-  return [...doArquivo, ...dosAgentes, ...doMapa]
+  return [...doArquivo, ...dosAgentes, ...doMapa, ...doBacklog]
     .filter((t) => {
       const chave = `${t.projeto}|${t.texto}`
       if (vistos.has(chave)) return false

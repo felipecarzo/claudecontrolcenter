@@ -26,7 +26,7 @@
  * de ele escolher. O `AskUserQuestion` sempre acrescenta resposta livre por
  * conta própria, que é a válvula contra a moldura que sobrar.
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -104,15 +104,26 @@ if (modo.fluxo) {
   try {
     const B = await import(urlDeModulo(AQUI, '../src/backlog.mjs'))
     const arq = resolve(raiz, 'docs', 'backlog.jsonl')
-    const f = B.filaDoAgente(B.ler(arq).itens)
+    const f = B.filaDoAgente(B.ler(arq).itens, { sprint: B.sprintAtualIds(raiz) })
     if (f.sozinho.length + f.semEspec.length + f.dele.length) {
-      linhas.push(`FILA DO AGENTE (especificação primeiro): ${f.sozinho.length} item(ns) que você faz e prova sozinho, em ordem, sem perguntar`
-        + (f.sozinho[0] ? `; o próximo é ${f.sozinho[0].id} (${String(f.sozinho[0].titulo).slice(0, 90)})` : '')
-        + `. ${f.semEspec.length} sem especificação: antes de executar um desses, escreva o que é pronto e como conferir `
+      const p = f.proximo; const rot = p && B.rotuloDoLugar(p)
+      linhas.push('FILA DO AGENTE, na ordem do Caminho (decisão dele em 07/10): termine o que está andando; depois agora, fim do dia, '
+        + 'o sprint atual na ordem do Caminho, fim do sprint, os próximos sprints e o fim do backlog. Fora do MVP não entra até ele promover.'
+        + (p ? ` O próximo é ${p.id} (${String(p.titulo).slice(0, 90)})${rot ? `, lugar: ${rot}` : ''}${f.semEspec.includes(p) ? ', ainda sem especificação: escreva o pronto e como conferir antes' : ''}.` : '')
+        + ` ${f.sozinho.length} você faz e prova sozinho, em ordem, sem perguntar. ${f.semEspec.length} sem especificação: antes de executar um desses, escreva o que é pronto e como conferir `
         + '(node cc.mjs backlog especificar <ID> --pronto "..." --conferir "auto:..."). '
         + `${f.dele.length} esperam ele: não são seus. Lista inteira: node cc.mjs backlog fila.`)
     }
   } catch { /* projeto sem backlog: sem fila */ }
+}
+
+/* CC-958: ideia nova dele pede o lugar na fila. Vale em todo modo, desde que o projeto tenha backlog. */
+if (existsSync(resolve(raiz, 'docs', 'backlog.jsonl'))) {
+  linhas.push('IDEIA NOVA DELE ("anota isso", "e se", "tive uma ideia"): registre com node cc.mjs backlog emenda "..." --citacao "..." '
+    + '(nasce como ideia, fora da fila, e o comando imprime a sugestão de lugar e as opções da pergunta). Pergunte o lugar no AskUserQuestion '
+    + 'com essas opções, a sugestão primeiro, e grave com node cc.mjs backlog lugar <ID> <agora|dia|sprint|backlog|fora>. '
+    + 'Ideia que melhora uma função que já existe: --melhora <ID do item dessa função>. Se ele já disse o lugar na fala, use --lugar direto. '
+    + 'Nada entra na fila sem o toque dele.')
 }
 
 if (modo.trava) {

@@ -14,10 +14,17 @@ set -euo pipefail
 AQUI=$(cd "$(dirname "$0")" && pwd)
 
 echo "== conferência do que vai ser instalado (compare com o que o Claude informou)"
-sha256sum "$AQUI/deploy-seguro.mjs"
+sha256sum "$AQUI/deploy-seguro.mjs" "$AQUI/../auditoria/auditoria.mjs" "$AQUI/../app-seguranca/app-seguranca.mjs"
+node --check "$AQUI/deploy-seguro.mjs"; node --check "$AQUI/../auditoria/auditoria.mjs"; node --check "$AQUI/../app-seguranca/app-seguranca.mjs"
 
+bash "$AQUI/../auditoria/instalar.sh"   # CC-933: o registro central de auditoria
 install -d -m 755 /opt/cockpit-deploy
+# guarda a versão anterior do serviço: se a nova não subir, é daqui que se volta
+AGORA=$(date +%Y%m%d%H%M%S)
+for f in deploy-seguro.mjs auditoria.mjs app-seguranca.mjs; do [ -f "/opt/cockpit-deploy/$f" ] && cp -a "/opt/cockpit-deploy/$f" "/opt/cockpit-deploy/$f.antes-$AGORA"; done
 install -m 644 "$AQUI/deploy-seguro.mjs" /opt/cockpit-deploy/deploy-seguro.mjs
+install -m 644 "$AQUI/../auditoria/auditoria.mjs" /opt/cockpit-deploy/auditoria.mjs
+install -m 644 "$AQUI/../app-seguranca/app-seguranca.mjs" /opt/cockpit-deploy/app-seguranca.mjs   # CC-859: manifesto, ícone e service worker do app
 install -d -m 700 /etc/cockpit-deploy /var/lib/cockpit-deploy /var/backups/cockpit-deploy
 # a lista de sites sai do repositório (que os agentes editam): na troca, mostra o que muda e pergunta
 if [ ! -f /etc/cockpit-deploy/alvos.json ]; then
@@ -43,6 +50,7 @@ After=network.target
 
 [Service]
 ExecStart=/usr/bin/node /opt/cockpit-deploy/deploy-seguro.mjs
+Environment=COCKPIT_AUDITORIA=/var/log/cockpit/auditoria.jsonl
 Restart=always
 RestartSec=3
 User=root

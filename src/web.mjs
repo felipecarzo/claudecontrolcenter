@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import * as SEG from './seguranca.mjs' // CC-722
 import os from 'node:os'
 import path from 'node:path'
-import { execFile, spawn } from 'node:child_process'
+import { execFile, spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { readJobs, summarize, writeMeta } from './jobs.mjs'
 import * as observado from './observado.mjs'
@@ -31,6 +31,12 @@ import {
   descartar as descartarMeu,
 } from './meu.mjs'
 import { origem as origemLocal } from './maquina-id.mjs'
+import { mudancas as mudancasGit, salvar as salvarGit } from './salvarGit.mjs'
+import { caminhoDe as caminhoDoProjeto, projetosComCaminho } from './caminho.mjs'
+import { caminhoPorSprint, contaDaSemana } from './sprint.mjs'
+let caminhoLista = null
+let sprintsConta = null
+import { adivinhar as adivinharProjeto, criar as criarPedido, listar as listarPedidos } from './pedidos.mjs'
 import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
   mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos, resumirBacklogs,
@@ -73,10 +79,21 @@ const sincronia = import('./sincronia.mjs')
    Vive em memória e é preenchido por `revisarPendencias()` a cada minuto: as
    provas rodam comando de sistema, e a aba Trabalho não pode pagar isso. */
 let REVISAO_PENDENCIAS = {}
-import {
-  estado as estadoMidia, acao as acaoMidia,
-  volume as volumeMidia, mudo as mudoMidia,
-} from './midia.mjs'
+
+/* CC-522: os projetos com algo a dizer no leitor do dia (fechou, espera ele,
+   travou). Uma conta só para a rota da tela e para a gravação da manhã. */
+function projetosDoLeitor() {
+  return import('./backlog.mjs').then((B) => {
+    const projetos = []
+    for (const raiz of findProjects()) {
+      const { itens, existe } = B.ler(path.join(raiz, 'docs', 'backlog.jsonl'))
+      if (!existe) continue
+      const l = B.leitorDoDia(itens)
+      if (l.fechados || l.dele.length || l.travados.length) projetos.push({ raiz, nome: path.basename(raiz).replace(/^(VPS|PC)_/i, ''), ...l })
+    }
+    return projetos.sort((a, b) => b.fechados - a.fechados || b.dele.length - a.dele.length)
+  })
+}
 import { estado as estadoMaquina } from './maquina.mjs'
 /* CC-340: o retrato das travas desta máquina, para a tela poder pôr local e
    remota lado a lado. Com cache curto, porque este caminho responde de 2 em 2
@@ -92,7 +109,6 @@ import { situacaoRotas } from './routia.mjs'
 import { retratoRotas } from './rotas.mjs'
 import { commitsDesde } from './gitlog.mjs'
 import { digestTodos } from './digest.mjs'
-import { enriquecerTodos } from './opencode.mjs'
 import {
   ligar as ligarRemoto, desligar as desligarRemoto, estado as estadoRemoto, link as linkRemoto,
   conectar as conectarRemoto, desconectar as desconectarRemoto, reabrir as reabrirRemoto,
@@ -121,7 +137,7 @@ import { arquivosDeclarados } from './oficinas.mjs'
 import {
   desligar as desligarFramework, gravar as gravarFramework, ler as lerFramework,
   ligar as ligarFramework, situacao as situacaoFramework, gravarSessao as gravarModoSessao,
-  origemDoModo,
+  origemDoModo, fecharEntrevista,
 } from './frameworkDisco.mjs'
 import {
   METODOS,
@@ -134,15 +150,15 @@ import {
 import {
   ROTEIRO as ROTEIRO_ENTREVISTA, aplicaveis as aplicaveisEntrevista, desfazer as desfazerEntrevista,
   progresso as progressoEntrevista, proxima as proximaEntrevista, responder as responderEntrevista,
-  respostasDe as respostasEntrevista, textoDaPergunta,
+  respostasDe as respostasEntrevista, textoDaPergunta, itensDoBacklog,
 } from './entrevista.mjs'
 import { criar as criarProjeto, gruposDe } from './novoProjeto.mjs'
-import { log as logRecados, TIPOS as TIPOS_RECADO } from './recados.mjs'
+import { ler as lerProduto } from './produto.mjs' // #produto (CC-902)
 import { resumo as resumoTempo } from './tempo.mjs'
 import {
-  setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor, setPip,
-  setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig, setVisita,
-  setMaquina, setFederacao, moduloLigado, setModuloProjeto, setPaineisMeus, setFoco, setEtiquetas,
+  setTaxa, setCambio, setAssinatura, setGraficos, setMercado, setSessao, setServidor,
+  setVpsConfig, setCalendario, removerCalendario, hookEnabled, setHookEnabled, readConfig,
+  setMaquina, setFederacao, moduloLigado, setModuloProjeto, projetoDe, setPaineisMeus, setFoco, setEtiquetas,
   projetosDoQuadro, setProjetosDoQuadro, setPastasDeProjeto,
   CHAVE_TUDO, visitaGeral, setVisitaGeral, setTelaAberto, lerTelaAberto,
   revisorDe, setRevisor, acessoTesteDe, setAcessoTeste,
@@ -172,7 +188,6 @@ import { garantirCambio } from './cambio.mjs'
 import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto, lerPedidosDoGancho, responderGancho, painelAbertoAgora, trocarConfig } from './decisao.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const UI = path.join(HERE, 'ui.html')
 /* CC-397, 29/08: o painel em construção, servido AO LADO do que ele usa.
  *
  * Pedido dele: *"vamos executar um plano em etapas p nao atrapalhar o
@@ -310,6 +325,10 @@ function retratoFramework(raiz) {
       const temMvp = Boolean(String(s.estado?.mvp?.nome || '').trim())
       const entrevista = { feitas: prog.feitas, total: prog.total, terminou: s.estado?.entrevista?.terminou || null }
 
+      /* #produto (CC-902): no método Criação de produto, até o planejamento, quem conduz é o arquiteto em cartões */
+      if (s.estado?.metodo === 'produto' && !['planejamento', 'execucao'].includes(a.fase)) {
+        return { entrevista, passo: 'responda as perguntas da criação de produto', acao: 'produto' }
+      }
       /* A ordem das perguntas é a ordem do trabalho: primeiro descobrir o que é
          o projeto, depois planejar, depois construir. */
       if (!fezEntrevista && !temMvp) {
@@ -527,6 +546,7 @@ function usoDaConta(local, pacotes) {
  * aqui com um relógio em vez de um clique.
  */
 let ultimoTempoEnviado = 0
+let pastasEnviadas = false // CC-861: as pastas de projeto já chegaram ao cofre neste processo
 const INTERVALO_TEMPO_MS = 10 * 60 * 1000
 
 /* CC-353: os servidores locais também viajam.
@@ -630,7 +650,7 @@ async function comUltimaFala(jobs) {
 /* CC-263: exportada para o modo `cc reportar`, que empurra sem levantar tela.
    É o coração do serviço do Windows: a mesma função que o painel já usava no
    timer de 30s, agora alcançável de fora. */
-export async function empurrar({ comTempo = null } = {}) {
+export async function empurrar({ comTempo = null, comPastas = null } = {}) {
   const cfg = readConfig()
   const { token, enviarPara, ativo } = cfg.federacao || {}
   if (!token || !enviarPara) return { ok: false, erro: 'federação não configurada' }
@@ -765,9 +785,13 @@ export async function empurrar({ comTempo = null } = {}) {
     hw: await estadoMaquina().then((m) => (m ? { cpu: m.cpu, ram: m.ram, gpu: m.gpu } : null)).catch(() => null),
     // CC-735: os pedidos de permissão abertos aqui, para serem respondidos de lá
     permissoes: (() => { try { return lerPedidosDoGancho().filter((p) => !p.coderoom) } catch { return [] } })(),
+    /* CC-861: as pastas desta máquina vão no primeiro empurrão que chega e quando o comando
+       `cc registro enviar` pede. Medir `ativo` roda git em cada pasta: a cada 30s seria caro. */
+    pastas: (comPastas ?? !pastasEnviadas) ? await import('./migrarRegistro.mjs').then((M) => M.pastasParaEnviar(findProjects())).catch(() => null) : null,
   })
   ultimoEnvioEm = Date.now()
   const r = await enviarPacote({ enviarPara, token, pacote })
+  if (r?.ok && pacote.pastas) pastasEnviadas = true
   /* CC-735: a outra ponta diz se ele está olhando o painel de lá agora. Com
      isso o gancho daqui espera a resposta dele em vez de sair calado. */
   if (r?.ok && r.vendo) vendoDeLaAte = Date.now() + 40_000
@@ -1218,6 +1242,59 @@ const comCorpoAsync = (req, res, max, fn) => {
   })
 }
 
+/** Texto dele na conversa do arquiteto sem pergunta aberta: continuar, ou virar pedido no backlog. Nunca um agente solto. */
+async function seguirArquiteto(id, cwd, texto) {
+  acrescentarGate(id, { tipo: 'dele', texto })
+  const emObra = (() => { try { return obraRodando(cwd) } catch { return false } })()
+  if (emObra) return { evento: acrescentarGate(id, { tipo: 'sistema', texto: 'Anotado. O robô está no meio de uma obra neste projeto; quando terminar, o arquiteto continua.' }) }
+  let virou = null
+  if (!/^\s*(pode\s+)?(continu|segu|vai|manda ver|ok|beleza)/i.test(texto) && texto.trim().length >= 12) {
+    const Bk = await import('./backlog.mjs'); const arq = Bk.caminhoPadrao(cwd)
+    virou = Bk.acrescentar({ prefixo: Bk.prefixoDoProjeto(Bk.ler(arq).itens, cwd), natureza: 'PED', area: 'tela', tamanho: 'M', estado: 'B1', origem: 'felipe',
+      intencao: texto.replace(/\s+/g, ' ').slice(0, 140), citacao: texto, pronto: `${texto.slice(0, 300)} (pedido dele na conversa do arquiteto)`, conferir: 'dele:ele confere na revisão' }, arq).id
+  }
+  const log = path.join(os.homedir(), 'logs', `arquiteto-${id}.log`)
+  fs.mkdirSync(path.dirname(log), { recursive: true })
+  const fd = fs.openSync(log, 'a')
+  const filho = spawn(process.execPath, [fileURLToPath(new URL('./arquiteto.mjs', import.meta.url)), '--pasta', cwd, '--passo', '--avisar', id], { cwd, detached: true, stdio: ['ignore', fd, fd] })
+  filho.on('error', () => { /* o log diz */ }); filho.unref(); fs.closeSync(fd)
+  return { evento: acrescentarGate(id, { tipo: 'sistema', texto: virou ? `Anotado como pedido seu (${virou}). O arquiteto segue a partir dele.` : 'Anotado. O arquiteto segue para o próximo passo.' }) }
+}
+/** Há obra do robô (arquiteto ou maestro) rodando nesta pasta? */
+function obraRodando(cwd) {
+  const r = spawnSync('pgrep', ['-f', `(arquiteto|maestro)\\.mjs --pasta ${cwd}`], { encoding: 'utf8' })
+  return Boolean(String(r.stdout || '').trim())
+}
+
+/* CC-867: a resposta dele a uma pergunta do arquiteto, por botão ou escrita.
+   Grava a escolha no diário da ficha, mostra na conversa e chama o próximo
+   passo do arquiteto, que sobe solto (a proposta leva cerca de 1 minuto). */
+/* #produto: sobe o arquiteto solto (o passo leva cerca de 1 minuto), com o log em ~/logs. `modo` são os argumentos
+   do modo: ['--passo'], ['--executar', ficha] ou ['--juntar', ficha]. */
+function dispararArquiteto(cwd, id, modo) {
+  const log = path.join(os.homedir(), 'logs', `arquiteto-${id}.log`)
+  fs.mkdirSync(path.dirname(log), { recursive: true })
+  const fd = fs.openSync(log, 'a')
+  const filho = spawn(process.execPath, [fileURLToPath(new URL('./arquiteto.mjs', import.meta.url)), '--pasta', cwd, ...modo, '--avisar', id], { cwd, detached: true, stdio: ['ignore', fd, fd] })
+  filho.on('error', () => { /* sem node, o log diz */ })
+  filho.unref(); fs.closeSync(fd)
+}
+async function responderArquiteto(id, ficha, escolha) {
+  const cab = lerCabecalhoGate(id)
+  const cwd = cab?.cwd
+  if (!cwd) throw new Error('esta conversa não tem pasta de projeto')
+  // a resposta só vale vinda da conversa do arquiteto: de outra (micro tarefa) o próximo passo sairia no lugar errado
+  if (!String(cab.titulo || '').startsWith('Arquiteto · ')) throw new Error('esta não é a conversa do arquiteto: responda na conversa "Arquiteto · ..."')
+  const Ar = await import('./arquiteto.mjs')
+  // CC-902: com o array de rótulos marcados a separação por vírgula não é preciso (rótulo com vírgula)
+  const fechada = Ar.responder(cwd, String(ficha || ''), Array.isArray(escolha) ? escolha : String(escolha || ''))
+  acrescentarGate(id, { tipo: 'dele', texto: Array.isArray(escolha) ? escolha.join(', ') : String(escolha) })
+  /* CC-885: o "sim" a um pedido CONSTRÓI (o robô divide, faz e confere); qualquer outra resposta segue
+     para o próximo passo do arquiteto. Antes o sim só gerava mais uma pergunta, e ele respondeu 8. */
+  dispararArquiteto(cwd, id, fechada.executar ? ['--executar', String(ficha)] : fechada.juntar ? ['--juntar', String(ficha)] : fechada.fazer ? ['--fazer', String(fechada.fazer)] : ['--passo'])
+  return { evento: acrescentarGate(id, { tipo: 'sistema', texto: fechada.executar ? 'Anotado. O robô vai construir agora.' : fechada.juntar ? 'Anotado. Vou juntar ao projeto de verdade.' : 'Anotado. O arquiteto está pensando no próximo passo.' }) }
+}
+
 /* CC-450: o remote-control do Antigravity, irmão do que o Claude já tem.
  *
  * ⚠️ **Achado em 07/09, depois de medir: o daemon do remote-control NÃO
@@ -1385,7 +1462,6 @@ function handler(req, res) {
   if (url.pathname === '/antigo' || url.pathname === '/novo' || url.pathname === '/v3') {
     return send(res, 200, fs.readFileSync(UI_V3, 'utf8'), 'text/html; charset=utf-8')
   }
-  if (url.pathname === '/v1') return send(res, 200, fs.readFileSync(UI, 'utf8'), 'text/html; charset=utf-8')
   if (url.pathname === '/graficos.js') {
     return send(res, 200, fs.readFileSync(GRAFICOS, 'utf8'), 'text/javascript; charset=utf-8')
   }
@@ -1570,9 +1646,16 @@ function handler(req, res) {
         return r && r.ok !== false ? { ok: true, nome, porta } : r
       })
     }
-    return comCorpo(req, res, 1e3, ({ nome }) => {
+    return comCorpoAsync(req, res, 1e3, async ({ nome }) => {
       const alvo = nomes.find((n) => n.nome === nome)
       if (!alvo) return { ok: false, erro: 'nome desconhecido pelo ~/dev.sh' }
+      /* CC-914: a subida leva cerca de 1 minuto (gera o site e depois serve), e a tela
+         desiste de esperar em 60 s. Um segundo clique nesse intervalo rodava o script
+         de novo: ele mata o servidor da porta e apaga a pasta do site que a primeira
+         ainda estava gerando. Medido no log de 04/10: uma subida falhou e a seguinte
+         encontrou o servidor da anterior ainda de pé. Uma subida por teste de voo. */
+      const emCurso = await new Promise((ok) => execFile('pgrep', ['-f', `dev\\.sh ${alvo.nome}$`], (e) => ok(!e)))
+      if (emCurso) return { ok: false, erro: 'já está subindo: leva cerca de 1 minuto, espere o endereço abrir' }
       const log = fs.openSync(path.join(os.homedir(), 'logs', 'dev-teste-painel.log'), 'a')
       const filho = spawn(script, [alvo.nome], { detached: true, stdio: ['ignore', log, log], env: { ...process.env, CC_SEM_NAVEGADOR: '1' } })
       filho.unref()
@@ -1743,12 +1826,6 @@ function handler(req, res) {
     })
   }
 
-  // CC-33: carimbo explícito de "vi isso". Nunca automático — o Felipe olha o
-  // painel o dia todo, e carimbar sozinho zeraria o delta a cada visita.
-  if (url.pathname === '/api/visita' && req.method === 'POST') {
-    return comCorpo(req, res, 1e3, ({ projeto }) => ({ visitas: setVisita(projeto).visitas }))
-  }
-
   // O framework de engenharia (ver docs/produto/FRAMEWORK.md). Leitura sob
   // demanda por projeto, nunca no stream: são ~20 projetos e o tique é de 2s.
   //
@@ -1802,6 +1879,16 @@ function handler(req, res) {
       const { ok, erro, pacote } = validarPacote(bruto)
       if (!ok) return { error: erro }
       gravarPacote(pacote)
+      /* CC-861: as pastas da outra máquina completam o registro central DESTA (o cofre),
+         sem registro paralelo: projeto em comum ganha a máquina, novo ganha entrada. */
+      let registroPastas = null
+      if (pacote.pastas?.length) {
+        try {
+          const M = await import('./migrarRegistro.mjs')
+          const r = M.receberPastas({ maquina: pacote.maquina.nome, pastas: pacote.pastas })
+          registroPastas = r.ok ? { novos: r.plano.novos.length, completar: r.plano.completar.length, iguais: r.plano.iguais.length, total: r.depois } : { erro: r.erro }
+        } catch (e) { registroPastas = { erro: String(e?.message || e) } }
+      }
       /* CC-166: a resposta do empurrão é a carona de volta.
          A VPS não alcança o PC atrás do NAT, então este é o único momento em
          que dá para entregar alguma coisa a ele: ele pergunta de 30 em 30
@@ -1823,6 +1910,7 @@ function handler(req, res) {
            recebeu o empurrão é o cofre (decisão de operação, não deste
            código); quem empurrou guarda a lista como espelho de leitura. */
         registro: await registroParaResposta(),
+        ...(registroPastas ? { registroPastas } : {}),
         maquina: origemLocal(readConfig())?.nome || null,
         /* CC-735: ele está com o painel daqui aberto agora? O outro lado usa
            para o gancho de permissão de lá esperar a resposta dele. */
@@ -2009,6 +2097,23 @@ function handler(req, res) {
   //
   // Sai do snapshot que já está em memória: zero I/O novo, e por isso pode ser
   // chamado à vontade.
+  /* CC-858 (#pedidos): o pedido que ele digita para os agentes e a lista dos
+     pedidos com o estado. A limpeza das tarefas paradas é a gaveta da Início. */
+  if (url.pathname === '/api/pedidos') {
+    const projetos = findProjects().map((raiz) => ({ raiz }))
+    if (req.method === 'POST') {
+      return comCorpo(req, res, 8e3, ({ texto, raiz }) => {
+        try { const i = criarPedido({ texto, raiz }, projetos); return { ok: true, id: i.id, projeto: raiz } } catch (e) { return { ok: false, erro: e.message } }
+      })
+    }
+    const texto = url.searchParams.get('texto') || ''
+    const { palpite, alternativas } = adivinharProjeto(texto, projetos)
+    return send(res, 200, {
+      palpite, alternativas: alternativas.map(({ raiz, nome }) => ({ raiz, nome })),
+      // com texto é só o palpite, que sai a cada pausa na digitação: ler todos os backlogs custa ~230 ms
+      ...(texto ? {} : { pedidos: listarPedidos(projetos) }), at: Date.now(),
+    })
+  }
   if (url.pathname === '/api/meu') {
     if (req.method === 'POST') {
       return comCorpo(req, res, 4e3, ({ acao, id: alvo, texto, projeto, frente, porque, feito }) => {
@@ -2413,9 +2518,10 @@ function handler(req, res) {
      projetos ficam dentro de grupos que na VPS não existem. */
   if (url.pathname === '/api/projeto/novo') {
     if (req.method === 'POST') {
-      return comCorpo(req, res, 1e4, ({ nome, grupo, descricao }) => {
+      return comCorpo(req, res, 1e4, ({ nome, grupo, descricao, cliente, ativo, site }) => {
         const base = projectsBase()
-        const r = criarProjeto(base, { nome, grupo, descricao })
+        // CC-525: cliente, ativo e site vão para o registro do projeto
+        const r = criarProjeto(base, { nome, grupo, descricao, cliente, ativo, site })
         if (!r.ok) return { error: r.erro }
         /* O retrato do framework vai junto porque o projeto nasce ligado e a
            tela abre a entrevista na sequência: sem isso ela faria duas voltas
@@ -2530,6 +2636,8 @@ function handler(req, res) {
         const r = responderEntrevista(estado, id, texto)
         if (!r.ok) return { error: r.erro }
         gravarFramework(raiz, r.estado)
+        // padrão de projeto (01/10): a última resposta escreve o backlog do projeto
+        if (!proximaEntrevista(r.estado)) fecharEntrevista(raiz, r.estado, itensDoBacklog(r.estado))
         /* O retrato sai do DISCO, não do estado em memória: é a mesma regra da
            troca de modo, em que a tela dizia "salvo" sobre um arquivo que não
            tinha mudado. O que a tela mostra é o que ficou gravado. */
@@ -2541,28 +2649,7 @@ function handler(req, res) {
     return send(res, 200, { raiz, ...retratoEntrevista(raiz) })
   }
 
-  /* CC-134: o que os agentes conversaram entre si, registrado e visível.
-     Pedido dele em 15/08, antes de duas sessões trabalharem juntas de verdade:
-     um log "por projeto, por hora, poder ver em ordem crescente, decrescente,
-     separar por projeto, separar por agentes". A ordenação e os filtros são
-     do lado do navegador (a mesma regra da tabela de jobs, que já ordena por
-     clique); aqui só a varredura, que é o lado caro.
-
-     Sem `projeto`, varre TODOS os conhecidos, igual à aba de servidores: são
-     leituras de JSON pequeno, uma por projeto, nunca no tique de 2s. */
-  if (url.pathname === '/api/recados') {
-    const alvo = url.searchParams.get('projeto')
-    const raizes = alvo
-      ? [cwdDoProjeto(url.searchParams.get('cwd'), alvo)].filter(Boolean)
-      : findProjects()
-    const todos = []
-    for (const raiz of raizes) {
-      const nome = path.basename(raiz)
-      for (const r of logRecados(raiz, 300)) todos.push({ ...r, projeto: nome })
-    }
-    todos.sort((a, b) => b.em - a.em)
-    return send(res, 200, { recados: todos, tipos: TIPOS_RECADO, at: Date.now() })
-  }
+  // CC-856: a rota /api/recados (CC-134) saiu com o painel antigo; os recados seguem no comando do Routia
 
   // CC-23: o que aconteceu num projeto, derivado do histórico já guardado —
   // mesma barateza do /api/cockpit, sem spawn nem disco além do JSON.
@@ -2715,13 +2802,6 @@ function handler(req, res) {
     return send(res, 200, { aberto: lerTelaAberto(), at: Date.now() })
   }
 
-  if (url.pathname === '/api/pip') {
-    if (req.method === 'POST') {
-      return comCorpo(req, res, 1e4, ({ blocos, layout }) => ({ pip: setPip({ blocos, layout }) }))
-    }
-    return send(res, 200, { pip: readConfig().pip })
-  }
-
   /* ==================== O GATE: a conversa é do painel ====================
    *
    * Ele fala com Claude Code, opencode e agy numa conversa só, e troca de agente
@@ -2766,6 +2846,19 @@ function handler(req, res) {
   /* Os modelos de cada agente. Rota própria e não dentro da lista de conversas:
      ela pergunta ao binário de dois deles, leva segundos na primeira vez, e a
      lista de conversas é pedida a cada dois segundos. */
+  /* 01/10, pedido dele: as APIs de IA (pagas e gratuitas). A chave nunca volta
+     para a tela: só "tem chave" e os 4 últimos caracteres. */
+  if (url.pathname === '/api/ia/provedores') {
+    if (req.method !== 'POST') return import('./provedoresIA.mjs').then((IA) => send(res, 200, { provedores: IA.listar() })).catch((e) => send(res, 500, { erro: String(e.message || e) }))
+    return comCorpoAsync(req, res, 4e3, async ({ acao, id, chave }) => {
+      const IA = await import('./provedoresIA.mjs')
+      const { esquecerModelos } = await import('./gateAgentes.mjs')
+      if (acao === 'salvar') { const r = IA.salvarChave(String(id || ''), chave); esquecerModelos('api'); esquecerModelos('opencode'); return { ...r, teste: await IA.testar(String(id)) } }
+      if (acao === 'remover') { esquecerModelos('api'); esquecerModelos('opencode'); return IA.removerChave(String(id || '')) }
+      if (acao === 'testar') return IA.testar(String(id || ''))
+      return { ok: false, erro: 'ação desconhecida' }
+    })
+  }
   if (url.pathname === '/api/gate/modelos') {
     /* CC-710: cada modelo leva a descrição de uso (o "i" da barra lateral); o
        que não tem descrição vai com `info: null`, e a tela diz que não tem. */
@@ -2831,8 +2924,22 @@ function handler(req, res) {
   if (url.pathname === '/api/gate/mensagem' && req.method === 'POST') {
     /* 100 KB: ele dita mensagem longa por voz, e cortar o pedido dele calado
        seria a pior forma de economizar. */
-    return comCorpo(req, res, 1e5, ({ id, texto, agente, modelo, esforco, anexos, revisar }) => {
+    return comCorpoAsync(req, res, 1e5, async ({ id, texto, agente, modelo, esforco, anexos, revisar }) => {
       if (!id || !String(texto || '').trim()) throw new Error('preciso da conversa e do texto')
+      /* CC-867: na conversa do arquiteto, o que ele escreve responde a pergunta
+         aberta (a entrevista tem pergunta sem botão). Sem pergunta aberta, segue
+         para o agente como qualquer conversa. */
+      const cab = lerCabecalhoGate(id)
+      if (cab?.cwd && String(cab.titulo || '').startsWith('Arquiteto · ')) {
+        const Ar = await import('./arquiteto.mjs')
+        const Bk = await import('./backlog.mjs')
+        const aberta = Ar.perguntaAberta(Bk.ler(Bk.caminhoPadrao(cab.cwd)).itens)
+        if (aberta) return responderArquiteto(id, aberta.id, texto)
+        /* 07/10: sem pergunta aberta, o texto dele ia para o agente padrão da conversa (agy), que trabalhava no projeto
+           AO MESMO TEMPO que a obra do maestro. A conversa do arquiteto não tem agente livre: "continuar" faz o arquiteto
+           seguir; qualquer outra coisa vira pedido dele no backlog, e o arquiteto segue a partir dele. */
+        return seguirArquiteto(id, cab.cwd, String(texto))
+      }
       return responderGate(id, {
         texto: String(texto), agente: agente || 'agy',
         modelo: modelo || null, esforco: esforco || null,
@@ -2916,6 +3023,61 @@ function handler(req, res) {
      conferidas de novo dentro de `trocarConfig`. Só sessão deste terminal. */
   if (url.pathname === '/api/decisao/config' && req.method === 'POST') {
     return comCorpoAsync(req, res, 1e3, async ({ conversa, modelo, esforco }) => trocarConfig({ conversa: String(conversa || '').slice(0, 80), modelo: modelo || null, esforco: esforco || null }))
+  }
+  /* CC-909 (#cartas): a explicação longa de uma opção curta, escrita pelo AGY. */
+  if (url.pathname === '/api/cartas/explicar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 4e3, async (corpo) => {
+      const [C, A] = await Promise.all([import('./cartas.mjs'), import('./resumoAgy.mjs')])
+      return C.explicar(corpo, A)
+    })
+  }
+  /* CC-936 (#explicacoes): o que é e o que muda de cada item, escrito pelo AGY uma vez e guardado.
+     A tela manda os ids que está mostrando; o que falta entra na fila. Nunca por temporizador. */
+  if (url.pathname === '/api/explicacoes' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 4e3, async ({ cwd, ids }) => {
+      const dir = cwdDoProjeto(cwd, null)
+      if (!dir) return { ok: false, erro: 'projeto não encontrado' }
+      const X = await import('./explicaItem.mjs')
+      return X.explicacoes(dir, (Array.isArray(ids) ? ids : []).map(String).filter((s) => /^[A-Z]{2,4}-\d{1,5}$/.test(s)).slice(0, 60))
+    })
+  }
+  /* CC-911 (#cartas): os baralhos de `docs/cartas` dos projetos. Só raiz que o
+     `findProjects` conhece; a tela entra na etapa D3b. */
+  if (url.pathname === '/api/cartas' && req.method === 'GET') {
+    return import('./cartas.mjs').then((C) => {
+      const cwd = url.searchParams.get('cwd')
+      if (cwd) {
+        if (!findProjects().includes(cwd)) return send(res, 404, { error: 'projeto desconhecido' })
+        return send(res, 200, { projetos: [{ raiz: cwd, decks: C.pendentes(cwd) }] })
+      }
+      /* ponytail: cache de 60 s para varrer todos os projetos; votar invalida. */
+      if (!global.__cartasCache || Date.now() - global.__cartasCache.em > 60e3) {
+        global.__cartasCache = { em: Date.now(), projetos: findProjects().map((raiz) => ({ raiz, decks: C.pendentes(raiz) })).filter((p) => p.decks.length) }
+      }
+      return send(res, 200, { projetos: global.__cartasCache.projetos })
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
+  }
+  if (url.pathname === '/api/cartas/votar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 4e3, async ({ raiz, deck, carta, escolhas, nota }) => {
+      if (!findProjects().includes(raiz)) return { ok: false, erro: 'projeto desconhecido' }
+      const C = await import('./cartas.mjs')
+      const r = C.votar(raiz, String(deck || ''), String(carta || ''), { escolhas, nota })
+      if (r.ok) global.__cartasCache = null
+      return { ok: !!r.ok, ...r }
+    })
+  }
+  if (url.pathname === '/api/cartas/img' && req.method === 'GET') {
+    return import('./cartas.mjs').then((C) => {
+      const cwd = url.searchParams.get('cwd')
+      const alvo = findProjects().includes(cwd) ? C.caminhoDaImagem(cwd, url.searchParams.get('arq')) : null
+      if (!alvo) return send(res, 404, { error: 'arquivo não servido' })
+      const tipo = { png: 'image/png', webp: 'image/webp', jpg: 'image/jpeg' }[alvo.split('.').pop().toLowerCase()]
+      fs.readFile(alvo, (err, dado) => {
+        if (err) return send(res, 404, { error: 'arquivo não servido' })
+        res.writeHead(200, { 'content-type': tipo, 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'", 'cache-control': 'max-age=300' })
+        res.end(dado)
+      })
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
   }
   /* CC-737: ele corrige a etiqueta do agy (responder, testar, nada) com um toque. */
   if (url.pathname === '/api/sessao/etiqueta' && req.method === 'POST') {
@@ -3012,19 +3174,57 @@ function handler(req, res) {
     return
   }
   /* CC-530: o leitor do dia, de todos os projetos com backlog. */
+  /* CC-857: a carga da máquina e se o painel está segurando agente novo. A tela mostra o aviso. */
+  if (url.pathname === '/api/carga') {
+    return import('./vigiaCarga.mjs').then((V) => send(res, 200, { ...V.retrato(), agora: os.loadavg()[0], nucleosAgora: os.cpus().length }))
+  }
   if (url.pathname === '/api/leitor') {
-    import('./backlog.mjs').then((B) => {
-      const projetos = []
-      for (const raiz of findProjects()) {
-        const { itens, existe } = B.ler(path.join(raiz, 'docs', 'backlog.jsonl'))
-        if (!existe) continue
-        const l = B.leitorDoDia(itens)
-        if (l.fechados || l.dele.length || l.travados.length) projetos.push({ raiz, nome: path.basename(raiz).replace(/^(VPS|PC)_/i, ''), ...l })
-      }
-      projetos.sort((a, b) => b.fechados - a.fechados || b.dele.length - a.dele.length)
-      return send(res, 200, { projetos, em: Date.now() })
-    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
+    Promise.all([projetosDoLeitor(), import('./leitorDiario.mjs'), import('./parados.mjs'), import('./projetoRegistro.mjs'), import('./nomeProjeto.mjs')])
+      // CC-522: junto vai a última leitura gravada sozinha de manhã
+      .then(([projetos, LD, P, Reg, NP]) => {
+        // CC-526: projeto ativo do registro, sem movimento há mais de 7 dias (git ou backlog)
+        const pastas = findProjects()
+        const lista = Reg.listar().filter((r) => r.ativo !== false).map((r) => {
+          const raiz = Object.values(r.maquinas || {}).map((m) => m.raiz).find((x) => x && fs.existsSync(x))
+            || pastas.find((x) => NP.mesmoProjeto(path.basename(x), r.nome))
+          return { id: r.id, nome: r.nome, ativo: r.ativo, ultimoMovimento: raiz ? P.ultimoMovimentoDe(raiz) : null }
+        })
+        send(res, 200, { projetos, em: Date.now(), gravado: LD.ultima(), parados: P.projetosParados(lista), limiteDias: P.LIMITE_DIAS })
+      })
+      .catch((e) => send(res, 500, { error: String(e.message || e) }))
     return
+  }
+  /* CC-526: ele decide marcar um projeto parado como inativo (ou voltar a ativo). Só ele. */
+  if (url.pathname === '/api/projeto/ativo' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e3, async ({ id, ativo }) => {
+      const Reg = await import('./projetoRegistro.mjs')
+      return Reg.atualizarDados(String(id || ''), { ativo: ativo !== false && ativo !== 'false' })
+    })
+  }
+  /* CC-920 (#provas): as provas que esperam o olho dele viram cartas do Tinder, e ele aprova por
+     cartão ou "todas as que vi" (a tela manda os ids que mostrou; o servidor valida cada um).
+     Sem `cwd`: todos os projetos, com cache de 60 s. Pergunta de agente NÃO passa por aqui. */
+  if (url.pathname === '/api/backlog/provas' && req.method === 'GET') {
+    const cwd = url.searchParams.get('cwd')
+    const todos = findProjects()
+    if (cwd && !todos.includes(cwd)) return send(res, 404, { error: 'projeto desconhecido' })
+    import('./provas.mjs').then((P) => send(res, 200, { ok: true, cartas: P.cartasDeProvas({ raizes: cwd ? [cwd] : todos }) }))
+      .catch((e) => send(res, 500, { error: String(e.message || e) }))
+    return
+  }
+  /* CC-958 (#lugar): o toque dele no Caminho muda o lugar de um item na fila. */
+  if (url.pathname === '/api/backlog/lugar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 2e3, async ({ cwd, id, onde }) => {
+      const dir = cwdDoProjeto(cwd, null)
+      if (!dir) throw new Error('projeto não encontrado')
+      if (!/^[A-Z]{2,4}-\d{1,5}$/.test(String(id))) throw new Error('id fora do formato')
+      const B = await import('./backlog.mjs')
+      const i = B.porNoLugar(String(id), String(onde), {}, B.caminhoPadrao(dir))
+      return { item: { id: i.id, estado: i.estado, lugar: B.lugarDe(i), lugarRot: B.rotuloDoLugar(i) } }
+    })
+  }
+  if (url.pathname === '/api/backlog/aprovar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 4e3, async (b) => (await import('./provas.mjs')).aprovar(b, { raizes: findProjects() }))
   }
   /* CC-557: a fila do agente de um projeto (especificação primeiro). */
   if (url.pathname === '/api/backlog/fila') {
@@ -3033,7 +3233,7 @@ function handler(req, res) {
     import('./backlog.mjs').then((B) => {
       const { itens, existe } = B.ler(path.join(raiz, 'docs', 'backlog.jsonl'))
       if (!existe) return send(res, 200, { existe: false })
-      const f = B.filaDoAgente(itens)
+      const f = B.filaDoAgente(itens, { sprint: B.sprintAtualIds(raiz) })
       const curto = (xs) => ({ n: xs.length, itens: xs.slice(0, 5).map((x) => ({ id: x.id, titulo: x.titulo })) })
       return send(res, 200, { existe: true, sozinho: curto(f.sozinho), semEspec: curto(f.semEspec), dele: curto(f.dele) })
     }).catch((e) => send(res, 500, { error: String(e.message || e) }))
@@ -3090,6 +3290,57 @@ function handler(req, res) {
     }).catch((e) => send(res, 500, { error: String(e.message || e) }))
     return
   }
+  /* CC-658 (#design-editar): trocar cor, fonte ou regra grava no arquivo de design do projeto, com cópia guardada no abrigo. */
+  if (url.pathname === '/api/design/editar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 4e3, async ({ raiz, acao, nome, de, para, texto }) => {
+      if (!findProjects().includes(raiz)) return { ok: false, erro: 'projeto desconhecido' }
+      const D = await import('./design.mjs')
+      if (acao === 'cor') return D.editarCor(raiz, { nome: nome || null, de: de || null, para })
+      if (acao === 'fonte') return D.editarFonte(raiz, { de, para })
+      if (acao === 'regra') return D.acrescentarRegra(raiz, texto)
+      return { ok: false, erro: 'ação desconhecida' }
+    })
+  }
+  /* CC-655 (#design-telas): as telas desenhadas, com versões e o voto de cada uma. Ler também atualiza o baralho
+     "design" das cartas; fotografar é pedido da tela, uma versão por vez, nunca por temporizador. */
+  if (url.pathname === '/api/design/telas' && req.method === 'GET') {
+    const raiz = url.searchParams.get('raiz')
+    if (!findProjects().includes(raiz)) return send(res, 404, { error: 'projeto desconhecido' })
+    return import('./designTelas.mjs').then((T) => { const r = T.sincronizar(raiz); global.__cartasCache = null; send(res, 200, { telas: r.lista, erro: r.erro || null }) })
+      .catch((e) => send(res, 500, { error: String(e.message || e) }))
+  }
+  if (url.pathname === '/api/design/fotografar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e3, async ({ raiz, tela, n }) => {
+      if (!findProjects().includes(raiz)) return { ok: false, erro: 'projeto desconhecido' }
+      const T = await import('./designTelas.mjs')
+      const r = await T.fotografarVersao(raiz, String(tela || ''), Number(n))
+      global.__cartasCache = null
+      return r.ok ? { ok: true, telas: r.lista } : { ok: false, erro: r.erro }
+    })
+  }
+  /* CC-656 (#design-mural): o mural de referências de um projeto, guardado dentro dele (docs/design). */
+  if (url.pathname === '/api/design/mural') {
+    if (req.method === 'POST') {
+      return comCorpoAsync(req, res, 17e6, async (b) => {
+        if (!findProjects().includes(b.raiz)) return { ok: false, erro: 'projeto desconhecido' }
+        const M = await import('./designMural.mjs')
+        return b.apagar ? M.apagar(b.raiz, String(b.apagar)) : M.acrescentar(b.raiz, b)
+      })
+    }
+    const raiz = url.searchParams.get('raiz')
+    if (!findProjects().includes(raiz)) return send(res, 404, { error: 'projeto desconhecido' })
+    return import('./designMural.mjs').then((M) => send(res, 200, { itens: M.lerMural(raiz) })).catch((e) => send(res, 500, { error: String(e.message || e) }))
+  }
+  /* CC-657 (#design-comparar): o antes e depois do site, das duas últimas rodadas de fotos do Coderoom do projeto. */
+  if (url.pathname === '/api/design/comparar' && req.method === 'GET') {
+    const raiz = url.searchParams.get('raiz')
+    if (!findProjects().includes(raiz)) return send(res, 404, { error: 'projeto desconhecido' })
+    return import('./designTelas.mjs').then(async (T) => {
+      const comp = await T.comparacao(raiz)
+      T.comparacaoNoDeck(raiz, comp); global.__cartasCache = null
+      send(res, 200, { comparacao: comp, voto: comp ? T.votosDoDeck(raiz).get(comp.carta) || null : null })
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
+  }
   /* CC-654, área de design 1/4: identidade de cada projeto, só leitura. */
   if (url.pathname === '/api/design') {
     import('./design.mjs')
@@ -3103,8 +3354,10 @@ function handler(req, res) {
     return
   }
   if (url.pathname === '/api/design/arquivo') {
-    import('./design.mjs').then((D) => {
-      const alvo = D.caminhoDeMarca(url.searchParams.get('raiz'), url.searchParams.get('caminho'))
+    Promise.all([import('./design.mjs'), import('./designMural.mjs')]).then(([D, M]) => {
+      const raizA = url.searchParams.get('raiz'), relA = url.searchParams.get('caminho')
+      // CC-656: a mesma rota serve as imagens do mural, só de dentro de docs/design/mural
+      const alvo = D.caminhoDeMarca(raizA, relA) || (findProjects().includes(raizA) ? M.caminhoDaImagem(raizA, relA) : null)
       if (!alvo) return send(res, 404, { error: 'arquivo não servido' })
       const tipo = { svg: 'image/svg+xml', png: 'image/png', webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg' }[alvo.split('.').pop().toLowerCase()]
       fs.readFile(alvo, (err, dado) => {
@@ -3167,7 +3420,7 @@ function handler(req, res) {
   if (url.pathname === '/api/gate/agente' && req.method === 'POST') {
     return comCorpo(req, res, 1e3, ({ id, agente, modelo }) => {
       if (!id) throw new Error('preciso saber qual conversa')
-      if (!['claude', 'opencode', 'agy'].includes(agente)) throw new Error('agente desconhecido')
+      if (!['claude', 'opencode', 'agy', 'api'].includes(agente)) throw new Error('agente desconhecido')
       const cab = lerCabecalhoGate(String(id))
       if (!cab) throw new Error('conversa não encontrada')
       const modelos = { ...(cab.modelos || {}) }
@@ -3238,10 +3491,108 @@ function handler(req, res) {
   /* Escreve um aviso do PAINEL na conversa, sem chamar agente nenhum.
      Existe porque registrar "o modo mudou" pela rota de mensagem dispararia um
      turno, e ele pagaria um agente para ler um recado do próprio painel. */
+  /* CC-849 (Nisaba): o pedido vai para o maestro, pelo celular. O maestro
+     planeja, divide em micro tarefas, roda cada uma numa conversa limpa e
+     escreve o andamento NESTA conversa (--avisar). Sobe solto e a rota volta
+     na hora: a fila leva minutos.
+     Medido em 02/10: o maestro SOBREVIVE ao religar do painel (sobe solto). Para
+     parar uma rodada é preciso matar o processo; o estado fica no backlog e
+     `--continuar` retoma de onde parou. */
+  if (url.pathname === '/api/gate/maestro' && req.method === 'POST') {
+    return comCorpo(req, res, 1e5, ({ id, texto }) => {
+      if (!id || !String(texto || '').trim()) throw new Error('preciso da conversa e do pedido')
+      const cwd = lerCabecalhoGate(id)?.cwd
+      if (!cwd) throw new Error('esta conversa não tem pasta de projeto')
+      // CC-854: Nisaba desligado neste projeto (tela Projetos) = o maestro não roda aqui
+      if (!moduloLigado('nisaba', projetoDe(cwd))) throw new Error(`o Nisaba está desligado em ${projetoDe(cwd)}: religue na tela Projetos para mandar pedido ao maestro`)
+      acrescentarGate(id, { tipo: 'dele', texto: String(texto) })
+      const log = path.join(os.homedir(), 'logs', `maestro-${id}.log`)
+      fs.mkdirSync(path.dirname(log), { recursive: true })
+      const fd = fs.openSync(log, 'a')
+      const filho = spawn(process.execPath, [fileURLToPath(new URL('./maestro.mjs', import.meta.url)), '--pasta', cwd, '--avisar', id, String(texto)], { cwd, detached: true, stdio: ['ignore', fd, fd] })
+      filho.on('error', () => { /* sem node, o aviso abaixo fica sem continuação, e o log diz */ })
+      filho.unref(); fs.closeSync(fd)
+      return { evento: acrescentarGate(id, { tipo: 'sistema', texto: 'Mandei para o maestro: ele planeja com o Antigravity, divide em micro tarefas e confere cada uma com o robô. O andamento aparece aqui.' }) }
+    })
+  }
+
   if (url.pathname === '/api/gate/nota' && req.method === 'POST') {
-    return comCorpo(req, res, 4e3, ({ id, texto }) => {
+    return comCorpo(req, res, 2e4, ({ id, texto, acoes, fotos }) => {
       if (!id || !String(texto || '').trim()) throw new Error('preciso da conversa e do texto')
-      return { evento: acrescentarGate(id, { tipo: 'sistema', texto: String(texto) }) }
+      /* CC-867: a pergunta do arquiteto chega com uma opção por botão. Só passa
+         botão de resposta ao arquiteto (ficha no formato XX-000), nada mais.
+         CC-894: a descrição, a marca de múltipla e o "só texto" também passam: antes eram descartados aqui,
+         e a explicação de cada opção nunca chegou à tela do Coderoom. */
+      const botoes = (Array.isArray(acoes) ? acoes : []).slice(0, 6)
+        .filter((a) => a && /^[A-Z]{2,4}-\d{1,5}$/.test(String(a.arquiteto || '')) && String(a.rotulo || '').trim())
+        .map((a) => ({ rotulo: String(a.rotulo).slice(0, 120), arquiteto: String(a.arquiteto),
+          ...(a.descricao ? { descricao: String(a.descricao).slice(0, 140) } : {}), ...(a.multipla === true ? { multipla: true } : {}), ...(a.soTexto === true ? { soTexto: true } : {}) }))
+      /* CC-894: fotos do app para a revisão. Só vale arquivo que mora na pasta de anexos DESTA conversa
+         (caminho real, depois de seguir atalhos): é a mesma pasta que a tela sabe servir, e nada fora dela. */
+      let anexadas = []
+      if (Array.isArray(fotos) && fotos.length) {
+        try {
+          const raiz = fs.realpathSync(path.join(lerCabecalhoGate(id)?._onde || '', `${id}.anexos`)) + path.sep
+          anexadas = fotos.slice(0, 12).map(String).filter((f) => { try { return fs.realpathSync(f).startsWith(raiz) } catch { return false } })
+        } catch { anexadas = [] }
+      }
+      return { evento: acrescentarGate(id, { tipo: 'sistema', texto: String(texto), ...(botoes.length ? { acoes: botoes } : {}), ...(anexadas.length ? { fotos: anexadas } : {}) }) }
+    })
+  }
+
+  /* CC-867: o botão de uma pergunta do arquiteto (ver `responderArquiteto`). */
+  if (url.pathname === '/api/arquiteto/responder' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 8e3, ({ id, ficha, escolha, escolhas, extra }) => {
+      /* o formulário manda as opções marcadas e o campo extra, que vale junto
+         (uma opção sozinha chega com o rótulo exato, que a entrevista reconhece) */
+      const marcadas = (Array.isArray(escolhas) ? escolhas : []).map((x) => String(x).trim()).filter(Boolean)
+      const txt = String(extra || '').trim()
+      // CC-902: sem texto extra vai o ARRAY (rótulo com vírgula não se confunde); com extra segue a string, que o arquiteto separa pelos rótulos oferecidos
+      const resposta = marcadas.length && !txt ? marcadas : marcadas.length ? marcadas.join(', ') + '. ' + txt : (txt || String(escolha || ''))
+      return responderArquiteto(id, ficha, resposta)
+    })
+  }
+
+  /* #produto, CC-902: começa a criação de produto. Acha (ou cria) a conversa "Arquiteto · <projeto>" e sobe o
+     arquiteto, que pergunta a entrevista e depois as perguntas do produto. A tela troca o método antes. */
+  if (url.pathname === '/api/arquiteto/comecar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 2e3, ({ cwd, projeto }) => {
+      const raiz = cwdDoProjeto(cwd, projeto || null)
+      if (!raiz) throw new Error('projeto não encontrado')
+      if (!moduloLigado('nisaba', projetoDe(raiz))) throw new Error(`o Nisaba está desligado em ${projetoDe(raiz)}: religue na tela Projetos`)
+      const nome = path.basename(raiz).replace(/^VPS_/, '')
+      const titulo = `Arquiteto · ${nome}`
+      const conversa = listarGate().find((c) => c.titulo === titulo && path.resolve(c.cwd || '') === path.resolve(raiz)) || criarGate({ titulo, projeto: projeto || path.basename(raiz), cwd: raiz })
+      dispararArquiteto(raiz, conversa.id, ['--passo'])
+      acrescentarGate(conversa.id, { tipo: 'sistema', texto: 'Começando a criação do produto: o arquiteto vai fazer as perguntas, uma por vez.' })
+      return { conversa: conversa.id }
+    })
+  }
+
+  /* #produto, CC-902: o mapa do produto do projeto (docs/produto.json), para a seção Produto do inspetor. */
+  if (url.pathname === '/api/produto' && req.method === 'GET') {
+    const dir = cwdDoProjeto(url.searchParams.get('cwd'), null)
+    if (!dir) return send(res, 200, { existe: false })
+    const p = lerProduto(dir)
+    if (!p) return send(res, 200, { existe: false })
+    // CC-922: os requisitos de segurança de cada parte, lidos da última medida (sem rede, sem varrer aqui)
+    return import('./segurancaProduto.mjs').then((S) => S.requisitosDoProduto(dir)).catch(() => [])
+      .then((seguranca) => send(res, 200, { existe: true, ...p, seguranca }))
+  }
+
+  /* CC-922: "medir agora" da seção Produto. Roda a varredura SÓ deste projeto (só leitura, mede os cabeçalhos
+     pela rede) e grava o veredito que o portão do pronto lê. Sob clique, nunca em temporizador. */
+  if (url.pathname === '/api/produto/seguranca' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 2e3, async ({ cwd }) => {
+      const dir = cwdDoProjeto(cwd, null)
+      if (!dir) return { ok: false, erro: 'projeto não encontrado' }
+      const V = await import('../tools/varredura-seguranca/varredura.mjs')
+      const S = await import('./segurancaProduto.mjs')
+      const nome = path.basename(dir)
+      const r = await V.varrerProjeto({ nome, pasta: dir, urls: V.urlsDosProjetos(path.resolve(RAIZ_DO_PAINEL))[nome] || [] })
+      if (r.erro) return { ok: false, erro: r.erro }
+      const { barra } = S.conferirSeguranca(dir, r)
+      return { ok: true, barra, quando: new Date().toISOString() }
     })
   }
 
@@ -3410,6 +3761,7 @@ function handler(req, res) {
         send(res, 200, {
           eventos: lista.map((e) => ({ ...e, julgamento: julgamentos[e.id]?.valor || null })),
           placar: T.placar(amplo),
+          familias: T.placarPorFamilia(T.placar(amplo)),
           /* **O que QUEBROU, separado do que barrou** (corte 3 do MVP da v2,
              11/09). Antes os dois somavam no mesmo placar, e "sem nome" era o
              primeiro lugar com 334 de 485 eventos, todos de um único hook
@@ -3444,7 +3796,9 @@ function handler(req, res) {
       try {
         const { registros, transcritos } = await C.coletarTranscritos({ desde })
         const { registros: doGit } = await C.coletarGit(findProjects(), { desde })
-        const r = A.gravar([...registros, ...doGit])
+        const { eventos } = await import('./travas.mjs')
+        const { registros: dasTravas } = C.coletarTravas({ eventos: eventos({ limite: 100000, guardarNovos: false }), registros, desde })
+        const r = A.gravar([...registros, ...doGit, ...dasTravas])
         /* `onde` volta para a tela de propósito: cair no abrigo em silêncio é
            exatamente como o dado parece sumir. */
         send(res, 200, { ok: r.ok, gravados: r.gravados, onde: r.onde, transcritos })
@@ -3599,12 +3953,15 @@ function handler(req, res) {
     }))
   }
 
+  /* CC-856: o custo do trabalho ganhou tela (Ajustes). A leitura e as respostas devolvem SÓ os três
+     números: antes a gravação devolvia a configuração inteira, com o token da federação dentro. */
+  const custoAtual = () => { const c = readConfig(); return { taxaHora: Number(c.taxaHora) || 0, assinaturaMes: Number(c.assinaturaMes) || 0, cambio: c.cambio || {} } }
+  if (url.pathname === '/api/custo' && req.method === 'GET') return send(res, 200, custoAtual())
+
   // Taxa em R$/hora, global ou por projeto. Fica no config e não no cache de
   // tempo: mudar a taxa não pode invalidar 800 MB de varredura.
   if (url.pathname === '/api/taxa' && req.method === 'POST') {
-    return comCorpo(req, res, 1e4, ({ valor, projeto }) => ({
-      config: setTaxa(valor, { projeto: projeto || null }),
-    }))
+    return comCorpo(req, res, 1e4, ({ valor, projeto }) => { setTaxa(valor, { projeto: projeto || null }); return custoAtual() })
   }
 
   if (url.pathname === '/api/graficos') {
@@ -3615,7 +3972,7 @@ function handler(req, res) {
   }
 
   if (url.pathname === '/api/assinatura' && req.method === 'POST') {
-    return comCorpo(req, res, 1e4, ({ valor }) => ({ config: setAssinatura(valor) }))
+    return comCorpo(req, res, 1e4, ({ valor }) => { setAssinatura(valor); return custoAtual() })
   }
 
   // Preço por tarefa. Puxa o mercado antes do cálculo, pelo mesmo motivo do
@@ -3973,22 +4330,6 @@ function handler(req, res) {
     return send(res, 200, { ...mapa, ordens, estrutura })
   }
 
-  // CC-36: enriquecimento de to-dos pelo opencode. Uma chamada por AGENTE
-  // (não por tarefa), roda em pasta neutra (nunca o cwd do projeto — todos
-  // os agentes do opencode aqui têm permission:*, nenhum é read-only).
-  // Pode levar até 60s (espera o processo do opencode terminar), por isso
-  // sob clique explícito, nunca automático.
-  if (url.pathname === '/api/enriquecer' && req.method === 'POST') {
-    return comCorpoAsync(req, res, 1e4, async ({ job }) => {
-      const atual = readJobs().find((j) => j.id === job)
-      if (!atual) throw new Error(`job ${job} não existe`)
-      const textos = (atual.todos || []).map((t) => t.text)
-      const novas = await enriquecerTodos(textos)
-      const explicacoes = { ...atual.explicacoes, ...novas }
-      return { meta: writeMeta(job, { explicacoes }), adicionadas: Object.keys(novas).length }
-    })
-  }
-
   // CC-24: digest semanal entre projetos, cruzando histórico + git + diário +
   // roadmap. Varre ~20 projetos com spawn de git cada — sempre sob clique.
   /* ===== CC-412: a síntese escrita por IA sobre os números da Análise ======
@@ -4093,6 +4434,43 @@ function handler(req, res) {
 
   // CC-35: "o que mudou desde que saí", em commit de verdade — sempre sob
   // clique, nunca no stream: é spawn de git.
+  /* CC-896 (#caminho): o backlog do projeto como estrada. Sem `cwd`, a lista dos
+     projetos que têm backlog (lê ~26 arquivos, ~500 ms: guardada por 60 s). */
+  if (url.pathname === '/api/caminho' && req.method === 'GET') {
+    const cwd = url.searchParams.get('cwd')
+    if (cwd) {
+      const dir = cwdDoProjeto(cwd, null)
+      // CC-901 (#sprints): `por=sprint` devolve o mesmo formato, com cada trecho um sprint de 7 dias
+      const porSprint = url.searchParams.get('por') === 'sprint'
+      return send(res, 200, dir ? (porSprint ? caminhoPorSprint(dir) : caminhoDoProjeto(dir)) : { ok: false, erro: 'projeto não encontrado' })
+    }
+    if (!caminhoLista || Date.now() - caminhoLista.em > 60000) caminhoLista = { em: Date.now(), projetos: projetosComCaminho(findProjects().map((raiz) => ({ raiz }))) }
+    return send(res, 200, { ok: true, projetos: caminhoLista.projetos })
+  }
+
+  /* CC-901 (#sprints): a soma dos sprints abertos de todos os projetos contra a semana da conta.
+     Só o gasto desta máquina entra (estimadoPor: 'VPS'). Lê a semana inteira de uso (~3 s na primeira
+     vez), por isso fica guardada por 60 s. Não corta nada pelo limite: o orçamento segue em aberto. */
+  if (url.pathname === '/api/sprints/conta' && req.method === 'GET') {
+    if (!sprintsConta || Date.now() - sprintsConta.em > 60000) {
+      if (!caminhoLista || Date.now() - caminhoLista.em > 60000) caminhoLista = { em: Date.now(), projetos: projetosComCaminho(findProjects().map((raiz) => ({ raiz }))) }
+      sprintsConta = { em: Date.now(), dado: contaDaSemana(caminhoLista.projetos.map((p) => p.raiz)) }
+    }
+    return send(res, 200, { ok: true, ...sprintsConta.dado, at: sprintsConta.em })
+  }
+
+  /* CC-884 (#git-salvar): o que um commit e push faria no projeto, e fazê-lo. */
+  if (url.pathname === '/api/git/mudancas' && req.method === 'GET') {
+    const cwd = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
+    if (!cwd) return send(res, 200, { ok: false, erro: 'projeto não encontrado' })
+    return mudancasGit(cwd).then((r) => send(res, 200, r))
+  }
+  if (url.pathname === '/api/git/salvar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 8e3, async ({ cwd, projeto, mensagem }) => {
+      const dir = cwdDoProjeto(cwd, projeto)
+      return dir ? salvarGit(dir, mensagem) : { ok: false, erro: 'projeto não encontrado' }
+    })
+  }
   if (url.pathname === '/api/git') {
     const cwd = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto'))
     const desde = Number(url.searchParams.get('desde')) || 0
@@ -4145,24 +4523,6 @@ function handler(req, res) {
         })
       })
       .catch((e) => send(res, 500, { erro: String(e.message || e) }))
-  }
-
-  // Mídia: consultada pela barra do player, que pergunta a cada poucos
-  // segundos. Cache curto mora no módulo; aqui só se decide ler ou escrever.
-  if (url.pathname === '/api/midia') {
-    return estadoMidia({ force: url.searchParams.has('force') })
-      .then((d) => send(res, 200, d))
-      .catch((e) => send(res, 500, { erro: String(e.message || e) }))
-  }
-
-  if (url.pathname === '/api/midia/acao' && req.method === 'POST') {
-    return comCorpoAsync(req, res, 1e4, ({ indice, qual }) => acaoMidia(indice, qual))
-  }
-
-  if (url.pathname === '/api/midia/volume' && req.method === 'POST') {
-    return comCorpoAsync(req, res, 1e4, ({ pid, nivel, mudo }) => (
-      mudo === undefined ? volumeMidia(pid, nivel) : mudoMidia(pid, mudo)
-    ))
   }
 
   if (url.pathname === '/api/kill' && req.method === 'POST') {
@@ -4550,12 +4910,24 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
               mapa[t.id] = { pareceResolvida: t.resolvida === true, comoSoube: t.comoSoube }
             }
             REVISAO_PENDENCIAS = mapa
+            P.ultimaRevisao.mapa = mapa; P.ultimaRevisao.em = Date.now() // CC-234: o Cockpit novo lê daqui
           })
           .catch(() => {})
       }
       const relRev = setInterval(revisarPendencias, 60_000)
       relRev.unref()
       revisarPendencias()
+
+      /* CC-522: o leitor diário grava sozinho, uma vez por dia, a partir das 7h
+         de Brasília. Confere de meia em meia hora: religar o painel não perde o dia. */
+      const leitorDaManha = () => Promise.all([projetosDoLeitor(), import('./leitorDiario.mjs')])
+        .then(([projetos, LD]) => LD.talvezGravar(projetos.map((p) => ({ nome: p.nome, leitor: p }))))
+        .catch(() => {})
+      const relLeitor = setInterval(leitorDaManha, 30 * 60_000)
+      relLeitor.unref()
+      leitorDaManha()
+      // CC-857: o vigia de carga, uma leitura a cada 10 s
+      import('./vigiaCarga.mjs').then((V) => V.iniciar()).catch(() => {})
 
       const { token, enviarPara } = readConfig().federacao || {}
       if (token && enviarPara) {
@@ -4605,6 +4977,13 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
           fs.mkdirSync(dirP, { recursive: true })
           fs.writeFileSync(path.join(dirP, 'porta'), String(server.address().port))
         } catch { /* sem a anotação, o status cai na porta padrão */ }
+        /* 02/10: as skills do repositório (a do Nisaba) vão para os três agentes.
+           Só o painel de verdade instala: ele roda fora do isolamento das
+           sessões, e instância de teste não pode gravar nas pastas reais. */
+        import('./skills.mjs').then((S) => {
+          const r = S.instalarDoRepositorio()
+          if (r.feitos.length) console.log('skills do repositório:', r.feitos.map((f) => `${f.skill}/${f.agente} ${f.acao}`).join(', '))
+        }).catch(() => { /* sem skills, o painel segue */ })
       }
       if (process.env.CC_VPS_LOCAL === '1') {
         const retratoVps = () => atualizarSnapshot().catch(() => {})

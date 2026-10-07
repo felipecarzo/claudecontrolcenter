@@ -160,7 +160,61 @@ export async function atualizarUsoDaConta({ agora = Date.now(), forcar = false }
       break
     } catch { /* próximo lugar */ }
   }
+  anotarHistorico(r.dados)
   return { dados: r.dados }
+}
+
+/**
+ * CC-899: o histórico do uso semanal do plano, uma linha por MUDANÇA.
+ * Mora no abrigo (a casa é só leitura no sandbox). Nunca derruba quem chama.
+ */
+export const HISTORICO = () => path.join(path.dirname(USO_FILE_ABRIGO), 'uso-historico.jsonl')
+
+let ultimaAnotada = null // { arq, chave }
+
+const chaveHist = (l) => JSON.stringify([l?.semana ?? null, l?.semanaReset ?? null, l?.cincoHoras ?? null])
+
+export function anotarHistorico(dados, arq = HISTORICO()) {
+  try {
+    const linha = {
+      em: dados?.em || Date.now(),
+      semana: dados?.semana?.pct ?? null,
+      semanaReset: dados?.semana?.resetaEm ?? null,
+      cincoHoras: dados?.cincoHoras?.pct ?? null,
+    }
+    if (linha.semana === null && linha.cincoHoras === null) return false
+    if (ultimaAnotada?.arq !== arq) {
+      const ult = lerHistorico({}, arq).pop()
+      ultimaAnotada = { arq, chave: ult ? chaveHist(ult) : null }
+    }
+    const chave = chaveHist(linha)
+    if (ultimaAnotada.chave === chave) return false
+    fs.mkdirSync(path.dirname(arq), { recursive: true })
+    fs.appendFileSync(arq, JSON.stringify(linha) + '\n')
+    ultimaAnotada.chave = chave
+    return true
+  } catch { return false }
+}
+
+export function lerHistorico({ desde = 0 } = {}, arq = HISTORICO()) {
+  let texto = ''
+  try { texto = fs.readFileSync(arq, 'utf8') } catch { return [] }
+  const out = []
+  for (const l of texto.split('\n')) {
+    if (!l.trim()) continue
+    try { const o = JSON.parse(l); if ((o.em || 0) >= desde) out.push(o) } catch { /* linha torta */ }
+  }
+  return out
+}
+
+/** O maior pct de cada janela semanal (identificada por `semanaReset`). */
+export function gastoPorSemana(hist) {
+  const por = new Map()
+  for (const l of hist || []) {
+    if (!l.semanaReset || !Number.isFinite(l.semana)) continue
+    por.set(l.semanaReset, Math.max(por.get(l.semanaReset) ?? 0, l.semana))
+  }
+  return [...por].map(([resetaEm, pct]) => ({ resetaEm, pct })).sort((a, b) => a.resetaEm - b.resetaEm)
 }
 
 const janela = (j) => {
@@ -232,6 +286,7 @@ export function gravarUso(entrada) {
       const tmp = `${arq}.tmp`
       fs.writeFileSync(tmp, JSON.stringify(dados))
       fs.renameSync(tmp, arq)
+      anotarHistorico(dados)
       return dados
     } catch { /* próximo lugar */ }
   }

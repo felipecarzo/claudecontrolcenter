@@ -24,6 +24,11 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { spawn, execFileSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
+// CC-933: instalado, o registro de auditoria fica ao lado (./auditoria.mjs, copiado pelo instalar.sh); no repositório mora em ../auditoria/
+const { registrar } = await import(new URL(fs.existsSync(new URL('./auditoria.mjs', import.meta.url)) ? './auditoria.mjs' : '../auditoria/auditoria.mjs', import.meta.url).href)
+// CC-859: manifesto, ícone e service worker para instalar a página como app (mesmo esquema: ao lado, ou em ../app-seguranca/)
+const APP = await import(new URL(fs.existsSync(new URL('./app-seguranca.mjs', import.meta.url)) ? './app-seguranca.mjs' : '../app-seguranca/app-seguranca.mjs', import.meta.url).href)
+const PECAS_APP = APP.pecas('deploy')
 
 export const CONF_DIR = process.env.DEPLOY_CONF || '/etc/cockpit-deploy'
 export const ESTADO_DIR = process.env.DEPLOY_ESTADO || '/var/lib/cockpit-deploy'
@@ -127,6 +132,17 @@ export function inspecionar(dir, limite = 500 * 1024 * 1024) {
   return { total, arquivos }
 }
 
+/** O site no ar serve o index.html que está em `destino`? Tenta três vezes (o nginx pode demorar um instante). */
+async function servindo(alvo, destino, { log, buscar }) {
+  const esperado = fs.readFileSync(path.join(destino, 'index.html'), 'utf8')
+  let okSite = false
+  for (let i = 0; i < 3 && !okSite; i += 1) {
+    try { const r = await buscar(alvo.url, { headers: { 'cache-control': 'no-cache' } }); const corpo = await r.text(); okSite = r.status === 200 && corpo.trim() === esperado.trim(); log(`resposta ${r.status}${okSite ? ', serve o index.html novo' : ', mas não é o arquivo novo'}\n`) } catch (e) { log('falhou: ' + e.message + '\n') }
+    if (!okSite) await new Promise((r) => setTimeout(r, 1500))
+  }
+  return okSite
+}
+
 /* ── o deploy estático, passo a passo, com volta automática ────────────── */
 export async function deployEstatico(alvo, pedido, { log, buscar = fetch } = {}) {
   const passo = (t) => log(`\n▸ ${t}\n`)
@@ -170,12 +186,7 @@ export async function deployEstatico(alvo, pedido, { log, buscar = fetch } = {})
   if (fs.existsSync(destino)) fs.renameSync(destino, antigo)
   fs.renameSync(novo, destino)
   passo(`conferindo o site no ar (${alvo.url})`)
-  const esperado = fs.readFileSync(path.join(destino, 'index.html'), 'utf8')
-  let okSite = false
-  for (let i = 0; i < 3 && !okSite; i += 1) {
-    try { const r = await buscar(alvo.url, { headers: { 'cache-control': 'no-cache' } }); const corpo = await r.text(); okSite = r.status === 200 && corpo.trim() === esperado.trim(); log(`resposta ${r.status}${okSite ? ', serve o index.html novo' : ', mas não é o arquivo novo'}\n`) } catch (e) { log('falhou: ' + e.message + '\n') }
-    if (!okSite) await new Promise((r) => setTimeout(r, 1500))
-  }
+  const okSite = await servindo(alvo, destino, { log, buscar })
   if (!okSite) {
     passo('o site não serviu a versão nova: voltando a anterior')
     fs.rmSync(destino + '.falhou', { recursive: true, force: true })
@@ -194,36 +205,9 @@ export async function deployEstatico(alvo, pedido, { log, buscar = fetch } = {})
      existe lá (senhas, dados, dependências instaladas, build).
    Antes guarda cópia da produção; depois reconstrói (Docker) ou reinicia
    (PM2), confere o site e, se não responder, devolve a cópia e religa. */
-export const EXCLUIR_COPIA = ['.git', 'node_modules', '.next', '.venv', 'venv', '__pycache__', '.env', '.env.*', 'data', 'media', 'cache', 'uploads', '*.log', '*.bak*', 'CREDENCIAIS.md', 'dist', 'build']
-export async function deployProcesso(alvo, pedido, { log, buscar = fetch, exec = rodar, esperaMs = 4000 } = {}) {
+/** Como religar o site (Docker, systemd ou PM2) e como conferir que ele voltou: o deploy e a volta de versão usam os mesmos. */
+function religadores(alvo, prod, { log, buscar, exec, esperaMs }) {
   const passo = (t) => log(`\n▸ ${t}\n`)
-  const prod = alvo.dirProducao
-  if (!prod || !fs.existsSync(prod)) throw new Error('a pasta de produção não existe: ' + prod)
-  // serviço que roda direto da pasta do projeto (o coepiloto): não há o que copiar, e devolver arquivo ali apagaria trabalho dele
-  const naPasta = alvo.tipo === 'systemd' && path.resolve(prod) === path.resolve(alvo.repo)
-  const ehGit = !naPasta && fs.existsSync(path.join(prod, '.git'))
-  let copia = null, antes = null
-  if (!naPasta) {
-  passo('guardando cópia da produção (sem dependências nem dados)')
-  fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o700 })
-  copia = path.join(BACKUP_DIR, `${alvo.id}-${new Date().toISOString().replace(/[:.]/g, '-')}.tar.gz`)
-  const fora = ['node_modules', '.next', '.venv', 'venv', 'data', 'media', 'cache', 'uploads'].flatMap((x) => ['--exclude', x])
-  const t = await exec('tar', ['-czf', copia, ...fora, '-C', path.dirname(prod), path.basename(prod)], { log })
-  if (!t.ok) throw new Error('não consegui guardar a cópia da produção')
-  if (ehGit) {
-    antes = (await saida('git', ['-C', prod, 'rev-parse', 'HEAD'], {})) || null
-    passo(`puxando o código novo do GitHub (${alvo.ramo || 'ramo atual'})`)
-    const f = await exec('git', ['-C', prod, 'pull', '--ff-only', ...(alvo.ramo ? ['origin', alvo.ramo] : [])], { log })
-    if (!f.ok) throw new Error('o git pull falhou (a produção tem mudança local, ou o ramo divergiu): nada foi trocado')
-  } else {
-    const origem = path.join(alvo.repo, alvo.dir || '.')
-    passo(`copiando de ${origem} (sem apagar nada da produção)`)
-    const ex = [...EXCLUIR_COPIA, ...(alvo.excluir || [])].flatMap((x) => ['--exclude', x])
-    // --checksum: compara o conteúdo; pelo tamanho e horário, uma correção de uma letra no mesmo segundo ficaria de fora
-    const r = await exec('rsync', ['-a', '--checksum', '--no-owner', '--no-group', ...ex, origem.replace(/\/?$/, '/'), prod.replace(/\/?$/, '/')], { log })
-    if (!r.ok) throw new Error('a cópia falhou')
-  }
-  }
   const religar = async () => {
     if (alvo.tipo === 'docker') {
       passo('reconstruindo e religando o container (docker compose up -d --build)')
@@ -248,6 +232,39 @@ export async function deployProcesso(alvo, pedido, { log, buscar = fetch, exec =
     }
     return false
   }
+  return { religar, conferir }
+}
+export const EXCLUIR_COPIA = ['.git', 'node_modules', '.next', '.venv', 'venv', '__pycache__', '.env', '.env.*', 'data', 'media', 'cache', 'uploads', '*.log', '*.bak*', 'CREDENCIAIS.md', 'dist', 'build']
+export async function deployProcesso(alvo, pedido, { log, buscar = fetch, exec = rodar, esperaMs = 4000 } = {}) {
+  const passo = (t) => log(`\n▸ ${t}\n`)
+  const prod = alvo.dirProducao
+  if (!prod || !fs.existsSync(prod)) throw new Error('a pasta de produção não existe: ' + prod)
+  // serviço que roda direto da pasta do projeto (o coepiloto): não há o que copiar, e devolver arquivo ali apagaria trabalho dele
+  const naPasta = alvo.tipo === 'systemd' && path.resolve(prod) === path.resolve(alvo.repo)
+  const ehGit = !naPasta && fs.existsSync(path.join(prod, '.git'))
+  let copia = null, antes = null
+  if (!naPasta) {
+  passo('guardando cópia da produção (sem dependências nem dados)')
+  fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o700 })
+  copia = path.join(BACKUP_DIR, `${alvo.id}-${new Date().toISOString().replace(/[:.]/g, '-')}.tar.gz`)
+  const fora = FORA_DO_BACKUP.flatMap((x) => ['--exclude', x])
+  const t = await exec('tar', ['-czf', copia, ...fora, '-C', path.dirname(prod), path.basename(prod)], { log })
+  if (!t.ok) throw new Error('não consegui guardar a cópia da produção')
+  if (ehGit) {
+    antes = (await saida('git', ['-C', prod, 'rev-parse', 'HEAD'], {})) || null
+    passo(`puxando o código novo do GitHub (${alvo.ramo || 'ramo atual'})`)
+    const f = await exec('git', ['-C', prod, 'pull', '--ff-only', ...(alvo.ramo ? ['origin', alvo.ramo] : [])], { log })
+    if (!f.ok) throw new Error('o git pull falhou (a produção tem mudança local, ou o ramo divergiu): nada foi trocado')
+  } else {
+    const origem = path.join(alvo.repo, alvo.dir || '.')
+    passo(`copiando de ${origem} (sem apagar nada da produção)`)
+    const ex = [...EXCLUIR_COPIA, ...(alvo.excluir || [])].flatMap((x) => ['--exclude', x])
+    // --checksum: compara o conteúdo; pelo tamanho e horário, uma correção de uma letra no mesmo segundo ficaria de fora
+    const r = await exec('rsync', ['-a', '--checksum', '--no-owner', '--no-group', ...ex, origem.replace(/\/?$/, '/'), prod.replace(/\/?$/, '/')], { log })
+    if (!r.ok) throw new Error('a cópia falhou')
+  }
+  }
+  const { religar, conferir } = religadores(alvo, prod, { log, buscar, exec, esperaMs })
   const r = await religar()
   if (r.ok && await conferir()) return { copia }
   if (naPasta) throw new Error('o serviço não voltou depois de religar; ele roda da pasta do projeto, então não há versão anterior para devolver')
@@ -258,6 +275,74 @@ export async function deployProcesso(alvo, pedido, { log, buscar = fetch, exec =
   throw new Error(r.ok ? 'o site não respondeu depois de publicar; a versão anterior foi devolvida' : 'falhou ao gerar ou religar; a versão anterior foi devolvida')
 }
 export const deployAlvo = (alvo, pedido, op) => (alvo.tipo === 'estatico' ? deployEstatico(alvo, pedido, op) : deployProcesso(alvo, pedido, op))
+
+/* ── CC-935: voltar a versão anterior, pelo próprio deploy seguro ───────────
+   Todo deploy guarda, ANTES de trocar, um .tar.gz do que estava no ar (`${id}-${data}.tar.gz`
+   em BACKUP_DIR). Voltar é devolver o tar mais novo daquele site, depois de guardar também o que
+   está no ar agora: assim a própria volta se desfaz, repetindo o pedido. Mesmo caminho do
+   deploy: pedido, código do autenticador, conferência do site, e volta atrás se não servir. */
+const FORA_DO_BACKUP = ['node_modules', '.next', '.venv', 'venv', 'data', 'media', 'cache', 'uploads']
+/** O tar mais novo do site em BACKUP_DIR (a data ISO no nome ordena sozinha), ou null. */
+export function ultimaCopia(id) {
+  const re = new RegExp(`^${id}-\\d{4}-\\d\\d-\\d\\dT[\\d-]+Z\\.tar\\.gz$`)
+  try { const n = fs.readdirSync(BACKUP_DIR).filter((x) => re.test(x)).sort().pop(); return n ? path.join(BACKUP_DIR, n) : null } catch { return null }
+}
+const nomeDaCopia = (id) => path.join(BACKUP_DIR, `${id}-${new Date().toISOString().replace(/[:.]/g, '-')}.tar.gz`)
+export async function reverterEstatico(alvo, pedido, { log, buscar = fetch } = {}) {
+  const passo = (t) => log(`\n▸ ${t}\n`)
+  const anterior = ultimaCopia(alvo.id)
+  if (!anterior) throw new Error('não há versão anterior guardada para ' + alvo.id)
+  const destino = alvo.destino; const pai = path.dirname(destino); const base = path.basename(destino)
+  passo('guardando cópia da versão no ar agora (para poder desfazer a volta)')
+  fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o700 })
+  const copia = nomeDaCopia(alvo.id)
+  if (fs.existsSync(destino)) { const t = await rodar('tar', ['-czf', copia, '-C', pai, base], { log }); if (!t.ok) throw new Error('não consegui guardar a cópia') }
+  passo('abrindo a versão anterior ' + path.basename(anterior))
+  const tmp = fs.mkdtempSync(path.join(pai, '.voltar-'))
+  try {
+    const x = await rodar('tar', ['-xzf', anterior, '-C', tmp], { log })
+    if (!x.ok || !fs.existsSync(path.join(tmp, base, 'index.html'))) throw new Error('a cópia anterior está inválida: nada foi trocado')
+    passo('trocando')
+    const antigo = destino + '.antigo'
+    fs.rmSync(antigo, { recursive: true, force: true })
+    if (fs.existsSync(destino)) fs.renameSync(destino, antigo)
+    fs.renameSync(path.join(tmp, base), destino)
+    passo(`conferindo o site no ar (${alvo.url})`)
+    if (!await servindo(alvo, destino, { log, buscar })) {
+      passo('o site não serviu a versão anterior: desfazendo a volta')
+      fs.rmSync(destino + '.falhou', { recursive: true, force: true })
+      fs.renameSync(destino, destino + '.falhou')
+      if (fs.existsSync(antigo)) fs.renameSync(antigo, destino)
+      throw new Error('o site não serviu a versão anterior; a que estava no ar foi devolvida')
+    }
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }) }
+  return { copia: anterior, guardada: copia }
+}
+export async function reverterProcesso(alvo, pedido, { log, buscar = fetch, exec = rodar, esperaMs = 4000 } = {}) {
+  const passo = (t) => log(`\n▸ ${t}\n`)
+  const prod = alvo.dirProducao
+  if (!prod || !fs.existsSync(prod)) throw new Error('a pasta de produção não existe: ' + prod)
+  if (alvo.tipo === 'systemd' && path.resolve(prod) === path.resolve(alvo.repo)) throw new Error('este serviço roda da pasta do projeto: não há versão anterior para devolver')
+  const anterior = ultimaCopia(alvo.id)
+  if (!anterior) throw new Error('não há versão anterior guardada para ' + alvo.id)
+  passo('guardando cópia da produção agora (para poder desfazer a volta)')
+  fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o700 })
+  const copia = nomeDaCopia(alvo.id)
+  const t = await exec('tar', ['-czf', copia, ...FORA_DO_BACKUP.flatMap((x) => ['--exclude', x]), '-C', path.dirname(prod), path.basename(prod)], { log })
+  if (!t.ok) throw new Error('não consegui guardar a cópia da produção')
+  passo('devolvendo os arquivos de ' + path.basename(anterior))
+  const x = await exec('tar', ['-xzf', anterior, '-C', path.dirname(prod)], { log })
+  if (!x.ok) throw new Error('não consegui abrir a cópia anterior')
+  // ponytail: arquivo que só existe na versão nova fica (tar não apaga); a volta cobre o que existia, e o código antigo ignora o resto
+  const { religar, conferir } = religadores(alvo, prod, { log, buscar, exec, esperaMs })
+  const r = await religar()
+  if (r.ok && await conferir()) return { copia: anterior, guardada: copia }
+  passo('não subiu direito: desfazendo a volta')
+  await exec('tar', ['-xzf', copia, '-C', path.dirname(prod)], { log })
+  await religar()
+  throw new Error('o site não voltou com a versão anterior; a que estava no ar foi devolvida')
+}
+export const reverterAlvo = (alvo, pedido, op) => (alvo.tipo === 'estatico' ? reverterEstatico(alvo, pedido, op) : reverterProcesso(alvo, pedido, op))
 
 /* ── descoberta: quais sites existem e de onde vêm ────────────────────────
    Pedido dele: "deveríamos criar um processo que automatize isso, sem gastar
@@ -423,12 +508,57 @@ function usarCodigo(e, codigo, agora) {
   e.falhas = 0; e.ultimoPasso = passo; gravarEstado(e)
   return null
 }
+/* ── CC-869: o código do autenticador vale também em OUTRAS portas ─────────
+ *
+ * Pedido dele em 02/10: o mesmo autenticador no login do painel (aparelho novo) e no
+ * reinício de emergência da VPS. O segredo continua SÓ aqui, no arquivo de root: quem
+ * pergunta recebe apenas "sim" ou "não". Copiar o segredo para a porta de entrada (que roda
+ * como o usuário comum) deixaria as sessões dos agentes lerem o segredo e aprovarem deploy.
+ *
+ * Cada finalidade tem os PRÓPRIOS contadores (erros, bloqueio e último passo usado):
+ *  - erros no login não bloqueiam os deploys dele, nem o contrário;
+ *  - o mesmo código pode servir a uma finalidade por passo, mas nunca duas vezes na mesma.
+ * Quem chama deve conferir a SENHA antes de gastar uma tentativa: assim quem não sabe a senha
+ * não consegue queimar o contador do login. */
+export const FINALIDADES = ['login', 'religar']
+export function verificarCodigo(e, finalidade, codigo, { agora = Date.now(), segredo = null } = {}) {
+  if (!FINALIDADES.includes(finalidade)) return { ok: false, motivo: 'finalidade' }
+  const v = (e.verificacao ||= {})
+  const c = (v[finalidade] ||= { falhas: 0, bloqueadoAte: 0, ultimoPasso: 0 })
+  if (agora < c.bloqueadoAte) return { ok: false, motivo: 'bloqueado', bloqueadoAte: c.bloqueadoAte }
+  let seg = segredo
+  if (!seg) { try { seg = lerSegredo() } catch { return { ok: false, motivo: 'sem-segredo' } } }
+  const passo = conferirCodigo(seg, codigo, agora)
+  if (passo === null || passo <= c.ultimoPasso) {
+    c.falhas += 1
+    if (c.falhas >= MAX_FALHAS) { c.bloqueadoAte = agora + BLOQUEIO_MS; c.falhas = 0 }
+    gravarEstado(e)
+    return { ok: false, motivo: passo !== null ? 'usado' : 'errado', bloqueadoAte: c.bloqueadoAte > agora ? c.bloqueadoAte : 0 }
+  }
+  c.falhas = 0; c.ultimoPasso = passo; gravarEstado(e)
+  return { ok: true }
+}
 let SUGESTOES = { em: 0, lista: [] }
 
-export function criarServidor({ executar = deployAlvo, descobrirFn = descobrir } = {}) {
+// quem chega pelo nginx traz o IP no x-real-ip; direto na porta, vale o endereço da conexão
+const ipDe = (req) => String(req.headers['x-real-ip'] || req.socket.remoteAddress || '').split(',')[0].trim()
+
+export function criarServidor({ executar = deployAlvo, reverter = reverterAlvo, descobrirFn = descobrir } = {}) {
   return http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x')
+    const ip = ipDe(req)
     try {
+      // ── CC-869: a verificação do código para outras portas: só responde sim ou não ──
+      if (u.pathname === '/api/verificar/estado') {
+        let configurado = true; try { lerSegredo() } catch { configurado = false }
+        return json(res, 200, { ok: true, finalidades: FINALIDADES, configurado })
+      }
+      if (u.pathname === '/api/verificar' && req.method === 'POST') {
+        const d = JSON.parse(await corpoDe(req) || '{}')
+        const v = verificarCodigo(lerEstado(), String(d.finalidade || ''), d.codigo)
+        registrar({ acao: 'segundo-fator', quem: 'dono', de: ip, alvo: String(d.finalidade || '').slice(0, 20), ok: v.ok, detalhe: v.ok ? '' : v.motivo })
+        return json(res, 200, v)
+      }
       // ── a API, para o Cockpit e os agentes: só pedir e ler ──
       if (u.pathname === '/api/alvos') return json(res, 200, lerAlvos().map((a) => ({ id: a.id, nome: a.nome, url: a.url, repo: a.repo })))
       if (u.pathname === '/api/pedidos') { const e = lerEstado(); return json(res, 200, { pedidos: e.pedidos.map(({ log, ...p }) => p), historico: e.historico.slice(0, 20).map(({ log, ...p }) => p) }) }
@@ -440,13 +570,20 @@ export function criarServidor({ executar = deployAlvo, descobrirFn = descobrir }
         e.pedidos = e.pedidos.filter((p) => p.estado !== 'esperando' || agora - p.em < VALIDADE_PEDIDO_MS)
         if (e.pedidos.some((p) => p.alvo === alvo.id && (p.estado === 'esperando' || p.estado === 'rodando'))) return json(res, 200, { ok: true, jaPedido: true })
         if (e.pedidos.filter((p) => p.estado === 'esperando').length >= 5) return json(res, 429, { ok: false, erro: 'pedidos demais esperando' })
-        const p = { id: crypto.randomBytes(6).toString('hex'), alvo: alvo.id, nome: alvo.nome, url: alvo.url, de: String(d.de || 'cockpit').slice(0, 60), em: agora, estado: 'esperando', ...(await infoDoRepo(alvo)) }
+        // CC-935: `reverter: true` pede a volta da versão anterior; segue a mesma confirmação com código
+        const volta = d.reverter === true
+        let copiaAnterior = null
+        if (volta && !(copiaAnterior = ultimaCopia(alvo.id))) return json(res, 400, { ok: false, erro: 'não há versão anterior guardada para ' + alvo.id })
+        const p = { id: crypto.randomBytes(6).toString('hex'), alvo: alvo.id, nome: alvo.nome, url: alvo.url, de: String(d.de || 'cockpit').slice(0, 60), em: agora, estado: 'esperando', ...(volta ? { acao: 'reverter', voltaPara: path.basename(copiaAnterior) } : await infoDoRepo(alvo)) }
         e.pedidos.unshift(p); gravarEstado(e)
+        registrar({ acao: volta ? 'rollback-pedido' : 'deploy-pedido', quem: p.de, de: ip, alvo: alvo.id, ok: true, detalhe: volta ? 'volta para ' + p.voltaPara : p.commit })
         return json(res, 200, { ok: true, id: p.id, confirmar: '/deploy-seguro/' })
       }
+      // ── CC-859: as peças do app instalado (manifesto, ícones, service worker): sem dado nenhum ──
+      if (APP.servirPeca('deploy', PECAS_APP, req, res, u.pathname)) return
       // ── a página de confirmação: só ele, com o código do autenticador ──
       if (u.pathname === '/deploy-seguro/' && req.method === 'GET') {
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'", 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer' })
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': `default-src 'none'; style-src 'unsafe-inline'; script-src ${APP.hashRegistro('deploy')}; worker-src 'self'; manifest-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'`, 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer' })
         return res.end(pagina(lerEstado(), u.searchParams.get('msg')))
       }
       /* A decisão é uma só: a página (formulário) e o cartão do Cockpit (JSON,
@@ -456,24 +593,28 @@ export function criarServidor({ executar = deployAlvo, descobrirFn = descobrir }
         const e = lerEstado(); const agora = Date.now()
         const p = e.pedidos.find((x) => x.id === id && x.estado === 'esperando')
         if (!p) return { ok: false, msg: 'esse pedido não está mais esperando' }
-        if (recusar) { p.estado = 'recusado'; p.fim = agora; e.historico.unshift(p); e.pedidos = e.pedidos.filter((y) => y.id !== p.id); gravarEstado(e); return { ok: true, msg: 'pedido recusado' } }
+        const volta = p.acao === 'reverter'; const prefixo = volta ? 'rollback' : 'deploy'
+        if (recusar) { p.estado = 'recusado'; p.fim = agora; e.historico.unshift(p); e.pedidos = e.pedidos.filter((y) => y.id !== p.id); gravarEstado(e); registrar({ acao: 'deploy-recusado', quem: 'dono', de: ip, alvo: p.alvo, ok: true, detalhe: volta ? 'volta de versão' : '' }); return { ok: true, msg: 'pedido recusado' } }
         const erroCodigo = usarCodigo(e, codigo, agora)
-        if (erroCodigo) return { ok: false, msg: erroCodigo }
+        if (erroCodigo) { registrar({ acao: 'codigo-recusado', quem: 'dono', de: ip, alvo: p.alvo, ok: false, detalhe: erroCodigo }); return { ok: false, msg: erroCodigo } }
         p.estado = 'rodando'; p.inicio = agora; p.log = ''
         gravarEstado(e)
+        registrar({ acao: prefixo + '-confirmado', quem: 'dono', de: ip, alvo: p.alvo, ok: true, detalhe: 'pedido por ' + p.de })
         const alvo = lerAlvos().find((a) => a.id === p.alvo)
         const anota = (t) => { const x = lerEstado(); const q = x.pedidos.find((y) => y.id === p.id); if (q) { q.log = (q.log + t).slice(-20000); gravarEstado(x) } }
-        executar(alvo, p, { log: anota }).then((r) => {
+        ;(volta ? reverter : executar)(alvo, p, { log: anota }).then((r) => {
           const x = lerEstado(); const q = x.pedidos.find((y) => y.id === p.id)
-          q.estado = 'publicado'; q.fim = Date.now(); q.copia = r.copia
-          x.ultimoCommit[p.alvo] = (p.commit || '').split(' ')[0] || x.ultimoCommit[p.alvo]
+          q.estado = volta ? 'revertido' : 'publicado'; q.fim = Date.now(); q.copia = r.copia
+          if (!volta) x.ultimoCommit[p.alvo] = (p.commit || '').split(' ')[0] || x.ultimoCommit[p.alvo]
           x.historico.unshift(q); x.pedidos = x.pedidos.filter((y) => y.id !== p.id); gravarEstado(x)
+          registrar({ acao: prefixo + '-resultado', quem: 'dono', de: ip, alvo: p.alvo, ok: true, detalhe: volta ? 'voltou para ' + path.basename(r.copia || '') : 'publicado' })
         }).catch((err) => {
           const x = lerEstado(); const q = x.pedidos.find((y) => y.id === p.id)
           q.estado = 'falhou'; q.fim = Date.now(); q.erro = err.message; q.log = (q.log + '\n✗ ' + err.message).slice(-20000)
           x.historico.unshift(q); x.pedidos = x.pedidos.filter((y) => y.id !== p.id); gravarEstado(x)
+          registrar({ acao: prefixo + '-resultado', quem: 'dono', de: ip, alvo: p.alvo, ok: false, detalhe: err.message })
         })
-        return { ok: true, msg: 'confirmado: publicando ' + p.nome }
+        return { ok: true, msg: volta ? 'confirmado: voltando a versão anterior de ' + p.nome : 'confirmado: publicando ' + p.nome }
       }
       /* Descoberta e cadastro (pedido dele: "automatize isso, sem gastar tokens").
          Ler as sugestões é livre; cadastrar exige o código, como publicar. */
@@ -487,8 +628,9 @@ export function criarServidor({ executar = deployAlvo, descobrirFn = descobrir }
         const d = JSON.parse(await corpoDe(req, 8192) || '{}')
         let novo; try { novo = validarAlvo(d.alvo || {}) } catch (err) { return json(res, 200, { ok: false, msg: err.message }) }
         const e = lerEstado(); const erroCodigo = usarCodigo(e, d.codigo, Date.now())
-        if (erroCodigo) return json(res, 200, { ok: false, msg: erroCodigo })
+        if (erroCodigo) { registrar({ acao: 'codigo-recusado', quem: 'dono', de: ip, alvo: novo.id, ok: false, detalhe: 'cadastro de site: ' + erroCodigo }); return json(res, 200, { ok: false, msg: erroCodigo }) }
         try { cadastrarAlvo(novo) } catch (err) { return json(res, 200, { ok: false, msg: err.message }) }
+        registrar({ acao: 'cadastro-site', quem: 'dono', de: ip, alvo: novo.id, ok: true, detalhe: novo.tipo + ' ' + novo.url })
         SUGESTOES.em = 0
         return json(res, 200, { ok: true, msg: 'cadastrado: ' + novo.nome, id: novo.id })
       }
@@ -513,19 +655,20 @@ function pagina(e, msg) {
   /* 30/09, print dele: "esse design tá ruim demais". Coluna central de até
      480 px, tema claro ou escuro do aparelho, cartão em relevo como o Cockpit,
      campo do código grande e botões no tamanho normal. */
-  const ESTADO = { publicado: ['publicado', 'ok'], falhou: ['falhou', 'mau'], recusado: ['recusado', 'neutro'], rodando: ['publicando', 'neutro'] }
+  const ESTADO = { publicado: ['publicado', 'ok'], revertido: ['versão anterior de volta', 'ok'], falhou: ['falhou', 'mau'], recusado: ['recusado', 'neutro'], rodando: ['publicando', 'neutro'] }
   const cartao = (p) => `<section class="c"><div class="cab"><span class="ponto"></span><div><h2>${esc(p.nome)}</h2><p class="m">pedido por ${esc(p.de)} · ${quando(p.em)}</p></div></div>
     <dl><dt>site</dt><dd><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</a></dd>
     <dt>ramo</dt><dd>${esc(p.ramo || '?')}</dd><dt>último commit</dt><dd>${esc(p.commit || '?')}</dd></dl>
     ${p.arquivosSemCommit ? `<p class="aviso">${p.arquivosSemCommit} arquivo(s) mudados sem commit também vão junto</p>` : ''}
-    ${p.novos ? `<details class="novos"${p.novos.length <= 5 ? ' open' : ''}><summary>o que entra (${p.novos.length} commit${p.novos.length === 1 ? '' : 's'})</summary><ul>${p.novos.map((l) => `<li>${esc(l)}</li>`).join('') || '<li>nenhum commit novo</li>'}</ul></details>` : '<p class="m">primeira publicação por aqui: sem histórico para comparar</p>'}
+    ${p.acao === 'reverter' ? `<p class="aviso">volta a versão anterior: ${esc(p.voltaPara)}. O que está no ar agora fica guardado.</p>` : ''}
+    ${p.acao === 'reverter' ? '' : p.novos ? `<details class="novos"${p.novos.length <= 5 ? ' open' : ''}><summary>o que entra (${p.novos.length} commit${p.novos.length === 1 ? '' : 's'})</summary><ul>${p.novos.map((l) => `<li>${esc(l)}</li>`).join('') || '<li>nenhum commit novo</li>'}</ul></details>` : '<p class="m">primeira publicação por aqui: sem histórico para comparar</p>'}
     <form method="post" action="/deploy-seguro/confirmar"><input type="hidden" name="id" value="${esc(p.id)}">
       <label for="c-${esc(p.id)}">código do autenticador</label>
       <input id="c-${esc(p.id)}" name="codigo" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
-      <div class="bts"><button class="pri">confirmar e publicar</button></div></form>
+      <div class="bts"><button class="pri">${p.acao === 'reverter' ? 'confirmar e voltar' : 'confirmar e publicar'}</button></div></form>
     <form method="post" action="/deploy-seguro/recusar" class="rec"><input type="hidden" name="id" value="${esc(p.id)}"><button class="sec">recusar este pedido</button></form></section>`
   const linha = (p) => { const [rot, cls] = ESTADO[p.estado] || [p.estado, 'neutro']; return `<li><div class="lh"><b>${esc(p.nome)}</b><span class="tag ${cls}">${esc(rot)}</span><span class="m">${quando(p.fim || p.inicio || p.em)}</span></div>${p.erro ? `<p class="aviso">${esc(p.erro)}</p>` : ''}${p.log ? `<details><summary>o que aconteceu</summary><pre>${esc(p.log)}</pre></details>` : ''}</li>` }
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="${rodando.length ? 4 : 60}"><title>Deploy seguro</title>
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="${rodando.length ? 4 : 60}"><title>Deploy seguro · Ogumia</title>${APP.cabecaApp('deploy')}
 <style>
 :root{--bg:#e6e9f0;--card:#eef1f6;--txt:#1f2433;--dim:#5b6476;--borda:rgba(30,40,70,.12);--acc:#4f46e5;--ok:#15803d;--mau:#b91c1c;--alto:6px 6px 14px rgba(163,177,198,.55),-6px -6px 14px rgba(255,255,255,.9);--fundo:inset 3px 3px 7px rgba(163,177,198,.5),inset -3px -3px 7px rgba(255,255,255,.85)}
 @media (prefers-color-scheme:dark){:root{--bg:#1b1f2a;--card:#212634;--txt:#e7eaf2;--dim:#9aa3b5;--borda:rgba(255,255,255,.08);--acc:#818cf8;--ok:#4ade80;--mau:#f87171;--alto:6px 6px 14px rgba(0,0,0,.45),-4px -4px 12px rgba(255,255,255,.035);--fundo:inset 3px 3px 7px rgba(0,0,0,.45),inset -3px -3px 7px rgba(255,255,255,.04)}}
@@ -540,7 +683,7 @@ label{display:block;font-size:13.5px;color:var(--dim);margin:14px 0 6px}input[na
 h3{font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin:28px 0 10px}ul.h{list-style:none;margin:0;padding:0}ul.h li{background:var(--card);border-radius:14px;padding:12px 14px;margin:0 0 10px;box-shadow:var(--alto)}.lh{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.lh .m{margin-left:auto}
 .tag{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--bg)}.tag.ok{color:var(--ok)}.tag.mau{color:var(--mau)}pre{white-space:pre-wrap;font-size:12px;background:var(--bg);padding:10px;border-radius:10px;max-height:45vh;overflow:auto;box-shadow:var(--fundo)}
 </style></head><body><main>
-<h1>Deploy seguro</h1><p class="sub">Lado protegido da VPS. Nada é publicado sem o código do seu autenticador.</p>
+<h1><svg viewBox="84 68 344 304" width="30" height="27" aria-hidden="true" style="vertical-align:-3px;margin-right:10px"><defs><mask id="mDeploy" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><rect x="118" y="176" width="276" height="150" rx="62" fill="#000"/><path d="M156 300L232 196H266L190 300Z" fill="#fff"/><path d="M204 300L280 196H300L224 300Z" fill="#fff"/></mask></defs><path mask="url(#mDeploy)" fill="#3B82F6" d="M256 74a166 166 0 0 1 166 166v92a34 34 0 0 1-34 34H124a34 34 0 0 1-34-34v-92A166 166 0 0 1 256 74z"/></svg>Deploy seguro</h1><p class="sub">Lado protegido da VPS. Nada é publicado sem o código do seu autenticador.</p>
 ${msg ? `<p class="msg">${esc(msg)}</p>` : ''}
 ${rodando.map((p) => `<section class="c"><div class="cab"><span class="ponto"></span><h2>publicando ${esc(p.nome)}…</h2></div><pre>${esc(p.log || '')}</pre></section>`).join('')}
 ${esperando.length ? esperando.map(cartao).join('') : (rodando.length ? '' : '<p class="vazio">Nenhum pedido esperando.</p>')}

@@ -34,3 +34,18 @@ self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()) })
    conta para o navegador considerar o site instalável, e mantém o painel sempre
    servindo a versão de agora. */
 self.addEventListener('fetch', () => {})
+
+/* CC-932: aviso de queda. A porta de entrada manda um Web Push com JSON { titulo, corpo } e é
+   aqui que ele vira notificação no celular. Quem decide e cifra é a porta; este arquivo só mostra.
+   Continua sem guardar nada: não toca em cache nenhum. */
+self.addEventListener('push', (e) => {
+  let d = {}
+  try { d = e.data ? e.data.json() : {} } catch { d = { titulo: e.data ? e.data.text() : '' } }
+  e.waitUntil(self.registration.showNotification(d.titulo || 'Ogumia', { body: d.corpo || '', icon: '/icone-192.png', tag: d.titulo || 'ogumia' }))
+})
+
+/* Tocar na notificação abre o painel: foca a janela que já existe, ou abre uma. */
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close()
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((js) => (js.length ? js[0].focus() : self.clients.openWindow('/'))))
+})

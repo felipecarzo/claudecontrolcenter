@@ -9,6 +9,7 @@ const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'deploy-seguro-'))
 process.env.DEPLOY_CONF = path.join(casa, 'conf')
 process.env.DEPLOY_ESTADO = path.join(casa, 'estado')
 process.env.DEPLOY_BACKUP = path.join(casa, 'backup')
+process.env.COCKPIT_AUDITORIA = path.join(casa, 'auditoria.jsonl') // nunca o registro de verdade
 const D = await import('./tools/deploy-seguro/deploy-seguro.mjs')
 
 let ok = 0
@@ -30,6 +31,49 @@ try {
     assert.equal(D.conferirCodigo(SEG, D.totp(SEG, passo - 1), agora), passo - 1)
     assert.equal(D.conferirCodigo(SEG, D.totp(SEG, passo + 2), agora), null)
     assert.equal(D.conferirCodigo(SEG, 'abcdef', agora), null)
+  })
+
+  await t('CC-869: o código vale em outras portas, e cada finalidade tem os próprios contadores', () => {
+    const agora = 1_790_000_000_000; const passo = Math.floor(agora / 30000)
+    const e = { pedidos: [], historico: [], falhas: 0, bloqueadoAte: 0, ultimoPasso: 0, ultimoCommit: {} }
+    const cod = D.totp(SEG, passo)
+    assert.deepEqual(D.verificarCodigo(e, 'login', cod, { agora, segredo: SEG }), { ok: true })
+    assert.equal(D.verificarCodigo(e, 'login', cod, { agora, segredo: SEG }).motivo, 'usado', 'o mesmo código não vale duas vezes na mesma finalidade')
+    assert.deepEqual(D.verificarCodigo(e, 'religar', cod, { agora, segredo: SEG }), { ok: true }, 'mas vale uma vez em cada finalidade')
+    assert.equal(e.ultimoPasso, 0, 'o passo do deploy não foi gasto')
+    assert.equal(e.falhas, 0)
+    assert.equal(D.verificarCodigo(e, 'inventada', cod, { agora, segredo: SEG }).motivo, 'finalidade')
+  })
+  await t('CC-869: cinco erros bloqueiam SÓ aquela finalidade, por 15 minutos', () => {
+    const agora = 1_790_000_100_000; const passo = Math.floor(agora / 30000)
+    const e = { pedidos: [], historico: [], falhas: 0, bloqueadoAte: 0, ultimoPasso: 0, ultimoCommit: {} }
+    let r
+    for (let i = 0; i < 5; i++) r = D.verificarCodigo(e, 'login', '000000', { agora, segredo: SEG })
+    assert.equal(r.motivo, 'errado'); assert.ok(r.bloqueadoAte > agora, 'o quinto erro já bloqueia')
+    const certo = D.totp(SEG, passo)
+    assert.equal(D.verificarCodigo(e, 'login', certo, { agora, segredo: SEG }).motivo, 'bloqueado', 'nem o código certo passa bloqueado')
+    assert.deepEqual(D.verificarCodigo(e, 'religar', certo, { agora, segredo: SEG }), { ok: true }, 'o reinício segue livre')
+    assert.deepEqual(D.verificarCodigo(e, 'login', D.totp(SEG, passo + 31), { agora: agora + 16 * 60 * 1000, segredo: SEG }), { ok: true }, 'passados 15 minutos, volta')
+  })
+  await t('CC-869: sem o arquivo do segredo recusa com a causa, nunca aceita', () => {
+    const e = { pedidos: [], historico: [], falhas: 0, bloqueadoAte: 0, ultimoPasso: 0, ultimoCommit: {} }
+    assert.equal(D.verificarCodigo(e, 'login', '123456').motivo, 'sem-segredo')
+  })
+  await t('CC-869: a rota /api/verificar responde só sim ou não e nunca devolve o segredo', async () => {
+    fs.mkdirSync(process.env.DEPLOY_CONF, { recursive: true })
+    fs.writeFileSync(path.join(process.env.DEPLOY_CONF, 'totp.secret'), SEG)
+    const srv = D.criarServidor({})
+    await new Promise((r) => srv.listen(0, '127.0.0.1', r))
+    const base = 'http://127.0.0.1:' + srv.address().port
+    const est = await (await fetch(base + '/api/verificar/estado')).json()
+    assert.deepEqual(est, { ok: true, finalidades: ['login', 'religar'], configurado: true })
+    const cod = D.totp(SEG, Math.floor(Date.now() / 30000))
+    const post = (corpo) => fetch(base + '/api/verificar', { method: 'POST', body: JSON.stringify(corpo) }).then((r) => r.text())
+    const bom = await post({ finalidade: 'religar', codigo: cod })
+    assert.deepEqual(JSON.parse(bom), { ok: true })
+    assert.equal(JSON.parse(await post({ finalidade: 'religar', codigo: '000000' })).ok, false)
+    for (const resposta of [bom, JSON.stringify(est)]) assert.ok(!resposta.includes(SEG), 'o segredo nunca sai nas respostas')
+    await new Promise((r) => srv.close(r))
   })
 
   await t('build com link simbólico é recusado (não expõe arquivo do sistema pelo site)', () => {
@@ -61,6 +105,62 @@ try {
     await assert.rejects(D.deployEstatico(alvo, {}, { log: () => {}, buscar: async () => ({ status: 502, text: async () => 'erro' }) }), /anterior foi devolvida/)
     assert.equal(fs.readFileSync(path.join(destino, 'index.html'), 'utf8'), 'NOVO-1', 'voltou a que estava no ar')
     assert.equal(fs.readFileSync(path.join(destino + '.falhou', 'index.html'), 'utf8'), 'NOVO-2')
+  })
+
+  // CC-935: a árvore inteira (caminhos + bytes) vira uma impressão digital, para provar "byte a byte"
+  const crypto = await import('node:crypto')
+  const digital = (dir) => {
+    const h = crypto.createHash('sha256')
+    const andar = (d) => { for (const n of fs.readdirSync(d).sort()) { const p = path.join(d, n); if (fs.statSync(p).isDirectory()) { h.update('D:' + path.relative(dir, p) + '\n'); andar(p) } else { h.update('F:' + path.relative(dir, p) + '\n'); h.update(fs.readFileSync(p)) } } }
+    andar(dir); return h.digest('hex')
+  }
+  const escrever = (dir, arquivos) => { fs.rmSync(dir, { recursive: true, force: true }); for (const [n, c] of Object.entries(arquivos)) { fs.mkdirSync(path.dirname(path.join(dir, n)), { recursive: true }); fs.writeFileSync(path.join(dir, n), c) } }
+  const serve = (dest) => async () => ({ status: 200, text: async () => fs.readFileSync(path.join(dest, 'index.html'), 'utf8') })
+
+  await t('CC-935: um deploy estático é desfeito pelo deploy seguro, byte a byte; a volta também se desfaz', async () => {
+    const repoV = path.join(casa, 'repo-volta'); const distV = path.join(repoV, 'dist'); const dest = path.join(casa, 'www', 'volta')
+    const v1 = { 'index.html': '<h1>v1</h1>', 'assets/logo.bin': Buffer.from([0, 255, 1, 254, 2, 253]), 'sub/fundo/x.txt': 'só existe na v1' }
+    const v2 = { 'index.html': '<h1>v2</h1>', 'assets/logo.bin': Buffer.from([9, 9, 9]), 'novo.txt': 'só existe na v2' }
+    escrever(dest, v1); escrever(distV, v2)
+    const d1 = digital(dest)
+    const alvoV = { id: 'volta', nome: 'volta', repo: repoV, dir: '.', build: 'true', saida: 'dist', destino: dest, url: 'https://exemplo/', usuarioBuild: null }
+    await assert.rejects(D.reverterEstatico(alvoV, {}, { log: () => {}, buscar: serve(dest) }), /não há versão anterior/, 'sem cópia guardada, recusa sem tocar em nada')
+    assert.equal(digital(dest), d1)
+    await D.deployEstatico(alvoV, {}, { log: () => {}, buscar: serve(dest) })
+    const d2 = digital(dest)
+    assert.notEqual(d2, d1, 'o deploy trocou a versão')
+    assert.ok(fs.existsSync(path.join(dest, 'novo.txt')))
+    await new Promise((r) => setTimeout(r, 5)) // o nome da cópia leva a data em milissegundos
+    let log = ''
+    await D.reverterEstatico(alvoV, {}, { log: (s) => { log += s }, buscar: serve(dest) })
+    assert.equal(digital(dest), d1, 'voltou a versão anterior, byte a byte (arquivos, pastas e conteúdo)')
+    assert.ok(!fs.existsSync(path.join(dest, 'novo.txt')) && fs.existsSync(path.join(dest, 'sub/fundo/x.txt')), 'o que só existia na v2 saiu, o que só existia na v1 voltou')
+    assert.match(log, /conferindo o site/)
+    assert.deepEqual(fs.readdirSync(path.dirname(dest)).filter((n) => n.startsWith('.voltar-')), [], 'não sobra pasta temporária')
+    await new Promise((r) => setTimeout(r, 5))
+    await D.reverterEstatico(alvoV, {}, { log: () => {}, buscar: serve(dest) })
+    assert.equal(digital(dest), d2, 'repetir o pedido desfaz a volta: a v2 está de novo no ar')
+    await new Promise((r) => setTimeout(r, 5))
+    await assert.rejects(D.reverterEstatico(alvoV, {}, { log: () => {}, buscar: async () => ({ status: 502, text: async () => 'erro' }) }), /foi devolvida/)
+    assert.equal(digital(dest), d2, 'a volta que o site não serviu foi desfeita sozinha')
+  })
+
+  await t('CC-935: deploy de processo é desfeito: devolve os arquivos da cópia anterior, religa e confere', async () => {
+    const prod = path.join(casa, 'opt', 'volta-proc'); const work = path.join(casa, 'work-volta')
+    escrever(prod, { 'app.txt': 'v1', '.env': 'SENHA=prod', 'lib/a.js': 'a1' }); escrever(work, { 'app.txt': 'v2', 'lib/a.js': 'a2' })
+    const antes = digital(prod)
+    const chamadas = []
+    const exec = async (cmd, args, op) => { chamadas.push(cmd); return cmd === 'docker' ? { ok: true } : D.rodar(cmd, args, op) }
+    const alvoP = { id: 'volta-proc', tipo: 'docker', repo: work, dir: '.', dirProducao: prod, url: 'https://x/' }
+    await D.deployProcesso(alvoP, {}, { log: () => {}, exec, buscar: async () => ({ status: 200 }), esperaMs: 1 })
+    assert.equal(fs.readFileSync(path.join(prod, 'app.txt'), 'utf8'), 'v2')
+    await new Promise((r) => setTimeout(r, 5))
+    await D.reverterProcesso(alvoP, {}, { log: () => {}, exec, buscar: async () => ({ status: 200 }), esperaMs: 1 })
+    assert.equal(digital(prod), antes, 'a pasta de produção voltou como estava antes do deploy, byte a byte')
+    assert.equal(chamadas.filter((c) => c === 'docker').length, 2, 'religou o container no deploy e na volta')
+    await new Promise((r) => setTimeout(r, 5))
+    await assert.rejects(D.reverterProcesso(alvoP, {}, { log: () => {}, exec, buscar: async () => ({ status: 502 }), esperaMs: 1 }), /foi devolvida/)
+    assert.equal(digital(prod), antes, 'volta que não subiu é desfeita sozinha')
   })
 
   await t('descoberta: lê nginx, Docker, PM2 e portas, e sugere o repositório', () => {
@@ -130,7 +230,8 @@ try {
   fs.writeFileSync(path.join(process.env.DEPLOY_CONF, 'alvos.json'), JSON.stringify([{ ...alvo, repo: casa }]))
   fs.writeFileSync(path.join(process.env.DEPLOY_CONF, 'totp.secret'), SEG)
   const executados = []
-  const srv = D.criarServidor({ executar: async (a) => { executados.push(a.id); return { copia: 'x' } } })
+  const revertidos = []; let codigoVolta = ''
+  const srv = D.criarServidor({ executar: async (a) => { executados.push(a.id); return { copia: 'x' } }, reverter: async (a) => { revertidos.push(a.id); return { copia: '/backup/site-anterior.tar.gz' } } })
   await new Promise((r) => srv.listen(0, '127.0.0.1', r))
   const base = `http://127.0.0.1:${srv.address().port}`
   const post = (u, corpo, tipo = 'application/json') => fetch(base + u, { method: 'POST', headers: { 'content-type': tipo }, body: corpo, redirect: 'manual' })
@@ -143,7 +244,31 @@ try {
       assert.match(pg, /código do autenticador/)
       assert.equal(executados.length, 0, 'pedir não publica nada')
     })
-    const id = D.lerEstado().pedidos[0].id
+    await t('CC-859: a página instala como app: manifesto, ícones e service worker respondem, e a página os aponta', async () => {
+      const m = await fetch(base + '/deploy-seguro/app.webmanifest')
+      assert.equal(m.status, 200); assert.match(m.headers.get('content-type'), /manifest\+json/)
+      const man = await m.json()
+      assert.equal(man.name, 'Deploy seguro'); assert.equal(man.start_url, '/deploy-seguro/'); assert.equal(man.scope, '/deploy-seguro/')
+      assert.equal(man.display, 'standalone'); assert.equal(man.theme_color, '#2B2F36'); assert.equal(man.background_color, '#2B2F36')
+      const outro = JSON.parse((await import('./tools/app-seguranca/app-seguranca.mjs')).manifesto('religar'))
+      assert.notEqual(man.name, outro.name, 'cada página é um app com nome próprio'); assert.notEqual(man.scope, outro.scope)
+      assert.ok(man.icons.some((i) => i.purpose === 'maskable') && man.icons.some((i) => i.sizes === '192x192') && man.icons.some((i) => i.sizes === '512x512'))
+      for (const i of man.icons) { const r = await fetch(base + i.src); assert.equal(r.status, 200, i.src); assert.equal(r.headers.get('content-type').split(';')[0], i.type, i.src) }
+      const png = Buffer.from(await (await fetch(base + '/deploy-seguro/icone-192.png')).arrayBuffer())
+      assert.equal(png.subarray(1, 4).toString(), 'PNG'); assert.equal(png.readUInt32BE(16), 192); assert.equal(png.readUInt32BE(20), 192)
+      const sw = await fetch(base + '/deploy-seguro/sw.js')
+      assert.equal(sw.status, 200); assert.match(sw.headers.get('content-type'), /javascript/)
+      const fonte = await sw.text()
+      assert.match(fonte, /addEventListener\('fetch'/); assert.ok(!/caches\.|\.put\(|\.addAll\(/.test(fonte), 'o service worker não guarda resposta nenhuma')
+      assert.equal((await fetch(base + '/deploy-seguro/chute.js')).status, 404, 'lista exata, não prefixo')
+      const res = await fetch(base + '/deploy-seguro/'); const pg = await res.text()
+      assert.match(pg, /<link rel="manifest" href="\/deploy-seguro\/app\.webmanifest">/)
+      assert.ok(pg.includes('<script>' + (await import('./tools/app-seguranca/app-seguranca.mjs')).scriptRegistro('deploy') + '</script>'), 'o script da página é o que a CSP carimbou')
+      const csp = res.headers.get('content-security-policy')
+      assert.ok(csp.includes((await import('./tools/app-seguranca/app-seguranca.mjs')).hashRegistro('deploy')) && /manifest-src 'self'/.test(csp) && /worker-src 'self'/.test(csp), 'a CSP deixa o registro, o manifesto e o worker passarem')
+      assert.match(csp, /default-src 'none'/); assert.equal(res.headers.get('cache-control'), 'no-store', 'a página continua sem cache')
+    })
+    const id =D.lerEstado().pedidos[0].id
     const form = (codigo) => new URLSearchParams({ id, codigo }).toString()
     await t('servidor: código errado não publica, e 5 erros bloqueiam', async () => {
       for (let i = 0; i < 5; i += 1) await post('/deploy-seguro/confirmar', form('000000'), 'application/x-www-form-urlencoded')
@@ -174,6 +299,41 @@ try {
       assert.equal(rec.ok, true)
       assert.equal(D.lerEstado().pedidos.some((p) => p.id === id3), false, 'saiu da lista de esperando')
       assert.equal(D.lerEstado().historico[0].estado, 'recusado')
+    })
+    await t('CC-935: pedir a volta passa pela mesma confirmação com código e só então chama a volta', async () => {
+      assert.equal((await post('/api/pedir', JSON.stringify({ alvo: 'site', de: 'agente-x', reverter: true }))).status, 200)
+      const pv = D.lerEstado().pedidos.find((p) => p.estado === 'esperando')
+      assert.equal(pv.acao, 'reverter'); assert.match(pv.voltaPara, /^site-.*\.tar\.gz$/)
+      assert.match(await (await fetch(base + '/deploy-seguro/')).text(), /confirmar e voltar/)
+      assert.equal(revertidos.length, 0, 'pedir a volta não volta nada')
+      const errado = await (await post('/api/confirmar', JSON.stringify({ id: pv.id, codigo: '000000' }))).json()
+      assert.equal(errado.ok, false); assert.equal(revertidos.length, 0)
+      codigoVolta = D.totp(SEG, Math.floor(Date.now() / 30000) + 1) // o passo seguinte: o anterior já foi gasto no deploy
+      const bom = await (await post('/api/confirmar', JSON.stringify({ id: pv.id, codigo: codigoVolta }))).json()
+      assert.equal(bom.ok, true, bom.msg)
+      await new Promise((r) => setTimeout(r, 100))
+      assert.deepEqual(revertidos, ['site']); assert.deepEqual(executados, ['site'], 'a volta não passa pelo caminho do deploy')
+      assert.equal(D.lerEstado().historico[0].estado, 'revertido')
+    })
+    await t('CC-933: o deploy e a volta deixaram linhas no registro de auditoria, sem nenhum código nem segredo', () => {
+      const bruto = fs.readFileSync(process.env.COCKPIT_AUDITORIA, 'utf8')
+      const linhas = bruto.trim().split('\n').map((l) => JSON.parse(l))
+      const acoes = linhas.map((l) => l.acao)
+      for (const a of ['deploy-pedido', 'codigo-recusado', 'deploy-confirmado', 'deploy-resultado', 'deploy-recusado', 'rollback-pedido', 'rollback-confirmado', 'rollback-resultado', 'segundo-fator']) assert.ok(acoes.includes(a), 'falta a linha ' + a)
+      assert.ok(linhas.every((l) => l.em && l.acao), 'toda linha tem data e ação')
+      const pedido = linhas.find((l) => l.acao === 'rollback-pedido'); assert.equal(pedido.quem, 'agente-x'); assert.equal(pedido.alvo, 'site')
+      assert.equal(linhas.find((l) => l.acao === 'rollback-resultado').ok, true)
+      assert.ok(linhas.some((l) => l.acao === 'codigo-recusado' && l.ok === false))
+      const certo = D.totp(SEG, Math.floor(Date.now() / 30000))
+      for (const proibido of [SEG, codigoVolta, certo, '000000']) assert.ok(!bruto.includes(proibido), 'o registro nunca guarda código nem segredo')
+    })
+    await t('CC-933: se o registro não puder ser gravado, a ação segue e o aviso sai no stderr', async () => {
+      const { registrar } = await import('./tools/auditoria/auditoria.mjs')
+      const guardado = process.env.COCKPIT_AUDITORIA; const err = process.stderr.write.bind(process.stderr); let aviso = ''
+      process.env.COCKPIT_AUDITORIA = path.join(casa, 'auditoria.jsonl', 'dentro-de-arquivo.jsonl') // o "pai" é um arquivo: impossível
+      process.stderr.write = (s) => { aviso += s; return true }
+      let r; try { r = registrar({ acao: 'teste', ok: true }) } finally { process.stderr.write = err; process.env.COCKPIT_AUDITORIA = guardado }
+      assert.equal(r, false); assert.match(aviso, /auditoria: não consegui registrar/)
     })
   } finally { srv.close() }
 } finally {

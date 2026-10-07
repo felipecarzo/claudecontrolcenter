@@ -55,4 +55,22 @@ Depois disso o painel passa a cobrar a prova.' 0
 
 caso "resposta curta e comum" "Feito, commitado." 0
 
+# CC-942: recado de um executor (isMeta, mas turnOrigin peer) abre turno novo.
+# A resposta cheia de nome veio ANTES dele; a de agora é limpa e tem de passar.
+turno_novo() {
+  local tr="$T/t2.jsonl"
+  node -e '
+const fs=require("fs")
+fs.writeFileSync(process.argv[2], [
+ JSON.stringify({type:"user",message:{content:"seguir"},turnOrigin:"human"}),
+ JSON.stringify({type:"assistant",message:{content:[{type:"text",text:"O reporte-guard, o fluxo-guard e o gate-guard escrevem no meta.json e no hooksCatalogo.mjs."}]}}),
+ JSON.stringify({type:"user",isMeta:true,turnOrigin:"peer",message:{content:"Another Claude session sent a message"}}),
+ JSON.stringify({type:"assistant",message:{content:[{type:"text",text:"Conferi a entrega do executor: os testes passam e nada real foi tocado."}]}}),
+].join("\n"))' x "$tr"
+  echo "{\"transcript_path\":\"$tr\"}" | node "$H" > /dev/null 2>&1
+  local s=$?
+  [ "$s" = "0" ] && echo "  ok     recado de executor abre turno: nome da resposta anterior nao conta" || echo "  FALHOU recado de executor abre turno (saiu $s, esperava 0)"
+}
+turno_novo
+
 rm -rf "$T"

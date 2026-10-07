@@ -43,6 +43,9 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { transicionar } from './tarefa.mjs'
+import { catalogoDe, ehFrente, listaDeFrentes } from './frentes.mjs'
 
 /**
  * Os estados de produção, com código curto.
@@ -156,6 +159,28 @@ const TETO_INTENCAO = 140
 
 const listaTem = (lista, v) => lista.some((x) => (x.codigo || x) === v)
 
+/* CC-958, decisão dele em 07/10: fila mista. O Caminho é a prioridade, e ideia nova entra no lugar que ele escolhe. */
+export const LUGARES = [
+  { codigo: 'agora', rotulo: 'agora', desc: 'urgente: fura a fila, logo depois do que está andando' },
+  { codigo: 'dia', rotulo: 'fim do dia', desc: 'ainda hoje, antes do resto do sprint atual' },
+  { codigo: 'sprint', rotulo: 'fim do sprint', desc: 'neste sprint, depois do que já estava nele' },
+  { codigo: 'backlog', rotulo: 'fim do backlog', desc: 'depois de tudo o que já existe' },
+  { codigo: 'fora', rotulo: 'fora do MVP', desc: 'guardada: não entra na fila até você promover' },
+]
+// dado gravado não se conserta, se interpreta: o "(depois do MVP)" escrito antes do campo vale como fora do MVP
+const MARCA_FORA = /^\s*\(depois do MVP\)/i
+export function lugarDe(item) {
+  if (item?.lugar !== undefined) return listaTem(LUGARES, item.lugar?.onde) ? item.lugar.onde : null
+  return MARCA_FORA.test(String(item?.titulo || item?.intencao || '')) ? 'fora' : null
+}
+export const diaLocal = (d = new Date()) => new Date(d).toLocaleDateString('sv')
+export function rotuloDoLugar(item, hoje = diaLocal()) {
+  const l = lugarDe(item); if (!l) return null
+  const r = LUGARES.find((x) => x.codigo === l).rotulo
+  const d = item.lugar?.em ? diaLocal(item.lugar.em) : null
+  return l === 'dia' && d && d < hoje ? `${r}, sobrou de ${d.slice(8, 10)}/${d.slice(5, 7)}` : r
+}
+
 /**
  * O item está no formato novo? Devolve a lista do que falta.
  *
@@ -204,6 +229,13 @@ export const estadoDe = (c) => PORCODIGO.get(String(c || '').toUpperCase()) || n
 /** Estado que ainda pede trabalho ou decisão. */
 export const estaAberto = (item) => item.estado !== 'OK' && item.estado !== 'KO'
 
+/**
+ * CC-920: esta prova pode ser aprovada pelo olho dele, no Tinder? Só item em PR cujo
+ * `conferir` começa por "olho:" ou "dele:". As "auto:" só o robô fecha
+ * (`node cc.mjs backlog conferir`, regra 3 do Nisaba).
+ */
+export const podeAprovarPorOlho = (item) => item?.estado === 'PR' && /^(olho|dele):/.test(String(item.conferir || ''))
+
 /** O peso, e ele não é duração. Escala declarada para não virar chute mudo. */
 export const PESOS = { 1: 'até uma hora', 2: 'até meio dia', 3: 'até um dia', 5: 'vários dias', 8: 'não cabe, quebre antes' }
 
@@ -215,17 +247,25 @@ const CAMPOS_OBRIGATORIOS = ['id', 'titulo', 'estado', 'frente']
  * Valida de verdade, e alto: o motivo de existir este módulo é que item mal
  * formado sumia calado. Recusar aqui é mais barato que descobrir na tela.
  */
-export function problemas(item) {
+export function problemas(item, frentes = null) {
   const p = []
   if (!item || typeof item !== 'object') return ['não é um objeto']
   for (const c of CAMPOS_OBRIGATORIOS) if (!item[c]) p.push(`falta ${c}`)
   if (item.id && !/^[A-Z]{2,4}-\d{1,5}$/.test(item.id)) p.push(`id fora do formato XX-000: ${item.id}`)
   if (item.estado && !ehEstado(item.estado)) p.push(`estado desconhecido: ${item.estado}`)
   if (item.peso != null && !PESOS[item.peso]) p.push(`peso fora da escala: ${item.peso}`)
+  /* CC-521: item aberto carrega só o código do catálogo de frentes. Fechado é
+     história e não se reescreve. */
+  if (item.frente && frentes && estaAberto(item) && !ehFrente(item.frente, frentes)) {
+    p.push(`frente "${item.frente}" fora do catálogo do projeto (uma palavra, de docs/frentes.json): ${listaDeFrentes(frentes)}`)
+  }
   if (item.estado === 'OK' && !item.prova) p.push('fechado sem prova')
   if (item.estado === 'KO' && !item.porque) p.push('cancelado sem motivo')
   if (item.estado === 'TR' && !item.porque) p.push('travado sem a causa escrita')
   if (item.estado === 'DE' && !item.decisao) p.push('esperando decisão dele sem dizer qual é a decisão')
+  if (item.pai != null && !/^[A-Z]{2,4}-\d{1,5}$/.test(item.pai)) p.push(`pai fora do formato XX-000: ${item.pai}`)
+  if (item.pai && item.pai === item.id) p.push('um item não pode ser filho de si mesmo')
+  if (item.lugar != null && (!listaTem(LUGARES, item.lugar.onde) || Number.isNaN(Date.parse(item.lugar.em)))) p.push(`lugar desconhecido: ${JSON.stringify(item.lugar)} (vale ${LUGARES.map((l) => l.codigo).join(', ')}, com a data em "em")`)
   /* Formato novo: cobrado só de quem JÁ está nele, e de item aberto que nasceu
      depois da virada. Item fechado antes de 11/09 é história, e decisão dele é
      que história não se reescreve. Sem esta linha, os 510 fechados virariam
@@ -250,7 +290,7 @@ export function ler(arquivo = caminhoPadrao()) {
     if (!l || l.startsWith('//')) continue
     let o
     try { o = JSON.parse(l) } catch (e) { ruins.push({ linha: i + 1, erro: 'JSON inválido', texto: l.slice(0, 80) }); continue }
-    const p = problemas(o)
+    const p = problemas(o, catalogoDe(arquivo))
     if (p.length) ruins.push({ linha: i + 1, erro: p.join('; '), texto: o.id || l.slice(0, 60) })
     itens.push(o)
   }
@@ -298,6 +338,15 @@ export function proximoId(itens, prefixo = 'CC') {
  */
 export function acrescentar(campos, arquivo = caminhoPadrao()) {
   const { itens } = ler(arquivo)
+  /* Padrão de projeto, decisão dele em 01/10: a micro tarefa é FILHA de um item,
+     no mesmo arquivo (um lugar só para tarefa). Ela herda do pai o que é do
+     pai (frente, natureza, área) e nasce pequena. */
+  const pai = campos.pai ? itens.find((x) => x.id === campos.pai) : null
+  if (campos.pai && !pai) throw new Error(`item recusado: o pai ${campos.pai} não existe`)
+  if (pai?.pai) throw new Error(`item recusado: ${pai.id} já é filho de ${pai.pai}; micro tarefa não tem neta`)
+  if (pai) {
+    campos = { ...campos, frente: campos.frente && campos.frente !== 'sem frente' ? campos.frente : pai.frente, natureza: campos.natureza || pai.natureza, area: campos.area || pai.area, tamanho: campos.tamanho || 'P' }
+  }
   const item = {
     id: campos.id || proximoId(itens, campos.prefixo || 'CC'),
     titulo: String(campos.titulo || '').trim(),
@@ -322,6 +371,9 @@ export function acrescentar(campos, arquivo = caminhoPadrao()) {
     conferir: campos.conferir || null,
     trava: campos.trava || null,
     risco: campos.risco || null,
+    ...(campos.pai ? { pai: campos.pai } : {}),
+    ...(campos.arquivos?.length ? { arquivos: campos.arquivos } : {}),
+    ...(campos.lugar ? { lugar: campos.lugar } : {}),
   }
   /* O título continua existindo para quem lê de fora do painel, mas quem manda
      é a intenção: sem título, ele é escrito a partir dela. */
@@ -329,12 +381,13 @@ export function acrescentar(campos, arquivo = caminhoPadrao()) {
   /* `problemas()` já cobra o formato quando o item JÁ está nele; aqui a cobrança
      é do item que nem começou. Sem o `Set`, quem manda meio formato recebia a
      mesma queixa duas vezes. */
-  const p = new Set(problemas(item))
+  const p = new Set(problemas(item, catalogoDe(arquivo)))
   if (!campos.permitirAntigo) for (const x of problemasDoFormato(item)) p.add(x)
   if (p.size) throw new Error(`item recusado: ${[...p].join('; ')}`)
   if (itens.some((i) => i.id === item.id)) throw new Error(`id repetido: ${item.id}`)
   itens.push(item)
   gravar(itens, arquivo)
+  registrar([{ tipo: 'criada', id: item.id, estado: item.estado, ...(item.pai ? { pai: item.pai } : {}), ...(item.citacao ? { texto: item.citacao } : {}) }], arquivo)
   return item
 }
 
@@ -346,15 +399,61 @@ export function acrescentar(campos, arquivo = caminhoPadrao()) {
  */
 export function mover(id, estado, extras = {}, arquivo = caminhoPadrao()) {
   const { itens } = ler(arquivo)
-  const i = itens.find((x) => x.id === id)
-  if (!i) throw new Error(`não achei ${id}`)
-  const novo = { ...i, ...extras, estado: String(estado).toUpperCase(), mexido: hoje() }
-  if (novo.estado === 'OK' && !novo.fechado) novo.fechado = hoje()
-  const p = problemas(novo)
-  if (p.length) throw new Error(p.join('; '))
-  itens[itens.indexOf(i)] = novo
-  gravar(itens, arquivo)
-  return novo
+  // CC-835: a regra de estado mora em tarefa.mjs (tabela, guardas e efeitos), uma conta só
+  const r = transicionar(itens, id, estado, extras, { hoje: hoje(), validar: (x) => problemas(x, catalogoDe(arquivo)) })
+  gravar(r.itens, arquivo)
+  // CC-836: a mudança vai para o diário com o motivo que veio junto (prova, porque, decisão)
+  const motivo = extras.prova || extras.porque || extras.decisao
+  registrar(r.eventos.map((e) => (e.id === id && motivo && !e.porque ? { ...e, porque: String(motivo).slice(0, 500) } : e)), arquivo)
+  return r.item
+}
+
+/* ===================================================================
+   CC-836 (Nisaba): o diário da tarefa. Só por acréscimo.
+   Pedido dele: "aquelas minhas palavras que eu falaria poderiam ficar
+   registradas ali dentro". Mora ao lado do backlog, um evento por linha:
+   o estado atual está no backlog, e a HISTÓRIA de como chegou lá, aqui.
+   =================================================================== */
+
+export const caminhoEventos = (arquivo = caminhoPadrao()) => path.join(path.dirname(arquivo), 'eventos.jsonl')
+
+/** Acrescenta eventos. Nunca reescreve: `appendFileSync` de linhas inteiras. */
+export function registrar(eventos, arquivo = caminhoPadrao()) {
+  if (!eventos?.length) return 0
+  const em = new Date().toISOString()
+  const corpo = eventos.map((e) => JSON.stringify({ em, ...e })).join('\n') + '\n'
+  fs.mkdirSync(path.dirname(arquivo), { recursive: true })
+  fs.appendFileSync(caminhoEventos(arquivo), corpo, 'utf8')
+  return eventos.length
+}
+
+export const TIPOS_DE_FALA = ['fala', 'decisao', 'nota']
+
+/** Uma fala no debate de uma tarefa. `de` é quem falou: felipe, agente, robo. */
+export function debater(id, texto, { de = 'felipe', tipo = 'fala' } = {}, arquivo = caminhoPadrao()) {
+  if (!ler(arquivo).itens.some((x) => x.id === id)) throw new Error(`não achei ${id}`)
+  if (!TIPOS_DE_FALA.includes(tipo)) throw new Error(`tipo de fala desconhecido: ${tipo} (vale ${TIPOS_DE_FALA.join(', ')})`)
+  if (!String(texto || '').trim()) throw new Error('fala vazia')
+  registrar([{ tipo, id, de, texto: String(texto).trim() }], arquivo)
+}
+
+/** A história de uma tarefa e das micro tarefas dela, em ordem. */
+export function historia(id, arquivo = caminhoPadrao()) {
+  const filhas = new Set(filhasDe(ler(arquivo).itens, id).map((x) => x.id))
+  let cru = ''; try { cru = fs.readFileSync(caminhoEventos(arquivo), 'utf8') } catch { return [] }
+  return cru.split(/\r?\n/).filter(Boolean).flatMap((l) => { try { return [JSON.parse(l)] } catch { return [] } })
+    .filter((e) => e.id === id || filhas.has(e.id))
+}
+
+/** As micro tarefas de um item, na ordem em que nasceram. */
+export function filhasDe(itens, id) {
+  return itens.filter((x) => x.pai === id).sort((a, b) => Number(a.id.split('-')[1]) - Number(b.id.split('-')[1]))
+}
+
+/** O andamento de um item pai: quantas micro tarefas fecharam de quantas. `null` sem filhas. */
+export function andamento(itens, id) {
+  const f = filhasDe(itens, id).filter((x) => x.estado !== 'KO')
+  return f.length ? { feitas: f.filter((x) => x.estado === 'OK').length, total: f.length } : null
 }
 
 /**
@@ -367,17 +466,62 @@ export function mover(id, estado, extras = {}, arquivo = caminhoPadrao()) {
  *  - semEspec: falta o pronto ou o como conferir (especificar antes de fazer);
  *  - dele: conferir é dele, trava é dele, ou é uma decisão.
  * Ideia ainda não avaliada (B0) fica de fora: ela não é pedido ainda.
+ * CC-958: a ordem é a da fila mista (ordemDaFila), e o que está fora do MVP não entra.
  */
-export function filaDoAgente(itens) {
-  const abertos = itens.filter((x) => estaAberto(x) && !['DE', 'TR', 'B0'].includes(x.estado))
-  const ordem = (a, b) => (a.estado === 'EM' ? 0 : 1) - (b.estado === 'EM' ? 0 : 1) || String(a.criado || '').localeCompare(String(b.criado || '')) || a.id.localeCompare(b.id)
+/** CC-958: a ordem do trabalho. 0 andando, 1 agora, 2 fim do dia, 3 sprint atual, 4 fim do sprint, 5 próximos, 6 fim do backlog. */
+export function ordemDaFila(itens, { sprint = new Set() } = {}) {
+  const porId = new Map(itens.map((x) => [x.id, x]))
+  const ref = (x) => (x.pai && porId.get(x.pai)) || x // a micro tarefa vai no lugar do pai
+  const lugar = (x) => lugarDe(x) || lugarDe(ref(x))
+  const grupo = (x) => {
+    if (x.estado === 'EM') return 0
+    const l = lugar(x)
+    if (l === 'agora') return 1
+    if (l === 'dia') return 2
+    if (l === 'sprint') return 4
+    if (l === 'backlog') return 6
+    return sprint.has(x.id) || sprint.has(ref(x).id) ? 3 : 5
+  }
+  const em = (x) => String((x.lugar || ref(x).lugar)?.em || '')
+  const num = (x) => Number(String(x.id).split('-')[1] || 0)
+  return (a, b) => grupo(a) - grupo(b) || em(a).localeCompare(em(b)) || String(ref(a).criado || '').localeCompare(String(ref(b).criado || ''))
+    || num(ref(a)) - num(ref(b)) || num(a) - num(b) || String(a.id).localeCompare(String(b.id))
+}
+
+export function filaDoAgente(itens, { sprint = new Set() } = {}) {
+  /* Padrão de projeto (01/10): item que já foi dividido sai da fila enquanto
+     tiver micro tarefa aberta; quem anda são as filhas, na ordem. */
+  const comFilhaAberta = new Set(itens.filter((x) => x.pai && estaAberto(x)).map((x) => x.pai))
+  const porId = new Map(itens.map((x) => [x.id, x]))
+  const foraDoMvp = (x) => (lugarDe(x) || lugarDe((x.pai && porId.get(x.pai)) || x)) === 'fora'
+  const abertos = itens.filter((x) => estaAberto(x) && !['DE', 'TR', 'B0'].includes(x.estado) && !comFilhaAberta.has(x.id) && !foraDoMvp(x))
+  const ordem = ordemDaFila(itens, { sprint })
   const modo = (x) => String(x.conferir || '').split(':')[0]
   const ehDele = (x) => modo(x) === 'dele' || x.trava === 'dele' || x.natureza === 'DEC'
   const temEspec = (x) => String(x.pronto || '').trim().length >= 10 && MODOS_DE_CONFERIR.includes(modo(x))
   const dele = abertos.filter(ehDele).sort(ordem)
   const semEspec = abertos.filter((x) => !ehDele(x) && !temEspec(x)).sort(ordem)
   const sozinho = abertos.filter((x) => !ehDele(x) && temEspec(x)).sort(ordem)
-  return { sozinho, semEspec, dele }
+  return { sozinho, semEspec, dele, proximo: [...sozinho, ...semEspec].sort(ordem)[0] || null }
+}
+
+/** CC-958: os ids do sprint atual, pela linha `abrir` de docs/sprints.jsonl cuja janela contém agora. Sem linha, vazio. */
+export function sprintAtualIds(raiz, agora = Date.now()) {
+  let t = ''; try { t = fs.readFileSync(path.join(raiz, 'docs', 'sprints.jsonl'), 'utf8') } catch { return new Set() }
+  const rows = t.split(/\r?\n/).filter(Boolean).flatMap((l) => { try { return [JSON.parse(l)] } catch { return [] } })
+  return new Set(rows.find((g) => g.tipo === 'abrir' && Date.parse(g.de) <= agora && agora < Date.parse(g.ate))?.itens || [])
+}
+
+/** CC-958: põe um item aberto num lugar da fila, ou tira com 'nenhum'. A ideia (B0) que ganha um lugar fora o "fora" vira definida: o toque dele é a confirmação. */
+export function porNoLugar(id, onde, { agora = new Date(), de = 'felipe' } = {}, arquivo = caminhoPadrao()) {
+  if (onde !== 'nenhum' && !listaTem(LUGARES, onde)) throw new Error(`lugar desconhecido: ${onde} (vale ${LUGARES.map((l) => l.codigo).join(', ')} ou nenhum)`)
+  const i = ler(arquivo).itens.find((x) => x.id === id)
+  if (!i) throw new Error(`não achei ${id}`)
+  if (!estaAberto(i)) throw new Error(`${id} já fechou: lugar só vale para item aberto`)
+  const para = i.estado === 'B0' && !['fora', 'nenhum'].includes(onde) ? 'B1' : i.estado
+  const novo = mover(id, para, { lugar: onde === 'nenhum' ? null : { onde, em: agora.toISOString() } }, arquivo)
+  registrar([{ tipo: 'lugar', id, de, texto: onde === 'nenhum' ? 'sem lugar: volta para a ordem do Caminho' : LUGARES.find((l) => l.codigo === onde).rotulo }], arquivo)
+  return novo
 }
 
 /**
@@ -411,7 +555,7 @@ export function especificar(id, { pronto, conferir } = {}, arquivo = caminhoPadr
   const novo = { ...i, mexido: hoje() }
   if (pronto != null) novo.pronto = String(pronto).trim()
   if (conferir != null) novo.conferir = String(conferir).trim()
-  const p = problemas(novo)
+  const p = problemas(novo, catalogoDe(arquivo))
   if (p.length) throw new Error(p.join('; '))
   itens[itens.indexOf(i)] = novo
   gravar(itens, arquivo)
@@ -426,18 +570,21 @@ export function retrato(arquivo = caminhoPadrao()) {
   for (const e of ESTADOS) porEstado[e.codigo] = 0
   for (const i of itens) porEstado[i.estado] = (porEstado[i.estado] || 0) + 1
   const porFrente = new Map()
-  for (const i of abertos) {
+  // o mapa é dos pedidos dele; as micro tarefas aparecem como andamento do pai (01/10)
+  for (const i of abertos.filter((x) => !x.pai)) {
     if (!porFrente.has(i.frente)) porFrente.set(i.frente, [])
     porFrente.get(i.frente).push(i)
   }
   return {
     existe,
-    total: itens.length,
-    abertos: abertos.length,
-    fechados: itens.length - abertos.length,
+    // as contagens são de pedidos: micro tarefa já aparece como "X de Y" no pai
+    total: itens.filter((x) => !x.pai).length,
+    abertos: abertos.filter((x) => !x.pai).length,
+    fechados: itens.filter((x) => !x.pai && !estaAberto(x)).length,
     porEstado,
     frentes: [...porFrente.entries()].map(([nome, is]) => ({ nome, itens: is })),
     ruins,
+    andamentos: Object.fromEntries(abertos.filter((x) => !x.pai).map((x) => [x.id, andamento(itens, x.id)]).filter(([, a]) => a)),
     esperandoEle: abertos.filter((i) => i.estado === 'DE'),
     travados: abertos.filter((i) => i.estado === 'TR'),
     /* **Item velho não é item morto, é item que ninguém perguntou.**
@@ -453,6 +600,22 @@ export function retrato(arquivo = caminhoPadrao()) {
      * desliga na terceira vez. */
     parados: abertos.filter((i) => diasDesde(i.mexido) > 30).sort((a, b) => diasDesde(b.mexido) - diasDesde(a.mexido)),
   }
+}
+
+/**
+ * CC-873: quantos itens há em cada estado (pelo rótulo que a tela mostra). Micro tarefa (item com
+ * `pai`) não entra: ela é parte do pai, e contar as duas inflaria o total. Feito primeiro numa
+ * cópia de teste do projeto e trazido para cá.
+ */
+export function contarPorEstado(itens = []) {
+  const contagem = {}
+  for (const e of ESTADOS) contagem[e.rotulo] = 0
+  for (const i of itens) {
+    if (i && typeof i === 'object' && i.pai) continue
+    const e = estadoDe(i?.estado)
+    if (e) contagem[e.rotulo] = (contagem[e.rotulo] || 0) + 1
+  }
+  return contagem
 }
 
 /** Dias desde uma data `AAAA-MM-DD`. Devolve 0 quando não dá para saber. */
@@ -559,9 +722,94 @@ export function comoMarkdown(arquivo = caminhoPadrao()) {
     l.push('|---|---|---|---|')
     for (const i of f.itens) {
       const e = estadoDe(i.estado)
-      l.push(`| ${i.id} | ${e ? e.rotulo : i.estado} | ${i.peso ?? '-'} | ${String(i.titulo).replace(/\|/g, '/')} |`)
+      const a = r.andamentos[i.id]
+      l.push(`| ${i.id} | ${e ? e.rotulo : i.estado}${a ? ` · ${a.feitas} de ${a.total}` : ''} | ${i.peso ?? '-'} | ${String(i.titulo).replace(/\|/g, '/')} |`)
     }
     l.push('')
   }
   return l.join('\n')
+}
+
+/* Padrão de projeto (01/10): usados pelo maestro, pela entrevista e pelo criador de projeto. */
+
+/** Siglas escolhidas à mão, onde a automática ficaria ruim ou ambígua. */
+const SIGLAS = new Map([
+  ['cockpit', 'CC'],
+  ['inovallbond', 'NV'],
+  ['fibraessencia', 'FB'],
+  ['boxboutique', 'BX'],
+  ['ibrics', 'IB'],
+  ['ghoscode', 'GH'],
+  ['coepiloto', 'CP'],
+  ['productvideomaker', 'PV'],
+  ['ratomacaco', 'RM'],
+  ['reunion', 'RU'],
+  ['rhydon', 'RH'],
+  ['carzo', 'CZ'],
+  ['vps', 'VP'],
+  ['escritorio', 'ES'],
+  ['entreg4', 'EN'],
+  ['hutukara', 'HK'],
+  ['renanmarchon', 'RN'],
+  /* `cockpit--front` é OUTRA pasta, com outra branch e outro backlog, e daria
+     `CC` pela regra automática. Dois projetos com a mesma sigla viram um item
+     só no dia em que dois backlogs forem somados numa tela, e o número fica
+     maior e plausível. É o mesmo cuidado da lista de renomeações. */
+  ['cockpitfront', 'CF'],
+  ['maurice', 'MC'],
+  ['sumauma', 'SU'],
+  ['mnzs', 'MZ'],
+  ['profinance', 'PF'],
+  ['ahtleta', 'AT'],
+  ['geolev4', 'GL'],
+  // 01/10: as duas saíam HT, e pierre saía PR, que é o código do estado "prova"
+  ['ahtletacorrida', 'AC'],
+  ['ahtletaescalada', 'AE'],
+  ['pierre', 'PI'],
+])
+
+/**
+ * A sigla de um projeto: duas ou três letras, estáveis.
+ *
+ * Estável importa mais que bonita: a sigla vira parte do id, e id que muda
+ * quebra toda referência já escrita. Por isso a lista acima é explícita, e a
+ * regra automática só cobre o que não está nela.
+ */
+export function siglaDe(projeto) {
+  // desde 23/08 as pastas têm prefixo de máquina: sem tirar, `VPS_inovallbond` virava `VP`
+  const cru = String(projeto || '').replace(/^(VPS|PC)_/i, '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (SIGLAS.has(cru)) return SIGLAS.get(cru)
+  // CC-945: id é XX-000, só letras na sigla; pasta '9' ou 'd3' dava sigla com dígito e todo item era recusado
+  const letras = cru.replace(/[0-9]/g, '')
+  const consoantes = letras.replace(/[aeiou]/g, '')
+  const fonte = consoantes.length >= 2 ? consoantes : letras
+  const base = fonte.slice(0, 2).toUpperCase()
+  if (base.length < 2) return 'XX'
+  // sigla igual a código de estado (PR, DE, TR...) confunde a leitura do id
+  return ehEstado(base) ? fonte.slice(0, 3).toUpperCase() : base
+}
+
+/** Prefixo dos ids do projeto: o que o backlog já usa, senão a sigla do projeto. */
+export function prefixoDoProjeto(itens, cwd) {
+  const conta = {}
+  for (const i of itens) { const m = String(i.id).match(/^([A-Z]{2,4})-\d+$/); if (m) conta[m[1]] = (conta[m[1]] || 0) + 1 }
+  const usado = Object.entries(conta).sort((a, b) => b[1] - a[1])[0]?.[0]
+  return usado || siglaDe(path.basename(cwd))
+}
+
+/** O ROADMAP sai do backlog quando ele não existe ou já é gerado; o escrito à mão não é tocado. */
+export function regerarRoadmap(raiz) {
+  const alvo = path.join(raiz, 'docs', 'ROADMAP.md')
+  let atual = null; try { atual = fs.readFileSync(alvo, 'utf8') } catch { /* não existe */ }
+  if (atual != null && !atual.includes('GERADO por src/backlog.mjs')) return false
+  /* 02/10, no teste de liberação: projeto que tem o PRÓPRIO gerador (uma cópia
+     do cockpit) gera com o dele. Gerar com este aqui deu "114 abertos" contra
+     "115" pela conta da cópia, e o teste dela reprovou o pedido inteiro. */
+  const proprio = path.join(raiz, 'cc.mjs')
+  if (fs.existsSync(path.join(raiz, 'src', 'backlog.mjs')) && fs.existsSync(proprio) && path.resolve(raiz) !== path.resolve(new URL('..', import.meta.url).pathname)) {
+    const r = spawnSync(process.execPath, [proprio, 'backlog', 'gerar'], { cwd: raiz, timeout: 60000, stdio: 'ignore' })
+    return r.status === 0
+  }
+  fs.writeFileSync(alvo, comoMarkdown(caminhoPadrao(raiz)), 'utf8')
+  return true
 }

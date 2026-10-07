@@ -194,6 +194,13 @@ seguem padrões"*. O padrão acima diz QUANTO falar; este diz COMO explicar.
 As duas regras que já existiam continuam valendo: comando de terminal se quebra
 parte por parte, e valor vem com a escala ("borda em 10, de 0 a 100").
 
+**Onde vai a explicação do comando (02/10, pedido dele): FORA do bloco de código.**
+O bloco leva SÓ o comando, para ele copiar de uma vez. A explicação parte por parte
+(programa, cada flag, cada caminho) vem logo abaixo, em texto comum ou lista, e o
+"deu certo se" também. Explicação desenhada com "│" e "└─" DENTRO do bloco é
+proibida: ele cola o bloco inteiro, a explicação vai junto e quebra o comando.
+O copiar-guard devolve a resposta que misturar os dois.
+
 ## O vício a evitar, com exemplo real
 
 Parágrafo que começa se defendendo de pergunta que ninguém fez:
@@ -377,12 +384,15 @@ export function respostaDoTurno(arquivo, limite = 400 * 1024) {
 
   const linhas = texto.split('\n')
   /* Onde começou o turno: a última fala de uma PESSOA. Injeção de skill e
-     resultado de ferramenta chegam como `user` e não contam. */
+     resultado de ferramenta chegam como `user` e não contam.
+     CC-942: o recado de um executor também chega com `isMeta`, mas ABRE turno
+     (`turnOrigin: 'peer'`). Pulá-lo juntava num turno só tudo desde a última
+     fala dele, e a trava acusava nomes de respostas já corrigidas. */
   let inicio = 0
   for (let i = linhas.length - 1; i >= 0; i -= 1) {
     let j = null
     try { j = JSON.parse(linhas[i]) } catch { continue }
-    if (j?.type !== 'user' || j.isMeta || j.toolUseResult) continue
+    if (j?.type !== 'user' || j.toolUseResult || (j.isMeta && !j.turnOrigin)) continue
     inicio = i + 1
     break
   }

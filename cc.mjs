@@ -53,6 +53,10 @@ const FLAGS_WITH_VALUE = new Set([
   '--desde', '--dia', '--por',
   // CC-238: o test-map
   '--falta',
+  // CC-899: o sprint
+  '--pasta',
+  // CC-933: o registro de auditoria
+  '--ultimos',
 ])
 
 const has = (f) => argv.includes(f)
@@ -152,64 +156,9 @@ switch (cmd) {
    * Felipe some da tela, o que é pior que não ter o dado no painel.
    */
   case 'statusline': {
-    const entrada = await new Promise((resolve) => {
-      let buf = ''
-      process.stdin.setEncoding('utf8')
-      process.stdin.on('data', (c) => { buf += c })
-      process.stdin.on('end', () => resolve(buf))
-      process.stdin.on('error', () => resolve(''))
-    })
-    try {
-      const { gravarUso, marcarChamada } = await import('./src/uso.mjs')
-      const dados = JSON.parse(entrada)
-      /* CC-261: registra que a barra FOI chamada, mesmo quando não veio número.
-         É o que distingue "nunca rodou aqui" de "rodou e não trouxe o dado", e
-         os dois deixam a tela igual: sem número. */
-      marcarChamada(Boolean(dados?.rate_limits))
-      gravarUso(dados)
-    } catch { /* sem rate_limits, JSON quebrado ou disco cheio: segue o jogo */ }
-
-    const embrulhado = val('--wrap')
-    if (!embrulhado) break
-    let saida = ''
-    try {
-      const { spawnSync } = await import('node:child_process')
-      // 15s: a statusline embrulhada pode chamar ferramenta externa lenta (a
-      // do Felipe cai num `npx ccusage` quando o binário não está instalado).
-      //
-      /* CC-460: `windowsHide` faltava AQUI, e só aqui em todo o projeto.
-         A barra de rodapé redesenha o tempo todo, e cada redesenho subia
-         `cmd` + `bash` + `conhost` no Windows: 20 disparos em 45 segundos,
-         somando as sessões abertas dele. Cada um pisca uma janela preta.
-         ⚠️ Não é a causa do piscar que ELE reclamou (aquela era a bandeja
-         relançando, e já está consertada). É a mesma família, e sobrevive
-         àquele conserto: some a bandeja, isto continua.
-         ⚠️ E não está provado: esconde a janela do processo que o Node sobe,
-         e aqui são três em cadeia. Esconder o primeiro pode não esconder os
-         netos, e esta VPS não tem `conhost` para medir. A prova é na máquina
-         dele, contando janelas nascendo por 30s com a barra redesenhando. */
-      const r = spawnSync(embrulhado, {
-        input: entrada, shell: true, encoding: 'utf8', timeout: 15000, windowsHide: true,
-      })
-      saida = r.stdout || ''
-    } catch { /* fica com a linha mínima abaixo */ }
-
-    // Se a original travou ou não imprimiu nada, ainda assim sai algo: barra
-    // vazia parece painel quebrado, e o uso do plano é a informação que mais
-    // importa ali.
-    if (!saida.trim()) {
-      try {
-        const j = JSON.parse(entrada)
-        const u = (await import('./src/uso.mjs')).readUso()
-        const pct = (x) => (x ? `${Math.round(x.pct)}%` : '—')
-        saida = [
-          j.workspace?.current_dir ? j.workspace.current_dir.split(/[\\/]/).filter(Boolean).pop() : '',
-          j.model?.display_name,
-          u ? `plano 5h ${pct(u.cincoHoras)} · semana ${pct(u.semana)}` : '',
-        ].filter(Boolean).join('  ·  ')
-      } catch { /* nem isso: sai vazio mesmo */ }
-    }
-    if (saida) process.stdout.write(saida)
+    /* 02/10: o corpo mora em src/statusline.mjs, que a própria barra pode chamar direto
+       (settings.json) sem carregar este arquivo todo. Aqui fica por compatibilidade. */
+    await (await import('./src/statusline.mjs')).rodar(argv)
     break
   }
 
@@ -1062,6 +1011,10 @@ switch (cmd) {
           if (!res.ok) die(res.erro)
           D.gravar(r, res.estado)
           console.log(`${atual.header}: ${res.resposta.texto}`)
+          if (!E.proxima(res.estado)) {
+            const f = D.fecharEntrevista(r, res.estado, E.itensDoBacklog(res.estado))
+            if (f.gravou?.ok) console.log(`backlog do projeto: ${f.gravou.novos.length} item(ns) novo(s) em docs/backlog.jsonl`)
+          }
           mostrarProxima(res.estado)
           break
         }
@@ -1761,6 +1714,39 @@ switch (cmd) {
       break
     }
 
+    /* CC-916: emenda = ideia nova no meio do projeto. Entra no trecho onde o projeto está
+       (ou na --frente dada), como ideia (B0), marcada, com as palavras dele em --citacao. */
+    if (sub === 'emenda') {
+      const depois = argv.slice(argv.indexOf(sub) + 1)
+      const ate = depois.findIndex((a) => a.startsWith('--'))
+      const intencao = (ate === -1 ? depois : depois.slice(0, ate)).join(' ')
+      if (!intencao) {
+        console.log('\n  uso: node cc.mjs backlog emenda "a ideia, em uma frase" --citacao "as palavras dele" \\')
+        console.log('         --natureza PED|DEF|DEC|MED|DOC --area dado|tela|agente|maquinas|trava|texto --tamanho P|M|G \\')
+        console.log('         --pronto "o que se observa quando estiver feito" --conferir auto:...|olho:...|dele:... [--frente x] [--melhora <ID>] [--lugar agora|dia|sprint|backlog|fora]\n')
+        break
+      }
+      try {
+        const E = await import('./src/emenda.mjs')
+        const i = E.emendar(process.cwd(), {
+          intencao, frente: valorDe('frente') || undefined, natureza: valorDe('natureza') || 'PED', area: valorDe('area'),
+          tamanho: valorDe('tamanho') || 'M', pronto: valorDe('pronto'), conferir: valorDe('conferir'), citacao: valorDe('citacao'),
+          lugar: valorDe('lugar') || undefined, melhora: valorDe('melhora') || undefined, risco: valorDe('risco') || undefined,
+        })
+        console.log(`\n  ${i.id}  emenda no trecho "${i.frente}"${valorDe('melhora') ? ` (melhora ${valorDe('melhora')})` : ''}: ${B.comoSeLe(i)}`)
+        if (i.lugar) console.log(`  lugar: ${B.rotuloDoLugar(i)}${i.estado === 'B1' ? ', já na fila' : ', guardada fora da fila'}\n`)
+        else {
+          // CC-958: sem lugar, a ideia fica fora da fila, e a sessão pergunta a ele com a sugestão primeiro
+          const s = E.sugerirLugar(i, { itens: B.ler().itens, sprint: B.sprintAtualIds(process.cwd()) })
+          const q = E.opcoesDaPergunta(s.onde); const rot = (c) => B.LUGARES.find((l) => l.codigo === c).rotulo
+          console.log(`  sem lugar: ficou como ideia, fora da fila.\n  sugestão: ${rot(s.onde)} (${s.porque})`)
+          console.log(`  pergunte no AskUserQuestion, nesta ordem: ${q.opcoes.map((c, k) => rot(c) + (k ? '' : ' (Recomendado)')).join(', ')}; e escreva na pergunta: "${rot(q.noTexto)}: responda no campo livre"`)
+          console.log(`  depois grave: node cc.mjs backlog lugar ${i.id} <agora|dia|sprint|backlog|fora>\n`)
+        }
+      } catch (e) { console.log(`\n  recusado: ${e.message}\n`) }
+      break
+    }
+
     if (sub === 'novo' || sub === 'abrir') {
       /* O texto solto vira a INTENÇÃO, não mais o título: decisão dele em
          11/09, quando o item deixou de ser prosa. O título continua sendo
@@ -1778,11 +1764,13 @@ switch (cmd) {
         console.log('         --tamanho P|M|G')
         console.log('         --pronto "o que se observa quando estiver feito"')
         console.log('         --conferir auto:<comando> | olho:<o que olhar> | dele:<o que confirmar>')
-        console.log('         --frente <codigo>   [--trava dele|item:CC-nnn|mundo:<o quê>]  [--risco local|compartilhado|cliente]\n')
+        console.log('         --frente <cockpit|coderoom|framework|travas|projetos|fundacao|sincronia|padrao|maquinas>   (catálogo: src/frentes.mjs)\n         [--trava dele|item:CC-nnn|mundo:<o quê>]  [--risco local|compartilhado|cliente]\n')
         break
       }
       try {
         const i = B.acrescentar({
+          // CC-956: o código do PRÓPRIO projeto; sem isto caía no padrão "CC" (o do painel) em qualquer projeto
+          prefixo: B.prefixoDoProjeto(B.ler().itens, process.cwd()),
           intencao,
           frente: valorDe('frente') || 'sem frente',
           estado: valorDe('estado') || 'B1',
@@ -1795,6 +1783,11 @@ switch (cmd) {
           conferir: valorDe('conferir'),
           trava: valorDe('trava'),
           risco: valorDe('risco'),
+          lugar: valorDe('lugar') ? { onde: valorDe('lugar'), em: new Date().toISOString() } : undefined, // CC-958
+          // 01/10: `--citacao` era aceito no uso e nunca lido; as palavras dele se perdiam
+          citacao: valorDe('citacao'),
+          // padrão de projeto (01/10): micro tarefa nasce filha de um item
+          pai: valorDe('pai'),
           /* `--antigo` é a única porta para gravar fora do formato, e existe
              para a migração do que já estava em prosa. */
           permitirAntigo: argv.includes('--antigo'),
@@ -1804,11 +1797,97 @@ switch (cmd) {
       break
     }
 
+    /* CC-838 (Nisaba): roda a conferência automática da tarefa (lista fechada)
+       e, se passar, fecha com a prova do robô. Reprovou: vai para o diário. */
+    if (sub === 'conferir') {
+      const id = argv[argv.indexOf(sub) + 1]
+      if (!id) { console.log('\n  uso: node cc.mjs backlog conferir <ID>\n'); break }
+      const Cf = await import('./src/conferencia.mjs')
+      const item = B.ler().itens.find((x) => x.id === id)
+      if (!item) { console.log(`\n  não achei ${id}\n`); break }
+      const c = Cf.lerConferencia(item.conferir)
+      if (!c.conhecido) { console.log(`\n  ${id} não tem conferência que o robô possa rodar: ${c.motivo}\n`); break }
+      const r = await Cf.rodarConferencia(process.cwd(), c)
+      if (!r.ok) { B.registrar([{ tipo: 'robo', id, ok: false, texto: r.erro }]); console.log(`\n  ${id} reprovado pelo robô:\n  ${r.erro.split('\n').join('\n  ')}\n`); process.exitCode = 1; break }
+      try {
+        B.mover(id, 'OK', { prova: r.prova }); console.log(`\n  ${id} → fechado (${r.prova})\n`)
+        try { (await import('./src/custoItem.mjs')).marcar(id, 'OK') } catch { /* medir nunca impede fechar */ }
+      } catch (e) { console.log(`\n  passou no robô, mas não fechou: ${e.message}\n`) }
+      break
+    }
+
+    /* CC-836 (Nisaba): o debate mora dentro da tarefa.
+         backlog debate CC-x "texto" [--de felipe|agente|robo] [--tipo fala|decisao|nota]
+         backlog historia CC-x */
+    if (sub === 'debate' || sub === 'historia') {
+      const id = argv[argv.indexOf(sub) + 1]
+      if (!id) { console.log(`\n  uso: node cc.mjs backlog ${sub} <ID>${sub === 'debate' ? ' "texto" [--de felipe] [--tipo fala|decisao|nota]' : ''}\n`); break }
+      try {
+        if (sub === 'debate') {
+          const depois = argv.slice(argv.indexOf(id) + 1)
+          const ate = depois.findIndex((a) => a.startsWith('--'))
+          B.debater(id, (ate === -1 ? depois : depois.slice(0, ate)).join(' '), { de: valorDe('de') || 'felipe', tipo: valorDe('tipo') || 'fala' })
+          console.log(`\n  registrado no diário de ${id}\n`)
+        } else {
+          const h = B.historia(id)
+          console.log(`\n  ${id}: ${h.length} evento(s)\n`)
+          for (const e of h) {
+            const quando = String(e.em).slice(0, 16).replace('T', ' ')
+            const o_que = e.tipo === 'estado' ? `${e.de} > ${e.para}${e.porque ? ': ' + e.porque : ''}`
+              : e.tipo === 'criada' ? `criada${e.pai ? ' como micro tarefa de ' + e.pai : ''}${e.texto ? ': "' + e.texto + '"' : ''}`
+              : e.tipo === 'medida' ? `medida: ${e.estado} ${e.tokens} tokens (sessão ${String(e.sessao).slice(0, 8)})`
+              : `${e.de || ''} (${e.tipo}): ${e.texto}`
+            console.log(`  ${quando}  ${e.id}  ${o_que}`)
+          }
+          console.log('')
+        }
+      } catch (e) { console.log(`\n  recusado: ${e.message}\n`) }
+      break
+    }
+
+    /* Padrão de projeto (01/10): divide um item em micro tarefas filhas. Recebe
+       um JSON (texto ou caminho de arquivo): [{"intencao","pronto","conferir"}].
+       É o caminho do maestro e de quem planeja à mão. */
+    if (sub === 'dividir') {
+      const id = argv[argv.indexOf(sub) + 1]
+      const fonte = valorDe('json')
+      if (!id || !fonte) { console.log('\n  uso: node cc.mjs backlog dividir CC-nnn --json \'[{"intencao":"...","pronto":"...","conferir":"auto:..."}]\'  (ou caminho de arquivo)\n'); break }
+      try {
+        const lista = JSON.parse(fs.existsSync(fonte) ? fs.readFileSync(fonte, 'utf8') : fonte)
+        for (const t of lista) {
+          const f = B.acrescentar({ prefixo: B.prefixoDoProjeto(B.ler().itens, process.cwd()), pai: id, origem: 'agente', estado: 'B1', intencao: t.intencao || t.titulo, pronto: t.pronto, conferir: t.conferir || 'auto:npm test' })
+          console.log(`  ${f.id}  ${f.intencao}`)
+        }
+        const a = B.andamento(B.ler().itens, id)
+        console.log(`\n  ${id}: ${a.feitas} de ${a.total} micro tarefas\n`)
+      } catch (e) { console.log(`\n  recusado: ${e.message}\n`) }
+      break
+    }
+
+    /* CC-958: o lugar do item na fila. Sem o lugar, mostra o atual e a sugestão. */
+    if (sub === 'lugar') {
+      const id = argv[argv.indexOf(sub) + 1]; const onde = argv[argv.indexOf(sub) + 2]
+      if (!id || id.startsWith('--')) { console.log('\n  uso: node cc.mjs backlog lugar <ID> [agora|dia|sprint|backlog|fora|nenhum]\n'); break }
+      try {
+        if (!onde) {
+          const E = await import('./src/emenda.mjs'); const itens = B.ler().itens; const i = itens.find((x) => x.id === id)
+          if (!i) throw new Error(`não achei ${id}`)
+          const s = E.sugerirLugar(i, { itens, sprint: B.sprintAtualIds(process.cwd()) })
+          console.log(`\n  ${id}: ${B.rotuloDoLugar(i) || 'sem lugar'}\n  sugestão: ${B.LUGARES.find((l) => l.codigo === s.onde).rotulo} (${s.porque})\n`)
+          break
+        }
+        const i = B.porNoLugar(id, onde)
+        console.log(`\n  ${i.id} vai para: ${B.rotuloDoLugar(i) || 'sem lugar, na ordem do Caminho'}${i.estado === 'B1' ? ' (definida, na fila)' : ''}\n`)
+      } catch (e) { console.log(`\n  recusado: ${e.message}\n`); process.exitCode = 1 }
+      break
+    }
+
     /* CC-557: a fila do agente (especificação primeiro). */
     if (sub === 'fila') {
-      const f = B.filaDoAgente(B.ler().itens)
+      const f = B.filaDoAgente(B.ler().itens, { sprint: B.sprintAtualIds(process.cwd()) })
       if (argv.includes('--json')) { console.log(JSON.stringify({ sozinho: f.sozinho.map((x) => x.id), semEspec: f.semEspec.map((x) => x.id), dele: f.dele.map((x) => x.id) })); break }
-      const linha = (x) => `    ${x.id.padEnd(9)} ${x.titulo.slice(0, 70)}`
+      const linha = (x) => `    ${x.id.padEnd(9)} ${x.titulo.slice(0, 60)}${B.rotuloDoLugar(x) ? `  [${B.rotuloDoLugar(x)}]` : ''}`
+      console.log('\n  ordem do Caminho: andando, agora, fim do dia, sprint atual, fim do sprint, próximos sprints, fim do backlog (fora do MVP não entra)')
       console.log(`\n  faço sozinho (${f.sozinho.length}): pronto escrito e conferência minha, sem trava dele`)
       f.sozinho.slice(0, 15).forEach((x) => console.log(linha(x)))
       console.log(`\n  sem especificação (${f.semEspec.length}): especificar antes de fazer`)
@@ -1831,6 +1910,17 @@ switch (cmd) {
       const id = argv[argv.indexOf(sub) + 1]
       const estado = sub === 'fechar' ? 'OK' : (valorDe('para') || '').toUpperCase()
       if (!id) { console.log(`\n  uso: node cc.mjs backlog ${sub} <ID> ${sub === 'fechar' ? '--prova "como testei"' : '--para <CODIGO>'}\n`); break }
+      /* CC-851 (Nisaba), regra 3: tarefa com conferência automática que o robô
+         sabe rodar só fecha pelo robô. "Testei" escrito à mão não basta. */
+      if (estado === 'OK') {
+        const Cf = await import('./src/conferencia.mjs')
+        const it = B.ler().itens.find((x) => x.id === id)
+        if (it && Cf.lerConferencia(it.conferir).conhecido) {
+          console.log(`\n  recusado: ${id} tem conferência automática (${it.conferir}) e só fecha pelo robô:\n  node cc.mjs backlog conferir ${id}\n`)
+          process.exitCode = 1
+          break
+        }
+      }
       try {
         const i = B.mover(id, estado, {
           prova: valorDe('prova') || undefined,
@@ -1838,6 +1928,8 @@ switch (cmd) {
           decisao: valorDe('decisao') || undefined,
         })
         console.log(`\n  ${i.id} → ${B.estadoDe(i.estado).rotulo}\n`)
+        // CC-900: o contador de tokens da sessão, para medir o custo do item
+        try { (await import('./src/custoItem.mjs')).marcar(i.id, i.estado) } catch { /* medir nunca impede mover */ }
       } catch (e) { console.log(`\n  recusado: ${e.message}\n`) }
       break
     }
@@ -1869,6 +1961,15 @@ switch (cmd) {
       const alvo = path.join(process.cwd(), 'docs', 'ROADMAP.md')
       fs2.writeFileSync(alvo, B.comoMarkdown(), 'utf8')
       console.log(`\n  ${alvo} regerado a partir do dado\n`)
+      break
+    }
+
+    /* CC-873: `backlog contar` mostra quantos itens há em cada estado (sem as micro tarefas). */
+    if (sub === 'contar') {
+      const { itens } = B.ler()
+      console.log('')
+      for (const [estado, qtd] of Object.entries(B.contarPorEstado(itens))) console.log(`  ${estado.padEnd(14)} ${qtd}`)
+      console.log('')
       break
     }
 
@@ -2190,6 +2291,94 @@ switch (cmd) {
    * que escreve fica atrás de UM verbo, e um comando que só olha nunca muda
    * nada por engano.
    */
+  /* CC-544: as pastas de projeto desta máquina viram entradas do registro central.
+   *   node cc.mjs registro migrar --ensaio   mostra o que faria, sem gravar
+   *   node cc.mjs registro migrar            grava (e diz antes e depois) */
+  case 'registro': {
+    /* CC-861: no PC, manda as pastas daqui para o registro central da VPS, pela federação
+       (o único caminho que a porta de entrada deixa outra máquina usar). */
+    if (arg === 'enviar') {
+      const W = await import('./src/web.mjs')
+      const r = await W.empurrar({ comPastas: true }).catch((e) => ({ ok: false, erro: e.message }))
+      if (!r?.ok) die(`não enviei: ${r?.erro || 'resposta ' + (r?.status || 'sem status')}`)
+      const p = r.registroPastas
+      if (!p) die('a VPS recebeu, mas não respondeu sobre as pastas: ela precisa estar na versão nova do painel')
+      if (p.erro) die(`a VPS recusou as pastas: ${p.erro}`)
+      console.log(`\n  registro central: ${p.novos} projeto(s) novo(s), ${p.completar} ganharam esta máquina, ${p.iguais} já estavam. Total: ${p.total}\n`)
+      break
+    }
+    if (arg !== 'migrar') { console.log('\n  uso: node cc.mjs registro migrar [--ensaio] | registro enviar\n'); break }
+    const { migrar } = await import('./src/migrarRegistro.mjs')
+    const { findProjects } = await import('./src/install.mjs')
+    const { maquina } = await import('./src/maquina-id.mjs')
+    const r = migrar({ pastas: findProjects(), maquina: maquina().nome, ensaio: argv.includes('--ensaio') })
+    if (!r.ok) die(r.erro)
+    console.log(`\n  ${r.pastasLidas} pasta(s) lida(s) → ${r.entradas} projeto(s) distinto(s)${r.ensaio ? '  (ENSAIO: nada gravado)' : ''}`)
+    console.log(`  novos: ${r.plano.novos.length} · máquina a completar: ${r.plano.completar.length} · já iguais: ${r.plano.iguais.length}`)
+    console.log(`  registro: ${r.antes} → ${r.depois}${r.ids != null ? ` (${r.ids} ids distintos)` : ''}\n`)
+    for (const n of r.plano.novos) console.log(`   + ${n.nome}`)
+    break
+  }
+
+  /* CC-923 e CC-931: varredura de segurança (ASVS nível 1) dos projetos da VPS, só leitura.
+   *   node cc.mjs seguranca varrer [--projeto X]   escreve docs/seguranca/<projeto>.md e o README */
+  case 'seguranca': {
+    if (arg !== 'varrer' && arg !== 'requisitos') { console.log('\n  uso: node cc.mjs seguranca varrer [--projeto X]\n       node cc.mjs seguranca requisitos [--projeto X] [--sem-varrer]\n'); break }
+    const V = await import('./tools/varredura-seguranca/varredura.mjs')
+    const raiz = path.dirname((await import('node:url')).fileURLToPath(import.meta.url))
+    const base = path.dirname(raiz) // a pasta onde moram os projetos (~/projetos)
+    /* CC-922: os requisitos de segurança de cada parte do mapa do produto. Roda a varredura do projeto (só leitura) e
+       grava o veredito que o portão do pronto lê; com --sem-varrer só mostra a última. Sem --projeto, a pasta atual. */
+    if (arg === 'requisitos') {
+      const S = await import('./src/segurancaProduto.mjs')
+      const so = val('--projeto')
+      let pasta = process.cwd()
+      if (so) {
+        const nome = V.listarProjetos(base).find((n) => n === so || n === 'VPS_' + so)
+        if (!nome) die(`projeto "${so}" não encontrado em ${base}`)
+        pasta = path.join(base, nome)
+      }
+      const nome = path.basename(pasta)
+      let lista
+      try {
+        if (has('--sem-varrer')) lista = S.requisitosDoProduto(pasta)
+        else {
+          const r = await V.varrerProjeto({ nome, pasta, urls: V.urlsDosProjetos(raiz)[nome] || [] })
+          if (r.erro) die(`a varredura de ${nome} falhou: ${r.erro}`)
+          lista = S.conferirSeguranca(pasta, r).lista
+        }
+      } catch (e) { die(e.message) }
+      console.log(S.textoDosRequisitos(lista, { projeto: nome, varreu: !has('--sem-varrer') }))
+      break
+    }
+    let rs
+    try {
+      rs = await V.varrer({ base, raizCockpit: raiz, destino: path.join(raiz, 'docs/seguranca'), so: val('--projeto') })
+    } catch (e) { die(e.message) }
+    console.log('')
+    for (const r of rs) {
+      if (r.erro) { console.log(`  ${r.projeto}: ${r.erro}`); continue }
+      const c = V.contar(r)
+      console.log(`  ${r.projeto}: ${c['não cumpre']} não cumprem, ${c.suspeito} suspeitos, ${c['não medido']} não medidos, ${c.cumpre} cumprem`)
+    }
+    console.log(`\n  ${rs.length} projeto(s), relatórios em docs/seguranca/\n`)
+    break
+  }
+
+  /* CC-933: o registro de auditoria (login, revogar, deploy, volta de versão, religar a VPS).
+   *   node cc.mjs auditoria [--ultimos N]   as últimas N linhas em português (padrão 30) */
+  case 'auditoria': {
+    const Au = await import('./tools/auditoria/auditoria.mjs')
+    const n = Number(val('--ultimos')) || 30
+    const linhas = Au.ler({ ultimos: n })
+    console.log(`\n  registro de auditoria: ${Au.caminhoAuditoria()}`)
+    if (!linhas.length) { console.log('  nenhuma linha ainda\n'); break }
+    console.log(`  as últimas ${linhas.length}, a mais nova embaixo:\n`)
+    for (const l of linhas) console.log('  ' + Au.legivel(l))
+    console.log()
+    break
+  }
+
   case 'armazem': {
     const A = await import('./src/armazem.mjs')
     const C = await import('./src/coletores.mjs')
@@ -2200,8 +2389,10 @@ switch (cmd) {
       const { registros, transcritos } = await C.coletarTranscritos({ desde })
       const { findProjects } = await import('./src/install.mjs')
       const { registros: doGit } = await C.coletarGit(findProjects(), { desde })
-      const r = A.gravar([...registros, ...doGit])
-      console.log(`\n  ${transcritos} conversa(s) lida(s), ${findProjects().length} projeto(s) no git`)
+      const { eventos } = await import('./src/travas.mjs')
+      const { registros: dasTravas } = C.coletarTravas({ eventos: eventos({ limite: 100000, guardarNovos: false }), registros, desde })
+      const r = A.gravar([...registros, ...doGit, ...dasTravas])
+      console.log(`\n  ${transcritos} conversa(s) lida(s), ${findProjects().length} projeto(s) no git, ${dasTravas.length} ponto(s) de trava`)
       console.log(`  ${r.gravados} medida(s) gravada(s) em ${r.onde || '(nenhum lugar gravável)'}\n`)
       break
     }
@@ -2524,6 +2715,59 @@ switch (cmd) {
    * `--json` despeja no terminal sem gravar nada, que é como outra ferramenta
    * consome sem precisar do arquivo em disco.
    */
+  case 'sprint': {
+    /* CC-899: node cc.mjs sprint capacidade [--pasta X] */
+    /* CC-927: node cc.mjs sprint artefatos [--projeto X]: o que o sprint atual manda produzir */
+    if (arg === 'artefatos') {
+      const X = val('--projeto')
+      const irmao = (n) => [n, 'VPS_' + n, 'PC_' + n].map((d) => path.join(path.dirname(process.cwd()), d)).find((d) => fs.existsSync(d))
+      const raizX = X ? (fs.existsSync(path.resolve(X)) ? path.resolve(X) : irmao(X)) : process.cwd()
+      if (!raizX) die(`não achei o projeto "${X}"`)
+      const c = (await import('./src/sprint.mjs')).caminhoPorSprint(raizX, Date.now(), { gravar: false })
+      if (!c.ok) die(c.erro)
+      const t = c.trechos.find((x) => x.sprint.estado === 'atual')
+      const lista = t?.artefatos || []
+      console.log(`\n  artefatos do ${t?.frente || 'sprint atual'} de ${c.nome}\n`)
+      if (!lista.length) console.log('  nenhum: os itens deste sprint não pedem artefato de engenharia.\n')
+      for (const a of lista) {
+        console.log(`  ${a.existe ? 'feito  ' : 'A FAZER'}  ${a.nome}\n           para que serve: ${a.porque}\n           onde fica: ${a.arquivo}\n           pedido por: ${a.itens.join(', ')}\n`)
+      }
+      break
+    }
+    if (arg !== 'capacidade') { console.log('\n  uso: node cc.mjs sprint capacidade [--pasta X] | sprint artefatos [--projeto X]\n'); break }
+    const S = await import('./src/sprint.mjs')
+    const U = await import('./src/uso.mjs')
+    const c = S.capacidade(val('--pasta') || process.cwd())
+    const f = (n) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+    console.log(`\n  capacidade de ${c.projeto} (tokens = saída + escrita de cache)\n`)
+    console.log('  semana (segunda)  dias ativos  horas de agente  tokens')
+    for (const s of c.semanas) console.log(`  ${s.de}        ${String(s.diasAtivos).padStart(5)}  ${f(s.horasAgente).padStart(15)}  ${s.tokens.toLocaleString('pt-BR')}`)
+    console.log(`\n  horas de agente por dia ativo: ${f(c.horasPorDiaAtivo)}`)
+    console.log(`  tokens por semana (mediana):   ${Math.round(c.tokensPorSemanaMediana).toLocaleString('pt-BR')}`)
+    console.log(`  horas dele (atenção):          ${c.horasDele} (sem medida)`)
+    const g = U.gastoPorSemana(U.lerHistorico())
+    console.log('\n  gasto do plano por semana (maior % lido, histórico no abrigo):')
+    console.log(g.length ? g.map((x) => `  até ${new Date(x.resetaEm).toLocaleDateString('sv')}: ${x.pct}%`).join('\n') : '  ainda sem linhas (o histórico começa a ser anotado agora)')
+    console.log('')
+    break
+  }
+
+  /* CC-911 (#cartas): node cc.mjs cartas validar <arquivo> | cartas votos <deck> */
+  case 'cartas': {
+    const C = await import('./src/cartas.mjs')
+    if (arg === 'validar' && positional[2]) {
+      let j
+      try { j = JSON.parse(fs.readFileSync(positional[2], 'utf8')) } catch (x) { die('arquivo ilegível: ' + x.message) }
+      const erros = C.validarDeck(j)
+      if (erros.length) { console.log(erros.map((e) => '  ' + e).join('\n')); process.exitCode = 1; break }
+      console.log(`deck válido: ${j.cartas.length} cartas`)
+    } else if (arg === 'votos' && positional[2]) {
+      const v = C.votos(process.cwd(), positional[2])
+      console.log(v.length ? v.map((x) => `${x.em}  ${x.carta}  ${x.escolhas.join(' + ')}${x.nota ? '  "' + x.nota + '"' : ''}`).join('\n') : 'sem votos')
+    } else console.log('\n  uso: node cc.mjs cartas validar <arquivo> | cartas votos <deck>\n')
+    break
+  }
+
   case 'testmap': {
     const T = await import('./src/testmap.mjs')
     const raiz = val('--dir') || process.cwd()
