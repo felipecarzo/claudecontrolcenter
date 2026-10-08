@@ -149,7 +149,8 @@ export function organizar(raiz, texto, { agy = AGY, respostas = [] } = {}) {
     v = validarQuebra(r.texto, { frentes, comRespostas: resp.length > 0 })
     if (!v.ok) { semIA = `o agy devolveu algo fora do formato (${v.erros[0]})`; v = null }
   } else semIA = agy.falhaDe(k) ? `o agy falhou: ${agy.falhaDe(k)}` : 'o agy não respondeu'
-  if (v?.escolhas.length) return { escolhas: v.escolhas }
+  // 07/10, pedido dele: a ideia em palavras melhores vai junto da pergunta ("sai da janela (…) e quando voltei ja nao lembro qual a ideia")
+  if (v?.escolhas.length) return { escolhas: v.escolhas, ...(v.ideia?.intencao ? { resumo: v.ideia.intencao } : {}) }
   const mae = v ? v.ideia : ideiaDoTexto(t)
   const frente = mae.frente || frenteAtual(raiz)
   const ideia = { ...mae, frente }

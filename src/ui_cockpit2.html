@@ -4629,6 +4629,8 @@
     .cam-ideia-campo{display:block;width:100%;box-sizing:border-box;min-height:96px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text-main);font:inherit;font-size:16px;line-height:1.4;resize:vertical;}
     .cam-ideia-int{display:block;width:100%;box-sizing:border-box;min-height:48px;padding:10px 14px;resize:vertical;line-height:1.35;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text-main);font:inherit;font-size:16px;}
     .cam-ideia-msg{margin:0;font-size:14px;line-height:1.5;color:var(--text-dim);}
+    .cam-ideia-orig{margin:6px 0 10px;font-size:14px;color:var(--text-dim);}
+    .cam-ideia-orig summary{cursor:pointer;min-height:44px;display:flex;align-items:center;}
     .cam-ideia-aviso{margin:0;padding:10px 12px;border-radius:12px;box-shadow:var(--neu-dentro);font-size:14px;line-height:1.5;color:var(--text-dim);}
     .cam-ideia-erro{margin:0;font-size:14px;line-height:1.5;color:var(--red);}
     .cam-ideia-tarefa{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;box-shadow:var(--neu-dentro);}
@@ -21378,7 +21380,10 @@
         corpo = '<p class="cam-ideia-msg" role="status">ideia ' + esc(E.id) + (n ? ' com ' + n + (n === 1 ? ' parte' : ' partes') : '') + ' no backlog</p>'
           + '<div class="cam-ideia-acoes"><button type="button" class="cam-ideia-b forte" data-ideia-nova>nova ideia</button></div>';
       } else if (E.fase === 'escolha') {
-        corpo = '<p class="cam-ideia-msg">antes de montar as partes, uma escolha sua:</p>'
+        // pedido dele em 07/10: a ideia reescrita em cima, para quem saiu da janela e voltou lembrar do que se trata
+        corpo = (E.resumo ? '<div class="cam-ideia-tarefa cam-ideia-mae"><p class="cam-ideia-rot">a sua ideia</p><p class="cam-ideia-perg">' + esc(E.resumo) + '</p></div>' : '')
+          + '<details class="cam-ideia-orig"><summary>o que você escreveu</summary><p class="cam-ideia-msg">' + esc(E.texto || '') + '</p></details>'
+          + '<p class="cam-ideia-msg">antes de montar as partes, uma escolha sua:</p>'
           + E.escolhas.map((e, i) => '<div class="cam-ideia-escolha"><p class="cam-ideia-perg">' + esc(e.pergunta) + '</p>'
             + '<div class="cam-ideia-ops" role="group" aria-label="' + esc(e.pergunta) + '">'
             + e.opcoes.map((o, k) => '<button type="button" class="cam-ideia-op' + (E.escolhaResp[i] === o ? ' on' : '') + '" aria-pressed="' + (E.escolhaResp[i] === o) + '" data-ideia-escolha="' + i + '" data-ideia-opcao="' + k + '">' + esc(o) + '</button>').join('')
@@ -21424,7 +21429,7 @@
           if (E.token !== token) return;
           if (!r) return falhou('o painel não respondeu. Tente de novo.');
           if (r.ok && Array.isArray(r.escolhas) && r.escolhas.length) {
-            E.escolhas = r.escolhas; E.escolhaResp = []; E.fase = 'escolha'; E.erro = null;
+            E.escolhas = r.escolhas; E.resumo = r.resumo || null; E.escolhaResp = []; E.fase = 'escolha'; E.erro = null;
             return c2RenderCaminho();
           }
           if (r.ok && r.ideia) {
