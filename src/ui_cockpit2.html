@@ -416,7 +416,15 @@
     :root[data-tema] .n-block textarea { background: var(--bg) !important; border-color: transparent !important; box-shadow: var(--neu-fora); }
     /* CC-677: barra de responder sessões; CC-748: em toda largura (ver abaixo). */
     .lat-btn { display: none !important; }
-    #lateral-dir { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 384px; overflow-y: auto; padding: 18px 16px 24px; background: var(--bg); border-left: 1px solid var(--border); z-index: 35; box-sizing: border-box; }
+    /* CC-988, pedido dele: a largura da barra direita ajustável como a da esquerda. A alça mora FORA do #lateral-dir,
+       porque o conteúdo dele é reescrito inteiro e a apagaria; fica presa à borda esquerda dele pela mesma variável. */
+    :root { --lat-w: 384px; }
+    .lat-punho { display: none; position: fixed; top: 0; bottom: 0; right: calc(var(--lat-w) - 3px); width: 6px; cursor: col-resize; z-index: 71; background: color-mix(in srgb, var(--border) 60%, transparent); transition: background .15s, width .15s; }
+    .lat-punho:hover, .lat-punho.arrastando { background: var(--accent); opacity: .8; width: 8px; }
+    body.lateral-on .lat-punho, body.lat-gaveta .lat-punho { display: block; }
+    body.arrastando-lat, body.arrastando-lat * { cursor: col-resize !important; user-select: none !important; }
+    @media (max-width: 700px) { body.lateral-on .lat-punho, body.lat-gaveta .lat-punho { display: none; } }
+    #lateral-dir { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: var(--lat-w); overflow-y: auto; padding: 18px 16px 24px; background: var(--bg); border-left: 1px solid var(--border); z-index: 35; box-sizing: border-box; }
     #lateral-dir .c2-aviso { margin-bottom: 12px; }
     /* CC-684: limites e máquinas no topo da barra. */
     .lat-maq { border: 1px solid var(--border); border-radius: 12px; margin: 0 0 12px; background: var(--card); }
@@ -430,7 +438,7 @@
     .lat-cab b { font-size: 15px; }
     @media (min-width: 1700px) {
       .lat-btn { display: inline-flex !important; }
-      body.lateral-on .main-content { margin-right: 384px; }
+      body.lateral-on .main-content { margin-right: var(--lat-w); }
       body.lateral-on #lateral-dir { display: block; }
       body.lateral-on .lat-btn { color: var(--accent); }
       #lat-fundo { display: none; }
@@ -439,7 +447,7 @@
        nada surge do nada), com fundo escurecido que fecha ao tocar. */
     @media (max-width: 1699px) {
       .lat-btn { display: inline-flex !important; }
-      #lateral-dir { display: block; width: min(420px, 92vw); transform: translateX(105%); visibility: hidden; transition: transform .28s ease, visibility 0s linear .28s; z-index: 70; box-shadow: -14px 0 34px rgba(0,0,0,.18); overscroll-behavior: contain; }
+      #lateral-dir { display: block; width: min(var(--lat-w), 92vw); transform: translateX(105%); visibility: hidden; transition: transform .28s ease, visibility 0s linear .28s; z-index: 70; box-shadow: -14px 0 34px rgba(0,0,0,.18); overscroll-behavior: contain; }
       body.lat-gaveta #lateral-dir { transform: none; visibility: visible; transition: transform .28s ease; }
       body.lat-gaveta .lat-btn { color: var(--accent); }
       #lat-fundo { position: fixed; inset: 0; background: rgba(0,0,0,.28); z-index: 69; opacity: 0; pointer-events: none; transition: opacity .28s; }
@@ -11373,6 +11381,36 @@
       });
     })();
 
+    /* CC-988, pedido dele: a barra direita (responder sessões) com a largura ajustável como a esquerda. Mesmo jeito:
+       arrasta a borda, grava ao soltar, toque duplo volta ao padrão. A largura é a distância do dedo à borda direita. */
+    const LAT_MIN = 300, LAT_MAX = 720, LAT_PADRAO = 384;
+    function aplicarLarguraLat(px) {
+      const v = Math.min(LAT_MAX, Math.max(LAT_MIN, Math.round(px)));
+      document.documentElement.style.setProperty('--lat-w', v + 'px');
+      return v;
+    }
+    (function ligarPunhoLat() {
+      const punho = document.createElement('div'); punho.className = 'lat-punho'; punho.title = 'arraste para mudar a largura';
+      document.body.appendChild(punho);
+      let arrastando = false; let ultimo = LAT_PADRAO;
+      const mover = (e) => { if (!arrastando) return; e.preventDefault(); ultimo = aplicarLarguraLat(window.innerWidth - (e.touches?.[0]?.clientX ?? e.clientX)); };
+      const soltar = () => {
+        if (!arrastando) return;
+        arrastando = false; punho.classList.remove('arrastando'); document.body.classList.remove('arrastando-lat');
+        post('/api/tela', { chave: 'lateral:largura', aberto: true, valor: ultimo }).catch(() => {}); // grava no soltar, não a cada pixel
+      };
+      punho.addEventListener('mousedown', (e) => { arrastando = true; punho.classList.add('arrastando'); document.body.classList.add('arrastando-lat'); e.preventDefault(); });
+      punho.addEventListener('touchstart', () => { arrastando = true; punho.classList.add('arrastando'); }, { passive: true });
+      window.addEventListener('mousemove', mover);
+      window.addEventListener('touchmove', mover, { passive: false });
+      window.addEventListener('mouseup', soltar);
+      window.addEventListener('touchend', soltar);
+      punho.addEventListener('dblclick', () => {
+        ultimo = aplicarLarguraLat(LAT_PADRAO);
+        post('/api/tela', { chave: 'lateral:largura', aberto: true, valor: LAT_PADRAO }).catch(() => {});
+      });
+    })();
+
     /* A grade de todas as telas, como a tela de aplicativos do celular.
        Monta a partir da PRÓPRIA barra lateral: uma tela nova aparece aqui sem
        ninguém lembrar de somar, que é a mesma escolha da gaveta do telefone. */
@@ -19137,6 +19175,8 @@
          resto: aberto no computador tem que ser igual no telefone. */
       const larg = Number(d?.aberto?.['menu:largura'] ?? 0);
       if (larg >= 180 && larg <= 420) aplicarLarguraBarra(larg);
+      const largLat = Number(d?.aberto?.['lateral:largura'] ?? 0); // CC-988
+      if (largLat >= LAT_MIN && largLat <= LAT_MAX) aplicarLarguraLat(largLat);
       if (!d?.aberto?.['menu:encolhido']) return;
       document.querySelector('.sidebar')?.classList.add('encolhida');
       const b = document.querySelector('[data-sb-encolher]');

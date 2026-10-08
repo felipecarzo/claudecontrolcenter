@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-93 abertos, 882 fechados, 975 no total. Gerado em 2026-10-07.
+94 abertos, 882 fechados, 976 no total. Gerado em 2026-10-07.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -71,6 +71,7 @@
 | CC-983 | prova | - | resumo do agy por nivel: ate a minha ultima pergunta, cada nivel sobe mais uma mensagem minha; mensagens seguidas contam como uma |
 | CC-986 | prova | - | area de ideias no Caminho: ditar ou escrever a ideia, a IA quebra em tarefas, pergunta o lugar na fila e grava no backlog |
 | CC-987 | prova | - | cada aba do painel (Caminho, Sessoes e as outras) instalavel como app separado no celular |
+| CC-988 | prova | - | barra lateral direita (responder sessoes) com largura ajustavel arrastando a borda, igual a esquerda |
 
 ## framework
 
