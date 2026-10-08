@@ -213,6 +213,21 @@ t('abre e anda são reconhecidos para o testedevoo e o endereço local', () => {
     assert.deepEqual(conversasQueAcabaram(itens).sort(), ['passou', 'reprovada']))
 }
 
+/* CC-1004: o que o painel, o app ou outra sessão escreve não acusa o agente nem é desfeito */
+{
+  const { foraDoDeclarado, ehEfeitoNormal } = await import('./src/maestro.mjs')
+  t('a foto de design que o painel grava não reprova a tarefa (08/10)', () => {
+    assert.deepEqual(foraDoDeclarado(['server.js', 'docs/cartas/design.json', 'docs/cartas/img/design/antes-depois-41s39kv4-346.jpg'], ['server.js']), [])
+    assert.deepEqual(foraDoDeclarado(['server.js', 'index.html'], ['server.js']), ['index.html'])
+  })
+  t('banco do app conta como efeito normal; código não', () => {
+    assert.equal(ehEfeitoNormal('dados/contas.db-wal'), true)
+    assert.equal(ehEfeitoNormal('server.js'), false)
+  })
+  const fonte = (await import('node:fs')).readFileSync(new URL('./src/maestro.mjs', import.meta.url), 'utf8')
+  t('o desfazer pula efeito normal e documento', () => assert.ok(fonte.includes('r.mexidos.filter((f) => !naoDesfazer(f))')))
+}
+
 /* CC-847: trava de arquivo durante a micro tarefa, mordendo de verdade */
 {
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
@@ -697,6 +712,8 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
     assert.deepEqual(Ar.itemDaFilaFechavel({ proposta: { daFila: 'CN-113', daFilaTexto: 'Sim, somar os compromissos recorrentes na conta da sobra do mês' } }), ['CN-113'])
     assert.deepEqual(Ar.itemDaFilaFechavel({ proposta: { daFila: 'CN-16', daFilaTexto: 'Lançar gasto rápido com print ou foto, Contas fixas separadas do resto, Ver quanto sobra no mês' } }), [], 'várias funções: fica aberto')
     assert.deepEqual(Ar.itemDaFilaFechavel({ proposta: { daFila: 'CN-1' } }), [], 'sem o texto, não fecha')
+    // CC-1005: vírgula dentro de parêntese é detalhe (o CN-169 nunca fechava e o conserto foi proposto 6 vezes)
+    assert.deepEqual(Ar.itemDaFilaFechavel({ proposta: { daFila: 'CN-169', daFilaTexto: 'Os endereços do backup (configuração, status e o que roda o backup) abrem sem login' } }), ['CN-169'])
     assert.deepEqual(Ar.itemDaFilaFechavel({ proposta: {} }), [])
   })
   t('arquiteto: recusar a revisão não fecha nada', () => {

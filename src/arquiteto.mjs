@@ -383,7 +383,9 @@ export function itemDaFilaFechavel(it) {
   const id = it?.proposta?.daFila
   if (!id || !it.proposta.daFilaTexto) return [] // sem o texto, não dá para saber se é uma função só: não fecha
   // ideia aceita vira item "Sim, criar a área ...": o "Sim," não é uma função
-  return String(it.proposta.daFilaTexto).replace(/^\s*sim\s*[,:.-]\s*/i, '').split(/[,;]/).filter((x) => x.trim()).length > 1 ? [] : [id]
+  // CC-1005: vírgula dentro de parêntese é detalhe, não outra função. "Os endereços do backup (configuração, status e o que
+  // roda o backup) abrem sem login" contava três, o item nunca fechava e o mesmo conserto foi proposto 6 vezes (08/10).
+  return String(it.proposta.daFilaTexto).replace(/^\s*sim\s*[,:.-]\s*/i, '').replace(/\([^)]*\)/g, '').split(/[,;]/).filter((x) => x.trim()).length > 1 ? [] : [id]
 }
 
 /**
@@ -906,7 +908,7 @@ function responderProduto(cwd, proposta, texto, marcadas) {
 }
 
 /** Um passo do ciclo: com pergunta esperando, para; com entrevista aberta, pergunta dela; senão, o Haiku propõe. */
-export async function passo(cwd, { binario } = {}) {
+export async function passo(cwd, { binario, voltou = false } = {}) {
   const aberta = perguntaAberta(B.ler(B.caminhoPadrao(cwd)).itens)
   if (aberta) return { esperando: aberta }
   const daEntrevista = perguntaDaEntrevista(cwd)
@@ -928,6 +930,12 @@ export async function passo(cwd, { binario } = {}) {
   let daFila = deveRodarSozinho(proposta, estado)
   // CC-967: item que já teve obra aprovada nunca é construído sozinho de novo; a pergunta diz isso
   const jaFeito = daFila && jaTeveObraAprovada(daFila.id, B.ler(B.caminhoPadrao(cwd)).itens)
+  /* CC-1005, ele em 08/10: "se é um problema pq voce mesmo ou o sistema mesmo nao pode decidir corrigir???". O item já teve
+     obra aprovada por ele: está feito. Fecha com essa prova e propõe outra coisa, em vez de perguntar "corrige agora?" de novo. */
+  if (jaFeito && !voltou) {
+    B.mover(daFila.id, 'OK', { prova: `feito: obra aprovada por ele (pedido ${jaFeito.pedido}, revisão ${jaFeito.revisao}); fechado pelo robô para não propor de novo` }, B.caminhoPadrao(cwd))
+    return passo(cwd, { binario, voltou: true })
+  }
   if (jaFeito) {
     proposta.porque = `${proposta.porque} (Atenção: o item ${daFila.id} já teve uma obra aprovada (pedido ${jaFeito.pedido}, revisão ${jaFeito.revisao}). Não construo de novo sozinho: confirme se é mesmo para refazer.)`.slice(0, 500)
     daFila = null

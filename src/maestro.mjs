@@ -288,12 +288,17 @@ const EFEITO_NORMAL = [
   /\.(db|db-shm|db-wal|sqlite|sqlite3|sqlite-shm|sqlite-wal)$/,
   // 07/10: o estado do projeto que o PAINEL escreve (backlog, diário, sprints, mapa) não é código do agente; sprints.jsonl reprovou 2 tarefas boas
   /^docs\/[^/]+\.jsonl$/, /^docs\/ROADMAP\.md$/, /^\.framework\//,
+  // CC-1004, 08/10: 2 das 3 reprovações do dia foram a foto de design que o painel grava em docs/cartas/ a cada resposta
+  /^docs\/cartas\//,
 ]
+const normArq = (f) => String(f).replace(/\\/g, '/').replace(/^\.\//, '')
+export const ehEfeitoNormal = (f) => EFEITO_NORMAL.some((re) => re.test(normArq(f)))
+// O desfazer nunca apaga efeito normal nem documento: em 08/10 apagou o banco do app e o relatório de outra sessão
+const naoDesfazer = (f) => ehEfeitoNormal(f) || /^docs\//.test(normArq(f))
 export function foraDoDeclarado(mexidos, declarados) {
   if (!declarados?.length) return []
-  const norm = (f) => String(f).replace(/\\/g, '/').replace(/^\.\//, '')
-  const ok = new Set(declarados.map(norm))
-  return mexidos.map(norm).filter((f) => !ok.has(f) && !EFEITO_NORMAL.some((re) => re.test(f)))
+  const ok = new Set(declarados.map(normArq))
+  return mexidos.map(normArq).filter((f) => !ok.has(f) && !ehEfeitoNormal(f))
 }
 
 /** Marca o estado da pasta antes da tentativa. `git stash create` fotografa o que está sem commit sem mexer em nada. */
@@ -383,7 +388,8 @@ export async function build(cwd) {
 /** O robô que confere uma micro tarefa. Devolve `{ ok, erro, mexidos }` com o erro EXATO. */
 export async function conferir(cwd, desde, head = null, conferirItem = 'auto:build', ponto = null) {
   const mexidos = ponto?.conteudo ? mudadosEntre(ponto.conteudo, await fotoDoConteudo(cwd)) : await mexidosDesde(cwd, desde, head)
-  if (!mexidos.length) return { ok: false, erro: 'nenhum arquivo do projeto foi alterado nesta tarefa', mexidos }
+  // CC-1004: a foto de design, o backlog e o diário que o PAINEL grava durante a tarefa não provam que o agente fez algo
+  if (!mexidos.some((f) => !/^(docs\/cartas\/|docs\/[^/]+\.jsonl$|docs\/ROADMAP\.md$|\.framework\/)/.test(normArq(f)))) return { ok: false, erro: 'nenhum arquivo do projeto foi alterado nesta tarefa', mexidos }
   // CC-838: a conferência da tarefa, só de lista fechada; build (ou nada a conferir) segue pelo build() daqui
   const c = lerConferencia(conferirItem)
   const b = c.conhecido && c.tipo !== 'build' ? await rodarConferencia(cwd, c) : await build(cwd)
@@ -581,7 +587,7 @@ export async function executar(cwd, pai, { log = console.log, rodada = 1 } = {})
       const destruidos = r.ok ? await encolhidos(cwd, ponto, r.mexidos) : []
       if (destruidos.length) r = { ...r, ok: false, erro: `reescrita destrutiva: apagou boa parte de ${destruidos.join(', ')}. Mude só o trecho necessário, sem regravar o arquivo inteiro` }
       if (!r.ok && r.mexidos.length) {
-        const desfeitos = await voltar(cwd, ponto, r.mexidos)
+        const desfeitos = await voltar(cwd, ponto, r.mexidos.filter((f) => !naoDesfazer(f))) // CC-1004
         if (desfeitos.length) r = { ...r, erro: `${r.erro}\n(as mudanças desta tentativa foram desfeitas: ${desfeitos.join(', ')})` }
       }
     } finally { destravar(dono); emAndamento = null }

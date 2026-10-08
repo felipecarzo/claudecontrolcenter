@@ -1247,12 +1247,13 @@ async function montarResposta() {
        o turno acaba, e uma chave por escrita faria o mesmo resumo ser pedido
        de novo a cada tique. */
     const textoDoCoderoom = new Map()
-    for (const j of jobs) if (j.tipo === 'coderoom' && j.ultima?.texto) textoDoCoderoom.set('gate:' + j.id, j.ultima.texto)
+    for (const j of jobs) if (j.tipo === 'coderoom' && j.ultima?.texto) textoDoCoderoom.set('gate:' + j.id, j.ultima)
     // CC-879: o cartão de "esperando você" também; antes só a lista de conectadas recebia o resumo
     for (const s of [...(dados.espera || []), ...(dados.conectadas || [])]) {
-      const txt = s.conversa && textoDoCoderoom.get(s.conversa)
+      const u = s.conversa && textoDoCoderoom.get(s.conversa), txt = u?.texto
       if (!txt || s.estado === 'trabalhando' || s.porPrograma) continue
-      const k = 'sess::' + s.conversa
+      // CC-1005: a chave leva a hora da mensagem; só pela conversa, o resumo da primeira parada ficava para sempre (08/10: "travou com erro" com 3 de 3 feitas)
+      const k = 'sess::' + s.conversa + '::' + (u.em || u.texto.length)
       const r = resumoAgy.obterTexto(k)
       resumoAgy.pedirTexto({ k, prompt: 'Um agente de programação acabou de responder no Coderoom, a tela de conversa do painel de projetos dele. Escreva em português do Brasil, sem travessão, no máximo 3 frases curtas: o que ele fez, o que ele mudou e o que falta. Para quem não é programador. Sem markdown. Não use ferramentas.\n\n' + resumoAgy.INSTRUCAO_ETIQUETA + 'RESPOSTA DO AGENTE:\n' + txt.slice(0, 4000), comEtiqueta: true })
       s.resumoIA = r
