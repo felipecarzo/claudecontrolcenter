@@ -1,27 +1,33 @@
 # HANDOFF
 
-**Sessões:** duas na VPS até 07/10, `2c01df04` (rota `gate`) e `baa1393b` (rota `cockpit2`). Ponteiro, não
-relatório: o feito está em `docs/diario/2026-10-07.md` (uma seção por sessão) e no histórico de cada item
-(`node cc.mjs backlog historia <ID>`).
-**Commit:** o trabalho das duas sessões foi commitado junto em 07/10, a pedido dele. Ficaram de fora `scratch/` e
-`screenshot-coderoom.png` na raiz (rascunho, não é do projeto).
-**Branch:** `backlog/cc-46-48-49-52-53-56-65`
+**Última sessão:** `5ba0551c`, 08/10. Ponteiro, não relatório: o feito está em `docs/diario/2026-10-08.md`
+e no histórico de cada item (`node cc.mjs backlog historia <ID>`).
+**Commit:** NADA commitado desta sessão (ele não pediu). Fora também: `scratch/` e `screenshot-coderoom.png`.
+**Branch:** `backlog/cc-46-48-49-52-53-56-65`. Rotas `modelo` e `cockpit2` marcadas por 5ba0551c: liberar ao commitar.
 
-## Próximo (sessão baa1393b)
+## Próximo
 
-- **CC-960**, pedido dele para a próxima conversa: trocar modelo e esforço sozinho pela complexidade. Desenho já
-  escolhido por ele: trava nos ajudantes, modelo e esforço por projeto, planeja Opus e executa Sonnet. Correção
-  dele: decidir o modelo ANTES, por critérios, e orientar a sessão seguinte, sem refazer trabalho. Depois, CC-959.
-- Em prova esperando o celular dele: CC-966 (menu do celular) e os outros PR do Caminho e da segurança.
-- Tarefas dele (lista "meu"): reinstalar o deploy seguro e a porta de entrada como root, religar o painel, trocar
-  as chaves vazadas, cabeçalhos do nginx.
+- Em prova esperando o olho dele: CC-984, CC-991 a CC-997 (lista no diário de 08/10).
+- Próximo da fila: CC-985 (guia de cada projeto), Sonnet esforço alto.
+- Em prova esperando o celular dele: CC-986 (área de ideias no Caminho), CC-987 (abas como apps), CC-983, CC-988,
+  CC-990, CC-975, CC-976 e os PR anteriores.
+- Tarefas dele (lista "meu"): modelo padrão global em opusplan e reinstalar a porta de entrada (comandos nas tarefas),
+  trocar as chaves vazadas, cabeçalhos do nginx.
+- Regra nova de economia: memória `modelo-padrao-opusplan`. Os projetos da VPS abrem em opusplan (Conta de Casa em
+  Opus) pelo `.claude/settings.local.json` de cada um.
 
-## Em andamento quando a sessão 2c01df04 fechou
+## Sessão 599331d1 (07 e 08/10, rota `gate`, liberada ao fechar)
 
-- **Conta de Casa** (`~/projetos/VPS_conta-de-casa`): o robô estava tirando os endereços repetidos do backup
-  (pedido dele na revisão CN-175). Conversa do arquiteto: `41s39k-v4cf`. Antes de rodar qualquer passo do
-  arquiteto, leia a conversa e o backlog do projeto: pode haver pergunta aberta esperando ele.
-- **CC-879 pela metade:** o cartão do Coderoom nas Sessões ainda não mostra as tarefas nem o resumo do agy.
+- **Em prova:** CC-879 (cartão do Coderoom com resumo e tarefas do robô), CC-980 (conversa de micro tarefa que
+  acabou é arquivada), CC-1004 (robô não culpa nem desfaz por foto de design do painel), CC-1005 (robô não
+  repropõe conserto já aprovado). Detalhe no diário de 08/10.
+- **Código SEM commit desta sessão:** `src/maestro.mjs`, `src/arquiteto.mjs`, `src/cockpit2.mjs`,
+  `test-tarefa.mjs`, `test-cockpit2.mjs` (parte do `ui_cockpit2.html` e do `gate.mjs` entrou no 37c8164 de outra
+  sessão).
+- **Conta de Casa:** Coderoom com uma conversa só (`41s39k-v4cf`). Os itens de backup dele fecharam; o cartão
+  fica "parou" até o próximo passo do robô. Na próxima rodada, conferir se sumiram as reprovações "fora do
+  declarado" por `docs/cartas/`.
+- **Na fila:** CC-978 (checklist do agente no cartão), CC-979 (pedido dado por falho em app sem build).
 
 ## Esperando ele
 
