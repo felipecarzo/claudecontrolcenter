@@ -199,6 +199,20 @@ t('abre e anda são reconhecidos para o testedevoo e o endereço local', () => {
   t('o projeto declara a conferência padrão uma vez no AGENTS.md', () => assert.equal(lida, 'auto:anda https://testedevoo.carzo.com.br/x/'))
 }
 
+/* CC-980: conversa de micro tarefa que acabou, por qualquer motivo, vai para os arquivados */
+{
+  const { conversasQueAcabaram } = await import('./src/maestro.mjs')
+  const itens = [
+    { id: 'P-1', estado: 'EM' },
+    { id: 'P-2', pai: 'P-1', estado: 'OK', conversa: 'passou' },
+    { id: 'P-3', pai: 'P-1', estado: 'KO', conversa: 'reprovada' }, // o conserto foi para conversa limpa
+    { id: 'P-4', pai: 'P-1', estado: 'KO', conversa: 'reusada' }, { id: 'P-5', pai: 'P-1', estado: 'B1', conversa: 'reusada' },
+    { id: 'P-6', pai: 'P-1', estado: 'TR', conversa: 'travada' },
+  ]
+  t('conversa de micro tarefa sem tarefa aberta é arquivada; a reusada pelo conserto e a travada ficam', () =>
+    assert.deepEqual(conversasQueAcabaram(itens).sort(), ['passou', 'reprovada']))
+}
+
 /* CC-847: trava de arquivo durante a micro tarefa, mordendo de verdade */
 {
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
@@ -274,7 +288,7 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
   const casaN = fs.mkdtempSync(path.join(os.tmpdir(), 'nis-casa-'))
   const proj = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'nis-')), 'VPS_teste_nisaba')
   fs.mkdirSync(path.join(proj, 'docs'), { recursive: true }); fs.mkdirSync(path.join(proj, 'src'))
-  const hoje = new Date().toISOString().slice(0, 10)
+  const hoje = new Date().toLocaleDateString('sv') // dia local, como a trava e o backlog (07/10)
   const backlog = (itens) => fs.writeFileSync(path.join(proj, 'docs', 'backlog.jsonl'), itens.map((x) => JSON.stringify(x)).join('\n') + '\n')
   const gancho = (arquivo, cfg = {}) => {
     fs.mkdirSync(path.join(casaN, '.claude'), { recursive: true })
@@ -507,13 +521,56 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
     assert.match(r.saida, /Build final: passou/)
   })
   t('arquiteto: a revisão é montada pelo programa, diz onde foi feito, e passa pelo contrato', () => {
-    const { juntar, encerra, ...paraOContrato } = rev // `juntar` e `encerra` são internos do programa, o contrato do Haiku não os conhece
+    const { juntar, encerra, ciclo, ...paraOContrato } = rev // `juntar`, `encerra` e `ciclo` são internos do programa, o contrato do Haiku não os conhece
     assert.equal(Ar.validarProposta(JSON.stringify(paraOContrato)).ok, true, JSON.stringify(Ar.validarProposta(JSON.stringify(paraOContrato)).erros))
     assert.match(rev.porque, /cópia separada/); assert.match(noProjeto.porque, /direto na pasta/)
     assert.equal(falhou.pergunta, 'O robô não terminou. Como seguimos?'); assert.match(falhou.porque, /o build quebrou/)
     assert.equal(Ar.validarProposta(JSON.stringify(falhou)).ok, true)
   })
   t('arquiteto: projeto sem commit não ganha cópia, e o erro diz o motivo', () => assert.match(erroCopia, /pelo menos um commit/))
+}
+
+/* CC-876, etapa 5: a lição do ciclo, contada pelo programa, e os números que a proposta de melhoria cita */
+{
+  const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
+  const Ar = await import('./src/arquiteto.mjs'); const Bk = await import('./src/backlog.mjs')
+  const itens = [{ id: 'X-1' }, { id: 'X-2', pai: 'X-1', estado: 'OK' }]
+  const ev = [{ tipo: 'criada', id: 'X-1', em: '2026-10-07T10:00:00Z' }, { tipo: 'robo', id: 'X-2', ok: false, texto: 'build quebrou\nlinha 2' },
+    { tipo: 'robo', id: 'X-2', ok: true, texto: 'alterou a.js' }, { tipo: 'robo', id: 'Y-9', ok: false, texto: 'de outro pedido' }]
+  const l = Ar.licaoDoCiclo(itens, ev, 'X-1', { ficha: 'X-5', aprovou: false, texto: 'faltou o botão', agora: Date.parse('2026-10-07T10:45:00Z') })
+  t('arquiteto: a lição conta tentativas e reprovações do pedido e das filhas, e só delas', () => {
+    assert.equal(l.tentativas, 2); assert.equal(l.reprovadas, 1); assert.equal(l.minutos, 45); assert.equal(l.aprovado, false)
+    assert.match(l.texto, /^Reprovado por ele na X-5\. O robô tentou 2 vez\(es\) e o fiscal reprovou 1 \(primeiro erro: build quebrou\); 45 min do pedido à resposta\. Ele disse: faltou o botão$/)
+    assert.doesNotMatch(l.texto, /linha 2|de outro pedido/)
+  })
+  t('arquiteto: aprovado não repete o texto dele, e sem marca de criação não inventa minutos', () => {
+    const a = Ar.licaoDoCiclo(itens, ev.slice(1), 'X-1', { ficha: 'X-6', aprovou: true, texto: 'Está bom' })
+    assert.equal(a.minutos, null); assert.match(a.texto, /^Aprovado/); assert.doesNotMatch(a.texto, /Ele disse/)
+  })
+  t('arquiteto: o resumo do processo soma os últimos ciclos; sem ciclo, null', () => {
+    assert.equal(Ar.resumoDoProcesso(ev), null)
+    const r = Ar.resumoDoProcesso([l, { ...l, aprovado: true, tentativas: 1, reprovadas: 0 }])
+    assert.deepEqual({ ...r, licoes: r.licoes.length }, { ciclos: 2, aprovados: 1, tentativasDoRobo: 3, reprovadasPeloFiscal: 1, licoes: 2 })
+  })
+  // de ponta a ponta: a revisão registrada com o pedido de origem, a resposta dele, a lição no diário e no estado
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'licao-'))
+  fs.mkdirSync(path.join(d, 'docs')); const arq = path.join(d, 'docs', 'backlog.jsonl'); fs.writeFileSync(arq, '')
+  const pai = Bk.acrescentar({ prefixo: 'LT', natureza: 'PED', area: 'tela', tamanho: 'M', estado: 'B1', origem: 'arquiteto', intencao: 'tela de gastos', pronto: 'a tela de gastos abre e lista', conferir: 'dele:ele olha' }, arq)
+  Bk.registrar([{ tipo: 'robo', id: pai.id, ok: false, texto: 'teste falhou' }, { tipo: 'robo', id: pai.id, ok: true, texto: 'alterou gastos.js' }], arq)
+  const rev = { tipo: 'revisao', titulo: 'Revisar: tela de gastos', porque: 'O robô terminou todas as micro tarefas.', pergunta: 'O que o robô entregou está bom?', opcoes: ['Está bom, segue para o próximo passo', 'Quase: quero ajustar (escreva abaixo o quê)'], ciclo: pai.id }
+  const q = Ar.registrarPergunta(d, rev)
+  const fechada = Ar.responder(d, q.id, 'Quase: quero ajustar (escreva abaixo o quê). O total não soma')
+  const doDiario = fs.readFileSync(Bk.caminhoEventos(arq), 'utf8').trim().split('\n').map((x) => JSON.parse(x)).filter((e) => e.tipo === 'licao')
+  const proc = Ar.lerEstado(d).processo
+  fs.rmSync(d, { recursive: true, force: true })
+  t('arquiteto: fechar a revisão grava a lição do ciclo no diário, e a leitura de estado a entrega à proposta', () => {
+    assert.equal(doDiario.length, 1); assert.equal(doDiario[0].id, pai.id); assert.equal(doDiario[0].reprovadas, 1)
+    assert.match(fechada.licao, /Reprovado .* O total não soma/)
+    assert.equal(proc.ciclos, 1); assert.equal(proc.aprovados, 0); assert.equal(proc.reprovadasPeloFiscal, 1)
+  })
+  t('arquiteto: melhoria nunca roda sozinha, nem citando a fila', () => {
+    assert.equal(Ar.deveRodarSozinho({ tipo: 'melhoria', daFila: 'LT-1', executa: 'Sim' }, { fila: [{ id: 'LT-1', origem: 'felipe' }] }), null)
+  })
 }
 
 /* CC-889 e CC-890: efeito normal não reprova, e a revisão diz primeiro o que faltou */
@@ -1025,5 +1082,25 @@ t('fila: o teto é o orçamento, e a fila não passa dele', () => {
   assert.equal(proximoDegrau({ tentados: [...RESERVA_OPENCODE], teto: 'agy' }).agente, 'agy')
   assert.equal(proximoDegrau({ tentados: [...RESERVA_OPENCODE, 'agy:padrão'], teto: 'agy' }), null, 'o Haiku fica de fora')
 })
+
+/* 07/10, medido às 21h de Brasília: o "mexido" saía em UTC e a trava do Nisaba comparava em UTC; das 21h à meia-noite
+   nada era "de hoje" e todo código ficava barrado. Processo à parte, com fuso de Brasília e relógio às 22h locais. */
+{
+  const { spawnSync } = await import('node:child_process'); const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'virada-')); fs.mkdirSync(path.join(d, 'docs')); fs.writeFileSync(path.join(d, 'docs', 'backlog.jsonl'), '')
+  const url = (f) => new URL('./src/' + f, import.meta.url).href
+  const codigo = `const R = Date; const T = R.parse('2026-10-08T01:00:00Z')
+globalThis.Date = class extends R { constructor(...a) { super(...(a.length ? a : [T])) } static now() { return T } }
+const B = await import('${url('backlog.mjs')}'); const G = await import('${url('nisabaGuard.mjs')}')
+const arq = ${JSON.stringify(path.join(d, 'docs', 'backlog.jsonl'))}
+const i = B.acrescentar({ prefixo: 'VT', natureza: 'PED', area: 'tela', tamanho: 'P', estado: 'EM', origem: 'felipe', frente: 'f', intencao: 'tarefa das 22h', pronto: 'algo que se ve pronto', conferir: 'dele:olhar', permitirAntigo: true }, arq)
+console.log(JSON.stringify({ mexido: B.ler(arq).itens[0].mexido, trava: G.avaliarEdicao(${JSON.stringify(path.join(d, 'src', 'x.js'))}) }))`
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', codigo], { encoding: 'utf8', env: { ...process.env, TZ: 'America/Sao_Paulo' } })
+  fs.rmSync(d, { recursive: true, force: true })
+  t('a tarefa andando às 22h de Brasília conta como de hoje, e a trava deixa editar código', () => {
+    const o = JSON.parse(r.stdout.trim().split('\n').pop() || '{}')
+    assert.equal(o.mexido, '2026-10-07', r.stderr.slice(0, 300)); assert.equal(o.trava?.bloquear, false, JSON.stringify(o.trava))
+  })
+}
 
 console.log(`\n${ok} verificações, 0 falhas (tarefa)\n`)

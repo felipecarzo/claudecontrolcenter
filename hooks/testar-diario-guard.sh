@@ -9,7 +9,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/testar-comum.sh"
 
 echo "== diario-guard =="
 
-HOJE=$(date -u +%Y-%m-%d)
+HOJE=$(date +%Y-%m-%d) # dia local, como o guarda (07/10)
 
 projeto() { # monta um projeto com docs/diario, pra contar como projeto que usa a convenção
   local dir="$T/$1"

@@ -50,11 +50,7 @@ export function lerEstado(cwd) {
   try { fw = JSON.parse(fs.readFileSync(path.join(cwd, '.framework', 'estado.json'), 'utf8')) } catch { /* sem framework */ }
   let agents = ''; try { agents = fs.readFileSync(path.join(cwd, 'AGENTS.md'), 'utf8') } catch { /* sem memorial */ }
   const escopo = /## Escopo do projeto\n([\s\S]*?)(\n## |$)/.exec(agents)?.[1]?.trim() || null
-  let eventos = []
-  try {
-    eventos = fs.readFileSync(B.caminhoEventos(arq), 'utf8').split(/\r?\n/).filter(Boolean)
-      .flatMap((l) => { try { return [JSON.parse(l)] } catch { return [] } })
-  } catch { /* sem diário */ }
+  const eventos = eventosDe(arq)
   const resumo = (x) => ({ id: x.id, intencao: x.intencao || x.titulo, estado: x.estado, origem: x.origem || null })
   /* O furo do "casal" (CN-26): ele tinha dito na entrevista que o app é só dele, e a proposta não via
      essas respostas. Entram inteiras, e as perguntas já feitas com a escolha dele. */
@@ -79,6 +75,7 @@ export function lerEstado(cwd) {
     esperandoDele: fila.dele.slice(0, 10).map(resumo),
     reprovacoes: eventos.filter((e) => e.tipo === 'robo' && e.ok === false).slice(-10).map((e) => ({ id: e.id, erro: String(e.texto || '').split('\n')[0].slice(0, 200) })),
     decisoes: eventos.filter((e) => e.tipo === 'decisao').slice(-10).map((e) => ({ id: e.id, texto: String(e.texto || '').slice(0, 300) })),
+    processo: resumoDoProcesso(eventos), // CC-876: o que a proposta de melhoria cita
   }
 }
 
@@ -87,7 +84,7 @@ export function pedidoDeProposta(estado) {
   return [
     'Você é o arquiteto de um projeto de software e trabalha para o dono do produto (o Felipe), que decide TUDO.',
     'Você não executa nada: propõe UM próximo passo, e ele escolhe entre opções. Ele não é técnico: escreva para quem decide, não para quem programa.',
-    'Tipos de proposta: "ideia" (algo novo para o produto), "pedido" (algo do backlog para executar agora), "melhoria" (mudar o PROCESSO de trabalho; só propor, citando números do estado abaixo). Revisão de algo já feito NÃO é sua: o programa faz depois de cada obra. Se ele apontou um defeito (está na fila dele), proponha o pedido que o corrige.',
+    'Tipos de proposta: "ideia" (algo novo para o produto), "pedido" (algo do backlog para executar agora), "melhoria" (mudar o PROCESSO de trabalho; só quando "processo" no estado mostrar um número ruim, citando esse número; é sempre pergunta, nunca se aplica sozinha). Revisão de algo já feito NÃO é sua: o programa faz depois de cada obra. Se ele apontou um defeito (está na fila dele), proponha o pedido que o corrige.',
     'Responda SÓ um JSON, sem texto antes nem depois:',
     '{"tipo":"ideia|pedido|revisao|melhoria","titulo":"até 80 letras","porque":"por que agora, citando o estado","pergunta":"a pergunta para ele, curta","opcoes":["2 a 4 opções concretas e diferentes"],"pedido":"o pedido técnico que o maestro executaria se ele aprovar (obrigatório em pedido)","executa":"em pedido: a opção, copiada igual, que significa sim, construa agora"}',
     'Em "pedido" a pergunta é só para aprovar a construção: a PRIMEIRA opção é o "sim, construa agora" (e vai em "executa"), as outras são não ou ajustar. Escolha de detalhe técnico (stack, banco, framework, biblioteca) NUNCA vira pergunta: decida você e descreva no pedido.',
@@ -285,7 +282,44 @@ export function responder(cwd, ficha, escolha, { automatico = null } = {}) {
     fechada.fazer = novo.id
   }
   if (p.tipo === 'revisao' && p.juntar && texto.startsWith(p.opcoes?.[0] || '\0')) fechada.juntar = p.juntar // aprovou a revisão de uma obra na cópia
+  // CC-876: fechar a revisão fecha o ciclo, e a lição dele vai para o diário
+  if (p.tipo === 'revisao' && p.ciclo) {
+    const l = licaoDoCiclo(B.ler(arq).itens, eventosDe(arq), p.ciclo, { ficha, aprovou: texto.startsWith(p.opcoes?.[0] || '\0'), texto: extra || texto })
+    B.registrar([l], arq)
+    fechada.licao = l.texto
+  }
   return fechada
+}
+
+const eventosDe = (arq) => {
+  try {
+    return fs.readFileSync(B.caminhoEventos(arq), 'utf8').split(/\r?\n/).filter(Boolean).flatMap((l) => { try { return [JSON.parse(l)] } catch { return [] } })
+  } catch { return [] } // sem diário
+}
+
+/**
+ * CC-876, etapa 5 do plano (docs/CC-867.md): a lição de um ciclo, contada pelo programa e não escrita por IA. Tentativas
+ * do robô no pedido e nas micro tarefas dele, quantas o fiscal reprovou e o primeiro erro, minutos do pedido à resposta
+ * dele, e o que ele escreveu quando reprovou. É o número que a proposta de melhoria cita depois (`processo` no estado).
+ */
+export function licaoDoCiclo(itens, eventos, pai, { ficha, aprovou, texto, agora = Date.now() } = {}) {
+  const ids = new Set([pai, ...B.filhasDe(itens, pai).map((x) => x.id)])
+  const robo = eventos.filter((e) => e.tipo === 'robo' && ids.has(e.id))
+  const reprovadas = robo.filter((e) => e.ok === false)
+  const nasceu = eventos.find((e) => e.tipo === 'criada' && e.id === pai)?.em
+  const minutos = nasceu ? Math.max(0, Math.round((agora - Date.parse(nasceu)) / 60000)) : null
+  const erro = reprovadas[0] ? String(reprovadas[0].texto || '').split('\n')[0].slice(0, 160) : null
+  const frase = `${aprovou ? 'Aprovado' : 'Reprovado'} por ele na ${ficha}. O robô tentou ${robo.length} vez(es) e o fiscal reprovou ${reprovadas.length}`
+    + `${erro ? ` (primeiro erro: ${erro})` : ''}${minutos != null ? `; ${minutos} min do pedido à resposta` : ''}.${!aprovou && texto ? ` Ele disse: ${String(texto).slice(0, 200)}` : ''}`
+  return { tipo: 'licao', id: pai, ficha, aprovado: Boolean(aprovou), tentativas: robo.length, reprovadas: reprovadas.length, minutos, texto: frase }
+}
+
+/** CC-876: os números do processo nos últimos ciclos, para a proposta de melhoria citar. Sem ciclo fechado, null. */
+export function resumoDoProcesso(eventos, n = 10) {
+  const l = eventos.filter((e) => e.tipo === 'licao').slice(-n)
+  if (!l.length) return null
+  const soma = (k) => l.reduce((s, e) => s + (e[k] || 0), 0)
+  return { ciclos: l.length, aprovados: l.filter((e) => e.aprovado).length, tentativasDoRobo: soma('tentativas'), reprovadasPeloFiscal: soma('reprovadas'), licoes: l.slice(-5).map((e) => e.texto) }
 }
 
 /* ===================================================================
@@ -297,7 +331,7 @@ export const TETO_AUTOMATICO = Number(process.env.CC_ARQUITETO_TETO_AUTO) || 6
 
 /** Quantas coisas o programa decidiu sozinho hoje neste projeto, e se ainda cabe mais uma. */
 export function podeAutomatico(cwd, teto = TETO_AUTOMATICO) {
-  const hoje = new Date().toISOString().slice(0, 10)
+  const hoje = B.diaLocal() // o mesmo dia do "mexido" do backlog (07/10: em UTC, das 21h à meia-noite o teto zerava)
   // conta só as OBRAS que o robô começou sozinho; aprovar com prova não abre obra nova
   return B.ler(B.caminhoPadrao(cwd)).itens.filter((x) => x.automatico && x.mexido === hoje && x.proposta?.tipo === 'pedido').length < teto
 }
@@ -602,6 +636,7 @@ export function perguntaDeRevisao(it, r) {
     opcoes: r.ok ? [r.copia ? 'Está bom, junte ao projeto de verdade' : 'Está bom, segue para o próximo passo', 'Quase: quero ajustar (escreva abaixo o quê)', 'Não serve: refaz de outro jeito (escreva abaixo)']
       : ['Tenta de novo do jeito que estava', 'Quero ajustar o pedido (escreva abaixo)', 'Para por aqui e propõe outro passo'],
     ...(r.copia && r.ok ? { juntar: r.dir } : {}), // o "sim" da primeira opção aciona a junção
+    ...(res?.pai ? { ciclo: res.pai } : {}), // CC-876: o pedido que gerou esta obra, para a lição do ciclo ao fechar a revisão
     ...(r.ok ? { encerra: [res?.pai, ...(it?.proposta?.encerra || []), ...itemDaFilaFechavel(it)].filter(Boolean) } : {}), // aprovar fecha o pedido, o que ficou para trás e o item da fila dele que a obra executou
   }
 }

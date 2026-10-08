@@ -1829,6 +1829,8 @@ switch (cmd) {
           B.debater(id, (ate === -1 ? depois : depois.slice(0, ate)).join(' '), { de: valorDe('de') || 'felipe', tipo: valorDe('tipo') || 'fala' })
           console.log(`\n  registrado no diário de ${id}\n`)
         } else {
+          /* 07/10: `historia <ID> --nota "..."` era ignorado calado, e a decisão dele sobre o CC-960 se perdeu assim */
+          if (argv.length > argv.indexOf(id) + 1) { console.log(`\n  historia só lê. Para gravar: node cc.mjs backlog debate ${id} "texto" --tipo nota|fala|decisao\n`); process.exitCode = 1; break }
           const h = B.historia(id)
           console.log(`\n  ${id}: ${h.length} evento(s)\n`)
           for (const e of h) {
@@ -1886,7 +1888,9 @@ switch (cmd) {
     if (sub === 'fila') {
       const f = B.filaDoAgente(B.ler().itens, { sprint: B.sprintAtualIds(process.cwd()) })
       if (argv.includes('--json')) { console.log(JSON.stringify({ sozinho: f.sozinho.map((x) => x.id), semEspec: f.semEspec.map((x) => x.id), dele: f.dele.map((x) => x.id) })); break }
-      const linha = (x) => `    ${x.id.padEnd(9)} ${x.titulo.slice(0, 60)}${B.rotuloDoLugar(x) ? `  [${B.rotuloDoLugar(x)}]` : ''}`
+      const MO = await import('./src/modelo.mjs')
+      const pede = (x) => { const m = MO.indicado(x); return m?.modelo ? `  (${MO.rotuloModelo(m.modelo)}, ${MO.rotuloEsforco(m.esforco)})` : '' }
+      const linha = (x) => `    ${x.id.padEnd(9)} ${x.titulo.slice(0, 60)}${B.rotuloDoLugar(x) ? `  [${B.rotuloDoLugar(x)}]` : ''}${pede(x)}`
       console.log('\n  ordem do Caminho: andando, agora, fim do dia, sprint atual, fim do sprint, próximos sprints, fim do backlog (fora do MVP não entra)')
       console.log(`\n  faço sozinho (${f.sozinho.length}): pronto escrito e conferência minha, sem trava dele`)
       f.sozinho.slice(0, 15).forEach((x) => console.log(linha(x)))
@@ -1895,6 +1899,36 @@ switch (cmd) {
       console.log(`\n  espera ele (${f.dele.length})`)
       f.dele.slice(0, 15).forEach((x) => console.log(linha(x)))
       console.log('\n  especificar: node cc.mjs backlog especificar <ID> --pronto "o que é pronto" --conferir "auto:como confiro"\n')
+      break
+    }
+    /* CC-973: o modelo e o esforço que a tarefa pede, por critério escrito, e o ajuste dele. */
+    if (sub === 'modelo') {
+      const MO = await import('./src/modelo.mjs')
+      const id = argv[argv.indexOf(sub) + 1]
+      if (!id || id.startsWith('--')) {
+        console.log('\n  as regras, em ordem (a primeira que casa decide; o ajuste dele na tarefa vence):')
+        MO.REGRAS.forEach((r, k) => console.log(`    ${k + 1}. ${r.quando.padEnd(18)} ${r.modelo ? `${MO.rotuloModelo(r.modelo)}, esforço ${typeof r.esforco === 'function' ? 'médio se P, alto se maior' : MO.rotuloEsforco(r.esforco)}` : 'nenhum modelo'}: ${r.porque}`))
+        console.log('\n  ver uma tarefa:  node cc.mjs backlog modelo <ID>')
+        console.log('  ajustar:         node cc.mjs backlog modelo <ID> sonnet|opusplan|opus|criterio [--esforco low|medium|high|criterio]\n')
+        break
+      }
+      try {
+        const escolha = argv[argv.indexOf(sub) + 2]
+        const modelo = escolha && !escolha.startsWith('--') ? escolha : null
+        const esforco = valorDe('esforco')
+        const i = modelo || esforco ? B.ajustarModelo(id, { modelo, esforco }) : B.ler().itens.find((x) => x.id === id)
+        if (!i) throw new Error(`não achei ${id}`)
+        const m = MO.indicado(i)
+        console.log(m.modelo ? `\n  ${i.id}: ${MO.rotuloModelo(m.modelo)}, esforço ${MO.rotuloEsforco(m.esforco)} (${m.porque})` : `\n  ${i.id}: ${m.porque}`)
+        // CC-977: o que a tarefa gastou de fato, por modelo, ajudantes incluídos
+        const gasto = (await import('./src/custoItem.mjs')).custosPorModeloDoProjeto().get(i.id)
+        const fmt = (n) => (n >= 1000 ? `${Math.round(n / 1000)} mil` : String(n))
+        console.log(!gasto
+          ? '  gastou: ainda sem medida por modelo (só aparece quando a tarefa entra e sai de "andando" numa sessão)\n'
+          : Object.keys(gasto).length
+            ? `  gastou: ${Object.entries(gasto).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt(v)} tokens`).join(', ')} (saída e escrita de cache)\n`
+            : '  gastou: zero entre entrar e sair de "andando" (o trabalho foi feito antes de a tarefa andar)\n')
+      } catch (e) { console.log(`\n  não ajustei: ${e.message}\n`); process.exitCode = 1 }
       break
     }
     if (sub === 'especificar') {

@@ -31,7 +31,7 @@ import * as resumoAgy from './resumoAgy.mjs'
 import { ultimaRevisao } from './tarefasProva.mjs'
 import { raioX } from './raioX.mjs'
 import * as observado from './observado.mjs'
-import { ler as lerBacklogDe, estaAberto as itemAberto } from './backlog.mjs'
+import { ler as lerBacklogDe, estaAberto as itemAberto, ESTADOS as ESTADOS_BACKLOG } from './backlog.mjs'
 import { lerCabecalho as lerCabecalhoGate } from './gate.mjs'
 import { perguntaDoArquiteto } from './arquiteto.mjs'
 
@@ -55,6 +55,29 @@ function raizDoBacklog(cwd) {
     if (fs.existsSync(path.join(d, 'docs', 'backlog.jsonl'))) return d
   }
   return null
+}
+/* CC-879, pedido dele em 02/10: "as tarefas são parte do card também". O cartão da conversa do robô
+   leva o último pedido que ele executou e as micro tarefas dele (os filhos no backlog), com estado. */
+export function obraDoRobo(itens) {
+  const ultimoFilho = [...itens].reverse().find((x) => x.pai)
+  const pai = ultimoFilho && itens.find((x) => x.id === ultimoFilho.pai)
+  if (!pai) return null
+  const rot = (c) => ESTADOS_BACKLOG.find((e) => e.codigo === c)?.rotulo || c
+  return {
+    id: pai.id, titulo: pai.titulo, estado: rot(pai.estado),
+    tarefas: itens.filter((f) => f.pai === pai.id).map((f) => ({ id: f.id, titulo: f.titulo, estado: rot(f.estado), feita: f.estado === 'OK' })),
+  }
+}
+const cacheObra = new Map()
+function obraDoProjeto(cwd) {
+  const raiz = cwd && raizDoBacklog(cwd); if (!raiz) return null
+  const arq = path.join(raiz, 'docs', 'backlog.jsonl')
+  let mtime; try { mtime = fs.statSync(arq).mtimeMs } catch { return null }
+  const c = cacheObra.get(arq)
+  if (c && c.mtime === mtime) return c.obra
+  const obra = obraDoRobo(lerBacklogDe(arq).itens)
+  cacheObra.set(arq, { mtime, obra })
+  return obra
 }
 export function palpiteDeFrente(j) {
   if (!j || j.frente || !j.cwd) return null
@@ -597,7 +620,10 @@ export function montar({
          dele e muda de conversa para conversa, e sem isso o cartão dizia
          "claude code (fundo)" para uma conversa do opencode. */
       agente: j.tipo === 'coderoom' ? (j.template || null) : null,
-      fala: falaSessao?.texto || null, conversa: falaSessao?.conversa || null,
+      /* CC-982, print dele em 07/10: sessão recém-aberta ("sem fala do agente ainda") vinha sem conversa, e sem conversa a
+         tela esconde o campo de escrever, a voz e o "/" das skills. Viva, ela já tem o arquivo: a conversa é o nome dele. */
+      fala: falaSessao?.texto || null,
+      conversa: falaSessao?.conversa || (!j.stale && !semContato && transcritoDe(j) ? path.basename(transcritoDe(j), '.jsonl') : null),
       resumo: falaSessao?.resumo || null, marca: falaSessao?.em || null,
       porPrograma: Boolean(j.porPrograma),
       appUrl: appUrlDe(j),
@@ -1154,7 +1180,9 @@ async function montarResposta() {
       if (x.sessao !== 'coderoom' && x.tipo !== 'coderoom') continue
       if (!x.id) continue
       if (!x.conversa) x.conversa = 'gate:' + x.id
-      if (!x.cwd) x.cwd = lerCabecalhoGate(x.id)?.cwd || null
+      const cab = lerCabecalhoGate(x.id)
+      if (!x.cwd) x.cwd = cab?.cwd || null
+      if (String(cab?.titulo || '').startsWith('Arquiteto · ')) x.obra = obraDoProjeto(x.cwd)
     }
   } catch { /* sem eles, o cartão fica sem campo, como antes */ }
   try {
@@ -1207,7 +1235,7 @@ async function montarResposta() {
       e.resumoIA = resumoAgy.obter(e.conversa, e.marca)
     }
     for (const s of dados.conectadas || []) {
-      if (s.estado === 'trabalhando' || s.porPrograma || !alvo(s)) continue
+      if (s.estado === 'trabalhando' || s.porPrograma || !s.fala || !alvo(s)) continue // CC-982: sem fala não há o que resumir
       resumoAgy.pedir({ conversa: s.conversa, marca: s.marca, arquivo: arquivoDe.get(s.conversa) })
       s.resumoIA = resumoAgy.obter(s.conversa, s.marca)
     }

@@ -505,6 +505,22 @@ export function paiAberto(itens) {
   return itens.filter((x) => pais.has(x.id)).at(-1)?.id || null
 }
 
+/* CC-980, pedido dele em 07/10: "não tem por que ter mais de uma conversa (…) deveriam ser fechadas depois que os
+   agentes terminam". O arquivar do CC-891 só valia para a tarefa que PASSOU: a reprovada cujo conserto foi para conversa
+   limpa e a cancelada deixavam a conversa aberta (8 no conta-de-casa em 07/10, todas KO). Agora vale qualquer fim:
+   conversa de micro tarefa que nenhuma tarefa aberta usa vai para os arquivados (dá para desfazer). Travada (TR) é
+   aberta: ele precisa ver. */
+export function conversasQueAcabaram(itens) {
+  const emUso = new Set(itens.filter((x) => x.conversa && B.estaAberto(x)).map((x) => x.conversa))
+  return [...new Set(itens.filter((x) => x.pai && x.conversa && !emUso.has(x.conversa)).map((x) => x.conversa))]
+}
+async function arquivarAsQueAcabaram(cwd) {
+  try {
+    const abertas = new Set(((await api('/api/gate/conversas')).conversas || []).map((c) => c.id))
+    for (const id of conversasQueAcabaram(B.ler(arqBacklog(cwd)).itens)) if (abertas.has(id)) await api('/api/gate/arquivar', { id, arquivar: true })
+  } catch { /* sem o painel, a lista fica como estava */ }
+}
+
 /**
  * Roda as filhas abertas de `pai`, uma por conversa limpa. Reprovada pelo robô,
  * a filha é cancelada com o erro e nasce uma filha de conserto, na mesma
@@ -626,6 +642,7 @@ export async function executar(cwd, pai, { log = console.log, rodada = 1 } = {})
   const resumo = resumoDoRobo(filhas, mexidos, linhaFinal)
   if (!travadas.length && final.ok && (!comportamento || comportamento.ok)) B.mover(pai, 'OK', { prova: resumo }, arq)
   B.regerarRoadmap(cwd)
+  await arquivarAsQueAcabaram(cwd)
   return { pai, resumo, filhas }
 }
 

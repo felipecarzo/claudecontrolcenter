@@ -36,7 +36,8 @@ const BACKLOG = /^docs\/(backlog|eventos)\.jsonl$/
  * Pode editar `arquivo`? Devolve `{ bloquear, motivo }`.
  * `ligado(projeto)` diz se o módulo Nisaba vale no projeto (padrão: ligado).
  */
-export function avaliarEdicao(arquivo, { hoje = new Date().toISOString().slice(0, 10), ligado = () => true } = {}) {
+// o dia local, o mesmo do "mexido" do backlog (diaLocal): em UTC, das 21h à meia-noite de Brasília nada contava como hoje
+export function avaliarEdicao(arquivo, { hoje = new Date().toLocaleDateString('sv'), ligado = () => true } = {}) {
   const raiz = raizDoProjeto(arquivo)
   if (!raiz) return { bloquear: false }
   const projeto = path.basename(raiz)

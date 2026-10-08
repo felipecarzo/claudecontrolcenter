@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { falaDasLinhas, montar, avisoDoAgente, semanaDe, semanaDosBlocos, conversaSemFala, ehPastaPessoal, resumoDaFala, falasDaConversa, _internals } from './src/cockpit2.mjs'
+import { falaDasLinhas, montar, avisoDoAgente, semanaDe, semanaDosBlocos, conversaSemFala, ehPastaPessoal, resumoDaFala, falasDaConversa, obraDoRobo, _internals } from './src/cockpit2.mjs'
 import { primeiraFrase, paragrafoDepois } from './src/projetoResumo.mjs'
 import { contextoDaConversa } from './src/resumoAgy.mjs'
 
@@ -1114,6 +1114,18 @@ t('CC-971: a tela abre com o último dado guardado no aparelho e o novo pinta po
   assert.ok(ui.includes("localStorage.getItem(C2_ULTIMO)") && ui.includes('localStorage.setItem(C2_ULTIMO'), 'lê e grava o guardado')
   assert.ok(ui.includes('if (on && C2.guardadoEm)'), 'pinta com o guardado assim que a tela liga, sem esperar o servidor')
   assert.ok(ui.includes('C2.erro = null; C2.guardadoEm = 0;'), 'o dado novo apaga o aviso de guardado')
+})
+
+t('CC-879: o cartão da conversa do robô leva o último pedido e as micro tarefas com estado', () => {
+  const itens = [
+    { id: 'CN-1', titulo: 'pedido velho', estado: 'OK' }, { id: 'CN-2', titulo: 'velha', estado: 'OK', pai: 'CN-1' },
+    { id: 'CN-3', titulo: 'pedido novo', estado: 'EM' }, { id: 'CN-4', titulo: 'feita', estado: 'OK', pai: 'CN-3' },
+    { id: 'CN-5', titulo: 'rodando', estado: 'EM', pai: 'CN-3' }, { id: 'CN-6', titulo: 'solto', estado: 'B1' },
+  ]
+  const o = obraDoRobo(itens)
+  assert.equal(o.id, 'CN-3')
+  assert.deepEqual(o.tarefas.map((t) => [t.id, t.estado, t.feita]), [['CN-4', 'fechado', true], ['CN-5', 'andando', false]])
+  assert.equal(obraDoRobo([{ id: 'X-1', titulo: 'sem filhos', estado: 'OK' }]), null)
 })
 
 console.log(`\n${ok} ok, 0 falhas (cockpit2)`)

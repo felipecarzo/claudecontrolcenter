@@ -23,9 +23,9 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
 | tela | 17 | 17/17 | 11/17 | 17/17 | 0/17 | 17/17 |
-| acao | 337 | 337/337 | 47/337 | 0/337 | 0/337 | 0/337 |
+| acao | 344 | 344/344 | 48/344 | 0/344 | 0/344 | 0/344 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 159 | 159/159 | 3/159 | 0/159 | 0/159 | 0/159 |
+| endereco | 162 | 162/162 | 3/162 | 0/162 | 0/162 | 0/162 |
 | palavra | 85 | 85/85 | 10/85 | 85/85 | 0/85 | 85/85 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
@@ -54,7 +54,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `conhecimento` | viva | src/ui_cockpit2.html#view-conhecimento | funciona, estreito |
 | `remoto` | viva | src/ui_cockpit2.html#view-remoto | estreito |
 
-## acao (337)
+## acao (344)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -312,6 +312,11 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-cam-w` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-h` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-alvo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ideia-escolha` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ideia-opcao` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ideia-int` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ideia-lugar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ideia-tirar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-modo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-por` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-proj-ir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
@@ -328,6 +333,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-tdr-op` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-carta-explicar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-colap` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-niv` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-niv-n` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-fala-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-ses-fixar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-ses-painel-por` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
@@ -408,7 +415,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-n` | viva | src/ui_cockpit2.html | explica, estreito |
 
-## endereco (159)
+## endereco (162)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -481,6 +488,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/cartas/votar` | estatica | src/web.mjs | funciona, explica |
 | `/api/cartas/img` | estatica | src/web.mjs | funciona, explica |
 | `/api/sessao/etiqueta` | estatica | src/web.mjs | funciona, explica |
+| `/api/sessao/resumo` | estatica | src/web.mjs | funciona, explica |
 | `/api/sessao/fala` | estatica | src/web.mjs | funciona, explica |
 | `/api/sessao/conversa` | estatica | src/web.mjs | funciona, explica |
 | `/api/decisao/historico` | estatica | src/web.mjs | funciona, explica |
@@ -495,6 +503,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/projeto/ativo` | estatica | src/web.mjs | funciona, explica |
 | `/api/backlog/provas` | estatica | src/web.mjs | funciona, explica |
 | `/api/backlog/lugar` | estatica | src/web.mjs | funciona, explica |
+| `/api/ideia/organizar` | estatica | src/web.mjs | funciona, explica |
+| `/api/ideia/gravar` | estatica | src/web.mjs | funciona, explica |
 | `/api/backlog/aprovar` | estatica | src/web.mjs | funciona, explica |
 | `/api/backlog/fila` | estatica | src/web.mjs | funciona, explica |
 | `/api/armario` | estatica | src/web.mjs | funciona, explica |

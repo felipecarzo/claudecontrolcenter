@@ -748,7 +748,11 @@ const servidor = http.createServer((req, res) => {
   //
   // Lista exata, nunca prefixo: '/icone' como prefixo abriria qualquer coisa
   // que comecasse assim, hoje ou depois.
-  const PECAS_DO_APP = ['/app.webmanifest', '/icone.svg', '/icone-192.png', '/icone-512.png']
+  // CC-987, 07/10: cada aba instalavel tem manifesto proprio (/app/<aba>.webmanifest), com o mesmo tipo de
+  // conteudo do de cima (nome do app e da aba, sem dado). Sem estar aqui, o Chrome recebia 401 e dizia "nao e
+  // possivel instalar". Lista exata, igual a de src/appsAbas.mjs (o test-apps.mjs confere as duas).
+  const ABAS_INSTALAVEIS = ['inicio', 'caminho', 'sessoes', 'tarefas', 'coderoom', 'kanban', 'projetos', 'armario', 'ideias']
+  const PECAS_DO_APP = ['/app.webmanifest', '/icone.svg', '/icone-192.png', '/icone-512.png', ...ABAS_INSTALAVEIS.map((a) => `/app/${a}.webmanifest`)]
   if (PECAS_DO_APP.includes(url.pathname) && (req.method === 'GET' || req.method === 'HEAD')) {
     return repassar(req, res, token)
   }

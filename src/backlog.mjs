@@ -46,6 +46,7 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { transicionar } from './tarefa.mjs'
 import { catalogoDe, ehFrente, listaDeFrentes } from './frentes.mjs'
+import { MODELOS, ESFORCOS } from './modelo.mjs'
 
 /**
  * Os estados de produção, com código curto.
@@ -312,7 +313,9 @@ export function gravar(itens, arquivo = caminhoPadrao()) {
   return ordem.length
 }
 
-const hoje = () => new Date().toISOString().slice(0, 10)
+/* 07/10, medido às 21h de Brasília: com a data em UTC, o "mexido" virava o dia três horas antes do relógio dele, e a
+   trava do Nisaba (que pede tarefa andando mexida HOJE) barrava todo trabalho das 21h à meia-noite. Dia local. */
+const hoje = () => diaLocal()
 
 /** O próximo id livre, no prefixo dado. Nunca reusa número morto. */
 export function proximoId(itens, prefixo = 'CC') {
@@ -559,6 +562,26 @@ export function especificar(id, { pronto, conferir } = {}, arquivo = caminhoPadr
   if (p.length) throw new Error(p.join('; '))
   itens[itens.indexOf(i)] = novo
   gravar(itens, arquivo)
+  return novo
+}
+
+/** CC-973: o ajuste dele no modelo e no esforço de uma tarefa. 'criterio' apaga o ajuste e volta para a regra. */
+export function ajustarModelo(id, { modelo, esforco } = {}, arquivo = caminhoPadrao()) {
+  const { itens } = ler(arquivo)
+  const i = itens.find((x) => x.id === id)
+  if (!i) throw new Error(`não achei ${id}`)
+  const novo = { ...i, mexido: hoje() }
+  const campo = (nome, v, lista) => {
+    if (v == null) return
+    if (v === 'criterio') { delete novo[nome]; return }
+    if (!lista.some((x) => x.codigo === v)) throw new Error(`${nome} fora da lista: ${v} (vale ${lista.map((x) => x.codigo).join(', ')} ou criterio)`)
+    novo[nome] = v
+  }
+  campo('modelo', modelo, MODELOS)
+  campo('esforco', esforco, ESFORCOS)
+  itens[itens.indexOf(i)] = novo
+  gravar(itens, arquivo)
+  registrar([{ tipo: 'nota', id, de: 'felipe', texto: `modelo ${novo.modelo || 'pelo critério'}, esforço ${novo.esforco || 'pelo critério'}` }], arquivo)
   return novo
 }
 

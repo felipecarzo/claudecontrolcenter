@@ -1459,6 +1459,19 @@ function handler(req, res) {
   if (url.pathname === '/' || url.pathname === '/cockpit2' || url.pathname === '/simples') {
     return send(res, 200, fs.readFileSync(UI_COCKPIT2, 'utf8'), 'text/html; charset=utf-8')
   }
+  /* CC-987, pedido dele: cada aba instalável como app separado. O mesmo painel, com manifesto próprio (nome, id e
+     escopo de cada aba: escopo próprio é o que faz o Android tratar cada uma como um app). Lista em appsAbas.mjs. */
+  const appAba = /^\/app\/([a-z0-9-]+)(\/|\.webmanifest)?$/.exec(url.pathname)
+  if (appAba) {
+    return import('./appsAbas.mjs').then((A) => {
+      if (appAba[2] === '.webmanifest') {
+        const m = A.manifestoDaAba(JSON.parse(fs.readFileSync(path.join(HERE, 'app.webmanifest'), 'utf8')), appAba[1])
+        return m ? send(res, 200, JSON.stringify(m), 'application/manifest+json; charset=utf-8') : send(res, 404, { erro: 'aba desconhecida' })
+      }
+      const h = A.htmlDaAba(fs.readFileSync(UI_COCKPIT2, 'utf8'), appAba[1])
+      return h ? send(res, 200, h, 'text/html; charset=utf-8') : send(res, 404, { erro: 'aba desconhecida' })
+    }).catch((e) => send(res, 500, { error: String(e.message || e) }))
+  }
   if (url.pathname === '/antigo' || url.pathname === '/novo' || url.pathname === '/v3') {
     return send(res, 200, fs.readFileSync(UI_V3, 'utf8'), 'text/html; charset=utf-8')
   }
@@ -3086,6 +3099,14 @@ function handler(req, res) {
       return R.corrigirEtiqueta(String(k || '').slice(0, 200), etiqueta) ? { ok: true } : { ok: false, erro: 'resumo não encontrado ou etiqueta inválida' }
     })
   }
+  /* CC-983: resumo da sessão por nível, ou resposta a uma pergunta dele sobre ela. Só conversa desta máquina. */
+  if (url.pathname === '/api/sessao/resumo' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 4e3, async ({ conversa, nivel, pergunta }) => {
+      const R = await import('./resumoAgy.mjs')
+      const r = R.pedirNivel({ conversa: String(conversa || '').slice(0, 60), nivel, pergunta })
+      return r.erro && !r.k ? { ok: false, erro: r.erro } : { ok: !r.erro, ...r }
+    })
+  }
   /* CC-582: o histórico de decisões, de um projeto (pela chave) ou de todos. */
   /* CC-589: a última resposta inteira de uma sessão, para "ver resposta
      completa". Só desta máquina; o id é conferido em `falaCompleta`. */
@@ -3221,6 +3242,24 @@ function handler(req, res) {
       const B = await import('./backlog.mjs')
       const i = B.porNoLugar(String(id), String(onde), {}, B.caminhoPadrao(dir))
       return { item: { id: i.id, estado: i.estado, lugar: B.lugarDe(i), lugarRot: B.rotuloDoLugar(i) } }
+    })
+  }
+  /* CC-986: a área de ideias do Caminho. `projeto` é a mesma chave (cwd) da rota /api/caminho; a raiz sai de cwdDoProjeto,
+     nunca de um caminho livre vindo da tela. `organizar` { projeto, texto, respostas?: [{pergunta, resposta}] } é consultada
+     de novo a cada 3 s até vir `ideia`+`partes` ou `escolhas`; `gravar` { projeto, texto, ideia, partes, lugar, respostas? }
+     devolve { id, filhas }. */
+  if (url.pathname === '/api/ideia/organizar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 3e4, async ({ projeto, texto, respostas }) => {
+      const dir = cwdDoProjeto(String(projeto || ''), null)
+      if (!dir) throw new Error('projeto não encontrado')
+      return (await import('./ideiaEntrada.mjs')).organizar(dir, texto, { respostas })
+    })
+  }
+  if (url.pathname === '/api/ideia/gravar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e5, async ({ projeto, texto, ideia, partes, lugar, respostas }) => {
+      const dir = cwdDoProjeto(String(projeto || ''), null)
+      if (!dir) throw new Error('projeto não encontrado')
+      return (await import('./ideiaEntrada.mjs')).gravar(dir, { texto, ideia, partes, lugar, respostas })
     })
   }
   if (url.pathname === '/api/backlog/aprovar' && req.method === 'POST') {

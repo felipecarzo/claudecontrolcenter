@@ -48,11 +48,33 @@ try { dados = JSON.parse(entrada) } catch { sair() }
 const { acharRaiz, ler, origemDoModo } = await import(urlDeModulo(AQUI, '../src/frameworkDisco.mjs')).catch(sair)
 const F = await import(urlDeModulo(AQUI, '../src/framework.mjs')).catch(sair)
 
+/* CC-974: a sessão abre sabendo o modelo e o esforço da próxima tarefa. Vale em todo projeto com
+   backlog, com ou sem framework (14 dos 31 da VPS têm backlog sem framework em 07/10), porque a
+   economia que ele pediu é de todos. Só orienta: gancho não troca o modelo da conversa. */
+async function linhaDoModelo(r) {
+  try {
+    if (!r || !existsSync(resolve(r, 'docs', 'backlog.jsonl'))) return null
+    const B = await import(urlDeModulo(AQUI, '../src/backlog.mjs'))
+    const MO = await import(urlDeModulo(AQUI, '../src/modelo.mjs'))
+    const p = B.filaDoAgente(B.ler(resolve(r, 'docs', 'backlog.jsonl')).itens, { sprint: B.sprintAtualIds(r) }).proximo
+    const o = p && MO.orientar(p, MO.modeloDaSessao(dados, r))
+    return o ? `MODELO DA PRÓXIMA TAREFA (decisão dele em 07/10: decidir antes, sem retrabalho): ${o.texto} Regras: node cc.mjs backlog modelo.` : null
+  } catch { return null } // backlog ilegível: sem indicação, nunca sessão travada
+}
+/* Sem framework, só a linha do modelo, achando o backlog pela pasta como o framework acha a dele. */
+async function soModeloESair() {
+  let d = resolve(dados?.cwd || process.cwd())
+  for (let i = 0; i < 40 && !existsSync(resolve(d, 'docs', 'backlog.jsonl')); i++) { const pai = dirname(d); if (pai === d) break; d = pai }
+  const l = await linhaDoModelo(d)
+  if (l) process.stdout.write(`${l}\n`)
+  sair()
+}
+
 const raiz = acharRaiz(dados?.cwd || process.cwd())
-if (!raiz) sair() // projeto sem framework: silêncio total
+if (!raiz) await soModeloESair() // projeto sem framework: só o modelo da próxima tarefa
 
 const estado = ler(raiz)
-if (!estado || estado.ligado === false) sair()
+if (!estado || estado.ligado === false) await soModeloESair()
 
 const modo = F.modoDe(estado)
 const tom = F.tomDe(estado)
@@ -124,6 +146,9 @@ if (existsSync(resolve(raiz, 'docs', 'backlog.jsonl'))) {
     + 'com essas opções, a sugestão primeiro, e grave com node cc.mjs backlog lugar <ID> <agora|dia|sprint|backlog|fora>. '
     + 'Ideia que melhora uma função que já existe: --melhora <ID do item dessa função>. Se ele já disse o lugar na fala, use --lugar direto. '
     + 'Nada entra na fila sem o toque dele.')
+
+  const l = await linhaDoModelo(raiz)
+  if (l) linhas.push(l)
 }
 
 if (modo.trava) {

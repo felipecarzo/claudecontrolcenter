@@ -121,7 +121,9 @@ function nomearSozinho(id) {
   if (process.env.CC_SEM_AGY) return
   const c = lerConversa(id)
   const cab = c?.cabecalho
-  if (!cab || cab.tituloDele || cab.tituloAuto || esperandoNome.has(id)) return
+  /* CC-879, medido em 07/10: o nome automático trocou "Arquiteto · conta-de-casa" por "Proteção e unificação do
+     backup", e o robô, a resposta e o cartão acham a conversa dele por esse nome. A do robô nunca é renomeada. */
+  if (!cab || cab.tituloDele || cab.tituloAuto || /^Arquiteto · /.test(cab.titulo || '') || esperandoNome.has(id)) return
   const dele = c.mensagens.find((m) => m.de === 'felipe')
   const resp = c.mensagens.find((m) => m.de !== 'felipe' && m.de !== 'sistema' && m.estado === 'pronto')
   if (!dele || !resp) return

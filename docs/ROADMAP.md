@@ -4,7 +4,11 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-84 abertos, 881 fechados, 965 no total. Gerado em 2026-10-07.
+93 abertos, 882 fechados, 975 no total. Gerado em 2026-10-07.
+
+## ⚠️ Travados, com a causa medida
+
+- **CC-564** responder pelo painel as perguntas das sessoes do PC: medir se um gancho na pergunta entrega a resposta, sem depender de tela — teste interativo recusado pelo classificador de permissao; precisa ele autorizar a sessao de teste no tmux
 
 ## travas
 
@@ -12,7 +16,7 @@
 |---|---|---|---|
 | CC-294 | definida | 3 | a amostra julgada: 30 devoluções lidas lado a lado |
 | CC-917 | prova | - | trava: resposta que deixa ideia longa dele só no texto, sem item no backlog, é barrada uma vez |
-| CC-960 | definida | - | trocar modelo e esforco sozinho pela complexidade da tarefa, com regras reais em todos os projetos |
+| CC-960 | andando · 3 de 5 | - | trocar modelo e esforco sozinho pela complexidade da tarefa, com regras reais em todos os projetos |
 | CC-967 | prova | - | trava: o robo nunca constroi sozinho um item que ja teve obra aprovada (reconstruiu o MVP e o backup em 07/10) |
 
 ## projetos
@@ -26,6 +30,8 @@
 | CC-923 | prova | - | varredura de segurança em todos os projetos da VPS com o catálogo ASVS nível 1, começando pelos que têm login e dados de pessoas |
 | CC-966 | prova | - | celular sem barra inferior: menu hamburguer no topo com barra lateral (ajustes de letra e tema dentro), topo enxuto como o Coderoom |
 | CC-969 | ideia | - | aplicativo de Android do painel: so quando houver algo que o app instalado pelo Chrome nao faca (widget, atalho de voz) |
+| CC-984 | definida | - | Medir no Conta de Casa quanto o opencode economizou contra o limite semanal e mensal do Claude, e provar que o app funciona |
+| CC-985 | definida | - | Guia de cada projeto: diz se é teste ou não e, nos de teste, o que comparar no fim (tokens gastos, economia contra o Claude) |
 
 ## cockpit
 
@@ -37,7 +43,7 @@
 | CC-558 | andando | - | cockpit novo: uma area de construcao de design para os projetos |
 | CC-559 | prova | - | cockpit novo: notas continua importante, mas o app de notas precisa melhorar |
 | CC-562 | prova | - | estudar o JEV (modelo barato de decisao sim/nao e nota) para rodar num modelo barato ou no Gemini pelo agy, nao aqui |
-| CC-564 | definida | - | responder pelo painel as perguntas das sessoes do PC: medir se um gancho na pergunta entrega a resposta, sem depender de tela |
+| CC-564 | travado | - | responder pelo painel as perguntas das sessoes do PC: medir se um gancho na pergunta entrega a resposta, sem depender de tela |
 | CC-581 | definida | - | visao: area onde a IA pede prazo dos projetos, alinha expectativas, debate prazos e gera o foco do dia |
 | CC-655 | prova · 1 de 1 | - | design 2/4: telas e prototipos por projeto, com versoes, e ele aprova qual vira codigo |
 | CC-656 | prova | - | design 3/4: mural de referencias por projeto (prints, sites de inspiracao, feedback) para mostrar ao agente quero assim |
@@ -49,10 +55,10 @@
 | CC-753 | definida | - | Instalavel unico do Cockpit para Windows: executa, vira servico automatico e pega os projetos da maquina, sem repositorio nem programar nela |
 | CC-765 | prova | - | Widescreen de Sessoes: paineis como os do Coderoom, reordenaveis, com adicionar e recolocar; talvez duas sessoes lado a lado |
 | CC-769 | definida | - | Botao no cartao leva ao desktop do projeto no PC via a controladora; popup em cada desktop volta ao Cockpit, que vira a central |
-| CC-795 | definida | - | Coderoom: com o menu de tres pontos aberto, os controles vao para o meio do cabecalho e as fichas (estado, maquina, agentes) somem |
+| CC-795 | prova | - | Coderoom: com o menu de tres pontos aberto, os controles vao para o meio do cabecalho e as fichas (estado, maquina, agentes) somem |
 | CC-856 | prova | - | Dez rotas só do painel antigo sem tela no cockpit novo: ligar cada uma ou tirar do servidor |
 | CC-865 | prova | - | o painel passa a se chamar Ogumia na tela e no guia, mantendo os nomes internos |
-| CC-879 | andando | - | Sessoes: cada conversa do Coderoom vira UM card responsivo com suas tarefas e o resumo do agy, sem agrupar 21 sessoes paradas num card so |
+| CC-879 | prova | - | Sessoes: cada conversa do Coderoom vira UM card responsivo com suas tarefas e o resumo do agy, sem agrupar 21 sessoes paradas num card so |
 | CC-883 | prova | - | tela própria Tarefas no menu, com pedido, pedidos, tarefas por projeto e gaveta; a aba da Início continua |
 | CC-893 | prova | - | card de conversa do Coderoom na tela Sessoes ganha botao arquivar (com desfazer): hoje so tem renomear e abrir sessao |
 | CC-895 | definida | - | endereco no testedevoo para app simples de Node (como o Conta de Casa): o dev.sh nao tem esse tipo e o roteador exige o prefixo |
@@ -61,6 +67,10 @@
 | CC-936 | andando | - | aba Tarefas mostra o que foi feito, o que está em prova e o que vem, cada item com a explicação na língua dele |
 | CC-957 | prova | - | sessao parada ha dias aparece como parou ou espera voce: separar como esquecida (3+ dias) e alertar no sino as que ocupam memoria |
 | CC-972 | definida | - | dado principal do painel leva de 2 a 8 s para sair do servidor; medir o que pesa e cortar |
+| CC-982 | prova | - | sessao recem aberta tem campo de escrever obrigatorio, com audio e chamar skill; campo com skill e audio vira padrao em todo chat do cockpit |
+| CC-983 | prova | - | resumo do agy por nivel: ate a minha ultima pergunta, cada nivel sobe mais uma mensagem minha; mensagens seguidas contam como uma |
+| CC-986 | prova | - | area de ideias no Caminho: ditar ou escrever a ideia, a IA quebra em tarefas, pergunta o lugar na fila e grava no backlog |
+| CC-987 | prova | - | cada aba do painel (Caminho, Sessoes e as outras) instalavel como app separado no celular |
 
 ## framework
 
@@ -100,7 +110,7 @@
 | CC-820 | definida | - | Simulação 5: o Coderoom cria um jogo 3D de aventura do zero, em projeto novo, no testedevoo |
 | CC-828 | definida | - | Coderoom: maestro que divide o pedido em micro tarefas, roda uma a uma no opencode e confere com robô, minimizando IA |
 | CC-830 | definida | - | Coderoom: continuar no Coderoom uma tarefa que começou no Claude Code (mesma sessão, outro agente) |
-| CC-866 | andando · 0 de 5 | - | agente arquiteto com Haiku: cria projetos pelo Coderoom e pelo framework, tem ideias, revisa e melhora o próprio processo em ciclos |
+| CC-866 | andando · 1 de 5 | - | agente arquiteto com Haiku: cria projetos pelo Coderoom e pelo framework, tem ideias, revisa e melhora o próprio processo em ciclos |
 | CC-871 | definida | - | botao de resposta do arquiteto falhou com nao foi na pergunta CN-2 em 02/10 e nao reproduziu; o botao agora mostra o motivo |
 | CC-892 | definida | - | ver os agentes do robo sem eles virarem conversas na lista do Coderoom: outro lugar para acompanhar cada agente |
 | CC-921 | prova | - | apagar conversa do Coderoom logo depois do turno derrubava o painel inteiro: relogio escrevia em conversa que nao existia |
@@ -108,6 +118,9 @@
 | CC-930 | prova | - | guarda no Coderoom vigiando os agentes de segundo em segundo (pode usar Haiku) |
 | CC-938 | prova | - | Conta de Casa construido pelo Agy no lugar do opencode, com a sessao fazendo o papel dele e auditando cada pergunta |
 | CC-939 | prova | - | print da revisao tem que passar pelo login: hoje sai sempre a tela de entrada porque o robo so abre o endereco |
+| CC-978 | definida | - | Cartão da conversa do Coderoom mostra o checklist do próprio agente (o agy hoje não grava o texto das tarefas) |
+| CC-979 | definida | - | Robô dá o pedido por falho quando o projeto não tem etapa de build nem página pronta para foto, com o trabalho feito |
+| CC-980 | prova | - | Conversa de micro tarefa reprovada ou cancelada também vai para os arquivados: o projeto fica com uma conversa só, a do robô |
 
 ## padrao
 

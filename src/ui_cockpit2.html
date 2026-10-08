@@ -3246,6 +3246,15 @@
     #view-gate #gate-centro #gate-titulo { flex: 0 20 auto; min-width: 3em; max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #view-gate #gate-centro .gate-header-acoes { flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; justify-content: safe flex-end; overflow-x: auto; scrollbar-width: none; }
     #view-gate #gate-centro .gate-header-acoes::-webkit-scrollbar { display: none; }
+    /* CC-795, decisão dele em 07/10: com os pontinhos abertos, o botão do painel de responder passava da borda
+       (60 px em 1280, 30 em 1100) e só aparecia arrastando a fileira. "Segunda linha só quando não cabe": o
+       título continua cedendo primeiro e, abaixo de 520 px úteis de chat (a consulta mede sem o espaçamento
+       interno, ~40 px; medido: com o título no mínimo os controles pedem ~500), o que está dentro do menu desce
+       para uma segunda linha. Quebrar a fileira inteira jogava a lupa sozinha no topo; por isso só o menu quebra. */
+    @container chatcoderoom (max-width: 520px) {
+      #view-gate #gate-centro .gate-canto.aberto { flex: 0 1 auto; min-width: 0; }
+      #view-gate #gate-centro .gate-canto.aberto, #view-gate #gate-centro .gate-canto.aberto .topo-canto { flex-wrap: wrap; justify-content: flex-end; min-width: 0; row-gap: 6px; }
+    }
     /* CC-792: área que rola corta o que passa da borda, sombra inclusive; a
        folga por dentro (desfeita por fora) dá lugar à sombra dos ícones */
     #view-gate #gate-centro .gate-header-acoes { padding: 12px 10px; margin: -12px -10px; }
@@ -4614,6 +4623,41 @@
     .cam-it-lugar.tem{color:var(--accent);border-color:var(--accent);}
     .cam-guard{margin-top:12px;}
     .cam-lugar-erro{color:var(--red);margin:8px 0 0;min-height:1em;}
+    /* CC-986: o cartao "nova ideia" no topo do Caminho. Layout por classe (grade inline quebra em 390 px). */
+    .cam-ideia{display:flex;flex-direction:column;gap:10px;margin:0 0 14px;padding:14px;border-radius:14px;background:var(--card);box-shadow:var(--neu-leve);}
+    .cam-ideia-tit{margin:0;font-size:15px;font-weight:700;color:var(--text-main);}
+    .cam-ideia-campo{display:block;width:100%;box-sizing:border-box;min-height:96px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text-main);font:inherit;font-size:16px;line-height:1.4;resize:vertical;}
+    .cam-ideia-int{display:block;width:100%;box-sizing:border-box;min-height:48px;padding:10px 14px;resize:vertical;line-height:1.35;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text-main);font:inherit;font-size:16px;}
+    .cam-ideia-msg{margin:0;font-size:14px;line-height:1.5;color:var(--text-dim);}
+    .cam-ideia-aviso{margin:0;padding:10px 12px;border-radius:12px;box-shadow:var(--neu-dentro);font-size:14px;line-height:1.5;color:var(--text-dim);}
+    .cam-ideia-erro{margin:0;font-size:14px;line-height:1.5;color:var(--red);}
+    .cam-ideia-tarefa{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;box-shadow:var(--neu-dentro);}
+    .cam-ideia-meta,.cam-ideia-porque{margin:0;font-size:13px;line-height:1.4;color:var(--text-dim);}
+    .cam-ideia-lugares{display:flex;flex-wrap:wrap;gap:8px;}
+    .cam-ideia-lg{display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:44px;padding:4px 12px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-main);box-shadow:var(--neu-leve);font:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+    .cam-ideia-lg small{font-size:12px;font-weight:600;color:var(--accent);}
+    .cam-ideia-lg.on{box-shadow:var(--neu-dentro);border-color:var(--accent);color:var(--accent);}
+    .cam-ideia-acoes{display:flex;flex-wrap:wrap;gap:8px;}
+    .cam-ideia-b{min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-main);box-shadow:var(--neu-leve);font:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+    .cam-ideia-b.forte{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .cam-ideia-b:disabled{opacity:.45;cursor:default;box-shadow:none;}
+    .cam-ideia-tirar{align-self:flex-start;}
+    .cam-ideia-rot{margin:0;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim);}
+    .cam-ideia-mae{border-left:3px solid var(--accent);}
+    .cam-ideia-partes{display:flex;flex-direction:column;gap:8px;margin-left:18px;padding-left:12px;border-left:2px solid var(--border);}
+    .cam-ideia-liga{margin:0;font-size:12px;font-weight:600;line-height:1.4;color:var(--accent);}
+    .cam-ideia-escolha{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;box-shadow:var(--neu-dentro);}
+    .cam-ideia-perg{margin:0;font-size:15px;font-weight:600;line-height:1.4;color:var(--text-main);}
+    .cam-ideia-ops{display:flex;flex-wrap:wrap;gap:8px;}
+    .cam-ideia-op{display:flex;align-items:center;min-height:44px;padding:8px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-main);box-shadow:var(--neu-leve);font:inherit;font-size:14px;font-weight:600;line-height:1.35;text-align:left;cursor:pointer;}
+    .cam-ideia-op.on{box-shadow:var(--neu-dentro);border-color:var(--accent);color:var(--accent);}
+    @media (max-width: 700px){
+      .cam-ideia{padding:12px;}
+      .cam-ideia-acoes .cam-ideia-b{flex:1 1 0;min-width:0;}
+      .cam-ideia-ops{flex-direction:column;}
+      .cam-ideia-op{width:100%;}
+      .cam-ideia-partes{margin-left:8px;padding-left:10px;}
+    }
     .tar-cam-h{font-size:16px;font-weight:600;color:var(--text-main);margin:8px 0 0;}
     .cam-it-oque{display:block;}
     .cam-it-muda{display:block;margin-top:2px;font-size:13px;color:var(--text-dim);}
@@ -5015,6 +5059,11 @@
     .c2-aviso .c2-rotulo .c2-cad { position: absolute; top: 12px; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: none; color: var(--text-dim); cursor: pointer; transition: background .2s, color .2s; }
     .c2-aviso .c2-rotulo .c2-cad-dec { right: 82px; }
     .c2-aviso .c2-rotulo .c2-cad-ses { right: 10px; }
+    /* CC-879: as micro tarefas do robô no cartão da conversa dele */
+    .c2-obra { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 4px; }
+    .c2-obra li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+    .c2-obra li > span:first-child { flex: 1; min-width: 0; }
+    .c2-obra li.feita > span:first-child { color: var(--text-dim); text-decoration: line-through; }
     /* CC-893: card de conversa do Coderoom parada tem × no canto; o cadeado dá um passo para a esquerda (36px do × + 0) em vez de ficar embaixo dele */
     .c2-aviso .c2-rotulo .c2-x ~ .c2-cad-ses { right: 46px; }
     .c2-aviso .c2-rotulo .c2-cad:hover { color: var(--text-main); background: var(--card-hover); }
@@ -20244,7 +20293,8 @@
         + '<div class="c2-perg">' + perg + '</div>'
         /* CC-599: o resumo do agy, em pergunta e em parada. */
         /* Na permissão o resumo é da parada anterior e diria "não precisa de nada seu". */
-        + (!pend && e.rotulo !== 'permissão' ? c2BlocoIA(e.resumoIA, e.id) + c2EtiLinha(e) : '')
+        + (!pend && e.rotulo !== 'permissão' ? c2BlocoIA(e.resumoIA, e.id) + (daqui && e.conversa && !String(e.conversa).startsWith('gate:') ? c2ResumoNivel(e.conversa) : '') + c2EtiLinha(e) : '')
+        + c2Obra(e.obra, e.id)
         /* CC-589: a parada sem pergunta também tem resumo e resposta completa. */
         + (e.rotulo === 'parou' ? c2BlocoResumo(e.pergunta, e.resumo, e.conversa, daqui, e.resumoIA?.texto) : '')
         /* CC-596: a pergunta vem com o contexto, o que o agente disse antes. */
@@ -21304,6 +21354,144 @@
       const passo = (agora) => { const u = Math.min(1, (agora - t0) / dur); if (!eu.isConnected) return; poe(L * (1 - Math.pow(1 - u, 3))); if (u < 1) requestAnimationFrame(passo); };
       requestAnimationFrame(passo);
     }
+    /* CC-986: a area de ideias do Caminho. O agy propoe UMA ideia-mae com as partes dela; se o texto traz uma escolha
+       dele ("A ou B"), a janela pergunta antes de montar as partes. Ele escolhe o lugar UMA vez, para a mae, e so entao
+       grava. O rascunho mora em C2.ideia[raiz] (nao no DOM), para sobreviver ao redesenho de 2 s. */
+    const C2_IDEIA_LUGARES = [['agora', 'agora'], ['dia', 'fim do dia'], ['sprint', 'fim do sprint'], ['backlog', 'fim do backlog'], ['fora', 'fora do MVP']];
+    function c2IdeiaZera(E) { Object.assign(E, { fase: 'escrevendo', ideia: null, partes: [], escolhas: [], escolhaResp: [], respostas: [], sugestao: null, lugar: null, semIA: null, id: null, filhas: [], erro: null }); }
+    function c2IdeiaEstado(raiz) {
+      C2.ideia = C2.ideia || {};
+      if (!C2.ideia[raiz]) { const E = { rascunho: '', texto: '', token: 0 }; c2IdeiaZera(E); C2.ideia[raiz] = E; }
+      return C2.ideia[raiz];
+    }
+    // a mae so grava com o lugar TOCADO (a sugestao nao conta) e com a intencao dela e de cada parte preenchidas
+    function c2IdeiaPodeGravar(E) { return !!(E.ideia && E.lugar && String(E.ideia.intencao || '').trim() && E.partes.every((p) => String(p.intencao || '').trim())); }
+    function c2IdeiaLinhas(t) { return Math.min(4, Math.max(2, Math.ceil(String(t || '').length / 32))); }
+    function c2IdeiaCartao(raiz) {
+      const E = c2IdeiaEstado(raiz);
+      const erro = E.erro ? '<p class="cam-ideia-erro" role="alert">' + esc(E.erro) + '</p>' : '';
+      let corpo = '';
+      if (E.fase === 'organizando') corpo = '<p class="cam-ideia-msg" role="status">o agy está pensando na ideia…</p>';
+      else if (E.fase === 'gravando') corpo = '<p class="cam-ideia-msg" role="status">gravando no backlog…</p>';
+      else if (E.fase === 'gravado') {
+        const n = E.filhas.length;
+        corpo = '<p class="cam-ideia-msg" role="status">ideia ' + esc(E.id) + (n ? ' com ' + n + (n === 1 ? ' parte' : ' partes') : '') + ' no backlog</p>'
+          + '<div class="cam-ideia-acoes"><button type="button" class="cam-ideia-b forte" data-ideia-nova>nova ideia</button></div>';
+      } else if (E.fase === 'escolha') {
+        corpo = '<p class="cam-ideia-msg">antes de montar as partes, uma escolha sua:</p>'
+          + E.escolhas.map((e, i) => '<div class="cam-ideia-escolha"><p class="cam-ideia-perg">' + esc(e.pergunta) + '</p>'
+            + '<div class="cam-ideia-ops" role="group" aria-label="' + esc(e.pergunta) + '">'
+            + e.opcoes.map((o, k) => '<button type="button" class="cam-ideia-op' + (E.escolhaResp[i] === o ? ' on' : '') + '" aria-pressed="' + (E.escolhaResp[i] === o) + '" data-ideia-escolha="' + i + '" data-ideia-opcao="' + k + '">' + esc(o) + '</button>').join('')
+            + '</div></div>').join('')
+          + '<div class="cam-ideia-acoes"><button type="button" class="cam-ideia-b" data-ideia-recomecar>recomeçar</button></div>';
+      } else if (E.fase === 'escolher') {
+        const I = E.ideia; const sug = E.sugestao && E.sugestao.onde;
+        const meta = (t, f) => [t.tamanho ? 'tamanho ' + t.tamanho : '', f && t.frente ? 'frente ' + t.frente : ''].filter(Boolean).join(' · ');
+        const mm = meta(I, true);
+        corpo = (E.semIA ? '<p class="cam-ideia-aviso">o agy não ajudou: ficou o seu texto como ideia, sem partes</p>' : '')
+          + '<div class="cam-ideia-tarefa cam-ideia-mae"><p class="cam-ideia-rot">a ideia</p>'
+          // duas linhas ou mais: numa so, a frase saia cortada no celular (medido em 390 px)
+          + '<textarea class="cam-ideia-int" rows="' + c2IdeiaLinhas(I.intencao) + '" maxlength="140" data-ideia-int="m" aria-label="a ideia">' + esc(I.intencao || '') + '</textarea>'
+          + (mm ? '<p class="cam-ideia-meta">' + esc(mm) + '</p>' : '')
+          + '<p class="cam-ideia-rot">onde entra na fila</p>'
+          + '<div class="cam-ideia-lugares" role="group" aria-label="onde a ideia entra na fila">'
+          + C2_IDEIA_LUGARES.map(([cod, rot]) => '<button type="button" class="cam-ideia-lg' + (E.lugar === cod ? ' on' : '') + '" aria-pressed="' + (E.lugar === cod) + '" data-ideia-lugar="' + cod + '">' + esc(rot) + (sug === cod ? '<small>sugerido</small>' : '') + '</button>').join('')
+          + '</div>'
+          + (E.sugestao && E.sugestao.porque ? '<p class="cam-ideia-porque">' + esc(E.sugestao.porque) + '</p>' : '')
+          + '</div>'
+          + (E.partes.length ? '<div class="cam-ideia-partes">' + E.partes.map((p, i) => {
+            const pm = meta(p, false);
+            return '<div class="cam-ideia-tarefa cam-ideia-parte"><p class="cam-ideia-liga">parte da ideia acima</p>'
+              + '<textarea class="cam-ideia-int" rows="' + c2IdeiaLinhas(p.intencao) + '" maxlength="140" data-ideia-int="' + i + '" aria-label="o que fazer nesta parte">' + esc(p.intencao || '') + '</textarea>'
+              + (pm ? '<p class="cam-ideia-meta">' + esc(pm) + '</p>' : '')
+              + '<button type="button" class="cam-ideia-b cam-ideia-tirar" data-ideia-tirar="' + i + '">tirar</button></div>';
+          }).join('') + '</div>' : '')
+          + '<div class="cam-ideia-acoes"><button type="button" class="cam-ideia-b forte" data-ideia-gravar' + (c2IdeiaPodeGravar(E) ? '' : ' disabled') + '>gravar no backlog</button>'
+          + '<button type="button" class="cam-ideia-b" data-ideia-recomecar>recomeçar</button></div>';
+      } else {
+        corpo = '<textarea class="cam-ideia-campo" data-ideia-rascunho placeholder="escreva ou dite a ideia…" aria-label="nova ideia">\n' + esc(E.rascunho) + '</textarea>'
+          + '<div class="cam-ideia-acoes"><button type="button" class="cam-ideia-b forte" data-ideia-organizar' + (E.rascunho.trim() ? '' : ' disabled') + '>organizar a ideia</button></div>';
+      }
+      return '<section class="cam-ideia" aria-label="nova ideia"><h3 class="cam-ideia-tit">nova ideia</h3>' + corpo + erro + '</section>';
+    }
+    // pergunta ao painel ate vir a escolha ou a ideia pronta; E.respostas leva o que ele ja escolheu
+    function c2IdeiaOrganizar(raiz) {
+      const E = c2IdeiaEstado(raiz); const token = ++E.token; const inicio = Date.now();
+      const falhou = (msg) => { E.fase = 'escrevendo'; E.erro = msg; c2RenderCaminho(); };
+      const volta = () => {
+        if (E.token !== token) return;
+        c2Post('/api/ideia/organizar', { projeto: raiz, texto: E.texto, respostas: E.respostas }).then((r) => {
+          if (E.token !== token) return;
+          if (!r) return falhou('o painel não respondeu. Tente de novo.');
+          if (r.ok && Array.isArray(r.escolhas) && r.escolhas.length) {
+            E.escolhas = r.escolhas; E.escolhaResp = []; E.fase = 'escolha'; E.erro = null;
+            return c2RenderCaminho();
+          }
+          if (r.ok && r.ideia) {
+            E.ideia = { ...r.ideia }; E.partes = (r.partes || []).map((p) => ({ ...p })); E.sugestao = r.sugestao || null; E.lugar = null;
+            E.semIA = r.semIA || null; E.fase = 'escolher'; E.erro = null;
+            return c2RenderCaminho();
+          }
+          if (r.ok) { // ainda pensando: pergunta de novo em 3 s, com teto de 3 minutos
+            if (Date.now() - inicio > 180000) return falhou('o agy demorou demais. Tente de novo.');
+            return void setTimeout(volta, 3000);
+          }
+          falhou(r.error || r.erro || 'não deu para organizar a ideia.');
+        });
+      };
+      volta();
+    }
+    document.addEventListener('input', (ev) => {
+      const K = C2.cam; if (!K.raiz) return;
+      const campo = ev.target.closest && ev.target.closest('[data-ideia-rascunho],[data-ideia-int]'); if (!campo) return;
+      const E = c2IdeiaEstado(K.raiz); const cartao = campo.closest('.cam-ideia');
+      if (campo.hasAttribute('data-ideia-rascunho')) {
+        E.rascunho = campo.value;
+        const b = cartao && cartao.querySelector('[data-ideia-organizar]'); if (b) b.disabled = !E.rascunho.trim();
+      } else {
+        const alvo = campo.dataset.ideiaInt; const t = alvo === 'm' ? E.ideia : E.partes[Number(alvo)]; if (!t) return;
+        t.intencao = campo.value;
+        const b = cartao && cartao.querySelector('[data-ideia-gravar]'); if (b) b.disabled = !c2IdeiaPodeGravar(E);
+      }
+    });
+    document.addEventListener('click', (ev) => {
+      const K = C2.cam; if (!K.raiz) return;
+      const b = ev.target.closest('[data-ideia-organizar],[data-ideia-escolha],[data-ideia-lugar],[data-ideia-tirar],[data-ideia-gravar],[data-ideia-recomecar],[data-ideia-nova]'); if (!b) return;
+      const E = c2IdeiaEstado(K.raiz); const raiz = K.raiz;
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); // campo com foco impede o redesenho (celular nao tira o foco ao tocar no botao)
+      if (b.hasAttribute('data-ideia-organizar')) {
+        const texto = E.rascunho.trim(); if (!texto) return;
+        c2IdeiaZera(E); E.texto = texto; E.fase = 'organizando'; c2RenderCaminho(); return c2IdeiaOrganizar(raiz);
+      }
+      if (b.hasAttribute('data-ideia-escolha')) {
+        const i = Number(b.dataset.ideiaEscolha); const e = E.escolhas[i]; const o = e && e.opcoes[Number(b.dataset.ideiaOpcao)]; if (!o) return;
+        E.escolhaResp[i] = o;
+        // respondeu todas: pede de novo ao agy, agora com as respostas, para ele montar as partes
+        if (E.escolhas.every((_, k) => E.escolhaResp[k])) {
+          E.respostas = E.escolhas.map((x, k) => ({ pergunta: x.pergunta, resposta: E.escolhaResp[k] }));
+          E.fase = 'organizando'; E.erro = null; c2RenderCaminho(); return c2IdeiaOrganizar(raiz);
+        }
+      }
+      else if (b.hasAttribute('data-ideia-lugar')) E.lugar = b.dataset.ideiaLugar;
+      else if (b.hasAttribute('data-ideia-tirar')) E.partes.splice(Number(b.dataset.ideiaTirar), 1);
+      else if (b.hasAttribute('data-ideia-recomecar')) { E.token++; c2IdeiaZera(E); }
+      else if (b.hasAttribute('data-ideia-nova')) { c2IdeiaZera(E); E.rascunho = ''; E.texto = ''; }
+      else if (b.hasAttribute('data-ideia-gravar')) {
+        if (!c2IdeiaPodeGravar(E)) return;
+        E.fase = 'gravando'; E.erro = null;
+        const campos = (t) => ({ intencao: String(t.intencao).trim(), natureza: t.natureza, area: t.area, tamanho: t.tamanho, pronto: t.pronto, conferir: t.conferir });
+        const ideia = { ...campos(E.ideia), frente: E.ideia.frente };
+        c2Post('/api/ideia/gravar', { projeto: raiz, texto: E.texto, ideia, partes: E.partes.map(campos), lugar: E.lugar, respostas: E.respostas }).then((r) => {
+          if (r && r.ok) {
+            E.id = r.id; E.filhas = r.filhas || []; E.fase = 'gravado'; E.ideia = null; E.partes = [];
+            ['sprint', 'frente'].forEach((p) => { if (p !== K.por) delete K.dados[raiz + '|' + p]; });
+            c2CaminhoLer(C2.cam.raiz, true);
+          } else { E.fase = 'escolher'; E.erro = (r && (r.error || r.erro)) || 'o painel não respondeu. Tente de novo.'; }
+          c2RenderCaminho();
+        });
+      }
+      c2RenderCaminho();
+    });
     function c2RenderCaminho() {
       const naTar = document.getElementById('view-tarefas')?.classList.contains('active'); // CC-936: a mesma peça desenha no Caminho e embaixo da aba Tarefas
       const alvo = document.getElementById(naTar ? 'c2-tar-caminho' : 'c2-caminho');
@@ -21327,7 +21515,7 @@
       const corpo = !r ? '<p class="c2-vazio">lendo o caminho…</p>' : !r.ok ? '<p class="c2-vazio">' + esc(r.erro || 'não deu para ler o caminho') + '</p>'
         : K.modo === 'lista' ? camLista(r) : c2CaminhoCorpo(r, estreito, anima);
       pintar(portal, r && r.ok && K.modo !== 'lista' ? camGaveta(r) : '');
-      if (pintar(alvo, (naTar ? '<h2 class="tar-cam-h">Caminho do projeto</h2>' : '') + '<div class="cam-topo">' + seletor + pors + modos + '</div>' + corpo + (r && r.ok ? camGuardados(r) : '') + (naTar ? c2ExplGasto() : '')) && r && r.ok && K.modo !== 'lista') {
+      if (pintar(alvo, (naTar ? '<h2 class="tar-cam-h">Caminho do projeto</h2>' : '') + '<div class="cam-topo">' + seletor + pors + modos + '</div>' + (!naTar && r && r.ok ? c2IdeiaCartao(K.raiz) : '') + corpo + (r && r.ok ? camGuardados(r) : '') + (naTar ? c2ExplGasto() : '')) && r && r.ok && K.modo !== 'lista') {
         c2CaminhoPosicionar(anima, alvo);
         if (anima) setTimeout(() => K.animou.add(chave), 2000); // só depois do fim, para o redesenho não cortar a animação
       }
@@ -22789,12 +22977,73 @@
       if (r.texto) return '<div class="ses-contexto-rot">o que aconteceu (resumo do agy)</div>' + '<div class="ses-ia">' + esc(r.texto) + '</div>';
       return '<div class="c2-mini" style="margin:6px 0">resumo do agy: ' + esc(r.estado || '') + '…</div>';
     }
+    /* CC-983, pedido dele em 07/10: "um resumo até a minha última pergunta (…) se eu pedir mais um nível de
+       abstração, ele sobe até a minha próxima mensagem acima dessa", e "poder fazer perguntas sobre a sessão".
+       O servidor junta as mensagens dele seguidas e próximas num pedido só; repetir o toque não gasta de novo. */
+    C2.niv = C2.niv || {};
+    // ⚠️ não chamar de c2Nivel: esse nome é o nível do cadeado, e a colisão apagou todos os avisos da Sessões (medido em 07/10)
+    function c2ResumoNivel(conv) {
+      const st = C2.niv[conv] || {}; const r = st.r; const n = st.nivel || 0;
+      const corpo = !r ? '' : r.texto ? '<div class="ses-ia">' + esc(r.texto) + '</div>'
+        : r.erro ? '<div class="c2-mini" style="color:var(--red)">' + esc(r.erro) + '</div>'
+        : '<div class="c2-mini">' + (st.pergunta ? 'o agy está lendo para responder' : 'resumindo até ' + (n === 1 ? 'o seu último pedido' : 'os seus últimos ' + n + ' pedidos')) + '…</div>';
+      return '<div class="ses-nivel" data-niv="' + esc(conv) + '"><div class="ses-niv-bts">'
+        + '<button class="c2-link" data-niv-n="1">' + (n ? 'de novo, até meu último pedido' : 'resumir até meu último pedido') + '</button>'
+        + (r && r.texto && n < 5 ? '<button class="c2-link" data-niv-n="' + (n + 1) + '">subir mais um pedido</button>' : '') + '</div>'
+        + '<div class="c2-msg ses-niv-perg"><input data-niv-perg placeholder="perguntar sobre esta sessão…" enterkeyhint="send" value="' + esc(st.rascunho || '') + '">'
+        + '<button class="c2-enviar" data-niv-ir aria-label="perguntar" title="perguntar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>'
+        + (r ? '<div class="ses-contexto-rot">' + (st.pergunta ? 'resposta do agy: ' + esc(st.pergunta.slice(0, 80)) : 'resumo do agy, ' + (n === 1 ? 'até seu último pedido' : 'subindo ' + n + ' pedidos')) + '</div>' + corpo : '')
+        + '</div>';
+    }
+    async function c2NivelPedir(conv, nivel, pergunta) {
+      const st = { nivel, pergunta, rascunho: '', r: { estado: 'na fila' } };
+      C2.niv[conv] = st; c2RenderInicio(); c2RenderDecisoes();
+      for (let i = 0; i < 60; i += 1) {
+        const r = await fetch('/api/sessao/resumo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: conv, nivel, pergunta }), signal: AbortSignal.timeout(15000) })
+          .then(c2Json).catch((e) => ({ erro: 'o painel não respondeu: ' + e.message }));
+        if (C2.niv[conv] !== st) return; // ele pediu outro nível no meio: este para
+        st.r = r; c2RenderInicio(); c2RenderDecisoes();
+        if (r.texto || r.erro) return;
+        await new Promise((ok) => setTimeout(ok, 3000));
+      }
+      st.r = { erro: 'o agy não respondeu em 3 minutos' }; c2RenderInicio(); c2RenderDecisoes();
+    }
+    document.addEventListener('click', (ev) => {
+      const box = ev.target.closest('[data-niv]'); if (!box) return;
+      const bt = ev.target.closest('[data-niv-n]');
+      if (bt) { ev.preventDefault(); c2NivelPedir(box.dataset.niv, Number(bt.dataset.nivN), ''); return; }
+      if (ev.target.closest('[data-niv-ir]')) {
+        ev.preventDefault();
+        const p = (box.querySelector('[data-niv-perg]')?.value || '').trim();
+        if (p) c2NivelPedir(box.dataset.niv, (C2.niv[box.dataset.niv] || {}).nivel || 1, p);
+      }
+    });
+    document.addEventListener('input', (ev) => {
+      const campo = ev.target.closest('[data-niv-perg]'); if (!campo) return;
+      const conv = campo.closest('[data-niv]').dataset.niv; (C2.niv[conv] || (C2.niv[conv] = {})).rascunho = campo.value;
+    });
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter' || !ev.target.closest('[data-niv-perg]')) return;
+      ev.preventDefault(); ev.target.closest('[data-niv]').querySelector('[data-niv-ir]').click();
+    });
+    /* CC-879, pedido dele: "as tarefas são parte do card também". A conversa do robô mostra o pedido
+       que ele executou por último e as micro tarefas dele, com o estado de cada uma. */
+    function c2Obra(o, chave) {
+      if (!o || !o.tarefas || !o.tarefas.length) return '';
+      const k = 'obra:' + chave, aberto = C2.colap && C2.colap.has(k);
+      const feitas = o.tarefas.filter((t) => t.feita).length;
+      return '<div class="ses-contexto-rot">tarefas do robô: ' + feitas + ' de ' + o.tarefas.length + ' feitas</div>'
+        + '<div class="c2-mini" style="margin:2px 0 4px">pedido ' + esc(o.id) + ' (' + esc(o.estado) + '): ' + esc(o.titulo) + '</div>'
+        + '<ul class="c2-obra">' + (aberto ? o.tarefas : o.tarefas.slice(0, 5)).map((t) => '<li' + (t.feita ? ' class="feita"' : '') + '><span>' + esc(t.titulo) + '</span><span class="c2-mini">' + esc(t.estado) + '</span></li>').join('') + '</ul>'
+        + (o.tarefas.length > 5 ? '<button class="c2-link colap-bt" data-colap="' + esc(k) + '">' + (aberto ? 'ver menos' : 'mais ' + (o.tarefas.length - 5)) + '</button>' : '');
+    }
     /* CC-600, pedido dele: com o resumo do agy, o resumo curto era repetido;
        e a resposta completa abre numa janela por cima, não dentro do cartão. */
     function c2BlocoResumo(frase, resumo, conversa, daqui, temIA) {
       const extra = !temIA && resumo && resumo.replace(/\s+/g, ' ').trim() !== String(frase || '').replace(/\s+/g, ' ').trim();
       let h = extra ? c2Colapsavel(resumo, 'res:' + (conversa || frase), 'ses-resumo') : '';
-      if (conversa && daqui) h += '<button class="c2-link ses-abrir" data-fala-abrir="' + esc(conversa) + '">ver resposta completa</button>';
+      // CC-982: sessão recém-aberta tem conversa e ainda não tem resposta; o link prometeria o que não existe
+      if (conversa && daqui && frase) h += '<button class="c2-link ses-abrir" data-fala-abrir="' + esc(conversa) + '">ver resposta completa</button>';
       return h;
     }
     /* ── CC-631: o modo lista da tela Sessões ────────────────────────────
@@ -23096,7 +23345,8 @@
         + c2SaudeBloco(s)
         + c2ProcBloco(s.id)
         + '<div class="c2-perg">' + (s.fala ? esc(c2semMd(s.fala)) : '<span style="color:var(--text-dim)">' + esc(s.assunto || 'sem fala do agente ainda') + '</span>') + '</div>'
-        + c2BlocoIA(s.resumoIA, s.id) + c2EtiLinha(s)
+        + c2BlocoIA(s.resumoIA, s.id) + (daqui && s.fala && s.conversa && !coderoom ? c2ResumoNivel(s.conversa) : '') + c2EtiLinha(s)
+        + c2Obra(s.obra, s.id)
         + c2BlocoResumo(s.fala, s.resumo, s.conversa, daqui, s.resumoIA?.texto)
         + (daqui && coderoom ? c2GateQuem(s) : '')
         + (daqui && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela, abra a sessão no ' + esc(s.dispositivo || 'outro computador') + '.') + '</div>' : ''))

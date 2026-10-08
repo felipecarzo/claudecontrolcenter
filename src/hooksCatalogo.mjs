@@ -496,6 +496,22 @@ export const HOOKS = [
     implementado: true,
   },
   {
+    id: 'modelo-guard',
+    modulo: 'nisaba',
+    nivel: 'trava',
+    familia: 'forma', // conta: o modelo da chamada contra o que a tarefa pede
+    label: 'Ajudante no modelo que a tarefa andando pede',
+    script: 'modelo-guard.mjs',
+    evento: 'PreToolUse',
+    matcher: 'Agent|Task',
+    descricao: 'CC-975, decisão dele em 07/10: cada tarefa tem modelo indicado por critério '
+      + '(node cc.mjs backlog modelo). Chamada de ajudante que sairia em outro modelo que o da '
+      + 'tarefa que esta sessão pôs em andamento é recusada antes de rodar, com o modelo certo '
+      + 'e o jeito de ajustar a tarefa. Ajudante só de leitura passa sempre.',
+    padrao: true,
+    implementado: true,
+  },
+  {
     id: 'edicao-guard',
     modulo: 'codigo',
     nivel: 'trava',

@@ -78,7 +78,7 @@ const relativos = [...alvos]
 const forDoDocs = relativos.filter((r) => !r.startsWith('docs/'))
 if (!forDoDocs.length) liberar() // turno só mexeu em docs/: nada de código para registrar
 
-const hoje = new Date().toISOString().slice(0, 10)
+const hoje = new Date().toLocaleDateString('sv') // dia local: em UTC, das 21h à meia-noite cobrava o diário de amanhã (07/10)
 const diarioDeHoje = `docs/diario/${hoje}.md`
 if (relativos.includes(diarioDeHoje)) liberar() // já registrado neste mesmo turno
 

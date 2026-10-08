@@ -429,11 +429,14 @@ export function ultimoDoAgente(id, { bytes = 96 * 1024 } = {}) {
   if (!cab) return null
   let st = null
   try { st = fs.statSync(arquivosDe(cab._onde, id).log) } catch { return null }
+  // CC-879: na conversa do robô quem fala é ele, gravado como "sistema"; sem isto o cartão dela nunca tinha resumo.
+  // Entra na chave da memória: renomear não muda o arquivo, e a resposta de antes do nome ficava presa.
+  const doRobo = /^Arquiteto · /.test(cab.titulo || '')
   const guardado = cacheUltima.get(id)
-  if (guardado && guardado.size === st.size && guardado.mtimeMs === st.mtimeMs) return guardado.r
+  if (guardado && guardado.size === st.size && guardado.mtimeMs === st.mtimeMs && guardado.doRobo === doRobo) return guardado.r
   let r = null
   for (const m of dobrar(cab, lerLinhas(cab._onde, id, bytes)).reverse()) {
-    if (m.de === 'felipe' || m.de === 'sistema') continue
+    if (m.de === 'felipe' || (m.de === 'sistema' && !doRobo)) continue
     if (!String(m.texto || '').trim()) continue
     r = { de: m.de, texto: m.texto, em: m.em || null, seq: m.seq || null, pronto: m.estado === 'pronto' }
     break
@@ -441,7 +444,7 @@ export function ultimoDoAgente(id, { bytes = 96 * 1024 } = {}) {
   /* Conversa apagada não pode ficar ocupando memória para sempre: o limite é
      holgado de propósito, e a 200 ele limpa tudo, que é barato. */
   if (cacheUltima.size > 200) cacheUltima.clear()
-  cacheUltima.set(id, { size: st.size, mtimeMs: st.mtimeMs, r })
+  cacheUltima.set(id, { size: st.size, mtimeMs: st.mtimeMs, doRobo, r })
   return r
 }
 
