@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-94 abertos, 882 fechados, 976 no total. Gerado em 2026-10-07.
+95 abertos, 882 fechados, 977 no total. Gerado em 2026-10-08.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -16,7 +16,7 @@
 |---|---|---|---|
 | CC-294 | definida | 3 | a amostra julgada: 30 devoluções lidas lado a lado |
 | CC-917 | prova | - | trava: resposta que deixa ideia longa dele só no texto, sem item no backlog, é barrada uma vez |
-| CC-960 | andando · 3 de 5 | - | trocar modelo e esforco sozinho pela complexidade da tarefa, com regras reais em todos os projetos |
+| CC-960 | andando · 4 de 6 | - | trocar modelo e esforco sozinho pela complexidade da tarefa, com regras reais em todos os projetos |
 | CC-967 | prova | - | trava: o robo nunca constroi sozinho um item que ja teve obra aprovada (reconstruiu o MVP e o backup em 07/10) |
 
 ## projetos
@@ -72,6 +72,7 @@
 | CC-986 | prova | - | area de ideias no Caminho: ditar ou escrever a ideia, a IA quebra em tarefas, pergunta o lugar na fila e grava no backlog |
 | CC-987 | prova | - | cada aba do painel (Caminho, Sessoes e as outras) instalavel como app separado no celular |
 | CC-988 | prova | - | barra lateral direita (responder sessoes) com largura ajustavel arrastando a borda, igual a esquerda |
+| CC-990 | prova | - | o A+ e A- do tamanho da letra nao mudam o texto da barra lateral direita |
 
 ## framework
 

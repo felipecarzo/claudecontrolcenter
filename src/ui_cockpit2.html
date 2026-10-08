@@ -4869,6 +4869,9 @@
        botão muda de lugar". Com o topo ampliado junto, o A+ andava a cada
        toque. */
     .view-section, .sidebar { zoom: var(--escala, 1); }
+    /* 08/10, print dele: o A+ e o A- não mudavam a barra direita. O zoom vai no que está DENTRO dela: na barra inteira
+       ele esticaria a largura dela por cima do conteúdo, que só cede o espaço de --lat-w. */
+    #lateral-dir > * { zoom: var(--escala, 1); }
     .fonte-ctl { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 10px; background: var(--card); overflow: hidden; }
     .fonte-ctl button { background: none; border: 0; color: var(--text-muted); font: inherit; font-size: 14px; font-weight: 600; padding: 7px 9px; cursor: pointer; line-height: 1; }
     .fonte-ctl .tema-btn { display: inline-flex; align-items: center; justify-content: center; width: 34px; border-left: 1px solid var(--border); }

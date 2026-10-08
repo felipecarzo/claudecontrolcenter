@@ -768,3 +768,9 @@
 {"em":"2026-10-08T02:54:24.653Z","tipo":"criada","id":"CC-988","estado":"EM","texto":"agora eu quero que a aba lateral direita possa ser ajustada de tamanho igual a esquerda"}
 {"em":"2026-10-08T02:59:08.422Z","tipo":"estado","id":"CC-988","de":"EM","para":"PR","porque":"provado no navegador em 1800 e 1280 px: arrastar a borda leva a barra de 384 para 534 px e o conteudo cede o mesmo; grava lateral:largura ao soltar; toque duplo volta a 384; regua da tela estreita ok"}
 {"em":"2026-10-08T02:59:09.491Z","tipo":"medida","id":"CC-988","estado":"PR","sessao":"38b5cd37-7870-4290-9528-90bdda8f807d","tokens":5527126,"porModelo":{"claude-opus-5-5":5527126,"claude-sonnet-5-5":1493941}}
+{"em":"2026-10-08T03:17:43.760Z","tipo":"criada","id":"CC-989","estado":"EM","pai":"CC-960","texto":"relato da sessao do dengonator (DN-61): o aviso so chegou na compactacao, quando a tarefa ja estava andando e o codigo editado"}
+{"em":"2026-10-08T03:18:31.383Z","tipo":"estado","id":"CC-989","de":"EM","para":"OK","porque":"robô: test-modelo.mjs passou"}
+{"em":"2026-10-08T03:18:32.050Z","tipo":"medida","id":"CC-989","estado":"OK","sessao":"38b5cd37-7870-4290-9528-90bdda8f807d","tokens":5560925,"porModelo":{"claude-opus-5-5":5560925,"claude-sonnet-5-5":1493941}}
+{"em":"2026-10-08T03:18:59.979Z","tipo":"criada","id":"CC-990","estado":"EM","texto":"o + e - do tamanho da fonte nao alteram o texto da barra lateral direita"}
+{"em":"2026-10-08T03:20:04.518Z","tipo":"estado","id":"CC-990","de":"EM","para":"PR","porque":"provado em 1800 px: com a letra em 150 por cento o titulo da barra direita foi de 19 para 27 px de altura, a barra ficou com a mesma largura (720, a escolhida por ele) e nada vaza para o lado"}
+{"em":"2026-10-08T03:20:05.516Z","tipo":"medida","id":"CC-990","estado":"PR","sessao":"38b5cd37-7870-4290-9528-90bdda8f807d","tokens":5638371,"porModelo":{"claude-opus-5-5":5638371,"claude-sonnet-5-5":1493941}}

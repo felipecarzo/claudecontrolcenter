@@ -1693,6 +1693,16 @@ switch (cmd) {
 
   case 'backlog': {
     const B = await import('./src/backlog.mjs')
+    /* CC-989, relato da sessão do dengonator (DN-61): o aviso de modelo só saía na abertura e na compactação da sessão,
+       e chegou com a tarefa já andando e o código mexido. Agora sai na hora em que a tarefa entra em andamento. */
+    const avisoDeModelo = async (i) => {
+      if (i?.estado !== 'EM') return
+      try {
+        const MO = await import('./src/modelo.mjs')
+        const o = MO.orientar(i, MO.modeloDaSessao({}, process.cwd()))
+        if (o && o.acao && o.acao !== 'seguir') console.log(`  MODELO: ${o.texto}\n`)
+      } catch { /* aviso nunca impede mover */ }
+    }
     const sub = arg
     const valorDe = (nome) => {
       const i = argv.indexOf(`--${nome}`)
@@ -1793,6 +1803,7 @@ switch (cmd) {
           permitirAntigo: argv.includes('--antigo'),
         })
         console.log(`\n  ${i.id}  ${B.comoSeLe(i)}\n`)
+        await avisoDeModelo(i)
       } catch (e) { console.log(`\n  recusado: ${e.message}\n`) }
       break
     }
@@ -1962,6 +1973,7 @@ switch (cmd) {
           decisao: valorDe('decisao') || undefined,
         })
         console.log(`\n  ${i.id} → ${B.estadoDe(i.estado).rotulo}\n`)
+        await avisoDeModelo(i)
         // CC-900: o contador de tokens da sessão, para medir o custo do item
         try { (await import('./src/custoItem.mjs')).marcar(i.id, i.estado) } catch { /* medir nunca impede mover */ }
       } catch (e) { console.log(`\n  recusado: ${e.message}\n`) }

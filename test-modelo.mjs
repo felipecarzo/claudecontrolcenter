@@ -120,4 +120,18 @@ try {
   rmSync(casa, { recursive: true, force: true }); rmSync(proj, { recursive: true, force: true })
 }
 
+// CC-989: o aviso sai na hora em que a tarefa entra em andamento, não só na abertura da sessão
+{
+  const d = mkdtempSync(join(tmpdir(), 'modelo-cli-'))
+  try {
+    mkdirSync(join(d, 'docs')); mkdirSync(join(d, '.claude')); writeFileSync(join(d, 'docs', 'backlog.jsonl'), ''); writeFileSync(join(d, '.claude', 'settings.local.json'), '{"model":"sonnet"}')
+    const cli = (...a) => spawnSync(process.execPath, [new URL('./cc.mjs', import.meta.url).pathname, 'backlog', ...a], { cwd: d, encoding: 'utf8', env: { ...process.env, CC_HOME: join(d, 'casa') } }).stdout
+    const def = cli('novo', 'consertar o login que quebrou', '--estado', 'EM', '--natureza', 'DEF', '--area', 'tela', '--tamanho', 'M', '--pronto', 'o login volta a funcionar', '--conferir', 'dele:entrar', '--frente', 'f')
+    ok(/MODELO: \w+-1 pede Opus[\s\S]*\/model opus/.test(def), 'novo já andando, em sessão Sonnet: avisa na hora')
+    const ped = cli('novo', 'texto do botao', '--natureza', 'PED', '--area', 'tela', '--tamanho', 'P', '--pronto', 'o botao diz salvar', '--conferir', 'olho:ver', '--frente', 'f')
+    ok(!/MODELO:/.test(ped), 'tarefa que não está andando: sem aviso')
+    const mov = cli('mover', (/(\w+-2)/.exec(ped) || [])[1] || 'X', '--para', 'EM')
+    ok(/andando/.test(mov) && !/MODELO:/.test(mov), 'tarefa Sonnet andando em sessão Sonnet: sem aviso à toa')
+  } finally { rmSync(d, { recursive: true, force: true }) }
+}
 console.log(`test-modelo: ${n} verificações, 0 falhas`)
