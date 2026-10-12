@@ -225,6 +225,25 @@ try {
     assert.equal(fs.readFileSync(path.join(proj, 'app.py'), 'utf8'), 'meu trabalho', 'a falha não mexe na pasta do projeto')
   })
 
+  await t('script do projeto (o dengonator): roda o script dele como claudedev, nunca como root, e confere o site', async () => {
+    const proj = path.join(casa, 'dengo'); fs.mkdirSync(path.join(proj, 'apps/web/scripts'), { recursive: true }); fs.writeFileSync(path.join(proj, 'apps/web/scripts/publicar.sh'), 'echo oi')
+    const base = { id: 'dengo', tipo: 'script', repo: '/home/claudedev/projetos/VPS_cockpit', dir: '.', script: 'tools/deploy-seguro/instalar.sh', url: 'https://d.com.br/', usuarioBuild: 'root' }
+    assert.equal(D.validarAlvo(base).usuarioBuild, 'claudedev', 'o cadastro não escolhe o usuário: é sempre claudedev')
+    assert.throws(() => D.validarAlvo({ ...base, script: 'cc.mjs' }), /script inválido/, 'só .sh')
+    assert.throws(() => D.validarAlvo({ ...base, script: '../../../root/x.sh' }), /script inválido/)
+    assert.throws(() => D.validarAlvo({ ...base, script: '/root/x.sh' }), /script inválido/)
+    assert.throws(() => D.validarAlvo({ ...base, script: 'x.sh; reboot' }), /script inválido/)
+    assert.throws(() => D.validarAlvo({ ...base, script: 'nao-existe.sh' }), /não existe/)
+    const chamadas = []; const exec = async (cmd, args, op) => { chamadas.push([cmd, args.join(' '), op.usuario, op.cwd]); return { ok: true } }
+    const alvoD = { id: 'dengo', tipo: 'script', repo: proj, dir: 'apps/web', script: 'scripts/publicar.sh', url: 'https://d/', usuarioBuild: 'claudedev' }
+    await D.deployAlvo(alvoD, {}, { log: () => {}, exec, buscar: async () => ({ status: 200 }), esperaMs: 1 })
+    assert.deepEqual(chamadas, [['bash', 'scripts/publicar.sh', 'claudedev', path.join(proj, 'apps/web')]], 'um comando só, como claudedev, na subpasta do app')
+    await assert.rejects(D.deployAlvo({ ...alvoD, usuarioBuild: 'root' }, {}, { log: () => {}, exec, buscar: async () => ({ status: 200 }), esperaMs: 1 }), /só roda como claudedev/)
+    await assert.rejects(D.deployAlvo(alvoD, {}, { log: () => {}, exec: async () => ({ ok: false }), buscar: async () => ({ status: 200 }), esperaMs: 1 }), /anterior continua no ar/)
+    await assert.rejects(D.deployAlvo(alvoD, {}, { log: () => {}, exec, buscar: async () => ({ status: 502 }), esperaMs: 1 }), /não respondeu/)
+    assert.throws(() => D.reverterAlvo(alvoD, {}, {}), /não há cópia guardada/)
+  })
+
   // o servidor: pedir, recusar código errado, bloquear, confirmar uma vez só
   fs.mkdirSync(process.env.DEPLOY_CONF, { recursive: true })
   fs.writeFileSync(path.join(process.env.DEPLOY_CONF, 'alvos.json'), JSON.stringify([{ ...alvo, repo: casa }]))

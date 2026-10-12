@@ -71,5 +71,15 @@
     "destino": "/var/www/lev4-landing",
     "url": "https://lev4.carzo.com.br/",
     "usuarioBuild": "claudedev"
+  },
+  {
+    "id": "dengonator",
+    "nome": "dengonator2000",
+    "tipo": "script",
+    "repo": "/home/claudedev/projetos/VPS_dengonator2000",
+    "dir": "apps/web",
+    "script": "scripts/publicar.sh",
+    "url": "https://app.dengonator2000.carzo.com.br/",
+    "usuarioBuild": "claudedev"
   }
 ]

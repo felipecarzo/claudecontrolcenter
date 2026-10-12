@@ -274,7 +274,20 @@ export async function deployProcesso(alvo, pedido, { log, buscar = fetch, exec =
   await religar()
   throw new Error(r.ok ? 'o site não respondeu depois de publicar; a versão anterior foi devolvida' : 'falhou ao gerar ou religar; a versão anterior foi devolvida')
 }
-export const deployAlvo = (alvo, pedido, op) => (alvo.tipo === 'estatico' ? deployEstatico(alvo, pedido, op) : deployProcesso(alvo, pedido, op))
+/* Tipo "script": o projeto tem o próprio jeito de publicar (o dengonator monta a versão nova na cópia
+   desligada, liga, e só então desliga a velha). Aqui só se roda o script dele, SEMPRE como claudedev
+   (nunca root: o script mora numa pasta que a sessão edita), e se confere o site. */
+export async function deployScript(alvo, pedido, { log, buscar = fetch, exec = rodar, esperaMs = 4000 } = {}) {
+  const dir = path.join(alvo.repo, alvo.dir || '.')
+  if (alvo.usuarioBuild !== 'claudedev') throw new Error('script de publicação só roda como claudedev')
+  log(`\n▸ publicando pelo script do projeto (${alvo.script}), como ${alvo.usuarioBuild}\n`)
+  const r = await exec('bash', [alvo.script], { cwd: dir, usuario: alvo.usuarioBuild, log, timeout: 20 * 60 * 1000 })
+  if (!r.ok) throw new Error('o script de publicação falhou; ele só troca de versão quando a nova responde, então a anterior continua no ar')
+  const { conferir } = religadores(alvo, dir, { log, buscar, exec, esperaMs })
+  if (!await conferir()) throw new Error('o script terminou, mas o site não respondeu')
+  return { copia: null }
+}
+export const deployAlvo = (alvo, pedido, op) => (alvo.tipo === 'estatico' ? deployEstatico(alvo, pedido, op) : alvo.tipo === 'script' ? deployScript(alvo, pedido, op) : deployProcesso(alvo, pedido, op))
 
 /* ── CC-935: voltar a versão anterior, pelo próprio deploy seguro ───────────
    Todo deploy guarda, ANTES de trocar, um .tar.gz do que estava no ar (`${id}-${data}.tar.gz`
@@ -342,7 +355,10 @@ export async function reverterProcesso(alvo, pedido, { log, buscar = fetch, exec
   await religar()
   throw new Error('o site não voltou com a versão anterior; a que estava no ar foi devolvida')
 }
-export const reverterAlvo = (alvo, pedido, op) => (alvo.tipo === 'estatico' ? reverterEstatico(alvo, pedido, op) : reverterProcesso(alvo, pedido, op))
+export const reverterAlvo = (alvo, pedido, op) => {
+  if (alvo.tipo === 'script') throw new Error('este site publica pelo próprio script, que só desliga a versão velha depois que a nova responde: não há cópia guardada aqui para devolver')
+  return alvo.tipo === 'estatico' ? reverterEstatico(alvo, pedido, op) : reverterProcesso(alvo, pedido, op)
+}
 
 /* ── descoberta: quais sites existem e de onde vêm ────────────────────────
    Pedido dele: "deveríamos criar um processo que automatize isso, sem gastar
@@ -450,7 +466,7 @@ export async function descobrir() {
 export function validarAlvo(a) {
   const id = String(a.id || '').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
   if (id.length < 2) throw new Error('nome curto demais')
-  const tipo = ['estatico', 'pm2', 'docker', 'systemd'].includes(a.tipo) ? a.tipo : null
+  const tipo = ['estatico', 'pm2', 'docker', 'systemd', 'script'].includes(a.tipo) ? a.tipo : null
   if (!tipo) throw new Error('tipo inválido')
   const sobPasta = (p, bases) => { const r = path.resolve(String(p || '')); return bases.some((b) => r === b || r.startsWith(b + '/')) ? r : null }
   const repo = sobPasta(a.repo, ['/home/claudedev/projetos'])
@@ -459,6 +475,12 @@ export function validarAlvo(a) {
   const url = /^https:\/\/[a-z0-9.-]+\/$/.test(String(a.url || '')) ? a.url : null
   if (!url) throw new Error('endereço inválido')
   const o = { id, nome: String(a.nome || id).slice(0, 60), tipo, repo, dir, url, usuarioBuild: 'claudedev' }
+  if (tipo === 'script') { // caminho relativo à subpasta do projeto, terminando em .sh; roda como claudedev (deployScript)
+    o.script = String(a.script || '')
+    if (!/^[a-zA-Z0-9_./-]{1,120}\.sh$/.test(o.script) || o.script.includes('..') || o.script.startsWith('/')) throw new Error('script inválido')
+    if (!fs.existsSync(path.join(repo, dir, o.script))) throw new Error('o script não existe no projeto')
+    return o
+  }
   if (tipo === 'estatico') {
     o.destino = sobPasta(a.destino, ['/var/www']); if (!o.destino || o.destino === '/var/www') throw new Error('pasta no ar fora de /var/www')
     o.build = a.build ? String(a.build).slice(0, 120) : null
