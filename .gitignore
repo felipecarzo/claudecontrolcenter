@@ -57,3 +57,7 @@ vps_prompts.*
 # 20/08: o arquivo esta corrompido, com DOIS documentos HTML dentro dele.
 # Fica fora ate ser refeito ou apagado de vez.
 src/ui_v3.html
+
+# rascunho de teste e prints soltos (12/10)
+scratch/
+screenshot-*.png
