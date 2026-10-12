@@ -158,7 +158,8 @@ const JS_PASSO = `(p) => new Promise((ok, x) => {
    abriam o menu do celular. O painel acha sozinho o que tocar: itens de menu
    (abrindo o menu escondido do celular) e os primeiros cartões da tela inicial.
    Nunca toca no que sai, apaga ou zera. */
-export const NAO_TOCAR = /sair|logout|log out|excluir|apagar|delet|remov|limpar|resetar|zerar|desconectar|menu|recolher|fechar|tema|idioma/i
+// CC-1028, 08/10: a foto do Conta de Casa clicou "Fazer backup agora"
+export const NAO_TOCAR = /sair|logout|log out|excluir|apagar|delet|remov|limpar|resetar|zerar|desconectar|menu|recolher|fechar|tema|idioma|backup/i
 export const ALVOS_MAX = 6
 const JS_VIS = `const vis = (e) => { const r = e.getBoundingClientRect(); return !!e.offsetParent && r.width > 4 && r.height > 4 };`
 const JS_ALVOS = `(() => { ${JS_VIS}
