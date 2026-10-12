@@ -134,4 +134,31 @@ try {
     ok(/andando/.test(mov) && !/MODELO:/.test(mov), 'tarefa Sonnet andando em sessão Sonnet: sem aviso à toa')
   } finally { rmSync(d, { recursive: true, force: true }) }
 }
+// CC-991: o lembrete de trocar o modelo
+{
+  const L = MO.lembreteDeModelo
+  ok(L(M, 'opusplan', 'claude-opus-5-5') === null, 'sessão em opusplan: a troca é sozinha, sem lembrete')
+  ok(L(M, 'sonnet', 'claude-sonnet-5-5') === null, 'modelo bate com a tarefa: sem lembrete')
+  ok(/AskUserQuestion/.test(L(DEF, 'sonnet', 'claude-sonnet-5-5')) && /\/model opus/.test(L(DEF, 'sonnet', 'claude-sonnet-5-5')), 'defeito numa sessão Sonnet: pergunta para trocar para Opus')
+  ok(/\/model sonnet/.test(L(M, 'opus', 'claude-opus-5-5')), 'tarefa Sonnet numa sessão Opus: pergunta para trocar para Sonnet')
+  ok(/\/model opusplan/.test(L(G, 'sonnet', null)), 'sem resposta ainda, vale o configurado')
+  ok(L(M, null, null) === null && L({ id: 'X-6', natureza: 'DEC' }, 'opus', 'opus') === null, 'sem saber o modelo, ou decisão dele: sem lembrete')
+
+  const d = mkdtempSync(join(tmpdir(), 'modelo-lemb-'))
+  try {
+    mkdirSync(join(d, 'docs')); mkdirSync(join(d, '.claude'))
+    writeFileSync(join(d, 'docs', 'backlog.jsonl'), JSON.stringify({ id: 'T-9', titulo: 'x', estado: 'EM', frente: 'f', natureza: 'DEF', area: 'tela', tamanho: 'M', criado: '2026-10-08', pronto: 'algo que se ve pronto', conferir: 'auto:true' }) + '\n')
+    const sess = '91111111-2222-3333-4444-555555555555'
+    writeFileSync(join(d, 'docs', 'eventos.jsonl'), JSON.stringify({ tipo: 'medida', id: 'T-9', estado: 'EM', sessao: sess, tokens: 1 }) + '\n')
+    writeFileSync(join(d, 'transcrito.jsonl'), JSON.stringify({ type: 'assistant', message: { model: 'claude-sonnet-5-5' } }) + '\n')
+    const run = (cfgModelo) => {
+      writeFileSync(join(d, '.claude', 'settings.local.json'), JSON.stringify({ model: cfgModelo }))
+      return spawnSync(process.execPath, ['hooks/modelo-lembrete.mjs'], { input: JSON.stringify({ cwd: d, session_id: sess, transcript_path: join(d, 'transcrito.jsonl') }), encoding: 'utf8', env: { ...process.env, CC_HOME: join(d, 'casa') } })
+    }
+    ok(run('opusplan').stdout === '', 'gancho: sessão em opusplan não lembra')
+    const r1 = run('sonnet')
+    ok(/MODELO: T-9 pede Opus/.test(r1.stdout) && /AskUserQuestion/.test(r1.stdout), `gancho: defeito numa sessão Sonnet lembra (${r1.stdout.slice(0, 200)} ${r1.stderr.slice(0, 200)})`)
+    ok(run('sonnet').stdout === '', 'gancho: avisa uma vez só por tarefa')
+  } finally { rmSync(d, { recursive: true, force: true }); rmSync(join(tmpdir(), 'cc-modelo-lembrete-91111111-2222-3333-4444-555555555555'), { force: true }) }
+}
 console.log(`test-modelo: ${n} verificações, 0 falhas`)

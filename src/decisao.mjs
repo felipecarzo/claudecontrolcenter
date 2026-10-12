@@ -309,10 +309,24 @@ export async function enviarMensagem({ conversa, texto }, deps = DEPS) {
   const r2 = await deps.apertar(aqui.sessao, 'Enter')
   if (!r2?.ok) return { ok: false, erro: 'o terminal recusou o Enter' }
   const pedaco = msg.slice(0, 40)
+  /* CC-1052: comando de barra não entra no histórico como fala. Medido num
+     .jsonl real: "/start-session" vira `<command-name>/start-session</command-name>`
+     e os argumentos vão em `<command-args>`, então o texto inteiro ("/model opus")
+     nunca aparece. Para comando de barra a prova é o nome do comando no histórico
+     ou, quando o comando é do próprio programa e não deixa rastro, o campo do
+     terminal ter voltado a ficar vazio. */
+  const nomeBarra = /^\/[\w:.-]+/.test(msg) ? msg.split(/\s/)[0] : null
   for (let i = 0; i < 20; i += 1) {
     await deps.esperar(500)
     const depois = deps.lerTranscrito(conversa) || ''
-    if (depois.length > antes.length && depois.slice(antes.length).includes(pedaco.replace(/"/g, '\\"'))) return { ok: true, sessao: aqui.sessao }
+    if (depois.length > antes.length) {
+      const novo = depois.slice(antes.length)
+      if (nomeBarra ? novo.includes(`<command-name>${nomeBarra}</command-name>`) : novo.includes(pedaco.replace(/"/g, '\\"'))) return { ok: true, sessao: aqui.sessao }
+    }
+    if (nomeBarra && i >= 3 && deps.capturar) {
+      const t = await deps.capturar(aqui.sessao, { cor: true })
+      if (telaNoCampo(t) && lerRodape(String(t || '').replace(/\x1b\[[0-9;]*m/g, '')).rascunho === null) return { ok: true, sessao: aqui.sessao, aviso: 'comando de barra: confirmado pelo campo do terminal vazio' }
+    }
   }
   return { ok: false, erro: 'escrevi, mas a sessão não confirmou que recebeu: confira nela' }
 }
@@ -335,6 +349,82 @@ export async function parar({ conversa }, deps = DEPS) {
     if (/Interrupted/i.test(await deps.capturar(aqui.sessao) || '')) return { ok: true, sessao: aqui.sessao }
   }
   return { ok: true, sessao: aqui.sessao, aviso: 'mandei o Esc, mas a tela não confirmou a interrupção: pode ser que ela já estivesse parada' }
+}
+
+/**
+ * CC-1052: o rodapé do Claude Code na tela do terminal, para a faixa do topo do
+ * painel "a conversa". Puro. `modo`: manual | aceitar | auto | plano | null;
+ * `trabalhando`: a tela tem "esc to interrupt"; `rascunho`: texto digitado depois
+ * do ❯ da última linha de prompt (null se vazio ou se a tela é um menu);
+ * `esforco`: a palavra antes de "· /effort".
+ */
+export function lerRodape(texto) {
+  const t = String(texto || '').replace(/\x1b\[[0-9;]*m/g, '')
+  const linhas = t.split('\n'); while (linhas.length && !linhas[linhas.length - 1].trim()) linhas.pop()
+  const fim = linhas.slice(-14).join('\n')
+  let modo = null
+  if (/plan mode on/i.test(fim)) modo = 'plano'
+  else if (/accept edits on/i.test(fim)) modo = 'aceitar'
+  else if (/auto mode on|bypass permissions on/i.test(fim)) modo = 'auto'
+  else if (/manual mode on/i.test(fim)) modo = 'manual'
+  /* Medido em 11/10 na versão 2.1.29x: trabalhando NÃO mostra mais "esc to interrupt"; mostra a linha do giro,
+     "* Jitterbugging… (34s · ↓ 1.2k tokens · thinking with high effort)". Acabado vira "✻ Sautéed for 27s · done",
+     sem reticências nem parêntese, e não casa. O esforço também vem nessa linha. */
+  const giro = fim.match(/^\s*\S\s+\S[^\n]*…\s*\((?:\d+h\s*)?(?:\d+m\s*)?\d+s\b[^\n]*\)/m)
+  const ef = fim.match(/([a-z]+)\s*·\s*\/effort/i) || (giro && giro[0].match(/with (\w+) effort/i))
+  let rascunho = null
+  if (!/Enter to (select|confirm)/i.test(fim)) {
+    for (let i = linhas.length - 1; i >= 0; i -= 1) {
+      const m = linhas[i].match(/^\s*❯[\s ]?(.*)$/)
+      if (m) { rascunho = m[1].trim() || null; break }
+    }
+  }
+  return { trabalhando: /esc to interrupt/i.test(fim) || Boolean(giro), modo, esforco: ef ? ef[1].toLowerCase() : null, rascunho }
+}
+
+/** Teclas que o painel "a conversa" pode mandar. Lista FECHADA: o que a tela manda nunca vira tecla livre. */
+export const TECLAS_APP = { parar: 'Escape', modo: 'BTab' }
+export function teclaDoApp(nome) {
+  return Object.prototype.hasOwnProperty.call(TECLAS_APP, nome) ? TECLAS_APP[nome] : null
+}
+
+export async function telaDaConversa(conversa, deps = DEPS) {
+  if (!conversa) return { ok: false, erro: 'faltou dizer qual conversa' }
+  const sessoes = await deps.sessoes().catch(() => ({}))
+  const aqui = Object.values(sessoes || {}).find((s) => s?.conversa === conversa)
+  if (!aqui?.sessao) return { ok: false, tmux: false, erro: 'essa sessão não está num terminal do painel' }
+  const tela = await deps.capturar(aqui.sessao)
+  if (tela === null || tela === undefined) return { ok: false, tmux: true, erro: 'não consegui ler a tela do terminal' }
+  return { ok: true, tmux: true, ...lerRodape(tela) }
+}
+
+export const MODOS_APP = ['manual', 'aceitar', 'plano', 'auto']
+export async function tecla({ conversa, tecla: nome, alvo = null }, deps = DEPS) {
+  const k = teclaDoApp(nome)
+  if (!k) return { ok: false, erro: 'tecla não permitida' }
+  if (!conversa) return { ok: false, erro: 'faltou dizer qual conversa' }
+  if (alvo != null && (nome !== 'modo' || !MODOS_APP.includes(alvo))) return { ok: false, erro: 'modo fora da lista' }
+  const sessoes = await deps.sessoes().catch(() => ({}))
+  const aqui = Object.values(sessoes || {}).find((s) => s?.conversa === conversa)
+  if (!aqui?.sessao) return semTerminal(conversa, 'mande a tecla', deps)
+  /* Pedido dele em 12/10: escolher o modo num menu, não apertar um por um. O Claude Code só troca modo pelo Shift+Tab,
+     em ciclo; então aperta e lê o rodapé até chegar. O ciclo tem até 5 modos: 6 voltas sem chegar quer dizer que esse
+     modo não está ligado nesta sessão (o automático só existe se foi liberado). */
+  if (alvo) {
+    for (let i = 0; i < 6; i += 1) {
+      const agora = lerRodape(String(await deps.capturar(aqui.sessao) || ''))
+      if (agora.modo === alvo) return { ok: true, voltas: i, tela: await telaDaConversa(conversa, deps) }
+      if (!agora.modo) return { ok: false, erro: 'a tela da sessão não mostra o modo agora (menu ou pergunta aberta)' }
+      const r = await deps.apertar(aqui.sessao, k)
+      if (!r?.ok) return { ok: false, erro: 'o terminal recusou a tecla' }
+      await deps.esperar(350)
+    }
+    return { ok: false, erro: 'esse modo não aparece no ciclo desta sessão', tela: await telaDaConversa(conversa, deps) }
+  }
+  const r = await deps.apertar(aqui.sessao, k)
+  if (!r?.ok) return { ok: false, erro: 'o terminal recusou a tecla' }
+  await deps.esperar(400)
+  return { ok: true, tela: await telaDaConversa(conversa, deps) }
 }
 
 /**
@@ -674,6 +764,13 @@ export async function responder({ conversa, id, respostas }, deps = DEPS) {
     if (!r?.ok) return { ok: false, erro: `o terminal recusou a tecla: ${r?.out || 'sem motivo'}` }
     await deps.esperar(250)
   }
+
+  /* CC-1055, ele em 12/10: "continua dando uns errinhos (...) já tentamos resolver mil vezes". Medido num Claude de teste
+     na versão das sessões (2.1.296): com PRÉVIA ao lado das opções, o número só move o cursor, a tela fica na pergunta, e
+     só o Enter escolhe. O Enter acima só saía na troca de pergunta ou antes da revisão, então pergunta ÚNICA com prévia
+     nunca era respondida e o painel desistia em 10 s. (Na 2.1.231 o número escolhia sozinho: mudou de versão.) Se a tela
+     ainda mostra a última pergunta, um Enter; sem prévia o menu já fechou e nada é apertado. */
+  if (!passos.some((p) => p.revisao)) { await deps.esperar(400); await empurrar(pend.perguntas.length - 1) }
 
   /* A prova é o transcrito, não a tela: a resposta vira `tool_result` do mesmo
      id. Até 10s, porque a sessão grava depois de fechar o menu. */

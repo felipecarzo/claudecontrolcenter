@@ -42,6 +42,33 @@ function trechoDe(item, catalogo) {
   return f.length > 48 ? f.slice(0, 47) + '…' : f
 }
 
+const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const numeroDe = (id) => Number((/(\d+)$/.exec(String(id)) || [])[1]) || 0
+
+/**
+ * CC-1007, pedido dele: "fiquei procurando cc985 e não achei de jeito nenhum". A tela mostra só uns 16 itens por
+ * trecho (o que anda, 4 emendas, 6 da fila, 5 fechados), e a CC-985 estava na fila, fora do corte. Esta busca vê TODOS
+ * os itens do projeto. O código casa com ou sem hífen e sem caixa ("cc985" acha "CC-985"); o resto casa no texto.
+ * `ord`: 'rel' (o que anda primeiro, depois o mais mexido) ou 'num' (número da tarefa, do maior para o menor).
+ */
+export function buscarItens(raiz, q, { ord = 'rel', max = 40 } = {}) {
+  const { itens, existe } = B.ler(B.caminhoPadrao(raiz))
+  if (!existe) return { ok: false, erro: 'este projeto ainda não tem backlog' }
+  const t = semAcento(q).trim().replace(/\s+/g, ' ')
+  const cod = t.replace(/[\s-]/g, '')
+  const casa = (i) => {
+    if (!t) return true
+    const id = semAcento(i.id).replace(/-/g, '')
+    return id.includes(cod) || semAcento(i.intencao || i.titulo).includes(t)
+  }
+  const peso = (i) => (i.estado === 'EM' || i.estado === 'PR' ? 0 : aberto(i) ? 1 : 2)
+  const achados = itens.filter((i) => !i.pai && casa(i))
+  achados.sort(ord === 'num'
+    ? (a, b) => numeroDe(b.id) - numeroDe(a.id)
+    : (a, b) => peso(a) - peso(b) || String(b.mexido || '').localeCompare(String(a.mexido || '')))
+  return { ok: true, total: achados.length, itens: achados.slice(0, max).map(itemDoCaminho) }
+}
+
 export function caminhoDe(raiz, agora = Date.now()) {
   const arquivo = B.caminhoPadrao(raiz)
   const { itens: todos, existe } = B.ler(arquivo)

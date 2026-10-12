@@ -22,17 +22,17 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
-| tela | 17 | 17/17 | 11/17 | 17/17 | 0/17 | 17/17 |
-| acao | 344 | 344/344 | 48/344 | 0/344 | 0/344 | 0/344 |
+| tela | 19 | 19/19 | 13/19 | 19/19 | 0/19 | 19/19 |
+| acao | 363 | 363/363 | 50/363 | 0/363 | 0/363 | 0/363 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 162 | 162/162 | 3/162 | 0/162 | 0/162 | 0/162 |
-| palavra | 85 | 85/85 | 10/85 | 85/85 | 0/85 | 85/85 |
+| endereco | 168 | 168/168 | 3/168 | 0/168 | 0/168 | 0/168 |
+| palavra | 88 | 88/88 | 10/88 | 88/88 | 0/88 | 88/88 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
 ponta.** A diferença está na coluna `como` do JSON, item a item. Inflar
 este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 
-## tela (17)
+## tela (19)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -44,7 +44,9 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `decisoes` | viva | src/ui_cockpit2.html#view-decisoes | funciona, estreito |
 | `armario` | viva | src/ui_cockpit2.html#view-armario | funciona, estreito |
 | `ideias` | viva | src/ui_cockpit2.html#view-ideias | funciona, estreito |
+| `revisoes` | viva | src/ui_cockpit2.html#view-revisoes | estreito |
 | `design` | viva | src/ui_cockpit2.html#view-design | estreito |
+| `hooks` | viva | src/ui_cockpit2.html#view-hooks | estreito |
 | `gate` | viva | src/ui_cockpit2.html#view-gate | estreito |
 | `trabalho` | viva | src/ui_cockpit2.html#view-trabalho | estreito |
 | `analise` | viva | src/ui_cockpit2.html#view-analise | estreito |
@@ -54,7 +56,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `conhecimento` | viva | src/ui_cockpit2.html#view-conhecimento | funciona, estreito |
 | `remoto` | viva | src/ui_cockpit2.html#view-remoto | estreito |
 
-## acao (344)
+## acao (363)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -182,6 +184,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-sessao-modo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-sessao-proj` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cc-dir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-claude-term` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-claude-tit` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-remoto-perfil` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-agy-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-agy-remoto` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
@@ -233,6 +237,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-gl-k` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-gl-recolher` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-gl-acao` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-app-menu` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-app-onde` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-tira` | viva | src/ui_cockpit2.html | explica, estreito |
 | `data-kb-card` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-kb-mover` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
@@ -305,6 +311,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-cam-lugar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-lugar-onde` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-gav` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-cam-na-lista` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-x` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-y` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
@@ -336,11 +343,20 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-niv` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-niv-n` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-fala-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-app` | estatica | src/ui_cockpit2.html | explica, estreito |
+| `data-app-tecla` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-app-fer` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-app-op` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-flutuar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-ses-fixar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-ses-painel-por` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-ses-painel-tirar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-ses-sel` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-ses-proj` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-conv-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-conv-nome` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-conv-tmux` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-conv-cwd` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cfg-conversa` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cfg` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-ses-conversa` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
@@ -402,6 +418,11 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-ide-acao` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-ide-i` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-ide-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-hk-dias` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-hk-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-rev-aplicar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-rev-revisar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-rev-ensaio` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 
 ## dado-de-tela (7)
 
@@ -415,7 +436,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-n` | viva | src/ui_cockpit2.html | explica, estreito |
 
-## endereco (162)
+## endereco (168)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -491,6 +512,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/sessao/resumo` | estatica | src/web.mjs | funciona, explica |
 | `/api/sessao/fala` | estatica | src/web.mjs | funciona, explica |
 | `/api/sessao/conversa` | estatica | src/web.mjs | funciona, explica |
+| `/api/sessao/tela` | estatica | src/web.mjs | funciona, explica |
 | `/api/decisao/historico` | estatica | src/web.mjs | funciona, explica |
 | `/api/decisao/fechar` | estatica | src/web.mjs | funciona, explica |
 | `/api/decisao/reabrir` | estatica | src/web.mjs | funciona, explica |
@@ -520,6 +542,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/design` | estatica | src/web.mjs | funciona, explica |
 | `/api/design/arquivo` | estatica | src/web.mjs | funciona, explica |
 | `/api/decisao/parar` | estatica | src/web.mjs | funciona, explica |
+| `/api/decisao/tecla` | estatica | src/web.mjs | funciona, explica |
 | `/api/decisao/mensagem` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/parar` | estatica | src/web.mjs | funciona, explica |
 | `/api/gate/permissao` | estatica | src/web.mjs | funciona, explica |
@@ -566,6 +589,10 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/pastas` | estatica | src/web.mjs | funciona, explica |
 | `/api/sintese` | estatica | src/web.mjs | funciona, explica |
 | `/api/digest` | estatica | src/web.mjs | funciona, explica |
+| `/api/hooks/monitor` | estatica | src/web.mjs | funciona, explica |
+| `/api/revisoes` | estatica | src/web.mjs | funciona, explica |
+| `/api/revisoes/aplicar` | estatica | src/web.mjs | funciona, explica |
+| `/api/caminho/busca` | estatica | src/web.mjs | funciona, explica |
 | `/api/caminho` | estatica | src/web.mjs | funciona, explica |
 | `/api/sprints/conta` | estatica | src/web.mjs | funciona, explica |
 | `/api/git/mudancas` | estatica | src/web.mjs | funciona, explica |
@@ -582,7 +609,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/rotas/alternar` | estatica | src/web.mjs | funciona, explica |
 | `/api/shutdown` | estatica | src/web.mjs | funciona, explica |
 
-## palavra (85)
+## palavra (88)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -593,6 +620,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `tela: armario` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: design` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: ideias` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: hooks` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `tela: revisoes` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: cockpit` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: gate` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `tela: agora` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
@@ -671,4 +700,5 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `servidor de desenvolvimento` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `container` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `painel embutido` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `a conversa (painel da aba Sessões)` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 

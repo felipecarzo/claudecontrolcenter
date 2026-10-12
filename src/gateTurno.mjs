@@ -24,7 +24,7 @@
  */
 import {
   lerConversa, acrescentar, gravarCabecalho, deltaPara, marcarLido,
-  esquecerSessao, guardarCota, lerCabecalho,
+  esquecerSessao, guardarCota, lerCabecalho, decidirFila, falasNaFila,
 } from './gate.mjs'
 import * as resumoAgy from './resumoAgy.mjs'
 import { fotografar, mexeuEmTela, enderecoDe } from './gateFotos.mjs'
@@ -322,14 +322,15 @@ export function tituloDe(texto) {
    devolução: os agentes de verdade recusam produzir o gatilho depois de
    ensinados, e uma régua que nunca dispara é uma régua que pode estar quebrada
    sem ninguém saber. */
-export function responder(id, { texto, agente = 'agy', modelo = null, esforco = null, anexos = [], binario = null, revisar = false, reenvio = false, tentados = [], esperas = 0, teto = null }) {
+export function responder(id, { texto, agente = 'agy', modelo = null, esforco = null, anexos = [], binario = null, revisar = false, reenvio = false, daFila = false, tentados = [], esperas = 0, teto = null }) {
   const c = lerConversa(id)
   if (!c) throw new Error(`conversa ${id} não existe`)
 
   /* A mensagem dele entra SEMPRE, antes de qualquer decisão. Exceto no reenvio
      (CC-823): o pedido é o mesmo, indo a outro modelo, e a conversa não pode
-     mostrar que ele o escreveu duas vezes. */
-  if (!reenvio) acrescentar(id, { tipo: 'dele', texto, ...(anexos.length ? { anexos } : {}) })
+     mostrar que ele o escreveu duas vezes. `daFila` (CC-1043) é o mesmo caso: as
+     falas já estão gravadas, só falta entregá-las. */
+  if (!reenvio && !daFila) acrescentar(id, { tipo: 'dele', texto, ...(anexos.length ? { anexos } : {}) })
 
   /* CC-252b: a conversa ganha nome pela primeira mensagem dele, para ele
      reconhecer na lista sem abrir. Só na primeira: renomear a cada mensagem
@@ -430,6 +431,8 @@ export function responder(id, { texto, agente = 'agy', modelo = null, esforco = 
     /* CC-728: o último agente usado vira o da conversa, e é ele que responde
        quando ele escreve pelo cartão em Sessões. */
     agentePadrao: quem,
+    // CC-1043: até onde as falas dele já foram entregues; o que passar disso é a fila
+    enviadoAte: delta.ate,
     /* `revisar` e `semMemoria` vão gravados para a retomada depois de um
        reinício (CC-700) não perdê-los. Medido em 30/09 na simulação: o painel
        religou no meio do pedido com revisão, a resposta terminou e a revisão
@@ -469,8 +472,10 @@ function acompanhar(id, t) {
   let ultimoGravado = ''
   let gravadoEm = 0
   let ultimasFer = 0
+  /* CC-1043: como o turno terminou, para a fila decidir (preenchido no fim do passo) */
+  const desfecho = { fechou: false, estado: null, parou: false }
 
-  const tique = setInterval(() => {
+  const passo = () => {
     // conversa apagada com o agente ainda trabalhando: para de olhar, em vez de lançar dentro do relógio e derrubar o painel (05/10)
     if (!lerCabecalho(id)) { clearInterval(tique); emCurso.delete(id); return }
     const r = lerTurno(t.logFile, t.agente, t.erroFile)
@@ -549,6 +554,8 @@ function acompanhar(id, t) {
     if (r.sessaoPerdida) esquecerSessao(id, t.agente)
 
     const estado = estourou ? 'interrompido' : (r.estado || (r.terminou ? 'pronto' : 'interrompido'))
+    desfecho.fechou = true
+    desfecho.estado = estado
 
     /* CC-280: o que ele mexeu. Só quando houve ferramenta com alvo: turno de
        conversa pura não tem o que mostrar, e um bloco vazio ali diria que ele
@@ -599,6 +606,7 @@ function acompanhar(id, t) {
        parado logo depois de um comando, processo morto, ninguém mandou parar).
        Duas vezes no mesmo dia. Queda que não foi ordem dele é retomada UMA vez. */
     const parouPelaMao = PARADOS.delete(id)
+    desfecho.parou = parouPelaMao
     /* CC-805, achado na simulação 3: o opencode PARA sozinho quando a pasta é
        recusada (e o painel já pergunta a ele), e isso não é queda. A retomada
        disparava também aí, e mandava um "continue" em cima do pedido de pasta. */
@@ -646,6 +654,16 @@ function acompanhar(id, t) {
     if (mexeuEmTela(r.ferramentas) && !process.env.CC_SEM_FOTOS) return conferirTela(id, t, r.texto, { revisar: t.revisar || revisorDe().visualAuto, semResposta })
     if (semResposta) return pedirResumo(id, t)
     if (t.revisar) pedirRevisao(id, t, r.texto, mudou)
+  }
+
+  /* CC-1043: a fila que sai sozinha. Roda DEPOIS do passo, qualquer que seja o
+     `return` que ele tomou: se o passo já pôs outro turno no ar (devolução,
+     revisão, troca de modelo), `saiFila` vê o turno aberto e espera a vez dele. */
+  const tique = setInterval(() => {
+    const jaFechado = desfecho.fechou
+    try { passo() } finally {
+      if (desfecho.fechou && !jaFechado) saiFila(id, t, desfecho)
+    }
   }, OLHAR_MS)
 
   emCurso.set(id, { tique, turnoId: t.turnoId, agente: t.agente, texto: '', ferramentas: [] })
@@ -1155,6 +1173,48 @@ function voltarDaRevisao(id, t, texto) {
   acrescentar(id, { tipo: 'turno', turnoId: novo.turnoId, agente: t.autor, modelo: novo.modelo, permissao: novo.permissao })
   gravarCabecalho(id, { estado: { turnoId: novo.turnoId, agente: t.autor, pid: novo.pid, desde: Date.now(), logFile: novo.logFile, erroFile: novo.erroFile, ate } })
   acompanhar(id, { ...novo, agente: t.autor, ate, cwd: t.cwd, permissao: novo.permissao, binario: t.binario, jaVoltou: true })
+}
+
+/* ============ CC-1043: a fila que sai sozinha ============
+ *
+ * Como no app do Claude: ele escreve com o agente ainda respondendo, a fala fica
+ * gravada, e quando o turno termina bem começa um turno novo com ela. A decisão
+ * mora em `decidirFila` (gate.mjs, pura e testada); aqui só se olha o estado
+ * real e se dispara. Sem laço por construção: `responder` marca as falas como
+ * entregues (`enviadoAte`) ANTES de o turno novo existir, então turno novo que
+ * falhe termina sem `pronto` e não dispara, e nunca reenvia a mesma fala. */
+
+/** Há turno de verdade em curso nesta conversa (memória ou cabeçalho com processo vivo)? */
+function turnoEmCurso(id) {
+  if (emCurso.has(id)) return true
+  const e = lerCabecalho(id)?.estado
+  return Boolean(e?.turnoId && vivo(e.pid))
+}
+
+function saiFila(id, t, desfecho) {
+  try {
+    const c = lerConversa(id)
+    if (!c) return
+    const d = decidirFila({
+      mensagens: c.mensagens, enviadoAte: c.cabecalho.enviadoAte,
+      estado: desfecho.estado, parou: desfecho.parou,
+      arquivada: Boolean(c.cabecalho.arquivada), emTurno: turnoEmCurso(id),
+    })
+    if (!d.sai) return
+    acrescentar(id, { tipo: 'sistema', texto: d.falas.length === 1 ? 'Sua mensagem que estava na fila saiu agora.' : `As ${d.falas.length} mensagens que estavam na fila saíram agora.` })
+    // ponytail: o agente é o padrão da conversa; modelo e esforço vêm do cabeçalho, como numa mensagem comum
+    responder(id, { texto: d.falas[d.falas.length - 1].texto, agente: c.cabecalho.agentePadrao || t.agente, daFila: true, binario: t.binario || null })
+  } catch (e) {
+    // falha em voz alta: a fala continua gravada e ele vê por que não saiu
+    try { acrescentar(id, { tipo: 'sistema', texto: `Não consegui mandar sua mensagem da fila: ${String(e?.message || e).slice(0, 200)}` }) } catch { /* conversa apagada */ }
+  }
+}
+
+/** Quantas falas dele esperam o turno em curso terminar (0 sem turno vivo: fala solta não é fila). */
+export function naFilaDe(c) {
+  const e = c?.cabecalho?.estado
+  if (!c || !e?.turnoId || !vivo(e.pid)) return 0
+  return falasNaFila(c.mensagens, c.cabecalho.enviadoAte).length
 }
 
 /** Parar é decisão dele, e não efeito colateral de trocar de agente. */

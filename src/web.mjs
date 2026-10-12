@@ -53,7 +53,7 @@ import {
   gravarCabecalho as gravarCabecalhoGate, reconciliar as reconciliarGate,
   lerCabecalho as lerCabecalhoGate, ultimoDoAgente as ultimoDoAgenteGate, falasDe as falasDeGate,
 } from './gate.mjs'
-import { responder as responderGate, parar as pararGate, conversaAoVivo as conversaAoVivoGate, liberarPasta as liberarPastaGate } from './gateTurno.mjs'
+import { responder as responderGate, parar as pararGate, conversaAoVivo as conversaAoVivoGate, liberarPasta as liberarPastaGate, naFilaDe as naFilaDeGate } from './gateTurno.mjs'
 import { vivo as vivoGate, todosOsModelos as todosOsModelosGate } from './gateAgentes.mjs'
 import { INFO_MODELOS, INFO_ESFORCO, INFO_MODELOS_DATA } from './gateModelosInfo.mjs'
 import { enderecoDe as enderecoDeGate } from './gateFotos.mjs'
@@ -185,7 +185,7 @@ import { SECOES as SECOES_VPS, veredito as veredictoVps } from './vpsSaude.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
 import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
-import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto, lerPedidosDoGancho, responderGancho, painelAbertoAgora, trocarConfig } from './decisao.mjs'
+import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto, lerPedidosDoGancho, responderGancho, painelAbertoAgora, trocarConfig, telaDaConversa, tecla as teclaSessao } from './decisao.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 /* CC-397, 29/08: o painel em construção, servido AO LADO do que ele usa.
@@ -1859,7 +1859,7 @@ function handler(req, res) {
   // máquina, que é o oposto de servir o painel atrás de senha.
   if (url.pathname === '/painel' || url.pathname.startsWith('/painel/')) {
     const partes = url.pathname.split('/').filter(Boolean) // ['painel', id, ...resto]
-    const porta = portaDe(partes[1])
+    const porta = portaRepasse(partes[1])
     if (!porta) return send(res, 404, { error: 'painel desconhecido' })
 
     const caminho = '/' + partes.slice(2).join('/') + (url.search || '')
@@ -2897,7 +2897,10 @@ function handler(req, res) {
     // CC-807: o endereço de teste do projeto, para a tela mostrar o link ("como eu testo?")
     let testedevoo = null
     try { testedevoo = enderecoDeGate(c.cabecalho?.cwd) } catch { /* sem endereço, sem link */ }
-    return send(res, 200, { ...c, pedidos, testedevoo })
+    // CC-1043: quantas falas dele esperam o turno em curso terminar (saem sozinhas quando ele acabar)
+    let naFila = 0
+    try { naFila = naFilaDeGate(c) } catch { /* sem fila, a conversa segue */ }
+    return send(res, 200, { ...c, pedidos, testedevoo, naFila })
   }
 
   if (url.pathname === '/api/gate/nova' && req.method === 'POST') {
@@ -3064,10 +3067,15 @@ function handler(req, res) {
         return send(res, 200, { projetos: [{ raiz: cwd, decks: C.pendentes(cwd) }] })
       }
       /* ponytail: cache de 60 s para varrer todos os projetos; votar invalida. */
-      if (!global.__cartasCache || Date.now() - global.__cartasCache.em > 60e3) {
-        global.__cartasCache = { em: Date.now(), projetos: findProjects().map((raiz) => ({ raiz, decks: C.pendentes(raiz) })).filter((p) => p.decks.length) }
-      }
-      return send(res, 200, { projetos: global.__cartasCache.projetos })
+      if (global.__cartasCache && Date.now() - global.__cartasCache.em <= 60e3) return send(res, 200, { projetos: global.__cartasCache.projetos })
+      /* CC-996: o baralho de design (telas desenhadas e o antes e depois das fotos do Coderoom) só era montado
+         ao abrir a tela Design de cada projeto, e nada chegava no Tinder. Agora monta aqui, na mesma varredura. */
+      return import('./designTelas.mjs').then(async (T) => {
+        const raizes = findProjects()
+        for (const raiz of raizes) { try { T.comparacaoNoDeck(raiz, await T.comparacao(raiz)) } catch { /* projeto sem telas nem fotos */ } }
+        global.__cartasCache = { em: Date.now(), projetos: raizes.map((raiz) => ({ raiz, decks: C.pendentes(raiz) })).filter((p) => p.decks.length) }
+        send(res, 200, { projetos: global.__cartasCache.projetos })
+      })
     }).catch((e) => send(res, 500, { error: String(e.message || e) }))
   }
   if (url.pathname === '/api/cartas/votar' && req.method === 'POST') {
@@ -3131,9 +3139,14 @@ function handler(req, res) {
       return send(res, f ? 200 : 404, f ? { falas: f } : { erro: 'conversa do coderoom não encontrada nesta máquina' })
     }
     return import('./cockpit2.mjs').then((m) => {
-      const r = m.conversaRecente(ped)
+      const r = m.conversaRecente(ped, { app: url.searchParams.get('app') === '1' })
       send(res, r ? 200 : 404, r || { erro: 'conversa não encontrada nesta máquina' })
     }).catch((e) => send(res, 500, { erro: String(e.message || e) }))
+  }
+  /* CC-1052: o rodapé da tela do terminal daquela conversa (modo, esforço, trabalhando, rascunho). */
+  if (url.pathname === '/api/sessao/tela') {
+    return telaDaConversa(url.searchParams.get('conversa') || '')
+      .then((r) => send(res, 200, r)).catch((e) => send(res, 500, { ok: false, erro: String(e.message || e) }))
   }
   if (url.pathname === '/api/decisao/historico') {
     return send(res, 200, { itens: listarHistorico({ projeto: url.searchParams.get('projeto') || null }) })
@@ -3416,6 +3429,10 @@ function handler(req, res) {
       return pararSessao({ conversa })
     })
   }
+  /* CC-1052: parar (Esc) e trocar de modo (Shift+Tab) pelo painel "a conversa". Lista fechada de teclas. */
+  if (url.pathname === '/api/decisao/tecla' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e3, ({ conversa, tecla, alvo }) => teclaSessao({ conversa, tecla, alvo: alvo || null }))
+  }
   if (url.pathname === '/api/decisao/mensagem' && req.method === 'POST') {
     return comCorpoAsync(req, res, 2e4, async ({ conversa, texto }) => {
       /* Responder pelo cartão de uma sessão do coderoom, pedido dele: o campo
@@ -3440,13 +3457,14 @@ function handler(req, res) {
     return comCorpo(req, res, 1e3, ({ id }) => pararGate(id))
   }
 
-  /* CC-699: troca a permissão da conversa. Só dois valores, de propósito: o
+  /* CC-699: troca a permissão da conversa. Só três valores, de propósito: o
      texto vira argumento do agente, e valor livre aqui seria ele escolhendo
-     `bypassPermissions` por um campo de formulário. */
+     `bypassPermissions` por um campo de formulário. CC-1043: `plano` (o Claude
+     só lê e propõe) entrou; bypass e auto continuam recusados. */
   if (url.pathname === '/api/gate/permissao' && req.method === 'POST') {
     return comCorpo(req, res, 1e3, ({ id, permissao }) => {
       if (!id) throw new Error('preciso saber qual conversa')
-      if (!['acceptEdits', 'pergunteAntes'].includes(permissao)) throw new Error('permissão desconhecida')
+      if (!['acceptEdits', 'pergunteAntes', 'plano'].includes(permissao)) throw new Error('permissão desconhecida')
       /* Conferir ANTES: gravar num id que não existe criaria uma conversa fantasma. */
       if (!conversaAoVivoGate(String(id))) throw new Error('conversa não encontrada')
       gravarCabecalhoGate(String(id), { permissao })
@@ -4475,6 +4493,32 @@ function handler(req, res) {
   // clique, nunca no stream: é spawn de git.
   /* CC-896 (#caminho): o backlog do projeto como estrada. Sem `cwd`, a lista dos
      projetos que têm backlog (lê ~26 arquivos, ~500 ms: guardada por 60 s). */
+  /* CC-1044 (aba Hooks): disparos, tempo e barradas de cada hook, lidos das conversas gravadas. A primeira leitura
+     custa ~11 s (51 conversas, 160 MB); depois o módulo guarda por arquivo e responde em ~25 ms. */
+  if (url.pathname === '/api/hooks/monitor' && req.method === 'GET') {
+    const dias = Math.min(60, Math.max(1, Number(url.searchParams.get('dias')) || 7))
+    return import('./hooksMonitor.mjs').then(async (M) => { const r = M.relatorio({ dias }); send(res, 200, { ...r, hooks: M.explicar(r.hooks, await M.catalogoDosHooks()) }) }).catch((e) => send(res, 500, { erro: String(e.message || e) }))
+  }
+  /* CC-1038 (aba Revisões): as revisões de cada projeto, com o andamento; e o aplicar das edições de texto no código.
+     Aplicar é ação dele (botão, depois de ver o que muda) e só vale para projeto que o painel conhece. */
+  if (url.pathname === '/api/revisoes' && req.method === 'GET') {
+    return import('./revisoes.mjs').then((R) => send(res, 200, { projetos: R.listar(findProjects()) })).catch((e) => send(res, 500, { erro: String(e.message || e) }))
+  }
+  if (url.pathname === '/api/revisoes/aplicar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 2e3, async ({ raiz, ensaio }) => {
+      if (!findProjects().includes(raiz)) throw new Error('projeto desconhecido')
+      const X = await import('./textosApp.mjs')
+      return { ok: true, ...X.aplicar(raiz, { ensaio: ensaio !== false }) } // sem dizer "false" de propósito, é ensaio
+    })
+  }
+  /* CC-1007: busca de tarefa por código ou palavra, em TODOS os itens (a tela do caminho só carrega uns 16 por trecho) */
+  if (url.pathname === '/api/caminho/busca' && req.method === 'GET') {
+    const dir = cwdDoProjeto(url.searchParams.get('cwd'), null)
+    if (!dir) return send(res, 200, { ok: false, erro: 'projeto não encontrado' })
+    const ord = url.searchParams.get('ord') === 'num' ? 'num' : 'rel'
+    return import('./caminho.mjs').then((C) => send(res, 200, C.buscarItens(dir, String(url.searchParams.get('q') || '').slice(0, 80), { ord })))
+      .catch((e) => send(res, 500, { error: String(e.message || e) }))
+  }
   if (url.pathname === '/api/caminho' && req.method === 'GET') {
     const cwd = url.searchParams.get('cwd')
     if (cwd) {
@@ -4539,6 +4583,10 @@ function handler(req, res) {
    */
   /* Rota do Cockpit 2, pedida por `0174a7a8` em 11/09 pelo recado do Routia.
      Só acréscimo: tudo que ela faz mora em `src/cockpit2.mjs`, que é dela. */
+  /* CC-972: as montagens lentas, com o tempo por etapa, para achar onde o dado principal perde tempo */
+  if (url.pathname === '/api/cockpit2/lentas') {
+    return import('./cockpit2.mjs').then((m) => send(res, 200, { lentas: m.montagensLentas() })).catch((e) => send(res, 500, { erro: String(e.message || e) }))
+  }
   if (url.pathname === '/api/cockpit2') {
     marcarPainelAberto() // CC-651: o gancho de permissão só espera com o painel aberto
     return import('./cockpit2.mjs')
@@ -4851,11 +4899,16 @@ function proxyUpgrade(req, socket, head) {
 
   if (!caminho.startsWith('/painel/')) return socket.destroy()
   const partes = caminho.split('/').filter(Boolean)
-  const porta = portaDe(partes[1])
+  const porta = portaRepasse(partes[1])
   if (!porta) return socket.destroy()
 
   return encaminharUpgrade(req, socket, head, porta, '/' + partes.slice(2).join('/') + busca)
 }
+
+/* CC-1041: o Claude Code de verdade (ttyd do claude-ttyd.service, só em 127.0.0.1) passa pelo mesmo repasse, atrás da
+   senha. Fica fora da lista do escritório (paineis.mjs) para não aparecer como painel de bonecos. */
+export const PORTA_CLAUDE = 5185
+function portaRepasse(id) { return id === 'claude' ? PORTA_CLAUDE : portaDe(id) }
 
 function encaminharUpgrade(req, socket, head, porta, destino) {
   const req2 = http.request({
@@ -4996,8 +5049,9 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
          não disputar com a subida do painel. */
       /* Depois de varrer, aquece o índice da tela Ideias: sem isso a primeira
          abertura dele esperaria uns 8 segundos. */
-      const varrerIdeias = (janelaMs) => import('./ideiasVarredura.mjs').then((m) => { m.varrer({ janelaMs }); m.indice() }).catch(() => {})
-      setTimeout(() => varrerIdeias(7 * 86400000), 90_000).unref()
+      /* CC-1031: em fatias. A síncrona travava o painel por uns 65 s, 90 s depois de cada partida (medido em 08/10). */
+      const varrerIdeias = (janelaMs) => import('./ideiasVarredura.mjs').then(async (m) => { await m.varrerSuave({ janelaMs }); await m.indiceSuave() }).catch(() => {})
+      setTimeout(() => varrerIdeias(7 * 86400000), 10 * 60_000).unref() // CC-1031: 10 min, e não 90 s, para não disputar CPU com as primeiras telas
       /* CC-585: aquece o cache das ordens do Kanban logo depois de subir, para
          o primeiro toque dele não pagar os ~5 s da primeira leitura do git. */
       setTimeout(() => { try { carregarProjetos(projetosDe(snapshot().jobs, findProjects)) } catch { /* só aquecimento */ } }, 20_000).unref()

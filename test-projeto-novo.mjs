@@ -789,6 +789,10 @@ const comRespostas = (extra = {}) => ({
        Cockpit 2 for descartado sem consumir a rota, e some daqui quando a tela
        dela passar a chamá-la. A diferença entre esta e a `/api/marcos` acima é
        que existe alguém construindo o consumidor agora. */
+    /* CC-1031 (08/10): as montagens lentas do dado principal, com o tempo de cada etapa. É instrumento de medida,
+       lido com curl por quem investiga a partida lenta, não peça de tela. **Exceção com prazo**: some daqui (e a
+       rota some do servidor) quando o CC-1031 fechar. */
+    '/api/cockpit2/lentas': 'CC-1031: diagnóstico lido pelo terminal, sem tela; sai quando a investigação da partida lenta fechar',
     '/api/cockpit2': 'a tela do Cockpit 2 está sendo escrita pela sessão 0174a7a8, que pediu a rota por recado em 11/09',
     /* CC-540, Fase 1 de 5 (plano aprovado em 11/09). Fase 1 é só o módulo e a
        rota do registro central; quem consome pela tela é a Fase 4 (CC-543,

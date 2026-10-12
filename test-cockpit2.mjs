@@ -1,6 +1,7 @@
 // O motor do cockpit 2: a fala do agente, a presença e a montagem do modelo.
 import assert from 'node:assert/strict'
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { readFileSync, mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs'
+import { buscarItens } from './src/caminho.mjs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { falaDasLinhas, montar, avisoDoAgente, semanaDe, semanaDosBlocos, conversaSemFala, ehPastaPessoal, resumoDaFala, falasDaConversa, obraDoRobo, _internals } from './src/cockpit2.mjs'
@@ -445,9 +446,86 @@ t('CC-903: o Caminho tem estrada e lista; tocar na parada abre o painel lateral,
   assert.ok(ui.includes("ev.key === 'Escape' && C2.cam.raiz && C2.cam.gaveta[C2.cam.raiz]"), 'Esc fecha o painel')
 })
 
+t('CC-1007: o código da tarefa em destaque, e a busca vê todos os itens (não só os 16 do corte)', () => {
+  const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+  assert.ok(ui.includes("'<span class=\"cam-cod\">' + esc(i.id) + '</span>'") && /\.cam-cod\{[^}]*font:700/.test(ui), 'o código vem primeiro e em destaque')
+  assert.ok(ui.includes('/api/caminho/busca?cwd=') && ui.includes('data-cam-q') && ui.includes('data-cam-ord'), 'campo de busca e ordem por número')
+  const d = mkdtempSync(join(tmpdir(), 'cam-busca-')); mkdirSync(join(d, 'docs'))
+  const mk = (n, estado, titulo) => JSON.stringify({ id: 'T-' + n, titulo, estado, frente: 'f', natureza: 'PED', area: 'tela', tamanho: 'P', criado: '2026-10-0' + (n % 9 + 1), mexido: '2026-10-0' + (n % 9 + 1), pronto: 'algo que se ve', conferir: 'auto:true' })
+  const itens = [...Array.from({ length: 30 }, (_, k) => mk(k + 1, 'B1', 'tarefa de fila ' + (k + 1))), mk(985, 'B1', 'guia do projeto')]
+  writeFileSync(join(d, 'docs', 'backlog.jsonl'), itens.join('\n') + '\n')
+  try {
+    const r = buscarItens(d, 't985'); assert.ok(r.ok && r.itens.length === 1 && r.itens[0].id === 'T-985', 'sem hífen e sem caixa acha o código')
+    assert.ok(buscarItens(d, 'T-985').itens[0].id === 'T-985' && buscarItens(d, 'guia').itens[0].id === 'T-985', 'com hífen e por palavra')
+    assert.ok(buscarItens(d, '', { ord: 'num' }).itens[0].id === 'T-985' && buscarItens(d, '', { ord: 'num' }).itens[1].id === 'T-30', 'por número: do maior para o menor')
+    assert.ok(buscarItens(d, 'zzzz').total === 0, 'sem resultado diz zero')
+  } finally { rmSync(d, { recursive: true, force: true }) }
+})
+
+t('CC-1012: a gaveta do Caminho encaixa na área de conteúdo, sem cobrir as barras, e a estrada se reorganiza animada', () => {
+  const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+  assert.ok(/body\.cam-gav-dock \.cam-gaveta\{top:var\(--gav-t,0px\);right:var\(--gav-r,0px\)/.test(ui) && ui.includes('body.cam-gav-dock .cam-fundo{display:none;}'), 'dock: abaixo do topo, à esquerda da barra da direita, sem escuro')
+  assert.ok(/body\.cam-gav-dock #view-caminho,body\.cam-gav-dock #view-tarefas\{padding-right:calc\(var\(--gav-w/.test(ui) && /#view-caminho,#view-tarefas,\.main-content > header\.header\{transition:padding-right/.test(ui), 'a tela encolhe com transição')
+  // CC-1015: a gaveta vai do topo da área ao fim, e o topo da tela anda para o lado dela (nada empilhado)
+  assert.ok(ui.includes("s.setProperty('--gav-t', Math.max(0, r.top) + 'px')") && ui.includes('body.cam-gav-dock .main-content > header.header{padding-right:calc(var(--gav-w'), 'altura toda e botões do topo ao lado da gaveta')
+  assert.ok(ui.includes('function camGavArea()') && ui.includes('r.width >= 900') && ui.includes('function camFlipLer(') && ui.includes('function camFlipAplicar('), 'mede a área; sem espaço para duas colunas cai no por cima; reorganiza do lugar antigo ao novo')
+  assert.ok(ui.includes('prefers-reduced-motion: reduce)').valueOf() && /camFlipAplicar[\s\S]{0,400}prefers-reduced-motion/.test(ui), 'respeita movimento reduzido')
+})
+
+t('CC-1016: com a gaveta aberta, dado novo repinta só o miolo; a gaveta não nasce de novo (a animação não se repete)', () => {
+  const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+  assert.ok(/if \(gNovo && gAtual\) \{[\s\S]{0,400}for \(const sel of \['\.cam-gav-cab', '\.cam-gav-corpo'\]\)/.test(ui), 'repinta cabeçalho e miolo, não o portal')
+  assert.ok(ui.includes("} else pintar(portal, gNovo);"), 'o portal só é reescrito ao abrir ou fechar')
+})
+
+t('CC-1018 a CC-1021: atalhos numa lista só, manual gerado dela, teclas lidas certo, campo de texto protegido', () => {
+  const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+  const fn = ui.match(/function teclaDe\(ev\) \{[\s\S]*?\n    \}/)[0]
+  // eslint-disable-next-line no-new-func
+  const teclaDe = new Function(fn + '; return teclaDe;')()
+  const ev = (o) => ({ ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, key: '', code: '', ...o })
+  assert.equal(teclaDe(ev({ altKey: true, key: 'π', code: 'KeyP' })), 'Alt+P', 'Alt+letra pelo código da tecla (Mac troca o caractere)')
+  assert.equal(teclaDe(ev({ shiftKey: true, key: '?', code: 'IntlRo' })), '?', '? no teclado ABNT2 não vira Shift+?')
+  assert.equal(teclaDe(ev({ ctrlKey: true, shiftKey: true, altKey: true, key: ' ', code: 'Space' })), 'Ctrl+Shift+Alt+Espaço', 'a busca de tarefa do Caminho')
+  assert.equal(teclaDe(ev({ key: 'ArrowRight', code: 'ArrowRight' })), '→', 'seta')
+  assert.equal(teclaDe(ev({ key: '3', code: 'Digit3' })), '3', 'número')
+  for (const s of ["atalho('caminho', '← ou ↑'", "atalho('caminho', 'Espaço ou Enter'", "atalho('caminho', 'Ctrl+Shift+Alt+Espaço'", "atalho('caminho', 'Alt+P'", "atalho('decisoes', 'J ou ↓'", "atalho('decisoes', 'Alt+P'", "atalho('decisoes', 'G'", "atalho('decisoes', 'F'", "atalho('decisoes', '1 a 4'", "atalho('*', '?'"]) assert.ok(ui.includes(s), s)
+  assert.ok(/if \(ehCampo\(ev\.target\) && !\/\^\(Ctrl\|Alt\)/.test(ui), 'letra solta dentro de campo é digitação')
+  assert.ok(ui.includes("const daPg = ATALHOS.filter((a) => a.pagina === pg)") && ui.includes("ATALHOS.filter((a) => a.pagina === '*')"), 'manual gerado da lista: da tela e de qualquer tela')
+  assert.ok(ui.includes("if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) el.scrollIntoView("), 'CC-1021: digitar num campo fora da vista rola até ele')
+})
+
+t('CC-1022: flutuar o cartão da sessão numa janela nativa, viva, com os eventos repassados ao painel', () => {
+  const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+  assert.ok(ui.includes("documentPictureInPicture.requestWindow(") && ui.includes("'documentPictureInPicture' in window ?"), 'janela nativa, botão só onde existe')
+  assert.ok(ui.includes("Object.defineProperty(e2, 'target', { value: ev.target });") && ui.includes('document.dispatchEvent(e2)'), 'clique e digitação da janela chegam aos tratadores do painel com o alvo certo')
+  assert.ok(ui.includes("if (at && el.contains(at) && /^(INPUT|TEXTAREA|SELECT)$/.test(at.tagName)) return;"), 'não redesenha com o cursor num campo da janela')
+  assert.ok(ui.includes("C2.cartaoHtml[idDe(sel)] = cSel"), 'o cartão vem do desenho de Sessões, que roda mesmo com a tela fechada')
+})
+
+t('CC-1035: "Editar" na carta de texto abre o campo com o texto atual, e enviar vota Editar com o texto ajustado', () => {
+  const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+  assert.ok(ui.includes("if (c.carta && typeof c.carta.editar === 'string' && /^Editar/i.test(q.opcoes[j].rot)) { c2TdrEditar(c, j); return; }"), 'tocar em Editar numa carta com texto atual abre o campo')
+  assert.ok(ui.includes("C2.msg['tdr:' + c.key] = { texto: c.carta.editar, envio: null };") && ui.includes("setSelectionRange(campo.value.length, campo.value.length)"), 'o campo vem preenchido e com o cursor no fim')
+  assert.ok(ui.includes('if (texto === String(c.carta.editar || \'\').trim())') && ui.includes('c2TdrAndar(c, c2TdrXDeck(c, [j])); return;'), 'texto igual ao atual não vota; texto ajustado vira o voto num toque só')
+  assert.ok(ui.includes("T.outra = null; T.editarJ = null; c2TdrRender(); return; }") && ui.includes("'ajuste o texto e envie'"), 'voltar às opções desliga o modo, e o campo diz o que fazer')
+})
+
+t('CC-1017: a nova ideia por atalho abre no projeto da sessão escolhida em Sessões', () => {
+  const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+  assert.ok(ui.includes('C2.sesSelNome = sel ?') && ui.includes("C2.ideiaQuer = document.getElementById('view-decisoes')?.classList.contains('active') ? C2.sesSelNome : null;"), 'guarda o projeto da sessão escolhida e usa ao abrir')
+  assert.ok(ui.includes('function ideiaPopProjetoDoContexto()') && /ideiaPopHtml\(\) \{\s*const K = C2\.cam;\s*ideiaPopProjetoDoContexto\(\);/.test(ui), 'aplica quando a lista de projetos chega')
+})
+
+t('CC-1011: a caixa de nova ideia do Caminho é um botão; abrir foca e fechar guarda o rascunho', () => {
+  const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+  assert.ok(ui.includes("E.fase === 'escrevendo' && !E.aberta") && ui.includes('data-ideia-abrir') && ui.includes('data-ideia-fechar') && ui.includes('rascunho guardado'), 'botão fechado, aberto ao tocar, rascunho avisado')
+  assert.ok(ui.includes("document.querySelector('[data-ideia-rascunho]')?.focus()"), 'abrir põe o cursor no campo')
+})
+
 t('CC-927: o painel lateral do sprint tem a seção Artefatos deste sprint, com feito ou a fazer e letra de 12 px ou mais', () => {
   const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
-  assert.ok(ui.includes('function camArtefatos(t)') && ui.includes('Artefatos deste sprint') && ui.includes("'<div class=\"cam-gav-corpo\">' + camArtefatos(t) + camItens(t)"), 'a seção entra no painel lateral')
+  assert.ok(ui.includes('function camArtefatos(t)') && ui.includes('Artefatos deste sprint') && ui.includes("'<div class=\"cam-gav-corpo\">' + camBusca() + camArtefatos(t) + camItens(t)"), 'a seção entra no painel lateral (CC-1007: a busca de tarefa vem na frente)')
   assert.ok(ui.includes("a.existe ? 'feito' : 'a fazer'") && ui.includes('if (!L.length) return'), 'palavra feito ou a fazer, e some sem artefato')
   const css = ui.match(/\.cam-art[^{]*\{[^}]*\}/g).join('')
   assert.ok(!/font-size:(\d|1[01])px/.test(css), 'nenhuma letra abaixo de 12 px')
@@ -471,7 +549,7 @@ t('CC-915: pendência do backlog só ganha o visto quando o motivo é conferir',
 t('CC-916: o Caminho mostra as emendas no topo, na parada e no item', () => {
   const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
   assert.ok(ui.includes("r.emendas ? ', ' + r.emendas + ' de emenda (+' + r.crescimento + '%)'"), 'o número do topo diz quanto o escopo cresceu')
-  assert.ok(ui.includes("(t.emendas ? ' · +' + t.emendas + ' emenda'") && ui.includes("chip(t.emendas, t.emendas === 1 ? 'emenda' : 'emendas'") && ui.includes("i.emenda ? ' · emenda: ideia nova no meio do projeto'"), 'parada, chip e item marcados')
+  assert.ok(ui.includes("(t.emendas ? ' · +' + t.emendas + ' emenda'") && ui.includes("chip(t.emendas, t.emendas === 1 ? 'emenda' : 'emendas'") && ui.includes("i.emenda ? '<small>emenda: ideia nova no meio do projeto</small>'"), 'parada, chip e item marcados')
 })
 
 t('CC-508: agente que entregou não vira cartão de parada', () => {
@@ -674,7 +752,8 @@ t('CC-907: alvos de toque de 48 px e letra de 14 px no mínimo, movimento reduzi
 })
 
 t('CC-908: entra por Sessões e pelo cartão do projeto', () => {
-  assert.ok(uiTdr.includes("const statsV = c2TdrEntrada() + (c2Faixa('decisoes', 'resumo') ? statsH : '');") && !uiTdr.includes("'<div class=\"dec-fixo\">' + c2TdrEntrada()"), 'botão na tela Sessões, rolando com o conteúdo e não preso no topo')
+  // CC-994: a entrada virou o primeiro cartão da fileira dos números (regra 16: nada fino e comprido)
+  assert.ok(uiTdr.includes("const statsH = '<div class=\"ini-stats com-tdr\">' + c2TdrEntrada()") && uiTdr.includes("'<div class=\"ini-stats com-tdr\">' + c2TdrEntrada() + '</div>'") && !uiTdr.includes("'<div class=\"dec-fixo\">' + c2TdrEntrada()"), 'botão na tela Sessões, rolando com o conteúdo e não preso no topo')
   assert.ok(uiTdr.includes("data-tdr-abrir=\"' + esc(e.nome || '') + '\">um por um"), 'botão no cartão do projeto')
   assert.ok(/function c2TdrEntrada\(\)[\s\S]{0,1800}Decidir um por um/.test(uiTdr), 'o rótulo e a contagem')
 })
@@ -825,7 +904,14 @@ t('CC-909 (lógica): cartaEhCurta da tela concorda com ehCurta de src/cartas.mjs
 /* CC-920 (F2) e CC-911 (D3b): provas e baralhos no Tinder */
 t('CC-920: o Tinder tem a origem Provas, o "Aprovar todas as que vi (n)" e chama as rotas certas', () => {
   for (const s of ['Aprovar todas as que vi (', '/api/backlog/aprovar', '/api/backlog/provas', 'data-tdr-aprovar-todas', 'data-tdr-orig', 'Fecha \' + vistas + \' provas como aprovadas por você', 'Dá para ver o histórico de cada uma no backlog']) assert.ok(blocoTdr.includes(s), s)
-  assert.ok(blocoTdr.includes('c2TdrVistasLista') && /const c2TdrVistasLista = \(\) => C2\.tdr\.fila\.filter\(\(c\) => c\.tipo === 'prova' && C2\.tdr\.vistas\[c\.key\]\)/.test(blocoTdr), 'só as provas já mostradas')
+  assert.ok(blocoTdr.includes('c2TdrVistasLista') && /const c2TdrVistasLista = \(\) => C2\.tdr\.fila\.filter\(\(c\) => c\.tipo === 'prova' && !c\.rajada && C2\.tdr\.vistas\[c\.key\]\)/.test(blocoTdr), 'só as provas já mostradas (CC-1003: a carta de rajada fica de fora)')
+})
+
+t('CC-1003: rajada do robô vira uma carta por projeto; enviar e deslizar abrem uma a uma, nunca aprovam todas', () => {
+  assert.ok(blocoTdr.includes("p.natureza !== 'DEF' && !C2.tdr.rajadaAberta[p.raiz]") && blocoTdr.includes('if (lista.length <= 3) continue;'), 'defeito fica fora da rajada; até 3 seguem uma a uma')
+  assert.ok(/rot: 'Ver uma a uma'[\s\S]{0,200}rot: 'Aprovar todas \('/.test(blocoTdr), 'a primeira opção (a do enviar e do deslize) é ver uma a uma')
+  assert.ok(blocoTdr.includes('if (c.rajada && x && x.j === 0) { T.rajadaAberta[c.raiz] = true;'), 'ver uma a uma não envia nada')
+  assert.ok(/if \(c\.rajada\) \{[\s\S]{0,200}for \(let i = 0; i < c\.cartas\.length; i \+= 50\)/.test(blocoTdr), 'aprovar todas vai em pedidos de até 50')
   assert.ok(blocoTdr.includes("c2Desfazer('Aprovadas: '") && /6000\) \}|, 6000\)/.test(blocoTdr), 'o lote sai depois do desfazer de 6 s')
   assert.ok(/for \(let i = 0; i < lista\.length; i \+= 50\)/.test(blocoTdr), 'no máximo 50 ids por pedido, como o servidor')
   assert.ok(blocoTdr.includes('x.j === 1 ? \'Não aprovo\' : \'Aprovo\'') && blocoTdr.includes('c2TdrAbrirCampo(c)'), '"Não aprovo" sem motivo abre o campo do motivo')
@@ -881,7 +967,7 @@ t('CC-936: a aba Tarefas tem o caminho do projeto embaixo, com a mesma peça do 
   assert.ok(!/setInterval\([^)]*c2ExplPedir/.test(ui), 'o pedido nunca anda por temporizador')
   assert.ok(ui.includes("if (!['na fila', 'escrevendo'].includes(r.estado)) faltam.forEach"), 'sem fila andando, a tela para de pedir o que não vai vir')
   assert.ok(srv.includes("url.pathname === '/api/explicacoes'"), 'a rota existe no servidor')
-  assert.ok(ui.includes("i.emenda ? ' · emenda: ideia nova no meio do projeto'"), 'a marca de emenda do CC-916 continua')
+  assert.ok(ui.includes("i.emenda ? '<small>emenda: ideia nova no meio do projeto</small>'"), 'a marca de emenda do CC-916 continua')
 })
 
 t('CC-946 e CC-947: controles do Caminho numa barra presa, e o projeto escolhido numa folha de cartões', () => {
@@ -1056,7 +1142,7 @@ t('CC-958: o lugar na fila aparece em cada item, muda com um toque, e fora do MV
   assert.ok(ui.includes("(r && r.ok ? camGuardados(r) : '')"), 'as guardadas vão embaixo da estrada')
   assert.ok(ui.includes('r.lugares'), 'o vocabulário dos lugares vem do servidor')
   assert.ok(ui.includes('body.cam-lugar-on #cam-lugar{display:block;}'), 'a folha só aparece quando aberta')
-  assert.ok(ui.includes("i.emenda ? ' · emenda: ideia nova no meio do projeto'"), 'a marca de emenda do CC-916 continua')
+  assert.ok(ui.includes("i.emenda ? '<small>emenda: ideia nova no meio do projeto</small>'"), 'a marca de emenda do CC-916 continua')
   assert.ok(!/setInterval\([^)]*camLugar/.test(ui), 'a folha nunca é desenhada no tique')
   assert.ok(srv.includes("url.pathname === '/api/backlog/lugar'"), 'a rota do lugar existe')
   assert.ok(srv.includes('B.porNoLugar('), 'a rota usa a função do núcleo')

@@ -274,7 +274,57 @@ export function falasDaConversa(texto, { parcial = false, limite = 30 } = {}) {
   return out.slice(-limite).map(({ junta, ...x }) => x)
 }
 
-export function conversaRecente(conversa) {
+/**
+ * CC-1052: a conversa em forma de app. Como `falasDaConversa`, mas ferramentas
+ * seguidas viram UM bloco `ferramentas` (nome + alvo curto) entre as falas, e
+ * devolve também o modelo da última fala do assistente. Puro.
+ */
+const ALVO_MAX = 120
+function alvoDaFerramenta(input, cwd) {
+  const i = input || {}
+  let v = i.command ?? i.file_path ?? i.notebook_path ?? i.pattern ?? i.url ?? i.description ?? i.prompt ?? i.path ?? ''
+  v = String(v).replace(/\s+/g, ' ').trim()
+  if (cwd && v.startsWith(cwd + '/')) v = v.slice(cwd.length + 1)
+  return v.slice(0, ALVO_MAX)
+}
+export function itensDaConversa(texto, { parcial = false, limite = 80 } = {}) {
+  const linhas = String(texto || '').split('\n'); if (parcial) linhas.shift()
+  const itens = []; let modelo = null
+  const ferr = (o, lista) => {
+    const ult = itens[itens.length - 1]
+    if (ult && ult.tipo === 'ferramentas') { ult.lista.push(...lista); ult.em = o.timestamp || ult.em }
+    else itens.push({ tipo: 'ferramentas', em: o.timestamp || null, lista })
+  }
+  for (const l of linhas) {
+    if (l.length > 200000) continue
+    if (!l.includes('"user"') && !l.includes('"assistant"')) continue
+    let o = null
+    try { o = JSON.parse(l) } catch { continue }
+    if (o?.isSidechain || o?.isMeta) continue
+    const c = o?.message?.content
+    if (o.type === 'user') {
+      const t = typeof c === 'string' ? c : (Array.isArray(c) ? c.filter((x) => x?.type === 'text').map((x) => x.text).join('\n') : '')
+      if (!t || !t.trim() || /^\s*<(command|system|local-command|task-notification)/.test(t)) continue
+      itens.push({ tipo: 'voce', texto: t.trim().slice(0, 6000), em: o.timestamp || null })
+    } else if (o.type === 'assistant' && Array.isArray(c)) {
+      if (o.message?.model) modelo = o.message.model
+      const t = c.filter((x) => x?.type === 'text').map((x) => x.text).join('\n').trim()
+      const perg = c.find((x) => x?.type === 'tool_use' && x.name === 'AskUserQuestion')
+      const txt = t || (perg ? (perg.input?.questions || []).map((q) => q.question).join('\n') : '')
+      if (txt) {
+        const ult = itens[itens.length - 1]
+        /* A mesma resposta chega em várias linhas seguidas: junta (só se nada entrou no meio). */
+        if (ult && ult.tipo === 'agente' && ult.junta) { ult.texto = (ult.texto + '\n\n' + txt).slice(-8000); ult.em = o.timestamp || ult.em }
+        else itens.push({ tipo: 'agente', texto: txt.slice(0, 8000), em: o.timestamp || null, junta: true })
+      }
+      const usos = c.filter((x) => x?.type === 'tool_use' && x.name !== 'AskUserQuestion')
+      if (usos.length) ferr(o, usos.map((x) => ({ nome: String(x.name || ''), alvo: alvoDaFerramenta(x.input, o.cwd) })))
+    }
+  }
+  return { itens: itens.slice(-limite).map(({ junta, ...x }) => x), modelo }
+}
+
+export function conversaRecente(conversa, { app = false } = {}) {
   if (!/^[0-9a-f-]{8,40}$/i.test(String(conversa || ''))) return null
   const base = path.join(casaClaudeDir(), 'projects')
   let arquivo = null
@@ -288,14 +338,17 @@ export function conversaRecente(conversa) {
   if (!arquivo) return null
   let st
   try { st = fs.statSync(arquivo) } catch { return null }
-  const c = cacheConversa.get(arquivo)
+  const mapa = app ? cacheConversaApp : cacheConversa
+  const c = mapa.get(arquivo)
   if (c && c.size === st.size && c.mtimeMs === st.mtimeMs) return c.r
   const { texto, parcial } = lerCauda(arquivo, 1024 * 1024)
   const r = { falas: falasDaConversa(texto, { parcial }) }
-  cacheConversa.set(arquivo, { size: st.size, mtimeMs: st.mtimeMs, r })
+  if (app) Object.assign(r, itensDaConversa(texto, { parcial }))
+  mapa.set(arquivo, { size: st.size, mtimeMs: st.mtimeMs, r })
   return r
 }
 const cacheConversa = new Map()
+const cacheConversaApp = new Map()
 
 export function falaCompleta(conversa) {
   if (!/^[0-9a-f-]{8,40}$/i.test(String(conversa || ''))) return null
@@ -945,17 +998,35 @@ function tempoBarato() {
    atrás é reaproveitada: a tela pede de 5 em 5, então 2 s não atrasam nada. */
 let montando = null
 let ultimaMontagem = { em: 0, dados: null }
-export function responder() {
-  if (ultimaMontagem.dados && Date.now() - ultimaMontagem.em < 2000) return Promise.resolve(ultimaMontagem.dados)
-  if (montando) return montando
-  montando = montarResposta()
-    .then((d) => { ultimaMontagem = { em: Date.now(), dados: d }; return d })
-    .finally(() => { montando = null })
+/* CC-972, medido em 08/10 no painel no ar: 15 de 30 leituras no ritmo da tela passavam de 0,5 s (picos de 2,2 s).
+   A montagem quente custa de 0,3 a 1,4 s, e a memória de 2 s vencia justo no intervalo em que a tela pede de novo,
+   então quase toda leitura esperava uma montagem inteira. Agora a leitura devolve na hora o último dado (até 20 s de
+   idade) e, se ele passou de 2 s, remonta por trás: a próxima leitura pega o novo. O dado chega no máximo um tique
+   atrasado. Sem nada guardado, ou guardado há mais de 20 s (painel parado), espera a montagem como antes. */
+const VELHO_MS = 20000
+function remontar() {
+  if (!montando) {
+    montando = montarResposta()
+      .then((d) => { ultimaMontagem = { em: Date.now(), dados: d }; return d })
+      .finally(() => { montando = null })
+  }
   return montando
 }
+export function responder() {
+  const idade = ultimaMontagem.dados ? Date.now() - ultimaMontagem.em : Infinity
+  if (idade > VELHO_MS) return remontar()
+  if (idade > 2000) remontar().catch(() => { /* falhou por trás: a próxima leitura tenta de novo */ })
+  return Promise.resolve(ultimaMontagem.dados)
+}
 
+/* CC-972: as últimas montagens lentas (mais de 1,5 s), com o tempo de cada etapa. Medido em 08/10: uma leitura levou
+   34 s, e o perfil de CPU não mostra espera (processo externo, disco, evento ocupado). Lido em /api/cockpit2/lentas. */
+const LENTAS = []
+export const montagensLentas = () => LENTAS
 async function montarResposta() {
   const t0 = Date.now()
+  const etapas = {}; let tm = t0
+  const marca = (k) => { const n = Date.now(); etapas[k] = (etapas[k] || 0) + n - tm; tm = n }
   const agora = Date.now()
 
   /* As duas máquinas, não só esta. O que a outra manda já está guardado em
@@ -973,15 +1044,19 @@ async function montarResposta() {
     maquinas = maquinasConhecidas(pacotes, eu)
   } catch { pacotes = []; maquinas = null }
 
+  marca('pacotes')
   const locais = todosOsJobs(agora)
   let jobs = locais
   try { jobs = eu ? mesclar(locais, pacotes, eu) : locais } catch { jobs = locais }
 
+  marca('sessoes')
   let servers = []
   try { servers = readServers() } catch { servers = [] }
   try { if (eu) servers = mesclar(servers, pacotes, eu, 'servidores') } catch { /* fica só o local */ }
+  marca('portas')
   let containers = []
   try { containers = (await listarContainers())?.containers || [] } catch { containers = [] }
+  marca('docker')
   let tarefas = []
   try {
     const r = meu.tudo(jobs)
@@ -989,7 +1064,9 @@ async function montarResposta() {
   } catch { tarefas = [] }
   let local = { id: null, nome: 'esta máquina' }
   try { const m = maquinaLocal(); local = { id: m.id, nome: m.nome } } catch { /* fica o padrão */ }
+  marca('tarefas')
   const tempo = tempoBarato()
+  marca('tempo')
   const dados = montar({
     jobs, servers, containers, tarefas, tempo, local, agora, maquinas, fechadas: lerFechadas(), mantidas: lerMantidas(), depois: lerDepois(), blocosTempo: blocosDoTempo(),
     /* Sessão da outra máquina traz a fala pronta no pacote: o transcrito dela
@@ -1021,11 +1098,15 @@ async function montarResposta() {
      toda sessão aberta pelo painel é lida a cada leitura (poucas sessões,
      alguns milissegundos cada), e pedido na tela vira cartão, qualquer que
      seja o estado do registro. Cartão que já veio da conversa fica como está. */
+  marca('montar e memoria')
   const nomeDaConversa = new Map() // CC-708: conversa -> nome que ele deu à sessão
+  const tmuxDaConversa = new Map() // CC-1041: conversa -> sessão tmux onde o Claude roda
   try {
     const rcTodas = Object.entries(await estadoRC().catch(() => ({})) || {}).filter(([, s]) => s?.sessao)
     // sem nome dado por ele, vale o do terminal ("VPS_cockpit-2"); a tela esconde o que repete o projeto
     for (const [rotulo, s] of rcTodas) if (s.conversa) nomeDaConversa.set(s.conversa, s.nomeSessao || rotulo)
+    // CC-1041: o cartão da sessão abre o terminal de verdade dela (o tmux por trás), então ele precisa saber qual é
+    for (const [, s] of rcTodas) if (s.conversa) tmuxDaConversa.set(s.conversa, s.sessao)
     const telaDe = new Map(await Promise.all(rcTodas.map(([, s]) => new Promise((ok) => execFile('tmux', ['capture-pane', '-t', s.sessao, '-p', '-S', '-60'], { encoding: 'utf8', timeout: 3000 }, (err, out) => ok([s.sessao, err ? '' : out]))))))
     const sessoesRC = rcTodas.map(([, s]) => s).filter((s) => s.conversa)
     const telas = sessoesRC.map((s) => telaDe.get(s.sessao) || '')
@@ -1151,6 +1232,7 @@ async function montarResposta() {
   for (const j of jobs) if (j.tipo === 'coderoom' && j.subject && !nomeDaConversa.has('gate:' + j.id)) nomeDaConversa.set('gate:' + j.id, j.subject)
   for (const s of dados.conectadas || []) if (!s.sessaoNome && s.conversa && nomeDaConversa.has(s.conversa)) s.sessaoNome = nomeDaConversa.get(s.conversa)
   for (const e of dados.espera || []) if (e.conversa && nomeDaConversa.has(e.conversa)) e.sessaoNome = nomeDaConversa.get(e.conversa)
+  for (const s of [...(dados.conectadas || []), ...(dados.espera || [])]) if (s.conversa && tmuxDaConversa.has(s.conversa)) s.tmux = tmuxDaConversa.get(s.conversa)
   /* CC-867, print dele em 02/10: o cartão do arquiteto dizia "sem pergunta legível" e não
      tinha nada clicável, porque a pergunta de verdade só existia dentro do Coderoom. Com
      pergunta aberta do arquiteto na conversa, o cartão leva as opções e vira pergunta. */
@@ -1302,7 +1384,9 @@ async function montarResposta() {
     } catch { /* fila ilegível conta como vazia */ }
   }
   dados.ideias.sort((a, b) => (b.em || 0) - (a.em || 0))
+  marca('terminais, conversas e resto')
   dados.custoMs = Date.now() - t0
+  if (dados.custoMs > 1500) { LENTAS.push({ em: Date.now(), total: dados.custoMs, etapas }); if (LENTAS.length > 20) LENTAS.shift() }
   return dados
 }
 

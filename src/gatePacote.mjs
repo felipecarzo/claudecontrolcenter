@@ -163,6 +163,8 @@ const REGRAS = [
   'Responda sempre em português do Brasil, do começo ao fim, inclusive a primeira frase.',
   'Quebre todo pedido em microtarefas antes de começar: liste os passos numerados, faça um de cada vez e diga em qual passo está.',
   'Não diga que conferiu o que não conferiu. Se escrever que vai olhar no navegador, olhe; se não tiver como, diga que não conferiu.',
+  /* CC-1026: o opencode do Coderoom não via as skills do Claude Code, então não sabia que existe como fotografar o app. */
+  'Para ver o app como ele vê, tire uma foto: ~/.local/bin/print <endereço> <saida.png> 390 844 (celular), e olhe a imagem. Esse comando não lê o console do navegador: erro de código você pega rodando o teste do projeto.',
 ]
 
 /* CC-742: as regras de design dele, lidas AO VIVO do arquivo delas, para cada

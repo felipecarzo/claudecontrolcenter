@@ -1176,6 +1176,126 @@
     .sl-quem { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
     .sl-txt { white-space: pre-wrap; overflow-wrap: anywhere; }
     .sl-acao .c2-aviso { margin: 0; }
+    /* CC-1052: o painel "a conversa" como app: faixa numa linha, conversa, pendência, campo preso embaixo */
+    .app-sessao { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .app-faixa { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .app-chips { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow: hidden; }
+    .app-bts { display: flex; gap: 4px; margin-left: auto; flex: none; }
+    .app-bt { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text-main); cursor: pointer; }
+    .app-bt:hover { border-color: var(--accent); color: var(--accent); }
+    .app-bt.parar { color: var(--red); }
+    /* com pergunta aberta, a conversa encolhe para o formulário caber acima do campo, sem ficar escondido embaixo dele */
+    .app-sessao:has(.app-pend-lugar:not(:empty)) .sl-conversa.app-fluxo { max-height: 32vh !important; }
+    .app-pend-lugar { max-height: 48vh; overflow-y: auto; }
+    .app-est { font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+    .app-est.trab { color: var(--accent); }
+    .app-est.espera { color: var(--amber, #f59e0b); }
+    /* CC-1053: no celular a conversa é tela cheia, como o app, e minimizada vira pílula no topo */
+    #app-movel { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; background: var(--bg); padding: env(safe-area-inset-top) 12px calc(8px + env(safe-area-inset-bottom)); }
+    #app-movel[hidden] { display: none; }
+    .app-movel-cab { display: flex; align-items: center; gap: 10px; padding: 8px 0; flex: none; }
+    .app-movel-nome { font-size: 16px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #app-movel .app-sessao { flex: 1; min-height: 0; }
+    #app-movel .sl-conversa.app-fluxo { flex: 1; min-height: 0; max-height: none !important; overflow-y: auto; }
+    #app-movel .app-sessao:has(.app-pend-lugar:not(:empty)) .sl-conversa.app-fluxo { max-height: none !important; }
+    #app-movel .app-pend-lugar { max-height: 45dvh; }
+    #app-movel .app-comp { position: static; }
+    body.app-movel-on { overflow: hidden; }
+    #app-pilula { position: fixed; z-index: 85; top: calc(env(safe-area-inset-top) + 64px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; max-width: calc(100vw - 32px); border-radius: 999px; background: var(--card); border: 1px solid var(--border); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+    #app-pilula[hidden] { display: none; }
+    .app-pil-abrir { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 6px 0 16px; background: none; border: 0; color: var(--text-main); font: inherit; font-size: 14px; min-width: 0; cursor: pointer; }
+    .app-pil-abrir b, .app-pil-abrir span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .app-pil-abrir span:last-child { color: var(--text-muted); }
+    .app-pil-ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--text-muted); flex: none; }
+    .app-pil-ponto.trab { background: var(--accent); } .app-pil-ponto.espera { background: var(--amber, #f59e0b); }
+    .app-pil-x { width: 44px; height: 44px; border: 0; background: none; color: var(--text-muted); font-size: 20px; cursor: pointer; flex: none; }
+    /* CC-1052, pedido dele em 11/10 com prints do app: "deixar mais parecido com o claude code" */
+    .app-fluxo { display: flex; flex-direction: column; gap: 14px; }
+    .app-sessao .sl-conversa.app-fluxo { background: none; border: 0; box-shadow: none; padding: 4px 2px; }
+    .app-voce { display: flex; justify-content: flex-end; }
+    .app-voce-txt { max-width: 85%; padding: 10px 14px; border-radius: 16px; background: rgba(var(--tinta), .08); color: var(--text-main); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.5; }
+    .app-ag { width: 100%; }
+    .app-ag .gate-md { font-size: 15px; line-height: 1.6; color: var(--text-main); overflow-wrap: anywhere; }
+    .app-ag .gate-md p, .app-ag .gate-md li, .app-ag .gate-md div { font-size: 15px; color: var(--text-main); }
+    .app-meta { margin-top: 6px; font-size: 12px; color: var(--text-dim); }
+    .app-fer { color: var(--text-muted); font-size: 14px; }
+    .app-fer > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+    .app-fer > summary::-webkit-details-marker { display: none; }
+    .app-fer > summary::after { content: "›"; font-size: 16px; transition: transform .15s; }
+    .app-fer[open] > summary::after { transform: rotate(90deg); }
+    .app-fer-lista { margin: 6px 0 0 2px; padding-left: 10px; border-left: 2px solid var(--border); display: flex; flex-direction: column; gap: 4px; font-size: 13px; overflow-wrap: anywhere; }
+    .app-fer-lista b { color: var(--text-main); font-weight: 600; }
+    .app-faixa { padding: 2px 4px; }
+    .app-chips { gap: 14px; }
+    .app-txt { background: none; border: 0; padding: 0; font: inherit; font-size: 13.5px; color: var(--text-muted); white-space: nowrap; cursor: default; }
+    button.app-txt { cursor: pointer; } button.app-txt:hover { color: var(--accent); }
+    .app-txt.forte { color: var(--text-main); }
+    /* modo, modelo e esforço: a mesma peça (regra 5, relevo leve = o que se toca), aberta afunda (regra 5, escolhido) */
+    .app-esc { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--card); box-shadow: var(--neu-leve); color: var(--text-main); font: inherit; font-size: 14px; white-space: nowrap; cursor: pointer; flex: none; transition: box-shadow .15s, color .15s; }
+    .app-esc svg { color: var(--text-muted); transition: transform .15s; }
+    .app-esc:hover { color: var(--accent); }
+    .app-esc[aria-expanded="true"] { box-shadow: var(--neu-dentro); color: var(--accent); }
+    .app-esc[aria-expanded="true"] svg { transform: rotate(180deg); }
+    .app-esc.so-ler { box-shadow: none; background: none; cursor: default; padding: 0 4px; color: var(--text-muted); }
+    /* CC-1043: a mesma linha, embaixo do campo do Coderoom. Uma linha só, à esquerda; se faltar largura, rola de lado em vez de empilhar. */
+    .gate-linha { display: flex; align-items: center; gap: 8px; padding: 6px 2px 4px; overflow-x: auto; scrollbar-width: none; }
+    .gate-linha[hidden] { display: none; }
+    .gate-fila { max-width: 48rem; margin: 0 auto 6px; padding: 0 6px; font-size: 13px; color: var(--text-muted); }
+    .gate-fila[hidden] { display: none; }
+    @media (max-width: 700px) {
+      .gate-linha .app-esc { height: 44px; padding: 0 12px; }
+      /* o botão de enviar fica ancorado no canto de baixo da caixa: a linha não passa por baixo dele */
+      #view-gate:not(.gate-vendo-lista) .gate-caixa > .gate-linha { padding-right: 56px; }
+    }
+    #app-menu { position: fixed; z-index: 95; display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 16px; background: var(--card); box-shadow: var(--neu-fora); overflow-y: auto; overscroll-behavior: contain;
+      opacity: 0; transform: translateY(6px); transition: opacity .15s ease-out, transform .15s ease-out; }
+    #app-menu.on { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { #app-menu { transform: none; transition: opacity .1s; } }
+    .app-menu-tit { padding: 6px 10px 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+    .app-op { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 10px; border: 0; border-radius: 10px; background: none; color: var(--text-main); font: inherit; text-align: left; cursor: pointer; }
+    .app-op:hover, .app-op:focus-visible { background: rgba(var(--tinta), .06); outline: none; }
+    .app-op.on { box-shadow: var(--neu-dentro); }
+    .app-op-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .app-op-txt b { font-size: 15px; font-weight: 600; }
+    .app-op-txt small { font-size: 13px; color: var(--text-muted); }
+    .app-op-ok { width: 18px; color: var(--accent); font-weight: 700; text-align: center; }
+    .app-op-mais > summary { list-style: none; cursor: pointer; padding: 10px; font-size: 13.5px; color: var(--text-muted); }
+    .app-op-mais > summary::-webkit-details-marker { display: none; }
+    .app-op-mais > summary::after { content: " ›"; }
+    .app-op-mais[open] > summary::after { content: " ⌄"; }
+    .app-faixa .app-chips { gap: 10px; overflow-x: auto; scrollbar-width: none; padding: 6px 4px; }
+    .app-cfg { display: inline-flex; gap: 10px; flex: none; }
+    .app-cfg .c2-cfg-sel { field-sizing: content; appearance: none; -webkit-appearance: none; background: none; border: 0; padding: 4px 16px 4px 2px; font: inherit; font-size: 13.5px; color: var(--text-main); cursor: pointer; max-width: 150px; text-overflow: ellipsis;
+      background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-size: 4px 4px; background-position: right 6px top 55%, right 2px top 55%; background-repeat: no-repeat; }
+    .app-cfg .c2-cfg-sel:hover { color: var(--accent); }
+    .app-cfg .c2-cfg-sel option { color: var(--text-main); background: var(--card); }
+    .app-giro { width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); animation: app-giro 0.9s linear infinite; }
+    @keyframes app-giro { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .app-giro { animation: none; border-color: var(--accent); } }
+    .app-comp .c2-msg { border-radius: 16px; }
+    /* pergunta: opções numeradas uma embaixo da outra, como no app */
+    .app-pend { counter-reset: app-op; }
+    .app-pend .c2-perg { font-weight: 600; font-size: 15px; margin-bottom: 8px; }
+    .app-pend .c2-dec-ops { display: flex; flex-direction: column; gap: 6px; }
+    .app-pend .c2-dec-op { counter-increment: app-op; position: relative; width: 100%; text-align: left; padding: 10px 40px 10px 12px; border-radius: 10px; }
+    .app-pend .c2-dec-op::after { content: counter(app-op); position: absolute; right: 10px; top: 10px; min-width: 20px; height: 20px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); }
+    .app-chip { padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px; font-size: 11.5px; color: var(--text-muted); background: var(--card); white-space: nowrap; }
+    .app-sessao .sl-conversa.app-fluxo { max-height: 60vh; overscroll-behavior: contain; }
+    #view-decisoes .ses-painel.p-conversa .sl-conversa.app-fluxo { max-height: calc(100dvh - var(--dec-fixo, 0px) - var(--topo-fixo, 0px) - 250px); min-height: 160px; }
+    .app-fluxo .sl-fala { max-width: 94%; }
+    .app-fluxo .gate-md { overflow-wrap: anywhere; }
+    .app-fluxo .gate-cmds { align-self: stretch; }
+    .app-pend:empty, .app-pend-lugar:empty, .app-rasc:empty { display: none; }
+    .app-pend { padding: 10px; border: 1px solid var(--accent); border-radius: 12px; background: var(--card); }
+    .app-comp { position: sticky; bottom: 0; z-index: 2; background: var(--card); padding-top: 6px; }
+    .app-comp .c2-msg textarea { max-height: 9.5em; overflow-y: auto; }
+    .app-comp [data-msg-sug] { position: absolute; left: 0; right: 0; bottom: 100%; max-height: 40vh; overflow-y: auto; }
+    @container painel (max-width: 700px) {
+      .app-faixa .btn, .app-comp .c2-enviar, .app-comp .c2-voz { min-height: 44px; }
+      .app-bt { width: 44px; height: 44px; }
+      .app-esc { height: 44px; padding: 0 10px; }
+      .app-comp .c2-enviar, .app-comp .c2-voz { min-width: 44px; }
+    }
     .sl-lado { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: var(--card); display: flex; flex-direction: column; gap: 9px; font-size: 13px; }
     .sl-lado-tit { font-weight: 600; font-size: 14px; }
     .sl-kv { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -4582,6 +4702,10 @@
     .cam-pf-cab{display:flex;align-items:center;justify-content:space-between;gap:12px;}
     .cam-pf-busca{display:block;width:100%;min-height:48px;box-sizing:border-box;margin:12px 0 10px;padding:0 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-main);font:inherit;font-size:16px;}
     .cam-pf-lista{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+    /* CC-1054, ele em 12/10: "quando digitei na busca de algum projeto o menu desceu lá pra baixo". A folha tinha a altura
+       do conteúdo e encostava embaixo: filtrar encolhia a lista e a caixa descia. Altura fixa; só a lista rola dentro. */
+    #cam-proj .tdr-folha-caixa{display:flex;flex-direction:column;height:min(82vh,640px);overflow:hidden;}
+    #cam-proj .cam-pf-lista{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:4px 2px 8px;}
     .cam-pf-busca + .cam-pf-lista{margin-top:0;}
     .cam-pf{display:flex;flex-direction:column;gap:8px;width:100%;min-height:64px;padding:12px 14px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--text-main);box-shadow:var(--neu-leve);font:inherit;text-align:left;cursor:pointer;}
     .cam-pf.on{box-shadow:var(--neu-dentro);border-color:var(--text-dim);}
@@ -4624,6 +4748,60 @@
     .cam-it.e-EM .cam-it-ic,.cam-it.e-PR .cam-it-ic{background:conic-gradient(var(--q) 0 50%,transparent 50% 100%);}
     .cam-it.e-DE .cam-it-ic,.cam-it.e-TR .cam-it-ic{color:var(--q);}
     .cam-it-txt{flex:1;min-width:0;font-size:14px;line-height:1.35;}
+    /* CC-1007, pedido dele: o código da tarefa em destaque, para achar de relance */
+    .cam-cod{display:inline-block;margin:0 0 3px;padding:1px 8px;border-radius:8px;font:700 13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent);}
+    .cam-it-txt .cam-cod{display:block;width:fit-content;}
+    /* CC-1044: a aba Hooks */
+    .hk-topo{padding:18px 20px;margin:0 0 16px;} .hk-topo-cab{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;font-size:17px;}
+    @media (max-width:520px){ .hk-dias{width:100%;gap:4px;} .hk-dia{flex:1;padding:0 4px!important;font-size:13px!important;} }
+    /* CC-1041: o terminal do Claude por cima da área central; o cabeçalho é uma linha só, título à esquerda e ações à direita */
+    .c2-term{position:fixed;top:0;bottom:0;z-index:70;display:flex;flex-direction:column;background:#000;box-shadow:0 0 0 1px var(--border);} .c2-term[hidden]{display:none;}
+    .c2-term-cab{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--border);} .c2-term-tit{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;}
+    .c2-term-ifr{flex:1;width:100%;border:0;background:#000;}
+    @media (max-width:520px){ .c2-term{left:0!important;right:0!important;} .c2-term-aba{display:none;} }
+    .hk-dias{display:flex;flex-wrap:wrap;gap:6px;} .hk-dia{min-height:44px;padding:0 12px;white-space:nowrap;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text-main);font:inherit;font-size:14px;cursor:pointer;} .hk-dia.on{border-color:var(--accent);color:var(--accent);}
+    .hk-nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0 8px;}
+    .hk-nums div{padding:12px 14px;border-radius:12px;background:rgba(var(--tinta),.04);} .hk-nums b{display:block;font-size:26px;} .hk-nums span{font-size:14px;color:var(--text-muted);}
+    .hk-lista{padding:16px 18px;} .hk-tit{margin:0 0 10px;font-size:18px;} .hk-tit small{font-weight:400;font-size:13px;color:var(--text-dim);}
+    .hk-lista ul{list-style:none;margin:0;padding:0;} .hk-it{border-top:1px solid rgba(var(--tinta),.08);}
+    .hk-cab{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:10px 4px;border:0;background:none;color:var(--text-main);font:inherit;text-align:left;cursor:pointer;}
+    .hk-nome{display:flex;flex-direction:column;min-width:160px;} .hk-nome b{font-size:15px;} .hk-nome small{font-size:12.5px;color:var(--text-dim);}
+    .hk-met{display:flex;flex-wrap:wrap;gap:14px;font-size:15px;font-variant-numeric:tabular-nums;} .hk-met span{display:flex;flex-direction:column;align-items:flex-end;min-width:54px;} .hk-met small{font-size:12px;color:var(--text-dim);}
+    .hk-ruim{color:var(--waiting);} .hk-barra{color:var(--red);font-weight:700;}
+    .hk-sub{margin:4px 0 0;font-size:14px;font-weight:600;} .hk-mais{margin:6px 0 0;font-size:13px;color:var(--text-dim);} .hk-mais summary{cursor:pointer;min-height:32px;display:flex;align-items:center;} .hk-mais div{word-break:break-word;line-height:1.5;}
+    .hk-nome{flex:1 1 260px;} .hk-nome small{line-height:1.4;margin-top:2px;}
+    .hk-det{padding:0 4px 14px;} .hk-ult{margin:8px 0 0;} .hk-ult li{padding:8px 0;border-top:1px solid rgba(var(--tinta),.06);font-size:14px;line-height:1.45;} .hk-ult small{display:block;color:var(--text-dim);font-size:12.5px;}
+    /* CC-1038: a aba Revisões */
+    .rev-proj{padding:18px 20px;margin:0 0 16px;}
+    .rev-nome{margin:0 0 12px;font-size:20px;font-weight:700;}
+    .rev-lin{padding:14px 0;border-top:1px solid rgba(var(--tinta),.08);} .rev-lin:first-of-type{border-top:0;padding-top:0;}
+    .rev-cab{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:16px;}
+    .rev-pct{font-size:14px;color:var(--text-dim);font-variant-numeric:tabular-nums;}
+    .rev-barra{height:6px;border-radius:6px;background:rgba(var(--tinta),.08);overflow:hidden;margin:10px 0;}
+    .rev-barra i{display:block;height:100%;min-width:3px;border-radius:6px;background:var(--accent);transition:width .3s;}
+    .rev-pills{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;}
+    .rev-pill{padding:5px 12px;border-radius:999px;border:1px solid var(--border);font-size:14px;color:var(--text-muted);} .rev-pill b{color:var(--text-main);}
+    .rev-pill.ok b{color:var(--green);} .rev-pill.ed b{color:var(--accent);} .rev-pill.rec b{color:var(--red);}
+    .rev-acoes{display:flex;flex-wrap:wrap;gap:10px;}
+    .rev-b{min-height:48px;padding:0 20px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-main);font:inherit;font-size:15px;font-weight:600;cursor:pointer;}
+    .rev-b.forte{background:var(--accent);color:#fff;border-color:transparent;} .rev-b[disabled]{opacity:.5;cursor:default;}
+    .rev-res{margin:14px 0 0;padding:14px;border-radius:12px;border:1px solid var(--border);background:rgba(var(--tinta),.03);}
+    .rev-res-tit{margin:0 0 10px;font-size:15px;font-weight:600;} .rev-erro{border-color:var(--red);color:var(--red);}
+    .rev-lista{list-style:none;margin:0 0 12px;padding:0;max-height:340px;overflow-y:auto;}
+    .rev-lista li{display:grid;gap:2px;padding:9px 0;border-bottom:1px solid rgba(var(--tinta),.07);font-size:14px;}
+    .rev-arq{font-size:12.5px;color:var(--text-dim);word-break:break-all;} .rev-de{color:var(--text-muted);text-decoration:line-through;text-decoration-color:rgba(var(--tinta),.35);} .rev-para{font-weight:600;}
+    .rev-vazio{padding:22px;} .rev-vazio p{margin:8px 0 0;color:var(--text-muted);line-height:1.5;}
+    .cam-ideia-abrir{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;margin:0 0 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-main);font:inherit;font-size:15px;font-weight:600;cursor:pointer;}
+    .cam-ideia-abrir small{font-weight:400;font-size:12px;color:var(--accent);}
+    .cam-ideia-abrir:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--border));}
+    .cam-busca{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:0 0 10px;}
+    .cam-busca label{flex:1 1 180px;min-width:0;display:flex;align-items:center;gap:8px;min-height:48px;padding:0 12px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);}
+    .cam-busca input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--text-main);font:inherit;font-size:15px;}
+    .cam-busca label:focus-within{border-color:color-mix(in srgb,var(--accent) 55%,var(--border));}
+    .cam-ord{flex:none;min-height:48px;padding:0 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-main);font:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+    .cam-ord.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);}
+    .cam-busca-res{margin:0 0 12px;}
+    .cam-busca-res:empty{display:none;}
     .cam-it-txt small{display:block;font-size:12px;color:var(--text-dim);}
     .cam-it.e-OK .cam-it-txt{color:var(--text-dim);}
     .cam-it-est{font-size:12px;font-weight:600;color:var(--q);white-space:nowrap;}
@@ -4677,6 +4855,17 @@
     body:has(#view-tarefas.active) #cam-portal{display:block;}
     .cam-fundo{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.28);}
     .cam-gaveta{position:fixed;top:0;right:0;bottom:0;z-index:81;width:min(440px,100vw);display:flex;flex-direction:column;background:var(--bg);box-shadow:-12px 0 32px rgba(0,0,0,.22);}
+    /* CC-1012, regra 17 de design: a gaveta é uma coluna DENTRO da área de conteúdo. Fica abaixo do topo e à esquerda da
+       barra da direita (--gav-t e --gav-r, medidos por camGavArea), sem escuro por cima, e a tela do Caminho ganha uma
+       margem do tamanho dela, com transição: a estrada encolhe junto e se reorganiza. Em tela estreita (sem espaço
+       para as duas colunas) segue como antes, por cima. */
+    body.cam-gav-dock .cam-fundo{display:none;}
+    body.cam-gav-dock .cam-gaveta{top:var(--gav-t,0px);right:var(--gav-r,0px);bottom:0;z-index:40;width:var(--gav-w,420px);border-left:1px solid var(--border);box-shadow:none;}
+    #view-caminho,#view-tarefas,.main-content > header.header{transition:padding-right .32s cubic-bezier(.2,.8,.2,1);}
+    body.cam-gav-dock #view-caminho,body.cam-gav-dock #view-tarefas{padding-right:calc(var(--gav-w,420px) + 20px);}
+    body.cam-gav-dock .main-content > header.header{padding-right:calc(var(--gav-w,420px) + 20px);} /* CC-1015: o topo anda junto */
+    .cam-estrada.reflui svg{animation:cam-fade .35s ease-out both;}
+    @media (prefers-reduced-motion: reduce){ #view-caminho,#view-tarefas{transition:none;} .cam-estrada.reflui svg{animation:none;} }
     .cam-fundo.entra{animation:cam-fade .25s ease-out both;}
     .cam-gaveta.entra{animation:cam-desliza .3s cubic-bezier(.2,.8,.2,1) both;}
     .cam-gav-cab{display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid rgba(var(--tinta),0.08);}
@@ -4695,11 +4884,33 @@
     .tdr-fundo{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.45);animation:cam-fade .2s ease-out both;}
     .tdr{position:fixed;inset:0;z-index:151;display:flex;flex-direction:column;margin:0 auto;max-width:560px;background:var(--bg);color:var(--text-main);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);}
     @media (min-width:900px){.tdr{inset:24px auto;left:50%;transform:translateX(-50%);width:560px;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.35);}}
+    /* CC-995, escolha dele em 08/10 ("opção 2"): no PC, duas colunas e altura do conteúdo. Carta à esquerda,
+       respostas à direita, cabeçalho em cima das duas. Era um celular esticado: 560 px de largura e a tela
+       inteira de altura, com a carta curta boiando num vazio. O celular segue como estava (CC-949). */
+    @media (min-width:1000px){
+      .tdr{inset:auto;top:50%;left:50%;transform:translate(-50%,-50%);width:min(980px,calc(100vw - 48px));max-width:none;max-height:calc(100vh - 48px);display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:auto minmax(0,1fr);overflow:hidden;}
+      #tdr-cab{grid-column:1 / -1;}
+      #tdr-pilha{grid-column:1;grid-row:2;min-height:340px;}
+      #tdr-ops{grid-column:2;grid-row:2;justify-content:flex-end;padding:12px;border-left:1px solid rgba(var(--tinta),.08);overflow-y:auto;}
+      .tdr-img{max-height:60vh;} /* CC-996: aprovar tela é olhar a foto; no PC ela ganha a altura */
+      /* CC-999, pedido dele: barras laterais e topo são a parte mecânica do painel; nada de dentro as apaga.
+         O escuro e a janela ficam na área de conteúdo, medida por c2TdrArea() (--tdr-l/t/w/h). */
+      .tdr-fundo{inset:auto;left:var(--tdr-l,0px);top:var(--tdr-t,0px);width:var(--tdr-w,100vw);height:var(--tdr-h,100vh);}
+      .tdr{top:calc(var(--tdr-t,0px) + var(--tdr-h,100vh) / 2);left:calc(var(--tdr-l,0px) + var(--tdr-w,100vw) / 2);width:min(980px,calc(var(--tdr-w,100vw) - 48px));max-height:calc(var(--tdr-h,100vh) - 48px);}
+    }
     #tdr-cab{flex:none;padding:8px 12px;border-bottom:1px solid rgba(var(--tinta),.08);}
     .tdr-topo{display:flex;align-items:center;gap:8px;min-height:48px;}
     .tdr-topo b{flex:1;font-size:16px;}
+    .tdr-topo .tdr-fonte{font-size:16px;font-weight:700;} .tdr-topo .tdr-fonte[disabled]{opacity:.4;cursor:default;}
     .tdr-x{min-width:48px;min-height:48px;font-size:26px;line-height:1;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text-main);cursor:pointer;}
     .tdr-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 6px;} .tdr-chips::-webkit-scrollbar{display:none;}
+    /* CC-998, pedido dele: no PC a roda do mouse rola os filtros de lado, com barra fina visível (no celular segue sem barra, o dedo arrasta) */
+    @media (hover:hover) and (pointer:fine){
+      .tdr-chips{scrollbar-width:thin;scrollbar-color:color-mix(in srgb, var(--accent,#6366f1) 55%, transparent) transparent;padding-bottom:8px;}
+      .tdr-chips::-webkit-scrollbar{display:block;height:6px;} .tdr-chips::-webkit-scrollbar-track{background:transparent;}
+      .tdr-chips::-webkit-scrollbar-thumb{background:color-mix(in srgb, var(--accent,#6366f1) 55%, transparent);border-radius:6px;}
+      .tdr-chips::-webkit-scrollbar-thumb:hover{background:var(--accent,#6366f1);}
+    }
     .tdr-chip{min-height:48px;flex:none;padding:0 14px;font-size:14px;border-radius:24px;border:1px solid var(--border);background:var(--bg);color:var(--text-main);cursor:pointer;}
     .tdr-chip.on{outline:2px solid var(--accent,#6366f1);font-weight:700;}
     .tdr-aviso{font-size:14px;color:var(--text-dim);margin:2px 0 4px;}
@@ -4751,7 +4962,11 @@
     .tdr-vazio p{margin:0;} .tdr-vazio .tdr-aviso{font-size:14px;}
     .tdr-vazio button{min-height:52px;font-size:16px;border-radius:14px;border:1px solid var(--border);background:var(--bg);color:var(--text-main);cursor:pointer;font-weight:700;}
     .tdr-ops-chama{animation:tdr-chama .3s ease-out;}
-    .tdr-entrar{min-height:48px;width:100%;font-size:16px;font-weight:700;border-radius:14px;border:1px solid var(--border);background:var(--bg);color:var(--text-main);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 8px;}
+    /* CC-994: a entrada do Tinder é o primeiro cartão da fileira dos números, com borda de ação */
+    /* CC-1001: quantas colunas cabem pelo tamanho do cartão, não pela janela (com zoom a janela mente) */
+    .ini-stats.com-tdr { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+    .tdr-entrar { font: inherit; text-align: left; cursor: pointer; width: 100%; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)) !important; }
+    @media (max-width: 900px) { .ini-stats.com-tdr { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     /* CC-909 (D2): o "?" ao lado da opção curta e a folha da explicação (z-index 170: acima do Tinder, abaixo do desfazer 180 e do ditado 181) */
     .tdr-opl{display:flex;gap:8px;align-items:stretch;} .tdr-opl .tdr-op{flex:1;min-width:0;}
     #tdr-ops .tdr-q,#tdr-folha .tdr-folha-b{min-width:48px;min-height:48px;border-radius:14px;border:1px solid var(--border);background:var(--bg);color:var(--text-main);cursor:pointer;font-size:16px;font-weight:700;}
@@ -4869,6 +5084,9 @@
        botão muda de lugar". Com o topo ampliado junto, o A+ andava a cada
        toque. */
     .view-section, .sidebar { zoom: var(--escala, 1); }
+    /* CC-1000: o Tinder segue o A+ e A-. O zoom vai no que está DENTRO da carta, nunca nela: carta com zoom
+       anda mais que o dedo no deslize. */
+    #tdr-cab, #tdr-ops, .tdr-carta > * { zoom: var(--escala, 1); }
     /* 08/10, print dele: o A+ e o A- não mudavam a barra direita. O zoom vai no que está DENTRO dela: na barra inteira
        ele esticaria a largura dela por cima do conteúdo, que só cede o espaço de --lat-w. */
     #lateral-dir > * { zoom: var(--escala, 1); }
@@ -4907,8 +5125,41 @@
     #spot .busca-res { position: static; margin-top: 10px; max-height: 52vh; border: 0; border-radius: 16px; box-shadow: var(--neu-fora); padding: 8px; }
     #spot .busca-it { min-height: 44px; font-size: 15px; }
     #spot .spot-dica { margin: 10px 4px 0; text-align: center; font-size: 12.5px; color: var(--text-dim); }
+    /* CC-1014, pedido dele: nova ideia em qualquer tela, só com teclado, no mesmo desenho do painel de buscar */
+    #ideia-spot { position: fixed; inset: 0; z-index: 400; display: flex; justify-content: center; align-items: flex-start; padding: 10vh 16px 0; opacity: 0; visibility: hidden; transition: opacity .18s ease-out, visibility 0s .18s; }
+    #ideia-spot.aberto { opacity: 1; visibility: visible; transition: opacity .18s ease-out; }
+    #ideia-spot .spot-fundo { position: absolute; inset: 0; background: rgba(20, 24, 34, .38); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+    #ideia-spot .spot-caixa { position: relative; width: min(640px, 100%); max-height: 80vh; overflow-y: auto; padding: 16px; border-radius: 16px; background: var(--card); box-shadow: var(--neu-fora); transform: translateY(-12px) scale(.98); transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
+    #ideia-spot.aberto .spot-caixa { transform: none; }
+    #ideia-spot .cam-ideia-tit { display: none; }
+    #ideia-spot .cam-ideia { border: 0; box-shadow: none; background: none; padding: 0; margin: 0; }
+    #ideia-spot .ideia-pop-cab { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 0 0 12px; font-size: 13px; color: var(--text-dim); }
+    #ideia-spot .ideia-pop-cab label { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 14px; }
+    #ideia-spot .ideia-pop-cab select { min-height: 40px; max-width: 220px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font: inherit; padding: 0 10px; }
+    #ideia-spot kbd { font: inherit; font-size: 12px; color: var(--text-dim); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; }
+    @media (prefers-reduced-motion: reduce) { #ideia-spot, #ideia-spot .spot-caixa { transition: none; } }
+    body.pip-flut { margin: 0; padding: 12px; min-height: 100vh; box-sizing: border-box; background: var(--bg); color: var(--text-main); overflow: auto; } /* CC-1022 */
+    /* CC-1018: o manual de atalhos (tecla ?), no mesmo desenho */
+    #atalhos-spot { position: fixed; inset: 0; z-index: 400; display: flex; justify-content: center; align-items: flex-start; padding: 8vh 16px 0; opacity: 0; visibility: hidden; transition: opacity .18s ease-out, visibility 0s .18s; }
+    #atalhos-spot.aberto { opacity: 1; visibility: visible; transition: opacity .18s ease-out; }
+    #atalhos-spot .spot-fundo { position: absolute; inset: 0; background: rgba(20, 24, 34, .38); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+    #atalhos-spot .spot-caixa { position: relative; width: min(680px, 100%); max-height: 84vh; overflow-y: auto; padding: 18px; border-radius: 16px; background: var(--card); box-shadow: var(--neu-fora); }
+    #atalhos-spot .atl-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; font-size: 18px; }
+    #atalhos-spot .atl-cab span { font-size: 13px; color: var(--text-dim); }
+    #atalhos-spot h5 { margin: 16px 0 6px; font-size: 12px; letter-spacing: .8px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; }
+    .atl-tab { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .atl-tab td { padding: 8px 6px; border-bottom: 1px solid rgba(var(--tinta), .07); vertical-align: top; }
+    .atl-tab td:last-child { white-space: nowrap; width: 1%; padding-left: 16px; text-align: right; }
+    .atl-tab td span { color: var(--text-dim); font-size: 13px; }
+    #atalhos-spot kbd { display: inline-block; min-width: 22px; text-align: center; font: 600 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-main); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 6px; padding: 0 6px; background: var(--bg); }
+    @media (max-width: 480px) { .atl-tab td:last-child { white-space: normal; } }
     @media (prefers-reduced-motion: reduce) { #spot, #spot .spot-caixa { transition: opacity .1s; transform: none; } }
     @media (max-width: 760px) { .topo-busca { display: none; } }
+    /* CC-997, pedido dele em 08/10: o texto do painel não seleciona (toque e arrasto viram só toque e arrasto).
+       Campo de digitar continua normal. O botão de copiar no topo liga a seleção e fica aceso enquanto ligada. */
+    body:not(.copiar-on) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    body:not(.copiar-on) :is(input, textarea, [contenteditable="true"], [contenteditable=""]) { -webkit-user-select: text; user-select: text; }
+    body.copiar-on .main-content > header.header .topo-copiar { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
     .topo-menu { display: none; } /* CC-966: o botão de menu só aparece no celular (bloco CC-966, no fim da folha) */
     .topo-icone { display: none; } /* CC-970: buscar e painel de responder na faixa, só no celular */
     /* CC-676, pedido dele: o topo de toda tela igual ao da Início. A descrição
@@ -4922,6 +5173,15 @@
       .main-content > header.header { flex-wrap: wrap; align-items: center; row-gap: 18px; }
       .main-content > header.header .header-left { order: 2; flex-basis: 100%; }
       .main-content > header.header .topo-busca { margin-left: 0; }
+      /* CC-992, escolha dele em 08/10: no PC a busca também é só a lupa, como no celular (Ctrl K continua abrindo) */
+      .main-content > header.header .topo-busca { display: none; }
+      /* sem a barra, o título volta para a linha dos controles, e os controles para o canto direito */
+      .main-content > header.header { flex-wrap: nowrap; }
+      .main-content > header.header .header-left { order: 0; flex: 1; min-width: 0; }
+      .main-content > header.header .header-right { margin-left: auto; }
+      .main-content > header.header .topo-copiar,
+      .main-content > header.header .topo-buscar { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-muted); cursor: pointer; box-shadow: none !important; }
+      .main-content > header.header :is(.topo-buscar, .topo-copiar):hover { background: rgba(var(--tinta), .06); color: var(--text-main); }
       #header-title { font-size: 32px; font-weight: 700; letter-spacing: -0.8px; }
     }
     /* CC-579: a marca do logotipo, no lugar do texto sozinho. */
@@ -5407,7 +5667,11 @@
       <a href="#" class="nav-item" data-target="view-armario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M4 12h16"></path><path d="M10 7.5h4M10 16.5h4"></path></svg> Armário</a>
       <a href="#trabalho" class="nav-item" data-atalho="trabalho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M12 4v16"></path></svg> Kanban</a>
       <a href="#" class="nav-item" data-target="view-ideias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"></path></svg> Ideias</a>
+      <!-- CC-1038, escolha dele em 10/10: a revisão de textos e telas de cada projeto tem aba própria -->
+      <a href="#" class="nav-item" data-target="view-revisoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"></path><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"></path></svg> Revisões</a>
       <a href="#" class="nav-item" data-target="view-design"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"></circle><circle cx="17.5" cy="10.5" r="1.5"></circle><circle cx="8.5" cy="7.5" r="1.5"></circle><circle cx="6.5" cy="12.5" r="1.5"></circle><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A5.6 5.6 0 0 0 22 9.8C22 5.5 17.5 2 12 2z"></path></svg> Design</a>
+      <!-- CC-1044, pedido dele em 11/10: monitorar os hooks -->
+      <a href="#" class="nav-item" data-target="view-hooks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg> Hooks</a>
       <a href="#" class="nav-item" data-target="view-servidores2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg> Máquinas</a>
       <!-- CC-376, 27/08: a tela das rotas fica colada nas de projeto porque a
            pergunta dela é a mesma, um nível abaixo. Não "onde tem alguém", e
@@ -5498,7 +5762,7 @@
       <div class="topo-busca">
         <label>
           <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-          <input id="busca" type="search" autocomplete="off" placeholder="Buscar no cockpit… (ex: projeto, tarefa, decisão, nota)" aria-label="buscar no cockpit">
+          <input id="busca" type="search" autocomplete="off" placeholder="Buscar no Ogumia… (ex: projeto, tarefa, decisão, nota)" aria-label="buscar no Ogumia">
           <kbd>Ctrl K</kbd>
         </label>
         <div id="busca-res" class="busca-res" hidden></div>
@@ -5532,7 +5796,9 @@
                largura; o sino conta as decisões e abre a lista delas. -->
           <div class="topo-canto">
             <!-- CC-970, pedido dele: no celular, buscar e o painel de responder ficam à direita, ao lado do sino (só aparecem no bloco CC-966) -->
-            <button type="button" class="topo-icone topo-buscar" data-busca-abrir aria-label="buscar no cockpit" title="buscar no cockpit"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+            <!-- CC-997, pedido dele em 08/10: o texto do painel não seleciona; este botão liga a cópia -->
+            <button type="button" class="topo-icone topo-copiar" data-copiar-alternar aria-pressed="false" aria-label="permitir copiar texto" title="permitir copiar texto"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg></button>
+            <button type="button" class="topo-icone topo-buscar" data-busca-abrir aria-label="buscar no Ogumia" title="buscar no Ogumia"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
             <button type="button" id="sino" class="sino" aria-label="decisões esperando você" title="decisões esperando você">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
               <span id="sino-n" class="sino-n" hidden>0</span>
@@ -5746,7 +6012,7 @@
                existia em lugar nenhum: só editando o arquivo de configuração à
                mão, que é o que ele não faz. -->
           <details class="cc-bloco">
-          <summary><b>Onde ficam seus projetos</b><span>as pastas que o cockpit varre. Pode ser mais de uma</span></summary>
+          <summary><b>Onde ficam seus projetos</b><span>as pastas que o Ogumia varre. Pode ser mais de uma</span></summary>
           <div id="pastas-corpo"></div>
           </details>
 
@@ -5972,6 +6238,8 @@
               <div id="gate-anexos" class="gate-anexos" hidden></div>
               <!-- CC-712: a lista do "@ arquivo" e do "/ comando", acima da caixa. -->
               <div id="gate-sugere" class="gate-sugere card" role="listbox" hidden></div>
+              <!-- CC-1043: falas dele esperando o turno acabar; some quando a fila esvazia. -->
+              <div id="gate-fila" class="gate-fila" role="status" hidden></div>
               <div class="gate-caixa">
                 <textarea id="gate-txt" rows="1" placeholder="escreva aqui…"></textarea>
 
@@ -6006,6 +6274,10 @@
                   </button>
                 </div>
 
+                <!-- CC-1043: a linha de baixo, a mesma da aba Sessões: modo, modelo e esforço. Cada peça abre o menu
+                     suspenso do painel (#app-menu) e a escolha cai nos selects da gaveta, que gravam como sempre. -->
+                <div class="gate-linha" id="gate-linha" hidden></div>
+
                 <!-- A gaveta dos ajustes. Fica DENTRO da caixa e nasce fechada:
                      aberta por padrão era o que empurrava a conversa para cima. -->
                 <div class="gate-gaveta" id="gate-gaveta" hidden>
@@ -6016,6 +6288,7 @@
                   <select id="gate-permissao" class="gate-sel" aria-label="permissão" hidden>
                     <option value="acceptEdits">edita sem perguntar</option>
                     <option value="pergunteAntes">pergunte antes</option>
+                    <option value="plano">só planeja</option>
                   </select>
                   <!-- CC-716: só aparece com o opencode. Nomes dele. -->
                   <select id="gate-oc-modo" class="gate-sel" aria-label="modo do opencode" hidden>
@@ -6653,6 +6926,18 @@
       </div>
     </div>
 
+    <div id="view-hooks" class="view-section">
+      <div class="grid-container so-uma">
+        <div class="main-col" id="hk-tela"><p class="c2-vazio">lendo os hooks…</p></div>
+      </div>
+    </div>
+
+    <div id="view-revisoes" class="view-section">
+      <div class="grid-container so-uma">
+        <div class="main-col" id="rev-tela"><p class="c2-vazio">lendo as revisões…</p></div>
+      </div>
+    </div>
+
     <div id="view-ideias" class="view-section">
       <div class="grid-container so-uma">
         <div class="main-col">
@@ -6681,10 +6966,10 @@
 
   <div id="spot" aria-hidden="true">
     <div class="spot-fundo" data-spot-fechar></div>
-    <div class="spot-caixa" role="dialog" aria-label="buscar no cockpit">
+    <div class="spot-caixa" role="dialog" aria-label="buscar no Ogumia">
       <label>
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="busca-spot" type="search" autocomplete="off" placeholder="Buscar projeto, tela, função, tarefa, nota…" aria-label="buscar no cockpit">
+        <input id="busca-spot" type="search" autocomplete="off" placeholder="Buscar projeto, tela, função, tarefa, nota…" aria-label="buscar no Ogumia">
         <kbd>Esc</kbd>
       </label>
       <div id="busca-spot-res" class="busca-res" hidden></div>
@@ -6803,6 +7088,8 @@
       'view-servidores2': { title: 'Máquinas', subtitle: 'O que está no ar em cada máquina: serviços, containers, memória e processador.' },
       'view-decisoes': { title: 'Sessões', subtitle: 'Todas as sessões abertas: responda, mande o próximo passo, filtre por estado, máquina e projeto.' },
       'view-gate': { title: 'Coderoom', subtitle: 'Conversas com os agentes que nascem no painel, por projeto.' },
+      'view-hooks': { title: 'Hooks', subtitle: 'O que cada hook faz com você: quantas vezes rodou, quanto demorou e quando barrou.' },
+      'view-revisoes': { title: 'Revisões', subtitle: 'Os textos e as telas de cada projeto que você revisa um por um: quanto falta, e o botão que leva as suas edições para o código.' },
       'view-ideias': { title: 'Ideias', subtitle: 'O que você falou com cara de ideia nas conversas, e o que aconteceu com cada uma.' },
       'view-armario': { title: 'Armário', subtitle: '' },
       'view-design': { title: 'Design', subtitle: 'A identidade de cada projeto, as telas desenhadas antes do código, o mural de referências e o antes e depois do site, para você ajustar e aprovar.' }
@@ -10013,7 +10300,7 @@
            acusa. */
         + ((PASTAS.escolhidas || []).length
           ? ''
-          : '<p class="modos-vazio">Nenhuma pasta escolhida por você. O cockpit está usando a que ele achou sozinho, e continua assim enquanto a lista estiver vazia.</p>')
+          : '<p class="modos-vazio">Nenhuma pasta escolhida por você. O Ogumia está usando a que ele achou sozinho, e continua assim enquanto a lista estiver vazia.</p>')
         + '<p id="pasta-erro" class="pasta-erro" hidden></p>');
     }
 
@@ -11286,7 +11573,7 @@
       const comHoras = new Set(aparelhos.map((a) => a.id));
       const mudas = (DATA.maquinas || []).filter((m) => m.id && !comHoras.has(m.id));
       const linhaAparelho = (a) => `<div class="metric-item"><div class="metric-label"><span class="dot ${a.semContato ? '' : 'green'}"></span> ${esc(a.nome)}</div><div class="metric-value">${horasDe(a.ativoMs)}</div></div>`;
-      const linhaMuda = (m) => `<div class="metric-item" title="esta máquina é conhecida do cockpit e não trouxe hora nenhuma neste período. O total acima é a soma de quem reportou, não de tudo."><div class="metric-label"><span class="dot"></span> ${esc(m.nome || m.id)}</div><div class="metric-value" style="font-size:12px;color:var(--amber);">não reportou</div></div>`;
+      const linhaMuda = (m) => `<div class="metric-item" title="esta máquina é conhecida do Ogumia e não trouxe hora nenhuma neste período. O total acima é a soma de quem reportou, não de tudo."><div class="metric-label"><span class="dot"></span> ${esc(m.nome || m.id)}</div><div class="metric-value" style="font-size:12px;color:var(--amber);">não reportou</div></div>`;
       document.getElementById('tempo-aparelhos').innerHTML =
         (aparelhos.length ? aparelhos.map(linhaAparelho).join('') : `<p style="font-size:12px;color:var(--text-muted);">só esta máquina reportou horas.</p>`)
         + (mudas.length
@@ -12195,7 +12482,7 @@
 
       if (!fw) {
         return '<p class="cc-explica">' + esc(onde) + ' ainda não conta o estado do framework. '
-          + 'Atualize o cockpit lá (<code>git pull</code> e <code>cc daemon restart</code>) e isto vira controle.</p>';
+          + 'Atualize o Ogumia lá (<code>git pull</code> e <code>cc daemon restart</code>) e isto vira controle.</p>';
       }
 
       const modos = catModos().filter((m) => m.id !== 'desligado');
@@ -12597,6 +12884,8 @@
            **soltar** e **encerrar** ficam a um toque, porque os dois desfazem
            algo e encerrar mata uma sessão sem volta. Nada some: a decisão dele
            de 29/08 continua de pé, o controle segue no mesmo lugar. */
+        // CC-1041: a mesma sessão, na tela do terminal, aqui dentro do painel
+        + '<button type="button" class="btn btn-outline compacto" data-claude-term="' + esc(c2TmuxDe(rot)) + '" data-claude-tit="' + esc(rot) + '" title="abre o terminal de verdade desta sessão">terminal</button>'
         + '<button type="button" class="btn btn-ghost compacto" data-remoto-conectar="' + esc(rot) + '">conectar celular</button>'
         + '<details class="rc-mais"><summary title="soltar o celular ou encerrar esta sessão">mais</summary>'
         + '<button type="button" class="btn btn-ghost compacto" data-remoto-soltar="' + esc(rot) + '">soltar celular</button>'
@@ -12610,7 +12899,8 @@
           + rotulos.map(linhaSessao).join('')
           + '<div class="rc-botoes" style="margin-top:8px;"><button type="button" class="btn btn-outline compacto" data-remoto-mais="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '">abrir mais uma</button></div>'
           + '</div>'
-        : grupo('Claude Code', '<button type="button" class="btn btn-outline compacto" data-remoto-ligar="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '">abrir sessão</button>'
+        : grupo('Claude Code', '<button type="button" class="btn btn-outline compacto" data-claude-term="' + esc(nome) + '" data-claude-tit="' + esc(nome) + '" title="abre o Claude Code de verdade neste projeto, aqui dentro do painel">terminal</button>'
+            + '<button type="button" class="btn btn-ghost compacto" data-remoto-ligar="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '">abrir sessão</button>'
             /* CC-359: o perfil de autoridade total. Abre a sessão sem parar para
                pedir permissão (o "claude_rc_ceo" dele). Fica em botão separado,
                com aviso na confirmação, para nunca ser o clique de sempre. */
@@ -15815,6 +16105,50 @@
       if (v.style.getPropertyValue('--gate-alt') !== alt + 'px') v.style.setProperty('--gate-alt', alt + 'px');
     }
     window.addEventListener('resize', () => requestAnimationFrame(gateMedirTopo));
+    /* CC-1043: a linha de baixo do campo do Coderoom (modo, modelo, esforço), a mesma peça da aba Sessões. As peças só
+       LEEM o que a tela já sabe (cabeçalho da conversa e lista de modelos do agente) e a escolha cai no select
+       da gaveta, que grava como sempre (gatePrefGravar, /api/gate/permissao). Uma fonte só, nenhum caminho novo. */
+    function gateLinhaPecas() {
+      const cab = GATE.dados?.cabecalho, md = GATE.modelos?.[GATE.agente], P = {};
+      if (GATE.agente === 'claude' && cab) {
+        const pm = cab.permissao === 'pergunteAntes' || cab.permissao === 'plano' ? cab.permissao : 'acceptEdits';
+        const ops = [['pergunteAntes', 'Manual', 'pede sua permissão antes de editar ou rodar comando'], ['acceptEdits', 'Aceitar edições', 'edita arquivos sem perguntar'],
+          ['plano', 'Plano', 'só lê e planeja, não mexe em nada']];
+        P.modo = { titulo: 'Modo', cur: pm, ops, rot: (ops.find(([v]) => v === pm) || ops[1])[1], dica: 'modo desta conversa: toque para escolher' };
+      }
+      if (md && !md.erro && (md.modelos || []).length) {
+        const cur = GATE.modelo || cab?.modelos?.[GATE.agente] || '';
+        const ops = [['', 'Padrão', 'o que o ' + GATE.agente + ' escolhe sozinho']].concat(md.modelos.map((m) => [m.id, m.rotulo || m.id, '']));
+        P.modelo = { titulo: 'Modelo', cur, ops, rot: cur ? (ops.find(([v]) => v === cur) || [, cur])[1] : 'Modelo padrão', dica: 'modelo: toque para escolher' }; // como no app: o valor atual, nunca só o nome do campo
+      }
+      const niveis = md?.esforcos || [];
+      if (md && !md.erro && niveis.length) {
+        const NOME = { low: ['Baixo', 'responde rápido, pensa pouco'], medium: ['Médio', 'o equilíbrio do dia a dia'], high: ['Alto', 'pensa mais antes de agir'], xhigh: ['Muito alto', 'para problema difícil'], max: ['Máximo', 'o mais lento e o que mais gasta'] };
+        const cur = GATE.esforco || cab?.esforcos?.[GATE.agente] || '';
+        const ops = [['', 'Padrão', '']].concat(niveis.map((n) => [n, (NOME[n] || [n])[0], (NOME[n] || [, ''])[1]]));
+        P.esforco = { titulo: 'Esforço', cur, ops, rot: cur ? 'Esforço ' + String((ops.find(([v]) => v === cur) || [, cur])[1]).toLowerCase() : 'Esforço padrão', dica: 'esforço: toque para escolher' };
+      }
+      return P;
+    }
+    function gateLinhaEscolher(k, valor) {
+      const sel = document.getElementById({ modo: 'gate-permissao', modelo: 'gate-modelo', esforco: 'gate-esforco' }[k]);
+      if (!sel || ![...sel.options].some((o) => o.value === valor)) { c2Toast('não consegui trocar agora: a lista ainda não chegou'); return; }
+      sel.value = valor;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    function gateLinhaRender() {
+      const el = document.getElementById('gate-linha'), fila = document.getElementById('gate-fila');
+      if (el) {
+        const P = gateLinhaPecas(), ks = Object.keys(P);
+        el.hidden = !ks.length;
+        pintar(el, ks.map((k) => '<button type="button" class="app-esc" data-app-menu="' + k + '" data-app-onde="coderoom" aria-haspopup="menu" aria-expanded="' + (C2.appMenu === 'coderoom:' + k ? 'true' : 'false') + '" title="' + esc(P[k].dica) + '"><span>' + esc(P[k].rot) + '</span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>').join(''));
+      }
+      if (fila) { // o servidor novo manda naFila; sem ele a linha simplesmente não aparece
+        const n = Number(GATE.dados?.naFila ?? GATE.dados?.cabecalho?.naFila) || 0;
+        fila.hidden = n < 1;
+        if (n > 0) pintar(fila, n === 1 ? '1 mensagem na fila: sai quando ele terminar' : n + ' mensagens na fila: saem quando ele terminar');
+      }
+    }
     function renderGate() {
       const lista = document.getElementById('gate-lista');
       try { gateLadoRender(); gateCabecalho(); } catch (e) { console.error('lista do coderoom', e); }
@@ -15898,9 +16232,11 @@
       const selP = document.getElementById('gate-permissao');
       if (selP && selP !== document.activeElement) {
         selP.hidden = GATE.agente !== 'claude' || !GATE.dados?.cabecalho;
-        const v = GATE.dados?.cabecalho?.permissao === 'pergunteAntes' ? 'pergunteAntes' : 'acceptEdits';
+        const pm = GATE.dados?.cabecalho?.permissao;
+        const v = pm === 'pergunteAntes' || pm === 'plano' ? pm : 'acceptEdits';
         if (selP.value !== v) selP.value = v;
       }
+      try { gateLinhaRender(); } catch (e) { console.error('linha do coderoom', e); }
 
       const selOc = document.getElementById('gate-oc-modo');
       if (selOc && selOc !== document.activeElement) {
@@ -16272,7 +16608,9 @@
             method: 'POST', headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ id: GATE.id, texto: d.permissao === 'pergunteAntes'
               ? 'Permissão trocada para "pergunte antes": o Claude para antes de cada comando ou edição e espera sua aprovação no painel (até 10 min; sem resposta, ele não faz).'
-              : 'Permissão trocada para "edita sem perguntar".' }),
+              : d.permissao === 'plano'
+                ? 'Permissão trocada para "plano": o Claude só lê e planeja, não edita nem roda comando até você trocar.'
+                : 'Permissão trocada para "edita sem perguntar".' }),
           }).catch(() => { /* a troca já valeu; o registro é o extra */ });
         } catch (err) {
           GATE.erro = `não consegui trocar a permissão: ${err.message || err}`;
@@ -19960,7 +20298,7 @@
           if (proj) itens.push({ rot: 'copiar o nome do projeto', faz: () => navigator.clipboard?.writeText(proj.innerText.trim()) });
           if (itens.length) grupos.push({ titulo: 'este cartão', itens });
         }
-        grupos.push({ titulo: 'cockpit', itens: [
+        grupos.push({ titulo: 'Ogumia', itens: [
           { rot: 'atualizar agora', faz: () => (typeof c2Buscar === 'function' ? c2Buscar() : location.reload()) },
           { rot: document.body.classList.contains('lateral-on') || document.body.classList.contains('lat-gaveta') ? 'fechar a barra lateral' : 'abrir a barra lateral', faz: () => document.querySelector('.lat-btn')?.click() },
           { rot: 'voltar ao topo', faz: () => { window.scrollTo({ top: 0, behavior: 'smooth' }); document.querySelector('.view-section.active')?.scrollTo?.({ top: 0, behavior: 'smooth' }); } },
@@ -20021,7 +20359,7 @@
       const stat = (icn, cor, rot, n, sub) => '<div class="card ini-stat">' + icQuad(icn, cor, 44) + '<div><div class="ini-stat-rot">' + rot + '</div><div class="ini-stat-n"><b>' + n + '</b><span>' + sub + '</span></div></div></div>';
       /* CC-705, regras de design dele: os números rolam; abas, modo e filtros
          ficam numa faixa presa no topo (`fixo`), como em Projetos. */
-      const statsH = '<div class="ini-stats">'
+      const statsH = '<div class="ini-stats com-tdr">' + c2TdrEntrada()
         + stat('chat', 'var(--c-decisao)', 'Esperando você', espV.filter((e) => e.grupo || (!c2EhQA(e) && !c2EhNada(e))).length + outras.filter((s) => s.estado === 'espera você' && !c2EhQA(s) && !c2EhNada(s)).length, nPerg ? nPerg + ' com opções' : 'responda por aqui')
         + stat('raio', 'var(--c-sessao)', 'Trabalhando', nTrab, 'agora')
         + stat('pausa', 'var(--c-tarefa)', 'Paradas', nParada, 'sem pedir nada')
@@ -20038,7 +20376,7 @@
       const fixo = (resto, extra) => '<div class="dec-fixo">' + c2FaixasCtl('decisoes', [['resumo', 'Resumo', 'kanban'], ['abas', 'Abas', 'raio'], ...(extra || [])])
         + (c2Faixa('decisoes', 'abas') ? abasH : '') + (resto || '') + '</div>';
       /* A entrada do Tinder rola junto com o conteúdo: dentro da parte fixa ela custava ~60 px de tela o tempo todo no celular */
-      const statsV = c2TdrEntrada() + (c2Faixa('decisoes', 'resumo') ? statsH : '');
+      const statsV = c2Faixa('decisoes', 'resumo') ? statsH : '<div class="ini-stats com-tdr">' + c2TdrEntrada() + '</div>';
       const topo = statsV + fixo();
       /* CC-582, pedido dele: "um histórico de decisões por projeto". Tudo o
          que apareceu, com quando e como terminou; filtro por projeto. */
@@ -20983,7 +21321,7 @@
       flut.addEventListener('mousedown', (e) => e.preventDefault()); // o foco fica no campo
       document.body.appendChild(flut);
       const serve = (el) => el && el.matches && el.matches('textarea, input:not([type]), input[type="text"], input[type="search"]')
-        && !el.closest('[data-msg], #gate-caixa, .gate-escrever') && el.id !== 'gate-txt' && !el.readOnly && !el.disabled
+        && !el.closest('[data-msg], #gate-caixa, .gate-escrever, .cam-busca') && el.id !== 'gate-txt' // CC-1010: busca de tarefa (código) não dita && !el.readOnly && !el.disabled
         && el.inputMode !== 'numeric'; // campo só de números (o código do deploy) não precisa de ditado
       const posicionar = () => {
         if (!C2_VOZ_ALVO || flut.hidden) return;
@@ -21289,17 +21627,62 @@
       return (t.descricao ? '<p class="c2-mini" style="margin:0 0 8px">' + esc(t.descricao) + '</p>' : '')
         + '<div class="cam-barra" role="img" aria-label="' + pct + '% feito"><i style="width:' + pct + '%"></i></div>'
         + '<div class="cam-chips">' + chip(t.feitos, 'feitos', 'var(--green)') + chip(t.andando, 'andando', 'var(--accent)') + chip(t.fila, 'na fila', 'var(--text-dim)') + chip(t.parado, 'parados', 'var(--waiting)') + chip(t.emendas, t.emendas === 1 ? 'emenda' : 'emendas', 'var(--accent)') + chip(t.cancelados, 'cancelados', 'var(--text-dim)') + '</div>'
-        + '<ul class="cam-itens">' + t.itens.map((i) => { const e = CAM_EST[i.estado] || [i.estado, 'var(--text-dim)'];
-          const X = c2ExplDe(i.id);
-          return '<li class="cam-it e-' + esc(i.estado) + '" style="--q:' + e[1] + '"><span class="cam-it-ic">' + icItem(i.estado) + '</span><span class="cam-it-txt">'
+        + '<ul class="cam-itens">' + camOrdenar(t.itens).map(camLinha).join('')
+        + '</ul>' + (t.total > t.itens.length ? '<p class="c2-mini" style="margin:8px 0 0">mostrando ' + t.itens.length + ' de ' + (t.total + t.cancelados) + ': o que anda, o que vem a seguir e o que fechou por último. Para achar outra, use a busca acima.</p>' : '');
+    }
+    /* CC-1007: uma linha de tarefa, a mesma na lista do trecho e no resultado da busca. O código vem primeiro e em destaque. */
+    function camLinha(i) {
+      const icItem = (e) => e === 'OK' ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+        : e === 'DE' || e === 'TR' ? '<b>!</b>' : '';
+      const e = CAM_EST[i.estado] || [i.estado, 'var(--text-dim)'];
+      const X = c2ExplDe(i.id);
+      return '<li class="cam-it e-' + esc(i.estado) + '" style="--q:' + e[1] + '"><span class="cam-it-ic">' + icItem(i.estado) + '</span><span class="cam-it-txt">'
+            + '<span class="cam-cod">' + esc(i.id) + '</span>'
             + (X ? '<span class="cam-it-oque">' + esc(X.oque) + '</span><span class="cam-it-muda"><b>o que muda para você:</b> ' + esc(X.muda) + '</span>'
               : esc(i.texto) + '<span class="cam-it-ag">texto do agente' + (c2ExplACaminho() ? ', explicação a caminho' : '') + '</span>')
-            + '<small>código ' + esc(i.id) + (i.emenda ? ' · emenda: ideia nova no meio do projeto' : '') + '</small>'
+            + (i.emenda ? '<small>emenda: ideia nova no meio do projeto</small>' : '')
             // CC-958: o lugar na fila é o próprio botão de mudar, só em item aberto
             + (i.estado !== 'OK' && i.estado !== 'KO' ? '<button type="button" class="cam-it-lugar' + (i.lugar ? ' tem' : '') + '" data-cam-lugar="' + esc(i.id) + '" data-cam-lugar-onde="' + esc(i.lugar || '') + '">' + esc(i.lugarRot || 'escolher lugar') + '</button>' : '')
-            + '</span><span class="cam-it-est">' + e[0] + '</span></li>'; }).join('')
-        + '</ul>' + (t.total > t.itens.length ? '<p class="c2-mini" style="margin:8px 0 0">mostrando ' + t.itens.length + ' de ' + (t.total + t.cancelados) + ': o que anda, o que vem a seguir e o que fechou por último.</p>' : '');
+            + '</span><span class="cam-it-est">' + e[0] + '</span></li>';
     }
+    /* CC-1007, pedido dele: achar tarefa por código ou palavra (a tela só carrega uns 16 itens por trecho; a busca vê todos) */
+    C2.cam.q = C2.cam.q || ''; C2.cam.res = C2.cam.res || null;
+    C2.cam.ord = C2.cam.ord || (() => { try { return localStorage.getItem('c2-cam-ord') === 'num' ? 'num' : 'rel'; } catch { return 'rel'; } })();
+    function camBuscaRes() {
+      const K = C2.cam; if (!K.q.trim()) return '';
+      const R = K.res; if (!R || R.q !== K.q || R.ord !== K.ord || R.raiz !== K.raiz) return '<p class="c2-mini">procurando…</p>';
+      if (!R.ok) return '<p class="c2-mini">' + esc(R.erro || 'a busca não respondeu') + '</p>';
+      if (!R.itens.length) return '<p class="c2-mini">nenhuma tarefa com "' + esc(K.q.trim()) + '".</p>';
+      return '<p class="c2-mini" style="margin:0 0 4px">' + R.total + (R.total === 1 ? ' tarefa' : ' tarefas') + (R.total > R.itens.length ? ' (mostrando as ' + R.itens.length + ' primeiras)' : '') + '</p><ul class="cam-itens">' + R.itens.map(camLinha).join('') + '</ul>';
+    }
+    function camBusca() {
+      const K = C2.cam;
+      return '<div class="cam-busca"><label><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>'
+        + '<input type="search" data-cam-q autocomplete="off" placeholder="achar tarefa: CC-985 ou uma palavra" aria-label="achar tarefa por código ou palavra" value="' + esc(K.q) + '"></label>'
+        + '<button type="button" class="cam-ord' + (K.ord === 'num' ? ' on' : '') + '" data-cam-ord aria-pressed="' + (K.ord === 'num') + '" title="ordenar as tarefas pelo número, da mais nova para a mais antiga">por número</button></div>'
+        + '<div class="cam-busca-res">' + camBuscaRes() + '</div>';
+    }
+    let camBuscaT = null;
+    function camBuscar() {
+      const K = C2.cam, q = K.q, ord = K.ord, raiz = K.raiz;
+      const pinta = () => document.querySelectorAll('.cam-busca-res').forEach((el) => { el.innerHTML = camBuscaRes(); });
+      pinta(); clearTimeout(camBuscaT);
+      if (!q.trim() || !raiz) return;
+      camBuscaT = setTimeout(() => {
+        fetch('/api/caminho/busca?cwd=' + encodeURIComponent(raiz) + '&ord=' + ord + '&q=' + encodeURIComponent(q)).then(c2Json)
+          .then((r) => { if (K.q === q && K.ord === ord) { K.res = { ...r, q, ord, raiz }; pinta(); } })
+          .catch(() => { if (K.q === q) { K.res = { ok: false, erro: 'a busca não respondeu', q, ord, raiz }; pinta(); } });
+      }, 220);
+    }
+    document.addEventListener('input', (ev) => { if (ev.target.matches && ev.target.matches('[data-cam-q]')) { C2.cam.q = ev.target.value; camBuscar(); } });
+    document.addEventListener('click', (ev) => {
+      if (!ev.target.closest('[data-cam-ord]')) return;
+      const K = C2.cam; K.ord = K.ord === 'num' ? 'rel' : 'num'; try { localStorage.setItem('c2-cam-ord', K.ord); } catch { /* só conveniência */ }
+      c2RenderCaminho(); camBuscar();
+    });
+    /* CC-1007: "por número" ordena do maior para o menor; sem ele, a ordem do servidor (o que anda primeiro) */
+    const camNumero = (id) => Number((/(\d+)$/.exec(String(id)) || [])[1]) || 0;
+    const camOrdenar = (itens) => (C2.cam.ord === 'num' ? [...itens].sort((a, b) => camNumero(b.id) - camNumero(a.id)) : itens);
     /* CC-958: fora do MVP e ideias sem lugar ficam guardadas embaixo da estrada, fora da porcentagem. */
     function camGuardados(r) {
       const K = C2.cam; const A = K.abertos[r.raiz + '|' + K.por] || new Set();
@@ -21309,7 +21692,7 @@
     }
     function camLista(r) {
       const K = C2.cam; const kab = r.raiz + '|' + K.por; const abertos = K.abertos[kab] || (K.abertos[kab] = new Set([(r.trechos[r.atual] || {}).chave]));
-      return camNums(r) + '<div class="cam-lista">' + r.trechos.map((t, i) => {
+      return camNums(r) + camBusca() + '<div class="cam-lista">' + r.trechos.map((t, i) => {
         const tipo = camTipo(r, t, i); const ab = abertos.has(t.chave); const pct = t.total ? Math.round(t.feitos / t.total * 100) : 0;
         return '<section class="card cam-sec ' + tipo + '" style="--i:' + i + '"><button class="cam-sec-cab" data-cam-abrir="' + esc(t.chave) + '" aria-expanded="' + ab + '">'
           + '<span class="cam-bola cam-bola-p">' + camIcone(tipo) + '</span><span class="cam-sec-nome"><b>' + esc(camRotulo(t)) + '</b><small>' + t.feitos + '/' + t.total + ' · ' + camPalavra(t) + (i === r.atual && (t.sprint || !t.completo) ? ' · você está aqui' : '') + '</small></span>'
@@ -21332,10 +21715,10 @@
       const K = C2.cam; const ch = K.gaveta[r.raiz]; const i = r.trechos.findIndex((t) => t.chave === ch); if (i < 0) return '';
       const t = r.trechos[i]; const entra = K.gavEntrou !== r.raiz + '|' + ch;
       if (entra) setTimeout(() => { K.gavEntrou = r.raiz + '|' + ch; }, 450);
-      return '<div class="cam-fundo' + (entra ? ' entra' : '') + '" data-cam-fechar></div><aside class="cam-gaveta' + (entra ? ' entra' : '') + '" role="dialog" aria-modal="true" aria-label="itens de ' + esc(camRotulo(t)) + '">'
+      return '<div class="cam-fundo' + (entra ? ' entra' : '') + '" data-cam-fechar></div><aside class="cam-gaveta' + (entra ? ' entra' : '') + '" data-gav="' + esc(r.raiz + '|' + ch) + '" role="dialog" aria-modal="true" aria-label="itens de ' + esc(camRotulo(t)) + '">'
         + '<div class="cam-gav-cab"><span class="cam-bola cam-bola-p ' + camTipo(r, t, i) + '">' + camIcone(camTipo(r, t, i)) + '</span><span class="cam-sec-nome"><b>' + esc(camRotulo(t)) + '</b><small>' + t.feitos + '/' + t.total + ' · ' + camPalavra(t) + '</small></span>'
         + '<button class="cam-x" data-cam-fechar aria-label="fechar">×</button></div>'
-        + '<div class="cam-gav-corpo">' + camArtefatos(t) + camItens(t) + '<button class="btn compacto cam-ver-lista" data-cam-na-lista="' + esc(t.chave) + '">ver na lista</button></div></aside>';
+        + '<div class="cam-gav-corpo">' + camBusca() + camArtefatos(t) + camItens(t) + '<button class="btn compacto cam-ver-lista" data-cam-na-lista="' + esc(t.chave) + '">ver na lista</button></div></aside>';
     }
     function c2CaminhoCorpo(r, estreito, anima) {
       const trechos = r.trechos; const n = trechos.length + 1; // o último ponto é a chegada
@@ -21414,6 +21797,14 @@
     function c2IdeiaLinhas(t) { return Math.min(4, Math.max(2, Math.ceil(String(t || '').length / 32))); }
     function c2IdeiaCartao(raiz) {
       const E = c2IdeiaEstado(raiz);
+      /* CC-1011, regra 18 de design: a caixa de ideia não é o assunto do Caminho, então fica atrás de um botão. Só
+         aparece aberta ao tocar, ou quando há uma ideia em andamento (organizando, escolha, gravando). O rascunho
+         fica guardado ao fechar, e o botão avisa que ele existe. */
+      if (E.fase === 'escrevendo' && !E.aberta) {
+        const rasc = E.rascunho.trim();
+        return '<button type="button" class="cam-ideia-abrir" data-ideia-abrir aria-expanded="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'
+          + (rasc ? 'nova ideia <small>rascunho guardado</small>' : 'nova ideia') + '</button>';
+      }
       const erro = E.erro ? '<p class="cam-ideia-erro" role="alert">' + esc(E.erro) + '</p>' : '';
       let corpo = '';
       if (E.fase === 'organizando') corpo = '<p class="cam-ideia-msg" role="status">o agy está pensando na ideia…</p>';
@@ -21458,7 +21849,8 @@
           + '<button type="button" class="cam-ideia-b" data-ideia-recomecar>recomeçar</button></div>';
       } else {
         corpo = '<textarea class="cam-ideia-campo" data-ideia-rascunho placeholder="escreva ou dite a ideia…" aria-label="nova ideia">\n' + esc(E.rascunho) + '</textarea>'
-          + '<div class="cam-ideia-acoes"><button type="button" class="cam-ideia-b forte" data-ideia-organizar' + (E.rascunho.trim() ? '' : ' disabled') + '>organizar a ideia</button></div>';
+          + '<div class="cam-ideia-acoes"><button type="button" class="cam-ideia-b forte" data-ideia-organizar' + (E.rascunho.trim() ? '' : ' disabled') + '>organizar a ideia</button>'
+          + '<button type="button" class="cam-ideia-b" data-ideia-fechar>fechar</button></div>';
       }
       return '<section class="cam-ideia" aria-label="nova ideia"><h3 class="cam-ideia-tit">nova ideia</h3>' + corpo + erro + '</section>';
     }
@@ -21504,9 +21896,14 @@
     });
     document.addEventListener('click', (ev) => {
       const K = C2.cam; if (!K.raiz) return;
-      const b = ev.target.closest('[data-ideia-organizar],[data-ideia-escolha],[data-ideia-lugar],[data-ideia-tirar],[data-ideia-gravar],[data-ideia-recomecar],[data-ideia-nova]'); if (!b) return;
+      const b = ev.target.closest('[data-ideia-organizar],[data-ideia-escolha],[data-ideia-lugar],[data-ideia-tirar],[data-ideia-gravar],[data-ideia-recomecar],[data-ideia-nova],[data-ideia-abrir],[data-ideia-fechar]'); if (!b) return;
       const E = c2IdeiaEstado(K.raiz); const raiz = K.raiz;
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); // campo com foco impede o redesenho (celular nao tira o foco ao tocar no botao)
+      if (b.hasAttribute('data-ideia-abrir') || b.hasAttribute('data-ideia-fechar')) { // CC-1011: abrir foca o campo; fechar guarda o rascunho
+        E.aberta = b.hasAttribute('data-ideia-abrir'); c2RenderCaminho();
+        if (E.aberta) requestAnimationFrame(() => document.querySelector('[data-ideia-rascunho]')?.focus());
+        return;
+      }
       if (b.hasAttribute('data-ideia-organizar')) {
         const texto = E.rascunho.trim(); if (!texto) return;
         c2IdeiaZera(E); E.texto = texto; E.fase = 'organizando'; c2RenderCaminho(); return c2IdeiaOrganizar(raiz);
@@ -21540,7 +21937,131 @@
       }
       c2RenderCaminho();
     });
+    /* CC-1012, regra 17: onde cabe a gaveta (abaixo do topo, à esquerda da barra da direita). Se a área de conteúdo
+       for estreita demais para duas colunas, ela não encaixa e segue por cima como antes. */
+    function camGavArea() {
+      const m = document.querySelector('.main-content'); if (!m) return;
+      const r = m.getBoundingClientRect(), h = m.querySelector(':scope > header.header');
+      const dock = !!document.querySelector('#cam-portal .cam-gaveta') && r.width >= 900;
+      document.body.classList.toggle('cam-gav-dock', dock);
+      if (!dock) return;
+      const s = document.documentElement.style;
+      s.setProperty('--gav-r', Math.max(0, innerWidth - r.right) + 'px');
+      /* CC-1015, escolha dele em 08/10: a gaveta ocupa a altura toda, e os botões do topo andam para o lado dela, na linha
+         do título. Antes ela começava abaixo do topo e os botões ficavam empilhados em cima dela. */
+      s.setProperty('--gav-t', Math.max(0, r.top) + 'px');
+      s.setProperty('--gav-w', Math.round(Math.min(440, r.width * 0.4)) + 'px');
+    }
+    let camGavQuadro = 0;
+    const camGavAgenda = () => { if (!camGavQuadro) camGavQuadro = requestAnimationFrame(() => { camGavQuadro = 0; camGavArea(); }); };
+    try { const m = document.querySelector('.main-content'); if (m) { const ro = new ResizeObserver(camGavAgenda); ro.observe(m); const h = m.querySelector(':scope > header.header'); if (h) ro.observe(h); } } catch { /* sem ResizeObserver: só mede ao desenhar */ }
+    window.addEventListener('resize', camGavAgenda); window.addEventListener('scroll', camGavAgenda, true);
+    /* A estrada troca de colunas quando a área encolhe (a gaveta abriu, a barra da direita abriu, a janela estreitou).
+       Cada parada anda do lugar antigo ao novo (uma troca "do antigo para o novo"), e o traço aparece com fade. */
+    function camFlipLer(alvo) {
+      const box = alvo && alvo.querySelector('.cam-estrada'); if (!box) return null;
+      const b = box.getBoundingClientRect(), mapa = {};
+      for (const el of box.querySelectorAll('.cam-no, .cam-eu')) { const r = el.getBoundingClientRect(); mapa[el.dataset.camTrecho || (el.classList.contains('chegada') ? 'chegada' : el.classList.contains('cam-eu') ? 'eu' : '?')] = { x: r.left - b.left, y: r.top - b.top }; }
+      return mapa;
+    }
+    function camFlipAplicar(alvo, antes) {
+      const box = alvo && alvo.querySelector('.cam-estrada'); if (!box || !antes || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const b = box.getBoundingClientRect(), mexidos = [];
+      for (const el of box.querySelectorAll('.cam-no, .cam-eu')) {
+        const k = el.dataset.camTrecho || (el.classList.contains('chegada') ? 'chegada' : el.classList.contains('cam-eu') ? 'eu' : '?'), o = antes[k]; if (!o) continue;
+        const r = el.getBoundingClientRect(), dx = o.x - (r.left - b.left), dy = o.y - (r.top - b.top);
+        if (Math.abs(dx) + Math.abs(dy) < 3) continue;
+        el.style.transition = 'none'; el.style.translate = dx + 'px ' + dy + 'px'; mexidos.push(el);
+      }
+      if (!mexidos.length) return;
+      box.classList.add('reflui'); void box.offsetWidth;
+      requestAnimationFrame(() => mexidos.forEach((el) => { el.style.transition = 'translate .38s cubic-bezier(.2,.8,.2,1)'; el.style.translate = '0px 0px'; }));
+      setTimeout(() => { box.classList.remove('reflui'); mexidos.forEach((el) => { el.style.transition = ''; el.style.translate = ''; }); }, 480);
+    }
+    /* quando a largura do Caminho cruza o limite do estreito, redesenha (uma vez) com a reorganização suave */
+    try { const alvo0 = document.getElementById('c2-caminho'); if (alvo0) new ResizeObserver(() => { const K = C2.cam; if (K.estr != null && (alvo0.clientWidth < 700) !== K.estr) { K.reflow = true; c2RenderCaminho(); K.reflow = false; } }).observe(alvo0); } catch { /* sem ResizeObserver */ }
+    /* CC-1014, pedido dele em 08/10: "adicionar ideias em qualquer janela, e facilitado pra usar o teclado e não tocar no
+       mouse". Painel flutuante no desenho da busca, que reaproveita o fluxo de ideia do Caminho (escrever, organizar, escolher
+       o lugar, gravar): mesmo estado, mesmos botões. A ideia vai para o projeto selecionado no Caminho, trocável no topo. */
+    const ideiaPopAberto = () => !!document.getElementById('ideia-spot')?.classList.contains('aberto');
+    /* CC-1017, pedido dele: a ideia nasce no projeto do que está selecionado na tela. Em Sessões, o da sessão escolhida;
+       nas outras telas, o que o Caminho tem aberto. Aplica assim que a lista de projetos chega. */
+    function ideiaPopProjetoDoContexto() {
+      const K = C2.cam, nome = C2.ideiaQuer; if (!nome || !K.lista) return;
+      const n = String(nome).toLowerCase().replace(/^(vps|pc)_/, '');
+      const p = K.lista.find((x) => String(x.nome).toLowerCase() === n) || K.lista.find((x) => String(x.raiz).toLowerCase().endsWith('_' + n) || String(x.raiz).toLowerCase().endsWith('/' + n));
+      C2.ideiaQuer = null;
+      if (p && p.raiz !== K.raiz) { K.raiz = p.raiz; try { localStorage.setItem('c2-cam-proj', K.raiz); } catch { /* só conveniência */ } c2CaminhoLer(K.raiz); }
+    }
+    function ideiaPopHtml() {
+      const K = C2.cam;
+      ideiaPopProjetoDoContexto();
+      if (!K.raiz) return '<p class="c2-mini" role="status">lendo os projetos…</p>';
+      const E = c2IdeiaEstado(K.raiz); if (E.fase === 'escrevendo') E.aberta = true; // dentro do painel o campo nunca fica atrás do botão
+      const opts = (K.lista || []).map((p) => '<option value="' + esc(p.raiz) + '"' + (p.raiz === K.raiz ? ' selected' : '') + '>' + esc(p.nome) + '</option>').join('');
+      return '<div class="ideia-pop-cab"><label>ideia para <select data-ideia-proj aria-label="projeto da ideia">' + opts + '</select></label>'
+        + '<span><kbd>Ctrl</kbd> + <kbd>Enter</kbd> avança · <kbd>1</kbd> a <kbd>5</kbd> escolhe · <kbd>Esc</kbd> fecha</span></div>' + c2IdeiaCartao(K.raiz);
+    }
+    function ideiaPopFoco() {
+      const c = document.querySelector('#ideia-spot .spot-caixa'); const K = C2.cam; if (!c || !K.raiz) return;
+      const E = c2IdeiaEstado(K.raiz);
+      if (c.contains(document.activeElement) && c._fase === E.fase) return; // quem está no meio de uma escolha não perde o lugar
+      c._fase = E.fase;
+      const alvo = E.fase === 'escrevendo' ? c.querySelector('[data-ideia-rascunho]') : E.fase === 'escolha' ? c.querySelector('[data-ideia-opcao]')
+        : E.fase === 'escolher' ? (c.querySelector('.cam-ideia-lg.on') || c.querySelector('.cam-ideia-lg')) : E.fase === 'gravado' ? c.querySelector('[data-ideia-nova]') : null;
+      if (alvo) alvo.focus({ preventScroll: true });
+    }
+    function ideiaPopRepintar() {
+      const c = document.querySelector('#ideia-spot .spot-caixa'); if (!c || !ideiaPopAberto()) return;
+      pintar(c, ideiaPopHtml()); ideiaPopFoco();
+    }
+    function ideiaPop(abrir) {
+      let s = document.getElementById('ideia-spot');
+      if (!s) {
+        s = document.createElement('div'); s.id = 'ideia-spot'; s.setAttribute('aria-hidden', 'true');
+        s.innerHTML = '<div class="spot-fundo" data-ideia-pop-fechar></div><div class="spot-caixa" role="dialog" aria-label="nova ideia"></div>';
+        document.body.appendChild(s);
+      }
+      if (abrir === ideiaPopAberto()) return;
+      const K = C2.cam;
+      if (abrir) {
+        buscaSpot(false);
+        C2.ideiaQuer = document.getElementById('view-decisoes')?.classList.contains('active') ? C2.sesSelNome : null; // CC-1017
+        c2CaminhoLer(null);
+      }
+      else if (K.raiz) { const E = c2IdeiaEstado(K.raiz); if (E.fase === 'escrevendo') E.aberta = false; } // fecha guardando o rascunho
+      s.classList.toggle('aberto', abrir); s.setAttribute('aria-hidden', String(!abrir));
+      if (abrir) { const c = s.querySelector('.spot-caixa'); c._fase = null; ideiaPopRepintar(); setTimeout(ideiaPopFoco, 120); }
+      else { if (document.activeElement && s.contains(document.activeElement)) document.activeElement.blur(); c2RenderCaminho(); }
+    }
+    document.addEventListener('click', (ev) => { if (ev.target.closest('[data-ideia-pop-fechar]')) ideiaPop(false); });
+    document.addEventListener('change', (ev) => {
+      const s = ev.target.closest && ev.target.closest('[data-ideia-proj]'); if (!s) return;
+      C2.cam.raiz = s.value; try { localStorage.setItem('c2-cam-proj', C2.cam.raiz); } catch { /* só conveniência */ }
+      c2CaminhoLer(C2.cam.raiz); const c = document.querySelector('#ideia-spot .spot-caixa'); if (c) c._fase = null; ideiaPopRepintar();
+    });
+    document.addEventListener('keydown', (ev) => {
+      if (ev.ctrlKey && ev.shiftKey && !ev.altKey && ev.code === 'Space') { ev.preventDefault(); ideiaPop(!ideiaPopAberto()); return; }
+      if (!ideiaPopAberto()) return;
+      const c = document.querySelector('#ideia-spot .spot-caixa'); const K = C2.cam; const E = K.raiz ? c2IdeiaEstado(K.raiz) : null;
+      if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); ideiaPop(false); return; }
+      if (!E || !c) return;
+      if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { // avança o passo: organizar, ou gravar
+        ev.preventDefault();
+        const b = E.fase === 'escrevendo' ? c.querySelector('[data-ideia-organizar]') : E.fase === 'escolher' ? c.querySelector('[data-ideia-gravar]') : E.fase === 'gravado' ? c.querySelector('[data-ideia-nova]') : null;
+        if (b && !b.disabled) b.click();
+        return;
+      }
+      if (/^[1-9]$/.test(ev.key) && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !/^(INPUT|TEXTAREA|SELECT)$/.test((ev.target.tagName || ''))) {
+        const n = Number(ev.key) - 1;
+        let b = null;
+        if (E.fase === 'escolher') b = c.querySelectorAll('[data-ideia-lugar]')[n];
+        else if (E.fase === 'escolha') { const i = E.escolhas.findIndex((_, k) => !E.escolhaResp[k]); b = i >= 0 ? c.querySelector('[data-ideia-escolha="' + i + '"][data-ideia-opcao="' + n + '"]') : null; }
+        if (b) { ev.preventDefault(); b.click(); }
+      }
+    }, true);
     function c2RenderCaminho() {
+      ideiaPopRepintar(); // o painel de nova ideia acompanha o mesmo estado, em qualquer tela (CC-1014)
       const naTar = document.getElementById('view-tarefas')?.classList.contains('active'); // CC-936: a mesma peça desenha no Caminho e embaixo da aba Tarefas
       const alvo = document.getElementById(naTar ? 'c2-tar-caminho' : 'c2-caminho');
       /* O painel lateral mora direto no body: dentro da tela, um ancestral com
@@ -21556,15 +22077,29 @@
       const pAtual = K.lista.find((p) => p.raiz === K.raiz) || K.lista[0];
       const seletor = '<button type="button" class="cam-proj-b" data-cam-proj-abrir aria-haspopup="dialog" aria-label="Trocar de projeto">' + seloLocal() + '<span class="cam-proj-nome">' + esc(pAtual.nome) + '</span><small>' + pAtual.abertos + ' abertos</small><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>';
       const r = (K.dados[K.raiz + '|' + K.por] || {}).r; const estreito = alvo.clientWidth < 700; const chave = K.raiz + '|' + K.por + '|' + (estreito ? 'e' : 'l');
-      const anima = !K.animou.has(chave);
+      const anima = !K.animou.has(chave) && !K.reflow; // CC-1012: reorganizar não refaz o desenho da estrada, só move as paradas
+      if (K.reflow) K.animou.add(chave);
+      K.estr = estreito;
+      const flipAntes = K.reflow ? camFlipLer(alvo) : null;
       const modos = '<div class="cam-modos" role="tablist" aria-label="como mostrar">' + [['estrada', 'Estrada'], ['lista', 'Lista']].map(([k, rot]) => '<button role="tab" data-cam-modo="' + k + '" aria-selected="' + (K.modo === k) + '"' + (K.modo === k ? ' class="on"' : '') + '>' + rot + '</button>').join('') + '</div>';
       const pors = '<div class="cam-modos" role="tablist" aria-label="agrupar por">' + [['sprint', 'Sprints'], ['frente', 'Frentes']].map(([k, rot]) => '<button role="tab" data-cam-por="' + k + '" aria-selected="' + (K.por === k) + '"' + (K.por === k ? ' class="on"' : '') + '>' + rot + '</button>').join('') + '</div>';
       if (K.por === 'sprint') c2ContaLer();
       const corpo = !r ? '<p class="c2-vazio">lendo o caminho…</p>' : !r.ok ? '<p class="c2-vazio">' + esc(r.erro || 'não deu para ler o caminho') + '</p>'
         : K.modo === 'lista' ? camLista(r) : c2CaminhoCorpo(r, estreito, anima);
-      pintar(portal, r && r.ok && K.modo !== 'lista' ? camGaveta(r) : '');
+      /* CC-1016, defeito que ele pegou: a gaveta "abria duas vezes". Qualquer dado que chegasse durante a entrada (a
+         explicação das tarefas, a contagem nova) mudava o HTML, o portal era reescrito e a gaveta nascia de novo com a
+         animação do começo. Agora, com a mesma gaveta aberta, só o cabeçalho e o miolo dela são repintados. */
+      const gNovo = r && r.ok && K.modo !== 'lista' ? camGaveta(r) : '';
+      const gAtual = portal.querySelector('.cam-gaveta');
+      if (gNovo && gAtual) { // gaveta já aberta (a mesma parada ou outra): ela fica, só o conteúdo muda
+        const tmp = document.createElement('div'); tmp.innerHTML = gNovo;
+        const nova = tmp.querySelector('.cam-gaveta'); if (nova) { gAtual.dataset.gav = nova.dataset.gav; gAtual.setAttribute('aria-label', nova.getAttribute('aria-label') || ''); }
+        for (const sel of ['.cam-gav-cab', '.cam-gav-corpo']) { const de = tmp.querySelector(sel), para = gAtual.querySelector(sel); if (de && para) pintar(para, de.innerHTML); }
+      } else pintar(portal, gNovo);
+      camGavArea(); // CC-1012: a gaveta encaixa na área de conteúdo
       if (pintar(alvo, (naTar ? '<h2 class="tar-cam-h">Caminho do projeto</h2>' : '') + '<div class="cam-topo">' + seletor + pors + modos + '</div>' + (!naTar && r && r.ok ? c2IdeiaCartao(K.raiz) : '') + corpo + (r && r.ok ? camGuardados(r) : '') + (naTar ? c2ExplGasto() : '')) && r && r.ok && K.modo !== 'lista') {
         c2CaminhoPosicionar(anima, alvo);
+        if (flipAntes) camFlipAplicar(alvo, flipAntes);
         if (anima) setTimeout(() => K.animou.add(chave), 2000); // só depois do fim, para o redesenho não cortar a animação
       }
       if (r && r.ok) c2ExplPedir(K.raiz);
@@ -21598,6 +22133,8 @@
           + '<span class="cam-pf-l1">' + seloLocal() + '<span class="cam-pf-nome">' + esc(p.nome) + '</span>' + (p.raiz === K.raiz ? '<small>aberto agora</small>' : '') + '</span>'
           + '<span class="cam-pf-l2"><span>' + p.abertos + ' abertos</span><span class="cam-pf-barra" aria-hidden="true"><i style="width:' + pct(p) + '%"></i></span><span>' + pct(p) + '% andado</span></span></button>').join('') + '</div></div>';
       document.body.classList.add('cam-proj-on');
+      // CC-1054, pedido dele: atalho que abre lugar de buscar já abre com o cursor no campo (regra 19); sem campo, no projeto aberto
+      (el.querySelector('[data-cam-proj-busca]') || el.querySelector('.cam-pf.on') || el.querySelector('.cam-pf'))?.focus({ preventScroll: true });
     }
     function camProjFechar() { document.body.classList.remove('cam-proj-on'); const el = document.getElementById('cam-proj'); if (el) el.innerHTML = ''; }
     /* CC-958: a folha dos lugares. Desenhada só ao tocar, no body como a de projetos, nunca no tique de 2 s. */
@@ -21975,6 +22512,8 @@
         if (window.innerWidth < 800) document.querySelector('#view-decisoes .sl-meio-col')?.scrollIntoView({ block: 'start' }); return; }
       if (ev.target.closest('[data-ses-voltar]')) { C2.sesAberta = false; return c2RenderDecisoes(); }
       const convAb = ev.target.closest('[data-conv-abrir]');
+      // CC-1053: no celular a conversa abre em tela cheia, fora do bloco que se redesenha (era o que devolvia a tela ao topo)
+      if (convAb && !c2SesLargo()) { convAb.blur(); c2AppMovelAbrir({ conv: convAb.dataset.convAbrir, nome: convAb.dataset.convNome || '', tmux: convAb.dataset.convTmux || '', cwd: convAb.dataset.convCwd || '' }); return; }
       if (convAb) { convAb.blur(); const A = C2.convAberta || (C2.convAberta = new Set()); const k = convAb.dataset.convAbrir; A.has(k) ? A.delete(k) : A.add(k); C2.convRolada = null; return c2RenderDecisoes(); }
       const xPede = ev.target.closest('[data-dec-x]');
       if (xPede) { xPede.blur(); C2.xConf = xPede.dataset.decX; C2.depAberto = null; c2RenderDecisoes(); return c2RenderInicio(); }
@@ -22102,6 +22641,7 @@
         c2ProcFim(id, r.ok, r.ok ? 'enviado para a sessão' : 'não foi: ' + (r.erro || r.error || 'sem motivo dito'));
         if (r.ok) {
           st.texto = '';
+          document.querySelectorAll('[data-msg="' + CSS.escape(id) + '"] [data-msg-texto]').forEach((c) => { c.value = ''; c2Crescer(c); }); // CC-1052: o campo do painel app segue na tela
           c2Travar(id, false); // CC-754: enviou, o cartão volta a andar
           const e = (C2.dados?.espera || []).find((x) => x.id === id);
           if (e) setTimeout(() => c2MarcarEnviada(e), 3000);
@@ -22159,6 +22699,7 @@
          provas e cartasB guardam a leitura do servidor (cache de 60 s, fora do tique); vistas = provas que
          já passaram na tela nesta abertura; emLote = ids de prova no "aprovar todas" ainda no desfazer. */
       orig: null, provas: null, cartasB: null, lidoEm: 0, lendo: false, carregou: false, vistas: {}, emLote: {}, nota: {}, conf: false,
+      rajadaAberta: {}, // CC-1003: projetos cuja rajada ele abriu para ver uma a uma
     };
     try { const g = JSON.parse(localStorage.getItem('c2-tdr') || '{}'); if (g && g.aberto) { C2.tdr.aberto = true; C2.tdr.proj = g.proj || null; } } catch { /* sem armazenamento: abre fechado */ }
     /* lista = c2DecisoesVisiveis(D); local = nome da máquina local ou null;
@@ -22291,6 +22832,7 @@
     }
     function c2TdrRotulo(c, x) {
       const cut = (s) => (String(s).length > 38 ? String(s).slice(0, 36) + '…' : String(s));
+      if (c.rajada) return 'Aprovadas ' + c.cartas.length + ' entregas';
       if (c.tipo === 'prova') return x && x.j === 1 ? 'Não aprovo' : 'Aprovo';
       if (c.tipo === 'baralho') return x && x.escolhas && x.escolhas.length === 1 ? cut(x.escolhas[0]) : ((x && x.escolhas) || []).length + ' marcadas';
       if (c.tipo === 'resp') {
@@ -22334,6 +22876,15 @@
     }
     async function c2TdrEnviar(c, x) {
       const e = c.e;
+      if (c.rajada) { // CC-1003: aprovar todas da rajada, até 50 por pedido, cada id responde por si
+        const falhas = [];
+        for (let i = 0; i < c.cartas.length; i += 50) {
+          const parte = c.cartas.slice(i, i + 50), res = await c2TdrAprovar(c.raiz, parte.map((k) => k.id), 'Aprovo', '');
+          for (const k of parte) if (res[k.id]) falhas.push(k.id + ': ' + res[k.id]);
+        }
+        C2.tdr.lidoEm = 0;
+        return falhas.length ? { ok: false, erro: falhas.length + ' de ' + c.cartas.length + ' não fecharam (' + falhas.slice(0, 2).join('; ') + ')' } : { ok: true };
+      }
       if (c.tipo === 'prova') {
         const er = (await c2TdrAprovar(c.raiz, [c.id], x.j === 1 ? 'Não aprovo' : 'Aprovo', x.texto))[c.id];
         if (!er && C2.tdr.provas) C2.tdr.lidoEm = 0; // reler no próximo desenho
@@ -22386,6 +22937,7 @@
     /* Decidir não envia na hora: espera 6 s, e nesse tempo dá para desfazer. */
     function c2TdrDecidir(c, x) {
       const T = C2.tdr, e = c.e;
+      if (c.rajada && x && x.j === 0) { T.rajadaAberta[c.raiz] = true; T.atual = null; c2TdrRender(); return; } // CC-1003: ver uma a uma não envia nada
       delete T.erro[c.key]; T.outra = null; T.atual = null;
       if (C2_DITADO && C2_DITADO.msgId === 'tdr:' + c.key) { C2_DITADO.cancelar = true; C2_DITADO.parar = true; try { C2_DITADO.r.stop(); } catch { /* já parado */ } }
       const rot = c2TdrRotulo(c, x);
@@ -22407,7 +22959,7 @@
     }
     /* CC-920: "Aprovar todas as que vi (n)": só as provas que já passaram na tela nesta abertura, ainda
        pendentes e dentro do filtro de projeto (T.fila já vem filtrada). Nunca as que ele não viu. */
-    const c2TdrVistasLista = () => C2.tdr.fila.filter((c) => c.tipo === 'prova' && C2.tdr.vistas[c.key]);
+    const c2TdrVistasLista = () => C2.tdr.fila.filter((c) => c.tipo === 'prova' && !c.rajada && C2.tdr.vistas[c.key]); // a rajada tem o próprio "aprovar todas"
     function c2TdrAprovarVistas() {
       const T = C2.tdr, cartas = c2TdrVistasLista(); T.conf = false;
       if (!cartas.length) return;
@@ -22462,8 +23014,16 @@
       const campo = document.querySelector(sel + '[data-msg-texto]'), mic = document.querySelector(sel + '[data-voz]');
       if (C2_OUVINTE && campo) c2Ditar(campo, mic);
     }
+    /* CC-1035: abre o campo com o texto atual da carta; enviar vota "Editar" com o texto ajustado (c2TdrTexto) */
+    function c2TdrEditar(c, j) {
+      const T = C2.tdr; T.editarJ = { key: c.key, j };
+      T.outra = c.key; C2.msg['tdr:' + c.key] = { texto: c.carta.editar, envio: null };
+      c2TdrRender();
+      requestAnimationFrame(() => { const campo = document.querySelector('[data-msg="' + CSS.escape('tdr:' + c.key) + '"] [data-msg-texto]'); if (campo) { campo.focus(); campo.setSelectionRange(campo.value.length, campo.value.length); } });
+    }
     function c2TdrToque(c, j) {
       const p = c2TdrPasso(c), q = c.perguntas[p];
+      if (c.rajada) { c2TdrAndar(c, { j }); return; } // CC-1003: 0 abre uma a uma, 1 aprova todas (com desfazer)
       if (c.tipo === 'prova') {
         if (j !== 1) { c2TdrAndar(c, { j: 0 }); return; }
         /* "Não aprovo" precisa do motivo: é o que o agente lerá para refazer. Sem motivo escrito, abre o campo. */
@@ -22478,6 +23038,8 @@
           st.esc[0] = { opcoes: atual.includes(j) ? atual.filter((n) => n !== j) : [...atual, j] };
           c2TdrRender(); return;
         }
+        // CC-1035, pedido dele ("editar cada texto"): em carta de texto, "Editar" abre o campo JÁ com o texto atual
+        if (c.carta && typeof c.carta.editar === 'string' && /^Editar/i.test(q.opcoes[j].rot)) { c2TdrEditar(c, j); return; }
         st.esc[0] = { opcao: j }; c2TdrAndar(c, c2TdrXDeck(c, [j])); return;
       }
       if (c.tipo !== 'resp') { c2TdrAndar(c, { j }); return; }
@@ -22497,6 +23059,11 @@
       const T = C2.tdr, p = c2TdrPasso(c);
       T.outra = null;
       if (c.tipo === 'prova') { delete C2.msg['tdr:' + c.key]; c2TdrAndar(c, { j: 1, texto: texto.slice(0, 500) }); return; } // o texto da prova É o motivo do "Não aprovo"
+      if (c.tipo === 'baralho' && T.editarJ && T.editarJ.key === c.key) { // CC-1035: o texto ajustado vira o voto "Editar", num toque só
+        if (texto === String(c.carta.editar || '').trim()) { T.outra = c.key; c2Toast('o texto não mudou: ajuste antes de enviar, ou volte e aprove'); c2TdrRender(); return; }
+        const j = T.editarJ.j; T.editarJ = null; delete C2.msg['tdr:' + c.key]; T.nota[c.key] = texto.slice(0, 600);
+        c2TdrAndar(c, c2TdrXDeck(c, [j])); return;
+      }
       if (c.tipo === 'baralho') { delete C2.msg['tdr:' + c.key]; T.nota[c.key] = texto.slice(0, 1000); c2TdrRender(); return; } // a nota vai junto com a opção que ele tocar
       if (c.tipo === 'resp') {
         const st = c2TdrSt(c);
@@ -22551,7 +23118,27 @@
         rotulo: 'PROVA ' + x.id, titulo: String(x.titulo || ''), porque: String(x.porque || ''), destaque: 0,
         perguntas: [{ pergunta: String(x.titulo || ''), porque: String(x.porque || ''), multipla: false, livre: true, destaque: 0,
           opcoes: ['Aprovo', 'Não aprovo'].map((r, j) => ({ rot: r, desc: '', v: j })) }],
+        natureza: x.natureza || null, mexido: x.mexido || null,
       }));
+      /* CC-1003, escolha dele em 08/10: o robô entrega em rajada (52 num projeto em dois dias). Conserto de
+         defeito segue um a um; o resto de um projeto com mais de 3 vira UMA carta com a lista. A primeira
+         opção (a do enviar e do deslize) é ver uma a uma: aprovar todas exige tocar na segunda. */
+      const grupos = {};
+      for (const p of provas) if (p.natureza !== 'DEF' && !C2.tdr.rajadaAberta[p.raiz]) (grupos[p.raiz] || (grupos[p.raiz] = [])).push(p);
+      for (const [raiz, lista] of Object.entries(grupos)) {
+        if (lista.length <= 3) continue;
+        const datas = lista.map((p) => p.mexido).filter(Boolean).sort(), dm = (d) => d.slice(8, 10) + '/' + d.slice(5, 7);
+        const quando = datas.length ? (dm(datas[0]) === dm(datas[datas.length - 1]) ? ' de ' + dm(datas[0]) : ' de ' + dm(datas[0]) + ' a ' + dm(datas[datas.length - 1])) : '';
+        const titulo = lista[0].projeto + ': ' + lista.length + ' entregas' + quando;
+        for (const p of lista) provas.splice(provas.indexOf(p), 1);
+        provas.push({
+          key: 'rajada:' + raiz, tipo: 'prova', rajada: true, cartas: lista, id: lista.length + ' ENTREGAS', raiz, projeto: lista[0].projeto, disp, desde: 0, prio: 1,
+          rotulo: lista.length + ' ENTREGAS', titulo, porque: lista.map((p) => '• ' + p.id + ' ' + p.titulo).join('\n'), destaque: 0,
+          perguntas: [{ pergunta: titulo, porque: '', multipla: false, livre: false, destaque: 0, opcoes: [
+            { rot: 'Ver uma a uma', desc: 'abre as ' + lista.length + ' cartas deste projeto', v: 0 },
+            { rot: 'Aprovar todas (' + lista.length + ')', desc: 'fecha as ' + lista.length + ' de uma vez, cada uma com a prova registrada', v: 1 }] }],
+        });
+      }
       const cartas = [];
       for (const pr of C2.tdr.cartasB || []) for (const dk of pr.decks || []) for (const k of dk.pendentes || []) {
         const ops = Array.isArray(k.opcoes) && k.opcoes.length ? k.opcoes : ['Aprovo', 'Não aprovo'];
@@ -22583,8 +23170,10 @@
       c2TdrLer(); // cache de 60 s; fora disso só olha o relógio
       const dk = c2TdrDeck(), np = dk.provas.filter(vivo).length, nc = dk.cartas.filter(vivo).length;
       /* os três números, cada um com o nome: soma de coisas diferentes não diria o que esperar */
-      const partes = [n + (n === 1 ? ' pergunta' : ' perguntas'), ...(np ? [np + (np === 1 ? ' prova' : ' provas')] : []), ...(nc ? [nc + (nc === 1 ? ' carta' : ' cartas')] : [])];
-      return '<button type="button" class="tdr-entrar" data-tdr-abrir="' + esc(unico) + '">' + ic('chat', 20) + 'Decidir um por um<span>(' + partes.join(', ') + ')</span></button>';
+      const resto = [n === 1 ? 'pergunta' : 'perguntas', ...(np ? [np + (np === 1 ? ' prova' : ' provas')] : []), ...(nc ? [nc + (nc === 1 ? ' carta' : ' cartas')] : [])];
+      /* CC-994, regra 16 de design: era uma faixa da largura da tela com 48 px de altura; virou cartão da fileira dos números */
+      return '<button type="button" class="card ini-stat tdr-entrar" data-tdr-abrir="' + esc(unico) + '">' + icQuad('chat', 'var(--accent)', 44)
+        + '<div><div class="ini-stat-rot">Decidir um por um</div><div class="ini-stat-n"><b>' + n + '</b><span>' + resto.join(' · ') + '</span></div></div></button>';
     }
     function c2TdrCab(fila, base, origs) {
       const T = C2.tdr, c = fila[0];
@@ -22605,7 +23194,10 @@
       return '<div class="tdr-topo"><button type="button" class="tdr-x" data-tdr-fechar aria-label="fechar o modo um por um">×</button>'
         + '<b>' + (c ? '1 de ' + fila.length : 'tudo em dia') + '</b>'
         + (T.pend.size ? '<span class="tdr-aviso">' + T.pend.size + (T.pend.size === 1 ? ' saindo' : ' saindo') + '</span>' : '')
-        + (c && c.e ? '<span class="tdr-aviso">há ' + esc(c2ms(c.e.desdeMs)) + '</span>' : '') + '</div>'
+        + (c && c.e ? '<span class="tdr-aviso">há ' + esc(c2ms(c.e.desdeMs)) + '</span>' : '')
+        /* CC-1002, pedido dele: no celular o A- e A+ do topo do painel ficam escondidos atrás do Tinder */
+        + '<button type="button" class="tdr-x tdr-fonte" data-fonte="-1" aria-label="diminuir a letra" title="diminuir a letra">A−</button>'
+        + '<button type="button" class="tdr-x tdr-fonte" data-fonte="1" aria-label="aumentar a letra" title="aumentar a letra">A+</button></div>'
         + filtros;
     }
     function c2TdrVazio(base) {
@@ -22667,7 +23259,7 @@
       if (T.outra === c.key) {
         const id = 'tdr:' + c.key, st = C2.msg[id] || (C2.msg[id] = { texto: '', envio: null });
         const gravando = Boolean(C2_DITADO && C2_DITADO.msgId === id);
-        const dica = c.tipo === 'prova' ? 'por que não aprova? o agente vai ler isto para refazer' : c.tipo === 'baralho' ? 'escreva ou fale a sua nota' : 'escreva ou fale a sua resposta';
+        const dica = c.tipo === 'prova' ? 'por que não aprova? o agente vai ler isto para refazer' : c.tipo === 'baralho' ? (T.editarJ && T.editarJ.key === c.key ? 'ajuste o texto e envie' : 'escreva ou fale a sua nota') : 'escreva ou fale a sua resposta';
         return (c.tipo === 'prova' ? '<div class="tdr-aviso">Não aprovo: diga o motivo. O item volta para andando com a sua fala.</div>' : '')
           + '<div class="tdr-campo" data-msg="' + esc(id) + '"><textarea data-msg-texto rows="3" enterkeyhint="send"'
           + (gravando ? ' class="gravando" placeholder="● gravando… o texto aparece embaixo">' : ' placeholder="' + dica + '">' + esc(st.texto)) + '</textarea>'
@@ -22705,6 +23297,15 @@
       return h + '<div class="tdr-fim">' + (p > 0 ? '<button type="button" data-tdr-voltar>← anterior</button>' : '')
         + '<button type="button" data-tdr-pular>← pular</button>'
         + (pode && !q.multipla ? '<button type="button" class="tdr-ir" data-tdr-enviar>enviar →</button>' : '') + '</div>';
+    }
+    /* CC-999: a área de conteúdo (sem as barras laterais e abaixo do topo), onde o Tinder pode escurecer */
+    function c2TdrArea(portal) {
+      const m = document.querySelector('.main-content'); if (!m || !portal) return;
+      const r = m.getBoundingClientRect(), h = m.querySelector(':scope > header.header');
+      const t = Math.max(r.top, h ? h.getBoundingClientRect().bottom : 0);
+      const s = portal.style;
+      s.setProperty('--tdr-l', r.left + 'px'); s.setProperty('--tdr-t', t + 'px');
+      s.setProperty('--tdr-w', r.width + 'px'); s.setProperty('--tdr-h', Math.max(200, r.bottom - t) + 'px');
     }
     function c2TdrPortal() {
       const portal = document.createElement('div');
@@ -22747,7 +23348,10 @@
       const c = fila[0] || null;
       if (c && c.tipo === 'prova') T.vistas[c.key] = true; // "as que vi": a que está na tela conta
       if (T.conf && c2TdrVistasLista().length < 2) T.conf = false;
+      const rolou = cab.querySelector('.tdr-chips')?.scrollLeft || 0; // CC-998: redesenhar não devolve os filtros ao começo
+      c2TdrArea(portal);
       pintar(cab, c2TdrCab(fila, base, origs));
+      const ch = cab.querySelector('.tdr-chips'); if (ch && ch.scrollLeft !== rolou) ch.scrollLeft = rolou;
       if (!T.arrastando) {
         pintar(pilha, c ? c2TdrCarta(c, fila.length > 1) : c2TdrVazio(base));
         const key = c ? c.key : '';
@@ -22841,7 +23445,7 @@
       if (a.hasAttribute('data-tdr-voltar')) { T.passo[c.key] = Math.max(0, c2TdrPasso(c) - 1); c2TdrRender(); return; }
       if (a.hasAttribute('data-tdr-pular')) { c2TdrVoo(-1, () => c2TdrPular(c)); return; }
       if (a.hasAttribute('data-tdr-enviar') || a.hasAttribute('data-tdr-pronto')) { c2TdrEnviarAtual(); return; }
-      if (a.hasAttribute('data-tdr-outra-fechar')) { T.outra = null; c2TdrRender(); return; }
+      if (a.hasAttribute('data-tdr-outra-fechar')) { T.outra = null; T.editarJ = null; c2TdrRender(); return; }
       if (a.hasAttribute('data-tdr-txt-enviar')) {
         const campo = document.querySelector('[data-msg="' + CSS.escape('tdr:' + c.key) + '"] [data-msg-texto]');
         const st = C2.msg['tdr:' + c.key];
@@ -23099,15 +23703,287 @@
        (é nele que se responde, igual ao mosaico), e o resumo à direita. No
        celular, uma coluna por vez: a lista, e a conversa com "voltar". */
     C2.conv = C2.conv || {};
-    function c2LerConversa(conv) {
+    function c2LerConversa(conv, ms = 10000, app = false) {
       const c = C2.conv[conv];
-      if (c && (c.lendo || Date.now() - c.em < 10000)) return;
+      if (c && (c.lendo || Date.now() - c.em < ms)) return;
       C2.conv[conv] = { ...(c || {}), lendo: true, em: Date.now() };
-      fetch('/api/sessao/conversa?conversa=' + encodeURIComponent(conv)).then((r) => r.json())
-        .then((j) => { C2.conv[conv] = { falas: j.falas || null, erro: j.falas ? null : (j.erro || 'sem conversa'), em: Date.now() }; })
+      fetch('/api/sessao/conversa?conversa=' + encodeURIComponent(conv) + (app ? '&app=1' : '')).then((r) => r.json())
+        .then((j) => { C2.conv[conv] = { falas: j.falas || null, itens: Array.isArray(j.itens) ? j.itens : null, modelo: j.modelo || null, erro: j.falas ? null : (j.erro || 'sem conversa'), em: Date.now() }; })
         .catch((e) => { C2.conv[conv] = { erro: 'o painel não respondeu: ' + e.message, em: Date.now() }; })
-        .finally(() => c2RenderDecisoes());
+        // CC-1052: com o painel app aberto só as partes da conversa se repintam; o campo de escrever nunca é tocado
+        .finally(() => (app && document.querySelector('.app-sessao[data-app="' + CSS.escape(conv) + '"] .app-fluxo') ? c2AppAtualizar(conv) : c2RenderDecisoes()));
     }
+    /* ── CC-1052: o painel "a conversa" como o Claude Code em forma de app ──
+       Faixa (estado, modo, modelo, parar/modo/terminal), conversa formatada,
+       pergunta pendente e o campo de escrever. O campo mora fora dos blocos que
+       se repintam a cada 2 s (faixa, fluxo, pendência, rascunho), e o texto
+       digitado também fica em C2.msg['app:'+conv], então um redesenho inteiro da
+       tela não o apaga. Sem as rotas novas do servidor, mostra as falas antigas. */
+    C2.tela = C2.tela || {};
+    C2.appAbertos = C2.appAbertos || new Set();
+    C2.appRolar = C2.appRolar || {};
+    const APP_MODOS = { manual: 'Manual', aceitar: 'Aceitar edições', auto: 'Automático', plano: 'Plano' };
+    const APP_ESFORCO = { low: 'Baixo', medium: 'Médio', high: 'Alto', xhigh: 'Muito alto', max: 'Máximo' };
+    function c2LerTela(conv, ms = 2000) {
+      const t = C2.tela[conv];
+      if (t && (t.lendo || Date.now() < t.ate)) return;
+      C2.tela[conv] = { ...(t || {}), lendo: true, ate: Date.now() + ms };
+      fetch('/api/sessao/tela?conversa=' + encodeURIComponent(conv)).then(c2Json)
+        .then((j) => { C2.tela[conv] = j && j.ok ? { ...j, ate: Date.now() + ms } : { falhou: true, ate: Date.now() + 15000 }; })
+        .catch(() => { C2.tela[conv] = { falhou: true, ate: Date.now() + 15000 }; })
+        .finally(() => c2AppAtualizar(conv));
+    }
+    function c2AppAgendar() {
+      if (C2.appTimer) return;
+      C2.appTimer = setTimeout(() => {
+        C2.appTimer = null;
+        const x = C2.appCtx;
+        if (!x || document.hidden || !document.querySelector('#view-decisoes.active .app-sessao, #app-movel:not([hidden]) .app-sessao')) return; // nada escolhido ou tela fechada: sem timer
+        c2LerConversa(x.conv, 1900, true); c2LerTela(x.conv, 1900); c2AppAgendar();
+      }, 2000);
+    }
+    function c2AppHora(em) { return em ? ' · ' + new Date(em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''; }
+    function c2AppResumoFer(lista) {
+      const n = { cmd: 0, leu: 0, edit: 0, outra: 0 };
+      lista.forEach((f) => { if (f.nome === 'Bash') n.cmd++; else if (/^(Read|Grep|Glob)$/.test(f.nome)) n.leu++; else if (/^(Edit|Write|MultiEdit|NotebookEdit)$/.test(f.nome)) n.edit++; else n.outra++; });
+      const p = [];
+      if (n.cmd) p.push('executou ' + n.cmd + ' comando' + (n.cmd > 1 ? 's' : ''));
+      if (n.leu) p.push('leu ' + n.leu + ' arquivo' + (n.leu > 1 ? 's' : ''));
+      if (n.edit) p.push('editou ' + n.edit);
+      if (n.outra) p.push('usou ' + n.outra + ' outra' + (n.outra > 1 ? 's' : ''));
+      const s = p.join(', ') || 'usou ferramentas';
+      return s[0].toUpperCase() + s.slice(1);
+    }
+    function c2AppFaixa(ctx) {
+      const T = C2.tela[ctx.conv], C = C2.conv[ctx.conv] || {};
+      const ok = T && T.ok ? T : null; // ok = a tela da sessão foi lida (durante a releitura vale a anterior)
+      const trab = ok && ok.trabalhando != null ? ok.trabalhando : ctx.estado === 'trabalhando';
+      const estado = ctx.dec ? 'esperando você' : trab ? 'trabalhando' : 'parada';
+      const tmux = (ok && ok.tmux) || ctx.tmux;
+      const modelo = C.modelo ? String(C.modelo).replace(/^claude-/, '') : '';
+      // como a linha embaixo do campo no app: modo (toque troca, Shift+Tab), modelo, esforço, e o giro enquanto trabalha
+      const nomeModelo = modelo.replace(/^(opus|sonnet|haiku|fable)-(\d+)-(\d+).*$/i, (m, a, b, c) => a[0].toUpperCase() + a.slice(1) + ' ' + b + '.' + c);
+      /* Pedido dele em 12/10, com a regra de design na mão: os três (modo, modelo, esforço) são a MESMA peça (regras 5 e
+         14: relevo leve, cada tocável é peça), e tocar abre um MENU SUSPENSO próprio do painel, para cima, com o atual
+         marcado (nunca a lista nativa do sistema, regra 9). O menu mora no body, fora da faixa que se repinta a cada 2 s. */
+      const cf = ([...(C2.dados?.conectadas || []), ...(C2.dados?.espera || [])].find((x) => x.conversa === ctx.conv) || {}).cfgAtual || {};
+      const atual = (C2.appCfg = C2.appCfg || {})[ctx.conv] = { modo: ok && ok.modo, modelo: cf.modelo || C.modelo || '', esforco: (ok && ok.esforco) || cf.esforco || '' };
+      const pode = Boolean(tmux) && !String(ctx.conv).startsWith('gate:');
+      const peca = (k, rot, dica) => pode
+        ? '<button type="button" class="app-esc" data-app-menu="' + k + '" aria-haspopup="menu" aria-expanded="' + (C2.appMenu === k ? 'true' : 'false') + '" title="' + esc(dica) + '"><span>' + esc(rot) + '</span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>'
+        : '<span class="app-esc so-ler">' + esc(rot) + '</span>';
+      const chips = (atual.modo || pode ? peca('modo', atual.modo ? (APP_MODOS[atual.modo] || atual.modo) : 'modo', 'modo da sessão: toque para escolher') : '')
+        + (atual.modelo || pode ? peca('modelo', atual.modelo ? c2NomeModelo(atual.modelo) : (nomeModelo || 'modelo'), 'modelo: toque para escolher') : '')
+        + (atual.esforco || pode ? peca('esforco', atual.esforco ? (APP_ESFORCO[atual.esforco] || atual.esforco) : 'esforço', 'esforço: toque para escolher') : '')
+        + (trab ? '<span class="app-giro" title="trabalhando" aria-label="trabalhando"></span>' : ''); // "esperando você" já está no cartão e na pílula; o app também não mostra aqui
+      // ícones na mesma linha do estado (regra dele: nada empilhado); "parar" só existe com a sessão trabalhando
+      const bts = (ok && tmux && trab ? '<button type="button" class="app-bt parar" data-app-tecla="parar" aria-label="parar" title="parar: manda Esc e interrompe o que a sessão está fazendo"><svg viewBox="0 0 24 24" width="15" height="15"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg></button>' : '')
+        + (tmux ? '<button type="button" class="app-bt" data-claude-term="' + esc(tmux) + '" data-claude-tit="' + esc(ctx.nome || '') + '" aria-label="terminal" title="abre o terminal de verdade desta sessão"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l4 4-4 4M12 17h7"/></svg></button>' : '');
+      return '<div class="app-chips">' + chips + '</div><div class="app-bts">' + bts + '</div>';
+    }
+    function c2AppFluxo(ctx) {
+      const C = C2.conv[ctx.conv] || {};
+      const quem = (ctx.nome || 'agente');
+      if (C.itens) {
+        if (!C.itens.length) return '<p class="c2-vazio">a conversa ainda não tem falas.</p>';
+        return C.itens.map((it, i) => {
+          /* Visual do app do Claude Code (prints dele de 11/10): a fala dele num balão cinza à direita; a do Claude é texto
+             solto, sem caixa, na largura toda, com a hora embaixo; as ferramentas são uma linha cinza que abre. */
+          if (it.tipo === 'voce') return '<div class="app-voce"><div class="app-voce-txt">' + esc(it.texto) + '</div></div>';
+          if (it.tipo === 'ferramentas') {
+            const k = ctx.conv + ':' + (it.em || i) + ':' + i;
+            return '<details class="app-fer" data-app-fer="' + esc(k) + '"' + (C2.appAbertos.has(k) ? ' open' : '') + '><summary>' + esc(c2AppResumoFer(it.lista || [])) + '</summary><div class="app-fer-lista">'
+              + (it.lista || []).map((f) => '<div><b>' + esc(f.nome) + '</b> ' + esc(f.alvo || '') + '</div>').join('') + '</div></details>';
+          }
+          return '<div class="app-ag"><div class="gate-md">' + gateFormatar(it.texto) + '</div>' + (it.em ? '<div class="app-meta">' + esc(c2AppHora(it.em).replace(/^\s*·\s*/, '')) + '</div>' : '') + '</div>';
+        }).join('');
+      }
+      if (C.falas) { // servidor sem o contrato novo: as falas simples de antes
+        return C.falas.length ? C.falas.map((f) => '<div class="sl-fala ' + (f.quem === 'voce' ? 'voce' : 'agente') + '"><div class="sl-quem">' + (f.quem === 'voce' ? 'você' : esc(quem)) + c2AppHora(f.em) + '</div><div class="sl-txt">' + esc(c2semMd(f.texto)) + '</div></div>').join('')
+          : '<p class="c2-vazio">a conversa ainda não tem falas.</p>';
+      }
+      return C.erro ? '<p class="c2-vazio" style="color:var(--red)">' + esc(C.erro) + '</p>' : '<p class="c2-vazio">lendo a conversa…</p>';
+    }
+    function c2AppPend(ctx) {
+      const d = ctx.dec; if (!d || d.grupo) return '';
+      if (d.responder) { const f = c2DecForm(d); return f ? '<div class="app-pend"><div class="c2-perg">' + esc(c2semMd(d.pergunta || '')) + '</div>' + f + '</div>' : ''; }
+      return d.rotulo === 'permissão' ? '<div class="app-pend">' + c2Aviso(d) + '</div>' : '';
+    }
+    function c2AppRasc(ctx) {
+      const T = C2.tela[ctx.conv];
+      return T && T.ok && T.rascunho ? '<div class="c2-mini" style="color:var(--amber)">há texto digitado no terminal: ' + esc(String(T.rascunho).slice(0, 100)) + '</div>' : '';
+    }
+    function c2AppCampo(ctx) {
+      const id = 'app:' + ctx.conv;
+      const st = C2.msg[id] || (C2.msg[id] = { texto: '', envio: null });
+      const aviso = C2.proc.get(id) ? ''
+        : st.envio === 'indo' ? '<span class="c2-mini">mandando…</span>'
+        : st.envio && st.envio.erro ? '<span class="c2-mini" style="color:var(--red)">' + esc(st.envio.erro) + '</span>' : '';
+      return '<div class="app-comp" data-msg="' + esc(id) + '" data-msg-conversa="' + esc(ctx.conv) + '">'
+        + '<div class="gate-sugere card" data-msg-sug data-msg-cwd="' + esc(ctx.cwd || '') + '" role="listbox" hidden></div>'
+        + (C2_DITADO && C2_DITADO.msgId === id
+          ? '<div class="c2-msg"><textarea data-msg-texto rows="1" class="gravando" placeholder="● gravando… o texto aparece embaixo" enterkeyhint="send"></textarea>'
+          : '<div class="c2-msg"><textarea data-msg-texto rows="1" placeholder="escreva para o Claude, / abre os comandos" enterkeyhint="send">' + esc(st.texto) + '</textarea>')
+        + (C2_OUVINTE ? '<button type="button" class="c2-voz" data-voz aria-label="ditar por voz" title="ditar por voz">' + C2_MIC + '</button>' : '')
+        + '<button class="c2-enviar" data-msg-enviar aria-label="mandar" title="mandar"' + (st.envio === 'indo' ? ' disabled' : '') + '>'
+        + '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>'
+        + (aviso ? '<div>' + aviso + '</div>' : '') + '</div>';
+    }
+    function c2AppPainel(ctx) {
+      // como no app: a faixa de modo, modelo e esforço fica EMBAIXO do campo de escrever
+      return '<div class="app-sessao" data-app="' + esc(ctx.conv) + '">'
+        + '<div class="sl-conversa app-fluxo" data-conv="' + esc(ctx.conv) + '">' + c2AppFluxo(ctx) + '</div>'
+        + '<div class="app-pend-lugar">' + c2AppPend(ctx) + '</div><div class="app-rasc">' + c2AppRasc(ctx) + '</div>' + c2AppCampo(ctx)
+        + '<div class="app-faixa">' + c2AppFaixa(ctx) + '</div></div>';
+    }
+    /* A conversa fica no fim, menos se ele rolou para cima. Guarda a posição por conversa e a devolve depois de qualquer repintura. */
+    function c2AppRestaurar(el) {
+      const e = C2.appRolar[el.dataset.conv] || { fim: true, top: 0 };
+      el.scrollTop = e.fim ? el.scrollHeight : e.top;
+    }
+    document.addEventListener('scroll', (ev) => {
+      const el = ev.target; if (!el || !el.classList || !el.classList.contains('app-fluxo')) return;
+      C2.appRolar[el.dataset.conv] = { fim: el.scrollHeight - el.scrollTop - el.clientHeight < 60, top: el.scrollTop };
+    }, true);
+    document.addEventListener('toggle', (ev) => {
+      const d = ev.target; if (!d.matches || !d.matches('details[data-app-fer]')) return;
+      if (d.open) C2.appAbertos.add(d.dataset.appFer); else C2.appAbertos.delete(d.dataset.appFer);
+    }, true);
+    function c2AppAtualizar(conv) {
+      const ctx = C2.appCtx, raiz = document.querySelector('.app-sessao[data-app="' + CSS.escape(conv) + '"]');
+      if (!raiz || !ctx || ctx.conv !== conv) return;
+      if (C2.appMovel && C2.appMovel.conv === conv) ctx.dec = (C2.dados?.espera || []).find((e) => e.conversa === conv && !e.grupo) || null; // a tela cheia não passa pelo redesenho da lista
+      pintar(raiz.querySelector('.app-faixa'), c2AppFaixa(ctx));
+      c2AppPilula();
+      pintar(raiz.querySelector('.app-pend-lugar'), c2AppPend(ctx));
+      pintar(raiz.querySelector('.app-rasc'), c2AppRasc(ctx));
+      const fl = raiz.querySelector('.app-fluxo');
+      if (pintar(fl, c2AppFluxo(ctx))) c2AppRestaurar(fl);
+    }
+    /* Menu suspenso da linha de baixo (modo, modelo, esforço). Pedido dele em 12/10: "não tem aquela zona que abre quando
+       você clica". Abre para cima (a linha fica no pé da tela), com o atual marcado e uma linha do que cada opção faz.
+       Mora no body: a faixa se repinta a cada 2 s e levaria o menu junto. Fecha com toque fora, Esc ou escolha. */
+    const APP_OPCOES = {
+      modo: [['manual', 'Manual', 'pede sua permissão antes de editar ou rodar comando'], ['aceitar', 'Aceitar edições', 'edita arquivos sem perguntar; comandos ainda pedem'],
+        ['plano', 'Plano', 'só lê e planeja, não mexe em nada'], ['auto', 'Automático', 'faz tudo sem parar para perguntar']],
+      modelo: [['claude-fable-5-1', 'Fable 5.1', 'o mais capaz; gasta a semana mais rápido'], ['claude-opus-5-5', 'Opus 5.5', 'raciocínio forte, para planejar e decidir'],
+        ['claude-sonnet-5-5', 'Sonnet 5.5', 'rápido e bom para executar'], ['claude-haiku-4-5', 'Haiku 4.5', 'o mais leve, para tarefa simples']],
+      esforco: [['low', 'Baixo', 'responde rápido, pensa pouco'], ['medium', 'Médio', 'o equilíbrio do dia a dia'], ['high', 'Alto', 'pensa mais antes de agir'],
+        ['xhigh', 'Muito alto', 'para problema difícil'], ['max', 'Máximo', 'o mais lento e o que mais gasta']],
+    };
+    const APP_TITULO = { modo: 'Modo', modelo: 'Modelo', esforco: 'Esforço' };
+    function c2AppMenuFechar() {
+      const m = document.getElementById('app-menu'); C2.appMenu = null;
+      document.querySelectorAll('[data-app-menu][aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+      if (!m) return; m.classList.remove('on'); setTimeout(() => { if (!m.classList.contains('on')) m.remove(); }, 160);
+    }
+    function c2AppMenuAbrir(bt) {
+      /* CC-1043: o mesmo menu serve a dois lugares. Sessões (padrão): a conversa vem do [data-app] e as opções de APP_OPCOES.
+         Coderoom (data-app-onde="coderoom"): a conversa é a aberta no Coderoom e as opções vêm de gateLinhaPecas(). */
+      const k = bt.dataset.appMenu, onde = bt.dataset.appOnde || '';
+      const conv = onde === 'coderoom' ? GATE.id : bt.closest('[data-app]')?.dataset.app; if (!k || !conv) return;
+      const chave = onde ? onde + ':' + k : k;
+      if (C2.appMenu === chave && document.getElementById('app-menu')) { c2AppMenuFechar(); return; }
+      document.getElementById('app-menu')?.remove();
+      const L = onde === 'coderoom' ? gateLinhaPecas()[k] : null; if (onde === 'coderoom' && !L) return;
+      const at = (C2.appCfg || {})[conv] || {}; const cur = L ? L.cur : String(at[k] || '');
+      const igual = L ? (v) => cur === v : (v) => cur === v || (k === 'modelo' && cur && (cur.startsWith(v) || v.includes('-' + cur + '-')));
+      let ops = (L ? L.ops : APP_OPCOES[k]).map(([v, r, d]) => '<button type="button" role="menuitemradio" aria-checked="' + igual(v) + '" class="app-op' + (igual(v) ? ' on' : '') + '" data-app-op="' + esc(v) + '"><span class="app-op-txt"><b>' + esc(r) + '</b>' + (d ? '<small>' + esc(d) + '</small>' : '') + '</span><span class="app-op-ok" aria-hidden="true">' + (igual(v) ? '✓' : '') + '</span></button>').join('');
+      if (k === 'modelo' && !L) { // as versões antigas ficam a um toque (regra 8: no máximo um nível escondido)
+        const velhos = C2_MODELOS.filter(([v]) => v.startsWith('claude-') && !APP_OPCOES.modelo.some(([x]) => x === v));
+        ops += '<details class="app-op-mais"><summary>outras versões</summary>' + velhos.map(([v, r]) => '<button type="button" role="menuitemradio" class="app-op' + (igual(v) ? ' on' : '') + '" data-app-op="' + esc(v) + '"><span class="app-op-txt"><b>' + esc(r) + '</b></span><span class="app-op-ok">' + (igual(v) ? '✓' : '') + '</span></button>').join('') + '</details>';
+      }
+      const m = document.createElement('div'); m.id = 'app-menu'; m.setAttribute('role', 'menu'); m.dataset.k = k; m.dataset.conv = conv; m.dataset.onde = onde;
+      m.innerHTML = '<div class="app-menu-tit">' + (L ? L.titulo : APP_TITULO[k]) + '</div>' + ops;
+      document.body.appendChild(m);
+      const r = bt.getBoundingClientRect(), w = Math.min(320, innerWidth - 24);
+      m.style.width = w + 'px'; m.style.left = Math.max(12, Math.min(r.left, innerWidth - w - 12)) + 'px'; m.style.bottom = (innerHeight - r.top + 8) + 'px';
+      m.style.maxHeight = Math.max(200, r.top - 24) + 'px';
+      C2.appMenu = chave; bt.setAttribute('aria-expanded', 'true');
+      requestAnimationFrame(() => m.classList.add('on'));
+      (m.querySelector('.app-op.on') || m.querySelector('.app-op'))?.focus({ preventScroll: true });
+    }
+    async function c2AppEscolher(k, conv, valor, onde) {
+      c2AppMenuFechar();
+      if (onde === 'coderoom') { gateLinhaEscolher(k, valor); return; } // grava pelo select da gaveta, como sempre
+      const rot = (APP_OPCOES[k].find(([v]) => v === valor) || C2_MODELOS.find(([v]) => v === valor) || [, valor])[1];
+      c2Toast('trocando ' + APP_TITULO[k].toLowerCase() + ' para ' + rot + '…');
+      const corpo = k === 'modo' ? { url: '/api/decisao/tecla', b: { conversa: conv, tecla: 'modo', alvo: valor } } : { url: '/api/decisao/config', b: { conversa: conv, [k]: valor } };
+      const r = await fetch(corpo.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo.b), signal: AbortSignal.timeout(30000) }).then(c2Json)
+        .catch((e) => ({ ok: false, erro: e.name === 'TimeoutError' ? 'sem confirmação em 30 s, confira na sessão' : e.message }));
+      if (r.ok && r.tela && r.tela.ok !== false) C2.tela[conv] = { ...r.tela, ok: true, ate: Date.now() + 2000 };
+      if (r.ok && k === 'esforco' && C2.tela[conv]) C2.tela[conv].esforco = valor;
+      c2Toast(r.ok ? (r.aviso ? 'mandei ' + rot + ', a sessão não confirmou: confira nela' : APP_TITULO[k] + ': ' + rot) : 'não trocou: ' + (r.erro || 'sem motivo dito'));
+      c2AppAtualizar(conv);
+    }
+    document.addEventListener('click', (ev) => {
+      const op = ev.target.closest && ev.target.closest('#app-menu [data-app-op]');
+      if (op) { const m = document.getElementById('app-menu'); c2AppEscolher(m.dataset.k, m.dataset.conv, op.dataset.appOp, m.dataset.onde); return; }
+      const bt = ev.target.closest && ev.target.closest('[data-app-menu]');
+      if (bt) { c2AppMenuAbrir(bt); return; }
+      if (C2.appMenu && !(ev.target.closest && ev.target.closest('#app-menu'))) c2AppMenuFechar();
+    });
+    document.addEventListener('keydown', (ev) => {
+      const m = document.getElementById('app-menu'); if (!m) return;
+      if (ev.key === 'Escape') { ev.preventDefault(); c2AppMenuFechar(); return; }
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { // teclado anda nas opções (regra 19)
+        const its = [...m.querySelectorAll('.app-op')].filter((e) => e.offsetParent); const i = its.indexOf(document.activeElement);
+        its[(i + (ev.key === 'ArrowDown' ? 1 : -1) + its.length) % its.length]?.focus(); ev.preventDefault();
+      }
+    });
+
+    /* CC-1053, pedido dele em 12/10 no celular: a conversa dentro da lista "teleporta a tela de volta pro topo", e o acesso
+       fica limitado. No celular ela abre em TELA CHEIA, como o app, fora do bloco que se redesenha; minimizar deixa uma
+       pílula fixa no topo, visível em qualquer aba, que reabre no toque. O × da pílula fecha de vez. */
+    function c2AppMovelAbrir(info) {
+      if (!info || !info.conv) return;
+      const M = C2.appMovel = { ...info, aberta: true };
+      const ctx = C2.appCtx = { conv: M.conv, nome: M.nome, tmux: M.tmux, estado: '', cwd: M.cwd, dec: (C2.dados?.espera || []).find((e) => e.conversa === M.conv && !e.grupo) || null };
+      let el = document.getElementById('app-movel');
+      if (!el) { el = document.createElement('div'); el.id = 'app-movel'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'conversa da sessão'); document.body.appendChild(el); }
+      if (el.dataset.conv !== M.conv) {
+        el.dataset.conv = M.conv;
+        el.innerHTML = '<div class="app-movel-cab"><button type="button" class="app-bt" data-app-min aria-label="minimizar" title="minimizar: fica uma pílula no topo"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>'
+          + '<b class="app-movel-nome">' + esc(M.nome || 'sessão') + '</b></div>' + c2AppPainel(ctx);
+      }
+      el.hidden = false; document.body.classList.add('app-movel-on');
+      c2LerConversa(M.conv, 0, true); c2LerTela(M.conv, 0); c2AppAgendar(); c2AppPilula();
+      const fl = el.querySelector('.app-fluxo'); if (fl) setTimeout(() => c2AppRestaurar(fl), 50);
+    }
+    function c2AppMovelMin() {
+      const el = document.getElementById('app-movel'); if (el) el.hidden = true;
+      document.body.classList.remove('app-movel-on'); if (C2.appMovel) C2.appMovel.aberta = false; c2AppPilula();
+    }
+    function c2AppMovelFechar() { c2AppMovelMin(); C2.appMovel = null; C2.appCtx = null; const el = document.getElementById('app-movel'); if (el) { el.remove(); } c2AppPilula(); }
+    function c2AppPilula() {
+      const M = C2.appMovel; let p = document.getElementById('app-pilula');
+      if (!M || M.aberta) { if (p) p.hidden = true; return; }
+      if (!p) { p = document.createElement('div'); p.id = 'app-pilula'; document.body.appendChild(p); }
+      const T = C2.tela[M.conv] || {}, dec = (C2.dados?.espera || []).find((e) => e.conversa === M.conv && !e.grupo);
+      const est = T.ok && T.trabalhando ? 'trabalhando' : dec ? 'esperando você' : 'parada';
+      pintar(p, '<button type="button" class="app-pil-abrir" data-app-reabrir><span class="app-pil-ponto ' + (est === 'trabalhando' ? 'trab' : dec ? 'espera' : '') + '"></span><b>' + esc(M.nome || 'sessão') + '</b><span>' + est + '</span></button>'
+        + '<button type="button" class="app-pil-x" data-app-fechar aria-label="fechar a conversa" title="fechar a conversa">×</button>');
+      p.hidden = false;
+    }
+    document.addEventListener('click', (ev) => {
+      const t = ev.target.closest && ev.target.closest('[data-app-min],[data-app-reabrir],[data-app-fechar]'); if (!t) return;
+      if (t.hasAttribute('data-app-min')) c2AppMovelMin();
+      else if (t.hasAttribute('data-app-reabrir')) c2AppMovelAbrir(C2.appMovel);
+      else c2AppMovelFechar();
+    });
+    // passou para tela larga (girou o tablet, abriu no PC): a tela cheia não faz sentido, o painel ao lado assume
+    addEventListener('resize', () => { if (C2.appMovel && c2SesLargo()) c2AppMovelFechar(); });
+
+    document.addEventListener('click', async (ev) => {
+      const b = ev.target.closest && ev.target.closest('[data-app-tecla]'); if (!b) return;
+      const conv = b.closest('[data-app]')?.dataset.app; if (!conv) return;
+      b.disabled = true;
+      const r = await fetch('/api/decisao/tecla', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: conv, tecla: b.dataset.appTecla }), signal: AbortSignal.timeout(15000) }).then(c2Json)
+        .catch((e) => ({ ok: false, erro: e.name === 'TimeoutError' ? 'o painel não confirmou em 15 s' : e.message }));
+      if (r.ok && r.tela && r.tela.ok !== false) C2.tela[conv] = { ...r.tela, ok: true, ate: Date.now() + 2000 };
+      else if (!r.ok) c2Toast('Não deu para mandar a tecla: ' + (r.erro || r.error || 'sem motivo dito'));
+      b.disabled = false; c2AppAtualizar(conv);
+    });
     function c2AbrirSessao(id) {
       C2.sesSel = id; C2.sesAberta = true; C2.sesModo = 'lista'; C2.sesDisps?.clear();
       if (C2.sesCats) C2.sesCats.clear();
@@ -23131,10 +24007,18 @@
       C2.sesLado = Boolean(fixa); // o clique de mover conta os mesmos painéis que a tela mostra
       const cartao = (x) => (x.dec ? (x.dec.grupo ? c2AvisoGrupo(x.dec) : c2Aviso(x.dec)) : c2CartaoSessao(x.sess));
       const conv = sel && !(sel.dec && sel.dec.grupo) ? (sel.dec || sel.sess).conversa : null;
+      // CC-1022: o cartão de cada sessão mostrada fica guardado; a janela flutuante desenha dele, mesmo com Sessões fechada
+      C2.cartaoHtml = C2.cartaoHtml || {};
+      const cSel = sel ? cartao(sel) : ''; if (sel) C2.cartaoHtml[idDe(sel)] = cSel;
+      if (fixa) C2.cartaoHtml[idDe(fixa)] = cartao(fixa);
+      // CC-1041: a sessão que roda num terminal desta VPS abre o Claude Code de verdade, aqui dentro
+      const tmuxSel = sel && !(sel.dec && sel.dec.grupo) ? (sel.dec || sel.sess || {}).tmux : '';
+      const termB = tmuxSel ? '<button type="button" class="c2-link" data-claude-term="' + esc(tmuxSel) + '" data-claude-tit="' + esc((sel.dec || sel.sess).sessaoNome || (sel.dec || sel.sess).projeto || '') + '" title="abre o terminal de verdade desta sessão: comandos de barra, plano, tudo como no app">' + ic('mais', 13) + ' terminal</button> ' : '';
+      const flutB = termB + (sel && 'documentPictureInPicture' in window ?'<button type="button" class="c2-link" data-flutuar="' + esc(idDe(sel)) + '" title="abre este cartão numa janela que fica por cima de tudo (Shift+F)">' + ic('mais', 13) + ' flutuar</button> ' : '');
       const corpo = {
         lista,
-        sessao: sel ? '<div class="sl-acao">' + cartao(sel) + '</div>' + (C2.sesSel2 === idDe(sel) ? '' : '<button type="button" class="c2-link" data-ses-fixar="' + esc(idDe(sel)) + '">' + ic('mais', 13) + ' fixar ao lado, para ver duas sessões juntas</button>') : '<p class="c2-vazio">escolha uma sessão na lista.</p>',
-        conversa: '<div class="sl-conversa" data-conv="' + esc(conv || '') + '">' + (falas || '<p class="c2-vazio">sem conversa ligada a esta sessão.</p>') + '</div>',
+        sessao: sel ? '<div class="sl-acao">' + cSel + '</div>' + flutB + (C2.sesSel2 === idDe(sel) ? '' : '<button type="button" class="c2-link" data-ses-fixar="' + esc(idDe(sel)) + '">' + ic('mais', 13) + ' fixar ao lado, para ver duas sessões juntas</button>') : '<p class="c2-vazio">escolha uma sessão na lista.</p>',
+        conversa: String(falas).startsWith('<div class="app-sessao"') ? falas : '<div class="sl-conversa" data-conv="' + esc(conv || '') + '">' + (falas || '<p class="c2-vazio">sem conversa ligada a esta sessão.</p>') + '</div>',
         lado: fixa ? '<div class="sl-acao">' + cartao(fixa) + '</div>' : '',
       };
       const ativos = SES_PAINEIS.filter(([k]) => k !== 'lado' || fixa);
@@ -23151,6 +24035,7 @@
       const idDe = (x) => (x.dec ? (x.dec.grupo ? 'g:' + x.dec.nome : x.dec.id) : x.sess.id);
       if (!vis.some((x) => idDe(x) === C2.sesSel)) C2.sesSel = idDe(vis[0]);
       const sel = vis.find((x) => idDe(x) === C2.sesSel);
+      C2.sesSelNome = sel ? ((sel.dec || sel.sess || {}).nome || null) : null; // CC-1017: o projeto da sessão escolhida, para a nova ideia
       const local = (C2.dados?.dispositivos || []).find((d) => d.local);
       const EST = (x) => {
         if (x.dec && x.dec.grupo) return ['raio', 'var(--c-sessao)', 'repetidas'];
@@ -23161,11 +24046,12 @@
       const desde = (x) => (x.dec ? x.dec.desdeMs : x.sess.desdeMs);
       const lista = '<div class="sl-lista">' + vis.map((x) => {
         const [icn, cor, rot] = EST(x);
-        return '<button class="sl-item' + (idDe(x) === C2.sesSel ? ' on' : '') + '" data-ses-sel="' + esc(idDe(x)) + '">' + icQuad(icn, cor, 34)
+        return '<button class="sl-item' + (idDe(x) === C2.sesSel ? ' on' : '') + '" data-ses-sel="' + esc(idDe(x)) + '" data-ses-proj="' + esc((x.dec || x.sess || {}).nome || '') + '">' + icQuad(icn, cor, 34)
           + '<span class="sl-meio"><span class="sl-l1"><b>' + esc(x.nome || '') + (c2SessaoMostra(x.nome, (x.dec || x.sess || {}).sessaoNome) ? ' <span class="sl-sessao">' + esc((x.dec || x.sess).sessaoNome) + '</span>' : '') + '</b><span class="ini-pilula" style="--q:' + cor + '">' + esc(rot) + '</span></span>'
           + '<span class="sl-l2">' + esc(c2semMd(texto(x)).slice(0, 110)) + '</span>'
           + '<span class="sl-l3">' + (x.disp ? ic('maquina', 11) + esc(x.disp) + ' · ' : '') + 'há ' + c2ms(desde(x) || 0) + '</span></span></button>';
       }).join('') + '</div>';
+      C2.appCtx = null; // CC-1052: só vale enquanto o painel app está na tela
       let meio = ''; let lado = ''; let falasSel = ''; // CC-765: as falas também vão para o painel da conversa
       if (sel) {
         const d = sel.dec || sel.sess;
@@ -23174,7 +24060,13 @@
         let falas = '';
         if (!conv) falas = '<p class="c2-vazio">sem conversa ligada a este cartão.</p>';
         else if (!daqui) falas = '<p class="c2-vazio">a conversa desta sessão fica no ' + esc(sel.disp || 'outro computador') + ' e não chega à VPS. Aqui aparece só a última fala, no cartão abaixo.</p>';
-        else {
+        else if (c2SesLargo() && !c2SesPainelEstado().ocultos.includes('conversa')) { // no celular a conversa é a tela cheia (CC-1053)
+          // CC-1052: painel app aberto: relê a cada 2 s e mostra faixa, conversa formatada, pendência e campo
+          const ctx = C2.appCtx = { conv, nome: sel.nome || '', tmux: d.tmux || '', estado: sel.sess ? sel.sess.estado : '', cwd: d.cwd || d.raiz || '', dec: sel.dec && !sel.dec.grupo ? sel.dec : (C2.dados?.espera || []).find((e) => e.conversa === conv && !e.grupo) || null };
+          c2LerConversa(conv, 1900, true); c2LerTela(conv, 2000); c2AppAgendar();
+          falas = c2AppPainel(ctx);
+        } else {
+          if (!C2.appMovel) C2.appCtx = null; // a tela cheia do celular segura o próprio contexto
           c2LerConversa(conv);
           const C = C2.conv[conv] || {};
           falas = C.falas ? (C.falas.length ? C.falas.map((f) => '<div class="sl-fala ' + (f.quem === 'voce' ? 'voce' : 'agente') + '"><div class="sl-quem">' + (f.quem === 'voce' ? 'você' : esc(sel.nome || 'agente')) + (f.em ? ' · ' + esc(new Date(f.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })) : '') + '</div><div class="sl-txt">' + esc(c2semMd(f.texto)) + '</div></div>').join('') : '<p class="c2-vazio">a conversa ainda não tem falas.</p>')
@@ -23189,8 +24081,8 @@
         meio = '<div class="sl-meio-col"><div class="sl-cab"><button class="c2-link sl-voltar" data-ses-voltar>' + ic('seta', 14) + ' voltar</button>'
           + '<b>' + esc(sel.nome || '') + '</b>' + c2disp(sel.disp) + '</div>'
           + '<div class="sl-acao">' + (sel.dec ? (sel.dec.grupo ? c2AvisoGrupo(sel.dec) : c2Aviso(sel.dec)) : c2CartaoSessao(sel.sess)) + '</div>'
-          + (conv ? '<button class="sl-conv-abrir" data-conv-abrir="' + esc(conv) + '">' + ic('chat', 15) + (convAberta ? 'esconder a conversa' : 'ver a conversa' + (nFalas ? ' (' + nFalas + ' falas)' : '')) + '<span class="sl-seta' + (convAberta ? ' on' : '') + '">▾</span></button>' : '')
-          + (convAberta || !conv ? '<div class="sl-conversa" data-conv="' + esc(conv || '') + '">' + falas + '</div>' : '')
+          + (conv ? '<button class="sl-conv-abrir" data-conv-abrir="' + esc(conv) + '" data-conv-nome="' + esc(sel.nome || '') + '" data-conv-tmux="' + esc(d.tmux || '') + '" data-conv-cwd="' + esc(d.cwd || d.raiz || '') + '">' + ic('chat', 15) + (convAberta && c2SesLargo() ? 'esconder a conversa' : 'ver a conversa' + (nFalas ? ' (' + nFalas + ' falas)' : '')) + '<span class="sl-seta' + (convAberta ? ' on' : '') + '">▾</span></button>' : '')
+          + (convAberta || !conv ? (falas.startsWith('<div class="app-sessao"') ? falas : '<div class="sl-conversa" data-conv="' + esc(conv || '') + '">' + falas + '</div>') : '')
           + '</div>';
       }
       if (c2SesLargo()) return c2SesPaineis(vis, lista, sel, idDe, falasSel);
@@ -23199,6 +24091,7 @@
     /* A conversa abre no fim, e só rola sozinha quando chega fala nova. */
     function c2ConversaRolar() {
       const el = document.querySelector('#view-decisoes .sl-conversa'); if (!el) return;
+      if (el.classList.contains('app-fluxo')) { c2AppRestaurar(el); return; } // CC-1052: fim, ou onde ele parou
       const chave = el.dataset.conv + ':' + el.children.length;
       if (C2.convRolada !== chave) { C2.convRolada = chave; el.scrollTop = el.scrollHeight; }
     }
@@ -23278,8 +24171,10 @@
       try {
         const r = await fetch('/api/decisao/config', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ conversa: sel.dataset.cfgConversa, [campo]: valor }), signal: AbortSignal.timeout(30000) }).then(c2Json)
           .catch((e) => ({ ok: false, erro: e.name === 'TimeoutError' ? 'sem confirmação em 30 s, confira na sessão' : e.message }));
-        if (idC) c2ProcFim(idC, r.ok, r.ok ? (r.aviso ? 'mandei ' + rot + ', a sessão não confirmou: confira nela' : 'trocado para ' + rot) : 'não trocou: ' + (r.erro || 'sem motivo dito'));
-      } catch { if (idC) c2ProcFim(idC, false, 'o painel não respondeu'); }
+        const msg = r.ok ? (r.aviso ? 'mandei ' + rot + ', a sessão não confirmou: confira nela' : 'trocado para ' + rot) : 'não trocou: ' + (r.erro || 'sem motivo dito');
+        if (idC) c2ProcFim(idC, r.ok, msg); else c2Toast(msg); // no painel da conversa não há cartão para o aviso
+        if (r.ok && campo === 'esforco') { const cv = sel.dataset.cfgConversa; if (C2.tela[cv]) C2.tela[cv].esforco = valor; }
+      } catch { if (idC) c2ProcFim(idC, false, 'o painel não respondeu'); else c2Toast('o painel não respondeu'); }
       sel.disabled = false; // fica no escolhido; a próxima leitura do histórico confirma
       c2RenderDecisoes();
     });
@@ -23878,7 +24773,7 @@
       const semSinal = D.dispositivos.filter((d) => !d.contato);
       const hero = '<div class="ini-hero"><div class="ini-hero-txt">'
         + '<div class="ini-ola">BEM-VINDO DE VOLTA,</div>'
-        + '<h2 class="ini-titulo">Seu cockpit, Lipe <span class="ini-mao">' + ic('mao', 30) + '</span></h2>'
+        + '<h2 class="ini-titulo">Seu Ogumia, Lipe <span class="ini-mao">' + ic('mao', 30) + '</span></h2>'
         + '<p class="ini-sub">Aqui você acompanha o que importa, toma decisões e mantém tudo em movimento.</p></div>'
         + '<div class="ini-saude' + (semSinal.length || C2.erro ? ' fora' : '') + '"><i></i><div>'
         + '<b>' + r.servicos + ' serviços ativos</b>'
@@ -24004,13 +24899,29 @@
     /* Tamanho da letra: de 80% a 150%, de 10 em 10. Guardado neste aparelho
        só por conveniência; sem armazenamento, começa em 100%. */
     const ESCALA = { min: 0.8, max: 1.5, passo: 0.1 };
+    /* CC-1001, defeito que ele pegou: o zoom aumenta o conteúdo, mas as quebras de layout olham a janela, não o
+       meio que sobrou entre as barras. Em 140% com a barra direita aberta o meio tinha ~820 px de conteúdo e a
+       tela montava 5 colunas. Teto: o meio nunca fica com menos de MEIO_MIN px de conteúdo. O pedido dele fica
+       guardado; quando a janela alarga, a letra volta a ele. No celular não há teto (lá o layout é o estreito). */
+    const MEIO_MIN = 1000;
+    function escalaTeto() {
+      const m = document.querySelector('.main-content');
+      if (!m || innerWidth <= 760) return ESCALA.max;
+      return Math.max(1, Math.floor((m.clientWidth / MEIO_MIN) * 10) / 10);
+    }
     function escalaAplicar(v) {
-      const e = Math.round(Math.min(ESCALA.max, Math.max(ESCALA.min, v)) * 10) / 10;
+      const pedido = Math.round(Math.min(ESCALA.max, Math.max(ESCALA.min, v)) * 10) / 10;
+      const teto = escalaTeto(), e = Math.min(pedido, teto);
       document.documentElement.style.setProperty('--escala', String(e));
       document.querySelectorAll('#fonte-pct, .gv-pct').forEach((pct) => { pct.textContent = Math.round(e * 100) + '%'; }); // CC-966: o do topo e o da gaveta
-      try { localStorage.setItem('c2-escala', String(e)); } catch { /* vale só nesta aba */ }
-      return e;
+      document.querySelectorAll('[data-fonte="1"]').forEach((b) => { b.disabled = e >= teto && teto < ESCALA.max; b.title = b.disabled ? 'não cabe maior nesta largura (feche uma barra lateral ou alargue a janela)' : 'aumentar a letra'; });
+      try { localStorage.setItem('c2-escala', String(pedido)); } catch { /* vale só nesta aba */ }
+      escalaVista = e;
+      return pedido;
     }
+    let escalaVista = 1;
+    /* o meio muda de largura com a janela, com a barra direita abrindo e com o arrasto da borda dela */
+    try { const m = document.querySelector('.main-content'); if (m) new ResizeObserver(() => escalaAplicar(escalaAtual)).observe(m); } catch { /* navegador sem ResizeObserver: sem ajuste automático */ }
     let escalaAtual = 1;
     try { escalaAtual = Number(localStorage.getItem('c2-escala')) || 1; } catch { /* sem armazenamento */ }
     escalaAtual = escalaAplicar(escalaAtual);
@@ -24038,7 +24949,7 @@
     document.addEventListener('click', (ev) => {
       const b = ev.target.closest('[data-fonte]'); if (!b) return;
       const d = Number(b.dataset.fonte);
-      escalaAtual = escalaAplicar(d === 0 ? 1 : escalaAtual + d * ESCALA.passo);
+      escalaAtual = escalaAplicar(d === 0 ? 1 : Math.min(escalaAtual, escalaVista) + d * ESCALA.passo); // parte do que está na tela (CC-1001)
     });
 
     /* CC-571: a busca do topo. Tudo sai do que já está na memória da página;
@@ -24059,7 +24970,10 @@
       const tarefas = (D.espera || []).filter((e) => e.tipo === 'pendencia').map((t) => ({ grupo: 'TAREFAS', icn: 'check', txt: t.pergunta, extra: t.nome, ir: () => { location.hash = '#trabalho'; } }));
       const ideias = (D.ideias || []).map((i) => ({ grupo: 'IDEIAS', icn: 'lampada', txt: i.texto, extra: i.nome, ir: () => { location.hash = '#ideias'; } }));
       const notas = ((X.notes && X.notes.notes) || []).map((n) => ({ grupo: 'NOTAS', icn: 'nota', txt: n.title || String(n.text || '').split('\n')[0], corpo: n.text, ir: () => { location.hash = '#notas/' + n.id; } }));
-      return [...telas, ...funcoes, ...projetos, ...decisoes, ...tarefas, ...ideias, ...notas];
+      // CC-1014: a nova ideia também se acha pela busca, para não depender de saber o atalho
+      const acoes = [{ grupo: 'AÇÕES', icn: 'seta', txt: 'Nova ideia', extra: 'Ctrl+Shift+Espaço', corpo: 'anotar ideia adicionar backlog', ir: () => ideiaPop(true) },
+        { grupo: 'AÇÕES', icn: 'seta', txt: 'Atalhos de teclado desta tela', extra: '?', corpo: 'manual atalho teclado', ir: () => atalhosManual(true) }]; // CC-1018
+      return [...acoes, ...telas, ...funcoes, ...projetos, ...decisoes, ...tarefas, ...ideias, ...notas];
     }
     /* Vai para a tela e, quando ela já estiver aberta, faz o resto (aba, painel). */
     function buscaDepois(hash, depois) {
@@ -24097,7 +25011,13 @@
       const s = document.getElementById('spot'); const campo = document.getElementById('busca-spot'); if (!s || !campo) return;
       if (abrir === buscaSpotAberto()) return;
       s.classList.toggle('aberto', abrir); s.setAttribute('aria-hidden', String(!abrir));
-      if (abrir) { BUSCA.sel = 0; campo.value = ''; document.getElementById('busca-spot-res').hidden = true; requestAnimationFrame(() => campo.focus()); }
+      if (abrir) {
+        BUSCA.sel = 0; campo.value = ''; document.getElementById('busca-spot-res').hidden = true;
+        /* CC-1009: o cursor tem de estar dentro ao abrir, para digitar sem clicar. Na hora, no próximo quadro e uma
+           conferência depois: outro elemento que roube o foco no meio do caminho (campo de uma tela, botão) não vence. */
+        const foca = () => { if (buscaSpotAberto() && document.activeElement !== campo) campo.focus({ preventScroll: true }); };
+        foca(); requestAnimationFrame(foca); setTimeout(foca, 120);
+      }
       else { campo.blur(); document.getElementById('busca-spot-res').hidden = true; }
     }
     function buscaPintar() {
@@ -24126,8 +25046,227 @@
     document.addEventListener('focusin', (ev) => { if (ev.target.id === 'busca') { ev.target.blur(); buscaSpot(true); } });
     // CC-970: o botão de buscar da faixa do celular abre o mesmo spotlight
     document.addEventListener('click', (ev) => { if (ev.target.closest('[data-busca-abrir]')) buscaSpot(true); });
+    /* CC-997: copiar texto liga e desliga pelo botão do topo, lembrado no aparelho */
+    function c2Copiar(on) {
+      document.body.classList.toggle('copiar-on', on);
+      for (const b of document.querySelectorAll('[data-copiar-alternar]')) { b.setAttribute('aria-pressed', String(on)); b.title = on ? 'copiar texto ligado; toque para bloquear' : 'permitir copiar texto'; }
+      try { localStorage.setItem('c2-copiar', on ? '1' : '0'); } catch { /* só conveniência */ }
+      if (!on) { try { getSelection().removeAllRanges(); } catch { /* sem seleção */ } }
+    }
+    try { if (localStorage.getItem('c2-copiar') === '1') c2Copiar(true); } catch { /* sem armazenamento: bloqueado */ }
+    /* CC-999: a área do Tinder acompanha janela, A+ e a barra direita */
+    window.addEventListener('resize', () => { if (C2.tdr && C2.tdr.aberto) c2TdrArea(document.getElementById('tdr-portal')); });
+    document.addEventListener('click', (ev) => { if (ev.target.closest('[data-fonte],[data-lateral-alternar]')) setTimeout(() => c2TdrArea(document.getElementById('tdr-portal')), 80); });
+    /* ============================================================================================================
+       CC-1018 a CC-1021, pedido dele em 08/10: o painel inteiro usável sem mouse. Todos os atalhos moram AQUI, numa
+       lista só; o manual de cada página (tecla ?) é gerado desta lista e por isso nunca desatualiza. Regra: com o
+       cursor num campo de texto, só valem atalhos com Ctrl ou Alt (letra solta é digitação).
+       ============================================================================================================ */
+    const ATALHOS = [];
+    const atalho = (pagina, teclas, oque, fazer, opc = {}) => ATALHOS.push({ pagina, teclas, oque, fazer, ...opc });
+    const paginaAtiva = () => (document.querySelector('.view-section.active')?.id || '').replace(/^view-/, '');
+    const ehCampo = (el) => !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
+    function teclaDe(ev) {
+      const setas = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓' };
+      const k = ev.code === 'Space' ? 'Espaço' : setas[ev.key] || (ev.key === 'Escape' ? 'Esc' : ev.key === 'Enter' ? 'Enter'
+        : /^Digit\d$/.test(ev.code) ? ev.code.slice(5) : /^Key[A-Z]$/.test(ev.code) ? ev.code.slice(3) : ev.key);
+      return [ev.ctrlKey || ev.metaKey ? 'Ctrl' : '', ev.shiftKey && k !== '?' ? 'Shift' : '', ev.altKey ? 'Alt' : '', k].filter(Boolean).join('+');
+    }
+    const casaTecla = (a, t) => (a.casa ? a.casa(t) : String(a.teclas).split(' ou ').includes(t));
+    const clicar = (sel) => { const b = document.querySelector(sel); if (b) { b.click(); return true; } return false; };
+    // telas cheias que têm teclas próprias: os atalhos de página esperam
+    const outraCamada = () => buscaSpotAberto() || ideiaPopAberto() || ['tdr-on', 'cam-proj-on', 'cam-lugar-on', 'tdr-folha-on'].some((c) => document.body.classList.contains(c));
+
+    /* --- em qualquer página --- */
+    atalho('*', '?', 'abre este manual de atalhos', () => atalhosManual(true));
+    atalho('*', 'Ctrl+K ou Ctrl+Espaço', 'buscar no painel (projeto, tela, tarefa, nota)', null, { doc: true });
+    atalho('*', 'Ctrl+Shift+Espaço', 'anotar uma ideia, no projeto do que está selecionado', null, { doc: true });
+    atalho('*', 'Alt+1 a Alt+9', 'vai para a tela de número N da barra da esquerda', (ev) => {
+      const n = Number(ev.code.slice(5)) - 1;
+      const telas = [...document.querySelectorAll('.sidebar .nav-item')].filter((a) => getComputedStyle(a).display !== 'none');
+      if (telas[n]) telas[n].click();
+    }, { casa: (t) => /^Alt\+[1-9]$/.test(t) });
+    atalho('*', 'Esc', 'fecha o que estiver aberto por cima (busca, ideia, gaveta, manual)', null, { doc: true });
+
+    /* --- Caminho (CC-1019) --- */
+    const camR = () => { const K = C2.cam; return (K.dados[K.raiz + '|' + K.por] || {}).r || null; };
+    function camAndar(d) {
+      const K = C2.cam, r = camR(); if (!r || !r.ok || !r.trechos.length) return;
+      const atual = K.sel[K.raiz] || (r.trechos[r.atual] || r.trechos[0]).chave;
+      const i = Math.max(0, Math.min(r.trechos.length - 1, r.trechos.findIndex((t) => t.chave === atual) + d));
+      K.sel[K.raiz] = r.trechos[i].chave;
+      if (K.gaveta[K.raiz]) K.gaveta[K.raiz] = r.trechos[i].chave; // gaveta aberta acompanha
+      c2RenderCaminho();
+      document.querySelector('.cam-no.sel')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    atalho('caminho', '← ou ↑', 'sprint (ou frente) anterior', () => camAndar(-1), { quando: () => C2.cam.modo !== 'lista' });
+    atalho('caminho', '→ ou ↓', 'próximo sprint (ou frente)', () => camAndar(1), { quando: () => C2.cam.modo !== 'lista' });
+    atalho('caminho', 'Espaço ou Enter', 'abre ou fecha as tarefas do sprint selecionado', () => {
+      const K = C2.cam, r = camR(); if (!r || !r.ok) return;
+      const ch = K.sel[K.raiz] || (r.trechos[r.atual] || r.trechos[0] || {}).chave; if (!ch) return;
+      if (K.gaveta[K.raiz]) delete K.gaveta[K.raiz]; else { K.sel[K.raiz] = ch; K.gaveta[K.raiz] = ch; }
+      c2RenderCaminho();
+    }, { quando: () => C2.cam.modo !== 'lista' });
+    atalho('caminho', 'Ctrl+Shift+Alt+Espaço', 'achar tarefa: abre as tarefas do sprint com o cursor na busca', () => {
+      const K = C2.cam, r = camR();
+      if (K.modo !== 'lista' && r && r.ok && !K.gaveta[K.raiz]) { const ch = K.sel[K.raiz] || (r.trechos[r.atual] || r.trechos[0] || {}).chave; if (ch) { K.sel[K.raiz] = ch; K.gaveta[K.raiz] = ch; c2RenderCaminho(); } }
+      setTimeout(() => document.querySelector('[data-cam-q]')?.focus(), 60);
+    });
+    atalho('caminho', 'Alt+P', 'trocar de projeto', () => camProjAbrir());
+    atalho('caminho', 'V', 'alterna entre estrada e lista', () => clicar('[data-cam-modo="' + (C2.cam.modo === 'lista' ? 'estrada' : 'lista') + '"]'));
+    atalho('caminho', 'S', 'alterna entre sprints e frentes', () => clicar('[data-cam-por="' + (C2.cam.por === 'sprint' ? 'frente' : 'sprint') + '"]'));
+    atalho('caminho', 'Esc', 'fecha as tarefas do sprint', null, { doc: true });
+
+    /* --- Sessões (CC-1020) --- */
+    function sesAndar(d, outroProjeto) {
+      const itens = [...document.querySelectorAll('#view-decisoes [data-ses-sel]')]; if (!itens.length) return;
+      const i = itens.findIndex((b) => b.classList.contains('on'));
+      let j = Math.max(0, Math.min(itens.length - 1, (i < 0 ? 0 : i) + d));
+      if (outroProjeto && i >= 0) { // pula para a próxima sessão de OUTRO projeto, dando a volta no fim
+        const p = itens[i].dataset.sesProj;
+        const k = [...itens.slice(i + 1), ...itens.slice(0, i)].find((b) => b.dataset.sesProj !== p);
+        if (!k) return; j = itens.indexOf(k);
+      }
+      itens[j].click();
+      setTimeout(() => document.querySelector('#view-decisoes [data-ses-sel].on')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 30);
+    }
+    atalho('decisoes', 'J ou ↓', 'próxima sessão da lista', () => sesAndar(1));
+    atalho('decisoes', 'K ou ↑', 'sessão anterior', () => sesAndar(-1));
+    atalho('decisoes', 'Alt+P', 'pula para a próxima sessão de outro projeto', () => sesAndar(1, true));
+    atalho('decisoes', 'R', 'responder: põe o cursor no campo da sessão escolhida', () => {
+      const c = document.querySelector('#view-decisoes .p-sessao [data-msg-texto]') || document.querySelector('#view-decisoes [data-msg-texto]');
+      if (c) { c.focus(); c.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    });
+    atalho('decisoes', 'G', 'ver em grade', () => clicar('#view-decisoes [data-ses-modo="grade"]'));
+    atalho('decisoes', 'L', 'ver em lista', () => clicar('#view-decisoes [data-ses-modo="lista"]'));
+    atalho('decisoes', 'F', 'abre ou fecha os filtros', () => clicar('#view-decisoes [data-ses-filtros-alternar]'));
+    atalho('decisoes', '1 a 4', 'troca de aba: Sessões, Para depois, Fechadas e antigas, Histórico', (ev) => {
+      const abas = document.querySelectorAll('#view-decisoes [data-dec-aba]'); const b = abas[Number(ev.code.slice(5)) - 1]; if (b) b.click();
+    }, { casa: (t) => /^[1-4]$/.test(t) });
+    atalho('decisoes', 'T', 'decidir um por um (o Tinder)', () => clicar('#view-decisoes .tdr-entrar'));
+
     document.addEventListener('keydown', (ev) => {
-      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k') { ev.preventDefault(); buscaSpot(!buscaSpotAberto()); return; }
+      if (ev.defaultPrevented || ev.isComposing) return;
+      const manual = document.getElementById('atalhos-spot');
+      if (manual && manual.classList.contains('aberto')) { if (ev.key === 'Escape' || ev.key === '?') { ev.preventDefault(); atalhosManual(false); } return; }
+      if (outraCamada()) return;
+      const t = teclaDe(ev), pg = paginaAtiva();
+      const a = ATALHOS.find((x) => x.pagina === pg && x.fazer && casaTecla(x, t) && (!x.quando || x.quando()))
+        || ATALHOS.find((x) => x.pagina === '*' && x.fazer && casaTecla(x, t));
+      if (!a) return;
+      if (ehCampo(ev.target) && !/^(Ctrl|Alt)\+|\+Alt\+/.test(t)) return; // letra solta dentro de campo é digitação
+      ev.preventDefault(); a.fazer(ev);
+    });
+
+    const NOMES_PAGINA = { decisoes: 'Sessões', caminho: 'Caminho', revisoes: 'Revisões' };
+    function atalhosManual(abrir) {
+      let s = document.getElementById('atalhos-spot');
+      if (!s) {
+        s = document.createElement('div'); s.id = 'atalhos-spot'; s.setAttribute('aria-hidden', 'true');
+        s.innerHTML = '<div class="spot-fundo" data-atalhos-fechar></div><div class="spot-caixa" role="dialog" aria-label="atalhos de teclado"></div>';
+        document.body.appendChild(s);
+      }
+      if (abrir) {
+        const pg = paginaAtiva(), nome = NOMES_PAGINA[pg] || document.getElementById('header-title')?.textContent.trim() || 'esta tela';
+        // CC-1054, escolha dele em 12/10: a função à esquerda (o que se procura), a tecla à direita
+        const linhas = (L) => '<table class="atl-tab">' + L.map((a) => '<tr><td>' + esc(a.oque) + '</td><td>' + String(a.teclas).split(' ou ').map((k) => k.split(/\+(?=.)/).map((p) => '<kbd>' + esc(p) + '</kbd>').join('+')).join(' <span>ou</span> ') + '</td></tr>').join('') + '</table>';
+        const daPg = ATALHOS.filter((a) => a.pagina === pg);
+        s.querySelector('.spot-caixa').innerHTML = '<div class="atl-cab"><b>Atalhos de teclado</b><span><kbd>Esc</kbd> fecha</span></div>'
+          + (daPg.length ? '<h5>nesta tela: ' + esc(nome) + '</h5>' + linhas(daPg) : '<p class="c2-mini">Esta tela ainda não tem atalhos próprios. Os de qualquer tela valem.</p>')
+          + '<h5>em qualquer tela</h5>' + linhas(ATALHOS.filter((a) => a.pagina === '*'))
+          + '<p class="c2-mini">Com o cursor num campo de texto, só valem os atalhos com Ctrl ou Alt.</p>';
+      }
+      s.classList.toggle('aberto', abrir); s.setAttribute('aria-hidden', String(!abrir));
+    }
+    document.addEventListener('click', (ev) => { if (ev.target.closest('[data-atalhos-fechar]')) atalhosManual(false); });
+
+    /* CC-1022, ideia dele em 08/10: "flutuar qualquer card (...) como um pip enquanto mexo no resto do painel". Janela
+       flutuante nativa (Document Picture-in-Picture, Edge e Chrome): fica por cima de tudo, até de outros programas.
+       Os tratadores de clique e digitação do painel moram no document principal e leem ev.target; a janela repassa cada
+       evento para lá com o alvo de verdade, então o cartão flutuante responde como o de dentro. O desenho vem do cartão
+       guardado (C2.cartaoHtml), de 1 em 1 s, e nunca com o cursor num campo da janela. */
+    const C2_PIP = { win: null, id: null, t: null };
+    function c2FlutPintar() {
+      const w = C2_PIP.win; if (!w || w.closed) return;
+      for (const a of document.documentElement.attributes) if (w.document.documentElement.getAttribute(a.name) !== a.value) w.document.documentElement.setAttribute(a.name, a.value); // tema e A+
+      const el = w.document.getElementById('pip-flut'); if (!el) return;
+      const at = w.document.activeElement; if (at && el.contains(at) && /^(INPUT|TEXTAREA|SELECT)$/.test(at.tagName)) return;
+      const html = (C2.cartaoHtml || {})[C2_PIP.id] || '<p class="c2-vazio">esta sessão saiu da lista de Sessões.</p>';
+      if (el.__html === html) return; el.__html = html; el.innerHTML = html;
+    }
+    async function c2Flutuar(id) {
+      if (!('documentPictureInPicture' in window)) { c2Toast('este navegador não abre janela flutuante (só Edge e Chrome)'); return; }
+      if (!id) return;
+      try { if (C2_PIP.win && !C2_PIP.win.closed) C2_PIP.win.close(); } catch { /* já fechada */ }
+      let w; try { w = await documentPictureInPicture.requestWindow({ width: 440, height: 600 }); } catch (e) { c2Toast('a janela flutuante não abriu: ' + (e.message || e)); return; }
+      for (const s of document.querySelectorAll('style, link[rel="stylesheet"]')) w.document.head.appendChild(s.cloneNode(true));
+      w.document.title = 'Ogumia: sessão';
+      w.document.body.className = 'pip-flut'; w.document.body.innerHTML = '<div id="pip-flut"></div>';
+      for (const tipo of ['click', 'input', 'change', 'keydown']) {
+        w.document.addEventListener(tipo, (ev) => {
+          const e2 = new ev.constructor(ev.type, ev); Object.defineProperty(e2, 'target', { value: ev.target });
+          document.dispatchEvent(e2); if (e2.defaultPrevented) ev.preventDefault();
+        });
+      }
+      C2_PIP.win = w; C2_PIP.id = id;
+      c2FlutPintar(); clearInterval(C2_PIP.t); C2_PIP.t = setInterval(c2FlutPintar, 1000);
+      w.addEventListener('pagehide', () => { clearInterval(C2_PIP.t); C2_PIP.win = null; });
+    }
+    document.addEventListener('click', (ev) => { const b = ev.target.closest && ev.target.closest('[data-flutuar]'); if (b && b.ownerDocument === document) c2Flutuar(b.dataset.flutuar); });
+    atalho('decisoes', 'Shift+F', 'flutuar o cartão da sessão escolhida numa janela por cima de tudo', () => c2Flutuar(C2.sesSel));
+
+    /* CC-1041, pedido dele em 11/10: "o mais importante pra mim é o claude code ali no sessões e no coderoom". O Claude
+       Code de verdade (a tela do terminal, com comandos de barra, Esc, plano, tudo) numa camada por cima da área central,
+       sem cobrir as barras laterais. Quem serve é o ttyd do claude-ttyd.service, pelo repasse /painel/claude/, atrás da
+       mesma senha. `arg` é a sessão tmux (cc-remote-..., a mesma que o app do celular vê) ou o nome do projeto (abre ou
+       cria a sessão cc-term-<projeto>). Fechar a camada só desliga a tela: o Claude continua rodando no tmux. */
+    function c2Terminal(arg, titulo) {
+      if (!arg) return;
+      let el = document.getElementById('c2-term');
+      if (!el) {
+        el = document.createElement('div'); el.id = 'c2-term'; el.className = 'c2-term';
+        el.innerHTML = '<div class="c2-term-cab"><b class="c2-term-tit"></b><a class="btn btn-ghost compacto c2-term-aba" target="_blank" rel="noopener" title="abre o mesmo terminal numa aba só dele">abrir em aba própria</a>'
+          + '<button type="button" class="btn btn-outline compacto" data-term-fechar title="fecha só a tela; o Claude continua rodando">fechar</button></div><iframe class="c2-term-ifr" title="terminal do Claude Code"></iframe>';
+        document.body.appendChild(el);
+        el.querySelector('[data-term-fechar]').addEventListener('click', () => { el.hidden = true; el.querySelector('iframe').src = 'about:blank'; });
+      }
+      const url = '/painel/claude/?arg=' + encodeURIComponent(arg);
+      // a camada começa onde a barra da esquerda termina, e termina onde a da direita começa
+      const esq = document.querySelector('.sidebar')?.getBoundingClientRect(); const dir = document.getElementById('lateral-dir')?.getBoundingClientRect();
+      el.style.left = (esq && esq.width && esq.right < innerWidth * 0.5 ? Math.round(esq.right) : 0) + 'px';
+      // fechada, a barra da direita fica FORA da tela (left além da largura) e a conta daria negativa: aí vale a borda
+      el.style.right = (dir && dir.width && dir.left > innerWidth * 0.5 && dir.left < innerWidth ? Math.round(innerWidth - dir.left) : 0) + 'px';
+      el.querySelector('.c2-term-tit').textContent = 'Claude Code · ' + (titulo || arg);
+      el.querySelector('.c2-term-aba').href = url;
+      const ifr = el.querySelector('iframe'); if (ifr.getAttribute('src') !== url) ifr.src = url;
+      el.hidden = false; setTimeout(() => { try { ifr.focus(); } catch { /* sem foco */ } }, 300);
+    }
+    document.addEventListener('click', (ev) => {
+      const b = ev.target.closest && ev.target.closest('[data-claude-term]'); if (!b || b.ownerDocument !== document) return;
+      ev.preventDefault(); c2Terminal(b.dataset.claudeTerm, b.dataset.claudeTit || '');
+    });
+    /** O nome tmux de uma sessão aberta pelo painel, igual ao `slug` de remotecontrol.mjs. */
+    function c2TmuxDe(rotulo) { return 'cc-remote-' + String(rotulo).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 50); }
+
+    /* CC-1021, regra dele: digitar num campo que saiu da vista rola a tela até ele, para ver onde está escrevendo */
+    document.addEventListener('keydown', (ev) => {
+      const el = document.activeElement;
+      if (!ehCampo(el) || ev.target !== el || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (!(ev.key.length === 1 || ev.key === 'Backspace' || ev.key === 'Delete' || ev.key === 'Enter')) return;
+      const r = el.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+
+    /* CC-998: roda vertical do mouse vira rolagem de lado na fileira de filtros do Tinder */
+    document.addEventListener('wheel', (ev) => {
+      const f = ev.target.closest && ev.target.closest('.tdr-chips');
+      if (!f || f.scrollWidth <= f.clientWidth || Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) return;
+      ev.preventDefault(); f.scrollLeft += ev.deltaY;
+    }, { passive: false });
+    document.addEventListener('click', (ev) => { if (ev.target.closest('[data-copiar-alternar]')) c2Copiar(!document.body.classList.contains('copiar-on')); });
+    document.addEventListener('keydown', (ev) => {
+      /* CC-1009, pedido dele: Ctrl+Espaço também abre a busca (Ctrl+K continua). Pelo `code`, porque `key` da barra de espaço varia. */
+      if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && !ev.shiftKey && (ev.key.toLowerCase() === 'k' || ev.code === 'Space')) { ev.preventDefault(); buscaSpot(!buscaSpotAberto()); return; }
       if (ev.target.id !== 'busca-spot') return;
       if (ev.key === 'ArrowDown') { ev.preventDefault(); BUSCA.sel = Math.min(BUSCA.sel + 1, BUSCA.itens.length - 1); buscaPintar(); document.querySelector('#busca-spot-res .busca-it.sel')?.scrollIntoView({ block: 'nearest' }); }
       else if (ev.key === 'ArrowUp') { ev.preventDefault(); BUSCA.sel = Math.max(BUSCA.sel - 1, 0); buscaPintar(); document.querySelector('#busca-spot-res .busca-it.sel')?.scrollIntoView({ block: 'nearest' }); }
@@ -24608,7 +25747,9 @@
            Antigravity, os três daqui (os botões e cliques do painel antigo). */
         + (pjSessaoBtn(p) ? '<div class="pj-mod-acoes pj-abrir-em" style="margin:10px 0 4px"><span class="c2-mini">abrir sessão em</span>' + pjSessaoBtn(p, 'Claude Code')
           + '<button class="btn compacto" data-coderoom-nova="' + esc(c2FwDe(p.chave).projeto) + '" data-coderoom-dir="' + esc(c2FwDe(p.chave).raiz || p.raiz) + '">' + ic('mais', 14) + 'Coderoom</button>'
-          + '<button class="btn compacto" data-agy-abrir="' + esc(c2FwDe(p.chave).projeto) + '">' + ic('mais', 14) + 'Antigravity</button></div>' : '')
+          + '<button class="btn compacto" data-agy-abrir="' + esc(c2FwDe(p.chave).projeto) + '">' + ic('mais', 14) + 'Antigravity</button>'
+          // CC-1051, pedido dele: o terminal de verdade do Claude também aqui, no projeto
+          + '<button class="btn compacto" data-claude-term="' + esc(c2FwDe(p.chave).projeto) + '" data-claude-tit="' + esc(c2FwDe(p.chave).projeto) + '" title="abre o Claude Code de verdade deste projeto, aqui dentro do painel">' + ic('mais', 14) + 'terminal</button></div>' : '')
         + c2DeployLinha(p)
         + c2GitLinha(p);
       /* As abas do detalhe: "Visão geral" é tudo o que o detalhe já mostrava,
@@ -25667,6 +26808,115 @@
     const designSeAtiva = () => { if (document.querySelector('.view-section.active')?.id === 'view-design' && !DSG.lista) designCarregar(); };
     window.addEventListener('hashchange', () => setTimeout(designSeAtiva, 0));
     window.addEventListener('load', () => setTimeout(designSeAtiva, 120));
+    /* ===== CC-1044: a aba Hooks (pedido dele em 11/10: "monitorar melhor os hooks") =====
+       Lido das conversas gravadas. O número de cima é o que ele sente: a espera ao fim de cada resposta, que é o hook
+       de parada mais lento (eles rodam juntos). Embaixo, cada hook: disparos, tempo, cortes por tempo e barradas. */
+    const HK = { dados: null, lendo: false, erro: null, dias: 7, aberto: null };
+    const hkAtiva = () => document.querySelector('.view-section.active')?.id === 'view-hooks';
+    function hkCarregar() {
+      if (HK.lendo) return; HK.lendo = true; hkRender();
+      fetch('/api/hooks/monitor?dias=' + HK.dias).then(c2Json).then((r) => { HK.dados = r; HK.erro = null; }).catch((e) => { HK.erro = e.message || 'a leitura falhou'; })
+        .finally(() => { HK.lendo = false; hkRender(); });
+    }
+    const hkS = (ms) => ms == null ? '-' : ms >= 1000 ? (ms / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' s' : ms + ' ms';
+    function hkTok(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi' : n >= 1e4 ? Math.round(n / 1e3) + ' mil' : n.toLocaleString('pt-BR'); }
+    function hkRender() {
+      const el = document.getElementById('hk-tela'); if (!el) return;
+      if (HK.erro && !HK.dados) return void pintar(el, '<p class="c2-vazio" style="color:var(--red)">não deu para ler: ' + esc(HK.erro) + '</p>');
+      if (!HK.dados) return void pintar(el, '<p class="c2-vazio">lendo as conversas gravadas… a primeira leitura leva uns 10 segundos.</p>');
+      const D = HK.dados, P = D.paradas || {};
+      const dias = '<div class="hk-dias" role="group" aria-label="período">' + [1, 7, 15, 30, 60].map((d) => '<button type="button" class="hk-dia' + (HK.dias === d ? ' on' : '') + '" data-hk-dias="' + d + '">' + (d === 1 ? 'hoje' : d + ' dias') + '</button>').join('') + '</div>';
+      const topo = '<section class="card hk-topo"><div class="hk-topo-cab"><b>Quanto você espera ao fim de cada resposta</b>' + dias + '</div>'
+        + (P.total ? '<div class="hk-nums"><div><b>' + hkS(P.medianaMs) + '</b><span>numa resposta comum (metade espera menos)</span></div>'
+          + '<div><b>' + hkS(P.p95Ms) + '</b><span>nas 5% mais lentas</span></div>'
+          + '<div><b>' + P.acima10s + ' de ' + P.total + '</b><span>respostas passaram de 10 s</span></div></div>'
+          + '<div class="hk-nums"><div><b>' + hkTok(D.tokens) + '</b><span>tokens que os hooks puseram na conversa no período (estimativa pelo tamanho do texto)</span></div></div>'
+          + '<p class="c2-mini">São ' + (P.hooksPorParada || '?') + ' hooks de parada rodando juntos: a espera é a do mais lento. Lido de ' + D.conversas + ' conversas desta máquina.</p>'
+          : '<p class="c2-mini">Nenhuma resposta com hooks de parada neste período.</p>') + (HK.lendo ? '<p class="c2-mini">atualizando…</p>' : '') + '</section>';
+      const lin = (h) => {
+        const ab = HK.aberto === h.hook;
+        return '<li class="hk-it' + (h.barrou ? ' barra' : '') + '"><button type="button" class="hk-cab" data-hk-abrir="' + esc(h.hook) + '" aria-expanded="' + ab + '">'
+          // CC-1046: o que ele lê primeiro é o nome em português e o que o hook faz; o técnico fica no fim, recolhido
+          + '<span class="hk-nome"><b>' + esc(h.titulo || h.hook) + '</b><small>' + esc(h.oQueFaz || '') + '</small></span>'
+          + '<span class="hk-met"><span>' + h.disparos + '<small>vezes que rodou</small></span><span>' + hkS(h.mediaMs) + '<small>demora comum</small></span><span>' + hkS(h.maxMs) + '<small>pior demora</small></span>'
+          + '<span class="' + (h.cancelados ? 'hk-ruim' : '') + '">' + h.cancelados + '<small>passou do tempo</small></span><span class="' + (h.barrou ? 'hk-barra' : '') + '">' + h.barrou + '<small>vezes que barrou</small></span>'
+          // CC-1049: token é estimativa (o Claude Code não grava token por hook): o tamanho do texto que o hook pôs na conversa
+          + '<span title="estimativa pelo tamanho do texto">' + hkTok(h.tokens) + '<small>tokens no total</small></span><span>' + hkTok(h.tokensPorVez) + '<small>tokens cada vez que fala</small></span></span></button>'
+          + (ab ? '<div class="hk-det">'
+            + (h.ultimas.length ? '<p class="hk-sub">Últimas vezes que barrou, e o que disse:</p><ul class="hk-ult">' + h.ultimas.map((u) => '<li><small>' + new Date(u.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ', no projeto ' + esc(u.projeto) + (u.ferramenta ? ', ao usar ' + esc(u.ferramenta) : '') + '</small>' + esc(u.frase || '')
+              + (String(u.texto || '').length > String(u.frase || '').length + 5 ? '<details class="hk-mais"><summary>texto inteiro</summary><div>' + esc(String(u.texto || '').replace(/\s+/g, ' ')) + '</div></details>' : '') + '</li>').join('') + '</ul>'
+              : '<p class="c2-mini">Não barrou nada neste período.</p>')
+            + (h.cancelados ? '<p class="c2-mini">"Passou do tempo": o Claude Code espera cada hook por um limite (aqui, uns 10 s) e corta o que demora mais. O corte não barra nada, mas você esperou esse tempo.</p>' : '')
+            + '<details class="hk-mais"><summary>detalhes técnicos</summary><div>' + esc(h.hook) + ' · ' + esc(h.eventos.join(', ')) + '<br>' + esc(h.comando || '') + '<br>projetos: ' + esc(h.projetos.join(', ')) + '</div></details></div>' : '') + '</li>';
+      };
+      pintar(el, topo + '<section class="card hk-lista"><h3 class="hk-tit">Cada hook <small>(do que mais pesa para o que menos pesa)</small></h3><ul>' + (D.hooks || []).map(lin).join('') + '</ul>'
+        + '<p class="c2-mini">Hooks de ferramenta que passam calados não ficam gravados: a contagem deles é o mínimo, não o total.</p></section>');
+    }
+    document.addEventListener('click', (ev) => {
+      const b = ev.target.closest && ev.target.closest('[data-hk-dias],[data-hk-abrir]'); if (!b) return;
+      if (b.hasAttribute('data-hk-dias')) { HK.dias = Number(b.dataset.hkDias); hkCarregar(); return; }
+      HK.aberto = HK.aberto === b.dataset.hkAbrir ? null : b.dataset.hkAbrir; hkRender();
+    });
+    window.addEventListener('hashchange', () => setTimeout(() => { if (hkAtiva() && !HK.dados) hkCarregar(); }, 0));
+    window.addEventListener('load', () => setTimeout(() => { if (hkAtiva() && !HK.dados) hkCarregar(); }, 120));
+    document.querySelectorAll('.nav-item[data-target="view-hooks"]').forEach((n) => n.addEventListener('click', () => setTimeout(hkCarregar, 0)));
+
+    /* ===== CC-1038: a aba Revisões (escolha dele em 10/10) =====
+       Cada projeto com baralhos de revisão (textos do app, telas desenhadas, fotos) mostra quanto falta, e leva ao Decidir
+       um por um já nesse projeto. Nos textos do app, "ver o que muda" mostra de-para sem gravar, e só então "aplicar no
+       código" troca os arquivos. Nada é gravado sem esse segundo toque, e nada é commitado. */
+    const REV = { dados: null, lendo: false, erro: null, aplicar: {}, ocupado: {} };
+    const revAtiva = () => document.querySelector('.view-section.active')?.id === 'view-revisoes';
+    function revCarregar() {
+      if (REV.lendo) return; REV.lendo = true;
+      fetch('/api/revisoes').then(c2Json).then((r) => { REV.dados = r.projetos || []; REV.erro = null; }).catch((e) => { REV.erro = e.message || 'a leitura falhou'; })
+        .finally(() => { REV.lendo = false; revRender(); });
+    }
+    const revN = (n) => Number(n || 0).toLocaleString('pt-BR');
+    function revResultado(p) {
+      const r = REV.aplicar[p.raiz]; if (!r) return '';
+      if (r.erro) return '<div class="rev-res rev-erro" role="alert">' + esc(r.erro) + '</div>';
+      const lin = (a) => '<li><span class="rev-arq">' + esc(a.arquivo) + '</span><span class="rev-de">' + esc(a.de) + '</span><span class="rev-para">' + esc(a.para) + '</span></li>';
+      const puladas = (r.puladas || []).filter((x) => !/já estava aplicada/.test(x.motivo));
+      return '<div class="rev-res">'
+        + '<p class="rev-res-tit">' + (r.ensaio ? (r.aplicadas.length ? r.aplicadas.length + ' texto(s) mudariam no código. Nada foi gravado ainda.' : 'Nenhuma edição para aplicar agora.') : r.aplicadas.length + ' texto(s) trocado(s) no código. Sem commit: rode os testes do projeto e confira o diff.') + '</p>'
+        + (r.aplicadas.length ? '<ul class="rev-lista">' + r.aplicadas.slice(0, 40).map(lin).join('') + '</ul>' + (r.aplicadas.length > 40 ? '<p class="c2-mini">e mais ' + (r.aplicadas.length - 40) + '.</p>' : '') : '')
+        + (puladas.length ? '<p class="c2-mini">' + puladas.length + ' pulada(s): ' + esc(puladas.slice(0, 3).map((x) => x.motivo).join('; ')) + '</p>' : '')
+        + (r.ensaio && r.aplicadas.length ? '<button type="button" class="rev-b forte" data-rev-aplicar="' + esc(p.raiz) + '">Aplicar no código</button>' : '') + '</div>';
+    }
+    function revRender() {
+      const el = document.getElementById('rev-tela'); if (!el) return;
+      if (REV.erro && !REV.dados) return void pintar(el, '<p class="c2-vazio" style="color:var(--red)">não deu para ler as revisões: ' + esc(REV.erro) + '</p>');
+      if (!REV.dados) return void pintar(el, '<p class="c2-vazio">lendo as revisões…</p>');
+      if (!REV.dados.length) return void pintar(el, '<div class="card rev-vazio"><b>Nenhuma revisão aberta.</b><p>Para revisar os textos de um app, diga numa sessão dentro do projeto: "verifique os textos com o tinderlike". As cartas aparecem aqui.</p></div>');
+      pintar(el, REV.dados.map((p) => '<section class="card rev-proj"><h3 class="rev-nome">' + seloLocal() + ' ' + esc(p.projeto) + '</h3>' + p.revisoes.map((r) => {
+        const feitas = r.total - r.pendentes; const pct = r.total ? Math.round(feitas / r.total * 100) : 0;
+        return '<div class="rev-lin"><div class="rev-cab"><b>' + esc(r.titulo) + '</b><span class="rev-pct">' + pct + '%</span></div>'
+          + '<div class="rev-barra" role="img" aria-label="' + pct + '% revisado"><i style="width:' + pct + '%"></i></div>'
+          + '<div class="rev-pills"><span class="rev-pill">faltam <b>' + revN(r.pendentes) + '</b></span><span class="rev-pill ok">aprovados <b>' + revN(r.aprovados) + '</b></span>'
+          + '<span class="rev-pill ed">editados <b>' + revN(r.editados) + '</b></span><span class="rev-pill rec">recusados <b>' + revN(r.recusados) + '</b></span></div>'
+          + '<div class="rev-acoes"><button type="button" class="rev-b forte" data-rev-revisar="' + esc(p.projeto) + '">' + (r.pendentes ? 'Revisar um por um' : 'Rever') + '</button>'
+          + (r.podeAplicar ? '<button type="button" class="rev-b" data-rev-ensaio="' + esc(p.raiz) + '"' + (REV.ocupado[p.raiz] ? ' disabled' : '') + '>Ver o que muda no código</button>' : '') + '</div>'
+          + (r.chave === 'textos' ? revResultado(p) : '') + '</div>';
+      }).join('') + '</section>').join(''));
+    }
+    async function revAplicar(raiz, ensaio) {
+      REV.ocupado[raiz] = true; revRender();
+      const r = await c2Post('/api/revisoes/aplicar', { raiz, ensaio }).catch((e) => ({ erro: e.message || 'não respondeu' }));
+      REV.ocupado[raiz] = false; REV.aplicar[raiz] = r && r.ok ? r : { erro: (r && (r.erro || r.error)) || 'não deu certo' };
+      revRender(); if (!ensaio) revCarregar();
+    }
+    document.addEventListener('click', (ev) => {
+      const b = ev.target.closest && ev.target.closest('[data-rev-revisar],[data-rev-ensaio],[data-rev-aplicar]'); if (!b) return;
+      if (b.hasAttribute('data-rev-revisar')) { C2.tdr.orig = 'cartas'; c2TdrAbrir(b.getAttribute('data-rev-revisar')); return; }
+      if (b.hasAttribute('data-rev-ensaio')) return void revAplicar(b.getAttribute('data-rev-ensaio'), true);
+      if (b.hasAttribute('data-rev-aplicar')) revAplicar(b.getAttribute('data-rev-aplicar'), false);
+    });
+    setInterval(() => { if (revAtiva() && !document.body.classList.contains('tdr-on')) revCarregar(); }, 6000);
+    window.addEventListener('hashchange', () => setTimeout(() => { if (revAtiva()) revCarregar(); }, 0));
+    window.addEventListener('load', () => setTimeout(() => { if (revAtiva()) revCarregar(); }, 120));
+    document.querySelectorAll('.nav-item[data-target="view-revisoes"]').forEach((n) => n.addEventListener('click', () => setTimeout(revCarregar, 0)));
+    atalho('revisoes', 'R', 'revisar um por um a primeira revisão com cartas faltando', () => { const b = document.querySelector('#rev-tela [data-rev-revisar]'); if (b) b.click(); });
     document.querySelectorAll('.nav-item[data-target="view-ideias"]').forEach((n) => n.addEventListener('click', () => setTimeout(ideiasCarregar, 0)));
     document.querySelectorAll('.nav-item[data-target="view-design"]').forEach((n) => n.addEventListener('click', () => setTimeout(designCarregar, 0)));
     window.addEventListener('hashchange', () => setTimeout(ideiasSeAtiva, 0));

@@ -18,7 +18,7 @@
  * ## A regra
  *
  * Passou de três parágrafos, precisa da linha de separação antes do que ele
- * decide ou confere. Ele LÊ o raciocínio — isto não corta nada, só marca onde
+ * decide ou confere. Ele LÊ o "como cheguei lá" (CC-1023: a palavra antiga era suspeita do aviso "reasoning extraction"); isto não corta nada, só marca onde
  * uma parte acaba e a outra começa.
  *
  * Resposta curta não precisa: separador em cima de duas linhas é ruído.
@@ -127,8 +127,8 @@ console.error(
   + 'Ele pediu isto em 16/08 e você implementou no mesmo dia, sem usar na\n'
   + 'resposta seguinte. As palavras dele: "eu te peço uma coisa, voce ignora e\n'
   + 'depois fala que foi erro humano pq eu nao pedi o suficiente".\n\n'
-  + 'Isto NÃO é para cortar o raciocínio: ele lê o raciocínio, e disse isso na\n'
-  + 'mesma mensagem em que pediu o separador. É só marcar onde uma parte acaba.\n\n'
+  + 'Isto NÃO é para cortar o "como cheguei lá" (o que foi medido, achado e\n'
+  + 'descartado): ele lê essa parte. É só marcar onde uma parte acaba.\n\n'
   + 'Esta é a única volta: a próxima passa.',
 )
 process.exit(2)

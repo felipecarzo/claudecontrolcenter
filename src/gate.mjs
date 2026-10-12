@@ -455,6 +455,44 @@ export function falasDe(id, opts) {
   return c.mensagens.map((m) => ({ quem: m.de === 'felipe' ? 'voce' : 'agente', de: m.de, texto: m.texto || '', em: m.em || null }))
 }
 
+/* ============================ a fila (CC-1043) ============================ */
+
+/**
+ * As falas dele que ainda não foram entregues a nenhum agente.
+ *
+ * `enviadoAte` é o `seq` até onde o último turno principal leu (gravado em
+ * `responder`). Conversa antiga, sem esse campo, usa o `seq` da última resposta
+ * de agente: fala gravada depois dela e antes de um turno novo é a que ficou
+ * esperando o agente terminar.
+ */
+export function falasNaFila(mensagens, enviadoAte) {
+  let limite = enviadoAte
+  if (limite == null) {
+    limite = 0
+    for (const m of mensagens) if (m.turnoId && (m.seq || 0) > limite) limite = m.seq
+  }
+  return mensagens.filter((m) => m.de === 'felipe' && (m.seq || 0) > limite)
+}
+
+/**
+ * O turno acabou: sai um turno novo sozinho com as falas que ficaram na fila?
+ *
+ * Função pura, de propósito: é aqui que mora a garantia de que não há laço.
+ * Só dispara depois de turno `pronto` (falha ou queda não dispara), nunca depois
+ * de "parar" dele, nunca em conversa arquivada e nunca com outro turno já em
+ * curso. E o turno que sai marca as falas como enviadas (`enviadoAte`), então a
+ * mesma fala não sai duas vezes.
+ */
+export function decidirFila({ mensagens, enviadoAte, estado, parou = false, arquivada = false, emTurno = false }) {
+  if (arquivada) return { sai: false, motivo: 'conversa arquivada' }
+  if (parou) return { sai: false, motivo: 'ele mandou parar' }
+  if (emTurno) return { sai: false, motivo: 'outro turno em curso' }
+  if (estado !== 'pronto') return { sai: false, motivo: 'o turno não terminou bem' }
+  const falas = falasNaFila(mensagens || [], enviadoAte)
+  if (!falas.length) return { sai: false, motivo: 'fila vazia' }
+  return { sai: true, falas }
+}
+
 /* ============================ o delta ============================ */
 
 /**

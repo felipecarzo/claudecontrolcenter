@@ -79,8 +79,9 @@ export const HOOKS = [
     evento: 'SessionStart',
     descricao: 'Injeta o padrão de resposta no início de TODA sessão, em '
       + 'qualquer projeto, com o framework ligado ou desligado. Não é gate: '
-      + 'hook bloqueia ferramenta, não prosa. O texto fica em '
-      + '~/.claude/control-center-estilo.md e é editável.',
+      + 'hook bloqueia ferramenta, não prosa. O texto é a fonte única de escrita, '
+      + 'docs/produto/ESCRITA.md (CC-1056), até a marca do fim; sem ela, vale '
+      + '~/.claude/control-center-estilo.md.',
     padrao: true,
     implementado: true,
   },
@@ -508,6 +509,20 @@ export const HOOKS = [
       + '(node cc.mjs backlog modelo). Chamada de ajudante que sairia em outro modelo que o da '
       + 'tarefa que esta sessão pôs em andamento é recusada antes de rodar, com o modelo certo '
       + 'e o jeito de ajustar a tarefa. Ajudante só de leitura passa sempre.',
+    padrao: true,
+    implementado: true,
+  },
+  {
+    id: 'modelo-lembrete',
+    modulo: 'nisaba',
+    nivel: 'avisa',
+    familia: 'forma',
+    label: 'Lembrete de trocar o modelo da sessão',
+    script: 'modelo-lembrete.mjs',
+    evento: 'UserPromptSubmit',
+    descricao: 'CC-991, decisão dele em 08/10: quando a sessão NÃO está em opusplan e o modelo que '
+      + 'respondeu por último não bate com o da tarefa andando, a sessão pergunta a ele numa '
+      + 'caixinha de duas opções (trocar ou seguir assim). Uma vez por tarefa; nunca trava.',
     padrao: true,
     implementado: true,
   },

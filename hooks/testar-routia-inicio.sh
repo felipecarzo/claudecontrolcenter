@@ -42,6 +42,16 @@ echo "— o que precisa aparecer na abertura —"
 fala "avisa que a rota do cockpit tem dono" sim "cockpit" "$COM_OCUPADA"
 fala "diz quem e o dono, para dar com quem falar" sim "abcd1234" "$COM_OCUPADA"
 
+echo "[o tamanho, CC-1050: chegou a 65 mil caracteres por sessão]"
+LONGA=$(printf 'x%.0s' $(seq 1 3000))
+GRANDE=$(quadro p4 "# Rotas ativas" "" "| Rota | Status | Quem | Desde |" "|---|---|---|---|" \
+  "| \`cockpit\` | 🔴 ocupada | abcd1234 — a entrevista na tela. Antes: $LONGA 📁 src/a.mjs 📁 src/b.mjs#parte. | hoje |" \
+  "| \`~~front~~\` (histórico) | 🟢 livre | — | — |" "| \`front\` | 🟢 livre | — | — |" "| \`front\` (antes) | 🟢 livre | — | — |")
+SAIDA_G=$(echo "{\"cwd\":\"$GRANDE\"}" | node "$HOOK" 2>&1)
+[ ${#SAIDA_G} -lt 1500 ] && echo "  ok     rota com histórico longo vira linha curta (${#SAIDA_G} caracteres)" || { echo "  FALHOU saída com ${#SAIDA_G} caracteres"; FALHOU=1; }
+echo "$SAIDA_G" | grep -q "src/b.mjs" && ! echo "$SAIDA_G" | grep -q "#parte" && echo "  ok     arquivos sem o #trecho" || { echo "  FALHOU lista de arquivos"; FALHOU=1; }
+[ "$(echo "$SAIDA_G" | grep -o 'front' | wc -l)" = 1 ] && echo "  ok     rota livre aparece uma vez, sem o histórico" || { echo "  FALHOU livres repetidas"; FALHOU=1; }
+
 echo "— o que tem que ficar calado —"
 fala "projeto sem quadro nenhum: o metodo e opt-in" nao "rota" "$SEM_QUADRO"
 

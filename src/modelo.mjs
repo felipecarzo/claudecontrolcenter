@@ -176,3 +176,21 @@ export function orientar(item, modeloDaSessao) {
   }
   return { ...ind, acao: 'seguir', texto: `${base} A sessão já está no modelo certo.` }
 }
+
+/**
+ * CC-991: o lembrete de trocar o modelo, para a sessão que NÃO está em opusplan
+ * (no opusplan a troca já é sozinha, na mesma janela). Compara o modelo que
+ * respondeu por último com o da tarefa andando. Devolve o texto que manda a
+ * sessão perguntar a ele numa caixinha de duas opções, ou null.
+ */
+export function lembreteDeModelo(item, modeloConfigurado, modeloReal) {
+  const ind = indicado(item)
+  if (!ind?.modelo || familia(modeloConfigurado) === 'opusplan') return null
+  const tem = familia(modeloReal) || familia(modeloConfigurado)
+  if (!tem || tem === ind.modelo) return null
+  const quer = ind.modelo
+  return `${item.id} pede ${rotuloModelo(quer)} (${ind.porque}) e esta sessão responde em ${tem}. `
+    + `Antes de seguir, pergunte a ele no AskUserQuestion, com só estas duas opções: `
+    + `"Trocar para ${quer}" (diga que ele digita /model ${quer}) e "Seguir em ${tem} assim mesmo". `
+    + `Não repita a pergunta nesta tarefa.`
+}

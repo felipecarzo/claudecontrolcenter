@@ -57,6 +57,10 @@ const FLAGS_WITH_VALUE = new Set([
   '--pasta',
   // CC-933: o registro de auditoria
   '--ultimos',
+  // CC-1033: o gerador de baralho; CC-1037: os textos do app
+  '--rotas', '--max', '--areas',
+  // CC-1039: o login do gerador de baralho (a senha e o cookie vêm de variável de ambiente, nunca da linha)
+  '--entrar', '--usuario', '--senha-env', '--cookie-env', '--seletor-usuario', '--seletor-senha', '--seletor-enviar',
 ])
 
 const has = (f) => argv.includes(f)
@@ -1822,6 +1826,10 @@ switch (cmd) {
       if (!r.ok) { B.registrar([{ tipo: 'robo', id, ok: false, texto: r.erro }]); console.log(`\n  ${id} reprovado pelo robô:\n  ${r.erro.split('\n').join('\n  ')}\n`); process.exitCode = 1; break }
       try {
         B.mover(id, 'OK', { prova: r.prova }); console.log(`\n  ${id} → fechado (${r.prova})\n`)
+        /* CC-1040: o roadmap é GERADO do backlog, e o teste do painel exige que bata. Fechar um item sem regerar deixava o
+           roadmap velho, e a conferência SEGUINTE (que roda esse teste) reprovava por isso: conferir vários itens em
+           sequência derrubava os outros. */
+        try { B.regerarRoadmap(process.cwd()) } catch { /* projeto sem roadmap gerado: nada a regerar */ }
         try { (await import('./src/custoItem.mjs')).marcar(id, 'OK') } catch { /* medir nunca impede fechar */ }
       } catch (e) { console.log(`\n  passou no robô, mas não fechou: ${e.message}\n`) }
       break
@@ -2811,6 +2819,53 @@ switch (cmd) {
       const v = C.votos(process.cwd(), positional[2])
       console.log(v.length ? v.map((x) => `${x.em}  ${x.carta}  ${x.escolhas.join(' + ')}${x.nota ? '  "' + x.nota + '"' : ''}`).join('\n') : 'sem votos')
     } else console.log('\n  uso: node cc.mjs cartas validar <arquivo> | cartas votos <deck>\n')
+    break
+  }
+
+  /* CC-1033: cc baralho <endereço> [--pasta <projeto>] [--rotas /a,/b] [--max 20]
+     Anda pelas telas do app, fotografa, tira o texto e os erros de console, e escreve os baralhos `telas` e `textos`
+     em <projeto>/docs/cartas/. O Tinder do painel mostra, e a skill tinderlike publica a mesma coisa. */
+  case 'baralho': {
+    const B = await import('./src/baralho.mjs')
+    const url = arg
+    if (!url) die('uso: cc baralho <endereço do app> [--pasta <projeto>] [--rotas /a,/b] [--max 20]\n  App com login: --entrar <tela de entrar> --usuario <quem> --senha-env <NOME da variável com a senha>\n                 ou --cookie-env <NOME da variável com nome=valor;nome2=valor2>\n  Roda FORA da caixa de proteção (abre um navegador próprio).')
+    const projeto = path.resolve(val('--pasta') || process.cwd())
+    const rotas = val('--rotas') ? String(val('--rotas')).split(',').map((r) => r.trim()).filter(Boolean) : null
+    let login = null
+    try { login = B.loginDe({ entrar: val('--entrar'), usuario: val('--usuario'), senhaEnv: val('--senha-env'), cookieEnv: val('--cookie-env'), seletorUsuario: val('--seletor-usuario'), seletorSenha: val('--seletor-senha'), seletorEnviar: val('--seletor-enviar') }) } catch (e) { die(e.message) }
+    const nav = await B.navegadorPlaywright({ login, origem: new URL(url).origin }).catch((e) => die(e.message))
+    try {
+      const r = await B.gerar({ url, projeto, rotas, max: Number(val('--max')) || B.MAX_TELAS, navegador: nav })
+      console.log(`\n${r.paginas} tela(s) lida(s), ${r.fotos} foto(s), ${r.comErroDeConsole} com erro no console.`)
+      for (const e of r.escritos) console.log(`  ${e.nome}: ${e.cartas} carta(s) em ${path.join(projeto, 'docs', 'cartas', e.nome + '.json')}`)
+      console.log('\nO Tinder do painel (Decidir um por um > cartas) mostra o baralho em até 1 minuto. A skill tinderlike publica o mesmo baralho numa página.\n')
+    } catch (e) { die(String(e.message || e)) } finally { await nav.fechar().catch(() => {}) }
+    break
+  }
+
+  /* CC-1037: cc textos levantar|aplicar --pasta <projeto> [--areas app,componentes,dados,motor] [--ensaio]
+     levantar: acha cada texto do app e escreve os baralhos `textos-<área>` (o Tinder do painel mostra).
+     aplicar:  troca no código os textos que ele editou (voto "Editar" com o texto novo na nota). Não faz commit. */
+  case 'textos': {
+    const X = await import('./src/textosApp.mjs')
+    const acao = positional[1]; const projeto = path.resolve(val('--pasta') || process.cwd())
+    if (acao === 'levantar') {
+      const r = X.levantar(projeto)
+      const areas = val('--areas') ? new Set(String(val('--areas')).split(',').map((a) => a.trim())) : null
+      const itens = areas ? r.itens.filter((i) => areas.has(X.areaDe(i.arquivo))) : r.itens
+      const pacote = X.montarBaralhos(itens, { projeto: path.basename(projeto).replace(/^(VPS|PC)_/, '') })
+      const escritos = X.gravar(projeto, pacote)
+      console.log(`\n${r.itens.length} texto(s) achado(s)${areas ? `, ${itens.length} nas áreas pedidas` : ''}; ${r.dinamicos} montado(s) em tempo de execução ficaram de fora.`)
+      for (const e of escritos) console.log(`  ${e.nome}: ${e.cartas} carta(s)`)
+      console.log('\nAbra o painel, aba Revisões. Em cada carta: Aprovo, Editar (o campo abre com o texto atual, você ajusta e envia) ou Recuso.')
+      console.log(`Quando terminar: cc textos aplicar --pasta ${projeto}\n`)
+    } else if (acao === 'aplicar') {
+      const r = X.aplicar(projeto, { ensaio: has('--ensaio') })
+      console.log(`\n${has('--ensaio') ? '[ensaio, nada gravado] ' : ''}${r.aplicadas.length} edição(ões) aplicada(s), ${r.puladas.length} pulada(s).`)
+      for (const a of r.aplicadas) console.log(`  ${a.arquivo}\n    de:   ${a.de}\n    para: ${a.para}`)
+      for (const p of r.puladas) console.log(`  pulada ${p.id}${p.arquivo ? ' (' + p.arquivo + ')' : ''}: ${p.motivo}`)
+      console.log(r.aplicadas.length && !has('--ensaio') ? '\nSem commit. Rode os testes do projeto e confira o diff.\n' : '')
+    } else die('uso: cc textos levantar|aplicar --pasta <projeto> [--areas app,componentes,dados,motor] [--ensaio]')
     break
   }
 

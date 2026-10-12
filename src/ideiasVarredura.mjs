@@ -44,40 +44,64 @@ const varridos = new Map()
  * Uma passada. Devolve o que achou, por projeto. Nunca lança.
  * `janelaMs` é o quanto para trás olhar (padrão 24 horas).
  */
-export function varrer({ janelaMs = 24 * 3600 * 1000, agora = Date.now(), dir = PROJETOS_DIR(), ensaio = false } = {}) {
-  const saida = { arquivos: 0, novas: 0, porProjeto: {} }
+/** O trabalho de UM arquivo de conversa. Existe separado para a varredura inteira poder ceder a vez entre um arquivo e
+ *  outro (CC-1031): o mesmo corpo serve à forma síncrona e à suave, e nunca divergem. */
+function varrerUm(arq, { agora, janelaMs, ensaio }, saida) {
+  let st
+  try { st = fs.statSync(arq) } catch { return }
+  if (agora - st.mtimeMs > janelaMs) return
+  if (varridos.get(arq) === st.size) return
+  varridos.set(arq, st.size)
+  const cab = cabecaDe(arq)
+  const raiz = raizDoProjeto(cab?.cwd)
+  if (!raiz || !fs.existsSync(raiz)) return
+  saida.arquivos += 1
+  try {
+    const novas = levantar(arq, backlogDe(raiz)).filter((a) => !a.registrada)
+    if (!novas.length) return
+    if (ensaio) {
+      varridos.delete(arq)
+      saida.novas += novas.length
+      ;(saida.exemplos || (saida.exemplos = [])).push(...novas.map((a) => path.basename(raiz) + ': ' + String(a.texto).replace(/\s+/g, ' ').slice(0, 90)))
+      saida.porProjeto[path.basename(raiz)] = (saida.porProjeto[path.basename(raiz)] || 0) + novas.length
+      return
+    }
+    const r = guardar(raiz, novas, { sessao: path.basename(arq, '.jsonl') })
+    saida.novas += r.novos
+    if (r.novos) saida.porProjeto[path.basename(raiz)] = (saida.porProjeto[path.basename(raiz)] || 0) + r.novos
+  } catch { /* conversa ilegível não derruba a passada */ }
+}
+function arquivosDe(dir) {
+  const lista = []
   let pastas = []
-  try { pastas = fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()) } catch { return saida }
+  try { pastas = fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()) } catch { return lista }
   for (const p of pastas) {
     let nomes = []
     try { nomes = fs.readdirSync(path.join(dir, p.name)).filter((n) => n.endsWith('.jsonl')) } catch { continue }
-    for (const n of nomes) {
-      const arq = path.join(dir, p.name, n)
-      let st
-      try { st = fs.statSync(arq) } catch { continue }
-      if (agora - st.mtimeMs > janelaMs) continue
-      if (varridos.get(arq) === st.size) continue
-      varridos.set(arq, st.size)
-      const cab = cabecaDe(arq)
-      const raiz = raizDoProjeto(cab?.cwd)
-      if (!raiz || !fs.existsSync(raiz)) continue
-      saida.arquivos += 1
-      try {
-        const novas = levantar(arq, backlogDe(raiz)).filter((a) => !a.registrada)
-        if (!novas.length) continue
-        if (ensaio) {
-          varridos.delete(arq)
-          saida.novas += novas.length
-          ;(saida.exemplos || (saida.exemplos = [])).push(...novas.map((a) => path.basename(raiz) + ': ' + String(a.texto).replace(/\s+/g, ' ').slice(0, 90)))
-          saida.porProjeto[path.basename(raiz)] = (saida.porProjeto[path.basename(raiz)] || 0) + novas.length
-          continue
-        }
-        const r = guardar(raiz, novas, { sessao: path.basename(arq, '.jsonl') })
-        saida.novas += r.novos
-        if (r.novos) saida.porProjeto[path.basename(raiz)] = (saida.porProjeto[path.basename(raiz)] || 0) + r.novos
-      } catch { /* conversa ilegível não derruba a passada */ }
-    }
+    for (const n of nomes) lista.push(path.join(dir, p.name, n))
   }
+  return lista
+}
+export function varrer({ janelaMs = 24 * 3600 * 1000, agora = Date.now(), dir = PROJETOS_DIR(), ensaio = false } = {}) {
+  const saida = { arquivos: 0, novas: 0, porProjeto: {} }
+  for (const arq of arquivosDe(dir)) varrerUm(arq, { agora, janelaMs, ensaio }, saida)
+  return saida
+}
+
+/** CC-1031: ceder a vez ao resto do painel entre um arquivo e outro, sempre que passou de 15 ms sem ceder. Medido em
+ *  08/10: a varredura de 7 dias travava o processo por 32,7 s, e o aquecimento do índice por outros 32 s, os dois 90 s
+ *  depois de cada partida, e nenhuma tela era atendida nesse tempo. */
+const cede = () => new Promise((r) => setImmediate(r))
+async function emFatias(arquivos, fazer) {
+  let desde = Date.now()
+  for (const arq of arquivos) {
+    fazer(arq)
+    if (Date.now() - desde > 15) { await cede(); desde = Date.now() }
+  }
+}
+export async function varrerSuave({ janelaMs = 24 * 3600 * 1000, agora = Date.now(), dir = PROJETOS_DIR(), ensaio = false } = {}) {
+  const saida = { arquivos: 0, novas: 0, porProjeto: {} }
+  await emFatias(arquivosDe(dir), (arq) => varrerUm(arq, { agora, janelaMs, ensaio }, saida))
   return saida
 }
 
@@ -97,33 +121,35 @@ export function estadoDaIdeia({ id, registrada }, fila) {
   return registrada ? 'no backlog' : 'nunca virou item'
 }
 
-export function indice({ dir = PROJETOS_DIR() } = {}) {
-  const itens = []
-  const filas = new Map()
-  let pastas = []
-  try { pastas = fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()) } catch { return itens }
-  for (const p of pastas) {
-    let nomes = []
-    try { nomes = fs.readdirSync(path.join(dir, p.name)).filter((n) => n.endsWith('.jsonl')) } catch { continue }
-    for (const n of nomes) {
-      const arq = path.join(dir, p.name, n)
-      let st
-      try { st = fs.statSync(arq) } catch { continue }
-      const raiz = raizDoProjeto(cabecaDe(arq)?.cwd)
-      if (!raiz || !fs.existsSync(raiz)) continue
-      let achados = cacheIndice.get(arq)
-      if (!achados || achados.size !== st.size) {
-        let lista = []
-        try { lista = levantar(arq, backlogDe(raiz)) } catch { lista = [] }
-        achados = { size: st.size, itens: lista.map((a) => ({ id: idDe(a.texto), texto: a.texto, quando: a.quando || null, registrada: Boolean(a.registrada), sessao: path.basename(arq, '.jsonl') })) }
-        cacheIndice.set(arq, achados)
-      }
-      if (!filas.has(raiz)) filas.set(raiz, lerFila(raiz))
-      for (const a of achados.itens) itens.push({ ...a, raiz, projeto: path.basename(raiz), estado: estadoDaIdeia(a, filas.get(raiz)) })
-    }
+function indiceUm(arq, itens, filas) {
+  let st
+  try { st = fs.statSync(arq) } catch { return }
+  const raiz = raizDoProjeto(cabecaDe(arq)?.cwd)
+  if (!raiz || !fs.existsSync(raiz)) return
+  let achados = cacheIndice.get(arq)
+  if (!achados || achados.size !== st.size) {
+    let lista = []
+    try { lista = levantar(arq, backlogDe(raiz)) } catch { lista = [] }
+    achados = { size: st.size, itens: lista.map((a) => ({ id: idDe(a.texto), texto: a.texto, quando: a.quando || null, registrada: Boolean(a.registrada), sessao: path.basename(arq, '.jsonl') })) }
+    cacheIndice.set(arq, achados)
   }
+  if (!filas.has(raiz)) filas.set(raiz, lerFila(raiz))
+  for (const a of achados.itens) itens.push({ ...a, raiz, projeto: path.basename(raiz), estado: estadoDaIdeia(a, filas.get(raiz)) })
+}
+function fechaIndice(itens) {
   /* A mesma ideia dita em duas conversas aparece uma vez só. */
   const unicos = new Map()
   for (const i of itens) if (!unicos.has(i.raiz + i.id)) unicos.set(i.raiz + i.id, i)
   return [...unicos.values()].sort((a, b) => String(b.quando || '').localeCompare(String(a.quando || '')))
+}
+export function indice({ dir = PROJETOS_DIR() } = {}) {
+  const itens = []; const filas = new Map()
+  for (const arq of arquivosDe(dir)) indiceUm(arq, itens, filas)
+  return fechaIndice(itens)
+}
+/** CC-1031: o mesmo índice, cedendo a vez ao painel entre um arquivo e outro (o aquecimento da partida usa este). */
+export async function indiceSuave({ dir = PROJETOS_DIR() } = {}) {
+  const itens = []; const filas = new Map()
+  await emFatias(arquivosDe(dir), (arq) => indiceUm(arq, itens, filas))
+  return fechaIndice(itens)
 }

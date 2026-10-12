@@ -98,10 +98,25 @@ function falso({ tela, transcrito, confirma = true, conversa = 'c1' }) {
 }
 
 await t('responde quando a pergunta está pendente E na tela, e confirma pelo transcrito', async () => {
-  const f = falso({ tela: '❯ Qual cor?\n 1. Azul', transcrito: pergunta('a1', COR) })
+  // sem prévia, o número escolhe e o menu fecha: a tela sai da pergunta e nenhum Enter a mais é mandado
+  const f = falso({ tela: (log) => (log.length ? '● User answered\n❯ ' : '❯ Qual cor?\n 1. Azul'), transcrito: pergunta('a1', COR) })
   const r = await responder({ conversa: 'c1', id: 'a1', respostas: [{ opcao: 2 }] }, f.deps)
   assert.equal(r.ok, true)
   assert.deepEqual(f.log, ['3'])
+})
+
+await t('CC-1055: pergunta única COM PRÉVIA, o número só move o cursor e o Enter escolhe (medido na 2.1.296)', async () => {
+  const log = []; let txt = pergunta('a1', COR)
+  const deps = {
+    sessoes: async () => ({ proj: { sessao: 'cc-remote-proj', conversa: 'c1' } }),
+    lerTranscrito: () => txt,
+    capturar: async () => (log.includes('Enter') ? '● User answered\n❯ ' : '❯ 1. Azul   ┌────┐\nQual cor?\n  2. Verde  │ ## │\nEnter to select'),
+    apertar: async (s, k) => { log.push(k); if (k === 'Enter') txt += '\n' + resposta('a1'); return { ok: true } },
+    escrever: async () => ({ ok: true }), esperar: async () => {},
+  }
+  const r = await responder({ conversa: 'c1', id: 'a1', respostas: [{ opcao: 1 }] }, deps)
+  assert.equal(r.ok, true, r.erro)
+  assert.deepEqual(log, ['2', 'Enter'])
 })
 
 await t('A TRAVA: pergunta fora da tela, nenhuma tecla é apertada', async () => {

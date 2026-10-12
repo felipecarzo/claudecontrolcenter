@@ -43,7 +43,13 @@ const dentro = (p, base) => p === base || p.startsWith(base + path.sep)
 export function foraDoProjeto(cmd, { cwd, home, liberadas = [] }) {
   const toks = String(cmd || '').match(/(?:~|\$HOME|\/home\/[A-Za-z0-9_.-]+)(?:\/[^\s'"`;|&)<>]*)?/g) || []
   /* Liberar a casa inteira (`/home/x/*`) desligaria a regra toda: fica de fora. */
-  const livres = [path.join(home, 'dev.sh'), path.join(home, 'logs'), path.join(home, '.npm'), path.join(home, '.cache'), ...liberadas.filter((l) => l && path.resolve(l) !== home)]
+  /* CC-1026, pedido dele em 08/10: o opencode no terminal tira foto do app e lê o console, e no Coderoom isto o barrava,
+     porque `~/.local/bin/print` fica na casa e fora do projeto. Só os DOIS comandos de foto entram, e o comando inteiro
+     (arquivo exato). A pasta da chave do Chrome (`~/.local/share/browser-tools`) segue barrada: o `print` lê a chave
+     sozinho, e o modelo nunca precisa tocar nela. */
+  const livres = [path.join(home, 'dev.sh'), path.join(home, 'logs'), path.join(home, '.npm'), path.join(home, '.cache'),
+    path.join(home, '.local', 'bin', 'print'), path.join(home, '.local', 'bin', 'print-logado'),
+    ...liberadas.filter((l) => l && path.resolve(l) !== home)]
   for (const t of toks) {
     const p = path.resolve(t.replace(/^\$HOME/, home).replace(/^~/, home))
     if (p === home || dentro(p, cwd) || livres.some((l) => dentro(p, path.resolve(l)))) continue

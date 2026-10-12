@@ -996,6 +996,20 @@ os caminhos que passam por `abrirNavegador`; se ainda assim abrir, o suspeito
   máquina especificamente; não assuma que toda máquina Windows se comporta
   igual.
 
+## Regra de produto: tudo que criamos para os projetos vira ferramenta no painel
+
+Pedido dele em 09/10/2026, quando criei um comando de terminal em vez do que ele queria: *"sempre que criamos algo pros
+projetos ele precisa ser uma ferramenta no painel, assim como é o cockpit"*.
+
+- **Script não é entrega.** Um comando solto que só uma sessão sabe rodar não conta. O que serve a um projeto (revisar
+  textos, aprovar telas, medir, conferir) precisa ter **lugar no painel**: onde ele vê, decide e acompanha, no projeto
+  certo, sem depender de lembrar o comando.
+- **O script continua existindo**, como o motor por baixo (sessão e robô usam), mas a tela é o que ele toca.
+- **Ao construir algo para um projeto, a pergunta final é: onde, no painel, ele chega nisso?** É a mesma regra da peça
+  construída e inalcançável, aqui pelo lado do produto.
+- Para revisão e aprovação, o lugar é o **Decidir um por um** (baralhos em `docs/cartas/` de cada projeto). Exemplo
+  pronto: `cc textos levantar|aplicar` (textos de um app) e `cc baralho` (telas e textos de um site).
+
 ## Convenções
 - Commits: `type(scope): mensagem` — sem `Co-Authored-By`
 - Gate de qualidade: `npm test` + conferência visual das duas telas

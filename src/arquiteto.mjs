@@ -630,7 +630,11 @@ export function perguntaDeRevisao(it, r) {
   const fim = res ? `${res.arquivos ? 'Arquivos alterados: ' + res.arquivos + '. ' : ''}${res.semBuild ? 'Atenção: nenhum teste rodou neste pedido, então o robô não provou que funciona; confira você.' : ''}`.trim()
     : String(r.saida || '').trim().split(/\n/).filter(Boolean).slice(-4).join(' ').slice(0, 380)
   const onde = r.copia ? ` Foi feito numa cópia separada (${r.dir}). Se estiver bom, eu junto no projeto de verdade, deixo pronto para commit e não commito.` : ' Foi feito direto na pasta do projeto.'
-  const quadro = r.ok ? `O robô terminou todas as micro tarefas. ${fim}` : `O robô parou com erro. ${r.erro || fim}`
+  /* CC-979: `r.erro` vem sempre como "Command failed: node maestro.mjs ..." (só a linha de comando), então o motivo
+     verdadeiro, que o maestro escreve na saída ("parou com erro: ..."), nunca chegava a ele. O motivo vem primeiro. */
+  const motivo = /parou com erro: ([^\n]+)/.exec(String(r.saida || ''))?.[1]?.trim() || ''
+  const erroLimpo = String(r.erro || '').replace(/^Command failed:[^\n]*\n?/, '').trim()
+  const quadro = r.ok ? `O robô terminou todas as micro tarefas. ${fim}` : `O robô parou com erro${motivo ? ': ' + motivo : '.'} ${motivo ? '' : (erroLimpo || fim)}`.replace(/\s+$/, '')
   return {
     tipo: 'revisao', titulo: `Revisar: ${String(it.titulo || it.intencao || 'o que foi construído')}`.slice(0, 80),
     porque: `${quadro}${frasePrint(r.ver)}${onde}`.slice(0, 500),

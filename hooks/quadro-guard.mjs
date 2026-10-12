@@ -109,7 +109,8 @@ let conta = null
 let listaCrua = []
 try {
   listaCrua = T.projetosDe([], I.findProjects)
-  const q = T.montar({ projetos: T.carregar(listaCrua), jobs: [], pendencias: [] })
+  // sem a ordem pelo git: aqui só se conta (CC-1045, 2,2 s por resposta antes)
+  const q = T.montar({ projetos: T.carregar(listaCrua, { ordem: false }), jobs: [], pendencias: [] })
   conta = {
     total: listaCrua.length,
     noQuadro: q.grupos.map((g) => g.projeto).sort(),

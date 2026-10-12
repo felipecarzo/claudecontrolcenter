@@ -7,6 +7,9 @@ resumo: O diagnóstico dele sobre por que a comunicação por chat quebra, e o q
 
 # A comunicação: por que o chat sozinho não sustenta o trabalho
 
+> As REGRAS de escrita que saíram deste diagnóstico moram desde 12/10/2026 na fonte única [[ESCRITA]]
+> (`docs/produto/ESCRITA.md`). Este documento é a história e o porquê, não a regra em vigor.
+
 Registrado em 16/08, ao fim de um dia de trabalho pesado, a pedido dele:
 *"anota tudo isso que eu falei, quebra em tarefas, e vamos decidir o que
 conserta primeiro antes de prosseguir"*.

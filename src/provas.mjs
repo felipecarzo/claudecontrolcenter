@@ -24,7 +24,8 @@ export function cartasDeProvas({ raizes, agora = Date.now() }) {
     try { itens = B.ler(B.caminhoPadrao(raiz)).itens } catch { continue }
     for (const i of itens) {
       if (!B.podeAprovarPorOlho(i)) continue
-      cartas.push({ id: i.id, raiz, projeto: path.basename(raiz), titulo: i.intencao || i.titulo, porque: i.prova || i.pronto || '', opcoes: ['Aprovo', 'Não aprovo'], origem: 'prova' })
+      // CC-1003: natureza e data deixam o Tinder separar conserto de defeito (um a um) da rajada do robô (uma carta)
+      cartas.push({ id: i.id, raiz, projeto: path.basename(raiz), titulo: i.intencao || i.titulo, porque: i.prova || i.pronto || '', opcoes: ['Aprovo', 'Não aprovo'], origem: 'prova', natureza: i.natureza || null, mexido: i.mexido || i.criado || null })
     }
   }
   cache = { em: agora, chave, cartas }

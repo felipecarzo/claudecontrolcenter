@@ -289,6 +289,12 @@ let e = ''; process.stdin.on('data', (d) => (e += d)).on('end', () => {
     assert.equal(f('cat /tmp2/x', { ...ctxPr, liberadas: ['/home/u/projetos/VPS_outro'] }).bloquear, false)
     assert.equal(f('ls /home/u/projetos/VPS_outro', { ...ctxPr, liberadas: ['/home/u/projetos/VPS_outro'] }).bloquear, false, 'pasta que ele liberou')
     assert.equal(f('cat /home/u/.ssh/id_rsa', { ...ctxPr, liberadas: ['/home/u'] }).regra, 'fora', 'liberar a casa inteira não desliga a regra')
+    // CC-1026: a foto do app e o console, como no terminal; a chave do navegador e o resto da pasta .local continuam barrados
+    assert.equal(f('/home/u/.local/bin/print http://localhost:5173/ foto.png 390 844').bloquear, false, 'print (a foto)')
+    assert.equal(f('~/.local/bin/print-logado https://x/entrar "Ana" hoje.png').bloquear, false, 'print-logado')
+    assert.equal(f('cat ~/.local/share/browser-tools/chave').regra, 'fora', 'a chave do Chrome fica barrada')
+    assert.equal(f('ls ~/.local/bin').regra, 'fora', 'só os dois comandos, não a pasta')
+    assert.equal(f('cat ~/.local/bin/print').bloquear, false, 'ler o próprio script de foto é inofensivo e entra junto')
   })
   const plugPr = await import('./hooks/opencode-prumo.mjs')
   passa('CC-803: a decisão nunca lança, e o plugin exporta só o plugin', () => {

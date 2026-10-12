@@ -704,13 +704,16 @@ function ordensComCache(raiz, mapa) {
   return ordens
 }
 
-export function carregar(lista) {
+/* CC-1045: `{ ordem: false }` pula a ordem pelo git. O guarda do quadro (hooks/quadro-guard.mjs) só CONTA projetos e roda
+   num processo novo a cada resposta, onde o cache acima nunca serve: medido em 12/10, 2,2 s de 2,4 s eram a ordem dos 37
+   projetos, a cada fim de resposta, e ele era cortado por tempo 345 vezes em 60 dias. */
+export function carregar(lista, { ordem = true } = {}) {
   return lista.map(({ projeto, raiz }) => {
     let mapa = null
     let ordens = null
     try { mapa = lerRoadmap(raiz) } catch { /* projeto sem roadmap */ }
     if (mapa) {
-      try { ordens = ordensComCache(raiz, mapa) } catch { /* sem git: fica sem ordem */ }
+      if (ordem) try { ordens = ordensComCache(raiz, mapa) } catch { /* sem git: fica sem ordem */ }
       // a citação alimenta o cartão, e o parser já a extrai do corpo
       for (const g of mapa.grupos) for (const f of g.frentes) f.citacao ||= citacaoDe(f.corpo)
     }

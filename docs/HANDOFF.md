@@ -1,14 +1,24 @@
 # HANDOFF
 
-**Última sessão:** `5ba0551c`, 08/10. Ponteiro, não relatório: o feito está em `docs/diario/2026-10-08.md`
-e no histórico de cada item (`node cc.mjs backlog historia <ID>`).
-**Commit:** NADA commitado desta sessão (ele não pediu). Fora também: `scratch/` e `screenshot-coderoom.png`.
+**Última sessão:** `5ba0551c`, 08 a 11/10. Ponteiro, não relatório: o feito está em `docs/diario/2026-10-08.md`
+(uma sessão longa, tudo nele) e no histórico de cada item (`node cc.mjs backlog historia <ID>`).
+**Commit:** NADA commitado desde 08/10 (ele não pediu): 50 itens em prova, a maioria só em código e teste. Fora também:
+`scratch/` e `screenshot-coderoom.png`.
 **Branch:** `backlog/cc-46-48-49-52-53-56-65`. Rotas `modelo` e `cockpit2` marcadas por 5ba0551c: liberar ao commitar.
+**Painel religado por último:** 10/10 às 23:48. Mudança em `src/web.mjs` ou rota nova só vale depois de religar.
 
 ## Próximo
 
-- Em prova esperando o olho dele: CC-984, CC-991 a CC-997 (lista no diário de 08/10).
-- Próximo da fila: CC-985 (guia de cada projeto), Sonnet esforço alto.
+- **Esperando o olho dele na tela (nenhum visto por mim, a captura é barrada):** a aba Revisões (CC-1038) e o Editar com o
+  texto atual nas cartas de texto (CC-1035), o gerador `cc baralho` (CC-1033), os atalhos e o manual `?` (CC-1018 a 1021),
+  o flutuar (CC-1022), a gaveta do Caminho e a busca de tarefa (CC-1007, CC-1012, CC-1016), o topo sem a barra de busca
+  (CC-992), o Tinder em duas colunas (CC-995). O resto está em `docs/diario/2026-10-08.md`.
+- **Dele decidir:** natureza dos outros projetos no guia (CC-1006); apps com login no `cc baralho`; quais telas ganham
+  atalhos próprios depois de Caminho e Sessões; se o console do navegador importa para o opencode do Coderoom.
+- **Provado só no código/servidor, falta a prova real:** o aplicar das edições de texto pelo botão da aba Revisões
+  (provado em cópia do Ahtleta Corrida, não pelo painel); o conserto da partida lenta (CC-1031: pior caso 34 s para 5,4 s).
+- **Cuidado:** `~/projetos/VPS_ahtleta-corrida` tem 9 baralhos de 1.211 textos em `docs/cartas/`, sem votos ainda, e 5 entregas
+  de código sem commit naquele projeto. A pasta `fibraessencia` (sem `VPS_`) tem a CC FB-033 em prova sem critério de pronto.
 - Em prova esperando o celular dele: CC-986 (área de ideias no Caminho), CC-987 (abas como apps), CC-983, CC-988,
   CC-990, CC-975, CC-976 e os PR anteriores.
 - Tarefas dele (lista "meu"): modelo padrão global em opusplan e reinstalar a porta de entrada (comandos nas tarefas),

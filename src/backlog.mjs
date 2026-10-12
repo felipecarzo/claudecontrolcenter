@@ -500,7 +500,10 @@ export function filaDoAgente(itens, { sprint = new Set() } = {}) {
   const abertos = itens.filter((x) => estaAberto(x) && !['DE', 'TR', 'B0'].includes(x.estado) && !comFilhaAberta.has(x.id) && !foraDoMvp(x))
   const ordem = ordemDaFila(itens, { sprint })
   const modo = (x) => String(x.conferir || '').split(':')[0]
-  const ehDele = (x) => modo(x) === 'dele' || x.trava === 'dele' || x.natureza === 'DEC'
+  /* CC-1057: prova (PR) que se confere por foto ou por ele é aprovada pelo OLHO DELE (podeAprovarPorOlho, no Decidir um
+     por um). Na lista "faço sozinho" ela parecia trabalho do agente: em 12/10 os 3 primeiros da fila já estavam prontos.
+     Prova com conferência automática continua do agente, que roda `backlog conferir`. */
+  const ehDele = (x) => modo(x) === 'dele' || x.trava === 'dele' || x.natureza === 'DEC' || podeAprovarPorOlho(x)
   const temEspec = (x) => String(x.pronto || '').trim().length >= 10 && MODOS_DE_CONFERIR.includes(modo(x))
   const dele = abertos.filter(ehDele).sort(ordem)
   const semEspec = abertos.filter((x) => !ehDele(x) && !temEspec(x)).sort(ordem)

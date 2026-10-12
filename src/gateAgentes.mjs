@@ -59,6 +59,7 @@ export const PASTA_LOG = path.join(os.tmpdir(), 'cc-gate')
    passa um pouco dos 10 min para quem dá a resposta de "ninguém respondeu"
    ser o gancho, e não o Claude matando ele. */
 export const PERGUNTE_ANTES = 'pergunteAntes'
+export const PLANO = 'plano' // CC-1043: modo plano escolhido na conversa
 const GANCHO_PERMISSAO = fileURLToPath(new URL('../hooks/permissao-painel.mjs', import.meta.url))
 /* ============ CC-716: o modo Flash do opencode (servidor aberto) ============
  *
@@ -150,7 +151,11 @@ export const AGENTES_GATE = {
          o gancho que segura cada comando e edição até ele responder no painel.
          Vai por `--settings` desta chamada só, sem tocar a configuração geral.
          CC-714: o modo Planejamento vence os dois: `plan` só lê. */
-      '--permission-mode', somenteLer ? 'plan' : permissao === PERGUNTE_ANTES ? 'default' : permissao,
+      /* CC-1043: `plano` é a escolha dele na conversa (como o modo plano do app) e vale o mesmo
+         que o modo Planejamento do projeto: `plan`, só lê. Só o Claude tem modo de permissão:
+         no opencode e no agy `permissao` nunca chega aos args, então plano ali não tem efeito
+         (e não quebra nada). */
+      '--permission-mode', somenteLer || permissao === PLANO ? 'plan' : permissao === PERGUNTE_ANTES ? 'default' : permissao,
       ...(!somenteLer && permissao === PERGUNTE_ANTES ? ['--settings', configPergunteAntes(conversa)] : []),
       /* CC-723: a ferramenta "perguntar", que pausa e espera a resposta dele no
          painel. Liberada nesta chamada: a lista geral de ferramentas liberadas

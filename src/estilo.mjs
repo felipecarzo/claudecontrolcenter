@@ -35,6 +35,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
+import { fileURLToPath } from 'node:url'
 import { casaClaude } from './platform.mjs'
 
 export const ARQUIVO_PADRAO = () => path.join(casaClaude(), 'control-center-estilo.md')
@@ -234,7 +235,18 @@ importa. É a mesma família do gate de MVP — parar no primeiro critério que 
 fecha, em vez de despejar tudo e deixar a conferência por conta dele.
 `
 
+/* CC-1056, pedido dele em 12/10: "isso precisa estar em todos os nossos locais com regras de escrita e elas inclusive
+   devem se somar, unificar". A fonte única é docs/produto/ESCRITA.md, no git (chega no PC pelo pull). O começo da sessão
+   leva só o que vem antes da marca; a origem de cada regra fica fora, para não pesar em token. Sem o arquivo (cópia
+   antiga do repositório), vale o control-center-estilo.md de antes. */
+export const ARQUIVO_ESCRITA = () => process.env.CC_ESCRITA || fileURLToPath(new URL('../docs/produto/ESCRITA.md', import.meta.url))
+export const MARCA_ESCRITA = '<!-- fim do que entra na sessão -->'
+export function lerEscrita(arquivo = ARQUIVO_ESCRITA()) {
+  try { const t = fs.readFileSync(arquivo, 'utf8'); const i = t.indexOf(MARCA_ESCRITA); return (i >= 0 ? t.slice(0, i) : t).trim() + '\n' } catch { return null }
+}
+
 export function lerPadrao() {
+  const escrita = lerEscrita(); if (escrita) return escrita
   const arquivo = ARQUIVO_PADRAO()
   try { return fs.readFileSync(arquivo, 'utf8') } catch { /* ainda não existe */ }
   try {

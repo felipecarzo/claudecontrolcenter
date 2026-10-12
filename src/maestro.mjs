@@ -548,7 +548,10 @@ export const RODADAS_DO_PEDIDO = 2 // a fila e mais uma volta de conserto do ped
    com as travas já soltas. Ao ser encerrado, o maestro para a resposta em
    andamento e solta as travas antes de sair. */
 let emAndamento = null // { conversa, dono }
-const aoEncerrar = async () => {
+const aoEncerrar = async (sinal) => {
+  /* CC-979: saía com código 1 em silêncio, e o arquiteto lia isso como "o robô falhou" sem motivo nenhum. Era quase certo
+     o painel sendo religado (o robô é filho dele e morre junto). Agora diz a verdade: foi interrompido, não falhou. */
+  console.log(`parou com erro: interrompido por ${sinal || 'sinal'} (o painel foi religado ou o robô foi parado; o trabalho feito até aqui ficou na pasta)`)
   const a = emAndamento
   if (a) { try { destravar(a.dono); await api('/api/gate/parar', { id: a.conversa }) } catch { /* saindo de qualquer jeito */ } }
   process.exit(1)

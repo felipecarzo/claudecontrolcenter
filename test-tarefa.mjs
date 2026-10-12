@@ -538,6 +538,9 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
   const rev = Ar.perguntaDeRevisao(it, r)
   const noProjeto = Ar.perguntaDeRevisao(it, { ...r, copia: false, dir: d })
   const falhou = Ar.perguntaDeRevisao(it, { ...r, ok: false, erro: 'o build quebrou' })
+  // CC-979: o motivo verdadeiro está na SAÍDA do robô; r.erro vinha sempre só como "Command failed: node maestro.mjs ..."
+  const comMotivo = Ar.perguntaDeRevisao(it, { ...r, ok: false, erro: 'Command failed: /usr/bin/node maestro.mjs --pasta x\n', saida: 'CN-1: 2 micro tarefas abertas\nparou com erro: interrompido por SIGTERM (o painel foi religado)\n' })
+  const semMotivo = Ar.perguntaDeRevisao(it, { ...r, ok: false, erro: 'Command failed: /usr/bin/node maestro.mjs --pasta x', saida: '' })
   const semCommit = path.join(raiz, 'VPS_sem-commit'); fs.mkdirSync(semCommit); execFileSync('git', ['-C', semCommit, 'init', '-q'])
   let erroCopia = ''; try { Ar.copiaIsolada(semCommit, 'CN-1') } catch (e) { erroCopia = e.message }
   const ramo = git('branch', '--list', 'arquiteto/*').toString()
@@ -555,6 +558,9 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
     assert.equal(Ar.validarProposta(JSON.stringify(paraOContrato)).ok, true, JSON.stringify(Ar.validarProposta(JSON.stringify(paraOContrato)).erros))
     assert.match(rev.porque, /cópia separada/); assert.match(noProjeto.porque, /direto na pasta/)
     assert.equal(falhou.pergunta, 'O robô não terminou. Como seguimos?'); assert.match(falhou.porque, /o build quebrou/)
+    // CC-979: o motivo verdadeiro (da saída do robô) aparece no lugar da linha de comando
+    assert.match(comMotivo.porque, /parou com erro: interrompido por SIGTERM/); assert.doesNotMatch(comMotivo.porque, /Command failed/)
+    assert.doesNotMatch(semMotivo.porque, /Command failed/, 'sem motivo na saída, a linha de comando não vira o "motivo"')
     assert.equal(Ar.validarProposta(JSON.stringify(falhou)).ok, true)
   })
   t('arquiteto: projeto sem commit não ganha cópia, e o erro diz o motivo', () => assert.match(erroCopia, /pelo menos um commit/))

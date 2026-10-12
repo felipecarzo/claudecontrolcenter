@@ -50,7 +50,7 @@ const DECK = /^[a-z0-9-]{1,40}$/
 const IMG = /\.(jpg|png|webp)$/i
 export const OPCOES_PADRAO = ['Aprovo', 'Não aprovo']
 const CAMPOS_DECK = ['titulo', 'criado', 'cartas']
-const CAMPOS_CARTA = ['id', 'titulo', 'pergunta', 'olhe', 'passos', 'img', 'link', 'opcoes', 'multipla']
+const CAMPOS_CARTA = ['id', 'titulo', 'pergunta', 'olhe', 'passos', 'img', 'link', 'opcoes', 'multipla', 'editar']
 const TRAVESSAO = /[—–]/
 const pasta = (raiz) => path.join(raiz, 'docs', 'cartas')
 const opcoesDe = (c) => (Array.isArray(c.opcoes) && c.opcoes.length ? c.opcoes : OPCOES_PADRAO)
@@ -74,6 +74,8 @@ export function validarDeck(j) {
     else if (ids.has(c.id)) e.push(n + 'id repetido: ' + c.id)
     else ids.add(c.id)
     txt(c.titulo, n + 'titulo')
+    // CC-1035: o texto atual, que a tela põe no campo quando ele toca em "Editar" (até 600, o teto do aplicador de textos)
+    if (c.editar !== undefined) { txt(c.editar, n + 'editar'); if (typeof c.editar === 'string' && c.editar.length > 600) e.push(n + 'editar: até 600 caracteres') }
     for (const k of ['pergunta', 'olhe']) if (c[k] !== undefined) txt(c[k], n + k)
     if (c.passos !== undefined) {
       if (!Array.isArray(c.passos) || c.passos.length > 10) e.push(n + 'passos: lista de até 10 textos')

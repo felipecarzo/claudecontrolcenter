@@ -206,6 +206,55 @@ Os filtros de cima escolhem o estado (o padrão é o que ainda pede decisão) e 
 projeto, e a busca procura qualquer palavra no texto. Tocar numa ideia abre o
 texto inteiro. As conversas do PC não entram: elas ficam guardadas lá.
 
+## tela: hooks
+
+O que cada hook (as travas e avisos automáticos que rodam junto do Claude) faz com
+você, lido das conversas gravadas desta máquina.
+
+O bloco de cima é o que você sente: **quanto espera ao fim de cada resposta**. Os
+hooks de parada rodam todos juntos, então a espera é a do mais lento. Aparecem a
+espera numa resposta comum (a mediana), nas 5% mais lentas, e quantas respostas
+passaram de 10 segundos. Os botões mudam o período: hoje, 7, 15, 30 ou 60 dias.
+
+Também no topo: **quantos tokens os hooks puseram na conversa** no período. É
+estimativa: o Claude Code não grava token por hook, só por resposta, então a conta
+é o tamanho do texto que cada hook injetou (contexto na abertura, avisos, barradas)
+dividido por 3,6 caracteres por token. Cada hook mostra o total e quanto põe cada vez que fala (a maioria roda calada e não põe nada).
+
+Embaixo, cada hook, do que mais pesa para o que menos pesa: quantas vezes rodou,
+o tempo médio e o pior, quantas vezes foi **cortado** por passar do tempo limite e
+quantas vezes **barrou** (recusou uma ferramenta ou devolveu a resposta para
+refazer). Tocar num hook abre o comando, os projetos e as últimas barradas com o
+texto que ele mandou.
+
+Hook de ferramenta que passa calado não fica gravado pelo Claude Code, então a
+contagem dele é o mínimo, não o total. A primeira leitura leva uns 10 segundos;
+depois é na hora.
+
+## tela: revisoes
+
+Os textos e as telas de cada projeto que você revisa um por um. Uma "revisão" é um
+conjunto de cartas guardado na pasta de documentos do projeto: os textos do app
+(gerados quando você pede, dentro do projeto, "verifique os textos com o
+tinderlike"), as telas desenhadas e as fotos.
+
+Cada revisão mostra uma barra de quanto já foi revisado e quatro números:
+**faltam**, **aprovados**, **editados** (você escolheu Editar e escreveu o texto
+novo na nota) e **recusados**. "Revisar um por um" abre o Decidir um por um já
+naquele projeto, e as cartas vão aparecendo.
+
+Nos textos do app há um segundo passo, que só você dá. **Ver o que muda no
+código** mostra, para cada edição sua, o texto de antes e o de depois, sem
+gravar nada. Só depois aparece **Aplicar no código**, que troca os textos nos
+arquivos do projeto. Antes de trocar, o painel confere que o trecho ainda é o
+original e que o arquivo continua válido; se algo mudou, ele pula aquela troca e
+diz por quê. **Não faz commit**: depois de aplicar, rode os testes do projeto e
+confira o diff.
+
+Os números vêm das cartas e dos votos de cada projeto desta máquina (cada voto
+fica numa linha que só cresce, na pasta de cartas do projeto). A tela se atualiza
+sozinha enquanto está aberta.
+
 ## tela: cockpit
 
 A tela de abertura. Responde uma pergunta só: **o que exige você agora**.
@@ -247,6 +296,13 @@ e é isso que distingue trabalho em curso de coisa travada.
 O agente pode editar arquivo e rodar comando, e as suas proteções continuam
 valendo: se ele tentar algo que uma trava barra, ela barra igual, e a conversa
 mostra o que aconteceu.
+
+Embaixo do campo de escrever, uma linha com três peças, as mesmas do app: **modo**
+(Manual, Aceitar edições ou Plano), **modelo** e **esforço**. Tocar numa abre uma
+lista com a escolha atual marcada, e vale a partir da próxima mensagem. Só o
+Claude tem modo; modelo e esforço aparecem quando o agente tem opções. Se você
+escrever enquanto ele ainda responde, uma linha acima do campo avisa "1 mensagem
+na fila: sai quando ele terminar".
 
 Na coluna da direita, em tela larga, cada bloco (a conversa, o git, o projeto,
 os arquivos, os agentes e as notas) sobe ou desce pelas setas, recolhe pelo
@@ -1357,3 +1413,29 @@ de **quem olha**, não a que serve. Apontar um painel embutido para
 `http://localhost:3101` funciona por acaso no PC e nunca funciona pelo celular.
 Por isso o cockpit serve esses painéis por um caminho relativo próprio, com um
 intermediário que só alcança portas declaradas.
+
+## a conversa (painel da aba Sessões)
+
+O painel "a conversa" da aba Sessões é a sessão do Claude Code em forma de app,
+falando com a mesma sessão de terminal que já roda. Não abre sessão paralela.
+
+De cima para baixo:
+
+- **faixa do topo**: o estado (trabalhando, esperando você, parada), o modo lido
+  da tela da sessão (manual, aceitar edições, auto, plano), o modelo e o esforço.
+  À direita ficam **parar** (manda Esc, interrompe o que a sessão faz), **modo**
+  (manda Shift+Tab, troca para o próximo modo) e **terminal** (abre o terminal de
+  verdade). Parar e modo só aparecem quando a tela da sessão foi lida;
+- **a conversa**, com as falas formatadas. As ferramentas do Claude entre uma fala
+  e outra ficam num bloco recolhido ("Executou 3 comandos, leu 2 arquivos, editou
+  1"), que abre e mostra cada nome e alvo. A conversa fica no fim sozinha, menos
+  quando você rolou para cima;
+- **pergunta ou permissão pendente** desta sessão, no mesmo formulário do cartão,
+  logo acima do campo;
+- **o campo de escrever**: Enter envia, Shift+Enter quebra linha, `/` no começo
+  abre a lista de comandos. Se há texto digitado no terminal da sessão, uma linha
+  avisa "há texto digitado no terminal".
+
+Com o painel aberto e a sessão escolhida, a conversa e a tela são relidas a cada
+2 segundos. Fechado, nada é lido. Se o servidor ainda não entrega a tela ou a
+conversa formatada, aparecem as falas simples e a faixa sem modo.

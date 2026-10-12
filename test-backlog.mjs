@@ -216,7 +216,9 @@ t('micro tarefas: com todas as filhas fechadas o pai fecha, e o pai some da fila
   const [pai, f1, f2] = ler(arq).itens
   mover(f1.id, 'OK', { prova: 'build passou' }, arq); mover(f2.id, 'OK', { prova: 'build passou' }, arq)
   assert.ok(comoMarkdown(arq).includes('2 de 2'))
-  assert.deepEqual(filaDoAgente(ler(arq).itens).sozinho.map((x) => x.id), [pai.id], 'sem filha aberta, o pai volta para a fila')
+  // sem filha aberta o pai volta à fila; como ele vira prova conferida por foto, ela é do olho dele (CC-1057)
+  const fp = filaDoAgente(ler(arq).itens)
+  assert.deepEqual([fp.sozinho.map((x) => x.id), fp.dele.map((x) => x.id)], [[], [pai.id]], 'sem filha aberta, o pai volta, e a prova por foto espera o olho dele')
   assert.equal(mover(pai.id, 'OK', { prova: 'as duas micro tarefas passaram' }, arq).estado, 'OK')
 })
 recusa('micro tarefas: pai que nao existe e recusado', () => acrescentar({ pai: 'CC-999', intencao: 'x', pronto: 'xxxxxxxxxx', conferir: 'auto:x', natureza: 'PED', area: 'tela', tamanho: 'P' }, path.join(casa, 'filhas.jsonl')), 'não existe')
@@ -322,7 +324,10 @@ import { pendencias, _limpar as limparEspera } from './src/esperaDele.mjs'
     recomeca()
     const c = cartasDeProvas({ raizes: [raiz] })
     assert.deepEqual(c.map((x) => x.id), ['PV-001', 'PV-003'])
-    assert.deepEqual(c[0], { id: 'PV-001', raiz, projeto: 'proj-provas', titulo: 'item PV-001', porque: 'robô passou', opcoes: ['Aprovo', 'Não aprovo'], origem: 'prova' })
+    // CC-1003: natureza e data entram para o Tinder separar conserto de defeito (um a um) da rajada do robô (uma carta)
+    const { natureza, mexido, ...resto } = c[0]
+    assert.deepEqual(resto, { id: 'PV-001', raiz, projeto: 'proj-provas', titulo: 'item PV-001', porque: 'robô passou', opcoes: ['Aprovo', 'Não aprovo'], origem: 'prova' })
+    assert.ok(natureza === 'PED' && /^\d{4}-\d\d-\d\d$/.test(mexido), 'natureza e data da última mexida vêm junto')
   })
   t('CC-920: "Aprovo" fecha com a prova acrescida, e a pendência some da fila dele', () => {
     recomeca()
@@ -386,6 +391,11 @@ t('CC-958: a fila mista segue o Caminho: andando, agora, fim do dia, sprint atua
   ], { sprint: new Set(['CC-2', 'CC-3', 'CC-12']) })
   assert.deepEqual(f.sozinho.map((x) => x.id), ['CC-10', 'CC-5', 'CC-7', 'CC-6', 'CC-2', 'CC-3', 'CC-4', 'CC-1', 'CC-13', 'CC-8', 'CC-12'])
   assert.equal(f.proximo.id, 'CC-10')
+})
+t('CC-1057: prova conferida por foto ou por ele espera o olho dele; prova automática continua do agente', () => {
+  const f = filaDoAgente([itL('CC-30', { estado: 'PR', conferir: 'olho:foto' }), itL('CC-31', { estado: 'PR', conferir: 'auto:teste' }), itL('CC-32', { conferir: 'olho:foto' })])
+  assert.deepEqual(f.sozinho.map((x) => x.id), ['CC-31', 'CC-32'])
+  assert.deepEqual(f.dele.map((x) => x.id), ['CC-30'])
 })
 t('CC-958: o que espera ele segue a mesma lógica de lugar', () => {
   const f = filaDoAgente([itL('CC-20', { conferir: 'dele:x' }), itL('CC-21', { conferir: 'dele:y', ...L('agora') }), itL('CC-22', { conferir: 'dele:z', ...L('fora') })])
