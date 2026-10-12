@@ -103,6 +103,9 @@ function efeitos(itens, novo, antes, hoje) {
    meio do texto e cortava o excesso, ou seja, interpretava.
    =================================================================== */
 
+const SEM_OBRA = /^(verificar|mapear|analisar|analise|investigar|inspecionar|identificar|entender|estudar|levantar|descobrir|ler|olhar|examinar|avaliar|localizar|encontrar|achar|pesquisar)$/i
+const semAcento = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+
 export const TETOS_DO_PLANO = { tarefas: 8, titulo: 80, pedidoMin: 10, pedido: 600, arquivos: 8, escopo: 2500 }
 
 /** Caminho aceitável numa micro tarefa: relativo, dentro do projeto, longe de segredo e do git. */
@@ -138,6 +141,8 @@ export function validarPlano(texto) {
     const ultima = k === v.tarefas.length - 1
     if (!ultima && (typeof t.deixa !== 'string' || t.deixa.trim().length < 5 || t.deixa.length > 300)) erros.push(`tarefa ${n}: falta "deixa", o que ela cria para as próximas usarem (5 a 300 caracteres)`)
     if (typeof t.titulo !== 'string' || !t.titulo.trim() || t.titulo.length > T.titulo) erros.push(`tarefa ${n}: titulo tem de ter de 1 a ${T.titulo} caracteres`)
+    // CC-1025: tarefa só de olhar o código não muda arquivo, e o robô reprova (medido no CC-1024)
+    else if (SEM_OBRA.test(semAcento(t.titulo.trim().split(/\s+/)[0]))) erros.push(`tarefa ${n}: "${t.titulo}" é tarefa sem obra (só olha o código). Toda tarefa muda arquivo; quem constrói lê o código sozinho. Junte com a tarefa que faz a mudança`)
     if (typeof t.pedido !== 'string' || t.pedido.trim().length < T.pedidoMin || t.pedido.length > T.pedido) erros.push(`tarefa ${n}: pedido tem de ter de ${T.pedidoMin} a ${T.pedido} caracteres`)
     const arquivos = t.arquivos ?? []
     if (!Array.isArray(arquivos) || arquivos.length > T.arquivos) erros.push(`tarefa ${n}: arquivos tem de ser uma lista de até ${T.arquivos}`)

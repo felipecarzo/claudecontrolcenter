@@ -200,8 +200,13 @@ export function gravarPlano(cwd, pedido, tarefas, { pai = null, area = 'tela', c
 
 export function pedidoDePlano(pedido, arquivos, temEscopo = false) {
   return [
-    'Você planeja, não executa. Divida o pedido abaixo em 2 a 8 micro tarefas pequenas, na ordem em que devem ser feitas.',
+    'Você planeja, não executa. Divida o pedido abaixo em 1 a 8 micro tarefas pequenas, na ordem em que devem ser feitas.',
+    /* CC-1029, medido no CC-1024: um pedido de 6 linhas virou 2 tarefas, e a segunda custou 169 s
+       fazendo o que o servidor já fazia. Picotar pedido pequeno só soma espera. */
+    'Pedido pequeno (um assunto, até uns 3 arquivos) é UMA tarefa só. Só divida quando o pedido tem partes que um programador faria em respostas separadas.',
     'Cada uma tem de caber numa resposta curta de um programador: um assunto só, poucos arquivos, e o resultado tem de ser visível ou testável.',
+    // CC-1025: tarefa só de olhar não muda arquivo e é reprovada; o contrato recusa
+    'Toda tarefa MUDA arquivo do projeto. Nada de tarefa só de verificar, mapear, analisar ou anotar o que achou: quem constrói lê o código sozinho.',
     'Cada micro tarefa roda SEM ver as outras nem a conversa: o pedido dela tem de se bastar.',
     temEscopo ? 'O escopo do projeto já existe no AGENTS.md: deixe "escopo" vazio.'
       : 'Escreva também o ESCOPO do projeto: o que ele é, onde fica cada parte (arquivo e papel), e as regras que valem para qualquer tarefa. No máximo 25 linhas.',
@@ -474,7 +479,10 @@ export function resumoDoRobo(filhas, mexidos, final) {
 
 /** Abre uma conversa limpa para a micro tarefa. */
 async function conversaNova(t) {
-  const id = (await api('/api/gate/nova', { cwd: t.cwd, titulo: '' })).id
+  const r = await api('/api/gate/nova', { cwd: t.cwd, titulo: '' })
+  // CC-1030: recusada (pasta fora de ~/projetos), o robô morria em "reading 'length'" sem dizer a causa
+  if (!r?.id) throw new Error(`o painel não abriu conversa para ${t.id} em ${t.cwd}: ${r?.error || r?.erro || JSON.stringify(r).slice(0, 200)}`)
+  const id = r.id
   await api('/api/gate/renomear', { id, titulo: `${t.id}: ${t.intencao}`.slice(0, 60) })
   await api('/api/gate/opencode-modo', { id, modo: 'normal' })
   return id

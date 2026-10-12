@@ -80,6 +80,21 @@ recusaPlano('caminho absoluto é recusado', plano([{ ...boa, arquivos: ['/etc/pa
 recusaPlano('arquivo de segredo é recusado', plano([{ ...boa, arquivos: ['.env.local'] }]), 'segredo')
 recusaPlano('o .git é recusado', plano([{ ...boa, arquivos: ['.git/config'] }]), '.git')
 t('o modelo de .env (.env.example) é permitido', () => assert.equal(caminhoSeguro('.env.example'), null))
+/* CC-1025: tarefa sem obra. Títulos reais do planejador na medição CC-1024: as duas só olhavam o
+   código, e o robô reprova tarefa que não muda arquivo (ou o modelo inventa um .txt para escapar). */
+recusaPlano('tarefa só de verificar é recusada', plano([{ ...boa, titulo: 'Verificar regra de login da rota app' }]), 'sem obra')
+recusaPlano('tarefa só de mapear é recusada, com acento ou sem', plano([{ ...boa, titulo: 'Mapear regra de login do app' }]), 'sem obra')
+recusaPlano('tarefa só de análise é recusada', plano([{ ...boa, titulo: 'Análise do server.js' }]), 'sem obra')
+t('tarefa de obra passa, mesmo citando o que vai ler', () => {
+  assert.equal(validarPlano(plano([{ ...boa, titulo: 'Proteger compromissos no servidor', pedido: 'Analise como o app.html é protegido e aplique o mesmo à compromissos.html' }])).ok, true)
+})
+{
+  const { pedidoDePlano } = await import('./src/maestro.mjs')
+  const p = pedidoDePlano('proteger a tela de compromissos', ['server.js'])
+  t('o planejador ouve que pedido pequeno é uma tarefa só, e que toda tarefa muda arquivo (CC-1029, CC-1025)', () => {
+    assert.match(p, /em 1 a 8 micro tarefas/); assert.match(p, /UMA tarefa só/); assert.match(p, /Toda tarefa MUDA arquivo/)
+  })
+}
 /* CC-846: o que uma tarefa deixa para a outra */
 recusaPlano('tarefa que não é a última sem "deixa" é recusada', plano([boa, boa]), 'falta "deixa"')
 t('com "deixa" na primeira, o plano de duas passa, e a última não precisa', () => {

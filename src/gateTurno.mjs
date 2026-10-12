@@ -884,7 +884,14 @@ async function conferirTela(id, t, texto, { revisar = true, semResposta = false 
     ? `Conferindo o endereço de teste (${alvo.url}): o painel abre, percorre o site (login, menu, cartões) e fotografa cada tela no celular e no computador.`
     : 'Conferindo a tela: build, e o painel percorre o site (login, menu, cartões) fotografando cada tela no celular e no computador.' })
   const saida = path.join(cab._onde, `${id}.anexos`, `fotos-${t.turnoId}`)
-  const res = await fotografar({ cwd: cab.cwd, saida })
+  let res = await fotografar({ cwd: cab.cwd, saida })
+  /* CC-1028, medido no CC-1024: app de servidor sem pasta de build (o Conta de Casa) terminava TODA
+     tarefa em "não achei a página pronta", e o robô nunca via a tela. Sem endereço de teste, sobe o
+     app numa porta de teste, entra com usuário descartável e fotografa (o mesmo do arquiteto). */
+  if (!res.ok && !res.endereco) {
+    const v = await (await import('./arquiteto.mjs')).verOApp(cab.cwd, { saida })
+    if (v.ok) res = v
+  }
   if (res.ok) acrescentar(id, { tipo: 'fotos', turnoId: t.turnoId, fotos: res.fotos })
   /* CC-807, medido na simulação 3: o jogo respondia 200 e estava quebrado
      (prefixo duplicado: 404 no script, página sem estilo). O que o Felipe abre é
