@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-149 abertos, 894 fechados, 1043 no total. Gerado em 2026-10-12.
+153 abertos, 894 fechados, 1047 no total. Gerado em 2026-10-12.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -20,6 +20,7 @@
 | CC-960 | andando · 6 de 7 | - | trocar modelo e esforco sozinho pela complexidade da tarefa, com regras reais em todos os projetos |
 | CC-1050 | prova | - | aviso de abertura das partes ocupadas poe 15 mil tokens em cada conversa, o maior gasto dos hooks |
 | CC-1056 | prova | - | regras de escrita unificadas numa fonte so, com a regra nova defina antes de concluir, e os outros lugares apontando para ela |
+| CC-1059 | definida | - | aviso 'projetos sairam do quadro' dispara para pasta renomeada (videolab virou medialab em 08/10) |
 
 ## projetos
 
@@ -150,6 +151,9 @@
 | id | estado | peso | o que é |
 |---|---|---|---|
 | CC-548 | definida | - | o Chrome da VPS nao alcanca porta local: a rota do container ate o host esta fechada e abrir exige regra de firewall com root |
+| CC-1058 | definida | - | PC fica sincronizado em tempo real com a VPS por um servico, e avisa com alerta se estiver offline |
+| CC-1060 | andando | - | sessao do PC controlada pelo Cockpit igual a da VPS: responder por texto e sincronismo imediato |
+| CC-1061 | definida | - | npm test quebra no PC: 16 testes falham no Windows, e a corrente para no terceiro, sem rodar o resto |
 
 ## coderoom
 

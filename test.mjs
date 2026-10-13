@@ -1795,6 +1795,11 @@ if (estRotinas.projetos.length) {
   const semPasta = await rc.ligar('projeto-x', path.join(tmpRc, 'nao-existe'))
   assert.equal(semPasta.ok, false)
 
+  /* CC-1060: com o WezTerm instalado, o ligar do PC vai para o terminal do
+     painel (coberto em test-terminal-pc.mjs). Este bloco cobre o caminho de
+     quem não tem o WezTerm, o console visível: aponta o WezTerm para o vazio. */
+  const wezAntes = process.env.CC_WEZTERM
+  process.env.CC_WEZTERM = path.join(tmpRc, 'sem-wezterm')
   if (ehWindows) {
     // binario fake que fica vivo por alguns segundos: um binario que sai na
     // hora (node com flag desconhecida, por exemplo) deixaria o teste instavel
@@ -1831,6 +1836,7 @@ if (estRotinas.projetos.length) {
     assert.equal(semLink.ok, false)
   }
 
+  if (wezAntes === undefined) delete process.env.CC_WEZTERM; else process.env.CC_WEZTERM = wezAntes
   fs.rmSync(tmpRc, { recursive: true, force: true })
 }
 

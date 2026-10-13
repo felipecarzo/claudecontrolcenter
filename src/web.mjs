@@ -41,6 +41,7 @@ import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
   mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos, resumirBacklogs,
   pedirPermissao, ID_GANCHO, DECISOES_REMOTAS,
+  pedirMensagem, maquinaDaConversa, ID_CONVERSA, TECLAS_REMOTAS,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
 /* O gate. Importado no TOPO, e não por `import()` dentro do handler: o handler
@@ -647,6 +648,40 @@ async function comUltimaFala(jobs) {
   } catch { return jobs }
 }
 
+/* CC-1060: quais sessões daqui moram num terminal do painel, e portanto
+   aceitam texto digitado no Cockpit da outra máquina. */
+async function marcarNoTerminal(jobs) {
+  const noTerminal = Object.values(await estadoRemoto().catch(() => ({}))).filter((x) => x?.sessao && x.conversa).map((x) => x.conversa)
+  return jobs.map((j) => ({ ...j, terminal: noTerminal.some((c) => c === j.sessionId || (String(j.id || '').length >= 8 && c.startsWith(j.id))) }))
+}
+
+/**
+ * CC-1060, M5: o envio leve. Pedido dele em 12/10: *"eu queria que fosse um
+ * sincronismo imediato"*. O completo pesa ~450 KB e vai de 30 em 30 segundos;
+ * este leva só as sessões e as permissões, sem pedir o retrato de volta, e
+ * roda de 2 em 2 segundos enquanto ele olha o painel da outra máquina. Os
+ * pedidos voltam na mesma carona, então a mensagem que ele digitou lá desce
+ * no envio seguinte.
+ */
+export async function empurrarLeve() {
+  const { token, enviarPara, ativo } = readConfig().federacao || {}
+  if (!token || !enviarPara || ativo === false) return { ok: false, erro: 'federação não configurada' }
+  const s = snapshot()
+  const meus = s.jobs.filter((j) => j.origem?.id === s.maquina.id)
+  const pacote = {
+    ...montarPacote({
+      maquina: s.maquina, jobs: await marcarNoTerminal(await comUltimaFala(meus)), servidores: null,
+      permissoes: (() => { try { return lerPedidosDoGancho().filter((p) => !p.coderoom) } catch { return [] } })(),
+    }),
+    leve: true,
+  }
+  ultimoEnvioEm = Date.now()
+  const r = await enviarPacote({ enviarPara, token, pacote, semRetrato: true })
+  if (r?.ok && r.vendo) vendoDeLaAte = Date.now() + 40_000
+  if (r?.ok && r.pedidos?.length) await atenderPedidos(r.pedidos)
+  return r
+}
+
 /* CC-263: exportada para o modo `cc reportar`, que empurra sem levantar tela.
    É o coração do serviço do Windows: a mesma função que o painel já usava no
    timer de 30s, agora alcançável de fora. */
@@ -779,7 +814,7 @@ export async function empurrar({ comTempo = null, comPastas = null } = {}) {
     /* `comUltimaFala`: plano do cockpit 2, M7. Só as sessões paradas levam a
        frase, e é o que faz o cartão da outra máquina dizer o que o agente
        perguntou em vez de repetir o assunto. */
-    maquina: s.maquina, jobs: await comUltimaFala(meus), uso: s.uso, tempo, backlogs, servidores,
+    maquina: s.maquina, jobs: await marcarNoTerminal(await comUltimaFala(meus)), uso: s.uso, tempo, backlogs, servidores,
     meu: meuDaqui, agentes: agentesDaqui, limites: null,
     travas: retrato.travas, framework: retrato.framework, servico,
     hw: await estadoMaquina().then((m) => (m ? { cpu: m.cpu, ram: m.ram, gpu: m.gpu } : null)).catch(() => null),
@@ -994,6 +1029,20 @@ async function atenderPedidos(pedidos) {
           ? await responderGancho(p.idGancho, p.decisao)
           : { ok: false, erro: 'pedido ou decisão inválidos' }
         console.error(`[federação] permissão ${p.idGancho}: ${p.decisao}, a pedido de ${p.de || 'outra máquina'}: ${r.ok ? 'ok' : 'recusado, ' + r.erro}`)
+        continue
+      }
+      /* CC-1060: mensagem (ou tecla) digitada no Cockpit da outra máquina para
+         uma sessão daqui. A conversa pode vir pelo id curto do pacote: resolve
+         pelo terminal do painel, o único lugar onde digitar é permitido. */
+      if (p.acao === 'mensagem') {
+        let r = { ok: false, erro: 'pedido inválido' }
+        if (ID_CONVERSA.test(String(p.conversa || '')) && (p.tecla == null || TECLAS_REMOTAS.includes(p.tecla))) {
+          const vivas = Object.values(await estadoRemoto().catch(() => ({})))
+          const achada = vivas.find((s) => s?.conversa && (s.conversa === p.conversa || s.conversa.startsWith(p.conversa)))
+          const conversa = achada ? achada.conversa : p.conversa
+          r = p.tecla ? await teclaSessao({ conversa, tecla: p.tecla }) : await mensagemDecisao({ conversa, texto: String(p.texto || '') })
+        }
+        console.error(`[federação] mensagem para ${String(p.conversa).slice(0, 8)}, a pedido de ${p.de || 'outra máquina'}: ${r.ok ? 'entregue' : 'recusada, ' + r.erro}`)
         continue
       }
       const dir = cwdDoProjeto(null, p.projeto)
@@ -3431,7 +3480,13 @@ function handler(req, res) {
   }
   /* CC-1052: parar (Esc) e trocar de modo (Shift+Tab) pelo painel "a conversa". Lista fechada de teclas. */
   if (url.pathname === '/api/decisao/tecla' && req.method === 'POST') {
-    return comCorpoAsync(req, res, 1e3, ({ conversa, tecla, alvo }) => teclaSessao({ conversa, tecla, alvo: alvo || null }))
+    return comCorpoAsync(req, res, 1e3, ({ conversa, tecla, alvo }) => {
+      /* CC-1060: sessão de outra máquina: a tecla vai na fila dela. Só parar e
+         trocar modo de um em um; escolher um modo pelo nome continua só aqui. */
+      const longe = !alvo && maquinaDaConversa(conversa)
+      if (longe) return pedirMensagem({ paraMaquina: longe, conversa, tecla, de: origemLocal()?.nome || null })
+      return teclaSessao({ conversa, tecla, alvo: alvo || null })
+    })
   }
   if (url.pathname === '/api/decisao/mensagem' && req.method === 'POST') {
     return comCorpoAsync(req, res, 2e4, async ({ conversa, texto }) => {
@@ -3446,6 +3501,13 @@ function handler(req, res) {
         const cab = lerCabecalhoGate(id)
         if (!cab) return { ok: false, erro: 'essa conversa do coderoom não existe mais' }
         return responderGate(id, { texto: String(texto || ''), agente: cab.estado?.agente || cab.agentePadrao || 'agy' })
+      }
+      /* CC-1060: sessão de outra máquina: a mensagem vai na fila dela, e o
+         painel de lá digita no terminal onde a sessão mora. */
+      const longe = maquinaDaConversa(conversa)
+      if (longe) {
+        const r = pedirMensagem({ paraMaquina: longe, conversa, texto, de: origemLocal()?.nome || null })
+        return r.ok ? { ...r, aviso: `mandei para ${longe}; chega em poucos segundos` } : r
       }
       const r = await mensagemDecisao({ conversa, texto })
       if (r && r.ok) marcarRespondidaHist(String(conversa || '').slice(0, 8))
@@ -5037,9 +5099,11 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
           if (enviando || agora - ultimoEnvioEm < 2000) return
           let abertos = 0
           try { abertos = lerPedidosDoGancho().filter((p) => !p.coderoom).length } catch { /* sem pasta */ }
-          if (!abertos) return
+          /* CC-1060: também enquanto ele olha o painel da outra máquina, que é
+             quando "imediato" importa. O envio é o leve: só sessões e permissões. */
+          if (!abertos && agora >= vendoDeLaAte) return
           enviando = true
-          empurrar().catch(() => {}).finally(() => { enviando = false })
+          empurrarLeve().catch(() => {}).finally(() => { enviando = false })
         }, 1000)
         curto.unref()
       }

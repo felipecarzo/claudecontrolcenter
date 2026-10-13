@@ -615,6 +615,104 @@ export function lancarComando(comando, cwd) {
   filho.unref()
 }
 
+/* ------------------------ terminal do painel (PC) --------------------
+   CC-1060: no PC, o terminal que o painel lê e onde ele digita é o WezTerm,
+   o papel que o tmux faz na VPS. Medido em 12/10: o servidor do WezTerm
+   (`wezterm-mux-server`) roda sem janela, e `wezterm cli` abre, digita e lê.
+   Três armadilhas do teste, todas tratadas aqui:
+   - `--daemonize` não se solta no Windows e prende quem chamou: o servidor
+     sobe destacado, sem janela;
+   - `spawn` sem `--new-window` falha quando nenhuma janela tem foco;
+   - sem servidor, toda chamada `cli` espera: todas têm teto de tempo.
+   O formato imita o do tmux em `decisao.mjs` (ler, apertar, escrever), com o
+   número do painel do WezTerm no lugar do nome da sessão do tmux. */
+
+const WEZTERM_PADRAO = 'C:\\Program Files\\WezTerm'
+
+/** O nome de uma sessão que mora num terminal do WezTerm: `wez:<número do painel>`. */
+export const PREFIXO_TERMINAL_PC = 'wez:'
+
+/** O executável do WezTerm, ou null. `CC_WEZTERM` aponta outra pasta. */
+export function wezterm(nome = 'wezterm.exe') {
+  if (!ehWindows) return null
+  const dir = process.env.CC_WEZTERM || WEZTERM_PADRAO
+  const exe = path.join(dir, nome)
+  return fs.existsSync(exe) ? exe : null
+}
+
+const wezCli = (args, ms = 8000) => {
+  const exe = wezterm()
+  if (!exe) return Promise.resolve({ ok: false, out: 'o WezTerm não está instalado' })
+  return quietAsync(exe, ['cli', '--prefer-mux', ...args], ms)
+}
+
+/** Teclas com nome, as mesmas que `decisao.mjs` manda ao tmux. */
+export const TECLAS_TERMINAL = { Enter: '\r', Escape: '\x1b', BTab: '\x1b[Z', Up: '\x1b[A', Down: '\x1b[B' }
+
+const servidorTerminalVivo = async () =>
+  /wezterm-mux-server\.exe/i.test((await quietAsync('tasklist', ['/FI', 'IMAGENAME eq wezterm-mux-server.exe', '/NH'], 5000)).out || '')
+
+/** Liga o servidor do WezTerm se ele estiver fora. Devolve se ele responde.
+ *  Medido em 12/10: `wezterm cli` sobe o servidor sozinho quando ele falta,
+ *  então "respondeu" não diz quem ligou. `subiu` sai do processo, conferido antes. */
+export async function garantirTerminal({ esperarMs = 6000 } = {}) {
+  if (!ehWindows) return { ok: false, erro: 'o terminal do painel pelo WezTerm só existe no Windows' }
+  const servidor = wezterm('wezterm-mux-server.exe')
+  if (!servidor) return { ok: false, erro: 'o WezTerm não está instalado' }
+  const jaVivo = await servidorTerminalVivo()
+  if ((await wezCli(['list'], 4000)).ok) return { ok: true, subiu: !jaVivo }
+  spawn(servidor, [], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
+  for (let gasto = 0; gasto < esperarMs; gasto += 300) {
+    await new Promise((r) => setTimeout(r, 300))
+    if ((await wezCli(['list'], 2000)).ok) return { ok: true, subiu: true }
+  }
+  return { ok: false, erro: 'subi o servidor do WezTerm, mas ele não respondeu' }
+}
+
+/** Os terminais do servidor: `{ painel, titulo, cwd }`. Lista vazia sem servidor. */
+export async function listarTerminais() {
+  const r = await wezCli(['list', '--format', 'json'], 3000)
+  if (!r.ok) return []
+  try {
+    return JSON.parse(r.out).map((p) => ({ painel: String(p.pane_id), titulo: p.title || '', cwd: p.cwd || '' }))
+  } catch { return [] }
+}
+
+/** Abre um terminal novo na pasta, rodando `comando` (lista de argumentos). Devolve o número do painel. */
+export async function abrirTerminalPainel({ cwd, comando }) {
+  const g = await garantirTerminal()
+  if (!g.ok) return g
+  const r = await wezCli(['spawn', '--new-window', '--cwd', cwd, '--', ...comando])
+  const painel = r.ok ? r.out.trim().split(/\s+/).pop() : ''
+  if (!/^\d+$/.test(painel)) return { ok: false, erro: `o WezTerm não abriu o terminal: ${r.out.slice(0, 200)}` }
+  return { ok: true, painel }
+}
+
+/** O que está na tela do terminal, com as últimas 60 linhas de rolagem. `cor` mantém os códigos de cor. */
+export async function lerTerminal(painel, { cor = false } = {}) {
+  const r = await wezCli(['get-text', '--pane-id', String(painel), '--start-line', '-60', ...(cor ? ['--escapes'] : [])])
+  return r.ok ? r.out : null
+}
+
+/** Escreve o texto como se fosse digitado, sem apertar Enter. */
+export const escreverTerminal = (painel, texto) =>
+  wezCli(['send-text', '--no-paste', '--pane-id', String(painel), String(texto)])
+
+/** Aperta uma tecla com nome (`Enter`, `Escape`, `BTab`) ou um caractere solto. */
+export function apertarTerminal(painel, tecla) {
+  const seq = Object.prototype.hasOwnProperty.call(TECLAS_TERMINAL, tecla) ? TECLAS_TERMINAL[tecla] : String(tecla)
+  if (!seq || seq.length > 4) return Promise.resolve({ ok: false, out: `tecla desconhecida: ${tecla}` })
+  return escreverTerminal(painel, seq)
+}
+
+export const fecharTerminal = (painel) => wezCli(['kill-pane', '--pane-id', String(painel)])
+
+/** Desliga o servidor do WezTerm. Só para teste: o painel deixa ele de pé. */
+export async function pararServidorTerminal() {
+  if (!ehWindows) return
+  await quietAsync('taskkill', ['/IM', 'wezterm-mux-server.exe', '/F'], 5000)
+}
+
 /* ----------------------------- autostart --------------------------- */
 // Cada sistema tem seu jeito de subir algo no login. A interface é a mesma:
 // instalar({node, script, porta}) / desinstalar() / caminhoAutostart()

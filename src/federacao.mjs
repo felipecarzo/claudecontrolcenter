@@ -119,6 +119,8 @@ export function validarPacote(bruto) {
          por causa do número faria a máquina sumir do painel sem explicação. O
          número serve para a tela AVISAR, nunca para fechar a porta. */
       contrato: Number.isFinite(bruto.contrato) ? Math.max(0, Math.trunc(bruto.contrato)) : 0,
+      /* CC-1060: pacote leve só traz sessões e permissões; o resto vem do último completo. */
+      leve: bruto.leve === true,
       jobs: lista(bruto.jobs, 500),
       /* CC-735: os pedidos de permissão abertos naquela máquina, para serem
          respondidos daqui. Recortados campo a campo: o id volta como ordem, e
@@ -423,9 +425,16 @@ export function gravarPacote(pacote) {
   try { anterior = JSON.parse(fs.readFileSync(alvo, 'utf8')) } catch { /* primeiro pacote desta máquina */ }
 
   const agora = Date.now()
-  const final = { ...pacote }
+  /* CC-1060: o pacote leve (de 2 em 2 segundos, enquanto ele olha) parte do
+     último completo e troca só o que ele traz. Herdar campo a campo não serve:
+     a validação transforma lista ausente em lista vazia, e vazia apagaria. As
+     idades ficam as do completo, porque nada além das sessões foi medido agora. */
+  const leve = Boolean(pacote.leve && anterior)
+  const final = leve
+    ? { ...anterior, maquina: pacote.maquina, contrato: pacote.contrato, jobs: pacote.jobs, permissoes: pacote.permissoes, origem: pacote.origem, em: pacote.em, leve: true }
+    : { ...pacote }
   const descartados = []
-  if (anterior) {
+  if (anterior && !leve) {
     const idades = { ...(anterior.idades || {}) }
     for (const campo of CAMPOS_QUE_PERSISTEM) {
       if (final[campo] == null && anterior[campo] != null) {
@@ -445,7 +454,7 @@ export function gravarPacote(pacote) {
       }
     }
     final.idades = idades
-  } else {
+  } else if (!leve) {
     final.idades = Object.fromEntries(
       CAMPOS_QUE_PERSISTEM.filter((c) => final[c] != null).map((c) => [c, final.em ?? agora]),
     )
@@ -858,6 +867,50 @@ export function pedirPermissao({ paraMaquina, idGancho, decisao, de = null, now 
   lista.push({ id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`, paraMaquina: alvo, acao: 'permissao', idGancho, decisao, de, em: now })
   gravarPedidos(lista)
   return { ok: true, enviado: true }
+}
+
+/**
+ * CC-1060: escrever numa sessão da outra máquina, pelo Cockpit.
+ *
+ * Pedido dele em 12/10: *"que eu possa responder por texto lá e tudo"*. Mesmo
+ * desenho da permissão: a ordem não tem projeto nem caminho, só o id da
+ * conversa e o texto (ou uma tecla de lista fechada). Quem executa entrega pelo
+ * mesmo `enviarMensagem` da VPS, que só digita em sessão que mora num terminal
+ * do painel, sem pergunta aberta e com a tela no campo de digitar. Conversa que
+ * não existe lá não faz nada.
+ */
+export const ID_CONVERSA = /^[0-9a-f-]{8,40}$/i
+export const TECLAS_REMOTAS = ['parar', 'modo']
+export const TETO_MENSAGEM = 4000
+
+export function pedirMensagem({ paraMaquina, conversa, texto = null, tecla = null, de = null, now = Date.now() }) {
+  const alvo = seguro(paraMaquina)
+  if (!alvo) return { ok: false, erro: 'sem máquina de destino' }
+  if (!ID_CONVERSA.test(String(conversa || ''))) return { ok: false, erro: 'conversa inválida' }
+  if (tecla != null && !TECLAS_REMOTAS.includes(tecla)) return { ok: false, erro: 'tecla inválida' }
+  const textoLimpo = tecla != null ? null : String(texto || '').trim().slice(0, TETO_MENSAGEM)
+  if (tecla == null && !textoLimpo) return { ok: false, erro: 'mensagem sem texto' }
+  const lista = lerPedidosBrutos().filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
+  lista.push({
+    id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    paraMaquina: alvo, acao: 'mensagem', conversa: String(conversa), texto: textoLimpo, tecla, de, em: now,
+  })
+  gravarPedidos(lista)
+  return { ok: true, enviado: true, paraMaquina: alvo }
+}
+
+/** De qual máquina é esta conversa, olhando os pacotes recebidos. `null` se for daqui ou ninguém souber. */
+export function maquinaDaConversa(conversa, pacotes = lerPacotes()) {
+  const alvo = String(conversa || '')
+  if (alvo.length < 8) return null
+  for (const p of pacotes || []) {
+    /* O pacote leva o id curto (8 letras) e às vezes nem o `sessionId`: casa pelo começo, nos dois sentidos. */
+    const casa = (id) => { const s = String(id || ''); return s.length >= 8 && (s.startsWith(alvo) || alvo.startsWith(s)) }
+    if ((p.jobs || []).some((j) => j && (casa(j.sessionId) || casa(j.id)))) {
+      return p.maquina?.nome || null
+    }
+  }
+  return null
 }
 
 /** Só para a tela e para o teste: o que está na fila, sem consumir. */
@@ -1329,6 +1382,10 @@ export function montarPacote({
     aberta: j.aberta,
     permissao: Boolean(j.permissao),
     porPrograma: Boolean(j.porPrograma),
+    /* CC-1060: a sessão mora num terminal do painel e aceita texto vindo do
+       Cockpit da outra máquina. Sem isto, a tela de lá ofereceria o campo para
+       toda sessão do PC, e a maioria recusaria em silêncio. */
+    terminal: Boolean(j.terminal),
   }))
   return {
     /* CC-440: primeiro campo do pacote, de propósito. Quem for depurar isto
@@ -1372,7 +1429,7 @@ export function montarPacote({
  * Empurra o pacote para o servidor. Nunca lança: se a rede cair, o painel local
  * segue inteiro e a próxima tentativa resolve.
  */
-export async function enviar({ enviarPara, token, pacote }) {
+export async function enviar({ enviarPara, token, pacote, semRetrato = false }) {
   if (!enviarPara || !token) return { ok: false, erro: 'federação não configurada' }
   const corpo = JSON.stringify(pacote)
   if (corpo.length > LIMITE_PACOTE) return { ok: false, erro: 'pacote grande demais' }
@@ -1384,7 +1441,9 @@ export async function enviar({ enviarPara, token, pacote }) {
          ignora o cabeçalho e responde como sempre; servidor novo falando com
          cliente antigo (sem o cabeçalho) também responde como sempre. É o que
          faz as duas pontas poderem subir em dias diferentes sem combinar nada. */
-      headers: { 'content-type': 'application/json', 'x-cc-token': token, 'x-cc-quer-retrato': '1' },
+      /* CC-1060: o envio leve, de 2 em 2 segundos, não pede o retrato de volta:
+         ele é o pacote inteiro da outra máquina, e já volta no envio completo. */
+      headers: { 'content-type': 'application/json', 'x-cc-token': token, ...(semRetrato ? {} : { 'x-cc-quer-retrato': '1' }) },
       body: corpo,
       signal: AbortSignal.timeout(10_000),
     })

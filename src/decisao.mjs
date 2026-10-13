@@ -26,6 +26,7 @@ import fs from 'node:fs'
 import { execFile } from 'node:child_process'
 import path from 'node:path'
 import { transcritoDe, DIR_SESSOES_ABRIGO, PROJETOS_DIR } from './metaSessao.mjs'
+import { lerTerminal, escreverTerminal, apertarTerminal, PREFIXO_TERMINAL_PC } from './platform.mjs'
 
 /* CC-694: "não está num terminal aberto pelo painel" valia para dois casos
    diferentes, e o cartão não dizia qual. Sessão FECHADA (não está no registro
@@ -258,6 +259,11 @@ const tmux = (args, ms = 5000) => new Promise((resolve) => {
     resolve(erro ? { ok: false, out: String(err || erro.message || '').trim() } : { ok: true, out: saida }))
 })
 
+/* CC-1060: no PC a sessão mora num terminal do WezTerm, e o nome dela é
+   `wez:<número do painel>`. Qualquer outro nome é sessão do tmux, como na VPS. */
+export const PREFIXO_WEZ = PREFIXO_TERMINAL_PC
+export const painelWez = (sessao) => (String(sessao || '').startsWith(PREFIXO_WEZ) ? String(sessao).slice(PREFIXO_WEZ.length) : null)
+
 const DEPS = {
   sessoes: estadoDasSessoes,
   lerTranscrito: (conversa) => {
@@ -266,11 +272,13 @@ const DEPS = {
     try { return fs.readFileSync(arq, 'utf8') } catch { return null }
   },
   capturar: async (sessao, { cor = false } = {}) => {
+    const wez = painelWez(sessao)
+    if (wez) return lerTerminal(wez, { cor })
     const r = await tmux(['capture-pane', '-t', sessao, '-p', ...(cor ? ['-e'] : []), '-S', '-60'])
     return r.ok ? r.out : null
   },
-  apertar: (sessao, tecla) => tmux(['send-keys', '-t', sessao, tecla]),
-  escrever: (sessao, texto) => tmux(['send-keys', '-t', sessao, '-l', texto]),
+  apertar: (sessao, tecla) => (painelWez(sessao) ? apertarTerminal(painelWez(sessao), tecla) : tmux(['send-keys', '-t', sessao, tecla])),
+  escrever: (sessao, texto) => (painelWez(sessao) ? escreverTerminal(painelWez(sessao), texto) : tmux(['send-keys', '-t', sessao, '-l', texto])),
   esperar: (ms) => new Promise((r) => setTimeout(r, ms)),
 }
 

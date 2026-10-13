@@ -676,10 +676,14 @@ export function montar({
       /* CC-982, print dele em 07/10: sessão recém-aberta ("sem fala do agente ainda") vinha sem conversa, e sem conversa a
          tela esconde o campo de escrever, a voz e o "/" das skills. Viva, ela já tem o arquivo: a conversa é o nome dele. */
       fala: falaSessao?.texto || null,
-      conversa: falaSessao?.conversa || (!j.stale && !semContato && transcritoDe(j) ? path.basename(transcritoDe(j), '.jsonl') : null),
+      conversa: falaSessao?.conversa || (!j.stale && !semContato && transcritoDe(j) ? path.basename(transcritoDe(j), '.jsonl') : null)
+        || (deFora(j) && j.terminal && !j.stale && !semContato ? (j.sessionId || j.id) : null),
       resumo: falaSessao?.resumo || null, marca: falaSessao?.em || null,
       porPrograma: Boolean(j.porPrograma),
       appUrl: appUrlDe(j),
+      /* CC-1060: dá para escrever nela daqui? Sessão de outra máquina só aceita
+         texto se mora num terminal do painel de lá. As daqui seguem como sempre. */
+      escreve: deFora(j) ? Boolean(j.terminal) : true,
     })
     if ((j.status === 'working' || j.status === 'waiting') && j.frente && !p.frenteEmCurso) p.frenteEmCurso = j.frente
     if (!j.stale && !semContato && j.aberta !== false && (j.status === 'waiting' || j.status === 'idle' || j.status === 'working')) {
@@ -725,7 +729,9 @@ export function montar({
         aviso.marca = fala?.em || null
         /* Para onde mandar mensagem livre. Só existe para sessão DAQUI: a
            conversa de outra máquina não tem terminal que o painel alcance. */
-        aviso.conversa = fala?.conversa || null
+        /* CC-1060: a de outra máquina num terminal do painel de lá também recebe. */
+        aviso.conversa = fala?.conversa || (deFora(j) && j.terminal ? (j.sessionId || j.id) : null)
+        aviso.escreve = deFora(j) ? Boolean(j.terminal) : true
         aviso.esperaTerminal = Boolean(j.permissao) // CC-638: o registro diz que o terminal espera
         aviso.appUrl = appUrlDe(j) // CC-740
         /* 26/09, tela Decisões item 4: o que sai da lista também vai, marcado,

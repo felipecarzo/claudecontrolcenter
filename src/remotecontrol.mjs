@@ -30,7 +30,10 @@
 import { spawn, execFile } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { ehWindows, casaClaude } from './platform.mjs'
+import {
+  ehWindows, casaClaude, wezterm, abrirTerminalPainel, lerTerminal, apertarTerminal, escreverTerminal,
+  listarTerminais, fecharTerminal, PREFIXO_TERMINAL_PC,
+} from './platform.mjs'
 import { PROJETOS_DIR, DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
 import { cabecaDe } from './sessoes.mjs'
 
@@ -331,11 +334,35 @@ function casarConversas(sessoes) {
   return mapa
 }
 
+/* CC-1060: as sessões do PC que moram num terminal do WezTerm. A fonte é o
+   vínculo gravado no `ligar` (o número do terminal), conferido contra a lista
+   viva do servidor, e por isso sobrevive ao painel reiniciar, o que o mapa em
+   memória de `ativosWindows` não faz. Só pergunta ao WezTerm quando há vínculo
+   aberto: a pergunta liga o servidor dele, e não precisa estar ligado à toa. */
+async function estadoWez() {
+  if (!wezterm()) return {}
+  const abertos = Object.entries(lerVinculos()).filter(([, v]) => v && v.painel && !v.encerradaEm)
+  if (!abertos.length) return {}
+  const vivos = new Set((await listarTerminais()).map((t) => t.painel))
+  const sessoes = abertos.filter(([, v]) => vivos.has(String(v.painel)))
+    .map(([rotulo, v]) => ({ nome: rotulo, criado: v.desde || 0, cwd: v.cwd || null, painel: String(v.painel), conversa: v.conversa || null }))
+  const casadas = casarConversas(sessoes)
+  const out = {}
+  for (const s of sessoes) {
+    const c = casadas.get(s.nome) || null
+    out[s.nome] = {
+      sessao: PREFIXO_TERMINAL_PC + s.painel, desde: s.criado || null, cwd: s.cwd,
+      ativa: c ? c.quando : null, conversa: (c && c.id) || s.conversa, nomeSessao: null,
+    }
+  }
+  return out
+}
+
 export async function estado() {
   if (ehWindows) {
     const out = {}
     for (const [projeto, info] of ativosWindows) out[projeto] = info
-    return out
+    return { ...out, ...(await estadoWez()) }
   }
   /* `pane_current_path` entra junto porque sem a pasta não dá pra saber quando
      a conversa falou pela última vez — e foi confundir CRIAÇÃO com ATIVIDADE
@@ -451,6 +478,14 @@ export async function ligar(projeto, cwd, {
   const rotulo = mais ? await proximoRotulo(projeto, ativos) : projeto
   if (!rotulo) return { ok: false, erro: `já há 20 sessões abertas em ${projeto}` }
 
+  if (ehWindows && wezterm()) {
+    const argsClaude = [binarioClaude(binario)]
+    if (remoto) argsClaude.push('--remote-control', rotulo)
+    if (retomar) argsClaude.push('--resume', retomar)
+    argsClaude.push(...bypass)
+    return ligarWez({ rotulo, cwd, argsClaude, esperarMs, pedido, retomar, remoto })
+  }
+
   if (ehWindows) {
     try {
       // Sem stdio redirecionado + detached: o Windows abre console novo de
@@ -560,6 +595,60 @@ export async function ligar(projeto, cwd, {
 }
 
 /**
+ * CC-1060: o `ligar` do PC, num terminal do WezTerm. Os mesmos passos do tmux
+ * da VPS, com as mesmas travas: a pergunta de confiança só se confirma com o
+ * cursor na linha do "Yes", sessão que morre na abertura devolve a última tela,
+ * e o vínculo grava o número do terminal, que é o que o `estado()` lê depois.
+ */
+async function ligarWez({ rotulo, cwd, argsClaude, esperarMs, pedido, retomar, remoto }) {
+  const nascimento = Date.now()
+  const a = await abrirTerminalPainel({ cwd, comando: argsClaude })
+  if (!a.ok) return a
+  const sessao = PREFIXO_TERMINAL_PC + a.painel
+  const vivo = async () => (await listarTerminais()).some((t) => t.painel === a.painel)
+
+  await espera(esperarMs)
+  let confianca = false
+  const primeira = (await lerTerminal(a.painel)) || ''
+  if (PERGUNTAS_DE_ABERTURA.some((re) => re.test(primeira))) {
+    let tela = primeira
+    for (let i = 0; i < 4 && passoDaConfianca(tela) === 'descer'; i += 1) {
+      await apertarTerminal(a.painel, 'Down')
+      await espera(400)
+      tela = (await lerTerminal(a.painel)) || ''
+    }
+    if (passoDaConfianca(tela) !== 'confirmar') {
+      await fecharTerminal(a.painel)
+      return { ok: false, erro: 'a sessão parou na pergunta de confiança da pasta e não achei a opção "Yes" na tela; nada foi confirmado. Última tela: ' + ultimasLinhas(tela) }
+    }
+    await apertarTerminal(a.painel, 'Enter')
+    confianca = true
+    await espera(2500)
+  }
+  if (!(await vivo())) return { ok: false, erro: 'a sessão fechou logo ao abrir. Última tela: ' + ultimasLinhas(primeira) }
+
+  if (pedido) {
+    await espera(1500)
+    await escreverTerminal(a.painel, String(pedido).slice(0, 4000))
+    await espera(300)
+    await apertarTerminal(a.painel, 'Enter')
+  }
+  const agora = await lerTerminal(a.painel)
+  const tela = agora ? agora.split('\n').filter((l) => l.trim()).slice(-12).join('\n') : null
+  const achada = retomar ? { id: retomar } : conversaDe(cwd, { depoisDe: nascimento - 2000 })
+  anotarVinculo(rotulo, {
+    conversa: achada ? achada.id : null, cwd, certeza: achada ? 'medida' : null,
+    desde: nascimento, encerradaEm: null, painel: a.painel,
+  })
+  const deslogada = motivoDaTela(tela) === 'deslogada'
+  return {
+    ok: true, ja: false, sessao, rotulo, desde: nascimento, cwd, confianca, tela,
+    remoto, conversa: achada ? achada.id : null,
+    deslogada, aviso: deslogada ? ERRO_DESLOGADA : null,
+  }
+}
+
+/**
  * Mata a sessão, **depois** de anotar o caminho de volta.
  *
  * A ordem não é detalhe: assim que o tmux morre não existe mais como
@@ -568,6 +657,13 @@ export async function ligar(projeto, cwd, {
  */
 export async function desligar(projeto) {
   if (!ehWindows) await anotarCaminhoDeVolta(projeto)
+  const doTerminal = ehWindows ? lerVinculos()[projeto] : null
+  if (doTerminal && doTerminal.painel && !doTerminal.encerradaEm) {
+    await anotarCaminhoDeVolta(projeto)
+    await fecharTerminal(doTerminal.painel)
+    anotarVinculo(projeto, { encerradaEm: Date.now() })
+    return { ok: true, ja: true, volta: lerVinculos()[projeto] || null }
+  }
   if (ehWindows) {
     const info = ativosWindows.get(projeto)
     if (!info) return { ok: true, ja: false }
