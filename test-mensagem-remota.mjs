@@ -88,5 +88,9 @@ try {
   const parar = web.slice(web.indexOf("'/api/decisao/parar'"), web.indexOf("'/api/decisao/parar'") + 900)
   assert.ok(/maquinaDaConversa\(conversa\)[\s\S]*pedirMensagem\(\{ paraMaquina: longe, conversa, tecla: 'parar'/.test(parar), 'M6: o parar do cartão encaminha para a fila da outra máquina')
   ok++; console.log('  ok  M6: parar do cartão vai na fila da outra máquina')
+  // 18/10: o retrato não marcava, e o último pacote a chegar apagava a marca. Toda montagem tem de marcar.
+  const montagens = web.split('montarPacote({').slice(1).map((t) => t.slice(0, t.indexOf('})')))
+  assert.ok(montagens.length >= 3 && montagens.every((t) => t.includes('marcarNoTerminal(')), 'todo pacote (leve, completo e retrato) marca quem mora num terminal do painel')
+  ok++; console.log('  ok  os ' + montagens.length + ' pacotes marcam quem mora num terminal do painel')
 }
 console.log(`test-mensagem-remota: ${ok} verificações, 0 falhas`)

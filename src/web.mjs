@@ -629,8 +629,11 @@ async function retratoDestaMaquina() {
   let servico = null
   try { servico = { ...(await estadoServicoAsync()), raiz: path.resolve(RAIZ_DO_PAINEL) } } catch { /* SO sem este caminho */ }
 
+  /* CC-1060: o retrato também marca quem mora num terminal do painel. Medido em 18/10: o leve e o completo marcavam e
+     este não; quando ele chegava por último na VPS, a sessão de teste do PC perdia a marca (terminal: undefined) e,
+     com ela, o campo de mensagem do cartão e o caminho da mensagem. */
   const pacote = montarPacote({
-    maquina: s.maquina, jobs: await comUltimaFala(meus), uso: s.uso, servidores,
+    maquina: s.maquina, jobs: await marcarNoTerminal(await comUltimaFala(meus)), uso: s.uso, servidores,
     travas: retrato.travas, framework: retrato.framework, servico,
   })
   retratoCache = { em: Date.now(), pacote }
