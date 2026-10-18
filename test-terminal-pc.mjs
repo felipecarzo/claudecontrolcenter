@@ -117,6 +117,20 @@ try {
     const e = await R.estado()
     assert.equal(e['proj-teste']?.sessao, r.sessao, `o estado não achou a sessão: ${JSON.stringify(e)}`)
     passou('o estado acha a sessão pelo vínculo gravado')
+
+    /* A conversa do terminal vem do registro de sessões abertas do Claude, e não
+       do palpite por pasta (que apontava a conversa de ontem, medido em 18/10).
+       Registro de mentira, na casa temporária: um processo vivo (este mesmo) e
+       uma sessão velha de antes do `ligar`, que não pode ser escolhida. */
+    const reg = path.join(casa, 'sessions'); fs.mkdirSync(reg, { recursive: true })
+    const desde = e['proj-teste'].desde
+    const sessaoReg = (pid, id, em) => fs.writeFileSync(path.join(reg, `${pid}.json`), JSON.stringify({ pid, sessionId: id, cwd: pasta, startedAt: em }))
+    sessaoReg(process.pid, 'conversa-velha-0000', desde - 3_600_000)
+    sessaoReg(4194301, 'conversa-morta-0000', desde + 100) // pid que não existe: ignorada
+    sessaoReg(process.ppid, 'conversa-nova-1111', desde + 1000)
+    assert.equal((await R.estado())['proj-teste'].conversa, 'conversa-nova-1111')
+    passou('a conversa do terminal vem do registro: a viva e posterior ao ligar, nunca a velha')
+    fs.rmSync(reg, { recursive: true, force: true })
     const d = await R.desligar('proj-teste')
     assert.equal(d.ok, true)
     await esperar(500)

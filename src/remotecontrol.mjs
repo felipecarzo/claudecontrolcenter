@@ -347,15 +347,49 @@ async function estadoWez() {
   const sessoes = abertos.filter(([, v]) => vivos.has(String(v.painel)))
     .map(([rotulo, v]) => ({ nome: rotulo, criado: v.desde || 0, cwd: v.cwd || null, painel: String(v.painel), conversa: v.conversa || null }))
   const casadas = casarConversas(sessoes)
+  const doRegistro = conversasVivasDoRegistro(sessoes)
   const out = {}
   for (const s of sessoes) {
     const c = casadas.get(s.nome) || null
+    /* O registro de sessões abertas do Claude Code vence o palpite por pasta.
+       Medido em 18/10: sem arquivo de conversa novo ainda, o palpite apontava a
+       conversa de ontem, e a mensagem da outra máquina ia para a conversa errada. */
+    const reg = doRegistro.get(s.nome) || null
     out[s.nome] = {
       sessao: PREFIXO_TERMINAL_PC + s.painel, desde: s.criado || null, cwd: s.cwd,
-      ativa: c ? c.quando : null, conversa: (c && c.id) || s.conversa, nomeSessao: null,
+      ativa: c && (!reg || c.id === reg) ? c.quando : null, conversa: reg || (c && c.id) || s.conversa, nomeSessao: null,
     }
   }
   return out
+}
+
+/* CC-1060: casa cada terminal do PC com a sua conversa pelo registro do Claude
+   (`~/.claude/sessions/<pid>.json`: pasta, hora de início, processo vivo). É a
+   sessão da MESMA pasta que começou depois do `ligar` e ainda não foi dada a
+   outro terminal; com duas na mesma pasta, vale a mais antiga para o terminal
+   mais antigo. */
+function conversasVivasDoRegistro(sessoes) {
+  const mapa = new Map()
+  const dir = path.join(casaClaude(), 'sessions')
+  let nomes = []
+  try { nomes = fs.readdirSync(dir).filter((f) => f.endsWith('.json')) } catch { return mapa }
+  const norm = (p) => String(p || '').replace(/[\\/]+$/, '').replace(/\//g, '\\').toLowerCase()
+  const vivas = []
+  for (const f of nomes) {
+    try {
+      const o = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
+      if (!o.sessionId || !o.pid || !o.startedAt) continue
+      process.kill(o.pid, 0)
+      vivas.push({ id: o.sessionId, cwd: norm(o.cwd), em: Number(o.startedAt) })
+    } catch { /* registro velho ou ilegível */ }
+  }
+  vivas.sort((a, b) => a.em - b.em)
+  const usadas = new Set()
+  for (const s of [...sessoes].sort((a, b) => (a.criado || 0) - (b.criado || 0))) {
+    const achada = vivas.find((v) => !usadas.has(v.id) && v.cwd === norm(s.cwd) && v.em >= (s.criado || 0) - 5000)
+    if (achada) { usadas.add(achada.id); mapa.set(s.nome, achada.id) }
+  }
+  return mapa
 }
 
 export async function estado() {
