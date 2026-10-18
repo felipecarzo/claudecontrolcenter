@@ -1962,7 +1962,7 @@ function handler(req, res) {
       const resposta = {
         recebido: pacote.maquina,
         jobs: pacote.jobs.length,
-        pedidos: pegarPedidos(pacote.maquina.nome),
+        pedidos: pegarPedidos(pacote.maquina.nome, Date.now(), { contrato: pacote.contrato }),
         /* CC-440, Plano de Unificação: as regras DECLARADAS para esta máquina
            vão na mesma carona dos pedidos. A diferença entre as duas coisas é a
            natureza: pedido acontece uma vez, regra vale sempre e é reafirmada a

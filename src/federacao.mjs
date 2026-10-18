@@ -425,6 +425,14 @@ export function gravarPacote(pacote) {
   try { anterior = JSON.parse(fs.readFileSync(alvo, 'utf8')) } catch { /* primeiro pacote desta máquina */ }
 
   const agora = Date.now()
+  /* CC-1060, medido em 18/10: dois painéis da mesma máquina (o novo e um antigo de contrato 0 que voltou no boot) se
+     alternavam, e o pacote velho apagava os campos novos (a marca de terminal caía e voltava a cada poucos segundos).
+     Pacote de contrato MENOR que o guardado, chegando enquanto o guardado ainda é recente (2 min, pela hora DESTA
+     máquina, que o relógio do PC anda adiantado), não sobrescreve. Painel velho sozinho continua valendo depois. */
+  try {
+    const guardadoHa = agora - fs.statSync(alvo).mtimeMs
+    if (anterior && Number(anterior.contrato || 0) > Number(pacote.contrato || 0) && guardadoHa < 120_000) return
+  } catch { /* sem arquivo ainda: grava */ }
   /* CC-1060: o pacote leve (de 2 em 2 segundos, enquanto ele olha) parte do
      último completo e troca só o que ele traz. Herdar campo a campo não serve:
      a validação transforma lista ausente em lista vazia, e vazia apagaria. As
@@ -832,11 +840,16 @@ export function pedirSessao({
  * perdido custa um clique, pedido repetido custa uma sessão fantasma por
  * ciclo.
  */
-export function pegarPedidos(maquina, now = Date.now()) {
+/* CC-1060, medido em 18/10: um painel antigo do PC (contrato 0, ligado como administrador no boot) pegava a fila e
+   descartava a ação `mensagem`, que não conhece; a mensagem digitada na VPS nunca chegava. Quem manda contrato < 1 não
+   recebe mensagem nem tecla: elas ficam na fila para o painel novo da mesma máquina. */
+const ACOES_DO_CONTRATO_1 = new Set(['mensagem'])
+export function pegarPedidos(maquina, now = Date.now(), { contrato = CONTRATO } = {}) {
   const alvo = seguro(maquina)
   if (!alvo) return []
   const todos = lerPedidosBrutos()
-  const meus = todos.filter((p) => p.paraMaquina === alvo && now - (p.em || 0) < VALIDADE_PEDIDO_MS)
+  const entende = (p) => Number(contrato) >= 1 || !ACOES_DO_CONTRATO_1.has(p.acao)
+  const meus = todos.filter((p) => p.paraMaquina === alvo && now - (p.em || 0) < VALIDADE_PEDIDO_MS && entende(p))
   if (!meus.length) {
     /* Aproveita para varrer o que venceu, mas só grava se algo mudou: escrita
        a cada 30 segundos por máquina, sem motivo, é disco à toa. */

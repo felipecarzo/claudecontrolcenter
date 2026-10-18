@@ -65,6 +65,20 @@ try {
     assert.deepEqual(depois.uso, antes.uso)
     assert.deepEqual(depois.idades, antes.idades)
   })
+  t('18/10: painel antigo (contrato 0) não consome a mensagem; ela fica para o painel novo', () => {
+    F.pedirMensagem({ paraMaquina: 'PCVELHO', conversa: CONV, texto: 'para o novo' })
+    assert.equal(F.pegarPedidos('PCVELHO', Date.now(), { contrato: 0 }).filter((x) => x.acao === 'mensagem').length, 0, 'o velho não leva')
+    assert.equal(F.pegarPedidos('PCVELHO', Date.now(), { contrato: 1 }).filter((x) => x.acao === 'mensagem').length, 1, 'o novo leva')
+  })
+  t('18/10: pacote de contrato menor não apaga o de contrato maior guardado agora há pouco', () => {
+    const novo = F.validarPacote({ ...F.montarPacote({ maquina: { id: 'pcdois', nome: 'PCD' }, jobs: [{ id: 'sess0001', terminal: true }] }) }).pacote
+    F.gravarPacote(novo)
+    const velho = F.validarPacote({ ...F.montarPacote({ maquina: { id: 'pcdois', nome: 'PCD' }, jobs: [{ id: 'sess0001' }] }), contrato: 0 }).pacote
+    assert.equal(velho.contrato, 0)
+    F.gravarPacote(velho)
+    const g = JSON.parse(fs.readFileSync(path.join(F.dirFederacao(), 'pcdois.json'), 'utf8'))
+    assert.equal(g.jobs[0].terminal, true, 'a marca do novo continua')
+  })
   t('pacote leve sem completo antes não inventa nada', () => {
     const leve = F.validarPacote({ ...F.montarPacote({ maquina: { id: 'pcteste2', nome: 'PC2' }, jobs: [{ id: 'so000001' }] }), leve: true }).pacote
     F.gravarPacote(leve)
