@@ -20643,7 +20643,8 @@
       const daqui = c2Daqui(e); // CC-728: conversa do Coderoom roda neste painel, é daqui
       const semTexto = e.rotulo === 'travado' || e.rotulo === 'permissão'; // texto digitado cairia no pedido de permissão
       const permEst = e.permissaoId && C2.perm ? C2.perm[e.permissaoId] : null;
-      const msgForm = !pend && !e.responder && e.conversa && daqui && !semTexto
+      // CC-1060 M6: sessão do PC aberta no terminal do painel de lá também recebe mensagem daqui (e.escreve vem do servidor)
+      const msgForm = !pend && !e.responder && e.conversa && (daqui || e.escreve) && !semTexto
         // CC-728: na conversa do Coderoom, escolher quem responde antes de escrever
         ? (String(e.conversa).startsWith('gate:') ? c2GateQuem(e) : '') + c2MsgForm(e) : '';
       const form = c2DecForm(e) || c2ArqForm(e) || msgForm;
@@ -24292,10 +24293,10 @@
         + c2Obra(s.obra, s.id)
         + c2BlocoResumo(s.fala, s.resumo, s.conversa, daqui, s.resumoIA?.texto)
         + (daqui && coderoom ? c2GateQuem(s) : '')
-        + (daqui && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela, abra a sessão no ' + esc(s.dispositivo || 'outro computador') + '.') + '</div>' : ''))
+        + ((daqui || s.escreve) && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela, abra a sessão no ' + esc(s.dispositivo || 'outro computador') + '.') + '</div>' : ''))
         + '<div class="c2-meta"><span class="c2-meta-t">' + ic('relogio', 13) + 'há ' + c2ms(s.desdeMs) + '</span>' + (s.estado === 'trabalhando' ? '<span class="c2-meta-ass">' + (s.ferramenta ? esc(s.ferramenta) : 'pensando') + '</span>' : '')
         + c2AcoesBotao(s.id)
-        + '<span class="c2-acoes">' + (daqui ? c2FwChip(s.projeto) : '') + c2TesteVoo(s.projeto) + (s.estado === 'trabalhando' && daqui && s.conversa ? '<button class="c2-link" style="color:var(--red)" data-sessao-parar="' + esc(s.conversa) + '" data-sessao-nome="' + esc(s.nome) + '">parar</button>' : '')
+        + '<span class="c2-acoes">' + (daqui ? c2FwChip(s.projeto) : '') + c2TesteVoo(s.projeto) + (s.estado === 'trabalhando' && (daqui || s.escreve) && s.conversa ? '<button class="c2-link" style="color:var(--red)" data-sessao-parar="' + esc(s.conversa) + '" data-sessao-nome="' + esc(s.nome) + '">parar</button>' : '')
         /* CC-727: renomear a conversa do Coderoom daqui mesmo. */
         + (daqui && coderoom ? '<button class="c2-link" data-gate-renomear="' + esc(s.conversa.slice(5)) + '" data-gate-titulo="' + esc(s.sessaoNome || '') + '">renomear</button>' : '')
         + (s.estado !== 'trabalhando' && daqui && !coderoom ? c2AcoesRapidas(s.conversa, s.nome, s.cfgAtual) : '')

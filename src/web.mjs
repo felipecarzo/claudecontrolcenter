@@ -3475,6 +3475,9 @@ function handler(req, res) {
       /* O botão "parar" do cartão é o mesmo nas duas famílias, e o prefixo é o
          que diz para quem ele manda o Esc. */
       if (String(conversa || '').startsWith(GATE_CONV)) return pararGate(conversa.slice(GATE_CONV.length))
+      // CC-1060 M6: sessão de outra máquina (o PC): o Esc vai na fila dela, como a tecla do painel "a conversa"
+      const longe = maquinaDaConversa(conversa)
+      if (longe) return pedirMensagem({ paraMaquina: longe, conversa, tecla: 'parar', de: origemLocal()?.nome || null })
       return pararSessao({ conversa })
     })
   }

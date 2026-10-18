@@ -79,4 +79,14 @@ try {
 } finally {
   fs.rmSync(casa, { recursive: true, force: true })
 }
+// CC-1060 M6: a tela usa a marca do servidor, e o parar do cartão também vai para a fila da outra máquina
+{
+  const ui = fs.readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+  const web = fs.readFileSync(new URL('./src/web.mjs', import.meta.url), 'utf8')
+  assert.ok(ui.includes('(daqui || e.escreve)') && ui.includes('((daqui || s.escreve) && s.conversa ? c2MsgForm') && ui.includes("(s.estado === 'trabalhando' && (daqui || s.escreve) && s.conversa"), 'M6: campo e parar aparecem para a sessão do PC que aceita texto')
+  ok++; console.log('  ok  M6: campo de mensagem e parar no cartão da sessão do PC')
+  const parar = web.slice(web.indexOf("'/api/decisao/parar'"), web.indexOf("'/api/decisao/parar'") + 900)
+  assert.ok(/maquinaDaConversa\(conversa\)[\s\S]*pedirMensagem\(\{ paraMaquina: longe, conversa, tecla: 'parar'/.test(parar), 'M6: o parar do cartão encaminha para a fila da outra máquina')
+  ok++; console.log('  ok  M6: parar do cartão vai na fila da outra máquina')
+}
 console.log(`test-mensagem-remota: ${ok} verificações, 0 falhas`)
