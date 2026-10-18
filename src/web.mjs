@@ -41,7 +41,7 @@ import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
   mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos, resumirBacklogs,
   pedirPermissao, ID_GANCHO, DECISOES_REMOTAS,
-  pedirMensagem, maquinaDaConversa, ID_CONVERSA, TECLAS_REMOTAS, cicloCurto,
+  pedirMensagem, maquinaDaConversa, ID_CONVERSA, TECLAS_REMOTAS, cicloCurto, conversaDeOutraMaquina,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
 /* O gate. Importado no TOPO, e não por `import()` dentro do handler: o handler
@@ -658,7 +658,15 @@ let haSessaoNoTerminal = false
 async function marcarNoTerminal(jobs) {
   const noTerminal = Object.values(await estadoRemoto().catch(() => ({}))).filter((x) => x?.sessao && x.conversa).map((x) => x.conversa)
   haSessaoNoTerminal = noTerminal.length > 0
-  return jobs.map((j) => ({ ...j, terminal: noTerminal.some((c) => c === j.sessionId || (String(j.id || '').length >= 8 && c.startsWith(j.id))) }))
+  let C2 = null
+  try { C2 = await import('./cockpit2.mjs') } catch { /* sem o módulo: o pacote vai sem a conversa */ }
+  return jobs.map((j) => {
+    const conv = noTerminal.find((c) => c === j.sessionId || (String(j.id || '').length >= 8 && c.startsWith(j.id)))
+    /* CC-1060: a sessão que mora no terminal leva o rabo da conversa, para a outra máquina mostrar o chat. */
+    let conversaApp = null
+    if (conv && C2) { try { conversaApp = C2.conversaParaPacote(conv) } catch { conversaApp = null } }
+    return { ...j, terminal: Boolean(conv), conversaApp }
+  })
 }
 
 /**
@@ -3233,6 +3241,11 @@ function handler(req, res) {
     }
     return import('./cockpit2.mjs').then((m) => {
       const r = m.conversaRecente(ped, { app: url.searchParams.get('app') === '1' })
+      if (!r) {
+        /* CC-1060: sessão de outra máquina que mora num terminal do painel de lá: o pacote dela traz o rabo da conversa. */
+        const o = conversaDeOutraMaquina(ped)
+        if (o) return send(res, 200, { falas: [], itens: o.itens, modelo: o.modelo, deOutraMaquina: o.maquina })
+      }
       send(res, r ? 200 : 404, r || { erro: 'conversa não encontrada nesta máquina' })
     }).catch((e) => send(res, 500, { erro: String(e.message || e) }))
   }

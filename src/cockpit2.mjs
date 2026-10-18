@@ -350,6 +350,21 @@ export function conversaRecente(conversa, { app = false } = {}) {
 const cacheConversa = new Map()
 const cacheConversaApp = new Map()
 
+/**
+ * CC-1060: o rabo da conversa de uma sessão que mora num terminal do painel, para ir no pacote até
+ * a outra máquina, que não tem o arquivo da conversa. Pedido dele em 18/10: *"na vps nao apareceu o
+ * chat"*. Enxuto de propósito, porque o pacote leve vai de 3 em 3 s: as últimas 30 mensagens, cada
+ * uma cortada, e um teto no total (o corte tira as mais antigas). `null` se a conversa não existe aqui.
+ */
+export const TETO_CONVERSA_PACOTE = 40_000
+export function conversaParaPacote(conversa) {
+  const r = conversaRecente(conversa, { app: true })
+  if (!r || !Array.isArray(r.itens)) return null
+  let itens = r.itens.slice(-30).map((i) => ({ ...i, texto: String(i.texto || '').slice(0, 1500) }))
+  while (itens.length > 1 && JSON.stringify(itens).length > TETO_CONVERSA_PACOTE) itens = itens.slice(1)
+  return { itens, modelo: r.modelo || null }
+}
+
 export function falaCompleta(conversa) {
   if (!/^[0-9a-f-]{8,40}$/i.test(String(conversa || ''))) return null
   const base = path.join(casaClaudeDir(), 'projects')

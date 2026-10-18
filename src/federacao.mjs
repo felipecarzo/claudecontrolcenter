@@ -925,6 +925,21 @@ export function cicloCurto({ abertos = 0, vendoAte = 0, temTerminal = false, ago
   return false
 }
 
+/**
+ * CC-1060: a conversa de uma sessão de OUTRA máquina, tirada do pacote dela (o rabo, enxuto). Serve o
+ * painel "a conversa" quando a conversa não existe nesta máquina. `null` se nenhum pacote a trouxe.
+ */
+export function conversaDeOutraMaquina(conversa, pacotes = lerPacotes()) {
+  const alvo = String(conversa || '')
+  if (alvo.length < 8) return null
+  const casa = (id) => { const s = String(id || ''); return s.length >= 8 && (s.startsWith(alvo) || alvo.startsWith(s)) }
+  for (const p of pacotes || []) {
+    const j = (p.jobs || []).find((x) => x && x.conversaApp && Array.isArray(x.conversaApp.itens) && (casa(x.sessionId) || casa(x.id)))
+    if (j) return { maquina: p.maquina?.nome || null, itens: j.conversaApp.itens, modelo: j.conversaApp.modelo || null }
+  }
+  return null
+}
+
 /** De qual máquina é esta conversa, olhando os pacotes recebidos. `null` se for daqui ou ninguém souber. */
 export function maquinaDaConversa(conversa, pacotes = lerPacotes()) {
   const alvo = String(conversa || '')
@@ -1412,6 +1427,8 @@ export function montarPacote({
        Cockpit da outra máquina. Sem isto, a tela de lá ofereceria o campo para
        toda sessão do PC, e a maioria recusaria em silêncio. */
     terminal: Boolean(j.terminal),
+    /* CC-1060: o rabo da conversa (últimas mensagens, cortadas), só de quem mora num terminal do painel. */
+    conversaApp: j.terminal && j.conversaApp && Array.isArray(j.conversaApp.itens) ? j.conversaApp : null,
   }))
   return {
     /* CC-440: primeiro campo do pacote, de propósito. Quem for depurar isto

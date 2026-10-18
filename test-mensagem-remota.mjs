@@ -95,6 +95,21 @@ try {
     assert.equal(F.cicloCurto({ agora, ultimoEnvioEm: agora - 3000, temTerminal: true }), true)
     assert.equal(F.cicloCurto({ agora, ultimoEnvioEm: agora - 1500, abertos: 1 }), false, 'nunca mais de um a cada 2 s')
   })
+  t('a conversa da sessão no terminal viaja no pacote, só dela, e a outra máquina a acha pelo id curto', () => {
+    const itens = [{ tipo: 'voce', texto: 'oi', em: 'a' }, { tipo: 'agente', texto: 'pronto', em: 'b' }]
+    const p = F.montarPacote({ maquina: { id: 'pcteste3', nome: 'PC3' }, jobs: [
+      { id: '94abc8ea', sessionId: CONV, terminal: true, conversaApp: { itens, modelo: 'opus' } },
+      { id: 'semterm1', terminal: false, conversaApp: { itens, modelo: 'x' } },
+    ] })
+    assert.deepEqual(p.jobs[0].conversaApp.itens, itens)
+    assert.equal(p.jobs[1].conversaApp, null, 'quem não mora no terminal do painel não leva a conversa')
+    const via = F.validarPacote(JSON.parse(JSON.stringify(p))).pacote
+    const o = F.conversaDeOutraMaquina(CONV, [via])
+    assert.equal(o.maquina, 'PC3'); assert.deepEqual(o.itens, itens); assert.equal(o.modelo, 'opus')
+    assert.equal(F.conversaDeOutraMaquina('94abc8ea', [via]).maquina, 'PC3')
+    assert.equal(F.conversaDeOutraMaquina('ffffffff-0000', [via]), null)
+    assert.equal(F.conversaDeOutraMaquina('8ebb', [via]), null)
+  })
   t('o pacote leva a marca de sessão que aceita texto', () => {
     const p = F.montarPacote({ maquina: { id: 'pc', nome: 'PC' }, jobs: [{ id: 'a', terminal: true }, { id: 'b' }] })
     assert.equal(p.jobs[0].terminal, true)
@@ -118,3 +133,31 @@ try {
   ok++; console.log('  ok  os ' + montagens.length + ' pacotes marcam quem mora num terminal do painel')
 }
 console.log(`test-mensagem-remota: ${ok} verificações, 0 falhas`)
+
+/* CC-1060: o recorte da conversa que vai no pacote (assíncrono, fora do bloco acima). */
+{
+  const C = await import('./src/cockpit2.mjs')
+  const casa2 = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-conv-'))
+  const antes = process.env.CC_HOME
+  process.env.CC_HOME = casa2
+  try {
+    const id = 'aaaaaaaa-1111-2222-3333-444444444444'
+    const dir = path.join(casa2, 'projects', 'D--teste'); fs.mkdirSync(dir, { recursive: true })
+    const linhas = []
+    for (let i = 0; i < 80; i += 1) {
+      linhas.push(JSON.stringify({ type: 'user', timestamp: `2026-10-18T10:${String(i % 60).padStart(2, '0')}:00Z`, message: { content: `pergunta ${i} ` + 'x'.repeat(4000) } }))
+      linhas.push(JSON.stringify({ type: 'assistant', timestamp: `2026-10-18T10:${String(i % 60).padStart(2, '0')}:30Z`, message: { model: 'opus', content: [{ type: 'text', text: `resposta ${i}` }] } }))
+    }
+    fs.writeFileSync(path.join(dir, id + '.jsonl'), linhas.join('\n') + '\n')
+    const r = C.conversaParaPacote(id)
+    assert.ok(r && r.itens.length <= 30, 'no máximo 30 mensagens')
+    assert.ok(r.itens.every((i) => i.texto.length <= 1500), 'cada mensagem cortada em 1500')
+    assert.ok(JSON.stringify(r.itens).length <= C.TETO_CONVERSA_PACOTE, 'respeita o teto do pacote')
+    assert.match(r.itens[r.itens.length - 1].texto, /resposta 79/, 'o que fica é o fim da conversa')
+    assert.equal(C.conversaParaPacote('bbbbbbbb-0000-0000-0000-000000000000'), null)
+    console.log('  ok  o recorte da conversa tem no máximo 30 mensagens, cortadas, dentro do teto, e guarda o fim')
+  } finally {
+    if (antes === undefined) delete process.env.CC_HOME; else process.env.CC_HOME = antes
+    fs.rmSync(casa2, { recursive: true, force: true })
+  }
+}
