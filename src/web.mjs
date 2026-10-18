@@ -41,7 +41,7 @@ import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
   mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos, resumirBacklogs,
   pedirPermissao, ID_GANCHO, DECISOES_REMOTAS,
-  pedirMensagem, maquinaDaConversa, ID_CONVERSA, TECLAS_REMOTAS,
+  pedirMensagem, maquinaDaConversa, ID_CONVERSA, TECLAS_REMOTAS, cicloCurto,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
 /* O gate. Importado no TOPO, e não por `import()` dentro do handler: o handler
@@ -654,8 +654,10 @@ async function comUltimaFala(jobs) {
 
 /* CC-1060: quais sessões daqui moram num terminal do painel, e portanto
    aceitam texto digitado no Cockpit da outra máquina. */
+let haSessaoNoTerminal = false
 async function marcarNoTerminal(jobs) {
   const noTerminal = Object.values(await estadoRemoto().catch(() => ({}))).filter((x) => x?.sessao && x.conversa).map((x) => x.conversa)
+  haSessaoNoTerminal = noTerminal.length > 0
   return jobs.map((j) => ({ ...j, terminal: noTerminal.some((c) => c === j.sessionId || (String(j.id || '').length >= 8 && c.startsWith(j.id))) }))
 }
 
@@ -1022,6 +1024,19 @@ async function obedecerRegras(declaracoes, deMaquina) {
  * Nunca lança: isto roda dentro do timer de 30s, e uma exceção aqui mataria o
  * empurrão seguinte junto.
  */
+/* CC-1060: o que aconteceu com cada mensagem vinda da outra máquina, em arquivo.
+   O painel escreve em `console.error` e isso se perde (sem janela, sem log): foi assim que
+   um pedido sumiu em 18/10 sem deixar rastro. Guarda as últimas 100 linhas. */
+function registrarMensagemRemota(linha) {
+  try {
+    const arq = path.join(casaClaude(), 'control-center-mensagens.jsonl')
+    let antes = []
+    try { antes = fs.readFileSync(arq, 'utf8').split('\n').filter(Boolean) } catch { /* primeira vez */ }
+    antes.push(JSON.stringify({ em: new Date().toISOString(), ...linha }))
+    fs.writeFileSync(arq, antes.slice(-100).join('\n') + '\n')
+  } catch { /* registrar é conforto, entregar é o pedido */ }
+}
+
 async function atenderPedidos(pedidos) {
   for (const p of pedidos.slice(0, 3)) { // teto por ciclo: fila estranha não vira enxame de sessões
     try {
@@ -1047,6 +1062,7 @@ async function atenderPedidos(pedidos) {
           r = p.tecla ? await teclaSessao({ conversa, tecla: p.tecla }) : await mensagemDecisao({ conversa, texto: String(p.texto || '') })
         }
         console.error(`[federação] mensagem para ${String(p.conversa).slice(0, 8)}, a pedido de ${p.de || 'outra máquina'}: ${r.ok ? 'entregue' : 'recusada, ' + r.erro}`)
+        registrarMensagemRemota({ conversa: String(p.conversa), de: p.de || null, tecla: p.tecla || null, ok: Boolean(r.ok), erro: r.ok ? null : (r.erro || 'falhou'), pedidoEm: p.em || null })
         continue
       }
       const dir = cwdDoProjeto(null, p.projeto)
@@ -5119,9 +5135,11 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
           if (enviando || agora - ultimoEnvioEm < 2000) return
           let abertos = 0
           try { abertos = lerPedidosDoGancho().filter((p) => !p.coderoom).length } catch { /* sem pasta */ }
-          /* CC-1060: também enquanto ele olha o painel da outra máquina, que é
-             quando "imediato" importa. O envio é o leve: só sessões e permissões. */
-          if (!abertos && agora >= vendoDeLaAte) return
+          /* CC-1060: também enquanto ele olha o painel da outra máquina, e enquanto houver
+             sessão num terminal do painel (que aceita texto de lá). O envio é o leve: só
+             sessões e permissões. Medido em 18/10: sem isto a mensagem digitada na VPS levava
+             63 s para chegar, porque o PC só a buscava no ciclo normal. */
+          if (!cicloCurto({ abertos, vendoAte: vendoDeLaAte, temTerminal: haSessaoNoTerminal, agora, ultimoEnvioEm })) return
           enviando = true
           empurrarLeve().catch(() => {}).finally(() => { enviando = false })
         }, 1000)

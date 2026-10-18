@@ -85,6 +85,16 @@ try {
     const g = JSON.parse(fs.readFileSync(path.join(F.dirFederacao(), 'pcteste2.json'), 'utf8'))
     assert.deepEqual(g.jobs.map((j) => j.id), ['so000001'])
   })
+  t('ciclo curto: acelera com permissão aberta, com ele olhando a outra máquina ou com sessão no terminal do painel', () => {
+    const agora = 1_000_000
+    const base = { agora, ultimoEnvioEm: agora - 2500 }
+    assert.equal(F.cicloCurto({ ...base }), false, 'parado: só o ciclo normal')
+    assert.equal(F.cicloCurto({ ...base, abertos: 1 }), true)
+    assert.equal(F.cicloCurto({ ...base, vendoAte: agora + 5000 }), true)
+    assert.equal(F.cicloCurto({ ...base, temTerminal: true }), false, 'sessão no terminal só acelera com 3 s de folga')
+    assert.equal(F.cicloCurto({ agora, ultimoEnvioEm: agora - 3000, temTerminal: true }), true)
+    assert.equal(F.cicloCurto({ agora, ultimoEnvioEm: agora - 1500, abertos: 1 }), false, 'nunca mais de um a cada 2 s')
+  })
   t('o pacote leva a marca de sessão que aceita texto', () => {
     const p = F.montarPacote({ maquina: { id: 'pc', nome: 'PC' }, jobs: [{ id: 'a', terminal: true }, { id: 'b' }] })
     assert.equal(p.jobs[0].terminal, true)

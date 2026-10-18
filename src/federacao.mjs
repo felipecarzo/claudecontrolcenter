@@ -912,6 +912,19 @@ export function pedirMensagem({ paraMaquina, conversa, texto = null, tecla = nul
   return { ok: true, enviado: true, paraMaquina: alvo }
 }
 
+/**
+ * CC-1060: o PC deve mandar agora um envio leve? Puro, para o teste cobrir.
+ * Acelera (2 s) com pedido de permissão aberto ou enquanto ele olha o painel da outra
+ * máquina; e (3 s) enquanto houver sessão num terminal do painel, que é o que faz a
+ * mensagem digitada lá chegar em poucos segundos em vez de esperar o ciclo de 30 s.
+ */
+export function cicloCurto({ abertos = 0, vendoAte = 0, temTerminal = false, agora = Date.now(), ultimoEnvioEm = 0 } = {}) {
+  const idade = agora - ultimoEnvioEm
+  if (abertos || agora < vendoAte) return idade >= 2000
+  if (temTerminal) return idade >= 3000
+  return false
+}
+
 /** De qual máquina é esta conversa, olhando os pacotes recebidos. `null` se for daqui ou ninguém souber. */
 export function maquinaDaConversa(conversa, pacotes = lerPacotes()) {
   const alvo = String(conversa || '')
