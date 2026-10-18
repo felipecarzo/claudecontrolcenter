@@ -1,11 +1,26 @@
 # HANDOFF
 
-**Última sessão:** `5ba0551c`, 08 a 11/10. Ponteiro, não relatório: o feito está em `docs/diario/2026-10-08.md`
-(uma sessão longa, tudo nele) e no histórico de cada item (`node cc.mjs backlog historia <ID>`).
-**Commit:** NADA commitado desde 08/10 (ele não pediu): 50 itens em prova, a maioria só em código e teste. Fora também:
-`scratch/` e `screenshot-coderoom.png`.
-**Branch:** `backlog/cc-46-48-49-52-53-56-65`. Rotas `modelo` e `cockpit2` marcadas por 5ba0551c: liberar ao commitar.
-**Painel religado por último:** 10/10 às 23:48. Mudança em `src/web.mjs` ou rota nova só vale depois de religar.
+**Última sessão:** `2635cde4` (PC), 12 a 13/10, fechada em 16/10: sessão do PC no Cockpit (CC-732, CC-1060). Ponteiro, não
+relatório: o feito está em `docs/diario/2026-10-13.md` e o plano em `docs/CC-1060.md`.
+**Antes dela:** `5ba0551c`, 08 a 11/10 (`docs/diario/2026-10-08.md`); as seções abaixo são dela e continuam valendo.
+**Commit:** `a099049` (CC-1060, M1 a M5) está no GitHub e na VPS. Ainda SEM commit: o conserto do ambiente limpo do
+terminal (`src/platform.mjs`, `test-terminal-pc.mjs`) e, de outras sessões, `hooks/fala-guard.mjs`, `hooks/resumo-guard.mjs`,
+`test-status-painel.mjs`, `hooks/claude/` e os `.bak`.
+**Branch:** `backlog/cc-46-48-49-52-53-56-65`. Rota `cockpit2` continua marcada por 5ba0551c; `sincronia` foi liberada.
+**Painel do PC publicado e religado:** 13/10 (`a099049`, sem o conserto do ambiente do terminal). O do PC roda uma COPIA instalada: mexeu em `src/`, é preciso
+`node cc.mjs versao publicar` e `daemon restart`, senão fica no código velho (foi o CC-732).
+
+## Próximo (sessão do PC, CC-1060)
+
+- **M6, o único que falta no código:** em `src/ui_cockpit2.html`, trocar `daqui` por `daqui || s.escreve` no campo de
+  mensagem do cartão (linhas ~20646 e ~24295) e no botão parar (~24298). O arquivo é da rota `cockpit2`; pedi por recado a
+  `5ba0551c` e ela não respondeu. Sem isto a VPS aceita a mensagem pelo código, mas a tela não mostra onde digitar.
+- **M7:** botão para abrir a janela do WezTerm ligada ao servidor (`wezterm connect`). **M8:** a prova dele pelo celular.
+- **Antes de dar a prova por boa:** a mensagem digitada na VPS não chegou na sessão do PC enquanto existia o processo
+  antigo `4292` (de administrador, já encerrado). Rodar de novo `POST /api/decisao/mensagem` na VPS com uma sessão aberta
+  pelo painel do PC (`cc-teste-1060` serve de modelo, via `src/remotecontrol.mjs`) e cronometrar a chegada (alvo: até 3 s).
+- Na lista dele: achar o que religa aquele processo antigo no boot, e o print do celular.
+- `npm test` no PC tem 16 testes que falham sem relação com isto (CC-1061).
 
 ## Próximo
 
