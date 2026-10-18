@@ -23,6 +23,18 @@ async function telaAte(painel, cond, tetoMs = 6000) {
 let ok = 0
 const passou = (nome) => { ok += 1; console.log(`  ok  ${nome}`) }
 
+/* A tela real do Claude Code lida pelo WezTerm, medida em 18/10: `ESC ( B` antes do ❯ e cor com dois pontos.
+   Sem normalizar, o campo parecia ocupado e a mensagem da outra máquina era recusada. */
+{
+  const D0 = await import('./src/decisao.mjs')
+  const crua = '\x1b[38:2::153:153:153m✻ Baked for 4s\x1b[0m\n\x1b[38:2::136:136:136m────\x1b[0m\n\x1b(B❯ \n\x1b[38:2::136:136:136m────\x1b[0m\n  ⏵⏵ auto mode on'
+  assert.equal(D0.telaNoCampo(crua), false, 'a tela crua do WezTerm enganava o painel (prova de que o defeito existe)')
+  assert.equal(D0.telaNoCampo(P.normalizarTelaDoTerminal(crua)), true)
+  assert.equal(D0.telaNoCampo(P.normalizarTelaDoTerminal('\x1b(B❯ \nEnter to confirm · Esc to cancel')), false, 'menu continua sendo menu')
+  assert.equal(P.normalizarTelaDoTerminal('\x1b[38:2::1:2:3;1mx'), '\x1b[38;2;1;2;3;1mx')
+  passou('a tela do WezTerm com ESC(B e cor com dois pontos volta ao dialeto do tmux, e o campo é reconhecido')
+}
+
 const g = await P.garantirTerminal()
 assert.equal(g.ok, true, g.erro)
 passou(`servidor de pé (${g.subiu ? 'subiu agora' : 'já estava'})`)

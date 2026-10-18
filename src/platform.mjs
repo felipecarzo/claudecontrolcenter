@@ -709,10 +709,24 @@ export async function abrirTerminalPainel({ cwd, comando }) {
   return { ok: true, painel }
 }
 
+/**
+ * A tela lida com `--escapes` do WezTerm vem num dialeto que o resto do painel (feito para o
+ * tmux) não entende. Medido em 18/10 com o Claude de verdade: o WezTerm escreve `ESC ( B`
+ * (voltar ao alfabeto normal) antes de cada `❯`, e as cores no formato `ESC[38:2::r:g:bm`,
+ * com dois pontos. O painel só reconhece o `❯` no começo da linha, então o campo de digitar
+ * parecia ocupado, e a mensagem era recusada ("não está esperando texto") sem digitar nada.
+ * Aqui a saída volta ao dialeto do tmux: sem troca de alfabeto, cor com ponto e vírgula.
+ */
+export function normalizarTelaDoTerminal(texto) {
+  return String(texto ?? '')
+    .replace(/\x1b\([0-9A-Za-z]/g, '')
+    .replace(/\x1b\[([0-9;:]*)m/g, (_, p) => `\x1b[${p.replace(/:+/g, ';')}m`)
+}
+
 /** O que está na tela do terminal, com as últimas 60 linhas de rolagem. `cor` mantém os códigos de cor. */
 export async function lerTerminal(painel, { cor = false } = {}) {
   const r = await wezCli(['get-text', '--pane-id', String(painel), '--start-line', '-60', ...(cor ? ['--escapes'] : [])])
-  return r.ok ? r.out : null
+  return r.ok ? (cor ? normalizarTelaDoTerminal(r.out) : r.out) : null
 }
 
 /** Escreve o texto como se fosse digitado, sem apertar Enter. */
