@@ -186,6 +186,7 @@ import { SECOES as SECOES_VPS, veredito as veredictoVps } from './vpsSaude.mjs'
 import { estado as estadoProcessos } from './processos.mjs'
 import { estado as estadoRotinas, comparar as compararRotina, sincronizar as sincronizarRotina, remover as removerRotina } from './rotinas.mjs'
 import { garantirCambio } from './cambio.mjs'
+import * as shellChat from './shellChat.mjs'
 import { responder as responderDecisao, fechar as fecharDecisao, reabrir as reabrirDecisao, enviarMensagem as mensagemDecisao, parar as pararSessao, permitir as permitirSessao, adiar as adiarDecisao, trazer as trazerDecisao, marcarPainelAberto, lerPedidosDoGancho, responderGancho, painelAbertoAgora, trocarConfig, telaDaConversa, tecla as teclaSessao } from './decisao.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -3016,6 +3017,19 @@ function handler(req, res) {
         revisar: revisar === true,
       })
     })
+  }
+
+  /* CC-1061: terminal da VPS em forma de chat (sessão tmux própria). POST já passa
+     por `pedidoDeFora` no topo; o corpo é pequeno de propósito. */
+  if (url.pathname.startsWith('/api/shell/')) {
+    const rota = url.pathname.slice('/api/shell/'.length)
+    const responderJson = (p) => p.then((r) => send(res, 200, r), (e) => send(res, 500, { ok: false, erro: String(e.message || e) }))
+    if (req.method === 'GET' && rota === 'estado') return responderJson(shellChat.estado())
+    if (req.method === 'GET' && rota === 'recentes') return send(res, 200, { ok: true, comandos: shellChat.recentes() })
+    if (req.method === 'GET' && rota === 'andamento') return responderJson(shellChat.andamento(url.searchParams.get('id') || ''))
+    if (req.method === 'POST' && rota === 'rodar') return comCorpoAsync(req, res, 4e3, ({ comando }) => shellChat.rodar(comando))
+    if (req.method === 'POST' && rota === 'responder') return comCorpoAsync(req, res, 2e3, ({ texto, senha }) => shellChat.responder(texto, !!senha))
+    if (req.method === 'POST' && rota === 'tecla') return comCorpoAsync(req, res, 1e3, ({ tecla }) => shellChat.tecla(tecla))
   }
 
   /* CC-556: responder pelo painel a pergunta que o agente fez. A peça confere

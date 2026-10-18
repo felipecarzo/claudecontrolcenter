@@ -2354,7 +2354,7 @@
     #view-gate .gate-lupa[aria-expanded="true"], #view-gate .gate-canto.aberto .gate-canto-tg { color: var(--accent); }
     #view-gate #gate-busca:not(.aberta) { display: none; }
     /* CC-762: o ⋯ recolhe modos, letra e tema; sino e barra lateral ficam à vista */
-    #view-gate .gate-canto:not(.aberto) #bt-modos, #view-gate .gate-canto:not(.aberto) .fonte-ctl > :not(.lat-btn) { display: none !important; }
+    #view-gate .gate-canto:not(.aberto) #bt-modos, #view-gate .gate-canto:not(.aberto) .fonte-ctl > :not(.lat-btn):not(.term-btn) { display: none !important; }
     #view-gate .gate-canto:not(:has(#bt-modos, .fonte-ctl)) .gate-canto-tg { display: none; }
     #view-gate .gate-painel-topo {
       flex: 0 0 auto;
@@ -4759,6 +4759,41 @@
     .c2-term-cab{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--border);} .c2-term-tit{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;}
     .c2-term-ifr{flex:1;width:100%;border:0;background:#000;}
     @media (max-width:520px){ .c2-term{left:0!important;right:0!important;} .c2-term-aba{display:none;} }
+    /* CC-1061, pedido dele em 18/10: o terminal da VPS em forma de chat. Celular: tela cheia minimizável (como o CC-1053).
+       Tela larga: painel encaixado à direita da área de conteúdo, entre as duas barras (regra 17). Só as mensagens rolam (regra 6). */
+    #shell-tela { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; background: var(--bg); padding: env(safe-area-inset-top) 12px calc(8px + env(safe-area-inset-bottom)); box-sizing: border-box; }
+    #shell-tela[hidden] { display: none; }
+    @media (min-width: 701px) { #shell-tela { inset: 0 0 0 auto; width: 460px; max-width: 100vw; z-index: 66; padding-top: 8px; border-left: 1px solid var(--border); box-shadow: -14px 0 34px rgba(0,0,0,.18); } }
+    .sh-cab { display: flex; align-items: center; gap: 8px; padding: 8px 0; flex: none; }
+    .sh-tit { font-size: 16px; flex: none; }
+    .sh-pasta { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-muted); }
+    .sh-fluxo { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 14px; padding: 4px 2px; }
+    .sh-vazio { margin: 0; font-size: 15px; line-height: 1.55; color: var(--text-muted); }
+    .sh-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important; font-size: 14px !important; }
+    .sh-saida { margin: 0; padding: 10px 12px; border-radius: 12px; background: rgba(var(--tinta), .05); color: var(--text-main); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: normal; overflow-x: auto; max-width: 100%; box-sizing: border-box; }
+    .sh-rod { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; font-size: 13px; color: var(--text-dim); }
+    .sh-ok { color: var(--green); font-weight: 600; } .sh-erro { color: var(--red); font-weight: 600; }
+    .sh-bt { min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text-main); font: inherit; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; text-decoration: none; }
+    .sh-bt:hover { border-color: var(--accent); color: var(--accent); }
+    .sh-teclas { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 8px 0 6px; flex: none; }
+    .sh-tecla { flex: none; min-width: 44px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--card); box-shadow: var(--neu-leve); color: var(--text-main); font: inherit; font-size: 15px; cursor: pointer; }
+    .sh-tecla:hover { color: var(--accent); }
+    @media (min-width: 701px) { .sh-tecla { min-height: 36px; font-size: 14px; } }
+    .sh-rot { flex: none; padding: 2px 4px 6px; font-size: 13px; color: var(--accent); }
+    .sh-rot[hidden], #sh-pw[hidden], #sh-ta[hidden] { display: none; }
+    .sh-campo { display: flex; gap: 8px; align-items: flex-end; flex: none; }
+    .sh-campo textarea, .sh-campo input { flex: 1; min-width: 0; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--text-main); font: 16px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: none; max-height: 30dvh; }
+    .sh-env { flex: none; width: 44px; height: 44px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    #sh-menu { position: fixed; z-index: 95; display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 16px; background: var(--card); box-shadow: var(--neu-fora); overflow-y: auto; overscroll-behavior: contain; max-width: calc(100vw - 16px); }
+    #sh-menu .app-op-txt b { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 500; overflow-wrap: anywhere; }
+    #shell-pilula { position: fixed; z-index: 85; top: calc(env(safe-area-inset-top) + 64px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; max-width: calc(100vw - 32px); border-radius: 999px; background: var(--card); border: 1px solid var(--border); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+    #shell-pilula[hidden] { display: none; }
+    body:has(#app-pilula:not([hidden])) #shell-pilula { top: calc(env(safe-area-inset-top) + 116px); }
+    @media (min-width: 701px) { #shell-pilula { display: none; } }
+    body.shell-on { overflow: hidden; }
+    @media (min-width: 701px) { body.shell-on { overflow: auto; } }
+    .term-btn { width: auto !important; padding: 0 10px; gap: 6px; font-size: 13px; }
+    @media (max-width: 520px) { .term-btn span { display: none; } }
     .hk-dias{display:flex;flex-wrap:wrap;gap:6px;} .hk-dia{min-height:44px;padding:0 12px;white-space:nowrap;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text-main);font:inherit;font-size:14px;cursor:pointer;} .hk-dia.on{border-color:var(--accent);color:var(--accent);}
     .hk-nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0 8px;}
     .hk-nums div{padding:12px 14px;border-radius:12px;background:rgba(var(--tinta),.04);} .hk-nums b{display:block;font-size:26px;} .hk-nums span{font-size:14px;color:var(--text-muted);}
@@ -5814,6 +5849,8 @@
               <button type="button" data-fonte="1" title="aumentar a letra" aria-label="aumentar a letra">A<small>+</small></button>
               <!-- CC-603: tema, na mesma caixa, sem mexer nos outros botões. -->
               <button type="button" class="tema-btn" data-tema-ciclo title="tema: segue o aparelho" aria-label="trocar o tema"></button>
+              <!-- CC-1061: o terminal da VPS em forma de chat; fica à vista também no Coderoom (ver .gate-canto). -->
+              <button type="button" class="tema-btn term-btn" data-sh-abrir title="terminal da VPS, em forma de chat (Alt+T)" aria-label="terminal da VPS"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6M12 19h8"/></svg><span>Terminal</span></button>
               <!-- CC-677: a barra de responder, só em tela larga. -->
               <button type="button" class="tema-btn lat-btn" data-lateral-alternar title="barra de responder sessões" aria-label="barra de responder sessões"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
             </div>
@@ -20215,7 +20252,7 @@
       const el = document.getElementById('lateral-dir');
       if (!el || !lateralAtiva()) return;
       const CFG = latCfg();
-      const cab = (n) => '<div class="lat-cab"><b>Responder sem sair daqui' + (n != null ? ' <span class="c2-mini">' + n + '</span>' : '') + '</b><button class="c2-link" data-lateral-alternar>fechar</button></div>';
+      const cab = (n) => '<div class="lat-cab"><b>Responder sem sair daqui' + (n != null ? ' <span class="c2-mini">' + n + '</span>' : '') + '</b><span><button class="c2-link" data-sh-abrir title="terminal da VPS em forma de chat (Alt+T)">terminal</button> <button class="c2-link" data-lateral-alternar>fechar</button></span></div>';
       if (!C2.dados) return pintar(el, cab() + '<p class="c2-vazio">lendo…</p>');
       /* CC-681, pedido dele: "no meio só os agentes que estão perguntando e na
          barra lateral só os que tão trabalhando". A mesma lista de Sessões,
@@ -25082,6 +25119,7 @@
     atalho('*', '?', 'abre este manual de atalhos', () => atalhosManual(true));
     atalho('*', 'Ctrl+K ou Ctrl+Espaço', 'buscar no painel (projeto, tela, tarefa, nota)', null, { doc: true });
     atalho('*', 'Ctrl+Shift+Espaço', 'anotar uma ideia, no projeto do que está selecionado', null, { doc: true });
+    atalho('*', 'Alt+T', 'abre ou esconde o terminal da VPS (chat de comandos)', () => shAlternar());
     atalho('*', 'Alt+1 a Alt+9', 'vai para a tela de número N da barra da esquerda', (ev) => {
       const n = Number(ev.code.slice(5)) - 1;
       const telas = [...document.querySelectorAll('.sidebar .nav-item')].filter((a) => getComputedStyle(a).display !== 'none');
@@ -25248,6 +25286,206 @@
     });
     /** O nome tmux de uma sessão aberta pelo painel, igual ao `slug` de remotecontrol.mjs. */
     function c2TmuxDe(rotulo) { return 'cc-remote-' + String(rotulo).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 50); }
+
+    /* ============================================================================================================
+       CC-1061, pedido dele em 18/10: "reconstruir um emulador de terminal feito para usar um telefone, como se fosse um
+       chat". Cada mensagem é um comando que roda na sessão cc-shell da VPS (servidor: src/shellChat.mjs). Elementos
+       próprios (#shell-tela), com o visual da conversa das Sessões; a conversa das Sessões não é tocada.
+       A senha digitada nunca entra em C2, em localStorage nem no balão: só vai na rota e o campo é limpo na hora.
+       ============================================================================================================ */
+    const SH = { aberta: false, min: false, itens: [], seq: 0, pasta: '', aviso: '', timer: null, rec: [] };
+    const SH_LINHAS = 15;
+    const SH_TECLAS = [['ctrl-c', 'Ctrl+C', 'interrompe o comando que está rodando'], ['tab', 'Tab', 'completa o que está digitado'], ['cima', '↑', 'comando anterior do histórico'],
+      ['baixo', '↓', 'próximo comando do histórico'], ['esc', 'Esc', 'manda Esc ao terminal']];
+    const shPost = (url, corpo) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(15000) });
+    const shErro = (e) => ({ ok: false, erro: e && e.name === 'TimeoutError' ? 'o painel não respondeu em 15 s' : 'sem conexão com o painel (' + (e && e.message) + ')' });
+    const shFrase = (r) => 'O terminal da VPS não respondeu: ' + (r.erro || r.error || 'sem motivo dito') + '.';
+    const shEl = () => document.getElementById('shell-tela');
+    const shAtual = () => SH.itens.find((m) => m.id && !m.terminou) || null;
+    const shLargo = () => window.matchMedia('(min-width: 701px)').matches;
+    function shCresce() { const ta = document.getElementById('sh-ta'); if (!ta) return; ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, Math.round(innerHeight * 0.3)) + 'px'; }
+    function shPosicionar() {
+      const el = shEl(); if (!el) return;
+      if (!shLargo()) { el.style.right = ''; el.style.width = ''; return; }
+      // painel largo: entre as duas barras. Fechada, a barra da direita fica FORA da tela e a conta daria negativa: aí vale a borda.
+      const esq = document.querySelector('.sidebar')?.getBoundingClientRect(), dir = document.getElementById('lateral-dir')?.getBoundingClientRect();
+      const dr = dir && dir.width && dir.left > innerWidth * 0.5 && dir.left < innerWidth ? Math.round(innerWidth - dir.left) : 0;
+      const el_ = esq && esq.width && esq.right < innerWidth * 0.5 ? Math.round(esq.right) : 0;
+      el.style.right = dr + 'px'; el.style.width = Math.max(320, Math.min(460, innerWidth - el_ - dr)) + 'px';
+    }
+    function shCriar() {
+      let el = shEl(); if (el) return el;
+      el = document.createElement('div'); el.id = 'shell-tela'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'terminal da VPS'); el.hidden = true;
+      el.innerHTML = '<div class="sh-cab"><button type="button" class="app-bt" data-sh-min aria-label="minimizar" title="minimizar o terminal"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>'
+        + '<b class="sh-tit">Terminal</b><span class="sh-pasta" id="sh-pasta"></span><button type="button" class="app-bt" data-sh-fechar aria-label="fechar o terminal" title="fechar o terminal">×</button></div>'
+        + '<div class="sh-fluxo" id="sh-fluxo" role="log" aria-live="polite"></div>'
+        + '<div class="sh-teclas" role="group" aria-label="teclas do terminal">' + SH_TECLAS.map((t) => '<button type="button" class="sh-tecla" data-sh-tecla="' + t[0] + '" title="' + esc(t[2]) + '">' + esc(t[1]) + '</button>').join('')
+        + '<button type="button" class="sh-tecla" data-sh-colar title="cola o que você copiou no campo">colar</button><button type="button" class="sh-tecla" data-sh-recentes aria-haspopup="menu" title="os últimos comandos">recentes</button></div>'
+        + '<label class="sh-rot" id="sh-rot" for="sh-ta" hidden></label>'
+        + '<div class="sh-campo"><textarea id="sh-ta" rows="1" placeholder="comando para rodar na VPS" aria-label="comando" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="send"></textarea>'
+        + '<input id="sh-pw" type="password" hidden aria-label="resposta secreta" autocapitalize="off" autocorrect="off" autocomplete="new-password" spellcheck="false" enterkeyhint="send">'
+        + '<button type="button" class="sh-env" data-sh-env aria-label="enviar" title="enviar (Enter)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>';
+      document.body.appendChild(el);
+      const ta = el.querySelector('#sh-ta'), pw = el.querySelector('#sh-pw');
+      ta.addEventListener('input', shCresce);
+      ta.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); shEnviar(); } });
+      pw.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); shEnviar(); } });
+      el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); if (document.getElementById('sh-menu')) shMenuFechar(); else shMin(); } });
+      return el;
+    }
+    async function shAbrir() {
+      const el = shCriar(); SH.aberta = true; SH.min = false; el.hidden = false; shPosicionar(); shPilula();
+      document.body.classList.toggle('shell-on', !shLargo());
+      shRender(true); shPoll();
+      const ta = document.getElementById('sh-ta'); if (ta && !('ontouchstart' in window)) setTimeout(() => ta.focus(), 50);
+      const r = await fetch('/api/shell/estado', { signal: AbortSignal.timeout(15000) }).then(c2Json).catch(shErro);
+      if (r.ok) { SH.pasta = r.pasta || SH.pasta; SH.aviso = r.ocupado && !shAtual() ? 'Há um comando rodando no terminal. Use Ctrl+C se quiser interromper.' : ''; }
+      else SH.aviso = shFrase(r) + ' Se o painel acabou de atualizar, recarregue a página.';
+      shRender();
+    }
+    function shMin() {
+      const el = shEl(); if (el) el.hidden = true;
+      clearTimeout(SH.timer); SH.aberta = false; SH.min = true; document.body.classList.remove('shell-on'); shMenuFechar(); shPilula();
+    }
+    function shFechar() { shMin(); SH.min = false; shPilula(); }
+    function shAlternar() { if (SH.aberta) shMin(); else shAbrir(); }
+    function shPilula() {
+      let p = document.getElementById('shell-pilula');
+      if (!SH.min) { if (p) p.hidden = true; return; }
+      if (!p) { p = document.createElement('div'); p.id = 'shell-pilula'; document.body.appendChild(p); }
+      const rod = !!shAtual();
+      pintar(p, '<button type="button" class="app-pil-abrir" data-sh-abrir><span class="app-pil-ponto ' + (rod ? 'trab' : '') + '"></span><b>Terminal</b><span>' + (rod ? 'rodando' : 'parado') + '</span></button>'
+        + '<button type="button" class="app-pil-x" data-sh-fechar aria-label="fechar o terminal" title="fechar o terminal">×</button>');
+      p.hidden = false;
+    }
+    function shItemHtml(m) {
+      if (m.resp) return '<div class="app-voce"><div class="app-voce-txt sh-mono">' + (m.secreta ? '<i>senha enviada</i>' : esc(m.txt)) + '</div></div>';
+      let h = '<div class="app-voce"><div class="app-voce-txt sh-mono">' + esc(m.comando) + '</div></div><div class="app-ag">';
+      if (m.cheio) return h + '<div class="app-meta">Este programa usa a tela inteira e não cabe no chat.</div><div class="sh-rod"><a class="sh-bt" href="/terminal/" target="_blank" rel="noopener">abrir no terminal completo</a></div></div>';
+      if (m.erroMsg) return h + '<div class="sh-rod"><span class="sh-erro">erro</span><span>' + esc(m.erroMsg) + '</span></div></div>';
+      const saida = (m.saida || '').replace(/\s+$/, ''), linhas = saida ? saida.split('\n') : [], longa = linhas.length > SH_LINHAS;
+      const mostra = longa && !m.expandida ? linhas.slice(-SH_LINHAS).join('\n') : saida;
+      if (longa) h += '<button type="button" class="sh-bt" data-sh-ver="' + m.n + '">' + (m.expandida ? 'recolher' : 'ver tudo (' + linhas.length + ' linhas)') + '</button> ';
+      if (saida) h += '<pre class="sh-saida" tabindex="0">' + esc(mostra) + '</pre>';
+      h += '<div class="sh-rod">';
+      if (!m.id) h += '<span>enviando…</span>';
+      else if (!m.terminou) h += '<span>' + (m.pede ? 'o terminal espera sua resposta' : 'rodando…') + '</span>';
+      else if (m.codigo === 0) h += '<span class="sh-ok">deu certo</span>';
+      else if (typeof m.codigo === 'number') h += '<span class="sh-erro">erro ' + m.codigo + '</span>';
+      else h += '<span>terminou</span>';
+      if (m.terminou && !saida) h += '<span>sem saída</span>';
+      if (m.cortada) h += '<span>saída muito longa: só o fim foi guardado</span>';
+      if (saida) h += '<button type="button" class="sh-bt" data-sh-copiar="' + m.n + '">copiar</button>';
+      return h + '</div></div>';
+    }
+    function shRender(fim) {
+      const fl = document.getElementById('sh-fluxo'); if (!fl) return;
+      const noFim = fim || fl.scrollHeight - fl.scrollTop - fl.clientHeight < 48;
+      const pa = SH.pasta ? SH.pasta.replace(/^\/home\/claudedev/, '~') : '', pe = document.getElementById('sh-pasta');
+      if (pe) { const t = pa.length > 38 ? '…' + pa.slice(-37) : pa; if (pe.textContent !== t) { pe.textContent = t; pe.title = SH.pasta; } }
+      if (!SH.itens.length) pintar(fl, '<p class="sh-vazio">Cada mensagem aqui é um comando. Ele roda na VPS, como o usuário claudedev, e a resposta aparece embaixo.' + (SH.aviso ? '</p><p class="sh-vazio">' + esc(SH.aviso) : '') + '</p>');
+      else {
+        if (fl.querySelector('.sh-vazio')) { fl.innerHTML = ''; fl.__html = ''; }
+        SH.itens.forEach((m) => {
+          let d = document.getElementById('sh-i-' + m.n);
+          if (!d) { d = document.createElement('div'); d.id = 'sh-i-' + m.n; fl.appendChild(d); }
+          pintar(d, shItemHtml(m));
+        });
+      }
+      const at = shAtual(), pede = at && at.pede, ta = document.getElementById('sh-ta'), pw = document.getElementById('sh-pw'), rot = document.getElementById('sh-rot');
+      if (ta && pw && rot) {
+        ta.hidden = pede === 'senha'; pw.hidden = pede !== 'senha';
+        rot.hidden = !pede; rot.textContent = pede === 'senha' ? 'senha pedida pelo terminal' : pede ? 'o terminal pergunta' : '';
+        ta.placeholder = pede ? 'sua resposta' : 'comando para rodar na VPS';
+        if (pede && SH.pedeVisto !== at.n + ':' + pede) { SH.pedeVisto = at.n + ':' + pede; (pede === 'senha' ? pw : ta).focus(); }
+        if (!pede) SH.pedeVisto = '';
+      }
+      if (noFim) fl.scrollTop = fl.scrollHeight;
+    }
+    function shPoll() {
+      clearTimeout(SH.timer); if (!SH.aberta) return;
+      const pend = SH.itens.filter((m) => m.id && !m.terminou); if (!pend.length) return;
+      SH.timer = setTimeout(async () => {
+        if (!SH.aberta) return;
+        if (!document.hidden) for (const m of pend) {
+          const r = await fetch('/api/shell/andamento?id=' + encodeURIComponent(m.id), { signal: AbortSignal.timeout(15000) }).then(c2Json).catch(shErro);
+          if (r.ok) {
+            m.falhas = 0; m.saida = r.saida || ''; m.cortada = !!r.cortada; m.terminou = !!r.terminou; m.codigo = typeof r.codigo === 'number' ? r.codigo : null; m.pede = r.terminou ? null : (r.pede || null);
+            if (r.pasta) SH.pasta = r.pasta;
+          } else if (++m.falhas >= 5) { m.terminou = true; m.erroMsg = shFrase(r); }
+        }
+        shRender(); shPoll();
+      }, 1000);
+    }
+    async function shEnviar() {
+      const at = shAtual();
+      if (at && at.pede) return shResponder(at);
+      const ta = document.getElementById('sh-ta'); const cmd = ta.value.replace(/\s+$/, ''); if (!cmd.trim()) return;
+      ta.value = ''; shCresce();
+      const m = { n: ++SH.seq, comando: cmd, saida: '', terminou: false, codigo: null, pede: null, cortada: false, expandida: false, falhas: 0 };
+      SH.itens.push(m); shRender(true);
+      const r = await shPost('/api/shell/rodar', { comando: cmd }).then(c2Json).catch(shErro);
+      if (!r.ok) { m.terminou = true; m.erroMsg = shFrase(r); }
+      else if (r.cheioDeTela) { m.cheio = true; m.terminou = true; }
+      else { m.id = r.id; shPoll(); }
+      shRender(true); shPilula();
+    }
+    async function shResponder(at) {
+      const senha = at.pede === 'senha', campo = document.getElementById(senha ? 'sh-pw' : 'sh-ta'), texto = campo.value;
+      campo.value = ''; if (!senha) shCresce();
+      SH.itens.push(senha ? { n: ++SH.seq, resp: true, secreta: true } : { n: ++SH.seq, resp: true, txt: texto });
+      at.pede = null; shRender(true);
+      const r = await shPost('/api/shell/responder', { texto, senha }).then(c2Json).catch(shErro);
+      if (!r.ok) c2Toast('Não deu para mandar a resposta: ' + (r.erro || r.error || 'sem motivo dito'));
+      shPoll();
+    }
+    async function shTecla(t) {
+      const r = await shPost('/api/shell/tecla', { tecla: t }).then(c2Json).catch(shErro);
+      if (!r.ok) c2Toast('Não deu para mandar a tecla: ' + (r.erro || r.error || 'sem motivo dito')); else shPoll();
+    }
+    async function shColar() {
+      const campo = document.getElementById('sh-pw').hidden ? document.getElementById('sh-ta') : document.getElementById('sh-pw');
+      let t = '';
+      try { t = await navigator.clipboard.readText(); } catch { return c2Toast('O navegador não deixou ler a área de transferência. Toque e segure no campo e escolha colar.'); }
+      if (!t) return c2Toast('A área de transferência está vazia.');
+      const a = campo.selectionStart ?? campo.value.length, b = campo.selectionEnd ?? a;
+      campo.value = campo.value.slice(0, a) + t + campo.value.slice(b); campo.focus(); shCresce();
+    }
+    function shMenuFechar() { document.getElementById('sh-menu')?.remove(); }
+    async function shRecentes(btn) {
+      if (document.getElementById('sh-menu')) return shMenuFechar();
+      const r = await fetch('/api/shell/recentes', { signal: AbortSignal.timeout(15000) }).then(c2Json).catch(shErro);
+      if (!r.ok) return c2Toast('Não deu para ler os recentes: ' + (r.erro || r.error || 'sem motivo dito'));
+      SH.rec = (r.comandos || []).map((c) => (typeof c === 'string' ? c : c && c.comando) || '').filter(Boolean);
+      const m = document.createElement('div'); m.id = 'sh-menu'; m.setAttribute('role', 'menu');
+      m.innerHTML = '<div class="app-menu-tit">Comandos recentes</div>' + (SH.rec.length
+        ? SH.rec.map((c, i) => '<button type="button" role="menuitem" class="app-op" data-sh-rec="' + i + '"><span class="app-op-txt"><b>' + esc(c) + '</b></span></button>').join('')
+        : '<div class="app-menu-tit">nenhum comando ainda</div>');
+      document.body.appendChild(m);
+      const rc = btn.getBoundingClientRect();
+      m.style.left = Math.max(8, Math.min(rc.left, innerWidth - m.offsetWidth - 8)) + 'px';
+      m.style.bottom = (innerHeight - rc.top + 6) + 'px'; m.style.maxHeight = Math.max(160, rc.top - 16) + 'px';
+    }
+    document.addEventListener('click', (ev) => {
+      const t = ev.target.closest && ev.target.closest('[data-sh-abrir],[data-sh-min],[data-sh-fechar],[data-sh-tecla],[data-sh-colar],[data-sh-recentes],[data-sh-env],[data-sh-ver],[data-sh-copiar],[data-sh-rec]');
+      if (!t) { if (document.getElementById('sh-menu') && !ev.target.closest('#sh-menu')) shMenuFechar(); return; }
+      if (t.hasAttribute('data-sh-abrir')) return shAbrir();
+      if (t.hasAttribute('data-sh-min')) return shMin();
+      if (t.hasAttribute('data-sh-fechar')) return shFechar();
+      if (t.hasAttribute('data-sh-tecla')) return shTecla(t.dataset.shTecla);
+      if (t.hasAttribute('data-sh-colar')) return shColar();
+      if (t.hasAttribute('data-sh-recentes')) return shRecentes(t);
+      if (t.hasAttribute('data-sh-env')) return shEnviar();
+      if (t.hasAttribute('data-sh-rec')) {
+        const ta = document.getElementById('sh-ta'); shMenuFechar(); if (ta && !ta.hidden) { ta.value = SH.rec[Number(t.dataset.shRec)] || ''; shCresce(); ta.focus(); } return;
+      }
+      const m = SH.itens.find((x) => String(x.n) === (t.dataset.shVer || t.dataset.shCopiar)); if (!m) return;
+      if (t.hasAttribute('data-sh-ver')) { m.expandida = !m.expandida; return shRender(); }
+      navigator.clipboard.writeText(m.saida || '').then(() => c2Toast('Saída copiada.')).catch(() => c2Toast('Não deu para copiar: o navegador negou o acesso à área de transferência.'));
+    });
+    addEventListener('resize', () => { if (SH.aberta) { shPosicionar(); document.body.classList.toggle('shell-on', !shLargo()); } });
+    // abrir ou fechar a barra da direita muda onde o painel termina; espera a animação da gaveta
+    document.addEventListener('click', (ev) => { if (SH.aberta && ev.target.closest('[data-lateral-alternar],[data-fonte]')) setTimeout(shPosicionar, 320); });
 
     /* CC-1021, regra dele: digitar num campo que saiu da vista rola a tela até ele, para ver onde está escrevendo */
     document.addEventListener('keydown', (ev) => {

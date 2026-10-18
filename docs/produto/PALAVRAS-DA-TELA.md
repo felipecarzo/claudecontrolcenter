@@ -1439,3 +1439,29 @@ De cima para baixo:
 Com o painel aberto e a sessão escolhida, a conversa e a tela são relidas a cada
 2 segundos. Fechado, nada é lido. Se o servidor ainda não entrega a tela ou a
 conversa formatada, aparecem as falas simples e a faixa sem modo.
+
+## o terminal (chat de comandos da VPS)
+
+Botão **Terminal** no canto de cima de qualquer tela (também no Coderoom), botão
+**terminal** no alto da barra da direita, e o atalho **Alt+T**. No celular abre em
+tela cheia e minimiza para uma pílula no topo; no computador fica ao lado, entre as
+duas barras.
+
+- **cada mensagem é um comando.** Vai para a sessão `cc-shell` da VPS, que continua
+  viva entre um comando e outro (o `cd` fica);
+- **o topo** mostra a pasta onde o terminal está, cortada no começo se for longa;
+- **a saída** vem embaixo do comando, em letra de máquina. Acima de 15 linhas fica
+  recolhida e o botão "ver tudo" abre. "copiar" leva a saída inteira;
+- **o fim de cada comando** diz com palavra: "deu certo" em verde (código 0) ou
+  "erro N" em vermelho. Enquanto não acaba, "rodando…", e a saída é relida a cada 1
+  segundo com a tela aberta;
+- **quando o terminal pede algo:** o campo muda de rótulo. "senha pedida pelo
+  terminal" esconde o que você digita e a conversa só mostra "senha enviada".
+  "o terminal pergunta" é uma pergunta comum (s/N);
+- **teclas:** Ctrl+C, Tab, seta para cima, seta para baixo, Esc, **colar** (lê o que
+  você copiou; se o navegador negar, avisa) e **recentes** (os últimos comandos; tocar
+  só põe no campo, não roda);
+- **programa de tela cheia** (vim, top, htop): não cabe no chat, então aparece
+  "abrir no terminal completo";
+- **Enter** envia, **Shift+Enter** quebra linha. Sem o servidor responder, a tela
+  diz em frase o que faltou.

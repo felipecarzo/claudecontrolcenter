@@ -23,10 +23,10 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
 | tela | 19 | 19/19 | 13/19 | 19/19 | 0/19 | 19/19 |
-| acao | 363 | 363/363 | 50/363 | 0/363 | 0/363 | 0/363 |
+| acao | 367 | 367/367 | 50/367 | 0/367 | 0/367 | 0/367 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
 | endereco | 168 | 168/168 | 3/168 | 0/168 | 0/168 | 0/168 |
-| palavra | 88 | 88/88 | 10/88 | 88/88 | 0/88 | 88/88 |
+| palavra | 89 | 89/89 | 10/89 | 89/89 | 0/89 | 89/89 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
 ponta.** A diferença está na coluna `como` do JSON, item a item. Inflar
@@ -56,7 +56,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `conhecimento` | viva | src/ui_cockpit2.html#view-conhecimento | funciona, estreito |
 | `remoto` | viva | src/ui_cockpit2.html#view-remoto | estreito |
 
-## acao (363)
+## acao (367)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -378,6 +378,10 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-proj-inativo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-ini-aba` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-busca-i` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sh-tecla` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sh-ver` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sh-copiar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-sh-rec` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-proj-criar-aqui` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-pj-etq-tirar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-pj-aba` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
@@ -609,7 +613,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/rotas/alternar` | estatica | src/web.mjs | funciona, explica |
 | `/api/shutdown` | estatica | src/web.mjs | funciona, explica |
 
-## palavra (88)
+## palavra (89)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -701,4 +705,5 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `container` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `painel embutido` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 | `a conversa (painel da aba Sessões)` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
+| `o terminal (chat de comandos da VPS)` | estatica | docs/produto/PALAVRAS-DA-TELA.md | funciona |
 
