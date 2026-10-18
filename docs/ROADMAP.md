@@ -152,7 +152,7 @@
 |---|---|---|---|
 | CC-548 | definida | - | o Chrome da VPS nao alcanca porta local: a rota do container ate o host esta fechada e abrir exige regra de firewall com root |
 | CC-1058 | definida | - | PC fica sincronizado em tempo real com a VPS por um servico, e avisa com alerta se estiver offline |
-| CC-1060 | prova | - | sessao do PC controlada pelo Cockpit igual a da VPS: responder por texto e sincronismo imediato |
+| CC-1060 | andando | - | sessao do PC controlada pelo Cockpit igual a da VPS: responder por texto e sincronismo imediato |
 | CC-1061 | definida | - | npm test quebra no PC: 16 testes falham no Windows, e a corrente para no terceiro, sem rodar o resto |
 | CC-1062 | definida | - | religar o painel do PC pode falhar com o painel ocupado e deixar painéis soltos em outras portas |
 

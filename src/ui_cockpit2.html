@@ -1212,7 +1212,9 @@
     /* CC-1052, pedido dele em 11/10 com prints do app: "deixar mais parecido com o claude code" */
     .app-fluxo { display: flex; flex-direction: column; gap: 14px; }
     .app-sessao .sl-conversa.app-fluxo { background: none; border: 0; box-shadow: none; padding: 4px 2px; }
-    .app-voce { display: flex; justify-content: flex-end; }
+    .app-voce { display: flex; flex-direction: column; align-items: flex-end; }
+    .app-dia { display: flex; justify-content: center; margin: 6px 0 2px; }
+    .app-dia span { font-size: 12px; color: var(--text-muted); padding: 3px 10px; border-radius: 999px; background: rgba(var(--tinta), .06); }
     .app-voce-txt { max-width: 85%; padding: 10px 14px; border-radius: 16px; background: rgba(var(--tinta), .08); color: var(--text-main); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.5; }
     .app-ag { width: 100%; }
     .app-ag .gate-md { font-size: 15px; line-height: 1.6; color: var(--text-main); overflow-wrap: anywhere; }
@@ -23749,7 +23751,13 @@
       if (c && (c.lendo || Date.now() - c.em < ms)) return;
       C2.conv[conv] = { ...(c || {}), lendo: true, em: Date.now() };
       fetch('/api/sessao/conversa?conversa=' + encodeURIComponent(conv) + (app ? '&app=1' : '')).then((r) => r.json())
-        .then((j) => { C2.conv[conv] = { falas: j.falas || null, itens: Array.isArray(j.itens) ? j.itens : null, modelo: j.modelo || null, erro: j.falas ? null : (j.erro || 'sem conversa'), em: Date.now() }; })
+        .then((j) => {
+          /* CC-1060: a conversa do PC vem no pacote, e um pacote de vez em quando vem sem ela (a marca de terminal pisca lá).
+             Leitura vazia não apaga a última boa: a tela segue mostrando o chat, e a próxima leitura atualiza. */
+          const ant = C2.conv[conv];
+          if (!j.falas && !Array.isArray(j.itens) && ant && (ant.itens || ant.falas)) { C2.conv[conv] = { ...ant, lendo: false, em: Date.now() }; return; }
+          C2.conv[conv] = { falas: j.falas || null, itens: Array.isArray(j.itens) ? j.itens : null, modelo: j.modelo || null, erro: j.falas ? null : (j.erro || 'sem conversa'), em: Date.now() };
+        })
         .catch((e) => { C2.conv[conv] = { erro: 'o painel não respondeu: ' + e.message, em: Date.now() }; })
         // CC-1052: com o painel app aberto só as partes da conversa se repintam; o campo de escrever nunca é tocado
         .finally(() => (app && document.querySelector('.app-sessao[data-app="' + CSS.escape(conv) + '"] .app-fluxo') ? c2AppAtualizar(conv) : c2RenderDecisoes()));
@@ -23827,16 +23835,24 @@
       const quem = (ctx.nome || 'agente');
       if (C.itens) {
         if (!C.itens.length) return '<p class="c2-vazio">a conversa ainda não tem falas.</p>';
+        /* 18/10, ele: "falta mensagem ou fora de ordem". As horas vinham sem o dia (02:37 e depois 13:36) e só a fala do
+           agente tinha hora. Agora um separador quando o dia muda, e a hora também no balão dele. */
+        let diaAnt = '';
+        const diaDe = (em) => { const d = new Date(em); if (isNaN(d)) return ''; const hoje = new Date(); const ontem = new Date(Date.now() - 864e5);
+          return d.toDateString() === hoje.toDateString() ? 'hoje' : d.toDateString() === ontem.toDateString() ? 'ontem' : d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }); };
         return C.itens.map((it, i) => {
+          const dia = it.em ? diaDe(it.em) : '';
+          const sep = dia && dia !== diaAnt ? (diaAnt = dia, '<div class="app-dia"><span>' + esc(dia) + '</span></div>') : '';
+          const hora = it.em ? '<div class="app-meta">' + esc(c2AppHora(it.em).replace(/^\s*·\s*/, '')) + '</div>' : '';
           /* Visual do app do Claude Code (prints dele de 11/10): a fala dele num balão cinza à direita; a do Claude é texto
              solto, sem caixa, na largura toda, com a hora embaixo; as ferramentas são uma linha cinza que abre. */
-          if (it.tipo === 'voce') return '<div class="app-voce"><div class="app-voce-txt">' + esc(it.texto) + '</div></div>';
+          if (it.tipo === 'voce') return sep + '<div class="app-voce"><div class="app-voce-txt">' + esc(it.texto) + '</div>' + hora + '</div>';
           if (it.tipo === 'ferramentas') {
             const k = ctx.conv + ':' + (it.em || i) + ':' + i;
-            return '<details class="app-fer" data-app-fer="' + esc(k) + '"' + (C2.appAbertos.has(k) ? ' open' : '') + '><summary>' + esc(c2AppResumoFer(it.lista || [])) + '</summary><div class="app-fer-lista">'
+            return sep + '<details class="app-fer" data-app-fer="' + esc(k) + '"' + (C2.appAbertos.has(k) ? ' open' : '') + '><summary>' + esc(c2AppResumoFer(it.lista || [])) + '</summary><div class="app-fer-lista">'
               + (it.lista || []).map((f) => '<div><b>' + esc(f.nome) + '</b> ' + esc(f.alvo || '') + '</div>').join('') + '</div></details>';
           }
-          return '<div class="app-ag"><div class="gate-md">' + gateFormatar(it.texto) + '</div>' + (it.em ? '<div class="app-meta">' + esc(c2AppHora(it.em).replace(/^\s*·\s*/, '')) + '</div>' : '') + '</div>';
+          return sep + '<div class="app-ag"><div class="gate-md">' + gateFormatar(it.texto) + '</div>' + hora + '</div>';
         }).join('');
       }
       if (C.falas) { // servidor sem o contrato novo: as falas simples de antes
@@ -24100,7 +24116,9 @@
         const daqui = !local || sel.disp === local.nome;
         let falas = '';
         if (!conv) falas = '<p class="c2-vazio">sem conversa ligada a este cartão.</p>';
-        else if (!daqui) falas = '<p class="c2-vazio">a conversa desta sessão fica no ' + esc(sel.disp || 'outro computador') + ' e não chega à VPS. Aqui aparece só a última fala, no cartão abaixo.</p>';
+        /* CC-1060, pedido dele em 18/10 ("na vps não apareceu o chat"): sessão do PC num terminal do painel de lá
+           (escreve) vem no pacote com a conversa, e o painel "a conversa" mostra o chat dela como o de uma daqui. */
+        else if (!daqui && !d.escreve) falas = '<p class="c2-vazio">a conversa desta sessão fica no ' + esc(sel.disp || 'outro computador') + ' e não chega à VPS. Aqui aparece só a última fala, no cartão abaixo.</p>';
         else if (c2SesLargo() && !c2SesPainelEstado().ocultos.includes('conversa')) { // no celular a conversa é a tela cheia (CC-1053)
           // CC-1052: painel app aberto: relê a cada 2 s e mostra faixa, conversa formatada, pendência e campo
           const ctx = C2.appCtx = { conv, nome: sel.nome || '', tmux: d.tmux || '', estado: sel.sess ? sel.sess.estado : '', cwd: d.cwd || d.raiz || '', dec: sel.dec && !sel.dec.grupo ? sel.dec : (C2.dados?.espera || []).find((e) => e.conversa === conv && !e.grupo) || null };
