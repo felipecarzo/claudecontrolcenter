@@ -1163,3 +1163,6 @@
 {"em":"2026-10-13T00:56:37.403Z","tipo":"criada","id":"CC-1061","estado":"B1"}
 {"em":"2026-10-13T03:49:56.400Z","tipo":"medida","id":"CC-1060","estado":"EM","sessao":"2635cde4-8850-4928-bd6f-9fe07f1be60c","tokens":3298019,"porModelo":{"claude-sonnet-5-5":439288,"claude-opus-5-5":2858731}}
 {"em":"2026-10-18T05:06:04.254Z","tipo":"medida","id":"CC-1060","estado":"EM","sessao":"5ba0551c-ffe3-465c-af85-c910fe46daac","tokens":31661874,"porModelo":{"claude-opus-5-5":19331453,"claude-sonnet-5-5":15157842}}
+{"em":"2026-10-18T05:37:32.492Z","tipo":"medida","id":"CC-1060","estado":"EM","sessao":"2635cde4-8850-4928-bd6f-9fe07f1be60c","tokens":6194592,"porModelo":{"claude-sonnet-5-5":3165859,"claude-opus-5-5":3028733}}
+{"em":"2026-10-18T16:38:25.095Z","tipo":"medida","id":"CC-1060","estado":"EM","sessao":"2635cde4-8850-4928-bd6f-9fe07f1be60c","tokens":7834020,"porModelo":{"claude-sonnet-5-5":4805287,"claude-opus-5-5":3028733}}
+{"em":"2026-10-18T16:58:38.890Z","tipo":"criada","id":"CC-1062","estado":"B1"}

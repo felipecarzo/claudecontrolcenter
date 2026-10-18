@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-153 abertos, 894 fechados, 1047 no total. Gerado em 2026-10-18.
+154 abertos, 894 fechados, 1048 no total. Gerado em 2026-10-18.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -154,6 +154,7 @@
 | CC-1058 | definida | - | PC fica sincronizado em tempo real com a VPS por um servico, e avisa com alerta se estiver offline |
 | CC-1060 | andando | - | sessao do PC controlada pelo Cockpit igual a da VPS: responder por texto e sincronismo imediato |
 | CC-1061 | definida | - | npm test quebra no PC: 16 testes falham no Windows, e a corrente para no terceiro, sem rodar o resto |
+| CC-1062 | definida | - | religar o painel do PC pode falhar com o painel ocupado e deixar painéis soltos em outras portas |
 
 ## coderoom
 
