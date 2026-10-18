@@ -59,7 +59,7 @@
 | CC-658 | prova · 1 de 1 | - | design 1b: ajustar a identidade pelo painel (cores, fontes, regras), gravando no arquivo de design do projeto |
 | CC-659 | andando | - | passada no painel inteiro: extrair os padroes das telas ja refeitas e aplicar ao resto, juntando e apagando telas |
 | CC-732 | definida | - | Sessoes do PC ficam presas e nao atualizam no Cockpit da VPS |
-| CC-734 | definida | - | Sessoes do PC que nem aparecem no Cockpit da VPS |
+| CC-734 | prova | - | Sessoes do PC que nem aparecem no Cockpit da VPS |
 | CC-753 | definida | - | Instalavel unico do Cockpit para Windows: executa, vira servico automatico e pega os projetos da maquina, sem repositorio nem programar nela |
 | CC-765 | prova | - | Widescreen de Sessoes: paineis como os do Coderoom, reordenaveis, com adicionar e recolocar; talvez duas sessoes lado a lado |
 | CC-769 | definida | - | Botao no cartao leva ao desktop do projeto no PC via a controladora; popup em cada desktop volta ao Cockpit, que vira a central |
@@ -104,7 +104,7 @@
 | CC-1017 | prova | - | nova ideia por atalho abre no projeto do que esta selecionado na tela (sessao, projeto, conversa) |
 | CC-1021 | prova | - | digitar com o cursor num campo fora da vista rola a tela ate o campo |
 | CC-1023 | prova | - | trocar 'o raciocinio' por 'como cheguei la' no estilo de toda sessao e no gancho do separador (suspeita do aviso reasoning extraction) |
-| CC-1031 | prova | - | painel: primeira leitura depois de religar leva 34 a 39 s, e a montagem por tras gasta 1,3 a 2 s em terminais e conversas |
+| CC-1031 | definida | - | painel: primeira leitura depois de religar leva 34 a 39 s, e a montagem por tras gasta 1,3 a 2 s em terminais e conversas |
 | CC-1032 | definida | - | Skill /framework que escolhe e troca sozinha o modo do framework ideal para a tarefa do momento |
 | CC-1033 | prova | - | gerador de cartas de aprovacao a partir do endereco de um app: prints e texto de cada tela viram baralho do Tinder |
 | CC-1034 | prova | - | regra de produto: tudo que criamos para os projetos vira ferramenta no painel, nao script solto |
