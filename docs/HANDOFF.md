@@ -1,25 +1,25 @@
 # HANDOFF
 
-**Última sessão:** `2635cde4` (PC), 12 a 13/10, fechada em 16/10: sessão do PC no Cockpit (CC-732, CC-1060). Ponteiro, não
-relatório: o feito está em `docs/diario/2026-10-13.md` e o plano em `docs/CC-1060.md`.
-**Antes dela:** `5ba0551c`, 08 a 11/10 (`docs/diario/2026-10-08.md`); as seções abaixo são dela e continuam valendo.
-**Commit:** `a099049` (CC-1060, M1 a M5) está no GitHub e na VPS. Ainda SEM commit: o conserto do ambiente limpo do
-terminal (`src/platform.mjs`, `test-terminal-pc.mjs`) e, de outras sessões, `hooks/fala-guard.mjs`, `hooks/resumo-guard.mjs`,
-`test-status-painel.mjs`, `hooks/claude/` e os `.bak`.
-**Branch:** `backlog/cc-46-48-49-52-53-56-65`. Rota `cockpit2` continua marcada por 5ba0551c; `sincronia` foi liberada.
-**Painel do PC publicado e religado:** 13/10 (`a099049`, sem o conserto do ambiente do terminal). O do PC roda uma COPIA instalada: mexeu em `src/`, é preciso
-`node cc.mjs versao publicar` e `daemon restart`, senão fica no código velho (foi o CC-732).
+**Última sessão:** `6613fd` (VPS), 18/10, coordenando a sessão do PC (`2635cde4`) no CC-1060. O canal entre as duas é
+`docs/diario/2026-10-18.md` (a do PC não consegue responder à da VPS de outro jeito). Antes: `5ba0551c` (08 a 12/10,
+`docs/diario/2026-10-08.md`) e `2635cde4` (PC, 12 a 16/10, `docs/diario/2026-10-13.md`, plano em `docs/CC-1060.md`).
+**Commits de 18/10, todos no GitHub:** `ca705a9` (M6: campo de mensagem e parar no cartão da sessão do PC), `76ee18c` e
+`50a608f` (PC: terminal limpo, conversa pelo registro do Claude), `e7e9e5f` (o retrato também marca o terminal), `59c1fd8`
+(painel antigo de contrato 0 não consome a mensagem nem apaga o pacote novo). VPS religada com tudo.
+**Branch:** `backlog/cc-46-48-49-52-53-56-65`. O painel do PC roda uma CÓPIA: mexeu em `src/`, `node cc.mjs versao publicar`
+e `daemon restart` lá (com `CC_SEM_NAVEGADOR=1`).
 
-## Próximo (sessão do PC, CC-1060)
+## Próximo (CC-1060, onde parou em 18/10 às 03:05)
 
-- **M6, o único que falta no código:** em `src/ui_cockpit2.html`, trocar `daqui` por `daqui || s.escreve` no campo de
-  mensagem do cartão (linhas ~20646 e ~24295) e no botão parar (~24298). O arquivo é da rota `cockpit2`; pedi por recado a
-  `5ba0551c` e ela não respondeu. Sem isto a VPS aceita a mensagem pelo código, mas a tela não mostra onde digitar.
-- **M7:** botão para abrir a janela do WezTerm ligada ao servidor (`wezterm connect`). **M8:** a prova dele pelo celular.
-- **Antes de dar a prova por boa:** a mensagem digitada na VPS não chegou na sessão do PC enquanto existia o processo
-  antigo `4292` (de administrador, já encerrado). Rodar de novo `POST /api/decisao/mensagem` na VPS com uma sessão aberta
-  pelo painel do PC (`cc-teste-1060` serve de modelo, via `src/remotecontrol.mjs`) e cronometrar a chegada (alvo: até 3 s).
-- Na lista dele: achar o que religa aquele processo antigo no boot, e o print do celular.
+- **A mensagem da VPS ainda não chega ao terminal do PC.** Último envio 03:04:05 (relógio da VPS; o do PC anda ~1 min
+  adiantado) para a sessão de teste `8ebb5e84-d6bb-4d24-ba62-9d9cda54a21e` (`cc-teste-1060`, terminal `wez:4`): a fila
+  da VPS esvaziou (o painel NOVO, contrato 1, levou o pedido) e a sessão não começou a trabalhar em 90 s. A falha está no
+  PC, entre `atenderPedidos` receber e digitar no WezTerm: conferir o pane id, se o texto chegou sem Enter, e se um aviso
+  do Claude Code travou o campo (sessão nova em auto mode abre "Teach auto mode about your environment?").
+- **Processo antigo `10480`** (node de administrador, ligado no boot por um `cmd.exe` filho do Agendador): com o `59c1fd8`
+  não atrapalha mais a mensagem, mas segue vivo e volta a cada boot. Só ele mata (PowerShell de administrador); achar a
+  tarefa que o liga.
+- **Depois da prova:** M7 (botão que abre a janela do WezTerm ligada ao servidor) e M8 (a prova dele pelo celular).
 - `npm test` no PC tem 16 testes que falham sem relação com isto (CC-1061).
 
 ## Próximo
