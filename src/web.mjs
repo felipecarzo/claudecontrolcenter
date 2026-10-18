@@ -17,7 +17,7 @@ import { PROJETOS_DIR as PROJETOS_DIR_SESSOES, readSessoes, todosOsJobs } from '
 import { perdidasDeTodas as perdidasDeTodasAsSessoes } from './fila.mjs'
 // `casaClaude()` e não `os.homedir()`: é o único lugar que resolve a pasta
 // `.claude`, e é o que faz `CC_HOME` isolar o painel de teste do real.
-import { casaClaude, caminhoAutostart, estadoServicoAsync } from './platform.mjs'
+import { casaClaude, caminhoAutostart, estadoServicoAsync, abrirJanelaTerminal, listarTerminais, wezterm } from './platform.mjs'
 import { estadoGit } from './git.mjs'
 import { mapear as mapearAvenidas, resumo as resumoAvenidas } from './avenidas.mjs'
 import { mapear as mapearDependencias } from './dependencias.mjs'
@@ -1757,6 +1757,17 @@ function handler(req, res) {
   // projeto (tmux no Linux, console novo no Windows — ver remotecontrol.mjs).
   // Nunca no stream de 2s: ligar/desligar spawna processo, e "pegar link"
   // lê a tela do tmux, mais caro que o resto do stream.
+  /* CC-1060, M7: "ver no PC". Abre a janela do WezTerm ligada ao servidor, onde moram as sessões
+     que o painel abriu. Só por clique (POST), sem corpo: nada do que vem da tela vira comando. */
+  if (url.pathname === '/api/terminal-pc/janela' && req.method === 'POST') {
+    return abrirJanelaTerminal().then((r) => send(res, 200, r)).catch((e) => send(res, 400, { ok: false, error: String(e?.message || e) }))
+  }
+  /* GET: a tela só mostra o botão onde ele serve, isto é, neste computador, com o WezTerm instalado
+     e com algum terminal aberto pelo painel. Barato: um `wezterm cli list`, só quando a tela pergunta. */
+  if (url.pathname === '/api/terminal-pc/janela' && req.method === 'GET') {
+    return listarTerminais().then((t) => send(res, 200, { ok: true, disponivel: Boolean(wezterm()), terminais: t.length }))
+      .catch((e) => send(res, 400, { ok: false, error: String(e?.message || e) }))
+  }
   if (url.pathname === '/api/remote-control') {
     if (req.method === 'POST') {
       return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, mais, remoto, perfil }) => {

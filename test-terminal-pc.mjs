@@ -35,6 +35,22 @@ const passou = (nome) => { ok += 1; console.log(`  ok  ${nome}`) }
   passou('a tela do WezTerm com ESC(B e cor com dois pontos volta ao dialeto do tmux, e o campo é reconhecido')
 }
 
+/* M7: o botão "ver no PC" abre a janela do WezTerm ligada ao servidor, uma só. Sem abrir janela de verdade. */
+{
+  const chamadas = []
+  const base = { gui: 'C:/falso/wezterm-gui.exe', garantir: async () => ({ ok: true }), spawnar: (...a) => { chamadas.push(a); return { unref() {} } } }
+  const r1 = await P.abrirJanelaTerminal({ ...base, janelaAberta: async () => false })
+  assert.deepEqual(r1, { ok: true, jaAberta: false })
+  assert.deepEqual(chamadas[0].slice(0, 2), ['C:/falso/wezterm-gui.exe', ['connect', 'unix']])
+  assert.equal(chamadas[0][2].detached, true)
+  const r2 = await P.abrirJanelaTerminal({ ...base, janelaAberta: async () => true })
+  assert.deepEqual(r2, { ok: true, jaAberta: true })
+  assert.equal(chamadas.length, 1, 'com janela já aberta não abre outra')
+  assert.equal((await P.abrirJanelaTerminal({ ...base, gui: null })).ok, false)
+  assert.equal((await P.abrirJanelaTerminal({ ...base, garantir: async () => ({ ok: false, erro: 'x' }) })).ok, false)
+  passou('o ver no PC abre uma janela do WezTerm ligada ao servidor, nunca duas, e recusa sem WezTerm')
+}
+
 const g = await P.garantirTerminal()
 assert.equal(g.ok, true, g.erro)
 passou(`servidor de pé (${g.subiu ? 'subiu agora' : 'já estava'})`)

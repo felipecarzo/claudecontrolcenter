@@ -742,6 +742,26 @@ export function apertarTerminal(painel, tecla) {
 
 export const fecharTerminal = (painel) => wezCli(['kill-pane', '--pane-id', String(painel)])
 
+/**
+ * CC-1060, M7: abre no PC a janela do WezTerm ligada ao servidor, para ele VER as sessões que o
+ * painel abriu (elas rodam sem janela). Medido em 18/10: `wezterm-gui connect unix` abre uma janela
+ * com o título da sessão de teste. Só abre quando ele pede (clique), e nunca uma segunda: já havendo
+ * janela do WezTerm, devolve `jaAberta`. `deps` existe para o teste não abrir janela de verdade.
+ */
+export async function abrirJanelaTerminal(deps = {}) {
+  const gui = deps.gui !== undefined ? deps.gui : wezterm('wezterm-gui.exe')
+  if (!gui) return { ok: false, erro: 'o WezTerm não está instalado neste computador' }
+  const g = await (deps.garantir ? deps.garantir() : garantirTerminal())
+  if (!g.ok) return g
+  const janelaAberta = deps.janelaAberta
+    ? await deps.janelaAberta()
+    : /wezterm-gui\.exe/i.test((await quietAsync('tasklist', ['/FI', 'IMAGENAME eq wezterm-gui.exe', '/NH'], 5000)).out || '')
+  if (janelaAberta) return { ok: true, jaAberta: true }
+  const filho = (deps.spawnar || spawn)(gui, ['connect', 'unix'], { detached: true, stdio: 'ignore', env: ambienteDoTerminal() })
+  if (filho && filho.unref) filho.unref()
+  return { ok: true, jaAberta: false }
+}
+
 /** Desliga o servidor do WezTerm. Só para teste: o painel deixa ele de pé. */
 export async function pararServidorTerminal() {
   if (!ehWindows) return

@@ -25,7 +25,7 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tela | 19 | 19/19 | 13/19 | 19/19 | 0/19 | 19/19 |
 | acao | 367 | 367/367 | 50/367 | 0/367 | 0/367 | 0/367 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 168 | 168/168 | 3/168 | 0/168 | 0/168 | 0/168 |
+| endereco | 169 | 169/169 | 3/169 | 0/169 | 0/169 | 0/169 |
 | palavra | 89 | 89/89 | 10/89 | 89/89 | 0/89 | 89/89 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
@@ -440,7 +440,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-n` | viva | src/ui_cockpit2.html | explica, estreito |
 
-## endereco (168)
+## endereco (169)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -454,6 +454,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/dev-teste` | estatica | src/web.mjs | funciona, explica |
 | `/api/subir` | estatica | src/web.mjs | funciona, explica |
 | `/api/abrir` | estatica | src/web.mjs | funciona, explica |
+| `/api/terminal-pc/janela` | estatica | src/web.mjs | funciona, explica |
 | `/api/remote-control` | estatica | src/web.mjs | funciona, explica |
 | `/api/agy-remote-control` | estatica | src/web.mjs | funciona, explica |
 | `/api/docker` | estatica | src/web.mjs | funciona, explica |
