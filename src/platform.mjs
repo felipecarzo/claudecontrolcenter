@@ -640,10 +640,31 @@ export function wezterm(nome = 'wezterm.exe') {
   return fs.existsSync(exe) ? exe : null
 }
 
+/* Medido em 12/10 com um Claude de verdade: o servidor do WezTerm herda o
+   ambiente de quem o ligou, e todo terminal aberto nele herda do servidor. Ligado
+   de dentro de uma sessão do Claude, a sessão nova nascia com
+   "Transcript saving is off, inherited CLAUDE_CODE_CHILD_SESSION marker": sem
+   conversa gravada, o painel não enxerga nada dela. Por isso o WezTerm sempre
+   roda sem as variáveis da sessão do Claude que chamou, e `wezterm cli` também,
+   porque ele liga o servidor sozinho quando falta. */
+export function ambienteDoTerminal(base = process.env) {
+  const limpo = {}
+  for (const [k, v] of Object.entries(base)) {
+    if (/^CLAUDECODE$|^CLAUDE_CODE_|^CLAUDE_(EFFORT|JOB_DIR|PID)$/.test(k)) continue
+    limpo[k] = v
+  }
+  return limpo
+}
+
 const wezCli = (args, ms = 8000) => {
   const exe = wezterm()
   if (!exe) return Promise.resolve({ ok: false, out: 'o WezTerm não está instalado' })
-  return quietAsync(exe, ['cli', '--prefer-mux', ...args], ms)
+  return new Promise((resolve) => {
+    execFile(exe, ['cli', '--prefer-mux', ...args], { encoding: 'utf8', windowsHide: true, timeout: ms, maxBuffer: 8 * 1024 * 1024, env: ambienteDoTerminal() },
+      (erro, saida, err) => resolve(erro
+        ? { ok: false, out: String(saida || err || erro.message).trim() }
+        : { ok: true, out: saida }))
+  })
 }
 
 /** Teclas com nome, as mesmas que `decisao.mjs` manda ao tmux. */
@@ -661,7 +682,7 @@ export async function garantirTerminal({ esperarMs = 6000 } = {}) {
   if (!servidor) return { ok: false, erro: 'o WezTerm não está instalado' }
   const jaVivo = await servidorTerminalVivo()
   if ((await wezCli(['list'], 4000)).ok) return { ok: true, subiu: !jaVivo }
-  spawn(servidor, [], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
+  spawn(servidor, [], { detached: true, stdio: 'ignore', windowsHide: true, env: ambienteDoTerminal() }).unref()
   for (let gasto = 0; gasto < esperarMs; gasto += 300) {
     await new Promise((r) => setTimeout(r, 300))
     if ((await wezCli(['list'], 2000)).ok) return { ok: true, subiu: true }

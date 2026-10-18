@@ -52,6 +52,15 @@ try {
   const comCor = await P.lerTerminal(a.painel, { cor: true })
   assert.equal(typeof comCor, 'string')
   passou('lê a tela com cor')
+
+  /* O terminal não herda a identidade da sessão do Claude que ligou o painel:
+     herdando, o Claude lá dentro não grava a conversa (medido em 12/10). */
+  assert.deepEqual(Object.keys(P.ambienteDoTerminal({ PATH: 'x', CLAUDECODE: '1', CLAUDE_CODE_CHILD_SESSION: '1', CLAUDE_PID: '9', CLAUDE_CONFIG_DIR: 'c' })), ['PATH', 'CLAUDE_CONFIG_DIR'])
+  await P.escreverTerminal(a.painel, 'if defined CLAUDE_CODE_CHILD_SESSION (echo herdou-1060) else (echo limpo-1060)')
+  await P.apertarTerminal(a.painel, 'Enter')
+  const env = await telaAte(a.painel, (t) => /^(herdou|limpo)-1060/m.test(t))
+  assert.match(env, /^limpo-1060/m, `o terminal herdou a sessão do Claude:\n${env.slice(-300)}`)
+  passou('o terminal nasce sem as variáveis da sessão do Claude que chamou')
 } finally {
   await P.fecharTerminal(a.painel)
 }
