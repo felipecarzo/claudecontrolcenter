@@ -20407,7 +20407,10 @@
         + '<button class="ini-aba' + (aba === 'esperando' ? ' on' : '') + '" data-dec-aba="esperando">' + ic('raio', 17) + 'Sessões<span class="ini-n">' + (esperando.length + outras.length) + '</span></button>'
         + '<button class="ini-aba' + (aba === 'depois' ? ' on' : '') + '" data-dec-aba="depois">' + ic('relogio', 17) + 'Para depois<span class="ini-n">' + depoisL.length + '</span></button>'
         + '<button class="ini-aba' + (aba === 'ocultas' ? ' on' : '') + '" data-dec-aba="ocultas">' + ic('check', 17) + 'Fechadas e antigas<span class="ini-n">' + ocultas.length + '</span></button>'
-        + '<button class="ini-aba' + (aba === 'historico' ? ' on' : '') + '" data-dec-aba="historico">' + ic('nota', 17) + 'Histórico</button></div>';
+        + '<button class="ini-aba' + (aba === 'historico' ? ' on' : '') + '" data-dec-aba="historico">' + ic('nota', 17) + 'Histórico</button>'
+        // CC-1060 M7: "ver no PC" abre a janela do WezTerm ligada aos terminais do painel; só existe onde há WezTerm e terminal aberto
+        + (c2TermPc().disponivel && c2TermPc().terminais > 0 ? '<button class="ini-aba" data-term-pc title="abre, no PC, a janela do terminal com as sessões do painel">' + ic('mais', 17) + (C2.termPcMsg || 'ver no PC') + '<span class="ini-n">' + c2TermPc().terminais + '</span></button>' : '')
+        + '</div>';
       /* CC-880: no celular cada faixa recolhe pelo próprio botão (resumo, abas, modo de ver, filtros). */
       const nomeAba = { esperando: 'Sessões', depois: 'Para depois', ocultas: 'Fechadas', historico: 'Histórico' }[aba] || 'Abas';
       const fixo = (resto, extra) => '<div class="dec-fixo">' + c2FaixasCtl('decisoes', [['resumo', 'Resumo', 'kanban'], ['abas', 'Abas', 'raio'], ...(extra || [])])
@@ -25233,6 +25236,32 @@
       const html = (C2.cartaoHtml || {})[C2_PIP.id] || '<p class="c2-vazio">esta sessão saiu da lista de Sessões.</p>';
       if (el.__html === html) return; el.__html = html; el.innerHTML = html;
     }
+    /* CC-1060 M7: o botão "ver no PC" da aba Sessões. Pergunta ao painel DESTA máquina se ele tem WezTerm e terminais
+       abertos (no máximo de minuto em minuto, e só quando a aba se desenha); na VPS a resposta é "não disponível" e o
+       botão não aparece. O clique abre a janela no PC, nunca duas (o servidor diz se já estava aberta). */
+    function c2TermPc() {
+      const T = C2.termPc || (C2.termPc = { disponivel: false, terminais: 0, em: 0, lendo: false });
+      if (!T.lendo && Date.now() - T.em > 60000) {
+        T.lendo = true;
+        fetch('/api/terminal-pc/janela').then(c2Json).then((r) => {
+          const mudou = Boolean(r && r.disponivel) !== T.disponivel || Number(r && r.terminais || 0) !== T.terminais;
+          T.disponivel = Boolean(r && r.ok && r.disponivel); T.terminais = Number(r && r.terminais || 0);
+          if (mudou) c2RenderDecisoes();
+        }).catch(() => { /* rota ausente (painel antigo): o botão só não aparece */ })
+          .finally(() => { T.lendo = false; T.em = Date.now(); });
+      }
+      return T;
+    }
+    document.addEventListener('click', async (ev) => {
+      const b = ev.target.closest && ev.target.closest('[data-term-pc]'); if (!b) return;
+      b.disabled = true; C2.termPcMsg = 'abrindo…'; c2RenderDecisoes();
+      const r = await fetch('/api/terminal-pc/janela', { method: 'POST', signal: AbortSignal.timeout(20000) }).then(c2Json)
+        .catch((e) => ({ ok: false, error: e.name === 'TimeoutError' ? 'o painel não respondeu em 20 s' : e.message }));
+      C2.termPcMsg = r.ok ? (r.jaAberta ? 'já aberta no PC' : 'aberta no PC') : null;
+      if (!r.ok) c2Toast('Não abriu a janela do terminal: ' + (r.error || r.erro || 'sem motivo dito'));
+      c2RenderDecisoes(); setTimeout(() => { C2.termPcMsg = null; c2RenderDecisoes(); }, 4000);
+    });
+
     async function c2Flutuar(id) {
       if (!('documentPictureInPicture' in window)) { c2Toast('este navegador não abre janela flutuante (só Edge e Chrome)'); return; }
       if (!id) return;
