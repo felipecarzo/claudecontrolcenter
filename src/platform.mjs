@@ -691,12 +691,15 @@ export async function garantirTerminal({ esperarMs = 6000 } = {}) {
 }
 
 /** Os terminais do servidor: `{ painel, titulo, cwd }`. Lista vazia sem servidor. */
-export async function listarTerminais() {
-  const r = await wezCli(['list', '--format', 'json'], 3000)
-  if (!r.ok) return []
+export async function listarTerminais({ falhaNula = false, ms = 3000 } = {}) {
+  /* `falhaNula`: consulta que falha ou estoura o prazo devolve `null`, e não `[]`. São coisas
+     diferentes: "o servidor disse que não há terminais" e "não consegui perguntar". Tratar a
+     segunda como a primeira fazia a sessão sumir do pacote por um ciclo (medido em 18/10). */
+  const r = await wezCli(['list', '--format', 'json'], ms)
+  if (!r.ok) return falhaNula ? null : []
   try {
     return JSON.parse(r.out).map((p) => ({ painel: String(p.pane_id), titulo: p.title || '', cwd: p.cwd || '' }))
-  } catch { return [] }
+  } catch { return falhaNula ? null : [] }
 }
 
 /** Abre um terminal novo na pasta, rodando `comando` (lista de argumentos). Devolve o número do painel. */

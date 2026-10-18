@@ -1180,3 +1180,4 @@
 {"em":"2026-10-18T19:42:53.097Z","tipo":"medida","id":"CC-1060","estado":"EM","sessao":"2635cde4-8850-4928-bd6f-9fe07f1be60c","tokens":10004166,"porModelo":{"claude-sonnet-5-5":6975433,"claude-opus-5-5":3028733}}
 {"em":"2026-10-18T19:49:55.346Z","tipo":"estado","id":"CC-1060","de":"PR","para":"EM"}
 {"em":"2026-10-18T19:49:57.012Z","tipo":"medida","id":"CC-1060","estado":"EM","sessao":"5ba0551c-ffe3-465c-af85-c910fe46daac","tokens":36679450,"porModelo":{"claude-opus-5-5":24349029,"claude-sonnet-5-5":15883678}}
+{"em":"2026-10-18T20:02:44.291Z","tipo":"medida","id":"CC-1060","estado":"EM","sessao":"2635cde4-8850-4928-bd6f-9fe07f1be60c","tokens":10108541,"porModelo":{"claude-sonnet-5-5":7079808,"claude-opus-5-5":3028733}}

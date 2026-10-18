@@ -339,11 +339,32 @@ function casarConversas(sessoes) {
    viva do servidor, e por isso sobrevive ao painel reiniciar, o que o mapa em
    memória de `ativosWindows` não faz. Só pergunta ao WezTerm quando há vínculo
    aberto: a pergunta liga o servidor dele, e não precisa estar ligado à toa. */
+/**
+ * CC-1060: quais terminais estão vivos, tolerando uma consulta que falhou. `lista` é o que o WezTerm
+ * respondeu, ou `null` se a consulta falhou ou estourou o prazo. Falha dentro da tolerância (30 s)
+ * repete a última lista boa; passada dela, assume que não há nenhum. Puro, para o teste cobrir.
+ * Medido em 18/10: uma única consulta falha fazia a sessão sumir de UM pacote (sem `terminal` e sem
+ * a conversa), e a tela da VPS piscava.
+ */
+export const TOLERANCIA_TERMINAIS_MS = 30_000
+export function terminaisVivos(lista, anterior, agora, tolerancia = TOLERANCIA_TERMINAIS_MS) {
+  if (Array.isArray(lista)) {
+    const vivos = new Set(lista.map((t) => String(t.painel)))
+    return { vivos, memo: { em: agora, vivos } }
+  }
+  if (anterior && agora - anterior.em < tolerancia) return { vivos: anterior.vivos, memo: anterior }
+  return { vivos: new Set(), memo: anterior || null }
+}
+let ultimaListaBoa = null
+
 async function estadoWez() {
   if (!wezterm()) return {}
   const abertos = Object.entries(lerVinculos()).filter(([, v]) => v && v.painel && !v.encerradaEm)
   if (!abertos.length) return {}
-  const vivos = new Set((await listarTerminais()).map((t) => t.painel))
+  const lista = await listarTerminais({ falhaNula: true, ms: 5000 })
+  const escolha = terminaisVivos(lista, ultimaListaBoa, Date.now())
+  ultimaListaBoa = escolha.memo
+  const vivos = escolha.vivos
   const sessoes = abertos.filter(([, v]) => vivos.has(String(v.painel)))
     .map(([rotulo, v]) => ({ nome: rotulo, criado: v.desde || 0, cwd: v.cwd || null, painel: String(v.painel), conversa: v.conversa || null }))
   const casadas = casarConversas(sessoes)

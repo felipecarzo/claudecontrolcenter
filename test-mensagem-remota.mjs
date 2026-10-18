@@ -161,3 +161,18 @@ console.log(`test-mensagem-remota: ${ok} verificações, 0 falhas`)
     fs.rmSync(casa2, { recursive: true, force: true })
   }
 }
+
+/* CC-1060: uma consulta ao WezTerm que falha não pode fazer a sessão sumir do pacote (medido em 18/10). */
+{
+  const R = await import('./src/remotecontrol.mjs')
+  const boa = R.terminaisVivos([{ painel: '4' }, { painel: 7 }], null, 1000)
+  assert.deepEqual([...boa.vivos].sort(), ['4', '7'])
+  const falhou = R.terminaisVivos(null, boa.memo, 1000 + 10_000)
+  assert.deepEqual([...falhou.vivos].sort(), ['4', '7'], 'falha dentro da tolerância repete a última lista boa')
+  const passou = R.terminaisVivos(null, boa.memo, 1000 + R.TOLERANCIA_TERMINAIS_MS + 1)
+  assert.equal(passou.vivos.size, 0, 'falha por tempo demais: assume que não há nenhum')
+  assert.equal(R.terminaisVivos(null, null, 5).vivos.size, 0, 'falha sem lista anterior: nenhum')
+  const vazia = R.terminaisVivos([], boa.memo, 2000)
+  assert.equal(vazia.vivos.size, 0, 'o servidor disse que não há terminais: vale, não é falha')
+  console.log('  ok  consulta ao WezTerm que falha repete a última lista boa por 30 s; lista vazia de verdade continua valendo')
+}
