@@ -106,8 +106,10 @@ export function criarChat(mundo, { raio, ler, aoAgir, ouvir, escrever, aoMudar }
   async function falar() {
     if (!ouvir || ouvindo) return;
     ouvindo = true; S.aviso = { texto: 'fale agora…' }; S.rascunho = null; pintAviso();
+    const conv = S.agente?.conversa;
     const r = await ouvir().catch(() => ({ erro: 'não conseguiu ouvir' })); ouvindo = false;
-    if (!g.visible) return; // fechou enquanto ouvia
+    // fechou ou trocou de agente enquanto ouvia: o que ele ditou era para o outro, e vai fora
+    if (!g.visible || S.agente?.conversa !== conv) return;
     if (r && r.texto) { S.aviso = null; S.rascunho = r.texto; modoRascunho(true); }
     else S.aviso = { erro: true, texto: (r && r.erro) || 'não ouviu nada' };
     pintAviso();
@@ -120,8 +122,9 @@ export function criarChat(mundo, { raio, ler, aoAgir, ouvir, escrever, aoMudar }
     const r = await aoAgir?.({ rota: 'mensagem', corpo: { conversa, texto } }).catch(() => ({ ok: false }));
     enviando = false;
     if (S.agente?.conversa !== conversa) return; // trocou de agente no meio
-    // falhou: o texto volta para ele não perder o que disse
+    // falhou: o texto volta para ele não perder o que disse; prazo estourado pode ter ido, e reenviar duplicaria
     if (r && r.ok) S.aviso = { texto: r.aviso || 'enviado' };
+    else if (r && r.talvez) S.aviso = { erro: true, texto: r.erro };
     else { S.rascunho = texto; modoRascunho(true); S.aviso = { erro: true, texto: 'não foi: ' + ((r && r.erro) || 'sem resposta') + '. Tente de novo' }; }
     pintAviso(); if (r && r.ok) recarregar();
   }

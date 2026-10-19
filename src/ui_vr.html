@@ -92,7 +92,7 @@ const raio = criarRaio(renderer, scene, camera, canvas);
    Lista fechada de rotas: a sala nunca manda para outro lugar. */
 const ROTAS_ACAO = { responder: '/api/decisao/responder', permitir: '/api/decisao/permitir', parar: '/api/decisao/parar', mensagem: '/api/decisao/mensagem' };
 // o responder digita no terminal e leva até ~27 s; o painel espera 35 (ui_cockpit2.html, `/api/decisao/responder`)
-const PRAZO_ACAO = { responder: 35000 };
+const PRAZO_ACAO = { responder: 35000, mensagem: 30000 }; // mensagem: 30 s, como o painel (CC-725)
 // o que o painel trata como "já resolvido em outro lugar" e tira o cartão (ui_cockpit2.html, perto de `perm-botoes`)
 const JA_RESOLVIDO = /não está na tela|já foi respondido|já passou para o terminal|respondido lá/;
 /* Erro do servidor em frase (regra 11): erro técnico cru vira o que fazer. */
@@ -294,6 +294,8 @@ async function trocarModo() {
 let escAgente = null, escVoltarPara = 'immersive-vr';
 async function escreverFora(a) {
   if (!a?.conversa) return;
+  // texto que ficou no campo era para outro agente: não pode ir para este
+  if (escAgente?.conversa !== a.conversa) $('esc-texto').value = '';
   escAgente = a; escVoltarPara = tipoAtual || 'immersive-vr';
   $('esc-titulo').textContent = 'Mensagem para ' + (a.projeto || 'o agente') + (a.maquina ? ', no ' + a.maquina : '');
   $('esc-status').textContent = ''; $('escrever').hidden = false; $('entrada').hidden = true;
