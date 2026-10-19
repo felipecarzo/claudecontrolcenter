@@ -24,7 +24,10 @@
   .pri { background: var(--accent); color: #fff; }
   .sec { background: #232a36; color: var(--txt); }
   button[disabled] { opacity: .45; cursor: not-allowed; }
-  #status { margin-top: 10px; font-size: 14px; color: var(--muted); }
+  #status, #esc-status { margin-top: 10px; font-size: 15px; color: var(--muted); }
+  #escrever { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); width: min(600px, calc(100vw - 32px)); background: var(--card); border-radius: 18px; padding: 18px; box-shadow: 0 10px 40px rgba(0,0,0,.5); box-sizing: border-box; }
+  #escrever h1 { margin: 0 0 10px; font-size: 22px; }
+  #esc-texto { width: 100%; box-sizing: border-box; min-height: 120px; padding: 12px; border-radius: 12px; border: 1px solid #2a3140; background: #0f131b; color: var(--txt); font: inherit; font-size: 18px; resize: vertical; }
 </style>
 <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
 </head>
@@ -41,11 +44,23 @@
   </div>
   <div id="status">conferindo se este navegador abre realidade virtual…</div>
 </div>
+<!-- M3: "escrever" no chat da sala sai do imersivo com este campo aberto naquele agente (até o teclado da sala, M6) -->
+<form id="escrever" hidden>
+  <h1 id="esc-titulo">Mensagem para o agente</h1>
+  <textarea id="esc-texto" rows="4" placeholder="Escreva o que o agente deve fazer"></textarea>
+  <div class="bts">
+    <button class="pri" id="esc-enviar" type="submit">Enviar mensagem</button>
+    <button class="sec" id="esc-voltar" type="button">Voltar para a sala</button>
+    <button class="sec" id="esc-fechar" type="button">Fechar</button>
+  </div>
+  <div id="esc-status"></div>
+</form>
 
 <script type="module">
 import * as THREE from 'three';
-import { painel, botao, criarRaio, noArco, linhas, arredondado, COR } from '/vr/kit.js';
+import { painel, botao, criarRaio, noArco, linhas, caber, arredondado, COR } from '/vr/kit.js';
 import { criarSala, OLHO } from '/vr/sala.js';
+import { criarChat } from '/vr/chat.js';
 
 const $ = (id) => document.getElementById(id);
 const status = (t) => { $('status').textContent = t; };
@@ -75,18 +90,49 @@ chao.rotation.x = -Math.PI / 2; mundo.add(chao); // um anel no chão: sem chão,
 const raio = criarRaio(renderer, scene, camera, canvas);
 /* M2: as ações da sala usam as MESMAS rotas do painel (responder, permitir, parar), que já servem a VPS e o PC.
    Lista fechada de rotas: a sala nunca manda para outro lugar. */
-const ROTAS_ACAO = { responder: '/api/decisao/responder', permitir: '/api/decisao/permitir', parar: '/api/decisao/parar' };
+const ROTAS_ACAO = { responder: '/api/decisao/responder', permitir: '/api/decisao/permitir', parar: '/api/decisao/parar', mensagem: '/api/decisao/mensagem' };
+// o responder digita no terminal e leva até ~27 s; o painel espera 35 (ui_cockpit2.html, `/api/decisao/responder`)
+const PRAZO_ACAO = { responder: 35000 };
+// o que o painel trata como "já resolvido em outro lugar" e tira o cartão (ui_cockpit2.html, perto de `perm-botoes`)
+const JA_RESOLVIDO = /não está na tela|já foi respondido|já passou para o terminal|respondido lá/;
+/* Erro do servidor em frase (regra 11): erro técnico cru vira o que fazer. */
+function fraseDoErro(t, status) {
+  const s = String(t || '');
+  if (!s) return 'o painel recusou (código ' + status + '): confira no painel';
+  if (/^(TypeError|ReferenceError|SyntaxError|RangeError|Error)\b|Cannot read|is not a function|undefined/.test(s)) return 'o painel falhou ao mandar: confira no painel';
+  return s.replace(/[,.;]?\s*recarregue[^.]*\.?/i, '');
+}
 async function aoAgir(envio) {
   const url = ROTAS_ACAO[envio && envio.rota]; if (!url) return { ok: false, erro: 'ação desconhecida' };
+  const prazo = PRAZO_ACAO[envio.rota] || 20000;
   try {
-    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(envio.corpo), signal: AbortSignal.timeout(20000) });
+    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(envio.corpo), signal: AbortSignal.timeout(prazo) });
     const j = await r.json().catch(() => ({}));
-    if (r.status === 401) return { ok: false, erro: 'o login do painel venceu' };
+    if (r.status === 401) return { ok: false, erro: 'o login do painel venceu: saia da sala e entre no painel' };
     const ok = r.ok && j.ok !== false; if (ok) { raio.vibrar(0.6, 80); setTimeout(ler, 1500); }
-    return ok ? { ok: true } : { ok: false, erro: j.erro || j.error || 'o painel recusou (código ' + r.status + ')' };
-  } catch (e) { return { ok: false, erro: e.name === 'TimeoutError' ? 'sem confirmação em 20 s: confira no painel' : 'sem conexão com o painel' }; }
+    if (ok) return { ok: true, aviso: j.aviso || null };
+    const erro = j.erro || j.error || '';
+    if (JA_RESOLVIDO.test(erro)) { setTimeout(ler, 500); return { ok: false, resolvido: true, erro: 'já respondido em outro lugar' }; }
+    return { ok: false, erro: fraseDoErro(erro, r.status) };
+  } catch (e) {
+    // estourou o prazo: pode ter ido, e tocar de novo mandaria teclas outra vez para o mesmo terminal
+    if (e.name === 'TimeoutError') return { ok: false, talvez: true, erro: 'sem confirmação em ' + prazo / 1000 + ' s: pode ter ido. Confira no painel antes de tocar de novo' };
+    return { ok: false, erro: 'sem conexão com o painel: confira o wifi do óculos' };
+  }
 }
-const sala = criarSala(mundo, { raio, aoAgir });
+/* M3: a conversa do agente, lida pela mesma rota do chat das Sessões (com as falas formatadas, `app=1`) */
+async function lerConversa(conversa) {
+  try {
+    const r = await fetch('/api/sessao/conversa?app=1&conversa=' + encodeURIComponent(conversa), { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    if (r.status === 401) return { erro: 'o login do painel venceu' };
+    const j = await r.json().catch(() => ({}));
+    return Array.isArray(j.itens) ? { itens: j.itens } : { erro: j.erro || 'esta conversa não tem falas que a sala mostre' };
+  } catch (e) { return { erro: e.name === 'TimeoutError' ? 'o painel demorou mais de 5 s' : 'sem conexão com o painel' }; }
+}
+const chat = criarChat(mundo, { raio, ler: lerConversa, aoAgir, ouvir: () => ouvir(), escrever: (a) => escreverFora(a),
+  // chat aberto: os cartões de trás somem (não se leem nem se apertam através dele); fechado, voltam
+  aoMudar: (aberto) => { sala.mostrarCartoes(!aberto); sujo = true; } });
+const sala = criarSala(mundo, { raio, aoAgir, aoTocarAgente: (a) => (chat.aberto?.id === a.id ? chat.fechar() : chat.abrir(a)) });
 
 /* ---------- cabeçalho: a contagem, acima do arco ---------- */
 let ESTADO = null, ESTADO_EM = 0, LER_ERRO = null;
@@ -94,8 +140,9 @@ const cab = painel(1.3, 0.22, (ctx, w, h) => {
   ctx.fillStyle = COR.fundo; arredondado(ctx, 0, 0, w, h, 34); ctx.fill();
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   if (!ESTADO) {
-    ctx.fillStyle = LER_ERRO ? COR.erro : COR.apagado; ctx.font = '600 50px system-ui';
-    ctx.fillText(LER_ERRO || 'lendo o painel…', 40, h / 2);
+    ctx.fillStyle = LER_ERRO ? COR.erro : COR.apagado; ctx.font = '600 46px system-ui';
+    const ls = linhas(ctx, LER_ERRO || 'lendo o painel…', w - 80, 2);
+    ls.forEach((l, i) => ctx.fillText(l, 40, h / 2 + (i - (ls.length - 1) / 2) * 56));
     return;
   }
   const k = ESTADO.contagem || {};
@@ -103,9 +150,10 @@ const cab = painel(1.3, 0.22, (ctx, w, h) => {
   ctx.fillStyle = COR.atencao; ctx.font = '700 104px system-ui'; ctx.fillText(num, 40, h / 2 + 4);
   const x = 40 + ctx.measureText(num).width + 24;
   ctx.fillStyle = COR.texto; ctx.font = '600 54px system-ui'; ctx.fillText('esperando você', x, h / 2 - 26);
-  ctx.fillStyle = COR.acento; ctx.font = '46px system-ui'; ctx.fillText(`${k.trabalhando ?? 0} trabalhando · ${k.total ?? 0} sessões`, x, h / 2 + 34);
   const idade = Math.round((Date.now() - ESTADO_EM) / 1000);
-  if (LER_ERRO && idade > 6) { ctx.textAlign = 'right'; ctx.fillStyle = COR.atencao; ctx.font = '40px system-ui'; ctx.fillText(`dado de há ${idade} s`, w - 40, h / 2); }
+  // dado velho: a segunda linha diz há quanto tempo E por quê (o login vencido é o caso típico no meio da sessão)
+  if (LER_ERRO && idade > 6) { ctx.fillStyle = COR.atencao; ctx.font = '40px system-ui'; ctx.fillText(caber(ctx, `dado de há ${idade} s: ${LER_ERRO}`, w - x - 40), x, h / 2 + 34); }
+  else { ctx.fillStyle = COR.acento; ctx.font = '46px system-ui'; ctx.fillText(`${k.trabalhando ?? 0} trabalhando, ${k.total ?? 0} sessões`, x, h / 2 + 34); }
 });
 noArco(cab.mesh, 0, 1.75, OLHO + 0.5); cab.mesh.lookAt(0, OLHO, 0); mundo.add(cab.mesh);
 
@@ -180,17 +228,25 @@ const ERRO_VOZ = {
   'network': 'o reconhecimento de voz precisa de internet e não conseguiu',
 };
 function voz(t) { vozMsg = t; status(t); vozP.atualizar(t); }
-function testarVoz() {
-  const R = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!R) { voz('voz: este navegador não reconhece fala'); return; }
-  try {
-    const r = new R(); r.lang = 'pt-BR'; r.interimResults = false; let ouviu = false;
-    voz('voz: fale agora…');
-    r.onresult = (ev) => { ouviu = true; voz('voz ouviu: "' + String(ev.results[0][0].transcript).slice(0, 60) + '"'); };
-    r.onerror = (ev) => { ouviu = true; voz('voz: ' + (ERRO_VOZ[ev.error] || 'falhou (' + (ev.error || 'sem motivo') + ')')); };
-    r.onend = () => { if (!ouviu) voz('voz: não ouviu nada'); };
-    r.start();
-  } catch (e) { voz('voz: não conseguiu começar a ouvir'); }
+/** Uma frase pela voz: { texto } ou { erro } já em português. O chat (M3) e o teste usam a mesma. */
+function ouvir() {
+  return new Promise((ok) => {
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!R) return ok({ erro: 'este navegador não reconhece fala: use "escrever"' });
+    try {
+      const r = new R(); r.lang = 'pt-BR'; r.interimResults = false; let fim = false;
+      const acabar = (v) => { if (!fim) { fim = true; ok(v); } };
+      r.onresult = (ev) => acabar({ texto: String(ev.results[0][0].transcript || '').trim() || null, erro: 'não ouviu nada' });
+      r.onerror = (ev) => acabar({ erro: ERRO_VOZ[ev.error] || 'a voz falhou (' + (ev.error || 'sem motivo') + ')' });
+      r.onend = () => acabar({ erro: 'não ouviu nada' });
+      r.start();
+    } catch { ok({ erro: 'não conseguiu começar a ouvir' }); }
+  });
+}
+async function testarVoz() {
+  voz('voz: fale agora…');
+  const r = await ouvir();
+  voz(r.texto ? 'voz ouviu: "' + r.texto.slice(0, 60) + '"' : 'voz: ' + r.erro);
 }
 $('bt-voz').onclick = testarVoz;
 
@@ -217,7 +273,8 @@ async function entrar(tipo) {
     scene.background = tipo === 'immersive-ar' ? null : FUNDO;
     btModo.texto(tipo === 'immersive-ar' ? 'sala escura' : 'ver o quarto');
     $('entrada').hidden = true;
-    s.addEventListener('end', () => { modo = 'tela'; tipoAtual = null; scene.background = FUNDO; mundo.position.set(0, 0, 0); mundo.rotation.set(0, 0, 0); $('entrada').hidden = false; status('saiu da sala.'); });
+    // saindo para escrever, o campo fica na frente e a entrada continua escondida
+    s.addEventListener('end', () => { modo = 'tela'; tipoAtual = null; scene.background = FUNDO; mundo.position.set(0, 0, 0); mundo.rotation.set(0, 0, 0); $('entrada').hidden = !$('escrever').hidden; status('saiu da sala.'); });
     setTimeout(recentrar, 600); // depois que a cabeça foi lida pela primeira vez
   } catch (e) {
     try { await s?.end(); } catch { /* já fechada */ }
@@ -233,6 +290,27 @@ async function trocarModo() {
   const s = renderer.xr.getSession(); if (s) { await s.end(); }
   status('toque de novo para entrar no outro modo.'); // o navegador só abre sessão a partir de um gesto
 }
+/* ---------- M3, "escrever": sai da sala com o campo aberto naquele agente; "voltar" entra de novo no mesmo modo ---------- */
+let escAgente = null, escVoltarPara = 'immersive-vr';
+async function escreverFora(a) {
+  if (!a?.conversa) return;
+  escAgente = a; escVoltarPara = tipoAtual || 'immersive-vr';
+  $('esc-titulo').textContent = 'Mensagem para ' + (a.projeto || 'o agente') + (a.maquina ? ', no ' + a.maquina : '');
+  $('esc-status').textContent = ''; $('escrever').hidden = false; $('entrada').hidden = true;
+  const s = renderer.xr.getSession(); if (s) { try { await s.end(); } catch { /* já fechada */ } }
+  $('esc-texto').focus();
+}
+$('escrever').onsubmit = async (ev) => {
+  ev.preventDefault();
+  const texto = $('esc-texto').value.trim(); if (!texto || !escAgente) { $('esc-status').textContent = 'escreva a mensagem antes de enviar'; return; }
+  $('esc-enviar').disabled = true; $('esc-status').textContent = 'enviando…';
+  const r = await aoAgir({ rota: 'mensagem', corpo: { conversa: escAgente.conversa, texto } });
+  $('esc-enviar').disabled = false;
+  if (r.ok) { $('esc-texto').value = ''; $('esc-status').textContent = (r.aviso || 'enviado') + '. Volte para a sala para ver a resposta.'; chat.recarregar(); }
+  else $('esc-status').textContent = 'não foi: ' + r.erro + '. O texto continua no campo.';
+};
+$('esc-voltar').onclick = () => { $('escrever').hidden = true; $('entrada').hidden = false; entrar(escVoltarPara); };
+$('esc-fechar').onclick = () => { $('escrever').hidden = true; $('entrada').hidden = false; };
 $('bt-vr').onclick = () => entrar('immersive-vr');
 $('bt-ar').onclick = () => entrar('immersive-ar');
 (async () => {
@@ -260,14 +338,24 @@ renderer.setAnimationLoop((t) => {
   if (sujo) {
     sujo = false;
     cab.atualizar(JSON.stringify([ESTADO && ESTADO.contagem, LER_ERRO, ESTADO ? Math.round((Date.now() - ESTADO_EM) / 5000) : 0]));
-    if (ESTADO) { sala.atualizar(ESTADO); vazio.mesh.visible = !(ESTADO.cartoes || []).length; }
+    if (ESTADO) {
+      sala.atualizar(ESTADO); vazio.mesh.visible = !chat.aberto && !(ESTADO.cartoes || []).length;
+      const a = chat.aberto && (ESTADO.agentes || []).find((x) => x.id === chat.aberto.id); if (a) chat.atualizarAgente(a);
+    }
   }
   sala.quadro(t); raio.quadro();
   renderer.render(scene, camera);
 });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 ler(); setInterval(ler, 2000);
-window.__vr = { estado: () => ESTADO, fps: () => fps, apertar: () => btApertar.acao(btApertar), toques: () => toques, cartoes: () => sala.cartoes.length, agentes: () => sala.agentes.size, erro: () => LER_ERRO, botoesDoPrimeiro: () => sala.cartoes[0]?.botoes || [] };
+window.__vr = { estado: () => ESTADO, fps: () => fps, apertar: () => btApertar.acao(btApertar), toques: () => toques, cartoes: () => sala.cartoes.length, agentes: () => sala.agentes.size, erro: () => LER_ERRO, botoesDoPrimeiro: () => sala.cartoes[0]?.botoes || [],
+  // M3: abrir o chat do agente N da mesa como o toque faria, e o estado dele
+  tocarAgente: (i) => { const o = [...sala.agentes.values()][i]; o?.alvo.acao(o.alvo); return o?.dado || null; }, chat: () => chat.estado, botoesChat: () => chat.botoes, escreverFora,
+  memoria: () => ({ ...renderer.info.memory }),
+  cartaoIds: () => sala.cartoes.map((c) => [c.dado.id, c.vaga, c.botoes.filter((b) => b.mesh.visible).length]),
+  tocarBotao: (m, n) => { const b = sala.cartoes[m]?.botoes[n]; if (b) b.acao(b); return Boolean(b); },
+  // de onde a mão ou o olho mira, o botão N do cartão M é o que o raio aperta? (a mesa não pode ficar na frente)
+  mira: (de, m, n) => { const b = sala.cartoes[m]?.botoes[n]; if (!b) return null; mundo.updateMatrixWorld(true); const p = new THREE.Vector3(); b.mesh.getWorldPosition(p); return raio.mirarDe(new THREE.Vector3(...de), p) === b; } };
 </script>
 </body>
 </html>

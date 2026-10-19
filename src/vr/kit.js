@@ -18,7 +18,7 @@ export const COR = {
 export const ESTADO = {
   trabalhando: { cor: '#7c8cff', palavra: 'trabalhando' },
   esperando: { cor: '#f5a524', palavra: 'esperando você' },
-  parada: { cor: '#6b7484', palavra: 'parada' },
+  parada: { cor: '#8b95a6', palavra: 'parada' }, // 6:1 sobre o fundo; o cinza antigo dava 4,1:1 (regra 9)
   falhou: { cor: '#ef5b5b', palavra: 'falhou' },
 };
 
@@ -71,8 +71,14 @@ export function botao(texto, acao, { larg = 0.36, alt = 0.12, cor = COR.acento }
   const B = painel(larg, alt, (ctx, w, h) => {
     ctx.fillStyle = aceso ? cor : COR.fundoAlt; arredondado(ctx, 0, 0, w, h, 28); ctx.fill();
     ctx.strokeStyle = cor; ctx.lineWidth = 6; arredondado(ctx, 3, 3, w - 6, h - 6, 26); ctx.stroke();
-    ctx.fillStyle = aceso ? '#0b0e14' : COR.texto; ctx.font = `600 ${Math.round(h * 0.4)}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(caber(ctx, rot, w - 40), w / 2, h / 2 + 2);
+    ctx.fillStyle = aceso ? '#0b0e14' : COR.texto; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // uma linha se couber; senão a letra encolhe até 80% e quebra em duas; só então corta (revisão do M2, achado 11)
+    let px = Math.round(h * 0.4); ctx.font = `600 ${px}px system-ui`;
+    if (ctx.measureText(rot).width > w - 40) {
+      px = Math.round(h * 0.32); ctx.font = `600 ${px}px system-ui`;
+      const ls = linhas(ctx, rot, w - 40, 2);
+      ls.forEach((l, i) => ctx.fillText(caber(ctx, l, w - 40), w / 2, h / 2 + 2 + (i - (ls.length - 1) / 2) * px * 1.1));
+    } else ctx.fillText(rot, w / 2, h / 2 + 2);
   });
   B.mesh.userData.alvo = B; B.acao = acao;
   B.mirar = (sim) => { if (sim !== aceso) { aceso = sim; B.atualizar(rot + aceso); } };
@@ -88,7 +94,9 @@ export function botao(texto, acao, { larg = 0.36, alt = 0.12, cor = COR.acento }
 export function criarRaio(renderer, scene, camera, canvas) {
   const alvos = new Set(); const ray = new THREE.Raycaster();
   const ctls = []; let mirado = null;
-  const acertar = () => ray.intersectObjects([...alvos].filter((a) => a.mesh.visible).map((a) => a.mesh), false)[0]?.object?.userData?.alvo || null;
+  // visível de verdade: o objeto E todos os pais (botão dentro de grupo escondido não pode ser apertado)
+  const visivel = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+  const acertar = () => ray.intersectObjects([...alvos].filter((a) => visivel(a.mesh)).map((a) => a.mesh), false)[0]?.object?.userData?.alvo || null;
   for (let i = 0; i < 2; i++) {
     const ctl = renderer.xr.getController(i);
     const linha = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0x7c8cff }));
@@ -96,10 +104,20 @@ export function criarRaio(renderer, scene, camera, canvas) {
     ctl.addEventListener('connected', (ev) => { ctl.userData.fonte = ev.data; });
     ctl.addEventListener('select', () => {
       ray.setFromXRController(ctl); const a = acertar();
-      if (a) { a.acao?.(a); try { ctl.userData.fonte?.gamepad?.hapticActuators?.[0]?.pulse?.(0.5, 40); } catch { /* sem vibração */ } }
+      if (a?.acao) { a.acao(a); try { ctl.userData.fonte?.gamepad?.hapticActuators?.[0]?.pulse?.(0.5, 40); } catch { /* sem vibração */ } }
     });
     scene.add(ctl); ctls.push(ctl);
+    scene.add(renderer.xr.getHand(i)); // M3: mãos sem controle; a pinça já chega como `select` no controle acima
   }
+  // ponta do indicador e do polegar, para ele ver a pinça (as articulações nascem só quando a mão aparece)
+  const PONTAS = ['index-finger-tip', 'thumb-tip'];
+  const geoPonta = new THREE.SphereGeometry(0.008, 12, 8), matPonta = new THREE.MeshBasicMaterial({ color: 0x7c8cff });
+  const marcarPontas = () => {
+    for (let i = 0; i < 2; i++) {
+      const j = renderer.xr.getHand(i).joints || {};
+      for (const n of PONTAS) if (j[n] && !j[n].userData.ponta) { j[n].userData.ponta = true; j[n].add(new THREE.Mesh(geoPonta, matPonta)); }
+    }
+  };
   canvas.addEventListener('click', (ev) => {
     if (renderer.xr.isPresenting) return;
     ray.setFromCamera(new THREE.Vector2((ev.clientX / innerWidth) * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1), camera);
@@ -107,9 +125,14 @@ export function criarRaio(renderer, scene, camera, canvas) {
   });
   return {
     add: (a) => { alvos.add(a); return a; }, remove: (a) => alvos.delete(a),
+    /** para o teste: o que um raio de `origem` até `destino` (Vector3 do mundo) aperta primeiro */
+    mirarDe(origem, destino) { ray.set(origem, destino.clone().sub(origem).normalize()); return acertar(); },
+    /** painel que o raio não atravessa: sem ação, só impede apertar o que está atrás dele */
+    anteparo(mesh) { const a = { mesh }; mesh.userData.alvo = a; alvos.add(a); return a; },
     /** chamar a cada quadro: acende o que o primeiro controle mira. Barato: um raio contra poucos planos. */
     quadro() {
       if (!renderer.xr.isPresenting) return;
+      marcarPontas();
       let novo = null; for (const ctl of ctls) { ray.setFromXRController(ctl); novo = acertar(); if (novo) break; }
       if (novo !== mirado) { mirado?.mirar?.(false); novo?.mirar?.(true); mirado = novo; }
     },
@@ -121,6 +144,15 @@ export function criarRaio(renderer, scene, camera, canvas) {
 export function noArco(obj, angulo, raio = 1.6, altura = 1.4) {
   const a = THREE.MathUtils.degToRad(angulo);
   obj.position.set(Math.sin(a) * raio, altura, -Math.cos(a) * raio);
-  obj.lookAt(0, altura, 0);
+  // giro LOCAL, de frente para o centro: `lookAt` mira um ponto do MUNDO e entortava a sala depois do "recentrar"
+  obj.rotation.set(0, -a, 0);
   return obj;
+}
+
+/** Devolve à placa de vídeo o que a peça ocupava: geometria, material e textura de tudo dentro dela. */
+export function descartar(obj) {
+  obj?.traverse?.((o) => {
+    o.geometry?.dispose();
+    for (const m of [].concat(o.material || [])) { m.map?.dispose(); m.dispose(); }
+  });
 }

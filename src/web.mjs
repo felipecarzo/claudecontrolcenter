@@ -1573,7 +1573,7 @@ function handler(req, res) {
     if (!fs.existsSync(arq)) return send(res, 404, { erro: 'peça da sala não existe' })
     return send(res, 200, fs.readFileSync(arq, 'utf8'), 'text/javascript; charset=utf-8')
   }
-  if (url.pathname === '/api/vr/estado') {
+  if (url.pathname === '/api/vr/estado' && req.method === 'GET') {
     marcarPainelAberto() // a sala é um painel aberto: o gancho de permissão espera a resposta dele, como no painel
     return Promise.all([import('./cockpit2.mjs'), import('./vrEstado.mjs')])
       .then(async ([C, V]) => send(res, 200, V.estadoVR(await C.responder())))

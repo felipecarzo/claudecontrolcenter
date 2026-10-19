@@ -32,3 +32,10 @@ export function botoesDoCartao(acao) {
   }
   return [];
 }
+
+/** Recorte da conversa que o chat da sala mostra (src/vr/chat.js): só falas dele e do agente, `desloc` falas antes do fim. */
+export function janela(itens, desloc = 0, n = 7) {
+  const falas = (itens || []).filter((i) => i && (i.tipo === 'voce' || i.tipo === 'agente') && String(i.texto || '').trim());
+  const fim = Math.max(0, falas.length - desloc); const ini = Math.max(0, fim - n);
+  return { falas: falas.slice(ini, fim), temAntes: ini > 0, temDepois: desloc > 0, total: falas.length };
+}
