@@ -5130,6 +5130,7 @@
     .fonte-ctl { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 10px; background: var(--card); overflow: hidden; }
     .fonte-ctl button { background: none; border: 0; color: var(--text-muted); font: inherit; font-size: 14px; font-weight: 600; padding: 7px 9px; cursor: pointer; line-height: 1; }
     .fonte-ctl .tema-btn { display: inline-flex; align-items: center; justify-content: center; width: 34px; border-left: 1px solid var(--border); }
+    .fonte-ctl .tema-btn[hidden] { display: none !important; } /* CC-1063: o display acima vencia o atributo hidden (revisão de 19/10) */
     .fonte-ctl button small { font-size: 11px; margin-left: 1px; }
     .fonte-ctl button:hover { color: var(--text-main); background: var(--card-hover); }
     .fonte-ctl span { font-size: 11.5px; color: var(--text-dim); min-width: 38px; text-align: center; cursor: pointer; }
@@ -5851,6 +5852,9 @@
               <button type="button" data-fonte="1" title="aumentar a letra" aria-label="aumentar a letra">A<small>+</small></button>
               <!-- CC-603: tema, na mesma caixa, sem mexer nos outros botões. -->
               <button type="button" class="tema-btn" data-tema-ciclo title="tema: segue o aparelho" aria-label="trocar o tema"></button>
+              <!-- CC-1063: só aparece onde o navegador abre realidade virtual (o Quest); o script tira o hidden.
+                   Botão, não link, para ter a altura dos vizinhos; sem term-btn, para não entrar no canto do Coderoom. -->
+              <button type="button" class="tema-btn" id="vr-btn" hidden onclick="location.href='/vr'" title="abrir o Ogumia em realidade virtual" aria-label="abrir em realidade virtual"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18v8h-6l-3-3-3 3H3z"/></svg></button>
               <!-- CC-1061: o terminal da VPS em forma de chat; fica à vista também no Coderoom (ver .gate-canto). -->
               <button type="button" class="tema-btn term-btn" data-sh-abrir title="terminal da VPS, em forma de chat (Alt+T)" aria-label="terminal da VPS"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6M12 19h8"/></svg><span>Terminal</span></button>
               <!-- CC-677: a barra de responder, só em tela larga. -->
@@ -25141,6 +25145,8 @@
     atalho('*', 'Ctrl+K ou Ctrl+Espaço', 'buscar no painel (projeto, tela, tarefa, nota)', null, { doc: true });
     atalho('*', 'Ctrl+Shift+Espaço', 'anotar uma ideia, no projeto do que está selecionado', null, { doc: true });
     atalho('*', 'Alt+T', 'abre ou esconde o terminal da VPS (chat de comandos)', () => shAlternar());
+    // CC-1063: o botão VR só existe onde o navegador abre o modo imersivo (no Quest); no celular e no PC fica escondido
+    try { navigator.xr?.isSessionSupported('immersive-vr').then((ok) => { const b = document.getElementById('vr-btn'); if (b && ok) b.hidden = false; }).catch(() => {}); } catch { /* sem WebXR */ }
     atalho('*', 'Alt+1 a Alt+9', 'vai para a tela de número N da barra da esquerda', (ev) => {
       const n = Number(ev.code.slice(5)) - 1;
       const telas = [...document.querySelectorAll('.sidebar .nav-item')].filter((a) => getComputedStyle(a).display !== 'none');

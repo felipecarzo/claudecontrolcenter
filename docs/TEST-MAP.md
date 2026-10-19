@@ -25,7 +25,7 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tela | 19 | 19/19 | 13/19 | 19/19 | 0/19 | 19/19 |
 | acao | 367 | 367/367 | 50/367 | 0/367 | 0/367 | 0/367 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 169 | 169/169 | 3/169 | 0/169 | 0/169 | 0/169 |
+| endereco | 170 | 170/170 | 3/170 | 0/170 | 0/170 | 0/170 |
 | palavra | 89 | 89/89 | 10/89 | 89/89 | 0/89 | 89/89 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
@@ -440,10 +440,11 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-n` | viva | src/ui_cockpit2.html | explica, estreito |
 
-## endereco (169)
+## endereco (170)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
+| `/api/vr/estado` | estatica | src/web.mjs | funciona, explica |
 | `/api/jobs` | estatica | src/web.mjs | explica |
 | `/api/meta` | estatica | src/web.mjs | funciona, explica |
 | `/api/notes` | estatica | src/web.mjs | funciona, explica |

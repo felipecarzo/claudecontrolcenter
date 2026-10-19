@@ -33,8 +33,8 @@
    "profundo": 0
   },
   "endereco": {
-   "total": 169,
-   "existe": 169,
+   "total": 170,
+   "existe": 170,
    "funciona": 3,
    "explica": 0,
    "estreito": 0,
@@ -12585,6 +12585,39 @@
      "coberto": null,
      "como": null,
      "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
+   "id": "endereco:vr/estado",
+   "tipo": "endereco",
+   "rotulo": "/api/vr/estado",
+   "onde": "src/web.mjs",
+   "camada": "estatica",
+   "escreve": false,
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/web.mjs",
+     "como": "a rota está declarada"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "a rota é citada em teste"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "endereço não aparece para ele: não precisa de verbete"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica"
     }
    }
   },

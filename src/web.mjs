@@ -1282,6 +1282,7 @@ async function atenderPedidos(pedidos) {
 
 const CACHE_PROJETOS = { em: 0, dado: null }
 
+const THREE_CACHE = new Map() // CC-1063: os dois arquivos do three.js, lidos uma vez
 const send = (res, code, body, type = 'application/json') => {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' })
   res.end(typeof body === 'string' ? body : JSON.stringify(body))
@@ -1551,6 +1552,32 @@ function handler(req, res) {
   }
   if (url.pathname === '/antigo' || url.pathname === '/novo' || url.pathname === '/v3') {
     return send(res, 200, fs.readFileSync(UI_V3, 'utf8'), 'text/html; charset=utf-8')
+  }
+  /* CC-1063: a sala de realidade virtual (docs/CC-1063.md). A página e o three.js são servidos daqui, atrás da mesma
+     senha; só os dois arquivos do three.js, por nome, nunca a pasta (sem caminho montado com o que vem na URL). */
+  if (url.pathname === '/vr' || url.pathname === '/vr/') {
+    return send(res, 200, fs.readFileSync(path.join(HERE, 'ui_vr.html'), 'utf8'), 'text/html; charset=utf-8')
+  }
+  if (url.pathname === '/vendor/three/three.module.js' || url.pathname === '/vendor/three/three.core.js') {
+    /* 2,1 MB que só mudam ao trocar de versão: em memória e com cache longo. `send` grava no-store pelo writeHead, que
+       vence o setHeader (achado da revisão de 19/10), então aqui o cabeçalho vai direto. */
+    const nome = path.basename(url.pathname)
+    const corpo = THREE_CACHE.get(nome) || THREE_CACHE.set(nome, fs.readFileSync(path.join(HERE, 'vendor', 'three', nome))).get(nome)
+    res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=604800, immutable' })
+    return res.end(corpo)
+  }
+  // as peças da sala (src/vr/<nome>.js): só nome simples, sem barra nem ponto no nome, então nada sai da pasta
+  const vrJs = /^\/vr\/([a-z0-9-]+)\.js$/.exec(url.pathname)
+  if (vrJs) {
+    const arq = path.join(HERE, 'vr', vrJs[1] + '.js')
+    if (!fs.existsSync(arq)) return send(res, 404, { erro: 'peça da sala não existe' })
+    return send(res, 200, fs.readFileSync(arq, 'utf8'), 'text/javascript; charset=utf-8')
+  }
+  if (url.pathname === '/api/vr/estado') {
+    marcarPainelAberto() // a sala é um painel aberto: o gancho de permissão espera a resposta dele, como no painel
+    return Promise.all([import('./cockpit2.mjs'), import('./vrEstado.mjs')])
+      .then(async ([C, V]) => send(res, 200, V.estadoVR(await C.responder())))
+      .catch((e) => send(res, 500, { erro: String(e.message || e) }))
   }
   if (url.pathname === '/graficos.js') {
     return send(res, 200, fs.readFileSync(GRAFICOS, 'utf8'), 'text/javascript; charset=utf-8')

@@ -7,7 +7,8 @@ import { nomeDoHook, eventosDoTexto, juntar, paradas, relatorio } from './src/ho
 
 let n = 0
 const ok = (c, m) => { assert.ok(c, m); n++; console.log('  ok  ' + m) }
-const ts = '2026-10-11T10:00:00.000Z'; const cwd = '/home/u/projetos/VPS_app'
+// uma hora atrás, e não uma data fixa: com data fixa o teste envelheceu e saiu da janela de 7 dias em 19/10
+const ts = new Date(Date.now() - 3600e3).toISOString(); const cwd = '/home/u/projetos/VPS_app'
 
 ok(nomeDoHook('node /x/hooks/edicao-guard.mjs') === 'edicao-guard' && nomeDoHook('node ~/.claude/hooks/todo-guard.mjs') === 'todo-guard' && nomeDoHook('bash /a/b.sh x') === 'b', 'nome curto do hook a partir do comando')
 

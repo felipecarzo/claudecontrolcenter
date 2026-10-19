@@ -1186,3 +1186,5 @@
 {"em":"2026-10-19T06:40:44.429Z","tipo":"lugar","id":"CC-1063","de":"felipe","texto":"agora"}
 {"em":"2026-10-19T06:41:36.559Z","tipo":"estado","id":"CC-1063","de":"B1","para":"EM"}
 {"em":"2026-10-19T06:41:38.302Z","tipo":"medida","id":"CC-1063","estado":"EM","sessao":"5ba0551c-ffe3-465c-af85-c910fe46daac","tokens":38410346,"porModelo":{"claude-opus-5-5":26079925,"claude-sonnet-5-5":15883678}}
+{"em":"2026-10-19T07:10:55.269Z","tipo":"medida","id":"CC-1063","estado":"EM","sessao":"5ba0551c-ffe3-465c-af85-c910fe46daac","tokens":38476254,"porModelo":{"claude-opus-5-5":26145833,"claude-sonnet-5-5":15883678}}
+{"em":"2026-10-19T07:18:19.762Z","tipo":"nota","id":"CC-1063","de":"felipe","texto":"modelo opus, esforço pelo critério"}

@@ -762,7 +762,7 @@ const comRespostas = (extra = {}) => ({
   /* `ui_cockpit2.html` entrou em 23/09: é tela de verdade, servida em
      `/cockpit2`, e sem ela na lista toda rota que só o cockpit 2 chama
      precisava virar exceção, que é o caminho para peça esquecida passar. */
-  const fontes = ['src/ui_novo.html', 'src/ui_cockpit2.html', 'src/conexao.html', 'cc.mjs']
+  const fontes = ['src/ui_novo.html', 'src/ui_cockpit2.html', 'src/conexao.html', 'src/ui_vr.html', 'cc.mjs'] // CC-1063: a sala de VR também é tela
     .map((f) => { try { return readFileSync(f, 'utf8') } catch { return '' } }).join('\n')
   /**
    * As exceções, cada uma com o motivo. **Exceção declarada é diferente de peça

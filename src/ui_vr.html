@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ogumia VR</title>
+<!--
+  CC-1063, a sala de realidade virtual do Ogumia no Quest 2. Plano em docs/CC-1063.md.
+  M0 (prova de vida): entra no imersivo? quantos quadros? que letra se lê a 1,5 m? a voz funciona dentro da sala?
+  M1 (ver): à frente, em arco, os cartões que esperam você; abaixo, como uma mesa, os agentes com o estado.
+  As peças vêm de src/vr/kit.js e a sala de src/vr/sala.js. Fora do óculos a mesma cena aparece numa janela comum
+  (modo de tela), para conferir daqui.
+-->
+<style>
+  :root { --bg: #0b0e14; --card: #151a23; --txt: #e8ecf3; --muted: #9aa4b5; --accent: #7c8cff; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--txt); font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  #cena { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #entrada { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); width: min(600px, calc(100vw - 32px)); background: var(--card); border-radius: 18px; padding: 18px; box-shadow: 0 10px 40px rgba(0,0,0,.5); box-sizing: border-box; }
+  #entrada h1 { margin: 0 0 4px; font-size: 22px; }
+  #entrada p { margin: 4px 0; color: var(--muted); font-size: 15px; }
+  .bts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .bts button, .bts a { min-height: 48px; padding: 0 18px; border-radius: 12px; border: 0; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+  .pri { background: var(--accent); color: #fff; }
+  .sec { background: #232a36; color: var(--txt); }
+  button[disabled] { opacity: .45; cursor: not-allowed; }
+  #status { margin-top: 10px; font-size: 14px; color: var(--muted); }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="cena"></canvas>
+<div id="entrada">
+  <h1>Ogumia em realidade virtual</h1>
+  <p>À frente, os pedidos que esperam você; embaixo, cada agente com o estado dele. Aponte e aperte com o controle ou com a pinça da mão.</p>
+  <div class="bts">
+    <button class="pri" id="bt-vr" disabled>Entrar em VR</button>
+    <button class="sec" id="bt-ar" disabled hidden>Entrar vendo o quarto</button>
+    <button class="sec" id="bt-voz">Testar voz aqui</button>
+    <a class="sec" href="/">Voltar ao painel</a>
+  </div>
+  <div id="status">conferindo se este navegador abre realidade virtual…</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { painel, botao, criarRaio, noArco, linhas, arredondado, COR } from '/vr/kit.js';
+import { criarSala, OLHO } from '/vr/sala.js';
+
+const $ = (id) => document.getElementById(id);
+const status = (t) => { $('status').textContent = t; };
+
+/* ---------- cena ---------- */
+const canvas = $('cena');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.xr.enabled = true;
+
+const scene = new THREE.Scene();
+const FUNDO = new THREE.Color(0x0b0e14);
+scene.background = FUNDO;
+// modo de tela: a câmera fica onde estaria a cabeça de quem está sentado
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.05, 50);
+// na prévia a câmera recua e sobe, para caber a sala inteira na janela; no óculos ela é a cabeça dele
+camera.position.set(0, OLHO + 0.35, 1.6); camera.lookAt(0, OLHO - 0.1, -1.0);
+scene.add(new THREE.HemisphereLight(0xbcc6ff, 0x101318, 1.3));
+
+// tudo o que é da sala mora em `mundo`: o "recentrar" move só ele
+const mundo = new THREE.Group(); scene.add(mundo);
+const chao = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.24, 64), new THREE.MeshBasicMaterial({ color: 0x2a3140, side: THREE.DoubleSide }));
+chao.rotation.x = -Math.PI / 2; mundo.add(chao); // um anel no chão: sem chão, a sala dá vertigem
+
+const raio = criarRaio(renderer, scene, camera, canvas);
+const sala = criarSala(mundo);
+
+/* ---------- cabeçalho: a contagem, acima do arco ---------- */
+let ESTADO = null, ESTADO_EM = 0, LER_ERRO = null;
+const cab = painel(1.3, 0.22, (ctx, w, h) => {
+  ctx.fillStyle = COR.fundo; arredondado(ctx, 0, 0, w, h, 34); ctx.fill();
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  if (!ESTADO) {
+    ctx.fillStyle = LER_ERRO ? COR.erro : COR.apagado; ctx.font = '600 50px system-ui';
+    ctx.fillText(LER_ERRO || 'lendo o painel…', 40, h / 2);
+    return;
+  }
+  const k = ESTADO.contagem || {};
+  const num = String(k.esperando ?? 0);
+  ctx.fillStyle = COR.atencao; ctx.font = '700 104px system-ui'; ctx.fillText(num, 40, h / 2 + 4);
+  const x = 40 + ctx.measureText(num).width + 24;
+  ctx.fillStyle = COR.texto; ctx.font = '600 54px system-ui'; ctx.fillText('esperando você', x, h / 2 - 26);
+  ctx.fillStyle = COR.acento; ctx.font = '46px system-ui'; ctx.fillText(`${k.trabalhando ?? 0} trabalhando · ${k.total ?? 0} sessões`, x, h / 2 + 34);
+  const idade = Math.round((Date.now() - ESTADO_EM) / 1000);
+  if (LER_ERRO && idade > 6) { ctx.textAlign = 'right'; ctx.fillStyle = COR.atencao; ctx.font = '40px system-ui'; ctx.fillText(`dado de há ${idade} s`, w - 40, h / 2); }
+});
+noArco(cab.mesh, 0, 1.75, OLHO + 0.5); cab.mesh.lookAt(0, OLHO, 0); mundo.add(cab.mesh);
+
+// vazio dito com palavras (regra 11): por que não há cartão
+const vazio = painel(1.0, 0.24, (ctx, w, h) => {
+  ctx.fillStyle = COR.fundo; arredondado(ctx, 0, 0, w, h, 34); ctx.fill();
+  ctx.fillStyle = COR.ok; ctx.font = '600 50px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('Nenhum pedido esperando você', w / 2, h / 2 - 26);
+  ctx.fillStyle = COR.apagado; ctx.font = '40px system-ui'; ctx.fillText('os agentes trabalham na mesa embaixo', w / 2, h / 2 + 34);
+});
+noArco(vazio.mesh, 0, 1.6, OLHO); vazio.atualizar('v'); vazio.mesh.visible = false; mundo.add(vazio.mesh);
+
+/* ---------- quadros por segundo: painel pequeno, repinta só quando o número muda (não a textura grande) ---------- */
+let fps = 0;
+const fpsP = painel(0.36, 0.08, (ctx, w, h) => {
+  ctx.fillStyle = COR.fundoAlt; arredondado(ctx, 0, 0, w, h, 18); ctx.fill();
+  ctx.fillStyle = fps >= 70 || !renderer.xr.isPresenting ? COR.apagado : COR.atencao; ctx.font = '600 34px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`${fps} quadros/s`, w / 2, h / 2 + 2);
+});
+noArco(fpsP.mesh, 0, 1.75, OLHO + 0.79); fpsP.mesh.lookAt(0, OLHO, 0); mundo.add(fpsP.mesh);
+
+/* ---------- M0: as três amostras de letra, à esquerda, na altura do olho e a 1,5 m ---------- */
+const AMOSTRAS = [{ nome: 'P', px: 30 }, { nome: 'M', px: 44 }, { nome: 'G', px: 62 }];
+let distAmostras = null;
+const amos = painel(0.95, 0.5, (ctx, w, h) => {
+  ctx.fillStyle = COR.fundo; arredondado(ctx, 0, 0, w, h, 34); ctx.fill();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = COR.texto; ctx.font = '600 46px system-ui'; ctx.fillText('Qual você lê sem esforço?', 36, 66);
+  AMOSTRAS.forEach((a, i) => { ctx.fillStyle = COR.texto; ctx.font = `${a.px}px system-ui`; ctx.fillText(`${a.nome}: Rodar os testes do cockpit`, 36, 150 + i * 92); });
+  ctx.fillStyle = COR.apagado; ctx.font = '34px system-ui';
+  ctx.fillText(distAmostras ? `você está a ${distAmostras.toFixed(2).replace('.', ',')} m daqui` : 'a 1,5 m de quem está no centro', 36, h - 26);
+});
+noArco(amos.mesh, -68, 1.5, OLHO); amos.atualizar('a'); mundo.add(amos.mesh);
+
+/* ---------- controles à direita: voz, sala ou quarto, recentrar, sair ---------- */
+let vozMsg = 'voz: ainda não testada', modo = 'tela';
+const vozP = painel(0.8, 0.12, (ctx, w, h) => {
+  ctx.fillStyle = COR.fundoAlt; arredondado(ctx, 0, 0, w, h, 22); ctx.fill();
+  ctx.fillStyle = COR.texto; ctx.font = '36px system-ui'; ctx.textBaseline = 'middle';
+  const ls = linhas(ctx, vozMsg, w - 40, 2); ls.forEach((l, i) => ctx.fillText(l, 20, h / 2 + (i - (ls.length - 1) / 2) * 40));
+});
+// os botões usam tons do acento, nunca as cores de estado (verde, âmbar, vermelho têm significado fixo: regra 10)
+let toques = 0;
+const btApertar = raio.add(botao('apertar', (b) => { toques++; b.texto(`apertar (${toques})`); }, { cor: '#9d7cff' }));
+const btVoz = raio.add(botao('testar voz', () => testarVoz(), { cor: '#5cc8ff' }));
+const btModo = raio.add(botao('ver o quarto', () => trocarModo(), { cor: '#5cc8ff' }));
+const btCentro = raio.add(botao('recentrar', () => recentrar(), { cor: COR.acento }));
+const btSair = raio.add(botao('sair da sala', () => renderer.xr.getSession()?.end(), { cor: '#6b7484' }));
+[btApertar, btVoz, btModo, btCentro, btSair].forEach((b, i) => { noArco(b.mesh, 62 + (i % 2) * 14, 1.5, OLHO + 0.28 - Math.floor(i / 2) * 0.17); mundo.add(b.mesh); });
+noArco(vozP.mesh, 69, 1.5, OLHO - 0.3); vozP.atualizar(vozMsg); mundo.add(vozP.mesh);
+
+/* ---------- dado: com limite de tempo, sem pedido acumulado, sem apagar o último dado bom ---------- */
+let lendo = false, sujo = true;
+async function ler() {
+  if (lendo) return; lendo = true;
+  try {
+    const r = await fetch('/api/vr/estado', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    if (r.status === 401) LER_ERRO = 'o login do painel venceu: saia da sala e entre de novo no painel';
+    else if (!r.ok) LER_ERRO = 'o painel não respondeu (código ' + r.status + '); tento de novo';
+    else { ESTADO = await r.json(); ESTADO_EM = Date.now(); LER_ERRO = null; }
+  } catch (e) { LER_ERRO = e.name === 'TimeoutError' ? 'o painel demorou mais de 5 s; tento de novo' : 'sem conexão com o painel; tento de novo'; }
+  finally { lendo = false; sujo = true; }
+}
+
+/* ---------- voz: existe reconhecimento? funciona dentro da sala? erro dito em frase (regra 11) ---------- */
+const ERRO_VOZ = {
+  'not-allowed': 'o óculos negou o microfone: permita o microfone para o Navegador nas Configurações',
+  'service-not-allowed': 'o reconhecimento de voz está bloqueado neste navegador',
+  'no-speech': 'não ouviu nada: aperte e fale logo em seguida',
+  'audio-capture': 'nenhum microfone encontrado',
+  'network': 'o reconhecimento de voz precisa de internet e não conseguiu',
+};
+function voz(t) { vozMsg = t; status(t); vozP.atualizar(t); }
+function testarVoz() {
+  const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!R) { voz('voz: este navegador não reconhece fala'); return; }
+  try {
+    const r = new R(); r.lang = 'pt-BR'; r.interimResults = false; let ouviu = false;
+    voz('voz: fale agora…');
+    r.onresult = (ev) => { ouviu = true; voz('voz ouviu: "' + String(ev.results[0][0].transcript).slice(0, 60) + '"'); };
+    r.onerror = (ev) => { ouviu = true; voz('voz: ' + (ERRO_VOZ[ev.error] || 'falhou (' + (ev.error || 'sem motivo') + ')')); };
+    r.onend = () => { if (!ouviu) voz('voz: não ouviu nada'); };
+    r.start();
+  } catch (e) { voz('voz: não conseguiu começar a ouvir'); }
+}
+$('bt-voz').onclick = testarVoz;
+
+/* ---------- recentrar: a sala vai para a frente da cabeça, na altura real dela ---------- */
+const cabeca = new THREE.Vector3(), dirCab = new THREE.Vector3();
+function recentrar() {
+  const cam = renderer.xr.isPresenting ? renderer.xr.getCamera() : camera;
+  cam.getWorldPosition(cabeca); cam.getWorldDirection(dirCab);
+  const yaw = Math.atan2(-dirCab.x, -dirCab.z);
+  mundo.position.set(cabeca.x, cabeca.y - OLHO, cabeca.z);
+  mundo.rotation.set(0, yaw, 0);
+  raio.vibrar(0.4, 60);
+}
+
+/* ---------- entrar: VR (sala escura) ou AR (o quarto pelas câmeras, preto e branco no Quest 2) ---------- */
+let tipoAtual = null;
+async function entrar(tipo) {
+  let s = null;
+  try {
+    s = await navigator.xr.requestSession(tipo, { optionalFeatures: ['local-floor', 'hand-tracking'] });
+    await renderer.xr.setSession(s);
+    // só depois de a sessão estar de pé: se falhar no meio, a prévia não fica marcada como "sala"
+    tipoAtual = tipo; modo = tipo === 'immersive-ar' ? 'quarto' : 'sala';
+    scene.background = tipo === 'immersive-ar' ? null : FUNDO;
+    btModo.texto(tipo === 'immersive-ar' ? 'sala escura' : 'ver o quarto');
+    $('entrada').hidden = true;
+    s.addEventListener('end', () => { modo = 'tela'; tipoAtual = null; scene.background = FUNDO; mundo.position.set(0, 0, 0); mundo.rotation.set(0, 0, 0); $('entrada').hidden = false; status('saiu da sala.'); });
+    setTimeout(recentrar, 600); // depois que a cabeça foi lida pela primeira vez
+  } catch (e) {
+    try { await s?.end(); } catch { /* já fechada */ }
+    scene.background = FUNDO; modo = 'tela';
+    status('não entrou: ' + (e.name === 'NotSupportedError' ? 'este navegador não abre esse modo' : 'o navegador recusou (' + (e.message || e.name) + ')'));
+  }
+}
+// trocar entre sala e quarto exige sair e entrar de novo: o WebXR não troca o tipo de uma sessão aberta
+async function trocarModo() {
+  const outro = tipoAtual === 'immersive-ar' ? 'immersive-vr' : 'immersive-ar';
+  const ok = await navigator.xr?.isSessionSupported(outro).catch(() => false);
+  if (!ok) { voz('este óculos não abre o modo ' + (outro === 'immersive-ar' ? 'quarto' : 'sala')); return; }
+  const s = renderer.xr.getSession(); if (s) { await s.end(); }
+  status('toque de novo para entrar no outro modo.'); // o navegador só abre sessão a partir de um gesto
+}
+$('bt-vr').onclick = () => entrar('immersive-vr');
+$('bt-ar').onclick = () => entrar('immersive-ar');
+(async () => {
+  if (!navigator.xr) { status('este navegador não abre realidade virtual (abra pelo navegador do Quest). A cena abaixo é a prévia.'); return; }
+  const vr = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
+  const ar = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+  $('bt-vr').disabled = !vr; $('bt-ar').hidden = !ar; $('bt-ar').disabled = !ar;
+  status(vr ? 'pronto: toque em "Entrar em VR".' : 'este navegador não abre o modo imersivo. A cena abaixo é a prévia.');
+})();
+
+/* ---------- laço: 72 quadros no Quest; textura só repinta quando o dado muda ---------- */
+let quadros = 0, desde = performance.now(), fpsPintado = -99, ultDist = 0;
+const posAmos = new THREE.Vector3();
+renderer.setAnimationLoop((t) => {
+  quadros++; const agora = performance.now();
+  if (agora - desde >= 1000) {
+    fps = Math.round(quadros * 1000 / (agora - desde)); quadros = 0; desde = agora;
+    if (Math.abs(fps - fpsPintado) > 2) { fpsPintado = fps; fpsP.atualizar(); }
+    if (renderer.xr.isPresenting) { // a distância real até as amostras, para a resposta dele valer
+      renderer.xr.getCamera().getWorldPosition(cabeca); amos.mesh.getWorldPosition(posAmos);
+      const d = cabeca.distanceTo(posAmos); if (Math.abs(d - ultDist) > 0.05) { ultDist = d; distAmostras = d; amos.atualizar('a' + d.toFixed(2)); }
+    }
+    if (LER_ERRO && ESTADO) sujo = true; // a idade do dado anda
+  }
+  if (sujo) {
+    sujo = false;
+    cab.atualizar(JSON.stringify([ESTADO && ESTADO.contagem, LER_ERRO, ESTADO ? Math.round((Date.now() - ESTADO_EM) / 5000) : 0]));
+    if (ESTADO) { sala.atualizar(ESTADO); vazio.mesh.visible = !(ESTADO.cartoes || []).length; }
+  }
+  sala.quadro(t); raio.quadro();
+  renderer.render(scene, camera);
+});
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+ler(); setInterval(ler, 2000);
+window.__vr = { estado: () => ESTADO, fps: () => fps, apertar: () => btApertar.acao(btApertar), toques: () => toques, cartoes: () => sala.cartoes.length, agentes: () => sala.agentes.size, erro: () => LER_ERRO };
+</script>
+</body>
+</html>
