@@ -22,6 +22,30 @@ export const ehNada = (x) => etiqueta(x) === 'nada' && !decisivo(x)
 /** O cartão conta como "esperando você"? */
 export const contaComoEsperando = (e) => Boolean(e) && e.tipo === 'agente' && !e.esquecida && !ehQA(e) && !ehNada(e)
 
+/**
+ * M2: o que a sala sabe responder neste cartão, com o que a rota do painel precisa (as mesmas rotas, nada novo):
+ * - pergunta de UMA questão de escolha única: /api/decisao/responder { conversa, id, respostas: [{ opcao }] };
+ * - permissão do terminal: /api/decisao/permitir { conversa, id, decisao: 'sim' | 'nao' | 'sempre' };
+ * - escolha do Coderoom: a mesma rota, decisao 'escolha:<texto>'.
+ * Pergunta com várias questões ou de várias escolhas fica para o painel (o cartão diz isso), até a sala ter teclado.
+ */
+export function acaoDoCartao(e) {
+  if (!e) return null
+  const r = e.responder
+  if (r && r.id && r.conversa && Array.isArray(r.perguntas) && r.perguntas.length) {
+    const q = r.perguntas[0]
+    if (r.perguntas.length === 1 && !q.multipla && Array.isArray(q.opcoes) && q.opcoes.length) {
+      return { tipo: 'pergunta', conversa: r.conversa, id: r.id, opcoes: q.opcoes.slice(0, 4).map((o) => CORTA(o, 60)) }
+    }
+    return { tipo: 'no-painel', motivo: r.perguntas.length > 1 ? 'são ' + r.perguntas.length + ' perguntas: responda no painel' : 'várias escolhas: responda no painel' }
+  }
+  if (e.rotulo === 'permissão' && e.permissaoId) {
+    if (Array.isArray(e.escolhas) && e.escolhas.length) return { tipo: 'escolha', conversa: e.conversa || null, id: e.permissaoId, opcoes: e.escolhas.slice(0, 4).map((o) => CORTA(o, 60)) }
+    return { tipo: 'permissao', conversa: e.conversa || null, id: e.permissaoId, sempre: Boolean(e.sempre) }
+  }
+  return null
+}
+
 /** Estado de um agente na sala: as mesmas palavras da tela (regra 10: cor nunca fala sozinha). */
 export function estadoDoAgente(s) {
   const e = String(s?.estado || '').toLowerCase()
@@ -46,6 +70,7 @@ export function estadoVR(dados, { maxCartoes = 8, maxAgentes = 24 } = {}) {
     opcoes: (e.opcoes || []).slice(0, 4).map((o) => CORTA(o, 60)),
     conversa: e.conversa || null,
     escreve: e.escreve !== false,
+    acao: acaoDoCartao(e),
   }))
   const esperandoIds = new Set(espera.map((e) => e.id))
   const agentes = (d.conectadas || []).slice(0, maxAgentes).map((s) => ({

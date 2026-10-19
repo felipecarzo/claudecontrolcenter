@@ -73,7 +73,20 @@ const chao = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.24, 64), new THREE.Mes
 chao.rotation.x = -Math.PI / 2; mundo.add(chao); // um anel no chão: sem chão, a sala dá vertigem
 
 const raio = criarRaio(renderer, scene, camera, canvas);
-const sala = criarSala(mundo);
+/* M2: as ações da sala usam as MESMAS rotas do painel (responder, permitir, parar), que já servem a VPS e o PC.
+   Lista fechada de rotas: a sala nunca manda para outro lugar. */
+const ROTAS_ACAO = { responder: '/api/decisao/responder', permitir: '/api/decisao/permitir', parar: '/api/decisao/parar' };
+async function aoAgir(envio) {
+  const url = ROTAS_ACAO[envio && envio.rota]; if (!url) return { ok: false, erro: 'ação desconhecida' };
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(envio.corpo), signal: AbortSignal.timeout(20000) });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401) return { ok: false, erro: 'o login do painel venceu' };
+    const ok = r.ok && j.ok !== false; if (ok) { raio.vibrar(0.6, 80); setTimeout(ler, 1500); }
+    return ok ? { ok: true } : { ok: false, erro: j.erro || j.error || 'o painel recusou (código ' + r.status + ')' };
+  } catch (e) { return { ok: false, erro: e.name === 'TimeoutError' ? 'sem confirmação em 20 s: confira no painel' : 'sem conexão com o painel' }; }
+}
+const sala = criarSala(mundo, { raio, aoAgir });
 
 /* ---------- cabeçalho: a contagem, acima do arco ---------- */
 let ESTADO = null, ESTADO_EM = 0, LER_ERRO = null;
@@ -136,12 +149,13 @@ const vozP = painel(0.8, 0.12, (ctx, w, h) => {
 });
 // os botões usam tons do acento, nunca as cores de estado (verde, âmbar, vermelho têm significado fixo: regra 10)
 let toques = 0;
-const btApertar = raio.add(botao('apertar', (b) => { toques++; b.texto(`apertar (${toques})`); }, { cor: '#9d7cff' }));
-const btVoz = raio.add(botao('testar voz', () => testarVoz(), { cor: '#5cc8ff' }));
-const btModo = raio.add(botao('ver o quarto', () => trocarModo(), { cor: '#5cc8ff' }));
-const btCentro = raio.add(botao('recentrar', () => recentrar(), { cor: COR.acento }));
-const btSair = raio.add(botao('sair da sala', () => renderer.xr.getSession()?.end(), { cor: '#6b7484' }));
-[btApertar, btVoz, btModo, btCentro, btSair].forEach((b, i) => { noArco(b.mesh, 62 + (i % 2) * 14, 1.5, OLHO + 0.28 - Math.floor(i / 2) * 0.17); mundo.add(b.mesh); });
+const BTC = { larg: 0.44, alt: 0.12 }; // largos o bastante para "ver o quarto" e "sair da sala" inteiros
+const btApertar = raio.add(botao('apertar', (b) => { toques++; b.texto(`apertar (${toques})`); }, { ...BTC, cor: '#9d7cff' }));
+const btVoz = raio.add(botao('testar voz', () => testarVoz(), { ...BTC, cor: '#5cc8ff' }));
+const btModo = raio.add(botao('ver o quarto', () => trocarModo(), { ...BTC, cor: '#5cc8ff' }));
+const btCentro = raio.add(botao('recentrar', () => recentrar(), { ...BTC, cor: COR.acento }));
+const btSair = raio.add(botao('sair da sala', () => renderer.xr.getSession()?.end(), { ...BTC, cor: '#6b7484' }));
+[btApertar, btVoz, btModo, btCentro, btSair].forEach((b, i) => { noArco(b.mesh, 60 + (i % 2) * 18, 1.5, OLHO + 0.28 - Math.floor(i / 2) * 0.17); mundo.add(b.mesh); });
 noArco(vozP.mesh, 69, 1.5, OLHO - 0.3); vozP.atualizar(vozMsg); mundo.add(vozP.mesh);
 
 /* ---------- dado: com limite de tempo, sem pedido acumulado, sem apagar o último dado bom ---------- */
@@ -253,7 +267,7 @@ renderer.setAnimationLoop((t) => {
 });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 ler(); setInterval(ler, 2000);
-window.__vr = { estado: () => ESTADO, fps: () => fps, apertar: () => btApertar.acao(btApertar), toques: () => toques, cartoes: () => sala.cartoes.length, agentes: () => sala.agentes.size, erro: () => LER_ERRO };
+window.__vr = { estado: () => ESTADO, fps: () => fps, apertar: () => btApertar.acao(btApertar), toques: () => toques, cartoes: () => sala.cartoes.length, agentes: () => sala.agentes.size, erro: () => LER_ERRO, botoesDoPrimeiro: () => sala.cartoes[0]?.botoes || [] };
 </script>
 </body>
 </html>

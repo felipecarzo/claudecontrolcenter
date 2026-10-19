@@ -49,6 +49,20 @@ ok(estadoVR(null).cartoes.length === 0 && estadoVR(undefined).contagem.total ===
 ok(estadoDoAgente({ estado: 'espera você' }) === 'esperando' && estadoDoAgente({}) === 'parada', 'estado desconhecido vira parada')
 ok(!contaComoEsperando(null) && ehQA({ resumoIA: { etiqueta: 'testar' } }) && !ehQA({ resumoIA: { etiqueta: 'testar' }, rotulo: 'permissão' }) && ehNada({ resumoIA: { etiqueta: 'nada' } }), 'QA e "nada" nunca tiram pergunta nem permissão')
 
+// M2: o que a sala sabe responder, com o mesmo corpo que o painel manda
+const { acaoDoCartao } = await import('./src/vrEstado.mjs')
+const { botoesDoCartao, angulosDoArco, angulosDaMesa } = await import('./src/vr/puro.js')
+const perg = acaoDoCartao({ responder: { conversa: 'c', id: 'q1', perguntas: [{ opcoes: ['A', 'B'], multipla: false }] } })
+ok(perg.tipo === 'pergunta' && JSON.stringify(botoesDoCartao(perg)[1].envio) === JSON.stringify({ rota: 'responder', corpo: { conversa: 'c', id: 'q1', respostas: [{ opcao: 1 }] } }), 'pergunta de uma questão: cada opção vira botão com o corpo de /api/decisao/responder')
+ok(acaoDoCartao({ responder: { conversa: 'c', id: 'q', perguntas: [{ opcoes: ['a'] }, { opcoes: ['b'] }] } }).tipo === 'no-painel' && acaoDoCartao({ responder: { conversa: 'c', id: 'q', perguntas: [{ opcoes: ['a'], multipla: true }] } }).tipo === 'no-painel', 'várias perguntas ou várias escolhas: o cartão manda responder no painel')
+const perm = acaoDoCartao({ rotulo: 'permissão', permissaoId: 'remoto:PC:9', conversa: 'c', sempre: true })
+const bp = botoesDoCartao(perm)
+ok(bp.map((b) => b.envio.corpo.decisao).join() === 'sim,sempre,nao' && bp[0].envio.rota === 'permitir' && bp[0].envio.corpo.id === 'remoto:PC:9' && bp[2].perigo, 'permissão: permitir, sempre (só quando oferecido) e negar, com o id que a VPS encaminha ao PC')
+ok(botoesDoCartao(acaoDoCartao({ rotulo: 'permissão', permissaoId: 'p', conversa: 'c' })).length === 2, 'sem "sempre" oferecido, só permitir e negar')
+ok(botoesDoCartao(acaoDoCartao({ rotulo: 'permissão', permissaoId: 'g', escolhas: ['usar X', 'usar Y'] })).map((b) => b.envio.corpo.decisao).join() === 'escolha:usar X,escolha:usar Y', 'escolha do Coderoom vai como "escolha:<texto>"')
+ok(acaoDoCartao({ rotulo: 'parou' }) === null && botoesDoCartao(null).length === 0, 'cartão sem decisão não ganha botão')
+ok(angulosDoArco(3).join() === '0,34,-34' && angulosDaMesa(1).join() === '0' && angulosDaMesa(0).length === 0 && Math.max(...angulosDaMesa(12)) <= 80, 'ângulos do arco e da mesa')
+
 const web = ler('./src/web.mjs'), vr = ler('./src/ui_vr.html'), ui = ler('./src/ui_cockpit2.html'), kit = ler('./src/vr/kit.js'), sala = ler('./src/vr/sala.js')
 // a regra do painel (no navegador) e a da sala (no servidor) têm de ser a mesma: as duas cópias conferidas aqui
 ok(ui.includes("const c2EhQA = (x) => c2Eti(x) === 'testar' && x.rotulo !== 'pergunta' && x.rotulo !== 'permissão' && x.estado !== 'trabalhando'")
@@ -68,12 +82,14 @@ ok(chaveCab && !/\bfps\b/.test(chaveCab), 'a textura grande não repinta por cau
 ok(/tipoAtual = tipo; modo = /.test(vr) && vr.indexOf('await renderer.xr.setSession(s)') < vr.indexOf('tipoAtual = tipo; modo = '), 'o modo só muda depois de a sessão estar de pé')
 ok(kit.includes('setFromXRController') && kit.includes("addEventListener('select'") && vr.includes('setAnimationLoop'), 'raio do controle (ou pinça) e laço de quadros')
 ok(sala.includes('export const OLHO = 1.2') && vr.includes('function recentrar()'), 'a sala na altura de quem está sentado, com recentrar de verdade')
+ok(vr.includes("const ROTAS_ACAO = { responder: '/api/decisao/responder', permitir: '/api/decisao/permitir', parar: '/api/decisao/parar' }") && vr.includes("if (!url) return { ok: false, erro: 'ação desconhecida' }"), 'M2: a sala só manda para as três rotas do painel, lista fechada')
+ok(/if \(!armado\) \{ armado = true/.test(sala), 'parar pede um segundo toque (desfaz trabalho)')
 ok(ui.includes('id="vr-btn"') && /<button type="button" class="tema-btn" id="vr-btn" hidden/.test(ui) && ui.includes('.fonte-ctl .tema-btn[hidden] { display: none !important; }') && ui.includes("isSessionSupported('immersive-vr')"), 'o botão VR do painel é botão, escondido de verdade fora do Quest')
 // a sintaxe do script da página (erro de sintaxe num <script type="module"> não dá erro visível nenhum)
 const dir = mkdtempSync(join(tmpdir(), 'vr-sintaxe-'))
 try {
   const script = /<script type="module">([\s\S]*?)<\/script>/.exec(vr)[1]
-  for (const [nome, texto] of [['pagina.mjs', script], ['kit.mjs', kit], ['sala.mjs', sala]]) { writeFileSync(join(dir, nome), texto); execFileSync(process.execPath, ['--check', join(dir, nome)]) }
+  for (const [nome, texto] of [['pagina.mjs', script], ['kit.mjs', kit], ['sala.mjs', sala], ['puro.mjs', ler('./src/vr/puro.js')]]) { writeFileSync(join(dir, nome), texto); execFileSync(process.execPath, ['--check', join(dir, nome)]) }
   ok(true, 'sintaxe do script da página, do kit e da sala')
 } finally { rmSync(dir, { recursive: true, force: true }) }
 for (const [nome, t] of [['ui_vr.html', vr], ['kit.js', kit], ['sala.js', sala]]) ok(!/[—–]/.test(t), nome + ' sem travessão')
