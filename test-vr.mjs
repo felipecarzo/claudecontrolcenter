@@ -113,7 +113,7 @@ ok(/if \(!armado\) \{\s*armado = true/.test(chat) && chat.includes('ele interrom
 ok(sala.includes('const porId = new Map()') && sala.includes('agir(card.dado.id, d)') && sala.includes('const agora = porId.get(id)'), 'cartão preso ao id: a resposta volta ao cartão certo mesmo se a lista mudou (achado 1)')
 ok(/Date\.now\(\) - card\.mudouEm < ESPERA_DEPOIS_DE_MUDAR\) return/.test(sala), 'toque num cartão que mudou há menos de 1,5 s não vale')
 ok(sala.includes("(dado?.id || '') + '|' + (dado?.acao?.id || '')"), 'o "enviado" é do pedido (sessão + pergunta): pergunta nova começa limpa (achado 8)')
-ok(vr.includes('const PRAZO_ACAO = { responder: 35000 }') && vr.includes('talvez: true') && sala.includes('if (ev && ev.erro && !ev.talvez) mostrarBotoes(agora, true)'), 'responder espera 35 s como o painel, e prazo estourado não devolve os botões (achado 5)')
+ok(vr.includes('const PRAZO_ACAO = { responder: 35000, mensagem: 30000 }') && vr.includes('talvez: true') && sala.includes('if (ev && ev.erro && !ev.talvez) mostrarBotoes(agora, true)'), 'responder espera 35 s como o painel, e prazo estourado não devolve os botões (achado 5)')
 ok(vr.includes('JA_RESOLVIDO') && vr.includes('fraseDoErro('), 'resposta "já respondido" é resolvida, e erro técnico vira frase (achado 13)')
 ok(kit.includes('obj.rotation.set(0, -a, 0)') && !/obj\.lookAt\(0, altura, 0\)/.test(kit), 'noArco gira no espaço local: o recentrar não entorta a sala (achado 9)')
 ok((sala.match(/descartar\(/g) || []).length >= 3 && kit.includes('export function descartar'), 'o que sai da sala devolve geometria, material e textura (achado 6)')
