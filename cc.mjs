@@ -2843,6 +2843,14 @@ switch (cmd) {
     break
   }
 
+  /* CC-1081: o roteiro de uso (navegação e usabilidade no estilo da entrevista). Quem opera é ele, qualquer IA
+     ou o próprio programa; o comando mora todo em src/roteiroCli.mjs, que lê as próprias flags. */
+  case 'roteiro': {
+    const R = await import('./src/roteiroCli.mjs')
+    process.exitCode = await R.main(argv)
+    break
+  }
+
   /* CC-1037: cc textos levantar|aplicar --pasta <projeto> [--areas app,componentes,dados,motor] [--ensaio]
      levantar: acha cada texto do app e escreve os baralhos `textos-<área>` (o Tinder do painel mostra).
      aplicar:  troca no código os textos que ele editou (voto "Editar" com o texto novo na nota). Não faz commit. */

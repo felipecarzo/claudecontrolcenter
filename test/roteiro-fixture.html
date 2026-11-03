@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loja de teste</title>
+<!--
+  CC-1081: página de teste do "roteiro de uso". Uma página só: as abas trocam o conteúdo
+  e o endereço NUNCA muda (é o caso do Nexus). O que ela tem de propósito:
+
+  - 8 telas: Início, Pedidos, Clientes, Ajuda, Detalhes do pedido, Ficha do cliente,
+    Histórico de compras, Contato com a equipe.
+  - "Histórico de compras" só se alcança com 3 cliques (Clientes, Ficha do cliente, Histórico).
+  - A tela Ajuda tem dois nomes: a aba "Ajuda" e o botão "Suporte" (dentro de Pedidos).
+  - "Contato com a equipe" fica num botão ABAIXO da dobra da Ajuda (precisa rolar).
+  - "Excluir tudo" está no Início e o mapa NÃO pode clicar nele (vira a tela "Tudo excluído").
+  - Um relógio e um contador mudam sozinhos: não podem virar outra tela.
+  - Um cabeçalho fixo ("Loja") em TODAS as telas, como o do painel do Nexus: não pode dar nome a nenhuma tela.
+  - O botão "Detalhes do pedido" é um cartão de duas linhas (rótulo e descrição).
+  - A página escreve o idioma do navegador (navigator.language) no topo.
+  - Só com `#fora=<endereço>` no endereço: um link "Abrir site externo" para esse endereço (teste da navegação barrada).
+  - Só com `#protecao=1`: botões que SÓ a descrição, o aria-label ou o title denunciam como protegidos (e dois que passam).
+-->
+<style>
+  body { font: 16px/1.4 system-ui, sans-serif; margin: 0; padding: 0 12px 24px; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+  h1 { font-size: 1.1rem; margin: 0; }
+  button span { display: block; }
+  button .desc { font-weight: normal; font-size: 0.85rem; }
+  nav { display: flex; gap: 6px; }
+  nav button { flex: 1; padding: 10px 4px; }
+  button { font: inherit; padding: 10px 14px; margin: 6px 0; display: block; }
+  nav button[aria-selected=true] { font-weight: bold; }
+  .perigo { background: #fdd; border: 1px solid #c00; }
+  .enchimento { height: 900px; background: linear-gradient(#fff, #eef); }
+</style>
+</head>
+<body>
+<header><h1>Loja</h1><small id="idioma"></small><small id="relogio"></small></header>
+<nav role="tablist" id="abas"></nav>
+<main id="tela"></main>
+<script>
+  const ABAS = ['Início', 'Pedidos', 'Clientes', 'Ajuda']
+  const TELAS = {
+    'Início': { h: 'Painel da loja', p: 'Escolha uma aba para começar.', botoes: [['Excluir tudo', 'Tudo excluído', 'perigo']] },
+    'Pedidos': { h: 'Lista de pedidos', p: 'Nenhum pedido novo.', botoes: [['Detalhes do pedido', 'Detalhes do pedido', '', 'Veja os itens do pedido e o total.'], ['Suporte', 'Ajuda'], ['Atualizar lista', null]] },
+    'Clientes': { h: 'Lista de clientes', p: 'Três clientes cadastrados.', botoes: [['Ficha do cliente', 'Ficha do cliente']] },
+    'Ajuda': { h: 'Central de ajuda', p: 'Perguntas frequentes.', enchimento: true, botoes: [['Falar com a equipe', 'Contato com a equipe']] },
+    'Detalhes do pedido': { h: 'Detalhes do pedido', p: 'Pedido de exemplo, dois itens.', botoes: [['Voltar para pedidos', 'Pedidos']] },
+    'Ficha do cliente': { h: 'Ficha do cliente', p: 'Cliente de exemplo.', botoes: [['Histórico de compras', 'Histórico de compras'], ['Voltar para clientes', 'Clientes']] },
+    'Histórico de compras': { h: 'Histórico de compras', p: 'Total gasto: R$ 1.240,00 em 12 compras.', botoes: [['Voltar para a ficha', 'Ficha do cliente']] },
+    'Contato com a equipe': { h: 'Contato com a equipe', p: 'Escreva para ajuda@loja.exemplo.', botoes: [['Voltar para a ajuda', 'Ajuda']] },
+    'Tudo excluído': { h: 'Tudo excluído', p: 'Os dados foram apagados.', botoes: [] },
+  }
+  let itens = 7
+  const abas = document.getElementById('abas')
+  const tela = document.getElementById('tela')
+  function ir(nome) {
+    const t = TELAS[nome]
+    abas.hidden = !ABAS.includes(nome) // as telas de detalhe não têm a barra de abas, só o botão de voltar
+    for (const b of abas.children) b.setAttribute('aria-selected', b.textContent === (ABAS.includes(nome) ? nome : '') ? 'true' : 'false')
+    tela.innerHTML = ''
+    const h = document.createElement('h2'); h.textContent = t.h; tela.append(h)
+    const p = document.createElement('p'); p.textContent = t.p; tela.append(p)
+    // o enchimento vem ANTES dos botões: o botão da Ajuda fica abaixo da dobra
+    if (t.enchimento) { const e = document.createElement('div'); e.className = 'enchimento'; tela.append(e) }
+    if (t.extra) tela.append(t.extra)
+    for (const x of t.extras || []) tela.append(x)
+    for (const [rotulo, destino, classe, descricao] of t.botoes) {
+      const b = document.createElement('button')
+      // cartão de duas linhas: o rótulo é a primeira, a descrição é a segunda
+      const texto = rotulo === 'Atualizar lista' ? `Atualizar lista (${itens} itens)` : rotulo
+      if (descricao) { const a = document.createElement('span'); a.textContent = texto; const d = document.createElement('span'); d.className = 'desc'; d.textContent = descricao; b.append(a, d) } else b.textContent = texto
+      if (classe) b.className = classe
+      b.onclick = destino ? () => ir(destino) : () => { itens++; b.textContent = `Atualizar lista (${itens} itens)` }
+      tela.append(b)
+    }
+  }
+  for (const nome of ABAS) {
+    const b = document.createElement('button'); b.setAttribute('role', 'tab'); b.textContent = nome
+    b.onclick = () => ir(nome); abas.append(b)
+  }
+  const relogio = document.getElementById('relogio')
+  setInterval(() => { relogio.textContent = 'Hora ' + new Date().toLocaleTimeString('pt-BR') }, 500)
+  relogio.textContent = 'Hora ' + new Date().toLocaleTimeString('pt-BR')
+  document.getElementById('idioma').textContent = 'Idioma ' + navigator.language
+  const opcoes = new URLSearchParams(location.hash.slice(1))
+  if (opcoes.get('fora')) { const a = document.createElement('a'); a.href = opcoes.get('fora'); a.textContent = 'Abrir site externo'; a.style.display = 'block'; TELAS['Início'].extra = a }
+  if (opcoes.get('protecao')) {
+    const mk = (texto, atributos, descricao) => {
+      const b = document.createElement('button')
+      if (descricao) { const a = document.createElement('span'); a.textContent = texto; const d = document.createElement('span'); d.className = 'desc'; d.textContent = descricao; b.append(a, d) } else b.textContent = texto
+      for (const [k, v] of Object.entries(atributos || {})) b.setAttribute(k, v)
+      return b
+    }
+    TELAS['Início'].extras = [mk('Assinatura', { 'aria-label': 'Cancelar assinatura' }), mk('Contador', { title: 'Zerar contador' }), mk('Cartão fiel', {}, 'Pague com pontos'),
+      mk('Ver relatório', {}, 'Veja o histórico de compras do mês'), mk('Dados', { title: 'Mais detalhes' })]
+  }
+  ir('Início')
+</script>
+</body>
+</html>
