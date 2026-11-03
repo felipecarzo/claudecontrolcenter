@@ -217,7 +217,7 @@ const naTela = (obs, alvo) => Boolean((alvo.texto && alvo.texto.test(semAcento(o
  * Uma sessão, neste processo (precisa de `node --experimental-websocket`). `plano`:
  * `{ raiz, url?, tarefa: { id, objetivo, sucesso: { texto?, estado? } }, persona?: { nome, paciencia } | 'nome',
  *   cerebro, mapa?, otimo?, maxPassos?, fotos?, id?, largura?, altura?, idioma? (pt-BR), naoTocar? (texto de regex
- *   que SOMA à lista de proteção), naoTocarSo? (troca a lista), qualquerUrl? (abrir endereço fora do permitido),
+ *   que SOMA à lista de proteção), naoTocarSo? (troca a lista), qualquerUrl? (abrir endereço fora do permitido), permitir? (hosts a mais), acesso? (caminho do JSON de login),
  *   prazoMs? (15 min; 0 = sem limite), prazoCerebroMs?, quem? (o NOME da pessoa: obrigatório no cérebro `humano`) }`.
  * Sem `url`, vale a do mapa; sem `mapa`, o do disco. Devolve o resumo; a sessão fica em `sessoes/<id>.jsonl`.
  */
@@ -255,7 +255,7 @@ export async function rodarAgente(plano) {
   const rl = especie === 'humano' ? readline.createInterface({ input: process.stdin, output: process.stdout }) : null
   const cerebro = criarCerebro(especie, { rl, prazoCerebroMs: plano.prazoCerebroMs || 120000 })
   const nav = await abrirNavegador({
-    largura: plano.largura || 390, altura: plano.altura || 844, qualquerUrl: Boolean(plano.qualquerUrl),
+    largura: plano.largura || 390, altura: plano.altura || 844, qualquerUrl: Boolean(plano.qualquerUrl), permitir: plano.permitir || [], acesso: plano.acesso || null,
     ...(plano.idioma && { idioma: plano.idioma }), ...(plano.naoTocar && { naoTocar: plano.naoTocar }), ...(plano.naoTocarSo && { naoTocarSo: plano.naoTocarSo }),
   }).catch((e) => { rl?.close(); throw e })
 

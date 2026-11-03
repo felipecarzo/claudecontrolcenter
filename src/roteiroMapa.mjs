@@ -27,6 +27,31 @@ const chaveDe = (e) => e.papel + '|' + normalizar(e.rotulo)
 const achar = (obs, alvo) => obs.elementos.filter((e) => chaveDe(e) === alvo.chave)[alvo.oc]
 
 /**
+ * Refaz o caminho do mapa até `tela` e devolve a assinatura de onde chegou (ou null se algum clique não deu).
+ * Recarrega a página e clica passo a passo. Com `tela.passos` (o mapa novo) acha cada botão por papel, nome e posição
+ * entre os iguais, como o próprio mapa fez. Sem eles (mapa antigo, só com `tela.caminho`) tenta os botões de mesmo
+ * nome, um a um, até um deixar clicar: no Nexus o menu em gaveta tem "Apps" FORA da janela, antes da aba "Apps", e
+ * pegar só o primeiro fazia toda tela parecer inalcançável. Clique recusado não muda a página, então tentar o
+ * próximo é seguro.
+ */
+export async function alcancar(nav, url, tela) {
+  await nav.ir(url)
+  let obs = await nav.observar({ soVisivel: false })
+  for (const [i, rotulo] of (tela.caminho || []).entries()) {
+    const passo = tela.passos?.[i]
+    const candidatos = passo ? [achar(obs, passo)].filter(Boolean) : obs.elementos.filter((e) => e.rotulo === rotulo)
+    let clicou = false
+    for (const el of candidatos) {
+      if (el.bloqueado) continue
+      if ((await nav.clicar(el.n)).ok) { clicou = true; break }
+    }
+    if (!clicou) return null
+    obs = await nav.observar({ soVisivel: false })
+  }
+  return obs.assinatura
+}
+
+/**
  * Os cabeçalhos da MOLDURA: os que aparecem na maioria das telas (mais da metade), como o do painel fixo.
  * Tem de ser "maioria" e não "todas": no Nexus duas telas (um aviso de scanner e uma tela de saída) não têm
  * o cabeçalho fixo, e com "todas" ele deixava de ser moldura e dava nome a todas as outras.
@@ -59,7 +84,8 @@ export function nomear(telas) {
  * No mapa a foto de cada tela fica como caminho relativo à `saida` (`fotos/t3.jpg`).
  * `maxIguais`: botões com o mesmo nome na mesma tela (linhas de uma lista) viram só os primeiros.
  * `idioma` (padrão pt-BR), `naoTocar` (texto de regex que SOMA à lista `PROTEGIDOS`), `naoTocarSo` (troca a
- * lista) e `qualquerUrl` (abrir endereço fora de `enderecoPermitido`) vão para o navegador.
+ * lista), `permitir` (hosts a mais que podem abrir), `acesso` (caminho do JSON de login; entra logado) e `qualquerUrl`
+ * (abrir endereço fora de `enderecoPermitido`) vão para o navegador.
  *
  * O progresso vai para `mapa.novo.json`, e só no FIM ele troca o `mapa.json` (rename). Se o processo morrer no
  * meio, o `mapa.json` bom continua lá, e o parcial fica em `mapa.novo.json` com `parcial: true` e um aviso.
@@ -70,11 +96,11 @@ export function nomear(telas) {
  * nunca levar a outro e sem nunca ficar parado em tela que não seja o destino, não é clicado de novo: a
  * aresta entra com `inferida: true`. Aposta que é navegação fixa. `inferir: false` clica em tudo.
  */
-export async function mapear({ url, maxTelas = 40, maxProfundidade = 4, prazoMs = 180000, saida = null, fotos = null, maxIguais = 2, largura = 390, altura = 844, idioma = 'pt-BR', naoTocar = undefined, naoTocarSo = undefined, qualquerUrl = false, inferir = true }) {
+export async function mapear({ url, maxTelas = 40, maxProfundidade = 4, prazoMs = 180000, saida = null, fotos = null, maxIguais = 2, largura = 390, altura = 844, idioma = 'pt-BR', naoTocar = undefined, naoTocarSo = undefined, qualquerUrl = false, permitir = [], acesso = null, inferir = true }) {
   if (!url) throw new Error('mapear precisa de uma url')
   const limite = Date.now() + prazoMs
   const semTempo = () => Date.now() > limite
-  const nav = await abrirNavegador({ largura, altura, idioma, qualquerUrl, ...(naoTocar && { naoTocar }), ...(naoTocarSo && { naoTocarSo }) })
+  const nav = await abrirNavegador({ largura, altura, idioma, qualquerUrl, permitir, acesso, ...(naoTocar && { naoTocar }), ...(naoTocarSo && { naoTocarSo }) })
   const raizUrl = new URL(url)
   const externo = (u) => { try { const x = new URL(u); return x.protocol !== raizUrl.protocol || x.host !== raizUrl.host } catch { return true } }
 
@@ -117,6 +143,8 @@ export async function mapear({ url, maxTelas = 40, maxProfundidade = 4, prazoMs 
       id, assinatura: obs.assinatura, titulo: obs.cabecalhos[0] || obs.titulo, nome: null, cabecalhos: obs.cabecalhos,
       rotulos: [...new Set(obs.elementos.map((e) => e.rotulo))].slice(0, 80),
       foto: null, profundidade, caminho: caminho.map((p) => p.rotulo), explorada: false,
+      // o jeito de REFAZER o clique: papel, nome e qual dos de mesmo nome (a gaveta e a aba podem ter o mesmo rótulo)
+      passos: caminho.map(({ chave, oc, papel, rotulo }) => ({ chave, oc, papel, rotulo })),
     }
     if (saida) {
       const arq = path.join(fotos || path.join(saida, 'fotos'), `${id}.jpg`)

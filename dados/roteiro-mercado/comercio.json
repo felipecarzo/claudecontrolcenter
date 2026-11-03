@@ -1,0 +1,1608 @@
+{
+ "familia": "comercio",
+ "rodada": 1,
+ "quando": "2026-11-03",
+ "tipos": [
+  {
+   "tipo": "Loja B2C (vitrine, lista, produto, carrinho, checkout)",
+   "tarefas_principais": [
+    "Buscar um produto",
+    "Filtrar e ordenar a lista",
+    "Abrir o produto e escolher variação",
+    "Calcular frete pelo CEP",
+    "Adicionar ao carrinho",
+    "Fechar a compra (checkout)",
+    "Pagar com PIX ou parcelado"
+   ],
+   "produtos": [
+    {
+     "nome": "Americanas",
+     "url": "https://www.americanas.com.br",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: digitei \"fone\" na busca, abri a lista, abri um produto, cliquei em comprar e no ícone do carrinho"
+    },
+    {
+     "nome": "KaBuM!",
+     "url": "https://www.kabum.com.br",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: busca \"teclado\", lista, produto, clique em comprar/adicionar (abriu modal de login)"
+    },
+    {
+     "nome": "Decathlon Brasil",
+     "url": "https://www.decathlon.com.br",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: busca \"mochila\", lista, produto, clique em comprar/adicionar (levou a /checkout/profile)"
+    },
+    {
+     "nome": "Mercado Livre",
+     "url": "https://www.mercadolivre.com.br",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: só a home (a busca redirecionou para verificação de conta, bloqueio típico de IP de datacenter) + página oficial /seguranca lida por texto"
+    },
+    {
+     "nome": "Tok&Stok",
+     "url": "https://www.tokstok.com.br",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: só a home (faixas e menu); a busca não completou"
+    },
+    {
+     "nome": "Apple Store",
+     "url": "https://www.apple.com/br/shop",
+     "como_olhou": "indireto: citado no estudo Baymard (data de entrega, presente no carrinho); não abri o checkout"
+    },
+    {
+     "nome": "Walmart",
+     "url": "https://www.walmart.com",
+     "como_olhou": "indireto: citado no estudo Baymard (seletor de quantidade com botões e campo, asterisco e \"(optional)\")"
+    },
+    {
+     "nome": "Best Buy",
+     "url": "https://www.bestbuy.com",
+     "como_olhou": "indireto: citado no estudo Baymard (contagem regressiva do corte de pedido)"
+    },
+    {
+     "nome": "IKEA",
+     "url": "https://www.ikea.com",
+     "como_olhou": "indireto: citado no estudo Baymard (trocar opção de entrega no próprio seletor)"
+    },
+    {
+     "nome": "Target",
+     "url": "https://www.target.com",
+     "como_olhou": "indireto: citado no estudo Baymard (presente no carrinho)"
+    },
+    {
+     "nome": "Lowe's",
+     "url": "https://www.lowes.com",
+     "como_olhou": "indireto: citado no estudo Baymard (campos opcionais atrás de link)"
+    },
+    {
+     "nome": "American Eagle",
+     "url": "https://www.ae.com",
+     "como_olhou": "indireto: citado no estudo Baymard (explica por que pede telefone)"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "busca-no-topo-em-todas-as-paginas",
+     "nome": "Campo de busca fixo no topo, em home, lista e produto",
+     "descricao": "A caixa de busca fica no cabeçalho em todas as páginas, com botão Buscar e placeholder do que dá para buscar.",
+     "sinal_observavel": "Em home, lista e produto: existe input visível (type=search, role=search ou combobox) dentro do cabeçalho.",
+     "presente_em": [
+      "Americanas",
+      "KaBuM!",
+      "Decathlon Brasil",
+      "Mercado Livre"
+     ],
+     "prevalencia": "4 de 4",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "busca-com-sugestoes-ao-digitar",
+     "nome": "Sugestões enquanto digita",
+     "descricao": "Ao digitar 4 letras abre uma lista com termos sugeridos (ex.: \"fone ouvido\", \"fone bluetooth\", \"fone jbl\"). [confiança: baixa, meu detector pode ter falhado nos outros]",
+     "sinal_observavel": "Digitar 4 letras na busca: surge listbox/role=option ou lista abaixo do campo com 2 ou mais itens clicáveis.",
+     "presente_em": [
+      "Americanas"
+     ],
+     "prevalencia": "1 de 3",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "lista-com-filtros-e-ordenacao",
+     "nome": "Lista com filtros laterais e ordenação",
+     "descricao": "A lista traz grupos de filtro (departamento, marca, preço com mínimo e máximo, atributos do tipo de produto), contagem de itens e um controle \"Ordenar por\" (padrão: mais relevantes).",
+     "sinal_observavel": "Abrir uma busca: existem controles de filtro (checkbox, faixa de preço) e um botão/select com texto \"Ordenar\".",
+     "presente_em": [
+      "Americanas",
+      "KaBuM!",
+      "Decathlon Brasil"
+     ],
+     "prevalencia": "3 de 3",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "paginacao-numerada",
+     "nome": "Paginação numerada",
+     "descricao": "Rodapé da lista com números de página, setas e \"Próxima página\" (Kabum chega a 130 páginas, com salto \">>\").",
+     "sinal_observavel": "No fim da lista: links/botões numerados e \"Próxima\".",
+     "presente_em": [
+      "KaBuM!",
+      "Decathlon Brasil"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "alternar-grade-e-lista",
+     "nome": "Alternar visualização grade e lista",
+     "descricao": "Dois botões, grid e lista, mudam a densidade dos cards.",
+     "sinal_observavel": "Botões com rótulo grid/lista acima dos resultados.",
+     "presente_em": [
+      "Americanas"
+     ],
+     "prevalencia": "1 de 3",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "adicionar-ao-carrinho-no-card",
+     "nome": "Adicionar ao carrinho direto do card da lista",
+     "descricao": "O card tem botão de carrinho sem abrir o produto; quando há variação, abre seletor de variações em vez de adicionar.",
+     "sinal_observavel": "Na lista: botão \"Adicionar ao carrinho\" dentro do card; clicar altera o contador do carrinho ou abre o seletor.",
+     "presente_em": [
+      "Americanas",
+      "KaBuM!"
+     ],
+     "prevalencia": "2 de 3",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "favoritar-produto",
+     "nome": "Favoritar produto (lista de desejos)",
+     "descricao": "Coração ou botão \"favoritar\" no card e na página do produto, com atalho \"Favoritos\" no topo.",
+     "sinal_observavel": "Botão com aria-label favoritar/wishlist no card e no produto.",
+     "presente_em": [
+      "Americanas",
+      "Decathlon Brasil"
+     ],
+     "prevalencia": "2 de 3",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "cep-no-topo-e-no-produto",
+     "nome": "Pedir CEP cedo, no topo e na página do produto",
+     "descricao": "Entrada do CEP no cabeçalho (\"Informe seu CEP\", \"Enviar para\", \"Adicione seu CEP\") e campo de CEP na página do produto para calcular frete e prazo. A Americanas abre janela de CEP na primeira visita.",
+     "sinal_observavel": "Home e produto: texto/botão com CEP no cabeçalho e input de CEP perto do preço.",
+     "presente_em": [
+      "Americanas",
+      "KaBuM!",
+      "Decathlon Brasil",
+      "Mercado Livre"
+     ],
+     "prevalencia": "4 de 4",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "comprar-agora-e-adicionar-ao-carrinho",
+     "nome": "Dois botões na página do produto: Comprar agora e Adicionar ao carrinho",
+     "descricao": "O botão primário leva direto ao fechamento; o secundário mantém na loja e abre o carrinho.",
+     "sinal_observavel": "Página de produto: dois botões distintos com esses rótulos; Comprar agora muda a URL para checkout/login.",
+     "presente_em": [
+      "KaBuM!",
+      "Decathlon Brasil"
+     ],
+     "prevalencia": "2 de 3",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "confirmar-variacao-antes-de-comprar",
+     "nome": "Confirmar a variação escolhida antes de comprar",
+     "descricao": "Comprar sem tocar na cor/tamanho abre diálogo \"o produto escolhido foi: Preto, deseja continuar?\" com \"não, alterar\" e \"sim, continuar\".",
+     "sinal_observavel": "Clicar comprar sem escolher variação: aparece role=dialog pedindo confirmação.",
+     "presente_em": [
+      "Americanas"
+     ],
+     "prevalencia": "1 de 3",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "parcelamento-e-pix-na-pagina-do-produto",
+     "nome": "Parcelamento e PIX visíveis no preço",
+     "descricao": "Linha \"10x de R$ ... sem juros\", destaque de desconto no PIX e link \"ver detalhes de parcelamento / formas de pagamento\" (abre janela).",
+     "sinal_observavel": "Página de produto: texto \"x de R$\" e \"PIX\" perto do preço e link para formas de pagamento.",
+     "presente_em": [
+      "Americanas",
+      "KaBuM!",
+      "Decathlon Brasil",
+      "Mercado Livre"
+     ],
+     "prevalencia": "4 de 4",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "galeria-de-imagens-com-ampliar",
+     "nome": "Galeria com várias imagens e ampliar",
+     "descricao": "Carrossel de miniaturas/slides e botão \"Expandir imagem\".",
+     "sinal_observavel": "Produto: 2 ou mais imagens navegáveis (setas ou \"slide N\") e botão de ampliar.",
+     "presente_em": [
+      "Americanas",
+      "Decathlon Brasil",
+      "KaBuM!"
+     ],
+     "prevalencia": "3 de 3",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "descricao-e-ficha-tecnica-em-secoes",
+     "nome": "Descrição e ficha técnica em seções que expandem",
+     "descricao": "Botões \"Ver descrição\", \"Ver informações técnicas\", \"Sobre o produto\", \"Ver mais\".",
+     "sinal_observavel": "Produto: botões de expandir/abas com esses rótulos; clicar mostra o texto sem mudar de página.",
+     "presente_em": [
+      "KaBuM!",
+      "Decathlon Brasil"
+     ],
+     "prevalencia": "2 de 3",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "gaveta-do-carrinho-com-estado-vazio",
+     "nome": "Gaveta lateral do carrinho com estado vazio",
+     "descricao": "Clicar no ícone do carrinho abre gaveta \"minha cesta\" com mensagem de vazio e botão para voltar a comprar. Achado: na Americanas o texto vem em inglês (\"Your Cart is empty\", \"Start Shopping\"), falha de tradução.",
+     "sinal_observavel": "Clicar no ícone do carrinho vazio: abre painel/dialog com mensagem e botão de primeira ação.",
+     "presente_em": [
+      "Americanas"
+     ],
+     "prevalencia": "1 de 3",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "login-em-modal-ao-comprar",
+     "nome": "Login ou cadastro em janela ao comprar sem conta",
+     "descricao": "Comprar sem login abre janela \"Aviso: o progresso será perdido, acesse sua conta ou cadastre-se\", com entrar com Google e Apple.",
+     "sinal_observavel": "Deslogado, clicar comprar: aparece role=dialog com campos de entrar e botões de login social.",
+     "presente_em": [
+      "KaBuM!"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "checkout-por-email-sem-conta-previa",
+     "nome": "Checkout que começa por e-mail, sem exigir conta antes",
+     "descricao": "Na Decathlon, comprar leva a \"Meus dados\" pedindo e-mail primeiro, na etapa 1 de 3. Baymard: criar conta só no fim é oferecido por 44% dos sites.",
+     "sinal_observavel": "Deslogado, clicar comprar: chega a tela de dados com e-mail, sem tela de login obrigatória.",
+     "presente_em": [
+      "Decathlon Brasil"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    },
+    {
+     "id": "checkout-em-etapas-com-resumo",
+     "nome": "Checkout em etapas com resumo do pedido",
+     "descricao": "Etapas Dados, Entrega, Pagamento; resumo com subtotal, \"entrega a calcular\" e total; links \"Voltar para o carrinho\" e \"Ajuda\"; selo de transação segura.",
+     "sinal_observavel": "Na tela de checkout: indicador de etapas, bloco de resumo com subtotal e total, link de voltar ao carrinho.",
+     "presente_em": [
+      "Decathlon Brasil"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    },
+    {
+     "id": "custo-total-com-frete-antes-do-pagamento",
+     "nome": "Total e frete visíveis antes de pagar",
+     "descricao": "O resumo mostra \"Entrega: a calcular\" até informar o CEP e o total à vista. Baymard: 40% abandonam por custos extras e 12% por não ver o total.",
+     "sinal_observavel": "No resumo do checkout: linhas de frete e total presentes antes da etapa de pagamento.",
+     "presente_em": [
+      "Decathlon Brasil"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": "https://baymard.com/lists/cart-abandonment-rate"
+    },
+    {
+     "id": "faixa-de-beneficios-no-topo",
+     "nome": "Faixa de benefícios no topo",
+     "descricao": "Barra com PIX com desconto, frete grátis, troca grátis ou retirada, antes do cabeçalho.",
+     "sinal_observavel": "Home: faixa/banner acima do menu com texto de benefício (PIX, frete, troca).",
+     "presente_em": [
+      "Decathlon Brasil",
+      "Tok&Stok",
+      "KaBuM!"
+     ],
+     "prevalencia": "3 de 5",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "beneficio-de-primeira-compra",
+     "nome": "Benefício ou cupom de primeira compra",
+     "descricao": "Cupom de primeira compra (KaBuM: 5% com TONOKABUM), frete grátis só na primeira compra (Mercado Livre) ou desconto pelo app (Tok&Stok).",
+     "sinal_observavel": "Home ou janela: texto \"primeira compra\" com cupom ou frete grátis.",
+     "presente_em": [
+      "KaBuM!",
+      "Mercado Livre",
+      "Tok&Stok"
+     ],
+     "prevalencia": "3 de 5",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "troca-e-devolucao-gratis-em-destaque",
+     "nome": "Troca e devolução grátis em destaque",
+     "descricao": "Faixa \"Trocas e devoluções grátis\" (Decathlon) e botão \"Devolver grátis\" na página da compra, até 30 dias (Mercado Livre).",
+     "sinal_observavel": "Home/produto: texto de troca grátis; minha compra: botão de devolver.",
+     "presente_em": [
+      "Decathlon Brasil",
+      "Mercado Livre"
+     ],
+     "prevalencia": "2 de 5",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "retirada-na-loja",
+     "nome": "Entrega ou retirada na loja",
+     "descricao": "O CEP pergunta \"Entrega ou retirada?\", com \"Retire na loja em até 2 horas\" e \"Retirada turbo\".",
+     "sinal_observavel": "Header/produto: opção de retirada além de frete.",
+     "presente_em": [
+      "Decathlon Brasil"
+     ],
+     "prevalencia": "1 de 5",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "widget-de-acessibilidade-com-libras",
+     "nome": "Widget de acessibilidade com Libras",
+     "descricao": "Botão que abre VLibras e controles de texto maior, espaçamento, inverter cores, tons de cinza, cursor grande, guia de leitura, sublinhar links e desativar animações.",
+     "sinal_observavel": "Procurar botão/ícone de acessibilidade fixo; abre painel com esses controles.",
+     "presente_em": [
+      "Americanas"
+     ],
+     "prevalencia": "1 de 5",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "atalhos-de-teclado-documentados",
+     "nome": "Atalhos de teclado documentados na página",
+     "descricao": "O Mercado Livre lista atalhos: buscar com Shift+/, Minhas compras, Carrinho com Alt+Shift+C, e abre/fecha o menu de atalhos.",
+     "sinal_observavel": "Home: link \"Atalhos do teclado\" ou menu de atalhos na primeira tabulação.",
+     "presente_em": [
+      "Mercado Livre"
+     ],
+     "prevalencia": "1 de 5",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "data-de-entrega-em-vez-de-velocidade",
+     "nome": "Mostrar data de entrega, não só \"5 dias úteis\"",
+     "descricao": "Baymard: 52% mostram data (Apple), 48% só velocidade (Macy's, John Lewis, H&M). Um título relacionado do mesmo estudo cita 41%, os números divergem.",
+     "sinal_observavel": "Etapa de entrega: cada opção traz uma data (\"chega até quinta, 12/11\").",
+     "presente_em": [
+      "Apple Store"
+     ],
+     "prevalencia": "52% dos sites do benchmark Baymard (números divergentes: 52% a 59%)",
+     "tipo_de_padrao": "comum",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    },
+    {
+     "id": "convidado-como-opcao-mais-visivel",
+     "nome": "Compra como convidado como opção mais visível",
+     "descricao": "Baymard: 47% dos sites não deixam convidado como a opção mais proeminente e 56% não oferecem criar conta só após a compra (Stance e Williams Sonoma oferecem).",
+     "sinal_observavel": "Tela de entrada do checkout: \"Continuar como convidado\" é o botão primário.",
+     "presente_em": [
+      "Stance",
+      "Williams Sonoma"
+     ],
+     "prevalencia": "cerca de 53% fazem (Baymard)",
+     "tipo_de_padrao": "comum",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    },
+    {
+     "id": "etapas-concluidas-resumidas",
+     "nome": "Etapas já preenchidas do checkout ficam resumidas",
+     "descricao": "Baymard: 72% não resumem etapas concluídas em acordeão; Sportchek e GAP resumem, Pep Boys não.",
+     "sinal_observavel": "Checkout em acordeão: etapa concluída colapsa com resumo e \"Editar\".",
+     "presente_em": [
+      "GAP",
+      "Sportchek"
+     ],
+     "prevalencia": "28% dos sites do benchmark Baymard",
+     "tipo_de_padrao": "diferencial",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    },
+    {
+     "id": "campos-obrigatorios-e-opcionais-marcados",
+     "nome": "Marcar campos obrigatórios e opcionais",
+     "descricao": "Baymard: só 14% a 50% marcam os dois (números divergentes); o Walmart usa asterisco e \"(optional)\".",
+     "sinal_observavel": "Formulário de checkout: rótulos com * e/ou \"(opcional)\".",
+     "presente_em": [
+      "Walmart"
+     ],
+     "prevalencia": "14% a 50% (Baymard, números divergentes)",
+     "tipo_de_padrao": "diferencial",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    },
+    {
+     "id": "campos-opcionais-atras-de-link",
+     "nome": "Campos opcionais escondidos atrás de link",
+     "descricao": "Baymard: 67% acertam (a Lowe's esconde Empresa e Complemento atrás de links).",
+     "sinal_observavel": "Formulário de endereço: \"Adicionar complemento\" revela o campo.",
+     "presente_em": [
+      "Lowe's"
+     ],
+     "prevalencia": "67% dos sites do benchmark Baymard",
+     "tipo_de_padrao": "comum",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    },
+    {
+     "id": "explicar-por-que-pede-telefone",
+     "nome": "Explicar por que pede telefone",
+     "descricao": "Baymard: 53% explicam (American Eagle), 47% mostram só o erro.",
+     "sinal_observavel": "Campo de telefone com texto de apoio sobre uso.",
+     "presente_em": [
+      "American Eagle"
+     ],
+     "prevalencia": "53% dos sites do benchmark Baymard",
+     "tipo_de_padrao": "comum",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    },
+    {
+     "id": "presente-no-carrinho",
+     "nome": "Opção de presente no carrinho",
+     "descricao": "Baymard: 32% oferecem (Target, Apple).",
+     "sinal_observavel": "Carrinho: opção/checkbox de presente.",
+     "presente_em": [
+      "Target",
+      "Apple Store"
+     ],
+     "prevalencia": "32% dos sites do benchmark Baymard",
+     "tipo_de_padrao": "diferencial",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    },
+    {
+     "id": "contagem-regressiva-do-corte-de-pedido",
+     "nome": "Contagem regressiva do corte de pedido",
+     "descricao": "Baymard: 17% mostram contagem (Best Buy), 83% só um horário fixo.",
+     "sinal_observavel": "Entrega: texto \"peça em 2h10 para chegar amanhã\".",
+     "presente_em": [
+      "Best Buy"
+     ],
+     "prevalencia": "17% dos sites do benchmark Baymard",
+     "tipo_de_padrao": "diferencial",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    },
+    {
+     "id": "trocar-opcao-de-entrega-no-proprio-seletor",
+     "nome": "Trocar entrega por retirada no próprio seletor",
+     "descricao": "Baymard: 47% a 50% permitem (IKEA, Whole Foods), os outros mandam voltar ao carrinho.",
+     "sinal_observavel": "Etapa de entrega: alternar entrega/retirada sem sair da etapa.",
+     "presente_em": [
+      "IKEA"
+     ],
+     "prevalencia": "47% a 50% (Baymard, números divergentes)",
+     "tipo_de_padrao": "diferencial",
+     "estudo": "https://baymard.com/blog/current-state-of-checkout-ux"
+    }
+   ]
+  },
+  {
+   "tipo": "Marketplace (vários vendedores)",
+   "tarefas_principais": [
+    "Escolher entre ofertas de vendedores diferentes",
+    "Conferir reputação do vendedor",
+    "Falar com o vendedor",
+    "Pagar com proteção",
+    "Acompanhar a entrega",
+    "Devolver ou abrir reclamação"
+   ],
+   "produtos": [
+    {
+     "nome": "Mercado Livre",
+     "url": "https://www.mercadolivre.com.br",
+     "como_olhou": "página oficial /seguranca lida por texto; home no navegador; resumo de busca da central e do blog oficial (frete grátis). A lista e o produto não abriram (verificação de conta)"
+    },
+    {
+     "nome": "eBay",
+     "url": "https://www.ebay.com/help/buying",
+     "como_olhou": "ajuda oficial \"contatar o vendedor\" lida por texto (não vi a interface rodando)"
+    },
+    {
+     "nome": "Americanas",
+     "url": "https://www.americanas.com.br",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: lista com filtro \"Vendido Por\""
+    },
+    {
+     "nome": "KaBuM!",
+     "url": "https://www.kabum.com.br",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: lista e produto com \"Vendido por KaBuM!\" e menu \"Venda no KaBuM!\""
+    },
+    {
+     "nome": "iFood",
+     "url": "https://www.ifood.com.br",
+     "como_olhou": "artigos de terceiros (Saipos, Tecnoblog, Canaltech, Buscapé, Oficina da Net) lidos via resumo de busca; o site bloqueou meu navegador (Cloudflare 403). Confiança baixa"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "vendedor-identificado-na-lista-ou-no-anuncio",
+     "nome": "Vendedor identificado na lista ou no anúncio",
+     "descricao": "Filtro \"Vendido por\" na lista (Americanas), selo \"Vendido por KaBuM!\" e seção \"Informações do vendedor\" no anúncio (eBay).",
+     "sinal_observavel": "Lista ou anúncio: texto \"Vendido por\" ou bloco de vendedor.",
+     "presente_em": [
+      "Americanas",
+      "KaBuM!",
+      "eBay"
+     ],
+     "prevalencia": "3 de 3",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "mensagem-com-vendedor-dentro-da-plataforma",
+     "nome": "Conversar com o vendedor dentro da plataforma",
+     "descricao": "Chat seguro após a compra (Mercado Livre), \"Contatar vendedor\" no anúncio e no histórico de compras (eBay); mensagens guardadas como prova.",
+     "sinal_observavel": "Minhas compras: botão \"Contatar vendedor\" abre formulário/chat dentro do site.",
+     "presente_em": [
+      "Mercado Livre",
+      "eBay"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "pagamento-intermediado-com-alerta-contra-pagar-fora",
+     "nome": "Pagamento pela plataforma, com alerta contra pagar fora",
+     "descricao": "O Mercado Pago processa todo o pagamento e avisa para só pagar o boleto emitido no checkout; o eBay diz que venda fora do site não tem proteção e pede denúncia.",
+     "sinal_observavel": "Checkout/ajuda: aviso explícito sobre pagar apenas pela plataforma.",
+     "presente_em": [
+      "Mercado Livre",
+      "eBay"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "protecao-ao-comprador-nomeada",
+     "nome": "Programa de proteção ao comprador com nome",
+     "descricao": "\"Compra Garantida\" (Mercado Livre) e programas de proteção do eBay, citados no checkout e na ajuda.",
+     "sinal_observavel": "Rodapé/ajuda/checkout: selo ou link do programa.",
+     "presente_em": [
+      "Mercado Livre",
+      "eBay"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "rastreio-do-despacho-ate-a-entrega",
+     "nome": "Rastreio do despacho até a entrega",
+     "descricao": "O Mercado Livre acompanha o pedido do despacho à entrega entre transportadoras; o iFood mostra cartão de pedido em andamento com progresso e rota.",
+     "sinal_observavel": "Minhas compras/home logado: linha do tempo com status.",
+     "presente_em": [
+      "Mercado Livre",
+      "iFood"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "reputacao-do-vendedor-visivel",
+     "nome": "Reputação do vendedor visível",
+     "descricao": "eBay: nota de feedback, número de vendas e tempo típico de resposta, no anúncio.",
+     "sinal_observavel": "Anúncio: bloco de vendedor com nota/contagem.",
+     "presente_em": [
+      "eBay"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "devolucao-iniciada-na-pagina-da-compra",
+     "nome": "Devolução iniciada na página da compra",
+     "descricao": "Botão \"Devolver grátis\" na compra, com código e entrega em Correios ou agência, até 30 dias.",
+     "sinal_observavel": "Minhas compras > compra: botão de devolver/reclamar.",
+     "presente_em": [
+      "Mercado Livre"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "dados-de-contato-so-apos-a-compra",
+     "nome": "Contato do comprador só vai ao vendedor depois da compra",
+     "descricao": "Mercado Livre: e-mail e telefone do comprador seguem ao vendedor só quando a compra termina.",
+     "sinal_observavel": "Texto de privacidade no checkout.",
+     "presente_em": [
+      "Mercado Livre"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "frete-gratis-por-valor-minimo-no-carrinho",
+     "nome": "Frete grátis acumulável no carrinho",
+     "descricao": "Blog oficial do Mercado Livre: juntar itens no carrinho até o valor mínimo libera frete grátis. Os valores citados divergem entre trechos (R$ 79 e R$ 19), conferir antes de usar.",
+     "sinal_observavel": "Carrinho: barra/aviso de quanto falta para frete grátis.",
+     "presente_em": [
+      "Mercado Livre"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "pedido-em-andamento-em-cartao-na-home",
+     "nome": "Pedido em andamento como cartão na home",
+     "descricao": "O iFood mostra, na tela inicial, um cartão com o progresso do pedido.",
+     "sinal_observavel": "Home logada com pedido ativo: cartão com status.",
+     "presente_em": [
+      "iFood"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "cancelar-pelo-pedido-via-ajuda-antes-do-aceite",
+     "nome": "Cancelar pelo detalhe do pedido, via Ajuda, antes de a loja aceitar",
+     "descricao": "Pedido > Ajuda > \"Quero cancelar meu pedido\"; depois do aceite a loja pode recusar e o suporte media.",
+     "sinal_observavel": "Detalhe do pedido: botão Ajuda com opção de cancelar enquanto o status é recebido.",
+     "presente_em": [
+      "iFood"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "cupom-maior-aplicado-sozinho-com-troca-no-fechamento",
+     "nome": "Maior cupom aplicado sozinho, com troca no fechamento",
+     "descricao": "O iFood aplica o cupom de maior valor e deixa trocar no último passo.",
+     "sinal_observavel": "Fechamento: cupom aplicado e botão para escolher outro.",
+     "presente_em": [
+      "iFood"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "Assinatura recorrente (gerenciar e cancelar)",
+   "tarefas_principais": [
+    "Achar onde gerenciar a assinatura",
+    "Ver renovação, preço e forma de pagamento",
+    "Trocar de plano",
+    "Pausar",
+    "Cancelar",
+    "Reativar depois"
+   ],
+   "produtos": [
+    {
+     "nome": "Netflix",
+     "url": "https://help.netflix.com/en/node/407",
+     "como_olhou": "ajuda oficial lida por texto, passo a passo de cancelar"
+    },
+    {
+     "nome": "Spotify",
+     "url": "https://support.spotify.com/us/article/cancel-premium/",
+     "como_olhou": "ajuda oficial lida por texto"
+    },
+    {
+     "nome": "Apple (assinaturas)",
+     "url": "https://support.apple.com/en-us/118428",
+     "como_olhou": "ajuda oficial lida por texto (iPhone, Mac, Windows, web)"
+    },
+    {
+     "nome": "Google Play (assinaturas)",
+     "url": "https://support.google.com/googleplay/answer/7018481",
+     "como_olhou": "ajuda oficial lida por texto (cancelar, pausar, trocar plano, reassinar)"
+    },
+    {
+     "nome": "YouTube Premium",
+     "url": "https://support.google.com/youtube/answer/6308278",
+     "como_olhou": "ajuda oficial lida por texto (versão Android abriu inteira; desktop e pausar vieram por resumo de busca da página 11950175)"
+    },
+    {
+     "nome": "Microsoft 365",
+     "url": "https://support.microsoft.com/en-us/accounts-billing/subscriptions/cancel-a-microsoft-365-subscription",
+     "como_olhou": "ajuda oficial por resumo de busca (não abri a página inteira)"
+    },
+    {
+     "nome": "Adobe",
+     "url": "https://helpx.adobe.com/account/individual/terms-policies-and-regulations/adobe-subscription-terms.html",
+     "como_olhou": "ajuda oficial por resumo de busca (taxa de cancelamento, 14 dias)"
+    },
+    {
+     "nome": "Amazon Prime",
+     "url": "https://www.amazon.com/gp/help/customer/display.html?nodeId=GU8AWX4GDKM7QGTE",
+     "como_olhou": "ajuda oficial por resumo de busca; a página deu 503 no fetch"
+    },
+    {
+     "nome": "Disney+",
+     "url": "https://help.disneyplus.com/en-GB/article/disneyplus-cancel",
+     "como_olhou": "ajuda oficial por resumo de busca; a página veio vazia no fetch"
+    },
+    {
+     "nome": "Globoplay",
+     "url": "https://globoplay.globo.com/ajuda",
+     "como_olhou": "guias de terceiros (Tecnoblog, Canaltech, Buscapé) por resumo de busca. Confiança baixa"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "cancelar-na-propria-conta",
+     "nome": "Cancelar na própria conta, sem telefone nem chat obrigatório",
+     "descricao": "Em Conta > Gerenciar plano/Assinaturas há o botão de cancelar. Globoplay: guias antigos dizem que cancelar por telefone não existe mais.",
+     "sinal_observavel": "Logado: do menu de conta até o botão \"Cancelar assinatura\" em até 3 cliques, sem tela de contato obrigatória.",
+     "presente_em": [
+      "Netflix",
+      "Spotify",
+      "Apple (assinaturas)",
+      "Google Play (assinaturas)",
+      "YouTube Premium",
+      "Microsoft 365",
+      "Adobe",
+      "Amazon Prime",
+      "Disney+",
+      "Globoplay"
+     ],
+     "prevalencia": "10 de 10",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "cancelar-no-canal-onde-assinou",
+     "nome": "Dizer onde cancelar quando a cobrança é de terceiro",
+     "descricao": "Se assinou pela loja de apps, operadora ou revendedor, a tela explica que o cancelamento é lá (Netflix, Spotify, Apple, Google Play, YouTube, Microsoft, Adobe, Amazon, Disney+, Globoplay/Roku).",
+     "sinal_observavel": "Tela de gerenciar: texto condicional \"cobrado por X, cancele em X\" quando o parceiro não é a própria empresa.",
+     "presente_em": [
+      "Netflix",
+      "Spotify",
+      "Apple (assinaturas)",
+      "Google Play (assinaturas)",
+      "YouTube Premium",
+      "Microsoft 365",
+      "Adobe",
+      "Amazon Prime",
+      "Disney+",
+      "Globoplay"
+     ],
+     "prevalencia": "10 de 10",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "acesso-mantido-ate-o-fim-do-periodo",
+     "nome": "Acesso mantido até o fim do período pago",
+     "descricao": "Cancelar não derruba na hora: Netflix, Spotify, Google Play, YouTube, Microsoft, Adobe e Disney+ mantêm o acesso até a data paga. [prevalência subestimada: a ajuda dos demais não detalha]",
+     "sinal_observavel": "Após cancelar: tela mostra \"acesso até DD/MM\" e nenhuma nova cobrança.",
+     "presente_em": [
+      "Netflix",
+      "Spotify",
+      "Google Play (assinaturas)",
+      "YouTube Premium",
+      "Microsoft 365",
+      "Adobe",
+      "Disney+"
+     ],
+     "prevalencia": "7 de 10",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "cancelar-em-poucos-passos-com-verbo-explicito",
+     "nome": "Cancelar em 2 a 4 passos, com botão final de verbo explícito",
+     "descricao": "Netflix: Cancel, depois Finish Cancellation. YouTube: Continue, motivo, Next, Yes cancel. Microsoft: desligar cobrança recorrente e escolher \"não quero minha assinatura\". Spotify, Apple e Google Play: Cancelar assinatura.",
+     "sinal_observavel": "Contar toques até concluir; último botão tem verbo (Cancelar/Confirmar cancelamento), não \"Continuar\".",
+     "presente_em": [
+      "Netflix",
+      "YouTube Premium",
+      "Microsoft 365",
+      "Spotify",
+      "Apple (assinaturas)",
+      "Google Play (assinaturas)"
+     ],
+     "prevalencia": "6 de 10",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "estado-da-assinatura-com-data",
+     "nome": "Estado e data visíveis (ativa, cancelada, expira em)",
+     "descricao": "Apple mostra aviso vermelho de expiração e some o botão cancelar; YouTube tem campo Status; Microsoft mostra \"Expira em\" e link \"Ativar cobrança recorrente\"; Netflix mostra a data de fechamento; Amazon lista ativas, canceladas e expiradas com renovação e preço; Google Play mostra \"Reassinar\".",
+     "sinal_observavel": "Na área da assinatura: rótulo de estado e data de renovação ou expiração.",
+     "presente_em": [
+      "Apple (assinaturas)",
+      "YouTube Premium",
+      "Microsoft 365",
+      "Netflix",
+      "Amazon Prime",
+      "Google Play (assinaturas)"
+     ],
+     "prevalencia": "6 de 10",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "central-unica-de-assinaturas",
+     "nome": "Central única que lista todas as assinaturas",
+     "descricao": "Apple (Ajustes > Assinaturas), Google Play (Gerenciar assinaturas), Amazon (Suas assinaturas, com renovação e preço), Microsoft (Serviços e assinaturas), YouTube (paid_memberships).",
+     "sinal_observavel": "Conta: página que lista as assinaturas, cada uma com ação Gerenciar.",
+     "presente_em": [
+      "Apple (assinaturas)",
+      "Google Play (assinaturas)",
+      "Amazon Prime",
+      "Microsoft 365",
+      "YouTube Premium"
+     ],
+     "prevalencia": "5 de 10",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "reassinar-ou-religar-em-um-clique",
+     "nome": "Reassinar ou religar a cobrança de onde cancelou",
+     "descricao": "Google Play \"Reassinar\"; Netflix permite reiniciar e guarda histórico e perfis por 24 meses; Microsoft mostra \"Ativar cobrança recorrente\"; YouTube restaura selos ao voltar.",
+     "sinal_observavel": "Assinatura cancelada: botão Reassinar/Reativar na mesma tela.",
+     "presente_em": [
+      "Google Play (assinaturas)",
+      "Netflix",
+      "Microsoft 365",
+      "YouTube Premium"
+     ],
+     "prevalencia": "4 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "janela-de-reembolso-informada",
+     "nome": "Janela de reembolso informada no cancelamento",
+     "descricao": "Adobe: reembolso total em 14 dias; Amazon: reembolso integral se não usou os benefícios, 3 a 5 dias úteis; Microsoft confere elegibilidade depois de cancelar; Google Play cita casos de reembolso.",
+     "sinal_observavel": "Tela de cancelar: texto sobre prazo de arrependimento e reembolso.",
+     "presente_em": [
+      "Adobe",
+      "Amazon Prime",
+      "Microsoft 365",
+      "Google Play (assinaturas)"
+     ],
+     "prevalencia": "4 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "trocar-de-plano-sem-cancelar",
+     "nome": "Trocar de plano sem cancelar",
+     "descricao": "Google Play (paga a diferença, dias restantes passam), Adobe (Gerenciar plano, sem taxa ao mudar), e artigos \"Switch\" da Amazon e da Microsoft (só pelo título).",
+     "sinal_observavel": "Assinatura: botão Mudar de plano/Gerenciar plano.",
+     "presente_em": [
+      "Google Play (assinaturas)",
+      "Adobe",
+      "Amazon Prime",
+      "Microsoft 365"
+     ],
+     "prevalencia": "4 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "historico-de-cobranca-e-editar-pagamento",
+     "nome": "Histórico de cobrança e troca da forma de pagamento",
+     "descricao": "Netflix tem Payment History; Disney+ Billing History com atualização de pagamento; Google Play Gerenciar > Atualizar; Microsoft tem artigo de trocar forma de pagamento.",
+     "sinal_observavel": "Assinatura: link de histórico e de editar cartão.",
+     "presente_em": [
+      "Netflix",
+      "Disney+",
+      "Google Play (assinaturas)",
+      "Microsoft 365"
+     ],
+     "prevalencia": "4 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "pesquisa-de-motivo-ou-intencao-no-cancelamento",
+     "nome": "Pergunta de motivo ou intenção antes de concluir",
+     "descricao": "YouTube pede motivo e depois \"Sim, cancelar\"; Microsoft pede escolher entre \"não quero minha assinatura\" e \"quero manter meus benefícios\".",
+     "sinal_observavel": "Fluxo de cancelar: tela com lista de motivos antes do botão final.",
+     "presente_em": [
+      "YouTube Premium",
+      "Microsoft 365"
+     ],
+     "prevalencia": "2 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "pausar-em-vez-de-cancelar",
+     "nome": "Pausar a assinatura em vez de cancelar",
+     "descricao": "Google Play pausa de 1 semana a 3 meses; YouTube pausa de 1 a 6 meses com controle deslizante (plano anual não pausa).",
+     "sinal_observavel": "Gerenciar: botão Pausar ao lado de Cancelar, com duração.",
+     "presente_em": [
+      "Google Play (assinaturas)",
+      "YouTube Premium"
+     ],
+     "prevalencia": "2 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "aviso-de-taxa-e-parcelas-restantes",
+     "nome": "Aviso de taxa ou parcelas restantes ao cancelar",
+     "descricao": "Adobe: após 14 dias, 50% do saldo restante no plano anual pago mensalmente; Google Play: plano parcelado não cancela as parcelas já contratadas.",
+     "sinal_observavel": "Tela de cancelar: valor da multa ou das parcelas restantes antes de confirmar.",
+     "presente_em": [
+      "Adobe",
+      "Google Play (assinaturas)"
+     ],
+     "prevalencia": "2 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "regras-de-plano-familia",
+     "nome": "Regras claras de plano familiar",
+     "descricao": "Spotify: quem gerencia cancela o plano, membro só sai; Apple: não dá para cancelar a assinatura de outro membro.",
+     "sinal_observavel": "Plano compartilhado: texto que diz quem pode cancelar.",
+     "presente_em": [
+      "Spotify",
+      "Apple (assinaturas)"
+     ],
+     "prevalencia": "2 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "email-de-confirmacao-do-cancelamento",
+     "nome": "E-mail de confirmação do cancelamento",
+     "descricao": "Netflix envia e-mail de confirmação; a Adobe diz que sem e-mail o plano pode seguir ativo. [prevalência subestimada]",
+     "sinal_observavel": "Após cancelar: mensagem \"enviamos confirmação para ...\" e e-mail recebido.",
+     "presente_em": [
+      "Netflix",
+      "Adobe"
+     ],
+     "prevalencia": "2 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "aviso-desinstalar-nao-cancela",
+     "nome": "Aviso de que sair ou desinstalar o app não cancela",
+     "descricao": "Netflix e Google Play avisam que sair da conta ou apagar o app não cancela a cobrança.",
+     "sinal_observavel": "Tela de gerenciar ou ajuda: texto desse aviso.",
+     "presente_em": [
+      "Netflix",
+      "Google Play (assinaturas)"
+     ],
+     "prevalencia": "2 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "Reserva e viagem (hospedagem e voo)",
+   "tarefas_principais": [
+    "Buscar por destino e datas",
+    "Filtrar e comparar opções",
+    "Abrir o item e ver o preço total",
+    "Conferir a política de cancelamento",
+    "Reservar e pagar",
+    "Alterar ou cancelar a reserva"
+   ],
+   "produtos": [
+    {
+     "nome": "Airbnb",
+     "url": "https://www.airbnb.com.br",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: home, busca São Paulo com datas, lista, página do anúncio, clique em Reservar (cheguei a \"Confirmar e pagar\", etapa 1 de 3, sem entrar); ajuda oficial de cancelamento lida por texto"
+    },
+    {
+     "nome": "Booking.com",
+     "url": "https://www.booking.com",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: home, busca com datas, lista com filtros, página do hotel, clique em Reservar (só ver disponibilidade, sem login); FAQ oficial lida por texto"
+    },
+    {
+     "nome": "Google Flights",
+     "url": "https://support.google.com/travel/answer/2475306",
+     "como_olhou": "ajuda oficial lida por texto (busca, calendário, filtros, Insights, acompanhar preço); não abri o site"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "busca-destino-datas-pessoas",
+     "nome": "Busca com destino, datas e número de pessoas",
+     "descricao": "Barra com Onde, Quando e Quem (Airbnb), destino, datas e ocupação (Booking), origem, destino, calendário e passageiros (Google Flights), com botão Buscar.",
+     "sinal_observavel": "Home: campos de destino, datas e quantidade de pessoas, e botão Buscar.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com",
+      "Google Flights"
+     ],
+     "prevalencia": "3 de 3",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "calendario-de-intervalo-de-datas",
+     "nome": "Calendário de intervalo (entrada e saída)",
+     "descricao": "Um seletor de datas único, com intervalo, mostrado como \"10 a 12 de dez.\" depois de escolhido.",
+     "sinal_observavel": "Clicar em datas: abre calendário; escolher duas datas fecha e mostra o intervalo.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com",
+      "Google Flights"
+     ],
+     "prevalencia": "3 de 3",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "filtros-rapidos-com-contagem-e-faixa-de-preco",
+     "nome": "Filtros rápidos, contagem por filtro e faixa de preço",
+     "descricao": "Booking: coluna com \"Cancelamento grátis: 8138\", mínimo e máximo de preço; Airbnb: atalhos (Wi-Fi, Piscina, Cancelamento gratuito) e botão Filtros; Google Flights: Paradas, Companhias, Horários, Mais.",
+     "sinal_observavel": "Lista: grupo de filtros com checkbox/chips e, em Booking, número ao lado de cada filtro.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com",
+      "Google Flights"
+     ],
+     "prevalencia": "3 de 3",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "ordenacao-explicita",
+     "nome": "Ordenação explícita",
+     "descricao": "Booking: \"Ordenar por: Nossas principais escolhas\"; Google Flights: Melhores voos, Preço, Duração, Horário de partida.",
+     "sinal_observavel": "Lista: botão/select de ordenar com opções.",
+     "presente_em": [
+      "Booking.com",
+      "Google Flights"
+     ],
+     "prevalencia": "2 de 3",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "mapa-ao-lado-dos-resultados",
+     "nome": "Mapa dos resultados",
+     "descricao": "O Airbnb mostra mapa junto da lista; o Booking tem botão \"Mostrar no mapa\".",
+     "sinal_observavel": "Lista: elemento de mapa ou botão que o abre.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com"
+     ],
+     "prevalencia": "2 de 3",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "aviso-do-que-nao-esta-incluso-no-preco",
+     "nome": "Aviso do que não está incluído no preço",
+     "descricao": "Google Flights: preço inclui impostos mas não bagagem nem taxa de cartão; o Booking mostra se café, impostos e taxas entram.",
+     "sinal_observavel": "Resultado: linha de aviso sobre extras.",
+     "presente_em": [
+      "Booking.com",
+      "Google Flights"
+     ],
+     "prevalencia": "2 de 3",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "salvar-na-lista-no-card",
+     "nome": "Salvar o item numa lista a partir do card",
+     "descricao": "Airbnb \"Adicionar aos favoritos\" e Booking \"Salvar X em uma lista\".",
+     "sinal_observavel": "Cada card: botão de coração/salvar.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "busca-refletida-na-url",
+     "nome": "Busca refletida na URL",
+     "descricao": "Datas e pessoas viajam em parâmetros (checkin, checkout, adults) e passam do resultado ao anúncio.",
+     "sinal_observavel": "URL da lista contém datas e hóspedes; o anúncio abre com as mesmas datas.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "cancelamento-gratis-como-filtro-e-selo",
+     "nome": "Cancelamento grátis como filtro e como etiqueta",
+     "descricao": "Airbnb: chip \"Cancelamento gratuito\" e, no checkout, \"reembolso integral se cancelar em até 24 horas\" com \"Alterar política\"; Booking: filtro com contagem, selo na home e prazo definido por cada acomodação.",
+     "sinal_observavel": "Lista: filtro de cancelamento grátis; checkout: texto da política antes do botão de pagar.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "preco-total-da-estadia-com-detalhamento",
+     "nome": "Preço total da estadia com detalhamento",
+     "descricao": "Airbnb: \"Total: R$ 910\" no card e link \"Mostrar detalhamento de preço\"; no checkout, 2 noites x R$ 205,95, desconto e total. Booking: o preço vale para a estadia e indica se café e impostos estão incluídos.",
+     "sinal_observavel": "Card e checkout: total das datas escolhidas e link para ver o detalhamento.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "preco-riscado-com-desconto-explicado",
+     "nome": "Preço riscado e desconto explicado",
+     "descricao": "Airbnb: \"preço original R$ 412, novo total R$ 370\" e \"Desconto para reservas antecipadas\"; Booking: preço riscado é comparação com a oferta de 30 dias em torno da entrada.",
+     "sinal_observavel": "Card/checkout: preço antigo riscado e linha do desconto.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "item-com-botao-reservar-herdando-datas",
+     "nome": "Página do item com botão Reservar ou Ver disponibilidade, com as datas da busca",
+     "descricao": "Airbnb: caixa com check-in, check-out, hóspedes e \"Reservar\"; Booking: \"Reservar agora\", \"Veja a disponibilidade\" e seletor de quantidade por tipo de quarto.",
+     "sinal_observavel": "No item: botão de reservar sem pedir as datas de novo.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "selo-de-destaque-e-nota-com-contagem",
+     "nome": "Selo de destaque e nota com número de avaliações",
+     "descricao": "Airbnb \"Preferido dos hóspedes\", 4,85 (48); Booking \"acomodação Preferencial\", nota 7,5 Bom com 871 avaliações.",
+     "sinal_observavel": "Card e item: nota numérica e contagem de avaliações.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "gerenciar-reserva-em-viagens-e-no-email",
+     "nome": "Gerenciar a reserva em Viagens e pelo link do e-mail",
+     "descricao": "Airbnb: alterar ou cancelar em \"suas viagens\"; Booking: alterar pelo e-mail de confirmação ou no site. Reserva cancelada no Airbnb não volta, é preciso reservar de novo.",
+     "sinal_observavel": "Logado: área Viagens com Alterar/Cancelar; e-mail de confirmação com link.",
+     "presente_em": [
+      "Airbnb",
+      "Booking.com"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "checkout-em-etapas-numeradas",
+     "nome": "Checkout em etapas numeradas com resumo e edição",
+     "descricao": "Airbnb: \"Etapa 1 de 3\" (entrar, pagamento, revisar), resumo do anúncio com \"Alterar\" em datas e hóspedes e \"Alterar política\".",
+     "sinal_observavel": "Checkout: indicador \"etapa N de M\", resumo e links Alterar.",
+     "presente_em": [
+      "Airbnb"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "cancelamento-estendido-pago",
+     "nome": "Opção paga de estender o cancelamento grátis",
+     "descricao": "O Airbnb vende \"cancelamento estendido\", que amplia a janela grátis até 24 horas antes do check-in.",
+     "sinal_observavel": "Checkout: opção extra de cancelamento flexível com preço.",
+     "presente_em": [
+      "Airbnb"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "perguntas-frequentes-no-item",
+     "nome": "Perguntas frequentes no próprio item",
+     "descricao": "Booking: \"Posso estacionar ali?\", \"Tem piscina?\", \"Faça uma pergunta\".",
+     "sinal_observavel": "Página do item: bloco de perguntas e respostas.",
+     "presente_em": [
+      "Booking.com"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "abas-ancoradas-no-item",
+     "nome": "Abas ou âncoras de seções no item",
+     "descricao": "Booking: Visão geral, Informações e preços, Comodidades, Políticas, Informações importantes, Avaliações.",
+     "sinal_observavel": "Página do item: barra de abas que rola ou troca a seção.",
+     "presente_em": [
+      "Booking.com"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "assistente-virtual-da-reserva",
+     "nome": "Assistente virtual para mudanças e dúvidas",
+     "descricao": "Booking Assistant, gratuito, no app, no site e no Messenger.",
+     "sinal_observavel": "Menu de ajuda: chat com assistente.",
+     "presente_em": [
+      "Booking.com"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "pagar-na-acomodacao",
+     "nome": "Reservar agora e pagar na acomodação",
+     "descricao": "Booking: \"Reserve agora, pague na acomodação\" e \"Cancelamento GRÁTIS na maioria dos quartos\".",
+     "sinal_observavel": "Home: faixa de benefícios com essas frases.",
+     "presente_em": [
+      "Booking.com"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "metabuscador-encaminha-ao-site-da-companhia",
+     "nome": "Metabuscador que encaminha a compra ao site da companhia",
+     "descricao": "Google Flights: \"Selecionar\" normalmente abre o site da companhia ou agência para comprar.",
+     "sinal_observavel": "Resultado: botão de selecionar abre site externo.",
+     "presente_em": [
+      "Google Flights"
+     ],
+     "prevalencia": "1 de 3",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "acompanhar-preco-por-email",
+     "nome": "Acompanhar preço por e-mail",
+     "descricao": "Google Flights: \"Acompanhar preços\" para as datas buscadas ou \"Qualquer data\", com página de voos acompanhados.",
+     "sinal_observavel": "Resultado: alternador de acompanhar preços.",
+     "presente_em": [
+      "Google Flights"
+     ],
+     "prevalencia": "1 de 3",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "insights-de-datas-e-preco-por-dia",
+     "nome": "Calendário com menor preço por dia e Insights de datas e aeroportos",
+     "descricao": "Google Flights: o calendário mostra o menor preço de cada dia; Insights traz Datas, Aeroportos e Gráfico de preços.",
+     "sinal_observavel": "Seletor de datas mostra preço dentro de cada dia.",
+     "presente_em": [
+      "Google Flights"
+     ],
+     "prevalencia": "1 de 3",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "Agendamento e ingressos",
+   "tarefas_principais": [
+    "Escolher o dia",
+    "Escolher horário ou sessão",
+    "Preencher dados do participante",
+    "Confirmar e receber comprovante ou ingresso",
+    "Remarcar, transferir ou cancelar"
+   ],
+   "produtos": [
+    {
+     "nome": "Cal.com",
+     "url": "https://cal.com/rick/get-rick-rolled",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: página pública de agendamento: calendário, horários, clique num horário, formulário (não confirmei a reserva)"
+    },
+    {
+     "nome": "Ingresso.com",
+     "url": "https://www.ingresso.com",
+     "como_olhou": "navegador headless (Chromium na VPS) em 03/11/2026: home, lista de filmes em cartaz, página de um filme com sessões; a compra e os assentos não abriram (as sessões carregam por API que não pude liberar)"
+    },
+    {
+     "nome": "Calendly",
+     "url": "https://calendly.com/help/sharing-booking",
+     "como_olhou": "ajuda oficial lida por texto (lado do convidado: fuso, formulário, confirmação); não vi a tela do convidado rodando"
+    },
+    {
+     "nome": "Sympla",
+     "url": "https://www.sympla.com.br",
+     "como_olhou": "artigos de terceiros (Canaltech e páginas de eventos) por resumo de busca; o site bloqueou meu navegador (Cloudflare 403). Confiança baixa"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "dia-e-horarios-na-mesma-tela",
+     "nome": "Escolher o dia e ver os horários na mesma tela",
+     "descricao": "Cal.com: calendário e lista de horários do dia (\"Horários disponíveis para terça-feira, 3 de novembro\"), já com hoje selecionado; Ingresso.com: faixa de datas (Hoje, 03/11 qua, ...) sobre as sessões.",
+     "sinal_observavel": "Abrir a página: seletor de data e lista de horários visíveis juntos; mudar a data troca só a lista.",
+     "presente_em": [
+      "Cal.com",
+      "Ingresso.com"
+     ],
+     "prevalencia": "2 de 3",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "fuso-horario-detectado-e-trocavel",
+     "nome": "Fuso horário detectado e trocável",
+     "descricao": "O Cal.com tem seletor \"Timezone\" já em America/Sao_Paulo; o Calendly detecta o fuso do convidado.",
+     "sinal_observavel": "Página do convidado: select de fuso com valor inicial do navegador.",
+     "presente_em": [
+      "Cal.com",
+      "Calendly"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "formulario-do-convidado-curto",
+     "nome": "Formulário curto do convidado",
+     "descricao": "Cal.com pede nome*, e-mail* e observações, com \"Participantes adicionais\"; no Calendly o anfitrião adiciona perguntas e marca obrigatórias.",
+     "sinal_observavel": "Após escolher horário: campos mínimos, obrigatórios com asterisco.",
+     "presente_em": [
+      "Cal.com",
+      "Calendly"
+     ],
+     "prevalencia": "2 de 2",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "horario-escolhido-vira-resumo-com-voltar-e-confirmar",
+     "nome": "Horário escolhido vira resumo, com Voltar e Confirmar",
+     "descricao": "Cal.com: a URL ganha ?slot=..., aparece \"13:00 a 13:10, 10m\" e dois botões, Voltar e Confirmar.",
+     "sinal_observavel": "Clicar num horário: URL muda, resumo + formulário e botões Voltar/Confirmar.",
+     "presente_em": [
+      "Cal.com"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "alternar-12h-24h-e-modos-de-visualizacao",
+     "nome": "Alternar 12h/24h e visualização (mês, semana, coluna)",
+     "descricao": "O Cal.com tem alternador 12h/24h e três visualizações.",
+     "sinal_observavel": "Controles de formato de hora e visualização.",
+     "presente_em": [
+      "Cal.com"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "aviso-de-privacidade-no-formulario",
+     "nome": "Aviso de tratamento de dados no formulário",
+     "descricao": "Cal.com: \"Cal.com processa seus dados em nome de Rick Astley\" com link para a política.",
+     "sinal_observavel": "Perto do botão Confirmar: texto e link de privacidade.",
+     "presente_em": [
+      "Cal.com"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "autopreenchimento-de-convidado-recorrente",
+     "nome": "Autopreenchimento para convidado que volta",
+     "descricao": "O Calendly preenche respostas de quem já agendou e aceita pré-preencher nome, e-mail e respostas pelo link.",
+     "sinal_observavel": "Segunda visita: campos já preenchidos.",
+     "presente_em": [
+      "Calendly"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "confirmacao-com-links-de-cancelar-e-remarcar",
+     "nome": "Confirmação com links de cancelar e remarcar",
+     "descricao": "Calendly: o e-mail pode trazer os links; o anfitrião pode exibir a política de cancelamento ao convidado.",
+     "sinal_observavel": "E-mail de confirmação com links.",
+     "presente_em": [
+      "Calendly"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "redirecionar-ou-links-na-confirmacao",
+     "nome": "Redirecionar depois de agendar ou pôr links na confirmação",
+     "descricao": "Calendly: link para marcar mais eventos e redirecionamento a outro site com dados da reserva.",
+     "sinal_observavel": "Tela de confirmação: links e redirecionamento.",
+     "presente_em": [
+      "Calendly"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "aviso-automatico-de-cancelamento-ou-remarcacao",
+     "nome": "Aviso automático ao convidado quando o anfitrião cancela ou remarca",
+     "descricao": "O Calendly envia e-mail com a nova data.",
+     "sinal_observavel": "Cancelar/remarcar no painel: e-mail enviado.",
+     "presente_em": [
+      "Calendly"
+     ],
+     "prevalencia": "1 de 2",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "cidade-no-topo-e-categorias",
+     "nome": "Cidade no topo e categorias (Filmes, Cinemas, Teatro, Eventos)",
+     "descricao": "Ingresso.com: seletor \"São Paulo\" e menu por categoria; tem \"Entrar\" no topo.",
+     "sinal_observavel": "Home: seletor de cidade e menu de categorias.",
+     "presente_em": [
+      "Ingresso.com"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "busca-na-lista-e-abas-em-cartaz-em-breve",
+     "nome": "Busca própria na lista, gêneros e abas Em Cartaz e Em Breve",
+     "descricao": "Ingresso.com: \"Pesquise por filmes\" e \"Pesquise por cinemas\", chips de gênero, abas Em Cartaz/Em Breve.",
+     "sinal_observavel": "Lista: input de busca e filtros de gênero.",
+     "presente_em": [
+      "Ingresso.com"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "selo-de-classificacao-indicativa",
+     "nome": "Selo de classificação indicativa no card",
+     "descricao": "Ingresso.com: 18, 14, 16 e \"?\" nos cards.",
+     "sinal_observavel": "Card: selo numérico de idade.",
+     "presente_em": [
+      "Ingresso.com"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "filtro-de-formato-e-idioma-das-sessoes",
+     "nome": "Filtro por formato e idioma das sessões",
+     "descricao": "Ingresso.com: Dublado, Legendado, VIP, Normal, D-Box, XD, 4DX, Dolby Atmos, Laser.",
+     "sinal_observavel": "Página do filme: chips de formato filtram as sessões.",
+     "presente_em": [
+      "Ingresso.com"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "horario-como-botao-por-local",
+     "nome": "Horário como botão agrupado por local",
+     "descricao": "Ingresso.com: sessões por cinema, com horários clicáveis e botões \"Abrir modal de assentos\" e \"Abrir modal de preços\".",
+     "sinal_observavel": "Página do filme: cinema com horários como links/botões.",
+     "presente_em": [
+      "Ingresso.com"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "favoritar-local-e-lembrar-estreia",
+     "nome": "Favoritar o local e \"Lembre-me\" nas estreias",
+     "descricao": "Ingresso.com: \"Favoritar cinema\" e \"Lembre-me\".",
+     "sinal_observavel": "Botões nessas páginas.",
+     "presente_em": [
+      "Ingresso.com"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "widget-de-libras",
+     "nome": "Widget de Libras",
+     "descricao": "Ingresso.com: \"Carregar plugin do Hand Talk\".",
+     "sinal_observavel": "Botão fixo de acessibilidade com Libras.",
+     "presente_em": [
+      "Ingresso.com"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "qr-code-unico-no-app-no-email-e-meus-pedidos",
+     "nome": "QR code único por ingresso, no app, por e-mail e em Meus pedidos",
+     "descricao": "Sympla segundo terceiros: um QR por ingresso, check-in uma vez, uso offline no app e carteira digital do Google. [confiança baixa]",
+     "sinal_observavel": "Logado: Meus pedidos com QR code.",
+     "presente_em": [
+      "Sympla"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "cancelar-pedido-inteiro-no-prazo",
+     "nome": "Cancelar o pedido inteiro dentro do prazo",
+     "descricao": "Sympla segundo o Canaltech: Cancelar Pedido, só pedido inteiro, em até 7 dias e 48 horas antes; reembolso PIX até 90 dias, boleto 30 dias. [confiança baixa]",
+     "sinal_observavel": "Meus pedidos: botão Cancelar Pedido com prazo.",
+     "presente_em": [
+      "Sympla"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "transferir-titularidade-pelo-app",
+     "nome": "Transferir ou trocar o titular pelo app",
+     "descricao": "Sympla segundo terceiros: depende do evento, às vezes só uma vez e até 24 horas antes. [confiança baixa]",
+     "sinal_observavel": "Ingresso: ação Transferir ou Editar participante.",
+     "presente_em": [
+      "Sympla"
+     ],
+     "prevalencia": "1 de 1",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  }
+ ]
+}

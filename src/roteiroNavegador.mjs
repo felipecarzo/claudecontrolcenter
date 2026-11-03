@@ -50,13 +50,30 @@ export function listaProtegida({ naoTocar = null, naoTocarSo = null } = {}) {
  * com `--no-sandbox` (a sandbox dele não sobe nesta VPS), então uma página hostil não pode ser aberta à toa.
  * Outro endereço exige `qualquerUrl: true` (no comando, `--qualquer-url`).
  */
-export function enderecoPermitido(url) {
+export function enderecoPermitido(url, permitir = []) {
   let u
   try { u = new URL(url) } catch { return false }
   if (u.protocol === 'about:' || u.protocol === 'file:') return true
   if (u.protocol !== 'http:' && u.protocol !== 'https:') return false
   if (['localhost', '127.0.0.1', '[::1]'].includes(u.hostname)) return true
+  if (permitir.some((h) => String(h).toLowerCase() === u.hostname)) return true // `plano.permitir`: mais seguro que `qualquerUrl`
   return u.protocol === 'https:' && u.hostname === 'testedevoo.carzo.com.br'
+}
+
+/**
+ * O login de teste: um arquivo JSON `{ "usuario": "...", "senha": "..." }` (o caminho vem em `plano.acesso`) ou as
+ * variáveis ROTEIRO_USUARIO e ROTEIRO_SENHA. Devolve `{ usuario, senha }` ou null. O VALOR nunca sai daqui: nenhuma
+ * mensagem de erro traz o conteúdo do arquivo (a do `JSON.parse` traria um pedaço dele, por isso é trocada).
+ */
+export function lerAcesso(caminho = null) {
+  if (caminho) {
+    let j
+    try { j = JSON.parse(fs.readFileSync(caminho, 'utf8')) } catch (e) { throw new Error(`não consegui ler o arquivo de acesso ${caminho} (${e?.code || 'não é um JSON válido'})`) }
+    if (!j || typeof j.usuario !== 'string' || typeof j.senha !== 'string' || !j.usuario || !j.senha) throw new Error(`o arquivo de acesso ${caminho} precisa ter "usuario" e "senha" (texto)`)
+    return { usuario: j.usuario, senha: j.senha }
+  }
+  const { ROTEIRO_USUARIO: usuario, ROTEIRO_SENHA: senha } = process.env
+  return usuario && senha ? { usuario, senha } : null
 }
 
 /** Texto de comparação: minúsculo, sem dígitos (horas e contadores), espaço único. */
@@ -170,7 +187,7 @@ function naPaginaObservar() {
 
 /** Prepara o clique no elemento i: traz para a janela e devolve o centro e se há algo por cima. */
 function naPaginaAlvo(i) {
-  const e = window.__roteiroEls?.[i]
+  const e = i < 0 ? window.__roteiroAlvo : window.__roteiroEls?.[i] // i < 0: o elemento que uma sonda marcou
   if (!e || !e.isConnected) return { solto: true }
   e.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   const r = e.getBoundingClientRect()
@@ -186,6 +203,29 @@ function naPaginaAlvo(i) {
 function naPaginaEstado() {
   const b = document.body
   return b ? b.getElementsByTagName('*').length + ':' + b.innerText.replace(/\d+/g, '').length : ''
+}
+
+/** Há campo de senha visível? */
+function naPaginaTemSenha() {
+  return [...document.querySelectorAll('input[type=password]')].some((e) => (!e.checkVisibility || e.checkVisibility()) && e.getBoundingClientRect().width > 4)
+}
+
+/** Preenche usuário e senha (pelo setter nativo e com `input`, para React não achar o campo vazio) e envia o formulário. */
+function naPaginaEntrar(a) {
+  const vis = (e) => (!e.checkVisibility || e.checkVisibility()) && e.getBoundingClientRect().width > 4
+  const pw = [...document.querySelectorAll('input[type=password]')].find(vis)
+  if (!pw) return false
+  const u = [...document.querySelectorAll('input:not([type=password]):not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=button])')].find(vis)
+  const por = (e, v) => {
+    const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(e), 'value')?.set
+    set ? set.call(e, v) : (e.value = v)
+    e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true }))
+  }
+  if (u) por(u, a.usuario)
+  por(pw, a.senha)
+  const b = pw.form && pw.form.querySelector('button[type=submit], input[type=submit], button:not([type=button])')
+  if (b) b.click(); else if (pw.form) pw.form.requestSubmit()
+  return true
 }
 
 /** Apaga o que a página guardou (localStorage, sessionStorage, IndexedDB): o que ela lê ao carregar. */
@@ -265,9 +305,15 @@ export function rodarFilho({ script, plano, prazoMs = 0, stdio = ['ignore', 'pip
  * `qualquerUrl` (padrão falso): só abre `enderecoPermitido()`; outro endereço, e qualquer navegação para fora
  * (clique, redirecionamento, iframe), é recusado. O Chrome roda sem sandbox.
  * `rolar({ acima })` rola meia janela, para quem só enxerga a janela alcançar o que está abaixo da dobra.
+ * `permitir`: hosts a MAIS que podem abrir (ex. ["testzone.vendeufy.com.br"]); mais seguro que `qualquerUrl`.
+ * `acesso`: caminho do JSON `{ usuario, senha }` (ou ROTEIRO_USUARIO e ROTEIRO_SENHA): quando aparece campo de senha, `ir`
+ * entra sozinho (e entra de novo a cada recarga). O valor nunca é impresso. Login que não entra faz `ir` falhar com aviso claro.
+ * `avaliar(fn, ...args)`, `tecla(nome)` e `clicarAlvo(fn, ...args)` são para as sondas (`roteiroSondas.mjs`).
  */
-export async function abrirNavegador({ largura = 390, altura = 844, naoTocar = null, naoTocarSo = null, idioma = 'pt-BR', qualquerUrl = false } = {}) {
+export async function abrirNavegador({ largura = 390, altura = 844, naoTocar = null, naoTocarSo = null, idioma = 'pt-BR', qualquerUrl = false, permitir = [], acesso = null } = {}) {
   const bloqueia = listaProtegida({ naoTocar, naoTocarSo })
+  const credencial = acesso && typeof acesso === 'object' ? acesso : lerAcesso(acesso) // caminho do arquivo, ou as variáveis ROTEIRO_*
+  let loginFalhou = false
   if (typeof WebSocket === 'undefined') throw new Error('este Node não tem WebSocket: rode com `node --experimental-websocket`')
   let proc = null
   let perfil = null
@@ -333,7 +379,7 @@ export async function abrirNavegador({ largura = 390, altura = 844, naoTocar = n
     else if (m.method === 'Fetch.requestPaused') {
       // navegação (aba, iframe, redirecionamento) para fora do permitido: recusada antes de sair do Chrome
       const { requestId, request } = m.params
-      const livre = enderecoPermitido(request.url)
+      const livre = enderecoPermitido(request.url, permitir)
       cdp(livre ? 'Fetch.continueRequest' : 'Fetch.failRequest', livre ? { requestId } : { requestId, errorReason: 'BlockedByClient' }).catch(() => {})
     }
     for (const f of ouvintes) f(m)
@@ -452,6 +498,11 @@ export async function abrirNavegador({ largura = 390, altura = 844, naoTocar = n
       if (novo.bloqueado) return { ok: false, motivo: 'nao-tocar', rotulo: novo.rotulo }
       pos = await ev(expr(naPaginaAlvo, novo.i))
     }
+    return cliqueEm(pos)
+  }
+
+  /** O clique de mouse no centro `pos` (de `naPaginaAlvo`): recusa o que está fora, tapado ou solto. */
+  async function cliqueEm(pos) {
     if (!pos || pos.solto) return { ok: false, motivo: 'o elemento saiu da página' }
     if (pos.fora) return { ok: false, motivo: 'o elemento está fora da janela' }
     if (pos.tapado) return { ok: false, motivo: 'tem outra coisa por cima do elemento' }
@@ -464,24 +515,70 @@ export async function abrirNavegador({ largura = 390, altura = 844, naoTocar = n
   }
 
   /**
+   * Clica num elemento que a SONDA achou: `fn` roda na página, guarda o elemento em `window.__roteiroAlvo` e devolve
+   * `{ rotulo, descricao }` (ou null se não achou). Mesma lista de proteção do `clicar`: nunca toca no que apaga, sai ou paga.
+   */
+  async function clicarAlvo(fn, ...args) {
+    const r = await ev(expr(fn, ...args))
+    if (!r) return { ok: false, motivo: 'não achei o elemento' }
+    if ([r.rotulo, r.descricao].some((t) => t && bloqueia.test(t))) return { ok: false, motivo: 'nao-tocar', rotulo: r.rotulo }
+    return cliqueEm(await ev(expr(naPaginaAlvo, -1)))
+  }
+
+  /** Roda uma função NA página e devolve o valor (JSON) dela, ou `undefined` se deu erro. */
+  const avaliar = (fn, ...args) => ev(expr(fn, ...args))
+
+  /** Aperta uma tecla (Escape, Enter...): o teclado de verdade, não um evento inventado. */
+  async function tecla(nome) {
+    const codigos = { Escape: 27, Enter: 13, Tab: 9 }
+    const k = { key: nome, code: nome, windowsVirtualKeyCode: codigos[nome] || 0 }
+    await cdp('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...k })
+    await cdp('Input.dispatchKeyEvent', { type: 'keyUp', ...k })
+    await esperarQuieto(800)
+  }
+
+  /**
    * Abre `url` do zero. Antes, esquece o que a página guardou (localStorage, sessionStorage, IndexedDB e cookies),
    * porque o app lembra a última tela entre recargas. Medido no Nexus: depois de clicar num atalho de nave a raiz
    * recarregada já não era a mesma, e o mapa, que refaz o caminho desde a raiz, perdia o rumo em todas as telas.
    * `{ limpo: false }` mantém a memória da página.
    */
   async function ir(url, { limpo = true } = {}) {
-    if (!qualquerUrl && !enderecoPermitido(url)) {
-      throw new Error(`endereço recusado: ${url}\n  Por padrão o roteiro só abre file://, localhost, 127.0.0.1 e https://testedevoo.carzo.com.br, porque o Chrome roda sem sandbox. Para abrir outro, use qualquerUrl (no comando, --qualquer-url).`)
+    if (!qualquerUrl && !enderecoPermitido(url, permitir)) {
+      throw new Error(`endereço recusado: ${url}\n  Por padrão o roteiro só abre file://, localhost, 127.0.0.1 e https://testedevoo.carzo.com.br, porque o Chrome roda sem sandbox. Para abrir outro host, use permitir (lista de hosts) ou, para qualquer um, qualquerUrl (no comando, --qualquer-url).`)
     }
     if (limpo) {
       await ev(expr(naPaginaEsquecer))
       await cdp('Network.clearBrowserCookies').catch(() => {})
+    }
+    /* Mesmo documento (o endereço igual, ou diferente só no `#fragmento`): navegar para ele seria uma troca de
+       fragmento, sem recarregar, e a tela anterior (e as opções lidas do `#`) ficariam lá. Passa por about:blank. */
+    const atual = (await ev('location.href')) || ''
+    if (atual.split('#')[0] === url.split('#')[0]) {
+      const branco = esperarEvento('Page.loadEventFired', 5000)
+      await cdp('Page.navigate', { url: 'about:blank' })
+      await branco
     }
     const carregou = esperarEvento('Page.loadEventFired', 12000)
     const r = await cdp('Page.navigate', { url })
     if (r.errorText) throw new Error(`não abriu ${url}: ${r.errorText}`)
     await carregou
     await esperarQuieto(1500)
+    if (credencial) await entrarSeFor()
+  }
+
+  /* Campo de senha na tela: preenche e envia, UMA vez por abertura. Se a senha não entrar, para: tentar de novo a cada
+     recarga do mapa travaria a conta de teste. Nenhum texto daqui carrega o usuário nem a senha. */
+  async function entrarSeFor() {
+    if (!(await ev(expr(naPaginaTemSenha)))) return
+    if (loginFalhou) throw new Error('o login já falhou nesta execução e não foi tentado de novo (para não travar a conta de teste)')
+    await ev(expr(naPaginaEntrar, credencial))
+    await esperarQuieto(2500)
+    for (let i = 0; i < 6 && (await ev(expr(naPaginaTemSenha))); i++) await dorme(500)
+    if (await ev(expr(naPaginaTemSenha))) {
+      loginFalhou = true
+      throw new Error('o login falhou: a tela de senha continuou na tela depois de enviar o usuário e a senha do arquivo de acesso. Confira usuário e senha (os valores não são mostrados).')
+    }
   }
 
   async function voltar() {
@@ -507,5 +604,5 @@ export async function abrirNavegador({ largura = 390, altura = 844, naoTocar = n
     return arquivo
   }
 
-  return { ir, observar, clicar, voltar, rolar, foto, fechar }
+  return { ir, observar, clicar, voltar, rolar, foto, fechar, avaliar, tecla, clicarAlvo }
 }

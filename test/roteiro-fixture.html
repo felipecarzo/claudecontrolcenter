@@ -19,6 +19,13 @@
   - O botão "Detalhes do pedido" é um cartão de duas linhas (rótulo e descrição).
   - A página escreve o idioma do navegador (navigator.language) no topo.
   - Só com `#fora=<endereço>` no endereço: um link "Abrir site externo" para esse endereço (teste da navegação barrada).
+  - Só com `#login=1`: uma tela de senha antes de tudo (usuário `ana`, senha `segredo-do-teste-123`, que é FALSA). Ao carregar de
+    novo (o navegador do roteiro limpa o armazenamento) a tela de senha volta, como num app de verdade.
+  - Só com `#listas=1`: seis abas a mais, para as sondas. Produtos (Editar abre JANELA, com busca, abas de filtro, caixas,
+    ordenação e paginação), Estoque (Editar abre PAINEL LATERAL), Cupons (Editar abre a edição NA LINHA), Fornecedores (Editar
+    troca para uma PÁGINA PRÓPRIA), Entregas (vazia, com botão) e Devoluções (vazia, sem botão).
+  - Só com `#gaveta=1`: um menu em gaveta FORA da janela, ANTES das abas no documento, com os mesmos rótulos delas (como no Nexus,
+    onde "Apps" aparece na gaveta e na aba): o primeiro botão de cada nome não dá para clicar.
   - Só com `#protecao=1`: botões que SÓ a descrição, o aria-label ou o title denunciam como protegidos (e dois que passam).
 -->
 <style>
@@ -66,6 +73,7 @@
     if (t.enchimento) { const e = document.createElement('div'); e.className = 'enchimento'; tela.append(e) }
     if (t.extra) tela.append(t.extra)
     for (const x of t.extras || []) tela.append(x)
+    if (t.render) t.render(tela)
     for (const [rotulo, destino, classe, descricao] of t.botoes) {
       const b = document.createElement('button')
       // cartão de duas linhas: o rótulo é a primeira, a descrição é a segunda
@@ -96,7 +104,97 @@
     TELAS['Início'].extras = [mk('Assinatura', { 'aria-label': 'Cancelar assinatura' }), mk('Contador', { title: 'Zerar contador' }), mk('Cartão fiel', {}, 'Pague com pontos'),
       mk('Ver relatório', {}, 'Veja o histórico de compras do mês'), mk('Dados', { title: 'Mais detalhes' })]
   }
-  ir('Início')
+  /* ---- as listas das sondas (#listas=1) ---- */
+  const el = (tag, props = {}, ...filhos) => { const e = Object.assign(document.createElement(tag), props); e.append(...filhos); return e }
+  const fecharJanelas = () => document.querySelectorAll('[data-janela]').forEach((j) => j.remove())
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharJanelas() })
+  if (opcoes.get('listas')) {
+    ABAS.push('Produtos', 'Estoque', 'Cupons', 'Fornecedores', 'Entregas', 'Devoluções')
+    const dados = [['Camiseta', 59], ['Caneca', 29], ['Boné', 39], ['Mochila', 129]]
+    const janela = () => {
+      fecharJanelas()
+      const j = el('div', { role: 'dialog', ariaModal: 'true' }, el('h2', { textContent: 'Editar produto' }), el('input', { value: 'Camiseta' }),
+        el('button', { textContent: 'Salvar' }), el('button', { textContent: 'Cancelar', onclick: fecharJanelas }), el('button', { textContent: 'Fechar', ariaLabel: 'Fechar', onclick: fecharJanelas }))
+      j.dataset.janela = '1'
+      j.setAttribute('aria-modal', 'true')
+      j.style.cssText = 'position:fixed;top:30%;left:50%;width:380px;margin-left:-190px;background:#fff;border:2px solid #333;padding:12px;z-index:9'
+      document.body.append(j)
+    }
+    const painelLateral = () => {
+      fecharJanelas()
+      const j = el('aside', { role: 'dialog' }, el('h2', { textContent: 'Editar item' }), el('input', { value: 'Parafuso' }), el('button', { textContent: 'Salvar' }), el('button', { textContent: 'Fechar', ariaLabel: 'Fechar', onclick: fecharJanelas }))
+      j.dataset.janela = '1'
+      j.style.cssText = 'position:fixed;top:0;right:0;height:100%;width:40%;background:#fff;border-left:2px solid #333;padding:12px;z-index:9'
+      document.body.append(j)
+    }
+    const tabela = (nomes, linhas, extras = {}) => {
+      const t = el('table', { border: 1, cellPadding: 6 })
+      const cab = el('tr'); for (const n of nomes) cab.append(el('th', { textContent: n, ...(extras.ordenar === n && { onclick: extras.aoOrdenar, style: 'cursor:pointer' }) }))
+      t.append(el('thead', {}, cab))
+      const corpo = el('tbody'); t.append(corpo)
+      return { t, corpo, nomes, linhas }
+    }
+    const produtos = (c) => {
+      let asc = true
+      const barra = el('div', { hidden: true, textContent: '1 selecionado ' }, el('button', { textContent: 'Ativar' }), el('button', { textContent: 'Excluir selecionados' }))
+      const { t, corpo } = tabela(['', 'Nome', 'Preço', ''], null, { ordenar: 'Nome', aoOrdenar: () => { asc = !asc; pintar() } })
+      const pintar = () => {
+        corpo.innerHTML = ''
+        for (const [n, v] of [...dados].sort((a, b) => (asc ? 1 : -1) * a[0].localeCompare(b[0]))) {
+          const cx = el('input', { type: 'checkbox', onchange: () => { barra.hidden = !corpo.querySelector('input:checked') } })
+          corpo.append(el('tr', {}, el('td', {}, cx), el('td', { textContent: n }), el('td', { textContent: 'R$ ' + v }), el('td', {}, el('button', { textContent: 'Editar', onclick: janela }))))
+        }
+      }
+      pintar()
+      const filtros = el('div', { role: 'tablist' }, ...['Todos', 'Ativos', 'Inativos'].map((n, i) => el('button', { role: 'tab', textContent: n, ariaSelected: String(i === 0) })))
+      for (const [b, i] of [...filtros.children].map((b, i) => [b, i])) b.setAttribute('aria-selected', String(i === 0))
+      const pag = el('div', { className: 'paginacao' }, ...['Anterior', '1', '2', 'Próxima'].map((n) => el('button', { textContent: n })))
+      c.append(filtros, el('input', { type: 'search', placeholder: 'Buscar produtos' }), barra, t, pag)
+    }
+    const simples = (nomes, linhas, aoEditar) => (c) => {
+      const { t, corpo } = tabela(nomes)
+      for (const l of linhas) corpo.append(el('tr', {}, el('td', { textContent: l }), el('td', { textContent: 'ativo' }), el('td', {}, el('button', { textContent: 'Editar', onclick: aoEditar }))))
+      c.append(t)
+    }
+    TELAS.Produtos = { h: 'Produtos', p: 'Catálogo da loja.', botoes: [], render: produtos }
+    TELAS.Estoque = { h: 'Estoque', p: 'Itens em estoque.', botoes: [], render: simples(['Item', 'Situação', ''], ['Parafuso', 'Porca', 'Arruela'], painelLateral) }
+    TELAS.Cupons = { h: 'Cupons', p: 'Cupons de desconto.', botoes: [], render: (c) => {
+      const { t, corpo } = tabela(['Código', 'Situação', ''])
+      for (const cod of ['VERAO10', 'FRETE0', 'VOLTA5']) {
+        const cel = el('td', { textContent: cod })
+        corpo.append(el('tr', {}, cel, el('td', { textContent: 'ativo' }), el('td', {}, el('button', { textContent: 'Editar', onclick: () => { cel.textContent = ''; cel.append(el('input', { value: cod })) } }))))
+      }
+      c.append(t)
+    } }
+    TELAS.Fornecedores = { h: 'Fornecedores', p: 'Quem entrega para a loja.', botoes: [], render: (c) => {
+      c.append(el('ul', {}, ...['Alfa', 'Beta', 'Gama', 'Delta'].map((n) => el('li', {}, n + ' ', el('button', { textContent: 'Editar', onclick: () => ir('Editar fornecedor') })))))
+    } }
+    TELAS['Editar fornecedor'] = { h: 'Editar fornecedor', p: 'Dados do fornecedor.', botoes: [['Voltar para fornecedores', 'Fornecedores']] }
+    TELAS.Entregas = { h: 'Entregas', p: 'Nenhuma entrega cadastrada ainda.', botoes: [['Cadastrar primeira entrega', 'Início']] }
+    TELAS['Devoluções'] = { h: 'Devoluções', p: 'Nenhuma devolução registrada ainda.', botoes: [] }
+  }
+  for (const nome of ABAS.slice(4)) { const b = document.createElement('button'); b.setAttribute('role', 'tab'); b.textContent = nome; b.onclick = () => ir(nome); abas.append(b) }
+
+  if (opcoes.get('gaveta')) {
+    const g = el('aside', { id: 'gaveta' }, ...ABAS.slice(0, 4).map((n) => el('button', { textContent: n, onclick: () => ir(n) })))
+    g.style.cssText = 'position:fixed;left:-600px;top:0;width:200px'
+    document.body.prepend(g)
+  }
+
+  /* ---- o login falso (#login=1): a senha é FALSA e vive só aqui ---- */
+  function mostrarLogin(erro) {
+    abas.hidden = true
+    tela.innerHTML = ''
+    tela.append(el('h2', { textContent: 'Entrar' }))
+    const f = el('form', {}, el('input', { name: 'usuario', placeholder: 'Usuário', autocomplete: 'off' }), el('input', { name: 'senha', type: 'password', placeholder: 'Senha' }), el('button', { type: 'submit', textContent: 'Acessar' }))
+    f.onsubmit = (e) => {
+      e.preventDefault()
+      if (f.usuario.value === 'ana' && f.senha.value === 'segredo-do-teste-123') { sessionStorage.setItem('logado', '1'); ir('Início') } else mostrarLogin('Usuário ou senha incorretos')
+    }
+    tela.append(f)
+    if (erro) tela.append(el('p', { textContent: erro }))
+  }
+  if (opcoes.get('login') && sessionStorage.getItem('logado') !== '1') mostrarLogin(); else ir('Início')
 </script>
 </body>
 </html>

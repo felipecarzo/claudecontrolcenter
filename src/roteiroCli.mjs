@@ -15,30 +15,35 @@
  */
 import { existsSync, statSync, readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
+import { spawn } from 'node:child_process'
 import * as R from './roteiro.mjs'
 
 const CMD = R.CMD
 
 const USO = `uso: ${CMD} [status]
-     ${CMD} responder "<texto>" [--de ia:<modelo> | --de ele --citacao "<palavras dele>"]
-     ${CMD} confirmar <id> [--citacao "<palavras dele>"]
+     ${CMD} proxima [--para ele|ia|programa]
+     ${CMD} responder "<texto>" [--id <pergunta>] [--de ia:<modelo> | --de ele --citacao "<palavras dele>"]
+     ${CMD} confirmar <id> | tudo [--citacao "<palavras dele>"]
      ${CMD} desfazer <id>
      ${CMD} tarefa "<objetivo>" --sucesso "<texto visível>" [--de ia:<modelo> | --de ele --citacao "<palavras dele>"]
-     ${CMD} mapa <url> [--max N] [--prazo <minutos>] [--nao-tocar "<regex>" | --nao-tocar-so "<regex>"] [--idioma pt-BR] [--qualquer-url]
-     ${CMD} agente <T1> --cerebro humano --quem "<nome>" | "comando:..." | roteiro:<arquivo> [--persona x] [--vezes 3] [--nao-tocar "<regex>" | --nao-tocar-so "<regex>"] [--idioma pt-BR] [--qualquer-url]
+     ${CMD} mapa <url> [--max N] [--prazo <minutos>] [--nao-tocar "<regex>" | --nao-tocar-so "<regex>"] [--idioma pt-BR] [--qualquer-url] [--acesso <arquivo>] [--permitir <host>]
+     ${CMD} agente <T1> --cerebro humano --quem "<nome>" | "comando:..." | roteiro:<arquivo> [--persona x] [--vezes 3] [--nao-tocar "<regex>" | --nao-tocar-so "<regex>"] [--idioma pt-BR] [--qualquer-url] [--acesso <arquivo>] [--permitir <host>]
+     ${CMD} mercado [--tipo familia/tipo] [--cerebro "comando:..." | roteiro:<arquivo>] (2 ou mais) [--acesso <arquivo>] [--permitir <host>] [--listar] [--base <pasta>]
      ${CMD} achados
      ${CMD} relatorio
      (em outra pasta: --projeto <pasta>)
-     Sem terminal de verdade (uma IA rodando o comando): responder e tarefa exigem --de, e quem fala por ele
-     (--de ele, e confirmar) exige --citacao com as palavras dele. O navegador só abre file://, localhost,
-     127.0.0.1 e https://testedevoo.carzo.com.br, a menos que se passe --qualquer-url.`
+     Cada pergunta é de um: dele (poucas), da IA (palpite que ele aprova com "confirmar tudo") ou do
+     programa (calculada do mapa e das sessões). Sem terminal de verdade (uma IA rodando o comando):
+     responder e tarefa exigem --de, e quem fala por ele (--de ele, e confirmar) exige --citacao com as
+     palavras dele. O navegador só abre file://, localhost, 127.0.0.1 e https://testedevoo.carzo.com.br,
+     a menos que se passe --qualquer-url.`
 
 /* ===================================================================== */
 /* Argumentos                                                             */
 /* ===================================================================== */
 
 /** Flags que comem o argumento seguinte. Esquecer uma aqui faria o valor virar posicional. */
-const COM_VALOR = new Set(['--projeto', '--dir', '--de', '--sucesso', '--estado', '--papel', '--cerebro', '--persona', '--vezes', '--max', '--prazo', '--nao-tocar', '--nao-tocar-so', '--idioma', '--citacao', '--quem'])
+const COM_VALOR = new Set(['--projeto', '--dir', '--de', '--sucesso', '--estado', '--papel', '--cerebro', '--persona', '--vezes', '--max', '--prazo', '--nao-tocar', '--nao-tocar-so', '--idioma', '--citacao', '--quem', '--id', '--para', '--acesso', '--permitir', '--base', '--tipo'])
 
 export function analisar(argv) {
   const pos = []
@@ -86,6 +91,15 @@ export function opcoesDoNavegador(a, { prazo = false } = {}) {
   }
   if (a.flag('--idioma')) opcoes.idioma = a.flag('--idioma')
   if (a.tem('--qualquer-url')) opcoes.qualquerUrl = true
+  /* O arquivo de acesso (login) só é nomeado aqui: o conteúdo nunca é lido nem impresso por este arquivo. */
+  const acesso = a.flag('--acesso')
+  if (acesso) {
+    const arq = resolve(acesso)
+    if (!existsSync(arq)) return { erro: `--acesso: o arquivo não existe: ${arq}` }
+    opcoes.acesso = arq
+  }
+  const permitir = a.todos('--permitir').filter(Boolean)
+  if (permitir.length) opcoes.permitir = permitir
   return { opcoes }
 }
 
@@ -116,7 +130,13 @@ function autoria(a, deps) {
 const curto = (s, n = 70) => (String(s).length > n ? `${String(s).slice(0, n - 1)}…` : String(s))
 
 /** O que o programa mediu até aqui (mapa e sessões), que alimenta os avisos das fases 3 a 5. */
-const contexto = (raiz) => ({ mapa: R.lerMapa(raiz), sessoes: R.lerSessoes(raiz) })
+const contexto = (raiz) => ({ mapa: R.lerMapa(raiz), sessoes: R.lerSessoes(raiz), mercado: R.lerResultadosMercado(raiz).resultados })
+
+/** O estado do projeto já com os achados confirmados de agora (de onde saem as perguntas por achado), e o que o programa mediu. */
+function carregar(raiz) {
+  const ctx = contexto(raiz)
+  return { estado: R.sincronizar(R.ler(raiz), ctx), ctx }
+}
 
 /* ===================================================================== */
 /* Saída de terminal                                                      */
@@ -127,34 +147,39 @@ function mostrarPergunta(p) {
   console.log(`  ${p.pergunta}`)
   if (p.ajuda) console.log(`  (${p.ajuda})`)
   for (const o of p.opcoes || []) console.log(`    · ${o.valor.padEnd(10)} ${o.label}${o.descricao ? `: ${o.descricao}` : ''}`)
+  if (p.para === 'ele') console.log('  Se não souber, responda "não sei": vale, e não gera outra pergunta.')
   console.log(`\n  responder: ${CMD} responder "<sua resposta>"\n`)
 }
 
+/**
+ * O estado em poucas linhas, nesta ordem: onde está, o que falta a ELE, o que está
+ * com a IA (uma linha), o que espera aprovação, o que falta ao programa, e SÓ a
+ * próxima pergunta dele. O que é da IA e do programa nunca vira pergunta aqui.
+ */
 function mostrarSituacao(estado, ctx) {
   const s = R.situacao(estado, ctx)
   const atual = s.fases[s.fase]
   console.log(`\nRoteiro de uso: ${s.prontas} de ${s.total} fases prontas`)
   if (s.emDia) {
-    console.log('Todas as fases estão prontas. A fase 8 segue em dia enquanto houver data marcada.')
+    console.log('Todas as fases estão prontas. A fase 8 segue em dia enquanto houver rodada nova a cada versão.')
   } else {
     console.log(`Agora: fase ${s.fase}, ${s.titulo}`)
-    /* Pergunta sem resposta já aparece logo abaixo, uma por vez: listá-las aqui
-       só repetiria. Fica o que a pergunta não resolve (palpite, tarefa, medida). */
-    const semResposta = atual.falta.filter((f) => /: sem resposta$/.test(f)).length
-    const outras = atual.falta.filter((f) => !/: sem resposta$/.test(f))
-    if (semResposta) console.log(`  faltam ${plural(semResposta, 'pergunta', 'perguntas')} desta fase`)
-    for (const f of outras.slice(0, 5)) console.log(`  falta: ${f}`)
-    if (outras.length > 5) console.log(`  (e mais ${outras.length - 5})`)
+    /* Pergunta dele sem resposta já aparece logo abaixo: listá-la aqui só repetiria. */
+    const dele = atual.itens.filter((i) => i.tipo === 'ele' && !/: sem resposta$/.test(i.texto))
+    for (const i of dele.slice(0, 5)) console.log(`  falta: ${i.texto}`)
+    if (dele.length > 5) console.log(`  (e mais ${dele.length - 5})`)
   }
   for (const av of atual.avisos.slice(0, 3)) console.log(`  aviso: ${av}`)
+  if (s.iaPendentes) console.log(`a IA tem ${plural(s.iaPendentes, 'item', 'itens')} para preencher: ${CMD} proxima --para ia`)
   if (s.palpites.length) {
-    console.log(`\n${s.palpites.length} palpite(s) de IA esperando você (confirmar: ${CMD} confirmar <id>, e sem terminal de verdade com --citacao "<palavras dele>"):`)
+    console.log(`${plural(s.palpites.length, 'palpite', 'palpites')} da IA esperando você (aprovar tudo: ${CMD} confirmar tudo, e sem terminal de verdade com --citacao "<palavras dele>"):`)
     for (const p of s.palpites.slice(0, 5)) console.log(`  ${p.id}  ${curto(p.texto)}  (${p.de})`)
+    if (s.palpites.length > 5) console.log(`  (e mais ${s.palpites.length - 5})`)
   }
+  for (const f of s.faltaPrograma.slice(0, 4)) console.log(`falta: ${f}`)
   const p = R.proxima(estado)
   if (p) mostrarPergunta(p)
-  else if (!s.emDia) console.log('\nSem pergunta pendente nesta fase: resolva o que falta, na lista acima.\n')
-  else console.log('')
+  else console.log('\nNenhuma pergunta para você agora.\n')
 }
 
 /** A análise do mapa, em estrutura: serve ao terminal e ao relatório. */
@@ -212,6 +237,17 @@ export function mostrarMapa(mapa) {
   console.log('')
 }
 
+/** As faltas de mercado (confirmadas e hipóteses), em duas listas curtas. Devolve quantas mostrou. */
+function mostrarMercadoAchados(resultados) {
+  const m = R.achadosDeMercado(resultados)
+  if (!m.confirmados.length && !m.naoConfirmados.length) return 0
+  console.log(`\nFaltas de mercado confirmadas (sonda do programa, ou 2 ou mais cérebros diferentes): ${m.confirmados.length}`)
+  for (const a of m.confirmados) console.log(`  ${a.texto}`)
+  console.log(`Faltas de mercado como hipótese (1 cérebro só): ${m.naoConfirmados.length}`)
+  for (const a of m.naoConfirmados) console.log(`  ${a.texto}`)
+  return m.confirmados.length + m.naoConfirmados.length
+}
+
 function mostrarAchados(ss, mapa = null) {
   const r = R.achados(ss, { mapa })
   console.log(`\nAchados de ${plural(ss.length, 'sessão', 'sessões')}`)
@@ -227,34 +263,142 @@ function mostrarAchados(ss, mapa = null) {
 }
 
 /* ===================================================================== */
+/* Mercado: o cérebro que responde "tem, não tem ou não dá para ver"       */
+/* ===================================================================== */
+
+/** `comando:<linha>`: roda no shell, entrega o pedido pela entrada, FECHA a entrada e lê a saída. Devolve o texto, ou `{ erro }`. */
+function rodarComando(linha, pedido, prazoMs = 120000) {
+  return new Promise((ok) => {
+    const f = spawn(linha, { shell: true, stdio: ['pipe', 'pipe', 'pipe'], detached: true, windowsHide: true })
+    let out = ''
+    let err = ''
+    const matar = () => { try { process.kill(-f.pid, 'SIGKILL') } catch { try { f.kill('SIGKILL') } catch { /* já saiu */ } } }
+    const t = setTimeout(() => { matar(); ok({ erro: `o cérebro não respondeu em ${Math.round(prazoMs / 1000)} s` }) }, prazoMs)
+    f.stdout.on('data', (d) => { out += d })
+    f.stderr.on('data', (d) => { err = (err + d).slice(-400) })
+    f.on('error', (e) => { clearTimeout(t); ok({ erro: `não consegui rodar o cérebro: ${e.message}` }) })
+    f.on('close', (codigo) => { clearTimeout(t); ok(out.trim() || { erro: `o cérebro não disse nada (código ${codigo}) ${err.trim().split('\n').pop() || ''}`.trim() }) })
+    f.stdin.on('error', () => { /* o comando não leu a entrada: a resposta vem assim mesmo */ })
+    f.stdin.end(pedido)
+  })
+}
+
+/**
+ * Pergunta a um cérebro sobre um padrão. `comando:<linha>` (qualquer IA pelo terminal) ou
+ * `roteiro:<arquivo.json>` (respostas gravadas por id do padrão, para teste sem IA:
+ * `{ "<id>": { "status": "nao-tem", "porque": "..." } }`). Devolve o texto da resposta, ou `{ erro }`.
+ */
+export async function perguntarCerebro(spec, pedido, { padrao } = {}) {
+  if (spec.startsWith('comando:')) return rodarComando(spec.slice('comando:'.length).trim(), pedido)
+  if (spec.startsWith('roteiro:')) {
+    const gravado = JSON.parse(readFileSync(spec.slice('roteiro:'.length).trim(), 'utf8'))[padrao?.id]
+    if (gravado === undefined) return JSON.stringify({ status: 'nao-da', porque: 'o roteiro não traz este padrão' })
+    return JSON.stringify(typeof gravado === 'string' ? { status: gravado } : gravado)
+  }
+  return { erro: `cérebro desconhecido: "${spec}" (use comando:<linha> ou roteiro:<arquivo.json>)` }
+}
+
+/** Uma consulta, com uma segunda chance no formato. Resposta que não serve vira `nao-da` (nunca achado). */
+async function consultar(deps, spec, pedido, padrao) {
+  let erro = ''
+  for (let i = 0; i < 2; i++) {
+    let bruto
+    try {
+      bruto = await deps.perguntar(spec, i === 0 ? pedido : `${pedido}\n\nSua resposta anterior não serviu (${erro}). Responda só a linha JSON.`, { padrao })
+    } catch (e) {
+      return { status: 'nao-da', porque: `o cérebro falhou: ${e.message}` }
+    }
+    if (bruto?.erro) return { status: 'nao-da', porque: `o cérebro falhou: ${bruto.erro}` }
+    const r = R.analisarStatus(bruto)
+    if (r.ok) return r
+    erro = r.erro
+  }
+  return { status: 'nao-da', porque: `resposta fora do formato: ${erro}` }
+}
+
+/** O que `executarSondas` devolveu, em `Map<id da sonda, { status, porque }>`. Aceita lista, `{ resultados }` ou `{ id: resultado }`. */
+function normalizarSondas(r) {
+  const lista = Array.isArray(r) ? r : Array.isArray(r?.resultados) ? r.resultados
+    : r && typeof r === 'object' ? Object.entries(r).map(([id, v]) => (v && typeof v === 'object' ? { id, ...v } : { id, status: v })) : []
+  const mapa = new Map()
+  for (const x of lista) {
+    const id = x?.id ?? x?.sonda
+    const status = R.normStatus(x?.status ?? x?.tem)
+    if (id && status) mapa.set(id, { status, porque: String(x.evidencia ?? x.porque ?? '').trim() })
+  }
+  return mapa
+}
+
+/* ===================================================================== */
 /* Subcomandos                                                            */
 /* ===================================================================== */
 
 const ACOES = {
   status(a, raiz) {
-    mostrarSituacao(R.ler(raiz), contexto(raiz))
+    const { estado, ctx } = carregar(raiz)
+    mostrarSituacao(estado, ctx)
+  },
+
+  /** `proxima` mostra só a pergunta dele; `--para ia` lista o que a IA tem a preencher; `--para programa`, o que o programa calculou. */
+  proxima(a, raiz) {
+    const para = a.flag('--para') || 'ele'
+    if (!['ele', 'ia', 'programa'].includes(para)) return falhar('--para é ele, ia ou programa')
+    const { estado, ctx } = carregar(raiz)
+    if (para === 'ele') {
+      const p = R.proxima(estado)
+      if (p) mostrarPergunta(p)
+      else console.log('\nNenhuma pergunta para você agora.\n')
+      return
+    }
+    if (para === 'ia') {
+      const lista = R.pendentes(estado, 'ia')
+      if (!lista.length) { console.log('\nA IA não tem nada pendente.\n'); return }
+      console.log(`\nA IA tem ${plural(lista.length, 'item', 'itens')} para preencher, tirando do código e dos documentos do projeto.`)
+      console.log(`Responda cada um com: ${CMD} responder "<texto>" --id <id> --de ia:<modelo>`)
+      for (const p of lista) {
+        console.log(`\n[${p.id}] ${p.header} (fase ${p.fase}, ${p.faseTitulo})\n  ${p.pergunta}`)
+        if (p.ajuda) console.log(`  (${p.ajuda})`)
+      }
+      console.log(`\nDepois ele aprova tudo de uma vez: ${CMD} confirmar tudo\n`)
+      return
+    }
+    const itens = R.itensDoRoteiro(estado, ctx).filter((i) => i.para === 'programa')
+    console.log(`\nO programa calcula ${plural(itens.length, 'item', 'itens')}, sem perguntar a ninguém:`)
+    for (const i of itens) console.log(`  ${i.header}: ${i.texto ?? `falta: ${i.falta}`}`)
+    console.log('')
   },
 
   responder(a, raiz, deps) {
-    const texto = a.pos.slice(1).join(' ')
-    if (!texto) return falhar(`uso: ${CMD} responder "<sua resposta>" [--de ia:<modelo> | --de ele --citacao "<palavras dele>"]`)
-    const estado = R.ler(raiz)
-    const atual = R.proxima(estado)
-    if (!atual) return falhar(`não há pergunta pendente agora (veja: ${CMD})`)
+    let texto = a.pos.slice(1).join(' ')
+    if (!texto) return falhar(`uso: ${CMD} responder "<sua resposta>" [--id <pergunta>] [--de ia:<modelo> | --de ele --citacao "<palavras dele>"]`)
+    const { estado, ctx } = carregar(raiz)
+    /* Sem --id é a pergunta dele da vez; com --id é a que se nomeia (é como a IA responde as dela). */
+    const id = a.flag('--id')
+    const alvo = id ? R.todas(estado).find((x) => x.id === id) : R.proxima(estado)
+    if (!alvo) return falhar(id ? `pergunta desconhecida: ${id}` : `não há pergunta para você agora (as da IA: ${CMD} proxima --para ia)`)
     const au = autoria(a, deps)
     if (au.erro) return falhar(au.erro)
-    const res = R.responder(estado, atual.id, texto, { de: au.de, por: au.por })
+    /* O tipo da plataforma só vale se existir na base de mercado: é com ele que o projeto é comparado. */
+    if (alvo.id === 'f0-tipo') {
+      const dir = a.flag('--base') || deps.mercadoDir
+      const base = R.lerMercado(dir)
+      if (!base.tipos.length) return falhar(`a base de mercado está vazia: ${dir}`)
+      const { tipos, desconhecidos } = R.acharTipos(base, texto.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean))
+      if (!tipos.length || desconhecidos.length) return falhar(`tipo fora da base: ${desconhecidos.join(', ') || texto}. Tipos: ${base.tipos.map((t) => t.id).join(', ')}`)
+      texto = tipos.map((t) => t.id).join(', ')
+    }
+    const res = R.responder(estado, alvo.id, texto, { de: au.de, por: au.por })
     if (!res.ok) return falhar(res.erro)
     R.gravar(raiz, res.estado)
-    console.log(`${atual.header}: ${res.resposta.texto}`)
-    if (au.de.startsWith('ia:')) console.log(`  palpite de ${au.de}: vale como hipótese até você confirmar (${CMD} confirmar ${atual.id})`)
+    console.log(`${alvo.header}: ${res.resposta.texto}`)
+    if (au.de.startsWith('ia:')) console.log(`  palpite de ${au.de}: vale como hipótese até você aprovar (${CMD} confirmar ${alvo.id}, ou confirmar tudo)`)
     if (au.por?.via === 'ia') console.log(`  registrado como dele, com a citação: "${curto(au.por.citacao, 60)}"`)
-    mostrarSituacao(res.estado, contexto(raiz))
+    mostrarSituacao(res.estado, ctx)
   },
 
   confirmar(a, raiz, deps) {
     const id = a.pos[1]
-    if (!id) return falhar(`uso: ${CMD} confirmar <id> [--citacao "<palavras dele>"]`)
+    if (!id) return falhar(`uso: ${CMD} confirmar <id> | tudo [--citacao "<palavras dele>"]`)
     /* Confirmar é o ato que transforma palpite de IA em fato. Em terminal de verdade
        é ele. Sem terminal, só com as palavras dele, gravadas junto: ele opera pelo
        celular, conversando com a IA, e a citação é o que permite conferir depois. */
@@ -264,22 +408,32 @@ const ACOES = {
       return falhar('sem terminal de verdade, confirmar exige --citacao "<as palavras dele>": a frase em que ele confirmou (ele opera pelo celular, conversando com a IA)')
     }
     const por = { de: 'ele', via: tty ? 'terminal' : 'ia', ...(citacao && { citacao }) }
-    const res = R.confirmar(R.ler(raiz), id, { por })
+    const { estado, ctx } = carregar(raiz)
+    if (id === 'tudo') {
+      const res = R.confirmarTudo(estado, { por })
+      if (!res.quantos) { console.log('\nnenhum palpite para confirmar\n'); return }
+      R.gravar(raiz, res.estado)
+      console.log(`confirmados ${plural(res.quantos, 'palpite', 'palpites')}: ${res.ids.slice(0, 8).join(', ')}${res.ids.length > 8 ? `, e mais ${res.ids.length - 8}` : ''}`)
+      mostrarSituacao(res.estado, ctx)
+      return
+    }
+    const res = R.confirmar(estado, id, { por })
     if (!res.ok) return falhar(res.erro)
     R.gravar(raiz, res.estado)
     console.log(`confirmado: ${id} (${res.alvo})`)
-    mostrarSituacao(res.estado, contexto(raiz))
+    mostrarSituacao(res.estado, ctx)
   },
 
   desfazer(a, raiz) {
     const id = a.pos[1]
     if (!id) return falhar(`uso: ${CMD} desfazer <id da pergunta>`)
-    const res = R.desfazer(R.ler(raiz), id)
+    const { estado, ctx } = carregar(raiz)
+    const res = R.desfazer(estado, id)
     if (!res.ok) return falhar(res.erro)
     R.gravar(raiz, res.estado)
     console.log(`apagada: ${id}`)
     if (res.orfas.length) console.log(`saíram junto, porque só existiam por causa dela: ${res.orfas.join(', ')}`)
-    mostrarSituacao(res.estado, contexto(raiz))
+    mostrarSituacao(res.estado, ctx)
   },
 
   tarefa(a, raiz, deps) {
@@ -369,19 +523,102 @@ const ACOES = {
     console.log(`\nver o voto das sessões: ${CMD} achados\n`)
   },
 
-  achados(a, raiz) {
-    const ss = R.lerSessoes(raiz)
-    if (!ss.length) {
-      console.log(`\nnenhuma sessão ainda (rode: ${CMD} agente <T1> --cerebro humano)\n`)
+  /**
+   * Compara o projeto com a prática de mercado do tipo dele. Cada padrão (convenção primeiro, depois
+   * por prevalência) é medido por uma sonda do programa quando alguma casa com ele, e senão perguntado
+   * a cada cérebro com o retrato das telas do mapa. Grava docs/roteiro/mercado.json, com o autor de cada resultado.
+   */
+  async mercado(a, raiz, deps) {
+    const dir = a.flag('--base') || deps.mercadoDir
+    const base = R.lerMercado(dir)
+    if (a.tem('--listar')) {
+      if (!base.tipos.length) return falhar(`a base de mercado está vazia: ${dir}`)
+      console.log(`\nTipos na base (${dir}):`)
+      for (const t of base.tipos) console.log(`  ${t.id}: ${plural(t.padroes.length, 'padrão', 'padrões')}`)
+      for (const e of base.erros) console.log(`  arquivo ilegível: ${e}`)
+      console.log('')
       return
     }
-    mostrarAchados(ss, R.lerMapa(raiz))
+    if (!base.tipos.length) return falhar(`a base de mercado está vazia: ${dir}`)
+    const { estado } = carregar(raiz)
+    const lista = base.tipos.map((t) => t.id).join(', ')
+    const pedidos = a.todos('--tipo').flatMap((x) => x.split(',')).map((x) => x.trim()).filter(Boolean)
+    const ids = pedidos.length ? pedidos : R.tiposDoProjeto(estado)
+    if (!ids.length) {
+      return falhar(`diga o tipo do projeto: --tipo familia/tipo (ou a IA responde "Que tipo de plataforma é este projeto?": ${CMD} responder "<familia/tipo>" --id f0-tipo --de ia:<modelo>). Tipos: ${lista}`)
+    }
+    const { tipos, desconhecidos } = R.acharTipos(base, ids)
+    if (desconhecidos.length) return falhar(`tipo fora da base: ${desconhecidos.join(', ')}. Tipos: ${lista}`)
+    const mapa = R.lerMapa(raiz)
+    if (!mapa) return falhar(`falta: mapa (rode: ${CMD} mapa <url>), porque o cérebro lê o retrato das telas`)
+    const nav = opcoesDoNavegador(a)
+    if (nav.erro) return falhar(nav.erro)
+    const cerebros = a.todos('--cerebro').filter(Boolean)
+    const ruim = cerebros.find((c) => !c.startsWith('comando:') && !c.startsWith('roteiro:'))
+    if (ruim) return falhar(`cérebro "${ruim}": o mercado aceita comando:<linha> ou roteiro:<arquivo.json> (humano fica de fora)`)
+    if (!pedidos.length && R.ehPalpite(estado.respostas?.['f0-tipo'])) console.log('  aviso: o tipo é palpite da IA, ainda não aprovado')
+    if (cerebros.length === 1) console.log('  aviso: com 1 cérebro só, a falta fica como hipótese (confirmar pede 2 ou mais diferentes)')
+
+    // as sondas do programa: carregadas só aqui, e a falta delas não impede os cérebros
+    let mod = null
+    try { mod = await deps.sondas() } catch (e) { console.log(`  as sondas não estão disponíveis (${e.message}): só os cérebros respondem`) }
+    const casadas = new Map()
+    for (const t of tipos) for (const p of t.padroes) { const s = R.casarSonda(p, mod?.SONDAS || []); if (s) casadas.set(`${t.id}|${p.id}`, s) }
+    let medidas = new Map()
+    const usadas = [...new Map([...casadas.values()].map((s) => [s.id, s])).values()]
+    if (usadas.length && typeof mod?.executarSondas === 'function') {
+      try {
+        console.log(`medindo ${plural(usadas.length, 'sonda', 'sondas')} do programa`)
+        medidas = normalizarSondas(await mod.executarSondas({ sondas: usadas, url: mapa.url, raiz, mapa, ...nav.opcoes }))
+      } catch (e) {
+        console.log(`  as sondas falharam (${e.message}): os padrões delas vão para os cérebros`)
+      }
+    }
+
+    const quando = new Date().toISOString()
+    const novos = []
+    let semResposta = 0
+    for (const t of tipos) {
+      for (const p of R.padroesDoTipo(t)) {
+        const info = { tipo: t.id, tipoNome: t.tipo, padrao: p.id, nome: p.nome, tipo_de_padrao: p.tipo_de_padrao || null, prevalencia: p.prevalencia || null, referencias: R.referenciasDe(p) }
+        const sonda = casadas.get(`${t.id}|${p.id}`)
+        const m = sonda && medidas.get(sonda.id)
+        if (m) { novos.push({ ...info, status: m.status, porque: m.porque, evidencia: m.porque, autor: 'programa', via: 'sonda', sonda: sonda.id, quando }); continue }
+        if (!cerebros.length) { semResposta++; continue }
+        const pedido = R.pedidoMercado({ padrao: p, tipo: t, mapa })
+        const respostas = await Promise.all(cerebros.map((spec) => consultar(deps, spec, pedido, p)))
+        respostas.forEach((r, i) => novos.push({ ...info, status: r.status, porque: r.porque, autor: cerebros[i], via: 'cerebro', quando }))
+      }
+    }
+    // o resultado novo substitui o antigo dos MESMOS tipos; o de outros tipos fica
+    const antes = R.lerResultadosMercado(raiz).resultados.filter((r) => !tipos.some((t) => t.id === r.tipo))
+    R.gravarResultadosMercado(raiz, { quando, resultados: [...antes, ...novos] })
+
+    for (const c of R.comparacaoMercado(novos)) {
+      console.log(`\nMercado (${c.tipoNome}): ${plural(c.tem.length + c.faltaConfirmada.length + c.faltaHipotese.length + c.naoDa.length, 'padrão', 'padrões')} medidos`)
+      console.log(`  tem: ${c.tem.length}, falta confirmada: ${c.faltaConfirmada.length}, falta como hipótese: ${c.faltaHipotese.length}, não deu para ver: ${c.naoDa.length}`)
+      for (const i of c.faltaConfirmada) console.log(`  falta (confirmada): ${i.nome} (${i.tipo_de_padrao === 'convencao' ? 'convenção' : i.tipo_de_padrao || 'padrão'}, ${i.prevalencia || '?'})`)
+    }
+    if (semResposta) console.log(`\n${plural(semResposta, 'padrão ficou', 'padrões ficaram')} sem resposta: nenhuma sonda casou e não há --cerebro (2 ou mais)`)
+    const n = R.achadosDeMercado(novos).confirmados.length
+    console.log(n ? `\n${plural(n, 'falta confirmada vira', 'faltas confirmadas viram')} pergunta para ele: ${CMD}\n` : '')
+  },
+
+  achados(a, raiz) {
+    const ss = R.lerSessoes(raiz)
+    const mercado = R.lerResultadosMercado(raiz).resultados
+    if (!ss.length && !mercado.length) {
+      console.log(`\nnenhuma sessão ainda (rode: ${CMD} agente <T1> --cerebro humano) e nenhuma comparação com o mercado (rode: ${CMD} mercado)\n`)
+      return
+    }
+    if (ss.length) mostrarAchados(ss, R.lerMapa(raiz))
+    if (mostrarMercadoAchados(mercado)) console.log('')
   },
 
   relatorio(a, raiz) {
     const arq = join(raiz, 'docs', 'roteiro', 'relatorio.html')
     const estado = R.ler(raiz)
-    R.escreverAtomico(arq, relatorioHtml({ estado, mapa: R.lerMapa(raiz), sessoes: R.lerSessoes(raiz) }))
+    R.escreverAtomico(arq, relatorioHtml({ estado, mapa: R.lerMapa(raiz), sessoes: R.lerSessoes(raiz), mercado: R.lerResultadosMercado(raiz).resultados }))
     const s = R.situacao(estado, contexto(raiz))
     console.log(`\nrelatório gerado: ${arq}`)
     console.log(`  ${s.prontas} de ${s.total} fases prontas, ${plural((estado.tarefas || []).length, 'tarefa', 'tarefas')}\n`)
@@ -389,13 +626,13 @@ const ACOES = {
 }
 
 /**
- * `injetados` troca os módulos do navegador (`{ mapa, agente }`, cada um uma
- * função que devolve o módulo) e a pergunta "há terminal de verdade?" (`tty`, uma
+ * `injetados` troca os módulos do navegador (`{ mapa, agente, sondas }`, cada um uma
+ * função que devolve o módulo), o cérebro do mercado (`perguntar(spec, pedido)`), a pasta da base (`mercadoDir`) e a pergunta "há terminal de verdade?" (`tty`, uma
  * função que devolve verdadeiro ou falso). Só os testes usam: é como conferir as
  * flags, o que chega ao plano e as regras de autoria sem abrir um Chrome.
  */
 export async function main(argv = [], injetados = {}) {
-  const deps = { mapa: () => import('./roteiroMapa.mjs'), agente: () => import('./roteiroAgente.mjs'), tty: () => Boolean(process.stdin.isTTY), ...injetados }
+  const deps = { mapa: () => import('./roteiroMapa.mjs'), agente: () => import('./roteiroAgente.mjs'), sondas: () => import('./roteiroSondas.mjs'), perguntar: perguntarCerebro, mercadoDir: R.MERCADO_DIR, tty: () => Boolean(process.stdin.isTTY), ...injetados }
   const a = analisar(argv[0] === 'roteiro' ? argv.slice(1) : argv)
   const sub = a.pos[0] || 'status'
   const raiz = resolve(a.flag('--projeto') || a.flag('--dir') || process.cwd())
@@ -433,7 +670,8 @@ li{margin:4px 0}
  * 26px, secundário 16px). Puro: recebe tudo pronto e devolve o HTML. Achado
  * confirmado e não confirmado ficam em seções separadas, de propósito.
  */
-export function relatorioHtml({ estado, mapa = null, sessoes = [], quando = new Date() }) {
+export function relatorioHtml({ estado: estadoCru, mapa = null, sessoes = [], mercado = [], quando = new Date() }) {
+  const estado = R.sincronizar(estadoCru, { mapa, sessoes, mercado })
   const s = R.situacao(estado, { mapa, sessoes })
   const atual = s.fases[s.fase]
   const lista = (itens, vazio) => (itens.length ? `<ul>${itens.map((i) => `<li>${i}</li>`).join('')}</ul>` : `<p class="sec">${vazio}</p>`)
@@ -443,13 +681,24 @@ export function relatorioHtml({ estado, mapa = null, sessoes = [], quando = new 
 
   // fase atual
   partes.push('<h2>Fase atual</h2>')
+  const dele = atual.itens.filter((i) => i.tipo === 'ele' && !/: sem resposta$/.test(i.texto)).map((i) => esc(i.texto))
   partes.push(s.emDia
-    ? '<div class="cartao bom">Todas as fases estão prontas. A fase 8 segue em dia enquanto houver data marcada.</div>'
-    : `<div class="cartao alerta"><strong>Fase ${s.fase}, ${esc(s.titulo)}</strong>${lista(atual.falta.map(esc), 'nada faltando')}</div>`)
+    ? '<div class="cartao bom">Todas as fases estão prontas. A fase 8 segue em dia enquanto houver rodada nova a cada versão.</div>'
+    : `<div class="cartao alerta"><strong>Fase ${s.fase}, ${esc(s.titulo)}</strong>${lista(dele, 'nada faltando a você agora')}</div>`)
   if (atual.avisos.length) partes.push(`<p class="sec">Avisos do programa:</p>${lista(atual.avisos.map(esc), '')}`)
-  partes.push(`<p class="sec">${s.fases.map((f) => `${f.id} ${esc(f.titulo)}: ${f.ok ? 'pronta' : f.id === s.fase ? 'agora' : 'aberta'}`).join(' | ')}</p>`)
+  partes.push(`<p class="sec">${s.fases.map((f) => `${f.id} ${esc(f.titulo)}: ${s.emDia || f.id < s.fase ? 'pronta' : f.id === s.fase ? 'agora' : 'aberta'}`).join(' | ')}</p>`)
+
+  // quem tem o quê: ele, a IA e o programa
+  partes.push('<h2>Quem tem o quê</h2>')
+  const ele = R.progresso(estado, 'ele')
+  partes.push(lista([
+    `Com você: ${ele.total - ele.feitas} de ${plural(ele.total, 'pergunta', 'perguntas')} sem resposta`,
+    `Com a IA: ${plural(s.iaPendentes, 'item', 'itens')} para preencher`,
+    `Esperando você aprovar: ${plural(s.palpites.length, 'palpite', 'palpites')} da IA`,
+    ...s.faltaPrograma.map((f) => `Falta ao programa: ${esc(f)}`),
+  ], ''))
   if (s.palpites.length) {
-    partes.push(`<h2>Palpites esperando confirmação (${s.palpites.length})</h2>${lista(s.palpites.map((p) => `${esc(p.id)}: ${esc(curto(p.texto, 120))} <span class="marca">${esc(p.de)}</span>`), '')}`)
+    partes.push(`<p class="sec">Palpites esperando aprovação (${esc(CMD)} confirmar tudo):</p>${lista(s.palpites.map((p) => `${esc(p.id)}: ${esc(curto(p.texto, 120))} <span class="marca">${esc(p.de)}</span>`), '')}`)
   }
 
   // tarefas
@@ -458,6 +707,28 @@ export function relatorioHtml({ estado, mapa = null, sessoes = [], quando = new 
   partes.push(ts.length
     ? ts.map((t) => `<div class="cartao"><strong>${esc(t.id)}</strong> ${esc(t.objetivo)}${R.ehPalpite(t) ? ' <span class="marca">palpite</span>' : ''}<br><small>Deu certo quando: ${esc(t.sucesso?.texto || t.sucesso?.estado || 'não definido')}. Autor: ${esc(t.de)}${t.papel ? `. Papel: ${esc(t.papel)}` : ''}</small></div>`).join('')
     : '<p class="sec">nenhuma tarefa cadastrada ainda</p>')
+
+  // respostas por fase, cada uma marcada com quem respondeu
+  partes.push('<h2>Respostas por fase</h2>')
+  const itens = R.itensDoRoteiro(estado, { mapa, sessoes })
+  const marcaDe = (i) => {
+    if (i.para === 'programa') return i.texto !== null ? '<span class="marca">programa</span>' : ''
+    if (!i.de) return ''
+    if (i.palpite) return `<span class="marca">${esc(i.de)}, palpite</span>`
+    if (i.de.startsWith('ia:')) return `<span class="marca">${esc(i.de)}, confirmado</span>`
+    return `<span class="marca">${esc(i.de)}</span>`
+  }
+  for (const f of s.fases) {
+    const dela = itens.filter((i) => i.fase === f.id)
+    if (!dela.length) continue
+    partes.push(`<h3 style="font-size:19px;margin:14px 0 4px">Fase ${f.id}, ${esc(f.titulo)}</h3>`)
+    partes.push(lista(dela.map((i) => {
+      const corpo = i.para === 'programa'
+        ? (i.texto !== null ? esc(i.texto) : `<span class="sec">falta: ${esc(i.falta)}</span>`)
+        : (i.texto !== null ? esc(i.texto) : `<span class="sec">${i.para === 'ia' ? 'a IA ainda não preencheu' : 'sem resposta'}</span>`)
+      return `<strong>${esc(i.header)}</strong>: ${corpo} ${marcaDe(i)}`
+    }), 'nada nesta fase'))
+  }
 
   // análise do mapa
   partes.push('<h2>Análise do mapa</h2>')
@@ -490,6 +761,22 @@ export function relatorioHtml({ estado, mapa = null, sessoes = [], quando = new 
       return `<div class="cartao ${x.sucesso ? 'bom' : 'alerta'}"><strong>${esc(x.id)}</strong> ${esc(x.tarefa || '')}: ${fim}<br><small>${esc(R.autorDaSessao(x).replace('|', ' / '))}. ${m.passos} passos${m.otimo ? ` (ótimo ${m.otimo})` : ''}, ${m.voltas} voltas, ${m.revisitas} revisitas,${m.rolagens ? ` ${m.rolagens} rolagens,` : ''} desorientação ${m.desorientacao ?? 'sem mapa'}.</small></div>`
     }).join('')
     : '<p class="sec">nenhuma sessão ainda</p>')
+
+  // comparado com o mercado, um bloco por tipo
+  const comparacoes = R.comparacaoMercado(mercado)
+  if (!comparacoes.length) {
+    partes.push(`<h2>Comparado com o mercado</h2><p class="sec">ainda não foi feito (${esc(CMD)} mercado --tipo familia/tipo)</p>`)
+  }
+  const linhaMercado = (i) => `<strong>${esc(i.nome)}</strong> <span class="marca">${esc(i.tipo_de_padrao === 'convencao' ? 'convenção' : (i.tipo_de_padrao || 'padrão'))}, ${esc(i.prevalencia || '?')}</span>${i.porque ? ` ${esc(i.porque)}` : ''}${i.referencias.length ? `<br><small>Referências: ${i.referencias.map(esc).join(', ')}</small>` : ''}`
+  for (const c of comparacoes) {
+    partes.push(`<h2>Comparado com o mercado (${esc(c.tipoNome)})</h2>`)
+    for (const [titulo, itens, vazio] of [
+      [`O projeto tem (${c.tem.length})`, c.tem, 'nenhum padrão confirmado'],
+      [`Falta, confirmado (${c.faltaConfirmada.length})`, c.faltaConfirmada, 'nenhuma falta confirmada'],
+      [`Falta, hipótese de um cérebro só (${c.faltaHipotese.length})`, c.faltaHipotese, 'nenhuma hipótese'],
+      [`Não deu para ver (${c.naoDa.length})`, c.naoDa, 'nenhum'],
+    ]) partes.push(`<h3 style="font-size:19px;margin:14px 0 4px">${titulo}</h3>${lista(itens.map(linhaMercado), vazio)}`)
+  }
 
   // achados: confirmados e não confirmados, separados
   const ach = R.achados(sessoes, { mapa })

@@ -19,8 +19,9 @@ import http from 'node:http'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import * as R from './src/roteiro.mjs'
-import { abrirNavegador, enderecoPermitido, PROTEGIDOS } from './src/roteiroNavegador.mjs'
-import { executarMapa, mapear, nomear } from './src/roteiroMapa.mjs'
+import { abrirNavegador, enderecoPermitido, lerAcesso, PROTEGIDOS } from './src/roteiroNavegador.mjs'
+import { executarSondas, SONDAS } from './src/roteiroSondas.mjs'
+import { alcancar, executarMapa, mapear, nomear } from './src/roteiroMapa.mjs'
 import { rodarAgente, executarAgente, rodadas } from './src/roteiroAgente.mjs'
 
 if (typeof WebSocket === 'undefined') {
@@ -190,6 +191,16 @@ try {
     } finally {
       await seguro.fechar()
     }
+    const comHost = await abrirNavegador({ permitir: ['127.0.0.2'] }) // só esse host a mais, sem abrir tudo
+    try {
+      await comHost.ir(URL_PAGINA + '#fora=' + alvoFora)
+      const o = await comHost.observar()
+      await comHost.clicar(o.elementos.find((e) => e.rotulo === 'Abrir site externo').n)
+      assert.ok((await comHost.observar()).texto.includes('ALCANCOU'), 'permitir deveria liberar o host da lista')
+      await assert.rejects(comHost.ir('https://example.com/'), /endereço recusado/)
+    } finally {
+      await comHost.fechar()
+    }
     const aberto = await abrirNavegador({ qualquerUrl: true })
     try {
       await aberto.ir(URL_PAGINA + '#fora=' + alvoFora)
@@ -202,7 +213,7 @@ try {
   } finally {
     servidor.close()
   }
-  ok('página hostil: endereço fora da lista é recusado em português, e o clique num link para fora (que ABRE de verdade com qualquerUrl) não sai do Chrome')
+  ok('página hostil: endereço fora da lista é recusado em português, o clique num link para fora (que ABRE de verdade com qualquerUrl) não sai do Chrome, e `permitir` libera só o host da lista')
 
   /* ========== 2. o mapa, pelo filho (com o atalho) e, ao mesmo tempo, sem o atalho ========== */
   const tMapa = Date.now()
@@ -230,6 +241,8 @@ try {
   assert.equal(mapa.telas.filter((t) => t.profundidade === 3).length, 1)
   assert.deepEqual(escondida.caminho, ['Clientes', 'Ficha do cliente', 'Histórico de compras'])
   assert.equal(R.menorCaminho(mapa, 'raiz', escondida.id).length, 3)
+  assert.deepEqual(escondida.passos.map((p) => p.rotulo), escondida.caminho) // o mapa grava COMO refazer cada clique (papel, nome e posição entre os iguais)
+  assert.ok(escondida.passos.every((p) => /\|/.test(p.chave) && Number.isInteger(p.oc)))
   ok('mapa: a tela escondida está a 3 cliques (Clientes, Ficha do cliente, Histórico de compras)')
 
   assert.ok(mapa.telas.some((t) => t.nome === 'Contato com a equipe'), 'o botão abaixo da dobra não foi alcançado')
@@ -254,6 +267,26 @@ try {
   assert.deepEqual(pares(mapa), pares(exaustivo), 'o atalho mudou o mapa: um caminho sumiu ou apareceu')
   assert.equal(exaustivo.arestas.filter((a) => a.inferida).length, 0)
   ok(`mapa: o atalho (botão de moldura não refeito) pulou ${inferidas} cliques e o mapa tem as mesmas ${pares(mapa).length} ligações do mapa clicando em tudo (${((Date.now() - tMapa) / 1000).toFixed(0)} s, os dois ao mesmo tempo)`)
+
+  /* ========== 2a. refazer o caminho: a gaveta fora da janela não pode enganar ========== */
+  const refaz = await abrirNavegador()
+  try {
+    assert.equal(await alcancar(refaz, URL_PAGINA, escondida), escondida.assinatura) // com `passos`, o jeito do mapa
+    const URL_GAVETA = URL_PAGINA + '#gaveta=1'
+    await refaz.ir(URL_GAVETA)
+    const o = await refaz.observar({ soVisivel: false })
+    const iguais = o.elementos.filter((e) => e.rotulo === 'Clientes')
+    assert.equal(iguais.length, 2) // a gaveta e a aba
+    const primeiro = await refaz.clicar(iguais[0].n)
+    assert.deepEqual([primeiro.ok, primeiro.motivo], [false, 'o elemento está fora da janela']) // a causa: o 1º "Clientes" é o da gaveta
+    // sem `passos` (mapa antigo, só os rótulos): tenta os iguais um a um e chega
+    const antigo = { id: 'tx', caminho: ['Clientes', 'Ficha do cliente', 'Histórico de compras'] }
+    await alcancar(refaz, URL_GAVETA, antigo)
+    assert.equal(secao(await refaz.observar()), 'Histórico de compras')
+    // e um rótulo que não existe continua dando null (não inventa caminho)
+    assert.equal(await alcancar(refaz, URL_GAVETA, { id: 'ty', caminho: ['Nao existe'] }), null)
+  } finally { await refaz.fechar() }
+  ok('refazer o caminho: com gaveta fora da janela (o 1º "Clientes" não clica), o mapa antigo, só com rótulos, acha o botão que clica; o mapa novo grava `passos`')
 
   /* ========== 2b. o mapa morto no meio não estraga o mapa bom ========== */
   const saidaMorta = path.join(projeto, 'morto')
@@ -396,6 +429,106 @@ console.log('Penso em voz alta. ' + JSON.stringify({ escolha: alvo ? alvo.n : 'd
   const vivo = spawnSync('pgrep', ['-f', marcador], { encoding: 'utf8' })
   if (!vivo.error) assert.equal(vivo.status, 1, 'o cérebro lento continua rodando: ' + vivo.stdout)
   ok(`agente: o prazo é do filho (4 s, fechou em ${((Date.now() - tPrazo) / 1000).toFixed(0)} s com fim "prazo") e o comando lento morreu com o grupo dele${vivo.error ? ' (sem pgrep nesta máquina, não conferi)' : ''}`)
+
+  /* ========== 5d. o login de teste: entra sozinho, e a senha nunca aparece ========== */
+  const SENHA = 'segredo-do-teste-123' // a senha FALSA da fixture
+  const acessoOk = path.join(projeto, 'acesso-ok.json')
+  fs.writeFileSync(acessoOk, JSON.stringify({ usuario: 'ana', senha: SENHA }), { mode: 0o600 })
+  const acessoErrado = path.join(projeto, 'acesso-errado.json')
+  fs.writeFileSync(acessoErrado, JSON.stringify({ usuario: 'ana', senha: 'senha-errada-xyz' }), { mode: 0o600 })
+  const URL_LOGIN = URL_PAGINA + '#login=1'
+
+  // o arquivo estragado não vaza: a mensagem do JSON.parse citaria um pedaço dele
+  const quebrado = path.join(projeto, 'acesso-quebrado.json')
+  fs.writeFileSync(quebrado, '{"usuario": "ana", "senha": "vazou-no-erro-987" oops')
+  assert.throws(() => lerAcesso(quebrado), (e) => !e.message.includes('vazou-no-erro-987') && /não consegui ler o arquivo de acesso/.test(e.message))
+  assert.throws(() => lerAcesso(path.join(projeto, 'nao-existe.json')), /não consegui ler o arquivo de acesso/)
+
+  const semAcesso = await abrirNavegador()
+  try {
+    await semAcesso.ir(URL_LOGIN)
+    assert.equal(secao(await semAcesso.observar()), 'Entrar') // sem acesso, fica na tela de senha
+  } finally { await semAcesso.fechar() }
+  const logado = await abrirNavegador({ acesso: acessoOk })
+  try {
+    await logado.ir(URL_LOGIN)
+    assert.equal(secao(await logado.observar()), 'Painel da loja')
+    await logado.ir(URL_LOGIN) // recarrega: o armazenamento é limpo, a tela de senha volta, e ele entra de novo
+    assert.equal(secao(await logado.observar()), 'Painel da loja')
+  } finally { await logado.fechar() }
+  process.env.ROTEIRO_USUARIO = 'ana'; process.env.ROTEIRO_SENHA = SENHA
+  const porEnv = await abrirNavegador()
+  try { await porEnv.ir(URL_LOGIN); assert.equal(secao(await porEnv.observar()), 'Painel da loja') } finally { await porEnv.fechar(); delete process.env.ROTEIRO_USUARIO; delete process.env.ROTEIRO_SENHA }
+  const errado = await abrirNavegador({ acesso: acessoErrado })
+  try {
+    await assert.rejects(errado.ir(URL_LOGIN), (e) => /o login falhou/.test(e.message) && !e.message.includes('senha-errada-xyz'))
+    await assert.rejects(errado.ir(URL_LOGIN), /já falhou nesta execução/) // não tenta de novo: travaria a conta
+  } finally { await errado.fechar() }
+  ok('login: preenche usuário e senha do arquivo (ou de ROTEIRO_USUARIO e ROTEIRO_SENHA), entra de novo a cada recarga, falha com aviso claro sem tentar duas vezes, e o erro do arquivo estragado não mostra o conteúdo')
+
+  // o mapa e o agente entram logados, e a senha não aparece em saída, mapa nem sessão
+  const rodaMapa = (acesso, dir) => spawnSync(process.execPath, ['--experimental-websocket', path.join(AQUI, 'src', 'roteiroMapa.mjs'), '--plano', JSON.stringify({ url: URL_LOGIN, saida: dir, acesso, maxProfundidade: 1 })], { encoding: 'utf8', timeout: 120000 })
+  const mLogado = rodaMapa(acessoOk, path.join(projeto, 'mapa-logado'))
+  assert.equal(mLogado.status, 0, mLogado.stderr)
+  const mapaLogado = JSON.parse(fs.readFileSync(path.join(projeto, 'mapa-logado', 'mapa.json'), 'utf8'))
+  assert.equal(mapaLogado.telas[0].cabecalhos.at(-1), 'Painel da loja')
+  assert.ok(mapaLogado.telas.length >= 4, 'o mapa logado deveria achar as abas: ' + mapaLogado.telas.length)
+  const mErrado = rodaMapa(acessoErrado, path.join(projeto, 'mapa-errado'))
+  assert.notEqual(mErrado.status, 0)
+  assert.match(mErrado.stderr, /o login falhou/)
+  for (const saidaFilho of [mLogado.stdout, mLogado.stderr, mErrado.stdout, mErrado.stderr]) assert.ok(!saidaFilho.includes(SENHA) && !saidaFilho.includes('senha-errada-xyz'), 'a senha apareceu na saída do filho')
+  const rAcesso = await rodarAgente({ raiz: projeto, url: URL_LOGIN, acesso: acessoOk, tarefa: { id: 'T9', objetivo, sucesso: { texto: 'Total gasto' } }, cerebro: 'roteiro:' + roteiroOk, persona: 'rui' })
+  assert.deepEqual([rAcesso.fim, rAcesso.metricas.passos], ['sucesso', 3])
+  ok('login: o mapa e o agente entram logados (o mapa achou as abas depois da tela de senha); login errado derruba o mapa com aviso claro')
+
+  /* ========== 5e. as sondas: a prática de mercado, tela por tela ========== */
+  const projSondas = path.join(projeto, 'proj-sondas')
+  const URL_LISTAS = URL_PAGINA + '#login=1&listas=1'
+  const telasSonda = [['t1', 'Produtos'], ['t2', 'Estoque'], ['t3', 'Cupons'], ['t4', 'Fornecedores'], ['t5', 'Entregas'], ['t6', 'Devoluções']]
+  R.gravarMapa(projSondas, { url: URL_LISTAS, telas: [{ id: 'raiz', nome: 'Início', caminho: [] }, ...telasSonda.map(([id, nome]) => ({ id, nome, caminho: [nome] }))], arestas: [] })
+  const tSondas = Date.now()
+  const sondas = await executarSondas({ raiz: projSondas, acesso: acessoOk, largura: 1100, altura: 800, sondas: SONDAS, soTelas: telasSonda.map(([id]) => id), prazoMs: 240000 })
+  assert.equal(sondas.resultados.length, telasSonda.length * SONDAS.length, 'avisos: ' + sondas.avisos.join(' | '))
+  assert.equal(sondas.parcial, false)
+  assert.ok(!fs.existsSync(path.join(projSondas, 'docs', 'roteiro', 'sondas.novo.json')) && fs.existsSync(sondas.caminho))
+  const por = (tela, id) => sondas.resultados.find((r) => r.nome === tela && r.id === id)
+  const esperado = (tela, id, status, trecho) => {
+    const r = por(tela, id)
+    assert.equal(r.status, status, `${tela} / ${id}: ${r.status}, ${r.evidencia}`)
+    if (trecho) assert.match(r.evidencia, trecho, `${tela} / ${id}: ${r.evidencia}`)
+    return r
+  }
+  const fJanela = esperado('Produtos', 'editar-sem-perder-a-lista', 'tem', /abriu uma janela "Editar produto" que não cobre a lista inteira/)
+  assert.ok(fJanela.foto && fs.existsSync(path.join(projSondas, 'docs', 'roteiro', fJanela.foto)))
+  esperado('Estoque', 'editar-sem-perder-a-lista', 'tem', /painel lateral/)
+  esperado('Cupons', 'editar-sem-perder-a-lista', 'tem', /na própria linha/)
+  esperado('Fornecedores', 'editar-sem-perder-a-lista', 'nao-tem', /página própria/)
+  ok('sonda editar-sem-perder-a-lista: janela que não cobre a lista = tem, painel lateral = tem, na linha = tem, página própria = nao-tem (e a evidência diz qual das quatro)')
+
+  for (const [id, status] of [['acoes-em-lote', 'tem'], ['busca-na-lista', 'tem'], ['filtros-como-abas', 'tem'], ['ordenar-colunas', 'tem'], ['paginacao', 'tem'], ['estado-vazio-com-acao', 'nao-da']]) esperado('Produtos', id, status)
+  esperado('Produtos', 'acoes-em-lote', 'tem', /Ativar.*Excluir selecionados|Excluir selecionados.*Ativar/)
+  for (const id of ['acoes-em-lote', 'busca-na-lista', 'filtros-como-abas', 'paginacao']) esperado('Estoque', id, 'nao-tem')
+  esperado('Estoque', 'ordenar-colunas', 'nao-tem', /nenhum cabeçalho/)
+  esperado('Fornecedores', 'ordenar-colunas', 'nao-da', /não é uma tabela/)
+  esperado('Entregas', 'editar-sem-perder-a-lista', 'nao-da')
+  esperado('Entregas', 'estado-vazio-com-acao', 'tem', /Cadastrar primeira entrega/)
+  esperado('Devoluções', 'estado-vazio-com-acao', 'nao-tem', /sem botão/)
+  ok(`sondas: ${sondas.resultados.length} resultados (6 telas x 7 sondas) em ${((Date.now() - tSondas) / 1000).toFixed(0)} s: lote, busca, abas, ordenação, paginação e estado vazio dão tem, nao-tem ou nao-da conforme a tela, e tela sem lista nunca vira "nao-tem"`)
+
+  // a lista que nunca é clicada: nem na tabela da fixture nenhuma ação protegida foi acionada, e a tela voltou ao ponto de partida
+  assert.ok(sondas.resultados.every((r) => ['tem', 'nao-tem', 'nao-da'].includes(r.status)))
+
+  /* a senha, em lugar nenhum: nem em sessão, nem em mapa, nem em sondas, nem em foto */
+  const varrer = (dir, achados = []) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const f = path.join(dir, e.name)
+      if (e.isDirectory()) varrer(f, achados)
+      else if (!/^acesso.*\.json$/.test(e.name) && fs.readFileSync(f).toString('latin1').includes(SENHA)) achados.push(f)
+    }
+    return achados
+  }
+  assert.deepEqual(varrer(projeto), [], 'a senha apareceu num arquivo gravado')
+  ok('login: a senha não está em nenhum arquivo gravado (sessões, mapas, sondas, fotos) fora do próprio arquivo de acesso')
 
   /* ========== 6. nada ficou para trás ========== */
   assert.equal(perfisAntes(), antes, 'sobrou perfil temporário de Chrome em ' + os.tmpdir())

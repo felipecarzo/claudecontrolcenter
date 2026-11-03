@@ -1,0 +1,1311 @@
+{
+ "familia": "conta-e-acesso",
+ "rodada": 1,
+ "quando": "2026-11-03",
+ "tipos": [
+  {
+   "tipo": "cadastro",
+   "tarefas_principais": [
+    "criar conta com e-mail ou conta externa",
+    "confirmar e-mail",
+    "chegar ao primeiro uso"
+   ],
+   "produtos": [
+    {
+     "nome": "Google",
+     "url": "https://support.google.com/accounts/answer/27441",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (help center, fluxo de criação de conta)"
+    },
+    {
+     "nome": "GitHub",
+     "url": "https://docs.github.com/en/get-started/start-your-journey/creating-an-account-on-github",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (parcial: não descreve campos)"
+    },
+    {
+     "nome": "Slack",
+     "url": "https://slack.com/help/articles/206845317-Create-a-Slack-workspace",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (help center, criar workspace)"
+    },
+    {
+     "nome": "Figma",
+     "url": "https://help.figma.com/hc/en-us/articles/360039811114-Create-a-Figma-account",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (help center, criar conta)"
+    },
+    {
+     "nome": "Spotify",
+     "url": "https://support.spotify.com/us/article/getting-started/",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (help center, primeiros passos)"
+    },
+    {
+     "nome": "Linear",
+     "url": "https://linear.app/docs/start-guide",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (parcial: só diz que se cadastra com e-mail de trabalho)"
+    },
+    {
+     "nome": "Nubank",
+     "url": "https://tecnoblog.net/379203/como-abrir-uma-conta-no-nubank/",
+     "como_olhou": "artigo de análise (Tecnoblog e guias), sem tela oficial; confiança menor"
+    },
+    {
+     "nome": "gov.br",
+     "url": "https://tecnoblog.net/responde/como-ter-uma-conta-gov-br-no-nivel-prata-ou-ouro/",
+     "como_olhou": "artigo de análise (Tecnoblog, Olhar Digital), sem tela oficial; confiança menor"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "cadastro-botoes-sociais",
+     "nome": "Cadastro com botão de conta externa ao lado do e-mail",
+     "descricao": "Além de e-mail, a tela de cadastro oferece Continuar com Google e/ou Apple (e Facebook no Spotify), e a conta nasce com nome e e-mail do provedor.",
+     "sinal_observavel": "Na tela de cadastro existem botões com texto 'Continuar com Google/Apple' (ou equivalente) além do campo de e-mail; clicar abre popup ou redireciona para o provedor.",
+     "presente_em": [
+      "Slack",
+      "GitHub",
+      "Figma",
+      "Spotify"
+     ],
+     "prevalencia": "4 de 8",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "cadastro-confirmacao-de-email",
+     "nome": "Confirmação do e-mail depois do cadastro",
+     "descricao": "O produto manda código ou link para o e-mail informado e só considera a conta verificada depois disso (Slack e Google pedem código na tela; Figma e GitHub mandam link ou pedem confirmar).",
+     "sinal_observavel": "Após enviar o cadastro com e-mail, aparece tela 'confira seu e-mail' com campo de código, ou aviso de verificação pendente; existe ação de reenviar.",
+     "presente_em": [
+      "Google",
+      "GitHub",
+      "Slack",
+      "Figma"
+     ],
+     "prevalencia": "4 de 8",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "cadastro-campos-opcionais-marcados",
+     "nome": "Dados que não são necessários vêm marcados como opcionais",
+     "descricao": "Telefone e e-mail de recuperação (Google) e gênero, data de nascimento e nome de exibição (Spotify) podem ser pulados no cadastro.",
+     "sinal_observavel": "No formulário de cadastro, campos não essenciais têm rótulo 'opcional' ou botão 'Pular', e o envio funciona com eles vazios.",
+     "presente_em": [
+      "Google",
+      "Spotify"
+     ],
+     "prevalencia": "2 de 8",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "cadastro-identidade-por-documento-e-selfie",
+     "nome": "Cadastro de serviço financeiro ou governamental pede documento e rosto",
+     "descricao": "CPF, foto do documento e selfie (Nubank) ou reconhecimento facial para subir o nível da conta (gov.br: bronze, prata, ouro).",
+     "sinal_observavel": "O cadastro tem etapa de câmera: pede permissão de câmera, foto de documento ou prova de vida antes de liberar a conta ou o nível.",
+     "presente_em": [
+      "Nubank",
+      "gov.br"
+     ],
+     "prevalencia": "2 de 8",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "cadastro-email-de-trabalho-orienta",
+     "nome": "Cadastro orienta usar o e-mail da empresa",
+     "descricao": "Slack diz que quem cria com e-mail da empresa vira dono do workspace; Linear cria o workspace a partir do e-mail de trabalho.",
+     "sinal_observavel": "Texto de ajuda perto do campo de e-mail citando e-mail de trabalho/empresa, ou domínio da empresa usado para localizar o workspace.",
+     "presente_em": [
+      "Slack",
+      "Linear"
+     ],
+     "prevalencia": "2 de 8",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "login (senha, link mágico, social, passkey)",
+   "tarefas_principais": [
+    "entrar com senha ou sem senha",
+    "entrar com conta externa",
+    "entrar em outro aparelho",
+    "entrar sem o método habitual"
+   ],
+   "produtos": [
+    {
+     "nome": "Google",
+     "url": "https://support.google.com/accounts/answer/13548313",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (passkey, Tentar de outro jeito, QR)"
+    },
+    {
+     "nome": "GitHub",
+     "url": "https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/configuring-two-factor-authentication",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (docs: 2FA e passkeys)"
+    },
+    {
+     "nome": "Slack",
+     "url": "https://slack.com/help/articles/212681477",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (help center, entrar no Slack, todas as formas)"
+    },
+    {
+     "nome": "Microsoft",
+     "url": "https://support.microsoft.com/en-us/accounts-billing/security/create-save-passkey",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (suporte: passkey e códigos), mais resumo de busca"
+    },
+    {
+     "nome": "Apple",
+     "url": "https://support.apple.com/en-us/HT204974",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (suporte: código de verificação no login)"
+    },
+    {
+     "nome": "Figma",
+     "url": "https://help.figma.com/hc/en-us/articles/360040047614-Authenticate-with-Google-Google-SSO",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (help center, entrar com Google)"
+    },
+    {
+     "nome": "Spotify",
+     "url": "https://support.spotify.com/us/article/cannot-remember-login/",
+     "como_olhou": "resumo de busca de páginas oficiais do help center (Google, Facebook, Apple login)"
+    },
+    {
+     "nome": "Nubank",
+     "url": "https://tecnoblog.net/noticias/nubank-segue-mercado-pago-e-exige-biometria-no-app-por-padrao/",
+     "como_olhou": "artigo de análise (Tecnoblog, Canaltech); confiança menor"
+    },
+    {
+     "nome": "Mercado Pago",
+     "url": "https://www.mercadopago.com.br/blog/seguranca-digital-conta-mercado-pago",
+     "como_olhou": "blog oficial de segurança do Mercado Pago (via resumo de busca)"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "login-outro-jeito-de-entrar",
+     "nome": "Link 'tentar de outro jeito' quando o método principal falha",
+     "descricao": "Google (Try another way), Apple (Não recebeu o código? / Não consegue acessar seus dispositivos), Mercado Pago (outro método, ex. reconhecimento facial ou autenticador) e Slack (passkey, código ou SSO) oferecem alternativa na própria tela.",
+     "sinal_observavel": "Na tela de código/senha existe link ou botão 'Tentar de outro jeito', 'Não recebi o código' ou similar que lista métodos alternativos sem voltar ao começo.",
+     "presente_em": [
+      "Google",
+      "Apple",
+      "Mercado Pago",
+      "Slack"
+     ],
+     "prevalencia": "4 de 9",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "login-passkey-como-opcao",
+     "nome": "Passkey (digital, rosto ou PIN do aparelho) como forma de entrar",
+     "descricao": "O campo de usuário sugere a passkey salva (Google), ou o produto oferece Entrar com passkey (Slack, GitHub, Microsoft); a verificação é feita pelo sistema do aparelho.",
+     "sinal_observavel": "Na tela de login há opção 'Entrar com passkey/chave de acesso' ou o campo de usuário aciona o seletor de passkeys do navegador (autofill WebAuthn).",
+     "presente_em": [
+      "Google",
+      "GitHub",
+      "Slack",
+      "Microsoft"
+     ],
+     "prevalencia": "4 de 9",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "login-botoes-sociais",
+     "nome": "Entrar com Google/Apple/Facebook",
+     "descricao": "Slack, Figma e Spotify mostram 'Continuar com Google/Apple'. Na amostra a prevalência cai porque 4 dos 9 são provedores de identidade ou bancos, que não oferecem conta externa.",
+     "sinal_observavel": "Tela de login com botões 'Continuar com Google/Apple/Facebook'; clique abre janela do provedor e volta logado.",
+     "presente_em": [
+      "Slack",
+      "Figma",
+      "Spotify"
+     ],
+     "prevalencia": "3 de 9",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "login-qr-entre-dispositivos",
+     "nome": "QR code para entrar usando o celular",
+     "descricao": "Google (passkey do celular via QR), Slack (Entrar no celular, a partir do desktop) e Mercado Pago (QR lido no app) usam o celular logado como prova.",
+     "sinal_observavel": "Na tela de login ou de verificação aparece QR code e instrução 'escaneie com o celular'.",
+     "presente_em": [
+      "Google",
+      "Slack",
+      "Mercado Pago"
+     ],
+     "prevalencia": "3 de 9",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "login-codigo-por-email-sem-senha",
+     "nome": "Entrada sem senha por código enviado ao e-mail",
+     "descricao": "Slack pede e-mail e manda código de confirmação; Microsoft envia códigos para os e-mails cadastrados.",
+     "sinal_observavel": "Tela de login só com campo de e-mail e botão 'Entrar com e-mail'; segunda tela pede código numérico recebido.",
+     "presente_em": [
+      "Slack",
+      "Microsoft"
+     ],
+     "prevalencia": "2 de 9",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "login-biometria-no-app-movel",
+     "nome": "App de banco abre com biometria ou senha por padrão",
+     "descricao": "Nubank e Mercado Pago passaram a exigir biometria ou senha do aparelho ao abrir o app, ligável e desligável nas configurações.",
+     "sinal_observavel": "Ao abrir o app instalado, pede biometria/senha antes de mostrar conteúdo; nas configurações existe chave para ligar ou desligar (só testável em app móvel).",
+     "presente_em": [
+      "Nubank",
+      "Mercado Pago"
+     ],
+     "prevalencia": "2 de 9",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "recuperação de senha",
+   "tarefas_principais": [
+    "redefinir senha esquecida",
+    "voltar a acessar sem o segundo fator"
+   ],
+   "produtos": [
+    {
+     "nome": "Google",
+     "url": "https://support.google.com/accounts/answer/7682439",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (recuperar conta)"
+    },
+    {
+     "nome": "GitHub",
+     "url": "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/updating-your-github-access-credentials",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (redefinir senha)"
+    },
+    {
+     "nome": "Spotify",
+     "url": "https://support.spotify.com/us/article/reset-password/",
+     "como_olhou": "resumo de busca das páginas oficiais de senha e login social"
+    },
+    {
+     "nome": "Apple",
+     "url": "https://support.apple.com/en-us/HT204974",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (sem acesso ao telefone confiável)"
+    },
+    {
+     "nome": "Microsoft",
+     "url": "https://support.microsoft.com/en-us/accounts-billing/manage/microsoft-account-security-info-verification-codes",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (parcial)"
+    },
+    {
+     "nome": "Nubank",
+     "url": "https://canaltech.com.br/apps/como-recuperar-a-conta-nubank/",
+     "como_olhou": "artigo de análise (Canaltech); confiança menor"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "recuperacao-link-por-email-que-expira",
+     "nome": "Redefinição por link enviado ao e-mail, com validade",
+     "descricao": "GitHub (3 horas), Spotify e Nubank (12 horas) mandam link; a nova senha é definida numa página aberta pelo link.",
+     "sinal_observavel": "Em 'Esqueci a senha' digitar e-mail ou CPF dispara aviso 'enviamos um link'; o link abre tela de nova senha; link usado ou velho mostra mensagem de expirado.",
+     "presente_em": [
+      "GitHub",
+      "Spotify",
+      "Nubank"
+     ],
+     "prevalencia": "3 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "recuperacao-sem-acesso-avisa-prazo",
+     "nome": "Quando não há acesso ao segundo fator, o fluxo existe e avisa que demora",
+     "descricao": "Apple diz que a recuperação pode levar dias; Google avisa até 7 dias para mudanças nos dados de recuperação; GitHub oferece pedido de recuperação de conta.",
+     "sinal_observavel": "Na tela do código há link 'Não consigo acessar' que leva a fluxo de recuperação com texto de prazo ou espera.",
+     "presente_em": [
+      "Google",
+      "Apple",
+      "GitHub"
+     ],
+     "prevalencia": "3 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "recuperacao-ferramenta-em-vez-de-atendente",
+     "nome": "Ajuda empurra para ferramenta de autoatendimento, não para atendente",
+     "descricao": "Google não ajuda por telefone a entrar; Microsoft diz que o suporte não envia link de redefinição e aponta um assistente de entrada.",
+     "sinal_observavel": "Página de ajuda de login traz botão para assistente de recuperação e texto explícito de que atendimento não redefine senha.",
+     "presente_em": [
+      "Google",
+      "Microsoft"
+     ],
+     "prevalencia": "2 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "recuperacao-exige-segundo-fator",
+     "nome": "Redefinir a senha também pede o segundo fator",
+     "descricao": "GitHub, depois do link, pede passkey, push, TOTP, SMS ou código de recuperação antes da nova senha.",
+     "sinal_observavel": "Após abrir o link de redefinição aparece desafio de 2FA antes do formulário de nova senha.",
+     "presente_em": [
+      "GitHub"
+     ],
+     "prevalencia": "1 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "recuperacao-conta-social-oferece-criar-senha",
+     "nome": "Conta criada por login social tem caminho para definir senha própria",
+     "descricao": "Spotify deixa criar senha pelo formulário de redefinição usando o e-mail do Google ou Facebook.",
+     "sinal_observavel": "Usar 'Esqueci a senha' com o e-mail de uma conta social cria senha local e permite entrar com e-mail e senha.",
+     "presente_em": [
+      "Spotify"
+     ],
+     "prevalencia": "1 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "verificação em duas etapas e código",
+   "tarefas_principais": [
+    "ligar 2FA",
+    "entrar com o segundo fator",
+    "guardar códigos de backup",
+    "perder o aparelho"
+   ],
+   "produtos": [
+    {
+     "nome": "Google",
+     "url": "https://support.google.com/accounts/answer/185839",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (verificação em duas etapas)"
+    },
+    {
+     "nome": "Apple",
+     "url": "https://support.apple.com/en-us/HT204974",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (código no aparelho confiável)"
+    },
+    {
+     "nome": "GitHub",
+     "url": "https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/configuring-two-factor-authentication",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (configurar 2FA, passo a passo)"
+    },
+    {
+     "nome": "Microsoft",
+     "url": "https://support.microsoft.com/en-us/accounts-billing/manage/microsoft-account-security-info-verification-codes",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (métodos de verificação)"
+    },
+    {
+     "nome": "Slack",
+     "url": "https://slack.com/help/articles/212681477",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (2FA com 6 dígitos, passkeys)"
+    },
+    {
+     "nome": "Mercado Pago",
+     "url": "https://www.mercadopago.com.br/blog/checklist-seguranca-conta-mercado-pago",
+     "como_olhou": "blog oficial de segurança (via resumo de busca)"
+    },
+    {
+     "nome": "Dropbox",
+     "url": "https://help.dropbox.com/security/enable-two-step-verification",
+     "como_olhou": "páginas oficiais do help center (via resumo de busca)"
+    },
+    {
+     "nome": "Discord",
+     "url": "https://support.discord.com/hc/articles/219576828",
+     "como_olhou": "trecho oficial citado em busca, mais guias de terceiros para os passos; confiança menor"
+    },
+    {
+     "nome": "Stripe",
+     "url": "https://docs.stripe.com/dashboard/teams/roles",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (menciona exigir duas etapas para funções)"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "2fa-app-autenticador-codigo-6-digitos",
+     "nome": "App autenticador: QR code, depois código de 6 dígitos que muda",
+     "descricao": "Configuração mostra QR (e chave manual) e pede o código atual para confirmar; no login pede o código.",
+     "sinal_observavel": "Em Segurança, ativar 2FA mostra QR code e campo de 6 dígitos; no login, depois da senha, aparece campo de código de 6 dígitos.",
+     "presente_em": [
+      "Google",
+      "GitHub",
+      "Microsoft",
+      "Slack",
+      "Mercado Pago",
+      "Dropbox",
+      "Discord"
+     ],
+     "prevalencia": "7 de 9",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "2fa-pagina-de-seguranca-lista-metodos",
+     "nome": "Uma página de segurança lista os métodos com Adicionar e Remover",
+     "descricao": "GitHub (Senha e autenticação), Google (Segurança e login), Microsoft (Gerenciar como eu entro, até 10 métodos), Dropbox (aba Segurança), Mercado Pago (Seu perfil, Segurança) e Slack (Passkeys) concentram os métodos num lugar.",
+     "sinal_observavel": "Existe uma seção de segurança onde cada método aparece como linha com botão Adicionar/Remover/Editar.",
+     "presente_em": [
+      "GitHub",
+      "Google",
+      "Microsoft",
+      "Dropbox",
+      "Mercado Pago",
+      "Slack"
+     ],
+     "prevalencia": "6 de 9",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "2fa-codigos-de-backup",
+     "nome": "Códigos de backup de uso único",
+     "descricao": "Google (8 dígitos), GitHub (baixar e marcar 'salvei'), Dropbox (10 códigos de 8 dígitos, regerados ao ligar ou desligar o 2FA) e Discord (opcional).",
+     "sinal_observavel": "Ao ativar 2FA aparece lista de códigos com Baixar/Copiar e confirmação 'já guardei'; no login há 'usar código de backup'.",
+     "presente_em": [
+      "Google",
+      "GitHub",
+      "Dropbox",
+      "Discord"
+     ],
+     "prevalencia": "4 de 9",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "2fa-chave-de-seguranca-fisica",
+     "nome": "Chave de segurança física como método",
+     "descricao": "Google, GitHub (apelido para a chave), Dropbox (só depois de SMS ou app) e Microsoft aceitam chave.",
+     "sinal_observavel": "Em Segurança existe 'Adicionar chave de segurança' com campo de apelido e instrução de encostar a chave.",
+     "presente_em": [
+      "Google",
+      "GitHub",
+      "Dropbox",
+      "Microsoft"
+     ],
+     "prevalencia": "4 de 9",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "2fa-aprovar-no-celular",
+     "nome": "Notificação em outro aparelho com Permitir/Negar",
+     "descricao": "Apple mostra Permitir e depois o código, com mapa aproximado; Google pergunta Sim/Não; GitHub Mobile aprova push; Microsoft Authenticator pede digitar o número mostrado na tela.",
+     "sinal_observavel": "No login, depois da senha, aparece tela 'aprove no seu aparelho' e às vezes número de 2 dígitos para conferir; a tela avança sozinha após aprovar.",
+     "presente_em": [
+      "Apple",
+      "Google",
+      "GitHub",
+      "Microsoft"
+     ],
+     "prevalencia": "4 de 9",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "2fa-nao-recebi-o-codigo",
+     "nome": "'Não recebi o código' oferece reenviar por outro canal",
+     "descricao": "Apple (enviar para número confiável), Google (tentar de outro jeito), Mercado Pago (outro método; suporte após cerca de 30 minutos).",
+     "sinal_observavel": "Tela de código tem link 'Não recebeu o código?' que troca o canal ou lista métodos, e há temporizador de reenvio.",
+     "presente_em": [
+      "Apple",
+      "Google",
+      "Mercado Pago"
+     ],
+     "prevalencia": "3 de 9",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "2fa-sms-como-segunda-opcao",
+     "nome": "SMS aparece como opção secundária ou desencorajada",
+     "descricao": "GitHub recomenda app em vez de SMS; Discord só libera SMS depois de ter app autenticador; Microsoft está encerrando SMS em contas pessoais.",
+     "sinal_observavel": "Na lista de métodos o SMS vem depois do app, com texto de aviso ou pré-requisito.",
+     "presente_em": [
+      "GitHub",
+      "Discord",
+      "Microsoft"
+     ],
+     "prevalencia": "3 de 9",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "2fa-confiar-no-aparelho",
+     "nome": "'Não perguntar de novo neste aparelho'",
+     "descricao": "Google tem a caixa na tela do segundo fator.",
+     "sinal_observavel": "Tela do segundo fator com checkbox 'Não perguntar novamente neste computador/aparelho'.",
+     "presente_em": [
+      "Google"
+     ],
+     "prevalencia": "1 de 9",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "2fa-exigido-pela-organizacao",
+     "nome": "A organização ou o plano pode exigir 2FA",
+     "descricao": "Slack (workspace ou organização exige código de 6 dígitos) e Stripe (conta precisa exigir duas etapas para função de transferência).",
+     "sinal_observavel": "Ao entrar numa organização que exige, aparece etapa obrigatória de configurar 2FA antes de acessar; configuração de organização tem chave 'exigir 2FA'.",
+     "presente_em": [
+      "Slack",
+      "Stripe"
+     ],
+     "prevalencia": "2 de 9",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "primeira entrada (onboarding)",
+   "tarefas_principais": [
+    "chegar ao primeiro uso útil",
+    "proteger a conta",
+    "convidar equipe"
+   ],
+   "produtos": [
+    {
+     "nome": "Figma",
+     "url": "https://help.figma.com/hc/en-us/articles/360039811114-Create-a-Figma-account",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (depois do cadastro cai no navegador de arquivos)"
+    },
+    {
+     "nome": "Slack",
+     "url": "https://slack.com/help/articles/206845317-Create-a-Slack-workspace",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (criar workspace e convidar colegas)"
+    },
+    {
+     "nome": "Spotify",
+     "url": "https://support.spotify.com/us/article/getting-started/",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (primeiros passos)"
+    },
+    {
+     "nome": "Linear",
+     "url": "https://linear.app/docs/start-guide",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (guia de início: workspace de demonstração, guias por papel)"
+    },
+    {
+     "nome": "GitHub",
+     "url": "https://docs.github.com/en/get-started/start-your-journey/creating-an-account-on-github",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (recomenda 2FA após criar)"
+    },
+    {
+     "nome": "Google",
+     "url": "https://support.google.com/accounts/answer/27441",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (recuperação pedida no cadastro)"
+    },
+    {
+     "nome": "gov.br",
+     "url": "https://tecnoblog.net/responde/como-aumentar-o-nivel-da-conta-gov/",
+     "como_olhou": "artigo de análise (Tecnoblog); confiança menor"
+    },
+    {
+     "nome": "Nubank",
+     "url": "https://tecnoblog.net/379203/como-abrir-uma-conta-no-nubank/",
+     "como_olhou": "artigo de análise (Tecnoblog); confiança menor"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "onboarding-cai-no-produto-e-nao-num-tour",
+     "nome": "Depois do cadastro o usuário já cai no produto",
+     "descricao": "Figma abre o navegador de arquivos com Rascunhos, times e Comunidade; Spotify manda explorar e usar a busca; Linear oferece workspace de demonstração para explorar.",
+     "sinal_observavel": "Logo após confirmar a conta, a URL e a tela são do produto (lista, arquivos, busca), sem sequência de telas de boas-vindas obrigatórias.",
+     "presente_em": [
+      "Figma",
+      "Spotify",
+      "Linear"
+     ],
+     "prevalencia": "3 de 8",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "onboarding-protecao-da-conta-logo-no-inicio",
+     "nome": "Pede proteger a conta logo depois de criar",
+     "descricao": "GitHub recomenda fortemente ligar 2FA; Google pede telefone e e-mail de recuperação no próprio cadastro.",
+     "sinal_observavel": "Após o cadastro há aviso ou etapa para ligar 2FA ou adicionar recuperação, com opção de adiar.",
+     "presente_em": [
+      "GitHub",
+      "Google"
+     ],
+     "prevalencia": "2 de 8",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "onboarding-niveis-de-conta",
+     "nome": "Conta que libera funções por nível de verificação",
+     "descricao": "gov.br tem bronze, prata e ouro, e o app mostra 'Aumentar nível da conta' com instruções de reconhecimento facial.",
+     "sinal_observavel": "Perfil mostra selo de nível e botão para subir de nível, com lista do que o nível libera.",
+     "presente_em": [
+      "gov.br"
+     ],
+     "prevalencia": "1 de 8",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "onboarding-guias-por-papel",
+     "nome": "Material de início separado por papel",
+     "descricao": "Linear tem guias para administrador (por tamanho de empresa) e para membro.",
+     "sinal_observavel": "Página de início tem entradas distintas 'sou admin' e 'sou membro'.",
+     "presente_em": [
+      "Linear"
+     ],
+     "prevalencia": "1 de 8",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "onboarding-convidar-colegas",
+     "nome": "Etapa de convidar colegas ao criar o espaço",
+     "descricao": "Slack encadeia a criação do workspace com o guia de convidar colegas.",
+     "sinal_observavel": "Ao terminar a criação do espaço aparece tela com campo de e-mails e link de convite, com opção de pular.",
+     "presente_em": [
+      "Slack"
+     ],
+     "prevalencia": "1 de 8",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "configurações da conta",
+   "tarefas_principais": [
+    "achar a configuração de segurança",
+    "trocar forma de entrar",
+    "gerenciar perfis e dados"
+   ],
+   "produtos": [
+    {
+     "nome": "Google",
+     "url": "https://support.google.com/accounts/answer/13548313",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (Segurança e login, Dados e privacidade)"
+    },
+    {
+     "nome": "GitHub",
+     "url": "https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/configuring-two-factor-authentication",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (menu Configurações)"
+    },
+    {
+     "nome": "Slack",
+     "url": "https://slack.com/help/articles/212681477",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (my.slack.com/account/settings, Passkeys)"
+    },
+    {
+     "nome": "Microsoft",
+     "url": "https://support.microsoft.com/en-us/accounts-billing/manage/microsoft-account-security-info-verification-codes",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (account.microsoft.com/security)"
+    },
+    {
+     "nome": "Dropbox",
+     "url": "https://help.dropbox.com/security/enable-two-step-verification",
+     "como_olhou": "páginas oficiais do help center (via resumo de busca)"
+    },
+    {
+     "nome": "Notion",
+     "url": "https://www.notion.com/help/delete-your-account",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (Configurações na barra lateral)"
+    },
+    {
+     "nome": "Mercado Pago",
+     "url": "https://www.mercadopago.com.br/blog/seguranca-digital-conta-mercado-pago",
+     "como_olhou": "blog oficial de segurança (via resumo de busca)"
+    },
+    {
+     "nome": "Spotify",
+     "url": "https://support.spotify.com/ag/article/cancel-premium/",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (página da conta, Gerenciar seu plano)"
+    },
+    {
+     "nome": "Netflix",
+     "url": "https://help.netflix.com/en/node/407",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (página Conta, seção Assinatura)"
+    },
+    {
+     "nome": "Discord",
+     "url": "https://support.discord.com/hc/articles/219576828",
+     "como_olhou": "guias de terceiros e trechos citados; confiança menor"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "config-secoes-por-assunto",
+     "nome": "Configurações divididas por assunto (segurança, privacidade, plano) em abas ou barra lateral",
+     "descricao": "GitHub (barra lateral: Acesso, Conta), Dropbox (abas Geral e Segurança), Google (Segurança e login, Dados e privacidade), Microsoft (aba Segurança), Notion e Mercado Pago (Perfil: Segurança, Privacidade).",
+     "sinal_observavel": "A página de configurações tem navegação lateral ou abas com nomes de assunto; trocar de seção não recarrega o produto todo e a URL muda por seção.",
+     "presente_em": [
+      "GitHub",
+      "Dropbox",
+      "Google",
+      "Microsoft",
+      "Notion",
+      "Mercado Pago"
+     ],
+     "prevalencia": "6 de 10",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "config-entrada-pelo-avatar",
+     "nome": "Configurações se abrem pelo avatar ou nome do usuário",
+     "descricao": "GitHub (foto no canto superior direito), Dropbox (avatar), Notion (nome na barra lateral), Netflix (ícone da conta), Discord (engrenagem junto ao usuário).",
+     "sinal_observavel": "Clicar no avatar/nome abre menu com 'Configurações' ou 'Conta'.",
+     "presente_em": [
+      "GitHub",
+      "Dropbox",
+      "Notion",
+      "Netflix",
+      "Discord"
+     ],
+     "prevalencia": "5 de 10",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "config-endereco-proprio-por-assunto",
+     "nome": "Cada assunto de conta tem endereço próprio",
+     "descricao": "Google (myaccount.google.com/signinoptions/passkeys), Slack (my.slack.com/account/settings), Microsoft (account.microsoft.com/security), GitHub (github.com/password_reset), Netflix (página Gerenciar assinatura).",
+     "sinal_observavel": "Seções de segurança e plano abrem por URL direta, acessível por link de e-mail ou de ajuda, sem navegar pelos menus.",
+     "presente_em": [
+      "Google",
+      "Slack",
+      "Microsoft",
+      "GitHub",
+      "Netflix"
+     ],
+     "prevalencia": "5 de 10",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "config-metodos-de-login-adicionar-remover",
+     "nome": "Lista de formas de entrar com adicionar, remover e apelido",
+     "descricao": "Slack (Adicionar outra passkey, Remover, Excluir passkey), Microsoft (Adicionar nova forma de entrar), GitHub (Adicionar chave, Adicionar passkey, apelido), Dropbox, Google, Spotify (página Formas de login).",
+     "sinal_observavel": "Em Segurança aparece lista de métodos cadastrados, cada um com ação de remover, e botão 'Adicionar'; adicionar pode pedir senha de novo.",
+     "presente_em": [
+      "Slack",
+      "Microsoft",
+      "GitHub",
+      "Dropbox",
+      "Google",
+      "Spotify"
+     ],
+     "prevalencia": "6 de 10",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "config-acao-sensivel-pede-senha-de-novo",
+     "nome": "Ação sensível pede confirmar a senha ou outro método",
+     "descricao": "GitHub pede confirmar senha ao adicionar passkey; Dropbox pede senha ao adicionar chave; Mercado Pago valida identidade antes de cancelar conta.",
+     "sinal_observavel": "Ao abrir adicionar chave, trocar e-mail ou cancelar conta, aparece diálogo de senha ou verificação mesmo já logado.",
+     "presente_em": [
+      "GitHub",
+      "Dropbox",
+      "Mercado Pago"
+     ],
+     "prevalencia": "3 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "config-gerenciar-perfis-dentro-da-conta",
+     "nome": "Perfis múltiplos dentro de uma conta, com tela própria",
+     "descricao": "Netflix tem Gerenciar perfis separado da assinatura; excluir perfil não encerra a cobrança.",
+     "sinal_observavel": "Existe tela 'Gerenciar perfis' com editar e excluir, distinta da tela de assinatura.",
+     "presente_em": [
+      "Netflix"
+     ],
+     "prevalencia": "1 de 10",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "cobrança e plano",
+   "tarefas_principais": [
+    "cancelar assinatura",
+    "trocar de plano",
+    "atualizar forma de pagamento",
+    "entender cobrança por pessoa"
+   ],
+   "produtos": [
+    {
+     "nome": "Spotify",
+     "url": "https://support.spotify.com/ag/article/cancel-premium/",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (cancelar Premium)"
+    },
+    {
+     "nome": "Netflix",
+     "url": "https://help.netflix.com/en/node/407",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (cancelar e pausar)"
+    },
+    {
+     "nome": "Stripe",
+     "url": "https://docs.stripe.com/customer-management",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (portal do cliente, com demonstração indicada no texto)"
+    },
+    {
+     "nome": "Figma",
+     "url": "https://help.figma.com/hc/en-us/articles/360039970673-Team-permissions",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (assentos e permissões) mais resumo de busca sobre cobrança"
+    },
+    {
+     "nome": "Linear",
+     "url": "https://linear.app/docs/members-roles",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (efeitos de convidado e suspensão na cobrança)"
+    },
+    {
+     "nome": "Notion",
+     "url": "https://www.notion.com/help/add-members-admins-guests-and-groups",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (membros pagos e sugestões de upgrade); página de planos deu 404"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "cobranca-cancelar-mantem-acesso-ate-o-fim-do-periodo",
+     "nome": "Cancelar não derruba o acesso: vale até o fim do período já pago",
+     "descricao": "Spotify (volta ao grátis na próxima cobrança), Netflix (serviço segue até o fim do ciclo), Stripe (portal permite cancelar agora ou no fim do período).",
+     "sinal_observavel": "Após cancelar, a página de plano mostra 'ativo até DD/MM' e a assinatura aparece como cancelada, não removida.",
+     "presente_em": [
+      "Spotify",
+      "Netflix",
+      "Stripe"
+     ],
+     "prevalencia": "3 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "cobranca-assento-ligado-ao-papel",
+     "nome": "Quem paga depende do papel, e o produto explica a conta",
+     "descricao": "Figma separa assento de permissão (editor custa, visualizador não); Linear cobra convidado como membro e tira suspenso no próximo ciclo; Notion cobra por membro e sugere promover convidados.",
+     "sinal_observavel": "Na lista de pessoas, o papel mostra se ocupa assento pago; mudar papel mostra aviso de custo.",
+     "presente_em": [
+      "Figma",
+      "Linear",
+      "Notion"
+     ],
+     "prevalencia": "3 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "cobranca-pagina-unica-de-plano-e-pagamento",
+     "nome": "Uma página reúne plano, forma de pagamento e faturas",
+     "descricao": "Spotify (Gerenciar seu plano, Pagamento), Netflix (seção Assinatura) e portal do Stripe (atualizar cartão, trocar plano, baixar faturas).",
+     "sinal_observavel": "Na conta existe uma tela com plano atual, próxima cobrança, forma de pagamento e histórico de faturas.",
+     "presente_em": [
+      "Spotify",
+      "Netflix",
+      "Stripe"
+     ],
+     "prevalencia": "3 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "cobranca-retencao-no-cancelamento",
+     "nome": "Oferta de retenção durante o cancelamento",
+     "descricao": "Netflix oferece 'Pausar por 1 mês' (até 3 meses, com banner Estender e Retomar); Stripe permite cupom no cancelamento e coleta o motivo.",
+     "sinal_observavel": "Ao clicar em cancelar aparece alternativa (pausar, cupom, rebaixar) ou pergunta de motivo antes do botão final.",
+     "presente_em": [
+      "Netflix",
+      "Stripe"
+     ],
+     "prevalencia": "2 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "cobranca-plano-de-parceiro-sem-troca",
+     "nome": "Plano contratado por parceiro mostra contato em vez de trocar",
+     "descricao": "Spotify (operadora) e Netflix (parceiro de pagamento) escondem trocar ou cancelar e indicam como falar com o parceiro.",
+     "sinal_observavel": "Em conta com cobrança de terceiro, a tela de plano não mostra Cancelar, e sim texto com o contato do parceiro.",
+     "presente_em": [
+      "Spotify",
+      "Netflix"
+     ],
+     "prevalencia": "2 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "cobranca-membro-sai-sem-cancelar-o-plano",
+     "nome": "Em plano compartilhado, sair não cancela e o gestor é avisado",
+     "descricao": "Spotify: membro de Família ou Duo é removido sem cancelar; o gestor, ao cancelar, deve avisar os membros, que perdem o Premium na próxima cobrança.",
+     "sinal_observavel": "Conta de membro mostra 'sair do plano' separado de 'cancelar'; gestor vê lista de membros afetados.",
+     "presente_em": [
+      "Spotify"
+     ],
+     "prevalencia": "1 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "equipe e permissões",
+   "tarefas_principais": [
+    "convidar pessoa",
+    "mudar papel",
+    "remover ou suspender",
+    "entender quem pode o quê"
+   ],
+   "produtos": [
+    {
+     "nome": "Stripe",
+     "url": "https://docs.stripe.com/dashboard/teams",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (equipe e funções, passo a passo)"
+    },
+    {
+     "nome": "Slack",
+     "url": "https://slack.com/help/articles/201314026-Roles-and-permissions-in-Slack",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (funções e permissões; passos de troca de função não descritos)"
+    },
+    {
+     "nome": "Notion",
+     "url": "https://www.notion.com/help/add-members-admins-guests-and-groups",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (membros, convidados, grupos)"
+    },
+    {
+     "nome": "Linear",
+     "url": "https://linear.app/docs/members-roles",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (membros e funções)"
+    },
+    {
+     "nome": "Figma",
+     "url": "https://help.figma.com/hc/en-us/articles/360039970673-Team-permissions",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (permissões de time)"
+    },
+    {
+     "nome": "Spotify",
+     "url": "https://support.spotify.com/ag/article/cancel-premium/",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (gestor do plano e membros; só como caso de papel)"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "equipe-papeis-hierarquicos",
+     "nome": "Papéis fixos em degraus: dono, administrador, membro, convidado",
+     "descricao": "Slack (Dono/Admin, Membro, Convidado), Notion, Linear (Admin, Membro, Convidado), Figma (Dono, Admin, pode editar, pode ver) e Stripe (Dono, Administrador, funções).",
+     "sinal_observavel": "Tela de membros mostra coluna Papel com valores desse tipo e seletor para mudar.",
+     "presente_em": [
+      "Slack",
+      "Notion",
+      "Linear",
+      "Figma",
+      "Stripe"
+     ],
+     "prevalencia": "5 de 6",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "equipe-propriedade-unica-transferivel",
+     "nome": "Existe um único dono, e só ele transfere a propriedade",
+     "descricao": "Stripe (só um Dono; só ele transfere), Figma (um dono por time, transferível), Slack (Dono Principal).",
+     "sinal_observavel": "Papel Dono aparece uma vez; ações de transferir propriedade ficam só nele.",
+     "presente_em": [
+      "Stripe",
+      "Figma",
+      "Slack"
+     ],
+     "prevalencia": "3 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "equipe-convite-por-email-com-papel",
+     "nome": "Convidar por e-mail já escolhendo o papel",
+     "descricao": "Stripe (Adicionar membro, e-mails, funções, Enviar convites), Notion (Adicionar membros, e-mail, papel), Figma (compartilhar, e-mail, pode ver/editar), Slack (admins e membros convidam).",
+     "sinal_observavel": "Botão 'Convidar/Adicionar membro' abre diálogo com campo de e-mails e seletor de papel; convite pendente aparece na lista.",
+     "presente_em": [
+      "Stripe",
+      "Notion",
+      "Figma",
+      "Slack"
+     ],
+     "prevalencia": "4 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "equipe-alterar-papel-na-linha",
+     "nome": "Mudar papel pelo menu da própria linha",
+     "descricao": "Notion (seletor de papel na aba Membros), Linear (passar o mouse, menu de três pontos, Mudar papel), Stripe (três pontos, Editar), Figma (seletor ao lado do nome).",
+     "sinal_observavel": "Em cada linha de pessoa existe seletor de papel ou menu '...' com Editar/Mudar papel; salvar atualiza a linha sem sair da lista.",
+     "presente_em": [
+      "Notion",
+      "Linear",
+      "Stripe",
+      "Figma"
+     ],
+     "prevalencia": "4 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "equipe-remover-explica-consequencia",
+     "nome": "Remover ou suspender com efeito imediato e consequência explicada",
+     "descricao": "Linear (Suspender: perde acesso na hora, continua na lista, sai da próxima cobrança), Notion (Remover do workspace: volta em 30 dias com as páginas), Stripe e Figma (Remover).",
+     "sinal_observavel": "Menu da linha tem Remover/Suspender; há texto de consequência antes de confirmar e filtro por status suspenso.",
+     "presente_em": [
+      "Linear",
+      "Notion",
+      "Stripe",
+      "Figma"
+     ],
+     "prevalencia": "4 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "equipe-sso-e-diretorio",
+     "nome": "Login corporativo (SSO) e sincronia de pessoas (SCIM)",
+     "descricao": "Stripe e Slack aceitam SSO; Linear usa SCIM no Enterprise e deixa convidar convidados à mão; Figma tem SSO e SCIM para organizações.",
+     "sinal_observavel": "Configurações de segurança têm seção SSO/SCIM, normalmente em plano superior.",
+     "presente_em": [
+      "Stripe",
+      "Slack",
+      "Linear",
+      "Figma"
+     ],
+     "prevalencia": "4 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "equipe-convidado-limitado",
+     "nome": "Convidado com acesso só ao que foi compartilhado",
+     "descricao": "Slack (canal único), Notion (páginas específicas), Linear (só times adicionados, plano Business ou superior).",
+     "sinal_observavel": "Papel Convidado existe e a lista de recursos visíveis dele é menor que a do membro.",
+     "presente_em": [
+      "Slack",
+      "Notion",
+      "Linear"
+     ],
+     "prevalencia": "3 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "equipe-permissoes-detalhadas-com-pode-e-nao-pode",
+     "nome": "Cada função lista o que pode e o que não pode fazer",
+     "descricao": "Stripe descreve para cada função listas 'pode' e 'não pode', permite acumular várias funções e orienta dar a menor permissão; Slack tem funções de sistema e personalizadas no Enterprise.",
+     "sinal_observavel": "Ao escolher função há descrição ou página com ações permitidas e negadas; usuário pode ter mais de uma função.",
+     "presente_em": [
+      "Stripe",
+      "Slack"
+     ],
+     "prevalencia": "2 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "equipe-convite-por-link-ou-dominio",
+     "nome": "Convite por link ou por domínio de e-mail",
+     "descricao": "Notion tem Copiar link com chave para desligar e Domínios de e-mail permitidos.",
+     "sinal_observavel": "Configuração com chave 'link de convite' e lista de domínios permitidos.",
+     "presente_em": [
+      "Notion"
+     ],
+     "prevalencia": "1 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "equipe-convite-expira",
+     "nome": "Convite pendente expira",
+     "descricao": "Stripe: convites expiram em 10 dias.",
+     "sinal_observavel": "Lista mostra convites pendentes com opção de reenviar; convite antigo mostra expirado.",
+     "presente_em": [
+      "Stripe"
+     ],
+     "prevalencia": "1 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "equipe-historico-de-seguranca",
+     "nome": "Histórico de atividade de segurança da equipe",
+     "descricao": "Stripe guarda a atividade dos membros por 180 dias em Histórico de segurança.",
+     "sinal_observavel": "Página de histórico de segurança com data, pessoa e ação.",
+     "presente_em": [
+      "Stripe"
+     ],
+     "prevalencia": "1 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  },
+  {
+   "tipo": "excluir conta",
+   "tarefas_principais": [
+    "achar onde excluir",
+    "entender o que se perde",
+    "confirmar",
+    "desistir"
+   ],
+   "produtos": [
+    {
+     "nome": "Google",
+     "url": "https://support.google.com/accounts/answer/32046",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (excluir conta)"
+    },
+    {
+     "nome": "GitHub",
+     "url": "https://docs.github.com/en/account-and-profile/how-tos/account-management/deleting-your-personal-account",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (excluir conta pessoal, passo a passo)"
+    },
+    {
+     "nome": "Notion",
+     "url": "https://www.notion.com/help/delete-your-account",
+     "como_olhou": "documentação oficial lida (texto, sem imagem) (excluir conta, diálogo de confirmação)"
+    },
+    {
+     "nome": "Dropbox",
+     "url": "https://help.dropbox.com/accounts-billing/create-delete/delete-account",
+     "como_olhou": "resumo de busca de páginas oficiais e guias; confiança média"
+    },
+    {
+     "nome": "Discord",
+     "url": "https://support.discord.com/hc/en-us/articles/212500837-How-to-Delete-or-Disable-Your-Account",
+     "como_olhou": "só guias de terceiros (página oficial devolveu 403); confiança menor"
+    },
+    {
+     "nome": "Mercado Pago",
+     "url": "https://tecnoblog.net/responde/como-cancelar-conta-do-mercado-livre-mercado-pago/",
+     "como_olhou": "artigos de análise (Tecnoblog, Canaltech); confiança menor"
+    }
+   ],
+   "padroes": [
+    {
+     "id": "excluir-reautenticacao-ou-digitar-para-confirmar",
+     "nome": "Confirmar a exclusão digitando e-mail, usuário ou senha",
+     "descricao": "GitHub (usuário ou e-mail e uma frase), Notion (e-mail da conta), Dropbox e Discord (senha), Mercado Pago (valida identidade).",
+     "sinal_observavel": "Diálogo de exclusão tem campo que precisa ser preenchido e botão final desabilitado até estar certo.",
+     "presente_em": [
+      "GitHub",
+      "Notion",
+      "Dropbox",
+      "Discord",
+      "Mercado Pago"
+     ],
+     "prevalencia": "5 de 6",
+     "tipo_de_padrao": "convencao",
+     "estudo": ""
+    },
+    {
+     "id": "excluir-aviso-para-exportar-antes",
+     "nome": "Aviso para baixar os dados antes",
+     "descricao": "Google, GitHub, Notion e Dropbox mandam salvar o que importa antes, e GitHub avisa que não restaura.",
+     "sinal_observavel": "Antes do botão final há texto ou link 'baixe seus dados' apontando para exportação.",
+     "presente_em": [
+      "Google",
+      "GitHub",
+      "Notion",
+      "Dropbox"
+     ],
+     "prevalencia": "4 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "excluir-periodo-para-voltar",
+     "nome": "Janela de tempo para desistir",
+     "descricao": "Discord (14 dias), Google (pode recuperar por um tempo), Notion (restaura pelo suporte até 30 dias), Mercado Pago (link para recuperar na confirmação). GitHub avisa que não restaura.",
+     "sinal_observavel": "Texto 'você pode recuperar a conta em N dias' e, no login dentro do prazo, botão Restaurar conta.",
+     "presente_em": [
+      "Discord",
+      "Google",
+      "Notion",
+      "Mercado Pago"
+     ],
+     "prevalencia": "4 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "excluir-bloqueado-por-pendencia",
+     "nome": "Exclusão bloqueada por pendência de posse ou cobrança",
+     "descricao": "GitHub (dono único de organização deve passar a posse), Discord (servidores próprios), Dropbox (cancelar assinatura paga antes).",
+     "sinal_observavel": "Tentar excluir mostra lista do que precisa resolver antes, com link direto para cada item.",
+     "presente_em": [
+      "GitHub",
+      "Discord",
+      "Dropbox"
+     ],
+     "prevalencia": "3 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "excluir-lista-do-que-sera-perdido",
+     "nome": "Diálogo lista exatamente o que será apagado",
+     "descricao": "Notion lista os workspaces que serão excluídos e o botão diz 'Excluir permanentemente a conta e N workspaces'; Google e GitHub listam tipos de dados.",
+     "sinal_observavel": "Diálogo de exclusão mostra lista de itens afetados e rótulo do botão com o número.",
+     "presente_em": [
+      "Notion",
+      "Google",
+      "GitHub"
+     ],
+     "prevalencia": "3 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "excluir-no-fim-da-pagina-de-conta",
+     "nome": "Opção de excluir fica no fim, em zona separada",
+     "descricao": "GitHub (Excluir conta no fim das configurações da conta), Dropbox (fim da aba Geral), Notion (zona de perigo, segundo espelho do artigo).",
+     "sinal_observavel": "A opção não está no menu principal: exige rolar até a seção final, com destaque vermelho.",
+     "presente_em": [
+      "GitHub",
+      "Dropbox",
+      "Notion"
+     ],
+     "prevalencia": "3 de 6",
+     "tipo_de_padrao": "comum",
+     "estudo": ""
+    },
+    {
+     "id": "excluir-pergunta-o-motivo",
+     "nome": "Pergunta o motivo antes de concluir",
+     "descricao": "Mercado Pago e Dropbox pedem escolher um motivo.",
+     "sinal_observavel": "Passo com lista de motivos antes do botão de excluir.",
+     "presente_em": [
+      "Mercado Pago",
+      "Dropbox"
+     ],
+     "prevalencia": "2 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    },
+    {
+     "id": "excluir-alternativa-de-desativar",
+     "nome": "Alternativa mais leve: desativar em vez de excluir",
+     "descricao": "Discord separa desativar de excluir.",
+     "sinal_observavel": "Duas opções lado a lado: Desativar conta e Excluir conta.",
+     "presente_em": [
+      "Discord"
+     ],
+     "prevalencia": "1 de 6",
+     "tipo_de_padrao": "diferencial",
+     "estudo": ""
+    }
+   ]
+  }
+ ]
+}
