@@ -10,6 +10,9 @@ ele pedir.
 - **Urgente, dele:** o IP de casa mudou para 200.195.5.197 e o CrowdSec baniu. Como root (VNC da Contabo ou celular no
   4G): `cscli decisions delete --ip 200.195.5.197`, `cscli allowlists add casa-felipe 200.195.5.197 -e 90d` e tirar
   186.247.110.235. O login de root no VNC falhava depois do reset de senha; a VPS não reiniciou (uptime 12,5 dias).
+- **Limpeza da VPS, pedido dele em 04/11:** disco 88% (170 de 193 GB), ~9,9 GB de swap com 12 GB de RAM. Medir antes,
+  apagar só com o ok dele. Usa dele de verdade: Nexus (Elite Dangerous), apps de VR, cockpit, ecommerce_apps (o único no
+  ar de fato) e ecommerce_carro. A rota de abrir sessão demora 5,5 s (suspeita do painel "morto"); medir com a VPS folgada.
 - **CC-1080 cápsula:** passos 4 (restaurar pelo painel) e 5 (cápsula de todos os projetos) só com o ok dele. Antes, a
   primeira cápsula real de um `fe-teste` feita por ele no botão da tela Cápsulas.
 - **CC-1078:** ele aplica `docs/tradutor-nginx.md` como root; depois mandar o endereço final à sessão `Android`.
