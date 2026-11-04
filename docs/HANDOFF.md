@@ -1,6 +1,23 @@
 # HANDOFF
 
-**Última sessão:** `6613fd` (VPS), 18/10, coordenando a sessão do PC (`2635cde4`) no CC-1060. O canal entre as duas é
+**Última sessão:** `d090ae1b` (VPS), 20/10 a 04/11, diário em `docs/diario/2026-11-04.md`. Último commit `f0c5db1`
+(não é desta sessão). **Esta sessão não commitou nada: 135 arquivos fora do git** (ganchos CC-1069/1070/1073, guias
+CC-1071/1076, CC-1072, `/encerrar` CC-1075, tradutor CC-1078, cápsula CC-1080, planos CC-1064/1068/1077). Commit só quando
+ele pedir.
+
+## Próximo (sessão d090ae1b, 04/11)
+
+- **Urgente, dele:** o IP de casa mudou para 200.195.5.197 e o CrowdSec baniu. Como root (VNC da Contabo ou celular no
+  4G): `cscli decisions delete --ip 200.195.5.197`, `cscli allowlists add casa-felipe 200.195.5.197 -e 90d` e tirar
+  186.247.110.235. O login de root no VNC falhava depois do reset de senha; a VPS não reiniciou (uptime 12,5 dias).
+- **CC-1080 cápsula:** passos 4 (restaurar pelo painel) e 5 (cápsula de todos os projetos) só com o ok dele. Antes, a
+  primeira cápsula real de um `fe-teste` feita por ele no botão da tela Cápsulas.
+- **CC-1078:** ele aplica `docs/tradutor-nginx.md` como root; depois mandar o endereço final à sessão `Android`.
+- **CC-1051 reaberto:** botão do terminal do Claude também no cartão da lista de projetos.
+- **CC-1077:** construir só quando ele mandar (passos 1 e 2 primeiro).
+- **Não religar o Regente nem criar robô ou timer** sem pedido dele (memória `regente-come-credito`).
+
+Antes: `6613fd` (VPS), 18/10, coordenando a sessão do PC (`2635cde4`) no CC-1060. O canal entre as duas é
 `docs/diario/2026-10-18.md` (a do PC não consegue responder à da VPS de outro jeito). Antes: `5ba0551c` (08 a 12/10,
 `docs/diario/2026-10-08.md`) e `2635cde4` (PC, 12 a 16/10, `docs/diario/2026-10-13.md`, plano em `docs/CC-1060.md`).
 **Commits de 18/10, todos no GitHub:** `ca705a9` (M6: campo de mensagem e parar no cartão da sessão do PC), `76ee18c` e
