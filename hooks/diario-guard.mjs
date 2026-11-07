@@ -83,12 +83,9 @@ const diarioDeHoje = `docs/diario/${hoje}.md`
 if (relativos.includes(diarioDeHoje)) liberar() // já registrado neste mesmo turno
 
 process.stderr.write(
-  `CÓDIGO MEXIDO SEM PASSAR PELO DIÁRIO, ${forDoDocs.length} arquivo(s) fora de docs/ neste turno:\n\n`
+  `[diario-guard] ${forDoDocs.length} arquivo(s) fora de docs/ editados neste turno e ${diarioDeHoje} sem alteração:\n`
   + forDoDocs.slice(0, 6).map((r) => `  · ${r}`).join('\n')
   + (forDoDocs.length > 6 ? `\n  … e mais ${forDoDocs.length - 6}` : '')
-  + `\n\n${diarioDeHoje} não foi tocado neste turno.\n\n`
-  + 'Não trava, o fim do turno é exatamente quando o diário se escreve, e '
-  + 'travar aqui criaria laço. Só avisa: se o que mudou vale registro, este é '
-  + 'o lugar; se já foi registrado em turno anterior do mesmo dia, ignore.\n',
+  + `\nSe a mudança vale registro, acrescente uma entrada em ${diarioDeHoje}. Aviso apenas, não bloqueia.\n`,
 )
 process.exit(0)

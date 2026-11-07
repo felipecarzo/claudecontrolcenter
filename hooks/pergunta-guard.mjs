@@ -99,17 +99,9 @@ try {
   if (ultimoTurno >= 0 && cauda.slice(ultimoTurno).includes('AskUserQuestion')) sair()
 } catch { /* sem conseguir ler, segue e avisa */ }
 
-const ultimaLinha = fim.split('\n').filter(Boolean).pop() || ''
-
 console.error(
-  'PERGUNTA DECISIVA EM PROSA, refaça no AskUserQuestion.\n\n'
-  + 'A resposta termina perguntando algo que muda o que será feito:\n'
-  + `  "${ultimaLinha.slice(0, 140)}"\n\n`
-  + 'Regra dele, em 15/08: "se é pergunta, vira caixa de pergunta". O motivo não\n'
-  + 'é estético, em prosa a pergunta fica no fim de um texto que ele pode não\n'
-  + 'terminar de ler, e a resposta vira mais prosa. Na ferramenta é uma tela, com\n'
-  + 'as opções e o tradeoff visíveis, resolvida no toque.\n\n'
-  + 'Chame o AskUserQuestion com as opções que você já tem na cabeça, incluindo a\n'
-  + 'que você recomenda. Esta é a única volta: a próxima passa.',
+  '[pergunta-guard] A resposta termina com uma pergunta de decisão em texto corrido.\n'
+  + 'Faça a pergunta na caixa de escolha (AskUserQuestion), com as opções e a recomendada marcada.\n'
+  + 'A próxima volta passa.',
 )
 process.exit(2)

@@ -85,12 +85,9 @@ for (const linha of turno.split('\n')) {
 if (!mexeuNoVisual || olhouImagem) sair()
 
 console.error(
-  'MUDOU O VISUAL E NAO OLHOU NENHUMA IMAGEM.\n\n'
-  + `Ultimo arquivo de tela mexido: ${mexeuNoVisual}\n\n`
-  + 'Em 16/08 eu entreguei uma tela conferida so em 390px. Ele abriu no monitor\n'
-  + 'e a resposta foi "olha esse design, ta horripilante, pelo amor de deus".\n'
-  + 'Estava certa no celular e errada no monitor, e eu nao tinha olhado o monitor.\n\n'
-  + 'Tire o print e ABRA com a ferramenta Read, que mostra a imagem:\n\n'
+  '[visual-guard] Arquivo de tela alterado e nenhuma imagem aberta neste turno.\n\n'
+  + `Ultimo arquivo de tela alterado: ${mexeuNoVisual}\n\n`
+  + 'Tire o print e abra com a ferramenta Read, que mostra a imagem:\n\n'
   + '    SB=$HOME/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell\n'
   + '    "$SB" --headless --disable-gpu --no-sandbox --hide-scrollbars \\\n'
   + '      --window-size=390,1200 --screenshot=/tmp/claude-1001/shots/x.png \\\n'
@@ -100,7 +97,6 @@ console.error(
   + '  · `?static=1` desliga a atualizacao automatica, senao o navegador nunca\n'
   + '    considera a pagina carregada e a captura trava\n'
   + '  · os temas claros se chamam `papel` e `areia`. Nao existe `?tema=claro`.\n\n'
-  + 'Teste verde nao substitui: ja houve 545 passando com a tela quebrada.\n\n'
-  + 'Esta e a unica volta: a proxima passa.',
+  + 'Teste verde nao substitui a imagem. A proxima volta passa.',
 )
 process.exit(2)

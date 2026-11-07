@@ -23,7 +23,7 @@ mkdir -p "$SEM_DIARIO/docs"
 
 echo "— o que precisa avisar —"
 transcrito "$T/1.jsonl" u "conserta isso" t Edit '{"file_path":"'"$PROJ"'/src/x.mjs"}' a "Feito."
-diz "codigo mexido sem tocar no diario de hoje" diario-guard sim "CÓDIGO MEXIDO SEM PASSAR PELO DIÁRIO" \
+diz "codigo mexido sem tocar no diario de hoje" diario-guard sim "[diario-guard]" \
   "{\"cwd\":\"$PROJ\",\"transcript_path\":\"$T/1.jsonl\"}"
 diz "cita o arquivo mexido" diario-guard sim "src/x.mjs" \
   "{\"cwd\":\"$PROJ\",\"transcript_path\":\"$T/1.jsonl\"}"
@@ -33,18 +33,18 @@ transcrito "$T/2.jsonl" u "conserta isso" \
   t Edit '{"file_path":"'"$PROJ"'/src/x.mjs"}' \
   t Write "{\"file_path\":\"$PROJ/docs/diario/$HOJE.md\"}" \
   a "Feito, e registrado."
-diz "diario de hoje foi tocado no mesmo turno" diario-guard nao "CÓDIGO MEXIDO" \
+diz "diario de hoje foi tocado no mesmo turno" diario-guard nao "[diario-guard]" \
   "{\"cwd\":\"$PROJ\",\"transcript_path\":\"$T/2.jsonl\"}"
 
 transcrito "$T/3.jsonl" u "atualiza o mapa" t Edit '{"file_path":"'"$PROJ"'/docs/ROADMAP.md"}' a "Feito."
-diz "turno so mexeu em docs/: nada de codigo pra registrar" diario-guard nao "CÓDIGO MEXIDO" \
+diz "turno so mexeu em docs/: nada de codigo pra registrar" diario-guard nao "[diario-guard]" \
   "{\"cwd\":\"$PROJ\",\"transcript_path\":\"$T/3.jsonl\"}"
 
 transcrito "$T/4.jsonl" u "por que o painel ficou lento?" a "Porque o transcrito passou de 25 MB."
-diz "turno sem edicao nenhuma" diario-guard nao "CÓDIGO MEXIDO" \
+diz "turno sem edicao nenhuma" diario-guard nao "[diario-guard]" \
   "{\"cwd\":\"$PROJ\",\"transcript_path\":\"$T/4.jsonl\"}"
 
-diz "projeto sem docs/diario: convencao nem existe aqui" diario-guard nao "CÓDIGO MEXIDO" \
+diz "projeto sem docs/diario: convencao nem existe aqui" diario-guard nao "[diario-guard]" \
   "{\"cwd\":\"$SEM_DIARIO\",\"transcript_path\":\"$T/1.jsonl\"}"
 
 echo "— higiene —"

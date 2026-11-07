@@ -96,13 +96,8 @@ if (naoEmpurrados) linhas.push(`  · ${naoEmpurrados} commit(s) feitos aqui e ai
 if (atras) linhas.push(`  · ${atras} commit(s) no remoto que esta máquina ainda não puxou`)
 
 process.stderr.write(
-  `O QUE ESTÁ AQUI A OUTRA MÁQUINA NÃO VÊ, ${dirname(raiz) ? raiz.split(/[\\/]/).pop() : raiz}\n\n`
-  + `${linhas.join('\n')}\n\n`
-  + 'O git é o transporte entre o PC e a VPS: o painel federado mostra os '
-  + 'agentes, nunca a árvore suja. Sem commit, trabalho feito aqui some da '
-  + 'vista de lá, e quem abrir o projeto na outra máquina começa do estado '
-  + 'velho.\n\n'
-  + 'Não trava, e não pede commit: a regra dele é que ninguém commita sem ele '
-  + 'pedir. É só o aviso de que existe diferença entre as máquinas agora.\n',
+  `[sincronia-guard] ${dirname(raiz) ? raiz.split(/[\\/]/).pop() : raiz} difere do remoto:\n`
+  + `${linhas.join('\n')}\n`
+  + 'Informe o estado ao Felipe. Não commite sem pedido dele. Aviso apenas, não bloqueia.\n',
 )
 process.exit(0)

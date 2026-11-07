@@ -32,12 +32,15 @@
  */
 import * as Vigia from './vigia.mjs'
 import fs from 'node:fs'
+import os from 'node:os'
 import crypto from 'node:crypto'
 import path from 'node:path'
 import { execFile } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { resolverBinario } from './paineis.mjs'
 import { lerTurno } from './gateAgentes.mjs'
+import { gravarCabecalho as gravarCabecalhoGate } from './gate.mjs'
+import { ler as lerRegente, commitarArquivos, empurrar } from './regente.mjs'
 import * as B from './backlog.mjs'
 import { caminhoSeguro, validarPlano } from './tarefa.mjs'
 import { lerConferencia, rodarConferencia } from './conferencia.mjs'
@@ -78,7 +81,12 @@ export function garantirEscopo(cwd, escopo) {
  * CC-938, pedido dele em 06/10: "coloca o AGI então agora ao invés do Open Code". Quem constrói é escolha do PROJETO,
  * numa linha do AGENTS.md ("Construtor: agy"). Vale como o primeiro degrau da escada; sem a linha, o opencode.
  */
+/** CC-1068: no modo Regente quem constrói é o Claude sem permissões; fora dele, a escada de sempre. */
+export const regenteLigado = (cwd) => { try { return lerRegente(cwd).ligado === true } catch { return false } }
+export const escadaDe = (cwd) => (regenteLigado(cwd) ? Vigia.ESCADA_REGENTE : Vigia.ESCADA)
+
 export function degrauInicial(cwd) {
+  if (regenteLigado(cwd)) return 0 // CC-1068: "Construtor:" do AGENTS.md indexa a escada antiga
   let t = ''; try { t = fs.readFileSync(path.join(cwd, 'AGENTS.md'), 'utf8') } catch { return 0 }
   const nome = /^\s*[-*]?\s*construtor:\s*(\S+)/im.exec(t)?.[1]?.toLowerCase()
   const i = nome ? Vigia.ESCADA.findIndex((d) => d.agente === nome || d.modelo === nome) : -1
@@ -108,6 +116,91 @@ export async function declararConferencia(cwd, conf, nota = '') {
   else { const i = t.indexOf('\n'); t = i < 0 ? `${t}\n\n${linha}\n` : `${t.slice(0, i + 1)}\n${linha}\n${t.slice(i + 1)}` }
   fs.writeFileSync(arq, t, 'utf8')
   return conferenciaDoProjeto(cwd) === conf
+}
+
+/**
+ * CC-852: `cc conferencia padrao`. Para cada pasta de projeto, declara a conferência padrão que PASSA:
+ * `auto:npm test` (script test que não seja o padrão do npm), depois `auto:npm run build`. Uma por vez,
+ * nunca em paralelo (a VPS serve sites no ar). Devolve linhas `{ projeto, conferencia, resultado }`.
+ * `ensaio`: só diz a candidata, não roda nem grava.
+ * Atenção: quando a conferência usa rede (o smoke do ahtleta bate no site público), o COMANDO precisa rodar fora da
+ * caixa de proteção da sessão; dentro dela a rede é barrada e o teste "falha" à toa (medido: 19 passam fora, falha dentro).
+ */
+export const PULAR_NA_CONFERENCIA = ['ecommerce_apps', 'fibraessencia', 'vr_apps', 'VPS_ibrics', 'VPS_cockpit']
+
+export function candidataDeConferencia(cwd) {
+  const s = scriptsDe(cwd)
+  if (!fs.existsSync(path.join(cwd, 'package.json'))) return null
+  if (s.test && !/no test specified/i.test(s.test)) return 'auto:npm test'
+  if (s.build) return 'auto:npm run build'
+  return null
+}
+
+/** Pastas que são o cwd de algum processo vivo (lê /proc, sem comando externo). */
+export function cwdsVivos() {
+  const r = []
+  let pids = []; try { pids = fs.readdirSync('/proc').filter((x) => /^\d+$/.test(x)) } catch { return r }
+  for (const p of pids) { try { r.push(fs.readlinkSync(`/proc/${p}/cwd`)) } catch { /* processo de outro dono ou já saiu */ } }
+  return r
+}
+
+/**
+ * Monorepo: sem candidata na raiz, olha apps/<a>/package.json (um nível). Devolve `{ cand, notas }`:
+ * `cand` é `auto:build apps/a apps/b` (o tipo que roda por pasta) com as que têm script build, node_modules e nenhum
+ * processo com cwd dentro (o build do Next mexe no .next que o dev server usa). O resto vai em `notas`.
+ */
+export function candidataMonorepo(cwd, vivos = cwdsVivos()) {
+  const usaveis = []; const notas = []
+  let real = cwd; try { real = fs.realpathSync(cwd) } catch { /* fica o caminho dado */ }
+  let subs = []; try { subs = fs.readdirSync(path.join(cwd, 'apps')).sort() } catch { return { cand: null, notas } }
+  for (const s of subs) {
+    const rel = `apps/${s}`
+    if (!scriptsDe(path.join(cwd, rel)).build) continue
+    const dentro = path.join(real, rel)
+    if (vivos.some((v) => v === dentro || v.startsWith(dentro + path.sep))) { notas.push({ conferencia: rel, resultado: `pulada: servidor rodando em ${rel}` }); continue }
+    if (!fs.existsSync(path.join(cwd, rel, 'node_modules'))) { notas.push({ conferencia: `sem dependências instaladas em ${rel}`, resultado: 'sem candidata' }); continue }
+    usaveis.push(rel)
+  }
+  return { cand: usaveis.length ? `auto:build ${usaveis.join(' ')}` : null, notas }
+}
+
+export async function declararConferenciaPadrao({ base = path.join(os.homedir(), 'projetos'), projeto = null, ensaio = false, timeout = 300000, pular = PULAR_NA_CONFERENCIA, aoLinha = () => {}, vivos = null } = {}) {
+  const linhas = []
+  const add = (projeto, conferencia, resultado) => { const l = { projeto, conferencia, resultado }; linhas.push(l); aoLinha(l) }
+  /* Nome sem barra é pasta de `base` (não da pasta onde o comando foi digitado); com barra, caminho comum. */
+  const alvo = projeto ? (projeto.includes('/') ? path.resolve(projeto) : path.join(base, projeto)) : null
+  const nomes = alvo ? [path.basename(alvo)] : fs.readdirSync(base).sort()
+  const baseReal = alvo ? path.dirname(alvo) : base
+  for (const nome of nomes) {
+    if (nome.startsWith('.')) continue
+    const cwd = path.join(baseReal, nome)
+    let st; try { st = fs.lstatSync(cwd) } catch { add(nome, 'pasta não existe', 'sem candidata'); continue }
+    if (st.isSymbolicLink()) { add(nome, 'atalho', 'pulada'); continue }
+    if (!st.isDirectory()) continue
+    if (nome.startsWith('_')) { add(nome, 'começa com _', 'pulada'); continue }
+    if (pular.includes(nome)) { add(nome, 'sessão viva', 'pulada'); continue }
+    const atual = conferenciaDoProjeto(cwd)
+    if (atual) { add(nome, atual, 'já tinha'); continue }
+    let cand = candidataDeConferencia(cwd); let deMonorepo = false
+    if (!cand) {
+      const m = candidataMonorepo(cwd, vivos || cwdsVivos())
+      for (const n of m.notas) add(nome, n.conferencia, n.resultado)
+      cand = m.cand; deMonorepo = true // node_modules já foi conferido por pasta
+      if (!cand) { if (!m.notas.length) add(nome, 'sem package.json com test ou build', 'sem candidata'); continue }
+    }
+    if (ensaio) { add(nome, cand, 'ensaio'); continue }
+    if (!deMonorepo && !fs.existsSync(path.join(cwd, 'node_modules'))) { add(nome, 'sem dependências instaladas (rodar npm install)', 'sem candidata'); continue }
+    // CI=1 evita que o teste entre em modo "watch" e fique esperando até o teto
+    const ci = process.env.CI; process.env.CI = '1'
+    let r; try { r = await rodarConferencia(cwd, lerConferencia(cand), { timeout }) } finally { if (ci === undefined) delete process.env.CI; else process.env.CI = ci }
+    if (!r.ok) { add(nome, cand, `falhou: ${(r.erro || '').split('\n').map((x) => x.trim()).filter(Boolean).at(-1) || 'sem mensagem'}`); continue }
+    const data = new Date().toLocaleDateString('pt-BR')
+    try {
+      const ok = await declararConferencia(cwd, cand, `validada pelo comando em ${data} no estado atual`)
+      add(nome, cand, ok ? 'declarada agora' : 'falhou: passou, mas a linha não ficou no AGENTS.md')
+    } catch (e) { add(nome, cand, `falhou: passou, mas não gravou o AGENTS.md (${e.code || e.message})`) }
+  }
+  return linhas
 }
 
 /* ===================================================================
@@ -230,7 +323,13 @@ export async function planejar(pedido, cwd) {
   let agents = ''; try { agents = fs.readFileSync(path.join(cwd, 'AGENTS.md'), 'utf8') } catch { /* sem escopo ainda */ }
   const corpo = pedidoDePlano(pedido, await arquivosDoProjeto(cwd), /^##\s*Escopo/im.test(agents))
   const agy = process.env.CC_MAESTRO_AGY || resolverBinario('agy')
-  const perguntar = (texto, k) => new Promise((ok) => {
+  /* CC-1068: o agy não existe nesta VPS (o plano morria com "modelo não reconhecido" e o Regente tentava de novo em vão).
+     No Regente quem planeja é o Claude, só lendo (modo plan), pelo mesmo caminho do arquiteto. */
+  const perguntar = regenteLigado(cwd) ? (texto) => new Promise((ok) => {
+    const p = execFile(process.env.CC_MAESTRO_CLAUDE || resolverBinario('claude'), ['-p', '--model', Vigia.ESCADA_REGENTE[0].modelo, '--permission-mode', 'plan', '--output-format', 'text'], { cwd, timeout: 300000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, CC_SEM_PONTO: '1' } }, (e, out, err) => ok({ texto: String(out || ''), erro: e ? String(err || e.message).split('\n')[0].slice(0, 160) : null }))
+    p.stdin.on('error', () => {})
+    p.stdin.end(limparSegredos(texto))
+  }) : (texto, k) => new Promise((ok) => {
     const p = execFile(agy, ['--output-format', 'stream-json', '--mode', 'plan', '--model', MODELO_PLANO, '--add-dir', cwd], { cwd, timeout: 240000, maxBuffer: 16 * 1024 * 1024 }, (e, out, err) => {
       fs.writeFileSync(`${base}-${k}.jsonl`, String(out || '')); fs.writeFileSync(`${base}-${k}.err`, String(err || ''))
       ok(lerTurno(`${base}-${k}.jsonl`, 'agy', `${base}-${k}.err`))
@@ -485,12 +584,15 @@ async function conversaNova(t) {
   const id = r.id
   await api('/api/gate/renomear', { id, titulo: `${t.id}: ${t.intencao}`.slice(0, 60) })
   await api('/api/gate/opencode-modo', { id, modo: 'normal' })
+  /* CC-1068: modo Regente, o Claude roda sem pedir permissão. Grava direto no cabeçalho da conversa: a rota do painel
+     recusa 'bypass' de propósito (qualquer tela a alcança), e só processo local chega aqui. */
+  if (regenteLigado(t.cwd)) { try { gravarCabecalhoGate(id, { permissao: 'bypass' }) } catch (e) { console.error(`maestro: não gravei a permissão bypass em ${id}: ${e.message}`) } }
   return id
 }
 
 /** Manda uma mensagem e espera a resposta inteira. `null` se o agente não terminou no prazo. */
-async function mandarEEsperar(id, texto, degrau = 0) {
-  const { agente, modelo } = Vigia.degrauDe(degrau) // CC-929: quem constrói depende do degrau da tarefa
+async function mandarEEsperar(id, texto, degrau = 0, cwd = null) {
+  const { agente, modelo } = Vigia.degrauDe(degrau, cwd ? escadaDe(cwd) : Vigia.ESCADA) // CC-929: quem constrói depende do degrau da tarefa
   await esperarLivre(id, { quietos: 5 }) // nada em andamento antes de mandar
   const antes = (await api(`/api/gate/conversa?id=${id}`)).mensagens.length
   let env = await api('/api/gate/mensagem', { id, agente, modelo, texto })
@@ -510,8 +612,24 @@ async function mandarEEsperar(id, texto, degrau = 0) {
     await esperarLivre(id, { quietos: 5 })
     env = await api('/api/gate/mensagem', { id, agente, modelo, texto })
   }
-  return esperarLivre(id, { desde: antes })
+  const c = await esperarLivre(id, { desde: antes })
+  if (c) c.novas = (c.mensagens || []).slice(antes) // CC-1068: o que o agente disse nesta rodada (para ver aviso de limite)
+  return c
 }
+
+/* ===================================================================
+   CC-1068: adiar não é reprovar. Crédito esgotado ou painel fora do ar não é falha da micro tarefa: ela fica aberta, com a
+   nota, e o ciclo para sem gastar tentativa nem abrir conserto (20/10: 6 voltas em ruído e uma obra perdida num reinício).
+   =================================================================== */
+const AVISO_DE_LIMITE = /(usage|rate) limit|limit reached|credit balance|out of (extra )?usage|quota|overloaded|resets? (at|in)|limite de uso/i
+/** Pura: a frase de limite que o agente devolveu no lugar do trabalho, ou null. */
+export function limiteNaConversa(c) {
+  const m = (c?.novas || c?.mensagens || []).filter((x) => x.de !== 'felipe').map((x) => String(x.texto || '')).find((t) => AVISO_DE_LIMITE.test(t))
+  return m ? m.replace(/\s+/g, ' ').slice(0, 140) : null
+}
+/** Pura: o painel não respondeu (reinício, porta fechada). */
+export const falhaDePainel = (e) => /ECONNREFUSED|fetch failed|ECONNRESET|UND_ERR|socket hang up|terminated/i.test(`${e?.message || ''} ${e?.cause?.code || ''} ${e?.cause?.message || ''}`)
+const adiada = (motivo) => Object.assign(new Error(motivo), { adiar: true })
 
 /** O item mais recente com micro tarefa aberta: é o que `--continuar` sem id retoma. */
 export function paiAberto(itens) {
@@ -558,7 +676,7 @@ const aoEncerrar = async (sinal) => {
 }
 
 
-export async function executar(cwd, pai, { log = console.log, rodada = 1 } = {}) {
+export async function executar(cwd, pai, { log = console.log, rodada = 1, item = null } = {}) {
   const arq = arqBacklog(cwd)
   /* Conserto primeiro (tem `erroAnterior`): roda logo depois da reprovação, na
      mesma conversa, enquanto o agente sabe o que fez. Medido em 01/10: pela
@@ -569,13 +687,21 @@ export async function executar(cwd, pai, { log = console.log, rodada = 1 } = {})
     const abertas = B.filhasDe(B.ler(arq).itens, pai).filter((x) => B.estaAberto(x) && x.estado !== 'TR')
     return [...abertas.filter((x) => x.erroAnterior), ...abertas.filter((x) => !x.erroAnterior)]
   }
+  // CC-1068: adiar = nota na micro tarefa, de volta a B1, sem gastar tentativa nem abrir conserto
+  const adiar = (t, pai, motivo, log) => {
+    try { B.debater(t.id, `adiada, não reprovada: ${motivo}. Segue aberta; o próximo ciclo retoma.`, { tipo: 'nota' }, arq) } catch { /* a nota é extra */ }
+    try { B.mover(t.id, 'B1', {}, arq) } catch { /* já estava aberta */ }
+    log(`  ${t.id}: adiada (${motivo})`)
+    return { pai, adiada: motivo, resumo: `MAESTRO_ADIADA: ${motivo}`, filhas: B.filhasDe(B.ler(arq).itens, pai) }
+  }
   const inicio = Date.now()
   const head0 = await headDe(cwd)
   log(`${pai}: ${filhasAbertas().length} micro tarefas abertas`)
   let t
   while ((t = filhasAbertas()[0])) {
     const comeco = Date.now()
-    const conversa = t.conversa || await conversaNova({ ...t, cwd })
+    let conversa
+    try { conversa = t.conversa || await conversaNova({ ...t, cwd }) } catch (e) { if (falhaDePainel(e)) return adiar(t, pai, `o painel não respondeu (${String(e.cause?.code || e.message).slice(0, 60)})`, log); throw e }
     t = B.mover(t.id, 'EM', { conversa }, arq)
     const tentativa = t.tentativa || 1
     const head = await headDe(cwd)
@@ -588,8 +714,10 @@ export async function executar(cwd, pai, { log = console.log, rodada = 1 } = {})
     let r
     try {
       const citacao = B.ler(arq).itens.find((x) => x.id === pai)?.citacao || null
-      const c = await mandarEEsperar(conversa, textoDaTarefa(t, t.erroAnterior || null, feitas, citacao), t.degrau ?? degrauInicial(cwd))
+      const c = await mandarEEsperar(conversa, textoDaTarefa(t, t.erroAnterior || null, feitas, citacao), t.degrau ?? degrauInicial(cwd), cwd)
       r = c ? await conferir(cwd, comeco - 1000, head, t.conferir, ponto) : { ok: false, erro: 'o agente não terminou no prazo', mexidos: mudadosEntre(ponto.conteudo, await fotoDoConteudo(cwd)) }
+      // CC-1068: nada foi feito e o agente devolveu aviso de limite: adia, não reprova
+      if (regenteLigado(cwd) && !r.ok && /nenhum arquivo|não terminou no prazo/.test(r.erro || '') && limiteNaConversa(c)) throw adiada(`o modelo está sem crédito agora: ${limiteNaConversa(c)}`)
       const fora = foraDoDeclarado(r.mexidos, t.arquivos)
       if (r.ok && fora.length) r = { ...r, ok: false, erro: `mexeu fora dos arquivos declarados (${(t.arquivos || []).join(', ')}): ${fora.join(', ')}` }
       // CC-919: o teste do pedido que o agente escreveu tem de ser de verdade (3+ verificações e fala com o servidor)
@@ -601,6 +729,10 @@ export async function executar(cwd, pai, { log = console.log, rodada = 1 } = {})
         const desfeitos = await voltar(cwd, ponto, r.mexidos.filter((f) => !naoDesfazer(f))) // CC-1004
         if (desfeitos.length) r = { ...r, erro: `${r.erro}\n(as mudanças desta tentativa foram desfeitas: ${desfeitos.join(', ')})` }
       }
+    } catch (e) {
+      if (e.adiar) return adiar(t, pai, e.message, log)
+      if (regenteLigado(cwd) && falhaDePainel(e)) return adiar(t, pai, `o painel não respondeu (${String(e.cause?.code || e.message).slice(0, 60)})`, log)
+      throw e
     } finally { destravar(dono); emAndamento = null }
     B.registrar([{ tipo: 'robo', id: t.id, ok: r.ok, texto: r.ok ? `alterou ${r.mexidos.join(', ')}` : r.erro, conversa }], arq) // CC-836: o diário conta o que o robô viu
     const segundos = Math.round((Date.now() - comeco) / 1000)
@@ -609,6 +741,15 @@ export async function executar(cwd, pai, { log = console.log, rodada = 1 } = {})
       B.mover(t.id, 'OK', { prova: `robô: alterou ${r.mexidos.join(', ')}; build passou`, segundos }, arq); B.regerarRoadmap(cwd)
       // CC-891, decisão dele em 04/10: a conversa da micro tarefa que passou vai para os arquivados. O conserto reaproveita a mesma conversa, então ela só sai da lista quando passa.
       api('/api/gate/arquivar', { id: conversa, arquivar: true }).catch(() => { /* a lista fica como estava */ })
+      // CC-1068: no Regente cada micro tarefa aprovada vira um commit só com os arquivos dela, e o push logo depois. Falha é nota, não reprovação.
+      if (regenteLigado(cwd)) {
+        const c = await commitarArquivos(cwd, item || t.id, t.intencao, r.mexidos).catch((e) => ({ ok: false, erro: e.message }))
+        if (c.ok) {
+          log(`  ${t.id}: commit ${c.hash} (${c.arquivos.join(', ')})`)
+          const p = await empurrar(cwd).catch((e) => ({ ok: false, erro: e.message }))
+          if (p.ok) log(`  ${t.id}: push feito`); else log(`  push travou: ${p.erro}`)
+        } else log(`  ${t.id}: não commitei (${c.erro})`)
+      }
       continue
     }
     if (tentativa >= MAX_TENTATIVAS) { B.mover(t.id, 'TR', { porque: `reprovada ${tentativa} vezes pelo robô: ${r.erro}`, segundos }, arq); B.regerarRoadmap(cwd); continue }
@@ -621,9 +762,9 @@ export async function executar(cwd, pai, { log = console.log, rodada = 1 } = {})
        (outro modelo, depois o Agy) numa conversa limpa. Falha do CÓDIGO segue na mesma conversa, que sabe o que fez. */
     const doModelo = Vigia.falhaDoModelo(r.erro)
     const atual = t.degrau ?? degrauInicial(cwd)
-    const proximo = doModelo ? Math.min(atual + 1, Vigia.ESCADA.length - 1) : atual
+    const proximo = doModelo ? Math.min(atual + 1, escadaDe(cwd).length - 1) : atual
     B.mover(conserto.id, 'B1', { ...(doModelo ? {} : { conversa }), tentativa: tentativa + 1, erroAnterior: r.erro, degrau: proximo }, arq)
-    if (doModelo) log(`  ${conserto.id}: a falha foi do modelo; a nova tentativa vai para ${Vigia.degrauDe(proximo).agente}${Vigia.degrauDe(proximo).modelo ? ' ' + Vigia.degrauDe(proximo).modelo : ''}, numa conversa limpa`)
+    if (doModelo) log(`  ${conserto.id}: a falha foi do modelo; a nova tentativa vai para ${Vigia.degrauDe(proximo, escadaDe(cwd)).agente}${Vigia.degrauDe(proximo, escadaDe(cwd)).modelo ? ' ' + Vigia.degrauDe(proximo, escadaDe(cwd)).modelo : ''}, numa conversa limpa`)
     B.mover(t.id, 'KO', { porque: `reprovada pelo robô: ${r.erro}; conserto em ${conserto.id}`, segundos }, arq)
     B.regerarRoadmap(cwd)
   }
@@ -652,7 +793,7 @@ export async function executar(cwd, pai, { log = console.log, rodada = 1 } = {})
     }, arq)
     if (ult?.conversa) B.mover(conserto.id, 'B1', { conversa: ult.conversa }, arq)
     B.regerarRoadmap(cwd)
-    return executar(cwd, pai, { log, rodada: rodada + 1 })
+    return executar(cwd, pai, { log, rodada: rodada + 1, item })
   }
   const linhaFinal = [!final.rodou ? 'Sem build no projeto.' : final.ok ? 'Build final: passou.' : 'Build final: ' + final.erro.split('\n')[0],
     comportamento ? (comportamento.ok ? `Comportamento: passou (${comportamento.prova.replace(/^robô: /, '')}).` : `Comportamento: reprovou (${comportamento.erro}).`) : null].filter(Boolean).join('\n')
@@ -669,7 +810,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const a = process.argv.slice(2)
   const valor = (f) => { const i = a.indexOf(f); return i >= 0 && a[i + 1] && !a[i + 1].startsWith('--') ? a[i + 1] : null }
   const cwd = path.resolve(valor('--pasta') || process.cwd())
-  const usados = new Set(['--pasta', '--pai', '--continuar', '--conferir', '--avisar'].flatMap((f) => { const i = a.indexOf(f); return valor(f) ? [i + 1] : [] }))
+  const usados = new Set(['--pasta', '--pai', '--continuar', '--conferir', '--avisar', '--item'].flatMap((f) => { const i = a.indexOf(f); return valor(f) ? [i + 1] : [] }))
   const pedido = a.filter((x, k) => !x.startsWith('--') && !usados.has(k)).join(' ').trim()
   const so = a.includes('--plano'); const continuar = a.includes('--continuar')
   /* CC-849: --avisar <conversa> escreve o andamento na conversa do Coderoom de
@@ -697,7 +838,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     pai = pai || paiAberto(B.ler(arqBacklog(cwd)).itens)
     if (!pai) throw new Error('não há micro tarefa aberta neste projeto')
-    const r = await executar(cwd, pai, { log })
+    const r = await executar(cwd, pai, { log, item: valor('--item') })
     log(r.resumo)
   })().catch((e) => { log(`parou com erro: ${e.message || e}`); setTimeout(() => process.exit(1), 1500) })
 }

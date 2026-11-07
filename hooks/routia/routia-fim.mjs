@@ -112,7 +112,7 @@ try {
   const abertos = p.pendentes(raiz, { excetoDe: marca })
   if (abertos.length) {
     textoPedidos =
-      `${abertos.length} agente(s) travado(s) esperando sua autorização: `
+      `[routia-fim] ${abertos.length} agente(s) travado(s) esperando autorização: `
       + abertos.map((x) => `${x.de} em ${x.arquivo}`).join(', ')
       // 01/10: a tela Estrutura virou a aba "rotas" da Análise no cockpit novo, com o bloco do que espera resposta primeiro
       + `. Responda no cockpit, em Análise › rotas.`
@@ -179,9 +179,10 @@ if (outroAgenteAtivo(raizProjeto, marca) === false && !textoPedidos) sair()
  * A regra que fica: **o chat leva o que exige decisão dele; o painel leva o
  * estado.** Aviso que só um agente resolve não ocupa a conversa.
  */
-const lembreteRota = `Método Routia: sua rota ainda está marcada 🔴 ocupada em ${quadro}\n`
-  + minhas.map((l) => `  ${l}`).join('\n')
-  + `\nSe terminou, edite o arquivo e troque por 🟢 livre.`
+const nomesRota = minhas.map((l) => l.match(/`([^`]+)`/)?.[1]).filter(Boolean).slice(0, 5)
+const lembreteRota = `[routia-fim] Rota ainda marcada 🔴 ocupada em ${quadro}\n`
+  + (nomesRota.length ? `Rotas: ${nomesRota.join(', ')}\n` : '')
+  + `Se terminou, troque a marca por 🟢 livre no arquivo.`
 
 if (textoPedidos) {
   /* Pedido pendente é alguém travado esperando ELE. Isso continua na conversa. */

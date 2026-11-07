@@ -101,21 +101,10 @@ if (!naoFalou.length) sair()
 const outras = faladas.filter((g) => !pedidas.includes(g))
 
 console.error(
-  `ELE PEDIU "${naoFalou.map(nome).join('", "')}" E A SUA ENTREGA NÃO FALA DISSO.\n\n`
-  + `O que ele escreveu: "${pedido.replace(/\s+/g, ' ').slice(0, 160)}"\n`
-  + (outras.length
-    ? `\nO que a sua entrega diz que fez: ${outras.map(nome).join(', ')}.\n`
-      + 'Isto é substituição: ele nomeou uma forma e você entregou outra. A forma\n'
-      + 'que ele nomeia É o pedido, não uma sugestão.\n'
-    : '\nA entrega não menciona a forma pedida em lugar nenhum, então ele não tem\ncomo saber se é aquilo.\n')
-  + '\nO que fazer:\n'
-  + '  1. Se você fez o que ele pediu, ESCREVA a palavra dele na conferência,\n'
-  + '     dizendo onde ela está e em que largura você olhou.\n'
-  + '  2. Se você fez outra coisa, volte e faça o que ele pediu. Se houver um\n'
-  + '     motivo real, pergunte antes no AskUserQuestion.\n\n'
-  + 'Em 17/08 ele pediu tabela, recebeu blocos empilhados no telefone, e a\n'
-  + 'palavra "tabela" não aparecia na conferência. Ele descobriu abrindo o\n'
-  + 'painel, três dias depois de começar a pedir.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  `[forma-guard] O pedido nomeia a forma "${naoFalou.map(nome).join('", "')}" e a entrega não a menciona.\n`
+  + (outras.length ? `A entrega cita outra forma: ${outras.map(nome).join(', ')}. A forma nomeada no pedido é a especificação.\n` : '')
+  + 'Se a entrega usa a forma pedida, reenvie a conferência com essa palavra, dizendo onde está e em que largura foi vista.\n'
+  + 'Se usa outra forma, refaça na pedida; havendo motivo real, pergunte antes na caixa de escolha (AskUserQuestion).\n'
+  + 'A próxima volta passa.',
 )
 process.exit(2)

@@ -18,6 +18,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { listar as listarCoderoom, ultimoDoAgente } from './gate.mjs'
 import { buildJob, readJobs } from './jobs.mjs'
+import { lerEncerradas } from './encerrarSessao.mjs'
 
 /**
  * CC-260: o gasto por sessão, atualizado NOUTRO ritmo.
@@ -61,11 +62,14 @@ export function sessoesAbertas() {
   /* CC-606: sessionId -> status do registro. `waiting` é o terminal parado
      num pedido de permissão (medido em 27/09 com o ahtleta-escalada). */
   const abertas = new Map()
+  const carimbos = lerEncerradas() // CC-1075: sessão que ele encerrou com /encerrar, ainda com o processo vivo
   for (const f of nomes) {
     try {
       const o = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
       if (!o.sessionId || !o.pid) continue
       process.kill(o.pid, 0) // lança se o processo não existe mais
+      // carimbo vale se for do início do processo em diante; processo iniciado DEPOIS dele (retomada) o ignora
+      if (carimbos[o.sessionId] && !(Number(o.startedAt) > carimbos[o.sessionId])) continue
       abertas.set(o.sessionId, o.status || null)
     } catch { /* registro velho ou ilegível: não conta como aberta */ }
   }

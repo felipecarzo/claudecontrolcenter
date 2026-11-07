@@ -37,6 +37,7 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { gravar as gravarFramework, ler as lerFramework, ligar as ligarFramework } from './frameworkDisco.mjs'
+import { autorizar } from './framework.mjs'
 import { installInto } from './install.mjs'
 import { caminhoPadrao, regerarRoadmap } from './backlog.mjs'
 import * as R from './projetoRegistro.mjs'
@@ -212,9 +213,11 @@ export function criar(base, { nome, grupo = '', descricao = '', quando = null, c
     marcar('o primeiro commit', commitou, commitou ? null : 'o git não tem nome e e-mail configurados aqui')
   }
 
-  /* O modo automático que ele pediu: ligado, em Definição, e com a entrevista
-     esperando na primeira pergunta. `ligar` já grava o estado no disco. */
-  const fw = ligarFramework(raiz)
+  /* O modo automático que ele pediu: ligado, e com a entrevista esperando na
+     primeira pergunta. `ligar` já grava o estado no disco.
+     CC-1085, 07/11: nasce no método `ideia-viva` (marco Semente), não mais no
+     `mvp-basico`. Os projetos que já existem continuam onde estão. */
+  const fw = ligarFramework(raiz, 'ideia-viva')
   /* CC-388, 28/08: projeto novo nasce em SUGESTIVO, e não em Livre.
    *
    * Pedido dele ao desenhar a sequência: *"isso tudo em modo sugestivo, eu
@@ -238,10 +241,14 @@ export function criar(base, { nome, grupo = '', descricao = '', quando = null, c
          versão deste trecho gravava e o modo continuava `dialogo`, calada.
          Lendo sem sessão, o objeto sai limpo e a gravação vale. */
       const estado = lerFramework(raiz, { sessao: null })
-      if (estado) gravarFramework(raiz, { ...estado, modo: 'sugestivo' })
+      /* CC-1085, decisão dele em 07/11 ("Sugestivo, sem travar"): os marcos da
+         ideia não travam código, e o Sugestivo travaria arquivo por arquivo já
+         no rascunho. Nasce com o projeto inteiro liberado (`'**'`), que vale até
+         o modo mudar, e o rastro fica no histórico. */
+      if (estado) gravarFramework(raiz, autorizar({ ...estado, modo: 'sugestivo' }, { motivo: 'projeto novo: os marcos da ideia não travam código (decisão dele, 07/11)', quando: new Date().toISOString() }).estado)
     } catch { /* sem modo escolhido o projeto nasce em Livre, e segue */ }
   }
-  marcar('o framework ligado em modo Sugestivo, na Definição, com a entrevista aberta', fw.ok)
+  marcar('o framework ligado em modo Sugestivo, no marco Semente, com a entrevista aberta', fw.ok)
 
   /* CC-525: o projeto nasce com registro (cliente, ativo, site). Já declarado antes
      (o caminho "declarar e criar aqui") só atualiza os três campos; não declara de novo. */

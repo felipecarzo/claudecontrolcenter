@@ -52,7 +52,8 @@ const ui = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf
 const web = readFileSync(new URL('./src/web.mjs', import.meta.url), 'utf8')
 ok(ui.includes('data-target="view-revisoes"') && ui.includes('id="view-revisoes" class="view-section"') && ui.includes("'view-revisoes': { title: 'Revisões'"), 'a aba está no menu, tem a seção e o título')
 ok(ui.includes("fetch('/api/revisoes')") && web.includes("url.pathname === '/api/revisoes'") && ui.includes("'/api/revisoes/aplicar'") && web.includes("url.pathname === '/api/revisoes/aplicar'"), 'a tela chama as duas rotas, e as duas existem no servidor')
-ok(ui.includes('data-rev-revisar') && ui.includes("C2.tdr.orig = 'cartas'; c2TdrAbrir(") && ui.includes('data-rev-ensaio') && ui.includes('data-rev-aplicar'), 'os três botões: revisar um por um, ver o que muda, aplicar')
+// 20/10: a origem passou a ser parâmetro de c2TdrAbrir (sessão do ecommerce, CC-1065); vale qualquer das duas formas
+ok(ui.includes('data-rev-revisar') && (ui.includes("C2.tdr.orig = 'cartas'; c2TdrAbrir(") || /c2TdrAbrir\([^)]*'data-rev-revisar'\), 'cartas'\)/.test(ui)) && ui.includes('data-rev-ensaio') && ui.includes('data-rev-aplicar'), 'os três botões: revisar um por um, ver o que muda, aplicar')
 ok(/data-rev-aplicar="' \+ esc\(p\.raiz\) \+ '">Aplicar no código/.test(ui) && /r\.ensaio && r\.aplicadas\.length \?/.test(ui), 'o botão de aplicar só aparece depois de ver o que muda (ensaio primeiro)')
 ok(web.includes('ensaio !== false') , 'o servidor trata qualquer coisa diferente de "false" como ensaio: gravar exige pedir de propósito')
 ok(ui.includes("atalho('revisoes', 'R'") && ui.includes("revisoes: 'Revisões'"), 'a aba tem atalho no manual de atalhos')

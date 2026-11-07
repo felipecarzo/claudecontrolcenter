@@ -74,7 +74,7 @@ projeto('VPS_mudo', '## Só prosa\n\nnenhum item aqui, só explicação.\n')
   const a = rodar()
   assert.equal(a.codigo, 2, 'a primeira volta avisa')
   assert.match(a.texto, /VPS_mudo/)
-  assert.match(a.texto, /PELA PRIMEIRA VEZ/)
+  assert.match(a.texto, /\[quadro-guard\] .*pela primeira vez/)
   ok('avisa na primeira vez que um projeto é lido e fica fora do quadro')
 
   /* A prova ao contrário, e é a que decide se este guarda serve para alguma
@@ -119,7 +119,7 @@ projeto('VPS_mudo', '## Só prosa\n\nnenhum item aqui, só explicação.\n')
 
   const a = rodar()
   assert.equal(a.codigo, 2)
-  assert.match(a.texto, /SAÍRAM DO QUADRO/)
+  assert.match(a.texto, /\[quadro-guard\] .*saíram do quadro/)
   assert.match(a.texto, /VPS_sumiu/)
   ok('projeto que saiu do quadro é acusado como regressão')
 

@@ -13,7 +13,7 @@ import fs from 'node:fs'
 const TAILS = [256 * 1024, 2 * 1024 * 1024] // tenta pequeno; só cresce se não achar
 const cache = new Map() // path -> { size, mtimeMs, prompt }
 
-function readTail(file, bytes) {
+export function readTail(file, bytes) {
   const fd = fs.openSync(file, 'r')
   try {
     const { size } = fs.fstatSync(fd)

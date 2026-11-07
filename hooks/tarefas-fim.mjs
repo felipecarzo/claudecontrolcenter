@@ -79,28 +79,14 @@ try {
 const faltando = P.faltandoNaLista(pendentes, tarefas)
 if (!faltando.length) sair()
 
+/* O texto de cada pendência não entra na mensagem (é frase escrita pelo
+   agente); entra só a contagem e o formato do comando. */
 const linhas = [
-  `${faltando.length} COISA(S) QUE DEPENDEM DELE NÃO ESTÃO NA LISTA DELE.`,
-  '',
-  'Você registrou isto como bloqueio da sua sessão. O bloqueio morre quando o',
-  'CLI apaga o job; a lista dele sobrevive. Em 20/08 quatro pendências foram',
-  'escritas assim e ele não as viu no painel no dia seguinte.',
-  '',
-  'Registre cada uma antes de encerrar:',
-  '',
+  `[tarefas-fim] ${faltando.length} bloqueio(s) da sessão que dependem dele não estão na lista dele.`,
+  'Registre cada um na lista dele: cc meu add "<texto do bloqueio>" --porque "<por que depende dele>".',
+  'O que não depende dele, tire dos bloqueios da sessão em vez de registrar.',
+  'A próxima volta passa.',
 ]
-for (const f of faltando) {
-  const curto = f.length > 150 ? `${f.slice(0, 147)}...` : f
-  linhas.push(`    cc meu add "${curto.replace(/"/g, "'")}" --porque "<por que depende dele>"`)
-}
-linhas.push(
-  '',
-  'Se alguma NÃO depende dele (é trabalho seu, ou já se resolveu), tire-a dos',
-  'bloqueios da sessão em vez de registrar. Bloqueio que não é dele mente na',
-  'tela igual.',
-  '',
-  'Esta é a única volta: a próxima passa.',
-)
 
 process.stderr.write(`${linhas.join('\n')}\n`)
 process.exit(2)

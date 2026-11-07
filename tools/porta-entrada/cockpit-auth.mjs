@@ -649,9 +649,21 @@ function repassar(req, res, token) {
     res.writeHead(r.statusCode || 502, { ...r.headers, 'x-cockpit-destino': alvo.servico })
     r.pipe(res)
   })
-  up.on('error', () => {
+  const inicio = Date.now()
+  up.on('error', (e) => {
+    /* CC-1089, 07/11: "vira e mexe recebo erros assim". O painel estava de pé havia 31 h e o 502 não se repetiu
+       medindo (40 de 40 certos por esta porta), então a causa é desconhecida. Cada queda fica anotada aqui, com o
+       caminho SEM os parâmetros (eles podem levar dado), para a próxima vez dizer a causa em vez de adivinhar. */
+    try {
+      fs.mkdirSync(path.join(CASA, 'logs'), { recursive: true })
+      fs.appendFileSync(path.join(CASA, 'logs', 'porta-entrada-quedas.log'), JSON.stringify({
+        em: new Date().toISOString(), metodo: req.method, caminho: String(alvo.path).split('?')[0], servico: alvo.servico,
+        porta: alvo.porta, motivo: e?.code || e?.message || 'desconhecido', reaproveitada: Boolean(up.reusedSocket),
+        ms: Date.now() - inicio, jaRespondia: res.headersSent,
+      }) + '\n')
+    } catch { /* anotar nunca impede responder */ }
     if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' })
-    res.end('painel fora do ar (porta ' + alvo.porta + '). veja: journalctl -u ' + alvo.servico)
+    res.end('a ligação com o painel caiu (porta ' + alvo.porta + ', ' + (e?.code || 'sem código') + '). a queda ficou anotada em ~/logs/porta-entrada-quedas.log')
   })
   req.pipe(up)
 }

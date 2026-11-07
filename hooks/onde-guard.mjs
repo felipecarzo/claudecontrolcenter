@@ -84,21 +84,14 @@ if (!anuncia) sair()
 if (DIZ_ONDE.some((re) => re.test(prosa))) sair()
 
 console.error(
-  'MUDANÇA ANUNCIADA SEM DIZER ONDE FICOU.\n\n'
-  + 'Ele roda 6 a 8 sessões ao mesmo tempo, em projetos diferentes. Sem o\n'
-  + 'lugar, ele não tem como saber se isto vale nas outras, e descobre dias\n'
-  + 'depois que não valia.\n\n'
-  + 'Acrescente o lugar, em uma linha:\n\n'
+  '[onde-guard] Mudança de comportamento anunciada sem o lugar onde ficou.\n'
+  + 'Reenvie com uma linha dizendo onde a mudança está e para quem vale:\n'
   + '  arquivo de ganchos (settings.json)   toda sessão desta máquina\n'
   + '  arquivo de instruções global         toda sessão desta máquina\n'
   + '  CLAUDE.md do projeto                 só as sessões deste projeto\n'
   + '  memória do projeto                   só as sessões deste projeto\n'
   + '  código do repositório                só quem puxar o repositório\n'
-  + '  só esta conversa                     nada: some ao fechar\n\n'
-  + 'Ele em 11/09: "quando te mostro um problema você tem que deixar claro\n'
-  + 'onde isso ficou salvo, se é um hook no cockpit, uma trava simples, só um\n'
-  + 'prompt".\n\n'
-  + 'E se vale só num lugar e devia valer em todos, diga isso agora.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  + '  só esta conversa                     nada: some ao fechar\n'
+  + 'Se vale só num lugar e precisa valer em todos, diga isso na mesma linha. A próxima volta passa.',
 )
 process.exit(2)

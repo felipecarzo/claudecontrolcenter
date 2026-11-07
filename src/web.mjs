@@ -113,8 +113,12 @@ import { digestTodos } from './digest.mjs'
 import {
   ligar as ligarRemoto, desligar as desligarRemoto, estado as estadoRemoto, link as linkRemoto,
   conectar as conectarRemoto, desconectar as desconectarRemoto, reabrir as reabrirRemoto,
-  caminhosDeVolta as voltasRemoto,
+  caminhosDeVolta as voltasRemoto, dispensar as dispensarRemoto,
 } from './remotecontrol.mjs'
+import {
+  baseRascunhos, prefixo as prefixoRascunho, listar as listarRascunhos, criar as criarRascunho,
+  descartar as descartarRascunho, promover as promoverRascunho,
+} from './rascunhos.mjs'
 import { garantirMercado } from './mercado.mjs'
 import {
   readServers, killServer, duplicados, recentes, projetosLancaveis,
@@ -147,6 +151,8 @@ import {
   resolverPedido as resolverPedidoFramework,
   faltaNoPerfil, modoDe as modoDeFramework, perfilResolvido, perfisEmArvore,
   resumo as resumoFramework, trocarModo as trocarModoFramework,
+  // CC-1085: os marcos da ideia viva
+  avancar as avancarFramework, estadoInicial as estadoInicialFramework, palpiteDeMatriz, virar as virarIdeia,
 } from './framework.mjs'
 import {
   ROTEIRO as ROTEIRO_ENTREVISTA, aplicaveis as aplicaveisEntrevista, desfazer as desfazerEntrevista,
@@ -351,6 +357,25 @@ function retratoFramework(raiz) {
     resumo: resumoFramework(s.estado.metodo, s.estado),
     mvp: s.estado.mvp || null,
     mudancasDeEscopo: (s.estado.historico || []).filter((h) => h.tipo === 'escopo').length,
+    /* CC-1085: os marcos de maturidade da ideia. Só o método `ideia-viva` leva
+       isto; nos outros é `null` e o cartão não desenha nada. A conta (qual marco
+       é o atual, qual o palpite de matriz) é do motor, não da tela, para os dois
+       painéis e o `cc framework marco` nunca discordarem. */
+    ideiaViva: s.estado.metodo === 'ideia-viva' ? {
+      marcos: METODOS['ideia-viva'].fases.map((f, i) => ({
+        id: f.id, titulo: f.titulo, estado: i < a.indice ? 'feito' : i === a.indice ? 'atual' : 'adiante',
+      })),
+      atual: a.fase,
+      explica: a.explica,
+      ultima: a.ultima,
+      frase: s.estado.ideia?.frase || '',
+      rascunho: s.estado.ideia?.rascunho || null,
+      matriz: s.estado.ideia?.matriz || [],
+      matrizConfirmada: s.estado.ideia?.matrizConfirmada || null,
+      usoReal: s.estado.ideia?.usoReal || null,
+      palpite: palpiteDeMatriz(s.estado),
+      viradas: (s.estado.historico || []).filter((h) => h.tipo === 'virada').length,
+    } : null,
   }
 }
 
@@ -387,6 +412,9 @@ export function retratoEntrevista(raiz) {
       pergunta: textoDaPergunta(p, respostas),
       texto: respostas[p.id].texto,
       valor: respostas[p.id].valor || null,
+      // CC-1086: de onde veio (ele, prosa, pesquisa) e as fontes da pesquisa, para a tela pedir a confirmação
+      de: respostas[p.id].de || 'ele',
+      fontes: respostas[p.id].fontes || null,
     }))
   return {
     existe: true,
@@ -1324,6 +1352,15 @@ const comCorpoAsync = (req, res, max, fn) => {
 async function seguirArquiteto(id, cwd, texto) {
   acrescentarGate(id, { tipo: 'dele', texto })
   const emObra = (() => { try { return obraRodando(cwd) } catch { return false } })()
+  // CC-1068: "regra: ..." ou "geral: ..." vira regra do Regente, não item do backlog; o passo seguinte já a obedece
+  const R = await import('./regente.mjs')
+  const regra = R.ehRegra(texto)
+  if (regra) {
+    const g = R.aprender(cwd, regra.texto, { geral: regra.geral })
+    if (!g.ok) return { evento: acrescentarGate(id, { tipo: 'sistema', texto: `Não anotei a regra: ${g.erro}.` }) }
+    if (!emObra) dispararArquiteto(cwd, id, ['--passo'])
+    return { evento: acrescentarGate(id, { tipo: 'sistema', texto: `Regra anotada (${regra.geral ? 'geral' : path.basename(cwd).replace(/^(VPS|PC)_/i, '')}): ${g.linha.replace(/^- /, '')}. Vale a partir do próximo passo.` }) }
+  }
   if (emObra) return { evento: acrescentarGate(id, { tipo: 'sistema', texto: 'Anotado. O robô está no meio de uma obra neste projeto; quando terminar, o arquiteto continua.' }) }
   let virou = null
   if (!/^\s*(pode\s+)?(continu|segu|vai|manda ver|ok|beleza)/i.test(texto) && texto.trim().length >= 12) {
@@ -1357,12 +1394,23 @@ function dispararArquiteto(cwd, id, modo) {
   filho.on('error', () => { /* sem node, o log diz */ })
   filho.unref(); fs.closeSync(fd)
 }
-async function responderArquiteto(id, ficha, escolha) {
+async function responderArquiteto(id, ficha, escolha, extra = null) {
   const cab = lerCabecalhoGate(id)
   const cwd = cab?.cwd
   if (!cwd) throw new Error('esta conversa não tem pasta de projeto')
   // a resposta só vale vinda da conversa do arquiteto: de outra (micro tarefa) o próximo passo sairia no lugar errado
   if (!String(cab.titulo || '').startsWith('Arquiteto · ')) throw new Error('esta não é a conversa do arquiteto: responda na conversa "Arquiteto · ..."')
+  /* CC-1068: texto dele que abre com "regra:" ou "geral:" vira regra do Regente. Sozinho, não é escolha (a pergunta segue
+     aberta); no campo extra de uma escolha, a regra vale ALÉM da resposta, que continua sendo a escolha. */
+  const R = await import('./regente.mjs')
+  const sozinho = typeof escolha === 'string' ? R.ehRegra(escolha) : null
+  const regra = sozinho || R.ehRegra(extra)
+  if (regra) {
+    const g = R.aprender(cwd, regra.texto, { geral: regra.geral })
+    const aviso = g.ok ? `Regra anotada (${regra.geral ? 'geral' : path.basename(cwd).replace(/^(VPS|PC)_/i, '')}): ${g.linha.replace(/^- /, '')}. Vale a partir do próximo passo.` : `Não anotei a regra: ${g.erro}.`
+    if (sozinho) { acrescentarGate(id, { tipo: 'dele', texto: String(escolha) }); return { evento: acrescentarGate(id, { tipo: 'sistema', texto: `${aviso} A pergunta segue aberta: escolha uma opção.` }) } }
+    acrescentarGate(id, { tipo: 'sistema', texto: aviso })
+  }
   const Ar = await import('./arquiteto.mjs')
   // CC-902: com o array de rótulos marcados a separação por vírgula não é preciso (rótulo com vírgula)
   const fechada = Ar.responder(cwd, String(ficha || ''), Array.isArray(escolha) ? escolha : String(escolha || ''))
@@ -1803,6 +1851,21 @@ function handler(req, res) {
     return listarTerminais().then((t) => send(res, 200, { ok: true, disponivel: Boolean(wezterm()), terminais: t.length }))
       .catch((e) => send(res, 400, { ok: false, error: String(e?.message || e) }))
   }
+  /* CC-1064: rascunhos, as conversas que ainda não são projeto (src/rascunhos.mjs).
+     Só sob clique e na abertura da tela Sessões; nada disso entra no stream de 2s. */
+  if (url.pathname === '/api/rascunhos') {
+    if (req.method === 'POST') {
+      return comCorpoAsync(req, res, 1e4, async ({ acao, titulo, slug, nome }) => {
+        if (acao === 'criar') return criarRascunho({ titulo })
+        if (acao === 'descartar') return descartarRascunho(slug)
+        if (acao === 'promover') return promoverRascunho(slug, { nome })
+        throw new Error(`ação desconhecida: ${String(acao).slice(0, 40)}`)
+      })
+    }
+    return estadoRemoto().then((vivos) => send(res, 200, {
+      base: baseRascunhos(), prefixo: prefixoRascunho(), rascunhos: listarRascunhos({ vivos }), at: Date.now(),
+    }))
+  }
   if (url.pathname === '/api/remote-control') {
     if (req.method === 'POST') {
       return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, mais, remoto, perfil }) => {
@@ -1818,6 +1881,7 @@ function handler(req, res) {
         if (acao === 'conectar') return conectarRemoto(projeto)
         if (acao === 'desconectar') return desconectarRemoto(projeto)
         if (acao === 'reabrir') return reabrirRemoto(projeto, { remoto: remoto !== false })
+        if (acao === 'dispensar') return dispensarRemoto(projeto)
         const dir = cwdDoProjeto(cwd, projeto)
         if (!dir) throw new Error(`projeto não encontrado: ${projeto}`)
         // `mais`: outro agente na mesma pasta, em vez de devolver o que já existe
@@ -2553,7 +2617,11 @@ function handler(req, res) {
                  descrição travaria o código dele de novo, e seria o framework
                  inventando trabalho que já foi feito. */
               : fases[fases.length - 1]
-          gravarFramework(raiz, { ...estado, metodo: alvo, fase })
+          /* CC-1085: quem entra na ideia viva ganha o bloco `ideia` vazio, e só
+             ele: o MVP e o histórico ficam como estão, que é o que impede a
+             troca de apagar o que o projeto já decidiu. */
+          const ideia = alvo === 'ideia-viva' && !estado.ideia ? { ideia: estadoInicialFramework('ideia-viva').ideia } : {}
+          gravarFramework(raiz, { ...estado, ...ideia, metodo: alvo, fase })
           return { raiz, ...retratoFramework(raiz) }
         }
 
@@ -2637,6 +2705,60 @@ function handler(req, res) {
        do projeto ativo — que é onde ele olha. Na lista, o mesmo dado custa o
        número de projetos vezes isso, e por lá só os visíveis pagam. */
     return send(res, 200, { raiz, ...retratoFramework(raiz), git: estadoGit(raiz) })
+  }
+
+  /* CC-1085: as ações dos marcos da ideia viva, uma por clique dele.
+
+     Cada uma lê com `{ sessao: null }` e grava: é escolha DELE, e lida com sessão
+     o `gravar()` restauraria o modo e viraria no-op calado (ver a ação `perfil`
+     em `/api/framework`). A conta é do motor (`virar`, `avancar`,
+     `palpiteDeMatriz`); aqui só se grava o que ele digitou. A raiz sai do nome
+     do projeto, nunca de caminho vindo da página. */
+  if (url.pathname === '/api/framework/ideia' && req.method === 'POST') {
+    return comCorpo(req, res, 1e4, ({ projeto, acao, frase, url: endereco, saiu, ficou, motivo, itens, quem }) => {
+      const raiz = cwdDoProjeto(null, projeto)
+      if (!raiz) return { error: 'não achei a pasta deste projeto' }
+      const estado = lerFramework(raiz, { sessao: null })
+      if (!estado) return { error: 'este projeto não tem framework ligado' }
+      if (estado.metodo !== 'ideia-viva') {
+        return { error: `este projeto está no método ${estado.metodo}, e os marcos da ideia são do método ideia-viva` }
+      }
+      const quando = new Date().toISOString()
+      // listas chegam como texto: uma por linha, ou separadas por ponto e vírgula
+      const lista = (v) => String(v || '').split(/[;\n]/).map((t) => t.trim()).filter(Boolean)
+      const ideia = estado.ideia || estadoInicialFramework('ideia-viva').ideia
+      const com = (campos) => gravarFramework(raiz, { ...estado, ideia: { ...ideia, ...campos } })
+
+      if (acao === 'semente') {
+        if (!String(frase || '').trim()) return { error: 'escreva a frase da ideia' }
+        com({ frase: String(frase).trim() })
+      } else if (acao === 'rascunho') {
+        if (!String(endereco || '').trim()) return { error: 'informe o endereço do rascunho' }
+        // endereço novo zera o `tocou`: ele tocou no rascunho antigo, não neste
+        com({ rascunho: { url: String(endereco).trim(), tocou: null } })
+      } else if (acao === 'tocou') {
+        if (!ideia.rascunho?.url) return { error: 'o rascunho ainda não tem endereço' }
+        com({ rascunho: { ...ideia.rascunho, tocou: quando } })
+      } else if (acao === 'virada') {
+        const v = virarIdeia(estado, { saiu: lista(saiu), ficou: lista(ficou), motivo, quando })
+        if (!v.ok) return { error: v.erro }
+        gravarFramework(raiz, v.estado)
+      } else if (acao === 'matriz') {
+        const finais = itens ? lista(itens) : palpiteDeMatriz(estado)
+        if (!finais.length) return { error: 'não há matriz para confirmar: sem viradas não há palpite, digite os itens' }
+        com({ matriz: finais, matrizConfirmada: quando })
+      } else if (acao === 'uso') {
+        if (!String(quem || '').trim()) return { error: 'diga quem usou' }
+        com({ usoReal: { quem: String(quem).trim(), quando } })
+      } else if (acao === 'avancar') {
+        const av = avancarFramework(estado.metodo, estado)
+        if (!av.ok) return { error: `ainda não dá para avançar: ${av.pendencias.join('; ')}` }
+        gravarFramework(raiz, av.estado)
+      } else {
+        return { error: `ação desconhecida: ${acao}` }
+      }
+      return { raiz, ...retratoFramework(raiz) }
+    })
   }
 
   /* CC-143: criar projeto novo pelo painel.
@@ -3047,7 +3169,13 @@ function handler(req, res) {
       try { base = path.resolve(projectsBase() || '') } catch { base = null }
       const dentroDaBase = base && (alvo === base || alvo.startsWith(base + path.sep))
       const ehOPainel = alvo === path.resolve(RAIZ_DO_PAINEL)
-      if (!dentroDaBase && !ehOPainel) throw new Error(`a pasta ${alvo} está fora da base de projetos`)
+      /* CC-1068, 20/10: a obra do arquiteto em projeto "no ar" roda numa cópia (git worktree) em
+         ~/.local/share/agent-cockpit/copias, criada pelo próprio cockpit (copiaIsolada). Recusada aqui, toda obra
+         morria antes de começar ("3 pedidos aprovados, 0 tentativas", medido no ecommerce). Vale SÓ essa pasta,
+         e só uma cópia que é worktree de verdade (tem .git), nunca a base nem pasta arbitrária. */
+      const copias = path.resolve(process.env.CC_ARQUITETO_COPIAS || path.join(os.homedir(), '.local', 'share', 'agent-cockpit', 'copias'))
+      const ehCopia = alvo.startsWith(copias + path.sep) && path.dirname(alvo) === copias && fs.existsSync(path.join(alvo, '.git'))
+      if (!dentroDaBase && !ehOPainel && !ehCopia) throw new Error(`a pasta ${alvo} está fora da base de projetos`)
       return criarGate({ titulo, projeto: projeto || path.basename(alvo), cwd: alvo })
     })
   }
@@ -3613,6 +3741,8 @@ function handler(req, res) {
   if (url.pathname === '/api/gate/permissao' && req.method === 'POST') {
     return comCorpo(req, res, 1e3, ({ id, permissao }) => {
       if (!id) throw new Error('preciso saber qual conversa')
+      /* 'bypass' NUNCA entra por aqui (test-coderoom-app.mjs guarda isso): qualquer tela alcança esta rota. O maestro
+         no modo Regente grava a permissão direto no cabeçalho, por gravarCabecalho, que só processo local alcança (CC-1068). */
       if (!['acceptEdits', 'pergunteAntes', 'plano'].includes(permissao)) throw new Error('permissão desconhecida')
       /* Conferir ANTES: gravar num id que não existe criaria uma conversa fantasma. */
       if (!conversaAoVivoGate(String(id))) throw new Error('conversa não encontrada')
@@ -3755,7 +3885,48 @@ function handler(req, res) {
       const txt = String(extra || '').trim()
       // CC-902: sem texto extra vai o ARRAY (rótulo com vírgula não se confunde); com extra segue a string, que o arquiteto separa pelos rótulos oferecidos
       const resposta = marcadas.length && !txt ? marcadas : marcadas.length ? marcadas.join(', ') + '. ' + txt : (txt || String(escolha || ''))
-      return responderArquiteto(id, ficha, resposta)
+      return responderArquiteto(id, ficha, resposta, txt)
+    })
+  }
+
+  /* CC-1070: o que a sessão fez de verdade (últimos turnos gravados pelo confere-omissao) e quantas conversas
+     `claude -p` nasceram nas últimas 24 h na pasta. O bloco da conversa (Coderoom) chama. */
+  if (url.pathname === '/api/registro' && req.method === 'GET') {
+    const raiz = url.searchParams.get('cwd') ? cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto') || null) : null
+    return import('./registroTurno.mjs').then((R) => {
+      send(res, 200, { ok: true, turnos: R.lerTurnos(url.searchParams.get('sessao') || '', 8), robos: R.robosDaPasta(raiz) })
+    })
+  }
+
+  /* CC-1068: liga e desliga o modo Regente do arquiteto (decide no lugar dele pelo caderno de regras, e não para).
+     GET devolve o estado e as últimas 5 linhas de cada caderno. A tela Projetos chama (M4). */
+  if (url.pathname === '/api/regente' && req.method === 'GET') {
+    const raiz = cwdDoProjeto(url.searchParams.get('cwd'), url.searchParams.get('projeto') || null)
+    if (!raiz) return send(res, 200, { ok: false, error: 'projeto não encontrado' })
+    return import('./regente.mjs').then((R) => {
+      const ultimas = (f) => { try { return fs.readFileSync(f, 'utf8').split(/\r?\n/).filter((l) => l.startsWith('- ')).slice(-5) } catch { return [] } }
+      send(res, 200, { ok: true, ...R.ler(raiz), regras: { projeto: ultimas(R.arquivoRegras(raiz)), geral: ultimas(R.arquivoRegrasGeral()) } })
+    })
+  }
+  if (url.pathname === '/api/regente' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 2e3, async ({ cwd, projeto, ligado, risco }) => {
+      const raiz = cwdDoProjeto(cwd, projeto || null)
+      if (!raiz) throw new Error('projeto não encontrado')
+      const R = await import('./regente.mjs')
+      if (ligado !== true) return { estado: R.desligar(raiz) }
+      if (!moduloLigado('nisaba', projetoDe(raiz))) throw new Error(`o Nisaba está desligado em ${projetoDe(raiz)}: religue na tela Projetos`)
+      const estado = R.ligar(raiz, { risco: risco === true })
+      // ao ligar, o primeiro passo sai já, se não há obra rodando nem pergunta esperando por ele
+      const Ar = await import('./arquiteto.mjs')
+      let disparou = false
+      if (!obraRodando(raiz) && !Ar.perguntaDoArquiteto(raiz)) {
+        const titulo = `Arquiteto · ${path.basename(raiz).replace(/^(VPS|PC)_/i, '')}`
+        const conversa = listarGate().find((c) => c.titulo === titulo && path.resolve(c.cwd || '') === path.resolve(raiz)) || criarGate({ titulo, projeto: projeto || path.basename(raiz), cwd: raiz })
+        dispararArquiteto(raiz, conversa.id, ['--passo'])
+        acrescentarGate(conversa.id, { tipo: 'sistema', texto: 'Regente ligado: ele decide pelo caderno de regras e avisa aqui. Corrija escrevendo "regra: ..." ou "geral: ...".' })
+        disparou = true
+      }
+      return { estado, disparou }
     })
   }
 
@@ -4689,6 +4860,33 @@ function handler(req, res) {
       sprintsConta = { em: Date.now(), dado: contaDaSemana(caminhoLista.projetos.map((p) => p.raiz)) }
     }
     return send(res, 200, { ok: true, ...sprintsConta.dado, at: sprintsConta.em })
+  }
+
+  /* CC-1080 passo 2 (#capsula): a tela Cápsulas. O Docker só roda aqui dentro (o serviço do painel), pelo botão dele.
+     A senha chega no corpo do POST, vai ao processo filho por stdin e não é gravada nem logada. Toda a lógica mora em
+     src/capsulaPainel.mjs; aqui só o encanamento. */
+  if (url.pathname === '/api/capsula/lista' && req.method === 'GET') {
+    return import('./capsulaPainel.mjs').then((P) => P.lista()).then((d) => send(res, 200, { ok: true, ...d })).catch((e) => send(res, 500, { ok: false, error: String(e.message || e) }))
+  }
+  if (url.pathname === '/api/capsula/ensaio' && req.method === 'POST') {
+    // devolve um id na hora: a medição é de um processo filho (varrer pasta grande a frio parava o painel inteiro). O resultado vem em /estado/:id
+    return comCorpoAsync(req, res, 1e3, async ({ projeto, incluirCandidatos }) => (await import('./capsulaPainel.mjs')).iniciarEnsaio(String(projeto || ''), { incluirCandidatos: incluirCandidatos === true }))
+  }
+  if (url.pathname === '/api/capsula/fazer' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 2e3, async ({ projeto, senha, incluirCandidatos }) => (await import('./capsulaPainel.mjs')).iniciar(String(projeto || ''), senha, { incluirCandidatos: incluirCandidatos === true }))
+  }
+  if (url.pathname.startsWith('/api/capsula/estado/') && req.method === 'GET') {
+    return import('./capsulaPainel.mjs').then((P) => send(res, 200, { ok: true, ...P.estado(decodeURIComponent(url.pathname.slice('/api/capsula/estado/'.length))) })).catch((e) => send(res, 404, { ok: false, error: String(e.message || e) }))
+  }
+  if (url.pathname.startsWith('/api/capsula/baixar/') && req.method === 'GET') {
+    let nome = ''
+    try { nome = decodeURIComponent(url.pathname.slice('/api/capsula/baixar/'.length)) } catch { /* nome vazio recusa abaixo */ }
+    return import('./capsulaPainel.mjs').then((P) => {
+      const a = P.arquivoParaBaixar(nome)
+      if (!a) return send(res, 404, { ok: false, error: 'cápsula não encontrada' })
+      res.writeHead(200, { 'content-type': 'application/gzip', 'content-length': a.bytes, 'content-disposition': `attachment; filename="${nome}"`, 'cache-control': 'no-store' })
+      fs.createReadStream(a.caminho).on('error', () => res.destroy()).pipe(res)
+    }).catch((e) => send(res, 500, { ok: false, error: String(e.message || e) }))
   }
 
   /* CC-884 (#git-salvar): o que um commit e push faria no projeto, e fazê-lo. */

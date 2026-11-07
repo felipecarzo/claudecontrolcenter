@@ -45,13 +45,14 @@ export function gravar(raiz, produto) {
   return alvo
 }
 
-/** A definição que a entrevista já apurou. Resposta com `de: 'prosa'` é palpite e não entra. */
+/** A definição que a entrevista já apurou. Resposta com `de: 'prosa'` ou `'pesquisa'` (CC-1086) é palpite e não entra. */
 export function definicaoDaEntrevista(estadoFw) {
   const r = estadoFw?.entrevista?.respostas || {}
-  const fala = (id) => (r[id] && r[id].de !== 'prosa' ? String(r[id].texto || '').trim() : '')
+  const dele = (x) => x && x.de !== 'prosa' && x.de !== 'pesquisa'
+  const fala = (id) => (dele(r[id]) ? String(r[id].texto || '').trim() : '')
   return {
     oque: fala('entrega'), paraQuem: fala('quem'), problema: fala('hoje'),
-    natureza: r.natureza && r.natureza.de !== 'prosa' ? String(r.natureza.valor || '') : '',
+    natureza: dele(r.natureza) ? String(r.natureza.valor || '') : '',
   }
 }
 

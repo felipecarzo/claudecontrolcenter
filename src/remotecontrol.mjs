@@ -222,7 +222,7 @@ function gravarVinculos(todos) {
 /** A pasta de transcritos daquele projeto. O Claude Code nomeia trocando tudo
  *  que não é letra ou número por hífen: `/home/x/VPS_coepiloto` vira
  *  `-home-x-VPS-coepiloto`. */
-const pastaTranscritos = (cwd) => path.join(PROJETOS_DIR(), String(cwd).replace(/[^a-zA-Z0-9]/g, '-'))
+export const pastaTranscritos = (cwd) => path.join(PROJETOS_DIR(), String(cwd).replace(/[^a-zA-Z0-9]/g, '-'))
 
 /**
  * Qual conversa está (ou estava) rodando naquela pasta. `depoisDe` filtra pelo
@@ -263,7 +263,7 @@ export function caminhosDeVolta() {
 }
 
 /** Guarda (ou atualiza) o vínculo de um projeto. */
-function anotarVinculo(projeto, dados) {
+export function anotarVinculo(projeto, dados) {
   const todos = lerVinculos()
   todos[projeto] = { ...(todos[projeto] || {}), ...dados }
   return gravarVinculos(todos)
@@ -778,12 +778,93 @@ async function anotarCaminhoDeVolta(projeto) {
  */
 export async function reabrir(projeto, { binario = 'claude', remoto = true } = {}) {
   const volta = lerVinculos()[projeto]
-  if (!volta || !volta.conversa) {
+  if (!volta || !volta.cwd) {
     return { ok: false, erro: `não sei qual conversa era a de ${projeto}: não há caminho de volta guardado` }
   }
   if (!fs.existsSync(volta.cwd)) return { ok: false, erro: `a pasta sumiu: ${volta.cwd}` }
-  const r = await ligar(projeto, volta.cwd, { binario, remoto, retomar: volta.conversa })
-  return r.ok ? { ...r, retomada: volta.conversa, certeza: volta.certeza || 'palpite' } : r
+  const conversa = conversaDoVinculo(volta)
+  if (!conversa) return { ok: false, erro: `não sei qual conversa era a de ${projeto}: não há caminho de volta guardado` }
+  const r = await ligar(projeto, volta.cwd, { binario, remoto, retomar: conversa.id })
+  return r.ok ? { ...r, retomada: conversa.id, certeza: conversa.certeza } : r
+}
+
+/**
+ * A conversa a que um vínculo se refere. O vínculo nasce sem conversa quando
+ * ela ainda não tinha arquivo ao abrir (medido em 19/10: `ecommerce_apps` com
+ * `conversa: null` e a conversa real, de 120 MB, na pasta), e pode apontar
+ * para um arquivo que sumiu. Nesses dois casos vale a mais recente da pasta
+ * desde que o vínculo nasceu, e a certeza cai para palpite: a tela avisa.
+ */
+export function conversaDoVinculo(v) {
+  if (!v || !v.cwd) return null
+  if (v.conversa && fs.existsSync(path.join(pastaTranscritos(v.cwd), `${v.conversa}.jsonl`))) {
+    return { id: v.conversa, certeza: v.certeza || 'palpite' }
+  }
+  const achada = conversaDe(v.cwd, { depoisDe: v.desde || 0 })
+  return achada ? { id: achada.id, certeza: 'palpite' } : null
+}
+
+/**
+ * Sessões que o painel abriu e cujo terminal morreu sem ninguém encerrar: o
+ * reinício da VPS mata o tmux inteiro, e o vínculo continua dizendo "viva"
+ * (`encerradaEm` vazio). Sem este olhar, a conversa fica offline no app e o
+ * painel não mostra nada, porque só enxerga o que está num terminal vivo.
+ * Pura, para o teste: quem lê o disco é `sessoesMortas()`.
+ *  - vivos: rótulos que têm terminal agora; conversasVivas: ids que rodam em
+ *    algum processo (inclusive fora do painel); ultima(conversa, cwd): mtime do
+ *    transcrito, ou 0 se o arquivo não existe.
+ * Mesma conversa em dois rótulos (um herdou o outro) conta uma vez, a mais nova.
+ */
+export function filtrarMortas({ vinculos, vivos, conversasVivas, ultima, agora = Date.now(), janelaMs = 7 * 86400000 }) {
+  const porConversa = new Map()
+  for (const [rotulo, v] of Object.entries(vinculos || {})) {
+    if (!v || !v.conversa || v.encerradaEm || vivos.has(rotulo) || conversasVivas.has(v.conversa)) continue
+    if (v.cwd && !fs.existsSync(v.cwd)) continue
+    const quando = ultima(v.conversa, v.cwd)
+    if (!quando || agora - quando > janelaMs) continue
+    const antes = porConversa.get(v.conversa)
+    if (!antes || (v.desde || 0) > (antes.desde || 0)) {
+      porConversa.set(v.conversa, { rotulo, conversa: v.conversa, cwd: v.cwd, certeza: v.certeza || 'palpite', desde: v.desde || 0, ultimaEm: quando })
+    }
+  }
+  return [...porConversa.values()].sort((a, b) => b.ultimaEm - a.ultimaEm)
+}
+
+/** Ids de conversa com processo vivo no registro do Claude Code, painel ou não. */
+function conversasComProcesso() {
+  const ids = new Set()
+  const dir = path.join(casaClaude(), 'sessions')
+  let nomes = []
+  try { nomes = fs.readdirSync(dir).filter((f) => f.endsWith('.json')) } catch { return ids }
+  for (const f of nomes) {
+    try {
+      const o = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
+      if (o.sessionId && o.pid) { process.kill(o.pid, 0); ids.add(o.sessionId) }
+    } catch { /* registro velho, ilegível ou processo morto */ }
+  }
+  return ids
+}
+
+export async function sessoesMortas() {
+  const vivos = await estado()
+  const conversasVivas = conversasComProcesso()
+  for (const s of Object.values(vivos)) if (s && s.conversa) conversasVivas.add(s.conversa)
+  const vinculos = {}
+  for (const [rotulo, v] of Object.entries(lerVinculos())) {
+    const c = v && !v.encerradaEm && conversaDoVinculo(v)
+    if (c) vinculos[rotulo] = { ...v, conversa: c.id, certeza: c.certeza }
+  }
+  return filtrarMortas({
+    vinculos, vivos: new Set(Object.keys(vivos)), conversasVivas,
+    ultima: (conversa, cwd) => { try { return fs.statSync(path.join(pastaTranscritos(cwd), `${conversa}.jsonl`)).mtimeMs } catch { return 0 } },
+  })
+}
+
+/** Tira a sessão morta da lista sem reativar: é o "encerrar" de quem já não tem terminal. */
+export function dispensar(rotulo) {
+  if (!lerVinculos()[rotulo]) return { ok: false, erro: `não conheço a sessão ${rotulo}` }
+  const g = anotarVinculo(rotulo, { encerradaEm: Date.now() })
+  return g.ok ? { ok: true } : { ok: false, erro: g.erro }
 }
 
 /* O menu do `/rc`, e o que cada tecla faz nele. Medido em sessão de teste em
@@ -834,7 +915,8 @@ export function rascunhoDaTela(tela) {
  * "/rc failed" no rodapé (celular caído, code 4090), e o boxboutique parado
  * na pergunta de confiança da pasta. Nenhum dos dois aparecia no painel.
  *  - celular: true com "/rc" no rodapé, false com "/rc failed" ou sem "/rc";
- *  - presa: o texto do menu que espera tecla, ou null.
+ *  - presa: o texto do menu que espera tecla, ou null;
+ *  - fechadaNoApp (CC-1090): a tela diz que o servidor não reporta mais a sessão.
  */
 export function saudeDaTela(tela) {
   const linhas = String(tela || '').replace(/\x1b\[[0-9;]*m/g, '').split('\n').filter((l) => l.trim())
@@ -858,7 +940,20 @@ export function saudeDaTela(tela) {
      e o tempo corrido ("✢ Frolicking… (13m 45s · ↓ 31.9k tokens)"); acabado,
      vira "✻ Crunched for 16m 53s". */
   const trabalhando = /[✢✻✶✳✽*·]\s+\p{L}+…\s*\((?:\d+h\s*)?(?:\d+m\s*)?\d+s/u.test(linhas.slice(-18).join('\n'))
-  return { celular, presa, trabalhando }
+  /* CC-1090, caso real de 07/11 (vr_apps-2): ele fechou a sessão no app com /exit,
+     o processo ficou vivo no terminal e a tela passou a dizer "Remote Control
+     disconnected, the server no longer reports this session, it may have been
+     deleted from another device or app (code 4090)". O cartão seguia como
+     "pronto para QA", e a sessão estava morta do lado dele.
+     ⚠️ O mesmo código 4090 também aparece com o celular caído SEM querer, por isso
+     isto só ETIQUETA: quem encerra é ele, e o religar celular continua valendo.
+     A frase quebra de linha no meio ("reports this\n  session"), então o texto
+     é juntado e os espaços são normalizados antes de procurar. Só vale com o
+     rodapé sem "/rc" ativo: mensagem velha que a rolagem ainda não levou, com o
+     celular já religado, não é sessão fechada. */
+  const fechadaNoApp = celular !== true
+    && /no longer reports this session|deleted from another device/i.test(linhas.slice(-16).join(' ').replace(/\s+/g, ' '))
+  return { celular, presa, trabalhando, fechadaNoApp }
 }
 async function guardarRascunho(sessao) {
   const r = await tmux(['capture-pane', '-t', sessao, '-p', '-e'])

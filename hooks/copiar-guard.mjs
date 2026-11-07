@@ -71,17 +71,9 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
   const ruins = blocosMisturados(texto)
   if (!ruins.length) sair()
   console.error(
-    'BLOCO PARA COPIAR COM A EXPLICAÇÃO DENTRO.\n\n'
-    + ruins.map((c) => `  · o bloco de "${c}" tem linhas de explicação (│ └─) junto do comando`).join('\n')
-    + '\n\nEle copia o bloco inteiro e cola no terminal: a explicação vai junto e QUEBRA o comando.\n'
-    + 'Palavras dele, em 02/10: "se é para eu copiar fácil, eu copio o bloco; com a explicação\n'
-    + 'embaixo, eu vou colar a explicação também, e pode quebrar o código".\n\n'
-    + 'Refaça assim:\n'
-    + '  · o bloco de código leva SÓ o comando, nada mais, para copiar de uma vez;\n'
-    + '  · a explicação parte por parte (programa, cada flag, cada caminho) continua obrigatória,\n'
-    + '    mas FORA do bloco, logo abaixo, em texto comum ou lista;\n'
-    + '  · "Deu certo se: ..." também fora do bloco.\n\n'
-    + 'Esta é a única volta: a próxima passa.',
+    `[copiar-guard] ${ruins.length} bloco(s) de código com o comando e a explicação desenhada (│ └─) juntos.\n`
+    + 'Reenvie com o comando sozinho no bloco de código e a explicação de cada parte logo abaixo, fora do bloco, em texto comum ou lista. A linha de conferência também vai fora do bloco.\n'
+    + 'A próxima volta passa.',
   )
   process.exit(2)
 }

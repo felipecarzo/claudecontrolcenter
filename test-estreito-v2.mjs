@@ -34,7 +34,7 @@ const TOPO = { menu: 30, sino: 316, lado: 360, alt: 52 }
 
 const TELAS = ['view-inicio', 'view-projetos2', 'view-decisoes', 'view-armario', 'view-ideias', 'view-design',
   'view-servidores2', 'view-gate', 'view-trabalho', 'view-analise', 'view-escritorio', 'view-tempo', 'view-agenda',
-  'view-conhecimento', 'view-infra', 'view-infra:vps', 'view-remoto', 'view-caminho', 'view-tarefas']
+  'view-conhecimento', 'view-infra', 'view-infra:vps', 'view-remoto', 'view-caminho', 'view-tarefas', 'view-capsulas']
 
 /* Cada exceção traz o seletor e o MOTIVO. Sem motivo escrito, não entra. */
 const EXCECOES = [

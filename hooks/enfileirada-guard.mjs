@@ -86,17 +86,12 @@ if (!naoCitadas.length) sair()
 
 const p = naoCitadas[0]
 console.error(
-  `${naoCitadas.length} MENSAGEM(NS) DELE SUMIU(RAM) DA FILA E VOCÊ NÃO CITOU.\n\n`
-  + 'Ele digitou isto enquanto você trabalhava, e a fila descartou antes de virar\n'
-  + `mensagem. O texto está guardado no registro (${p.palavras} palavras`
+  `[enfileirada-guard] ${naoCitadas.length} mensagem(ns) dele saiu(íram) da fila sem virar mensagem. `
+  + `Texto guardado no registro (${p.palavras} palavras`
   + `${p.quando ? `, ${String(p.quando).slice(11, 16)}` : ''}):\n\n`
   + p.texto.split('\n').map((l) => `    ${l}`).join('\n').slice(0, 1200)
   + (naoCitadas.length > 1 ? `\n\n  … e mais ${naoCitadas.length - 1}. Todas em: cc fila\n` : '\n')
-  + '\nO que fazer: responda o pedido, e CITE o texto dele na sua resposta. O que\n'
-  + 'sobrevive de um turno é o que virou mensagem, e a sua resposta é uma. Citando,\n'
-  + 'o pedido dele fica no histórico pela sua boca, mesmo que a fila descarte de novo.\n\n'
-  + 'Ele disse: "as vezes eu digito aqui e o texto fica em itálico. daí ao sair da\n'
-  + 'janela e voltar, o texto simplesmente some". Boa parte é ditada por voz, na rua.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  + '\nResponda o pedido e escreva na resposta um trecho de pelo menos 5 palavras seguidas do texto acima.\n'
+  + 'A próxima volta passa.',
 )
 process.exit(2)

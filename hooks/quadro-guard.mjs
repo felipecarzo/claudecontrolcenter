@@ -136,15 +136,10 @@ if (somados !== conta.total) {
   const conhecidos = new Set([...conta.noQuadro, ...conta.semRoadmap, ...conta.semNada, ...conta.avisados.map((a) => a.projeto)])
   const sumidos = listaCrua.map((p) => p.projeto).filter((n) => !conhecidos.has(n))
   console.error(
-    `A CONTA DOS PROJETOS NÃO FECHA: ${somados} de ${conta.total}.\n\n`
-    + 'Todo projeto do disco tem que cair em um de três lugares: no quadro, na\n'
-    + 'faixa de aviso, ou na linha dos sem roadmap. Se a soma não bate, alguma\n'
-    + 'coisa no caminho está descartando projeto em silêncio.\n\n'
-    + (sumidos.length ? `Sumiram sem serem contados:\n${sumidos.map((s) => `    · ${s}`).join('\n')}\n\n` : '')
-    + 'Foi assim que 11 projetos saíam por um `.filter()` no fim de `carregar()`,\n'
-    + 'e o carzo passou dias invisível sem ninguém conseguir dizer por quê.\n\n'
-    + 'Procure filtro novo em `carregar()` ou em `montar()`, em src/trabalho.mjs.\n\n'
-    + 'Esta é a única volta: a próxima passa.',
+    `[quadro-guard] A conta dos projetos não fecha: ${somados} de ${conta.total}.\n`
+    + (sumidos.length ? `Sem contagem: ${sumidos.slice(0, 5).join(', ')}.\n` : '')
+    + 'Todo projeto do disco cai no quadro, na faixa de aviso ou na linha dos sem roadmap. Procure filtro novo em carregar() ou montar(), em src/trabalho.mjs.\n'
+    + 'A próxima volta passa.',
   )
   process.exit(2)
 }
@@ -164,13 +159,10 @@ if (sairam.length) {
      nível e o de baixo. */
   const porque = new Map(conta.avisados.map((a) => [a.projeto, a.motivo]))
   console.error(
-    `${sairam.length} PROJETO(S) SAÍRAM DO QUADRO DESDE A ÚLTIMA VOLTA.\n\n`
+    `[quadro-guard] ${sairam.length} projeto(s) saíram do quadro desde a última volta.\n`
     + sairam.map((p) => `    · ${p}${porque.has(p) ? `: ${porque.get(p)}` : ''}`).join('\n')
-    + '\n\nAntes apareciam, agora não. Isso é regressão, não novidade: ou o\n'
-    + 'roadmap mudou de formato, ou o código que o lê parou de entender.\n\n'
-    + 'Este aviso volta em toda resposta até o projeto voltar ao quadro, ou até\n'
-    + 'você decidir que ele não deve mais estar lá.\n\n'
-    + 'Esta é a única volta: a próxima passa.',
+    + '\nConfira se o roadmap mudou de formato ou se o código que o lê parou de entender, e faça o projeto voltar ao quadro.\n'
+    + 'A próxima volta passa.',
   )
   process.exit(2)
 }
@@ -186,12 +178,9 @@ gravarFoto({
 if (!forasNovos.length) sair()
 
 console.error(
-  `${forasNovos.length} PROJETO(S) LIDO(S) E FORA DO QUADRO, PELA PRIMEIRA VEZ.\n\n`
+  `[quadro-guard] ${forasNovos.length} projeto(s) lido(s) e fora do quadro, pela primeira vez.\n`
   + forasNovos.map((a) => `    · ${a.projeto}: ${a.motivo}`).join('\n')
-  + '\n\nO painel achou a pasta e leu o roadmap. O que ele não conseguiu foi\n'
-  + 'tirar tarefa de lá. Isso costuma ser formato: o quadro entende cabeçalho,\n'
-  + 'lista com caixa de marcar, e tabela com coluna de tarefa e de status.\n\n'
-  + 'Aviso ÚNICO: se você decidir conviver com isso, ele não volta a falar.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  + '\nO painel leu o roadmap e não tirou tarefa dele. Costuma ser formato: o quadro entende cabeçalho, lista com caixa de marcar e tabela com colunas de tarefa e de status.\n'
+  + 'Aviso único. A próxima volta passa.',
 )
 process.exit(2)

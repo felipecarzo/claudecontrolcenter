@@ -6,6 +6,8 @@
 //   node cc.mjs daemon install     roda sozinho no logon + atalho no Desktop
 //   node cc.mjs daemon status|restart|uninstall
 //   node cc.mjs set '<json>'       agente grava seu meta.json
+//   node cc.mjs sessao encerrar [--so-marcar]   marca esta sessão como encerrada e fecha o tmux dela (CC-1075)
+//   node cc.mjs capsula fazer|provar|ensaio <pasta ou arquivo> [--saida <pasta>] [--senha-stdin] [--segredo a,b]   cápsula do projeto (CC-1080)
 //   node cc.mjs done "tarefa"      fecha um to-do sem reenviar a lista
 //   node cc.mjs check              usado pelo hook: avisa to-do aberto na entrega
 //   node cc.mjs on|off [--project X]   liga/desliga o reporte
@@ -43,6 +45,8 @@ const argv = process.argv.slice(2)
 const FLAGS_WITH_VALUE = new Set([
   '--port', '--job', '--project', '--dir', '--metodo', '--motivo', '--nome', '--criterio', '--pastas',
   '--prova', '--pronto', '--conferir', '--branch', '--alvo', '--apontou', '--respondeu', '--quem',
+  // CC-1085: as viradas da ideia (listas separadas por ';') e a matriz que ele confirma
+  '--saiu', '--ficou', '--itens',
   // CC-187: ligar um aparelho novo ao cockpit sem SSH
   '--para', '--token',
   // CC-232: a lista de tarefas dele, pela linha de comando
@@ -59,8 +63,13 @@ const FLAGS_WITH_VALUE = new Set([
   '--ultimos',
   // CC-1033: o gerador de baralho; CC-1037: os textos do app
   '--rotas', '--max', '--areas',
+  // CC-1076: onde o guia manual grava, sem mexer no INDICE
+  '--saida',
+  // CC-1080: segredos extras da cápsula (lista separada por vírgula)
+  '--segredo',
   // CC-1039: o login do gerador de baralho (a senha e o cookie vêm de variável de ambiente, nunca da linha)
   '--entrar', '--usuario', '--senha-env', '--cookie-env', '--seletor-usuario', '--seletor-senha', '--seletor-enviar',
+  '--fonte', // CC-1086: a fonte da pesquisa na entrevista
 ])
 
 const has = (f) => argv.includes(f)
@@ -1003,6 +1012,7 @@ switch (cmd) {
           console.log(`  ${p.pergunta}`)
           if (p.ajuda) console.log(`  (${p.ajuda})`)
           for (const o of p.opcoes || []) console.log(`    · ${o.valor.padEnd(11)} ${o.label} — ${o.descricao}`)
+          if (p.pesquisavel) console.log(`\n  esta a IA pesquisa: node cc.mjs framework entrevista pesquisa ${p.id} "<o que achou>" --fonte <endereço>`)
           console.log(`\n  responder: node cc.mjs framework entrevista responder "<sua resposta>"\n`)
         }
 
@@ -1019,6 +1029,21 @@ switch (cmd) {
             const f = D.fecharEntrevista(r, res.estado, E.itensDoBacklog(res.estado))
             if (f.gravou?.ok) console.log(`backlog do projeto: ${f.gravou.novos.length} item(ns) novo(s) em docs/backlog.jsonl`)
           }
+          mostrarProxima(res.estado)
+          break
+        }
+
+        /* CC-1086: a sessão grava o que pesquisou, com fonte. Fica como palpite
+           até ele confirmar (responder a mesma pergunta na tela ou aqui). */
+        if (acao === 'pesquisa') {
+          const id = positional[3]
+          const achado = positional.slice(4).join(' ')
+          const fontes = argv.flatMap((a, i) => (a === '--fonte' && argv[i + 1] ? [argv[i + 1]] : []))
+          if (!id || !achado) die('uso: node cc.mjs framework entrevista pesquisa <id> "<o que achou>" --fonte <endereço> [--fonte <endereço>]')
+          const res = E.responder(e, id, achado, { de: 'pesquisa', fontes })
+          if (!res.ok) die(res.erro)
+          D.gravar(r, res.estado)
+          console.log(`${id} (achado da pesquisa, espera ele confirmar): ${res.resposta.texto}\n  fontes: ${res.resposta.fontes.join(', ')}`)
           mostrarProxima(res.estado)
           break
         }
@@ -1044,6 +1069,122 @@ switch (cmd) {
         break
       }
 
+      /* CC-1085: os marcos da ideia viva, pela linha de comando.
+
+         ⚠️ Todos leem com `{ sessao: null }` antes de gravar: escolha DELE não
+         pode passar pela camada da sessão, senão `gravar()` restaura o modo e a
+         gravação vira no-op calado (CLAUDE.md, "ler() COM sessão faz gravar()
+         ignorar o modo"). E recusam em projeto de outro método, dizendo qual é:
+         gravar `ideia` num `mvp-basico` criaria um campo que nenhum portão lê. */
+      case 'marco':
+      case 'virada':
+      case 'semente':
+      case 'rascunho':
+      case 'matriz':
+      case 'uso': {
+        const r = exigeRaiz()
+        const e = D.ler(r, { sessao: null })
+        if (e.metodo !== 'ideia-viva') {
+          die(`este projeto está no método ${e.metodo}, e "framework ${arg}" é do método ideia-viva\ntroque o método no painel (seletor de método) antes de usar`)
+        }
+        const agora = new Date().toISOString()
+        const lista = (v) => String(v || '').split(';').map((t) => t.trim()).filter(Boolean)
+        const gravarIdeia = (ideia) => D.gravar(r, { ...e, ideia: { ...e.ideia, ...ideia } })
+        // Quem confirma, toca ou diz que alguém usou é ELE, nunca a sessão: igual ao aviso do `mvp`.
+        const avisoDele = () => console.log('\n!! se isto não veio de uma resposta DELE, pare: marco não é seu para fechar.\n')
+
+        if (arg === 'marco') {
+          const M = F.METODOS[e.metodo]
+          const a = F.avaliar(e.metodo, e)
+          console.log(`marco ${a.indice + 1} de ${M.fases.length}: ${a.tituloFase}`)
+          console.log(`  ${a.explica}`)
+          M.fases.forEach((f, i) => {
+            const marca = i < a.indice ? '[x]' : i === a.indice ? '[>]' : '[ ]'
+            console.log(`  ${marca} ${i + 1}. ${f.titulo}${i === a.indice ? '   <- você está aqui' : ''}`)
+          })
+          if (a.pendencias.length) a.pendencias.forEach((p) => console.log(`  falta: ${p}`))
+          else console.log(a.ultima ? '  portão aberto: não há marco depois deste' : '  portão aberto: pode avançar (framework avancar)')
+          if (a.fase === 'matriz') {
+            const palpite = F.palpiteDeMatriz(e)
+            console.log(palpite.length
+              ? `  palpite de matriz (só palpite, ele confirma): ${palpite.join('; ')}`
+              : '  palpite de matriz: nenhum, porque ainda não houve virada')
+          }
+          const viradas = (e.historico || []).filter((h) => h.tipo === 'virada').length
+          if (viradas) console.log(`  viradas registradas: ${viradas}`)
+          break
+        }
+
+        if (arg === 'virada') {
+          const v = F.virar(e, { saiu: lista(val('--saiu')), ficou: lista(val('--ficou')), motivo: val('--motivo'), quando: agora })
+          if (!v.ok) die(`${v.erro}\nuso: node cc.mjs framework virada --saiu "a;b" --ficou "c;d" --motivo "..."`)
+          D.gravar(r, v.estado)
+          console.log(`virada registrada no marco ${v.estado.fase} (a fase não mudou)`)
+          console.log(`  saiu: ${lista(val('--saiu')).join('; ') || '(nada)'}`)
+          console.log(`  ficou: ${lista(val('--ficou')).join('; ') || '(nada)'}`)
+          break
+        }
+
+        if (arg === 'semente') {
+          const frase = positional.slice(2).join(' ').trim()
+          if (!frase) { console.log(`frase: ${e.ideia?.frase || '(não registrada)'}`); break }
+          gravarIdeia({ frase })
+          console.log(`semente: ${frase}`)
+          break
+        }
+
+        if (arg === 'rascunho') {
+          const sub = positional[2]
+          if (sub === 'tocou') {
+            if (!e.ideia?.rascunho?.url) die('o rascunho ainda não tem endereço\nregistre com: node cc.mjs framework rascunho --url <endereço>')
+            avisoDele()
+            gravarIdeia({ rascunho: { ...e.ideia.rascunho, tocou: agora } })
+            console.log(`rascunho tocado em ${agora}`)
+            break
+          }
+          const url = val('--url')
+          if (!url) {
+            const rs = e.ideia?.rascunho
+            console.log(`endereço: ${rs?.url || '(não registrado)'}`)
+            console.log(`tocou:    ${rs?.tocou || 'não'}`)
+            break
+          }
+          // Endereço novo zera o `tocou`: ele tocou no rascunho antigo, não neste.
+          gravarIdeia({ rascunho: { url, tocou: null } })
+          console.log(`rascunho: ${url}\n  falta ele tocar e dizer: node cc.mjs framework rascunho tocou`)
+          break
+        }
+
+        if (arg === 'matriz') {
+          if (positional[2] !== 'confirmar') {
+            console.log(`matriz: ${(e.ideia?.matriz || []).join('; ') || '(vazia)'}`)
+            console.log(`confirmada: ${e.ideia?.matrizConfirmada || 'não'}`)
+            const palpite = F.palpiteDeMatriz(e)
+            if (palpite.length) console.log(`palpite: ${palpite.join('; ')}`)
+            console.log('confirmar: node cc.mjs framework matriz confirmar [--itens "a;b"]')
+            break
+          }
+          const itens = val('--itens') ? lista(val('--itens')) : F.palpiteDeMatriz(e)
+          if (!itens.length) die('não há matriz para confirmar: sem viradas não há palpite\ninforme os itens com: --itens "a;b"')
+          avisoDele()
+          gravarIdeia({ matriz: itens, matrizConfirmada: agora })
+          console.log(`matriz confirmada: ${itens.join('; ')}`)
+          break
+        }
+
+        // arg === 'uso'
+        const quem = val('--quem')
+        if (!quem) {
+          const u = e.ideia?.usoReal
+          console.log(u ? `usou: ${u.quem} em ${u.quando}` : 'uso real: não registrado\nregistre com: node cc.mjs framework uso --quem "..."')
+          break
+        }
+        avisoDele()
+        gravarIdeia({ usoReal: { quem, quando: agora } })
+        console.log(`uso real: ${quem} em ${agora}`)
+        break
+      }
+
       case 'status':
       case undefined: {
         if (!raiz) { console.log('este projeto não tem framework ligado'); break }
@@ -1051,7 +1192,7 @@ switch (cmd) {
         break
       }
       default:
-        die(`uso: node cc.mjs framework [status|iniciar|modo <nome>|entrevista|autorizar [alvo]|mvp|avancar]`)
+        die(`uso: node cc.mjs framework [status|iniciar|modo <nome>|entrevista|autorizar [alvo]|mvp|avancar|marco|virada|semente|rascunho|matriz|uso]`)
     }
     break
   }
@@ -2861,19 +3002,41 @@ switch (cmd) {
       const r = X.levantar(projeto)
       const areas = val('--areas') ? new Set(String(val('--areas')).split(',').map((a) => a.trim())) : null
       const itens = areas ? r.itens.filter((i) => areas.has(X.areaDe(i.arquivo))) : r.itens
-      const pacote = X.montarBaralhos(itens, { projeto: path.basename(projeto).replace(/^(VPS|PC)_/, '') })
+      const base = X.enderecoDoProjeto(projeto, { url: val('--url') || null }) // CC-1067: o link de cada carta
+      const pacote = X.montarBaralhos(itens, { projeto: path.basename(projeto).replace(/^(VPS|PC)_/, ''), base })
       const escritos = X.gravar(projeto, pacote)
       console.log(`\n${r.itens.length} texto(s) achado(s)${areas ? `, ${itens.length} nas áreas pedidas` : ''}; ${r.dinamicos} montado(s) em tempo de execução ficaram de fora.`)
       for (const e of escritos) console.log(`  ${e.nome}: ${e.cartas} carta(s)`)
       console.log('\nAbra o painel, aba Revisões. Em cada carta: Aprovo, Editar (o campo abre com o texto atual, você ajusta e envia) ou Recuso.')
       console.log(`Quando terminar: cc textos aplicar --pasta ${projeto}\n`)
+      /* CC-1066: a trava do print. Não fotografa aqui (o navegador não roda no sandbox): avisa o que falta */
+      const C = await import('./src/cartas.mjs')
+      const faltam = C.listarDecks(projeto).filter((n) => n.startsWith('textos-')).reduce((t, n) => t + C.semPrint(JSON.parse(fs.readFileSync(path.join(projeto, 'docs', 'cartas', n + '.json'), 'utf8'))).length, 0)
+      const temEndereco = Boolean(base)
+      if (faltam && temEndereco) console.log(`${faltam} cartas de texto sem print: rode \`cc textos print --pasta ${projeto}\` antes de pedir a revisão\n`)
+      else if (!temEndereco) console.log('projeto sem endereço para fotografar: as cartas ficam só com texto, arquivo e linha\n')
+    } else if (acao === 'print') {
+      /* CC-1066: o print de cada carta de texto (contorno rosa no bloco). Precisa do Chrome: rode fora do sandbox */
+      const P = await import('./src/printTextos.mjs')
+      const dir = path.join(projeto, 'docs', 'cartas')
+      const pedido = val('--baralho') ? String(val('--baralho')).replace(/\.json$/, '') : null
+      const nomes = (fs.existsSync(dir) ? fs.readdirSync(dir) : []).filter((f) => /^textos-[a-z0-9-]+\.json$/.test(f)).map((f) => f.slice(0, -5))
+        .filter((n) => !pedido || n === pedido || n === 'textos-' + pedido)
+      if (!nomes.length) { console.error('nenhum baralho de texto encontrado em ' + dir); process.exit(1) }
+      for (const n of nomes) {
+        let r
+        try { r = await P.imprimir({ baralhoArquivo: path.join(dir, n + '.json'), pasta: projeto, refazer: has('--refazer'), url: val('--url') || null, estados: val('--estados') || null }) }
+        catch (e) { console.error(`${n}: ${e.message}`); process.exit(1) }
+        console.log(`\n${n}: ${P.relatorio(r)}`)
+      }
+      console.log('')
     } else if (acao === 'aplicar') {
       const r = X.aplicar(projeto, { ensaio: has('--ensaio') })
       console.log(`\n${has('--ensaio') ? '[ensaio, nada gravado] ' : ''}${r.aplicadas.length} edição(ões) aplicada(s), ${r.puladas.length} pulada(s).`)
       for (const a of r.aplicadas) console.log(`  ${a.arquivo}\n    de:   ${a.de}\n    para: ${a.para}`)
       for (const p of r.puladas) console.log(`  pulada ${p.id}${p.arquivo ? ' (' + p.arquivo + ')' : ''}: ${p.motivo}`)
       console.log(r.aplicadas.length && !has('--ensaio') ? '\nSem commit. Rode os testes do projeto e confira o diff.\n' : '')
-    } else die('uso: cc textos levantar|aplicar --pasta <projeto> [--areas app,componentes,dados,motor] [--ensaio]')
+    } else die('uso: cc textos levantar|aplicar|print --pasta <projeto> [--areas app,componentes,dados,motor] [--ensaio]')
     break
   }
 
@@ -3091,6 +3254,105 @@ switch (cmd) {
     const { url } = wantWeb ? await startWeb({ port }) : { url: null }
     if (wantTui) startTui({ link: url })
     else console.log(`control center: ${url}`)
+    break
+  }
+
+  /* CC-1068: o modo Regente do arquiteto, pelo terminal e pelo timer (tools/plantao). `passo` roda um passo do arquiteto
+     nesta pasta, no mesmo processo de sempre (src/arquiteto.mjs --passo), e só vale com o Regente ligado. */
+  case 'regente': {
+    const R = await import('./src/regente.mjs')
+    const raiz = path.resolve(val('--pasta') || process.cwd())
+    if (arg === 'ligar') console.log(JSON.stringify(R.ligar(raiz, { risco: has('--risco') }), null, 1))
+    else if (arg === 'desligar') console.log(JSON.stringify(R.desligar(raiz), null, 1))
+    else if (arg === 'estado') {
+      const ultimas = (f) => { try { return fs.readFileSync(f, 'utf8').split(/\r?\n/).filter((l) => l.startsWith('- ')).slice(-5) } catch { return [] } }
+      console.log(JSON.stringify({ ...R.ler(raiz), regras: { projeto: ultimas(R.arquivoRegras(raiz)), geral: ultimas(R.arquivoRegrasGeral()) } }, null, 1))
+    } else if (arg === 'regra') {
+      const r = R.aprender(raiz, positional[2], { geral: has('--geral') })
+      if (!r.ok) die(r.erro)
+      console.log(`anotada em ${r.arquivo}: ${r.linha}`)
+    } else if (arg === 'passo') {
+      if (!R.ler(raiz).ligado) die(`o Regente está desligado em ${raiz}`)
+      const { spawn } = await import('node:child_process')
+      const filho = spawn(process.execPath, [(await import('node:url')).fileURLToPath(new URL('./src/arquiteto.mjs', import.meta.url)), '--pasta', raiz, '--passo'], { cwd: raiz, stdio: 'inherit' })
+      await new Promise((ok) => filho.on('close', (c) => { process.exitCode = c || 0; ok() }))
+    } else die('uso: cc regente ligar|desligar|estado|passo [--pasta <projeto>] [--risco]  ou  cc regente regra "<texto>" [--geral]')
+    break
+  }
+
+  /* CC-1075: `cc sessao encerrar` marca ESTA sessão como encerrada no painel e fecha o tmux dela em 6 s. */
+  case 'guia': {
+    // CC-1076: o guia de uma frente, escrito pelo Haiku. `cc guia frente <nome> [--ensaio]`
+    const nome = positional[2]
+    if (arg !== 'frente' || !nome) die('uso: node cc.mjs guia frente <nome da frente> [--ensaio] [--saida <arquivo>]')
+    const { acharRaiz } = await import('./src/guias.mjs')
+    const { gerar, TETO_TOTAL, arquivoLog } = await import('./src/guiaHaiku.mjs')
+    const raizG = acharRaiz(process.cwd())
+    if (!raizG) die('sem docs/backlog.jsonl aqui: rode dentro de um projeto')
+    const r = gerar({ raiz: raizG, frente: nome, ensaio: has('--ensaio'), saida: val('--saida') })
+    if (r.status === 'ensaio') {
+      console.log(`ensaio da frente "${nome}": ${r.itens.length} itens (${r.itens.join(', ')}), ${r.bytes} bytes de material (teto ${TETO_TOTAL}), ${r.arquivos.length} arquivos de código`)
+      for (const c of r.cortes) console.log(`  cortou: ${c}`)
+      console.log('nenhum modelo foi chamado')
+    } else if (r.status === 'gravou') console.log(`guia gravado: ${r.arquivo} (modelo ${r.modelo}, citações ${r.citacoes.certas} de ${r.citacoes.total}, estado ${r.estado.certas} de ${r.estado.total})`)
+    else die(`guia não gerado: ${r.status}${r.erro ? `: ${r.erro}` : ''} (log: ${arquivoLog()})`)
+    break
+  }
+
+  /* CC-1080, passo 1: a cápsula de um projeto (backup que volta igual, sem IA).
+     fazer <pasta> [--saida <pasta>] [--segredo a,b] [--senha-stdin]   grava a cápsula e a prova numa pasta temporária
+     provar <arquivo> [--senha-stdin]                                  restaura numa pasta temporária, compara e grava `provada`
+     ensaio <pasta>                                                    só mede tamanho e disco livre, não grava
+     A senha dos segredos vem SÓ por stdin (--senha-stdin): nunca por argumento, variável ou arquivo. */
+  case 'capsula': {
+    const alvo = positional[2]
+    if (!['fazer', 'provar', 'ensaio'].includes(arg) || !alvo) die('uso: node cc.mjs capsula fazer|ensaio <pasta do projeto> [--saida <pasta>] [--segredo a,b] [--senha-stdin]\n     node cc.mjs capsula provar <arquivo .capsula.tar.gz> [--senha-stdin]')
+    const C = await import('./src/capsula.mjs')
+    const senha = has('--senha-stdin') ? fs.readFileSync(0, 'utf8').split('\n')[0].replace(/\r$/, '') : null
+    const extras = (val('--segredo') || '').split(',').map((x) => x.trim()).filter(Boolean)
+    const saida = val('--saida') ? path.resolve(val('--saida')) : C.pastaCapsulas()
+    try {
+      if (arg === 'ensaio') {
+        const e = C.ensaio(alvo, { saida, extras })
+        console.log(`pasta: ${e.raiz}\n${e.entradas} entradas, ${C.formatarBytes(e.bytes)} (pico de gravação estimado ${C.formatarBytes(e.pico)})\ndisco livre em ${saida}: ${C.formatarBytes(e.livre)}; sobraria ${C.formatarBytes(e.sobra)} (mínimo ${C.formatarBytes(C.MIN_SOBRA)})\nsegredos: ${e.segredos.length ? e.segredos.join(', ') : 'nenhum'}\ncabe: ${e.cabe ? 'sim' : 'NÃO'}\n(nada foi gravado)`)
+        if (!e.cabe) process.exitCode = 1
+      } else if (arg === 'fazer') {
+        const r = await C.fazer(alvo, { senha, saida, extras })
+        console.log(`cápsula: ${r.arquivo}\ntamanho: ${C.formatarBytes(r.bytes)} (${r.bytes} bytes)\nprova: ${r.prova.ok ? 'OK' : 'FALHOU'}, ${r.prova.motivo}`)
+        if (!r.prova.ok) process.exitCode = 1
+      } else {
+        const r = C.provar(path.resolve(alvo), { senha })
+        console.log(`prova: ${r.ok ? 'OK' : r.parcial ? 'PARCIAL' : 'FALHOU'}, ${r.motivo}`)
+        if (!r.ok) process.exitCode = r.parcial ? 2 : 1
+      }
+    } catch (e) { die(`cápsula: ${e.message}`) }
+    break
+  }
+
+  case 'sessao': {
+    if (arg !== 'encerrar') die('uso: cc sessao encerrar [--so-marcar]')
+    const { encerrar } = await import('./src/encerrarSessao.mjs')
+    const r = await encerrar({ soMarcar: has('--so-marcar') })
+    if (!r.ok) die(r.erro)
+    console.log(r.texto)
+    break
+  }
+
+  /* CC-852: a conferência padrão (abre, anda, teste) declarada e validada no AGENTS.md de cada projeto.
+     padrao [--projeto <pasta>] [--ensaio]   roda uma candidata por vez (teto 300 s) e só declara a que passa */
+  case 'conferencia': {
+    if (arg !== 'padrao') die('uso: node cc.mjs conferencia padrao [--projeto <pasta>] [--ensaio]')
+    const { declararConferenciaPadrao } = await import('./src/maestro.mjs')
+    const ensaio = has('--ensaio')
+    const alvo = val('--projeto')
+    const linhas = await declararConferenciaPadrao({ projeto: alvo, ensaio, aoLinha: (l) => console.error(`  ${l.projeto}: ${l.resultado}`) })
+    const larg = (k) => Math.max(k.length, ...linhas.map((l) => l[k].length))
+    const [a, b] = [larg('projeto'), larg('conferencia')]
+    const linha = (x, y, z) => `${x.padEnd(a)} | ${y.padEnd(b)} | ${z}`
+    console.log(`\n${linha('projeto', 'conferência', 'resultado')}\n${'-'.repeat(a + b + 14)}`)
+    for (const l of linhas) console.log(linha(l.projeto, l.conferencia, l.resultado))
+    if (ensaio) console.log('\n(ensaio: nada foi rodado nem gravado)')
+    console.log()
     break
   }
 

@@ -115,15 +115,12 @@ if (ultimoGate > ultimaEdicao) sair() // rodou o gate depois da última mudança
 const nunca = ultimoGate < 0
 
 console.error(
-  `${nunca ? 'CÓDIGO EDITADO E O GATE NÃO RODOU' : 'O GATE RODOU ANTES DA ÚLTIMA EDIÇÃO'}, rode antes de encerrar.\n\n`
-  + `Última mudança de código neste turno: ${ondeEditou}\n`
-  + (nunca ? '' : 'O `npm test` passou, e DEPOIS o código mudou. Verde de um estado que\n'
-    + 'não existe mais: foi assim que a regressão do `4f78264` ficou escondida.\n')
-  + '\n    npm test\n\n'
-  + '  · `npm` = o gerenciador de pacotes do Node, que roda os scripts do projeto\n'
-  + '  · `test` = o script declarado no package.json; aqui ele executa o test.mjs,\n'
-  + '    que é o gate inteiro deste repositório\n\n'
-  + 'Se o gate não se aplica ao que você mexeu, diga isso na resposta em vez de\n'
-  + 'encerrar calado. Esta é a única volta: a próxima passa.',
+  `[gate-guard] ${nunca ? 'Código editado neste turno e o gate não foi executado.' : 'O gate foi executado antes da última edição de código.'}\n`
+  + `Última edição: ${ondeEditou}\n`
+  + 'Execute o gate antes de encerrar:\n\n'
+  + '    npm test\n\n'
+  + '  · `npm` = gerenciador de pacotes do Node, que roda os scripts do projeto\n'
+  + '  · `test` = script do package.json que executa o test.mjs, o gate inteiro deste repositório\n\n'
+  + 'Se a mudança não precisa do gate, encerre com uma linha dizendo isso. A próxima volta passa.',
 )
 process.exit(2)

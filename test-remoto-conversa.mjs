@@ -87,15 +87,73 @@ try {
 /* CC-675: a saúde da sessão lida no rodapé, com as telas medidas em 28/09. */
 try {
   const { saudeDaTela: f } = await import('./src/remotecontrol.mjs')
-  assert.deepEqual(f('❯ \n───\n  ⏸ manual mode on         ✔ Update installed\n                          /rc'), { celular: true, presa: null, trabalhando: false })
-  assert.deepEqual(f('● Remote Control disconnected (code 4090)\n❯ monta\n───\n  ⏸ manual mode on\n                          /rc failed'), { celular: false, presa: null, trabalhando: false })
-  assert.deepEqual(f('Do you trust the files in this folder?\n ❯ 1. Yes, I trust this folder\n   2. No, exit\n Enter to confirm · Esc to cancel'), { celular: null, presa: 'parada na pergunta de confiança da pasta', trabalhando: false })
-  assert.deepEqual(f('  4. Estudo\n  5. Type something.\n───\n  6. Chat about this\nEnter to select · ↑/↓ to navigate · Esc to cancel\n─── VPS_ecommerce_apps ─'), { celular: null, presa: null, trabalhando: false }, 'pergunta do agente não é sessão presa')
+  assert.deepEqual(f('❯ \n───\n  ⏸ manual mode on         ✔ Update installed\n                          /rc'), { celular: true, presa: null, trabalhando: false, fechadaNoApp: false })
+  assert.deepEqual(f('● Remote Control disconnected (code 4090)\n❯ monta\n───\n  ⏸ manual mode on\n                          /rc failed'), { celular: false, presa: null, trabalhando: false, fechadaNoApp: false })
+  assert.deepEqual(f('Do you trust the files in this folder?\n ❯ 1. Yes, I trust this folder\n   2. No, exit\n Enter to confirm · Esc to cancel'), { celular: null, presa: 'parada na pergunta de confiança da pasta', trabalhando: false, fechadaNoApp: false })
+  assert.deepEqual(f('  4. Estudo\n  5. Type something.\n───\n  6. Chat about this\nEnter to select · ↑/↓ to navigate · Esc to cancel\n─── VPS_ecommerce_apps ─'), { celular: null, presa: null, trabalhando: false, fechadaNoApp: false }, 'pergunta do agente não é sessão presa')
   assert.equal(f('  ⎿  Running…\n✢ Frolicking… (13m 45s · ↓ 31.9k tokens)\n───\n❯ \n───\n  ⏵⏵ auto mode on\n                    /rc').trabalhando, true, 'turno em andamento')
   assert.equal(f('✻ Crunched for 16m 53s · done 4:47 AM\n───\n❯ \n───\n  ⏸ manual mode on\n                    /rc').trabalhando, false, 'turno acabado')
   assert.equal(f('Network request outside of sandbox\n Host: r.jina.ai\n Do you want to allow this connection?\n ❯ 1. Yes\n   2. No').celular, null, 'com o pedido na tela, não dá para saber do celular')
   ok('a tela diz se o celular caiu, se a sessão está presa num menu e se está trabalhando')
+
+  /* CC-1090: a tela de verdade da sessão cc-remote-vr_apps-2, copiada de `tmux capture-pane` em 07/11 (travessão
+     escrito como \u2014 e o espaço depois do ❯ como \u00a0, que é como o terminal entrega). Ele fechou a sessão no
+     app com /exit; o processo ficou vivo, o rodapé diz "/rc failed" e a mensagem quebra a linha no meio da frase. */
+  const TELA_FECHADA = [
+    '\u273b Worked for 4m 21s \u00b7 done 10:19 PM',
+    '',
+    '\u25cf Remote Control disconnected \u2014 the server no longer reports this',
+    '  session \u2014 it may have been deleted from another device or app (code',
+    '  4090)',
+    '',
+    '\u2500'.repeat(60),
+    '\u276f\u00a0testei, ficou melhor que o app',
+    '\u2500'.repeat(60),
+    '  \u23f5\u23f5 auto mode on (shift+tab to cycle)  \u2714 Update installed \u00b7 Restart to update',
+    '                                          new task? /clear to save 118k tokens',
+    '                                                                    /rc failed',
+  ].join('\n')
+  const real = f(TELA_FECHADA)
+  assert.equal(real.fechadaNoApp, true, 'a frase quebrada em duas linhas tem que ser reconhecida')
+  assert.equal(real.celular, false, 'o rodapé diz /rc failed')
+  assert.equal(f(TELA_FECHADA.replace('/rc failed', '/rc')).fechadaNoApp, false, 'celular religado: a mensagem velha não vale')
+  const MSG = TELA_FECHADA.split('\n').slice(2, 5).join('\n')
+  const semFrase = TELA_FECHADA.replace(MSG, '\u25cf Remote Control disconnected (code 4090)')
+  assert.equal(f(semFrase).fechadaNoApp, false, 'sem a frase do servidor não é fechada no app')
+  assert.equal(f(semFrase).celular, false)
+  const soMetade = TELA_FECHADA.replace(MSG, '\u25cf Remote Control disconnected\n  it may have been deleted from another device or app (code 4090)')
+  assert.equal(f(soMetade).fechadaNoApp, true, 'a outra frase do aviso (deleted from another device) também vale')
+  ok('sessão fechada no app: a tela de verdade da vr_apps-2 é reconhecida, e celular caído sem querer não')
+
+  /* O texto no campo dessa mesma tela vem esmaecido (ESC[2m): é a SUGESTÃO do Claude Code, não uma resposta dele
+     parada. Medido na tela de verdade com `tmux capture-pane -e`. */
+  const { rascunhoDaTela: rasc } = await import('./src/remotecontrol.mjs')
+  const comCor = TELA_FECHADA.replace('\u276f\u00a0testei, ficou melhor que o app', '\u276f\u00a0\x1b[2mtestei, ficou melhor que o app\x1b[0m')
+  assert.equal(rasc(comCor), '', 'sugestão esmaecida não vira "resposta parada"')
+  assert.equal(rasc(TELA_FECHADA.replace('testei, ficou melhor que o app', 'testei, ficou melhor que o app')), 'testei, ficou melhor que o app', 'o mesmo texto SEM esmaecer é digitado por ele')
+  ok('a sugestão esmaecida do campo não é tomada por resposta que ficou parada')
 } catch (e) { erro('saúde da sessão', e) }
+
+/* Sessão morta no reinício da VPS: vínculo "vivo" sem terminal, com conversa em disco. */
+try {
+  const { filtrarMortas } = await import('./src/remotecontrol.mjs')
+  const agora = Date.now()
+  const pasta = process.cwd()
+  const vinculos = {
+    morta: { conversa: 'c-morta', cwd: pasta, certeza: 'medida', desde: 10, encerradaEm: null },
+    'morta-2': { conversa: 'c-morta', cwd: pasta, certeza: 'medida', desde: 20, encerradaEm: null },
+    viva: { conversa: 'c-viva', cwd: pasta, encerradaEm: null },
+    forasolta: { conversa: 'c-fora', cwd: pasta, encerradaEm: null },
+    encerrada: { conversa: 'c-enc', cwd: pasta, encerradaEm: agora - 1000 },
+    semConversa: { conversa: null, cwd: pasta, encerradaEm: null },
+    velha: { conversa: 'c-velha', cwd: pasta, encerradaEm: null },
+    sumiu: { conversa: 'c-sumiu', cwd: '/nao/existe/mesmo', encerradaEm: null },
+  }
+  const ultima = (c) => ({ 'c-morta': agora - 3600e3, 'c-viva': agora, 'c-fora': agora, 'c-enc': agora, 'c-velha': agora - 30 * 86400e3, 'c-sumiu': agora })[c] || 0
+  const r = filtrarMortas({ vinculos, vivos: new Set(['viva']), conversasVivas: new Set(['c-viva', 'c-fora']), ultima, agora })
+  assert.deepEqual(r.map((x) => x.rotulo), ['morta-2'], 'só a morta; mesma conversa em dois rótulos conta uma vez (a mais nova)')
+  ok('sessão morta no reinício aparece uma vez; viva, encerrada, antiga e sem pasta ficam de fora')
+} catch (e) { erro('sessões mortas', e) }
 
 if (falhou) process.exit(1)
 console.log('test-remoto-conversa: ok')

@@ -34,14 +34,13 @@ fim, depois da marca, e não entra na sessão.
 **Ordem.** A primeira frase é o que mudou para ele. Depois, só o que ele decide ou faz. Não justificar o que ele não
 questionou, não descrever de volta o problema que ele trouxe, não abrir parágrafo se defendendo ("Não inventei…").
 
-**Fato, não caminho.** Diga o fato e a causa. O caminho da investigação ("não era o que eu pensava", "erro meu") e o
-veredito vazio ("ficou ótimo") ficam de fora: no lugar do elogio, o número medido.
+**A primeira frase é o fato.** Diga o que mudou e, quando importa, a causa em uma linha. O resto fica nos arquivos do projeto, onde ele lê quando quiser. No lugar de elogio, o número medido.
 
 **O separador.** Resposta longa se parte em duas com esta linha sozinha no meio:
 
     ---------------------------------- // resumo // ----------------------------------
 
-- **Acima:** como cheguei lá: o que medi, o que achei, o que descartei e por quê. Fatos e evidências.
+- **Acima:** fatos e evidências: o que foi medido e encontrado, com os números.
 - **Abaixo:** o que mudou para ele e o que ele precisa fazer, com quatro cuidados:
   1. cada linha se explica sozinha (cortar o de cima e reler; frase que vira enigma está incompleta);
   2. número com a escala;

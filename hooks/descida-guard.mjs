@@ -119,19 +119,9 @@ const mexeu = /"name"\s*:\s*"(Edit|Write|NotebookEdit)"/.test(turno)
 if (!mexeu) sair()
 
 console.error(
-  'ELE REPROVOU E VOCÊ REFEZ NO MESMO NÍVEL.\n\n'
-  + `O que ele disse:\n  "${pedido.replace(/\s+/g, ' ').trim().slice(0, 150)}"\n\n`
-  + 'Regra dele, 16/08: **negativa não significa tentar melhor, significa tentar\n'
-  + 'menor.** Se a tarefa era a landing page e ele reprovou, a seguinte é quebrar\n'
-  + 'em seções. Se reprovar de novo, em botões. Exagerar não é problema; não\n'
-  + 'descer nenhum degrau é.\n\n'
-  + 'No mesmo dia isto aconteceu duas vezes: ele reprovou o design e eu refiz a\n'
-  + 'tela inteira nas duas. A terceira acertou por insistência, não por método.\n\n'
-  + 'Antes de tentar de novo, quebre em partes menores e registre:\n\n'
-  + '    node cc.mjs set \'{"todos":[{"text":"...","done":false,"pronto":"..."}]}\'\n\n'
-  + '  · cada parte precisa poder ser aprovada ou reprovada SOZINHA por ele\n'
-  + '  · três ou mais, senão não houve descida de verdade\n\n'
-  + 'Assim, quando ele reprovar de novo, você saberá qual pedaço estava errado.\n'
-  + 'Esta é a única volta: a próxima passa.',
+  '[descida-guard] Pedido reprovado e a tarefa foi refeita no mesmo nível.\n'
+  + 'Quebre a tarefa em 3 ou mais partes menores e registre-as como to-dos:\n'
+  + '    node cc.mjs set \'{"todos":[{"text":"...","done":false,"pronto":"..."}]}\'\n'
+  + 'Cada parte deve poder ser aprovada ou reprovada sozinha. A próxima volta passa.',
 )
 process.exit(2)

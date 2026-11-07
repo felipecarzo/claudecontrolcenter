@@ -43,5 +43,9 @@ try {
 if (!r || r.status !== 2 || !r.stderr) liberar()
 
 // exit 2 no Stop devolve o stderr ao modelo e o faz continuar em vez de parar.
-process.stderr.write(r.stderr)
+// O texto do `cc check` não é repassado: só a contagem (linhas "○") entra.
+const abertos = r.stderr.split('\n').filter((l) => l.trimStart().startsWith('○')).length
+process.stderr.write(`[todo-guard] ${abertos || 'Há'} to-do(s) em aberto com o status de entrega.\n`
+  + 'Marque cada um com cc done "texto da tarefa", ou registre o que ficou em blockers.\n'
+  + 'A próxima volta passa.\n')
 process.exit(2)

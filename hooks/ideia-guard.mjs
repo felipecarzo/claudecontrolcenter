@@ -66,15 +66,9 @@ export function decidir(pedido, registrou) {
   if (registrou) return null
   const p = String(pedido || '').trim()
   if (p.length <= MINIMO || !MARCADORES.test(p)) return null
-  return 'IDEIA LONGA SÓ NO TEXTO, registre no backlog.\n\n'
-    + `A mensagem dele tem ${p.length} caracteres e abre como visão ("${p.slice(0, 60).replace(/\n/g, ' ')}…").\n`
-    + 'Nesta resposta nada foi registrado no backlog, e o Caminho só lê o backlog: a ideia\n'
-    + 'que fica só na conversa não chega lá. Palavras dele, em 04/10: "às vezes eu falo com um\n'
-    + 'agente, ele só coloca lá no texto".\n\n'
-    + 'Use a skill `ideias` (ou `cc backlog emenda "..." --citacao "..."`, uma por ideia): ela\n'
-    + 'registra com as palavras dele, no trecho do Caminho onde o projeto está. Registrar não é\n'
-    + 'implementar: depois de registrar, pare e diga onde cada ideia ficou.\n'
-    + 'Esta é a única volta: a próxima passa.'
+  return `[ideia-guard] A mensagem dele (${p.length} caracteres) abre como visão e nada foi registrado no backlog.\n`
+    + 'Use a skill ideias, ou cc backlog emenda "<ideia>" --citacao "<palavras dele>", uma por ideia, e diga onde cada uma ficou. Registrar não é implementar.\n'
+    + 'A próxima volta passa.'
 }
 
 /** CC-958: ideia registrada sem lugar, ou com lugar gravado sem perguntar, volta uma vez. */
@@ -84,13 +78,12 @@ export function decidirLugar(pedido, usos = []) {
   const cmds = usos.filter((u) => u.nome === 'Bash').map((u) => u.cmd).join('\n')
   if (!/backlog\s+emenda\b/.test(cmds)) return null
   const gravou = new RegExp(`--lugar[\\s=]+["']?${ONDE}`).test(cmds) || new RegExp(`backlog\\s+lugar\\s+[A-Z]{2,4}-\\d+\\s+["']?${ONDE}`).test(cmds)
-  if (!gravou) return 'IDEIA REGISTRADA SEM LUGAR NA FILA.\n\n'
-    + 'A emenda nasceu como ideia, fora da fila, e nada entra na fila sem o toque dele (decisão dele em 07/10).\n'
-    + 'Pergunte o lugar no AskUserQuestion com as opções que o comando imprimiu, a sugestão primeiro, e grave com\n'
-    + 'node cc.mjs backlog lugar <ID> <agora|dia|sprint|backlog|fora>.\nEsta é a única volta: a próxima passa.'
-  if (!usos.some((u) => u.nome === 'AskUserQuestion') && !LUGAR_NA_FALA.test(String(pedido || ''))) return 'LUGAR GRAVADO SEM PERGUNTAR A ELE.\n\n'
-    + 'O lugar na fila é escolha dele. Confirme no AskUserQuestion, com a sugestão primeiro, e se ele escolher outro grave com\n'
-    + 'node cc.mjs backlog lugar <ID> <lugar>.\nEsta é a única volta: a próxima passa.'
+  if (!gravou) return '[ideia-guard] Emenda registrada sem lugar na fila.\n'
+    + 'Faça a pergunta do lugar na caixa de escolha (AskUserQuestion), com as opções que o comando imprimiu e a sugestão primeiro, e grave com node cc.mjs backlog lugar <ID> <agora|dia|sprint|backlog|fora>.\n'
+    + 'A próxima volta passa.'
+  if (!usos.some((u) => u.nome === 'AskUserQuestion') && !LUGAR_NA_FALA.test(String(pedido || ''))) return '[ideia-guard] Lugar na fila gravado sem a escolha dele.\n'
+    + 'Confirme na caixa de escolha (AskUserQuestion), com a sugestão primeiro, e se ele escolher outro grave com node cc.mjs backlog lugar <ID> <lugar>.\n'
+    + 'A próxima volta passa.'
   return null
 }
 

@@ -70,18 +70,12 @@ const feitas = texto.split(/\r?\n/)
 
 if (!feitas.length) liberar()
 
-const lista = feitas.slice(0, 6).map((t) => `  - ${t}`).join('\n')
-const resto = feitas.length > 6 ? `\n  … e mais ${feitas.length - 6}` : ''
+const lista = feitas.slice(0, 5).map((t) => `  - ${t}`).join('\n')
+const resto = feitas.length > 5 ? `\n  … e mais ${feitas.length - 5}` : ''
 
-process.stderr.write(`ROADMAP com ${feitas.length} ite${feitas.length === 1 ? 'm' : 'ns'} concluído${
+process.stderr.write(`[roadmap-guard] ROADMAP com ${feitas.length} ite${feitas.length === 1 ? 'm' : 'ns'} concluído${
   feitas.length === 1 ? '' : 's'} parado${feitas.length === 1 ? '' : 's'} lá dentro:
-
 ${lista}${resto}
-
-A regra do projeto está na linha 3 do próprio arquivo: "Só o que está aberto.
-Concluído sai daqui e vira linha no diário." Em 14/08 esse acúmulo levou o
-ROADMAP a 993 linhas, com quase metade descrevendo passado.
-
-Mover para \`docs/diario/<data>.md\` antes de encerrar mantém o mapa legível.
+Mova cada um para \`docs/diario/<data>.md\` e deixe no ROADMAP só o que está aberto.
 `)
 process.exit(0)

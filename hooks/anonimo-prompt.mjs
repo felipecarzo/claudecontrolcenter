@@ -57,6 +57,27 @@ let dados = null
 try { dados = JSON.parse(readFileSync(0, 'utf8')) } catch { liberar() }
 
 const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
+
+/* CC-1069, teto-robo: só no `claude -p` (sdk-cli). Fora do anonimizar de propósito:
+   vale em qualquer projeto. Bloqueia o pedido, o modelo nem roda. Falha aberta. */
+if (process.env.CLAUDE_CODE_ENTRYPOINT === 'sdk-cli' && (!cfg?.hookEnabled || cfg.hookEnabled('teto-robo', undefined, dados?.cwd || process.cwd()))) {
+  try {
+    const { conferirTeto } = await import(urlDeModulo(AQUI, './teto-robo.mjs'))
+    const motivo = conferirTeto({ cwd: dados?.cwd })
+    if (motivo) { process.stdout.write(JSON.stringify({ decision: 'block', reason: motivo })); process.exit(0) }
+  } catch { /* falha aberta */ }
+}
+
+/* CC-1069 item 5, confere-pedido: pedido grande ou de risco abre pendência e manda
+   conferir com ele na caixa de escolha. Sempre limpa a pendência anterior. */
+if (!cfg?.hookEnabled || cfg.hookEnabled('confere-pedido', undefined, dados?.cwd || process.cwd())) {
+  try {
+    const { abrir } = await import(urlDeModulo(AQUI, './confere-pedido.mjs'))
+    const ctx = abrir(dados)
+    if (ctx) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: ctx } }))
+  } catch { /* falha aberta */ }
+}
+
 if (cfg?.hookEnabled && !cfg.hookEnabled('anonimo-prompt')) liberar()
 
 const D = await import(urlDeModulo(AQUI, '../src/frameworkDisco.mjs')).catch(() => null)

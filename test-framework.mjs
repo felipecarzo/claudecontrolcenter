@@ -9,7 +9,7 @@
 import assert from 'node:assert'
 import {
   CODIGO, METODOS, PREDICADOS, SEMPRE_LIVRE, TRAVA_CODIGO,
-  avaliar, avancar, casa, estadoInicial, mudarEscopo, podeEditar, resumo,
+  avaliar, avancar, casa, estadoInicial, mudarEscopo, palpiteDeMatriz, podeEditar, resumo, virar,
 } from './src/framework.mjs'
 
 let n = 0
@@ -570,6 +570,67 @@ const mud2 = mudarEscopo(mud.estado, { mvp: { nome: 'terceiro', criterios: [] },
 assert.equal(mud2.estado.historico.length, 2)
 ok('escopo muda com motivo registrado, e o histórico acumula')
 
+/* CC-1085: o método `ideia-viva`, cinco marcos e nenhum trava código. */
+{
+  const M = 'ideia-viva'
+  assert.deepEqual(METODOS[M].fases.map((f) => f.id), ['semente', 'rascunho', 'matriz', 'mvp', 'uso'])
+  assert.ok(METODOS[M].fases.every((f) => f.trava.length === 0), 'nenhum marco trava código (decisão dele)')
+  assert.equal(METODOS['mvp-basico'].fases.length, 3, 'o mvp-basico continua com as mesmas 3 fases')
+  assert.equal(estadoInicial('mvp-basico').ideia, undefined, 'só a ideia viva ganha o bloco `ideia`')
+  let e = estadoInicial(M)
+  assert.deepEqual(e.ideia, { frase: '', rascunho: null, matriz: [], usoReal: null })
+  assert.equal(e.fase, 'semente')
+  assert.equal(avancar(M, e).ok, false, 'sem frase a semente não abre')
+
+  e = { ...e, ideia: { ...e.ideia, frase: 'um painel que mostra os agentes' } }
+  e = avancar(M, e).estado
+  assert.equal(e.fase, 'rascunho')
+
+  // endereço sozinho não fecha: ele precisa dizer que tocou
+  e = { ...e, ideia: { ...e.ideia, rascunho: { url: 'https://x.test' } } }
+  const sem = avancar(M, e)
+  assert.equal(sem.ok, false)
+  assert.match(sem.pendencias.join(' '), /tocou/)
+  e = { ...e, ideia: { ...e.ideia, rascunho: { url: 'https://x.test', tocou: '2026-11-05' } } }
+
+  // a virada no marco do rascunho registra e NÃO muda a fase
+  assert.equal(virar(e, { saiu: ['a'], ficou: ['b'], quando: '2026-11-05' }).ok, false, 'virada sem motivo é recusada')
+  let v = virar(e, { saiu: ['a', 'b', 'c'], ficou: ['Login', 'Painel  de agentes', 'x'], motivo: 'cortei o resto' })
+  assert.equal(v.ok, true)
+  assert.equal(v.estado.fase, 'rascunho')
+  assert.deepEqual(v.estado.historico.at(-1), {
+    tipo: 'virada', saiu: ['a', 'b', 'c'], ficou: ['Login', 'Painel  de agentes', 'x'],
+    motivo: 'cortei o resto', quando: null, marco: 'rascunho',
+  })
+  v = virar(v.estado, { saiu: ['x'], ficou: ['login', 'painel de agentes', 'y'], motivo: 'de novo' })
+  assert.deepEqual(palpiteDeMatriz(v.estado), ['Login', 'Painel  de agentes'], 'interseção, sem caixa nem espaço sobrando')
+  assert.deepEqual(palpiteDeMatriz(estadoInicial(M)), [], 'sem virada não há palpite')
+
+  e = avancar(M, v.estado).estado
+  assert.equal(e.fase, 'matriz')
+
+  // palpite não fecha: matriz preenchida e não confirmada não abre o marco 3
+  e = { ...e, ideia: { ...e.ideia, matriz: palpiteDeMatriz(e) } }
+  assert.equal(avancar(M, e).ok, false)
+  assert.match(avancar(M, e).pendencias.join(' '), /confirmar/)
+  e = { ...e, ideia: { ...e.ideia, matrizConfirmada: '2026-11-06' } }
+  e = avancar(M, e).estado
+  assert.equal(e.fase, 'mvp')
+
+  assert.equal(avancar(M, e).ok, false, 'o MVP exige nome e critério')
+  e = { ...e, mvp: { nome: 'painel', criterios: [{ texto: 'uma linha por agente', feito: false }] } }
+  e = avancar(M, e).estado
+  assert.equal(e.fase, 'uso')
+
+  assert.equal(avancar(M, e).ok, false)
+  e = { ...e, mvp: { ...e.mvp, criterios: [{ texto: 'uma linha por agente', feito: true }] } }
+  assert.match(avaliar(M, e).pendencias.join(' '), /quem/, 'critérios marcados, mas falta o uso real')
+  e = { ...e, ideia: { ...e.ideia, usoReal: { quem: 'a Ana', quando: '2026-11-07' } } }
+  assert.equal(avaliar(M, e).portaoAberto, true)
+  assert.equal(podeEditar(M, e, 'src/a.mjs').ok, true)
+}
+ok('CC-1085: ideia-viva avança pelos 5 marcos, a virada não muda a fase e o palpite não fecha marco')
+
 // ------------------------------------------------------------------- resumo
 assert.match(resumo('mvp-basico', vazio), /Falta:/)
 assert.match(resumo('mvp-basico', definido), /Portão aberto/)
@@ -606,7 +667,8 @@ ok('todo método declarado usa predicado que existe, e toda fase explica')
 {
   // CC-393: entrou o `projeto-novo`, o do projeto que nasce de uma descrição
   // CC-902: entrou o `produto` (criação de produto)
-  assert.equal(Object.keys(METODOS).length, 7, 'o catálogo tem que ter os sete métodos')
+  // CC-1085: entrou o `ideia-viva` (marcos de maturidade da ideia)
+  assert.equal(Object.keys(METODOS).length, 8, 'o catálogo tem que ter os oito métodos')
 
   /* O método novo trava código nas DUAS primeiras fases, e é o ponto dele: não
      se constrói o que ainda não foi descrito. É a régua do `mvp-basico` uma
@@ -751,5 +813,77 @@ ok('o restritivo restringe por rota, não por clique — quem trava é o sugesti
   assert.deepEqual(trocado.autorizado, [])
 }
 ok('CC-91: o agente pede por arquivo, e autorizar tira o pedido da fila')
+
+/* CC-1085, passo 2: os comandos da ideia viva, rodados de verdade pelo `cc.mjs`.
+   Casa e projeto TEMPORÁRIOS (CC_HOME + --dir): este teste nunca encosta no
+   estado de projeto real. Roda uma vez com a variável de sessão ligada, que é o
+   caminho em que `gravar()` virava no-op calado se o comando lesse com sessão. */
+{
+  const { spawnSync } = await import('node:child_process')
+  const fsx = await import('node:fs')
+  const osx = await import('node:os')
+  const pathx = await import('node:path')
+  const raizTmp = fsx.mkdtempSync(pathx.join(osx.tmpdir(), 'cc1085-'))
+  const proj = pathx.join(raizTmp, 'proj')
+  const outro = pathx.join(raizTmp, 'outro')
+  fsx.mkdirSync(proj, { recursive: true }); fsx.mkdirSync(outro, { recursive: true })
+  const CC = pathx.join(process.cwd(), 'cc.mjs')
+  const cc = (dir, ...args) => spawnSync(process.execPath, [CC, 'framework', ...args, '--dir', dir], {
+    encoding: 'utf8',
+    env: { ...process.env, CC_HOME: pathx.join(raizTmp, 'home'), CC_SEM_NAVEGADOR: '1', CLAUDE_CODE_SESSION_ID: 'aaaaaaaa-1085-test' },
+  })
+  const estado = () => JSON.parse(fsx.readFileSync(pathx.join(proj, '.framework', 'estado.json'), 'utf8'))
+  try {
+    assert.equal(cc(proj, 'iniciar', '--metodo', 'ideia-viva').status, 0)
+    let r = cc(proj, 'marco')
+    assert.equal(r.status, 0, r.stderr)
+    assert.match(r.stdout, /marco 1 de 5: Semente/)
+    assert.equal((r.stdout.match(/^\s+\[[x> ]\] \d\./gm) || []).length, 5, 'os 5 marcos em fila')
+    assert.match(r.stdout, /\[>\] 1\. Semente/, 'o atual vem marcado')
+
+    assert.equal(cc(proj, 'semente', 'um painel que mostra os agentes').status, 0)
+    assert.equal(estado().ideia.frase, 'um painel que mostra os agentes', 'gravou mesmo com a variável de sessão ligada')
+
+    assert.notEqual(cc(proj, 'virada', '--saiu', 'a;b').status, 0, 'virada sem motivo é recusada')
+    assert.equal(cc(proj, 'virada', '--saiu', 'a;b', '--ficou', 'Login;Painel', '--motivo', 'cortei').status, 0)
+    assert.equal(cc(proj, 'virada', '--saiu', 'c', '--ficou', 'login;x', '--motivo', 'de novo').status, 0)
+    assert.equal(estado().fase, 'semente', 'virada não muda a fase')
+    assert.deepEqual(estado().historico.map((h) => h.tipo), ['virada', 'virada'])
+    assert.deepEqual(estado().historico[0].saiu, ['a', 'b'], 'a lista separada por ponto e vírgula vira lista')
+
+    assert.equal(cc(proj, 'avancar').status, 0)
+    assert.equal(cc(proj, 'rascunho', '--url', 'https://x.test').status, 0)
+    assert.notEqual(cc(proj, 'avancar').status, 0, 'endereço sozinho não abre o marco 3')
+    assert.equal(cc(proj, 'rascunho', 'tocou').status, 0)
+    assert.ok(estado().ideia.rascunho.tocou)
+    assert.equal(cc(proj, 'avancar').status, 0)
+
+    r = cc(proj, 'marco')
+    assert.match(r.stdout, /palpite de matriz.*: Login/, 'no marco matriz o palpite aparece')
+    assert.notEqual(cc(proj, 'avancar').status, 0, 'palpite não confirmado não abre o marco 4')
+    assert.equal(cc(proj, 'matriz', 'confirmar').status, 0, 'sem --itens usa o palpite')
+    assert.deepEqual(estado().ideia.matriz, ['Login'])
+    assert.ok(estado().ideia.matrizConfirmada)
+    assert.equal(cc(proj, 'avancar').status, 0)
+    assert.equal(estado().fase, 'mvp')
+
+    assert.equal(cc(proj, 'uso', '--quem', 'a Ana').status, 0)
+    assert.equal(estado().ideia.usoReal.quem, 'a Ana')
+    assert.ok(estado().ideia.usoReal.quando)
+    assert.equal(estado().modo, 'dialogo', 'nenhum comando mexeu no modo')
+
+    // projeto em outro método: recusa dizendo qual é
+    assert.equal(cc(outro, 'iniciar').status, 0)
+    for (const sub of ['marco', 'virada', 'semente', 'rascunho', 'matriz', 'uso']) {
+      r = cc(outro, sub, '--motivo', 'x')
+      assert.notEqual(r.status, 0, `${sub} num mvp-basico tem que recusar`)
+      assert.match(r.stderr, /método mvp-basico/, `${sub}: a recusa diz o método atual`)
+    }
+    assert.equal(JSON.parse(fsx.readFileSync(pathx.join(outro, '.framework', 'estado.json'), 'utf8')).ideia, undefined)
+  } finally {
+    fsx.rmSync(raizTmp, { recursive: true, force: true })
+  }
+}
+ok('CC-1085: framework marco/virada/semente/rascunho/matriz/uso gravam, recusam em outro método e sobrevivem à sessão')
 
 console.log(`\n${n} grupos de asserção passaram`)

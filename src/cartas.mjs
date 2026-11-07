@@ -50,7 +50,7 @@ const DECK = /^[a-z0-9-]{1,40}$/
 const IMG = /\.(jpg|png|webp)$/i
 export const OPCOES_PADRAO = ['Aprovo', 'Não aprovo']
 const CAMPOS_DECK = ['titulo', 'criado', 'cartas']
-const CAMPOS_CARTA = ['id', 'titulo', 'pergunta', 'olhe', 'passos', 'img', 'link', 'opcoes', 'multipla', 'editar']
+const CAMPOS_CARTA = ['id', 'titulo', 'pergunta', 'olhe', 'passos', 'img', 'link', 'opcoes', 'multipla', 'editar', 'sem_print']
 const TRAVESSAO = /[—–]/
 const pasta = (raiz) => path.join(raiz, 'docs', 'cartas')
 const opcoesDe = (c) => (Array.isArray(c.opcoes) && c.opcoes.length ? c.opcoes : OPCOES_PADRAO)
@@ -85,6 +85,8 @@ export function validarDeck(j) {
       const ok = typeof c.img === 'string' && c.img.startsWith('docs/cartas/') && IMG.test(c.img) && !c.img.split('/').includes('..') && !c.img.includes('\\') && !c.img.includes('\0')
       if (!ok) e.push(n + 'img precisa ficar em docs/cartas/ e ser jpg, png ou webp')
     }
+    // CC-1066: por que a carta de texto ficou sem foto (o `cc textos print` grava)
+    if (c.sem_print !== undefined) { txt(c.sem_print, n + 'sem_print'); if (typeof c.sem_print === 'string' && c.sem_print.length > 120) e.push(n + 'sem_print: até 120 letras') }
     if (c.link !== undefined) {
       let u = null
       try { u = new URL(c.link) } catch { /* inválido */ }
@@ -100,6 +102,11 @@ export function validarDeck(j) {
     if (c.multipla !== undefined && typeof c.multipla !== 'boolean') e.push(n + 'multipla: verdadeiro ou falso')
   })
   return e
+}
+
+/** CC-1066: as cartas de texto (têm link http e `editar`) sem foto e sem o motivo de não ter. A trava do `cc textos levantar`. */
+export function semPrint(baralho) {
+  return ((baralho && baralho.cartas) || []).filter((c) => c && typeof c.editar === 'string' && c.editar.trim() && /^https?:\/\//i.test(c.link || '') && !c.img && !c.sem_print)
 }
 
 const deckOk = (d) => typeof d === 'string' && DECK.test(d)

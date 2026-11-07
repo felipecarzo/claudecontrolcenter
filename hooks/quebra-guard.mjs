@@ -32,6 +32,14 @@ try { evento = JSON.parse(entrada || '{}') } catch { process.exit(0) }
 const comando = String(evento?.tool_input?.command || '')
 if (!comando) process.exit(0)
 
+/* CC-1069: antes da regra de pasta, as duas travas de "não foi ele que pediu"
+   (ligar trabalho automático, derrubar o que ele não nomeou). Falha aberta. */
+try {
+  const { conferirAcao } = await import('./autonomia.mjs')
+  const motivo = await conferirAcao(evento)
+  if (motivo) { process.stderr.write(`${motivo}\n`); process.exit(2) }
+} catch { /* falha aberta */ }
+
 function ehPastaProjeto(p) {
   try { return fs.statSync(p).isDirectory() && path.dirname(p) === RAIZ_PROJETOS } catch { return false }
 }

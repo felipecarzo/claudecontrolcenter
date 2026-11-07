@@ -126,19 +126,9 @@ const daCasa = (E.PALAVRAS_DA_CASA || [])
 
 if (daCasa.length) {
   console.error(
-    `${daCasa.length} PALAVRA(S) DA CASA SEM EXPLICAÇÃO, E ELE NUNCA VIU O QUE SIGNIFICAM.\n\n`
-    + daCasa.map((p) => `  · ${p}`).join('\n')
-    + '\n\nElas parecem português comum, e só têm sentido dentro deste projeto.\n'
-    + 'Conferido na conversa inteira, não só nesta resposta: nenhuma foi\n'
-    + 'explicada antes.\n\n'
-    + 'Ele em 10/09, sobre uma delas: "eu já esqueci o que estávamos fazendo,\n'
-    + 'não lembro o que é empurrador".\n\n'
-    + 'Diga o que a coisa é, na primeira vez que ela aparecer:\n\n'
-    + '  em vez de  "o empurrador do PC parou"\n'
-    + '  escreva    "o programa que manda os dados do PC pra VPS parou"\n\n'
-    + 'Uma vez só. Explicada, a palavra fica livre pelo resto da conversa.\n'
-    + 'Repetir a explicação é o mesmo defeito pelo outro lado.\n\n'
-    + 'Esta é a única volta: a próxima passa.',
+    `[jargao-guard] ${daCasa.length} termo(s) internos sem definição na conversa: ${daCasa.slice(0, 5).join(', ')}.\n`
+    + 'Reenvie a resposta trocando cada termo pelo que ele faz, em linguagem comum, na primeira vez que aparece. '
+    + 'Depois de definido, o termo fica liberado. A próxima volta passa.',
   )
   process.exit(2)
 }
@@ -146,19 +136,9 @@ if (daCasa.length) {
 if (unicos.length <= LIMITE) sair()
 
 console.error(
-  `${unicos.length} NOMES INTERNOS NA CONVERSA. Ele não tem como lembrar disso.\n\n`
-  + unicos.slice(0, 10).map((a) => `  · ${a.termo}  (${a.o})`).join('\n')
-  + '\n\nRegra dele, 16/08: "eu não lembro o que que é reporte guard (…) o meu\n'
-  + 'cérebro não consegue absorver tudo". O problema não é o tamanho da resposta,\n'
-  + 'é a memória que ela exige.\n\n'
-  + 'Reescreva dizendo o EFEITO sobre ele:\n\n'
-  + '  em vez de  "o reporte-guard devolve quando falta `frente` no meta.json"\n'
-  + '  escreva    "se eu trabalhar e não anotar no painel, o sistema me obriga\n'
-  + '              a voltar e anotar antes de encerrar"\n\n'
-  + 'O nome fica no código, no backlog e no diário, lugares onde ele PROCURA.\n'
-  + 'Na conversa ele só passa os olhos.\n\n'
-  + 'Precisa mesmo do nome? Ele vem depois do que faz, entre parênteses e uma\n'
-  + 'vez só. Bloco de código não conta: ali o nome exato é obrigatório.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  `[jargao-guard] ${unicos.length} nomes internos na prosa (limite ${LIMITE}): ${unicos.slice(0, 5).map((a) => a.termo).join(', ')}.\n`
+  + 'Reenvie a resposta descrevendo o efeito de cada peça em linguagem comum. '
+  + 'Se o nome for necessário, ponha-o entre parênteses depois da descrição, uma vez só; nomes dentro de bloco de código não contam. '
+  + 'A próxima volta passa.',
 )
 process.exit(2)

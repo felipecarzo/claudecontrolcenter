@@ -41,6 +41,10 @@ const txt = (r) => String(r?.texto ?? r?.valor ?? '').trim()
 /** O valor comparável de uma resposta: a opção, quando houve. */
 const val = (r) => String(r?.valor ?? '').trim()
 
+/** CC-1086: resposta que não veio dele. `prosa` é o que eu deduzi da descrição,
+ *  `pesquisa` é o que a IA achou com fonte. As duas esperam ele confirmar. */
+export const ehPalpite = (r) => r?.de === 'prosa' || r?.de === 'pesquisa'
+
 /**
  * O roteiro. Cada pergunta:
  *
@@ -81,10 +85,13 @@ export const ROTEIRO = [
        `estudo` cobra `estudo.pergunta`, o `mvp-basico` cobra `mvp.nome`, e a
        entrevista não sabe (nem deve escolher) o método do projeto. Gravar só
        um dos dois deixava o portão da Definição fechado para sempre em quem
-       respondeu "estudo" com o método padrão ligado. */
+       respondeu "estudo" com o método padrão ligado.
+       CC-1085: pela mesma razão, no `ideia-viva` (o único que tem `ideia`) a
+       resposta vira também a frase da Semente, se ela ainda estiver vazia. */
     aplica: (estado, resposta, r) => {
       const texto = txt(resposta)
       const comNome = { ...estado, mvp: { ...(estado.mvp || {}), nome: texto } }
+      if (estado.ideia && !String(estado.ideia.frase || '').trim()) comNome.ideia = { ...estado.ideia, frase: texto }
       return val(r.natureza) === 'estudo'
         ? { ...comNome, estudo: { ...(estado.estudo || {}), pergunta: texto } }
         : comNome
@@ -98,6 +105,10 @@ export const ROTEIRO = [
       : 'Quem usa isso, e em que situação?'),
     header: 'Quem usa',
     ajuda: 'A regra dele: checar contra a realidade de campo antes de propor. "Impossível eu fotografar 40-50 fotos de um cliente" veio de pular esta pergunta.',
+    /* CC-1086, decisão dele em 04/11: "ela pode procurar tudo e trazer a
+       pesquisa p mim (...) talvez eu possa achar erros". Pesquisável: a sessão
+       pesquisa e grava com fonte, ele confirma ou corrige. */
+    pesquisavel: true,
   },
   {
     id: 'hoje',
@@ -110,6 +121,15 @@ export const ROTEIRO = [
     },
     header: 'Hoje',
     ajuda: 'Se a resposta for "nada, não existe problema", o projeto não tem por que existir. É a pergunta mais barata de fazer e a mais cara de pular.',
+    pesquisavel: true,
+  },
+  {
+    id: 'concorrencia',
+    quando: (r) => val(r.natureza) !== 'estudo',
+    pergunta: 'O que já existe que faz algo parecido?',
+    header: 'Parecidos',
+    ajuda: 'Os produtos e serviços que já resolvem isso, e o que falta neles. Diz o que copiar e onde este projeto se diferencia.',
+    pesquisavel: true,
   },
   {
     id: 'dado',
@@ -117,6 +137,7 @@ export const ROTEIRO = [
     pergunta: 'Onde o dado mora?',
     header: 'O dado',
     ajuda: 'Decide metade da arquitetura, e decide sozinha se a próxima pergunta sobre acesso faz sentido.',
+    pesquisavel: true,
     opcoes: [
       { valor: 'banco', label: 'Banco de dados', descricao: 'Postgres, Supabase, SQLite. Tem esquema e migração.' },
       { valor: 'arquivo', label: 'Arquivo no próprio projeto', descricao: 'JSON, Markdown, CSV versionados junto do código.' },
@@ -264,6 +285,7 @@ export function proxima(estado) {
       header: p.header,
       ajuda: p.ajuda,
       opcoes: p.opcoes || null,
+      pesquisavel: Boolean(p.pesquisavel),
       ...progresso(estado),
     }
   }
@@ -286,9 +308,18 @@ export function progresso(estado) {
  * onde as coisas moram), e é o que deixa o roteiro inteiro ser testado sem
  * tocar em arquivo nenhum.
  */
-export function responder(estado, id, entrada, { quando = null, de = 'ele' } = {}) {
+export function responder(estado, id, entrada, { quando = null, de = 'ele', fontes = [] } = {}) {
   const p = POR_ID[id]
   if (!p) return { ok: false, erro: `pergunta desconhecida: ${id}` }
+  /* CC-1086: pesquisa sem fonte não grava. É a trava contra o medo dele, "a IA
+     não faça a pesquisa e acaba deixando o produto mal feito pela metade". */
+  const links = (fontes || []).map((f) => String(f).trim()).filter(Boolean)
+  if (de === 'pesquisa') {
+    if (!p.pesquisavel) return { ok: false, erro: `a pergunta "${id}" é escolha dele, não se pesquisa` }
+    if (!links.length) return { ok: false, erro: 'pesquisa sem fonte não grava: passe pelo menos um --fonte <endereço>' }
+    const ruim = links.find((f) => !/^https?:\/\/\S+\.\S+/.test(f))
+    if (ruim) return { ok: false, erro: `fonte que não é endereço da internet: ${ruim}` }
+  }
 
   const respostas = respostasDe(estado)
   if (!cabe(p, respostas)) {
@@ -301,13 +332,15 @@ export function responder(estado, id, entrada, { quando = null, de = 'ele' } = {
   const cru = typeof entrada === 'string' ? entrada.trim() : txt(entrada)
   if (!cru) return { ok: false, erro: 'resposta vazia' }
 
-  const casa = (p.opcoes || []).find((o) => {
-    const alvo = cru.toLowerCase()
-    return o.valor.toLowerCase() === alvo || o.label.toLowerCase() === alvo
-  })
+  const alvo = cru.toLowerCase()
+  const casa = (p.opcoes || []).find((o) => o.valor.toLowerCase() === alvo || o.label.toLowerCase() === alvo)
+  /* CC-1086: "banco: o dado de reserva mora num sistema próprio" escolhe a
+     opção e guarda o porquê inteiro. É como a pesquisa responde pergunta de
+     opção, e o "confirmar" da tela devolve o mesmo texto. */
+  const comPorque = !casa && (p.opcoes || []).find((o) => alvo.startsWith(o.valor.toLowerCase() + ':'))
 
   const resposta = {
-    valor: casa ? casa.valor : null,
+    valor: casa ? casa.valor : comPorque ? comPorque.valor : null,
     texto: casa ? casa.label : cru,
     quando: quando || new Date().toISOString(),
     /* CC-390, 29/08: de ONDE veio esta resposta.
@@ -321,6 +354,7 @@ export function responder(estado, id, entrada, { quando = null, de = 'ele' } = {
      * uma fala dele sobre outro assunto e ele concluiu que eu não tinha
      * entendido o pedido. */
     de,
+    ...(de === 'pesquisa' ? { fontes: links } : {}),
   }
 
   let novo = {
@@ -350,7 +384,7 @@ export function responder(estado, id, entrada, { quando = null, de = 'ele' } = {
    * O `aplica` continua valendo no caso para o qual nasceu: projeto novo, sem
    * MVP, com ele respondendo. */
   const ehDeFrente = Boolean(frenteDa(novo))
-  const ehPalpite = de === 'prosa'
+  const ehPalpite = de === 'prosa' || de === 'pesquisa'
   if (typeof p.aplica === 'function' && !ehDeFrente && !ehPalpite) {
     const antes = novo.mvp || {}
     const depois = p.aplica(novo, resposta, respostasDe(novo))
@@ -451,7 +485,7 @@ export function colher(estado, { incluirPalpite = false } = {}) {
   const vale = (id) => {
     const r = respostas[id]
     if (!r) return false
-    return incluirPalpite || r.de !== 'prosa'
+    return incluirPalpite || !ehPalpite(r)
   }
   const texto = (id) => (vale(id) ? String(respostas[id]?.texto || '').trim() : '')
 
@@ -636,7 +670,7 @@ export function preencherDaProsa(estado, deduzidas = {}, { quando = null } = {})
        vale: palpite pode ser corrigido pelo palpite seguinte, porque nenhum dos
        dois é dele. */
     const atual = respostasDe(novo)[id]
-    if (atual && atual.de !== 'prosa') { recusadas.push({ id, porque: 'ele já respondeu isto' }); continue }
+    if (atual && !ehPalpite(atual)) { recusadas.push({ id, porque: 'ele já respondeu isto' }); continue }
     const r = responder(novo, id, texto, { quando, de: 'prosa' })
     if (!r.ok) { recusadas.push({ id, porque: r.erro }); continue }
     novo = r.estado
@@ -694,8 +728,8 @@ export const frenteDa = (estado) => String(estado?.entrevista?.frente || '').tri
 
 /** O que ainda é palpite meu, esperando ele confirmar. */
 export const palpites = (estado) => Object.entries(respostasDe(estado))
-  .filter(([, r]) => r?.de === 'prosa')
-  .map(([id, r]) => ({ id, header: POR_ID[id]?.header || id, texto: r.texto }))
+  .filter(([, r]) => ehPalpite(r))
+  .map(([id, r]) => ({ id, header: POR_ID[id]?.header || id, texto: r.texto, de: r.de, ...(r.fontes ? { fontes: r.fontes } : {}) }))
 
 export function resumo(estado) {
   const respostas = respostasDe(estado)
@@ -711,7 +745,9 @@ export function resumo(estado) {
        dele uma frase que eu deduzi, e ele lê as próprias palavras no lugar
        errado: o erro que ele nomeou em 17/08 e que custa a confiança na tela
        inteira. */
-    const marca = respostas[p.id].de === 'prosa' ? ' (deduzido da sua descrição, confirme)' : ''
+    const r = respostas[p.id]
+    const marca = r.de === 'prosa' ? ' (deduzido da sua descrição, confirme)'
+      : r.de === 'pesquisa' ? ` (achado da pesquisa, confirme; fontes: ${(r.fontes || []).join(', ')})` : ''
     return `  ${p.header.padEnd(12)} ${texto}${marca}`
   })
   const fim = estado?.entrevista?.terminou ? 'completa' : `${feitas} de ${total}`

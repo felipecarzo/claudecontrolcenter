@@ -136,20 +136,8 @@ for (const linha of turno.split('\n')) {
 if (!mexeu || mediu) sair()
 
 console.error(
-  'ELE DESCREVEU UM SINTOMA E VOCÊ MEXEU SEM MEDIR.\n\n'
-  + `O que ele disse:\n  "${pedido.replace(/\s+/g, ' ').trim().slice(0, 150)}"\n\n'`
-  + 'Método dele, 16/08: são TRÊS tempos, e o do meio é o que não pode faltar.\n'
-  + '  1. ele descreve o que vê, do jeito dele\n'
-  + '  2. VOCÊ MEDE no código e mostra o número\n'
-  + '  3. ele confirma que era isso, ou corrige o rumo\n\n'
-  + 'A metáfora dele aponta o rumo, não a causa. Naquele dia:\n'
-  + '  "os nomes dançam"            -> a mesma regra de estilo escrita 2x\n'
-  + '  "linhas mais gordinhas"      -> sombra e superfície, não espessura\n'
-  + '  "parece site feito por IA"   -> cartões esticados por 1860px\n\n'
-  + 'Agir na metáfora teria mexido em alinhamento, espessura e texto. Nenhum dos\n'
-  + 'três era a causa. E as duas telas que ele rejeitou foram as duas em que a\n'
-  + 'medição foi pulada.\n\n'
-  + 'Meça primeiro: conte, leia o arquivo, rode a consulta, tire o print e olhe.\n'
-  + 'Depois mostre o número a ele. Esta é a única volta: a próxima passa.',
+  '[medir-guard] Sintoma relatado e edição feita sem medição prévia.\n'
+  + 'Antes de editar, rode uma medição: grep ou contagem de ocorrências, leitura do arquivo, consulta ou print da tela.\n'
+  + 'Depois da edição, mostre o número medido junto do resultado. A próxima volta passa.',
 )
 process.exit(2)

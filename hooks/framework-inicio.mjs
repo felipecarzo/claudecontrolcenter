@@ -235,7 +235,19 @@ const daEntrevista = await (async () => {
   return semMvp || comecada ? q : null
 })()
 
-if (daEntrevista) {
+if (daEntrevista?.pesquisavel) {
+  /* CC-1086: pergunta que a internet responde não vai para ele. Decisão dele em
+     04/11: "ela pode procurar tudo e trazer a pesquisa p mim". A pesquisa sem
+     fonte é recusada pelo comando, então a pergunta genérica não tem como
+     chegar a ele sem pesquisa antes. */
+  const q = daEntrevista
+  linhas.push('', `PESQUISE ANTES DE PERGUNTAR, "${q.pergunta}" (entrevista, pergunta ${q.feitas + 1} de ${q.total})`)
+  if (q.ajuda) linhas.push(`(${q.ajuda})`)
+  linhas.push('NÃO pergunte isto ao Felipe. Pesquise (skill gaveta primeiro, depois WebSearch), com o que a entrevista já tem como contexto.')
+  if ((q.opcoes || []).length) linhas.push(`É pergunta de opção: o achado começa pelo valor da opção (${q.opcoes.map((o) => o.valor).join(', ')}) e segue com o porquê.`)
+  linhas.push(`Grave com: cc framework entrevista pesquisa ${q.id} "<o que achou, com nomes e números>" --fonte <endereço> [--fonte <endereço>]`)
+  linhas.push('Fica marcado como achado da pesquisa: mostre a ele o achado com as fontes, e ele confirma ou corrige.')
+} else if (daEntrevista) {
   const q = daEntrevista
   linhas.push('', `PERGUNTE AO FELIPE ANTES DE SEGUIR, "${q.pergunta}"`)
   if (q.ajuda) linhas.push(`(${q.ajuda})`)

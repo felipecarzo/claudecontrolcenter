@@ -1346,6 +1346,27 @@
     .maq-sinc-i { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     /* CC-674: filtros de Sessões recolhíveis. */
     .ses-barra { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    /* CC-1064: o bloco Rascunhos, no topo da lista de Sessões. Sem grade e sem largura fixa: cabe em 390 px. */
+    .rasc { margin: 0 0 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--raio, 14px); background: var(--card); }
+    .rasc-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+    .rasc-tit { flex: 1 1 200px; min-width: 0; }
+    .rasc-tit b { display: block; font-size: 17px; font-weight: 600; color: var(--text-main); }
+    .rasc-tit span { display: block; font-size: 14px; color: var(--text-dim); margin-top: 2px; }
+    .rasc-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font: inherit; font-size: 15px; cursor: pointer; }
+    .rasc-btn:hover { border-color: var(--accent); }
+    .rasc-btn.prim { background: var(--accent); border-color: transparent; color: #fff; }
+    .rasc-btn.perigo { color: var(--red); border-color: color-mix(in srgb, var(--red) 35%, transparent); }
+    .rasc-btn:disabled { opacity: .6; cursor: default; }
+    .rasc-lista { display: flex; flex-direction: column; margin-top: 12px; }
+    .rasc-l { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-top: 1px solid var(--border); }
+    .rasc-l1 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+    .rasc-nome { flex: 1 1 160px; min-width: 0; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+    .rasc-resumo { font-size: 15px; line-height: 1.45; color: var(--text-dim); overflow-wrap: anywhere; }
+    .rasc-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .rasc-vazio { margin: 12px 0 0; font-size: 15px; line-height: 1.45; color: var(--text-dim); }
+    .rasc-aviso { margin-top: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
+    .rasc-aviso.erro { color: var(--red); border-color: color-mix(in srgb, var(--red) 40%, transparent); }
+    .rasc-aviso ul { margin: 6px 0 0; padding-left: 20px; }
     .ses-barra .ses-modo { margin: 0; }
     .ses-fil-resumo { display: block; width: 100%; text-align: left; margin: 12px 0 18px; padding: 10px 14px; border: 1px dashed var(--border); border-radius: var(--raio, 14px); background: none; color: var(--text-dim); font: inherit; font-size: 13px; cursor: pointer; }
     .ses-fil-resumo b { color: var(--text-main); font-weight: 600; }
@@ -2913,6 +2934,23 @@
     .fw-passo.urgente { border-left-color: var(--waiting); }
     .fw-passo-texto { flex: 1 1 160px; font-size: 11.5px; color: var(--text-muted); line-height: 1.35; }
     .fw-passo-conta { font-size: 11px; color: var(--text-dim); }
+    /* CC-1085: os marcos da ideia viva. Fila que quebra linha (flex-wrap), nunca
+       grade de colunas: em 390px os cinco nomes descem para a linha de baixo. */
+    .iv { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .iv-marcos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+    .iv-m { display: flex; align-items: center; gap: 6px; font-size: 11.5px; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--text-dim); }
+    .iv-m .iv-n { font-size: 10px; opacity: .8; }
+    .iv-m.feito { color: var(--green); border-color: var(--green); }
+    .iv-m.atual { color: var(--text-main); border-color: var(--accent); background: var(--card-hover); font-weight: 600; }
+    .iv-falta { margin: 0; padding-left: 16px; font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+    .iv-linha { display: flex; flex-direction: column; gap: 6px; }
+    .iv-linha label { font-size: 11px; color: var(--text-dim); }
+    .iv-linha input, .iv-linha textarea { width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 9px 10px; color: var(--text-main); font: inherit; font-size: 13px; }
+    .iv-botoes { display: flex; flex-wrap: wrap; gap: 6px; }
+    .iv-palpite { margin: 0; padding-left: 16px; font-size: 12px; color: var(--text-main); line-height: 1.45; }
+    .iv-virou { border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
     .fw-aut .path { flex: 1 1 140px; font-size: 11.5px; color: var(--text-muted); line-height: 1.35; }
     /* ===== CC-374/CC-376: a tela das rotas =====
        A grade é `auto-fill` com `minmax`, e não colunas declaradas: ela se
@@ -4814,6 +4852,7 @@
     .rev-lin{padding:14px 0;border-top:1px solid rgba(var(--tinta),.08);} .rev-lin:first-of-type{border-top:0;padding-top:0;}
     .rev-cab{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:16px;}
     .rev-pct{font-size:14px;color:var(--text-dim);font-variant-numeric:tabular-nums;}
+    .rev-oque{margin:4px 0 0;font-size:14px;color:var(--text-muted);line-height:1.45;}
     .rev-barra{height:6px;border-radius:6px;background:rgba(var(--tinta),.08);overflow:hidden;margin:10px 0;}
     .rev-barra i{display:block;height:100%;min-width:3px;border-radius:6px;background:var(--accent);transition:width .3s;}
     .rev-pills{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;}
@@ -4828,6 +4867,34 @@
     .rev-lista li{display:grid;gap:2px;padding:9px 0;border-bottom:1px solid rgba(var(--tinta),.07);font-size:14px;}
     .rev-arq{font-size:12.5px;color:var(--text-dim);word-break:break-all;} .rev-de{color:var(--text-muted);text-decoration:line-through;text-decoration-color:rgba(var(--tinta),.35);} .rev-para{font-weight:600;}
     .rev-vazio{padding:22px;} .rev-vazio p{margin:8px 0 0;color:var(--text-muted);line-height:1.5;}
+    /* CC-1080: a tela Cápsulas. Cartões empilhados, sem grade: cabe em 390 px sem regra de estreito. */
+    .cap-topo{padding:16px 18px;margin:0 0 14px;} .cap-topo p{margin:6px 0 0;color:var(--text-muted);font-size:14px;line-height:1.5;}
+    .cap-proj{padding:16px 18px;margin:0 0 14px;}
+    .cap-cab{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 12px;}
+    .cap-nome{margin:0;font-size:18px;font-weight:700;}
+    .cap-raiz{margin:2px 0 0;font-size:12.5px;color:var(--text-dim);word-break:break-all;}
+    .cap-ult{margin:10px 0 0;font-size:14px;color:var(--text-muted);line-height:1.5;}
+    .cap-selo{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid var(--border);color:var(--text-muted);}
+    .cap-selo.ok{color:var(--green);border-color:var(--green);} .cap-selo.ruim{color:var(--red);border-color:var(--red);}
+    .cap-ruim{color:var(--red);}
+    .cap-acoes{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;}
+    .cap-acoes a.rev-b{display:inline-flex;align-items:center;text-decoration:none;}
+    .cap-est{margin:12px 0 0;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:rgba(var(--tinta),.03);font-size:14px;line-height:1.55;overflow-wrap:anywhere;}
+    .cap-est.erro{border-color:var(--red);color:var(--red);} .cap-est b{color:var(--text-main);}
+    .cap-est ul{margin:6px 0 0;padding-left:18px;} .cap-est li{margin:2px 0;}
+    .cap-barra{height:6px;border-radius:6px;background:rgba(var(--tinta),.08);overflow:hidden;margin:8px 0 0;} .cap-barra i{display:block;height:100%;width:40%;border-radius:6px;background:var(--accent);animation:capAnda 1.4s ease-in-out infinite;}
+    @keyframes capAnda{0%{margin-left:-40%}100%{margin-left:100%}}
+    @media (prefers-reduced-motion:reduce){.cap-barra i{animation:none;width:100%;}}
+    .cap-mais{margin:12px 0 0;font-size:14px;} .cap-mais summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--text-muted);}
+    .cap-mais ul{list-style:none;margin:0;padding:0;} .cap-mais li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid rgba(var(--tinta),.07);}
+    .cap-dlg{position:fixed;inset:0;margin:auto;border:1px solid var(--border);border-radius:14px;background:var(--card);color:var(--text-main);padding:20px;width:min(520px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow-y:auto;box-sizing:border-box;}
+    .cap-dlg::backdrop{background:rgba(0,0,0,.55);}
+    .cap-dlg-tit{margin:0 0 4px;font-size:18px;text-transform:none;letter-spacing:0;white-space:normal;}
+    .cap-campo{display:flex;flex-direction:column;gap:6px;margin:14px 0 0;font-size:14px;color:var(--text-muted);}
+    .cap-campo input{font-size:16px;min-height:48px;}
+    .cap-marca{display:flex;align-items:flex-start;gap:10px;margin:14px 0 0;font-size:14px;color:var(--text-main);}
+    .cap-marca[hidden]{display:none;}
+    .cap-marca input{width:22px;height:22px;flex:none;margin:1px 0 0;}
     .cam-ideia-abrir{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;margin:0 0 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text-main);font:inherit;font-size:15px;font-weight:600;cursor:pointer;}
     .cam-ideia-abrir small{font-weight:400;font-size:12px;color:var(--accent);}
     .cam-ideia-abrir:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--border));}
@@ -5705,12 +5772,16 @@
       <a href="#" class="nav-item" data-target="view-armario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M4 12h16"></path><path d="M10 7.5h4M10 16.5h4"></path></svg> Armário</a>
       <a href="#trabalho" class="nav-item" data-atalho="trabalho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M12 4v16"></path></svg> Kanban</a>
       <a href="#" class="nav-item" data-target="view-ideias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"></path></svg> Ideias</a>
+      <!-- CC-10 (webscrapper), 20/10: as gavetas de pesquisa moram no teste de voo; o item só abre o endereço em aba nova -->
+      <a href="https://testedevoo.carzo.com.br/gavetas" class="nav-item" data-externo="1" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="1"></rect><rect x="3" y="13" width="18" height="7" rx="1"></rect><path d="M10 7.5h4M10 16.5h4"></path></svg> Gavetas</a>
       <!-- CC-1038, escolha dele em 10/10: a revisão de textos e telas de cada projeto tem aba própria -->
       <a href="#" class="nav-item" data-target="view-revisoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"></path><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"></path></svg> Revisões</a>
       <a href="#" class="nav-item" data-target="view-design"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"></circle><circle cx="17.5" cy="10.5" r="1.5"></circle><circle cx="8.5" cy="7.5" r="1.5"></circle><circle cx="6.5" cy="12.5" r="1.5"></circle><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A5.6 5.6 0 0 0 22 9.8C22 5.5 17.5 2 12 2z"></path></svg> Design</a>
       <!-- CC-1044, pedido dele em 11/10: monitorar os hooks -->
       <a href="#" class="nav-item" data-target="view-hooks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg> Hooks</a>
       <a href="#" class="nav-item" data-target="view-servidores2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg> Máquinas</a>
+      <!-- CC-1080 passo 2: backup de projeto que volta igual. Fica ao lado de Máquinas porque é o que está nelas. -->
+      <a href="#" class="nav-item" data-target="view-capsulas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg> Cápsulas</a>
       <!-- CC-376, 27/08: a tela das rotas fica colada nas de projeto porque a
            pergunta dela é a mesma, um nível abaixo. Não "onde tem alguém", e
            sim "tem alguém no meu caminho". -->
@@ -7002,6 +7073,26 @@
       </div>
     </dialog>
 
+    <div id="view-capsulas" class="view-section">
+      <div class="grid-container so-uma">
+        <div class="main-col" id="cap-tela"><p class="c2-vazio">lendo as cápsulas…</p></div>
+      </div>
+    </div>
+
+    <!-- CC-1080: a senha mora FORA do #cap-tela, que se redesenha. Campo dentro de bloco redesenhado perde o que se digita. -->
+    <dialog id="cap-dlg" class="cap-dlg" aria-labelledby="cap-dlg-tit">
+      <h2 id="cap-dlg-tit" class="cap-dlg-tit">Fazer cápsula</h2>
+      <div id="cap-dlg-info" class="cap-est">medindo…</div>
+      <label class="cap-marca" id="cap-cand-lbl" hidden><input type="checkbox" id="cap-cand"><span>Incluir também as pastas publicadas dos blocos CANDIDATOS (<span id="cap-cand-n"></span>). Sem marcar, só entram as de ligação certa.</span></label>
+      <label class="cap-campo">Senha dos segredos (mínimo 12 caracteres)<input type="password" id="cap-s1" class="styled-input" autocomplete="new-password" spellcheck="false"></label>
+      <label class="cap-campo">Repita a senha<input type="password" id="cap-s2" class="styled-input" autocomplete="new-password" spellcheck="false"></label>
+      <p id="cap-dlg-msg" class="c2-mini" role="status"></p>
+      <div class="cap-acoes">
+        <button type="button" class="rev-b" id="cap-cancelar">Cancelar</button>
+        <button type="button" class="rev-b forte" id="cap-confirmar" disabled>Fazer cápsula</button>
+      </div>
+    </dialog>
+
     <div id="views-placeholder">
       <!-- Outras views serão renderizadas aqui temporariamente ou criadas por script -->
     </div>
@@ -7134,6 +7225,7 @@
       'view-hooks': { title: 'Hooks', subtitle: 'O que cada hook faz com você: quantas vezes rodou, quanto demorou e quando barrou.' },
       'view-revisoes': { title: 'Revisões', subtitle: 'Os textos e as telas de cada projeto que você revisa um por um: quanto falta, e o botão que leva as suas edições para o código.' },
       'view-ideias': { title: 'Ideias', subtitle: 'O que você falou com cara de ideia nas conversas, e o que aconteceu com cada uma.' },
+      'view-capsulas': { title: 'Cápsulas', subtitle: 'Um arquivo por projeto, com a pasta, o que roda no Docker e os segredos cifrados. Você baixa, e ele volta igual.' },
       'view-armario': { title: 'Armário', subtitle: '' },
       'view-design': { title: 'Design', subtitle: 'A identidade de cada projeto, as telas desenhadas antes do código, o mural de referências e o antes e depois do site, para você ajustar e aprovar.' }
     };
@@ -7146,6 +7238,7 @@
 
       navItems.forEach(item => {
         item.addEventListener('click', (e) => {
+          if (item.dataset.externo) return; // CC-10: link para fora do painel (as gavetas) abre como um link comum
           e.preventDefault();
           /* CC-580: atalho do menu só troca o endereço; quem abre a tela certa
              (e a aba certa, no caso de #notas) é o leitor do endereço. */
@@ -9113,6 +9206,7 @@
 
     document.body.addEventListener('input', (e) => {
       if (e.target.matches('[data-ent-campo]')) ENTREVISTA_RASCUNHO = e.target.value;
+      if (e.target.matches('[data-iv-campo]')) ivUi(e.target.dataset.ivProj)[e.target.dataset.ivCampo] = e.target.value; // CC-1085
       if (e.target.matches('[data-novo-campo]')) NOVO_FORM[e.target.dataset.novoCampo] = e.target.value;
       if (e.target.id === 'gl-q') { glossarioBusca = e.target.value; renderGlossario(); }
       if (e.target.id === 'doc-q') { docsBusca = e.target.value; renderDocs(); }
@@ -9374,6 +9468,8 @@
           ${e.respondidas.map((r) => `<div style="border-top:1px solid var(--border);padding:8px 0;">
             <b style="font-size:11px;">${esc(r.header)}</b>
             <div style="color:var(--text-muted);" title="${esc(r.pergunta)}">${esc(r.texto)}</div>
+            ${r.de === 'pesquisa' || r.de === 'prosa' ? `<p class="c2-mini" style="margin:4px 0 0;"><span class="c2-palpite">${r.de === 'pesquisa' ? 'achado da pesquisa' : 'deduzido da sua descrição'}</span> confirme ou corrija${(r.fontes || []).length ? ': ' + r.fontes.map((f) => `<a href="${esc(f)}" target="_blank" rel="noopener">${esc(f.replace(/^https?:\/\/(www\.)?/, '').split('/')[0])}</a>`).join(', ') : ''}</p>
+            <button class="btn compacto" style="font-size:10px;margin-top:4px;" data-ent-confirmar="${esc(r.id)}" data-texto="${esc(r.texto)}">confirmar</button>` : ''}
             <button class="btn compacto" style="font-size:10px;margin-top:4px;" data-ent-voltar="${esc(r.id)}">voltar aqui</button>
           </div>`).join('')}
         </details>`;
@@ -9396,6 +9492,7 @@
       alvo.innerHTML = `${cabeca}${orfas}
         <p style="color:var(--text-main);font-size:13px;margin-top:12px;">${esc(p.pergunta)}</p>
         <p style="color:var(--text-dim);font-size:11px;">${esc(p.ajuda || '')}</p>
+        ${p.pesquisavel ? '<p class="c2-mini" style="margin:6px 0 0;"><span class="c2-palpite">a IA pesquisa</span> a sessão do projeto pesquisa esta e te traz o achado com as fontes. Responda aqui só se você já souber.</p>' : ''}
         ${opcoes}
         <textarea data-ent-campo rows="3" placeholder="${p.opcoes?.length ? 'ou responda com as suas palavras' : 'a sua resposta'}" style="width:100%;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--text-main);font-family:inherit;box-sizing:border-box;">${esc(ENTREVISTA_RASCUNHO)}</textarea>
         <button class="btn" style="background:var(--accent);color:white;margin-top:8px;"${e.salvando ? ' disabled' : ''} data-ent-responder>${e.salvando ? 'gravando…' : 'responder'}</button>
@@ -12710,6 +12807,93 @@
         + '</details>';
     }
 
+    /* CC-1068: o estado do Regente por pasta. Lê UMA vez por pasta (e de novo depois de um clique ou de 60 s),
+       nunca no tique de 2 s: quem pede e ainda não tem resposta recebe vazio, e a tela se redesenha ao chegar. */
+    const REGENTE_EST = {};
+    function regenteLer(cwd, aoVoltar, forcar) {
+      const e = REGENTE_EST[cwd];
+      if (!cwd || (e && e.lendo) || (e && !forcar && Date.now() - e.em < 60000)) return e || null;
+      REGENTE_EST[cwd] = { ...(e || {}), lendo: true, em: e ? e.em : 0 };
+      fetch('/api/regente?cwd=' + encodeURIComponent(cwd)).then(c2Json)
+        .then((r) => { REGENTE_EST[cwd] = { ligado: !!(r && r.ligado), desde: (r && r.desde) || null, em: Date.now() }; })
+        .catch(() => { REGENTE_EST[cwd] = { ...(REGENTE_EST[cwd] || {}), lendo: false, em: Date.now() }; })
+        .then(() => { if (aoVoltar) aoVoltar(); });
+      return e || null;
+    }
+    function regenteLinha(fw) {
+      const cwd = fw && fw.raiz; if (!cwd) return '';
+      const e = regenteLer(cwd, () => { if (typeof c2RenderProjetos === 'function') c2RenderProjetos(); });
+      if (!e || e.ligado === undefined) return '';
+      const desde = e.desde ? new Date(e.desde).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+      return '<div class="fw-regente c2-mini">Regente: ' + (e.ligado ? 'ligado' + (desde ? ' desde ' + esc(desde) : '') : 'desligado')
+        + ' <button type="button" class="btn compacto" data-regente-alternar="' + esc(cwd) + '" data-regente-liga="' + (e.ligado ? '0' : '1') + '">'
+        + (e.ligado ? 'desligar o Regente' : 'ligar o Regente') + '</button></div>';
+    }
+    /* CC-1085: o cartão da ideia viva, dentro do cartão do framework. Só aparece
+       no projeto que está nesse método (`fw.ideiaViva`), e mostra o que a ideia
+       precisa agora: os cinco marcos em fila, o que falta, e o campo do marco
+       atual. O que ele digita fica em `IDEIA_UI` e volta como valor do campo, porque o
+       redesenho de 2 em 2 segundos troca o bloco e apagaria a digitação. */
+    const IDEIA_UI = {};
+    const ivUi = (projeto) => IDEIA_UI[projeto] || (IDEIA_UI[projeto] = { virou: false });
+    function blocoIdeiaViva(fw) {
+      const iv = fw && fw.ideiaViva;
+      if (!iv) return '';
+      const u = ivUi(fw.projeto);
+      const proj = esc(fw.projeto);
+      const campo = (nome, rot, valor, ajuda) => '<div class="iv-linha"><label>' + esc(rot) + '</label>'
+        + '<input type="text" data-iv-campo="' + nome + '" data-iv-proj="' + proj + '" value="' + esc(valor) + '"'
+        + (ajuda ? ' placeholder="' + esc(ajuda) + '"' : '') + '></div>';
+      const botao = (acao, rot, extra) => '<button type="button" class="btn compacto" data-iv="' + acao + '" data-iv-proj="' + proj + '">' + esc(rot) + '</button>' + (extra || '');
+      const area = (nome, rot, valor) => '<div class="iv-linha"><label>' + esc(rot) + '</label>'
+        + '<textarea rows="2" data-iv-campo="' + nome + '" data-iv-proj="' + proj + '">' + esc(valor) + '</textarea></div>';
+
+      let aqui = '';
+      if (iv.atual === 'semente') {
+        aqui = campo('frase', 'a ideia em uma frase', u.frase ?? iv.frase, 'o que ela entrega') + '<div class="iv-botoes">' + botao('semente', 'guardar a frase') + '</div>';
+      } else if (iv.atual === 'rascunho') {
+        const r = iv.rascunho;
+        aqui = campo('url', 'endereço do rascunho', u.url ?? (r ? r.url : ''), 'onde dá para mexer na primeira tela')
+          + '<div class="iv-botoes">' + botao('rascunho', 'guardar o endereço')
+          + (r && r.url ? botao('tocou', r.tocou ? 'toquei de novo' : 'toquei') : '') + '</div>'
+          + (r && r.tocou ? '<p class="cc-explica">você tocou nele em ' + esc(new Date(r.tocou).toLocaleDateString('pt-BR')) + '</p>' : '');
+      } else if (iv.atual === 'matriz') {
+        aqui = iv.matrizConfirmada
+          ? '<p class="cc-explica">matriz confirmada: ' + esc(iv.matriz.join('; ')) + '</p>'
+          : (iv.palpite.length
+            ? '<p class="cc-explica">palpite, do que ficou em todas as viradas (só vale quando você confirma):</p><ul class="iv-palpite">'
+              + iv.palpite.map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul>'
+            : '<p class="cc-explica">ainda não há palpite, porque nenhuma virada foi registrada. Digite a matriz abaixo.</p>')
+          + campo('itens', 'ou digite a matriz (separe por ponto e vírgula)', u.itens ?? '', 'a; b; c')
+          + '<div class="iv-botoes">' + botao('matriz', 'confirmar matriz') + '</div>';
+      } else if (iv.atual === 'mvp') {
+        aqui = '<p class="cc-explica">o nome e os critérios do MVP saem da entrevista (botão acima). A matriz já confirmada: ' + esc(iv.matriz.join('; ') || 'nenhuma') + '.</p>';
+      } else if (iv.atual === 'uso') {
+        aqui = (iv.usoReal ? '<p class="cc-explica">já usou: ' + esc(iv.usoReal.quem) + ', em ' + esc(new Date(iv.usoReal.quando).toLocaleDateString('pt-BR')) + '</p>' : '')
+          + campo('quem', 'quem além de você usou', u.quem ?? '', 'nome ou grupo') + '<div class="iv-botoes">' + botao('uso', 'registrar o uso') + '</div>';
+      }
+
+      const falta = (fw.pendencias || []).length
+        ? '<ul class="iv-falta">' + fw.pendencias.map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul>'
+        : '<p class="cc-explica">portão aberto' + (iv.ultima ? ': não há marco depois deste.' : ': dá para avançar de marco.') + '</p>';
+      const avancar = !(fw.pendencias || []).length && !iv.ultima ? botao('avancar', 'avançar de marco') : '';
+
+      const virou = u.virou
+        ? '<div class="iv-virou">' + area('saiu', 'o que saiu (um por linha, ou separado por ponto e vírgula)', u.saiu ?? '')
+          + area('ficou', 'o que ficou', u.ficou ?? '') + campo('motivo', 'por quê', u.motivo ?? '')
+          + '<div class="iv-botoes">' + botao('virada', 'registrar a virada') + botao('virou-abrir', 'cancelar') + '</div></div>'
+        : '';
+
+      return '<div class="iv" data-iv-bloco="' + proj + '">'
+        + '<ol class="iv-marcos">' + iv.marcos.map((m, i) => '<li class="iv-m ' + m.estado + '"'
+          + (m.estado === 'atual' ? ' aria-current="step"' : '') + '><span class="iv-n">' + (i + 1) + '</span>' + esc(m.titulo) + '</li>').join('') + '</ol>'
+        + '<p class="cc-explica" style="margin:0">' + esc(iv.explica || '') + '</p>'
+        + falta + aqui
+        + '<div class="iv-botoes">' + avancar + (u.virou ? '' : botao('virou-abrir', 'a ideia virou')) + '</div>'
+        + (iv.viradas ? '<p class="cc-explica" style="margin:0">' + iv.viradas + (iv.viradas === 1 ? ' virada registrada' : ' viradas registradas') + '</p>' : '')
+        + virou + '</div>';
+    }
+
     function blocoFramework(fw, { colapsado = false } = {}) {
       if (!fw) return '';
       const valendo = fw.ligado && fw.modo !== 'desligado';
@@ -12722,8 +12906,9 @@
           + '</span>'
         : '<div class="cc-fase"><span class="dot ' + (fw.portaoAberto ? 'green' : 'amber') + '"></span> '
           + esc(fw.tituloFase || 'em andamento')
-          + '</div>' + primeiraPendencia(fw)
-          + blocoMvp(fw);
+          + '</div>' + (fw.ideiaViva ? '' : primeiraPendencia(fw))
+          + blocoMvp(fw)
+          + blocoIdeiaViva(fw);
 
       const cat = FW_CATALOGO_MODULOS || {};
       const botaoMod = (m) => {
@@ -12858,6 +13043,7 @@
         + '<div class="cc-linha-estado">' + seletorEstado(fw) + ajuda('framework') + btnEntrevista + '</div>'
         + explicaModo(valendo ? fw.modo : 'desligado')
         + situacao
+        + regenteLinha(fw)
         + autorizacao
         + (modulos
           /* CC-436: os cinco botões de módulo viram gaveta. São o ajuste mais
@@ -15769,7 +15955,10 @@
       if (tit.textContent !== nome) tit.textContent = nome;
       const maq = (typeof DATA !== 'undefined' && DATA.maquina?.nome) || 'esta máquina';
       const pasta = String(cab.cwd || '').replace(/^\/home\/[^/]+/, '~');
-      const html = '<span class="gate-cab-conv">' + (GATE.dados.turnoAberto ? '<span class="ini-pilula" style="--q:var(--c-sessao)">trabalhando</span>' : '<span class="ini-pilula" style="--q:var(--text-dim)">parada</span>')
+      // CC-1068: na conversa do Arquiteto, a pílula diz que o Regente está ligado (leitura em cache, fora do tique)
+      const regente = String(cab.titulo || nome).startsWith('Arquiteto · ') && cab.cwd ? regenteLer(cab.cwd, gateCabecalho) : null;
+      const html = (regente && regente.ligado ? '<span class="ini-pilula" style="--q:var(--c-sessao)">Regente ligado</span>' : '')
+        + '<span class="gate-cab-conv">' + (GATE.dados.turnoAberto ? '<span class="ini-pilula" style="--q:var(--c-sessao)">trabalhando</span>' : '<span class="ini-pilula" style="--q:var(--text-dim)">parada</span>')
         // CC-762: o caminho da pasta saiu daqui; ele está na barra da direita
         + '<span' + (pasta ? ' title="' + esc(pasta) + '"' : '') + '>' + ic('maquina', 12) + ' ' + esc(maq) + '</span></span>'
         + (pasta ? '<span class="gate-cab-pasta">' + ic('pasta', 12) + ' ' + esc(pasta) + '</span>' : '')
@@ -15857,8 +16046,23 @@
         : (notasP.length + arqsP.length ? notasP.slice(0, 6).map((n) => '<div class="gctx-nota"><b>' + esc(n.title || String(n.text || '').split('\n')[0] || 'nota') + '</b></div>').join('') + arqsP.slice(0, 4).map((a) => '<div class="gctx-nota">' + ic('pasta', 12) + ' ' + esc(a.nome) + '</div>').join('')
           : '<p class="c2-mini">nenhuma nota nem arquivo ligado a este projeto. "salvar no projeto", embaixo de cada resposta, guarda aqui.</p>')
         + '<button type="button" class="c2-link" data-gctx-ir="armario">abrir no Armário ›</button>';
+      /* CC-1070: o que a sessão fez de verdade (registro independente do turno) e as conversas claude -p da pasta.
+         Lê por pasta+sessão a cada 20 s, nunca no tique de 2 s. */
+      const R = gateRegLer(cwd, cab.sessoes?.claude || cab.sessoes?.[GATE.agente] || '');
+      const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
+      const blocoFeito = !cwd ? semPasta : !R ? '<p class="c2-mini">lendo o registro…</p>'
+        : '<p class="c2-mini">' + (R.robos && R.robos.n ? '<b>' + R.robos.n + '</b> conversa' + (R.robos.n > 1 ? 's' : '') + ' claude -p nas últimas 24 h nesta pasta (primeira ' + esc(hm(R.robos.primeira)) + ', última ' + esc(hm(R.robos.ultima)) + ').' : 'nenhuma conversa claude -p nas últimas 24 h nesta pasta.') + '</p>'
+          + ((R.turnos || []).length ? R.turnos.slice(0, 6).map((t) => {
+            const n = (a) => (a || []).length;
+            const pil = (rot, k, cor) => (n(t[k]) ? '<span class="ini-pilula" style="--q:' + cor + '">' + rot + ' ' + n(t[k]) + '</span> ' : '');
+            const det = [].concat((t.derrubou || []).map((x) => 'derrubou: ' + x.rotulo), (t.ligou || []).map((x) => 'ligou: ' + x.rotulo), (t.erros || []).map((x) => 'erro: ' + x.alvo), (t.testesFalhos || []).map((x) => 'teste falho: ' + x.alvo)).slice(0, 4);
+            return '<div class="gctx-nota"><b>' + esc(hm(t.em)) + ' ' + esc(String(t.pedido || 'sem pedido').slice(0, 70)) + '</b><div>'
+              + pil('mudou', 'mudou', 'var(--text-dim)') + pil('erros', 'erros', 'var(--red)') + pil('testes falhos', 'testesFalhos', 'var(--red)') + pil('derrubou', 'derrubou', 'var(--amber)') + pil('ligou', 'ligou', 'var(--amber)')
+              + (n(t.mudou) + n(t.erros) + n(t.testesFalhos) + n(t.derrubou) + n(t.ligou) ? '' : '<span class="c2-mini">só leitura</span>') + '</div>'
+              + det.map((d) => '<div class="c2-mini">' + esc(String(d).slice(0, 90)) + '</div>').join('') + '</div>';
+          }).join('') : '<p class="c2-mini">nenhum turno registrado ainda nesta sessão.</p>');
       const E = gateCtxEstado();
-      const BLOCOS = [['conversa', 'chat', 'a conversa', blocoConversa], ['git', 'git', 'o projeto no git', blocoGit], ['projeto', 'kanban', 'o projeto e as tarefas', blocoProjeto],
+      const BLOCOS = [['conversa', 'chat', 'a conversa', blocoConversa], ['feito', 'chat', 'o que a sessão fez de verdade', blocoFeito], ['git', 'git', 'o projeto no git', blocoGit], ['projeto', 'kanban', 'o projeto e as tarefas', blocoProjeto],
         ['arquivos', 'pasta', 'arquivos principais', blocoArquivos], ['agentes', 'pessoas', 'agentes e sessões', blocoAgentes], ['notas', 'nota', 'notas do Armário', blocoNotas]];
       GATE_CTX.chaves = BLOCOS.map(([k]) => [k]); // CC-765: as chaves, para mover fora daqui
       const vis = c2PainelOrdem(BLOCOS, E.ordem).filter(([k]) => !E.ocultos.includes(k)); // CC-765: na ordem que ele escolheu
@@ -15871,6 +16075,20 @@
     /* O que a coluna de contexto guarda: por pasta, os arquivos e a fila; e o
        Armário inteiro (notas e arquivos), relido a cada 30s. */
     const GATE_CTX = { por: {}, notas: null, notasEm: 0, sesEm: 0 };
+    /* CC-1070: o registro do turno, por pasta+sessão, relido a cada 20 s */
+    const GATE_REG = {};
+    function gateRegLer(cwd, sessao) {
+      if (!cwd) return null;
+      const k = cwd + '|' + sessao; const r = GATE_REG[k];
+      if (!r || (!r.lendo && Date.now() - r.em > 20000)) {
+        GATE_REG[k] = { ...(r || {}), lendo: true, em: r ? r.em : 0 };
+        fetch('/api/registro?cwd=' + encodeURIComponent(cwd) + '&sessao=' + encodeURIComponent(sessao)).then(c2Json)
+          .then((d) => { GATE_REG[k] = { turnos: d.turnos || [], robos: d.robos || null, em: Date.now() }; })
+          .catch(() => { GATE_REG[k] = { ...(GATE_REG[k] || {}), turnos: (GATE_REG[k] || {}).turnos || [], lendo: false, em: Date.now() }; })
+          .then(() => gateContexto());
+      }
+      const v = GATE_REG[k]; return v && v.em ? v : null;
+    }
     /* CC-765: a ordem dos painéis que ele escolheu, a mesma conta no Coderoom e no Sessões. Painel fora da ordem
        gravada vai para o fim, na ordem do código; mover troca de lugar com o vizinho VISÍVEL. */
     function c2PainelOrdem(lista, ordem) { const pos = (k) => { const i = (ordem || []).indexOf(k); return i < 0 ? 1000 + lista.findIndex((x) => x[0] === k) : i; }; return [...lista].sort((a, b) => pos(a[0]) - pos(b[0])); }
@@ -18105,6 +18323,37 @@
     document.body.addEventListener('click', async (e) => {
       const tr = e.target.closest('button, a, [data-trab-abrir], [data-retomar], [data-meu-feito], [data-meu-abrir], [data-meu-feito-btn], [data-zona], [data-foco-dia], [data-sinc-ler], [data-sinc-acao], [data-ag], [data-esc-ver], [data-meu-remover], [data-meu-add], [data-fila-buscar], [data-vi-tudo], [data-fed-ver], [data-fed-gerar], [data-fed-salvar], [data-fed-enviar], [data-fed-pedir], [data-remoto-ligar], [data-remoto-mais], [data-remoto-desligar], [data-remoto-link], [data-remoto-conectar], [data-remoto-soltar], [data-remoto-reabrir], [data-coderoom-abrir], [data-coderoom-nova], [data-coderoom-fechar], [data-mapa-ordem], [data-criar-todo-roadmap], [data-rota], [data-n-add], [data-modo], [data-del], [data-nota-check], [data-nota-add], [data-fw-todos], [data-mod], [data-fw], [data-ent-abrir], [data-ent-fechar], [data-ent-op], [data-ent-responder], [data-ent-voltar], [data-novo-proj], [data-novo-criar], [data-vps-config], [data-vps-salvar], [data-vps-atualizar], [data-srv-modo], [data-srv-novo], [data-srv-fav], [data-srv-nome], [data-srv-nota], [data-abrir], [data-copiar], [data-dedup], [data-subir-cwd], [data-kill], [data-processos-atualizar], [data-hk-provar], [data-rt-ver], [data-rt-sync], [data-rt-del], [data-preco-abrir], [data-preco-nivel], [data-preco-buscar], [data-g-novo], [data-g-indice], [data-g-cancelar], [data-g-restaurar], [data-g-editar], [data-g-remover], [data-g-salvar], [data-digest], [data-sintese], [data-ag-modo], [data-modos-abrir], [data-risco], [data-pasta-add], [data-pasta-tirar], [data-bn-nivel], [data-bn-rodar], [data-bn-camada], [data-doc-novo], [data-doc-voltar], [data-doc-abrir], [data-doc-editar], [data-doc-apagar], [data-doc-cancelar], [data-doc-salvar], [data-ag-dias], [data-ag-atualizar], [data-ag-config], [data-ag-salvar], [data-ag-remover], [data-ver-agente], [data-bb], [data-gaveta-abrir], [data-gaveta-fechar], .gaveta [data-target], [data-meus-ver], [data-meus-novo], [data-meus-renomear], [data-meus-apagar], [data-ag-voltar], [data-tend-cheia], [data-tend-dia], [data-tend-andar], [data-tend-hoje], [data-tend-fechar], [data-trv-abrir], [data-trv-ajudou], [data-trv-atrapalhou], [data-trv-explica], [data-trv-fechar-explica], [data-pj-abrir], [data-pj-sessao], [data-pj-conversa], [data-cc-modo], [data-cc-fw], [data-cc-parados], [data-mod], [data-nav-grupo], [data-sb-grade], [data-tg-fechar], [data-tg-ir], [data-pj-pastas], [data-pa-fechar], [data-pa-alternar], [data-pa-arquivo], [data-pa-fechar-arq], [data-kb-fechar], [data-kb-proj], [data-kb-cheio], [data-mod-remoto], [data-fw-remoto]');
 
+      /* CC-1085: as ações dos marcos da ideia viva. Cada botão é uma rota só
+         (`/api/framework/ideia`) e o texto digitado é lido do próprio campo, não do
+         rascunho: ditado por voz coloca o valor sem disparar `input`. */
+      const ivBt = e.target.closest?.('[data-iv]');
+      if (ivBt) {
+        const projeto = ivBt.dataset.ivProj, acao = ivBt.dataset.iv, u = ivUi(projeto);
+        const redesenhar = () => { if (typeof renderProjetos === 'function') renderProjetos(); if (typeof c2RenderProjetos === 'function') c2RenderProjetos(); };
+        if (acao === 'virou-abrir') { u.virou = !u.virou; return redesenhar(); }
+        const lido = (n) => (document.querySelector('[data-iv-campo="' + n + '"][data-iv-proj="' + projeto + '"]')?.value ?? u[n] ?? '');
+        const corpo = { projeto, acao };
+        if (acao === 'semente') corpo.frase = lido('frase');
+        if (acao === 'rascunho') corpo.url = lido('url');
+        if (acao === 'matriz') corpo.itens = lido('itens');
+        if (acao === 'uso') corpo.quem = lido('quem');
+        if (acao === 'virada') { corpo.saiu = lido('saiu'); corpo.ficou = lido('ficou'); corpo.motivo = lido('motivo'); }
+        ivBt.disabled = true;
+        const f = await post('/api/framework/ideia', corpo);
+        ivBt.disabled = false;
+        // a rota responde 200 com `error` quando recusa: sem este aviso o clique pareceria não fazer nada
+        if (f && f.error && !f.falhou) avisarFalha('/api/framework/ideia', f.error);
+        if (f && !f.error && !f.falhou) {
+          if (Array.isArray(FW_LISTA)) FW_LISTA = FW_LISTA.map((p) => (p.projeto === projeto ? { ...p, ...f } : p));
+          const limpar = { semente: ['frase'], rascunho: ['url'], matriz: ['itens'], uso: ['quem'], virada: ['saiu', 'ficou', 'motivo'] }[acao] || [];
+          for (const n of limpar) delete u[n];
+          if (acao === 'virada') u.virou = false;
+        }
+        // campo com foco impede o repintar (`pintar`); quem acabou de gravar não está mais digitando
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        return redesenhar();
+      }
+
       /* CC-371: as caixinhas de projeto do quadro.
          ⚠️ Este `if` morava no ouvinte de `change`, herdado do `<select>` que
          estava aqui antes. Botão não dispara `change`, então o clique não fazia
@@ -18763,6 +19012,8 @@
         if (!texto) return;
         return mandarEntrevista({ acao: 'responder', id: ENTREVISTA.proxima.id, texto });
       }
+      // CC-1086: confirmar um achado da pesquisa (ou um palpite) é responder o mesmo texto como dele
+      if (tr.dataset.entConfirmar) return mandarEntrevista({ acao: 'responder', id: tr.dataset.entConfirmar, texto: tr.dataset.texto || '' });
       if (tr.dataset.entVoltar) {
         if (!confirm('Apagar esta resposta?\n\n· a pergunta volta a ser feita\n· o que só existia por causa dela sai junto, e a tela diz o que saiu')) return;
         return mandarEntrevista({ acao: 'desfazer', id: tr.dataset.entVoltar });
@@ -19949,9 +20200,9 @@
       const pessoalDec = new Set((C2.dados.projetos || []).filter((p) => p.pastaPessoal).map((p) => p.chave));
       const idsDec = new Set(esperando.flatMap((e) => (e.grupo ? e.itens.map((x) => x.id) : [e.id])));
       const itens = [
-        ...esperando.map((e) => ({ dec: e, cat: e.esquecida ? 'esquecida' : !e.grupo && c2EhQA(e) ? 'qa' : !e.grupo && c2EhNada(e) ? 'parada' : 'esperando', nome: e.nome, disp: e.dispositivo, ordem: ehPerg(e) ? 0 : 1, t: e.desdeMs || 0 })),
+        ...esperando.map((e) => ({ dec: e, cat: e.esquecida ? 'esquecida' : !e.grupo && e.fechadaNoApp && e.rotulo !== 'pergunta' && e.rotulo !== 'permissão' ? 'parada' : !e.grupo && c2EhQA(e) ? 'qa' : !e.grupo && c2EhNada(e) ? 'parada' : 'esperando', nome: e.nome, disp: e.dispositivo, ordem: ehPerg(e) ? 0 : 1, t: e.desdeMs || 0 })),
         ...(C2.dados.conectadas || []).filter((s) => !pessoalDec.has(s.projeto) && !idsDec.has(s.id) && !idsDepois.has(s.id)).map((s) => {
-          const cat = s.esquecida ? 'esquecida' : s.estado === 'trabalhando' ? 'trabalhando' : c2EhQA(s) ? 'qa' : s.estado === 'espera você' && !c2EhNada(s) ? 'esperando' : 'parada';
+          const cat = s.esquecida ? 'esquecida' : s.estado === 'trabalhando' ? 'trabalhando' : s.fechadaNoApp ? 'parada' : c2EhQA(s) ? 'qa' : s.estado === 'espera você' && !c2EhNada(s) ? 'esperando' : 'parada';
           return { sess: s, cat, nome: s.nome, disp: s.dispositivo, ordem: { esperando: 1, qa: 1.5, trabalhando: 2, parada: 3, esquecida: 4 }[cat], t: s.desdeMs || 0 };
         }),
       ];
@@ -20374,6 +20625,7 @@
       requestAnimationFrame(() => { try { c2CrescerTodos(); } catch { /* só conveniência */ } });
       const raiz = document.getElementById('dec-tela');
       if (!raiz) return;
+      c2RascAoAbrir(); // CC-1064: lê os rascunhos ao abrir a tela, nunca no tique de 2 s
       if (document.getElementById('view-decisoes')?.classList.contains('active')) c2GarantirFramework(); // CC-635: o botão do framework no cartão
       if (!C2.dados) return pintar(raiz, C2.erro ? '<p class="c2-vazio" style="color:var(--red)">falha na leitura: ' + esc(C2.erro) + '</p>' : '<p class="c2-vazio">lendo…</p>');
       /* 26/09, itens 1 a 5 da tela Decisões (docs/produto/DECISOES-BLOCOS.md):
@@ -20511,7 +20763,7 @@
       const botaoFiltros = c2FilGrupo({ ativos, aberto: C2.sesFiltrosAbertos, alternar: 'data-ses-filtros-alternar', limpar: 'data-ses-limpar' });
       const verV = c2Faixa('decisoes', 'ver'); const filV = c2Faixa('decisoes', 'filtros');
       const barraSes = (verV || filV) ? '<div class="ses-barra">' + (verV ? modoBts : '') + (filV ? botaoFiltros : '') + '</div>' + (filV && C2.sesFiltrosAbertos ? filtros : '') : '';
-      pintar(raiz, statsV + fixo(barraSes, [['ver', 'Ver', 'chat'], ['filtros', 'Filtros' + (ativos.length ? ' ' + ativos.length : ''), 'kanban']]) + (vis.length
+      pintar(raiz, statsV + fixo(barraSes, [['ver', 'Ver', 'chat'], ['filtros', 'Filtros' + (ativos.length ? ' ' + ativos.length : ''), 'kanban']]) + c2RascBloco() + (vis.length
         ? (C2.sesModo === 'lista' ? c2ModoLista(vis)
           : '<div class="c2-mosaico">' + vis.map((x) => (x.dec ? (x.dec.grupo ? c2AvisoGrupo(x.dec) : c2Aviso(x.dec)) : c2CartaoSessao(x.sess))).join('') + '</div>')
         : '<p class="c2-vazio">nenhuma sessão neste filtro, lido às ' + c2Hora(C2.dados.lidoEm || Date.now()) + '.</p>'));
@@ -20598,8 +20850,10 @@
       /* CC-763, print dele: "o que eu faço com uma sessão assim? não explica
          nada, não tem resumo do agy, nem opção de fechar ou responder". Fechado,
          uma linha por sessão com o resumo; aberto, o cartão inteiro de cada uma,
-         com responder, fechar e ações. */
-      const linha = (e) => '<div class="grp-item"><span class="grp-txt">' + esc(c2semMd(g.pergunta ? (e.assunto || e.sessaoNome || e.pergunta) : (e.resumoIA && e.resumoIA.texto) || e.pergunta || e.fala || e.assunto || 'sem fala legível: abra para ver onde parou')) + '</span>'
+         com responder, fechar e ações.
+         CC-1087, pedido dele em 07/11: "os nomes das sessoes no cockpit fosse o nome que eu dou aqui". As três do
+         ecommerce_apps (duas renomeadas por ele) viravam três falas soltas, sem dizer qual era qual. */
+      const linha = (e) => '<div class="grp-item"><span class="grp-txt">' + (c2SessaoMostra(g.nome, e.sessaoNome) ? '<b>' + esc(e.sessaoNome) + '</b> ' : '') + esc(c2semMd(g.pergunta ? (e.assunto || e.sessaoNome || e.pergunta) : (e.resumoIA && e.resumoIA.texto) || e.pergunta || e.fala || e.assunto || 'sem fala legível: abra para ver onde parou')) + '</span>'
         + '<span class="c2-mini grp-t">há ' + c2ms(e.desdeMs) + '</span></div>';
       const lista = aberto
         ? '<div class="grp-cartoes">' + g.itens.map((e) => c2Aviso(e)).join('') + '</div>'
@@ -20628,10 +20882,10 @@
        vira PRONTO PARA QA, para ele testar todas de uma vez. Pergunta e
        permissão nunca viram QA: essas pedem resposta, sempre. */
     const c2Eti = (x) => (x && x.resumoIA && x.resumoIA.etiqueta) || null;
-    const c2EhQA = (x) => c2Eti(x) === 'testar' && x.rotulo !== 'pergunta' && x.rotulo !== 'permissão' && x.estado !== 'trabalhando';
+    const c2EhQA = (x) => c2Eti(x) === 'testar' && x.rotulo !== 'pergunta' && x.rotulo !== 'permissão' && x.estado !== 'trabalhando' && !x.fechadaNoApp; // CC-1090: sessão fechada no app não é QA
     /* CC-950, print dele: o cartão dizia "espera você" e o resumo logo abaixo "nenhuma ação é necessária".
        Com a etiqueta "nada", o rótulo diz que terminou e a sessão sai do "Esperando você". */
-    const c2EhNada = (x) => c2Eti(x) === 'nada' && x.rotulo !== 'pergunta' && x.rotulo !== 'permissão' && x.estado !== 'trabalhando';
+    const c2EhNada = (x) => c2Eti(x) === 'nada' && x.rotulo !== 'pergunta' && x.rotulo !== 'permissão' && x.estado !== 'trabalhando' && !x.fechadaNoApp;
     function c2EtiLinha(x) {
       const k = x && x.resumoIA && x.resumoIA.k;
       if (!k || x.rotulo === 'pergunta' || x.rotulo === 'permissão' || x.estado === 'trabalhando') return '';
@@ -20713,7 +20967,7 @@
       const decIndo = e.responder && C2.dec[e.responder.id] && C2.dec[e.responder.id].envio === 'indo';
       /* CC-738, pedido dele: a máquina sempre no mesmo lugar, colada ao estado. */
       return '<div class="c2-aviso ' + cls + (C2.selecionado === e.id ? ' c2-sel' : '') + ((permEst && permEst.estado === 'indo') || decIndo || c2ProcAtivo(e.id) ? ' c2-processando' : '') + (pend || c2AcoesAbertas().has(e.id) ? ' acoes-on' : '') + '" data-aviso-id="' + esc(e.id) + '">'
-        + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span>' + (qa ? 'PRONTO PARA QA' : !pend && c2EhNada(e) ? 'TERMINOU, NADA PENDENTE' : rot) + '</span>' + xFechar + (pend ? '' : c2Cadeado(e.id, 'c2-cad-dec')) + c2Onde(e.dispositivo, c2tagProj(cor, e.nome, e.frente, e.sessaoNome, e.frentePalpite)) + '</div>'
+        + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span>' + (e.fechadaNoApp && !pend && e.rotulo !== 'pergunta' && e.rotulo !== 'permissão' ? 'FECHADA NO APLICATIVO' : qa ? 'PRONTO PARA QA' : !pend && c2EhNada(e) ? 'TERMINOU, NADA PENDENTE' : rot) + '</span>' + xFechar + (pend ? '' : c2Cadeado(e.id, 'c2-cad-dec')) + c2Onde(e.dispositivo, c2tagProj(cor, e.nome, e.frente, e.sessaoNome, e.frentePalpite)) + '</div>'
         + barra
         /* CC-675: a mesma faixa de saúde do cartão de sessão; o caso real do
            fibraessencia era uma sessão ESPERANDO com o celular caído. */
@@ -22590,6 +22844,13 @@
         try { await fetch('/api/decisao/fechar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: fechar.dataset.decFechar, marca: fechar.dataset.decMarca || null }) }); } catch { /* o próximo tique mostra */ }
         return c2Buscar();
       }
+      /* CC-1090: "enviar agora" da resposta que ficou parada no campo. Usa o mesmo envio do cartão (`c2MsgEnviar`). */
+      const rasc = ev.target.closest('[data-rasc-enviar]');
+      if (rasc && rasc.dataset.rascConversa) {
+        const idR = rasc.closest('[data-aviso-id]')?.dataset.avisoId || ('rasc:' + rasc.dataset.rascConversa);
+        await c2MsgEnviar(idR, rasc.dataset.rascConversa, rasc.dataset.rascTexto || '');
+        return;
+      }
       const env = ev.target.closest('[data-msg-enviar]');
       if (env) {
         const box = env.closest('[data-msg]');
@@ -23131,10 +23392,11 @@
       if (!pode) { c2TdrChama(); return; }
       if (pode.j != null) c2TdrToque(c, pode.j); else c2TdrAndar(c);
     }
-    function c2TdrAbrir(proj) {
+    function c2TdrAbrir(proj, orig) {
       const T = C2.tdr;
       T.aberto = true; T.proj = proj || null; T.atual = null; T.outra = null; T.pintado = null;
-      T.orig = null; T.vistas = {}; T.conf = false; // abre na origem mais urgente; "as que vi" recomeça
+      // Sem origem pedida, abre na mais urgente. A aba Revisões pede 'cartas' (CC-1065): antes ela era zerada aqui e abria nas provas.
+      T.orig = orig || null; T.vistas = {}; T.conf = false; // "as que vi" recomeça
       c2TdrGuardar(); c2TdrLer(true); c2TdrRender();
     }
     /* Lê as provas e os baralhos de todos os projetos. Cache de 60 s no cliente: o tique de 2 s só olha o relógio. */
@@ -23159,7 +23421,8 @@
       const D = C2.dados || {}, nome = {};
       const loc = (D.dispositivos || []).find((d) => d.local), disp = loc ? loc.nome : null; // provas e baralhos são lidos nesta máquina
       for (const p of D.projetos || []) if (p.raiz) nome[p.raiz] = p.nome || p.chave;
-      const proj = (raiz, f) => nome[raiz] || String(f || raiz).replace(/^(VPS|PC)_/, '');
+      // Projeto fora da lista do painel: o nome da pasta, nunca o caminho inteiro (CC-1065, o filtro mostrava "/home/claudedev/projetos/VPS_...")
+      const proj = (raiz, f) => nome[raiz] || String(f || String(raiz).split(/[\\/]/).filter(Boolean).pop() || raiz).replace(/^(VPS|PC)_/, '');
       const provas = (C2.tdr.provas || []).filter((x) => x && x.id && x.raiz).map((x) => ({
         key: 'prova:' + x.raiz + ':' + x.id, tipo: 'prova', id: String(x.id), raiz: x.raiz, projeto: proj(x.raiz, x.projeto), disp, desde: 0, prio: 1,
         rotulo: 'PROVA ' + x.id, titulo: String(x.titulo || ''), porque: String(x.porque || ''), destaque: 0,
@@ -24165,7 +24428,10 @@
     async function c2Json(r) {
       const t = await r.text();
       try { return JSON.parse(t); } catch { /* segue */ }
-      if (/fora do ar/i.test(t) || r.status === 502 || r.status === 503) return { ok: false, erro: 'o painel estava religando e não recebeu. Tente de novo em alguns segundos.' };
+      /* CC-1089, 07/11: a frase dizia "o painel estava religando" para todo 502, e no print dele o painel estava de pé
+         havia 31 h. O 502 é a porta de entrada perdendo a ligação com o painel no meio do pedido; ela anota cada queda
+         em ~/logs/porta-entrada-quedas.log, que é onde se descobre a causa. */
+      if (/fora do ar|ligação com o painel caiu/i.test(t) || r.status === 502 || r.status === 503) return { ok: false, erro: 'a ligação com o painel caiu antes da resposta (ele não religou). Tente de novo; a queda ficou anotada.' };
       if (r.status === 401) return { ok: false, erro: 'a sessão do painel expirou: recarregue a página e entre de novo.' };
       return { ok: false, erro: 'resposta inesperada do painel (' + r.status + '): ' + t.slice(0, 80) };
     }
@@ -24253,6 +24519,24 @@
     function c2SaudeBloco(s) {
       if (!s.rotuloRC) return '';
       const partes = [];
+      if (s.morta) {
+        const st = C2.reativar && C2.reativar[s.rotuloRC];
+        partes.push('<span class="ini-pilula" style="--q:var(--red)">terminal morto: a VPS reiniciou ou a sessão caiu. A conversa está salva</span>'
+          + (st === 'indo' ? '<span class="c2-mini">reativando, leva uns 15 segundos…</span>'
+            : (st && st.erro ? '<span class="c2-mini" style="color:var(--red)">' + esc(st.erro) + '</span>' : '')
+              + '<button class="c2-link" data-c2-reativar="' + esc(s.rotuloRC) + '" data-c2-certeza="' + esc(s.certezaVolta || '') + '">reativar</button>'
+              + '<button class="c2-link" data-c2-dispensar="' + esc(s.rotuloRC) + '" title="tira da lista sem reativar">dispensar</button>'));
+      }
+      /* CC-1090: ele fechou a sessão no app, mas o terminal dela continua vivo. NUNCA encerra sozinho: o mesmo
+         código 4090 já apareceu com o celular caído sem querer, e por isso o "religar celular" segue ao lado. */
+      if (s.fechadaNoApp) {
+        partes.push('<span class="ini-pilula" style="--q:var(--red)">o servidor não vê mais esta sessão</span>'
+          + '<button class="c2-link" style="color:var(--red)" data-ses-acao="encerrar" data-ses-conversa="' + esc(s.conversa || '') + '" data-ses-nome="' + esc(s.sessaoNome || s.nome || '') + '">encerrar de vez</button>');
+        if (s.rascunhoParado) {
+          partes.push('<span class="c2-mini">sua resposta ficou parada sem enviar: ' + esc(s.rascunhoParado) + '</span>'
+            + '<button class="c2-link" data-rasc-enviar data-rasc-conversa="' + esc(s.conversa || '') + '" data-rasc-texto="' + esc(s.rascunhoParado) + '">enviar agora</button>');
+        }
+      }
       if (s.perdida) partes.push('<span class="ini-pilula" style="--q:var(--red)">perdida: viva no terminal, sem sinal no registro</span>');
       if (s.presa) partes.push('<span class="ini-pilula" style="--q:var(--red)">presa: ' + esc(s.presa) + '</span>');
       if (s.celular === false) {
@@ -24264,6 +24548,19 @@
       }
       return partes.length ? '<div class="c2-saude">' + partes.join('') + '</div>' : '';
     }
+    /* Sessão morta: reativar retoma a conversa de onde parou (a mesma rota do "retomar de onde parou"),
+       dispensar tira da lista. Conversa só adivinhada pela pasta pede confirmação antes. */
+    document.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('[data-c2-reativar],[data-c2-dispensar]'); if (!b) return;
+      const dispensa = b.dataset.c2Dispensar !== undefined;
+      const r = dispensa ? b.dataset.c2Dispensar : b.dataset.c2Reativar;
+      if (!dispensa && b.dataset.c2Certeza !== 'medida'
+        && !confirm('Reativar "' + r + '"?\n\nRetoma a conversa mais recente daquela pasta. Não tenho certeza de que é a que você quer: se havia mais de uma aberta, pode ser a irmã.')) return;
+      (C2.reativar ||= {})[r] = 'indo'; b.blur(); c2RenderDecisoes();
+      let out; try { out = await post('/api/remote-control', { projeto: r, acao: dispensa ? 'dispensar' : 'reabrir' }); } catch (e) { out = { ok: false, erro: e.message }; }
+      if (out && out.ok) delete C2.reativar[r]; else C2.reativar[r] = { erro: String((out && (out.erro || out.error)) || 'não deu').slice(0, 120) };
+      c2RenderDecisoes(); setTimeout(c2Buscar, 300);
+    });
     document.addEventListener('click', async (ev) => {
       const b = ev.target.closest('[data-c2-religar]'); if (!b) return;
       const r = b.dataset.c2Religar; (C2.religar ||= {})[r] = 'indo'; b.blur(); c2RenderDecisoes();
@@ -24327,7 +24624,7 @@
 
     function c2CartaoSessao(s) {
       const EST = { trabalhando: ['raio', 'var(--c-sessao)', 'trabalhando'], 'espera você': ['pausa', 'var(--c-decisao)', 'espera você'], ociosa: ['pausa', 'var(--c-tarefa)', 'parada'] };
-      const [icn, cor, rot] = c2EhQA(s) ? ['check', 'var(--c-dev)', 'pronto para QA'] : c2EhNada(s) ? ['check', 'var(--text-dim)', 'terminou, nada pendente'] : EST[s.estado] || ['relogio', 'var(--text-dim)', s.estado];
+      const [icn, cor, rot] = s.fechadaNoApp ? ['relogio', 'var(--red)', 'fechada no aplicativo'] : c2EhQA(s) ? ['check', 'var(--c-dev)', 'pronto para QA'] : c2EhNada(s) ? ['check', 'var(--text-dim)', 'terminou, nada pendente'] : EST[s.estado] || ['relogio', 'var(--text-dim)', s.estado];
       const local = (C2.dados?.dispositivos || []).find((d) => d.local);
       /* CC-728: conversa do Coderoom aparece com a "máquina" Coderoom, mas roda
          neste mesmo painel: é daqui, e os controles de escrever valem. */
@@ -24346,6 +24643,7 @@
            conversa em andamento não. Agora tem, no mesmo canto; arquiva a conversa (dá para desfazer). */
         + (daqui && coderoom && s.estado !== 'trabalhando' ? '<button class="c2-x" data-gate-arquivar="' + esc(s.conversa.slice(5)) + '" data-gate-titulo="' + esc(s.sessaoNome || '') + '" title="arquivar esta conversa (dá para desfazer)" aria-label="arquivar esta conversa">×</button>' : '')
         + (s.agente ? '<span class="ini-pilula" style="--q:' + corAg + '">' + esc(s.agente) + '</span>' : '')
+        + (s.rascunho ? '<span class="ini-pilula" style="--q:var(--c-ideia, var(--accent))" title="conversa de ideia, ainda não é projeto">rascunho</span>' : '') // CC-1064
         + c2Cadeado(s.id, 'c2-cad-ses')
         + c2Onde(s.dispositivo, c2tagProj('var(--c-projeto)', s.nome, s.frente, s.sessaoNome, s.frentePalpite)) + '</div>'
         + c2SaudeBloco(s)
@@ -24355,13 +24653,13 @@
         + c2Obra(s.obra, s.id)
         + c2BlocoResumo(s.fala, s.resumo, s.conversa, daqui, s.resumoIA?.texto)
         + (daqui && coderoom ? c2GateQuem(s) : '')
-        + ((daqui || s.escreve) && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela, abra a sessão no ' + esc(s.dispositivo || 'outro computador') + '.') + '</div>' : ''))
+        + (s.morta ? '' : ((daqui || s.escreve) && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela, abra a sessão no ' + esc(s.dispositivo || 'outro computador') + '.') + '</div>' : '')))
         + '<div class="c2-meta"><span class="c2-meta-t">' + ic('relogio', 13) + 'há ' + c2ms(s.desdeMs) + '</span>' + (s.estado === 'trabalhando' ? '<span class="c2-meta-ass">' + (s.ferramenta ? esc(s.ferramenta) : 'pensando') + '</span>' : '')
         + c2AcoesBotao(s.id)
         + '<span class="c2-acoes">' + (daqui ? c2FwChip(s.projeto) : '') + c2TesteVoo(s.projeto) + (s.estado === 'trabalhando' && (daqui || s.escreve) && s.conversa ? '<button class="c2-link" style="color:var(--red)" data-sessao-parar="' + esc(s.conversa) + '" data-sessao-nome="' + esc(s.nome) + '">parar</button>' : '')
         /* CC-727: renomear a conversa do Coderoom daqui mesmo. */
         + (daqui && coderoom ? '<button class="c2-link" data-gate-renomear="' + esc(s.conversa.slice(5)) + '" data-gate-titulo="' + esc(s.sessaoNome || '') + '">renomear</button>' : '')
-        + (s.estado !== 'trabalhando' && daqui && !coderoom ? c2AcoesRapidas(s.conversa, s.nome, s.cfgAtual) : '')
+        + (s.estado !== 'trabalhando' && daqui && !coderoom && !s.morta ? c2AcoesRapidas(s.conversa, s.nome, s.cfgAtual) : '')
         + c2AppLink(s.appUrl) + '<button class="c2-link" data-ver-agente="' + esc(s.id) + '">abrir sessão</button></span></div></div>';
     }
     /* CC-607, pedido dele: o teste de voo do projeto no cartão da sessão. Só
@@ -25286,6 +25584,80 @@
       c2RenderDecisoes(); setTimeout(() => { C2.termPcMsg = null; c2RenderDecisoes(); }, 4000);
     });
 
+    /* CC-1064: Rascunhos, as conversas de ideia que ainda não são projeto (src/rascunhos.mjs). O bloco mora no topo da
+       aba Sessões. A lista vem de /api/rascunhos UMA vez a cada vez que a tela abre e depois de cada ação; nunca no
+       tique de 2 s (a rota lê o tmux). Nome, título e confirmação saem de prompt() e confirm(): campo de texto dentro de
+       bloco redesenhado por timer perde o foco. */
+    function c2Rasc() { return C2.rasc || (C2.rasc = { dados: null, erro: null, lendo: false, viu: false, ocupado: null, aviso: null }); }
+    function c2RascAoAbrir() {
+      const R = c2Rasc();
+      if (!document.getElementById('view-decisoes')?.classList.contains('active')) { R.viu = false; return; }
+      if (!R.viu) { R.viu = true; c2RascLer(); }
+    }
+    async function c2RascLer() {
+      const R = c2Rasc(); if (R.lendo) return; R.lendo = true;
+      try {
+        const r = await fetch('/api/rascunhos').then(c2Json);
+        if (r && Array.isArray(r.rascunhos)) { R.dados = r; R.erro = null; } else R.erro = String((r && (r.erro || r.error)) || 'o painel não devolveu a lista de rascunhos').slice(0, 120);
+      } catch (e) { R.erro = String(e.message || e).slice(0, 120); }
+      R.lendo = false; c2RenderDecisoes();
+    }
+    function c2RascBloco() {
+      const R = c2Rasc();
+      const ocup = R.ocupado;
+      const btn = (acao, slug, rot, cls) => '<button class="rasc-btn' + (cls ? ' ' + cls : '') + '" data-rasc="' + acao + '"' + (slug ? ' data-rasc-slug="' + esc(slug) + '"' : '') + (ocup ? ' disabled' : '') + '>' + rot + '</button>';
+      const linha = (r) => {
+        const feito = ocup === 'promover:' + r.slug ? 'criando o projeto, leva um pouco…' : null;
+        const pil = r.viva ? '<span class="ini-pilula" style="--q:var(--c-sessao)">no ar</span>' : '<span class="ini-pilula" style="--q:var(--text-dim)">parado</span>';
+        return '<div class="rasc-l"><div class="rasc-l1"><span class="rasc-nome">' + esc(r.titulo) + '</span>' + pil
+          + '<span class="c2-mini">há ' + c2ms(Math.max(0, Date.now() - (r.mexidoEm || Date.now()))) + '</span></div>'
+          + (r.resumo ? '<div class="rasc-resumo">' + esc(r.resumo) + '</div>' : '')
+          + '<div class="rasc-acoes">'
+          + btn('promover', r.slug, esc(feito || 'virar projeto'), 'prim')
+          + (r.viva ? '' : btn('reabrir', r.slug, ocup === 'reabrir:' + r.slug ? 'reabrindo…' : 'reabrir a conversa'))
+          + btn('descartar', r.slug, 'descartar', 'perigo') + '</div></div>';
+      };
+      const av = R.aviso;
+      const avisoH = av ? '<div class="rasc-aviso' + (av.ok ? '' : ' erro') + '"><b>' + esc(av.titulo) + '</b>'
+        + (av.passos && av.passos.length ? '<ul>' + av.passos.map((p) => '<li>' + (p.ok ? '' : 'falhou: ') + esc(p.o_que) + (p.detalhe ? ' (' + esc(p.detalhe) + ')' : '') + '</li>').join('') + '</ul>' : '')
+        + '<div class="rasc-acoes"><button class="rasc-btn" data-rasc="fechar-aviso">fechar este aviso</button></div></div>' : '';
+      const lista = R.dados ? R.dados.rascunhos : null;
+      const corpo = R.erro && !lista ? '<div class="rasc-aviso erro">não consegui ler os rascunhos: ' + esc(R.erro) + '</div>'
+        : lista === null ? '<p class="rasc-vazio">lendo os rascunhos…</p>'
+        : lista.length ? '<div class="rasc-lista">' + lista.map(linha).join('') + '</div>'
+        : '<p class="rasc-vazio">Nenhum rascunho. Use para conversar sobre uma ideia sem criar projeto: se ela for adiante, vira projeto com um toque.</p>';
+      return '<section class="rasc"><div class="rasc-cab"><div class="rasc-tit"><b>Rascunhos</b><span>conversas que ainda não são projeto</span></div>'
+        + btn('novo', '', ocup === 'novo' ? 'abrindo, leva uns 15 segundos…' : 'novo rascunho', 'prim') + '</div>' + avisoH + corpo + '</section>';
+    }
+    document.addEventListener('click', async (ev) => {
+      const b = ev.target.closest && ev.target.closest('[data-rasc]'); if (!b || b.disabled) return;
+      const R = c2Rasc(); const acao = b.dataset.rasc; const slug = b.dataset.rascSlug || '';
+      const r = slug && R.dados ? R.dados.rascunhos.find((x) => x.slug === slug) : null;
+      b.blur();
+      if (acao === 'fechar-aviso') { R.aviso = null; return c2RenderDecisoes(); }
+      let corpo = null; let rot = '';
+      if (acao === 'novo') {
+        const t = prompt('Sobre o que é a ideia?'); if (!t || !t.trim()) return;
+        corpo = { acao: 'criar', titulo: t.trim() }; rot = 'novo';
+      } else if (acao === 'descartar') {
+        if (!r || !confirm('Descartar "' + r.titulo + '"? A pasta vai para a lixeira dos rascunhos e dá para recuperar.')) return;
+        corpo = { acao: 'descartar', slug }; rot = 'descartar:' + slug;
+      } else if (acao === 'promover') {
+        if (!r) return;
+        const nome = prompt('Nome da pasta do projeto', ((R.dados && R.dados.prefixo) || '') + slug); if (!nome || !nome.trim()) return;
+        corpo = { acao: 'promover', slug, nome: nome.trim() }; rot = 'promover:' + slug;
+      }
+      R.aviso = null; R.ocupado = rot || ('reabrir:' + slug); c2RenderDecisoes();
+      let out;
+      if (acao === 'reabrir') out = await post('/api/remote-control', { projeto: r ? r.rotulo : 'rascunho-' + slug, acao: 'reabrir' });
+      else if (corpo) out = await post('/api/rascunhos', corpo);
+      else { R.ocupado = null; return c2RenderDecisoes(); }
+      R.ocupado = null;
+      const erro = !out || out.ok === false || out.falhou ? String((out && (out.erro || out.error)) || 'não deu').slice(0, 160) : null;
+      if (acao === 'promover') R.aviso = { ok: !erro, titulo: erro ? 'Não virou projeto: ' + erro : 'Virou projeto: ' + (out.nome || corpo.nome), passos: (out && out.passos) || [] };
+      else if (erro) R.aviso = { ok: false, titulo: ({ novo: 'Não abriu o rascunho: ', descartar: 'Não descartou: ', reabrir: 'Não reabriu: ' }[acao] || '') + erro, passos: [] };
+      await c2RascLer(); setTimeout(c2Buscar, 300);
+    });
     async function c2Flutuar(id) {
       if (!('documentPictureInPicture' in window)) { c2Toast('este navegador não abre janela flutuante (só Edge e Chrome)'); return; }
       if (!id) return;
@@ -25779,7 +26151,7 @@
       extras.sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
       /* 26/09, item 1 da tela Projetos: a pasta pessoal (o servidor marca)
          sai da lista. As decisões e sessões dela continuam na Início. */
-      return [...(D.projetos || []).filter((p) => !p.pastaPessoal), ...extras];
+      return [...(D.projetos || []).filter((p) => !p.pastaPessoal && !p.rascunho), ...extras]; // CC-1064: rascunho não é projeto
     }
     /* Nomes quase iguais ("tradutor" e "trandutor"): até 2 letras de
        diferença, em nomes de 5 letras ou mais. É aviso, não fusão: juntar dois
@@ -26161,6 +26533,18 @@
       const k = ev.target && ev.target.dataset && ev.target.dataset.prodParte; if (!k) return;
       if (ev.target.open) C2.prodAberta.add(k); else C2.prodAberta.delete(k);
     }, true);
+    /* CC-1068: ligar e desligar o Regente. Ligar pede confirmação, porque ele decide sozinho e não para. */
+    document.addEventListener('click', async (ev) => {
+      const b = ev.target.closest && ev.target.closest('[data-regente-alternar]'); if (!b || b.disabled) return;
+      const cwd = b.dataset.regenteAlternar, ligado = b.dataset.regenteLiga === '1';
+      if (ligado && !confirm('O Regente decide sozinho e não para. Você corrige na conversa do Arquiteto (regra: ... ou geral: ...). Ligar?')) return;
+      b.disabled = true;
+      const r = await c2Post('/api/regente', { cwd, ligado });
+      b.disabled = false;
+      if (!r || r.ok === false || r.error) { c2Toast('Não foi: ' + ((r && (r.error || r.erro)) || 'o painel não respondeu')); return; }
+      c2Toast(ligado ? 'Regente ligado' : 'Regente desligado');
+      regenteLer(cwd, () => { if (typeof c2RenderProjetos === 'function') c2RenderProjetos(); }, true);
+    });
     /* #produto: o botão "criar o produto" do cartão do framework. Troca o método se preciso, sobe o arquiteto na
        conversa dele e abre o Tinder no projeto, onde as perguntas chegam como cartões. */
     document.addEventListener('click', async (ev) => {
@@ -27183,7 +27567,9 @@
       if (!REV.dados.length) return void pintar(el, '<div class="card rev-vazio"><b>Nenhuma revisão aberta.</b><p>Para revisar os textos de um app, diga numa sessão dentro do projeto: "verifique os textos com o tinderlike". As cartas aparecem aqui.</p></div>');
       pintar(el, REV.dados.map((p) => '<section class="card rev-proj"><h3 class="rev-nome">' + seloLocal() + ' ' + esc(p.projeto) + '</h3>' + p.revisoes.map((r) => {
         const feitas = r.total - r.pendentes; const pct = r.total ? Math.round(feitas / r.total * 100) : 0;
-        return '<div class="rev-lin"><div class="rev-cab"><b>' + esc(r.titulo) + '</b><span class="rev-pct">' + pct + '%</span></div>'
+        // CC-1065: diz o que é a revisão antes dos números ("ta meio confuso", 19/10)
+        const oque = r.chave === 'textos' ? 'Cada carta é um texto do app: você aprova, edita ou recusa.' : r.chave === 'telas' ? 'Cada carta é uma tela: você aprova ou pede ajuste.' : 'Cada carta pede uma decisão sua.';
+        return '<div class="rev-lin"><div class="rev-cab"><b>' + esc(r.titulo) + '</b><span class="rev-pct">' + pct + '%</span></div><p class="rev-oque">' + oque + '</p>'
           + '<div class="rev-barra" role="img" aria-label="' + pct + '% revisado"><i style="width:' + pct + '%"></i></div>'
           + '<div class="rev-pills"><span class="rev-pill">faltam <b>' + revN(r.pendentes) + '</b></span><span class="rev-pill ok">aprovados <b>' + revN(r.aprovados) + '</b></span>'
           + '<span class="rev-pill ed">editados <b>' + revN(r.editados) + '</b></span><span class="rev-pill rec">recusados <b>' + revN(r.recusados) + '</b></span></div>'
@@ -27200,7 +27586,7 @@
     }
     document.addEventListener('click', (ev) => {
       const b = ev.target.closest && ev.target.closest('[data-rev-revisar],[data-rev-ensaio],[data-rev-aplicar]'); if (!b) return;
-      if (b.hasAttribute('data-rev-revisar')) { C2.tdr.orig = 'cartas'; c2TdrAbrir(b.getAttribute('data-rev-revisar')); return; }
+      if (b.hasAttribute('data-rev-revisar')) { c2TdrAbrir(b.getAttribute('data-rev-revisar'), 'cartas'); return; }
       if (b.hasAttribute('data-rev-ensaio')) return void revAplicar(b.getAttribute('data-rev-ensaio'), true);
       if (b.hasAttribute('data-rev-aplicar')) revAplicar(b.getAttribute('data-rev-aplicar'), false);
     });
@@ -27209,6 +27595,224 @@
     window.addEventListener('load', () => setTimeout(() => { if (revAtiva()) revCarregar(); }, 120));
     document.querySelectorAll('.nav-item[data-target="view-revisoes"]').forEach((n) => n.addEventListener('click', () => setTimeout(revCarregar, 0)));
     atalho('revisoes', 'R', 'revisar um por um a primeira revisão com cartas faltando', () => { const b = document.querySelector('#rev-tela [data-rev-revisar]'); if (b) b.click(); });
+
+    /* ===== CC-1080 passo 2: a tela Cápsulas =====
+       Um arquivo por projeto, que ele baixa e que volta igual sem IA. O Docker só roda dentro do painel, e SÓ quando ele
+       aperta "Fazer cápsula" aqui. Estimar só lê. A senha dos segredos é digitada duas vezes numa caixa que mora FORA do
+       bloco redesenhado (#cap-tela), vai uma vez ao servidor e é apagada do campo logo em seguida. */
+    const CAP = { dados: null, lendo: false, erro: null, est: {}, ocupado: {}, desde: {}, job: null, proj: null, andamento: null };
+    const capAtiva = () => document.querySelector('.view-section.active')?.id === 'view-capsulas';
+    const capB = (n) => { n = Number(n) || 0; return n >= 1073741824 ? (n / 1073741824).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' GB' : n >= 1048576 ? (n / 1048576).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' MB' : Math.round(n / 1024).toLocaleString('pt-BR') + ' KB'; };
+    const capQuando = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+    const capPost = (rota, corpo, ms) => fetch(rota, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(ms || 20000) }).then(c2Json).catch(() => null);
+    let capTimer = null;
+    function capCarregar() {
+      if (CAP.lendo) return; CAP.lendo = true;
+      fetch('/api/capsula/lista').then(c2Json).then((r) => {
+        if (!r || r.ok === false) throw new Error((r && (r.error || r.erro)) || 'a leitura falhou');
+        CAP.dados = r; CAP.erro = null;
+        if (r.ativo && !CAP.job) { CAP.job = r.ativo.id; CAP.proj = r.ativo.projeto; capAcompanhar(); }
+      }).catch((e) => { CAP.erro = e.message || 'a leitura falhou'; }).finally(() => { CAP.lendo = false; capRender(); });
+    }
+    function capAcompanhar() {
+      clearInterval(capTimer);
+      const passo = () => fetch('/api/capsula/estado/' + encodeURIComponent(CAP.job)).then(c2Json).then((r) => {
+        CAP.andamento = r && r.ok !== false ? r : { fase: 'sem resposta', erro: (r && (r.error || r.erro)) || 'o painel não respondeu', fim: Date.now(), ok: false };
+        if (CAP.andamento.fim) { clearInterval(capTimer); capTimer = null; CAP.job = null; capCarregar(); }
+        capRender();
+      }).catch(() => {});
+      capTimer = setInterval(passo, 2000); passo();
+    }
+    /* O servidor (passo 3): os blocos do nginx achados, certos e candidatos com o motivo de cada um, e os domínios. Só lê. */
+    function capServHtml(sv) {
+      if (!sv) return [];
+      const L = [], ng = sv.nginx || {}, arq = ng.arquivos || [];
+      if (!ng.lido) L.push('<b>Servidor, nginx:</b> não foi lido (' + esc(ng.motivo || 'sem motivo') + ').');
+      else if (!arq.length) L.push('<b>Servidor, nginx:</b> li ' + Number(ng.arquivos_lidos || 0) + ' arquivo(s) e nenhum bloco é deste projeto.');
+      else {
+        const blocos = arq.flatMap((f) => f.blocos.map((b) => ({ f, b })));
+        const nc = blocos.filter((x) => x.b.certeza === 'certo').length, nd = blocos.length - nc;
+        L.push('<b>Servidor, nginx:</b> ' + nc + ' bloco(s) de ligação certa' + (nd ? ' e ' + nd + ' CANDIDATO(S) (a ligação é incerta: confira)' : '') + ', em ' + arq.length + ' arquivo(s).'
+          + '<details class="cap-mais"><summary>Ver cada bloco e o motivo</summary><div>'
+          + arq.map((f) => '<p><b>' + esc(f.arquivo) + '</b> (' + (f.certeza === 'certo' ? 'certo' : 'candidato') + ')' + f.blocos.map((b) => '<br>• ' + esc(b.server_name.join(' ') || 'sem server_name') + ' (escuta ' + esc(b.listen.join(', ') || '?') + '): <b>' + (b.certeza === 'certo' ? 'certo' : 'candidato') + '</b>. ' + esc(b.motivos.map((m) => m.motivo).join('; '))).join('') + '</p>').join('')
+          + '</div></details>');
+      }
+      const pa = sv.publicado_achado || [];
+      if (pa.length) {
+        const certas = pa.filter((x) => x.certeza === 'certo'), cand = pa.filter((x) => x.certeza !== 'certo');
+        const linha = (x) => '<br>• ' + esc(x.caminho) + ' · ' + (x.situacao === 'ok' ? capB(x.bytes) + ', ' + Number(x.entradas || 0).toLocaleString('pt-BR') + ' entradas' : '<span class="cap-ruim">' + esc(x.texto || x.situacao) + '</span>') + (x.excluidos_total ? ' · ' + x.excluidos_total + ' chave(s) privada(s) ficam de fora' : '') + (x.segredos_total ? ' · ' + x.segredos_total + ' .env vão cifrados com a senha' : '') + ' · ' + esc((x.origens || []).join('; '));
+        if (certas.length) L.push('<b>Site publicado (pastas servidas de fora do projeto, entram na cápsula):</b>' + certas.map(linha).join(''));
+        if (cand.length) L.push('<b>Pastas de CANDIDATOS (só entram se você marcar a caixa na hora de fazer):</b>' + cand.map(linha).join(''));
+      }
+      if ((sv.ruido || []).length) L.push('Domínio citado em 3 ou mais projetos, ignorado como candidato: ' + sv.ruido.map((x) => esc(x.dominio) + ' (' + x.projetos + ' projetos)').join(', ') + '.');
+      if ((sv.dominios || []).length) L.push('<b>Domínios:</b> ' + sv.dominios.map((d) => esc(d.dominio) + (d.certeza === 'certo' ? '' : ' (candidato)')).join(', ') + '. O certificado é emitido de novo na restauração, e o DNS precisa apontar para o servidor.');
+      const outros = [];
+      if (sv.pm2 && sv.pm2.lido) outros.push((sv.pm2.processos || []).length + ' processo(s) PM2');
+      if (sv.unidades && sv.unidades.lido) outros.push((sv.unidades.arquivos || []).length + ' unidade(s) de usuário');
+      if (sv.cron && sv.cron.lido) outros.push(Number(sv.cron.linhas || 0) + ' linha(s) de cron');
+      if (outros.length) L.push('<b>Também guarda:</b> ' + outros.join(', '));
+      else L.push('PM2 e cron só são lidos quando você faz a cápsula.');
+      if ((sv.nao_coletado || []).length) L.push('<span class="cap-ruim">Não coletado, precisa de root: ' + sv.nao_coletado.map((x) => esc(x.caminho)).join(', ') + '.</span>');
+      return L;
+    }
+    function capEstHtml(e) {
+      if (!e) return '';
+      if (e.erro || e.error) return '<div class="cap-est erro" role="alert">' + esc(e.erro || e.error) + '</div>';
+      const d = e.docker || {}, L = [];
+      L.push('<b>Pasta do projeto:</b> ' + capB(e.bytes) + ', ' + Number(e.entradas || 0).toLocaleString('pt-BR') + ' entradas');
+      if (d.projeto_compose) {
+        const soma = (a) => (a || []).reduce((t, x) => t + (x.bytes || 0), 0);
+        L.push('<b>Docker:</b> projeto Compose ' + esc(d.projeto_compose) + ', ' + (d.conteineres || []).length + ' contêiner(es)');
+        L.push((d.imagens || []).length + ' imagem(ns), até ' + capB(soma(d.imagens)) + ' · ' + (d.volumes || []).length + ' volume(s), até ' + capB(soma(d.volumes)) + ' · ' + (d.bancos || []).length + ' banco(s), até ' + capB(soma(d.bancos)));
+        const pub = (d.portas || []).filter((x) => x.publica);
+        if (pub.length) L.push('Portas: ' + pub.map((x) => esc(x.publica) + ' (' + esc(x.servico) + ')').join(', '));
+        for (const a of d.avisos || []) L.push('<span class="cap-ruim">' + esc(a) + '</span>');
+      } else L.push('<b>Docker:</b> ' + esc(d.motivo || 'nada para guardar'));
+      if (d.montagens && d.montagens.length) {
+        const ok = d.montagens.filter((m) => m.situacao === 'ok');
+        L.push('<b>Pastas montadas pelos contêineres (fora do projeto):</b> ' + ok.length + ' entram, até ' + capB(ok.reduce((t, m) => t + (m.bytes || 0), 0)) + (d.montagens.length - ok.length ? ' · ' + (d.montagens.length - ok.length) + ' não entram (veja os avisos)' : ''));
+      }
+      L.push('<b>Total estimado:</b> ' + capB(e.bytes_total) + ' (teto, sem contar a compressão); precisa de até ' + capB(e.pico) + ' de disco durante o trabalho');
+      L.push('<b>Disco livre:</b> ' + capB(e.livre) + '. Depois, sobrariam ' + capB(Math.max(0, e.sobra)) + ' (o mínimo é ' + capB((CAP.dados && CAP.dados.minimo) || 2147483648) + ').');
+      L.push(e.cabe ? '<b>Cabe:</b> sim' : '<b class="cap-ruim">Cabe: NÃO. Libere disco antes.</b>');
+      for (const x of capServHtml(e.servidor)) L.push(x);
+      L.push((e.segredos || []).length ? '<b>Cifrados com a sua senha:</b> ' + e.segredos.map(esc).join(', ') : 'Nenhum arquivo de segredo (.env) neste projeto.');
+      if ((e.segredos_de_fora || []).length) L.push('<b>Também cifrados com a sua senha, de dentro das pastas de fora do projeto:</b> ' + e.segredos_de_fora.map(esc).join(', ') + '. Sem senha a cápsula não é feita.');
+      if ((e.ilegiveis || []).length) L.push('<span class="cap-ruim">' + e.ilegiveis.length + ' item(ns) que este usuário não consegue ler (precisam de root). Ficam de fora e o RESTAURAR.md da cápsula lista.</span>');
+      return '<div class="cap-est"><ul>' + L.map((x) => '<li>' + x + '</li>').join('') + '</ul></div>';
+    }
+    function capAndamentoHtml(a) {
+      if (!a) return '';
+      if (!a.fim) return '<div class="cap-est" role="status"><b>Fazendo a cápsula…</b> ' + esc(a.fase || '') + '<div class="cap-barra"><i></i></div><p class="c2-mini">Pode levar vários minutos. Pode sair desta tela: ela continua.</p></div>';
+      if (a.ok === false && !a.arquivo) return '<div class="cap-est erro" role="alert"><b>Não deu:</b> ' + esc(a.erro || a.fase || 'falhou') + '</div>';
+      const d = a.docker;
+      return '<div class="cap-est' + (a.ok ? '' : ' erro') + '"><b>' + (a.ok ? 'Pronta.' : 'Pronta, mas a prova falhou.') + '</b> ' + esc(a.arquivo || '') + ', ' + capB(a.bytes)
+        + (a.prova ? '<br>' + esc(a.prova.motivo || '') : '')
+        + (d && d.projeto_compose ? '<br>Docker: ' + d.imagens + ' imagem(ns), ' + d.volumes + ' volume(s), ' + d.bancos + ' banco(s)' + (d.falhas ? ', <span class="cap-ruim">' + d.falhas + ' falha(s)</span>' : '') : '')
+        + (a.servidor ? '<br>Servidor: ' + a.servidor.nginx_certos + ' bloco(s) nginx certo(s), ' + a.servidor.nginx_candidatos + ' candidato(s), ' + a.servidor.dominios + ' domínio(s), ' + a.servidor.pm2 + ' processo(s) PM2, ' + a.servidor.unidades + ' unidade(s), ' + a.servidor.cron + ' linha(s) de cron' : '')
+        + (a.pastas && (a.pastas.publicado || a.pastas.montagens || a.pastas.candidatas_nao_incluidas) ? '<br>Pastas de fora do projeto: ' + a.pastas.publicado + ' publicada(s), ' + a.pastas.montagens + ' montada(s)' + (a.pastas.candidatas_nao_incluidas ? ' · ' + a.pastas.candidatas_nao_incluidas + ' pasta(s) de candidato NÃO incluída(s)' : '') : '')
+        + (a.nao_coletado ? '<br><span class="cap-ruim">' + a.nao_coletado + ' item(ns) não coletados (precisam de root)</span>' : '') + '</div>';
+    }
+    const capLink = (c) => '<a class="rev-b" href="/api/capsula/baixar/' + encodeURIComponent(c.arquivo) + '" download>Baixar ' + capB(c.bytes) + '</a>';
+    function capRender() {
+      const el = document.getElementById('cap-tela'); if (!el) return;
+      if (CAP.erro && !CAP.dados) return void pintar(el, '<p class="c2-vazio" style="color:var(--red)">não deu para ler: ' + esc(CAP.erro) + '</p>');
+      if (!CAP.dados) return void pintar(el, '<p class="c2-vazio">lendo as cápsulas…</p>');
+      const D = CAP.dados;
+      const fazendo = !!CAP.job;
+      const topo = '<section class="card cap-topo"><b>Disco livre: ' + capB(D.livre) + '</b>'
+        + '<p>A cápsula guarda a pasta do projeto, o que roda no Docker (imagens, volumes e bancos), a configuração do servidor (blocos do nginx, domínios, PM2, cron) e os arquivos .env cifrados com a senha que você digitar. Nada é parado nem apagado, e a senha não fica guardada.</p>'
+        + '<p>Depois de feita, ela é provada: restaurada numa pasta temporária e comparada. Cápsula não provada fica em vermelho. Baixe e guarde fora da VPS.</p></section>';
+      const proj = (p) => {
+        const u = p.capsulas[0];
+        let ult;
+        if (!u) ult = '<p class="cap-ult"><span class="cap-selo ruim">sem cápsula</span> Este projeto ainda não tem cápsula.</p>';
+        else {
+          const ok = u.provada && u.provada.ok === true;
+          ult = '<p class="cap-ult">Última: <b>' + esc(capQuando(u.criada_em)) + '</b> · ' + capB(u.bytes) + ' <span class="cap-selo ' + (ok ? 'ok' : 'ruim') + '">' + (ok ? 'provada' : 'não provada') + '</span></p>'
+            + (ok ? '' : '<p class="cap-ult cap-ruim">' + esc((u.provada && u.provada.motivo) || 'sem prova') + '</p>')
+            + (u.docker && u.docker.projeto_compose ? '<p class="cap-ult">Docker: ' + u.docker.imagens + ' imagem(ns), ' + u.docker.volumes + ' volume(s), ' + u.docker.bancos + ' banco(s)' + (u.docker.falhas ? ' · <span class="cap-ruim">' + u.docker.falhas + ' falha(s) na coleta</span>' : '') + '</p>' : '')
+            + (u.servidor ? '<p class="cap-ult">Servidor: ' + u.servidor.nginx_certos + ' bloco(s) nginx certo(s)' + (u.servidor.nginx_candidatos ? ' + ' + u.servidor.nginx_candidatos + ' candidato(s)' : '') + ', ' + u.servidor.dominios + ' domínio(s), ' + u.servidor.pm2 + ' processo(s) PM2</p>' : '')
+            + (u.nao_coletado ? '<p class="cap-ult cap-ruim">' + u.nao_coletado + ' item(ns) não coletados (precisam de root)</p>' : '');
+        }
+        const meu = CAP.proj === p.nome;
+        const velhas = p.capsulas.slice(1);
+        return '<section class="card cap-proj"><div class="cap-cab"><h3 class="cap-nome">' + esc(p.nome) + '</h3></div><p class="cap-raiz">' + esc(p.raiz) + '</p>' + ult
+          + '<div class="cap-acoes"><button type="button" class="rev-b" data-cap-est="' + esc(p.id) + '"' + (Object.values(CAP.ocupado).some(Boolean) ? ' disabled' : '') + '>' + (CAP.ocupado[p.id] ? 'Medindo…' : 'Estimar') + '</button>'
+          + '<button type="button" class="rev-b forte" data-cap-fazer="' + esc(p.id) + '"' + (fazendo ? ' disabled title="já tem uma cápsula sendo feita"' : '') + '>Fazer cápsula</button>'
+          + (u ? capLink(u) : '') + '</div>'
+          + (CAP.ocupado[p.id] ? '<div class="cap-est" role="status"><b>Medindo… ' + capSegundos(p.id) + ' s.</b> A pasta e o Docker são medidos no fundo e o painel segue respondendo. A frio pode levar até 2 minutos.</div>' : capEstHtml(CAP.est[p.id])) + (meu ? capAndamentoHtml(CAP.andamento) : '')
+          + (velhas.length ? '<details class="cap-mais"><summary>' + velhas.length + ' cápsula(s) anterior(es)</summary><ul>' + velhas.map((c) => '<li><span>' + esc(capQuando(c.criada_em)) + ' · ' + capB(c.bytes) + ' · ' + (c.provada && c.provada.ok === true ? 'provada' : '<span class="cap-ruim">não provada</span>') + '</span>' + capLink(c) + '</li>').join('') + '</ul></details>' : '') + '</section>';
+      };
+      const ordem = D.projetos.slice().sort((a, b) => ((a.capsulas[0] && a.capsulas[0].provada && a.capsulas[0].provada.ok) ? 1 : 0) - ((b.capsulas[0] && b.capsulas[0].provada && b.capsulas[0].provada.ok) ? 1 : 0) || a.nome.localeCompare(b.nome));
+      const orfas = D.orfas.length ? '<section class="card cap-proj"><h3 class="cap-nome">Cápsulas de projetos fora do registro</h3><details class="cap-mais" open><ul>' + D.orfas.map((c) => '<li><span>' + esc(c.arquivo) + '</span>' + capLink(c) + '</li>').join('') + '</ul></details></section>' : '';
+      pintar(el, topo + (ordem.length ? ordem.map(proj).join('') : '<section class="card cap-proj"><b>Nenhum projeto do registro tem pasta nesta máquina.</b></section>') + orfas);
+    }
+    /* Medir (Estimar) não trava o painel: a rota devolve um id, a medição roda num processo filho (a frio, varrer uma pasta grande
+       leva até 15 s) e a tela pergunta o andamento de 1 em 1 s. Devolve o ensaio, ou { erro } (inclusive se estourar o teto de 120 s). */
+    async function capMedir(id, aoAndar) {
+      const r = await capPost('/api/capsula/ensaio', { projeto: id }, 20000);
+      if (!r || r.ok === false) return { erro: (r && (r.error || r.erro)) || 'o painel não respondeu' };
+      const limite = Date.now() + 150000;
+      for (;;) {
+        await new Promise((ok) => setTimeout(ok, 1000));
+        const s = await fetch('/api/capsula/estado/' + encodeURIComponent(r.id)).then(c2Json).catch(() => null);
+        if (s && s.fim) return s.ok === false || !s.resultado ? { erro: s.erro || s.error || 'a medição falhou' } : s.resultado;
+        if (s && s.ok === false) return { erro: s.error || s.erro || 'perdi o andamento da medição' };
+        if (aoAndar) aoAndar();
+        if (Date.now() > limite) return { erro: 'o painel não terminou a medição a tempo' };
+      }
+    }
+    const capSegundos = (id) => Math.max(0, Math.round((Date.now() - (CAP.desde[id] || Date.now())) / 1000));
+    async function capEstimar(id) {
+      CAP.ocupado[id] = true; CAP.desde[id] = Date.now(); capRender();
+      const e = await capMedir(id, capRender);
+      CAP.ocupado[id] = false;
+      CAP.est[id] = e.erro ? { erro: e.erro } : e;
+      capRender();
+    }
+    /* A caixa da senha. Só abre o botão de confirmar com: cabe no disco, senha de 12 ou mais, as duas iguais. */
+    let capDlgProj = null, capDlgCabe = false;
+    const capCampo = (id) => document.getElementById(id);
+    function capDlgValida() {
+      const s1 = capCampo('cap-s1').value, s2 = capCampo('cap-s2').value;
+      let t = '';
+      if (s1.length && s1.length < 12) t = 'Faltam ' + (12 - s1.length) + ' caractere(s) na senha.';
+      else if (s1.length >= 12 && s1 !== s2) t = 'As duas senhas ainda não são iguais.';
+      else if (s1.length >= 12) t = 'Senha confere. Anote: ela não fica guardada em lugar nenhum, e sem ela os segredos não voltam.';
+      capCampo('cap-dlg-msg').textContent = t;
+      capCampo('cap-confirmar').disabled = !(capDlgCabe && s1.length >= 12 && s1 === s2);
+    }
+    async function capAbrirFazer(id) {
+      const p = CAP.dados && CAP.dados.projetos.find((x) => x.id === id); if (!p) return;
+      capDlgProj = p; capDlgCabe = false;
+      capCampo('cap-dlg-tit').textContent = 'Fazer cápsula de ' + p.nome;
+      capCampo('cap-s1').value = ''; capCampo('cap-s2').value = ''; capCampo('cap-dlg-msg').textContent = '';
+      capCampo('cap-cand').checked = false; capCampo('cap-cand-lbl').hidden = true;
+      const info = capCampo('cap-dlg-info'); info.className = 'cap-est'; info.textContent = 'medindo o projeto e o Docker no fundo… a frio pode levar até 2 minutos.';
+      capCampo('cap-confirmar').disabled = true;
+      const dlg = capCampo('cap-dlg'); if (!dlg.open) dlg.showModal();
+      const t0 = Date.now();
+      const e = await capMedir(p.id, () => { if (capDlgProj === p && info.isConnected) info.textContent = 'medindo o projeto e o Docker no fundo (' + Math.round((Date.now() - t0) / 1000) + ' s)… o painel segue respondendo; a frio pode levar até 2 minutos.'; });
+      if (capDlgProj !== p) return;
+      if (e.erro) { info.className = 'cap-est erro'; info.textContent = e.erro; return; }
+      CAP.est[p.id] = e; capDlgCabe = e.cabe === true;
+      const nc = ((e.servidor && e.servidor.publicado_achado) || []).filter((x) => x.certeza !== 'certo' && x.situacao === 'ok').length;
+      if (nc) { capCampo('cap-cand-n').textContent = nc + (nc === 1 ? ' pasta, ' : ' pastas, ') + capB(e.bytes_publicado_candidatas); capCampo('cap-cand-lbl').hidden = false; }
+      info.outerHTML = capEstHtml(e).replace('class="cap-est"', 'class="cap-est" id="cap-dlg-info"');
+      capDlgValida(); capRender();
+    }
+    async function capConfirmar() {
+      const p = capDlgProj, s1 = capCampo('cap-s1').value;
+      if (!p || s1.length < 12 || s1 !== capCampo('cap-s2').value) return;
+      capCampo('cap-confirmar').disabled = true;
+      const r = await capPost('/api/capsula/fazer', { projeto: p.id, senha: s1, incluirCandidatos: capCampo('cap-cand').checked }, 20000);
+      capCampo('cap-s1').value = ''; capCampo('cap-s2').value = '';
+      if (!r || r.ok === false) { capCampo('cap-dlg-msg').textContent = 'Não começou: ' + ((r && (r.error || r.erro)) || 'o painel não respondeu') + '. Digite a senha de novo.'; return; }
+      capCampo('cap-dlg').close();
+      CAP.job = r.id; CAP.proj = r.projeto; CAP.andamento = { fase: 'iniciando' };
+      capAcompanhar(); capRender();
+    }
+    document.addEventListener('click', (ev) => {
+      const b = ev.target.closest && ev.target.closest('[data-cap-est],[data-cap-fazer],#cap-cancelar,#cap-confirmar'); if (!b) return;
+      if (b.hasAttribute('data-cap-est')) return void capEstimar(b.getAttribute('data-cap-est'));
+      if (b.hasAttribute('data-cap-fazer')) return void capAbrirFazer(b.getAttribute('data-cap-fazer'));
+      if (b.id === 'cap-cancelar') return void capCampo('cap-dlg').close();
+      if (b.id === 'cap-confirmar') capConfirmar();
+    });
+    /* marcar os candidatos muda a conta do disco: usa o "cabe" que o ensaio já calculou para os dois casos */
+    capCampo('cap-cand').addEventListener('change', () => {
+      const e = capDlgProj && CAP.est[capDlgProj.id]; if (!e) return;
+      capDlgCabe = (capCampo('cap-cand').checked ? e.cabe_com_candidatos : e.cabe) === true;
+      capDlgValida();
+    });
+    capCampo('cap-s1').addEventListener('input', capDlgValida);
+    capCampo('cap-s2').addEventListener('input', capDlgValida);
+    capCampo('cap-dlg').addEventListener('close', () => { capCampo('cap-s1').value = ''; capCampo('cap-s2').value = ''; capDlgProj = null; });
+    setInterval(() => { if (capAtiva() && !CAP.job) capCarregar(); }, 15000);
+    window.addEventListener('hashchange', () => setTimeout(() => { if (capAtiva()) capCarregar(); }, 0));
+    window.addEventListener('load', () => setTimeout(() => { if (capAtiva()) capCarregar(); }, 120));
+    document.querySelectorAll('.nav-item[data-target="view-capsulas"]').forEach((n) => n.addEventListener('click', () => setTimeout(capCarregar, 0)));
     document.querySelectorAll('.nav-item[data-target="view-ideias"]').forEach((n) => n.addEventListener('click', () => setTimeout(ideiasCarregar, 0)));
     document.querySelectorAll('.nav-item[data-target="view-design"]').forEach((n) => n.addEventListener('click', () => setTimeout(designCarregar, 0)));
     window.addEventListener('hashchange', () => setTimeout(ideiasSeAtiva, 0));

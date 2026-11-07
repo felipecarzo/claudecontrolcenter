@@ -440,8 +440,16 @@ const comRespostas = (extra = {}) => ({
   assert.equal(estado.modo, 'sugestivo',
     'ele pediu "isso tudo em modo sugestivo": é o único modo que trava código E '
     + 'pede autorização por arquivo, que é o comportamento descrito no pedido')
-  assert.equal(estado.fase, 'definicao')
-  ok('projeto novo nasce em modo Sugestivo, na Definição')
+  assert.equal(estado.metodo, 'ideia-viva', 'CC-1085: projeto novo nasce nos marcos da ideia')
+  assert.equal(estado.fase, 'semente')
+  assert.deepEqual(estado.ideia, { frase: '', rascunho: null, matriz: [], usoReal: null })
+  ok('projeto novo nasce em modo Sugestivo, no método ideia-viva, no marco Semente')
+
+  const { podeEditar } = await import('./src/framework.mjs')
+  assert.deepEqual(estado.autorizado, ['**'], 'decisão dele em 07/11: Sugestivo, sem travar')
+  assert.equal(estado.historico.at(-1).tipo, 'autorizacao')
+  assert.equal(podeEditar('ideia-viva', estado, 'src/app.mjs').ok, true, 'o rascunho sai sem pedir licença por arquivo')
+  ok('CC-1085: projeto novo nasce com o código liberado, e o rastro fica no histórico')
 
   /* ⚠️ A armadilha que este teste guarda, paga em 28/08: `gravar()` restaura
      `modo` e `tom` do arquivo cru sempre que o objeto tem campo derivado (`_`),
@@ -502,6 +510,86 @@ const comRespostas = (extra = {}) => ({
   assert.equal(tenta.recusadas[0].porque, 'ele já respondeu isto')
   assert.equal(tenta.estado.entrevista.respostas.entrega.texto, 'um app que organiza fotos por evento')
   ok('a prova ao contrário: palpite NÃO sobrescreve o que ele digitou')
+}
+
+/* ── CC-1085: no ideia-viva, "o que entrega" fecha a Semente ─────────────── */
+{
+  const E = await import('./src/entrevista.mjs')
+  const F = await import('./src/framework.mjs')
+  const vivo = E.responder(F.estadoInicial('ideia-viva'), 'natureza', 'app').estado
+  const r = E.responder(vivo, 'entrega', 'um app que organiza fotos por evento').estado
+  assert.equal(r.ideia.frase, 'um app que organiza fotos por evento', 'a resposta vira a frase da Semente')
+  assert.equal(F.avancar('ideia-viva', r).estado.fase, 'rascunho', 'e a Semente abre')
+  const comFrase = { ...vivo, ideia: { ...vivo.ideia, frase: 'a frase que ele escreveu no cartão' } }
+  assert.equal(E.responder(comFrase, 'entrega', 'outra coisa').estado.ideia.frase, 'a frase que ele escreveu no cartão', 'frase já escrita não é sobrescrita')
+  assert.equal(E.responder(F.estadoInicial('mvp-basico'), 'entrega', 'x qualquer').estado.ideia, undefined, 'no mvp-basico não nasce bloco `ideia`')
+  ok('CC-1085: no ideia-viva a resposta da entrega vira a frase da Semente, sem sobrescrever a dele')
+}
+
+/* ── CC-1086: a IA pesquisa o que dá para pesquisar, com fonte, e ele confirma ── */
+{
+  const E = await import('./src/entrevista.mjs')
+  const F = await import('./src/framework.mjs')
+  const { spawnSync } = await import('node:child_process')
+  const { criar } = await import('./src/novoProjeto.mjs')
+  const D = await import('./src/frameworkDisco.mjs')
+
+  assert.deepEqual(E.ROTEIRO.filter((p) => p.pesquisavel).map((p) => p.id), ['quem', 'hoje', 'concorrencia', 'dado'],
+    'pesquisáveis pela decisão dele em 04/11: quem usa, o que faz hoje, o que já existe parecido, onde o dado mora')
+
+  let e = E.responder(F.estadoInicial('ideia-viva'), 'natureza', 'cliente').estado
+  e = E.responder(e, 'entrega', 'um app de reserva de quadra de tênis').estado
+  assert.equal(E.proxima(e).id, 'quem')
+  assert.equal(E.proxima(e).pesquisavel, true, 'a próxima é pesquisável, e diz isso')
+
+  assert.match(E.responder(e, 'quem', 'jogadores amadores', { de: 'pesquisa' }).erro, /sem fonte/)
+  assert.match(E.responder(e, 'quem', 'jogadores amadores', { de: 'pesquisa', fontes: ['achei no google'] }).erro, /não é endereço/)
+  assert.match(E.responder(e, 'natureza', 'cliente', { de: 'pesquisa', fontes: ['https://x.com.br/a'] }).erro, /escolha dele/)
+  ok('CC-1086: pesquisa sem fonte, com fonte que não é endereço, ou em pergunta que é escolha dele, é recusada')
+
+  const r = E.responder(e, 'quem', 'jogadores amadores de clube, que reservam pelo WhatsApp do clube', { de: 'pesquisa', fontes: ['https://exemplo.com.br/pesquisa'] })
+  assert.equal(r.ok, true)
+  e = r.estado
+  assert.deepEqual(e.entrevista.respostas.quem.fontes, ['https://exemplo.com.br/pesquisa'])
+  assert.equal(E.proxima(e).id, 'hoje', 'gravada a pesquisa, a entrevista segue')
+  assert.match(F.PREDICADOS['entrevista-confirmada'](e), /palpite/, 'achado da pesquisa não fecha fase sem ele')
+  const { definicaoDaEntrevista } = await import('./src/produto.mjs')
+  assert.equal(definicaoDaEntrevista(e).paraQuem, '', 'nem entra na definição do produto')
+  assert.equal(definicaoDaEntrevista(E.responder(e, 'quem', 'jogadores amadores').estado).paraQuem, 'jogadores amadores', 'a prova ao contrário: dele, entra')
+  assert.deepEqual(E.palpites(e).map((p) => [p.id, p.de, p.fontes]), [['quem', 'pesquisa', ['https://exemplo.com.br/pesquisa']]])
+  assert.match(E.resumo(e), /achado da pesquisa, confirme; fontes: https:\/\/exemplo\.com\.br\/pesquisa/)
+  ok('CC-1086: o achado grava com as fontes, segue a entrevista, e fica como palpite até ele confirmar')
+
+  // pergunta de opção: o achado começa pelo valor da opção e guarda o porquê
+  e = E.responder(e, 'hoje', 'liga para o clube', { de: 'pesquisa', fontes: ['https://a.com/b'] }).estado
+  e = E.responder(e, 'concorrencia', 'Playtomic e Aircourts', { de: 'pesquisa', fontes: ['https://playtomic.io'] }).estado
+  const d = E.responder(e, 'dado', 'banco: reservas com horário e quadra pedem esquema', { de: 'pesquisa', fontes: ['https://a.com/c'] })
+  assert.equal(d.estado.entrevista.respostas.dado.valor, 'banco')
+  assert.match(d.estado.entrevista.respostas.dado.texto, /pedem esquema/)
+  ok('CC-1086: na pergunta de opção o achado escolhe a opção pelo valor e guarda o porquê')
+
+  // ele confirma respondendo o mesmo texto: vira dele, sem a marca
+  let c = d.estado
+  for (const id of ['quem', 'hoje', 'concorrencia', 'dado']) c = E.responder(c, id, c.entrevista.respostas[id].texto).estado
+  assert.equal(c.entrevista.respostas.dado.valor, 'banco', 'confirmar mantém a opção')
+  assert.equal(c.entrevista.respostas.quem.de, 'ele')
+  assert.equal(F.PREDICADOS['entrevista-confirmada'](c), null)
+  ok('CC-1086: confirmar é responder o mesmo texto, e a resposta passa a ser dele')
+
+  // de ponta a ponta: o gancho de início manda pesquisar, e não perguntar
+  const base = mkdtempSync(join(tmpdir(), 'cc-pesq-'))
+  const casa = mkdtempSync(join(tmpdir(), 'cc-pesq-casa-'))
+  const p = criar(base, { nome: 'app_quadra' })
+  let est = D.ler(p.raiz, { sessao: null })
+  est = E.responder(est, 'natureza', 'cliente').estado
+  est = E.responder(est, 'entrega', 'um app de reserva de quadra').estado
+  D.gravar(p.raiz, est)
+  const h = spawnSync(process.execPath, ['hooks/framework-inicio.mjs'], { input: JSON.stringify({ cwd: p.raiz }), encoding: 'utf8', env: { ...process.env, CC_HOME: casa } })
+  assert.match(h.stdout, /PESQUISE ANTES DE PERGUNTAR/, h.stdout.slice(-600) + h.stderr.slice(0, 300))
+  assert.match(h.stdout, /cc framework entrevista pesquisa quem/)
+  assert.doesNotMatch(h.stdout, /PERGUNTE AO FELIPE ANTES DE SEGUIR, "Quem usa/)
+  ok('CC-1086: o início da sessão manda pesquisar a pergunta pesquisável, nunca perguntar a ele')
+  rmSync(base, { recursive: true, force: true }); rmSync(casa, { recursive: true, force: true })
 }
 
 /* ── CC-392: a entrevista não pode destruir MVP escrito à mão ────────────── */

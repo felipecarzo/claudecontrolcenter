@@ -109,18 +109,14 @@ const abertos = backlogAberto(raiz)
 if (!abertos.length) sair()
 
 console.error(
-  `PAROU COM ${abertos.length} ITENS ABERTOS, no modo ${modo.titulo}.\n\n`
+  `[fluxo-guard] ${abertos.length} itens abertos no backlog, modo ${modo.titulo}.\n`
   + `Não pare para: ${modo.naoPara || modo.fluxo.naoPara}.\n`
-  + `Só pare para: ${modo.fluxo.paradaLegitima}.\n\n`
+  + `Só pare para: ${modo.fluxo.paradaLegitima}.\n`
   + 'Próximos na fila:\n'
   + abertos.slice(0, 3).map((t) => `  · ${t}`).join('\n')
-  + '\n\nDuas saídas, e só estas duas:\n\n'
-  + '  1. EXECUTE agora o próximo item, sem anunciar que vai executar. Anúncio\n'
-  + '     não é execução: o turno acaba quando você para de chamar ferramenta.\n'
-  + '  2. Ou abra a resposta com uma linha "Parada: <motivo>". O motivo tem\n'
-  + '     que ser decisão dele, não dúvida técnica sua. Dúvida técnica você\n'
-  + '     resolve e reporta. Se for decisão dele mesmo, use o AskUserQuestion.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  + '\n\nEscolha uma saída. Execute o próximo item agora, chamando as ferramentas, sem anunciar antes.\n'
+  + 'Ou abra a resposta com uma linha "Parada: <motivo>" quando o motivo for uma decisão do Felipe (use o AskUserQuestion).\n'
+  + 'A próxima volta passa.',
 )
 process.exit(2)
 

@@ -80,14 +80,8 @@ const temBloco = /```/.test(resposta)
 if (enviados >= 2 || (enviados >= 1 && temBloco)) sair()
 
 console.error(
-  'ELE PEDIU IGUAL A ALGO QUE JÁ EXISTE, E A ENTREGA NÃO MOSTRA O PAR.\n\n'
-  + `O que ele escreveu: "${pedido.replace(/\s+/g, ' ').slice(0, 160)}"\n\n`
-  + `Arquivos mostrados neste turno: ${enviados}. Precisa de dois:\n`
-  + '  · o ORIGINAL que ele citou (print, ou o trecho em bloco de código)\n'
-  + '  · o NOVO, na largura em que ele usa (390px, o telefone dele)\n\n'
-  + 'A trava não julga se ficou igual, e é de propósito: quem compara é ele, em\n'
-  + 'dois segundos. Descrever a comparação em prosa não conta, porque foi\n'
-  + 'exatamente o que eu fiz em 17/08 quando a tabela virou blocos.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  '[referencia-guard] O pedido aponta algo que já existe, e a entrega não traz o par lado a lado.\n'
+  + `Arquivos mostrados neste turno: ${enviados}. Envie dois: o original (print, ou o trecho em bloco de código) e o novo em 390px.\n`
+  + 'Descrição em prosa não conta como par. A próxima volta passa.',
 )
 process.exit(2)

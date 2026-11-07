@@ -120,34 +120,21 @@ const velhas = veredito.ok.filter((id) => {
 const pendentes = [...veredito.faltaRodar, ...velhas]
 if (!pendentes.length && !veredito.falhou.length) sair()
 
-const N = C.NIVEIS[nivel]
 const linhas = []
 if (veredito.falhou.length) {
-  linhas.push(`  ACHOU PROBLEMA: ${veredito.falhou.join(', ')}`)
+  linhas.push(`  achou problema: ${veredito.falhou.join(', ')}`)
 }
 if (veredito.faltaRodar.length) {
-  linhas.push(`  nunca rodou:    ${veredito.faltaRodar.join(', ')}`)
+  linhas.push(`  nunca rodou: ${veredito.faltaRodar.join(', ')}`)
 }
 if (velhas.length) {
-  linhas.push(`  rodou ANTES da sua edição: ${velhas.join(', ')}`)
+  linhas.push(`  rodou antes da última edição: ${velhas.join(', ')}`)
 }
 
 console.error(
-  `A BANCADA DO NÍVEL "${nivel}" NÃO COBRE ESTE TRABALHO.\n\n`
-  + `${N.titulo} pergunta: ${N.pergunta}\n`
-  + `${N.explica}\n\n`
-  + `Você mexeu em ${tocados.size} arquivo(s) de código neste turno.\n\n`
-  + `${linhas.join('\n')}\n\n`
-  + `    ${SUGESTAO}\n\n`
-  + `  · \`bancada nivel ${nivel} --rodar\` = roda as camadas exigidas por este\n`
-  + '    nível, pulando as que não se aplicam ao projeto\n'
-  + '  · `--so-mudou` = só nos arquivos que mudaram desde o último commit.\n'
-  + '    Sem git, varre tudo, nunca menos verificação, só menos espera\n\n'
-  + 'O `npm test` responde "eu quebrei alguma coisa?". A Bancada responde\n'
-  + '"eu deixei alguma coisa insegura?",e suíte verde convive muito bem com\n'
-  + 'chave commitada e tabela sem proteção.\n\n'
-  + `Nível errado para este projeto? \`node cc.mjs framework bancada nivel <outro>\`\n`
-  + `Os quatro são: ${Object.keys(C.NIVEIS).join(', ')}.\n`
-  + 'Esta é a única volta: a próxima passa.',
+  `[bancada-guard] Camadas do nível "${nivel}" pendentes, com ${tocados.size} arquivo(s) de código alterados neste turno.\n`
+  + `${linhas.join('\n')}\n`
+  + `Rode: ${SUGESTAO}\n`
+  + `Nível errado para o projeto? Os disponíveis: ${Object.keys(C.NIVEIS).join(', ')}. A próxima volta passa.`,
 )
 process.exit(2)

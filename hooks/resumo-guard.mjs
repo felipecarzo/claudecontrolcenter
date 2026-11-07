@@ -118,17 +118,14 @@ if (m.semMarcador) {
 }
 if (!m.semMarcador) sair()
 
+/* Texto emitido: só formato (CC-1023, regras em hooks/mensagens-guia.md).
+   História da regra: pedida em 16/08, implementada e não usada na resposta
+   seguinte; a reclamação dele está no cabeçalho deste arquivo. */
 console.error(
-  `RESPOSTA DE ${m.paragrafos} PARÁGRAFOS SEM O SEPARADOR.\n\n`
-  + 'Antes do que ele decide ou confere, uma linha sozinha:\n\n'
-  + '    ---------------------------------- // resumo // ----------------------------------\n\n'
-  + 'Acima dela: como você chegou lá, o que mediu, o que descartou.\n'
-  + 'Abaixo: o que mudou para ele, e o que ele precisa fazer.\n\n'
-  + 'Ele pediu isto em 16/08 e você implementou no mesmo dia, sem usar na\n'
-  + 'resposta seguinte. As palavras dele: "eu te peço uma coisa, voce ignora e\n'
-  + 'depois fala que foi erro humano pq eu nao pedi o suficiente".\n\n'
-  + 'Isto NÃO é para cortar o "como cheguei lá" (o que foi medido, achado e\n'
-  + 'descartado): ele lê essa parte. É só marcar onde uma parte acaba.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  `[resumo-guard] Resposta longa (${m.linhasNaTela} linhas na tela, o limite é 12) sem a linha de separação.\n`
+  + 'Reenvie com esta linha, sozinha, entre as duas partes:\n'
+  + '    ---------------------------------- // resumo // ----------------------------------\n'
+  + 'Acima: os fatos e as evidências (o que foi medido e encontrado). Abaixo: o que mudou e o que ele precisa fazer. '
+  + 'Cada linha se explica sozinha, número com escala, uma linha por assunto. A próxima volta passa.',
 )
 process.exit(2)

@@ -52,4 +52,9 @@ export const ESCADA = [
   { agente: 'opencode', modelo: 'opencode/nemotron-3-ultra-free' },
   { agente: 'agy', modelo: null },
 ]
-export const degrauDe = (n) => ESCADA[Math.min(Math.max(Number(n) || 0, 0), ESCADA.length - 1)]
+/** CC-1068: a escada do modo Regente. Só o Claude (assinatura dele), Sonnet primeiro e Opus quando o Sonnet falha. */
+export const ESCADA_REGENTE = [
+  { agente: 'claude', modelo: 'sonnet' },
+  { agente: 'claude', modelo: 'opus' },
+]
+export const degrauDe = (n, escada = ESCADA) => escada[Math.min(Math.max(Number(n) || 0, 0), escada.length - 1)]

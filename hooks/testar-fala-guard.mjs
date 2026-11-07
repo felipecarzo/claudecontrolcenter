@@ -41,6 +41,11 @@ function rodar(texto) {
 function caso(nome, esperado, texto) {
   const r = rodar(texto)
   if (r.status === esperado) {
+    if (esperado === 2 && !/^\[fala-guard\] padrão \d/.test(r.texto)) {
+      falhou += 1
+      console.log(`  FALHOU  ${nome}: a mensagem não abre com [fala-guard] padrão N`)
+      return
+    }
     ok += 1
     console.log(`  ok   ${nome}`)
   } else {

@@ -1317,7 +1317,9 @@ for (const h of HOOKS) assert.ok(EVENTOS.includes(h.evento), `evento desconhecid
     if (noCatalogo.has(f)) return false
     let fonte = ''
     try { fonte = fs.readFileSync(path.join(pastaHooks, f), 'utf8') } catch { return false }
-    return fonte.includes('hookEnabled')
+    /* Módulo de apoio (como `autonomia.mjs`, que só exporta funções chamadas por ganchos já no catálogo) não é
+       gancho: só quem LÊ a entrada do Claude Code (stdin) fica calado fora do catálogo. */
+    return fonte.includes('hookEnabled') && /stdin|readFileSync\(0/.test(fonte)
   })
   assert.deepEqual(mudos, [],
     `hook consulta o catálogo, não está nele, e por isso roda calado: ${mudos.join(', ')}`)
@@ -2517,6 +2519,7 @@ if (!ESPERADO) {
   let e = responder(cliente, 'entrega', 'catálogo de imóveis')
   e = responder(e, 'quem', 'corretor na rua')
   e = responder(e, 'hoje', 'manda foto por whatsapp')
+  e = responder(e, 'concorrencia', 'os portais de imóvel') // CC-1086: pergunta nova do roteiro
   const semBanco = responder(e, 'dado', 'nenhum')
   assert.ok(!E.aplicaveis(E.respostasDe(semBanco)).some((p) => p.id === 'acesso'),
     'sem dado guardado, perguntar sobre área restrita é ruído')
@@ -2693,7 +2696,7 @@ if (!ESPERADO) {
     // o modo automático que ele pediu, em 18/08
     const fw = D.ler(raiz)
     assert.ok(fw && fw.ligado !== false, 'o projeto tem que nascer com o framework ligado')
-    assert.equal(fw.fase, 'definicao')
+    assert.equal(fw.fase, 'semente', 'CC-1085: nasce no primeiro marco do ideia-viva')
     assert.equal(E.proxima(fw).id, 'natureza', 'e com a entrevista esperando na primeira pergunta')
 
     // criar duas vezes no mesmo nome não pode passar por cima do que existe
@@ -5677,7 +5680,7 @@ for (const PAINEL of PAINEIS_QUE_FICAM) {
      O que mudou é a ordem em que a folha oferece. */
   const F = await import('./src/framework.mjs')
   assert.equal(Object.keys(F.MODOS).length, 12, 'os 12 modos continuam no catálogo (planejamento entrou em 29/09, CC-714)')
-  assert.equal(Object.keys(F.METODOS).length, 7, 'os 7 métodos continuam no catálogo (produto entrou em 04/10, CC-902)')
+  assert.equal(Object.keys(F.METODOS).length, 8, 'os 8 métodos continuam no catálogo (ideia-viva entrou em 04/11, CC-1085)')
   for (const id of ['continuo', 'depuracao', 'revisao', 'pareado', 'entrega']) {
     assert.ok(F.MODOS[id], `o modo ${id} não pode sumir: some da tela, não do catálogo`)
   }

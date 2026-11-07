@@ -24,7 +24,7 @@ import { CACHE_FILE as TEMPO_CACHE, resumo as resumoTempo } from './tempo.mjs'
 import { lerFila } from './ideias.mjs'
 import { lerPacotes, mesclar, maquinasConhecidas } from './federacao.mjs'
 import { configAtual, lerFechadas, lerMantidas, chaveDoCartao, lerDepois, depoisVale, permissaoDaTela, teclaDaPermissao, lerPedidosDoGancho } from './decisao.mjs'
-import { estado as estadoRC, saudeDaTela } from './remotecontrol.mjs'
+import { estado as estadoRC, saudeDaTela, sessoesMortas, rascunhoDaTela } from './remotecontrol.mjs'
 import { execFile } from 'node:child_process'
 import { registrar as registrarHistorico } from './decisaoHistorico.mjs'
 import * as resumoAgy from './resumoAgy.mjs'
@@ -34,6 +34,7 @@ import * as observado from './observado.mjs'
 import { ler as lerBacklogDe, estaAberto as itemAberto, ESTADOS as ESTADOS_BACKLOG } from './backlog.mjs'
 import { lerCabecalho as lerCabecalhoGate } from './gate.mjs'
 import { perguntaDoArquiteto } from './arquiteto.mjs'
+import { ehRascunho } from './rascunhos.mjs'
 
 /* CC-493: sessão sem frente declarada recebe um PALPITE de frente, deduzido dos arquivos
    que ela mexeu (o que o transcrito mostra) contra os itens abertos do backlog do projeto.
@@ -637,6 +638,14 @@ export function montar({
   /* A pasta de usuário vira "projeto" quando uma sessão abre nela. Não é
      trabalho, é lugar de passagem, e não entra na lista. */
   const fora = new Set(ignorar.map(chaveDeProjeto).filter(Boolean))
+  /* CC-1064: sessão cujo cwd está na pasta de rascunhos não é projeto. Só olha o caminho
+     (string); a base é lida uma vez por pasta distinta, não uma por sessão. */
+  const emRascunho = new Map()
+  const ehDeRascunho = (cwd) => {
+    if (!cwd) return false
+    if (!emRascunho.has(cwd)) emRascunho.set(cwd, ehRascunho(cwd))
+    return emRascunho.get(cwd)
+  }
   const projetoDe = (nomeCru) => {
     const chave = chaveDeProjeto(nomeCru)
     if (!chave || fora.has(chave)) return null
@@ -666,6 +675,8 @@ export function montar({
        pasta. Não some do painel: as decisões e sessões dela continuam na
        Início; só a lista de Projetos a deixa de fora. */
     if (ehPastaPessoal(j.cwd)) p.pastaPessoal = true
+    const doRascunho = ehDeRascunho(j.cwd)
+    p.rascunho = p.rascunho !== false && doRascunho // só é rascunho se TODAS as sessões dele forem
     if (!semContato && !j.stale) p.presenca.add(onde)
     p.ultimaAtividade = Math.max(p.ultimaAtividade, j.updatedAt || 0)
     /* 26/09, item 4 da Início: a linha da sessão mostrava o PEDIDO dele
@@ -680,7 +691,7 @@ export function montar({
       ? (j.tipo === 'coderoom' ? falaDoCoderoom(j) : falaDe(j))
       : null
     p.sessoes.push({
-      id: j.id, tipo: tipoDaSessao(j), dispositivo: onde, modelo: j.model || null,
+      id: j.id, tipo: tipoDaSessao(j), dispositivo: onde, modelo: j.model || null, rascunho: doRascunho,
       estado: estadoDaSessao(j), ferramenta: ferramentaCurta(j.inFlight?.[0]?.label) || null,
       desdeMs: Math.max(0, agora - (j.updatedAt || agora)), frente: j.frente || null, frentePalpite: palpiteDeFrente(j), item: j.item || null, assunto: j.subject || null,
       todos: j.todos?.length || 0, todosDone: j.todosDone || 0,
@@ -1141,9 +1152,20 @@ async function montarResposta() {
     const local = (dados.dispositivos || []).find((d) => d.local) || {}
     for (const [rotulo, s] of rcTodas) {
       const saude = saudeDaTela(telaDe.get(s.sessao))
+      /* CC-1090: sessão que ele fechou no app. Só ela paga a segunda leitura da tela, COM cor: sem a cor não dá
+         para separar a sugestão esmaecida do Claude Code (que não é texto dele) do que ele digitou e não enviou. */
+      let rascunho = ''
+      if (saude.fechadaNoApp) {
+        const comCor = await new Promise((ok) => execFile('tmux', ['capture-pane', '-e', '-t', s.sessao, '-p', '-S', '-60'], { encoding: 'utf8', timeout: 3000 }, (err, out) => ok(err ? '' : out)))
+        rascunho = rascunhoDaTela(comCor)
+      }
       const c = (dados.conectadas || []).find((x) => s.conversa && (x.conversa === s.conversa || x.id === String(s.conversa).slice(0, 8)))
+      if (saude.fechadaNoApp && s.conversa) {
+        // o cartão de "espera você" dessa conversa também sabe, para a tela não o pôr em QA nem em espera
+        for (const e of dados.espera || []) if (e.conversa === s.conversa) e.fechadaNoApp = true
+      }
       if (c) {
-        Object.assign(c, { celular: saude.celular, presa: saude.presa, rotuloRC: rotulo, sessaoNome: s.nomeSessao || rotulo })
+        Object.assign(c, { celular: saude.celular, presa: saude.presa, rotuloRC: rotulo, sessaoNome: s.nomeSessao || rotulo, fechadaNoApp: saude.fechadaNoApp, rascunhoParado: rascunho || null })
         /* A tela diz que o turno está em andamento: a sessão trabalha, mesmo
            que o registro diga parada. Sai o cartão de "parou" dela (pergunta
            e permissão ficam: essas pedem resposta de qualquer jeito). */
@@ -1161,6 +1183,24 @@ async function montarResposta() {
         projeto: p ? p.chave : path.basename(s.cwd || rotulo), nome: p ? p.nome : path.basename(s.cwd || rotulo),
         conversa: s.conversa || null, fala: null, assunto: saude.presa || 'viva no terminal, sem sinal no registro do Claude Code',
         celular: saude.celular, presa: saude.presa, rotuloRC: rotulo, todos: 0, todosDone: 0,
+        fechadaNoApp: saude.fechadaNoApp, rascunhoParado: rascunho || null,
+      })
+    }
+    /* 19/10, pedido dele: a VPS reiniciou, o tmux morreu inteiro e a conversa
+       ficou offline no app, sem nenhum sinal no painel (que só enxerga o que
+       está num terminal vivo). Sessão que o painel abriu e ninguém encerrou,
+       sem terminal, entra como "morta", com reativar e dispensar na tela. */
+    for (const m of await sessoesMortas().catch(() => [])) {
+      const c = (dados.conectadas || []).find((x) => x.conversa === m.conversa || x.id === m.conversa.slice(0, 8))
+      const marca = { morta: true, certezaVolta: m.certeza, celular: null, presa: null, rotuloRC: m.rotulo }
+      if (c) { Object.assign(c, marca); c.estado = 'ociosa'; continue }
+      const p = (dados.projetos || []).find((x) => x.raiz && x.raiz === m.cwd)
+      ;(dados.conectadas || (dados.conectadas = [])).push({
+        id: m.conversa.slice(0, 8), tipo: 'remote control', dispositivo: local.nome || 'esta máquina', modelo: null,
+        estado: 'ociosa', desdeMs: Math.max(0, agora - m.ultimaEm),
+        projeto: p ? p.chave : path.basename(m.cwd || m.rotulo), nome: p ? p.nome : path.basename(m.cwd || m.rotulo),
+        conversa: m.conversa, fala: null, assunto: 'o terminal dela morreu (reinício da VPS ou queda); a conversa está salva',
+        todos: 0, todosDone: 0, ...marca,
       })
     }
     /* CC-645, print dele: respondeu no terminal e o cartão continuou, com

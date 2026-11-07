@@ -296,6 +296,79 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
   fs.rmSync(vazio, { recursive: true, force: true })
 }
 
+/* CC-852: `cc conferencia padrao`, só em pastas temporárias (nunca um projeto real) */
+{
+  const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
+  const { declararConferenciaPadrao, conferenciaDoProjeto } = await import('./src/maestro.mjs')
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'padrao-'))
+  const faz = (nome, scripts, { deps = true } = {}) => {
+    const d = path.join(base, nome); fs.mkdirSync(d)
+    if (scripts) fs.writeFileSync(path.join(d, 'package.json'), JSON.stringify({ name: nome, scripts }))
+    if (scripts && deps) fs.mkdirSync(path.join(d, 'node_modules'))
+    return d
+  }
+  const passa = faz('passa', { test: 'node -e "process.exit(0)"' })
+  const falha = faz('falha', { test: 'node -e "console.error(\'AssertionError: quebrou aqui\');process.exit(1)"' })
+  const semPkg = faz('sem-pkg', null)
+  const semDeps = faz('sem-deps', { test: 'node -e "process.exit(0)"' }, { deps: false })
+  const padraoNpm = faz('padrao-npm', { test: 'echo "Error: no test specified" && exit 1', build: 'node -e "process.exit(0)"' })
+  const jaTem = faz('ja-tem', { test: 'node -e "process.exit(1)"' }); fs.writeFileSync(path.join(jaTem, 'AGENTS.md'), '# x\n\nConferência padrão: auto:abre http://127.0.0.1:1\n')
+  faz('VPS_ibrics', { test: 'node -e "process.exit(0)"' }); faz('_rascunho', { test: 'x' })
+  fs.symlinkSync(passa, path.join(base, 'atalho'))
+  const ens = await declararConferenciaPadrao({ base, ensaio: true })
+  const gravouEnsaio = fs.existsSync(path.join(passa, 'AGENTS.md'))
+  const lin = await declararConferenciaPadrao({ base, timeout: 60000 })
+  const r = (n) => lin.find((l) => l.projeto === n)
+  t('conferência padrão: ensaio lista a candidata e não grava', () => {
+    assert.equal(ens.find((l) => l.projeto === 'passa').conferencia, 'auto:npm test')
+    assert.equal(ens.find((l) => l.projeto === 'padrao-npm').conferencia, 'auto:npm run build')
+    assert.equal(gravouEnsaio, false)
+  })
+  t('conferência padrão: passou declara, falhou não, e as exceções ficam como são', () => {
+    assert.equal(r('passa').resultado, 'declarada agora')
+    assert.equal(conferenciaDoProjeto(passa), 'auto:npm test')
+    assert.match(fs.readFileSync(path.join(passa, 'AGENTS.md'), 'utf8'), /validada pelo comando em \d\d\/\d\d\/\d{4} no estado atual/)
+    assert.match(r('falha').resultado, /^falhou: .*quebrou aqui/)
+    assert.equal(conferenciaDoProjeto(falha), null)
+    assert.equal(r('sem-pkg').resultado, 'sem candidata')
+    assert.match(r('sem-deps').conferencia, /npm install/)
+    assert.equal(conferenciaDoProjeto(semDeps), null)
+    assert.equal(r('padrao-npm').resultado, 'declarada agora') // o "no test specified" cai para o build
+    assert.equal(conferenciaDoProjeto(padraoNpm), 'auto:npm run build')
+    assert.equal(r('ja-tem').resultado, 'já tinha')
+    assert.equal(r('VPS_ibrics').resultado, 'pulada')
+    assert.equal(r('_rascunho').resultado, 'pulada')
+    assert.equal(r('atalho').conferencia, 'atalho')
+    assert.equal(conferenciaDoProjeto(semPkg), null)
+  })
+
+  /* nome sem barra é pasta da base (e não da pasta onde se digitou); monorepo olha apps/<a> */
+  const { spawn } = await import('node:child_process')
+  const mono = path.join(base, 'mono'); fs.mkdirSync(mono)
+  for (const [n, scripts, deps] of [['web', { build: 'node -e "process.exit(0)"' }, true], ['api', { build: 'x' }, true], ['sem', { build: 'x' }, false], ['lib', { x: 'y' }, true]]) {
+    const d = path.join(mono, 'apps', n); fs.mkdirSync(d, { recursive: true })
+    fs.writeFileSync(path.join(d, 'package.json'), JSON.stringify({ name: n, scripts })); if (deps) fs.mkdirSync(path.join(d, 'node_modules'))
+  }
+  const vivo = spawn(process.execPath, ['-e', 'setTimeout(()=>{},60000)'], { cwd: path.join(mono, 'apps', 'api') }) // servidor "rodando" dentro de apps/api
+  await new Promise((ok) => setTimeout(ok, 300))
+  const um = await declararConferenciaPadrao({ base, projeto: 'passa', ensaio: true })
+  const em = await declararConferenciaPadrao({ base, projeto: 'mono', ensaio: true })
+  const emReal = await declararConferenciaPadrao({ base, projeto: 'mono' })
+  vivo.kill()
+  t('conferência padrão: --projeto com nome só acha a pasta da base', () => {
+    assert.deepEqual(um.map((l) => [l.projeto, l.resultado]), [['passa', 'já tinha']]) // já declarada acima, e não "pasta não existe"
+  })
+  t('conferência padrão: monorepo usa auto:build por pasta, pula servidor vivo e pasta sem dependências', () => {
+    assert.ok(em.some((l) => l.conferencia === 'auto:build apps/web' && l.resultado === 'ensaio'))
+    assert.ok(em.some((l) => l.conferencia === 'apps/api' && l.resultado === 'pulada: servidor rodando em apps/api'))
+    assert.ok(em.some((l) => l.conferencia === 'sem dependências instaladas em apps/sem'))
+    assert.ok(!em.some((l) => /apps\/lib/.test(l.conferencia)), 'pasta sem script build nem aparece')
+    assert.equal(emReal.find((l) => l.resultado === 'declarada agora').conferencia, 'auto:build apps/web')
+    assert.equal(conferenciaDoProjeto(mono), 'auto:build apps/web')
+  })
+  fs.rmSync(base, { recursive: true, force: true })
+}
+
 /* 02/10: a skill do Nisaba sai do repositório para os três agentes (numa casa temporária) */
 {
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
@@ -659,7 +732,12 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
   const dNada = tmp('ver-nada-')
   const dMudo = tmp('ver-mudo-'); fs.writeFileSync(path.join(dMudo, 'server.js'), 'setTimeout(()=>{},30000)') // nunca escuta
   // porta ocupada: tem que pular para a seguinte, e nunca devolver 3000
-  const ocupa = net.createServer(); await new Promise((ok) => ocupa.listen(5270, '127.0.0.1', ok))
+  /* A faixa 5270 a 5279 também é de servidores de desenvolvimento de outros projetos (o boxe do vr_apps usa a 5270
+     por horas), então o teste não supõe a 5270 livre: ocupa a primeira porta livre da faixa que tenha a seguinte livre. */
+  const livre = (p) => new Promise((ok) => { const s = net.createServer(); s.once('error', () => ok(false)); s.listen(p, '127.0.0.1', () => s.close(() => ok(true))) })
+  let ocupada = 5270
+  while (ocupada < 5277 && !(await livre(ocupada) && await livre(ocupada + 1))) ocupada++
+  const ocupa = net.createServer(); await new Promise((ok) => ocupa.listen(ocupada, '127.0.0.1', ok))
   const porta = await Ar.portaLivre(); await new Promise((ok) => ocupa.close(ok))
   let recebida = null
   const feliz = await Ar.verOApp(dServ, { saida: path.join(dServ, 'fotos'), foto: async ({ url }) => { recebida = url; return { ok: true, fotos: ['/x/01.jpg'], problemas: [] } } })
@@ -674,7 +752,7 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
     assert.equal(cmdVite, null, 'vite não sobe por aqui'); assert.equal(cmdNada, null)
   })
   t('arquiteto: a porta de teste pula a ocupada e nunca é a 3000 (3000 a 3021 são sites de cliente)', () => {
-    assert.equal(porta, 5271); assert.ok(portaDoApp >= 5270 && portaDoApp <= 5279 && portaDoApp !== 3000)
+    assert.equal(porta, ocupada + 1); assert.ok(portaDoApp >= 5270 && portaDoApp <= 5279 && portaDoApp !== 3000)
   })
   t('arquiteto: o app sobe com PORT, é fotografado pelo endereço local, e é derrubado depois', () => {
     assert.equal(feliz.ok, true); assert.deepEqual(feliz.fotos, ['/x/01.jpg']); assert.equal(feliz.link, null); assert.match(recebida, /^http:\/\/127\.0\.0\.1:527\d\/$/); assert.equal(aindaNoAr, false)

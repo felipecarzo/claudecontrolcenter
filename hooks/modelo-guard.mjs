@@ -25,6 +25,26 @@ const sair = () => process.exit(0)
 
 let dados = null
 try { dados = JSON.parse(readFileSync(0, 'utf8')) } catch { sair() }
+/* CC-1069 item 5: com pedido dele ainda sem conferência, ferramenta que muda coisa fica recusada. */
+if (['Edit', 'Write', 'NotebookEdit', 'Agent', 'Task', 'CronCreate', 'ScheduleWakeup', 'Bash'].includes(dados?.tool_name)) {
+  try {
+    const cfg0 = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
+    if (!cfg0?.hookEnabled || cfg0.hookEnabled('confere-pedido', undefined, dados?.cwd || process.cwd())) {
+      const { barrar } = await import('./confere-pedido.mjs')
+      const motivo = barrar(dados)
+      if (motivo) { process.stderr.write(`${motivo}\n`); process.exit(2) }
+    }
+  } catch { /* falha aberta */ }
+}
+/* CC-1069: CronCreate e ScheduleWakeup ligam trabalho automático; o autonomo-guard confere. */
+if (dados?.tool_name === 'CronCreate' || dados?.tool_name === 'ScheduleWakeup') {
+  try {
+    const { conferirAcao } = await import('./autonomia.mjs')
+    const motivo = await conferirAcao(dados)
+    if (motivo) { process.stderr.write(`${motivo}\n`); process.exit(2) }
+  } catch { /* falha aberta */ }
+  sair()
+}
 if (dados?.tool_name !== 'Agent' && dados?.tool_name !== 'Task') sair()
 
 const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)

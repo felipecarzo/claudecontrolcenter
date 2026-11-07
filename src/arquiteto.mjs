@@ -32,6 +32,7 @@ import { avancar } from './framework.mjs'
 import { catalogoDe } from './frentes.mjs'
 import { frenteAtual } from './emenda.mjs'
 import * as P from './produto.mjs'
+import * as R from './regente.mjs' // CC-1068: o arquiteto importa o regente, nunca o contrário
 
 /* ATENÇÃO, medido em 02/10: neste Claude Code, `--model haiku` é atendido pelo claude-sonnet-5
    (o transcrito e o `modelUsage` dizem isso). O Haiku de verdade é `claude-haiku-4-5-20251001`,
@@ -52,6 +53,10 @@ export function lerEstado(cwd) {
   const escopo = /## Escopo do projeto\n([\s\S]*?)(\n## |$)/.exec(agents)?.[1]?.trim() || null
   const eventos = eventosDe(arq)
   const resumo = (x) => ({ id: x.id, intencao: x.intencao || x.titulo, estado: x.estado, origem: x.origem || null })
+  // CC-1068: no modo Regente, o que só o Felipe faz (conta, aparelho, root, deploy) não aparece como opção para o robô
+  const regente = R.ler(cwd).ligado
+  const regras = R.regrasDe(cwd)
+  const semDele = (x) => !regente || !R.exigeDele(x)
   /* O furo do "casal" (CN-26): ele tinha dito na entrevista que o app é só dele, e a proposta não via
      essas respostas. Entram inteiras, e as perguntas já feitas com a escolha dele. */
   const entrevista = fw ? Object.fromEntries(Object.entries(respostasDe(fw)).map(([k, r]) => [k, String(r?.texto || '').slice(0, 300)])) : {}
@@ -71,16 +76,20 @@ export function lerEstado(cwd) {
     perguntasJaFeitas: jaPerguntadas,
     abertos: itens.filter((x) => B.estaAberto(x) && !x.pai).length,
     // os itens que ELE criou entram na fila que a IA enxerga, mesmo os que nascem "ele confere" (07/10: a IA não via o CN-129)
-    fila: [...fila.dele.filter((x) => x.origem === 'felipe'), ...fila.sozinho].slice(0, 10).map(resumo),
-    esperandoDele: fila.dele.slice(0, 10).map(resumo),
+    fila: [...fila.dele.filter((x) => x.origem === 'felipe'), ...fila.sozinho].filter(semDele).slice(0, 10).map(resumo),
+    esperandoDele: fila.dele.filter(semDele).slice(0, 10).map(resumo),
     reprovacoes: eventos.filter((e) => e.tipo === 'robo' && e.ok === false).slice(-10).map((e) => ({ id: e.id, erro: String(e.texto || '').split('\n')[0].slice(0, 200) })),
     decisoes: eventos.filter((e) => e.tipo === 'decisao').slice(-10).map((e) => ({ id: e.id, texto: String(e.texto || '').slice(0, 300) })),
     processo: resumoDoProcesso(eventos), // CC-876: o que a proposta de melhoria cita
+    regente, // CC-1068
+    ...(/^- /m.test(regras) ? { regras } : {}), // CC-1068: o caderno de regras dele (gerais + deste projeto)
   }
 }
 
 /** O pedido ao Haiku: o estado, o formato exato e as regras do modo Product Owner. */
 export function pedidoDeProposta(estado) {
+  const { regras, ...resto } = estado || {} // CC-1068: as regras vão em bloco próprio, antes do estado
+  estado = resto
   return [
     'Você é o arquiteto de um projeto de software e trabalha para o dono do produto (o Felipe), que decide TUDO.',
     'Você não executa nada: propõe UM próximo passo, e ele escolhe entre opções. Ele não é técnico: escreva para quem decide, não para quem programa.',
@@ -94,6 +103,7 @@ export function pedidoDeProposta(estado) {
     'Em português do Brasil, sem travessão. Opções concretas: nada de "talvez" ou "depende".',
     // CC-940, regra geral dele em 07/10
     'Projeto inicial não tem login nem senha: só proponha login quando o projeto já guarda informação de alguém (cadastro, gasto, foto, mensagem). Antes disso, login é atrito sem nada a proteger.',
+    ...(regras ? ['', 'REGRAS DO DONO (obrigatórias, aprendidas com ele):', regras] : []),
     '', 'ESTADO DO PROJETO:', JSON.stringify(estado, null, 1),
   ].join('\n')
 }
@@ -132,9 +142,14 @@ export function validarProposta(texto) {
   return { ok: true, proposta: { tipo: v.tipo, titulo: v.titulo.trim(), porque: v.porque.trim(), pergunta: v.pergunta.trim(), opcoes: ops, ...(v.pedido ? { pedido: String(v.pedido).trim() } : {}), ...(v.executa ? { executa: String(v.executa).trim() } : {}), ...(v.daFila && v.tipo === 'pedido' ? { daFila: String(v.daFila) } : {}) }, erros: [] }
 }
 
-const rodarComEntrada = (bin, args, entrada, cwd) => new Promise((ok) => {
+const rodarComEntrada = (bin, args, entrada, cwd) => new Promise((ok, falha) => {
   // CC_SEM_PONTO: o Claude daqui só lê e propõe; a caixa de ponto (commit ao sair) não deve varrer o projeto por causa dele
-  const p = execFile(bin, args, { cwd, timeout: 180000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, CC_SEM_PONTO: '1' } }, (e, out, err) => ok({ ok: !e, out: String(out || ''), err: String(err || e?.message || '') }))
+  const p = execFile(bin, args, { cwd, timeout: 180000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, CC_SEM_PONTO: '1' } }, (e, out, err) => {
+    const r = { ok: !e, out: String(out || ''), err: String(err || e?.message || '') }
+    // CC-1068: no Regente, chamada que falhou, vazia ou com aviso de limite é "indisponível" (espera o próximo ciclo), não proposta recusada
+    const m = R.ler(cwd).ligado && R.motivoIndisponivel(r)
+    return m ? falha(R.erroIndisponivel(m)) : ok(r)
+  })
   p.stdin.on('error', () => { /* o programa morreu antes de ler: o erro dele já vem no retorno */ })
   p.stdin.end(limparSegredos(entrada)) // segredo nunca vai para modelo
 })
@@ -504,13 +519,13 @@ export function pedidoComARegraDele(pedido, item, decisoes = []) {
 const maestro = () => process.env.CC_ARQUITETO_MAESTRO || fileURLToPath(new URL('./maestro.mjs', import.meta.url)) // lido na hora: o teste troca por um de mentira
 
 /** Roda o maestro com o pedido e espera terminar. O andamento vai para a conversa pelo próprio maestro (--avisar). */
-export function executarPedido(cwd, ficha, pedido, { conversa = null } = {}) {
+export function executarPedido(cwd, ficha, pedido, { conversa = null, item = null } = {}) {
   const copia = noAr(cwd)
   const dir = copia ? copiaIsolada(cwd, ficha) : cwd
   return new Promise((ok) => {
-    execFile(process.execPath, [maestro(), '--pasta', dir, ...(conversa ? ['--avisar', conversa] : []), pedido],
+    execFile(process.execPath, [maestro(), '--pasta', dir, ...(conversa ? ['--avisar', conversa] : []), ...(item && R.ler(cwd).ligado ? ['--item', item] : []), pedido],
       { cwd: dir, timeout: 2 * 3600 * 1000, maxBuffer: 32 * 1024 * 1024 },
-      (e, out, err) => ok({ ok: !e && !/parou com erro/.test(String(out)), dir, copia, saida: String(out || ''), erro: String(err || e?.message || ''), resultado: resultadoDoPai(dir, String(out || '')) }))
+      (e, out, err) => ok({ ok: !e && !/parou com erro/.test(String(out)), dir, copia, saida: String(out || ''), erro: String(err || e?.message || ''), adiada: /MAESTRO_ADIADA: ([^\n]+)/.exec(String(out || ''))?.[1] || null, resultado: resultadoDoPai(dir, String(out || '')) }))
   })
 }
 
@@ -911,10 +926,77 @@ function responderProduto(cwd, proposta, texto, marcadas) {
   avancarProduto(cwd)
 }
 
+/* ===================================================================
+   CC-1068: o modo Regente. Decide no lugar dele pelo caderno de regras (src/regente.mjs) e avisa na conversa.
+   =================================================================== */
+
+/** O item do backlog que o pedido executa, se só o Felipe pode fazê-lo (conta, aparelho, root, deploy). Pura. */
+export function itemQueExigeDele(proposta, itens) {
+  if (proposta?.tipo !== 'pedido') return null
+  const it = (proposta.daFila && itens.find((x) => x.id === proposta.daFila)) || itemDoBacklog(proposta, itens)
+  return it && R.exigeDele(it) ? it : null
+}
+
+/** A opção de um pedido que NÃO executa: a que parece "não/depois", senão a última diferente da que executa. Pura. */
+export function opcaoNegativa(proposta) {
+  const ops = proposta?.opcoes || []
+  return ops.find((o) => o !== proposta.executa && /^(n[aã]o\b|depois|ajust|agora n)/i.test(o)) || [...ops].reverse().find((o) => o !== proposta.executa) || null
+}
+
+/** A mensagem de sistema na conversa do arquiteto quando o Regente decidiu. Pura. */
+export function mensagemDoRegente(proposta, d) {
+  return `Regente: decidi ${d.escolha} em "${proposta?.titulo || 'pergunta'}". Por quê: ${String(d.porque).replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '')}. Corrija escrevendo aqui (regra: ... para virar regra deste projeto; geral: ... para valer em todos).`
+}
+
+/**
+ * Decide a ficha aberta pelo Regente e a fecha. Devolve o resultado do passo, ou null (nada a decidir: a ficha segue aberta
+ * para ele). `ficha` pode ser null: a ficha só nasce depois da decisão, então modelo indisponível não deixa ficha para trás.
+ * Laço (mesma decisão 3 vezes seguidas) e revisão sem prova na segunda vez desligam o Regente neste projeto.
+ */
+export async function decidirFicha(cwd, ficha, proposta, estado, { chamar } = {}) {
+  const reg = R.ler(cwd)
+  const titulo = proposta?.titulo || ''
+  const tentou = R.jaTentou(reg.ultimas, titulo)
+  const d = await R.decidir(cwd, proposta, { ...estado, jaTentou: tentou }, chamar ? { chamar } : {})
+  const aberta = () => ficha || registrarPergunta(cwd, proposta)
+  const desligou = (motivo, texto) => { R.desligar(cwd, motivo); return { pergunta: aberta(), proposta, desligou: texto, semDecisao: motivo } }
+  if (!d) return proposta?.tipo === 'revisao' && tentou ? desligou(`revisão sem prova: ${titulo} já foi tentada de novo`, 'Regente desligado neste projeto: a revisão segue sem prova do robô depois de uma nova tentativa. Preciso de você.') : null
+  if (R.ehLaco(reg.ultimas, titulo, d.escolha)) return desligou(`laço: ${titulo} ${d.escolha} repetida`, 'Regente desligado neste projeto: decidi a mesma coisa 3 vezes seguidas. Preciso de você.')
+  R.anotarDecisao(cwd, titulo, d.escolha)
+  R.limparPendente(cwd)
+  const f = aberta()
+  const fechada = responder(cwd, f.id || f, d.escolha, { automatico: 'regente: ' + d.porque })
+  return { pergunta: fechada, proposta, automatico: true, regente: d }
+}
+
+/**
+ * CC-1068: o item da fila já tem commit no projeto (o id dele, ou o título repetido no assunto)? Então o Regente o fecha com
+ * essa prova e não manda construir de novo (20/10: a Fundação existia e ele tentou reconstruí-la). Devolve o commit, ou null.
+ */
+export async function fecharSeFeito(cwd, item, { chamar } = {}) {
+  if (!item || !R.ler(cwd).ligado || ['OK', 'KO'].includes(item.estado)) return null
+  const c = await R.commitDoItem(cwd, item)
+  if (c) B.mover(item.id, 'OK', { prova: `feito: commit ${c.hash} ${c.assunto}`.slice(0, 300) }, B.caminhoPadrao(cwd))
+  if (c) return c
+  // nenhum commit cita o item: uma conferência pelo conteúdo do repositório (só leitura); prova que não confere, constrói
+  const v = await R.conferirPorConteudo(cwd, item, chamar ? { chamar } : {})
+  if (!v.feito) return null
+  B.mover(item.id, 'OK', { prova: ('feito (conferido pelo Regente): ' + v.prova).slice(0, 300) }, B.caminhoPadrao(cwd))
+  return { hash: 'pelo conteúdo,', assunto: v.prova, por: 'conteúdo' }
+}
+
 /** Um passo do ciclo: com pergunta esperando, para; com entrevista aberta, pergunta dela; senão, o Haiku propõe. */
-export async function passo(cwd, { binario, voltou = false } = {}) {
+async function passoBruto(cwd, { binario, voltou = false } = {}) {
   const aberta = perguntaAberta(B.ler(B.caminhoPadrao(cwd)).itens)
-  if (aberta) return { esperando: aberta }
+  if (aberta) {
+    // CC-1068: revisão que ficou aberta porque o modelo estava fora do ar: o Regente a decide agora, em vez de esperar o Felipe
+    const pend = R.ler(cwd).ligado && R.ler(cwd).pendente
+    if (pend && pend.ficha === aberta.id) {
+      const r = await decidirFicha(cwd, aberta, aberta.proposta, { ...lerEstado(cwd), provado: pend.provado === true })
+      if (r) return r
+    }
+    return { esperando: aberta }
+  }
   const daEntrevista = perguntaDaEntrevista(cwd)
   if (daEntrevista) {
     const { _p, _respostas, ...q } = daEntrevista
@@ -944,16 +1026,42 @@ export async function passo(cwd, { binario, voltou = false } = {}) {
     proposta.porque = `${proposta.porque} (Atenção: o item ${daFila.id} já teve uma obra aprovada (pedido ${jaFeito.pedido}, revisão ${jaFeito.revisao}). Não construo de novo sozinho: confirme se é mesmo para refazer.)`.slice(0, 500)
     daFila = null
   }
-  const cabe = podeAutomatico(cwd)
+  // CC-1068: o teto de 6 por dia não segura o Regente; vale só o `teto` dele (0 = sem teto)
+  const reg = R.ler(cwd)
+  const cabe = reg.ligado ? (reg.teto > 0 ? podeAutomatico(cwd, reg.teto) : true) : podeAutomatico(cwd)
   // o teto segurou: a pergunta diz por quê, senão parece redundante (07/10, CN-131)
   if (daFila && !cabe) proposta.porque = `${proposta.porque} (Este item você já escolheu, mas hoje o robô já começou ${TETO_AUTOMATICO} obras sozinho, o limite do dia: por isso pergunto.)`.slice(0, 500)
   // grava DEPOIS de conferir o item: antes a ficha ficava sem o vínculo com o item dele
-  const ficha = registrarPergunta(cwd, proposta)
+  // CC-1068: no Regente a ficha só nasce quando há o que gravar nela (modelo indisponível não deixa ficha para trás)
+  let ficha = reg.ligado ? null : registrarPergunta(cwd, proposta)
+  const fichar = () => (ficha ||= registrarPergunta(cwd, proposta))
+  if (reg.ligado) {
+    // CC-1068: o item já tem commit no projeto: fecha com essa prova e propõe outra coisa (não reconstrói o feito)
+    const alvo = daFila || (proposta.daFila ? B.ler(B.caminhoPadrao(cwd)).itens.find((x) => x.id === proposta.daFila) : null)
+    if (alvo && await fecharSeFeito(cwd, alvo)) return passoBruto(cwd, { binario, voltou })
+    // CC-1068: item que só o Felipe faz vai para a fila dele; o robô não tenta, e o passo propõe outra coisa
+    const itens = B.ler(B.caminhoPadrao(cwd)).itens
+    const bloqueado = itemQueExigeDele(proposta, itens)
+    if (bloqueado) {
+      if (bloqueado.estado !== 'DE') { try { B.mover(bloqueado.id, 'DE', { decisao: 'Só você pode fazer isto (conta, aparelho, root ou deploy): o Regente não manda o robô tentar.', porque: 'exige o Felipe: conta, aparelho, root ou deploy' }, B.caminhoPadrao(cwd)) } catch { /* estado que não vai para DE: a recusa abaixo já impede a obra */ } }
+      const fechada = responder(cwd, fichar().id, opcaoNegativa(proposta) || proposta.opcoes[proposta.opcoes.length - 1], { automatico: 'regente: exige o Felipe (conta, aparelho, root ou deploy)' })
+      const aviso = { id: bloqueado.id, titulo: String(bloqueado.intencao || bloqueado.titulo || '').slice(0, 80) }
+      if (!voltou) {
+        // o modelo pode não achar outro passo (a trava de repetição recusa): o item já está na fila dele e o ciclo espera o próximo tique
+        try { return { ...(await passo(cwd, { binario, voltou: true })), bloqueou: aviso } } catch (e) { return { pergunta: fechada, proposta, bloqueou: aviso, semDecisao: `não achei outro passo: ${String(e.message || e).slice(0, 120)}` } }
+      }
+      return { pergunta: fechada, proposta, bloqueou: aviso, semDecisao: 'só restaram itens que exigem você' }
+    }
+    if (!(daFila && cabe)) {
+      const r = await decidirFicha(cwd, null, proposta, estado)
+      return r || { pergunta: fichar(), proposta, semDecisao: 'não achei opção segura para decidir' }
+    }
+  }
   if (daFila && cabe) {
-    const fechada = responder(cwd, ficha.id, proposta.executa, { automatico: `item da fila que ele já escolheu (${daFila.id}: ${String(daFila.intencao).slice(0, 80)})` })
+    const fechada = responder(cwd, fichar().id, proposta.executa, { automatico: `item da fila que ele já escolheu (${daFila.id}: ${String(daFila.intencao).slice(0, 80)})` })
     return { pergunta: fechada, proposta, automatico: true, daFila }
   }
-  return { pergunta: ficha, proposta }
+  return { pergunta: fichar(), proposta }
 }
 
 /**
@@ -974,6 +1082,10 @@ export function perguntaDeSocorro(motivo, estado = {}) {
     opcoes: [...fila, fila.length ? 'Outra direção (escreva abaixo)' : 'Parar por enquanto', ...(fila.length ? [] : ['Outra direção (escreva abaixo)'])].slice(0, 4),
     fazer: Object.fromEntries(itens.map((x, i) => [fila[i], x.id])), // "Fazer: X" escolhido constrói o item X direto
   }
+}
+/** CC-1068: o passo que não derruba o ciclo quando o modelo está fora do ar: devolve `{ indisponivel }`, sem ficha e sem decisão. */
+export async function passo(cwd, o = {}) {
+  try { return await passoBruto(cwd, o) } catch (e) { if (e?.indisponivel) return { indisponivel: String(e.message).replace(/^regente: /, '') }; throw e }
 }
 export async function passoOuSocorro(cwd, o = {}) {
   try { return await passo(cwd, o) } catch (e) {
@@ -1022,15 +1134,27 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
      * Executa uma ficha de pedido já aprovada (por ele, ou pelo programa quando veio da fila dele) e fecha o ciclo: com prova
      * automática passando, o robô aprova a própria revisão e AVISA; sem prova (ou em obra de cópia), pergunta como sempre.
      */
+    const LIMITE_REGENTE = 12 // CC-1068: voltas (decisão, obra, revisão) por processo
+    // CC-1068: aviso na conversa que não derruba o passo se a conversa ou o painel não existirem; o texto vai também para o log
+    const nota = async (conversa, corpo) => {
+      console.log(String(corpo.texto || '').split('\n')[0])
+      try { return await api('/api/gate/nota', { id: conversa, ...corpo }) } catch (e) { console.log(`sem conversa para avisar (${e.message})`) }
+    }
     const executarFicha = async (ficha, conversa, { automatico = null, profundidade = 0 } = {}) => {
       const it = B.ler(B.caminhoPadrao(cwd)).itens.find((x) => x.id === ficha)
       const pedido = it && aprovouExecutar(it.proposta, it.escolha)
       if (!pedido) throw new Error(`${ficha} não é um pedido aprovado`)
+      // CC-1068: o item da fila já tem commit: fecha com essa prova e segue, sem rodar o maestro
+      const doItem = it.proposta?.daFila && B.ler(B.caminhoPadrao(cwd)).itens.find((x) => x.id === it.proposta.daFila)
+      const feito = doItem && await fecharSeFeito(cwd, doItem)
+      if (feito) { await nota(conversa, { texto: `Regente: "${String(doItem.intencao).slice(0, 80)}" (${doItem.id}) já está nos commits (${feito.hash} ${feito.assunto}). Fechei sem refazer.` }); return seguir(conversa, profundidade + 1) }
       const copia = noAr(cwd)
       await api('/api/gate/nota', { id: conversa, texto: automatico
         ? `Arquiteto: este item você já escolheu (${automatico}), então vou construir sem perguntar: "${it.titulo}". Fica ${copia ? 'numa cópia separada do projeto' : 'direto na pasta do projeto'}. Para segurar o que vier depois, desligue o Nisaba deste projeto na tela Projetos.`
         : `Arquiteto: vou construir "${it.titulo}" ${copia ? 'numa cópia separada do projeto' : 'direto na pasta do projeto'}. O andamento aparece aqui, e eu volto com uma pergunta quando terminar.` })
-      const r = await executarPedido(cwd, ficha, pedidoComARegraDele(pedido, B.ler(B.caminhoPadrao(cwd)).itens.find((x) => x.id === it.proposta?.daFila), decisoesDoProjeto(cwd)), { conversa })
+      const r = await executarPedido(cwd, ficha, pedidoComARegraDele(pedido, B.ler(B.caminhoPadrao(cwd)).itens.find((x) => x.id === it.proposta?.daFila), decisoesDoProjeto(cwd)), { conversa, item: it.proposta?.daFila })
+      // CC-1068: o maestro adiou (modelo sem crédito ou painel fora do ar): não há o que revisar, o próximo ciclo retoma
+      if (r.adiada) return nota(conversa, { texto: `Regente: obra adiada (${r.adiada}). Nada foi reprovado; tento de novo no próximo ciclo.` })
       // CC-894: a revisão leva fotos do app rodando. Obra em cópia é fotografada na cópia, que é onde está o código novo.
       const saidaFotos = path.join(lerCabecalhoGate(conversa)?._onde || os.tmpdir(), `${conversa}.anexos`, `revisao-${ficha}`)
       r.ver = await verOApp(r.copia ? r.dir : cwd, { saida: saidaFotos })
@@ -1038,6 +1162,21 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       const rev = registrarPergunta(cwd, proposta)
       const fotos = r.ver.ok && r.ver.fotos?.length ? { fotos: r.ver.fotos } : {}
       const prova = proposta.tipo === 'revisao' ? provaAutomatica(r, r.ver) : { ok: false, motivo: 'faltou parte' }
+      // CC-1068: no Regente a revisão é decidida por ele (com a prova do robô no estado), avisada na conversa, e o ciclo segue
+      if (R.ler(cwd).ligado && proposta.tipo === 'revisao' && profundidade < LIMITE_REGENTE) {
+        let d
+        try { d = await decidirFicha(cwd, rev, proposta, { ...lerEstado(cwd), provado: prova.ok === true }) } catch (e) {
+          if (!e.indisponivel) throw e
+          R.marcarPendente(cwd, rev.id, prova.ok === true) // a revisão fica aberta e o próximo passo a decide
+          return nota(conversa, { texto: 'Regente: modelo indisponível agora; tento de novo no próximo ciclo' })
+        }
+        if (d?.desligou) { await nota(conversa, { texto: d.desligou }); return nota(conversa, { ...mensagemDaPergunta(rev), ...fotos }) }
+        if (d) {
+          await nota(conversa, { texto: mensagemDoRegente(proposta, d.regente), ...fotos })
+          console.log(`revisão ${rev.id} decidida pelo Regente: ${d.regente.escolha}`)
+          return seguirResposta(d.pergunta, rev.id, conversa, profundidade + 1)
+        }
+      }
       if (!prova.ok || !podeAutomatico(cwd)) {
         await api('/api/gate/nota', { id: conversa, ...mensagemDaPergunta(rev), ...fotos })
         return console.log(`construído (${r.ok ? 'ok' : 'com erro'}); pergunta de revisão ${rev.id}${prova.ok ? ' (teto de decisões automáticas do dia atingido)' : ' (' + prova.motivo + ')'}`)
@@ -1052,25 +1191,68 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const seguir = async (conversa, profundidade = 0) => {
       const r = await passoOuSocorro(cwd)
       if (r.esperando) return console.log(`esperando a resposta dele em ${r.esperando.id}: ${r.esperando.decisao}`)
+      if (R.ler(cwd).ligado) return seguirRegente(r, conversa, profundidade)
       if (r.automatico && profundidade < 4) return executarFicha(r.pergunta.id, conversa, { automatico: `${r.daFila.id}: ${String(r.daFila.intencao).slice(0, 80)}`, profundidade })
       await api('/api/gate/nota', { id: conversa, ...mensagemDaPergunta(r.pergunta) })
       return console.log(`pergunta ${r.pergunta.id} na conversa ${conversa}`)
     }
-    if (a.includes('--fazer')) {
-      const id = valor('--fazer'); const item = B.ler(B.caminhoPadrao(cwd)).itens.find((x) => x.id === id)
-      if (!item || item.origem !== 'felipe') throw new Error(`${id} não é um item dele`)
+    /* CC-1068: o que a rota do painel faz ao receber a resposta dele (executar, juntar, fazer, ou o próximo passo), o Regente
+       faz aqui, no mesmo processo. O limite de voltas evita laço sem fim; o timer chama o passo seguinte. */
+    const seguirResposta = async (fechada, ficha, conversa, profundidade) => {
+      if (profundidade >= LIMITE_REGENTE) return console.log(`Regente: ${profundidade} voltas neste processo, o próximo passo vem pelo timer`)
+      if (fechada.executar) return executarFicha(ficha, conversa, { profundidade })
+      if (fechada.juntar) return juntarFicha(ficha, conversa, profundidade)
+      if (fechada.fazer) return fazerItem(fechada.fazer, conversa, profundidade)
+      return seguir(conversa, profundidade + 1)
+    }
+    const seguirRegente = async (r, conversa, profundidade) => {
+      if (r.socorro) { // sem proposta do modelo: o Regente escolhe entre as saídas reais da pergunta de socorro
+        let estado = {}; try { estado = lerEstado(cwd) } catch { /* sem estado */ }
+        const ficha0 = r.pergunta
+        r = (await decidirFicha(cwd, ficha0, ficha0.proposta, estado).catch((e) => (e.indisponivel ? { indisponivel: e.message } : null))) || { ...r, semDecisao: 'não consegui propor o próximo passo e não há item seguro na fila' }
+        if (r.indisponivel) R.marcarPendente(cwd, ficha0.id) // a ficha de socorro fica aberta e o próximo passo a decide
+      }
+      if (r.indisponivel) return nota(conversa, { texto: 'Regente: modelo indisponível agora; tento de novo no próximo ciclo' }) // sem ficha, sem decisão; sai com 0
+      if (r.desligou) { await nota(conversa, { texto: r.desligou }); return nota(conversa, mensagemDaPergunta(r.pergunta)) }
+      if (r.bloqueou) await nota(conversa, { texto: `Regente: "${r.bloqueou.titulo}" (${r.bloqueou.id}) exige você (conta, aparelho, root ou deploy). Passei para a sua fila e propus outra coisa.` })
+      if (r.semDecisao) {
+        await nota(conversa, { texto: `Regente: sem passo possível (${r.semDecisao}); espero você.` })
+        return r.pergunta.estado === 'DE' ? nota(conversa, mensagemDaPergunta(r.pergunta)) : undefined // ficha já fechada: não há o que perguntar
+      }
+      if (r.regente) {
+        await nota(conversa, { texto: mensagemDoRegente(r.proposta, r.regente) })
+        return seguirResposta(r.pergunta, r.pergunta.id, conversa, profundidade)
+      }
+      if (r.automatico && r.daFila) { // item da fila dele: constrói sem perguntar, como no modo normal
+        if (profundidade >= LIMITE_REGENTE) return console.log('Regente: limite de voltas, o próximo passo vem pelo timer')
+        return executarFicha(r.pergunta.id, conversa, { automatico: `${r.daFila.id}: ${String(r.daFila.intencao).slice(0, 80)}`, profundidade })
+      }
+      // entrevista, produto ou rota: a definição do produto é dele, o Regente não responde por ele
+      await nota(conversa, mensagemDaPergunta(r.pergunta))
+      return console.log(`pergunta ${r.pergunta.id} na conversa ${conversa} (definição do produto, é dele)`)
+    }
+    const fazerItem = async (id, conversa, profundidade = 0) => {
+      const item = B.ler(B.caminhoPadrao(cwd)).itens.find((x) => x.id === id)
+      // CC-1068: no Regente a opção "Fazer" do socorro pode apontar item da fila que não nasceu dele; o backlog é a fila dele
+      if (!item || (item.origem !== 'felipe' && !R.ler(cwd).ligado)) throw new Error(`${id} não é um item dele`)
+      if (R.ler(cwd).ligado && R.exigeDele(item)) { // CC-1068: só o Felipe faz; segue para outra coisa
+        await nota(conversa, { texto: `Regente: "${String(item.intencao).slice(0, 80)}" (${id}) exige você (conta, aparelho, root ou deploy). Não mando o robô tentar.` })
+        return seguir(conversa, profundidade + 1)
+      }
+      // CC-1068: item que já tem commit não é refeito: fecha com a prova e segue para o próximo
+      const feito = R.ler(cwd).ligado && await fecharSeFeito(cwd, item)
+      if (feito) { await nota(conversa, { texto: `Regente: "${String(item.intencao).slice(0, 80)}" (${id}) já está nos commits (${feito.hash} ${feito.assunto}). Fechei sem refazer.` }); return seguir(conversa, profundidade + 1) }
       const texto = String(item.citacao || item.intencao || '')
       const q = registrarPergunta(cwd, { tipo: 'pedido', titulo: String(item.intencao || '').slice(0, 80), porque: 'ele escolheu fazer este item no pedido de direção', pergunta: 'Constrói este item agora?', opcoes: ['Sim, constrói agora', 'Não, depois'], executa: 'Sim, constrói agora', pedido: texto.slice(0, 600), daFila: item.id, daFilaTexto: item.intencao || '' })
       responder(cwd, q.id, 'Sim, constrói agora', { automatico: `ele escolheu fazer ${id} no pedido de direção` })
-      return executarFicha(q.id, valor('--avisar') || await conversaDoArquiteto(cwd), { automatico: `${id}: ${String(item.intencao).slice(0, 80)}` })
+      return executarFicha(q.id, conversa, { automatico: `${id}: ${String(item.intencao).slice(0, 80)}`, profundidade })
     }
+    if (a.includes('--fazer')) return fazerItem(valor('--fazer'), valor('--avisar') || await conversaDoArquiteto(cwd))
     if (a.includes('--executar')) return executarFicha(valor('--executar'), valor('--avisar') || await conversaDoArquiteto(cwd))
-    if (a.includes('--juntar')) {
-      const ficha = valor('--juntar')
+    const juntarFicha = async (ficha, conversa, profundidade = 0) => {
       const it = B.ler(B.caminhoPadrao(cwd)).itens.find((x) => x.id === ficha)
       const dir = it?.proposta?.juntar
       if (!dir) throw new Error(`${ficha} não é uma revisão de obra feita numa cópia`)
-      const conversa = valor('--avisar') || await conversaDoArquiteto(cwd)
       const r = juntarCopia(cwd, dir)
       if (!r.ok) {
         // conflito: nada foi tocado. Ele resolve à mão e manda tentar de novo, ou deixa só na cópia.
@@ -1081,9 +1263,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       B.debater(ficha, `juntado ao projeto: ${r.aplicados.length} arquivo(s) novos ou alterados, ${r.removidos.length} removido(s). Preparado para commit, sem commitar. A cópia segue em ${dir}.`, { tipo: 'nota' }, B.caminhoPadrao(cwd))
       await api('/api/gate/nota', { id: conversa, texto: `Arquiteto: juntei ao projeto de verdade. ${r.aplicados.length} arquivo(s) novos ou alterados e ${r.removidos.length} removido(s), prontos para commit (não commitei). A cópia continua guardada em ${dir}.` })
       console.log(`juntado: ${r.aplicados.length} aplicados, ${r.removidos.length} removidos`)
-      return seguir(conversa)
+      return seguir(conversa, profundidade + 1)
     }
-    if (a.includes('--passo')) return seguir(valor('--avisar') || await conversaDoArquiteto(cwd))
+    if (a.includes('--juntar')) return juntarFicha(valor('--juntar'), valor('--avisar') || await conversaDoArquiteto(cwd))
+    // CC-1068: no ensaio ou sem painel a conversa pode não existir; o Regente segue e o aviso vai só para o log
+    if (a.includes('--passo')) return seguir(valor('--avisar') || await conversaDoArquiteto(cwd).catch((e) => { if (!R.ler(cwd).ligado) throw e; console.log(`sem conversa (${e.message})`); return null }))
     console.log('uso: node src/arquiteto.mjs --pasta <projeto> --propor | --passo [--avisar <conversa>]')
   })().catch((e) => { console.error('arquiteto: ' + e.message); process.exit(1) })
 }

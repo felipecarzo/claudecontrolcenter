@@ -14,6 +14,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import os from 'node:os'
 import { createRequire } from 'node:module'
 import { validarDeck, votos } from './cartas.mjs'
 
@@ -83,10 +84,28 @@ export function levantar(raiz, { dirs = ['src'] } = {}) {
     }
     const lit = (n) => ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)
     const doLiteral = (tipo, n, direto = false) => { add(tipo, n.text, n.getStart() + 1, n.getEnd() - 1, src[n.getStart()], direto) }
+    /* CC-1065: a frase inteira do elemento, com "…" no lugar do valor que muda (`Ver os {total} apps` vira "Ver os … apps").
+       Sem isso a carta mostrava só o pedaço fixo ("Ver os") e parecia texto quebrado. Elemento filho entra pelo texto dele. */
+    const frase = (el) => {
+      const partes = []
+      const junta = (filhos) => { for (const c of filhos) {
+        if (ts.isJsxText(c)) partes.push(src.slice(c.pos, c.end))
+        else if (ts.isJsxExpression(c)) { if (c.expression && lit(c.expression)) partes.push(c.expression.text); else if (c.expression) partes.push(' … ') }
+        else if (ts.isJsxElement(c) || ts.isJsxFragment(c)) { partes.push(' '); junta(c.children); partes.push(' ') } // bloco separado: separa a palavra
+        else if (ts.isJsxSelfClosingElement(c)) partes.push(' ')
+      } }
+      junta(el.children)
+      return partes.join('').replace(/\s+/g, ' ').trim()
+    }
     const visita = (n) => {
       if (ts.isJsxText(n)) {
         const cru = src.slice(n.pos, n.end); const ini = n.pos + (cru.length - cru.trimStart().length); const fim = n.pos + cru.trimEnd().length
-        if (fim > ini) add('jsx', src.slice(ini, fim), ini, fim, '')
+        if (fim > ini) {
+          add('jsx', src.slice(ini, fim), ini, fim, '')
+          // pedaço de uma frase maior (tem valor ou outro elemento ao lado): guarda a frase para a carta
+          const pai = n.parent; const it = itens[itens.length - 1]
+          if (it && it.ini === ini && (ts.isJsxElement(pai) || ts.isJsxFragment(pai))) { const f = frase(pai); if (f && f !== it.texto) it.frase = f }
+        }
       } else if (ts.isJsxExpression(n) && n.expression && lit(n.expression) && (ts.isJsxElement(n.parent) || ts.isJsxFragment(n.parent))) doLiteral('jsx-texto', n.expression)
       else if (ts.isJsxAttribute(n) && ATTR.has(n.name.getText()) && n.initializer) {
         if (lit(n.initializer)) doLiteral('atributo ' + n.name.getText(), n.initializer, true) // texto direto no atributo: o JSX não aceita barra invertida ali
@@ -102,10 +121,55 @@ export function levantar(raiz, { dirs = ['src'] } = {}) {
   return { itens, dinamicos }
 }
 
+/* CC-1067: o endereço da página de cada carta, para a trava do print (CC-1066) enxergar as cartas novas. */
+export const TESTE_DE_VOO = 'https://testedevoo.carzo.com.br'
+
+/** Rota de uma tela de arquivo-é-rota (`src/app/entrar.tsx` vira `/entrar`, `app/index.tsx` vira `/`).
+    `null` quando não dá para inferir: não é arquivo de tela, é layout, ou tem segmento dinâmico (`[id]`). */
+export function rotaDeArquivo(arq) {
+  const m = String(arq).split(path.sep).join('/').replace(/\.[jt]sx?$/, '').match(/^(?:src\/)?(?:app|pages)\/(.+)$/)
+  if (!m) return null
+  const segs = m[1].split('/'); const ult = segs[segs.length - 1]
+  if (/^(_|\+|layout$|template$|loading$|error$|not-found$)/.test(ult)) return null
+  if (ult === 'page' || ult === 'index') segs.pop()
+  const reais = segs.filter((x) => !/^\(.*\)$/.test(x))
+  if (reais.some((x) => /[[\]]/.test(x) || x.startsWith('@') || x.startsWith('_'))) return null
+  return '/' + reais.join('/')
+}
+
+/** `link` da carta: base + rota da tela; sem rota inferível, a base (a imprimir procura o texto na página inteira). Sem base: null. */
+export function linkDaCarta(base, arquivo) {
+  if (!base || !/^https?:\/\//i.test(base)) return null
+  const b = base.replace(/\/+$/, ''); const r = rotaDeArquivo(arquivo)
+  return r ? b + r : base
+}
+
+/** Lê o teste de voo: textos do `~/dev.sh` (linhas `nome) echo "$HOME/pasta:tipo:porta"`) e da lista extra (`nome:pasta:tipo:porta`).
+    Devolve o endereço público do projeto cuja pasta é a raiz (ou fica dentro dela), ou null. Não executa nada. */
+export function enderecoDeDevSh(projeto, home, textos) {
+  const raiz = path.resolve(projeto)
+  for (const [i, t] of textos.entries()) for (const l of String(t || '').split(/\r?\n/)) {
+    const m = i === 0 ? l.match(/^\s*([a-z0-9_-]+)\)\s*echo\s+"\$HOME\/([^:"]+):/) : l.match(/^([a-z0-9_-]+):([^:]+):/)
+    if (!m) continue
+    const pasta = path.join(home, m[2])
+    if (pasta === raiz || pasta.startsWith(raiz + path.sep)) return `${TESTE_DE_VOO}/${m[1]}`
+  }
+  return null
+}
+
+/** Endereço base do projeto: `url` pedida, `docs/endereco.txt` (primeira linha não vazia que começa com http), teste de voo. */
+export function enderecoDoProjeto(projeto, { url = null, home = os.homedir() } = {}) {
+  if (url) return String(url)
+  const ler = (f) => { try { return fs.readFileSync(f, 'utf8') } catch { return '' } }
+  const linha = ler(path.join(projeto, 'docs', 'endereco.txt')).split(/\r?\n/).map((x) => x.trim()).find(Boolean)
+  if (linha && /^https?:\/\//i.test(linha)) return linha
+  return enderecoDeDevSh(projeto, home, [ler(path.join(home, 'dev.sh')), ler(path.join(home, '.config', 'testedevoo', 'projetos.txt'))])
+}
+
 const semTravessao = (s) => String(s).replace(/\s*[—–]\s*/g, ' - ')
 
 /** Os baralhos (um por área, até MAX_POR_BARALHO cartas) e a tabela de posições. */
-export function montarBaralhos(itens, { projeto = 'app', agora = new Date() } = {}) {
+export function montarBaralhos(itens, { projeto = 'app', agora = new Date(), base = null } = {}) {
   const criado = agora.toISOString(); const porArea = {}
   for (const it of itens) (porArea[areaDe(it.arquivo)] ||= []).push(it)
   const baralhos = {}; const fontes = {}
@@ -118,14 +182,20 @@ export function montarBaralhos(itens, { projeto = 'app', agora = new Date() } = 
         cartas: parte.map((it) => {
           const tem = /[—–]/.test(it.texto)
           fontes[it.id] = { baralho: nome, arquivo: it.arquivo, ini: it.ini, fim: it.fim, quote: it.quote, tipo: it.tipo, direto: it.direto, original: it.original }
+          /* CC-1065: a carta era confusa ("ta meio confuso", 19/10). O texto vinha no título E de novo no corpo, junto com tipo, caminho
+             e linha, e uma lista repetia o que os três botões já dizem. Agora: o título é o texto (inteiro no corpo só se não coube),
+             embaixo, numa linha, onde ele fica, e sem lista de passos. */
+          // Pedaço de frase maior: a carta mostra a frase inteira e diz qual pedaço o Editar troca
+          const texto = semTravessao(it.texto); const mostra = it.frase ? semTravessao(it.frase) : texto; const cortado = mostra.length > 110
+          const pedaco = it.frase ? `\nEsta frase tem partes que o site preenche sozinho (o "…"). Editar troca só o pedaço: "${texto}".` : ''
           return {
-            id: it.id, titulo: semTravessao(`${telaDe(it.arquivo)}: ${it.texto}`).slice(0, 110),
-            pergunta: 'Este texto está aprovado?',
-            olhe: semTravessao(`"${it.texto}"\n\n${it.tipo}, em ${it.arquivo}, linha ${it.linha}.`) + (tem ? '\nO texto tem travessão no código, e você não quer travessão: vale editar.' : ''),
-            passos: ['Aprovo: o texto fica como está', 'Editar: o campo abre com o texto atual, você ajusta e envia', 'Recuso: marca para refazer, sem mexer no arquivo'],
+            id: it.id, titulo: cortado ? mostra.slice(0, 107) + '...' : mostra,
+            pergunta: it.frase ? 'Aprova este pedaço da frase?' : 'Aprova este texto?',
+            olhe: (cortado ? `"${mostra}"\n\n` : '') + `Onde fica: ${telaDe(it.arquivo)}, linha ${it.linha}.` + pedaco + (tem ? '\nO texto tem travessão no código, e você não quer travessão: vale editar.' : ''),
             opcoes: [OP_APROVO, OP_EDITAR, OP_RECUSO],
             // o texto atual, para a tela abrir o campo de editar já preenchido (CC-1035); texto comprido demais não leva
             ...(semTravessao(it.texto).length <= 600 ? { editar: semTravessao(it.texto) } : {}),
+            ...(linkDaCarta(base, it.arquivo) ? { link: linkDaCarta(base, it.arquivo) } : {}), // CC-1067
           }
         }),
       }

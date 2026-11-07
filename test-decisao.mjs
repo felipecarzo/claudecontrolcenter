@@ -338,6 +338,16 @@ await t('mensagem livre: só escreve com a tela no campo de digitar', async () =
   // com pergunta aberta, manda usar os botões
   const r3 = await enviarMensagem({ conversa: 'c1', texto: 'oi' }, { ...deps, lerTranscrito: () => pergunta('a1', COR) })
   assert.match(r3.erro, /botões da pergunta/)
+  /* CC-1090: "enviar agora" de uma resposta que já está no campo só aperta Enter, para o texto não ficar duas vezes.
+     A sugestão esmaecida (ESC[2m) NÃO conta como texto no campo: aí o texto é escrito normalmente. */
+  const log4 = []
+  const deps4 = { ...deps, escrever: async (s, x) => { log4.push(x); txt += '\n' + linha({ type: 'user', message: { content: x } }); return { ok: true } }, apertar: async (s, k) => { log4.push(k); txt += '\n' + linha({ type: 'user', message: { content: 'testei, ficou melhor' } }); return { ok: true } } }
+  const r4 = await enviarMensagem({ conversa: 'c1', texto: 'testei, ficou melhor' }, { ...deps4, capturar: async () => 'x\n\u276f\u00a0testei, ficou melhor\n' })
+  assert.equal(r4.ok, true)
+  assert.deepEqual(log4, ['Enter'], 'o texto já estava no campo: não escreve de novo')
+  const log5 = []
+  await enviarMensagem({ conversa: 'c1', texto: 'testei, ficou melhor' }, { ...deps4, escrever: async (s, x) => { log5.push(x); return { ok: true } }, apertar: async (s, k) => { log5.push(k); return { ok: true } }, lerTranscrito: () => txt + 'testei, ficou melhor', capturar: async () => 'x\n\u276f\u00a0\x1b[2mtestei, ficou melhor\x1b[0m\n' })
+  assert.deepEqual(log5, ['testei, ficou melhor', 'Enter'], 'sugestão esmaecida não é texto dele: escreve')
 })
 
 /* 30/09: o modelo e o esforço atuais saem da última resposta do histórico. */

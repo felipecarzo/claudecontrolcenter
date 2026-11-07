@@ -206,6 +206,45 @@ Os filtros de cima escolhem o estado (o padrão é o que ainda pede decisão) e 
 projeto, e a busca procura qualquer palavra no texto. Tocar numa ideia abre o
 texto inteiro. As conversas do PC não entram: elas ficam guardadas lá.
 
+## tela: capsulas
+
+Um arquivo por projeto que você baixa e guarda fora da VPS, e que recoloca o projeto
+onde ele estava sem precisar de IA. Dentro vão a pasta inteira do projeto (com o git,
+o que não foi commitado e o `node_modules`), o que roda no Docker (as imagens, os
+volumes e o despejo de cada banco Postgres), a configuração do servidor (os blocos do
+nginx que são do projeto, os domínios, o PM2, as unidades de usuário e o cron), um
+documento `RESTAURAR.md` com o passo a passo, e os arquivos `.env` cifrados com a senha
+que você digita. O comando que
+restaura é o `restaurar.sh`, que vai dentro do próprio arquivo.
+
+**Estimar** só mede: o tamanho da pasta, das imagens, dos volumes e dos bancos, e o
+disco livre. A medição roda no fundo: o botão mostra "Medindo…" com os segundos, o painel
+segue respondendo, e a frio pode levar até 2 minutos (passou disso, ela é interrompida e
+a tela diz). **Fazer cápsula** pede a senha duas vezes (mínimo de 12 caracteres), e só
+libera o botão se couber no disco com 2 GB de folga. A senha não fica guardada em
+lugar nenhum: sem ela os segredos não voltam. Fazer a cápsula não para nem apaga nada
+do site; o Docker é só lido e copiado, por este painel, quando você aperta o botão.
+
+Toda cápsula passa por uma prova: é restaurada numa pasta temporária e comparada com
+o original. **Provada** em verde quer dizer que voltou igual. **Não provada** em
+vermelho quer dizer que algo faltou, e o motivo aparece embaixo. O que o usuário do
+painel não consegue ler (arquivo de root) fica de fora e é listado como "precisa de
+root". Ao estimar, a tela mostra os blocos do nginx achados: **certo** quer dizer que o
+projeto prova a ligação (a porta que ele usa, ou a pasta dele); **candidato** quer dizer
+que a ligação é só provável (um nome parecido, um domínio citado), e vem com o motivo
+para você conferir. Só os certos são instalados na restauração, e só como root. O
+certificado e a chave privada não entram na cápsula: o certbot emite de novo. O DNS no
+registrador também não entra.
+
+O site que está no ar também entra: a pasta que o nginx serve de fora do projeto (por
+exemplo em `/var/www`) e as pastas que os contêineres montam direto do disco. A tela
+mostra o tamanho de cada uma e se o painel consegue ler (se não consegue, vai para "precisa
+de root"). A pasta de um bloco **candidato** só entra se você marcar a caixa na hora de
+fazer. Chave privada e certificado que estejam dentro dessas pastas ficam de fora de
+propósito. Os `.env` de dentro delas não vão no arquivo da pasta: vão cifrados, com a mesma
+senha, junto dos do projeto (sem senha a cápsula não é feita), e voltam ao lugar de origem. Um domínio citado em 3 ou mais projetos (o endereço de teste, por exemplo)
+deixa de aparecer como candidato.
+
 ## tela: hooks
 
 O que cada hook (as travas e avisos automáticos que rodam junto do Claude) faz com

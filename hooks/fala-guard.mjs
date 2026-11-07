@@ -116,19 +116,13 @@ const achados = PADROES
 
 if (!achados.length) sair()
 
+/* A mensagem devolve só o número do padrão (posição em PADROES, a partir de 1),
+   nunca o trecho que casou nem o rótulo: ver hooks/mensagens-guia.md. */
+const numeros = achados.map((a) => PADROES.findIndex((p) => p.id === a.id) + 1).join(', ')
+
 console.error(
-  `${achados.length} TRECHO(S) CONTANDO O CAMINHO, EM VEZ DO FATO.\n\n`
-  + achados.map((a) => `  · "${a.m[0]}"  (${a.id})\n    → ${a.troca}`).join('\n\n')
-  + '\n\nEle em 11/09: "pra que falar isso? Não é mais fácil falar: Achei o erro.\n'
-  + 'O erro era tal coisa." E o motivo: ele toca 6 projetos ao mesmo tempo, já\n'
-  + 'perdeu o contexto, e cada linha a mais é uma linha que ele processa antes\n'
-  + 'de chegar no que importa.\n\n'
-  + 'A forma que ele pediu:\n\n'
-  + '  1. o fato        o que é, ou o que mudou\n'
-  + '  2. a causa       uma linha, e só se ele precisar dela para decidir\n'
-  + '  3. a pergunta    na caixa de escolha, nunca em prosa\n\n'
-  + 'A explicação longa não some: vai para o arquivo do projeto, onde ele lê\n'
-  + 'quando quiser. O chat fica com o fato.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  `[fala-guard] padrão ${numeros}: a resposta traz relato no lugar do fato.\n`
+  + 'Reenvie dizendo o que mudou e o que ficou certo. A causa, só se ele precisar dela, em no máximo uma linha. A pergunta vai na caixa de escolha (AskUserQuestion).\n'
+  + 'A explicação longa vai para o arquivo do projeto. A próxima volta passa.',
 )
 process.exit(2)

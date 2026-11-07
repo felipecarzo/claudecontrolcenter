@@ -49,7 +49,7 @@ function semTerminal(conversa, verbo, deps) {
   if (aberta === false) return { ok: false, fechada: true, erro: 'essa sessão já foi fechada: não há ninguém do outro lado para receber' }
   return { ok: false, erro: `essa conversa não está num terminal aberto pelo painel: ${verbo} direto nela` }
 }
-import { estado as estadoDasSessoes } from './remotecontrol.mjs'
+import { estado as estadoDasSessoes, rascunhoDaTela } from './remotecontrol.mjs'
 
 /* ── Cartões fechados por ele (26/09) ─────────────────────────────────────
    "tem que ter opção de fechar um pedido". Fechar vale para AQUELE momento da
@@ -308,11 +308,17 @@ export async function enviarMensagem({ conversa, texto }, deps = DEPS) {
   if (!aqui?.sessao) return semTerminal(conversa, 'mande', deps)
   const antes = deps.lerTranscrito(conversa) || ''
   if (perguntaPendente(antes)) return { ok: false, erro: 'a sessão está com uma pergunta aberta: responda pelos botões da pergunta' }
-  if (!telaNoCampo(await deps.capturar(aqui.sessao, { cor: true }))) {
+  const telaAntes = await deps.capturar(aqui.sessao, { cor: true })
+  if (!telaNoCampo(telaAntes)) {
     return { ok: false, erro: 'a sessão não está esperando texto agora (está num menu ou trabalhando), então não escrevi nada' }
   }
-  const r1 = await deps.escrever(aqui.sessao, msg)
-  if (!r1?.ok) return { ok: false, erro: 'o terminal recusou o texto' }
+  /* CC-1090: "enviar agora" de uma resposta que ele já digitou e deixou no campo. Escrever de novo faria o campo
+     ficar com o texto duas vezes; se o que vai é o que já está lá (a sugestão esmaecida não conta), só falta o Enter. */
+  const jaNoCampo = rascunhoDaTela(telaAntes).replace(/\s+/g, ' ').trim() === msg
+  if (!jaNoCampo) {
+    const r1 = await deps.escrever(aqui.sessao, msg)
+    if (!r1?.ok) return { ok: false, erro: 'o terminal recusou o texto' }
+  }
   await deps.esperar(300)
   const r2 = await deps.apertar(aqui.sessao, 'Enter')
   if (!r2?.ok) return { ok: false, erro: 'o terminal recusou o Enter' }

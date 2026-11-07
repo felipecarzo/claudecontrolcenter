@@ -81,5 +81,35 @@
     "script": "scripts/publicar.sh",
     "url": "https://app.dengonator2000.carzo.com.br/",
     "usuarioBuild": "claudedev"
+  },
+  {
+    "id": "carzo-enterprises",
+    "nome": "Carzo Enterprises",
+    "tipo": "systemd",
+    "repo": "/home/claudedev/projetos/carzoindustries_elitedangerous",
+    "dir": ".",
+    "dirProducao": "/opt/carzo-enterprises",
+    "unidade": "carzo-enterprises.service",
+    "url": "https://carzo.enterprises/",
+    "usuarioBuild": "claudedev",
+    "excluir": [
+      "dados",
+      "assets",
+      "docs",
+      "tools",
+      ".framework",
+      ".claude",
+      "testes.py"
+    ]
+  },
+  {
+    "id": "vendeufy",
+    "nome": "Vendeufy (painel e site)",
+    "tipo": "script",
+    "repo": "/home/claudedev/projetos/ecommerce_apps",
+    "dir": ".",
+    "script": "deploy/publicar.sh",
+    "url": "https://app.vendeufy.com.br/",
+    "usuarioBuild": "claudedev"
   }
 ]

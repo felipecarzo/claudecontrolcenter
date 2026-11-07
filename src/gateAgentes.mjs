@@ -155,7 +155,9 @@ export const AGENTES_GATE = {
          que o modo Planejamento do projeto: `plan`, só lê. Só o Claude tem modo de permissão:
          no opencode e no agy `permissao` nunca chega aos args, então plano ali não tem efeito
          (e não quebra nada). */
-      '--permission-mode', somenteLer || permissao === PLANO ? 'plan' : permissao === PERGUNTE_ANTES ? 'default' : permissao,
+      /* CC-1068: 'bypass' é o modo Regente do maestro, Claude sem pedir permissão. Só vale fora do somenteLer. */
+      ...(!somenteLer && permissao === 'bypass' ? ['--dangerously-skip-permissions'] : []),
+      '--permission-mode', somenteLer || permissao === PLANO ? 'plan' : permissao === PERGUNTE_ANTES ? 'default' : permissao === 'bypass' ? 'acceptEdits' : permissao,
       ...(!somenteLer && permissao === PERGUNTE_ANTES ? ['--settings', configPergunteAntes(conversa)] : []),
       /* CC-723: a ferramenta "perguntar", que pausa e espera a resposta dele no
          painel. Liberada nesta chamada: a lista geral de ferramentas liberadas

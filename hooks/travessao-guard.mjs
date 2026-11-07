@@ -57,13 +57,11 @@ if (cfg?.hookEnabled && !cfg.hookEnabled('travessao-guard')) sair()
 const TRACO = /[—–]/g
 
 /** As trocas que ele mesmo escreveu na tabela do arquivo de instruções. */
-const COMO_TROCAR = 'Como trocar, na ordem em que ele escreveu:\n'
+const COMO_TROCAR = 'Troque assim:\n'
   + '  · duas ideias numa frase  → duas frases, com ponto\n'
   + '  · aposto ou explicação    → vírgula, ou parênteses\n'
   + '  · antes de uma lista      → dois pontos\n'
-  + '  · nome + subtítulo        → ponto, barra, ou nada\n\n'
-  + 'Se a frase pede pausa forte, ela tem duas ideias dentro. Separe em duas:\n'
-  + 'quase sempre fica mais clara, que é o motivo real da regra.\n\n'
+  + '  · nome + subtítulo        → ponto, barra, ou nada\n'
   + 'O hífen comum (-) continua valendo em palavra composta e em lista.'
 
 /**
@@ -98,14 +96,11 @@ if (dados?.tool_name === 'Write' || dados?.tool_name === 'Edit') {
   const achados = conteudo.match(TRACO)
   if (!achados) sair()
 
-  const linha = conteudo.split('\n').find((l) => TRACO.test(l)) || ''
+  const nLinha = conteudo.split('\n').findIndex((l) => TRACO.test(l)) + 1
   process.stderr.write(
-    `${achados.length} TRAVESSÃO(ÕES) NO TEXTO QUE VAI PARA O ARQUIVO.\n\n`
-    + `  ${linha.trim().slice(0, 110)}\n\n`
-    + 'Este arquivo é PÚBLICO: alguém de fora vai ler. E o traço longo denuncia\n'
-    + 'texto de máquina na hora, que é o motivo da regra.\n\n'
-    + 'Comentário de código e documentação interna continuam livres (decisão dele\n'
-    + 'em 16/08). Aqui não.\n\n'
+    `[travessao-guard] ${achados.length} travessão(ões) ou meia-risca(s) no texto destinado a arquivo público`
+    + `${nLinha ? `, primeira na linha ${nLinha}` : ''}.\n\n`
+    + 'Reenvie a edição sem esses caracteres. Comentário de código e documentação interna não são afetados.\n\n'
     + COMO_TROCAR,
   )
   process.exit(2)
@@ -127,17 +122,13 @@ const prosa = texto.replace(/```[\s\S]*?```/g, ' ')
 const achados = prosa.match(TRACO)
 if (!achados) sair()
 
-const exemplo = prosa.split('\n').find((l) => TRACO.test(l)) || ''
+const nLinha = prosa.split('\n').findIndex((l) => TRACO.test(l)) + 1
 
 console.error(
-  `${achados.length} TRAVESSÃO(ÕES) NA RESPOSTA.\n\n`
-  + `  ${exemplo.trim().slice(0, 110)}\n\n`
-  + 'É a regra número 1 do arquivo de instruções dele, e a mais quebrada:\n'
-  + 'medido em 16/08, foram 279 travessões num dia só. Ela está escrita há meses\n'
-  + 'e nada cobrava.\n\n'
-  + '"O travessão é a marca registrada de texto escrito por máquina, e o Felipe\n'
-  + 'reconhece na hora."\n\n'
+  `[travessao-guard] ${achados.length} travessão(ões) ou meia-risca(s) na resposta`
+  + `${nLinha ? `, primeira na linha ${nLinha} da prosa` : ''}.\n\n`
+  + 'Reenvie a resposta sem esses caracteres.\n\n'
   + COMO_TROCAR
-  + '\n\nEsta é a única volta: a próxima passa.',
+  + '\nA próxima volta passa.',
 )
 process.exit(2)

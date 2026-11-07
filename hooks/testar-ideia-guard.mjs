@@ -29,7 +29,7 @@ const bash = (cmd) => ({ type: 'tool_use', name: 'Bash', input: { command: cmd }
 const ask = { type: 'tool_use', name: 'AskUserQuestion', input: { questions: [] } }
 
 t('ideia longa que abre com "e se" e não foi registrada volta uma vez', () => {
-  const r = roda(longa('E se')); assert.equal(r.codigo, 2); assert.match(r.erro, /registre no backlog/)
+  const r = roda(longa('E se')); assert.equal(r.codigo, 2); assert.match(r.erro, /\[ideia-guard\]/)
 })
 t('os outros marcadores e o vocativo antes também contam', () => {
   for (const a of ['Tive uma ideia:', 'Camarada, me deu uma ideia,', 'Proponho que', 'Poderíamos fazer']) assert.equal(roda(longa(a)).codigo, 2, a)
@@ -44,7 +44,7 @@ t('mensagem longa SEM marcador (conversa comum, pergunta, pedido) passa', () => 
 t('"e se" curto passa: é pergunta, não visão', () => assert.equal(roda('E se fosse azul?').codigo, 0))
 t('uma volta só: com stop_hook_active passa', () => assert.equal(roda(longa('E se'), [], { stop_hook_active: true }).codigo, 0))
 t('a decisão pura devolve texto só quando deve', () => {
-  assert.equal(decidir(longa('E se'), true), null); assert.equal(decidir('', false), null); assert.match(decidir(longa('E se'), false), /Esta é a única volta/)
+  assert.equal(decidir(longa('E se'), true), null); assert.equal(decidir('', false), null); assert.match(decidir(longa('E se'), false), /\[ideia-guard\]/)
 })
 const EMENDA = 'node cc.mjs backlog emenda "cupom"'
 t('CC-958: emenda sem lugar volta uma vez pedindo a pergunta do lugar', () => {
@@ -67,7 +67,7 @@ t('CC-958: uma volta só e sem emenda no turno passa', () => {
 })
 t('CC-958: a decisão pura do lugar', () => {
   assert.equal(decidirLugar('x', []), null)
-  assert.match(decidirLugar('x', [{ nome: 'Bash', cmd: 'cc backlog emenda "y"' }]), /única volta/)
+  assert.match(decidirLugar('x', [{ nome: 'Bash', cmd: 'cc backlog emenda "y"' }]), /\[ideia-guard\]/)
 })
 fs.rmSync(tmp, { recursive: true, force: true })
 console.log(`${ok} verificações, todas passaram`)

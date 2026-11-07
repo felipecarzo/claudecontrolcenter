@@ -83,15 +83,8 @@ const vagas = tarefas.filter((t) => ligacoes(semCodigo(t)) < 2)
 if (!vagas.length) sair()
 
 console.error(
-  `${vagas.length} TAREFA(S) ESCRITA(S) EM TELEGRAMA.\n\n`
-  + vagas.map((t) => `    "${t}"`).join('\n')
-  + '\n\nSem artigo nem preposição o sujeito e o objeto desaparecem, e a linha só\n'
-  + 'é legível para quem escreveu. Ele leu uma dessas e disse:\n\n'
-  + '    "os cards nunca fazem sentido. o texto é algo vago como \'profissão\n'
-  + '     escolhe quem entra\', não tem o contexto de que é na verdade, tipo\n'
-  + '     \'a profissão do agente define se ele entra na tarefa\'"\n\n'
-  + 'Reescreva cada uma como frase inteira: quem faz, o que muda, e onde.\n'
-  + 'Depois grave de novo com `cc set`, mandando a lista toda.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  `[tarefa-vaga-guard] ${vagas.length} tarefa(s) do cartão em forma de telegrama, sem artigo nem preposição.\n`
+  + 'Reescreva cada uma como frase inteira com quem faz, o que muda e onde.\n'
+  + 'Grave de novo com `cc set`, mandando a lista toda. A próxima volta passa.',
 )
 process.exit(2)

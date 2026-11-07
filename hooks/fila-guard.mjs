@@ -87,13 +87,8 @@ const dnv = texto.split(SEPARADOR).pop() || ''
 if (FILA.test(dnv) || AVISO.test(dnv)) sair()
 
 console.error(
-  `PAUSA COM ${abertas.length} TAREFA(S) ABERTA(S) E O RESUMO NÃO DIZ O QUE FICOU.\n\n`
-  + 'Abaixo do separador, enumere os pedidos da conversa, um por linha, cada um\n'
-  + 'com o estado: feito (com prova), em curso, ou na fila. O que está aberto\n'
-  + 'no cartão agora:\n\n'
-  + abertas.map((t) => `    · ${t.text}`).join('\n')
-  + '\n\nPalavras dele (17/08): "qdo eu te peço mil coisas e voce pausa no meio\n'
-  + 'eu não sei quanto você implementou e eu perco as ideias".\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  `[fila-guard] Pausa com ${abertas.length} tarefa(s) aberta(s) no cartão e o resumo sem a fila.\n`
+  + 'Reenvie a resposta com, abaixo do separador, um pedido por linha e o estado de cada um: feito (com prova), em curso ou na fila.\n'
+  + 'A próxima volta passa.',
 )
 process.exit(2)

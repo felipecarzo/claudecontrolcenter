@@ -97,7 +97,7 @@ if (!meta || !Object.keys(meta).length) {
 const faltam = []
 if (!String(meta.subject || '').trim()) faltam.push('`subject`, o problema em 3 a 6 palavras, não o comando')
 if (!String(meta.frente || '').trim()) faltam.push('`frente`, a seção do docs/ROADMAP.md onde este trabalho entra')
-if (!(meta.todos || []).length) faltam.push('`todos`, a lista do que esta tarefa tem que fechar')
+if (!(meta.todos || []).length) faltam.push('`todos`, a lista do que a tarefa precisa fechar')
 
 /* CC-528: em projeto com backlog, a sessão declara o ITEM em que trabalha. Sem isso o
    aviso dele ("espera você") fica sem dono: ele vê o projeto e não sabe de qual item
@@ -106,8 +106,8 @@ let backlogTexto = null
 try { backlogTexto = readFileSync(resolve(dados?.cwd || process.cwd(), 'docs', 'backlog.jsonl'), 'utf8') } catch { /* projeto sem backlog: não se cobra item */ }
 if (backlogTexto !== null) {
   const item = String(meta.item || '').trim()
-  if (!item) faltam.push('`item`, o código do item do docs/backlog.jsonl em que você trabalha (ex.: CC-340). Sem item declarado, o aviso dele fica sem dono')
-  else if (!backlogTexto.includes(`"id":"${item}"`)) faltam.push(`\`item\` ${item} não existe no docs/backlog.jsonl deste projeto: use o código de um item real`)
+  if (!item) faltam.push('`item`, o código do item do docs/backlog.jsonl em que o trabalho se encaixa (ex.: CC-340)')
+  else if (!backlogTexto.includes(`"id":"${item}"`)) faltam.push(`\`item\` ${item} não existe no docs/backlog.jsonl: use o código de um item real`)
 }
 
 /* ===================== CC-221: existir não basta, tem que ser verdade =====================
@@ -145,7 +145,7 @@ if (assunto) {
   const eco = a.length >= 12 && p.length >= 12
     && (p.startsWith(a.slice(0, 24)) || a.startsWith(p.slice(0, 24)))
   if (eco) {
-    faltam.push('`subject`, hoje ele é o começo do que ELE digitou, não um resumo do trabalho. Escreva com as SUAS palavras o problema que está sendo resolvido')
+    faltam.push('`subject`, igual ao começo do último pedido dele. Escreva o problema que está sendo resolvido, em 3 a 6 palavras')
   }
 
   const carimbo = meta.subjectEm ? Date.parse(meta.subjectEm) : NaN
@@ -154,26 +154,17 @@ if (assunto) {
      próxima vez que o agente reescrever. */
   if (!eco && Number.isFinite(carimbo) && ultimo && ultimo.em > carimbo) {
     const min = Math.round((ultimo.em - carimbo) / 60000)
-    faltam.push(`\`subject\`, está mais velho que o último pedido dele (${min} min). O painel descreve o trabalho anterior. Reescreva para o que está sendo feito AGORA`)
+    faltam.push(`\`subject\`, gravado ${min} min antes do último pedido dele. Atualize para o trabalho atual`)
   }
 }
 
 if (!faltam.length) sair()
 
 console.error(
-  'TRABALHO SEM REGISTRO NO PAINEL, o painel está mostrando vazio.\n\n'
-  + 'Este turno mexeu em código ou no ROADMAP, e falta:\n\n'
+  '[reporte-guard] Turno com código ou ROADMAP alterado e registro do painel incompleto. Campos a preencher:\n'
   + faltam.map((f) => `  · ${f}`).join('\n')
-  + '\n\n    node cc.mjs set \'{"subject":"...","frente":"...","todos":[{"text":"...","done":false}]}\'\n\n'
-  + '  · `set` = grava o estado desta sessão no painel, sem apagar o que já está lá\n'
-  + '  · fechar um item depois: `node cc.mjs done "texto da tarefa"`\n\n'
-  + 'Por que isto é cobrado: em 16/08 um dia inteiro fechou dez itens do ROADMAP\n'
-  + 'com ZERO to-dos no painel. O `cc-check` não pegou porque ele cobra to-do\n'
-  + 'ABERTO, e lista vazia passava como entrega limpa, ausência de registro e\n'
-  + 'trabalho terminado tinham a mesma cara.\n\n'
-  + 'A consequência, nas palavras dele: "eu acabo sendo empurrado pro vibecoding\n'
-  + 'pq a minha cabeça nao consegue processar". O painel existe para ele não\n'
-  + 'precisar perguntar o que já foi feito.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  + '\nGrave com: node cc.mjs set \'{"subject":"...","frente":"...","todos":[{"text":"...","done":false}]}\'\n'
+  + 'Para fechar um item depois: node cc.mjs done "texto da tarefa"'
+  + '\n\nA próxima volta passa.',
 )
 process.exit(2)

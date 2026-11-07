@@ -155,30 +155,10 @@ testar se a decisão replica no resto.
 **A regra prática:** se a tarefa não cabe numa linha do painel com um resultado
 conferível, ela é grande demais. Quebre antes de começar, não depois.
 
-## O marcador: onde o raciocínio acaba e a conclusão começa
+## O marcador: onde os fatos acabam e a ação começa
 
-Pedido dele em 16/08, e com o formato já escolhido por ele:
-
-> "todas as mensagens que nao forem processos devem ficar entre alguma
-> sinalização, como ---- // resumo // ----"
-
-**Ele LÊ o raciocínio.** Isso não é para cortar nada — na mesma mensagem em que
-pediu isto, ele recusou o protocolo de outra IA que mandava não contar o
-porquê. O problema é a mistura: hoje raciocínio e conclusão vêm no mesmo bloco
-de prosa, e ele separa de cabeça enquanto lê.
-
-Numa resposta longa, o que ele decide ou confere vem depois de uma linha assim,
-sozinha:
-
-    ---------------------------------- // resumo // ----------------------------------
-
-Conversa curta não precisa de moldura: uma linha de resposta com um separador em
-cima é mais ruído que ajuda. O corte prático é o mesmo do resto deste arquivo —
-se a mensagem tem mais de dois parágrafos de raciocínio antes do que importa,
-marque.
-
-**O que vai abaixo do marcador:** o que mudou, o que ele decide, o que ele
-confere. **O que fica acima:** como cheguei lá, o que medi, o que descartei.
+Resposta longa leva, no meio, esta linha sozinha: \`---------------------------------- // resumo // ----------------------------------\`
+Acima dela ficam os fatos e as evidências (o que foi medido e encontrado). Abaixo, o que mudou para ele e o que ele precisa fazer. O marcador só separa as duas partes: nada é cortado.
 
 ## Como explicar uma coisa técnica: quatro campos, sempre nesta ordem
 

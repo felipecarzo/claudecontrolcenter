@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-155 abertos, 894 fechados, 1049 no total. Gerado em 2026-10-19.
+178 abertos, 899 fechados, 1077 no total. Gerado em 2026-11-07.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -18,7 +18,6 @@
 | CC-294 | definida | 3 | a amostra julgada: 30 devoluções lidas lado a lado |
 | CC-917 | prova | - | trava: resposta que deixa ideia longa dele só no texto, sem item no backlog, é barrada uma vez |
 | CC-960 | andando · 6 de 7 | - | trocar modelo e esforco sozinho pela complexidade da tarefa, com regras reais em todos os projetos |
-| CC-1050 | prova | - | aviso de abertura das partes ocupadas poe 15 mil tokens em cada conversa, o maior gasto dos hooks |
 | CC-1056 | prova | - | regras de escrita unificadas numa fonte so, com a regra nova defina antes de concluir, e os outros lugares apontando para ela |
 | CC-1059 | definida | - | aviso 'projetos sairam do quadro' dispara para pasta renomeada (videolab virou medialab em 08/10) |
 
@@ -112,7 +111,6 @@
 | CC-1037 | prova | - | skill tinderlike em modo textos: levanta os textos do app, revisao no painel e aplica as edicoes no codigo |
 | CC-1038 | prova | - | aba Revisoes no painel: revisoes de textos e telas de todos os projetos, com andamento e botao de aplicar edicoes no codigo |
 | CC-1039 | prova | - | cc baralho entra em app com login (formulario ou cookie) e fotografa as telas de dentro |
-| CC-1040 | prova | - | conferir um item fecha o backlog mas deixa o ROADMAP velho e reprova a conferencia seguinte |
 | CC-1041 | prova | - | terminal real do Claude Code numa aba do painel, atras da senha do painel |
 | CC-1042 | prova | - | medir se comandos de barra e skills funcionam no claude -p (modo sem tela) do Coderoom |
 | CC-1043 | prova | - | Coderoom com o Claude em paridade com o app: ferramentas, plano, comandos, fila, imagens |
@@ -122,11 +120,16 @@
 | CC-1047 | andando | - | aba Hooks diz o que CADA hook faz, nao so o tipo |
 | CC-1048 | prova | - | aba Hooks diz o que CADA hook faz, nao so o tipo |
 | CC-1049 | prova | - | aba Hooks mostra quanto token cada hook poe na conversa (por disparo e total) e periodos de 1, 7, 15, 30 e 60 dias |
-| CC-1051 | prova | - | botao terminal do Claude no cartao do projeto da aba Projetos, junto do teste de voo |
+| CC-1051 | andando | - | botao terminal do Claude no cartao do projeto da aba Projetos, junto do teste de voo |
 | CC-1052 | prova | - | painel a conversa das Sessoes vira o Claude Code em app: comandar a sessao com conversa formatada, perguntas em opcoes, barra e modelo |
 | CC-1053 | prova | - | no celular a conversa da sessao abre em tela cheia como o app, minimiza para uma pilula fixa no topo, e a tela nao pula mais para o topo |
-| CC-1054 | prova | - | janela Escolher projeto fica parada no alto ao filtrar, e todo atalho que abre busca ja abre com o cursor no campo |
 | CC-1055 | prova | - | resposta de pergunta pelo painel chega na sessao mas o painel diz que a sessao nao confirmou |
+| CC-1065 | prova | - | Revisões: Revisar um por um abre nas provas (83 entregas) em vez das cartas de texto do projeto; tela confusa |
+| CC-1084 | definida | - | Painel demora uns 27 min para subir: lê inteira a conversa de 191 MB da vr_apps e já caiu por falta de memória |
+| CC-1087 | prova | - | Cartão de sessões agrupadas mostra o nome que ele deu a cada sessão |
+| CC-1089 | prova | - | Porta de entrada repete uma vez quando a conexão com o painel cai antes de enviar, e a tela para de culpar religamento |
+| CC-1090 | prova | - | Sessão fechada no app (/exit, Remote Control 4090) sai do QA, com botão encerrar e aviso de resposta parada |
+| CC-1091 | definida | - | abrir o painel pelo endereço antigo #framework dá erro 'Cannot access C2 before initialization' |
 
 ## framework
 
@@ -145,6 +148,11 @@
 | CC-940 | prova | - | regra geral: projeto inicial nao precisa de login e senha; login so entra quando o projeto ja guarda informacao |
 | CC-958 | prova · 5 de 5 | - | fila mista: Caminho como prioridade, e ideia nova entra no lugar escolhido (agora, fim do dia, sprint, backlog, fora do MVP) |
 | CC-959 | definida | - | retrospectiva do sprint: tokens gastos contra complexidade resolvida, por frente, para achar desperdicio, desfoco ou demora de revisao |
+| CC-1081 | prova | - | programa 'roteiro de uso' no cockpit, estilo entrevista: IA, ele ou outro modelo operam |
+| CC-1082 | definida | - | roteiro pergunta demais: só o que só ele sabe, o resto a IA e o programa preenchem |
+| CC-1083 | andando | - | roteiro compara o projeto com a prática de mercado da categoria (pesquisa em laço até saturar) |
+| CC-1085 | prova | - | Framework: marcos de maturidade da ideia além do MVP, que acompanham a ideia mudando |
+| CC-1086 | prova | - | Framework: trocar perguntas genéricas do MVP (ex.: o que a pessoa faz hoje sem isso) por pesquisa feita pela IA |
 
 ## sincronia
 
@@ -156,6 +164,20 @@
 | CC-1061 | definida | - | npm test quebra no PC: 16 testes falham no Windows, e a corrente para no terceiro, sem rodar o resto |
 | CC-1062 | definida | - | religar o painel do PC pode falhar com o painel ocupado e deixar painéis soltos em outras portas |
 | CC-1063 | andando | - | Cockpit no Meta Quest 2: abas como apps soltos no espaco e, depois, sala imersiva em WebXR |
+| CC-1064 | andando | - | Sessão só de ideias, sem projeto: chat temporário que pode virar projeto ou não |
+| CC-1066 | andando | - | Cartas de texto com print da tela: o levantar de textos fotografa cada texto no lugar onde aparece, como o e-commerce fez à mão |
+| CC-1067 | andando | - | Modo plantão: por algumas horas o cockpit toca os projetos sozinho, respondendo perguntas e empurrando sessões paradas, enquanto ele dorme |
+| CC-1068 | andando | - | Regente: agente com critério que toca cada projeto até o MVP, decide, conversa no cockpit e aprende com as correções dele |
+| CC-1069 | prova | - | Gancho que confere cada ação automática contra o que ele pediu e barra o que ele não pediu |
+| CC-1072 | prova | - | Ganchos PreCompact (resumo em português) e título do terminal, em node, no padrão dos guardas |
+| CC-1073 | prova | - | Conferir o fazer: a conferência do feito contra o pedido roda também em turno com ação de risco |
+| CC-1074 | definida | - | Agrupar projetos em conglomerados no painel, com cada jogo um projeto próprio dentro de uma pasta de coleção |
+| CC-1075 | prova | - | Comando /encerrar: commit e push do trabalho da sessão, marca encerrada no painel e fecha o processo |
+| CC-1076 | prova | - | Guia de funções escrito pelo Haiku, disparado por código quando uma frente termina, como parte do framework |
+| CC-1077 | definida | - | Organizar projetos e subprojetos por pastas no gerenciador: pasta agrupadora que também pode ser projeto |
+| CC-1078 | prova | - | Servidor de tradução do app Tradutor na VPS, só texto, com Haiku e teto de gasto |
+| CC-1079 | prova | - | Celular com rotação travada não pode parar no aviso de girar: o jogo abre na versão do lado em que a tela está |
+| CC-1080 | andando | - | Backup e restauração de projeto num pacote só: baixar, tirar da VPS e voltar igual, sem IA |
 
 ## coderoom
 
@@ -210,3 +232,4 @@
 | id | estado | peso | o que é |
 |---|---|---|---|
 | CC-1057 | prova | - | fila do agente lista prova que espera o olho dele como trabalho que o agente faz sozinho |
+| CC-1088 | definida | - | Gravar no backlog regera o ROADMAP gerado: hoje só o comando lugar regera e o teste geral quebra a cada novo/mover |

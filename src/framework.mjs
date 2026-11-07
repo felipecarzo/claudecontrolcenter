@@ -134,9 +134,9 @@ export const PREDICADOS = {
      escreveu, e o projeto inteiro seria planejado em cima dela. */
   'entrevista-confirmada': (e) => {
     const naoConfirmadas = Object.entries(e?.entrevista?.respostas || {})
-      .filter(([, r]) => r?.de === 'prosa')
+      .filter(([, r]) => r?.de === 'prosa' || r?.de === 'pesquisa') // CC-1086: achado da pesquisa também espera ele
     return naoConfirmadas.length
-      ? `${naoConfirmadas.length} resposta(s) ainda são palpite meu, tiradas da sua descrição: confirme ou corrija`
+      ? `${naoConfirmadas.length} resposta(s) ainda são palpite meu (da sua descrição ou da pesquisa): confirme ou corrija`
       : null
   },
   /* CC-902: os dois portões do método `produto`. As datas moram no estado e o conteúdo em docs/produto.json. */
@@ -248,6 +248,36 @@ export const PREDICADOS = {
   'superficie-declarada': (e) => ((e?.seguranca?.superficie || []).length
     ? null
     : 'antes de liberar código, diga o que este projeto expõe (banco, login, upload, pagamento). É o que decide quais verificações valem'),
+
+  /* CC-1085, método `ideia-viva`: os portões dos cinco marcos de maturidade da
+     ideia. Em todos vale a regra do palpite da entrevista: o que fecha o marco
+     é ele dizendo, nunca um dado que a sessão preencheu sozinha. */
+  'ideia-tem-frase': (e) => (String(e?.ideia?.frase || '').trim().length > 10
+    ? null
+    : 'a semente ainda não tem frase: em uma frase, o que a ideia entrega'),
+  /* ⚠️ Endereço sozinho não fecha (decisão dele, 04/11). Um link no ar que ele
+     nunca abriu seria o marco 2 cumprido por quem o construiu, não por quem
+     vai usar. `tocou` é a data em que ELE disse que mexeu. */
+  'rascunho-tocavel': (e) => {
+    const r = e?.ideia?.rascunho
+    if (!String(r?.url || '').trim()) return 'o rascunho ainda não tem endereço: onde dá para mexer na primeira tela'
+    if (!r.tocou) return 'o rascunho está no ar, mas falta você dizer que tocou nele'
+    return null
+  },
+  /* A matriz só existe confirmada. `palpiteDeMatriz` sugere, e sugestão não
+     fecha o marco: é o resto que sobrou depois de 90% da ideia sair, e só ele
+     sabe se aquilo é mesmo o essencial. */
+  'matriz-declarada': (e) => {
+    if (!(e?.ideia?.matriz || []).length) return 'a matriz está vazia: o que sobrou da ideia depois das viradas'
+    if (!e.ideia.matrizConfirmada) return 'a matriz é só palpite: falta você confirmar que é isso que ficou'
+    return null
+  },
+  'uso-real': (e) => {
+    const u = e?.ideia?.usoReal
+    if (!String(u?.quem || '').trim()) return 'falta dizer quem, além de você, usou de verdade'
+    if (!u.quando) return 'falta dizer quando essa pessoa usou'
+    return null
+  },
 }
 
 /** Métodos prontos. Trocar de método é trocar de dado, nunca de código. */
@@ -547,6 +577,61 @@ export const METODOS = {
       },
     ],
   },
+
+  /**
+   * CC-1085, 04/11: os marcos de maturidade da ideia, com o MVP como o quarto.
+   *
+   * Pedido dele: *"tem outros marcos mais importantes do que o MVP (...) às
+   * vezes 90% dele sai, fica 10%, que é uma matriz da ideia, e você acaba
+   * mudando tudo"*. No `mvp-basico` a Definição exige MVP no primeiro dia, e
+   * quem descobre a ideia fazendo o rascunho esbarra na trava justamente
+   * quando a ideia ainda vai mudar.
+   *
+   * ⚠️ **Nenhuma fase trava código**, decisão dele na caixa de escolha. As
+   * fases são marcos para o projeto saber onde está, não portões de edição. O
+   * `mvp-basico` continua existindo: quem já está nele só sai por escolha dele.
+   */
+  'ideia-viva': {
+    id: 'ideia-viva',
+    titulo: 'Ideia viva: semente, rascunho, matriz, MVP, uso real',
+    fases: [
+      {
+        id: 'semente',
+        titulo: 'Semente',
+        explica: 'A ideia em uma frase: o que ela entrega. Ainda pode estar errada, e tudo bem.',
+        exige: ['ideia-tem-frase'],
+        trava: [],
+      },
+      {
+        id: 'rascunho',
+        titulo: 'Rascunho tocável',
+        explica: 'A primeira tela em que dá para mexer. Só fecha quando você mesmo abriu e disse que tocou.',
+        exige: ['rascunho-tocavel'],
+        trava: [],
+      },
+      {
+        id: 'matriz',
+        titulo: 'Matriz',
+        explica: 'O que sobreviveu às viradas da ideia. Eu sugiro a partir do que você disse que ficou, e você confirma ou corrige.',
+        exige: ['matriz-declarada'],
+        trava: [],
+      },
+      {
+        id: 'mvp',
+        titulo: 'MVP',
+        explica: 'Agora sim o pronto é definido, a partir da matriz: um nome e os critérios para saber que acabou.',
+        exige: ['mvp-tem-nome', 'mvp-definido'],
+        trava: [],
+      },
+      {
+        id: 'uso',
+        titulo: 'Uso real',
+        explica: 'Os critérios do MVP todos marcados, e alguém além de você usou de verdade.',
+        exige: ['criterios-todos-marcados', 'uso-real'],
+        trava: [],
+      },
+    ],
+  },
 }
 
 /**
@@ -632,7 +717,7 @@ export function proximaPergunta(metodo, estado) {
  */
 export const TONS = {
   direto: 'Frases curtas, sem explicação. Executa e reporta o resultado.',
-  explicativo: 'Diz o porquê de cada escolha e o que foi descartado no caminho.',
+  explicativo: 'Traz as opções comparadas, com o que cada uma custa, e a recomendação.',
 }
 export const TOM_RECOMENDADO = {
   desligado: 'explicativo',
@@ -1239,6 +1324,8 @@ export const estadoInicial = (metodo = 'mvp-basico') => ({
   modo: 'dialogo',
   fase: METODOS[metodo]?.fases[0]?.id || null,
   mvp: { nome: '', criterios: [] },
+  // CC-1085: só a ideia viva carrega este bloco; os outros métodos não ganham campo que não usam.
+  ...(metodo === 'ideia-viva' ? { ideia: { frase: '', rascunho: null, matriz: [], usoReal: null } } : {}),
   // F4: as ferramentas de verificação deste projeto, escolhidas na Definição.
   // `verificacao` guarda o resultado de cada uma: `{ gitleaks: { ok, em } }`.
   ferramentas: [],
@@ -1508,6 +1595,50 @@ export function mudarEscopo(estado, { mvp, motivo, quando }) {
       ],
     },
   }
+}
+
+/**
+ * CC-1085: a ideia virou. Registra o que saiu, o que ficou e por quê, e NÃO
+ * muda a fase: virar é parte de qualquer marco, não um marco. Pelo mesmo motivo
+ * de `mudarEscopo`, exige motivo (o valor está em ficar registrado) e nunca
+ * proíbe. O `marco` grava onde o projeto estava quando virou, que é o que
+ * mostra depois em que ponto a ideia costuma mudar.
+ */
+export function virar(estado, { saiu, ficou, motivo, quando } = {}) {
+  if (!motivo || !String(motivo).trim()) {
+    return { ok: false, erro: 'a virada exige motivo' }
+  }
+  return {
+    ok: true,
+    estado: {
+      ...estado,
+      historico: [
+        ...(estado.historico || []),
+        { tipo: 'virada', saiu, ficou, motivo, quando: quando || null, marco: estado.fase },
+      ],
+    },
+  }
+}
+
+/**
+ * CC-1085: o palpite de matriz é o que sobrou em TODAS as viradas, ou seja, a
+ * interseção dos `ficou`. Compara sem caixa e sem espaço sobrando, e devolve o
+ * texto como a primeira virada o escreveu. Sem virada não há o que sugerir.
+ * É só palpite: `matriz-declarada` não fecha sem ele confirmar.
+ */
+export function palpiteDeMatriz(estado) {
+  const norm = (t) => String(t ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+  const listas = (estado?.historico || [])
+    .filter((h) => h?.tipo === 'virada')
+    .map((h) => (Array.isArray(h.ficou) ? h.ficou : []))
+  if (!listas.length) return []
+  const vistos = new Set()
+  return listas[0].filter((t) => {
+    const k = norm(t)
+    if (!k || vistos.has(k)) return false
+    vistos.add(k)
+    return listas.every((l) => l.some((x) => norm(x) === k))
+  })
 }
 
 /**

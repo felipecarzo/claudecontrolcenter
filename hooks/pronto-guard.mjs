@@ -93,16 +93,8 @@ if (arquivo) {
 }
 
 console.error(
-  `${recentes.length} TAREFA(S) FECHADA(S) SEM PROVA.\n\n`
-  + recentes.map((t) => `  ✓ ${t.text}${t.pronto ? `\n      pronto quando: ${t.pronto}` : ''}`).join('\n')
-  + '\n\n    node cc.mjs done "texto da tarefa" --prova "o que rodou, e o que apareceu"\n\n'
-  + '  · `--prova` = a evidência, não a intenção. "npm test verde, 17 telas em\n'
-  + '    390px" é prova; "implementado" não é.\n\n'
-  + 'Regra dele, 16/08: "nao temos exatamente uma definição de pronto, e isso\n'
-  + 'quebra praticamente todo o projeto". Sem prova, "feito" é opinião minha,\n'
-  + 'e o que ele mais teme é descobrir depois que não era bem isso.\n\n'
-  + 'Não conseguiu verificar? Diga isso na prova. "não consegui conferir, falta\n'
-  + 'o painel reiniciar" é uma resposta honesta; silêncio não é.\n\n'
-  + 'Esta é a única volta: a próxima passa.',
+  `[pronto-guard] ${recentes.length} tarefa(s) fechada(s) neste turno sem o campo prova (lista em: node cc.mjs json).\n`
+  + 'Registre a prova de cada uma: node cc.mjs done "texto da tarefa" --prova "comando rodado e resultado observado"\n'
+  + 'Se a verificação não foi possível, grave isso no campo prova. A próxima volta passa.',
 )
 process.exit(2)

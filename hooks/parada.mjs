@@ -39,7 +39,10 @@ export const GUARDAS = [
   'jargao-guard', 'resumo-guard', 'fila-guard', 'tarefa-vaga-guard', 'referencia-guard',
   'forma-guard', 'enfileirada-guard', 'teto-guard', 'travessao-guard', 'visual-guard',
   'descida-guard', 'medir-guard', 'diario-guard', 'sincronia-guard', 'tarefas-fim',
-  'quadro-guard', 'copiar-guard', 'onde-guard', 'fala-guard', 'ideia-guard',
+  'quadro-guard', 'copiar-guard', 'onde-guard', 'fala-guard', 'ideia-guard', 'confere-fala',
+  'confere-omissao', 'conferente', // CC-1070
+  // CC-1071: guia-fim e guia-contexto, APOSENTADOS por CC-1076 (o arquivo continua em hooks/, fora da lista)
+  'guia-frente', // CC-1076
 ]
 
 /** Guardas que não cabem no mesmo processo e continuam registrados sozinhos. */

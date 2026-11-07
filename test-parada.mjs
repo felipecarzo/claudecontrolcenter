@@ -37,7 +37,9 @@ const NOMES_31 = ['routia/todo-guard', 'routia/routia-fim', 'roadmap-guard', 'es
   'teto-guard', 'travessao-guard', 'visual-guard', 'descida-guard', 'medir-guard', 'diario-guard',
   'sincronia-guard', 'tarefas-fim', 'quadro-guard', 'copiar-guard', 'onde-guard', 'fala-guard', 'ideia-guard']
 const todos = [...GUARDAS, ...SOZINHOS.map((s) => s.nome)]
-ok(todos.length === 31 && new Set(todos).size === 31 && NOMES_31.every((n) => todos.includes(n)), 'lista de guardas diferente dos 31')
+// CC-1069: confere-fala entrou depois dos 31 de 12/10; CC-1070: confere-omissao e conferente; CC-1071: guia-fim e guia-contexto,
+// aposentados por CC-1076, que pôs guia-frente no lugar
+ok(todos.length === 35 && new Set(todos).size === 35 && [...NOMES_31, 'confere-fala', 'confere-omissao', 'conferente', 'guia-frente'].every((n) => todos.includes(n)) && !todos.includes('guia-fim') && !todos.includes('guia-contexto'), 'lista de guardas diferente dos 35')
 for (const s of SOZINHOS) ok(s.motivo, `${s.nome} fora do programa sem motivo`)
 for (const g of GUARDAS) ok(fs.existsSync(path.join(HOOKS, `${g}.mjs`)), `${g}.mjs não existe`)
 
@@ -83,6 +85,8 @@ const casas = []
 function casaNova() {
   const t = fs.mkdtempSync(path.join(os.tmpdir(), 'parada-'))
   fs.mkdirSync(path.join(t, '.claude'))
+  // CC-1070: o conferente chama o modelo de verdade; aqui ele fica desligado (o test-cc1070 cobre com claude falso)
+  fs.writeFileSync(path.join(t, '.claude', 'control-center.json'), JSON.stringify({ hooks: { conferente: false } }))
   casas.push(t)
   return t
 }
