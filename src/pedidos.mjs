@@ -76,9 +76,37 @@ export function listar(projetos) {
     let itens = []
     try { itens = B.ler(B.caminhoPadrao(p.raiz)).itens } catch { continue }
     for (const i of itens) {
-      if (i.origem !== ORIGEM) continue
-      out.push({ id: i.id, projeto: curto(path.basename(p.raiz)), raiz: p.raiz, texto: i.citacao || i.intencao, estado: i.estado, rotulo: ROTULO[i.estado] || i.estado, criado: i.criado, mexido: i.mexido })
+      // CC-850: o pedido que ele mandou pelo maestro também é pedido dele: é o PED com micro tarefas penduradas
+      const andamento = B.andamento(itens, i.id)
+      if (i.origem !== ORIGEM && !(i.origem === 'felipe' && i.natureza === 'PED' && andamento)) continue
+      out.push({ id: i.id, projeto: curto(path.basename(p.raiz)), raiz: p.raiz, texto: i.citacao || i.intencao, estado: i.estado, rotulo: ROTULO[i.estado] || i.estado, criado: i.criado, mexido: i.mexido, andamento })
     }
   }
   return out.sort((a, b) => String(b.criado).localeCompare(String(a.criado)) || b.id.localeCompare(a.id))
+}
+
+/**
+ * CC-850: o pedido aberto. As micro tarefas com o estado, o andamento X de Y, a prova do robô em cada uma e o diário
+ * (as palavras dele e o que o robô viu, lidos do eventos.jsonl do projeto). `raiz` tem de ser um projeto conhecido.
+ */
+export function detalhar({ raiz, id }, projetos) {
+  if (!projetos.some((p) => p.raiz === raiz)) throw new Error('esse projeto não é conhecido')
+  const arq = B.caminhoPadrao(raiz)
+  const { itens } = B.ler(arq)
+  const pai = itens.find((x) => x.id === id)
+  if (!pai) throw new Error(`o pedido ${id} não existe neste projeto`)
+  const filhas = B.filhasDe(itens, id)
+  const ids = new Set([id, ...filhas.map((f) => f.id)])
+  let diario = []
+  try {
+    diario = fs.readFileSync(B.caminhoEventos(arq), 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l) } catch { return null } })
+      .filter((e) => e && ids.has(e.id) && ['robo', 'nota', 'citacao'].includes(e.tipo))
+      .map((e) => ({ em: e.em, id: e.id, tipo: e.tipo, ok: e.ok ?? null, texto: String(e.texto || '').slice(0, 400) }))
+      .slice(-40)
+  } catch { /* projeto sem diário ainda */ }
+  const micro = (f) => ({ id: f.id, titulo: f.intencao, estado: f.estado, rotulo: ROTULO[f.estado] || f.estado, prova: f.prova || null, porque: f.porque || null, segundos: f.segundos ?? null })
+  return {
+    id, texto: pai.citacao || pai.intencao, estado: pai.estado, rotulo: ROTULO[pai.estado] || pai.estado, prova: pai.prova || null,
+    andamento: B.andamento(itens, id), micro: filhas.map(micro), diario,
+  }
 }

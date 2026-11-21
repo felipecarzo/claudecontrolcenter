@@ -1,0 +1,256 @@
+{
+  "titulo": "Provas do backlog: o robô fotografou, você aprova",
+  "criado": "2026-11-18T16:51:20.870Z",
+  "cartas": [
+    {
+      "id": "CC-993",
+      "titulo": "regra de design: nada fino e comprido na pagina, salvo separador ou banner especifico",
+      "olhe": "ler a regra na skill",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O trecho abaixo, de a regra 16 das regras de design, diz o que você pediu?",
+      "passos": [
+        "## 16. Nada fino e comprido: peça tem proporção de peça",
+        "08/10/2026, no \"Decidir um por um\" do Ogumia (um botão ocupando a largura",
+        "inteira da tela, com 50px de altura): *\"um botão super largo e fino, isso é",
+        "muito feio, nada pode ser assim nunca (...) são raríssimas as vezes que algo",
+        "fino e cumprido faz sentido em uma pagina sem ser um separador ou um banner",
+        "bem específico\"*.",
+        "**O que exige:**",
+        "- **Botão, cartão e campo nunca esticam na largura toda só porque o espaço"
+      ]
+    },
+    {
+      "id": "CC-1013",
+      "titulo": "regras de design: barras laterais sao a parte mecanica sempre por cima; painel de detalhe encaixa e reduz a area; ideia/entrada colapsada",
+      "olhe": "ler as regras na skill",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O trecho abaixo, de a regra 17 das regras de design, diz o que você pediu?",
+      "passos": [
+        "## 17. As barras são a moldura do painel: sempre por cima, nada de dentro as cobre",
+        "08/10/2026, ao ver a gaveta de tarefas do Caminho abrir por cima da barra da",
+        "direita, e o Tinder escurecer as duas barras: *\"as barras da direita e esquerda",
+        "são como se fosse a parte de fora do resto do painel e tão sempre por cima...",
+        "é uma regra de design que você não tá seguindo totalmente, que é o princípio da",
+        "hierarquia do painel\"* e *\"nada dentro do sistema afeta essas áreas\"*.",
+        "O painel tem duas camadas. **A moldura**: barra da esquerda, barra da direita e",
+        "a faixa do topo (busca, sino, A+ e A-, tema). **O conteúdo**: o que sobra no"
+      ]
+    },
+    {
+      "id": "CC-1034",
+      "titulo": "regra de produto: tudo que criamos para os projetos vira ferramenta no painel, nao script solto",
+      "olhe": "ler a regra",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O trecho abaixo, de a regra de produto no CLAUDE.md do cockpit, diz o que você pediu?",
+      "passos": [
+        "## Regra de produto: tudo que criamos para os projetos vira ferramenta no painel",
+        "Pedido dele em 09/10/2026, quando criei um comando de terminal em vez do que ele queria: *\"sempre que criamos algo pros",
+        "projetos ele precisa ser uma ferramenta no painel, assim como é o cockpit\"*.",
+        "- **Script não é entrega.** Um comando solto que só uma sessão sabe rodar não conta. O que serve a um projeto (revisar",
+        "textos, aprovar telas, medir, conferir) precisa ter **lugar no painel**: onde ele vê, decide e acompanha, no projeto",
+        "certo, sem depender de lembrar o comando.",
+        "- **O script continua existindo**, como o motor por baixo (sessão e robô usam), mas a tela é o que ele toca.",
+        "- **Ao construir algo para um projeto, a pergunta final é: onde, no painel, ele chega nisso?** É a mesma regra da peça"
+      ]
+    },
+    {
+      "id": "CC-1056",
+      "titulo": "regras de escrita unificadas numa fonte so, com a regra nova defina antes de concluir, e os outros lugares apontando para ela",
+      "olhe": "ler o arquivo unico e conferir que os outros lugares so apontam",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O trecho abaixo, de as instruções globais, que só apontam para a fonte única, diz o que você pediu?",
+      "passos": [
+        "## Regras de escrita: fonte única",
+        "Desde 12/10/2026 todas as regras de escrita (chat, tela, documento, commit) moram num arquivo só:",
+        "`~/projetos/VPS_cockpit/docs/produto/ESCRITA.md` (no PC, na mesma pasta do repositório do cockpit). Ele vence o que",
+        "estiver repetido aqui e nas skills. Regra nova de escrita entra lá, nunca aqui.",
+        "## OBRIGATÓRIO: nunca usar travessão",
+        "**Regra absoluta, todos os projetos, sem exceção.** Nada de `,` (travessão) nem `,` (meia-risca)",
+        "em texto nenhum: interface, copy de site, documentação, comentário de código, mensagem de commit",
+        "e as respostas no chat."
+      ]
+    },
+    {
+      "id": "CC-1024",
+      "titulo": "Medir lado a lado o mesmo pedido pequeno no opencode do terminal e no robo do Coderoom, mesmo modelo: tempo, falhas e resultado",
+      "olhe": "relatorio em docs com os dois lados",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O trecho abaixo, de o relatório da medição lado a lado, diz o que você pediu?",
+      "passos": [
+        "## Resultado",
+        "| lado | quem construiu | tempo | tentativas | régua |",
+        "|---|---|---|---|---|",
+        "| terminal | opencode big-pickle | 80 s | 1 | 10 de 10 |",
+        "| Coderoom, como o projeto estava | agy (Gemini) | 721 s | 2 tarefas, 0 reprovadas | 10 de 10 |",
+        "| Coderoom, forçando big-pickle | opencode big-pickle | 337 s | 2 tarefas, 0 reprovadas | 10 de 10 |",
+        "Os 337 s do Coderoom com big-pickle: plano 19 s; modelo trabalhando 45 s + 169 s; espera do robô",
+        "(abrir conversa e conferir que ficou quieta) cerca de 15 s + 33 s por tarefa.",
+        "## Causas achadas",
+        "1. **O conta-de-casa não usava o opencode.** O `AGENTS.md` dele tem `Construtor: agy` (mudança sem"
+      ]
+    },
+    {
+      "id": "CC-1042",
+      "titulo": "medir se comandos de barra e skills funcionam no claude -p (modo sem tela) do Coderoom",
+      "olhe": "ler os numeros no historico",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O trecho abaixo, de o diário de 12/10 com os números, diz o que você pediu?",
+      "passos": [
+        "### CC-1042, comandos com barra no Claude sem tela (12/10)",
+        "Medido com o binário das sessões, `-p --resume` numa conversa descartável, modelo haiku (o apelido hoje resolve para Haiku 5.5): `/model`, `/cost`, `/context` e `/compact` respondem texto sem rodada do modelo (custo só da leitura); skill chamada pelo nome (`/regras-design`) carrega e responde em 1 rodada; `/help` responde \"não disponível neste ambiente\". Conclusão para o Coderoom: o campo pode man",
+        "### CC-1050, aviso de abertura das rotas de 65 mil para 1,7 mil caracteres (12/10)",
+        "O aviso que lista as rotas ocupadas copiava a linha inteira de cada rota, com o histórico todo (uma linha tinha 12.900 caracteres; o quadro, 101 mil), e batia no teto de 65.536 em toda abertura: ~15 mil tokens por conversa, 956 mil em 60 dias. Agora cada rota ocupada é uma linha (nome, sessão dona, primeira frase, até 8 arquivos) e as livres vão só pelo nome, sem as riscadas e o histórico. 1.687 c",
+        "### CC-1043, Coderoom com cara de app (12/10)",
+        "Plano em docs/CC-1043.md; servidor e tela por dois ajudantes Sonnet, conferidos aqui. Linha embaixo do campo com modo (só com o Claude: Manual, Aceitar edições, Plano), modelo e esforço no menu suspenso das Sessões (generalizado, a escolha passa pelos selects da gaveta). Modo plano agora escolhível por conversa (`--permission-mode plan`, sem o gancho de pergunte-antes); bypass e auto seguem recusa",
+        "### CC-1057, a fila mostrava prova como trabalho (12/10)",
+        "A lista \"faço sozinho\" (e o aviso do começo de sessão, \"30 você faz\") incluía prova conferida por foto ou por ele, que só o olho dele aprova (no Decidir um por um). Os 3 primeiros da fila de hoje já estavam prontos. Agora prova por foto ou dele vai para \"espera ele\"; prova automática continua do agente, que roda `backlog conferir`. A fila caiu de 35 para 15 itens de trabalho de verdade. Na mesma v"
+      ]
+    },
+    {
+      "id": "CC-865",
+      "titulo": "o painel passa a se chamar Ogumia na tela e no guia, mantendo os nomes internos",
+      "olhe": "abrir o painel e o guia e não achar Cockpit visível",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O que aparece no print é o que você pediu?",
+      "img": "docs/cartas/provas/CC-865.png",
+      "passos": [
+        "o robô abriu a tela no painel em 390 px, com os dados de agora",
+        "esperou o dado chegar e fotografou a tela Início, para ver o nome Ogumia no lugar de Cockpit",
+        "foto de 18/11/2026, 13:52:37"
+      ]
+    },
+    {
+      "id": "CC-1045",
+      "titulo": "hooks de parada fazem ele esperar 6,4 s por resposta (95 cortes do quadro-guard): achar e cortar o que pesa",
+      "olhe": "aba Hooks, numero de cima",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O que aparece no print é o que você pediu?",
+      "img": "docs/cartas/provas/CC-1045.png",
+      "passos": [
+        "o robô abriu a tela no painel em 390 px, com os dados de agora",
+        "esperou o dado chegar e fotografou o topo da aba Hooks, com quanto os hooks fazem você esperar",
+        "foto de 18/11/2026, 13:54:24"
+      ]
+    },
+    {
+      "id": "CC-765",
+      "titulo": "Widescreen de Sessoes: paineis como os do Coderoom, reordenaveis, com adicionar e recolocar; talvez duas sessoes lado a lado",
+      "olhe": "print 1920px com paineis reordenados e um recolocado",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O que aparece no print é o que você pediu?",
+      "img": "docs/cartas/provas/CC-765.png",
+      "passos": [
+        "o robô abriu a tela no painel em 1920 px, com os dados de agora",
+        "esperou o dado chegar e fotografou a tela Sessões em tela larga (1920 px), com os painéis",
+        "foto de 18/11/2026, 13:58:59"
+      ]
+    },
+    {
+      "id": "CC-795",
+      "titulo": "Coderoom: com o menu de tres pontos aberto, os controles vao para o meio do cabecalho e as fichas (estado, maquina, agentes) somem",
+      "olhe": "print do cabecalho com o menu aberto e fechado",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O que aparece no print é o que você pediu?",
+      "img": "docs/cartas/provas/CC-795.png",
+      "passos": [
+        "o robô abriu a tela no painel em 1100 px, com os dados de agora",
+        "esperou o dado chegar e fotografou o cabeçalho da conversa do Coderoom com o menu de três pontos fechado e aberto, em 1100 px",
+        "foto de 19/11/2026, 13:34:47"
+      ]
+    },
+    {
+      "id": "CC-988",
+      "titulo": "barra lateral direita (responder sessoes) com largura ajustavel arrastando a borda, igual a esquerda",
+      "olhe": "print da barra direita em duas larguras",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O que aparece no print é o que você pediu?",
+      "img": "docs/cartas/provas/CC-988.png",
+      "passos": [
+        "o robô abriu a tela no painel em 1920 px, com os dados de agora",
+        "esperou o dado chegar e fotografou a tela inteira com a barra direita (responder sessões) em duas larguras",
+        "foto de 19/11/2026, 13:35:08"
+      ]
+    },
+    {
+      "id": "CC-990",
+      "titulo": "o A+ e A- do tamanho da letra nao mudam o texto da barra lateral direita",
+      "olhe": "print da barra direita em 100 e 150 por cento",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O que aparece no print é o que você pediu?",
+      "img": "docs/cartas/provas/CC-990.png",
+      "passos": [
+        "o robô abriu a tela no painel em 2560 px, com os dados de agora",
+        "esperou o dado chegar e fotografou a barra direita com a letra em 100% e aumentada pelo A+, numa tela de 2560 px (em 1920 com as duas barras o A+ não tem espaço para crescer)",
+        "foto de 19/11/2026, 13:37:46"
+      ]
+    },
+    {
+      "id": "CC-850",
+      "titulo": "tela do pedido: micro tarefas, andamento, o que o robô viu e o diário",
+      "olhe": "abrir CC-834 no painel pelo celular",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O que aparece no print é o que você pediu?",
+      "img": "docs/cartas/provas/CC-850.png",
+      "passos": [
+        "o robô abriu a tela no painel em 900 px, com os dados de agora",
+        "esperou o dado chegar e fotografou o pedido CC-834 aberto na lista de pedidos: o andamento X de Y, cada micro tarefa com o que o robô viu, e o diário",
+        "foto de 19/11/2026, 15:02:05"
+      ]
+    },
+    {
+      "id": "CC-849",
+      "titulo": "botão no Coderoom: mandar o pedido para o maestro pelo celular",
+      "olhe": "mandar um pedido pelo celular e ver as micro tarefas aparecerem na conversa",
+      "opcoes": [
+        "Aprovo",
+        "Não aprovo"
+      ],
+      "pergunta": "O que aparece no print é o que você pediu?",
+      "img": "docs/cartas/provas/CC-849.png",
+      "passos": [
+        "o robô abriu a tela no painel em 1100 px, com os dados de agora",
+        "esperou o dado chegar e fotografou o menu de três pontos do Coderoom com o botão 'pelo maestro': desligado e depois ligado",
+        "foto de 19/11/2026, 15:03:57"
+      ]
+    }
+  ]
+}

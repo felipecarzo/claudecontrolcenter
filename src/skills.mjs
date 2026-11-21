@@ -40,6 +40,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { casaClaude } from './platform.mjs'
 
 /**
@@ -157,7 +158,34 @@ export function sincronizar({ nomes = null } = {}) {
  * agentes, só quando o conteúdo mudou. É o painel que grava porque ele roda fora
  * do isolamento das sessões, onde `~/.claude/skills` é somente leitura.
  */
-export const dirDoRepositorio = () => path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'skills')
+/* `fileURLToPath`, nunca `new URL(...).pathname`: no Windows o segundo dá `/D:/...` e a pasta nunca é achada (CC-1104). */
+export const dirDoRepositorio = () => path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'skills')
+export const agentesDoRepositorio = () => path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'agents')
+
+/**
+ * CC-1104: os ajudantes do repositório (`agents/<nome>.md`) vão para `~/.claude/agents/`, como as skills. Só o Claude
+ * Code tem ajudante, então é um destino só. A sessão carrega a lista de ajudantes ao abrir: ajudante instalado agora
+ * vale a partir da próxima sessão.
+ */
+export function instalarAgentesDoRepositorio({ origem = agentesDoRepositorio(), destino = path.join(casaClaude(), 'agents') } = {}) {
+  const feitos = []
+  let nomes = []
+  try { nomes = fs.readdirSync(origem).filter((n) => n.endsWith('.md') && valido(n.slice(0, -3))) } catch { return { feitos } }
+  for (const n of nomes) {
+    const texto = fs.readFileSync(path.join(origem, n), 'utf8')
+    const alvo = path.join(destino, n)
+    try {
+      let atual = null; try { atual = fs.readFileSync(alvo, 'utf8') } catch { /* novo */ }
+      if (atual === texto) continue
+      fs.mkdirSync(destino, { recursive: true })
+      fs.writeFileSync(alvo, texto)
+      feitos.push({ ajudante: n.slice(0, -3), acao: atual == null ? 'criado' : 'atualizado' })
+    } catch (e) {
+      feitos.push({ ajudante: n.slice(0, -3), acao: 'falhou', erro: String(e.message || e) })
+    }
+  }
+  return { feitos }
+}
 
 export function instalarDoRepositorio({ origem = dirDoRepositorio() } = {}) {
   const feitos = []

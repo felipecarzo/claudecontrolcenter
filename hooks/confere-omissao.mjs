@@ -9,8 +9,8 @@
  * devolve UMA vez listando os itens. `stop_hook_active` passa. Turno sem nada
  * disso não dispara. Não vale no `claude -p`. Falha aberta.
  */
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const urlDeModulo = (...p) => pathToFileURL(resolve(...p)).href
@@ -37,6 +37,15 @@ try {
     const E = await import(urlDeModulo(AQUI, '../src/estilo.mjs'))
     const texto = E.ultimaResposta(arquivo)
     if (texto) itens = R.naoCitados(reg, texto)
+    /* CC-1094: o "turno" vai do último texto DELE, então numa sessão movida por mensagem de outra sessão o mesmo erro
+       antigo era cobrado a cada resposta (medido: 4 vezes seguidas o mesmo item). Cobrado uma vez, não volta. */
+    if (itens.length && dados?.session_id) {
+      const arq = join(R.dirRegistro(), `${String(dados.session_id).replace(/[^\w-]/g, '_')}.cobrados.json`)
+      let ja = []
+      try { ja = JSON.parse(readFileSync(arq, 'utf8')) } catch { /* nada cobrado ainda */ }
+      itens = itens.filter((x) => !ja.includes(x))
+      if (itens.length) { mkdirSync(dirname(arq), { recursive: true }); writeFileSync(arq, JSON.stringify([...ja, ...itens].slice(-200))) }
+    }
   }
 } catch { itens = [] /* falha aberta */ }
 

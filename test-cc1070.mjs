@@ -135,6 +135,8 @@ const a2 = stop('confere-omissao.mjs', TESTE('Rodei tudo, parece bom.'))
 ok(a2.err.includes('test-xyz.mjs') && !/racioc|pensament/i.test(a2.err), 'a: a mensagem lista o item e fala de formato')
 ok(passou(stop('confere-omissao.mjs', TESTE('O test-xyz.mjs falhou no caso b; vou corrigir.'))), 'b: o mesmo erro citado passa')
 ok(passou(stop('confere-omissao.mjs', TESTE('Rodei tudo, parece bom.'), { stop_hook_active: true })), 'a: stop_hook_active passa (uma volta só)')
+const mesma = { session_id: 'cc1094-mesma' }
+ok(barrou(stop('confere-omissao.mjs', TESTE('Rodei tudo.'), mesma), 'confere-omissao') && passou(stop('confere-omissao.mjs', TESTE('Rodei tudo.'), mesma)), 'CC-1094: o mesmo item não é cobrado duas vezes na mesma sessão')
 const KILL = (resp) => [fala('organiza as sessões'), ...bash('tmux kill-session -t cc-remote-elite', ''), resposta(resp)]
 ok(barrou(stop('confere-omissao.mjs', KILL('Organizei as sessões.')), 'confere-omissao'), 'c: tmux kill-session não citado barra')
 ok(passou(stop('confere-omissao.mjs', KILL('Encerrei a sessão Elite, que estava parada.'))), 'c: o alvo citado (sem acento, sem caixa) passa')
@@ -157,7 +159,7 @@ const AFIRMA = 'Pronto, todas as sessões estão em Sonnet.'
 const SONNET = [fala('muda todas as sessões para Sonnet'), ...bash('cc sessoes modelos', 'sessao A: sonnet\nsessao Elite: opus'), resposta(AFIRMA)]
 veredito({ ...VAZIO, fala_x_feito: { desmentidas: [{ frase: 'todas as sessões estão em Sonnet', prova: 'sessao Elite: opus' }], sem_prova: [], feito_nao_contado: [] } })
 let antes = chamadas()
-let c = stop('conferente.mjs', SONNET, { stop_hook_active: true })
+let c = stop('conferente.mjs', SONNET)
 ok(barrou(c, 'conferente') && c.err.includes('Afirmações que a saída contradiz') && c.err.includes('sessao Elite: opus'), 'd: "todas em Sonnet" com saída mostrando Opus: o conferente barra, com a prova')
 ok(chamadas() === antes + 1, 'd: uma chamada ao modelo')
 const entrada = fs.readFileSync(FAKE_ENTRADA, 'utf8')
@@ -169,27 +171,27 @@ ok(!/racioc|pensament|voc[êe] (disse|escreveu)/i.test(c.err), 'd: a mensagem fa
 ok(!c.err.includes('\u2014') && !c.err.includes('\u2013'), 'd: sem travessão')
 
 antes = chamadas()
-ok(passou(stop('conferente.mjs', SONNET)), 'd: na primeira passada (confere-fala ligado) não roda')
+ok(passou(stop('conferente.mjs', SONNET, { stop_hook_active: true })), 'd: na segunda volta não roda de novo (CC-1099: roda na primeira)')
 ok(chamadas() === antes, 'd: e não gasta chamada')
-ok(passou(stop('conferente.mjs', [fala('x'), resposta('Não achei o arquivo.')], { stop_hook_active: true })), 'd: resposta sem afirmação não roda o conferente')
-ok(passou(stop('conferente.mjs', [fala('x'), resposta('Todas em Sonnet, mas não conferi.')], { stop_hook_active: true })), 'd: "não conferi" passa')
+ok(passou(stop('conferente.mjs', [fala('x'), resposta('Não achei o arquivo.')])), 'd: resposta sem afirmação não roda o conferente')
+ok(passou(stop('conferente.mjs', [fala('x'), resposta('Todas em Sonnet, mas não conferi.')])), 'd: "não conferi" passa')
 // uma vez por turno
 const arqUma = transcrito(SONNET)
-const uma = () => rodar('conferente.mjs', { hook_event_name: 'Stop', cwd: TRABALHO, session_id: 'uma-vez', stop_hook_active: true, transcript_path: arqUma })
+const uma = () => rodar('conferente.mjs', { hook_event_name: 'Stop', cwd: TRABALHO, session_id: 'uma-vez', transcript_path: arqUma })
 antes = chamadas()
 ok(barrou(uma(), 'conferente') && passou(uma()) && chamadas() === antes + 1, 'd: roda uma vez por turno (a terceira volta passa sem nova chamada)')
 // sem achado
 veredito(VAZIO)
-ok(passou(stop('conferente.mjs', SONNET, { stop_hook_active: true })) && logConf().some((l) => l.status === 'passou'), 'conferente sem achado: passa e loga')
+ok(passou(stop('conferente.mjs', SONNET)) && logConf().some((l) => l.status === 'passou'), 'conferente sem achado: passa e loga')
 // o parada.mjs despacha o conferente e o confere-omissao
 veredito({ ...VAZIO, fala_x_feito: { desmentidas: [], sem_prova: ['todas as sessões estão em Sonnet'], feito_nao_contado: [] } })
-const viaParada = rodar('parada.mjs', { hook_event_name: 'Stop', cwd: TRABALHO, session_id: 'via-parada', stop_hook_active: true, transcript_path: transcrito(SONNET) })
+const viaParada = rodar('parada.mjs', { hook_event_name: 'Stop', cwd: TRABALHO, session_id: 'via-parada', transcript_path: transcrito(SONNET) })
 ok(viaParada.err.includes('[conferente]') && viaParada.err.includes('Afirmações sem saída'), 'o parada.mjs despacha o conferente')
 
 // e: falha do conferente passa e grava
 for (const modo of ['erro', 'lixo']) {
   const nLog = logConf().length
-  const x = rodar('conferente.mjs', { hook_event_name: 'Stop', cwd: TRABALHO, session_id: `falha-${modo}`, stop_hook_active: true, transcript_path: transcrito(SONNET) }, { FAKE_MODO: modo })
+  const x = rodar('conferente.mjs', { hook_event_name: 'Stop', cwd: TRABALHO, session_id: `falha-${modo}`, transcript_path: transcrito(SONNET) }, { FAKE_MODO: modo })
   ok(passou(x), `e: conferente com ${modo === 'erro' ? 'erro (claude saiu com 1)' : 'JSON ruim'} passa`)
   ok(logConf().slice(nLog).some((l) => l.status === 'erro' && l.erro), `e: e grava o erro no log (${modo})`)
 }
@@ -197,14 +199,14 @@ for (const modo of ['erro', 'lixo']) {
 // f: pedido "desliga o robô" e registro com kill-session: feito_nao_pedido
 veredito({ ...VAZIO, feito_x_pedido: { pedido_nao_feito: [], feito_nao_pedido: ['derrubou a sessão cc-remote-elite'] } })
 const DESLIGA = [fala('desliga o robô'), ...bash('tmux kill-session -t cc-remote-elite', ''), resposta('Pronto, desliguei o robô.')]
-c = stop('conferente.mjs', DESLIGA, { stop_hook_active: true })
+c = stop('conferente.mjs', DESLIGA)
 ok(barrou(c, 'conferente') && c.err.includes('Feito e não pedido') && c.err.includes('cc-remote-elite'), 'f: "desliga o robô" com kill-session: feito_nao_pedido barra')
 ok(fs.readFileSync(FAKE_ENTRADA, 'utf8').includes('kill-session'), 'f: o conferente recebeu o registro com o kill-session')
 
 // g: pedido de duas partes, só uma feita, resposta diz "feito"
 veredito({ ...VAZIO, feito_x_pedido: { pedido_nao_feito: ['rodar os testes'], feito_nao_pedido: [] } })
 const DUAS = [fala('corrige o bug e roda os testes'), ...bash('git diff', 'a'), resposta('Feito, corrigi o bug.')]
-c = stop('conferente.mjs', DUAS, { stop_hook_active: true })
+c = stop('conferente.mjs', DUAS)
 ok(barrou(c, 'conferente') && c.err.includes('Pedido e não feito') && c.err.includes('rodar os testes'), 'g: pedido de duas partes, uma feita, "feito": pedido_nao_feito barra')
 
 // teto próprio de 30 por hora, no mesmo log
@@ -212,7 +214,7 @@ fs.mkdirSync(path.join(CASA, 'logs'), { recursive: true })
 const horaAgora = new Date().toISOString()
 fs.appendFileSync(path.join(CASA, 'logs', 'conferente.log'), Array.from({ length: 30 }, () => JSON.stringify({ em: horaAgora, chamada: true, status: 'passou' })).join('\n') + '\n')
 antes = chamadas()
-ok(passou(stop('conferente.mjs', SONNET, { stop_hook_active: true })) && chamadas() === antes && logConf().some((l) => l.status === 'teto'), 'teto: 30 chamadas na hora passa sem chamar o modelo e loga')
+ok(passou(stop('conferente.mjs', SONNET)) && chamadas() === antes && logConf().some((l) => l.status === 'teto'), 'teto: 30 chamadas na hora passa sem chamar o modelo e loga')
 
 // o conferente não conta no teto-robo, e dentro dele os ganchos de fim não rodam
 const pastaTeto = path.join(CC_HOME, 'projects', '-x')

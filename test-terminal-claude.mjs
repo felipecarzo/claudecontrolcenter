@@ -13,6 +13,7 @@ ok(c2.includes('tmuxDaConversa.set(s.conversa, s.sessao)') && /s\.tmux = tmuxDaC
 ok(ui.includes('function c2Terminal(arg, titulo)') && ui.includes("'/painel/claude/?arg=' + encodeURIComponent(arg)"), 'a tela abre o terminal pelo repasse, com o argumento escapado')
 const botoes = (ui.match(/data-claude-term="' \+ esc\(/g) || []).length
 ok(botoes >= 3, 'há botão de terminal no cartão da sessão, em cada sessão do projeto e no projeto sem sessão (achados: ' + botoes + ')')
+ok(/data-coderoom-nova="[^;]*?data-claude-term="' \+ esc\(c2FwDe\(p\.chave\)\.projeto\)/.test(ui), 'o cartão do projeto na lista de Projetos tem o botão do terminal, junto de Coderoom e Antigravity (CC-1051 reaberto)')
 const slug = (r) => 'cc-remote-' + String(r).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 50)
 ok(ler('./src/remotecontrol.mjs').includes("const slug = (projeto) => PREFIXO_SESSAO + String(projeto).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 50)") && ui.includes("return 'cc-remote-' + String(rotulo).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 50)") && slug('VPS_cockpit-2') === 'cc-remote-VPS_cockpit-2', 'a tela monta o nome do terminal igual ao servidor')
 console.log(`test-terminal-claude: ${n} verificações, 0 falhas`)

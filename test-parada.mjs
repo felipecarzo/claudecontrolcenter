@@ -14,12 +14,12 @@
  *
  * Rápido por padrão (2 entradas, para o gate). Completo: PARADA_COMPLETO=1.
  */
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { GUARDAS, SOZINHOS, juntar } from './hooks/parada.mjs'
+import { BARRAM, GUARDAS, NAO_REPITA, SOZINHOS, arquivoCobranca, juntar } from './hooks/parada.mjs'
 
 const RAIZ = path.dirname(fileURLToPath(import.meta.url))
 const HOOKS = path.join(RAIZ, 'hooks')
@@ -144,7 +144,12 @@ try {
       else ok(false, `${g} em ${path.basename(e.cwd)} (ativo=${e.stop_hook_active}): sozinho ${a.codigo} ${JSON.stringify((a.stderr + a.stdout).slice(0, 160))}, junto ${b.codigo} ${JSON.stringify(((b.stderr || '') + (b.stdout || '')).slice(0, 160))}`)
     })
 
-    const esperado = juntar(GUARDAS.map((g, k) => ({ nome: g, ...sozinhos[k] })))
+    // CC-1099: só o conferente barra; o resto vira cobrança da próxima mensagem, gravada no abrigo
+    const esperado = juntar(GUARDAS.map((g, k) => ({ nome: g, ...sozinhos[k], ...(sozinhos[k].codigo === 2 && !BARRAM.has(g) ? { codigo: 0, stderr: '' } : {}) })))
+    if (sozinhos.some((a, k) => a.codigo === 2 && !BARRAM.has(GUARDAS[k]))) {
+      const dirCob = path.join(casa, '.local', 'share', 'agent-cockpit', 'cobrancas')
+      ok(fs.existsSync(dirCob) && fs.readdirSync(dirCob).length === 1, `${path.basename(e.cwd)}: forma barrada sem cobrança gravada para a próxima mensagem`)
+    }
     ok(junto.codigo === esperado.codigo && junto.stdout === esperado.stdout && junto.stderr === esperado.stderr,
       `${path.basename(e.cwd)}: saída juntada difere (código ${junto.codigo} contra ${esperado.codigo})`)
     ok(!PROIBIDAS.test(junto.stdout + junto.stderr), `${path.basename(e.cwd)}: texto juntado com palavra proibida`)
@@ -162,7 +167,25 @@ try {
 const j = juntar([{ nome: 'a', codigo: 2, stdout: '', stderr: 'x\n' }, { nome: 'b', codigo: 0, stdout: '{"systemMessage":"m"}', stderr: '' }])
 ok(j.codigo === 0 && JSON.parse(j.stdout).decision === 'block' && JSON.parse(j.stdout).systemMessage === 'm', 'bloqueio com aviso de tela')
 const j2 = juntar([{ nome: 'a', codigo: 2, stdout: '', stderr: 'x\n' }, { nome: 'b', codigo: 2, stdout: '', stderr: 'y' }])
-ok(j2.codigo === 2 && j2.stderr === '[a]\nx\n\n[b]\ny\n', 'dois bloqueios juntados')
+ok(j2.codigo === 2 && j2.stderr === `[a]\nx\n\n[b]\ny\n\n${NAO_REPITA}\n`, 'dois bloqueios juntados, com a ordem de não repetir (CC-1094)')
+
+/* CC-1099: a cobrança de forma chega na próxima mensagem dele pelo gancho de mensagem, uma vez só. */
+{
+  const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cobranca-'))
+  const homeAntes = process.env.HOME
+  try {
+    process.env.HOME = casa
+    const arq = await arquivoCobranca('s1')
+    fs.mkdirSync(path.dirname(arq), { recursive: true })
+    fs.appendFileSync(arq, '[resumo-guard] falta o separador\n')
+    const msg = () => spawnSync('node', [path.join('hooks', 'anonimo-prompt.mjs')], { input: JSON.stringify({ session_id: 's1', prompt: 'oi', cwd: casa }), env: { ...process.env, HOME: casa }, encoding: 'utf8' }).stdout
+    const um = msg(); const dois = msg()
+    let ctx = ''
+    try { ctx = JSON.parse(um).hookSpecificOutput.additionalContext } catch { /* conferido abaixo */ }
+    ok(ctx.includes('falta o separador') && !ctx.includes('Reenvie'), 'cobrança de forma entregue como contexto da próxima mensagem')
+    ok(!dois.includes('falta o separador'), 'a cobrança sai uma vez só')
+  } finally { process.env.HOME = homeAntes; fs.rmSync(casa, { recursive: true, force: true }) }
+}
 
 const melhor = Math.min(...temposParada)
 ok(melhor < 1500, `programa único levou ${Math.round(melhor)} ms (teto 1500)`)

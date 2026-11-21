@@ -51,6 +51,20 @@ e `daemon restart` lá (com `CC_SEM_NAVEGADOR=1`).
 - **Depois da prova:** M7 (botão que abre a janela do WezTerm ligada ao servidor) e M8 (a prova dele pelo celular).
 - `npm test` no PC tem 16 testes que falham sem relação com isto (CC-1061).
 
+## VPS: CrowdSec baniu o IP da própria máquina (31/10, sessão do PC)
+
+- **O que houve:** os sites da VPS (`app.vendeufy.com.br`, `testedevoo.carzo.com.br`) foram dados como fora do ar por um
+  agente. O CrowdSec (programa que bane IPs suspeitos, primeira regra do firewall) tinha banido `66.94.117.215`, o IP
+  público da própria VPS, às 23h33 UTC por `http-crawl-non_statics` (54 eventos): testes rodando dentro da máquina contra
+  o endereço público contam como varredura. UFW e fail2ban estavam limpos.
+- **Feito, na VPS (vale para todos os sites dela):** ban apagado (`cscli decisions delete --ip 66.94.117.215`) e IP posto
+  na allowlist `vps-propria`. Já existia a `casa-felipe` (16/09, revisar em 90 dias). Depois: sites 200 de fora, 307 e 200
+  de dentro pelo IP público.
+- **Não provado:** que esse ban causou o `ECONNREFUSED` visto de fora pelo serviço de leitura de páginas. Ban dá tempo
+  esgotado, não recusa. Se o agente repetir o teste e ainda falhar, a causa é outra: conferir o IP de saída desse serviço
+  em `cscli decisions list --limit 0`.
+- **Para o cockpit:** agente que testa a VPS por dentro pelo endereço público pode se banir de novo se o IP mudar.
+
 ## Próximo
 
 - **Esperando o olho dele na tela (nenhum visto por mim, a captura é barrada):** a aba Revisões (CC-1038) e o Editar com o

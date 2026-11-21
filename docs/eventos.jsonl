@@ -1350,3 +1350,81 @@
 {"em":"2026-11-07T19:20:51.917Z","tipo":"criada","id":"CC-1091","estado":"B1"}
 {"em":"2026-11-07T19:20:59.123Z","tipo":"estado","id":"CC-1086","de":"EM","para":"PR","porque":"quem, hoje, concorrencia (nova) e dado viram pesquisáveis; 'framework entrevista pesquisa <id> \"achado\" --fonte <url>' recusa sem fonte; o achado fica como palpite até ele confirmar; o início de sessão manda pesquisar em vez de perguntar; tela mostra 'achado da pesquisa' com fontes e o botão confirmar (toque real gravou de=ele); test-projeto-novo 68 ok, gate verde; fotos 390 px em painel de teste"}
 {"em":"2026-11-07T19:21:01.972Z","tipo":"medida","id":"CC-1086","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":56382766,"porModelo":{"claude-sonnet-5-5":56949817,"claude-opus-5-5":14851930,"claude-fable-5-1":8438718}}
+{"em":"2026-11-08T02:38:33.085Z","tipo":"criada","id":"CC-1092","estado":"B1"}
+{"em":"2026-11-08T02:44:50.193Z","tipo":"estado","id":"CC-1092","de":"B1","para":"EM"}
+{"em":"2026-11-08T02:44:53.411Z","tipo":"medida","id":"CC-1092","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":57193743,"porModelo":{"claude-sonnet-5-5":56949817,"claude-opus-5-5":15662907,"claude-fable-5-1":8438718}}
+{"em":"2026-11-08T02:44:54.128Z","tipo":"estado","id":"CC-1092","de":"EM","para":"PR","porque":"painel de teste 8123, 390 px: conversa do Coderoom parada mostra 'arquivar' na aba Sessões do projeto; o toque arquiva (lista do Coderoom de 1 para 0), mostra o desfazer, e a linha sai da aba em 12 s (SESSÕES 1 para 0); zero erro de página; test.mjs passa"}
+{"em":"2026-11-08T02:44:56.493Z","tipo":"medida","id":"CC-1092","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":57193743,"porModelo":{"claude-sonnet-5-5":56949817,"claude-opus-5-5":15662907,"claude-fable-5-1":8438718}}
+{"em":"2026-11-08T20:05:57.235Z","tipo":"criada","id":"CC-1093","estado":"EM","texto":"vincular todos os servicos, tudo que a gente usa APR para ca"}
+{"em":"2026-11-18T11:38:00.752Z","tipo":"criada","id":"CC-1094","estado":"B1","texto":"ela manda a explicação da tarefa, o resumo, aí manda algum hook, alguma coisa que faz ela mandar tudo de novo, inclusive o resumo de novo, umas 4, 5 vezes (...) eu queria que parasse"}
+{"em":"2026-11-18T11:38:34.516Z","tipo":"estado","id":"CC-1094","de":"B1","para":"EM"}
+{"em":"2026-11-18T11:38:39.478Z","tipo":"medida","id":"CC-1094","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":59390423,"porModelo":{"claude-sonnet-5-5":56949817,"claude-opus-5-5":17859587,"claude-fable-5-1":8438718}}
+{"em":"2026-11-18T11:53:56.600Z","tipo":"estado","id":"CC-1094","de":"EM","para":"PR","porque":"parada.mjs no transcrito real: 1a volta código 2 com a ordem de não repetir, 2a volta código 0; confere-omissao com transcrito montado: cobra 1 vez, a 2a passa; test-cc1070 ok (caso novo), test-parada ok menos o teto de tempo (carga 81), test.mjs ok, test-hooks-monitor 25/25"}
+{"em":"2026-11-18T11:54:02.797Z","tipo":"medida","id":"CC-1094","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":59492202,"porModelo":{"claude-sonnet-5-5":56949817,"claude-opus-5-5":17961366,"claude-fable-5-1":8438718}}
+{"em":"2026-11-18T13:21:30.250Z","tipo":"estado","id":"CC-1051","de":"EM","para":"PR","porque":"test-terminal-claude.mjs: 7 verificações, 0 falhas; botão no cartão da lista de Projetos (src/ui_cockpit2.html:26419) travado pelo teste"}
+{"em":"2026-11-18T13:21:38.315Z","tipo":"medida","id":"CC-1051","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":59853552,"porModelo":{"claude-sonnet-5-5":57305576,"claude-opus-5-5":17966957,"claude-fable-5-1":8438718}}
+{"em":"2026-11-18T13:21:47.900Z","tipo":"estado","id":"CC-1051","de":"PR","para":"EM"}
+{"em":"2026-11-18T13:21:56.473Z","tipo":"medida","id":"CC-1051","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":59857968,"porModelo":{"claude-sonnet-5-5":57309992,"claude-opus-5-5":17966957,"claude-fable-5-1":8438718}}
+{"em":"2026-11-18T13:22:16.831Z","tipo":"estado","id":"CC-1051","de":"EM","para":"PR","porque":"test-terminal-claude.mjs: 7 verificações, 0 falhas; o cartão da lista de Projetos tem o botão (src/ui_cockpit2.html:26419) e o teste agora o trava"}
+{"em":"2026-11-18T13:22:22.557Z","tipo":"medida","id":"CC-1051","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":59860542,"porModelo":{"claude-sonnet-5-5":57312566,"claude-opus-5-5":17966957,"claude-fable-5-1":8438718}}
+{"em":"2026-11-18T16:12:38.413Z","tipo":"criada","id":"CC-1095","estado":"EM","texto":"esses testes são muiuto complicados de eu fazer, tem como a gente automatizar testes, trazer prints e informacoes pra eu avaliar sem sair daqui?"}
+{"em":"2026-11-18T17:14:28.634Z","tipo":"criada","id":"CC-1096","estado":"PR","texto":"camarada, vamos verificar a memoria da vps, eu naotenho muitos projetos rodando e ela ta no limite mesmo assim"}
+{"em":"2026-11-18T17:14:44.929Z","tipo":"estado","id":"CC-1096","de":"PR","para":"EM"}
+{"em":"2026-11-18T17:14:48.041Z","tipo":"medida","id":"CC-1096","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":61071586,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":18697593,"claude-fable-5-1":8438718}}
+{"em":"2026-11-08T00:18:49.451Z","tipo":"criada","id":"CC-1097","estado":"B1"}
+{"em":"2026-11-08T03:48:37.372Z","tipo":"criada","id":"CC-1098","estado":"B1"}
+{"em":"2026-11-19T15:46:15.444Z","tipo":"criada","id":"CC-1099","estado":"B1","texto":"sem o hook aberto a correcao vira uma mensagem poluida na tela, que na verdade eu nao entendo sem ler o hook"}
+{"em":"2026-11-19T15:51:15.166Z","tipo":"estado","id":"CC-1099","de":"B1","para":"EM"}
+{"em":"2026-11-19T15:51:17.851Z","tipo":"medida","id":"CC-1099","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":61410112,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":19036119,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T15:55:06.515Z","tipo":"estado","id":"CC-1099","de":"EM","para":"PR","porque":"só o conferente barra; forma vira cobrança entregue na próxima mensagem (test-parada: cobrança entregue e uma vez só; test-cc1070: 57 ok, 0 falhas). Teto de tempo da parada falha: 1772 ms contra 1500"}
+{"em":"2026-11-19T15:55:08.899Z","tipo":"medida","id":"CC-1099","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":61588928,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":19214935,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T16:00:51.347Z","tipo":"criada","id":"CC-1100","estado":"B0","texto":"Uma sessão por frente. O cockpit abre a sessão da frente com o briefing (HANDOFF, a frente do ROADMAP e as regras dele), no modelo do tipo Decidir"}
+{"em":"2026-11-19T16:00:52.039Z","tipo":"criada","id":"CC-1101","estado":"B0","texto":"Quando a sessão passar de um limite (por exemplo 40% da janela), o cockpit avisa que é hora de fechar a frente e abrir a próxima"}
+{"em":"2026-11-19T16:00:52.769Z","tipo":"criada","id":"CC-1102","estado":"B0","texto":"Ajudantes padrão de execução, globais, com modelo e effort no cabeçalho: um para Blender, um para Unity, um para conferir e atualizar o painel"}
+{"em":"2026-11-19T16:00:53.889Z","tipo":"criada","id":"CC-1103","estado":"B0","texto":"Cada caixa ganha o tipo, escrito ou inferido pelo verbo"}
+{"em":"2026-11-19T16:05:07.619Z","tipo":"estado","id":"CC-1100","de":"B0","para":"B1"}
+{"em":"2026-11-19T16:05:07.621Z","tipo":"lugar","id":"CC-1100","de":"felipe","texto":"fim do sprint"}
+{"em":"2026-11-19T16:05:08.167Z","tipo":"estado","id":"CC-1101","de":"B0","para":"B1"}
+{"em":"2026-11-19T16:05:08.168Z","tipo":"lugar","id":"CC-1101","de":"felipe","texto":"fim do sprint"}
+{"em":"2026-11-19T16:05:08.679Z","tipo":"estado","id":"CC-1102","de":"B0","para":"B1"}
+{"em":"2026-11-19T16:05:08.682Z","tipo":"lugar","id":"CC-1102","de":"felipe","texto":"fim do sprint"}
+{"em":"2026-11-19T16:05:09.383Z","tipo":"estado","id":"CC-1103","de":"B0","para":"B1"}
+{"em":"2026-11-19T16:05:09.384Z","tipo":"lugar","id":"CC-1103","de":"felipe","texto":"fim do sprint"}
+{"em":"2026-11-19T16:08:46.630Z","tipo":"medida","id":"CC-1096","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":61740843,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":19366850,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T16:31:57.560Z","tipo":"estado","id":"CC-1096","de":"EM","para":"OK","porque":"navegador de teste aberto: a rota achou (3 abas, 576 MB), a aba esta máquina da tela Infra mostrou o aviso em 390 px (docs/cartas/provas/CC-1096.png) e o fechar pelo painel o matou; test-navegadores 9 verificações, 0 falhas"}
+{"em":"2026-11-19T16:32:03.209Z","tipo":"medida","id":"CC-1096","estado":"OK","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":62021765,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":19647772,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T16:32:04.197Z","tipo":"estado","id":"CC-852","de":"EM","para":"PR","porque":"declarada em 4 projetos (VPS_ahtleta npm test, VPS_inovallbond build, overwatch build, ecommerce_apps-lab-nubesdk build do widget). Sem declarar: VPS_carzo e VPS_cockpit--front sem npm install; VPS_dengonator2000 e ecommerce_carro com next dev aberto, pulados; favecom e vendeufy-redesign com erro de build em kaminho/empresa/page.tsx; 14 montagem-* puladas (cópias de trabalho de outras sessões); 12 sem test nem build"}
+{"em":"2026-11-19T16:32:07.432Z","tipo":"medida","id":"CC-852","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":62021765,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":19647772,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T16:32:44.326Z","tipo":"estado","id":"CC-1093","de":"EM","para":"PR","porque":"alvos.json é JSON válido e pierre-app, pierre-svc e pierre-jogo passam no validarAlvo (19/11)"}
+{"em":"2026-11-19T16:32:47.025Z","tipo":"medida","id":"CC-1093","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":62041733,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":19667740,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T16:32:47.621Z","tipo":"estado","id":"CC-1093","de":"PR","para":"OK","porque":"alvos.json é JSON válido e pierre-app, pierre-svc e pierre-jogo passam no validarAlvo (19/11)"}
+{"em":"2026-11-19T16:32:50.217Z","tipo":"medida","id":"CC-1093","estado":"OK","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":62041733,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":19667740,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T16:33:00.422Z","tipo":"estado","id":"CC-1072","de":"PR","para":"OK","porque":"robô: test-cc1072.mjs passou"}
+{"em":"2026-11-19T16:33:04.495Z","tipo":"medida","id":"CC-1072","estado":"OK","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":62046197,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":19672204,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T16:33:05.625Z","tipo":"estado","id":"CC-1075","de":"PR","para":"OK","porque":"robô: test-encerrar.mjs passou"}
+{"em":"2026-11-19T16:33:08.417Z","tipo":"medida","id":"CC-1075","estado":"OK","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":62046197,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":19672204,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T16:33:27.681Z","tipo":"medida","id":"CC-1095","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":62052395,"porModelo":{"claude-sonnet-5-5":57792974,"claude-opus-5-5":19678402,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T17:57:01.078Z","tipo":"estado","id":"CC-850","de":"B1","para":"EM"}
+{"em":"2026-11-19T17:57:04.788Z","tipo":"medida","id":"CC-850","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":62973991,"porModelo":{"claude-sonnet-5-5":58250962,"claude-opus-5-5":20142010,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T17:57:05.310Z","tipo":"estado","id":"CC-849","de":"B1","para":"EM"}
+{"em":"2026-11-19T17:57:08.065Z","tipo":"medida","id":"CC-849","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":62973991,"porModelo":{"claude-sonnet-5-5":58250962,"claude-opus-5-5":20142010,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T17:57:17.248Z","tipo":"estado","id":"CC-850","de":"EM","para":"PR","porque":"test-pedidos.mjs passa (6 verificações); rota /api/pedidos/detalhe devolve 11 micro tarefas e 5 eventos do CC-834 no backlog real; lista mostra 10 de 11"}
+{"em":"2026-11-19T17:57:19.949Z","tipo":"medida","id":"CC-850","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":62979442,"porModelo":{"claude-sonnet-5-5":58256413,"claude-opus-5-5":20142010,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T18:00:56.760Z","tipo":"estado","id":"CC-849","de":"EM","para":"PR","porque":"botão 'pelo maestro' e rota /api/gate/maestro no código desde 02/10; print do botão desligado e ligado na carta CC-849"}
+{"em":"2026-11-19T18:00:59.431Z","tipo":"medida","id":"CC-849","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":63055712,"porModelo":{"claude-sonnet-5-5":58332683,"claude-opus-5-5":20142010,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T19:03:14.277Z","tipo":"lugar","id":"CC-1103","de":"felipe","texto":"agora"}
+{"em":"2026-11-19T19:04:46.309Z","tipo":"estado","id":"CC-1103","de":"B1","para":"EM"}
+{"em":"2026-11-19T19:04:49.277Z","tipo":"medida","id":"CC-1103","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":63143291,"porModelo":{"claude-sonnet-5-5":58420262,"claude-opus-5-5":20142010,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T19:06:07.964Z","tipo":"estado","id":"CC-1103","de":"EM","para":"OK","porque":"robô: test-tipo-tarefa.mjs passou"}
+{"em":"2026-11-19T19:06:11.684Z","tipo":"medida","id":"CC-1103","estado":"OK","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":63202572,"porModelo":{"claude-sonnet-5-5":58479543,"claude-opus-5-5":20142010,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T19:27:01.182Z","tipo":"estado","id":"CC-1102","de":"B1","para":"EM"}
+{"em":"2026-11-19T19:27:05.565Z","tipo":"medida","id":"CC-1102","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":63214406,"porModelo":{"claude-sonnet-5-5":58491377,"claude-opus-5-5":20142010,"claude-fable-5-1":8438718}}
+{"em":"2026-11-19T19:27:47.535Z","tipo":"estado","id":"CC-1102","de":"EM","para":"PR","porque":"agents/executor-blender.md, executor-unity.md e conferidor.md com modelo e esforço do catálogo; test-ajudantes.mjs passa (4 grupos). Falta instalar em ~/.claude/agents (a sessão não escreve lá) e rodar um exemplo de cada"}
+{"em":"2026-11-19T19:27:50.317Z","tipo":"medida","id":"CC-1102","estado":"PR","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":63249399,"porModelo":{"claude-sonnet-5-5":58526370,"claude-opus-5-5":20142010,"claude-fable-5-1":8438718}}
+{"em":"2026-11-21T22:24:26.765Z","tipo":"criada","id":"CC-1104","estado":"B0","texto":"mas não é só p´blender e vps, é pra qualquer agente em qualquer projeto"}
+{"em":"2026-11-21T22:24:49.532Z","tipo":"estado","id":"CC-1104","de":"B0","para":"B1"}
+{"em":"2026-11-21T22:24:49.532Z","tipo":"lugar","id":"CC-1104","de":"felipe","texto":"agora"}
+{"em":"2026-11-21T22:26:14.056Z","tipo":"estado","id":"CC-1104","de":"B1","para":"EM"}
+{"em":"2026-11-21T22:26:17.459Z","tipo":"medida","id":"CC-1104","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":63964344,"porModelo":{"claude-sonnet-5-5":58829901,"claude-opus-5-5":20553424,"claude-fable-5-1":8438718}}
+{"em":"2026-11-21T22:42:03.548Z","tipo":"estado","id":"CC-1104","de":"EM","para":"OK","porque":"robô: test-ajudantes.mjs passou"}
+{"em":"2026-11-21T22:42:07.405Z","tipo":"medida","id":"CC-1104","estado":"OK","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":64180783,"porModelo":{"claude-sonnet-5-5":58829901,"claude-opus-5-5":20769863,"claude-fable-5-1":8438718}}

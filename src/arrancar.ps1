@@ -70,6 +70,8 @@ while ($true) {
   }
 
   $ultimaPartida = Get-Date
+  # CC-1104: a marca de painel de verdade. Com ela o painel instala as skills e os ajudantes do repositório ao subir.
+  $env:CC_PAINEL_REAL = '1'
   $node = Start-Process -FilePath "node" -ArgumentList "cc.mjs", "--web-only", "--port", "$Port" -WorkingDirectory $repo -PassThru -WindowStyle Hidden
   Write-Output "[arrancar] painel subiu, pid=$($node.Id), $(Get-Date -Format 'HH:mm:ss')"
 

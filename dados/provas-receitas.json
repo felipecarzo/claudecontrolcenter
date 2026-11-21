@@ -1,0 +1,31 @@
+{
+  "CC-1087": { "tela": "view-decisoes", "seletor": "#view-decisoes .c2-grupo", "o_que": "o cartão de sessões agrupadas da tela Sessões" },
+  "CC-1045": { "tela": "view-hooks", "o_que": "o topo da aba Hooks, com quanto os hooks fazem você esperar" },
+  "CC-865": { "tela": "view-inicio", "o_que": "a tela Início, para ver o nome Ogumia no lugar de Cockpit" },
+  "CC-765": { "tela": "view-decisoes", "largura": 1920, "altura": 1080, "o_que": "a tela Sessões em tela larga (1920 px), com os painéis" },
+  "CC-795": { "tela": "view-gate", "largura": 1100, "altura": 800, "seletor": "#gate-centro .gate-painel-topo", "o_que": "o cabeçalho da conversa do Coderoom com o menu de três pontos fechado e aberto, em 1100 px",
+    "variantes": [
+      { "rotulo": "menu fechado", "antes": ["document.getElementById('gate-canto').classList.contains('aberto') && document.querySelector('[data-gate-canto-tg]').click()"] },
+      { "rotulo": "menu aberto", "antes": ["document.getElementById('gate-canto').classList.contains('aberto') || document.querySelector('[data-gate-canto-tg]').click()"] } ] },
+  "CC-988": { "tela": "view-inicio", "largura": 1920, "altura": 1080, "o_que": "a tela inteira com a barra direita (responder sessões) em duas larguras",
+    "variantes": [
+      { "rotulo": "barra direita em 384 px (padrão)", "antes": ["LAT.on = true; c2RenderLateral(); aplicarLarguraLat(384)"] },
+      { "rotulo": "barra direita arrastada para 620 px", "antes": ["aplicarLarguraLat(620)"] } ] },
+  "CC-990": { "tela": "view-inicio", "largura": 2560, "altura": 1300, "seletor": "#lateral-dir", "o_que": "a barra direita com a letra em 100% e aumentada pelo A+, numa tela de 2560 px (em 1920 com as duas barras o A+ não tem espaço para crescer)",
+    "variantes": [
+      { "rotulo": "letra normal", "antes": ["LAT.on = true; c2RenderLateral(); escalaAtual = escalaAplicar(1)"], "medir": "'o topo mostra ' + document.getElementById('fonte-pct').textContent" },
+      { "rotulo": "depois de 5 toques no A+", "antes": ["for (let i = 0; i < 5; i++) document.querySelector('[data-fonte=\"1\"]').click()"], "medir": "'o topo mostra ' + document.getElementById('fonte-pct').textContent" } ] },
+  "CC-850": { "tela": "view-tarefas", "largura": 900, "altura": 1200, "seletor": ".c2-kv:has([data-pedido-abrir$=\"|CC-834\"])", "o_que": "o pedido CC-834 aberto na lista de pedidos: o andamento X de Y, cada micro tarefa com o que o robô viu, e o diário",
+    "variantes": [
+      { "rotulo": "pedido CC-834 aberto", "antes": ["(async function(){ const esp=async(f)=>{ for (let i=0;i<40;i++){ const x=f(); if (x) return x; await new Promise(r=>setTimeout(r,200)); } return null; }; const m=await esp(()=>document.querySelector('[data-pedido-mais]')); if (m && m.textContent.indexOf('mais')>=0) { m.click(); await new Promise(r=>setTimeout(r,600)); } (await esp(()=>document.querySelector('[data-pedido-abrir$=\"|CC-834\"]'))).click(); await new Promise(r=>setTimeout(r,2500)); })()"] } ] },
+  "CC-849": { "tela": "view-gate", "largura": 1100, "altura": 900, "seletor": "#gate-centro", "o_que": "o menu de três pontos do Coderoom com o botão 'pelo maestro': desligado e depois ligado",
+    "variantes": [
+      { "rotulo": "menu aberto, pelo maestro desligado", "antes": ["document.getElementById('gate-canto').classList.contains('aberto') || document.querySelector('[data-gate-canto-tg]').click()", "document.getElementById('gate-maestro').getAttribute('aria-pressed') === 'true' && document.getElementById('gate-maestro').click()"], "medir": "'o botão diz: ' + document.getElementById('gate-maestro').textContent" },
+      { "rotulo": "depois de tocar no botão", "antes": ["document.getElementById('gate-canto').classList.contains('aberto') || document.querySelector('[data-gate-canto-tg]').click()", "document.getElementById('gate-maestro').getAttribute('aria-pressed') === 'true' || document.getElementById('gate-maestro').click()"], "medir": "'o botão diz: ' + document.getElementById('gate-maestro').textContent" } ] },
+  "CC-993": { "texto": { "arquivo": "~/.claude/skills/regras-design/SKILL.md", "de": "^## 16\\. Nada fino" }, "o_que": "a regra 16 das regras de design" },
+  "CC-1013": { "texto": { "arquivo": "~/.claude/skills/regras-design/SKILL.md", "de": "^## 17\\. As barras" }, "o_que": "a regra 17 das regras de design" },
+  "CC-1034": { "texto": { "arquivo": "CLAUDE.md", "de": "^## Regra de produto" }, "o_que": "a regra de produto no CLAUDE.md do cockpit" },
+  "CC-1056": { "texto": { "arquivo": "~/.claude/CLAUDE.md", "de": "^## Regras de escrita: fonte" }, "o_que": "as instruções globais, que só apontam para a fonte única" },
+  "CC-1024": { "texto": { "arquivo": "docs/CC-1024.md", "de": "^## Resultado", "linhas": 10 }, "o_que": "o relatório da medição lado a lado" },
+  "CC-1042": { "texto": { "arquivo": "docs/diario/2026-10-08.md", "de": "^### CC-1042", "linhas": 8 }, "o_que": "o diário de 12/10 com os números" }
+}

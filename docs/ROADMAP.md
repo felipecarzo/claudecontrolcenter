@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-178 abertos, 899 fechados, 1077 no total. Gerado em 2026-11-07.
+185 abertos, 905 fechados, 1090 no total. Gerado em 2026-11-21.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -20,6 +20,8 @@
 | CC-960 | andando · 6 de 7 | - | trocar modelo e esforco sozinho pela complexidade da tarefa, com regras reais em todos os projetos |
 | CC-1056 | prova | - | regras de escrita unificadas numa fonte so, com a regra nova defina antes de concluir, e os outros lugares apontando para ela |
 | CC-1059 | definida | - | aviso 'projetos sairam do quadro' dispara para pasta renomeada (videolab virou medialab em 08/10) |
+| CC-1094 | prova | - | Os ganchos de fim de resposta fazem a sessão repetir a resposta inteira, resumo junto, de 2 a 4 vezes |
+| CC-1102 | prova | - | Ajudantes padrão globais com modelo e esforço fixos (Blender, Unity, conferir e atualizar o painel), que devolvem só número e print |
 
 ## projetos
 
@@ -120,7 +122,7 @@
 | CC-1047 | andando | - | aba Hooks diz o que CADA hook faz, nao so o tipo |
 | CC-1048 | prova | - | aba Hooks diz o que CADA hook faz, nao so o tipo |
 | CC-1049 | prova | - | aba Hooks mostra quanto token cada hook poe na conversa (por disparo e total) e periodos de 1, 7, 15, 30 e 60 dias |
-| CC-1051 | andando | - | botao terminal do Claude no cartao do projeto da aba Projetos, junto do teste de voo |
+| CC-1051 | prova | - | botao terminal do Claude no cartao do projeto da aba Projetos, junto do teste de voo |
 | CC-1052 | prova | - | painel a conversa das Sessoes vira o Claude Code em app: comandar a sessao com conversa formatada, perguntas em opcoes, barra e modelo |
 | CC-1053 | prova | - | no celular a conversa da sessao abre em tela cheia como o app, minimiza para uma pilula fixa no topo, e a tela nao pula mais para o topo |
 | CC-1055 | prova | - | resposta de pergunta pelo painel chega na sessao mas o painel diz que a sessao nao confirmou |
@@ -130,6 +132,8 @@
 | CC-1089 | prova | - | Porta de entrada repete uma vez quando a conexão com o painel cai antes de enviar, e a tela para de culpar religamento |
 | CC-1090 | prova | - | Sessão fechada no app (/exit, Remote Control 4090) sai do QA, com botão encerrar e aviso de resposta parada |
 | CC-1091 | definida | - | abrir o painel pelo endereço antigo #framework dá erro 'Cannot access C2 before initialization' |
+| CC-1092 | prova | - | A aba Sessões do projeto não oferece fechar conversa do Coderoom (print dele: sessão de 17 dias só com 'abrir') |
+| CC-1097 | definida | - | painel do PC trava 6 a 7 s a cada 30 s por tres varreduras sincronas sem cache util |
 
 ## framework
 
@@ -169,15 +173,14 @@
 | CC-1067 | andando | - | Modo plantão: por algumas horas o cockpit toca os projetos sozinho, respondendo perguntas e empurrando sessões paradas, enquanto ele dorme |
 | CC-1068 | andando | - | Regente: agente com critério que toca cada projeto até o MVP, decide, conversa no cockpit e aprende com as correções dele |
 | CC-1069 | prova | - | Gancho que confere cada ação automática contra o que ele pediu e barra o que ele não pediu |
-| CC-1072 | prova | - | Ganchos PreCompact (resumo em português) e título do terminal, em node, no padrão dos guardas |
 | CC-1073 | prova | - | Conferir o fazer: a conferência do feito contra o pedido roda também em turno com ação de risco |
 | CC-1074 | definida | - | Agrupar projetos em conglomerados no painel, com cada jogo um projeto próprio dentro de uma pasta de coleção |
-| CC-1075 | prova | - | Comando /encerrar: commit e push do trabalho da sessão, marca encerrada no painel e fecha o processo |
 | CC-1076 | prova | - | Guia de funções escrito pelo Haiku, disparado por código quando uma frente termina, como parte do framework |
 | CC-1077 | definida | - | Organizar projetos e subprojetos por pastas no gerenciador: pasta agrupadora que também pode ser projeto |
 | CC-1078 | prova | - | Servidor de tradução do app Tradutor na VPS, só texto, com Haiku e teto de gasto |
 | CC-1079 | prova | - | Celular com rotação travada não pode parar no aviso de girar: o jogo abre na versão do lado em que a tela está |
 | CC-1080 | andando | - | Backup e restauração de projeto num pacote só: baixar, tirar da VPS e voltar igual, sem IA |
+| CC-1098 | definida | - | Cockpit da VPS avisa quando o CrowdSec bloqueia o IP do PC e tem botao para desbloquear |
 
 ## coderoom
 
@@ -216,6 +219,10 @@
 | CC-853 | prova | - | visualizações do backlog em dado: kanban melhor e roteiro animado com marcos, meio soft-gamified |
 | CC-860 | prova | - | skill do Nisaba: a sessão do próprio projeto avalia e instala o sistema nele, aos poucos |
 | CC-864 | prova | - | guia completo do Nisaba com analogias, do nascimento de um projeto ao pedido fechado, com um app de finanças pessoais como exemplo |
+| CC-1095 | andando | - | Prova automática: o robô tira print das telas dos itens em prova e monta a carta no Revisar um por um para ele aprovar |
+| CC-1099 | prova | - | Correção pedida por gancho aparece no chat como resposta a quem ele não vê; simplificar |
+| CC-1100 | definida | - | Uma sessão por frente: o cockpit abre a sessão da frente com o briefing, grava o HANDOFF e abre a próxima quando ela fecha |
+| CC-1101 | definida | - | Aviso de contexto cheio: passou de 40% da janela, o cockpit avisa que é hora de fechar a frente e abrir a próxima |
 
 ## maquinas
 

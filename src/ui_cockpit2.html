@@ -6661,6 +6661,7 @@
       <div class="grid-container so-uma">
         <div class="main-col">
           <div id="maq-corpo" class="bottom-grid"><p style="color:var(--text-dim);">lendo…</p></div>
+          <div id="maq-navegadores" style="margin-top:20px;"></div>
           <div id="maq-processos" style="margin-top:20px;"></div>
         </div>
       </div>
@@ -7367,7 +7368,7 @@
             if (targetId === 'view-vps') carregarVps();
             if (targetId === 'view-servidores') { if (!SERVERS) carregarServidores(); else renderServidores(); }
             if (targetId === 'view-docker') carregarDocker();
-            if (targetId === 'view-maquina') { renderMaquina(); carregarProcessos(); }
+            if (targetId === 'view-maquina') { renderMaquina(); carregarProcessos(); carregarNavegadores(); }
             /* CC-420: a tela do Digest PEDE ao abrir, em vez de ser um botão.
                Antes ela mostrava 16 caracteres — o rótulo de um botão — com
                300 KB de dado pronto do outro lado da rota. O botão existia
@@ -9791,6 +9792,32 @@
       try { PROCESSOS = (await (await fetch('/api/processos')).json()); if (PROCESSOS?.indisponivel) PROCESSOS = null; } catch { PROCESSOS = null; }
       processosCarregando = false;
       renderServidores();
+    }
+
+    /* CC-1096: navegador sem tela esquecido há mais de um dia. Em 19/11 um deles segurava 6,6 GB com 52 abas, 9 dias
+       depois de a sessão que o abriu ter acabado, e nada no painel dizia. Lido ao abrir a tela Máquina, nunca no tique. */
+    let NAVEGADORES = undefined, navArmado = null, navAviso = '';
+    async function carregarNavegadores() {
+      try { NAVEGADORES = (await (await fetch('/api/navegadores')).json()).navegadores; } catch { NAVEGADORES = undefined; }
+      renderNavegadores();
+    }
+    function renderNavegadores() {
+      const alvo = document.getElementById('maq-navegadores');
+      if (!alvo) return;
+      if (NAVEGADORES === null) { alvo.innerHTML = ''; return; } // máquina sem /proc: a leitura não existe aqui
+      if (NAVEGADORES === undefined) { alvo.innerHTML = '<p style="color:var(--text-dim);">lendo navegadores sem tela…</p>'; return; }
+      const aviso = navAviso ? `<p style="margin-bottom:10px;">${esc(navAviso)}</p>` : '';
+      if (!NAVEGADORES.length) { alvo.innerHTML = `<div class="card">${aviso}<p style="color:var(--text-dim);">nenhum navegador sem tela aberto há mais de um dia</p></div>`; return; }
+      const dias = (h) => (h >= 48 ? `${Math.round(h / 24)} dias` : `${h} horas`);
+      alvo.innerHTML = `<div class="card" style="border-left:3px solid var(--amber);">
+        <h2>NAVEGADOR SEM TELA ESQUECIDO</h2>${aviso}
+        <p style="color:var(--text-dim);margin-bottom:10px;">navegador que alguma sessão abriu para testar e não fechou. Ele segue ocupando memória até alguém fechar.</p>
+        ${NAVEGADORES.map((n) => `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);">
+          <div><b>${(n.memoriaMB / 1024).toFixed(1)} GB</b>${n.abas == null ? '' : ` · ${n.abas} aba(s)`} · aberto há ${dias(n.horas)}
+            <div style="font-size:12px;color:var(--text-dim);">${n.perfil ? 'perfil ' + esc(n.perfil) : 'perfil padrão'}${n.porta ? ' · porta ' + esc(n.porta) : ''}</div></div>
+          <button class="btn compacto" style="background:var(--red-bg);color:var(--red);" data-nav-fechar="${n.pid}">${navArmado === n.pid ? 'confirmar: fechar?' : 'fechar'}</button>
+        </div>`).join('')}
+      </div>`;
     }
 
     const cauda = (p, n = 42) => (p.length > n ? '…' + p.slice(-(n - 1)) : p);
@@ -19086,6 +19113,14 @@
         return carregarServidores(true);
       }
       if (tr.dataset.processosAtualizar !== undefined) return carregarProcessos(true);
+      if (tr.dataset.navFechar) {
+        const pid = Number(tr.dataset.navFechar);
+        if (navArmado !== pid) { navArmado = pid; return renderNavegadores(); }
+        navArmado = null; tr.disabled = true; tr.textContent = 'fechando…';
+        const r = await post('/api/navegadores/fechar', { pid });
+        navAviso = r?.ok ? `fechado: ${(r.memoriaMB / 1024).toFixed(1)} GB devolvidos` : `não fechou: ${r?.erro || 'sem resposta'}`;
+        return carregarNavegadores();
+      }
 
       // ===== HOOKS =====
       if (tr.dataset.hkProvar !== undefined) return provarHooks();
@@ -19688,7 +19723,7 @@
         if (typeof SERVERS !== 'undefined' && SERVERS) renderServidores(); else carregarServidores();
       }
       if (aba === 'docker' && typeof carregarDocker === 'function') carregarDocker();
-      if (aba === 'maquina' && typeof renderMaquina === 'function') { renderMaquina(); carregarProcessos(); }
+      if (aba === 'maquina' && typeof renderMaquina === 'function') { renderMaquina(); carregarProcessos(); carregarNavegadores(); }
       /* A VPS NÃO carrega sozinha, e isso é decisão antiga: ela é a única
          chamada de rede perigosa do painel, com a chave dele num processo que
          religa no login. Só sob clique, dentro dela. */
@@ -21816,13 +21851,37 @@
         + '<label class="c2-mini c2-ped-proj">projeto do pedido <select data-pedido-proj>' + c2PedidoOpcoes() + '</select></label>'
         + (aviso ? '<div style="margin-top:6px">' + aviso + '</div>' : '') + '</div>';
     }
+    /* CC-850: o pedido aberto: o andamento, cada micro tarefa com a prova do robô e o diário com as palavras dele */
+    function c2PedidoDetalheHtml(d) {
+      if (!d || d.lendo) return '<p class="c2-mini">lendo o pedido…</p>';
+      if (d.erro) return '<p class="c2-mini" style="color:var(--red)">' + esc(d.erro) + '</p>';
+      const hora = (e) => esc(String(e || '').slice(11, 16));
+      const micro = (d.micro || []).map((m) => '<div class="c2-kv" style="align-items:flex-start"><span style="flex:1;min-width:0">' + esc(m.titulo) + ' <span class="c2-mini">' + esc(m.id) + '</span>'
+        + (m.prova ? '<div class="c2-mini">robô viu: ' + esc(m.prova.replace(/^robô: /, '')) + '</div>' : '')
+        + (m.porque ? '<div class="c2-mini" style="color:var(--red)">' + esc(m.porque) + '</div>' : '')
+        + '</span><span class="c2-mini" style="white-space:nowrap;color:' + (PED_COR[m.rotulo] || 'var(--text-dim)') + '">● ' + esc(m.rotulo) + '</span></div>').join('');
+      const diario = (d.diario || []).map((e) => '<div class="c2-mini" style="padding:2px 0">' + hora(e.em) + ' · ' + esc(e.id) + ' · ' + (e.tipo === 'robo' ? (e.ok === false ? 'robô reprovou' : 'robô') : e.tipo === 'citacao' ? 'ele disse' : 'nota') + ': ' + esc(e.texto) + '</div>').join('');
+      return '<div class="c2-mini" style="margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:8px">'
+        + '<div><b>Andamento:</b> ' + (d.andamento ? d.andamento.feitas + ' de ' + d.andamento.total + ' micro tarefas feitas' : 'este pedido ainda não foi dividido em micro tarefas') + '</div>'
+        + (d.prova ? '<div style="margin-top:4px"><b>Prova do pedido:</b> ' + esc(d.prova.replace(/^robô: /, '')) + '</div>' : '')
+        + (micro ? '<div style="margin-top:6px"><b>Micro tarefas</b>' + micro + '</div>' : '')
+        + '<div style="margin-top:6px"><b>As palavras dele:</b> ' + esc(d.texto) + '</div>'
+        + (diario ? '<div style="margin-top:6px"><b>Diário</b>' + diario + '</div>' : '') + '</div>';
+    }
     function c2PedidosHtml() {
       const P = C2.ped; const l = P.dados?.pedidos || [];
       if (!P.dados) return '<p class="c2-vazio">lendo os pedidos…</p>';
       if (!l.length) return '<p class="c2-vazio">nenhum pedido ainda. O que você pedir acima aparece aqui, com o andamento.</p>';
-      return (P.todos ? l : l.slice(0, 6)).map((p) => '<div class="c2-kv" style="align-items:flex-start"><span style="flex:1;min-width:0">' + esc(p.texto.length > 120 ? p.texto.slice(0, 119) + '…' : p.texto)
-        + '<div class="c2-mini">' + seloLocal() + ' ' + esc(p.projeto) + ' · ' + esc(String(p.criado || '').split('-').reverse().slice(0, 2).join('/')) + ' · ' + esc(p.id) + '</div></span>'
-        + '<span class="c2-mini" style="white-space:nowrap;color:' + (PED_COR[p.rotulo] || 'var(--text-dim)') + '">● ' + esc(p.rotulo) + '</span></div>').join('')
+      P.det = P.det || {};
+      return (P.todos ? l : l.slice(0, 6)).map((p) => {
+        const k = p.raiz + '|' + p.id; const aberto = P.abertos.has('d:' + k);
+        const and = p.andamento ? ' · ' + p.andamento.feitas + ' de ' + p.andamento.total + ' micro tarefas' : '';
+        return '<div class="c2-kv" style="align-items:flex-start"><span style="flex:1;min-width:0">' + esc(p.texto.length > 120 ? p.texto.slice(0, 119) + '…' : p.texto)
+          + '<div class="c2-mini">' + seloLocal() + ' ' + esc(p.projeto) + ' · ' + esc(String(p.criado || '').split('-').reverse().slice(0, 2).join('/')) + ' · ' + esc(p.id) + esc(and) + '</div>'
+          + '<div class="c2-mini" style="margin-top:4px"><button class="c2-link" style="padding-left:0" data-pedido-abrir="' + esc(k) + '" aria-expanded="' + aberto + '">' + (aberto ? 'fechar o pedido' : 'abrir o pedido') + '</button></div>'
+          + (aberto ? c2PedidoDetalheHtml(P.det[k]) : '') + '</span>'
+          + '<span class="c2-mini" style="white-space:nowrap;color:' + (PED_COR[p.rotulo] || 'var(--text-dim)') + '">● ' + esc(p.rotulo) + '</span></div>';
+      }).join('')
         + (l.length > 6 ? '<div class="c2-mini" style="margin-top:6px"><button class="c2-link" style="padding-left:0" data-pedido-mais>' + (P.todos ? 'mostrar menos' : 'mais ' + (l.length - 6) + ' pedido(s)') + '</button></div>' : '');
     }
     /* CC-896 (#caminho): o backlog do projeto como estrada. Cada frente é um
@@ -22528,8 +22587,15 @@
       ev.target.closest('.c2-pedido')?.querySelector('[data-pedido-enviar]')?.click();
     });
     document.addEventListener('click', async (ev) => {
-      const b = ev.target.closest('[data-pedido-enviar],[data-pedido-grupo],[data-pedido-mais]'); if (!b) return;
+      const b = ev.target.closest('[data-pedido-enviar],[data-pedido-grupo],[data-pedido-mais],[data-pedido-abrir]'); if (!b) return;
       const P = C2.ped;
+      if (b.dataset.pedidoAbrir) { // CC-850: abre o pedido e lê o detalhe na hora (a cada abertura, para o andamento vir atual)
+        const k = b.dataset.pedidoAbrir; const [raiz, id] = k.split('|'); P.det = P.det || {};
+        if (P.abertos.has('d:' + k)) { P.abertos.delete('d:' + k); return c2RenderInicio(); }
+        P.abertos.add('d:' + k); P.det[k] = { lendo: true }; c2RenderInicio();
+        P.det[k] = await fetch('/api/pedidos/detalhe?raiz=' + encodeURIComponent(raiz) + '&id=' + encodeURIComponent(id)).then(c2Json).then((r) => (r.ok ? r : { erro: r.erro || 'não consegui abrir o pedido' })).catch((e) => ({ erro: e.message }));
+        return c2RenderInicio();
+      }
       if (b.dataset.pedidoGrupo) { const k = b.dataset.pedidoGrupo; P.abertos.has(k) ? P.abertos.delete(k) : P.abertos.add(k); return c2RenderInicio(); }
       if (b.hasAttribute('data-pedido-mais')) { P.todos = !P.todos; return c2RenderInicio(); }
       if (P.envio === 'indo') return;
@@ -26370,6 +26436,9 @@
         /* CC-686: encerrar fecha o terminal dela nesta máquina (e guarda a
            conversa para retomar), achado pela conversa. */
         + ((terms.find(([, v]) => v.conversa && v.conversa === s.conversa) || [])[0] ? '<button class="c2-link" style="color:var(--red)" data-remoto-desligar="' + esc(terms.find(([, v]) => v.conversa === s.conversa)[0]) + '">encerrar</button>' : '')
+        /* CC-1092, print dele: conversa do Coderoom não tem terminal nem processo, então nem parar nem encerrar
+           apareciam e ela ficava só com "abrir". Arquivar é o fechar dela, o mesmo dos outros cartões. */
+        + (s.tipo === 'coderoom' && s.estado !== 'trabalhando' ? '<button class="c2-link" style="color:var(--red)" data-gate-arquivar="' + esc(s.id) + '" data-gate-titulo="' + esc(s.assunto || '') + '" title="tira da lista; dá para desfazer">arquivar</button>' : '')
         + '<button class="btn compacto" data-ver-agente="' + esc(s.id) + '">abrir</button></span></div>'
         /* Item 6 (26/09): a última frase do agente, como na Início. */
         + (s.fala ? '<div class="pj-fala">' + esc(c2semMd(s.fala)) + '</div>' : '')

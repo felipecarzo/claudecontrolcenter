@@ -23,9 +23,9 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
 | tela | 20 | 20/20 | 13/20 | 20/20 | 0/20 | 20/20 |
-| acao | 382 | 382/382 | 54/382 | 0/382 | 0/382 | 0/382 |
+| acao | 384 | 384/384 | 54/384 | 0/384 | 0/384 | 0/384 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 177 | 177/177 | 3/177 | 0/177 | 0/177 | 0/177 |
+| endereco | 180 | 180/180 | 3/180 | 0/180 | 0/180 | 0/180 |
 | palavra | 90 | 90/90 | 10/90 | 90/90 | 0/90 | 90/90 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
@@ -57,7 +57,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `conhecimento` | viva | src/ui_cockpit2.html#view-conhecimento | funciona, estreito |
 | `remoto` | viva | src/ui_cockpit2.html#view-remoto | estreito |
 
-## acao (382)
+## acao (384)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -109,6 +109,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-remoto-dir` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-remoto-quieto` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-novo-campo` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-nav-fechar` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-abrir` | viva | src/ui_cockpit2.html | explica, estreito |
 | `data-copiar` | viva | src/ui_cockpit2.html | explica, estreito |
 | `data-srv-nome` | viva | src/ui_cockpit2.html | funciona, explica, estreito |
@@ -318,6 +319,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-msg-conversa` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-msg-cwd` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-msg-sug-i` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-pedido-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-lugar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-lugar-onde` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
@@ -456,7 +458,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-n` | viva | src/ui_cockpit2.html | explica, estreito |
 
-## endereco (177)
+## endereco (180)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -477,6 +479,8 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/agy-remote-control` | estatica | src/web.mjs | funciona, explica |
 | `/api/docker` | estatica | src/web.mjs | funciona, explica |
 | `/api/processos` | estatica | src/web.mjs | funciona, explica |
+| `/api/navegadores` | estatica | src/web.mjs | funciona, explica |
+| `/api/navegadores/fechar` | estatica | src/web.mjs | funciona, explica |
 | `/api/cockpit` | estatica | src/web.mjs | funciona, explica |
 | `/api/federacao` | estatica | src/web.mjs | funciona, explica |
 | `/api/federacao/pedir` | estatica | src/web.mjs | funciona, explica |
@@ -486,6 +490,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/federacao/pausar` | estatica | src/web.mjs | funciona, explica |
 | `/api/federacao/retomar` | estatica | src/web.mjs | funciona, explica |
 | `/api/glossario` | estatica | src/web.mjs | funciona, explica |
+| `/api/pedidos/detalhe` | estatica | src/web.mjs | funciona, explica |
 | `/api/pedidos` | estatica | src/web.mjs | funciona, explica |
 | `/api/meu` | estatica | src/web.mjs | funciona, explica |
 | `/api/fila-perdida` | estatica | src/web.mjs | funciona, explica |

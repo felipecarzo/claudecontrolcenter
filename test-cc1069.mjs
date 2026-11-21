@@ -153,7 +153,7 @@ escreverConfig({ ...Object.fromEntries(IDS.map((i) => [i, true])), 'confere-fala
 ok(passou(stop([fala('x'), resposta(AFIRMA)])), 'fala: interruptor desligado cala')
 escreverConfig(Object.fromEntries(IDS.map((i) => [i, true])))
 s = rodar('parada.mjs', { hook_event_name: 'Stop', cwd: TRABALHO, transcript_path: transcrito([fala('x'), resposta(AFIRMA)]) })
-ok(s.err.includes('[confere-fala]'), 'fala: o parada.mjs despacha o guarda')
+ok(passou(s) && !s.err.includes('[confere-fala]'), 'fala: o parada.mjs despacha o guarda, mas não barra (CC-1099: vira cobrança na próxima resposta)')
 
 /* ---------- 5. confere-pedido (UserPromptSubmit + PreToolUse) ---------- */
 const SESSAO = 'sessao-teste-1'

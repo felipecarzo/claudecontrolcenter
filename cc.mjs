@@ -70,6 +70,7 @@ const FLAGS_WITH_VALUE = new Set([
   // CC-1039: o login do gerador de baralho (a senha e o cookie vêm de variável de ambiente, nunca da linha)
   '--entrar', '--usuario', '--senha-env', '--cookie-env', '--seletor-usuario', '--seletor-senha', '--seletor-enviar',
   '--fonte', // CC-1086: a fonte da pesquisa na entrevista
+  '--tipo', '--faz', // CC-1104: o ajudante novo
 ])
 
 const has = (f) => argv.includes(f)
@@ -3354,6 +3355,62 @@ switch (cmd) {
     if (ensaio) console.log('\n(ensaio: nada foi rodado nem gravado)')
     console.log()
     break
+  }
+
+  /* CC-1103: o tipo de cada caixa do ROADMAP (Decidir, Executar, Conferir) e o modelo que ele pede.
+     tipos [arquivo.md] [--json]   sem arquivo, lê docs/ROADMAP.md da pasta atual */
+  case 'tipos': {
+    const { lerCaixas, contar } = await import('./src/tipoTarefa.mjs')
+    const arq = arg || 'docs/ROADMAP.md'
+    let md; try { md = fs.readFileSync(arq, 'utf8') } catch (e) { die(`não consegui ler ${arq}: ${e.message}`) }
+    const caixas = lerCaixas(md)
+    if (has('--json')) { console.log(JSON.stringify({ arquivo: arq, total: caixas.length, porTipo: contar(caixas), caixas }, null, 2)); break }
+    console.log(`\n  ${arq}: ${caixas.length} caixa(s)  ${Object.entries(contar(caixas)).map(([k, v]) => `${k} ${v}`).join(' · ')}\n`)
+    for (const c of caixas) console.log(`  ${c.feita ? '✓' : ' '} ${c.tipo.padEnd(8)} ${c.modelo}/${c.esforco}  ${c.texto.slice(0, 80)}${c.por === 'padrão' ? '  (verbo desconhecido: padrão)' : ''}`)
+    console.log()
+    break
+  }
+
+  /* CC-1104: os ajudantes de qualquer projeto.  ajudantes [listar] | qual "<tarefa>" | novo <nome> --tipo Executar|Conferir
+     [--faz "<domínio>"] [--sobrescrever] | instalar (skills e ajudantes do repositório para ~/.claude; fora da caixa de
+     proteção na VPS, direto no PC) */
+  case 'ajudantes': {
+    const A = await import('./src/ajudantes.mjs')
+    const S = await import('./src/skills.mjs')
+    const acao = arg || 'listar'
+    const alvo = positional[2]
+    if (acao === 'listar') {
+      for (const a of A.listarAjudantes()) console.log(`  ${a.instalado ? '✓' : ' '} ${a.nome.padEnd(22)} ${a.noRepo ? '' : '(só instalado, fora do repositório)'}${a.noRepo && !a.instalado ? 'falta instalar: cc ajudantes instalar' : ''}`)
+    } else if (acao === 'qual') {
+      if (!alvo) die('uso: cc ajudantes qual "<texto da tarefa>"')
+      const q = A.qual(alvo)
+      if (has('--json')) { console.log(JSON.stringify(q, null, 2)); break }
+      console.log(`  ${q.tipo} (${q.por === 'verbo' ? `pelo verbo "${q.verbo}"` : q.por}): ${q.modelo}/${q.esforco}, ${q.onde}`)
+      console.log(q.ajudante ? `  ajudantes que servem: ${q.servem.map((a) => a.nome + (a.instalado ? '' : ' (não instalado)')).join(', ') || `nenhum ainda (crie: cc ajudantes novo ${q.ajudante} --tipo ${q.tipo})`}` : '  sem ajudante: faça na sessão principal')
+    } else if (acao === 'novo') {
+      if (!alvo || !val('--tipo')) die('uso: cc ajudantes novo <nome> --tipo Executar|Conferir [--faz "<domínio>"] [--sobrescrever]')
+      try { console.log('  escrito: ' + A.criarAjudante({ nome: alvo, tipo: val('--tipo'), faz: val('--faz', ''), sobrescrever: has('--sobrescrever') })) } catch (e) { die('  ' + e.message) }
+      const r = S.instalarAgentesDoRepositorio().feitos.find((f) => f.ajudante === alvo)
+      console.log(r?.acao === 'falhou' ? `  NÃO instalado (${r.erro}): rode \`cc ajudantes instalar\` fora da caixa de proteção, ou religue o painel` : '  instalado em ~/.claude/agents (vale a partir da próxima sessão)')
+    } else if (acao === 'instalar') {
+      const sk = S.instalarDoRepositorio().feitos; const ag = S.instalarAgentesDoRepositorio().feitos
+      for (const f of sk) console.log(`  skill ${f.skill}/${f.agente}: ${f.acao}${f.erro ? ' (' + f.erro + ')' : ''}`)
+      for (const f of ag) console.log(`  ajudante ${f.ajudante}: ${f.acao}${f.erro ? ' (' + f.erro + ')' : ''}`)
+      if (!sk.length && !ag.length) console.log('  tudo já instalado, nada mudou')
+      if ([...sk, ...ag].some((f) => f.acao === 'falhou')) process.exit(1)
+    } else die('uso: cc ajudantes [listar] | qual "<tarefa>" | novo <nome> --tipo X | instalar')
+    break
+  }
+
+  /* CC-1095: prova automática. O robô fotografa a tela de cada item em prova (conferência olho:) e monta a carta
+     no Revisar um por um; o voto dele muda o estado.  automatica [--item <ID>] [--ensaio] */
+  case 'prova': {
+    if (arg !== 'automatica') die('uso: node cc.mjs prova automatica [--item <ID>] [--ensaio]')
+    const { montarDeck, aplicarVotosPendentes } = await import('./src/provaAutomatica.mjs')
+    if (!has('--ensaio')) for (const v of await aplicarVotosPendentes(process.cwd())) console.log('  voto aplicado: ' + v)
+    const r = await montarDeck(process.cwd(), { item: val('--item'), ensaio: has('--ensaio'), aoLinha: (l) => console.log('  ' + l) })
+    console.log(`\n${r.feitas.length} carta(s) pronta(s), ${r.semReceita.length} sem receita, ${r.falhas.length} falha(s)`)
+    process.exit(0)
   }
 
   default:

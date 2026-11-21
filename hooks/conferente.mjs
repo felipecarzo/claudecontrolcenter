@@ -34,7 +34,6 @@ try { dados = JSON.parse(fs.readFileSync(0, 'utf8')) } catch { sair() }
 const cfg = await import(urlDeModulo(AQUI, '../src/config.mjs')).catch(() => null)
 const cwd = dados?.cwd || process.cwd()
 if (cfg?.hookEnabled && !cfg.hookEnabled('conferente', undefined, cwd)) sair()
-const falaLigada = !cfg?.hookEnabled || cfg.hookEnabled('confere-fala', undefined, cwd)
 const segunda = !!dados?.stop_hook_active
 
 const arquivo = dados?.transcript_path || dados?.transcriptPath
@@ -49,7 +48,8 @@ try {
   const sem = C.limpar(fala)
   const home = os.homedir()
   const registro = R.registroDoTurno(arquivo)
-  const porFala = !!fala && !/nao conferi/.test(sem) && C.afirma(sem) && (segunda || !falaLigada)
+  /* CC-1099: o confere-fala não barra mais (vira cobrança da próxima), então não há segunda volta para esperar. */
+  const porFala = !!fala && !/nao conferi/.test(sem) && C.afirma(sem) && !segunda
   const risco = segunda ? [] : R.riscoDoRegistro(registro)
   if (porFala || risco.length) {
     const marca = path.join(home, '.local', 'share', 'agent-cockpit', 'conferente-marca', `${String(dados?.session_id || 'sem').replace(/[^\w-]/g, '_')}.json`)

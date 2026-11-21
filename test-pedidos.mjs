@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { adivinhar, criar, listar, ORIGEM } from './src/pedidos.mjs'
+import { adivinhar, criar, detalhar, listar, ORIGEM } from './src/pedidos.mjs'
 import * as B from './src/backlog.mjs'
 const t = (nome, fn) => { fn(); console.log('  ok   ' + nome) }
 const base = fs.mkdtempSync(path.join(os.tmpdir(), 'pedidos-'))
@@ -44,5 +44,24 @@ t('a lista mostra o estado do jeito dele e não lista item que ele não pediu', 
   const l = listar(projetos)
   assert.equal(l.length, 2)
   assert.equal(l.find((p) => p.id === id).rotulo, 'em andamento')
+})
+// CC-850: o pedido que ele mandou pelo maestro aparece na lista com o andamento, e abrir mostra micro tarefas, prova e diário
+t('pedido do maestro: lista com X de Y, e o detalhe traz micro tarefas, a prova do robô e o diário', () => {
+  const raiz = projetos[1].raiz; const arq = B.caminhoPadrao(raiz)
+  const pai = B.acrescentar({ prefixo: 'TT', natureza: 'PED', area: 'tela', tamanho: 'M', estado: 'EM', origem: 'felipe', citacao: 'quero a faixa escura sumindo', intencao: 'faixa', pronto: 'p', conferir: 'auto:build' }, arq).id
+  const f1 = B.acrescentar({ prefixo: 'TT', pai, estado: 'B1', origem: 'maestro', intencao: 'tirar a faixa do css', pronto: 'p', conferir: 'auto:build' }, arq).id
+  const f2 = B.acrescentar({ prefixo: 'TT', pai, estado: 'B1', origem: 'maestro', intencao: 'ajustar o html', pronto: 'p', conferir: 'auto:build' }, arq).id
+  B.mover(f1, 'OK', { prova: 'robô: alterou a.css; build passou' }, arq)
+  B.registrar([{ tipo: 'robo', id: f1, ok: true, texto: 'alterou a.css' }, { tipo: 'robo', id: f2, ok: false, texto: 'não mudou nada' }, { tipo: 'robo', id: 'OUTRO-1', ok: true, texto: 'de outro pedido' }], arq)
+  const l = listar(projetos).find((p) => p.id === pai)
+  assert.deepEqual(l.andamento, { feitas: 1, total: 2 })
+  const d = detalhar({ raiz, id: pai }, projetos)
+  assert.deepEqual(d.micro.map((m) => [m.id, m.rotulo]), [[f1, 'feita'], [f2, 'na fila']])
+  assert.match(d.micro[0].prova, /build passou/)
+  assert.equal(d.texto, 'quero a faixa escura sumindo')
+  assert.equal(d.diario.length, 2, 'só o diário deste pedido')
+  assert.equal(d.diario[1].ok, false)
+  assert.throws(() => detalhar({ raiz: '/etc', id: pai }, projetos), /não é conhecido/)
+  assert.throws(() => detalhar({ raiz, id: 'TT-999' }, projetos), /não existe/)
 })
 fs.rmSync(base, { recursive: true, force: true })

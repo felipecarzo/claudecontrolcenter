@@ -36,7 +36,7 @@ import { caminhoDe as caminhoDoProjeto, projetosComCaminho } from './caminho.mjs
 import { caminhoPorSprint, contaDaSemana } from './sprint.mjs'
 let caminhoLista = null
 let sprintsConta = null
-import { adivinhar as adivinharProjeto, criar as criarPedido, listar as listarPedidos } from './pedidos.mjs'
+import { adivinhar as adivinharProjeto, criar as criarPedido, detalhar as detalharPedido, listar as listarPedidos } from './pedidos.mjs'
 import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
   mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos, resumirBacklogs,
@@ -2006,6 +2006,14 @@ function handler(req, res) {
     return estadoProcessos({ force: url.searchParams.has('force') }).then((d) => send(res, 200, d || { indisponivel: true }))
   }
 
+  // CC-1096: navegador sem tela aberto há mais de um dia (lê /proc; null fora do Linux), e o fechar sob clique
+  if (url.pathname === '/api/navegadores') {
+    return import('./navegadores.mjs').then(async (N) => send(res, 200, { navegadores: await N.comAbas(N.navegadoresSemTela({ horas: Number(url.searchParams.get('horas') ?? 24) })) }))
+  }
+  if (url.pathname === '/api/navegadores/fechar' && req.method === 'POST') {
+    return comCorpoAsync(req, res, 1e3, async ({ pid }) => (await import('./navegadores.mjs')).fecharNavegador(pid))
+  }
+
   // "Onde eu mexo agora": projetos ordenados por urgência. Barato de
   // propósito — só relê os mesmos jobs do snapshot, sem tempo.mjs nem spawn,
   // então pode ser consultado à vontade.
@@ -2291,6 +2299,11 @@ function handler(req, res) {
   // chamado à vontade.
   /* CC-858 (#pedidos): o pedido que ele digita para os agentes e a lista dos
      pedidos com o estado. A limpeza das tarefas paradas é a gaveta da Início. */
+  // CC-850: o pedido aberto, com as micro tarefas, a prova do robô e o diário
+  if (url.pathname === '/api/pedidos/detalhe') {
+    const projetos = findProjects().map((raiz) => ({ raiz }))
+    try { return send(res, 200, { ok: true, ...detalharPedido({ raiz: url.searchParams.get('raiz'), id: url.searchParams.get('id') }, projetos) }) } catch (e) { return send(res, 200, { ok: false, erro: e.message }) }
+  }
   if (url.pathname === '/api/pedidos') {
     const projetos = findProjects().map((raiz) => ({ raiz }))
     if (req.method === 'POST') {
@@ -3340,6 +3353,8 @@ function handler(req, res) {
       const C = await import('./cartas.mjs')
       const r = C.votar(raiz, String(deck || ''), String(carta || ''), { escolhas, nota })
       if (r.ok) global.__cartasCache = null
+      // CC-1095: no baralho das provas, o voto dele muda o estado do item no backlog
+      if (r.ok && deck === 'provas-do-backlog') r.backlog = await (await import('./provaAutomatica.mjs')).aplicarVoto(raiz, String(carta), escolhas, nota)
       return { ok: !!r.ok, ...r }
     })
   }
@@ -5415,7 +5430,9 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
       /* CC-547: o painel do serviço anota a porta em que subiu, e o
          `cc status` lê daqui. Sem isso ele olhava a 8099 e dizia "fora do
          ar" com o painel na 5180. Instância de teste não anota. */
-      if (process.env.INVOCATION_ID || process.env.CC_VPS_LOCAL === '1') {
+      /* CC-1104: `CC_PAINEL_REAL` é a marca do lançador do Windows (arrancar.ps1). Sem ela, o painel do PC nunca
+         instalava skill nem ajudante do repositório. */
+      if (process.env.INVOCATION_ID || process.env.CC_VPS_LOCAL === '1' || process.env.CC_PAINEL_REAL === '1') {
         try {
           const dirP = path.join(os.homedir(), '.local', 'share', 'agent-cockpit')
           fs.mkdirSync(dirP, { recursive: true })
@@ -5427,6 +5444,8 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
         import('./skills.mjs').then((S) => {
           const r = S.instalarDoRepositorio()
           if (r.feitos.length) console.log('skills do repositório:', r.feitos.map((f) => `${f.skill}/${f.agente} ${f.acao}`).join(', '))
+          const a = S.instalarAgentesDoRepositorio()
+          if (a.feitos.length) console.log('ajudantes do repositório:', a.feitos.map((f) => `${f.ajudante} ${f.acao}`).join(', '))
         }).catch(() => { /* sem skills, o painel segue */ })
       }
       if (process.env.CC_VPS_LOCAL === '1') {

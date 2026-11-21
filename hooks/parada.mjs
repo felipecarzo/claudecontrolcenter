@@ -52,6 +52,33 @@ export const SOZINHOS = [
 
 const TETO_MS = 8000
 
+/* CC-1094, pedido dele em 18/11: cada "reenvie a resposta" virava a resposta inteira de novo na tela dele, resumo junto,
+   e 1 em cada 3 respostas era barrada (577 de 1755, de 29/10 a 18/11). Vale acima do que cada guarda pede. */
+/* CC-1099, pedido dele em 19/11: a volta extra respondia a um aviso que ele não vê, e virava texto que ele só entendia
+   abrindo o gancho. Agora ela se lê sozinha, e só existe quando um fato da resposta estava errado. */
+export const NAO_REPITA = 'Ele NÃO vê este aviso, só a sua resposta acima. Se um fato dela está errado ou faltou algo que muda o '
+  + 'que ele entendeu, escreva no máximo 3 linhas começando por "Correção:", dizendo o que estava errado e o certo, '
+  + 'sem citar aviso, gancho ou conferência. Se nada muda o que ele entendeu, não escreva nada.'
+
+/** CC-1099: só ele barra a resposta; os outros apontam forma, e isso vai para a próxima resposta, sem volta extra. */
+export const BARRAM = new Set(['conferente'])
+
+/** Onde fica o que os guardas de forma apontaram, até a próxima mensagem dele. */
+export const arquivoCobranca = async (sessao) => {
+  const { ARQUIVO_MEDIDAS_PARADA } = await import('../src/hooksMonitor.mjs')
+  return join(dirname(ARQUIVO_MEDIDAS_PARADA()), 'cobrancas', `${String(sessao || 'sem').replace(/[^\w-]/g, '_')}.txt`)
+}
+
+/** Entrega e apaga a cobrança da sessão: o gancho de mensagem põe no contexto da próxima resposta. */
+export async function tirarCobranca(sessao) {
+  try {
+    const arq = await arquivoCobranca(sessao)
+    const t = fs.readFileSync(arq, 'utf8'); fs.rmSync(arq, { force: true })
+    return t.trim() ? 'Na sua resposta anterior, estes pontos de forma ficaram para trás. Aplique nesta resposta, '
+      + 'sem comentar nem pedir desculpa por eles:\n' + t.trim() : null
+  } catch { return null }
+}
+
 /**
  * Junta os resultados como o Claude Code juntaria ganchos separados.
  * Exportada para o teste montar o esperado a partir dos guardas sozinhos.
@@ -66,7 +93,7 @@ export function juntar(resultados) {
       stderr: resultados.map((r) => r.stderr).filter(Boolean).join(''),
     }
   }
-  const motivo = barraram.map((r) => `[${r.nome}]\n${r.stderr.trimEnd()}`).join('\n\n')
+  const motivo = `${barraram.map((r) => `[${r.nome}]\n${r.stderr.trimEnd()}`).join('\n\n')}\n\n${NAO_REPITA}`
   if (!saidas.length) return { codigo: 2, stdout: '', stderr: `${motivo}\n` }
   /* Com saída 2 o Claude Code não lê o JSON do stdout, e o aviso que ia para a
      tela dele (o `systemMessage` do routia-fim) se perderia. Separados, os dois
@@ -198,7 +225,21 @@ if (principal) {
   if (process.env.PARADA_DETALHE) {
     try { fs.writeFileSync(process.env.PARADA_DETALHE, JSON.stringify(resultados)) } catch { /* só o teste pede */ }
   }
-  const { codigo, stdout, stderr } = juntar(resultados)
+  /* CC-1094: na segunda volta da mesma resposta só o conferente barra (ele existe para rodar nela, CC-1070); os outros
+     passam, mesmo os que não olham `stop_hook_active` (medido: 75 respostas barradas 2 ou 3 vezes seguidas). */
+  let sessao = null
+  try { sessao = JSON.parse(entrada)?.session_id || null } catch { /* sem entrada */ }
+  /* CC-1099: e na primeira volta também. O que os guardas de forma apontaram vira cobrança da próxima resposta. */
+  const forma = resultados.filter((r) => r.codigo === 2 && !BARRAM.has(r.nome))
+  if (forma.length) {
+    try {
+      const arq = await arquivoCobranca(sessao)
+      fs.mkdirSync(dirname(arq), { recursive: true })
+      fs.appendFileSync(arq, forma.map((r) => r.stderr.replace(/\n*A próxima volta passa\.?\s*$/i, '').trim()).join('\n\n') + '\n\n')
+    } catch { /* sem lugar para gravar: a forma fica sem cobrança, a resposta passa igual */ }
+  }
+  const valem = resultados.map((r) => (r.codigo === 2 && !BARRAM.has(r.nome) ? { ...r, codigo: 0, stderr: '' } : r))
+  const { codigo, stdout, stderr } = juntar(valem)
   if (stdout) process.stdout.write(stdout)
   if (stderr) process.stderr.write(stderr)
   /* Sai explícito: promessa solta de algum guarda não segura o fim da resposta. */

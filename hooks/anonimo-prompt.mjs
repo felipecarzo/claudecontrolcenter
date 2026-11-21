@@ -70,13 +70,21 @@ if (process.env.CLAUDE_CODE_ENTRYPOINT === 'sdk-cli' && (!cfg?.hookEnabled || cf
 
 /* CC-1069 item 5, confere-pedido: pedido grande ou de risco abre pendência e manda
    conferir com ele na caixa de escolha. Sempre limpa a pendência anterior. */
+const contexto = []
 if (!cfg?.hookEnabled || cfg.hookEnabled('confere-pedido', undefined, dados?.cwd || process.cwd())) {
   try {
     const { abrir } = await import(urlDeModulo(AQUI, './confere-pedido.mjs'))
     const ctx = abrir(dados)
-    if (ctx) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: ctx } }))
+    if (ctx) contexto.push(ctx)
   } catch { /* falha aberta */ }
 }
+/* CC-1099: o que os guardas de forma apontaram na resposta anterior chega aqui, em vez de uma volta extra na tela dele. */
+try {
+  const { tirarCobranca } = await import(urlDeModulo(AQUI, './parada.mjs'))
+  const c = await tirarCobranca(dados?.session_id)
+  if (c) contexto.push(c)
+} catch { /* falha aberta */ }
+if (contexto.length) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: contexto.join('\n\n') } }))
 
 if (cfg?.hookEnabled && !cfg.hookEnabled('anonimo-prompt')) liberar()
 

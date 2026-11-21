@@ -6,15 +6,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const casa = mkdtempSync(join(tmpdir(), 'status-'))
+// no Windows os.homedir() lê USERPROFILE, não HOME: sem as duas, o teste lê a pasta real da máquina
+const casaFalsa = { HOME: casa, USERPROFILE: casa }
 const rodar = (env) => spawnSync(process.execPath, ['cc.mjs', 'status', '--port', '59999'], {
-  encoding: 'utf8', env: { ...process.env, HOME: casa, CC_HOME: join(casa, '.claude'), ...env },
+  encoding: 'utf8', env: { ...process.env, ...casaFalsa, CC_HOME: join(casa, '.claude'), ...env },
 }).stdout
 
 assert.match(rodar({ SANDBOX_RUNTIME: '1' }), /área isolada/, 'dentro da área isolada, diz que não enxerga')
 assert.match(rodar({ SANDBOX_RUNTIME: '' }), /painel: fora do ar/, 'fora dela, porta sem ninguém é fora do ar')
 
 const porta = (env) => spawnSync(process.execPath, ['-e', 'import("./src/daemon.mjs").then((d) => console.log(d.portaDoPainel()))'], {
-  encoding: 'utf8', env: { ...process.env, HOME: casa, ...env },
+  encoding: 'utf8', env: { ...process.env, ...casaFalsa, ...env },
 }).stdout.trim()
 assert.equal(porta(), '8099', 'sem anotação, a porta padrão')
 mkdirSync(join(casa, '.local', 'share', 'agent-cockpit'), { recursive: true })

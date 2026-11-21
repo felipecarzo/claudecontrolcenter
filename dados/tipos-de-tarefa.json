@@ -1,0 +1,21 @@
+{
+  "_nota": "CC-1103: o catálogo único dos tipos de tarefa (pedido dele, economia de tokens). Cada tipo diz o modelo, o esforço, onde roda e quais verbos o reconhecem no começo de uma caixa do ROADMAP. Mexer aqui muda todos os projetos. Os códigos de modelo e esforço são os de src/modelo.mjs. Haiku não entra: nesta máquina `--model haiku` roda Sonnet, então o tipo Conferir usa Sonnet com esforço baixo.",
+  "padrao": "Decidir",
+  "tipos": {
+    "Decidir": {
+      "exemplos": "ler foto de referência, decidir a forma, achar a causa, planejar a frente, desambiguar o que ele pediu",
+      "modelo": "opus", "esforco": "high", "onde": "sessão principal da frente", "ajudante": null,
+      "verbos": ["decidir", "achar", "escolher", "planejar", "definir", "desambiguar", "analisar", "investigar", "ler", "desenhar", "projetar", "comparar", "avaliar", "diagnosticar", "descobrir", "propor", "esbocar", "estudar", "pesquisar", "revisar", "priorizar"]
+    },
+    "Executar": {
+      "exemplos": "render, varredura, ajustar até a meta, exportar, instalar, rodar script com critério de parada",
+      "modelo": "sonnet", "esforco": "medium", "onde": "ajudante isolado, que devolve só número e caminho do print", "ajudante": "executor", "ferramentas": "Read, Write, Edit, Glob, Grep, Bash",
+      "verbos": ["rodar", "exportar", "medir", "renderizar", "instalar", "ajustar", "implementar", "criar", "construir", "gerar", "modelar", "importar", "aplicar", "corrigir", "consertar", "mover", "copiar", "varrer", "otimizar", "compilar", "montar", "adicionar", "trocar", "refatorar", "animar", "texturizar", "configurar", "escrever", "baixar", "limpar", "renomear"]
+    },
+    "Conferir": {
+      "exemplos": "rodar teste, contar, atualizar ROADMAP e painel, montar print",
+      "modelo": "sonnet", "esforco": "low", "onde": "ajudante isolado ou gancho", "ajudante": "conferidor", "ferramentas": "Read, Glob, Grep, Bash",
+      "verbos": ["conferir", "testar", "contar", "atualizar", "validar", "verificar", "checar", "fotografar", "registrar", "mandar", "tirar", "listar", "confirmar"]
+    }
+  }
+}

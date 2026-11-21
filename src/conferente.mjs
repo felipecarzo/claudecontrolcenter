@@ -157,5 +157,5 @@ export function mensagem(v) {
     bloco('Feito e não pedido', P.feito_nao_pedido),
   ].filter(Boolean)
   return `[conferente] A resposta não bate com o que foi feito ou pedido.\n${linhas.join('\n')}\n`
-    + 'Reenvie a resposta corrigindo cada item: troque por o que a saída mostra, diga que não foi feito, ou tire a afirmação.\nA próxima volta passa.'
+    + 'Corrija só o item que muda o que ele entendeu: o que a saída mostra, ou que não foi feito.\nA próxima volta passa.'
 }
