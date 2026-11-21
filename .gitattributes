@@ -1,0 +1,4 @@
+# CC-1105: o que o Claude Code lê pelo cabeçalho (ajudantes e skills) sai do Git sempre com LF, também no Windows.
+# Sem isto o PC recebia CRLF, o teste dos ajudantes falhava lá e não se sabia se o cabeçalho era lido.
+agents/*.md text eol=lf
+skills/**/SKILL.md text eol=lf

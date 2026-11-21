@@ -1428,3 +1428,7 @@
 {"em":"2026-11-21T22:26:17.459Z","tipo":"medida","id":"CC-1104","estado":"EM","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":63964344,"porModelo":{"claude-sonnet-5-5":58829901,"claude-opus-5-5":20553424,"claude-fable-5-1":8438718}}
 {"em":"2026-11-21T22:42:03.548Z","tipo":"estado","id":"CC-1104","de":"EM","para":"OK","porque":"robô: test-ajudantes.mjs passou"}
 {"em":"2026-11-21T22:42:07.405Z","tipo":"medida","id":"CC-1104","estado":"OK","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":64180783,"porModelo":{"claude-sonnet-5-5":58829901,"claude-opus-5-5":20769863,"claude-fable-5-1":8438718}}
+{"em":"2026-11-21T23:37:57.722Z","tipo":"criada","id":"CC-1105","estado":"EM"}
+{"em":"2026-11-21T23:38:05.152Z","tipo":"estado","id":"CC-1105","de":"EM","para":"OK","porque":"robô: test-ajudantes.mjs passou"}
+{"em":"2026-11-21T23:38:08.260Z","tipo":"medida","id":"CC-1105","estado":"OK","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":64265947,"porModelo":{"claude-sonnet-5-5":58829901,"claude-opus-5-5":20855027,"claude-fable-5-1":8438718}}
+{"em":"2026-11-21T23:38:16.817Z","tipo":"medida","id":"CC-1105","estado":"OK","sessao":"d090ae1b-918b-4e36-b7e2-050efc6e284a","tokens":64269478,"porModelo":{"claude-sonnet-5-5":58829901,"claude-opus-5-5":20858558,"claude-fable-5-1":8438718}}
