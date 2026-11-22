@@ -136,20 +136,39 @@ t('CC-872: pytest é reconhecido, com ou sem alvo, e nunca vira comando livre', 
 })
 {
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
+  const { ehWindows } = await import('./src/platform.mjs')
   const proj = fs.mkdtempSync(path.join(os.tmpdir(), 'conf-py-'))
-  fs.mkdirSync(path.join(proj, '.venv', 'bin'), { recursive: true })
-  const py = path.join(proj, '.venv', 'bin', 'python')
-  // um python de mentira: o do .venv do projeto vence o do sistema (que aqui nem tem pytest)
-  fs.writeFileSync(py, '#!/bin/sh\necho "3 passed"\nexit 0\n'); fs.chmodSync(py, 0o755)
-  const passou = await rodarConferencia(proj, lerConferencia('auto:pytest'))
-  fs.mkdirSync(path.join(proj, 'tests')); fs.writeFileSync(path.join(proj, 'tests', 'test_x.py'), 'def test_x(): assert 1 == 2\n')
-  fs.writeFileSync(py, '#!/bin/sh\necho "AssertionError: 1 != 2"\nexit 1\n')
-  const falhou = await rodarConferencia(proj, lerConferencia('auto:pytest tests/test_x.py'))
+  if (!ehWindows) {
+    fs.mkdirSync(path.join(proj, '.venv', 'bin'), { recursive: true })
+    const py = path.join(proj, '.venv', 'bin', 'python')
+    // um python de mentira: o do .venv do projeto vence o do sistema (que aqui nem tem pytest)
+    fs.writeFileSync(py, '#!/bin/sh\necho "3 passed"\nexit 0\n'); fs.chmodSync(py, 0o755)
+    const passou = await rodarConferencia(proj, lerConferencia('auto:pytest'))
+    fs.mkdirSync(path.join(proj, 'tests')); fs.writeFileSync(path.join(proj, 'tests', 'test_x.py'), 'def test_x(): assert 1 == 2\n')
+    fs.writeFileSync(py, '#!/bin/sh\necho "AssertionError: 1 != 2"\nexit 1\n')
+    const falhou = await rodarConferencia(proj, lerConferencia('auto:pytest tests/test_x.py'))
+    t('CC-872: pytest que passa fecha com a prova escrita; o que falha mostra a asserção', () => {
+      assert.equal(passou.ok, true); assert.match(passou.prova, /robô: pytest passou/)
+      assert.equal(falhou.ok, false); assert.match(falhou.erro, /AssertionError: 1 != 2/)
+    })
+  } else {
+    /* CC-1115: no Windows o python de mentira (script de shell) não executa, o spawn dá ENOENT. Aqui vale o pytest
+       DE VERDADE do sistema, e sem ele o teste pula dizendo o que falta. */
+    const { execFileSync } = await import('node:child_process')
+    let temPytest = true; try { execFileSync('python', ['-m', 'pytest', '--version'], { stdio: 'ignore', windowsHide: true }) } catch { temPytest = false }
+    if (!temPytest) console.log('  pula CC-872: pytest de verdade (sem "python -m pytest" nesta máquina; instale com pip install pytest)')
+    else {
+      fs.mkdirSync(path.join(proj, 'tests')); fs.writeFileSync(path.join(proj, 'tests', 'test_ok.py'), 'def test_ok(): assert 1 == 1\n')
+      const passou = await rodarConferencia(proj, lerConferencia('auto:pytest'))
+      fs.writeFileSync(path.join(proj, 'tests', 'test_x.py'), 'def test_x(): assert 1 == 2\n')
+      const falhou = await rodarConferencia(proj, lerConferencia('auto:pytest tests/test_x.py'))
+      t('CC-872: pytest de verdade (Windows): o que passa fecha com a prova; o que falha mostra a asserção', () => {
+        assert.equal(passou.ok, true, passou.erro); assert.match(passou.prova, /robô: pytest passou/)
+        assert.equal(falhou.ok, false); assert.match(falhou.erro, /assert 1 == 2/)
+      })
+    }
+  }
   fs.rmSync(proj, { recursive: true, force: true })
-  t('CC-872: pytest que passa fecha com a prova escrita; o que falha mostra a asserção', () => {
-    assert.equal(passou.ok, true); assert.match(passou.prova, /robô: pytest passou/)
-    assert.equal(falhou.ok, false); assert.match(falhou.erro, /AssertionError: 1 != 2/)
-  })
 }
 {
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
@@ -352,8 +371,13 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
   const vivo = spawn(process.execPath, ['-e', 'setTimeout(()=>{},60000)'], { cwd: path.join(mono, 'apps', 'api') }) // servidor "rodando" dentro de apps/api
   await new Promise((ok) => setTimeout(ok, 300))
   const um = await declararConferenciaPadrao({ base, projeto: 'passa', ensaio: true })
-  const em = await declararConferenciaPadrao({ base, projeto: 'mono', ensaio: true })
-  const emReal = await declararConferenciaPadrao({ base, projeto: 'mono' })
+  /* CC-1115: cwdsVivos() lê /proc, que só existe no Linux. No Windows a lista de vivos entra pronta, e a leitura de /proc
+     fica sem prova aqui (o aviso diz isso). */
+  const { ehWindows: noWindows } = await import('./src/platform.mjs')
+  const vivos = noWindows ? [path.join(mono, 'apps', 'api')] : null
+  if (noWindows) console.log('  pula CC-852: leitura de /proc para achar servidor vivo (só Linux); a lista de vivos entra pronta')
+  const em = await declararConferenciaPadrao({ base, projeto: 'mono', ensaio: true, vivos })
+  const emReal = await declararConferenciaPadrao({ base, projeto: 'mono', vivos })
   vivo.kill()
   t('conferência padrão: --projeto com nome só acha a pasta da base', () => {
     assert.deepEqual(um.map((l) => [l.projeto, l.resultado]), [['passa', 'já tinha']]) // já declarada acima, e não "pasta não existe"
@@ -374,7 +398,7 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
   const { spawnSync } = await import('node:child_process')
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'casa-'))
-  const rodar = () => JSON.parse(spawnSync(process.execPath, ['-e', "import('./src/skills.mjs').then(S=>console.log(JSON.stringify(S.instalarDoRepositorio().feitos)))"], { env: { ...process.env, HOME: d, CC_HOME: path.join(d, '.claude') }, encoding: 'utf8' }).stdout)
+  const rodar = () => JSON.parse(spawnSync(process.execPath, ['-e', "import('./src/skills.mjs').then(S=>console.log(JSON.stringify(S.instalarDoRepositorio().feitos)))"], { env: { ...process.env, HOME: d, USERPROFILE: d, CC_HOME: path.join(d, '.claude') }, encoding: 'utf8' }).stdout) // CC-1115: no Windows os.homedir() segue USERPROFILE, e sem ele a skill caía na casa real
   const um = rodar(); const dois = rodar()
   const naCasa = fs.existsSync(path.join(d, '.claude', 'skills', 'nisaba', 'SKILL.md'))
   fs.rmSync(d, { recursive: true, force: true })

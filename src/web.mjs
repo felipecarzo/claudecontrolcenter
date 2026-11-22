@@ -17,7 +17,7 @@ import { PROJETOS_DIR as PROJETOS_DIR_SESSOES, readSessoes, todosOsJobs } from '
 import { perdidasDeTodas as perdidasDeTodasAsSessoes } from './fila.mjs'
 // `casaClaude()` e não `os.homedir()`: é o único lugar que resolve a pasta
 // `.claude`, e é o que faz `CC_HOME` isolar o painel de teste do real.
-import { casaClaude, caminhoAutostart, estadoServicoAsync, abrirJanelaTerminal, listarTerminais, wezterm } from './platform.mjs'
+import { casaClaude, caminhoAutostart, memoriaDosProcessos, estadoServicoAsync, abrirJanelaTerminal, listarTerminais, wezterm } from './platform.mjs'
 import { estadoGit } from './git.mjs'
 import { mapear as mapearAvenidas, resumo as resumoAvenidas } from './avenidas.mjs'
 import { mapear as mapearDependencias } from './dependencias.mjs'
@@ -41,7 +41,7 @@ import {
   LIMITE_PACOTE, enviar as enviarPacote, gravarPacote, lerPacotes, maquinasConhecidas,
   mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos, resumirBacklogs,
   pedirPermissao, ID_GANCHO, DECISOES_REMOTAS,
-  pedirMensagem, maquinaDaConversa, ID_CONVERSA, TECLAS_REMOTAS, cicloCurto, conversaDeOutraMaquina,
+  pedirMensagem, maquinaDaConversa, ID_CONVERSA, TECLAS_REMOTAS, cicloCurto, conversaDeOutraMaquina, entregarMensagemRemota,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
 /* O gate. Importado no TOPO, e não por `import()` dentro do handler: o handler
@@ -634,6 +634,19 @@ let vendoDeLaAte = 0
  * O cache de 20s é requisito, não enfeite: isto responde a um pedido que chega
  * de 30 em 30 segundos por máquina, e `readServers()` custa ~1,7s frio.
  */
+/* CC-1110: as portas desta máquina como vão no pacote, agora COM a memória de cada uma. Antes o campo não existia,
+   e toda linha de serviço de outra máquina dizia "sem leitura de memória" (a VPS mede, o pacote perdia o dado). */
+async function servidoresParaOPacote() {
+  const S = await import('./servers.mjs')
+  const lista = S.readServers({ semEspera: true }) || []
+  const mem = await memoriaDosProcessos([...new Set(lista.map((x) => x.pid).filter(Boolean))]).catch(() => new Map())
+  return lista.map((x) => ({
+    pid: x.pid, name: x.name, ports: x.ports, kind: x.kind,
+    project: x.project, path: x.path, sub: x.sub, since: x.since,
+    memoria: mem.get(x.pid) || null,
+  }))
+}
+
 let retratoCache = { em: 0, pacote: null }
 async function retratoDestaMaquina() {
   if (retratoCache.pacote && Date.now() - retratoCache.em < 20_000) return retratoCache.pacote
@@ -642,11 +655,7 @@ async function retratoDestaMaquina() {
 
   let servidores = null
   try {
-    const S = await import('./servers.mjs')
-    servidores = (S.readServers() || []).map((x) => ({
-      pid: x.pid, name: x.name, ports: x.ports, kind: x.kind,
-      project: x.project, path: x.path, sub: x.sub, since: x.since,
-    }))
+    servidores = await servidoresParaOPacote()
   } catch { /* varredura falhou: o resto do retrato continua valendo */ }
 
   let retrato = { travas: null, framework: null }
@@ -665,6 +674,10 @@ async function retratoDestaMaquina() {
     maquina: s.maquina, jobs: await marcarNoTerminal(await comUltimaFala(meus)), uso: s.uso, servidores,
     travas: retrato.travas, framework: retrato.framework, servico,
     codigo: await import('./codigoDaMaquina.mjs').then((M) => M.codigoDaqui()).catch(() => null),
+    /* CC-1111: causa medida de "a semana do PC diz só ele": este retrato é o ÚNICO caminho da VPS para o PC e
+       nunca levou horas (varredura cara), então o PC não tinha como somar. Vai só a semana, que sai do cache de
+       tempo já em disco (barato); sem `projetos`, de propósito, para a tela Tempo não achar que veio o completo. */
+    tempo: await import('./cockpit2.mjs').then((M) => { const sem = M.semanaParaPacote(); return sem ? { semana: sem } : null }).catch(() => null),
   })
   retratoCache = { em: Date.now(), pacote }
   return pacote
@@ -751,6 +764,9 @@ export async function empurrar({ comTempo = null, comPastas = null } = {}) {
           projeto: p.projeto, ativoMs: p.ativoMs, tokens: p.tokens,
         })),
       }
+      /* CC-1111: campo novo e OPCIONAL, os últimos 7 dias por dia + trechos, para a Início da outra
+         máquina somar a semana das duas. Pacote sem ele (versão velha) segue valendo. */
+      try { const sem = (await import('./cockpit2.mjs')).semanaParaPacote(); if (sem) tempo.semana = sem } catch { /* sem a semana */ }
     } catch { /* varredura falhou: manda o resto, tempo vai na próxima */ }
   }
 
@@ -843,13 +859,9 @@ export async function empurrar({ comTempo = null, comPastas = null } = {}) {
   let servidores = null
   if (agora - ultimoServidoresEnviado > INTERVALO_SERVIDORES_MS) {
     try {
-      const S = await import('./servers.mjs')
       /* Só o que a outra ponta usa para desenhar a linha. O objeto cru traz
          linha de comando inteira, que é o que engorda o pacote. */
-      servidores = (S.readServers() || []).map((x) => ({
-        pid: x.pid, name: x.name, ports: x.ports, kind: x.kind,
-        project: x.project, path: x.path, sub: x.sub, since: x.since,
-      }))
+      servidores = await servidoresParaOPacote()
     } catch { /* varredura falhou: manda o resto, os servidores vão na próxima */ }
   }
 
@@ -1092,13 +1104,8 @@ async function atenderPedidos(pedidos) {
          uma sessão daqui. A conversa pode vir pelo id curto do pacote: resolve
          pelo terminal do painel, o único lugar onde digitar é permitido. */
       if (p.acao === 'mensagem') {
-        let r = { ok: false, erro: 'pedido inválido' }
-        if (ID_CONVERSA.test(String(p.conversa || '')) && (p.tecla == null || TECLAS_REMOTAS.includes(p.tecla))) {
-          const vivas = Object.values(await estadoRemoto().catch(() => ({})))
-          const achada = vivas.find((s) => s?.conversa && (s.conversa === p.conversa || s.conversa.startsWith(p.conversa)))
-          const conversa = achada ? achada.conversa : p.conversa
-          r = p.tecla ? await teclaSessao({ conversa, tecla: p.tecla }) : await mensagemDecisao({ conversa, texto: String(p.texto || '') })
-        }
+        // CC-1114: a regra (só terminal do painel daqui, texto limpo de novo) mora em federacao.mjs, onde o teste a alcança
+        const r = await entregarMensagemRemota(p, { sessoes: estadoRemoto, enviar: mensagemDecisao, apertarTecla: teclaSessao })
         console.error(`[federação] mensagem para ${String(p.conversa).slice(0, 8)}, a pedido de ${p.de || 'outra máquina'}: ${r.ok ? 'entregue' : 'recusada, ' + r.erro}`)
         registrarMensagemRemota({ conversa: String(p.conversa), de: p.de || null, tecla: p.tecla || null, ok: Boolean(r.ok), erro: r.ok ? null : (r.erro || 'falhou'), pedidoEm: p.em || null })
         continue

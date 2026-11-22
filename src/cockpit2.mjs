@@ -599,6 +599,8 @@ function servicoDaPorta(s, dispositivo, agora) {
     projeto: s.project ? chaveDeProjeto(s.project) : null, nomeProjeto: s.project ? nomeCanonico(s.project) : null,
     dispositivo, desdeMs: s.startedAt ? Math.max(0, agora - s.startedAt) : null,
     url: s.url || null, encerravel: Boolean(s.dev && !s.protegido), detalhe: s.resumo || s.titulo || null,
+    /* CC-1110: o serviço de OUTRA máquina traz a memória que ela mesma mediu no pacote; o daqui é pintado depois. */
+    memoria: s.memoria > 0 ? s.memoria : null,
   }
 }
 
@@ -619,7 +621,7 @@ function servicoDoContainer(c, chaves, dispositivo) {
 export function montar({
   jobs = [], servers = [], containers = [], tarefas = [], tempo = null,
   local = { id: null, nome: 'esta máquina' }, agora = Date.now(), falaDe = () => null,
-  ignorar = [], maquinas = null, fechadas = new Set(), mantidas = new Set(), depois = {}, blocosTempo = null,
+  ignorar = [], maquinas = null, fechadas = new Set(), mantidas = new Set(), depois = {}, blocosTempo = null, semanasRemotas = [],
 } = {}) {
   const disp = local.nome || 'esta máquina'
   let fechadasOcultas = 0
@@ -826,8 +828,11 @@ export function montar({
 
   /* 26/09: com os trechos do cache, a semana sai por relógio e por agente,
      no dia de Brasília; sem eles, cai na conta antiga pelos totais. */
-  const semana = blocosTempo ? semanaDosBlocos(blocosTempo, { agora }) : semanaDe(tempo, agora)
+  const semana = blocosTempo ? semanaDosBlocos(blocosTempo, { agora, remotas: semanasRemotas }) : semanaDe(tempo, agora)
   if (blocosTempo && local.nome) semana.fonte = local.nome
+  /* CC-1111: `somadas` diz quais máquinas entraram na conta; a tela escreve "somando A e B" em vez de "só A". */
+  if (semana.somadas?.length) { semana.fonte = [semana.fonte || disp, ...semana.somadas].join(' + '); semana.somando = true }
+  delete semana.trechos // só serve ao pacote (semanaParaPacote); na tela seria peso a cada 5 s
   if (tempo?.projetos) {
     const hoje = new Date(agora).toISOString().slice(0, 10)
     for (const tp of tempo.projetos) {
@@ -923,7 +928,7 @@ export function montar({
  * `sessoes` é o mapa do cache de tempo: { arquivo: { cwd, blocos: [[ini, fim]] } }.
  * Puro. O fuso é fixo em -3h: o Brasil não tem horário de verão desde 2019.
  */
-export function semanaDosBlocos(sessoes, { agora = Date.now(), corteMs = 15 * 60_000, fusoMs = -3 * 3600_000 } = {}) {
+export function semanaDosBlocos(sessoes, { agora = Date.now(), corteMs = 15 * 60_000, fusoMs = -3 * 3600_000, remotas = [] } = {}) {
   const diaLocal = (ms) => new Date(ms + fusoMs).toISOString().slice(0, 10)
   const inicioDoDia = (dia) => Date.parse(`${dia}T00:00:00Z`) - fusoMs
   const dias = []
@@ -965,8 +970,23 @@ export function semanaDosBlocos(sessoes, { agora = Date.now(), corteMs = 15 * 60
     somarNosDias(unidos, 'ms', porProjeto, proj)
     todos.push(...unidos)
   }
+  /* CC-1111: o que a OUTRA máquina mandou. Horas de agente somam por dia, e o relógio é a união dos
+     trechos das duas (houve algum agente trabalhando em alguma), então o que roda ao mesmo tempo
+     nas duas não conta em dobro. Pacote velho, sem este bloco, simplesmente não entra. */
+  const trechosLocais = juntar(todos)
+  const somadas = []
+  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0)
+  for (const r of remotas || []) {
+    if (!r || !Array.isArray(r.dias)) continue
+    temAlgo = true
+    for (const rd of r.dias) { const d = dias.find((x) => x.dia === rd?.dia); if (d) d.ms += num(rd.ms) }
+    for (const p of r.porProjeto || []) { const n = nomeCanonico(String(p?.nome || '?')); porProjeto.set(n, (porProjeto.get(n) || 0) + num(p?.ms)) }
+    for (const t of Array.isArray(r.trechos) ? r.trechos : []) if (Array.isArray(t) && num(t[1]) >= janelaIni) todos.push([num(t[0]), num(t[1])])
+    somadas.push(r.nome || 'outra máquina')
+  }
   somarNosDias(juntar(todos), 'relogioMs')
   return {
+    trechos: trechosLocais, somadas,
     disponivel: temAlgo || Object.keys(sessoes || {}).length > 0,
     totalMs: dias.reduce((a, d) => a + d.ms, 0),
     relogioMs: dias.reduce((a, d) => a + d.relogioMs, 0),
@@ -1000,6 +1020,28 @@ export function semanaDe(tempo, agora = Date.now()) {
   return { disponivel: true, totalMs: dias.reduce((a, d) => a + d.ms, 0), dias, porProjeto: lista.slice(0, 5) }
 }
 
+/**
+ * CC-1111: a semana desta máquina no formato que viaja no pacote (campo OPCIONAL `tempo.semana`):
+ * horas de agente por dia, por projeto, e os trechos unidos para a outra ponta somar o relógio sem
+ * contar em dobro. Barato: lê só o cache de tempo (o mesmo da Início). `null` sem cache.
+ */
+export function semanaParaPacote(agora = Date.now(), blocos = blocosDoTempo()) {
+  if (!blocos) return null
+  const s = semanaDosBlocos(blocos, { agora })
+  return {
+    dias: s.dias.map((d) => ({ dia: d.dia, ms: d.ms })),
+    porProjeto: s.porProjeto.slice(0, 20),
+    trechos: s.trechos.slice(-500),
+  }
+}
+
+/** Das semanas que os pacotes das OUTRAS máquinas trouxeram, as que dá para somar. */
+export function semanasDosPacotes(pacotes = [], eu = null) {
+  return (pacotes || [])
+    .filter((p) => p?.tempo?.semana && (!eu || p.maquina?.id !== eu.id))
+    .map((p) => ({ nome: p.maquina?.nome || p.maquina?.id || 'outra máquina', ...p.tempo.semana }))
+}
+
 /* ───────────────────────────── a rota ───────────────────────────── */
 
 let tempoCache = { em: 0, dados: null }
@@ -1015,12 +1057,24 @@ function blocosDoTempo() {
   return dados
 }
 
+let tempoAtrasado = false
 function tempoBarato() {
   /* Só lê o que a aba Tempo já gravou. Sem cache no disco, a varredura custa
      segundos e não cabe numa rota que a tela chama a cada 5s. */
   if (!fs.existsSync(TEMPO_CACHE)) return null
   if (Date.now() - tempoCache.em < 60_000) return tempoCache.dados
-  try { tempoCache = { em: Date.now(), dados: resumoTempo({ corteMin: 15 }) } } catch { tempoCache = { em: Date.now(), dados: null } }
+  const recalcular = () => {
+    try { tempoCache = { em: Date.now(), dados: resumoTempo({ corteMin: 15 }) } } catch { tempoCache = { em: Date.now(), dados: null } }
+    tempoAtrasado = false
+  }
+  /* CC-1110, medido em 22/11 (etapa "tempo" de /api/cockpit2/lentas): a varredura leva de 1,5 a 3 s SÍNCRONA, e quem
+     abria o painel depois de um tempo parado esperava por ela. Com um valor já guardado, ele volta na hora e a conta
+     nova roda segundos depois, com a resposta já entregue. Só a primeira vez, sem nada guardado, espera. */
+  if (tempoCache.dados) {
+    if (!tempoAtrasado) { tempoAtrasado = true; setTimeout(recalcular, 3000).unref?.() }
+    return tempoCache.dados
+  }
+  recalcular()
   return tempoCache.dados
 }
 
@@ -1086,7 +1140,7 @@ async function montarResposta() {
 
   marca('sessoes')
   let servers = []
-  try { servers = readServers() } catch { servers = [] }
+  try { servers = readServers({ semEspera: true }) } catch { servers = [] }
   try { if (eu) servers = mesclar(servers, pacotes, eu, 'servidores') } catch { /* fica só o local */ }
   marca('portas')
   let containers = []
@@ -1104,6 +1158,7 @@ async function montarResposta() {
   marca('tempo')
   const dados = montar({
     jobs, servers, containers, tarefas, tempo, local, agora, maquinas, fechadas: lerFechadas(), mantidas: lerMantidas(), depois: lerDepois(), blocosTempo: blocosDoTempo(),
+    semanasRemotas: semanasDosPacotes(pacotes, eu),
     /* Sessão da outra máquina traz a fala pronta no pacote: o transcrito dela
        está no disco de lá e não atravessa. Quem é daqui é lido do arquivo. */
     /* ⚠️ `mesclar` carimba `origem` também nas sessões DESTA máquina (medido em

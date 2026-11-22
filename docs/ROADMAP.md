@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-187 abertos, 907 fechados, 1094 no total. Gerado em 2026-11-22.
+194 abertos, 907 fechados, 1101 no total. Gerado em 2026-11-22.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -22,6 +22,7 @@
 | CC-1059 | definida | - | aviso 'projetos sairam do quadro' dispara para pasta renomeada (videolab virou medialab em 08/10) |
 | CC-1094 | prova | - | Os ganchos de fim de resposta fazem a sessão repetir a resposta inteira, resumo junto, de 2 a 4 vezes |
 | CC-1102 | prova | - | Ajudantes padrão globais com modelo e esforço fixos (Blender, Unity, conferir e atualizar o painel), que devolvem só número e print |
+| CC-1112 | definida | - | Chat poluido pelas respostas aos ganchos: medir quais travas de fim de resposta mais devolvem e propor a juncao em um programa so |
 
 ## projetos
 
@@ -183,6 +184,11 @@
 | CC-1080 | andando | - | Backup e restauração de projeto num pacote só: baixar, tirar da VPS e voltar igual, sem IA |
 | CC-1098 | definida | - | Cockpit da VPS avisa quando o CrowdSec bloqueia o IP do PC e tem botao para desbloquear |
 | CC-1107 | andando | - | PC e VPS sempre à mostra um do outro: o resumo leva commit, arquivos soltos e versão do painel, e a tela mostra as diferenças |
+| CC-1109 | andando | - | Sessoes mortas e contadores que discordam: a lista de sessoes some com as esquecidas e os numeros batem |
+| CC-1110 | andando | - | Aba Maquinas lenta, erro do service worker e 'sem leitura de memoria' nos servicos da VPS |
+| CC-1111 | andando | - | Saude da VPS desatualizada (retrato de 20/08) e tempo de trabalho da VPS fora da semana |
+| CC-1113 | definida | - | Conferir na tela o que a sessao de 22/11 commitou: linha PC contra VPS, sessoes esquecidas, maquinas sem sinal, travas da VPS |
+| CC-1114 | andando | - | Responder pelo cockpit da VPS as sessoes do PC abertas pelo botao do cockpit (caminho B1) |
 
 ## coderoom
 
@@ -242,3 +248,4 @@
 |---|---|---|---|
 | CC-1057 | prova | - | fila do agente lista prova que espera o olho dele como trabalho que o agente faz sozinho |
 | CC-1088 | definida | - | Gravar no backlog regera o ROADMAP gerado: hoje só o comando lugar regera e o teste geral quebra a cada novo/mover |
+| CC-1115 | andando | - | npm test vermelho: pytest da conferência não roda no Windows, rota sem chamada no test-cockpit2, teste do Tinder preso a LF |

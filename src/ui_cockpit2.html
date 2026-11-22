@@ -9662,16 +9662,23 @@
       return carregarVps(true);
     }
 
+    /* CC-1111: a falha aparece (antes era engolida e o botão parecia morto) e o Início, que lê de C2X, recebe o retrato novo. */
+    let vpsErro = null;
     async function atualizarVps() {
-      vpsAtualizando = true;
+      vpsAtualizando = true; vpsErro = null;
       renderVps();
+      if (typeof c2Render === 'function') c2Render();
       try {
         const r = await fetch('/api/vps/atualizar', { method: 'POST' });
         const out = await r.json();
-        if (out.ok) VPS = { ...VPS, snapshot: out.snapshot, saude: out.saude };
-      } catch { /* a tela mostra o VPS.snapshot anterior; nada pior que isso */ }
+        if (out.ok) {
+          VPS = { ...VPS, snapshot: out.snapshot, saude: out.saude };
+          if (C2X.dados.vps) C2X.dados.vps = { ...C2X.dados.vps, snapshot: out.snapshot, saude: out.saude };
+        } else vpsErro = String(out.error || 'sem resposta').slice(0, 200);
+      } catch (e) { vpsErro = String(e.message || 'sem resposta').slice(0, 200); }
       vpsAtualizando = false;
       renderVps();
+      if (typeof c2Render === 'function') c2Render();
     }
 
     function viewVpsFormulario() {
@@ -9743,6 +9750,7 @@
       const saude = VPS.saude || { cor: 'neutro', frase: '', alertas: [] };
       const corSaude = { bom: 'var(--green)', atencao: 'var(--amber)', ruim: 'var(--red)', neutro: 'var(--text-muted)' }[saude.cor] || 'var(--text-muted)';
       alvo.innerHTML = `${vpsConfigAberto ? viewVpsFormulario() : ''}
+        ${vpsErro ? `<div class="card" style="border-left:3px solid var(--red);margin-bottom:16px;"><b style="font-size:12px;">não consegui atualizar a VPS</b><div style="font-size:11px;color:var(--text-muted);">${esc(vpsErro)}</div></div>` : ''}
         ${!s ? '<p style="color:var(--text-dim);">nunca lida, clique em "atualizar" pra entrar pela primeira vez</p>' : `
           <div class="card" style="border-left:3px solid ${corSaude};margin-bottom:16px;">
             <b style="color:${corSaude};">${esc(saude.frase)}</b>
@@ -19856,7 +19864,11 @@
     /* CC-283: o registro que completa a instalação como aplicativo.
        Falha aberta: sem ele o painel funciona igual, e derrubar a tela por
        causa disto seria trocar o recurso inteiro por um enfeite. */
-    if ('serviceWorker' in navigator) {
+    /* CC-1110, medido em 22/11: o navegador embutido do aplicativo do Claude (UA com "Claude/") recusa o `sw.js` com
+       "unknown error occurred when fetching the script" mesmo com o arquivo respondendo 200 e tipo certo (o Chrome de
+       verdade registra sem erro). Ali o painel nunca vira aplicativo instalado, então não há o que registrar, e o erro
+       só sujava o console de quem mede a tela. Em qualquer outro navegador a falha continua falando em voz alta. */
+    if ('serviceWorker' in navigator && !/\bClaude\//.test(navigator.userAgent)) {
       /* CC-312: falha aqui deixa o painel de ser instalável como aplicativo, e
          engolir em silêncio esconde justamente isso.
          Apontado pela sessão do Coderoom em 22/08, depois de uma tarde
@@ -20407,7 +20419,10 @@
       /* CC-707, pedido dele: máquinas SOMAM, como estado e projeto
          (ex.: VPS e Coderoom juntos). */
       const ds = F.disps;
-      const disps = {}; for (const x of itens) disps[x.disp] = (disps[x.disp] || 0) + 1;
+      /* CC-1109: as esquecidas não entram na conta das máquinas (a aba dizia "6" e o estado "Todas" dizia "4"), a menos que o
+         filtro "Esquecidas" esteja ligado. */
+      const contaveis = cats.includes('esquecida') ? itens : itens.filter((x) => x.cat !== 'esquecida');
+      const disps = {}; for (const x of contaveis) disps[x.disp] = (disps[x.disp] || 0) + 1;
       for (const d of ds) if (!(d in disps)) disps[d] = 0;
       const daMaq = itens.filter((x) => !ds.size || ds.has(x.disp));
       /* CC-1108, print dele em 22/11: a sessão de 14 dias aparecia em "Todas" ao lado das vivas. Esquecida só aparece no
@@ -20421,7 +20436,7 @@
       const vis = daCat.filter((x) => !F.projs.size || F.projs.has(x.nome));
       const chip = (attr, on, val, rot, n) => '<button class="c2-dec-op' + (on ? ' on' : '') + '" style="min-height:32px;padding:4px 10px;font-size:12px" ' + attr + '="' + esc(val) + '">' + esc(rot) + ' <span class="c2-mini">' + n + '</span></button>';
       const html = '<div class="ses-filtros">'
-        + (Object.keys(disps).length > 1 || ds.size ? '<div class="ses-fil-linha"><span class="ses-fil-rot">máquina</span><div class="c2-dec-ops">' + chip(at.disp, !ds.size, '', 'todas as máquinas', itens.length)
+        + (Object.keys(disps).length > 1 || ds.size ? '<div class="ses-fil-linha"><span class="ses-fil-rot">máquina</span><div class="c2-dec-ops">' + chip(at.disp, !ds.size, '', 'todas as máquinas', contaveis.length)
           + Object.entries(disps).map(([d, n]) => chip(at.disp, ds.has(d), d, d, n)).join('') + '</div></div>' : '')
         + '<div class="ses-fil-linha"><span class="ses-fil-rot">estado</span><div class="c2-dec-ops">' + C2_CATS.map(([k, rot]) => chip(at.cat, k === 'todas' ? !cats.length : cats.includes(k), k, rot, porCat(k).length)).join('') + '</div></div>'
         + (Object.keys(projs).length > 1 ? '<div class="ses-fil-linha"><span class="ses-fil-rot">projeto</span><div class="c2-dec-ops">' + chip(at.proj, !F.projs.size, '', 'todos os projetos', daCat.length)
@@ -24723,7 +24738,7 @@
         + c2Obra(s.obra, s.id)
         + c2BlocoResumo(s.fala, s.resumo, s.conversa, daqui, s.resumoIA?.texto)
         + (daqui && coderoom ? c2GateQuem(s) : '')
-        + (s.morta ? '' : ((daqui || s.escreve) && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela, abra a sessão no ' + esc(s.dispositivo || 'outro computador') + '.') + '</div>' : '')))
+        + (s.morta ? '' : ((daqui || s.escreve) && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela daqui, abra a sessão pelo botão "abrir sessão" do cockpit do ' + esc(s.dispositivo || 'outro computador') + '. A do aplicativo do desktop não aceita texto de fora.') + '</div>' : '')))
         + '<div class="c2-meta"><span class="c2-meta-t">' + ic('relogio', 13) + 'há ' + c2ms(s.desdeMs) + '</span>' + (s.estado === 'trabalhando' ? '<span class="c2-meta-ass">' + (s.ferramenta ? esc(s.ferramenta) : 'pensando') + '</span>' : '')
         + c2AcoesBotao(s.id)
         + '<span class="c2-acoes">' + (daqui ? c2FwChip(s.projeto) : '') + c2TesteVoo(s.projeto) + (s.estado === 'trabalhando' && (daqui || s.escreve) && s.conversa ? '<button class="c2-link" style="color:var(--red)" data-sessao-parar="' + esc(s.conversa) + '" data-sessao-nome="' + esc(s.nome) + '">parar</button>' : '')
@@ -25165,7 +25180,7 @@
         : (S.relogioMs != null
           ? '<div style="display:flex;gap:18px;align-items:flex-end"><div><div class="c2-num">' + c2h(S.relogioMs) + '</div><div class="c2-mini">de relógio</div></div>'
             + '<div><div class="c2-num" style="font-size:18px;color:var(--text-muted)">' + c2h(S.totalMs) + '</div><div class="c2-mini">de agente, somando as sessões</div></div></div>'
-            + '<div class="c2-mini" style="margin-top:4px">últimos 7 dias, no horário de Brasília · só ' + esc(S.fonte || 'esta máquina') + '</div>'
+            + '<div class="c2-mini" style="margin-top:4px">últimos 7 dias, no horário de Brasília · ' + (S.somando ? 'somando ' : 'só ') + esc(S.fonte || 'esta máquina') + '</div>'
           : '<div class="c2-num">' + c2h(S.totalMs) + '</div><div class="c2-mini">nos últimos 7 dias, tempo ativo</div>')
           + '<div class="c2-dias">' + S.dias.map((d) => '<i title="' + esc(d.dia) + ': ' + (d.relogioMs != null ? c2h(d.relogioMs) + ' de relógio, ' : '') + c2h(d.ms) + ' de agente" style="height:' + Math.max(2, Math.round(36 * d.ms / Math.max(1, ...S.dias.map((x) => x.ms)))) + 'px"></i>').join('') + '</div>'
           + '<div class="c2-dias-rot">' + S.dias.map((d) => '<span>' + c2DiaSem(d.dia) + '</span>').join('') + '</div>'
@@ -25193,7 +25208,18 @@
           + (V.snapshot ? '<div class="c2-kv"><span>memória</span><b>' + Math.round((V.snapshot.ram?.usadoMB || 0) / 1024 * 10) / 10 + ' de ' + Math.round((V.snapshot.ram?.totalMB || 0) / 1024 * 10) / 10 + ' GB</b></div>'
             + '<div class="c2-kv"><span>disco</span><b>' + (V.snapshot.disco?.usadoGB ?? '?') + ' de ' + (V.snapshot.disco?.totalGB ?? '?') + ' GB</b></div>'
             + '<div class="c2-kv"><span>programas</span><b>' + ((V.snapshot.docker || []).length) + ' em caixa · ' + ((V.snapshot.pm2 || []).length) + ' soltos</b></div>'
-            + '<div class="c2-mini" style="margin-top:6px">retrato de ' + c2Data(V.snapshot.em) + (V.saude?.alertas?.length ? ' · ' + V.saude.alertas.length + ' aviso(s)' : '') + ' · <a href="#vps">ver e atualizar</a></div>'
+            + (() => {
+              /* CC-1111: a idade do retrato por extenso ("lido há 94 dias"), e o botão que atualiza aqui mesmo. Era só
+                 "retrato de 20/08", e três meses velho parecia uma leitura de hoje. A leitura usa SSH, por isso só sob clique. */
+              const idade = Date.now() - V.snapshot.em;
+              const velho = idade > 3600000;
+              const dias = Math.floor(idade / 86400000);
+              const quando = dias >= 1 ? dias + (dias === 1 ? ' dia' : ' dias') : age(idade);
+              return '<div class="c2-mini" style="margin-top:6px' + (velho ? ';color:var(--amber)' : '') + '">lido há ' + quando + (velho ? ', clique para atualizar' : '')
+                + (V.saude?.alertas?.length ? ' · ' + V.saude.alertas.length + ' aviso(s)' : '') + ' · <a href="#vps">ver</a></div>'
+                + '<div style="margin-top:6px"><button class="btn compacto" data-vps-atualizar' + (vpsAtualizando ? ' disabled' : '') + '>' + (vpsAtualizando ? 'lendo a VPS…' : 'atualizar agora') + '</button></div>'
+                + (vpsErro ? '<div class="c2-mini" style="color:var(--red);margin-top:4px">não atualizou: ' + esc(vpsErro) + '</div>' : '');
+            })()
             : '<p class="c2-vazio">nunca lida. <a href="#vps">atualizar</a></p>');
 
       /* 26/09, item 13: só o que é projeto dele. Programa do Windows (svchost,
@@ -25256,9 +25282,10 @@
          (as velhas estão na gaveta), sessões trabalhando de todas as vivas,
          projetos com sinal de todos, decisões na tela de todas (as que saíram
          sozinhas ou foram fechadas entram no total). */
-      /* CC-1108: o motor conta `vivas` por projeto ANTES de marcar as esquecidas, então a conta aqui tira as paradas há dias. */
-      const vivas = Math.max(0, (D.projetos || []).reduce((a, p) => a + (p.vivas || 0), 0)
-        - (D.conectadas || []).filter((s) => s.esquecida && s.estado === 'espera você').length);
+      /* CC-1109: a soma de `vivas` dos projetos só contava trabalhando e "espera você", e esquecidas "ociosas" entravam no
+         motor sem sair daqui, então o "de N" discordava de "N conectadas". Agora é a MESMA lista do bloco Sessões: as
+         conectadas sem as esquecidas e sem as da pasta pessoal. */
+      const vivas = conectadas.filter((s) => !pastaPessoal.has(s.projeto)).length;
       const ocultasN = (r.travadasOcultas || 0) + (r.fechadasOcultas || 0);
       const stat = (icn, cor, rot, n, de, alvo) => '<a class="card ini-stat" href="' + alvo + '">' + icQuad(icn, cor, 44)
         + '<div><div class="ini-stat-rot">' + rot + '</div><div class="ini-stat-n"><b>' + n + '</b><span>de ' + de + '</span></div></div>'
@@ -26825,7 +26852,8 @@
       const daMaq = D.servicos.filter((s) => !f || s.dispositivo === f);
       const TIPOS = [['porta', 'serviços na porta'], ['container', 'containers']];
       const lista = daMaq.filter((s) => !C2.srvTipos.size || C2.srvTipos.has(s.tipo))
-        .sort((a, b) => (b.memoria || 0) - (a.memoria || 0) || String(a.nomeProjeto || 'zzz').localeCompare(String(b.nomeProjeto || 'zzz')) || (a.porta || 0) - (b.porta || 0));
+        /* CC-1110: uma máquina de cada vez (esta primeiro), e só dentro dela pela memória. Misturadas, 5 daqui se perdiam no meio de 39 da outra. */
+        .sort((a, b) => (b.dispositivo === local.nome) - (a.dispositivo === local.nome) || String(a.dispositivo).localeCompare(String(b.dispositivo)) || (b.memoria || 0) - (a.memoria || 0) || String(a.nomeProjeto || 'zzz').localeCompare(String(b.nomeProjeto || 'zzz')) || (a.porta || 0) - (b.porta || 0));
       const total = lista.reduce((t, s) => t + (s.memoria || 0), 0);
       const devDe = (s) => (C2.devTeste || []).find((n) => n.porta === s.porta && s.dispositivo === local.nome);
       const M = C2.maq; const mostraLocal = !f || f === local.nome;
@@ -26857,7 +26885,7 @@
           + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span class="ini-pilula" style="--q:' + cor + '">' + esc(rot) + '</span>'
           + (s.nomeProjeto ? c2tagProj('var(--c-projeto)', s.nomeProjeto) : '') + c2disp(s.dispositivo) + '</div>'
           + '<div class="c2-perg">' + esc(s.nome) + (s.detalhe ? '<div class="c2-mini" style="font-weight:400;margin-top:4px;overflow-wrap:anywhere">' + esc(s.detalhe) + '</div>' : '') + '</div>'
-          + '<div class="c2-meta"><span class="c2-meta-t">' + ic('pulso', 13) + (s.memoria ? c2Mem(s.memoria) : 'sem leitura de memória') + '</span>'
+          + '<div class="c2-meta"><span class="c2-meta-t">' + ic('pulso', 13) + (s.memoria ? c2Mem(s.memoria) : (s.dispositivo === local.nome ? 'memória não lida neste sistema' : esc(s.dispositivo) + ' ainda não informa a memória')) + '</span>'
           + (s.desdeMs != null ? '<span class="c2-meta-t">' + ic('relogio', 13) + 'há ' + c2ms(s.desdeMs) + '</span>' : '')
           + '<span class="c2-acoes">' + acoes(s) + '</span></div></div>';
       };
@@ -26869,7 +26897,12 @@
       const corpo = !lista.length ? '<p class="c2-vazio">nada no ar nesse filtro.</p>'
         : C2.srvModo === 'tabela'
           ? '<table class="c2-tab"><thead><tr><th>projeto</th><th>serviço</th><th>memória</th><th>porta</th><th>dispositivo</th><th>desde</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table>'
-          : '<div class="c2-mosaico">' + lista.map(cartao).join('') + '</div>';
+          : (f ? '<div class="c2-mosaico">' + lista.map(cartao).join('') + '</div>'
+            /* CC-1110: com as duas máquinas na tela, cada uma ganha o próprio título e o próprio bloco de cartões. */
+            : Object.keys(disps).filter((d) => lista.some((s) => s.dispositivo === d))
+              .sort((a, b) => (b === local.nome) - (a === local.nome) || a.localeCompare(b))
+              .map((d) => { const L = lista.filter((s) => s.dispositivo === d); const m = L.reduce((t, s) => t + (s.memoria || 0), 0);
+                return '<h3 class="c2-mini" style="margin:14px 0 8px;font-size:13px;color:var(--text)"><b>' + esc(d) + '</b> · ' + L.length + ' no ar' + (m ? ' · ' + c2Mem(m) : '') + '</h3><div class="c2-mosaico">' + L.map(cartao).join('') + '</div>'; }).join(''));
       /* CC-340: a sincronia das outras máquinas, em uma linha cada: se estão
          mandando os dados delas e há quanto tempo chegou o último envio. */
       const fora = (D.dispositivos || []).filter((d) => !d.local);

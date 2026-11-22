@@ -12,6 +12,7 @@ import path from 'node:path'
 import { execFile } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { caminhoSeguro } from './tarefa.mjs'
+import { ehWindows } from './platform.mjs'
 
 const HOSTS = /^https?:\/\/(127\.0\.0\.1|localhost|testedevoo\.carzo\.com\.br)(:\d+)?(\/|$)/
 export const TIPOS_DE_CONFERENCIA = ['build', 'npm test', 'node <test-*.mjs>', 'pytest [<caminho>]', 'contem <arquivo> <texto>', 'responde <url>', 'abre <url>', 'anda <url>']
@@ -55,7 +56,11 @@ export function lerConferencia(conferir) {
 }
 
 const rodar = (cmd, args, cwd, timeout) => new Promise((ok) => {
-  execFile(cmd, args, { cwd, timeout, maxBuffer: 16 * 1024 * 1024 }, (e, out, err) => ok({ ok: !e, saida: `${out || ''}\n${err || e?.message || ''}` }))
+  /* CC-1115: no Windows não existe `nice`, e `npm` é npm.cmd, que execFile sem shell não acha (spawn npm ENOENT).
+     Vai por cmd.exe /c com cada argumento separado, como o lancarComando; aqui os argumentos são de lista fechada. */
+  if (ehWindows && cmd === 'nice') [cmd, args] = [args[2], args.slice(3)]
+  if (ehWindows && cmd === 'npm') [cmd, args] = ['cmd.exe', ['/c', 'npm', ...args]]
+  execFile(cmd, args, { cwd, timeout, maxBuffer: 16 * 1024 * 1024, windowsHide: true }, (e, out, err) => ok({ ok: !e, saida: `${out || ''}\n${err || e?.message || ''}` }))
 })
 
 /** Roda uma conferência já lida. Devolve `{ ok, prova }` ou `{ ok: false, erro }`. */
@@ -76,8 +81,10 @@ export async function rodarConferencia(cwd, c, { timeout = 600000 } = {}) {
   }
   if (c.cmd) {
     // CC-872: o python do .venv do projeto vence o do sistema, que costuma não ter o pytest
-    const venv = path.join(cwd, '.venv', 'bin', 'python')
-    const cmd = c.pytest && fs.existsSync(venv) ? venv : c.cmd
+    /* CC-1115: no Windows o .venv põe o python em Scripts\python.exe, e o do sistema se chama `python`
+       (o `python3` deste PC era um atalho de outro programa, sem pytest). */
+    const venv = ehWindows ? path.join(cwd, '.venv', 'Scripts', 'python.exe') : path.join(cwd, '.venv', 'bin', 'python')
+    const cmd = !c.pytest ? c.cmd : fs.existsSync(venv) ? venv : ehWindows ? 'python' : c.cmd
     const r = await rodar(cmd, c.args, cwd, timeout)
     if (r.ok) return { ok: true, prova: `robô: ${c.rotulo || (c.tipo === 'build' ? 'npm run build' : c.arquivo || 'npm test')} passou`, rodou: true }
     /* 02/10, no teste de liberação: "falh" casava com "12 ok, 0 falhas", e o

@@ -1436,3 +1436,18 @@
 {"em":"2026-11-21T23:40:32.370Z","tipo":"estado","id":"CC-1106","de":"EM","para":"KO","porque":"obsoleta: o CC-1105 da VPS (commit 6a2efdf, gitattributes eol=lf) resolveu a causa, e o teste original passa no PC"}
 {"em":"2026-11-22T15:42:17.882Z","tipo":"criada","id":"CC-1107","estado":"EM"}
 {"em":"2026-11-22T17:00:19.762Z","tipo":"criada","id":"CC-1108","estado":"EM"}
+{"em":"2026-11-22T23:01:19.649Z","tipo":"criada","id":"CC-1109","estado":"B1","texto":"sessoes mortas aparecem como vivas"}
+{"em":"2026-11-22T23:01:19.866Z","tipo":"criada","id":"CC-1110","estado":"B1"}
+{"em":"2026-11-22T23:01:20.081Z","tipo":"criada","id":"CC-1111","estado":"B1"}
+{"em":"2026-11-22T23:01:20.292Z","tipo":"criada","id":"CC-1112","estado":"B1","texto":"precisa ficar se explicando e gerando conversa desnecessaria"}
+{"em":"2026-11-22T23:01:20.505Z","tipo":"criada","id":"CC-1113","estado":"B1"}
+{"em":"2026-11-22T23:03:06.412Z","tipo":"estado","id":"CC-1110","de":"B1","para":"EM"}
+{"em":"2026-11-22T23:03:06.507Z","tipo":"medida","id":"CC-1110","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":3922963,"porModelo":{"claude-opus-5-5":1875556,"claude-sonnet-5-5":4685404}}
+{"em":"2026-11-22T23:03:47.665Z","tipo":"estado","id":"CC-1111","de":"B1","para":"EM"}
+{"em":"2026-11-22T23:03:47.810Z","tipo":"medida","id":"CC-1111","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":3922963,"porModelo":{"claude-opus-5-5":1899055,"claude-sonnet-5-5":4839979}}
+{"em":"2026-11-22T23:04:29.762Z","tipo":"estado","id":"CC-1109","de":"B1","para":"EM"}
+{"em":"2026-11-22T23:04:29.860Z","tipo":"medida","id":"CC-1109","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":3922963,"porModelo":{"claude-opus-5-5":1932304,"claude-sonnet-5-5":5018290}}
+{"em":"2026-11-22T23:10:47.781Z","tipo":"criada","id":"CC-1114","estado":"B1"}
+{"em":"2026-11-22T23:10:55.731Z","tipo":"criada","id":"CC-1115","estado":"EM"}
+{"em":"2026-11-22T23:11:20.237Z","tipo":"estado","id":"CC-1114","de":"B1","para":"EM"}
+{"em":"2026-11-22T23:11:20.360Z","tipo":"medida","id":"CC-1114","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":4711425,"porModelo":{"claude-opus-5-5":3721895,"claude-sonnet-5-5":5391608}}

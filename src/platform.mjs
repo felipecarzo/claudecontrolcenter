@@ -446,8 +446,7 @@ $out = foreach ($g in ($conns | Group-Object OwningProcess)) {
 ConvertTo-Json -InputObject @($out) -Depth 4 -Compress
 `
 
-function portasWindows() {
-  const r = quiet('powershell', ['-NoProfile', '-NonInteractive', '-Command', PS_PORTAS])
+function lerPortasWindows(r) {
   if (!r.ok) return null
   try {
     const v = JSON.parse(r.out || '[]')
@@ -455,6 +454,10 @@ function portasWindows() {
   } catch {
     return null
   }
+}
+
+function portasWindows() {
+  return lerPortasWindows(quiet('powershell', ['-NoProfile', '-NonInteractive', '-Command', PS_PORTAS]))
 }
 
 /**
@@ -518,6 +521,14 @@ function portasUnix() {
 /** Processos com porta TCP em escuta (>= 1024). null = não deu pra consultar. */
 export function listarPortas() {
   return ehWindows ? portasWindows() : portasUnix()
+}
+
+/* CC-1110: a mesma leitura sem parar o servidor. No Windows o PowerShell leva de 1,1 a 1,7 s (medido em 22/11 pelas
+   etapas de /api/cockpit2/lentas) e, síncrono, congelava toda resposta do painel durante esse tempo, a aba Máquinas
+   inclusa. No Unix a leitura é de milissegundos e continua como era. */
+export async function listarPortasAsync() {
+  if (!ehWindows) return portasUnix()
+  return lerPortasWindows(await quietAsync('powershell', ['-NoProfile', '-NonInteractive', '-Command', PS_PORTAS], 20000))
 }
 
 /**

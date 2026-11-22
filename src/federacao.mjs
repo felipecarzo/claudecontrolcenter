@@ -141,6 +141,8 @@ export function validarPacote(bruto) {
           path: x?.path ? String(x.path).slice(0, 260) : null,
           sub: x?.sub ? String(x.sub).slice(0, 80) : null,
           since: Number(x?.since) || null,
+          /* CC-1110: bytes que a própria máquina mediu (com os filhos); número ou nada. */
+          memoria: Number(x?.memoria) > 0 ? Math.round(Number(x.memoria)) : null,
         })).filter((x) => x.ports.length || x.pid)
         : null,
       uso: bruto.uso && typeof bruto.uso === 'object' ? bruto.uso : null,
@@ -904,7 +906,7 @@ export function pedirMensagem({ paraMaquina, conversa, texto = null, tecla = nul
   if (!alvo) return { ok: false, erro: 'sem máquina de destino' }
   if (!ID_CONVERSA.test(String(conversa || ''))) return { ok: false, erro: 'conversa inválida' }
   if (tecla != null && !TECLAS_REMOTAS.includes(tecla)) return { ok: false, erro: 'tecla inválida' }
-  const textoLimpo = tecla != null ? null : String(texto || '').trim().slice(0, TETO_MENSAGEM)
+  const textoLimpo = tecla != null ? null : limparTextoRemoto(texto)
   if (tecla == null && !textoLimpo) return { ok: false, erro: 'mensagem sem texto' }
   const lista = lerPedidosBrutos().filter((p) => now - (p.em || 0) < VALIDADE_PEDIDO_MS)
   lista.push({
@@ -913,6 +915,34 @@ export function pedirMensagem({ paraMaquina, conversa, texto = null, tecla = nul
   })
   gravarPedidos(lista)
   return { ok: true, enviado: true, paraMaquina: alvo }
+}
+
+/* CC-1114: o texto vai cru para `wezterm cli send-text` (ou `tmux send-keys -l`). Um ESC ou um Ctrl+C dentro dele
+   mexeria no terminal em vez de virar letra. Tira a sequência de escape inteira (senão "[2J" sobra como texto) e depois
+   todo caractere de controle; quebra de linha e tabulação viram espaço, como o `enviarMensagem` já faz. */
+export function limparTextoRemoto(texto) {
+  return String(texto ?? '')
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/[\u0000-\u001f\u007f-\u009f]/g, '')
+    .trim()
+    .slice(0, TETO_MENSAGEM)
+}
+
+/**
+ * CC-1114: o lado do PC. Entrega a mensagem que desceu da fila, mas só a uma sessão que este painel abriu num terminal
+ * dele (`sessoes` é o `estado()` do remotecontrol). Conversa que não está lá é recusada sem digitar nada, inclusive a
+ * do aplicativo do desktop. O texto é limpo de novo aqui: a VPS pode estar com versão velha.
+ */
+export async function entregarMensagemRemota(p, { sessoes, enviar, apertarTecla }) {
+  if (!ID_CONVERSA.test(String(p?.conversa || '')) || (p.tecla != null && !TECLAS_REMOTAS.includes(p.tecla))) return { ok: false, erro: 'pedido inválido' }
+  const vivas = Object.values((await Promise.resolve().then(sessoes).catch(() => ({}))) || {})
+  const achada = vivas.find((s) => s?.sessao && s?.conversa && (s.conversa === p.conversa || s.conversa.startsWith(p.conversa)))
+  if (!achada) return { ok: false, erro: 'essa conversa não está num terminal aberto pelo painel desta máquina' }
+  if (p.tecla) return apertarTecla({ conversa: achada.conversa, tecla: p.tecla })
+  const texto = limparTextoRemoto(p.texto)
+  if (!texto) return { ok: false, erro: 'mensagem sem texto' }
+  return enviar({ conversa: achada.conversa, texto })
 }
 
 /**
@@ -1109,7 +1139,8 @@ export function mesclarTempo(local, pacotes, origemLocal) {
   }
 
   const projetos = [...porProjeto.values()].sort((a, b) => b.ativoMs - a.ativoMs)
-  return { ...(local || {}), projetos, federado: pacotes.some((p) => p.tempo) }
+  /* CC-1111: `tempo` só com `semana` (o retrato que volta da VPS) não é horas por projeto: não conta como federado. */
+  return { ...(local || {}), projetos, federado: pacotes.some((p) => p.tempo?.projetos) }
 }
 
 /** As máquinas conhecidas, para montar o filtro do topo. A local vem primeiro:

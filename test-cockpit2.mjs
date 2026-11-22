@@ -4,7 +4,8 @@ import { readFileSync, mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'nod
 import { buscarItens } from './src/caminho.mjs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { falaDasLinhas, montar, avisoDoAgente, semanaDe, semanaDosBlocos, conversaSemFala, ehPastaPessoal, resumoDaFala, falasDaConversa, obraDoRobo, _internals } from './src/cockpit2.mjs'
+import { falaDasLinhas, montar, avisoDoAgente, semanaDe, semanaDosBlocos, conversaSemFala, semanasDosPacotes, ehPastaPessoal, resumoDaFala, falasDaConversa, obraDoRobo, _internals } from './src/cockpit2.mjs'
+import { validarPacote, montarPacote, mesclarTempo } from './src/federacao.mjs'
 import { primeiraFrase, paragrafoDepois } from './src/projetoResumo.mjs'
 import { contextoDaConversa } from './src/resumoAgy.mjs'
 
@@ -107,6 +108,36 @@ t('26/09, Semana: relógio é a união, agente é a soma, e o dia vira à meia-n
   const [d25, d26] = r.dias.slice(-2)
   assert.deepEqual([d25.dia, d25.ms / H, d25.relogioMs / H], ['2026-09-25', 1, 1], 'às 22h de Brasília ainda é dia 25; o corte de Londres jogava no 26')
   assert.deepEqual([d26.ms / H, d26.relogioMs / H], [4, 3], 'duas sessões em paralelo somam 4h de agente em 3h de relógio')
+})
+
+t('CC-1111: a semana soma a outra máquina (agente soma, relógio é união), atravessa o pacote e pacote velho segue valendo', () => {
+  const H = 3600e3
+  const ag = Date.parse('2026-09-26T08:00:00Z')
+  const meus = { a: { cwd: '/p/cockpit', blocos: [[ag - 4 * H, ag - 2 * H]] } } // 01h às 03h, dia 26
+  const vps = { nome: 'VPS', dias: [{ dia: '2026-09-26', ms: 2 * H }, { dia: '2026-01-01', ms: 99 * H }], porProjeto: [{ nome: 'cockpit', ms: 2 * H }], trechos: [[ag - 3 * H, ag - 1 * H]] } // 02h às 04h
+  const r = semanaDosBlocos(meus, { agora: ag, remotas: [vps] })
+  const d26 = r.dias.at(-1)
+  assert.equal(d26.ms / H, 4, 'agente: 2h daqui mais 2h de lá')
+  assert.equal(d26.relogioMs / H, 3, 'relógio: 01h a 04h, o que rodou junto não conta em dobro')
+  assert.equal(r.totalMs / H, 4, 'dia fora da janela (2026-01-01) não entra')
+  assert.deepEqual(r.somadas, ['VPS'])
+  // sem remotas, igual a antes
+  assert.equal(semanaDosBlocos(meus, { agora: ag }).totalMs / H, 2)
+  // lixo no pacote não derruba nem vira NaN
+  assert.equal(semanaDosBlocos(meus, { agora: ag, remotas: [{ nome: 'x', dias: [{ dia: '2026-09-26', ms: 'abc' }], trechos: [null, [1]] }, null, { nome: 'y' }] }).totalMs / H, 2)
+  // atravessa o pacote real (validarPacote) e pacote velho, sem `tempo.semana`, é ignorado
+  const pac = (nome, tempo) => validarPacote(montarPacote({ maquina: { id: nome, nome, plataforma: 'linux' }, jobs: [], tempo })).pacote
+  const novo = pac('vps1', { semana: { dias: vps.dias, porProjeto: vps.porProjeto, trechos: vps.trechos } })
+  const velho = pac('vps2', { corteMin: 15, projetos: [{ projeto: 'x', ativoMs: 1, tokens: 1 }] })
+  assert.equal(novo.tempo.semana.dias.length, 2, 'o campo novo passa pela validação')
+  const somar = semanasDosPacotes
+  assert.deepEqual(somar([novo, velho], { id: 'pc' }).map((s) => s.nome), ['vps1'])
+  assert.deepEqual(somar([novo], { id: 'vps1' }), [], 'o retrato desta própria máquina não soma em dobro')
+  // o campo viaja só como `semana`, sem `projetos`: a tela Tempo não acha que veio o completo
+  assert.equal(mesclarTempo({ projetos: [] }, [pac('vps3', { semana: vps })], { id: 'pc' }).federado, false)
+  // montar() entrega o rótulo certo
+  const d = montar({ jobs: [], local: { id: 'pc', nome: 'PC' }, agora: ag, blocosTempo: meus, semanasRemotas: [vps] })
+  assert.equal(d.semana.fonte, 'PC + VPS'); assert.equal(d.semana.somando, true); assert.equal(d.semana.trechos, undefined)
 })
 
 t('26/09: sessão DESTA máquina carimbada com origem dá a pasta ao projeto; a de outra máquina, não', () => {
@@ -707,7 +738,8 @@ t('resumo do agy: contexto começa no último pedido dele e ignora o que veio an
 })
 
 /* CC-907 e CC-908: decidir um por um. O bloco novo vai de c2TdrCartoes até o marcador de fim. */
-const uiTdr = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8')
+// CC-1115: o Git guarda em LF, mas o PC (core.autocrlf) entrega CRLF, e os recortes por "\n    }\n" deixavam de casar
+const uiTdr = readFileSync(new URL('./src/ui_cockpit2.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
 const blocoTdr = uiTdr.slice(uiTdr.indexOf('function c2TdrCartoes'), uiTdr.indexOf('/* fim do Tinder (CC-907) */'))
 
 t('CC-910: o lote do Tinder (marcar todas, Aprovar marcadas, esquerda = Nenhuma destas) só existe para o arquiteto', () => {

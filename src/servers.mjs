@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { projectOf, PROJECT_DIRS } from './jobs.mjs'
 import {
-  listarPortas, matarProcesso, abrirPasta, abrirEditor, abrirTerminal, lancarComando,
+  listarPortas, listarPortasAsync, matarProcesso, abrirPasta, abrirEditor, abrirTerminal, lancarComando,
 } from './platform.mjs'
 import { readConfig, setServidor } from './config.mjs'
 import { findProjects, projectsBase } from './install.mjs'
@@ -140,11 +140,25 @@ function registrarVistos(list) {
   }
 }
 
-export function readServers({ force = false } = {}) {
+/* CC-1110: com `semEspera`, lista velha volta na hora e a leitura nova corre por trás. Quem chama a cada poucos
+   segundos (o dado principal do painel) não fica parado 1 a 1,7 s no PowerShell. A primeira leitura, sem nada
+   guardado, continua esperando como antes. */
+let renovando = null
+function renovarPorTras() {
+  if (!renovando) {
+    renovando = listarPortasAsync()
+      .then((p) => { if (p) readServers({ force: true, parsed: p }) })
+      .catch(() => { /* a próxima leitura tenta de novo */ })
+      .finally(() => { renovando = null })
+  }
+}
+
+export function readServers({ force = false, semEspera = false, parsed: lidas = null } = {}) {
   const now = Date.now()
   if (!force && now - cache.at < CACHE_MS) return cache.list
+  if (!force && semEspera && cache.at) { renovarPorTras(); return cache.list }
 
-  const parsed = listarPortas()
+  const parsed = lidas || listarPortas()
   if (!parsed) return cache.list // consulta falhou: mantém a última lista boa
 
   const salvos = readConfig().servidores || {}

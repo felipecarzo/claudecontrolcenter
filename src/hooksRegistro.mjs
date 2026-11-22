@@ -43,12 +43,18 @@ export function readSettings() {
  * — `cc-check` vive dentro de `cc.mjs` e quem está lá é `todo-guard.mjs`, que
  * o chama por dentro. Procurar "cc.mjs" no settings.json nunca acharia nada.
  */
+/* CC-1107: o settings do PC chama `{ command: "node", args: ["D:/.../parada.mjs"] }`, com o caminho em `args`.
+   Ler só `command` dava 0 de 37 travas registradas, e o instalador regravaria as 34 cópias soltas.
+   Barra invertida vira normal: caminho do Windows escrito à mão casa igual. */
+const textoDoHook = (h) => [h?.command, ...(Array.isArray(h?.args) ? h.args : [])]
+  .filter((p) => typeof p === 'string').join(' ').replace(/\\/g, '/')
+
 export function registrado(hook, settings = readSettings()) {
   const alvo = hook.registradoVia || hook.script
   const grupos = settings?.hooks?.[hook.evento]
   if (!alvo || !Array.isArray(grupos)) return false
   const nosComandos = (texto) => grupos.some((grupo) =>
-    (grupo.hooks || []).some((h) => typeof h.command === 'string' && h.command.includes(texto)))
+    (grupo.hooks || []).some((h) => textoDoHook(h).includes(texto)))
   /* CC-1107: o guarda de Stop que roda por dentro do `parada.mjs` (todos num processo só, CC-1045) não aparece pelo
      nome no settings.json: o que está lá é o programa único. Sem isto a VPS mostrava 0 de 35 travas de fim de
      resposta registradas, e elas rodavam. */
@@ -177,7 +183,7 @@ function comandoRegistradoDe(hook, settings = readSettings()) {
   const alvo = hook.registradoVia || hook.script
   for (const grupo of settings?.hooks?.[hook.evento] || []) {
     for (const h of grupo.hooks || []) {
-      if (typeof h.command === 'string' && alvo && h.command.includes(alvo)) return h.command
+      if (alvo && textoDoHook(h).includes(alvo)) return textoDoHook(h)
     }
   }
   return null

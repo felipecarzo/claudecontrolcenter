@@ -17,4 +17,9 @@ assert.equal(registrado(stopNoParada, so('Stop', 'node /x/pixel-agents.js')), fa
 assert.equal(registrado(stopNoParada, { hooks: {} }), false, 'configuração vazia')
 assert.equal(registrado(stopNoParada, null), false, 'configuração ilegível não inventa registro')
 assert.equal(registrado(preTool, so('PreToolUse', 'node /x/hooks/parada.mjs')), false, 'parada.mjs só vale para hook de Stop')
-console.log('test-registro-parada: 6 verificações, 0 falhas')
+// a forma REAL do settings do PC em 22/11: o caminho mora em `args`, e `command` é só "node"
+const comArgs = (...args) => ({ hooks: { Stop: [{ hooks: [{ type: 'command', command: 'node', args, timeout: 60 }] }] } })
+assert.equal(registrado(stopNoParada, comArgs('D:/Documentos/projetos/cockpit/hooks/parada.mjs')), true, 'PC: parada.mjs em args')
+assert.equal(registrado(stopNoParada, comArgs('D:\\Documentos\\projetos\\cockpit\\hooks\\parada.mjs')), true, 'PC: barra invertida')
+assert.equal(registrado(stopNoParada, comArgs('C:/Users/x/.pixel-agents/hooks/claude-hook.js')), false, 'args de outro programa não conta')
+console.log('test-registro-parada: 9 verificações, 0 falhas')

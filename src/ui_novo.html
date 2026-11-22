@@ -15123,7 +15123,8 @@
     /* CC-283: o registro que completa a instalação como aplicativo.
        Falha aberta: sem ele o painel funciona igual, e derrubar a tela por
        causa disto seria trocar o recurso inteiro por um enfeite. */
-    if ('serviceWorker' in navigator) {
+    /* CC-1110: o navegador embutido do aplicativo do Claude (UA com "Claude/") recusa o sw.js; ali não há instalação. */
+    if ('serviceWorker' in navigator && !/\bClaude\//.test(navigator.userAgent)) {
       /* CC-312: falha aqui deixa o painel de ser instalável como aplicativo, e
          engolir em silêncio esconde justamente isso.
          Apontado pela sessão do Coderoom em 22/08, depois de uma tarde

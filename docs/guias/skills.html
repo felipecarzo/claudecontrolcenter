@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guia das skills</title>
+<style>
+:root{--bg:#10131a;--card:#1a1f2b;--borda:#2e3647;--txt:#f1f4fa;--dim:#b4bdd0;--ac:#ffb454;--ac2:#7fd1ff}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--txt);font:17px/1.5 system-ui,"Segoe UI",Roboto,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:2rem;margin:0 0 6px}
+.sub{color:var(--dim);margin:0 0 4px}
+.data{color:var(--dim);font-size:.9rem;margin:0 0 20px}
+#busca{width:100%;font:inherit;padding:12px 14px;border-radius:10px;border:2px solid var(--borda);background:#0b0e14;color:var(--txt)}
+#busca:focus{outline:none;border-color:var(--ac)}
+h2{font-size:1.35rem;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borda)}
+h2 small{color:var(--dim);font-weight:400;font-size:.85rem}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:12px}
+.cartao{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:14px;min-width:0}
+.cartao.top{border-color:var(--ac)}
+.cmd{display:inline-block;font:700 1.1rem ui-monospace,Consolas,monospace;color:var(--ac);background:#0b0e14;padding:3px 9px;border-radius:7px;margin-bottom:8px;overflow-wrap:anywhere}
+.faz{margin:0 0 6px}
+.quando{margin:0;color:var(--ac2);font-size:.95rem}
+#vazio{display:none;color:var(--dim);margin-top:24px}
+</style>
+</head>
+<body>
+<main>
+<h1>Guia das skills</h1>
+<p class="sub">Lista dos comandos e skills do seu Claude Code, agrupados pelo uso, para lembrar o que existe.</p>
+<p class="data">Atualizado em 22/11/2026</p>
+<input id="busca" type="search" placeholder="Buscar: copy, deploy, imagem, teste..." aria-label="Buscar skill" autocomplete="off">
+<p id="vazio">Nada encontrado para essa busca.</p>
+<div id="raiz"></div>
+</main>
+<script>
+// [comando, o que faz, use quando]
+var TOP=[
+["/start-session","Abre a sessão: confere o git, lê o HANDOFF e diz o próximo passo.","Use quando abrir uma sessão nova num projeto."],
+["/end-session","Fecha a sessão: atualiza a documentação, faz o commit e o push.","Use quando terminar o trabalho do dia no projeto."],
+["/cc","Abre o painel do cockpit e liga ou desliga o reporte dos agentes.","Use quando quiser ver os agentes ou religar o painel."],
+["/ajudantes","Manda o que é executar ou conferir para ajudantes mais baratos e deixa a decisão na sessão principal.","Use quando houver várias micro tarefas já decididas e você quer gastar menos token."],
+["/copy","Escreve e estrutura texto de tela sem cara de máquina; texto seu entra literal.","Use para título, botão, mensagem de erro ou página inteira."],
+["/navegador","Chrome próprio do Claude (perfil separado, sem pedir autorização) para abrir página, tirar print e ler o console.","Use quando precisar ver ou medir uma tela, local ou pública."],
+["/deploy","Commita, dá push e publica pelo Deploy Seguro do cockpit, com o código do autenticador.","Use quando o projeto estiver pronto para ir ao ar."],
+["/code-review-and-quality","Revisão de código em vários eixos (correção, leitura, segurança).","Use antes de juntar uma mudança ou depois de o Claude escrever muito código."]
+];
+var G=[
+["Começar e encerrar sessão",[
+["/start-session","Abre a sessão: confere o git, lê o HANDOFF (resumo da última sessão) e diz o próximo passo.","Use quando abrir uma sessão nova."],
+["/pulling-session","Faz pull (baixar do repositório) na main antes de começar.","Use quando voltar de outra máquina ou de outro agente."],
+["/context","Carrega seu perfil, o estado do projeto e as memórias num briefing rápido.","Use quando o Claude precisa se situar sem vasculhar o código."],
+["/end-session","Verifica a documentação, atualiza o HANDOFF, faz commit e push.","Use quando terminar o trabalho com calma."],
+["/fecha","Encerramento de emergência: salva e registra tudo sem perguntar nada.","Use quando precisa sair agora."],
+["/restart","Salva o estado antes de reiniciar o terminal e diz como retomar (alias: /reset).","Use quando for reiniciar o terminal ou o Claude Code."],
+["/daily-log","Registra o que foi feito na sessão no diário do projeto (docs/diario/).","Use quando quiser deixar o dia anotado."],
+["/hint","Sugere o próximo passo ou responde pergunta aberta com base no contexto.","Use quando estiver sem saber o que vem depois."],
+["/ceo","Autorização por contexto: segue a opção mais recomendada, continua a task ou sugere backlog.","Use quando quiser que ele siga sem perguntar a cada passo."],
+["/mode","Troca o modelo e o esforço da sessão. Sem argumento, lista as combinações.","Use quando quiser um modelo mais forte ou mais barato."]
+]],
+["Projeto e organização",[
+["/novo-projeto","Cria projeto novo a partir do template, com git e primeira frente no ROADMAP.","Use quando começar um projeto do zero."],
+["/organizar-projeto","Aplica seu padrão de pastas: apps, tools, docs, git na raiz.","Use quando um projeto estiver bagunçado."],
+["/planner","Chama o agente Planner para validar ou refazer o plano do projeto.","Use quando o plano mudou ou o projeto está começando."],
+["/sm","Chama o Scrum Manager (cuida do ROADMAP) para ver se o planejado bate com o feito.","Use quando o ROADMAP parecer fora da realidade."],
+["/autopilot","Executa as tasks do ROADMAP em sequência e para nas decisões.","Use quando o roadmap está claro e você quer andar sozinho."],
+["/archive-sprint","Arquiva os arquivos da sprint e limpa a MEMORY.md.","Use só na virada formal de sprint."],
+["/ideias","Transforma fala solta em itens do backlog do projeto.","Use quando ditar várias ideias de uma vez."],
+["/nisaba","Avalia e coloca o Nisaba (seu sistema de projetos) dentro do projeto, aos poucos.","Use quando quiser levar o Nisaba para o projeto da sessão."],
+["/faq","Painel rápido do projeto: comandos, URLs, banco, testes e scripts.","Use quando esquecer como rodar alguma coisa do projeto."],
+["/check-up","Verifica a integridade do projeto, pasta por pasta: APIs quebradas, imports órfãos.","Use quando suspeitar de código solto ou quebrado."],
+["/cc","Abre o painel do cockpit, mostra o status e liga ou desliga o reporte dos agentes.","Use quando quiser ver os agentes ou religar o painel."],
+["/cc-instalar","Instala o protocolo do Control Center no CLAUDE.md do projeto.","Use quando o projeto ainda não reporta no painel."],
+["/cc-sync","Atualiza o bloco do Control Center no CLAUDE.md de todos os projetos.","Use depois de mudar o protocolo do painel."],
+["/deps","Varre o projeto e grava as dependências humanas como bloqueios no painel.","Use quando houver coisa que só você pode resolver."],
+["/routia-resolver","Confere se uma rota do Método Routia está mesmo ocupada por outro agente.","Use quando a rota avisar à toa."],
+["/rename-terminal","Põe o nome do projeto no título da aba do terminal.","Use quando tiver várias abas e se perder."],
+["/ajudantes","Divide o trabalho: decidir fica na sessão principal, executar e conferir vão para ajudantes baratos. Também cria ajudante novo.","Use quando houver micro tarefas já decididas ou você quiser economizar token."]
+]],
+["Texto e copy",[
+["/copy","Escreve, reescreve e estrutura texto de tela; texto seu entra literal.","Use para site, app, botão, erro, estado vazio."],
+["/ux-copy","Escreve ou revisa microtexto: erros, botões, estados vazios.","Use quando o texto for pequeno e de interface."],
+["/copywriting","Copy de marketing para páginas (home, preço, sobre).","Use para texto de venda de página inteira."],
+["/tinderlike","Levanta todos os textos de um app e leva para o Decidir um por um.","Use quando quiser revisar todos os textos de um app."],
+["/gaveta","Consulta as pesquisas profundas já guardadas e dispara pesquisa nova se você autorizar.","Use antes de pesquisar na web algo que pode já estar guardado."],
+["/idea-refine","Transforma ideia vaga em conceito claro.","Use quando a ideia ainda está solta."],
+["/interview-me","Entrevista de uma pergunta por vez até entender o que você quer de verdade.","Use quando o pedido está vago."]
+]],
+["Design e tela",[
+["/regras-design","Suas regras de design, que crescem a cada toque seu.","Use antes de criar ou mexer em qualquer tela."],
+["/impeccable","Projeta, critica, refina e corrige interface (hierarquia, cor, tipografia, acessibilidade).","Use quando uma tela estiver feia, confusa ou sem acabamento."],
+["/ui-ux-pro-max","Banco de estilos, paletas, fontes e boas práticas de UI/UX.","Use quando precisar escolher estilo ou paleta."],
+["/frontend-ui-engineering","Constrói telas acessíveis e responsivas, de nível de produção.","Use quando for implementar componentes e páginas."],
+["/web-design-guidelines","Revisa o código de UI contra as diretrizes de interface web.","Use para auditar acessibilidade e UX."],
+["/web-design-reviewer","Olha o site rodando e acha e corrige problemas visuais.","Use quando quiser revisão visual de um site no ar ou local."],
+["/design-loading","Instala o loading fixo (barra fica parada, só o miolo muda), como no iBRICS e Pierre.","Use quando a navegação parecer recarregar tudo."],
+["/emilkowal-animations","Boas práticas de animação web (transições, easing, gestos).","Use ao escrever animação em CSS ou Framer Motion."],
+["/instalar-tour","Instala o tour guiado de entrega para cliente em projeto Next.js.","Use na reunião de entrega de um site."],
+["/instalar-altmail","Instala a caixa de email por alias (Altmail) em projeto Next.js.","Use quando o site precisar receber email de qualquer endereço."]
+]],
+["Navegador e testes",[
+["/navegador","Chrome dedicado ao Claude, sem pedir autorização: print, medida, texto, JavaScript.","Use como padrão para ver qualquer página."],
+["/browser-harness","Controla o Chrome real seu, com seus logins.","Use só quando precisar de login seu (Gmail, Supabase)."],
+["/remote-browser","Chrome headless (sem janela) na VPS, para ver site local ou de produção.","Use quando o navegador do PC não serve."],
+["/browser-testing-with-devtools","Testa no navegador real: DOM, console, rede, desempenho.","Use para depurar algo que roda no navegador."],
+["/test-driven-development","Escreve o teste primeiro, depois o código.","Use ao implementar lógica ou corrigir bug."],
+["/test-ag","Gera o briefing de testes para o Antigravity (outro agente) rodar.","Use quando for passar o teste do site para ele."],
+["/debugging-and-error-recovery","Depuração sistemática até a causa raiz.","Use quando teste falha ou algo quebra sem explicação."],
+["/csi","Investiga bug em produção juntando evidências antes de qualquer conserto.","Use quando o erro aconteceu em produção."],
+["/hardtester","Simulação walk-forward (testa sem ver o futuro) com dados históricos.","Use para testar algoritmo de investimento."],
+["/nzt-challenge","Walk-forward com vários agentes em paralelo, comparando resultados.","Use para comparar agentes de investimento."]
+]],
+["VPS e deploy",[
+["/deploy","Commita, dá push e publica pelo Deploy Seguro do cockpit, com o código do autenticador.","Use quando o projeto estiver pronto para o ar."],
+["/startserver","Sobe o projeto num endereço público de teste (testedevoo.carzo.com.br).","Use quando quiser mostrar o projeto rodando."],
+["/vps","Carrega a configuração da VPS: IP, chave, projetos, containers, nginx. Só leitura.","Use quando o projeto precisar falar com a VPS."],
+["/vps-sync","Sincroniza o projeto com o clone dele na sandbox da VPS (push local, pull remoto).","Use quando for continuar o trabalho na VPS."],
+["/auth","Referência de credenciais de infraestrutura: VPS, SSH, Cloudflare, Supabase.","Use quando precisar de acesso remoto ou DNS."],
+["/autonomo","Modo administrador: usa sudo, VPS e credenciais sem perguntar.","Use só quando quiser zero perguntas."],
+["/shipping-and-launch","Checklist de lançamento em produção.","Use antes de publicar algo importante."],
+["/ci-cd-and-automation","Monta pipeline de build e deploy (CI/CD, entrega automática).","Use ao automatizar testes e publicação."],
+["/pull-now","Mostra o que há de novo no remoto e faz o pull com sua aprovação.","Use quando suspeitar que há commits novos."],
+["/commit-now","Commit rápido com mensagem gerada.","Use quando quiser salvar o ponto agora."]
+]],
+["Imagens e mídia",[
+["/gemini-image","Gera imagem pela API oficial do Gemini e conta quantas já usou hoje.","Use para capa, banner, ilustração."],
+["/google-flow-generate","Gera imagem e vídeo pelo Google Flow, na sua assinatura.","Use quando quiser vídeo ou imagem sem pagar por crédito."],
+["/local-image-gen","Gera pixel art e sprites na sua GPU, de graça.","Use para sprites e imagens ilimitadas."],
+["/pixellab-character","Fluxo e checagem visual para criar e animar personagem no PixelLab.","Use ao gerar personagem pixel art."],
+["/screenshot","Carrega o último print do Windows, ou os N últimos.","Use quando mandar um print sem anexar."],
+["/remotion","Gera vídeo de apresentação a partir de projetos Stitch com Remotion.","Use para vídeo de passo a passo de telas."],
+["/remotion-best-practices","Boas práticas de Remotion (vídeo em React).","Use ao fazer vídeo com código."],
+["/remotionmode","Contexto completo de Remotion: pipeline, DaVinci Resolve, transparência.","Use ao abrir trabalho longo de vídeo."],
+["/unity-mcp","Conecta o Claude ao editor do Unity para ver e editar a cena.","Use quando o Unity aparecer desconectado."]
+]],
+["Qualidade de código e revisão",[
+["/code-review-and-quality","Revisão em vários eixos antes de juntar mudança.","Use depois de escrever muito código."],
+["/code-simplification","Simplifica código sem mudar o comportamento.","Use quando funciona mas está difícil de ler."],
+["/doubt-driven-development","Cada decisão não trivial passa por uma revisão adversária (feita para contestar) com contexto limpo.","Use quando acertar pesa mais que rapidez."],
+["/security-and-hardening","Protege o código contra falhas de segurança.","Use ao mexer com login, entrada de usuário ou dados."],
+["/performance-optimization","Otimiza desempenho de tela, servidor e banco.","Use quando algo estiver lento."],
+["/observability-and-instrumentation","Põe log, métrica e alerta para enxergar o que acontece em produção.","Use ao entregar algo que precisa ser vigiado."],
+["/api-and-interface-design","Desenha APIs e contratos entre módulos.","Use ao criar endpoint ou fronteira entre partes."],
+["/spec-driven-development","Escreve a especificação antes do código.","Use ao começar algo grande sem spec."],
+["/planning-and-task-breakdown","Quebra o trabalho em tarefas ordenadas.","Use quando a tarefa parecer grande demais."],
+["/incremental-implementation","Entrega mudanças em passos pequenos.","Use quando a mudança toca vários arquivos."],
+["/git-workflow-and-versioning","Boas práticas de commit, branch e conflito.","Use ao organizar o trabalho no git."],
+["/documentation-and-adrs","Registra decisões e documentação (ADR é o registro de decisão de arquitetura).","Use depois de decidir algo estrutural."],
+["/deprecation-and-migration","Remove sistema antigo e migra os usuários.","Use ao aposentar uma API ou funcionalidade."],
+["/source-driven-development","Baseia o código na documentação oficial.","Use quando o padrão antigo pode estar desatualizado."],
+["/context-engineering","Ajusta o contexto do agente para a qualidade voltar.","Use quando a resposta do Claude piorar."]
+]],
+["Documentos (docx pdf pptx xlsx)",[
+["/docx","Cria, lê e edita documento Word.","Use para relatório, carta ou modelo em .docx."],
+["/pdf","Lê, junta, divide, preenche e cria PDF.","Use quando houver um .pdf no meio."],
+["/pptx","Cria e edita apresentação de slides.","Use para deck ou qualquer .pptx."],
+["/xlsx","Abre, edita e cria planilha.","Use quando a planilha for a entrada ou a saída."],
+["/presentation-deck","Estrutura uma apresentação de design para um público e uma decisão.","Use ao montar apresentação interna."]
+]],
+["Plugins de terceiros",[
+["/caveman","Liga o modo de fala curta (menos token), em níveis lite, full e ultra.","Use quando quiser respostas bem enxutas."],
+["/caveman-commit","Gera mensagem de commit enxuta.","Use para commit rápido e curto."],
+["/caveman-review","Revisão de diff com uma linha por achado.","Use para revisar mudança sem rodeio."],
+["/ponytail","Força a solução mais simples que funciona.","Use ao escrever código e querer menos código."],
+["/ponytail-audit","Procura excesso de engenharia no repositório inteiro.","Use para achar o que apagar."],
+["/ponytail-review","Revisa um diff atrás de excesso.","Use antes de juntar uma mudança."],
+["/frontend-design","Design de interface com identidade, sem cara de modelo pronto.","Use ao criar tela nova."],
+["/design-review","Revisa um design (plugin designer-skills).","Use para ter segunda opinião sobre uma tela."],
+["/design-brief","Monta o briefing de um design.","Use antes de começar uma tela."],
+["/design-tokens","Define tokens de design (cores, espaços e fontes nomeados).","Use ao montar um sistema visual."],
+["/grill-me","Interroga você sobre o design até as dúvidas aparecerem.","Use para testar uma ideia de interface."],
+["/vercel:deploy","Publica na Vercel.","Use em projeto que mora na Vercel."],
+["/mercadopago:mp-integrate","Integra pagamento com Mercado Pago.","Use ao ligar cobrança num projeto."],
+["/dataviz","Regras para gráficos e painéis de dados.","Use antes de criar qualquer gráfico."]
+]],
+["Outras",[
+["/vibecoder","Divide a task em microtarefas e entrega a modelos locais ou gratuitos (também em /vibecoder-opencode).","Use raramente."],
+["/grid","Lista todas as skills e comandos dentro do Claude.","Use para uma visão rápida, também com /find-skills, /skill-creator, /set-role e /mute."]
+]]
+];
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+function cartao(s,top){var c=el('div','cartao'+(top?' top':''));c.appendChild(el('span','cmd',s[0]));c.appendChild(el('p','faz',s[1]));c.appendChild(el('p','quando',s[2]));return c}
+var raiz=document.getElementById('raiz'),secs=[],vistos={};
+function secao(t,lista,top){var h=el('h2',null,t);var g=el('div','grade');lista.forEach(function(s){g.appendChild(cartao(s,top));if(!top)vistos[s[0]]=1});raiz.appendChild(h);raiz.appendChild(g);secs.push({h:h,g:g})}
+secao('As 8 que mais valem lembrar',TOP,true);
+G.forEach(function(x){secao(x[0],x[1],false)});
+secs.slice(1).forEach(function(s){s.h.appendChild(document.createTextNode(' '));s.h.appendChild(el('small',null,'('+s.g.children.length+')'))});
+document.getElementById('busca').addEventListener('input',function(){
+ var q=this.value.trim().toLowerCase(),total=0;
+ secs.forEach(function(s){var v=0;Array.prototype.forEach.call(s.g.children,function(c){var ok=!q||c.textContent.toLowerCase().indexOf(q)>-1;c.style.display=ok?'':'none';if(ok)v++});s.h.style.display=s.g.style.display=v?'':'none';total+=v});
+ document.getElementById('vazio').style.display=total?'none':'block'});
+</script>
+</body>
+</html>
