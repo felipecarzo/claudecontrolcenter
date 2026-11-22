@@ -20166,7 +20166,8 @@
     function sbSaudePintar() {
       const el = document.getElementById('sb-saude'); const D = C2.dados;
       if (!el || !D) return;
-      const semSinal = (D.dispositivos || []).filter((d) => !d.contato).map((d) => d.nome);
+      /* CC-1108: calada há mais de 7 dias é máquina antiga, e não deixa o "Sistema online" vermelho (continua na tela Máquinas). */
+      const semSinal = (D.dispositivos || []).filter((d) => !d.contato && !(d.idadeMs != null && d.idadeMs > 7 * 864e5)).map((d) => d.nome);
       const ok = !C2.erro && !semSinal.length;
       pintar(el, '<b><i class="' + (ok ? '' : 'fora') + '"></i><em>' + (C2.erro ? 'Leitura falhou' : ok ? 'Sistema online' : esc(semSinal.join(', ')) + ' sem sinal') + '</em></b>'
         + '<span>' + D.resumo.servicos + ' serviços · ' + D.resumo.projetos + ' projetos</span>');
@@ -20409,9 +20410,12 @@
       const disps = {}; for (const x of itens) disps[x.disp] = (disps[x.disp] || 0) + 1;
       for (const d of ds) if (!(d in disps)) disps[d] = 0;
       const daMaq = itens.filter((x) => !ds.size || ds.has(x.disp));
-      const porCat = (k) => (k === 'todas' ? daMaq : k === 'perguntas' ? daMaq.filter(c2EhPergItem) : daMaq.filter((x) => x.cat === k));
+      /* CC-1108, print dele em 22/11: a sessão de 14 dias aparecia em "Todas" ao lado das vivas. Esquecida só aparece no
+         próprio filtro "Esquecidas" (que já existe), nunca em "Todas". */
+      const semEsquecidas = (l) => l.filter((x) => x.cat !== 'esquecida');
+      const porCat = (k) => (k === 'todas' ? semEsquecidas(daMaq) : k === 'perguntas' ? daMaq.filter(c2EhPergItem) : daMaq.filter((x) => x.cat === k));
       const naCat = (x) => cats.some((k) => (k === 'perguntas' ? c2EhPergItem(x) : x.cat === k));
-      const daCat = cats.length ? daMaq.filter(naCat) : daMaq;
+      const daCat = cats.length ? daMaq.filter(naCat) : semEsquecidas(daMaq);
       const projs = {}; for (const x of daCat) projs[x.nome] = (projs[x.nome] || 0) + 1;
       for (const p of F.projs) if (!(p in projs)) projs[p] = 0;
       const vis = daCat.filter((x) => !F.projs.size || F.projs.has(x.nome));
@@ -24996,8 +25000,13 @@
       /* A pasta pessoal (as consultas do simulador) vai para o fim: são 112
          sessões num cartão só, e no meio empurravam as de verdade para baixo. */
       const pastaPessoal = new Set((D.projetos || []).filter((p) => p.pastaPessoal).map((p) => p.chave));
-      const conectadas = [...(D.conectadas || D.rodando)].sort((a, b) => (pastaPessoal.has(a.projeto) ? 1 : 0) - (pastaPessoal.has(b.projeto) ? 1 : 0));
-      const rodando = conectadas.length
+      const todasConectadas = [...(D.conectadas || D.rodando)].sort((a, b) => (pastaPessoal.has(a.projeto) ? 1 : 0) - (pastaPessoal.has(b.projeto) ? 1 : 0));
+      /* CC-1108, print dele em 22/11: sessão de 14 e 33 dias aparecia na lista ao lado das que trabalham agora, e o
+         contador dizia "5 conectadas". O motor já marca `esquecida` (3 dias sem atividade, CC-957); aqui só sai da lista
+         e da conta, e fica num bloco à parte logo abaixo. */
+      const esquecidasIni = todasConectadas.filter((s) => s.esquecida);
+      const conectadas = todasConectadas.filter((s) => !s.esquecida);
+      const rodandoVivas = conectadas.length
         ? c2Juntar(conectadas, () => true).map((s) => s.grupo ? c2AvisoGrupo(s, 'sessões juntas') : '<div class="c2-aviso rodando' + (s.estado === 'trabalhando' ? '' : ' parada') + '"><div class="c2-rotulo"><span>' + esc(s.tipo) + '</span>' + c2disp(s.dispositivo)
           + (SESS_ESTADO[s.estado] ? '<span class="ini-pilula" style="--q:' + SESS_ESTADO[s.estado][1] + '">' + SESS_ESTADO[s.estado][0] + '</span>' : '') + '</div>'
           + '<div class="c2-perg">' + esc(s.nome) + (s.frente ? ' / ' + esc(s.frente) : '') + '</div>'
@@ -25012,6 +25021,12 @@
             ? '<button class="c2-link" style="color:var(--red)" data-sessao-parar="' + esc(s.conversa) + '" data-sessao-nome="' + esc(s.nome) + '">parar</button>' : '')
           + '<button class="c2-link" data-ver-agente="' + esc(s.id) + '">abrir sessão</button></span></div></div>').join('')
         : '<p class="c2-vazio">nenhuma sessão conectada agora.</p>';
+      const rodando = rodandoVivas + (esquecidasIni.length
+        ? '<details class="c2-mini" style="margin-top:8px"><summary>' + esquecidasIni.length + ' esquecida(s): sem atividade há mais de ' + (D.esquecidas?.limiteDias || 3) + ' dias</summary>'
+          + esquecidasIni.map((s) => '<div class="c2-meta" style="margin:6px 0"><span>' + esc(s.nome) + ' · ' + esc(s.dispositivo || '') + ' · há ' + c2ms(s.desdeMs) + '</span>'
+            + '<span style="margin-left:auto"><button class="c2-link" data-ver-agente="' + esc(s.id) + '">abrir sessão</button></span></div>').join('')
+          + '</details>'
+        : '');
 
       const pend = D.espera.filter((e) => e.tipo === 'pendencia');
       /* 26/09, item 6, decisão dele: "1 + clicar na tarefa abre mais infos
@@ -25197,7 +25212,13 @@
          mosaico. O cartão de saúde carrega o mesmo dado da faixa das máquinas
          (quem está em contato, serviços, projetos, hora e custo da leitura),
          e por isso fica no lugar dela. */
-      const semSinal = D.dispositivos.filter((d) => !d.contato);
+      /* CC-1108, print dele em 22/11: a TESTE-735, calada há 52 dias, deixava a faixa de saúde vermelha e ainda avisava de
+         "2 painéis enviando ao mesmo tempo", lido do último envio dela. Calada há mais de 7 dias é "antiga": sai daqui e
+         continua inteira na tela Máquinas, com a idade (a tela não esconde que ela existe, só para de gritar). */
+      const MAQ_ANTIGA_MS = 7 * 864e5;
+      const maqAntiga = (d) => !d.contato && d.idadeMs != null && d.idadeMs > MAQ_ANTIGA_MS;
+      const maquinasAntigas = D.dispositivos.filter(maqAntiga);
+      const semSinal = D.dispositivos.filter((d) => !d.contato && !maqAntiga(d));
       const hero = '<div class="ini-hero"><div class="ini-hero-txt">'
         + '<div class="ini-ola">BEM-VINDO DE VOLTA,</div>'
         + '<h2 class="ini-titulo">Seu Ogumia, Lipe <span class="ini-mao">' + ic('mao', 30) + '</span></h2>'
@@ -25206,20 +25227,38 @@
         + '<b>' + r.servicos + ' serviços ativos</b>'
         /* Item 2 da Início (26/09): cada máquina com a própria bolinha, verde
            em contato e vermelha com "sem sinal há …" quando some. */
-        + '<span>' + r.projetos + ' projetos · ' + D.dispositivos.map((d) => esc(d.nome) + ' '
+        + '<span>' + r.projetos + ' projetos · ' + D.dispositivos.filter((d) => !maqAntiga(d)).map((d) => esc(d.nome) + ' '
           + (d.contato ? '<b style="color:var(--green);display:inline" title="em contato">●</b>'
             : '<b style="color:var(--red);display:inline">○ sem sinal' + (d.idadeMs != null ? ' há ' + c2ms(d.idadeMs) : '') + '</b>')).join(' ') + '</span>'
         /* 26/09: dois programas enviando da mesma máquina fazem cartão sumir e
            voltar a cada 15 segundos. Diz com todas as letras, e o que fazer. */
-        + D.dispositivos.filter((d) => (d.empurradores || []).length > 1).map((d) => '<span style="color:var(--amber)" title="um deles roda código antigo; feche o painel duplicado nessa máquina">'
+        + D.dispositivos.filter((d) => !maqAntiga(d) && (d.empurradores || []).length > 1).map((d) => '<span style="color:var(--amber)" title="um deles roda código antigo; feche o painel duplicado nessa máquina">'
           + esc(d.nome) + ': ' + d.empurradores.length + ' painéis enviando ao mesmo tempo (' + d.empurradores.map((e) => e.pid ? 'processo ' + e.pid : 'um antigo').join(', ') + ')</span>').join('')
+        /* CC-1107, peça A: PC contra VPS. Commit, arquivos sem commit e painel com código velho de cada máquina, com a
+           idade da medida ao lado (número sem data é o defeito que a tela já teve com o retrato de 20/08). */
+        + (() => {
+          const comCodigo = D.dispositivos.filter((d) => !maqAntiga(d) && d.codigo && d.codigo.commit);
+          if (!comCodigo.length) return '';
+          const linhas = comCodigo.map((d) => {
+            const k = d.codigo;
+            return '<span>' + esc(d.nome) + ': commit ' + esc(k.commit)
+              + (k.soltos != null ? ', ' + k.soltos + ' arquivo(s) sem commit' : '')
+              + (k.painelVelho ? ' · <b style="color:var(--amber);display:inline" title="o painel não recarrega módulo: religar para valer o commit novo">painel roda código velho (' + esc(k.rodando || '?') + ')</b>' : '')
+              + (k.em ? ' · medido há ' + c2ms(Math.max(0, Date.now() - k.em)) : '') + '</span>';
+          }).join('');
+          const commits = new Set(comCodigo.map((d) => d.codigo.commit));
+          return linhas + (commits.size > 1 ? '<span style="color:var(--amber)">as máquinas estão em commits diferentes</span>' : '');
+        })()
+        + (maquinasAntigas.length ? '<span class="c2-mini">' + maquinasAntigas.length + ' máquina(s) antiga(s) sem sinal há mais de 7 dias (' + maquinasAntigas.map((d) => esc(d.nome)).join(', ') + '), em <a href="#servidores2" class="c2-link">Máquinas</a></span>' : '')
         + '<span>lido às ' + lido + (C2.erro ? ' · <b style="color:var(--red)">falha na última leitura</b>' : '') + ' · ' + (D.custoMs || 0) + 'ms</span>'
         + '</div>' + ic('pulso', 22) + '</div></div>';
       /* "de N" é sempre uma conta real: tarefas recentes de todas as abertas
          (as velhas estão na gaveta), sessões trabalhando de todas as vivas,
          projetos com sinal de todos, decisões na tela de todas (as que saíram
          sozinhas ou foram fechadas entram no total). */
-      const vivas = (D.projetos || []).reduce((a, p) => a + (p.vivas || 0), 0);
+      /* CC-1108: o motor conta `vivas` por projeto ANTES de marcar as esquecidas, então a conta aqui tira as paradas há dias. */
+      const vivas = Math.max(0, (D.projetos || []).reduce((a, p) => a + (p.vivas || 0), 0)
+        - (D.conectadas || []).filter((s) => s.esquecida && s.estado === 'espera você').length);
       const ocultasN = (r.travadasOcultas || 0) + (r.fechadasOcultas || 0);
       const stat = (icn, cor, rot, n, de, alvo) => '<a class="card ini-stat" href="' + alvo + '">' + icQuad(icn, cor, 44)
         + '<div><div class="ini-stat-rot">' + rot + '</div><div class="ini-stat-n"><b>' + n + '</b><span>de ' + de + '</span></div></div>'

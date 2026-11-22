@@ -111,5 +111,44 @@
     "script": "deploy/publicar.sh",
     "url": "https://app.vendeufy.com.br/",
     "usuarioBuild": "claudedev"
+  },
+  {
+    "id": "pierre-app",
+    "nome": "Pierre (tela)",
+    "tipo": "pm2",
+    "repo": "/home/claudedev/projetos/VPS_pierre",
+    "dir": "apps/app_pierre",
+    "dirProducao": "/opt/pierre/apps/app_pierre",
+    "processo": "pierre-app",
+    "url": "https://pierre.carzo.com.br/",
+    "usuarioBuild": "claudedev",
+    "espelhar": true
+  },
+  {
+    "id": "pierre-svc",
+    "nome": "Pierre (servidor; dependencia nova do requirements.txt nao instala sozinha)",
+    "tipo": "pm2",
+    "repo": "/home/claudedev/projetos/VPS_pierre",
+    "dir": "apps/svc_pierre",
+    "dirProducao": "/opt/pierre/apps/svc_pierre",
+    "processo": "pierre-svc",
+    "url": "https://pierre.carzo.com.br/",
+    "usuarioBuild": "claudedev",
+    "excluir": ["tests"],
+    "espelhar": true
+  },
+  {
+    "id": "pierre-jogo",
+    "nome": "Pierre (jogo em /pierregame; reinicia a tela por alguns segundos)",
+    "tipo": "pm2",
+    "repo": "/home/claudedev/projetos/VPS_pierre",
+    "dir": "apps/game_startingup",
+    "dirProducao": "/opt/pierre/apps/game_startingup",
+    "processo": "pierre-app",
+    "url": "https://pierre.carzo.com.br/",
+    "usuarioBuild": "claudedev",
+    "excluir": ["docs"],
+    "manter": ["data"],
+    "espelhar": true
   }
 ]

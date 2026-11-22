@@ -26,6 +26,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { casaClaude } from './platform.mjs'
+import { recortarCodigo } from './codigoDaMaquina.mjs'
 
 /* `casaClaude()`, nunca `os.homedir()`: é o único lugar que resolve a pasta
    `.claude`, e `CC_HOME` redireciona tudo para uma casa isolada. Achado em
@@ -319,6 +320,8 @@ export function validarPacote(bruto) {
           raiz: bruto.servico.raiz ? String(bruto.servico.raiz).slice(0, 260) : null,
         }
         : null,
+      /* CC-1107: recorte do retrato do código (commit, soltos, painel velho). */
+      codigo: recortarCodigo(bruto.codigo),
       /* CC-456: rótulo de diagnóstico, e o remetente pode mentir — então o
          `tipo` é recortado contra lista FECHADA, como toda ação da fila. Nome
          desconhecido vira `avulso` em vez de entrar cru: é texto que vai parar
@@ -354,7 +357,7 @@ export function validarPacote(bruto) {
  * Cada campo preservado carrega o carimbo de quando chegou, porque hora velha
  * exibida como atual é pior que hora ausente.
  */
-const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs', 'travas', 'framework', 'servico']
+const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs', 'travas', 'framework', 'servico', 'codigo']
 
 /**
  * CC-342: validade POR CAMPO, porque 12 horas não serve para todo mundo.
@@ -374,7 +377,7 @@ const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs',
  * qualquer alternância de empurradores de 30s e ainda deixam o buraco de
  * verdade aparecer no minuto seguinte.
  */
-const VALIDADE_POR_CAMPO = { travas: 2 * 60 * 1000, framework: 2 * 60 * 1000, servico: 2 * 60 * 1000 }
+const VALIDADE_POR_CAMPO = { travas: 2 * 60 * 1000, framework: 2 * 60 * 1000, servico: 2 * 60 * 1000, codigo: 2 * 60 * 1000 }
 export const validadeDe = (campo) => VALIDADE_POR_CAMPO[campo] ?? VALIDADE_HERDADO_MS
 
 /**
@@ -1164,6 +1167,7 @@ export function maquinasConhecidas(pacotes, origemLocal, retratoLocal = null) {
       semContato: false,
       travas: retratoLocal?.travas ?? null,
       framework: retratoLocal?.framework ?? null,
+      codigo: retratoLocal?.codigo ?? null,
     },
     ...pacotes.map((p) => ({
       ...p.maquina,
@@ -1171,6 +1175,7 @@ export function maquinasConhecidas(pacotes, origemLocal, retratoLocal = null) {
       idadeMs: p.idadeMs,
       semContato: p.semContato,
       hw: p.hw || null,
+      codigo: p.codigo || null,
       /* 26/09: quantos programas enviaram desta máquina nos últimos 5 min.
          Mais de um é o defeito que faz cartão sumir e voltar na tela. */
       empurradores: Array.isArray(p.empurradores) ? p.empurradores.map((e) => ({ tipo: e.tipo || null, pid: e.pid ?? null })) : [],
@@ -1400,7 +1405,7 @@ export function origemDoEmpurrao() {
 export function montarPacote({
   maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [], backlogs = null,
   meu = null, agentes = null, limites = null, travas = null, framework = null, servico = null, hw = null,
-  permissoes = [], pastas = null,
+  permissoes = [], pastas = null, codigo = null,
 }) {
   const enxuto = jobs.map((j) => ({
     id: j.id, status: j.status, subject: j.subject, project: j.project, sub: j.sub,
@@ -1453,6 +1458,9 @@ export function montarPacote({
        cada empurrão, `null` quando a máquina não sabe dizer (nunca `false` —
        "não sei" e "não está instalado" levam a conclusões opostas). */
     servico,
+    /* CC-1107: commit, arquivos soltos e painel com código velho desta máquina. Mesma regra: barato, `null` quando
+       não soube medir. */
+    codigo,
     /* CC-684: processador, memória e placa de vídeo desta máquina, para a
        barra lateral mostrar as duas. Mesma regra do retrato: barato, calculado
        a cada empurrão, `null` quando a máquina não sabe dizer. */

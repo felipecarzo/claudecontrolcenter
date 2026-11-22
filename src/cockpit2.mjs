@@ -14,6 +14,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { todosOsJobs } from './sessoes.mjs'
+import { codigoEmCache } from './codigoDaMaquina.mjs'
 import { JOBS_DIR } from './jobs.mjs'
 import { readServers } from './servers.mjs'
 import { listarContainers } from './docker.mjs'
@@ -880,6 +881,8 @@ export function montar({
         idadeMs: m.idadeMs ?? null,
         empurradores: Array.isArray(m.empurradores) ? m.empurradores : [],
         hw: m.hw || null,
+        /* CC-1107: commit, soltos e painel velho de cada máquina. A local lê do cache medido em segundo plano. */
+        codigo: m.codigo || (m.local ? codigoEmCache() : null),
       }))
       : [{ id: local.id, nome: disp, local: true, contato: true, idadeMs: 0 }],
     projetos: lista,

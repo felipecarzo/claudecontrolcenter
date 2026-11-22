@@ -664,6 +664,7 @@ async function retratoDestaMaquina() {
   const pacote = montarPacote({
     maquina: s.maquina, jobs: await marcarNoTerminal(await comUltimaFala(meus)), uso: s.uso, servidores,
     travas: retrato.travas, framework: retrato.framework, servico,
+    codigo: await import('./codigoDaMaquina.mjs').then((M) => M.codigoDaqui()).catch(() => null),
   })
   retratoCache = { em: Date.now(), pacote }
   return pacote
@@ -859,6 +860,7 @@ export async function empurrar({ comTempo = null, comPastas = null } = {}) {
     maquina: s.maquina, jobs: await marcarNoTerminal(await comUltimaFala(meus)), uso: s.uso, tempo, backlogs, servidores,
     meu: meuDaqui, agentes: agentesDaqui, limites: null,
     travas: retrato.travas, framework: retrato.framework, servico,
+    codigo: await import('./codigoDaMaquina.mjs').then((M) => M.codigoDaqui()).catch(() => null),
     hw: await estadoMaquina().then((m) => (m ? { cpu: m.cpu, ram: m.ram, gpu: m.gpu } : null)).catch(() => null),
     // CC-735: os pedidos de permissão abertos aqui, para serem respondidos de lá
     permissoes: (() => { try { return lerPedidosDoGancho().filter((p) => !p.coderoom) } catch { return [] } })(),

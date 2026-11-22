@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-185 abertos, 906 fechados, 1091 no total. Gerado em 2026-11-21.
+187 abertos, 907 fechados, 1094 no total. Gerado em 2026-11-22.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -134,6 +134,7 @@
 | CC-1091 | definida | - | abrir o painel pelo endereço antigo #framework dá erro 'Cannot access C2 before initialization' |
 | CC-1092 | prova | - | A aba Sessões do projeto não oferece fechar conversa do Coderoom (print dele: sessão de 17 dias só com 'abrir') |
 | CC-1097 | definida | - | painel do PC trava 6 a 7 s a cada 30 s por tres varreduras sincronas sem cache util |
+| CC-1108 | andando | - | Sessões esquecidas e máquina sem sinal há dias saem da lista e dos contadores do Início, sem apagar nada |
 
 ## framework
 
@@ -181,6 +182,7 @@
 | CC-1079 | prova | - | Celular com rotação travada não pode parar no aviso de girar: o jogo abre na versão do lado em que a tela está |
 | CC-1080 | andando | - | Backup e restauração de projeto num pacote só: baixar, tirar da VPS e voltar igual, sem IA |
 | CC-1098 | definida | - | Cockpit da VPS avisa quando o CrowdSec bloqueia o IP do PC e tem botao para desbloquear |
+| CC-1107 | andando | - | PC e VPS sempre à mostra um do outro: o resumo leva commit, arquivos soltos e versão do painel, e a tela mostra as diferenças |
 
 ## coderoom
 

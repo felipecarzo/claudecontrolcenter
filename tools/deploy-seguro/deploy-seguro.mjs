@@ -235,6 +235,28 @@ function religadores(alvo, prod, { log, buscar, exec, esperaMs }) {
   return { religar, conferir }
 }
 export const EXCLUIR_COPIA = ['.git', 'node_modules', '.next', '.venv', 'venv', '__pycache__', '.env', '.env.*', 'data', 'media', 'cache', 'uploads', '*.log', '*.bak*', 'CREDENCIAIS.md', 'dist', 'build']
+/* O rsync casa esses nomes em QUALQUER profundidade: 'data' pula também src/data, que no
+   jogo do Pierre é código (perguntas e falas), e a edição nunca chegaria ao ar, calada.
+   `manter` devolve um nome à cópia, por alvo. Só os de pasta de conteúdo: segredo,
+   repositório e dependência nunca voltam, mesmo se a lista pedir (CC-1093, 08/11). */
+const PODE_MANTER = ['data', 'media', 'cache', 'uploads', 'dist', 'build']
+export const exclusoes = (alvo) => {
+  const manter = (alvo.manter || []).filter((x) => PODE_MANTER.includes(x))
+  return [...EXCLUIR_COPIA.filter((x) => !manter.includes(x)), ...(alvo.excluir || [])]
+}
+/* Sem `espelhar`, arquivo apagado no projeto continua na produção para sempre: no
+   Pierre, tela removida ficava lá importando função que não existe mais, e o build
+   da produção quebrava (CC-1093, 08/11). Com `espelhar`, o rsync apaga na produção
+   o que saiu do projeto. O que está em `exclusoes` (dados, .env, dependências,
+   build) NÃO é apagado: o rsync protege o excluído, a não ser com
+   --delete-excluded, que aqui nunca entra. */
+export const argumentosDaCopia = (alvo, origem, prod) => [
+  '-a', '--checksum', '--no-owner', '--no-group',
+  ...(alvo.espelhar ? ['--delete'] : []),
+  ...exclusoes(alvo).flatMap((x) => ['--exclude', x]),
+  // --checksum: compara o conteúdo; pelo tamanho e horário, uma correção de uma letra no mesmo segundo ficaria de fora
+  origem.replace(/\/?$/, '/'), prod.replace(/\/?$/, '/'),
+]
 export async function deployProcesso(alvo, pedido, { log, buscar = fetch, exec = rodar, esperaMs = 4000 } = {}) {
   const passo = (t) => log(`\n▸ ${t}\n`)
   const prod = alvo.dirProducao
@@ -257,10 +279,8 @@ export async function deployProcesso(alvo, pedido, { log, buscar = fetch, exec =
     if (!f.ok) throw new Error('o git pull falhou (a produção tem mudança local, ou o ramo divergiu): nada foi trocado')
   } else {
     const origem = path.join(alvo.repo, alvo.dir || '.')
-    passo(`copiando de ${origem} (sem apagar nada da produção)`)
-    const ex = [...EXCLUIR_COPIA, ...(alvo.excluir || [])].flatMap((x) => ['--exclude', x])
-    // --checksum: compara o conteúdo; pelo tamanho e horário, uma correção de uma letra no mesmo segundo ficaria de fora
-    const r = await exec('rsync', ['-a', '--checksum', '--no-owner', '--no-group', ...ex, origem.replace(/\/?$/, '/'), prod.replace(/\/?$/, '/')], { log })
+    passo(alvo.espelhar ? `copiando de ${origem} e apagando na produção o que saiu do projeto` : `copiando de ${origem} (sem apagar nada da produção)`)
+    const r = await exec('rsync', argumentosDaCopia(alvo, origem, prod), { log })
     if (!r.ok) throw new Error('a cópia falhou')
   }
   }

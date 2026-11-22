@@ -13,6 +13,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { casaClaude } from './platform.mjs'
+import { GUARDAS as GUARDAS_DA_PARADA } from '../hooks/parada.mjs'
 
 // via `casaClaude()`: o gate precisa apontar isto para uma casa temporária, e
 // escrever no settings.json de verdade num teste seria repetir o erro das notas
@@ -46,8 +47,13 @@ export function registrado(hook, settings = readSettings()) {
   const alvo = hook.registradoVia || hook.script
   const grupos = settings?.hooks?.[hook.evento]
   if (!alvo || !Array.isArray(grupos)) return false
-  return grupos.some((grupo) =>
-    (grupo.hooks || []).some((h) => typeof h.command === 'string' && h.command.includes(alvo)))
+  const nosComandos = (texto) => grupos.some((grupo) =>
+    (grupo.hooks || []).some((h) => typeof h.command === 'string' && h.command.includes(texto)))
+  /* CC-1107: o guarda de Stop que roda por dentro do `parada.mjs` (todos num processo só, CC-1045) não aparece pelo
+     nome no settings.json: o que está lá é o programa único. Sem isto a VPS mostrava 0 de 35 travas de fim de
+     resposta registradas, e elas rodavam. */
+  const viaParada = hook.evento === 'Stop' && GUARDAS_DA_PARADA.some((g) => `${g.split('/').pop()}.mjs` === path.basename(alvo))
+  return nosComandos(alvo) || (viaParada && nosComandos('parada.mjs'))
 }
 
 export function registradoTodos(hooks, settings = readSettings()) {

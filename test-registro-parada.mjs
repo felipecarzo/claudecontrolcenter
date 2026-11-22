@@ -1,0 +1,20 @@
+// CC-1107: o guarda de Stop que roda por dentro do parada.mjs conta como registrado (a VPS só tem o programa único)
+import assert from 'node:assert/strict'
+import { HOOKS } from './src/hooksCatalogo.mjs'
+import { registrado } from './src/hooksRegistro.mjs'
+
+const stopNoParada = HOOKS.find((h) => h.evento === 'Stop' && h.script === 'jargao-guard.mjs')
+const preTool = HOOKS.find((h) => h.evento === 'PreToolUse' && h.implementado)
+assert.ok(stopNoParada && preTool, 'catálogo sem os hooks de exemplo')
+
+const so = (evento, command) => ({ hooks: { [evento]: [{ hooks: [{ type: 'command', command }] }] } })
+const comoNaVps = so('Stop', 'node /home/claudedev/projetos/VPS_cockpit/hooks/parada.mjs')
+const comoNoPc = so('Stop', 'node D:/Documentos/projetos/cockpit/hooks/jargao-guard.mjs')
+
+assert.equal(registrado(stopNoParada, comoNaVps), true, 'VPS: o guarda roda por dentro do parada.mjs')
+assert.equal(registrado(stopNoParada, comoNoPc), true, 'PC: registrado pelo nome, como sempre')
+assert.equal(registrado(stopNoParada, so('Stop', 'node /x/pixel-agents.js')), false, 'sem parada.mjs nem o nome, não está')
+assert.equal(registrado(stopNoParada, { hooks: {} }), false, 'configuração vazia')
+assert.equal(registrado(stopNoParada, null), false, 'configuração ilegível não inventa registro')
+assert.equal(registrado(preTool, so('PreToolUse', 'node /x/hooks/parada.mjs')), false, 'parada.mjs só vale para hook de Stop')
+console.log('test-registro-parada: 6 verificações, 0 falhas')

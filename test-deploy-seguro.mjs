@@ -16,6 +16,27 @@ let ok = 0
 const t = async (nome, fn) => { await fn(); ok += 1; console.log(`  ok  ${nome}`) }
 
 try {
+  await t('manter devolve pasta de conteúdo à cópia, nunca segredo nem repositório (CC-1093)', () => {
+    assert.ok(D.exclusoes({}).includes('data'), 'sem manter, data continua fora')
+    const ex = D.exclusoes({ manter: ['data', '.env', '.git', 'node_modules'], excluir: ['docs'] })
+    assert.ok(!ex.includes('data'), 'data volta para a cópia')
+    for (const x of ['.env', '.env.*', '.git', 'node_modules', 'media', 'docs']) assert.ok(ex.includes(x), `${x} continua fora`)
+  })
+  await t('espelhar apaga na produção o que saiu do projeto, e nunca o excluído (CC-1093)', async () => {
+    const a = D.argumentosDaCopia({}, '/o', '/p')
+    assert.ok(!a.includes('--delete'), 'sem espelhar, nada é apagado')
+    const b = D.argumentosDaCopia({ espelhar: true }, '/o', '/p')
+    assert.ok(b.includes('--delete') && !b.includes('--delete-excluded'), 'espelhar usa --delete, nunca --delete-excluded')
+    // de verdade, com rsync: some o arquivo removido, ficam .env, data e node_modules
+    const { execFileSync } = await import('node:child_process')
+    const o = path.join(casa, 'esp-origem'), p = path.join(casa, 'esp-prod')
+    for (const d of [o, path.join(p, 'data'), path.join(p, 'node_modules')]) fs.mkdirSync(d, { recursive: true })
+    fs.writeFileSync(path.join(o, 'fica.txt'), '1')
+    for (const f of ['fica.txt', 'saiu.txt', '.env', 'data/banco.db', 'node_modules/x.js']) fs.writeFileSync(path.join(p, f), '0')
+    execFileSync('rsync', D.argumentosDaCopia({ espelhar: true }, o, p))
+    assert.ok(!fs.existsSync(path.join(p, 'saiu.txt')), 'o arquivo removido do projeto continuou na produção')
+    for (const f of ['fica.txt', '.env', 'data/banco.db', 'node_modules/x.js']) assert.ok(fs.existsSync(path.join(p, f)), `${f} foi apagado`)
+  })
   await t('TOTP bate com os exemplos oficiais do padrão (RFC 6238, SHA-1)', () => {
     const seg = Buffer.from('12345678901234567890')
     assert.equal(D.totp(seg, Math.floor(59 / 30), 8), '94287082')
