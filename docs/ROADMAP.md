@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-204 abertos, 909 fechados, 1113 no total. Gerado em 2026-11-23.
+205 abertos, 909 fechados, 1114 no total. Gerado em 2026-11-23.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -199,6 +199,7 @@
 | CC-1126 | prova | - | Varredura do backlog roda no PC e na VPS ao mesmo tempo e o git bate a cada pull; so uma maquina pode gravar |
 | CC-1127 | definida | - | VPS e PC commitam o que a outra maquina deixou sem commit: item criado na VPS fica fora do git e bate a cada pull |
 | CC-1128 | prova | - | painel velho falso quando o commit so mudou documentos |
+| CC-1129 | andando | - | Comando de encerrar sessao confere o painel do tmux antes de marcar e avisa quando nao alcanca (conserto vindo da VPS) |
 
 ## coderoom
 

@@ -47,6 +47,13 @@ try {
     assert.deepEqual(chamadas, ['%1'], 'fecha só o PAINEL da própria sessão, nunca a sessão tmux inteira nem a de outra')
     assert.match(r.texto, /fecha em 6 segundos/)
   })
+  await ok('(h) CC-1123: tmux que não se alcança (caixa de proteção) falha em voz alta e não marca', async () => {
+    reg('h', process.pid, 'sess-H', { tmux: 'cc-remote-projH:@8.%8' })
+    const r = await encerrar({ sessionId: 'sess-H', fechar: () => false, agora: 5000 })
+    assert.equal(r.ok, false)
+    assert.match(r.erro, /fora da caixa de proteção/)
+    assert.equal(lerEncerradas()['sess-H'], undefined)
+  })
   await ok('(g) registro de tmux sem id de painel: só marca, não fecha nada', async () => {
     chamadas.length = 0
     reg('d', process.pid, 'sess-D', { tmux: 'cc-remote-projD' })

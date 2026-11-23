@@ -5,7 +5,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { DIR_SESSOES_ABRIGO } from './metaSessao.mjs'
 import { casaClaude } from './platform.mjs'
 
@@ -40,26 +40,30 @@ export function registroDa(sessionId, dir = path.join(casaClaude(), 'sessions'))
 
 /** Padrão do fechamento: processo solto, só do PAINEL (`%N`) recebido, depois de ATRASO_S segundos.
  *  Painel e não sessão: `kill-session` fecharia todas as janelas do tmux, inclusive de outra conversa que
- *  dividisse a sessão. O id de painel é único na máquina e sai do registro da própria sessão. */
+ *  dividisse a sessão. O id de painel é único na máquina e sai do registro da própria sessão.
+ *  CC-1123: confere ANTES que alcança o painel. Dentro da caixa de proteção o tmux dá "Operation not permitted" e o
+ *  processo solto morre junto com o comando; sem esta conferência a sessão era marcada e ficava viva (geolev4, 22/11). */
 function fecharTmux(painel) {
+  if (spawnSync('tmux', ['display-message', '-p', '-t', painel, '#{pane_id}'], { encoding: 'utf8' }).stdout?.trim() !== painel) return false
   spawn('sh', ['-c', 'sleep "$1" && tmux kill-pane -t "$2"', 'x', String(ATRASO_S), painel], { detached: true, stdio: 'ignore' }).unref()
+  return true
 }
 
 export async function encerrar({ sessionId = process.env.CLAUDE_CODE_SESSION_ID, soMarcar = false, fechar = fecharTmux, agora = Date.now(), dir } = {}) {
   if (!sessionId) return { ok: false, erro: 'sem CLAUDE_CODE_SESSION_ID: este comando só roda dentro de uma sessão do Claude Code' }
   const reg = registroDa(sessionId, dir)
   if (!reg) return { ok: false, erro: `não achei o registro da sessão ${String(sessionId).slice(0, 8)} em ~/.claude/sessions` }
-  gravarCarimbo(sessionId, agora)
   const nomeTmux = reg.tmux ? String(reg.tmux).split(':')[0] : null
+  const painel = reg.tmux ? (String(reg.tmux).match(/%\d+$/) || [])[0] || null : null
+  const fecha = Boolean(painel) && !soMarcar
+  if (fecha && !fechar(painel)) return { ok: false, erro: `não alcancei o painel ${painel} do tmux ${nomeTmux}, então nada foi marcado nem fechado. Rode o comando fora da caixa de proteção (dangerouslyDisableSandbox).` }
+  gravarCarimbo(sessionId, agora)
   let vinculo = null
   if (nomeTmux?.startsWith('cc-remote-')) {
     const R = await import('./remotecontrol.mjs')
     vinculo = Object.keys(R.lerVinculos()).find((p) => R._internals.slug(p) === nomeTmux) || null
     if (vinculo) R.anotarVinculo(vinculo, { encerradaEm: agora })
   }
-  const painel = reg.tmux ? (String(reg.tmux).match(/%\d+$/) || [])[0] || null : null
-  const fecha = Boolean(painel) && !soMarcar
-  if (fecha) fechar(painel)
   const texto = !nomeTmux ? 'Marquei a sessão como encerrada no painel. Ela não está num tmux, então o processo continua vivo: feche o terminal.'
     : soMarcar ? 'Marquei a sessão como encerrada no painel e não fechei o tmux (--so-marcar).'
       : `Marquei a sessão como encerrada no painel. O tmux ${nomeTmux} fecha em ${ATRASO_S} segundos.`
