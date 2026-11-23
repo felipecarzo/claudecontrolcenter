@@ -42,6 +42,7 @@ import {
   mesclar, mesclarTempo, montarPacote, validarPacote, pedirSessao, pegarPedidos, resumirBacklogs,
   pedirPermissao, ID_GANCHO, DECISOES_REMOTAS,
   pedirMensagem, maquinaDaConversa, ID_CONVERSA, TECLAS_REMOTAS, cicloCurto, conversaDeOutraMaquina, entregarMensagemRemota,
+  receberPedidosParaVoce,
 } from './federacao.mjs'
 import { tarefas } from './tarefas.mjs'
 /* O gate. Importado no TOPO, e não por `import()` dentro do handler: o handler
@@ -2095,9 +2096,13 @@ function handler(req, res) {
        devolve promessa. Sem o `await`, a resposta sairia com uma promessa
        dentro e o outro lado receberia um campo vazio sem erro nenhum. */
     return comCorpoAsync(req, res, LIMITE_PACOTE, async (bruto) => {
-      const { ok, erro, pacote } = validarPacote(bruto)
+      const { ok, erro, pacote, pedidosParaVoce } = validarPacote(bruto)
       if (!ok) return { error: erro }
       gravarPacote(pacote)
+      /* CC-1120: a mensagem que a outra máquina guardou para esta vem no corpo do envio (o PC é alcançável só neste
+         sentido). Entrega pela mesma função do caminho contrário, sem segurar a resposta; o recibo vai de volta. */
+      const chegados = receberPedidosParaVoce(pedidosParaVoce, origemLocal(readConfig())?.nome)
+      if (chegados.novos.length) atenderPedidos(chegados.novos).catch(() => {})
       /* CC-861: as pastas da outra máquina completam o registro central DESTA (o cofre),
          sem registro paralelo: projeto em comum ganha a máquina, novo ganha entrada. */
       let registroPastas = null
@@ -2117,6 +2122,7 @@ function handler(req, res) {
         recebido: pacote.maquina,
         jobs: pacote.jobs.length,
         pedidos: pegarPedidos(pacote.maquina.nome, Date.now(), { contrato: pacote.contrato }),
+        ...(chegados.ids.length ? { pedidosRecebidos: chegados.ids } : {}),
         /* CC-440, Plano de Unificação: as regras DECLARADAS para esta máquina
            vão na mesma carona dos pedidos. A diferença entre as duas coisas é a
            natureza: pedido acontece uma vez, regra vale sempre e é reafirmada a

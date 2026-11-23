@@ -113,6 +113,8 @@ export function validarPacote(bruto) {
   const lista = (v, max) => (Array.isArray(v) ? v.slice(0, max) : [])
   return {
     ok: true,
+    /* CC-1120: fora do `pacote` de propósito. O pacote vira retrato gravado e repassado; o pedido é evento de uma vez. */
+    pedidosParaVoce: recortarPedidosParaVoce(bruto.pedidosParaVoce),
     pacote: {
       maquina: { id, nome: String(bruto.maquina?.nome || id).slice(0, 60) },
       /* CC-440: qual formato esta máquina fala. Ausente vira `0`, "não diz", que
@@ -956,6 +958,53 @@ export async function entregarMensagemRemota(p, { sessoes, enviar, apertarTecla,
   return enviar({ conversa: achada.conversa, texto })
 }
 
+/* CC-1120, medido em 23/11: a mensagem que o PC enfileira para a VPS ficava na fila do PC para sempre, porque essa fila
+   só é lida por quem RECEBE envio, e a VPS nunca alcança o PC (NAT). Agora ela viaja no corpo do envio do próprio PC
+   (`pedidosParaVoce`) e só sai da fila quando a resposta devolve o id em `pedidosRecebidos`. Rede caída: o pedido fica.
+   Recibo perdido: o receptor lembra o id e não entrega de novo. Receptor velho ignora o campo e não devolve recibo: o
+   pedido vence em 10 min, como qualquer outro. Só mensagem e tecla; o resto da fila não muda. */
+export function recortarPedidosParaVoce(v) {
+  return (Array.isArray(v) ? v : []).slice(0, 10)
+    .filter((p) => p && p.acao === 'mensagem' && /^[0-9a-z-]{4,40}$/i.test(String(p.id || ''))
+      && ID_CONVERSA.test(String(p.conversa || ''))
+      && (p.tecla == null ? Boolean(limparTextoRemoto(p.texto)) : TECLAS_REMOTAS.includes(p.tecla)))
+    .map((p) => ({
+      id: String(p.id), acao: 'mensagem', paraMaquina: seguro(p.paraMaquina), conversa: String(p.conversa),
+      texto: p.tecla == null ? limparTextoRemoto(p.texto) : null, tecla: p.tecla ?? null,
+      de: p.de ? String(p.de).slice(0, 60) : null, em: Number(p.em) || null,
+    }))
+}
+
+/** O que o envio desta máquina leva: mensagens da fila daqui para outra máquina, ainda válidas. */
+export function pedidosParaLevar(eu, now = Date.now()) {
+  const meu = seguro(eu)
+  return recortarPedidosParaVoce(lerPedidosBrutos().filter((p) => p.acao === 'mensagem' && p.paraMaquina !== meu
+    && now - (p.em || 0) < VALIDADE_PEDIDO_MS))
+}
+
+/** Tira da fila só os ids que o outro lado confirmou. */
+export function tirarPedidos(ids) {
+  const fora = new Set((Array.isArray(ids) ? ids : []).map(String))
+  if (!fora.size) return
+  const todos = lerPedidosBrutos()
+  const resto = todos.filter((p) => !fora.has(String(p.id)))
+  if (resto.length !== todos.length) gravarPedidos(resto)
+}
+
+/* ponytail: memória do processo. Painel religado dentro dos 10 min, com o recibo perdido no meio, entrega de novo;
+   gravar em disco quando isso acontecer de verdade. */
+const jaEntregues = new Map()
+/** O lado que recebe: os endereçados a esta máquina ainda não entregues (até 3, o teto do `atenderPedidos`) e os ids
+ *  para o recibo, que inclui os já entregues antes (recibo perdido) para o outro lado parar de mandar. */
+export function receberPedidosParaVoce(lista, eu, now = Date.now()) {
+  const meu = seguro(eu)
+  for (const [id, em] of jaEntregues) if (now - em > VALIDADE_PEDIDO_MS) jaEntregues.delete(id)
+  const meus = (Array.isArray(lista) ? lista : []).filter((p) => meu && p?.paraMaquina === meu)
+  const novos = meus.filter((p) => !jaEntregues.has(p.id)).slice(0, 3)
+  for (const p of novos) jaEntregues.set(p.id, now)
+  return { novos, ids: meus.filter((p) => jaEntregues.has(p.id)).map((p) => p.id) }
+}
+
 /**
  * CC-1060: o PC deve mandar agora um envio leve? Puro, para o teste cobrir.
  * Acelera (2 s) com pedido de permissão aberto ou enquanto ele olha o painel da outra
@@ -1541,7 +1590,10 @@ export function montarPacote({
  */
 export async function enviar({ enviarPara, token, pacote, semRetrato = false }) {
   if (!enviarPara || !token) return { ok: false, erro: 'federação não configurada' }
-  const corpo = JSON.stringify(pacote)
+  /* CC-1120: aqui e não em quem chama, para o envio leve, o completo e o `cc reportar` levarem igual. */
+  let levar = []
+  try { levar = pedidosParaLevar(pacote?.maquina?.nome) } catch { /* fila ilegível: o envio segue sem ela */ }
+  const corpo = JSON.stringify(levar.length ? { ...pacote, pedidosParaVoce: levar } : pacote)
   if (corpo.length > LIMITE_PACOTE) return { ok: false, erro: 'pacote grande demais' }
   try {
     const r = await fetch(`${enviarPara}/api/federacao`, {
@@ -1566,6 +1618,9 @@ export async function enviar({ enviarPara, token, pacote, semRetrato = false }) 
        pode ser uma versão antiga, e aí simplesmente não há pedido. */
     let corpoResposta = null
     try { corpoResposta = await r.json() } catch { /* servidor antigo ou resposta vazia */ }
+    if (r.ok && levar.length && Array.isArray(corpoResposta?.pedidosRecebidos)) {
+      try { tirarPedidos(corpoResposta.pedidosRecebidos) } catch { /* fica na fila; o outro lado não entrega duas vezes */ }
+    }
     return { ok: r.ok, status: r.status, ...(corpoResposta && typeof corpoResposta === 'object' ? corpoResposta : {}) }
   } catch (e) {
     return { ok: false, erro: String(e?.message || e) }
