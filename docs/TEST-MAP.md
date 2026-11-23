@@ -25,7 +25,7 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tela | 20 | 20/20 | 13/20 | 20/20 | 0/20 | 20/20 |
 | acao | 385 | 385/385 | 54/385 | 0/385 | 0/385 | 0/385 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
-| endereco | 180 | 180/180 | 3/180 | 0/180 | 0/180 | 0/180 |
+| endereco | 181 | 181/181 | 3/181 | 0/181 | 0/181 | 0/181 |
 | palavra | 90 | 90/90 | 10/90 | 90/90 | 0/90 | 90/90 |
 
 **Coberto quer dizer CITADO num arquivo de teste, não testado de ponta a
@@ -459,7 +459,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-como` | estatica | src/ui_cockpit2.html | explica, estreito |
 | `data-n` | viva | src/ui_cockpit2.html | explica, estreito |
 
-## endereco (180)
+## endereco (181)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -633,6 +633,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `/api/git/mudancas` | estatica | src/web.mjs | funciona, explica |
 | `/api/git/salvar` | estatica | src/web.mjs | funciona, explica |
 | `/api/git` | estatica | src/web.mjs | funciona, explica |
+| `/api/memoria` | estatica | src/web.mjs | funciona, explica |
 | `/api/maquina` | estatica | src/web.mjs | funciona, explica |
 | `/api/instalacao` | estatica | src/web.mjs | funciona, explica |
 | `/api/kill` | estatica | src/web.mjs | funciona, explica |

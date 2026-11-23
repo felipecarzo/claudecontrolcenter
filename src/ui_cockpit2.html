@@ -20065,6 +20065,7 @@
       c2Extra('notes', '/api/notes', 30000),
       c2Extra('vps', '/api/vps', 30000),
       c2Extra('maquina', '/api/maquina', 10000),
+      c2Extra('memoria', '/api/memoria', 10000), // CC-1130: memória disponível, piso e aviso
       c2Extra('agenda', '/api/calendario', 300000),
       c2Extra('leitor', '/api/leitor', 60000),
     ]);
@@ -20093,12 +20094,14 @@
       const lista = sinoDecisoes().filter((e) => !e.esquecida);
       const esq = (C2.dados && C2.dados.esquecidas) || null;
       const lims = sinoLimites();
-      const total = lista.length + lims.length + (esq && esq.quantas ? 1 : 0);
+      const memAv = (C2X.dados.memoria && C2X.dados.memoria.aviso) || null; // CC-1130: o aviso do guarda de memória
+      const total = lista.length + lims.length + (esq && esq.quantas ? 1 : 0) + (memAv ? 1 : 0);
       const n = document.getElementById('sino-n');
       if (n) { n.hidden = !total; n.textContent = total > 9 ? '9+' : String(total); }
       const caixa = document.getElementById('sino-caixa');
       if (!caixa || caixa.hidden) return;
-      caixa.innerHTML = (lims.length
+      caixa.innerHTML = (memAv ? '<h4 style="color:var(--amber)">MEMÓRIA DO PC</h4><p class="c2-mini" style="padding:2px 10px 8px" data-sino-memoria>' + esc(memAv.texto) + '</p>' : '')
+        + (lims.length
         ? '<h4 style="color:var(--red)">LIMITE DO PLANO</h4>' + lims.map((l) => '<button class="sino-item" data-sino-limite><b>' + l.pct + '% da ' + esc(l.rot) + '</b><span>'
           + (l.resetaEm ? 'zera ' + new Date(l.resetaEm).toLocaleString('pt-BR', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '') + '</span></button>').join('')
         : '')
@@ -20146,6 +20149,7 @@
         try { const r = await fetch('/api/cockpit2'); if (r.ok) C2.dados = await r.json(); } catch { /* fica o que tinha */ }
       }
       SINO_LIDO = Date.now();
+      await c2Extra('memoria', '/api/memoria', 9000); // CC-1130: o aviso de memória toca o sino em qualquer tela
       sinoPintar();
       sbSaudePintar();
       /* A tela Agentes usa esta leitura para contar igual à Início (27/09):
@@ -25391,7 +25395,17 @@
       const abas = '<div class="card ini-abas" role="tablist">' + ABAS.map(([k, rot, icn]) => '<button role="tab" aria-selected="' + (aba === k) + '" class="ini-aba' + (aba === k ? ' on' : '') + '" data-ini-aba="' + k + '">' + ic(icn, 17) + rot + '</button>').join('') + '</div>';
       const visiveis = aba === 'tudo' ? blocos.filter(([k]) => !k.endsWith('+')).map(([, h]) => h) : blocos.filter(([k]) => k === aba || k === aba + '+').map(([, h]) => h);
 
-      pintar(raiz, hero + stats + '<div class="ini-fixo">' + abas + '</div>'
+      /* CC-1130: o aviso de memória (quando o guarda disparou) e, sempre, um número discreto:
+         disponível de total, mudando de cor perto do piso (âmbar a 1 GB do piso, vermelho abaixo). */
+      const MEM = X.memoria;
+      const memVirg = (n) => String(n).replace('.', ',');
+      const memBloco = !MEM ? '' : (MEM.aviso
+        ? '<div class="card" data-ini-memoria-aviso style="padding:14px;border-left:3px solid var(--amber);margin-bottom:10px"><b>MEMÓRIA DO PC ACABANDO</b>'
+          + '<p style="margin:6px 0 0;font-size:13px;line-height:1.45">' + esc(MEM.aviso.texto) + '</p>'
+          + '<div class="c2-mini" style="margin-top:6px">avisado às ' + c2Hora(MEM.aviso.quando) + '. O cockpit só avisa: não fecha nem pausa nada.</div></div>' : '')
+        + '<div class="c2-mini" data-ini-memoria style="margin:0 0 10px;color:' + (MEM.abaixo ? 'var(--red)' : MEM.perto ? 'var(--amber)' : 'var(--text-dim)') + '">memória disponível: '
+        + memVirg(MEM.disponivelGB) + ' de ' + memVirg(MEM.totalGB) + ' GB · piso ' + memVirg(MEM.pisoGB) + ' GB</div>';
+      pintar(raiz, hero + memBloco + stats + '<div class="ini-fixo">' + abas + '</div>'
         + '<div class="c2-mosaico' + (aba === 'tudo' ? '' : ' so-um') + '">' + visiveis.join('') + '</div>');
       c2Encaixar();
     }

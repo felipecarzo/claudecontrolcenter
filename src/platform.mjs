@@ -113,6 +113,51 @@ export async function lerGpu() {
 }
 
 /**
+ * CC-1130: quem segura a memória, lido SÓ quando o guarda de memória cruza o piso
+ * (nunca no tique). Windows: uma chamada de PowerShell com Win32_Process (medida em
+ * 2,7s, contra 19-29s do Get-Process), que traz memória em uso, memória comprometida
+ * por processo, linha de comando e as páginas por segundo. Outros sistemas: `ps`.
+ * Devolve `{ processos: [{pid, nome, ramB, comprometidaB, cmd}], comprometidaGB,
+ * limiteGB, paginasPorSeg }` ou `null` quando a leitura falha.
+ */
+const PS_MEMORIA = `
+$ErrorActionPreference='SilentlyContinue'
+$os = Get-CimInstance Win32_OperatingSystem
+$pg = Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory
+$p = Get-CimInstance Win32_Process | ForEach-Object { [pscustomobject]@{ n=$_.Name; p=$_.ProcessId; ws=[int64]$_.WorkingSetSize; pv=[int64]$_.PrivatePageCount; c=$(if ($_.CommandLine) { $_.CommandLine.Substring(0,[math]::Min(300,$_.CommandLine.Length)) } else { '' }) } }
+@{ comprometidaKB = ($os.TotalVirtualMemorySize - $os.FreeVirtualMemory); limiteKB = $os.TotalVirtualMemorySize; paginas = $pg.PagesPersec; procs = $p } | ConvertTo-Json -Compress -Depth 4`
+
+export async function lerMemoriaDosProcessos() {
+  if (ehWindows) {
+    const r = await quietAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', PS_MEMORIA], 30000)
+    if (!r.ok) return null
+    try {
+      const j = JSON.parse(r.out.slice(r.out.indexOf('{')))
+      return {
+        processos: (j.procs || []).map((x) => ({ pid: x.p, nome: String(x.n || '').replace(/\.exe$/i, ''), ramB: x.ws || 0, comprometidaB: x.pv || 0, cmd: x.c || '' })),
+        comprometidaGB: j.comprometidaKB ? +(j.comprometidaKB / 2 ** 20).toFixed(1) : null,
+        limiteGB: j.limiteKB ? +(j.limiteKB / 2 ** 20).toFixed(1) : null,
+        paginasPorSeg: numero(j.paginas),
+      }
+    } catch { return null }
+  }
+  const r = await quietAsync('ps', ['-eo', 'pid=,rss=,comm=,args='], 8000)
+  if (!r.ok) return null
+  const processos = []
+  for (const l of r.out.split('\n')) {
+    const m = l.trim().match(/^(\d+)\s+(\d+)\s+(\S+)\s*(.*)$/)
+    if (m) processos.push({ pid: Number(m[1]), nome: path.basename(m[3]), ramB: Number(m[2]) * 1024, comprometidaB: 0, cmd: m[4].slice(0, 300) })
+  }
+  let comprometidaGB = null, limiteGB = null
+  try { // /proc/meminfo só existe no Linux; no resto fica nulo
+    const mi = fs.readFileSync('/proc/meminfo', 'utf8')
+    const kb = (k) => { const x = mi.match(new RegExp(`^${k}:\\s+(\\d+)`, 'm')); return x ? +(Number(x[1]) / 2 ** 20).toFixed(1) : null }
+    comprometidaGB = kb('Committed_AS'); limiteGB = kb('CommitLimit')
+  } catch { /* sem meminfo */ }
+  return { processos, comprometidaGB, limiteGB, paginasPorSeg: null }
+}
+
+/**
  * Temperatura de CPU e de memória — só existem se o LibreHardwareMonitor (ou
  * o antigo OpenHardwareMonitor) estiver ABERTO, porque é ele quem publica o
  * namespace WMI. Sem ele, `MSAcpi_ThermalZoneTemperature` e

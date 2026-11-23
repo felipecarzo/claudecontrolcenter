@@ -4971,6 +4971,11 @@ function handler(req, res) {
     return commitsDesde(cwd, desde).then((r) => send(res, 200, r))
   }
 
+  // CC-1130: memória disponível, o piso e o aviso do guarda. Barata (os.freemem), pode ser lida a cada 10 s
+  if (url.pathname === '/api/memoria') {
+    return import('./guardaMemoria.mjs').then((G) => send(res, 200, G.retrato()))
+  }
+
   // Sensores da máquina. Fora do stream pelo mesmo motivo da mídia: a leitura
   // da GPU spawna processo, e o tique de 2s dos agentes não pode depender disso.
   if (url.pathname === '/api/maquina') {
@@ -5445,6 +5450,8 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
       setTimeout(arrumarBacklogs, 3 * 60_000).unref() // não disputa com a subida do painel
       // CC-857: o vigia de carga, uma leitura a cada 10 s
       import('./vigiaCarga.mjs').then((V) => V.iniciar()).catch(() => {})
+      // CC-1130: o guarda de memória, só avisa: uma leitura a cada 10 s
+      import('./guardaMemoria.mjs').then((G) => G.iniciar()).catch(() => {})
 
       const { token, enviarPara } = readConfig().federacao || {}
       if (token && enviarPara) {

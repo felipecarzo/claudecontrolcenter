@@ -22,6 +22,8 @@ import { casaClaude } from './platform.mjs'
 export const CONFIG_FILE = path.join(casaClaude(), 'control-center.json')
 
 const DEFAULTS = {
+  // CC-1130: piso de memória disponível, em GB, abaixo do qual o guarda de memória avisa
+  memoriaPisoGB: 4,
   enabled: true, disabledProjects: [], taxaHora: 0, taxaPorProjeto: {}, cambio: {},
   assinaturaMes: 0, graficos: null, mercado: {}, sessoes: {}, servidores: {},
   pip: { blocos: ['uso', 'agentes'], layout: 'quadrado' },
