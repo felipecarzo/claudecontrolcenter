@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-194 abertos, 907 fechados, 1101 no total. Gerado em 2026-11-22.
+196 abertos, 907 fechados, 1103 no total. Gerado em 2026-11-22.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -189,6 +189,8 @@
 | CC-1111 | andando | - | Saude da VPS desatualizada (retrato de 20/08) e tempo de trabalho da VPS fora da semana |
 | CC-1113 | definida | - | Conferir na tela o que a sessao de 22/11 commitou: linha PC contra VPS, sessoes esquecidas, maquinas sem sinal, travas da VPS |
 | CC-1114 | andando | - | Responder pelo cockpit da VPS as sessoes do PC abertas pelo botao do cockpit (caminho B1) |
+| CC-1116 | andando | - | Aviso falso '2 paineis enviando ao mesmo tempo' logo depois de religar a VPS: o processo antigo ja morreu e continua contando |
+| CC-1117 | andando | - | Tela de Projetos conta como viva sessao esquecida 'espera voce' (vivas por projeto em cockpit2.mjs) |
 
 ## coderoom
 

@@ -489,8 +489,11 @@ const appUrlDe = (j) => (/^https:\/\/claude\.ai\/code\/session_[A-Za-z0-9]{10,60
 export const conversaDoMaestro = (h) => Boolean(h) && (h.origem === 'maestro' || /^[A-Z]{2,5}-\d+: /.test(h.titulo || '') || /^maestro\b|pelo maestro/i.test(h.titulo || ''))
 
 /** CC-957: marca `esquecida` em sessão (e cartão de espera) sem atividade há `limite` ou mais. Trabalhando nunca é esquecida. Devolve o limite usado. */
-export function marcarEsquecidas(dados, limite = Number(process.env.CC_ESQUECIDA_MS) || 3 * 864e5) {
-  for (const c of dados.conectadas || []) if (c && c.estado !== 'trabalhando' && Number(c.desdeMs) >= limite) c.esquecida = true
+export const limiteEsquecida = () => Number(process.env.CC_ESQUECIDA_MS) || 3 * 864e5
+/** CC-1117: a conta de uma só, usada pelo `esquecida` das listas e pelo `vivas` de cada projeto. */
+export const ehEsquecida = (c, limite = limiteEsquecida()) => Boolean(c) && c.estado !== 'trabalhando' && Number(c.desdeMs) >= limite
+export function marcarEsquecidas(dados, limite = limiteEsquecida()) {
+  for (const c of dados.conectadas || []) if (ehEsquecida(c, limite)) c.esquecida = true
   for (const e of dados.espera || []) if (e && e.tipo === 'agente' && Number(e.desdeMs) >= limite) e.esquecida = true
   return limite
 }
@@ -849,7 +852,7 @@ export function montar({
     presenca: [...p.presenca],
     espera: p.espera.sort(porTempo),
     sessoes: p.sessoes.sort((a, b) => a.desdeMs - b.desdeMs),
-    vivas: p.sessoes.filter((s) => s.estado === 'trabalhando' || s.estado === 'espera você').length,
+    vivas: p.sessoes.filter((s) => (s.estado === 'trabalhando' || s.estado === 'espera você') && !ehEsquecida(s)).length,
   })).sort((a, b) =>
     b.espera.length - a.espera.length
     || b.vivas - a.vivas

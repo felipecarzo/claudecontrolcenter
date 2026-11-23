@@ -511,9 +511,13 @@ export function gravarPacote(pacote) {
   const JANELA_EMPURRADORES_MS = 5 * 60 * 1000
   const vistos = Array.isArray(anterior?.empurradores) ? anterior.empurradores : []
   const chave = (o) => `${o.tipo}:${o.pid ?? '?'}`
-  const atual = final.origem
+  /* CC-1116: `desde` é o primeiro envio visto deste processo, `em` o último. Sem o par, religar o painel (o PID velho
+     morre, o novo nasce) parecia "2 painéis enviando": o velho ficava 5 min na lista. `empurradoresSimultaneos` usa o par. */
+  const atual0 = final.origem
     ? { ...final.origem, em: agora }
     : { pid: null, tipo: 'antigo', em: agora }
+  const anteriorDoMesmo = vistos.find((v) => chave(v) === chave(atual0) && agora - (v.em || 0) < JANELA_EMPURRADORES_MS)
+  const atual = { ...atual0, desde: anteriorDoMesmo?.desde ?? anteriorDoMesmo?.em ?? agora }
   final.empurradores = [
     ...vistos.filter((v) => agora - (v.em || 0) < JANELA_EMPURRADORES_MS && chave(v) !== chave(atual)),
     atual,
@@ -1183,6 +1187,20 @@ export function rotasDeTodos(locais = [], pacotes = [], origemLocal = 'local') {
   return Object.fromEntries(porProjeto)
 }
 
+/**
+ * CC-1116: quem está enviando AO MESMO TEMPO. Troca em sequência (o PID velho para, o novo começa: religar o painel)
+ * tem intervalos [desde, em] separados e devolve só o último; dois processos que se intercalam têm intervalos que se
+ * cruzam e voltam juntos. Entrada sem `desde` (arquivo gravado antes do CC-1116) conta como um ponto só, em `em`.
+ */
+export function empurradoresSimultaneos(lista) {
+  const l = (Array.isArray(lista) ? lista : []).map((e) => ({ ...e, _d: e.desde ?? e.em ?? 0, _e: e.em ?? 0 }))
+  if (l.length < 2) return l.map(({ _d, _e, ...e }) => e)
+  const cruza = (a, b) => a._d <= b._e && b._d <= a._e
+  const juntos = l.filter((a) => l.some((b) => b !== a && cruza(a, b)))
+  const saida = juntos.length ? juntos : [l.reduce((m, e) => (e._e >= m._e ? e : m))]
+  return saida.map(({ _d, _e, ...e }) => e)
+}
+
 export function maquinasConhecidas(pacotes, origemLocal, retratoLocal = null) {
   return [
     /* CC-340: a máquina local entra com o MESMO retrato das remotas.
@@ -1209,7 +1227,7 @@ export function maquinasConhecidas(pacotes, origemLocal, retratoLocal = null) {
       codigo: p.codigo || null,
       /* 26/09: quantos programas enviaram desta máquina nos últimos 5 min.
          Mais de um é o defeito que faz cartão sumir e voltar na tela. */
-      empurradores: Array.isArray(p.empurradores) ? p.empurradores.map((e) => ({ tipo: e.tipo || null, pid: e.pid ?? null })) : [],
+      empurradores: empurradoresSimultaneos(p.empurradores).map((e) => ({ tipo: e.tipo || null, pid: e.pid ?? null })),
       /* CC-263: onde o projeto mora NAQUELA máquina, tirado do que ela mesma
          reportou. É o que permite a tela montar o comando de instalar o serviço
          com o caminho certo, em vez de chutar um `D:\...` que pode não existir.
