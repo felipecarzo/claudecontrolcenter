@@ -600,7 +600,10 @@ export function filaDoAgente(itens, { sprint = new Set() } = {}) {
 export function sprintAtualIds(raiz, agora = Date.now()) {
   let t = ''; try { t = fs.readFileSync(path.join(raiz, 'docs', 'sprints.jsonl'), 'utf8') } catch { return new Set() }
   const rows = t.split(/\r?\n/).filter(Boolean).flatMap((l) => { try { return [JSON.parse(l)] } catch { return [] } })
-  return new Set(rows.find((g) => g.tipo === 'abrir' && Date.parse(g.de) <= agora && agora < Date.parse(g.ate))?.itens || [])
+  const naJanela = (g) => Date.parse(g.de) <= agora && agora < Date.parse(g.ate)
+  // CC-1124, passo 6: a linha `tirar` (resposta ao aviso de sprint que não cabe) tira do sprint
+  const tirados = new Set(rows.filter((g) => g.tipo === 'tirar' && naJanela(g)).flatMap((g) => g.itens || []))
+  return new Set((rows.find((g) => g.tipo === 'abrir' && naJanela(g))?.itens || []).filter((id) => !tirados.has(id)))
 }
 
 /** CC-958: põe um item aberto num lugar da fila, ou tira com 'nenhum'. A ideia (B0) que ganha um lugar fora o "fora" vira definida: o toque dele é a confirmação. */

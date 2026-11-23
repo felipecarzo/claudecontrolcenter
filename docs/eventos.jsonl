@@ -1538,3 +1538,7 @@
 {"em":"2026-11-23T17:59:20.996Z","tipo":"lugar","id":"CC-1032","de":"robo","texto":"fim do backlog","porque":"parada há 30 dias, no lugar sprint: foi para o fim do backlog e saiu do sprint","por":"robo","regra":"trinta-dias"}
 {"em":"2026-11-23T17:59:20.996Z","tipo":"estado","id":"CC-1061","de":"B1","para":"KO","porque":"parada há 30 dias, no lugar backlog","por":"robo","regra":"trinta-dias"}
 {"em":"2026-11-23T17:59:20.996Z","tipo":"estado","id":"CC-1062","de":"B1","para":"KO","porque":"parada há 30 dias, no lugar backlog","por":"robo","regra":"trinta-dias"}
+{"em":"2026-11-23T18:07:18.819Z","tipo":"criada","id":"CC-1127","estado":"B1","texto":"PC e VPS arrumando o mesmo backlog antes do git juntar"}
+{"em":"2026-11-23T18:11:05.163Z","tipo":"criada","id":"CC-1128","estado":"EM"}
+{"em":"2026-11-23T18:14:59.899Z","tipo":"estado","id":"CC-1124","de":"PR","para":"EM"}
+{"em":"2026-11-23T18:15:00.379Z","tipo":"medida","id":"CC-1124","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":14357911,"porModelo":{"claude-opus-5-5":18697227,"claude-sonnet-5-5":13551404}}

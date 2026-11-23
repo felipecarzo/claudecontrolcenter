@@ -3391,6 +3391,8 @@ function handler(req, res) {
       // CC-1124, passo 4: o cartão semanal das paradas recusa opções que se contradizem antes de votar, e aplica no backlog
       const r = deck === 'parados-da-semana'
         ? (await import('./cartaSemanal.mjs')).responder(raiz, String(carta || ''), escolhas, nota)
+        // CC-1124, passo 6: o aviso de sprint que não cabe tira do sprint pelo comando do backlog
+        : deck === 'sprint-que-nao-cabe' ? (await import('./avisoDeSprint.mjs')).responder(raiz, String(carta || ''), escolhas, nota)
         : C.votar(raiz, String(deck || ''), String(carta || ''), { escolhas, nota })
       if (r.ok) global.__cartasCache = null
       // CC-1095: no baralho das provas, o voto dele muda o estado do item no backlog
@@ -5431,9 +5433,12 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
          Desliga: Nisaba desligado no projeto, ou "nisabaExpira": false no control-center.json. */
       const arrumarBacklogs = () => import('./backlog.mjs').then(async (B) => {
         const cfg = readConfig()
-        if (cfg.nisabaExpira === false && cfg.nisabaTrintaDias === false) return
+        const nisaba = !(cfg.nisabaExpira === false && cfg.nisabaTrintaDias === false)
+        const A = cfg.avisoDeSprint !== false && B.ehDonoDoBacklog(cfg) ? await import('./avisoDeSprint.mjs') : null
         for (const raiz of findProjects()) {
-          if (moduloLigado('nisaba', path.basename(raiz), cfg)) await B.arrumarProjeto(raiz, { cfg, expira: cfg.nisabaExpira !== false }).catch(() => {})
+          if (nisaba && moduloLigado('nisaba', path.basename(raiz), cfg)) await B.arrumarProjeto(raiz, { cfg, expira: cfg.nisabaExpira !== false }).catch(() => {})
+          // CC-1124, passo 6: o aviso único de sprint que não cabe, depois da varredura (que pode já ter tirado tarefa do sprint)
+          if (A) { try { if (A.emitir(raiz, { cfg }).carta) global.__cartasCache = null } catch { /* o aviso nunca impede a varredura */ } }
         }
       }).catch(() => {})
       setInterval(arrumarBacklogs, 10 * 60_000).unref()

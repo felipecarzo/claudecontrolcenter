@@ -206,7 +206,9 @@ export function montar(itens, { agora, ancora = null, previsao: prev, capacidade
   // atual: o compromisso gravado, ou a escolha da fila; o que já fechou nesta janela entra sempre
   const feitosAgora = fechadosPor.get(cur.de)?.lista || []
   const rowAtual = abrirs.find((g) => mesmaJanela(g, cur))
-  const fila = filaAberta(itens, new Set(rowAtual?.itens || []))
+  // CC-1124, passo 6: a linha `tirar` (resposta dele ao aviso de sprint que não cabe) manda a tarefa para os próximos sprints
+  const tirados = new Set(gravados.filter((g) => g.tipo === 'tirar' && mesmaJanela(g, cur)).flatMap((g) => g.itens || []))
+  const fila = filaAberta(itens, new Set((rowAtual?.itens || []).filter((id) => !tirados.has(id))))
   // CC-958: o lugar escolhido por ele vence a linha gravada; fim do backlog vira trecho próprio, depois dos previstos
   const L = (i) => (B.estaAberto(i) ? B.lugarDe(i) : null)
   const fimDoBacklog = fila.filter((i) => L(i) === 'backlog')
@@ -219,8 +221,8 @@ export function montar(itens, { agora, ancora = null, previsao: prev, capacidade
   }
   for (const i of feitosAgora) if (!doAtual.includes(i)) doAtual.push(i)
   // CC-958: andando, agora, fim do dia e fim do sprint estão no sprint atual; fim do backlog e fora do MVP saem dele
-  doAtual = doAtual.filter((i) => !['backlog', 'fora'].includes(L(i)))
-  for (const i of filaSem) if ((i.estado === 'EM' || ['agora', 'dia', 'sprint'].includes(L(i))) && !doAtual.includes(i)) doAtual.push(i)
+  doAtual = doAtual.filter((i) => !['backlog', 'fora'].includes(L(i)) && !(tirados.has(i.id) && B.estaAberto(i)))
+  for (const i of filaSem) if ((i.estado === 'EM' || ['agora', 'dia', 'sprint'].includes(L(i))) && !doAtual.includes(i) && !tirados.has(i.id)) doAtual.push(i)
   // ponytail: o que entra pelo lugar não está na linha `abrir`, então o fechamento preguiçoso não soma o gasto dele
   const atual = info(cur, doAtual, rowAtual, null, 'atual')
   // previstos: o resto da fila em blocos de capacidade, no máximo 6
@@ -241,6 +243,12 @@ export const arquivoDeSprints = (raiz) => path.join(raiz, 'docs', 'sprints.jsonl
 function lerGravados(arq) {
   let t = ''; try { t = fs.readFileSync(arq, 'utf8') } catch { return [] }
   return t.split('\n').filter(Boolean).flatMap((l) => { try { return [JSON.parse(l)] } catch { return [] } })
+}
+
+/** CC-1124, passo 6: tira tarefas do sprint da janela `{ de, ate }`, por acréscimo. Elas voltam para a fila e caem nos próximos sprints. */
+export function tirarDoSprint(raiz, janela, ids, { agora = Date.now(), por = 'felipe', porque = '' } = {}) {
+  if (!ids.length) return
+  fs.appendFileSync(arquivoDeSprints(raiz), JSON.stringify({ tipo: 'tirar', de: isoDe(janela.de), ate: isoDe(janela.ate), itens: ids, em: isoDe(agora), por, porque }) + '\n')
 }
 
 /**
@@ -312,6 +320,8 @@ export function caminhoPorSprint(raiz, agora = Date.now(), opcoes = {}) {
       itens: [...naFila(abertos), ...recentes(feitos)].slice(0, 14)
         .map(itemDoCaminho),
       naoCabe: (s.naoCabe || []).length, naoCabeItens: naFila(s.naoCabe || []).map(itemDoCaminho), // CC-1124: a fila embaixo
+      // CC-1124, passo 6: o aviso de sprint que não cabe precisa de todas as abertas do atual, não das 14 da tela
+      ...(s.estado === 'atual' ? { abertosNaOrdem: naFila(abertos).map((i) => ({ id: i.id, titulo: i.titulo || '', estado: i.estado, lugar: B.lugarDe(i), pontos: pontosDe(i) })) } : {}),
       naoCabePor: !s.naoCabe ? null : prev.fonte === 'medido' ? 'ritmo medido em tokens do robô'
         : `ritmo das últimas ${ritmoReal.semanas} semanas: ${String(Math.round(ritmoReal.porSemana * 10) / 10).replace('.', ',')} pontos por semana`,
       sprint: { n: s.n, estado: s.estado, previsto: s.previsto, gasto: s.gasto, fonte: s.fonte },

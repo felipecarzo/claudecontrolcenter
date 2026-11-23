@@ -4,7 +4,7 @@
 import { execFile } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { versaoInstalada } from './publicar.mjs'
+import { versaoInstalada, DO_PRODUTO } from './publicar.mjs'
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const VALIDADE_MS = 30_000
@@ -29,6 +29,16 @@ const commitCarregado = (raiz) => {
   return carregados.get(raiz)
 }
 
+/* CC-1128: commit diferente não basta. Só conta mudança em arquivo que o painel carrega (o que a cópia publicada
+   leva, menos .md e test*.mjs). Commit carregado que o repositório não conhece: null, não mediu. */
+const QUE_CARREGA = DO_PRODUTO.filter((p) => !/\.md$|^LICENSE$/.test(p))
+const ehCodigo = (f) => !/\.md$/i.test(f) && !/(^|\/)test[^/]*\.mjs$/.test(f)
+const codigoMudou = async (de, para, raiz) => {
+  if (de === para) return false
+  const nomes = await git(['diff', '--name-only', de, para, '--', ...QUE_CARREGA], raiz)
+  return nomes === null ? null : nomes.split('\n').some((f) => f && ehCodigo(f))
+}
+
 /** `{ commit, soltos, rodando, painelVelho, em }`. Campo `null` = esta máquina não soube medir (nunca zero). */
 export async function codigoDaqui({ raiz = RAIZ, agora = Date.now() } = {}) {
   if (cache && cache.raiz === raiz && agora - cache.em < VALIDADE_MS) return cache.valor
@@ -42,7 +52,7 @@ export async function codigoDaqui({ raiz = RAIZ, agora = Date.now() } = {}) {
     commit,
     soltos: status === null ? null : status.split('\n').filter(Boolean).length,
     rodando: rodando || null,
-    painelVelho: commit && rodando ? commit !== rodando : null,
+    painelVelho: commit && rodando ? await codigoMudou(rodando, commit, obras) : null,
     em: agora,
   }
   cache = { raiz, em: agora, valor }
