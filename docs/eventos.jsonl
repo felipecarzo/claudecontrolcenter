@@ -1526,3 +1526,7 @@
 {"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1108","de":"EM","para":"PR","porque":"o commit 7adc013 cita CC-1108","por":"robo"}
 {"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1124","de":"EM","para":"PR","porque":"o commit a9a84af cita CC-1124","por":"robo"}
 {"em":"2026-11-23T15:36:33.221Z","tipo":"criada","id":"CC-1125","estado":"EM","texto":"tem uma linha no meio do cockpit"}
+{"em":"2026-11-23T15:42:43.940Z","tipo":"criada","id":"CC-1126","estado":"B1","texto":"PC e VPS arrumando o mesmo backlog antes do git juntar"}
+{"em":"2026-11-23T15:44:35.886Z","tipo":"estado","id":"CC-1125","de":"EM","para":"PR","porque":"o commit 51defb0 cita CC-1125","por":"robo"}
+{"em":"2026-11-23T15:44:46.192Z","tipo":"estado","id":"CC-1126","de":"B1","para":"EM"}
+{"em":"2026-11-23T15:44:46.554Z","tipo":"medida","id":"CC-1126","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":11789219,"porModelo":{"claude-opus-5-5":15627562,"claude-sonnet-5-5":10982712}}

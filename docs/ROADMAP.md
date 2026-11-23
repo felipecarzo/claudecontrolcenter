@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-203 abertos, 907 fechados, 1110 no total. Gerado em 2026-11-23.
+204 abertos, 907 fechados, 1111 no total. Gerado em 2026-11-23.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -197,7 +197,8 @@
 | CC-1121 | prova | - | Painel do PC fica lento (60 s por resposta) minutos depois de ligar |
 | CC-1122 | prova | - | PC e VPS escolhem o mesmo numero de item no backlog: o numero novo passa a considerar o maior que veio da outra maquina |
 | CC-1124 | prova | - | Tarefas e atividades do cockpit entram, andam e saem sozinhas, e o cockpit cobra o Felipe so quando precisa, de forma limpa |
-| CC-1125 | andando | - | Linha solta de ponta a ponta no meio do cockpit: a alca do painel lateral aparece com o painel fechado |
+| CC-1125 | prova | - | Linha solta de ponta a ponta no meio do cockpit: a alca do painel lateral aparece com o painel fechado |
+| CC-1126 | andando | - | Varredura do backlog roda no PC e na VPS ao mesmo tempo e o git bate a cada pull; so uma maquina pode gravar |
 
 ## coderoom
 

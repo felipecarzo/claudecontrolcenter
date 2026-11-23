@@ -98,7 +98,7 @@ git('init', '-q')
 fs.writeFileSync(path.join(raiz, 'a.txt'), 'x')
 git('add', 'a.txt')
 git('commit', '-q', '-m', 'fix: a coisa', '-m', 'corpo citando CC-6 e CC-2')
-await arrumarProjeto(raiz, { agora, sinal })
+await arrumarProjeto(raiz, { agora, sinal, dono: true }) // CC-1126: sem isto, na VPS (só receptora) o teste não gravaria
 const depois = Object.fromEntries(ler(arquivo).itens.map((x) => [x.id, x.estado]))
 assert.strictEqual(depois['CC-6'], 'PR')
 assert.strictEqual(depois['CC-2'], 'PR', 'mexida hoje e citada em commit de agora: vai para prova')

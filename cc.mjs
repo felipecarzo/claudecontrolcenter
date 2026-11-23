@@ -2187,8 +2187,10 @@ switch (cmd) {
       const C = await import('./src/config.mjs')
       const cfg = C.readConfig()
       if (cfg.nisabaExpira === false || !C.moduloLigado('nisaba', path.basename(process.cwd()), cfg)) return []
-      const acoes = await B.arrumarProjeto(process.cwd(), { ensaio })
-      for (const a of acoes) console.log(`  ${a.recusa ? 'não mudei' : ensaio ? 'mudaria' : 'mudou'}  ${a.id} → ${B.estadoDe(a.para).rotulo}: ${a.recusa || a.porque}`)
+      const dono = B.ehDonoDoBacklog(cfg) // CC-1126: só a dona grava; aqui o mesmo cfg, sem ler duas vezes
+      const acoes = await B.arrumarProjeto(process.cwd(), { ensaio, dono })
+      if (!dono && (acoes.length || sub === 'arrumar')) console.log(`  ${B.AVISO_NAO_DONO}`)
+      for (const a of acoes) console.log(`  ${a.recusa ? 'não mudei' : ensaio || !dono ? 'mudaria' : 'mudou'}  ${a.id} → ${B.estadoDe(a.para).rotulo}: ${a.recusa || a.porque}`)
       return acoes
     }
     if (sub === 'arrumar') {

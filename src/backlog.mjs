@@ -871,12 +871,32 @@ export function arrumar(arquivo = caminhoPadrao(), { ensaio = false, ...opcoes }
   return acoes
 }
 
-/** O mesmo, para um projeto: lê o git só quando há tarefa andando. Assíncrono, para o painel não parar esperando o git. */
+/**
+ * CC-1126: quem grava a varredura. Em 23/11 PC e VPS arrumaram o mesmo backlog e cada `git pull` da VPS bateu
+ * três vezes na mesma noite. Decisão dele: só o PC grava, a VPS só mostra. Dona é a máquina que NÃO é só receptora
+ * da federação (tem `token` e não tem `enviarPara`); sem federação nenhuma, é dona. `backlogDono: true|false` no
+ * control-center.json vale sobre a regra.
+ */
+export function ehDonoDoBacklog(cfg = {}) {
+  if (typeof cfg.backlogDono === 'boolean') return cfg.backlogDono
+  const f = cfg.federacao || {}
+  return !(f.token && !f.enviarPara)
+}
+
+export const AVISO_NAO_DONO = 'esta máquina não é a dona do backlog; as mudanças chegam pelo git'
+
+/**
+ * O mesmo, para um projeto: lê o git só quando há tarefa andando. Assíncrono, para o painel não parar esperando o git.
+ * Máquina que não é dona nunca grava: devolve o ensaio, com `naoDono: true` em cada ação.
+ */
 export async function arrumarProjeto(raiz, opcoes = {}) {
   const arquivo = caminhoPadrao(raiz)
   const { itens, existe } = ler(arquivo)
   if (!existe || !itens.some((x) => x.estado === 'EM')) return []
-  return arrumar(arquivo, { ...opcoes, commits: await commitsRecentes(raiz) })
+  const dono = opcoes.dono ?? ehDonoDoBacklog((await import('./config.mjs')).readConfig())
+  const acoes = arrumar(arquivo, { ...opcoes, ensaio: opcoes.ensaio || !dono, commits: await commitsRecentes(raiz) })
+  if (!dono) for (const a of acoes) a.naoDono = true
+  return acoes
 }
 
 /**
