@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-199 abertos, 907 fechados, 1106 no total. Gerado em 2026-11-23.
+201 abertos, 907 fechados, 1108 no total. Gerado em 2026-11-23.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -194,6 +194,8 @@
 | CC-1118 | andando | - | npm test verde no Windows: 28 de 121 testes falham (shell como binario falso, EFTYPE, rsync, tar) |
 | CC-1119 | definida | - | Laco de religar do painel no Windows desiste para sempre apos 5 quedas rapidas: com disco cheio o painel ficou morto ate religar a mao |
 | CC-1120 | andando | - | Programa instalado que liga qualquer sessao ao cockpit: captura o trafego, registra pastas pela bandeja, sincroniza com a VPS |
+| CC-1121 | andando | - | Painel do PC fica lento (60 s por resposta) minutos depois de ligar |
+| CC-1122 | andando | - | PC e VPS escolhem o mesmo numero de item no backlog: o numero novo passa a considerar o maior que veio da outra maquina |
 
 ## coderoom
 

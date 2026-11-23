@@ -2101,6 +2101,17 @@ switch (cmd) {
       } catch (e) { console.log(`\n  não especifiquei: ${e.message}\n`); process.exitCode = 1 }
       break
     }
+    /* CC-1122: troca o id de um item (e dos eventos dele) quando PC e VPS escolheram o mesmo número. */
+    if (sub === 'renumerar') {
+      const [id, novo] = argv.slice(argv.indexOf(sub) + 1)
+      if (!id || !novo) { console.log('\n  uso: node cc.mjs backlog renumerar <ID> <NOVO>\n'); break }
+      try {
+        const r = B.renumerar(id, novo)
+        console.log(`\n  ${r.antes} → ${r.id}${r.repetido ? `\n  ${r.antes} aparecia mais de uma vez: troquei a última ocorrência; eventos e referências ficaram em ${r.antes}` : ', com eventos e referências'}`)
+        console.log('  regere o roadmap com: node cc.mjs backlog gerar\n')
+      } catch (e) { console.log(`\n  recusado: ${e.message}\n`); process.exitCode = 1 }
+      break
+    }
     if (sub === 'fechar' || sub === 'mover') {
       const id = argv[argv.indexOf(sub) + 1]
       const estado = sub === 'fechar' ? 'OK' : (valorDe('para') || '').toUpperCase()
@@ -2179,6 +2190,9 @@ switch (cmd) {
     }
     console.log(`  ${r.abertos} abertos · ${r.fechados} fechados · ${r.total} no total`)
     if (r.ruins.length) console.log(`  ⚠️  ${r.ruins.length} linha(s) que não valem: ${r.ruins[0].erro}`)
+    // CC-1122: o mesmo id duas vezes é colisão entre máquinas que escapou
+    const repetidos = B.idsRepetidos(B.ler().itens)
+    if (repetidos.length) console.log(`  ⚠️  id repetido no arquivo: ${repetidos.join(', ')}. Troque um: node cc.mjs backlog renumerar <ID> <NOVO>`)
     if (r.parados.length) {
       console.log('')
       console.log(`  ⏳ ${r.parados.length} parado(s) há mais de 30 dias. Ainda valem?`)

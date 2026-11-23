@@ -187,6 +187,12 @@ const gravarCache = (cache) => {
   } catch { /* relê na próxima */ }
 }
 
+/* CC-1121, medido em 23/11: um transcrito de 1,5 GB passa do teto de texto do Node (ERR_STRING_TOO_LONG) depois de
+   3 a 5 s de leitura SÍNCRONA, e sem entrar no cache era relido a cada varredura (de 30 em 30 s, e mais a cada
+   minuto), travando o painel inteiro. A falha fica lembrada pelo tamanho e data, e só se tenta de novo quando ele muda.
+   ponytail: em memória, então cada processo paga a leitura uma vez; ler em pedaços contaria essas horas também. */
+const FALHAS = new Map()
+
 /** Varre os transcripts, relendo só o que mudou de tamanho ou data. */
 export function varrer({ force = false } = {}) {
   const cache = force ? { versao: VERSAO_CACHE, arquivos: {} } : lerCache()
@@ -214,13 +220,16 @@ export function varrer({ force = false } = {}) {
       try { st = fs.statSync(arquivo) } catch { continue }
       const antigo = cache.arquivos[chave]
       if (antigo && antigo.size === st.size && antigo.mtime === st.mtimeMs) continue
+      const marca = `${st.size}:${st.mtimeMs}`
+      if (FALHAS.get(chave) === marca) continue
       try {
         const dados = lerArquivo(arquivo)
         cache.arquivos[chave] = { size: st.size, mtime: st.mtimeMs, sessao: nome.slice(0, -6), ...dados }
         lidos++
         bytesLidos += st.size
       } catch {
-        // arquivo sendo escrito agora, ou ilegível: fica pra próxima varredura
+        // arquivo sendo escrito agora, ou ilegível: tenta de novo quando ele mudar
+        FALHAS.set(chave, marca)
       }
     }
   }

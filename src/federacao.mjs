@@ -27,6 +27,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { casaClaude } from './platform.mjs'
 import { recortarCodigo } from './codigoDaMaquina.mjs'
+import { chaveDeProjeto } from './nomeProjeto.mjs'
 
 /* `casaClaude()`, nunca `os.homedir()`: é o único lugar que resolve a pasta
    `.claude`, e `CC_HOME` redireciona tudo para uma casa isolada. Achado em
@@ -88,6 +89,30 @@ const seguro = (s) => String(s || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40
 /* CC-735: o id que o gancho de permissão gera (`randomUUID().slice(0, 13)`). */
 export const ID_GANCHO = /^[0-9a-f-]{6,20}$/
 export const DECISOES_REMOTAS = ['sim', 'nao', 'sempre']
+
+/* CC-1122: rede entrando em disco, recortado como o resto: prefixo de 2 a 4 letras, número inteiro positivo. */
+export function recortarMaioresIds(v) {
+  if (!Array.isArray(v)) return null
+  return v.slice(0, 80).map((x) => {
+    const maiorId = {}
+    for (const [k, n] of Object.entries(x?.maiorId && typeof x.maiorId === 'object' ? x.maiorId : {}).slice(0, 10)) {
+      if (/^[A-Z]{2,4}$/.test(k) && Number.isInteger(n) && n > 0 && n < 1e6) maiorId[k] = n
+    }
+    return { projeto: String(x?.projeto || '').slice(0, 80), maiorId }
+  }).filter((x) => x.projeto && Object.keys(x.maiorId).length)
+}
+
+/** CC-1122: o maior número que as OUTRAS máquinas disseram usar neste projeto e prefixo. 0 sem dado. */
+export function maiorIdConhecido(projeto, prefixo, pacotes = lerPacotes()) {
+  const chave = chaveDeProjeto(projeto)
+  let maior = 0
+  for (const p of pacotes || []) {
+    for (const x of p?.maioresIds || []) {
+      if (chaveDeProjeto(x.projeto) === chave) maior = Math.max(maior, Number(x.maiorId?.[prefixo]) || 0)
+    }
+  }
+  return maior
+}
 
 export const recortarPermissoes = (v) => (Array.isArray(v) ? v : [])
   .filter((p) => ID_GANCHO.test(String(p?.id || '')))
@@ -326,6 +351,8 @@ export function validarPacote(bruto) {
         : null,
       /* CC-1107: recorte do retrato do código (commit, soltos, painel velho). */
       codigo: recortarCodigo(bruto.codigo),
+      /* CC-1122: o maior número de item por projeto e prefixo, para a outra ponta não escolher o mesmo. */
+      maioresIds: recortarMaioresIds(bruto.maioresIds),
       /* CC-456: rótulo de diagnóstico, e o remetente pode mentir — então o
          `tipo` é recortado contra lista FECHADA, como toda ação da fila. Nome
          desconhecido vira `avulso` em vez de entrar cru: é texto que vai parar
@@ -361,7 +388,7 @@ export function validarPacote(bruto) {
  * Cada campo preservado carrega o carimbo de quando chegou, porque hora velha
  * exibida como atual é pior que hora ausente.
  */
-const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs', 'travas', 'framework', 'servico', 'codigo']
+const CAMPOS_QUE_PERSISTEM = ['tempo', 'uso', 'servidores', 'rotas', 'backlogs', 'travas', 'framework', 'servico', 'codigo', 'maioresIds']
 
 /**
  * CC-342: validade POR CAMPO, porque 12 horas não serve para todo mundo.
@@ -1510,7 +1537,7 @@ export function origemDoEmpurrao() {
 export function montarPacote({
   maquina, jobs = [], servidores = [], uso = null, tempo = null, rotas = [], backlogs = null,
   meu = null, agentes = null, limites = null, travas = null, framework = null, servico = null, hw = null,
-  permissoes = [], pastas = null, codigo = null,
+  permissoes = [], pastas = null, codigo = null, maioresIds = null,
 }) {
   const enxuto = jobs.map((j) => ({
     id: j.id, status: j.status, subject: j.subject, project: j.project, sub: j.sub,
@@ -1569,6 +1596,8 @@ export function montarPacote({
     /* CC-1107: commit, arquivos soltos e painel com código velho desta máquina. Mesma regra: barato, `null` quando
        não soube medir. */
     codigo,
+    /* CC-1122: `[{ projeto, maiorId: { CC: 1121 } }]`, `null` quando não soube ler. */
+    maioresIds,
     /* CC-684: processador, memória e placa de vídeo desta máquina, para a
        barra lateral mostrar as duas. Mesma regra do retrato: barato, calculado
        a cada empurrão, `null` quando a máquina não sabe dizer. */

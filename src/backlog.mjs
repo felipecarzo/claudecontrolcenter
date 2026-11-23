@@ -47,6 +47,7 @@ import { spawnSync } from 'node:child_process'
 import { transicionar } from './tarefa.mjs'
 import { catalogoDe, ehFrente, listaDeFrentes } from './frentes.mjs'
 import { MODELOS, ESFORCOS } from './modelo.mjs'
+import { maiorIdConhecido } from './federacao.mjs'
 
 /**
  * Os estados de produção, com código curto.
@@ -317,14 +318,74 @@ export function gravar(itens, arquivo = caminhoPadrao()) {
    trava do Nisaba (que pede tarefa andando mexida HOJE) barrava todo trabalho das 21h à meia-noite. Dia local. */
 const hoje = () => diaLocal()
 
-/** O próximo id livre, no prefixo dado. Nunca reusa número morto. */
-export function proximoId(itens, prefixo = 'CC') {
-  let maior = 0
+/** O maior número usado por prefixo: `{ CC: 1121 }`. */
+export function maioresIds(itens) {
+  const r = {}
   for (const i of itens) {
-    const m = String(i.id || '').match(/^([A-Z]{2,4})-(\d+)$/)
-    if (m && m[1] === prefixo) maior = Math.max(maior, Number(m[2]))
+    const m = String(i?.id || '').match(/^([A-Z]{2,4})-(\d+)$/)
+    if (m) r[m[1]] = Math.max(r[m[1]] || 0, Number(m[2]))
   }
-  return `${prefixo}-${maior + 1}`
+  return r
+}
+
+/** O mesmo, lido do arquivo cru, sem validar item: é o que vai no pacote da federação a cada 30 s. `null` sem arquivo. */
+export function maioresDoArquivo(arquivo = caminhoPadrao()) {
+  let cru; try { cru = fs.readFileSync(arquivo, 'utf8') } catch { return null }
+  return maioresIds([...cru.matchAll(/"id":"([A-Z]{2,4}-\d+)"/g)].map((m) => ({ id: m[1] })))
+}
+
+/**
+ * O próximo id livre, no prefixo dado. Nunca reusa número morto.
+ * CC-1122: `conhecido` é o maior que a OUTRA máquina já usou neste projeto. Medido em 23/11, duas vezes na mesma noite:
+ * PC e VPS escolhiam o maior LOCAL mais 1 e nasciam dois CC-1120, depois dois CC-1121.
+ */
+export function proximoId(itens, prefixo = 'CC', conhecido = 0) {
+  return `${prefixo}-${Math.max(maioresIds(itens)[prefixo] || 0, Number(conhecido) || 0) + 1}`
+}
+
+/** O maior número que as outras máquinas disseram usar neste projeto, do dado da federação já em disco. 0 sem dado. */
+export function maiorConhecidoFora(arquivo, prefixo) {
+  try { return maiorIdConhecido(path.basename(path.dirname(path.dirname(path.resolve(arquivo)))), prefixo) } catch { return 0 }
+}
+
+/** Ids que aparecem mais de uma vez no arquivo (colisão que escapou, normalmente depois de um pull). */
+export function idsRepetidos(itens) {
+  const vistos = new Set(); const rep = new Set()
+  for (const i of itens) (vistos.has(i.id) ? rep : vistos).add(i.id)
+  return [...rep]
+}
+
+/**
+ * CC-1122: troca o id de um item, e dos eventos e das referências (pai, depende) a ele.
+ * Com o id repetido no arquivo, troca a ÚLTIMA ocorrência e deixa eventos e referências onde estão: não há como saber
+ * de qual dos dois itens cada evento é.
+ */
+export function renumerar(id, novo, arquivo = caminhoPadrao()) {
+  if (!/^[A-Z]{2,4}-\d{1,5}$/.test(String(novo || ''))) throw new Error(`id novo fora do formato XX-000: ${novo}`)
+  const { itens } = ler(arquivo)
+  if (itens.some((i) => i.id === novo)) throw new Error(`${novo} já existe`)
+  const achados = itens.filter((i) => i.id === id)
+  if (!achados.length) throw new Error(`não achei ${id}`)
+  const repetido = achados.length > 1
+  achados[achados.length - 1].id = novo
+  if (!repetido) {
+    for (const i of itens) {
+      if (i.pai === id) i.pai = novo
+      if (Array.isArray(i.depende)) i.depende = i.depende.map((d) => (d === id ? novo : d))
+    }
+    const ev = caminhoEventos(arquivo)
+    let cru = ''; try { cru = fs.readFileSync(ev, 'utf8') } catch { /* sem eventos */ }
+    if (cru) {
+      const linhas = cru.split(/\r?\n/).filter(Boolean).map((l) => {
+        try { const e = JSON.parse(l); return e.id === id ? JSON.stringify({ ...e, id: novo }) : l } catch { return l }
+      })
+      fs.writeFileSync(ev + '.tmp', linhas.join('\n') + '\n', 'utf8')
+      fs.renameSync(ev + '.tmp', ev)
+    }
+  }
+  gravar(itens, arquivo)
+  registrar([{ tipo: 'renumerada', id: novo, antes: id }], arquivo)
+  return { id: novo, antes: id, repetido }
 }
 
 /**
@@ -351,7 +412,7 @@ export function acrescentar(campos, arquivo = caminhoPadrao()) {
     campos = { ...campos, frente: campos.frente && campos.frente !== 'sem frente' ? campos.frente : pai.frente, natureza: campos.natureza || pai.natureza, area: campos.area || pai.area, tamanho: campos.tamanho || 'P' }
   }
   const item = {
-    id: campos.id || proximoId(itens, campos.prefixo || 'CC'),
+    id: campos.id || proximoId(itens, campos.prefixo || 'CC', maiorConhecidoFora(arquivo, campos.prefixo || 'CC')),
     titulo: String(campos.titulo || '').trim(),
     estado: String(campos.estado || 'B0').toUpperCase(),
     frente: String(campos.frente || 'sem frente').trim(),

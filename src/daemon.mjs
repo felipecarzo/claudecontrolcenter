@@ -113,6 +113,7 @@ export async function status(port = DEFAULT_PORT) {
 }
 
 /** Garante o painel no ar e devolve a URL — usado pelo comando `open`. */
+let derrubadoEm = 0
 export async function ensureUp(port = DEFAULT_PORT, { waitMs = 8000 } = {}) {
   /* CC-442: o ícone da barra vem JUNTO, e a queixa dele foi "nao tem nada na
      barra de tarefas". Quem cria o ícone é o lançador; quem sobe o painel
@@ -125,6 +126,13 @@ export async function ensureUp(port = DEFAULT_PORT, { waitMs = 8000 } = {}) {
   if (await isUp(port)) return { url: `http://localhost:${port}`, started: false }
   /* Subir aqui dentro criaria um SEGUNDO painel, vivo mas inalcançável de
      fora: o processo esquecido que já custou uma sessão "ativa" por 11 horas. */
+  /* CC-1119, medido em 23/11: no Windows o laço da tarefa agendada religa o painel uns 3 s depois da queda. Subir um
+     aqui na mesma hora criava dois disputando a porta; o do laço caía 5 vezes e o laço entrava na pausa (antes, desistia
+     para sempre). Quem vigia é o laço: espera ele por até 20 s antes de subir um avulso. */
+  for (const fim = Date.now() + (Date.now() - derrubadoEm < 30000 ? 20000 : 0); Date.now() < fim;) {
+    await new Promise((r) => setTimeout(r, 1000))
+    if (await isUp(port)) return { url: `http://localhost:${port}`, started: false }
+  }
   if (redeIsolada()) throw new Error('esta sessão roda numa área isolada da rede e não enxerga o painel; não subi outro para não criar um painel invisível. Confira em https://cockpit.carzo.com.br')
   spawnDetached(port)
   const deadline = Date.now() + waitMs
@@ -139,6 +147,7 @@ export const openBrowser = so.abrirNavegador
 
 /** Pede pro processo no ar encerrar. Usado por `daemon restart`. */
 export async function shutdown(port = DEFAULT_PORT) {
+  derrubadoEm = Date.now() // CC-1119: o ensureUp seguinte espera o laço antes de subir um avulso
   try {
     await fetch(`http://127.0.0.1:${port}/api/shutdown`, { method: 'POST', signal: AbortSignal.timeout(1500) })
   } catch {

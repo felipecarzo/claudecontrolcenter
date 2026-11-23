@@ -649,6 +649,16 @@ async function servidoresParaOPacote() {
   }))
 }
 
+/* CC-1122: o maior número de item de cada projeto desta máquina, lido do backlog.jsonl em disco (com o que ainda não
+   foi commitado), para a outra máquina não escolher o mesmo. Vai no empurrão e no retrato. `null` se a leitura falhar. */
+async function maioresIdsDaqui() {
+  try {
+    const B = await import('./backlog.mjs')
+    return findProjects().map((raiz) => ({ projeto: path.basename(raiz), maiorId: B.maioresDoArquivo(B.caminhoPadrao(raiz)) }))
+      .filter((x) => x.maiorId && Object.keys(x.maiorId).length)
+  } catch { return null }
+}
+
 let retratoCache = { em: 0, pacote: null }
 async function retratoDestaMaquina() {
   if (retratoCache.pacote && Date.now() - retratoCache.em < 20_000) return retratoCache.pacote
@@ -680,6 +690,7 @@ async function retratoDestaMaquina() {
        nunca levou horas (varredura cara), então o PC não tinha como somar. Vai só a semana, que sai do cache de
        tempo já em disco (barato); sem `projetos`, de propósito, para a tela Tempo não achar que veio o completo. */
     tempo: await import('./cockpit2.mjs').then((M) => { const sem = M.semanaParaPacote(); return sem ? { semana: sem } : null }).catch(() => null),
+    maioresIds: await maioresIdsDaqui(),
   })
   retratoCache = { em: Date.now(), pacote }
   return pacote
@@ -890,6 +901,7 @@ export async function empurrar({ comTempo = null, comPastas = null } = {}) {
     /* CC-861: as pastas desta máquina vão no primeiro empurrão que chega e quando o comando
        `cc registro enviar` pede. Medir `ativo` roda git em cada pasta: a cada 30s seria caro. */
     pastas: (comPastas ?? !pastasEnviadas) ? await import('./migrarRegistro.mjs').then((M) => M.pastasParaEnviar(findProjects())).catch(() => null) : null,
+    maioresIds: await maioresIdsDaqui(),
   })
   ultimoEnvioEm = Date.now()
   const r = await enviarPacote({ enviarPara, token, pacote })
