@@ -1504,3 +1504,25 @@
 {"em":"2026-11-23T09:13:30.000Z","tipo":"medida","id":"CC-1119","estado":"PR","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":10492106,"porModelo":{"claude-opus-5-5":13667356,"claude-sonnet-5-5":8962250}}
 {"em":"2026-11-23T09:14:04.299Z","tipo":"estado","id":"CC-1124","de":"B1","para":"EM"}
 {"em":"2026-11-23T09:14:04.651Z","tipo":"medida","id":"CC-1124","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":10499815,"porModelo":{"claude-opus-5-5":13667356,"claude-sonnet-5-5":9520180}}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-558","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-659","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-834","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-848","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-866","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-867","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-936","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-960","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1047","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1060","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1063","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1064","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1066","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1067","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1068","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1080","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1083","de":"EM","para":"B1","porque":"ninguém mexeu há 48 h","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1095","de":"EM","para":"PR","porque":"o commit b03b9c8 cita CC-1095","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1107","de":"EM","para":"PR","porque":"o commit 7adc013 cita CC-1107","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1108","de":"EM","para":"PR","porque":"o commit 7adc013 cita CC-1108","por":"robo"}
+{"em":"2026-11-23T15:34:14.060Z","tipo":"estado","id":"CC-1124","de":"EM","para":"PR","porque":"o commit a9a84af cita CC-1124","por":"robo"}
+{"em":"2026-11-23T15:36:33.221Z","tipo":"criada","id":"CC-1125","estado":"EM","texto":"tem uma linha no meio do cockpit"}
