@@ -703,7 +703,9 @@ async function marcarNoTerminal(jobs) {
   /* CC-1120: sessão fora do terminal do painel com o ouvido vivo também recebe, pela caixa. Entra no ciclo curto
      para a mensagem digitada lá chegar em segundos. */
   const comOuvido = ouvidosVivos()
-  haSessaoNoTerminal = noTerminal.length > 0 || comOuvido.length > 0
+  /* Medido em 23/11: com o ouvido em toda sessão, o ciclo curto ficava ligado sempre, os envios se acumulavam e o
+     painel passou de 75 s por resposta. O ouvido recebe pelo envio completo (até 30 s); o ciclo curto é só do terminal. */
+  haSessaoNoTerminal = noTerminal.length > 0
   let C2 = null
   try { C2 = await import('./cockpit2.mjs') } catch { /* sem o módulo: o pacote vai sem a conversa */ }
   const desta = (j) => (c) => c === j.sessionId || (String(j.id || '').length >= 8 && c.startsWith(j.id))
@@ -712,7 +714,9 @@ async function marcarNoTerminal(jobs) {
     const ouv = comOuvido.find(desta(j))
     /* CC-1060: a sessão que mora no terminal leva o rabo da conversa, para a outra máquina mostrar o chat. */
     let conversaApp = null
-    if ((conv || ouv) && C2) { try { conversaApp = C2.conversaParaPacote(conv || ouv) } catch { conversaApp = null } }
+    /* CC-1120: só a de terminal. Com o ouvido em toda sessão, ler a conversa de cada uma a cada 3 s deixou o painel
+       levando mais de 75 s por resposta (medido em 23/11). A sessão com ouvido recebe texto do mesmo jeito. */
+    if (conv && C2) { try { conversaApp = C2.conversaParaPacote(conv) } catch { conversaApp = null } }
     return { ...j, terminal: Boolean(conv), ouvido: Boolean(ouv), conversaApp }
   })
 }
