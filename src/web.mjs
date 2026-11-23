@@ -5423,6 +5423,18 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
       const relLeitor = setInterval(leitorDaManha, 30 * 60_000)
       relLeitor.unref()
       leitorDaManha()
+      /* CC-1124, passos 2 e 3: andando parado há 48 h volta para definida, andando citado em commit vai para prova.
+         De 10 em 10 minutos, um projeto por vez; o git só roda onde há tarefa andando, e em processo à parte.
+         Desliga: Nisaba desligado no projeto, ou "nisabaExpira": false no control-center.json. */
+      const arrumarBacklogs = () => import('./backlog.mjs').then(async (B) => {
+        const cfg = readConfig()
+        if (cfg.nisabaExpira === false) return
+        for (const raiz of findProjects()) {
+          if (moduloLigado('nisaba', path.basename(raiz), cfg)) await B.arrumarProjeto(raiz).catch(() => {})
+        }
+      }).catch(() => {})
+      setInterval(arrumarBacklogs, 10 * 60_000).unref()
+      setTimeout(arrumarBacklogs, 3 * 60_000).unref() // não disputa com a subida do painel
       // CC-857: o vigia de carga, uma leitura a cada 10 s
       import('./vigiaCarga.mjs').then((V) => V.iniciar()).catch(() => {})
 

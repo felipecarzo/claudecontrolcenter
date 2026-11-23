@@ -17,8 +17,8 @@
    "profundo": 20
   },
   "acao": {
-   "total": 384,
-   "existe": 384,
+   "total": 385,
+   "existe": 385,
    "funciona": 54,
    "explica": 0,
    "estreito": 0,
@@ -9163,6 +9163,38 @@
    }
   },
   {
+   "id": "acao:cam-nao-cabe",
+   "tipo": "acao",
+   "rotulo": "data-cam-nao-cabe",
+   "onde": "src/ui_cockpit2.html",
+   "camada": "estatica",
+   "dimensoes": {
+    "existe": {
+     "coberto": "src/ui_cockpit2.html",
+     "como": "o atributo existe no fonte"
+    },
+    "funciona": {
+     "coberto": null,
+     "como": "o nome aparece num teste, o que ainda não prova o clique de ponta a ponta"
+    },
+    "explica": {
+     "coberto": null,
+     "como": null,
+     "nota": "ação não tem verbete próprio: quem explica é a tela"
+    },
+    "estreito": {
+     "coberto": null,
+     "como": null,
+     "nota": "depende do bloco onde ela aparece"
+    },
+    "profundo": {
+     "coberto": null,
+     "como": null,
+     "nota": "não se aplica a uma ação isolada"
+    }
+   }
+  },
+  {
    "id": "acao:cam-lugar",
    "tipo": "acao",
    "rotulo": "data-cam-lugar",
@@ -14092,7 +14124,7 @@
    "rotulo": "/api/pedidos/detalhe",
    "onde": "src/web.mjs",
    "camada": "estatica",
-   "escreve": true,
+   "escreve": false,
    "dimensoes": {
     "existe": {
      "coberto": "src/web.mjs",

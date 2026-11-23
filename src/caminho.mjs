@@ -86,19 +86,21 @@ export function caminhoDe(raiz, agora = Date.now()) {
   const rotulo = (k) => k === '_antes' ? 'Antes do catálogo de frentes' : k === '_sem' ? 'Sem frente' : k
   let trechos = [...grupos].map(([k, lista]) => {
     const abertos = lista.filter(aberto); const feitos = lista.filter((i) => i.estado === 'OK')
-    const andando = abertos.filter((i) => i.estado === 'EM' || i.estado === 'PR')
+    const emCurso = abertos.filter((i) => i.estado === 'EM' || i.estado === 'PR') // lista e "onde estamos"
+    const andando = abertos.filter((i) => i.estado === 'EM') // CC-1124: andando e em prova se contam separado
+    const emProva = abertos.filter((i) => i.estado === 'PR')
     const recentes = (l) => [...l].sort((a, b) => String(b.mexido || '').localeCompare(String(a.mexido || '')))
     return {
       chave: k, frente: rotulo(k), descricao: (catalogo && catalogo[k]) || null,
       total: feitos.length + abertos.length, feitos: feitos.length, cancelados: lista.length - feitos.length - abertos.length,
-      andando: andando.length, fila: abertos.filter((i) => i.estado === 'B0' || i.estado === 'B1').length,
+      andando: andando.length, emProva: emProva.length, fila: abertos.filter((i) => i.estado === 'B0' || i.estado === 'B1').length,
       parado: abertos.filter((i) => i.estado === 'DE' || i.estado === 'TR').length,
       completo: abertos.length === 0 && feitos.length > 0,
       comeco: lista.map((i) => i.criado || '').filter(Boolean).sort()[0] || '',
       mexido: lista.map((i) => i.mexido || '').sort().at(-1) || '',
       emendas: lista.filter((i) => i.origem === 'emenda' && i.estado !== 'KO').length, // CC-916: ideia nova no meio do projeto
       // emenda ainda não avaliada (B0) sobe junto do que anda: é a novidade que ele precisa ver
-      itens: [...recentes(andando), ...recentes(abertos.filter((i) => i.origem === 'emenda' && !andando.includes(i))).slice(0, 4), ...recentes(abertos.filter((i) => i.origem !== 'emenda' && !andando.includes(i))).slice(0, 6), ...recentes(feitos).slice(0, 5)]
+      itens: [...recentes(emCurso), ...recentes(abertos.filter((i) => i.origem === 'emenda' && !emCurso.includes(i))).slice(0, 4), ...recentes(abertos.filter((i) => i.origem !== 'emenda' && !emCurso.includes(i))).slice(0, 6), ...recentes(feitos).slice(0, 5)]
         .map(itemDoCaminho),
     }
   }).filter((t) => t.total > 0)
@@ -110,7 +112,7 @@ export function caminhoDe(raiz, agora = Date.now()) {
     const soma = (k) => resto.reduce((s, t) => s + t[k], 0)
     trechos = [...trechos.filter((t) => fica.has(t.chave)), {
       chave: '_outras', frente: 'Outras frentes', descricao: `${resto.length} frentes menores`, total: soma('total'), feitos: soma('feitos'), cancelados: soma('cancelados'),
-      andando: soma('andando'), fila: soma('fila'), parado: soma('parado'), emendas: soma('emendas'), completo: resto.every((t) => t.completo),
+      andando: soma('andando'), emProva: soma('emProva'), fila: soma('fila'), parado: soma('parado'), emendas: soma('emendas'), completo: resto.every((t) => t.completo),
       comeco: resto.map((t) => t.comeco).filter(Boolean).sort()[0] || '', mexido: resto.map((t) => t.mexido).sort().at(-1) || '',
       itens: resto.flatMap((t) => t.itens).slice(0, 10),
     }]
@@ -119,7 +121,7 @@ export function caminhoDe(raiz, agora = Date.now()) {
   trechos.sort((a, b) => (a.comeco || '9').localeCompare(b.comeco || '9') || a.frente.localeCompare(b.frente))
   const feitos = trechos.reduce((s, t) => s + t.feitos, 0); const total = trechos.reduce((s, t) => s + t.total, 0)
   /* Onde estamos: o trecho com trabalho andando mais recente; senão o primeiro com algo aberto; senão a chegada. */
-  const andando = trechos.map((t, i) => ({ t, i })).filter((x) => x.t.andando).sort((a, b) => b.t.mexido.localeCompare(a.t.mexido))[0]
+  const andando = trechos.map((t, i) => ({ t, i })).filter((x) => x.t.andando || x.t.emProva).sort((a, b) => b.t.mexido.localeCompare(a.t.mexido))[0]
   const atual = andando ? andando.i : Math.max(0, trechos.findIndex((t) => !t.completo) === -1 ? trechos.length - 1 : trechos.findIndex((t) => !t.completo))
   const emendas = trechos.reduce((s, t) => s + t.emendas, 0)
   return { ok: true, raiz, nome: nomeDe(raiz), feitos, total, pct: total ? Math.round((feitos / total) * 100) : 0, marcos: trechos.filter((t) => t.completo).length, emendas, crescimento: total - emendas ? Math.round((emendas / (total - emendas)) * 100) : 0, trechos, atual, at: agora, foraDoMvp: secaoGuardada('fora', 'Fora do MVP', 'guardado: não entra na fila até você promover', fora), lugares: B.LUGARES }

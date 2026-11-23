@@ -21943,7 +21943,7 @@
       if (c.ok === false) return '<p class="cam-conta c2-mini">não deu para ler a conta da semana.</p>';
       const p = c.previsto || {}; const agora = c.pctAgora == null ? '' : ' Uso agora: <b>' + c.pctAgora + '%</b>.';
       if (c.semMedida || c.pctPrevisto == null) {
-        return '<p class="cam-conta c2-mini"><b>Sprints abertos de todos os projetos:</b> ainda sem uma semana inteira medida. Previsto: ' + (p.pontos || 0) + ' pontos, ' + (p.projetosEmPontos || 0) + ' projeto(s) em pontos.' + agora + '</p>';
+        return '<p class="cam-conta c2-mini"><b>Sprints abertos de todos os projetos:</b> ainda sem uma semana inteira medida. Previsto: ' + (p.pontos || 0) + ' pontos no sprint atual de todos os projetos somados. Pontos são o tamanho de cada tarefa (P, M ou G) somado, e ' + (p.projetosEmPontos || 0) + ' projetos medem assim.' + agora + '</p>';
       }
       return '<p class="cam-conta c2-mini"><b>Sprints abertos de todos os projetos:</b> ~' + c.pctPrevisto + '% da semana (estimado pela ' + esc(c.estimadoPor || 'VPS') + ').' + agora + '</p>';
     }
@@ -21980,8 +21980,10 @@
         : tipo === 'chegada' ? '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>'
         : '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>';
     }
-    const camPalavra = (t) => t.sprint ? (t.sprint.estado === 'passado' ? 'marco alcançado' : t.sprint.estado === 'atual' ? 'sprint atual' : 'previsto') + (t.sprint.estado !== 'passado' && t.andando ? ' · ' + t.andando + ' andando' : '')
-      : t.completo ? 'marco alcançado' : t.andando ? t.andando + ' andando' : t.parado && !t.fila ? 'parado' : 'na fila';
+    /* CC-1124: andando é trabalho em curso; em prova é feito esperando conferência. Duas contas, nunca somadas. */
+    const camCurso = (t) => [t.andando ? t.andando + ' andando' : '', t.emProva ? t.emProva + ' em prova' : ''].filter(Boolean).join(' · ');
+    const camPalavra = (t) => t.sprint ? (t.sprint.estado === 'passado' ? 'marco alcançado' : t.sprint.estado === 'atual' ? 'sprint atual' : 'previsto') + (t.sprint.estado !== 'passado' && camCurso(t) ? ' · ' + camCurso(t) : '')
+      : t.completo ? 'marco alcançado' : camCurso(t) || (t.parado && !t.fila ? 'parado' : 'na fila');
     const camTipo = (r, t, i) => t.sprint ? (t.sprint.estado === 'passado' ? 'feito' : t.sprint.estado === 'atual' ? 'atual' : 'futuro') : t.completo ? 'feito' : i === r.atual ? 'atual' : 'futuro';
     /* No modo Sprints o nome do trecho leva as datas: "Sprint 4 · 29/09 a 06/10". */
     const camRotulo = (t) => t.sprint && t.descricao ? t.frente + ' · ' + t.descricao : t.frente;
@@ -21991,7 +21993,13 @@
       const num = (v, rot, cor) => '<div class="card tar-num"><b style="color:' + cor + '">' + v + '</b><span>' + rot + '</span></div>';
       if (r.por === 'sprint') {
         const s = (r.trechos[r.atual] || {}).sprint;
-        return camConta() + '<div class="tar-nums cam-nums-4">' + num(r.pct + '%', 'já andado (' + r.feitos + ' de ' + r.total + ')', 'var(--green)') + num(r.marcos + ' de ' + r.trechos.length, 'marcos alcançados', 'var(--text-main)')
+        /* CC-1124: de que é feito o previsto e de onde vem a régua, em palavras comuns (regra 10) */
+        const cp = r.capacidade || {};
+        const pesos = cp.pesos ? Object.entries(cp.pesos).map(([k, v]) => k + ' vale ' + v).join(', ') : 'P, M ou G';
+        const origem = cp.unidade === 'pontos' && cp.frase
+          ? '<p class="cam-conta c2-mini"><b>Previsto:</b> pontos são o tamanho de cada tarefa do sprint somado (' + esc(pesos) + '), lido do backlog deste projeto. Fica gravado quando a semana abre; tarefa que entra depois não está nele. <b>Ritmo medido:</b> ' + esc(cp.frase) + ', contando as semanas sem nada fechado.</p>'
+          : '<p class="cam-conta c2-mini"><b>Previsto:</b> tokens que o robô gastou em tarefas do mesmo tamanho já fechadas, somados para as tarefas do sprint.</p>';
+        return camConta() + origem + '<div class="tar-nums cam-nums-4">' + num(r.pct + '%', 'já andado (' + r.feitos + ' de ' + r.total + ')', 'var(--green)') + num(r.marcos + ' de ' + r.trechos.length, 'marcos alcançados', 'var(--text-main)')
           + num(esc(camPrev(s)), 'previsto no sprint atual', 'var(--accent)') + num(esc(camGasto(s)), 'gasto no sprint atual', 'var(--text-main)') + '</div>';
       }
       return '<div class="tar-nums">' + num(r.pct + '%', 'já andado (' + r.feitos + ' de ' + r.total + ')', 'var(--green)') + num(r.marcos + ' de ' + r.trechos.length, 'marcos alcançados', 'var(--text-main)') + num(r.total - r.feitos, 'itens ainda abertos' + (r.emendas ? ', ' + r.emendas + ' de emenda (+' + r.crescimento + '%)' : ''), 'var(--waiting)') + '</div>';
@@ -22005,10 +22013,15 @@
         : e === 'DE' || e === 'TR' ? '<b>!</b>' : '';
       return (t.descricao ? '<p class="c2-mini" style="margin:0 0 8px">' + esc(t.descricao) + '</p>' : '')
         + '<div class="cam-barra" role="img" aria-label="' + pct + '% feito"><i style="width:' + pct + '%"></i></div>'
-        + '<div class="cam-chips">' + chip(t.feitos, 'feitos', 'var(--green)') + chip(t.andando, 'andando', 'var(--accent)') + chip(t.fila, 'na fila', 'var(--text-dim)') + chip(t.parado, 'parados', 'var(--waiting)') + chip(t.emendas, t.emendas === 1 ? 'emenda' : 'emendas', 'var(--accent)') + chip(t.cancelados, 'cancelados', 'var(--text-dim)') + '</div>'
+        + '<div class="cam-chips">' + chip(t.feitos, 'feitos', 'var(--green)') + chip(t.andando, 'andando', 'var(--accent)') + chip(t.emProva, 'em prova', 'var(--waiting)') + chip(t.fila, 'na fila', 'var(--text-dim)') + chip(t.parado, 'parados', 'var(--waiting)') + chip(t.emendas, t.emendas === 1 ? 'emenda' : 'emendas', 'var(--accent)') + chip(t.cancelados, 'cancelados', 'var(--text-dim)') + '</div>'
         + '<ul class="cam-itens">' + camOrdenar(t.itens).map(camLinha).join('')
-        + '</ul>' + (t.total > t.itens.length ? '<p class="c2-mini" style="margin:8px 0 0">mostrando ' + t.itens.length + ' de ' + (t.total + t.cancelados) + ': o que anda, o que vem a seguir e o que fechou por último. Para achar outra, use a busca acima.</p>' : '');
+        + '</ul>' + (t.total > t.itens.length ? '<p class="c2-mini" style="margin:8px 0 0">mostrando ' + t.itens.length + ' de ' + (t.total + t.cancelados) + ': o que anda, o que vem a seguir e o que fechou por último. Para achar outra, use a busca acima.</p>' : '')
+        /* CC-1124: o que não cabe no ritmo fica embaixo, recolhido; sprint que cabe inteiro não tem a linha */
+        + (t.naoCabe ? '<details class="cam-nao-cabe" data-cam-nao-cabe="' + esc(t.chave) + '"' + (CAM_NAO_CABE.has(t.chave) ? ' open' : '') + '><summary class="c2-mini">mais ' + t.naoCabe + (t.naoCabe === 1 ? ' tarefa não cabe' : ' tarefas não cabem') + ' até esta semana (' + esc(t.naoCabePor || '') + '). Ficam na fila, nesta ordem.</summary>'
+          + '<ul class="cam-itens">' + (t.naoCabeItens || []).map(camLinha).join('') + '</ul></details>' : '');
     }
+    const CAM_NAO_CABE = new Set(); // aberto continua aberto quando a tela se redesenha
+    document.addEventListener('toggle', (ev) => { const d = ev.target; if (!d.dataset || d.dataset.camNaoCabe == null) return; if (d.open) CAM_NAO_CABE.add(d.dataset.camNaoCabe); else CAM_NAO_CABE.delete(d.dataset.camNaoCabe); }, true);
     /* CC-1007: uma linha de tarefa, a mesma na lista do trecho e no resultado da busca. O código vem primeiro e em destaque. */
     function camLinha(i) {
       const icItem = (e) => e === 'OK' ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'

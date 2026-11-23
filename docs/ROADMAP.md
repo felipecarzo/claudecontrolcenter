@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-201 abertos, 907 fechados, 1108 no total. Gerado em 2026-11-23.
+202 abertos, 907 fechados, 1109 no total. Gerado em 2026-11-23.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -184,18 +184,19 @@
 | CC-1080 | andando | - | Backup e restauração de projeto num pacote só: baixar, tirar da VPS e voltar igual, sem IA |
 | CC-1098 | definida | - | Cockpit da VPS avisa quando o CrowdSec bloqueia o IP do PC e tem botao para desbloquear |
 | CC-1107 | andando | - | PC e VPS sempre à mostra um do outro: o resumo leva commit, arquivos soltos e versão do painel, e a tela mostra as diferenças |
-| CC-1109 | andando | - | Sessoes mortas e contadores que discordam: a lista de sessoes some com as esquecidas e os numeros batem |
-| CC-1110 | andando | - | Aba Maquinas lenta, erro do service worker e 'sem leitura de memoria' nos servicos da VPS |
-| CC-1111 | andando | - | Saude da VPS desatualizada (retrato de 20/08) e tempo de trabalho da VPS fora da semana |
+| CC-1109 | prova | - | Sessoes mortas e contadores que discordam: a lista de sessoes some com as esquecidas e os numeros batem |
+| CC-1110 | prova | - | Aba Maquinas lenta, erro do service worker e 'sem leitura de memoria' nos servicos da VPS |
+| CC-1111 | prova | - | Saude da VPS desatualizada (retrato de 20/08) e tempo de trabalho da VPS fora da semana |
 | CC-1113 | definida | - | Conferir na tela o que a sessao de 22/11 commitou: linha PC contra VPS, sessoes esquecidas, maquinas sem sinal, travas da VPS |
-| CC-1114 | andando | - | Responder pelo cockpit da VPS as sessoes do PC abertas pelo botao do cockpit (caminho B1) |
-| CC-1116 | andando | - | Aviso falso '2 paineis enviando ao mesmo tempo' logo depois de religar a VPS: o processo antigo ja morreu e continua contando |
-| CC-1117 | andando | - | Tela de Projetos conta como viva sessao esquecida 'espera voce' (vivas por projeto em cockpit2.mjs) |
-| CC-1118 | andando | - | npm test verde no Windows: 28 de 121 testes falham (shell como binario falso, EFTYPE, rsync, tar) |
-| CC-1119 | definida | - | Laco de religar do painel no Windows desiste para sempre apos 5 quedas rapidas: com disco cheio o painel ficou morto ate religar a mao |
-| CC-1120 | andando | - | Programa instalado que liga qualquer sessao ao cockpit: captura o trafego, registra pastas pela bandeja, sincroniza com a VPS |
-| CC-1121 | andando | - | Painel do PC fica lento (60 s por resposta) minutos depois de ligar |
-| CC-1122 | andando | - | PC e VPS escolhem o mesmo numero de item no backlog: o numero novo passa a considerar o maior que veio da outra maquina |
+| CC-1114 | prova | - | Responder pelo cockpit da VPS as sessoes do PC abertas pelo botao do cockpit (caminho B1) |
+| CC-1116 | prova | - | Aviso falso '2 paineis enviando ao mesmo tempo' logo depois de religar a VPS: o processo antigo ja morreu e continua contando |
+| CC-1117 | prova | - | Tela de Projetos conta como viva sessao esquecida 'espera voce' (vivas por projeto em cockpit2.mjs) |
+| CC-1118 | prova | - | npm test verde no Windows: 28 de 121 testes falham (shell como binario falso, EFTYPE, rsync, tar) |
+| CC-1119 | prova | - | Laco de religar do painel no Windows desiste para sempre apos 5 quedas rapidas: com disco cheio o painel ficou morto ate religar a mao |
+| CC-1120 | prova | - | Programa instalado que liga qualquer sessao ao cockpit: captura o trafego, registra pastas pela bandeja, sincroniza com a VPS |
+| CC-1121 | prova | - | Painel do PC fica lento (60 s por resposta) minutos depois de ligar |
+| CC-1122 | prova | - | PC e VPS escolhem o mesmo numero de item no backlog: o numero novo passa a considerar o maior que veio da outra maquina |
+| CC-1124 | andando | - | Tarefas e atividades do cockpit entram, andam e saem sozinhas, e o cockpit cobra o Felipe so quando precisa, de forma limpa |
 
 ## coderoom
 
@@ -255,4 +256,4 @@
 |---|---|---|---|
 | CC-1057 | prova | - | fila do agente lista prova que espera o olho dele como trabalho que o agente faz sozinho |
 | CC-1088 | definida | - | Gravar no backlog regera o ROADMAP gerado: hoje só o comando lugar regera e o teste geral quebra a cada novo/mover |
-| CC-1115 | andando | - | npm test vermelho: pytest da conferência não roda no Windows, rota sem chamada no test-cockpit2, teste do Tinder preso a LF |
+| CC-1115 | prova | - | npm test vermelho: pytest da conferência não roda no Windows, rota sem chamada no test-cockpit2, teste do Tinder preso a LF |

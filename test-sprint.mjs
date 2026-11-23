@@ -79,12 +79,12 @@ try {
     const seg = janelaDe(new Date(2026, 9, 4, 12).getTime(), null) // domingo 04/10
     assert.equal(new Date(seg.de).getDay(), 1); assert.equal(Math.round((seg.ate - seg.de) / 864e5), 7)
   })
-  t('velocidade usa a mediana das janelas com trabalho e ignora micro tarefa', () => {
+  t('velocidade é a média das últimas 4 janelas, semana zerada conta (CC-1124), e ignora micro tarefa', () => {
     const j = [0, 1, 2, 3, 4].map((k) => ({ de: new Date(2026, 8, 7 + 7 * k).getTime(), ate: new Date(2026, 8, 14 + 7 * k).getTime() }))
     const itens = [fechado('CC-1', 'G', '2026-09-08'), fechado('CC-2', 'M', '2026-09-16'), fechado('CC-3', 'P', '2026-09-23'), fechado('CC-4', 'M', '2026-09-24'),
       fechado('CC-5', 'G', '2026-09-09', { pai: 'CC-1' }), fechado('CC-6', 'G', '2026-09-30', { pai: 'CC-1' })]
-    assert.equal(velocidade(itens, j), 4) // janelas com 8, 3 e 4 pontos (as filhas não contam): mediana 4
-    assert.equal(velocidade([], j), 10) // sem histórico
+    assert.equal(velocidade(itens, j), 1.75) // últimas 4 janelas: 3, 4, 0 e 0 pontos (as filhas não contam): 7 / 4
+    assert.equal(velocidade([], j), 10) // sem nenhum fechamento com data: não há ritmo
   })
   t('custosDoRobo soma só as mensagens do claude, por item pai', () => {
     const itens = [item('CC-1'), { ...item('CC-2'), pai: 'CC-1', estado: 'OK', conversa: 'c1' }, { ...item('CC-3'), pai: 'CC-1', estado: 'OK', conversa: 'c2' }, { ...item('CC-4'), pai: 'CC-1', estado: 'EM', conversa: 'c3' }]
@@ -120,7 +120,8 @@ try {
     const c = caminhoPorSprint(raiz, agoraC, opc)
     assert.equal(c.ok, true); assert.equal(c.por, 'sprint'); assert.equal(c.avisoGravacao, undefined)
     for (const k of ['trechos', 'atual', 'marcos', 'pct', 'feitos', 'total']) assert.ok(k in c, k)
-    assert.deepEqual(c.trechos.map((x) => x.sprint.estado), ['passado', 'atual', 'previsto'])
+    // CC-1124: o ritmo das últimas 4 semanas é 3 pontos / 4 = 0,75 e o CC-2 já fechou nesta semana, então CC-3 e CC-4 vão uma por semana
+    assert.deepEqual(c.trechos.map((x) => x.sprint.estado), ['passado', 'atual', 'previsto', 'previsto'])
     assert.equal(c.trechos[c.atual].sprint.estado, 'atual')
     assert.match(c.trechos[0].descricao, /^\d\d\/\d\d a \d\d\/\d\d/)
     assert.equal(c.trechos[0].completo, true)

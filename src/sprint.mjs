@@ -115,13 +115,29 @@ export function janelaDe(agora, ancora = null) {
 
 const tops = (itens) => itens.filter((i) => !i.pai && i.estado === 'OK' && !i.semData && msDe(i.fechado) != null)
 
-/** Pontos fechados por janela (só itens sem pai); mediana das últimas 4 janelas com trabalho. Sem histórico, 10. */
-export function velocidade(itens, janelas = []) {
+/**
+ * CC-1124: o ritmo real. Pontos fechados (só itens sem pai) nas últimas 4 janelas, e a semana
+ * sem nenhum fechamento CONTA como zero. A mediana só das semanas com trabalho levava o
+ * fechamento em lote de uma semana para todas (232,5 por semana contra 7 de verdade).
+ */
+export function ritmo(itens, janelas = []) {
   const fechados = tops(itens)
-  const por = janelas.map((j) => fechados.filter((i) => { const f = msDe(i.fechado); return f >= j.de && f < j.ate }).reduce((s, i) => s + pontosDe(i), 0)).filter((p) => p > 0)
-  // ponytail: o fechamento em lote infla a semana; a mediana de 4 janelas amortece
-  const ult = por.slice(-4)
-  return ult.length ? mediana(ult) : 10
+  const ult = janelas.slice(-4)
+  const total = ult.reduce((s, j) => s + fechados.filter((i) => { const f = msDe(i.fechado); return f >= j.de && f < j.ate }).reduce((a, i) => a + pontosDe(i), 0), 0)
+  return { semanas: ult.length, total, porSemana: ult.length ? total / ult.length : 0 }
+}
+
+/** Pontos por semana do ritmo real. Projeto que nunca fechou nada com data não tem ritmo: 10. */
+export function velocidade(itens, janelas = []) {
+  if (!tops(itens).length) return 10
+  const r = ritmo(itens, janelas)
+  return r.semanas ? r.porSemana : 10
+}
+
+/** A frase da régua, em palavras comuns: "nas últimas 4 semanas, 28 pontos no total, 7 por semana". */
+export function fraseDoRitmo(r) {
+  const n = (v) => String(Math.round(v * 10) / 10).replace('.', ',')
+  return `nas últimas ${r.semanas} semanas, ${n(r.total)} pontos no total, ${n(r.porSemana)} por semana`
 }
 
 /** Percorre a fila na ordem somando o custo; para quando o próximo não cabe. O primeiro sempre entra. */
@@ -215,6 +231,8 @@ export function montar(itens, { agora, ancora = null, previsao: prev, capacidade
     const w = { de: cur.de + k * SEMANA, ate: cur.ate + k * SEMANA }
     previstos.push({ ...info(w, bloco, null, null, 'previsto'), n: atual.n + k })
   }
+  // CC-1124: o que não cabe nos 6 sprints no ritmo medido fica embaixo do último, em vez de sumir da tela
+  if (resto.length && previstos.length) previstos.at(-1).naoCabe = resto
   return { passados, atual, previstos, fimDoBacklog, ordem: fila, custos }
 }
 
@@ -244,6 +262,7 @@ export function caminhoPorSprint(raiz, agora = Date.now(), opcoes = {}) {
   const cur = janelaDe(agora, ancora)
   const anteriores = []; for (let k = 8; k >= 1; k--) anteriores.push(janelaDe(cur.de - 1 - (k - 1) * SEMANA, ancora))
   let cap = velocidade(itens, anteriores)
+  const ritmoReal = ritmo(itens, anteriores)
   if (prev.fonte === 'medido') {
     const t = capacidade(raiz, { agora, resumoFn }).tokensPorSemanaMediana
     if (t > 0) cap = t; else prev = { ...prev, fonte: 'pontos' }
@@ -278,19 +297,23 @@ export function caminhoPorSprint(raiz, agora = Date.now(), opcoes = {}) {
   const trecho = (s) => {
     const vivos = s.itens.filter((i) => i.estado !== 'KO')
     const feitos = vivos.filter((i) => i.estado === 'OK'); const abertos = vivos.filter(aberto)
-    const andando = abertos.filter((i) => i.estado === 'EM' || i.estado === 'PR')
+    // CC-1124: andando é trabalho em curso; em prova é feito esperando conferência. Duas contas.
+    const andando = abertos.filter((i) => i.estado === 'EM'); const emProva = abertos.filter((i) => i.estado === 'PR')
     const recentes = (l) => [...l].sort((a, b) => String(b.mexido || '').localeCompare(String(a.mexido || '')))
     return {
       chave: 'S' + s.n, frente: 'Sprint ' + s.n,
       descricao: `${ddmm(s.de)} a ${ddmm(s.ate - 1)}${s.meta ? ' · meta: ' + nomeParte(s.meta) : ''}`,
       total: vivos.length, feitos: feitos.length, cancelados: s.itens.length - vivos.length,
-      andando: andando.length, fila: abertos.filter((i) => i.estado === 'B0' || i.estado === 'B1').length,
+      andando: andando.length, emProva: emProva.length, fila: abertos.filter((i) => i.estado === 'B0' || i.estado === 'B1').length,
       parado: abertos.filter((i) => i.estado === 'DE' || i.estado === 'TR').length,
       completo: s.estado === 'passado' || (vivos.length > 0 && abertos.length === 0),
       comeco: isoDe(s.de).slice(0, 10), mexido: s.itens.map((i) => i.mexido || '').sort().at(-1) || '',
       emendas: s.itens.filter((i) => i.origem === 'emenda' && i.estado !== 'KO').length,
       itens: [...naFila(abertos), ...recentes(feitos)].slice(0, 14)
         .map(itemDoCaminho),
+      naoCabe: (s.naoCabe || []).length, naoCabeItens: naFila(s.naoCabe || []).map(itemDoCaminho), // CC-1124: a fila embaixo
+      naoCabePor: !s.naoCabe ? null : prev.fonte === 'medido' ? 'ritmo medido em tokens do robô'
+        : `ritmo das últimas ${ritmoReal.semanas} semanas: ${String(Math.round(ritmoReal.porSemana * 10) / 10).replace('.', ',')} pontos por semana`,
       sprint: { n: s.n, estado: s.estado, previsto: s.previsto, gasto: s.gasto, fonte: s.fonte },
       artefatos: artefatosDoSprint(s.itens, raiz), // CC-927: calculado, nunca gravado
     }
@@ -301,13 +324,14 @@ export function caminhoPorSprint(raiz, agora = Date.now(), opcoes = {}) {
   if (semData.length) trechos.unshift({ ...trecho({ n: 0, de: 0, ate: DIA, estado: 'passado', itens: semData, previsto: null, gasto: null, fonte: null, meta: null }), chave: 'antes', frente: 'Antes do histórico', descricao: 'fechados sem data registrada' })
   // CC-958: fim do backlog é o último trecho antes da chegada
   if (m.fimDoBacklog.length) { const ult = m.previstos.at(-1) || m.atual; trechos.push({ ...trecho({ n: ult.n + 1, de: ult.ate, ate: ult.ate + SEMANA, estado: 'previsto', itens: m.fimDoBacklog, previsto: null, gasto: null, fonte: null, meta: null }), chave: 'fim', frente: 'Fim do backlog', descricao: 'o que você mandou para depois de tudo' }) }
-  const feitos = trechos.reduce((s, t) => s + t.feitos, 0); const total = trechos.reduce((s, t) => s + t.total, 0)
+  const feitos = trechos.reduce((s, t) => s + t.feitos, 0); const total = trechos.reduce((s, t) => s + t.total + (t.naoCabe || 0), 0)
   const emendas = trechos.reduce((s, t) => s + t.emendas, 0)
   return {
     ok: true, por: 'sprint', raiz, nome: nomeDe(raiz), feitos, total, pct: total ? Math.round((feitos / total) * 100) : 0,
     marcos: trechos.filter((t) => t.completo).length, emendas, crescimento: total - emendas ? Math.round((emendas / (total - emendas)) * 100) : 0,
     trechos, atual: Math.max(0, trechos.findIndex((t) => t.sprint.estado === 'atual')), at: agora,
-    capacidade: { valor: cap, unidade: prev.fonte === 'medido' ? 'tokens' : 'pontos' }, horasDele: 'aberto',
+    // CC-1124: a régua com a origem: pontos somam o tamanho P, M ou G de cada tarefa; o ritmo vem das últimas 4 semanas
+    capacidade: { valor: cap, unidade: prev.fonte === 'medido' ? 'tokens' : 'pontos', pesos: PONTOS, ritmo: ritmoReal, frase: fraseDoRitmo(ritmoReal) }, horasDele: 'aberto',
     // CC-958: guardados fora da estrada, fora do andado e dos marcos
     foraDoMvp: secaoGuardada('fora', 'Fora do MVP', 'guardado: não entra na fila até você promover', itens.filter((i) => !i.pai && B.estaAberto(i) && B.lugarDe(i) === 'fora')),
     ideiasSemLugar: secaoGuardada('ideias', 'Ideias esperando o seu lugar', 'ainda fora da fila: escolha onde cada uma entra', itens.filter((i) => !i.pai && i.estado === 'B0' && !B.lugarDe(i))),

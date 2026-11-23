@@ -23,7 +23,7 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
 | tela | 20 | 20/20 | 13/20 | 20/20 | 0/20 | 20/20 |
-| acao | 384 | 384/384 | 54/384 | 0/384 | 0/384 | 0/384 |
+| acao | 385 | 385/385 | 54/385 | 0/385 | 0/385 | 0/385 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
 | endereco | 180 | 180/180 | 3/180 | 0/180 | 0/180 | 0/180 |
 | palavra | 90 | 90/90 | 10/90 | 90/90 | 0/90 | 90/90 |
@@ -57,7 +57,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `conhecimento` | viva | src/ui_cockpit2.html#view-conhecimento | funciona, estreito |
 | `remoto` | viva | src/ui_cockpit2.html#view-remoto | estreito |
 
-## acao (384)
+## acao (385)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -320,6 +320,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-msg-cwd` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-msg-sug-i` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-pedido-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-cam-nao-cabe` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-lugar` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-lugar-onde` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-cam-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |

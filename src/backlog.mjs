@@ -42,12 +42,14 @@
  */
 
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { spawnSync, execFile } from 'node:child_process'
 import { transicionar } from './tarefa.mjs'
 import { catalogoDe, ehFrente, listaDeFrentes } from './frentes.mjs'
 import { MODELOS, ESFORCOS } from './modelo.mjs'
 import { maiorIdConhecido } from './federacao.mjs'
+import { casaClaude } from './platform.mjs'
 
 /**
  * Os estados de produção, com código curto.
@@ -771,6 +773,110 @@ export function sincronizarComCommits(linhas, { arquivo = caminhoPadrao(), ensai
   }
   if (!ensaio && feitos.some((f) => f.acao === 'fechado')) gravar(itens, arquivo)
   return { feitos, citados: dizem.size }
+}
+
+/* ===================================================================
+   CC-1124, passos 2 e 3: o "andando" se arruma sozinho.
+   Medido em 23/11: 21 de 31 tarefas andando sem sessão viva, e 17 de 19
+   tarefas citadas em commit ainda abertas. Duas regras, as duas só sobre
+   andando (EM); prova (PR) e decisão dele (DE) nunca mudam aqui:
+     - commit que cita a tarefa depois de ela entrar em andando leva para
+       prova, com o commit como prova (nunca fecha: quem fecha é a conferência);
+     - andando que ninguém toca há 48 h volta para definida (B1).
+   "Tocar" é o maior de: o `mexido` (fim daquele dia), o último evento da
+   tarefa ou das micro tarefas dela, e o último sinal das sessões que a
+   mediram (transcrito e registro de turno). Este último é o que protege a
+   sessão que está trabalhando agora sem mexer no backlog.
+   =================================================================== */
+
+export const HORAS_ANDANDO = 48
+
+/** Os eventos do diário do projeto, em ordem. Linha quebrada é pulada. */
+export function lerEventos(arquivo = caminhoPadrao()) {
+  let cru = ''; try { cru = fs.readFileSync(caminhoEventos(arquivo), 'utf8') } catch { return [] }
+  return cru.split(/\r?\n/).filter(Boolean).flatMap((l) => { try { return [JSON.parse(l)] } catch { return [] } })
+}
+
+/** O último sinal de vida de uma sessão, em ms (0 sem sinal): o transcrito dela e o registro de turno (o mesmo caminho de registroTurno.dirRegistro). */
+export function sinalDaSessao(sessao, { casa = casaClaude(), home = os.homedir() } = {}) {
+  if (!/^[0-9a-f-]{36}$/.test(String(sessao || ''))) return 0
+  const cands = [path.join(home, '.local', 'share', 'agent-cockpit', 'registro', `${sessao}.jsonl`)]
+  try { for (const p of fs.readdirSync(path.join(casa, 'projects'))) cands.push(path.join(casa, 'projects', p, `${sessao}.jsonl`)) } catch { /* sem pasta de conversas */ }
+  let t = 0
+  for (const f of cands) { try { t = Math.max(t, fs.statSync(f).mtimeMs) } catch { /* não existe */ } }
+  return t
+}
+
+const IDS_NO_TEXTO = /\b([A-Z]{2,4}-\d{1,5})\b/g
+
+/** Commits recentes do repositório: `[{ hash, em, titulo, ids }]`, o mais novo primeiro. Lista vazia se o git falhar. */
+export function commitsRecentes(raiz, { dias = 7 } = {}) {
+  return new Promise((res) => execFile('git', ['log', `--since=${dias} days ago`, '--pretty=%H%x1f%ct%x1f%s%x1f%b%x1e'],
+    { cwd: raiz, timeout: 20000, windowsHide: true, maxBuffer: 16e6 }, (err, out) => {
+      if (err) return res([])
+      res(String(out).split('\x1e').map((b) => b.trim()).filter(Boolean).map((b) => {
+        const [hash, ct, titulo = '', corpo = ''] = b.split('\x1f')
+        return { hash, em: Number(ct) * 1000, titulo: titulo.trim(), ids: new Set([...`${titulo}\n${corpo}`.matchAll(IDS_NO_TEXTO)].map((m) => m[1])) }
+      }))
+    }))
+}
+
+/** O que arrumar, sem gravar nada: `[{ id, para, porque, prova? }]`. Função pura, a não ser por `sinal`. */
+export function planoDeArrumar(itens, eventos, { agora = Date.now(), commits = [], sinal = sinalDaSessao, horas = HORAS_ANDANDO } = {}) {
+  const andando = itens.filter((x) => x.estado === 'EM')
+  if (!andando.length) return []
+  const evDe = new Map()
+  for (const e of eventos) { if (!evDe.has(e.id)) evDe.set(e.id, []); evDe.get(e.id).push(e) }
+  const fimDoDia = (d) => Date.parse(`${d}T23:59:59`) || 0 // sem fuso: hora local, a mesma do `mexido`
+  const inicioDoDia = (d) => Date.parse(`${d}T00:00:00`) || 0
+  const limite = agora - horas * 3600e3
+  const acoes = []
+  for (const i of andando) {
+    // commit só conta se veio depois da entrada em andando; sem evento de entrada, vale o dia do `mexido`
+    const entradas = (evDe.get(i.id) || []).filter((e) => e.tipo === 'estado' && e.para === 'EM').map((e) => Date.parse(e.em) || 0)
+    const desde = entradas.length ? Math.max(...entradas) : inicioDoDia(i.mexido)
+    const c = commits.find((x) => x.em > desde && x.ids.has(i.id))
+    if (c) { acoes.push({ id: i.id, para: 'PR', prova: `commit ${c.hash.slice(0, 7)}: ${c.titulo}`.slice(0, 300), porque: `o commit ${c.hash.slice(0, 7)} cita ${i.id}` }); continue }
+    const daFamilia = [i, ...itens.filter((x) => x.pai === i.id)]
+    const evs = daFamilia.flatMap((x) => evDe.get(x.id) || [])
+    let toque = Math.max(0, ...daFamilia.map((x) => fimDoDia(x.mexido)), ...evs.map((e) => Date.parse(e.em) || 0))
+    // as sessões só são olhadas quando o resto já venceu: é o caminho caro (um stat por pasta de conversa)
+    if (toque <= limite) for (const s of new Set(evs.filter((e) => e.tipo === 'medida' && e.sessao).map((e) => e.sessao))) toque = Math.max(toque, sinal(s))
+    if (toque <= limite) acoes.push({ id: i.id, para: 'B1', porque: `ninguém mexeu há ${horas} h` })
+  }
+  return acoes
+}
+
+/**
+ * Aplica o plano e grava, com o motivo no diário de cada tarefa (`por: 'robo'`).
+ * A volta para definida NÃO conta como toque: o `mexido` antigo fica, senão o aviso dos 30 dias parados nunca dispararia.
+ */
+export function arrumar(arquivo = caminhoPadrao(), { ensaio = false, ...opcoes } = {}) {
+  const { itens } = ler(arquivo)
+  const acoes = planoDeArrumar(itens, lerEventos(arquivo), opcoes)
+  if (ensaio || !acoes.length) return acoes
+  let atual = itens
+  const eventos = []
+  for (const a of acoes) {
+    try {
+      const antes = atual.find((x) => x.id === a.id)
+      const r = transicionar(atual, a.id, a.para, a.prova ? { prova: a.prova } : {}, { hoje: hoje(), validar: (x) => problemas(x, catalogoDe(arquivo)) })
+      if (a.para === 'B1') r.itens[r.itens.indexOf(r.item)] = { ...r.item, mexido: antes.mexido }
+      atual = r.itens
+      eventos.push(...r.eventos.map((e) => (e.id === a.id && e.tipo === 'estado' ? { ...e, porque: a.porque, por: 'robo' } : e)))
+      a.feito = true
+    } catch (e) { a.recusa = e.message }
+  }
+  if (acoes.some((a) => a.feito)) { gravar(atual, arquivo); registrar(eventos, arquivo) }
+  return acoes
+}
+
+/** O mesmo, para um projeto: lê o git só quando há tarefa andando. Assíncrono, para o painel não parar esperando o git. */
+export async function arrumarProjeto(raiz, opcoes = {}) {
+  const arquivo = caminhoPadrao(raiz)
+  const { itens, existe } = ler(arquivo)
+  if (!existe || !itens.some((x) => x.estado === 'EM')) return []
+  return arrumar(arquivo, { ...opcoes, commits: await commitsRecentes(raiz) })
 }
 
 /**

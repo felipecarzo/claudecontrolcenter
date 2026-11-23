@@ -2180,6 +2180,25 @@ switch (cmd) {
       break
     }
 
+    /* CC-1124, passos 2 e 3: andando parado há 48 h volta para definida, andando citado em commit vai para prova.
+       Roda aqui, ao ler o backlog, e no painel de 10 em 10 minutos. Desliga: Nisaba desligado no projeto (tela
+       Projetos), ou "nisabaExpira": false no control-center.json (vale para a máquina inteira). */
+    const arrumarAqui = async (ensaio) => {
+      const C = await import('./src/config.mjs')
+      const cfg = C.readConfig()
+      if (cfg.nisabaExpira === false || !C.moduloLigado('nisaba', path.basename(process.cwd()), cfg)) return []
+      const acoes = await B.arrumarProjeto(process.cwd(), { ensaio })
+      for (const a of acoes) console.log(`  ${a.recusa ? 'não mudei' : ensaio ? 'mudaria' : 'mudou'}  ${a.id} → ${B.estadoDe(a.para).rotulo}: ${a.recusa || a.porque}`)
+      return acoes
+    }
+    if (sub === 'arrumar') {
+      console.log('')
+      const acoes = await arrumarAqui(argv.includes('--ensaio'))
+      console.log(acoes.length ? '' : '  nada a arrumar: nenhuma tarefa andando parada há 48 h nem citada em commit.\n')
+      break
+    }
+    if (!sub) { try { await arrumarAqui(false) } catch { /* arrumar nunca impede ler */ } }
+
     const r = B.retrato()
     console.log('')
     if (!r.existe) {

@@ -28,6 +28,15 @@ fim, depois da marca, e não entra na sessão.
 8. **O texto dele entra literal.** Se ele escreveu a versão, ela vai como está. Problema nela vira pergunta, nunca
    reescrita; sugestão vem separada e marcada como sugestão.
 9. **Quando ele disser "caminho 2", "parte 2", "opção 2"**, conferir a que lista ele se refere antes de agir.
+10. **Comunicação limpa.** É a comunicação clara e direta, sem jargão e sem frase feita para explicar conceito. Quem
+    escreve parte de que ele não tem o contexto da conversa e não decorou o projeto. Toda escolha que ele precisa fazer
+    vem com três coisas, em palavras gerais: **de onde ela veio** (o que aconteceu ou foi medido), **o que cada opção
+    muda** e **o peso de cada uma** (quanto custa, quanto atrasa, o que desfaz). Se faltar um dos três, a pergunta está
+    incompleta. Ele é o autor das ideias do projeto, e a escrita existe para carregar o que ele não consegue carregar
+    de cabeça: o texto faz o trabalho de lembrar. Palavras dele em 23/11/2026: *"uma comunicação limpa é uma comunicação
+    clara e direta. ela precisa não conter jargões nem frases feitas pra explicar conceitos, seja estritamente lúcido,
+    não sou um robô, não tenho contexto, preciso de origens e explicações do que eu preciso escolher e o peso de cada
+    de forma generalista"*.
 
 ## Parte 2. Resposta no chat
 
