@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-202 abertos, 907 fechados, 1109 no total. Gerado em 2026-11-23.
+203 abertos, 907 fechados, 1110 no total. Gerado em 2026-11-23.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -17,7 +17,7 @@
 |---|---|---|---|
 | CC-294 | definida | 3 | a amostra julgada: 30 devoluções lidas lado a lado |
 | CC-917 | prova | - | trava: resposta que deixa ideia longa dele só no texto, sem item no backlog, é barrada uma vez |
-| CC-960 | andando · 6 de 7 | - | trocar modelo e esforco sozinho pela complexidade da tarefa, com regras reais em todos os projetos |
+| CC-960 | definida · 6 de 7 | - | trocar modelo e esforco sozinho pela complexidade da tarefa, com regras reais em todos os projetos |
 | CC-1056 | prova | - | regras de escrita unificadas numa fonte so, com a regra nova defina antes de concluir, e os outros lugares apontando para ela |
 | CC-1059 | definida | - | aviso 'projetos sairam do quadro' dispara para pasta renomeada (videolab virou medialab em 08/10) |
 | CC-1094 | prova | - | Os ganchos de fim de resposta fazem a sessão repetir a resposta inteira, resumo junto, de 2 a 4 vezes |
@@ -50,7 +50,7 @@
 | CC-496 | definida | - | so quero que as informacoes redundantes sumam e as importantes sejam organizadas de forma correta; coisa que eu veja pouco mas bem organizada pode ser util; o problema e coisa pouco util no dia a dia virar ruido no meio do importante cockpit 2 |
 | CC-539 | prova | - | framework so reconhece projeto com pasta ja marcada; ideia dele: projeto nasce no framework, pastas no PC/VPS vem depois, sincronizadas |
 | CC-557 | prova | - | cockpit novo: uma engenharia tipo SDD que deixa o agente decidir e fazer sozinho o que nao depende de mim |
-| CC-558 | andando | - | cockpit novo: uma area de construcao de design para os projetos |
+| CC-558 | definida | - | cockpit novo: uma area de construcao de design para os projetos |
 | CC-559 | prova | - | cockpit novo: notas continua importante, mas o app de notas precisa melhorar |
 | CC-562 | prova | - | estudar o JEV (modelo barato de decisao sim/nao e nota) para rodar num modelo barato ou no Gemini pelo agy, nao aqui |
 | CC-564 | travado | - | responder pelo painel as perguntas das sessoes do PC: medir se um gancho na pergunta entrega a resposta, sem depender de tela |
@@ -59,7 +59,7 @@
 | CC-656 | prova | - | design 3/4: mural de referencias por projeto (prints, sites de inspiracao, feedback) para mostrar ao agente quero assim |
 | CC-657 | prova | - | design 4/4: comparar versoes de uma tela lado a lado (antes e depois, 390 e 1536) e aprovar ou pedir ajuste dali |
 | CC-658 | prova · 1 de 1 | - | design 1b: ajustar a identidade pelo painel (cores, fontes, regras), gravando no arquivo de design do projeto |
-| CC-659 | andando | - | passada no painel inteiro: extrair os padroes das telas ja refeitas e aplicar ao resto, juntando e apagando telas |
+| CC-659 | definida | - | passada no painel inteiro: extrair os padroes das telas ja refeitas e aplicar ao resto, juntando e apagando telas |
 | CC-732 | definida | - | Sessoes do PC ficam presas e nao atualizam no Cockpit da VPS |
 | CC-734 | prova | - | Sessoes do PC que nem aparecem no Cockpit da VPS |
 | CC-753 | definida | - | Instalavel unico do Cockpit para Windows: executa, vira servico automatico e pega os projetos da maquina, sem repositorio nem programar nela |
@@ -73,7 +73,7 @@
 | CC-893 | prova | - | card de conversa do Coderoom na tela Sessoes ganha botao arquivar (com desfazer): hoje so tem renomear e abrir sessao |
 | CC-895 | definida | - | endereco no testedevoo para app simples de Node (como o Conta de Casa): o dev.sh nao tem esse tipo e o roteador exige o prefixo |
 | CC-906 | prova · 1 de 6 | - | Tinder like fixo no cockpit: decidir tudo por cartões, uma mão, sem digitar, em Sessões inteira ou num projeto só |
-| CC-936 | andando | - | aba Tarefas mostra o que foi feito, o que está em prova e o que vem, cada item com a explicação na língua dele |
+| CC-936 | definida | - | aba Tarefas mostra o que foi feito, o que está em prova e o que vem, cada item com a explicação na língua dele |
 | CC-957 | prova | - | sessao parada ha dias aparece como parou ou espera voce: separar como esquecida (3+ dias) e alertar no sino as que ocupam memoria |
 | CC-972 | prova | - | dado principal do painel leva de 2 a 8 s para sair do servidor; medir o que pesa e cortar |
 | CC-982 | prova | - | sessao recem aberta tem campo de escrever obrigatorio, com audio e chamar skill; campo com skill e audio vira padrao em todo chat do cockpit |
@@ -120,7 +120,7 @@
 | CC-1044 | prova | - | monitor de hooks no painel: disparos, tempo, barradas e o que cada hook devolveu, por projeto |
 | CC-1045 | prova | - | hooks de parada fazem ele esperar 6,4 s por resposta (95 cortes do quadro-guard): achar e cortar o que pesa |
 | CC-1046 | prova | - | aba Hooks em portugues claro: o que cada hook faz com ele, colunas explicadas, barrada em frase inteira |
-| CC-1047 | andando | - | aba Hooks diz o que CADA hook faz, nao so o tipo |
+| CC-1047 | definida | - | aba Hooks diz o que CADA hook faz, nao so o tipo |
 | CC-1048 | prova | - | aba Hooks diz o que CADA hook faz, nao so o tipo |
 | CC-1049 | prova | - | aba Hooks mostra quanto token cada hook poe na conversa (por disparo e total) e periodos de 1, 7, 15, 30 e 60 dias |
 | CC-1051 | prova | - | botao terminal do Claude no cartao do projeto da aba Projetos, junto do teste de voo |
@@ -135,7 +135,7 @@
 | CC-1091 | definida | - | abrir o painel pelo endereço antigo #framework dá erro 'Cannot access C2 before initialization' |
 | CC-1092 | prova | - | A aba Sessões do projeto não oferece fechar conversa do Coderoom (print dele: sessão de 17 dias só com 'abrir') |
 | CC-1097 | definida | - | painel do PC trava 6 a 7 s a cada 30 s por tres varreduras sincronas sem cache util |
-| CC-1108 | andando | - | Sessões esquecidas e máquina sem sinal há dias saem da lista e dos contadores do Início, sem apagar nada |
+| CC-1108 | prova | - | Sessões esquecidas e máquina sem sinal há dias saem da lista e dos contadores do Início, sem apagar nada |
 
 ## framework
 
@@ -156,7 +156,7 @@
 | CC-959 | definida | - | retrospectiva do sprint: tokens gastos contra complexidade resolvida, por frente, para achar desperdicio, desfoco ou demora de revisao |
 | CC-1081 | prova | - | programa 'roteiro de uso' no cockpit, estilo entrevista: IA, ele ou outro modelo operam |
 | CC-1082 | definida | - | roteiro pergunta demais: só o que só ele sabe, o resto a IA e o programa preenchem |
-| CC-1083 | andando | - | roteiro compara o projeto com a prática de mercado da categoria (pesquisa em laço até saturar) |
+| CC-1083 | definida | - | roteiro compara o projeto com a prática de mercado da categoria (pesquisa em laço até saturar) |
 | CC-1085 | prova | - | Framework: marcos de maturidade da ideia além do MVP, que acompanham a ideia mudando |
 | CC-1086 | prova | - | Framework: trocar perguntas genéricas do MVP (ex.: o que a pessoa faz hoje sem isso) por pesquisa feita pela IA |
 
@@ -166,14 +166,14 @@
 |---|---|---|---|
 | CC-548 | definida | - | o Chrome da VPS nao alcanca porta local: a rota do container ate o host esta fechada e abrir exige regra de firewall com root |
 | CC-1058 | definida | - | PC fica sincronizado em tempo real com a VPS por um servico, e avisa com alerta se estiver offline |
-| CC-1060 | andando | - | sessao do PC controlada pelo Cockpit igual a da VPS: responder por texto e sincronismo imediato |
+| CC-1060 | definida | - | sessao do PC controlada pelo Cockpit igual a da VPS: responder por texto e sincronismo imediato |
 | CC-1061 | definida | - | npm test quebra no PC: 16 testes falham no Windows, e a corrente para no terceiro, sem rodar o resto |
 | CC-1062 | definida | - | religar o painel do PC pode falhar com o painel ocupado e deixar painéis soltos em outras portas |
-| CC-1063 | andando | - | Cockpit no Meta Quest 2: abas como apps soltos no espaco e, depois, sala imersiva em WebXR |
-| CC-1064 | andando | - | Sessão só de ideias, sem projeto: chat temporário que pode virar projeto ou não |
-| CC-1066 | andando | - | Cartas de texto com print da tela: o levantar de textos fotografa cada texto no lugar onde aparece, como o e-commerce fez à mão |
-| CC-1067 | andando | - | Modo plantão: por algumas horas o cockpit toca os projetos sozinho, respondendo perguntas e empurrando sessões paradas, enquanto ele dorme |
-| CC-1068 | andando | - | Regente: agente com critério que toca cada projeto até o MVP, decide, conversa no cockpit e aprende com as correções dele |
+| CC-1063 | definida | - | Cockpit no Meta Quest 2: abas como apps soltos no espaco e, depois, sala imersiva em WebXR |
+| CC-1064 | definida | - | Sessão só de ideias, sem projeto: chat temporário que pode virar projeto ou não |
+| CC-1066 | definida | - | Cartas de texto com print da tela: o levantar de textos fotografa cada texto no lugar onde aparece, como o e-commerce fez à mão |
+| CC-1067 | definida | - | Modo plantão: por algumas horas o cockpit toca os projetos sozinho, respondendo perguntas e empurrando sessões paradas, enquanto ele dorme |
+| CC-1068 | definida | - | Regente: agente com critério que toca cada projeto até o MVP, decide, conversa no cockpit e aprende com as correções dele |
 | CC-1069 | prova | - | Gancho que confere cada ação automática contra o que ele pediu e barra o que ele não pediu |
 | CC-1073 | prova | - | Conferir o fazer: a conferência do feito contra o pedido roda também em turno com ação de risco |
 | CC-1074 | definida | - | Agrupar projetos em conglomerados no painel, com cada jogo um projeto próprio dentro de uma pasta de coleção |
@@ -181,9 +181,9 @@
 | CC-1077 | definida | - | Organizar projetos e subprojetos por pastas no gerenciador: pasta agrupadora que também pode ser projeto |
 | CC-1078 | prova | - | Servidor de tradução do app Tradutor na VPS, só texto, com Haiku e teto de gasto |
 | CC-1079 | prova | - | Celular com rotação travada não pode parar no aviso de girar: o jogo abre na versão do lado em que a tela está |
-| CC-1080 | andando | - | Backup e restauração de projeto num pacote só: baixar, tirar da VPS e voltar igual, sem IA |
+| CC-1080 | definida | - | Backup e restauração de projeto num pacote só: baixar, tirar da VPS e voltar igual, sem IA |
 | CC-1098 | definida | - | Cockpit da VPS avisa quando o CrowdSec bloqueia o IP do PC e tem botao para desbloquear |
-| CC-1107 | andando | - | PC e VPS sempre à mostra um do outro: o resumo leva commit, arquivos soltos e versão do painel, e a tela mostra as diferenças |
+| CC-1107 | prova | - | PC e VPS sempre à mostra um do outro: o resumo leva commit, arquivos soltos e versão do painel, e a tela mostra as diferenças |
 | CC-1109 | prova | - | Sessoes mortas e contadores que discordam: a lista de sessoes some com as esquecidas e os numeros batem |
 | CC-1110 | prova | - | Aba Maquinas lenta, erro do service worker e 'sem leitura de memoria' nos servicos da VPS |
 | CC-1111 | prova | - | Saude da VPS desatualizada (retrato de 20/08) e tempo de trabalho da VPS fora da semana |
@@ -196,7 +196,8 @@
 | CC-1120 | prova | - | Programa instalado que liga qualquer sessao ao cockpit: captura o trafego, registra pastas pela bandeja, sincroniza com a VPS |
 | CC-1121 | prova | - | Painel do PC fica lento (60 s por resposta) minutos depois de ligar |
 | CC-1122 | prova | - | PC e VPS escolhem o mesmo numero de item no backlog: o numero novo passa a considerar o maior que veio da outra maquina |
-| CC-1124 | andando | - | Tarefas e atividades do cockpit entram, andam e saem sozinhas, e o cockpit cobra o Felipe so quando precisa, de forma limpa |
+| CC-1124 | prova | - | Tarefas e atividades do cockpit entram, andam e saem sozinhas, e o cockpit cobra o Felipe so quando precisa, de forma limpa |
+| CC-1125 | andando | - | Linha solta de ponta a ponta no meio do cockpit: a alca do painel lateral aparece com o painel fechado |
 
 ## coderoom
 
@@ -210,7 +211,7 @@
 | CC-820 | definida | - | Simulação 5: o Coderoom cria um jogo 3D de aventura do zero, em projeto novo, no testedevoo |
 | CC-828 | definida | - | Coderoom: maestro que divide o pedido em micro tarefas, roda uma a uma no opencode e confere com robô, minimizando IA |
 | CC-830 | definida | - | Coderoom: continuar no Coderoom uma tarefa que começou no Claude Code (mesma sessão, outro agente) |
-| CC-866 | andando · 2 de 5 | - | agente arquiteto com Haiku: cria projetos pelo Coderoom e pelo framework, tem ideias, revisa e melhora o próprio processo em ciclos |
+| CC-866 | definida · 2 de 5 | - | agente arquiteto com Haiku: cria projetos pelo Coderoom e pelo framework, tem ideias, revisa e melhora o próprio processo em ciclos |
 | CC-871 | definida | - | botao de resposta do arquiteto falhou com nao foi na pergunta CN-2 em 02/10 e nao reproduziu; o botao agora mostra o motivo |
 | CC-892 | definida | - | ver os agentes do robo sem eles virarem conversas na lista do Coderoom: outro lugar para acompanhar cada agente |
 | CC-921 | prova | - | apagar conversa do Coderoom logo depois do turno derrubava o painel inteiro: relogio escrevia em conversa que nao existia |
@@ -230,12 +231,12 @@
 
 | id | estado | peso | o que é |
 |---|---|---|---|
-| CC-834 | andando · 10 de 11 | - | o fluxo de projeto vira código: cada tarefa é um objeto que guarda o debate dele e anda sozinho, sem IA onde dá |
-| CC-848 | andando · 1 de 6 | - | Nisaba no cockpit inteiro: botão no Coderoom, tela do pedido, regras em toda sessão, conferência por projeto |
+| CC-834 | definida · 10 de 11 | - | o fluxo de projeto vira código: cada tarefa é um objeto que guarda o debate dele e anda sozinho, sem IA onde dá |
+| CC-848 | definida · 1 de 6 | - | Nisaba no cockpit inteiro: botão no Coderoom, tela do pedido, regras em toda sessão, conferência por projeto |
 | CC-853 | prova | - | visualizações do backlog em dado: kanban melhor e roteiro animado com marcos, meio soft-gamified |
 | CC-860 | prova | - | skill do Nisaba: a sessão do próprio projeto avalia e instala o sistema nele, aos poucos |
 | CC-864 | prova | - | guia completo do Nisaba com analogias, do nascimento de um projeto ao pedido fechado, com um app de finanças pessoais como exemplo |
-| CC-1095 | andando | - | Prova automática: o robô tira print das telas dos itens em prova e monta a carta no Revisar um por um para ele aprovar |
+| CC-1095 | prova | - | Prova automática: o robô tira print das telas dos itens em prova e monta a carta no Revisar um por um para ele aprovar |
 | CC-1099 | prova | - | Correção pedida por gancho aparece no chat como resposta a quem ele não vê; simplificar |
 | CC-1100 | definida | - | Uma sessão por frente: o cockpit abre a sessão da frente com o briefing, grava o HANDOFF e abre a próxima quando ela fecha |
 | CC-1101 | definida | - | Aviso de contexto cheio: passou de 40% da janela, o cockpit avisa que é hora de fechar a frente e abrir a próxima |
