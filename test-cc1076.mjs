@@ -11,6 +11,7 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { pathComFalso, WIN } from './test/windows.mjs'
 import { fileURLToPath } from 'node:url'
 
 const RAIZ = path.dirname(fileURLToPath(import.meta.url))
@@ -57,7 +58,7 @@ const chamadas = () => { try { return fs.readFileSync(`${FAKE_ENTRADA}.n`, 'utf8
 const GUIA_FALSO = '# Titulo do modelo\n\n## 1. Estado\nPronto \u2014 em prova. Ver `src/a.mjs:2` e `src/a.mjs:99` e `src/nao-existe.mjs:1`.\n\n## Não verificado\n- nada\n'
 const guiaFalso = (texto = GUIA_FALSO) => fs.writeFileSync(FAKE_SAIDA, JSON.stringify({ result: texto, modelUsage: { 'claude-haiku-falso': { inputTokens: 1 } }, usage: { input_tokens: 10, output_tokens: 20 } }))
 guiaFalso()
-const ENV = { ...process.env, HOME: CASA, CC_HOME, PATH: `${BIN}:${process.env.PATH}`, FAKE_ENTRADA, FAKE_SAIDA }
+const ENV = { ...process.env, HOME: CASA, USERPROFILE: CASA, CC_HOME, PATH: pathComFalso(BIN, 'claude'), FAKE_ENTRADA, FAKE_SAIDA } // CC-1118: homedir e PATH do Windows, nunca o claude real
 for (const k of ['CLAUDE_CODE_ENTRYPOINT', 'CC_CONFERENTE', 'CC_GUIA_HAIKU', 'FAKE_MODO']) delete ENV[k]
 const rodar = (args, { env = {}, entrada = '\n' } = {}) => {
   const r = spawnSync('node', args, { input: entrada, env: { ...ENV, ...env }, encoding: 'utf8', cwd: PROJ, timeout: 30000 })
@@ -115,6 +116,9 @@ let n0 = chamadas()
 let x = rodar([path.join(RAIZ, 'cc.mjs'), 'guia', 'frente', 'teste', '--ensaio'])
 ok(x.codigo === 0 && /2 itens/.test(x.out) && /bytes de material/.test(x.out) && /nenhum modelo foi chamado/.test(x.out) && chamadas() === n0 && !fs.existsSync(GUIA), 'e: o --ensaio mostra tamanho e itens, não chama o modelo e não grava guia')
 
+/* CC-1118: do caso a até o --saida tudo depende do claude falso (script de shell), que o Windows não executa */
+if (WIN) console.log('PULADO no Windows: casos a até h e --saida do guia-frente (o claude falso é script de shell, o Windows só executa .exe)')
+else {
 /* a: o gancho dispara uma vez; o filho solto escreve o guia */
 zerarCobertura()
 mundo([item('CC-1', 'PR'), item('CC-2', 'OK')], [evento('CC-1')])
@@ -258,6 +262,8 @@ const SAIDA3 = path.join(CASA, 'fora', 'prova3.md')
 x = rodar([path.join(RAIZ, 'cc.mjs'), 'guia', 'frente', 'teste', '--saida', SAIDA3])
 const g3 = fs.existsSync(SAIDA3) ? fs.readFileSync(SAIDA3, 'utf8') : ''
 ok(x.codigo === 0 && /estado 1 de 2/.test(x.out) && /^- guia-fim: o guia diz "menção a "guia-fim"[^\n]*o estado real é "aposentado"/m.test(g3) && (g3.match(/^- guia-/gm) || []).length === 1, 'guia gravado: menção a gancho aposentado como ativo é apontada; dito aposentado e gancho ligado não')
+} // fim do trecho que depende do claude falso (CC-1118)
+
 /* o parada.mjs despacha o guia-frente, e os dois antigos saíram da lista */
 const P = await import('./hooks/parada.mjs?lista')
 ok(P.GUARDAS.includes('guia-frente') && !P.GUARDAS.includes('guia-fim') && !P.GUARDAS.includes('guia-contexto'), 'parada: guia-frente entrou na lista e guia-fim e guia-contexto saíram')

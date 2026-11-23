@@ -58,7 +58,9 @@ try {
     assert.equal(d64(pub).length, 65); assert.equal(d64(pub)[0], 4)
     assert.equal(P.chavePublica(), pub, 'a segunda chamada devolve a mesma')
     const arq = path.join(process.env.COCKPIT_PUSH_DIR, 'vapid.json')
-    assert.equal(fs.statSync(arq).mode & 0o777, 0o600); assert.equal(fs.statSync(process.env.COCKPIT_PUSH_DIR).mode & 0o777, 0o700)
+    // CC-1118: o Windows não tem modo POSIX (todo arquivo sai 0666); lá só se confere que o arquivo existe
+    if (process.platform === 'win32') { assert.ok(fs.existsSync(arq)); console.log('  aviso: permissão 0600/0700 não se confere no Windows') }
+    else { assert.equal(fs.statSync(arq).mode & 0o777, 0o600); assert.equal(fs.statSync(process.env.COCKPIT_PUSH_DIR).mode & 0o777, 0o700) }
   })
 
   await t('a assinatura VAPID: ES256, aud é a origem do endpoint, exp de 12 h, sub do dono, e confere com a chave pública', () => {
@@ -93,7 +95,7 @@ try {
       assert.equal(P.inscrever(sub(a1)), 1); assert.equal(P.inscrever(sub(a1)), 1, 'o mesmo endereço não duplica')
       assert.equal(P.inscrever(sub(a2)), 2)
       assert.equal(P.inscricoes().length, 2)
-      assert.equal(fs.statSync(path.join(process.env.COCKPIT_PUSH_DIR, 'inscricoes.json')).mode & 0o777, 0o600)
+      if (process.platform !== 'win32') assert.equal(fs.statSync(path.join(process.env.COCKPIT_PUSH_DIR, 'inscricoes.json')).mode & 0o777, 0o600) // CC-1118: sem modo POSIX no Windows
       assert.throws(() => P.inscrever({}), /sem endereço/)
       assert.throws(() => P.inscrever({ endpoint: origem + '/x', keys: { p256dh: 'curta', auth: 'x' } }), /sem as chaves/)
       process.env.COCKPIT_PUSH_INSEGURO = '0'
@@ -193,4 +195,5 @@ try {
   fs.rmSync(casa, { recursive: true, force: true })
 }
 console.log(`${n} verificações do push e do vigia, todas passaram`)
-process.exit(0)
+// CC-1118: process.exit com conexão do fetch ainda fechando aborta o Node no Windows (asserção do libuv em async.c)
+setTimeout(() => process.exit(0), 100)

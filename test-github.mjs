@@ -48,11 +48,18 @@ testar('pega a URL mesmo cercada de mais texto na mesma linha', () => {
   try {
     process.env.PATH = pasta // só a pasta do falso: sem gh nenhum dentro dela ainda
     let r = await criarRepo('x'); assert.equal(r.ok, false); assert.match(r.erro, /não está instalado/); ok++; console.log('  ok   sem o gh instalado, diz isso em português')
+    /* CC-1118: no Windows o execFile só acha gh.exe, nunca o script de shell falso, e seguia para o gh REAL
+       da máquina: `gh repo create x` rodou de verdade na conta dele (repositório privado felipecarzo/x, 13/10).
+       Lá os dois passos com o falso pulam; no Linux e no macOS rodam. */
+    if (process.platform === 'win32') throw Object.assign(new Error('pulo'), { pulo: true })
     ghFalso('[ "$1 $2" = "auth status" ] && { echo "You are not logged into any GitHub hosts" >&2; exit 1; }')
-    process.env.PATH = pasta + ':' + PATH0
+    process.env.PATH = pasta + path.delimiter + PATH0
     r = await criarRepo('x'); assert.equal(r.ok, false); assert.match(r.erro, /não está autenticado/); ok++; console.log('  ok   gh sem login: avisa que não está autenticado, antes de tentar criar')
     ghFalso('[ "$1 $2" = "auth status" ] && exit 0\n[ "$1 $2" = "repo create" ] && { echo "https://github.com/felipecarzo/$3"; exit 0; }')
     r = await criarRepo('projeto-teste'); assert.deepEqual(r, { ok: true, repo: 'felipecarzo/projeto-teste', url: 'https://github.com/felipecarzo/projeto-teste' }); ok++; console.log('  ok   gh logado: cria e devolve o repositório')
+  } catch (e) {
+    if (!e.pulo) throw e
+    console.log('  PULADO no Windows: gh sem login e gh logado (o gh falso é script de shell, o Windows só executa .exe)')
   } finally { process.env.PATH = PATH0; fs.rmSync(pasta, { recursive: true, force: true }) }
 }
 

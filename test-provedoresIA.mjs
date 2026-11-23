@@ -28,7 +28,9 @@ try {
   assert.throws(() => IA.salvarChave('groq', 'curta'), /não parece uma chave/); ok('texto que não é chave é recusado')
   assert.throws(() => IA.salvarChave('inventado', CHAVE), /desconhecido/); ok('provedor fora do catálogo é recusado')
   IA.salvarChave('groq', CHAVE)
-  assert.equal(fs.statSync(IA.ARQUIVO()).mode & 0o777, 0o600); ok('o arquivo das chaves só o dono lê (600)')
+  // CC-1118: o Windows não tem modo POSIX (todo arquivo sai 0666); lá a permissão não se confere
+  if (process.platform === 'win32') console.log('  aviso: permissão 600 não se confere no Windows')
+  else { assert.equal(fs.statSync(IA.ARQUIVO()).mode & 0o777, 0o600); ok('o arquivo das chaves só o dono lê (600)') }
   const g = IA.listar().find((p) => p.id === 'groq')
   assert.equal(g.temChave, true); assert.equal(g.chaveFim, '…abcd')
   assert.ok(!JSON.stringify(IA.listar()).includes(CHAVE)); ok('a lista para a tela nunca leva a chave, só os 4 últimos caracteres')

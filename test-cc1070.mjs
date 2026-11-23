@@ -16,6 +16,7 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { pathComFalso, soComFalso, lerDoFalso } from './test/windows.mjs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const RAIZ = path.dirname(fileURLToPath(import.meta.url))
@@ -51,10 +52,10 @@ const veredito = (v) => fs.writeFileSync(FAKE_SAIDA, JSON.stringify({ result: JS
 const VAZIO = { fala_x_feito: { desmentidas: [], sem_prova: [], feito_nao_contado: [] }, feito_x_pedido: { pedido_nao_feito: [], feito_nao_pedido: [] } }
 
 let falhas = 0
-const ok = (cond, msg) => { if (!cond) { falhas++; console.error(`FALHOU: ${msg}`) } else console.log(`ok ${msg}`) }
+let ok = (cond, msg) => { if (!cond) { falhas++; console.error(`FALHOU: ${msg}`) } else console.log(`ok ${msg}`) }
 
 function rodar(script, entrada, env = {}) {
-  const e = { ...process.env, HOME: CASA, CC_HOME, PATH: `${BIN}:${process.env.PATH}`, FAKE_ENTRADA, FAKE_SAIDA, ...env }
+  const e = { ...process.env, HOME: CASA, USERPROFILE: CASA, CC_HOME, PATH: pathComFalso(BIN, 'claude'), FAKE_ENTRADA, FAKE_SAIDA, ...env } // CC-1118: homedir e PATH do Windows, nunca o claude real
   for (const k of ['CLAUDE_CODE_ENTRYPOINT', 'CC_CONFERENTE']) if (env[k] === undefined) delete e[k]
   const r = spawnSync('node', [path.join(HOOKS, script)], { input: JSON.stringify(entrada), env: e, encoding: 'utf8', cwd: TRABALHO, timeout: 30000 })
   return { codigo: r.status, out: r.stdout || '', err: r.stderr || '' }
@@ -155,6 +156,7 @@ ok(passou(stop('confere-omissao.mjs', TESTE('Rodei tudo, parece bom.'))), 'omiss
 fs.writeFileSync(path.join(CC_HOME, 'control-center.json'), JSON.stringify({ hooks: Object.fromEntries(IDS.map((i) => [i, true])) }))
 
 /* ---------- peça 3: o conferente ---------- */
+ok = soComFalso(ok, 'claude') // CC-1118: daqui em diante as checagens dependem do claude falso
 const AFIRMA = 'Pronto, todas as sessões estão em Sonnet.'
 const SONNET = [fala('muda todas as sessões para Sonnet'), ...bash('cc sessoes modelos', 'sessao A: sonnet\nsessao Elite: opus'), resposta(AFIRMA)]
 veredito({ ...VAZIO, fala_x_feito: { desmentidas: [{ frase: 'todas as sessões estão em Sonnet', prova: 'sessao Elite: opus' }], sem_prova: [], feito_nao_contado: [] } })
@@ -162,9 +164,9 @@ let antes = chamadas()
 let c = stop('conferente.mjs', SONNET)
 ok(barrou(c, 'conferente') && c.err.includes('Afirmações que a saída contradiz') && c.err.includes('sessao Elite: opus'), 'd: "todas em Sonnet" com saída mostrando Opus: o conferente barra, com a prova')
 ok(chamadas() === antes + 1, 'd: uma chamada ao modelo')
-const entrada = fs.readFileSync(FAKE_ENTRADA, 'utf8')
+const entrada = lerDoFalso(FAKE_ENTRADA)
 ok(entrada.includes('muda todas as sessões para Sonnet') && entrada.includes('sessao Elite: opus') && entrada.includes(AFIRMA), 'montador: o texto mandado traz as três entradas (pedido, feito, fala)')
-ok(/--model haiku/.test(fs.readFileSync(`${FAKE_ENTRADA}.args`, 'utf8')), 'd: chama claude -p com --model haiku')
+ok(/--model haiku/.test(lerDoFalso(`${FAKE_ENTRADA}.args`)), 'd: chama claude -p com --model haiku')
 const logConf = () => { try { return fs.readFileSync(path.join(CASA, 'logs', 'conferente.log'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) } catch { return [] } }
 ok(logConf().some((l) => l.status === 'barrou' && l.modelo === 'claude-falso-1' && l.chamada), 'd: o log registra o modelo que respondeu')
 ok(!/racioc|pensament|voc[êe] (disse|escreveu)/i.test(c.err), 'd: a mensagem fala de formato, sem narração')
@@ -201,7 +203,7 @@ veredito({ ...VAZIO, feito_x_pedido: { pedido_nao_feito: [], feito_nao_pedido: [
 const DESLIGA = [fala('desliga o robô'), ...bash('tmux kill-session -t cc-remote-elite', ''), resposta('Pronto, desliguei o robô.')]
 c = stop('conferente.mjs', DESLIGA)
 ok(barrou(c, 'conferente') && c.err.includes('Feito e não pedido') && c.err.includes('cc-remote-elite'), 'f: "desliga o robô" com kill-session: feito_nao_pedido barra')
-ok(fs.readFileSync(FAKE_ENTRADA, 'utf8').includes('kill-session'), 'f: o conferente recebeu o registro com o kill-session')
+ok(lerDoFalso(FAKE_ENTRADA).includes('kill-session'), 'f: o conferente recebeu o registro com o kill-session')
 
 // g: pedido de duas partes, só uma feita, resposta diz "feito"
 veredito({ ...VAZIO, feito_x_pedido: { pedido_nao_feito: ['rodar os testes'], feito_nao_pedido: [] } })

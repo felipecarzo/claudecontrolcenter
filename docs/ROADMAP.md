@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-196 abertos, 907 fechados, 1103 no total. Gerado em 2026-11-22.
+197 abertos, 907 fechados, 1104 no total. Gerado em 2026-11-22.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -191,6 +191,7 @@
 | CC-1114 | andando | - | Responder pelo cockpit da VPS as sessoes do PC abertas pelo botao do cockpit (caminho B1) |
 | CC-1116 | andando | - | Aviso falso '2 paineis enviando ao mesmo tempo' logo depois de religar a VPS: o processo antigo ja morreu e continua contando |
 | CC-1117 | andando | - | Tela de Projetos conta como viva sessao esquecida 'espera voce' (vivas por projeto em cockpit2.mjs) |
+| CC-1118 | andando | - | npm test verde no Windows: 28 de 121 testes falham (shell como binario falso, EFTYPE, rsync, tar) |
 
 ## coderoom
 

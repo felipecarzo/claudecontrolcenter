@@ -28,7 +28,7 @@ let falhas = 0
 const ok = (cond, msg) => { if (!cond) { falhas++; console.error(`FALHOU: ${msg}`) } else console.log(`ok ${msg}`) }
 
 function rodar(script, entrada, env = {}) {
-  const e = { ...process.env, HOME: CASA, CC_HOME, ...env }
+  const e = { ...process.env, HOME: CASA, USERPROFILE: CASA, CC_HOME, ...env } // CC-1118: no Windows o homedir é USERPROFILE
   if (env.CLAUDE_CODE_ENTRYPOINT === undefined) delete e.CLAUDE_CODE_ENTRYPOINT
   const r = spawnSync('node', [path.join(HOOKS, script)], { input: JSON.stringify(entrada), env: e, encoding: 'utf8', cwd: TRABALHO, timeout: 20000 })
   return { codigo: r.status, out: r.stdout || '', err: r.stderr || '' }

@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { pathComFalso, soComFalso, WIN } from './test/windows.mjs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const RAIZ = path.dirname(fileURLToPath(import.meta.url))
@@ -43,12 +44,14 @@ const VAZIO = { fala_x_feito: { desmentidas: [], sem_prova: [], feito_nao_contad
 const logConf = () => { try { return fs.readFileSync(path.join(CASA, 'logs', 'conferente.log'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) } catch { return [] } }
 
 let falhas = 0
-const ok = (cond, msg) => { if (!cond) { falhas++; console.error(`FALHOU: ${msg}`) } else console.log(`ok ${msg}`) }
+let ok = (cond, msg) => { if (!cond) { falhas++; console.error(`FALHOU: ${msg}`) } else console.log(`ok ${msg}`) }
 
 function rodar(script, entrada, env = {}) {
-  const e = { ...process.env, HOME: CASA, CC_HOME, PATH: `${BIN}:${process.env.PATH}`, FAKE_ENTRADA, FAKE_SAIDA, ...env }
+  const e = { ...process.env, HOME: CASA, USERPROFILE: CASA, CC_HOME, PATH: pathComFalso(BIN, 'claude'), FAKE_ENTRADA, FAKE_SAIDA, ...env } // CC-1118: homedir e PATH do Windows, nunca o claude real
   for (const k of ['CLAUDE_CODE_ENTRYPOINT', 'CC_CONFERENTE']) if (env[k] === undefined) delete e[k]
-  const r = spawnSync('timeout', ['60', 'node', path.join(HOOKS, script)], { input: JSON.stringify(entrada), env: e, encoding: 'utf8', cwd: TRABALHO, timeout: 70000 })
+  // CC-1118: no Windows `timeout` é outro programa (o TIMEOUT.EXE do sistema); lá o teto fica só no spawnSync
+  const [cmd, args] = WIN ? [process.execPath, [path.join(HOOKS, script)]] : ['timeout', ['60', 'node', path.join(HOOKS, script)]]
+  const r = spawnSync(cmd, args, { input: JSON.stringify(entrada), env: e, encoding: 'utf8', cwd: TRABALHO, timeout: 70000 })
   return { codigo: r.status, out: r.stdout || '', err: r.stderr || '' }
 }
 
@@ -97,6 +100,8 @@ reg = registroDe(bash('ls -la'), bash('cat docs/x.md'), bash('grep -rn x src'), 
 ok(R.riscoDoRegistro(reg).length === 0, 'riscoDoRegistro: leitura, Edit comum e teste não são risco')
 
 /* ---------- a: kill-session não pedido, resposta sem afirmar nada ---------- */
+const okDeVerdade = ok
+ok = soComFalso(ok, 'claude') // CC-1118: daqui em diante as checagens dependem do claude falso
 veredito({ ...VAZIO, feito_x_pedido: { pedido_nao_feito: [], feito_nao_pedido: ['derrubou a sessão cc-remote-elite'] } })
 const KILL = [fala('mostra o estado das sessões'), ...bash('tmux kill-session -t cc-remote-elite'), resposta('Aqui está o estado: três sessões abertas.')]
 let antes = chamadas()
@@ -183,8 +188,10 @@ x = rodar('parada.mjs', { hook_event_name: 'Stop', cwd: TRABALHO, session_id: 'v
 ok(x.err.includes('[conferente]') && x.err.includes('Feito e não pedido'), 'o parada.mjs despacha o conferente também pelo gatilho de risco')
 
 /* ---------- falha do modelo passa e grava ---------- */
-const FALHA = rodar('conferente.mjs', { hook_event_name: 'Stop', cwd: TRABALHO, session_id: 'falha', transcript_path: transcrito(KILL) }, { PATH: `${path.join(CASA, 'vazio')}:/usr/bin:/bin` })
+const FALHA = rodar('conferente.mjs', { hook_event_name: 'Stop', cwd: TRABALHO, session_id: 'falha', transcript_path: transcrito(KILL) }, { PATH: WIN ? [path.join(CASA, 'vazio'), path.dirname(process.execPath)].join(path.delimiter) : `${path.join(CASA, 'vazio')}:/usr/bin:/bin` }) // CC-1118: no Windows, só o Node, sem claude
+ok = okDeVerdade // sem o claude no PATH é justamente o caso: vale também no Windows
 ok(passou(FALHA) && logConf().some((l) => l.status === 'erro' && l.gatilho === 'risco'), 'falha aberta: sem o claude no PATH passa e grava o erro no log')
+ok = soComFalso(okDeVerdade, 'claude')
 
 /* ---------- f: teto por hora ---------- */
 fs.mkdirSync(path.join(CASA, 'logs'), { recursive: true })
