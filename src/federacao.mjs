@@ -969,11 +969,14 @@ export function limparTextoRemoto(texto) {
  * CC-1120: fora do terminal do painel, a sessão com o ouvido vivo (src/ouvido.mjs) recebe o texto pela caixa dela.
  * Tecla não vai pela caixa. `ouvido` vem por parâmetro no teste; sem ele, o módulo real (import tardio, sem ciclo).
  */
-export async function entregarMensagemRemota(p, { sessoes, enviar, apertarTecla, ouvido = null }) {
+export async function entregarMensagemRemota(p, { sessoes, enviar, apertarTecla, ouvido = null, codex = null }) {
   if (!ID_CONVERSA.test(String(p?.conversa || '')) || (p.tecla != null && !TECLAS_REMOTAS.includes(p.tecla))) return { ok: false, erro: 'pedido inválido' }
   const vivas = Object.values((await Promise.resolve().then(sessoes).catch(() => ({}))) || {})
   const achada = vivas.find((s) => s?.sessao && s?.conversa && (s.conversa === p.conversa || s.conversa.startsWith(p.conversa)))
   if (!achada) {
+    /* CC-1131: sessão do Codex daqui (id inteiro, arquivo nesta máquina): vai pelo `codex queue --resume`. Tecla não. */
+    const C = p.tecla ? null : (codex || await import('./codex.mjs').catch(() => null))
+    if (C?.arquivoCodex(p.conversa)) return C.responderCodex(p.conversa, p.texto)
     const O = p.tecla ? null : (ouvido || await import('./ouvido.mjs').catch(() => null))
     const sessao = O?.ouvidoVivo(p.conversa)
     if (sessao) return O.gravarCaixa(sessao, p.texto)
@@ -1567,6 +1570,9 @@ export function montarPacote({
     /* CC-1120: fora do terminal do painel, mas com o ouvido vivo: aceita texto pela caixa. Campo novo e opcional,
        pacote velho sem ele deixa a sessão com cadeado, como antes. */
     ouvido: Boolean(j.ouvido),
+    /* CC-1131: sessão do Codex. Campos opcionais: pacote velho sem eles é sessão do Claude, como sempre foi; versão
+       velha do outro lado ignora. `codexResponde` diz se o PC tem o programa e a credencial para responder. */
+    ...(j.ferramenta === 'codex' ? { ferramenta: 'codex', codexResponde: Boolean(j.codexResponde), usoCodex: j.usoCodex || null } : {}),
     /* CC-1060: o rabo da conversa (últimas mensagens, cortadas), só de quem recebe texto (terminal do painel ou ouvido). */
     conversaApp: (j.terminal || j.ouvido) && j.conversaApp && Array.isArray(j.conversaApp.itens) ? j.conversaApp : null,
   }))

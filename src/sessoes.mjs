@@ -19,6 +19,7 @@ import path from 'node:path'
 import { listar as listarCoderoom, ultimoDoAgente } from './gate.mjs'
 import { buildJob, readJobs } from './jobs.mjs'
 import { lerEncerradas } from './encerrarSessao.mjs'
+import { readCodex } from './codex.mjs'
 
 /**
  * CC-260: o gasto por sessão, atualizado NOUTRO ritmo.
@@ -359,5 +360,9 @@ export function todosOsJobs(now = Date.now(), opcoes = {}) {
     coderoom = []
   }
 
-  return [...doBackground, ...interativas, ...coderoom]
+  /* CC-1131: as sessões do Codex desta máquina, com `ferramenta: 'codex'` e o id inteiro como chave. */
+  let codex = []
+  try { codex = readCodex(now, opcoes.janelaMs ? { janelaMs: opcoes.janelaMs } : {}) } catch { codex = [] }
+
+  return [...doBackground, ...interativas, ...coderoom, ...codex]
 }

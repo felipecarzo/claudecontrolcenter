@@ -703,7 +703,8 @@ async function retratoDestaMaquina() {
 async function comUltimaFala(jobs) {
   try {
     const C2 = await import('./cockpit2.mjs')
-    return jobs.map((j) => (j.status === 'waiting' ? { ...j, ultimaFala: C2.falaDeJob(j) } : j))
+    // CC-1131: a do Codex vai sempre, porque a fala dele já está na memória e é por ela que a VPS acha a conversa
+    return jobs.map((j) => (j.status === 'waiting' || j.ferramenta === 'codex' ? { ...j, ultimaFala: C2.falaDeJob(j) } : j))
   } catch { return jobs }
 }
 
@@ -3774,6 +3775,10 @@ function handler(req, res) {
         if (!cab) return { ok: false, erro: 'essa conversa do coderoom não existe mais' }
         return responderGate(id, { texto: String(texto || ''), agente: cab.estado?.agente || cab.agentePadrao || 'agy' })
       }
+      /* CC-1131: sessão do Codex desta máquina (id inteiro): vai pelo `codex queue --resume`. A de outra máquina cai
+         no ramo de baixo e desce pela fila, como a do Claude. */
+      const C = await import('./codex.mjs').catch(() => null)
+      if (C?.arquivoCodex(conversa)) return C.responderCodex(String(conversa), texto)
       /* CC-1060: sessão de outra máquina: a mensagem vai na fila dela, e o
          painel de lá digita no terminal onde a sessão mora. */
       const longe = maquinaDaConversa(conversa)

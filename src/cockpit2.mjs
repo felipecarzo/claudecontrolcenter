@@ -431,6 +431,7 @@ export function ultimaFalaDoAgente(arquivo) {
  */
 export function falaDeJob(job, { soParado = true } = {}) {
   if (!job) return null
+  if (job.ferramenta === 'codex') return falaDoCodex(job) // CC-1131: já está na memória, não custa ler; vai sempre no pacote
   if (soParado && job.status !== 'waiting' && !job.permissao) return null
   return ultimaFalaDoAgente(transcritoDe(job))
 }
@@ -461,6 +462,7 @@ function transcritoDe(job) {
 /* ───────────────────────────── o modelo ───────────────────────────── */
 
 const tipoDaSessao = (j) => {
+  if (j.ferramenta === 'codex') return 'codex' // CC-1131: nunca confundir com sessão do Claude
   if (j.tipo === 'coderoom') return 'coderoom'
   if (j.tipo === 'interativa') return j.remoto ? 'remote control' : 'claude code'
   return 'claude code (fundo)'
@@ -511,6 +513,16 @@ const falaDoCoderoom = (j) => {
     em: j.ultima.em || null,
   }
 }
+
+/* CC-1131: a fala da sessão do Codex sai do leitor (src/codex.mjs), não do transcrito do Claude. A conversa é o id
+   INTEIRO, sem prefixo: é ele que viaja na fila da federação e que o `codex queue` recebe. */
+const falaDoCodex = (j) => (j.ultima?.texto
+  ? { tipo: 'fala', texto: primeiraFrase(j.ultima.texto), resumo: resumoDaFala(j.ultima.texto), conversa: j.sessionId || j.id, em: j.ultima.em || null }
+  : null)
+/** A fala que não vem do transcrito do Claude (coderoom, Codex daqui); `undefined` manda ler pelo caminho de sempre. */
+const falaPropria = (j) => (j.tipo === 'coderoom' ? falaDoCoderoom(j) : j.ferramenta === 'codex' && j.ultima ? falaDoCodex(j) : undefined)
+/** CC-1131: Codex só aceita texto onde o programa e a credencial existem (a VPS herda isso do pacote do PC). */
+const aceitaTexto = (j, deFora) => (j.ferramenta === 'codex' ? Boolean(j.codexResponde) : deFora ? Boolean(j.terminal || j.ouvido) : true)
 
 const estadoDaSessao = (j) => {
   if (j.stale) return 'sem sinal'
@@ -694,7 +706,7 @@ export function montar({
        não só a que trabalha. */
     // CC-508: a que entregou também leva a última fala, que é o resumo da entrega ao abrir
     const falaSessao = (j.status === 'working' || j.status === 'waiting' || j.status === 'idle' || entregou(j)) && !j.stale && !semContato
-      ? (j.tipo === 'coderoom' ? falaDoCoderoom(j) : falaDe(j))
+      ? (falaPropria(j) ?? falaDe(j))
       : null
     p.sessoes.push({
       id: j.id, tipo: tipoDaSessao(j), dispositivo: onde, modelo: j.model || null, rascunho: doRascunho,
@@ -709,13 +721,15 @@ export function montar({
          tela esconde o campo de escrever, a voz e o "/" das skills. Viva, ela já tem o arquivo: a conversa é o nome dele. */
       fala: falaSessao?.texto || null,
       conversa: falaSessao?.conversa || (!j.stale && !semContato && transcritoDe(j) ? path.basename(transcritoDe(j), '.jsonl') : null)
-        || (deFora(j) && (j.terminal || j.ouvido) && !j.stale && !semContato ? (j.sessionId || j.id) : null),
+        || (((deFora(j) && (j.terminal || j.ouvido)) || (j.ferramenta === 'codex' && j.codexResponde)) && !j.stale && !semContato ? (j.sessionId || j.id) : null),
+      /* CC-1131: rótulo "Codex" ao lado da máquina, e o uso do plano dele quando a sessão traz. */
+      codex: j.ferramenta === 'codex', usoCodex: j.usoCodex || null,
       resumo: falaSessao?.resumo || null, marca: falaSessao?.em || null,
       porPrograma: Boolean(j.porPrograma),
       appUrl: appUrlDe(j),
       /* CC-1060: dá para escrever nela daqui? Sessão de outra máquina só aceita
          texto se mora num terminal do painel de lá, ou (CC-1120) se tem o ouvido vivo. As daqui seguem como sempre. */
-      escreve: deFora(j) ? Boolean(j.terminal || j.ouvido) : true,
+      escreve: aceitaTexto(j, deFora(j)),
     })
     if ((j.status === 'working' || j.status === 'waiting') && j.frente && !p.frenteEmCurso) p.frenteEmCurso = j.frente
     if (!j.stale && !semContato && j.aberta !== false && (j.status === 'waiting' || j.status === 'idle' || j.status === 'working')) {
@@ -732,7 +746,7 @@ export function montar({
          dela sai do log do gate. Lida pelo caminho do terminal, vinha vazia, e
          o aviso "parou" nascia sem fala e sem conversa: sem campo de resposta
          e sem o seletor de quem responde (medido em 30/09). */
-      const fala = j.tipo === 'coderoom' ? falaDoCoderoom(j) : falaDe(j)
+      const fala = falaPropria(j) ?? falaDe(j)
       /* Sessão "trabalhando" com outra ferramenta em andamento (Edit, Bash)
          não está parada na pergunta, mesmo que ela seja a última fala do
          arquivo: o teste do motor pegou isso na primeira versão. */
@@ -763,7 +777,8 @@ export function montar({
            conversa de outra máquina não tem terminal que o painel alcance. */
         /* CC-1060: a de outra máquina num terminal do painel de lá também recebe. */
         aviso.conversa = fala?.conversa || (deFora(j) && (j.terminal || j.ouvido) ? (j.sessionId || j.id) : null)
-        aviso.escreve = deFora(j) ? Boolean(j.terminal || j.ouvido) : true
+        aviso.escreve = aceitaTexto(j, deFora(j))
+        if (j.ferramenta === 'codex') { aviso.codex = true; aviso.usoCodex = j.usoCodex || null }
         aviso.esperaTerminal = Boolean(j.permissao) // CC-638: o registro diz que o terminal espera
         aviso.appUrl = appUrlDe(j) // CC-740
         /* 26/09, tela Decisões item 4: o que sai da lista também vai, marcado,

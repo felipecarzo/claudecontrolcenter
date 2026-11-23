@@ -20003,6 +20003,9 @@
     const c2chip = (t, cls = '') => '<span class="c2-badge ' + cls + '">' + esc(t) + '</span>';
     /* CC-602: a máquina com ícone, para ler de relance onde a sessão está. */
     const c2disp = (nome) => (nome ? '<span class="maq" title="está em ' + esc(nome) + '">' + ic('maquina', 12) + esc(nome) + '</span>' : '');
+    /* CC-1131: sessão do Codex leva o rótulo ao lado da máquina, para nunca passar por sessão do Claude. */
+    const c2PilulaCodex = (x) => (x && x.codex ? '<span class="ini-pilula c2-codex" style="--q:var(--c-dev)" title="sessão do Codex (OpenAI)'
+      + (x.usoCodex && x.usoCodex.cincoHoras != null ? ', uso do plano: ' + esc(String(x.usoCodex.cincoHoras)) + '% nas 5 h, ' + esc(String(x.usoCodex.semana ?? '?')) + '% na semana' : '') + '">Codex</span>' : '');
     /* CC-708: o nome da sessão (o que ele deu, ou o do terminal) numa etiqueta
        própria, separada da pasta, pedido dele em 29/09. Nome que só repete o
        projeto não aparece. */
@@ -21006,7 +21009,7 @@
       const semTexto = e.rotulo === 'travado' || e.rotulo === 'permissão'; // texto digitado cairia no pedido de permissão
       const permEst = e.permissaoId && C2.perm ? C2.perm[e.permissaoId] : null;
       // CC-1060 M6: sessão do PC aberta no terminal do painel de lá também recebe mensagem daqui (e.escreve vem do servidor)
-      const msgForm = !pend && !e.responder && e.conversa && (daqui || e.escreve) && !semTexto
+      const msgForm = !pend && !e.responder && e.conversa && (daqui || e.escreve) && !(e.codex && !e.escreve) && !semTexto // CC-1131
         // CC-728: na conversa do Coderoom, escolher quem responde antes de escrever
         ? (String(e.conversa).startsWith('gate:') ? c2GateQuem(e) : '') + c2MsgForm(e) : '';
       const form = c2DecForm(e) || c2ArqForm(e) || msgForm;
@@ -21029,7 +21032,7 @@
       const decIndo = e.responder && C2.dec[e.responder.id] && C2.dec[e.responder.id].envio === 'indo';
       /* CC-738, pedido dele: a máquina sempre no mesmo lugar, colada ao estado. */
       return '<div class="c2-aviso ' + cls + (C2.selecionado === e.id ? ' c2-sel' : '') + ((permEst && permEst.estado === 'indo') || decIndo || c2ProcAtivo(e.id) ? ' c2-processando' : '') + (pend || c2AcoesAbertas().has(e.id) ? ' acoes-on' : '') + '" data-aviso-id="' + esc(e.id) + '">'
-        + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span>' + (e.fechadaNoApp && !pend && e.rotulo !== 'pergunta' && e.rotulo !== 'permissão' ? 'FECHADA NO APLICATIVO' : qa ? 'PRONTO PARA QA' : !pend && c2EhNada(e) ? 'TERMINOU, NADA PENDENTE' : rot) + '</span>' + xFechar + (pend ? '' : c2Cadeado(e.id, 'c2-cad-dec')) + c2Onde(e.dispositivo, c2tagProj(cor, e.nome, e.frente, e.sessaoNome, e.frentePalpite)) + '</div>'
+        + '<div class="c2-rotulo">' + icQuad(icn, cor, 26) + '<span>' + (e.fechadaNoApp && !pend && e.rotulo !== 'pergunta' && e.rotulo !== 'permissão' ? 'FECHADA NO APLICATIVO' : qa ? 'PRONTO PARA QA' : !pend && c2EhNada(e) ? 'TERMINOU, NADA PENDENTE' : rot) + '</span>' + xFechar + (pend ? '' : c2Cadeado(e.id, 'c2-cad-dec')) + c2PilulaCodex(e) + c2Onde(e.dispositivo, c2tagProj(cor, e.nome, e.frente, e.sessaoNome, e.frentePalpite)) + '</div>'
         + barra
         /* CC-675: a mesma faixa de saúde do cartão de sessão; o caso real do
            fibraessencia era uma sessão ESPERANDO com o celular caído. */
@@ -24751,15 +24754,18 @@
         + (s.agente ? '<span class="ini-pilula" style="--q:' + corAg + '">' + esc(s.agente) + '</span>' : '')
         + (s.rascunho ? '<span class="ini-pilula" style="--q:var(--c-ideia, var(--accent))" title="conversa de ideia, ainda não é projeto">rascunho</span>' : '') // CC-1064
         + c2Cadeado(s.id, 'c2-cad-ses')
+        + c2PilulaCodex(s) // CC-1131
         + c2Onde(s.dispositivo, c2tagProj('var(--c-projeto)', s.nome, s.frente, s.sessaoNome, s.frentePalpite)) + '</div>'
         + c2SaudeBloco(s)
         + c2ProcBloco(s.id)
         + '<div class="c2-perg">' + (s.fala ? esc(c2semMd(s.fala)) : '<span style="color:var(--text-dim)">' + esc(s.assunto || 'sem fala do agente ainda') + '</span>') + '</div>'
-        + c2BlocoIA(s.resumoIA, s.id) + (daqui && s.fala && s.conversa && !coderoom ? c2ResumoNivel(s.conversa) : '') + c2EtiLinha(s)
+        + c2BlocoIA(s.resumoIA, s.id) + (daqui && s.fala && s.conversa && !coderoom && !s.codex ? c2ResumoNivel(s.conversa) : '') + c2EtiLinha(s)
         + c2Obra(s.obra, s.id)
         + c2BlocoResumo(s.fala, s.resumo, s.conversa, daqui, s.resumoIA?.texto)
         + (daqui && coderoom ? c2GateQuem(s) : '')
-        + (s.morta ? '' : ((daqui || s.escreve) && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela daqui, abra a sessão pelo botão "abrir sessão" do cockpit do ' + esc(s.dispositivo || 'outro computador') + ', ou ligue lá o ouvido do cockpit (gancho ouvido), que vale também para a do aplicativo.') + '</div>' : '')))
+        /* CC-1131: Codex sem o programa ou sem login na máquina dele não aceita texto, nem daqui. */
+        + (s.morta ? '' : s.codex && !s.escreve ? '<div class="c2-mini" style="color:var(--amber)">para responder ao Codex por aqui, o ' + esc(s.dispositivo || 'computador') + ' precisa ter o programa do Codex instalado e com login feito.</div>'
+          : ((daqui || s.escreve) && s.conversa ? c2MsgForm({ id: s.id, conversa: s.conversa }) : (!daqui ? '<div class="c2-mini" style="color:var(--amber)">' + (s.appUrl ? 'para escrever nela, use "abrir no app" (o painel não alcança o terminal do ' + esc(s.dispositivo || 'outro computador') + ').' : 'para escrever nela daqui, abra a sessão pelo botão "abrir sessão" do cockpit do ' + esc(s.dispositivo || 'outro computador') + ', ou ligue lá o ouvido do cockpit (gancho ouvido), que vale também para a do aplicativo.') + '</div>' : '')))
         + '<div class="c2-meta"><span class="c2-meta-t">' + ic('relogio', 13) + 'há ' + c2ms(s.desdeMs) + '</span>' + (s.estado === 'trabalhando' ? '<span class="c2-meta-ass">' + (s.ferramenta ? esc(s.ferramenta) : 'pensando') + '</span>' : '')
         + c2AcoesBotao(s.id)
         + '<span class="c2-acoes">' + (daqui ? c2FwChip(s.projeto) : '') + c2TesteVoo(s.projeto) + (s.estado === 'trabalhando' && (daqui || s.escreve) && s.conversa ? '<button class="c2-link" style="color:var(--red)" data-sessao-parar="' + esc(s.conversa) + '" data-sessao-nome="' + esc(s.nome) + '">parar</button>' : '')
