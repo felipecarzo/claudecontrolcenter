@@ -1629,3 +1629,4 @@
 {"em":"2026-11-23T19:03:09.095Z","tipo":"nota","de":"felipe","texto":"saiu do sprint 15 para os próximos, no aviso de sprint que não cabe de 2026-11-23: respondido pelo Felipe pela caixa de escolha da sessão, 23/11","id":"CC-1101"}
 {"em":"2026-11-23T19:03:09.095Z","tipo":"nota","de":"felipe","texto":"saiu do sprint 15 para os próximos, no aviso de sprint que não cabe de 2026-11-23: respondido pelo Felipe pela caixa de escolha da sessão, 23/11","id":"CC-1102"}
 {"em":"2026-11-23T19:30:24.427Z","tipo":"criada","id":"CC-1129","estado":"EM"}
+{"em":"2026-11-23T19:38:56.382Z","tipo":"estado","id":"CC-1129","de":"EM","para":"PR","porque":"o commit 47c62c5 cita CC-1129","por":"robo"}
