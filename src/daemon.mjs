@@ -35,9 +35,9 @@ export function portaDoPainel() {
   return DEFAULT_PORT
 }
 
-export async function isUp(port = DEFAULT_PORT) {
+export async function isUp(port = DEFAULT_PORT, { limiteMs = 1500 } = {}) {
   try {
-    const res = await fetch(`http://127.0.0.1:${port}/api/jobs`, { signal: AbortSignal.timeout(1500) })
+    const res = await fetch(`http://127.0.0.1:${port}/api/jobs`, { signal: AbortSignal.timeout(limiteMs) })
     return res.ok
   } catch {
     return false
@@ -129,9 +129,12 @@ export async function ensureUp(port = DEFAULT_PORT, { waitMs = 8000 } = {}) {
   /* CC-1119, medido em 23/11: no Windows o laço da tarefa agendada religa o painel uns 3 s depois da queda. Subir um
      aqui na mesma hora criava dois disputando a porta; o do laço caía 5 vezes e o laço entrava na pausa (antes, desistia
      para sempre). Quem vigia é o laço: espera ele por até 20 s antes de subir um avulso. */
-  for (const fim = Date.now() + (Date.now() - derrubadoEm < 30000 ? 20000 : 0); Date.now() < fim;) {
+  /* CC-1119, medido em 23/11: depois de derrubado, o painel do PC leva uns 46 s para voltar a responder (caiu aos 5 s,
+     voltou aos 51 s). Com 1,5 s por tentativa e 40 s no total, o religar achava que ele não tinha subido, subia um
+     segundo e saía com erro. Cada tentativa espera até 12 s, e o total é de 90 s. */
+  for (const fim = Date.now() + (Date.now() - derrubadoEm < 45000 ? 90000 : 0); Date.now() < fim;) {
     await new Promise((r) => setTimeout(r, 1000))
-    if (await isUp(port)) return { url: `http://localhost:${port}`, started: false }
+    if (await isUp(port, { limiteMs: 12000 })) return { url: `http://localhost:${port}`, started: false }
   }
   if (redeIsolada()) throw new Error('esta sessão roda numa área isolada da rede e não enxerga o painel; não subi outro para não criar um painel invisível. Confira em https://cockpit.carzo.com.br')
   spawnDetached(port)
