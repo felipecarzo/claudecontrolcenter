@@ -6,6 +6,7 @@ import { join } from 'node:path'
 
 const casa = mkdtempSync(join(tmpdir(), 'armario-'))
 process.env.HOME = casa
+process.env.USERPROFILE = casa // CC-1118: no Windows os.homedir() lê USERPROFILE, não HOME
 process.env.CC_HOME = join(casa, '.claude')
 const A = await import('./src/armario.mjs')
 const N = await import('./src/notes.mjs')

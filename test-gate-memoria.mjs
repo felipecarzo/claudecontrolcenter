@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import assert from 'node:assert/strict'
+import { apagarPasta } from './test/windows.mjs'
 
 const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gate-mem-'))
 process.env.CC_HOME = casa
@@ -260,7 +261,8 @@ let e = ''; process.stdin.on('data', (d) => (e += d)).on('end', () => {
   })
   /* CC-803: o prumo, que segura o modelo no projeto. */
   const Pr = await import('./src/gatePrumo.mjs')
-  const ctxPr = { cwd: '/home/u/projetos/VPS_jogo', home: '/home/u', liberadas: [] }
+  // CC-1118: cwd e casa como o gancho recebe de verdade, absolutos DESTA máquina (no Windows o resolve põe o drive na frente)
+  const ctxPr = { cwd: path.resolve('/home/u/projetos/VPS_jogo'), home: path.resolve('/home/u'), liberadas: [] }
   passa('CC-803: leituras demais sem escrever barram; escrever zera a conta; ferramenta neutra nao conta', () => {
     const est = Pr.novoEstado()
     for (let i = 1; i < Pr.LIMITE_LEITURAS; i++) assert.equal(Pr.avaliar(est, 'read', { filePath: `/home/u/projetos/VPS_jogo/a${i}.js` }, ctxPr).bloquear, false, 'leitura ' + i)
@@ -313,9 +315,11 @@ let e = ''; process.stdin.on('data', (d) => (e += d)).on('end', () => {
     assert.equal(F.enderecoDe('/p/VPS_jogo'), null, 'sem mapa não quebra')
     // CC-819: mapa zerado por outra sessão, mas o projeto está na lista registrada
     process.env.CC_DEV_MAPA = path.join(casa, 'mapa-zerado.json'); fs.writeFileSync(process.env.CC_DEV_MAPA, '{}')
-    const lista = path.join(casa, 'projetos.txt'); fs.writeFileSync(lista, `outro:projetos/VPS_outro:vite:5290\njogo:${path.relative(os.homedir(), '/p/VPS_jogo')}:vite:5294\n`)
+    // CC-1118: a lista guarda a pasta relativa à casa; no Windows '/p' cai em outro drive e o relativo vira absoluto com ':'
+    const jogo = path.join(os.homedir(), 'projetos', 'VPS_jogo') // só o caminho, nada é criado
+    const lista = path.join(casa, 'projetos.txt'); fs.writeFileSync(lista, `outro:projetos/VPS_outro:vite:5290\njogo:${path.relative(os.homedir(), jogo).split(path.sep).join('/')}:vite:5294\n`)
     process.env.CC_DEV_LISTA = lista
-    const reg = F.enderecoDe('/p/VPS_jogo')
+    const reg = F.enderecoDe(jogo)
     assert.equal(reg.nome, 'jogo'); assert.equal(reg.foraDoMapa, true, 'avisa que o roteador perdeu o registro')
     assert.equal(F.enderecoDe('/p/sem-registro'), null)
     delete process.env.CC_DEV_LISTA
@@ -697,6 +701,7 @@ setTimeout(() => process.exit(0), 300)`)
     assert.equal(Cf.setRevisor({ principal: { agente: 'invasor' } }).principal.agente, 'opencode', 'agente desconhecido nao entra')
   })
 } finally {
-  fs.rmSync(casa, { recursive: true, force: true })
+  // CC-1118: no Windows matar o .cmd não mata o node neto (o opencode falso), que segura a pasta até sair sozinho em 20s
+  apagarPasta(casa)
 }
 console.log(`test-gate-memoria: ${ok} verificações, 0 falhas`)

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { WIN } from './test/windows.mjs'
 
 const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'deploy-seguro-'))
 process.env.DEPLOY_CONF = path.join(casa, 'conf')
@@ -28,7 +29,9 @@ try {
     const b = D.argumentosDaCopia({ espelhar: true }, '/o', '/p')
     assert.ok(b.includes('--delete') && !b.includes('--delete-excluded'), 'espelhar usa --delete, nunca --delete-excluded')
     // de verdade, com rsync: some o arquivo removido, ficam .env, data e node_modules
-    const { execFileSync } = await import('node:child_process')
+    const { execFileSync, spawnSync } = await import('node:child_process')
+    // CC-1118: o PC Windows não tem rsync; a cópia de verdade roda só onde ele existe (a VPS, onde o deploy acontece)
+    if (spawnSync('rsync', ['--version']).error) { console.log('  PULADO: a cópia de verdade com rsync (rsync não instalado nesta máquina)'); return }
     const o = path.join(casa, 'esp-origem'), p = path.join(casa, 'esp-prod')
     for (const d of [o, path.join(p, 'data'), path.join(p, 'node_modules')]) fs.mkdirSync(d, { recursive: true })
     fs.writeFileSync(path.join(o, 'fica.txt'), '1')
@@ -106,13 +109,18 @@ try {
     assert.throws(() => D.inspecionar(sem), /index.html/)
   })
 
+  /* CC-1118: o deploy de verdade (rodar() com PATH de Linux fixo, `true`, tar, rsync) e o cadastro (repositório
+     sob /home/claudedev/projetos, que precisa existir) são da VPS. Fora dela estes testes pulam com aviso. */
+  const tLinux = process.platform === 'win32' || !fs.existsSync('/home/claudedev/projetos')
+    ? async (nome) => console.log(`  PULADO fora da VPS: ${nome} (precisa de /home/claudedev/projetos, PATH de Linux, tar e rsync)`)
+    : t
   // um site estático de mentira: repo com dist pronto, destino com a versão velha
   const repo = path.join(casa, 'repo'); const dist = path.join(repo, 'dist'); const destino = path.join(casa, 'www', 'site')
   fs.mkdirSync(dist, { recursive: true }); fs.mkdirSync(destino, { recursive: true })
   fs.writeFileSync(path.join(destino, 'index.html'), 'VELHO')
   const alvo = { id: 'site', nome: 'site', repo, dir: '.', build: 'true', saida: 'dist', destino, url: 'https://exemplo/', usuarioBuild: null }
 
-  await t('deploy estático: troca, guarda cópia e confere o site servindo o arquivo novo', async () => {
+  await tLinux('deploy estático: troca, guarda cópia e confere o site servindo o arquivo novo', async () => {
     fs.writeFileSync(path.join(dist, 'index.html'), 'NOVO-1')
     let log = ''
     const r = await D.deployEstatico(alvo, {}, { log: (s) => { log += s }, buscar: async () => ({ status: 200, text: async () => fs.readFileSync(path.join(destino, 'index.html'), 'utf8') }) })
@@ -121,7 +129,7 @@ try {
     assert.equal(fs.readFileSync(path.join(destino + '.antigo', 'index.html'), 'utf8'), 'VELHO')
   })
 
-  await t('deploy estático: site não serve o novo, a versão anterior volta sozinha', async () => {
+  await tLinux('deploy estático: site não serve o novo, a versão anterior volta sozinha', async () => {
     fs.writeFileSync(path.join(dist, 'index.html'), 'NOVO-2')
     await assert.rejects(D.deployEstatico(alvo, {}, { log: () => {}, buscar: async () => ({ status: 502, text: async () => 'erro' }) }), /anterior foi devolvida/)
     assert.equal(fs.readFileSync(path.join(destino, 'index.html'), 'utf8'), 'NOVO-1', 'voltou a que estava no ar')
@@ -138,7 +146,7 @@ try {
   const escrever = (dir, arquivos) => { fs.rmSync(dir, { recursive: true, force: true }); for (const [n, c] of Object.entries(arquivos)) { fs.mkdirSync(path.dirname(path.join(dir, n)), { recursive: true }); fs.writeFileSync(path.join(dir, n), c) } }
   const serve = (dest) => async () => ({ status: 200, text: async () => fs.readFileSync(path.join(dest, 'index.html'), 'utf8') })
 
-  await t('CC-935: um deploy estático é desfeito pelo deploy seguro, byte a byte; a volta também se desfaz', async () => {
+  await tLinux('CC-935: um deploy estático é desfeito pelo deploy seguro, byte a byte; a volta também se desfaz', async () => {
     const repoV = path.join(casa, 'repo-volta'); const distV = path.join(repoV, 'dist'); const dest = path.join(casa, 'www', 'volta')
     const v1 = { 'index.html': '<h1>v1</h1>', 'assets/logo.bin': Buffer.from([0, 255, 1, 254, 2, 253]), 'sub/fundo/x.txt': 'só existe na v1' }
     const v2 = { 'index.html': '<h1>v2</h1>', 'assets/logo.bin': Buffer.from([9, 9, 9]), 'novo.txt': 'só existe na v2' }
@@ -166,7 +174,7 @@ try {
     assert.equal(digital(dest), d2, 'a volta que o site não serviu foi desfeita sozinha')
   })
 
-  await t('CC-935: deploy de processo é desfeito: devolve os arquivos da cópia anterior, religa e confere', async () => {
+  await tLinux('CC-935: deploy de processo é desfeito: devolve os arquivos da cópia anterior, religa e confere', async () => {
     const prod = path.join(casa, 'opt', 'volta-proc'); const work = path.join(casa, 'work-volta')
     escrever(prod, { 'app.txt': 'v1', '.env': 'SENHA=prod', 'lib/a.js': 'a1' }); escrever(work, { 'app.txt': 'v2', 'lib/a.js': 'a2' })
     const antes = digital(prod)
@@ -197,7 +205,7 @@ try {
     assert.deepEqual(sug.map((s) => [s.dominio, s.tipo, s.repo]), [['ibrics.carzo.com.br', 'docker', '/p/VPS_ibrics'], ['app.ex.com.br', 'pm2', '/p/VPS_ex']], 'mnzs já cadastrado sai; a pasta do processo PM2 não vira site estático')
   })
 
-  await t('cadastro: só aceita caminhos e comandos dentro do permitido', () => {
+  await tLinux('cadastro: só aceita caminhos e comandos dentro do permitido', () => {
     const base = { id: 'Site X', tipo: 'docker', repo: '/home/claudedev/projetos/VPS_cockpit', dirProducao: '/opt/web_x', url: 'https://x.carzo.com.br/' }
     assert.equal(D.validarAlvo(base).id, 'site-x')
     assert.throws(() => D.validarAlvo({ ...base, dirProducao: '/etc' }), /produção fora/)
@@ -207,7 +215,7 @@ try {
     assert.throws(() => D.validarAlvo({ ...base, tipo: 'pm2', processo: 'x; reboot' }), /processo inválido/)
   })
 
-  await t('deploy de processo: copia sem apagar, religa, confere; se não responder, devolve a cópia', async () => {
+  await tLinux('deploy de processo: copia sem apagar, religa, confere; se não responder, devolve a cópia', async () => {
     const prod = path.join(casa, 'opt', 'site'); const work = path.join(casa, 'work')
     fs.mkdirSync(prod, { recursive: true }); fs.mkdirSync(work, { recursive: true })
     fs.writeFileSync(path.join(prod, 'app.txt'), 'v1'); fs.writeFileSync(path.join(prod, '.env'), 'SENHA=prod')
@@ -224,7 +232,7 @@ try {
     assert.equal(fs.readFileSync(path.join(prod, 'app.txt'), 'utf8'), 'v2', 'voltou a versão que estava no ar')
   })
 
-  await t('serviço do sistema (o coepiloto): descoberto pelo processo, religa sem tocar na pasta do projeto', async () => {
+  await tLinux('serviço do sistema (o coepiloto): descoberto pelo processo, religa sem tocar na pasta do projeto', async () => {
     const lido = D.lerOutro(9, (f) => (f.endsWith('cgroup') ? '0::/system.slice/coepiloto.service\n' : 'python\0-m\0uvicorn\0'), () => '/home/claudedev/projetos/VPS_coepiloto')
     assert.deepEqual(lido, { unidade: 'coepiloto.service', dir: '/home/claudedev/projetos/VPS_coepiloto', comando: 'python -m uvicorn' })
     const sites = D.lerNginx([{ nome: 'a', texto: 'server { server_name coepiloto.carzo.com.br; location / { proxy_pass http://127.0.0.1:5174; } }\nserver { server_name solto.com.br; location / { proxy_pass http://127.0.0.1:4000; } }\nserver { server_name a.com.br; root /var/www/a; location /i/ { alias /var/www/a/icons; } }' }])
@@ -246,7 +254,7 @@ try {
     assert.equal(fs.readFileSync(path.join(proj, 'app.py'), 'utf8'), 'meu trabalho', 'a falha não mexe na pasta do projeto')
   })
 
-  await t('script do projeto (o dengonator): roda o script dele como claudedev, nunca como root, e confere o site', async () => {
+  await tLinux('script do projeto (o dengonator): roda o script dele como claudedev, nunca como root, e confere o site', async () => {
     const proj = path.join(casa, 'dengo'); fs.mkdirSync(path.join(proj, 'apps/web/scripts'), { recursive: true }); fs.writeFileSync(path.join(proj, 'apps/web/scripts/publicar.sh'), 'echo oi')
     const base = { id: 'dengo', tipo: 'script', repo: '/home/claudedev/projetos/VPS_cockpit', dir: '.', script: 'tools/deploy-seguro/instalar.sh', url: 'https://d.com.br/', usuarioBuild: 'root' }
     assert.equal(D.validarAlvo(base).usuarioBuild, 'claudedev', 'o cadastro não escolhe o usuário: é sempre claudedev')
@@ -269,6 +277,9 @@ try {
   fs.mkdirSync(process.env.DEPLOY_CONF, { recursive: true })
   fs.writeFileSync(path.join(process.env.DEPLOY_CONF, 'alvos.json'), JSON.stringify([{ ...alvo, repo: casa }]))
   fs.writeFileSync(path.join(process.env.DEPLOY_CONF, 'totp.secret'), SEG)
+  // CC-1118: fora da VPS os deploys de verdade acima pulam e não deixam cópia; a volta pelo servidor só precisa de um nome
+  // de cópia (o `reverter` daqui é falso), então um arquivo vazio basta e o pedido de volta é testado em todo lugar
+  if (!D.ultimaCopia('site')) { fs.mkdirSync(process.env.DEPLOY_BACKUP, { recursive: true }); fs.writeFileSync(path.join(process.env.DEPLOY_BACKUP, 'site-2026-01-01T00-00-00-000Z.tar.gz'), '') }
   const executados = []
   const revertidos = []; let codigoVolta = ''
   const srv = D.criarServidor({ executar: async (a) => { executados.push(a.id); return { copia: 'x' } }, reverter: async (a) => { revertidos.push(a.id); return { copia: '/backup/site-anterior.tar.gz' } } })
@@ -380,3 +391,6 @@ try {
   fs.rmSync(casa, { recursive: true, force: true })
 }
 console.log(`\n${ok} verificações do deploy seguro, todas passaram`)
+// CC-1118: no Windows o `git` do pedido não existe no PATH de Linux fixo de rodar(); o spawn falha (ENOENT) e o
+// temporizador de 10 minutos dele fica pendurado, segurando o processo. Na VPS o git existe e o processo sai sozinho.
+if (WIN) process.exit(0)

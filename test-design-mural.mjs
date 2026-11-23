@@ -6,6 +6,7 @@ import { join } from 'node:path'
 
 const casa = mkdtempSync(join(tmpdir(), 'mural-'))
 process.env.HOME = casa
+process.env.USERPROFILE = casa // CC-1118: no Windows os.homedir() lê USERPROFILE, não HOME
 process.env.CC_HOME = join(casa, '.claude')
 const raiz = join(casa, 'VPS_prova'); mkdirSync(raiz, { recursive: true })
 const M = await import('./src/designMural.mjs')

@@ -11,13 +11,14 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 
 let falhou = false
 const ok = (m) => console.log(`  ok   ${m}`)
 const erro = (m, e) => { falhou = true; console.error(`  FALHOU ${m}\n         ${e?.message || e}`) }
 
 const home = os.homedir()
-const guard = new URL('./hooks/quebra-guard.mjs', import.meta.url).pathname
+const guard = fileURLToPath(new URL('./hooks/quebra-guard.mjs', import.meta.url)) // CC-1118: .pathname dá /D:/... no Windows
 
 // roda o guard com um comando no stdin; devolve { code }
 function rodar(comando) {
@@ -66,7 +67,7 @@ try {
 
   // 2. depois da varredura, o mesmo comando passa
   try {
-    execFileSync('node', [new URL('./hooks/impacto-scan.mjs', import.meta.url).pathname, path.join(projetos, alvo), '--json'], { encoding: 'utf8' })
+    execFileSync('node', [fileURLToPath(new URL('./hooks/impacto-scan.mjs', import.meta.url)), path.join(projetos, alvo), '--json'], { encoding: 'utf8' })
     const r = rodar(`mv ~/projetos/${alvo} ~/projetos/${alvo}_novo`)
     assert.equal(r.code, 0, 'depois da varredura, libera: ' + (r.erro || ''))
     ok('depois da varredura da pasta, a ação é liberada')

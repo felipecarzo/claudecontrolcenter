@@ -1,5 +1,6 @@
 /* CC-1066: partes puras do print das cartas de texto. Não abre navegador (o gate roda no sandbox). */
 import assert from 'node:assert/strict'
+import { resolve } from 'node:path'
 import { normalizar, nomeDoPrint, cartasParaPrint, textoDaCarta, relatorio, trocarBase } from './src/printTextos.mjs'
 import { validarEstados } from './src/printTextos.mjs'
 import { rotaDeArquivo, linkDaCarta, enderecoDeDevSh, montarBaralhos } from './src/textosApp.mjs'
@@ -71,10 +72,12 @@ assert.equal(linkDaCarta('https://v.test/app', 'src/app/index.tsx'), 'https://v.
 assert.equal(linkDaCarta('https://v.test/app', 'src/componentes/Botao.tsx'), 'https://v.test/app')
 assert.equal(linkDaCarta(null, 'src/app/entrar.tsx'), null)
 const dev = '    jogo)  echo "$HOME/projetos/VPS_x/apps/game:vite:5191" ;;\n    corrida) echo "$HOME/projetos/VPS_ahtleta-corrida:expo:5197" ;;'
-assert.equal(enderecoDeDevSh('/h/projetos/VPS_ahtleta-corrida', '/h', [dev, '']), 'https://testedevoo.carzo.com.br/corrida')
-assert.equal(enderecoDeDevSh('/h/projetos/VPS_x', '/h', [dev, '']), 'https://testedevoo.carzo.com.br/jogo')
-assert.equal(enderecoDeDevSh('/h/projetos/VPS_y', '/h', [dev, 'novo:projetos/VPS_y:next:5260']), 'https://testedevoo.carzo.com.br/novo')
-assert.equal(enderecoDeDevSh('/h/projetos/outro', '/h', [dev, '']), null)
+// CC-1118: casa e projeto como caminho absoluto DESTA máquina (no Windows '/h' sozinho não tem drive e não bate com o resolve)
+const h = resolve('/h')
+assert.equal(enderecoDeDevSh(resolve('/h/projetos/VPS_ahtleta-corrida'), h, [dev, '']), 'https://testedevoo.carzo.com.br/corrida')
+assert.equal(enderecoDeDevSh(resolve('/h/projetos/VPS_x'), h, [dev, '']), 'https://testedevoo.carzo.com.br/jogo')
+assert.equal(enderecoDeDevSh(resolve('/h/projetos/VPS_y'), h, [dev, 'novo:projetos/VPS_y:next:5260']), 'https://testedevoo.carzo.com.br/novo')
+assert.equal(enderecoDeDevSh(resolve('/h/projetos/outro'), h, [dev, '']), null)
 const it = { id: 'T1', tipo: 'jsx', texto: 'Entrar', arquivo: 'src/app/entrar.tsx', linha: 3, ini: 1, fim: 2, quote: '', direto: false, original: 'Entrar' }
 const com = montarBaralhos([it], { base: 'https://v.test/app' }).baralhos['textos-app'].cartas[0]
 assert.equal(com.link, 'https://v.test/app/entrar'); assert.equal(com.editar, 'Entrar')

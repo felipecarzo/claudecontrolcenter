@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import * as R from './src/roteiro.mjs'
 import { main, relatorioHtml, analisar, opcoesDoNavegador } from './src/roteiroCli.mjs'
@@ -984,7 +984,7 @@ await caso('cli: comando desconhecido e pasta que não existe saem com código 1
 
 await caso('cli: como processo de verdade, o código de saída chega ao shell', () => {
   const d = pasta('proc')
-  const roda = (...args) => spawnSync(process.execPath, ['--input-type=module', '-e', `import(${JSON.stringify(join(AQUI, 'src', 'roteiroCli.mjs'))}).then((m) => m.main(process.argv.slice(1)))`, ...args], { encoding: 'utf8' })
+  const roda = (...args) => spawnSync(process.execPath, ['--input-type=module', '-e', `import(${JSON.stringify(pathToFileURL(join(AQUI, 'src', 'roteiroCli.mjs')).href)}).then((m) => m.main(process.argv.slice(1)))`, ...args], { encoding: 'utf8' })
   const ok = roda('status', '--projeto', d)
   assert.equal(ok.status, 0)
   assert.match(ok.stdout, /0 de 9 fases prontas/)

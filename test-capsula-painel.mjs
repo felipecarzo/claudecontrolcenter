@@ -6,13 +6,18 @@ import fs from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
+import { WIN } from './test/windows.mjs'
 
-const T = fs.mkdtempSync(path.join(os.tmpdir(), 'test-capsula-painel-'))
+// CC-1118: a cápsula é da VPS (registro na máquina VPS, falsos de pm2 e crontab em shell, tar GNU, gpg). Roda lá.
+if (WIN) { console.log('test-capsula-painel: PULADO no Windows (precisa de tar GNU, gpg, /bin/sh e do registro da VPS)'); process.exit(0) }
+
+const T =fs.mkdtempSync(path.join(os.tmpdir(), 'test-capsula-painel-'))
 const CASA = path.join(T, 'casa')
 const HOME_CLAUDE = path.join(CASA, '.claude')
 const CAPS = path.join(CASA, 'caps')
 fs.mkdirSync(HOME_CLAUDE, { recursive: true })
 process.env.HOME = CASA
+process.env.USERPROFILE = CASA // CC-1118: no Windows os.homedir() lê USERPROFILE, não HOME
 process.env.CC_HOME = HOME_CLAUDE
 process.env.CC_CAPSULAS = CAPS
 process.env.CC_SEM_NAVEGADOR = '1'

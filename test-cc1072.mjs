@@ -70,7 +70,7 @@ try {
     fs.writeFileSync(arquivo, 'x')
     const r = spawnSync(process.execPath, [path.join(aqui, 'hooks', 'titulo-terminal.mjs')], {
       input: JSON.stringify({ session_id: 'y', cwd: semGit }), encoding: 'utf8', timeout: 10000,
-      env: { ...process.env, HOME: tmp, CC_HOME: path.join(arquivo, 'casa') },
+      env: { ...process.env, HOME: tmp, USERPROFILE: tmp, CC_HOME: path.join(arquivo, 'casa') },
     })
     assert.equal(r.status, 0)
     assert.equal(r.stdout.trim(), 'solta')

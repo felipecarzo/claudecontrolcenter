@@ -24,5 +24,18 @@ export const soComFalso = (ok, nome) => (WIN
   ? (cond, msg) => (cond ? ok(cond, msg) : console.log(`PULADO no Windows: ${msg} (o ${nome} falso é script de shell, o Windows só executa .exe)`))
   : ok)
 
+/**
+ * Apaga a pasta temporária do teste. No Windows, pasta com processo vivo dentro (um falso que o painel matou pelo .cmd,
+ * mas cujo node neto segue rodando) não sai: tenta de novo, de segundo em segundo, até `teto` segundos.
+ */
+export function apagarPasta(dir, teto = 30) {
+  for (let i = 0; ; i++) {
+    try { return fs.rmSync(dir, { recursive: true, force: true }) } catch (e) {
+      if (!WIN || i >= teto) throw e
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000)
+    }
+  }
+}
+
 /** Lê o que o falso gravou; sem o falso rodando (Windows), devolve texto vazio em vez de derrubar o teste. */
 export const lerDoFalso = (arq) => { try { return fs.readFileSync(arq, 'utf8') } catch (e) { if (WIN) return ''; throw e } }

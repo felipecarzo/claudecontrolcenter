@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import * as MO from './src/modelo.mjs'
 import * as B from './src/backlog.mjs'
 
@@ -125,7 +126,7 @@ try {
   const d = mkdtempSync(join(tmpdir(), 'modelo-cli-'))
   try {
     mkdirSync(join(d, 'docs')); mkdirSync(join(d, '.claude')); writeFileSync(join(d, 'docs', 'backlog.jsonl'), ''); writeFileSync(join(d, '.claude', 'settings.local.json'), '{"model":"sonnet"}')
-    const cli = (...a) => spawnSync(process.execPath, [new URL('./cc.mjs', import.meta.url).pathname, 'backlog', ...a], { cwd: d, encoding: 'utf8', env: { ...process.env, CC_HOME: join(d, 'casa') } }).stdout
+    const cli = (...a) => spawnSync(process.execPath, [fileURLToPath(new URL('./cc.mjs', import.meta.url)), 'backlog', ...a], { cwd: d, encoding: 'utf8', env: { ...process.env, CC_HOME: join(d, 'casa') } }).stdout
     const def = cli('novo', 'consertar o login que quebrou', '--estado', 'EM', '--natureza', 'DEF', '--area', 'tela', '--tamanho', 'M', '--pronto', 'o login volta a funcionar', '--conferir', 'dele:entrar', '--frente', 'f')
     ok(/MODELO: \w+-1 pede Opus[\s\S]*\/model opus/.test(def), 'novo já andando, em sessão Sonnet: avisa na hora')
     const ped = cli('novo', 'texto do botao', '--natureza', 'PED', '--area', 'tela', '--tamanho', 'P', '--pronto', 'o botao diz salvar', '--conferir', 'olho:ver', '--frente', 'f')

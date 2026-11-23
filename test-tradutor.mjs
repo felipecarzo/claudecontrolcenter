@@ -13,6 +13,11 @@ import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { WIN } from './test/windows.mjs'
+
+// CC-1118: o servidor sobe com `timeout` e `python3` do Linux, e o claude falso é script de bash; no Windows nada disso
+// existe, e o python poderia achar o claude.exe REAL no PATH. Roda na VPS, onde o tradutor vive.
+if (WIN) { console.log('test-tradutor: PULADO no Windows (precisa de timeout, python3 e bash do Linux)'); process.exit(0) }
 
 const RAIZ = path.dirname(fileURLToPath(import.meta.url))
 const SERVIDOR = path.join(RAIZ, 'tools', 'tradutor', 'tradutor.py')
@@ -48,7 +53,7 @@ const servidores = []
 async function subir(teto) {
   const porta = await portaLivre()
   const tokenArq = path.join(CASA, `token-${porta}`)
-  const env = { ...process.env, HOME, PATH: `${BIN}:${process.env.PATH}`, FAKE_DIR: REG, CC_SEM_NAVEGADOR: '1',
+  const env = { ...process.env, HOME, USERPROFILE: HOME, PATH: `${BIN}${path.delimiter}${process.env.PATH}`, FAKE_DIR: REG, CC_SEM_NAVEGADOR: '1',
     TRADUTOR_PORTA: String(porta), TRADUTOR_TOKEN_ARQ: tokenArq, TRADUTOR_TETO_HORA: String(teto) }
   const p = spawn('timeout', ['120', 'python3', '-u', SERVIDOR], { env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
   const s = { p, porta, tokenArq, saida: '', base: `http://127.0.0.1:${porta}` }

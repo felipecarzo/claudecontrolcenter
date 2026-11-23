@@ -11,6 +11,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cc1075-'))
 const casa = path.join(tmp, '.claude')
 fs.mkdirSync(path.join(casa, 'sessions'), { recursive: true })
 process.env.HOME = tmp
+process.env.USERPROFILE = tmp // CC-1118: no Windows os.homedir() lê USERPROFILE, não HOME
 process.env.CC_HOME = casa
 delete process.env.XDG_DATA_HOME
 const reg = (arq, pid, id, extra = {}) => fs.writeFileSync(path.join(casa, 'sessions', `${arq}.json`),

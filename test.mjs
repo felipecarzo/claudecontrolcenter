@@ -5970,13 +5970,18 @@ for (const PAINEL of PAINEIS_QUE_FICAM) {
   assert.equal(E.usaPalavra('cartão', 'os cartões da tela'), true, 'o plural conta')
   assert.equal(E.usaPalavra('rota', 'a rotação do disco'), false)
   assert.equal(E.foiExplicado('cartão', '"Cartão" é cada bloco retangular da tela'), true, 'explicação com acento e aspas passa')
-  const casaVelha = process.env.HOME
+  const casaVelha = process.env.HOME; const perfilVelho = process.env.USERPROFILE
   process.env.HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'jargao-'))
+  process.env.USERPROFILE = process.env.HOME // CC-1118: no Windows os.homedir() lê USERPROFILE
   try {
     E.anotarExplicadas('sessao-teste', ['guarda'])
     assert.ok(E.explicadasDaSessao('sessao-teste').has('guarda'), 'explicada uma vez, lembrada na sessão inteira')
     assert.equal(E.explicadasDaSessao('outra-sessao').size, 0, 'e só naquela sessão')
-  } finally { process.env.HOME = casaVelha }
+  } finally {
+    fs.rmSync(process.env.HOME, { recursive: true, force: true })
+    process.env.HOME = casaVelha
+    if (perfilVelho === undefined) delete process.env.USERPROFILE; else process.env.USERPROFILE = perfilVelho
+  }
   console.log('  ok   CC-549: palavra de verdade (acento, plural, sem "guardar") e lembrança por sessão')
 
   /* ⚠️ Resposta curta NÃO precisa de separador, e contar como falha faria o

@@ -92,8 +92,12 @@ while ($true) {
   if (((Get-Date) - $ultimaPartida).TotalSeconds -lt 30) {
     $quedasRapidas++
     if ($quedasRapidas -ge 5) {
-      Write-Output "[arrancar] 5 quedas rápidas seguidas, desisto. Provavelmente o código está quebrado."
-      break
+      # CC-1119: sair aqui deixava o painel morto até alguém religar à mão. Em 22/11 o disco cheio derrubou a largada
+      # 5 vezes seguidas, e o painel sumiu sem aviso. Esperar 10 minutos segura as religadas (no máximo 6 rodadas por
+      # hora) e volta sozinho quando a causa some.
+      Write-Output "[arrancar] 5 quedas rápidas seguidas, espero 10 minutos e tento de novo. $(Get-Date -Format 'HH:mm:ss')"
+      Start-Sleep -Seconds 600
+      $quedasRapidas = 0
     }
   } else {
     $quedasRapidas = 0

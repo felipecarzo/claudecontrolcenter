@@ -1150,7 +1150,7 @@ t('build por pasta: aceita pastas do projeto e recusa caminho para fora', () => 
     assert.equal(r3.ok, false); assert.deepEqual(r3.conflitos, ['src/c.txt']); assert.equal(x3, null)
   })
   // a caixa de ponto commita tudo que estiver sujo ao fim de uma sessão do Claude; o arquiteto só lê e a dispensa por sinal
-  const { spawnSync } = await import('node:child_process'); const gancho = new URL('./hooks/caixa-sair.mjs', import.meta.url).pathname
+  const { spawnSync } = await import('node:child_process'); const gancho = (await import('node:url')).fileURLToPath(new URL('./hooks/caixa-sair.mjs', import.meta.url)) // CC-1118: .pathname dá /D:/... no Windows
   const ponto = (sinal) => {
     const m = montar(); fs.writeFileSync(path.join(m.d, 'src/sujo.txt'), 'x\\n'); m.git('add', '-A')
     spawnSync(process.execPath, [gancho], { input: JSON.stringify({ session_id: 'teste-ponto-0001', cwd: m.d }), env: { ...process.env, CC_SEM_PONTO: sinal }, encoding: 'utf8', timeout: 60000 })

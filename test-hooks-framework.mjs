@@ -17,6 +17,8 @@
  * já usa esse padrão em outros casos.
  */
 import { spawnSync } from 'node:child_process'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -29,9 +31,12 @@ if (!temBash) {
   process.exit(0)
 }
 
+// CC-1118: casa temporária. Com a casa real, os ganchos regravavam o ~/.claude/control-center.json de verdade (medido no PC)
+const casa = mkdtempSync(join(tmpdir(), 'hooks-framework-'))
+const env = { ...process.env, HOME: casa, USERPROFILE: casa, CC_HOME: join(casa, '.claude') }
 let falhas = 0
 for (const rel of ARQUIVOS) {
-  const r = spawnSync('bash', [join(AQUI, rel)], { encoding: 'utf8' })
+  const r = spawnSync('bash', [join(AQUI, rel)], { encoding: 'utf8', env })
   const saida = `${r.stdout || ''}${r.stderr || ''}`
   if (r.status === 0) {
     const quantos = (saida.match(/^\s+ok/gm) || []).length
@@ -43,4 +48,5 @@ for (const rel of ARQUIVOS) {
   }
 }
 
+rmSync(casa, { recursive: true, force: true })
 if (falhas) process.exit(1)

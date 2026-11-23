@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-197 abertos, 907 fechados, 1104 no total. Gerado em 2026-11-22.
+198 abertos, 907 fechados, 1105 no total. Gerado em 2026-11-23.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -192,6 +192,7 @@
 | CC-1116 | andando | - | Aviso falso '2 paineis enviando ao mesmo tempo' logo depois de religar a VPS: o processo antigo ja morreu e continua contando |
 | CC-1117 | andando | - | Tela de Projetos conta como viva sessao esquecida 'espera voce' (vivas por projeto em cockpit2.mjs) |
 | CC-1118 | andando | - | npm test verde no Windows: 28 de 121 testes falham (shell como binario falso, EFTYPE, rsync, tar) |
+| CC-1119 | definida | - | Laco de religar do painel no Windows desiste para sempre apos 5 quedas rapidas: com disco cheio o painel ficou morto ate religar a mao |
 
 ## coderoom
 

@@ -9,6 +9,10 @@ import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 
+// CC-1118: a porta de entrada é da VPS e lê /proc/meminfo para decidir o religar; no Windows o arquivo não existe,
+// a leitura rejeita sem tratamento e o serviço cai no meio do teste (ECONNRESET). Roda na VPS.
+if (!fs.existsSync('/proc/meminfo')) { console.log('test-porta-entrada: PULADO (sem /proc/meminfo: a porta de entrada só roda no Linux)'); process.exit(0) }
+
 const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'porta-entrada-'))
 process.env.DEPLOY_CONF = path.join(casa, 'conf')
 process.env.DEPLOY_ESTADO = path.join(casa, 'estado')
@@ -46,7 +50,7 @@ const HOME = path.join(casa, 'home'); fs.mkdirSync(path.join(HOME, 'logs'), { re
 const portaEntrada = await livre()
 const portaFechada = await livre() // ninguém escuta: serve de "painel fora do ar" e de "serviço fora do ar"
 const env = {
-  ...process.env, HOME, COCKPIT_AUTH_PORT: String(portaEntrada), COCKPIT_ALVO_PORT: String(portaFechada),
+  ...process.env, HOME, USERPROFILE: HOME, COCKPIT_AUTH_PORT: String(portaEntrada), COCKPIT_ALVO_PORT: String(portaFechada),
   COCKPIT_DEPLOY_PORT: String(portaDeploy),
   COCKPIT_VIGIA: 'off', COCKPIT_PUSH_DIR: path.join(casa, 'push'), // CC-932: sem vigia (não há painel de verdade aqui) e com as chaves numa pasta temporária
   COCKPIT_CONTABO_AUTH_URL: `http://127.0.0.1:${portaContabo}/token`, COCKPIT_CONTABO_API_URL: `http://127.0.0.1:${portaContabo}/v1`,

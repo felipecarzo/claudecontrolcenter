@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import * as B from './src/backlog.mjs'
 
 let n = 0
@@ -21,7 +22,7 @@ try {
   const esperado = () => B.comoMarkdown(B.caminhoPadrao(d))
   ok(roadmap() === esperado(), 'ponto de partida: o roadmap bate com o backlog')
 
-  const r = spawnSync(process.execPath, [new URL('./cc.mjs', import.meta.url).pathname, 'backlog', 'conferir', 'TT-001'], { cwd: d, encoding: 'utf8', env: { ...process.env, CC_HOME: join(d, 'casa') } })
+  const r = spawnSync(process.execPath, [fileURLToPath(new URL('./cc.mjs', import.meta.url)), 'backlog', 'conferir', 'TT-001'], { cwd: d, encoding: 'utf8', env: { ...process.env, CC_HOME: join(d, 'casa') } })
   ok(/TT-001 → fechado/.test(r.stdout), 'a conferência automática fecha o item (' + r.stdout.trim().split('\n').pop() + ')')
   ok(B.ler(B.caminhoPadrao(d)).itens.find((x) => x.id === 'TT-001').estado === 'OK', 'o estado no backlog é OK')
   ok(roadmap() === esperado(), 'DEPOIS de fechar, o roadmap já bate com o backlog (antes ficava velho e reprovava o teste seguinte)')

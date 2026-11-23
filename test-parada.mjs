@@ -19,6 +19,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { WIN } from './test/windows.mjs'
 import { BARRAM, GUARDAS, NAO_REPITA, SOZINHOS, arquivoCobranca, juntar } from './hooks/parada.mjs'
 
 const RAIZ = path.dirname(fileURLToPath(import.meta.url))
@@ -91,7 +92,7 @@ function casaNova() {
   return t
 }
 const ambiente = (casa, extra = {}) => {
-  const env = { ...process.env, HOME: casa, CC_HOME: path.join(casa, '.claude'), ...extra }
+  const env = { ...process.env, HOME: casa, USERPROFILE: casa, CC_HOME: path.join(casa, '.claude'), ...extra } // CC-1118: no Windows o homedir é USERPROFILE
   delete env.CLAUDE_JOB_DIR
   delete env.XDG_DATA_HOME
   return env
@@ -119,7 +120,10 @@ async function emParalelo(tarefas, limite) {
 }
 
 const lista = entradas(COMPLETO ? 8 : 1)
-ok(lista.length >= (COMPLETO ? 6 : 2), `poucas entradas reais achadas: ${lista.length}`)
+// CC-1118: as entradas reais são conversas da VPS (cwd em /home/); no Windows não há nenhuma, e a comparação pula com aviso
+const semConversaReal = WIN && lista.length === 0
+if (semConversaReal) console.log('PULADO no Windows: comparação com conversas reais (só existem na VPS, com cwd em /home/)')
+else ok(lista.length >= (COMPLETO ? 6 : 2), `poucas entradas reais achadas: ${lista.length}`)
 
 let iguais = 0; let total = 0; let barradas = 0
 const temposParada = []
@@ -172,9 +176,9 @@ ok(j2.codigo === 2 && j2.stderr === `[a]\nx\n\n[b]\ny\n\n${NAO_REPITA}\n`, 'dois
 /* CC-1099: a cobrança de forma chega na próxima mensagem dele pelo gancho de mensagem, uma vez só. */
 {
   const casa = fs.mkdtempSync(path.join(os.tmpdir(), 'cobranca-'))
-  const homeAntes = process.env.HOME
+  const homeAntes = process.env.HOME; const perfilAntes = process.env.USERPROFILE
   try {
-    process.env.HOME = casa
+    process.env.HOME = casa; process.env.USERPROFILE = casa // CC-1118: no Windows o homedir é USERPROFILE
     const arq = await arquivoCobranca('s1')
     fs.mkdirSync(path.dirname(arq), { recursive: true })
     fs.appendFileSync(arq, '[resumo-guard] falta o separador\n')
@@ -184,11 +188,11 @@ ok(j2.codigo === 2 && j2.stderr === `[a]\nx\n\n[b]\ny\n\n${NAO_REPITA}\n`, 'dois
     try { ctx = JSON.parse(um).hookSpecificOutput.additionalContext } catch { /* conferido abaixo */ }
     ok(ctx.includes('falta o separador') && !ctx.includes('Reenvie'), 'cobrança de forma entregue como contexto da próxima mensagem')
     ok(!dois.includes('falta o separador'), 'a cobrança sai uma vez só')
-  } finally { process.env.HOME = homeAntes; fs.rmSync(casa, { recursive: true, force: true }) }
+  } finally { process.env.HOME = homeAntes; if (perfilAntes === undefined) delete process.env.USERPROFILE; else process.env.USERPROFILE = perfilAntes; fs.rmSync(casa, { recursive: true, force: true }) }
 }
 
 const melhor = Math.min(...temposParada)
-ok(melhor < 1500, `programa único levou ${Math.round(melhor)} ms (teto 1500)`)
+if (!semConversaReal) ok(melhor < 1500, `programa único levou ${Math.round(melhor)} ms (teto 1500)`)
 
 console.log(`test-parada: ${lista.length} entradas x ${GUARDAS.length} guardas = ${total}, ${iguais} idênticas, ${barradas} barradas; programa único ${temposParada.map((t) => Math.round(t)).join('/')} ms${COMPLETO ? '' : ' (rápido; completo com PARADA_COMPLETO=1)'}`)
 if (falhas) { console.error(`test-parada: ${falhas} falha(s)`); process.exit(1) }

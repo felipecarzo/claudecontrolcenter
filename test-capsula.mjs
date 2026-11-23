@@ -4,6 +4,10 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { WIN } from './test/windows.mjs'
+
+// CC-1118: a cápsula é da VPS: tar GNU (que lê "C:" como máquina remota), gpg, /bin/sh e falsos em shell. Roda lá.
+if (WIN) { console.log('test-capsula: PULADO no Windows (precisa de tar GNU com caminho Linux, gpg e /bin/sh)'); process.exit(0) }
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url))
 const T = fs.mkdtempSync(path.join(os.tmpdir(), 'test-capsula-'))
@@ -12,6 +16,7 @@ const SAIDA = path.join(CASA, 'caps')
 fs.mkdirSync(CASA, { recursive: true })
 // casa falsa: nada de ~/.gnupg nem de ~/.local reais
 process.env.HOME = CASA
+process.env.USERPROFILE = CASA // CC-1118: no Windows os.homedir() lê USERPROFILE, não HOME
 process.env.CC_HOME = path.join(CASA, '.claude')
 process.env.GNUPGHOME = fs.mkdtempSync(path.join(os.tmpdir(), 'g-'))
 fs.chmodSync(process.env.GNUPGHOME, 0o700)
