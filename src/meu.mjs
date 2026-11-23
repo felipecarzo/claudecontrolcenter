@@ -370,3 +370,25 @@ export function tudo(jobs = [], { projetos = [], maquinaLocal = null } = {}) {
     })
     .sort((a, b) => (a.feito ? 1 : 0) - (b.feito ? 1 : 0) || (a.em || 0) - (b.em || 0))
 }
+
+const ehDecisao = (t) => t.motivo === 'decidir' || /^decidir\b/i.test(String(t.texto || ''))
+
+/**
+ * CC-1124, passo 5: o que a abertura de sessão mostra da lista dele.
+ *
+ * Medido em 23/11: a abertura listava 8 de 248 tarefas, as MAIS VELHAS primeiro
+ * (203 paradas há mais de 30 dias), mais "e mais 240", em toda sessão. Ele não
+ * respondeu nenhuma das 94 provas em 30 dias: a lista virou ruído.
+ *
+ * Entra só o que mudou nos últimos `dias`, ou o que é da mesma frente da sessão
+ * (quando ela já tem frente). Decisão sobe primeiro: decisão que mudou na semana
+ * é a pergunta nova. O resto vira uma contagem, e mora no Caminho.
+ */
+export function paraAbertura(tarefas = [], { agora = Date.now(), projeto = null, frente = null, teto = 4, dias = 7 } = {}) {
+  const corte = agora - dias * 86400000
+  const recente = (t) => (t.em || 0) >= corte
+  const daFrente = (t) => Boolean(frente && t.frente === frente && mesmoProjeto(t.projeto, projeto))
+  const entram = tarefas.filter((t) => recente(t) || daFrente(t))
+    .sort((a, b) => ehDecisao(b) - ehDecisao(a) || daFrente(b) - daFrente(a) || (b.em || 0) - (a.em || 0))
+  return { mostrar: entram.slice(0, teto), entram: entram.length, paradas: tarefas.length - entram.length, total: tarefas.length }
+}

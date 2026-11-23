@@ -2182,21 +2182,23 @@ switch (cmd) {
 
     /* CC-1124, passos 2 e 3: andando parado há 48 h volta para definida, andando citado em commit vai para prova.
        Roda aqui, ao ler o backlog, e no painel de 10 em 10 minutos. Desliga: Nisaba desligado no projeto (tela
-       Projetos), ou "nisabaExpira": false no control-center.json (vale para a máquina inteira). */
+       Projetos), ou "nisabaExpira": false no control-center.json (vale para a máquina inteira).
+       Passo 4: a regra dos 30 dias (sprint vai para o fim do backlog, backlog é cancelada) e o cartão semanal;
+       desliga com "nisabaTrintaDias": false. */
     const arrumarAqui = async (ensaio) => {
       const C = await import('./src/config.mjs')
       const cfg = C.readConfig()
-      if (cfg.nisabaExpira === false || !C.moduloLigado('nisaba', path.basename(process.cwd()), cfg)) return []
+      if ((cfg.nisabaExpira === false && cfg.nisabaTrintaDias === false) || !C.moduloLigado('nisaba', path.basename(process.cwd()), cfg)) return []
       const dono = B.ehDonoDoBacklog(cfg) // CC-1126: só a dona grava; aqui o mesmo cfg, sem ler duas vezes
-      const acoes = await B.arrumarProjeto(process.cwd(), { ensaio, dono })
+      const acoes = await B.arrumarProjeto(process.cwd(), { ensaio, dono, cfg, expira: cfg.nisabaExpira !== false })
       if (!dono && (acoes.length || sub === 'arrumar')) console.log(`  ${B.AVISO_NAO_DONO}`)
-      for (const a of acoes) console.log(`  ${a.recusa ? 'não mudei' : ensaio || !dono ? 'mudaria' : 'mudou'}  ${a.id} → ${B.estadoDe(a.para).rotulo}: ${a.recusa || a.porque}`)
+      for (const a of acoes) console.log(`  ${a.recusa ? 'não mudei' : ensaio || !dono ? 'mudaria' : 'mudou'}  ${a.id} → ${a.lugar ? 'fim do backlog' : B.estadoDe(a.para).rotulo}: ${a.recusa || a.porque}`)
       return acoes
     }
     if (sub === 'arrumar') {
       console.log('')
       const acoes = await arrumarAqui(argv.includes('--ensaio'))
-      console.log(acoes.length ? '' : '  nada a arrumar: nenhuma tarefa andando parada há 48 h nem citada em commit.\n')
+      console.log(acoes.length ? '' : '  nada a arrumar: nenhuma tarefa andando parada há 48 h, citada em commit, ou parada há 30 dias no sprint ou no fim do backlog.\n')
       break
     }
     if (!sub) { try { await arrumarAqui(false) } catch { /* arrumar nunca impede ler */ } }

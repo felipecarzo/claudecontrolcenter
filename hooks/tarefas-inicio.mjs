@@ -26,7 +26,7 @@
  * jeito de a lista passar a mentir, que é o defeito que este item conserta.
  */
 import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 /* CC-167: `import()` no Windows precisa de URL, não de caminho. Com `D:\...`
@@ -52,12 +52,13 @@ const M = await import(urlDeModulo(AQUI, '../src/meu.mjs')).catch(sair)
 const S = await import(urlDeModulo(AQUI, '../src/sessoes.mjs')).catch(() => null)
 
 let tarefas = []
+let jobs = []
 try {
   /* A lista completa junta o arquivo dele, o que os agentes pediram e o backlog
      parado esperando decisão dele. Sem os jobs ela ainda funciona, só mais
      pobre, e uma leitura de jobs que falha não pode calar a lista inteira.
      `todosOsJobs()` e não `readJobs()`: ver CC-124 no `sessoes.mjs`. */
-  const jobs = S?.todosOsJobs ? S.todosOsJobs() : []
+  try { jobs = S?.todosOsJobs ? S.todosOsJobs() : [] } catch { jobs = [] }
   tarefas = M.tudo(jobs).filter((t) => !t.feito)
 } catch {
   try { tarefas = M.ler().tarefas.filter((t) => !t.feito) } catch { sair() }
@@ -90,9 +91,10 @@ try {
 const idade = (ms) => {
   if (!ms) return ''
   const d = Math.floor((Date.now() - ms) / 86400000)
-  if (d >= 1) return ` (parada há ${d} dia${d > 1 ? 's' : ''})`
+  if (d >= 7) return ` (parada há ${d} dias)`
+  if (d >= 1) return ` (mudou há ${d} dia${d > 1 ? 's' : ''})`
   const h = Math.floor((Date.now() - ms) / 3600000)
-  return h >= 1 ? ` (há ${h}h)` : ''
+  return h >= 1 ? ` (mudou há ${h} h)` : ' (mudou agora há pouco)'
 }
 
 const linhas = []
@@ -112,22 +114,29 @@ if (resolvidas.length) {
   linhas.push('')
 }
 
-linhas.push(`${tarefas.length} coisa(s) dependem DELE, não de você. Não são suas tarefas:`)
-/* Teto de 8: a lista dele já passou de 20 itens, e despejar tudo no começo da
-   sessão empurra o resto do contexto para longe. O comando mostra o resto. */
-for (const t of tarefas.slice(0, 8)) {
-  const onde = [t.projeto, t.frente].filter(Boolean).join(' › ')
-  linhas.push(`  - ${t.texto}${onde ? `  [${onde}]` : ''}${idade(t.em)}`)
-}
-if (tarefas.length > 8) linhas.push(`  ... e mais ${tarefas.length - 8}. Lista inteira: \`cc meu list\``)
+/* CC-1124, passo 5: no máximo 4 linhas, só o que mudou na semana ou é da
+   frente desta sessão; o resto vira uma frase. A lista de 8 mais velhas, mais
+   "e mais 240", em toda sessão, era ruído que ele não respondia. A frente vem
+   do cartão desta sessão, que só existe ao retomar; sessão nova não tem. */
+const minha = jobs.find((j) => dados?.session_id && (j.sessionId === dados.session_id || j.id === String(dados.session_id).slice(0, 8)))
+const sel = M.paraAbertura(tarefas, { projeto: dados?.cwd ? basename(dados.cwd) : null, frente: minha?.frente || null })
 
-linhas.push(
-  '',
-  'O que fazer com isso: MENCIONE as que interessam ao trabalho de hoje, no',
-  'começo da conversa, e siga. Não execute por ele e não marque como feita,',
-  'só ele fecha tarefa dele (`cc meu feito <id>`).',
-  'Se ele disser que já resolveu alguma, feche-a; se ele ignorar, não insista.',
-)
+if (sel.mostrar.length) {
+  linhas.push(`Tarefas do Felipe que mudaram nos últimos 7 dias${sel.entram > sel.mostrar.length ? ` (${sel.mostrar.length} de ${sel.entram})` : ''}:`)
+  for (const t of sel.mostrar) {
+    const onde = [t.projeto, t.frente].filter(Boolean).join(' › ')
+    linhas.push(`  - ${t.texto}${onde ? `  [${onde}]` : ''}${idade(t.em)}`)
+  }
+}
+if (sel.paradas) {
+  const um = sel.paradas === 1
+  const quantas = sel.paradas === sel.total
+    ? (um ? 'A única tarefa do Felipe' : `As ${sel.total} tarefas do Felipe`)
+    : `${sel.paradas} de ${sel.total} tarefas do Felipe`
+  // ponytail: frase fixa; quando o cartão semanal do Decidir um por um existir, trocar o fim por "esperam no cartão semanal do Decidir um por um"
+  linhas.push(`${quantas} ${um ? 'está parada' : 'estão paradas'} há mais de 7 dias; ${um ? 'está' : 'estão'} no Caminho e no Decidir um por um.`)
+}
+linhas.push('Mencione só se tocar o trabalho de hoje; não execute nem feche por ele.')
 
 process.stdout.write(`${linhas.join('\n')}\n`)
 process.exit(0)

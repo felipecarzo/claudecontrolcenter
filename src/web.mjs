@@ -3388,7 +3388,10 @@ function handler(req, res) {
     return comCorpoAsync(req, res, 4e3, async ({ raiz, deck, carta, escolhas, nota }) => {
       if (!findProjects().includes(raiz)) return { ok: false, erro: 'projeto desconhecido' }
       const C = await import('./cartas.mjs')
-      const r = C.votar(raiz, String(deck || ''), String(carta || ''), { escolhas, nota })
+      // CC-1124, passo 4: o cartão semanal das paradas recusa opções que se contradizem antes de votar, e aplica no backlog
+      const r = deck === 'parados-da-semana'
+        ? (await import('./cartaSemanal.mjs')).responder(raiz, String(carta || ''), escolhas, nota)
+        : C.votar(raiz, String(deck || ''), String(carta || ''), { escolhas, nota })
       if (r.ok) global.__cartasCache = null
       // CC-1095: no baralho das provas, o voto dele muda o estado do item no backlog
       if (r.ok && deck === 'provas-do-backlog') r.backlog = await (await import('./provaAutomatica.mjs')).aplicarVoto(raiz, String(carta), escolhas, nota)
@@ -5428,9 +5431,9 @@ export function startWeb({ port = 8099, tries = 10 } = {}) {
          Desliga: Nisaba desligado no projeto, ou "nisabaExpira": false no control-center.json. */
       const arrumarBacklogs = () => import('./backlog.mjs').then(async (B) => {
         const cfg = readConfig()
-        if (cfg.nisabaExpira === false) return
+        if (cfg.nisabaExpira === false && cfg.nisabaTrintaDias === false) return
         for (const raiz of findProjects()) {
-          if (moduloLigado('nisaba', path.basename(raiz), cfg)) await B.arrumarProjeto(raiz).catch(() => {})
+          if (moduloLigado('nisaba', path.basename(raiz), cfg)) await B.arrumarProjeto(raiz, { cfg, expira: cfg.nisabaExpira !== false }).catch(() => {})
         }
       }).catch(() => {})
       setInterval(arrumarBacklogs, 10 * 60_000).unref()

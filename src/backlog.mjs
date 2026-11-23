@@ -474,6 +474,28 @@ export function mover(id, estado, extras = {}, arquivo = caminhoPadrao()) {
   return r.item
 }
 
+/**
+ * CC-1124: várias mudanças numa leitura e numa gravação, pela mesma regra do `mover` (transicionar).
+ * `[{ id, para, extras?, evento? }]` → `{ feitas, recusas }`. Uma por vez, 43 tarefas levaram 17 s, e a tela desiste em 15.
+ */
+export function moverEmLote(pedidos, arquivo = caminhoPadrao()) {
+  let { itens } = ler(arquivo)
+  const cat = catalogoDe(arquivo)
+  const eventos = []
+  const r = { feitas: 0, recusas: [] }
+  for (const p of pedidos) {
+    try {
+      const t = transicionar(itens, p.id, p.para, p.extras || {}, { hoje: hoje(), validar: (x) => problemas(x, cat) })
+      itens = t.itens
+      const motivo = p.extras?.porque
+      eventos.push(...t.eventos.map((e) => (e.id === p.id && motivo && !e.porque ? { ...e, porque: String(motivo).slice(0, 500) } : e)), ...(p.evento ? [{ ...p.evento, id: p.id }] : []))
+      r.feitas++
+    } catch (e) { r.recusas.push(`${p.id}: ${e.message}`) }
+  }
+  if (r.feitas) { gravar(itens, arquivo); registrar(eventos, arquivo) }
+  return r
+}
+
 /* ===================================================================
    CC-836 (Nisaba): o diário da tarefa. Só por acréscimo.
    Pedido dele: "aquelas minhas palavras que eu falaria poderiam ficar
@@ -708,11 +730,11 @@ export function contarPorEstado(itens = []) {
 }
 
 /** Dias desde uma data `AAAA-MM-DD`. Devolve 0 quando não dá para saber. */
-export function diasDesde(data) {
+export function diasDesde(data, agora = Date.now()) {
   if (!data) return 0
   const t = Date.parse(String(data) + 'T12:00:00Z')
   if (Number.isNaN(t)) return 0
-  return Math.floor((Date.now() - t) / 86400000)
+  return Math.floor((agora - t) / 86400000)
 }
 
 /**
@@ -847,23 +869,59 @@ export function planoDeArrumar(itens, eventos, { agora = Date.now(), commits = [
   return acoes
 }
 
+/* ===================================================================
+   CC-1124, passo 4: a regra dos 30 dias. Decisão dele em 23/11: "um pra
+   cada nível de prioridade da tarefa", e o nível é o `lugar`. Parada é o
+   mesmo critério do retrato: `mexido` há mais de 30 dias.
+     sprint  -> fim do backlog (sai do sprint), motivo no diário;
+     backlog -> cancelada, motivo no diário;
+     agora, fim do dia, fora do MVP e sem lugar -> nada muda aqui (as que
+     perguntam vão para o cartão semanal, src/cartaSemanal.mjs).
+   Prova (PR) e decisão dele (DE) nunca mudam; andando (EM) é da regra das
+   48 h. Micro tarefa segue o pai; pai com micro tarefa aberta não é cancelado.
+   A ida para o fim do backlog conta como toque (o `mexido` vira hoje): são
+   mais 30 dias lá antes do cancelamento, e não 10 minutos.
+   Desliga: "nisabaTrintaDias": false no control-center.json.
+   =================================================================== */
+export const DIAS_PARADA = 30
+export const REGRA_TRINTA = 'trinta-dias'
+export const estaParada = (i, agora = Date.now(), dias = DIAS_PARADA) => estaAberto(i) && diasDesde(i.mexido, agora) > dias
+
+/** O que a regra dos 30 dias faria, sem gravar: `[{ id, para, lugar?, porque, regra }]`. Função pura. */
+export function planoDosTrintaDias(itens, { agora = Date.now(), dias = DIAS_PARADA } = {}) {
+  const comFilhaAberta = new Set(itens.filter((x) => x.pai && estaAberto(x)).map((x) => x.pai))
+  const acoes = []
+  for (const i of itens) {
+    if (i.pai || ['PR', 'DE', 'EM'].includes(i.estado) || !estaParada(i, agora, dias)) continue
+    const l = lugarDe(i)
+    if (l === 'sprint') acoes.push({ id: i.id, para: i.estado, lugar: 'backlog', regra: REGRA_TRINTA, porque: `parada há ${dias} dias, no lugar sprint: foi para o fim do backlog e saiu do sprint` })
+    else if (l === 'backlog' && !comFilhaAberta.has(i.id)) acoes.push({ id: i.id, para: 'KO', regra: REGRA_TRINTA, porque: `parada há ${dias} dias, no lugar backlog` })
+  }
+  return acoes
+}
+
 /**
  * Aplica o plano e grava, com o motivo no diário de cada tarefa (`por: 'robo'`).
  * A volta para definida NÃO conta como toque: o `mexido` antigo fica, senão o aviso dos 30 dias parados nunca dispararia.
+ * `expira` (48 h e commit) e `trintaDias` ligam cada regra; as duas nunca pegam a mesma tarefa (uma é só andando, a outra nunca andando).
  */
-export function arrumar(arquivo = caminhoPadrao(), { ensaio = false, ...opcoes } = {}) {
+export function arrumar(arquivo = caminhoPadrao(), { ensaio = false, expira = true, trintaDias = true, ...opcoes } = {}) {
   const { itens } = ler(arquivo)
-  const acoes = planoDeArrumar(itens, lerEventos(arquivo), opcoes)
+  const acoes = [...(expira ? planoDeArrumar(itens, lerEventos(arquivo), opcoes) : []), ...(trintaDias ? planoDosTrintaDias(itens, opcoes) : [])]
   if (ensaio || !acoes.length) return acoes
   let atual = itens
   const eventos = []
+  const quando = new Date(opcoes.agora ?? Date.now()).toISOString()
   for (const a of acoes) {
     try {
       const antes = atual.find((x) => x.id === a.id)
-      const r = transicionar(atual, a.id, a.para, a.prova ? { prova: a.prova } : {}, { hoje: hoje(), validar: (x) => problemas(x, catalogoDe(arquivo)) })
-      if (a.para === 'B1') r.itens[r.itens.indexOf(r.item)] = { ...r.item, mexido: antes.mexido }
+      const extras = a.lugar ? { lugar: { onde: a.lugar, em: quando } } : a.para === 'KO' ? { porque: a.porque } : a.prova ? { prova: a.prova } : {}
+      const r = transicionar(atual, a.id, a.para, extras, { hoje: hoje(), validar: (x) => problemas(x, catalogoDe(arquivo)) })
+      if (antes.estado === 'EM' && a.para === 'B1') r.itens[r.itens.indexOf(r.item)] = { ...r.item, mexido: antes.mexido }
       atual = r.itens
-      eventos.push(...r.eventos.map((e) => (e.id === a.id && e.tipo === 'estado' ? { ...e, porque: a.porque, por: 'robo' } : e)))
+      const marca = { porque: a.porque, por: 'robo', ...(a.regra ? { regra: a.regra } : {}) }
+      eventos.push(...r.eventos.map((e) => (e.id === a.id && e.tipo === 'estado' ? { ...e, ...marca } : e)))
+      if (a.lugar) eventos.push({ tipo: 'lugar', id: a.id, de: 'robo', texto: LUGARES.find((l) => l.codigo === a.lugar).rotulo, ...marca })
       a.feito = true
     } catch (e) { a.recusa = e.message }
   }
@@ -892,10 +950,17 @@ export const AVISO_NAO_DONO = 'esta máquina não é a dona do backlog; as mudan
 export async function arrumarProjeto(raiz, opcoes = {}) {
   const arquivo = caminhoPadrao(raiz)
   const { itens, existe } = ler(arquivo)
-  if (!existe || !itens.some((x) => x.estado === 'EM')) return []
-  const dono = opcoes.dono ?? ehDonoDoBacklog((await import('./config.mjs')).readConfig())
-  const acoes = arrumar(arquivo, { ...opcoes, ensaio: opcoes.ensaio || !dono, commits: await commitsRecentes(raiz) })
+  if (!existe) return []
+  const cfg = opcoes.cfg ?? (await import('./config.mjs')).readConfig()
+  const dono = opcoes.dono ?? ehDonoDoBacklog(cfg)
+  const andando = opcoes.expira !== false && itens.some((x) => x.estado === 'EM')
+  const trintaDias = opcoes.trintaDias ?? cfg.nisabaTrintaDias !== false
+  if (!andando && !trintaDias) return []
+  const ensaio = opcoes.ensaio || !dono
+  const acoes = arrumar(arquivo, { ...opcoes, ensaio, expira: andando, trintaDias, commits: andando ? await commitsRecentes(raiz) : [] })
   if (!dono) for (const a of acoes) a.naoDono = true
+  // CC-1124, passo 4: o cartão semanal; em ensaio (e na máquina que não é dona) nada é gravado em docs/cartas
+  if (trintaDias) { try { (await import('./cartaSemanal.mjs')).montarCartao(raiz, { ensaio, acoes, agora: opcoes.agora }) } catch { /* o cartão nunca impede a varredura */ } }
   return acoes
 }
 
