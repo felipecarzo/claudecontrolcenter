@@ -7,7 +7,7 @@
  *
  * Regras:
  *   - uma trava por sessão: ouvido vivo recente da mesma sessão, com pid vivo, faz este sair calado com 0;
- *   - espera até 55 min por armada (o `timeout` do registro precisa ser maior), e sai 0 limpando o marcador;
+ *   - espera até quase 24 h por armada (o `timeout` do registro, 86400 s, precisa ser maior), e sai 0 limpando o marcador;
  *   - sai 0 se a sessão acabou (o processo pai morreu);
  *   - caixa que não dá para apagar não é entregue: entregar e deixar lá acordaria a sessão em laço;
  *   - falha aberta: qualquer erro sai 0, calado.
@@ -34,7 +34,10 @@ if (!O.ID_SESSAO.test(sessao)) sair()
 const dir = O.dirCaixas()
 const vivo = path.join(dir, `${sessao}.vivo`)
 const caixa = path.join(dir, `${sessao}.txt`)
-const TETO = Number(process.env.CC_OUVIDO_TETO_MS) || 55 * 60_000
+/* 23/11, medido na VPS: com 55 min, a sessão parada desde 02:52 ficou surda às 03:47, e a mensagem do cockpit não
+   chegou. O ouvido só arma de novo quando a sessão responde, então a espera tem de cobrir a sessão parada: quase 24 h
+   (o `timeout` do registro é 86400 s). */
+const TETO = Number(process.env.CC_OUVIDO_TETO_MS) || (24 * 60 - 10) * 60_000
 const PASSO = Number(process.env.CC_OUVIDO_PASSO_MS) || 1000
 const RENOVA = 20_000
 const pai = process.ppid

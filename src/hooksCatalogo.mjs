@@ -957,7 +957,7 @@ export const HOOKS = [
   },
   /* CC-1120: o ouvido. Só age registrado, e o registro é decisão dele (docs/CC-1120.md tem a entrada). `padrao: true`
      porque o gate recusa gancho implementado fora do padrão e de todo modo; ele não consulta o interruptor.
-     `opcoes` vai para o registro: sem `asyncRewake` o Stop esperaria 55 min travando a sessão. */
+     `opcoes` vai para o registro: sem `asyncRewake` o Stop esperaria horas travando a sessão. */
   {
     id: 'ouvido',
     modulo: 'reporte',
@@ -967,10 +967,10 @@ export const HOOKS = [
     script: 'ouvido.mjs',
     evento: 'Stop',
     tambemEm: ['SessionStart'],
-    opcoes: { asyncRewake: true, timeout: 3600 },
+    opcoes: { asyncRewake: true, timeout: 86400 },
     descricao: 'Espera ao fundo a caixa desta sessão e, quando ele escreve pelo cockpit (do PC ou da VPS), acorda a '
       + 'sessão com o texto. Vale para sessão aberta fora do painel: app do desktop, terminal próprio. Arma de novo a '
-      + 'cada resposta; uma escuta por sessão, 55 min por armada.',
+      + 'cada resposta; uma escuta por sessão, até quase 24 h por armada.',
     padrao: true,
     implementado: true,
   },

@@ -105,7 +105,7 @@ try {
     const s = JSON.parse(fs.readFileSync(path.join(casa, 'settings.json'), 'utf8'))
     for (const ev of ['Stop', 'SessionStart']) {
       const h = s.hooks[ev][0].hooks[0]
-      assert.ok(h.command.includes('ouvido.mjs') && h.asyncRewake === true && h.timeout === 3600, `${ev} sem as opções: ${JSON.stringify(h)}`)
+      assert.ok(h.command.includes('ouvido.mjs') && h.asyncRewake === true && h.timeout === 86400, `${ev} sem as opções: ${JSON.stringify(h)}`)
     }
   })
   await t('a rota local e o pacote do painel usam o ouvido', () => {
