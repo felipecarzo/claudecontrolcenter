@@ -937,12 +937,19 @@ export function limparTextoRemoto(texto) {
  * CC-1114: o lado do PC. Entrega a mensagem que desceu da fila, mas só a uma sessão que este painel abriu num terminal
  * dele (`sessoes` é o `estado()` do remotecontrol). Conversa que não está lá é recusada sem digitar nada, inclusive a
  * do aplicativo do desktop. O texto é limpo de novo aqui: a VPS pode estar com versão velha.
+ * CC-1120: fora do terminal do painel, a sessão com o ouvido vivo (src/ouvido.mjs) recebe o texto pela caixa dela.
+ * Tecla não vai pela caixa. `ouvido` vem por parâmetro no teste; sem ele, o módulo real (import tardio, sem ciclo).
  */
-export async function entregarMensagemRemota(p, { sessoes, enviar, apertarTecla }) {
+export async function entregarMensagemRemota(p, { sessoes, enviar, apertarTecla, ouvido = null }) {
   if (!ID_CONVERSA.test(String(p?.conversa || '')) || (p.tecla != null && !TECLAS_REMOTAS.includes(p.tecla))) return { ok: false, erro: 'pedido inválido' }
   const vivas = Object.values((await Promise.resolve().then(sessoes).catch(() => ({}))) || {})
   const achada = vivas.find((s) => s?.sessao && s?.conversa && (s.conversa === p.conversa || s.conversa.startsWith(p.conversa)))
-  if (!achada) return { ok: false, erro: 'essa conversa não está num terminal aberto pelo painel desta máquina' }
+  if (!achada) {
+    const O = p.tecla ? null : (ouvido || await import('./ouvido.mjs').catch(() => null))
+    const sessao = O?.ouvidoVivo(p.conversa)
+    if (sessao) return O.gravarCaixa(sessao, p.texto)
+    return { ok: false, erro: 'essa conversa não está num terminal aberto pelo painel desta máquina' }
+  }
   if (p.tecla) return apertarTecla({ conversa: achada.conversa, tecla: p.tecla })
   const texto = limparTextoRemoto(p.texto)
   if (!texto) return { ok: false, erro: 'mensagem sem texto' }
@@ -1481,8 +1488,11 @@ export function montarPacote({
        Cockpit da outra máquina. Sem isto, a tela de lá ofereceria o campo para
        toda sessão do PC, e a maioria recusaria em silêncio. */
     terminal: Boolean(j.terminal),
-    /* CC-1060: o rabo da conversa (últimas mensagens, cortadas), só de quem mora num terminal do painel. */
-    conversaApp: j.terminal && j.conversaApp && Array.isArray(j.conversaApp.itens) ? j.conversaApp : null,
+    /* CC-1120: fora do terminal do painel, mas com o ouvido vivo: aceita texto pela caixa. Campo novo e opcional,
+       pacote velho sem ele deixa a sessão com cadeado, como antes. */
+    ouvido: Boolean(j.ouvido),
+    /* CC-1060: o rabo da conversa (últimas mensagens, cortadas), só de quem recebe texto (terminal do painel ou ouvido). */
+    conversaApp: (j.terminal || j.ouvido) && j.conversaApp && Array.isArray(j.conversaApp.itens) ? j.conversaApp : null,
   }))
   return {
     /* CC-440: primeiro campo do pacote, de propósito. Quem for depurar isto

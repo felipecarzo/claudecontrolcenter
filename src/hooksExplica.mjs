@@ -71,6 +71,7 @@ export const EXPLICA = {
   'routia-inicio': 'Mostra ao Claude, ao abrir, quais partes do projeto outras sessões estão usando.',
   'maquina-inicio': 'Uma vez por dia, confere se as travas que o painel exige estão ligadas nesta máquina, e avisa se faltar alguma.',
   'framework-inicio': 'Ao abrir, diz ao Claude em que fase o projeto está, com que tom falar e qual a próxima pergunta a fazer para você.',
+  ouvido: 'Fica esperando ao fundo a mensagem que você escreve pelo cockpit para esta sessão e, quando ela chega, acorda a sessão com o texto.',
   'inject-claude-md': 'Põe as regras do projeto no começo da conversa (vem de um plugin).',
   'session-start-profiler': 'Só mede quanto a abertura da conversa demora (vem de um plugin).',
   'check-version': 'Confere se um plugin instalado está na versão nova (vem do plugin).',

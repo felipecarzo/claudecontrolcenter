@@ -1461,3 +1461,8 @@
 {"em":"2026-11-23T01:00:30.972Z","tipo":"estado","id":"CC-1118","de":"B1","para":"EM"}
 {"em":"2026-11-23T01:00:31.145Z","tipo":"medida","id":"CC-1118","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":4955907,"porModelo":{"claude-opus-5-5":4671274,"claude-sonnet-5-5":5980622}}
 {"em":"2026-11-23T02:38:41.439Z","tipo":"criada","id":"CC-1119","estado":"B1"}
+{"em":"2026-11-23T03:52:25.033Z","tipo":"criada","id":"CC-1120","estado":"B0","texto":"um software que eu instalo, a gente ja criou um mas eu nao sei pq ele não funciona. esse software captura tudo que sai daqui pro server da anthropic e com os hooks tambem consegue intervir"}
+{"em":"2026-11-23T03:54:40.698Z","tipo":"estado","id":"CC-1120","de":"B0","para":"B1"}
+{"em":"2026-11-23T03:54:40.698Z","tipo":"lugar","id":"CC-1120","de":"felipe","texto":"agora"}
+{"em":"2026-11-23T04:25:14.823Z","tipo":"estado","id":"CC-1120","de":"B1","para":"EM"}
+{"em":"2026-11-23T04:25:15.063Z","tipo":"medida","id":"CC-1120","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":5830099,"porModelo":{"claude-opus-5-5":7894899,"claude-sonnet-5-5":6513778}}

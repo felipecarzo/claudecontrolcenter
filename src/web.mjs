@@ -185,6 +185,7 @@ import { agenda, esquecerCache as esquecerAgenda } from './calendario.mjs'
 import { HOOKS, MODULOS as MODULOS_HOOKS } from './hooksCatalogo.mjs'
 import { rodar as provarHooks, testeDe as provaTesteDe } from './hooksProva.mjs'
 import { registradoTodos } from './hooksRegistro.mjs'
+import { ouvidosVivos, ouvidoVivo, gravarCaixa } from './ouvido.mjs'
 import { porProjeto } from './cockpit.mjs'
 import { listarContainers } from './docker.mjs'
 import { atualizarSnapshot, configurada as vpsConfigurada } from './vps.mjs'
@@ -699,15 +700,20 @@ async function comUltimaFala(jobs) {
 let haSessaoNoTerminal = false
 async function marcarNoTerminal(jobs) {
   const noTerminal = Object.values(await estadoRemoto().catch(() => ({}))).filter((x) => x?.sessao && x.conversa).map((x) => x.conversa)
-  haSessaoNoTerminal = noTerminal.length > 0
+  /* CC-1120: sessão fora do terminal do painel com o ouvido vivo também recebe, pela caixa. Entra no ciclo curto
+     para a mensagem digitada lá chegar em segundos. */
+  const comOuvido = ouvidosVivos()
+  haSessaoNoTerminal = noTerminal.length > 0 || comOuvido.length > 0
   let C2 = null
   try { C2 = await import('./cockpit2.mjs') } catch { /* sem o módulo: o pacote vai sem a conversa */ }
+  const desta = (j) => (c) => c === j.sessionId || (String(j.id || '').length >= 8 && c.startsWith(j.id))
   return jobs.map((j) => {
-    const conv = noTerminal.find((c) => c === j.sessionId || (String(j.id || '').length >= 8 && c.startsWith(j.id)))
+    const conv = noTerminal.find(desta(j))
+    const ouv = comOuvido.find(desta(j))
     /* CC-1060: a sessão que mora no terminal leva o rabo da conversa, para a outra máquina mostrar o chat. */
     let conversaApp = null
-    if (conv && C2) { try { conversaApp = C2.conversaParaPacote(conv) } catch { conversaApp = null } }
-    return { ...j, terminal: Boolean(conv), conversaApp }
+    if ((conv || ouv) && C2) { try { conversaApp = C2.conversaParaPacote(conv || ouv) } catch { conversaApp = null } }
+    return { ...j, terminal: Boolean(conv), ouvido: Boolean(ouv), conversaApp }
   })
 }
 
@@ -3748,7 +3754,13 @@ function handler(req, res) {
         const r = pedirMensagem({ paraMaquina: longe, conversa, texto, de: origemLocal()?.nome || null })
         return r.ok ? { ...r, aviso: `mandei para ${longe}; chega em poucos segundos` } : r
       }
-      const r = await mensagemDecisao({ conversa, texto })
+      let r = await mensagemDecisao({ conversa, texto })
+      /* CC-1120: recusada só por não estar num terminal do painel (app do desktop, terminal próprio)? Com o ouvido
+         vivo, vai pela caixa da sessão. Sessão fechada e os outros motivos seguem recusados como antes. */
+      if (r && !r.ok && !r.fechada && /não está num terminal/.test(r.erro || '')) {
+        const sessao = ouvidoVivo(conversa)
+        if (sessao) r = gravarCaixa(sessao, texto)
+      }
       if (r && r.ok) marcarRespondidaHist(String(conversa || '').slice(0, 8))
       return r
     })

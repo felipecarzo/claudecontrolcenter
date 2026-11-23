@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-198 abertos, 907 fechados, 1105 no total. Gerado em 2026-11-23.
+199 abertos, 907 fechados, 1106 no total. Gerado em 2026-11-23.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -193,6 +193,7 @@
 | CC-1117 | andando | - | Tela de Projetos conta como viva sessao esquecida 'espera voce' (vivas por projeto em cockpit2.mjs) |
 | CC-1118 | andando | - | npm test verde no Windows: 28 de 121 testes falham (shell como binario falso, EFTYPE, rsync, tar) |
 | CC-1119 | definida | - | Laco de religar do painel no Windows desiste para sempre apos 5 quedas rapidas: com disco cheio o painel ficou morto ate religar a mao |
+| CC-1120 | andando | - | Programa instalado que liga qualquer sessao ao cockpit: captura o trafego, registra pastas pela bandeja, sincroniza com a VPS |
 
 ## coderoom
 

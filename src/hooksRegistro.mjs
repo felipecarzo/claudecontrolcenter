@@ -122,7 +122,9 @@ export function instalar(hooks, { dryRun = false } = {}) {
 
     settings.hooks ??= {}
     settings.hooks[hook.evento] ??= []
-    settings.hooks[hook.evento].push({ hooks: [{ type: 'command', command: comando }] })
+    // CC-1120: `opcoes` do catálogo (asyncRewake, timeout) vai junto; sem isso o ouvido travaria a sessão
+    const cmd = { type: 'command', command: comando, ...(hook.opcoes || {}) }
+    settings.hooks[hook.evento].push({ hooks: [cmd] })
 
     /* Um hook pode precisar de mais de um evento, e o `travessao-guard` é o
        primeiro: a regra vale para a resposta na tela E para o texto que entra
@@ -132,7 +134,7 @@ export function instalar(hooks, { dryRun = false } = {}) {
     for (const extra of hook.tambemEm || []) {
       const [ev, matcher] = String(extra).split(':')
       settings.hooks[ev] ??= []
-      const grupo = { ...(matcher ? { matcher } : {}), hooks: [{ type: 'command', command: comando }] }
+      const grupo = { ...(matcher ? { matcher } : {}), hooks: [{ ...cmd }] }
       settings.hooks[ev].push(grupo)
     }
 
