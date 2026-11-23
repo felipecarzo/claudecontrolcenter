@@ -1,0 +1,21 @@
+{
+  "titulo": "Sprint que não cabe no ritmo: um aviso por sprint",
+  "criado": "2026-11-23T18:58:48.784Z",
+  "cartas": [
+    {
+      "id": "sprint-15-2026-11-18",
+      "titulo": "O sprint 15 tem 247 pontos e nas últimas 4 semanas vocês fecharam 14, uns 3,5 por semana",
+      "pergunta": "Cabe quase nada. No ritmo de agora, ele leva umas 71 semanas para fechar. O que você quer fazer com o resto? Sem resposta, nada muda e este aviso não volta neste sprint.",
+      "passos": [
+        "De onde vem: 55 tarefas abertas estão no sprint 15. Os pontos somam o tamanho de cada uma (P vale 1, M vale 3, G vale 8), e o ritmo conta o que fechou nas últimas 4 semanas, as semanas paradas inclusive. 27 delas estão em prova: o código existe e falta você conferir. 33 estão marcadas como agora ou fim do dia.",
+        "Passar o que não cabe para o próximo sprint: ficam 1 tarefa (3 pontos) e saem 54, na ordem da fila. Tarefa andando nunca sai. Peso: nada é apagado, e cada uma ganha uma linha no histórico dizendo que saiu por este aviso. As 35 marcadas como agora, fim do dia ou fim do sprint voltam todas no sprint 16, porque a marca continua; as outras entram nos próximos sprints na vez delas.",
+        "Manter tudo e aceitar o atraso: nada muda. Peso: o sprint 15 termina com quase tudo ainda aberto, e o que sobrar segue na fila do Caminho.",
+        "O que não cabe, na ordem da fila: CC-982 (sessao recem aberta tem campo de escrever ob…); CC-983 (resumo do agy por nivel: ate a minha ultima…); CC-986 (area de ideias no Caminho: ditar ou escrever…); CC-987 (cada aba do painel (Caminho, Sessoes e as ou…); CC-996 (aprovar telas de design e fotos dos projetos…); CC-1014 (atalho de teclado que abre um painel flutuan…); e mais 48, no Caminho."
+      ],
+      "opcoes": [
+        "Passar o que não cabe para o próximo sprint",
+        "Manter tudo e aceitar o atraso"
+      ]
+    }
+  ]
+}

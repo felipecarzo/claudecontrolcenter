@@ -1,0 +1,25 @@
+{
+  "titulo": "Paradas há 30 dias: uma pergunta por semana",
+  "criado": "2026-11-23T12:00:00.000Z",
+  "cartas": [
+    {
+      "id": "semana-2026-11-23",
+      "titulo": "154 das 204 tarefas abertas estão paradas há mais de 30 dias",
+      "pergunta": "O que faço com cada grupo? Marque quantas quiser. Manter: as sem lugar e as de agora ficam onde estão e saem deste cartão por 30 dias. O que você não marcar fica como está e volta na semana que vem.",
+      "passos": [
+        "Nesta semana a varredura mexeu sozinha em tarefas paradas há mais de 30 dias: 1 foi para o fim do backlog e saiu do sprint, e 2 foram canceladas por estar no fim do backlog. O motivo está no histórico de cada uma.",
+        "Sem lugar na fila: 43 das 154. De onde vem: nunca ganharam um lugar e ninguém mexe nelas há mais de 30 dias; a mais parada é a CC-548, há 62 dias. Pôr no fim do backlog: saem do sprint e ficam depois de tudo. Peso: um toque no Caminho traz de volta, e se ficarem mais 30 dias paradas lá, são canceladas sozinhas. Cancelar: fecham com o motivo escrito. Peso: o histórico fica, e reabrir é uma por uma.",
+        "Agora e fim do dia: 6 das 154. De onde vem: você pôs na frente da fila e ninguém mexe há mais de 30 dias; a mais parada é a CC-1060, há 36 dias. Elas nunca mudam sozinhas. Pôr no fim do backlog: deixam de furar a fila. Peso: um toque no Caminho põe de volta, e se ficarem mais 30 dias paradas lá, são canceladas sozinhas.",
+        "Em prova: 104 das 154. De onde vem: o código existe e falta conferir. Este cartão não muda nada nelas; quem decide é o baralho Provas do backlog, uma por uma.",
+        "Fora do MVP: 1 das 154. Ficam guardadas e nada muda."
+      ],
+      "opcoes": [
+        "Sem lugar: pôr todas no fim do backlog",
+        "Sem lugar: cancelar todas",
+        "Agora e fim do dia: pôr todas no fim do backlog",
+        "Manter tudo como está"
+      ],
+      "multipla": true
+    }
+  ]
+}

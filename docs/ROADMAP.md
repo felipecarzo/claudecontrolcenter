@@ -194,11 +194,11 @@
 | CC-1120 | prova | - | Programa instalado que liga qualquer sessao ao cockpit: captura o trafego, registra pastas pela bandeja, sincroniza com a VPS |
 | CC-1121 | prova | - | Painel do PC fica lento (60 s por resposta) minutos depois de ligar |
 | CC-1122 | prova | - | PC e VPS escolhem o mesmo numero de item no backlog: o numero novo passa a considerar o maior que veio da outra maquina |
-| CC-1124 | andando | - | Tarefas e atividades do cockpit entram, andam e saem sozinhas, e o cockpit cobra o Felipe so quando precisa, de forma limpa |
+| CC-1124 | prova | - | Tarefas e atividades do cockpit entram, andam e saem sozinhas, e o cockpit cobra o Felipe so quando precisa, de forma limpa |
 | CC-1125 | prova | - | Linha solta de ponta a ponta no meio do cockpit: a alca do painel lateral aparece com o painel fechado |
 | CC-1126 | prova | - | Varredura do backlog roda no PC e na VPS ao mesmo tempo e o git bate a cada pull; so uma maquina pode gravar |
 | CC-1127 | definida | - | VPS e PC commitam o que a outra maquina deixou sem commit: item criado na VPS fica fora do git e bate a cada pull |
-| CC-1128 | andando | - | painel velho falso quando o commit so mudou documentos |
+| CC-1128 | prova | - | painel velho falso quando o commit so mudou documentos |
 
 ## coderoom
 
@@ -247,9 +247,9 @@
 | id | estado | peso | o que é |
 |---|---|---|---|
 | CC-859 | prova | - | Instalar como app no celular a página do Deploy seguro e a do reinício emergencial da VPS, como apps de segurança dele |
-| CC-931 | ideia | - | segurança: cabeçalhos no nginx do cockpit e dos sites (HSTS, nosniff, frame-ancestors), que hoje não são enviados |
+| CC-931 | definida | - | segurança: cabeçalhos no nginx do cockpit e dos sites (HSTS, nosniff, frame-ancestors), que hoje não são enviados |
 | CC-932 | prova | - | segurança: alerta ativo quando o painel, a porta de entrada ou um site cair, sem depender de ele perceber |
-| CC-934 | ideia | - | segurança: backup da VPS inteira fora dela e um roteiro de restauração testado de verdade |
+| CC-934 | definida | - | segurança: backup da VPS inteira fora dela e um roteiro de restauração testado de verdade |
 | CC-944 | definida | - | leitura segura: Claude consulta o banco do Ahtleta no ar, so leitura e sem dado pessoal, liberado por 24h com o autenticador |
 
 ## fundacao
