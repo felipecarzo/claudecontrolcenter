@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-204 abertos, 907 fechados, 1111 no total. Gerado em 2026-11-23.
+202 abertos, 909 fechados, 1111 no total. Gerado em 2026-11-23.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -167,8 +167,6 @@
 | CC-548 | definida | - | o Chrome da VPS nao alcanca porta local: a rota do container ate o host esta fechada e abrir exige regra de firewall com root |
 | CC-1058 | definida | - | PC fica sincronizado em tempo real com a VPS por um servico, e avisa com alerta se estiver offline |
 | CC-1060 | definida | - | sessao do PC controlada pelo Cockpit igual a da VPS: responder por texto e sincronismo imediato |
-| CC-1061 | definida | - | npm test quebra no PC: 16 testes falham no Windows, e a corrente para no terceiro, sem rodar o resto |
-| CC-1062 | definida | - | religar o painel do PC pode falhar com o painel ocupado e deixar painéis soltos em outras portas |
 | CC-1063 | definida | - | Cockpit no Meta Quest 2: abas como apps soltos no espaco e, depois, sala imersiva em WebXR |
 | CC-1064 | definida | - | Sessão só de ideias, sem projeto: chat temporário que pode virar projeto ou não |
 | CC-1066 | definida | - | Cartas de texto com print da tela: o levantar de textos fotografa cada texto no lugar onde aparece, como o e-commerce fez à mão |
@@ -196,7 +194,7 @@
 | CC-1120 | prova | - | Programa instalado que liga qualquer sessao ao cockpit: captura o trafego, registra pastas pela bandeja, sincroniza com a VPS |
 | CC-1121 | prova | - | Painel do PC fica lento (60 s por resposta) minutos depois de ligar |
 | CC-1122 | prova | - | PC e VPS escolhem o mesmo numero de item no backlog: o numero novo passa a considerar o maior que veio da outra maquina |
-| CC-1124 | andando | - | Tarefas e atividades do cockpit entram, andam e saem sozinhas, e o cockpit cobra o Felipe so quando precisa, de forma limpa |
+| CC-1124 | prova | - | Tarefas e atividades do cockpit entram, andam e saem sozinhas, e o cockpit cobra o Felipe so quando precisa, de forma limpa |
 | CC-1125 | prova | - | Linha solta de ponta a ponta no meio do cockpit: a alca do painel lateral aparece com o painel fechado |
 | CC-1126 | prova | - | Varredura do backlog roda no PC e na VPS ao mesmo tempo e o git bate a cada pull; so uma maquina pode gravar |
 
