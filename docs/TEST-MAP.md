@@ -23,7 +23,7 @@ ferramentas é o `TEST-MAP.json` ao lado; este arquivo é a leitura humana.
 | tipo | itens | `existe` | `funciona` | `explica` | `estreito` | `profundo` |
 |---|---|---|---|---|---|---|
 | tela | 20 | 20/20 | 13/20 | 20/20 | 0/20 | 20/20 |
-| acao | 385 | 385/385 | 54/385 | 0/385 | 0/385 | 0/385 |
+| acao | 386 | 386/386 | 54/386 | 0/386 | 0/386 | 0/386 |
 | dado-de-tela | 7 | 7/7 | 6/7 | 0/7 | 0/7 | 0/7 |
 | endereco | 181 | 181/181 | 3/181 | 0/181 | 0/181 | 0/181 |
 | palavra | 90 | 90/90 | 10/90 | 90/90 | 0/90 | 90/90 |
@@ -57,7 +57,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `conhecimento` | viva | src/ui_cockpit2.html#view-conhecimento | funciona, estreito |
 | `remoto` | viva | src/ui_cockpit2.html#view-remoto | estreito |
 
-## acao (385)
+## acao (386)
 
 | item | camada | onde | o que falta |
 |---|---|---|---|
@@ -198,6 +198,7 @@ este número tornaria o mapa um relatório bonito, e ele existe contra isso.
 | `data-claude-term` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-claude-tit` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-remoto-perfil` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
+| `data-codex-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-agy-abrir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-agy-remoto` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |
 | `data-agy-dir` | estatica | src/ui_cockpit2.html | funciona, explica, estreito |

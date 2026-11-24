@@ -1636,3 +1636,6 @@
 {"em":"2026-11-23T20:57:50.428Z","tipo":"criada","id":"CC-1131","estado":"B1","texto":"eu queria colocar ela para ser utilizada dentro do cockpit tambem"}
 {"em":"2026-11-23T20:59:55.991Z","tipo":"estado","id":"CC-1131","de":"B1","para":"EM"}
 {"em":"2026-11-23T20:59:56.444Z","tipo":"medida","id":"CC-1131","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":16748096,"porModelo":{"claude-opus-5-5":19781338,"claude-sonnet-5-5":16654073}}
+{"em":"2026-11-23T21:28:33.896Z","tipo":"estado","id":"CC-1131","de":"EM","para":"PR","porque":"o commit b83e9c9 cita CC-1131","por":"robo"}
+{"em":"2026-11-24T00:15:09.729Z","tipo":"estado","id":"CC-1131","de":"PR","para":"EM"}
+{"em":"2026-11-24T00:15:10.278Z","tipo":"medida","id":"CC-1131","estado":"EM","sessao":"d985c8cb-e694-4055-b374-1a3ff5ad3ba0","tokens":19500917,"porModelo":{"claude-opus-5-5":20433831,"claude-sonnet-5-5":20131485}}

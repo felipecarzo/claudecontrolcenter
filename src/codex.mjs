@@ -190,15 +190,27 @@ let cacheBin = { em: 0, bin: null }
  * O programa que responde. No Windows, o `codex.js` do pacote npm, rodado pelo Node (ver o topo). Fora dele, o
  * `codex` do PATH, chamado direto, também sem shell. `null` quando não há.
  */
-export function binarioCodex(agora = Date.now()) {
+export function binarioCodex(agora = Date.now(), plataforma = process.platform) {
   if (process.env.CC_CODEX_BIN) return fs.existsSync(process.env.CC_CODEX_BIN) ? process.env.CC_CODEX_BIN : null
   if (agora - cacheBin.em < 60_000) return cacheBin.bin
   let bin = null
   for (const dir of String(process.env.PATH || '').split(path.delimiter).filter(Boolean)) {
     const js = path.join(dir, 'node_modules', '@openai', 'codex', 'bin', 'codex.js')
     if (fs.existsSync(js)) { bin = js; break }
-    if (process.platform !== 'win32' && fs.existsSync(path.join(dir, 'codex'))) { bin = path.join(dir, 'codex'); break }
+    if (plataforma !== 'win32' && fs.existsSync(path.join(dir, 'codex'))) { bin = path.join(dir, 'codex'); break }
   }
+  /* Medido em 23/11 na VPS: o painel roda como serviço e o PATH dele NÃO tem `~/.npm-global/bin`, onde o npm do usuário
+     pôs o `codex`. Sem este achado a sessão do Codex da VPS aparecia com `codexResponde: false` e sem campo de resposta. */
+  if (!bin) {
+    const casa = process.env.HOME || process.env.USERPROFILE || ''
+    const lugares = plataforma === 'win32'
+      ? [path.join(process.env.APPDATA || '', 'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js')]
+      : [path.join(casa, '.npm-global', 'bin', 'codex'), path.join(casa, '.local', 'bin', 'codex'), '/usr/local/bin/codex', '/usr/bin/codex']
+    bin = lugares.find((f) => f && fs.existsSync(f)) || null
+  }
+  /* `codex` do npm é um atalho para o `codex.js`, que começa com `#!/usr/bin/env node`: com o PATH de serviço o `node`
+     também não se acha. Apontando direto para o `.js`, quem chama roda com o próprio Node do painel. */
+  if (bin && plataforma !== 'win32') { try { const real = fs.realpathSync(bin); if (/\.(c|m)?js$/i.test(real)) bin = real } catch { /* fica o atalho */ } }
   cacheBin = { em: agora, bin }
   return bin
 }
@@ -267,19 +279,25 @@ function guardarPendente(conversa, texto, erro) {
 }
 
 /**
- * Manda o texto para a sessão do Codex, pelo `codex queue --resume`. Devolve `{ ok, entregue: 'codex' }` ou
- * `{ ok: false, erro }` em palavras comuns, com o pedido guardado.
+ * Manda o texto para a sessão do Codex. Sessão aberta pelo cockpit num terminal (botão "Codex", src/codexAbrir.mjs)
+ * recebe digitado nesse terminal; as outras, pelo `codex queue --resume`. Devolve `{ ok, entregue: 'terminal' | 'codex' }`
+ * ou `{ ok: false, erro }` em palavras comuns, com o pedido guardado.
  */
-export function responderCodex(conversa, texto, { timeoutMs = TETO_RESPOSTA_MS, bin = binarioCodex() } = {}) {
+export async function responderCodex(conversa, texto, { timeoutMs = TETO_RESPOSTA_MS, bin = binarioCodex(), terminal = true, depsTerminal = {} } = {}) {
   const id = String(conversa || '')
   const limpo = limparTextoRemoto(texto)
-  if (!ID_CODEX.test(id) || !ID_CONVERSA.test(id)) return Promise.resolve({ ok: false, erro: 'conversa do Codex inválida' })
-  if (!limpo) return Promise.resolve({ ok: false, erro: 'mensagem sem texto' })
+  if (!ID_CODEX.test(id) || !ID_CONVERSA.test(id)) return { ok: false, erro: 'conversa do Codex inválida' }
+  if (!limpo) return { ok: false, erro: 'mensagem sem texto' }
   const falhou = (motivo) => {
     const guardado = guardarPendente(id, limpo, motivo)
     return { ok: false, erro: motivo + (guardado ? '; o pedido ficou guardado' : ''), pendente: guardado }
   }
-  if (!bin) return Promise.resolve(falhou('o programa do Codex não está instalado nesta máquina'))
+  if (terminal) {
+    const arq = arquivoCodex(id)
+    const t = await import('./codexAbrir.mjs').then((T) => T.responderNoTerminal(id, limpo, { cwd: (arq && cabecaCodex(arq)?.cwd) || null, deps: depsTerminal })).catch(() => null)
+    if (t) return t.ok ? t : falhou(t.erro)
+  }
+  if (!bin) return falhou('o programa do Codex não está instalado nesta máquina')
   // `=` junto do valor: texto que comece com "-" não vira opção do Codex
   const args = ['queue', `--thread=${id}`, `--message=${limpo}`, '--resume']
   const [cmd, todos] = /\.(c|m)?js$/i.test(bin) ? [process.execPath, [bin, ...args]] : [bin, args]

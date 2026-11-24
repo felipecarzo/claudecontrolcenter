@@ -1901,7 +1901,16 @@ function handler(req, res) {
   }
   if (url.pathname === '/api/remote-control') {
     if (req.method === 'POST') {
-      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, mais, remoto, perfil }) => {
+      return comCorpoAsync(req, res, 1e4, async ({ projeto, cwd, acao, mais, remoto, perfil, ferramenta }) => {
+        /* CC-1131: `ferramenta: 'codex'` abre (ou, com `acao: 'desligar'`, fecha) uma sessão do Codex em tmux/WezTerm,
+           por módulo próprio (src/codexAbrir.mjs). Sem o campo, tudo segue como o Claude sempre foi. */
+        if (ferramenta === 'codex') {
+          const K = await import('./codexAbrir.mjs')
+          if (acao === 'desligar') return K.fecharCodex(String(projeto || ''))
+          const pasta = cwdDoProjeto(cwd, projeto)
+          if (!pasta) throw new Error(`projeto não encontrado: ${projeto}`)
+          return K.abrirCodex(projeto, pasta, { mais: Boolean(mais) })
+        }
         if (acao === 'desligar') return desligarRemoto(projeto)
         if (acao === 'link') return linkRemoto(projeto)
         /* 24/08: abrir, conectar o celular, soltar o celular e encerrar viraram

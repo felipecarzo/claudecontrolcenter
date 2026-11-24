@@ -133,6 +133,29 @@ Codex, terminal). Ordem das entregas, uma sessão cada:
 5. **Controle remoto do próprio Codex** (`codex remote-control start` e `pair`): isto muda o que o Codex deixa o celular
    dele fazer no PC. Só liga com a ordem dele na hora, e o código de pareamento é dele, nunca meu.
 
+## CORREÇÃO (23/11, 21h): a causa de "não aparece no celular" era a lista do aplicativo, não a minha sessão
+
+Depois de 4 sessões de teste, ele fechou e abriu de novo o aplicativo do ChatGPT no celular e **apareceu tudo**, até
+a sessão do Codex da VPS. Ou seja, a lista do celular não se atualiza sozinha: precisa fechar e reabrir o aplicativo.
+As três explicações abaixo (origem `exec`, projeto desconhecido, campo `thread_source`) eram hipóteses minhas e
+**não se confirmaram como causa**; não decidem nada no botão "+ Codex". O que continua medido e vale: a lista do
+servidor sem filtro mostra só as fontes interativas, e abrir pelo protocolo dá origem `vscode`. Não conferi quais das
+sessões de teste ele viu (as `exec` entre elas). Regra para o futuro: ao testar o celular, fechar e reabrir o
+aplicativo ANTES de mexer em qualquer coisa.
+
+## (hipóteses de 23/11, 20h40, não confirmadas) por que a sessão aberta por `codex exec` não aparece no celular
+
+- `codex exec` cria sessão com origem `exec` (originador `codex_exec`). A lista de sessões do servidor, quando o
+  cliente não pede filtro, devolve só as fontes **interativas** (descrição do próprio protocolo). Sem filtro, só a
+  sessão `vscode` do viralgame01 voltou; as duas `exec` de teste ficaram de fora. O celular provavelmente pede sem
+  filtro, então não via nada.
+- Abrir pelo protocolo do servidor (`thread/start` e `turn/start`, com `cwd`, sandbox só leitura, aprovação sob
+  pedido) dá à sessão a origem `vscode` e ela entra na lista sem filtro. Depois de aberta, a lista mostrou o
+  originador dela como `codex_chatgpt_android_remote`, ou seja, o servidor registrou o cliente do ChatGPT no Android
+  nessa sessão. Isso é um sinal forte, não prova de que ele a vê na tela.
+- Consequência para o botão "+ Codex" (entrega 4): abrir pelo protocolo do servidor, nunca por `codex exec`. O cliente
+  de teste está em `scratchpad/scripts/ws-nova.mjs` (30 linhas, sem dependência).
+
 ## A pergunta que ele já respondeu (arquivo do plano)
 
 **Responder já basta, ou aprovar pelo cockpit é o que importa?**
@@ -146,3 +169,30 @@ Codex, terminal). Ordem das entregas, uma sessão cada:
 - **Opção 2, responder e aprovar (C)**: tudo da opção 1 e as licenças do Codex aparecem no cockpit, ao lado das do
   Claude. Peso: grande, várias sessões, e mais frágil, porque a OpenAI marca essa parte como experimental e ela muda
   entre versões. Começar pela 1 não atrasa a 2.
+
+## Entrega 4: abrir sessão do Codex em projeto (23/11, medido na VPS e no PC)
+
+O botão "Codex" (telas Projetos e Remoto) abre o `codex` de terminal na pasta do projeto: num tmux `cc-codex-<projeto>`
+na VPS, num terminal do WezTerm no PC. Código em `src/codexAbrir.mjs`; a rota é a mesma `POST /api/remote-control`, com
+`ferramenta: 'codex'`. A resposta digitada no cockpit vai para esse terminal (`responderCodex` tenta o terminal antes
+do `codex queue`). Medido na VPS, numa pasta de teste que já foi apagada:
+
+- **Sandbox**: `read-only` e `workspace-write` funcionam dentro da caixa da VPS (provado com `codex sandbox`: lê, grava
+  só na pasta do projeto, recusa gravar fora). O botão usa `workspace-write` com aprovação `on-request`. `danger-full-access`
+  e `--dangerously-bypass-approvals-and-sandbox` não foram necessários e não são usados.
+- **Confiança na pasta**: sem nada, o Codex pergunta "Trust and continue". `-c 'projects."<pasta>".trust_level=...'` (com
+  ponto) NÃO pula a pergunta; `-c 'projects={"<pasta>"={trust_level="trusted"}}'` (tabela inteira) pula, e não escreve
+  no `config.toml`. Se a pergunta aparecer mesmo assim, o painel escolhe pelo texto da tela, com o cursor conferido.
+- **Aviso de versão nova** abre uma tela em que o Enter padrão roda `npm install -g`: `-c check_for_update_on_startup=false`
+  evita, e se ela aparecer a sessão fecha sem apertar nada.
+- **No PC** o Codex abriu uma tela "Hooks need review" (confiar nos ganchos dele), que o painel não responde: a sessão
+  fica aberta e o botão avisa que a pergunta se responde no terminal.
+- **O id da sessão** é a trava nova em `~/.codex/thread-writer-locks/`, criada ao abrir, antes de qualquer mensagem, e
+  é o mesmo id do arquivo da sessão (conferido). É por ele que a resposta acha o terminal.
+- **Ponta a ponta na VPS**: abrir em tmux com os argumentos do botão, digitar `responda apenas VPS-OK` com `send-keys -l`
+  e Enter (pausa de 300 ms entre os dois), e o arquivo da sessão trouxe a resposta `VPS-OK`. Um pedido ao modelo.
+- **Por que a VPS dizia `escreve: false`**: o painel roda como serviço, o PATH dele não tem `~/.npm-global/bin`, e o
+  `codex` não era achado. `binarioCodex()` agora procura nos lugares do npm do usuário.
+
+Não feito: aprovar pelo cockpit (entrega 3); botão de encerrar a sessão do Codex (a rota `acao: 'desligar'` com
+`ferramenta: 'codex'` existe, sem botão); abrir sessão numa máquina pelo cockpit da outra.

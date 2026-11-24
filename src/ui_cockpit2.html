@@ -13177,6 +13177,8 @@
               ? '<button type="button" class="btn btn-ghost compacto" data-remoto-reabrir="' + esc(nome) + '">retomar de onde parou</button>' : ''));
       return '<div class="rc-grupos">'
         + claudeCode
+        /* CC-1131: o Codex, aberto num terminal desta máquina, dentro da pasta do projeto. */
+        + grupo('Codex', '<button type="button" class="btn btn-outline compacto" data-codex-abrir="' + esc(nome) + '" data-remoto-dir="' + esc(dir) + '" title="abre o Codex neste projeto, num terminal desta máquina">abrir sessão</button>')
         + grupo('Coderoom', nConversas
           ? '<button type="button" class="btn btn-ghost compacto" data-coderoom-abrir="' + esc(nome) + '" data-coderoom-dir="' + esc(dir) + '">abrir' + (nConversas > 1 ? ' (' + nConversas + ')' : '') + '</button>'
             + '<button type="button" class="btn btn-ghost compacto" data-coderoom-nova="' + esc(nome) + '" data-coderoom-dir="' + esc(dir) + '">mais uma</button>'
@@ -18880,6 +18882,41 @@
             alert(`${out.rotulo || projeto}\n\n${out.tela}`);
           }
           await carregarRemoto(true);
+        })();
+      }
+      /* CC-1131: abrir o Codex no projeto, nesta máquina. Mesma confirmação do Claude: a pasta e o que vai acontecer. */
+      if (tr.dataset.codexAbrir) {
+        e.preventDefault();
+        const projeto = tr.dataset.codexAbrir;
+        const dir = tr.dataset.remotoDir;
+        return (async () => {
+          const ok = await confirmar(tr, {
+            titulo: `Abrir o Codex em ${projeto}?`,
+            detalhe: '<ul>'
+              + '<li>pasta: <code>' + esc(dir || '?') + '</code></li>'
+              + '<li>abre o Codex num terminal desta máquina, dentro dessa pasta, já confiando nela</li>'
+              + '<li>ele só escreve dentro da pasta do projeto e pede licença no terminal para sair dela</li>'
+              + '<li>depois você responde por aqui, como nas outras sessões</li>'
+              + '</ul>',
+            sim: 'abrir o Codex',
+          });
+          if (!ok) return;
+          const rotulo = tr.innerText;
+          tr.disabled = true; tr.innerText = 'abrindo…';
+          const abrir = (mais) => c2Andamento('abrindo o Codex em ' + projeto, () => post('/api/remote-control', { projeto, cwd: dir, ferramenta: 'codex', mais })).catch((er) => ({ ok: false, erro: er.message }));
+          let out = await abrir(false);
+          /* `ja: true` é o servidor devolvendo o Codex que JÁ estava aberto neste projeto, sem abrir nada: pergunta antes
+             de abrir outro, para o clique nunca parecer que não fez nada. */
+          if (out?.ok && out.ja) {
+            tr.disabled = false; tr.innerText = rotulo;
+            if (!(await confirmar(tr, { titulo: `Já há um Codex aberto em ${projeto}`, detalhe: '<ul><li>abrir mais um, na mesma pasta?</li></ul>', sim: 'abrir mais um' }))) return;
+            tr.disabled = true; tr.innerText = 'abrindo…';
+            out = await abrir(true);
+          }
+          /* `aviso`: o Codex abriu, mas parou numa pergunta própria dele (ex.: revisar ganchos), que só se responde no terminal. */
+          tr.innerText = out?.ok ? (out.aviso ? 'aberto, mas responda a pergunta dele no terminal' : 'Codex aberto ✓') : 'não abriu: ' + String(out?.erro || out?.error || 'sem resposta').slice(0, 90);
+          if (out?.ok && out.aviso) tr.title = out.aviso;
+          setTimeout(() => { tr.disabled = false; tr.innerText = rotulo; c2Buscar(); }, out?.ok ? (out.aviso ? 9000 : 3000) : 7000);
         })();
       }
       if (tr.dataset.remotoDesligar) {
@@ -26753,6 +26790,8 @@
       const volta = !aqui && typeof DATA !== 'undefined' && DATA.remoto && (DATA.remoto.volta || {})[fw.projeto];
       return '<button class="btn compacto pj-sessao-btn" ' + (aqui ? 'data-remoto-mais' : 'data-remoto-ligar') + '="' + esc(fw.projeto) + '" data-remoto-dir="' + esc(raiz) + '" data-remoto-quieto="1">'
         + ic('mais', 14) + (rotulo || (aqui ? 'mais uma sessão' : 'nova sessão')) + '</button>'
+        /* CC-1131: o Codex ao lado, no mesmo projeto e na mesma máquina em que o painel roda. */
+        + '<button class="btn compacto pj-sessao-btn" data-codex-abrir="' + esc(fw.projeto) + '" data-remoto-dir="' + esc(raiz) + '" title="abre o Codex neste projeto, num terminal desta máquina">' + ic('mais', 14) + 'Codex</button>'
         + (volta ? '<button class="btn compacto" data-remoto-reabrir="' + esc(fw.projeto) + '">' + ic('relogio', 14) + ' retomar de onde parou</button>' : '');
     }
     /* CC-633: os projetos em módulos, como a tela Sessões. Tocar num módulo
