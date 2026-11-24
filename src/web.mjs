@@ -14,6 +14,7 @@ import * as observado from './observado.mjs'
    nesta VPS, onde quase tudo é sessão interativa. Quem lê agente lê pelas DUAS
    fontes, senão o retrato sai vazio e o vazio parece resposta (CC-124/CC-232). */
 import { PROJETOS_DIR as PROJETOS_DIR_SESSOES, readSessoes, todosOsJobs } from './sessoes.mjs'
+import { readCodex as readCodexDaqui } from './codex.mjs' // CC-1131: as sessões do Codex entram no que a máquina manda à outra
 import { perdidasDeTodas as perdidasDeTodasAsSessoes } from './fila.mjs'
 // `casaClaude()` e não `os.homedir()`: é o único lugar que resolve a pasta
 // `.claude`, e é o que faz `CC_HOME` isolar o painel de teste do real.
@@ -444,7 +445,11 @@ const snapshot = () => {
   const interativas = readSessoes(Date.now(), {
     ignorar: doBackground.flatMap((j) => [j.id, j.sessionId]),
   })
-  const jobs = [...doBackground, ...interativas]
+  /* CC-1131, medido em 23/11 nos dois painéis reais: o que uma máquina manda à outra sai DAQUI, e as sessões do Codex
+     entravam só em `todosOsJobs` (a tela). Resultado: o PC e a VPS nunca viam as sessões do Codex um do outro. */
+  let doCodex = []
+  try { doCodex = readCodexDaqui(Date.now()) } catch { doCodex = [] }
+  const jobs = [...doBackground, ...interativas, ...doCodex]
 
   /* CC-466: o que a sessão FEZ, lido do transcrito, sem ela precisar contar.
    *

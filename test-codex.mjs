@@ -166,5 +166,13 @@ const doVelho = montar({ jobs: [daVps({ ...velho, ultimaFala: null })], local: {
 assert.notEqual(doVelho.tipo, 'codex'); assert.equal(doVelho.escreve, false, 'pacote velho sem o campo: cadeado, como antes')
 ok('a tela marca Codex, mostra a fala, e só oferece escrever onde o Codex responde (PC e VPS)')
 
+/* CC-1131, achado em 23/11 nos dois painéis reais: o que uma máquina manda à outra sai do `snapshot` de src/web.mjs, e
+   ele não juntava o Codex (só a tela juntava). Resultado: o PC e a VPS nunca viam o Codex um do outro, e este teste
+   passava porque olha o pacote já montado. Guarda a fonte: se o snapshot largar o Codex, o teste recusa. */
+const fonteWeb = fs.readFileSync(new URL('./src/web.mjs', import.meta.url), 'utf8')
+assert.match(fonteWeb, /import \{ readCodex as readCodexDaqui \} from '\.\/codex\.mjs'/, 'web.mjs importa o leitor do Codex')
+assert.match(fonteWeb, /const jobs = \[\.\.\.doBackground, \.\.\.interativas, \.\.\.doCodex\]/, 'o snapshot (o que a máquina manda à outra) leva o Codex')
+ok('o que a máquina manda à outra leva as sessões do Codex (fonte guardada)')
+
 fs.rmSync(raiz, { recursive: true, force: true })
 console.log(`\n${n} blocos ok`)
