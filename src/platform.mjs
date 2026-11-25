@@ -41,6 +41,23 @@ export const ehMac = SO === 'darwin'
  */
 export const casaClaude = () => process.env.CC_HOME || path.join(os.homedir(), '.claude')
 
+/** CC-1133: a linha de comando de um processo, ou '' se não der para ler (nunca lança). Windows pergunta ao sistema
+ *  (uns 300 a 700 ms), Linux lê /proc. Serve para saber se quem abriu o gancho foi um `claude -p` (chamada não
+ *  interativa), que as variáveis de ambiente não distinguem: elas herdam as da sessão que chamou. */
+export const linhaDeComandoDe = (pid) => {
+  try {
+    if (!Number.isInteger(pid) || pid <= 0) return ''
+    if (process.platform === 'linux') return fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').replace(/\0/g, ' ').trim()
+    if (process.platform === 'win32') {
+      const r = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command',
+        `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").CommandLine`],
+      { encoding: 'utf8', windowsHide: true, timeout: 8000, stdio: ['ignore', 'pipe', 'ignore'] })
+      return String(r).trim()
+    }
+    return execFileSync('ps', ['-o', 'command=', '-p', String(pid)], { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+  } catch { return '' }
+}
+
 export const quiet = (cmd, args) => {
   try {
     return {

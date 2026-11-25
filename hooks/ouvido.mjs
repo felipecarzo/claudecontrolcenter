@@ -31,6 +31,17 @@ if (!limparTextoRemoto) sair()
 const sessao = String(entrada?.session_id || '')
 if (!O.ID_SESSAO.test(sessao)) sair()
 
+/* CC-1133, medido em 25/11: dentro de `claude -p` (as chamadas não interativas que o cockpit faz por baixo: arquiteto,
+   textos, conferências) este gancho prendia a chamada inteira, 151 s sem resposta até o limite, porque o `-p` espera o
+   gancho ao fundo acabar e ele espera até 24 h. Quem recebe mensagem do cockpit é sessão com gente do outro lado, não
+   chamada de uma linha. As variáveis de ambiente não distinguem (herdam as da sessão que chamou), então olha-se quem
+   abriu o gancho: linha de comando do pai com `-p` ou `--print`. As sessões do aplicativo usam `stream-json` e não têm. */
+if (!process.env.CC_OUVIDO_FORCAR) {
+  const { linhaDeComandoDe } = await import('../src/platform.mjs').catch(() => ({}))
+  const linhaDoPai = linhaDeComandoDe ? linhaDeComandoDe(process.ppid) : ''
+  if (/(^|\s)(-p|--print)(\s|$)/.test(linhaDoPai)) sair()
+}
+
 const dir = O.dirCaixas()
 const vivo = path.join(dir, `${sessao}.vivo`)
 const caixa = path.join(dir, `${sessao}.txt`)

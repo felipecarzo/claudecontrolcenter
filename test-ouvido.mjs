@@ -113,6 +113,21 @@ try {
     assert.match(web, /const sessao = ouvidoVivo\(conversa\)\s+if \(sessao\) r = gravarCaixa\(sessao, texto\)/)
     assert.match(web, /ouvido: Boolean\(ouv\)/)
   })
+  await t('CC-1133: aberto por um `-p` (chamada não interativa), o gancho sai na hora e não arma nada', async () => {
+    // o pai do gancho aqui é um `node -p ...`: a linha de comando dele tem `-p`, como a de um `claude -p`
+    const S4 = 'dddd1111-2222-3333-4444-555566667777'
+    const codigo = `const c=require('child_process').spawnSync(process.execPath,[${JSON.stringify(path.join(raiz, 'hooks', 'ouvido.mjs'))}],`
+      + `{input:JSON.stringify({session_id:${JSON.stringify(S4)},cwd:${JSON.stringify(raiz)},hook_event_name:'Stop'}),`
+      + `env:{...process.env,CC_HOME:${JSON.stringify(casa)},CC_OUVIDO_TETO_MS:'30000',CC_OUVIDO_PASSO_MS:'100'},timeout:25000});c.status`
+    const inicio = Date.now()
+    const r = await new Promise((res) => {
+      const f = spawn(process.execPath, ['-p', codigo], { stdio: ['ignore', 'pipe', 'pipe'] })
+      let out = ''; f.stdout.on('data', (d) => { out += d }); f.on('exit', () => res(out.trim()))
+    })
+    assert.equal(r, '0', `o gancho devia sair com 0, saiu com ${r}`)
+    assert.ok(Date.now() - inicio < 15000, `o gancho ficou esperando (${Date.now() - inicio} ms): prenderia o claude -p`)
+    assert.equal(O.ouvidoVivo(S4), null, 'um `claude -p` não pode deixar ouvido armado')
+  })
 } finally {
   fs.rmSync(base, { recursive: true, force: true })
 }

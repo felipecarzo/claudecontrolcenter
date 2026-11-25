@@ -4,7 +4,7 @@
 
 # ROADMAP — o que está aberto neste projeto
 
-207 abertos, 909 fechados, 1116 no total. Gerado em 2026-11-23.
+209 abertos, 909 fechados, 1118 no total. Gerado em 2026-11-25.
 
 ## ⚠️ Travados, com a causa medida
 
@@ -201,7 +201,9 @@
 | CC-1128 | prova | - | painel velho falso quando o commit so mudou documentos |
 | CC-1129 | prova | - | Comando de encerrar sessao confere o painel do tmux antes de marcar e avisa quando nao alcanca (conserto vindo da VPS) |
 | CC-1130 | prova | - | Cockpit avisa quando a memoria disponivel cai abaixo de 4 GB, com quem mais pesa |
-| CC-1131 | andando | - | Codex dentro do cockpit: ver as sessoes e responder pelo cockpit |
+| CC-1131 | prova | - | Codex dentro do cockpit: ver as sessoes e responder pelo cockpit |
+| CC-1132 | definida | - | Companheiro ativo: Haiku que acompanha projetos e backlog, caca erros, manda agentes atras dos complexos, resume e cobra decisoes |
+| CC-1133 | andando | - | Ouvido prende toda chamada claude -p do PC (arquiteto, textos, conferencias): sair sem armar quando o pai e uma chamada nao interativa |
 
 ## coderoom
 
