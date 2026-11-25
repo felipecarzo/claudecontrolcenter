@@ -44,6 +44,24 @@ export const casaClaude = () => process.env.CC_HOME || path.join(os.homedir(), '
 /** CC-1133: a linha de comando de um processo, ou '' se não der para ler (nunca lança). Windows pergunta ao sistema
  *  (uns 300 a 700 ms), Linux lê /proc. Serve para saber se quem abriu o gancho foi um `claude -p` (chamada não
  *  interativa), que as variáveis de ambiente não distinguem: elas herdam as da sessão que chamou. */
+/** Pid do pai de um processo; 0 se não achar. Nunca lança. */
+export const pidPaiDe = (pid) => {
+  try {
+    if (!Number.isInteger(pid) || pid <= 0) return 0
+    if (process.platform === 'linux') {
+      const resto = fs.readFileSync(`/proc/${pid}/stat`, 'utf8').replace(/^.*\) /, '').split(' ')
+      return Number(resto[1]) || 0
+    }
+    if (process.platform === 'win32') {
+      const r = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command',
+        `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").ParentProcessId`],
+      { encoding: 'utf8', windowsHide: true, timeout: 8000, stdio: ['ignore', 'pipe', 'ignore'] })
+      return Number(String(r).trim()) || 0
+    }
+    return Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).trim()) || 0
+  } catch { return 0 }
+}
+
 export const linhaDeComandoDe = (pid) => {
   try {
     if (!Number.isInteger(pid) || pid <= 0) return ''

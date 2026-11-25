@@ -128,6 +128,24 @@ try {
     assert.ok(Date.now() - inicio < 15000, `o gancho ficou esperando (${Date.now() - inicio} ms): prenderia o claude -p`)
     assert.equal(O.ouvidoVivo(S4), null, 'um `claude -p` não pode deixar ouvido armado')
   })
+  await t('CC-1133: com um `sh -c` entre o `-p` e o gancho (como na VPS), também sai na hora', async () => {
+    const sh = spawn('sh', ['-c', 'true'], { stdio: 'ignore' })
+    const temSh = await new Promise((r) => { sh.on('error', () => r(false)); sh.on('exit', (c) => r(c === 0)) })
+    if (!temSh) return
+    const S5 = 'eeee1111-2222-3333-4444-555566667777'
+    const hook = path.join(raiz, 'hooks', 'ouvido.mjs')
+    const codigo = `const c=require('child_process').spawnSync('sh',['-c',${JSON.stringify(`"${process.execPath}" "${hook}"`)}],`
+      + `{input:JSON.stringify({session_id:${JSON.stringify(S5)},cwd:${JSON.stringify(raiz)},hook_event_name:'Stop'}),`
+      + `env:{...process.env,CC_HOME:${JSON.stringify(casa)},CC_OUVIDO_TETO_MS:'30000',CC_OUVIDO_PASSO_MS:'100'},timeout:25000});c.status`
+    const inicio = Date.now()
+    const r = await new Promise((res) => {
+      const f = spawn(process.execPath, ['-p', codigo], { stdio: ['ignore', 'pipe', 'pipe'] })
+      let out = ''; f.stdout.on('data', (d) => { out += d }); f.on('exit', () => res(out.trim()))
+    })
+    assert.equal(r, '0')
+    assert.ok(Date.now() - inicio < 15000, `o gancho ficou esperando atrás do sh (${Date.now() - inicio} ms)`)
+    assert.equal(O.ouvidoVivo(S5), null)
+  })
 } finally {
   fs.rmSync(base, { recursive: true, force: true })
 }

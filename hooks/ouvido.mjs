@@ -37,9 +37,15 @@ if (!O.ID_SESSAO.test(sessao)) sair()
    chamada de uma linha. As variáveis de ambiente não distinguem (herdam as da sessão que chamou), então olha-se quem
    abriu o gancho: linha de comando do pai com `-p` ou `--print`. As sessões do aplicativo usam `stream-json` e não têm. */
 if (!process.env.CC_OUVIDO_FORCAR) {
-  const { linhaDeComandoDe } = await import('../src/platform.mjs').catch(() => ({}))
-  const linhaDoPai = linhaDeComandoDe ? linhaDeComandoDe(process.ppid) : ''
-  if (/(^|\s)(-p|--print)(\s|$)/.test(linhaDoPai)) sair()
+  const { linhaDeComandoDe, pidPaiDe } = await import('../src/platform.mjs').catch(() => ({}))
+  /* Na VPS o pai é um `/bin/sh -c` e o `claude -p` é o avô: sobe até 3 níveis, passando só por shell. */
+  let pid = process.ppid
+  for (let nivel = 0; linhaDeComandoDe && nivel < 3 && pid; nivel += 1) {
+    const linha = linhaDeComandoDe(pid)
+    if (/(^|\s)(-p|--print)(\s|$)/.test(linha)) sair()
+    if (!/(^|[\\/\s])(ba|da)?sh(\.exe)?(\s|$)|cmd(\.exe)?(\s|$)/i.test(linha.split(' ')[0] + ' ')) break
+    pid = pidPaiDe(pid)
+  }
 }
 
 const dir = O.dirCaixas()
